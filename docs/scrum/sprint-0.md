@@ -6,8 +6,8 @@
 | Trilha | Quem | Entrega até sexta |
 |---|---|---|
 | BPMN | Lucas com o escritório | Códigos dos passos gravados nos cartões do Miro; passos novos D1.21M, DP.00 e D4.02N desenhados; "a definir" respondidos |
-| Histórias | Lucas e Fernando | Candidatas de D1, D2 e governança médica (PREV-01 a 31 e 66 a 71) criadas no Jira `GGVP`, refinadas na quarta |
-| Figma | Pedro | Tela inicial "O que é meu hoje" + chat para Atendimento, Documentação, Advogada, Sênior e Financeiro (T-01, T-02) |
+| Histórias | Lucas e Fernando | Candidatas de D1, D2 e governança médica (GGVP-16 a 31 e 66 a 71) criadas no Jira `GGVP`, refinadas na quarta |
+| Figma | Pedro | Tela inicial "O que é meu hoje" + chat para Atendimento, Documentação, Advogada, Sênior e Financeiro (GGVP-78, GGVP-82) |
 | Base técnica | Mateus | Proposta dos ADRs 001, 002 e 008; ambiente de homologação |
 
 ## Eventos

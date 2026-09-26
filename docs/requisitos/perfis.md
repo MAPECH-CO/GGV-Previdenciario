@@ -12,7 +12,7 @@ Os perfis saem das raias do BPMN. Toda tela inicial tem o mesmo formato: **"O qu
 | **Financeiro** | FINANCEIRO | Prestações de contas recebidas | Recebe e lança a prestação de contas | Entrevista, petição, laudos |
 | **Cliente ou lead** | CLIENTE / LEAD | Fora do portal: a ficha de atendimento, o link de assinatura e as mensagens | Preenche a ficha, assina, envia documentos, confirma presença | Qualquer tela interna |
 | **Gestão do escritório** (proposto, não está no BPMN) | nenhuma | Configurações | Mantém kits por benefício, modelos, limites de cobrança, mensagens padrão e perfis | (conforme o papel) |
-| **Sócio** (proposto, não está no BPMN) | nenhuma | Painel de resultado (PREV-80) | Acompanha deferimento, procedência, extinções sem mérito e rendimento | Dados de saúde de cliente individual |
+| **Sócio** (proposto, não está no BPMN) | nenhuma | Painel de resultado (GGVP-75) | Acompanha deferimento, procedência, extinções sem mérito e rendimento | Dados de saúde de cliente individual |
 
 **Sistema** e **IA** também são raias, mas não são perfis de pessoa. Tudo o que fazem aparece para as pessoas como sugestão, tarefa ou registro no histórico do card.
 
