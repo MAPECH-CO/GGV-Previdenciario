@@ -18,6 +18,18 @@ O desenho vive no **Miro**, board `uXjVHjbveV4=`. Cada processo tem duas versõe
 
 Raias usadas: CLIENTE / LEAD, ATENDIMENTO, JURÍDICO, DOCUMENTAÇÃO · ADM, FINANCEIRO, SISTEMA · REGRAS, IA · LLM, SCANNER · OCR, ACERVO · RAG, e as raias externas INSS e JUSTIÇA.
 
+## Transcrição neste repositório
+Cada diagrama tem a transcrição em markdown, no formato dos processos do Trabalhista (raias, passos numerados, decisões, fluxos e as regras vindas dos comentários do board). O Miro continua sendo a fonte; estes arquivos são a cópia versionada, corrigida por PR.
+
+- [D1 · Entrevista, benefício e documentos](D1.md)
+- [D2 · Via administrativa no INSS](D2.md)
+- [D3 · Judicialização](D3.md)
+- [D3a · Vigília e exigências do juiz](D3a.md)
+- [D3b · Desfecho do mérito](D3b.md)
+- [D4 · Diário e acervo (RAG)](D4.md)
+- [D5 · Conversa com lead ou cliente](D5.md)
+- [DP · Perícia padrão](DP.md)
+
 ## Códigos dos passos
 O board ainda não numera os passos. Os códigos abaixo foram propostos em 26/09/2026 e **devem ser gravados nos cartões do Miro** para que história e diagrama fiquem ligados. Rótulo no Jira: `bpmn-d1-05`, `bpmn-dp-07`.
 
