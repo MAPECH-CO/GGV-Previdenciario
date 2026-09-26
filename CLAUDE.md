@@ -46,3 +46,6 @@ ADR-013 (base de conhecimento em markdown curado, busca híbrida no PostgreSQL).
 - `docs/requisitos/`: candidatas, perfis, portões, roteiro de laudos, jurimetria, exigências, dúvidas.
 - `docs/scrum/`: papéis, eventos, DoR, DoD, plano da Sprint 0.
 - `docs/decisoes/`: ADRs. Uma decisão, um arquivo, numerado.
+- `docs/ferramentas.md`: Jira, GitHub, Miro, Drive, Claude Teams, Meet e como se ligam.
+- `docs/claude-code.md`: como cada dev roda o Claude Code no clone e liga o conector do Jira.
+- `CONTRIBUTING.md`: branches, commits, PR, revisão.

@@ -1,0 +1,104 @@
+# Liga o GitHub ao Jira (projeto GGVP) sem depender da automação nativa do Jira.
+# 1) PR sem chave GGVP-n no título é reprovado.
+# 2) Branch criada -> item vai para "Em desenvolvimento"; PR aberto -> "Em revisão"; PR mesclado -> "Em homologação".
+# Segredos do repositório: JIRA_EMAIL e JIRA_API_TOKEN (conta de serviço ou do administrador).
+name: Jira
+
+on:
+  create:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review, closed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  JIRA_URL: https://mapech.atlassian.net
+  CHAVE_REGEX: 'GGVP-[0-9]+'
+
+jobs:
+  chave-no-pr:
+    name: Chave GGVP no título do PR
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar título e branch
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if echo "$TITULO" | grep -Eq "$CHAVE_REGEX"; then
+            echo "ok: $TITULO"
+          else
+            echo "::error::O título do PR precisa trazer a chave do Jira, por exemplo 'GGVP-12: listar prazos do dia'. Título atual: $TITULO"
+            exit 1
+          fi
+          if ! echo "$BRANCH" | grep -Eq "$CHAVE_REGEX"; then
+            echo "::warning::A branch '$BRANCH' não tem a chave GGVP-n. Convenção: feat/GGVP-12-descricao"
+          fi
+
+  transicao:
+    name: Mover item no Jira
+    if: (github.event_name == 'create' && github.ref_type == 'branch') || (github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","ready_for_review","closed"]'), github.event.action))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descobrir chave e estado alvo
+        id: alvo
+        env:
+          EVENTO: ${{ github.event_name }}
+          ACAO: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          TITULO: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          chave=$(printf '%s %s %s' "$TITULO" "$HEAD_REF" "$REF_NAME" | grep -Eo "$CHAVE_REGEX" | head -1 || true)
+          estado=""
+          case "$EVENTO:$ACAO" in
+            create:)                 estado="Em desenvolvimento" ;;
+            pull_request:opened|pull_request:reopened|pull_request:ready_for_review)
+                                     [ "$DRAFT" = "true" ] || estado="Em revisão" ;;
+            pull_request:closed)     [ "$MERGED" = "true" ] && estado="Em homologação" ;;
+          esac
+          echo "chave=$chave" >> "$GITHUB_OUTPUT"
+          echo "estado=$estado" >> "$GITHUB_OUTPUT"
+          echo "evento=$EVENTO:$ACAO chave=${chave:-nenhuma} estado=${estado:-nenhum}"
+
+      - name: Transicionar no Jira
+        if: steps.alvo.outputs.chave != '' && steps.alvo.outputs.estado != ''
+        env:
+          CHAVE: ${{ steps.alvo.outputs.chave }}
+          ESTADO: ${{ steps.alvo.outputs.estado }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, json, base64, urllib.request
+          url, chave, alvo = os.environ["JIRA_URL"], os.environ["CHAVE"], os.environ["ESTADO"]
+          auth = "Basic " + base64.b64encode(f"{os.environ['JIRA_EMAIL']}:{os.environ['JIRA_API_TOKEN']}".encode()).decode()
+          def api(method, path, body=None):
+              req = urllib.request.Request(url + path, data=json.dumps(body).encode() if body else None, method=method,
+                    headers={"Authorization": auth, "Content-Type": "application/json", "Accept": "application/json"})
+              with urllib.request.urlopen(req) as r:
+                  raw = r.read().decode(); return json.loads(raw) if raw else None
+          # nomes aceitos por estado alvo: o nome do processo, o nome padrão do Jira em inglês e a tradução que a interface mostra
+          equivalentes = {
+              "Em desenvolvimento": ["Em desenvolvimento", "In Progress", "Em andamento"],
+              "Em revisão": ["Em revisão", "In Review", "Em análise"],
+              "Em homologação": ["Em homologação"],
+          }
+          aceitos = equivalentes.get(alvo, [alvo])
+          st = api("GET", f"/rest/api/3/issue/{chave}?fields=status")["fields"]["status"]
+          print(f"{chave} está em '{st['name']}'; alvo '{alvo}'")
+          if st["name"] in aceitos: print("já está no estado alvo"); raise SystemExit(0)
+          if st["statusCategory"]["key"] == "done": print("item concluído não volta"); raise SystemExit(0)
+          ts = api("GET", f"/rest/api/3/issue/{chave}/transitions")["transitions"]
+          t = next((t for t in ts if t["to"]["name"] in aceitos), None)
+          if not t:
+              print(f"::warning::Não existe transição para '{alvo}' (nomes aceitos: {aceitos}) a partir de '{st['name']}'. Estados disponíveis: {[x['to']['name'] for x in ts]}")
+              raise SystemExit(0)
+          api("POST", f"/rest/api/3/issue/{chave}/transitions", {"transition": {"id": t["id"]}})
+          print(f"{chave} movido para '{t['to']['name']}'")
+          PY

@@ -14,6 +14,8 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | Documentação médica por benefício | `docs/requisitos/roteiro-laudos.md` e `docs/requisitos/fontes/` |
 | O que ainda depende do PO | `docs/requisitos/duvidas-abertas.md` |
 | Como a equipe trabalha | `docs/scrum/` e `CONTRIBUTING.md` |
+| Ferramentas e como se ligam | `docs/ferramentas.md` |
+| Rodar o Claude Code no clone | `docs/claude-code.md` |
 | Decisões | `docs/decisoes/` |
 
 ## Estado em 26/09/2026

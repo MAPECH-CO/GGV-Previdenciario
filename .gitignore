@@ -1,0 +1,39 @@
+# segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# sistema e editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# node
+node_modules/
+dist/
+build/
+.next/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# claude local
+.claude/settings.local.json
+
+# google drive para desktop
+Icon?
+desktop.ini
+.tmp.driveupload/
+.tmp.drivedownload/
+*.gdoc
+*.gsheet
+*.gslides
