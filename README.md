@@ -17,6 +17,7 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | Ferramentas e como se ligam | `docs/ferramentas.md` |
 | Rodar o Claude Code no clone | `docs/claude-code.md` |
 | Decisões | `docs/decisoes/` |
+| Estudos de arquitetura (ex.: Chatwoot no portal) | `docs/arquitetura/` |
 
 ## Estado em 26/09/2026
 - BPMN revisado no Miro; passos ainda sem número no board (códigos propostos em `docs/bpmn/`).
