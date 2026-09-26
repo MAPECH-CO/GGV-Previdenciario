@@ -3,9 +3,9 @@
 | Ferramenta | Onde | Para quê |
 |---|---|---|
 | Jira | https://mapech.atlassian.net, projeto `GGVP` | Backlog, sprints, quadro. Chave `GGVP`. Fonte da verdade do que fazer e em que ordem |
-| GitHub | https://github.com/femezher/GGV-Prev- | Código e documentação. Fonte da verdade do que foi feito |
+| GitHub | https://github.com/femezher/mapech-previdenciario | Código e documentação. Fonte da verdade do que foi feito |
 | Miro | board `uXjVHjbveV4=` | O BPMN do escritório. Vale o frame "revisão BPMN" da direita. Índice por diagrama em `docs/bpmn/README.md` |
-| Google Drive | pasta `Mapech/ggv-previdenciario` no Drive da MAPECH | Espelho de leitura do repositório, atualizado a cada commit. Para NotebookLM, celular e quem não usa git |
+| Google Drive | pasta `Mapech/mapech-previdenciario` no Drive da MAPECH | Espelho de leitura do repositório, atualizado a cada commit. Para NotebookLM, celular e quem não usa git |
 | Claude Teams | projeto "GGV Previdenciário" | Contexto compartilhado: usa o `CLAUDE.md` deste repositório como instrução e a pasta do Drive como fonte |
 | Claude Code | no clone local de cada dev | Trabalha por história e lê o `CLAUDE.md` deste repositório direto do disco. Instalação e conector do Jira em `docs/claude-code.md` |
 | Google Meet | sala fixa do projeto | Planning, daily, refinamento, review e retrospectiva. Nenhuma reunião do projeto por WhatsApp |

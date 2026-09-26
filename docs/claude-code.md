@@ -13,14 +13,14 @@ sincronização**. Os quatro trabalham com a mesma regra sem ninguém copiar nad
 entra por pull request como qualquer outra alteração.
 
 ## Pré-requisitos
-- Acesso de escrita ao repositório `femezher/GGV-Prev-`.
+- Acesso de escrita ao repositório `femezher/mapech-previdenciario`.
 - Conta própria do Claude com acesso ao Claude Code.
 - `git` e, de preferência, o `gh` instalado, que facilita abrir o pull request pelo terminal.
 
 ## Passo a passo
 ```
-git clone https://github.com/femezher/GGV-Prev-.git
-cd GGV-Prev-
+git clone https://github.com/femezher/mapech-previdenciario.git
+cd mapech-previdenciario
 claude
 ```
 
