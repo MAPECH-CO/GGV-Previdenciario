@@ -10,6 +10,7 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | Entender o processo do escritório | `docs/bpmn/README.md` (links para o Miro e códigos dos passos) |
 | Ver o backlog candidato | `docs/requisitos/candidatas/README.md` (89 histórias, uma por arquivo) |
 | Saber o que cada perfil vê (base do Figma) | `docs/requisitos/perfis.md` |
+| Funções e tarefas por perfil (base das telas) | `docs/requisitos/funcoes-e-telas.md` |
 | Conhecer as travas de governança | `docs/requisitos/portoes-governanca.md` |
 | Documentação médica por benefício | `docs/requisitos/roteiro-laudos.md` e `docs/requisitos/fontes/` |
 | O que ainda depende do PO | `docs/requisitos/duvidas-abertas.md` |
