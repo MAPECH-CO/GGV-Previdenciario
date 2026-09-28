@@ -101,6 +101,19 @@ precisar de contato; anexo do documento faltante; contrato na íntegra + anexar 
 assinatura; lista de exigências com cumprida/pendente/sem prova; resumo do que foi coletado com
 abrir cada documento; links para os documentos do scanner; campos do lead.
 
+## Tarefas do setor e atribuição
+- **Todo mundo vê as tarefas do setor.** Cada Central tem duas abas: **Minhas tarefas** (o que
+  está atribuído a mim) e **Tarefas do setor** (tudo do Atendimento ou do Jurídico, com o
+  responsável em cada linha e filtro por pessoa e por "sem responsável").
+- **Só o líder atribui.** O responsável pelo Atendimento (perfil "Atendimento · líder") e a
+  sênior (líder do Jurídico) veem a mesma lista com o botão **Atribuir / Reatribuir** em cada
+  tarefa. O colaborador vê a lista só para leitura e pede ao líder no chat se quiser pegar uma
+  tarefa sem responsável.
+- **Popup Atribuir tarefa**: pessoas do setor com a carga de hoje (barra e contagem), prazo
+  sugerido, prioridade, recado, aviso no chat e na Central de quem recebe; "Deixar sem
+  responsável" e "Abrir a tarefa". Quem atribuiu fica no histórico (quem, quando, para quem).
+  Tarefa sem responsável ou com prazo estourado sobe para o líder (G15).
+
 ## Suporte interno em todas as telas
 Aba "✦ Suporte" na borda direita de **todos** os artboards do desktop. Abre uma janela à direita com
 o chatbot do escritório (Chatwoot embutido, ver `docs/arquitetura/chatwoot-no-portal.md`). O chat
