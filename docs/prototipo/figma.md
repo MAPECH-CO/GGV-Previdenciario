@@ -30,14 +30,25 @@ notificações de cada função vêm de `docs/requisitos/funcoes-e-telas.md`.
   inteira** (Atendimento → INSS → Judicial, 14 ocorridos com quem fez e o passo do BPMN), dados do
   processo, exigências (prazo, responsável, prova, G21), perícias, prazos, documentos (abrir cada um)
   e ações. Sem texto de apoio desnecessário.
+- **Barra de ações do processo**, logo abaixo do cabeçalho: os passos do Jurídico lado a lado em
+  ordem cronológica (Entrevista → Pedido ao INSS → Exigência INSS → Perícia INSS → Despacho →
+  Petição → Perícia judicial → Exigência do juiz → Minuta → Sentença/recurso → Prestação de contas).
+  O que já ocorreu fica desabilitado com ✓; **só a etapa atual está habilitada** (▶, laranja) e abre
+  o popup daquela tarefa; o que ainda não chegou fica apagado. Três casos no protótipo: Antônio
+  (exigência do juiz + minuta), Sérgio Ramos (resultado da perícia) e Lúcia Prado (prestação de
+  contas).
 - **Cada tarefa tem a sua ação na página.** A página do processo se adapta ao estágio do caso, e a
   tarefa que a abriu ganha um **popup próprio** a partir de "Abrir próxima ação". Exemplo feito:
   "Prestação de contas: dar o OK" abre a página do processo da Lúcia Prado (sentença procedente,
   RPV expedida, painel de honorários) e o popup **Prestação de contas — conferir e dar o OK**:
   valores montados pela IA (condenação, honorários 20%, a repassar, forma e prazo), checklist de
   conferência, observação para o Financeiro e os botões "Dar o OK e liberar o aviso à cliente" (G8)
-  e "Pedir ajuste à IA". O mesmo padrão vale para as outras tarefas do Jurídico (entrevista,
-  exigência do INSS, pedir/conferir petição, laudo pericial): página no estágio certo + popup.
+  e "Pedir ajuste à IA". Segundo exemplo: "Conferir laudo pericial e parecer médico (G17)" abre o processo do Sérgio
+  Ramos e o popup **Resultado da perícia — conferir laudo e parecer**: resumo do laudo pela IA,
+  conclusão, DII, coerência com o pedido (G18), jurimetria do perito (G22), ponto de atenção,
+  checklist de conferência e as decisões "Laudo favorável — gerar a manifestação", "Pedir
+  esclarecimentos (quesitos)" e "Impugnar o laudo". Faltam popups para entrevista, exigência do
+  INSS e pedir/conferir petição (mesmo padrão).
 - **Histórico**: linha do tempo já está na página; o toggle sob o número abre a versão em detalhe.
 - **Etapas futuras não aparecem**: sentença, recurso e prestação de contas só entram quando
   acontecerem (uma linha diz isso ao pé da linha do tempo).
