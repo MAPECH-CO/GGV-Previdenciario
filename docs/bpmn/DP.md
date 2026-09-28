@@ -1,6 +1,7 @@
 # DP · Perícia padrão (revisão BPMN)
 
 **Fonte:** frame "DP · Perícia padrão · revisão BPMN (para conferência)" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977072953) (frame `3458764684977072953`).
+**Imagem exportada:** [`img/DP.jpg`](img/DP.jpg) (mesma que abre em tela cheia no protótipo).
 **Estado:** revisão feita com o PO em setembro de 2026. Vale este frame; a versão antiga fica no board só como histórico.
 **Início:** Perícia pedida (evento vindo de **D2, D3 ou D3a**). **Fim:** "▶ DEVOLVE PARA o diagrama que pediu", com perícia favorável ou desfavorável.
 

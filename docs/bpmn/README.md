@@ -5,16 +5,16 @@ Fonte de toda história do backlog. Nada entra no Jira sem apontar para um passo
 ## Onde está o BPMN
 O desenho vive no **Miro**, board `uXjVHjbveV4=`. Cada processo tem duas versões lado a lado; **vale a da direita**, marcada "revisão BPMN (para conferência)", refeita com o PO em setembro de 2026. O D5 tem só uma versão.
 
-| Diagrama | O que cobre | Frame que vale |
-|---|---|---|
-| D1 · Entrevista, benefício e documentos | Da chegada do cliente ou lead até o caso liberado ao Jurídico: ficha, entrevista gravada, benefício, contrato no ZapSign, scanner, checklist e cobrança | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978799774) |
-| D2 · Via administrativa no INSS | OK do sênior, protocolo no Meu INSS, vigília diária, exigências, deferido (prestação de contas e banco) ou indeferido | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977251201) |
-| D3 · Judicialização | Motivo do indeferimento, análise da IA, despacho da sênior, laços dos setores, petição escrita pela IA e conferida, três travas e protocolo | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977559113) |
-| D3a · Vigília e exigências do juiz | Publicação lida pela IA, exigência analisada pelo advogado, laços dos setores, manifestação e volta à vigília | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977768761) |
-| D3b · Desfecho do mérito | Procedente: pagamento, prestação de contas, Financeiro e aviso. Improcedente: recorrer ou estudo de caso | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978188052) |
-| D4 · O diário e o acervo que aprende | Publicação casada pelo CNJ, classificada, prazo contado; acervo (RAG) que aprende com os desfechos | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978380513) |
-| DP · Perícia padrão | Chamado por D2, D3 e D3a: marcar, reunir documentos, orientar o cliente (perfil do perito), conferir o resultado | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977072953) |
-| D5 · Conversa com lead ou cliente em análise | Conversa gravada, transcrita, ficha e processo atualizados pela IA, conferidos pelo Jurídico | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684983659886) |
+| Diagrama | O que cobre | Frame que vale | Imagem |
+|---|---|---|---|
+| D1 · Entrevista, benefício e documentos | Da chegada do cliente ou lead até o caso liberado ao Jurídico: ficha, entrevista gravada, benefício, contrato no ZapSign, scanner, checklist e cobrança | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978799774) | [`img/D1.jpg`](img/D1.jpg) |
+| D2 · Via administrativa no INSS | OK do sênior, protocolo no Meu INSS, vigília diária, exigências, deferido (prestação de contas e banco) ou indeferido | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977251201) | [`img/D2.jpg`](img/D2.jpg) |
+| D3 · Judicialização | Motivo do indeferimento, análise da IA, despacho da sênior, laços dos setores, petição escrita pela IA e conferida, três travas e protocolo | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977559113) | [`img/D3.jpg`](img/D3.jpg) |
+| D3a · Vigília e exigências do juiz | Publicação lida pela IA, exigência analisada pelo advogado, laços dos setores, manifestação e volta à vigília | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977768761) | [`img/D3a.jpg`](img/D3a.jpg) |
+| D3b · Desfecho do mérito | Procedente: pagamento, prestação de contas, Financeiro e aviso. Improcedente: recorrer ou estudo de caso | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978188052) | [`img/D3b.jpg`](img/D3b.jpg) |
+| D4 · O diário e o acervo que aprende | Publicação casada pelo CNJ, classificada, prazo contado; acervo (RAG) que aprende com os desfechos | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978380513) | [`img/D4.jpg`](img/D4.jpg) |
+| DP · Perícia padrão | Chamado por D2, D3 e D3a: marcar, reunir documentos, orientar o cliente (perfil do perito), conferir o resultado | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977072953) | [`img/DP.jpg`](img/DP.jpg) |
+| D5 · Conversa com lead ou cliente em análise | Conversa gravada, transcrita, ficha e processo atualizados pela IA, conferidos pelo Jurídico | [abrir](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684983659886) | sem frame no board |
 
 Raias usadas: CLIENTE / LEAD, ATENDIMENTO, JURÍDICO, DOCUMENTAÇÃO · ADM, FINANCEIRO, SISTEMA · REGRAS, IA · LLM, SCANNER · OCR, ACERVO · RAG, e as raias externas INSS e JUSTIÇA.
 
@@ -58,8 +58,12 @@ Para o portal real há três caminhos, do mais barato ao mais completo:
 | 3. Diagrama desenhado pelo portal | gerar o diagrama a partir da transcrição versionada (`D1.md`…), por exemplo com bpmn-js | hover e clique em cada passo; versionado e corrigido por PR | mais trabalho; o desenho do Miro continua sendo a fonte visual |
 
 Decisão do PO em 28/09: o BPMN abre **fora do Miro**, dentro do portal, em tela cheia com "Fechar" que
-volta à tela anterior (é assim no protótipo). Isso descarta a opção 1; a 2 serve como interino e a 3 é o
-alvo. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
+volta à tela anterior. Isso descarta a opção 1; a 2 está em uso (imagens exportadas do Miro em
+`docs/bpmn/img/`, uma por diagrama, também colocadas no Figma) e a 3 é o alvo.
+
+**Imagens** (`img/<diagrama>.jpg`, exportadas do Miro em 28/09 pelo Fernando, frames "revisão BPMN"):
+quando o desenho mudar no Miro, reexportar o frame (Export → Image, JPG) e substituir o arquivo, no mesmo PR
+que corrige o `D<n>.md`. O D5 não tem frame no board, então não tem imagem. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
 nos três casos.
 
 ## Convenção

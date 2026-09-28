@@ -1,6 +1,7 @@
 # D3a · Depois do protocolo: vigília e exigências do juiz (revisão BPMN)
 
 **Frame do Miro:** [D3a · Depois do protocolo: vigília e exigências do juiz · revisão BPMN (para conferência)](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977768761) (id `3458764684977768761`).
+**Imagem exportada:** [`img/D3a.jpg`](img/D3a.jpg) (mesma que abre em tela cheia no protótipo).
 **Estado:** revisão BPMN refeita com o PO em setembro de 2026. É a versão que vale (a da direita).
 **Início:** Petição protocolada (vem de D3). **Fim:** decisão de mérito → ▶ SEGUE PARA D3b · desfecho do mérito; a manifestação sobre exigência/laudo volta o processo para a vigília (ciclo).
 

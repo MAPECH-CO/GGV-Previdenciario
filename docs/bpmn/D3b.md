@@ -1,6 +1,7 @@
 # D3b · Desfecho do mérito (revisão BPMN)
 
 **Fonte:** frame "D3b · Desfecho do mérito · revisão BPMN (para conferência)" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978188052) (frame `3458764684978188052`).
+**Imagem exportada:** [`img/D3b.jpg`](img/D3b.jpg) (mesma que abre em tela cheia no protótipo).
 **Estado:** revisão feita com o PO em setembro de 2026. Vale este frame; a versão antiga fica no board só como histórico.
 **Início:** Decisão de mérito, vinda do D3a. **Fim:** "Vencemos: baixa registrada" (procedente) ou "Perdemos: estudo registrado" (improcedente).
 

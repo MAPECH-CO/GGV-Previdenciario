@@ -62,8 +62,12 @@ Para o portal real há três caminhos, do mais barato ao mais completo:
 | 3. Diagrama desenhado pelo portal | gerar o diagrama a partir da transcrição versionada (`D1.md`…), por exemplo com bpmn-js | hover e clique em cada passo; versionado e corrigido por PR | mais trabalho; o desenho do Miro continua sendo a fonte visual |
 
 Decisão do PO em 28/09: o BPMN abre **fora do Miro**, dentro do portal, em tela cheia com "Fechar" que
-volta à tela anterior (é assim no protótipo). Isso descarta a opção 1; a 2 serve como interino e a 3 é o
-alvo. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
+volta à tela anterior. Isso descarta a opção 1; a 2 está em uso (imagens exportadas do Miro em
+`docs/bpmn/img/` no repositório, uma por diagrama, também colocadas no Figma) e a 3 é o alvo.
+
+**Imagens** (`img/<diagrama>.jpg`, exportadas do Miro em 28/09 pelo Fernando, frames "revisão BPMN"):
+quando o desenho mudar no Miro, reexportar o frame (Export → Image, JPG) e substituir o arquivo, no mesmo PR
+que corrige o `D<n>.md`. O D5 não tem frame no board, então não tem imagem. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
 nos três casos.
 
 ## Convenção

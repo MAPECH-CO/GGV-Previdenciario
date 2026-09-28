@@ -145,13 +145,15 @@ portal e nas histórias do Jira:
 - **Passar o mouse sobre o código** de uma tela (o chip "D1.24" no topo das 46 telas de ação e os 14
   códigos da linha do tempo da página do processo) mostra uma dica: código e nome do passo, tipo,
   raia, diagrama e a descrição de `docs/bpmn/`. **Clicar no código** (ou na própria dica) abre o
-  fluxo daquele diagrama em **tela cheia**, rolável; "✕ Fechar" volta à tela anterior. A dica é um
+  **desenho do BPMN** daquele diagrama em **tela cheia** (imagem exportada do Miro, a mesma de
+  `docs/bpmn/img/`), com arraste horizontal e vertical; "✕ Fechar" volta à tela anterior. O D5,
+  sem frame no Miro, mostra a lista numerada dos passos. A dica é um
   overlay do Figma, por isso a área clicável dela cobre o chip: o clique funciona tanto com a dica
   aberta quanto fechada. As variantes da página do processo (tema escuro, fonte grande, por
   tarefa) ainda não têm a dica.
-- **BPMN dentro do portal** (decisão pendente com o PO, ver `docs/bpmn/README.md`): no protótipo a
-  tela cheia é a lista numerada; no portal real, a orientação é abrir **fora do Miro**: imagem
-  exportada por frame ou, melhor, o diagrama desenhado pelo próprio portal a partir de `docs/bpmn/`.
+- **BPMN dentro do portal** (ver `docs/bpmn/README.md`): decisão do PO, abrir **fora do Miro**. Hoje
+  é a imagem exportada por frame; o alvo é o diagrama desenhado pelo próprio portal a partir de
+  `docs/bpmn/`.
 
 ## Suporte interno em todas as telas
 Aba "✦ Suporte" na borda direita de **todos** os artboards do desktop. Abre uma janela à direita com
