@@ -97,6 +97,18 @@ precisar de contato; anexo do documento faltante; contrato na íntegra + anexar 
 assinatura; lista de exigências com cumprida/pendente/sem prova; resumo do que foi coletado com
 abrir cada documento; links para os documentos do scanner; campos do lead.
 
+## Transcrições: sempre à mão ao abrir um processo
+A entrevista gravada é a fonte primária do caso. Toda página do processo (e a ficha do cliente)
+tem no topo, em destaque, o botão **"▶ Transcrições (n)"**, que abre a janela de transcrições:
+- **lista de gravações e registros** do cliente (pode haver várias: entrevista com a advogada,
+  telefone com o Atendimento, registro manual sem áudio);
+- para a selecionada, **resumo pela IA**, **informações extraídas** (cada uma marcada com o
+  destino: ficha, processo, cofre ou pendência para a Documentação) e a **transcrição** completa
+  com busca, player e trechos marcados como prova.
+Regras que aparecem na tela: aviso de gravação no início (G10); a senha do gov.br dita na conversa
+vai ao cofre e não consta na transcrição (G9); a IA só muda na ficha o que foi dito, o valor antigo
+fica no histórico e o Jurídico pode desfazer (G14).
+
 ## Tarefas do setor e atribuição
 - **Todo mundo vê as tarefas do setor.** Cada Central tem duas abas: **Minhas tarefas** (o que
   está atribuído a mim) e **Tarefas do setor** (tudo do Atendimento ou do Jurídico, com o
