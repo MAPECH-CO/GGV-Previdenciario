@@ -57,8 +57,9 @@ Para o portal real há três caminhos, do mais barato ao mais completo:
 | 2. Imagem exportada | "Exportar como imagem" de cada frame no Miro, guardada em `docs/bpmn/img/`; o portal mostra a imagem | funciona sem login; simples | estática; alguém reexporta a cada mudança; sem hover no desenho (a API do Miro só exporta o board inteiro, e só no plano Enterprise) |
 | 3. Diagrama desenhado pelo portal | gerar o diagrama a partir da transcrição versionada (`D1.md`…), por exemplo com bpmn-js | hover e clique em cada passo; versionado e corrigido por PR | mais trabalho; o desenho do Miro continua sendo a fonte visual |
 
-Recomendação: começar pela opção 1 (já usada no protótipo pelos links "Abrir no Miro") e migrar para a 3
-quando o BPMN estabilizar. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
+Decisão do PO em 28/09: o BPMN abre **fora do Miro**, dentro do portal, em tela cheia com "Fechar" que
+volta à tela anterior (é assim no protótipo). Isso descarta a opção 1; a 2 serve como interino e a 3 é o
+alvo. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
 nos três casos.
 
 ## Convenção
