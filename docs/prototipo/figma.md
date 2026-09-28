@@ -30,6 +30,14 @@ notificações de cada função vêm de `docs/requisitos/funcoes-e-telas.md`.
   inteira** (Atendimento → INSS → Judicial, 14 ocorridos com quem fez e o passo do BPMN), dados do
   processo, exigências (prazo, responsável, prova, G21), perícias, prazos, documentos (abrir cada um)
   e ações. Sem texto de apoio desnecessário.
+- **Cada tarefa tem a sua ação na página.** A página do processo se adapta ao estágio do caso, e a
+  tarefa que a abriu ganha um **popup próprio** a partir de "Abrir próxima ação". Exemplo feito:
+  "Prestação de contas: dar o OK" abre a página do processo da Lúcia Prado (sentença procedente,
+  RPV expedida, painel de honorários) e o popup **Prestação de contas — conferir e dar o OK**:
+  valores montados pela IA (condenação, honorários 20%, a repassar, forma e prazo), checklist de
+  conferência, observação para o Financeiro e os botões "Dar o OK e liberar o aviso à cliente" (G8)
+  e "Pedir ajuste à IA". O mesmo padrão vale para as outras tarefas do Jurídico (entrevista,
+  exigência do INSS, pedir/conferir petição, laudo pericial): página no estágio certo + popup.
 - **Histórico**: linha do tempo já está na página; o toggle sob o número abre a versão em detalhe.
 - **Etapas futuras não aparecem**: sentença, recurso e prestação de contas só entram quando
   acontecerem (uma linha diz isso ao pé da linha do tempo).
