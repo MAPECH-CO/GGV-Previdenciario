@@ -142,6 +142,15 @@ portal e nas histórias do Jira:
 - Os mesmos códigos foram **escritos nos cartões do Miro** (frames "revisão BPMN"): cada caixa
   começa com o código (ex.: "D1.13 · Calcular tempo e pontos"; nas decisões, "D2.03 · Precisa de
   perícia?"). Assim Figma, Miro, `docs/bpmn/` e o Jira usam a mesma referência.
+- **Passar o mouse sobre o código** de uma tela (o chip "D1.24" no topo das 46 telas de ação e os 14
+  códigos da linha do tempo da página do processo) mostra uma dica: código e nome do passo, tipo,
+  raia, diagrama e a descrição de `docs/bpmn/`. **Clicar no código** abre o fluxo daquele diagrama
+  em **popup** (janela sobre a tela, rolável, com "Abrir no Miro ↗" e "Fechar"), sem sair da tela.
+  As variantes da página do processo (tema escuro, fonte grande, por tarefa) ainda não têm a dica.
+- **BPMN dentro do portal** (decisão pendente com o PO, ver `docs/bpmn/README.md`): no protótipo o
+  popup é a lista numerada; no portal real ele pode ser o board do Miro embutido (iframe com
+  `moveToWidget`), uma imagem exportada por frame ou o diagrama desenhado pelo próprio portal a
+  partir de `docs/bpmn/`.
 
 ## Suporte interno em todas as telas
 Aba "✦ Suporte" na borda direita de **todos** os artboards do desktop. Abre uma janela à direita com
@@ -169,8 +178,8 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
 4. Na Central do Atendimento: "+ Novo cliente" → salvar e marcar reunião → iniciar agora → reunião
    com transcrição → encerrar (volta à ficha do cliente).
 5. Numa tela de ação do Atendimento (ex.: D1.24): abrir a ficha, a entrevista e o parecer médico
-   pelos atalhos do cartão. No seletor: "? Glossário" → clicar num código → fluxo numerado →
-   "Abrir no Miro".
+   pelos atalhos do cartão. Passar o mouse no chip "D1.24" (dica) e clicar (popup do fluxo D1).
+   No seletor: "? Glossário" → clicar num código → fluxo numerado → "Abrir no Miro".
 
 ## Limitações do protótipo
 - Overlays (histórico, seletor, chat) usam uma moldura transparente do tamanho da tela, porque a
