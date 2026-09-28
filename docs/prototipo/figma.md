@@ -34,9 +34,10 @@ notificações de cada função vêm de `docs/requisitos/funcoes-e-telas.md`.
   ordem cronológica (Entrevista → Pedido ao INSS → Exigência INSS → Perícia INSS → Despacho →
   Petição → Perícia judicial → Exigência do juiz → Minuta → Sentença/recurso → Prestação de contas).
   O que já ocorreu fica desabilitado com ✓; **só a etapa atual está habilitada** (▶, laranja) e abre
-  o popup daquela tarefa; o que ainda não chegou fica apagado. Três casos no protótipo: Antônio
-  (exigência do juiz + minuta), Sérgio Ramos (resultado da perícia) e Lúcia Prado (prestação de
-  contas).
+  o popup daquela tarefa; o que ainda não chegou fica apagado. Sete casos no protótipo, um por tarefa da Central da Advogada: Clara Nunes (entrevista), Pedro
+  Alves (exigência do INSS), Rosa Lima (pedir petição), Marcos Dias (conferir petição), Sérgio Ramos
+  (resultado da perícia), Antônio Ferreira Lima (exigência do juiz + minuta) e Lúcia Prado
+  (prestação de contas).
 - **Cada tarefa tem a sua ação na página.** A página do processo se adapta ao estágio do caso, e a
   tarefa que a abriu ganha um **popup próprio** a partir de "Abrir próxima ação". Exemplo feito:
   "Prestação de contas: dar o OK" abre a página do processo da Lúcia Prado (sentença procedente,
@@ -47,8 +48,15 @@ notificações de cada função vêm de `docs/requisitos/funcoes-e-telas.md`.
   Ramos e o popup **Resultado da perícia — conferir laudo e parecer**: resumo do laudo pela IA,
   conclusão, DII, coerência com o pedido (G18), jurimetria do perito (G22), ponto de atenção,
   checklist de conferência e as decisões "Laudo favorável — gerar a manifestação", "Pedir
-  esclarecimentos (quesitos)" e "Impugnar o laudo". Faltam popups para entrevista, exigência do
-  INSS e pedir/conferir petição (mesmo padrão).
+  esclarecimentos (quesitos)" e "Impugnar o laudo". Os outros quatro seguem o mesmo padrão, cada um com o
+  seu caso: **Entrevista** (Clara Nunes: ficha lida pela IA, sugestão de benefício com fundamentos,
+  alternativa, roteiro de perguntas, decisão da advogada — G3 — e "Iniciar a entrevista", que abre a
+  reunião com transcrição); **Exigência do INSS** (Pedro Alves: o que o INSS pediu, itens com prova
+  — G21 —, resposta redigida pela IA, conferência e "Aprovar — a Documentação anexa e responde");
+  **Pedir petição** (Rosa Lima: tese e pedidos sugeridos, provas a anexar, jurimetria do acervo,
+  instruções para a IA, opções e "Gerar a petição"); **Conferir petição** (Marcos Dias: o que
+  mudou da v1 para a v2, travas G7, ponto de atenção, prévia, conferência e "Assinar e enviar ao
+  protocolo" — G6). Sete tarefas da Central da Advogada, sete páginas no estágio certo, sete popups.
 - **Histórico**: linha do tempo já está na página; o toggle sob o número abre a versão em detalhe.
 - **Etapas futuras não aparecem**: sentença, recurso e prestação de contas só entram quando
   acontecerem (uma linha diz isso ao pé da linha do tempo).
