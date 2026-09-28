@@ -129,5 +129,6 @@ e mensagens. Não usa "O que é meu hoje" nem o chat interno.
 - **Passos novos** D1.21M, DP.00, D4.02N ainda não desenhados no Miro; as telas ligadas a eles esperam.
 
 ## Próximo passo
-Protótipo das 7 homes: **Figma primeiro** (as 7 telas "O que é meu hoje" + um fluxo D1 ponta a ponta),
-depois **Railway** (navegável, com seletor de perfil e dados fictícios). A fazer quando aprovado.
+O protótipo desktop está no Figma, com uma Central por função e as telas de ação por passo do BPMN:
+ver `docs/prototipo/figma.md`. Depois da validação com o PO, **Railway** (navegável, com seletor de
+perfil e dados fictícios).
