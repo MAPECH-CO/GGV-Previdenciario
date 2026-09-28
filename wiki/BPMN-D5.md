@@ -1,0 +1,96 @@
+> Fonte versionada: [`docs/bpmn/D5.md`](https://github.com/femezher/GGV-Prev-/blob/main/docs/bpmn/D5.md) no repositório. Edite lá (por PR), não na wiki.
+
+# D5 · Conversa com lead ou cliente em análise (revisão BPMN)
+
+**Fonte:** frame "D5 · Conversa com lead ou cliente em análise" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684983659886) (frame `3458764684983659886`).
+**Estado:** o D5 tem só uma versão no board (não há par "revisão BPMN" separado). Vale este frame.
+**Início:** Lead ou cliente em análise procura o escritório. **Fim:** "▶ VOLTA PARA D1 · o caso segue de onde parou".
+
+Resumo do frame: *O lead ainda não aceito ou o cliente em análise vem ao escritório ou liga para conversar e tirar dúvidas. A conversa é gravada, a IA transcreve e o sistema atualiza a ficha do cliente ou os campos do processo. O Jurídico confere e o caso volta para onde estava.*
+
+Cada passo aponta para o código acordado no README (`D5.01`…). O executor segue a legenda "Como ler" do board pela cor do cartão: **[Pessoa]** (azul), **[IA]** (verde), **[Sistema]** (cinza), **[Scanner]** (laranja). Toda ação da IA tem uma pessoa que confere.
+
+## Raias
+
+Na ordem das faixas do frame (de cima para baixo):
+
+- **ATENDIMENTO** — recebe o lead ou cliente, escolhe o canal e sobe/grava a conversa.
+- **JURÍDICO** — confere o que a IA atualizou e decide o que fazer com pendências.
+- **SISTEMA · REGRAS** — guarda o áudio, atualiza a ficha e os campos do processo e cria a tarefa.
+- **IA · LLM** — transcreve a conversa e identifica o que mudou; sempre conferida por pessoa.
+
+## Passos
+
+### ATENDIMENTO
+
+- **Início** Lead ou cliente em análise procura o escritório — evento de início.
+- **Decisão · Canal da conversa** (ver Decisões).
+- **D5.01 [Pessoa]** Subir a gravação da ligação — no card do lead ou cliente (ramo Telefone).
+- **D5.01 [Pessoa]** Conversar e gravar — tira as dúvidas no escritório · grava no sistema (ramo Presencial).
+
+### JURÍDICO
+
+- **D5.04 [Pessoa]** Conferir o que a IA atualizou — confirma ou corrige os campos.
+- **Decisão · Surgiu pendência?** (ver Decisões).
+
+### SISTEMA · REGRAS
+
+- **D5.01 [Sistema]** Guardar o áudio no card — liga a gravação ao lead ou cliente.
+- **Decisão · O que precisa atualizar?** (ver Decisões).
+- **D5.03 [Sistema]** Atualizar a ficha do cliente — contato, endereço, grupo familiar…
+- **D5.03 [Sistema]** Atualizar os campos do processo — fatos novos, datas, documentos citados.
+- **D5.05 [Sistema]** Criar a tarefa no card — o que ficou pendente, com responsável.
+
+### IA · LLM
+
+- **D5.02 [IA]** Transcrever a conversa — o áudio vira texto no histórico do card.
+- **D5.02 [IA]** Identificar o que mudou — compara a conversa com a ficha e o processo.
+
+## Decisões (gateways)
+
+1. **Canal da conversa** (raia ATENDIMENTO, depois do início) — símbolo ✕ (exclusivo).
+   - **Telefone** → `D5.01` Subir a gravação da ligação.
+   - **Presencial** → `D5.01` Conversar e gravar.
+2. **O que precisa atualizar?** (raia SISTEMA · REGRAS, depois de `D5.02` Identificar o que mudou) — símbolo ◯ (e/ou, inclusivo): pode seguir por um ramo, pelo outro ou pelos dois.
+   - **Cadastro do cliente** → `D5.03` Atualizar a ficha do cliente.
+   - **Processo** → `D5.03` Atualizar os campos do processo.
+   - (os dois ramos convergem num gateway ◯ e seguem para `D5.04`.)
+3. **Surgiu pendência?** (raia JURÍDICO, depois de `D5.04` Conferir) — símbolo ✕ (exclusivo).
+   - **Sim** → `D5.05` Criar a tarefa no card.
+   - **Não** → **▶ VOLTA PARA D1**.
+
+## Fluxos e sequência
+
+Registro da conversa (`D5.01`): evento "Lead ou cliente em análise procura o escritório" → gateway "Canal da conversa": **Telefone** → Subir a gravação da ligação; **Presencial** → Conversar e gravar. Os dois seguem para "Guardar o áudio no card".
+
+Transcrição e mudanças (`D5.02`): Guardar o áudio no card → Transcrever a conversa (IA) → Identificar o que mudou (IA) → gateway "O que precisa atualizar?".
+
+Atualização (`D5.03`): pelo(s) ramo(s) do gateway ◯ → Atualizar a ficha do cliente e/ou Atualizar os campos do processo → convergem → `D5.04` Conferir o que a IA atualizou (Jurídico) → gateway "Surgiu pendência?".
+
+Fecho (`D5.05`): **Sim** → Criar a tarefa no card → **▶ VOLTA PARA D1**; **Não** → **▶ VOLTA PARA D1** direto.
+
+Ligações com outros diagramas:
+- **Volta para D1** — pastilha "▶ VOLTA PARA D1 · o caso segue de onde parou" (o caso retoma de onde estava).
+
+## Documentos e sistemas citados
+
+- **Card do lead ou cliente** — onde a gravação, a transcrição, a ficha, os campos do processo e a tarefa vivem.
+- **Ficha do cliente** — contato, endereço, grupo familiar (atualizada em `D5.03`).
+- **Campos do processo** — fatos novos, datas, documentos citados (atualizados em `D5.03`).
+- **Histórico do card** — onde a transcrição fica e onde o valor antigo é preservado (ver DICA).
+- **Cofre de senhas** — para onde vai qualquer senha (gov.br) que aparecer na conversa (ver OBSERVAÇÃO).
+
+## Regras e travas
+
+Os comentários do board são regra de negócio; viram critério de aceite ou portão em `docs/requisitos/portoes-governanca.md`.
+
+- **💡 QUANDO USAR** — "Lead que ainda não foi aceito ou cliente com o caso em análise. Pode ser dúvida sobre o processo ou uma informação nova que muda a ficha."
+- **⚠️ ATENÇÃO** — "Avise no início que a conversa será gravada. Pessoalmente ou por telefone, o aviso fica registrado na gravação." → portão **G10** (`docs/requisitos/portoes-governanca.md`).
+- **📝 OBSERVAÇÃO** — "Se aparecer senha na conversa (gov.br), ela vai para o cofre de senhas, nunca para um campo de texto." → portão **G9**.
+- **💡 DICA** — "A IA só muda o que foi dito na conversa. O valor antigo fica no histórico do card e o Jurídico pode desfazer." → portão **G14**.
+
+## A conferir (divergências board × README)
+
+- Sem divergências de código: os cinco passos `D5.01`…`D5.05` aparecem no board.
+- **D5.01** cobre três cartões no board (gateway "Canal da conversa", "Subir a gravação da ligação", "Conversar e gravar") mais "Guardar o áudio no card" [Sistema]. **D5.02** e **D5.03** cobrem dois cartões cada. Confirmar na validação se os códigos permanecem agrupados.
+- O gateway "O que precisa atualizar?" usa o símbolo ◯ (e/ou): a leitura é que ficha e processo podem ser atualizados juntos. Confirmar com quem faz o trabalho.

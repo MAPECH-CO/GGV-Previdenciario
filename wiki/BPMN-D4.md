@@ -1,0 +1,89 @@
+> Fonte versionada: [`docs/bpmn/D4.md`](https://github.com/femezher/GGV-Prev-/blob/main/docs/bpmn/D4.md) no repositório. Edite lá (por PR), não na wiki.
+
+# D4 · O diário e o acervo que aprende (revisão BPMN)
+
+**Fonte:** frame "D4 · O diário e o acervo que aprende · revisão BPMN (para conferência)" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978380513) (frame `3458764684978380513`).
+**Estado:** revisão feita com o PO em setembro de 2026. Vale este frame; a versão antiga fica no board só como histórico.
+**Início:** Publicação chega (AASP · DJEN), depois de o juízo disponibilizar a intimação. **Fim:** "Só andamento: registrado", ou "Peça nova nasce com o que a casa já aprendeu", ou "Acervo atualizado".
+
+Resumo do frame: *A publicação chega, é casada pelo número CNJ, classificada e o prazo é contado. Exigência segue para o D3a, mérito para o D3b, andamento só é registrado. O acervo aprende com os desfechos, e toda peça nova consulta esse acervo antes de ser escrita.*
+
+Cada passo aponta para o código acordado no README (`D4.01`…). O executor segue a legenda "Como ler" do board pela cor do cartão: **[Pessoa]** (azul), **[IA]** (verde), **[Sistema]** (cinza), **[Scanner]** (laranja), **[Externo]** (borda tracejada). Toda ação da IA tem uma pessoa que confere.
+
+## Raias
+
+Na ordem das faixas do frame (de cima para baixo):
+
+- **JUSTIÇA** (externa, faixa tracejada) — o juízo disponibiliza a intimação.
+- **SISTEMA · REGRAS** — casa a publicação pelo CNJ, conta o prazo, encaminha pelo tipo de ato e grava no acervo.
+- **IA · LLM** — classifica o ato, mede ganho e perda e busca no acervo antes de escrever; sempre conferida por pessoa.
+- **ACERVO · RAG** — o acervo da casa (Vector Store) que aprende com os desfechos.
+
+## Passos
+
+### JUSTIÇA (externa)
+
+- **[Externo]** Juízo disponibiliza a intimação — evento fora do escritório (linha tracejada cinza).
+
+### SISTEMA · REGRAS
+
+- **Início [Sistema]** Publicação chega (AASP · DJEN) — evento de início do fluxo do diário.
+- **D4.01 [Sistema]** Casar pelo número CNJ — descarta repetidas.
+- **D4.03 [Sistema]** Contar o prazo — Lei 11.419, lado seguro.
+- **Decisão · Que tipo de ato é?** (ver Decisões).
+- **D4.06 [Sistema]** Gravar no acervo — resumo, resultado e a lição.
+
+### IA · LLM
+
+- **D4.02 [IA]** Classificar o ato — sentença, exigência, despacho.
+- **D4.05 [IA]** Medir ganho e perda — matéria, vara e tese.
+- **D4.07 [IA]** Buscar antes de escrever — toda peça consulta o acervo.
+
+### ACERVO · RAG
+
+- **[Armazenamento]** Acervo da casa (RAG) — Vector Store onde a lição é gravada e de onde toda peça nova consulta.
+
+## Decisões (gateways)
+
+1. **Que tipo de ato é?** (raia SISTEMA · REGRAS, depois de `D4.03` Contar o prazo) — corresponde a `D4.04` Encaminhar pelo tipo de ato.
+   - **Intimação ou exigência** → segue para **D3a** (os advogados definem quem cumpre).
+   - **Decisão de mérito** → segue para **D3b** (desfecho do mérito).
+   - **Só andamento** → **fim "Só andamento: registrado"**.
+
+## Fluxos e sequência
+
+Fluxo do diário (chegada da publicação): evento "Juízo disponibiliza a intimação" —(publicação, linha tracejada)→ "Publicação chega (AASP · DJEN)" → `D4.01` Casar pelo número CNJ → `D4.02` Classificar o ato → `D4.03` Contar o prazo → gateway `D4.04` "Que tipo de ato é?" → um dos três ramos acima.
+
+Fluxo do acervo que aprende (entra dos desfechos): eventos "Processo bom ou ruim (D3b)" → `D4.05` Medir ganho e perda → `D4.06` Gravar no acervo; e "Motivo do indeferimento (D3)" → `D4.06` Gravar no acervo. Gravar no acervo grava no "Acervo da casa (RAG)" (linha pontilhada roxa, "grava") e leva ao **fim "Acervo atualizado"**.
+
+Fluxo de consulta (antes de escrever qualquer peça): evento "Peça nova vai ser escrita (qualquer diagrama)" → `D4.07` Buscar antes de escrever; o acervo é consultado (linha pontilhada roxa, "consulta") e a peça segue ao **fim "Peça nova nasce com o que a casa já aprendeu"**.
+
+Ligações com outros diagramas:
+- **Segue para D3a** — pastilha "▶ SEGUE PARA D3a · os advogados definem quem cumpre" (ramo "Intimação ou exigência").
+- **Segue para D3b** — pastilha "▶ SEGUE PARA D3b · desfecho do mérito" (ramo "Decisão de mérito").
+- **Entra de D3b** — evento "Processo bom ou ruim (D3b)".
+- **Entra de D3** — evento "Motivo do indeferimento (D3)".
+- **Serve todos os diagramas** — o `D4.07` Buscar antes de escrever é chamado por qualquer peça nova (ver DICA abaixo).
+
+## Documentos e sistemas citados
+
+- **AASP · DJEN** — fontes das publicações que chegam ao diário.
+- **Número CNJ** — chave que casa a publicação e descarta repetidas (`D4.01`).
+- **Lei 11.419** — base legal da contagem de prazo (`D4.03`).
+- **Acervo da casa (Vector Store · RAG)** — base de conhecimento que aprende com os desfechos e é consultada antes de escrever peças.
+- **Fila de revisão** — para onde vai a publicação sem número CNJ (ver OBSERVAÇÃO).
+
+## Regras e travas
+
+Os comentários do board são regra de negócio; viram critério de aceite ou portão em `docs/requisitos/portoes-governanca.md`.
+
+- **📝 OBSERVAÇÃO** — "Publicação repetida é descartada. Sem número CNJ, vai para a fila de revisão." (ligada a `D4.01` Casar pelo número CNJ).
+- **⚠️ ATENÇÃO** — "Na dúvida, o prazo é contado pelo lado mais seguro." → portão **G12** (`docs/requisitos/portoes-governanca.md`).
+- **⚠️ ATENÇÃO** — "O sistema vigia 3 vezes por dia. Rodada que falhou dispara alarme; nunca parece um dia sem publicação." → portão **G13**.
+- **💡 DICA** — "Consultam o acervo: D1 benefício, DP roteiro da perícia, D3 petição, D3a manifestação e D3b estudo." (quem chama o `D4.07`).
+
+## A conferir (divergências board × README)
+
+- Sem divergências de código: os sete passos `D4.01`…`D4.07` aparecem no board.
+- **D4.04** está desenhado como o gateway "Que tipo de ato é?" (não como um cartão de passo). Confirmar na validação se o código fica no gateway.
+- O passo novo `D4.02N` (Nomeação de perito e identificação do juízo), citado no README como ainda não desenhado, **não** aparece neste frame — segue pendente de desenho no Miro.

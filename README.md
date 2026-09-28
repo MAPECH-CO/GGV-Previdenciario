@@ -17,6 +17,7 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | O que ainda depende do PO | `docs/requisitos/duvidas-abertas.md` |
 | Como a equipe trabalha | `docs/scrum/` e `CONTRIBUTING.md` |
 | Ferramentas e como se ligam | `docs/ferramentas.md` |
+| Wiki do GitHub (espelho de `wiki/`, publicado por Action) | `wiki/Home.md` |
 | Rodar o Claude Code no clone | `docs/claude-code.md` |
 | Decisões | `docs/decisoes/` |
 | Estudos de arquitetura (ex.: Chatwoot no portal) | `docs/arquitetura/` |

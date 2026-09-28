@@ -1,9 +1,13 @@
+# Ferramentas
+
+> Fonte versionada: [`docs/ferramentas.md`](https://github.com/femezher/GGV-Prev-/blob/main/docs/ferramentas.md) no repositório. Edite lá (por PR), não na wiki.
+
 # Ferramentas e como se ligam
 
 | Ferramenta | Onde | Para quê |
 |---|---|---|
 | Jira | https://mapech.atlassian.net, projeto `GGVP` | Backlog, sprints, quadro. Chave `GGVP`. Fonte da verdade do que fazer e em que ordem |
-| GitHub | https://github.com/femezher/mapech-previdenciario | Código e documentação. Fonte da verdade do que foi feito. A **wiki** do repositório é publicada pela Action `.github/workflows/wiki.yml` a partir da pasta `wiki/`: edite `wiki/*.md` por PR, nunca na aba Wiki |
+| GitHub | https://github.com/femezher/GGV-Prev- | Código e documentação. Fonte da verdade do que foi feito |
 | Miro | board `uXjVHjbveV4=` | O BPMN do escritório. Vale o frame "revisão BPMN" da direita. Índice por diagrama em `docs/bpmn/README.md` |
 | Google Drive | pasta `Mapech/mapech-previdenciario` no Drive da MAPECH | Espelho de leitura do repositório, atualizado a cada commit. Para NotebookLM, celular e quem não usa git |
 | Claude Teams | projeto "GGV Previdenciário" | Contexto compartilhado: usa o `CLAUDE.md` deste repositório como instrução e a pasta do Drive como fonte |

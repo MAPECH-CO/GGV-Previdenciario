@@ -1,0 +1,210 @@
+> Fonte versionada: [`docs/bpmn/D1.md`](https://github.com/femezher/GGV-Prev-/blob/main/docs/bpmn/D1.md) no repositório. Edite lá (por PR), não na wiki.
+
+# D1 · Entrevista, benefício e documentos (revisão BPMN)
+
+**Frame do Miro:** [D1 · Entrevista, benefício e documentos · revisão BPMN (para conferência)](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978799774) (id `3458764684978799774`).
+**Estado:** revisão BPMN refeita com o PO em setembro de 2026. É a versão que vale (a da direita).
+**Início:** Cliente ou lead chega ao escritório. **Fim:** Caso liberado ao Jurídico e ▶ SEGUE PARA D2 · protocolo e vigília no INSS (ou lead arquivado com o motivo, quando não fecha).
+
+Resumo do board: "Cliente ou lead, Atendimento, Jurídico, sistema e IA: o Atendimento primeiro entende quem chegou. Cliente que veio entregar documento vai para a Documentação e o scanner; outra etapa vai para o setor responsável. Lead com contato prévio ou data marcada: confirma o agendamento e, se ainda não tem a ficha de atendimento, preenche; se já tem, a doutora se prepara. Lead novo: preenche a ficha, o Jurídico analisa (acidentário, senha do gov.br) e segue para a entrevista. O cadastro no sistema é feito depois da entrevista."
+
+Os textos de caixas, losangos e comentários estão transcritos literalmente do frame. Cada passo aponta para o código acordado no `README.md` (`D1.01`…`D1.24`).
+
+## Como ler (legenda do board)
+
+Cor da caixa = quem faz o passo. As marcações abaixo seguem essa legenda:
+
+- **[PESSOA]** — caixa azul: pessoa da equipe.
+- **[IA]** — caixa verde: IA (LLM). Toda ação da IA tem uma pessoa que confere.
+- **[SISTEMA]** — caixa cinza: sistema / regra.
+- **[SCANNER]** — caixa laranja: scanner (OCR).
+- Losango amarelo: pergunta (decisão), lida como `✕ ou · ◯ e/ou · ✚ e`.
+- Pílula cinza arredondada: vem de / segue para outro diagrama.
+- Caixa pontilhada: comentário (💡 dica, ⚠️ atenção, 📝 observação).
+
+Linhas: cheia = o trabalho segue; tracejada cinza = mensagem com o INSS ou a Justiça; pontilhada roxa = grava ou consulta o RAG; tracejada fina = liga o comentário ao passo.
+
+## Raias
+
+De cima para baixo, na ordem do frame:
+
+- **CLIENTE / LEAD** — quem chega ao escritório; preenche a ficha de atendimento e a segunda ficha (acidentário).
+- **ATENDIMENTO** — recepção e triagem: agenda, encaminhamento, senha do gov.br, cálculo, cobrança e assinatura.
+- **JURÍDICO** — a doutora prepara e conduz a entrevista, analisa a ficha e cadastra o lead.
+- **DOCUMENTAÇÃO · ADM** — recebe e sobe os documentos do cliente.
+- **SISTEMA · REGRAS** — transcrição, geração de documento no ZapSign, tarefas e arquivamento.
+- **IA · LLM** — consulta o RAG, define benefício, lê documentos, confere checklist.
+- **SCANNER · OCR** — digitaliza documentos no Scanner Brother com OCR.
+
+## Passos
+
+Em ordem de fluxo. A raia aparece entre parênteses.
+
+**Evento inicial:** Cliente ou lead chega ao escritório (CLIENTE / LEAD).
+
+- **D1.01 [PESSOA] Verificar o agendamento** (ATENDIMENTO) — vê no sistema se há data marcada e para qual etapa.
+- **D1.03 [PESSOA] Encaminhar ao setor da etapa** (ATENDIMENTO) — segundo a ficha e o agendamento; leva a "▶ SEGUE PARA o setor responsável pela etapa".
+- **D1.02 [PESSOA] Receber os documentos** (DOCUMENTAÇÃO · ADM) — a Documentação leva direto ao scanner.
+    - A conferir: o board escreve "Receber os documentos"; o README chama este passo de "Receber documentos avulsos".
+- **D1.04 [PESSOA] Confirmar o agendamento** (ATENDIMENTO) — vê a data na agenda e o cadastro do contato por mensagem ou ligação.
+- **D1.05 [PESSOA] Preencher a ficha de atendimento** (CLIENTE / LEAD) — dados, benefício e senha do gov.br.
+- **D1.06 [PESSOA] Preparar a conversa** (JURÍDICO) — a doutora lê a ficha antes de entrar.
+- **D1.07 [PESSOA] Analisar a ficha** (JURÍDICO) — o Jurídico olha antes de o cliente entrar na sala; se pode ser auxílio acidentário, preenche a **segunda ficha** (ficha de auxílio acidentário, CLIENTE / LEAD).
+- **D1.08 [PESSOA] Renovar a senha do gov.br** (ATENDIMENTO) — com o cliente, antes da entrevista. Se não consegue renovar, **Avisar o cliente** (ATENDIMENTO): precisa buscar a senha, se preciso no INSS, e a entrevista segue.
+- **D1.09 [PESSOA] Atender e entrevistar** (JURÍDICO) — o Jurídico conduz; entrevista gravada em áudio.
+- **D1.10 [PESSOA] Cadastrar o lead** (JURÍDICO) — no sistema, depois da entrevista.
+- **D1.11 [SISTEMA] Transcrever o áudio** (SISTEMA · REGRAS) — a entrevista vira texto.
+- **D1.12 [IA] Definir o benefício (RAG)** (IA · LLM) — três caixas encadeadas:
+    - **Consultar o RAG** — compara a entrevista com casos da casa (consulta o Vector Store / RAG).
+    - Se a advogada citou um benefício → **Manter o benefício citado** e mostrar sugestão, se houver.
+    - Se não → **Escolher o benefício**: a IA define pelo RAG.
+- **D1.13 [PESSOA] Calcular tempo e pontos** (ATENDIMENTO) — sobre o CNIS, feito por pessoa. Só para benefícios que exigem cálculo.
+- **D1.14 [SISTEMA] Fechou? Registrar o motivo e recontatar** — se o cliente não fecha (ou não pode se aposentar):
+    - **Registrar o motivo** (SISTEMA · REGRAS) — por que não virou cliente.
+    - Se vale recontatar numa data prevista → **Recontatar na data** [PESSOA] (ATENDIMENTO): a régua avisa quem liga (volta e refaz o cálculo).
+    - Se não → **evento final: Lead arquivado com o motivo**.
+- **D1.15 [SISTEMA] Kit de documentos por benefício** (SISTEMA · REGRAS) — o losango "Qual é o benefício?" abre o kit de cada benefício (ver "Kit de documentos por benefício" adiante) e converge em **Puxar o contrato completo**: o modelo do benefício, com os documentos ao lado.
+- **D1.16 [IA] Ler o modelo e preencher** (IA · LLM) — dados do cliente e do processo; depois **Conferir os campos** [PESSOA] (ATENDIMENTO): estão certos e completos? Se não, **Corrigir campos** do documento a ser assinado.
+- **D1.17 [PESSOA] Assinatura digital (ZapSign) ou em papel** — losango "Como o cliente vai assinar?":
+    - **Digital:** **Gerar o documento no ZapSign** [SISTEMA] (o sistema envia os dados e o ZapSign monta pelo modelo) → **Criar a tarefa de assinatura** [SISTEMA] para o Atendimento, com o link do ZapSign → **Pedir a assinatura ao cliente** [PESSOA] (manda o link e acompanha) → se assinou, **Receber o documento assinado** [SISTEMA] (o ZapSign devolve e anexa no card); se não, tenta contato de novo.
+    - **Papel:** **Imprimir e assinar** [PESSOA] (ATENDIMENTO), na hora da entrevista.
+- **D1.18 [SCANNER]/[IA] Scanner e leitura dos documentos** — **Digitalizar no scanner** [SCANNER] (Scanner Brother com OCR) para o papel; **Ler os documentos** [IA] (extrai CPF, RG e endereço) para o digital; ambos → **Arquivar no Drive** [IA] (pasta do cliente + campos).
+- **D1.19 [PESSOA] Verificar o contrato assinado** (ATENDIMENTO) — quando a IA não reconhece o contrato assinado ou aponta algo, o sistema **Cria a tarefa de verificação** [SISTEMA] e o Atendimento verifica o que a IA não entendeu ou apontou ("Está tudo certo?"). Correção pelo Atendimento reenvia para assinar (**Corrigir os campos do contrato**).
+- **D1.20 [PESSOA] Imprimir a cópia do contrato** (ATENDIMENTO) — assinada, numa pastinha para o cliente levar. (README: "Cópia impressa".)
+- **D1.21 [IA] Conferir o checklist** (IA · LLM) — documentos obrigatórios do benefício.
+- **D1.22 [SISTEMA] Enviar boas-vindas** (SISTEMA · REGRAS) — mensagem padrão + cópias + documentos pendentes, se houver.
+- **D1.23 [SISTEMA] Cobrança de pendentes** — se a documentação não está completa: **Criar a tarefa de cobrança** [SISTEMA] dos documentos pendentes, para o Atendimento → **Pedir ao cliente** [PESSOA] os documentos que faltam → se o cliente enviou, **Receber o documento** [PESSOA] (DOCUMENTAÇÃO) → "Chegou em papel ou digital?": digital vai para **Subir no card do cliente** [PESSOA] (DOCUMENTAÇÃO), papel passa pelo scanner com OCR; depois os dois voltam ao checklist.
+- **D1.24 [PESSOA] Liberar ao Jurídico** (ATENDIMENTO) — caso pronto para o INSS → **▶ SEGUE PARA D2 · protocolo e vigília no INSS**.
+
+## Decisões (gateways)
+
+Na ordem em que aparecem no fluxo. Todas desenhadas como losango amarelo.
+
+1. **Já é cliente do escritório?** (ATENDIMENTO)
+   - **Sim: já é cliente** → D1.01 Verificar o agendamento.
+   - **Não: é lead** → "O lead já está cadastrado? (contato prévio ou data marcada)".
+2. **O lead já está cadastrado? (contato prévio ou data marcada)** (ATENDIMENTO)
+   - **Sim: já cadastrado** → D1.04 Confirmar o agendamento.
+   - **Não: lead novo** → D1.05 Preencher a ficha de atendimento.
+3. **O que o cliente veio fazer? (pela ficha e pela agenda)** (ATENDIMENTO)
+   - **Entregar documento** → D1.02 Receber os documentos.
+   - **Outra etapa** → D1.03 Encaminhar ao setor da etapa.
+4. **Já preencheu a ficha de atendimento?** (ATENDIMENTO)
+   - **Não: preenche a ficha** → D1.05 Preencher a ficha de atendimento.
+   - **Sim: já tem ficha** → D1.06 Preparar a conversa.
+5. **Pode ser auxílio acidentário?** (JURÍDICO)
+   - **Sim** → Preencher a segunda ficha (ficha de auxílio acidentário).
+   - **Não** → segue.
+6. **A ficha tem a senha do gov.br?** (JURÍDICO)
+   - **Sim** → D1.09 Atender e entrevistar.
+   - **Não: renovar** → D1.08 Renovar a senha do gov.br.
+7. **Conseguiu renovar?** (ATENDIMENTO)
+   - **Sim** → D1.09 Atender e entrevistar.
+   - **Não** → Avisar o cliente → segue com a entrevista.
+8. **A advogada citou um benefício?** (IA · LLM)
+   - **Sim** → Manter o benefício citado.
+   - **Não** → Escolher o benefício (a IA define pelo RAG).
+9. **O benefício exige cálculo?** (ATENDIMENTO)
+   - **Sim: com cálculo** → D1.13 Calcular tempo e pontos.
+   - **Não: sem cálculo** → "O cliente fechou com o escritório?".
+10. **Já pode se aposentar?** (ATENDIMENTO, após o cálculo)
+    - **Sim** → "O cliente fechou com o escritório?".
+    - **Ainda não** → Registrar o motivo.
+11. **O cliente fechou com o escritório?** (ATENDIMENTO)
+    - **Sim** → D1.15 Kit de documentos (Qual é o benefício?).
+    - **Não fechou** → Registrar o motivo.
+12. **Vale recontatar numa data prevista?** (ATENDIMENTO)
+    - **Sim** → Recontatar na data.
+    - **Não** → evento final: Lead arquivado com o motivo.
+13. **Qual é o benefício?** (SISTEMA · REGRAS) — roteador do kit de documentos (ver tabela adiante).
+14. **Os documentos foram aprovados?** (ATENDIMENTO, após Conferir os campos)
+    - **Sim** → "Como o cliente vai assinar?".
+    - **Não** → Corrigir campos → volta.
+15. **Como o cliente vai assinar?** (ATENDIMENTO)
+    - **Digital** → Gerar o documento no ZapSign.
+    - **Papel** → Imprimir e assinar.
+16. **O cliente assinou?** (ATENDIMENTO)
+    - **Sim** → Receber o documento assinado.
+    - **Não: tenta contato de novo** → Pedir a assinatura ao cliente.
+17. **O documento é o contrato assinado?** (IA · LLM, após Arquivar no Drive)
+    - **Sim** → "A IA reconheceu o contrato assinado e está tudo ok?".
+    - **Não: outro documento** → D1.21 Conferir o checklist.
+18. **A IA reconheceu o contrato assinado e está tudo ok?** (IA · LLM)
+    - **Sim** → D1.20 Imprimir a cópia do contrato.
+    - **Não ou não entendeu** → Criar a tarefa de verificação.
+19. **Está tudo certo?** (ATENDIMENTO, após Verificar o contrato assinado)
+    - **Sim** → D1.20 Imprimir a cópia do contrato.
+    - **Não** → (ilegível no board — a validar; presume-se correção e reenvio para assinar via "Corrigir os campos do contrato").
+20. **A documentação está completa?** (IA · LLM / checklist)
+    - **Sim** → D1.24 Liberar ao Jurídico.
+    - **Não: falta documento** → Criar a tarefa de cobrança.
+21. **O cliente enviou?** (ATENDIMENTO, na cobrança)
+    - **Sim** → Receber o documento.
+    - **Não: lembrete e pede de novo** → Pedir ao cliente.
+22. **Chegou em papel ou digital?** (DOCUMENTAÇÃO · ADM)
+    - **Digital** → Subir no card do cliente.
+    - **Papel** → passa pelo scanner com OCR (D1.18); depois volta ao checklist.
+
+## Kit de documentos por benefício (D1.15)
+
+O losango "Qual é o benefício?" abre um kit por benefício. Arquivos na pasta **MODELOS ZAPSIGN — PREV**.
+
+| Benefício | Kit (documentos) |
+|---|---|
+| Aposentadorias | Contrato · Procuração · Hipossuficiência · Residência · Termo INSS (aposentadorias, CTC, recursos) · Código Penal |
+| Auxílio acidentário | Contrato · Procuração · Hipossuficiência · Residência · Termo INSS (auxílio-acidente, acréscimo de 25%) · Código Penal |
+| Auxílio incapacidade | Contrato · Procuração · Hipossuficiência · Residência · Termo INSS (incapacidade temporária e permanente, 25%) · Código Penal |
+| LOAS idoso ou deficiente | Contrato · Procuração · Hipossuficiência · Residência · Termo INSS (BPC idoso e PcD, recursos) · Código Penal |
+| LOAS representado (genitor) | O mesmo kit do LOAS, com os dados e a assinatura do representado e da genitora |
+| Curatela | Contrato · Procuração · Hipossuficiência · Residência (sem Termo INSS) |
+| Isenção de IR | Contrato · Procuração · Termo INSS (isenção de IR) · Código Penal · Residência (sem Hipossuficiência) |
+| Empréstimo fraudulento | Contrato · Procuração · Hipossuficiência (ação contra o banco) |
+| Seguro de vida | Contrato · Procuração · Hipossuficiência (ação contra a seguradora) |
+
+Arquivo de cada modelo (comentário do board): Aposentadorias, Auxílio Acidentário, Auxílio Incapacidade, LOAS Idoso e Deficiente, LOAS representado por genitor(a) usam **Contrato Completo 2026**; Curatela usa modelo 6; Isenção de IR usa modelo 7 (Restituição de Contribuições); Empréstimo fraudulento usa modelo 8 (Kit Consumidor); Seguro de vida usa modelo 10.
+
+Benefícios que **exigem cálculo** (caminho "Sim" em "O benefício exige cálculo?"): Aposentadoria por Contribuição, por Idade, Especial, Rural; PCD Aposentadoria por Contribuição e por Idade; Emissão de CTC; Planejamento Previdenciário; Revisão de Aposentadoria; Atualização de Vínculos e Contribuições.
+
+Benefícios que **não exigem cálculo** (caminho "Não"): LOAS Idoso, LOAS Deficiente, Aposentadoria por Incapacidade Permanente (e Acidentária), Auxílio por Incapacidade, Auxílio Acidentário, Auxílio Maternidade, Pensão por Morte, Reestabelecimento de Benefício, Cadastro Único, Isenção e Restituição de Imposto de Renda, Restituição de Contribuições.
+
+## Fluxos entre diagramas
+
+| Rótulo | De | Para |
+|---|---|---|
+| ▶ SEGUE PARA o setor responsável pela etapa | D1.03 Encaminhar ao setor da etapa | Setor responsável (outro fluxo interno) |
+| ▶ SEGUE PARA D2 · protocolo e vigília no INSS | D1.24 Liberar ao Jurídico | D2 · Via administrativa no INSS |
+
+## Documentos, modelos e sistemas citados
+
+- **Ficha de atendimento** e **segunda ficha** (ficha de auxílio acidentário) — preenchidas na raia CLIENTE / LEAD.
+- **Senha do gov.br** — vai para o cofre; nunca fica no texto transcrito (ver Regras e travas).
+- **Vector Store (RAG)** — base de casos da casa consultada pela IA para definir o benefício.
+- **CNIS** — base do cálculo de tempo e pontos.
+- **MODELOS ZAPSIGN — PREV** — pasta dos modelos de contrato por benefício; Contrato Completo 2026 e modelos 6, 7, 8, 10.
+- **ZapSign** — gera o documento pelo modelo, envia o link de assinatura e devolve o assinado, anexado no card.
+- **Scanner Brother (OCR)** — digitaliza os documentos em papel; o OCR deixa o texto pesquisável.
+- **Drive** — pasta do cliente onde os documentos são arquivados com os campos extraídos.
+- **Card do cliente** — onde ficam anexados o documento assinado e os documentos recebidos.
+
+## Regras e travas (comentários do board)
+
+Cada comentário do board é regra de negócio. Referência em `docs/requisitos/portoes-governanca.md`.
+
+- **⚠️ ATENÇÃO (checklist / D1.21):** "Nada vai para o INSS sem o checklist completo: documentos do benefício, todas as assinaturas do cliente e as datas preenchidas." → portão **G1**.
+- **⚠️ ATENÇÃO (senha do gov.br / D1.08):** "Precisamos da senha do gov.br. Se não vier na ficha, tentamos renovar antes da entrevista; se não der, a entrevista segue e o cliente sai avisado." → relacionado a **G9**.
+- **💡 DICA (transcrição / D1.09):** "A senha do gov.br dita na entrevista vai direto para o cofre; nunca fica no texto transcrito." → portão **G9**.
+- **💡 DICA (benefício / D1.12):** "Se a advogada citou um benefício, a IA mantém. Se o RAG mostrar direito a outro, aparece como sugestão para a advogada decidir." → portão **G3**.
+- **📝 OBSERVAÇÃO (lead / D1.14):** "Todo lead que não vira cliente fica com o motivo registrado no histórico." → portão **G16**.
+- **💡 DICA (cobrança / D1.23):** "Enquanto o cliente não manda, o sistema lembra a equipe de cobrar em intervalos. Passou do limite (a definir), sobe para a sênior." → portão **G15** (o limite ainda é "a definir").
+- **⚠️ ATENÇÃO (modelos de contrato / D1.15):** "Os Contratos Completos do INSS ainda vêm com os dados de um cliente de exemplo. Para o sistema preencher, cada um precisa virar modelo com campos {{...}}, como já são Curatela, IR, Consumidor e Seguros."
+- **⚠️ O QUE CONFERIR (Conferir os campos / D1.16):** "As datas feitas à mão estão preenchidas; Ficha LOAS: cliente ou representante legal; A página do Código Penal não tem assinatura."
+- **💡 COMO O MODELO SAI PREENCHIDO (D1.16):** dados do cliente e, se houver, do representante (nome, estado civil, profissão, CPF, RG, endereço, telefone); dados do processo (benefício e parte contrária); datas em branco, preenchidas à mão na assinatura.
+- **📝 OBSERVAÇÃO (kit / D1.15):** "Nenhum modelo traz ficha de grupo familiar nem declarações de moradia, união estável ou separação de fato."
+- **📝 OBSERVAÇÃO (scanner / D1.18):** "O OCR deixa o texto do documento pesquisável e ajuda a IA a ler os dados."
+- **💡 DICA (recebimento / D1.23):** "Papel passa no scanner com OCR; digital vai direto para o Drive. Depois os dois voltam ao checklist."
+
+## A conferir / lacunas
+
+- O losango "Está tudo certo?" (após Verificar o contrato assinado) tem o ramo "Não" sem destino legível no frame — presume-se correção e reenvio para assinar. **A validar no board.**
+- Existem dois gateways de convergência sem rótulo (após "Pode ser auxílio acidentário?" e após o kit de documentos): funcionam como junção do fluxo, sem pergunta.
+- Limite de cobrança de documentos pendentes: "a definir" (D1.23 / G15).
