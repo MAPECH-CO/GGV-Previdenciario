@@ -51,6 +51,20 @@ Os códigos abaixo foram propostos em 26/09/2026 e, em 28/09, **gravados nos car
 
 **Passos novos, ainda não desenhados** (vieram do roteiro de laudos e da conversa de 26/09): `D1.21M` Analisar a documentação médica, `DP.00` Recomendação sobre a perícia, `D4.02N` Nomeação de perito e identificação do juízo. As histórias ligadas a eles só ficam Prontas quando os passos estiverem no Miro.
 
+## BPMN dentro do portal (a decidir com o PO)
+No protótipo, cada código (ex.: `D1.24`) mostra uma dica ao passar o mouse e abre o fluxo em popup.
+Para o portal real há três caminhos, do mais barato ao mais completo:
+
+| Opção | Como | Prós | Contras |
+|---|---|---|---|
+| 1. Miro embutido | iframe do board com `moveToWidget=<id do frame>` (os mesmos links da tabela acima) | zero exportação; sempre atual | quem vê precisa de login no Miro; a dica por passo fica no portal, não no desenho |
+| 2. Imagem exportada | "Exportar como imagem" de cada frame no Miro, guardada em `docs/bpmn/img/`; o portal mostra a imagem | funciona sem login; simples | estática; alguém reexporta a cada mudança; sem hover no desenho (a API do Miro só exporta o board inteiro, e só no plano Enterprise) |
+| 3. Diagrama desenhado pelo portal | gerar o diagrama a partir da transcrição versionada (`D1.md`…), por exemplo com bpmn-js | hover e clique em cada passo; versionado e corrigido por PR | mais trabalho; o desenho do Miro continua sendo a fonte visual |
+
+Recomendação: começar pela opção 1 (já usada no protótipo pelos links "Abrir no Miro") e migrar para a 3
+quando o BPMN estabilizar. A dica por passo (código, nome, tipo, raia, descrição) vem de `docs/bpmn/`
+nos três casos.
+
 ## Convenção
 - Vale o frame "revisão BPMN" da direita. Versão antiga fica no board só como histórico.
 - Correção no processo: primeiro no Miro, depois neste arquivo por PR, citando o frame.
