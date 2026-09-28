@@ -60,6 +60,11 @@ petição, valores nem conteúdo de laudo. No protótipo todos os nomes abrem a 
   Ao encerrar, resumo e ficha vão para a advogada definir o benefício (D1.09–D1.12).
 
 ## Atendimento: o que cada tela de ação carrega
+Cada tela de ação do Atendimento e da Documentação abre com um cartão **"O que você deve fazer"**:
+instruções curtas montadas pela IA a partir da entrevista, do benefício e do caso daquele cliente
+(ex.: em "Marcar a perícia", qual agência, que horário, o que conferir no kit antes, o que orientar
+o cliente a levar e o portão que vale). O **tipo de benefício** aparece em destaque (selo laranja
+"◆ Benefício") no cabeçalho de toda tela e no próprio cartão.
 Tipo de benefício sempre visível; contatos do cliente (ligar/WhatsApp) em toda tela que pode
 precisar de contato; anexo do documento faltante; contrato na íntegra + anexar página de
 assinatura; lista de exigências com cumprida/pendente/sem prova; resumo do que foi coletado com
