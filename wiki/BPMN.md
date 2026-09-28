@@ -35,7 +35,7 @@ Cada diagrama tem a transcrição em markdown, no formato dos processos do Traba
 - [DP · Perícia padrão]([[BPMN-DP]])
 
 ## Códigos dos passos
-O board ainda não numera os passos. Os códigos abaixo foram propostos em 26/09/2026 e **devem ser gravados nos cartões do Miro** para que história e diagrama fiquem ligados. Rótulo no Jira: `bpmn-d1-05`, `bpmn-dp-07`.
+Os códigos abaixo foram propostos em 26/09/2026 e, em 28/09, **gravados nos cartões do Miro** (frames "revisão BPMN" de D1, D2, D3, D3a, D3b, D4 e DP): cada caixa começa com o código, ex. "D1.13 · Calcular tempo e pontos"; nas decisões, "D2.03 · Precisa de perícia?". O frame do D5 não foi encontrado no board em 28/09; conferir e numerar à mão. O glossário dos códigos, com os fluxos numerados, está no Figma ([[Prototipo-Figma]]). Rótulo no Jira: `bpmn-d1-05`, `bpmn-dp-07`.
 
 | Diagrama | Passos |
 |---|---|

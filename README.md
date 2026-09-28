@@ -23,6 +23,6 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | Estudos de arquitetura (ex.: Chatwoot no portal) | `docs/arquitetura/` |
 
 ## Estado em 26/09/2026
-- BPMN revisado no Miro; passos ainda sem número no board (códigos propostos em `docs/bpmn/`).
+- BPMN revisado no Miro; passos numerados nos cartões do board em 28/09 (códigos em `docs/bpmn/README.md`; D5 a conferir). Glossário dos códigos no Figma.
 - 89 histórias candidatas, todas com o rótulo `a-validar-bpmn`. Nenhuma está Pronta: faltam as respostas de `duvidas-abertas.md` e o refinamento.
 - Sprint 0 começa em 28/09. O Trabalhista (`mapech-trabalhista`) está pausado até o Prev terminar; este repositório segue a mesma metodologia.

@@ -27,4 +27,4 @@ Vale sempre o frame "revisão BPMN" (o da direita) no [Miro](https://miro.com/ap
 - [[Chatwoot-no-portal]] — como incorporar o Chatwoot ao portal (proposta ADR-015).
 
 ## Estado em 28/09/2026
-BPMN revisado e transcrito; 15 épicos e 89 histórias no Jira `GGVP` (rótulo `a-validar-bpmn`); protótipo desktop no Figma revisado com o PO (Central por função, página completa do processo com barra de ações e popups por tarefa, cliente, novo cliente → reunião com transcrição, suporte, tema escuro e fonte maior). Sprint 0 de 28/09 a 02/10: numerar o BPMN no Miro, refinar as candidatas, review do Figma com o escritório. Detalhe em [[Planejamento]].
+BPMN revisado e transcrito; 15 épicos e 89 histórias no Jira `GGVP` (rótulo `a-validar-bpmn`); protótipo desktop no Figma revisado com o PO (Central por função, página completa do processo com barra de ações e popups por tarefa, cliente, novo cliente → reunião com transcrição, suporte, tema escuro e fonte maior, glossário dos códigos com fluxos numerados). BPMN numerado nos cartões do Miro em 28/09 (D5 a conferir). Sprint 0 de 28/09 a 02/10: refinar as candidatas, review do Figma com o escritório. Detalhe em [[Planejamento]].

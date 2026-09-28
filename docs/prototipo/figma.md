@@ -97,6 +97,13 @@ precisar de contato; anexo do documento faltante; contrato na íntegra + anexar 
 assinatura; lista de exigências com cumprida/pendente/sem prova; resumo do que foi coletado com
 abrir cada documento; links para os documentos do scanner; campos do lead.
 
+Em toda tela de ação do Atendimento e da Documentação, o cartão "O que você deve fazer" traz três
+atalhos: **Abrir a ficha do cliente**, **Entrevista e transcrições** (janela de gravações, com
+resumo, informações extraídas e transcrição) e **Parecer médico** (janela com o parecer da IA,
+conclusão "Suficiente / Insuficiente", documentos analisados e quem confirmou, G17). Na tela
+D1.24 "Liberar o caso ao Jurídico", as linhas Ficha, Entrevista e Parecer médico do "Resumo do que
+foi coletado" também abrem esses mesmos destinos.
+
 ## Transcrições: sempre à mão ao abrir um processo
 A entrevista gravada é a fonte primária do caso. Toda página do processo (e a ficha do cliente)
 tem no topo, em destaque, o botão **"▶ Transcrições (n)"**, que abre a janela de transcrições:
@@ -121,6 +128,20 @@ fica no histórico e o Jurídico pode desfazer (G14).
   sugerido, prioridade, recado, aviso no chat e na Central de quem recebe; "Deixar sem
   responsável" e "Abrir a tarefa". Quem atribuiu fica no histórico (quem, quando, para quem).
   Tarefa sem responsável ou com prazo estourado sobe para o líder (G15).
+
+## Glossário e fluxos do BPMN numerados
+No seletor de função há a entrada **"? Glossário"**. A página explica cada código que aparece no
+portal e nas histórias do Jira:
+- **G1 a G22**: os portões de governança de `docs/requisitos/portoes-governanca.md`, uma linha
+  cada, com os diagramas em que valem.
+- **D1.01, D2.03, DP.07…**: os passos do BPMN, agrupados por diagrama, na ordem do fluxo. Clicar
+  num passo (ex.: D1.13) abre o **fluxo daquele diagrama** dentro do Figma: uma tela por diagrama
+  (D1, D2, D3, D3a, D3b, D4, D5, DP) com cada passo numerado, o tipo (pessoa, IA, sistema,
+  scanner, decisão, fluxo) e a raia. Cada fluxo tem "Abrir no Miro ↗", que leva ao frame
+  original do board.
+- Os mesmos códigos foram **escritos nos cartões do Miro** (frames "revisão BPMN"): cada caixa
+  começa com o código (ex.: "D1.13 · Calcular tempo e pontos"; nas decisões, "D2.03 · Precisa de
+  perícia?"). Assim Figma, Miro, `docs/bpmn/` e o Jira usam a mesma referência.
 
 ## Suporte interno em todas as telas
 Aba "✦ Suporte" na borda direita de **todos** os artboards do desktop. Abre uma janela à direita com
@@ -147,6 +168,9 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
    abre a ficha com todos os processos; da página, a próxima ação e a minuta; testar ☾ e A+.
 4. Na Central do Atendimento: "+ Novo cliente" → salvar e marcar reunião → iniciar agora → reunião
    com transcrição → encerrar (volta à ficha do cliente).
+5. Numa tela de ação do Atendimento (ex.: D1.24): abrir a ficha, a entrevista e o parecer médico
+   pelos atalhos do cartão. No seletor: "? Glossário" → clicar num código → fluxo numerado →
+   "Abrir no Miro".
 
 ## Limitações do protótipo
 - Overlays (histórico, seletor, chat) usam uma moldura transparente do tamanho da tela, porque a
