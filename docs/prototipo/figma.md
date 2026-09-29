@@ -159,8 +159,10 @@ portal e nas histórias do Jira:
 O texto da marca no topo de toda tela é **"GGV Previdenciário"** (era "Central de trabalho"; o nome
 "Central" continua neste documento só para designar a tela inicial de cada função). O primeiro botão
 do topo é **"⌂ Início"**, que volta à tela inicial da função logada (na própria Central ele aparece
-aceso). Os "Voltar" das telas de ação e do processo dizem "‹ Início". Depois vem "Agenda" e, por
-função, os botões:
+aceso). Os "Voltar" das telas de ação e do processo dizem "‹ Início". A barra de botões aparece em
+**toda tela** da função (Central, Agenda, Clientes, Processos, Gestão, Financeiro, telas de ação,
+processo, cliente, minuta, novo cliente e reunião); a Agenda tem uma cópia por função, porque os
+botões mudam por função. Depois de "Início" vem "Agenda" e, por função, os botões:
 - **Atendimento:** só "Agenda". **Atendimento · líder e Advogada:** "Clientes" e "Processos".
   **Sênior:** "Clientes", "Processos" e "Gestão". **Financeiro:** "Clientes", "Processos", "Gestão" e
   "Financeiro". Cada função tem a sua cópia das telas (o cabeçalho e o "Voltar" são os da função).
@@ -171,7 +173,9 @@ função, os botões:
 - **Processos**: todos os processos, administrativos e judiciais, com busca por autor, nº ou CPF e
   filtros por tribunal/foro, juiz, perito, benefício, êxito e fase. Colunas: processo (CNJ), autor,
   benefício, foro, juiz, perito, desfecho (Êxito, Acordo, Perdido no mérito, Extinto sem mérito, Em
-  andamento, como no Raio-X), ajuizamento. Clicar abre o processo completo.
+  andamento, como no Raio-X), ajuizamento. Clicar na linha abre o processo completo; clicar no nome
+  do autor abre a ficha do cliente. Vale o mesmo nas tabelas de Clientes (a contagem de processos
+  abre a lista) e do Financeiro (cliente → ficha, nº do processo → processo).
 - **Gestão**: painel de resultados do escritório, montado a partir do **Raio-X Previdenciário GGV**
   (leitura integral de 979 processos, gerado em 21/09/2026): seis indicadores com a variação entre
   safras (êxito nos decididos 9% → 25% → 36%; falha nossa provada 52% → 38% → 30%; laudo médico
