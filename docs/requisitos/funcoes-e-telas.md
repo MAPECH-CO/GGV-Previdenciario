@@ -83,7 +83,7 @@ Nenhuma decisão é da raia.
 **Histórias:** **nenhuma tem o perfil Financeiro** — a tarefa está sob GGVP-44 (advogada) e GGVP-98
 (Atendimento). **Lacuna de backlog: falta história própria para desenhar a home do Financeiro.**
 **Nunca vê:** entrevista, petição, laudos. O aviso ao cliente depende do OK da advogada (G8).
-**Home:** prestações de contas recebidas; aba Financeiro (recebido, a receber, lançamentos), ver `docs/prototipo/figma.md`.
+**Home:** prestações de contas recebidas; botões Clientes, Processos, Gestão e Financeiro (recebido, a receber, lançamentos), ver `docs/prototipo/figma.md`.
 
 ## Gestão / Administração (proposto, fora do BPMN)
 **Raia:** nenhuma. **Tarefas:** configuração do escritório — kits por benefício, modelos ZapSign,

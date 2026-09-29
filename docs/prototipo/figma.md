@@ -157,8 +157,9 @@ portal e nas histórias do Jira:
 
 ## Clientes, Processos, Gestão e Financeiro (29/09)
 Ao lado de "Agenda", no topo da Central, entram botões por função:
-- **Atendimento · líder e Advogada:** "Clientes" e "Processos". **Sênior:** "Clientes", "Processos" e
-  "Gestão". **Financeiro:** "Financeiro".
+- **Atendimento:** só "Agenda". **Atendimento · líder e Advogada:** "Clientes" e "Processos".
+  **Sênior:** "Clientes", "Processos" e "Gestão". **Financeiro:** "Clientes", "Processos", "Gestão" e
+  "Financeiro". Cada função tem a sua cópia das telas (o cabeçalho e o "Voltar" são os da função).
 - **Clientes**: a base de todos os clientes e leads, com busca por nome ou CPF e filtros por benefício,
   localização, êxito e situação. Colunas: cliente, CPF, benefício, cidade, processos, situação/êxito,
   último contato. Clicar num cliente abre a ficha (a variante da função). "+ Novo cliente" só no
