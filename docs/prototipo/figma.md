@@ -12,7 +12,7 @@ prazo) ou **busca** por processo, nome ou tarefa. Cada item abre a **tela daquel
 ## Páginas do arquivo
 | Página | O que tem | Início do fluxo (Present) |
 |---|---|---|
-| Desktop · Central de trabalho (simulação) | **Tudo o que é navegável está aqui** (links de protótipo não atravessam páginas): uma Central **por função** (Atendimento, Documentação · ADM, Advogada, Sênior, Estagiário/assistente, Financeiro), 46 telas de ação `step_<código>`, a página completa do processo, a página do cliente (duas variantes), o fluxo Novo cliente → Marcar reunião → Reunião com transcrição, a Minuta e as variantes tema escuro / fonte grande | Cada Central, Meus processos e Novo cliente são pontos de início |
+| Desktop · Central de trabalho (simulação) | **Tudo o que é navegável está aqui** (links de protótipo não atravessam páginas): uma Central **por função** (Atendimento, Atendimento · líder, Advogada, Sênior, Financeiro; os painéis de Documentação e de Estagiário foram retirados em 29/09, ver abaixo), 46 telas de ação `step_<código>`, a página completa do processo, a página do cliente (duas variantes), o fluxo Novo cliente → Marcar reunião → Reunião com transcrição, a Minuta e as variantes tema escuro / fonte grande | Cada Central, Meus processos e Novo cliente são pontos de início |
 | Desktop · Jurídico (simulação) | Versão anterior (hub do caso). Referência, não é o modelo atual | — |
 | Page 1 | Homes por perfil e mobile da primeira rodada. Referência | — |
 
@@ -20,7 +20,7 @@ O seletor de perfil (canto superior direito da Central) abre "Entrar como…" e 
 notificações de cada função vêm de `docs/requisitos/funcoes-e-telas.md`.
 
 ## Advogada: o que foi decidido
-- **Tarefa abre o processo do cliente.** Na Central da Advogada (e da Sênior e do Estagiário), clicar
+- **Tarefa abre o processo do cliente.** Na Central da Advogada (e da Sênior), clicar
   numa tarefa abre a **página completa do processo**, não uma tela solta. A ação específica (minuta,
   contato) sai de dentro da página.
 - **Meus processos**: cada cartão mostra a etapa (balão), o próximo passo e o prazo. À direita, as
@@ -155,6 +155,39 @@ portal e nas histórias do Jira:
   é a imagem exportada por frame; o alvo é o diagrama desenhado pelo próprio portal a partir de
   `docs/bpmn/`.
 
+## Clientes, Processos, Gestão e Financeiro (29/09)
+Ao lado de "Agenda", no topo da Central, entram botões por função:
+- **Atendimento · líder e Advogada:** "Clientes" e "Processos". **Sênior:** "Clientes", "Processos" e
+  "Gestão". **Financeiro:** "Financeiro".
+- **Clientes**: a base de todos os clientes e leads, com busca por nome ou CPF e filtros por benefício,
+  localização, êxito e situação. Colunas: cliente, CPF, benefício, cidade, processos, situação/êxito,
+  último contato. Clicar num cliente abre a ficha (a variante da função). "+ Novo cliente" só no
+  Atendimento.
+- **Processos**: todos os processos, administrativos e judiciais, com busca por autor, nº ou CPF e
+  filtros por tribunal/foro, juiz, perito, benefício, êxito e fase. Colunas: processo (CNJ), autor,
+  benefício, foro, juiz, perito, desfecho (Êxito, Acordo, Perdido no mérito, Extinto sem mérito, Em
+  andamento, como no Raio-X), ajuizamento. Clicar abre o processo completo.
+- **Gestão**: painel de resultados do escritório, montado a partir do **Raio-X Previdenciário GGV**
+  (leitura integral de 979 processos, gerado em 21/09/2026): seis indicadores com a variação entre
+  safras (êxito nos decididos 9% → 25% → 36%; falha nossa provada 52% → 38% → 30%; laudo médico
+  favorável 44%; extinção por não cumprir determinação 24% → 2%; cliente faltou à perícia 3% → 6%;
+  recurso provido 5–8%), gráfico de linhas do desfecho por safra, barras da falha por safra, êxito por
+  tipo de benefício, o que o cartório mais cobra na inicial, onde julgam, "a perícia decide", listas
+  Melhorou / Piorou e "O que mudar" com o passo do BPMN que cobra cada ajuste. O bloco "Operação
+  2026" (novos casos por mês) é fictício até o portal estar no ar. O arquivo do Raio-X **não entra no
+  repositório**: tem nome de cliente e dado de saúde processo a processo; só os agregados estão no
+  painel.
+- **Financeiro**: no modelo do Financeiro do portal antigo. Indicadores (recebido no mês, a receber
+  em RPV/precatório/acordos, prestações de contas a lançar, mensalidades em atraso, honorários de
+  êxito previstos), receita por mês (recebido × previsto), receita por origem, prestações de contas
+  pendentes e a tabela de lançamentos com filtros por tipo, status, responsável e vencimento. Status:
+  Recebido, A receber, Atrasado, Aguardando OK (da advogada, G8) e Lançar. Valores fictícios.
+- **Painéis retirados:** Documentação · ADM e Estagiário não têm mais Central própria. As tarefas de
+  documentação (D1.02, D1.18, D2.05, DP.03) aparecem na Central do Atendimento; o protocolo no Meu
+  INSS (D2.02) aparece na Central da Advogada. As telas de ação continuam as mesmas; só o "Voltar"
+  muda de destino. O seletor de função ficou com Atendimento, Atendimento · líder, Advogada, Sênior,
+  Financeiro e Glossário.
+
 ## Suporte interno em todas as telas
 Aba "✦ Suporte" na borda direita de **todos** os artboards do desktop. Abre uma janela à direita com
 o chatbot do escritório (Chatwoot embutido, ver `docs/arquitetura/chatwoot-no-portal.md`). O chat
@@ -192,5 +225,5 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
   "Advogada (workspace)" foi absorvida pela página da Central.
 
 ## Próximos passos
-Validar com o PO as 7 Centrais e as telas do Jurídico; aplicar o mesmo nível de detalhe do
-Atendimento nas telas de Sênior, Estagiário e Financeiro; atualizar o mobile; depois Railway.
+Validar com o PO as 5 Centrais, Clientes, Processos, Gestão e Financeiro; aplicar o mesmo nível de
+detalhe do Atendimento nas telas de Sênior e Financeiro; atualizar o mobile; depois Railway.

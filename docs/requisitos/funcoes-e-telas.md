@@ -46,7 +46,7 @@ pede (DP.03); laços de setor (D2.05, D3.04, D3a.03). (Digitalizar é [SCANNER] 
 confere.)
 **Histórias:** GGVP-17, 81, 91, 95, 47, 56. Compartilhadas: 58, 83.
 **Nunca vê:** petição, valores. Limite de cobrança escala à sênior (G15).
-**Home:** cards de documentos pendentes por cliente; fila do scanner; checklist por benefício.
+**Home:** sem painel próprio (decisão de 29/09): as tarefas de documentação entram na Central do Atendimento (cards de documentos pendentes, fila do scanner, checklist por benefício).
 
 ## Advogada responsável (Jurídico)
 **Raia:** JURÍDICO (todos os diagramas). É o núcleo do trabalho.
@@ -70,12 +70,12 @@ importar o estudo prévio de peritos (D4.05); portão do parecer (G17).
 **Nunca vê:** vê tudo do Jurídico. É quem despacha (G4), decide o que escalou (G15) e dispensa parecer
 com justificativa (G17).
 **Home:** casos aguardando conferência; despachos pendentes; tarefas que estouraram o limite; estudos
-de caso.
+de caso. Botões Clientes, Processos e Gestão (painel de resultados a partir do Raio-X).
 
 ## Estagiário ou assistente jurídico
 **Raia:** JURÍDICO (protocolo). **Tarefa:** protocolar no Meu INSS (D2.02), só após o OK do sênior.
 **História:** GGVP-27 (única com esse perfil).
-**Nunca vê:** valores, configuração. **Home:** casos liberados para protocolo no Meu INSS.
+**Nunca vê:** valores, configuração. **Home:** sem painel próprio (decisão de 29/09): o protocolo no Meu INSS aparece na Central da Advogada.
 
 ## Financeiro
 **Raia:** FINANCEIRO (D2, D3b). **Tarefa:** receber e lançar a prestação de contas (D2.06, D3b.03).
@@ -83,7 +83,7 @@ Nenhuma decisão é da raia.
 **Histórias:** **nenhuma tem o perfil Financeiro** — a tarefa está sob GGVP-44 (advogada) e GGVP-98
 (Atendimento). **Lacuna de backlog: falta história própria para desenhar a home do Financeiro.**
 **Nunca vê:** entrevista, petição, laudos. O aviso ao cliente depende do OK da advogada (G8).
-**Home:** prestações de contas recebidas.
+**Home:** prestações de contas recebidas; aba Financeiro (recebido, a receber, lançamentos), ver `docs/prototipo/figma.md`.
 
 ## Gestão / Administração (proposto, fora do BPMN)
 **Raia:** nenhuma. **Tarefas:** configuração do escritório — kits por benefício, modelos ZapSign,
