@@ -163,7 +163,9 @@ portal e nas histórias do Jira:
 O texto da marca no topo de toda tela é **"GGV Previdenciário"** (era "Central de trabalho"; o nome
 "Central" continua neste documento só para designar a tela inicial de cada função). O primeiro botão
 do topo é **"⌂ Início"**, que volta à tela inicial da função logada (na própria Central ele aparece
-aceso). Os "Voltar" das telas de ação e do processo dizem "‹ Início". A barra de botões aparece em
+aceso). Todo link "‹ Voltar" (telas de ação, processo, cliente, minuta, glossário) usa a ação **Voltar do
+histórico** do Figma: retorna à tela de onde a pessoa veio, seja a Central, a lista de Processos, a
+Agenda ou outra. A barra de botões aparece em
 **toda tela** da função (Central, Agenda, Clientes, Processos, Gestão, Financeiro, telas de ação,
 processo, cliente, minuta, novo cliente e reunião); a Agenda tem uma cópia por função, porque os
 botões mudam por função. Depois de "Início" vem "Agenda" e, por função, os botões:
