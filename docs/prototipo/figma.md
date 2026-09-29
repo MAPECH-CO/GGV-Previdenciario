@@ -235,6 +235,9 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
 - "Jurídico (simulação)" e "Page 1" ficaram como referência da rodada anterior. A página
   "Advogada (workspace)" foi absorvida pela página da Central.
 
+## Revisão de usabilidade (29/09)
+Percurso por persona executando as funções do BPMN, com 287 achados e plano: `revisao-usabilidade-2026-09-29.md`.
+
 ## Próximos passos
 Validar com o PO as 5 Centrais, Clientes, Processos, Gestão e Financeiro; aplicar o mesmo nível de
 detalhe do Atendimento nas telas de Sênior e Financeiro; atualizar o mobile; depois Railway.

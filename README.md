@@ -12,6 +12,7 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | Saber o que cada perfil vê (base do Figma) | `docs/requisitos/perfis.md` |
 | Funções e tarefas por perfil (base das telas) | `docs/requisitos/funcoes-e-telas.md` |
 | Ver o protótipo navegável e o que foi decidido nele | `docs/prototipo/figma.md` |
+| Revisão de usabilidade do protótipo (achados e plano) | `docs/prototipo/revisao-usabilidade-2026-09-29.md` |
 | Conhecer as travas de governança | `docs/requisitos/portoes-governanca.md` |
 | Documentação médica por benefício | `docs/requisitos/roteiro-laudos.md` e `docs/requisitos/fontes/` |
 | O que ainda depende do PO | `docs/requisitos/duvidas-abertas.md` |
