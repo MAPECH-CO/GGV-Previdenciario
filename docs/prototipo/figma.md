@@ -235,8 +235,26 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
 - "Jurídico (simulação)" e "Page 1" ficaram como referência da rodada anterior. A página
   "Advogada (workspace)" foi absorvida pela página da Central.
 
-## Revisão de usabilidade (29/09)
-Percurso por persona executando as funções do BPMN, com 287 achados e plano: `revisao-usabilidade-2026-09-29.md`.
+## Revisão de usabilidade (29/09) e correções (30/09)
+Percurso por persona executando as funções do BPMN, com 287 achados levantados e 285 confirmados
+por dois verificadores: `revisao-usabilidade-2026-09-29.md` (e `.docx`).
+As correções aplicadas no dia 30, com o estado de cada achado e as jornadas refeitas:
+`revisao-usabilidade-v2-2026-09-30.md` (e `.docx`).
+
+Decisões de desenho que vieram dessa rodada:
+- **Backup**: a versão anterior às correções ficou na página "Backup · antes das correções da
+  revisão (30/09/2026)".
+- **O que cada função vê é uma tela, não um bloqueio**: em vez de impedir a navegação, existem
+  "Processo · visão Atendimento (restrita)", "Processo · visão Financeiro (restrita)" e
+  "Cliente · dados (Financeiro)". O atalho continua lá; o conteúdo é o da função.
+- **Parecer médico em duas versões**: a completa (Jurídico) e a do Atendimento — conclusão, quem
+  confirmou e situação dos documentos, sem CID, diagnóstico nem resumo clínico.
+- **Portão é registro e trava**: quem liberou e quando, com o botão bloqueado enquanto faltar
+  evidência (G2 em D2.02, G7 em D3.07, G8 em D3b.03, G17 em D1.24 e no pedido de petição).
+  Nada de caixinha pré-marcada.
+- **D5 apagado** do protótipo; "Registrar contato" abre o overlay "Registrar conversa".
+- **Documento e cofre**: overlays "Documento (visualizador)" e "Cofre do gov.br", ligados nos
+  links de documento e de senha do gov.br.
 
 ## Próximos passos
 Validar com o PO as 5 Centrais, Clientes, Processos, Gestão e Financeiro; aplicar o mesmo nível de
