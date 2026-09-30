@@ -32,7 +32,7 @@ Sessão caiu no meio? Abra outra na mesma branch. O kit lembra o Claude onde par
 ## Comandos
 
 Permitidos, e só estes:
-- `/historia`, `/ok`
+- `/agora` (o que fazer agora, na ordem), `/historia`, `/ok`
 - `/opsx:explore`, `/opsx:propose`, `/opsx:apply`, `/opsx:update`, `/opsx:archive`
 - `/ecc:code-review`, `/ecc:security-scan`, `/ecc:save-session`, `/ecc:resume-session`
 - `/ponytail` quando o Claude complicar
