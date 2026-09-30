@@ -1,10 +1,10 @@
 # Entrega de 09/10/2026: o que entra, em que ordem, quem faz
 
-Dois devs, sete dias úteis a partir de 01/10. As 96 histórias não cabem. Cabe a fatia abaixo, funcionando em homologação, testada pelo Lucas. O resto vem depois, pelo mesmo método.
+Compromisso com o escritório: **as 96 histórias funcionando em homologação em 09/10**. Dois devs, sete dias úteis a partir de 01/10. Ritmo necessário: **14 histórias por dia entre os dois**, 7 cada. O `/agora` mostra o ritmo todo dia; se ele subir, o time avisa o Lucas no mesmo dia, não no dia 09.
 
-## O que está pronto no dia 09/10
+## Primeira leva
 
-Uma pessoa de cada perfil entra no portal, vê "O que é meu hoje", e um caso do D1 atravessa da recepção até a liberação ao Jurídico com o parecer médico. É o item 1 e o item 2 de `docs/requisitos/fatiamento.md`.
+A tabela abaixo é a primeira leva, já atribuída no Jira. Quando a fila de alguém esvazia, `/agora fatia N` puxa as próximas da "Ordem completa" e atribui. Nada fica sem dono por decisão; fica sem dono só até chegar a vez.
 
 | Bloco | Histórias | Observação |
 |---|---|---|
@@ -29,11 +29,20 @@ As histórias já estão atribuídas no Jira. `/agora` lê `assignee = currentUs
 Cada história tem um dono só, e o dono faz tela e API dela. O outro não entra na branch. O que se compartilha é o contrato em `packages/contratos` e a biblioteca `campos`.
 | 09/10 | UAT com o Lucas desde a manhã. Correções. `/mapech-delivery-os:mapech-delivery`: rollback, runbook, quem chamar. | Idem. |
 
-## Ordem de dependência (o `/agora` lê daqui)
+## Ordem completa (o `/agora` lê daqui)
 
-1. Fundação antes de qualquer tela com dado real: 108 → 117 → 96 → 109 → 105.
-2. Esqueleto antes das telas de ação: 78 e 86 antes de 16, 24, 21, 17, 81, 91, 65, 20, 33, 18.
-3. Dentro do D1, a ordem do fluxo: 16 → 24 → 21 → 17 → 81 → 91 → 65 → 20 → 33 → 18.
+Blocos, na ordem. Dentro de cada bloco, a ordem do fluxo do BPMN. O `/agora` só avança de bloco quando o anterior está sem história livre.
+
+1. **Fundação:** 108 → 117 → 96 → 109 → 105 → 106 → 110 → 104.
+2. **Esqueleto:** 78 → 86 → 82 (só consulta) → 99.
+3. **D1:** 16 → 24 → 21 → 32 → 28 → 36 → 40 → 46 → 43 → 51 → 57 → 42 → 65 → 69 → 72 → 77 → 85 → 89 → 17 → 81 → 95 → 91 → 47 → 50 → 20 → 25 → 29 → 93 → 33 → 18 → 60 → 97 → 101 → 94 → 103 → 102 → 111.
+4. **D2 e DP:** 23 → 27 → 31 → 49 → 53 → 56 → 61 → 62 → 66 → 70 → 73 → 38 → 35 → 39 → 44 → 98 → 48.
+5. **D4 e vigília:** 26 → 30 → 34 → 37 → 74.
+6. **D3, D3a, D3b:** 52 → 54 → 58 → 45 → 63 → 67 → 71 → 79 → 68 → 83 → 87 → 90 → 92 → 100 → 19 → 22.
+7. **D5:** 76 → 80 → 84 → 88.
+8. **Jurimetria, acervo, painéis:** 41 → 55 → 59 → 64 → 75 → 107.
+
+Dependências que não se negociam: fundação antes de qualquer tela com dado real; 78 e 86 antes das telas de ação; dentro do D1, a ordem do fluxo.
 4. O dono da história escreve o contrato Zod na `design.md` da change e o commita em `packages/contratos` antes da tela e da API. Tela pode nascer com mock e ligar depois.
 5. 32, 85, 89, 110 não dependem de nada além de 108 e 117. Servem para preencher buraco.
 6. Dúvidas do PO estão nos tickets GGVP-112 a GGVP-116 (filtro `labels = duvida-po`). História cuja dúvida está lá não começa antes da resposta.
