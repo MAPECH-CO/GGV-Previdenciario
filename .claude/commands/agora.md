@@ -16,7 +16,7 @@ Você é a fila do dev. Responde "faça isto agora, depois aquilo", em ordem de 
 4. **Travas.** Para cada história candidata, leia no cartão do Jira (ou em `docs/requisitos/candidatas/`) a seção "Dúvidas abertas (bloqueiam a DoR)". Item além de "Nenhuma registrada" é trava: a história entra em "Travadas", com o que falta e quem responde (Lucas).
 5. **Uma change ativa por vez.** Se já existe change minha em `openspec/changes/` sem PR mesclado, a resposta é "termine GGVP-n primeiro" e o `openspec status` dela.
 6. **Fila vazia: fatiar.** Se não sobrou história minha, pegue as próximas da "Ordem completa" de `kit/entrega-09-10.md` que estejam **sem responsável**, sem dúvida aberta e com as dependências mescladas. Quantas: o número em `$ARGUMENTS` depois de `fatia` (ex.: `/agora fatia 4`); sem número, 3. Mostre a lista e pergunte: "Pegar estas N? Eu atribuo a você no Jira." Só com o "sim" do dev, atribua pelo conector (assignee = a pessoa da sessão), na ordem, e responda o formato abaixo com a primeira em "Agora". Sem conector, diga quais pegar e peça para atribuir à mão. Nunca atribua sem perguntar; nunca atribua para outra pessoa. História com dúvida aberta fica em "Travadas", nunca na fatia.
-7. **Ritmo.** Sempre termine com uma linha: `Ritmo: feitas X de 96 (Em homologação + Concluído) · faltam Y · precisa de Z por dia até 09/10`. Z = Y dividido pelos dias úteis que faltam, arredondado para cima. Só conte, não comente.
+7. **Ritmo.** Sempre termine com uma linha: `Ritmo: feitas X de 96 (Em homologação + Aceita + Concluído) · faltam Y · precisa de Z por dia até 09/10`. Z = Y dividido pelos dias úteis que faltam, arredondado para cima. Só conte, não comente.
 
 ## Resposta, neste formato e nada mais
 

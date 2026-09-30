@@ -58,11 +58,11 @@ GitHub não precisa de conector enquanto existir o clone. O `gh` cobre o que fal
 
 ## Uma história, do início ao fim
 1. `kit/verificar-historia GGVP-27`: diz se está livre ou quem está nela.
-2. `kit/nova-historia GGVP-27`: puxa a `main`, cria `feat/GGVP-27-...` e abre o `claude`. O item vai sozinho para Em desenvolvimento.
+2. `kit/nova-historia GGVP-27`: puxa a `main`, cria `feat/GGVP-27-...` e abre o `claude`. O item vai sozinho para Em andamento.
 3. No chat, `/historia GGVP-27`. O Claude lê a história e devolve `/opsx:propose "GGVP-27: ..."`. Cole. Leia os quatro arquivos que saem em `openspec/changes/`.
 4. Suba o plano: `git add openspec && git commit -m "docs(spec): GGVP-27 proposta" && git push -u origin HEAD`.
 5. `/opsx:apply`. Uma tarefa por vez, com teste. Ao terminar, o Claude roda as verificações e pergunta "Agora ok?". Peça ajustes até estar ok.
-6. `/ok`: commita com a chave, sobe e abre o pull request com o template. O item vai para Em revisão.
+6. `/ok`: commita com a chave, sobe e abre o pull request com o template. O item vai para Em análise.
 7. O outro dev revisa. Ninguém mescla o próprio PR. Depois do merge e do "Aceita" do Lucas: `/opsx:archive`.
 
 Sem change do OpenSpec o Claude não escreve código: responde com o comando do `propose`. Ele descontrolou: `kit/quando-descontrola.md`.

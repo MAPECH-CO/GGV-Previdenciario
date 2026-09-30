@@ -39,5 +39,5 @@ Este arquivo é o resumo. O guia completo, parte por parte, está em `guia-scrum
 - Métricas que o SM acompanha: histórias aceitas por sprint, PRs com revisão, tempo de PR aberto até merge, impedimentos abertos.
 
 ## Fluxo no Jira (projeto GGVP)
-`Backlog → Pronta → Em desenvolvimento → Em revisão → Em homologação → Aceita` (ou `Recusada`, volta a Pronta).
+`Tarefas pendentes → Refinada → Em andamento → Em análise → Em homologação → Aceita` (recusada volta a Refinada, com o motivo no cartão; `Concluído` só em produção).
 Tipos: Épico (uma raia ou processo do BPMN), História, Tarefa técnica, Bug, Spike (investigação com prazo).

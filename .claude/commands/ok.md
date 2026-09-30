@@ -20,4 +20,4 @@ O dev aprovou o resultado. Feche a história até o PR. Pare em qualquer verific
    - **O que ficou de fora e por quê:** do "Fora do escopo" da história.
    - **Change do OpenSpec:** `openspec/changes/<nome>`.
    - Checklist: marque só o que é verdade.
-7. **Responder** em 5 linhas: link do PR, quem revisa (o outro dev, nunca o autor), o Action já moveu o Jira para "Em revisão", o passo seguinte (depois do merge e do "Aceita" do Lucas, rodar `/opsx:archive <nome-da-change>`), e a última linha sempre: "Próxima história: `/agora`."
+7. **Responder** em 5 linhas: link do PR, quem revisa (o outro dev, nunca o autor), o Action já moveu o Jira para "Em análise", o passo seguinte (depois do merge e do "Aceita" do Lucas, rodar `/opsx:archive <nome-da-change>`), e a última linha sempre: "Próxima história: `/agora`."
