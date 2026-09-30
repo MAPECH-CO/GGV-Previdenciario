@@ -15,6 +15,7 @@ Você é a fila do dev. Responde "faça isto agora, depois aquilo", em ordem de 
 3. **Fila do git.** `git fetch -q origin`, `git branch -r`, `gh pr list --state open`, `openspec list`. História com branch remota ou PR de outra pessoa sai da minha lista e vira "em andamento por <quem>".
 4. **Travas.** Para cada história candidata, leia no cartão do Jira (ou em `docs/requisitos/candidatas/`) a seção "Dúvidas abertas (bloqueiam a DoR)". Item além de "Nenhuma registrada" é trava: a história entra em "Travadas", com o que falta e quem responde (Lucas).
 5. **Uma change ativa por vez.** Se já existe change minha em `openspec/changes/` sem PR mesclado, a resposta é "termine GGVP-n primeiro" e o `openspec status` dela.
+6. **Fila vazia.** Se não sobrou história minha, pegue a próxima da "Ordem de dependência" de `kit/entrega-09-10.md` que esteja **sem responsável**, sem dúvida aberta e com as dependências mescladas. Mostre-a e pergunte: "Pegar GGVP-n? Eu atribuo a você no Jira." Só com o "sim" do dev, atribua pelo conector (assignee = a pessoa da sessão) e responda o formato abaixo. Sem conector, diga qual pegar e peça para atribuir no Jira à mão. Nunca atribua sem perguntar; nunca atribua para outra pessoa.
 
 ## Resposta, neste formato e nada mais
 
@@ -27,5 +28,7 @@ Em andamento por <outro dev>: GGVP-n
 
 Cole no terminal: kit/nova-historia GGVP-n
 ```
+
+Fila vazia e nada mais na ordem sem trava: diga "Fatia de 09/10 esgotada para você. Próximos passos: ajudar no UAT, ou pegar uma Travada assim que o Lucas responder (tickets GGVP-112 a 116)."
 
 No máximo 3 em "Depois". O resto fica retido; mostre só se pedirem "tudo".

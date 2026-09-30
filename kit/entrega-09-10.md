@@ -44,6 +44,7 @@ Cada história tem um dono só, e o dono faz tela e API dela. O outro não entra
 - **Mateus: uma sessão por vez.** Termina, `/ok`, próxima.
 - **Pedro: no máximo duas**, em árvores separadas (`git worktree add ../prev-GGVP-24 feat/GGVP-24-...`). Uma codando, outra no `propose` da próxima.
 - Começo do dia, dentro do `claude`: `/agora`. Ele diz a próxima e o comando para abrir a branch.
+- Terminou uma história: `/ok`, depois `/agora` de novo. Acabou a sua fila: o `/agora` oferece a próxima da ordem sem dono e, com o seu "sim", atribui a você no Jira. Ninguém atribui à mão nem pega história de outro.
 - Fim do dia: `/ok` se terminou; se não, `/ecc:save-session` e commit do que está feito com a chave.
 
 ## Rodar local, sem Docker
