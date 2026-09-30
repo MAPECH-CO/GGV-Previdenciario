@@ -8,7 +8,7 @@ Uma pessoa de cada perfil entra no portal, vê "O que é meu hoje", e um caso do
 
 | Bloco | Histórias | Observação |
 |---|---|---|
-| Entrar no portal | login mínimo (senha, sessão, perfil), **GGVP-96** perfis e permissões | Login não tem história em lugar nenhum. É a primeira a escrever. Versão mínima, sem 2FA. |
+| Entrar no portal | **GGVP-117** login com e-mail e senha, **GGVP-96** perfis e permissões | Login não estava no BPMN; a história foi escrita em 30/09. Versão mínima, sem 2FA. |
 | Fundação | **GGVP-108** identificadores (CPF, NB, protocolo, CNJ), **GGVP-105** motor de fluxo (só o D1), **GGVP-109** portões validados no servidor | Sem isso nenhuma tela do D1 sobe. As três estão em `backlog/06-revisao-jira/historias/` até entrarem no Jira. |
 | Esqueleto por perfil | **GGVP-78** Central por função, **GGVP-86** navegar pelo caso | Sobre API mockada com o contrato Zod, desde o dia 1. |
 | D1 de ponta a ponta | as histórias com rótulo `bpmn-d1-*`, mais **GGVP-20**, **33**, **93** e **95** (parecer médico e roteiro de laudos) | Lista final é do Pedro com o Lucas. Começa pela recepção (GGVP-16, 17, 21, 24) e termina na liberação (GGVP-18). |
@@ -17,12 +17,41 @@ Não entra até 09/10: D2, D3, D3a, D3b, DP, D4, D5, chat com ação (só consul
 
 ## Ordem e quem
 
-| Quando | Mateus (back e infra) | Pedro (front) |
+As histórias já estão atribuídas no Jira. `/agora` lê `assignee = currentUser()` e esta ordem.
+
+| Dia | Mateus (back e infra) | Pedro (front) |
 |---|---|---|
-| 01 e 02/10 | ADR-001 fechado. Repositório de código criado (monorepo: `apps/api`, `apps/web`, `packages/campos`, `packages/contratos`). CI: typecheck, lint, testes, segredos. Deploy automático em homologação no Coolify a cada merge na `main`. `kit/campos` vira `packages/campos` (GGVP-108). | GGVP-78 e GGVP-86 com dados mockados sobre o contrato de `packages/contratos`. Login mínimo (tela). |
-| 03/10 | GGVP-96 perfis, login (API), GGVP-105 motor só com o D1, GGVP-109 portões. | Ficha de atendimento e recepção (GGVP-24, 16, 21), já com `campos`. |
-| 06 a 08/10 | D1: uma história por vez, contrato antes do código. Cada um pega a próxima da fila; nunca a mesma. | Idem. |
-| 09/10 | UAT com o Lucas em homologação desde a manhã. Correções. Checklist de entrega (`/mapech-delivery-os:mapech-delivery`): rollback, runbook, quem chamar. | Idem. |
+| 01/10 | ADR-001. Monorepo (`apps/api`, `apps/web`, `packages/campos`, `packages/contratos`). CI. Homologação e **Postgres de dev no Coolify**. **GGVP-108** identificadores (`kit/campos` vira `packages/campos`). | **GGVP-78** Central por função, com login e perfil mockados. **GGVP-86** navegar pelo caso. |
+| 02/10 | **GGVP-117** login e sessão. **GGVP-96** perfis (API e matriz). **GGVP-109** portões no servidor. | **GGVP-78** ligada no login e nos perfis reais. **GGVP-32** preparar a conversa. **GGVP-85**, **GGVP-89** (pequenas). |
+| 03/10 | **GGVP-105** motor de fluxo, só as fases do D1. | **GGVP-16** balcão. **GGVP-24** ficha, já com `campos`. **GGVP-21** agendamento. |
+| 06 a 08/10 | Histórias inteiras (tela e API), uma por vez: **81, 91, 65, 20, 33, 18**. | Histórias inteiras (tela e API), uma por vez: **17**, depois o que sobrar da fila do Mateus. |
+
+Cada história tem um dono só, e o dono faz tela e API dela. O outro não entra na branch. O que se compartilha é o contrato em `packages/contratos` e a biblioteca `campos`.
+| 09/10 | UAT com o Lucas desde a manhã. Correções. `/mapech-delivery-os:mapech-delivery`: rollback, runbook, quem chamar. | Idem. |
+
+## Ordem de dependência (o `/agora` lê daqui)
+
+1. Fundação antes de qualquer tela com dado real: 108 → 117 → 96 → 109 → 105.
+2. Esqueleto antes das telas de ação: 78 e 86 antes de 16, 24, 21, 17, 81, 91, 65, 20, 33, 18.
+3. Dentro do D1, a ordem do fluxo: 16 → 24 → 21 → 17 → 81 → 91 → 65 → 20 → 33 → 18.
+4. O dono da história escreve o contrato Zod na `design.md` da change e o commita em `packages/contratos` antes da tela e da API. Tela pode nascer com mock e ligar depois.
+5. 32, 85, 89, 110 não dependem de nada além de 108 e 117. Servem para preencher buraco.
+6. Dúvidas do PO estão nos tickets GGVP-112 a GGVP-116 (filtro `labels = duvida-po`). História cuja dúvida está lá não começa antes da resposta.
+
+## Sessões do Claude Code
+
+- **Uma sessão por história, uma história por branch.** Nunca duas sessões na mesma pasta.
+- **Mateus: uma sessão por vez.** Termina, `/ok`, próxima.
+- **Pedro: no máximo duas**, em árvores separadas (`git worktree add ../prev-GGVP-24 feat/GGVP-24-...`). Uma codando, outra no `propose` da próxima.
+- Começo do dia, dentro do `claude`: `/agora`. Ele diz a próxima e o comando para abrir a branch.
+- Fim do dia: `/ok` se terminou; se não, `/ecc:save-session` e commit do que está feito com a chave.
+
+## Rodar local, sem Docker
+
+- Só Node. `pnpm dev` sobe `apps/api` e `apps/web`.
+- Banco de dev no Coolify, na VPS: um banco por pessoa (`prev_pedro`, `prev_mateus`), URL no `.env` local. Nada de Postgres nem Docker na máquina.
+- Homologação é outro banco, no mesmo Postgres. Migrações rodam no deploy.
+- Playwright usa o Chromium que ele mesmo instala (`pnpm exec playwright install chromium`).
 
 Regra dos dois em paralelo: o contrato (schema Zod em `packages/contratos`) nasce na `design.md` da change. Pedro constrói a tela sobre o schema, Mateus o servidor sobre o mesmo schema. Os dois não editam o mesmo arquivo. Conflito de merge é sinal de que alguém saiu da história.
 

@@ -53,7 +53,7 @@ BPMN do Miro (board `uXjVHjbveV4=`, frames "revisão BPMN"). Segue a metodologia
    sobe e abre o PR. `/opsx:archive` só depois do merge e do "Aceita" do Lucas.
 7. **Sem subagente que ninguém pediu.** Proibidos neste repositório: `/ecc:orch-*`, `/ecc:multi-*`,
    `/ecc:team-*`, `/ecc:gan-*`, `/ecc:santa-loop`, `/ecc:loop-start`, `/agenthub:*`, `/autoresearch-agent:*`.
-   Permitidos: `/historia`, `/ok`, `/opsx:*`, `/ecc:code-review`, `/ecc:security-scan`,
+   Permitidos: `/agora`, `/historia`, `/ok`, `/opsx:*`, `/ecc:code-review`, `/ecc:security-scan`,
    `/ecc:save-session`, `/ecc:resume-session`, `/ponytail`.
 
 ## Stack
