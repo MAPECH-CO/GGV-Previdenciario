@@ -21,7 +21,7 @@ As histórias já estão atribuídas no Jira. `/agora` lê `assignee = currentUs
 
 | Dia | Mateus (back e infra) | Pedro (front) |
 |---|---|---|
-| 01/10 | ADR-001. Monorepo (`apps/api`, `apps/web`, `packages/campos`, `packages/contratos`). CI. Homologação e **Postgres de dev no Coolify**. **GGVP-108** identificadores (`kit/campos` vira `packages/campos`). | **GGVP-78** Central por função, com login e perfil mockados. **GGVP-86** navegar pelo caso. |
+| 01/10 | **GGVP-118** base de código: ADR-001, monorepo (`apps/api`, `apps/web`, `packages/campos`, `packages/contratos`), banco, CI. **GGVP-119** ambiente: homologação no Coolify e Postgres de dev por pessoa. **GGVP-108** identificadores. | **GGVP-78** Central por função, com login e perfil mockados. **GGVP-86** navegar pelo caso. |
 | 02/10 | **GGVP-117** login e sessão. **GGVP-96** perfis (API e matriz). **GGVP-109** portões no servidor. | **GGVP-78** ligada no login e nos perfis reais. **GGVP-32** preparar a conversa. **GGVP-85**, **GGVP-89** (pequenas). |
 | 03/10 | **GGVP-105** motor de fluxo, só as fases do D1. | **GGVP-16** balcão. **GGVP-24** ficha, já com `campos`. **GGVP-21** agendamento. |
 | 06 a 08/10 | Histórias inteiras (tela e API), nesta ordem: **81, 91, 65, 20, 33, 18**. Depois, `/agora fatia 4`. | Histórias inteiras (tela e API): **17**, depois `/agora fatia 4`. |
@@ -33,7 +33,7 @@ Cada história tem um dono só, e o dono faz tela e API dela. O outro não entra
 
 Blocos, na ordem. Dentro de cada bloco, a ordem do fluxo do BPMN. O `/agora` só avança de bloco quando o anterior está sem história livre.
 
-1. **Fundação:** 108 → 117 → 96 → 109 → 105 → 106 → 110 → 104.
+1. **Fundação:** 118 → 119 → 108 → 117 → 96 → 109 → 105 → 106 → 110 → 104.
 2. **Esqueleto:** 78 → 86 → 82 (só consulta) → 99.
 3. **D1:** 16 → 24 → 21 → 32 → 28 → 36 → 40 → 46 → 43 → 51 → 57 → 42 → 65 → 69 → 72 → 77 → 85 → 89 → 17 → 81 → 95 → 91 → 47 → 50 → 20 → 25 → 29 → 93 → 33 → 18 → 60 → 97 → 101 → 94 → 103 → 102 → 111.
 4. **D2 e DP:** 23 → 27 → 31 → 49 → 53 → 56 → 61 → 62 → 66 → 70 → 73 → 38 → 35 → 39 → 44 → 98 → 48.
