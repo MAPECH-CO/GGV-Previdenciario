@@ -19,12 +19,12 @@ Instala o OpenSpec, registra os plugins do projeto e confere Node, git, gh e Cla
 
 ## Uma história, do início ao fim
 
-1. **Confira a fila.** `kit/verificar-historia GGVP-27`. Responde "livre" ou quem está nela. Cartão do Jira sem responsável e em "Pronta" é o outro sinal.
-2. **Abra a branch.** `kit/nova-historia GGVP-27`. Puxa a `main`, cria `feat/GGVP-27-...`, abre o `claude`. O Action move o cartão para "Em desenvolvimento".
+1. **Confira a fila.** `kit/verificar-historia GGVP-27`. Responde "livre" ou quem está nela. Cartão do Jira sem responsável e em "Refinada" é o outro sinal.
+2. **Abra a branch.** `kit/nova-historia GGVP-27`. Puxa a `main`, cria `feat/GGVP-27-...`, abre o `claude`. O Action move o cartão para "Em andamento".
 3. **Peça o plano.** No chat: `/historia GGVP-27`. O Claude lê a história, confere travas e devolve o comando. Cole: `/opsx:propose "GGVP-27: ..."`. Saem proposta, spec, design com o contrato e `tasks.md`. Leia os quatro.
 4. **Suba o plano.** `git add openspec && git commit -m "docs(spec): GGVP-27 proposta" && git push -u origin HEAD`. A partir daqui o outro dev vê que a história tem dono.
 5. **Execute.** `/opsx:apply`. Uma tarefa por vez, com teste. Ao terminar, o Claude roda as verificações e pergunta **"Agora ok?"**. Peça ajustes até estar ok. Ele pergunta de novo a cada ajuste.
-6. **Diga ok.** `/ok`: verifica, commita, sobe, abre o PR com o template. O cartão vai para "Em revisão". O outro dev revisa. Ninguém mescla o próprio PR.
+6. **Diga ok.** `/ok`: verifica, commita, sobe, abre o PR com o template. O cartão vai para "Em análise". O outro dev revisa. Ninguém mescla o próprio PR.
 7. **Depois do merge e do "Aceita" do Lucas:** `/opsx:archive <change>` e commit `docs(spec): GGVP-27 arquivada`. A spec principal em `openspec/specs/` passa a descrever o sistema que existe.
 
 Sessão caiu no meio? Abra outra na mesma branch. O kit lembra o Claude onde parou. `openspec status --change <nome>` também.
