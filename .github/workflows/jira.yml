@@ -66,6 +66,23 @@ jobs:
           echo "estado=$estado" >> "$GITHUB_OUTPUT"
           echo "evento=$EVENTO:$ACAO chave=${chave:-nenhuma} estado=${estado:-nenhum}"
 
+      - name: Diagnóstico das credenciais (temporário, não imprime valores)
+        if: steps.alvo.outputs.chave != ''
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          def d(n, v):
+              if not v: print(f"{n}: VAZIO"); return
+              print(f"{n}: tamanho={len(v)} espaco_ou_quebra={bool(re.search(r'\s', v))} comeca_com={v[:2]!r}")
+          d("JIRA_EMAIL", os.environ.get("JIRA_EMAIL", ""))
+          d("JIRA_API_TOKEN", os.environ.get("JIRA_API_TOKEN", ""))
+          PY
+          code=$(curl -s -o /dev/null -w '%{http_code}' -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_URL/rest/api/3/myself")
+          echo "GET /myself com os segredos -> HTTP $code"
+
       - name: Transicionar no Jira
         if: steps.alvo.outputs.chave != '' && steps.alvo.outputs.estado != ''
         env:
