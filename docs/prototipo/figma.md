@@ -12,7 +12,7 @@ prazo) ou **busca** por processo, nome ou tarefa. Cada item abre a **tela daquel
 ## Páginas do arquivo
 | Página | O que tem | Início do fluxo (Present) |
 |---|---|---|
-| Desktop · Central de trabalho (simulação) | **Tudo o que é navegável está aqui** (links de protótipo não atravessam páginas): uma Central **por função** (Atendimento, Atendimento · líder, Advogada, Sênior, Financeiro; os painéis de Documentação e de Estagiário foram retirados em 29/09, ver abaixo), 46 telas de ação `step_<código>`, a página completa do processo, a página do cliente (duas variantes), o fluxo Novo cliente → Marcar reunião → Reunião com transcrição, a Minuta e as variantes tema escuro / fonte grande | Cada Central, Meus processos e Novo cliente são pontos de início |
+| Desktop · Central de trabalho (simulação) | **Tudo o que é navegável está aqui** (links de protótipo não atravessam páginas): uma Central **por função** (Atendimento, Atendimento · líder, Advogada, Estagiário (Jurídico adm.), Sênior, Financeiro; o painel da Documentação foi retirado em 29/09 e o do Estagiário voltou na mesma noite, ver abaixo), 46 telas de ação `step_<código>` (contagem de 28/09; as telas novas de 29/09 estão em "Ajustes de 29/09 à noite"), a página completa do processo, a página do cliente (duas variantes), o fluxo Novo cliente → Marcar reunião → Reunião com transcrição, a Minuta e as variantes tema escuro / fonte grande | Cada Central, Meus processos e Novo cliente são pontos de início |
 | Desktop · Jurídico (simulação) | Versão anterior (hub do caso). Referência, não é o modelo atual | — |
 | Page 1 | Homes por perfil e mobile da primeira rodada. Referência | — |
 
@@ -21,9 +21,10 @@ notificações de cada função vêm de `docs/requisitos/funcoes-e-telas.md`.
 
 ## Advogada: o que foi decidido
 - **Tarefa abre o processo do cliente.** Na Central da Advogada (e da Sênior), clicar
-  numa tarefa abre a **página completa do processo**, não uma tela solta. A ação específica (minuta,
+  numa tarefa abre a **página completa do processo**, não uma tela solta (duas exceções desde 29/09: D2.03 "Decidir perícia" e D1.21M "Analisar laudo novo" abrem a
+  tela da ação). A ação específica (minuta,
   contato) sai de dentro da página.
-- **Meus processos**: cada cartão mostra a etapa (balão), o próximo passo e o prazo. À direita, as
+- **Meus processos** (tela sem uso desde 29/09, com o selo "Substituída"): cada cartão mostra a etapa (balão), o próximo passo e o prazo. À direita, as
   últimas movimentações dos processos do setor.
 - **Página completa do processo**, compacta, em três colunas: cabeçalho (número, etapa, benefício,
   NB, cliente clicável, juízo, prazo) + resumo da IA com a próxima ação; abaixo, a **linha do processo
@@ -89,7 +90,7 @@ petição, valores nem conteúdo de laudo. No protótipo todos os nomes abrem a 
 ## Atendimento: o que cada tela de ação carrega
 Cada tela de ação do Atendimento e da Documentação abre com um cartão **"O que você deve fazer"**:
 instruções curtas montadas pela IA a partir da entrevista, do benefício e do caso daquele cliente
-(ex.: em "Marcar a perícia", qual agência, que horário, o que conferir no kit antes, o que orientar
+(ex.: em "Marcar a perícia", tela que passou ao Estagiário em 29/09: qual agência, que horário, o que conferir no kit antes, o que orientar
 o cliente a levar e o portão que vale). O **tipo de benefício** aparece em destaque (selo laranja
 "◆ Benefício") no cabeçalho de toda tela e no próprio cartão.
 Tipo de benefício sempre visível; contatos do cliente (ligar/WhatsApp) em toda tela que pode
@@ -139,15 +140,16 @@ portal e nas histórias do Jira:
   (D1, D2, D3, D3a, D3b, D4, D5, DP) com cada passo numerado, o tipo (pessoa, IA, sistema,
   scanner, decisão, fluxo) e a raia. Os botões "Abrir no Miro" foram removidos do protótipo: o
   BPMN é lido dentro do portal; o Miro fica só como ferramenta de desenho (links em `docs/bpmn/`).
-- Os mesmos códigos foram **escritos nos cartões do Miro** (frames "revisão BPMN"): cada caixa
+- Os mesmos códigos foram **escritos nos cartões do Miro** (frames "revisão BPMN"; os códigos com E dos passos
+  externos ainda não): cada caixa
   começa com o código (ex.: "D1.13 · Calcular tempo e pontos"; nas decisões, "D2.03 · Precisa de
   perícia?"). Assim Figma, Miro, `docs/bpmn/` e o Jira usam a mesma referência.
 - **Passar o mouse sobre o código** de uma tela (o chip "D1.24" no topo das 46 telas de ação e os 14
   códigos da linha do tempo da página do processo) mostra uma dica: código e nome do passo, tipo,
   raia, diagrama e a descrição de `docs/bpmn/`. **Clicar no código** (ou na própria dica) abre o
-  **desenho do BPMN** daquele diagrama em **tela cheia** (imagem exportada do Miro, a mesma de
-  `docs/bpmn/img/`), com arraste horizontal e vertical; "✕ Fechar" volta à tela anterior. O D5,
-  sem frame no Miro, mostra a lista numerada dos passos. A dica é um
+  **desenho do BPMN** daquele diagrama em **tela cheia** (desde 29/09, imagem gerada a partir do conteúdo do board, com o desenho novo; as de
+  `docs/bpmn/img/` continuam as de 28/09), com arraste horizontal e vertical; "✕ Fechar" volta à tela anterior. O D5,
+  apagado do Miro em 28/09, abre pelo glossário marcado como removido. A dica é um
   overlay do Figma, por isso a área clicável dela cobre o chip: o clique funciona tanto com a dica
   aberta quanto fechada. As variantes da página do processo (tema escuro, fonte grande, por
   tarefa) ainda não têm a dica.
@@ -193,14 +195,16 @@ botões mudam por função. Depois de "Início" vem "Agenda" e, por função, os
   êxito previstos), receita por mês (recebido × previsto), receita por origem, prestações de contas
   pendentes e a tabela de lançamentos com filtros por tipo, status, responsável e vencimento. Status:
   Recebido, A receber, Atrasado, Aguardando OK (da advogada, G8) e Lançar. Valores fictícios.
-- **Painéis retirados:** Documentação · ADM e Estagiário não têm mais Central própria. As tarefas de
-  documentação (D1.02, D1.18, D2.05, DP.03) aparecem na Central do Atendimento; o protocolo no Meu
-  INSS (D2.02) aparece na Central da Advogada. As telas de ação continuam as mesmas; só o "Voltar"
-  muda de destino. O seletor de função ficou com Atendimento, Atendimento · líder, Advogada, Sênior,
-  Financeiro e Glossário.
+- **Painel retirado:** Documentação · ADM não tem mais Central própria. As tarefas de documentação
+  (D1.02, D1.18, D2.05, DP.03) aparecem na Central do Atendimento. O painel do Estagiário, retirado na
+  mesma tarde, voltou à noite por decisão do Lucas (ver "Ajustes de 29/09 à noite"): o protocolo no Meu
+  INSS (D2.02) saiu da Central da Advogada e foi para a do Estagiário, junto com a perícia. As telas de
+  ação continuam as mesmas; só o "Voltar" muda de destino. O seletor de função ficou com Atendimento,
+  Atendimento · líder, Advogada, Estagiário (Jurídico adm.), Sênior, Financeiro e Glossário.
 
-## Suporte interno em todas as telas
-Aba "✦ Suporte" na borda direita de **todos** os artboards do desktop. Abre uma janela à direita com
+## Suporte interno nas telas
+Aba "✦ Suporte" na borda direita dos artboards do desktop, menos nas Centrais: desde 29/09 à noite, nelas
+o chat fica embaixo da busca (ver "Ajustes de 29/09 à noite"). A aba abre uma janela à direita com
 o chatbot do escritório (Chatwoot embutido, ver `docs/arquitetura/chatwoot-no-portal.md`). O chat
 herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano entra se precisar.
 
@@ -219,7 +223,8 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
 
 ## Como apresentar
 1. Abrir a página, Present (▶). Na Central: clicar em uma notificação, ou na busca, e voltar.
-2. Trocar de função pelo seletor. Abrir o Suporte pela aba da direita.
+2. Trocar de função pelo seletor. Na Central, usar o chat embaixo da busca; nas outras telas, abrir o
+   Suporte pela aba da direita.
 3. Na Central da Advogada: clicar numa tarefa abre o processo completo; clicar no nome do cliente
    abre a ficha com todos os processos; da página, a próxima ação e a minuta; testar ☾ e A+.
 4. Na Central do Atendimento: "+ Novo cliente" → salvar e marcar reunião → iniciar agora → reunião
@@ -238,6 +243,43 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
 ## Revisão de usabilidade (29/09)
 Percurso por persona executando as funções do BPMN, com 287 achados e plano: `revisao-usabilidade-2026-09-29.md`.
 
+## Ajustes de 29/09 à noite (Lucas, Fernando e Pedro)
+Aplicados no Figma na noite de 29/09/2026, junto com o ajuste do BPMN no Miro (ver `docs/bpmn/`).
+
+- **Central do Estagiário (Jurídico administrativo) de volta.** Por decisão do Lucas, a perícia fica toda com
+  o Jurídico administrativo (marcar no INSS, subir o comprovante, orientar e remarcar), e o protocolo no Meu
+  INSS (D2.02) saiu da Central da Advogada para a do Estagiário. O seletor de função tem Atendimento,
+  Atendimento · líder, Advogada, Estagiário (Jurídico adm.), Sênior, Financeiro e Glossário. A Documentação
+  continua dentro da Central do Atendimento.
+- **Títulos padronizados.** O título de toda tarefa é o nome do cliente em negrito mais uma ação de uma lista
+  fixa; o detalhe vai na linha de baixo. A lista está em `docs/requisitos/titulos-de-tarefa.md` e no quadro
+  "Glossário · títulos das tarefas" do Figma.
+- **Chat embaixo da busca em todas as Centrais**, inclusive nas abas do setor e nas variantes escura e de
+  fonte grande. São 10 respostas que só orientam e 5 cards de confirmar: o Atendimento sobe o laudo novo, a
+  Advogada cria tarefa, o Estagiário sobe o comprovante do INSS, a Sênior cria tarefa e o Financeiro lança
+  comprovante. Nas outras telas, o Suporte continua na aba da direita.
+- **Telas novas:** D1.20 (entregar a cópia do contrato), D1.23 (cobrar documento do checklist), D3.04
+  (cumprir pendência do despacho) e "Laudo novo · resumo e comparação da IA".
+- **Overlay · Registrar conversa** (tela nova). Os botões "Registrar contato com o cliente" (página do
+  processo e fichas do cliente) e "Registrar nova conversa" (transcrições) levavam à tela do D5.01, que foi
+  apagada, e agora abrem esse formulário: canal, com quem falou, gravação (com o aviso de gravação, G10),
+  resumo que a IA escreve e a pessoa confere, e os botões Cancelar e Salvar no processo.
+- **Botão principal de cada tela de tarefa:** leva ao próximo passo ou volta à Central da função.
+- **Listas do BPMN:** cada passo abre a tela dele. As listas mostram 18 passos externos tracejados, com a
+  proposta de códigos com E (`D1.E1`, `DP.E3`…, ver `docs/bpmn/README.md`), que ainda não foi gravada no Miro.
+- **BPMN em tela cheia com o desenho de 29/09.** As telas "BPMN · tela cheia" (D1, D2, D3, D3a, D3b, D4, DP)
+  ganharam o desenho novo do Miro, com as raias externas e o laudo novo no D1. Não é o "Exportar imagem" do
+  Miro: a imagem foi gerada a partir do conteúdo do board (mesmas posições, cores e textos), e o cabeçalho diz
+  "gerado do Miro em 29/09". As imagens de `docs/bpmn/img/` continuam as de 28/09 até alguém reexportar pelo
+  Miro.
+- **Tarefas da Advogada e da Sênior** continuam abrindo a página do processo, com duas exceções que abrem a
+  tela da ação: D2.03 "Decidir perícia" e D1.21M "Analisar laudo novo".
+- **Telas antigas sem uso** ganharam o selo "Substituída": Advogada · Meus processos e os dois "Suporte IA
+  fixo".
+- **Conferência:** os links de protótipo foram conferidos por script: 2.143 links para telas (2.259 ações,
+  contando Fechar e Voltar), nenhum quebrado, nenhuma tela sem entrada e nenhum link para tela removida,
+  fora os do glossário, que abrem o D5 marcado como removido. O modo Apresentar não foi rodado.
+
 ## Próximos passos
-Validar com o PO as 5 Centrais, Clientes, Processos, Gestão e Financeiro; aplicar o mesmo nível de
+Validar com o PO as 6 Centrais, Clientes, Processos, Gestão e Financeiro; aplicar o mesmo nível de
 detalhe do Atendimento nas telas de Sênior e Financeiro; atualizar o mobile; depois Railway.

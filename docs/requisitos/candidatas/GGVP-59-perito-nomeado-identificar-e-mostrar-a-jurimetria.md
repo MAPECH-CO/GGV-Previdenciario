@@ -17,6 +17,7 @@
 4. **Dado** o laudo que o perito entregar neste caso, **quando** a advogada confere o resultado (DP.08), **então** o caso entra na base do perito (GGVP-73).
 
 ## Fora do escopo desta história
+- Tirar o perito do comprovante do INSS (PDF): o PDF traz data, hora, local e tipo da perícia, mas não o perito. O perito vem do processo ou do acervo.
 - A definir no refinamento.
 
 ## Dados e permissões
@@ -33,4 +34,4 @@
 - Q16: Qual o tamanho mínimo de amostra para mostrar a jurimetria de um perito ou juiz?
 
 ## Dúvidas respondidas pelo PO
-- (vazio)
+- Ajuste de 29/09/2026 (Lucas): o comprovante do INSS (PDF) traz data, hora, local e tipo da perícia, mas não o perito. O perito vem do processo ou do acervo, nunca do PDF.
