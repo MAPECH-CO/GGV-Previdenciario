@@ -48,7 +48,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
-          show_full_output: true
           claude_args: |
             --max-turns 20
             --setting-sources user
@@ -75,7 +74,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           use_sticky_comment: true
-          show_full_output: true
           claude_args: |
             --max-turns 20
             --setting-sources user

@@ -62,7 +62,7 @@ Regra dos dois em paralelo: o contrato (schema Zod em `packages/contratos`) nasc
 |---|---|---|
 | Fernando | Criar no Jira os estados do fluxo: `Backlog → Pronta → Em desenvolvimento → Em revisão → Em homologação → Aceita`. Hoje só existe o padrão ("Tarefas pendentes", "Em andamento", "Concluído") e o Action `jira.yml` não consegue mover para "Em revisão" nem "Em homologação". | 15 min |
 | Pedro | Mandar as 96 histórias revisadas para o Jira e para `docs/requisitos/candidatas/` por PR. O `/historia` lê do repositório. | depois da validação |
-| Mateus | Segredo `CLAUDE_CODE_OAUTH_TOKEN` no repositório (revisão automática do PR): na máquina, `claude setup-token` gera o token; guardar com `gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo femezher/GGV-Previdenciario`. `JIRA_EMAIL` e `JIRA_API_TOKEN` já existem. Coolify: aplicação de homologação ligada ao GitHub. | 30 min |
+| Mateus | Coolify: aplicação de homologação ligada ao GitHub e Postgres de dev com um banco por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) já existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e depois `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret" nem colando direto do console: entra espaço e o valor fica inválido. | 30 min |
 | Lucas | Responder as travas **[decidir]** das histórias do D1 antes de elas entrarem. Lista em `backlog/06-revisao-jira/00-leia-primeiro.md`. | 1 h |
 
 ## Regras de fila
