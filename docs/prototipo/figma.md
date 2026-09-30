@@ -255,6 +255,15 @@ Decisões de desenho que vieram dessa rodada:
 - **D5 apagado** do protótipo; "Registrar contato" abre o overlay "Registrar conversa".
 - **Documento e cofre**: overlays "Documento (visualizador)" e "Cofre do gov.br", ligados nos
   links de documento e de senha do gov.br.
+- **Chat por página (30/09)**: o bloco "✦ Pergunte ou peça" deixou de ser só da Central. As páginas
+  de **Gestão** (Sênior e Financeiro) e o **painel do Financeiro** ganharam o mesmo bloco, com
+  exemplo e sugestões do assunto da página. Duas sugestões de cada página abrem tela: uma resposta
+  em texto com lista e uma **ação em card para confirmar**, mantendo a regra de que a IA responde e
+  orienta, e só executa depois do OK de uma pessoa.
+  - Gestão: "por que perdemos em 2025?" (resposta com os números do Raio-X) e "faltas à perícia
+    dobraram" (card para criar a rotina de lembrete, sem remarcar nada sozinha).
+  - Financeiro: "quais prestações estão esperando o OK da advogada?" (resposta, G8) e "lançar a
+    prestação da Célia Moura" (card com o OK da advogada registrado; sem ele o botão fica bloqueado).
 
 ## Próximos passos
 Validar com o PO as 5 Centrais, Clientes, Processos, Gestão e Financeiro; aplicar o mesmo nível de
