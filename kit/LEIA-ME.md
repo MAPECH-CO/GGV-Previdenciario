@@ -62,4 +62,4 @@ Proibidos neste repositório: `/ecc:orch-*`, `/ecc:multi-*`, `/ecc:team-*`, `/ec
 | Biblioteca de campos | `kit/campos/` (vai para `packages/campos` na história GGVP-108) |
 | O que entra até 09/10 e em que ordem | `kit/entrega-09-10.md` |
 | O Claude descontrolou | `kit/quando-descontrola.md` |
-| Revisão automática do PR | `.github/workflows/claude-review.yml` (precisa do segredo `ANTHROPIC_API_KEY`) |
+| Revisão automática do PR | `.github/workflows/claude-review.yml` (precisa do segredo `CLAUDE_CODE_OAUTH_TOKEN`, token da assinatura gerado com `claude setup-token`) |
