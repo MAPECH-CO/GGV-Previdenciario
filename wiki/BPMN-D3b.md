@@ -19,7 +19,7 @@ Na ordem das faixas do frame (de cima para baixo):
 - **JURÍDICO** — decide se o mérito foi procedente, dá o OK na prestação de contas e decide se recorre.
 - **SISTEMA · REGRAS** — acompanha o pagamento, registra e notifica, guarda no acervo (RAG).
 - **IA · LLM** — monta a prestação de contas e gera o estudo de caso; sempre conferida por pessoa.
-- **JUSTIÇA** (externa, faixa tracejada; nova em 29/09, posição no frame não conferida) — libera o pagamento. O passo externo é uma espera: o acompanhamento do pagamento segue quando a Justiça libera.
+- **JUSTIÇA** (externa, faixa tracejada, nova em 29/09; fica embaixo de tudo, depois da IA · LLM) — libera o pagamento. O passo externo é uma espera: o acompanhamento do pagamento segue quando a Justiça libera.
 
 ## Passos
 

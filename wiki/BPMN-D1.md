@@ -23,7 +23,7 @@ Cor da caixa = quem faz o passo. As marcações abaixo seguem essa legenda:
 - Pílula cinza arredondada: vem de / segue para outro diagrama.
 - Caixa pontilhada: comentário (💡 dica, ⚠️ atenção, 📝 observação).
 
-Linhas: cheia = o trabalho segue; tracejada cinza = mensagem com o INSS ou a Justiça; pontilhada roxa = grava ou consulta o RAG; tracejada fina = liga o comentário ao passo.
+Linhas: cheia = o trabalho segue; tracejada cinza = mensagem com quem está fora do escritório (cliente, INSS ou Justiça); pontilhada roxa = grava ou consulta o RAG; tracejada fina = liga o comentário ao passo.
 
 ## Raias
 

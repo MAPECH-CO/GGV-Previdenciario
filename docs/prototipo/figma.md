@@ -276,7 +276,14 @@ Aplicados no Figma na noite de 29/09/2026, junto com o ajuste do BPMN no Miro (v
   tela da ação: D2.03 "Decidir perícia" e D1.21M "Analisar laudo novo".
 - **Telas antigas sem uso** ganharam o selo "Substituída": Advogada · Meus processos e os dois "Suporte IA
   fixo".
-- **Conferência:** os links de protótipo foram conferidos por script: 2.143 links para telas (2.259 ações,
+- **Agenda: todo evento abre o detalhe.** Na Lista, na Semana e no Mês das cinco agendas (Advogada,
+  Atendimento, Atendimento · líder, Sênior e Financeiro), clicar num evento abre o detalhe daquele evento. São
+  20 detalhes, um por evento, com o título no padrão, quando, cliente, detalhe e passo do BPMN. "Abrir a
+  tarefa" leva à tela do passo; nas audiências, o botão abre o processo. "Remarcar" aparece nas visitas, nos
+  retornos e nas idas ao banco, onde abre a marcação de reunião, e nas perícias, onde abre o DP.07 com o
+  limite do G15. Prazo, protocolo e audiência não têm "Remarcar". No Mês, 7 eventos antigos de setembro seguem
+  sem detalhe, porque o protótipo não tem os dados deles.
+- **Conferência:** os links de protótipo foram conferidos por script: 2.401 links para telas (2.556 ações,
   contando Fechar e Voltar), nenhum quebrado, nenhuma tela sem entrada e nenhum link para tela removida,
   fora os do glossário, que abrem o D5 marcado como removido. O modo Apresentar não foi rodado.
 
