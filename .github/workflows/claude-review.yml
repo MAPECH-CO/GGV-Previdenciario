@@ -47,10 +47,17 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 20"
+          use_sticky_comment: true
+          claude_args: |
+            --max-turns 20
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
           prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
             Revise este pull request em português do Brasil. Leia CLAUDE.md, a change em openspec/changes/ citada no PR e a história em docs/requisitos/candidatas/.
-            Confira, nesta ordem, e responda com um comentário curto no PR (no máximo 15 linhas), começando por uma destas palavras: BLOQUEIA, ATENÇÃO ou OK.
+            Publique o resultado como UM comentário no PR, com `gh pr comment` (a branch do PR já está no diretório atual). Para apontar uma linha específica, use `mcp__github_inline_comment__create_inline_comment` com `confirmed: true`. Não entregue a revisão como mensagem de texto: só como comentário no PR.
+            Confira, nesta ordem, e escreva o comentário curto (no máximo 15 linhas), começando por uma destas palavras: BLOQUEIA, ATENÇÃO ou OK.
             1. Escopo: o diff faz só o que a história GGVP-n do título pede. Arquivo fora da história é BLOQUEIA.
             2. Testes: cada critério de aceite tem teste. Teste que não roda ou não existe é BLOQUEIA.
             3. Campos de formulário: CPF, CEP, data, número, telefone, NB, CNJ e nome usam a biblioteca campos (kit/campos ou packages/campos). Validação solta na tela é ATENÇÃO.
@@ -65,10 +72,17 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: "--max-turns 20"
+          use_sticky_comment: true
+          claude_args: |
+            --max-turns 20
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
           prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
             Revise este pull request em português do Brasil. Leia CLAUDE.md, a change em openspec/changes/ citada no PR e a história em docs/requisitos/candidatas/.
-            Confira, nesta ordem, e responda com um comentário curto no PR (no máximo 15 linhas), começando por uma destas palavras: BLOQUEIA, ATENÇÃO ou OK.
+            Publique o resultado como UM comentário no PR, com `gh pr comment` (a branch do PR já está no diretório atual). Para apontar uma linha específica, use `mcp__github_inline_comment__create_inline_comment` com `confirmed: true`. Não entregue a revisão como mensagem de texto: só como comentário no PR.
+            Confira, nesta ordem, e escreva o comentário curto (no máximo 15 linhas), começando por uma destas palavras: BLOQUEIA, ATENÇÃO ou OK.
             1. Escopo: o diff faz só o que a história GGVP-n do título pede. Arquivo fora da história é BLOQUEIA.
             2. Testes: cada critério de aceite tem teste. Teste que não roda ou não existe é BLOQUEIA.
             3. Campos de formulário: CPF, CEP, data, número, telefone, NB, CNJ e nome usam a biblioteca campos (kit/campos ou packages/campos). Validação solta na tela é ATENÇÃO.
