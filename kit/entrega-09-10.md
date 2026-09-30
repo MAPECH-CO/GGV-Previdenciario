@@ -24,7 +24,7 @@ As histórias já estão atribuídas no Jira. `/agora` lê `assignee = currentUs
 | 01/10 | ADR-001. Monorepo (`apps/api`, `apps/web`, `packages/campos`, `packages/contratos`). CI. Homologação e **Postgres de dev no Coolify**. **GGVP-108** identificadores (`kit/campos` vira `packages/campos`). | **GGVP-78** Central por função, com login e perfil mockados. **GGVP-86** navegar pelo caso. |
 | 02/10 | **GGVP-117** login e sessão. **GGVP-96** perfis (API e matriz). **GGVP-109** portões no servidor. | **GGVP-78** ligada no login e nos perfis reais. **GGVP-32** preparar a conversa. **GGVP-85**, **GGVP-89** (pequenas). |
 | 03/10 | **GGVP-105** motor de fluxo, só as fases do D1. | **GGVP-16** balcão. **GGVP-24** ficha, já com `campos`. **GGVP-21** agendamento. |
-| 06 a 08/10 | Histórias inteiras (tela e API), uma por vez: **81, 91, 65, 20, 33, 18**. | Histórias inteiras (tela e API), uma por vez: **17**, depois o que sobrar da fila do Mateus. |
+| 06 a 08/10 | Histórias inteiras (tela e API), nesta ordem: **81, 91, 65, 20, 33, 18**. Depois, `/agora fatia 4`. | Histórias inteiras (tela e API): **17**, depois `/agora fatia 4`. |
 
 Cada história tem um dono só, e o dono faz tela e API dela. O outro não entra na branch. O que se compartilha é o contrato em `packages/contratos` e a biblioteca `campos`.
 | 09/10 | UAT com o Lucas desde a manhã. Correções. `/mapech-delivery-os:mapech-delivery`: rollback, runbook, quem chamar. | Idem. |
@@ -50,8 +50,7 @@ Dependências que não se negociam: fundação antes de qualquer tela com dado r
 ## Sessões do Claude Code
 
 - **Uma sessão por história, uma história por branch.** Nunca duas sessões na mesma pasta.
-- **Mateus: uma sessão por vez.** Termina, `/ok`, próxima.
-- **Pedro: no máximo duas**, em árvores separadas (`git worktree add ../prev-GGVP-24 feat/GGVP-24-...`). Uma codando, outra no `propose` da próxima.
+- **Cada um até duas sessões ao mesmo tempo**, em árvores separadas (`git worktree add ../prev-GGVP-24 feat/GGVP-24-...`). Uma codando, outra no `propose` da próxima. Vale igual para Pedro e Mateus.
 - Começo do dia, dentro do `claude`: `/agora`. Ele diz a próxima e o comando para abrir a branch.
 - Terminou uma história: `/ok`, depois `/agora` de novo. Acabou a sua fila: o `/agora` oferece a próxima da ordem sem dono e, com o seu "sim", atribui a você no Jira. Ninguém atribui à mão nem pega história de outro.
 - Fim do dia: `/ok` se terminou; se não, `/ecc:save-session` e commit do que está feito com a chave.
