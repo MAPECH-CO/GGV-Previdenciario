@@ -2,6 +2,8 @@
 
 # D5 · Conversa com lead ou cliente em análise (revisão BPMN)
 
+> **Histórico.** O frame do D5 foi apagado do board do Miro em 28/09/2026. Esta transcrição, de 26/09, fica só como histórico: o link abaixo aponta para um frame que não existe mais.
+
 **Fonte:** frame "D5 · Conversa com lead ou cliente em análise" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684983659886) (frame `3458764684983659886`).
 **Estado:** o D5 tem só uma versão no board (não há par "revisão BPMN" separado). Vale este frame.
 **Início:** Lead ou cliente em análise procura o escritório. **Fim:** "▶ VOLTA PARA D1 · o caso segue de onde parou".

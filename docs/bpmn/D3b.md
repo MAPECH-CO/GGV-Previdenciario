@@ -1,13 +1,13 @@
 # D3b · Desfecho do mérito (revisão BPMN)
 
 **Fonte:** frame "D3b · Desfecho do mérito · revisão BPMN (para conferência)" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978188052) (frame `3458764684978188052`).
-**Imagem exportada:** [`img/D3b.jpg`](img/D3b.jpg) (mesma que abre em tela cheia no protótipo).
-**Estado:** revisão feita com o PO em setembro de 2026. Vale este frame; a versão antiga fica no board só como histórico.
+**Imagem exportada:** [`img/D3b.jpg`](img/D3b.jpg). É o export de 28/09/2026: não mostra o ajuste de 29/09 e fica desatualizada até novo export do Miro. O protótipo do Figma já abre em tela cheia o desenho de 29/09, numa imagem gerada do conteúdo do board (ver `docs/prototipo/figma.md`).
+**Estado:** revisão feita com o PO em setembro de 2026 e ajustada no Miro em 29/09/2026 (raia externa JUSTIÇA). Vale este frame; a versão antiga fica no board só como histórico.
 **Início:** Decisão de mérito, vinda do D3a. **Fim:** "Vencemos: baixa registrada" (procedente) ou "Perdemos: estudo registrado" (improcedente).
 
-Resumo do frame: *Procedente: acompanha o pagamento, presta contas, passa pelo Financeiro e avisa o cliente; vira processo bom no RAG. Improcedente: o Jurídico decide se recorre; se não, vira processo ruim com estudo de caso.*
+Resumo do frame: *Procedente: acompanha o pagamento, presta contas, passa pelo Financeiro e avisa o cliente; vira processo bom no RAG. Improcedente: o Jurídico decide se recorre; se não, vira processo ruim com estudo de caso. Ajuste de 29/09/2026: raia externa JUSTIÇA (a Justiça libera o pagamento).*
 
-Cada passo aponta para o código acordado no README (`D3b.01`…). O executor segue a legenda "Como ler" do board pela cor do cartão: **[Pessoa]** (azul), **[IA]** (verde), **[Sistema]** (cinza), **[Scanner]** (laranja). Toda ação da IA tem uma pessoa que confere.
+Cada passo aponta para o código acordado no README (`D3b.01`…). O executor segue a legenda "Como ler" do board pela cor do cartão: **[Pessoa]** (azul), **[IA]** (verde), **[Sistema]** (cinza), **[Scanner]** (laranja), **[Externo]** (borda tracejada). Toda ação da IA tem uma pessoa que confere. Na legenda das linhas, a tracejada cinza é a mensagem com quem está fora do escritório (Justiça). O cartão externo não tem código no Miro; o código `D3b.E1` citado abaixo é a **proposta** de 29/09/2026, a confirmar com o PO.
 
 ## Raias
 
@@ -18,6 +18,7 @@ Na ordem das faixas do frame (de cima para baixo):
 - **JURÍDICO** — decide se o mérito foi procedente, dá o OK na prestação de contas e decide se recorre.
 - **SISTEMA · REGRAS** — acompanha o pagamento, registra e notifica, guarda no acervo (RAG).
 - **IA · LLM** — monta a prestação de contas e gera o estudo de caso; sempre conferida por pessoa.
+- **JUSTIÇA** (externa, faixa tracejada; nova em 29/09, posição no frame não conferida) — libera o pagamento. O passo externo é uma espera: o acompanhamento do pagamento segue quando a Justiça libera.
 
 ## Passos
 
@@ -50,6 +51,10 @@ Na ordem das faixas do frame (de cima para baixo):
 - **D3b.02 [IA]** Montar a prestação de contas — a IA monta; a advogada responsável dá o OK antes de seguir.
 - **D3b.05 [IA]** Gerar o estudo de caso — por que foi improcedente.
 
+### JUSTIÇA (externa)
+
+- **[Externo]** Justiça libera o pagamento — RPV ou precatório. Manda a mensagem "pagamento liberado" para `D3b.01` Acompanhar o pagamento (proposta `D3b.E1`).
+
 ## Decisões (gateways)
 
 1. **A ação foi procedente?** (raia JURÍDICO, logo depois do evento "Decisão de mérito (D3a)")
@@ -61,7 +66,7 @@ Na ordem das faixas do frame (de cima para baixo):
 
 ## Fluxos e sequência
 
-Ramo procedente: evento "Decisão de mérito (D3a)" → gateway "A ação foi procedente?" → (Sim) `D3b.01` Acompanhar o pagamento → `D3b.02` Montar a prestação de contas (IA) → Advogada responsável dá o OK → `D3b.03` Financeiro recebe a prestação de contas → Avisar o cliente → Guardar no RAG (processo bom) → **fim "Vencemos: baixa registrada"**. Guardar no RAG grava no Vector Store (linha pontilhada roxa, rótulo "grava").
+Ramo procedente: evento "Decisão de mérito (D3a)" → gateway "A ação foi procedente?" → (Sim) `D3b.01` Acompanhar o pagamento, que espera a mensagem tracejada "pagamento liberado" da Justiça → `D3b.02` Montar a prestação de contas (IA) → Advogada responsável dá o OK → `D3b.03` Financeiro recebe a prestação de contas → Avisar o cliente → Guardar no RAG (processo bom) → **fim "Vencemos: baixa registrada"**. Guardar no RAG grava no Vector Store (linha pontilhada roxa, rótulo "grava").
 
 Ramo improcedente: gateway "A ação foi procedente?" → (Não) gateway "Vale recorrer?"; se **Sim: recorre**, segue para o D3a; se **Não**, `D3b.05` Gerar o estudo de caso (IA) → Registrar e notificar → Guardar no RAG (processo ruim) e → `D3b.06` Falar com o cliente → **fim "Perdemos: estudo registrado"**. Guardar no RAG (ruim) também grava no Vector Store.
 
@@ -72,7 +77,7 @@ Ligações com outros diagramas:
 
 ## Documentos e sistemas citados
 
-- **RPV / precatório** — formas de pagamento acompanhadas em `D3b.01`.
+- **RPV / precatório** — formas de pagamento acompanhadas em `D3b.01`; quem libera é a Justiça (cartão externo).
 - **Prestação de contas** — montada pela IA (`D3b.02`), recebida pelo Financeiro (`D3b.03`).
 - **Vector Store (RAG)** — acervo onde processo bom e processo ruim são guardados como exemplo.
 - **Card do processo** — onde o estudo de caso é registrado e o sênior é avisado (`D3b.05`).
@@ -89,3 +94,4 @@ Os comentários do board são regra de negócio; viram critério de aceite ou po
 
 - O board tem dois passos **"Guardar no RAG"** (processo bom e processo ruim) e o armazenamento **Vector Store (RAG)** que não têm código no inventário do README. Confirmar se entram como passos próprios de D3b ou se pertencem ao D4 (acervo). Registrado em `docs/requisitos/duvidas-abertas.md` quando for validado.
 - **D3b.02** cobre dois cartões no board ("Montar a prestação de contas" [IA] e "Advogada responsável dá o OK" [Pessoa]); **D3b.03** cobre dois cartões ("Financeiro recebe a prestação de contas" e "Avisar o cliente"). Manter os dois pares sob o mesmo código ou desmembrar é decisão do PO na validação.
+- Código do cartão externo: a proposta `D3b.E1` **não** foi gravada no Miro; aguarda o Lucas.
