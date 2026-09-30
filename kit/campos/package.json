@@ -1,0 +1,14 @@
+{
+  "name": "@ggv/campos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Campos de formulário do portal GGV: normalizar, validar e formatar CPF, CEP, data, número, telefone, NB, CNJ e nome. Sem dependências.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/campos.test.ts"
+  },
+  "engines": {
+    "node": ">=22.6"
+  }
+}

@@ -1,0 +1,54 @@
+# Revisão automática de todo PR pelo Claude, antes da revisão do outro dev.
+# Só roda se o segredo ANTHROPIC_API_KEY existir no repositório. Sem ele, o job termina sem fazer nada.
+# Não substitui a revisão humana: o outro dev continua aprovando e mesclando.
+name: Revisão automática (Claude)
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  revisar:
+    name: Claude revisa o PR
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Existe a chave?
+        id: chave
+        env:
+          TEM: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: echo "tem=$TEM" >> "$GITHUB_OUTPUT"
+
+      - name: Baixar o repositório
+        if: steps.chave.outputs.tem == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Revisar
+        if: steps.chave.outputs.tem == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 20"
+          prompt: |
+            Revise este pull request em português do Brasil. Leia CLAUDE.md, a change em openspec/changes/ citada no PR e a história em docs/requisitos/candidatas/.
+            Confira, nesta ordem, e responda com um comentário curto no PR (no máximo 15 linhas), começando por uma destas palavras: BLOQUEIA, ATENÇÃO ou OK.
+            1. Escopo: o diff faz só o que a história GGVP-n do título pede. Arquivo fora da história é BLOQUEIA.
+            2. Testes: cada critério de aceite tem teste. Teste que não roda ou não existe é BLOQUEIA.
+            3. Campos de formulário: CPF, CEP, data, número, telefone, NB, CNJ e nome usam a biblioteca campos (kit/campos ou packages/campos). Validação solta na tela é ATENÇÃO.
+            4. Portões G1 a G22 (docs/requisitos/portoes-governanca.md): validados no servidor, nunca só na tela. Portão contornado é BLOQUEIA.
+            5. Regra numérica (prazo, limite, intervalo) é código com teste, nunca texto de modelo.
+            6. Segredo, .env, token ou dado real de cliente no diff é BLOQUEIA.
+            7. Complexidade: abstração, camada ou dependência que a história não pede é ATENÇÃO, com a linha.
+            Cite arquivo e linha em cada ponto. Não elogie. Não repita o diff.

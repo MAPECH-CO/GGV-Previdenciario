@@ -13,16 +13,23 @@ sincronização**. Os quatro trabalham com a mesma regra sem ninguém copiar nad
 entra por pull request como qualquer outra alteração.
 
 ## Pré-requisitos
-- Acesso de escrita ao repositório `femezher/mapech-previdenciario`.
+- Acesso de escrita ao repositório `femezher/GGV-Previdenciario`.
 - Conta própria do Claude com acesso ao Claude Code.
-- `git` e, de preferência, o `gh` instalado, que facilita abrir o pull request pelo terminal.
+- `git`, Node 22 ou mais novo, e o `gh`, que o `/ok` usa para abrir o pull request.
 
 ## Passo a passo
+Já tem o clone: `git switch main && git pull`. Não tem:
 ```
-git clone https://github.com/femezher/mapech-previdenciario.git
-cd mapech-previdenciario
-claude
+git clone https://github.com/femezher/GGV-Previdenciario.git
+cd GGV-Previdenciario
 ```
+Depois, uma vez por máquina, o kit (`kit/LEIA-ME.md`):
+```
+kit\instalar.ps1        (Windows)
+kit/instalar.sh         (Mac ou Linux)
+```
+Ele instala o OpenSpec, registra os plugins do projeto e confere as ferramentas. Se `.claude/settings.json`
+não existir, copie `kit/modelos/settings.json` para lá e commite por PR.
 
 A partir daqui o Claude Code enxerga todo o repositório e já está sob as regras do `CLAUDE.md`.
 
@@ -50,13 +57,15 @@ A autenticação é individual: cada pessoa vê apenas o que a própria conta do
 GitHub não precisa de conector enquanto existir o clone. O `gh` cobre o que falta na hora do pull request.
 
 ## Uma história, do início ao fim
-1. Ler a história no Jira, pelo conector ou pelo navegador.
-2. `git checkout main && git pull`.
-3. Criar a branch com a chave: `git checkout -b feat/GGVP-27-protocolar-no-meu-inss`. O item vai sozinho para Em desenvolvimento.
-4. Rodar `claude` na raiz do repositório e trabalhar dentro do escopo da história.
-5. Rodar typecheck, lint e testes antes de pedir revisão.
-6. Abrir o pull request com a chave no título. O item vai para Em revisão.
-7. Pedir revisão ao outro dev. Ninguém mescla o próprio PR.
+1. `kit/verificar-historia GGVP-27`: diz se está livre ou quem está nela.
+2. `kit/nova-historia GGVP-27`: puxa a `main`, cria `feat/GGVP-27-...` e abre o `claude`. O item vai sozinho para Em desenvolvimento.
+3. No chat, `/historia GGVP-27`. O Claude lê a história e devolve `/opsx:propose "GGVP-27: ..."`. Cole. Leia os quatro arquivos que saem em `openspec/changes/`.
+4. Suba o plano: `git add openspec && git commit -m "docs(spec): GGVP-27 proposta" && git push -u origin HEAD`.
+5. `/opsx:apply`. Uma tarefa por vez, com teste. Ao terminar, o Claude roda as verificações e pergunta "Agora ok?". Peça ajustes até estar ok.
+6. `/ok`: commita com a chave, sobe e abre o pull request com o template. O item vai para Em revisão.
+7. O outro dev revisa. Ninguém mescla o próprio PR. Depois do merge e do "Aceita" do Lucas: `/opsx:archive`.
+
+Sem change do OpenSpec o Claude não escreve código: responde com o comando do `propose`. Ele descontrolou: `kit/quando-descontrola.md`.
 
 ## Duas histórias ao mesmo tempo
 Nunca dois agentes na mesma pasta. Um sobrescreve o trabalho do outro, a branch mistura duas histórias e
