@@ -71,6 +71,7 @@ jobs:
         env:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          TESTE_KIT: ${{ secrets.TESTE_KIT }}
         run: |
           python3 - <<'PY'
           import os, re
@@ -79,6 +80,7 @@ jobs:
               print(f"{n}: tamanho={len(v)} espaco_ou_quebra={bool(re.search(r'\s', v))} comeca_com={v[:2]!r}")
           d("JIRA_EMAIL", os.environ.get("JIRA_EMAIL", ""))
           d("JIRA_API_TOKEN", os.environ.get("JIRA_API_TOKEN", ""))
+          d("TESTE_KIT", os.environ.get("TESTE_KIT", ""))
           PY
           code=$(curl -s -o /dev/null -w '%{http_code}' -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_URL/rest/api/3/myself")
           echo "GET /myself com os segredos -> HTTP $code"
