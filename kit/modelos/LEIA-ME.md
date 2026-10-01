@@ -13,6 +13,6 @@ O que ela faz:
 - **Plugins do projeto** (`enabledPlugins`): liga os 7 que o kit usa e desliga, só aqui, os que abrem subagentes. Marketplaces extras em `extraKnownMarketplaces`; o Claude Code oferece instalar na primeira sessão.
 - **Hooks do ECC no perfil `minimal`** (`env`): só os de segurança.
 - **Permissões**: libera leitura do git, `openspec` e testes sem perguntar; nega ler `.env`, chaves, e `git push --force`, `git reset --hard`, `rm -rf`.
-- **Hook de estado** (`kit/hooks/estado.js`): a cada prompt, lembra ao Claude a história, a change e quantas tarefas faltam. Nunca bloqueia.
+- **Hook de estado** (`kit/hooks/estado.js`): a cada prompt, lembra ao Claude o épico, a história atual e quantas tarefas faltam. Nunca bloqueia.
 
 Mudou de ideia sobre um plugin ou permissão? Muda aqui, por PR.

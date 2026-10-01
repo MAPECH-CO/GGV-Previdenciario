@@ -15,7 +15,7 @@ entra por pull request como qualquer outra alteração.
 ## Pré-requisitos
 - Acesso de escrita ao repositório `femezher/GGV-Previdenciario`.
 - Conta própria do Claude com acesso ao Claude Code.
-- `git`, Node 22 ou mais novo, e o `gh`, que o `/ok` usa para abrir o pull request.
+- `git`, Node 22 ou mais novo, e o `gh`, que o `/epico` usa para abrir o pull request.
 
 ## Passo a passo
 Já tem o clone: `git switch main && git pull`. Não tem:
@@ -56,28 +56,25 @@ A autenticação é individual: cada pessoa vê apenas o que a própria conta do
 
 GitHub não precisa de conector enquanto existir o clone. O `gh` cobre o que falta na hora do pull request.
 
-## Uma história, do início ao fim
-1. `kit/verificar-historia GGVP-27`: diz se está livre ou quem está nela.
-2. `kit/nova-historia GGVP-27`: puxa a `main`, cria `feat/GGVP-27-...` e abre o `claude`. O item vai sozinho para Em andamento.
-3. No chat, `/historia GGVP-27`. O Claude lê a história e devolve `/opsx:propose "GGVP-27: ..."`. Cole. Leia os quatro arquivos que saem em `openspec/changes/`.
-4. Suba o plano: `git add openspec && git commit -m "docs(spec): GGVP-27 proposta" && git push -u origin HEAD`.
-5. `/opsx:apply`. Uma tarefa por vez, com teste. Ao terminar, o Claude roda as verificações e pergunta "Agora ok?". Peça ajustes até estar ok.
-6. `/ok`: commita com a chave, sobe e abre o pull request com o template. O item vai para Em análise.
-7. O outro dev revisa. Ninguém mescla o próprio PR. Depois do merge e do "Aceita" do Lucas: `/opsx:archive`.
+## Um épico, do início ao fim
+1. Na raiz do clone: `claude`.
+2. `/epico <nome do épico>`. O Claude cria ou retoma a branch `feat/GGVP-6-...` e a change do épico em `openspec/changes/`.
+3. Ele pega a primeira história do épico em "Refinada", põe seu nome no cartão, move para Em andamento e explica em 5 linhas o que vai fazer.
+4. Faz, uma tarefa por vez, com teste. Ao terminar, roda as verificações e pergunta "Agora ok?". Peça ajustes até estar ok.
+5. Escreva "ok": ele commita com a chave da história, sobe, abre (ou atualiza) o pull request do épico e move o cartão para Em análise. Já começa a próxima história.
+6. Acabou o épico: ele marca o PR como pronto. O outro dev revisa. Ninguém mescla o próprio PR. O merge move as histórias para Em homologação; o Lucas testa e marca Aceita.
 
-Sem change do OpenSpec o Claude não escreve código: responde com o comando do `propose`. Ele descontrolou: `kit/quando-descontrola.md`.
+Sem história em "Refinada" o Claude não escreve código: diz quem revisa. Ele descontrolou: `kit/quando-descontrola.md`.
 
-## Duas histórias ao mesmo tempo
-Nunca dois agentes na mesma pasta. Um sobrescreve o trabalho do outro, a branch mistura duas histórias e
-o pull request fica impossível de revisar. Para trabalhar em paralelo, criar uma árvore separada:
+## Dois épicos ao mesmo tempo
+Não. Um épico por pessoa por vez, e nunca dois agentes na mesma pasta: um sobrescreve o trabalho do outro e o
+pull request fica impossível de revisar. Segunda sessão só para revisar o PR do outro dev, em outra árvore:
 
 ```
-git worktree add ../prev-GGVP-99 feat/GGVP-99-descricao
-cd ../prev-GGVP-99
+git worktree add ../prev-revisao feat/GGVP-8-via-administrativa
+cd ../prev-revisao
 claude
 ```
-
-Uma árvore por história, com um pull request cada.
 
 ## O que não fazer
 - **Criar uma pasta só com o `CLAUDE.md`.** O agente fica com as regras e sem o material: não vê BPMN,

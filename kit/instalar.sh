@@ -12,7 +12,7 @@ falta=0
 for c in git node npm claude; do
   if command -v "$c" >/dev/null 2>&1; then echo "ok     $c $("$c" --version 2>/dev/null | head -1)"; else echo "FALTA  $c"; falta=1; fi
 done
-if command -v gh >/dev/null 2>&1; then echo "ok     gh"; else echo "aviso  gh não instalado. O /ok usa para abrir o PR: https://cli.github.com"; fi
+if command -v gh >/dev/null 2>&1; then echo "ok     gh"; else echo "aviso  gh não instalado. O /epico usa para abrir o PR: https://cli.github.com"; fi
 if command -v node >/dev/null 2>&1; then
   maior="$(node -v | sed 's/^v//' | cut -d. -f1)"
   if [ "$maior" -lt 22 ]; then echo "FALTA  Node 22 ou mais novo (tem $(node -v))"; falta=1; fi
@@ -46,4 +46,4 @@ else echo "FALTA  .claude/settings.json. Copie kit/modelos/settings.json para .c
 echo; echo "== Biblioteca campos =="
 ( cd kit/campos && npm test 2>&1 | tail -4 )
 
-echo; echo "Pronto. Próximo passo: kit/verificar-historia.sh GGVP-n"
+echo; echo "Pronto. Próximo passo: claude, e dentro dele /epico <nome do épico>"

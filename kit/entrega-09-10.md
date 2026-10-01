@@ -1,60 +1,66 @@
-# Entrega de 09/10/2026: o que entra, em que ordem, quem faz
+# Entrega de 09/10/2026: por épico, com dono
 
-Compromisso com o escritório: **as 96 histórias funcionando em homologação em 09/10**. Dois devs, sete dias úteis a partir de 01/10. Ritmo necessário: **14 histórias por dia entre os dois**, 7 cada. O `/agora` mostra o ritmo todo dia; se ele subir, o time avisa o Lucas no mesmo dia, não no dia 09.
+Compromisso com o escritório: **as 100 histórias funcionando em homologação em 09/10**. Decisão de 01/10 (Pedro e Fernando): trabalhar por épico, não por história solta. Valida um épico, desenvolve esse épico inteiro com um dono, passa ao próximo. Ritmo necessário: **14 histórias por dia entre os dois devs**. O `/epico` mostra o ritmo toda vez.
 
-## Primeira leva
+## Esta semana
 
-A tabela abaixo é a primeira leva, já atribuída no Jira. Quando a fila de alguém esvazia, `/agora fatia N` puxa as próximas da "Ordem completa" e atribui. Nada fica sem dono por decisão; fica sem dono só até chegar a vez.
+| Quando | O quê |
+|---|---|
+| 02/10 (quinta) | **Prazo da revisão das histórias**, para todos, na divisão do Fernando (abaixo). Primeiro os épicos que começam primeiro: Recepção e entrevista (Pedro revisa) e Fundação técnica (Fernando revisa). Revisou e está bom: tira o nome do cartão e arrasta para "Refinada". Reunião do time no fim do dia: fecha a arquitetura (ADR-001) e confirma o segundo e o terceiro épico de cada um. |
+| 03/10 (sexta) | Lucas valida o BPMN com o escritório, começando pela Recepção e entrevista. Devs já codando a fundação e o primeiro épico. |
+| 06 a 08/10 | Épicos na ordem abaixo. |
+| 09/10 | UAT com o Lucas desde a manhã. Correções. `/mapech-delivery-os:mapech-delivery`: rollback, runbook, quem chamar. |
 
-| Bloco | Histórias | Observação |
+## Quem revisa cada épico (divisão do Fernando, 30/09)
+
+Nome no cartão = quem revisa. Revisou: tira o nome, "Refinada". Faltou ajustar: deixa o nome, comenta, não arrasta.
+
+| Revisor | Épicos |
+|---|---|
+| Lucas | Garantia e governança · Perícia |
+| Pedro | Recepção e entrevista · Abertura e documentação |
+| Mateus | Judicialização e vigília · Via administrativa no INSS · Jurimetria |
+| Fernando | Desfecho e financeiro · Relacionamento com o cliente · IA jurídica · Fundação técnica · Experiência por perfil e chat |
+
+## Quem implementa cada épico, e em que ordem
+
+Um épico por pessoa por vez. O dono faz as histórias inteiras, tela e servidor, e abre um PR por épico. O outro dev revisa.
+
+| Ordem | Mateus (servidor, banco, infra) | Pedro (telas) |
 |---|---|---|
-| Entrar no portal | **GGVP-117** login com e-mail e senha, **GGVP-96** perfis e permissões | Login não estava no BPMN; a história foi escrita em 30/09. Versão mínima, sem 2FA. |
-| Fundação | **GGVP-108** identificadores (CPF, NB, protocolo, CNJ), **GGVP-105** motor de fluxo (só o D1), **GGVP-109** portões validados no servidor | Sem isso nenhuma tela do D1 sobe. As três estão em `backlog/06-revisao-jira/historias/` até entrarem no Jira. |
-| Esqueleto por perfil | **GGVP-78** Central por função, **GGVP-86** navegar pelo caso | Sobre API mockada com o contrato Zod, desde o dia 1. |
-| D1 de ponta a ponta | as histórias com rótulo `bpmn-d1-*`, mais **GGVP-20**, **33**, **93** e **95** (parecer médico e roteiro de laudos) | Lista final é do Pedro com o Lucas. Começa pela recepção (GGVP-16, 17, 21, 24) e termina na liberação (GGVP-18). |
+| 1 | **Fundação técnica** (GGVP-2): stack, monorepo, banco, ambiente, identificadores, login e perfis, motor de fluxo. | **Recepção e entrevista** (GGVP-6), começando pela base das telas (tokens do Figma, tema, Central do Atendimento), que já existe em rascunho na branch `feat/GGVP-120-base-do-front`. Sobre dados de exemplo até a fundação subir. |
+| 2 | **Via administrativa no INSS** (GGVP-8) | **Experiência por perfil e chat** (GGVP-5): tela inicial das outras funções, navegar pelo caso, chat só de consulta |
+| 3 | **Garantia e governança** (GGVP-13), depois da validação do Lucas na sexta | **Abertura e documentação** (GGVP-7) |
+| 4 | **Judicialização e vigília** (GGVP-9) | **Perícia** (GGVP-10) |
+| 5 | **Desfecho e financeiro** (GGVP-11) | **Relacionamento com o cliente** (GGVP-12) |
+| 6 | **IA jurídica** (GGVP-14) · **Jurimetria** (GGVP-15) | ajuda onde faltar |
 
-Não entra até 09/10: D2, D3, D3a, D3b, DP, D4, D5, chat com ação (só consulta, se sobrar tempo), jurimetria, Google Drive, assinatura ZapSign, 2FA.
+Não entra até 09/10: Google Drive (GGVP-107), assinatura ZapSign real, 2FA, chat com ação (só consulta).
 
-## Ordem e quem
+Dependência que não se negocia: a fundação sobe primeiro. Tela que precisa de servidor nasce com dados de exemplo e liga depois. O contrato (schema Zod em `packages/contratos`) é o que os dois compartilham: nasce na `design.md` da change, e cada um constrói o seu lado sobre ele.
 
-As histórias já estão atribuídas no Jira. `/agora` lê `assignee = currentUser()` e esta ordem.
+## Ordem dentro dos épicos (o `/epico` lê daqui)
 
-| Dia | Mateus (back e infra) | Pedro (front) |
-|---|---|---|
-| 01/10 | ADR-001. Monorepo (`apps/api`, `apps/web`, `packages/campos`, `packages/contratos`). CI. Homologação e **Postgres de dev no Coolify**. **GGVP-108** identificadores (`kit/campos` vira `packages/campos`). | **GGVP-78** Central por função, com login e perfil mockados. **GGVP-86** navegar pelo caso. |
-| 02/10 | **GGVP-117** login e sessão. **GGVP-96** perfis (API e matriz). **GGVP-109** portões no servidor. | **GGVP-78** ligada no login e nos perfis reais. **GGVP-32** preparar a conversa. **GGVP-85**, **GGVP-89** (pequenas). |
-| 03/10 | **GGVP-105** motor de fluxo, só as fases do D1. | **GGVP-16** balcão. **GGVP-24** ficha, já com `campos`. **GGVP-21** agendamento. |
-| 06 a 08/10 | Histórias inteiras (tela e API), uma por vez: **81, 91, 65, 20, 33, 18**. | Histórias inteiras (tela e API), uma por vez: **17**, depois o que sobrar da fila do Mateus. |
+Ordem do fluxo do BPMN. História fora da lista: ordem do Jira.
 
-Cada história tem um dono só, e o dono faz tela e API dela. O outro não entra na branch. O que se compartilha é o contrato em `packages/contratos` e a biblioteca `campos`.
-| 09/10 | UAT com o Lucas desde a manhã. Correções. `/mapech-delivery-os:mapech-delivery`: rollback, runbook, quem chamar. | Idem. |
-
-## Ordem completa (o `/agora` lê daqui)
-
-Blocos, na ordem. Dentro de cada bloco, a ordem do fluxo do BPMN. O `/agora` só avança de bloco quando o anterior está sem história livre.
-
-1. **Fundação:** 108 → 117 → 96 → 109 → 105 → 106 → 110 → 104.
-2. **Esqueleto:** 78 → 86 → 82 (só consulta) → 99.
-3. **D1:** 16 → 24 → 21 → 32 → 28 → 36 → 40 → 46 → 43 → 51 → 57 → 42 → 65 → 69 → 72 → 77 → 85 → 89 → 17 → 81 → 95 → 91 → 47 → 50 → 20 → 25 → 29 → 93 → 33 → 18 → 60 → 97 → 101 → 94 → 103 → 102 → 111.
-4. **D2 e DP:** 23 → 27 → 31 → 49 → 53 → 56 → 61 → 62 → 66 → 70 → 73 → 38 → 35 → 39 → 44 → 98 → 48.
-5. **D4 e vigília:** 26 → 30 → 34 → 37 → 74.
-6. **D3, D3a, D3b:** 52 → 54 → 58 → 45 → 63 → 67 → 71 → 79 → 68 → 83 → 87 → 90 → 92 → 100 → 19 → 22.
-7. **D5:** 76 → 80 → 84 → 88.
-8. **Jurimetria, acervo, painéis:** 41 → 55 → 59 → 64 → 75 → 107.
-
-Dependências que não se negociam: fundação antes de qualquer tela com dado real; 78 e 86 antes das telas de ação; dentro do D1, a ordem do fluxo.
-4. O dono da história escreve o contrato Zod na `design.md` da change e o commita em `packages/contratos` antes da tela e da API. Tela pode nascer com mock e ligar depois.
-5. 32, 85, 89, 110 não dependem de nada além de 108 e 117. Servem para preencher buraco.
-6. Dúvidas do PO estão nos tickets GGVP-112 a GGVP-116 (filtro `labels = duvida-po`). História cuja dúvida está lá não começa antes da resposta.
+- **Fundação técnica (GGVP-2):** 118 → 119 → 108 → 117 → 96 → 105. (107 fica de fora.)
+- **Recepção e entrevista (GGVP-6):** 120 → 16 → 24 → 21 → 32 → 28 → 36 → 40 → 46 → 43 → 51 → 57 → 17 → 60.
+- **Experiência por perfil e chat (GGVP-5):** 78 → 86 → 82.
+- **Abertura e documentação (GGVP-7):** 65 → 69 → 72 → 77 → 85 → 89 → 81 → 91 → 18 → 97 → 101.
+- **Via administrativa no INSS (GGVP-8):** 23 → 27 → 31 → 35 → 39 → 44 → 48.
+- **Garantia e governança (GGVP-13):** 109 → 25 → 42 → 47 → 50 → 20 → 33 → 93 → 95 → 94 → 68 → 99 → 103 → 104.
+- **Perícia (GGVP-10):** 49 → 53 → 56 → 61 → 62 → 66 → 70 → 73.
+- **Judicialização e vigília (GGVP-9):** 26 → 30 → 34 → 37 → 74 → 52 → 54 → 58 → 63 → 67 → 71 → 79 → 83 → 87.
+- **Desfecho e financeiro (GGVP-11):** 90 → 92 → 98 → 100 → 19 → 22.
+- **Relacionamento com o cliente (GGVP-12):** 76 → 80 → 84 → 88 → 102 → 111.
+- **IA jurídica (GGVP-14):** 106 → 110 → 38 → 41 → 45.
+- **Jurimetria (GGVP-15):** 55 → 59 → 64 → 75.
 
 ## Sessões do Claude Code
 
-- **Uma sessão por história, uma história por branch.** Nunca duas sessões na mesma pasta.
-- **Mateus: uma sessão por vez.** Termina, `/ok`, próxima.
-- **Pedro: no máximo duas**, em árvores separadas (`git worktree add ../prev-GGVP-24 feat/GGVP-24-...`). Uma codando, outra no `propose` da próxima.
-- Começo do dia, dentro do `claude`: `/agora`. Ele diz a próxima e o comando para abrir a branch.
-- Terminou uma história: `/ok`, depois `/agora` de novo. Acabou a sua fila: o `/agora` oferece a próxima da ordem sem dono e, com o seu "sim", atribui a você no Jira. Ninguém atribui à mão nem pega história de outro.
-- Fim do dia: `/ok` se terminou; se não, `/ecc:save-session` e commit do que está feito com a chave.
+- Uma sessão por pessoa, no épico dela, na raiz do clone. Nunca duas sessões na mesma pasta.
+- Segunda sessão só para revisar o PR do outro, em outra árvore (`git worktree add ../prev-revisao <branch>`).
+- Começo do dia, dentro do `claude`: `/epico <nome do épico>`. Fim do dia: "ok" se terminou a história; se não, o Claude guarda com `wip` e `/ecc:save-session`.
 
 ## Rodar local, sem Docker
 
@@ -63,20 +69,17 @@ Dependências que não se negociam: fundação antes de qualquer tela com dado r
 - Homologação é outro banco, no mesmo Postgres. Migrações rodam no deploy.
 - Playwright usa o Chromium que ele mesmo instala (`pnpm exec playwright install chromium`).
 
-Regra dos dois em paralelo: o contrato (schema Zod em `packages/contratos`) nasce na `design.md` da change. Pedro constrói a tela sobre o schema, Mateus o servidor sobre o mesmo schema. Os dois não editam o mesmo arquivo. Conflito de merge é sinal de que alguém saiu da história.
+## Fora do código
 
-## Antes do dia 1, fora do código
-
-| Quem | O quê | Tempo |
-|---|---|---|
-| Fernando | Feito em 30/09. Colunas do quadro: `Tarefas pendentes → Refinada → Em andamento → Em análise → Em homologação → Aceita → Concluído`. "Aceita" é o Lucas aprovando em homologação. "Concluído" fica para produção: ninguém arrasta antes de 09/10. O Action `jira.yml` move para Em andamento, Em análise e Em homologação sozinho. | feito |
-| Pedro | Mandar as 96 histórias revisadas para o Jira e para `docs/requisitos/candidatas/` por PR. O `/historia` lê do repositório. | depois da validação |
-| Mateus | Coolify: aplicação de homologação ligada ao GitHub e Postgres de dev com um banco por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) já existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e depois `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret" nem colando direto do console: entra espaço e o valor fica inválido. | 30 min |
-| Lucas | Responder as travas **[decidir]** das histórias do D1 antes de elas entrarem. Lista em `backlog/06-revisao-jira/00-leia-primeiro.md`. | 1 h |
+| Quem | O quê |
+|---|---|
+| Todos | Revisar os cartões dos seus épicos até 02/10. |
+| Fernando | Reunião de 02/10. Colunas do Jira já estão certas (feito em 30/09). |
+| Mateus | Coolify: aplicação de homologação ligada ao GitHub e Postgres de dev com um banco por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret". |
+| Lucas | Validar o BPMN com o escritório em 03/10. Dúvidas novas: comentar no cartão. |
 
 ## Regras de fila
 
-- Uma change ativa por dev. Terminou e arquivou, pega a próxima.
-- Dentro da fatia, Highest primeiro. Fora da fatia, nada até 09/10.
-- História com **[decidir]** aberto no critério não começa.
-- Bloqueio: comentário no cartão do Jira e aviso ao Fernando. Não espera a próxima reunião.
+- Um épico por dev. Dentro dele, uma história por vez.
+- Só história em "Refinada" vira código. Com dúvida aberta: "Travada", pergunta a quem revisa.
+- Bloqueio: comentário no cartão e aviso ao Fernando. Não espera a próxima reunião.

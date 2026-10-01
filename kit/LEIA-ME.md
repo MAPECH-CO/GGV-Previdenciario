@@ -15,51 +15,55 @@ Depois, na raiz do repositório:
 kit\instalar.ps1        (Windows)
 kit/instalar.sh         (Mac ou Linux)
 ```
-Instala o OpenSpec, registra os plugins do projeto e confere Node, git, gh e Claude Code. Rodar de novo não estraga nada.
+Instala o OpenSpec, registra os plugins do projeto e confere Node, git, gh e Claude Code. Rodar de novo não estraga nada. Ligue também o conector do Jira no Claude Code (`docs/claude-code.md`).
 
-## Uma história, do início ao fim
+## Trabalhar (todo dia)
 
-1. **Confira a fila.** `kit/verificar-historia GGVP-27`. Responde "livre" ou quem está nela. Cartão do Jira sem responsável e em "Refinada" é o outro sinal.
-2. **Abra a branch.** `kit/nova-historia GGVP-27`. Puxa a `main`, cria `feat/GGVP-27-...`, abre o `claude`. O Action move o cartão para "Em andamento".
-3. **Peça o plano.** No chat: `/historia GGVP-27`. O Claude lê a história, confere travas e devolve o comando. Cole: `/opsx:propose "GGVP-27: ..."`. Saem proposta, spec, design com o contrato e `tasks.md`. Leia os quatro.
-4. **Suba o plano.** `git add openspec && git commit -m "docs(spec): GGVP-27 proposta" && git push -u origin HEAD`. A partir daqui o outro dev vê que a história tem dono.
-5. **Execute.** `/opsx:apply`. Uma tarefa por vez, com teste. Ao terminar, o Claude roda as verificações e pergunta **"Agora ok?"**. Peça ajustes até estar ok. Ele pergunta de novo a cada ajuste.
-6. **Diga ok.** `/ok`: verifica, commita, sobe, abre o PR com o template. O cartão vai para "Em análise". O outro dev revisa. Ninguém mescla o próprio PR.
-7. **Depois do merge e do "Aceita" do Lucas:** `/opsx:archive <change>` e commit `docs(spec): GGVP-27 arquivada`. A spec principal em `openspec/specs/` passa a descrever o sistema que existe.
+1. Na raiz do repositório: `claude`.
+2. Digite `/epico` e o nome do seu épico. Exemplo: `/epico Recepção e entrevista`.
+3. O Claude pega a primeira história "Refinada" do épico, explica em 5 linhas o que vai fazer, faz, testa e pergunta **"Agora ok?"**.
+4. Teste na tela. Peça ajuste quantas vezes quiser; ele pergunta de novo a cada ajuste. Está bom: escreva **ok**.
+5. Ele salva, sobe, move o cartão para "Em análise" e já começa a próxima história. Acabou o épico: ele marca o pull request como pronto e diz quem revisa.
 
-Sessão caiu no meio? Abra outra na mesma branch. O kit lembra o Claude onde parou. `openspec status --change <nome>` também.
+Perdeu o fio: `/epico` sem nada mostra onde você está. Fim do dia sem "ok": ele guarda o que tem e retoma amanhã.
+
+## O que o Claude faz por dentro
+
+Você não precisa saber, mas está aqui: uma branch e um pull request por épico; uma change do OpenSpec por épico, com uma spec por história; tarefas de até 2 horas, cada uma com teste; biblioteca `campos` em todo formulário; portões validados no servidor; cartão do Jira movido pelo conector. Comandos em `.claude/commands/epico.md`.
+
+## Como o cartão anda
+
+Tarefas pendentes → **Refinada** (revisado, sem dúvida; o nome do revisor sai do cartão) → **Em andamento** (quem implementa põe o próprio nome) → **Em análise** (o commit da história subiu) → **Em homologação** (o PR do épico foi mesclado) → **Aceita** (Lucas testou). "Concluído" só em produção.
+
+Só história em "Refinada" vira código. Cartão com dúvida aberta fica "Travada": o Claude diz a pergunta e quem responde.
 
 ## Comandos
 
-Permitidos, e só estes:
-- `/agora` (o que fazer agora, na ordem), `/historia`, `/ok`
-- `/opsx:explore`, `/opsx:propose`, `/opsx:apply`, `/opsx:update`, `/opsx:archive`
-- `/ecc:code-review`, `/ecc:security-scan`, `/ecc:save-session`, `/ecc:resume-session`
-- `/ponytail` quando o Claude complicar
-- No terminal: `openspec list`, `openspec status --change <nome>`, `openspec validate --all --strict`
+Permitidos: `/epico`, `/ecc:code-review`, `/ecc:security-scan`, `/ecc:save-session`, `/ecc:resume-session`, `/ponytail`. Os `/opsx:*` do OpenSpec só o Claude usa, por dentro do `/epico`.
 
 Proibidos neste repositório: `/ecc:orch-*`, `/ecc:multi-*`, `/ecc:team-*`, `/ecc:gan-*`, `/ecc:santa-loop`, `/ecc:loop-start`, `/agenthub:*`, `/autoresearch-agent:*`, e qualquer subagente que você não pediu. Se o Claude abrir um sozinho, Esc e "sem subagente".
 
 ## Regras que não se negociam
 
 1. A história é o prompt. Fora dela, o Claude para e diz.
-2. Sem change do OpenSpec, sem código. O Claude responde com o comando do `propose`.
+2. Só história em "Refinada" vira código.
 3. Menor mudança que cumpre o critério. Sem abstração para uso futuro. Sem refatorar o que não pediu.
 4. Campo de formulário usa a biblioteca `campos`. CPF, CEP, data, número, telefone, NB, CNJ. Nunca validação solta na tela.
-5. Critério com **[decidir]** aberto não vira código. Pergunta ao Lucas primeiro.
+5. Dúvida aberta no cartão não vira código. Pergunta a quem revisa.
 6. Teste acompanha a tarefa. Saída do teste na tela, não "passou".
-7. Uma change ativa por dev. Terminou, arquiva; só depois a próxima.
+7. Um épico por pessoa por vez. Nunca duas sessões na mesma pasta.
 
 ## Onde está cada coisa
 
 | O quê | Onde |
 |---|---|
 | Regras do repositório para o Claude | `CLAUDE.md` (seção "Como o Claude Code trabalha aqui") |
-| Comandos do kit | `.claude/commands/historia.md`, `.claude/commands/ok.md` |
+| O comando | `.claude/commands/epico.md` |
+| Épicos, donos, ordem, prazos | `kit/entrega-09-10.md` |
 | Plugins e permissões do projeto | `.claude/settings.json` |
 | Lembrete de estado a cada prompt | `kit/hooks/estado.js` |
 | Regras do OpenSpec | `openspec/config.yaml` |
-| Biblioteca de campos | `kit/campos/` (vai para `packages/campos` na história GGVP-108) |
-| O que entra até 09/10 e em que ordem | `kit/entrega-09-10.md` |
+| Biblioteca de campos | `kit/campos/` (vai para `packages/campos` na fundação) |
 | O Claude descontrolou | `kit/quando-descontrola.md` |
-| Revisão automática do PR | `.github/workflows/claude-review.yml` (precisa do segredo `CLAUDE_CODE_OAUTH_TOKEN`, token da assinatura gerado com `claude setup-token`) |
+| Cartões do Jira movidos pelo GitHub | `.github/workflows/jira.yml` |
+| Revisão automática do PR | `.github/workflows/claude-review.yml` |
