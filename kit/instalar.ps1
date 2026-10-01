@@ -15,7 +15,7 @@ foreach ($c in 'git', 'node', 'npm', 'claude') {
     if (Tem $c) { $v = (& $c --version 2>$null | Select-Object -First 1); Write-Host "ok     $c $v" }
     else { Write-Host "FALTA  $c"; $falta = $true }
 }
-if (Tem 'gh') { Write-Host "ok     gh" } else { Write-Host "aviso  gh não instalado. O /ok usa para abrir o PR: https://cli.github.com" }
+if (Tem 'gh') { Write-Host "ok     gh" } else { Write-Host "aviso  gh não instalado. O /epico usa para abrir o PR: https://cli.github.com" }
 if (Tem 'node') {
     $maior = [int](((node -v) -replace '^v', '').Split('.')[0])
     if ($maior -lt 22) { Write-Host "FALTA  Node 22 ou mais novo (tem $(node -v))"; $falta = $true }
@@ -59,4 +59,4 @@ npm test 2>&1 | Select-Object -Last 4
 Pop-Location
 
 Write-Host ""
-Write-Host "Pronto. Próximo passo: kit\verificar-historia.ps1 GGVP-n"
+Write-Host "Pronto. Próximo passo: claude, e dentro dele /epico <nome do épico>"
