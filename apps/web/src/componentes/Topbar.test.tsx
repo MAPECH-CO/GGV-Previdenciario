@@ -21,4 +21,11 @@ describe('Topbar', () => {
     expect(screen.getByRole('button', { name: /^(Aumentar|Diminuir) a fonte$/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Atendimento' })).toBeTruthy()
   })
+
+  it('a troca de função, ainda não ligada, avisa que está indisponível e não promete menu', () => {
+    render(<Topbar itens={itens} ativo="inicio" funcao="Atendimento" />)
+    const funcao = screen.getByRole('button', { name: 'Atendimento' })
+    expect(funcao.getAttribute('aria-disabled')).toBe('true')
+    expect(funcao.getAttribute('aria-haspopup')).toBeNull()
+  })
 })

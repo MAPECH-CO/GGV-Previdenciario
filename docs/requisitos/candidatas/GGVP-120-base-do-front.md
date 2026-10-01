@@ -17,6 +17,8 @@
 5. **Dado** a raiz `/`, **quando** abro, **então** vejo a Central do Atendimento montada com as peças, como no Figma `11:2`, com dados fictícios: busca com nome acessível; chat "✦ Pergunte ou peça" com sugestões (clicar preenche e não envia; enviar sem servidor avisa e mantém o texto); abas "Minhas tarefas" e "Tarefas do setor", que trocam no clique e nas setas do teclado; a fila; a aba "✦ Suporte".
 6. **Dado** `/tokens`, **quando** abro, **então** vejo as 29 cores, os 17 tamanhos de fonte e os raios, e eles reagem à troca de tema e de fonte, para comparar com o Figma.
 7. **Dado** um caminho que ainda não tem tela, **quando** abro, **então** vejo "Esta tela ainda não foi construída", o caminho e "Voltar ao início".
+8. **Dado** um botão que ainda não está ligado ("Atendimento ⌄", "✦ Suporte", "+ Anexar arquivo" e "Gravar áudio"), **quando** chego nele pelo teclado ou pelo leitor de tela, **então** ele avisa que está indisponível e não promete menu nem janela que não abre, sem mudar o visual. (revisão de acessibilidade de 01/10, decisão do Pedro)
+9. **Dado** cada tela (`/`, `/tokens` e um caminho sem tela), **quando** abro, **então** a aba do navegador mostra o título dela: "Início · GGV Previdenciário", "Tokens do Figma · GGV Previdenciário" e "Tela não construída · GGV Previdenciário". (revisão de acessibilidade de 01/10, decisão do Pedro)
 
 ## Fora do escopo desta história
 - Monorepo (workspace do pnpm), `apps/api`, `packages/campos`, `packages/contratos`, banco e CI: **GGVP-118** (Mateus). Esta história entrega só o conteúdo de `apps/web`, que roda sozinho com `npm`; o GGVP-118 o liga ao monorepo, sem recriar.

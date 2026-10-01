@@ -11,6 +11,7 @@ export function Tokens() {
 
   return (
     <main className={styles.pagina}>
+      <title>Tokens do Figma · GGV Previdenciário</title>
       <header className={styles.cabecalho}>
         <div>
           <h1 className={styles.titulo}>Tokens do Figma</h1>

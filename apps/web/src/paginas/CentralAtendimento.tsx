@@ -25,6 +25,7 @@ export function CentralAtendimento() {
 
   return (
     <>
+      <title>Início · GGV Previdenciário</title>
       <Topbar
         itens={navegacao}
         ativo="inicio"

@@ -4,6 +4,7 @@ import styles from './NaoConstruida.module.css'
 export function NaoConstruida({ caminho }: { caminho: string }) {
   return (
     <main className={styles.pagina}>
+      <title>Tela não construída · GGV Previdenciário</title>
       <h1 className={styles.titulo}>Esta tela ainda não foi construída</h1>
       <p className={styles.texto}>
         <code>{caminho}</code>

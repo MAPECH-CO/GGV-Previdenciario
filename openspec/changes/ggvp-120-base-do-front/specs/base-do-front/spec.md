@@ -66,3 +66,19 @@ Um caminho que ainda não tem tela SHALL mostrar "Esta tela ainda não foi const
 - **Dado** um caminho que ainda não tem tela
 - **Quando** abro
 - **Então** vejo "Esta tela ainda não foi construída", o caminho e "Voltar ao início"
+
+### Requirement: CA8 · Botão ainda não ligado avisa que está indisponível
+Os botões que ainda não estão ligados ("Atendimento ⌄", "✦ Suporte", "+ Anexar arquivo" e "Gravar áudio") MUST se anunciar como indisponíveis e MUST NOT prometer menu nem janela que não abre; o visual SHALL continuar o mesmo.
+
+#### Scenario: CA8 · Chegar num botão ainda não ligado
+- **Dado** um botão que ainda não está ligado ("Atendimento ⌄", "✦ Suporte", "+ Anexar arquivo" e "Gravar áudio")
+- **Quando** chego nele pelo teclado ou pelo leitor de tela
+- **Então** ele avisa que está indisponível e não promete menu nem janela que não abre, sem mudar o visual
+
+### Requirement: CA9 · Cada tela tem título próprio
+Cada tela SHALL mostrar o próprio título na aba do navegador: "Início · GGV Previdenciário" em `/`, "Tokens do Figma · GGV Previdenciário" em `/tokens` e "Tela não construída · GGV Previdenciário" num caminho sem tela.
+
+#### Scenario: CA9 · Abrir uma tela
+- **Dado** cada tela (`/`, `/tokens` e um caminho sem tela)
+- **Quando** abro
+- **Então** a aba do navegador mostra o título dela: "Início · GGV Previdenciário", "Tokens do Figma · GGV Previdenciário" e "Tela não construída · GGV Previdenciário"

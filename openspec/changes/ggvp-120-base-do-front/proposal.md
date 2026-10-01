@@ -9,6 +9,7 @@ O `apps/web` foi escrito em 01/10 antes de existir cartão e change, e pela regr
 - Nenhum comportamento novo: o código de `apps/web` fica como está e ganha a spec da capacidade nova `base-do-front`, um requisito por critério (CA1 a CA7).
 - Entram só os testes que faltam para provar cada critério (lista no `tasks.md`).
 - Entra o Playwright, dependência nova (motivo no `design.md`), para o que o teste de componente não enxerga.
+- Depois da revisão de acessibilidade de 01/10, entram o CA8 (botão ainda não ligado avisa que está indisponível) e o CA9 (título próprio por tela), sem mudar o visual.
 
 ## Fora do escopo
 

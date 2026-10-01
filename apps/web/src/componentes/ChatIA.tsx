@@ -59,10 +59,11 @@ export function ChatIA({ exemplo, sugestoes, onEnviar }: Props) {
           onKeyDown={aoTeclar}
         />
         <div className={styles.acoes}>
-          <button type="button" className={styles.chip}>
+          {/* Anexar e gravar ainda não estão ligados (GGVP-82): avisam que estão indisponíveis. */}
+          <button type="button" className={styles.chip} aria-disabled="true">
             + Anexar arquivo
           </button>
-          <button type="button" className={styles.chip}>
+          <button type="button" className={styles.chip} aria-disabled="true">
             <span className={styles.gravar} aria-hidden="true">
               ●
             </span>

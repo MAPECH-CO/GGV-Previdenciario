@@ -66,3 +66,12 @@ test('CA7 · caminho sem tela avisa, e "Voltar ao início" leva à Central', asy
   await expect(page).toHaveURL('/')
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
 })
+
+test('CA9 · cada tela tem o próprio título na aba do navegador', async ({ page }) => {
+  await page.goto('/')
+  await expect(page).toHaveTitle('Início · GGV Previdenciário')
+  await page.goto('/tokens')
+  await expect(page).toHaveTitle('Tokens do Figma · GGV Previdenciário')
+  await page.goto('/qualquer-coisa')
+  await expect(page).toHaveTitle('Tela não construída · GGV Previdenciário')
+})

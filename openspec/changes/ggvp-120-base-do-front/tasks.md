@@ -40,6 +40,11 @@
 - [x] 9.3 No mesmo arquivo, CA4, CA6 e CA7: a tarefa urgente da Central tem o prazo na cor de `--cor-erro`; em `/tokens`, a amostra de `cor/fundo` muda ao trocar o tema e o exemplo de `fonte/13` cresce com "A+" (o CA6 pede as duas reações); `/qualquer-coisa` mostra "Esta tela ainda não foi construída" e "Voltar ao início" leva a `/`. Rodar `npm run e2e` e colar a saída.
 - [x] 9.4 Acrescentar ao `apps/web/README.md` como instalar o Chromium e rodar `npm run e2e`; verifica rodando o comando como está escrito.
 
-## 10. Fechamento
+## 10. CA8 e CA9 · acessibilidade (revisão de 01/10)
 
-- [x] 10.1 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 10.1 CA8: em `src/componentes/Topbar.tsx`, `AbaSuporte.tsx` e `ChatIA.tsx`, os botões "Atendimento ⌄", "✦ Suporte", "+ Anexar arquivo" e "Gravar áudio" ganham `aria-disabled="true"`, e os dois primeiros perdem `aria-haspopup` e `aria-expanded`; testes em `src/componentes/Topbar.test.tsx` e `src/paginas/CentralAtendimento.test.tsx`; rodar os dois arquivos e colar a saída.
+- [x] 10.2 CA9: `src/paginas/CentralAtendimento.tsx`, `Tokens.tsx` e `NaoConstruida.tsx` desenham o próprio `<title>`; teste em `e2e/base-do-front.e2e.ts` com `toHaveTitle` nas três rotas; rodar `npm run e2e` e colar a saída.
+
+## 11. Fechamento
+
+- [x] 11.1 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

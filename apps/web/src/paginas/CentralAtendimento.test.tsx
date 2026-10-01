@@ -62,4 +62,12 @@ describe('Central do Atendimento', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('button', { name: '✦ Suporte' })).toBeTruthy()
   })
+
+  it('botões ainda não ligados avisam que estão indisponíveis e não prometem janela', () => {
+    render(<CentralAtendimento />)
+    for (const nome of ['✦ Suporte', '+ Anexar arquivo', 'Gravar áudio']) {
+      expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), nome).toBe('true')
+    }
+    expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
+  })
 })

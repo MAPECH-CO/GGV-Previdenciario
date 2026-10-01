@@ -50,8 +50,8 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
         </a>
       )}
       <BotoesPreferencias />
-      {/* Troca de função ainda não está ligada (overlay "Trocar perfil" do Figma). */}
-      <button type="button" className={styles.funcao} aria-haspopup="menu" aria-expanded="false">
+      {/* Troca de função ainda não está ligada (overlay "Trocar perfil" do Figma, GGVP-78): avisa que está indisponível. */}
+      <button type="button" className={styles.funcao} aria-disabled="true">
         <span className={styles.avatar} aria-hidden="true" />
         <span className={styles.funcaoNome}>{funcao}</span>
         <span className={styles.seta} aria-hidden="true">
