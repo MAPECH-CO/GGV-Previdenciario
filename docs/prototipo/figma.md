@@ -230,7 +230,12 @@ herda o perfil de quem está logado e não contorna portão (GGVP-82); um humano
 
 ## Limitações do protótipo
 - Overlays (histórico, seletor, chat) usam uma moldura transparente do tamanho da tela, porque a
-  API do Figma não permite posicionar overlay por código.
+  API do Figma não permite posicionar overlay por código. **A dica do código do BPMN (01/10)**:
+  como a moldura é centralizada, uma dica compartilhada aparecia longe do chip e, em telas altas,
+  no meio da página. Agora **cada chip tem a sua própria moldura**, do tamanho exato daquela tela,
+  com a caixa logo abaixo do chip e um retângulo invisível por cima dele para o ponteiro não sair
+  do hover. São 102 dicas, uma por ocorrência de chip; o clique dentro da dica abre o fluxo do BPMN
+  daquele passo.
 - O mobile (versão do atendente) ainda está na primeira rodada, sem estas revisões.
 - "Jurídico (simulação)" e "Page 1" ficaram como referência da rodada anterior. A página
   "Advogada (workspace)" foi absorvida pela página da Central.
