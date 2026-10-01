@@ -1,0 +1,111 @@
+/* GERADO por scripts/gerar-tokens.mjs a partir de figma-tokens.json. Não edite à mão:
+   mude o JSON (ou extraia de novo do Figma) e rode `npm run tokens`.
+   Origem: Figma "Portal GGV Previdenciário" (nHOPzl005CpWDXUWyVZIo6),
+   coleções Tema e Acessibilidade, extraídas em 2026-10-01. */
+
+/* Tema claro e fonte padrão: valores iniciais. */
+:root {
+  color-scheme: light;
+  --cor-fundo: #f6f7f8;
+  --cor-superficie: #ffffff;
+  --cor-texto: #15171c;
+  --cor-texto-suave: #616875;
+  --cor-texto-suave-2: #98a0ac;
+  --cor-linha: #e4e7eb;
+  --cor-linha-2: #e7eaee;
+  --cor-borda-controle: #b8bdc7;
+  --cor-acento: #b4531a;
+  --cor-acento-suave: #fbeadb;
+  --cor-acento-claro: #f8dcc8;
+  --cor-painel-neutro: #eeeff2;
+  --cor-painel-neutro-2: #f1f2f4;
+  --cor-painel-neutro-3: #f0f2f4;
+  --cor-advogada: #324a7a;
+  --cor-advogada-suave: #e9eef6;
+  --cor-senior: #5b3a7a;
+  --cor-senior-suave: #efe9f6;
+  --cor-alerta: #b7791f;
+  --cor-alerta-suave: #fbf1dc;
+  --cor-alerta-2: #8a5a12;
+  --cor-alerta-2-suave: #f6ecd8;
+  --cor-ok: #2f7a4d;
+  --cor-ok-suave: #e3f1e8;
+  --cor-erro: #b3261e;
+  --cor-erro-suave: #f6e3e3;
+  --cor-erro-2: #9a3434;
+  --cor-beneficio: #4a3b2c;
+  --cor-beneficio-suave: #ece9e4;
+
+  --fonte-10: 0.625rem; /* 10px */
+  --fonte-11: 0.6875rem; /* 11px */
+  --fonte-12: 0.75rem; /* 12px */
+  --fonte-13: 0.8125rem; /* 13px */
+  --fonte-14: 0.875rem; /* 14px */
+  --fonte-15: 0.9375rem; /* 15px */
+  --fonte-16: 1rem; /* 16px */
+  --fonte-17: 1.0625rem; /* 17px */
+  --fonte-18: 1.125rem; /* 18px */
+  --fonte-20: 1.25rem; /* 20px */
+  --fonte-22: 1.375rem; /* 22px */
+  --fonte-24: 1.5rem; /* 24px */
+  --fonte-26: 1.625rem; /* 26px */
+  --fonte-28: 1.75rem; /* 28px */
+  --fonte-32: 2rem; /* 32px */
+  --fonte-36: 2.25rem; /* 36px */
+  --fonte-40: 2.5rem; /* 40px */
+}
+
+/* Tema escuro. */
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --cor-fundo: #121417;
+  --cor-superficie: #1c1f24;
+  --cor-texto: #eceef1;
+  --cor-texto-suave: #a2a8b3;
+  --cor-texto-suave-2: #8a919c;
+  --cor-linha: #2c3038;
+  --cor-linha-2: #2c3038;
+  --cor-borda-controle: #4a505b;
+  --cor-acento: #e0803f;
+  --cor-acento-suave: #3a2416;
+  --cor-acento-claro: #f3c9ae;
+  --cor-painel-neutro: #23262c;
+  --cor-painel-neutro-2: #23262c;
+  --cor-painel-neutro-3: #23262c;
+  --cor-advogada: #9fb4da;
+  --cor-advogada-suave: #202a3d;
+  --cor-senior: #c3acdd;
+  --cor-senior-suave: #2a2236;
+  --cor-alerta: #e0b45a;
+  --cor-alerta-suave: #3a2e14;
+  --cor-alerta-2: #e0b45a;
+  --cor-alerta-2-suave: #3a2e14;
+  --cor-ok: #6cc48a;
+  --cor-ok-suave: #17301f;
+  --cor-erro: #f28b82;
+  --cor-erro-suave: #3a1e1e;
+  --cor-erro-2: #f28b82;
+  --cor-beneficio: #d8cbb8;
+  --cor-beneficio-suave: #2e2a25;
+}
+
+/* Fonte grande (+25%). */
+:root[data-fonte="grande"] {
+  --fonte-10: 0.8125rem; /* 13px */
+  --fonte-11: 0.875rem; /* 14px */
+  --fonte-12: 0.9375rem; /* 15px */
+  --fonte-13: 1rem; /* 16px */
+  --fonte-14: 1.125rem; /* 18px */
+  --fonte-15: 1.1875rem; /* 19px */
+  --fonte-16: 1.25rem; /* 20px */
+  --fonte-17: 1.3125rem; /* 21px */
+  --fonte-18: 1.4375rem; /* 23px */
+  --fonte-20: 1.5625rem; /* 25px */
+  --fonte-22: 1.75rem; /* 28px */
+  --fonte-24: 1.875rem; /* 30px */
+  --fonte-26: 2.0625rem; /* 33px */
+  --fonte-28: 2.1875rem; /* 35px */
+  --fonte-32: 2.5rem; /* 40px */
+  --fonte-36: 2.8125rem; /* 45px */
+  --fonte-40: 3.125rem; /* 50px */
+}

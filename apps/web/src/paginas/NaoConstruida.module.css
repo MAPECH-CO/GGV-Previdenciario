@@ -1,0 +1,28 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: 48px 20px;
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.texto {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+.voltar {
+  padding: 7px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
