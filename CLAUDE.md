@@ -70,6 +70,6 @@ ADR-013 (base de conhecimento em markdown curado, busca híbrida no PostgreSQL).
 - `docs/decisoes/`: ADRs. Uma decisão, um arquivo, numerado.
 - `docs/ferramentas.md`: Jira, GitHub, Miro, Drive, Claude Teams, Meet e como se ligam.
 - `docs/claude-code.md`: como cada dev roda o Claude Code no clone e liga o conector do Jira.
-- `kit/`: o método de desenvolvimento com o Claude Code: instalar, abrir história, `campos`, entrega de 09/10.
-- `openspec/`: specs do sistema (`specs/`) e changes em andamento (`changes/`), uma por história.
+- `kit/`: o método de desenvolvimento com o Claude Code: instalar, `/epico`, `campos`, entrega de 09/10.
+- `openspec/`: specs do sistema (`specs/`) e changes em andamento (`changes/`), uma por épico, com uma spec por história.
 - `CONTRIBUTING.md`: branches, commits, PR, revisão.
