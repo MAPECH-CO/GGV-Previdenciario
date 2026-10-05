@@ -54,6 +54,15 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Caso não encontrado' })).toBeTruthy()
   })
 
+  it('GGVP-101 · em /casos/:id/cobranca e /cobranca/decidir abrem a cobrança e a decisão da sênior', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/antonio-exemplo-1/cobranca" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Cobrar documento' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/antonio-exemplo-1/cobranca/decidir" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Decidir cobrança' })).toBeTruthy()
+  })
+
   it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)

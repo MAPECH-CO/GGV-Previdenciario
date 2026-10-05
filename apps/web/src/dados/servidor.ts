@@ -13,6 +13,7 @@ import { fichasDeExemplo, pastasDeExemplo } from './exemplo.ts'
 import type { DocumentoLido } from './leitura.ts'
 import type { ConferenciaDoChecklist } from './checklist.ts'
 import type { RegistroDasBoasVindas } from './boasVindas.ts'
+import type { Cobranca } from './cobranca.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
@@ -58,6 +59,8 @@ export type Banco = {
   checklists?: ConferenciaDoChecklist[]
   /** Cada tentativa de envio das boas-vindas (GGVP-97). */
   boasVindas?: RegistroDasBoasVindas[]
+  /** A cobrança dos documentos pendentes de cada caso (GGVP-101). */
+  cobrancas?: Cobranca[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

@@ -68,11 +68,11 @@ describe('Conferir checklist · tela do passo', () => {
     expect(screen.getByText(/Liberar ao Jurídico: bloqueado\. Auxílio Acidentário ainda não tem lista/)).toBeTruthy()
   })
 
-  it('"Concluir a conferência" registra a situação calculada no histórico', async () => {
+  it('GGVP-101 CA1 · incompleto, "Gerar cobrança das pendências" registra a conferência e manda a cobrança ao Atendimento', async () => {
     await abrir()
-    fireEvent.click(screen.getByRole('button', { name: 'Concluir a conferência' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar cobrança das pendências' }))
     expect(await screen.findByRole('heading', { name: '✓ Conferido às 14:32' })).toBeTruthy()
-    expect(screen.getByText(/Checklist incompleto\. Falta: Documento pessoal \(RG\)/)).toBeTruthy()
+    expect(screen.getByText(/Checklist incompleto\. Falta: Documento pessoal \(RG\).*A cobrança das pendências foi para o Atendimento \(D1\.23\)\./)).toBeTruthy()
     expect((await obterFicha('rita-exemplo'))?.historico.at(-1)?.oQue).toContain('Conferiu o checklist do LOAS Deficiente: incompleto')
   })
 })

@@ -16,6 +16,8 @@ import { SegundaFicha } from './paginas/SegundaFicha.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
 import { ConferirDocumentos } from './paginas/ConferirDocumentos.tsx'
 import { ConferirChecklist } from './paginas/ConferirChecklist.tsx'
+import { CobrarDocumento } from './paginas/CobrarDocumento.tsx'
+import { DecidirCobranca } from './paginas/DecidirCobranca.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 export function App({ caminho = window.location.pathname, busca = window.location.search }: { caminho?: string; busca?: string }) {
@@ -48,5 +50,9 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (conferirDocumentos) return <ConferirDocumentos fichaId={decodeURIComponent(conferirDocumentos[1])} />
   const checklist = /^\/casos\/([^/]+)\/checklist$/.exec(caminho)
   if (checklist) return <ConferirChecklist processoId={decodeURIComponent(checklist[1])} />
+  const cobrar = /^\/casos\/([^/]+)\/cobranca$/.exec(caminho)
+  if (cobrar) return <CobrarDocumento processoId={decodeURIComponent(cobrar[1])} />
+  const decidir = /^\/casos\/([^/]+)\/cobranca\/decidir$/.exec(caminho)
+  if (decidir) return <DecidirCobranca processoId={decodeURIComponent(decidir[1])} />
   return <NaoConstruida caminho={caminho} />
 }

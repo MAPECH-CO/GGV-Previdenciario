@@ -19,6 +19,7 @@ import { tarefasDoSetor } from '../dados/servidor.ts'
 import { tarefasDeConferirDocumento } from '../dados/leitura.ts'
 import { tarefasDeConferirChecklist } from '../dados/checklist.ts'
 import { tarefasDeReenviarBoasVindas } from '../dados/boasVindas.ts'
+import { tarefasDeCobrar } from '../dados/cobranca.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
@@ -42,6 +43,7 @@ export function CentralAtendimento() {
     ...tarefasDeConferirDocumento(),
     ...tarefasDeConferirChecklist(),
     ...tarefasDeReenviarBoasVindas(),
+    ...tarefasDeCobrar(),
   ])
 
   return (

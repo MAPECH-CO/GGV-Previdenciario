@@ -12,7 +12,7 @@ test('CA1, CA2, CA4 e CA5 · conferido o checklist, a mensagem com as pendência
   await page.goto('/casos/rita-exemplo-1/checklist')
   const bloco = page.getByRole('region', { name: 'Boas-vindas (D1.22)' })
   await expect(bloco).toContainText('Depois de concluir a conferência do checklist')
-  await page.getByRole('button', { name: 'Concluir a conferência' }).click()
+  await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
 
   const mensagem = bloco.getByRole('textbox', { name: 'Mensagem (confira antes de enviar)' })
   await expect(mensagem).toHaveValue(/Olá, Rita! Boas-vindas ao escritório GGV\./)
@@ -37,7 +37,7 @@ test('CA3 · quem já era cliente não recebe as boas-vindas', async ({ page }) 
 
 test('CA6 · sem telefone, a falha fica no histórico e vira "Reenviar boas-vindas" na Central', async ({ page }) => {
   await page.goto('/casos/marta-exemplo-1/checklist')
-  await page.getByRole('button', { name: 'Concluir a conferência' }).click()
+  await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
   const bloco = page.getByRole('region', { name: 'Boas-vindas (D1.22)' })
   await bloco.getByRole('checkbox', { name: 'Conferi a mensagem' }).check()
   await bloco.getByRole('button', { name: 'Enviar pelo Chatwoot' }).click()

@@ -22,7 +22,7 @@ describe('Boas-vindas · na tela do checklist', () => {
     let bloco = await abrir('rita-exemplo-1')
     expect(screen.getByText('cliente novo · boas-vindas')).toBeTruthy()
     expect(bloco.getByText('Depois de concluir a conferência do checklist, com as pendências dele.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Concluir a conferência' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar cobrança das pendências' }))
     await screen.findByRole('heading', { name: '✓ Conferido às 14:32' })
     bloco = within(screen.getByRole('region', { name: 'Boas-vindas (D1.22)' }))
     expect(await bloco.findByText(/mensagem padrão \+ cópias do kit \+ pendências: Documento pessoal \(RG\)/)).toBeTruthy()

@@ -25,7 +25,7 @@ test('CA1, CA3, CA5 e CA7 · da leitura arquivada ao checklist da Rita, incomple
   await expect(itens.getByRole('listitem').filter({ hasText: 'Ficha de grupo familiar' })).toContainText('falta')
   await expect(page.getByText(/Liberar ao Jurídico: bloqueado\. O checklist está incompleto/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Concluir a conferência' }).click()
+  await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
   await expect(page.getByRole('heading', { name: /✓ Conferido às/ })).toBeVisible()
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Rita Exemplo · Conferir checklist' })).toHaveCount(0)

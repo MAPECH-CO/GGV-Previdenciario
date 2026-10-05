@@ -151,7 +151,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
                 {feito.completo
                   ? 'Checklist completo: o caso segue para liberar ao Jurídico (D1.24).'
                   : checklist.temLista
-                    ? `Checklist incompleto. Falta: ${juntar(feito.faltam)}.`
+                    ? `Checklist incompleto. Falta: ${juntar(feito.faltam)}. A cobrança das pendências foi para o Atendimento (D1.23).`
                     : `Checklist sem lista aprovada para ${beneficio}: o caso fica na Documentação.`}{' '}
                 A conferência ficou no histórico da ficha.
               </p>
@@ -167,7 +167,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
           ) : (
             <div className={styles.rodape}>
               <button type="button" className={styles.principalBotao} disabled={conferindo} onClick={concluir}>
-                {conferindo ? 'concluindo…' : 'Concluir a conferência'}
+                {conferindo ? 'concluindo…' : checklist.faltam.length > 0 ? 'Gerar cobrança das pendências' : 'Concluir a conferência'}
               </button>
               {conferencia && (
                 <p className={styles.motivo}>
