@@ -10,6 +10,11 @@ import {
   entrevistaDoCaso,
   mensagemDoLink,
   papelNaHora,
+  paginasDaLeitura,
+  precisaConferir,
+  resumoDaLeitura,
+  motivoParadoDaVerificacao,
+  type LeituraDoContrato,
   MODELOS,
   SEM_CONDICOES,
   camposDoModelo,
@@ -284,5 +289,34 @@ describe('GGVP-77 · assinatura em papel na entrevista', () => {
   it('CA1 · o kit impresso sai com as datas em branco, menos o contrato de honorários', () => {
     const datas = datasDoKit(montarKit('loas-idoso')!, 'papel', '2026-10-05')
     expect(datas.filter((d) => d.data !== 'em branco, à mão na assinatura')).toEqual([{ documento: 'Contrato de honorários', data: '05/10/2026' }])
+  })
+})
+
+describe('GGVP-85 · verificar o contrato assinado', () => {
+  const certo: LeituraDoContrato = { reconhecido: true, assinatura: { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' }, faltam: [], pendencias: [] }
+
+  it('CA1 · reconhecido e tudo certo: não precisa conferir', () => {
+    expect(precisaConferir(certo)).toBe(false)
+    expect(resumoDaLeitura(certo)).toBe('a IA reconheceu: tudo certo')
+    expect(paginasDaLeitura(certo)).toBe('todas presentes')
+  })
+
+  it('CA2 e CA4 · a IA não entendeu, não reconheceu a assinatura ou apontou página que falta: precisa conferir', () => {
+    expect(precisaConferir({ ...certo, reconhecido: false })).toBe(true)
+    expect(resumoDaLeitura({ ...certo, reconhecido: false })).toBe('a IA não entendeu o contrato')
+    const cortada = { ...certo, faltam: ['pág. 4 (rubrica)'], pendencias: ['a página da assinatura veio cortada'] }
+    expect(precisaConferir(cortada)).toBe(true)
+    expect(resumoDaLeitura(cortada)).toBe('a IA apontou 1 pendência')
+    expect(paginasDaLeitura(cortada)).toBe('falta pág. 4 (rubrica)')
+    const semAssinatura = { ...certo, assinatura: { reconhecida: false, texto: 'não reconhecida' }, faltam: ['pág. 2'] }
+    expect(precisaConferir(semAssinatura)).toBe(true)
+    expect(resumoDaLeitura(semAssinatura)).toBe('a IA apontou 2 pendências')
+  })
+
+  it('CA5 · "Não, corrigir e reenviar" exige o que corrigir; seguir só com a decisão respondida', () => {
+    expect(motivoParadoDaVerificacao(null, '')).toBe('Responda se está tudo certo.')
+    expect(motivoParadoDaVerificacao(false, 'a')).toBe('Escreva o que corrigir.')
+    expect(motivoParadoDaVerificacao(false, 'pedir a pág. 4 rubricada')).toBeNull()
+    expect(motivoParadoDaVerificacao(true, '')).toBeNull()
   })
 })

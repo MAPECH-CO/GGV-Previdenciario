@@ -3,6 +3,7 @@ import {
   CLIENTE_DO_EXEMPLO_DOS_MODELOS,
   SEGREDO_DO_RETORNO_EXEMPLO,
   concluirAssinaturaEmPapel,
+  concluirLeituraDoContrato,
   configurarZapSign,
   digitalizarContratoAssinado,
   enviarParaAssinatura,
@@ -13,8 +14,10 @@ import {
   receberRetornoDoZapSign,
   registrarTentativaDeAssinatura,
   salvarCondicoes,
+  simularLeituraDoContrato,
   simularRetornoDoZapSign,
   tarefasDoContrato,
+  verificarContrato,
   type EnvioDoContrato,
 } from './contrato.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
@@ -297,5 +300,75 @@ describe('GGVP-77 · assinatura em papel na entrevista · servidor de exemplo', 
     gravar(banco)
     await expect(imprimirKit(id)).rejects.toThrow('Papel só na entrevista presencial')
     expect((await enviarParaAssinatura(id)).resultado).toBe('gerado')
+  })
+})
+
+/** O Antônio assina em papel e a digitalização é anexada: o contrato espera a leitura da IA. */
+async function papelAteALeitura() {
+  const id = await contratoGerado()
+  await imprimirKit(id)
+  await digitalizarContratoAssinado(id)
+  await concluirAssinaturaEmPapel(id)
+  return id
+}
+
+describe('GGVP-85 · verificar o contrato assinado · servidor de exemplo', () => {
+  it('CA1 e CA7 · a IA reconhece e está tudo certo: nenhuma tarefa de conferir, o caso segue para a cópia', async () => {
+    await simularRetornoDoZapSign('nair-exemplo-1')
+    const contrato = await simularLeituraDoContrato('nair-exemplo-1')
+    expect(contrato.etapa).toBe('copia')
+    expect(contrato.leitura).toMatchObject({ reconhecido: true, faltam: [], pendencias: [] })
+    expect(tarefasDoContrato().some((t) => t.processoId === 'nair-exemplo-1' && t.acao === 'Conferir contrato')).toBe(false)
+    expect((await obterFicha('nair-exemplo'))?.historico.at(-1)?.oQue).toBe('A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato')
+  })
+
+  it('CA2 e CA4 · a IA apontou problema: o Atendimento recebe "Conferir contrato" com a assinatura e as páginas', async () => {
+    const id = await papelAteALeitura()
+    const contrato = await simularLeituraDoContrato(id)
+    expect(contrato.etapa).toBe('conferir')
+    expect(contrato.leitura).toMatchObject({
+      assinatura: { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' },
+      faltam: ['pág. 4 (rubrica)'],
+      pendencias: ['a página da assinatura veio cortada'],
+    })
+    expect(tarefasDoContrato().find((t) => t.processoId === id)).toMatchObject({
+      codigo: 'D1.19',
+      acao: 'Conferir contrato',
+      detalhe: 'Aposentadoria por Idade · a IA apontou 1 pendência',
+      href: `/contrato/${id}/conferir`,
+    })
+    await expect(concluirLeituraDoContrato(id, contrato.leitura!)).rejects.toThrow('esperando a leitura')
+  })
+
+  it('CA5 · "Não, corrigir e reenviar" exige o que corrigir; a página anexa passa pelas regras de arquivo', async () => {
+    const id = await papelAteALeitura()
+    await simularLeituraDoContrato(id)
+    await expect(verificarContrato(id, { tudoCerto: false, oQueCorrigir: '' })).rejects.toThrow('o que corrigir')
+    await expect(verificarContrato(id, { tudoCerto: false, oQueCorrigir: 'pedir a pág. 4', paginaCorrigida: { nome: 'planilha.xlsx', tamanho: 10 } })).rejects.toThrow('inválida')
+  })
+
+  it('CA3 e CA6 · corrigir: a versão assinada fica no histórico, volta a preparar e a versão nova vai para assinar', async () => {
+    const id = await papelAteALeitura()
+    await simularLeituraDoContrato(id)
+    const contrato = await verificarContrato(id, { tudoCerto: false, oQueCorrigir: 'pedir a pág. 4 rubricada', paginaCorrigida: { nome: 'pagina-4.jpg', tamanho: 2048 } })
+    expect(contrato.etapa).toBe('preparar')
+    expect(contrato.anteriores).toEqual([
+      { versao: 1, arquivo: 'Contrato assinado - Antônio Exemplo - 2026-10-05 (papel, PDF pesquisável).pdf', motivo: 'pedir a pág. 4 rubricada', quando: expect.any(String) },
+    ])
+    const ficha = await obterFicha('antonio-exemplo')
+    expect(ficha?.arquivos.map((a) => a.nome)).toEqual(['Contrato assinado - Antônio Exemplo - 2026-10-05 (papel, PDF pesquisável).pdf', 'pagina-4.jpg'])
+    expect(tarefasDoContrato().find((t) => t.processoId === id)).toMatchObject({ acao: 'Preparar contrato', detalhe: 'Aposentadoria por Idade · corrigir e reenviar: pedir a pág. 4 rubricada' })
+    expect((await gerarContrato(id, aprovado)).resultado).toBe('gerado')
+    expect((await obterContrato(id))?.contrato.documento?.versao).toBe(2)
+    const envio = await enviarParaAssinatura(id)
+    expect(envio.resultado === 'gerado' && envio.contrato.assinatura?.zapsign?.documentoId).toBe(`zapsign-exemplo-${id}-v2`)
+  })
+
+  it('CA7 · "Está certo, seguir" vai para a cópia do contrato', async () => {
+    const id = await papelAteALeitura()
+    await simularLeituraDoContrato(id)
+    const contrato = await verificarContrato(id, { tudoCerto: true })
+    expect(contrato).toMatchObject({ etapa: 'copia', verificacao: { tudoCerto: true, quem: 'Você (Atendimento)' } })
+    expect(tarefasDoContrato().some((t) => t.processoId === id && t.acao === 'Conferir contrato')).toBe(false)
   })
 })

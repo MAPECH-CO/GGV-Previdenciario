@@ -12,6 +12,7 @@ import {
   imprimirKit,
   obterContrato,
   registrarTentativaDeAssinatura,
+  simularLeituraDoContrato,
   simularRetornoDoZapSign,
   type ContratoDoCaso,
 } from '../dados/contrato.ts'
@@ -26,6 +27,7 @@ import {
   mensagemDoLink,
   modeloPorId,
   papelNaHora,
+  resumoDaLeitura,
   type FormaDeAssinar,
 } from '../regras/contrato.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
@@ -143,6 +145,13 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
   const concluirPapel = () =>
     agir(async () => {
       await concluirAssinaturaEmPapel(processoId)
+      await recarregar()
+    })
+
+  // A leitura do contrato assinado é da Documentação (GGVP-81): até a junção, o botão faz o papel dela (GGVP-85).
+  const simularLeitura = () =>
+    agir(async () => {
+      await simularLeituraDoContrato(processoId)
       await recarregar()
     })
 
@@ -349,7 +358,21 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                   ? `A digitalização do contrato assinado está na pasta do cliente: ${assinatura.arquivo}. Segue para a leitura da Documentação, e a tarefa de assinatura se encerrou.`
                   : `O arquivo final, com as evidências da assinatura, está na pasta do cliente: ${assinatura?.arquivo}. Segue para a leitura da Documentação, e a tarefa de assinatura se encerrou.`}
               </p>
+              {contrato.etapa === 'conferir' && contrato.leitura && (
+                <p>A IA leu o contrato assinado: {resumoDaLeitura(contrato.leitura)}. O Atendimento recebeu "Conferir contrato".</p>
+              )}
+              {contrato.etapa === 'copia' && <p>A IA leu o contrato assinado e reconheceu: tudo certo. Segue para a cópia do contrato.</p>}
               <div className={styles.atalhos}>
+                {contrato.etapa === 'leitura' && (
+                  <button type="button" className={styles.atalho} disabled={ocupado} onClick={simularLeitura}>
+                    Simular a leitura da IA (D1.18)
+                  </button>
+                )}
+                {contrato.etapa === 'conferir' && (
+                  <a className={styles.atalho} href={`/contrato/${processoId}/conferir`}>
+                    Conferir contrato
+                  </a>
+                )}
                 <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
                   Abrir a ficha do cliente
                 </a>

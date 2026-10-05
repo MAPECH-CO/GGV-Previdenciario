@@ -487,3 +487,36 @@ export function entrevistaDoCaso(agendamentos: { oQue: string; data: string; tip
 
 /** Papel na hora só na entrevista presencial; por vídeo ou telefone, a assinatura vai pelo ZapSign (CA4). */
 export const papelNaHora = (entrevista: TipoDeEntrevista) => entrevista === 'presencial'
+
+// GGVP-85 · verificar o contrato assinado.
+
+/** O que a leitura da IA devolve do contrato assinado (a leitura é da GGVP-81). */
+export type LeituraDoContrato = {
+  /** A IA entendeu o documento. */
+  reconhecido: boolean
+  assinatura: { reconhecida: boolean; texto: string }
+  /** As páginas e rubricas que faltam: "pág. 4 (rubrica)". */
+  faltam: string[]
+  /** O que a IA apontou: "a página da assinatura veio cortada". */
+  pendencias: string[]
+}
+
+/** A leitura pede conferência à mão quando a IA não entendeu ou apontou problema (CA1, CA2, CA4). */
+export const precisaConferir = (l: LeituraDoContrato) => !l.reconhecido || !l.assinatura.reconhecida || l.faltam.length > 0 || l.pendencias.length > 0
+
+/** O resumo do que a IA apontou, para a tarefa e para o aviso da tela (CA2). */
+export function resumoDaLeitura(l: LeituraDoContrato): string {
+  if (!l.reconhecido) return 'a IA não entendeu o contrato'
+  const n = l.pendencias.length + (l.assinatura.reconhecida ? 0 : 1) + (l.pendencias.length === 0 ? l.faltam.length : 0)
+  return n === 0 ? 'a IA reconheceu: tudo certo' : `a IA apontou ${n} ${n === 1 ? 'pendência' : 'pendências'}`
+}
+
+/** "Páginas" do cartão "A IA sugere · você confere" (CA4). */
+export const paginasDaLeitura = (l: LeituraDoContrato) => (l.faltam.length === 0 ? 'todas presentes' : `falta ${l.faltam.join(', ')}`)
+
+/** Por que "Está certo — seguir" ou "Corrigir" ainda não habilitam (CA5). */
+export function motivoParadoDaVerificacao(tudoCerto: boolean | null, oQueCorrigir: string): string | null {
+  if (tudoCerto === null) return 'Responda se está tudo certo.'
+  if (!tudoCerto && oQueCorrigir.trim().length < 3) return 'Escreva o que corrigir.'
+  return null
+}

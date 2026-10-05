@@ -40,6 +40,13 @@
 
 ## GGVP-85 · Verificar o contrato assinado
 
+- [x] 5.1 Contrato: a leitura do contrato assinado, a verificação, as versões anteriores e as etapas "conferir" e "copia" em `src/regras/contrato.ts` e `src/dados/contrato.ts`. Verifica com `npm run typecheck`.
+- [x] 5.2 Regra: `precisaConferir`, `resumoDaLeitura`, `paginasDaLeitura` e `motivoParadoDaVerificacao` em `src/regras/contrato.ts`, com teste em `src/regras/contrato.test.ts` (CA1, CA2, CA4, CA5). Verifica com `npx vitest run src/regras/contrato.test.ts`.
+- [x] 5.3 Servidor de exemplo: `concluirLeituraDoContrato` (o ponto que a leitura da GGVP-81 chama), a leitura de exemplo, `verificarContrato` e `avisarClienteDaConferencia` em `src/dados/contrato.ts`, com teste em `src/dados/contrato.test.ts` (CA1 a CA7). Verifica com `npx vitest run src/dados/contrato.test.ts`.
+- [x] 5.4 Tela `/contrato/:processoId/conferir` (`src/paginas/ConferirContrato.tsx`, Figma `10:202`): chips com o benefício, "A IA sugere · você confere", o contato do cliente, o contrato na íntegra, a página anexa, "O que corrigir", "Está certo — seguir", "Corrigir" e o painel "Está tudo certo?"; "Simular a leitura da IA" na tela de colher a assinatura e o aviso da volta no preparo. Teste em `ConferirContrato.test.tsx` (CA2 a CA7). Verifica com `npx vitest run src/paginas/ConferirContrato.test.tsx src/paginas/ColherAssinatura.test.tsx src/paginas/PrepararContrato.test.tsx`.
+- [x] 5.5 Playwright `e2e/conferir-contrato.e2e.ts`: a Nair sem tarefa de conferir (CA1, CA7), o Antônio com a página cortada, corrigir e voltar ao preparo (CA2 a CA6), tema escuro e fonte grande. Verifica com `npm run e2e -- conferir-contrato`.
+- [ ] 5.6 Ligar no servidor: a leitura da GGVP-81 chama `concluirLeituraDoContrato` (sai o botão "Simular a leitura da IA") e o corpo de `src/dados/contrato.ts` vira `fetch`. Depende da junção com o grupo documentos, do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+
 ## GGVP-89 · Cópia do contrato para o cliente levar
 
 <!-- Fim do grupo contrato. -->

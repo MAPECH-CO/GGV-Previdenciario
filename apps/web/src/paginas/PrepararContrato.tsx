@@ -128,6 +128,12 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
             beneficio={processo.beneficio}
             instrucoes={instrucoes}
           />
+          {preparando && contrato.anteriores && contrato.anteriores.length > 0 && (
+            <p className={styles.aviso}>
+              Voltou da conferência para corrigir: {contrato.anteriores.at(-1)!.motivo}. A versão {contrato.anteriores.at(-1)!.versao} assinada ficou
+              guardada no histórico; a versão nova vai para o cliente assinar.
+            </p>
+          )}
           <CartaoKit
             processoId={processoId}
             beneficio={processo.beneficio}

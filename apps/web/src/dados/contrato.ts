@@ -2,6 +2,7 @@
 // processo: o kit, o preenchimento, a assinatura, a conferência e a cópia. Ligar no servidor: trocar o corpo de cada função
 // por fetch no endpoint indicado na spec da história, sobre o mesmo contrato. ZapSign, Drive, Chatwoot e IA são simulados.
 import { somarDias } from '../regras/agenda.ts'
+import { problemaDoArquivo } from '../regras/arquivos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { fichaComCpf } from '../regras/duplicidade.ts'
 import {
@@ -14,6 +15,9 @@ import {
   datasDoKit,
   entrevistaDoCaso,
   papelNaHora,
+  precisaConferir,
+  resumoDaLeitura,
+  motivoParadoDaVerificacao,
   mensagemDoLink,
   erroDoCampo,
   faltando,
@@ -35,6 +39,7 @@ import {
   type DocumentoDoKit,
   type IdDaConferencia,
   type KitMontado,
+  type LeituraDoContrato,
 } from '../regras/contrato.ts'
 import { BENEFICIOS, nomeBeneficio } from './catalogos.ts'
 import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
@@ -46,7 +51,7 @@ import type { Arquivo, Ficha, Processo, Tarefa, TarefaEncaminhada } from './tipo
  * Onde o contrato do caso está: preparar (D1.16), colher a assinatura (D1.17), a leitura do assinado pela Documentação (D1.18,
  * GGVP-81) e, nas histórias seguintes, conferir e a cópia.
  */
-export type EtapaDoContrato = 'preparar' | 'assinatura' | 'leitura'
+export type EtapaDoContrato = 'preparar' | 'assinatura' | 'leitura' | 'conferir' | 'copia'
 
 /** O documento gerado pelo modelo: os campos e o texto de cada documento do kit (GGVP-69). */
 export type DocumentoGerado = {
@@ -76,6 +81,12 @@ export type Contrato = {
   versoes?: { versao: number; geradoEm: string; motivo: string }[]
   /** Como o cliente assina e o que já aconteceu (GGVP-72). */
   assinatura?: Assinatura
+  /** O que a IA leu do contrato assinado (GGVP-81 lê; GGVP-85 confere). */
+  leitura?: LeituraDoContrato & { lidoEm: string }
+  /** A conferência do Atendimento: "Está tudo certo?" (GGVP-85, CA5). */
+  verificacao?: { tudoCerto: boolean; oQueCorrigir?: string; paginaCorrigida?: string; quem: string; quando: string }
+  /** As versões assinadas que voltaram para corrigir: ficam no histórico (GGVP-85, CA6). */
+  anteriores?: { versao: number; arquivo?: string; motivo: string; quando: string }[]
 }
 
 /** Uma tentativa de contato para o cliente assinar: o link enviado e os lembretes (GGVP-72, CA5). */
@@ -165,6 +176,7 @@ function achar(banco: Banco, processoId: string): ContratoDoCaso | null {
 const TITULOS: Partial<Record<EtapaDoContrato, { codigo: string; acao: string; rota: string }>> = {
   preparar: { codigo: 'D1.16', acao: 'Preparar contrato', rota: 'preparar' },
   assinatura: { codigo: 'D1.17', acao: 'Colher assinatura', rota: 'assinatura' },
+  conferir: { codigo: 'D1.19', acao: 'Conferir contrato', rota: 'conferir' },
 }
 
 /** O detalhe e o prazo da tarefa "Colher assinatura": o status do ZapSign, a tentativa e o lembrete (GGVP-72, CA2 e CA4). */
@@ -199,7 +211,14 @@ export function tarefasDoContrato(): Tarefa[] {
     const { ficha, processo } = achado
     const modelo = c.kit ? modeloPorId(c.kit.modelo).nome : ''
     const base = { detalhe: [c.kit ? `kit ${c.kit.nome} · ${modelo}` : 'benefício sem kit cadastrado'], prazo: processo.prazo ?? 'hoje', urgente: processo.urgente }
-    const andamento = c.etapa === 'assinatura' ? andamentoDaAssinatura(c.assinatura, hoje) : base
+    const andamento =
+      c.etapa === 'assinatura'
+        ? andamentoDaAssinatura(c.assinatura, hoje)
+        : c.etapa === 'conferir' && c.leitura
+          ? { detalhe: [resumoDaLeitura(c.leitura)], prazo: 'hoje', urgente: false }
+          : c.etapa === 'preparar' && c.anteriores?.length
+            ? { ...base, detalhe: [`corrigir e reenviar: ${c.anteriores.at(-1)!.motivo}`], urgente: true }
+            : base
     return [
       {
         id: `contrato-${c.processoId}`,
@@ -458,7 +477,9 @@ export async function enviarParaAssinatura(processoId: string): Promise<Resposta
       gravar(banco)
       return { resultado: 'erro', mensagem: assinatura.erro }
     }
-    const documentoId = `zapsign-exemplo-${processoId}`
+    // Um documento por kit; a versão corrigida (GGVP-85) é outro documento.
+    const versao = contrato.documento?.versao ?? 1
+    const documentoId = versao > 1 ? `zapsign-exemplo-${processoId}-v${versao}` : `zapsign-exemplo-${processoId}`
     assinatura.zapsign = { documentoId, link: linkDoZapSign(documentoId), status: 'enviado', criadoEm: agora().toISOString(), eventos: [] }
     assinatura.erro = undefined
     ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoModelo(modeloPorId(contrato.kit.modelo))}: ${documentoId}`))
@@ -648,4 +669,111 @@ export async function concluirAssinaturaEmPapel(processoId: string): Promise<Con
   ficha.historico.push(evento('Concluiu a assinatura em papel, com a digitalização anexada; segue para a leitura'))
   gravar(banco)
   return contrato
+}
+
+// GGVP-85 · verificar o contrato assinado. A leitura pela IA é da GGVP-81 (grupo documentos): ela chama
+// concluirLeituraDoContrato. Até a junção, "Simular a leitura da IA" usa a leitura de exemplo.
+
+/**
+ * POST /api/processos/:id/contrato/leitura, chamado pela leitura da IA (GGVP-81). Reconhecido e tudo certo, nenhuma tarefa é
+ * criada e o caso segue para a cópia (CA1, CA7). Sem entender ou com problema, o Atendimento recebe "Conferir contrato" com o
+ * que a IA apontou (CA2, CA4).
+ */
+export async function concluirLeituraDoContrato(processoId: string, leitura: LeituraDoContrato): Promise<Contrato> {
+  await esperar()
+  const banco = ler()
+  const achado = achar(banco, processoId)
+  if (!achado) throw new Error('Contrato não encontrado')
+  const { ficha, processo, contrato } = achado
+  if (contrato.etapa !== 'leitura') throw new Error('Este contrato não está esperando a leitura')
+  contrato.leitura = { ...leitura, lidoEm: agora().toISOString() }
+  if (precisaConferir(leitura)) {
+    contrato.etapa = 'conferir'
+    processo.etapa = 'Contrato · conferência'
+    processo.proximaAcao = 'conferir o contrato assinado'
+    ficha.historico.push(evento(`A IA leu o contrato assinado: ${resumoDaLeitura(leitura)}; o Atendimento confere`, 'IA (leitura)'))
+  } else {
+    contrato.etapa = 'copia'
+    processo.proximaAcao = 'entregar a cópia do contrato'
+    ficha.historico.push(evento('A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato', 'IA (leitura)'))
+  }
+  gravar(banco)
+  return contrato
+}
+
+/**
+ * EXEMPLO. A leitura da IA simulada: o papel da primeira versão vem com a página da assinatura cortada (Figma 10:202); o resto
+ * a IA reconhece. A leitura de verdade é da GGVP-81.
+ */
+export function leituraDeExemploDoContrato(contrato: Contrato): LeituraDoContrato {
+  const assinatura = { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' }
+  if (contrato.assinatura?.forma === 'papel' && (contrato.documento?.versao ?? 1) === 1) {
+    return { reconhecido: true, assinatura, faltam: ['pág. 4 (rubrica)'], pendencias: ['a página da assinatura veio cortada'] }
+  }
+  return { reconhecido: true, assinatura, faltam: [], pendencias: [] }
+}
+
+/** EXEMPLO. O botão "Simular a leitura da IA" faz o papel da leitura da GGVP-81. */
+export async function simularLeituraDoContrato(processoId: string): Promise<Contrato> {
+  const caso = await obterContrato(processoId)
+  if (!caso) throw new Error('Contrato não encontrado')
+  return concluirLeituraDoContrato(processoId, leituraDeExemploDoContrato(caso.contrato))
+}
+
+export type Verificacao = { tudoCerto: boolean; oQueCorrigir?: string; paginaCorrigida?: { nome: string; tamanho: number } }
+
+/**
+ * POST /api/processos/:id/contrato/verificacao. "Está certo, seguir": vai para a cópia do contrato (CA7). "Não, corrigir e
+ * reenviar": o que corrigir é obrigatório e a página corrigida pode ir anexa (CA5); a versão assinada fica no histórico (CA6)
+ * e o contrato volta a preparar, para corrigir os campos e reenviar para assinar (CA3).
+ */
+export async function verificarContrato(processoId: string, v: Verificacao): Promise<Contrato> {
+  await esperar()
+  const oQueCorrigir = v.oQueCorrigir?.trim() ?? ''
+  if (motivoParadoDaVerificacao(v.tudoCerto, oQueCorrigir)) throw new Error('Escreva o que corrigir')
+  if (!v.tudoCerto && v.paginaCorrigida && problemaDoArquivo(v.paginaCorrigida)) throw new Error('Página corrigida inválida')
+  const banco = ler()
+  const achado = achar(banco, processoId)
+  if (!achado) throw new Error('Contrato não encontrado')
+  const { ficha, processo, contrato } = achado
+  if (contrato.etapa !== 'conferir') throw new Error('Este contrato não está para conferir')
+  const quando = agora().toISOString()
+  const hoje = hojeIso(agora())
+  if (v.tudoCerto) {
+    contrato.verificacao = { tudoCerto: true, quem: QUEM, quando }
+    contrato.etapa = 'copia'
+    processo.etapa = `Contrato assinado em ${dataCurta(hojeIso(new Date(contrato.assinatura?.assinadoEm ?? quando)), hoje)}`
+    processo.proximaAcao = 'entregar a cópia do contrato'
+    ficha.historico.push(evento('Conferiu o contrato assinado: está certo; segue para a cópia do contrato'))
+  } else {
+    const versao = contrato.documento?.versao ?? 1
+    const pagina = v.paginaCorrigida
+    if (pagina) {
+      ficha.arquivos.push({ nome: pagina.nome, tipo: 'contrato', local: processo.id, data: hoje, origem: 'card', repetido: false, aguardaLeitura: false })
+    }
+    contrato.verificacao = { tudoCerto: false, oQueCorrigir, ...(pagina && { paginaCorrigida: pagina.nome }), quem: QUEM, quando }
+    contrato.anteriores = [...(contrato.anteriores ?? []), { versao, arquivo: contrato.assinatura?.arquivo, motivo: oQueCorrigir, quando }]
+    contrato.assinatura = undefined
+    contrato.leitura = undefined
+    contrato.etapa = 'preparar'
+    processo.etapa = 'Contrato · corrigir e reenviar'
+    processo.proximaAcao = 'corrigir os campos e reenviar para assinar'
+    ficha.historico.push(
+      evento(`Conferiu o contrato assinado: corrigir e reenviar (${oQueCorrigir}). A versão ${versao} assinada fica guardada no histórico`),
+    )
+  }
+  gravar(banco)
+  return contrato
+}
+
+/** O aviso ao cliente pelo WhatsApp, da tela de conferir: fica em "Últimos contatos". Chatwoot simulado. */
+export async function avisarClienteDaConferencia(processoId: string, mensagem: string): Promise<void> {
+  await esperar()
+  if (!mensagem.trim()) throw new Error('Escreva a mensagem')
+  const banco = ler()
+  const achado = achar(banco, processoId)
+  if (!achado) throw new Error('Contrato não encontrado')
+  achado.ficha.contatos.push({ data: hojeIso(agora()), canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
+  achado.ficha.historico.push(evento('Avisou o cliente pelo WhatsApp da pendência no contrato assinado'))
+  gravar(banco)
 }
