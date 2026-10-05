@@ -554,3 +554,94 @@ export type SegundaFicha = {
 export type RegistroDaRenovacao =
   | { resultado: 'renovou'; senha: string; conferiMeuInss: true }
   | { resultado: 'nao-conseguiu'; motivo: string; aviseiOCliente: true }
+
+// GGVP-40 em diante: a entrevista gravada e a transcrição. Espelho do Zod da design.md da change ggvp-6.
+
+export type Papel = 'advogada' | 'cliente' | 'atendimento'
+
+export type Trecho = {
+  /** Segundos desde o início do áudio. */
+  aos: number
+  quem: string
+  papel: Papel
+  texto: string
+  /** Marcado como prova (GGVP-46, CA6). */
+  prova?: boolean
+}
+
+/** Campos da ficha que a entrevista pode atualizar, depois de conferidos (GGVP-46, CA6). */
+export type CampoDaEntrevista = 'telefone' | 'estadoCivil' | 'profissao' | 'contatoApoio'
+
+export type InformacaoExtraida = {
+  id: string
+  rotulo: string
+  valor: string
+  destino: 'ficha' | 'documentacao' | 'cofre' | 'processo'
+  campo?: CampoDaEntrevista
+  /** Data e hora ISO da conferência: antes dela, a ficha não muda. */
+  conferidaEm?: string
+}
+
+export type AcaoNaGravacao = {
+  acao: 'avisou' | 'gravou' | 'pausou' | 'retomou' | 'abriu-cofre' | 'guardou-senha' | 'falhou' | 'encerrou' | 'sem-audio' | 'subiu-arquivo' | 'enviou-audio'
+  /** Data e hora ISO. */
+  quando: string
+  /** Onde estava a gravação, em segundos. */
+  aos: number
+}
+
+export type Audio = {
+  nome: string
+  formato: string
+  /** Em bytes. Sem limite (CA10). */
+  tamanho: number
+  /** Partes de até 24 MB para a transcrição (CA10). */
+  partes: number
+}
+
+export type EstadoDaTranscricao = 'aguardando-internet' | 'transcrevendo' | 'falhou' | 'pronta' | 'sem-audio'
+
+export type Gravacao = {
+  id: string
+  fichaId: string
+  agendamentoId?: string
+  /** aaaa-mm-dd */
+  data: string
+  /** "Entrevista com a advogada", "Telefone: indeferimento e próximo passo". */
+  titulo: string
+  /** "vídeo", "telefone", "presencial", "WhatsApp". */
+  canal: string
+  participantes: string[]
+  /** Em segundos. */
+  duracao: number
+  origem: 'portal' | 'arquivo' | 'registro'
+  /** Data e hora ISO do aviso de gravação (G10). */
+  avisoEm?: string
+  estado: 'gravando' | 'pausada' | 'falhou' | 'encerrada'
+  acoes: AcaoNaGravacao[]
+  /** Guardado para sempre no caso (CA13). */
+  audio?: Audio
+  transcricao: EstadoDaTranscricao
+  motivoDaFalha?: string
+  trechos: Trecho[]
+  resumo?: string
+  extraidas: InformacaoExtraida[]
+  /** O que o cliente precisa trazer: vai ao checklist do benefício depois de conferido (GGVP-46, CA7). */
+  documentos: string[]
+  documentosConferidosEm?: string
+  /** A conversa sem áudio, escrita por quem participou. */
+  registro?: string
+  /** Entrevista com a advogada: tem dado de saúde, o Atendimento vê só a data, quem participou e a duração. */
+  soJuridico: boolean
+  /** "ficha atualizada", "benefício definido". */
+  marcas: string[]
+}
+
+/** O que a tela da entrevista lê. */
+export type Entrevista = { ficha: Ficha; agendamento: Agendamento; gravacao?: Gravacao }
+
+/** O áudio gravado fora do portal, como a ligação do Chatwoot baixada (CA9). */
+export type AudioDeFora = { nome: string; tipo: string; tamanho: number }
+
+/** Encerrar devolve a gravação e a tarefa nova da advogada (CA5). */
+export type RespostaDoEncerramento = { gravacao: Gravacao; tarefa?: TarefaEncaminhada }

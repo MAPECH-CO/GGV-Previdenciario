@@ -3,7 +3,7 @@
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
 import { isoParaData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
-import type { EnvioDaFicha, Ficha, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha } from './tipos.ts'
+import type { EnvioDaFicha, Ficha, Gravacao, InformacaoExtraida, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha, Trecho } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
 export const CPF_DE_TESTE = '00000000191'
@@ -212,4 +212,64 @@ export function leituraDaSegundaFicha(): { respostas: Partial<RespostasDaSegunda
     },
     senhaLida: true,
   }
+}
+
+/** Uma fala da conversa de exemplo, com o que a IA marca no roteiro e o que ela tira para a ficha (GGVP-40). */
+export type FalaDeExemplo = Trecho & { roteiro?: number[]; extrai?: InformacaoExtraida[] }
+
+/**
+ * A conversa que a gravação simulada "ouve" (GGVP-40): os fatos da ficha em papel de leituraDeExemplo, o telefone novo
+ * (para a divergência do cadastro, GGVP-43) e o cofre na hora da senha, que nunca é dita (G9). O tempo é curto de
+ * propósito, para a demonstração no localhost.
+ */
+export function conversaDeExemplo(ficha: Ficha, advogada: string): FalaDeExemplo[] {
+  const cliente = ficha.nome.split(' ')[0]
+  const a = (aos: number, texto: string, extra: Partial<FalaDeExemplo> = {}): FalaDeExemplo => ({ aos, quem: advogada, papel: 'advogada', texto, ...extra })
+  const c = (aos: number, texto: string, extra: Partial<FalaDeExemplo> = {}): FalaDeExemplo => ({ aos, quem: cliente, papel: 'cliente', texto, ...extra })
+  return [
+    a(0, `${cliente}, essa conversa está sendo gravada e transcrita para preencher a sua ficha. Tudo bem?`),
+    c(6, 'Tudo bem, sim.'),
+    a(14, 'Me conta desde quando você não consegue trabalhar e o que aconteceu.'),
+    c(24, 'Parei em junho de 2026. O último trabalho foi de auxiliar de limpeza, com carteira, até maio.', {
+      roteiro: [0],
+      extrai: [
+        { id: 'desde', rotulo: 'Sem trabalhar desde', valor: '06/2026', destino: 'processo' },
+        { id: 'vinculo', rotulo: 'Último vínculo', valor: 'auxiliar de limpeza · CLT · até 05/2026', destino: 'processo' },
+        { id: 'profissao', rotulo: 'Profissão', valor: 'Auxiliar de limpeza', destino: 'ficha', campo: 'profissao' },
+      ],
+    }),
+    a(34, 'Você já pediu algum benefício ao INSS? O que disseram?'),
+    c(44, 'Pedi o auxílio e negaram em agosto. A carta do INSS está em casa.', {
+      roteiro: [3],
+      extrai: [
+        { id: 'pedido', rotulo: 'Pedido anterior ao INSS', valor: 'auxílio negado em 08/2026', destino: 'processo' },
+        { id: 'carta', rotulo: 'Documento citado', valor: 'carta de indeferimento do INSS', destino: 'documentacao' },
+      ],
+    }),
+    a(54, 'E o tratamento? Está fazendo alguma coisa? Tem laudo?'),
+    c(64, 'Faço fisioterapia duas vezes por semana. Tenho dois laudos do ortopedista.', {
+      roteiro: [2, 4],
+      extrai: [{ id: 'laudos', rotulo: 'Laudos citados', valor: '2 laudos do ortopedista', destino: 'documentacao' }],
+    }),
+    a(74, 'Qual é o seu estado civil? Quem mora com você?'),
+    c(84, 'União estável, há vinte anos. Em casa somos três, com a minha filha Renata.', {
+      roteiro: [5],
+      extrai: [{ id: 'estado-civil', rotulo: 'Estado civil', valor: 'União estável', destino: 'ficha', campo: 'estadoCivil' }],
+    }),
+    a(94, 'Tem o telefone de alguém da família, para apoio? E o seu número continua o mesmo?'),
+    c(104, 'O da Renata é (11) 90000-0022. O meu mudou: agora é (11) 90000-0021.', {
+      extrai: [
+        { id: 'apoio', rotulo: 'Contato de apoio', valor: 'filha Renata · (11) 90000-0022', destino: 'ficha', campo: 'contatoApoio' },
+        { id: 'telefone', rotulo: 'Telefone', valor: telefoneDeExemplo(21), destino: 'ficha', campo: 'telefone' },
+      ],
+    }),
+    a(114, 'Você tem a senha do gov.br em mãos? Não precisa falar em voz alta: eu abro o cofre para você digitar.', { roteiro: [1] }),
+    c(122, 'Tenho, sim.'),
+    a(132, 'Pelo que você contou, vou conferir os laudos e definir o benefício com você. Obrigada.'),
+  ]
+}
+
+/** As gravações de exemplo. As do Antônio, do Figma 1626:2, entram com a GGVP-46. */
+export function gravacoesDeExemplo(): Gravacao[] {
+  return []
 }

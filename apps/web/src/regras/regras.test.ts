@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
-import type { EventoDaAgenda, Ficha, PastaDrive } from '../dados/tipos.ts'
+import type { EventoDaAgenda, Ficha, InformacaoExtraida, PastaDrive, Trecho } from '../dados/tipos.ts'
 import { bateNaBusca, buscar, etapaDaFicha, fichasCitadas, semAcento } from './busca.ts'
 import { dataCurta, idadeEm } from './datas.ts'
+import {
+  PARTE_MAXIMA,
+  SENHA_RETIRADA,
+  documentosDaEntrevista,
+  ehAudio,
+  juntarPartes,
+  minutos,
+  partesDoAudio,
+  pendenciasDaEntrevista,
+  relogio,
+  roteiroDaEntrevista,
+  situacaoDaInformacao,
+  tirarSenhas,
+} from './entrevista.ts'
 import { fichaComCpf, fichasParecidas } from './duplicidade.ts'
 import {
   MENSAGEM,
@@ -657,5 +671,90 @@ describe('segunda ficha, de auxílio acidentário (GGVP-28)', () => {
     expect(motivoParaIniciar(sim)).toBe('A cliente ainda não preencheu a segunda ficha (auxílio acidentário).')
     expect(motivoParaIniciar({ ...sim, segundaFicha: { data: HOJE, origem: 'papel', respostas, emBranco: [] } })).toBeNull()
     expect(motivoParaIniciar({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })).toBeNull()
+  })
+})
+
+describe('GGVP-40 · Entrevistar com gravação', () => {
+  const lead = ficha({ id: 'lead', nome: 'Josefa Teste', telefone: '11900000002', situacao: 'lead', beneficioInteresse: 'loas-idoso' })
+  const fala = (texto: string, papel: Trecho['papel'] = 'cliente', aos = 0): Trecho => ({ aos, quem: papel === 'cliente' ? 'Josefa' : 'Dra. Paula', papel, texto })
+
+  /** Senhas de teste faladas: nenhuma pode sobrar no texto (CA7). */
+  const SENHAS_DE_TESTE = ['Teste#2026', 'girassol123', 'TesteSenha99', 'Maria@1950', 'girassol', 'abc$teste', '19501950']
+
+  it('CA3 e CA7 · a senha dita sai do texto, em várias formas de falar, e o resto da conversa fica', () => {
+    const conversa = [
+      fala('Me conta desde quando você está afastada.', 'advogada'),
+      fala('Parei em 06/2026. Recebi auxílio por dois meses em 2024; meu telefone é (11) 90000-0021.'),
+      fala('Minha senha do gov.br é Teste#2026, doutora.'),
+      fala('A senha é girassol123'),
+      fala('senha: TesteSenha99'),
+      fala('E a senha do Meu INSS, qual é?', 'advogada'),
+      fala('É Maria@1950, a mesma.'),
+      fala('a senha é girassol'),
+      fala('Anotei a senha abc$teste e também 19501950 no papel.'),
+    ]
+    const limpo = tirarSenhas(conversa)
+    const texto = limpo.map((t) => t.texto).join(' | ')
+    for (const senha of SENHAS_DE_TESTE) expect(texto).not.toContain(senha)
+    expect(texto).toContain(SENHA_RETIRADA)
+    expect(limpo[1].texto).toBe(conversa[1].texto)
+    expect(limpo[0].texto).toBe(conversa[0].texto)
+    expect(limpo[2].texto).toBe(`Minha senha do gov.br é ${SENHA_RETIRADA}, doutora.`)
+  })
+
+  it('CA9 · aceita qualquer formato de áudio, pelo tipo ou pela extensão', () => {
+    expect(ehAudio({ nome: 'ligacao-chatwoot.ogg', tipo: '' })).toBe(true)
+    expect(ehAudio({ nome: 'gravacao', tipo: 'audio/x-something' })).toBe(true)
+    expect(ehAudio({ nome: 'WhatsApp Ptt.OPUS', tipo: 'application/octet-stream' })).toBe(true)
+    expect(ehAudio({ nome: 'audio.amr', tipo: '' })).toBe(true)
+    expect(ehAudio({ nome: 'laudo.pdf', tipo: 'application/pdf' })).toBe(false)
+  })
+
+  it('CA10 · sem limite: divide em partes de até 24 MB e junta o texto na ordem, com o tempo corrido', () => {
+    expect(partesDoAudio(10 * 1024 * 1024)).toBe(1)
+    expect(partesDoAudio(PARTE_MAXIMA)).toBe(1)
+    expect(partesDoAudio(PARTE_MAXIMA + 1)).toBe(2)
+    expect(partesDoAudio(300 * 1024 * 1024)).toBe(13)
+    const juntas = juntarPartes([
+      { inicio: 0, trechos: [fala('um', 'advogada', 0), fala('dois', 'cliente', 600)] },
+      { inicio: 1200, trechos: [fala('três', 'advogada', 5)] },
+    ])
+    expect(juntas.map((t) => [t.aos, t.texto])).toEqual([
+      [0, 'um'],
+      [600, 'dois'],
+      [1205, 'três'],
+    ])
+  })
+
+  it('CA11 · relógio, duração e o roteiro com o acidentário, a senha e, no LOAS, a casa', () => {
+    expect(relogio(462)).toBe('00:07:42')
+    expect(relogio(3725)).toBe('01:02:05')
+    expect(minutos(2292)).toBe('38 min')
+    expect(minutos(20)).toBe('1 min')
+    const roteiro = roteiroDaEntrevista({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })
+    expect(roteiro[1]).toBe('Acidentário já decidido antes da entrevista (D1.07): não · sem senha no cofre (G9)')
+    expect(roteiro.at(-1)).toBe('Quem mora na casa e a renda de cada um')
+    expect(roteiroDaEntrevista({ ...lead, beneficioInteresse: 'incapacidade-temporaria' })).toHaveLength(5)
+  })
+
+  it('a IA marca cada informação e aponta as pendências e os documentos', () => {
+    const extraidas: InformacaoExtraida[] = [
+      { id: 'telefone', rotulo: 'Telefone', valor: '11900000002', destino: 'ficha', campo: 'telefone' },
+      { id: 'estado-civil', rotulo: 'Estado civil', valor: 'União estável', destino: 'ficha', campo: 'estadoCivil' },
+      { id: 'laudos', rotulo: 'Laudos citados', valor: '2 laudos do ortopedista', destino: 'documentacao' },
+      { id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre', destino: 'cofre' },
+    ]
+    expect(extraidas.map((e) => situacaoDaInformacao(e, lead))).toEqual(['confirmado', 'detectado', 'pedir', 'cofre'])
+    expect(pendenciasDaEntrevista(lead, extraidas)).toEqual([
+      'Pedir 2 laudos do ortopedista (kit, G1).',
+      'Perguntar se houve acidente de trabalho (muda o benefício).',
+      'Confirmar o CEP e o contato de apoio.',
+    ])
+    expect(documentosDaEntrevista({ ...lead, documentos: [{ nome: 'RG', detalhe: 'ok' }] }, extraidas)).toEqual([
+      'CPF',
+      'Comprovante de residência',
+      'CNIS',
+      '2 laudos do ortopedista',
+    ])
   })
 })

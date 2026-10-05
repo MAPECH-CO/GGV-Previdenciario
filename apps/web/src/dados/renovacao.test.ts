@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { obterPreparacao } from './preparacao.ts'
 import { registrarRenovacao } from './renovacao.ts'
 import { registrarAnalise } from './segundaFicha.ts'
-import { configurarExemplo, gravar, ler, obterFicha, tarefasDoSetor, zerarExemplo } from './servidor.ts'
+import { CHAVE, configurarExemplo, gravar, ler, obterFicha, tarefasDoSetor, zerarExemplo } from './servidor.ts'
 
 /** Senha de teste: não pode aparecer em lugar nenhum depois de guardada (G9). */
 const SENHA_DE_TESTE = 'Teste#Renovada-4821'
@@ -35,7 +35,7 @@ describe('Renovar a senha do gov.br · servidor de exemplo', () => {
     expect(r.senhaGov).toEqual({ situacao: 'no-cofre', atualizadaEm: AGORA.toISOString(), por: 'Você (Atendimento)', funcionouEm: '2026-10-05' })
     expect(ler().cofre).toEqual([{ fichaId: 'josefa-exemplo', quando: AGORA.toISOString(), quem: 'Você (Atendimento)', acao: 'renovou' }])
     expect(JSON.stringify(ler())).not.toContain(SENHA_DE_TESTE)
-    expect(sessionStorage.getItem('ggv.exemplo.v4')).not.toContain(SENHA_DE_TESTE)
+    expect(sessionStorage.getItem(CHAVE)).not.toContain(SENHA_DE_TESTE)
     expect(tarefasDoSetor('Atendimento')).toEqual([])
     // CA7: a advogada vê na preparação.
     const p = await obterPreparacao('josefa-entrevista')

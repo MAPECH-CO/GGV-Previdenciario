@@ -4,6 +4,8 @@ import { Balcao } from './paginas/Balcao.tsx'
 import { CentralAdvogada } from './paginas/CentralAdvogada.tsx'
 import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { ConfirmarAgendamento } from './paginas/ConfirmarAgendamento.tsx'
+import { Entrevista } from './paginas/Entrevista.tsx'
+import { EntrevistaAoVivo } from './paginas/EntrevistaAoVivo.tsx'
 import { FichaAtendimento } from './paginas/FichaAtendimento.tsx'
 import { FichaCliente } from './paginas/FichaCliente.tsx'
 import { MarcarEntrevista } from './paginas/MarcarEntrevista.tsx'
@@ -34,6 +36,10 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (analisar) return <AnalisarFicha agendamentoId={decodeURIComponent(analisar[1])} />
   const renovar = /^\/entrevista\/([^/]+)\/renovar-senha$/.exec(caminho)
   if (renovar) return <RenovarSenha agendamentoId={decodeURIComponent(renovar[1])} />
+  const gravacao = /^\/entrevista\/([^/]+)\/gravacao$/.exec(caminho)
+  if (gravacao) return <EntrevistaAoVivo agendamentoId={decodeURIComponent(gravacao[1])} simular={parametros.get('simular') ?? undefined} />
+  const entrevista = /^\/entrevista\/([^/]+)$/.exec(caminho)
+  if (entrevista) return <Entrevista agendamentoId={decodeURIComponent(entrevista[1])} />
   const recebimento = /^\/balcao\/documento\/([^/]+)$/.exec(caminho)
   if (recebimento) return <ReceberDocumento tarefaId={decodeURIComponent(recebimento[1])} />
   const fichaDeAtendimento = /^\/clientes\/([^/]+)\/ficha-de-atendimento$/.exec(caminho)

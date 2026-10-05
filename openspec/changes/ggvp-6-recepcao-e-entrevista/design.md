@@ -656,6 +656,176 @@ export const RegistroDaRenovacao = z.discriminatedUnion('resultado', [
 5. **Código de verificação** (CA10): a tela lembra que o código chega no celular ou no e-mail do próprio cliente.
 6. **A advogada vê** (CA7): o resultado aparece na preparação da conversa (GGVP-32).
 
+## GGVP-40 · Entrevistar com gravação
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/entrevista/:agendamentoId` | step_D1.09 `14:65` | "nome · Fazer entrevista": chips, "entrevista inicial · gravada", a frase do passo, o aviso do G10, "Iniciar entrevista (Transcrição)" e o bloco "Áudio gravado fora do portal" (CA9); no lado, "Antes de concluir" |
+| `/entrevista/:agendamentoId/gravacao` | Atendimento · Reunião com transcrição `73:560`, com o roteiro do Overlay · Entrevista `1581:348` | "Entrevista com nome": "Gravar" lembra o aviso (G10) e só grava depois de "Avisei o cliente"; "● Gravando · 00:07:42 · aviso de gravação feito às 10:31 (G10)", "Pausar"/"Retomar", "Abrir o cofre", "Encerrar e gerar resumo"; "Transcrição ao vivo"; "Ficha preenchida pela IA · você confere"; "Roteiro da entrevista (a IA marca o que for respondido)"; "Pendências que a IA apontou"; "Ao encerrar"; "Definir o benefício (D1.12)" só depois de encerrar |
+
+`?simular=falha-do-microfone` e `?simular=falha-da-transcricao` simulam as falhas (CA8 e GGVP-46, CA3), como o "scanner simulado" da GGVP-17.
+
+### Contrato (Zod, vai para `packages/contratos/entrevista.ts`)
+
+```ts
+export const Papel = z.enum(['advogada', 'cliente', 'atendimento'])
+export const Trecho = z.object({ aos: z.number().int().min(0), quem: z.string(), papel: Papel, texto: z.string(), prova: z.boolean().optional() })
+export const InformacaoExtraida = z.object({
+  id: z.string(), rotulo: z.string(), valor: z.string(),
+  destino: z.enum(['ficha', 'documentacao', 'cofre', 'processo']),
+  campo: z.enum(['telefone', 'estadoCivil', 'profissao', 'contatoApoio']).optional(),   // quando o destino é a ficha
+  conferidaEm: z.string().optional(),                                                  // antes disso, a ficha não muda (GGVP-46, CA6)
+})
+export const AcaoNaGravacao = z.object({
+  acao: z.enum(['avisou', 'gravou', 'pausou', 'retomou', 'abriu-cofre', 'guardou-senha', 'falhou', 'encerrou', 'sem-audio', 'subiu-arquivo', 'enviou-audio']),
+  quando: z.string(), aos: z.number().int().min(0),
+})
+export const Audio = z.object({ nome: z.string(), formato: z.string(), tamanho: z.number().int().min(0), partes: z.number().int().min(1) })
+export const Gravacao = z.object({
+  id: z.string(), fichaId: z.string(), agendamentoId: z.string().optional(),
+  data: z.string(), titulo: z.string(), canal: z.string(), participantes: z.array(z.string()),
+  duracao: z.number().int().min(0),                          // segundos
+  origem: z.enum(['portal', 'arquivo', 'registro']),
+  avisoEm: z.string().optional(),                            // G10
+  estado: z.enum(['gravando', 'pausada', 'falhou', 'encerrada']),
+  acoes: z.array(AcaoNaGravacao),
+  audio: Audio.optional(),                                   // guardado para sempre (CA13)
+  transcricao: z.enum(['aguardando-internet', 'transcrevendo', 'falhou', 'pronta', 'sem-audio']),
+  motivoDaFalha: z.string().optional(),
+  trechos: z.array(Trecho), resumo: z.string().optional(), extraidas: z.array(InformacaoExtraida),
+  documentos: z.array(z.string()), documentosConferidosEm: z.string().optional(),
+  registro: z.string().max(4000).optional(),                 // conversa sem áudio
+  soJuridico: z.boolean(),                                   // entrevista com a advogada: dado de saúde
+  marcas: z.array(z.string()),                               // "ficha atualizada", "benefício definido"
+})
+export const InicioDaGravacao = z.object({ avisei: z.literal(true) })                   // CA4
+export const AudioDeFora = z.object({ nome: z.string().min(1), tipo: z.string(), tamanho: z.number().int().min(1) })  // CA9, CA10
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/entrevistas/:id` | `id` | `{ ficha, agendamento, gravacao? }` | `obterEntrevista` |
+| `POST /api/entrevistas/:id/gravacoes` | `InicioDaGravacao` | `Gravacao` | `iniciarGravacao` |
+| `POST /api/gravacoes/:id/acoes` | `{ acao, aos }` | `Gravacao` | `registrarAcao` |
+| `POST /api/gravacoes/:id/encerrar` | `{ aos, online }` | `{ gravacao, tarefa }` | `encerrarGravacao` |
+| `POST /api/gravacoes/:id/audio` | o áudio guardado no computador | `Gravacao` | `enviarAudioGuardado` |
+| `POST /api/gravacoes/:id/sem-audio` | `{ notas }` | `{ gravacao, tarefa }` | `registrarSemAudio` |
+| `POST /api/entrevistas/:id/audio` | `AudioDeFora` e o arquivo | `{ gravacao, tarefa }` | `subirAudio` |
+| `POST /api/gravacoes/:id/transcricao` | — | `Gravacao` | `transcrever` |
+
+### Decisões da história
+
+1. **O aviso antes de gravar** (CA1, CA4, G10): "Gravar" abre o lembrete com a frase do aviso; a gravação só começa com "Avisei o cliente · começar a gravar", que grava a hora do aviso. O servidor recusa iniciar sem `avisei`.
+2. **Gravação simulada.** Sem microfone de verdade: o relógio corre, a transcrição ao vivo mostra a conversa de exemplo (`conversaDeExemplo` em `exemplo.ts`, montada com a ficha) e a IA marca o roteiro e as informações. O áudio é um arquivo simulado `entrevista-<ficha>-<data>.webm`.
+3. **Cada ação registrada** (CA5): avisou, gravou, pausou, retomou, abriu o cofre, guardou a senha, falhou, encerrou, com a hora e o ponto do áudio. Ao encerrar: o compromisso vira "realizado", o "Preparar entrevista" sai da fila, o áudio vai para a transcrição (D1.11) e a advogada recebe "nome · Cadastrar lead" (D1.10). A página que recarrega no meio volta com a gravação pausada no último ponto.
+4. **Cofre durante a entrevista** (CA6, G9): "Abrir o cofre" pausa a gravação e mostra o `CampoCofre`; guardada a senha, a gravação retoma sozinha. O trecho pausado não entra no áudio nem na transcrição.
+5. **Senha dita mesmo assim** (CA3, CA7, G9): `tirarSenhas` em `regras/entrevista.ts` troca por "[senha retirada: vai ao cofre]" o que parece senha perto da palavra "senha" (na mesma fala ou na resposta à pergunta), com teste de várias senhas de teste faladas. A transcrição guardada já sai limpa.
+6. **Falha** (CA8): o aviso aparece na hora, o que foi gravado fica guardado, e a advogada escolhe "Tentar gravar de novo" ou "Registrar como sem áudio" (com as anotações dela).
+7. **Áudio de fora** (CA9, CA10): aceita qualquer `audio/*` ou extensão de áudio (mp3, ogg, opus, m4a, wav, webm, aac, amr, wma, flac), sem limite de tamanho; `partesDoAudio` divide em partes de até 24 MB para a transcrição e `juntarPartes` junta o texto na ordem, com o tempo corrido.
+8. **Sem internet** (CA12): com `navigator.onLine` falso, a tela avisa e continua gravando; ao encerrar, a transcrição fica "aguardando a internet" e o áudio é enviado uma vez quando a conexão volta (o servidor ignora o segundo envio).
+9. **Guardado para sempre** (CA13): não há função que apague áudio ou gravação; a tela diz "guardado no caso".
+10. **"Definir o benefício (D1.12)"** só vira link depois de encerrar; leva à tela da GGVP-51 (grupo 2), que até lá cai em "ainda não construída".
+
+## GGVP-43 · Cadastrar o lead depois da entrevista
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/clientes/:fichaId/cadastro` | step_D1.10 `14:89` | "nome · Cadastrar lead", "Após a entrevista": "Preencher" com nome completo, CPF, RG, nascimento e idade, estado civil, profissão, telefone, CEP, rua e número, bairro, cidade e UF, e o representante legal; a origem de cada valor e as divergências; "Salvar cadastro"; no lado, "Antes de concluir" com os campos, as travas e o kit |
+
+### Contrato (Zod, vai para `packages/contratos/fichas.ts`)
+
+```ts
+export const ESTADOS_CIVIS = ['Solteiro(a)', 'Casado(a)', 'União estável', 'Divorciado(a)', 'Viúvo(a)'] as const
+export const Representante = z.object({
+  nome: z.string().refine(validarNome), cpf: z.string().refine(validarCpf), rg: Rg,
+  parentesco: z.enum(['Mãe', 'Pai', 'Tutor(a)', 'Curador(a)', 'Outro']),
+  estadoCivil: z.enum(ESTADOS_CIVIS), profissao: z.string().min(2).max(80),
+})
+export const Cadastro = z.object({
+  nome: z.string().refine(validarNome), cpf: z.string().refine(validarCpf), rg: Rg,             // Rg: 5 a 14 letras e números
+  nascimento: z.string().transform(normalizarData).refine(naoFutura),
+  estadoCivil: z.enum(ESTADOS_CIVIS), profissao: z.string().min(2).max(80),                   // da lista PROFISSOES
+  telefone: z.string().refine(validarTelefone),
+  cep: z.string().refine(validarCep), rua: z.string().min(3).max(150), bairro: z.string().min(2).max(80),
+  cidade: z.string().min(2).max(80), uf: z.string().length(2),
+  representante: Representante.optional(),
+})
+export const PedidoDeCadastro = z.object({ base: Cadastro.partial(), valores: Cadastro })   // base: o que a tela abriu (CA11)
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/fichas/:id/cadastro` | `id` | `{ ficha, extraidas }` | `obterCadastro` |
+| `PUT /api/fichas/:id/cadastro` | `PedidoDeCadastro` | `{ resultado: 'salvo', ficha } \| { resultado: 'cpf-de-outra-ficha', id, nome } \| { resultado: 'conflito', campos }` | `salvarCadastro` |
+| `GET /api/fichas/:id/kit` | `id` | `{ pode, falta }` | `podeGerarKit` |
+
+### Campos e a função de cada um
+
+| Campo | Funções |
+|---|---|
+| Nome completo | `normalizarNome`, `validarNome` |
+| CPF (e o do representante) | `normalizarCpf`, `validarCpf` (dígitos verificadores, CA5), `formatarCpf` |
+| Nascimento | `normalizarData`, `dataParaIso`, não futura; a idade por `idadeEm` (CA10) |
+| Telefone | `normalizarTelefone`, `validarTelefone`, `formatarTelefone` |
+| CEP | `normalizarCep`, `validarCep`, `formatarCep`, `buscarCep` com o ViaCEP simulado (CA10) |
+| RG | letras e números, de 5 a 14 (regra em `regras/cadastro.ts`) |
+| Estado civil, profissão, parentesco | escolha numa lista (`ESTADOS_CIVIS`, `PROFISSOES`) |
+
+### Decisões da história
+
+1. **A mesma ficha** (CA9): o cadastro completa a ficha do primeiro contato; nunca cria outra. Ela continua lead até "Fechou com o escritório? Sim" (D1.14, GGVP-60), que só muda a situação.
+2. **Preenchido das fontes** (CA1, CA8): `preencherCadastro` junta a ficha e o que a IA tirou da entrevista; cada campo mostra de onde veio ("da ficha", "da entrevista"), e o que as duas dizem diferente aparece destacado, com "Usar o da ficha" e "Usar o da entrevista".
+3. **Obrigatórios** (CA3): os do modelo do contrato: nome completo, CPF, RG, estado civil, profissão, endereço (CEP, rua e número, bairro, cidade, UF) e telefone; com representante, os dele. "Salvar cadastro" mostra o que falta.
+4. **CPF de outra ficha** (CA2): o servidor não grava e devolve a ficha dona; a tela mostra "Este CPF já é do cadastro de nome" com o link.
+5. **Histórico com o valor anterior** (CA7): cada campo alterado vira "Alterou o estado civil: «Solteiro(a)» → «Casado(a)»", com quem e quando.
+6. **Representante** (CA6): "Tem representante legal" mostra os campos do representante. O catálogo do GGVP-91 não tem "LOAS representado (genitor)"; a caixa vem marcada quando a ficha já tem representante.
+7. **Kit** (CA4): `faltaParaOKit` em `regras/cadastro.ts`, com teste; o lado da tela diz se o kit pode ser gerado ou o que falta. O botão do kit é da história do D1.15 e usa a mesma regra (`podeGerarKit`).
+8. **Duas pessoas** (CA11): o aviso "está editando" passa entre as abas abertas pelo `BroadcastChannel` (a presença do Supabase, ao ligar no servidor); salvar manda o que a tela abriu (`base`) e `mesclar` guarda o que o outro salvou nos campos que eu não mexi; campo mexido pelos dois volta como conflito para escolher.
+9. **Profissão numa lista** (CA10): `PROFISSOES` de exemplo em `catalogos.ts`, trocar pela do Airtable; valor antigo fora da lista aparece como dica para escolher.
+
+## GGVP-46 · Transcrever a entrevista
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| janela "Transcrições" na ficha do cliente e na entrevista encerrada | Overlay · Transcrições do processo `1626:2` | "▶ Transcrições do caso", "N gravações · M registro sem áudio", "Registrar nova conversa"; à esquerda "Gravações e registros" (data, duração, título, participantes, situação); à direita o título, "Abrir áudio", "Exportar PDF", "Resumo · Informações extraídas · Transcrição", o resumo pela IA, as informações extraídas com o destino e "Conferir e levar", os documentos para o checklist, a busca, os trechos marcados como prova, o player e a transcrição com quem fala |
+
+### Contrato (Zod, vai para `packages/contratos/entrevista.ts`)
+
+```ts
+export const ConferenciaDasInformacoes = z.object({ ids: z.array(z.string()).min(1) })
+export const ConferenciaDosDocumentos = z.object({ documentos: z.array(z.string().min(2).max(120)).min(1) })
+export const ConversaSemAudio = z.object({
+  data: z.string().transform(normalizarData).refine(naoFutura), canal: z.enum(['WhatsApp', 'Telefone', 'Presencial', 'Vídeo']),
+  titulo: z.string().trim().min(3).max(120), participantes: z.string().trim().min(3).max(120), texto: z.string().trim().min(3).max(4000),
+})
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/fichas/:id/gravacoes` | `id` | `Gravacao[]` | `obterGravacoes` |
+| `POST /api/gravacoes/:id/transcricao` | — (tentar de novo) | `Gravacao` | `transcrever` |
+| `POST /api/gravacoes/:id/conferencias` | `ConferenciaDasInformacoes` | `{ gravacao, ficha }` | `conferirInformacoes` |
+| `POST /api/gravacoes/:id/documentos` | `ConferenciaDosDocumentos` | `Gravacao` | `conferirDocumentos` |
+| `PATCH /api/gravacoes/:id/trechos/:aos` | `{ prova }` | `Gravacao` | `marcarProva` |
+| `POST /api/fichas/:id/conversas` | `ConversaSemAudio` | `Gravacao` | `registrarConversa` |
+
+### Decisões da história
+
+1. **Transcrição simulada** (CA1, CA8): a OpenAI fica simulada; `transcrever` monta os trechos da conversa de exemplo, separa quem fala (advogada, cliente, Atendimento), tira a senha (GGVP-40, CA3) e junta as partes. Aparece na janela com a data da entrevista.
+2. **Busca** (CA2): `buscarTrechos` em `regras/transcricao.ts`, sem acento e sem maiúscula, mostra só os trechos com a palavra, marcada.
+3. **Falha** (CA3): a gravação mostra "A transcrição falhou" com o motivo e "Tentar de novo".
+4. **Lista** (CA4): cada gravação com a data, os participantes, a duração e a situação ("transcrita · ficha atualizada", "transcrevendo…", "falhou", "só registro").
+5. **Nada se apaga** (CA5): sem botão nem função de apagar; o rodapé diz que fica guardado no caso.
+6. **Conferir antes da ficha** (CA6, G14): cada informação tem o destino. "Conferir e levar" leva à ficha só as marcadas, com o valor antigo no histórico; "Documentação" vira a pendência "Pedir documento" da Documentação; "cofre" só diz que a senha foi ao cofre, sem valor; "processo" fica no caso para a definição do benefício. Também: marcar trecho como prova, "Abrir áudio" (player simulado), "Exportar PDF" (impressão do navegador, só a janela) e "Registrar nova conversa" sem áudio.
+7. **Documentos para o checklist** (CA7): a IA lista o que o cliente precisa trazer; "Conferi · enviar ao checklist" grava na ficha a lista conferida para o checklist do benefício (GGVP-91).
+8. **Quem vê**: o Jurídico vê tudo. Na ficha do cliente (Atendimento), a entrevista com a advogada mostra só a data, quem participou e a duração: o resumo, a transcrição e o áudio têm dado de saúde (o áudio só para o Jurídico, proposta do cartão da GGVP-40). As conversas do próprio Atendimento aparecem inteiras.
+
 ## Risks / Trade-offs
 
 - [Fontes de "Como chegou" não são as do Airtable] → lista de exemplo, num arquivo só; trocar ao ligar no servidor. Os benefícios já são os do Airtable, normalizados no cartão GGVP-91 (desde a GGVP-21).
@@ -674,6 +844,12 @@ export const RegistroDaRenovacao = z.discriminatedUnion('resultado', [
 - [Limite de remarcações (G15) não está no cartão] → 2, decisão do Pedro em 05/10, num lugar só (`regras/agenda.ts`); o laço e o escalonamento são da GGVP-94. Levar ao cartão.
 - [O cartão fala em "link da ficha", e a ficha é em papel até o tablet chegar (Lucas e Pedro, 05/10)] → o convite pede a ficha em papel; quando o tablet chegar, troca o texto. Levar ao cartão.
 - [Google Meet e Chatwoot de verdade são serviços de fora] → link do Meet e conversa do Chatwoot simulados; ligar com a GGVP-102.
+- [Gravar de verdade pede o microfone e a OpenAI] → gravação e transcrição simuladas com a conversa de exemplo; o microfone (MediaRecorder) e a OpenAI entram ao ligar no servidor. As falhas abrem por `?simular=`.
+- [Achar senha falada no texto é aproximado] → a proteção principal é pausar no cofre (CA6); `tirarSenhas` pega o que parece senha perto de "senha", com teste. Senha soletrada em palavras ("um dois três") pode escapar: levar ao Lucas.
+- [Aviso "está editando" entre pessoas pede servidor] → entre abas do mesmo navegador pelo `BroadcastChannel`; o "salvar não apaga o do outro" fica no servidor de exemplo, com teste. Cada aba tem a sua semente, então a mescla não aparece entre abas.
+- [O catálogo do GGVP-91 não tem "LOAS representado (genitor)"] → caixa "Tem representante legal". Levar ao cartão.
+- [Quem vê a transcrição não está decidido] → Jurídico vê tudo; Atendimento vê a entrevista com a advogada só pela data, participantes e duração. Levar ao Lucas.
+- [A lista de profissões do Airtable não está aqui] → `PROFISSOES` de exemplo, num lugar só.
 
 ## Migration Plan
 

@@ -9,13 +9,14 @@ import { fichaComCpf, fichasParecidas } from '../regras/duplicidade.ts'
 import { IDADE_MAXIMA } from '../regras/formularios.ts'
 import { pastasDoCliente } from '../regras/pasta.ts'
 import { nomeBeneficio } from './catalogos.ts'
-import { fichasDeExemplo, pastasDeExemplo } from './exemplo.ts'
+import { fichasDeExemplo, gravacoesDeExemplo, pastasDeExemplo } from './exemplo.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
   Encaminhamento,
   EventoHistorico,
   Ficha,
+  Gravacao,
   FichaResumo,
   NovoCliente,
   PastaDrive,
@@ -26,7 +27,8 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 
-const CHAVE = 'ggv.exemplo.v4'
+/** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
+export const CHAVE = 'ggv.exemplo.v5'
 
 /** Sem login ainda: quem faz é a pessoa do Atendimento. */
 export const QUEM = 'Você (Atendimento)'
@@ -48,6 +50,8 @@ export type Banco = {
   cofre: RegistroDoCofre[]
   /** A seção médica que a IA leu da segunda ficha em papel: vai direto ao Jurídico, sem passar pela tela do Atendimento (GGVP-28). */
   leiturasMedicas: { fichaId: string; medicos: Partial<RespostasDaSegundaFicha> }[]
+  /** As gravações e as conversas sem áudio, guardadas para sempre (GGVP-40, GGVP-46). */
+  gravacoes: Gravacao[]
   seq: number
 }
 
@@ -79,7 +83,7 @@ export function agora(): Date {
 
 function semente(): Banco {
   const fichas = fichasDeExemplo(hojeIso(agora()))
-  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], internos: [], cofre: [], leiturasMedicas: [], seq: 0 }
+  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], internos: [], cofre: [], leiturasMedicas: [], gravacoes: gravacoesDeExemplo(), seq: 0 }
 }
 
 /** Para os outros arquivos do servidor de exemplo (documentos.ts). */
