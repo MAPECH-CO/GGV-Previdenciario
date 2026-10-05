@@ -11,7 +11,7 @@ export default defineConfig({
     {
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: 'http://127.0.0.1:3101/saude',
-      env: { PORTA: '3101', BANCO_LOCAL: 'memoria' },
+      env: { PORTA: '3101' },
       reuseExistingServer: false,
     },
     {

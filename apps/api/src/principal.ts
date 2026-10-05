@@ -1,5 +1,5 @@
 // Sobe a API. `pnpm dev` na raiz chama isto junto com a tela.
-// Sem DATABASE_URL, usa o banco embutido em apps/api/.banco-local, com usuários de exemplo.
+// Sem DATABASE_URL, usa o banco embutido na memória, com usuários de exemplo (src/banco/exemplo.ts).
 import { fileURLToPath } from 'node:url'
 import { abrirBanco } from './banco/conexao.ts'
 import { criarServidor } from './servidor.ts'

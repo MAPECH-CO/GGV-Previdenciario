@@ -17,8 +17,9 @@ export async function abrirBanco(url = process.env.DATABASE_URL): Promise<{ banc
     const banco = drizzle(url, { schema: esquema })
     return { banco, fechar: () => banco.$client.end() }
   }
-  // BANCO_LOCAL=memoria: banco limpo a cada start (Playwright).
-  return abrirBancoEmbutido(process.env.BANCO_LOCAL === 'memoria' ? undefined : pastaBancoLocal, true)
+  // Padrão: na memória, com os usuários de exemplo, limpo a cada start. No Windows o `--watch` mata a API no meio
+  // da gravação e corrompe a pasta; na memória isso não acontece. BANCO_LOCAL=pasta guarda em apps/api/.banco-local.
+  return abrirBancoEmbutido(process.env.BANCO_LOCAL === 'pasta' ? pastaBancoLocal : undefined, true)
 }
 
 /** Postgres embutido. `pasta` indefinida: só na memória. `semear`: usuários de exemplo, se o banco estiver vazio. */
