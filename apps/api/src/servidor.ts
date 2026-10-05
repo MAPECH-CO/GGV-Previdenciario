@@ -1,0 +1,52 @@
+import { existsSync } from 'node:fs'
+import fastifyStatic from '@fastify/static'
+import { sql } from 'drizzle-orm'
+import Fastify from 'fastify'
+import { Saude } from '@ggv/contratos'
+import type { Banco } from './banco/conexao.ts'
+import { registrarSessao } from './sessao/rotas.ts'
+
+type Opcoes = {
+  logger?: boolean
+  /** Banco do portal. Com ele entram o login e a trava de toda rota /api (GGVP-117). */
+  banco?: Banco
+  /** Faz uma consulta simples no banco e rejeita se ele não responder. Padrão: `select 1` no `banco`. */
+  consultarBanco?: () => Promise<unknown>
+  /** Pasta da tela montada (`apps/web/dist`). Existindo, a API serve a tela na mesma URL (homologação, GGVP-119). */
+  pastaTela?: string
+  /** Relógio, para o teste controlar a trava e a expiração. */
+  agora?: () => Date
+  /** Cookie só por HTTPS (homologação). */
+  cookieSeguro?: boolean
+}
+
+/** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro }: Opcoes = {}) {
+  const app = Fastify({ logger })
+  const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
+
+  app.get('/saude', async (_pedido, resposta): Promise<Saude> => {
+    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco' })
+    try {
+      await consultar()
+      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado' })
+    } catch {
+      resposta.code(503) // o deploy lê como falha e mantém a versão anterior no ar
+      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar' })
+    }
+  })
+
+  if (banco) registrarSessao(app, { banco, agora, cookieSeguro })
+
+  if (pastaTela && existsSync(pastaTela)) {
+    app.register(fastifyStatic, { root: pastaTela })
+    // A tela decide a rota pelo endereço (App.tsx): caminho desconhecido devolve o index.html; /api desconhecida é 404.
+    app.setNotFoundHandler((pedido, resposta) =>
+      pedido.method === 'GET' && !pedido.url.startsWith('/api/')
+        ? resposta.sendFile('index.html')
+        : resposta.code(404).send({ erro: 'Não encontrado.' }),
+    )
+  }
+
+  return app
+}

@@ -18,7 +18,7 @@ Sem dependência. TypeScript puro. Roda com `node --experimental-strip-types` (N
 ## Testar
 
 ```
-cd kit/campos
+cd packages/campos
 npm test
 ```
 
@@ -29,6 +29,6 @@ npm test
 3. No servidor: valida de novo com a mesma função dentro do schema Zod (`z.string().refine(validarCpf, 'CPF inválido')`). A tela nunca é a única trava.
 4. Teste Playwright da tela digita letra no campo de data e no de CPF e confere que não passa.
 
-## Para onde vai
+## No monorepo
 
-Na história **GGVP-108** o Mateus move esta pasta para `packages/campos` do monorepo, troca o `node --test` por Vitest, e o pacote passa a ser importado por `apps/web` e `apps/api`. As funções e os testes ficam iguais.
+Morava em `kit/campos`; na GGVP-118 veio para `packages/campos` sem mudar funções nem testes. Os outros pacotes importam de `@ggv/campos`. A troca do `node --test` por Vitest fica para a GGVP-108.
