@@ -5,8 +5,8 @@ import { normalizarCpf, normalizarNome } from '../campos.ts'
 import type { PastaDrive } from '../dados/tipos.ts'
 import { semAcento } from './busca.ts'
 
-/** Uma letra trocada, a mais ou a menos. */
-function umaLetraDeDiferenca(a: string, b: string): boolean {
+/** Uma letra trocada, a mais ou a menos. A leitura da IA usa a mesma tolerância (GGVP-81). */
+export function umaLetraDeDiferenca(a: string, b: string): boolean {
   if (a === b || Math.abs(a.length - b.length) > 1) return false
   let i = 0
   while (a[i] === b[i]) i++

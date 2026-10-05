@@ -39,6 +39,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Tarefa não encontrada' })).toBeTruthy()
   })
 
+  it('GGVP-81 · em /clientes/:id/conferir-documentos abre a conferência da leitura da IA', async () => {
+    zerarExemplo()
+    render(<App caminho="/clientes/rita-exemplo/conferir-documentos" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir documento' })).toBeTruthy()
+  })
+
   it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)

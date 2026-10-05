@@ -169,6 +169,8 @@ export type Ficha = {
   arquivos: Arquivo[]
   /** Ficha criada pela automação do scanner: pode chegar sem telefone (GGVP-17, CA15). */
   origem?: 'scanner'
+  /** Número do RG, como a IA leu do documento e a Documentação confirmou (GGVP-81, CA3). */
+  rg?: string
 }
 
 /** Uma pessoa na lista da busca do balcão. */

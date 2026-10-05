@@ -10,6 +10,7 @@ import { IDADE_MAXIMA } from '../regras/formularios.ts'
 import { pastasDoCliente } from '../regras/pasta.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { fichasDeExemplo, pastasDeExemplo } from './exemplo.ts'
+import type { DocumentoLido } from './leitura.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
@@ -49,6 +50,8 @@ export type Banco = {
   /** A seção médica que a IA leu da segunda ficha em papel: vai direto ao Jurídico, sem passar pela tela do Atendimento (GGVP-28). */
   leiturasMedicas: { fichaId: string; medicos: Partial<RespostasDaSegundaFicha> }[]
   seq: number
+  /** O que a IA leu de cada documento que entrou, para a Documentação conferir e arquivar (GGVP-81). Nasce em leitura.ts. */
+  leituras?: DocumentoLido[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
