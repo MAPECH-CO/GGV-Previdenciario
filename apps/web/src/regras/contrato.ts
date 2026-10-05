@@ -1,5 +1,7 @@
 // O contrato do caso, do kit à cópia (GGVP-65 em diante). Regra do escritório é código com teste, nunca resposta de modelo.
 // A tabela dos kits é a do cartão GGVP-65 (board do escritório); a manutenção pela gestão vem com a GGVP-104.
+import { formatarCpf, formatarTelefone, normalizarCpf, normalizarNome, normalizarTelefone } from '../campos.ts'
+import { erroCpf, erroNome, erroTelefone } from './formularios.ts'
 
 export type DocumentoDoKit =
   | 'contrato'
@@ -203,4 +205,237 @@ export function montarKit(beneficio: string, condicoes: CondicoesDoKit = SEM_CON
     assinam: representado ? ['o representado (cliente)', 'o genitor ou a genitora (representante legal)'] : ['o cliente'],
     ...(linha.acaoContra && { acaoContra: linha.acaoContra }),
   }
+}
+
+// GGVP-69 · preencher o modelo com os dados do cliente e do processo e conferir antes de mandar assinar.
+
+export type CampoDoModelo =
+  | 'nome'
+  | 'estadoCivil'
+  | 'profissao'
+  | 'cpf'
+  | 'rg'
+  | 'endereco'
+  | 'telefone'
+  | 'beneficio'
+  | 'parteContraria'
+  | 'representanteNome'
+  | 'representanteCpf'
+  | 'representanteRg'
+  | 'representanteParentesco'
+
+export const ROTULOS_DOS_CAMPOS: Record<CampoDoModelo, string> = {
+  nome: 'Nome completo',
+  estadoCivil: 'Estado civil',
+  profissao: 'Profissão',
+  cpf: 'CPF',
+  rg: 'RG',
+  endereco: 'Endereço',
+  telefone: 'Telefone',
+  beneficio: 'Benefício',
+  parteContraria: 'Parte contrária',
+  representanteNome: 'Nome do representante',
+  representanteCpf: 'CPF do representante',
+  representanteRg: 'RG do representante',
+  representanteParentesco: 'Parentesco do representante',
+}
+
+/** De onde veio cada campo (CA5). */
+export type Origem = 'cadastro' | 'ficha' | 'documento' | 'caso' | 'corrigido'
+
+export const ROTULOS_DAS_ORIGENS: Record<Origem, string> = {
+  cadastro: 'cadastro',
+  ficha: 'ficha de atendimento',
+  documento: 'documento na pasta',
+  caso: 'caso',
+  corrigido: 'corrigido aqui',
+}
+
+export type CampoPreenchido = { campo: CampoDoModelo; rotulo: string; valor: string; origem: Origem; obrigatorio: boolean }
+
+/** O que o contrato guarda e a ficha não tem: o RG, a parte contrária escrita e o representante (CA1). */
+export type DadosDoContrato = Partial<
+  Record<'rg' | 'parteContraria' | 'representanteNome' | 'representanteCpf' | 'representanteRg' | 'representanteParentesco', string>
+>
+
+export const PARENTESCOS = [
+  { id: 'genitora', nome: 'Genitora' },
+  { id: 'genitor', nome: 'Genitor' },
+]
+
+/** A parte contrária dos kits do INSS. */
+export const INSS = 'Instituto Nacional do Seguro Social (INSS)'
+
+/** Nos kits do INSS, o INSS; no empréstimo e no seguro, a pessoa escreve; na curatela, não há. */
+export function parteContrariaDoKit(linha: LinhaDoKit | undefined): 'inss' | 'escrever' | 'nao-ha' {
+  if (linha?.termoInss) return 'inss'
+  return linha?.acaoContra ? 'escrever' : 'nao-ha'
+}
+
+/** O que a montagem dos campos precisa da ficha: os dados pessoais e o que já está na pasta. */
+export type FichaParaOModelo = {
+  nome: string
+  cpf?: string
+  telefone: string
+  estadoCivil?: string
+  profissao?: string
+  endereco?: string
+  /** A ficha de atendimento foi preenchida no portal (GGVP-24). */
+  fichaAtendimento?: unknown
+  documentos: { nome: string }[]
+  arquivos: { tipo: string }[]
+}
+
+const formatar = (campo: CampoDoModelo, valor: string) =>
+  campo === 'cpf' || campo === 'representanteCpf' ? formatarCpf(valor) : campo === 'telefone' ? formatarTelefone(valor) : valor
+
+/**
+ * Os campos do modelo, com o valor e de onde veio (CA1, CA5). O representante só entra no LOAS representado (CA9); a parte
+ * contrária, quando o kit tem uma.
+ */
+export function camposDoModelo(entrada: {
+  ficha: FichaParaOModelo
+  beneficio: string
+  nomeDoBeneficio: string
+  condicoes: CondicoesDoKit
+  dados: DadosDoContrato
+  corrigidos: CampoDoModelo[]
+}): CampoPreenchido[] {
+  const { ficha, beneficio, nomeDoBeneficio, condicoes, dados, corrigidos } = entrada
+  const linha = linhaDoBeneficio(beneficio)
+  const daTriagem = ficha.fichaAtendimento !== undefined
+  const cpfNaPasta = ficha.documentos.some((d) => d.nome === 'CPF') || ficha.arquivos.some((a) => a.tipo === 'cpf')
+  const rgNaPasta = ficha.documentos.some((d) => d.nome === 'RG') || ficha.arquivos.some((a) => a.tipo === 'rg')
+  const campos: [CampoDoModelo, string | undefined, Origem][] = [
+    ['nome', ficha.nome, daTriagem ? 'ficha' : 'cadastro'],
+    ['estadoCivil', ficha.estadoCivil, 'cadastro'],
+    ['profissao', ficha.profissao, 'cadastro'],
+    ['cpf', ficha.cpf, cpfNaPasta ? 'documento' : daTriagem ? 'ficha' : 'cadastro'],
+    ['rg', dados.rg, rgNaPasta ? 'documento' : 'cadastro'],
+    ['endereco', ficha.endereco, daTriagem ? 'ficha' : 'cadastro'],
+    ['telefone', ficha.telefone, daTriagem ? 'ficha' : 'cadastro'],
+    ['beneficio', nomeDoBeneficio, 'caso'],
+  ]
+  const parte = parteContrariaDoKit(linha)
+  if (parte !== 'nao-ha') campos.push(['parteContraria', parte === 'inss' ? INSS : dados.parteContraria, 'caso'])
+  if (linha?.loas && condicoes.representado) {
+    const parentesco = PARENTESCOS.find((p) => p.id === dados.representanteParentesco)?.nome
+    campos.push(
+      ['representanteNome', dados.representanteNome, 'caso'],
+      ['representanteCpf', dados.representanteCpf, 'caso'],
+      ['representanteRg', dados.representanteRg, 'caso'],
+      ['representanteParentesco', parentesco, 'caso'],
+    )
+  }
+  return campos.map(([campo, valor, origem]) => ({
+    campo,
+    rotulo: ROTULOS_DOS_CAMPOS[campo],
+    valor: valor ? formatar(campo, valor) : '',
+    origem: corrigidos.includes(campo) ? 'corrigido' : origem,
+    obrigatorio: true,
+  }))
+}
+
+export const faltando = (campos: CampoPreenchido[]) => campos.filter((c) => c.obrigatorio && c.valor.trim() === '').map((c) => c.campo)
+
+/** O que a pessoa corrige na tela: o benefício não (ele muda o kit), nem a parte contrária dos kits do INSS. */
+export const corrigivel = (c: CampoPreenchido) => c.campo !== 'beneficio' && !(c.campo === 'parteContraria' && c.valor === INSS)
+
+const TAMANHOS: Partial<Record<CampoDoModelo, number>> = { estadoCivil: 40, profissao: 200, endereco: 200, parteContraria: 120 }
+
+export const MENSAGENS_DO_CONTRATO = {
+  rg: 'RG com 5 a 20 letras e números.',
+  texto: 'Preencha este campo.',
+  parentesco: 'Escolha genitora ou genitor.',
+} as const
+
+/** RG: letras, números e a pontuação, de 5 a 20. A biblioteca campos não tem RG. */
+export function erroRg(valor: string): string | undefined {
+  return /^[0-9A-Za-z.\-/ ]{5,20}$/.test(valor.trim()) ? undefined : MENSAGENS_DO_CONTRATO.rg
+}
+
+/** A mensagem embaixo de cada campo corrigido, pela biblioteca campos; o servidor valida de novo (CA3, CA7). */
+export function erroDoCampo(campo: CampoDoModelo, valor: string): string | undefined {
+  if (campo === 'nome' || campo === 'representanteNome') return erroNome(valor)
+  if (campo === 'cpf' || campo === 'representanteCpf') return erroCpf(valor, true)
+  if (campo === 'telefone') return erroTelefone(valor)
+  if (campo === 'rg' || campo === 'representanteRg') return erroRg(valor)
+  if (campo === 'representanteParentesco') return PARENTESCOS.some((p) => p.id === valor) ? undefined : MENSAGENS_DO_CONTRATO.parentesco
+  const tamanho = TAMANHOS[campo] ?? 200
+  return valor.trim() !== '' && valor.trim().length <= tamanho ? undefined : MENSAGENS_DO_CONTRATO.texto
+}
+
+/** O valor que fica guardado: CPF e telefone só com números, nome sem espaço sobrando. */
+export function normalizarCampo(campo: CampoDoModelo, valor: string): string {
+  if (campo === 'cpf' || campo === 'representanteCpf') return normalizarCpf(valor)
+  if (campo === 'telefone') return normalizarTelefone(valor)
+  if (campo === 'nome' || campo === 'representanteNome') return normalizarNome(valor)
+  return valor.trim()
+}
+
+/** As quatro conferências antes de "Gerar contrato" (CA6, Figma 10:143). */
+export const CONFERENCIAS = [
+  { id: 'campos', rotulo: 'Campos certos e completos' },
+  { id: 'datas', rotulo: 'Datas feitas à mão serão preenchidas na assinatura' },
+  { id: 'fichaLoas', rotulo: 'Ficha LOAS: cliente ou representante legal (se aplicável)' },
+  { id: 'codigoPenal', rotulo: 'A página do Código Penal não tem assinatura' },
+] as const
+
+export type IdDaConferencia = (typeof CONFERENCIAS)[number]['id']
+
+/** A lista "O que conferir" (CA2). */
+export const O_QUE_CONFERIR = [
+  'As datas feitas à mão: no papel saem em branco, para preencher na assinatura, menos o contrato de honorários; no ZapSign, vale a data da assinatura.',
+  'Na ficha LOAS: se quem assina é o cliente ou o representante legal.',
+  'A página do Código Penal vai sem assinatura.',
+]
+
+const juntar = (itens: string[]) => (itens.length <= 1 ? itens.join('') : `${itens.slice(0, -1).join(', ')} e ${itens.at(-1)}`)
+
+/** Por que "Gerar contrato" ainda não habilita; nulo quando habilita (CA6, CA7). */
+export function motivoParadoDoGerar(estado: {
+  aprovados: boolean | null
+  oQueCorrigir: string
+  conferencias: Partial<Record<IdDaConferencia, boolean>>
+  faltam: CampoDoModelo[]
+}): string | null {
+  if (estado.aprovados === null) return 'Responda se os documentos foram aprovados.'
+  if (!estado.aprovados && estado.oQueCorrigir.trim().length < 3) return 'Escreva o que corrigir.'
+  if (estado.faltam.length > 0) return `Falta: ${juntar(estado.faltam.map((c) => ROTULOS_DOS_CAMPOS[c]))}.`
+  if (CONFERENCIAS.some((c) => !estado.conferencias[c.id])) return 'Marque as quatro conferências.'
+  return null
+}
+
+export type FormaDeAssinar = 'digital' | 'papel'
+
+/**
+ * A data de cada documento do kit (CA4): no papel, em branco para preencher à mão na assinatura, menos o contrato de
+ * honorários, que sai com a data de hoje; no ZapSign, a data da assinatura.
+ */
+export function datasDoKit(kit: KitMontado, forma: FormaDeAssinar, hoje: string): { documento: string; data: string }[] {
+  const [a, m, d] = hoje.split('-')
+  return kit.documentos.map((doc) => ({
+    documento: doc.nome,
+    data: forma === 'digital' ? 'data da assinatura no ZapSign' : doc.id === 'contrato' ? `${d}/${m}/${a}` : 'em branco, à mão na assinatura',
+  }))
+}
+
+/** O identificador do modelo, o mesmo na pasta "MODELOS ZAPSIGN · PREV" e no ZapSign (CA10). */
+export const identificadorDoModelo = (m: Modelo) => `${m.id}-v${m.versao}`
+
+export const caminhoDoModelo = (m: Modelo) => `${PASTA_DOS_MODELOS}/${identificadorDoModelo(m)}`
+
+/** Os honorários vêm do modelo, sem campo para digitar (CA11). */
+export const honorariosDoModelo = (m: Modelo) => m.honorarios ?? `os do ${m.nome}`
+
+/** Troca cada {{campo}} do modelo pelo valor; o que não tem valor fica como está, para a verificação achar. */
+export function preencherModelo(texto: string, valores: Record<string, string>): string {
+  return texto.replace(/\{\{(\w+)\}\}/g, (marca, campo: string) => valores[campo] || marca)
+}
+
+/** O que sobrou do modelo no texto gerado: campo {{...}} sem valor ou dado do cliente de exemplo do modelo (CA8). */
+export function restosDoModelo(texto: string, dadosDoExemplo: string[]): string[] {
+  const campos = texto.match(/\{\{\w+\}\}/g) ?? []
+  const exemplo = dadosDoExemplo.filter((d) => texto.toLowerCase().includes(d.toLowerCase()))
+  return [...new Set([...campos, ...exemplo])]
 }

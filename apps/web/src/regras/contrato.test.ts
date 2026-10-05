@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { BENEFICIOS } from '../dados/catalogos.ts'
-import { KITS, MODELOS, SEM_CONDICOES, linhaDoBeneficio, montarKit } from './contrato.ts'
+import { CPF_DE_TESTE } from '../dados/exemplo.ts'
+import {
+  INSS,
+  KITS,
+  MODELOS,
+  SEM_CONDICOES,
+  camposDoModelo,
+  caminhoDoModelo,
+  datasDoKit,
+  erroDoCampo,
+  faltando,
+  honorariosDoModelo,
+  identificadorDoModelo,
+  linhaDoBeneficio,
+  modeloPorId,
+  montarKit,
+  motivoParadoDoGerar,
+  normalizarCampo,
+  preencherModelo,
+  restosDoModelo,
+  type FichaParaOModelo,
+} from './contrato.ts'
 
 const ids = (beneficio: string, condicoes = SEM_CONDICOES) => montarKit(beneficio, condicoes)?.documentos.map((d) => d.id)
 const BASE = ['contrato', 'procuracao', 'hipossuficiencia', 'residencia', 'termo-inss', 'codigo-penal']
@@ -96,5 +117,120 @@ describe('GGVP-65 · kit de documentos por benefício', () => {
     const tudo = { representado: true, moradia: true, uniaoEstavel: true, separacaoDeFato: true }
     expect(ids('aposentadoria-idade', tudo)).toEqual(BASE)
     expect(montarKit('aposentadoria-idade', tudo)?.assinam).toEqual(['o cliente'])
+  })
+})
+
+const antonio: FichaParaOModelo = {
+  nome: 'Antônio Exemplo',
+  cpf: CPF_DE_TESTE,
+  telefone: '11900000001',
+  estadoCivil: 'Casado',
+  profissao: 'porteiro',
+  documentos: [{ nome: 'RG' }, { nome: 'CPF' }],
+  arquivos: [],
+}
+const campos = (ficha: FichaParaOModelo, beneficio: string, extra: Partial<Parameters<typeof camposDoModelo>[0]> = {}) =>
+  camposDoModelo({ ficha, beneficio, nomeDoBeneficio: 'Benefício', condicoes: SEM_CONDICOES, dados: {}, corrigidos: [], ...extra })
+
+describe('GGVP-69 · preencher o contrato pelo modelo e conferir', () => {
+  it('CA1 e CA5 · o modelo traz os dados do cliente e do processo, cada um com de onde veio', () => {
+    const lista = campos(antonio, 'aposentadoria-idade', { dados: { rg: '12.345.678-X' } })
+    expect(lista.map((c) => [c.rotulo, c.valor, c.origem])).toEqual([
+      ['Nome completo', 'Antônio Exemplo', 'cadastro'],
+      ['Estado civil', 'Casado', 'cadastro'],
+      ['Profissão', 'porteiro', 'cadastro'],
+      ['CPF', '000.000.001-91', 'documento'],
+      ['RG', '12.345.678-X', 'documento'],
+      ['Endereço', '', 'cadastro'],
+      ['Telefone', '(11) 90000-0001', 'cadastro'],
+      ['Benefício', 'Benefício', 'caso'],
+      ['Parte contrária', INSS, 'caso'],
+    ])
+    expect(faltando(lista)).toEqual(['endereco'])
+  })
+
+  it('CA5 · com a ficha de atendimento preenchida no portal, os dados dela vêm da ficha; o que se corrigiu aqui aparece', () => {
+    const lista = campos({ ...antonio, documentos: [], fichaAtendimento: {} }, 'aposentadoria-idade', { corrigidos: ['estadoCivil'] })
+    expect(lista.find((c) => c.campo === 'nome')?.origem).toBe('ficha')
+    expect(lista.find((c) => c.campo === 'cpf')?.origem).toBe('ficha')
+    expect(lista.find((c) => c.campo === 'estadoCivil')?.origem).toBe('corrigido')
+  })
+
+  it('CA1 e CA9 · o representante só aparece no LOAS representado', () => {
+    expect(campos(antonio, 'loas-deficiente').some((c) => c.campo.startsWith('representante'))).toBe(false)
+    const comRepresentante = campos(antonio, 'loas-deficiente', {
+      condicoes: { ...SEM_CONDICOES, representado: true },
+      dados: { representanteNome: 'Maria Exemplo', representanteParentesco: 'genitora' },
+    })
+    expect(comRepresentante.filter((c) => c.campo.startsWith('representante')).map((c) => [c.rotulo, c.valor])).toEqual([
+      ['Nome do representante', 'Maria Exemplo'],
+      ['CPF do representante', ''],
+      ['RG do representante', ''],
+      ['Parentesco do representante', 'Genitora'],
+    ])
+    const fora = campos(antonio, 'aposentadoria-idade', { condicoes: { ...SEM_CONDICOES, representado: true } })
+    expect(fora.some((c) => c.campo.startsWith('representante'))).toBe(false)
+  })
+
+  it('CA1 · a parte contrária: o INSS nos kits do INSS, escrita no empréstimo e no seguro, nenhuma na curatela', () => {
+    expect(campos(antonio, 'loas-idoso').find((c) => c.campo === 'parteContraria')?.valor).toBe(INSS)
+    expect(campos(antonio, 'emprestimo-indevido').find((c) => c.campo === 'parteContraria')?.valor).toBe('')
+    const seguro = campos(antonio, 'seguro-vida', { dados: { parteContraria: 'Seguradora Exemplo' } })
+    expect(seguro.find((c) => c.campo === 'parteContraria')?.valor).toBe('Seguradora Exemplo')
+    expect(campos(antonio, 'curatela').some((c) => c.campo === 'parteContraria')).toBe(false)
+  })
+
+  it('CA3 e CA7 · cada campo corrigido passa pela biblioteca campos', () => {
+    expect(erroDoCampo('cpf', '000.000.001-92')).toBe('CPF inválido: confira os 11 números.')
+    expect(erroDoCampo('cpf', '000.000.001-91')).toBeUndefined()
+    expect(erroDoCampo('nome', 'Ant0nio')).toBe('Escreva o nome completo, só com letras.')
+    expect(erroDoCampo('telefone', '90000-0001')).toBe('Telefone com DDD: 10 ou 11 números.')
+    expect(erroDoCampo('rg', '12')).toBe('RG com 5 a 20 letras e números.')
+    expect(erroDoCampo('rg', '12.345.678-X')).toBeUndefined()
+    expect(erroDoCampo('endereco', '   ')).toBe('Preencha este campo.')
+    expect(erroDoCampo('estadoCivil', 'x'.repeat(41))).toBe('Preencha este campo.')
+    expect(erroDoCampo('representanteParentesco', 'tia')).toBe('Escolha genitora ou genitor.')
+    expect(normalizarCampo('cpf', '000.000.001-91')).toBe(CPF_DE_TESTE)
+    expect(normalizarCampo('telefone', '(11) 90000-0001')).toBe('11900000001')
+  })
+
+  it('CA6 e CA7 · "Gerar contrato" só com a decisão, o que corrigir no "Não", sem campo vazio e as quatro conferências', () => {
+    const todas = { campos: true, datas: true, fichaLoas: true, codigoPenal: true }
+    const motivo = (aprovados: boolean | null, oQueCorrigir: string, faltam: Parameters<typeof motivoParadoDoGerar>[0]['faltam'] = [], conferencias = todas) =>
+      motivoParadoDoGerar({ aprovados, oQueCorrigir, conferencias, faltam })
+    expect(motivo(null, '')).toBe('Responda se os documentos foram aprovados.')
+    expect(motivo(false, '')).toBe('Escreva o que corrigir.')
+    expect(motivo(true, '', ['cpf', 'rg', 'endereco'])).toBe('Falta: CPF, RG e Endereço.')
+    expect(motivo(true, '', [], { ...todas, codigoPenal: false })).toBe('Marque as quatro conferências.')
+    expect(motivo(true, '')).toBeNull()
+    expect(motivo(false, 'o RG')).toBeNull()
+  })
+
+  it('CA4 · no papel as datas saem em branco, menos o contrato de honorários; no ZapSign, a data da assinatura', () => {
+    const kit = montarKit('aposentadoria-idade')!
+    const papel = datasDoKit(kit, 'papel', '2026-10-05')
+    expect(papel[0]).toEqual({ documento: 'Contrato de honorários', data: '05/10/2026' })
+    expect(papel.slice(1).every((d) => d.data === 'em branco, à mão na assinatura')).toBe(true)
+    expect(datasDoKit(kit, 'digital', '2026-10-05').every((d) => d.data === 'data da assinatura no ZapSign')).toBe(true)
+  })
+
+  it('CA8 · a verificação acha campo do modelo sem valor e dado do cliente de exemplo', () => {
+    const modelo = 'CONTRATO. {{nome}}, CPF {{cpf}}, contra {{parteContraria}}. Testemunha: Fulana Exemplo do Modelo.'
+    const texto = preencherModelo(modelo, { nome: 'Antônio Exemplo', cpf: '000.000.001-91', parteContraria: '' })
+    expect(texto).toBe('CONTRATO. Antônio Exemplo, CPF 000.000.001-91, contra {{parteContraria}}. Testemunha: Fulana Exemplo do Modelo.')
+    expect(restosDoModelo(texto, ['fulana exemplo do modelo'])).toEqual(['{{parteContraria}}', 'fulana exemplo do modelo'])
+    expect(restosDoModelo('CONTRATO. Antônio Exemplo.', ['Fulana Exemplo do Modelo'])).toEqual([])
+  })
+
+  it('CA10 · o modelo tem o mesmo identificador na pasta e no ZapSign', () => {
+    const m = modeloPorId('contrato-completo-2026')
+    expect(identificadorDoModelo(m)).toBe('contrato-completo-2026-v1')
+    expect(caminhoDoModelo(m)).toBe('MODELOS ZAPSIGN · PREV/contrato-completo-2026-v1')
+    expect(new Set(MODELOS.map(identificadorDoModelo)).size).toBe(MODELOS.length)
+  })
+
+  it('CA11 · os honorários vêm do modelo, sem campo para digitar', () => {
+    expect(honorariosDoModelo(modeloPorId('contrato-completo-2026'))).toBe('20% do êxito (ad exitum)')
+    expect(honorariosDoModelo(modeloPorId('modelo-8'))).toBe('os do modelo 8')
   })
 })

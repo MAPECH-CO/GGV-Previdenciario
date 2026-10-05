@@ -1,0 +1,68 @@
+/* Documento preenchido (GGVP-69). O cartão vem de Balcao.module.css (telas de passo). */
+.modelo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.campos {
+  display: flex;
+  flex-direction: column;
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.linha:last-child {
+  border-bottom: 0;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.valor {
+  overflow-wrap: anywhere;
+}
+
+.valor[data-falta='true'] {
+  color: var(--cor-erro);
+  font-weight: 600;
+}
+
+.origem {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  white-space: nowrap;
+}
+
+.caixa {
+  display: flex;
+  padding: 8px 0;
+}
+
+.caixa input,
+.caixa select {
+  padding: 9px 12px;
+  font-size: var(--fonte-14);
+}
+
+@media (max-width: 560px) {
+  .linha {
+    grid-template-columns: 1fr;
+  }
+
+  .origem {
+    justify-self: start;
+  }
+}
