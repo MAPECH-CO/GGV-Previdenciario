@@ -1,0 +1,87 @@
+/* O resto vem de Balcao.module.css: o visual das telas de passo (Figma step_D1.21, 1818:2). */
+.cartaoTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.itens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.itemTexto {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.itemNome {
+  font-size: var(--fonte-15);
+}
+
+.itemDetalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+/* Selos "ok", "falta" e "problema" do Figma (1818:2). */
+.ok,
+.falta,
+.problema,
+.completo,
+.incompleto {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border-radius: var(--raio-pilula);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ok,
+.completo {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.falta,
+.incompleto {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.problema {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+/* "Em aberto: …" do Figma: caixa cinza com a nota da lista. */
+.nota {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}

@@ -45,6 +45,15 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir documento' })).toBeTruthy()
   })
 
+  it('GGVP-91 · em /casos/:id/checklist abre o checklist do caso; caso que não existe avisa', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/rita-exemplo-1/checklist" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir checklist' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/nenhum/checklist" />)
+    expect(await screen.findByRole('heading', { name: 'Caso não encontrado' })).toBeTruthy()
+  })
+
   it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)

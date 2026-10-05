@@ -48,7 +48,11 @@ describe('Conferir documento · tela do passo', () => {
     expect(await screen.findByRole('heading', { name: '✓ Arquivado às 14:32' })).toBeTruthy()
     expect(screen.getByText(/3 documentos arquivados na pasta de Rita Exemplo no Drive; 1 cópia descartada, com o original guardado/)).toBeTruthy()
     // CA14: o checklist foi recalculado; a quarentena continua à vista.
-    expect(screen.getByText('O checklist do LOAS Deficiente foi recalculado com o que entrou.')).toBeTruthy()
+    expect(
+      await screen.findByText(
+        'O checklist do LOAS Deficiente foi recalculado com o que entrou. Ainda falta: Documento pessoal (CPF), Comprovante de renda, Cadastro Único (CadÚnico), Ficha de grupo familiar e Declaração de moradia.',
+      ),
+    ).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Abrir o checklist' }).getAttribute('href')).toBe('/casos/rita-exemplo-1/checklist')
     expect(screen.getByRole('heading', { name: /Em quarentena/ })).toBeTruthy()
   })

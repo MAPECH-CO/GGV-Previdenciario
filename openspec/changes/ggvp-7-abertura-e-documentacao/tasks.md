@@ -29,6 +29,13 @@
 
 ## GGVP-91 · Checklist de documentos obrigatórios do benefício
 
+- [x] 8.1 Contrato: tipos em `apps/web/src/regras/checklist.ts` (item, checklist, lista do benefício, condição) e em `src/dados/checklist.ts` (conferência); `checklists` opcional no `Banco`; os documentos do LOAS e as notas do produtor no fim de `TIPOS_DE_DOCUMENTO`; a leitura guarda a hora do "Arquivar" e aponta "sem assinatura" e "data em branco". Verifica com `npm run typecheck`.
+- [x] 8.2 Regras com teste: `src/regras/checklist.ts` (contrato do kit, lista do benefício, condicionais do caso, documentos da entrevista sem repetir, recebido, pendente pelo G1 e problema pela quarentena, "completo" calculado, sem lista nunca completa, trava da liberação com o que falta), com teste em `src/regras/checklist.test.ts` (CA1, CA2, CA3, CA5, CA6, CA7, CA8, CA10). Verifica com `npx vitest run src/regras/checklist.test.ts`.
+- [x] 8.3 Servidor de exemplo: `src/dados/checklist.ts` (a configuração de exemplo só com o LOAS, o que a entrevista pediu à Rita e ao Antônio, o contrato assinado até a junção com o grupo contrato, `obterChecklist`, `conferirChecklist` e a tarefa "Conferir checklist" depois da leitura arquivada), com teste em `src/dados/checklist.test.ts` (CA1, CA2, CA5, CA6, CA7, CA8, CA9, CA10). Verifica com `npx vitest run src/dados/checklist.test.ts`.
+- [x] 8.4 Tela do passo `/casos/:processoId/checklist` (`src/paginas/ConferirChecklist.tsx`, Figma `1818:2`): topo, instruções, "Checklist · benefício" com ok, falta e problema e o porquê de cada item, situação calculada, aviso do benefício sem lista, trava da liberação, a nota da lista e "Concluir a conferência"; rota em `App.tsx`; a Central mostra "Conferir checklist"; a conferência de documentos mostra o que ainda falta depois de arquivar; teste em `ConferirChecklist.test.tsx`, `ConferirDocumentos.test.tsx`, `App.test.tsx` e `CentralAtendimento.test.tsx` (CA1, CA2, CA3, CA5, CA6, CA7; GGVP-81 CA14). Verifica com `npx vitest run src/paginas/ConferirChecklist.test.tsx`.
+- [x] 8.5 Playwright `e2e/checklist.e2e.ts`: da leitura arquivada ao checklist da Rita, incompleto e com a liberação bloqueada, e "Concluir a conferência" (CA1, CA3, CA5, CA7); benefício sem lista (CA6); tema escuro e fonte grande. Verifica com `npm run e2e`.
+- [ ] 8.6 Ligar no servidor: trocar o corpo das funções de `src/dados/checklist.ts` por `fetch` nos endpoints da spec e ler as listas da configuração do escritório (GGVP-104) e a lista da entrevista (GGVP-46). Depende do GGVP-118, do banco do Mateus, da GGVP-104 e da GGVP-46. **Fica aberta nesta história.**
+
 ## GGVP-97 · Boas-vindas ao cliente
 
 ## GGVP-101 · Cobrar os documentos pendentes

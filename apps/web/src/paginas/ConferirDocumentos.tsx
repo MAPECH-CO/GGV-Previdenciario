@@ -4,6 +4,7 @@ import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { dataParaIso, isoParaData, normalizarData, validarData } from '../campos.ts'
 import { TIPOS_DE_DOCUMENTO, nomeBeneficio, nomeTipo } from '../dados/catalogos.ts'
+import { obterChecklist } from '../dados/checklist.ts'
 import {
   arquivarDocumentos,
   documentosLidos,
@@ -14,6 +15,7 @@ import {
   type DocumentoLido,
   type RespostaArquivamento,
 } from '../dados/leitura.ts'
+import { juntar } from '../regras/checklist.ts'
 import { hora } from '../regras/datas.ts'
 import {
   ROTULOS_DOS_CAMPOS,
@@ -51,6 +53,8 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
   const [aviso, setAviso] = useState('')
   const [arquivando, setArquivando] = useState(false)
   const [feito, setFeito] = useState<RespostaArquivamento | null>(null)
+  // O que o checklist recalculado diz que ainda falta (CA14, GGVP-91).
+  const [faltam, setFaltam] = useState<string[] | null>(null)
   const [erro, setErro] = useState('')
   // Trava no mesmo clique, antes de o React redesenhar o botão.
   const travado = useRef(false)
@@ -112,6 +116,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
         duplicados: copias.length > 0 ? decisao : undefined,
       })
       setFeito(resposta)
+      if (resposta.processoId) setFaltam((await obterChecklist(resposta.processoId))?.checklist.faltam ?? null)
       await recarregar()
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para arquivar.')
@@ -261,7 +266,10 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                 conferência ficou no histórico da ficha.
               </p>
               {feito.contrato && <p>O contrato assinado segue para a verificação do contrato.</p>}
-              <p>O checklist {beneficio ? `do ${beneficio} ` : ''}foi recalculado com o que entrou.</p>
+              <p>
+                O checklist {beneficio ? `do ${beneficio} ` : ''}foi recalculado com o que entrou.
+                {faltam && (faltam.length === 0 ? ' Nada falta.' : ` Ainda falta: ${juntar(faltam)}.`)}
+              </p>
               {emQuarentena.length > 0 && <p>{plural(emQuarentena.length, 'documento continua', 'documentos continuam')} em quarentena: confira de quem é abaixo.</p>}
               <div className={styles.atalhos}>
                 {feito.processoId && (
@@ -342,6 +350,8 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                               {d.duplicadoDe && (
                                 <span className={proprio.seloAlerta}>possível duplicado de {original ? nomeTipo(original.tipo) : 'um documento já arquivado'}</span>
                               )}
+                              {d.semAssinatura && <span className={proprio.seloAlerta}>sem assinatura (G1)</span>}
+                              {d.dataEmBranco && <span className={proprio.seloAlerta}>data em branco (G1)</span>}
                               {ehMedico(e.tipo) && <span className={proprio.selo}>documento médico</span>}
                             </span>
                           </span>

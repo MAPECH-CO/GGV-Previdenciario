@@ -5,7 +5,7 @@
 import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { localDoTipo, nomeSemSobrescrever } from '../regras/arquivos.ts'
-import { fichasCitadas } from '../regras/busca.ts'
+import { fichasCitadas, semAcento } from '../regras/busca.ts'
 import { hojeIso } from '../regras/datas.ts'
 import { fichaComCpf } from '../regras/duplicidade.ts'
 import {
@@ -48,6 +48,11 @@ export type DocumentoLido = {
   situacao: SituacaoDoLido
   /** Data e hora ISO em que a leitura terminou: conta a idade da quarentena (CA12). */
   lidoEm: string
+  /** A IA não achou a assinatura do cliente, ou achou a data em branco: o item do checklist fica pendente (GGVP-91, G1). */
+  semAssinatura?: boolean
+  dataEmBranco?: boolean
+  /** Data e hora ISO do "Arquivar": o checklist é conferido de novo depois disso (GGVP-91). */
+  arquivadoEm?: string
 }
 
 /** "Arquivar" (CA7, CA9). Só depois de "Conferi os documentos lidos pela IA". */
@@ -121,6 +126,8 @@ function lerComIA(ficha: Ficha, arquivo: Arquivo, leituras: DocumentoLido[]): Do
     ? ficha.arquivos.find((a) => a !== arquivo && a.hash !== undefined && a.hash === arquivo.hash)
     : undefined
   const quarentena = motivoDaQuarentena(lidos, ficha)
+  // ponytail: a falta de assinatura e a data em branco vêm do nome do arquivo, como o tipo na GGVP-17; a IA de verdade lê o papel.
+  const nome = semAcento(arquivo.nome)
   return {
     id: `${ficha.id}/${arquivo.nome}`,
     fichaId: ficha.id,
@@ -134,11 +141,13 @@ function lerComIA(ficha: Ficha, arquivo: Arquivo, leituras: DocumentoLido[]): Do
     quarentena,
     situacao: quarentena ? 'quarentena' : 'a-conferir',
     lidoEm: agora().toISOString(),
+    ...(nome.includes('sem assinatura') && { semAssinatura: true }),
+    ...(nome.includes('sem data') && { dataEmBranco: true }),
   }
 }
 
 /** As leituras do banco: nascem com a pilha da Rita, e a IA lê o que chegou e ainda não foi lido (CA1, CA2, CA13). */
-function leiturasDo(banco: Banco): DocumentoLido[] {
+export function leiturasDo(banco: Banco): DocumentoLido[] {
   if (!banco.leituras) {
     banco.leituras = []
     semearPilhaDaRita(banco, banco.leituras)
@@ -220,6 +229,7 @@ export async function arquivarDocumentos(fichaId: string, pedido: Arquivamento):
     l.tipo = escolha.tipo
     l.data = escolha.data
     l.situacao = saem.has(l) ? 'descartado' : 'arquivado'
+    l.arquivadoEm = agora().toISOString()
     const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
     if (!arquivo) continue
     const local = localDoTipo(l.tipo, caso?.id)

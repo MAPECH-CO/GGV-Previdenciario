@@ -11,6 +11,7 @@ import { pastasDoCliente } from '../regras/pasta.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { fichasDeExemplo, pastasDeExemplo } from './exemplo.ts'
 import type { DocumentoLido } from './leitura.ts'
+import type { ConferenciaDoChecklist } from './checklist.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
@@ -52,6 +53,8 @@ export type Banco = {
   seq: number
   /** O que a IA leu de cada documento que entrou, para a Documentação conferir e arquivar (GGVP-81). Nasce em leitura.ts. */
   leituras?: DocumentoLido[]
+  /** Cada conferência do checklist de um caso (GGVP-91). */
+  checklists?: ConferenciaDoChecklist[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

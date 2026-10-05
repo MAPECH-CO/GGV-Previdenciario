@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
@@ -32,6 +33,16 @@ describe('Central do Atendimento', () => {
     expect(conferir.getAttribute('href')).toBe('/clientes/rita-exemplo/conferir-documentos')
     expect(conferir.closest('li')?.textContent).toContain('LOAS Deficiente · 5 documentos lidos pela IA · 1 em quarentena · scanner')
     expect(screen.queryByText(/Vários clientes/)).toBeNull()
+  })
+
+  it('GGVP-91 · depois da leitura arquivada, a Documentação vê "Conferir checklist" do caso', async () => {
+    const c = await documentosLidos('rita-exemplo')
+    const documentos = c!.documentos.filter((d) => d.situacao === 'a-conferir').map(({ id, tipo, data }) => ({ id, tipo, data }))
+    await arquivarDocumentos('rita-exemplo', { conferi: true, documentos, duplicados: 'manter' })
+    render(<CentralAtendimento />)
+    const checklist = screen.getByRole('link', { name: 'Rita Exemplo · Conferir checklist' })
+    expect(checklist.getAttribute('href')).toBe('/casos/rita-exemplo-1/checklist')
+    expect(checklist.closest('li')?.textContent).toContain('LOAS Deficiente · 4 de 9 itens recebidos · leitura arquivada')
   })
 
   it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {
