@@ -24,7 +24,7 @@ async function comecarAGravar(page: Page) {
 async function internet(page: Page, ligada: boolean) {
   await page.evaluate((on) => {
     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => on })
-    window.dispatchEvent(new Event(on ? 'online' : 'offline'))
+    ;(globalThis as unknown as EventTarget).dispatchEvent(new Event(on ? 'online' : 'offline'))
   }, ligada)
 }
 
