@@ -38,6 +38,13 @@
 
 ## GGVP-97 · Boas-vindas ao cliente
 
+- [x] 9.1 Contrato: tipos em `apps/web/src/dados/boasVindas.ts` (boas-vindas do caso, registro de cada tentativa, envio conferido) e `boasVindas` opcional no `Banco`. Verifica com `npm run typecheck`.
+- [x] 9.2 Regras com teste: `src/regras/boasVindas.ts` (já era cliente quando tem outro processo; a mensagem pelo modelo de exemplo, com as cópias e as pendências do checklist em linguagem simples), com teste em `src/regras/boasVindas.test.ts` (CA1, CA3, CA5). Verifica com `npx vitest run src/regras/boasVindas.test.ts`.
+- [x] 9.3 Servidor de exemplo: `src/dados/boasVindas.ts` (as cópias do kit até a junção com o grupo contrato, `obterBoasVindas`, `enviarBoasVindas` uma vez e conferida, a falha sem telefone e a tarefa "Reenviar boas-vindas"), com teste em `src/dados/boasVindas.test.ts` (CA1, CA2, CA3, CA4, CA5, CA6). Verifica com `npx vitest run src/dados/boasVindas.test.ts`.
+- [x] 9.4 Bloco "Boas-vindas (D1.22)" na tela do checklist (`src/componentes/CartaoBoasVindas.tsx`, Figma `1818:2`, rótulo Chatwoot): esperando a conferência, a enviar com a mensagem para conferir, "Conferi a mensagem" e "Enviar pelo Chatwoot", enviada, já era cliente e a falha com "Tentar de novo"; o subtítulo diz cliente novo ou já era cliente; a Central mostra "Reenviar boas-vindas"; teste em `CartaoBoasVindas.test.tsx` e `CentralAtendimento.test.tsx` (CA1, CA2, CA3, CA4, CA6). Verifica com `npx vitest run src/componentes/CartaoBoasVindas.test.tsx`.
+- [x] 9.5 Playwright `e2e/boas-vindas.e2e.ts`: conferido o checklist, a mensagem com as pendências sai pelo Chatwoot simulado e aparece no histórico e nos últimos contatos (CA1, CA2, CA4, CA5); já era cliente (CA3); sem telefone vira tarefa (CA6); tema escuro e fonte grande. Verifica com `npm run e2e`.
+- [ ] 9.6 Ligar no servidor: trocar o corpo das funções de `src/dados/boasVindas.ts` por `fetch` nos endpoints da spec, mandar pelo Chatwoot de verdade com o modelo aprovado e as cópias do grupo contrato (GGVP-89). Depende do GGVP-118, do banco do Mateus e da GGVP-102. **Fica aberta nesta história.**
+
 ## GGVP-101 · Cobrar os documentos pendentes
 
 ## GGVP-18 · Liberar o caso ao Jurídico

@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
+import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
@@ -43,6 +45,15 @@ describe('Central do Atendimento', () => {
     const checklist = screen.getByRole('link', { name: 'Rita Exemplo · Conferir checklist' })
     expect(checklist.getAttribute('href')).toBe('/casos/rita-exemplo-1/checklist')
     expect(checklist.closest('li')?.textContent).toContain('LOAS Deficiente · 4 de 9 itens recebidos · leitura arquivada')
+  })
+
+  it('GGVP-97 CA6 · as boas-vindas que não saíram viram "Reenviar boas-vindas"', async () => {
+    await conferirChecklist('marta-exemplo-1')
+    await enviarBoasVindas('marta-exemplo-1', { conferi: true, mensagem: (await obterBoasVindas('marta-exemplo-1'))!.mensagem })
+    render(<CentralAtendimento />)
+    const tarefa = screen.getByRole('link', { name: 'Marta Exemplo · Reenviar boas-vindas' })
+    expect(tarefa.getAttribute('href')).toBe('/casos/marta-exemplo-1/checklist')
+    expect(tarefa.closest('li')?.textContent).toContain('não saíram pelo Chatwoot: a ficha não tem telefone')
   })
 
   it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {

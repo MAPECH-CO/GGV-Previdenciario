@@ -12,6 +12,7 @@ import { nomeBeneficio } from './catalogos.ts'
 import { fichasDeExemplo, pastasDeExemplo } from './exemplo.ts'
 import type { DocumentoLido } from './leitura.ts'
 import type { ConferenciaDoChecklist } from './checklist.ts'
+import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
@@ -55,6 +56,8 @@ export type Banco = {
   leituras?: DocumentoLido[]
   /** Cada conferência do checklist de um caso (GGVP-91). */
   checklists?: ConferenciaDoChecklist[]
+  /** Cada tentativa de envio das boas-vindas (GGVP-97). */
+  boasVindas?: RegistroDasBoasVindas[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

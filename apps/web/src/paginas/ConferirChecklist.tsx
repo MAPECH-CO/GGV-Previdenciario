@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { CartaoBoasVindas } from '../componentes/CartaoBoasVindas.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { conferirChecklist, obterChecklist, type ChecklistDoCaso, type ConferenciaDoChecklist } from '../dados/checklist.ts'
+import { jaEraCliente } from '../regras/boasVindas.ts'
 import { CONDICOES, juntar, motivoParaNaoLiberar, type ItemDoChecklist } from '../regras/checklist.ts'
 import { dataHora, hora } from '../regras/datas.ts'
 import styles from './Balcao.module.css'
@@ -30,6 +32,8 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
   const [feito, setFeito] = useState<ConferenciaDoChecklist | null>(null)
   const [conferindo, setConferindo] = useState(false)
   const [erro, setErro] = useState('')
+  // Sobe a cada conferência: as boas-vindas saem das pendências do checklist conferido (GGVP-97).
+  const [versao, setVersao] = useState(0)
   // Trava no mesmo clique, antes de o React redesenhar o botão.
   const travado = useRef(false)
 
@@ -53,7 +57,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
     )
   }
 
-  const { ficha, beneficio, checklist, conferencia } = caso
+  const { ficha, processo, beneficio, checklist, conferencia } = caso
   const trava = motivoParaNaoLiberar(checklist, beneficio)
 
   async function concluir() {
@@ -63,6 +67,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
     setErro('')
     try {
       setFeito(await conferirChecklist(processoId))
+      setVersao((v) => v + 1)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para concluir a conferência.')
     } finally {
@@ -87,14 +92,12 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
             <h1 className={styles.titulo}>
               <strong>{ficha.nome}</strong> · Conferir checklist
             </h1>
-            <p className={styles.subtitulo}>
-              {beneficio} · {checklist.completo ? 'completo' : 'incompleto'}
-            </p>
+            <p className={styles.subtitulo}>{jaEraCliente(ficha, processo.id) ? 'já era cliente · sem boas-vindas' : 'cliente novo · boas-vindas'}</p>
           </div>
 
           <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
-            Situação do checklist calculada pelo sistema a partir dos documentos arquivados. Confira cada item: documento sem
-            assinatura ou com a data em branco não vale (G1), e documento em quarentena não conta.
+            Situação do checklist calculada pelo sistema a partir dos documentos arquivados e registro das boas-vindas. Confira cada
+            item: documento sem assinatura ou com a data em branco não vale (G1), e documento em quarentena não conta.
           </InstrucoesPasso>
 
           <section className={styles.cartao} aria-labelledby="checklist">
@@ -128,6 +131,8 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
               })}
             </ul>
           </section>
+
+          <CartaoBoasVindas processoId={processo.id} nome={ficha.nome} versao={versao} />
 
           {trava && <p className={styles.trava}>Liberar ao Jurídico: bloqueado. {trava}</p>}
 
