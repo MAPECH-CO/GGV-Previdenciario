@@ -74,7 +74,7 @@
 - [x] 6.5 Tela `/entrevista/:agendamentoId/preparar` (`src/paginas/PrepararEntrevista.tsx`, Figma `14:2`): chips, título, "A IA sugere · você confere", pontos de atenção, senha, renovação, primeiro contato, em branco, as duas fichas, "Analisar a ficha", "Iniciar entrevista (Transcrição)" com o motivo e o painel; o "Início" do topo leva à Central dela; rota em `App.tsx` e "Preparar entrevista" no detalhe do compromisso; teste em `PrepararEntrevista.test.tsx`, `App.test.tsx` e `DetalheCompromisso.test.tsx` (CA2, CA3, CA4, CA5). Verifica com `npx vitest run src/paginas/PrepararEntrevista.test.tsx src/App.test.tsx src/componentes/DetalheCompromisso.test.tsx`.
 - [x] 6.6 Playwright `e2e/preparar-entrevista.e2e.ts`: da Central da Advogada à preparação com os pontos (CA1, CA2, CA4), pela agenda com a anotação do primeiro contato (CA5), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 6.7 Ligar no servidor: trocar o corpo das funções de `src/dados/preparacao.ts` por `fetch` e o resumo simulado pela IA de verdade. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
-- [ ] 6.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-28 · Segunda ficha para auxílio acidentário
 
@@ -85,7 +85,7 @@
 - [x] 7.5 Tela `/clientes/:fichaId/segunda-ficha` (`src/paginas/SegundaFicha.tsx`, Figma `1815:422`): a ficha em papel no scanner simulado, as 6 seções (a médica escondida na conferência do Atendimento), o cofre, "Enviar segunda ficha" e o modo tablet uma seção por tela; a ficha do cliente mostra só que foi preenchida; teste em `SegundaFicha.test.tsx` e `FichaCliente.test.tsx` (CA2, CA5, CA6, CA7, CA8). Verifica com `npx vitest run src/paginas/SegundaFicha.test.tsx src/paginas/FichaCliente.test.tsx`.
 - [x] 7.6 Playwright `e2e/segunda-ficha.e2e.ts`: da preparação à análise com "Sim", a pendência na Central, a ficha em papel e a entrevista liberada (CA1, CA3, CA6), as duas fichas juntas na preparação (CA2), dado médico fora da visão do Atendimento (CA8), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 7.7 Ligar no servidor: trocar o corpo das funções de `src/dados/segundaFicha.ts` por `fetch` e receber a leitura do n8n. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
-- [ ] 7.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 7.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-36 · Renovar a senha do gov.br antes da entrevista
 
@@ -94,4 +94,4 @@
 - [x] 8.3 Tela `/entrevista/:agendamentoId/renovar-senha` (`src/paginas/RenovarSenha.tsx`, Figma `10:89`): chips, título, "O que você deve fazer" com o código no celular do cliente, a frase da tarefa, a caixa mascarada, a conferência do Meu INSS, o motivo e o aviso, o G9, "Guardar no cofre" e o painel "Conseguiu renovar?"; teste em `RenovarSenha.test.tsx` (CA2, CA3, CA5, CA6, CA9, CA10). Verifica com `npx vitest run src/paginas/RenovarSenha.test.tsx`.
 - [x] 8.4 Playwright `e2e/renovar-senha.e2e.ts`: da análise sem senha à tarefa na Central, renovar com a senha de teste fora da tela e do armazenamento e ver na preparação (CA1, CA2, CA7, CA9), "Não conseguiu" com motivo e aviso (CA3, CA6), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 8.5 Ligar no servidor: trocar o corpo de `src/dados/renovacao.ts` por `fetch` e guardar no cofre de verdade (GGVP-103). Depende do GGVP-118, do banco do Mateus e da GGVP-103. **Fica aberta nesta história.**
-- [ ] 8.6 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 8.6 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
