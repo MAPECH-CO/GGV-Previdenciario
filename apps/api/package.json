@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --experimental-strip-types --env-file-if-exists=../../.env --watch src/principal.ts",
+    "start": "node --experimental-strip-types src/principal.ts",
     "typecheck": "tsc",
     "lint": "oxlint",
     "test": "vitest run",
@@ -12,6 +13,7 @@
     "db:migrar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/migrar.ts"
   },
   "dependencies": {
+    "@fastify/static": "^10.1.5",
     "@ggv/contratos": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.6.1",
