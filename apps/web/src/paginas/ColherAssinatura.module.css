@@ -1,0 +1,77 @@
+/* O resto vem de Balcao.module.css (telas de passo). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.dados {
+  display: flex;
+  flex-direction: column;
+}
+
+.dados > div {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.dados dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.dados dd {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.subtitulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.tentativas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  font-size: var(--fonte-13);
+  list-style: decimal;
+}
+
+.ligacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pendente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--cor-borda-controle);
+  border-radius: var(--raio-10);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+@media (max-width: 560px) {
+  .dados > div {
+    grid-template-columns: 1fr;
+  }
+
+  .dados dd {
+    text-align: left;
+  }
+}

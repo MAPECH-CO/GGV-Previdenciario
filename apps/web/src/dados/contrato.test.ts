@@ -1,10 +1,28 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { CLIENTE_DO_EXEMPLO_DOS_MODELOS, fecharContrato, gerarContrato, obterContrato, salvarCondicoes, tarefasDoContrato, type EnvioDoContrato } from './contrato.ts'
+import {
+  CLIENTE_DO_EXEMPLO_DOS_MODELOS,
+  SEGREDO_DO_RETORNO_EXEMPLO,
+  configurarZapSign,
+  enviarParaAssinatura,
+  fecharContrato,
+  gerarContrato,
+  obterContrato,
+  receberRetornoDoZapSign,
+  registrarTentativaDeAssinatura,
+  salvarCondicoes,
+  simularRetornoDoZapSign,
+  tarefasDoContrato,
+  type EnvioDoContrato,
+} from './contrato.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
-import { configurarExemplo, obterFicha, zerarExemplo } from './servidor.ts'
+import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
+
+let hoje = new Date(2026, 9, 5, 14, 32)
 
 beforeEach(() => {
-  configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
+  hoje = new Date(2026, 9, 5, 14, 32)
+  configurarExemplo({ agora: () => hoje, latencia: 0 })
+  configurarZapSign({ falhar: false })
   zerarExemplo()
 })
 
@@ -135,5 +153,105 @@ describe('GGVP-69 · preencher o contrato pelo modelo e conferir · servidor de 
     await expect(gerarContrato('cleide-exemplo-1', corrigir({}, ''))).rejects.toThrow('o que corrigir')
     await expect(gerarContrato('cleide-exemplo-1', corrigir({ cpf: '000.000.001-92' }))).rejects.toThrow('inválida')
     await expect(gerarContrato('cleide-exemplo-1', corrigir({ beneficio: 'curatela' }))).rejects.toThrow('inválida')
+  })
+})
+
+/** O Antônio fecha a Aposentadoria por Idade e o contrato é gerado: fica para colher a assinatura. */
+async function contratoGerado() {
+  const { processo } = await fecharContrato('antonio-exemplo', 'aposentadoria-idade')
+  await gerarContrato(processo.id, corrigir({ rg: '12.345.678-X', endereco: 'Rua Exemplo, 1' }))
+  return processo.id
+}
+
+describe('GGVP-72 · assinatura digital pelo ZapSign · servidor de exemplo', () => {
+  it('CA2 e CA4 · a semente: a Nair recebeu o link há 9 dias; a tarefa mostra o status e lembra de tentar de novo', () => {
+    expect(tarefasDoContrato().find((t) => t.processoId === 'nair-exemplo-1')).toMatchObject({
+      codigo: 'D1.17',
+      acao: 'Colher assinatura',
+      detalhe: 'Aposentadoria por Idade · ZapSign enviado 26/09 · tentativa 1 de 2',
+      prazo: 'tentar contato hoje',
+      urgente: true,
+      href: '/contrato/nair-exemplo-1/assinatura',
+    })
+  })
+
+  it('CA1, CA4 e CA12 · o ZapSign gera um documento por kit, com o link e a mensagem do WhatsApp pronta', async () => {
+    const id = await contratoGerado()
+    const r = await enviarParaAssinatura(id)
+    expect(r.resultado).toBe('gerado')
+    if (r.resultado !== 'gerado') return
+    expect(r.contrato.assinatura?.zapsign).toMatchObject({ documentoId: `zapsign-exemplo-${id}`, status: 'enviado' })
+    expect(r.mensagem).toContain(`https://zapsign.exemplo/assinar/zapsign-exemplo-${id}`)
+    expect(tarefasDoContrato().find((t) => t.processoId === id)).toMatchObject({ detalhe: 'Aposentadoria por Idade · ZapSign gerado · link ainda não enviado', prazo: 'enviar o link' })
+    const deNovo = await enviarParaAssinatura(id)
+    expect(deNovo.resultado === 'gerado' && deNovo.contrato.assinatura?.zapsign?.documentoId).toBe(`zapsign-exemplo-${id}`)
+  })
+
+  it('CA2 e CA5 · cada tentativa fica com a data e o canal; a próxima só 3 dias depois, com o mesmo link', async () => {
+    const id = await contratoGerado()
+    await enviarParaAssinatura(id)
+    await registrarTentativaDeAssinatura(id, 'whatsapp', 'Olá, Antônio! Aqui está o link.')
+    const ficha = await obterFicha('antonio-exemplo')
+    expect(ficha?.contatos.at(-1)).toEqual({ data: '2026-10-05', canal: 'WhatsApp', texto: 'Link do ZapSign enviado para assinar o contrato.' })
+    expect(tarefasDoContrato().find((t) => t.processoId === id)).toMatchObject({ detalhe: 'Aposentadoria por Idade · ZapSign enviado 05/10 · tentativa 1 de 2', prazo: 'nova tentativa 08/10' })
+    await expect(registrarTentativaDeAssinatura(id, 'ligacao')).rejects.toThrow('Ainda não é dia')
+    hoje = new Date(2026, 9, 8, 10, 0)
+    const contrato = await registrarTentativaDeAssinatura(id, 'ligacao')
+    expect(contrato.assinatura?.tentativas.map((t) => [t.data, t.canal])).toEqual([
+      ['2026-10-05', 'whatsapp'],
+      ['2026-10-08', 'ligacao'],
+    ])
+    expect(contrato.assinatura?.zapsign?.documentoId).toBe(`zapsign-exemplo-${id}`)
+  })
+
+  it('CA11 · com a segunda tentativa sem assinatura, o caso sobe para a advogada sênior e sai da Central do Atendimento', async () => {
+    const contrato = await registrarTentativaDeAssinatura('nair-exemplo-1', 'ligacao')
+    expect(contrato.assinatura?.naSenior).toBe(true)
+    expect(tarefasDoContrato().some((t) => t.processoId === 'nair-exemplo-1')).toBe(false)
+    expect(ler().tarefas.find((t) => t.processoId === 'nair-exemplo-1')).toMatchObject({
+      setor: 'Jurídico',
+      acao: 'Colher assinatura · limite de tentativas',
+      detalhe: 'Aposentadoria por Idade · 2 tentativas sem assinatura (G15) · o Atendimento tentou em 26/09 e 05/10',
+    })
+    await expect(registrarTentativaDeAssinatura('nair-exemplo-1', 'ligacao')).rejects.toThrow('Ainda não é dia')
+  })
+
+  it('CA3, CA6 e CA10 · assinado, o arquivo final do ZapSign entra no card, segue para a leitura e a tarefa se encerra sozinha', async () => {
+    await registrarTentativaDeAssinatura('nair-exemplo-1', 'ligacao')
+    const r = await simularRetornoDoZapSign('nair-exemplo-1')
+    expect(r).toEqual({
+      resultado: 'anexado',
+      arquivo: {
+        nome: 'Contrato assinado - Nair Exemplo - 2026-10-05 (ZapSign, com evidências).pdf',
+        tipo: 'contrato',
+        local: 'nair-exemplo-1',
+        data: '2026-10-05',
+        origem: 'card',
+        repetido: false,
+        aguardaLeitura: true,
+      },
+    })
+    const caso = await obterContrato('nair-exemplo-1')
+    expect(caso?.contrato.etapa).toBe('leitura')
+    expect(caso?.processo.etapa).toBe('Contrato assinado em 05/10')
+    expect(tarefasDoContrato().some((t) => t.processoId === 'nair-exemplo-1')).toBe(false)
+    expect(ler().tarefas.find((t) => t.processoId === 'nair-exemplo-1')?.concluida).toBe(true)
+  })
+
+  it('CA7 · o retorno sem o segredo é recusado, e o mesmo evento repetido não anexa duas vezes', async () => {
+    const retorno = { documentoId: 'zapsign-exemplo-nair-exemplo-1', eventoId: 'evento-1', status: 'assinado' as const }
+    await expect(receberRetornoDoZapSign({ ...retorno, segredo: 'errado' })).rejects.toThrow('não autenticado')
+    expect((await receberRetornoDoZapSign({ ...retorno, segredo: SEGREDO_DO_RETORNO_EXEMPLO })).resultado).toBe('anexado')
+    expect(await receberRetornoDoZapSign({ ...retorno, segredo: SEGREDO_DO_RETORNO_EXEMPLO })).toEqual({ resultado: 'repetido' })
+    expect((await obterFicha('nair-exemplo'))?.arquivos.filter((a) => a.tipo === 'contrato')).toHaveLength(1)
+  })
+
+  it('CA9 · erro ao gerar no ZapSign: a tarefa mostra a mensagem e dá para tentar de novo', async () => {
+    const id = await contratoGerado()
+    configurarZapSign({ falhar: true })
+    expect(await enviarParaAssinatura(id)).toEqual({ resultado: 'erro', mensagem: 'O ZapSign não respondeu ao gerar o documento. Nada foi enviado ao cliente.' })
+    expect(tarefasDoContrato().find((t) => t.processoId === id)).toMatchObject({ detalhe: 'Aposentadoria por Idade · erro ao gerar no ZapSign: tente de novo', urgente: true })
+    configurarZapSign({ falhar: false })
+    expect((await enviarParaAssinatura(id)).resultado).toBe('gerado')
   })
 })

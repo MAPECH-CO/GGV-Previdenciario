@@ -1,6 +1,7 @@
 // O contrato do caso, do kit à cópia (GGVP-65 em diante). Regra do escritório é código com teste, nunca resposta de modelo.
 // A tabela dos kits é a do cartão GGVP-65 (board do escritório); a manutenção pela gestão vem com a GGVP-104.
 import { formatarCpf, formatarTelefone, normalizarCpf, normalizarNome, normalizarTelefone } from '../campos.ts'
+import { somarDias } from './agenda.ts'
 import { erroCpf, erroNome, erroTelefone } from './formularios.ts'
 
 export type DocumentoDoKit =
@@ -438,4 +439,36 @@ export function restosDoModelo(texto: string, dadosDoExemplo: string[]): string[
   const campos = texto.match(/\{\{\w+\}\}/g) ?? []
   const exemplo = dadosDoExemplo.filter((d) => texto.toLowerCase().includes(d.toLowerCase()))
   return [...new Set([...campos, ...exemplo])]
+}
+
+// GGVP-72 · assinatura digital pelo ZapSign.
+
+/** Quantas tentativas de contato sem assinatura antes de o caso subir para a advogada sênior (G15; Lucas e Pedro, 05/10). */
+export const TENTATIVAS_DE_ASSINATURA = 2
+
+/** Dias entre uma tentativa e a próxima (Lucas e Pedro, 05/10): a mesma regra de cobrar documentos e confirmar a entrevista. */
+export const DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA = 3
+
+export type CanalDaTentativa = 'whatsapp' | 'ligacao'
+
+export const NOMES_DOS_CANAIS: Record<CanalDaTentativa, string> = { whatsapp: 'WhatsApp', ligacao: 'Ligação' }
+
+/**
+ * Onde a cobrança da assinatura está (CA2, CA5, CA11): a tentativa de agora, a data da próxima e se hoje é dia de tentar.
+ * A primeira tentativa é o link enviado; a segunda, 3 dias depois; com a segunda sem assinatura, o limite foi atingido.
+ */
+export function cobrancaDaAssinatura(tentativas: { data: string }[], hoje: string): { feitas: number; proximaEm?: string; lembrar: boolean; noLimite: boolean } {
+  const feitas = tentativas.length
+  if (feitas === 0) return { feitas, lembrar: false, noLimite: false }
+  if (feitas >= TENTATIVAS_DE_ASSINATURA) return { feitas, lembrar: false, noLimite: true }
+  const proximaEm = somarDias(tentativas[feitas - 1].data, DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA)
+  return { feitas, proximaEm, lembrar: hoje >= proximaEm, noLimite: false }
+}
+
+/** A mensagem do WhatsApp com o link do ZapSign (CA12). */
+export function mensagemDoLink(nome: string, link: string, lembrete: boolean): string {
+  const primeiro = nome.split(' ')[0]
+  return lembrete
+    ? `Olá, ${primeiro}! Passando para lembrar do contrato do escritório que ainda falta assinar. O link é o mesmo: ${link}. Se tiver dúvida, é só responder aqui.`
+    : `Olá, ${primeiro}! Aqui está o link para assinar o contrato do escritório pelo celular: ${link}. Leva poucos minutos. Assim que assinar, a cópia chega para você aqui pelo WhatsApp.`
 }

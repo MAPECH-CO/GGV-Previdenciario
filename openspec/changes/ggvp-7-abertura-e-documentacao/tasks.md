@@ -22,6 +22,13 @@
 
 ## GGVP-72 · Assinatura digital pelo ZapSign
 
+- [x] 3.1 Contrato: a assinatura (ZapSign, tentativas, sênior, erro) e a etapa "leitura" em `src/dados/contrato.ts`. Verifica com `npm run typecheck`.
+- [x] 3.2 Regra: `TENTATIVAS_DE_ASSINATURA`, `DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA`, `cobrancaDaAssinatura` e `mensagemDoLink` em `src/regras/contrato.ts`, com teste em `src/regras/contrato.test.ts` (CA2, CA11, CA12). Verifica com `npx vitest run src/regras/contrato.test.ts`.
+- [x] 3.3 Servidor de exemplo: a semente da Nair, `enviarParaAssinatura`, `registrarTentativaDeAssinatura`, `receberRetornoDoZapSign` e o ZapSign simulado em `src/dados/contrato.ts`, com teste em `src/dados/contrato.test.ts` (CA1 a CA7, CA9 a CA12). A linha fixa "Nair · Colher assinatura" sai de `atendimento.ts`. Verifica com `npx vitest run src/dados/contrato.test.ts`.
+- [x] 3.4 Tela `/contrato/:processoId/assinatura` (`src/paginas/ColherAssinatura.tsx`, Figma `10:176`): "Como o cliente vai assinar?", "Enviar para assinatura", a janela do Chatwoot com o link, o cartão do ZapSign com o status, as tentativas, o lembrete, a ligação, o limite, o pendente e o retorno simulado, o erro com "Tentar de novo" e o painel; teste em `ColherAssinatura.test.tsx` (CA1 a CA6, CA9 a CA12). Verifica com `npx vitest run src/paginas/ColherAssinatura.test.tsx`.
+- [x] 3.5 Playwright `e2e/colher-assinatura.e2e.ts`: da Central ao lembrete e à sênior (CA2, CA4, CA5, CA11, CA12), o retorno assinado na pasta do caso (CA3, CA6, CA10), tema escuro e fonte grande. Verifica com `npm run e2e -- colher-assinatura`.
+- [ ] 3.6 Ligar no servidor: o ZapSign de verdade (modelo, link, webhook autenticado e o segredo no cofre do servidor) e o Chatwoot (GGVP-102). Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+
 ## GGVP-77 · Assinatura em papel na entrevista
 
 ## GGVP-85 · Verificar o contrato assinado

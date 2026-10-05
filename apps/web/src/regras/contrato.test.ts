@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { BENEFICIOS } from '../dados/catalogos.ts'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
 import {
+  DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA,
   INSS,
   KITS,
+  TENTATIVAS_DE_ASSINATURA,
+  cobrancaDaAssinatura,
+  mensagemDoLink,
   MODELOS,
   SEM_CONDICOES,
   camposDoModelo,
@@ -232,5 +236,27 @@ describe('GGVP-69 · preencher o contrato pelo modelo e conferir', () => {
   it('CA11 · os honorários vêm do modelo, sem campo para digitar', () => {
     expect(honorariosDoModelo(modeloPorId('contrato-completo-2026'))).toBe('20% do êxito (ad exitum)')
     expect(honorariosDoModelo(modeloPorId('modelo-8'))).toBe('os do modelo 8')
+  })
+})
+
+describe('GGVP-72 · assinatura digital pelo ZapSign', () => {
+  it('CA11 · a regra: 2 tentativas, com 3 dias entre elas', () => {
+    expect(TENTATIVAS_DE_ASSINATURA).toBe(2)
+    expect(DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA).toBe(3)
+  })
+
+  it('CA2 e CA11 · depois do link, a próxima tentativa é 3 dias depois; com a segunda, o limite foi atingido', () => {
+    expect(cobrancaDaAssinatura([], '2026-10-05')).toEqual({ feitas: 0, lembrar: false, noLimite: false })
+    expect(cobrancaDaAssinatura([{ data: '2026-10-05' }], '2026-10-07')).toEqual({ feitas: 1, proximaEm: '2026-10-08', lembrar: false, noLimite: false })
+    expect(cobrancaDaAssinatura([{ data: '2026-10-05' }], '2026-10-08')).toMatchObject({ lembrar: true })
+    expect(cobrancaDaAssinatura([{ data: '2026-09-26' }], '2026-10-05')).toMatchObject({ proximaEm: '2026-09-29', lembrar: true })
+    expect(cobrancaDaAssinatura([{ data: '2026-09-26' }, { data: '2026-10-05' }], '2026-10-05')).toEqual({ feitas: 2, lembrar: false, noLimite: true })
+  })
+
+  it('CA12 · a mensagem do WhatsApp leva o link; o lembrete leva o mesmo link', () => {
+    expect(mensagemDoLink('Nair Exemplo', 'https://zapsign.exemplo/assinar/x', false)).toBe(
+      'Olá, Nair! Aqui está o link para assinar o contrato do escritório pelo celular: https://zapsign.exemplo/assinar/x. Leva poucos minutos. Assim que assinar, a cópia chega para você aqui pelo WhatsApp.',
+    )
+    expect(mensagemDoLink('Nair Exemplo', 'https://zapsign.exemplo/assinar/x', true)).toContain('O link é o mesmo: https://zapsign.exemplo/assinar/x.')
   })
 })

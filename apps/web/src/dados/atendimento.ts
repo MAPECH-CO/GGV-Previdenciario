@@ -16,13 +16,6 @@ export const tarefasAtendimento: Tarefa[] = [
     urgente: true,
   },
   {
-    id: 't3',
-    codigo: 'D1.17',
-    cliente: cliente('nair-exemplo', 'Nair Exemplo'),
-    acao: 'Colher assinatura',
-    detalhe: 'Aposentadoria por idade · ZapSign enviado 26/09',
-  },
-  {
     id: 't5',
     codigo: 'D2.06',
     cliente: cliente('marta-exemplo', 'Marta Exemplo'),
