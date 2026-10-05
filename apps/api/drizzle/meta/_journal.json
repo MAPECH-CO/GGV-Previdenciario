@@ -15,6 +15,13 @@
       "when": 1791221581982,
       "tag": "0001_usuario_e_sessao",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791242520661,
+      "tag": "0002_rls_em_todas_as_tabelas",
+      "breakpoints": true
     }
   ]
 }

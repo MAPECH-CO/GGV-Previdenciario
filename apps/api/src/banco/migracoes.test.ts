@@ -17,4 +17,15 @@ describe('migrações', () => {
     expect(rows.map((r) => r.table_name)).toEqual(['caso', 'evento_auditoria', 'pessoa', 'sessao', 'tarefa', 'usuario'])
     await db.$client.close()
   })
+
+  it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {
+    const db = drizzle(new PGlite())
+    await migrate(db, { migrationsFolder: pastaMigracoes })
+    const { rows } = await db.execute<{ relname: string }>(
+      sql`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity`,
+    )
+    expect(rows.map((r) => r.relname)).toEqual([])
+    await db.$client.close()
+  })
 })

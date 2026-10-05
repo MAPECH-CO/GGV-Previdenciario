@@ -1,4 +1,6 @@
 // Tabelas mínimas do portal (GGVP-118). Mudou aqui: `pnpm --filter @ggv/api db:gerar` cria a migração versionada.
+// Toda tabela com RLS ligado e sem política (GGVP-119): no Supabase, a chave pública não lê nada; só a API, que
+// conecta como dona do banco, acessa. Tabela nova: terminar com `.enableRLS()`.
 import { boolean, date, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 const criadoEm = () => timestamp('criado_em', { withTimezone: true }).notNull().defaultNow()
@@ -8,7 +10,7 @@ export const pessoa = pgTable('pessoa', {
   nome: text('nome').notNull(),
   cpf: text('cpf').unique(),
   criadoEm: criadoEm(),
-})
+}).enableRLS()
 
 export const caso = pgTable('caso', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -17,7 +19,7 @@ export const caso = pgTable('caso', {
     .references(() => pessoa.id),
   beneficio: text('beneficio').notNull(),
   criadoEm: criadoEm(),
-})
+}).enableRLS()
 
 export const tarefa = pgTable('tarefa', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -28,7 +30,7 @@ export const tarefa = pgTable('tarefa', {
   prazo: date('prazo'),
   criadoEm: criadoEm(),
   concluidaEm: timestamp('concluida_em', { withTimezone: true }),
-})
+}).enableRLS()
 
 /** Quem fez o quê, incluindo a IA. `detalhe` leva ids e nomes de campo, nunca dado de saúde. */
 export const eventoAuditoria = pgTable('evento_auditoria', {
@@ -38,7 +40,7 @@ export const eventoAuditoria = pgTable('evento_auditoria', {
   alvo: text('alvo').notNull(),
   quando: timestamp('quando', { withTimezone: true }).notNull().defaultNow(),
   detalhe: jsonb('detalhe').notNull().default({}),
-})
+}).enableRLS()
 
 /** Quem entra no portal (GGVP-117). Só o hash da senha; `perfil` nulo até a gestão atribuir (GGVP-96). */
 export const usuario = pgTable('usuario', {
@@ -52,7 +54,7 @@ export const usuario = pgTable('usuario', {
   tentativasErradas: integer('tentativas_erradas').notNull().default(0),
   travadoAte: timestamp('travado_ate', { withTimezone: true }),
   criadoEm: criadoEm(),
-})
+}).enableRLS()
 
 /** Sessão aberta. O cookie leva o token; aqui fica só o hash dele. */
 export const sessao = pgTable('sessao', {
@@ -63,4 +65,4 @@ export const sessao = pgTable('sessao', {
   tokenHash: text('token_hash').notNull().unique(),
   expiraEm: timestamp('expira_em', { withTimezone: true }).notNull(),
   criadoEm: criadoEm(),
-})
+}).enableRLS()
