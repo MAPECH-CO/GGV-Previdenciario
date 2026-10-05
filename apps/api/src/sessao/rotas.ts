@@ -31,9 +31,13 @@ const hashDoToken = (token: string) => createHash('sha256').update(token).digest
 // Comparar com um hash qualquer quando o e-mail não existe: a resposta demora igual e não entrega quem tem conta.
 const HASH_FALSO = bcrypt.hashSync('nenhuma-senha', 10)
 
+// A decisão usa a rota que o Fastify casou (routeOptions.url), não o endereço cru: `/%61pi/...` cai na mesma rota
+// que `/api/...` e não pode escapar da trava. Sem rota casada, vale o endereço (só chega a 404 ou à tela, nunca a dado).
+const rota = (r: FastifyRequest) => r.routeOptions.url ?? r.url
+const protegida = (r: FastifyRequest) => rota(r).startsWith('/api/') || rota(r) === '/api'
 /** Rotas que dispensam sessão, ou que quem tem senha provisória ou está sem perfil ainda pode usar. */
-const livre = (r: FastifyRequest) => r.method === 'POST' && r.url === '/api/sessao'
-const daPropriaSessao = (r: FastifyRequest) => r.url === '/api/sessao' || r.url === '/api/sessao/senha'
+const livre = (r: FastifyRequest) => r.method === 'POST' && r.routeOptions.url === '/api/sessao'
+const daPropriaSessao = (r: FastifyRequest) => r.routeOptions.url === '/api/sessao' || r.routeOptions.url === '/api/sessao/senha'
 
 /** Registra na raiz (sem encapsular), para a trava valer também para rota /api que não existe. */
 export function registrarSessao(app: FastifyInstance, { banco, agora = () => new Date(), cookieSeguro = false }: Opcoes) {
@@ -48,7 +52,7 @@ export function registrarSessao(app: FastifyInstance, { banco, agora = () => new
 
   // CA5: a proteção é do servidor. Toda rota /api, existente ou não, passa por aqui antes de qualquer dado.
   app.addHook('onRequest', async (pedido, resposta) => {
-    if (!pedido.url.startsWith('/api/') && pedido.url !== '/api') return
+    if (!protegida(pedido)) return
     if (livre(pedido)) return
     const token = pedido.cookies[COOKIE]
     const [achado] = token

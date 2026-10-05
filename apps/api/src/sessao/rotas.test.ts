@@ -139,6 +139,13 @@ describe('CA5 · API sem sessão', () => {
     const inventado = await app.inject({ method: 'GET', url: '/api/sessao', cookies: { [COOKIE]: 'inventado' } })
     expect(inventado.statusCode).toBe(401)
   })
+
+  it('endereço codificado que cai na mesma rota também leva 401', async () => {
+    const app = servidor()
+    for (const url of ['/%61pi/sessao', '/api/%73essao', '/api/sessao?x=1']) {
+      expect((await app.inject({ method: 'GET', url })).statusCode, url).toBe(401)
+    }
+  })
 })
 
 describe('CA6 · só o hash', () => {

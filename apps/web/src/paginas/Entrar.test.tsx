@@ -62,6 +62,8 @@ describe('voltaSegura', () => {
   it('só aceita caminho interno', () => {
     expect(voltaSegura('/clientes/novo?aba=2')).toBe('/clientes/novo?aba=2')
     expect(voltaSegura('//site-malicioso.com')).toBe('/')
+    expect(voltaSegura('/\\site-malicioso.com')).toBe('/')
+    expect(voltaSegura('/\t/site-malicioso.com')).toBe('/')
     expect(voltaSegura('https://site-malicioso.com')).toBe('/')
     expect(voltaSegura('/entrar')).toBe('/')
     expect(voltaSegura(null)).toBe('/')

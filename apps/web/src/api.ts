@@ -25,9 +25,23 @@ export function irParaEntrar() {
   window.location.assign(`/entrar?${params}`)
 }
 
-/** Só caminho interno: `/x`, nunca `//site` nem `https://...` (sem redirecionar para fora). */
+// Barra invertida e caracteres de controle (tab, quebra de linha): o navegador os ignora ou troca por "/",
+// e "/\site.com" vira outro site. Recusados antes de tudo.
+const PERIGOSO = /[\\\u0000-\u001f]/
+
+/**
+ * Só caminho deste site: nunca `//site`, `/\site` nem `https://...` (sem redirecionar para fora).
+ * Resolve contra a origem atual e compara: é o navegador quem diz para onde o endereço vai.
+ */
 export function voltaSegura(volta: string | null): string {
-  return volta && volta.startsWith('/') && !volta.startsWith('//') && !volta.startsWith('/entrar') ? volta : '/'
+  if (!volta || !volta.startsWith('/') || PERIGOSO.test(volta)) return '/'
+  try {
+    const destino = new URL(volta, window.location.origin)
+    if (destino.origin !== window.location.origin || destino.pathname.startsWith('/entrar')) return '/'
+    return destino.pathname + destino.search + destino.hash
+  } catch {
+    return '/'
+  }
 }
 
 export function marcarEntrou(entrou: boolean) {
