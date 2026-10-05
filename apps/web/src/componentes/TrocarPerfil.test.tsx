@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { iniciarPerfil, lerPerfil } from '../dados/perfis.ts'
 import { TrocarPerfil } from './TrocarPerfil.tsx'
 
@@ -37,14 +37,16 @@ describe('TrocarPerfil', () => {
     }
   })
 
-  it('escolher um perfil troca o botão, fecha o menu e fica guardado para a próxima tela', () => {
-    render(<TrocarPerfil funcao="Atendimento" />)
+  it('escolher um perfil troca o botão, fecha o menu, fica guardado e leva à tela inicial da função', () => {
+    const ir = vi.fn()
+    render(<TrocarPerfil funcao="Atendimento" ir={ir} />)
     fireEvent.click(screen.getByRole('button', { name: 'Atendimento' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: /^Advogada/ }))
 
     expect(screen.getByRole('button', { name: 'Advogada' })).toBeTruthy()
     expect(screen.queryByRole('menu')).toBeNull()
     expect(lerPerfil('')?.id).toBe('advogada')
+    expect(ir).toHaveBeenCalledExactlyOnceWith('/advogada')
   })
 
   it('fecha com Esc e com clique fora', () => {

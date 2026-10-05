@@ -1,6 +1,13 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act } from 'react'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
 import { Topbar } from './Topbar.tsx'
+
+beforeEach(() => {
+  window.localStorage.clear()
+  iniciarPerfil('')
+})
 
 const itens = [
   { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
@@ -27,5 +34,22 @@ describe('Topbar', () => {
     const funcao = screen.getByRole('button', { name: 'Atendimento' })
     expect(funcao.getAttribute('aria-haspopup')).toBe('menu')
     expect(funcao.getAttribute('aria-disabled')).toBeNull()
+  })
+
+  it('com um perfil escolhido, o início e a ação principal passam a ser os da função; sem escolha, ficam os da tela', () => {
+    const acao = { rotulo: '+ Novo cliente', href: '/clientes/novo' }
+    render(<Topbar itens={itens} ativo="inicio" funcao="Atendimento" acao={acao} />)
+    expect(screen.getByRole('link', { name: '+ Novo cliente' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Início' }).getAttribute('href')).toBe('/')
+
+    act(() => trocarPerfil('advogada'))
+    expect(screen.queryByRole('link', { name: '+ Novo cliente' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Início' }).getAttribute('href')).toBe('/advogada')
+    expect(screen.getByRole('link', { name: 'GGV Previdenciário, início' }).getAttribute('href')).toBe('/advogada')
+    expect(screen.getByRole('link', { name: 'Agenda' }).getAttribute('href')).toBe('/agenda')
+
+    act(() => trocarPerfil('documentacao'))
+    expect(screen.getByRole('link', { name: '+ Novo cliente' }).getAttribute('href')).toBe('/clientes/novo')
+    expect(screen.getByRole('link', { name: 'Início' }).getAttribute('href')).toBe('/')
   })
 })

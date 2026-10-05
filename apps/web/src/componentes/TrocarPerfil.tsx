@@ -4,9 +4,16 @@ import styles from './TrocarPerfil.module.css'
 
 /**
  * Botão da função na barra do topo e o menu "Entrar como…" (overlay "Trocar perfil" do Figma, 59:979).
- * Troca entre perfis de exemplo, só na tela. `funcao` é a função da tela, que vale enquanto ninguém escolhe.
+ * Troca entre perfis de exemplo, só na tela, e leva à tela inicial da função escolhida.
+ * `funcao` é a função da tela, que vale enquanto ninguém escolhe. `ir` abre o endereço (o teste troca).
  */
-export function TrocarPerfil({ funcao }: { funcao: string }) {
+export function TrocarPerfil({
+  funcao,
+  ir = (href) => window.location.assign(href),
+}: {
+  funcao: string
+  ir?: (href: string) => void
+}) {
   const perfil = usePerfil(funcao)
   const [aberto, setAberto] = useState(false)
   const caixa = useRef<HTMLDivElement>(null)
@@ -59,6 +66,7 @@ export function TrocarPerfil({ funcao }: { funcao: string }) {
               onClick={() => {
                 trocarPerfil(p.id)
                 setAberto(false)
+                ir(p.inicio)
               }}
             >
               {p.rotulo}{' '}

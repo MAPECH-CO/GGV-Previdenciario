@@ -10,15 +10,23 @@ export type Perfil = {
   rotulo: string
   /** Pessoa de exemplo com essa função. */
   usuario: string
+  /** A tela inicial da função. Sem a Central dela, o caminho cai em "Esta tela ainda não foi construída". */
+  inicio: string
+  /** A ação principal da barra do topo, como na Central da função no Figma. */
+  acao?: { rotulo: string; href: string }
 }
 
+const novoCliente = { rotulo: '+ Novo cliente', href: '/clientes/novo' }
+
 export const PERFIS: Perfil[] = [
-  { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Bruna (exemplo)' },
-  { id: 'atendimento-lider', rotulo: 'Atendimento · líder', usuario: 'Carla (exemplo)' },
-  { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)' },
-  { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)' },
-  { id: 'financeiro', rotulo: 'Financeiro', usuario: 'Marcos (exemplo)' },
-  { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)' },
+  { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Bruna (exemplo)', inicio: '/', acao: novoCliente },
+  { id: 'atendimento-lider', rotulo: 'Atendimento · líder', usuario: 'Carla (exemplo)', inicio: '/atendimento-lider', acao: novoCliente },
+  // A Central da Advogada (/advogada) vem com a branch das telas; até as duas se juntarem, cai em "não construída".
+  { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)', inicio: '/advogada' },
+  { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)', inicio: '/senior' },
+  { id: 'financeiro', rotulo: 'Financeiro', usuario: 'Marcos (exemplo)', inicio: '/financeiro' },
+  // Sem Central própria no Figma: a Documentação trabalha na Central do Atendimento.
+  { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/', acao: novoCliente },
 ]
 
 const CHAVE = 'ggv.perfil'
@@ -53,14 +61,18 @@ export function trocarPerfil(id: IdPerfil) {
   ouvintes.forEach((avisar) => avisar())
 }
 
-/** O perfil escolhido; sem escolha, o da função da tela (`padrao`, o rótulo). */
-export function usePerfil(padrao?: string): Perfil | undefined {
-  const escolhido = useSyncExternalStore(
+/** Só o perfil que a pessoa escolheu; sem escolha, nada, e a tela fica como foi desenhada. */
+export function usePerfilEscolhido(): Perfil | undefined {
+  return useSyncExternalStore(
     (avisar) => {
       ouvintes.add(avisar)
       return () => ouvintes.delete(avisar)
     },
     () => atual,
   )
-  return escolhido ?? PERFIS.find((p) => p.rotulo === padrao)
+}
+
+/** O perfil escolhido; sem escolha, o da função da tela (`padrao`, o rótulo). */
+export function usePerfil(padrao?: string): Perfil | undefined {
+  return usePerfilEscolhido() ?? PERFIS.find((p) => p.rotulo === padrao)
 }
