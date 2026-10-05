@@ -11,6 +11,9 @@ import {
   TENTATIVAS_DE_ASSINATURA,
   camposDoModelo,
   cobrancaDaAssinatura,
+  datasDoKit,
+  entrevistaDoCaso,
+  papelNaHora,
   mensagemDoLink,
   erroDoCampo,
   faltando,
@@ -104,8 +107,10 @@ export type Assinatura = {
   erro?: string
   /** Data e hora ISO em que o documento assinado voltou. */
   assinadoEm?: string
-  /** O arquivo assinado, anexado no card. */
+  /** O arquivo assinado, anexado no card: o do ZapSign ou a digitalização do papel. */
   arquivo?: string
+  /** Papel na hora: quando o kit foi impresso (GGVP-77, CA1). */
+  impressoEm?: string
 }
 
 export type ContratoDoCaso = { ficha: Ficha; processo: Processo; contrato: Contrato }
@@ -164,6 +169,12 @@ const TITULOS: Partial<Record<EtapaDoContrato, { codigo: string; acao: string; r
 
 /** O detalhe e o prazo da tarefa "Colher assinatura": o status do ZapSign, a tentativa e o lembrete (GGVP-72, CA2 e CA4). */
 function andamentoDaAssinatura(a: Assinatura | undefined, hoje: string): { detalhe: string[]; prazo?: string; urgente?: boolean } {
+  if (a?.forma === 'papel' && !a.zapsign) {
+    return {
+      detalhe: [a.arquivo ? 'papel · digitalizado, falta concluir' : a.impressoEm ? 'papel · impresso, falta digitalizar o assinado' : 'papel · imprimir o kit'],
+      prazo: 'hoje',
+    }
+  }
   if (!a?.zapsign) return { detalhe: [a?.erro ? 'erro ao gerar no ZapSign: tente de novo' : 'escolher como o cliente vai assinar'], urgente: a?.erro !== undefined }
   const cobranca = cobrancaDaAssinatura(a.tentativas, hoje)
   const enviado = a.tentativas[0]
@@ -437,6 +448,7 @@ export async function enviarParaAssinatura(processoId: string): Promise<Resposta
   if (!achado) throw new Error('Contrato não encontrado')
   const { ficha, contrato } = achado
   if (contrato.etapa !== 'assinatura' || !contrato.kit) throw new Error('Este contrato não está para assinar')
+  if (contrato.assinatura?.forma === 'papel' && contrato.assinatura.arquivo) throw new Error('O contrato assinado em papel já foi digitalizado')
   const assinatura: Assinatura = contrato.assinatura ?? { forma: 'digital', tentativas: [] }
   contrato.assinatura = assinatura
   if (!assinatura.zapsign) {
@@ -562,4 +574,78 @@ export async function simularRetornoDoZapSign(processoId: string) {
   const documentoId = (await obterContrato(processoId))?.contrato.assinatura?.zapsign?.documentoId
   if (!documentoId) throw new Error('Não há documento no ZapSign')
   return receberRetornoDoZapSign({ documentoId, eventoId: `${documentoId}-assinado`, status: 'assinado', segredo: SEGREDO_DO_RETORNO_EXEMPLO })
+}
+
+// GGVP-77 · assinatura em papel na entrevista. A impressora e o scanner são simulados: a automação do balcão (n8n) guarda o
+// PDF pesquisável na pasta do cliente.
+
+/** Como foi a entrevista do caso: papel na hora só na presencial (CA4). */
+export const entrevistaDoContrato = ({ ficha }: ContratoDoCaso) => entrevistaDoCaso(ficha.agendamentos)
+
+function paraOPapel(banco: Banco, processoId: string): ContratoDoCaso & { assinatura: Assinatura } {
+  const achado = achar(banco, processoId)
+  if (!achado) throw new Error('Contrato não encontrado')
+  const { contrato } = achado
+  if (contrato.etapa !== 'assinatura' || !contrato.kit) throw new Error('Este contrato não está para assinar')
+  if (!papelNaHora(entrevistaDoContrato(achado))) throw new Error('Papel só na entrevista presencial: a assinatura vai pelo ZapSign')
+  if (contrato.assinatura?.zapsign) throw new Error('O documento já foi para o ZapSign')
+  contrato.assinatura = { ...(contrato.assinatura ?? { tentativas: [] }), forma: 'papel' }
+  return { ...achado, assinatura: contrato.assinatura }
+}
+
+/**
+ * POST /api/processos/:id/contrato/impressao. "Papel, na hora": o kit sai com as datas em branco para preencher à mão, menos o
+ * contrato de honorários (CA1). Só na entrevista presencial (CA4).
+ */
+export async function imprimirKit(processoId: string): Promise<{ contrato: Contrato; datas: { documento: string; data: string }[] }> {
+  await esperar()
+  const banco = ler()
+  const { ficha, contrato, assinatura } = paraOPapel(banco, processoId)
+  assinatura.impressoEm = agora().toISOString()
+  ficha.historico.push(evento(`Imprimiu o kit para assinar em papel na hora (${contrato.kit!.documentos.length} documentos, datas em branco menos a do contrato de honorários)`))
+  gravar(banco)
+  return { contrato, datas: datasDoKit(contrato.kit!, 'papel', hojeIso(agora())) }
+}
+
+/**
+ * O que a automação do balcão faz quando o contrato assinado passa no scanner: guarda o PDF pesquisável na pasta do cliente e
+ * o arquivo aparece no card, para a leitura (GGVP-81, CA2).
+ */
+export async function digitalizarContratoAssinado(processoId: string): Promise<Arquivo> {
+  await esperar()
+  const banco = ler()
+  const { ficha, processo, assinatura } = paraOPapel(banco, processoId)
+  if (!assinatura.impressoEm) throw new Error('Imprima o kit antes')
+  if (assinatura.arquivo) throw new Error('O contrato assinado já foi digitalizado')
+  const hoje = hojeIso(agora())
+  const arquivo: Arquivo = {
+    nome: `Contrato assinado - ${ficha.nome} - ${hoje} (papel, PDF pesquisável).pdf`,
+    tipo: 'contrato',
+    local: processo.id,
+    data: hoje,
+    origem: 'scanner',
+    repetido: false,
+    aguardaLeitura: true,
+  }
+  ficha.arquivos.push(arquivo)
+  assinatura.arquivo = arquivo.nome
+  ficha.historico.push(evento('Digitalizou o contrato assinado em papel: PDF pesquisável na pasta do cliente', 'Automação do balcão'))
+  gravar(banco)
+  return arquivo
+}
+
+/** POST /api/processos/:id/contrato/assinatura-em-papel. Só conclui com a digitalização do contrato assinado anexada (CA3). */
+export async function concluirAssinaturaEmPapel(processoId: string): Promise<Contrato> {
+  await esperar()
+  const banco = ler()
+  const { ficha, processo, contrato, assinatura } = paraOPapel(banco, processoId)
+  if (!assinatura.arquivo) throw new Error('Anexe a digitalização do contrato assinado')
+  const hoje = hojeIso(agora())
+  assinatura.assinadoEm = agora().toISOString()
+  contrato.etapa = 'leitura'
+  processo.etapa = `Contrato assinado em ${dataCurta(hoje, hoje)}`
+  processo.proximaAcao = 'ler e arquivar o contrato assinado'
+  ficha.historico.push(evento('Concluiu a assinatura em papel, com a digitalização anexada; segue para a leitura'))
+  gravar(banco)
+  return contrato
 }

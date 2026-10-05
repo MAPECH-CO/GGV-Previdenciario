@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { configurarZapSign, fecharContrato, gerarContrato, obterContrato } from '../dados/contrato.ts'
-import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { ColherAssinatura } from './ColherAssinatura.tsx'
 
 beforeEach(() => {
@@ -75,6 +75,41 @@ describe('Colher assinatura · ZapSign (GGVP-72)', () => {
     configurarZapSign({ falhar: false })
     fireEvent.click(botao('Tentar de novo'))
     expect(await screen.findByRole('dialog', { name: 'Chatwoot · conversa com Antônio Exemplo' })).toBeTruthy()
+  })
+
+  it('GGVP-77 CA1, CA2 e CA3 · papel na hora: imprimir com as datas em branco, digitalizar e só então concluir', async () => {
+    const id = await contratoGerado()
+    await abrir(id)
+    fireEvent.click(within(screen.getByRole('region', { name: 'Como o cliente vai assinar?' })).getByRole('radio', { name: 'Em papel na hora' }))
+    expect(botao('Concluir a assinatura').disabled).toBe(true)
+    fireEvent.click(botao('Imprimir o kit'))
+    const datas = await screen.findByRole('list', { name: 'Datas do kit impresso' })
+    expect(within(datas).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Contrato de honorários · 05/10/2026',
+      'Procuração · em branco, à mão na assinatura',
+      'Declaração de hipossuficiência · em branco, à mão na assinatura',
+      'Declaração de residência · em branco, à mão na assinatura',
+      'Termo INSS · em branco, à mão na assinatura',
+      'Código Penal · em branco, à mão na assinatura',
+    ])
+    expect(screen.getByText('Anexe a digitalização do contrato assinado.')).toBeTruthy()
+    expect(botao('Concluir a assinatura').disabled).toBe(true)
+    fireEvent.click(botao('Digitalizar o contrato assinado (scanner simulado)'))
+    expect(await screen.findByText(/✓ Contrato assinado - Antônio Exemplo - 2026-10-05 \(papel, PDF pesquisável\)\.pdf, PDF pesquisável na pasta do cliente/)).toBeTruthy()
+    fireEvent.click(botao('Concluir a assinatura'))
+    expect(await screen.findByRole('heading', { name: '✓ Contrato assinado em papel' })).toBeTruthy()
+    expect((await obterContrato(id))?.contrato.etapa).toBe('leitura')
+  })
+
+  it('GGVP-77 CA4 · entrevista por vídeo: a opção de papel não aparece e a assinatura vai pelo ZapSign', async () => {
+    const id = await contratoGerado()
+    const banco = ler()
+    banco.fichas.find((f) => f.id === 'antonio-exemplo')!.agendamentos.push({ id: 'antonio-entrevista', data: '2026-10-05', hora: '10:30', oQue: 'Entrevista', tipo: 'video' })
+    gravar(banco)
+    await abrir(id)
+    expect(screen.queryByRole('radio', { name: 'Em papel na hora' })).toBeNull()
+    expect(screen.queryByRole('radio', { name: 'Papel, na hora' })).toBeNull()
+    expect(screen.getByText(/A entrevista de Antônio foi por vídeo \(meet\): a assinatura vai pelo ZapSign/)).toBeTruthy()
   })
 
   it('contrato ainda não gerado leva a preparar', async () => {

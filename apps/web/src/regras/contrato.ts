@@ -1,6 +1,7 @@
 // O contrato do caso, do kit à cópia (GGVP-65 em diante). Regra do escritório é código com teste, nunca resposta de modelo.
 // A tabela dos kits é a do cartão GGVP-65 (board do escritório); a manutenção pela gestão vem com a GGVP-104.
 import { formatarCpf, formatarTelefone, normalizarCpf, normalizarNome, normalizarTelefone } from '../campos.ts'
+import type { TipoDeEntrevista } from '../dados/tipos.ts'
 import { somarDias } from './agenda.ts'
 import { erroCpf, erroNome, erroTelefone } from './formularios.ts'
 
@@ -472,3 +473,17 @@ export function mensagemDoLink(nome: string, link: string, lembrete: boolean): s
     ? `Olá, ${primeiro}! Passando para lembrar do contrato do escritório que ainda falta assinar. O link é o mesmo: ${link}. Se tiver dúvida, é só responder aqui.`
     : `Olá, ${primeiro}! Aqui está o link para assinar o contrato do escritório pelo celular: ${link}. Leva poucos minutos. Assim que assinar, a cópia chega para você aqui pelo WhatsApp.`
 }
+
+// GGVP-77 · assinatura em papel na entrevista.
+
+/**
+ * Como foi a entrevista do caso: a mais recente que não foi remarcada. Sem entrevista registrada (cliente antigo, nova demanda
+ * no balcão), é presencial.
+ */
+export function entrevistaDoCaso(agendamentos: { oQue: string; data: string; tipo?: TipoDeEntrevista; estado?: string }[]): TipoDeEntrevista {
+  const entrevistas = agendamentos.filter((a) => a.oQue === 'Entrevista' && a.estado !== 'remarcado').sort((a, b) => b.data.localeCompare(a.data))
+  return entrevistas[0]?.tipo ?? 'presencial'
+}
+
+/** Papel na hora só na entrevista presencial; por vídeo ou telefone, a assinatura vai pelo ZapSign (CA4). */
+export const papelNaHora = (entrevista: TipoDeEntrevista) => entrevista === 'presencial'

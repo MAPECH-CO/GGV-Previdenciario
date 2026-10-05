@@ -7,7 +7,9 @@ import {
   KITS,
   TENTATIVAS_DE_ASSINATURA,
   cobrancaDaAssinatura,
+  entrevistaDoCaso,
   mensagemDoLink,
+  papelNaHora,
   MODELOS,
   SEM_CONDICOES,
   camposDoModelo,
@@ -258,5 +260,29 @@ describe('GGVP-72 · assinatura digital pelo ZapSign', () => {
       'Olá, Nair! Aqui está o link para assinar o contrato do escritório pelo celular: https://zapsign.exemplo/assinar/x. Leva poucos minutos. Assim que assinar, a cópia chega para você aqui pelo WhatsApp.',
     )
     expect(mensagemDoLink('Nair Exemplo', 'https://zapsign.exemplo/assinar/x', true)).toContain('O link é o mesmo: https://zapsign.exemplo/assinar/x.')
+  })
+})
+
+describe('GGVP-77 · assinatura em papel na entrevista', () => {
+  it('CA4 · papel na hora só quando a entrevista foi presencial', () => {
+    expect(entrevistaDoCaso([{ oQue: 'Entrevista', data: '2026-10-04', tipo: 'video' }])).toBe('video')
+    expect(entrevistaDoCaso([{ oQue: 'Entrevista', data: '2026-10-05', tipo: 'presencial' }])).toBe('presencial')
+    expect(
+      entrevistaDoCaso([
+        { oQue: 'Entrevista', data: '2026-10-01', tipo: 'presencial' },
+        { oQue: 'Entrevista', data: '2026-10-03', tipo: 'telefone' },
+        { oQue: 'Entrevista', data: '2026-10-04', tipo: 'presencial', estado: 'remarcado' },
+        { oQue: 'Retirada da cópia do contrato', data: '2026-10-05', tipo: 'presencial' },
+      ]),
+    ).toBe('telefone')
+    expect(entrevistaDoCaso([])).toBe('presencial')
+    expect(papelNaHora('presencial')).toBe(true)
+    expect(papelNaHora('video')).toBe(false)
+    expect(papelNaHora('telefone')).toBe(false)
+  })
+
+  it('CA1 · o kit impresso sai com as datas em branco, menos o contrato de honorários', () => {
+    const datas = datasDoKit(montarKit('loas-idoso')!, 'papel', '2026-10-05')
+    expect(datas.filter((d) => d.data !== 'em branco, à mão na assinatura')).toEqual([{ documento: 'Contrato de honorários', data: '05/10/2026' }])
   })
 })

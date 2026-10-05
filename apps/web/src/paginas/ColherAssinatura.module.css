@@ -53,6 +53,16 @@
   margin-top: 8px;
 }
 
+.anexo {
+  color: var(--cor-erro);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.anexo[data-ok='true'] {
+  color: var(--cor-ok);
+}
+
 .pendente {
   display: flex;
   flex-wrap: wrap;

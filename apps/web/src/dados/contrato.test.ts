@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   CLIENTE_DO_EXEMPLO_DOS_MODELOS,
   SEGREDO_DO_RETORNO_EXEMPLO,
+  concluirAssinaturaEmPapel,
   configurarZapSign,
+  digitalizarContratoAssinado,
   enviarParaAssinatura,
   fecharContrato,
   gerarContrato,
+  imprimirKit,
   obterContrato,
   receberRetornoDoZapSign,
   registrarTentativaDeAssinatura,
@@ -15,7 +18,7 @@ import {
   type EnvioDoContrato,
 } from './contrato.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
-import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
+import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from './servidor.ts'
 
 let hoje = new Date(2026, 9, 5, 14, 32)
 
@@ -252,6 +255,47 @@ describe('GGVP-72 · assinatura digital pelo ZapSign · servidor de exemplo', ()
     expect(await enviarParaAssinatura(id)).toEqual({ resultado: 'erro', mensagem: 'O ZapSign não respondeu ao gerar o documento. Nada foi enviado ao cliente.' })
     expect(tarefasDoContrato().find((t) => t.processoId === id)).toMatchObject({ detalhe: 'Aposentadoria por Idade · erro ao gerar no ZapSign: tente de novo', urgente: true })
     configurarZapSign({ falhar: false })
+    expect((await enviarParaAssinatura(id)).resultado).toBe('gerado')
+  })
+})
+
+describe('GGVP-77 · assinatura em papel na entrevista · servidor de exemplo', () => {
+  it('CA1 · o kit impresso sai com as datas em branco, menos o contrato de honorários', async () => {
+    const id = await contratoGerado()
+    const { contrato, datas } = await imprimirKit(id)
+    expect(contrato.assinatura).toMatchObject({ forma: 'papel', impressoEm: expect.any(String) })
+    expect(datas[0]).toEqual({ documento: 'Contrato de honorários', data: '05/10/2026' })
+    expect(datas.slice(1).map((d) => d.data)).toEqual(Array(5).fill('em branco, à mão na assinatura'))
+    expect(tarefasDoContrato().find((t) => t.processoId === id)?.detalhe).toBe('Aposentadoria por Idade · papel · impresso, falta digitalizar o assinado')
+  })
+
+  it('CA2 e CA3 · só conclui com a digitalização anexada; o PDF pesquisável entra na pasta do caso para a leitura', async () => {
+    const id = await contratoGerado()
+    await imprimirKit(id)
+    await expect(concluirAssinaturaEmPapel(id)).rejects.toThrow('Anexe a digitalização')
+    const arquivo = await digitalizarContratoAssinado(id)
+    expect(arquivo).toEqual({
+      nome: 'Contrato assinado - Antônio Exemplo - 2026-10-05 (papel, PDF pesquisável).pdf',
+      tipo: 'contrato',
+      local: id,
+      data: '2026-10-05',
+      origem: 'scanner',
+      repetido: false,
+      aguardaLeitura: true,
+    })
+    expect((await obterFicha('antonio-exemplo'))?.arquivos.at(-1)).toEqual(arquivo)
+    await expect(enviarParaAssinatura(id)).rejects.toThrow('já foi digitalizado')
+    const contrato = await concluirAssinaturaEmPapel(id)
+    expect(contrato.etapa).toBe('leitura')
+    expect(tarefasDoContrato().some((t) => t.processoId === id)).toBe(false)
+  })
+
+  it('CA4 · entrevista por vídeo ou telefone: sem papel na hora, a assinatura vai pelo ZapSign', async () => {
+    const id = await contratoGerado()
+    const banco = ler()
+    banco.fichas.find((f) => f.id === 'antonio-exemplo')!.agendamentos.push({ id: 'antonio-entrevista', data: '2026-10-05', hora: '10:30', oQue: 'Entrevista', tipo: 'video' })
+    gravar(banco)
+    await expect(imprimirKit(id)).rejects.toThrow('Papel só na entrevista presencial')
     expect((await enviarParaAssinatura(id)).resultado).toBe('gerado')
   })
 })

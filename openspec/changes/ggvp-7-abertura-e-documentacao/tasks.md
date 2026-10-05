@@ -31,6 +31,13 @@
 
 ## GGVP-77 · Assinatura em papel na entrevista
 
+- [x] 4.1 Contrato: `impressoEm` na assinatura, em `src/dados/contrato.ts`. Verifica com `npm run typecheck`.
+- [x] 4.2 Regra: `entrevistaDoCaso` e `papelNaHora` em `src/regras/contrato.ts`, com teste em `src/regras/contrato.test.ts` (CA1, CA4). Verifica com `npx vitest run src/regras/contrato.test.ts`.
+- [x] 4.3 Servidor de exemplo: `imprimirKit`, `digitalizarContratoAssinado` (a automação do balcão simulada) e `concluirAssinaturaEmPapel` em `src/dados/contrato.ts`, com teste em `src/dados/contrato.test.ts` (CA1 a CA4). Verifica com `npx vitest run src/dados/contrato.test.ts`.
+- [x] 4.4 Tela `/contrato/:processoId/assinatura` (Figma `10:176`): "Em papel na hora" só na entrevista presencial, o cartão "Assinatura em papel" com a impressão, as datas, a digitalização e o anexo obrigatório, "Concluir a assinatura" e o "Contrato assinado em papel"; teste em `ColherAssinatura.test.tsx` (CA1 a CA4). Verifica com `npx vitest run src/paginas/ColherAssinatura.test.tsx`.
+- [x] 4.5 Playwright `e2e/colher-assinatura.e2e.ts`: do contrato gerado ao papel na hora, com a digitalização na pasta do caso (CA1, CA2, CA3). Verifica com `npm run e2e -- colher-assinatura`.
+- [ ] 4.6 Ligar no servidor: a impressão de verdade e o aviso do n8n quando o contrato assinado passa no scanner. Depende do GGVP-118, do banco do Mateus e da automação do balcão. **Fica aberta nesta história.**
+
 ## GGVP-85 · Verificar o contrato assinado
 
 ## GGVP-89 · Cópia do contrato para o cliente levar
