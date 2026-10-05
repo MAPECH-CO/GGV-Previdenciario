@@ -150,6 +150,10 @@ export type Ficha = {
   fichaAtendimentoPreenchida: boolean
   /** As respostas da triagem da ficha de atendimento (GGVP-24). Os dados pessoais ficam na própria ficha. */
   fichaAtendimento?: FichaDeAtendimento
+  /** "Pode ser auxílio acidentário?", decidido na análise da ficha (GGVP-28). */
+  analise?: AnaliseDaFicha
+  /** A tentativa do Atendimento de renovar a senha do gov.br (GGVP-36). */
+  renovacao?: Renovacao
   processos: Processo[]
   agendamentos: Agendamento[]
   contatos: Contato[]
@@ -466,4 +470,35 @@ export type LeituraDaFicha = {
   naoLidos: (keyof EnvioDaFicha)[]
   /** Havia senha escrita: foi para o cofre, para conferir (CA15). */
   senhaLida: boolean
+}
+
+// GGVP-32 em diante: a preparação da conversa. Espelho do Zod da design.md da change ggvp-6.
+
+export type AnaliseDaFicha = {
+  acidentario: boolean
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+}
+
+export type Renovacao =
+  | { resultado: 'renovou'; quem: string; quando: string }
+  | { resultado: 'nao-conseguiu'; motivo: string; quem: string; quando: string }
+
+export type PontoDeAtencao = {
+  tipo: 'acidentario' | 'senha' | 'beneficio' | 'em-branco'
+  texto: string
+  /** O que entra no detalhe da tarefa da fila, quando é alerta. */
+  curto: string
+  alerta: boolean
+}
+
+export type Preparacao = {
+  ficha: Ficha
+  agendamento: Agendamento
+  /** A leitura da IA, para conferir (CA3). */
+  resumo: string
+  pontos: PontoDeAtencao[]
+  /** A anotação mais antiga de "Últimos contatos" (CA5). */
+  primeiroContato?: Contato
 }

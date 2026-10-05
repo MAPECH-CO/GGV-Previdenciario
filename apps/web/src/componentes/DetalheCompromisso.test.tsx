@@ -44,6 +44,14 @@ describe('Detalhe do compromisso', () => {
     expect(passado.janela.queryByRole('link', { name: 'Confirmar agendamento' })).toBeNull()
   })
 
+  it('GGVP-32 CA5 · a entrevista agendada abre a preparação da conversa; a que passou, não', async () => {
+    const { janela } = abrir(await evento('josefa-entrevista'))
+    expect(janela.getByRole('link', { name: 'Preparar entrevista' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/preparar')
+    cleanup()
+    const passado = abrir(await evento('natalia-entrevista'))
+    expect(passado.janela.queryByRole('link', { name: 'Preparar entrevista' })).toBeNull()
+  })
+
   it('CA6 · "Marcar como realizado" registra e a agenda atualiza', async () => {
     const { aoMudar, janela } = abrir(await evento('josefa-entrevista'))
     expect(janela.getByRole('link', { name: 'Josefa Exemplo' }).getAttribute('href')).toBe('/clientes/josefa-exemplo')

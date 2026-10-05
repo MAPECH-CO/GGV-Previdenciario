@@ -104,6 +104,12 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
             Abrir a ficha
           </a>
         )}
+        {/* A advogada prepara a conversa também pela agenda (GGVP-32, CA5). */}
+        {evento.oQue === 'Fazer entrevista' && evento.estado === 'agendado' && evento.fichaId && (
+          <a className={styles.botao} href={`/entrevista/${evento.id}/preparar`}>
+            Preparar entrevista
+          </a>
+        )}
         {/* A entrevista do lead ainda sem confirmação abre a tarefa de confirmar (GGVP-21). */}
         {evento.aConfirmar && (
           <a className={styles.botao} href={`/agenda/confirmar/${evento.id}`}>

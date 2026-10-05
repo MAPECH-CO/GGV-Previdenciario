@@ -527,11 +527,142 @@ O servidor de exemplo valida de novo com as mesmas funções.
 8. **O Jurídico vê a ficha antes** (CA4): o cartão "Ficha de atendimento" na ficha do cliente mostra as respostas, o que ficou em branco e a situação da senha; a preparação da conversa (GGVP-32, grupo 2) usa os mesmos dados.
 9. **A IA completa pela transcrição** (CA13): entra com a transcrição (GGVP-46, grupo 3), sobre o mesmo "lido pela IA · confira".
 
+## GGVP-32 · Preparar a conversa lendo a ficha
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/advogada` | Central de trabalho · Advogada `59:449` | A fila da advogada: busca, "Pergunte ou peça" com os atalhos dela, abas e "O que você tem que fazer", com as tarefas do Jurídico que o portal cria e as de exemplo do Figma (só com as pessoas da semente) |
+| `/entrevista/:agendamentoId/preparar` | step_D1.06 `14:2` | Chips, "nome · Preparar entrevista", "A IA sugere · você confere" com o resumo da IA, os pontos de atenção, a senha do gov.br (só a situação e a última vez que funcionou), a renovação, a anotação do primeiro contato, o que ficou em branco, a ficha completa e a segunda ficha; "Analisar a ficha" e "Iniciar entrevista (Transcrição)"; no lado, "Antes de concluir" |
+
+A Central da Advogada não tem cartão próprio: entra aqui porque o CA1 pede "minha fila", e o Figma conta como validado. A troca de perfil no topo continua indisponível (GGVP-78); a Central abre por `/advogada`.
+
+### Contrato (Zod, vai para `packages/contratos/entrevista.ts`)
+
+```ts
+// O que a preparação lê da ficha. A análise, a segunda ficha e a renovação nascem na GGVP-28 e na GGVP-36.
+export const AnaliseDaFicha = z.object({ acidentario: z.boolean(), quem: z.string(), quando: z.string() })
+export const Renovacao = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('renovou'), quem: z.string(), quando: z.string() }),
+  z.object({ resultado: z.literal('nao-conseguiu'), motivo: z.string(), quem: z.string(), quando: z.string() }),
+])
+export const PontoDeAtencao = z.object({ tipo: z.enum(['acidentario', 'senha', 'beneficio', 'em-branco']), texto: z.string(), alerta: z.boolean() })
+export const Preparacao = z.object({
+  ficha: Ficha, agendamento: Agendamento,
+  resumo: z.string(),                       // a leitura da IA, para conferir (CA3)
+  pontos: z.array(PontoDeAtencao),          // CA1, CA2
+  primeiroContato: Contato.optional(),      // CA5
+})
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/entrevistas/:id/preparacao` | `id` | `Preparacao` | `obterPreparacao` |
+| `GET /api/central/advogada` | — | `Tarefa[]` | `tarefasDaAdvogada` |
+
+### Decisões da história
+
+1. **Pontos de atenção** (CA1, CA2, CA4): regra em `regras/preparacao.ts`: o acidentário (benefício citado acidentário, ou a decisão da análise e a segunda ficha), a senha do gov.br pela situação (sem senha, o escritório tem mas não está no cofre, no cofre com a última vez que funcionou) e se o Atendimento já tentou renovar, o benefício que o cliente procura e o que ficou em branco. A tarefa "Preparar entrevista" da fila traz esses pontos no detalhe.
+2. **Resumo da IA** (CA3): simulado em `dados/preparacao.ts` a partir da ficha de atendimento, marcado "A IA sugere · você confere", com os links para a ficha completa e para a segunda ficha quando houver.
+3. **Primeiro contato** (CA5): a anotação mais antiga de "Últimos contatos". A preparação abre pela tarefa da fila e pelo "Preparar entrevista" do detalhe do compromisso na agenda.
+4. **"Iniciar entrevista (Transcrição)"**: visual do Figma; só libera com a ficha analisada e, no acidentário, a segunda ficha preenchida (GGVP-28, CA3). A tela da entrevista vem no grupo 3 (GGVP-40); até lá o botão leva à rota dela, que cai em "ainda não construída".
+5. **Topo das telas da advogada**: o "Início" leva a `/advogada`; o contexto à direita é "Você · Advogada responsável", como no Figma.
+6. **Dado de saúde**: a preparação é tela do Jurídico e mostra a seção médica da segunda ficha; a ficha do cliente (Atendimento) não.
+
+## GGVP-28 · Segunda ficha para auxílio acidentário
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/entrevista/:agendamentoId/analisar` | step_D1.07 `14:36` | "nome · Analisar ficha": "Pode ser auxílio acidentário?" com "Sim — abrir 2ª ficha" e "Não", a situação da senha do gov.br, o aviso do G9 e "Confirmar" |
+| `/clientes/:fichaId/segunda-ficha` | Segunda ficha: auxílio acidentário `1815:422` | "nome · Preencher segunda ficha": a ficha em papel no scanner simulado, as 6 seções do modelo (o cartão manda; o Figma tem só campos de exemplo), a senha do Meu INSS pelo cofre e "Enviar segunda ficha" |
+| `/clientes/:fichaId/segunda-ficha?modo=tablet` | a mesma, uma seção por tela | O cliente no tablet, com letra grande |
+
+### Contrato (Zod, vai para `packages/contratos/fichas.ts`)
+
+```ts
+const SimNao = z.enum(['sim', 'nao', 'nao-sei'])
+const Data = z.string().transform(normalizarData).refine((d) => d === '' || (dataParaIso(d) !== null && dataParaIso(d)! <= hojeIso()))
+export const RespostasDaSegundaFicha = z.object({
+  // (1) atendimento e dados pessoais: vêm da ficha única, sem repetir
+  empresa: z.string().max(120), funcao: z.string().max(120), vinculo: z.string().max(80),            // (2) profissionais
+  afastamentoEm: Data, acidenteEm: Data, acidenteLocal: z.string().max(200),
+  nb: z.string().refine((v) => v === '' || validarNb(v)), der: Data,                                  // (3) INSS; a senha vai ao cofre
+  cat: SimNao, catEm: Data, boletim: SimNao, boletimEm: Data, deTrabalho: SimNao,                      // (4) acidente
+  parteDoCorpo: z.string().max(120), lado: z.enum(['', 'direito', 'esquerdo', 'os dois']),
+  doencas: z.string().max(300), cid: z.string().max(40), tratamento: z.string().max(300),              // (5) médicos: só o Jurídico
+  cirurgia: SimNao, medico: z.string().max(120), laudos: z.string().max(300),
+  historico: z.string().trim().min(3).max(2000),                                                       // (6) obrigatório (Figma)
+})
+export const SegundaFicha = z.object({ data: z.string(), origem: z.enum(['papel', 'tablet']), respostas: RespostasDaSegundaFicha })
+export const DecisaoDaAnalise = z.object({ acidentario: z.boolean() })
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `POST /api/entrevistas/:id/analise` | `DecisaoDaAnalise` | `{ tarefas }` | `registrarAnalise` |
+| `POST /api/fichas/:id/segunda-ficha/leitura` | aviso do n8n | `{ arquivo, respostas, senhaLida }` | `lerSegundaFichaEmPapel` |
+| `PUT /api/fichas/:id/segunda-ficha` | `RespostasDaSegundaFicha` e a origem | `{ ficha }` | `salvarSegundaFicha` |
+
+### Campos e a função de cada um
+
+| Campo | Funções |
+|---|---|
+| Datas (afastamento, acidente, DER, CAT, boletim) | `normalizarData`, `dataParaIso`, não futura |
+| Número do benefício | `normalizarNb`, `validarNb`, `formatarNb` |
+| Houve CAT, boletim, acidente de trabalho, cirurgia | escolha: Sim, Não, Não sei |
+| Lado | escolha: direito, esquerdo, os dois |
+| Os outros | texto com tamanho |
+| Senha do Meu INSS | só o componente do cofre (a mesma conta do gov.br) |
+
+### Decisões da história
+
+1. **Analisar a ficha** (CA1, CA4): a decisão fica na ficha, com a autora e o horário, e no histórico. "Sim" abre a pendência do Atendimento "Preencher segunda ficha" (D1.07), em papel até o tablet chegar. A tela fica no caminho da preparação: "Analisar a ficha" na preparação leva a ela. A tarefa da advogada continua sendo uma por entrevista, "Preparar entrevista"; "Analisar ficha" é o título da tela do passo.
+2. **A entrevista espera a segunda ficha** (CA3): `entrevistaLiberada` em `regras/segundaFicha.ts`, com teste; a preparação mostra o motivo no "Iniciar entrevista".
+3. **As 6 seções** (CA5): a primeira mostra os dados pessoais da ficha única, sem repetir; o resto é a lista do contrato. O que ficou em branco é guardado, como na ficha de atendimento.
+4. **Papel e IA** (CA6, CA7): como na GGVP-24, com a imagem "Ficha de atendimento AUXILIO ACIDENTE" em Documentos pessoais e a senha do Meu INSS no cofre para conferir.
+5. **Dado médico só para o Jurídico** (CA8): na conferência do Atendimento, a seção 5 não aparece ("a IA leu e guardou só para o Jurídico"); no tablet, o próprio cliente preenche; a ficha do cliente mostra só "Segunda ficha preenchida em dd/mm"; a preparação da advogada mostra tudo. O histórico nunca leva o conteúdo médico.
+6. **As duas fichas juntas** (CA2): a preparação mostra a ficha de atendimento e a segunda ficha lado a lado.
+
+## GGVP-36 · Renovar a senha do gov.br antes da entrevista
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/entrevista/:agendamentoId/renovar-senha` | step_D1.08 `10:89` | "nome · Renovar senha do gov.br": "O que você deve fazer" com o código de verificação no celular do cliente, a frase da tarefa, a nova senha direto no cofre (mascarada), "Conferi que o Meu INSS abre e que o CNIS aparece", o motivo e o aviso no "Não", o aviso do G9 e "Guardar no cofre"; no lado, "Conseguiu renovar?" |
+
+### Contrato (Zod, vai para `packages/contratos/fichas.ts`)
+
+```ts
+export const RegistroDaRenovacao = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('renovou'), senha: z.string().min(1).max(100), conferiMeuInss: z.literal(true) }),   // a senha vai ao cofre e não volta
+  z.object({ resultado: z.literal('nao-conseguiu'), motivo: z.string().trim().min(3).max(300), aviseiOCliente: z.literal(true) }),
+])
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `POST /api/entrevistas/:id/renovacao` | `RegistroDaRenovacao` | `{ senhaGov, renovacao }` | `registrarRenovacao` |
+
+### Decisões da história
+
+1. **Quando nasce** (CA1, CA4): ao confirmar a análise da ficha (GGVP-28) de quem está sem senha no cofre, o Atendimento recebe "Renovar senha do gov.br" (D1.08), com prazo no horário da entrevista.
+2. **"Sim"** (CA2, CA5, CA9, CA11): a senha é digitada numa caixa mascarada que vai direto ao cofre, sem ficar em nenhum outro lugar; "Guardar no cofre" só habilita com a senha e "Conferi que o Meu INSS abre e que o CNIS aparece", e o cofre grava essa data como a última vez em que a senha funcionou.
+3. **"Não"** (CA3, CA6): o motivo é obrigatório e "Avisei o cliente" também; o aviso fica em "Últimos contatos" e a entrevista segue.
+4. **Trilha** (CA8): toda gravação no cofre registra quem, quando e a ação, sem o valor.
+5. **Código de verificação** (CA10): a tela lembra que o código chega no celular ou no e-mail do próprio cliente.
+6. **A advogada vê** (CA7): o resultado aparece na preparação da conversa (GGVP-32).
+
 ## Risks / Trade-offs
 
 - [Fontes de "Como chegou" não são as do Airtable] → lista de exemplo, num arquivo só; trocar ao ligar no servidor. Os benefícios já são os do Airtable, normalizados no cartão GGVP-91 (desde a GGVP-21).
 - [A semente só tem um CPF, o de teste, que é do Antônio] → o teste que salva a ficha de atendimento usa a ficha dele; a da Josefa mostra a trava sem CPF. Nenhum CPF inventado.
 - [O que levar de cada benefício só está escrito para o LOAS] → os outros usam "RG, CPF e os laudos" até a GGVP-104 trazer as listas.
+- [A Central da Advogada não tem cartão próprio] → entra com a GGVP-32, porque o CA1 pede "minha fila"; as tarefas de exemplo do Figma ficam só com as pessoas da semente. Levar ao Lucas.
+- [O cartão da GGVP-28 lista a tarefa "Analisar ficha", e a advogada já tem "Preparar entrevista" da mesma entrevista] → uma tarefa por entrevista; "Analisar ficha" é a tela do passo, aberta pela preparação. Levar ao Lucas.
 - [O cofre de verdade é da GGVP-103] → aqui só o componente que guarda e mostra a situação, simulado, sem guardar o valor; "Revelar" fica na GGVP-103.
 - [Regra do scanner para achar a pasta não está escrita em lugar nenhum] → CPF, senão nome sem acento; parâmetro de `regras/pasta.ts`, ajusta com a GGVP-81.
 - [Ficha do cliente não tinha história própria] → ela está entre as telas desta história; a GGVP-86 constrói sobre ela.

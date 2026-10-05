@@ -65,7 +65,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
         contatoPreferido: 'WhatsApp, à tarde',
         observacoes: 'Prefere atendimento por vídeo.',
         resumo: 'trabalhador rural aposentando · São Paulo/SP',
-        senhaGov: { situacao: 'no-cofre', atualizadaEm: '2025-07-12T14:00:00.000Z', por: 'Atendimento' },
+        senhaGov: { situacao: 'no-cofre', atualizadaEm: '2025-07-12T14:00:00.000Z', por: 'Atendimento', funcionouEm: '2026-09-15' },
         laudoNovoEm: '2026-09-29',
         contatos: [
           { data: '2026-09-27', canal: 'WhatsApp', texto: 'Avisado da exigência do juiz; vai buscar as notas do produtor.' },

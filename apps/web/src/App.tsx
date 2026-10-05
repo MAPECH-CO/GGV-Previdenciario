@@ -1,5 +1,6 @@
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
+import { CentralAdvogada } from './paginas/CentralAdvogada.tsx'
 import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { ConfirmarAgendamento } from './paginas/ConfirmarAgendamento.tsx'
 import { FichaAtendimento } from './paginas/FichaAtendimento.tsx'
@@ -7,6 +8,7 @@ import { FichaCliente } from './paginas/FichaCliente.tsx'
 import { MarcarEntrevista } from './paginas/MarcarEntrevista.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
 import { NovoCliente } from './paginas/NovoCliente.tsx'
+import { PrepararEntrevista } from './paginas/PrepararEntrevista.tsx'
 import { ReceberDocumento } from './paginas/ReceberDocumento.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
 
@@ -14,6 +16,7 @@ import { Tokens } from './paginas/Tokens.tsx'
 export function App({ caminho = window.location.pathname, busca = window.location.search }: { caminho?: string; busca?: string }) {
   const parametros = new URLSearchParams(busca)
   if (caminho === '/') return <CentralAtendimento />
+  if (caminho === '/advogada') return <CentralAdvogada />
   if (caminho === '/tokens') return <Tokens />
   if (caminho === '/balcao') return <Balcao />
   if (caminho === '/clientes/novo') return <NovoCliente />
@@ -22,6 +25,8 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (marcar) return <MarcarEntrevista fichaId={decodeURIComponent(marcar[1])} remarcar={parametros.get('remarcar') ?? undefined} />
   const confirmar = /^\/agenda\/confirmar\/([^/]+)$/.exec(caminho)
   if (confirmar) return <ConfirmarAgendamento agendamentoId={decodeURIComponent(confirmar[1])} />
+  const preparar = /^\/entrevista\/([^/]+)\/preparar$/.exec(caminho)
+  if (preparar) return <PrepararEntrevista agendamentoId={decodeURIComponent(preparar[1])} />
   const recebimento = /^\/balcao\/documento\/([^/]+)$/.exec(caminho)
   if (recebimento) return <ReceberDocumento tarefaId={decodeURIComponent(recebimento[1])} />
   const fichaDeAtendimento = /^\/clientes\/([^/]+)\/ficha-de-atendimento$/.exec(caminho)

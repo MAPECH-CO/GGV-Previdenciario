@@ -50,6 +50,7 @@ import {
   precisaConfirmar,
   tentativaAtual,
 } from './confirmacao.ts'
+import { atencaoCurta, pontosDeAtencao } from './preparacao.ts'
 import { MENSAGEM_PESSOAS, camposEmBranco, envioValido, errosDaFicha, oQueFalta, paraEnvio, type ValoresDaFicha } from './fichaAtendimento.ts'
 
 const HOJE = '2026-10-05'
@@ -562,5 +563,39 @@ describe('ficha de atendimento (GGVP-24)', () => {
     expect(envioValido(envio, HOJE)).toBe(true)
     expect(envioValido({ ...envio, cpf: '00000000192' }, HOJE)).toBe(false)
     expect(envioValido({ ...envio, nascimento: '06/10/2026' }, HOJE)).toBe(false)
+  })
+})
+
+describe('preparação da conversa (GGVP-32)', () => {
+  const lead = ficha({ id: 'j', nome: 'Josefa Exemplo', telefone: '11900000002', situacao: 'lead', beneficioInteresse: 'loas-idoso', fichaAtendimentoPreenchida: true })
+  const textos = (f: Ficha) => pontosDeAtencao(f, HOJE).map((p) => p.texto)
+
+  it('CA1 e CA2 · sem senha: o alerta e se o Atendimento já tentou renovar; o benefício procurado', () => {
+    expect(textos(lead)).toEqual([
+      'Acidentário: decidir na análise da ficha',
+      'Sem senha do gov.br · o Atendimento ainda não tentou renovar',
+      'Benefício que o cliente procura: LOAS Idoso',
+    ])
+    const tentou = { ...lead, renovacao: { resultado: 'nao-conseguiu' as const, motivo: 'o celular cadastrado não é mais dela', quem: 'Você', quando: '' } }
+    expect(textos(tentou)[1]).toBe('Sem senha do gov.br · o Atendimento tentou renovar e não conseguiu: o celular cadastrado não é mais dela')
+    expect(textos({ ...lead, senhaGov: { situacao: 'sem-senha', naoSabe: true } })[1]).toBe('Sem senha do gov.br (o cliente não sabe) · o Atendimento ainda não tentou renovar')
+    expect(atencaoCurta(pontosDeAtencao(lead, HOJE))).toBe('atenção: sem senha do gov.br')
+  })
+
+  it('CA4 · as três situações da senha, sem a senha, com a última vez que funcionou', () => {
+    expect(textos({ ...lead, senhaGov: { situacao: 'no-cofre', funcionouEm: '2026-09-15' } })[1]).toBe('Senha do gov.br no cofre · funcionou pela última vez em 15/09')
+    expect(textos({ ...lead, senhaGov: { situacao: 'no-cofre' } })[1]).toBe('Senha do gov.br no cofre · ainda sem registro de que funcionou')
+    expect(textos({ ...lead, senhaGov: { situacao: 'escritorio-tem' } })[1]).toBe('Senha do gov.br: o escritório tem, mas ainda não está no cofre')
+  })
+
+  it('o acidentário vem da análise ou do benefício procurado; o que ficou em branco e a ficha que falta são alerta', () => {
+    expect(textos({ ...lead, beneficioInteresse: 'auxilio-acidente' })[0]).toBe('O benefício procurado é acidentário: confirme na análise da ficha')
+    const analisada = { ...lead, analise: { acidentario: true, quem: 'Dra. Paula', quando: '' } }
+    expect(textos(analisada)[0]).toBe('Pode ser auxílio acidentário (decidido na análise da ficha)')
+    const branco = { ...lead, fichaAtendimento: { data: HOJE, origem: 'papel' as const, emBranco: ['Endereço', 'O que já pediu ao INSS'] } }
+    expect(textos(branco).at(-1)).toBe('Ficou em branco na ficha: Endereço e O que já pediu ao INSS')
+    expect(textos({ ...lead, fichaAtendimentoPreenchida: false }).at(-1)).toBe('A ficha de atendimento ainda não foi preenchida')
+    expect(atencaoCurta(pontosDeAtencao({ ...analisada, senhaGov: { situacao: 'no-cofre' } }, HOJE))).toBe('atenção: pode ser acidentário')
+    expect(atencaoCurta(pontosDeAtencao({ ...lead, senhaGov: { situacao: 'no-cofre' } }, HOJE))).toBe('sem pontos de atenção')
   })
 })

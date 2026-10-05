@@ -67,6 +67,15 @@ describe('App', () => {
     expect(await screen.findByText('Pergunta 1 de 11')).toBeTruthy()
   })
 
+  it('GGVP-32 · em /advogada abre a Central da Advogada e em /entrevista/:id/preparar, a preparação', async () => {
+    zerarExemplo()
+    render(<App caminho="/advogada" />)
+    expect(screen.getByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/entrevista/josefa-entrevista/preparar" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Preparar entrevista' })).toBeTruthy()
+  })
+
   it('em rota sem tela avisa que não foi construída e mostra o caminho', () => {
     render(<App caminho="/relatorios" />)
     expect(screen.getByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeTruthy()
