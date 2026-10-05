@@ -1,0 +1,15 @@
+.grupo {
+  display: flex;
+  gap: 8px;
+}
+
+.botao {
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+  white-space: nowrap;
+}

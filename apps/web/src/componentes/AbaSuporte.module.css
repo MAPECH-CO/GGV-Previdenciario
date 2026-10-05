@@ -1,0 +1,23 @@
+.aba {
+  position: fixed;
+  top: 40%;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 140px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-12) 0 0 var(--raio-12);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+/* O texto lê de baixo para cima, como no Figma. */
+.texto {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}

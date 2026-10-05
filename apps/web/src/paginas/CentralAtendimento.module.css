@@ -1,0 +1,39 @@
+.pagina {
+  display: flex;
+  justify-content: center;
+  padding: 28px 20px;
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: min(820px, 100%);
+}
+
+.painel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tituloTexto {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.contagem {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-13);
+}
+
+.emConstrucao {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
