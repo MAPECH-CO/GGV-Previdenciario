@@ -16,14 +16,6 @@ export const tarefasAtendimento: Tarefa[] = [
     urgente: true,
   },
   {
-    id: 't2',
-    codigo: 'D1.19',
-    cliente: cliente('cleide-exemplo', 'Cleide Exemplo'),
-    acao: 'Conferir contrato',
-    detalhe: 'Aposentadoria PCD · a IA apontou 1 pendência',
-    prazo: 'hoje',
-  },
-  {
     id: 't3',
     codigo: 'D1.17',
     cliente: cliente('nair-exemplo', 'Nair Exemplo'),

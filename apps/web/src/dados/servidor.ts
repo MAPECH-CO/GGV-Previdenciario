@@ -25,6 +25,7 @@ import type {
   Setor,
   TarefaEncaminhada,
 } from './tipos.ts'
+import type { Contrato } from './contrato.ts'
 
 const CHAVE = 'ggv.exemplo.v4'
 
@@ -49,6 +50,8 @@ export type Banco = {
   /** A seção médica que a IA leu da segunda ficha em papel: vai direto ao Jurídico, sem passar pela tela do Atendimento (GGVP-28). */
   leiturasMedicas: { fichaId: string; medicos: Partial<RespostasDaSegundaFicha> }[]
   seq: number
+  /** Um contrato por processo, do kit à cópia (GGVP-65 em diante). Sem ele, começa da semente de contrato.ts. */
+  contratos?: Contrato[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

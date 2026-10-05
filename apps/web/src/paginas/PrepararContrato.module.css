@@ -1,0 +1,8 @@
+/* O resto vem de Balcao.module.css (telas de passo). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
