@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
 
-const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfil: 'atendimento', trocarSenha: false }
+const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
 
 function servidorResponde(status: number, corpo: unknown) {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })))
@@ -34,7 +34,7 @@ describe('App', () => {
   })
 
   it('CA4 · sem perfil mostra o aviso e nenhuma tela de caso', async () => {
-    servidorResponde(200, { ...usuario, perfil: null })
+    servidorResponde(200, { ...usuario, perfis: [], perfilAtivo: null })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Sem perfil, fale com a gestão.' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()
@@ -55,5 +55,19 @@ describe('App', () => {
     await vi.waitFor(() => expect(assign).toHaveBeenCalledOnce())
     expect(assign.mock.calls[0][0]).toBe('/entrar?volta=%2Fclientes%2Fnovo%3Faba%3D2')
     expect(container.textContent).toBe('')
+  })
+
+  it('GGVP-96 · cada perfil cai na sua Central; a da Sênior ainda não foi construída', async () => {
+    servidorResponde(200, { ...usuario, perfis: ['senior'], perfilAtivo: 'senior' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Central · Sênior' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
+  })
+
+  it('GGVP-96 · a Documentação trabalha na Central do Atendimento', async () => {
+    servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
   })
 })

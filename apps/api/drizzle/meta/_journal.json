@@ -36,6 +36,27 @@
       "when": 1791243396494,
       "tag": "0004_historico_so_cresce",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791243717263,
+      "tag": "0005_usuario_sem_perfil_unico",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791243718571,
+      "tag": "0006_perfis_e_perfil_ativo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791243741833,
+      "tag": "0007_perfis_validos",
+      "breakpoints": true
     }
   ]
 }

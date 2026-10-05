@@ -40,3 +40,12 @@
 - [x] 4.3 Histórico só cresce: gatilho recusa `update` e `delete` em `evento_auditoria` e `acesso_dado_sensivel` (migração `0004_historico_so_cresce`); teste em `migracoes.test.ts`.
 - [x] 4.4 Testes de confiança: estado fora da lista, CPF repetido, número de processo em dois casos, prestação com a mesma pessoa no OK e no recebimento e aviso antes do OK; verifica com `pnpm --filter @ggv/api test`.
 - [x] 4.5 Aplicar no Supabase "Portal Operacional" com `pnpm --filter @ggv/api db:migrar`; verifica pelo conector: 43 tabelas, todas com RLS.
+
+## GGVP-96 · Perfis e permissões
+
+- [x] 5.1 CA2, CA4, CA5, CA6, CA7, CA12, CA15 · Matriz em `packages/contratos/src/permissoes.ts`: 8 perfis, ações, `pode(perfil, acao)` e versão com impressão digital; teste por perfil; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 5.2 Banco: `usuario.perfis` (lista) no lugar de `usuario.perfil`, `sessao.perfil_ativo`; migrações; verifica com o teste das migrações.
+- [x] 5.3 CA3, CA8, CA10 · API: login abre no primeiro perfil; `POST /api/sessao/perfil` só para perfil atribuído, com histórico; `exigir(acao)` recusa com 403 e histórico; comando `usuario:perfis` só por Sócio, com histórico; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.4 CA9, CA10, CA11 · Tela: "Entrar como…" na barra do topo com os perfis da pessoa; Central pelo perfil ativo; "Sem permissão"; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.5 Playwright: trocar de perfil e ver a recusa; verifica com `pnpm --filter @ggv/web e2e`.
+- [ ] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

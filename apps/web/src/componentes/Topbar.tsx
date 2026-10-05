@@ -1,4 +1,6 @@
 import { sair } from '../api.ts'
+import { useSessao } from '../sessao.ts'
+import { EntrarComo } from './EntrarComo.tsx'
 import { BotoesPreferencias } from './BotoesPreferencias.tsx'
 import styles from './Topbar.module.css'
 
@@ -20,6 +22,8 @@ type Props = {
 }
 
 export function Topbar({ itens, ativo, funcao, acao }: Props) {
+  // Com sessão, o botão da função vira o "Entrar como…" (GGVP-96); sem ela (testes, /tokens), segue indisponível.
+  const usuario = useSessao()
   return (
     <header className={styles.topbar}>
       <a className={styles.marca} href="/" aria-label="GGV Previdenciário, início">
@@ -51,14 +55,17 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
         </a>
       )}
       <BotoesPreferencias />
-      {/* Troca de função ainda não está ligada (overlay "Trocar perfil" do Figma, GGVP-78): avisa que está indisponível. */}
-      <button type="button" className={styles.funcao} aria-disabled="true">
-        <span className={styles.avatar} aria-hidden="true" />
-        <span className={styles.funcaoNome}>{funcao}</span>
-        <span className={styles.seta} aria-hidden="true">
-          ⌄
-        </span>
-      </button>
+      {usuario ? (
+        <EntrarComo usuario={usuario} />
+      ) : (
+        <button type="button" className={styles.funcao} aria-disabled="true">
+          <span className={styles.avatar} aria-hidden="true" />
+          <span className={styles.funcaoNome}>{funcao}</span>
+          <span className={styles.seta} aria-hidden="true">
+            ⌄
+          </span>
+        </button>
+      )}
       <button type="button" className={styles.sair} onClick={() => void sair()}>
         Sair
       </button>

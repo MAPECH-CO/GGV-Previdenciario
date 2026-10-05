@@ -1,20 +1,26 @@
 // Acesso: quem entra, sessão e histórico (GGVP-117, GGVP-96, GGVP-99).
-import { boolean, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { boolean, check, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { PERFIS } from '@ggv/contratos'
 import { criadoEm, id, momento } from './comum.ts'
 
-/** Quem entra no portal. Só o hash da senha; `perfil` nulo até a gestão atribuir (GGVP-96). */
+/** Quem entra no portal. Só o hash da senha; `perfis` vazio até o Sócio atribuir (GGVP-96). */
 export const usuario = pgTable('usuario', {
   id: id(),
   email: text('email').notNull().unique(),
   nome: text('nome').notNull(),
   senhaHash: text('senha_hash').notNull(),
-  perfil: text('perfil'),
+  /** Perfis da matriz (`@ggv/contratos`); a pessoa escolhe um por vez no "Entrar como…". */
+  perfis: text('perfis').array().notNull().default([]),
   /** Senha provisória cadastrada pela gestão: troca obrigatória no primeiro acesso. */
   trocarSenha: boolean('trocar_senha').notNull().default(true),
   tentativasErradas: integer('tentativas_erradas').notNull().default(0),
   travadoAte: momento('travado_ate'),
   criadoEm: criadoEm(),
-}).enableRLS()
+}, (t) => [
+  // O banco recusa perfil fora da matriz (`PERFIS` de @ggv/contratos).
+  check('usuario_perfis_validos', sql`${t.perfis} <@ ARRAY[${sql.raw(PERFIS.map((p) => `'${p}'`).join(', '))}]::text[]`),
+]).enableRLS()
 
 /** Sessão aberta. O cookie leva o token; aqui fica só o hash dele. */
 export const sessao = pgTable('sessao', {
@@ -23,6 +29,8 @@ export const sessao = pgTable('sessao', {
     .notNull()
     .references(() => usuario.id),
   tokenHash: text('token_hash').notNull().unique(),
+  /** Perfil escolhido no "Entrar como…"; o servidor confere as ações por ele (GGVP-96 CA8). */
+  perfilAtivo: text('perfil_ativo'),
   expiraEm: momento('expira_em').notNull(),
   criadoEm: criadoEm(),
 }).enableRLS()
