@@ -50,7 +50,7 @@
 - [x] 4.4 Tela `/agenda/confirmar/:agendamentoId` (`src/paginas/ConfirmarAgendamento.tsx`, Figma `10:33`): chips, título, "O que você deve fazer", a frase da tarefa, "Contato do cliente" com a entrevista e a ficha, "Ligar" e "Chatwoot" (a janela do Chatwoot simulado com a mensagem), "Confirmar entrevista" ou "Registrar tentativa", e o painel "Antes de concluir" com as decisões e a tentativa; rota em `App.tsx` e "Abrir a tarefa" do detalhe do compromisso; teste em `ConfirmarAgendamento.test.tsx`, `App.test.tsx` e `DetalheCompromisso.test.tsx` (CA1, CA4, CA5, CA6). Verifica com `npx vitest run src/paginas/ConfirmarAgendamento.test.tsx src/App.test.tsx src/componentes/DetalheCompromisso.test.tsx`.
 - [x] 4.5 Playwright `e2e/confirmar-agendamento.e2e.ts`: da Central à confirmação por ligação com ficha e o "Preparar entrevista" no histórico (CA3, CA5), Chatwoot com a mensagem do LOAS (CA1, CA8), duas tentativas sem resposta até a sênior (CA6), sem ficha vira "Preencher ficha" na Central com o prazo (CA2, CA7), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 4.6 Ligar no servidor: trocar o corpo das funções de `src/dados/confirmacao.ts` por `fetch` nos endpoints da `design.md` e abrir o Chatwoot e a ligação de verdade (GGVP-102). Depende do GGVP-118, do banco do Mateus e da GGVP-102. **Fica aberta nesta história.**
-- [ ] 4.7 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 4.7 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-24 · Preencher a ficha de atendimento
 
@@ -63,4 +63,4 @@
 - [x] 5.7 Ligações: rota em `App.tsx`; "Preencher a ficha" no balcão; cartão "Ficha de atendimento" na ficha do cliente com as respostas, o que ficou em branco e a situação da senha; teste em `App.test.tsx`, `Balcao.test.tsx` e `FichaCliente.test.tsx` (CA4, CA6). Verifica com `npx vitest run src/App.test.tsx src/paginas/Balcao.test.tsx src/paginas/FichaCliente.test.tsx`.
 - [x] 5.8 Playwright `e2e/ficha-de-atendimento.e2e.ts`: da pendência à ficha em papel lida pela IA, a trava sem CPF (CA5, CA14), salvar com campos em branco e ver no cartão (CA4, CA6), senha de teste no cofre sem aparecer na tela nem no armazenamento (CA9), tablet uma pergunta por vez (CA1), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 5.9 Ligar no servidor: trocar o corpo das funções de `src/dados/fichaAtendimento.ts` e `src/dados/cofre.ts` por `fetch` nos endpoints da `design.md`, receber a leitura do n8n e guardar no cofre de verdade (GGVP-103). Depende do GGVP-118, do banco do Mateus e da GGVP-103. **Fica aberta nesta história.**
-- [ ] 5.10 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 5.10 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
