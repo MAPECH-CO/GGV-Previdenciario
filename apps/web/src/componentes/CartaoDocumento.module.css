@@ -11,7 +11,8 @@
 
 .linha {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) auto;
+  /* Rótulo com largura fixa: o valor começa no mesmo ponto em todas as linhas. */
+  grid-template-columns: 170px minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 4px 12px;
   padding: 9px 0;

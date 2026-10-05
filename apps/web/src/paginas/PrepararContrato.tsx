@@ -177,8 +177,10 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
 
               {preparando ? (
                 <>
-                  <fieldset className={`${styles.cartao} ${proprio.conferir}`}>
-                    <legend className={styles.cartaoTitulo}>Conferir</legend>
+                  <section className={`${styles.cartao} ${proprio.conferir}`} role="group" aria-labelledby="conferir-titulo">
+                    <h2 id="conferir-titulo" className={styles.cartaoTitulo}>
+                      Conferir
+                    </h2>
                     {CONFERENCIAS.map((c) => (
                       <label key={c.id} className={proprio.conferencia}>
                         <input
@@ -189,7 +191,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
                         {c.rotulo}
                       </label>
                     ))}
-                  </fieldset>
+                  </section>
 
                   <div className={styles.rodape}>
                     <button type="button" className={styles.principalBotao} disabled={motivoParado !== null || gerando} onClick={gerar}>
