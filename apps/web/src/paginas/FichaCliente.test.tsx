@@ -36,7 +36,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(within(screen.getByRole('list', { name: 'Últimos contatos' })).getAllByRole('listitem')[0].textContent).toContain('27/09')
     expect(screen.getByText(/Laudo novo de 29\/09 enviado ao Jurídico: aguarda a análise/)).toBeTruthy()
     expect(screen.getByText('Próxima: nenhuma marcada.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Marcar reunião' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
+    expect(screen.getByRole('link', { name: 'Marcar entrevista' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
 
     for (const nome of ['Transcrições (2)', 'Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)']) {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), String(nome)).toBe('true')

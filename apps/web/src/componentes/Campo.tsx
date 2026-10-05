@@ -15,10 +15,12 @@ type Props = {
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
   maxLength?: number
   largo?: boolean
+  /** 'time': a hora pelo campo do navegador (a biblioteca campos não tem hora). */
+  tipo?: 'text' | 'time'
 }
 
 /** Campo de formulário das fichas (Figma 73:371 e 73:199): rótulo pequeno, caixa e a mensagem de erro embaixo. */
-export function Campo({ id, rotulo, valor, aoMudar, aoSair, erro, opcoes, inputMode, maxLength, largo }: Props) {
+export function Campo({ id, rotulo, valor, aoMudar, aoSair, erro, opcoes, inputMode, maxLength, largo, tipo }: Props) {
   const comum = {
     id,
     className: styles.entrada,
@@ -42,7 +44,7 @@ export function Campo({ id, rotulo, valor, aoMudar, aoSair, erro, opcoes, inputM
           ))}
         </select>
       ) : (
-        <input {...comum} inputMode={inputMode} maxLength={maxLength} onChange={(e) => aoMudar(e.target.value)} />
+        <input {...comum} type={tipo} inputMode={inputMode} maxLength={maxLength} onChange={(e) => aoMudar(e.target.value)} />
       )}
       {erro && (
         <p id={`${id}-erro`} className={styles.erro}>

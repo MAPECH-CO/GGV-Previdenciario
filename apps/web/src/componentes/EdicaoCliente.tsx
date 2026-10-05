@@ -136,8 +136,9 @@ export function EdicaoCliente({ ficha, hoje, aoSalvar }: { ficha: Ficha; hoje: s
         <button type="button" className={styles.botao} aria-disabled="true">
           Registrar contato
         </button>
+        {/* O cartão chama de "Marcar entrevista" (GGVP-123, CA1); o Figma, de "Marcar reunião". Vale o cartão. */}
         <a className={styles.botao} href={`/agenda/marcar/${ficha.id}`}>
-          Marcar reunião
+          Marcar entrevista
         </a>
         <p role="status" className={styles.aviso}>
           {aviso}

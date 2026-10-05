@@ -39,10 +39,23 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Tarefa não encontrada' })).toBeTruthy()
   })
 
+  it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
+    zerarExemplo()
+    render(<App caminho="/agenda" busca="?ver=lista" />)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Agenda')
+    expect(screen.getByRole('tab', { name: 'Lista' }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('GGVP-123 · em /agenda/marcar/:id abre a marcação; com ?remarcar=, a remarcação', async () => {
+    zerarExemplo()
+    render(<App caminho="/agenda/marcar/natalia-exemplo" busca="?remarcar=natalia-entrevista" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Remarcar a entrevista com Natália Exemplo' })).toBeTruthy()
+  })
+
   it('em rota sem tela avisa que não foi construída e mostra o caminho', () => {
-    render(<App caminho="/agenda" />)
+    render(<App caminho="/relatorios" />)
     expect(screen.getByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeTruthy()
-    expect(screen.getByText('/agenda')).toBeTruthy()
+    expect(screen.getByText('/relatorios')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Voltar ao início' }).getAttribute('href')).toBe('/')
   })
 })

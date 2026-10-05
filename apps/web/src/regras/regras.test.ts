@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
-import type { Ficha, PastaDrive } from '../dados/tipos.ts'
+import type { EventoDaAgenda, Ficha, PastaDrive } from '../dados/tipos.ts'
 import { bateNaBusca, buscar, etapaDaFicha, fichasCitadas, semAcento } from './busca.ts'
 import { dataCurta, idadeEm } from './datas.ts'
 import { fichaComCpf, fichasParecidas } from './duplicidade.ts'
@@ -8,6 +8,7 @@ import {
   MENSAGEM,
   erroCpf,
   erroData,
+  erroDataDoCompromisso,
   erroIdade,
   erroIndicadoPor,
   erroTelefone,
@@ -15,6 +16,21 @@ import {
   validarEdicao,
   validarNovoCliente,
 } from './formularios.ts'
+import {
+  LIMITE_DE_REMARCACOES,
+  dataLonga,
+  detalheDoEvento,
+  diaCheio,
+  diaCurto,
+  equipeDaEntrevista,
+  estadoDoEvento,
+  gradeDoMes,
+  horarioOcupado,
+  mensagemDoConvite,
+  podeRemarcar,
+  proximosDiasUteis,
+  semanaDe,
+} from './agenda.ts'
 import {
   TAMANHO_MAXIMO,
   formatoDoArquivo,
@@ -319,5 +335,89 @@ describe('quem é citado no chat (GGVP-17, CA8)', () => {
     expect(fichasCitadas([...fichas, { nome: 'Maria Teste' }], 'laudo da Maria Exemplo')).toEqual([{ nome: 'Maria Exemplo' }])
     expect(fichasCitadas([...fichas, { nome: 'Maria Teste' }], 'laudo da Maria')).toHaveLength(2)
     expect(fichasCitadas(fichas, 'laudo novo')).toEqual([])
+  })
+})
+
+describe('agenda e marcação da entrevista (GGVP-123)', () => {
+  const evento = (hora: string, duracao = 45, estado: EventoDaAgenda['estado'] = 'agendado'): EventoDaAgenda => ({
+    id: hora,
+    data: '2026-10-06',
+    hora,
+    duracao,
+    titulo: 'Josefa Exemplo',
+    oQue: 'Fazer entrevista',
+    categoria: 'visitas',
+    estado,
+    remarcacoes: 0,
+  })
+
+  it('CA1 · os 5 próximos dias úteis depois de hoje, como no Figma', () => {
+    expect(proximosDiasUteis('2026-10-02').map(diaCurto)).toEqual(['seg 05', 'ter 06', 'qua 07', 'qui 08', 'sex 09'])
+    expect(proximosDiasUteis('2026-10-05')[0]).toBe('2026-10-06')
+  })
+
+  it('CA3 · horário ocupado é quem se cruza pela duração; falta não ocupa; dia cheio quando todos os horários têm alguém', () => {
+    const agenda = [evento('10:30'), evento('14:00', 30, 'faltou')]
+    expect(horarioOcupado(agenda, { data: '2026-10-06', hora: '10:00', duracao: 45 }).map((e) => e.id)).toEqual(['10:30'])
+    expect(horarioOcupado(agenda, { data: '2026-10-06', hora: '09:00', duracao: 45 })).toEqual([])
+    expect(horarioOcupado(agenda, { data: '2026-10-06', hora: '14:00', duracao: 45 })).toEqual([])
+    expect(horarioOcupado(agenda, { data: '2026-10-07', hora: '10:30', duracao: 45 })).toEqual([])
+    expect(diaCheio(agenda, '2026-10-06')).toBe(false)
+    expect(diaCheio(['09:00', '10:30', '14:00', '16:00'].map((h) => evento(h)), '2026-10-06')).toBe(true)
+  })
+
+  it('CA8 · passou do dia sem registro vira "confirmar"; realizado e faltou ficam como estão', () => {
+    expect(estadoDoEvento('marcado', '2026-10-04', '2026-10-05')).toBe('confirmar')
+    expect(estadoDoEvento(undefined, '2026-10-05', '2026-10-05')).toBe('agendado')
+    expect(estadoDoEvento('realizado', '2026-10-04', '2026-10-05')).toBe('realizado')
+    expect(estadoDoEvento('faltou', '2026-10-04', '2026-10-05')).toBe('faltou')
+  })
+
+  it('a semana vai de segunda a domingo e o mês cobre as semanas inteiras', () => {
+    expect(semanaDe('2026-10-08')).toEqual(['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11'])
+    const setembro = gradeDoMes('2026-09-15')
+    expect(setembro[0][0]).toBe('2026-08-31')
+    expect(setembro.at(-1)?.at(-1)).toBe('2026-10-04')
+    expect(setembro).toHaveLength(5)
+  })
+
+  it('CA2 · "Com quem" só tem advogada do escritório, nunca captador', () => {
+    const equipe = [
+      { id: 'captador', nome: 'Captador', papel: 'captador' as const },
+      { id: 'paula', nome: 'Dra. Paula', papel: 'advogada' as const },
+      { id: 'atendimento', nome: 'Você (Atendimento)', papel: 'atendimento' as const },
+    ]
+    expect(equipeDaEntrevista(equipe).map((m) => m.id)).toEqual(['paula'])
+  })
+
+  it('CA7 · a entrevista aceita 2 remarcações (G15)', () => {
+    expect(LIMITE_DE_REMARCACOES).toBe(2)
+    expect(podeRemarcar(1)).toBe(true)
+    expect(podeRemarcar(2)).toBe(false)
+  })
+
+  it('CA4 · o convite traz dia, hora, o link do vídeo, a ficha em papel e o que trazer', () => {
+    const comum = { nome: 'Josefa Exemplo', data: '2026-09-30', hora: '10:30', pedirFicha: true, levar: true, gravar: true }
+    expect(mensagemDoConvite({ ...comum, tipo: 'video', link: 'meet.google.com/ggv-josefa' })).toBe(
+      'Olá, Josefa! Sua conversa com o escritório GGV está marcada para quarta, 30/09, às 10h30, por vídeo. ' +
+        'Link: meet.google.com/ggv-josefa. Antes da conversa, preencha a ficha de atendimento em papel, no balcão do escritório ' +
+        'ou com quem te atendeu. Traga RG, CPF e os laudos. Avisamos que a conversa é gravada.',
+    )
+    expect(mensagemDoConvite({ ...comum, tipo: 'presencial', hora: '09:00', pedirFicha: false, levar: false, gravar: false })).toBe(
+      'Olá, Josefa! Sua conversa com o escritório GGV está marcada para quarta, 30/09, às 9h, aqui no escritório.',
+    )
+  })
+
+  it('a linha de detalhe e a data longa da agenda', () => {
+    expect(detalheDoEvento({ gravar: true, tipo: 'video', responsavel: 'Dra. Paula', fichaId: 'f' })).toBe('gravada · vídeo (Meet) · Dra. Paula')
+    expect(detalheDoEvento({ responsavel: 'Você (Atendimento)' })).toBe('Você (Atendimento) · interno')
+    expect(dataLonga('2026-10-06')).toBe('ter 06/10/2026')
+  })
+
+  it('CA5 · o compromisso interno é de hoje em diante', () => {
+    expect(erroDataDoCompromisso('06/10/2026', '2026-10-05')).toBeUndefined()
+    expect(erroDataDoCompromisso('05/10/2026', '2026-10-05')).toBeUndefined()
+    expect(erroDataDoCompromisso('04/10/2026', '2026-10-05')).toBe(MENSAGEM.dataDoCompromisso)
+    expect(erroDataDoCompromisso('3a/10/2026', '2026-10-05')).toBe(MENSAGEM.dataDoCompromisso)
   })
 })

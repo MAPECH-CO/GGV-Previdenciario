@@ -1,6 +1,6 @@
 // EXEMPLO. Catálogos únicos do portal: a ficha, a agenda, o cadastro e a sugestão de benefício usam estes.
 // Os nomes vêm do Figma e do Miro (D1). Ao ligar no servidor, trocar pelas listas que o escritório usa no Airtable.
-import type { Setor } from './tipos.ts'
+import type { CategoriaDaAgenda, Setor, TipoDeEntrevista } from './tipos.ts'
 
 export type ItemCatalogo = { id: string; nome: string }
 
@@ -52,6 +52,31 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
 export function nomeTipo(id: string | undefined): string {
   return TIPOS_DE_DOCUMENTO.find((t) => t.id === id)?.nome ?? ''
 }
+
+/** Quem trabalha no escritório. Só quem já está na semente; o captador nunca entra no "Com quem" (GGVP-123, CA2). */
+export type MembroDaEquipe = { id: string; nome: string; papel: 'advogada' | 'atendimento' | 'captador' }
+
+export const EQUIPE: MembroDaEquipe[] = [
+  { id: 'paula', nome: 'Dra. Paula', papel: 'advogada' },
+  { id: 'atendimento', nome: 'Você (Atendimento)', papel: 'atendimento' },
+]
+
+export const TIPOS_DE_ENTREVISTA: { id: TipoDeEntrevista; nome: string }[] = [
+  { id: 'video', nome: 'Vídeo (Meet)' },
+  { id: 'presencial', nome: 'Presencial' },
+  { id: 'telefone', nome: 'Telefone' },
+]
+
+/** As categorias da agenda, na ordem dos filtros do Figma (1941:2). */
+export const CATEGORIAS_DA_AGENDA: { id: CategoriaDaAgenda; nome: string }[] = [
+  { id: 'visitas', nome: 'Visitas e reuniões' },
+  { id: 'pericias', nome: 'Perícias' },
+  { id: 'audiencias', nome: 'Audiências' },
+  { id: 'protocolos', nome: 'Protocolos (INSS e Justiça)' },
+  { id: 'prazos', nome: 'Prazos' },
+  { id: 'bancos', nome: 'Idas ao banco' },
+  { id: 'retornos', nome: 'Retornos a leads' },
+]
 
 export const SETORES: Setor[] = ['Jurídico', 'Documentação · ADM', 'Financeiro']
 

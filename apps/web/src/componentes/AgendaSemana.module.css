@@ -1,0 +1,49 @@
+.semana {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.dia {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 360px;
+  padding: 10px 8px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+}
+
+.dia[data-hoje='true'] {
+  border: 2px solid var(--cor-acento);
+}
+
+.cabeca {
+  font-weight: 400;
+}
+
+.nome {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.numero {
+  font-size: var(--fonte-16);
+  font-weight: 600;
+}
+
+.dia[data-hoje='true'] .nome,
+.dia[data-hoje='true'] .numero,
+.hoje {
+  color: var(--cor-acento);
+}
+
+.hoje {
+  font-size: var(--fonte-12);
+}
+
+.vazio {
+  color: var(--cor-texto-suave-2);
+}

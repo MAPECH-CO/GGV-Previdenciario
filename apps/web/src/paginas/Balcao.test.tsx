@@ -93,7 +93,7 @@ describe('Balcão · Receber quem chegou', () => {
 
     render(<CentralAtendimento />)
     const fila = within(screen.getByRole('tabpanel'))
-    expect(fila.getAllByRole('listitem')).toHaveLength(16)
+    expect(fila.getAllByRole('listitem')).toHaveLength(17)
     expect(fila.getByRole('link', { name: 'Antônio Exemplo · Atender quem chegou' }).getAttribute('href')).toBe(
       '/clientes/antonio-exemplo',
     )

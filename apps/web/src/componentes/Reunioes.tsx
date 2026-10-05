@@ -1,11 +1,12 @@
 import type { Agendamento } from '../dados/tipos.ts'
+import { emAberto } from '../regras/busca.ts'
 import { dataCurta } from '../regras/datas.ts'
 import { Cartao } from './Cartao.tsx'
 import styles from './Reunioes.module.css'
 
 function proximaReuniao(agendamentos: Agendamento[], hoje: string): string {
   const [proxima] = agendamentos
-    .filter((a) => a.data >= hoje)
+    .filter((a) => a.data >= hoje && emAberto(a))
     .sort((a, b) => `${a.data} ${a.hora}`.localeCompare(`${b.data} ${b.hora}`))
   if (!proxima) return 'Próxima: nenhuma marcada.'
   const quando = proxima.data === hoje ? `hoje ${proxima.hora}` : `${dataCurta(proxima.data, hoje)} ${proxima.hora}`

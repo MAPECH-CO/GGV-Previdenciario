@@ -253,6 +253,118 @@ O servidor de exemplo valida de novo formato, tamanho e tipo com as mesmas funç
 7. **Uma pasta só** (CA11): `regras/pasta.ts` ganha o terceiro passo, nome com uma letra de diferença (sem acento), só quando uma pasta fica tão perto. No envio pelo card, a ficha sem pasta procura por essa regra; sem pasta achada, cria só se a ficha tem CPF; sem CPF, a janela pede para completar o CPF. O cadastro do novo cliente (GGVP-16) segue criando a pasta, porque ali não há papel.
 8. **Ficha do scanner sem telefone** (CA15): a ficha ganha `origem: 'scanner'` e aceita telefone vazio só com essa origem. A semente marca Marta Exemplo assim (pessoa que já existe). A ficha mostra o selo "completar telefone" e a Central do Atendimento ganha a tarefa "Completar telefone"; salvar a ficha continua pedindo telefone com DDD.
 
+## GGVP-123 · Marcar a entrevista e a agenda
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/agenda/marcar/:fichaId` | Atendimento · Marcar reunião `73:459` | Tipo, dia, horário, com quem, duração, opções, aviso de horário ocupado, "Marcar e enviar convite", próximas reuniões e prévia do convite |
+| `/agenda/marcar/:fichaId?remarcar=:id` | a mesma | "Remarcar a entrevista", com o motivo obrigatório |
+| `/agenda` | Agenda · Semana `1941:2`, Mês `1941:198`, Lista `1941:401` | Abas, "‹ Hoje ›", filtros por categoria com a contagem, "+ Novo evento" |
+| janela sobre a agenda | detalhe do compromisso `2164:280` e `2164:95` | Quando, cliente, detalhe, passo do BPMN; "Abrir a tarefa", "Marcar como realizado", "Faltou", "Remarcar", "Enviar convite" |
+| janela sobre a marcação e o detalhe | não desenhada | Chatwoot simulado: a conversa do cliente com a mensagem pronta para conferir e enviar |
+
+O "Marcar reunião" da ficha passa a se chamar "Marcar entrevista", como no cartão (CA1). O balcão, o novo cliente e a ficha já levam a `/agenda/marcar/:fichaId`.
+
+### Contrato (Zod, vai para `packages/contratos/agenda.ts`)
+
+```ts
+import { z } from 'zod'
+import { dataParaIso } from '@ggv/campos'
+
+export const TipoDeEntrevista = z.enum(['video', 'presencial', 'telefone'])
+export const EstadoDoCompromisso = z.enum(['marcado', 'realizado', 'faltou', 'remarcado'])
+export const HORARIOS = ['09:00', '10:30', '14:00', '16:00'] as const   // os do Figma; parâmetro
+
+// Agendamento (GGVP-16) ganha os campos da marcação.
+export const Agendamento = AgendamentoGgvp16.extend({
+  tipo: TipoDeEntrevista.optional(),
+  duracao: z.number().int().min(15).max(240).default(45),          // minutos
+  estado: EstadoDoCompromisso.default('marcado'),
+  remarcacoes: z.number().int().min(0).default(0),                  // G15: até 2 (Pedro, 05/10)
+  conviteEnviadoEm: z.string().optional(),
+  gravar: z.boolean().default(true),                                // aviso de gravação no início (G10)
+  levar: z.boolean().default(true),                                 // o que trazer vai no convite
+  pedirFicha: z.boolean().default(true),                            // a ficha em papel vai no convite (Pedro, 05/10)
+})
+
+// "Marcar e enviar convite" (CA1, CA3). Remarcar exige o motivo (CA7).
+export const Marcacao = z.object({
+  tipo: TipoDeEntrevista,
+  data: z.string().transform(dataParaIso).refine((iso) => iso !== null && iso >= hojeIso(), 'Data inválida ou passada'),
+  hora: z.enum(HORARIOS),
+  duracao: z.number().int().min(15).max(240),
+  com: z.string(),                                                  // id da EQUIPE: nunca captador (CA2)
+  gravar: z.boolean(),
+  levar: z.boolean(),
+  pedirFicha: z.boolean(),
+  confirmarHorarioOcupado: z.boolean().default(false),              // CA3
+  remarcar: z.object({ agendamentoId: z.string(), motivo: z.string().trim().min(3).max(300) }).optional(),
+})
+export const RespostaMarcacao = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('marcado'), agendamento: Agendamento }),
+  z.object({ resultado: z.literal('ocupado'), conflitos: z.array(EventoDaAgenda) }),   // avisa e deixa confirmar
+  z.object({ resultado: z.literal('limite') }),                     // já são 2 remarcações: sobe para a sênior (G15)
+])
+
+// O que a agenda mostra: entrevistas e retiradas das fichas e os compromissos internos (CA5).
+export const EventoDaAgenda = z.object({
+  id: z.string(), data: z.string(), hora: z.string(), duracao: z.number(),
+  titulo: z.string(),                         // nome do cliente, ou o título do interno
+  oQue: z.string(),                           // "Fazer entrevista", "Entregar cópia do contrato"...
+  categoria: z.enum(['visitas', 'pericias', 'audiencias', 'protocolos', 'prazos', 'bancos', 'retornos']),
+  tipo: TipoDeEntrevista.optional(), responsavel: z.string().optional(),
+  passo: z.string().optional(),               // "D1.09 · Atender e entrevistar"
+  estado: z.enum(['agendado', 'realizado', 'faltou', 'confirmar']),   // 'confirmar': passou sem registro (CA8)
+  fichaId: z.string().optional(),
+})
+
+export const CompromissoInterno = z.object({
+  titulo: z.string().trim().min(3).max(80),
+  data: z.string().transform(dataParaIso).refine((iso) => iso !== null && iso >= hojeIso()),
+  hora: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  duracao: z.number().int().min(15).max(480),
+  responsavel: z.string(),
+})
+
+export const Resultado = z.object({ resultado: z.enum(['realizado', 'faltou']) })   // CA6, CA8, CA9
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/agenda?de=&ate=` | datas | `EventoDaAgenda[]` | `eventosDaAgenda` |
+| `POST /api/fichas/:id/agendamentos` | `Marcacao` | `RespostaMarcacao` | `marcarEntrevista` |
+| `POST /api/agendamentos/:id/resultado` | `Resultado` | `{ evento }` | `registrarResultado` |
+| `GET /api/agendamentos/:id/convite` | `id` | `{ nome, telefone, mensagem }` | `prepararConvite` |
+| `POST /api/agendamentos/:id/convite` | `{ mensagem }` | `{ evento }` (fica em "Últimos contatos") | `registrarConvite` |
+| `POST /api/agenda/internos` | `CompromissoInterno` | `EventoDaAgenda` | `criarCompromissoInterno` |
+
+### Campos e a função de cada um
+
+| Tela | Campo | Funções |
+|---|---|---|
+| Marcar | Tipo, dia, horário | escolhas da tela; o dia e o horário vêm de `regras/agenda.ts` (próximos 5 dias úteis, `HORARIOS`) |
+| Marcar | Com quem | lista `EQUIPE` sem captador (`regras/agenda.ts`), advogada primeiro |
+| Marcar | Duração | 30, 45, 60 ou 90 minutos |
+| Remarcar | Motivo * | texto, obrigatório e com tamanho |
+| Novo evento | Título * | texto, obrigatório e com tamanho |
+| Novo evento | Data * | `normalizarData`, `dataParaIso` e "não passada" em `regras/formularios.ts` |
+| Novo evento | Hora * | `<input type="time">` do navegador; a biblioteca `campos` não tem hora |
+
+O servidor de exemplo valida de novo com as mesmas funções.
+
+### Decisões da história
+
+1. **Uma agenda só** (CA5): `eventosDaAgenda` junta as entrevistas e retiradas das fichas (os agendamentos que já existem) e os compromissos internos, que ficam à parte porque não têm cliente. Categoria pelo que é: entrevista, retirada e interno são "Visitas e reuniões"; as outras categorias do Figma aparecem nos filtros com zero até as histórias delas trazerem eventos.
+2. **Dia e horário** (CA1, CA3): os 5 próximos dias úteis, cada um com "livre" ou "cheio" (cheio quando todos os horários do dia já têm compromisso), e os horários do Figma. Horário ocupado é qualquer compromisso que se cruze com o novo, pela duração; o portal mostra quem está lá e "Marcar mesmo assim".
+3. **Convite** (CA4): `regras/agenda.ts` monta a mensagem com o nome, o dia por extenso, a hora, o tipo (no vídeo, o link do Meet simulado), o pedido para preencher a ficha de atendimento em papel no balcão antes da conversa (Pedro, 05/10: papel até o tablet; o "link da ficha" do cartão vale quando o tablet chegar) e, com "Pedir ao cliente que traga", o que trazer. "Marcar e enviar convite" marca e abre a janela do Chatwoot simulado com a conversa do cliente e a mensagem para conferir; "Enviar" ali registra o convite em "Últimos contatos". O modelo de verdade e o registro da mensagem são da GGVP-102.
+4. **Realizado, faltou e o que passou** (CA6, CA8, CA9): o estado mora no agendamento. Data antes de hoje sem registro vira "confirmar se aconteceu", em cinza, nas três visões e no topo da lista. "Realizado" conclui a tarefa da entrevista na Central e, no lead, abre a tarefa seguinte do Jurídico, "Cadastrar lead" (GGVP-43). "Faltou" grava a falta e abre o remarcar.
+5. **Remarcar** (CA7): o agendamento antigo fica "remarcado", o novo nasce com a conta de remarcações, e o motivo entra em "Últimos contatos" com o canal "Remarcação". Limite de remarcações (G15): 2 (Pedro, 05/10), `LIMITE_DE_REMARCACOES` em `regras/agenda.ts`; na terceira, a tela avisa que o caso sobe para a advogada sênior e não remarca (o laço e o escalonamento são da GGVP-94).
+6. **Com quem** (CA2): catálogo `EQUIPE` de exemplo, só com quem já está na semente (a Dra. Paula, advogada); o captador nunca entra, e a regra que filtra tem teste com um captador de mentira.
+7. **Fora desta história, com visual do Figma e indisponível**: "Iniciar entrevista (Transcrição)" (GGVP-40) e a aba "Protocolos" da agenda.
+8. **Semente**: os agendamentos da semente ganham tipo e duração, e a Natália ganha uma entrevista de ontem, sem registro, para mostrar o "confirmar se aconteceu". Nenhuma pessoa nova.
+
 ## Risks / Trade-offs
 
 - [Catálogo de benefícios e fontes de "Como chegou" não são os do Airtable] → listas de exemplo, num arquivo só; trocar ao ligar no servidor.
@@ -263,6 +375,9 @@ O servidor de exemplo valida de novo formato, tamanho e tipo com as mesmas funç
 - [A página do processo não existe ainda (GGVP-86, Fernando)] → o que é do processo nos CA6, CA12 e CA14 fica pronto no servidor de exemplo, com teste (`pastaDoProcesso`, "Laudo novo" no processo); a tela entra com a GGVP-86.
 - [O chat é da GGVP-82 (Fernando)] → aqui entra só o fluxo "Subir laudo novo", sem modelo de linguagem; avisar o Fernando para ele construir em cima.
 - [Que tipo vai para Documentos pessoais e qual vai para o processo não está escrito no cartão] → lista em `regras/arquivos.ts`, um lugar só; ajusta com a GGVP-81.
+- [Limite de remarcações (G15) não está no cartão] → 2, decisão do Pedro em 05/10, num lugar só (`regras/agenda.ts`); o laço e o escalonamento são da GGVP-94. Levar ao cartão.
+- [O cartão fala em "link da ficha", e a ficha é em papel até o tablet chegar (Lucas e Pedro, 05/10)] → o convite pede a ficha em papel; quando o tablet chegar, troca o texto. Levar ao cartão.
+- [Google Meet e Chatwoot de verdade são serviços de fora] → link do Meet e conversa do Chatwoot simulados; ligar com a GGVP-102.
 
 ## Migration Plan
 

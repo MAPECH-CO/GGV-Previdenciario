@@ -26,6 +26,7 @@ export const MENSAGEM = {
   telefone: 'Telefone com DDD: 10 ou 11 números.',
   email: 'E-mail inválido.',
   data: 'Data em dd/mm/aaaa, sem letra e que não seja futura.',
+  dataDoCompromisso: 'Data em dd/mm/aaaa, de hoje em diante.',
   cep: 'CEP com 8 números.',
   pretende: 'Escreva em poucas palavras o que a pessoa pretende.',
   indicadoPor: 'Escreva o nome de quem indicou, só com letras.',
@@ -64,6 +65,12 @@ export function erroData(valor: string, hoje: string): string | undefined {
   if (valor.trim() === '') return undefined
   const iso = dataParaIso(normalizarData(valor))
   return iso !== null && iso <= hoje ? undefined : MENSAGEM.data
+}
+
+/** Compromisso da agenda: dd/mm/aaaa que existe, de hoje em diante (GGVP-123). */
+export function erroDataDoCompromisso(valor: string, hoje: string): string | undefined {
+  const iso = dataParaIso(normalizarData(valor))
+  return iso !== null && iso >= hoje ? undefined : MENSAGEM.dataDoCompromisso
 }
 
 export function erroCep(valor: string): string | undefined {

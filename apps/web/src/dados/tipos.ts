@@ -62,6 +62,20 @@ export type Agendamento = {
   oQue: string
   /** Com quem: "Dra. Paula". */
   com?: string
+  // GGVP-123: a marcação da entrevista. Sem estes campos, vale o padrão (marcado, 45 minutos).
+  tipo?: TipoDeEntrevista
+  /** Em minutos. */
+  duracao?: number
+  estado?: EstadoDoCompromisso
+  /** Quantas vezes já foi remarcada: até 2 (G15). */
+  remarcacoes?: number
+  conviteEnviadoEm?: string
+  /** Aviso de gravação no início (G10). */
+  gravar?: boolean
+  /** O convite pede o que trazer. */
+  levar?: boolean
+  /** O convite pede a ficha de atendimento em papel (até o tablet chegar). */
+  pedirFicha?: boolean
 }
 
 /** Uma linha de "Últimos contatos". */
@@ -280,3 +294,75 @@ export type RegistroRecebimento = {
   /** Obrigatório quando o lote veio com "CONFERIR O PAPEL". */
   conferiPapel: boolean
 }
+
+// GGVP-123 em diante: a entrevista e a agenda. Espelho do Zod da design.md da change ggvp-6.
+
+export type TipoDeEntrevista = 'video' | 'presencial' | 'telefone'
+
+export type EstadoDoCompromisso = 'marcado' | 'realizado' | 'faltou' | 'remarcado'
+
+export type CategoriaDaAgenda = 'visitas' | 'pericias' | 'audiencias' | 'protocolos' | 'prazos' | 'bancos' | 'retornos'
+
+/** O que a agenda mostra: entrevistas e retiradas das fichas e os compromissos internos (CA5). */
+export type EventoDaAgenda = {
+  /** O id do agendamento ou do compromisso interno. */
+  id: string
+  /** aaaa-mm-dd */
+  data: string
+  /** hh:mm */
+  hora: string
+  /** Em minutos. */
+  duracao: number
+  /** O nome do cliente, ou o título do compromisso interno. */
+  titulo: string
+  /** "Fazer entrevista", "Retirada da cópia do contrato", "Compromisso interno". */
+  oQue: string
+  categoria: CategoriaDaAgenda
+  tipo?: TipoDeEntrevista
+  responsavel?: string
+  /** "D1.09 · Atender e entrevistar". */
+  passo?: string
+  /** 'confirmar': passou sem registro (CA8). */
+  estado: 'agendado' | 'realizado' | 'faltou' | 'confirmar'
+  fichaId?: string
+  remarcacoes: number
+  conviteEnviadoEm?: string
+  gravar?: boolean
+}
+
+/** "Marcar e enviar convite" (CA1, CA3); com `remarcar`, o motivo é obrigatório (CA7). */
+export type Marcacao = {
+  tipo: TipoDeEntrevista
+  /** aaaa-mm-dd */
+  data: string
+  hora: string
+  duracao: number
+  /** Id da EQUIPE: nunca captador (CA2). */
+  com: string
+  gravar: boolean
+  levar: boolean
+  pedirFicha: boolean
+  /** Horário ocupado: o escritório tem duas salas (CA3). */
+  confirmarHorarioOcupado: boolean
+  remarcar?: { agendamentoId: string; motivo: string }
+}
+
+export type RespostaMarcacao =
+  | { resultado: 'marcado'; agendamento: Agendamento }
+  | { resultado: 'ocupado'; conflitos: EventoDaAgenda[] }
+  /** Já são 2 remarcações: o caso sobe para a advogada sênior (G15). */
+  | { resultado: 'limite' }
+
+/** Compromisso sem cliente, como "gravação amanhã" (CA5). */
+export type CompromissoInterno = {
+  titulo: string
+  /** aaaa-mm-dd */
+  data: string
+  hora: string
+  duracao: number
+  /** Id da EQUIPE ou 'atendimento'. */
+  responsavel: string
+}
+
+/** O compromisso interno guardado no servidor. */
+export type CompromissoGuardado = CompromissoInterno & { id: string; estado: EstadoDoCompromisso }

@@ -1,7 +1,7 @@
 // Busca do balcão (GGVP-16, CA1, CA2, CA5 e CA10): por nome, CPF ou telefone.
 import { normalizarTelefone } from '../campos.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import type { Ficha, ResultadoBusca } from '../dados/tipos.ts'
+import type { Agendamento, Ficha, ResultadoBusca } from '../dados/tipos.ts'
 import { dataCurta } from './datas.ts'
 
 /** Menos que isto não busca: 2 letras ou 3 dígitos. */
@@ -36,13 +36,16 @@ export function fichasCitadas<T extends Pick<Ficha, 'nome'>>(fichas: T[], texto:
 
 /** O agendamento de hoje, se houver. */
 export function agendamentoDoDia(ficha: Ficha, hoje: string) {
-  return ficha.agendamentos.find((a) => a.data === hoje)
+  return ficha.agendamentos.find((a) => a.data === hoje && emAberto(a))
 }
+
+/** Marcado e ainda não resolvido: o que foi remarcado, realizado ou faltou não conta (GGVP-123). */
+export const emAberto = (a: Agendamento) => !a.estado || a.estado === 'marcado'
 
 /** Onde a pessoa está, como o Atendimento lê. */
 export function etapaDaFicha(ficha: Ficha, hoje: string): string {
   if (ficha.situacao === 'cliente') return ficha.processos[0]?.etapa ?? 'Cliente · sem caso em andamento'
-  const proximo = ficha.agendamentos.filter((a) => a.data >= hoje).sort((a, b) => a.data.localeCompare(b.data))[0]
+  const proximo = ficha.agendamentos.filter((a) => a.data >= hoje && emAberto(a)).sort((a, b) => a.data.localeCompare(b.data))[0]
   if (proximo) {
     const quando = proximo.data === hoje ? 'hoje' : dataCurta(proximo.data, hoje)
     return `Lead · ${proximo.oQue.toLowerCase()} ${quando} ${proximo.hora}`

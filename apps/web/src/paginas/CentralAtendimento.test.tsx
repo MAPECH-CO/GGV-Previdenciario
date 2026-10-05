@@ -9,11 +9,11 @@ beforeEach(() => {
 })
 
 describe('Central do Atendimento', () => {
-  it('mostra a fila de 15 tarefas e os totais nas abas', () => {
+  it('mostra a fila de 16 tarefas e os totais nas abas', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(15)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (15)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(16)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (9)' }).getAttribute('aria-selected')).toBe('false')
   })
 
@@ -24,6 +24,11 @@ describe('Central do Atendimento', () => {
     expect(receber.getAttribute('href')).toBe(`/balcao/documento/${tarefa.id}`)
     expect(receber.closest('li')?.textContent).toContain('Aposentadoria por incapacidade permanente · Judicial · exigência')
     expect(screen.getByRole('link', { name: 'Marta Exemplo · Completar telefone' }).getAttribute('href')).toBe('/clientes/marta-exemplo')
+  })
+
+  it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {
+    render(<CentralAtendimento />)
+    expect(screen.getByRole('link', { name: 'Natália Exemplo · Confirmar se a entrevista aconteceu' }).getAttribute('href')).toBe('/agenda?ver=lista')
   })
 
   it('marca o Início como página atual e oferece o novo cliente', () => {
@@ -41,7 +46,7 @@ describe('Central do Atendimento', () => {
     expect(screen.getByText('Tarefas do setor: tela ainda não construída.')).toBeTruthy()
 
     fireEvent.keyDown(setor, { key: 'ArrowLeft' })
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (15)' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
   })
 

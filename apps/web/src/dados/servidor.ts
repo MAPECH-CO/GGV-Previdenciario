@@ -3,7 +3,7 @@
 // balcão precisa chegar à ficha. Aba nova começa da semente. Ligar no servidor: trocar o corpo de cada
 // função por fetch no endpoint indicado, sobre o mesmo contrato.
 import { normalizarCpf, validarCpf, validarNome, validarTelefone } from '../campos.ts'
-import { buscar, etapaDaFicha } from '../regras/busca.ts'
+import { agendamentoDoDia, buscar, etapaDaFicha } from '../regras/busca.ts'
 import { hojeIso, hora } from '../regras/datas.ts'
 import { fichaComCpf, fichasParecidas } from '../regras/duplicidade.ts'
 import { IDADE_MAXIMA } from '../regras/formularios.ts'
@@ -11,6 +11,7 @@ import { pastasDoCliente } from '../regras/pasta.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { fichasDeExemplo, pastasDeExemplo } from './exemplo.ts'
 import type {
+  CompromissoGuardado,
   EdicaoFicha,
   Encaminhamento,
   EventoHistorico,
@@ -24,7 +25,7 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 
-const CHAVE = 'ggv.exemplo.v2'
+const CHAVE = 'ggv.exemplo.v3'
 
 /** Sem login ainda: quem faz é a pessoa do Atendimento. */
 export const QUEM = 'Você (Atendimento)'
@@ -32,7 +33,15 @@ export const QUEM = 'Você (Atendimento)'
 /** O resumo da IA do laudo novo: só o Jurídico vê; nunca entra na ficha da visão do Atendimento (GGVP-17, CA9). */
 export type ResumoDeLaudo = { fichaId: string; processoId?: string; data: string; arquivo: string; resumo: string }
 
-export type Banco = { fichas: Ficha[]; pastas: PastaDrive[]; tarefas: TarefaEncaminhada[]; resumosDeLaudo: ResumoDeLaudo[]; seq: number }
+export type Banco = {
+  fichas: Ficha[]
+  pastas: PastaDrive[]
+  tarefas: TarefaEncaminhada[]
+  resumosDeLaudo: ResumoDeLaudo[]
+  /** Compromissos sem cliente (GGVP-123, CA5). */
+  internos: CompromissoGuardado[]
+  seq: number
+}
 
 let relogio = () => new Date()
 let latencia = 400
@@ -60,7 +69,7 @@ export function agora(): Date {
 
 function semente(): Banco {
   const fichas = fichasDeExemplo(hojeIso(agora()))
-  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], seq: 0 }
+  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], internos: [], seq: 0 }
 }
 
 /** Para os outros arquivos do servidor de exemplo (documentos.ts). */
@@ -262,7 +271,7 @@ export async function encaminhar(dados: Encaminhamento): Promise<{ tarefa: Taref
   const ficha = banco.fichas.find((f) => f.id === dados.fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')
   const hoje = hojeIso(agora())
-  const agendamento = ficha.agendamentos.find((a) => a.data === hoje)
+  const agendamento = agendamentoDoDia(ficha, hoje)
   if (dados.motivo === 'entrevista' && !agendamento) throw new Error('Sem entrevista marcada hoje')
   const quando = agora().toISOString()
   const beneficio = nomeBeneficio(ficha.processos[0]?.beneficio ?? ficha.beneficioInteresse)

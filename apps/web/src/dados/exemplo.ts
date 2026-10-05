@@ -1,6 +1,7 @@
 // EXEMPLO. Semente do servidor de exemplo, falsa de propósito: nomes com "Exemplo" e telefones
 // (11) 90000-00xx. São as pessoas da Central (atendimento.ts), para seguir uma pessoa do balcão
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
+import { somarDias } from '../regras/agenda.ts'
 import type { Ficha, LoteDigitalizado, PastaDrive, Processo } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
@@ -87,7 +88,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
       desde: '09/2026',
       beneficioInteresse: 'loas-idoso',
       fichaAtendimentoPreenchida: false,
-      agendamentos: [{ id: 'josefa-entrevista', data: hoje, hora: '15:30', oQue: 'Entrevista', com: 'Dra. Paula' }],
+      agendamentos: [{ id: 'josefa-entrevista', data: hoje, hora: '15:30', oQue: 'Entrevista', com: 'Dra. Paula', tipo: 'presencial', duracao: 45 }],
       contatos: [{ data: '2026-09-29', canal: 'WhatsApp', texto: 'Perguntou do LOAS; marcou a entrevista.' }],
     }),
     // Mãe e filha com o mesmo celular (CA9).
@@ -96,6 +97,8 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
       desde: '10/2026',
       beneficioInteresse: 'incapacidade-temporaria',
       contatos: [{ data: '2026-10-02', canal: 'WhatsApp', texto: 'Quer saber do auxílio por incapacidade.' }],
+      // Entrevista de ontem que ninguém marcou como realizada ou falta: fica "confirmar se aconteceu" (GGVP-123, CA8).
+      agendamentos: [{ id: 'natalia-entrevista', data: somarDias(hoje, -1), hora: '10:30', oQue: 'Entrevista', com: 'Dra. Paula', tipo: 'video', duracao: 45 }],
       pastaId: undefined,
     }),
     cliente(3, 'nair-exemplo', 'Nair Exemplo', [
@@ -113,7 +116,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
         { beneficio: 'aposentadoria-pcd', etapa: 'Contrato · conferência', proximaAcao: 'conferir o contrato', prazo: 'hoje' },
         { beneficio: 'aposentadoria-especial', etapa: 'Contrato assinado em 12/07', proximaAcao: 'entregar a cópia do contrato', prazo: 'hoje', urgente: true },
       ],
-      { agendamentos: [{ id: 'cleide-retirada', data: hoje, hora: '16:00', oQue: 'Retirada da cópia do contrato' }] },
+      { agendamentos: [{ id: 'cleide-retirada', data: hoje, hora: '16:00', oQue: 'Retirada da cópia do contrato', tipo: 'presencial', duracao: 30 }] },
     ),
     // Ficha criada pela automação do scanner, que não lê telefone (GGVP-17, CA15).
     cliente(6, 'marta-exemplo', 'Marta Exemplo', [{ beneficio: 'loas-deficiente', etapa: 'Benefício deferido', proximaAcao: 'agendar a ida ao banco' }], {

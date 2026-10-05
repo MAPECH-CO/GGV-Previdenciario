@@ -9,6 +9,8 @@
 }
 
 .central {
+  border: 0;
+  background: none;
   color: var(--cor-acento);
   font-size: var(--fonte-13);
   font-weight: 500;
