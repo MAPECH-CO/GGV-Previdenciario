@@ -54,7 +54,7 @@ else { Write-Host "FALTA  .claude/settings.json. Copie kit\modelos\settings.json
 
 Write-Host ""
 Write-Host "== Biblioteca campos =="
-Push-Location 'kit/campos'
+Push-Location 'packages/campos'
 npm test 2>&1 | Select-Object -Last 4
 Pop-Location
 

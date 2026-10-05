@@ -63,7 +63,7 @@ Proibidos neste repositório: `/ecc:orch-*`, `/ecc:multi-*`, `/ecc:team-*`, `/ec
 | Plugins e permissões do projeto | `.claude/settings.json` |
 | Lembrete de estado a cada prompt | `kit/hooks/estado.js` |
 | Regras do OpenSpec | `openspec/config.yaml` |
-| Biblioteca de campos | `kit/campos/` (vai para `packages/campos` na fundação) |
+| Biblioteca de campos | `packages/campos/` |
 | O Claude descontrolou | `kit/quando-descontrola.md` |
 | Cartões do Jira movidos pelo GitHub | `.github/workflows/jira.yml` |
 | Revisão automática do PR | `.github/workflows/claude-review.yml` |

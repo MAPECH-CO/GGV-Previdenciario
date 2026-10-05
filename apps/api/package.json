@@ -1,0 +1,32 @@
+{
+  "name": "@ggv/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types --env-file-if-exists=../../.env --watch src/principal.ts",
+    "typecheck": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "db:gerar": "drizzle-kit generate",
+    "db:migrar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/migrar.ts"
+  },
+  "dependencies": {
+    "@ggv/contratos": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "fastify": "^5.6.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.11",
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.5",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.3"
+  },
+  "engines": {
+    "node": ">=22.9"
+  }
+}

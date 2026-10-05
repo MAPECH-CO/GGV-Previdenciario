@@ -44,6 +44,6 @@ if [ -f .claude/settings.json ]; then echo "ok     .claude/settings.json"
 else echo "FALTA  .claude/settings.json. Copie kit/modelos/settings.json para .claude/settings.json (leia kit/modelos/LEIA-ME.md) e commite por PR."; fi
 
 echo; echo "== Biblioteca campos =="
-( cd kit/campos && npm test 2>&1 | tail -4 )
+( cd packages/campos && npm test 2>&1 | tail -4 )
 
 echo; echo "Pronto. Próximo passo: claude, e dentro dele /epico <nome do épico>"
