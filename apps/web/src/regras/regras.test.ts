@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
-import type { Cadastro, EventoDaAgenda, Ficha, InformacaoExtraida, PastaDrive, Trecho } from '../dados/tipos.ts'
+import type { Cadastro, EventoDaAgenda, Ficha, Gravacao, InformacaoExtraida, PastaDrive, Trecho } from '../dados/tipos.ts'
 import { bateNaBusca, buscar, etapaDaFicha, fichasCitadas, semAcento } from './busca.ts'
 import {
   MENSAGEM_RG,
@@ -14,6 +14,7 @@ import {
   preencherCadastro,
 } from './cadastro.ts'
 import { dataCurta, idadeEm } from './datas.ts'
+import { buscarTrechos, contagemDoTopo, marcarBusca, situacaoDaGravacao } from './transcricao.ts'
 import {
   PARTE_MAXIMA,
   SENHA_RETIRADA,
@@ -835,5 +836,41 @@ describe('GGVP-43 · Cadastrar o lead depois da entrevista', () => {
     const atual = { telefone: 'b', rg: '', estadoCivil: 'Casado(a)' }
     expect(mesclar(base, { telefone: 'a', rg: '123456', estadoCivil: '' }, atual)).toEqual({ valores: { telefone: 'b', rg: '123456', estadoCivil: 'Casado(a)' }, conflitos: [] })
     expect(mesclar(base, { telefone: 'c', rg: '', estadoCivil: 'Casado(a)' }, atual).conflitos).toEqual(['telefone'])
+  })
+})
+
+describe('GGVP-46 · Transcrever a entrevista', () => {
+  const trechos: Trecho[] = [
+    { aos: 0, quem: 'Dra. Paula', papel: 'advogada', texto: 'Antes de porteiro, o senhor trabalhou na roça?' },
+    { aos: 4, quem: 'Antônio', papel: 'cliente', texto: 'Trabalhei de 2018 a 2020 na lavoura, como RURAL, sem carteira.' },
+    { aos: 9, quem: 'Antônio', papel: 'cliente', texto: 'Tenho as notas do produtor rural e o sindicato tem registro.' },
+  ]
+
+  it('CA2 · a busca acha a palavra sem acento e sem maiúscula e marca o trecho', () => {
+    expect(buscarTrechos(trechos, 'rural').map((t) => t.aos)).toEqual([4, 9])
+    expect(buscarTrechos(trechos, 'roca').map((t) => t.aos)).toEqual([0])
+    expect(buscarTrechos(trechos, '  ')).toHaveLength(3)
+    expect(marcarBusca('Trabalhei na roça e na ROÇA.', 'roca')).toEqual([
+      { texto: 'Trabalhei na ', marca: false },
+      { texto: 'roça', marca: true },
+      { texto: ' e na ', marca: false },
+      { texto: 'ROÇA', marca: true },
+      { texto: '.', marca: false },
+    ])
+  })
+
+  it('CA3 e CA4 · o selo de cada gravação e a contagem do topo', () => {
+    const g = (parcial: Partial<Gravacao>): Gravacao => ({
+      id: 'g', fichaId: 'f', data: HOJE, titulo: 't', canal: 'vídeo', participantes: [], duracao: 60, origem: 'portal', estado: 'encerrada',
+      acoes: [], transcricao: 'pronta', trechos: [], extraidas: [], documentos: [], soJuridico: true, marcas: [], ...parcial,
+    })
+    const audio = { nome: 'a.webm', formato: 'webm', tamanho: 1, partes: 1 }
+    expect(situacaoDaGravacao(g({ marcas: ['ficha atualizada'] }))).toBe('transcrita · ficha atualizada')
+    expect(situacaoDaGravacao(g({ transcricao: 'falhou' }))).toBe('transcrição falhou')
+    expect(situacaoDaGravacao(g({ transcricao: 'sem-audio', origem: 'registro' }))).toBe('só registro')
+    expect(situacaoDaGravacao(g({ estado: 'gravando' }))).toBe('gravando')
+    expect(contagemDoTopo([g({ audio }), g({ audio }), g({ origem: 'registro' })])).toBe('2 gravações · 1 registro sem áudio')
+    expect(contagemDoTopo([g({ audio })])).toBe('1 gravação')
+    expect(contagemDoTopo([])).toBe('nenhuma conversa ainda')
   })
 })

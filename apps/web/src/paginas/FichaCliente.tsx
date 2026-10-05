@@ -11,6 +11,7 @@ import { ListaDatada } from '../componentes/ListaDatada.tsx'
 import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
+import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
@@ -25,6 +26,8 @@ export function FichaCliente({ id }: { id: string }) {
   // Arquivos da janela "Conferir e enviar"; null com a janela fechada (GGVP-17).
   const [envio, setEnvio] = useState<File[] | null>(null)
   const [enviados, setEnviados] = useState('')
+  // A janela "Transcrições" (GGVP-46), na visão do Atendimento.
+  const [transcricoes, setTranscricoes] = useState(false)
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -80,8 +83,7 @@ export function FichaCliente({ id }: { id: string }) {
           { texto: 'Atendimento não vê petição nem valores', tom: 'acento' },
         ]}
         acao={
-          // Transcrições são de outra história: avisa que está indisponível.
-          <button type="button" className={styles.transcricoes} aria-disabled="true">
+          <button type="button" className={styles.transcricoes} onClick={() => setTranscricoes(true)}>
             <span aria-hidden="true">▶ </span>Transcrições ({ficha.transcricoes})
           </button>
         }
@@ -121,6 +123,9 @@ export function FichaCliente({ id }: { id: string }) {
         </div>
       </main>
       <AbaSuporte />
+      {transcricoes && (
+        <Transcricoes ficha={ficha} perfil="atendimento" aoFechar={() => setTranscricoes(false)} aoMudar={async () => setFicha(await obterFicha(id))} />
+      )}
       {envio && <ConferirEnviar fichaId={ficha.id} origem="card" iniciais={envio} aoEnviar={aoEnviar} aoFechar={() => setEnvio(null)} />}
     </>
   )

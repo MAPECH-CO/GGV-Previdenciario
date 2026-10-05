@@ -64,8 +64,12 @@ describe('Entrevista com gravação · tela', () => {
     await screen.findByText(/Transcrição pronta \(D1.11\)/)
     expect(screen.getByRole('link', { name: 'Definir o benefício (D1.12)' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/beneficio')
     expect(screen.getByRole('link', { name: 'Cadastrar lead (D1.10)' }).getAttribute('href')).toBe('/clientes/josefa-exemplo/cadastro')
-    const acoes = ler().gravacoes[0].acoes.map((a) => a.acao)
+    const acoes = ler().gravacoes.at(-1)!.acoes.map((a) => a.acao)
     expect(acoes).toEqual(['avisou', 'gravou', 'pausou', 'retomou', 'encerrou'])
+    // GGVP-46: a transcrição abre na janela do Jurídico.
+    fireEvent.click(botao('Ver a transcrição'))
+    expect(await screen.findByRole('heading', { name: 'Transcrições do caso' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /^Entrevista com a advogada · 05\/10\/2026/ })).toBeTruthy()
   }, LONGO)
 
   it('CA6 · o cofre pausa a gravação; guardada a senha, ela retoma e a senha não fica na tela', async () => {
@@ -76,7 +80,7 @@ describe('Entrevista com gravação · tela', () => {
     fireEvent.click(botao('Guardar no cofre'))
     await screen.findByText(/● Gravando/)
     expect(document.body.innerHTML).not.toContain(SENHA_DE_TESTE)
-    expect(ler().gravacoes[0].acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou', 'abriu-cofre', 'guardou-senha'])
+    expect(ler().gravacoes.at(-1)!.acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou', 'abriu-cofre', 'guardou-senha'])
   })
 
   it('CA8 · a gravação falha: aviso na hora e registrar sem áudio', async () => {
@@ -99,7 +103,7 @@ describe('Entrevista com gravação · tela', () => {
     online = true
     fireEvent(window, new Event('online'))
     await screen.findByText(/Transcrição pronta \(D1.11\)/)
-    expect(ler().gravacoes[0].acoes.filter((a) => a.acao === 'enviou-audio')).toHaveLength(1)
+    expect(ler().gravacoes.at(-1)!.acoes.filter((a) => a.acao === 'enviou-audio')).toHaveLength(1)
     expect(estado()).toMatch(/^Encerrada/)
   })
 })

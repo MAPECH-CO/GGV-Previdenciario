@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type HTMLAttributes } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { Campo } from '../componentes/Campo.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
+import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { dataParaIso, formatarCep, formatarCpf, formatarTelefone, normalizarData, validarCpf, validarTelefone } from '../campos.ts'
 import { buscarEndereco, obterCadastro, salvarCadastro } from '../dados/cadastro.ts'
 import { PROFISSOES, nomeBeneficio, type ItemCatalogo } from '../dados/catalogos.ts'
@@ -79,6 +80,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
   const [dono, setDono] = useState<{ id: string; nome: string } | null>(null)
   const [conflito, setConflito] = useState<string[]>([])
   const [erro, setErro] = useState('')
+  const [transcricoes, setTranscricoes] = useState(false)
   const travado = useRef(false)
   const hoje = hojeIso(agora())
 
@@ -395,6 +397,9 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
             Campos exigidos pelo modelo do contrato: nome, estado civil, profissão, CPF, RG, endereço e telefone (e os do
             representante, quando houver).
           </p>
+          <button type="button" className={styles.atalho} onClick={() => setTranscricoes(true)}>
+            ▶ Abrir a transcrição
+          </button>
           <h3 className={styles.ladoSecao}>Kit do benefício (D1.15)</h3>
           <p className={proprio.kit} data-ok={kit.length === 0}>
             {kit.length === 0 ? 'Pode ser gerado: o cadastro tem os campos do modelo.' : `Ainda não pode ser gerado. Falta: ${juntar(kit)}.`}
@@ -402,6 +407,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
         </aside>
       </main>
       <AbaSuporte />
+      {transcricoes && <Transcricoes ficha={ficha} perfil="juridico" aoFechar={() => setTranscricoes(false)} />}
     </>
   )
 }

@@ -138,6 +138,8 @@ export type Ficha = {
   rg?: string
   /** O representante legal, para o contrato (GGVP-43, CA6). */
   representante?: Representante
+  /** O que o cliente precisa trazer, conferido pela advogada na transcrição: o checklist do benefício começa daqui (GGVP-46, CA7). */
+  checklist?: string[]
   /** Id do catálogo de fontes. */
   comoChegou?: string
   /** Nome de quem indicou. Não vira captador. */
@@ -689,3 +691,17 @@ export type RespostaDoCadastro =
   | { resultado: 'salvo'; ficha: Ficha }
   | { resultado: 'cpf-de-outra-ficha'; id: string; nome: string }
   | { resultado: 'conflito'; campos: { campo: keyof Cadastro; deles: string; meu: string }[] }
+
+// GGVP-46 em diante: as transcrições do caso. Espelho do Zod da design.md da change ggvp-6.
+
+export type CanalDaConversa = 'WhatsApp' | 'Telefone' | 'Presencial' | 'Vídeo'
+
+/** "Registrar nova conversa": a conversa sem áudio, escrita por quem participou (CA6). */
+export type ConversaSemAudio = {
+  /** dd/mm/aaaa */
+  data: string
+  canal: CanalDaConversa
+  titulo: string
+  participantes: string
+  texto: string
+}

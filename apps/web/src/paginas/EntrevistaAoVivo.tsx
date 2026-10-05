@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoCofre } from '../componentes/CampoCofre.tsx'
+import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { formatarTelefone } from '../campos.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
 import {
@@ -50,6 +51,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
   const [semAudio, setSemAudio] = useState(false)
   const [notas, setNotas] = useState('')
   const [tarefa, setTarefa] = useState<TarefaEncaminhada | undefined>(undefined)
+  const [transcricoes, setTranscricoes] = useState(false)
   const [online, setOnline] = useState(() => navigator.onLine)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
@@ -329,6 +331,11 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                     Tentar de novo
                   </button>
                 )}
+                {g.transcricao !== 'falhou' && (
+                  <button type="button" className={base.atalho} onClick={() => setTranscricoes(true)}>
+                    Ver a transcrição
+                  </button>
+                )}
                 {(tarefa || ficha.situacao === 'lead') && (
                   <a className={base.atalho} href={`/clientes/${ficha.id}/cadastro`}>
                     Cadastrar lead (D1.10)
@@ -474,6 +481,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
         </div>
       </main>
       <AbaSuporte />
+      {transcricoes && g && <Transcricoes ficha={ficha} perfil="juridico" inicial={g.id} aoFechar={() => setTranscricoes(false)} />}
     </>
   )
 }

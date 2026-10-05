@@ -63,6 +63,9 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
         comoChegou: 'indicacao',
         indicadoPor: 'Maria Exemplo',
         contatoPreferido: 'WhatsApp, à tarde',
+        // Conferidos na transcrição da entrevista de 10/07 (gravacoesDeExemplo, GGVP-46).
+        contatoApoio: `filha Renata · (11) 90000-0023`,
+        checklist: ['Notas do produtor rural (2018–2020)', 'Certidão do sindicato rural', 'CNIS atualizado'],
         observacoes: 'Prefere atendimento por vídeo.',
         resumo: 'trabalhador rural aposentando · São Paulo/SP',
         senhaGov: { situacao: 'no-cofre', atualizadaEm: '2025-07-12T14:00:00.000Z', por: 'Atendimento', funcionouEm: '2026-09-15' },
@@ -269,7 +272,107 @@ export function conversaDeExemplo(ficha: Ficha, advogada: string): FalaDeExemplo
   ]
 }
 
-/** As gravações de exemplo. As do Antônio, do Figma 1626:2, entram com a GGVP-46. */
+/**
+ * As conversas do Antônio do Figma "Transcrições do processo" (1626:2), com as pessoas da semente: a entrevista com a
+ * advogada, transcrita e conferida; a ligação do Atendimento, gravada no Chatwoot; e um registro sem áudio (GGVP-46).
+ */
 export function gravacoesDeExemplo(): Gravacao[] {
-  return []
+  const comum = { fichaId: 'antonio-exemplo', estado: 'encerrada' as const, extraidas: [], documentos: [], marcas: [] }
+  const quando = (data: string, hora: string) => new Date(`${data}T${hora}:00`).toISOString()
+  const conferida = quando('2026-07-10', '15:00')
+  const extraida = (id: string, rotulo: string, valor: string, destino: InformacaoExtraida['destino'], campo?: InformacaoExtraida['campo']): InformacaoExtraida => ({
+    id,
+    rotulo,
+    valor,
+    destino,
+    ...(campo && { campo }),
+    conferidaEm: conferida,
+  })
+  const paula = (aos: number, texto: string, prova?: boolean): Trecho => ({ aos, quem: 'Dra. Paula', papel: 'advogada', texto, ...(prova && { prova }) })
+  const antonio = (aos: number, texto: string, prova?: boolean): Trecho => ({ aos, quem: 'Antônio', papel: 'cliente', texto, ...(prova && { prova }) })
+  const atendimento = (aos: number, texto: string): Trecho => ({ aos, quem: 'Atendimento', papel: 'atendimento', texto })
+  return [
+    {
+      ...comum,
+      id: 'antonio-entrevista',
+      data: '2026-07-10',
+      titulo: 'Entrevista com a advogada',
+      canal: 'vídeo',
+      participantes: ['Dra. Paula', 'Atendimento', 'Antônio Exemplo'],
+      duracao: 2292,
+      origem: 'portal',
+      avisoEm: quando('2026-07-10', '14:00'),
+      acoes: [
+        { acao: 'avisou', quando: quando('2026-07-10', '14:00'), aos: 0 },
+        { acao: 'gravou', quando: quando('2026-07-10', '14:00'), aos: 0 },
+        { acao: 'abriu-cofre', quando: quando('2026-07-10', '14:12'), aos: 760 },
+        { acao: 'guardou-senha', quando: quando('2026-07-10', '14:13'), aos: 760 },
+        { acao: 'encerrou', quando: quando('2026-07-10', '14:39'), aos: 2292 },
+      ],
+      audio: { nome: 'entrevista-antonio-exemplo-2026-07-10.webm', formato: 'webm', tamanho: 2292 * 16_000, partes: 2 },
+      transcricao: 'pronta',
+      trechos: [
+        paula(0, 'Seu Antônio, essa conversa está sendo gravada e transcrita para preencher sua ficha. O senhor concorda?'),
+        antonio(6, 'Concordo, doutora.'),
+        paula(135, 'Me conta desde quando o senhor não consegue trabalhar.'),
+        antonio(140, 'Parei de trabalhar em março, depois da segunda crise na coluna. Estou sem receber desde então.', true),
+        paula(348, 'Antes de porteiro, o senhor trabalhou na roça?', true),
+        antonio(352, 'Trabalhei de 2018 a 2020, sem carteira. Tenho as notas do produtor, e o sindicato tem registro.', true),
+        atendimento(760, 'O senhor tem a senha do gov.br? Não precisa falar; vou abrir o cofre para o senhor digitar.'),
+        paula(1865, 'Pelo que o senhor contou e pelos laudos, o caminho é a aposentadoria por invalidez. Vamos pedir ao INSS e, se negar, entramos na Justiça.'),
+      ],
+      resumo:
+        'Antônio, 62 anos, trabalhou como rural (2018–2020, sem registro) e como porteiro (2021–2025). Afastado desde 03/2026, sem receber, depois de crises na coluna. Três laudos do ortopedista, o último de 18/09. Já pediu auxílio ao INSS uma vez (negado, 2024). A advogada definiu Aposentadoria por Incapacidade Permanente; a IA havia sugerido o mesmo (G3). Pendências: prova do vínculo rural 2018–2020 (sem registro; notas do produtor) e CNIS atualizado.',
+      extraidas: [
+        extraida('dii', 'Início da incapacidade (DII)', '03/2026 — "parei de trabalhar em março, depois da segunda crise"', 'processo'),
+        extraida('vinculo', 'Último vínculo', 'porteiro · CLT · 2021 a 02/2026', 'processo'),
+        extraida('rural', 'Atividade rural', '2018–2020 · sem registro · notas do produtor com o sindicato', 'documentacao'),
+        extraida('laudos', 'Laudos citados', '3 laudos do ortopedista · último 18/09', 'processo'),
+        extraida('pedido', 'Pedido anterior ao INSS', 'auxílio negado em 2024', 'processo'),
+        extraida('senha', 'Senha do gov.br', 'digitada no cofre: não consta na transcrição (G9)', 'cofre'),
+        extraida('apoio', 'Contato de apoio', `filha Renata · (11) 90000-0023`, 'ficha', 'contatoApoio'),
+        extraida('beneficio', 'Benefício definido', 'Aposentadoria por Incapacidade Permanente (decisão da advogada, G3)', 'processo'),
+      ],
+      documentos: ['Notas do produtor rural (2018–2020)', 'Certidão do sindicato rural', 'CNIS atualizado'],
+      documentosConferidosEm: conferida,
+      soJuridico: true,
+      marcas: ['ficha atualizada'],
+    },
+    {
+      ...comum,
+      id: 'antonio-telefone',
+      data: '2026-09-20',
+      titulo: 'Telefone: indeferimento e próximo passo',
+      canal: 'telefone',
+      participantes: ['Atendimento', 'Antônio Exemplo'],
+      duracao: 720,
+      origem: 'arquivo',
+      acoes: [{ acao: 'subiu-arquivo', quando: quando('2026-09-20', '16:30'), aos: 0 }],
+      audio: { nome: 'ligacao-chatwoot-antonio-2026-09-20.ogg', formato: 'ogg', tamanho: 720 * 16_000, partes: 1 },
+      transcricao: 'pronta',
+      trechos: [
+        atendimento(0, 'Seu Antônio, essa ligação está sendo gravada. O INSS respondeu o pedido: foi negado.'),
+        antonio(9, 'Eu imaginei. E agora, o que a gente faz?'),
+        atendimento(15, 'A doutora já tinha falado: o próximo passo é entrar na Justiça. O senhor concorda?'),
+        antonio(24, 'Concordo. Pode seguir.'),
+      ],
+      resumo: 'Ligação do Atendimento: o INSS negou o pedido e o cliente concordou em ajuizar.',
+      soJuridico: false,
+    },
+    {
+      ...comum,
+      id: 'antonio-whatsapp',
+      data: '2026-09-27',
+      titulo: 'WhatsApp: exigência do juiz',
+      canal: 'WhatsApp',
+      participantes: ['Atendimento', 'Antônio Exemplo'],
+      duracao: 0,
+      origem: 'registro',
+      acoes: [],
+      transcricao: 'sem-audio',
+      trechos: [],
+      registro: 'Avisado da exigência do juiz; vai buscar as notas do produtor.',
+      soJuridico: false,
+    },
+  ]
 }

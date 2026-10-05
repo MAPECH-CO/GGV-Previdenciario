@@ -1,0 +1,435 @@
+/* Figma 1626:2: janela larga, a lista das conversas à esquerda e a selecionada à direita. */
+.janela {
+  width: min(1080px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.textos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 260px;
+}
+
+.tituloLinha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.play {
+  color: var(--cor-acento);
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.contagem {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.sub,
+.nota {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.botao,
+.primario {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.botao {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.botao:disabled,
+.primario:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.fechar {
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-20);
+}
+
+.corpo {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.lista {
+  display: flex;
+  flex: 0 1 300px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--cor-fundo);
+}
+
+.lista ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listaTitulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  text-align: left;
+}
+
+.item[aria-pressed='true'] {
+  border-color: var(--cor-acento);
+}
+
+.itemQuando,
+.itemDetalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.itemTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.selo {
+  padding: 1px 6px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.selo[data-situacao='pronta'] {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.selo[data-situacao='falhou'] {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.detalhe {
+  display: flex;
+  flex: 1 1 520px;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px 20px;
+  font-size: var(--fonte-13);
+}
+
+.detalheCabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.detalheTitulo {
+  flex: 1;
+  font-size: var(--fonte-16);
+  font-weight: 600;
+}
+
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.abas a {
+  padding: 6px 12px;
+  border-radius: var(--raio-16);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}
+
+.resumo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+}
+
+.secao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.secaoTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.extraidas,
+.documentos,
+.trechos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.extraida {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: 4px 12px;
+  align-items: start;
+}
+
+.extraida > :last-child {
+  grid-column: 2 / -1;
+}
+
+.rotuloExtraida,
+.quando {
+  color: var(--cor-texto-suave);
+}
+
+.destino,
+.provas,
+.prova {
+  padding: 1px 6px;
+  border-radius: var(--raio-6);
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+  font-size: var(--fonte-11);
+  white-space: nowrap;
+}
+
+.destino[data-destino='documentacao'],
+.provas,
+.prova {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.prova {
+  border: 0;
+}
+
+.marcarProva {
+  padding: 1px 6px;
+  border: 1px dashed var(--cor-linha);
+  border-radius: var(--raio-6);
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.conferir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fonte-12);
+}
+
+.conferir input {
+  accent-color: var(--cor-acento);
+}
+
+.conferida {
+  color: var(--cor-ok);
+  font-size: var(--fonte-12);
+}
+
+.buscaLinha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.busca,
+.entrada {
+  padding: 7px 10px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+}
+
+.busca {
+  flex: 1 1 220px;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-painel-neutro);
+}
+
+.tocar {
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+}
+
+.barra {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--raio-6);
+  background: var(--cor-linha-2);
+}
+
+.trecho {
+  display: grid;
+  grid-template-columns: 44px 100px 1fr auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.quem {
+  color: var(--cor-advogada);
+  font-weight: 600;
+}
+
+.quem[data-papel='advogada'],
+.quem[data-papel='atendimento'] {
+  color: var(--cor-acento);
+}
+
+.trecho mark {
+  background: var(--cor-alerta-suave);
+  color: inherit;
+}
+
+.aviso {
+  padding: 10px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-painel-neutro);
+}
+
+.falha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-erro-suave);
+}
+
+.erro {
+  color: var(--cor-erro);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rotulo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.acoes {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .extraida,
+  .trecho {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* "Exportar PDF": a impressão do navegador leva só a janela. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .janela,
+  .janela * {
+    visibility: visible;
+  }
+
+  .janela {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    max-height: none;
+  }
+}
