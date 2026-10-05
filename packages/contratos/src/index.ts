@@ -1,6 +1,6 @@
 // Contratos entre a tela e o servidor. Um schema por endpoint e por formulário (ADR-001).
 // Campo de formulário valida com a função de @ggv/campos, nunca com regra solta.
-import { normalizarCpf, normalizarNome, validarCpf, validarNome } from '@ggv/campos'
+import { normalizarCpf, normalizarNome, validarCpf, validarEmail, validarNome } from '@ggv/campos'
 import { z } from 'zod'
 
 /**
@@ -21,3 +21,32 @@ export const Pessoa = z.object({
   cpf: z.string().refine(validarCpf, 'CPF inválido').transform(normalizarCpf).optional(),
 })
 export type Pessoa = z.infer<typeof Pessoa>
+
+/** POST /api/sessao: entrar. O e-mail passa por `validarEmail`; a senha só precisa vir preenchida. */
+export const Entrar = z.object({
+  email: z.string().trim().toLowerCase().refine(validarEmail, 'E-mail inválido'),
+  senha: z.string().min(1, 'Digite a senha'),
+})
+export type Entrar = z.infer<typeof Entrar>
+
+/** Quem está na sessão. `perfil` nulo: entrou, mas ainda sem perfil (GGVP-96). Nunca leva a senha. */
+export const UsuarioDaSessao = z.object({
+  nome: z.string(),
+  email: z.string(),
+  perfil: z.string().nullable(),
+  /** Senha provisória da gestão: troca obrigatória antes de qualquer tela (GGVP-117, Q1). */
+  trocarSenha: z.boolean(),
+})
+export type UsuarioDaSessao = z.infer<typeof UsuarioDaSessao>
+
+export const TAMANHO_MINIMO_SENHA = 8
+
+/** POST /api/sessao/senha: trocar a senha provisória. */
+export const TrocarSenha = z.object({
+  senhaNova: z.string().min(TAMANHO_MINIMO_SENHA, `A senha precisa de pelo menos ${TAMANHO_MINIMO_SENHA} caracteres`),
+})
+export type TrocarSenha = z.infer<typeof TrocarSenha>
+
+/** Corpo de toda resposta de erro da API. */
+export const Erro = z.object({ erro: z.string() })
+export type Erro = z.infer<typeof Erro>

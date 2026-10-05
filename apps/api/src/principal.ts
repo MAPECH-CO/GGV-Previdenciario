@@ -1,14 +1,15 @@
-// Sobe a API. `pnpm dev` na raiz chama isto junto com a tela. Sem DATABASE_URL, sobe sem banco.
+// Sobe a API. `pnpm dev` na raiz chama isto junto com a tela.
+// Sem DATABASE_URL, usa o banco embutido em apps/api/.banco-local, com usuários de exemplo.
 import { fileURLToPath } from 'node:url'
-import pg from 'pg'
+import { abrirBanco } from './banco/conexao.ts'
 import { criarServidor } from './servidor.ts'
 
-const url = process.env.DATABASE_URL
-const banco = url ? new pg.Pool({ connectionString: url, max: 5 }) : undefined
+const { banco } = await abrirBanco()
 
 const app = criarServidor({
   logger: true,
-  consultarBanco: banco && (() => banco.query('select 1')),
+  banco,
   pastaTela: fileURLToPath(new URL('../../web/dist', import.meta.url)),
+  cookieSeguro: process.env.NODE_ENV === 'production',
 })
 await app.listen({ port: Number(process.env.PORTA ?? 3000), host: process.env.HOST ?? '127.0.0.1' })

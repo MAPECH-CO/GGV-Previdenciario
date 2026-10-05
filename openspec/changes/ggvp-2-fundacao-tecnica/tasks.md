@@ -19,5 +19,16 @@
 - [x] 2.3 CA1, CA5 · `Dockerfile` e `.dockerignore` na raiz: monta a tela, roda as migrações antes de subir e tem verificação de saúde em `/saude`; verifica localmente com `pnpm --filter @ggv/web build` e a API servindo a tela em `localhost:3000`.
 - [ ] 2.4 CA3, CA6 · `.env.example` na raiz com a URL dos bancos `prev_homolog`, `prev_pedro` e `prev_mateus`, sem senha; verifica com o gitleaks no CI.
 - [x] 2.5 CA1, CA3, CA5, CA6 · `docs/infra/homologacao.md`: criar os bancos e usuários, o app no Coolify (deploy a cada merge, segredos só lá), acesso ao banco de dev por túnel SSH e só dados de exemplo em homologação; verifica lendo o arquivo.
-- [ ] 2.6 CA1, CA2, CA3 · Ligar a homologação (Mateus, depois de 09/10 se preciso): banco no Supabase, projeto "Portal Operacional" (decisão de 05/10; os dados atuais podem ser apagados), imagem no GHCR do GitHub da MAPECH a cada merge; ajustar `docs/infra/homologacao.md`; verifica abrindo a URL de homologação.
+- [ ] 2.6 CA1, CA2, CA3 · Ligar a homologação ANTES de 09/10 (o Lucas testa no dia 09 de manhã), logo depois do login e dos perfis: banco no Supabase, projeto "Portal Operacional" (os dados atuais podem ser apagados), app no Coolify; segredo só no Coolify ou no .env local; ajustar `docs/infra/homologacao.md`; verifica abrindo a URL de homologação.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-117 · Entrar no portal com e-mail e senha
+
+- [x] 3.1 Contratos em `packages/contratos`: `Entrar` (e-mail por `validarEmail` de `@ggv/campos`), `UsuarioDaSessao`, `TrocarSenha` (mínimo de 8 caracteres) e `Erro`; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 3.2 CA2 · Regra da trava em `apps/api/src/sessao/regras.ts` (5 erros seguidos travam 15 minutos; sessão de 8 horas) com teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.3 CA6 · Tabelas `usuario` e `sessao` no esquema e migração nova; senha só como hash bcrypt; verifica com o teste das migrações.
+- [x] 3.4 CA1, CA2, CA5, CA6, CA7 · Rotas `POST/GET/DELETE /api/sessao` e `POST /api/sessao/senha`, cookie httpOnly, 401 em toda rota `/api` sem sessão, histórico de login e logout; teste em `src/sessao/rotas.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.5 Banco local de exemplo: sem `DATABASE_URL`, a API usa Postgres embutido em `apps/api/.banco-local/` com usuários de exemplo; comandos `usuario:criar` e `usuario:destravar` (resposta do Lucas, Q1 e Q2); verifica com `pnpm dev` e entrando na tela.
+- [x] 3.6 CA1, CA2, CA3, CA4 · Telas "Entrar", "Trocar a senha" e "Sem perfil"; o portal confere a sessão e manda ao login com a volta para a mesma tela; "Sair" na barra do topo; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 3.7 CA1, CA2, CA3, CA4 · Playwright do login com a API no ar; verifica com `pnpm --filter @ggv/web e2e`.
+- [ ] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

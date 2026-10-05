@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Pessoa, Saude } from './index.ts'
+import { Entrar, Pessoa, Saude, TrocarSenha, UsuarioDaSessao } from './index.ts'
 
 const id = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
 
@@ -34,5 +34,30 @@ describe('Pessoa', () => {
 
   it('aceita pessoa sem CPF', () => {
     expect(Pessoa.parse({ id, nome: 'Ana Lima' })).toEqual({ id, nome: 'Ana Lima' })
+  })
+})
+
+describe('Entrar', () => {
+  it('normaliza o e-mail e exige senha', () => {
+    expect(Entrar.parse({ email: '  Ana@Exemplo.com ', senha: 'x' })).toEqual({ email: 'ana@exemplo.com', senha: 'x' })
+    expect(Entrar.safeParse({ email: 'ana@exemplo.com', senha: '' }).error?.issues[0]?.message).toBe('Digite a senha')
+  })
+
+  it('recusa e-mail inválido com a função de @ggv/campos', () => {
+    expect(Entrar.safeParse({ email: 'ana@', senha: 'x' }).error?.issues[0]?.message).toBe('E-mail inválido')
+  })
+})
+
+describe('TrocarSenha', () => {
+  it('exige pelo menos 8 caracteres', () => {
+    expect(TrocarSenha.safeParse({ senhaNova: '1234567' }).success).toBe(false)
+    expect(TrocarSenha.safeParse({ senhaNova: '12345678' }).success).toBe(true)
+  })
+})
+
+describe('UsuarioDaSessao', () => {
+  it('não carrega a senha nem o hash', () => {
+    const u = UsuarioDaSessao.parse({ nome: 'Ana', email: 'a@b.co', perfil: null, trocarSenha: false, senhaHash: 'x' })
+    expect(u).not.toHaveProperty('senhaHash')
   })
 })
