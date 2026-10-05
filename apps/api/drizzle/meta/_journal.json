@@ -22,6 +22,20 @@
       "when": 1791242520661,
       "tag": "0002_rls_em_todas_as_tabelas",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791243387151,
+      "tag": "0003_modelo_de_dados",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791243396494,
+      "tag": "0004_historico_so_cresce",
+      "breakpoints": true
     }
   ]
 }

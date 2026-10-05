@@ -1,0 +1,154 @@
+// Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104).
+import { sql } from 'drizzle-orm'
+import { boolean, check, date, integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { usuario } from './acesso.ts'
+import { caso } from './casos.ts'
+import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
+import { pessoa } from './pessoas.ts'
+
+/**
+ * Prestação de contas (G8): o aviso ao cliente só nasce depois do OK da advogada.
+ * Quem dá o OK não registra o recebimento (GGVP-96 CA16): o banco recusa a mesma pessoa nas duas pontas.
+ */
+export const prestacaoContas = pgTable(
+  'prestacao_contas',
+  {
+    id: id(),
+    casoId: uuid('caso_id')
+      .notNull()
+      .references(() => caso.id),
+    valorRecebido: numeric('valor_recebido', { precision: 14, scale: 2 }).notNull(),
+    honorarios: numeric('honorarios', { precision: 14, scale: 2 }).notNull(),
+    valorCliente: numeric('valor_cliente', { precision: 14, scale: 2 }).notNull(),
+    okAdvogadaPor: uuid('ok_advogada_por').references(() => usuario.id),
+    okAdvogadaEm: momento('ok_advogada_em'),
+    recebidaPor: uuid('recebida_por').references(() => usuario.id),
+    recebidaEm: momento('recebida_em'),
+    clienteAvisadoEm: momento('cliente_avisado_em'),
+    criadoEm: criadoEm(),
+  },
+  (t) => [
+    check('prestacao_pessoas_diferentes', sql`${t.okAdvogadaPor} is null or ${t.recebidaPor} is null or ${t.okAdvogadaPor} <> ${t.recebidaPor}`),
+    check('prestacao_aviso_depois_do_ok', sql`${t.clienteAvisadoEm} is null or ${t.okAdvogadaEm} is not null`),
+  ],
+).enableRLS()
+
+/** Perito com as grafias conhecidas, para a jurimetria (GGVP-59, 73). */
+export const perito = pgTable('perito', {
+  id: id(),
+  nome: text('nome').notNull(),
+  nomeNormalizado: text('nome_normalizado').notNull().unique(),
+  grafias: jsonb('grafias').notNull().default([]),
+  especialidade: text('especialidade'),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+export const juizo = pgTable(
+  'juizo',
+  {
+    id: id(),
+    tribunal: text('tribunal').notNull(),
+    nome: text('nome').notNull(),
+    criadoEm: criadoEm(),
+  },
+  (t) => [unique('juizo_unico').on(t.tribunal, t.nome)],
+).enableRLS()
+
+/** Acervo do escritório (D4): só desfecho conferido por pessoa entra nas contas da jurimetria (G22, GGVP-55 CA7). */
+export const processoAcervo = pgTable('processo_acervo', {
+  id: id(),
+  numeroCnj: text('numero_cnj').unique(),
+  casoId: uuid('caso_id').references(() => caso.id),
+  beneficio: text('beneficio'),
+  peritoId: uuid('perito_id').references(() => perito.id),
+  juizoId: uuid('juizo_id').references(() => juizo.id),
+  desfecho: text('desfecho'),
+  desfechoConferidoPor: uuid('desfecho_conferido_por').references(() => usuario.id),
+  dataDecisao: date('data_decisao'),
+  fonte: text('fonte').notNull(),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+export const CANAIS_MENSAGEM = ['whatsapp', 'sms', 'email', 'telefone'] as const
+
+/** Mensagem ao cliente pelo modelo, com registro (GGVP-102). Nunca leva diagnóstico nem CID. */
+export const mensagem = pgTable(
+  'mensagem',
+  {
+    id: id(),
+    pessoaId: uuid('pessoa_id')
+      .notNull()
+      .references(() => pessoa.id),
+    casoId: uuid('caso_id').references(() => caso.id),
+    canal: text('canal').notNull(),
+    modeloId: uuid('modelo_id'),
+    conteudo: text('conteudo').notNull(),
+    aprovadaPor: uuid('aprovada_por').references(() => usuario.id),
+    enviadaPor: uuid('enviada_por').references(() => usuario.id),
+    enviadaEm: momento('enviada_em'),
+    criadoEm: criadoEm(),
+  },
+  (t) => [emLista('mensagem_canal', t.canal, CANAIS_MENSAGEM)],
+).enableRLS()
+
+/** Configuração do escritório (GGVP-104): limites de cobrança (Q1), prazo de guarda (LGPD) e afins, com quem mudou. */
+export const configuracao = pgTable('configuracao', {
+  chave: text('chave').primaryKey(),
+  valor: jsonb('valor').notNull(),
+  alteradoPor: uuid('alterado_por').references(() => usuario.id),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
+/** Roteiro de conteúdo mínimo por benefício, versionado (GGVP-93). */
+export const roteiroLaudo = pgTable(
+  'roteiro_laudo',
+  {
+    id: id(),
+    beneficio: text('beneficio').notNull(),
+    versao: integer('versao').notNull(),
+    itens: jsonb('itens').notNull(),
+    vigenteDesde: date('vigente_desde').notNull(),
+    criadoEm: criadoEm(),
+  },
+  (t) => [unique('roteiro_versao_unica').on(t.beneficio, t.versao)],
+).enableRLS()
+
+/** Kit de documentos por benefício (G1, GGVP-65). */
+export const kitDocumento = pgTable(
+  'kit_documento',
+  {
+    id: id(),
+    beneficio: text('beneficio').notNull(),
+    tipoDocumento: text('tipo_documento').notNull(),
+    obrigatorio: boolean('obrigatorio').notNull().default(true),
+  },
+  (t) => [unique('kit_unico').on(t.beneficio, t.tipoDocumento)],
+).enableRLS()
+
+export const TIPOS_MODELO = ['contrato', 'mensagem', 'peticao'] as const
+
+export const modelo = pgTable(
+  'modelo',
+  {
+    id: id(),
+    tipo: text('tipo').notNull(),
+    nome: text('nome').notNull(),
+    versao: integer('versao').notNull().default(1),
+    conteudo: text('conteudo').notNull(),
+    ativo: boolean('ativo').notNull().default(true),
+    criadoEm: criadoEm(),
+  },
+  (t) => [unique('modelo_versao_unica').on(t.tipo, t.nome, t.versao), emLista('modelo_tipo', t.tipo, TIPOS_MODELO)],
+).enableRLS()
+
+/** Feriados e suspensões por tribunal, para a contagem de prazo (GGVP-34). `tribunal` nulo: nacional. */
+export const feriado = pgTable(
+  'feriado',
+  {
+    id: id(),
+    data: date('data').notNull(),
+    tribunal: text('tribunal'),
+    descricao: text('descricao').notNull(),
+  },
+  (t) => [unique('feriado_unico').on(t.data, t.tribunal)],
+).enableRLS()

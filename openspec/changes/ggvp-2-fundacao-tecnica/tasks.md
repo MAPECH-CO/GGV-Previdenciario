@@ -32,3 +32,11 @@
 - [x] 3.6 CA1, CA2, CA3, CA4 · Telas "Entrar", "Trocar a senha" e "Sem perfil"; o portal confere a sessão e manda ao login com a volta para a mesma tela; "Sair" na barra do topo; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 3.7 CA1, CA2, CA3, CA4 · Playwright do login com a API no ar; verifica com `pnpm --filter @ggv/web e2e`.
 - [ ] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## Modelo de dados do portal (base de todos os épicos, decisão de 05/10)
+
+- [x] 4.1 Desenhar o modelo por área e as regras de LGPD em `design.md` ("Modelo de dados do portal"); verifica lendo o arquivo.
+- [x] 4.2 Esquema Drizzle por área em `apps/api/src/banco/esquema/` (37 tabelas novas; `pessoa`, `caso` e `tarefa` ganham colunas), estados com `check` e RLS em todas; migração `0003_modelo_de_dados`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.3 Histórico só cresce: gatilho recusa `update` e `delete` em `evento_auditoria` e `acesso_dado_sensivel` (migração `0004_historico_so_cresce`); teste em `migracoes.test.ts`.
+- [x] 4.4 Testes de confiança: estado fora da lista, CPF repetido, número de processo em dois casos, prestação com a mesma pessoa no OK e no recebimento e aviso antes do OK; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.5 Aplicar no Supabase "Portal Operacional" com `pnpm --filter @ggv/api db:migrar`; verifica pelo conector: 43 tabelas, todas com RLS.
