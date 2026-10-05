@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE, telefoneDeExemplo } from '../dados/exemplo.ts'
+import { salvarFichaDeAtendimento } from '../dados/fichaAtendimento.ts'
 import { configurarExemplo, criarFicha, encaminhar, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { MENSAGEM } from '../regras/formularios.ts'
 import { FichaCliente } from './FichaCliente.tsx'
@@ -20,7 +21,7 @@ const digitar = (rotulo: string, valor: string) => fireEvent.change(campo(rotulo
 const historico = () => within(screen.getByRole('list', { name: 'Histórico' }))
 
 describe('Ficha do cliente · visão do Atendimento', () => {
-  it('mostra os blocos do Figma 73:199 e nada de petição, valores, senha ou cofre', async () => {
+  it('mostra os blocos do Figma 73:199, nada de petição nem valores, e da senha só a situação', async () => {
     await abrir('antonio-exemplo')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cliente')
     expect(screen.getByText('cliente desde 03/2023')).toBeTruthy()
@@ -41,7 +42,30 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     for (const nome of ['Transcrições (2)', 'Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)']) {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), String(nome)).toBe('true')
     }
-    expect(document.body.textContent).not.toMatch(/senha|cofre/i)
+    // GGVP-24: a ficha mostra só a situação da senha do gov.br, nunca a senha nem campo para ela.
+    expect(document.body.textContent?.match(/senha|cofre/gi)).toEqual(['senha', 'cofre'])
+    expect(screen.getByText('gov.br: senha no cofre · atualizada em 12/07/2025 por Atendimento (G9)')).toBeTruthy()
+    expect(document.querySelector('input[type="password"]')).toBeNull()
+  })
+
+  it('GGVP-24 CA4 e CA6 · o cartão "Ficha de atendimento" mostra as respostas, o que ficou em branco e leva à ficha', async () => {
+    await salvarFichaDeAtendimento('antonio-exemplo', {
+      nome: 'Antônio Exemplo',
+      cpf: CPF_DE_TESTE,
+      nascimento: '10/03/1964',
+      telefone: '11900000001',
+      beneficioInteresse: 'nao-sei',
+      pessoasNaCasa: 2,
+      ultimaAtividade: 'porteiro, até 2025',
+      origem: 'papel',
+      modelo: 'GGV',
+    })
+    await abrir('antonio-exemplo')
+    const cartao = within(screen.getByRole('region', { name: 'Ficha de atendimento' }))
+    expect(cartao.getByText('Preenchida em 05/10/2026 · papel GGV')).toBeTruthy()
+    expect(cartao.getByText('porteiro, até 2025')).toBeTruthy()
+    expect(cartao.getByText('Em branco: Endereço, Desde quando está sem trabalhar, O que já pediu ao INSS.')).toBeTruthy()
+    expect(cartao.getByRole('link', { name: 'Abrir a ficha de atendimento' }).getAttribute('href')).toBe('/clientes/antonio-exemplo/ficha-de-atendimento')
   })
 
   it('CA8 · o encaminhamento do balcão aparece no histórico com quem, data, hora e setor', async () => {

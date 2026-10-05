@@ -46,7 +46,7 @@ export function tipoSugerido(nome: string): string {
 }
 
 // ponytail: a divisão entre pessoal e processo é proposta (o cartão não diz); ajusta com a GGVP-81.
-const PESSOAIS = new Set(['rg', 'cpf', 'comprovante-residencia', 'certidao', 'ctps', 'cnis'])
+const PESSOAIS = new Set(['rg', 'cpf', 'comprovante-residencia', 'certidao', 'ctps', 'cnis', 'ficha-atendimento'])
 
 /** Documentos pessoais, ou a subpasta do caso em andamento; sem processo, Documentos pessoais (CA14). */
 export function localDoTipo(tipo: string, processoId: string | undefined): string {

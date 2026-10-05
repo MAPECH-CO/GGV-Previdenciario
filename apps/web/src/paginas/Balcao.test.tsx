@@ -104,7 +104,8 @@ describe('Balcão · Receber quem chegou', () => {
     await escolherPessoa('josefa', 'Josefa Exemplo')
     fireEvent.click(screen.getByRole('radio', { name: 'Entrevista agendada' }))
     expect(screen.getByText(/A Dra. Paula \(Jurídico\) recebe o aviso com a ficha e o agendamento das 15:30/)).toBeTruthy()
-    expect(screen.getByText(/a cliente preenche pelo link antes de entrar/)).toBeTruthy()
+    expect(screen.getByText(/a cliente preenche em papel antes de entrar/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Preencher a ficha' }).getAttribute('href')).toBe('/clientes/josefa-exemplo/ficha-de-atendimento')
 
     await escolherPessoa('nair', 'Nair Exemplo')
     expect((encaminhar() as HTMLButtonElement).disabled).toBe(true)

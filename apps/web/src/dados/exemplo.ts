@@ -1,8 +1,9 @@
 // EXEMPLO. Semente do servidor de exemplo, falsa de propósito: nomes com "Exemplo" e telefones
 // (11) 90000-00xx. São as pessoas da Central (atendimento.ts), para seguir uma pessoa do balcão
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
+import { isoParaData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
-import type { Ficha, LoteDigitalizado, PastaDrive, Processo } from './tipos.ts'
+import type { EnvioDaFicha, Ficha, LoteDigitalizado, PastaDrive, Processo } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
 export const CPF_DE_TESTE = '00000000191'
@@ -17,7 +18,7 @@ function pessoa(n: number, id: string, nome: string, resto: Partial<Ficha>): Fic
     situacao: 'cliente',
     desde: '01/2026',
     telefone: telefoneDeExemplo(n),
-    senhaGovNoCofre: false,
+    senhaGov: { situacao: 'sem-senha' },
     fichaAtendimentoPreenchida: true,
     processos: [],
     agendamentos: [],
@@ -64,7 +65,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
         contatoPreferido: 'WhatsApp, à tarde',
         observacoes: 'Prefere atendimento por vídeo.',
         resumo: 'trabalhador rural aposentando · São Paulo/SP',
-        senhaGovNoCofre: true,
+        senhaGov: { situacao: 'no-cofre', atualizadaEm: '2025-07-12T14:00:00.000Z', por: 'Atendimento' },
         laudoNovoEm: '2026-09-29',
         contatos: [
           { data: '2026-09-27', canal: 'WhatsApp', texto: 'Avisado da exigência do juiz; vai buscar as notas do produtor.' },
@@ -164,4 +165,25 @@ export function loteDeExemplo(ficha: Ficha, hoje: string, loteId: string): LoteD
   const antonio = ficha.id === 'antonio-exemplo'
   const motivo = antonio ? 'esse CPF aparece escrito dentro de documento que já está nessa pasta' : 'nome igual'
   return { loteId, status: 'arquivado', motivo, fichaId: ficha.id, conferirPapel: antonio, arquivos }
+}
+
+/**
+ * O que a IA leria da ficha de atendimento em papel (GGVP-24, CA14): o que a ficha já tem e os exemplos do Figma (10:54).
+ * CPF e data de nascimento que a ficha não tem ficam "não lidos": a semente não inventa CPF. A senha escrita no papel vai
+ * para o cofre (CA15); o valor nunca aparece aqui.
+ */
+export function leituraDeExemplo(ficha: Ficha): { campos: Partial<EnvioDaFicha>; naoLidos: (keyof EnvioDaFicha)[]; senhaLida: boolean } {
+  const campos: Partial<EnvioDaFicha> = {
+    nome: ficha.nome,
+    ...(ficha.cpf && { cpf: ficha.cpf }),
+    ...(ficha.nascimento && { nascimento: isoParaData(ficha.nascimento) ?? undefined }),
+    ...(ficha.telefone && { telefone: ficha.telefone }),
+    pessoasNaCasa: 3,
+    beneficioInteresse: ficha.beneficioInteresse ?? 'nao-sei',
+    ultimaAtividade: 'auxiliar de limpeza, com carteira, até 05/2026',
+    semTrabalharDesde: '06/2026',
+    pedidosAoInss: 'auxílio negado em 08/2026',
+  }
+  const naoLidos = (['cpf', 'nascimento', 'telefone', 'endereco'] as const).filter((c) => campos[c] === undefined)
+  return { campos, naoLidos, senhaLida: true }
 }

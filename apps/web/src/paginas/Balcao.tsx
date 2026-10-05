@@ -303,9 +303,15 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
                       <p>
                         {entrevistaHoje.com ? `A ${entrevistaHoje.com}` : 'A advogada'} (Jurídico) recebe o aviso com a ficha
                         e o agendamento das {entrevistaHoje.hora}.
-                        {escolhido?.situacao === 'lead' &&
-                          !escolhido.fichaAtendimentoPreenchida &&
-                          ' A ficha de atendimento ainda não foi preenchida: a cliente preenche pelo link antes de entrar.'}
+                        {escolhido?.situacao === 'lead' && !escolhido.fichaAtendimentoPreenchida && (
+                          <>
+                            {' '}A ficha de atendimento ainda não foi preenchida: a cliente preenche em papel antes de entrar, e
+                            ela passa no scanner.{' '}
+                            <a className={styles.avisoLink} href={`/clientes/${escolhido.id}/ficha-de-atendimento`}>
+                              Preencher a ficha
+                            </a>
+                          </>
+                        )}
                       </p>
                     ) : (
                       <p>

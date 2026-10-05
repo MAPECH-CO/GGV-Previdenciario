@@ -143,10 +143,13 @@ export type Ficha = {
   beneficioInteresse?: string
   /** Linha embaixo do nome na ficha: "trabalhador rural aposentando · Santo Amaro, São Paulo/SP". */
   resumo?: string
-  senhaGovNoCofre: boolean
+  /** Só a situação da senha do gov.br: o valor fica no cofre e nunca vem para cá (GGVP-24, G9). */
+  senhaGov: SenhaGov
   /** Data (aaaa-mm-dd) do laudo novo que o Jurídico ainda não analisou. */
   laudoNovoEm?: string
   fichaAtendimentoPreenchida: boolean
+  /** As respostas da triagem da ficha de atendimento (GGVP-24). Os dados pessoais ficam na própria ficha. */
+  fichaAtendimento?: FichaDeAtendimento
   processos: Processo[]
   agendamentos: Agendamento[]
   contatos: Contato[]
@@ -403,4 +406,64 @@ export type RespostaDaConfirmacao = {
   naSenior: boolean
   /** Preparar entrevista, Preencher ficha ou a da sênior. */
   tarefa?: TarefaEncaminhada
+}
+
+// GGVP-24 em diante: a ficha de atendimento e o cofre. Espelho do Zod da design.md da change ggvp-6.
+
+export type SituacaoDaSenha = 'sem-senha' | 'escritorio-tem' | 'no-cofre'
+
+export type SenhaGov = {
+  situacao: SituacaoDaSenha
+  /** "Não sei a senha" (CA3): a ficha segue com o alerta de senha (GGVP-36). */
+  naoSabe?: boolean
+  /** Lida da ficha em papel: o Atendimento confere (CA15). */
+  conferir?: boolean
+  /** Data e hora ISO. */
+  atualizadaEm?: string
+  por?: string
+  /** aaaa-mm-dd: a última vez que a senha entrou na conta (GGVP-36). */
+  funcionouEm?: string
+}
+
+export type ModeloDaFicha = 'GGV' | 'APA'
+
+export type FichaDeAtendimento = {
+  /** aaaa-mm-dd: o dia em que foi preenchida, sem edição (CA12). */
+  data: string
+  origem: 'papel' | 'tablet'
+  modelo?: ModeloDaFicha
+  pessoasNaCasa?: number
+  ultimaAtividade?: string
+  semTrabalharDesde?: string
+  pedidosAoInss?: string
+  /** O que ficou em branco, para o Jurídico (CA6). */
+  emBranco: string[]
+}
+
+/** O que "Salvar ficha" manda. Sem campo de senha (CA8). */
+export type EnvioDaFicha = {
+  nome: string
+  cpf: string
+  /** dd/mm/aaaa */
+  nascimento: string
+  telefone: string
+  endereco?: string
+  pessoasNaCasa?: number
+  beneficioInteresse: string
+  ultimaAtividade?: string
+  semTrabalharDesde?: string
+  pedidosAoInss?: string
+  origem: 'papel' | 'tablet'
+  modelo?: ModeloDaFicha
+}
+
+/** O que a automação do scanner e a IA devolvem da ficha em papel (CA14). */
+export type LeituraDaFicha = {
+  modelo: ModeloDaFicha
+  arquivo: Arquivo
+  campos: Partial<EnvioDaFicha>
+  /** Os campos que a IA não conseguiu ler. */
+  naoLidos: (keyof EnvioDaFicha)[]
+  /** Havia senha escrita: foi para o cofre, para conferir (CA15). */
+  senhaLida: boolean
 }

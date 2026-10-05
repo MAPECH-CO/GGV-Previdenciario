@@ -2,6 +2,7 @@ import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
 import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { ConfirmarAgendamento } from './paginas/ConfirmarAgendamento.tsx'
+import { FichaAtendimento } from './paginas/FichaAtendimento.tsx'
 import { FichaCliente } from './paginas/FichaCliente.tsx'
 import { MarcarEntrevista } from './paginas/MarcarEntrevista.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
@@ -23,6 +24,8 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (confirmar) return <ConfirmarAgendamento agendamentoId={decodeURIComponent(confirmar[1])} />
   const recebimento = /^\/balcao\/documento\/([^/]+)$/.exec(caminho)
   if (recebimento) return <ReceberDocumento tarefaId={decodeURIComponent(recebimento[1])} />
+  const fichaDeAtendimento = /^\/clientes\/([^/]+)\/ficha-de-atendimento$/.exec(caminho)
+  if (fichaDeAtendimento) return <FichaAtendimento fichaId={decodeURIComponent(fichaDeAtendimento[1])} tablet={parametros.get('modo') === 'tablet'} />
   const ficha = /^\/clientes\/([^/]+)$/.exec(caminho)
   if (ficha) return <FichaCliente id={decodeURIComponent(ficha[1])} />
   return <NaoConstruida caminho={caminho} />

@@ -50,6 +50,7 @@ import {
   precisaConfirmar,
   tentativaAtual,
 } from './confirmacao.ts'
+import { MENSAGEM_PESSOAS, camposEmBranco, envioValido, errosDaFicha, oQueFalta, paraEnvio, type ValoresDaFicha } from './fichaAtendimento.ts'
 
 const HOJE = '2026-10-05'
 const CPF_COM_PONTOS = '000.000.001-91'
@@ -59,7 +60,7 @@ function ficha(parcial: Partial<Ficha> & Pick<Ficha, 'id' | 'nome' | 'telefone'>
   return {
     situacao: 'cliente',
     desde: '01/2026',
-    senhaGovNoCofre: false,
+    senhaGov: { situacao: 'sem-senha' },
     fichaAtendimentoPreenchida: false,
     processos: [],
     agendamentos: [],
@@ -492,5 +493,74 @@ describe('confirmação da entrevista do lead (GGVP-21)', () => {
         'CadÚnico, vá ao CRAS antes. Duas tentativas sem confirmação, com 3 dias entre elas, sobem para a advogada sênior.',
     )
     expect(instrucaoDaConfirmacao('Natália Exemplo', 'incapacidade-temporaria')).toContain('confirmando a entrevista. Peça que traga RG, CPF e os laudos.')
+  })
+})
+
+describe('ficha de atendimento (GGVP-24)', () => {
+  const vazia: ValoresDaFicha = {
+    nome: '',
+    cpf: '',
+    nascimento: '',
+    telefone: '',
+    endereco: '',
+    pessoasNaCasa: '',
+    beneficioInteresse: 'nao-sei',
+    ultimaAtividade: '',
+    semTrabalharDesde: '',
+    pedidosAoInss: '',
+  }
+  const minima = { ...vazia, nome: 'Antônio Exemplo', cpf: CPF_COM_PONTOS, nascimento: '10/03/1964', telefone: '(11) 90000-0001' }
+
+  it('CA5 · só salva com nome, CPF, data de nascimento e telefone', () => {
+    expect(oQueFalta(vazia, HOJE)).toEqual(['Nome completo', 'CPF', 'Data de nascimento', 'Telefone / WhatsApp'])
+    expect(oQueFalta({ ...minima, cpf: '' }, HOJE)).toEqual(['CPF'])
+    expect(oQueFalta(minima, HOJE)).toEqual([])
+  })
+
+  it('CA12 · CPF com dígito errado, letra ou data futura no nascimento e pessoas fora do limite não passam', () => {
+    expect(errosDaFicha({ ...minima, cpf: CPF_ERRADO }, HOJE).cpf).toBe(MENSAGEM.cpf)
+    expect(errosDaFicha({ ...minima, nascimento: '1a/03/1964' }, HOJE).nascimento).toBe(MENSAGEM.data)
+    expect(errosDaFicha({ ...minima, nascimento: '06/10/2026' }, HOJE).nascimento).toBe(MENSAGEM.data)
+    expect(errosDaFicha({ ...minima, telefone: '90000-0001' }, HOJE).telefone).toBe(MENSAGEM.telefone)
+    expect(errosDaFicha({ ...minima, pessoasNaCasa: '0' }, HOJE).pessoasNaCasa).toBe(MENSAGEM_PESSOAS)
+    expect(errosDaFicha({ ...minima, pessoasNaCasa: '31' }, HOJE).pessoasNaCasa).toBe(MENSAGEM_PESSOAS)
+    expect(errosDaFicha({ ...minima, pessoasNaCasa: '4' }, HOJE)).toEqual({})
+  })
+
+  it('CA6 e CA11 · endereço, pessoas na casa e a situação de trabalho podem ficar em branco e o Jurídico vê quais', () => {
+    expect(camposEmBranco(minima)).toEqual([
+      'Endereço',
+      'Quantas pessoas moram na casa',
+      'Última atividade',
+      'Desde quando está sem trabalhar',
+      'O que já pediu ao INSS',
+    ])
+    expect(camposEmBranco({ ...minima, endereco: 'Rua Exemplo, 1', ultimaAtividade: 'porteiro' })).toEqual([
+      'Quantas pessoas moram na casa',
+      'Desde quando está sem trabalhar',
+      'O que já pediu ao INSS',
+    ])
+  })
+
+  it('o envio sai normalizado e o servidor confere de novo; não há campo de senha (CA8)', () => {
+    const envio = paraEnvio({ ...minima, pessoasNaCasa: '3', endereco: '  ' }, 'papel', 'GGV')
+    expect(envio).toEqual({
+      nome: 'Antônio Exemplo',
+      cpf: CPF_DE_TESTE,
+      nascimento: '10/03/1964',
+      telefone: '11900000001',
+      endereco: undefined,
+      pessoasNaCasa: 3,
+      beneficioInteresse: 'nao-sei',
+      ultimaAtividade: undefined,
+      semTrabalharDesde: undefined,
+      pedidosAoInss: undefined,
+      origem: 'papel',
+      modelo: 'GGV',
+    })
+    expect(Object.keys(envio).some((c) => /senha/i.test(c))).toBe(false)
+    expect(envioValido(envio, HOJE)).toBe(true)
+    expect(envioValido({ ...envio, cpf: '00000000192' }, HOJE)).toBe(false)
+    expect(envioValido({ ...envio, nascimento: '06/10/2026' }, HOJE)).toBe(false)
   })
 })

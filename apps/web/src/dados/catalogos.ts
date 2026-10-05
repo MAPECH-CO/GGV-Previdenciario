@@ -70,6 +70,7 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'laudo', nome: 'Laudo médico' },
   { id: 'receita', nome: 'Receita médica' },
   { id: 'prontuario', nome: 'Prontuário' },
+  { id: 'ficha-atendimento', nome: 'Ficha de atendimento' },
   { id: 'outro', nome: 'Outro documento' },
 ]
 

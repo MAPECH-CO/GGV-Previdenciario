@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CabecalhoCliente } from '../componentes/CabecalhoCliente.tsx'
 import { Cartao } from '../componentes/Cartao.tsx'
+import { CartaoFichaAtendimento } from '../componentes/CartaoFichaAtendimento.tsx'
 import { CasoEmAndamento } from '../componentes/CasoEmAndamento.tsx'
 import { ConferirEnviar } from '../componentes/ConferirEnviar.tsx'
 import { DocumentosPessoais } from '../componentes/DocumentosPessoais.tsx'
@@ -115,6 +116,7 @@ export function FichaCliente({ id }: { id: string }) {
               {[ficha.documentacaoMedica ?? 'Nenhum laudo recebido ainda.', laudoNovo].filter(Boolean).join(' ')}
             </p>
           </Cartao>
+          <CartaoFichaAtendimento ficha={ficha} hoje={hoje} />
           <Reunioes agendamentos={ficha.agendamentos} hoje={hoje} />
         </div>
       </main>
