@@ -22,10 +22,10 @@ describe('Topbar', () => {
     expect(screen.getByRole('button', { name: 'Atendimento' })).toBeTruthy()
   })
 
-  it('a troca de função, ainda não ligada, avisa que está indisponível e não promete menu', () => {
+  it('a função abre o menu "Entrar como…"', () => {
     render(<Topbar itens={itens} ativo="inicio" funcao="Atendimento" />)
     const funcao = screen.getByRole('button', { name: 'Atendimento' })
-    expect(funcao.getAttribute('aria-disabled')).toBe('true')
-    expect(funcao.getAttribute('aria-haspopup')).toBeNull()
+    expect(funcao.getAttribute('aria-haspopup')).toBe('menu')
+    expect(funcao.getAttribute('aria-disabled')).toBeNull()
   })
 })
