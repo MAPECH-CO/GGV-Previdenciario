@@ -547,3 +547,10 @@ export type SegundaFicha = {
   /** O que ficou em branco, pelo rótulo. */
   emBranco: string[]
 }
+
+// GGVP-36 em diante: a renovação da senha do gov.br. Espelho do Zod da design.md da change ggvp-6.
+
+/** A senha vai ao cofre e não volta; "Não" pede o motivo e o aviso ao cliente. */
+export type RegistroDaRenovacao =
+  | { resultado: 'renovou'; senha: string; conferiMeuInss: true }
+  | { resultado: 'nao-conseguiu'; motivo: string; aviseiOCliente: true }

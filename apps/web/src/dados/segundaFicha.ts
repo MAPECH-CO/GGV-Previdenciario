@@ -73,6 +73,18 @@ export async function registrarAnalise(agendamentoId: string, d: { acidentario: 
       }),
     )
   }
+  // Sem senha no cofre, o Atendimento renova antes da entrevista (GGVP-36, CA1 e CA4).
+  if (ficha.senhaGov.situacao !== 'no-cofre') {
+    tarefas.push(
+      pendenciaDoAtendimento(banco, ficha, a, {
+        id: `renovar-senha-${a.id}`,
+        codigo: 'D1.08',
+        acao: 'Renovar senha do gov.br',
+        detalhe: 'com o cliente, antes da entrevista · a senha vai direto ao cofre',
+        href: `/entrevista/${a.id}/renovar-senha`,
+      }),
+    )
+  }
   gravar(banco)
   return { tarefas }
 }

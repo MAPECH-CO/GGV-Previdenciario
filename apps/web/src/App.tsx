@@ -11,6 +11,7 @@ import { NaoConstruida } from './paginas/NaoConstruida.tsx'
 import { NovoCliente } from './paginas/NovoCliente.tsx'
 import { PrepararEntrevista } from './paginas/PrepararEntrevista.tsx'
 import { ReceberDocumento } from './paginas/ReceberDocumento.tsx'
+import { RenovarSenha } from './paginas/RenovarSenha.tsx'
 import { SegundaFicha } from './paginas/SegundaFicha.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
 
@@ -31,6 +32,8 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (preparar) return <PrepararEntrevista agendamentoId={decodeURIComponent(preparar[1])} />
   const analisar = /^\/entrevista\/([^/]+)\/analisar$/.exec(caminho)
   if (analisar) return <AnalisarFicha agendamentoId={decodeURIComponent(analisar[1])} />
+  const renovar = /^\/entrevista\/([^/]+)\/renovar-senha$/.exec(caminho)
+  if (renovar) return <RenovarSenha agendamentoId={decodeURIComponent(renovar[1])} />
   const recebimento = /^\/balcao\/documento\/([^/]+)$/.exec(caminho)
   if (recebimento) return <ReceberDocumento tarefaId={decodeURIComponent(recebimento[1])} />
   const fichaDeAtendimento = /^\/clientes\/([^/]+)\/ficha-de-atendimento$/.exec(caminho)

@@ -47,7 +47,7 @@ export function CampoCofre({ fichaId, senhaGov, aoMudar }: Props) {
       <p className={styles.titulo}>
         <span aria-hidden="true">🔒 </span>Senha do gov.br
       </p>
-      <p className={styles.situacao} aria-live="polite">
+      <p className={styles.situacao} aria-live="polite" data-ok={senhaGov.situacao === 'no-cofre' && !senhaGov.conferir}>
         gov.br: {situacaoDaSenha(senhaGov, hoje)}
       </p>
       {senhaGov.conferir && (

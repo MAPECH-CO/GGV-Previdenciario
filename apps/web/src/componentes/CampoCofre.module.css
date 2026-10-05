@@ -20,6 +20,10 @@
   font-weight: 500;
 }
 
+.situacao[data-ok='false'] {
+  color: var(--cor-alerta-2);
+}
+
 .conferir {
   display: flex;
   flex-wrap: wrap;

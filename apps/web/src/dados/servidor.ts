@@ -51,7 +51,7 @@ export type Banco = {
   seq: number
 }
 
-export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' }
+export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
 
 let relogio = () => new Date()
 let latencia = 400

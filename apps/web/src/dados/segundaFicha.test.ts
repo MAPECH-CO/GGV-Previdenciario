@@ -18,13 +18,14 @@ describe('Segunda ficha · servidor de exemplo', () => {
     const josefa = await obterFicha('josefa-exemplo')
     expect(josefa?.analise).toEqual({ acidentario: true, quem: 'Você (Advogada)', quando: AGORA.toISOString() })
     expect(josefa?.historico.at(-1)).toEqual({ quando: AGORA.toISOString(), quem: 'Você (Advogada)', oQue: 'Analisou a ficha: pode ser auxílio acidentário' })
-    expect(tarefas).toMatchObject([{ codigo: 'D1.07', acao: 'Preencher segunda ficha', prazo: 'até 15:30', href: '/clientes/josefa-exemplo/segunda-ficha' }])
-    expect(tarefasDoSetor('Atendimento').map((t) => t.acao)).toEqual(['Preencher segunda ficha'])
+    expect(tarefas[0]).toMatchObject({ codigo: 'D1.07', acao: 'Preencher segunda ficha', prazo: 'até 15:30', href: '/clientes/josefa-exemplo/segunda-ficha' })
+    // A Josefa está sem senha: o Atendimento também renova (GGVP-36).
+    expect(tarefasDoSetor('Atendimento').map((t) => t.acao)).toEqual(['Preencher segunda ficha', 'Renovar senha do gov.br'])
   })
 
-  it('CA4 · "Não" também fica no histórico e não abre pendência', async () => {
+  it('CA4 · "Não" também fica no histórico e não abre a segunda ficha', async () => {
     const { tarefas } = await registrarAnalise('josefa-entrevista', { acidentario: false })
-    expect(tarefas).toEqual([])
+    expect(tarefas.map((t) => t.acao)).toEqual(['Renovar senha do gov.br'])
     expect((await obterFicha('josefa-exemplo'))?.historico.at(-1)?.oQue).toBe('Analisou a ficha: não é auxílio acidentário')
   })
 
@@ -49,7 +50,7 @@ describe('Segunda ficha · servidor de exemplo', () => {
     expect(ficha.segundaFicha?.respostas.acidenteEm).toBe('01/09/2026')
     expect(ficha.segundaFicha?.emBranco).toContain('Empresa')
     expect(ficha.historico.at(-1)).toMatchObject({ quem: 'Cliente (tablet)', oQue: 'Salvou a segunda ficha (auxílio acidentário, tablet)' })
-    expect(tarefasDoSetor('Atendimento')).toEqual([])
+    expect(tarefasDoSetor('Atendimento').map((t) => t.acao)).toEqual(['Renovar senha do gov.br'])
   })
 
   it('sem o histórico do caso, com data futura ou NB errado, não salva', async () => {
