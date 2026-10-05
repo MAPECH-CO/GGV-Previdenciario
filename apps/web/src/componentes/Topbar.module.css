@@ -68,30 +68,3 @@
   font-weight: 600;
   white-space: nowrap;
 }
-
-.funcao {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: var(--raio-pilula);
-  background: var(--cor-painel-neutro-3);
-}
-
-.avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--raio-pilula);
-  background: var(--cor-acento);
-}
-
-.funcaoNome {
-  font-size: var(--fonte-13);
-  font-weight: 500;
-}
-
-.seta {
-  color: var(--cor-texto-suave);
-  font-size: var(--fonte-13);
-}

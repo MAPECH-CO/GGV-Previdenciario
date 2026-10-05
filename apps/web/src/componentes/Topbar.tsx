@@ -1,5 +1,6 @@
 import { BotoesPreferencias } from './BotoesPreferencias.tsx'
 import styles from './Topbar.module.css'
+import { TrocarPerfil } from './TrocarPerfil.tsx'
 
 export type ItemNavegacao = {
   id: string
@@ -13,7 +14,7 @@ type Props = {
   itens: ItemNavegacao[]
   /** id do item da página atual. */
   ativo: string
-  /** Nome da função de quem está logado. */
+  /** Função da tela; vale até a pessoa escolher outro perfil no menu. */
   funcao: string
   acao?: { rotulo: string; href: string }
 }
@@ -50,14 +51,7 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
         </a>
       )}
       <BotoesPreferencias />
-      {/* Troca de função ainda não está ligada (overlay "Trocar perfil" do Figma, GGVP-78): avisa que está indisponível. */}
-      <button type="button" className={styles.funcao} aria-disabled="true">
-        <span className={styles.avatar} aria-hidden="true" />
-        <span className={styles.funcaoNome}>{funcao}</span>
-        <span className={styles.seta} aria-hidden="true">
-          ⌄
-        </span>
-      </button>
+      <TrocarPerfil funcao={funcao} />
     </header>
   )
 }
