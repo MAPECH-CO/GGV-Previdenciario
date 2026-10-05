@@ -311,6 +311,12 @@
   font-weight: 500;
 }
 
+.chip:disabled,
+.atalho:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .chip[aria-checked='true'],
 .chip[data-ativa='true'] {
   border-color: var(--cor-acento);

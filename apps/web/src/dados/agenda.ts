@@ -13,6 +13,7 @@ import {
   mensagemDoConvite,
   podeRemarcar,
 } from '../regras/agenda.ts'
+import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from './catalogos.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type {
@@ -52,6 +53,7 @@ function doAgendamento(ficha: Ficha, a: Agendamento, hoje: string): EventoDaAgen
     remarcacoes: a.remarcacoes ?? 0,
     conviteEnviadoEm: a.conviteEnviadoEm,
     gravar: a.gravar,
+    ...(precisaConfirmar(ficha, a, hoje) && { aConfirmar: true }),
   }
 }
 

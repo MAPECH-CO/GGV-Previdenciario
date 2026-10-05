@@ -36,6 +36,14 @@ describe('Detalhe do compromisso', () => {
     expect((await obterFicha('natalia-exemplo'))?.historico.at(-1)?.oQue).toBe('Registrou a falta à entrevista de 04/10')
   })
 
+  it('GGVP-21 · a entrevista do lead ainda sem confirmação abre a tarefa de confirmar', async () => {
+    const { janela } = abrir(await evento('josefa-entrevista'))
+    expect(janela.getByRole('link', { name: 'Confirmar agendamento' }).getAttribute('href')).toBe('/agenda/confirmar/josefa-entrevista')
+    cleanup()
+    const passado = abrir(await evento('natalia-entrevista'))
+    expect(passado.janela.queryByRole('link', { name: 'Confirmar agendamento' })).toBeNull()
+  })
+
   it('CA6 · "Marcar como realizado" registra e a agenda atualiza', async () => {
     const { aoMudar, janela } = abrir(await evento('josefa-entrevista'))
     expect(janela.getByRole('link', { name: 'Josefa Exemplo' }).getAttribute('href')).toBe('/clientes/josefa-exemplo')

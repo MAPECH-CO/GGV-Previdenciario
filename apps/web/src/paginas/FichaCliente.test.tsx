@@ -29,7 +29,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText('WhatsApp preferido')).toBeTruthy()
     expect(screen.getByText('Laudo novo · 29/09')).toBeTruthy()
 
-    const caso = screen.getByRole('link', { name: /Aposentadoria por incapacidade permanente/ })
+    const caso = screen.getByRole('link', { name: /Aposentadoria por Incapacidade Permanente/ })
     expect(caso.textContent).toContain('Judicial · exigência')
     expect(caso.textContent).toContain('vence em 2 dias')
     expect(within(screen.getByRole('list', { name: 'Documentos pessoais' })).getAllByRole('listitem')).toHaveLength(6)
@@ -131,7 +131,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByText('Laudo novo · 05/10')).toBeTruthy()
     expect(screen.getByText(/Laudo novo de 05\/10 enviado ao Jurídico: aguarda a análise/)).toBeTruthy()
-    const subpasta = within(screen.getByRole('list', { name: 'Subpasta Aposentadoria por incapacidade permanente' }))
+    const subpasta = within(screen.getByRole('list', { name: 'Subpasta Aposentadoria por Incapacidade Permanente' }))
     expect(subpasta.getByText('laudo_ortopedia_set2026.pdf')).toBeTruthy()
     expect(subpasta.getByText('Laudo médico · aguarda a leitura')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Resumo simulado/)

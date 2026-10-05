@@ -365,9 +365,174 @@ O servidor de exemplo valida de novo com as mesmas funções.
 7. **Fora desta história, com visual do Figma e indisponível**: "Iniciar entrevista (Transcrição)" (GGVP-40) e a aba "Protocolos" da agenda.
 8. **Semente**: os agendamentos da semente ganham tipo e duração, e a Natália ganha uma entrevista de ontem, sem registro, para mostrar o "confirmar se aconteceu". Nenhuma pessoa nova.
 
+## GGVP-21 · Confirmar o agendamento do lead
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/agenda/confirmar/:agendamentoId` | step_D1.04 `10:33` | Chips, "nome · Confirmar agendamento", telefone · lead, "O que você deve fazer" com o que levar do benefício, a frase da tarefa, "Contato do cliente" com a entrevista, a ficha, "Ligar" e "Chatwoot", "Confirmar entrevista"; no lado, "Antes de concluir" com as duas decisões e "Tentativa n de 2" |
+| janela sobre a tela | não desenhada | Chatwoot simulado com a mensagem de confirmação pronta (a mesma janela do convite) |
+
+Entradas: a Central do Atendimento ("nome · Confirmar agendamento", uma por entrevista de lead ainda não confirmada) e "Abrir a tarefa" no detalhe do compromisso da agenda.
+
+### Contrato (Zod, vai para `packages/contratos/agenda.ts`)
+
+```ts
+export const CanalDoContato = z.enum(['mensagem', 'ligacao'])
+export const Tentativa = z.object({
+  quando: z.string(), quem: z.string(), canal: CanalDoContato,
+  resultado: z.enum(['confirmou', 'sem-resposta']),
+})
+
+// Agendamento (GGVP-123) ganha a confirmação.
+export const Agendamento = AgendamentoGgvp123.extend({
+  confirmacao: z.object({
+    tentativas: z.array(Tentativa),
+    proximaEm: z.string().optional(),            // aaaa-mm-dd: 3 dias depois da tentativa sem resposta (CA6)
+    naSenior: z.boolean().default(false),        // 2 sem resposta: a advogada sênior resolve (CA6)
+  }).optional(),
+})
+
+export const RegistroDaConfirmacao = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('confirmou'), canal: CanalDoContato, jaPreencheuFicha: z.boolean() }),
+  z.object({ resultado: z.literal('sem-resposta'), canal: CanalDoContato }),
+])
+export const RespostaDaConfirmacao = z.object({
+  tentativa: z.number().int().min(1),             // o número desta tentativa (CA6)
+  proximaEm: z.string().optional(),
+  naSenior: z.boolean(),
+  tarefa: Tarefa.optional(),                      // Preparar entrevista, Preencher ficha ou a da sênior
+})
+// Setor ganha 'Atendimento': a pendência "Preencher ficha" é do próprio Atendimento.
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/agendamentos/:id/confirmacao` | `id` | `{ ficha, agendamento, tentativa, mensagem }` | `obterConfirmacao` |
+| `POST /api/agendamentos/:id/confirmacao/mensagem` | `{ mensagem }` | `{ evento }` (fica em "Últimos contatos") | `registrarMensagemDeConfirmacao` |
+| `POST /api/agendamentos/:id/confirmacao` | `RegistroDaConfirmacao` | `RespostaDaConfirmacao` | `registrarConfirmacao` |
+| parte de `GET /api/central/atendimento` | — | `Tarefa[]` | `tarefasDeConfirmarAgendamento` |
+
+### Campos e a função de cada um
+
+Só a mensagem no Chatwoot simulado: texto obrigatório, até 1000 caracteres. As decisões são escolhas da tela.
+
+### Decisões da história
+
+1. **Quem entra** (CA1, CA4): entrevista de lead marcada de hoje em diante, sem confirmação e fora da sênior. A tarefa nasce da agenda: a linha fixa da Josefa (D1.04) em `atendimento.ts` sai.
+2. **Canal** (CA1, CA5): "Ligar" (ligação simulada: a tela mostra o número e conta como ligação) ou "Chatwoot" (mensagem conferida e enviada, que fica em "Últimos contatos"). Vale o canal do último contato feito na tela; "Confirmar entrevista" só habilita com um contato feito e as decisões respondidas.
+3. **Decisões no painel** "Antes de concluir", como no Figma: "Resultado do contato de hoje" e, com "Confirmou a entrevista", "Já preencheu a ficha de atendimento?". Com "Sem resposta", o botão vira "Registrar tentativa".
+4. **Tentativas** (CA6): `regras/confirmacao.ts`, `TENTATIVAS_DE_CONFIRMACAO = 2` e `DIAS_ENTRE_TENTATIVAS = 3` (Lucas, 05/10). A primeira sem resposta marca a próxima para 3 dias depois, e a tarefa fica na Central com esse prazo; a segunda passa a tarefa para a advogada sênior (Jurídico) e ela sai da Central do Atendimento.
+5. **Depois de confirmar** (CA2, CA3, CA7): com ficha, o Jurídico recebe "Preparar entrevista" (D1.06, GGVP-32), que leva a `/entrevista/:agendamentoId/preparar` (tela do grupo 2; até lá, "ainda não construída"). Sem ficha, o Atendimento recebe a pendência "Preencher ficha" (D1.05), com prazo no horário da entrevista, que leva à ficha de atendimento (GGVP-24).
+6. **Mensagem** (CA8): regra em `regras/confirmacao.ts`, com o dia e a hora, o pedido da ficha em papel quando falta, o que levar do benefício (LOAS Idoso e LOAS Deficiente com o texto do BPC/LOAS do cartão; os outros, "RG, CPF e os laudos", até a GGVP-104 trazer a lista de cada um) e os quatro documentos que mais travam.
+7. **Registro** (CA5): cada tentativa grava quando, quem e o canal no agendamento, no histórico e em "Últimos contatos".
+8. **Catálogo de benefícios**: troca pela lista do cartão "Checklist de documentos obrigatórios do benefício" (GGVP-91), os nomes do Airtable normalizados em 05/10, com "Não sei ainda" no começo. Os ids que a semente já usa ficam.
+
+## GGVP-24 · Preencher a ficha de atendimento
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/clientes/:fichaId/ficha-de-atendimento` | step_D1.05 `10:54` | Atendimento: "Ficha em papel" com o scanner simulado e a leitura da IA; "Preencher" com os campos (os lidos pela IA marcados para conferir) e a data da ficha; a senha do gov.br pelo cofre ou "Não sei a senha"; "Salvar ficha"; no lado, "Antes de concluir" com Campos, Travas e Como segue |
+| `/clientes/:fichaId/ficha-de-atendimento?modo=tablet` | o mesmo frame, uma pergunta por vez (cartão, CA1) | O cliente no tablet: letra grande, "Voltar" e "Próxima", o cofre na pergunta da senha e "Salvar ficha" no fim |
+
+Entradas: a pendência "Preencher ficha" da Central (GGVP-21), "Preencher a ficha" no balcão (pessoa sem ficha) e o cartão "Ficha de atendimento" da ficha do cliente.
+
+### Contrato (Zod, vai para `packages/contratos/fichas.ts`)
+
+```ts
+import { dataParaIso, normalizarCpf, normalizarData, normalizarTelefone, validarCpf, validarNome, validarTelefone } from '@ggv/campos'
+
+// Ficha (GGVP-16): senhaGovNoCofre (boolean) vira senhaGov. O valor da senha nunca está aqui.
+export const SenhaGov = z.object({
+  situacao: z.enum(['sem-senha', 'escritorio-tem', 'no-cofre']),   // as três que a GGVP-32 mostra
+  naoSabe: z.boolean().default(false),           // CA3
+  conferir: z.boolean().default(false),          // lida da ficha em papel: o Atendimento confere (CA15)
+  atualizadaEm: z.string().optional(), por: z.string().optional(),
+  funcionouEm: z.string().optional(),            // a última vez que entrou na conta (GGVP-36)
+})
+
+// A triagem fica na ficha única da pessoa; os dados pessoais vão para a própria ficha.
+export const FichaDeAtendimento = z.object({
+  data: z.string(),                                // o dia de hoje, sozinho e sem edição (CA12)
+  origem: z.enum(['papel', 'tablet']),
+  modelo: z.enum(['GGV', 'APA']).optional(),       // a ficha em papel
+  pessoasNaCasa: z.number().int().min(1).max(30).optional(),
+  ultimaAtividade: z.string().max(200).optional(),
+  semTrabalharDesde: z.string().max(40).optional(),
+  pedidosAoInss: z.string().max(300).optional(),
+  emBranco: z.array(z.string()),                   // o que o Jurídico vê que ficou em branco (CA6)
+})
+
+export const EnvioDaFicha = z.object({             // sem campo de senha (CA8)
+  nome: z.string().refine(validarNome),
+  cpf: z.string().transform(normalizarCpf).refine(validarCpf),
+  nascimento: z.string().transform((v) => dataParaIso(normalizarData(v))).refine((iso) => iso !== null && iso <= hojeIso()),
+  telefone: z.string().transform(normalizarTelefone).refine(validarTelefone),
+  endereco: z.string().max(200).optional(),
+  pessoasNaCasa: z.number().int().min(1).max(30).optional(),
+  beneficioInteresse: z.string(),                  // do catálogo, com "Não sei ainda" (CA7)
+  ultimaAtividade: z.string().max(200).optional(),
+  semTrabalharDesde: z.string().max(40).optional(),
+  pedidosAoInss: z.string().max(300).optional(),
+  origem: z.enum(['papel', 'tablet']), modelo: z.enum(['GGV', 'APA']).optional(),
+})
+
+export const LeituraDaFicha = z.object({           // o que a automação do scanner e a IA devolvem (CA14)
+  modelo: z.enum(['GGV', 'APA']), arquivo: Arquivo,
+  campos: EnvioDaFicha.partial(), naoLidos: z.array(z.string()), senhaLida: z.boolean(),
+})
+
+// O cofre: a senha vai e não volta; nunca em ficha, histórico, log nem sessionStorage (CA9).
+export const GuardarSenha = z.object({ senha: z.string().min(1).max(100), origem: z.enum(['ficha', 'renovacao']) })
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `POST /api/fichas/:id/ficha-de-atendimento/leitura` | aviso do n8n | `LeituraDaFicha` | `lerFichaEmPapel` |
+| `PUT /api/fichas/:id/ficha-de-atendimento` | `EnvioDaFicha` | `{ ficha }` ou `{ erro: 'cpf-de-outra-ficha', nome }` | `salvarFichaDeAtendimento` |
+| `GET /api/telefones/:numero/conferencia` | número | `{ valido, tipo }` | `conferirTelefone` (ferramenta gratuita, simulada) |
+| `POST /api/fichas/:id/cofre/gov` | `GuardarSenha` | `{ senhaGov }` | `guardarSenhaNoCofre` |
+| `POST /api/fichas/:id/cofre/gov/nao-sabe` | — | `{ senhaGov }` | `naoSabeASenha` |
+| `POST /api/fichas/:id/cofre/gov/conferida` | — | `{ senhaGov }` | `conferirSenhaLida` |
+
+### Campos e a função de cada um
+
+| Campo | Funções |
+|---|---|
+| Nome completo * | `validarNome`, `normalizarNome` |
+| CPF * | `normalizarCpf`, `validarCpf`, `formatarCpf`; CPF de outra ficha não grava |
+| Data de nascimento * | `normalizarData`, `dataParaIso`, não futura (`erroData`) e a idade ao lado (`idadeEm`) |
+| Telefone / WhatsApp * | `normalizarTelefone`, `validarTelefone`, `formatarTelefone` e a conferência simulada |
+| Endereço | texto até 200 |
+| Quantas pessoas moram na casa | `normalizarInteiro`, de 1 a 30 |
+| Benefício procurado | lista `BENEFICIOS`, com "Não sei ainda" |
+| Última atividade, Desde quando está sem trabalhar, O que já pediu ao INSS | texto com tamanho |
+| Data da ficha | hoje, só leitura |
+| Senha do gov.br | só o componente do cofre (`CampoCofre`), fora do formulário da ficha, ou "Não sei a senha" |
+
+O servidor de exemplo valida de novo com as mesmas funções.
+
+### Decisões da história
+
+1. **Hoje é papel** (CA14): "Digitalizar a ficha em papel (scanner simulado)" guarda a imagem em Documentos pessoais e devolve a leitura de exemplo (`leituraDeExemplo` em `exemplo.ts`: o que a ficha já tem e os exemplos do Figma; CPF e data de nascimento ficam "não lidos", porque a semente não inventa CPF). Os campos lidos chegam marcados "lido pela IA · confira"; o Atendimento confere e salva.
+2. **Tablet** (CA1): o mesmo formulário, uma pergunta por tela, com letra grande, e "Salvar ficha" no fim. Fica pronto para quando o tablet chegar.
+3. **Senha** (CA2, CA3, CA8, CA9, CA15): o componente do cofre fica fora do formulário da ficha, manda a senha direto ao cofre (simulado: o servidor de exemplo descarta o valor e grava só quem, quando e de onde) e mostra "senha no cofre · atualizada em dd/mm por fulano". Lida da ficha em papel, a senha vai ao cofre marcada para conferir, e o Atendimento marca "Conferi a senha do cofre com o papel". "Não sei a senha" aceita a ficha e deixa o alerta para a GGVP-36. O teste procura uma senha de teste na tela, no `sessionStorage` e no histórico.
+4. **"Salvar ficha"** (CA5, CA6): só com nome, CPF, nascimento e telefone; o resto pode ficar em branco e vai para `emBranco`, que a preparação da conversa (GGVP-32) mostra ao Jurídico.
+5. **Uma ficha só**: os dados pessoais vão para a ficha da pessoa e as respostas da triagem para `fichaAtendimento`. Salvar conclui a pendência "Preencher ficha" e, com a entrevista já confirmada, abre o "Preparar entrevista" do Jurídico (GGVP-21, CA3).
+6. **Histórico** (CA10): a primeira vez grava "Salvou a ficha de atendimento (papel GGV)"; depois, "Alterou na ficha de atendimento: telefone e endereço". Nunca o valor da senha.
+7. **Telefone** (CA12): a ferramenta gratuita de validação é serviço de fora, simulada sobre `validarTelefone`; a tela mostra "conferido".
+8. **O Jurídico vê a ficha antes** (CA4): o cartão "Ficha de atendimento" na ficha do cliente mostra as respostas, o que ficou em branco e a situação da senha; a preparação da conversa (GGVP-32, grupo 2) usa os mesmos dados.
+9. **A IA completa pela transcrição** (CA13): entra com a transcrição (GGVP-46, grupo 3), sobre o mesmo "lido pela IA · confira".
+
 ## Risks / Trade-offs
 
-- [Catálogo de benefícios e fontes de "Como chegou" não são os do Airtable] → listas de exemplo, num arquivo só; trocar ao ligar no servidor.
+- [Fontes de "Como chegou" não são as do Airtable] → lista de exemplo, num arquivo só; trocar ao ligar no servidor. Os benefícios já são os do Airtable, normalizados no cartão GGVP-91 (desde a GGVP-21).
+- [A semente só tem um CPF, o de teste, que é do Antônio] → o teste que salva a ficha de atendimento usa a ficha dele; a da Josefa mostra a trava sem CPF. Nenhum CPF inventado.
+- [O que levar de cada benefício só está escrito para o LOAS] → os outros usam "RG, CPF e os laudos" até a GGVP-104 trazer as listas.
+- [O cofre de verdade é da GGVP-103] → aqui só o componente que guarda e mostra a situação, simulado, sem guardar o valor; "Revelar" fica na GGVP-103.
 - [Regra do scanner para achar a pasta não está escrita em lugar nenhum] → CPF, senão nome sem acento; parâmetro de `regras/pasta.ts`, ajusta com a GGVP-81.
 - [Ficha do cliente não tinha história própria] → ela está entre as telas desta história; a GGVP-86 constrói sobre ela.
 - [O Vitest estoura o tempo do worker no OneDrive] → rodar de novo e colar as duas saídas.

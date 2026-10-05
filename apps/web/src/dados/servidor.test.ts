@@ -99,7 +99,7 @@ describe('servidor de exemplo', () => {
       setor: 'Documentação · ADM',
       href: '/clientes/antonio-exemplo',
     })
-    expect(tarefa.detalhe).toBe('Aposentadoria por incapacidade permanente · chegou ao balcão às 14:32 · sem agendamento hoje')
+    expect(tarefa.detalhe).toBe('Aposentadoria por Incapacidade Permanente · chegou ao balcão às 14:32 · sem agendamento hoje')
     expect(evento).toEqual({
       quando: AGORA.toISOString(),
       quem: QUEM,

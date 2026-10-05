@@ -22,7 +22,7 @@ describe('Central do Atendimento', () => {
     render(<CentralAtendimento />)
     const receber = screen.getByRole('link', { name: 'Antônio Exemplo · Receber documento' })
     expect(receber.getAttribute('href')).toBe(`/balcao/documento/${tarefa.id}`)
-    expect(receber.closest('li')?.textContent).toContain('Aposentadoria por incapacidade permanente · Judicial · exigência')
+    expect(receber.closest('li')?.textContent).toContain('Aposentadoria por Incapacidade Permanente · Judicial · exigência')
     expect(screen.getByRole('link', { name: 'Marta Exemplo · Completar telefone' }).getAttribute('href')).toBe('/clientes/marta-exemplo')
   })
 

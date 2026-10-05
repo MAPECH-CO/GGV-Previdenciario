@@ -41,6 +41,15 @@ import {
   tipoSugerido,
 } from './arquivos.ts'
 import { pastasDoCliente } from './pasta.ts'
+import {
+  DIAS_ENTRE_TENTATIVAS,
+  TENTATIVAS_DE_CONFIRMACAO,
+  depoisDaTentativa,
+  instrucaoDaConfirmacao,
+  mensagemDaConfirmacao,
+  precisaConfirmar,
+  tentativaAtual,
+} from './confirmacao.ts'
 
 const HOJE = '2026-10-05'
 const CPF_COM_PONTOS = '000.000.001-91'
@@ -101,7 +110,7 @@ describe('busca do balcão', () => {
   it('CA1 · pelo CPF, com ou sem pontuação, acha o cliente com o caso e a etapa', () => {
     const [r] = buscar(fichas, CPF_COM_PONTOS, HOJE)
     expect(r.nome).toBe('Antônio Exemplo')
-    expect(r.casos).toEqual([{ beneficio: 'Aposentadoria por incapacidade permanente', etapa: 'Judicial · exigência' }])
+    expect(r.casos).toEqual([{ beneficio: 'Aposentadoria por Incapacidade Permanente', etapa: 'Judicial · exigência' }])
     expect(buscar(fichas, CPF_DE_TESTE, HOJE)).toHaveLength(1)
   })
 
@@ -419,5 +428,69 @@ describe('agenda e marcação da entrevista (GGVP-123)', () => {
     expect(erroDataDoCompromisso('05/10/2026', '2026-10-05')).toBeUndefined()
     expect(erroDataDoCompromisso('04/10/2026', '2026-10-05')).toBe(MENSAGEM.dataDoCompromisso)
     expect(erroDataDoCompromisso('3a/10/2026', '2026-10-05')).toBe(MENSAGEM.dataDoCompromisso)
+  })
+})
+
+describe('confirmação da entrevista do lead (GGVP-21)', () => {
+  const entrevista = { id: 'a', data: HOJE, hora: '15:30', oQue: 'Entrevista', tipo: 'presencial' as const }
+  const lead = ficha({ id: 'l', nome: 'Josefa Exemplo', telefone: '11900000002', situacao: 'lead', agendamentos: [entrevista] })
+  const tentativa = (resultado: 'confirmou' | 'sem-resposta') => ({ quando: `${HOJE}T10:00:00.000Z`, quem: 'Você', canal: 'ligacao' as const, resultado })
+
+  it('CA1 · confirma a entrevista do lead de hoje em diante, ainda sem confirmação e fora da sênior', () => {
+    expect(precisaConfirmar(lead, entrevista, HOJE)).toBe(true)
+    expect(precisaConfirmar(lead, { ...entrevista, data: '2026-10-04' }, HOJE)).toBe(false)
+    expect(precisaConfirmar({ ...lead, situacao: 'cliente' }, entrevista, HOJE)).toBe(false)
+    expect(precisaConfirmar(lead, { ...entrevista, oQue: 'Retirada da cópia do contrato' }, HOJE)).toBe(false)
+    expect(precisaConfirmar(lead, { ...entrevista, estado: 'remarcado' }, HOJE)).toBe(false)
+    expect(precisaConfirmar(lead, { ...entrevista, confirmacao: { tentativas: [tentativa('confirmou')] } }, HOJE)).toBe(false)
+    expect(precisaConfirmar(lead, { ...entrevista, confirmacao: { tentativas: [tentativa('sem-resposta')] } }, HOJE)).toBe(true)
+    expect(precisaConfirmar(lead, { ...entrevista, confirmacao: { tentativas: [], naSenior: true } }, HOJE)).toBe(false)
+  })
+
+  it('CA6 · 2 tentativas com 3 dias entre elas; sem resposta na segunda, a sênior', () => {
+    expect(TENTATIVAS_DE_CONFIRMACAO).toBe(2)
+    expect(DIAS_ENTRE_TENTATIVAS).toBe(3)
+    expect(tentativaAtual(undefined)).toBe(1)
+    expect(tentativaAtual({ tentativas: [tentativa('sem-resposta')] })).toBe(2)
+    expect(depoisDaTentativa(1, HOJE)).toEqual({ naSenior: false, proximaEm: '2026-10-08' })
+    expect(depoisDaTentativa(2, HOJE)).toEqual({ naSenior: true })
+  })
+
+  it('CA8 · no LOAS, a mensagem traz o que levar e os quatro documentos que mais travam', () => {
+    expect(
+      mensagemDaConfirmacao({ nome: 'Josefa Exemplo', tipo: 'presencial', data: HOJE, hora: '15:30', beneficio: 'loas-idoso', fichaPreenchida: false }),
+    ).toBe(
+      'Olá, Josefa! Passando para confirmar sua conversa com o escritório GGV: segunda, 05/10, às 15h30, aqui no escritório. ' +
+        'Pode confirmar respondendo esta mensagem? Antes da conversa, preencha a ficha de atendimento em papel, no balcão do ' +
+        'escritório ou com quem te atendeu. Traga RG e CPF de todos da casa, comprovante de renda e CadÚnico; sem CadÚnico, ' +
+        'vá ao CRAS antes. Os documentos que mais travam os casos são biometria, CadÚnico, senha do Meu INSS e comprovantes ' +
+        'de gastos: se faltar algum, avise a gente.',
+    )
+  })
+
+  it('CA8 · nos outros benefícios, o que o convite já pede; com ficha, não pede a ficha; no vídeo, o link', () => {
+    const texto = mensagemDaConfirmacao({
+      nome: 'Natália Exemplo',
+      tipo: 'video',
+      data: '2026-10-06',
+      hora: '09:00',
+      link: 'meet.google.com/ggv-n',
+      beneficio: 'incapacidade-temporaria',
+      fichaPreenchida: true,
+    })
+    expect(texto).toContain('terça, 06/10, às 9h, por vídeo')
+    expect(texto).toContain('Link: meet.google.com/ggv-n.')
+    expect(texto).toContain('Traga RG, CPF e os laudos.')
+    expect(texto).toContain('biometria, CadÚnico, senha do Meu INSS e comprovantes de gastos')
+    expect(texto).not.toContain('ficha de atendimento')
+  })
+
+  it('"O que você deve fazer" sai da regra do benefício', () => {
+    expect(instrucaoDaConfirmacao('Josefa Exemplo', 'loas-idoso')).toBe(
+      'Ligue ou mande mensagem pelo Chatwoot para Josefa confirmando a entrevista. O BPC/LOAS depende da renda de quem mora ' +
+        'na casa e da idade ou da deficiência: peça que traga RG e CPF de todos da casa, comprovante de renda e CadÚnico; sem ' +
+        'CadÚnico, vá ao CRAS antes. Duas tentativas sem confirmação, com 3 dias entre elas, sobem para a advogada sênior.',
+    )
+    expect(instrucaoDaConfirmacao('Natália Exemplo', 'incapacidade-temporaria')).toContain('confirmando a entrevista. Peça que traga RG, CPF e os laudos.')
   })
 })

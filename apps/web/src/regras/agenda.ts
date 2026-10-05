@@ -11,6 +11,11 @@ export const DURACOES = [30, 45, 60, 90]
 export const LIMITE_DE_REMARCACOES = 2
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+
+/** "2026-10-06" → "terça, 06/10". */
+export function diaFalado(iso: string): string {
+  return `${DIAS[diaDaSemana(iso)]}, ${iso.slice(8)}/${iso.slice(5, 7)}`
+}
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
 
 function paraData(iso: string): Date {
@@ -95,12 +100,12 @@ export function equipeDaEntrevista(equipe: MembroDaEquipe[]): MembroDaEquipe[] {
 export const podeRemarcar = (remarcacoes: number) => remarcacoes < LIMITE_DE_REMARCACOES
 
 /** "10:30" → "10h30"; "09:00" → "9h". */
-function horaFalada(hora: string): string {
+export function horaFalada(hora: string): string {
   const h = Number(hora.slice(0, 2))
   return hora.endsWith(':00') ? `${h}h` : `${h}h${hora.slice(3)}`
 }
 
-const COMO: Record<TipoDeEntrevista, string> = {
+export const COMO: Record<TipoDeEntrevista, string> = {
   video: 'por vídeo',
   presencial: 'aqui no escritório',
   telefone: 'por telefone: nós ligamos para você',
@@ -117,9 +122,8 @@ export function mensagemDoConvite(c: {
   levar: boolean
   gravar: boolean
 }): string {
-  const [, mes, dia] = c.data.split('-')
   return [
-    `Olá, ${c.nome.split(' ')[0]}! Sua conversa com o escritório GGV está marcada para ${DIAS[diaDaSemana(c.data)]}, ${dia}/${mes}, às ${horaFalada(c.hora)}, ${COMO[c.tipo]}.`,
+    `Olá, ${c.nome.split(' ')[0]}! Sua conversa com o escritório GGV está marcada para ${diaFalado(c.data)}, às ${horaFalada(c.hora)}, ${COMO[c.tipo]}.`,
     c.tipo === 'video' && c.link ? `Link: ${c.link}.` : '',
     c.pedirFicha ? 'Antes da conversa, preencha a ficha de atendimento em papel, no balcão do escritório ou com quem te atendeu.' : '',
     c.levar ? 'Traga RG, CPF e os laudos.' : '',

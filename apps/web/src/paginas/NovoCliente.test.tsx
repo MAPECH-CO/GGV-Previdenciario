@@ -38,7 +38,7 @@ describe('Novo cliente', () => {
       expect(campo(rotulo), rotulo).toBeTruthy()
     }
     const beneficios = within(screen.getByRole('radiogroup', { name: 'Benefício de interesse (opcional)' }))
-    for (const nome of ['Curatela', 'Isenção de IR', 'Empréstimo fraudulento', 'Seguro de vida']) expect(beneficios.getByRole('radio', { name: nome })).toBeTruthy()
+    for (const nome of ['Curatela', 'Isenção e Restituição de Imposto de Renda', 'Empréstimo Indevido', 'Seguro de Vida', 'Cartão RMC']) expect(beneficios.getByRole('radio', { name: nome })).toBeTruthy()
     expect(beneficios.getByRole('radio', { name: 'Não sei ainda' }).getAttribute('aria-checked')).toBe('true')
     expect(botao('Salvar e marcar a entrevista')).toBeTruthy()
     expect(botao('Salvar apenas')).toBeTruthy()

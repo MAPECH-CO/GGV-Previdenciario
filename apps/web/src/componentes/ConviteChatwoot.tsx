@@ -1,15 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatarTelefone } from '../campos.ts'
 import { prepararConvite, registrarConvite } from '../dados/agenda.ts'
+import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confirmacao.ts'
 import styles from './ConviteChatwoot.module.css'
 
-type Props = { agendamentoId: string; aoEnviado: () => void; aoFechar: () => void }
+/** O convite da entrevista (GGVP-123) ou a confirmação dela (GGVP-21). */
+type Assunto = 'convite' | 'confirmacao'
+
+type Props = { agendamentoId: string; assunto?: Assunto; aoEnviado: () => void; aoFechar: () => void }
+
+const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Promise<{ nome: string; telefone: string; mensagem: string }>; enviar: (id: string, mensagem: string) => Promise<unknown> }> = {
+  convite: { rotulo: 'Mensagem do convite (confira antes de enviar)', carregar: prepararConvite, enviar: registrarConvite },
+  confirmacao: {
+    rotulo: 'Mensagem de confirmação (confira antes de enviar)',
+    carregar: async (id) => {
+      const dados = await obterConfirmacao(id)
+      if (!dados) throw new Error('Compromisso não encontrado')
+      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
+    },
+    enviar: registrarMensagemDeConfirmacao,
+  },
+}
 
 /**
- * A conversa do cliente no Chatwoot com o convite pronto, para conferir e enviar (GGVP-123, CA4). Simulada: o Chatwoot
- * de verdade, com o modelo da mensagem, é da GGVP-102.
+ * A conversa do cliente no Chatwoot com a mensagem pronta, para conferir e enviar (GGVP-123, CA4; GGVP-21, CA1).
+ * Simulada: o Chatwoot de verdade, com o modelo da mensagem, é da GGVP-102.
  */
-export function ConviteChatwoot({ agendamentoId, aoEnviado, aoFechar }: Props) {
+export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado, aoFechar }: Props) {
+  const conversaDe = CONVERSA[assunto]
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<{ nome: string; telefone: string } | null>(null)
   const [mensagem, setMensagem] = useState('')
@@ -25,7 +43,7 @@ export function ConviteChatwoot({ agendamentoId, aoEnviado, aoFechar }: Props) {
       if (!dialogo.open) dialogo.showModal()
     } else dialogo?.setAttribute('open', '')
     let valendo = true
-    prepararConvite(agendamentoId).then((c) => {
+    conversaDe.carregar(agendamentoId).then((c) => {
       if (!valendo) return
       setConversa(c)
       setMensagem(c.mensagem)
@@ -33,7 +51,7 @@ export function ConviteChatwoot({ agendamentoId, aoEnviado, aoFechar }: Props) {
     return () => {
       valendo = false
     }
-  }, [agendamentoId])
+  }, [agendamentoId, conversaDe])
 
   async function enviar() {
     if (travado.current) return
@@ -41,7 +59,7 @@ export function ConviteChatwoot({ agendamentoId, aoEnviado, aoFechar }: Props) {
     setEnviando(true)
     setErro('')
     try {
-      await registrarConvite(agendamentoId, mensagem)
+      await conversaDe.enviar(agendamentoId, mensagem)
       aoEnviado()
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para enviar.')
@@ -68,7 +86,7 @@ export function ConviteChatwoot({ agendamentoId, aoEnviado, aoFechar }: Props) {
         </button>
       </div>
       <label className={styles.campo}>
-        <span className={styles.rotulo}>Mensagem do convite (confira antes de enviar)</span>
+        <span className={styles.rotulo}>{conversaDe.rotulo}</span>
         <textarea className={styles.texto} rows={6} maxLength={1000} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
       </label>
       {erro && (

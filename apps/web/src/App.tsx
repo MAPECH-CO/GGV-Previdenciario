@@ -1,6 +1,7 @@
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
 import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
+import { ConfirmarAgendamento } from './paginas/ConfirmarAgendamento.tsx'
 import { FichaCliente } from './paginas/FichaCliente.tsx'
 import { MarcarEntrevista } from './paginas/MarcarEntrevista.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
@@ -18,6 +19,8 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (caminho === '/agenda') return <Agenda vistaInicial={(parametros.get('ver') as Vista | null) ?? undefined} />
   const marcar = /^\/agenda\/marcar\/([^/]+)$/.exec(caminho)
   if (marcar) return <MarcarEntrevista fichaId={decodeURIComponent(marcar[1])} remarcar={parametros.get('remarcar') ?? undefined} />
+  const confirmar = /^\/agenda\/confirmar\/([^/]+)$/.exec(caminho)
+  if (confirmar) return <ConfirmarAgendamento agendamentoId={decodeURIComponent(confirmar[1])} />
   const recebimento = /^\/balcao\/documento\/([^/]+)$/.exec(caminho)
   if (recebimento) return <ReceberDocumento tarefaId={decodeURIComponent(recebimento[1])} />
   const ficha = /^\/clientes\/([^/]+)$/.exec(caminho)

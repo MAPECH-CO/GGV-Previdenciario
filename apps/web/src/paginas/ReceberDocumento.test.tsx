@@ -22,7 +22,7 @@ describe('Receber documento · tela do passo', () => {
   it('abre com o título do Figma, o caso e o "Registrar" parado até escolher papel ou digital', async () => {
     await abrir('antonio-exemplo')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Antônio Exemplo · Receber documento')
-    expect(screen.getByText(/Cliente entregou documentos · Aposentadoria por incapacidade permanente · Judicial · exigência/)).toBeTruthy()
+    expect(screen.getByText(/Cliente entregou documentos · Aposentadoria por Incapacidade Permanente · Judicial · exigência/)).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Antes de concluir' })).toBeTruthy()
     expect(registrar().disabled).toBe(true)
     expect(screen.getByText('Escolha se chegou em papel ou digital.')).toBeTruthy()

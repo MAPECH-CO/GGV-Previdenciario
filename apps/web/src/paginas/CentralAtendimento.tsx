@@ -13,6 +13,7 @@ import {
   totalTarefasSetorAtendimento,
 } from '../dados/atendimento.ts'
 import { tarefasDeConfirmar } from '../dados/agenda.ts'
+import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
 import { tarefasDeCompletarTelefone } from '../dados/documentos.ts'
 import { tarefasDoSetor } from '../dados/servidor.ts'
 import styles from './CentralAtendimento.module.css'
@@ -25,11 +26,14 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAtendimento() {
   const [aba, setAba] = useState('minhas')
-  // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as fichas
-  // que o scanner criou sem telefone (GGVP-17, CA15) e as entrevistas que passaram sem registro (GGVP-123, CA8).
+  // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as pendências do
+  // Atendimento (GGVP-21), as fichas que o scanner criou sem telefone (GGVP-17, CA15), as entrevistas que passaram sem
+  // registro (GGVP-123, CA8) e as que falta confirmar com o lead (GGVP-21).
   const [tarefas] = useState(() => [
     ...tarefasDoSetor('Documentação · ADM'),
+    ...tarefasDoSetor('Atendimento'),
     ...tarefasDeConfirmar(),
+    ...tarefasDeConfirmarAgendamento(),
     ...tarefasDeCompletarTelefone(),
     ...tarefasAtendimento,
   ])

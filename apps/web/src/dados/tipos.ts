@@ -33,7 +33,8 @@ export type Tarefa = {
 
 export type Situacao = 'lead' | 'cliente'
 
-export type Setor = 'Jurídico' | 'Documentação · ADM' | 'Financeiro'
+/** 'Atendimento': as pendências do próprio Atendimento, como "Preencher ficha" (GGVP-21). */
+export type Setor = 'Jurídico' | 'Documentação · ADM' | 'Financeiro' | 'Atendimento'
 
 /** Um processo tem um benefício só; outro benefício do mesmo cliente é processo novo, na mesma ficha. */
 export type Processo = {
@@ -76,6 +77,8 @@ export type Agendamento = {
   levar?: boolean
   /** O convite pede a ficha de atendimento em papel (até o tablet chegar). */
   pedirFicha?: boolean
+  /** A confirmação da entrevista do lead, por mensagem ou ligação (GGVP-21). */
+  confirmacao?: Confirmacao
 }
 
 /** Uma linha de "Últimos contatos". */
@@ -328,6 +331,8 @@ export type EventoDaAgenda = {
   remarcacoes: number
   conviteEnviadoEm?: string
   gravar?: boolean
+  /** Entrevista de lead que ainda espera a confirmação (GGVP-21). */
+  aConfirmar?: boolean
 }
 
 /** "Marcar e enviar convite" (CA1, CA3); com `remarcar`, o motivo é obrigatório (CA7). */
@@ -366,3 +371,36 @@ export type CompromissoInterno = {
 
 /** O compromisso interno guardado no servidor. */
 export type CompromissoGuardado = CompromissoInterno & { id: string; estado: EstadoDoCompromisso }
+
+// GGVP-21 em diante: a confirmação da entrevista do lead. Espelho do Zod da design.md da change ggvp-6.
+
+export type CanalDoContato = 'mensagem' | 'ligacao'
+
+export type Tentativa = {
+  /** Data e hora ISO. */
+  quando: string
+  quem: string
+  canal: CanalDoContato
+  resultado: 'confirmou' | 'sem-resposta'
+}
+
+export type Confirmacao = {
+  tentativas: Tentativa[]
+  /** aaaa-mm-dd: 3 dias depois da tentativa sem resposta (CA6). */
+  proximaEm?: string
+  /** Duas sem resposta: a advogada sênior resolve (CA6). */
+  naSenior?: boolean
+}
+
+export type RegistroDaConfirmacao =
+  | { resultado: 'confirmou'; canal: CanalDoContato; jaPreencheuFicha: boolean }
+  | { resultado: 'sem-resposta'; canal: CanalDoContato }
+
+export type RespostaDaConfirmacao = {
+  /** O número desta tentativa. */
+  tentativa: number
+  proximaEm?: string
+  naSenior: boolean
+  /** Preparar entrevista, Preencher ficha ou a da sênior. */
+  tarefa?: TarefaEncaminhada
+}

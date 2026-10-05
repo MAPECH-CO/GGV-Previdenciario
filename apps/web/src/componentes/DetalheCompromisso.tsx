@@ -104,6 +104,12 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
             Abrir a ficha
           </a>
         )}
+        {/* A entrevista do lead ainda sem confirmação abre a tarefa de confirmar (GGVP-21). */}
+        {evento.aConfirmar && (
+          <a className={styles.botao} href={`/agenda/confirmar/${evento.id}`}>
+            Confirmar agendamento
+          </a>
+        )}
         {aberto && (
           <>
             <button type="button" className={styles.botao} disabled={registrando} onClick={() => registrar('realizado')}>

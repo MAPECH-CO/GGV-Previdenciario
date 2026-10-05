@@ -44,7 +44,7 @@ describe('Balcão · Receber quem chegou', () => {
     buscar('000.000.001-91')
     const antonio = await screen.findByRole('button', { name: /Antônio Exemplo/ })
     expect(antonio.textContent).toContain('Cliente')
-    expect(antonio.textContent).toContain('◆ Aposentadoria por incapacidade permanente · Judicial · exigência')
+    expect(antonio.textContent).toContain('◆ Aposentadoria por Incapacidade Permanente · Judicial · exigência')
     expect(antonio.textContent).toContain('Sem agendamento hoje')
     buscar('cleide')
     const cleide = await screen.findByRole('button', { name: /Cleide Exemplo/ })

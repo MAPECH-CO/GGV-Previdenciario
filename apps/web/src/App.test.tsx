@@ -52,6 +52,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Remarcar a entrevista com Natália Exemplo' })).toBeTruthy()
   })
 
+  it('GGVP-21 · em /agenda/confirmar/:id abre a confirmação do agendamento', async () => {
+    zerarExemplo()
+    render(<App caminho="/agenda/confirmar/josefa-entrevista" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Confirmar agendamento' })).toBeTruthy()
+  })
+
   it('em rota sem tela avisa que não foi construída e mostra o caminho', () => {
     render(<App caminho="/relatorios" />)
     expect(screen.getByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeTruthy()

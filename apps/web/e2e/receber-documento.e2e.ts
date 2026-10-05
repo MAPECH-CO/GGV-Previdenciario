@@ -62,7 +62,7 @@ test('CA6, CA9 e CA13 · laudo pela ficha: "Laudo novo", aguarda o Jurídico, e 
     await expect(page.getByRole('status').filter({ hasText: 'arquivo enviado' })).toBeVisible()
     if (vez === 1) await expect(page.getByText(/enviado ao Jurídico: aguarda a análise/)).toBeVisible()
   }
-  const subpasta = page.getByRole('list', { name: 'Subpasta Aposentadoria por incapacidade permanente' })
+  const subpasta = page.getByRole('list', { name: 'Subpasta Aposentadoria por Incapacidade Permanente' })
   await expect(subpasta).toContainText('laudo_ortopedia (2).pdf')
   await expect(subpasta).toContainText('repetido')
 })
@@ -77,7 +77,7 @@ test('CA8 · laudo pelo chat da Central só sobe depois de "Confirmar"', async (
   await card.getByRole('button', { name: 'Confirmar e enviar ao Jurídico' }).click()
   await expect(page.getByRole('status').filter({ hasText: '✓ Feito' })).toBeVisible()
   await page.getByRole('link', { name: 'Abrir a ficha' }).click()
-  await expect(page.getByRole('list', { name: 'Subpasta Aposentadoria por incapacidade permanente' })).toContainText('laudo_antonio_ortopedia.pdf')
+  await expect(page.getByRole('list', { name: 'Subpasta Aposentadoria por Incapacidade Permanente' })).toContainText('laudo_antonio_ortopedia.pdf')
 })
 
 test('tema escuro e fonte grande na tela do passo e na janela "Conferir e enviar"', async ({ page }) => {

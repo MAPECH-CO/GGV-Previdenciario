@@ -43,8 +43,8 @@ describe('Receber documento · servidor de exemplo', () => {
       processoId: 'antonio-exemplo-1',
       href: `/balcao/documento/${tarefa.id}`,
     })
-    expect(tarefa.detalhe).toBe('Aposentadoria por incapacidade permanente · Judicial · exigência · chegou ao balcão às 14:32')
-    expect(evento.oQue).toBe('Encaminhou à Documentação · ADM para receber documento, ligado ao caso Aposentadoria por incapacidade permanente')
+    expect(tarefa.detalhe).toBe('Aposentadoria por Incapacidade Permanente · Judicial · exigência · chegou ao balcão às 14:32')
+    expect(evento.oQue).toBe('Encaminhou à Documentação · ADM para receber documento, ligado ao caso Aposentadoria por Incapacidade Permanente')
     expect(tarefasDoSetor('Documentação · ADM').map((t) => t.id)).toEqual([tarefa.id])
     expect((await obterTarefa(tarefa.id))?.ficha.nome).toBe('Antônio Exemplo')
     expect(await obterTarefa('nenhuma')).toBeNull()
