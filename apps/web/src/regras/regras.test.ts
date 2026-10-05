@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
-import type { EventoDaAgenda, Ficha, InformacaoExtraida, PastaDrive, Trecho } from '../dados/tipos.ts'
+import type { Cadastro, EventoDaAgenda, Ficha, InformacaoExtraida, PastaDrive, Trecho } from '../dados/tipos.ts'
 import { bateNaBusca, buscar, etapaDaFicha, fichasCitadas, semAcento } from './busca.ts'
+import {
+  MENSAGEM_RG,
+  cadastroDaFicha,
+  errosDoCadastro,
+  estadoCivilDaLista,
+  faltaParaOKit,
+  fichaDoCadastro,
+  mesclar,
+  oQueFaltaNoCadastro,
+  preencherCadastro,
+} from './cadastro.ts'
 import { dataCurta, idadeEm } from './datas.ts'
 import {
   PARTE_MAXIMA,
@@ -756,5 +767,73 @@ describe('GGVP-40 · Entrevistar com gravação', () => {
       'CNIS',
       '2 laudos do ortopedista',
     ])
+  })
+})
+
+describe('GGVP-43 · Cadastrar o lead depois da entrevista', () => {
+  const completo: Cadastro = {
+    nome: 'Josefa Exemplo',
+    cpf: CPF_COM_PONTOS,
+    rg: '12.345.678-x',
+    nascimento: '10/03/1958',
+    estadoCivil: 'União estável',
+    profissao: 'Auxiliar de limpeza',
+    telefone: '(11) 90000-0002',
+    cep: '01001-000',
+    rua: 'Praça da Sé, 10',
+    bairro: 'Sé',
+    cidade: 'São Paulo',
+    uf: 'sp',
+  }
+
+  it('CA3 e CA5 · os campos do modelo do contrato; CPF com dígito errado não passa; o que falta, na ordem da tela', () => {
+    expect(errosDoCadastro(completo, HOJE)).toEqual({})
+    expect(errosDoCadastro({ ...completo, cpf: CPF_ERRADO, rg: '12', estadoCivil: 'Casado', uf: 'XX' }, HOJE)).toEqual({
+      cpf: 'CPF inválido: confira os 11 números.',
+      rg: MENSAGEM_RG,
+      estadoCivil: 'Escolha na lista.',
+      uf: 'UF com 2 letras, como SP.',
+    })
+    const vazio = { ...completo, rg: '', estadoCivil: '', cep: '', nascimento: '' }
+    expect(oQueFaltaNoCadastro(vazio, undefined, HOJE)).toEqual(['RG', 'Estado civil', 'CEP'])
+  })
+
+  it('CA6 · com representante, os campos dele também', () => {
+    const representante = { nome: 'Renata Exemplo', cpf: '', rg: '', parentesco: 'Mãe', estadoCivil: '', profissao: 'Diarista' }
+    expect(oQueFaltaNoCadastro(completo, representante, HOJE)).toEqual(['CPF do representante', 'RG do representante', 'Estado civil do representante'])
+  })
+
+  it('CA4 · sem os campos do modelo, o kit não é gerado e diz o que falta', () => {
+    expect(faltaParaOKit(antonio)).toEqual(['estado civil', 'profissão', 'RG', 'endereço'])
+    const cadastrada = { ...antonio, ...fichaDoCadastro(completo) }
+    expect(faltaParaOKit(cadastrada)).toEqual([])
+    expect(faltaParaOKit({ ...cadastrada, representante: { nome: 'Renata Exemplo', cpf: '', rg: '', parentesco: 'Mãe', estadoCivil: '', profissao: '' } })).toEqual([
+      'dados do representante',
+    ])
+  })
+
+  it('o estado civil da ficha antiga vira o da lista; a ficha guarda o cadastro normalizado', () => {
+    expect(['Casado', 'casada', 'VIÚVA', 'união estável', 'separado'].map(estadoCivilDaLista)).toEqual(['Casado(a)', 'Casado(a)', 'Viúvo(a)', 'União estável', ''])
+    expect(fichaDoCadastro(completo)).toMatchObject({ cpf: CPF_DE_TESTE, rg: '12345678X', nascimento: '1958-03-10', telefone: '11900000002', cep: '01001000', cidadeUf: 'São Paulo / SP' })
+    expect(cadastroDaFicha({ ...josefa, ...fichaDoCadastro(completo) })).toEqual({ ...completo, rg: '12345678X', uf: 'SP' })
+  })
+
+  it('CA1 e CA8 · preenche pela ficha e pela entrevista; a diferença aparece para escolher', () => {
+    const extraidas: InformacaoExtraida[] = [
+      { id: 'telefone', rotulo: 'Telefone', valor: '11900000021', destino: 'ficha', campo: 'telefone' },
+      { id: 'estado-civil', rotulo: 'Estado civil', valor: 'União estável', destino: 'ficha', campo: 'estadoCivil' },
+      { id: 'profissao', rotulo: 'Profissão', valor: 'Auxiliar de limpeza', destino: 'ficha', campo: 'profissao' },
+    ]
+    const { valores, origem, divergencias } = preencherCadastro(josefa, extraidas)
+    expect(valores).toMatchObject({ nome: 'Josefa Teste', telefone: '(11) 90000-0002', estadoCivil: 'União estável', profissao: 'Auxiliar de limpeza' })
+    expect(origem).toMatchObject({ nome: 'ficha', telefone: 'ficha', estadoCivil: 'entrevista', profissao: 'entrevista' })
+    expect(divergencias).toEqual([{ campo: 'telefone', ficha: '(11) 90000-0002', entrevista: '(11) 90000-0021' }])
+  })
+
+  it('CA11 · a mescla guarda o que o outro salvou e acusa o campo que os dois mexeram', () => {
+    const base = { telefone: 'a', rg: '', estadoCivil: '' }
+    const atual = { telefone: 'b', rg: '', estadoCivil: 'Casado(a)' }
+    expect(mesclar(base, { telefone: 'a', rg: '123456', estadoCivil: '' }, atual)).toEqual({ valores: { telefone: 'b', rg: '123456', estadoCivil: 'Casado(a)' }, conflitos: [] })
+    expect(mesclar(base, { telefone: 'c', rg: '', estadoCivil: 'Casado(a)' }, atual).conflitos).toEqual(['telefone'])
   })
 })

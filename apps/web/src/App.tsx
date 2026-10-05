@@ -1,6 +1,7 @@
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
+import { CadastrarLead } from './paginas/CadastrarLead.tsx'
 import { CentralAdvogada } from './paginas/CentralAdvogada.tsx'
 import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { ConfirmarAgendamento } from './paginas/ConfirmarAgendamento.tsx'
@@ -46,6 +47,8 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (fichaDeAtendimento) return <FichaAtendimento fichaId={decodeURIComponent(fichaDeAtendimento[1])} tablet={parametros.get('modo') === 'tablet'} />
   const segunda = /^\/clientes\/([^/]+)\/segunda-ficha$/.exec(caminho)
   if (segunda) return <SegundaFicha fichaId={decodeURIComponent(segunda[1])} tablet={parametros.get('modo') === 'tablet'} />
+  const cadastro = /^\/clientes\/([^/]+)\/cadastro$/.exec(caminho)
+  if (cadastro) return <CadastrarLead fichaId={decodeURIComponent(cadastro[1])} />
   const ficha = /^\/clientes\/([^/]+)$/.exec(caminho)
   if (ficha) return <FichaCliente id={decodeURIComponent(ficha[1])} />
   return <NaoConstruida caminho={caminho} />

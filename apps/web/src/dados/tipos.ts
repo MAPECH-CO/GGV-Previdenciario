@@ -127,11 +127,17 @@ export type Ficha = {
   telefone: string
   email?: string
   estadoCivil?: string
+  /** Rua e número; o bairro fica à parte (GGVP-43). */
   endereco?: string
+  bairro?: string
   cidadeUf?: string
   /** Só números. */
   cep?: string
   profissao?: string
+  /** Só letras e números (GGVP-43). */
+  rg?: string
+  /** O representante legal, para o contrato (GGVP-43, CA6). */
+  representante?: Representante
   /** Id do catálogo de fontes. */
   comoChegou?: string
   /** Nome de quem indicou. Não vira captador. */
@@ -645,3 +651,41 @@ export type AudioDeFora = { nome: string; tipo: string; tamanho: number }
 
 /** Encerrar devolve a gravação e a tarefa nova da advogada (CA5). */
 export type RespostaDoEncerramento = { gravacao: Gravacao; tarefa?: TarefaEncaminhada }
+
+// GGVP-43 em diante: o cadastro do lead depois da entrevista. Espelho do Zod da design.md da change ggvp-6.
+
+export type Representante = {
+  nome: string
+  /** Só números. */
+  cpf: string
+  rg: string
+  parentesco: string
+  estadoCivil: string
+  profissao: string
+}
+
+/** O que a tela "Cadastrar lead" manda, como foi digitado; o servidor normaliza e valida de novo. */
+export type Cadastro = {
+  nome: string
+  cpf: string
+  rg: string
+  /** dd/mm/aaaa; não obrigatória. */
+  nascimento: string
+  estadoCivil: string
+  profissao: string
+  telefone: string
+  cep: string
+  /** Rua e número. */
+  rua: string
+  bairro: string
+  cidade: string
+  uf: string
+}
+
+/** `base`: o que a tela abriu, para não apagar o que outra pessoa salvou enquanto isso (CA11). */
+export type PedidoDeCadastro = { base: Cadastro; valores: Cadastro; representante?: Representante }
+
+export type RespostaDoCadastro =
+  | { resultado: 'salvo'; ficha: Ficha }
+  | { resultado: 'cpf-de-outra-ficha'; id: string; nome: string }
+  | { resultado: 'conflito'; campos: { campo: keyof Cadastro; deles: string; meu: string }[] }

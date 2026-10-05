@@ -113,3 +113,26 @@ export function nomeBeneficio(id: string | undefined): string {
 export function nomeFonte(id: string | undefined): string {
   return FONTES.find((f) => f.id === id)?.nome ?? ''
 }
+
+/** EXEMPLO. Profissões do cadastro (GGVP-43, CA10): as que mais aparecem nas fichas. Trocar pela lista do Airtable. */
+export const PROFISSOES: ItemCatalogo[] = [
+  'Agricultor(a) / trabalhador(a) rural',
+  'Aposentado(a)',
+  'Auxiliar de limpeza',
+  'Auxiliar de produção',
+  'Comerciante',
+  'Costureiro(a)',
+  'Cozinheiro(a)',
+  'Desempregado(a)',
+  'Diarista',
+  'Do lar',
+  'Empregado(a) doméstico(a)',
+  'Estudante',
+  'Motorista',
+  'Pedreiro(a)',
+  'Porteiro(a)',
+  'Servente',
+  'Vendedor(a)',
+  'Vigilante',
+  'Outra',
+].map((nome) => ({ id: nome, nome }))
