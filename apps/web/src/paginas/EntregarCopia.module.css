@@ -33,3 +33,8 @@
 .linha > * {
   min-width: 180px;
 }
+
+/* A caixa de hora do navegador é mais alta: as duas da linha ficam iguais. */
+.linha input {
+  min-height: 36px;
+}

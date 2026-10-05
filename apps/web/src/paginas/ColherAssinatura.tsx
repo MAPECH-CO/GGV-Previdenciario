@@ -197,11 +197,11 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                 Como o cliente vai assinar?
               </h2>
               <div className={styles.opcoes} role="radiogroup" aria-labelledby="como-assinar">
-                <button type="button" role="radio" className={styles.opcao} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
+                <button type="button" role="radio" className={`${styles.opcao} ${proprio.escolhida}`} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
                   ZapSign (digital)
                 </button>
                 {podePapel && (
-                  <button type="button" role="radio" className={styles.opcao} aria-checked={forma === 'papel'} disabled={escolhido} onClick={() => setForma('papel')}>
+                  <button type="button" role="radio" className={`${styles.opcao} ${proprio.escolhida}`} aria-checked={forma === 'papel'} disabled={escolhido} onClick={() => setForma('papel')}>
                     Em papel na hora
                   </button>
                 )}
@@ -415,11 +415,11 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
           <div className={styles.decisao}>
             <p id="como-assinar-lado">Como a cliente vai assinar?</p>
             <div className={styles.ladoOpcoes} role="radiogroup" aria-labelledby="como-assinar-lado">
-              <button type="button" role="radio" className={styles.chip} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
+              <button type="button" role="radio" className={`${styles.chip} ${proprio.escolhida}`} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
                 ZapSign (digital)
               </button>
               {podePapel && (
-                <button type="button" role="radio" className={styles.chip} aria-checked={forma === 'papel'} disabled={escolhido} onClick={() => setForma('papel')}>
+                <button type="button" role="radio" className={`${styles.chip} ${proprio.escolhida}`} aria-checked={forma === 'papel'} disabled={escolhido} onClick={() => setForma('papel')}>
                   Papel, na hora
                 </button>
               )}

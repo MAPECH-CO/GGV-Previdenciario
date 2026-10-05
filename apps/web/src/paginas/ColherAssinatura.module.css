@@ -53,6 +53,11 @@
   margin-top: 8px;
 }
 
+/* A forma escolhida continua acesa depois de travada; só a outra fica apagada. */
+.escolhida[aria-checked='true']:disabled {
+  opacity: 1;
+}
+
 .anexo {
   color: var(--cor-erro);
   font-size: var(--fonte-13);
