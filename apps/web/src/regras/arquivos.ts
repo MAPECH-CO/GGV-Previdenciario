@@ -26,6 +26,8 @@ export function problemaDoArquivo(arquivo: { nome: string; tamanho: number }): s
 
 // A IA que diz o tipo é simulada pelo nome do arquivo; a pessoa confere e troca na janela.
 const PISTAS: [RegExp, string][] = [
+  [/ficha de atendimento auxilio acidente/, 'ficha-acidente'],
+  [/ficha de atendimento/, 'ficha-atendimento'],
   [/\blaudo|atestado/, 'laudo'],
   [/receita/, 'receita'],
   [/prontuario/, 'prontuario'],
@@ -46,7 +48,7 @@ export function tipoSugerido(nome: string): string {
 }
 
 // ponytail: a divisão entre pessoal e processo é proposta (o cartão não diz); ajusta com a GGVP-81.
-const PESSOAIS = new Set(['rg', 'cpf', 'comprovante-residencia', 'certidao', 'ctps', 'cnis', 'ficha-atendimento'])
+const PESSOAIS = new Set(['rg', 'cpf', 'comprovante-residencia', 'certidao', 'ctps', 'cnis', 'ficha-atendimento', 'ficha-acidente'])
 
 /** Documentos pessoais, ou a subpasta do caso em andamento; sem processo, Documentos pessoais (CA14). */
 export function localDoTipo(tipo: string, processoId: string | undefined): string {

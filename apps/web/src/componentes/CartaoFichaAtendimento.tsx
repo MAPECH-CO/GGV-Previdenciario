@@ -37,6 +37,16 @@ export function CartaoFichaAtendimento({ ficha, hoje }: { ficha: Ficha; hoje: st
         </dl>
       )}
       {f && f.emBranco.length > 0 && <p className={styles.branco}>Em branco: {f.emBranco.join(', ')}.</p>}
+      {/* A segunda ficha: o Atendimento vê só que foi preenchida, nunca os dados médicos (GGVP-28, CA8). */}
+      {(ficha.segundaFicha || ficha.analise?.acidentario) && (
+        <p className={styles.texto}>
+          Segunda ficha (auxílio acidentário):{' '}
+          {ficha.segundaFicha ? `preenchida em ${isoParaData(ficha.segundaFicha.data)}` : 'pendente'}{' '}
+          <a className={styles.link} href={`/clientes/${ficha.id}/segunda-ficha`}>
+            {ficha.segundaFicha ? 'Abrir a segunda ficha' : 'Preencher a segunda ficha'}
+          </a>
+        </p>
+      )}
       <p className={styles.senha}>gov.br: {situacaoDaSenha(ficha.senhaGov, hoje)} (G9)</p>
       <a className={styles.link} href={link}>
         {f || ficha.fichaAtendimentoPreenchida ? 'Abrir a ficha de atendimento' : 'Preencher a ficha'}

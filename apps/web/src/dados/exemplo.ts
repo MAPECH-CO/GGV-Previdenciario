@@ -3,7 +3,7 @@
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
 import { isoParaData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
-import type { EnvioDaFicha, Ficha, LoteDigitalizado, PastaDrive, Processo } from './tipos.ts'
+import type { EnvioDaFicha, Ficha, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
 export const CPF_DE_TESTE = '00000000191'
@@ -186,4 +186,30 @@ export function leituraDeExemplo(ficha: Ficha): { campos: Partial<EnvioDaFicha>;
   }
   const naoLidos = (['cpf', 'nascimento', 'telefone', 'endereco'] as const).filter((c) => campos[c] === undefined)
   return { campos, naoLidos, senhaLida: true }
+}
+
+/**
+ * O que a IA leria da segunda ficha em papel, a de auxílio acidentário (GGVP-28, CA6). Respostas de exemplo, sem número
+ * de benefício nem CID (a semente não inventa número de documento). A senha do Meu INSS vai para o cofre (CA7).
+ */
+export function leituraDaSegundaFicha(): { respostas: Partial<RespostasDaSegundaFicha>; senhaLida: boolean } {
+  return {
+    respostas: {
+      empresa: 'Exemplo Indústria Ltda',
+      funcao: 'auxiliar de produção',
+      vinculo: 'CLT',
+      acidenteLocal: 'na linha de produção',
+      cat: 'sim',
+      boletim: 'nao',
+      deTrabalho: 'sim',
+      parteDoCorpo: 'mão',
+      lado: 'direito',
+      doencas: 'dor e perda de força na mão',
+      tratamento: 'fisioterapia',
+      cirurgia: 'nao',
+      laudos: '1 laudo do ortopedista',
+      historico: 'Prendeu a mão na máquina e ficou afastada; desde então não consegue fazer força.',
+    },
+    senhaLida: true,
+  }
 }

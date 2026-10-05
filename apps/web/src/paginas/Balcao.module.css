@@ -127,6 +127,11 @@
   background: var(--cor-superficie);
 }
 
+/* Botão solto dentro do cartão: do tamanho do texto, não da largura do cartão. */
+.cartao > .atalho {
+  align-self: flex-start;
+}
+
 .cartaoTitulo {
   font-size: var(--fonte-15);
   font-weight: 500;
@@ -312,7 +317,8 @@
 }
 
 .chip:disabled,
-.atalho:disabled {
+.atalho:disabled,
+.opcao:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

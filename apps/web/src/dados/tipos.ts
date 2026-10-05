@@ -154,6 +154,8 @@ export type Ficha = {
   analise?: AnaliseDaFicha
   /** A tentativa do Atendimento de renovar a senha do gov.br (GGVP-36). */
   renovacao?: Renovacao
+  /** A FICHA DE ATENDIMENTO AUXILIO ACIDENTE (GGVP-28). A seção médica só o Jurídico vê. */
+  segundaFicha?: SegundaFicha
   processos: Processo[]
   agendamentos: Agendamento[]
   contatos: Contato[]
@@ -501,4 +503,47 @@ export type Preparacao = {
   pontos: PontoDeAtencao[]
   /** A anotação mais antiga de "Últimos contatos" (CA5). */
   primeiroContato?: Contato
+}
+
+// GGVP-28 em diante: a segunda ficha, de auxílio acidentário. Espelho do Zod da design.md da change ggvp-6.
+
+/** Todas as respostas em texto; '' é em branco. Escolhas: 'sim', 'nao', 'nao-sei'; lado: 'direito', 'esquerdo', 'os dois'. */
+export type RespostasDaSegundaFicha = {
+  // (2) dados profissionais
+  empresa: string
+  funcao: string
+  vinculo: string
+  /** dd/mm/aaaa */
+  afastamentoEm: string
+  acidenteEm: string
+  acidenteLocal: string
+  // (3) benefício e INSS; a senha do Meu INSS vai ao cofre
+  nb: string
+  der: string
+  // (4) acidente
+  cat: string
+  catEm: string
+  boletim: string
+  boletimEm: string
+  deTrabalho: string
+  parteDoCorpo: string
+  lado: string
+  // (5) dados médicos: só o Jurídico vê
+  doencas: string
+  cid: string
+  tratamento: string
+  cirurgia: string
+  medico: string
+  laudos: string
+  // (6) histórico do caso contado pelo cliente
+  historico: string
+}
+
+export type SegundaFicha = {
+  /** aaaa-mm-dd: o dia em que foi preenchida. */
+  data: string
+  origem: 'papel' | 'tablet'
+  respostas: RespostasDaSegundaFicha
+  /** O que ficou em branco, pelo rótulo. */
+  emBranco: string[]
 }

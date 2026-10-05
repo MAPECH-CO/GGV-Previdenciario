@@ -6,6 +6,7 @@ import { agora } from '../dados/servidor.ts'
 import type { Preparacao } from '../dados/tipos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { motivoParaIniciar } from '../regras/preparacao.ts'
+import { SECOES, valorFalado } from '../regras/segundaFicha.ts'
 import styles from './Balcao.module.css'
 import proprio from './PrepararEntrevista.module.css'
 
@@ -74,11 +75,22 @@ export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string })
                 <dt>Resumo da IA</dt>
                 <dd>{resumo}</dd>
               </div>
+              {(ficha.segundaFicha || ficha.analise?.acidentario) && (
+                <div className={proprio.linha}>
+                  <dt>Segunda ficha</dt>
+                  <dd>{ficha.segundaFicha ? `preenchida em ${dataCurta(ficha.segundaFicha.data, hoje)}` : 'ainda não preenchida'}</dd>
+                </div>
+              )}
             </dl>
             <div className={proprio.links}>
               <a className={styles.atalho} href={`/clientes/${ficha.id}/ficha-de-atendimento`}>
                 Abrir a ficha completa
               </a>
+              {ficha.segundaFicha && (
+                <a className={styles.atalho} href={`/clientes/${ficha.id}/segunda-ficha`}>
+                  Abrir a segunda ficha
+                </a>
+              )}
               <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
                 Abrir a ficha do cliente
               </a>
@@ -99,6 +111,32 @@ export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string })
               ))}
             </ul>
           </section>
+
+          {/* As duas fichas juntas (GGVP-28, CA2). Tela do Jurídico: a seção médica aparece aqui. */}
+          {ficha.segundaFicha && (
+            <section className={styles.cartao} aria-labelledby="segunda-ficha">
+              <h2 id="segunda-ficha" className={styles.cartaoTitulo}>
+                Segunda ficha (auxílio acidentário)
+              </h2>
+              {SECOES.map((secao) => (
+                <div key={secao.numero}>
+                  <p className={proprio.contatoQuando}>
+                    {secao.numero}. {secao.titulo}
+                  </p>
+                  <dl className={proprio.linhas} aria-label={`${secao.numero}. ${secao.titulo}`}>
+                  {secao.campos
+                    .filter((c) => ficha.segundaFicha!.respostas[c.campo] !== '')
+                    .map((c) => (
+                      <div key={c.campo} className={proprio.linha}>
+                        <dt>{c.rotulo.replace(' *', '')}</dt>
+                        <dd>{valorFalado(c, ficha.segundaFicha!.respostas[c.campo])}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+            </section>
+          )}
 
           <section className={styles.cartao} aria-labelledby="primeiro-contato">
             <h2 id="primeiro-contato" className={styles.cartaoTitulo}>

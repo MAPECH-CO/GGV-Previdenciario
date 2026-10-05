@@ -50,7 +50,17 @@ import {
   precisaConfirmar,
   tentativaAtual,
 } from './confirmacao.ts'
-import { atencaoCurta, pontosDeAtencao } from './preparacao.ts'
+import { atencaoCurta, motivoParaIniciar, pontosDeAtencao } from './preparacao.ts'
+import {
+  CAMPOS_MEDICOS,
+  MENSAGEM_HISTORICO,
+  MENSAGEM_NB,
+  SECOES,
+  emBrancoDaSegunda,
+  errosDaSegundaFicha,
+  respostasVazias,
+  semDadosMedicos,
+} from './segundaFicha.ts'
 import { MENSAGEM_PESSOAS, camposEmBranco, envioValido, errosDaFicha, oQueFalta, paraEnvio, type ValoresDaFicha } from './fichaAtendimento.ts'
 
 const HOJE = '2026-10-05'
@@ -591,11 +601,61 @@ describe('preparação da conversa (GGVP-32)', () => {
   it('o acidentário vem da análise ou do benefício procurado; o que ficou em branco e a ficha que falta são alerta', () => {
     expect(textos({ ...lead, beneficioInteresse: 'auxilio-acidente' })[0]).toBe('O benefício procurado é acidentário: confirme na análise da ficha')
     const analisada = { ...lead, analise: { acidentario: true, quem: 'Dra. Paula', quando: '' } }
-    expect(textos(analisada)[0]).toBe('Pode ser auxílio acidentário (decidido na análise da ficha)')
+    expect(textos(analisada)[0]).toBe('Pode ser auxílio acidentário (decidido na análise da ficha) · segunda ficha ainda não preenchida')
     const branco = { ...lead, fichaAtendimento: { data: HOJE, origem: 'papel' as const, emBranco: ['Endereço', 'O que já pediu ao INSS'] } }
     expect(textos(branco).at(-1)).toBe('Ficou em branco na ficha: Endereço e O que já pediu ao INSS')
     expect(textos({ ...lead, fichaAtendimentoPreenchida: false }).at(-1)).toBe('A ficha de atendimento ainda não foi preenchida')
     expect(atencaoCurta(pontosDeAtencao({ ...analisada, senhaGov: { situacao: 'no-cofre' } }, HOJE))).toBe('atenção: pode ser acidentário')
     expect(atencaoCurta(pontosDeAtencao({ ...lead, senhaGov: { situacao: 'no-cofre' } }, HOJE))).toBe('sem pontos de atenção')
+  })
+})
+
+describe('segunda ficha, de auxílio acidentário (GGVP-28)', () => {
+  const lead = ficha({ id: 'j', nome: 'Josefa Exemplo', telefone: '11900000002', situacao: 'lead', fichaAtendimentoPreenchida: true })
+  const respostas = { ...respostasVazias(), historico: 'Caí da escada no trabalho.' }
+
+  it('CA5 · as 6 seções do modelo: a 1 é a ficha única; da 2 à 6, os campos do cartão', () => {
+    expect(SECOES.map((s) => `${s.numero}. ${s.titulo}`)).toEqual([
+      '2. Dados profissionais',
+      '3. Benefício e INSS',
+      '4. Acidente',
+      '5. Dados médicos',
+      '6. Histórico do caso contado pelo cliente',
+    ])
+    expect(SECOES[2].campos.map((c) => c.rotulo)).toEqual([
+      'Houve CAT?',
+      'Data da CAT',
+      'Houve boletim de ocorrência?',
+      'Data do boletim',
+      'Foi acidente de trabalho?',
+      'Parte do corpo afetada',
+      'Lado',
+    ])
+    expect(Object.keys(respostasVazias()).some((c) => /senha/i.test(c))).toBe(false)
+  })
+
+  it('datas sem letra e não futuras, NB com 10 números e o histórico obrigatório', () => {
+    expect(errosDaSegundaFicha(respostas, HOJE)).toEqual({})
+    expect(errosDaSegundaFicha({ ...respostas, acidenteEm: '06/10/2026', der: '3a/01/2026', nb: '123' }, HOJE)).toEqual({
+      acidenteEm: MENSAGEM.data,
+      der: MENSAGEM.data,
+      nb: MENSAGEM_NB,
+    })
+    expect(errosDaSegundaFicha({ ...respostas, historico: '' }, HOJE)).toEqual({ historico: MENSAGEM_HISTORICO })
+    expect(emBrancoDaSegunda({ ...respostas, empresa: 'Exemplo Ltda' })).not.toContain('Empresa')
+  })
+
+  it('CA8 · a seção médica sai da visão do Atendimento', () => {
+    expect(CAMPOS_MEDICOS).toEqual(['doencas', 'cid', 'tratamento', 'cirurgia', 'medico', 'laudos'])
+    const vista = semDadosMedicos({ ...respostas, doencas: 'dor no punho', tratamento: 'fisioterapia', empresa: 'Exemplo Ltda' })
+    expect(vista).toMatchObject({ doencas: '', tratamento: '', empresa: 'Exemplo Ltda' })
+  })
+
+  it('CA3 · a entrevista espera a análise e, no acidentário, a segunda ficha', () => {
+    expect(motivoParaIniciar(lead)).toBe('Analise a ficha antes: pode ser auxílio acidentário?')
+    const sim = { ...lead, analise: { acidentario: true, quem: 'Você (Advogada)', quando: '' } }
+    expect(motivoParaIniciar(sim)).toBe('A cliente ainda não preencheu a segunda ficha (auxílio acidentário).')
+    expect(motivoParaIniciar({ ...sim, segundaFicha: { data: HOJE, origem: 'papel', respostas, emBranco: [] } })).toBeNull()
+    expect(motivoParaIniciar({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })).toBeNull()
   })
 })

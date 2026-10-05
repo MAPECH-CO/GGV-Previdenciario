@@ -27,11 +27,15 @@ function pontoDaSenha(ficha: Ficha, hoje: string): PontoDeAtencao {
 }
 
 /** O acidentário: o que a análise da ficha decidiu ou, antes dela, o benefício procurado. */
-function pontoDoAcidentario(ficha: Ficha): PontoDeAtencao {
+function pontoDoAcidentario(ficha: Ficha, hoje: string): PontoDeAtencao {
   if (ficha.analise) {
-    return ficha.analise.acidentario
-      ? { tipo: 'acidentario', texto: 'Pode ser auxílio acidentário (decidido na análise da ficha)', curto: 'pode ser acidentário', alerta: true }
-      : { tipo: 'acidentario', texto: 'Não é auxílio acidentário (decidido na análise da ficha)', curto: '', alerta: false }
+    if (ficha.analise.acidentario) {
+      const segunda = ficha.segundaFicha
+        ? `segunda ficha preenchida em ${dataCurta(ficha.segundaFicha.data, hoje)}`
+        : 'segunda ficha ainda não preenchida'
+      return { tipo: 'acidentario', texto: `Pode ser auxílio acidentário (decidido na análise da ficha) · ${segunda}`, curto: 'pode ser acidentário', alerta: true }
+    }
+    return { tipo: 'acidentario', texto: 'Não é auxílio acidentário (decidido na análise da ficha)', curto: '', alerta: false }
   }
   return ACIDENTARIOS.has(ficha.beneficioInteresse ?? '')
     ? { tipo: 'acidentario', texto: 'O benefício procurado é acidentário: confirme na análise da ficha', curto: 'pode ser acidentário', alerta: true }
@@ -42,7 +46,7 @@ function pontoDoAcidentario(ficha: Ficha): PontoDeAtencao {
 export function pontosDeAtencao(ficha: Ficha, hoje: string): PontoDeAtencao[] {
   const beneficio = ficha.beneficioInteresse && ficha.beneficioInteresse !== 'nao-sei' ? nomeBeneficio(ficha.beneficioInteresse) : ''
   const pontos = [
-    pontoDoAcidentario(ficha),
+    pontoDoAcidentario(ficha, hoje),
     pontoDaSenha(ficha, hoje),
     {
       tipo: 'beneficio' as const,
@@ -66,7 +70,9 @@ export function atencaoCurta(pontos: PontoDeAtencao[]): string {
   return alertas.length ? `atenção: ${juntar(alertas)}` : 'sem pontos de atenção'
 }
 
-/** Por que "Iniciar entrevista" ainda não libera; nulo quando libera. A segunda ficha entra com a GGVP-28. */
+/** Por que "Iniciar entrevista" ainda não libera; nulo quando libera. No acidentário, espera a segunda ficha (GGVP-28, CA3). */
 export function motivoParaIniciar(ficha: Ficha): string | null {
-  return ficha.analise ? null : 'Analise a ficha antes: pode ser auxílio acidentário?'
+  if (!ficha.analise) return 'Analise a ficha antes: pode ser auxílio acidentário?'
+  if (ficha.analise.acidentario && !ficha.segundaFicha) return 'A cliente ainda não preencheu a segunda ficha (auxílio acidentário).'
+  return null
 }

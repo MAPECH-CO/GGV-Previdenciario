@@ -20,6 +20,7 @@ import type {
   NovoCliente,
   PastaDrive,
   RespostaNovoCliente,
+  RespostasDaSegundaFicha,
   ResultadoBusca,
   Setor,
   TarefaEncaminhada,
@@ -29,6 +30,9 @@ const CHAVE = 'ggv.exemplo.v4'
 
 /** Sem login ainda: quem faz é a pessoa do Atendimento. */
 export const QUEM = 'Você (Atendimento)'
+
+/** Nas telas do Jurídico, quem faz é a advogada (GGVP-28). */
+export const QUEM_ADVOGADA = 'Você (Advogada)'
 
 /** O resumo da IA do laudo novo: só o Jurídico vê; nunca entra na ficha da visão do Atendimento (GGVP-17, CA9). */
 export type ResumoDeLaudo = { fichaId: string; processoId?: string; data: string; arquivo: string; resumo: string }
@@ -42,6 +46,8 @@ export type Banco = {
   internos: CompromissoGuardado[]
   /** A trilha do cofre: quem, quando e a ação, nunca o valor da senha (GGVP-24). */
   cofre: RegistroDoCofre[]
+  /** A seção médica que a IA leu da segunda ficha em papel: vai direto ao Jurídico, sem passar pela tela do Atendimento (GGVP-28). */
+  leiturasMedicas: { fichaId: string; medicos: Partial<RespostasDaSegundaFicha> }[]
   seq: number
 }
 
@@ -73,7 +79,7 @@ export function agora(): Date {
 
 function semente(): Banco {
   const fichas = fichasDeExemplo(hojeIso(agora()))
-  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], internos: [], cofre: [], seq: 0 }
+  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], internos: [], cofre: [], leiturasMedicas: [], seq: 0 }
 }
 
 /** Para os outros arquivos do servidor de exemplo (documentos.ts). */
