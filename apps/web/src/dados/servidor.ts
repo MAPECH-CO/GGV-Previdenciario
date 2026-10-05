@@ -14,6 +14,7 @@ import type { DocumentoLido } from './leitura.ts'
 import type { ConferenciaDoChecklist } from './checklist.ts'
 import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type { Cobranca } from './cobranca.ts'
+import type { Liberacao } from './liberacao.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
@@ -61,6 +62,8 @@ export type Banco = {
   boasVindas?: RegistroDasBoasVindas[]
   /** A cobrança dos documentos pendentes de cada caso (GGVP-101). */
   cobrancas?: Cobranca[]
+  /** Quem liberou cada caso ao Jurídico, e quando (GGVP-18). */
+  liberacoes?: Liberacao[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

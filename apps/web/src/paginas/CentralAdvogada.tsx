@@ -9,6 +9,7 @@ import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
 import { tarefasDaAdvogada } from '../dados/preparacao.ts'
 import { tarefasDeDecidirCobranca } from '../dados/cobranca.ts'
+import { tarefasDaFilaDaSenior } from '../dados/liberacao.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
@@ -20,8 +21,8 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
-  // A cobrança que passou do limite chega à sênior (GGVP-101, CA7).
-  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca()])
+  // A cobrança que passou do limite chega à sênior (GGVP-101, CA7), e o caso liberado pela Documentação também (GGVP-18, CA1).
+  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior()])
 
   return (
     <>

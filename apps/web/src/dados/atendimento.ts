@@ -1,7 +1,8 @@
 // EXEMPLO. Tarefas da Central do Atendimento, com os textos do protótipo do Figma (frame 11:2) e as
 // pessoas de exemplo.ts (nomes com "Exemplo"). Servem só para desenhar a tela até a API existir. O "Confirmar
 // agendamento" da Josefa (D1.04) saiu daqui: nasce da agenda (GGVP-21, dados/confirmacao.ts). Os "Conferir documento" da
-// Rita e da fila do scanner (D1.18) também: nascem da leitura da IA (GGVP-81, dados/leitura.ts).
+// Rita e da fila do scanner (D1.18) também: nascem da leitura da IA (GGVP-81, dados/leitura.ts). E o "Liberar ao
+// Jurídico" do Sebastião (D1.24) nasce da fila da Documentação (GGVP-18, dados/liberacao.ts).
 import type { Tarefa } from './tipos.ts'
 
 const cliente = (id: string, nome: string) => ({ id, nome })
@@ -46,14 +47,6 @@ export const tarefasAtendimento: Tarefa[] = [
     acao: 'Receber quem chegou',
     detalhe: 'agora',
     href: '/balcao',
-  },
-  {
-    id: 't8',
-    codigo: 'D1.24',
-    cliente: cliente('sebastiao-exemplo', 'Sebastião Exemplo'),
-    acao: 'Liberar ao Jurídico',
-    detalhe: 'Auxílio-acidente · parecer Suficiente (G17) · conferir a documentação',
-    prazo: 'amanhã',
   },
   {
     id: 't9',

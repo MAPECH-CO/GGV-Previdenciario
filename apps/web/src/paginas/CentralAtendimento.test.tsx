@@ -63,6 +63,13 @@ describe('Central do Atendimento', () => {
     expect(cobrar.closest('li')?.textContent).toContain('na sênior: decidir (G15) · prazo do juiz 07/10')
   })
 
+  it('GGVP-18 CA5 · o Sebastião espera a liberação ao Jurídico, com a idade na fila', () => {
+    render(<CentralAtendimento />)
+    const liberar = screen.getByRole('link', { name: 'Sebastião Exemplo · Liberar ao Jurídico' })
+    expect(liberar.getAttribute('href')).toBe('/casos/sebastiao-exemplo-1/liberar')
+    expect(liberar.closest('li')?.textContent).toContain('na fila há 2 dias')
+  })
+
   it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('link', { name: 'Natália Exemplo · Confirmar se a entrevista aconteceu' }).getAttribute('href')).toBe('/agenda?ver=lista')

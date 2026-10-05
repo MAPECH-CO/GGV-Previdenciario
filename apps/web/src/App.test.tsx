@@ -63,6 +63,16 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Decidir cobrança' })).toBeTruthy()
   })
 
+  it('GGVP-18 · em /casos/:id/liberar abre a liberação; com ?perfil=atendimento, só a situação', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)
+    expect(await screen.findByRole('button', { name: 'Liberar ao Jurídico' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" busca="?perfil=atendimento" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sebastião Exemplo · Liberar ao Jurídico' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Liberar ao Jurídico' })).toBeNull()
+  })
+
   it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)
