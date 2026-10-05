@@ -29,7 +29,7 @@ function buscaValida(termo: string): boolean {
 
 export function Balcao({ navegar = (url: string) => window.location.assign(url) }: { navegar?: (url: string) => void }) {
   const [termo, setTermo] = useState('')
-  const [resultados, setResultados] = useState<ResultadoBusca[] | null>(null)
+  const [achados, setAchados] = useState<ResultadoBusca[] | null>(null)
   const [escolhido, setEscolhido] = useState<ResultadoBusca | null>(null)
   const [opcao, setOpcao] = useState<Opcao | null>(null)
   const [setor, setSetor] = useState<Setor | null>(null)
@@ -37,18 +37,17 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
   const [feito, setFeito] = useState<Feito | null>(null)
 
   useEffect(() => {
-    if (!buscaValida(termo)) {
-      setResultados(null)
-      return
-    }
+    if (!buscaValida(termo)) return
     let valendo = true
     buscarNoBalcao(termo).then((lista) => {
-      if (valendo) setResultados(lista)
+      if (valendo) setAchados(lista)
     })
     return () => {
       valendo = false
     }
   }, [termo])
+
+  const resultados = buscaValida(termo) ? achados : null
 
   const ninguem = resultados !== null && resultados.length === 0
   const entrevistaHoje = escolhido?.agendamentoHoje

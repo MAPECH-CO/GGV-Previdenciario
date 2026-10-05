@@ -1,0 +1,15 @@
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+}
+
+.titulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}

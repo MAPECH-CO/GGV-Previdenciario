@@ -1,0 +1,41 @@
+.lista {
+  display: grid;
+  grid-template-columns: minmax(44px, max-content) 1fr;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.quando {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.textos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.texto {
+  font-size: var(--fonte-12);
+}
+
+.vazio {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
