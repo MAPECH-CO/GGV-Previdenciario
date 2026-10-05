@@ -14,6 +14,9 @@ import {
   precisaConferir,
   resumoDaLeitura,
   motivoParadoDaVerificacao,
+  errosDaEntrega,
+  errosDaVisita,
+  motivoParadoDaEntrega,
   type LeituraDoContrato,
   MODELOS,
   SEM_CONDICOES,
@@ -318,5 +321,25 @@ describe('GGVP-85 · verificar o contrato assinado', () => {
     expect(motivoParadoDaVerificacao(false, 'a')).toBe('Escreva o que corrigir.')
     expect(motivoParadoDaVerificacao(false, 'pedir a pág. 4 rubricada')).toBeNull()
     expect(motivoParadoDaVerificacao(true, '')).toBeNull()
+  })
+})
+
+describe('GGVP-89 · cópia do contrato para o cliente levar', () => {
+  const entrega = { copiaDaVersaoAssinada: true, entregueEm: '05/10/2026', quemRecebeu: 'Cleide Exemplo', observacao: '' }
+
+  it('CA3 · "Registrar entrega" só com a confirmação, a data e quem recebeu; a observação é opcional', () => {
+    expect(motivoParadoDaEntrega(entrega, '2026-10-05')).toBeNull()
+    expect(motivoParadoDaEntrega({ ...entrega, copiaDaVersaoAssinada: false }, '2026-10-05')).toBe('Confirme que é a cópia impressa da versão assinada.')
+    expect(motivoParadoDaEntrega({ ...entrega, entregueEm: '' }, '2026-10-05')).toBe('Escreva a data da entrega.')
+    expect(motivoParadoDaEntrega({ ...entrega, entregueEm: '06/10/2026' }, '2026-10-05')).toBe('Escreva a data da entrega.')
+    expect(motivoParadoDaEntrega({ ...entrega, quemRecebeu: 'C1eide' }, '2026-10-05')).toBe('Escreva quem recebeu.')
+    expect(motivoParadoDaEntrega({ ...entrega, observacao: 'x'.repeat(301) }, '2026-10-05')).toBe('Até 300 caracteres.')
+    expect(errosDaEntrega({ ...entrega, entregueEm: '31/02/2026' }, '2026-10-05').entregueEm).toBe('Data em dd/mm/aaaa, sem letra e que não seja futura.')
+  })
+
+  it('CA4 · a visita para entregar depois: de hoje em diante, com a hora', () => {
+    expect(errosDaVisita('08/10/2026', '16:00', '2026-10-05')).toEqual({ data: undefined, hora: undefined })
+    expect(errosDaVisita('04/10/2026', '16:00', '2026-10-05').data).toBe('Data em dd/mm/aaaa, de hoje em diante.')
+    expect(errosDaVisita('08/10/2026', '', '2026-10-05').hora).toBe('Escolha a hora.')
   })
 })

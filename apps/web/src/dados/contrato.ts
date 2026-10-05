@@ -1,6 +1,7 @@
 // EXEMPLO. Servidor de exemplo do contrato do caso (GGVP-65 em diante), sobre o mesmo banco de servidor.ts. Um contrato por
 // processo: o kit, o preenchimento, a assinatura, a conferência e a cópia. Ligar no servidor: trocar o corpo de cada função
 // por fetch no endpoint indicado na spec da história, sobre o mesmo contrato. ZapSign, Drive, Chatwoot e IA são simulados.
+import { dataParaIso, normalizarData, normalizarNome } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { problemaDoArquivo } from '../regras/arquivos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
@@ -18,6 +19,9 @@ import {
   precisaConferir,
   resumoDaLeitura,
   motivoParadoDaVerificacao,
+  errosDaVisita,
+  motivoParadoDaEntrega,
+  type ValoresDaEntrega,
   mensagemDoLink,
   erroDoCampo,
   faltando,
@@ -43,7 +47,7 @@ import {
 } from '../regras/contrato.ts'
 import { BENEFICIOS, nomeBeneficio } from './catalogos.ts'
 import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Arquivo, Ficha, Processo, Tarefa, TarefaEncaminhada } from './tipos.ts'
+import type { Agendamento, Arquivo, Ficha, Processo, Tarefa, TarefaEncaminhada } from './tipos.ts'
 
 // Espelho do contrato (Zod) da spec de cada história; vai para packages/contratos/contrato.ts.
 
@@ -51,7 +55,7 @@ import type { Arquivo, Ficha, Processo, Tarefa, TarefaEncaminhada } from './tipo
  * Onde o contrato do caso está: preparar (D1.16), colher a assinatura (D1.17), a leitura do assinado pela Documentação (D1.18,
  * GGVP-81) e, nas histórias seguintes, conferir e a cópia.
  */
-export type EtapaDoContrato = 'preparar' | 'assinatura' | 'leitura' | 'conferir' | 'copia'
+export type EtapaDoContrato = 'preparar' | 'assinatura' | 'leitura' | 'conferir' | 'copia' | 'entregue'
 
 /** O documento gerado pelo modelo: os campos e o texto de cada documento do kit (GGVP-69). */
 export type DocumentoGerado = {
@@ -87,6 +91,13 @@ export type Contrato = {
   verificacao?: { tudoCerto: boolean; oQueCorrigir?: string; paginaCorrigida?: string; quem: string; quando: string }
   /** As versões assinadas que voltaram para corrigir: ficam no histórico (GGVP-85, CA6). */
   anteriores?: { versao: number; arquivo?: string; motivo: string; quando: string }[]
+  /** A cópia para o cliente levar (GGVP-89): a impressão, a visita marcada e a entrega. */
+  copia?: {
+    impressaEm?: string
+    /** O compromisso "Entregar cópia do contrato" na agenda (CA4). */
+    visitaId?: string
+    entrega?: { entregueEm: string; quemRecebeu: string; observacao?: string; quem: string; quando: string }
+  }
 }
 
 /** Uma tentativa de contato para o cliente assinar: o link enviado e os lembretes (GGVP-72, CA5). */
@@ -156,6 +167,30 @@ export function contratosDeExemplo(fichas: Ficha[], hoje: string): Contrato[] {
         tentativas: [{ data: enviadoEm, quando: `${enviadoEm}T13:00:00.000Z`, canal: 'whatsapp', quem: 'Atendimento' }],
       },
     }),
+    // A Cleide assinou a Aposentadoria Especial pelo ZapSign em 12/07 e vem buscar a cópia hoje (Figma step_D1.20 `2106:69`).
+    novo('cleide-exemplo-2', 'copia', {
+      assinatura: {
+        forma: 'digital',
+        zapsign: {
+          documentoId: 'zapsign-exemplo-cleide-exemplo-2',
+          link: linkDoZapSign('zapsign-exemplo-cleide-exemplo-2'),
+          status: 'assinado',
+          criadoEm: '2026-07-10T13:00:00.000Z',
+          eventos: ['zapsign-exemplo-cleide-exemplo-2-assinado'],
+        },
+        tentativas: [{ data: '2026-07-10', quando: '2026-07-10T13:00:00.000Z', canal: 'whatsapp', quem: 'Atendimento' }],
+        assinadoEm: '2026-07-12T15:00:00.000Z',
+        arquivo: 'Contrato assinado - Cleide Exemplo - 2026-07-12 (ZapSign, com evidências).pdf',
+      },
+      leitura: {
+        reconhecido: true,
+        assinatura: { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' },
+        faltam: [],
+        pendencias: [],
+        lidoEm: '2026-07-12T16:00:00.000Z',
+      },
+      copia: { visitaId: 'cleide-retirada' },
+    }),
   ].filter((c): c is Contrato => c !== null)
 }
 
@@ -177,6 +212,27 @@ const TITULOS: Partial<Record<EtapaDoContrato, { codigo: string; acao: string; r
   preparar: { codigo: 'D1.16', acao: 'Preparar contrato', rota: 'preparar' },
   assinatura: { codigo: 'D1.17', acao: 'Colher assinatura', rota: 'assinatura' },
   conferir: { codigo: 'D1.19', acao: 'Conferir contrato', rota: 'conferir' },
+  copia: { codigo: 'D1.20', acao: 'Entregar cópia do contrato', rota: 'copia' },
+}
+
+/** A visita marcada para entregar a cópia, ainda em aberto (GGVP-89, CA4). */
+export function visitaDaCopia(ficha: Ficha, contrato: Contrato) {
+  const visita = ficha.agendamentos.find((a) => a.id === contrato.copia?.visitaId)
+  return visita && visita.estado !== 'realizado' && visita.estado !== 'remarcado' ? visita : undefined
+}
+
+/** O detalhe e o prazo da tarefa "Entregar cópia do contrato" (GGVP-89, CA2). */
+function andamentoDaCopia(ficha: Ficha, contrato: Contrato, hoje: string): { detalhe: string[]; prazo?: string; urgente?: boolean } {
+  const assinadoEm = contrato.assinatura?.assinadoEm
+  const visita = visitaDaCopia(ficha, contrato)
+  return {
+    detalhe: [
+      ...(assinadoEm ? [`contrato assinado em ${dataCurta(hojeIso(new Date(assinadoEm)), hoje)}`] : []),
+      ...(visita ? [`retirada ${visita.data === hoje ? 'hoje' : dataCurta(visita.data, hoje)} às ${visita.hora}`] : []),
+    ],
+    prazo: visita && visita.data !== hoje ? dataCurta(visita.data, hoje) : 'hoje',
+    urgente: visita?.data === hoje,
+  }
 }
 
 /** O detalhe e o prazo da tarefa "Colher assinatura": o status do ZapSign, a tentativa e o lembrete (GGVP-72, CA2 e CA4). */
@@ -216,9 +272,11 @@ export function tarefasDoContrato(): Tarefa[] {
         ? andamentoDaAssinatura(c.assinatura, hoje)
         : c.etapa === 'conferir' && c.leitura
           ? { detalhe: [resumoDaLeitura(c.leitura)], prazo: 'hoje', urgente: false }
-          : c.etapa === 'preparar' && c.anteriores?.length
-            ? { ...base, detalhe: [`corrigir e reenviar: ${c.anteriores.at(-1)!.motivo}`], urgente: true }
-            : base
+          : c.etapa === 'copia'
+            ? andamentoDaCopia(ficha, c, hoje)
+            : c.etapa === 'preparar' && c.anteriores?.length
+              ? { ...base, detalhe: [`corrigir e reenviar: ${c.anteriores.at(-1)!.motivo}`], urgente: true }
+              : base
     return [
       {
         id: `contrato-${c.processoId}`,
@@ -776,4 +834,87 @@ export async function avisarClienteDaConferencia(processoId: string, mensagem: s
   achado.ficha.contatos.push({ data: hojeIso(agora()), canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
   achado.ficha.historico.push(evento('Avisou o cliente pelo WhatsApp da pendência no contrato assinado'))
   gravar(banco)
+}
+
+// GGVP-89 · cópia do contrato para o cliente levar. A impressora é simulada.
+
+function paraACopia(banco: Banco, processoId: string): ContratoDoCaso {
+  const achado = achar(banco, processoId)
+  if (!achado) throw new Error('Contrato não encontrado')
+  if (achado.contrato.etapa !== 'copia') throw new Error('Este contrato não está para entregar a cópia')
+  return achado
+}
+
+/** POST /api/processos/:id/contrato/copia/impressao. "Imprimir cópia para o cliente": a versão assinada (CA1). */
+export async function imprimirCopia(processoId: string): Promise<Contrato> {
+  await esperar()
+  const banco = ler()
+  const { ficha, contrato } = paraACopia(banco, processoId)
+  contrato.copia = { ...contrato.copia, impressaEm: agora().toISOString() }
+  ficha.historico.push(evento(`Imprimiu a cópia do contrato assinado para o cliente levar: ${contrato.assinatura?.arquivo ?? 'versão assinada'}`))
+  gravar(banco)
+  return contrato
+}
+
+/**
+ * POST /api/processos/:id/contrato/copia/visita. A entrega fica para uma visita: o compromisso "Entregar cópia do contrato"
+ * entra na agenda com a data da visita (CA4). A visita que já estava marcada fica remarcada.
+ */
+export async function marcarVisitaDaCopia(processoId: string, data: string, hora: string): Promise<Agendamento> {
+  await esperar()
+  const hoje = hojeIso(agora())
+  const erros = errosDaVisita(data, hora, hoje)
+  if (erros.data || erros.hora) throw new Error('Visita inválida')
+  const banco = ler()
+  const { ficha, contrato } = paraACopia(banco, processoId)
+  const anterior = visitaDaCopia(ficha, contrato)
+  if (anterior) anterior.estado = 'remarcado'
+  let n = 1
+  while (ficha.agendamentos.some((a) => a.id === `copia-${processoId}-${n}`)) n += 1
+  const visita: Agendamento = {
+    id: `copia-${processoId}-${n}`,
+    data: dataParaIso(normalizarData(data))!,
+    hora,
+    oQue: 'Entregar cópia do contrato',
+    tipo: 'presencial',
+    duracao: 30,
+  }
+  ficha.agendamentos.push(visita)
+  contrato.copia = { ...contrato.copia, visitaId: visita.id }
+  ficha.historico.push(evento(`Marcou a entrega da cópia do contrato numa visita: ${dataCurta(visita.data, hoje)} às ${hora}`))
+  gravar(banco)
+  return visita
+}
+
+/**
+ * POST /api/processos/:id/contrato/copia/entrega. Só com a confirmação de que é a cópia impressa da versão assinada, a data da
+ * entrega e quem recebeu; a observação é opcional (CA3). Registrada, o caso segue para o checklist do benefício (D1.21, CA5).
+ */
+export async function registrarEntregaDaCopia(processoId: string, v: ValoresDaEntrega): Promise<Contrato> {
+  await esperar()
+  const hoje = hojeIso(agora())
+  if (motivoParadoDaEntrega(v, hoje)) throw new Error('Entrega inválida')
+  const banco = ler()
+  const { ficha, processo, contrato } = paraACopia(banco, processoId)
+  const entregueEm = dataParaIso(normalizarData(v.entregueEm))!
+  const quemRecebeu = normalizarNome(v.quemRecebeu)
+  const observacao = v.observacao.trim() || undefined
+  contrato.copia = { ...contrato.copia, entrega: { entregueEm, quemRecebeu, ...(observacao && { observacao }), quem: QUEM, quando: agora().toISOString() } }
+  const visita = visitaDaCopia(ficha, contrato)
+  if (visita) visita.estado = 'realizado'
+  contrato.etapa = 'entregue'
+  processo.etapa = 'Documentação · checklist do benefício'
+  processo.proximaAcao = 'conferir o checklist do benefício (D1.21)'
+  processo.prazo = undefined
+  processo.urgente = undefined
+  ficha.contatos.push({
+    data: entregueEm,
+    canal: 'Presencial',
+    texto: `Recebeu a cópia do contrato assinado${quemRecebeu === ficha.nome ? '' : ` (entregue a ${quemRecebeu})`}.${observacao ? ` ${observacao}` : ''}`,
+  })
+  ficha.historico.push(
+    evento(`Entregou a cópia impressa da versão assinada em ${dataCurta(entregueEm, hoje)} a ${quemRecebeu}; o caso segue para o checklist do benefício (D1.21)`),
+  )
+  gravar(banco)
+  return contrato
 }

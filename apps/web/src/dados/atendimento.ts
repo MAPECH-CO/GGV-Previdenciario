@@ -92,15 +92,6 @@ export const tarefasAtendimento: Tarefa[] = [
     prazo: 'hoje',
     urgente: true,
   },
-  {
-    id: 't14',
-    codigo: 'D1.20',
-    cliente: cliente('cleide-exemplo', 'Cleide Exemplo'),
-    acao: 'Entregar a cópia do contrato',
-    detalhe: 'Aposentadoria especial · contrato assinado em 12/07 · retirada hoje às 16h',
-    prazo: 'hoje',
-    urgente: true,
-  },
 ]
 
 /** Quantas tarefas a aba "Tarefas do setor" mostra no protótipo. */

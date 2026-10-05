@@ -49,6 +49,13 @@
 
 ## GGVP-89 · Cópia do contrato para o cliente levar
 
+- [x] 6.1 Contrato: a cópia (impressão, visita, entrega) e a etapa "entregue" em `src/dados/contrato.ts`. Verifica com `npm run typecheck`.
+- [x] 6.2 Regra: `errosDaEntrega`, `motivoParadoDaEntrega` e `errosDaVisita` (pela biblioteca `campos`) em `src/regras/contrato.ts`, com teste em `src/regras/contrato.test.ts` (CA3, CA4). Verifica com `npx vitest run src/regras/contrato.test.ts`.
+- [x] 6.3 Servidor de exemplo: a semente da Cleide (Aposentadoria Especial), `imprimirCopia`, `marcarVisitaDaCopia` e `registrarEntregaDaCopia` em `src/dados/contrato.ts`, o passo D1.20 do novo compromisso em `dados/agenda.ts`, com teste em `src/dados/contrato.test.ts` (CA1 a CA5). A linha fixa "Cleide · Entregar a cópia do contrato" sai de `atendimento.ts`. Verifica com `npx vitest run src/dados/contrato.test.ts`.
+- [x] 6.4 Tela `/contrato/:processoId/copia` (`src/paginas/EntregarCopia.tsx`, Figma `2106:69`): chips, título, a linha do contrato assinado e da visita, "O que você deve fazer", "Imprimir cópia para o cliente", "Registrar a entrega" com a confirmação, a data, quem recebeu e a observação, "Entregar depois, numa visita", a entrega registrada e o painel; teste em `EntregarCopia.test.tsx` (CA1, CA3, CA4, CA5). Verifica com `npx vitest run src/paginas/EntregarCopia.test.tsx src/paginas/CentralAtendimento.test.tsx`.
+- [x] 6.5 Playwright `e2e/entregar-copia.e2e.ts`: da Central à entrega (CA1, CA2, CA3, CA5), a visita na agenda (CA4), tema escuro e fonte grande. Verifica com `npm run e2e -- entregar-copia`.
+- [ ] 6.6 Ligar no servidor: o corpo de `src/dados/contrato.ts` vira `fetch`, a página do processo (GGVP-86) ganha "Imprimir cópia para o cliente" e o checklist (GGVP-91) lê a etapa "entregue". Depende do GGVP-118, do banco do Mateus e da junção com o grupo documentos. **Fica aberta nesta história.**
+
 <!-- Fim do grupo contrato. -->
 
 <!-- Grupo documentos: preencher só as seções deste bloco. -->

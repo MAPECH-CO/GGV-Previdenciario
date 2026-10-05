@@ -30,6 +30,7 @@ import type {
 const PASSOS: Record<string, string> = {
   Entrevista: 'D1.09 · Atender e entrevistar',
   'Retirada da cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
+  'Entregar cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
 }
 
 const nomeDaEquipe = (id: string) => EQUIPE.find((m) => m.id === id)?.nome ?? id

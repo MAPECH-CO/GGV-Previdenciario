@@ -3,7 +3,7 @@
 import { formatarCpf, formatarTelefone, normalizarCpf, normalizarNome, normalizarTelefone } from '../campos.ts'
 import type { TipoDeEntrevista } from '../dados/tipos.ts'
 import { somarDias } from './agenda.ts'
-import { erroCpf, erroNome, erroTelefone } from './formularios.ts'
+import { MENSAGEM, erroCpf, erroData, erroDataDoCompromisso, erroNome, erroTelefone } from './formularios.ts'
 
 export type DocumentoDoKit =
   | 'contrato'
@@ -519,4 +519,32 @@ export function motivoParadoDaVerificacao(tudoCerto: boolean | null, oQueCorrigi
   if (tudoCerto === null) return 'Responda se está tudo certo.'
   if (!tudoCerto && oQueCorrigir.trim().length < 3) return 'Escreva o que corrigir.'
   return null
+}
+
+// GGVP-89 · cópia do contrato para o cliente levar.
+
+export type ValoresDaEntrega = { copiaDaVersaoAssinada: boolean; entregueEm: string; quemRecebeu: string; observacao: string }
+
+/** As mensagens embaixo dos campos da entrega, pela biblioteca campos (CA3). */
+export function errosDaEntrega(v: ValoresDaEntrega, hoje: string): Partial<Record<'entregueEm' | 'quemRecebeu' | 'observacao', string>> {
+  return {
+    entregueEm: v.entregueEm.trim() === '' ? MENSAGEM.data : erroData(v.entregueEm, hoje),
+    quemRecebeu: erroNome(v.quemRecebeu),
+    observacao: v.observacao.length > 300 ? 'Até 300 caracteres.' : undefined,
+  }
+}
+
+/** "Registrar entrega" só com a cópia da versão assinada confirmada, a data e quem recebeu; a observação é opcional (CA3). */
+export function motivoParadoDaEntrega(v: ValoresDaEntrega, hoje: string): string | null {
+  if (!v.copiaDaVersaoAssinada) return 'Confirme que é a cópia impressa da versão assinada.'
+  const erros = errosDaEntrega(v, hoje)
+  if (erros.entregueEm) return 'Escreva a data da entrega.'
+  if (erros.quemRecebeu) return 'Escreva quem recebeu.'
+  if (erros.observacao) return erros.observacao
+  return null
+}
+
+/** A visita para entregar a cópia depois: dia de hoje em diante e a hora (CA4). */
+export function errosDaVisita(data: string, hora: string, hoje: string): Partial<Record<'data' | 'hora', string>> {
+  return { data: erroDataDoCompromisso(data, hoje), hora: /^([01]\d|2[0-3]):[0-5]\d$/.test(hora) ? undefined : 'Escolha a hora.' }
 }

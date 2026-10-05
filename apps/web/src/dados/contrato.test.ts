@@ -9,7 +9,10 @@ import {
   enviarParaAssinatura,
   fecharContrato,
   gerarContrato,
+  imprimirCopia,
   imprimirKit,
+  marcarVisitaDaCopia,
+  registrarEntregaDaCopia,
   obterContrato,
   receberRetornoDoZapSign,
   registrarTentativaDeAssinatura,
@@ -20,6 +23,7 @@ import {
   verificarContrato,
   type EnvioDoContrato,
 } from './contrato.ts'
+import { eventosDaAgenda } from './agenda.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from './servidor.ts'
 
@@ -370,5 +374,58 @@ describe('GGVP-85 · verificar o contrato assinado · servidor de exemplo', () =
     const contrato = await verificarContrato(id, { tudoCerto: true })
     expect(contrato).toMatchObject({ etapa: 'copia', verificacao: { tudoCerto: true, quem: 'Você (Atendimento)' } })
     expect(tarefasDoContrato().some((t) => t.processoId === id && t.acao === 'Conferir contrato')).toBe(false)
+  })
+})
+
+const entrega = { copiaDaVersaoAssinada: true, entregueEm: '05/10/2026', quemRecebeu: 'Cleide Exemplo', observacao: '' }
+
+describe('GGVP-89 · cópia do contrato para o cliente levar · servidor de exemplo', () => {
+  it('CA2 · contrato reconhecido sem pendência vira "Entregar cópia do contrato": a semente da Cleide e a Nair depois da leitura', async () => {
+    expect(tarefasDoContrato().find((t) => t.processoId === 'cleide-exemplo-2')).toMatchObject({
+      codigo: 'D1.20',
+      acao: 'Entregar cópia do contrato',
+      detalhe: 'Aposentadoria Especial · contrato assinado em 12/07 · retirada hoje às 16:00',
+      prazo: 'hoje',
+      urgente: true,
+      href: '/contrato/cleide-exemplo-2/copia',
+    })
+    await simularRetornoDoZapSign('nair-exemplo-1')
+    await simularLeituraDoContrato('nair-exemplo-1')
+    expect(tarefasDoContrato().find((t) => t.processoId === 'nair-exemplo-1')).toMatchObject({ acao: 'Entregar cópia do contrato', detalhe: 'Aposentadoria por Idade · contrato assinado em 05/10' })
+  })
+
+  it('CA1 · "Imprimir cópia para o cliente" registra a impressão da versão assinada', async () => {
+    const contrato = await imprimirCopia('cleide-exemplo-2')
+    expect(contrato.copia?.impressaEm).toEqual(expect.any(String))
+    expect((await obterFicha('cleide-exemplo'))?.historico.at(-1)?.oQue).toBe(
+      'Imprimiu a cópia do contrato assinado para o cliente levar: Contrato assinado - Cleide Exemplo - 2026-07-12 (ZapSign, com evidências).pdf',
+    )
+  })
+
+  it('CA3 e CA5 · a entrega exige a confirmação, a data e quem recebeu; registrada, o caso segue para o checklist', async () => {
+    await expect(registrarEntregaDaCopia('cleide-exemplo-2', { ...entrega, copiaDaVersaoAssinada: false })).rejects.toThrow('inválida')
+    await expect(registrarEntregaDaCopia('cleide-exemplo-2', { ...entrega, quemRecebeu: '' })).rejects.toThrow('inválida')
+    const contrato = await registrarEntregaDaCopia('cleide-exemplo-2', { ...entrega, quemRecebeu: 'Rosa Exemplo', observacao: 'Levou numa pastinha.' })
+    expect(contrato.etapa).toBe('entregue')
+    expect(contrato.copia?.entrega).toMatchObject({ entregueEm: '2026-10-05', quemRecebeu: 'Rosa Exemplo', observacao: 'Levou numa pastinha.' })
+    const caso = await obterContrato('cleide-exemplo-2')
+    expect(caso?.processo).toMatchObject({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício (D1.21)' })
+    expect(caso?.ficha.agendamentos.find((a) => a.id === 'cleide-retirada')?.estado).toBe('realizado')
+    expect(caso?.ficha.contatos.at(-1)).toEqual({ data: '2026-10-05', canal: 'Presencial', texto: 'Recebeu a cópia do contrato assinado (entregue a Rosa Exemplo). Levou numa pastinha.' })
+    expect(tarefasDoContrato().some((t) => t.processoId === 'cleide-exemplo-2')).toBe(false)
+  })
+
+  it('CA4 · a entrega numa visita depois: o compromisso entra na agenda com a data da visita', async () => {
+    await expect(marcarVisitaDaCopia('cleide-exemplo-2', '04/10/2026', '16:00')).rejects.toThrow('Visita inválida')
+    const visita = await marcarVisitaDaCopia('cleide-exemplo-2', '08/10/2026', '10:30')
+    expect(visita).toMatchObject({ data: '2026-10-08', hora: '10:30', oQue: 'Entregar cópia do contrato', tipo: 'presencial', duracao: 30 })
+    const agenda = await eventosDaAgenda('2026-10-05', '2026-10-09')
+    expect(agenda.find((e) => e.id === visita.id)).toMatchObject({ titulo: 'Cleide Exemplo', oQue: 'Entregar cópia do contrato', passo: 'D1.20 · Entregar a cópia do contrato' })
+    expect(agenda.some((e) => e.id === 'cleide-retirada')).toBe(false)
+    expect(tarefasDoContrato().find((t) => t.processoId === 'cleide-exemplo-2')).toMatchObject({
+      detalhe: 'Aposentadoria Especial · contrato assinado em 12/07 · retirada 08/10 às 10:30',
+      prazo: '08/10',
+      urgente: false,
+    })
   })
 })
