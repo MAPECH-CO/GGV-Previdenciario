@@ -43,6 +43,7 @@
 }
 
 .chipOk,
+.chipAlerta,
 .chipAcento {
   padding: 2px 7px;
   border-radius: 5px;
@@ -53,6 +54,11 @@
 .chipOk {
   background: var(--cor-ok-suave);
   color: var(--cor-ok);
+}
+
+.chipAlerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
 }
 
 .chipAcento {

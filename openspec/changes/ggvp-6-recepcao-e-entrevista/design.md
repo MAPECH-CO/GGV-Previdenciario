@@ -19,7 +19,7 @@
 
 ## Decisions (valem para o épico)
 
-1. **Servidor de exemplo.** `src/dados/servidor.ts` expõe funções assíncronas com a forma dos endpoints (abaixo). Lê a semente de `src/dados/exemplo.ts` e grava no `sessionStorage` (`ggv.exemplo.v1`), porque os links recarregam a página e o que se cria no balcão precisa chegar à ficha. Aba nova e cada teste do Playwright começam da semente. Armazenamento bloqueado cai na memória, sem erro. **Ligar no servidor** troca o corpo dessas funções por `fetch`, sobre o mesmo contrato, e apaga a semente.
+1. **Servidor de exemplo.** `src/dados/servidor.ts` expõe funções assíncronas com a forma dos endpoints (abaixo). Lê a semente de `src/dados/exemplo.ts` e grava no `sessionStorage` (`ggv.exemplo.v2`: a versão sobe quando a forma do dado muda), porque os links recarregam a página e o que se cria no balcão precisa chegar à ficha. Aba nova e cada teste do Playwright começam da semente. Armazenamento bloqueado cai na memória, sem erro. **Ligar no servidor** troca o corpo dessas funções por `fetch`, sobre o mesmo contrato, e apaga a semente.
 2. **Regras em `src/regras/`.** Funções puras, testadas com Vitest, sem React. O servidor de exemplo e, depois, o de verdade usam as mesmas.
 3. **`campos` pelo `src/campos.ts`.** Reexporta `kit/campos/src/index.ts`; o `vite.config.ts` libera essa pasta no `server.fs.allow`. Quando o GGVP-108 mover a biblioteca para `packages/campos`, muda só esse arquivo. Sem dependência nova.
 4. **Catálogos únicos** em `src/dados/catalogos.ts`, marcados como exemplo: benefícios (com "Não sei ainda", LOAS Idoso e LOAS Deficiente separados), fontes de "Como chegou" e setores. Ficha, agenda, cadastro e sugestão de benefício usam os mesmos. Trocar pelas listas do Airtable ao ligar no servidor.
@@ -136,7 +136,7 @@ A tela normaliza ao digitar (letra não entra em CPF, telefone e idade), valida 
 
 1. **Busca** (CA1, CA2, CA5, CA10): com dígitos, compara com CPF e telefone; com letras, cada pedaço do termo tem de estar no nome, sem acento e sem diferença de maiúscula. A partir de 2 letras ou 3 dígitos.
 2. **"O que o cliente veio fazer?"**: as três opções do Figma ("Entregar documento", "Entrevista agendada", "Outra etapa") e, para quem já é cliente, "Nova demanda" (CA17).
-   - "Entregar documento" leva à tela de receber documento (GGVP-17).
+   - "Entregar documento" encaminha à Documentação, que recebe a tarefa "Receber documento" e abre a tela de receber documento (GGVP-17, CA1).
    - "Entrevista agendada" encaminha ao Jurídico, a advogada da agenda, com a ficha e o agendamento. Sem entrevista hoje, "Encaminhar" não habilita e a tela oferece marcar a entrevista (GGVP-123).
    - "Outra etapa" pede o setor (CA7) e encaminha (CA4).
    - "Nova demanda" leva à abertura do processo novo na mesma ficha (GGVP-124).
@@ -148,12 +148,121 @@ A tela normaliza ao digitar (letra não entra em CPF, telefone e idade), valida 
 8. **Histórico** (CA8): a ficha ganha o bloco "Histórico" embaixo de "Últimos contatos", com quem, data e hora e o quê. Não está desenhado no Figma; o cartão pede.
 9. **Ficha na visão do Atendimento** (`73:199`): tudo o que o frame mostra. "Trocar foto", "Registrar contato", "▶ Transcrições", o arrastar documentos e "Marcar e iniciar reunião" são de outras histórias e ficam indisponíveis ou levam à rota delas. "Salvar alterações" grava com as mesmas validações e escreve no histórico o que mudou.
 
+## GGVP-17 · Receber documento entregue no balcão
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/balcao/documento/:tarefaId` | step_D1.02 `10:440` | Papel ou digital, scanner, resultado do lote, conferências e "Registrar" |
+| janela sobre a ficha, a tela do passo e o chat | Overlay · Subir documento `2224:2` | "Conferir e enviar": arquivos, tipo dito pela IA, envio para a pasta |
+| `/clientes/:id` (muda) | Cliente · dados (Atendimento) `73:199` | Área de soltar ligada, pastas dos processos, "Laudo novo", "completar telefone" |
+| `/` (muda) | chat "atualizar laudo" `2052:2` | Anexar o laudo no chat e confirmar no card |
+
+O "Entregar documento" do balcão deixa de navegar: encaminha, e a Documentação recebe a tarefa na Central do Atendimento, que abre a tela do passo.
+
+### Contrato (Zod, vai para `packages/contratos/documentos.ts`)
+
+```ts
+import { z } from 'zod'
+import { TIPOS_DE_DOCUMENTO } from './catalogos'
+
+export const TAMANHO_MAXIMO = 20 * 1024 * 1024        // 20 MB por arquivo (CA12)
+
+// Onde o arquivo fica na pasta do cliente: Documentos pessoais ou a subpasta de um processo (CA14).
+export const LocalNaPasta = z.union([z.literal('pessoais'), z.string()])   // 'pessoais' ou o id do processo
+
+export const Arquivo = z.object({
+  nome: z.string().max(255),                          // "(2)" quando o nome já existe (CA13)
+  tipo: z.enum(TIPOS_DE_DOCUMENTO),
+  local: LocalNaPasta,
+  data: z.string(),                                   // aaaa-mm-dd
+  origem: z.enum(['scanner', 'card', 'chat']),
+  repetido: z.boolean(),                              // o mesmo arquivo já estava na pasta (CA13)
+  aguardaLeitura: z.boolean(),                        // segue para a leitura da GGVP-81 (CA2)
+})
+
+// Encaminhamento (GGVP-16) ganha o motivo 'documento', sempre para a Documentação · ADM (CA1).
+export const Encaminhamento = EncaminhamentoGgvp16.extend({ motivo: z.enum(['entrevista', 'outra-etapa', 'documento']) })
+
+// O que o n8n manda ao portal quando um lote termina (CA2, CA4, CA10, CA15). Hoje simulado.
+export const LoteDigitalizado = z.object({
+  loteId: z.string(),
+  status: z.enum(['arquivado', 'pasta-criada', 'revisao', 'falhou']),   // coluna Status do "Painel da digitalização"
+  motivo: z.string().max(300),                        // o texto da planilha: "nome igual", "não existe pasta parecida, mas o CPF..."
+  fichaId: z.string().optional(),                     // ausente na revisão: lote em revisão não mexe no portal
+  conferirPapel: z.boolean(),                         // página em branco: aviso "CONFERIR O PAPEL" (CA10)
+  arquivos: z.array(z.object({ nome: z.string(), tipo: z.enum(TIPOS_DE_DOCUMENTO), paginas: z.number().int().positive() })),
+})
+
+// "Conferir e enviar" (CA12, CA13, CA6, CA7).
+export const EnvioDeArquivos = z.object({
+  origem: z.enum(['card', 'chat']),
+  arquivos: z.array(z.object({
+    nome: z.string().min(1).max(255),
+    formato: z.enum(['pdf', 'jpg', 'png']),           // foto entra como foto, sem virar PDF
+    tamanho: z.number().int().positive().max(TAMANHO_MAXIMO),
+    tipo: z.enum(TIPOS_DE_DOCUMENTO),                 // o que a pessoa conferiu, não o que a IA disse
+    hash: z.string().length(64),                      // SHA-256 do conteúdo, para marcar repetido
+  })).min(1).max(20),
+})
+export const RespostaEnvio = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('enviado'), arquivos: z.array(Arquivo), laudoNovo: z.boolean() }),
+  z.object({ resultado: z.literal('sem-pasta') }),    // sem pasta achada e sem CPF: pasta nova só com CPF (CA11)
+])
+
+// "Registrar" na tela do passo (CA5, CA10).
+export const RegistroRecebimento = z.object({
+  forma: z.enum(['papel', 'digital']),
+  conferiTipos: z.literal(true),
+  conferiPapel: z.boolean(),                          // obrigatório quando o lote veio com "CONFERIR O PAPEL"
+})
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `POST /api/fichas/:id/encaminhamentos` (muda) | `Encaminhamento` | `{ tarefa, evento }` | `encaminhar` |
+| `GET /api/tarefas/:id` | `id` | tarefa com ficha e caso | `obterTarefa` |
+| `POST /api/digitalizacao/lotes` (chamado pelo n8n) | `LoteDigitalizado` | `{ tarefa }` | `receberLote` (lê `lotesDeExemplo`) |
+| `POST /api/fichas/:id/arquivos` | `EnvioDeArquivos` | `RespostaEnvio` | `enviarArquivos` |
+| `POST /api/tarefas/:id/registro` | `RegistroRecebimento` | `{ evento }` | `registrarRecebimento` |
+| `GET /api/processos/:id/pasta` | `id` | pessoais e a subpasta do processo | `pastaDoProcesso` |
+
+O resumo da IA do laudo fica guardado à parte, só para o Jurídico: nunca entra na ficha da visão do Atendimento (CA9).
+
+### Campos e a função de cada um
+
+| Tela | Campo | Funções |
+|---|---|---|
+| Conferir e enviar | Arquivos (soltar ou escolher) | `regras/arquivos.ts`: formato PDF, JPG ou PNG e até 20 MB; a biblioteca `campos` não tem campo de arquivo |
+| Conferir e enviar | Tipo de cada arquivo | lista `TIPOS_DE_DOCUMENTO`, com o tipo que a IA sugeriu já marcado |
+| Tela do passo | "Conferi o tipo de cada documento", "Conferi o papel" | caixas de marcar, sem texto |
+| Ficha | Telefone / WhatsApp ("completar telefone") | `normalizarTelefone`, `validarTelefone`, `formatarTelefone`, como no GGVP-16 |
+| Chat | Mensagem e anexo | texto livre; o anexo passa pelas mesmas regras da janela |
+
+O servidor de exemplo valida de novo formato, tamanho e tipo com as mesmas funções.
+
+### Decisões da história
+
+1. **Tarefa da Documentação** (CA1, CA3): "Entregar documento" no balcão encaminha (`motivo: 'documento'`) e cria a tarefa "Receber documento" com o nome do cliente, ligada ao caso em andamento (o primeiro processo aberto, com benefício e etapa no detalhe). Ela aparece na Central do Atendimento, como as outras da Documentação, e abre a tela do passo. "Registrar" conclui a tarefa e ela sai da Central.
+2. **Scanner simulado** (CA2, CA4, CA10): o portal não decide a pasta do papel; quem decide é o código da automação (n8n), que manda o resultado do lote. Na tela, "Digitalizar (scanner simulado)" faz o papel do n8n e lê o lote da semente (`lotesDeExemplo`): quem tem pasta sai "arquivado", com o nome "Tipo - Nome - data"; Antônio vem com página em branco ("CONFERIR O PAPEL"); Natália, sem pasta e sem CPF, vai para "A REVISAR" com o motivo da planilha. Revisão mostra o motivo e diz que a Documentação arrasta o arquivo no Drive; lote em revisão não mexe na ficha.
+3. **Conferir e enviar** (CA12, CA13): janela com `<dialog>` do navegador. A "IA" que diz o tipo é simulada pelo nome do arquivo (`laudo` → Laudo médico, `rg` → Documento pessoal (RG)...; sem pista, "Outro documento"), e a pessoa troca o tipo antes de enviar. Formato e tamanho fora da regra ficam marcados e não seguem. Nome que já existe entra como "(2)", "(3)"; conteúdo igual (SHA-256 pelo `crypto.subtle` do navegador) fica "repetido". Nada é apagado.
+4. **Onde o arquivo fica** (CA14): RG, CPF, comprovante de residência, certidão, CTPS e CNIS vão para Documentos pessoais; o resto vai para a subpasta do caso em andamento, ou para Documentos pessoais se ainda não há processo. A ficha mostra Documentos pessoais (as miniaturas do Figma) e um cartão novo "Pastas dos processos", uma subpasta por processo.
+5. **Laudo novo** (CA6, CA7, CA9): enviar um arquivo do tipo laudo marca "Laudo novo" na ficha e no processo, guarda o resumo simulado da IA à parte e cria a tarefa "Analisar laudo novo" para o Jurídico. A ficha do Atendimento mostra só "enviado ao Jurídico: aguarda a análise".
+6. **Chat** (CA8): na Central, "Anexar arquivo" e a sugestão "Subir laudo novo" passam a funcionar. O cliente é identificado pela mensagem e pelo nome do arquivo, com a mesma regra da busca do balcão; só um cliente bate → resposta e card "Ação para confirmar" com os três passos e "Confirmar e enviar ao Jurídico". Nada é feito antes de "Confirmar". Ninguém ou mais de um → pede o nome completo. A conversa livre continua da GGVP-82.
+7. **Uma pasta só** (CA11): `regras/pasta.ts` ganha o terceiro passo, nome com uma letra de diferença (sem acento), só quando uma pasta fica tão perto. No envio pelo card, a ficha sem pasta procura por essa regra; sem pasta achada, cria só se a ficha tem CPF; sem CPF, a janela pede para completar o CPF. O cadastro do novo cliente (GGVP-16) segue criando a pasta, porque ali não há papel.
+8. **Ficha do scanner sem telefone** (CA15): a ficha ganha `origem: 'scanner'` e aceita telefone vazio só com essa origem. A semente marca Marta Exemplo assim (pessoa que já existe). A ficha mostra o selo "completar telefone" e a Central do Atendimento ganha a tarefa "Completar telefone"; salvar a ficha continua pedindo telefone com DDD.
+
 ## Risks / Trade-offs
 
 - [Catálogo de benefícios e fontes de "Como chegou" não são os do Airtable] → listas de exemplo, num arquivo só; trocar ao ligar no servidor.
 - [Regra do scanner para achar a pasta não está escrita em lugar nenhum] → CPF, senão nome sem acento; parâmetro de `regras/pasta.ts`, ajusta com a GGVP-81.
 - [Ficha do cliente não tinha história própria] → ela está entre as telas desta história; a GGVP-86 constrói sobre ela.
 - [O Vitest estoura o tempo do worker no OneDrive] → rodar de novo e colar as duas saídas.
+- [O formato do aviso do n8n para o portal ainda não foi combinado com o Mateus] → o lote simulado segue as colunas do "Painel da digitalização" (status e motivo); ajustar ao ligar no servidor.
+- [A página do processo não existe ainda (GGVP-86, Fernando)] → o que é do processo nos CA6, CA12 e CA14 fica pronto no servidor de exemplo, com teste (`pastaDoProcesso`, "Laudo novo" no processo); a tela entra com a GGVP-86.
+- [O chat é da GGVP-82 (Fernando)] → aqui entra só o fluxo "Subir laudo novo", sem modelo de linguagem; avisar o Fernando para ele construir em cima.
+- [Que tipo vai para Documentos pessoais e qual vai para o processo não está escrito no cartão] → lista em `regras/arquivos.ts`, um lugar só; ajusta com a GGVP-81.
 
 ## Migration Plan
 

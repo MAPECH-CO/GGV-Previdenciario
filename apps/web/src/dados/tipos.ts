@@ -23,6 +23,10 @@ export type Tarefa = {
   urgente?: boolean
   /** Para onde a linha leva. Sem ele, /tarefas/:id. */
   href?: string
+  /** O caso em andamento a que a tarefa está ligada (GGVP-17, CA3). */
+  processoId?: string
+  /** Concluída sai da Central. */
+  concluida?: boolean
 }
 
 // GGVP-16 em diante: a ficha única da pessoa. Espelho do Zod da design.md da change ggvp-6.
@@ -44,6 +48,8 @@ export type Processo = {
   proximaAcao?: string
   prazo?: string
   urgente?: boolean
+  /** Data (aaaa-mm-dd) do laudo novo ainda não analisado pelo Jurídico (GGVP-17, CA6). */
+  laudoNovoEm?: string
 }
 
 export type Agendamento = {
@@ -133,6 +139,10 @@ export type Ficha = {
   transcricoes: number
   historico: EventoHistorico[]
   pastaId?: string
+  /** O que está na pasta do Drive (simulado): Documentos pessoais e uma subpasta por processo (GGVP-17, CA14). */
+  arquivos: Arquivo[]
+  /** Ficha criada pela automação do scanner: pode chegar sem telefone (GGVP-17, CA15). */
+  origem?: 'scanner'
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -183,12 +193,13 @@ export type RespostaNovoCliente =
 
 export type Encaminhamento = {
   fichaId: string
-  motivo: 'entrevista' | 'outra-etapa'
+  /** 'documento' vai sempre para a Documentação · ADM (GGVP-17, CA1). */
+  motivo: 'entrevista' | 'outra-etapa' | 'documento'
   setor: Setor
 }
 
-/** Tarefa que um setor recebeu do balcão. */
-export type TarefaEncaminhada = Tarefa & { setor: Setor }
+/** Tarefa que um setor recebeu do balcão. `lote` é o resultado do scanner, quando a tarefa é "Receber documento". */
+export type TarefaEncaminhada = Tarefa & { setor: Setor; lote?: LoteDigitalizado }
 
 /** Campos que a ficha deixa editar. */
 export type EdicaoFicha = Pick<
@@ -208,3 +219,64 @@ export type EdicaoFicha = Pick<
   | 'contatoApoio'
   | 'observacoes'
 >
+
+// GGVP-17 em diante: documentos na pasta do cliente. Espelho do Zod da design.md da change ggvp-6.
+
+/** 'pessoais' (Documentos pessoais) ou o id do processo, que tem a sua subpasta. */
+export type LocalNaPasta = string
+
+export type Arquivo = {
+  /** Com "(2)" quando o nome já existia na pasta (CA13). */
+  nome: string
+  /** Id do catálogo de tipos de documento. */
+  tipo: string
+  local: LocalNaPasta
+  /** aaaa-mm-dd */
+  data: string
+  origem: 'scanner' | 'card' | 'chat'
+  /** O mesmo conteúdo já estava na pasta (CA13). */
+  repetido: boolean
+  /** Segue para a leitura da GGVP-81 (CA2). */
+  aguardaLeitura: boolean
+  /** SHA-256 do conteúdo. Só o servidor usa, para achar o repetido. */
+  hash?: string
+}
+
+/** O que o n8n manda ao portal quando um lote do scanner termina (CA2, CA4, CA10). */
+export type LoteDigitalizado = {
+  loteId: string
+  /** A coluna Status do "Painel da digitalização". */
+  status: 'arquivado' | 'pasta-criada' | 'revisao' | 'falhou'
+  /** O motivo como está na planilha. */
+  motivo: string
+  /** Ausente na revisão: lote em revisão não mexe no portal. */
+  fichaId?: string
+  /** Página em branco: aviso "CONFERIR O PAPEL" (CA10). */
+  conferirPapel: boolean
+  arquivos: { nome: string; tipo: string; paginas: number }[]
+}
+
+/** Um arquivo da janela "Conferir e enviar", já conferido pela pessoa (CA12). */
+export type ArquivoParaEnviar = {
+  nome: string
+  formato: 'pdf' | 'jpg' | 'png'
+  /** Em bytes. */
+  tamanho: number
+  tipo: string
+  hash: string
+}
+
+export type EnvioDeArquivos = { origem: 'card' | 'chat'; arquivos: ArquivoParaEnviar[] }
+
+export type RespostaEnvio =
+  | { resultado: 'enviado'; arquivos: Arquivo[]; laudoNovo: boolean }
+  /** Sem pasta achada e sem CPF: pasta nova só nasce com CPF (CA11). */
+  | { resultado: 'sem-pasta' }
+
+/** "Registrar" na tela do passo (CA5, CA10). */
+export type RegistroRecebimento = {
+  forma: 'papel' | 'digital'
+  conferiTipos: true
+  /** Obrigatório quando o lote veio com "CONFERIR O PAPEL". */
+  conferiPapel: boolean
+}

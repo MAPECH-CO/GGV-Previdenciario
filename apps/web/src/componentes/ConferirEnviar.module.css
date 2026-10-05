@@ -1,0 +1,216 @@
+/* Figma 2224:2: janela de 600 com fundo escuro atrás. */
+.janela {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 22px 14px;
+}
+
+.textos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.subtitulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.fechar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-22);
+  line-height: 1;
+}
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 22px 16px;
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 26px 16px;
+  border: 1.25px dashed var(--cor-borda-controle);
+  border-radius: var(--raio-12);
+  background: var(--cor-fundo);
+  text-align: center;
+  cursor: pointer;
+}
+
+.area:focus-within {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.iconeEnviar,
+.iconeArquivo {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.iconeEnviar {
+  stroke: var(--cor-acento);
+}
+
+.iconeArquivo {
+  flex: 0 0 24px;
+  stroke: var(--cor-texto-suave);
+}
+
+.areaTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 500;
+}
+
+.areaSub {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.arquivo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+}
+
+.arquivo[data-problema] {
+  border-color: var(--cor-erro);
+}
+
+.info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nome {
+  overflow: hidden;
+  font-size: var(--fonte-13);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.problema {
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}
+
+.tipo,
+.tipoLaudo {
+  max-width: 13rem;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--raio-pilula);
+  font: inherit;
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.tipo {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.tipoLaudo {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.avisoLaudo {
+  padding: 10px 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}
+
+.pe {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px 16px;
+}
+
+.cancelar,
+.enviar {
+  padding: 9px 16px;
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.cancelar {
+  border: 1px solid var(--cor-borda-controle);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.enviar {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.enviar:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}

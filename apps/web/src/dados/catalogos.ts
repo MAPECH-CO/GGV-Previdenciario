@@ -33,6 +33,26 @@ export const FONTES: ItemCatalogo[] = [
   { id: 'ja-foi-cliente', nome: 'Já foi cliente' },
 ]
 
+/** Tipos de documento: o que a IA sugere e a pessoa confere na janela "Conferir e enviar". */
+export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
+  { id: 'rg', nome: 'Documento pessoal (RG)' },
+  { id: 'cpf', nome: 'Documento pessoal (CPF)' },
+  { id: 'comprovante-residencia', nome: 'Comprovante de residência' },
+  { id: 'certidao', nome: 'Certidão' },
+  { id: 'ctps', nome: 'CTPS' },
+  { id: 'cnis', nome: 'CNIS' },
+  { id: 'procuracao', nome: 'Procuração' },
+  { id: 'contrato', nome: 'Contrato' },
+  { id: 'laudo', nome: 'Laudo médico' },
+  { id: 'receita', nome: 'Receita médica' },
+  { id: 'prontuario', nome: 'Prontuário' },
+  { id: 'outro', nome: 'Outro documento' },
+]
+
+export function nomeTipo(id: string | undefined): string {
+  return TIPOS_DE_DOCUMENTO.find((t) => t.id === id)?.nome ?? ''
+}
+
 export const SETORES: Setor[] = ['Jurídico', 'Documentação · ADM', 'Financeiro']
 
 export function nomeBeneficio(id: string | undefined): string {

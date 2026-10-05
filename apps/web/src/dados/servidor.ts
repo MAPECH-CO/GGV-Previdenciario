@@ -24,12 +24,15 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 
-const CHAVE = 'ggv.exemplo.v1'
+const CHAVE = 'ggv.exemplo.v2'
 
 /** Sem login ainda: quem faz é a pessoa do Atendimento. */
 export const QUEM = 'Você (Atendimento)'
 
-type Banco = { fichas: Ficha[]; pastas: PastaDrive[]; tarefas: TarefaEncaminhada[]; seq: number }
+/** O resumo da IA do laudo novo: só o Jurídico vê; nunca entra na ficha da visão do Atendimento (GGVP-17, CA9). */
+export type ResumoDeLaudo = { fichaId: string; processoId?: string; data: string; arquivo: string; resumo: string }
+
+export type Banco = { fichas: Ficha[]; pastas: PastaDrive[]; tarefas: TarefaEncaminhada[]; resumosDeLaudo: ResumoDeLaudo[]; seq: number }
 
 let relogio = () => new Date()
 let latencia = 400
@@ -57,10 +60,11 @@ export function agora(): Date {
 
 function semente(): Banco {
   const fichas = fichasDeExemplo(hojeIso(agora()))
-  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], seq: 0 }
+  return { fichas, pastas: pastasDeExemplo(fichas), tarefas: [], resumosDeLaudo: [], seq: 0 }
 }
 
-function ler(): Banco {
+/** Para os outros arquivos do servidor de exemplo (documentos.ts). */
+export function ler(): Banco {
   try {
     const guardado = sessionStorage.getItem(CHAVE)
     if (guardado) return JSON.parse(guardado) as Banco
@@ -71,7 +75,7 @@ function ler(): Banco {
   return structuredClone(memoria)
 }
 
-function gravar(banco: Banco) {
+export function gravar(banco: Banco) {
   memoria = banco
   try {
     sessionStorage.setItem(CHAVE, JSON.stringify(banco))
@@ -80,10 +84,10 @@ function gravar(banco: Banco) {
   }
 }
 
-const esperar = () => new Promise<void>((pronto) => setTimeout(pronto, latencia))
+export const esperar = () => new Promise<void>((pronto) => setTimeout(pronto, latencia))
 
-function evento(oQue: string): EventoHistorico {
-  return { quando: agora().toISOString(), quem: QUEM, oQue }
+export function evento(oQue: string, quem = QUEM): EventoHistorico {
+  return { quando: agora().toISOString(), quem, oQue }
 }
 
 function resumo(ficha: Ficha, hoje: string): FichaResumo {
@@ -170,6 +174,7 @@ export async function criarFicha(dados: NovoCliente): Promise<RespostaNovoClient
     // A anotação do primeiro contato vai para "Últimos contatos" (CA13).
     contatos: [{ data: hoje, canal: 'Presencial (balcão)', texto: dados.pretende }],
     documentos: [],
+    arquivos: [],
     transcricoes: 0,
     historico: [
       evento(
@@ -261,27 +266,48 @@ export async function encaminhar(dados: Encaminhamento): Promise<{ tarefa: Taref
   if (dados.motivo === 'entrevista' && !agendamento) throw new Error('Sem entrevista marcada hoje')
   const quando = agora().toISOString()
   const beneficio = nomeBeneficio(ficha.processos[0]?.beneficio ?? ficha.beneficioInteresse)
+  // Quem veio entregar documento vai sempre à Documentação, com o caso em andamento (GGVP-17, CA1 e CA3).
+  const documento = dados.motivo === 'documento'
+  const caso = ficha.processos[0]
 
   banco.seq += 1
-  const tarefa: TarefaEncaminhada = {
-    id: `balcao-${banco.seq}`,
-    codigo: 'D1.03',
-    cliente: { id: ficha.id, nome: ficha.nome },
-    acao: dados.motivo === 'entrevista' ? 'Receber para a entrevista' : 'Atender quem chegou',
-    detalhe: [
-      beneficio || 'benefício a definir',
-      `chegou ao balcão às ${hora(quando)}`,
-      agendamento ? `${agendamento.oQue.toLowerCase()} hoje ${agendamento.hora}` : 'sem agendamento hoje',
-    ].join(' · '),
-    prazo: 'agora',
-    href: `/clientes/${ficha.id}`,
-    setor: dados.setor,
-  }
+  const id = `balcao-${banco.seq}`
+  const tarefa: TarefaEncaminhada = documento
+    ? {
+        id,
+        codigo: 'D1.02',
+        cliente: { id: ficha.id, nome: ficha.nome },
+        acao: 'Receber documento',
+        detalhe: [
+          caso ? `${nomeBeneficio(caso.beneficio)} · ${caso.etapa}` : 'sem caso em andamento',
+          `chegou ao balcão às ${hora(quando)}`,
+        ].join(' · '),
+        prazo: 'agora',
+        href: `/balcao/documento/${id}`,
+        processoId: caso?.id,
+        setor: 'Documentação · ADM',
+      }
+    : {
+        id,
+        codigo: 'D1.03',
+        cliente: { id: ficha.id, nome: ficha.nome },
+        acao: dados.motivo === 'entrevista' ? 'Receber para a entrevista' : 'Atender quem chegou',
+        detalhe: [
+          beneficio || 'benefício a definir',
+          `chegou ao balcão às ${hora(quando)}`,
+          agendamento ? `${agendamento.oQue.toLowerCase()} hoje ${agendamento.hora}` : 'sem agendamento hoje',
+        ].join(' · '),
+        prazo: 'agora',
+        href: `/clientes/${ficha.id}`,
+        setor: dados.setor,
+      }
   banco.tarefas.push(tarefa)
   const registro = evento(
-    dados.motivo === 'entrevista'
-      ? `Encaminhou ao ${dados.setor} para a entrevista das ${agendamento!.hora}, com a ficha e o agendamento`
-      : `Encaminhou ao setor ${dados.setor} (outra etapa), com a ficha e o agendamento`,
+    documento
+      ? `Encaminhou à Documentação · ADM para receber documento${caso ? `, ligado ao caso ${nomeBeneficio(caso.beneficio)}` : ''}`
+      : dados.motivo === 'entrevista'
+        ? `Encaminhou ao ${dados.setor} para a entrevista das ${agendamento!.hora}, com a ficha e o agendamento`
+        : `Encaminhou ao setor ${dados.setor} (outra etapa), com a ficha e o agendamento`,
   )
   ficha.historico.push(registro)
   gravar(banco)
@@ -290,5 +316,5 @@ export async function encaminhar(dados: Encaminhamento): Promise<{ tarefa: Taref
 
 /** Tarefas que o balcão mandou a um setor. As da Documentação aparecem na Central do Atendimento. */
 export function tarefasDoSetor(setor: Setor): TarefaEncaminhada[] {
-  return ler().tarefas.filter((t) => t.setor === setor)
+  return ler().tarefas.filter((t) => t.setor === setor && !t.concluida)
 }

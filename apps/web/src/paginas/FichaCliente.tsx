@@ -3,13 +3,16 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CabecalhoCliente } from '../componentes/CabecalhoCliente.tsx'
 import { Cartao } from '../componentes/Cartao.tsx'
 import { CasoEmAndamento } from '../componentes/CasoEmAndamento.tsx'
+import { ConferirEnviar } from '../componentes/ConferirEnviar.tsx'
 import { DocumentosPessoais } from '../componentes/DocumentosPessoais.tsx'
 import { EdicaoCliente } from '../componentes/EdicaoCliente.tsx'
 import { ListaDatada } from '../componentes/ListaDatada.tsx'
+import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
+import { nomeTipo } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
-import type { Ficha } from '../dados/tipos.ts'
+import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import styles from './FichaCliente.module.css'
 
@@ -18,6 +21,9 @@ import styles from './FichaCliente.module.css'
 export function FichaCliente({ id }: { id: string }) {
   // undefined: abrindo; null: não existe.
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined)
+  // Arquivos da janela "Conferir e enviar"; null com a janela fechada (GGVP-17).
+  const [envio, setEnvio] = useState<File[] | null>(null)
+  const [enviados, setEnviados] = useState('')
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -46,6 +52,21 @@ export function FichaCliente({ id }: { id: string }) {
 
   const contatos = [...ficha.contatos].sort((a, b) => b.data.localeCompare(a.data))
   const historico = [...ficha.historico].reverse()
+  // As miniaturas da semente e o que entrou depois em Documentos pessoais, pelo scanner ou pelo card.
+  const pessoais = [
+    ...ficha.documentos,
+    ...ficha.arquivos
+      .filter((a) => a.local === 'pessoais')
+      .map((a) => ({ nome: nomeTipo(a.tipo), detalhe: [dataCurta(a.data, hoje), a.repetido ? 'repetido' : ''].filter(Boolean).join(' · ') })),
+  ]
+
+  async function aoEnviar(resposta: Extract<RespostaEnvio, { resultado: 'enviado' }>) {
+    setEnvio(null)
+    const n = resposta.arquivos.length
+    setEnviados(`${n === 1 ? '1 arquivo enviado' : `${n} arquivos enviados`} para a pasta do cliente.${resposta.laudoNovo ? ' Laudo novo enviado ao Jurídico.' : ''}`)
+    setFicha(await obterFicha(id))
+  }
+
   const laudoNovo = ficha.laudoNovoEm && `Laudo novo de ${dataCurta(ficha.laudoNovoEm, hoje)} enviado ao Jurídico: aguarda a análise.`
 
   return (
@@ -70,7 +91,8 @@ export function FichaCliente({ id }: { id: string }) {
             <CabecalhoCliente ficha={ficha} hoje={hoje} />
             <EdicaoCliente ficha={ficha} hoje={hoje} aoSalvar={setFicha} />
           </Cartao>
-          <DocumentosPessoais documentos={ficha.documentos} />
+          <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />
+          <PastasDosProcessos ficha={ficha} hoje={hoje} />
           <Cartao titulo="Últimos contatos">
             <ListaDatada
               nome="Últimos contatos"
@@ -97,6 +119,7 @@ export function FichaCliente({ id }: { id: string }) {
         </div>
       </main>
       <AbaSuporte />
+      {envio && <ConferirEnviar fichaId={ficha.id} origem="card" iniciais={envio} aoEnviar={aoEnviar} aoFechar={() => setEnvio(null)} />}
     </>
   )
 }

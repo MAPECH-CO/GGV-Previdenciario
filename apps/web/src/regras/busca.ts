@@ -26,6 +26,14 @@ export function bateNaBusca(ficha: Pick<Ficha, 'nome' | 'cpf' | 'telefone'>, ter
   return (ficha.cpf ?? '').includes(digitos) || ficha.telefone.includes(digitos)
 }
 
+/** Fichas citadas num texto livre: o nome inteiro; senão, o primeiro nome (GGVP-17, chat "Subir laudo novo"). */
+export function fichasCitadas<T extends Pick<Ficha, 'nome'>>(fichas: T[], texto: string): T[] {
+  const palavras = ` ${semAcento(texto).replace(/[^a-z0-9]+/g, ' ')} `
+  const tem = (nome: string) => palavras.includes(` ${nome} `)
+  const inteiro = fichas.filter((f) => tem(semAcento(f.nome)))
+  return inteiro.length > 0 ? inteiro : fichas.filter((f) => tem(semAcento(f.nome).split(' ')[0]))
+}
+
 /** O agendamento de hoje, se houver. */
 export function agendamentoDoDia(ficha: Ficha, hoje: string) {
   return ficha.agendamentos.find((a) => a.data === hoje)

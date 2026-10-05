@@ -81,3 +81,9 @@
   color: var(--cor-texto-suave);
   font-size: var(--fonte-12);
 }
+
+.aviso {
+  color: var(--cor-ok);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}

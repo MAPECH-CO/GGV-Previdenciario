@@ -33,6 +33,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Ficha não encontrada' })).toBeTruthy()
   })
 
+  it('em /balcao/documento/:tarefa abre a tela de receber documento', async () => {
+    zerarExemplo()
+    render(<App caminho="/balcao/documento/nenhuma" />)
+    expect(await screen.findByRole('heading', { name: 'Tarefa não encontrada' })).toBeTruthy()
+  })
+
   it('em rota sem tela avisa que não foi construída e mostra o caminho', () => {
     render(<App caminho="/agenda" />)
     expect(screen.getByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeTruthy()

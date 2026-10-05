@@ -19,7 +19,8 @@ const OPCOES: { id: Opcao; rotulo: string; soCliente?: boolean }[] = [
   { id: 'nova-demanda', rotulo: 'Nova demanda', soCliente: true },
 ]
 
-type Feito = { setor: Setor; quando: string }
+/** `tarefa` é o endereço da tarefa da Documentação, quando a pessoa veio entregar documento (GGVP-17). */
+type Feito = { setor: Setor; quando: string; tarefa?: string }
 
 function buscaValida(termo: string): boolean {
   return /\p{L}/u.test(termo)
@@ -77,13 +78,12 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
 
   async function aoEncaminhar() {
     if (!escolhido || !opcao || motivoParado || enviando) return
-    if (opcao === 'documento') return navegar(`/balcao/documento/${escolhido.id}`)
     if (opcao === 'nova-demanda') return navegar(`/clientes/${escolhido.id}/nova-demanda`)
-    const destino: Setor = opcao === 'entrevista' ? 'Jurídico' : setor!
+    const destino: Setor = opcao === 'entrevista' ? 'Jurídico' : opcao === 'documento' ? 'Documentação · ADM' : setor!
     setEnviando(true)
     try {
-      const { evento } = await encaminhar({ fichaId: escolhido.id, motivo: opcao, setor: destino })
-      setFeito({ setor: destino, quando: evento.quando })
+      const { tarefa, evento } = await encaminhar({ fichaId: escolhido.id, motivo: opcao, setor: destino })
+      setFeito({ setor: destino, quando: evento.quando, tarefa: opcao === 'documento' ? tarefa.href : undefined })
     } finally {
       setEnviando(false)
     }
@@ -232,8 +232,18 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
               <h2 id="encaminhado" className={styles.feitoTitulo}>
                 ✓ Encaminhado {feito.setor === 'Jurídico' ? 'ao Jurídico' : `ao setor ${feito.setor}`} às {hora(feito.quando)}
               </h2>
-              <p>A tarefa leva a ficha e o agendamento de {escolhido.nome}. O encaminhamento ficou no histórico da ficha.</p>
+              <p>
+                {feito.tarefa
+                  ? `A Documentação recebeu a tarefa "Receber documento" de ${escolhido.nome}, ligada ao caso em andamento.`
+                  : `A tarefa leva a ficha e o agendamento de ${escolhido.nome}.`}{' '}
+                O encaminhamento ficou no histórico da ficha.
+              </p>
               <div className={styles.atalhos}>
+                {feito.tarefa && (
+                  <a className={styles.atalho} href={feito.tarefa}>
+                    Abrir a tarefa
+                  </a>
+                )}
                 <a className={styles.atalho} href={`/clientes/${escolhido.id}`}>
                   Abrir a ficha do cliente
                 </a>

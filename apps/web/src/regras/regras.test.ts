@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
 import type { Ficha, PastaDrive } from '../dados/tipos.ts'
-import { bateNaBusca, buscar, etapaDaFicha, semAcento } from './busca.ts'
+import { bateNaBusca, buscar, etapaDaFicha, fichasCitadas, semAcento } from './busca.ts'
 import { dataCurta, idadeEm } from './datas.ts'
 import { fichaComCpf, fichasParecidas } from './duplicidade.ts'
 import {
@@ -15,6 +15,15 @@ import {
   validarEdicao,
   validarNovoCliente,
 } from './formularios.ts'
+import {
+  TAMANHO_MAXIMO,
+  formatoDoArquivo,
+  hashDoConteudo,
+  localDoTipo,
+  nomeSemSobrescrever,
+  problemaDoArquivo,
+  tipoSugerido,
+} from './arquivos.ts'
 import { pastasDoCliente } from './pasta.ts'
 
 const HOJE = '2026-10-05'
@@ -31,6 +40,7 @@ function ficha(parcial: Partial<Ficha> & Pick<Ficha, 'id' | 'nome' | 'telefone'>
     agendamentos: [],
     contatos: [],
     documentos: [],
+    arquivos: [],
     transcricoes: 0,
     historico: [],
     ...parcial,
@@ -133,6 +143,55 @@ describe('pasta do cliente no Drive', () => {
   it('CA14 · sem CPF, acha pelo nome sem acento: mais de uma, a tela pergunta', () => {
     expect(pastasDoCliente(pastas, { nome: 'Rosa  Exemplo' }).map((p) => p.id)).toEqual(['d1', 'd2'])
     expect(pastasDoCliente(pastas, { nome: 'Benedita Teste' })).toEqual([])
+  })
+
+  it('GGVP-17 CA11 · por último, o nome com uma letra de diferença, só se uma pasta fica tão perto', () => {
+    const marta: PastaDrive = { id: 'd4', nome: 'Marta Exemplo', caminho: 'Clientes' }
+    expect(pastasDoCliente([marta], { nome: 'Marta Exempl' }).map((p) => p.id)).toEqual(['d4'])
+    expect(pastasDoCliente([marta], { nome: 'Martha Exemplo' }).map((p) => p.id)).toEqual(['d4'])
+    expect(pastasDoCliente([marta], { nome: 'Marta Exempla' }).map((p) => p.id)).toEqual(['d4'])
+    expect(pastasDoCliente([marta], { nome: 'Mirta Exemplu' })).toEqual([])
+    const maria: PastaDrive = { id: 'd5', nome: 'Maria Exemplo', caminho: 'Clientes' }
+    expect(pastasDoCliente([marta, maria], { nome: 'Marja Exemplo' })).toEqual([])
+  })
+})
+
+describe('arquivos da pasta do cliente (GGVP-17)', () => {
+  it('CA12 · só PDF, JPG ou PNG, de até 20 MB; foto entra como foto', () => {
+    expect(formatoDoArquivo('laudo.PDF')).toBe('pdf')
+    expect(formatoDoArquivo('foto.jpeg')).toBe('jpg')
+    expect(formatoDoArquivo('rg.png')).toBe('png')
+    expect(formatoDoArquivo('planilha.xlsx')).toBeNull()
+    expect(problemaDoArquivo({ nome: 'laudo.pdf', tamanho: TAMANHO_MAXIMO })).toBeUndefined()
+    expect(problemaDoArquivo({ nome: 'laudo.pdf', tamanho: TAMANHO_MAXIMO + 1 })).toBe('Passa de 20 MB.')
+    expect(problemaDoArquivo({ nome: 'video.mp4', tamanho: 10 })).toBe('Só PDF, JPG ou PNG.')
+    expect(TAMANHO_MAXIMO).toBe(20 * 1024 * 1024)
+  })
+
+  it('CA12 · o tipo sugerido sai do nome do arquivo; sem pista, "outro"', () => {
+    expect(tipoSugerido('laudo_ortopedia_set2026.pdf')).toBe('laudo')
+    expect(tipoSugerido('rg_frente_verso.jpg')).toBe('rg')
+    expect(tipoSugerido('Comprovante-Residência.pdf')).toBe('comprovante-residencia')
+    expect(tipoSugerido('cargo.pdf')).toBe('outro')
+  })
+
+  it('CA13 · nome que já existe entra como "(2)", "(3)": nada é sobrescrito', () => {
+    expect(nomeSemSobrescrever('rg.pdf', [])).toBe('rg.pdf')
+    expect(nomeSemSobrescrever('rg.pdf', ['rg.pdf'])).toBe('rg (2).pdf')
+    expect(nomeSemSobrescrever('rg.pdf', ['rg.pdf', 'rg (2).pdf'])).toBe('rg (3).pdf')
+  })
+
+  it('CA13 · o mesmo conteúdo dá o mesmo SHA-256', async () => {
+    const um = await hashDoConteudo(new TextEncoder().encode('mesmo papel').buffer)
+    expect(um).toMatch(/^[0-9a-f]{64}$/)
+    expect(await hashDoConteudo(new TextEncoder().encode('mesmo papel').buffer)).toBe(um)
+    expect(await hashDoConteudo(new TextEncoder().encode('outro papel').buffer)).not.toBe(um)
+  })
+
+  it('CA14 · documento pessoal vai para Documentos pessoais; o resto, para a subpasta do caso', () => {
+    expect(localDoTipo('rg', 'p1')).toBe('pessoais')
+    expect(localDoTipo('laudo', 'p1')).toBe('p1')
+    expect(localDoTipo('laudo', undefined)).toBe('pessoais')
   })
 })
 
@@ -246,5 +305,19 @@ describe('datas', () => {
   it('data curta no mesmo ano, com o ano nos outros', () => {
     expect(dataCurta('2026-09-27', HOJE)).toBe('27/09')
     expect(dataCurta('2025-09-20', HOJE)).toBe('20/09/2025')
+  })
+})
+
+describe('quem é citado no chat (GGVP-17, CA8)', () => {
+  const fichas = [{ nome: 'Antônio Exemplo' }, { nome: 'Maria Exemplo' }, { nome: 'Marta Exemplo' }]
+  it('acha pelo primeiro nome, com ou sem acento, na mensagem ou no nome do arquivo', () => {
+    expect(fichasCitadas(fichas, 'Esse aqui é o laudo do Antônio. Atualizar.')).toEqual([{ nome: 'Antônio Exemplo' }])
+    expect(fichasCitadas(fichas, 'atualizar laudo_antonio_ortopedia.pdf')).toEqual([{ nome: 'Antônio Exemplo' }])
+    expect(fichasCitadas(fichas, 'laudo da Mari')).toEqual([])
+  })
+  it('o nome inteiro vale mais que o primeiro nome; nome que não bate, ninguém', () => {
+    expect(fichasCitadas([...fichas, { nome: 'Maria Teste' }], 'laudo da Maria Exemplo')).toEqual([{ nome: 'Maria Exemplo' }])
+    expect(fichasCitadas([...fichas, { nome: 'Maria Teste' }], 'laudo da Maria')).toHaveLength(2)
+    expect(fichasCitadas(fichas, 'laudo novo')).toEqual([])
   })
 })

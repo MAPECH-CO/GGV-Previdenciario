@@ -109,3 +109,31 @@
   color: var(--cor-texto-suave);
   font-size: var(--fonte-12);
 }
+
+.anexo {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-12);
+}
+
+.tirar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+  line-height: 1;
+}
+
+label.chip {
+  cursor: pointer;
+}
+
+label.chip:focus-within {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}

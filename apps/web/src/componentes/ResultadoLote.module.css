@@ -1,0 +1,80 @@
+.resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ok,
+.alerta,
+.conferir {
+  padding: 10px 12px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+}
+
+.ok {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.alerta,
+.conferir {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.conferir {
+  border: 1px solid var(--cor-alerta);
+}
+
+.texto {
+  font-size: var(--fonte-13);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.arquivo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nome {
+  font-size: var(--fonte-13);
+}
+
+.detalhe {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-12);
+}
+
+/* Figma 32:54: "Documentos digitalizados · abrir no acervo do cliente · Abrir". */
+.acervo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-15);
+}
+
+.acervoTextos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+}
+
+.abrir {
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}

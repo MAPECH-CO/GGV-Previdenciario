@@ -23,6 +23,8 @@ export function CabecalhoCliente({ ficha, hoje }: { ficha: Ficha; hoje: string }
         {linha && <p className={styles.linha}>{linha}</p>}
         <p className={styles.chips}>
           {preferido && <span className={styles.chipOk}>{preferido} preferido</span>}
+          {/* Ficha criada pelo scanner, que não lê telefone (GGVP-17, CA15). */}
+          {!ficha.telefone && <span className={styles.chipAlerta}>completar telefone</span>}
           {ficha.laudoNovoEm && <span className={styles.chipAcento}>Laudo novo · {dataCurta(ficha.laudoNovoEm, hoje)}</span>}
         </p>
       </div>

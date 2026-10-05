@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Abas } from '../componentes/Abas.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
-import { ChatIA } from '../componentes/ChatIA.tsx'
+import { LaudoPeloChat } from '../componentes/LaudoPeloChat.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -12,6 +12,7 @@ import {
   tarefasAtendimento,
   totalTarefasSetorAtendimento,
 } from '../dados/atendimento.ts'
+import { tarefasDeCompletarTelefone } from '../dados/documentos.ts'
 import { tarefasDoSetor } from '../dados/servidor.ts'
 import styles from './CentralAtendimento.module.css'
 
@@ -23,8 +24,9 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAtendimento() {
   const [aba, setAba] = useState('minhas')
-  // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo.
-  const [tarefas] = useState(() => [...tarefasDoSetor('Documentação · ADM'), ...tarefasAtendimento])
+  // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as fichas
+  // que o scanner criou sem telefone (GGVP-17, CA15).
+  const [tarefas] = useState(() => [...tarefasDoSetor('Documentação · ADM'), ...tarefasDeCompletarTelefone(), ...tarefasAtendimento])
 
   return (
     <>
@@ -39,7 +41,7 @@ export function CentralAtendimento() {
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Atendimento</h1>
           <CampoBusca />
-          <ChatIA exemplo={exemploChatAtendimento} sugestoes={sugestoesChatAtendimento} />
+          <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={sugestoesChatAtendimento} />
           <Abas
             rotulo="Filas de tarefas"
             ativa={aba}

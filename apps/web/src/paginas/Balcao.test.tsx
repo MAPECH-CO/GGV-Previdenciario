@@ -93,7 +93,7 @@ describe('Balcão · Receber quem chegou', () => {
 
     render(<CentralAtendimento />)
     const fila = within(screen.getByRole('tabpanel'))
-    expect(fila.getAllByRole('listitem')).toHaveLength(15)
+    expect(fila.getAllByRole('listitem')).toHaveLength(16)
     expect(fila.getByRole('link', { name: 'Antônio Exemplo · Atender quem chegou' }).getAttribute('href')).toBe(
       '/clientes/antonio-exemplo',
     )
@@ -127,13 +127,18 @@ describe('Balcão · Receber quem chegou', () => {
     expect(navegar).toHaveBeenCalledWith('/clientes/antonio-exemplo/nova-demanda')
   })
 
-  it('"Entregar documento" segue para receber o documento (Documentação e scanner)', async () => {
+  it('GGVP-17 CA1 · "Entregar documento" dá a tarefa à Documentação, com o nome, e oferece abrir a tarefa', async () => {
     const navegar = vi.fn()
     render(<Balcao navegar={navegar} />)
     await escolherPessoa('rita', 'Rita Exemplo')
     fireEvent.click(screen.getByRole('radio', { name: 'Entregar documento' }))
     expect(screen.getByText('Quem veio entregar documento vai para a Documentação e o scanner.')).toBeTruthy()
     fireEvent.click(encaminhar())
-    expect(navegar).toHaveBeenCalledWith('/balcao/documento/rita-exemplo')
+    expect(await screen.findByRole('heading', { name: '✓ Encaminhado ao setor Documentação · ADM às 14:32' })).toBeTruthy()
+    expect(screen.getByText(/recebeu a tarefa "Receber documento" de Rita Exemplo/)).toBeTruthy()
+    const [tarefa] = tarefasDoSetor('Documentação · ADM')
+    expect(tarefa).toMatchObject({ acao: 'Receber documento', cliente: { nome: 'Rita Exemplo' } })
+    expect(screen.getByRole('link', { name: 'Abrir a tarefa' }).getAttribute('href')).toBe(`/balcao/documento/${tarefa.id}`)
+    expect(navegar).not.toHaveBeenCalled()
   })
 })

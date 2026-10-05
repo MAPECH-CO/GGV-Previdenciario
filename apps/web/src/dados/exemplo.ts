@@ -1,7 +1,7 @@
 // EXEMPLO. Semente do servidor de exemplo, falsa de propósito: nomes com "Exemplo" e telefones
 // (11) 90000-00xx. São as pessoas da Central (atendimento.ts), para seguir uma pessoa do balcão
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
-import type { Ficha, PastaDrive, Processo } from './tipos.ts'
+import type { Ficha, LoteDigitalizado, PastaDrive, Processo } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
 export const CPF_DE_TESTE = '00000000191'
@@ -25,6 +25,7 @@ function pessoa(n: number, id: string, nome: string, resto: Partial<Ficha>): Fic
     transcricoes: 0,
     historico: [],
     pastaId: `drive-${id}`,
+    arquivos: [],
     ...resto,
   }
 }
@@ -114,7 +115,11 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
       ],
       { agendamentos: [{ id: 'cleide-retirada', data: hoje, hora: '16:00', oQue: 'Retirada da cópia do contrato' }] },
     ),
-    cliente(6, 'marta-exemplo', 'Marta Exemplo', [{ beneficio: 'loas-deficiente', etapa: 'Benefício deferido', proximaAcao: 'agendar a ida ao banco' }]),
+    // Ficha criada pela automação do scanner, que não lê telefone (GGVP-17, CA15).
+    cliente(6, 'marta-exemplo', 'Marta Exemplo', [{ beneficio: 'loas-deficiente', etapa: 'Benefício deferido', proximaAcao: 'agendar a ida ao banco' }], {
+      telefone: '',
+      origem: 'scanner',
+    }),
     cliente(10, 'rita-exemplo', 'Rita Exemplo', [
       { beneficio: 'loas-deficiente', etapa: 'Documentação · conferência', proximaAcao: 'conferir os documentos do balcão', prazo: 'hoje', urgente: true },
     ]),
@@ -137,4 +142,23 @@ export function pastasDeExemplo(fichas: Ficha[]): PastaDrive[] {
     { id: 'drive-rosa-1', nome: 'Rosa Exemplo', caminho: 'Clientes/2024' },
     { id: 'drive-rosa-2', nome: 'ROSA EXEMPLO', caminho: 'Scanner/antigos' },
   ]
+}
+
+/**
+ * O que o n8n mandaria ao portal depois de passar a pilha do cliente no scanner (GGVP-17). Quem tem pasta sai
+ * "arquivado"; Antônio vem com página em branco ("CONFERIR O PAPEL"); quem não tem pasta nem CPF no papel vai
+ * para "A REVISAR", com o motivo da planilha "Painel da digitalização".
+ */
+export function loteDeExemplo(ficha: Ficha, hoje: string, loteId: string): LoteDigitalizado {
+  const arquivos = [
+    { nome: `Comprovante de residencia - ${ficha.nome} - ${hoje}.pdf`, tipo: 'comprovante-residencia', paginas: 1 },
+    { nome: `CNIS - ${ficha.nome} - ${hoje}.pdf`, tipo: 'cnis', paginas: 3 },
+  ]
+  if (!ficha.pastaId) {
+    const motivo = 'não existe pasta parecida, mas o CPF dessa pessoa não está escrito no papel'
+    return { loteId, status: 'revisao', motivo, conferirPapel: false, arquivos }
+  }
+  const antonio = ficha.id === 'antonio-exemplo'
+  const motivo = antonio ? 'esse CPF aparece escrito dentro de documento que já está nessa pasta' : 'nome igual'
+  return { loteId, status: 'arquivado', motivo, fichaId: ficha.id, conferirPapel: antonio, arquivos }
 }

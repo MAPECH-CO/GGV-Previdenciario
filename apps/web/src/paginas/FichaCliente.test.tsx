@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE, telefoneDeExemplo } from '../dados/exemplo.ts'
 import { configurarExemplo, criarFicha, encaminhar, obterFicha, zerarExemplo } from '../dados/servidor.ts'
@@ -38,7 +38,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText('Próxima: nenhuma marcada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Marcar reunião' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
 
-    for (const nome of ['Transcrições (2)', 'Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)', /Solte os documentos/]) {
+    for (const nome of ['Transcrições (2)', 'Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)']) {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), String(nome)).toBe('true')
     }
     expect(document.body.textContent).not.toMatch(/senha|cofre/i)
@@ -115,5 +115,45 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     digitar('CPF', CPF_DE_TESTE)
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Este CPF já está na ficha de Antônio Exemplo.')).toBeTruthy()
+  })
+
+  it('GGVP-17 CA6, CA9 e CA14 · laudo solto na ficha vai para a subpasta do processo, marca "Laudo novo" e o Atendimento só vê que foi', async () => {
+    await abrir('antonio-exemplo')
+    fireEvent.drop(screen.getByRole('button', { name: /Solte os documentos do cliente aqui/ }), {
+      dataTransfer: { files: [new File(['laudo'], 'laudo_ortopedia_set2026.pdf')] },
+    })
+    const janela = within(screen.getByRole('dialog', { name: 'Conferir e enviar' }))
+    const enviar = janela.getByRole('button', { name: 'Enviar para a pasta do cliente' }) as HTMLButtonElement
+    await waitFor(() => expect(enviar.disabled).toBe(false))
+    fireEvent.click(enviar)
+
+    expect(await screen.findByText('1 arquivo enviado para a pasta do cliente. Laudo novo enviado ao Jurídico.')).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByText('Laudo novo · 05/10')).toBeTruthy()
+    expect(screen.getByText(/Laudo novo de 05\/10 enviado ao Jurídico: aguarda a análise/)).toBeTruthy()
+    const subpasta = within(screen.getByRole('list', { name: 'Subpasta Aposentadoria por incapacidade permanente' }))
+    expect(subpasta.getByText('laudo_ortopedia_set2026.pdf')).toBeTruthy()
+    expect(subpasta.getByText('Laudo médico · aguarda a leitura')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Resumo simulado/)
+  })
+
+  it('GGVP-17 CA12 e CA14 · clicar na área abre a janela; documento pessoal vira miniatura em Documentos pessoais', async () => {
+    await abrir('antonio-exemplo')
+    fireEvent.click(screen.getByRole('button', { name: /Solte os documentos do cliente aqui/ }))
+    const janela = within(screen.getByRole('dialog', { name: 'Conferir e enviar' }))
+    fireEvent.change(janela.getByLabelText(/Solte mais arquivos aqui/), { target: { files: [new File(['rg'], 'rg.jpg')] } })
+    const enviar = janela.getByRole('button', { name: 'Enviar para a pasta do cliente' }) as HTMLButtonElement
+    await waitFor(() => expect(enviar.disabled).toBe(false))
+    fireEvent.click(enviar)
+    expect(await screen.findByText('1 arquivo enviado para a pasta do cliente.')).toBeTruthy()
+    const miniaturas = within(screen.getByRole('list', { name: 'Documentos pessoais' })).getAllByRole('listitem')
+    expect(miniaturas).toHaveLength(7)
+    expect(miniaturas.at(-1)?.textContent).toBe('▤Documento pessoal (RG)05/10')
+  })
+
+  it('GGVP-17 CA15 · a ficha que o scanner criou sem telefone mostra "completar telefone"', async () => {
+    await abrir('marta-exemplo')
+    expect(screen.getByText('completar telefone')).toBeTruthy()
+    expect(campo('Telefone / WhatsApp *').value).toBe('')
   })
 })
