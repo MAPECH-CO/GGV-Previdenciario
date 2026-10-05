@@ -1,0 +1,74 @@
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 32px;
+  background: var(--cor-superficie);
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.central {
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  gap: 16px;
+}
+
+.item {
+  padding: 7px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.titulos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chipAcento,
+.chipNeutro {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.chipAcento {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.chipNeutro {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.quem {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  white-space: nowrap;
+}

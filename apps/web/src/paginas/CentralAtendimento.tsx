@@ -12,6 +12,7 @@ import {
   tarefasAtendimento,
   totalTarefasSetorAtendimento,
 } from '../dados/atendimento.ts'
+import { tarefasDoSetor } from '../dados/servidor.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
@@ -22,6 +23,8 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAtendimento() {
   const [aba, setAba] = useState('minhas')
+  // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo.
+  const [tarefas] = useState(() => [...tarefasDoSetor('Documentação · ADM'), ...tarefasAtendimento])
 
   return (
     <>
@@ -42,7 +45,7 @@ export function CentralAtendimento() {
             ativa={aba}
             onMudar={setAba}
             abas={[
-              { id: 'minhas', rotulo: `Minhas tarefas (${tarefasAtendimento.length})` },
+              { id: 'minhas', rotulo: `Minhas tarefas (${tarefas.length})` },
               { id: 'setor', rotulo: `Tarefas do setor (${totalTarefasSetorAtendimento})` },
             ]}
           />
@@ -51,9 +54,9 @@ export function CentralAtendimento() {
               <>
                 <div className={styles.titulo}>
                   <h2 className={styles.tituloTexto}>O que você tem que fazer</h2>
-                  <span className={styles.contagem}>{tarefasAtendimento.length}</span>
+                  <span className={styles.contagem}>{tarefas.length}</span>
                 </div>
-                <ListaTarefas tarefas={tarefasAtendimento} />
+                <ListaTarefas tarefas={tarefas} />
               </>
             ) : (
               <p className={styles.emConstrucao}>Tarefas do setor: tela ainda não construída.</p>

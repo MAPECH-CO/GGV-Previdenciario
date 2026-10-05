@@ -1,0 +1,54 @@
+import type { HTMLAttributes } from 'react'
+import type { ItemCatalogo } from '../dados/catalogos.ts'
+import styles from './Campo.module.css'
+
+type Props = {
+  id: string
+  rotulo: string
+  valor: string
+  aoMudar: (valor: string) => void
+  /** Ao sair do campo: normaliza e valida (a regra vem de regras/formularios.ts, sobre a biblioteca campos). */
+  aoSair?: () => void
+  erro?: string
+  /** Com opções, vira uma lista (select). */
+  opcoes?: ItemCatalogo[]
+  inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
+  maxLength?: number
+  largo?: boolean
+}
+
+/** Campo de formulário das fichas (Figma 73:371 e 73:199): rótulo pequeno, caixa e a mensagem de erro embaixo. */
+export function Campo({ id, rotulo, valor, aoMudar, aoSair, erro, opcoes, inputMode, maxLength, largo }: Props) {
+  const comum = {
+    id,
+    className: styles.entrada,
+    value: valor,
+    onBlur: aoSair,
+    'aria-invalid': erro ? true : undefined,
+    'aria-describedby': erro ? `${id}-erro` : undefined,
+  }
+  return (
+    <div className={`${styles.campo} ${largo ? styles.largo : ''}`}>
+      <label className={styles.rotulo} htmlFor={id}>
+        {rotulo}
+      </label>
+      {opcoes ? (
+        <select {...comum} onChange={(e) => aoMudar(e.target.value)}>
+          <option value="">Escolha…</option>
+          {opcoes.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.nome}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input {...comum} inputMode={inputMode} maxLength={maxLength} onChange={(e) => aoMudar(e.target.value)} />
+      )}
+      {erro && (
+        <p id={`${id}-erro`} className={styles.erro}>
+          {erro}
+        </p>
+      )}
+    </div>
+  )
+}

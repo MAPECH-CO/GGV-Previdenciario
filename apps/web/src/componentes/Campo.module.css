@@ -1,0 +1,34 @@
+.campo {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.largo {
+  flex-basis: 100%;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.entrada {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-6);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+}
+
+.entrada[aria-invalid='true'] {
+  border-color: var(--cor-erro);
+}
+
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-11);
+}

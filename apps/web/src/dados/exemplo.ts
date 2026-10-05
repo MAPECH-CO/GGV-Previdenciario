@@ -1,0 +1,140 @@
+// EXEMPLO. Semente do servidor de exemplo, falsa de propósito: nomes com "Exemplo" e telefones
+// (11) 90000-00xx. São as pessoas da Central (atendimento.ts), para seguir uma pessoa do balcão
+// até o benefício no localhost. Sai quando o servidor de verdade existir.
+import type { Ficha, PastaDrive, Processo } from './tipos.ts'
+
+/** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
+export const CPF_DE_TESTE = '00000000191'
+
+/** Telefone de exemplo número n: (11) 90000-000n. */
+export const telefoneDeExemplo = (n: number) => `1190000${String(n).padStart(4, '0')}`
+
+function pessoa(n: number, id: string, nome: string, resto: Partial<Ficha>): Ficha {
+  return {
+    id,
+    nome,
+    situacao: 'cliente',
+    desde: '01/2026',
+    telefone: telefoneDeExemplo(n),
+    senhaGovNoCofre: false,
+    fichaAtendimentoPreenchida: true,
+    processos: [],
+    agendamentos: [],
+    contatos: [],
+    documentos: [],
+    transcricoes: 0,
+    historico: [],
+    pastaId: `drive-${id}`,
+    ...resto,
+  }
+}
+
+function cliente(n: number, id: string, nome: string, processos: Omit<Processo, 'id'>[], resto: Partial<Ficha> = {}): Ficha {
+  return pessoa(n, id, nome, { processos: processos.map((p, i) => ({ ...p, id: `${id}-${i + 1}` })), ...resto })
+}
+
+/** As fichas de exemplo. `hoje` entra nos agendamentos do dia. */
+export function fichasDeExemplo(hoje: string): Ficha[] {
+  return [
+    cliente(
+      1,
+      'antonio-exemplo',
+      'Antônio Exemplo',
+      [
+        {
+          numero: '0000001-00.2025.4.03.0000',
+          beneficio: 'incapacidade-permanente',
+          etapa: 'Judicial · exigência',
+          proximaAcao: 'cobrar as notas do produtor e a certidão do sindicato (D1.23)',
+          prazo: 'vence em 2 dias',
+          urgente: true,
+        },
+      ],
+      {
+        cpf: CPF_DE_TESTE,
+        desde: '03/2023',
+        idade: 62,
+        estadoCivil: 'Casado',
+        cidadeUf: 'São Paulo / SP',
+        profissao: 'Trabalhador rural (2018–2020) · porteiro (2021–2025)',
+        comoChegou: 'indicacao',
+        indicadoPor: 'Maria Exemplo',
+        contatoPreferido: 'WhatsApp, à tarde',
+        observacoes: 'Prefere atendimento por vídeo.',
+        resumo: 'trabalhador rural aposentando · São Paulo/SP',
+        senhaGovNoCofre: true,
+        laudoNovoEm: '2026-09-29',
+        contatos: [
+          { data: '2026-09-27', canal: 'WhatsApp', texto: 'Avisado da exigência do juiz; vai buscar as notas do produtor.' },
+          { data: '2025-07-12', canal: 'Presencial', texto: 'Assinatura do contrato.' },
+        ],
+        documentos: [
+          { nome: 'RG', detalhe: 'frente e verso' },
+          { nome: 'CPF', detalhe: 'ok' },
+          { nome: 'Comp. residência', detalhe: '08/2026' },
+          { nome: 'CNIS', detalhe: '30/07' },
+          { nome: 'CTPS', detalhe: 'digitalizada' },
+          { nome: 'Procuração', detalhe: '26/09' },
+        ],
+        documentacaoMedica:
+          '3 laudos recebidos · parecer "Suficiente" confirmado pelo Jurídico (G17). O conteúdo dos laudos não é exibido aqui.',
+        transcricoes: 2,
+      },
+    ),
+    pessoa(2, 'josefa-exemplo', 'Josefa Exemplo', {
+      situacao: 'lead',
+      desde: '09/2026',
+      beneficioInteresse: 'loas-idoso',
+      fichaAtendimentoPreenchida: false,
+      agendamentos: [{ id: 'josefa-entrevista', data: hoje, hora: '15:30', oQue: 'Entrevista', com: 'Dra. Paula' }],
+      contatos: [{ data: '2026-09-29', canal: 'WhatsApp', texto: 'Perguntou do LOAS; marcou a entrevista.' }],
+    }),
+    // Mãe e filha com o mesmo celular (CA9).
+    pessoa(3, 'natalia-exemplo', 'Natália Exemplo', {
+      situacao: 'lead',
+      desde: '10/2026',
+      beneficioInteresse: 'incapacidade-temporaria',
+      contatos: [{ data: '2026-10-02', canal: 'WhatsApp', texto: 'Quer saber do auxílio por incapacidade.' }],
+      pastaId: undefined,
+    }),
+    cliente(3, 'nair-exemplo', 'Nair Exemplo', [
+      { beneficio: 'aposentadoria-idade', etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' },
+    ]),
+    cliente(4, 'maria-exemplo', 'Maria Exemplo', [
+      { beneficio: 'incapacidade-temporaria', etapa: 'Administrativo · perícia em 02/10', proximaAcao: 'cobrar o laudo que a perícia pede', prazo: 'vence hoje', urgente: true },
+    ]),
+    // Dois benefícios, dois processos, uma ficha.
+    cliente(
+      5,
+      'cleide-exemplo',
+      'Cleide Exemplo',
+      [
+        { beneficio: 'aposentadoria-pcd', etapa: 'Contrato · conferência', proximaAcao: 'conferir o contrato', prazo: 'hoje' },
+        { beneficio: 'aposentadoria-especial', etapa: 'Contrato assinado em 12/07', proximaAcao: 'entregar a cópia do contrato', prazo: 'hoje', urgente: true },
+      ],
+      { agendamentos: [{ id: 'cleide-retirada', data: hoje, hora: '16:00', oQue: 'Retirada da cópia do contrato' }] },
+    ),
+    cliente(6, 'marta-exemplo', 'Marta Exemplo', [{ beneficio: 'loas-deficiente', etapa: 'Benefício deferido', proximaAcao: 'agendar a ida ao banco' }]),
+    cliente(10, 'rita-exemplo', 'Rita Exemplo', [
+      { beneficio: 'loas-deficiente', etapa: 'Documentação · conferência', proximaAcao: 'conferir os documentos do balcão', prazo: 'hoje', urgente: true },
+    ]),
+    cliente(7, 'sebastiao-exemplo', 'Sebastião Exemplo', [
+      { beneficio: 'auxilio-acidente', etapa: 'Documentação · liberar ao Jurídico', proximaAcao: 'conferir a documentação', prazo: 'amanhã' },
+    ]),
+    cliente(8, 'pedro-exemplo', 'Pedro Exemplo', [
+      { beneficio: 'loas-idoso', etapa: 'Administrativo · exigência do INSS', proximaAcao: 'responder a exigência', prazo: 'vence em 2 dias', urgente: true },
+    ]),
+    cliente(9, 'lucia-exemplo', 'Lúcia Exemplo', [
+      { beneficio: 'pensao-morte', etapa: 'Judicial · sentença procedente', proximaAcao: 'avisar a cliente depois do OK da advogada', prazo: 'hoje', urgente: true },
+    ]),
+  ]
+}
+
+/** Pastas do Drive simulado: uma por ficha e duas com o mesmo nome, para o portal perguntar qual usar. */
+export function pastasDeExemplo(fichas: Ficha[]): PastaDrive[] {
+  return [
+    ...fichas.filter((f) => f.pastaId).map((f) => ({ id: f.pastaId!, nome: f.nome, caminho: 'Clientes', cpf: f.cpf })),
+    { id: 'drive-rosa-1', nome: 'Rosa Exemplo', caminho: 'Clientes/2024' },
+    { id: 'drive-rosa-2', nome: 'ROSA EXEMPLO', caminho: 'Scanner/antigos' },
+  ]
+}
