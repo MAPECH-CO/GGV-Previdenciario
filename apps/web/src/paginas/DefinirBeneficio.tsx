@@ -8,6 +8,7 @@ import { BENEFICIOS, nomeBeneficio } from '../dados/catalogos.ts'
 import { agora } from '../dados/servidor.ts'
 import type { Ficha } from '../dados/tipos.ts'
 import { requisitosDoBeneficio } from '../regras/beneficio.ts'
+import { exigeCalculo } from '../regras/calculo.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import styles from './Balcao.module.css'
 import proprio from './DefinirBeneficio.module.css'
@@ -204,8 +205,17 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                 ✓ Benefício definido: {nomeBeneficio(feito.beneficioDefinido!.beneficio)}
               </h2>
               <p>Ficou registrado quem decidiu, a sugestão exibida e os casos do acervo consultados.</p>
-              <p>Depois: «O cliente fechou com o escritório?» (D1.14).</p>
+              <p>
+                {exigeCalculo(feito.beneficioDefinido!.beneficio)
+                  ? 'Depois: «Calcular tempo e pontos» (D1.13), obrigatório antes do fechamento. A tarefa foi para o advogado do atendimento.'
+                  : 'Depois: «O cliente fechou com o escritório?» (D1.14).'}
+              </p>
               <div className={styles.atalhos}>
+                {exigeCalculo(feito.beneficioDefinido!.beneficio) && (
+                  <a className={styles.atalho} href={`/entrevista/${agendamentoId}/calculo`}>
+                    Abrir o cálculo (D1.13)
+                  </a>
+                )}
                 <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
                   Abrir a ficha do cliente
                 </a>
@@ -280,7 +290,10 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
           <p>Conferir: Conferi a recomendação com a entrevista</p>
           <p className={styles.ladoSub}>«Confirmar benefício» só habilita com os campos com * preenchidos e as conferências marcadas.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
-          <p>Um caso, um benefício. Depois: «O cliente fechou com o escritório?» (D1.14).</p>
+          <p>
+            Um caso, um benefício. Com cálculo: «Calcular tempo e pontos» (D1.13). Sem cálculo: «O cliente fechou com o escritório?»
+            (D1.14).
+          </p>
         </aside>
       </main>
       <AbaSuporte />

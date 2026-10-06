@@ -2,12 +2,13 @@
 // do acervo simulado (acervo.ts) e os requisitos numéricos do código (G19). Não cria processo, contrato nem kit: o caso
 // fica com um benefício só (CA8). Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da design.md.
 import { beneficioCitado, requisitosDoBeneficio } from '../regras/beneficio.ts'
-import { hojeIso } from '../regras/datas.ts'
+import { exigeCalculo } from '../regras/calculo.ts'
+import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { sugerirPeloAcervo } from './acervo.ts'
 import { BENEFICIOS, nomeBeneficio } from './catalogos.ts'
 import { cnisDeExemplo } from './exemplo.ts'
 import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Agendamento, Cnis, DecisaoDoBeneficio, Ficha, Gravacao, SugestaoDoBeneficio, Vinculo } from './tipos.ts'
+import type { Agendamento, Cnis, DecisaoDoBeneficio, Ficha, Gravacao, SugestaoDoBeneficio, TarefaEncaminhada, Vinculo } from './tipos.ts'
 
 /** EXEMPLO. O CNIS anexado ao caso. Ligar no servidor: o arquivo da pasta do caso, lido na renovação da senha ou no balcão. */
 export function cnisDoCaso(fichaId: string): Cnis | undefined {
@@ -74,7 +75,7 @@ export async function obterDefinicao(agendamentoId: string): Promise<Definicao |
  * POST /api/entrevistas/:id/beneficio. Guarda o benefício final, quem decidiu, o citado, a sugestão e os casos consultados
  * (CA6); recusar a sugestão vai ao histórico (CA3); trocar substitui, com o anterior no histórico (CA8).
  */
-export async function definirBeneficio(agendamentoId: string, decisao: DecisaoDoBeneficio): Promise<{ ficha: Ficha }> {
+export async function definirBeneficio(agendamentoId: string, decisao: DecisaoDoBeneficio): Promise<{ ficha: Ficha; tarefa?: TarefaEncaminhada }> {
   await esperar()
   const motivo = decisao.motivoDaRecusa?.trim()
   const valida =
@@ -116,8 +117,41 @@ export async function definirBeneficio(agendamentoId: string, decisao: DecisaoDo
       ),
     )
   }
-  const tarefa = banco.tarefas.find((t) => t.id === `definir-${ficha.id}`)
-  if (tarefa) tarefa.concluida = true
+  const definir = banco.tarefas.find((t) => t.id === `definir-${ficha.id}`)
+  if (definir) definir.concluida = true
+  const tarefa = tarefaDoCalculo(banco, ficha, agendamentoId, decisao.beneficio)
   gravar(banco)
-  return { ficha }
+  return { ficha, tarefa }
+}
+
+/**
+ * Benefício da lista "com cálculo": o advogado do atendimento recebe "Calcular tempo e pontos" (D1.13, GGVP-57),
+ * obrigatório antes do fechamento. Trocar para um sem cálculo tira a tarefa aberta da fila.
+ */
+function tarefaDoCalculo(banco: Banco, ficha: Ficha, agendamentoId: string, beneficio: string): TarefaEncaminhada | undefined {
+  const id = `calcular-${ficha.id}`
+  const aberta = banco.tarefas.find((t) => t.id === id && !t.concluida)
+  if (!exigeCalculo(beneficio)) {
+    if (aberta) aberta.concluida = true
+    return undefined
+  }
+  if (aberta) return aberta
+  const cnis = cnisDoCaso(ficha.id)
+  const hoje = hojeIso(agora())
+  const tarefa: TarefaEncaminhada = {
+    id,
+    codigo: 'D1.13',
+    cliente: { id: ficha.id, nome: ficha.nome },
+    acao: 'Calcular tempo e pontos',
+    detalhe: [
+      nomeBeneficio(beneficio),
+      cnis ? `CNIS ${cnis.origem === 'meu-inss' ? 'do Meu INSS' : 'impresso'} de ${dataCurta(cnis.extraidoEm, hoje)}` : 'sem CNIS no caso',
+      'obrigatório antes do fechamento',
+    ].join(' · '),
+    prazo: 'antes do fechamento',
+    href: `/entrevista/${agendamentoId}/calculo`,
+    setor: 'Atendimento',
+  }
+  banco.tarefas.push(tarefa)
+  return tarefa
 }

@@ -18,6 +18,7 @@ import { RenovarSenha } from './paginas/RenovarSenha.tsx'
 import { SegundaFicha } from './paginas/SegundaFicha.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
 import { DefinirBeneficio } from './paginas/DefinirBeneficio.tsx'
+import { CalcularTempo } from './paginas/CalcularTempo.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 export function App({ caminho = window.location.pathname, busca = window.location.search }: { caminho?: string; busca?: string }) {
@@ -54,5 +55,7 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (ficha) return <FichaCliente id={decodeURIComponent(ficha[1])} />
   const beneficio = /^\/entrevista\/([^/]+)\/beneficio$/.exec(caminho)
   if (beneficio) return <DefinirBeneficio agendamentoId={decodeURIComponent(beneficio[1])} />
+  const calculo = /^\/entrevista\/([^/]+)\/calculo$/.exec(caminho)
+  if (calculo) return <CalcularTempo agendamentoId={decodeURIComponent(calculo[1])} />
   return <NaoConstruida caminho={caminho} />
 }

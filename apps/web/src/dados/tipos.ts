@@ -179,6 +179,8 @@ export type Ficha = {
   origem?: 'scanner'
   /** O benefício do caso, decidido pela advogada (GGVP-51). Um só: outro benefício é processo novo (GGVP-124). */
   beneficioDefinido?: BeneficioDefinido
+  /** Os cálculos de tempo e pontos sobre o CNIS, do mais antigo ao mais novo: refazer não apaga o anterior (GGVP-57). */
+  calculos?: Calculo[]
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -749,3 +751,27 @@ export type Vinculo = { empresa: string; inicio: string; fim?: string }
 
 /** O CNIS anexado ao caso: impresso pelo cliente ou baixado do Meu INSS (GGVP-57, CA4). */
 export type Cnis = { fichaId: string; origem: 'meu-inss' | 'impresso'; /** aaaa-mm-dd */ extraidoEm: string; vinculos: Vinculo[] }
+
+// GGVP-57 em diante: o cálculo de tempo e pontos sobre o CNIS. Espelho do Zod da design.md da change ggvp-6.
+
+export type TempoDeContribuicao = { anos: number; meses: number; dias: number }
+
+/** "Concluir": os números que o advogado calculou sobre o CNIS, nunca da IA (CA5, CA7, G19). */
+export type RegistroDoCalculo =
+  | { podeAposentar: true; tempo: TempoDeContribuicao; pontos: number; regra: string; conferi: true }
+  | { podeAposentar: false; tempo: TempoDeContribuicao; pontos: number; regra: string; /** dd/mm/aaaa */ dataPrevista: string; conferi: true }
+
+export type Calculo = {
+  tempo: TempoDeContribuicao
+  pontos: number
+  regra: string
+  podeAposentar: boolean
+  /** aaaa-mm-dd: quando poderá se aposentar, no "Ainda não" (CA2). */
+  dataPrevista?: string
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+  /** O CNIS usado: de onde veio e quando foi extraído (CA4). */
+  cnisOrigem: Cnis['origem']
+  cnisExtraidoEm: string
+}
