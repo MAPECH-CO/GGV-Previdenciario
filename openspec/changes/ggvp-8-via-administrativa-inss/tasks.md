@@ -16,4 +16,4 @@
 - [x] 2.2 CA1, CA2, CA3, CA5, CA6, CA7 · Rota `POST /api/casos/:id/pericia`: decisão com autora e horário, perícia por tipo, tarefa do Jurídico administrativo aberta pelo sistema, junção; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 2.3 Tela "Decidir perícia" ("Definir" só com a resposta); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 2.4 Playwright: a advogada decide e a tarefa aparece para o Jurídico administrativo; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 2.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 2.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
