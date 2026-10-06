@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Tratar exigência do INSS: a advogada decide o que a exigência pede e o sistema transforma cada pedido em tarefa com prazo; a Documentação cobra o cliente, junta a prova de cada item e responde no portal do INSS; a perícia pedida abre a tarefa do Jurídico administrativo. Respostas do revisor de 05/10: limites de cobrança são configuração do escritório (Q1, GGVP-104); a resposta redigida pela IA é opcional e fica fora deste grupo; prazo vencido com item pendente sobe para a Sênior com "pedir dilação ou registrar a perda".
+Tratar exigência do INSS: a advogada decide o que a exigência pede e o sistema transforma cada pedido em tarefa com prazo; a Documentação cobra o cliente, junta a prova de cada item e responde no portal do INSS; a perícia pedida abre a tarefa do Jurídico administrativo. Respostas do revisor de 05/10: limites de cobrança são configuração do escritório (Q1, GGVP-104); a resposta redigida pela IA é opcional e fica fora deste grupo; prazo vencido com item pendente sobe para a Sênior com "pedir dilação ou registrar a perda". Ajuste do Mateus na homologação local de 05/10: quem acessa o portal do INSS do cliente é o Jurídico, então a Documentação entrega as provas e a advogada responde.
 
 ## ADDED Requirements
 
@@ -22,20 +22,20 @@ Escolher "Perícia" SHALL abrir sozinho a tarefa de perícia para o Jurídico ad
 - **Quando** escolho "Perícia"
 - **Então** o sistema abre sozinho a tarefa de perícia para o Jurídico administrativo, e com o resultado no card o caso volta para a vigília
 
-### Requirement: CA3 · A Documentação responde no portal com o documento
-Com o documento no card, a própria Documentação SHALL responder a exigência no portal do INSS anexando o documento. Se a exigência também pede perícia, a resposta SHALL abrir a tarefa de perícia para o Jurídico administrativo.
+### Requirement: CA3 · A Documentação entrega; o Jurídico responde no portal
+Com o documento de cada item no card, a Documentação SHALL entregar as provas ao Jurídico, e a advogada SHALL responder a exigência no portal do INSS com esses documentos (ajuste de 05/10: só o Jurídico acessa o portal do cliente). Se a exigência também pede perícia, a resposta SHALL abrir a tarefa de perícia para o Jurídico administrativo.
 
 #### Scenario: CA3 · Documento conseguido
 - **Dado** o documento conseguido
-- **Quando** a Documentação sobe no card
-- **Então** a própria Documentação responde a exigência no portal do INSS, anexando o documento; se a exigência também pede perícia, o caso entra na perícia e o Jurídico administrativo marca
+- **Quando** a Documentação sobe no card e entrega ao Jurídico
+- **Então** a advogada responde a exigência no portal do INSS, anexando o documento; se a exigência também pede perícia, o caso entra na perícia e o Jurídico administrativo marca
 
 ### Requirement: CA4 · Resposta registrada devolve o caso à vigília
-Registrar a resposta MUST exigir a data da resposta no portal e o comprovante anexado, e SHALL devolver o caso à vigília, esperando o INSS analisar a resposta (espera externa `D2.E4`, código proposto).
+Registrar a resposta, pela advogada, MUST exigir a data da resposta no portal e o comprovante anexado, e SHALL devolver o caso à vigília, esperando o INSS analisar a resposta (espera externa `D2.E4`, código proposto).
 
 #### Scenario: CA4 · Resposta enviada
 - **Dado** a resposta enviada
-- **Quando** a Documentação registra a data da resposta no portal e anexa o comprovante
+- **Quando** a advogada registra a data da resposta no portal e anexa o comprovante
 - **Então** o caso volta para a vigília e espera o INSS analisar a resposta
 
 ### Requirement: CA5 · Limite de cobranças sobe para a Sênior
@@ -102,12 +102,12 @@ Cada cobrança ao cliente SHALL registrar data, canal e resultado e contar no li
 - **Quando** a Documentação cobra
 - **Então** cada cobrança registra data, canal e resultado e conta no limite; o caso espera o cliente entregar o documento
 
-### Requirement: CA13 · Só responde com prova em todos os itens (G21)
-Responder a exigência no portal MUST exigir documento anexado em todos os itens; faltando um, o portal recusa.
+### Requirement: CA13 · Só entrega e só responde com prova em todos os itens (G21)
+Entregar ao Jurídico e responder a exigência no portal MUST exigir documento anexado em todos os itens; faltando um, o portal recusa.
 
 #### Scenario: CA13 · Vários itens
 - **Dado** uma exigência com vários itens
-- **Quando** a Documentação tenta responder no portal
+- **Quando** a Documentação tenta entregar ao Jurídico
 - **Então** só consegue com documento anexado em todos os itens
 
 ### Requirement: CA14 · Perto do vencimento, a Sênior é avisada

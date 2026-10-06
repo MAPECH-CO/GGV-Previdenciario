@@ -41,6 +41,8 @@ export const ExigenciaDoCaso = z.object({
     .nullable(),
   podeDecidir: z.boolean(),
   podeCumprir: z.boolean(),
+  /** A advogada responde no portal do INSS depois que a Documentação entrega as provas (ajuste do Mateus em 05/10). */
+  podeResponder: z.boolean(),
   podeDecidirVencida: z.boolean(),
 })
 export type ExigenciaDoCaso = z.infer<typeof ExigenciaDoCaso>
@@ -81,7 +83,7 @@ export const CumprirItem = z.discriminatedUnion(
 )
 export type CumprirItem = z.infer<typeof CumprirItem>
 
-/** POST /api/casos/:id/exigencia/resposta (CA4): data da resposta no portal; o comprovante vai no mesmo envio. */
+/** POST /api/casos/:id/exigencia/resposta (CA4, advogada): data da resposta no portal; o comprovante vai no mesmo envio. */
 export const ResponderExigencia = z.object({
   dataResposta: DataObrigatoria('Informe a data da resposta no portal (dd/mm/aaaa)').refine(naoFutura, 'A data da resposta não pode ser no futuro'),
 })

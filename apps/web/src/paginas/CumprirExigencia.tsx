@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { hojeIso, isoParaData } from '@ggv/campos'
-import { CANAIS_DE_COBRANCA, RESULTADOS_DE_COBRANCA, RegistrarCobranca, ResponderExigencia, type ExigenciaDoCaso } from '@ggv/contratos'
+import { isoParaData } from '@ggv/campos'
+import { CANAIS_DE_COBRANCA, RESULTADOS_DE_COBRANCA, RegistrarCobranca, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 import { ResumoDaExigencia } from './TratarExigencia.tsx'
@@ -76,17 +76,15 @@ function LinhaDoItem({ casoId, item, aoMudar }: { casoId: string; item: Item; ao
 }
 
 /**
- * Cumprir exigência do INSS (GGVP-39, Documentação): cobra o cliente (G15), junta a prova de cada item e responde no
- * portal do INSS. "Anexar e responder" só libera com documento em todos os itens (G21); o servidor confere de novo.
+ * Cumprir exigência do INSS (GGVP-39, Documentação): cobra o cliente (G15), junta a prova de cada item e entrega ao
+ * Jurídico, que responde no portal do INSS. "Entregar ao Jurídico" só libera com documento em todos os itens (G21).
  */
 export function CumprirExigencia({ casoId }: { casoId: string }) {
-  const ids = { canal: useId(), resultado: useId(), data: useId(), comprovante: useId() }
+  const ids = { canal: useId(), resultado: useId() }
   const [x, setX] = useState<ExigenciaDoCaso | null>(null)
   const [versao, setVersao] = useState(0)
   const [canal, setCanal] = useState('')
   const [resultado, setResultado] = useState('')
-  const [dataResposta, setDataResposta] = useState(() => hojeIso())
-  const [comprovante, setComprovante] = useState<File | null>(null)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const recarregar = () => setVersao((v) => v + 1)
@@ -106,23 +104,11 @@ export function CumprirExigencia({ casoId }: { casoId: string }) {
     recarregar()
   }
 
-  async function responder(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault()
-    const data = isoParaData(dataResposta) ?? ''
-    const entrada = ResponderExigencia.safeParse({ dataResposta: data })
-    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
-    if (!comprovante) return setErro('Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).')
-    const dados = new FormData()
-    dados.set('dataResposta', data)
-    dados.set('arquivo', comprovante)
-    const r = await chamarApi<{ aberto: string }>(`/casos/${casoId}/exigencia/resposta`, { method: 'POST', corpo: dados })
+  async function entregar() {
+    const r = await chamarApi(`/casos/${casoId}/exigencia/entrega`, { method: 'POST' })
     if (!r.ok) return setErro(r.erro)
     setErro('')
-    setFeito(
-      r.dados.aberto === 'pericia'
-        ? 'Resposta registrada. A exigência também pede perícia: o Jurídico administrativo recebeu a tarefa.'
-        : 'Resposta registrada. O caso voltou para a vigília e espera o INSS analisar.',
-    )
+    setFeito('Provas entregues. A advogada recebeu a tarefa de responder no portal do INSS.')
     recarregar()
   }
 
@@ -220,23 +206,17 @@ export function CumprirExigencia({ casoId }: { casoId: string }) {
             </div>
           </form>
 
-          <form className={styles.cartao} onSubmit={responder} noValidate>
-            <h2 className={styles.cartaoTitulo}>Responder no portal do INSS</h2>
-            {!tudoComProva && <p className={styles.dica}>Só libera com documento anexado em todos os itens (G21).</p>}
-            <label className={styles.rotulo} htmlFor={ids.data}>
-              Data da resposta no portal
-            </label>
-            <input id={ids.data} className={styles.campo} type="date" max={hojeIso()} value={dataResposta} onChange={(e) => setDataResposta(e.target.value)} />
-            <label className={styles.rotulo} htmlFor={ids.comprovante}>
-              Comprovante da resposta
-            </label>
-            <input id={ids.comprovante} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setComprovante(e.target.files?.[0] ?? null)} />
+          <section className={styles.cartao} aria-label="Entregar ao Jurídico">
+            <h2 className={styles.cartaoTitulo}>Entregar ao Jurídico</h2>
+            <p className={styles.dica}>
+              Quem responde no portal do INSS é o Jurídico. {tudoComProva ? 'Todos os itens têm documento.' : 'Só libera com documento em todos os itens (G21).'}
+            </p>
             <div className={styles.acoes}>
-              <button type="submit" className={styles.botao} disabled={!tudoComProva}>
-                Anexar e responder
+              <button type="button" className={styles.botao} disabled={!tudoComProva} onClick={() => void entregar()}>
+                Entregar ao Jurídico
               </button>
             </div>
-          </form>
+          </section>
         </>
       )}
     </main>

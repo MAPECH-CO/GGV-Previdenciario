@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/campos'
-import { DecidirExigencia, DecidirVencida, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
+import { DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -29,6 +29,57 @@ export function ResumoDaExigencia({ x }: { x: ExigenciaDoCaso }) {
       {x.regraPrazo && <p className={styles.dica}>Contado pelo sistema, pelo lado seguro (G12): {x.regraPrazo}.</p>}
       {!x.feriadosCadastrados && <p className={styles.dica}>Feriados não cadastrados: por enquanto o prazo só pula sábado e domingo.</p>}
     </section>
+  )
+}
+
+/** CA3, CA4: a advogada responde no portal do INSS com as provas que a Documentação entregou e registra aqui. */
+function ResponderNoPortal({ casoId, aoResponder }: { casoId: string; aoResponder: (texto: string) => void }) {
+  const ids = { data: useId(), comprovante: useId() }
+  const [dataResposta, setDataResposta] = useState(() => hojeIso())
+  const [comprovante, setComprovante] = useState<File | null>(null)
+  const [erro, setErro] = useState('')
+
+  async function responder(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    const data = isoParaData(dataResposta) ?? ''
+    const entrada = ResponderExigencia.safeParse({ dataResposta: data })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
+    if (!comprovante) return setErro('Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).')
+    const dados = new FormData()
+    dados.set('dataResposta', data)
+    dados.set('arquivo', comprovante)
+    const r = await chamarApi<{ aberto: string }>(`/casos/${casoId}/exigencia/resposta`, { method: 'POST', corpo: dados })
+    if (!r.ok) return setErro(r.erro)
+    aoResponder(
+      r.dados.aberto === 'pericia'
+        ? 'Resposta registrada. A exigência também pede perícia: o Jurídico administrativo recebeu a tarefa.'
+        : 'Resposta registrada. O caso voltou para a vigília e espera o INSS analisar.',
+    )
+  }
+
+  return (
+    <form className={styles.cartao} onSubmit={responder} noValidate>
+      <h2 className={styles.cartaoTitulo}>Responder no portal do INSS</h2>
+      <p className={styles.dica}>A Documentação já entregou o documento de cada item. Responda no portal e registre aqui.</p>
+      <label className={styles.rotulo} htmlFor={ids.data}>
+        Data da resposta no portal
+      </label>
+      <input id={ids.data} className={styles.campo} type="date" max={hojeIso()} value={dataResposta} onChange={(e) => setDataResposta(e.target.value)} />
+      <label className={styles.rotulo} htmlFor={ids.comprovante}>
+        Comprovante da resposta
+      </label>
+      <input id={ids.comprovante} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setComprovante(e.target.files?.[0] ?? null)} />
+      {erro && (
+        <p className={styles.erro} role="alert">
+          {erro}
+        </p>
+      )}
+      <div className={styles.acoes}>
+        <button type="submit" className={styles.botao}>
+          Registrar a resposta
+        </button>
+      </div>
+    </form>
   )
 }
 
@@ -236,6 +287,7 @@ export function TratarExigencia({ casoId }: { casoId: string }) {
                 {x.itens.map((i) => (
                   <li key={i.id}>
                     {i.descricao} · {ROTULO_ITEM[i.situacao]}
+                    {i.prova ? ` · ${i.prova}` : ''}
                     {i.motivo ? ` (${i.motivo})` : ''}
                   </li>
                 ))}
@@ -255,6 +307,16 @@ export function TratarExigencia({ casoId }: { casoId: string }) {
             )}
           </section>
         )
+      )}
+
+      {x.podeResponder && (
+        <ResponderNoPortal
+          casoId={casoId}
+          aoResponder={(texto) => {
+            setFeito(texto)
+            setVersao((v) => v + 1)
+          }}
+        />
       )}
 
       {x.podeDecidirVencida && (

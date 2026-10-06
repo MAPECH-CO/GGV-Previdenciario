@@ -24,6 +24,7 @@ const base = {
   card: null,
   podeDecidir: true,
   podeCumprir: false,
+  podeResponder: false,
   podeDecidirVencida: false,
 }
 const comCard = {
@@ -95,12 +96,25 @@ describe('Tratar exigência do INSS (GGVP-39)', () => {
   })
 })
 
+describe('Responder no portal (GGVP-39, advogada)', () => {
+  it('CA4 · com as provas entregues, a advogada registra data e comprovante e vê a volta à vigília', async () => {
+    servidor({ ...comCard, podeCumprir: false, podeResponder: true, itens: [{ ...comCard.itens[0], situacao: 'cumprido', prova: 'cad.pdf' }] }, [201, { ok: true, aberto: 'vigilia' }])
+    render(<TratarExigencia casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Registrar a resposta' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).')
+    fireEvent.change(screen.getByLabelText('Comprovante da resposta'), { target: { files: [new File(['%PDF'], 'r.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar a resposta' }))
+    expect((await screen.findByRole('status')).textContent).toContain('voltou para a vigília')
+  })
+})
+
 describe('Cumprir exigência do INSS (GGVP-39, Documentação)', () => {
-  it('CA11 e CA13 · itens com status; "Anexar e responder" travado com item pendente', async () => {
+  it('CA11 e CA13 · itens com status; "Entregar ao Jurídico" travado com item pendente; a Documentação não responde no portal', async () => {
     servidor(comCard)
     render(<CumprirExigencia casoId={CASO} />)
     expect((await screen.findByText('CadÚnico')).parentElement!.textContent).toContain('Pendente')
-    expect((screen.getByRole('button', { name: 'Anexar e responder' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Entregar ao Jurídico' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByLabelText('Comprovante da resposta')).toBeNull()
     expect(screen.getByText(/Cobranças: 1 de 3/)).toBeTruthy()
   })
 
@@ -111,14 +125,10 @@ describe('Cumprir exigência do INSS (GGVP-39, Documentação)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Escolha o canal da cobrança')
   })
 
-  it('CA4 · com tudo cumprido, responde com data e comprovante e avisa a volta à vigília', async () => {
-    servidor({ ...comCard, itens: [{ ...comCard.itens[0], situacao: 'cumprido', prova: 'cad.pdf' }] }, [201, { ok: true, aberto: 'vigilia' }])
+  it('CA13 · com tudo cumprido, entrega ao Jurídico', async () => {
+    servidor({ ...comCard, itens: [{ ...comCard.itens[0], situacao: 'cumprido', prova: 'cad.pdf' }] })
     render(<CumprirExigencia casoId={CASO} />)
-    const botao = await screen.findByRole('button', { name: 'Anexar e responder' })
-    fireEvent.click(botao)
-    expect((await screen.findByRole('alert')).textContent).toBe('Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).')
-    fireEvent.change(screen.getByLabelText('Comprovante da resposta'), { target: { files: [new File(['%PDF'], 'r.pdf', { type: 'application/pdf' })] } })
-    fireEvent.click(botao)
-    expect((await screen.findByRole('status')).textContent).toContain('voltou para a vigília')
+    fireEvent.click(await screen.findByRole('button', { name: 'Entregar ao Jurídico' }))
+    expect((await screen.findByRole('status')).textContent).toContain('A advogada recebeu a tarefa de responder')
   })
 })

@@ -17,6 +17,7 @@ export const MSG_SEM_CARD = 'Esta exigência não tem card da Documentação abe
 export const MSG_G21 = 'Só responde com documento anexado em todos os itens (G21).'
 export const MSG_COMPROVANTE_RESPOSTA = 'Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).'
 export const MSG_PROVA = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
+export const MSG_SEM_ENTREGA = 'A Documentação ainda não entregou as provas ao Jurídico.'
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -43,6 +44,15 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
         .select()
         .from(tarefa)
         .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.05d'), inArray(tarefa.situacao, [...ABERTAS])))
+        .limit(1)
+    )[0] ?? null
+
+  const respostaPendente = async (casoId: string) =>
+    (
+      await banco
+        .select({ id: tarefa.id })
+        .from(tarefa)
+        .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.05r'), isNull(tarefa.concluidaEm)))
         .limit(1)
     )[0] ?? null
 
@@ -124,6 +134,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
           : null,
         podeDecidir: pode(pedido.perfilAtivo, 'exigencia_inss.tratar') && x.pede === null && x.situacao === 'aberta',
         podeCumprir: pode(pedido.perfilAtivo, 'exigencia_inss.cumprir') && Boolean(cardAtivo),
+        podeResponder: pode(pedido.perfilAtivo, 'exigencia_inss.tratar') && Boolean(await respostaPendente(casoId)),
         podeDecidirVencida: pode(pedido.perfilAtivo, 'exigencia_inss.decidir_vencida') && vencida,
       })
     },
@@ -248,17 +259,44 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
     },
   )
 
-  // CA3, CA4, CA6, CA13 (G21): responde só com prova em todos os itens; com perícia pedida, abre a perícia; senão, vigília.
+  // CA13 (G21): a Documentação entrega as provas ao Jurídico só com documento em todos os itens. Quem acessa o portal do
+  // INSS do cliente é o Jurídico, então a resposta é da advogada (ajuste do Mateus em 05/10).
+  app.post<{ Params: { id: string } }>(
+    '/api/casos/:id/exigencia/entrega',
+    { preHandler: exigir(banco, 'exigencia_inss.cumprir', agora) },
+    async (pedido, resposta) => {
+      const casoId = pedido.params.id
+      const card = await cardAberto(casoId)
+      if (!card) return negar(resposta, 409, MSG_SEM_CARD)
+      const x = (await ultimaExigencia(casoId))!
+      const itens = await itensDa(x.id)
+      if (itens.length === 0 || itens.some((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId)) return negar(resposta, 409, MSG_G21)
+      const quem = pedido.usuario!.id
+      const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }
+      await banco.transaction(async (tx) => {
+        await tx.update(tarefa).set(fechar).where(eq(tarefa.id, card.id))
+        await tx
+          .update(etapa)
+          .set(fechar)
+          .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D2.E3'), isNull(etapa.concluidaEm)))
+        await tx.insert(tarefa).values({ casoId, passo: 'D2.05r', titulo: 'Responder exigência no portal do INSS', perfilDono: 'advogada' })
+      })
+      await historico(quem, 'provas_entregues_ao_juridico', pedido, `caso:${casoId}`, { itens: itens.length })
+      return resposta.code(201).send({ ok: true })
+    },
+  )
+
+  // CA3, CA4, CA6 (advogada): com as provas entregues, responde no portal; com perícia pedida, abre a perícia; senão, vigília.
   app.post<{ Params: { id: string } }>(
     '/api/casos/:id/exigencia/resposta',
-    { preHandler: exigir(banco, 'exigencia_inss.cumprir', agora) },
+    { preHandler: exigir(banco, 'exigencia_inss.tratar', agora) },
     async (pedido, resposta) => {
       const casoId = pedido.params.id
       const formulario = await lerFormulario(pedido)
       if (!formulario) return negar(resposta, 400, MSG_COMPROVANTE_RESPOSTA)
       const entrada = ResponderExigencia.safeParse(formulario.campos)
       if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
-      if (!(await cardAberto(casoId))) return negar(resposta, 409, MSG_SEM_CARD)
+      if (!(await respostaPendente(casoId))) return negar(resposta, 409, MSG_SEM_ENTREGA)
       const x = (await ultimaExigencia(casoId))!
       const itens = await itensDa(x.id)
       if (itens.length === 0 || itens.some((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId)) return negar(resposta, 409, MSG_G21)
@@ -274,11 +312,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
         await tx
           .update(tarefa)
           .set(fechar)
-          .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D2.05', 'D2.05d']), isNull(tarefa.concluidaEm)))
-        await tx
-          .update(etapa)
-          .set(fechar)
-          .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D2.E3'), isNull(etapa.concluidaEm)))
+          .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D2.05', 'D2.05d', 'D2.05r']), isNull(tarefa.concluidaEm)))
         if (tipos.length) await abrirPericiasDaExigencia(tx, casoId, tipos, quem, agora())
         else await esperarAnaliseDoInss(tx, casoId, agora())
       })
@@ -307,7 +341,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
           await tx
             .update(tarefa)
             .set({ situacao: 'cancelada', concluidaEm: agora(), concluidaPor: quem })
-            .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D2.05', 'D2.05d']), isNull(tarefa.concluidaEm)))
+            .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D2.05', 'D2.05d', 'D2.05r']), isNull(tarefa.concluidaEm)))
         }
       })
       await historico(quem, d.decisao === 'dilacao' ? 'exigencia_dilacao_pedida' : 'exigencia_perdida', pedido, `caso:${casoId}`, d)

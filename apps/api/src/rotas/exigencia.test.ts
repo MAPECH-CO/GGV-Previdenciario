@@ -10,7 +10,7 @@ import { caso, configuracao, etapa, exigencia, exigenciaItem, pericia, pessoa, t
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_G21, MSG_JA_DECIDIDA } from './exigencia.ts'
+import { MSG_G21, MSG_JA_DECIDIDA, MSG_SEM_ENTREGA } from './exigencia.ts'
 
 const SENHA = 'senha-do-portal-1'
 const AGORA = new Date('2026-10-05T15:00:00Z') // segunda-feira
@@ -38,8 +38,9 @@ const cobrar = async (resultado: string) =>
   app.inject({ method: 'POST', url: url('/cobrancas'), cookies: await cookieDe('dora'), payload: { canal: 'whatsapp', resultado } })
 const cumprir = async (item: string, campos: Record<string, string> = { acao: 'cumprido' }, arquivo: typeof PDF | null = PDF) =>
   app.inject({ method: 'POST', url: url(`/itens/${item}`), cookies: await cookieDe('dora'), ...formulario(campos, arquivo) })
-const responder = async (arquivo: typeof PDF | null = PDF) =>
-  app.inject({ method: 'POST', url: url('/resposta'), cookies: await cookieDe('dora'), ...formulario({ dataResposta: '05/10/2026' }, arquivo) })
+const entregar = async () => app.inject({ method: 'POST', url: url('/entrega'), cookies: await cookieDe('dora') })
+const responder = async (arquivo: typeof PDF | null = PDF, apelido = 'gabi') =>
+  app.inject({ method: 'POST', url: url('/resposta'), cookies: await cookieDe(apelido), ...formulario({ dataResposta: '05/10/2026' }, arquivo) })
 const abertas = async () =>
   (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))).map((t) => `${t.perfilDono} · ${t.titulo}`).sort()
 const DOCS = { pede: 'documentos', itens: ['CadÚnico atualizado', 'Comprovante de renda'], diasInss: '30', prazoEntrega: '20/10/2026' }
@@ -138,12 +139,23 @@ describe('GGVP-39 · a Documentação cumpre', () => {
     ])
   })
 
-  it('CA13 e CA4 · só responde com prova em todos os itens; com comprovante, o caso volta para a vigília', async () => {
+  it('CA13 · a Documentação só entrega ao Jurídico com prova em todos os itens; antes disso, a advogada não responde', async () => {
     await decidir(DOCS)
     const [a, b] = await itens()
     await cumprir(a.id)
-    expect((await responder()).json().erro).toBe(MSG_G21)
+    expect((await entregar()).json().erro).toBe(MSG_G21)
+    expect((await responder()).json().erro).toBe(MSG_SEM_ENTREGA)
     await cumprir(b.id)
+    expect((await entregar()).statusCode).toBe(201)
+    expect(await abertas()).toEqual(['advogada · Responder exigência no portal do INSS', 'advogada · Trazer a resposta do INSS'])
+    expect((await ver('gabi')).json().podeResponder).toBe(true)
+  })
+
+  it('CA4 · quem responde no portal é a advogada; com comprovante, o caso volta para a vigília', async () => {
+    await decidir(DOCS)
+    for (const i of await itens()) await cumprir(i.id)
+    await entregar()
+    expect((await responder(PDF, 'dora')).statusCode).toBe(403)
     expect((await responder(null)).statusCode).toBe(400)
     expect((await responder()).json()).toEqual({ ok: true, aberto: 'vigilia' })
     expect(await abertas()).toEqual(['advogada · Trazer a resposta do INSS'])
@@ -157,6 +169,7 @@ describe('GGVP-39 · a Documentação cumpre', () => {
     expect(await abertas()).toEqual(['advogada · Trazer a resposta do INSS', 'documentacao · Cumprir exigência do INSS'])
     const [a] = await itens()
     await cumprir(a.id)
+    await entregar()
     expect((await responder()).json().aberto).toBe('pericia')
     expect(await abertas()).toEqual(['advogada · Trazer a resposta do INSS', 'juridico_adm · Marcar perícia médica (exigência do INSS)'])
     await banco.update(pericia).set({ resultado: 'desfavoravel' }).where(eq(pericia.casoId, casoId))
