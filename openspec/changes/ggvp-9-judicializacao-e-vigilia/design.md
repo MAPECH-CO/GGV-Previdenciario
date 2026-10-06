@@ -103,3 +103,71 @@ Analisar a exigência do juiz (`/casos/:id/exigencia-juiz`, advogada; a Sênior 
 - A mesma tabela serve às duas exigências; uma mudança na do INSS pode afetar a do juiz. Os testes das duas rodam juntos.
 - Sem IA, a advogada monta todos os itens à mão. É mais lento, mas nada nasce sem ela (G5).
 - O protocolo no tribunal é feito fora do portal; aqui fica o registro (data, comprovante, versão). Se alguém registrar sem protocolar de fato, o portal não percebe: a Sênior confere pela publicação seguinte.
+
+## Grupo 3 · GGVP-52, GGVP-54, GGVP-58, GGVP-63, GGVP-67 e GGVP-71
+
+### Context
+
+O indeferido (GGVP-48, `rotas/vigilia.ts`) já põe o caso na fase `judicial`, abre a etapa e a tarefa `D3.01` "Registrar indeferimento" (advogada) com a carta como evidência, e guarda o motivo do INSS em `resultado_inss`; a Sênior já pode encerrar o caso com motivo (`POST /api/casos/:id/encerrar`, `caso.encerrar`). A exigência do juiz (grupo 2) já tem o laço do setor inteiro: itens, tarefas com o limite da configuração (G15), tentativas, "não vou conseguir", prova, subida à Sênior e a perícia com a tarefa do Jurídico administrativo (`abrirPericiasDaExigencia`). O banco já tem `peticao` (tipo `inicial`), `peticao_versao` (número, conteúdo, hash, quem gerou, pedido de mudança, aprovação) e `protocolo_judicial`; a matriz já tem `caso.despachar_indeferimento` (Sênior), `peticao.pedir`, `peticao.aprovar` (advogada) e `peticao.ver` (Jurídico). Não existe rota para baixar documento, nem gerador de PDF, e nenhuma pessoa de exemplo tem CPF. O Drive fica fora até 09/10 (ADR-001, GGVP-107).
+
+### Goals / Non-Goals
+
+**Goals:** do indeferido ao protocolo da petição inicial, com uma pessoa em cada decisão: o motivo escrito pela advogada, o despacho da Sênior (G4), os laços dos setores com limite e prova (G15), o pedido e a versão 1 escrita pela advogada, a conferência com a diferença entre versões e a aprovação (G6, G18), o pacote em PDF com as três travas (G7) e o protocolo que põe o processo na vigília.
+
+**Non-Goals:** IA em qualquer passo (GGVP-14); jurimetria (GGVP-15, GGVP-64); parecer médico no pedido (GGVP-63 CA5, v2); a decisão da Sênior no laço que passou do limite (GGVP-94); remarcar a perícia (épico Perícia); atribuição pelo líder; tela da linha do processo (GGVP-99; aqui, o histórico grava); enviar o pacote ao tribunal.
+
+### Decisions
+
+26. **Matriz versão 7**, ações novas: `pendencia.cumprir` (atendimento, atendimento_lider, documentacao) e `peticao.protocolar` (advogada). O resto reaproveita o que já existe: o motivo do indeferimento usa `inss.registrar_resposta` (advogada, Sênior e Jurídico administrativo, "a advogada responsável ou a equipe do Jurídico" do cartão); despachar, `caso.despachar_indeferimento`; não judicializar, `caso.encerrar`; pedir, `peticao.pedir`; conferir e aprovar, `peticao.aprovar`; ver, `peticao.ver`.
+27. **Migração 0011**: `exigencia.origem` aceita `despacho`; `exigencia_item.informacao` (a informação que o Atendimento registra como prova); `resultado_inss.motivo_escrito`, `motivo_escrito_por` e `motivo_escrito_em` (o banco de motivos); `peticao.instrucoes`, `peticao.opcoes` (jsonb) e `peticao.citados` (jsonb: os documentos citados, na ordem, com o nome do que ainda falta); `peticao_versao.pacote` (jsonb: os arquivos na ordem, com o documento, o nome e o hash) e `pacote_gerado_em`.
+28. **Banco de motivos** (GGVP-52 CA2, CA5) são os motivos escritos em `resultado_inss`, com o caso: gravar de novo atualiza a mesma linha, numa transação, e nunca duplica. Alternativa descartada: tabela nova só para o texto. O acervo da IA lê dali quando o épico IA entrar.
+29. **Registrar o motivo** (`rotas/indeferimento.ts`; `GET /api/casos/:id/indeferimento`, `caso.ver`; `POST /api/casos/:id/indeferimento/motivo`, `inss.registrar_resposta`, multipart): o `GET` traz o cliente, o benefício, a data da decisão, o motivo do INSS, a carta e o motivo escrito com quem e quando. O `POST` exige o motivo e a carta (a do registro do indeferido vale; o arquivo só é pedido se faltar, CA4), só com a `D3.01` aberta; grava o motivo, conclui a tarefa e a etapa `D3.01`, abre "Despachar caso" (`D3.03`, Sênior) e grava `indeferimento_motivo_registrado` no histórico (linha do processo, CA6, CA7).
+30. **Baixar documento** (`rotas/documentos.ts`, `GET /api/casos/:id/documentos/:doc`, `caso.ver`): serve o arquivo do armazenamento privado com o nome original. Documento sensível (dado de saúde) só com `dado_saude.ver_detalhe`, e cada leitura grava `acesso_dado_sensivel`; nada do conteúdo vai para log. Serve a carta (GGVP-52 CA3) e os arquivos do pacote (GGVP-71 CA11).
+31. **Despachar** (`rotas/indeferimento.ts`; `GET /api/casos/:id/despacho`, `caso.ver`; `POST`, `caso.despachar_indeferimento`, só a Sênior; a recusa fica no histórico pelo `exigir`, CA8): o `GET` traz o histórico do caso (benefício, decisão do INSS com a data, carta, motivo do INSS, motivo escrito com quem e quando), o despacho feito e o status de cada setor. Entrada: `nada_falta`, ou `acionar` com itens (setor Atendimento ou Documentação, o que obter, "Essa tarefa tem prazo?" e a data com "Sim") e tipos de perícia. Grava a `decisao` (`D3.03`, `despacho`, o resultado e os setores, quem, o perfil; `sugestao_ia` vazia até o épico IA, G4, CA4, CA9). `acionar` reaproveita a exigência com `origem = 'despacho'`, sem prazo de fora, com um item e uma tarefa "Cumprir pendência" (`D3.04`, perfil do setor, prazo = próximo lembrete ou a data de entrega, limite do G15) por pedido; a perícia abre a tarefa de marcar do Jurídico administrativo (`ORIGEM_DESPACHO`, diagrama `D3`); abre a espera `D3.E1` (cliente). Nos dois casos nasce "Pedir a petição" (`D3.05`, advogada), que mostra quem falta até todos os setores fecharem, como "Manifestar no processo" (decisão 25).
+32. **Laço do setor nas duas origens** (GGVP-58): as quatro rotas do setor de `rotas/exigencia-juiz.ts` passam a ser registradas também em `/api/casos/:id/pendencias/...`, com `pendencia.cumprir` e a exigência `despacho` do caso. Muda só o que a história pede: título "Cumprir pendência"; prazo processual nulo, que a tela esconde (CA5); o Atendimento sobe com a informação escrita ou um documento, a Documentação com o documento (CA1, CA2, CA7); no limite ou com "não vou conseguir", sobe para a Sênior ("Pendência sem retorno", `D3.04s`) e continua com o setor (CA4, CA9); com o último item provado e a perícia resolvida, fecha a espera `D3.E1` (CA8). Alternativa descartada: copiar as rotas para outro arquivo (o mesmo laço em dois lugares).
+33. **Pedir a petição** (`rotas/peticao.ts`; `GET /api/casos/:id/peticao`, `peticao.ver`; `POST .../peticao/pedido`, `peticao.pedir`): o `GET` traz quem falta (itens e perícia do despacho), o pedido, as versões, a atual inteira com a diferença para a anterior, o pacote, as travas e os tribunais. O pedido só passa sem setor pendente (CA1); grava a `peticao` (`inicial`, quem pediu, instruções, opções e os documentos citados na ordem, com o nome do que falta) e a versão 1 escrita pela advogada (`gerada_por = 'advogada'`, hash SHA-256 do texto); conclui `D3.05` e abre "Conferir petição" (`D3.06`) (CA9, CA10). A carta de indeferimento entra sempre no pacote (Tema 350).
+34. **Conferir** (`POST .../peticao/versoes`, "Editar eu mesma"; `POST .../peticao/versoes/:n/aprovacao`; os dois com `peticao.aprovar`): editar grava a versão seguinte, numerada, com o que mudou; as anteriores ficam (GGVP-67 CA1, CA5, CA10). A diferença é por parágrafo, em código com teste (`fluxo/diferenca.ts`, LCS de linhas; sem dependência, são poucas linhas) (CA3, CA4). Aprovar exige as três marcações ("Li a petição na íntegra", "Fundamentos, pedidos e valores conferem com o caso", "Nada contradiz o requisito do benefício (G18)"), grava quem e quando (o hash já é o identificador, G6, CA2, CA6), gera o pacote (decisão 35), conclui `D3.06` e abre "Protocolar na Justiça" (`D3.07`). Versão nova depois da aprovação (CA7): a aprovada não muda; o pacote dela deixa de valer, `D3.07` é cancelada, `D3.06` volta e a tentativa fica no histórico. "Pedir outra versão à IA" e os pontos de atenção não aparecem até o épico IA.
+35. **Pacote** (`fluxo/pacote.ts`; GGVP-67 CA6, GGVP-71 CA1, CA8, CA11): na ordem, a petição em PDF (o texto aprovado, a assinatura padrão de `configuracao.peticao.assinatura` e, no rodapé e nos metadados, o hash da versão), a carta de indeferimento e os documentos citados na ordem do pedido; imagem vira PDF de uma página. Cada arquivo é guardado como `documento` (`pacote_peticao`) no armazenamento privado, com o hash, e a lista vai para `peticao_versao.pacote`. **Dependência nova: `pdf-lib`** (MIT, sem código nativo), porque o tribunal só aceita PDF e o portal precisa gerar o PDF da petição e converter as imagens; escrever PDF à mão, com fonte, acentos e quebra de linha, é mais código e mais risco.
+36. **Travas** (`fluxo/travas.ts`, funções puras com teste; GGVP-71 CA2, CA6, CA7): Tema 350, a carta de indeferimento está no pacote; CPF conferido, todo CPF escrito na petição (`normalizarCpf`, `validarCpf`) é igual ao do cadastro, e a petição tem ao menos um; pacote completo, nenhum citado falta, cada arquivo foi lido do armazenamento e cabe no formato e no tamanho do tribunal escolhido. Cada trava devolve o status e a evidência (o CPF dos dois lados, a carta, o que falta).
+37. **Documento que falta** (GGVP-71 CA13): a advogada sobe o arquivo (`POST .../peticao/citados/:i/documento`, `peticao.pedir`) ou pede à Documentação (`POST .../peticao/citados/:i/pedido`: um item "Cumprir pendência" na exigência `despacho` do caso, criada se não houver); com o documento, o citado é ligado e o pacote é gerado de novo.
+38. **Protocolo** (`POST .../peticao/protocolo`, `peticao.protocolar`, multipart; GGVP-71 CA3 a CA5, CA9, CA10): tribunal da configuração, CNJ (`validarCnj`), data (sem data futura), comprovante e a confirmação de cada trava pela evidência. Recusa dizendo a trava que falha; confere o hash de cada arquivo do pacote no armazenamento e, divergindo, recusa e grava `pacote_divergente` no histórico. Grava `protocolo_judicial` (versão aprovada, tribunal, número, data, comprovante, quem), o CNJ do caso em `identificador_caso` (para a vigília casar as publicações) e as travas confirmadas (`decisao` `D3.07`, `trava_g7`, com a evidência); conclui `D3.07` e a etapa; o processo entra na vigília (D3a). O botão do tribunal abre o site da configuração numa página nova; o portal não envia nada (CA11).
+39. **Tribunais na configuração** (resposta do revisor de 06/10, Q8): `configuracao.tribunais`, uma lista com nome, site de peticionamento, tipos de arquivo aceitos e tamanho máximo por arquivo (parâmetros, Q8). A semente traz a Justiça Federal, com valores de exemplo; a Estadual entra só na configuração.
+40. **Central**: `TELA_DO_PASSO` ganha `D3.01` (`/casos/:id/indeferimento`), `D3.03` e `D3.04s` (`/casos/:id/despacho`), `D3.04` (`/casos/:id/pendencias`), `D3.05`, `D3.06` e `D3.07` (`/casos/:id/peticao`). Os títulos são os das histórias, com o nome do cliente na Central.
+
+### Contratos (`packages/contratos/src/justica.ts`)
+
+`Indeferimento` e `RegistrarMotivo` (motivo); `Despacho` e `Despachar` (`nada_falta`, ou `acionar` com itens: setor, o que obter, `temPrazo` e a data quando `temPrazo`; e tipos de perícia); `ItensDoSetor` com `origem`, `prazoProcessual` nulo e `informacao`; `SubirInformacao` (texto); `PeticaoInicial` (quem falta, pedido, versões, atual com a diferença, pacote, travas, tribunais, `podePedir`, `podeAprovar`, `podeProtocolar`); `PedirPeticao` (instruções, opções, citados e o texto da versão 1); `NovaVersao` (texto e o que mudou); `AprovarPeticao` (as três marcações); `ProtocolarPeticao` (tribunal, CNJ, data, travas confirmadas).
+
+### Campos de formulário
+
+| Campo | Como |
+|---|---|
+| Motivo com as suas palavras, o que obter, instruções, texto da petição, o que mudou, informação do Atendimento | texto, aparado; o contrato exige quando é obrigatório |
+| Data de entrega ("Essa tarefa tem prazo?" Sim) e data do protocolo | calendário do navegador, com `isoParaData` e `hojeIso` de `@ggv/campos` |
+| Número do processo | `normalizarCnj`, `validarCnj` e `formatarCnj` de `@ggv/campos` |
+| CPF da trava (servidor) | `normalizarCpf`, `validarCpf` e `formatarCpf` de `@ggv/campos` |
+| Carta, documento que falta, comprovante | arquivo PDF ou imagem, até 25 MB (`TIPOS_DE_ANEXO`) |
+
+### Telas
+
+Registrar indeferimento (`/casos/:id/indeferimento`), Despachar caso (`/casos/:id/despacho`; a Sênior despacha ou encerra; a advogada vê só a leitura), Cumprir pendência (a tela do setor da exigência do juiz, com a origem, em `/casos/:id/pendencias`) e Petição inicial (`/casos/:id/peticao`: pedir, conferir, pacote e protocolo, conforme a situação, como a tela Manifestar).
+
+### Dados de exemplo
+
+Os três clientes de exemplo que esperam o INSS (Rita Gomes, Sebastião Cruz e Teresa Dias) ganham CPF de exemplo válido; a configuração ganha `tribunais` (Justiça Federal, exemplo) e `peticao.assinatura` (exemplo). O caminho começa com a advogada registrando o indeferido com a carta ("Trazer a resposta do INSS"), porque a semente não grava arquivos no armazenamento.
+
+### Risks / Trade-offs
+
+- [O laço serve duas origens] mudar o laço afeta a exigência do juiz → os testes das duas rodam juntos.
+- [PDF de texto corrido] a petição sai sem a formatação do Word, e caractere fora do conjunto da fonte padrão vira "?" → a advogada abre o PDF do pacote antes de protocolar; com o épico IA, a minuta já nasce no portal.
+- [Valores do tribunal] site, tipos e tamanho são de exemplo → o escritório confirma na configuração, sem código.
+- [Sem IA] a advogada escreve a versão 1 e marca os citados → mais trabalho até o épico IA, mas nada é inventado (G6).
+- [Grupo grande] seis histórias e três telas novas → dois pontos de "Agora ok?", depois da GGVP-58 e depois da GGVP-71.
+
+### Migration Plan
+
+Migração 0011 junto com as 0009 e 0010: `db:migrar` no Supabase depois do merge. Sem volta automática: as colunas novas são nulas e a origem nova só amplia a lista.
+
+### Open Questions
+
+- O site de peticionamento e o tamanho máximo por arquivo do tribunal: valores da configuração, que o escritório confirma; não mudam o código.
