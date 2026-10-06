@@ -81,6 +81,14 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'declaracao-uniao-estavel', nome: 'Declaração de união estável' },
   { id: 'declaracao-separacao', nome: 'Declaração de separação de fato' },
   { id: 'notas-produtor', nome: 'Notas do produtor rural' },
+  // GGVP-95: os documentos médicos que a IA classifica (laudo, receita e prontuário já estão acima).
+  { id: 'atestado', nome: 'Atestado médico' },
+  { id: 'relatorio-medico', nome: 'Relatório médico' },
+  { id: 'exame', nome: 'Exame' },
+  { id: 'cat', nome: 'CAT (Comunicação de Acidente de Trabalho)' },
+  { id: 'boletim-ocorrencia', nome: 'Boletim de ocorrência' },
+  { id: 'relatorio-escolar', nome: 'Relatório escolar' },
+  { id: 'relatorio-terapia', nome: 'Relatório de terapia' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

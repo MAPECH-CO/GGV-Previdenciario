@@ -69,3 +69,39 @@ Nenhum campo da biblioteca `campos` (não há CPF, data nem número aqui). O ser
 3. **Versão.** Salvar cria a versão seguinte com autor e data; nada é sobrescrito. A análise e o parecer guardam o número da versão usada, e mostram essa, não a de agora (CA2, CA4).
 4. **Pergunta ao médico** fica no item, para o sênior ajustar junto com a régua. A orientação ao médico (GGVP-29) é montada com elas.
 5. **Frases-chave**: o texto do item é para reconhecer no documento se o requisito foi atendido, nunca para ditar ao médico (G20). Por isso a orientação usa a pergunta, não o texto do item.
+
+## GGVP-95 · Classificar cada documento médico que entra
+
+### Telas e rotas
+
+| Rota | Figma | O que muda |
+|---|---|---|
+| `/clientes/:id/conferir-documentos` | step_D1.18 `10:466` | O documento médico mostra o tipo, a data de emissão, o emitente e o registro profissional (CRM ou outro), sem o conteúdo; "Reclassificar" corrige o tipo e a correção vai para o histórico; o ilegível aparece à parte, com a pendência do Atendimento |
+| `/` (Central do Atendimento) | Central · Atendimento `11:2` | Tarefa "Pedir documento legível" para cada documento cuja leitura falhou |
+
+### Contrato (acrescenta ao de `packages/contratos/documentos.ts` da GGVP-81)
+
+```ts
+// Os tipos médicos entram no fim do catálogo único (TIPOS_DE_DOCUMENTO):
+// atestado, relatorio-medico, exame, cat, boletim-ocorrencia, relatorio-escolar, relatorio-terapia
+// (laudo, receita e prontuario já existiam).
+export const SituacaoDoLido = z.enum(['a-conferir', 'quarentena', 'arquivado', 'descartado', 'movido', 'ilegivel'])
+export const DocumentoLido = DocumentoLidoGgvp81.extend({
+  emitente: z.string().max(120).optional(),       // nome do médico ou do serviço, se constar (CA1)
+  registro: z.string().max(40).optional(),        // CRM, CRP, CREFITO..., se constar (CA1)
+  sugerido: z.string().optional(),                // o tipo que a IA sugeriu, guardado depois da correção (CA2)
+})
+export const Conferencia = ConferenciaGgvp81.extend({ ilegiveis: z.array(DocumentoLido) })   // CA3
+```
+
+Sem endpoint novo: `GET /api/fichas/:id/documentos-lidos` e `POST .../arquivar` (GGVP-81) passam a levar esses campos.
+
+### Decisões da história
+
+1. **Documento médico** (`TIPOS_MEDICOS` em `regras/leitura.ts`): laudo, receita, prontuário e os sete novos. Nunca é descartado (GGVP-81, CA16) e o conteúdo não aparece na tela da Documentação: só tipo, data, emitente e registro. O resto vai para a análise do Jurídico (GGVP-20).
+2. **Data de emissão** é a `data` que a leitura já tinha; emitente e registro são campos novos da leitura. A IA simulada lê de uma tabela da semente (o laudo da pilha da Rita) ou põe um emitente de exemplo no que sobe pelo card.
+3. **Correção** (CA2): ao arquivar, o tipo que a pessoa escolheu vale; o sugerido fica guardado e o histórico da ficha diz "Corrigiu a classificação: <sugerido> → <escolhido>". Sem o conteúdo do documento.
+4. **Ilegível** (CA3): a leitura que falha deixa o documento como "ilegível", fora da conferência e do checklist, com o original guardado. O Atendimento recebe "Pedir documento legível"; a tarefa sai sozinha quando chega, para a mesma ficha, um documento legível do mesmo tipo. A IA simulada marca ilegível pela pista "ilegivel" no nome do arquivo.
+5. **Laudo novo pelo card** (CA4) já passa pela mesma leitura (a GGVP-17 marca `aguardaLeitura`); a comparação com o processo é da GGVP-20, que liga a tarefa "Analisar laudo novo" à tela dela.
+6. **Pistas do tipo** (`regras/arquivos.ts`): atestado, relatório médico, exame, CAT, boletim de ocorrência, relatório escolar e de terapia ganham pista própria; antes, atestado virava laudo.
+7. CA5 a CA10 já valem desde a GGVP-81 e a GGVP-91 (dono identificado, confiança, duplicado, mesma leitura, original guardado, checklist recalculado): a spec repete o critério e os testes provam com documento médico.

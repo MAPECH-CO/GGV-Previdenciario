@@ -7,7 +7,7 @@ import { somarDias } from '../regras/agenda.ts'
 import { normalizarRg } from '../regras/cadastro.ts'
 import { localDoTipo, nomeSemSobrescrever } from '../regras/arquivos.ts'
 import { fichasCitadas, semAcento } from '../regras/busca.ts'
-import { hojeIso } from '../regras/datas.ts'
+import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { fichaComCpf } from '../regras/duplicidade.ts'
 import {
   ROTULOS_DOS_CAMPOS,
@@ -26,7 +26,8 @@ import type { Arquivo, EventoHistorico, Ficha, Processo, Tarefa } from './tipos.
 
 // Contrato (vai para packages/contratos/documentos.ts quando o GGVP-118 existir).
 
-export type SituacaoDoLido = 'a-conferir' | 'quarentena' | 'arquivado' | 'descartado' | 'movido'
+/** 'ilegivel': a leitura falhou; o original fica guardado e o Atendimento pede de novo (GGVP-95, CA3). */
+export type SituacaoDoLido = 'a-conferir' | 'quarentena' | 'arquivado' | 'descartado' | 'movido' | 'ilegivel'
 
 /** Um documento que a IA leu. O arquivo original fica guardado na pasta: o OCR não o substitui (CA13). */
 export type DocumentoLido = {
@@ -55,6 +56,11 @@ export type DocumentoLido = {
   dataEmBranco?: boolean
   /** Data e hora ISO do "Arquivar": o checklist é conferido de novo depois disso (GGVP-91). */
   arquivadoEm?: string
+  /** Documento médico: quem emitiu e o registro profissional (CRM, CRP...), se constarem (GGVP-95, CA1). Nunca o conteúdo. */
+  emitente?: string
+  registro?: string
+  /** O tipo que a IA sugeriu, guardado quando a Documentação corrige (GGVP-95, CA2). */
+  sugerido?: string
 }
 
 /** "Arquivar" (CA7, CA9). Só depois de "Conferi os documentos lidos pela IA". */
@@ -89,6 +95,8 @@ export type Conferencia = {
   documentos: DocumentoLido[]
   /** Os casos deste cliente e, para a quarentena, os do cliente que a IA leu no papel (CA11). */
   destinos: Destino[]
+  /** A leitura falhou: o Atendimento pede o documento legível (GGVP-95, CA3). */
+  ilegiveis: DocumentoLido[]
 }
 
 const documentos = (n: number) => (n === 1 ? '1 documento' : `${n} documentos`)
@@ -104,7 +112,7 @@ function semearPilhaDaRita(banco: Banco, leituras: DocumentoLido[]) {
     { arquivo: nome('RG'), tipo: 'rg', data: '2015-03-10', confianca: 96, lidos: { nome: 'Rita de Cássia Exemplo', rg: '00.000.000-0' } },
     { arquivo: nome('Comprovante de residencia'), tipo: 'comprovante-residencia', data: '2026-09-12', confianca: 91, lidos: { nome: 'Rita Exemplo', endereco: 'Rua Exemplo, 100 · São Paulo/SP' } },
     { arquivo: nome('Comprovante de residencia', ' (2)'), tipo: 'comprovante-residencia', data: '2026-09-12', confianca: 74, lidos: { nome: 'Rita Exemplo', endereco: 'Rua Exemplo, 100 · São Paulo/SP' } },
-    { arquivo: nome('Laudo medico'), tipo: 'laudo', data: '2026-08-20', confianca: 62, lidos: {} },
+    { arquivo: nome('Laudo medico'), tipo: 'laudo', data: '2026-08-20', confianca: 62, lidos: {}, emitente: 'Dra. Exemplo Neurologista', registro: 'CRM-SP 000000' },
     // A automação guardou na pasta da Rita porque a pilha era dela; a IA leu o nome e o CPF de outro cliente.
     { arquivo: nome('CNIS'), tipo: 'cnis', data: '2026-09-30', confianca: 88, lidos: { nome: 'Antônio Exemplo', cpf: CPF_DE_TESTE } },
   ]
@@ -115,6 +123,20 @@ function semearPilhaDaRita(banco: Banco, leituras: DocumentoLido[]) {
     rita.arquivos.push({ nome: p.arquivo, tipo: p.tipo, local: localDoTipo(p.tipo, rita.processos[0]?.id), data: ontem, origem: 'scanner', repetido: false, aguardaLeitura: true })
   }
   leituras.find((l) => l.arquivo === nome('Comprovante de residencia', ' (2)'))!.duplicadoDe = `${rita.id}/${nome('Comprovante de residencia')}`
+}
+
+/** Quem emite cada documento médico, na leitura simulada: nomes de exemplo, registro zerado (GGVP-95, CA1). */
+const EMITENTES: Record<string, { emitente: string; registro?: string }> = {
+  laudo: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  'relatorio-medico': { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  atestado: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  receita: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  prontuario: { emitente: 'Hospital Exemplo' },
+  exame: { emitente: 'Laboratório Exemplo' },
+  cat: { emitente: 'Empresa Exemplo Ltda' },
+  'boletim-ocorrencia': { emitente: 'Delegacia Exemplo' },
+  'relatorio-escolar': { emitente: 'Escola Exemplo' },
+  'relatorio-terapia': { emitente: 'Clínica Exemplo de Terapias', registro: 'CREFITO-3 000000' },
 }
 
 /** A leitura simulada da IA: o tipo e a data que vieram, o nome do cliente, o CPF do CNIS e o endereço do comprovante. */
@@ -130,6 +152,8 @@ function lerComIA(ficha: Ficha, arquivo: Arquivo, leituras: DocumentoLido[]): Do
   const quarentena = motivoDaQuarentena(lidos, ficha)
   // ponytail: a falta de assinatura e a data em branco vêm do nome do arquivo, como o tipo na GGVP-17; a IA de verdade lê o papel.
   const nome = semAcento(arquivo.nome)
+  // A leitura que falhou (GGVP-95, CA3): pela mesma pista no nome do arquivo.
+  const ilegivel = nome.includes('ilegivel')
   return {
     id: `${ficha.id}/${arquivo.nome}`,
     fichaId: ficha.id,
@@ -137,14 +161,15 @@ function lerComIA(ficha: Ficha, arquivo: Arquivo, leituras: DocumentoLido[]): Do
     origem: arquivo.origem,
     tipo: arquivo.tipo,
     data: arquivo.data,
-    confianca: 90,
+    confianca: ilegivel ? 0 : 90,
     lidos,
     duplicadoDe: original && leituras.some((l) => l.id === `${ficha.id}/${original.nome}`) ? `${ficha.id}/${original.nome}` : undefined,
     quarentena,
-    situacao: quarentena ? 'quarentena' : 'a-conferir',
+    situacao: ilegivel ? 'ilegivel' : quarentena ? 'quarentena' : 'a-conferir',
     lidoEm: agora().toISOString(),
     ...(nome.includes('sem assinatura') && { semAssinatura: true }),
     ...(nome.includes('sem data') && { dataEmBranco: true }),
+    ...(ehMedico(arquivo.tipo) && !ilegivel && EMITENTES[arquivo.tipo]),
   }
 }
 
@@ -192,6 +217,7 @@ export async function documentosLidos(fichaId: string): Promise<Conferencia | nu
     processo: ficha.processos[0],
     documentos: docs,
     destinos: fichas.flatMap((f) => f.processos.map((p) => ({ processoId: p.id, rotulo: rotuloDoCaso(f, p) }))),
+    ilegiveis: leituras.filter((l) => l.fichaId === fichaId && ilegivelEmAberto(l, leituras)),
   }
 }
 
@@ -226,6 +252,12 @@ export async function arquivarDocumentos(fichaId: string, pedido: Arquivamento):
   }
 
   const caso = ficha.processos[0]
+  // A correção da classificação vale e fica no histórico, sem o conteúdo do documento (GGVP-95, CA2).
+  const correcoes = aConferir.filter((l) => escolhas.get(l.id)!.tipo !== l.tipo)
+  for (const l of correcoes) {
+    l.sugerido = l.tipo
+    ficha.historico.push(evento(`Corrigiu a classificação de ${l.arquivo}: a IA sugeriu ${nomeTipo(l.tipo)}; ficou ${nomeTipo(escolhas.get(l.id)!.tipo)}`))
+  }
   for (const l of aConferir) {
     const escolha = escolhas.get(l.id)!
     l.tipo = escolha.tipo
@@ -376,4 +408,36 @@ export function tarefasDeConferirDocumento(): Tarefa[] {
       },
     ]
   })
+}
+
+/**
+ * Ilegível ainda em aberto: nenhum documento legível do mesmo tipo chegou depois, para a mesma ficha (GGVP-95, CA3).
+ * Quando chega, a pendência sai sozinha.
+ */
+function ilegivelEmAberto(l: DocumentoLido, leituras: DocumentoLido[]): boolean {
+  return l.situacao === 'ilegivel' && !leituras.some((o) => o.fichaId === l.fichaId && o.tipo === l.tipo && o.situacao !== 'ilegivel' && o.lidoEm > l.lidoEm)
+}
+
+/** "Pedir documento legível" na Central do Atendimento: um por documento cuja leitura falhou (GGVP-95, CA3). */
+export function tarefasDePedirLegivel(): Tarefa[] {
+  const { banco, leituras } = lerComLeituras()
+  const hoje = hojeIso(agora())
+  return leituras
+    .filter((l) => ilegivelEmAberto(l, leituras))
+    .flatMap((l) => {
+      const ficha = banco.fichas.find((f) => f.id === l.fichaId)
+      if (!ficha) return []
+      return [
+        {
+          id: `legivel-${l.id}`,
+          codigo: 'D1.18',
+          cliente: { id: ficha.id, nome: ficha.nome },
+          acao: 'Pedir documento legível',
+          detalhe: `${nomeTipo(l.tipo)} de ${dataCurta(hojeIso(new Date(l.lidoEm)), hoje)} · a leitura falhou: pedir o reenvio legível ao cliente`,
+          prazo: 'hoje',
+          href: `/clientes/${ficha.id}`,
+          processoId: ficha.processos[0]?.id,
+        },
+      ]
+    })
 }

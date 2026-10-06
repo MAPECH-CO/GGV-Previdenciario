@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { obterContrato, simularRetornoDoZapSign } from './contrato.ts'
 import { enviarArquivos, receberLote } from './documentos.ts'
+import { obterChecklist } from './checklist.ts'
 import {
   arquivarDocumentos,
   documentosLidos,
@@ -8,6 +9,7 @@ import {
   moverDocumento,
   relatorioDeQuarentena,
   tarefasDeConferirDocumento,
+  tarefasDePedirLegivel,
   usarNoCadastro,
   type Conferencia,
 } from './leitura.ts'
@@ -210,5 +212,81 @@ describe('Ler e arquivar os documentos · servidor de exemplo', () => {
     expect(relatorioDeQuarentena()).toEqual([])
     agora = new Date(2026, 9, 5, 18, 0)
     expect(relatorioDeQuarentena().map((r) => [r.documento.id, r.cliente])).toEqual([[CNIS, 'Rita Exemplo']])
+  })
+
+  describe('GGVP-95 · documento médico', () => {
+    const pdf = (nome: string, tipo: string, n: number) => ({ nome, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(n).padStart(64, '0') })
+
+    it('CA1 e CA6 · o laudo da Rita: tipo, data de emissão, médico, registro e a confiança baixa para conferir com atenção', async () => {
+      const laudo = (await rita()).documentos.find((d) => d.id === LAUDO)!
+      expect([laudo.tipo, laudo.data, laudo.emitente, laudo.registro, laudo.confianca]).toEqual(['laudo', '2026-08-20', 'Dra. Exemplo Neurologista', 'CRM-SP 000000', 62])
+      // O que não é documento médico não ganha emitente.
+      expect((await rita()).documentos.find((d) => d.id === RG)?.emitente).toBeUndefined()
+    })
+
+    it('CA4 · o laudo novo que sobe pelo card é lido e classificado como os demais', async () => {
+      await enviarArquivos('antonio-exemplo', { origem: 'card', arquivos: [pdf('laudo ortopedia.pdf', 'laudo', 7), pdf('atestado.pdf', 'atestado', 8)] })
+      const docs = (await documentosLidos('antonio-exemplo'))!.documentos
+      expect(docs.map((d) => [d.arquivo, d.tipo, d.emitente, d.registro, d.situacao])).toEqual([
+        ['laudo ortopedia.pdf', 'laudo', 'Dr. Exemplo Silva', 'CRM-SP 000000', 'a-conferir'],
+        ['atestado.pdf', 'atestado', 'Dr. Exemplo Silva', 'CRM-SP 000000', 'a-conferir'],
+      ])
+      expect((await obterFicha('antonio-exemplo'))?.laudoNovoEm).toBe('2026-10-05')
+    })
+
+    it('CA2 · a classificação corrigida vale e fica no histórico, com o que a IA tinha sugerido', async () => {
+      const escolhas = comoAIASugeriu(await rita()).map((d) => (d.id === LAUDO ? { ...d, tipo: 'relatorio-medico' } : d))
+      await arquivarDocumentos('rita-exemplo', { conferi: true, documentos: escolhas, duplicados: 'manter' })
+      const ficha = await obterFicha('rita-exemplo')
+      expect(ficha?.arquivos.find((a) => a.nome.startsWith('Laudo medico'))?.tipo).toBe('relatorio-medico')
+      expect(ficha?.historico.map((e) => e.oQue)).toContain(
+        `Corrigiu a classificação de Laudo medico - Rita Exemplo - ${ONTEM}.pdf: a IA sugeriu Laudo médico; ficou Relatório médico`,
+      )
+    })
+
+    it('CA3 · a leitura que falha vira "Pedir documento legível" no Atendimento; o original fica; o legível que chega fecha a pendência', async () => {
+      await enviarArquivos('maria-exemplo', { origem: 'card', arquivos: [pdf('laudo ilegivel.pdf', 'laudo', 9)] })
+      const c = (await documentosLidos('maria-exemplo'))!
+      expect(c.documentos).toEqual([])
+      expect(c.ilegiveis.map((d) => [d.arquivo, d.situacao, d.confianca])).toEqual([['laudo ilegivel.pdf', 'ilegivel', 0]])
+      expect((await obterFicha('maria-exemplo'))?.arquivos.map((a) => a.nome)).toEqual(['laudo ilegivel.pdf'])
+      expect(tarefasDePedirLegivel()).toEqual([
+        expect.objectContaining({
+          acao: 'Pedir documento legível',
+          cliente: { id: 'maria-exemplo', nome: 'Maria Exemplo' },
+          detalhe: 'Laudo médico de 05/10 · a leitura falhou: pedir o reenvio legível ao cliente',
+          href: '/clientes/maria-exemplo',
+        }),
+      ])
+      agora = new Date(2026, 9, 5, 16, 0)
+      await enviarArquivos('maria-exemplo', { origem: 'card', arquivos: [pdf('laudo novo.pdf', 'laudo', 10)] })
+      expect(tarefasDePedirLegivel()).toEqual([])
+      expect((await documentosLidos('maria-exemplo'))!.ilegiveis).toEqual([])
+    })
+
+    it('CA5 · o documento médico de outra pessoa fica em quarentena, fora do checklist', async () => {
+      await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [pdf('cnis.pdf', 'cnis', 11)] })
+      const doc = (await rita()).documentos.find((d) => d.id === CNIS)!
+      expect(doc.situacao).toBe('quarentena')
+    })
+
+    it('CA7 e CA9 · o laudo duplicado não sai nem como cópia; o original fica na pasta', async () => {
+      await enviarArquivos('maria-exemplo', { origem: 'card', arquivos: [pdf('laudo.pdf', 'laudo', 12)] })
+      await enviarArquivos('maria-exemplo', { origem: 'card', arquivos: [pdf('laudo.pdf', 'laudo', 12)] })
+      const docs = comoAIASugeriu((await documentosLidos('maria-exemplo'))!)
+      await expect(arquivarDocumentos('maria-exemplo', { conferi: true, documentos: docs, duplicados: 'descartar' })).rejects.toThrow(
+        'Documento médico não se descarta',
+      )
+      expect((await obterFicha('maria-exemplo'))?.arquivos.map((a) => a.nome)).toEqual(['laudo.pdf', 'laudo (2).pdf'])
+    })
+
+    it('CA8 e CA10 · ler de novo não duplica, e arquivar o laudo recalcula o checklist', async () => {
+      await rita()
+      expect((await rita()).documentos.filter((d) => d.tipo === 'laudo')).toHaveLength(1)
+      const antes = (await obterChecklist('rita-exemplo-1'))!.checklist.faltam
+      expect(antes).toContain('Laudo médico')
+      await arquivarDocumentos('rita-exemplo', { conferi: true, documentos: comoAIASugeriu(await rita()), duplicados: 'manter' })
+      expect((await obterChecklist('rita-exemplo-1'))!.checklist.faltam).not.toContain('Laudo médico')
+    })
   })
 })

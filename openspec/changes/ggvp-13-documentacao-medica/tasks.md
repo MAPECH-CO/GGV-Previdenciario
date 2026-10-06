@@ -13,6 +13,15 @@
 - [ ] 1.7 CA3 e CA4 na tela: o aviso "benefício sem roteiro" com a conferência manual, e a versão usada no parecer refeito, aparecem na tela do parecer (GGVP-20, tarefa 3.x). A regra fica pronta aqui.
 - [ ] 1.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?" (no fim do grupo 1).
 
+## GGVP-95 · Classificar cada documento médico que entra
+
+- [x] 2.1 Contrato: os sete tipos médicos no fim de `TIPOS_DE_DOCUMENTO` (`catalogos.ts`), `TIPOS_MEDICOS` em `regras/leitura.ts`, e `emitente`, `registro`, `sugerido`, a situação "ilegivel" e `ilegiveis` na conferência em `dados/leitura.ts`. Verifica com `pnpm typecheck`.
+- [x] 2.2 Regra: as pistas dos tipos médicos em `regras/arquivos.ts` e `ehMedico` com os novos tipos, com teste em `regras/regras.test.ts` e `regras/leitura.test.ts` (CA1). Verifica com `pnpm vitest run src/regras/regras.test.ts src/regras/leitura.test.ts`.
+- [x] 2.3 Servidor de exemplo: em `dados/leitura.ts`, o emitente e o registro do laudo da pilha da Rita e do que sobe pelo card, a correção da classificação no histórico, o ilegível fora da conferência e `tarefasDePedirLegivel`, com teste em `dados/leitura.test.ts` (CA1 a CA10 com documento médico). Verifica com `pnpm vitest run src/dados/leitura.test.ts`.
+- [x] 2.4 Tela `/clientes/:id/conferir-documentos` (`ConferirDocumentos.tsx`, Figma `10:466`): o documento médico com tipo, data de emissão, emitente e registro, sem o conteúdo; a correção pelo "Reclassificar"; o bloco dos ilegíveis; a Central do Atendimento com "Pedir documento legível". Teste em `ConferirDocumentos.test.tsx` e `CentralAtendimento.test.tsx` (CA1, CA2, CA3). Verifica com `pnpm vitest run src/paginas/ConferirDocumentos.test.tsx src/paginas/CentralAtendimento.test.tsx`.
+- [x] 2.5 Playwright `e2e/documento-medico.e2e.ts`: o laudo da Rita com o emitente e o CRM, reclassificado e arquivado, a correção no histórico (CA1, CA2, CA10); o laudo ilegível que sobe pelo card vira "Pedir documento legível" na Central (CA3); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test documento-medico`.
+- [ ] 2.6 Ligar no servidor: a IA de verdade lê o emitente e o registro e marca a leitura que falhou; o corpo de `dados/leitura.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+
 <!-- Fim do grupo 1. -->
 
 <!-- Grupo 2: PCD, Auxílio-Acidente e LOAS de menor de 16 anos. -->

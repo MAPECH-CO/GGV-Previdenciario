@@ -240,6 +240,17 @@ describe('arquivos da pasta do cliente (GGVP-17)', () => {
     expect(tipoSugerido('cargo.pdf')).toBe('outro')
   })
 
+  it('GGVP-95 CA1 · cada documento médico com o seu tipo: atestado não vira laudo', () => {
+    expect(tipoSugerido('atestado 15 dias.pdf')).toBe('atestado')
+    expect(tipoSugerido('Relatório médico - neurologia.pdf')).toBe('relatorio-medico')
+    expect(tipoSugerido('relatorio escolar 2026.pdf')).toBe('relatorio-escolar')
+    expect(tipoSugerido('relatorio de terapia ocupacional.pdf')).toBe('relatorio-terapia')
+    expect(tipoSugerido('fonoaudiologia.pdf')).toBe('relatorio-terapia')
+    expect(tipoSugerido('CAT_acidente.pdf')).toBe('cat')
+    expect(tipoSugerido('boletim de ocorrência.jpg')).toBe('boletim-ocorrencia')
+    expect(tipoSugerido('ressonância coluna.pdf')).toBe('exame')
+  })
+
   it('CA13 · nome que já existe entra como "(2)", "(3)": nada é sobrescrito', () => {
     expect(nomeSemSobrescrever('rg.pdf', [])).toBe('rg.pdf')
     expect(nomeSemSobrescrever('rg.pdf', ['rg.pdf'])).toBe('rg (2).pdf')

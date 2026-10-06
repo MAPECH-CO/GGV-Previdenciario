@@ -28,7 +28,15 @@ export function problemaDoArquivo(arquivo: { nome: string; tamanho: number }): s
 const PISTAS: [RegExp, string][] = [
   [/ficha de atendimento auxilio acidente/, 'ficha-acidente'],
   [/ficha de atendimento/, 'ficha-atendimento'],
-  [/\blaudo|atestado/, 'laudo'],
+  // GGVP-95: cada documento médico com o seu tipo; antes, atestado virava laudo.
+  [/relatorio escolar|escola/, 'relatorio-escolar'],
+  [/relatorio de terapia|terapia|fono|psicolog/, 'relatorio-terapia'],
+  [/relatorio/, 'relatorio-medico'],
+  [/\blaudo/, 'laudo'],
+  [/atestado/, 'atestado'],
+  [/\bcat\b|comunicacao de acidente/, 'cat'],
+  [/boletim|\bbo\b/, 'boletim-ocorrencia'],
+  [/exame|ressonancia|raio x|tomografia|ultrassom/, 'exame'],
   [/receita/, 'receita'],
   [/prontuario/, 'prontuario'],
   [/\brg\b|identidade/, 'rg'],
