@@ -22,7 +22,7 @@ test('GGVP-27 · o Jurídico administrativo protocola um caso: senha do cofre, n
   await expect(page.getByRole('status')).toContainText('Senha do gov.br:')
 
   await page.getByLabel('Número do requerimento').fill('2026123456')
-  await page.getByLabel('Data de entrada do requerimento (DER)').fill('05102026')
+  await page.getByLabel('Data de entrada do requerimento (DER)').fill('2026-10-05')
   await page.getByLabel('Comprovante do protocolo').setInputFiles({ name: 'comprovante.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 exemplo') })
   await page.getByRole('button', { name: 'Registrar protocolo' }).click()
   await expect(page.getByRole('alert')).toHaveText('Marque "Revisei o requerimento antes de enviar"')

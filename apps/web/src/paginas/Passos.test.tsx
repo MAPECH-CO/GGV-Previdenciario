@@ -43,8 +43,9 @@ describe('Protocolar no Meu INSS (GGVP-27)', () => {
     render(<Protocolar casoId={CASO} />)
     fireEvent.change(await screen.findByLabelText('Número do requerimento'), { target: { value: '1234a5' } })
     expect((screen.getByLabelText('Número do requerimento') as HTMLInputElement).value).toBe('12345')
-    fireEvent.change(screen.getByLabelText('Data de entrada do requerimento (DER)'), { target: { value: '05102026' } })
-    expect((screen.getByLabelText('Data de entrada do requerimento (DER)') as HTMLInputElement).value).toBe('05/10/2026')
+    const der = screen.getByLabelText('Data de entrada do requerimento (DER)') as HTMLInputElement
+    expect([der.type, der.value]).toEqual(['date', der.max]) // calendário, já em hoje, sem data futura
+    fireEvent.change(der, { target: { value: '2026-10-05' } })
     fireEvent.click(screen.getByRole('button', { name: 'Registrar protocolo' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Marque "Revisei o requerimento antes de enviar"')
     expect(fetch).toHaveBeenCalledTimes(1)

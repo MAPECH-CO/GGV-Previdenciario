@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { normalizarData, somenteDigitos, validarData } from '@ggv/campos'
+import { hojeIso, isoParaData, somenteDigitos } from '@ggv/campos'
 import { RegistrarProtocolo, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
@@ -78,8 +78,7 @@ export function Protocolar({ casoId }: { casoId: string }) {
   const ids = { numero: useId(), der: useId(), comprovante: useId(), revisado: useId() }
   const [caso, setCaso] = useState<CasoParaProtocolo | null>(null)
   const [numero, setNumero] = useState('')
-  const [der, setDer] = useState('')
-  const [erroDer, setErroDer] = useState('')
+  const [der, setDer] = useState(() => hojeIso()) // calendário do navegador, já em hoje; não aceita data futura
   const [comprovante, setComprovante] = useState<File | null>(null)
   const [revisado, setRevisado] = useState(false)
   const [erro, setErro] = useState('')
@@ -92,12 +91,12 @@ export function Protocolar({ casoId }: { casoId: string }) {
 
   async function registrar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const entrada = RegistrarProtocolo.safeParse({ numero, der, revisado })
+    const entrada = RegistrarProtocolo.safeParse({ numero, der: isoParaData(der) ?? '', revisado })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     if (!comprovante) return setErro('Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).')
     const dados = new FormData()
     dados.set('numero', numero)
-    dados.set('der', der)
+    dados.set('der', isoParaData(der) ?? '')
     dados.set('revisado', String(revisado))
     dados.set('comprovante', comprovante)
     setEnviando(true)
@@ -170,20 +169,7 @@ export function Protocolar({ casoId }: { casoId: string }) {
           <label className={styles.rotulo} htmlFor={ids.der}>
             Data de entrada do requerimento (DER)
           </label>
-          <input
-            id={ids.der}
-            className={styles.campo}
-            inputMode="numeric"
-            placeholder="dd/mm/aaaa"
-            value={der}
-            aria-invalid={erroDer ? true : undefined}
-            onChange={(e) => {
-              setDer(normalizarData(e.target.value))
-              setErroDer('')
-            }}
-            onBlur={() => setErroDer(der && !validarData(der) ? 'Data inválida. Use dd/mm/aaaa.' : '')}
-          />
-          {erroDer && <p className={styles.erroCampo}>{erroDer}</p>}
+          <input id={ids.der} className={styles.campo} type="date" max={hojeIso()} value={der} onChange={(e) => setDer(e.target.value)} />
           <label className={styles.rotulo} htmlFor={ids.comprovante}>
             Comprovante do protocolo
           </label>

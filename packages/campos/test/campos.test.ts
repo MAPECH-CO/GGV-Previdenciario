@@ -4,7 +4,7 @@ import {
   somenteDigitos, normalizarInteiro, validarInteiro, normalizarDecimal, formatarDecimal,
   normalizarCpf, validarCpf, formatarCpf,
   normalizarCep, validarCep, formatarCep, buscarCep,
-  analisarData, validarData, normalizarData, formatarData, dataParaIso, isoParaData,
+  analisarData, validarData, normalizarData, formatarData, dataParaIso, isoParaData, hojeIso,
   normalizarTelefone, validarTelefone, formatarTelefone,
   validarCnj, formatarCnj, gerarDvCnj,
   validarNb, formatarNb,
@@ -72,6 +72,8 @@ test('data: letra não entra, 31/02 não existe', () => {
   assert.equal(dataParaIso('31/02/2024'), null);
   assert.equal(isoParaData('2024-02-29'), '29/02/2024');
   assert.equal(isoParaData('2024-02-30'), null);
+  assert.match(hojeIso(), /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(isoParaData(hojeIso()) !== null, true);
   assert.equal(normalizarData('29022024'), '29/02/2024');
   assert.equal(normalizarData('29a22024'), '29a22024');
 });

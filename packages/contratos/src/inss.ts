@@ -29,6 +29,9 @@ export const CasoParaProtocolo = z.object({
 })
 export type CasoParaProtocolo = z.infer<typeof CasoParaProtocolo>
 
+/** Data já acontecida (ISO). Folga de um dia: o servidor roda em UTC e o escritório, em Brasília. */
+const naoFutura = (iso: string) => iso <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+
 /** Campos do protocolo (o comprovante vai no mesmo envio, como arquivo). */
 export const RegistrarProtocolo = z.object({
   numero: z
@@ -38,7 +41,8 @@ export const RegistrarProtocolo = z.object({
   der: z
     .string()
     .refine(validarData, 'Informe a data de entrada do requerimento (dd/mm/aaaa)')
-    .transform((d) => dataParaIso(d) as string),
+    .transform((d) => dataParaIso(d) as string)
+    .refine(naoFutura, 'A data de entrada do requerimento não pode ser no futuro'),
   revisado: z.literal(true, { error: 'Marque "Revisei o requerimento antes de enviar"' }),
 })
 export type RegistrarProtocolo = z.input<typeof RegistrarProtocolo>
@@ -140,11 +144,7 @@ export const RespostaDoInss = z.discriminatedUnion(
     z.object({
       tipo: z.literal('exigencia'),
       texto: z.string().trim().min(1, 'Cole o texto da exigência'),
-      // Sem data futura: a exigência já chegou. Folga de um dia pelo fuso (UTC).
-      data: DataObrigatoria('Informe a data da exigência (dd/mm/aaaa)').refine(
-        (iso) => iso <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
-        'A data da exigência não pode ser no futuro',
-      ),
+      data: DataObrigatoria('Informe a data da exigência (dd/mm/aaaa)').refine(naoFutura, 'A data da exigência não pode ser no futuro'),
     }),
   ],
   { error: 'Escolha "Decisão" ou "Exigência"' },

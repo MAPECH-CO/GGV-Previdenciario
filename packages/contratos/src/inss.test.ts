@@ -15,6 +15,7 @@ describe('RegistrarProtocolo (GGVP-27 CA4)', () => {
     expect(erros({ numero: '', der: '05/10/2026', revisado: true })).toEqual(['Informe o número do requerimento'])
     expect(erros({ numero: '1', der: '31/02/2026', revisado: true })).toEqual(['Informe a data de entrada do requerimento (dd/mm/aaaa)'])
     expect(erros({ numero: '1', der: '05/10/2026', revisado: false })).toEqual(['Marque "Revisei o requerimento antes de enviar"'])
+    expect(erros({ numero: '1', der: '01/01/2099', revisado: true })).toEqual(['A data de entrada do requerimento não pode ser no futuro'])
   })
 })
 
