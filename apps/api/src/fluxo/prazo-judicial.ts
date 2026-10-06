@@ -30,7 +30,7 @@ export function prazoJudicial(disponibilizadaEm: string, dias: number, feriados:
 export const tribunalDoCnj = (cnj: string | null) => (cnj && /^\d{20}$/.test(cnj) ? `${cnj[13]}.${cnj.slice(14, 16)}` : null)
 
 /** Feriados nacionais e os do tribunal do processo (CA9). Vazio: só o fim de semana conta, e a tela avisa. */
-export async function feriadosDoProcesso(banco: Banco, cnj: string | null): Promise<Set<string>> {
+export async function feriadosDoProcesso(banco: Pick<Banco, 'select'>, cnj: string | null): Promise<Set<string>> {
   const tribunal = tribunalDoCnj(cnj)
   const linhas = await banco
     .select({ data: feriado.data })
