@@ -177,6 +177,8 @@ export type Ficha = {
   arquivos: Arquivo[]
   /** Ficha criada pela automação do scanner: pode chegar sem telefone (GGVP-17, CA15). */
   origem?: 'scanner'
+  /** "Fechou com o escritório?" depois da entrevista: o motivo, o recontato ou o arquivo (GGVP-60). */
+  fechamento?: Fechamento
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -705,3 +707,46 @@ export type ConversaSemAudio = {
   participantes: string
   texto: string
 }
+
+// GGVP-60 em diante: o fechamento depois da entrevista. Espelho do Zod da spec ggvp-60.
+
+/** Quem registra: a recusa do escritório só pelo Atendimento sênior ou pela advogada do atendimento (CA11). */
+export type PapelNoFechamento = 'atendimento' | 'atendimento-senior' | 'advogada-atendimento'
+
+/** Ficou de pensar (15 dias) ou pediu para esperar (30 dias) (CA12). */
+export type EsperaDoRecontato = 'pensar' | 'esperar'
+
+export type Fechamento = {
+  /** fechou; recontatar numa data; arquivado (sai das filas ativas); recalcular (o recontato voltou ao cálculo, D1.13). */
+  situacao: 'fechou' | 'recontatar' | 'arquivado' | 'recalcular'
+  /** Id do catálogo MOTIVOS_DE_NAO_FECHAR (G16). */
+  motivo?: string
+  detalhe?: string
+  espera?: EsperaDoRecontato
+  /** aaaa-mm-dd */
+  recontatarEm?: string
+  /** O compromisso "Recontatar lead" na agenda. */
+  recontatoId?: string
+  papel: PapelNoFechamento
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+}
+
+/** O que "Registrar" manda na tela do fechamento. */
+export type EnvioDoFechamento =
+  | { fechou: true }
+  | {
+      fechou: false
+      motivo: string
+      detalhe?: string
+      papel: PapelNoFechamento
+      /** Nulo: "Vale recontatar? Não", o lead é arquivado (CA7). */
+      recontatar: { data: string; espera?: EsperaDoRecontato } | null
+    }
+
+/** O resultado do recontato (CA10). */
+export type ResultadoDoRecontato =
+  | { resultado: 'calculo' }
+  | { resultado: 'nova-data'; data: string; espera?: EsperaDoRecontato }
+  | { resultado: 'arquivar'; motivo: string; detalhe?: string; papel: PapelNoFechamento }

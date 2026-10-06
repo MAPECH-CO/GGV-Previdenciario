@@ -138,6 +138,13 @@
 
 ## GGVP-60 · Registrar por que não virou cliente e recontatar
 
+- [x] 14.1 Contrato: `Fechamento`, `EnvioDoFechamento`, `ResultadoDoRecontato` e `fechamento?` na ficha em `src/dados/tipos.ts`; `MOTIVOS_DE_NAO_FECHAR` em `src/dados/catalogos.ts`. Verifica com `npm run typecheck`.
+- [x] 14.2 Regra: `DIAS_PARA_PENSAR`, `DIAS_PARA_ESPERAR`, `dataSugeridaDeRecontato`, `motivoParadoDoFechamento`, `podeRegistrarOMotivo`, `precisaRegistrarFechamento` e `recontatoDevido` em `src/regras/fechamento.ts`, com teste em `src/regras/fechamento.test.ts` (CA1, CA5 a CA9, CA11, CA12). Verifica com `npx vitest run src/regras/fechamento.test.ts`.
+- [x] 14.3 Servidor de exemplo: `clienteFechou` (a ligação com o contrato), `obterFechamento`, `registrarFechamento`, `registrarRecontato` e `tarefasDeFechamento` em `src/dados/fechamento.ts`; o "Recontatar lead" como "Retornos a leads" na agenda (`dados/agenda.ts`) e o lead arquivado na busca do balcão (`regras/busca.ts`). Teste em `src/dados/fechamento.test.ts` (CA2 a CA11). Verifica com `npx vitest run src/dados/fechamento.test.ts src/regras/regras.test.ts src/dados/agenda.test.ts`.
+- [x] 14.4 Telas `/clientes/:fichaId/fechamento` (`src/paginas/RegistrarFechamento.tsx`, Figma `10:112`) e `/clientes/:fichaId/recontato` (`src/paginas/Recontatar.tsx`), o cartão "Fechamento" na ficha do cliente e as tarefas na Central; testes em `RegistrarFechamento.test.tsx` e `Recontatar.test.tsx` (CA1 a CA12). Verifica com `npx vitest run src/paginas/RegistrarFechamento.test.tsx src/paginas/Recontatar.test.tsx src/paginas/CentralAtendimento.test.tsx src/paginas/FichaCliente.test.tsx`.
+- [x] 14.5 Playwright `e2e/fechamento.e2e.ts`: recontato com a data sugerida, a agenda e a tarefa no dia (CA1, CA2, CA5, CA6, CA8, CA12), o lead arquivado no balcão e na ficha (CA4, CA7), "Sim, fechou" (CA5), tema escuro e fonte grande. Verifica com `npm run e2e -- fechamento`.
+- [ ] 14.6 Ligar no servidor: o corpo de `src/dados/fechamento.ts` vira `fetch`, `clienteFechou` vira o `fecharContrato` do contrato (GGVP-7), o último cálculo e a tela do cálculo vêm da GGVP-57 e o papel de quem registra vem do login (GGVP-78). **Fica aberta nesta história.**
+
 ## GGVP-124 · Nova demanda de quem já é cliente
 
 <!-- Fim do grupo fechamento. -->

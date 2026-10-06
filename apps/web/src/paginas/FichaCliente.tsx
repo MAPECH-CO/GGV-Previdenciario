@@ -12,6 +12,7 @@ import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
+import { CartaoFechamento } from '../componentes/CartaoFechamento.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
@@ -113,6 +114,7 @@ export function FichaCliente({ id }: { id: string }) {
         </div>
         <div className={styles.direita}>
           <CasoEmAndamento ficha={ficha} />
+          <CartaoFechamento fechamento={ficha.fechamento} hoje={hoje} fichaId={ficha.id} />
           <Cartao titulo="Documentação médica">
             <p className={styles.texto}>
               {[ficha.documentacaoMedica ?? 'Nenhum laudo recebido ainda.', laudoNovo].filter(Boolean).join(' ')}

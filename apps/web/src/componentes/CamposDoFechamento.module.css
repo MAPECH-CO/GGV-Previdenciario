@@ -1,0 +1,7 @@
+/* Os campos vêm de Campo.module.css; as pílulas, de Balcao.module.css. */
+.recontato {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
