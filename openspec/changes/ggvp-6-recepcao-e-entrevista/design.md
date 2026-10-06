@@ -826,6 +826,99 @@ export const ConversaSemAudio = z.object({
 7. **Documentos para o checklist** (CA7): a IA lista o que o cliente precisa trazer; "Conferi · enviar ao checklist" grava na ficha a lista conferida para o checklist do benefício (GGVP-91).
 8. **Quem vê**: o Jurídico vê tudo. Na ficha do cliente (Atendimento), a entrevista com a advogada mostra só a data, quem participou e a duração: o resumo, a transcrição e o áudio têm dado de saúde (o áudio só para o Jurídico, proposta do cartão da GGVP-40). As conversas do próprio Atendimento aparecem inteiras.
 
+<!-- Grupo benefício: GGVP-51 e GGVP-57. -->
+
+## GGVP-51 · Definir o benefício com apoio do acervo
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/entrevista/:agendamentoId/beneficio` | step_D1.12 `14:123`, com a sugestão, a alternativa e a "Decisão da advogada" do Overlay · Entrevista `1581:348` | "nome · Definir benefício", "com apoio do acervo": "A IA sugere · você confere" com o benefício que a advogada citou na entrevista, o sugerido, a base (casos parecidos do acervo), o porquê, a alternativa e os requisitos calculados por código (G19); a decisão (aceitar, a alternativa ou outro benefício do catálogo); o motivo de recusar a sugestão; "Conferi a recomendação com a entrevista"; "Confirmar benefício"; no lado, "Antes de concluir" |
+
+A tarefa "nome · Definir benefício" (D1.12) nasce para a advogada quando a entrevista termina (GGVP-40).
+
+### Contrato (Zod, vai para `packages/contratos/entrevista.ts`)
+
+```ts
+export const CasoDoAcervo = z.object({ id: z.string(), titulo: z.string(), beneficio: z.string(), resultado: z.enum(['deferido', 'indeferido']), resumo: z.string() })
+export const Requisito = z.object({ texto: z.string(), atende: z.boolean().nullable() })        // null: falta dado para calcular
+export const SugestaoDoBeneficio = z.object({
+  citado: z.string().optional(),                 // o que a advogada disse na entrevista (G3)
+  sugerido: z.string(), alternativa: z.string().optional(),
+  base: z.array(CasoDoAcervo), porque: z.string(), requisitos: z.array(Requisito),
+})
+export const DecisaoDoBeneficio = z.object({ beneficio: z.string(), conferi: z.literal(true), motivoDaRecusa: z.string().max(500).optional() })
+export const BeneficioDefinido = DecisaoDoBeneficio.omit({ conferi: true }).extend({
+  agendamentoId: z.string(), quem: z.string(), quando: z.string(),
+  citado: z.string().optional(), sugerido: z.string().optional(), fontes: z.array(z.string()),   // CA6
+  recusouSugestao: z.boolean(),
+})
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/entrevistas/:id/beneficio` | `id` | `{ ficha, agendamento, sugestao?, transcrita }` | `obterDefinicao` |
+| `POST /api/entrevistas/:id/beneficio` | `DecisaoDoBeneficio` | `{ ficha, tarefa? }` | `definirBeneficio` |
+
+### Decisões da história
+
+1. **O citado prevalece** (CA1, G3): `beneficioCitado` em `regras/beneficio.ts` acha nas falas da advogada o benefício que ela disse (com os nomes de todo dia: "aposentadoria por invalidez", "auxílio-doença", "BPC"), com teste. Ele vem marcado na decisão; o que o acervo indicar diferente fica só como sugestão.
+2. **Acervo simulado** (CA2, CA5): `dados/acervo.ts` tem casos de exemplo (obviamente falsos); a "IA" pontua cada caso pelos sinais que aparecem na transcrição e na ficha, soma por benefício e devolve o sugerido, a alternativa, os três casos deferidos mais parecidos e a frase do porquê. Ligar no servidor: o RAG de verdade.
+3. **Qualquer benefício do catálogo** (CA5): "Outro benefício" abre a lista única do portal (`BENEFICIOS`, a do GGVP-91).
+4. **Conferir antes de confirmar** (CA4): "Confirmar benefício" só habilita com o benefício escolhido e "Conferi a recomendação com a entrevista" marcada (o Figma pede a conferência sempre).
+5. **Recusa no histórico** (CA3): escolher outro que não o sugerido grava "Recusou a sugestão da IA" com o motivo, se houver.
+6. **O registro** (CA6): na ficha, `beneficioDefinido` com o benefício final, quem, quando, o citado, o sugerido e os casos consultados.
+7. **Requisito numérico** (CA7, G19): `requisitosDoBeneficio` em `regras/beneficio.ts` conta as contribuições do CNIS do caso, os dias de afastamento e a idade, por código com teste: carência de 12 contribuições e mais de 15 dias de afastamento no auxílio por incapacidade temporária; carência no permanente; 65 anos no LOAS Idoso. Sem o dado, a tela diz o que falta.
+8. **Um benefício só** (CA8): a decisão guarda um benefício; trocar substitui, com o anterior no histórico. Outro benefício para o mesmo cliente é processo novo (GGVP-124, outro grupo): esta história não cria processo, contrato nem kit.
+9. **O que vem depois**: benefício da lista "com cálculo" abre "Calcular tempo e pontos" (D1.13, GGVP-57) para o advogado do atendimento; os outros seguem para "O cliente fechou com o escritório?" (D1.14, outro grupo).
+
+## GGVP-57 · Calcular tempo e pontos sobre o CNIS
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/entrevista/:agendamentoId/calculo` | step_D1.13 `14:159` | "nome · Calcular tempo e pontos", "CNIS baixado do Meu INSS · extraído em dd/mm" (ou trazido impresso): os vínculos do CNIS do caso, o tempo de contribuição, os pontos e a regra que o advogado calculou, a idade pela data de nascimento, o cálculo anterior; no lado, "Já pode se aposentar?" (com a data prevista no "Ainda não"), "Conferi o cálculo com o CNIS" e "Concluir" |
+
+### Contrato (Zod, vai para `packages/contratos/entrevista.ts`)
+
+```ts
+export const Vinculo = z.object({ empresa: z.string(), inicio: z.string(), fim: z.string().optional() })   // aaaa-mm
+export const Cnis = z.object({ fichaId: z.string(), origem: z.enum(['meu-inss', 'impresso']), extraidoEm: z.string(), vinculos: z.array(Vinculo) })
+export const TempoDeContribuicao = z.object({ anos: z.number().int().min(0).max(70), meses: z.number().int().min(0).max(11), dias: z.number().int().min(0).max(30) })
+export const RegistroDoCalculo = z.discriminatedUnion('podeAposentar', [
+  z.object({ podeAposentar: z.literal(true), tempo: TempoDeContribuicao, pontos: z.number().min(0).max(200), regra: z.string(), conferi: z.literal(true) }),
+  z.object({ podeAposentar: z.literal(false), tempo: TempoDeContribuicao, pontos: z.number().min(0).max(200), regra: z.string(), dataPrevista: Data, conferi: z.literal(true) }),
+])
+export const Calculo = RegistroDoCalculo.and(z.object({ quem: z.string(), quando: z.string(), cnisExtraidoEm: z.string() }))
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/entrevistas/:id/calculo` | `id` | `{ ficha, agendamento, cnis?, exige }` | `obterCalculo` |
+| `POST /api/entrevistas/:id/calculo` | `RegistroDoCalculo` | `{ ficha }` | `registrarCalculo` |
+
+### Campos e a função de cada um
+
+| Campo | Funções |
+|---|---|
+| Anos, meses e dias de contribuição | `normalizarInteiro`, `validarInteiro`, com os limites do contrato |
+| Pontos | `normalizarDecimal`, `validarDecimal`, `formatarDecimal` (uma casa) |
+| Regra aplicada | escolha numa lista (`REGRAS_DE_APOSENTADORIA`) |
+| Data prevista | `normalizarData`, `dataParaIso`, de hoje em diante |
+
+### Decisões da história
+
+1. **Feito por pessoa** (CA5, CA7, G19): o advogado do atendimento calcula sobre o CNIS e registra tempo, pontos e regra; o portal não calcula sozinho (fora do escopo do cartão). Só a idade sai por código (`idadeEm`), e os números digitados passam pelas funções de `campos`, com teste.
+2. **Lista "com cálculo"** (CA1, CA3): `exigeCalculo` em `regras/calculo.ts`, com a lista que o cartão cita (Aposentadoria por Contribuição, por Idade, Especial, Rural, as duas PCD, CTC, Planejamento, Revisão de Aposentadoria e Atualização de Vínculos). Benefício fora dela não abre a tarefa, e a tela diz que o passo não se aplica. `calculoPendente` diz se o passo ainda falta antes do fechamento; a ficha do cliente mostra no "Caso em andamento".
+3. **O CNIS do caso** (CA4): `cnisDeExemplo` em `exemplo.ts` (vínculos de empresas de exemplo), com a origem (Meu INSS ou impresso) e a data de extração no subtítulo. Sem CNIS, "Concluir" não habilita e a tela diz como conseguir.
+4. **"Ainda não pode se aposentar"** (CA2): pede a data prevista e registra; "Registrar o motivo" (D1.14) é do outro grupo (GGVP-60), que lê o último cálculo da ficha.
+5. **Refazer** (CA6): cada cálculo entra em `calculos` na ficha; o novo não apaga o anterior, que aparece na tela e no histórico.
+6. **Quem usa**: o advogado do setor de atendimento, pela Central do Atendimento (tarefa "nome · Calcular tempo e pontos", D1.13).
+
+<!-- Fim do grupo benefício. -->
+
 ## Risks / Trade-offs
 
 - [Fontes de "Como chegou" não são as do Airtable] → lista de exemplo, num arquivo só; trocar ao ligar no servidor. Os benefícios já são os do Airtable, normalizados no cartão GGVP-91 (desde a GGVP-21).
@@ -850,6 +943,10 @@ export const ConversaSemAudio = z.object({
 - [O catálogo do GGVP-91 não tem "LOAS representado (genitor)"] → caixa "Tem representante legal". Levar ao cartão.
 - [Quem vê a transcrição não está decidido] → Jurídico vê tudo; Atendimento vê a entrevista com a advogada só pela data, participantes e duração. Levar ao Lucas.
 - [A lista de profissões do Airtable não está aqui] → `PROFISSOES` de exemplo, num lugar só.
+- [O acervo de verdade (Raio-X de 979 processos) é carga de implantação] → acervo de exemplo e "IA" por sinais, só para a tela; o RAG entra ao ligar no servidor.
+- [As listas "com cálculo" e "sem cálculo" estão na seção do D1 que o cartão GGVP-57 cita, não no próprio cartão] → `exigeCalculo` num lugar só; Revisão da Vida Toda e os cíveis não estão em nenhuma das duas: ficam sem cálculo. Levar ao Lucas.
+- [Requisitos numéricos da sugestão sem dado completo] → carência pelos vínculos do CNIS de exemplo, afastamento pelo "sem trabalhar desde" da entrevista, idade pela data de nascimento; qualidade de segurado não é calculada aqui. Levar ao Lucas.
+- [O "Registrar o motivo" do "Ainda não pode se aposentar" é do grupo fechamento] → o cálculo guarda a data prevista na ficha; a tarefa nasce lá.
 
 ## Migration Plan
 

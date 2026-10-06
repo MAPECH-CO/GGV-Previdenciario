@@ -177,6 +177,8 @@ export type Ficha = {
   arquivos: Arquivo[]
   /** Ficha criada pela automação do scanner: pode chegar sem telefone (GGVP-17, CA15). */
   origem?: 'scanner'
+  /** O benefício do caso, decidido pela advogada (GGVP-51). Um só: outro benefício é processo novo (GGVP-124). */
+  beneficioDefinido?: BeneficioDefinido
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -705,3 +707,45 @@ export type ConversaSemAudio = {
   participantes: string
   texto: string
 }
+
+// GGVP-51 em diante: o benefício definido com apoio do acervo. Espelho do Zod da design.md da change ggvp-6.
+
+/** Um caso da casa no acervo (simulado): a base da sugestão (CA2). */
+export type CasoDoAcervo = { id: string; titulo: string; beneficio: string; resultado: 'deferido' | 'indeferido'; resumo: string }
+
+/** Um requisito numérico calculado por código (CA7, G19). `atende` nulo: falta dado para calcular. */
+export type Requisito = { texto: string; atende: boolean | null }
+
+export type SugestaoDoBeneficio = {
+  /** O benefício que a advogada disse na entrevista: prevalece (CA1, G3). */
+  citado?: string
+  sugerido: string
+  alternativa?: string
+  base: CasoDoAcervo[]
+  porque: string
+  requisitos: Requisito[]
+}
+
+/** "Confirmar benefício" (CA4). */
+export type DecisaoDoBeneficio = { beneficio: string; conferi: true; motivoDaRecusa?: string }
+
+/** O registro da decisão (CA6). */
+export type BeneficioDefinido = {
+  beneficio: string
+  agendamentoId: string
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+  citado?: string
+  sugerido?: string
+  /** Os casos do acervo consultados. */
+  fontes: string[]
+  recusouSugestao: boolean
+  motivoDaRecusa?: string
+}
+
+/** Um vínculo do CNIS: aaaa-mm; sem fim, em aberto. */
+export type Vinculo = { empresa: string; inicio: string; fim?: string }
+
+/** O CNIS anexado ao caso: impresso pelo cliente ou baixado do Meu INSS (GGVP-57, CA4). */
+export type Cnis = { fichaId: string; origem: 'meu-inss' | 'impresso'; /** aaaa-mm-dd */ extraidoEm: string; vinculos: Vinculo[] }

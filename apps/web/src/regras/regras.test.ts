@@ -14,6 +14,7 @@ import {
   preencherCadastro,
 } from './cadastro.ts'
 import { dataCurta, idadeEm } from './datas.ts'
+import { beneficioCitado, contribuicoes, diasDesde, requisitosDoBeneficio } from './beneficio.ts'
 import { buscarTrechos, contagemDoTopo, marcarBusca, situacaoDaGravacao } from './transcricao.ts'
 import {
   PARTE_MAXIMA,
@@ -872,5 +873,43 @@ describe('GGVP-46 · Transcrever a entrevista', () => {
     expect(contagemDoTopo([g({ audio }), g({ audio }), g({ origem: 'registro' })])).toBe('2 gravações · 1 registro sem áudio')
     expect(contagemDoTopo([g({ audio })])).toBe('1 gravação')
     expect(contagemDoTopo([])).toBe('nenhuma conversa ainda')
+  })
+})
+
+describe('GGVP-51 · Definir o benefício com apoio do acervo', () => {
+  const advogada = (texto: string): Trecho => ({ aos: 0, quem: 'Dra. Paula', papel: 'advogada', texto })
+  const cliente = (texto: string): Trecho => ({ aos: 0, quem: 'Josefa', papel: 'cliente', texto })
+
+  it('CA1 · acha o benefício que a advogada citou, pelos nomes de todo dia; o que o cliente diz não conta', () => {
+    expect(beneficioCitado([advogada('Pelo que o senhor contou, o caminho é a aposentadoria por invalidez.')])).toBe('incapacidade-permanente')
+    expect(beneficioCitado([advogada('Vamos pedir o auxílio-doença.')])).toBe('incapacidade-temporaria')
+    expect(beneficioCitado([advogada('Primeiro pensei no BPC do idoso.'), advogada('Mas o caminho é o auxílio por incapacidade temporária.')])).toBe('incapacidade-temporaria')
+    expect(beneficioCitado([advogada('Aposentadoria por invalidez acidentária, pelo acidente.')])).toBe('incapacidade-permanente-acidentaria')
+    expect(beneficioCitado([cliente('Eu queria a aposentadoria por idade.'), advogada('Vou conferir os laudos com você.')])).toBeUndefined()
+  })
+
+  it('CA7 · carência pelos meses do CNIS, sem contar o mesmo mês duas vezes', () => {
+    const vinculos = [
+      { empresa: 'A', inicio: '2025-01', fim: '2025-06' },
+      { empresa: 'B', inicio: '2025-05', fim: '2025-08' },
+      { empresa: 'C', inicio: '2026-09' },
+    ]
+    expect(contribuicoes(vinculos, '2026-10-05')).toBe(10)
+    expect(contribuicoes(vinculos, '2025-03-31')).toBe(3)
+  })
+
+  it('CA7 · afastamento em dias e os requisitos de cada benefício, por código', () => {
+    expect(diasDesde('06/2026', '2026-10-05')).toBe(126)
+    expect(diasDesde('junho', '2026-10-05')).toBeNull()
+    const vinculos = [{ empresa: 'Exemplo Ltda', inicio: '2025-11', fim: '2026-05' }]
+    expect(requisitosDoBeneficio('incapacidade-temporaria', { vinculos, semTrabalharDesde: '09/2026' }, '2026-10-05')).toEqual([
+      { texto: 'Carência: 7 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)', atende: false },
+      { texto: 'Afastamento: 34 dias desde 09/2026; precisa de mais de 15 (calculado por código, G19)', atende: true },
+    ])
+    expect(requisitosDoBeneficio('incapacidade-permanente', {}, '2026-10-05')).toEqual([{ texto: 'Carência: sem CNIS no caso para contar as contribuições', atende: null }])
+    expect(requisitosDoBeneficio('loas-idoso', { nascimento: '1960-12-01' }, '2026-10-05')).toEqual([
+      { texto: 'Idade: 65 anos; o LOAS Idoso pede 65 (calculado por código, G19)', atende: true },
+    ])
+    expect(requisitosDoBeneficio('pensao-morte', {}, '2026-10-05')).toEqual([])
   })
 })

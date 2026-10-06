@@ -3,7 +3,7 @@
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
 import { isoParaData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
-import type { EnvioDaFicha, Ficha, Gravacao, InformacaoExtraida, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha, Trecho } from './tipos.ts'
+import type { Cnis, EnvioDaFicha, Ficha, Gravacao, InformacaoExtraida, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha, Trecho } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
 export const CPF_DE_TESTE = '00000000191'
@@ -268,7 +268,13 @@ export function conversaDeExemplo(ficha: Ficha, advogada: string): FalaDeExemplo
     }),
     a(114, 'Você tem a senha do gov.br em mãos? Não precisa falar em voz alta: eu abro o cofre para você digitar.', { roteiro: [1] }),
     c(122, 'Tenho, sim.'),
-    a(132, 'Pelo que você contou, vou conferir os laudos e definir o benefício com você. Obrigada.'),
+    // A advogada da Natália cita o benefício na conversa; a da Josefa deixa para decidir depois (GGVP-51, G3).
+    a(
+      132,
+      ficha.beneficioInteresse === 'incapacidade-temporaria'
+        ? 'Pelo que você contou e pelos laudos, o caminho é a aposentadoria por invalidez. Vou conferir os laudos com você. Obrigada.'
+        : 'Pelo que você contou, vou conferir os laudos e definir o benefício com você. Obrigada.',
+    ),
   ]
 }
 
@@ -374,5 +380,25 @@ export function gravacoesDeExemplo(): Gravacao[] {
       registro: 'Avisado da exigência do juiz; vai buscar as notas do produtor.',
       soJuridico: false,
     },
+  ]
+}
+
+/**
+ * O CNIS anexado ao caso (GGVP-51 e GGVP-57): vínculos de empresas de exemplo, sem número de documento. O da Josefa foi
+ * baixado do Meu INSS na renovação da senha; o da Natália, trazido impresso.
+ */
+export function cnisDeExemplo(): Cnis[] {
+  return [
+    {
+      fichaId: 'josefa-exemplo',
+      origem: 'meu-inss',
+      extraidoEm: '2026-10-02',
+      vinculos: [
+        { empresa: 'Exemplo Comércio Ltda', inicio: '2012-01', fim: '2016-12' },
+        { empresa: 'Exemplo Limpeza Ltda', inicio: '2019-03', fim: '2026-05' },
+      ],
+    },
+    { fichaId: 'natalia-exemplo', origem: 'impresso', extraidoEm: '2026-10-01', vinculos: [{ empresa: 'Exemplo Serviços Ltda', inicio: '2021-02', fim: '2026-04' }] },
+    { fichaId: 'antonio-exemplo', origem: 'meu-inss', extraidoEm: '2026-07-30', vinculos: [{ empresa: 'Exemplo Condomínio', inicio: '2021-01', fim: '2026-02' }] },
   ]
 }

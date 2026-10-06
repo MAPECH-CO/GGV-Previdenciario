@@ -130,7 +130,22 @@
 
 ## GGVP-51 · Definir o benefício com apoio do acervo
 
+- [x] 12.1 Contrato: tipos espelho do Zod da `design.md` em `apps/web/src/dados/tipos.ts` (caso do acervo, requisito, sugestão, decisão, `beneficioDefinido` na ficha, vínculo e CNIS). Verifica com `npm run typecheck`.
+- [x] 12.2 Regras com teste: `src/regras/beneficio.ts` (`beneficioCitado` pelos nomes de todo dia, `contribuicoes` do CNIS, dias de afastamento, `requisitosDoBeneficio`), com teste em `src/regras/regras.test.ts` (CA1, CA7). Verifica com `npx vitest run src/regras`.
+- [x] 12.3 Semente e servidor: o acervo de exemplo e a sugestão por sinais em `src/dados/acervo.ts`; `cnisDeExemplo` e a fala da Natália que cita o benefício em `exemplo.ts`; a tarefa "Definir benefício" ao encerrar a entrevista; `obterDefinicao` e `definirBeneficio` em `src/dados/beneficio.ts`, com teste em `src/dados/beneficio.test.ts` (CA1, CA2, CA3, CA6, CA8). Verifica com `npx vitest run src/dados`.
+- [x] 12.4 Tela `/entrevista/:agendamentoId/beneficio` (`src/paginas/DefinirBeneficio.tsx`, Figma `14:123` e `1581:348`): "A IA sugere · você confere", o citado, o sugerido, a base, o porquê, a alternativa, os requisitos, a decisão com "Outro benefício", o motivo da recusa, a conferência e "Confirmar benefício"; rota em `App.tsx`; teste em `DefinirBeneficio.test.tsx` e `App.test.tsx` (CA1, CA2, CA4, CA5, CA7). Verifica com `npx vitest run src/paginas/DefinirBeneficio.test.tsx src/App.test.tsx`.
+- [x] 12.5 Playwright `e2e/definir-beneficio.e2e.ts`: da entrevista da Josefa à sugestão com a base e os requisitos, recusar com motivo e ver no histórico (CA2, CA3, CA4, CA6, CA7), Natália com o benefício citado (CA1), tema escuro e fonte grande. Verifica com `npm run e2e`.
+- [ ] 12.6 Ligar no servidor: trocar o corpo de `src/dados/beneficio.ts` por `fetch` e o acervo simulado pelo RAG de verdade. Depende do GGVP-118, do banco do Mateus e da carga do acervo. **Fica aberta nesta história.**
+
 ## GGVP-57 · Calcular tempo e pontos sobre o CNIS
+
+- [ ] 13.1 Contrato: tipos espelho do Zod da `design.md` em `apps/web/src/dados/tipos.ts` (tempo, registro e cálculo; `calculos` na ficha). Verifica com `npm run typecheck`.
+- [ ] 13.2 Regras com teste: `src/regras/calculo.ts` (`exigeCalculo`, `calculoPendente`, os erros dos campos pela biblioteca campos, `tempoFalado`, `REGRAS_DE_APOSENTADORIA`), com teste em `src/regras/regras.test.ts` (CA1, CA3, CA5, CA7). Verifica com `npx vitest run src/regras`.
+- [ ] 13.3 Servidor de exemplo: a tarefa "Calcular tempo e pontos" ao definir benefício com cálculo; `obterCalculo` e `registrarCalculo` em `src/dados/calculo.ts`, com teste em `src/dados/calculo.test.ts` (CA1, CA2, CA3, CA4, CA5, CA6). Verifica com `npx vitest run src/dados`.
+- [ ] 13.4 Tela `/entrevista/:agendamentoId/calculo` (`src/paginas/CalcularTempo.tsx`, Figma `14:159`): o CNIS com a origem e a data, os vínculos, tempo, pontos e regra, a idade, o cálculo anterior, "Já pode se aposentar?" com a data prevista, a conferência e "Concluir"; o "Caso em andamento" da ficha mostra o passo pendente; rota em `App.tsx`; teste em `CalcularTempo.test.tsx`, `FichaCliente.test.tsx` e `App.test.tsx` (CA1, CA2, CA3, CA4, CA5, CA7). Verifica com `npx vitest run src/paginas/CalcularTempo.test.tsx src/paginas/FichaCliente.test.tsx src/App.test.tsx`.
+- [ ] 13.5 Playwright `e2e/calcular-tempo.e2e.ts`: do benefício com cálculo à tarefa na Central do Atendimento, calcular e concluir (CA1, CA4, CA5), refazer com "Ainda não" e a data prevista e ver o anterior (CA2, CA6), benefício sem cálculo sem o passo (CA3), tema escuro e fonte grande. Verifica com `npm run e2e`.
+- [ ] 13.6 Ligar no servidor: trocar o corpo de `src/dados/calculo.ts` por `fetch` e o CNIS de exemplo pelo anexado ao caso. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+- [ ] 13.7 No fim do grupo: rodar typecheck, lint, todos os testes e todo o Playwright; escrever `RELATORIO-grupo-beneficio.md` fora do git.
 
 <!-- Fim do grupo benefício. -->
 
