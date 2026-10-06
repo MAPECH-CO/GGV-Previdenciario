@@ -30,6 +30,7 @@ import {
 import type { Cofre } from '../cofre.ts'
 import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
+import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
@@ -43,6 +44,8 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.02': (id) => `/casos/${id}/protocolo`,
   'D2.03': (id) => `/casos/${id}/pericia`,
   'D2.04': (id) => `/casos/${id}/vigilia`,
+  'D2.05': (id) => `/casos/${id}/exigencia`,
+  'D2.05d': (id) => `/casos/${id}/exigencia/documentos`,
 }
 
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date }
@@ -94,7 +97,25 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         }),
       )
     }
-    return visiveis
+    if (pedido.perfilAtivo !== 'senior') return visiveis
+    // GGVP-39 CA14: a 5 dias úteis, alerta; a 2 ou menos (ou vencida), no topo da fila.
+    const linha = (a: Awaited<ReturnType<typeof alertasDeExigencia>>[number]) =>
+      TarefaDaCentral.parse({
+        id: a.exigenciaId,
+        casoId: a.casoId,
+        passo: 'D2.05',
+        cliente: a.cliente,
+        titulo:
+          a.diasUteis < 0
+            ? 'Exigência do INSS vencida: pedir dilação ou registrar a perda'
+            : `Exigência do INSS perto do prazo: ${a.diasUteis === 0 ? 'vence hoje' : a.diasUteis === 1 ? '1 dia útil' : `${a.diasUteis} dias úteis`}`,
+        detalhe: (a.beneficio ?? 'benefício a definir').replaceAll('_', ' '),
+        tela: TELA_DO_PASSO['D2.05'](a.casoId),
+        prazo: a.prazo,
+        urgente: true,
+      })
+    const alertas = await alertasDeExigencia(banco, hoje(agora()))
+    return [...alertas.filter((a) => a.diasUteis <= 2).map(linha), ...visiveis, ...alertas.filter((a) => a.diasUteis > 2).map(linha)]
   })
 
   const comCaso = { preHandler: exigir(banco, 'protocolo_inss.registrar', agora) }

@@ -30,7 +30,7 @@ export const CasoParaProtocolo = z.object({
 export type CasoParaProtocolo = z.infer<typeof CasoParaProtocolo>
 
 /** Data já acontecida (ISO). Folga de um dia: o servidor roda em UTC e o escritório, em Brasília. */
-const naoFutura = (iso: string) => iso <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
+export const naoFutura = (iso: string) => iso <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)
 
 /** Campos do protocolo (o comprovante vai no mesmo envio, como arquivo). */
 export const RegistrarProtocolo = z.object({
@@ -117,7 +117,7 @@ export type DecidirConferencia = z.input<typeof DecidirConferencia>
 export const DispensarParecer = z.object({ justificativa: z.string().trim().min(1, 'Escreva por que o parecer é dispensado') })
 export type DispensarParecer = z.infer<typeof DispensarParecer>
 
-const DataObrigatoria = (mensagem: string) =>
+export const DataObrigatoria = (mensagem: string) =>
   z
     .string({ error: mensagem })
     .refine(validarData, mensagem)

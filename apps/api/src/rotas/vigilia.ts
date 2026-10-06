@@ -114,6 +114,11 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
         registradoPor: quem,
       })
       await tx.update(etapa).set(fecharVigilia).where(eq(etapa.id, vigilia.id))
+      // A espera da análise da resposta à exigência (GGVP-39 CA4) termina com a decisão.
+      await tx
+        .update(etapa)
+        .set(fecharVigilia)
+        .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D2.E4'), isNull(etapa.concluidaEm)))
       await tx
         .update(tarefa)
         .set(fecharVigilia)

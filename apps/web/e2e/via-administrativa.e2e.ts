@@ -166,3 +166,44 @@ test('GGVP-48 · indeferido com a carta vai para a Justiça; a Sênior pode ence
   await page.getByRole('button', { name: 'Encerrar o caso' }).click()
   await expect(page.getByRole('status')).toHaveText('Caso encerrado sem judicializar.')
 })
+
+// Grupo 3: exigência do INSS (Ulisses, de exemplo, esperando a advogada decidir).
+const emDias = (n: number) => new Date(Date.now() + n * 86_400_000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
+
+test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a prova e responde; o caso volta para a vigília', async ({ page, context }) => {
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Tratar exigência do INSS' }).click()
+  await expect(page.getByText(/Apresentar a inscrição no CadÚnico/)).toBeVisible()
+  await page.getByLabel('Documentos', { exact: true }).check()
+  await page.getByLabel('Prazo que o INSS deu (dias)').fill('30')
+  await expect(page.getByText(/Prazo do INSS: \d{2}\/\d{2}\/\d{4} \(30 dias\)/)).toBeVisible()
+  await page.getByLabel('Documentos pedidos (um por linha)').fill('CadÚnico atualizado\nComprovante de renda')
+  await page.getByLabel('Prazo de entrega da Documentação').fill(emDias(7))
+  await page.getByRole('button', { name: 'Criar a tarefa' }).click()
+  await expect(page.getByRole('status')).toContainText('A Documentação recebeu o card')
+
+  await context.clearCookies()
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Cumprir exigência do INSS' }).click()
+  await expect(page.getByRole('button', { name: 'Anexar e responder' })).toBeDisabled()
+  await page.getByLabel('Canal').selectOption('whatsapp')
+  await page.getByLabel('Resultado').selectOption('vai_entregar')
+  await page.getByRole('button', { name: 'Registrar cobrança' }).click()
+  await expect(page.getByText(/Cobranças: 1 de 3/)).toBeVisible()
+  for (const item of ['CadÚnico atualizado', 'Comprovante de renda']) {
+    await page.getByLabel(`Documento de “${item}”`).setInputFiles({ name: 'doc.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') })
+    await page.getByRole('listitem').filter({ hasText: item }).getByRole('button', { name: 'Anexar' }).click()
+    await expect(page.getByRole('listitem').filter({ hasText: item })).toContainText('Cumprido')
+  }
+  await page.getByLabel('Comprovante da resposta').setInputFiles({ name: 'resposta.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') })
+  await page.getByRole('button', { name: 'Anexar e responder' }).click()
+  await expect(page.getByRole('status')).toContainText('voltou para a vigília')
+
+  await context.clearCookies()
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Trazer a resposta do INSS' }).click()
+  await expect(page.getByText(/Esperando: INSS analisar a resposta/)).toBeVisible()
+})

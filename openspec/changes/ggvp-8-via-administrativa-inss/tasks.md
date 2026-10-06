@@ -48,16 +48,16 @@
 
 ## GGVP-39 · Tratar exigência do INSS
 
-- [ ] 6.1 Matriz versão 4 (`exigencia_inss.tratar`, `exigencia_inss.cumprir`, `exigencia_inss.decidir_vencida`, `banco.agendar`) e contratos `ExigenciaDoCaso`, `DecidirExigencia`, `RegistrarCobranca`, `CumprirItem`, `ResponderExigencia` e `DecidirVencida`; teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 6.2 Migração 0007 (colunas novas da exigência, do item, da prestação, do contrato e do agendamento); verifica com `pnpm --filter @ggv/api test` (o banco embutido aplica as migrações).
-- [ ] 6.3 CA7 · Prazo do INSS em `apps/api/src/fluxo/prazo-inss.ts` (dias corridos a partir do dia seguinte; fim sem expediente vai ao próximo dia útil; tabela `feriado`) e dias úteis até o prazo; teste com fim de semana, feriado e véspera; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.4 CA1, CA2, CA6, CA7, CA8, CA9, CA10 · `GET /api/casos/:id/exigencia` e `POST /api/casos/:id/exigencia` (decidir: itens, tipos de perícia, dias do INSS, prazo de entrega até o prazo do INSS, card da Documentação com limite e lembrete, ou tarefa de perícia); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.5 CA5, CA11, CA12 · `POST /api/casos/:id/exigencia/cobrancas` (tentativa com data, canal e resultado; limite da configuração; escalada à Sênior) e `POST /api/casos/:id/exigencia/itens/:item` (prova ou "não cumprido" com motivo); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.6 CA2, CA3, CA4, CA6, CA13 · `POST /api/casos/:id/exigencia/resposta` (G21, data e comprovante, perícia depois dos documentos, volta à vigília) e `avancarExigencia` (resultado das perícias devolve à vigília); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.7 CA14 · Fila da Sênior: "Exigência perto do prazo" a 5 dias úteis, topo a 2, vencida com "pedir dilação ou registrar a perda"; `POST /api/casos/:id/exigencia/vencida`; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.8 Dados de exemplo: configuração de cobrança (3 e 2) e um caso com exigência esperando a advogada; verifica entrando como advogada.
-- [ ] 6.9 Telas "Tratar exigência" (advogada e Sênior) e "Cumprir exigência" (Documentação); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 6.10 Playwright: a advogada decide "Documentos", a Documentação cobra, junta a prova e responde, e o caso volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 6.1 Matriz versão 4 (`exigencia_inss.tratar`, `exigencia_inss.cumprir`, `exigencia_inss.decidir_vencida`, `banco.agendar`) e contratos `ExigenciaDoCaso`, `DecidirExigencia`, `RegistrarCobranca`, `CumprirItem`, `ResponderExigencia` e `DecidirVencida`; teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 6.2 Migração 0008 (colunas novas da exigência, do item, da prestação, do contrato e do agendamento); verifica com `pnpm --filter @ggv/api test` (o banco embutido aplica as migrações).
+- [x] 6.3 CA7 · Prazo do INSS em `apps/api/src/fluxo/prazo-inss.ts` (dias corridos a partir do dia seguinte; fim sem expediente vai ao próximo dia útil; tabela `feriado`) e dias úteis até o prazo; teste com fim de semana, feriado e véspera; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.4 CA1, CA2, CA6, CA7, CA8, CA9, CA10 · `GET /api/casos/:id/exigencia` e `POST /api/casos/:id/exigencia` (decidir: itens, tipos de perícia, dias do INSS, prazo de entrega até o prazo do INSS, card da Documentação com limite e lembrete, ou tarefa de perícia); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.5 CA5, CA11, CA12 · `POST /api/casos/:id/exigencia/cobrancas` (tentativa com data, canal e resultado; limite da configuração; escalada à Sênior) e `POST /api/casos/:id/exigencia/itens/:item` (prova ou "não cumprido" com motivo); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.6 CA2, CA3, CA4, CA6, CA13 · `POST /api/casos/:id/exigencia/resposta` (G21, data e comprovante, perícia depois dos documentos, volta à vigília) e `avancarExigencia` (resultado das perícias devolve à vigília); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.7 CA14 · Fila da Sênior: "Exigência perto do prazo" a 5 dias úteis, topo a 2, vencida com "pedir dilação ou registrar a perda"; `POST /api/casos/:id/exigencia/vencida`; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.8 Dados de exemplo: configuração de cobrança (3 e 2) e um caso com exigência esperando a advogada; verifica entrando como advogada.
+- [x] 6.9 Telas "Tratar exigência" (advogada e Sênior) e "Cumprir exigência" (Documentação); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 6.10 Playwright: a advogada decide "Documentos", a Documentação cobra, junta a prova e responde, e o caso volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
 - [ ] 6.11 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-44 · Benefício deferido: prestação de contas e ida ao banco

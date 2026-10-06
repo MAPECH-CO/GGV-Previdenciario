@@ -58,3 +58,4 @@ export const Erro = z.object({ erro: z.string() })
 export type Erro = z.infer<typeof Erro>
 export * from './permissoes.ts'
 export * from './inss.ts'
+export * from './exigencia.ts'

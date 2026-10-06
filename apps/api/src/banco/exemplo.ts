@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, credencialGovbr, decisao, documento, etapa, parecerMedico, pessoa, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, credencialGovbr, decisao, documento, etapa, exigencia, parecerMedico, pessoa, tarefa, usuario } from './esquema.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
 
@@ -112,4 +112,23 @@ export async function semearExemplos(banco: Banco) {
       .values({ casoId: c.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date(Date.UTC(2026, 8, 25 + i, 12)) })
     await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' })
   }
+
+  // Exigência do INSS (GGVP-39): limites de cobrança do escritório (Q1, exemplo) e um caso esperando a advogada decidir.
+  await banco.insert(configuracao).values([
+    { chave: 'cobranca.limite', valor: 3 },
+    { chave: 'cobranca.intervalo_dias', valor: 2 },
+  ])
+  const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
+  await banco.insert(etapa).values({ casoId: cu.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date() })
+  await banco.insert(exigencia).values({
+    casoId: cu.id,
+    origem: 'inss',
+    descricao: 'Apresentar a inscrição no CadÚnico atualizada e o comprovante de renda de todos que moram na casa. (exemplo)',
+    recebidaEm: new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10),
+  })
+  await banco.insert(tarefa).values([
+    { casoId: cu.id, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' },
+    { casoId: cu.id, passo: 'D2.05', titulo: 'Tratar exigência do INSS', perfilDono: 'advogada' },
+  ])
 }

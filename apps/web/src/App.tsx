@@ -9,6 +9,8 @@ import { Entrar } from './paginas/Entrar.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
 import { Protocolar } from './paginas/Protocolar.tsx'
 import { Vigilia } from './paginas/Vigilia.tsx'
+import { TratarExigencia } from './paginas/TratarExigencia.tsx'
+import { CumprirExigencia } from './paginas/CumprirExigencia.tsx'
 import { Exige } from './paginas/SemPermissao.tsx'
 import { SemPerfil } from './paginas/SemPerfil.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
@@ -50,6 +52,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Exige acao="caso.ver"><Vigilia casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia$/, tela: (id) => <Exige acao="caso.ver"><TratarExigencia casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia\/documentos$/, tela: (id) => <Exige acao="exigencia_inss.cumprir"><CumprirExigencia casoId={id} /></Exige> },
 ]
 
 function Inicio({ caminho, perfil }: { caminho: string; perfil: string }) {
