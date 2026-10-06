@@ -115,6 +115,7 @@ describe('Transcrições do caso · janela', () => {
     fireEvent.change(screen.getByLabelText('O que foi conversado *'), { target: { value: 'Explicamos o que levar na perícia.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Registrar conversa' }))
     expect(await screen.findByText('Explicamos o que levar na perícia.')).toBeTruthy()
-    expect(screen.getByText('2 gravações · 2 registros sem áudio')).toBeTruthy()
+    // O contador do topo se atualiza depois da lista: espera por ele, em vez de conferir na hora.
+    expect(await screen.findByText('2 gravações · 2 registros sem áudio')).toBeTruthy()
   })
 })
