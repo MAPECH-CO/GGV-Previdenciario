@@ -143,7 +143,7 @@ test('GGVP-35 · a advogada registra um deferido e uma exigência; o Atendimento
   await expect(page.getByRole('button', { name: 'Registrar' })).toHaveCount(0)
 })
 
-test('GGVP-48 · indeferido com a carta vai para a Justiça; a Sênior pode encerrar sem judicializar', async ({ page, context }) => {
+test('GGVP-48 e GGVP-52 · indeferido com a carta e o motivo vai para a Justiça e para o despacho da Sênior; ela pode encerrar sem judicializar', async ({ page, context }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Sebastião Cruz (exemplo) · Trazer a resposta do INSS' }).click()
@@ -151,16 +151,17 @@ test('GGVP-48 · indeferido com a carta vai para a Justiça; a Sênior pode ence
   await page.getByLabel('Indeferido').check()
   await page.getByLabel('Texto da comunicação do INSS').fill('Benefício indeferido.')
   await page.getByLabel('Motivo que consta no sistema do INSS').fill('Renda per capita acima do limite')
+  await page.getByLabel('Motivo com as suas palavras').fill('O INSS somou a renda de quem não mora com ele.')
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('alert')).toHaveText('Anexe a carta de indeferimento (PDF ou imagem, até 25 MB).')
   await page.getByLabel('Carta de indeferimento').setInputFiles(PDF)
   await page.getByRole('button', { name: 'Registrar' }).click()
-  await expect(page.getByRole('status')).toContainText('Registrar indeferimento')
-  await page.goto('/')
-  await expect(page.getByRole('link', { name: 'Sebastião Cruz (exemplo) · Registrar indeferimento' })).toBeVisible()
+  await expect(page.getByRole('status')).toContainText('Despachar caso')
 
   await context.clearCookies()
   await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Sebastião Cruz (exemplo) · Despachar caso' })).toBeVisible()
   await page.goto(vigilia)
   await page.getByLabel('Por que o caso é encerrado').fill('Cliente decidiu não entrar na Justiça.')
   await page.getByRole('button', { name: 'Encerrar o caso' }).click()

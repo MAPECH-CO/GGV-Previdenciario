@@ -1,26 +1,23 @@
-// Do indeferido ao despacho (GGVP-52, 54): quem viu o indeferido escreve o motivo com as suas palavras, que vai para
-// o banco de motivos (`resultado_inss`), e a Sênior recebe o caso para despachar (G4). Sem IA até o épico IA jurídica.
+// Do indeferido ao despacho (GGVP-52, 54): o motivo com as palavras de quem viu é escrito no próprio registro do
+// indeferido (rotas/vigilia.ts; ajuste do Mateus, 06/10) e fica no banco de motivos (`resultado_inss`); aqui a Sênior
+// vê o histórico e despacha (G4). Sem IA até o épico IA jurídica.
 import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { Despachar, Despacho, Indeferimento, ROTULO_SETOR, RegistrarMotivo, pode, type Erro } from '@ggv/contratos'
-import type { Armazenamento } from '../armazenamento.ts'
+import { Despachar, Despacho, ROTULO_SETOR, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { somarDias } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
-import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
-import { MSG_CARTA } from './vigilia.ts'
 
 export const MSG_SEM_INDEFERIMENTO = 'Este caso não tem indeferimento registrado.'
-export const MSG_MOTIVO_JA_REGISTRADO = 'O motivo deste indeferimento já foi registrado.'
 export const MSG_NADA_A_DESPACHAR = 'Este caso não está esperando o despacho da Sênior.'
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => new Date(agora.getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
 
-export function registrarRotasIndeferimento(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   /** O último indeferimento do caso, com o cliente. */
@@ -48,68 +45,6 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, armaz
       motivoEscrito: r.motivoEscrito && autor && r.motivoEscritoEm ? { texto: r.motivoEscrito, por: autor.nome, em: r.motivoEscritoEm.toISOString() } : null,
     }
   }
-
-  // GGVP-52 CA3, CA7: a carta, o motivo do INSS e o motivo escrito, com quem e quando.
-  app.get<{ Params: { id: string } }>('/api/casos/:id/indeferimento', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
-    const casoId = pedido.params.id
-    const l = await indeferimentoDo(casoId)
-    if (!l) return negar(resposta, 404, MSG_SEM_INDEFERIMENTO)
-    const r = l.resultado
-    return Indeferimento.parse({
-      casoId,
-      cliente: l.cliente,
-      beneficio: l.beneficio,
-      dataDecisao: r.dataDecisao,
-      motivoInss: r.motivoIndeferimento,
-      ...(await cartaEMotivo(r)),
-      podeRegistrar: pode(pedido.perfilAtivo, 'inss.registrar_resposta') && Boolean(await tarefaAberta(casoId, 'D3.01')),
-    })
-  })
-
-  // GGVP-52 CA1, CA2, CA4 a CA7: motivo e carta obrigatórios; grava no banco de motivos sem duplicar e o despacho nasce.
-  app.post<{ Params: { id: string } }>('/api/casos/:id/indeferimento/motivo', { preHandler: exigir(banco, 'inss.registrar_resposta', agora) }, async (pedido, resposta) => {
-    const casoId = pedido.params.id
-    const formulario = await lerFormulario(pedido)
-    if (!formulario) return negar(resposta, 400, MSG_CARTA)
-    const entrada = RegistrarMotivo.safeParse({ motivo: formulario.campos.motivo })
-    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Escreva o motivo.')
-    const l = await indeferimentoDo(casoId)
-    if (!l) return negar(resposta, 404, MSG_SEM_INDEFERIMENTO)
-    const registro = await tarefaAberta(casoId, 'D3.01')
-    if (!registro) return negar(resposta, 409, MSG_MOTIVO_JA_REGISTRADO)
-    // CA4: a carta do registro do indeferido vale; o arquivo só é pedido se ela faltar.
-    const arquivo = formulario.arquivo
-    if (!l.resultado.documentoId && !(arquivo && TIPOS_DE_ANEXO.includes(arquivo.mime))) return negar(resposta, 400, MSG_CARTA)
-    const quem = pedido.usuario!.id
-    const carta = !l.resultado.documentoId && arquivo ? await guardarArquivo(armazenamento, casoId, arquivo, 'carta-indeferimento') : null
-    const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }
-    const feito = await banco.transaction(async (tx) => {
-      // CA5: duas confirmações ao mesmo tempo não duplicam: só uma conclui a tarefa.
-      const [t] = await tx
-        .update(tarefa)
-        .set(fechar)
-        .where(and(eq(tarefa.id, registro.id), isNull(tarefa.concluidaEm)))
-        .returning()
-      if (!t) return false
-      const [doc] = carta ? await tx.insert(documento).values({ casoId, tipo: 'carta_indeferimento', origem: 'portal', recebidoPor: quem, ...carta }).returning() : []
-      await tx
-        .update(resultadoInss)
-        .set({ motivoEscrito: entrada.data.motivo, motivoEscritoPor: quem, motivoEscritoEm: agora(), ...(doc ? { documentoId: doc.id } : {}) })
-        .where(eq(resultadoInss.id, l.resultado.id))
-      await tx
-        .update(etapa)
-        .set(fechar)
-        .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D3.01'), isNull(etapa.concluidaEm)))
-      // CA6: sem IA, o despacho da Sênior nasce direto (GGVP-54).
-      await tx.insert(etapa).values({ casoId, diagrama: 'D3', passo: 'D3.03', situacao: 'aberta', iniciadaEm: agora() })
-      await tx.insert(tarefa).values({ casoId, passo: 'D3.03', titulo: 'Despachar caso', perfilDono: 'senior', criadoEm: agora() })
-      return true
-    })
-    if (!feito) return negar(resposta, 409, MSG_MOTIVO_JA_REGISTRADO)
-    // CA7: na linha do processo, com autor e data (o texto fica no banco de motivos, não no histórico).
-    await historico(quem, 'indeferimento_motivo_registrado', pedido, `caso:${casoId}`, { resultado: l.resultado.id })
-    return resposta.code(201).send({ ok: true })
-  })
 
   /** O que a Sênior mandou buscar: os itens da exigência `despacho` e as perícias do D3 (GGVP-58 CA3, CA11). */
   async function situacaoDoDespacho(casoId: string) {

@@ -69,7 +69,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos })
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
-    registrarRotasIndeferimento(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasIndeferimento(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

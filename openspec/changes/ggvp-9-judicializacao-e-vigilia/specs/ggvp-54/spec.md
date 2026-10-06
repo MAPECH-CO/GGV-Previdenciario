@@ -15,7 +15,7 @@ A tarefa "Despachar caso" SHALL trazer o histórico do caso: o benefício, a dec
 - **Então** vejo o histórico do caso e o motivo; a análise e os critérios da IA entram com o épico IA
 
 ### Requirement: CA2 · Cada setor marcado recebe a própria tarefa
-Marcando o que falta (Atendimento, Documentação, perícia), cada setor SHALL receber a própria tarefa, e MUST ser possível marcar mais de um.
+Marcando o que falta (Atendimento, Documentação, perícia), cada setor marcado SHALL receber a própria tarefa, uma só por setor (ajuste do Mateus, 06/10: cada setor se marca uma vez), e MUST ser possível marcar mais de um.
 
 #### Scenario: CA2 · Marcar o que falta
 - **Dado** o caso para despachar

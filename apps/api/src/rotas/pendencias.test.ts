@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, documento, etapa, exigencia, exigenciaItem, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, etapa, exigencia, exigenciaItem, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_EVIDENCIA, MSG_INFORMACAO } from './exigencia-juiz.ts'
@@ -48,17 +48,19 @@ beforeEach(async () => {
   for (const [apelido, perfil] of [['gabi', 'advogada'], ['helena', 'senior'], ['ana', 'atendimento'], ['dora', 'documentacao'], ['igor', 'juridico_adm']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   await banco.insert(configuracao).values([{ chave: 'cobranca.limite', valor: 2 }])
-  // O indeferido (GGVP-48), o motivo (GGVP-52) e o despacho da Sênior (GGVP-54) aos dois setores.
+  // O indeferido com o motivo de quem viu (GGVP-48, GGVP-52) e o despacho da Sênior (GGVP-54) aos dois setores.
   const [p] = await banco.insert(pessoa).values({ nome: 'Sebastião Cruz' }).returning()
-  const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'judicial' }).returning()
+  const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
   casoId = c.id
-  const [carta] = await banco
-    .insert(documento)
-    .values({ casoId, tipo: 'carta_indeferimento', chaveArmazenamento: `casos/${casoId}/carta`, nomeOriginal: 'carta.pdf', mime: 'application/pdf', tamanho: 9, hashSha256: 'x', origem: 'portal' })
-    .returning()
-  await banco.insert(resultadoInss).values({ casoId, resultado: 'indeferido', dataDecisao: '2026-10-06', motivoIndeferimento: 'Renda acima do limite', documentoId: carta.id })
-  await banco.insert(tarefa).values({ casoId, passo: 'D3.01', titulo: 'Registrar indeferimento', perfilDono: 'advogada' })
-  await enviar('gabi', '/indeferimento/motivo', { motivo: 'O INSS somou a renda do filho' }, null)
+  await banco.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: AGORA })
+  await banco.insert(tarefa).values({ casoId, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' })
+  await enviar('gabi', '/vigilia', {
+    tipo: 'decisao',
+    resultado: 'indeferido',
+    texto: 'Benefício negado.',
+    motivoInss: 'Renda acima do limite',
+    motivoEscrito: 'O INSS somou a renda do filho',
+  })
   await chamar('helena', 'POST', '/despacho', {
     decisao: 'acionar',
     itens: [

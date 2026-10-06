@@ -9,7 +9,6 @@ import {
   NaoVouConseguir,
   ProtocolarManifestacao,
   RegistrarIndisponibilidade,
-  RegistrarMotivo,
   RegistrarTentativa,
   SubirInformacao,
   VincularPublicacao,
@@ -103,14 +102,6 @@ describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
   })
 })
 
-describe('GGVP-52 · registrar o motivo do indeferimento', () => {
-  it('CA1 · o motivo com as suas palavras é obrigatório e vem aparado', () => {
-    expect(RegistrarMotivo.parse({ motivo: '  Faltou o laudo da deficiência ' })).toEqual({ motivo: 'Faltou o laudo da deficiência' })
-    expect(erro(RegistrarMotivo.safeParse({ motivo: '   ' }))).toBe('Escreva o motivo com as suas palavras')
-    expect(erro(RegistrarMotivo.safeParse({}))).toBe('Escreva o motivo com as suas palavras')
-  })
-})
-
 describe('GGVP-54 · despachar', () => {
   it('CA3 · "nada falta" segue sem itens', () => {
     expect(Despachar.parse({ decisao: 'nada_falta' })).toEqual({ decisao: 'nada_falta' })
@@ -142,6 +133,11 @@ describe('GGVP-54 · despachar', () => {
     expect(erro(Despachar.safeParse({ decisao: 'acionar', itens: [] }))).toBe('Marque ao menos um setor ou a perícia')
     expect(Despachar.parse({ decisao: 'acionar', tiposPericia: ['medica'] })).toEqual({ decisao: 'acionar', itens: [], tiposPericia: ['medica'] })
     expect(erro(Despachar.safeParse({}))).toBe('Escolha "Nada falta" ou o que falta')
+  })
+
+  it('CA2, CA6 · cada setor recebe um pedido só (ajuste de 06/10)', () => {
+    const pedido = (setor: string) => ({ setor, descricao: 'teste', temPrazo: false })
+    expect(erro(Despachar.safeParse({ decisao: 'acionar', itens: [pedido('atendimento'), pedido('atendimento')] }))).toBe('Cada setor recebe um pedido só')
   })
 })
 

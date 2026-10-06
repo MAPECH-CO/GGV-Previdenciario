@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DespacharCaso } from './Despachar.tsx'
 
@@ -51,26 +51,44 @@ describe('Despachar caso (GGVP-54)', () => {
     expect(corpoDoPost(fetch, '/despacho')).toEqual({ decisao: 'nada_falta' })
   })
 
-  it('CA2, CA6 · cada pedido tem o setor e o que obter; "Essa tarefa tem prazo?" Sim pede a data de entrega', async () => {
+  it('CA2, CA6 · marca cada setor uma vez, com o que obter; "Essa tarefa tem prazo?" Sim pede a data de entrega (ajuste de 06/10)', async () => {
     const fetch = servidor(base)
     render(<DespacharCaso casoId={CASO} />)
     fireEvent.click(await screen.findByLabelText('Sim, falta'))
     fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Escolha o setor de cada pedido')
-    fireEvent.change(screen.getByLabelText('Setor'), { target: { value: 'documentacao' } })
-    fireEvent.change(screen.getByLabelText('O que o setor deve obter'), { target: { value: 'Laudo atualizado' } })
-    fireEvent.click(screen.getByLabelText('Sim'))
+    expect((await screen.findByRole('alert')).textContent).toBe('Marque ao menos um setor ou a perícia')
+    fireEvent.click(screen.getByLabelText('Documentação'))
+    const doc = within(screen.getByRole('region', { name: 'Pedido para Documentação' }))
+    fireEvent.change(doc.getByLabelText('O que a Documentação deve obter'), { target: { value: 'Laudo atualizado' } })
+    fireEvent.click(doc.getByLabelText('Sim'))
     fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Informe a data de entrega (dd/mm/aaaa)')
-    fireEvent.change(screen.getByLabelText('Data de entrega'), { target: { value: '2026-10-20' } })
+    fireEvent.change(doc.getByLabelText('Data de entrega'), { target: { value: '2026-10-20' } })
+    fireEvent.click(screen.getByLabelText('Atendimento'))
+    const atd = within(screen.getByRole('region', { name: 'Pedido para Atendimento' }))
+    fireEvent.change(atd.getByLabelText('O que o Atendimento deve obter'), { target: { value: 'Quem mora com a cliente' } })
+    fireEvent.click(atd.getByLabelText('Não'))
     fireEvent.click(screen.getByLabelText('Perícia médica'))
     fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
     expect((await screen.findByRole('status')).textContent).toBe('Despacho registrado. Cada setor recebeu "Cumprir pendência".')
     expect(corpoDoPost(fetch, '/despacho')).toEqual({
       decisao: 'acionar',
-      itens: [{ setor: 'documentacao', descricao: 'Laudo atualizado', temPrazo: true, prazo: '20/10/2026' }],
+      itens: [
+        { setor: 'atendimento', descricao: 'Quem mora com a cliente', temPrazo: false },
+        { setor: 'documentacao', descricao: 'Laudo atualizado', temPrazo: true, prazo: '20/10/2026' },
+      ],
       tiposPericia: ['medica'],
     })
+  })
+
+  it('desmarcar o setor tira o pedido dele', async () => {
+    servidor(base)
+    render(<DespacharCaso casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Sim, falta'))
+    fireEvent.click(screen.getByLabelText('Atendimento'))
+    expect(screen.getByRole('region', { name: 'Pedido para Atendimento' })).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Atendimento'))
+    expect(screen.queryByRole('region', { name: 'Pedido para Atendimento' })).toBeNull()
   })
 
   it('CA9 e GGVP-58 CA11 · despachado, mostra quem despachou, quando, e o status de cada setor', async () => {

@@ -140,10 +140,16 @@ export const RespostaDoInss = z.discriminatedUnion(
         texto: z.string().trim().min(1, 'Cole o texto da comunicação do INSS'),
         /** Deferido com outro benefício ou outra data de início: a advogada analisa antes da prestação (resposta do revisor de 05/10). */
         diferenteDoPedido: z.boolean().default(false),
-        /** Indeferido: o motivo que consta no sistema do INSS segue para a tarefa da Justiça (GGVP-48 CA3). */
+        /** Indeferido: o motivo que consta no sistema do INSS (GGVP-48 CA3). */
         motivoInss: z.string().trim().optional(),
+        /**
+         * Indeferido: o motivo com as palavras de quem viu, no mesmo registro; vai para o banco de motivos e para o
+         * despacho da Sênior (GGVP-52; ajuste do Mateus, 06/10: sem a tarefa "Registrar indeferimento" à parte).
+         */
+        motivoEscrito: z.string().trim().optional(),
       })
-      .refine((r) => r.resultado !== 'indeferido' || r.motivoInss, { message: 'Informe o motivo que consta no sistema do INSS', path: ['motivoInss'] }),
+      .refine((r) => r.resultado !== 'indeferido' || r.motivoInss, { message: 'Informe o motivo que consta no sistema do INSS', path: ['motivoInss'] })
+      .refine((r) => r.resultado !== 'indeferido' || r.motivoEscrito, { message: 'Escreva o motivo com as suas palavras', path: ['motivoEscrito'] }),
     z.object({
       tipo: z.literal('exigencia'),
       texto: z.string().trim().min(1, 'Cole o texto da exigência'),

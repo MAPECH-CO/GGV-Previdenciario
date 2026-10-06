@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Registrar o motivo do indeferimento: quem viu o indeferido escreve, com as suas palavras, por que o INSS negou, ao lado da carta e do motivo do INSS; o motivo vai para o banco de motivos e a Sênior recebe o caso para despachar. Respostas do revisor de 06/10: qualquer advogada da fila trata (a equipe do Jurídico também pode); sem IA até o épico IA jurídica, o despacho nasce direto; os arquivos ficam no armazenamento privado do portal até a integração com o Drive (GGVP-107).
+Registrar o motivo do indeferimento: quem viu o indeferido escreve, com as suas palavras, por que o INSS negou, ao lado da carta e do motivo do INSS; o motivo vai para o banco de motivos e a Sênior recebe o caso para despachar. Respostas do revisor de 06/10: qualquer advogada da fila trata (a equipe do Jurídico também pode); sem IA até o épico IA jurídica, o despacho nasce direto; os arquivos ficam no armazenamento privado do portal até a integração com o Drive (GGVP-107). Ajuste do Mateus, 06/10: o motivo é escrito no próprio registro do indeferido ("Trazer a resposta do INSS"), sem a tarefa "Registrar indeferimento" à parte.
 
 ## ADDED Requirements
 
 ### Requirement: CA1 · "Motivo com suas palavras" é obrigatório
-No caso indeferido, o campo "Motivo com suas palavras" MUST ser obrigatório para seguir.
+No registro do indeferido, o campo "Motivo com suas palavras" MUST ser obrigatório para seguir (ajuste do Mateus, 06/10: no mesmo registro, sem outra tarefa).
 
 #### Scenario: CA1 · Abrir o caso indeferido
 - **Dado** um caso indeferido
@@ -23,15 +23,15 @@ O motivo confirmado SHALL ir para o banco de motivos, no banco de dados do porta
 - **Então** ele vai para o banco de motivos; o acervo (D4) lê dali com o épico IA
 
 ### Requirement: CA3 · A carta e o motivo do INSS ao lado do campo
-A tarefa SHALL mostrar a carta de indeferimento anexada, para abrir, e o motivo como está no sistema do INSS, ao lado do campo "Motivo com as suas palavras".
+O registro do indeferido SHALL reunir a carta de indeferimento anexada, o motivo como está no sistema do INSS e o campo "Motivo com as suas palavras"; no despacho, a Sênior SHALL abrir a carta e ver os dois motivos.
 
 #### Scenario: CA3 · Abrir a tarefa
 - **Dado** um caso indeferido
 - **Quando** abro a tarefa
-- **Então** vejo a carta de indeferimento anexada e o motivo como está no sistema do INSS, ao lado do campo "Motivo com as suas palavras"
+- **Então** a carta de indeferimento anexada e o motivo como está no sistema do INSS ficam ao lado do campo "Motivo com as suas palavras"
 
 ### Requirement: CA4 · Motivo e carta obrigatórios
-Salvar MUST exigir o texto do motivo e a carta de indeferimento anexada; a carta anexada no registro do indeferido (GGVP-48) já vale.
+Salvar MUST exigir o texto do motivo e a carta de indeferimento anexada, no mesmo registro do indeferido (GGVP-48).
 
 #### Scenario: CA4 · Salvar
 - **Dado** o registro

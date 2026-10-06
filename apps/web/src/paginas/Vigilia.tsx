@@ -50,12 +50,13 @@ export function EncerrarSemJudicializar({ casoId, aoEncerrar }: { casoId: string
  * (com a comunicação anexada) ou a exigência (texto e data). O sistema abre o próximo passo; o servidor confere de novo.
  */
 export function Vigilia({ casoId }: { casoId: string }) {
-  const ids = { texto: useId(), data: useId(), motivo: useId(), arquivo: useId(), diferente: useId() }
+  const ids = { texto: useId(), data: useId(), motivo: useId(), meuMotivo: useId(), arquivo: useId(), diferente: useId() }
   const [caso, setCaso] = useState<VigiliaDoCaso | null>(null)
   const [tipo, setTipo] = useState<Tipo | null>(null)
   const [texto, setTexto] = useState('')
   const [data, setData] = useState(() => hojeIso()) // calendário do navegador, já em hoje; aceita datas anteriores, não futuras
   const [motivoInss, setMotivoInss] = useState('')
+  const [motivoEscrito, setMotivoEscrito] = useState('')
   const [diferente, setDiferente] = useState(false)
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [erro, setErro] = useState('')
@@ -73,7 +74,14 @@ export function Vigilia({ casoId }: { casoId: string }) {
     const campos =
       tipo === 'exigencia'
         ? { tipo, texto, data: isoParaData(data) ?? '' }
-        : { tipo: 'decisao', resultado: tipo ?? undefined, texto, diferenteDoPedido: diferente, motivoInss: tipo === 'indeferido' ? motivoInss : undefined }
+        : {
+            tipo: 'decisao',
+            resultado: tipo ?? undefined,
+            texto,
+            diferenteDoPedido: diferente,
+            motivoInss: tipo === 'indeferido' ? motivoInss : undefined,
+            motivoEscrito: tipo === 'indeferido' ? motivoEscrito : undefined,
+          }
     const entrada = RespostaDoInss.safeParse(campos)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     if (tipo !== 'exigencia' && !arquivo)
@@ -90,7 +98,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
       {
         prestacao: 'Deferido registrado. O sistema abriu "Prestar contas" para a advogada.',
         analise: 'Deferido diferente do pedido. O sistema abriu a análise para a advogada.',
-        justica: 'Indeferido registrado. O caso foi para a Justiça com a tarefa "Registrar indeferimento".',
+        justica: 'Indeferido registrado com o seu motivo. O caso foi para a Justiça e a Sênior recebeu "Despachar caso".',
         exigencia: 'Exigência registrada. O sistema abriu "Tratar exigência do INSS"; o caso continua vigiado.',
       }[r.dados.aberto] ?? 'Registrado.',
     )
@@ -189,6 +197,11 @@ export function Vigilia({ casoId }: { casoId: string }) {
                 Motivo que consta no sistema do INSS
               </label>
               <input id={ids.motivo} className={styles.campo} value={motivoInss} onChange={(e) => setMotivoInss(e.target.value)} />
+              <label className={styles.rotulo} htmlFor={ids.meuMotivo}>
+                Motivo com as suas palavras
+              </label>
+              <textarea id={ids.meuMotivo} className={styles.campo} rows={3} value={motivoEscrito} onChange={(e) => setMotivoEscrito(e.target.value)} />
+              <p className={styles.dica}>Por que o INSS negou, do jeito que você entendeu. Vai para o banco de motivos e para a Sênior despachar.</p>
             </>
           )}
           <label className={styles.rotulo} htmlFor={ids.arquivo}>

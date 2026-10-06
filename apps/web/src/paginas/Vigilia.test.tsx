@@ -93,8 +93,25 @@ describe('Indeferido segue para a Justiça (GGVP-48)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Informe o motivo que consta no sistema do INSS')
     fireEvent.change(screen.getByLabelText('Motivo que consta no sistema do INSS'), { target: { value: 'Renda acima' } })
     fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escreva o motivo com as suas palavras')
+    fireEvent.change(screen.getByLabelText('Motivo com as suas palavras'), { target: { value: 'O INSS somou a renda do filho' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Anexe a carta de indeferimento (PDF ou imagem, até 25 MB).')
     expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('GGVP-52 (ajuste de 06/10) · o motivo com as suas palavras vai no mesmo registro, e a Sênior recebe o despacho', async () => {
+    const fetch = servidor(emVigilia, [201, { ok: true, aberto: 'justica' }])
+    render(<Vigilia casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Indeferido'))
+    fireEvent.change(screen.getByLabelText('Texto da comunicação do INSS'), { target: { value: 'Negado' } })
+    fireEvent.change(screen.getByLabelText('Motivo que consta no sistema do INSS'), { target: { value: 'Renda acima' } })
+    fireEvent.change(screen.getByLabelText('Motivo com as suas palavras'), { target: { value: 'O INSS somou a renda do filho' } })
+    fireEvent.change(screen.getByLabelText('Carta de indeferimento'), { target: { files: [new File(['%PDF'], 'carta.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Indeferido registrado com o seu motivo. O caso foi para a Justiça e a Sênior recebeu "Despachar caso".')
+    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    expect((post[1]!.body as FormData).get('motivoEscrito')).toBe('O INSS somou a renda do filho')
   })
 
   it('a Sênior vê "Encerrar sem judicializar" e o motivo é obrigatório', async () => {

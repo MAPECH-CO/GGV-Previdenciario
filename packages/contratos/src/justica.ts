@@ -304,25 +304,6 @@ export type RegistrarIndisponibilidade = z.input<typeof RegistrarIndisponibilida
 
 // Grupo 3 (GGVP-52 a 71): do indeferido ao protocolo da petição inicial.
 
-/** GET /api/casos/:id/indeferimento (GGVP-52): a carta, o motivo do INSS e o motivo escrito, com quem e quando. */
-export const Indeferimento = z.object({
-  casoId: z.uuid(),
-  cliente: z.string(),
-  beneficio: z.string().nullable(),
-  dataDecisao: z.string(),
-  motivoInss: z.string().nullable(),
-  carta: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
-  motivoEscrito: z.object({ texto: z.string(), por: z.string(), em: z.string() }).nullable(),
-  podeRegistrar: z.boolean(),
-})
-export type Indeferimento = z.infer<typeof Indeferimento>
-
-/** POST /api/casos/:id/indeferimento/motivo (GGVP-52 CA1, CA4): o motivo com as palavras de quem viu; a carta vai no arquivo só se faltar. */
-export const RegistrarMotivo = z.object({
-  motivo: z.string({ error: 'Escreva o motivo com as suas palavras' }).trim().min(1, 'Escreva o motivo com as suas palavras'),
-})
-export type RegistrarMotivo = z.infer<typeof RegistrarMotivo>
-
 /** Setores do despacho da Sênior (GGVP-54 CA2): o Jurídico administrativo entra só pela perícia (CA5). */
 export const SETORES_DO_DESPACHO = ['atendimento', 'documentacao'] as const
 
@@ -348,7 +329,9 @@ export const Despachar = z.discriminatedUnion(
         itens: z.array(ItemDoDespacho).default([]),
         tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
       })
-      .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Marque ao menos um setor ou a perícia', path: ['itens'] }),
+      .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Marque ao menos um setor ou a perícia', path: ['itens'] })
+      // CA2, CA6: cada setor recebe a própria tarefa, uma só (ajuste do Mateus, 06/10).
+      .refine((d) => new Set(d.itens.map((i) => i.setor)).size === d.itens.length, { message: 'Cada setor recebe um pedido só', path: ['itens'] }),
   ],
   { error: 'Escolha "Nada falta" ou o que falta' },
 )

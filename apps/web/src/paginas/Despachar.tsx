@@ -8,30 +8,20 @@ import { EncerrarSemJudicializar } from './Vigilia.tsx'
 
 type Setor = (typeof SETORES_DO_DESPACHO)[number]
 type TipoPericia = (typeof TIPOS_DE_PERICIA)[number]
-type PedidoNaTela = { chave: number; setor: Setor | ''; descricao: string; temPrazo: boolean | null; prazo: string }
+type PedidoNaTela = { descricao: string; temPrazo: boolean | null; prazo: string }
 const ROTULO_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social' } as const
 const ROTULO_ITEM = { pendente: 'aberto', cumprido: 'concluído', nao_cumprido: 'encerrado sem a prova' } as const
+const DO_SETOR: Record<Setor, string> = { atendimento: 'o Atendimento', documentacao: 'a Documentação' }
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
 
-/** Um pedido a um setor (GGVP-54 CA2, CA6): o que obter e "Essa tarefa tem prazo?"; com "Sim", a data de entrega. */
-function LinhaDoPedido({ pedido, mudar, remover }: { pedido: PedidoNaTela; mudar: (p: PedidoNaTela) => void; remover: () => void }) {
-  const ids = { setor: useId(), descricao: useId(), prazo: useId() }
+/** O pedido a um setor marcado (GGVP-54 CA6): o que obter e "Essa tarefa tem prazo?"; com "Sim", a data de entrega. */
+function PedidoDoSetor({ setor, pedido, mudar }: { setor: Setor; pedido: PedidoNaTela; mudar: (p: PedidoNaTela) => void }) {
+  const ids = { descricao: useId(), prazo: useId() }
   return (
-    <li className={styles.cartao}>
-      <label className={styles.rotulo} htmlFor={ids.setor}>
-        Setor
-      </label>
-      <select id={ids.setor} className={styles.campo} value={pedido.setor} onChange={(e) => mudar({ ...pedido, setor: e.target.value as Setor })}>
-        <option value="">Escolha</option>
-        {SETORES_DO_DESPACHO.map((s) => (
-          <option key={s} value={s}>
-            {ROTULO_SETOR[s]}
-          </option>
-        ))}
-      </select>
+    <section className={styles.cartao} aria-label={`Pedido para ${ROTULO_SETOR[setor]}`}>
       <label className={styles.rotulo} htmlFor={ids.descricao}>
-        O que o setor deve obter
+        O que {DO_SETOR[setor]} deve obter
       </label>
       <input id={ids.descricao} className={styles.campo} value={pedido.descricao} onChange={(e) => mudar({ ...pedido, descricao: e.target.value })} />
       <fieldset className={styles.cartao}>
@@ -53,26 +43,21 @@ function LinhaDoPedido({ pedido, mudar, remover }: { pedido: PedidoNaTela; mudar
           <input id={ids.prazo} className={styles.campo} type="date" min={hojeIso()} value={pedido.prazo} onChange={(e) => mudar({ ...pedido, prazo: e.target.value })} />
         </>
       )}
-      <div className={styles.acoes}>
-        <button type="button" className={styles.botaoSecundario} onClick={remover}>
-          Remover pedido
-        </button>
-      </div>
-    </li>
+    </section>
   )
 }
 
 /**
- * Despachar caso (GGVP-54): a Sênior vê o histórico do indeferido e decide se falta algo para a petição; cada setor
- * marcado recebe "Cumprir pendência", a perícia vai para o Jurídico administrativo, e "nada falta" segue para pedir a
- * petição. Quem despacha é a Sênior (G4); a advogada vê só a leitura. O servidor confere de novo.
+ * Despachar caso (GGVP-54): a Sênior vê o histórico do indeferido e decide se falta algo para a petição. Cada setor
+ * marcado, uma vez só, recebe "Cumprir pendência" com o que obter (ajuste do Mateus, 06/10); a perícia vai para o
+ * Jurídico administrativo; "nada falta" segue para pedir a petição. Quem despacha é a Sênior (G4); a advogada vê só a
+ * leitura. O servidor confere de novo.
  */
 export function DespacharCaso({ casoId }: { casoId: string }) {
   const [x, setX] = useState<Despacho | null>(null)
   const [versao, setVersao] = useState(0)
   const [decisao, setDecisao] = useState<'nada_falta' | 'acionar' | null>(null)
-  const [pedidos, setPedidos] = useState<PedidoNaTela[]>([])
-  const [proximo, setProximo] = useState(1)
+  const [marcados, setMarcados] = useState<Partial<Record<Setor, PedidoNaTela>>>({})
   const [tipos, setTipos] = useState<TipoPericia[]>([])
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
@@ -81,10 +66,11 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
     void chamarApi<Despacho>(`/casos/${casoId}/despacho`).then((r) => (r.ok ? setX(r.dados) : setErro(r.erro)))
   }, [casoId, versao])
 
-  const incluir = () => {
-    setPedidos((atual) => [...atual, { chave: proximo, setor: '', descricao: '', temPrazo: null, prazo: '' }])
-    setProximo((n) => n + 1)
-  }
+  const alternar = (s: Setor) =>
+    setMarcados((m) => {
+      const { [s]: marcado, ...resto } = m
+      return marcado ? resto : { ...m, [s]: { descricao: '', temPrazo: null, prazo: '' } }
+    })
 
   async function despachar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -92,12 +78,10 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
       decisao === 'acionar'
         ? {
             decisao,
-            itens: pedidos.map((p) => ({
-              setor: p.setor || undefined,
-              descricao: p.descricao,
-              temPrazo: p.temPrazo ?? undefined,
-              prazo: p.temPrazo ? (isoParaData(p.prazo) ?? '') : undefined,
-            })),
+            itens: SETORES_DO_DESPACHO.flatMap((s) => {
+              const p = marcados[s]
+              return p ? [{ setor: s, descricao: p.descricao, temPrazo: p.temPrazo ?? undefined, prazo: p.temPrazo ? (isoParaData(p.prazo) ?? '') : undefined }] : []
+            }),
             tiposPericia: tipos,
           }
         : { decisao: decisao ?? undefined }
@@ -192,46 +176,31 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
               Não, nada falta
             </label>
             <label className={styles.escolha}>
-              <input
-                type="radio"
-                name="decisao"
-                checked={decisao === 'acionar'}
-                onChange={() => {
-                  setDecisao('acionar')
-                  if (pedidos.length === 0) incluir()
-                }}
-              />
+              <input type="radio" name="decisao" checked={decisao === 'acionar'} onChange={() => setDecisao('acionar')} />
               Sim, falta
             </label>
           </fieldset>
           {decisao === 'acionar' && (
-            <>
-              <ul className={styles.lista} aria-label="Pedidos">
-                {pedidos.map((p) => (
-                  <LinhaDoPedido
-                    key={p.chave}
-                    pedido={p}
-                    mudar={(novo) => setPedidos((atual) => atual.map((a) => (a.chave === p.chave ? novo : a)))}
-                    remover={() => setPedidos((atual) => atual.filter((a) => a.chave !== p.chave))}
-                  />
-                ))}
-              </ul>
-              <div className={styles.acoes}>
-                <button type="button" className={styles.botaoSecundario} onClick={incluir}>
-                  Incluir pedido
-                </button>
-              </div>
-              <fieldset className={styles.cartao}>
-                <legend className={styles.rotulo}>Perícia (DP)</legend>
-                <p className={styles.dica}>Quem marca é o Jurídico administrativo: a tarefa vai para a Central dele.</p>
-                {TIPOS_DE_PERICIA.map((t) => (
-                  <label key={t} className={styles.escolha}>
-                    <input type="checkbox" checked={tipos.includes(t)} onChange={() => setTipos((a) => (a.includes(t) ? a.filter((y) => y !== t) : [...a, t]))} />
-                    {ROTULO_PERICIA[t]}
+            <fieldset className={styles.cartao}>
+              <legend className={styles.rotulo}>O que falta</legend>
+              <p className={styles.dica}>Marque cada setor uma vez e escreva tudo o que ele deve obter.</p>
+              {SETORES_DO_DESPACHO.map((s) => (
+                <div key={s}>
+                  <label className={styles.escolha}>
+                    <input type="checkbox" checked={Boolean(marcados[s])} onChange={() => alternar(s)} />
+                    {ROTULO_SETOR[s]}
                   </label>
-                ))}
-              </fieldset>
-            </>
+                  {marcados[s] && <PedidoDoSetor setor={s} pedido={marcados[s]} mudar={(p) => setMarcados((m) => ({ ...m, [s]: p }))} />}
+                </div>
+              ))}
+              {TIPOS_DE_PERICIA.map((t) => (
+                <label key={t} className={styles.escolha}>
+                  <input type="checkbox" checked={tipos.includes(t)} onChange={() => setTipos((a) => (a.includes(t) ? a.filter((y) => y !== t) : [...a, t]))} />
+                  {ROTULO_PERICIA[t]}
+                </label>
+              ))}
+              <p className={styles.dica}>A perícia vai para o Jurídico administrativo, que marca: a tarefa vai para a Central dele.</p>
+            </fieldset>
           )}
           {erro && (
             <p className={styles.erro} role="alert">

@@ -35,7 +35,13 @@ const ver = async (apelido = 'gabi') => app.inject({ method: 'GET', url: `/api/c
 const abertas = async () =>
   (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))).map((t) => [t.passo, t.titulo]).sort()
 const DEFERIDO = { tipo: 'decisao', resultado: 'deferido', texto: 'Benefício concedido.' }
-const INDEFERIDO = { tipo: 'decisao', resultado: 'indeferido', texto: 'Benefício negado.', motivoInss: 'Renda per capita acima do limite' }
+const INDEFERIDO = {
+  tipo: 'decisao',
+  resultado: 'indeferido',
+  texto: 'Benefício negado.',
+  motivoInss: 'Renda per capita acima do limite',
+  motivoEscrito: 'O INSS somou a renda do filho, que não mora com ela',
+}
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
@@ -98,20 +104,25 @@ describe('GGVP-35 · vigiar o Meu INSS', () => {
 })
 
 describe('GGVP-48 · indeferido segue para a Justiça', () => {
-  it('CA2 · sem a carta de indeferimento, ou sem o motivo do INSS, não registra', async () => {
+  it('CA2 e GGVP-52 CA1, CA4 · sem a carta, sem o motivo do INSS ou sem o motivo com as palavras de quem viu, não registra', async () => {
     expect((await registrar(INDEFERIDO, null)).json().erro).toBe(MSG_CARTA)
     expect((await registrar({ ...INDEFERIDO, motivoInss: '' })).json().erro).toBe('Informe o motivo que consta no sistema do INSS')
+    expect((await registrar({ ...INDEFERIDO, motivoEscrito: ' ' })).json().erro).toBe('Escreva o motivo com as suas palavras')
+    expect(await abertas()).toEqual([['D2.04', 'Trazer a resposta do INSS']])
   })
 
-  it('CA1 e CA3 · o caso vai para a Justiça com a tarefa "Registrar indeferimento", a carta e o motivo', async () => {
+  it('CA1, CA3 e GGVP-52 CA2, CA5 a CA7 (ajuste de 06/10) · vai para a Justiça com o motivo no banco de motivos, e a Sênior recebe "Despachar caso"', async () => {
     expect((await registrar(INDEFERIDO)).json().aberto).toBe('justica')
     const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
     expect(c.fase).toBe('judicial')
-    const [t] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3.01')))
     const [res] = await banco.select().from(resultadoInss).where(eq(resultadoInss.casoId, casoId))
-    expect([t.titulo, t.perfilDono, t.evidenciaDocumentoId, res.motivoIndeferimento]).toEqual([
-      'Registrar indeferimento', 'advogada', res.documentoId, 'Renda per capita acima do limite',
-    ])
+    const [gabi] = await banco.select().from(usuario).where(eq(usuario.email, 'gabi@exemplo.ggv'))
+    expect([res.motivoIndeferimento, res.motivoEscrito, res.motivoEscritoPor]).toEqual(['Renda per capita acima do limite', INDEFERIDO.motivoEscrito, gabi.id])
+    expect(await abertas()).toEqual([['D3.03', 'Despachar caso']])
+    const [t] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3.03')))
+    expect([t.perfilDono, t.evidenciaDocumentoId]).toEqual(['senior', res.documentoId])
+    const etapas = (await banco.select().from(etapa).where(and(eq(etapa.casoId, casoId), eq(etapa.diagrama, 'D3')))).map((e) => `${e.passo} ${e.situacao}`).sort()
+    expect(etapas).toEqual(['D3.01 concluida', 'D3.03 aberta'])
   })
 
   it('a Sênior pode encerrar sem judicializar, com motivo; ninguém mais pode', async () => {

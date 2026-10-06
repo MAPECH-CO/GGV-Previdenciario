@@ -150,7 +150,7 @@ O indeferido (GGVP-48, `rotas/vigilia.ts`) já põe o caso na fase `judicial`, a
 
 ### Telas
 
-Registrar indeferimento (`/casos/:id/indeferimento`), Despachar caso (`/casos/:id/despacho`; a Sênior despacha ou encerra; a advogada vê só a leitura), Cumprir pendência (a tela do setor da exigência do juiz, com a origem, em `/casos/:id/pendencias`) e Petição inicial (`/casos/:id/peticao`: pedir, conferir, pacote e protocolo, conforme a situação, como a tela Manifestar).
+O motivo com as suas palavras fica na tela da vigília do INSS, no registro do indeferido (decisão 41); Despachar caso (`/casos/:id/despacho`; a Sênior despacha ou encerra; a advogada vê só a leitura), Cumprir pendência (a tela do setor da exigência do juiz, com a origem, em `/casos/:id/pendencias`) e Petição inicial (`/casos/:id/peticao`: pedir, conferir, pacote e protocolo, conforme a situação, como a tela Manifestar).
 
 ### Dados de exemplo
 
@@ -171,3 +171,8 @@ Migração 0011 junto com as 0009 e 0010: `db:migrar` no Supabase depois do merg
 ### Open Questions
 
 - O site de peticionamento e o tamanho máximo por arquivo do tribunal: valores da configuração, que o escritório confirma; não mudam o código.
+
+### Ajustes da homologação local (Mateus, 06/10)
+
+41. **O motivo vai no registro do indeferido.** Quem registra o indeferido em "Trazer a resposta do INSS" já escreve o motivo com as suas palavras (`RespostaDoInss.motivoEscrito`, obrigatório no indeferido), que vai para o banco de motivos com quem e quando; a etapa `D3.01` fica concluída na hora, e a Sênior recebe "Despachar caso" (`D3.03`) com a carta. Saem a tarefa "Registrar indeferimento", a tela e as rotas `GET /api/casos/:id/indeferimento` e `POST .../indeferimento/motivo` (decisão 29) e o `D3.01` da Central (decisão 40): a advogada fazia a mesma coisa duas vezes. Isso muda a GGVP-48 (CA1 e CA3: a primeira tarefa deixa de ser "Registrar indeferimento"); fica registrado nos cartões, e o Lucas confirma na homologação.
+42. **Um pedido por setor no despacho.** No despacho, cada setor se marca uma vez (caixa por setor, com o que obter e "Essa tarefa tem prazo?"), e o contrato recusa o mesmo setor duas vezes. Antes, a lista de pedidos com a escolha do setor deixava pedir duas vezes ao mesmo setor sem perceber, e um despacho para a Documentação e o Atendimento saiu com os dois pedidos para o Atendimento.
