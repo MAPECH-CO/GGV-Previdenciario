@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ClassificarPublicacao, VincularPublicacao } from './justica.ts'
+import { AnalisarExigenciaJuiz, ClassificarPublicacao, VincularPublicacao } from './justica.ts'
 
 const erro = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues[0]?.message
 const CNJ_VALIDO = '0001234-96.2026.4.03.6301'
@@ -32,5 +32,28 @@ describe('GGVP-26 CA8 · vincular um item da fila', () => {
 
   it('ou registra que não é do escritório', () => {
     expect(VincularPublicacao.parse({ decisao: 'fora_do_escritorio' })).toEqual({ decisao: 'fora_do_escritorio' })
+  })
+})
+
+describe('GGVP-79 · analisar a exigência do juiz', () => {
+  const item = { setor: 'documentacao', descricao: 'Trazer laudo atualizado', prazoInterno: '20/10/2026' }
+
+  it('só ciência não pede nada; precisa cumprir pede ao menos um item ou a perícia', () => {
+    expect(AnalisarExigenciaJuiz.parse({ decisao: 'ciencia' })).toEqual({ decisao: 'ciencia' })
+    expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir' }))).toBe('Inclua ao menos um item ou a perícia')
+    expect(AnalisarExigenciaJuiz.parse({ decisao: 'cumprir', tiposPericia: ['medica'] })).toMatchObject({ itens: [], tiposPericia: ['medica'] })
+  })
+
+  it('cada item tem setor, o que cumprir e prazo interno; a prova esperada é opcional', () => {
+    expect(AnalisarExigenciaJuiz.parse({ decisao: 'cumprir', itens: [item] })).toEqual({
+      decisao: 'cumprir',
+      itens: [{ setor: 'documentacao', descricao: 'Trazer laudo atualizado', provaEsperada: null, prazoInterno: '2026-10-20' }],
+      tiposPericia: [],
+    })
+    expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir', itens: [{ ...item, descricao: ' ' }] }))).toBe('Descreva o que o setor deve cumprir')
+    expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir', itens: [{ ...item, prazoInterno: '' }] }))).toBe(
+      'Informe o prazo interno de cada item (dd/mm/aaaa)',
+    )
+    expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir', itens: [{ ...item, setor: 'financeiro' }] }))).toBe('Escolha o setor de cada item')
   })
 })

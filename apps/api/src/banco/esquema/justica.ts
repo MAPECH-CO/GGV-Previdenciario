@@ -128,6 +128,8 @@ export const peticaoVersao = pgTable(
     hash: text('hash').notNull(),
     geradaPor: text('gerada_por').notNull(),
     pedidoDeMudanca: text('pedido_de_mudanca'),
+    /** A versão anexada pela advogada (GGVP-87; sem IA, ela redige fora do portal). */
+    documentoId: uuid('documento_id').references(() => documento.id),
     aprovadaPor: uuid('aprovada_por').references(() => usuario.id),
     aprovadaEm: momento('aprovada_em'),
     criadoEm: criadoEm(),

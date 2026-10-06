@@ -71,6 +71,13 @@
       "when": 1791256275716,
       "tag": "0009_publicacao_e_vigilia",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791258865146,
+      "tag": "0010_exigencia_do_juiz",
+      "breakpoints": true
     }
   ]
 }

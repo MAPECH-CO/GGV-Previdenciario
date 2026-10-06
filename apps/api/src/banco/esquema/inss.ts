@@ -69,6 +69,9 @@ export const exigenciaItem = pgTable(
     perfilResponsavel: text('perfil_responsavel').notNull(),
     responsavelId: uuid('responsavel_id').references(() => usuario.id),
     prazo: date('prazo'),
+    /** O que o setor deve trazer como prova (GGVP-79 CA13) e a tarefa do setor que cumpre o item (GGVP-83). */
+    provaEsperada: text('prova_esperada'),
+    tarefaId: uuid('tarefa_id'),
     situacao: text('situacao').notNull().default('pendente'),
     /** Por que não foi cumprido (GGVP-39 CA11). */
     motivo: text('motivo'),

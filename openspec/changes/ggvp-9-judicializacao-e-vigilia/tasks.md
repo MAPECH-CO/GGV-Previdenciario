@@ -32,9 +32,9 @@
 
 ## GGVP-79 · Analisar a exigência e criar a tarefa do setor
 
-- [ ] 6.1 Matriz versão 6 e contratos `ExigenciaDoJuiz` e `AnalisarExigenciaJuiz`; migração 0010; teste; verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
-- [ ] 6.2 CA1, CA2, CA4 a CA10, CA12, CA13 · `GET` e `POST /api/casos/:id/exigencia-juiz` (ciência registrada e volta à vigília; itens por setor com prazo interno até o processual; tarefas dos setores com o limite; perícia com a origem D3a; só advogada distribui); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.3 Tela "Analisar a exigência do juiz" (texto, prazo com a regra, itens editáveis, status de cada setor); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 6.1 Matriz versão 6 e contratos `ExigenciaDoJuiz` e `AnalisarExigenciaJuiz`; migração 0010; teste; verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
+- [x] 6.2 CA1, CA2, CA4 a CA10, CA12, CA13 · `GET` e `POST /api/casos/:id/exigencia-juiz` (ciência registrada e volta à vigília; itens por setor com prazo interno até o processual; tarefas dos setores com o limite; perícia com a origem D3a; só advogada distribui); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.3 Tela "Analisar a exigência do juiz" (texto, prazo com a regra, itens editáveis, status de cada setor); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-83 · Laços dos setores na exigência do juiz
 

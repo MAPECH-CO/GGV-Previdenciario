@@ -1,6 +1,7 @@
 // Contratos da vigília e da publicação (GGVP-9, grupo 1). Tela e servidor validam com o mesmo schema.
 import { normalizarCnj, normalizarInteiro, validarCnj } from '@ggv/campos'
 import { z } from 'zod'
+import { DataObrigatoria, TIPOS_DE_PERICIA } from './inss.ts'
 
 export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
 export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
@@ -128,3 +129,70 @@ export const PainelDaVigilia = z.object({
   podeCasar: z.boolean(),
 })
 export type PainelDaVigilia = z.infer<typeof PainelDaVigilia>
+
+/** Setores que cumprem a exigência do juiz (GGVP-79 CA1). O "Jurídico" é o Jurídico administrativo (revisor, 06/10). */
+export const SETORES_DA_EXIGENCIA = ['atendimento', 'juridico_adm', 'documentacao'] as const
+export const ROTULO_SETOR: Record<(typeof SETORES_DA_EXIGENCIA)[number], string> = {
+  atendimento: 'Atendimento',
+  juridico_adm: 'Jurídico',
+  documentacao: 'Documentação',
+}
+
+const ItemDaExigenciaJuiz = z.object({
+  setor: z.enum(SETORES_DA_EXIGENCIA, { error: 'Escolha o setor de cada item' }),
+  descricao: z.string({ error: 'Descreva o que o setor deve cumprir' }).trim().min(1, 'Descreva o que o setor deve cumprir'),
+  provaEsperada: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || null),
+  prazoInterno: DataObrigatoria('Informe o prazo interno de cada item (dd/mm/aaaa)'),
+})
+
+/** POST /api/casos/:id/exigencia-juiz (GGVP-79 CA1, CA2, CA6, CA7, CA8, CA13): "o prazo interno até o processual" o servidor confere. */
+export const AnalisarExigenciaJuiz = z.discriminatedUnion(
+  'decisao',
+  [
+    z.object({ decisao: z.literal('ciencia') }),
+    z
+      .object({
+        decisao: z.literal('cumprir'),
+        itens: z.array(ItemDaExigenciaJuiz).default([]),
+        tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+      })
+      .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Inclua ao menos um item ou a perícia', path: ['itens'] }),
+  ],
+  { error: 'Escolha "Só ciência" ou "Precisa cumprir"' },
+)
+export type AnalisarExigenciaJuiz = z.input<typeof AnalisarExigenciaJuiz>
+
+/** GET /api/casos/:id/exigencia-juiz (GGVP-79 CA5; GGVP-83 CA2, CA3, CA10). */
+export const ExigenciaDoJuiz = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  publicacaoId: z.uuid(),
+  texto: z.string(),
+  disponibilizadaEm: z.string(),
+  prazo: Prazo,
+  /** `a_analisar`: ninguém decidiu; `ciencia`; `em_cumprimento`; `cumprida`; `vencida`; `dilacao_pedida`. */
+  situacao: z.enum(['a_analisar', 'ciencia', 'em_cumprimento', 'cumprida', 'vencida', 'dilacao_pedida']),
+  itens: z.array(
+    z.object({
+      id: z.uuid(),
+      setor: z.enum(SETORES_DA_EXIGENCIA),
+      descricao: z.string(),
+      provaEsperada: z.string().nullable(),
+      prazoInterno: z.string().nullable(),
+      situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
+      prova: z.string().nullable(),
+      tentativas: z.number(),
+      limite: z.number().nullable(),
+      escalada: z.boolean(),
+    }),
+  ),
+  pericias: z.array(z.object({ tipo: z.enum(TIPOS_DE_PERICIA), resultado: z.string().nullable() })),
+  /** Setores que ainda não subiram o card (GGVP-83 CA3). */
+  faltam: z.array(z.string()),
+  podeDistribuir: z.boolean(),
+})
+export type ExigenciaDoJuiz = z.infer<typeof ExigenciaDoJuiz>
