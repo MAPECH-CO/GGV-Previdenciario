@@ -58,7 +58,7 @@
 - [x] 6.8 Dados de exemplo: configuração de cobrança (3 e 2) e um caso com exigência esperando a advogada; verifica entrando como advogada.
 - [x] 6.9 Telas "Tratar exigência" (advogada e Sênior) e "Cumprir exigência" (Documentação); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 6.10 Playwright: a advogada decide "Documentos", a Documentação cobra, junta a prova e responde, e o caso volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 6.11 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.11 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-44 · Benefício deferido: prestação de contas e ida ao banco
 
@@ -70,4 +70,4 @@
 - [x] 7.6 Dados de exemplo: modelo "Confirmação da ida ao banco", contratos com 30% e um caso deferido com "Prestar contas" e a carta; verifica entrando como advogada.
 - [x] 7.7 Telas "Prestar contas", "Receber a prestação" e "Agendar ida ao banco"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 7.8 Playwright: a advogada conclui a prestação, o Financeiro recebe, o Atendimento agenda e registra a confirmação; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
