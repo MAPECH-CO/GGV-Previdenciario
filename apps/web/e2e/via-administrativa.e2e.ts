@@ -110,7 +110,7 @@ test('GGVP-23 · sem parecer, Aprovar fica desligado; reprovar sem motivo não p
 // Grupo 2: casos de exemplo em vigília (Rita, Sebastião e Teresa), esperando o INSS.
 const PDF = { name: 'comunicacao.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 exemplo') }
 
-test('GGVP-35 · a advogada registra um deferido e uma exigência; o Atendimento só vê', async ({ page, context }) => {
+test('GGVP-35 · a advogada registra um deferido e uma exigência, com o passo seguinte na mesma tela; o Atendimento só vê', async ({ page, context }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Rita Gomes (exemplo) · Trazer a resposta do INSS' }).click()
@@ -124,6 +124,8 @@ test('GGVP-35 · a advogada registra um deferido e uma exigência; o Atendimento
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('status')).toContainText('Prestar contas')
   await expect(page.getByRole('list', { name: 'Registros' })).toContainText('Deferido · Gabi (exemplo)')
+  // Ajuste do Mateus (06/10): o passo seguinte da advogada aparece na mesma tela, se ela quiser seguir.
+  await expect(page.getByRole('region', { name: 'Prestar contas' }).getByLabel('Valor recebido (atrasados)')).toBeVisible()
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Teresa Dias (exemplo) · Trazer a resposta do INSS' }).click()
@@ -132,6 +134,8 @@ test('GGVP-35 · a advogada registra um deferido e uma exigência; o Atendimento
   await page.getByLabel('Data da exigência').fill('2026-10-03')
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('status')).toContainText('o caso continua vigiado')
+  await expect(page.getByRole('region', { name: 'Tratar exigência do INSS' }).getByText('O que a exigência pede?')).toBeVisible()
+  // Deixou para depois: a tarefa está na Central.
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Teresa Dias (exemplo) · Tratar exigência do INSS' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Teresa Dias (exemplo) · Trazer a resposta do INSS' })).toBeVisible()

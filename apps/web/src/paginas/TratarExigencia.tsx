@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/campos'
 import { DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { Moldura } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const ROTULO_PEDE = { documentos: 'Documentos', pericia: 'Perícia', pericia_e_documentos: 'Perícia e documentos' } as const
@@ -148,7 +149,7 @@ export function DecidirVencidaForm({ casoId, aoDecidir, rota = 'exigencia' }: { 
  * Tratar exigência do INSS (GGVP-39). A advogada decide o que a exigência pede (G5): documentos (card da Documentação
  * com os itens e o prazo de entrega), perícia (tarefa do Jurídico administrativo) ou os dois (primeiro os documentos).
  */
-export function TratarExigencia({ casoId }: { casoId: string }) {
+export function TratarExigencia({ casoId, embutida = false }: { casoId: string; embutida?: boolean }) {
   const ids = { dias: useId(), itens: useId(), entrega: useId() }
   const [x, setX] = useState<ExigenciaDoCaso | null>(null)
   const [versao, setVersao] = useState(0)
@@ -194,26 +195,31 @@ export function TratarExigencia({ casoId }: { casoId: string }) {
 
   if (!x)
     return (
-      <main className={styles.pagina}>
-        <title>Tratar exigência do INSS · GGV Previdenciário</title>
+      <Moldura titulo="Tratar exigência do INSS" embutida={embutida}>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </Moldura>
     )
 
   return (
-    <main className={styles.pagina}>
-      <title>Tratar exigência do INSS · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Tratar exigência do INSS</h1>
-      <p className={styles.subtitulo}>
-        {x.cliente} · {rotuloBeneficio(x.beneficio)}
-      </p>
+    <Moldura
+      titulo="Tratar exigência do INSS"
+      embutida={embutida}
+      cabecalho={
+        <>
+          <a className={styles.voltar} href="/">
+            ← Voltar ao início
+          </a>
+          <h1 className={styles.titulo}>Tratar exigência do INSS</h1>
+          <p className={styles.subtitulo}>
+            {x.cliente} · {rotuloBeneficio(x.beneficio)}
+          </p>
+        </>
+      }
+    >
       <ResumoDaExigencia x={x} />
 
       {feito && (
@@ -328,6 +334,6 @@ export function TratarExigencia({ casoId }: { casoId: string }) {
           }}
         />
       )}
-    </main>
+    </Moldura>
   )
 }

@@ -3,7 +3,10 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
 import { EncerrarCaso, RespostaDoInss, type VigiliaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { usePode } from '../sessao.ts'
 import styles from './Passo.module.css'
+import { PrestarContas } from './PrestarContas.tsx'
+import { TratarExigencia } from './TratarExigencia.tsx'
 
 type Tipo = 'deferido' | 'indeferido' | 'exigencia'
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
@@ -62,6 +65,10 @@ export function Vigilia({ casoId }: { casoId: string }) {
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [enviando, setEnviando] = useState(false)
+  // Ajuste do Mateus (06/10): depois de registrar, o passo seguinte da advogada pode ser feito aqui mesmo.
+  const [seguir, setSeguir] = useState<'exigencia' | 'prestacao' | null>(null)
+  const podeTratar = usePode('exigencia_inss.tratar')
+  const podePrestar = usePode('prestacao.dar_ok')
 
   const [versao, setVersao] = useState(0) // muda depois de registrar: recarrega a situação e os registros
 
@@ -102,6 +109,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
         exigencia: 'Exigência registrada. O sistema abriu "Tratar exigência do INSS"; o caso continua vigiado.',
       }[r.dados.aberto] ?? 'Registrado.',
     )
+    setSeguir(r.dados.aberto === 'exigencia' ? 'exigencia' : r.dados.aberto === 'prestacao' || r.dados.aberto === 'analise' ? 'prestacao' : null)
     setVersao((v) => v + 1)
   }
 
@@ -154,7 +162,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
         </p>
       )}
 
-      {caso.podeRegistrar && (
+      {caso.podeRegistrar && !seguir && (
         <form className={styles.cartao} onSubmit={registrar} noValidate>
           <h2 className={styles.cartaoTitulo}>O que o INSS respondeu?</h2>
           <fieldset className={styles.cartao}>
@@ -219,6 +227,19 @@ export function Vigilia({ casoId }: { casoId: string }) {
             </button>
           </div>
         </form>
+      )}
+
+      {seguir === 'exigencia' && podeTratar && (
+        <>
+          <p className={styles.dica}>Pode tratar a exigência aqui mesmo, ou depois: a tarefa ficou na sua Central.</p>
+          <TratarExigencia casoId={casoId} embutida />
+        </>
+      )}
+      {seguir === 'prestacao' && podePrestar && (
+        <>
+          <p className={styles.dica}>Pode prestar contas aqui mesmo, ou depois: a tarefa ficou na sua Central.</p>
+          <PrestarContas casoId={casoId} embutida />
+        </>
       )}
 
       {caso.podeEncerrar && <EncerrarSemJudicializar casoId={casoId} aoEncerrar={() => {
