@@ -19,6 +19,7 @@ import { registrarRotasDocumentos } from './rotas/documentos.ts'
 import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
 import { registrarRotasGestao } from './rotas/gestao.ts'
+import { registrarRotasRegras } from './rotas/regras.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
@@ -74,6 +75,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasIndeferimento(app, { banco, agora })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasGestao(app, { banco, agora })
+    registrarRotasRegras(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {
