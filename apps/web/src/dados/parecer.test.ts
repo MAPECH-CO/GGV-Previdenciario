@@ -283,6 +283,16 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
       expect(tarefasDoParecer().filter((t) => t.cliente?.id === 'rita-exemplo')).toEqual([])
     })
 
+    it('CA2 · o caso sem documento médico também recebe a dispensa: o pedido chega à outra sênior e, aprovado, vale no portão', async () => {
+      await pedirDispensa('maria-exemplo-1', JUSTIFICATIVA, RENATA)
+      expect(tarefasDoParecer().filter((t) => t.cliente?.id === 'maria-exemplo')).toEqual([
+        expect.objectContaining({ acao: 'Aprovar dispensa do parecer', href: '/casos/maria-exemplo-1/parecer/dispensa' }),
+      ])
+      await responderDispensa('maria-exemplo-1', true, OTAVIO)
+      expect(parecerParaOPortao(ler(), 'maria-exemplo-1')?.situacao).toBe('dispensado')
+      expect(tarefasDoParecer().filter((t) => t.cliente?.id === 'maria-exemplo')).toEqual([])
+    })
+
     it('CA2 · a segunda sênior pode recusar, e o caso continua esperando o parecer', async () => {
       await pedirDispensa('rita-exemplo-1', JUSTIFICATIVA, RENATA)
       const p = await responderDispensa('rita-exemplo-1', false, OTAVIO)

@@ -685,14 +685,32 @@ export function tarefasDoParecer(): Tarefa[] {
   const tarefas = banco.fichas.flatMap((ficha) =>
     ficha.processos.flatMap((processo): Tarefa[] => {
       const p = emDia(banco, ficha, processo)
-      const analise = p.analises.at(-1)
-      if (!analise) return []
       const beneficio = nomeBeneficio(processo.beneficio)
+      const doCaso: Tarefa[] = []
+      // A dispensa da sênior esperando a segunda aprovação (GGVP-33): vale também para o caso ainda sem documento médico.
+      const dispensa = p.dispensas?.at(-1)
+      const esperandoDispensa = dispensa !== undefined && !dispensa.aprovadaPor && !dispensa.recusadaPor
+      if (esperandoDispensa) {
+        doCaso.push({
+          id: `dispensa-${processo.id}`,
+          codigo: 'D1.24',
+          cliente: { id: ficha.id, nome: ficha.nome },
+          acao: 'Aprovar dispensa do parecer',
+          detalhe: `${beneficio} · pedida por ${dispensa.pedidaPor} · a segunda aprovação é de outra sênior (G17)`,
+          prazo: 'hoje',
+          urgente: true,
+          href: `/casos/${processo.id}/parecer/dispensa`,
+          processoId: processo.id,
+        })
+      }
+      const analise = p.analises.at(-1)
+      if (!analise) return doCaso
       const laudoNovoEm = laudoNovoDo(ficha, processo)
       if (laudoNovoEm) {
         // A tarefa que o envio pelo card já criou (GGVP-17) vale; a da semente nasce aqui.
-        if (banco.tarefas.some((x) => x.processoId === processo.id && x.acao === 'Analisar laudo novo' && !x.concluida)) return []
+        if (banco.tarefas.some((x) => x.processoId === processo.id && x.acao === 'Analisar laudo novo' && !x.concluida)) return doCaso
         return [
+          ...doCaso,
           {
             id: `laudo-novo-${processo.id}`,
             codigo: 'D1.21M',
@@ -706,24 +724,7 @@ export function tarefasDoParecer(): Tarefa[] {
           },
         ]
       }
-      // A dispensa da sênior esperando a segunda aprovação (GGVP-33).
-      const dispensa = p.dispensas?.at(-1)
-      if (dispensa && !dispensa.aprovadaPor && !dispensa.recusadaPor) {
-        return [
-          {
-            id: `dispensa-${processo.id}`,
-            codigo: 'D1.24',
-            cliente: { id: ficha.id, nome: ficha.nome },
-            acao: 'Aprovar dispensa do parecer',
-            detalhe: `${beneficio} · pedida por ${dispensa.pedidaPor} · a segunda aprovação é de outra sênior (G17)`,
-            prazo: 'hoje',
-            urgente: true,
-            href: `/casos/${processo.id}/parecer/dispensa`,
-            processoId: processo.id,
-          },
-        ]
-      }
-      if (dispensaEmVigor(p) || p.registros.at(-1)?.analise === analise.quando) return []
+      if (esperandoDispensa || dispensaEmVigor(p) || p.registros.at(-1)?.analise === analise.quando) return doCaso
       return [
         {
           id: `parecer-${processo.id}`,
