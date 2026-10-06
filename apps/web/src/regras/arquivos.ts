@@ -36,7 +36,12 @@ const PISTAS: [RegExp, string][] = [
   [/atestado/, 'atestado'],
   [/\bcat\b|comunicacao de acidente/, 'cat'],
   [/boletim|\bbo\b/, 'boletim-ocorrencia'],
+  // GGVP-47: o exame da época do acidente e o posterior à alta, antes do exame comum.
+  [/(exame|ressonancia|raio x|tomografia).*(epoca|do acidente)/, 'exame-imagem-epoca'],
+  [/(exame|ressonancia|raio x|tomografia).*(pos alta|apos a alta)/, 'exame-pos-alta'],
   [/exame|ressonancia|raio x|tomografia|ultrassom/, 'exame'],
+  [/pronto socorro/, 'ficha-pronto-socorro'],
+  [/\bppp\b|perfil profissiografico/, 'ppp'],
   [/receita/, 'receita'],
   [/prontuario/, 'prontuario'],
   [/\brg\b|identidade/, 'rg'],

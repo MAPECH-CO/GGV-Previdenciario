@@ -54,7 +54,9 @@ describe('Liberar o caso ao Jurídico · servidor de exemplo', () => {
   })
 
   it('CA2 · checklist sem lista ou incompleto não libera e diz o que falta', async () => {
-    await expect(liberarAoJuridico('sebastiao-exemplo-1', tudoConferido)).rejects.toThrow('Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada')
+    await expect(liberarAoJuridico('antonio-exemplo-1', tudoConferido)).rejects.toThrow('Aposentadoria por Incapacidade Permanente ainda não tem lista de documentos obrigatórios aprovada')
+    // GGVP-47: o Auxílio-Acidente tem lista, mas espera a circunstância do acidente.
+    await expect(liberarAoJuridico('sebastiao-exemplo-1', tudoConferido)).rejects.toThrow('Marque a circunstância do acidente')
     await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('O checklist está incompleto. Falta: Documento pessoal (RG)')
   })
 

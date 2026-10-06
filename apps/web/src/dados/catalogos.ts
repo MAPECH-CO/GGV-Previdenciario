@@ -92,6 +92,11 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   // GGVP-42: as provas da deficiência na época de cada vínculo.
   { id: 'aso', nome: 'ASO (atestado de saúde ocupacional)' },
   { id: 'contratacao-cota', nome: 'Contratação por cota (PCD)' },
+  // GGVP-47: as provas do acidente que ainda não estavam (CAT, boletim e prontuário já estão acima).
+  { id: 'ficha-pronto-socorro', nome: 'Ficha do pronto-socorro' },
+  { id: 'exame-imagem-epoca', nome: 'Exame de imagem da época do acidente' },
+  { id: 'exame-pos-alta', nome: 'Exame posterior à alta' },
+  { id: 'ppp', nome: 'PPP (Perfil Profissiográfico Previdenciário)' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

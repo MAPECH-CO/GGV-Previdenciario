@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 
 // GGVP-18 · Liberar o caso ao Jurídico: o caminho inteiro da Rita no localhost, da leitura ao OK da Documentação e à fila
-// da sênior; o Sebastião travado sem lista; outro perfil vê só a situação. Cada teste começa da semente de exemplo.ts.
+// da sênior; o Sebastião travado sem a circunstância do acidente; outro perfil vê só a situação. Cada teste começa da
+// semente de exemplo.ts.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -75,12 +76,12 @@ test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documen
   )
 })
 
-test('CA2 e CA5 · o Sebastião espera na fila há 2 dias e não libera: o benefício não tem lista', async ({ page }) => {
+test('CA2 e CA5 · o Sebastião espera na fila há 2 dias e não libera: falta marcar a circunstância do acidente (GGVP-47)', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Sebastião Exemplo · Liberar ao Jurídico' }).click()
   await expect(page).toHaveURL('/casos/sebastiao-exemplo-1/liberar')
   await expect(page.getByRole('button', { name: 'Liberar ao Jurídico' })).toBeDisabled()
-  await expect(page.getByText(/Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada/)).toBeVisible()
+  await expect(page.getByText(/Marque a circunstância do acidente: o que é obrigatório depende dela\./)).toBeVisible()
 })
 
 test('CA4 · outro perfil vê só a situação', async ({ page }) => {

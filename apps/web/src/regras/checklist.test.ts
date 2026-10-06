@@ -83,3 +83,45 @@ describe('Checklist do benefício (GGVP-91)', () => {
     expect(montarChecklist(entrada({ lista: outra, documentos: [{ tipo: 'cnis' }] })).completo).toBe(true)
   })
 })
+
+describe('Checklist do Auxílio-Acidente (GGVP-47)', () => {
+  const BASE: ListaDoBeneficio = { obrigatorios: ['laudo'], condicionais: [] }
+  const acidente = (resto: Partial<EntradaDoChecklist> = {}) =>
+    entrada({
+      lista: BASE,
+      complementares: [
+        { tipo: 'cat', exigencia: 'obrigatorio', aplica: true, recusado: false },
+        { tipo: 'boletim-ocorrencia', exigencia: 'desejavel', aplica: true, recusado: false },
+        { tipo: 'prontuario', exigencia: 'condicional', aplica: false, recusado: false },
+      ],
+      ...resto,
+    })
+
+  it('CA1 · os complementares entram depois da lista, cada um com a exigência e o status próprio', () => {
+    const c = montarChecklist(acidente({ documentos: [{ tipo: 'laudo' }] }))
+    expect(c.itens.map((i) => [i.tipo, i.exigencia, i.situacao, i.motivo, i.naoConta])).toEqual([
+      ['contrato', undefined, 'recebido', undefined, undefined],
+      ['laudo', undefined, 'recebido', undefined, undefined],
+      ['cat', 'obrigatorio', 'pendente', 'falta', undefined],
+      ['boletim-ocorrencia', 'desejavel', 'pendente', 'falta', true],
+      ['prontuario', 'condicional', 'pendente', 'só com internação ou cirurgia: não se aplica', true],
+    ])
+  })
+
+  it('CA3 · completo com todos os obrigatórios e os condicionais que se aplicam; o desejável não conta', () => {
+    expect(montarChecklist(acidente({ documentos: [{ tipo: 'laudo' }] }))).toMatchObject({ completo: false, faltam: ['CAT (Comunicação de Acidente de Trabalho)'] })
+    expect(montarChecklist(acidente({ documentos: [{ tipo: 'laudo' }, { tipo: 'cat' }] }))).toMatchObject({ completo: true, faltam: [] })
+  })
+
+  it('CA3 · a CAT recusada pelo empregador vira pendência que não trava', () => {
+    const c = montarChecklist(acidente({ documentos: [{ tipo: 'laudo' }], complementares: [{ tipo: 'cat', exigencia: 'obrigatorio', aplica: true, recusado: true }] }))
+    expect(c.itens.at(-1)).toMatchObject({ tipo: 'cat', situacao: 'pendente', motivo: 'o empregador recusou: pendência que não trava', naoConta: true })
+    expect(c.completo).toBe(true)
+  })
+
+  it('CA2 · o bloqueio da categoria trava o completo e é o motivo para não liberar', () => {
+    const c = montarChecklist(acidente({ documentos: [{ tipo: 'laudo' }, { tipo: 'cat' }], bloqueio: 'Facultativo não tem direito ao auxílio-acidente: o caso trava na categoria.' }))
+    expect([c.completo, c.faltam]).toEqual([false, []])
+    expect(motivoParaNaoLiberar(c, 'Auxílio Acidentário')).toBe('Facultativo não tem direito ao auxílio-acidente: o caso trava na categoria.')
+  })
+})

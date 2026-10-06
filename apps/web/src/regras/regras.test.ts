@@ -251,6 +251,14 @@ describe('arquivos da pasta do cliente (GGVP-17)', () => {
     expect(tipoSugerido('ressonância coluna.pdf')).toBe('exame')
   })
 
+  it('GGVP-47 · as provas do acidente: o exame da época, o posterior à alta, o pronto-socorro e o PPP', () => {
+    expect(tipoSugerido('raio x do acidente.pdf')).toBe('exame-imagem-epoca')
+    expect(tipoSugerido('exame da época.pdf')).toBe('exame-imagem-epoca')
+    expect(tipoSugerido('ressonância pós-alta.pdf')).toBe('exame-pos-alta')
+    expect(tipoSugerido('ficha do pronto socorro.pdf')).toBe('ficha-pronto-socorro')
+    expect(tipoSugerido('PPP_empresa.pdf')).toBe('ppp')
+  })
+
   it('CA13 · nome que já existe entra como "(2)", "(3)": nada é sobrescrito', () => {
     expect(nomeSemSobrescrever('rg.pdf', [])).toBe('rg.pdf')
     expect(nomeSemSobrescrever('rg.pdf', ['rg.pdf'])).toBe('rg (2).pdf')

@@ -31,9 +31,10 @@ test('CA1, CA3, CA5 e CA7 · da leitura arquivada ao checklist da Rita, incomple
   await expect(page.getByRole('link', { name: 'Rita Exemplo · Conferir checklist' })).toHaveCount(0)
 })
 
+// Desde a GGVP-47 o Auxílio-Acidente tem lista: o exemplo sem lista é a aposentadoria do Antônio.
 test('CA6 · benefício sem lista aprovada explica o bloqueio', async ({ page }) => {
-  await page.goto('/casos/sebastiao-exemplo-1/checklist')
-  await expect(page.getByText(/Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada/).first()).toBeVisible()
+  await page.goto('/casos/antonio-exemplo-1/checklist')
+  await expect(page.getByText(/Aposentadoria por Incapacidade Permanente ainda não tem lista de documentos obrigatórios aprovada/).first()).toBeVisible()
   await expect(page.getByText(/Liberar ao Jurídico: bloqueado/)).toBeVisible()
 })
 

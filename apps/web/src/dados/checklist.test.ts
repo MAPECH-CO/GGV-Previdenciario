@@ -86,12 +86,13 @@ describe('Checklist do benefício · servidor de exemplo', () => {
     expect((await obterChecklist('rita-exemplo-1'))?.checklist.itens.find((i) => i.tipo === 'grupo-familiar')?.situacao).toBe('recebido')
   })
 
-  it('CA6 · Auxílio Acidentário sem lista aprovada: o checklist não fica completo e a conferência registra o porquê', async () => {
-    const caso = await obterChecklist('sebastiao-exemplo-1')
+  // Desde a GGVP-47 o Auxílio-Acidente tem lista: o exemplo sem lista é a aposentadoria do Antônio.
+  it('CA6 · benefício sem lista aprovada: o checklist não fica completo e a conferência registra o porquê', async () => {
+    const caso = await obterChecklist('antonio-exemplo-1')
     expect(caso?.checklist).toMatchObject({ temLista: false, completo: false })
-    await conferirChecklist('sebastiao-exemplo-1')
-    expect((await obterFicha('sebastiao-exemplo'))?.historico.at(-1)?.oQue).toBe(
-      'Conferiu o checklist do Auxílio Acidentário: sem lista de documentos aprovada para o benefício',
+    await conferirChecklist('antonio-exemplo-1')
+    expect((await obterFicha('antonio-exemplo'))?.historico.at(-1)?.oQue).toBe(
+      'Conferiu o checklist do Aposentadoria por Incapacidade Permanente: sem lista de documentos aprovada para o benefício',
     )
   })
 

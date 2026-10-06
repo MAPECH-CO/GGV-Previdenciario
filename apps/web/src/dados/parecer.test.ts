@@ -70,7 +70,7 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
     expect(p?.confirmado).toEqual({ quem: 'Dra. Paula', quando: new Date('2026-07-15T11:00:00').toISOString() })
     expect(p?.documentos.map((d) => [d.tipo, d.data])).toEqual([
       ['cat', '2024-03-15'],
-      ['exame', '2025-02-10'],
+      ['exame-pos-alta', '2025-02-10'],
       ['laudo', '2025-05-06'],
       ['laudo', '2025-07-08'],
       ['laudo', '2025-09-10'],

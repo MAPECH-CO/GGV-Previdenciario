@@ -55,7 +55,9 @@ export function LiberarCaso({ processoId, perfil = 'documentacao' }: { processoI
   // O que o registro diz e, se não está em ordem, o que falta (GGVP-33, CA1 e CA4).
   const textoParecer = !precisaParecer
     ? `Parecer médico: não se aplica a ${beneficio} — registro, você não marca`
-    : parecer?.situacao === 'dispensado'
+    : parecer?.contradicoes?.length
+      ? 'Parecer médico (G18): a IA achou contradição num documento que o Jurídico ainda não conferiu — registro, você não marca'
+      : parecer?.situacao === 'dispensado'
       ? `Parecer médico dispensado por duas sêniores (G17) · ${parecer.quem}${parecer.data ? `, ${dataCurta(parecer.data, hoje)}` : ''} — registro, você não marca`
       : parecerOk
         ? `Parecer médico Suficiente (G17)${confirmado} — registro, você não marca`

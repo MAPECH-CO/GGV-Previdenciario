@@ -177,7 +177,7 @@ const DOCUMENTOS_DA_SEMENTE: Record<string, DocumentoDaSemente[]> = {
       resumo: 'comunicação do acidente de trabalho',
       cobre: { acidente: t(1, 'Acidente de trabalho em 15/03/2024: queda na linha de produção.'), nexo: t(1, 'Acidente durante a função, no local de trabalho.') },
     },
-    { id: 'semente/sebastiao/exames', tipo: 'exame', data: '2025-02-10', emitente: 'Laboratório Exemplo', resumo: 'exames de imagem · tornozelo direito', cobre: {} },
+    { id: 'semente/sebastiao/exames', tipo: 'exame-pos-alta', data: '2025-02-10', emitente: 'Laboratório Exemplo', resumo: 'exames de imagem · tornozelo direito', cobre: {} },
     {
       id: 'semente/sebastiao/laudo-2025-05',
       tipo: 'laudo',
@@ -287,6 +287,7 @@ const COBREM = ['laudo', 'relatorio-medico', 'prontuario']
 const PISTAS_DE_CONTRADICAO: [string, string][] = [
   ['incapacidade total', 'incapacidade-total'],
   ['nao consolidada', 'nao-consolidada'],
+  ['sem reducao', 'sem-reducao'],
   ['temporaria', 'temporaria'],
 ]
 
@@ -315,8 +316,16 @@ const assinaturaDe = (docs: Pick<DocumentoAnalisado, 'id' | 'tipo'>[]) =>
     .join('|')
 
 /** Os documentos médicos do caso e o que a IA leu de cada um. */
-function documentosMedicos(banco: Banco, ficha: Ficha, processoId: string, itens: ItemDoRoteiro[], daSemente: DocumentoDaSemente[]): { docs: DocumentoAnalisado[]; leituras: LeituraMedica[] } {
+function documentosMedicos(
+  banco: Banco,
+  ficha: Ficha,
+  processoId: string,
+  itens: ItemDoRoteiro[],
+  daSemente: DocumentoDaSemente[],
+  comLeituras: boolean,
+): { docs: DocumentoAnalisado[]; leituras: LeituraMedica[] } {
   const lidos = leiturasDo(banco).filter((l) => {
+    if (!comLeituras) return false
     if (l.fichaId !== ficha.id || !ehMedico(l.tipo) || (l.situacao !== 'a-conferir' && l.situacao !== 'arquivado')) return false
     const local = ficha.arquivos.find((a) => a.nome === l.arquivo)?.local
     return local === processoId || local === 'pessoais'
@@ -345,12 +354,14 @@ function montarAnalise(
   anterior: AnaliseDaIA | undefined,
   quando: string,
   daSemente = DOCUMENTOS_DA_SEMENTE[processo.id] ?? [],
+  /** A semente analisa só os documentos dela: o que chegou à pasta depois vira análise nova (GGVP-47). */
+  comLeituras = true,
 ): AnaliseDaIA | undefined {
   const roteiro = roteiroComLaudo(banco, processo.beneficio)
   if (roteiro === null) return undefined
   const versao = roteiro && emVigor(roteiro)
   const itensDoRoteiro = versao?.itens ?? []
-  const { docs, leituras } = documentosMedicos(banco, ficha, processo.id, itensDoRoteiro, daSemente)
+  const { docs, leituras } = documentosMedicos(banco, ficha, processo.id, itensDoRoteiro, daSemente, comLeituras)
   if (docs.length === 0) return undefined
   const assinatura = assinaturaDe(docs)
   if (anterior?.assinatura === assinatura) return anterior
@@ -387,7 +398,7 @@ function semear(banco: Banco): ParecerDoCaso[] {
   }
   const sebastiao = caso('sebastiao-exemplo', 'sebastiao-exemplo-1')
   if (sebastiao) {
-    const analise = montarAnalise(banco, sebastiao.ficha, sebastiao.processo, undefined, new Date('2026-07-14T10:00:00').toISOString())!
+    const analise = montarAnalise(banco, sebastiao.ficha, sebastiao.processo, undefined, new Date('2026-07-14T10:00:00').toISOString(), undefined, false)!
     pareceres.push({
       processoId: 'sebastiao-exemplo-1',
       fichaId: 'sebastiao-exemplo',
@@ -399,8 +410,8 @@ function semear(banco: Banco): ParecerDoCaso[] {
   if (antonio) {
     // A análise de 19/09 leu os três laudos; a de 29/09, o laudo novo também.
     const tresLaudos = DOCUMENTOS_DA_SEMENTE['antonio-exemplo-1'].slice(0, 3)
-    const antes = montarAnalise(banco, antonio.ficha, antonio.processo, undefined, new Date('2026-09-19T09:00:00').toISOString(), tresLaudos)!
-    const depois = montarAnalise(banco, antonio.ficha, antonio.processo, antes, new Date('2026-09-29T16:00:00').toISOString())!
+    const antes = montarAnalise(banco, antonio.ficha, antonio.processo, undefined, new Date('2026-09-19T09:00:00').toISOString(), tresLaudos, false)!
+    const depois = montarAnalise(banco, antonio.ficha, antonio.processo, antes, new Date('2026-09-29T16:00:00').toISOString(), undefined, false)!
     pareceres.push({
       processoId: 'antonio-exemplo-1',
       fichaId: 'antonio-exemplo',
@@ -602,12 +613,19 @@ export function parecerParaOPortao(banco: Banco, processoId: string): Parecer | 
   const caso = acharCaso(banco, processoId)
   if (!caso) return undefined
   const p = emDia(banco, caso.ficha, caso.processo)
-  const dispensa = dispensaEmVigor(p)
-  if (dispensa) return { situacao: 'dispensado', quem: `${dispensa.pedidaPor} e ${dispensa.aprovadaPor}`, data: quandoCurto(dispensa.aprovadaEm!), justificativa: dispensa.justificativa }
   const registro = p.registros.at(-1)
-  if (registro) return { situacao: registro.situacao, quem: registro.quem, data: quandoCurto(registro.quando) }
-  return p.analises.length > 0 ? { situacao: 'pendente' } : undefined
+  // G18: a contradição da análise que ninguém do Jurídico conferiu ainda trava (GGVP-47, CA4); conferida, vale o registro.
+  const analise = p.analises.at(-1)
+  const contradicoes = analise && analise.quando !== registro?.analise ? analise.itens.filter((i) => i.situacao === 'contraditorio').map(({ id, texto }) => ({ id, texto })) : []
+  const g18 = contradicoes.length > 0 ? { contradicoes } : {}
+  const dispensa = dispensaEmVigor(p)
+  if (dispensa) return { situacao: 'dispensado', quem: `${dispensa.pedidaPor} e ${dispensa.aprovadaPor}`, data: quandoCurto(dispensa.aprovadaEm!), justificativa: dispensa.justificativa, ...g18 }
+  if (registro) return { situacao: registro.situacao, quem: registro.quem, data: quandoCurto(registro.quando), ...g18 }
+  return analise ? { situacao: 'pendente', ...g18 } : undefined
 }
+
+/** Os tipos dos documentos médicos da semente do caso (a CAT, os exames e os laudos do Sebastião), para o checklist (GGVP-47). */
+export const tiposDaSemente = (processoId: string): string[] => (DOCUMENTOS_DA_SEMENTE[processoId] ?? []).map((d) => d.tipo)
 
 const ehSenior = (perfil: string | undefined) => perfil?.startsWith('senior') === true
 

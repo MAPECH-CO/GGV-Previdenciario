@@ -130,9 +130,14 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
     cliente(10, 'rita-exemplo', 'Rita Exemplo', [
       { beneficio: 'loas-deficiente', etapa: 'Documentação · conferência', proximaAcao: 'conferir os documentos do balcão', prazo: 'hoje', urgente: true },
     ]),
-    cliente(7, 'sebastiao-exemplo', 'Sebastião Exemplo', [
-      { beneficio: 'auxilio-acidente', etapa: 'Documentação · liberar ao Jurídico', proximaAcao: 'conferir a documentação', prazo: 'amanhã' },
-    ]),
+    cliente(
+      7,
+      'sebastiao-exemplo',
+      'Sebastião Exemplo',
+      [{ beneficio: 'auxilio-acidente', etapa: 'Documentação · liberar ao Jurídico', proximaAcao: 'conferir a documentação', prazo: 'amanhã' }],
+      // GGVP-47: os documentos pessoais do kit do Auxílio-Acidente (Figma 10:264).
+      { documentos: [{ nome: 'RG', detalhe: 'frente e verso' }, { nome: 'CPF', detalhe: 'ok' }, { nome: 'CNIS', detalhe: '05/2026' }] },
+    ),
     cliente(8, 'pedro-exemplo', 'Pedro Exemplo', [
       { beneficio: 'loas-idoso', etapa: 'Administrativo · exigência do INSS', proximaAcao: 'responder a exigência', prazo: 'vence em 2 dias', urgente: true },
     ]),

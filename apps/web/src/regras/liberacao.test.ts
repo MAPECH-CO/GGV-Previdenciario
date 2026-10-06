@@ -61,3 +61,24 @@ describe('Liberar o caso ao Jurídico (GGVP-18)', () => {
     expect([0, 1, 4].map(idade)).toEqual(['desde hoje', 'há 1 dia', 'há 4 dias'])
   })
 })
+
+describe('G18 no Auxílio-Acidente (GGVP-47, CA4)', () => {
+  const suficiente = { situacao: 'suficiente' as const, quem: 'Dra. Paula', data: '2026-07-15' }
+  const naoConsolidada = { id: 'nao-consolidada', texto: 'Lesão ainda não consolidada' }
+
+  it('a contradição que a IA achou e ninguém conferiu trava, mesmo com o parecer Suficiente anterior, e sugere a troca de benefício', () => {
+    const parecer = { ...suficiente, contradicoes: [naoConsolidada] }
+    expect(parecerEmOrdem('auxilio-acidente', parecer)).toBe(false)
+    expect(travaDoParecer('liberar', 'auxilio-acidente', parecer)).toBe(
+      'Não dá para liberar ao Jurídico: a análise da IA achou documento que contradiz o requisito do benefício (lesão ainda não consolidada). O caso fica parado até o Jurídico conferir o parecer (G18). Sugestão: trocar para Auxílio por Incapacidade Temporária; o caso muda de porta.',
+    )
+    expect(travaDaLiberacao({ ...pronto, beneficio: 'auxilio-acidente', nomeBeneficio: 'Auxílio Acidentário', parecer })).toContain('(G18)')
+  })
+
+  it('sem redução da capacidade também trava, sem a sugestão de troca; fora do Auxílio-Acidente, a troca não aparece', () => {
+    const semReducao = { id: 'sem-reducao', texto: 'Laudo sem redução da capacidade' }
+    expect(travaDoParecer('liberar', 'auxilio-acidente', { ...suficiente, contradicoes: [semReducao] })).not.toContain('Sugestão')
+    expect(travaDoParecer('liberar', 'incapacidade-temporaria', { ...suficiente, contradicoes: [naoConsolidada] })).not.toContain('Sugestão')
+    expect(travaDoParecer('liberar', 'auxilio-acidente', suficiente)).toBeNull()
+  })
+})

@@ -29,7 +29,11 @@ describe('Roteiro de laudos · tela', () => {
     const obrigatorios = screen.getByRole('list', { name: 'Obrigatórios · o que o documento precisa abordar' })
     expect(within(obrigatorios).getAllByRole('listitem')).toHaveLength(7)
     expect(obrigatorios.textContent).toContain('Consolidação das lesõesPergunta ao médico: As lesões já estão consolidadas? Desde quando?')
-    expect(screen.getByRole('list', { name: 'Contradições que bloqueiam (G18)' }).textContent).toBe('Lesão ainda não consolidada')
+    // GGVP-47: o laudo sem redução da capacidade também bloqueia (resposta do Lucas, 01/10).
+    expect(within(screen.getByRole('list', { name: 'Contradições que bloqueiam (G18)' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Lesão ainda não consolidada',
+      'Laudo sem redução da capacidade para o trabalho habitual (a redução mínima basta, Tema 416 do STJ)',
+    ])
     expect(screen.getByRole('list', { name: 'Documentos complementares' }).textContent).toContain('CAT, boletim de ocorrência')
     expect(screen.queryByRole('button', { name: 'Editar o roteiro' })).toBeNull()
     expect(screen.getByText('Só a sênior edita o roteiro. Você vê a versão em vigor e as anteriores.')).toBeTruthy()

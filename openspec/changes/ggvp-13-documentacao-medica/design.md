@@ -299,3 +299,50 @@ export const DadosDaDeficiencia = z.object({
 3. **Semente**: a Cleide (Aposentadoria PCD) ganha o CNIS de exemplo (três vínculos, com o indicador PCD e a insalubridade), a deficiência desde 06/2014, leve, com agravamento para moderada em 03/2019. O período moderado de 2019 fica sem prova da época, para a tela mostrar o aviso.
 4. **"Em qualquer tela"** (CA4): o enquadramento sai de uma função só, usada na linha do tempo e no parecer da Aposentadoria PCD. A tela da exigência do INSS (D2.05) é de outra história e usa a mesma função.
 5. **Insalubridade** (resposta do Lucas, 01/10): o período com deficiência e insalubridade fica marcado, como informativo para o processo; o cálculo da atividade especial não entra aqui.
+
+## GGVP-47 · Auxílio-Acidente: prova do acidente
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/checklist` (muda) | step_D1.21 `1818:2`; não há quadro da escolha da circunstância | No Auxílio-Acidente, o cartão "Circunstância do acidente" (circunstância, categoria do segurado, data do acidente, internação ou cirurgia e a recusa do empregador na CAT e no PPP), com a espécie (B94 ou B36) e a sugestão da segunda ficha; o checklist com os complementares, cada um com a exigência e a situação |
+| `/casos/:id/liberar` (muda) | step_D1.24 `10:264` | A trava do G18 quando a análise da IA acha laudo de lesão não consolidada ou sem redução da capacidade, com a sugestão de troca para auxílio por incapacidade temporária |
+
+### Contrato (vai para `packages/contratos/acidente.ts`)
+
+```ts
+export const Circunstancia = z.enum(['trabalho', 'trajeto', 'ocupacional', 'transito', 'domestico'])
+export const Categoria = z.enum(['empregado', 'domestico', 'avulso', 'especial', 'individual', 'facultativo'])
+export const DadosDoAcidente = z.object({
+  circunstancia: Circunstancia,          // define a espécie: B94 (trabalho, trajeto, ocupacional) ou B36 (trânsito, doméstico)
+  categoria: Categoria,                  // individual e facultativo travam; doméstico só a partir da LC 150/2015
+  acidenteEm: dataIso,                   // não futura
+  internacao: z.boolean(),               // puxa o prontuário (condicional)
+  recusados: z.array(z.enum(['cat', 'ppp'])),   // a válvula: o empregador recusou, vira pendência e não trava
+})
+// O checklist (GGVP-91) ganha, opcionais: no item, a exigência e "não conta"; no checklist, o bloqueio.
+// O Parecer do portão (GGVP-33) ganha, opcional: as contradições da análise da IA que ninguém conferiu ainda.
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/processos/:id/acidente` | | os dados salvos e a sugestão da segunda ficha | `obterAcidente` |
+| `PUT /api/processos/:id/acidente` | `DadosDoAcidente` | os dados salvos | `salvarAcidente` |
+
+### Campos
+
+| Campo | Função de `campos` |
+|---|---|
+| Data do acidente | `normalizarData`, `validarData`, `dataParaIso`, `isoParaData`; não futura (`regras/formularios.ts`) |
+| Circunstância, categoria | lista fixa |
+| Internação ou cirurgia, recusa do empregador | caixa de marcar |
+
+### Decisões da história
+
+1. **A tabela por circunstância é configuração do escritório**, como a lista de cada benefício (GGVP-91, CA10): fica em `dados/checklist.ts`; a regra (o que se aplica, a válvula, o bloqueio da categoria e o completo) fica em `regras/acidente.ts`, com teste. O Lucas fixou a CAT, o PPP, o boletim e a regra dos condicionais; a ficha do pronto-socorro e os exames seguem a lista da história como obrigatórios, e o prontuário como condicional da internação ou cirurgia. Levar ao Lucas: conferir essas células.
+2. **"CAT só quando há vínculo"** (CA2): a CAT e o PPP entram só para empregado, empregado doméstico e avulso. Levar ao Lucas: o segurado especial fica sem a CAT no checklist.
+3. **Os exames** viram dois tipos no catálogo único (exame de imagem da época do acidente e exame posterior à alta), mais a ficha do pronto-socorro e o PPP, acrescentados no fim. A pessoa confere o tipo na leitura; a IA sugere pelo nome do arquivo. O exame da semente do Sebastião passa a ser "posterior à alta".
+4. **Antes de marcar a circunstância** o checklist mostra a lista base (RG, CPF, CNIS e laudo, do kit do Figma `10:264`) e trava: "Marque a circunstância do acidente". A segunda ficha sugere a data e o "foi acidente de trabalho"; quem salva é a Documentação ou o Jurídico.
+5. **G18** (CA4): a análise da IA que acha a contradição trava a liberação até uma pessoa do Jurídico conferir o parecer; depois, vale o parecer registrado. A contradição "sem redução da capacidade" entra no roteiro do Auxílio-Acidente.
+6. **Os documentos da semente do parecer** (a CAT, os exames e os laudos do Sebastião) contam no checklist, como os da pasta.

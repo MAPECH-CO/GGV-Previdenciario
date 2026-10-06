@@ -41,7 +41,7 @@ async function abrir(processoId: string, perfil?: 'atendimento') {
 const liberar = () => screen.getByRole('button', { name: 'Liberar ao Jurídico' }) as HTMLButtonElement
 
 describe('Liberar ao Jurídico · tela do passo', () => {
-  it('CA2 e CA7 · o Sebastião do Figma: parecer Suficiente registrado, mas o benefício sem lista trava a liberação', async () => {
+  it('CA2 e CA7 · o Sebastião do Figma: parecer Suficiente registrado, mas o checklist sem a circunstância do acidente trava a liberação', async () => {
     await abrir('sebastiao-exemplo-1')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sebastião Exemplo · Liberar ao Jurídico')
     const parecer = screen.getByRole('checkbox', { name: /Parecer médico Suficiente \(G17\) · confirmado por Dra\. Paula, 15\/07/ }) as HTMLInputElement
@@ -49,7 +49,7 @@ describe('Liberar ao Jurídico · tela do passo', () => {
     expect(parecer.disabled).toBe(true)
     expect((screen.getByRole('checkbox', { name: /Checklist do Auxílio Acidentário/ }) as HTMLInputElement).disabled).toBe(true)
     expect(liberar().disabled).toBe(true)
-    expect(screen.getByText(/Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada/)).toBeTruthy()
+    expect(screen.getByText(/Marque a circunstância do acidente: o que é obrigatório depende dela\./)).toBeTruthy()
   })
 
   it('CA1, CA6 e CA7 · completo: só libera com as duas conferências, e o histórico registra quem liberou', async () => {
@@ -126,5 +126,19 @@ describe('Liberar ao Jurídico · tela do passo', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Checklist do LOAS Deficiente/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }))
     expect(liberar().disabled).toBe(false)
+  })
+})
+
+describe('G18 no Auxílio-Acidente · tela da liberação (GGVP-47, CA4)', () => {
+  it('o laudo de lesão não consolidada trava, diz que o Jurídico ainda não conferiu e sugere a troca de benefício', async () => {
+    await enviarArquivos('sebastiao-exemplo', {
+      origem: 'card',
+      arquivos: [{ nome: 'laudo lesao nao consolidada.pdf', formato: 'pdf', tamanho: 1000, tipo: 'laudo', hash: '7'.padStart(64, '0') }],
+    })
+    await arquivarTudo('sebastiao-exemplo')
+    await abrir('sebastiao-exemplo-1')
+    const parecer = screen.getByRole('checkbox', { name: /Parecer médico \(G18\): a IA achou contradição num documento que o Jurídico ainda não conferiu/ }) as HTMLInputElement
+    expect(parecer.checked).toBe(false)
+    expect(liberar().disabled).toBe(true)
   })
 })

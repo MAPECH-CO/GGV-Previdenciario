@@ -88,6 +88,7 @@ export function roteirosDeExemplo(): Roteiro[] {
       o('repercussao', 'Repercussão da sequela na atividade habitual', 'Como a sequela afeta o trabalho que o paciente fazia?'),
       o('lesao', 'Tipo de lesão, CID e data do acidente', 'Qual é o tipo de lesão e a data do acidente?'),
       x('nao-consolidada', 'Lesão ainda não consolidada'),
+      x('sem-reducao', 'Laudo sem redução da capacidade para o trabalho habitual (a redução mínima basta, Tema 416 do STJ)'),
       c('provas', 'CAT, boletim de ocorrência, ficha do pronto-socorro, prontuário da internação ou cirurgia, exames de imagem da época e posteriores à alta'),
     ]),
     roteiro('loas-idoso', 'BPC/LOAS Idoso (socioeconômico)', ['loas-idoso'], false, LUCAS, '2026-10-01', [

@@ -1,5 +1,6 @@
 // A liberação do caso ao Jurídico (GGVP-18, G1, G17). Trava é código com teste, nunca resposta de modelo.
-import { motivoParaNaoLiberar, type Checklist } from './checklist.ts'
+import { SUGESTAO_DE_TROCA } from './acidente.ts'
+import { juntar, motivoParaNaoLiberar, type Checklist } from './checklist.ts'
 
 /** Quem pode estar na tela. Só a Documentação · ADM aperta o OK (CA4). */
 export type Perfil = 'documentacao' | 'atendimento' | 'juridico'
@@ -28,6 +29,8 @@ export type Parecer = {
   data?: string
   /** Na dispensa: a justificativa das sêniores (GGVP-33, CA2). */
   justificativa?: string
+  /** O que a análise da IA achou de contradição e ninguém do Jurídico conferiu ainda (G18, GGVP-47 CA4). */
+  contradicoes?: { id: string; texto: string }[]
 }
 
 /** As três ações que o G17 segura (GGVP-33, CA1): o OK da Documentação (D1.24), o da sênior antes do INSS (D2.01) e o pedido da petição (D3.05). */
@@ -39,12 +42,18 @@ export const precisaDeParecer = (beneficio: string) => BENEFICIOS_COM_PARECER.in
 
 /** O parecer está em ordem: "Suficiente", dispensado por duas sêniores, ou o benefício nem pede parecer (CA7, G17). */
 export const parecerEmOrdem = (beneficio: string, parecer: Parecer | undefined) =>
-  !precisaDeParecer(beneficio) || parecer?.situacao === 'suficiente' || parecer?.situacao === 'dispensado'
+  !precisaDeParecer(beneficio) || ((parecer?.situacao === 'suficiente' || parecer?.situacao === 'dispensado') && !parecer.contradicoes?.length)
 
 /** Por que a ação não segue pelo G17, dizendo o que falta; em ordem, null (GGVP-33, CA1 e CA5). */
 export function travaDoParecer(acao: AcaoDoPortao, beneficio: string, parecer: Parecer | undefined): string | null {
   if (parecerEmOrdem(beneficio, parecer)) return null
   const fazer = `Não dá para ${ACOES_DO_PORTAO[acao]}`
+  if (parecer?.contradicoes?.length) {
+    // Na lesão não consolidada do Auxílio-Acidente, o caso muda de porta em vez de morrer (resposta do Lucas, 01/10).
+    const troca = beneficio === 'auxilio-acidente' && parecer.contradicoes.some((c) => c.id === 'nao-consolidada') ? ` ${SUGESTAO_DE_TROCA}` : ''
+    const textos = juntar(parecer.contradicoes.map((c) => c.texto.toLowerCase()))
+    return `${fazer}: a análise da IA achou documento que contradiz o requisito do benefício (${textos}). O caso fica parado até o Jurídico conferir o parecer (G18).${troca}`
+  }
   switch (parecer?.situacao) {
     case 'insuficiente':
       return `${fazer}: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).`
