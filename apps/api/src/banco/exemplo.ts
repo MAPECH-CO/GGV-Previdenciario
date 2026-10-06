@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, credencialGovbr, decisao, documento, parecerMedico, pessoa, tarefa, usuario } from './esquema.ts'
+import { caso, credencialGovbr, decisao, documento, etapa, parecerMedico, pessoa, tarefa, usuario } from './esquema.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
 
@@ -101,5 +101,15 @@ export async function semearExemplos(banco: Banco) {
         ],
       })
     await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
+  }
+
+  // Casos em vigília, esperando o INSS (GGVP-35 e GGVP-48): um para cada resposta (deferido, indeferido e exigência).
+  for (const [i, nome] of ['Rita Gomes (exemplo)', 'Sebastião Cruz (exemplo)', 'Teresa Dias (exemplo)'].entries()) {
+    const [p] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+    await banco
+      .insert(etapa)
+      .values({ casoId: c.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date(Date.UTC(2026, 8, 25 + i, 12)) })
+    await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' })
   }
 }

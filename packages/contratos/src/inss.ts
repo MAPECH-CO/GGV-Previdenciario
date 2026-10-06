@@ -112,3 +112,55 @@ export type DecidirConferencia = z.input<typeof DecidirConferencia>
 /** POST /api/casos/:id/parecer/dispensa (G17): só a Sênior, com justificativa. */
 export const DispensarParecer = z.object({ justificativa: z.string().trim().min(1, 'Escreva por que o parecer é dispensado') })
 export type DispensarParecer = z.infer<typeof DispensarParecer>
+
+const DataObrigatoria = (mensagem: string) =>
+  z
+    .string({ error: mensagem })
+    .refine(validarData, mensagem)
+    .transform((d) => dataParaIso(d) as string)
+
+/**
+ * POST /api/casos/:id/vigilia (GGVP-35, GGVP-48): o que o Jurídico achou no Meu INSS. A comunicação (ou a carta de
+ * indeferimento) vai no mesmo envio, como arquivo, e é obrigatória na decisão.
+ */
+export const RespostaDoInss = z.discriminatedUnion(
+  'tipo',
+  [
+    z
+      .object({
+        tipo: z.literal('decisao'),
+        resultado: z.enum(['deferido', 'indeferido'], { error: 'Informe se foi deferido ou indeferido' }),
+        texto: z.string().trim().min(1, 'Cole o texto da comunicação do INSS'),
+        /** Deferido com outro benefício ou outra data de início: a advogada analisa antes da prestação (resposta do revisor de 05/10). */
+        diferenteDoPedido: z.boolean().default(false),
+        /** Indeferido: o motivo que consta no sistema do INSS segue para a tarefa da Justiça (GGVP-48 CA3). */
+        motivoInss: z.string().trim().optional(),
+      })
+      .refine((r) => r.resultado !== 'indeferido' || r.motivoInss, { message: 'Informe o motivo que consta no sistema do INSS', path: ['motivoInss'] }),
+    z.object({
+      tipo: z.literal('exigencia'),
+      texto: z.string().trim().min(1, 'Cole o texto da exigência'),
+      data: DataObrigatoria('Informe a data da exigência (dd/mm/aaaa)'),
+    }),
+  ],
+  { error: 'Escolha "Decisão" ou "Exigência"' },
+)
+export type RespostaDoInss = z.input<typeof RespostaDoInss>
+
+/** GET /api/casos/:id/vigilia: o que o caso espera e desde quando (CA7), e o que já foi registrado (CA10). */
+export const VigiliaDoCaso = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  fase: z.string(),
+  esperando: z.string().nullable(),
+  desde: z.string().nullable(),
+  registros: z.array(z.object({ quando: z.string(), tipo: z.string(), resumo: z.string(), quem: z.string() })),
+  podeRegistrar: z.boolean(),
+  podeEncerrar: z.boolean(),
+})
+export type VigiliaDoCaso = z.infer<typeof VigiliaDoCaso>
+
+/** POST /api/casos/:id/encerrar (GGVP-48): só a Sênior, com o motivo (cliente desistiu, sem chance). */
+export const EncerrarCaso = z.object({ motivo: z.string().trim().min(1, 'Escreva por que o caso é encerrado') })
+export type EncerrarCaso = z.infer<typeof EncerrarCaso>

@@ -12,7 +12,7 @@ Grupo 1 (feito, PR #14):
 
 Grupo 2 (agora):
 3. **GGVP-23** · Conferência do sênior antes do INSS · Sênior (os outros perfis veem só para leitura).
-4. **GGVP-35** · Vigiar o Meu INSS todo dia · advogada responsável e equipe do Jurídico (entra quando o cartão for para "Refinada"; ver Travadas).
+4. **GGVP-35** · Vigiar o Meu INSS todo dia · advogada responsável e equipe do Jurídico.
 5. **GGVP-48** · Indeferido segue para a Justiça · advogada responsável; a Sênior pode encerrar com motivo. Depende do registro da decisão do INSS, que é da GGVP-35.
 
 Grupo 3: **GGVP-39** Tratar exigência do INSS (advogada e Documentação) · **GGVP-44** Benefício deferido: prestação de contas e ida ao banco (advogada, Financeiro e Atendimento).
@@ -21,7 +21,7 @@ Dúvidas das histórias dos grupos 2 e 3 respondidas pelo revisor (Mateus) em 05
 
 ## Travadas
 
-- **GGVP-35** · Vigiar o Meu INSS: a dúvida (deferido diferente do pedido) foi respondida no cartão; falta o Mateus mover o cartão para "Refinada" (a mudança foi bloqueada para o agente). Sem ela, a GGVP-48 não tem por onde começar.
+- Nenhuma no grupo 2: a GGVP-35 foi para "Refinada" em 05/10.
 
 ## Fora do escopo
 

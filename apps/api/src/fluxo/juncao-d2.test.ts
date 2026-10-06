@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, documento, etapa, pericia, pessoa, requerimentoInss, usuario } from '../banco/esquema.ts'
+import { caso, documento, etapa, pericia, pessoa, requerimentoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarJuncaoD2 } from './juncao-d2.ts'
 
 let banco: Banco
@@ -65,5 +65,14 @@ describe('junção do D2: protocolo feito e perícia resolvida (ou sem perícia)
     await avancarJuncaoD2(banco, casoId)
     await avancarJuncaoD2(banco, casoId)
     expect(await naVigilia()).toBe(1)
+  })
+
+  it('GGVP-35 CA1 · ao fechar, abre uma vez só "Trazer a resposta do INSS" para o Jurídico', async () => {
+    await protocolar()
+    await decidir([])
+    await avancarJuncaoD2(banco, casoId)
+    await avancarJuncaoD2(banco, casoId)
+    const t = await banco.select().from(tarefa).where(eq(tarefa.casoId, casoId))
+    expect(t.map((x) => [x.passo, x.titulo, x.perfilDono])).toEqual([['D2.04', 'Trazer a resposta do INSS', 'advogada']])
   })
 })

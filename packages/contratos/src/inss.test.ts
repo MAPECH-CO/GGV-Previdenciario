@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DecidirConferencia, DecidirPericia, DispensarParecer, RegistrarProtocolo } from './inss.ts'
+import { DecidirConferencia, DecidirPericia, DispensarParecer, EncerrarCaso, RegistrarProtocolo, RespostaDoInss } from './inss.ts'
 
 describe('RegistrarProtocolo (GGVP-27 CA4)', () => {
   it('aceita número, DER em dd/mm/aaaa e a conferência marcada; guarda só dígitos e a data em ISO', () => {
@@ -51,5 +51,35 @@ describe('DecidirConferencia (GGVP-23)', () => {
 
   it('G17 · dispensar o parecer pede justificativa', () => {
     expect(DispensarParecer.safeParse({ justificativa: '' }).error?.issues[0]?.message).toBe('Escreva por que o parecer é dispensado')
+  })
+})
+
+describe('RespostaDoInss (GGVP-35, GGVP-48)', () => {
+  it('decisão deferida com o texto; indeferida pede o motivo do INSS', () => {
+    expect(RespostaDoInss.parse({ tipo: 'decisao', resultado: 'deferido', texto: ' Benefício concedido ' })).toEqual({
+      tipo: 'decisao',
+      resultado: 'deferido',
+      texto: 'Benefício concedido',
+      diferenteDoPedido: false,
+    })
+    expect(RespostaDoInss.safeParse({ tipo: 'decisao', resultado: 'indeferido', texto: 'x' }).error?.issues[0]?.message).toBe(
+      'Informe o motivo que consta no sistema do INSS',
+    )
+  })
+
+  it('CA6 · exigência pede texto e data válida; sem tipo, pede a escolha', () => {
+    expect(RespostaDoInss.parse({ tipo: 'exigencia', texto: 'Apresentar CNIS', data: '05/10/2026' })).toEqual({
+      tipo: 'exigencia',
+      texto: 'Apresentar CNIS',
+      data: '2026-10-05',
+    })
+    expect(RespostaDoInss.safeParse({ tipo: 'exigencia', texto: 'x', data: '32/10/2026' }).error?.issues[0]?.message).toBe(
+      'Informe a data da exigência (dd/mm/aaaa)',
+    )
+    expect(RespostaDoInss.safeParse({ texto: 'x' }).error?.issues[0]?.message).toBe('Escolha "Decisão" ou "Exigência"')
+  })
+
+  it('encerrar pede o motivo', () => {
+    expect(EncerrarCaso.safeParse({ motivo: ' ' }).error?.issues[0]?.message).toBe('Escreva por que o caso é encerrado')
   })
 })

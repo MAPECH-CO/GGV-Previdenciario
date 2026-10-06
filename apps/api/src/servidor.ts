@@ -8,6 +8,7 @@ import type { Banco } from './banco/conexao.ts'
 import { chaveDoCofre, criarCofre, type Cofre } from './cofre.ts'
 import { registrarRotasConferencia } from './rotas/conferencia.ts'
 import { registrarRotasInss } from './rotas/inss.ts'
+import { registrarRotasVigilia } from './rotas/vigilia.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
 type Opcoes = {
@@ -47,12 +48,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
   if (banco) {
     registrarSessao(app, { banco, agora, cookieSeguro })
     registrarRotasConferencia(app, { banco, agora })
-    registrarRotasInss(app, {
-      banco,
-      agora,
-      cofre: cofre ?? criarCofre(chaveDoCofre()),
-      armazenamento: armazenamento ?? abrirArmazenamento(),
-    })
+    const arquivos = armazenamento ?? abrirArmazenamento()
+    registrarRotasInss(app, { banco, agora, cofre: cofre ?? criarCofre(chaveDoCofre()), armazenamento: arquivos })
+    registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

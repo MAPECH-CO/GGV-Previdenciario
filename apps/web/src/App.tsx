@@ -8,6 +8,7 @@ import { DecidirPericia } from './paginas/DecidirPericia.tsx'
 import { Entrar } from './paginas/Entrar.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
 import { Protocolar } from './paginas/Protocolar.tsx'
+import { Vigilia } from './paginas/Vigilia.tsx'
 import { Exige } from './paginas/SemPermissao.tsx'
 import { SemPerfil } from './paginas/SemPerfil.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
@@ -48,6 +49,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/conferencia$/, tela: (id) => <Exige acao="caso.ver"><Conferencia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Exige acao="caso.ver"><Vigilia casoId={id} /></Exige> },
 ]
 
 function Inicio({ caminho, perfil }: { caminho: string; perfil: string }) {

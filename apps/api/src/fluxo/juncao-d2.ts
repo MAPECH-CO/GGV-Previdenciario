@@ -1,9 +1,9 @@
 // Junção do D2 (GGVP-27 CA2, GGVP-31 CA3 e CA7): "protocolo feito E perícia resolvida (ou sem perícia)".
 // Chamada depois do protocolo, da decisão de perícia e do resultado da perícia. Fechou: o caso entra na vigília
-// (etapa D2.04, esperando o INSS). Idempotente: chamar de novo não abre outra.
+// (etapa D2.04, esperando o INSS, e a tarefa "Trazer a resposta do INSS"). Idempotente: chamar de novo não abre outra.
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
-import { etapa, pericia, requerimentoInss } from '../banco/esquema.ts'
+import { etapa, pericia, requerimentoInss, tarefa } from '../banco/esquema.ts'
 
 export type EstadoJuncao = { protocolo: boolean; pericia: 'sem_decisao' | 'sem_pericia' | 'pendente' | 'resolvida'; fechou: boolean }
 
@@ -36,5 +36,7 @@ export async function avancarJuncaoD2(banco: Banco, casoId: string, agora = new 
     .set({ situacao: 'concluida', concluidaEm: agora })
     .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D2.E1'), isNull(etapa.concluidaEm)))
   await banco.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: agora })
+  // GGVP-35 CA1: a vigília é manual; a tarefa fica na fila do Jurídico até alguém registrar a decisão do INSS.
+  await banco.insert(tarefa).values({ casoId, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' })
   return estado
 }
