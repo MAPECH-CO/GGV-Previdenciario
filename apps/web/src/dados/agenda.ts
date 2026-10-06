@@ -166,6 +166,39 @@ export async function marcarEntrevista(fichaId: string, m: Marcacao): Promise<Re
 }
 
 /**
+ * POST /api/fichas/:id/entrevistas/agora. "Iniciar entrevista (Transcrição)" na marcação: a pessoa já está aqui e a
+ * entrevista começa agora, sem convite. Nasce marcada para hoje, nesta hora, com quem e o tipo escolhidos; a tela abre
+ * a entrevista (GGVP-40).
+ */
+export async function iniciarEntrevistaAgora(fichaId: string, m: Pick<Marcacao, 'tipo' | 'com' | 'duracao' | 'gravar'>): Promise<Agendamento> {
+  await esperar()
+  const com = equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com)
+  if (!com || !TIPOS_DE_ENTREVISTA.some((t) => t.id === m.tipo) || !DURACOES.includes(m.duracao)) throw new Error('Escolha o tipo e com quem')
+  const banco = ler()
+  const ficha = banco.fichas.find((f) => f.id === fichaId)
+  if (!ficha) throw new Error('Ficha não encontrada')
+  const agoraMesmo = agora()
+  const hora = `${String(agoraMesmo.getHours()).padStart(2, '0')}:${String(agoraMesmo.getMinutes()).padStart(2, '0')}`
+  banco.seq += 1
+  const agendamento: Agendamento = {
+    id: `${ficha.id}-ag-${banco.seq}`,
+    data: hojeIso(agoraMesmo),
+    hora,
+    oQue: 'Entrevista',
+    com: com.nome,
+    tipo: m.tipo,
+    duracao: m.duracao,
+    estado: 'marcado',
+    remarcacoes: 0,
+    gravar: m.gravar,
+  }
+  ficha.agendamentos.push(agendamento)
+  ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`))
+  gravar(banco)
+  return agendamento
+}
+
+/**
  * POST /api/agendamentos/:id/resultado. "Realizado" conclui a tarefa e, na entrevista do lead, abre o "Cadastrar lead"
  * do Jurídico (CA6); "Faltou" grava a falta, e a tela abre o remarcar (CA8, CA9).
  */
