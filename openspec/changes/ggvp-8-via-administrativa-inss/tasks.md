@@ -35,7 +35,7 @@
 - [x] 4.3 CA3, CA5, CA6, CA7, CA8, CA10 · `GET /api/casos/:id/vigilia` e `POST /api/casos/:id/vigilia` (comunicação anexada, deferido, deferido diferente do pedido, exigência com texto e data, histórico); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 4.4 CA3, CA5, CA6, CA7 · Tela "Vigília" em `apps/web/src/paginas/Vigilia.tsx`; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 4.5 Playwright: registrar uma decisão de deferido e uma exigência num caso em vigília; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 4.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 4.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-48 · Indeferido segue para a Justiça
 
@@ -44,4 +44,4 @@
 - [x] 5.3 CA1 · `POST /api/casos/:id/encerrar` (só Sênior, motivo obrigatório, tarefas canceladas, histórico); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 5.4 Tela: "Indeferido" na Vigília exige a carta; "Encerrar sem judicializar" para a Sênior; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 5.5 Playwright: indeferido com a carta abre "Registrar indeferimento" para a advogada; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
