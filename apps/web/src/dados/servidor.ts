@@ -26,6 +26,7 @@ import type {
   Setor,
   TarefaEncaminhada,
 } from './tipos.ts'
+import type { Contrato } from './contrato.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -53,6 +54,8 @@ export type Banco = {
   /** As gravações e as conversas sem áudio, guardadas para sempre (GGVP-40, GGVP-46). */
   gravacoes: Gravacao[]
   seq: number
+  /** Um contrato por processo, do kit à cópia (GGVP-65 em diante). Sem ele, começa da semente de contrato.ts. */
+  contratos?: Contrato[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

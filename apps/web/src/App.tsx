@@ -17,6 +17,10 @@ import { ReceberDocumento } from './paginas/ReceberDocumento.tsx'
 import { RenovarSenha } from './paginas/RenovarSenha.tsx'
 import { SegundaFicha } from './paginas/SegundaFicha.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
+import { PrepararContrato } from './paginas/PrepararContrato.tsx'
+import { ColherAssinatura } from './paginas/ColherAssinatura.tsx'
+import { ConferirContrato } from './paginas/ConferirContrato.tsx'
+import { EntregarCopia } from './paginas/EntregarCopia.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 export function App({ caminho = window.location.pathname, busca = window.location.search }: { caminho?: string; busca?: string }) {
@@ -51,5 +55,13 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (cadastro) return <CadastrarLead fichaId={decodeURIComponent(cadastro[1])} />
   const ficha = /^\/clientes\/([^/]+)$/.exec(caminho)
   if (ficha) return <FichaCliente id={decodeURIComponent(ficha[1])} />
+  const prepararContrato = /^\/contrato\/([^/]+)\/preparar$/.exec(caminho)
+  if (prepararContrato) return <PrepararContrato processoId={decodeURIComponent(prepararContrato[1])} />
+  const colherAssinatura = /^\/contrato\/([^/]+)\/assinatura$/.exec(caminho)
+  if (colherAssinatura) return <ColherAssinatura processoId={decodeURIComponent(colherAssinatura[1])} />
+  const conferirContrato = /^\/contrato\/([^/]+)\/conferir$/.exec(caminho)
+  if (conferirContrato) return <ConferirContrato processoId={decodeURIComponent(conferirContrato[1])} />
+  const entregarCopia = /^\/contrato\/([^/]+)\/copia$/.exec(caminho)
+  if (entregarCopia) return <EntregarCopia processoId={decodeURIComponent(entregarCopia[1])} />
   return <NaoConstruida caminho={caminho} />
 }
