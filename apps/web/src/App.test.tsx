@@ -39,6 +39,40 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Tarefa não encontrada' })).toBeTruthy()
   })
 
+  it('GGVP-81 · em /clientes/:id/conferir-documentos abre a conferência da leitura da IA', async () => {
+    zerarExemplo()
+    render(<App caminho="/clientes/rita-exemplo/conferir-documentos" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir documento' })).toBeTruthy()
+  })
+
+  it('GGVP-91 · em /casos/:id/checklist abre o checklist do caso; caso que não existe avisa', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/rita-exemplo-1/checklist" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir checklist' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/nenhum/checklist" />)
+    expect(await screen.findByRole('heading', { name: 'Caso não encontrado' })).toBeTruthy()
+  })
+
+  it('GGVP-101 · em /casos/:id/cobranca e /cobranca/decidir abrem a cobrança e a decisão da sênior', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/antonio-exemplo-1/cobranca" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Cobrar documento' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/antonio-exemplo-1/cobranca/decidir" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Decidir cobrança' })).toBeTruthy()
+  })
+
+  it('GGVP-18 · em /casos/:id/liberar abre a liberação; com ?perfil=atendimento, só a situação', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)
+    expect(await screen.findByRole('button', { name: 'Liberar ao Jurídico' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" busca="?perfil=atendimento" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sebastião Exemplo · Liberar ao Jurídico' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Liberar ao Jurídico' })).toBeNull()
+  })
+
   it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)

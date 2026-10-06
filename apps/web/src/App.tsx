@@ -21,6 +21,12 @@ import { PrepararContrato } from './paginas/PrepararContrato.tsx'
 import { ColherAssinatura } from './paginas/ColherAssinatura.tsx'
 import { ConferirContrato } from './paginas/ConferirContrato.tsx'
 import { EntregarCopia } from './paginas/EntregarCopia.tsx'
+import { ConferirDocumentos } from './paginas/ConferirDocumentos.tsx'
+import { ConferirChecklist } from './paginas/ConferirChecklist.tsx'
+import { CobrarDocumento } from './paginas/CobrarDocumento.tsx'
+import { DecidirCobranca } from './paginas/DecidirCobranca.tsx'
+import { LiberarCaso } from './paginas/LiberarCaso.tsx'
+import type { Perfil } from './regras/liberacao.ts'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 export function App({ caminho = window.location.pathname, busca = window.location.search }: { caminho?: string; busca?: string }) {
@@ -63,5 +69,16 @@ export function App({ caminho = window.location.pathname, busca = window.locatio
   if (conferirContrato) return <ConferirContrato processoId={decodeURIComponent(conferirContrato[1])} />
   const entregarCopia = /^\/contrato\/([^/]+)\/copia$/.exec(caminho)
   if (entregarCopia) return <EntregarCopia processoId={decodeURIComponent(entregarCopia[1])} />
+  const conferirDocumentos = /^\/clientes\/([^/]+)\/conferir-documentos$/.exec(caminho)
+  if (conferirDocumentos) return <ConferirDocumentos fichaId={decodeURIComponent(conferirDocumentos[1])} />
+  const checklist = /^\/casos\/([^/]+)\/checklist$/.exec(caminho)
+  if (checklist) return <ConferirChecklist processoId={decodeURIComponent(checklist[1])} />
+  const cobrar = /^\/casos\/([^/]+)\/cobranca$/.exec(caminho)
+  if (cobrar) return <CobrarDocumento processoId={decodeURIComponent(cobrar[1])} />
+  const decidir = /^\/casos\/([^/]+)\/cobranca\/decidir$/.exec(caminho)
+  if (decidir) return <DecidirCobranca processoId={decodeURIComponent(decidir[1])} />
+  const liberar = /^\/casos\/([^/]+)\/liberar$/.exec(caminho)
+  const perfil = parametros.get('perfil')
+  if (liberar) return <LiberarCaso processoId={decodeURIComponent(liberar[1])} perfil={perfil === 'atendimento' || perfil === 'juridico' ? (perfil as Perfil) : 'documentacao'} />
   return <NaoConstruida caminho={caminho} />
 }
