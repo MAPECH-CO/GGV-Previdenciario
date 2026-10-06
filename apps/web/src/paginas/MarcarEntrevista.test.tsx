@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eventosDaAgenda, marcarEntrevista } from '../dados/agenda.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import type { Marcacao } from '../dados/tipos.ts'
@@ -23,6 +23,17 @@ const pelaApi = (fichaId: string, resto: Partial<Marcacao>) =>
   marcarEntrevista(fichaId, { tipo: 'video', data: '2026-10-06', hora: '10:30', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false, ...resto })
 
 describe('Marcar a entrevista', () => {
+  it('"Iniciar entrevista (Transcrição)": a pessoa já está aqui, a entrevista nasce agora e a tela dela abre (GGVP-40)', async () => {
+    let aberta = ''
+    render(<MarcarEntrevista fichaId="antonio-exemplo" navegar={(url) => (aberta = url)} />)
+    await screen.findByRole('heading', { level: 1, name: /a entrevista com/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }))
+    await vi.waitFor(() => expect(aberta).toMatch(/^\/entrevista\/antonio-exemplo-ag-\d+$/))
+    const entrevista = (await obterFicha('antonio-exemplo'))?.agendamentos.at(-1)
+    expect(entrevista).toMatchObject({ oQue: 'Entrevista', data: '2026-10-05', hora: '14:32', estado: 'marcado', com: 'Dra. Paula' })
+    expect((await obterFicha('antonio-exemplo'))?.historico.at(-1)?.oQue).toBe('Iniciou a entrevista agora (vídeo (meet)) com Dra. Paula, sem marcar antes')
+  })
+
   it('CA1 e CA2 · escolhe tipo, dia, horário e com quem (só a advogada), e a entrevista vai para a agenda', async () => {
     await abrir('natalia-exemplo')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Marcar a entrevista com Natália Exemplo')
@@ -38,7 +49,7 @@ describe('Marcar a entrevista', () => {
     expect([...comQuem.options].map((o) => o.text)).toEqual(['Escolha…', 'Dra. Paula (advogada) + você'])
     expect(botaoMarcar().disabled).toBe(true)
     expect(screen.getByText('Escolha o dia.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }).getAttribute('aria-disabled')).toBe('true')
+    expect((screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }) as HTMLButtonElement).disabled).toBe(false)
 
     escolher('Data', /ter 06/)
     escolher('Horário', '10:30')

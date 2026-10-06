@@ -7,7 +7,7 @@ import { GrupoDeOpcoes } from '../componentes/GrupoDeOpcoes.tsx'
 import { OpcoesDaMarcacao, type Opcoes } from '../componentes/OpcoesDaMarcacao.tsx'
 import { ProximasReunioes } from '../componentes/ProximasReunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
-import { eventosDaAgenda, marcarEntrevista } from '../dados/agenda.ts'
+import { eventosDaAgenda, iniciarEntrevistaAgora, marcarEntrevista } from '../dados/agenda.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
 import type { Agendamento, EventoDaAgenda, Ficha, TipoDeEntrevista } from '../dados/tipos.ts'
@@ -31,9 +31,9 @@ import styles from './MarcarEntrevista.module.css'
 const COM_QUEM = equipeDaEntrevista(EQUIPE).map((m) => ({ id: m.id, nome: `${m.nome} (advogada) + você` }))
 const nomeDoTipo = (id: string | undefined) => TIPOS_DE_ENTREVISTA.find((t) => t.id === id)?.nome ?? ''
 
-type Props = { fichaId: string; remarcar?: string }
+type Props = { fichaId: string; remarcar?: string; navegar?: (url: string) => void }
 
-export function MarcarEntrevista({ fichaId, remarcar }: Props) {
+export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.location.assign(url) }: Props) {
   const hoje = hojeIso(agora())
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined)
   const [eventos, setEventos] = useState<EventoDaAgenda[]>([])
@@ -119,6 +119,22 @@ export function MarcarEntrevista({ fichaId, remarcar }: Props) {
     } catch {
       setErro('Não deu para marcar. Confira as escolhas e tente de novo.')
     } finally {
+      travado.current = false
+      setSalvando(false)
+    }
+  }
+
+  /** A pessoa já está aqui: a entrevista começa agora, sem convite, e a tela da entrevista abre (GGVP-40). */
+  async function iniciarAgora() {
+    if (travado.current) return
+    travado.current = true
+    setSalvando(true)
+    setErro('')
+    try {
+      const agendamento = await iniciarEntrevistaAgora(ficha!.id, { tipo, com, duracao: Number(duracao), gravar: opcoes.gravar })
+      navegar(`/entrevista/${encodeURIComponent(agendamento.id)}`)
+    } catch {
+      setErro('Não deu para iniciar a entrevista. Confira o tipo e com quem.')
       travado.current = false
       setSalvando(false)
     }
@@ -228,10 +244,11 @@ export function MarcarEntrevista({ fichaId, remarcar }: Props) {
                 <button type="button" className={styles.primario} disabled={motivoParado !== null || salvando} onClick={() => marcar(false)}>
                   {salvando ? 'marcando…' : opcoes.convite ? 'Marcar e enviar convite' : 'Marcar'}
                 </button>
-                {/* Entrevistar com gravação é a GGVP-40: avisa que está indisponível. */}
-                <button type="button" className={styles.secundario} aria-disabled="true">
-                  Iniciar entrevista (Transcrição)
-                </button>
+                {!antes && (
+                  <button type="button" className={styles.secundario} disabled={salvando} onClick={iniciarAgora}>
+                    Iniciar entrevista (Transcrição)
+                  </button>
+                )}
               </div>
               {(motivoParado || erro) && <p className={styles.motivo}>{erro || motivoParado}</p>}
             </Cartao>
