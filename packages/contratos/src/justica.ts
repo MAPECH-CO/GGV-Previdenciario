@@ -365,3 +365,63 @@ export const Despacho = z.object({
   podeEncerrar: z.boolean(),
 })
 export type Despacho = z.infer<typeof Despacho>
+
+/** GGVP-63 CA6, CA9: as opções do pedido. O indeferimento do INSS (Tema 350) entra sempre, sem opção. */
+export const OpcoesDoPedido = z.object({
+  tutelaUrgencia: z.boolean().default(false),
+  precedentes: z.boolean().default(false),
+  anexarCitados: z.boolean().default(true),
+})
+export type OpcoesDoPedido = z.infer<typeof OpcoesDoPedido>
+
+/** Um documento citado, na ordem do pedido: um documento do caso ou o nome do que ainda falta (GGVP-71 CA7, CA13). */
+const Citado = z
+  .object({ documentoId: z.uuid({ error: 'Documento citado inválido' }).nullable().default(null), nome: z.string().trim().default('') })
+  .refine((c) => c.documentoId !== null || c.nome !== '', { message: 'Escreva o nome do documento que falta', path: ['nome'] })
+
+/** POST /api/casos/:id/peticao/pedido (GGVP-63 CA1, CA6, CA9, CA10): sem IA, a advogada escreve ou cola a versão 1. */
+export const PedirPeticao = z.object({
+  instrucoes: z.string().trim().default(''),
+  opcoes: OpcoesDoPedido.default({ tutelaUrgencia: false, precedentes: false, anexarCitados: true }),
+  citados: z.array(Citado).default([]),
+  texto: z.string({ error: 'Escreva ou cole o texto da petição (versão 1)' }).trim().min(1, 'Escreva ou cole o texto da petição (versão 1)'),
+})
+export type PedirPeticao = z.input<typeof PedirPeticao>
+
+/** GET /api/casos/:id/peticao (GGVP-63; a conferência e o protocolo entram com a GGVP-67 e a GGVP-71). */
+export const PeticaoInicial = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  /** CA1: quem ainda não subiu o card no despacho da Sênior (setores e perícia). */
+  faltam: z.array(z.string()),
+  /** A carta de indeferimento, que entra sempre (Tema 350). */
+  carta: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
+  /** Os documentos do caso, para citar (CA6). */
+  documentos: z.array(z.object({ id: z.uuid(), nome: z.string() })),
+  pedido: z
+    .object({
+      por: z.string(),
+      em: z.string(),
+      instrucoes: z.string(),
+      opcoes: OpcoesDoPedido,
+      citados: z.array(z.object({ documentoId: z.uuid().nullable(), nome: z.string() })),
+    })
+    .nullable(),
+  versoes: z.array(
+    z.object({
+      numero: z.number(),
+      por: z.string(),
+      em: z.string(),
+      oQueMudou: z.string().nullable(),
+      hash: z.string(),
+      aprovadaPor: z.string().nullable(),
+      aprovadaEm: z.string().nullable(),
+    }),
+  ),
+  /** A versão atual, inteira (GGVP-67 CA4). */
+  atual: z.object({ numero: z.number(), texto: z.string() }).nullable(),
+  podePedir: z.boolean(),
+})
+export type PeticaoInicial = z.infer<typeof PeticaoInicial>
+

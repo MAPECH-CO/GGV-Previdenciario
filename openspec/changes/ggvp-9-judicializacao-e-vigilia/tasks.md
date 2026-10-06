@@ -78,9 +78,9 @@
 
 ## GGVP-63 · Pedir a petição e a IA escrever
 
-- [ ] 12.1 Contratos `PeticaoInicial` e `PedirPeticao` (instruções, opções, citados na ordem com o nome do que falta, texto da versão 1); teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 12.2 CA1, CA2, CA3, CA6, CA9, CA10 · `GET /api/casos/:id/peticao` e `POST /api/casos/:id/peticao/pedido` em `apps/api/src/rotas/peticao.ts` (bloqueado com quem falta; grava o pedido e a versão 1 da advogada com o hash; conclui `D3.05`; nasce "Conferir petição"); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 12.3 Tela "Petição inicial" (`apps/web/src/paginas/Peticao.tsx`), parte do pedido (bloqueio com quem falta, instruções, opções, documentos citados, texto da versão 1), a rota e `D3.05` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 12.1 Contratos `PeticaoInicial` e `PedirPeticao` (instruções, opções, citados na ordem com o nome do que falta, texto da versão 1); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 12.2 CA1, CA2, CA3, CA6, CA9, CA10 · `GET /api/casos/:id/peticao` e `POST /api/casos/:id/peticao/pedido` em `apps/api/src/rotas/peticao.ts` (bloqueado com quem falta; grava o pedido e a versão 1 da advogada com o hash; conclui `D3.05`; nasce "Conferir petição"); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 12.3 Tela "Petição inicial" (`apps/web/src/paginas/Peticao.tsx`), parte do pedido (bloqueio com quem falta, instruções, opções, documentos citados, texto da versão 1), a rota e `D3.05` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-67 · Conferir a petição
 

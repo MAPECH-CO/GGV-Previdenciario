@@ -17,6 +17,35 @@ type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => new Date(agora.getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
 
+/**
+ * O que a Sênior mandou buscar: os itens da exigência `despacho` e as perícias do D3, e quem falta (GGVP-58 CA3, CA11;
+ * GGVP-63 CA1: "Pedir a petição" só libera sem ninguém faltando).
+ */
+export async function situacaoDoDespacho(banco: Banco, casoId: string) {
+  const [x] = await banco
+    .select()
+    .from(exigencia)
+    .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'despacho')))
+    .orderBy(desc(exigencia.criadoEm))
+    .limit(1)
+  const itens = x
+    ? await banco
+        .select({ item: exigenciaItem, escaladaEm: tarefa.escaladaEm })
+        .from(exigenciaItem)
+        .leftJoin(tarefa, eq(exigenciaItem.tarefaId, tarefa.id))
+        .where(eq(exigenciaItem.exigenciaId, x.id))
+        .orderBy(asc(exigenciaItem.perfilResponsavel), asc(exigenciaItem.descricao))
+    : []
+  const pericias = await banco
+    .select({ tipo: pericia.tipo, resultado: pericia.resultado })
+    .from(pericia)
+    .innerJoin(etapa, eq(pericia.chamadaPorEtapaId, etapa.id))
+    .where(and(eq(pericia.casoId, casoId), eq(etapa.diagrama, ORIGEM_DESPACHO.diagrama), eq(etapa.passo, ORIGEM_DESPACHO.passo)))
+  const pendentes = itens.filter((i) => i.item.situacao === 'pendente').map((i) => ROTULO_SETOR[i.item.perfilResponsavel as 'atendimento' | 'documentacao'])
+  const faltam = [...new Set(pendentes), ...(pericias.some((p) => !p.resultado) ? ['Perícia'] : [])]
+  return { exigencia: x ?? null, itens, pericias, faltam }
+}
+
 export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
@@ -46,32 +75,6 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
     }
   }
 
-  /** O que a Sênior mandou buscar: os itens da exigência `despacho` e as perícias do D3 (GGVP-58 CA3, CA11). */
-  async function situacaoDoDespacho(casoId: string) {
-    const [x] = await banco
-      .select()
-      .from(exigencia)
-      .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'despacho')))
-      .orderBy(desc(exigencia.criadoEm))
-      .limit(1)
-    const itens = x
-      ? await banco
-          .select({ item: exigenciaItem, escaladaEm: tarefa.escaladaEm })
-          .from(exigenciaItem)
-          .leftJoin(tarefa, eq(exigenciaItem.tarefaId, tarefa.id))
-          .where(eq(exigenciaItem.exigenciaId, x.id))
-          .orderBy(asc(exigenciaItem.perfilResponsavel), asc(exigenciaItem.descricao))
-      : []
-    const pericias = await banco
-      .select({ tipo: pericia.tipo, resultado: pericia.resultado })
-      .from(pericia)
-      .innerJoin(etapa, eq(pericia.chamadaPorEtapaId, etapa.id))
-      .where(and(eq(pericia.casoId, casoId), eq(etapa.diagrama, ORIGEM_DESPACHO.diagrama), eq(etapa.passo, ORIGEM_DESPACHO.passo)))
-    const pendentes = itens.filter((i) => i.item.situacao === 'pendente').map((i) => ROTULO_SETOR[i.item.perfilResponsavel as 'atendimento' | 'documentacao'])
-    const faltam = [...new Set(pendentes), ...(pericias.some((p) => !p.resultado) ? ['Perícia'] : [])]
-    return { exigencia: x ?? null, itens, pericias, faltam }
-  }
-
   // GGVP-54 CA1, CA9 e GGVP-58 CA3, CA11: o histórico do caso, o despacho feito e o status de cada setor.
   app.get<{ Params: { id: string } }>('/api/casos/:id/despacho', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
@@ -84,7 +87,7 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       .where(and(eq(decisao.casoId, casoId), eq(decisao.passo, 'D3.03'), eq(decisao.tipo, 'despacho')))
       .orderBy(desc(decisao.decididoEm))
       .limit(1)
-    const s = await situacaoDoDespacho(casoId)
+    const s = await situacaoDoDespacho(banco, casoId)
     const aguardando = Boolean(await tarefaAberta(casoId, 'D3.03'))
     return Despacho.parse({
       casoId,

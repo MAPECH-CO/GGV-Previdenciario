@@ -7,6 +7,7 @@ import {
   Despachar,
   EncerrarSemProva,
   NaoVouConseguir,
+  PedirPeticao,
   ProtocolarManifestacao,
   RegistrarIndisponibilidade,
   RegistrarTentativa,
@@ -145,6 +146,28 @@ describe('GGVP-58 · laços dos setores no despacho', () => {
   it('CA1, CA7 · a informação do Atendimento é obrigatória e vem aparada', () => {
     expect(SubirInformacao.parse({ informacao: ' Mora com o filho e a nora ' })).toEqual({ informacao: 'Mora com o filho e a nora' })
     expect(erro(SubirInformacao.safeParse({ informacao: '' }))).toBe('Escreva a informação que conseguiu com o cliente')
+  })
+})
+
+describe('GGVP-63 · pedir a petição', () => {
+  const DOC = '33333333-3333-4333-8333-333333333333'
+
+  it('CA9 · o texto da versão 1 é obrigatório; instruções e opções vêm com o padrão', () => {
+    expect(erro(PedirPeticao.safeParse({ texto: '  ' }))).toBe('Escreva ou cole o texto da petição (versão 1)')
+    expect(PedirPeticao.parse({ texto: ' Excelentíssimo ' })).toEqual({
+      instrucoes: '',
+      opcoes: { tutelaUrgencia: false, precedentes: false, anexarCitados: true },
+      citados: [],
+      texto: 'Excelentíssimo',
+    })
+  })
+
+  it('CA6 · cada citado é um documento do caso ou o nome do que falta, na ordem', () => {
+    expect(PedirPeticao.parse({ texto: 'x', citados: [{ documentoId: DOC }, { nome: ' Laudo do INSS ' }] }).citados).toEqual([
+      { documentoId: DOC, nome: '' },
+      { documentoId: null, nome: 'Laudo do INSS' },
+    ])
+    expect(erro(PedirPeticao.safeParse({ texto: 'x', citados: [{ nome: ' ' }] }))).toBe('Escreva o nome do documento que falta')
   })
 })
 
