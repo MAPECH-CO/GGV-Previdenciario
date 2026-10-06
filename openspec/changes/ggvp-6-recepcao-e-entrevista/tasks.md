@@ -125,3 +125,19 @@
 - [x] 11.6 Playwright `e2e/transcricao.e2e.ts`: da entrevista encerrada à transcrição pronta, buscar, marcar prova, conferir e ver na ficha com o valor antigo no histórico, documentos ao checklist (CA1, CA2, CA6, CA7, CA8), falha e tentar de novo (CA3), a lista do Antônio pelo Atendimento (CA4), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 11.7 Ligar no servidor: trocar o corpo de `src/dados/transcricao.ts` por `fetch` e a transcrição pela OpenAI de verdade. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
 - [x] 11.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+<!-- Grupo benefício (sessão da Recepção, branch feat/GGVP-6-recepcao-e-entrevista): preencher só as seções deste bloco. -->
+
+## GGVP-51 · Definir o benefício com apoio do acervo
+
+## GGVP-57 · Calcular tempo e pontos sobre o CNIS
+
+<!-- Fim do grupo benefício. -->
+
+<!-- Grupo fechamento (árvore grupo-contrato, branch feat/GGVP-6-grupo-fechamento): preencher só as seções deste bloco. -->
+
+## GGVP-60 · Registrar por que não virou cliente e recontatar
+
+## GGVP-124 · Nova demanda de quem já é cliente
+
+<!-- Fim do grupo fechamento. -->
