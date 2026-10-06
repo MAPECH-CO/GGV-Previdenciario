@@ -653,3 +653,30 @@ export function tarefasDoParecer(): Tarefa[] {
   gravar(banco)
   return tarefas
 }
+
+/** O que a IA viu no documento novo que chegou depois do pedido de complemento, em perguntas (GGVP-29; resposta do Lucas, Q4). */
+export type PreviaDoComplemento = { documentos: string[]; respondidas: string[]; faltam: string[] }
+
+/**
+ * A prévia para o Atendimento: os documentos novos (tipo e data) e quais perguntas do pedido eles já respondem. Sem conteúdo
+ * clínico. A palavra final continua da advogada (G17).
+ */
+export function previaDoComplemento(banco: Banco, processoId: string): PreviaDoComplemento | undefined {
+  const caso = acharCaso(banco, processoId)
+  if (!caso) return undefined
+  const p = emDia(banco, caso.ficha, caso.processo)
+  const pedido = [...p.registros].reverse().find((r) => r.situacao !== 'suficiente')
+  const analise = p.analises.at(-1)
+  if (!pedido || !analise || analise.quando === pedido.analise) return undefined
+  const usada = p.analises.find((a) => a.quando === pedido.analise)
+  const documentos = analise.documentos.filter((d) => !usada?.documentos.some((x) => x.id === d.id)).map(comoCitar)
+  if (documentos.length === 0) return undefined
+  const pedidos = pedido.itens.filter((i) => i.tipo === 'obrigatorio' && i.situacao !== 'presente')
+  const situacaoAgora = new Map(analise.itens.map((i) => [i.id, i.situacao]))
+  const pergunta = (i: ItemRegistrado) => i.pergunta ?? i.texto
+  return {
+    documentos,
+    respondidas: pedidos.filter((i) => situacaoAgora.get(i.id) === 'presente').map(pergunta),
+    faltam: pedidos.filter((i) => situacaoAgora.get(i.id) !== 'presente').map(pergunta),
+  }
+}

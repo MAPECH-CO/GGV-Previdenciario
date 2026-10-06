@@ -91,7 +91,7 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
       expect.objectContaining({
         acao: 'Pedir complemento ao médico',
         cliente: { id: 'rita-exemplo', nome: 'Rita Exemplo' },
-        detalhe: 'LOAS Deficiente · parecer Insuficiente · 2 pontos para o médico abordar',
+        detalhe: 'LOAS Deficiente · parecer Insuficiente · 2 pontos para o médico abordar · 1ª tentativa',
         href: '/casos/rita-exemplo-1/complemento',
       }),
     ])

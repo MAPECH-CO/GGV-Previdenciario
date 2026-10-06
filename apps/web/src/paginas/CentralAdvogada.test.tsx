@@ -1,6 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registrarConfirmacao } from '../dados/confirmacao.ts'
+import { registrarTentativaDoComplemento } from '../dados/complemento.ts'
+import { obterParecer, registrarParecer } from '../dados/parecer.ts'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from './CentralAdvogada.tsx'
 
@@ -23,6 +25,17 @@ describe('Central da Advogada', () => {
     const parecer = screen.getByRole('link', { name: 'Rita Exemplo · Dar parecer médico' })
     expect(parecer.getAttribute('href')).toBe('/casos/rita-exemplo-1/parecer')
     expect(parecer.closest('li')?.textContent).toContain('LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)')
+  })
+
+  it('GGVP-29 CA3 · o pedido de complemento que passou do limite chega à sênior como "Decidir complemento"', async () => {
+    const p = (await obterParecer('rita-exemplo-1', 'juridico'))!.juridico!
+    const conferidos = Object.fromEntries(p.analise!.itens.map((i) => [i.id, i.situacao]))
+    await registrarParecer('rita-exemplo-1', { analise: p.analise!.quando, conferidos, decisao: 'insuficiente', abordar: p.abordarSugerido }, { perfil: 'advogada', nome: 'Dra. Paula' })
+    await registrarTentativaDoComplemento('rita-exemplo-1', { canal: 'chatwoot', resultado: 'sem-resposta' })
+    configurarExemplo({ agora: () => new Date(2026, 9, 8, 10, 0) })
+    await registrarTentativaDoComplemento('rita-exemplo-1', { canal: 'ligacao', resultado: 'sem-resposta' })
+    render(<CentralAdvogada />)
+    expect(screen.getByRole('link', { name: 'Rita Exemplo · Decidir complemento' }).getAttribute('href')).toBe('/casos/rita-exemplo-1/complemento')
   })
 
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {

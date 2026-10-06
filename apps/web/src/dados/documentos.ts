@@ -19,6 +19,9 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 
+/** Os tipos que trazem a avaliação do médico: chegando pelo card ou pelo chat, são "Laudo novo". */
+const LAUDOS = ['laudo', 'relatorio-medico', 'prontuario']
+
 /** Quem aparece no histórico quando o scanner guarda o papel. */
 export const SCANNER = 'Automação do scanner'
 
@@ -144,7 +147,8 @@ export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos): P
     return arquivo
   })
   const pelo = envio.origem === 'chat' ? 'pelo chat' : 'pelo card'
-  const laudos = novos.filter((a) => a.tipo === 'laudo' && !a.repetido)
+  // Laudo, relatório médico e prontuário contam como laudo novo: vão à comparação do Jurídico (GGVP-95, CA4; GGVP-29, CA5).
+  const laudos = novos.filter((a) => LAUDOS.includes(a.tipo) && !a.repetido)
   if (laudos.length > 0) {
     ficha.laudoNovoEm = hoje
     if (caso) caso.laudoNovoEm = hoje

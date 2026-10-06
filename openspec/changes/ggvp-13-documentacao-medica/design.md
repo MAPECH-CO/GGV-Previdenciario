@@ -167,3 +167,49 @@ Nenhum campo da biblioteca `campos`. O servidor de exemplo valida de novo com as
 6. **Laudo novo** (CA6): a ficha e o processo mostram "Laudo novo" até o registro do parecer, que limpa a marca e conclui a tarefa "Analisar laudo novo". A comparação usa o último laudo antes dele; o resumo diz o que o laudo novo passa a cobrir e o que ainda falta (resposta do Lucas, 01/10). A IA só compara o que está nos documentos: não sugere CID, grau nem conclusão (CA7).
 7. **O parecer de exemplo da liberação sai.** `PARECERES_DE_EXEMPLO` (GGVP-18) dá lugar ao registro de verdade do servidor de exemplo: o Sebastião (Suficiente, Dra. Paula, 15/07, Figma `1654:2`) e o Antônio (Suficiente em 20/09, com o laudo novo de 29/09 esperando) vêm da semente; a Rita passa a depender do parecer da advogada.
 8. **Tarefas da advogada** nascem do caso: "Analisar laudo novo" (laudo novo esperando) e "Dar parecer médico" (análise mais nova que o último registro). A linha fixa do Antônio sai de `advogada.ts`; a tarefa que o envio pelo card cria (GGVP-17) passa a abrir a tela do laudo novo.
+
+## GGVP-29 · Pedir o complemento ao médico do cliente
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/complemento` | sem quadro próprio; no visual de "Cobrar documento · pendentes do checklist" `2106:3` | O resultado do parecer (sem conteúdo clínico), a orientação ao médico com as perguntas do que falta e o que a advogada confirmou, "Imprimir a orientação", o contato com "Ligar" e "Chatwoot", "Enviar orientação" (Chatwoot simulado, conta como tentativa), as tentativas e o próximo lembrete, o limite (G15), "Anexar o documento recebido" (sobe como laudo novo), a prévia da IA sobre o documento novo e, para a sênior no limite, "Nova tentativa com prazo" |
+| `/` (Central do Atendimento) | Central · Atendimento `11:2` | "Pedir complemento ao médico" com a tentativa e o próximo lembrete |
+| `/advogada` (Central da Advogada) | Central · Advogada `59:449` | "Decidir complemento" quando passa do limite |
+
+### Contrato (acrescenta a `packages/contratos/pareceres.ts`)
+
+```ts
+export const Complemento = z.object({
+  processoId: z.string(), fichaId: z.string(), abertaEm: z.string(),
+  parecer: z.enum(['insuficiente', 'contraditorio']),
+  abordar: z.string(), perguntas: z.array(z.string()), quem: z.string(),
+  tentativas: z.array(TentativaDeCobranca), decisoes: z.array(DecisaoDaSenior),   // o laço da GGVP-101 (G15)
+  prazo: PrazoExterno.optional(),                                                 // o prazo do juiz ou do INSS do caso
+  encerrado: z.object({ quando: z.string(), porque: z.literal('parecer-suficiente') }).optional(),
+})
+export const TentativaDoComplemento = z.object({ canal: z.enum(['chatwoot', 'ligacao']), resultado: z.enum(['sem-resposta', 'respondeu']) })
+export const DecisaoDoComplemento = z.object({ justificativa: z.string().trim().min(5), prazo: dataIso })  // nova tentativa da sênior
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/processos/:id/complemento` | | o complemento na visão do Atendimento | `obterComplemento` |
+| `POST /api/processos/:id/complemento/tentativas` | `TentativaDoComplemento` | o complemento | `registrarTentativaDoComplemento` |
+| `POST /api/processos/:id/complemento/decisoes` | `DecisaoDoComplemento` | o complemento | `decidirComplemento` |
+
+### Campos
+
+| Campo | Função |
+|---|---|
+| Como foi a ligação | lista fixa: atendeu ou não atendeu |
+| Novo prazo (sênior) | `normalizarData`, `dataParaIso` da biblioteca `campos`; depois de hoje (`motivoParaNaoDecidir` da GGVP-101) |
+| Justificativa (sênior) | texto, obrigatório |
+
+### Decisões da história
+
+1. **Quem escreve a orientação**: a IA sugere no parecer e a advogada confirma (resposta do Lucas, 01/10, Q1). A tela do Atendimento só mostra e envia; não edita o texto. A orientação usa as perguntas do roteiro, nunca o texto do item (as frases-chave), e passa pela regra do G20 (CA2).
+2. **O laço é o da cobrança (GGVP-101)**: 2 tentativas, 3 dias entre elas, lembrete e, no limite, a sênior. Com prazo do juiz ou do INSS no caso (a cobrança aberta do processo), o limite é esse prazo e a tarefa fica urgente (resposta do Lucas, Q2). O limite sem prazo externo segue o da cobrança até o refinamento da régua geral (GGVP-94).
+3. **A pendência é uma só** (Q4): o parecer novo Insuficiente atualiza o que pedir; o Suficiente encerra (GGVP-20). O documento novo sobe pelo card como laudo novo (D1.02) e vai à comparação; a tela mostra ao Atendimento a prévia da IA (o que o documento novo responde e o que ainda falta, em perguntas), sem o conteúdo clínico. A palavra final é da advogada (G17).
+4. **A sênior no limite** decide uma nova tentativa com prazo ou a dispensa do parecer (GGVP-33).

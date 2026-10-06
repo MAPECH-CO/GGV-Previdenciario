@@ -4,8 +4,10 @@ import {
   abaixoDe24Meses,
   abordarSugerido,
   analisar,
+  mensagemDoComplemento,
   mesesEntre,
   motivoParaNaoRegistrar,
+  orientacaoAoMedico,
   mudancas,
   problemaG20,
   situacaoFinal,
@@ -122,5 +124,32 @@ describe('Parecer de suficiência (GGVP-20)', () => {
     const base = { itens: [], conferidos: {}, decisao: 'suficiente' as const, abordar: '', semRoteiro: true, conferenciaManual: 'curto' }
     expect(motivoParaNaoRegistrar(base)).toBe('O benefício não tem roteiro: escreva o que você conferiu nos documentos (conferência manual).')
     expect(motivoParaNaoRegistrar({ ...base, conferenciaManual: 'Li os três laudos e conferi as datas.' })).toBeNull()
+  })
+
+  it('GGVP-29 CA1 e CA2 · a orientação ao médico: as perguntas do que falta, sem as frases-chave do roteiro nem CID', () => {
+    const loas = emVigor(roteirosDeExemplo()[0])
+    const r = analisar(loas.itens, [leitura('laudo', '2026-08-20', ['natureza', 'inicio', 'limitacoes'])])
+    const abordar = abordarSugerido(r.itens, [])
+    const orientacao = orientacaoAoMedico({ nome: 'Rita Exemplo', beneficio: 'LOAS Deficiente', abordar })
+    expect(orientacao).toContain('Orientação para o médico de Rita Exemplo')
+    expect(orientacao).toContain('• Qual a previsão de duração do quadro?')
+    expect(orientacao).toContain('• O paciente depende de outra pessoa, de acompanhamento contínuo, de transporte ou de tratamento? Com que frequência?')
+    // As frases-chave (o texto dos itens) não vão para o médico copiar.
+    for (const item of loas.itens) expect(orientacao).not.toContain(item.texto)
+    expect(problemaG20(abordar)).toBeNull()
+  })
+
+  it('GGVP-29 · a mensagem pronta do Chatwoot leva as perguntas e até quando, e passa no G20', () => {
+    const mensagem = mensagemDoComplemento({
+      nome: 'Rita Exemplo',
+      beneficio: 'LOAS Deficiente',
+      perguntas: ['Qual a previsão de duração do quadro?'],
+      ate: '2026-10-09',
+      hoje: '2026-10-06',
+    })
+    expect(mensagem).toBe(
+      'Olá, Rita! Aqui é do escritório GGV. Para o seu caso de LOAS Deficiente, precisamos de um relatório médico novo. Leve ao seu médico estas perguntas, para ele responder no relatório:\n1. Qual a previsão de duração do quadro?\nQuando tiver o relatório, mande foto por aqui ou traga ao escritório até 09/10. Qualquer dúvida, é só responder esta mensagem.',
+    )
+    expect(problemaG20(mensagem)).toBeNull()
   })
 })

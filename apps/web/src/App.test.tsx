@@ -94,6 +94,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Dar parecer médico' })).toBeTruthy()
   })
 
+  it('GGVP-29 · em /casos/:id/complemento abre o pedido de complemento; sem pedido, avisa', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/rita-exemplo-1/complemento" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Este caso não tem pedido de complemento' })).toBeTruthy()
+  })
+
   it('GGVP-18 · em /casos/:id/liberar abre a liberação; com ?perfil=atendimento, só a situação', async () => {
     zerarExemplo()
     render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)

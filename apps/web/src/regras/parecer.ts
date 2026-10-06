@@ -1,6 +1,7 @@
 // O parecer de suficiência da documentação médica (GGVP-20): a IA cruza o roteiro do benefício (GGVP-93) com os documentos
 // e sugere; a advogada confere item a item e registra (G17). Contradição bloqueia (G18). A orientação ao médico não sugere
 // diagnóstico, CID, grau, conclusão nem frase pronta (G20). Regra numérica é código com teste, nunca resposta de modelo (G19).
+import { dataCurta } from './datas.ts'
 import type { ItemDoRoteiro } from './roteiro.ts'
 
 export type SituacaoDoItem = 'presente' | 'ausente' | 'contraditorio'
@@ -164,4 +165,27 @@ export function motivoParaNaoRegistrar(d: {
   }
   if (d.abordar.trim().length < ABORDAR_MINIMO) return 'Escreva o que o documento deve abordar (G20).'
   return problemaG20(d.abordar)
+}
+
+/**
+ * A orientação para o cliente levar ao médico (GGVP-29, CA1 e CA2): o que a advogada confirmou, com as perguntas do roteiro.
+ * Nunca o texto do item (as frases-chave): elas servem para reconhecer no documento, não para ditar ao médico (G20).
+ */
+export function orientacaoAoMedico(d: { nome: string; beneficio: string; abordar: string }): string {
+  return [
+    `Orientação para o médico de ${d.nome}`,
+    `Para o pedido de ${d.beneficio}, o escritório precisa de um relatório médico que responda, com as palavras do próprio médico:`,
+    d.abordar.trim(),
+    'Este pedido diz só o que o relatório precisa abordar: a avaliação e as conclusões são do médico.',
+  ].join('\n\n')
+}
+
+/** A mensagem pronta do Chatwoot (GGVP-29): as perguntas e até quando, em linguagem simples. */
+export function mensagemDoComplemento(d: { nome: string; beneficio: string; perguntas: string[]; ate: string; hoje: string }): string {
+  const perguntas = d.perguntas.map((p, i) => `${i + 1}. ${p}`).join('\n')
+  return (
+    `Olá, ${d.nome.split(' ')[0]}! Aqui é do escritório GGV. Para o seu caso de ${d.beneficio}, precisamos de um relatório médico novo. ` +
+    `Leve ao seu médico estas perguntas, para ele responder no relatório:\n${perguntas}\n` +
+    `Quando tiver o relatório, mande foto por aqui ou traga ao escritório até ${dataCurta(d.ate, d.hoje)}. Qualquer dúvida, é só responder esta mensagem.`
+  )
 }
