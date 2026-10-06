@@ -346,3 +346,39 @@ export const DadosDoAcidente = z.object({
 4. **Antes de marcar a circunstância** o checklist mostra a lista base (RG, CPF, CNIS e laudo, do kit do Figma `10:264`) e trava: "Marque a circunstância do acidente". A segunda ficha sugere a data e o "foi acidente de trabalho"; quem salva é a Documentação ou o Jurídico.
 5. **G18** (CA4): a análise da IA que acha a contradição trava a liberação até uma pessoa do Jurídico conferir o parecer; depois, vale o parecer registrado. A contradição "sem redução da capacidade" entra no roteiro do Auxílio-Acidente.
 6. **Os documentos da semente do parecer** (a CAT, os exames e os laudos do Sebastião) contam no checklist, como os da pasta.
+
+## GGVP-50 · BPC/LOAS de menor de 16 anos
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/parecer` (muda) | step_D1.21M `14:195`; não há quadro do roteiro infantil | No LOAS Deficiente de menor de 16 anos, a análise com o roteiro infantil e o cartão "Criança · condição e terapias": a advogada marca a condição e as terapias, e vê os relatórios que o caso pede, cada um recebido ou faltando |
+| `/casos/:id/checklist` (muda) | step_D1.21 `1818:2` | Os relatórios da criança entram como obrigatórios; sem a condição marcada, o checklist trava e diz que a advogada marca no parecer |
+
+### Contrato (vai para `packages/contratos/infantil.ts`)
+
+```ts
+export const CondicaoDaCrianca = z.enum(['saude-mental', 'neurologica'])   // CAPS; neurologia (paralisia cerebral, má formação e parecidos)
+export const Terapia = z.enum(['fono', 'to', 'psicologia'])
+export const DadosDaCrianca = z.object({ condicoes: z.array(CondicaoDaCrianca), terapias: z.array(Terapia) })
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/processos/:id/crianca` | | se é infantil, os dados e os relatórios | `obterCrianca` |
+| `PUT /api/processos/:id/crianca` | `DadosDaCrianca` | os relatórios | `salvarCrianca` |
+
+### Campos
+
+| Campo | Função de `campos` |
+|---|---|
+| Condição, terapias | caixas de marcar (lista fixa) |
+
+### Decisões da história
+
+1. **Menor de 16 anos é código com teste (G19)**: `idadeEm(nascimento, hoje) < 16`, pela data de nascimento da ficha (a ficha é do beneficiário; o responsável é o representante legal). Sem data de nascimento, vale o roteiro do adulto.
+2. **O roteiro infantil é outro roteiro da semente** (`loas-infantil`), editável pela sênior como os outros (GGVP-93): troca as limitações e barreiras do adulto pelo impacto na participação social e nas atividades da idade, e pela necessidade de cuidados que limitam o trabalho dos responsáveis. O complementar "Menor de 16 anos" do roteiro do adulto passa a apontar para ele.
+3. **Os relatórios por condição** (resposta do Lucas, 01/10) entram no checklist de documentos como obrigatórios, pelo mesmo caminho dos complementares do Auxílio-Acidente. Os cinco relatórios novos entram no fim do catálogo único como documentos médicos; a IA sugere o tipo pelo nome do arquivo (fono, terapia ocupacional, psicologia, CAPS, neurologia).
+4. **A condição é dado de saúde**: só o Jurídico marca e vê; o histórico registra que marcou, sem dizer a condição. A Documentação vê no checklist só o nome do relatório que falta.
+5. **Semente**: nenhum cliente da semente tinha menos de 16 anos; entra no fim o Davi Exemplo (7 anos, sem CPF), com o LOAS Deficiente esperando o parecer e um laudo de exemplo da neuropediatria.

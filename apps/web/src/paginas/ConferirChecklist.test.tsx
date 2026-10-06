@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { enviarArquivos } from '../dados/documentos.ts'
+import { salvarCrianca } from '../dados/infantil.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { iniciarPerfil } from '../dados/perfis.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
@@ -150,3 +151,18 @@ describe('Checklist do Auxílio-Acidente · tela do passo (GGVP-47)', () => {
     expect((screen.getByRole('combobox', { name: 'Circunstância' }) as HTMLSelectElement).disabled).toBe(true)
   })
 })
+
+describe('Checklist do LOAS da criança · tela do passo (GGVP-50)', () => {
+  it('CA2 · os relatórios por condição entram como obrigatórios; sem a condição, o checklist espera a advogada', async () => {
+    await abrir('davi-exemplo-1')
+    expect(item('Relatório escolar').textContent).toBe('Relatório escolarobrigatóriofalta')
+    expect(screen.getByText('A advogada marca a condição da criança no parecer: os relatórios que o caso pede dependem dela.')).toBeTruthy()
+    await salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: ['psicologia'] }, { perfil: 'advogada', nome: 'Dra. Paula (exemplo)' })
+    cleanup()
+    await abrir('davi-exemplo-1')
+    expect(item('Relatório do CAPS').textContent).toBe('Relatório do CAPSobrigatóriofalta')
+    expect(item('Relatório de psicologia').textContent).toBe('Relatório de psicologiaobrigatóriofalta')
+    expect(screen.queryByText(/A advogada marca a condição da criança/)).toBeNull()
+  })
+})
+

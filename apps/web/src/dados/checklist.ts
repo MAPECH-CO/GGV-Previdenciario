@@ -1,9 +1,11 @@
 // EXEMPLO. Servidor de exemplo do checklist do benefício (GGVP-91), sobre o mesmo banco de servidor.ts. Os documentos
 // são os que a leitura arquivou (GGVP-81). A lista de cada benefício é configuração do escritório (GGVP-104): aqui só a do
 // LOAS, com que o portal nasce. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da spec da ggvp-91.
-import { bloqueioDoAcidente, complementares, type TabelaDoAcidente } from '../regras/acidente.ts'
+import { bloqueioDoAcidente, complementares, type Complementar, type TabelaDoAcidente } from '../regras/acidente.ts'
+import { relatoriosDaCrianca } from '../regras/infantil.ts'
 import { juntar, montarChecklist, type Checklist, type Condicao, type DocumentoDoCaso, type ListaDoBeneficio } from '../regras/checklist.ts'
 import { acidenteDoCaso } from './acidente.ts'
+import { criancaDoCaso, ehInfantil } from './infantil.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { contratos } from './contrato.ts'
 import { leiturasDo } from './leitura.ts'
@@ -56,6 +58,26 @@ export const TABELA_DO_ACIDENTE: TabelaDoAcidente = {
 }
 
 const SEM_CIRCUNSTANCIA = 'Marque a circunstância do acidente: o que é obrigatório depende dela.'
+
+const SEM_CONDICAO = 'A advogada marca a condição da criança no parecer: os relatórios que o caso pede dependem dela.'
+
+/** Os complementares e o bloqueio do caso: a circunstância do acidente (GGVP-47) ou a condição da criança (GGVP-50). */
+function complementaresDoCaso(banco: Banco, ficha: Ficha, processo: Processo): { complementares?: Complementar[]; bloqueio?: string } {
+  if (processo.beneficio === 'auxilio-acidente') {
+    const acidente = acidenteDoCaso(banco, processo.id)
+    if (!acidente) return { bloqueio: SEM_CIRCUNSTANCIA }
+    const bloqueio = bloqueioDoAcidente(acidente)
+    return { complementares: complementares(TABELA_DO_ACIDENTE, acidente), ...(bloqueio && { bloqueio }) }
+  }
+  if (ehInfantil(ficha, processo)) {
+    const crianca = criancaDoCaso(banco, processo.id)
+    // Sem a condição, o escolar já entra (vale para todas), e o checklist espera a advogada.
+    const relatorios = relatoriosDaCrianca(crianca ?? { condicoes: [], terapias: [] })
+    const pedidos = relatorios.map((tipo) => ({ tipo, exigencia: 'obrigatorio' as const, aplica: true, recusado: false }))
+    return { complementares: pedidos, ...(!crianca && { bloqueio: SEM_CONDICAO }) }
+  }
+  return {}
+}
 
 let listas = LISTAS_DE_DOCUMENTOS
 
@@ -120,17 +142,13 @@ function montar(banco: Banco, processoId: string): ChecklistDoCaso | null {
   const processo = ficha?.processos.find((p) => p.id === processoId)
   if (!ficha || !processo) return null
   const entrevista = DA_ENTREVISTA[processoId] ?? { condicoes: [], documentos: [] }
-  // No Auxílio-Acidente, a circunstância marcada traz os complementares e o bloqueio da categoria (GGVP-47).
-  const acidente = processo.beneficio === 'auxilio-acidente' ? acidenteDoCaso(banco, processoId) : undefined
-  const bloqueio = processo.beneficio !== 'auxilio-acidente' ? undefined : acidente ? bloqueioDoAcidente(acidente) : SEM_CIRCUNSTANCIA
   const checklist = montarChecklist({
     lista: listas[processo.beneficio],
     condicoes: entrevista.condicoes,
     daEntrevista: entrevista.documentos,
     documentos: documentosDoCaso(banco, ficha, processoId),
     contratoAssinado: contratoAssinado(banco, processo),
-    ...(acidente && { complementares: complementares(TABELA_DO_ACIDENTE, acidente) }),
-    ...(bloqueio && { bloqueio }),
+    ...complementaresDoCaso(banco, ficha, processo),
   })
   const conferencia = banco.checklists?.filter((c) => c.processoId === processoId).at(-1)
   return { ficha, processo, beneficio: nomeBeneficio(processo.beneficio), checklist, condicoes: entrevista.condicoes, conferencia }

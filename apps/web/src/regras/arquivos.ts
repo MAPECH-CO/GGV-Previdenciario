@@ -30,6 +30,12 @@ const PISTAS: [RegExp, string][] = [
   [/ficha de atendimento/, 'ficha-atendimento'],
   // GGVP-95: cada documento médico com o seu tipo; antes, atestado virava laudo.
   [/relatorio escolar|escola/, 'relatorio-escolar'],
+  // GGVP-50: o relatório de cada terapia e o do CAPS e da neurologia, antes do de terapia comum.
+  [/\bcaps\b/, 'relatorio-caps'],
+  [/relatorio (da |de )?neuro/, 'relatorio-neurologia'],
+  [/fono/, 'relatorio-fono'],
+  [/terapia ocupacional/, 'relatorio-to'],
+  [/psicolog/, 'relatorio-psicologia'],
   [/relatorio de terapia|terapia|fono|psicolog/, 'relatorio-terapia'],
   [/relatorio/, 'relatorio-medico'],
   [/\blaudo/, 'laudo'],

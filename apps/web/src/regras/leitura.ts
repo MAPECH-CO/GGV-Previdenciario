@@ -9,7 +9,7 @@ import { umaLetraDeDiferenca } from './pasta.ts'
 export const CONFIANCA_MINIMA = 80
 
 /** Documentos médicos: a Documentação confirma que estão ok sem ver o conteúdo, e nunca são apagados (CA16). Os sete do fim são da GGVP-95. */
-export const TIPOS_MEDICOS = ['laudo', 'receita', 'prontuario', 'atestado', 'relatorio-medico', 'exame', 'cat', 'boletim-ocorrencia', 'relatorio-escolar', 'relatorio-terapia', 'aso', 'ficha-pronto-socorro', 'exame-imagem-epoca', 'exame-pos-alta']
+export const TIPOS_MEDICOS = ['laudo', 'receita', 'prontuario', 'atestado', 'relatorio-medico', 'exame', 'cat', 'boletim-ocorrencia', 'relatorio-escolar', 'relatorio-terapia', 'aso', 'ficha-pronto-socorro', 'exame-imagem-epoca', 'exame-pos-alta', 'relatorio-caps', 'relatorio-neurologia', 'relatorio-fono', 'relatorio-to', 'relatorio-psicologia']
 
 export type CampoLido = 'nome' | 'cpf' | 'rg' | 'endereco'
 

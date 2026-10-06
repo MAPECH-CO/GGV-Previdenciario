@@ -27,10 +27,10 @@ export type ItemDoChecklist = {
   /** Por que não está recebido: "falta", "sem assinatura (G1)", "em quarentena". */
   motivo?: string
   /** De onde o item veio. */
-  de: 'contrato' | 'beneficio' | 'condicao' | 'entrevista' | 'acidente'
+  de: 'contrato' | 'beneficio' | 'condicao' | 'entrevista' | 'complementar'
   /** A condição do caso que puxou a declaração (CA7). */
   condicao?: Condicao
-  /** No Auxílio-Acidente: obrigatório, desejável ou condicional (GGVP-47). */
+  /** No Auxílio-Acidente e no LOAS da criança: obrigatório, desejável ou condicional (GGVP-47, GGVP-50). */
   exigencia?: Exigencia
   /** Aparece, mas não conta para o completo: desejável, condicional que não se aplica, recusa do empregador (GGVP-47, CA3). */
   naoConta?: true
@@ -57,7 +57,7 @@ export type EntradaDoChecklist = {
   documentos: DocumentoDoCaso[]
   /** O contrato do kit foi assinado (D1.17, grupo contrato). */
   contratoAssinado: boolean
-  /** No Auxílio-Acidente: os complementares da circunstância (GGVP-47). */
+  /** Os complementares: os da circunstância do acidente (GGVP-47) e os relatórios da criança (GGVP-50). */
   complementares?: Complementar[]
   bloqueio?: string
 }
@@ -74,10 +74,10 @@ function situacao(tipo: string, documentos: DocumentoDoCaso[]): Pick<ItemDoCheck
   return { situacao: 'pendente', motivo: 'falta' }
 }
 
-/** O complementar do Auxílio-Acidente: a exigência e por que não conta (GGVP-47, CA1 e CA3). */
-function doAcidente(c: Complementar): Omit<ItemDoChecklist, 'nome' | 'situacao' | 'motivo'> {
+/** O complementar: a exigência e por que não conta (GGVP-47, CA1 e CA3). */
+function doComplementar(c: Complementar): Omit<ItemDoChecklist, 'nome' | 'situacao' | 'motivo'> {
   const naoConta = c.exigencia === 'desejavel' || !c.aplica || c.recusado
-  return { tipo: c.tipo, de: 'acidente', exigencia: c.exigencia, ...(naoConta && { naoConta: true as const }) }
+  return { tipo: c.tipo, de: 'complementar', exigencia: c.exigencia, ...(naoConta && { naoConta: true as const }) }
 }
 
 /** Por que o complementar pendente não conta: a recusa do empregador vira pendência (válvula) e o condicional pode não se aplicar. */
@@ -92,7 +92,7 @@ export function montarChecklist(e: EntradaDoChecklist): Checklist {
   const pedidos: Omit<ItemDoChecklist, 'nome' | 'situacao' | 'motivo'>[] = [
     ...(e.lista?.obrigatorios.map((tipo) => ({ tipo, de: 'beneficio' as const })) ?? []),
     ...(e.lista?.condicionais.filter((c) => e.condicoes.includes(c.quando)).map((c) => ({ tipo: c.tipo, de: 'condicao' as const, condicao: c.quando })) ?? []),
-    ...(e.complementares?.map(doAcidente) ?? []),
+    ...(e.complementares?.map(doComplementar) ?? []),
     ...e.daEntrevista.map((tipo) => ({ tipo, de: 'entrevista' as const })),
   ].filter((p, i, todos) => p.tipo !== 'contrato' && todos.findIndex((q) => q.tipo === p.tipo) === i)
 
@@ -103,7 +103,7 @@ export function montarChecklist(e: EntradaDoChecklist): Checklist {
     contrato,
     ...pedidos.map((p) => {
       const item: ItemDoChecklist = { ...p, nome: nomeTipo(p.tipo), ...situacao(p.tipo, e.documentos) }
-      const c = p.de === 'acidente' ? e.complementares?.find((x) => x.tipo === p.tipo) : undefined
+      const c = p.de === 'complementar' ? e.complementares?.find((x) => x.tipo === p.tipo) : undefined
       const motivo = c && item.situacao === 'pendente' && item.motivo === 'falta' && motivoDoAcidente(c)
       return motivo ? { ...item, motivo } : item
     }),

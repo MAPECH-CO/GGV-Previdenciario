@@ -73,4 +73,13 @@
 - [x] 7.5 Playwright `e2e/acidente.e2e.ts`: o Sebastião marca a circunstância, o checklist muda com o trânsito, os documentos chegam e o checklist fica completo, e o laudo de lesão não consolidada trava a liberação (CA1 a CA4); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test acidente checklist liberar`.
 - [ ] 7.6 Ligar no servidor: a tabela por circunstância na configuração do escritório (GGVP-104), a circunstância salva no banco e o G18 validado no servidor (GGVP-109); o corpo de `dados/acidente.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
 
+## GGVP-50 · BPC/LOAS de menor de 16 anos
+
+- [x] 8.1 Contrato: `CondicaoDaCrianca`, `Terapia` e `DadosDaCrianca` em `src/regras/infantil.ts`; `criancas?` no `Banco`; os cinco relatórios no fim do catálogo; o Davi no fim da semente. Verifica com `pnpm typecheck`.
+- [x] 8.2 Regra: `menorDe16` e `relatoriosDaCrianca` (escolar para todas, CAPS, neurologia e as terapias), com teste em `src/regras/infantil.test.ts` (CA1, CA2). Verifica com `pnpm vitest run src/regras/infantil.test.ts`.
+- [x] 8.3 Servidor de exemplo: o roteiro infantil na semente; a análise do parecer com ele para menor de 16 anos; `obterCrianca` e `salvarCrianca` (só o Jurídico, histórico sem a condição) em `src/dados/infantil.ts`; os relatórios no checklist. Teste em `src/dados/infantil.test.ts` e `src/dados/roteiro.test.ts` (CA1, CA2). Verifica com `pnpm vitest run src/dados`.
+- [x] 8.4 Tela: o cartão "Criança · condição e terapias" no parecer; os relatórios e a trava no checklist. Teste em `DarParecer.test.tsx` e `ConferirChecklist.test.tsx` (CA1, CA2). Verifica com `pnpm vitest run src/paginas`.
+- [x] 8.5 Playwright `e2e/infantil.e2e.ts`: o Davi no parecer com o roteiro infantil, a advogada marca a condição e as terapias, e o checklist mostra os relatórios (CA1, CA2); a Documentação não vê a condição; tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test infantil`.
+- [ ] 8.6 Ligar no servidor: a condição salva no banco e a regra do menor de 16 anos validada no servidor; o corpo de `dados/infantil.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+
 <!-- Fim do grupo 2. -->

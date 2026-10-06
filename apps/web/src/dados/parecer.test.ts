@@ -191,6 +191,8 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
     expect(tarefasDoParecer().map((t) => [t.cliente?.nome, t.acao, t.detalhe])).toEqual([
       ['Antônio Exemplo', 'Analisar laudo novo', 'Aposentadoria por Incapacidade Permanente · enviado pelo Atendimento em 29/09 · resumo e comparação da IA prontos'],
       ['Rita Exemplo', 'Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)'],
+      // GGVP-50: o Davi, de 7 anos, com o roteiro infantil.
+      ['Davi Exemplo', 'Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)'],
     ])
   })
 

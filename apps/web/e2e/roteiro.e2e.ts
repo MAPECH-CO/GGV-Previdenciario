@@ -10,7 +10,8 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 
 test('CA1 e CA2 · a sênior abre o roteiro do LOAS Deficiente, edita um item e salva a versão 2', async ({ page }) => {
   await page.goto('/roteiros?perfil=senior')
-  await expect(page.getByRole('link', { name: /BPC\/LOAS Deficiente/ })).toHaveAttribute('href', '/roteiros/loas-deficiente')
+  // GGVP-50: o roteiro infantil também começa com "BPC/LOAS Deficiente"; o do adulto é o primeiro.
+  await expect(page.getByRole('link', { name: /BPC\/LOAS Deficiente/ }).first()).toHaveAttribute('href', '/roteiros/loas-deficiente')
   // O perfil escolhido pelo endereço vale para a página aberta (dados/perfis.ts).
   await page.goto('/roteiros/loas-deficiente?perfil=senior')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('BPC/LOAS Deficiente · Roteiro de conteúdo mínimo')

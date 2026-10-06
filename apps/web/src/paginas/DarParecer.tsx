@@ -6,6 +6,7 @@ import { nomeTipo } from '../dados/catalogos.ts'
 import { doJuridico, obterParecer, registrarParecer, type ParecerNaTela } from '../dados/parecer.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { enquadramentoDoCaso } from '../dados/deficiencia.ts'
+import { CartaoDaCrianca } from './CartaoDaCrianca.tsx'
 import { agora } from '../dados/servidor.ts'
 import { isoParaData } from '../campos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
@@ -262,6 +263,8 @@ export function DarParecer({ processoId }: { processoId: string }) {
                   </a>
                 </section>
               )}
+
+              {processo.beneficio === 'loas-deficiente' && <CartaoDaCrianca processoId={processo.id} perfil={perfil?.id} nome={perfil?.usuario ?? 'Advogada'} />}
 
               {!p.semRoteiro && (
                 <section className={styles.cartao} aria-labelledby="matriz">

@@ -37,6 +37,7 @@ import type { ParecerDoCaso } from './parecer.ts'
 import type { Complemento } from './complemento.ts'
 import type { DeficienciaDoCaso } from './deficiencia.ts'
 import type { AcidenteDoCaso } from './acidente.ts'
+import type { CriancaDoCaso } from './infantil.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -86,6 +87,8 @@ export type Banco = {
   deficiencias?: DeficienciaDoCaso[]
   /** A circunstância do acidente de cada caso de Auxílio-Acidente (GGVP-47). Sem ela, o checklist pede para marcar. */
   acidentes?: AcidenteDoCaso[]
+  /** A condição e as terapias de cada criança do LOAS Deficiente de menor de 16 anos (GGVP-50). Dado de saúde. */
+  criancas?: CriancaDoCaso[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

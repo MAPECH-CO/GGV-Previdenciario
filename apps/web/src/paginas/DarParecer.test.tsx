@@ -126,3 +126,43 @@ describe('Dar parecer médico · tela da advogada', () => {
     expect(await screen.findByRole('heading', { name: 'Parecer médico de suficiência' })).toBeTruthy()
   })
 })
+
+describe('BPC/LOAS de menor de 16 anos · o parecer da criança (GGVP-50)', () => {
+  it('CA1 · o Davi, de 7 anos: a matriz com o roteiro infantil, a participação e os cuidados ausentes', async () => {
+    await abrir('davi-exemplo-1')
+    expect(screen.getByText(/BPC\/LOAS Deficiente · menor de 16 anos, versão 1/)).toBeTruthy()
+    const obrigatorios = within(screen.getByRole('list', { name: 'Itens obrigatórios' })).getAllByRole('listitem')
+    expect(obrigatorios.map((li) => li.textContent?.split('(exemplo)')[0].split('A IA')[0])).toEqual([
+      'Natureza do impedimento (físico, mental, intelectual ou sensorial)Laudo médico · 20/08/2026 · pág. 1 — “',
+      'Data de início e se o quadro persisteLaudo médico · 20/08/2026 · pág. 1 — “',
+      'Prognóstico: duração prevista ou permanenteLaudo médico · 20/08/2026 · pág. 1 — “',
+      'Impacto na participação social e nas atividades próprias da idade (escola, brincar, convívio)',
+      'Necessidade de cuidados que limitam o trabalho dos responsáveis',
+    ])
+    expect(await screen.findByText('roteiro infantil · 7 anos')).toBeTruthy()
+  })
+
+  it('CA2 · a advogada marca a condição e as terapias, e vê os relatórios que o checklist vai pedir', async () => {
+    await abrir('davi-exemplo-1')
+    const cartao = (await screen.findByRole('heading', { name: 'Criança · condição e terapias' })).closest('section')!
+    const relatorios = () => within(within(cartao).getByRole('list', { name: 'Relatórios que o caso pede' })).getAllByRole('listitem').map((li) => li.textContent)
+    expect(relatorios()).toEqual(['Relatório escolar'])
+    expect(within(cartao).getByText('Sem a condição marcada, o checklist pede só o relatório escolar e fica travado.')).toBeTruthy()
+    fireEvent.click(within(cartao).getByRole('checkbox', { name: /Paralisia cerebral, má formação ou parecido/ }))
+    fireEvent.click(within(cartao).getByRole('checkbox', { name: 'Fonoaudiologia' }))
+    fireEvent.click(within(cartao).getByRole('checkbox', { name: 'Terapia ocupacional' }))
+    fireEvent.click(within(cartao).getByRole('button', { name: 'Salvar a condição' }))
+    expect(await within(cartao).findByText('Condição salva: o checklist pede os relatórios dela.')).toBeTruthy()
+    expect(relatorios()).toEqual(['Relatório escolar', 'Relatório da neurologia', 'Relatório de fonoaudiologia', 'Relatório de terapia ocupacional'])
+    expect(within(cartao).getByRole('link', { name: 'Abrir o checklist' }).getAttribute('href')).toBe('/casos/davi-exemplo-1/checklist')
+    expect((await obterFicha('davi-exemplo'))?.historico.at(-1)?.oQue).toBe('Marcou a condição e as terapias da criança (roteiro infantil)')
+  })
+
+  it('a Rita, adulta, não tem o cartão da criança', async () => {
+    await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [{ nome: 'laudo.pdf', formato: 'pdf', tamanho: 1000, tipo: 'laudo', hash: '4'.padStart(64, '0') }] })
+    await abrir()
+    await screen.findByText(/BPC\/LOAS Deficiente, versão 1/)
+    expect(screen.queryByRole('heading', { name: 'Criança · condição e terapias' })).toBeNull()
+  })
+})
+

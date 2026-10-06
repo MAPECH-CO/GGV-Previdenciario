@@ -16,7 +16,9 @@ describe('Roteiro de laudos · tela', () => {
     render(<Roteiro />)
     const lista = await screen.findByRole('list', { name: 'Roteiros' })
     const itens = within(lista).getAllByRole('link')
-    expect(itens).toHaveLength(10)
+    // GGVP-50: o roteiro infantil é o último.
+    expect(itens).toHaveLength(11)
+    expect(itens[10].getAttribute('href')).toBe('/roteiros/loas-infantil')
     expect(itens[1].textContent).toContain('Aposentadoria da Pessoa com Deficiência')
     expect(itens[1].textContent).toContain('PCD Aposentadoria por Contribuição · PCD Aposentadoria por Idade')
     expect(itens[1].getAttribute('href')).toBe('/roteiros/pcd')

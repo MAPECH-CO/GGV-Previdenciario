@@ -97,6 +97,12 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'exame-imagem-epoca', nome: 'Exame de imagem da época do acidente' },
   { id: 'exame-pos-alta', nome: 'Exame posterior à alta' },
   { id: 'ppp', nome: 'PPP (Perfil Profissiográfico Previdenciário)' },
+  // GGVP-50: os relatórios do caso da criança, por condição e por terapia (o escolar já está acima).
+  { id: 'relatorio-caps', nome: 'Relatório do CAPS' },
+  { id: 'relatorio-neurologia', nome: 'Relatório da neurologia' },
+  { id: 'relatorio-fono', nome: 'Relatório de fonoaudiologia' },
+  { id: 'relatorio-to', nome: 'Relatório de terapia ocupacional' },
+  { id: 'relatorio-psicologia', nome: 'Relatório de psicologia' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

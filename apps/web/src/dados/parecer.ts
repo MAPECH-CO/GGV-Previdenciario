@@ -25,6 +25,7 @@ import {
   type SituacaoDoParecer,
   type Sugestao,
 } from '../regras/parecer.ts'
+import { menorDe16 } from '../regras/infantil.ts'
 import { emVigor, type ItemDoRoteiro, type Roteiro } from '../regras/roteiro.ts'
 import { semAcento } from '../regras/busca.ts'
 import { nomeBeneficio, nomeTipo } from './catalogos.ts'
@@ -207,6 +208,21 @@ const DOCUMENTOS_DA_SEMENTE: Record<string, DocumentoDaSemente[]> = {
       },
     },
   ],
+  // GGVP-50: o laudo da neuropediatria do Davi cobre a natureza, o início e o prognóstico; a participação e os cuidados, não.
+  'davi-exemplo-1': [
+    {
+      id: 'semente/davi/laudo-2026-08',
+      tipo: 'laudo',
+      data: '2026-08-20',
+      emitente: 'Dra. Exemplo Neuropediatra',
+      resumo: 'acompanhamento neurológico',
+      cobre: {
+        natureza: t(1, 'Impedimento de natureza física e neurológica, de longo prazo.'),
+        inicio: t(1, 'Quadro presente desde o nascimento; persiste.'),
+        prognostico: t(1, 'Quadro permanente, com acompanhamento contínuo.'),
+      },
+    },
+  ],
   'antonio-exemplo-1': [
     {
       id: 'semente/antonio/laudo-2025-11',
@@ -341,8 +357,8 @@ function documentosMedicos(
 }
 
 /** O roteiro com laudo do benefício; régua documental (sem laudo) não entra no parecer médico. */
-function roteiroComLaudo(banco: Banco, beneficio: string): Roteiro | undefined | null {
-  const r = roteiroDoCaso(banco, beneficio)
+function roteiroComLaudo(banco: Banco, beneficio: string, infantil = false): Roteiro | undefined | null {
+  const r = roteiroDoCaso(banco, beneficio, infantil)
   if (!r) return undefined
   return r.laudo ? r : null
 }
@@ -357,7 +373,8 @@ function montarAnalise(
   /** A semente analisa só os documentos dela: o que chegou à pasta depois vira análise nova (GGVP-47). */
   comLeituras = true,
 ): AnaliseDaIA | undefined {
-  const roteiro = roteiroComLaudo(banco, processo.beneficio)
+  // Menor de 16 anos no dia da análise, pela data de nascimento: o roteiro infantil (GGVP-50, CA1).
+  const roteiro = roteiroComLaudo(banco, processo.beneficio, menorDe16(ficha.nascimento, hojeIso(new Date(quando))))
   if (roteiro === null) return undefined
   const versao = roteiro && emVigor(roteiro)
   const itensDoRoteiro = versao?.itens ?? []

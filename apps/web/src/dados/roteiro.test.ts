@@ -25,6 +25,7 @@ describe('Roteiros · servidor de exemplo', () => {
       ['aposentadoria-especial', false],
       ['curatela', true],
       ['isencao-ir', true],
+      ['loas-infantil', true],
     ])
     const loas = await obterRoteiro('loas-deficiente')
     expect(emVigor(loas!).itens.map((i) => [i.tipo, i.texto])).toEqual([

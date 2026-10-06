@@ -1,6 +1,7 @@
 // EXEMPLO. Servidor de exemplo dos roteiros de conteúdo mínimo (GGVP-93), sobre o mesmo banco de servidor.ts. A semente é
 // a matriz de docs/requisitos/roteiro-laudos.md (PDF do escritório, 26/09) e a resposta do Lucas de 01/10 (Q18). Ligar no
 // servidor: trocar o corpo de cada função por fetch no endpoint da design (seção GGVP-93); quem salva vem da sessão.
+import { ROTEIRO_INFANTIL } from '../regras/infantil.ts'
 import { motivoParaNaoSalvar, novaVersao, roteiroDoBeneficio, type ItemDoRoteiro, type Roteiro, type TipoDoItem } from '../regras/roteiro.ts'
 import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
 
@@ -30,7 +31,7 @@ export function roteirosDeExemplo(): Roteiro[] {
         'O paciente depende de outra pessoa, de acompanhamento contínuo, de transporte ou de tratamento? Com que frequência?',
       ),
       x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'),
-      c('menor-de-16', 'Menor de 16 anos: relatórios escolares, de terapias (fono, TO, psicologia) e do CAPS; impacto na participação social e nos cuidados que limitam o trabalho dos responsáveis'),
+      c('menor-de-16', 'Menor de 16 anos: o caso usa o roteiro infantil, com os relatórios por condição e os cuidados que limitam o trabalho dos responsáveis (GGVP-50)'),
       c('gastos', 'Provas de gastos que levam à miserabilidade: aluguel, remédios, gastos hospitalares, alimentação'),
     ]),
     roteiro('pcd', 'Aposentadoria da Pessoa com Deficiência', ['aposentadoria-pcd', 'aposentadoria-pcd-idade'], true, ESCRITORIO, '2026-09-26', [
@@ -122,6 +123,29 @@ export function roteirosDeExemplo(): Roteiro[] {
       o('oficial', 'De preferência, de serviço médico oficial', 'O documento é de serviço médico oficial?'),
       c('beneficio', 'Prova de que recebe aposentadoria ou pensão'),
     ]),
+    // GGVP-50: o LOAS Deficiente de menor de 16 anos troca a capacidade para o trabalho pela participação social e pelas
+    // atividades da idade (resposta do Lucas de 01/10: os relatórios por condição).
+    roteiro(ROTEIRO_INFANTIL, 'BPC/LOAS Deficiente · menor de 16 anos', ['loas-deficiente'], true, LUCAS, '2026-10-01', [
+      o('natureza', 'Natureza do impedimento (físico, mental, intelectual ou sensorial)', 'Qual é a natureza do impedimento da criança?'),
+      o('inicio', 'Data de início e se o quadro persiste', 'Desde quando a criança apresenta o quadro? Ele continua até hoje?'),
+      o('prognostico', 'Prognóstico: duração prevista ou permanente', 'Qual a previsão de duração do quadro?'),
+      o(
+        'participacao',
+        'Impacto na participação social e nas atividades próprias da idade (escola, brincar, convívio)',
+        'Como o quadro afeta a participação da criança na escola, no brincar e no convívio, comparada a outras crianças da mesma idade?',
+      ),
+      o(
+        'cuidados',
+        'Necessidade de cuidados que limitam o trabalho dos responsáveis',
+        'A criança precisa de cuidados ou de acompanhamento que impedem ou limitam o trabalho dos responsáveis? Com que frequência?',
+      ),
+      x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'),
+      c(
+        'relatorios',
+        'Relatórios por condição: o escolar para todas; o do CAPS na saúde mental; o da neurologia na paralisia cerebral, na má formação e parecidos; fono, terapia ocupacional e psicologia conforme a terapia que a criança faz',
+      ),
+      c('gastos', 'Provas de gastos que levam à miserabilidade: aluguel, remédios, gastos hospitalares, alimentação'),
+    ]),
   ]
 }
 
@@ -131,9 +155,11 @@ export function roteirosDo(banco: Banco): Roteiro[] {
   return banco.roteiros
 }
 
-/** O roteiro do benefício do caso; undefined: "benefício sem roteiro" (CA3). Para o parecer (GGVP-20). */
-export function roteiroDoCaso(banco: Banco, beneficio: string): Roteiro | undefined {
-  return roteiroDoBeneficio(roteirosDo(banco), beneficio)
+/** O roteiro do benefício do caso; undefined: "benefício sem roteiro" (CA3). Para o parecer (GGVP-20). Menor de 16 anos no LOAS Deficiente: o infantil (GGVP-50). */
+export function roteiroDoCaso(banco: Banco, beneficio: string, menorDe16 = false): Roteiro | undefined {
+  const roteiros = roteirosDo(banco)
+  const infantil = menorDe16 && beneficio === 'loas-deficiente' ? roteiros.find((r) => r.id === ROTEIRO_INFANTIL) : undefined
+  return infantil ?? roteiroDoBeneficio(roteiros, beneficio)
 }
 
 /** GET /api/roteiros */

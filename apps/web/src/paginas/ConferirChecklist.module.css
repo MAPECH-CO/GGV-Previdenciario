@@ -91,6 +91,21 @@
   font-weight: 600;
 }
 
+/* GGVP-50: os grupos de caixas da condição e das terapias da criança. */
+.grupo {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.grupo legend {
+  padding: 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
 .marcar {
   display: flex;
   align-items: center;
