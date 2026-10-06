@@ -55,4 +55,13 @@
 
 <!-- Grupo 2: PCD, Auxílio-Acidente e LOAS de menor de 16 anos. -->
 
+## GGVP-42 · Aposentadoria PCD: linha do tempo da deficiência
+
+- [x] 6.1 Contrato: `Grau`, `DadosDaDeficiencia`, período e enquadramento em `src/regras/deficiencia.ts`; `indicadorPcd` e `insalubre` no `Vinculo` de `tipos.ts`, `deficiencias?` no `Banco`, ASO e contratação por cota no fim do catálogo, todos acrescentados no fim. Verifica com `pnpm typecheck`.
+- [x] 6.2 Regra: `periodos` (vínculo partido no início e nos agravamentos), `semProvaDaEpoca`, `tempoPorGrau`, a tabela de conversão do art. 70-E por sexo, `enquadramento` (preponderante, convertido, mínimo da LC 142 e o que falta) e `errosDaDeficiencia` (datas pela biblioteca `campos`), com teste em `src/regras/deficiencia.test.ts` (CA1 a CA4). Verifica com `pnpm vitest run src/regras/deficiencia.test.ts`.
+- [x] 6.3 Servidor de exemplo: o CNIS e a deficiência da Cleide na semente, os documentos da época (semente e pasta), `obterLinhaDoTempo` e `salvarDeficiencia` (valida de novo, histórico) em `src/dados/deficiencia.ts`, com teste em `src/dados/deficiencia.test.ts` (CA1 a CA4). Verifica com `pnpm vitest run src/dados/deficiencia.test.ts`.
+- [x] 6.4 Tela `/casos/:id/deficiencia` (`src/paginas/LinhaDaDeficiencia.tsx`): os dados da deficiência com os agravamentos, a linha do tempo por vínculo com o indicador PCD, a insalubridade, os documentos da época e "sem prova da época", e o enquadramento; rota em `App.tsx`; a linha do enquadramento no parecer da Aposentadoria PCD. Teste em `LinhaDaDeficiencia.test.tsx` e `DarParecer.test.tsx` (CA1 a CA4). Verifica com `pnpm vitest run src/paginas/LinhaDaDeficiencia.test.tsx src/paginas/DarParecer.test.tsx`.
+- [x] 6.5 Playwright `e2e/deficiencia.e2e.ts`: a linha do tempo da Cleide, o agravamento que muda o grau, o período sem prova da época e o enquadramento no parecer (CA1 a CA4); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test deficiencia`.
+- [ ] 6.6 Ligar no servidor: o CNIS de verdade (com o indicador PCD e os períodos especiais), os documentos da pasta e a tela da exigência do INSS (D2.05) usando `enquadramento`; o corpo de `dados/deficiencia.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+
 <!-- Fim do grupo 2. -->

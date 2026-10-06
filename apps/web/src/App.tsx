@@ -43,6 +43,7 @@ import { AnalisarLaudoNovo } from './paginas/AnalisarLaudoNovo.tsx'
 import { DarParecer } from './paginas/DarParecer.tsx'
 import { PedirComplemento } from './paginas/PedirComplemento.tsx'
 import { DispensarParecer } from './paginas/DispensarParecer.tsx'
+import { LinhaDaDeficiencia } from './paginas/LinhaDaDeficiencia.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -138,5 +139,7 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (complemento) return <PedirComplemento processoId={decodeURIComponent(complemento[1])} />
   const dispensa = /^\/casos\/([^/]+)\/parecer\/dispensa$/.exec(caminho)
   if (dispensa) return <DispensarParecer processoId={decodeURIComponent(dispensa[1])} />
+  const deficiencia = /^\/casos\/([^/]+)\/deficiencia$/.exec(caminho)
+  if (deficiencia) return <LinhaDaDeficiencia processoId={decodeURIComponent(deficiencia[1])} />
   return <NaoConstruida caminho={caminho} />
 }

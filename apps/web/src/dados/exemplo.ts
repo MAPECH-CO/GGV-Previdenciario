@@ -400,5 +400,16 @@ export function cnisDeExemplo(): Cnis[] {
     },
     { fichaId: 'natalia-exemplo', origem: 'impresso', extraidoEm: '2026-10-01', vinculos: [{ empresa: 'Exemplo Serviços Ltda', inicio: '2021-02', fim: '2026-04' }] },
     { fichaId: 'antonio-exemplo', origem: 'meu-inss', extraidoEm: '2026-07-30', vinculos: [{ empresa: 'Exemplo Condomínio', inicio: '2021-01', fim: '2026-02' }] },
+    // A Cleide da Aposentadoria PCD (GGVP-42): o indicador PCD e a insalubridade de cada vínculo.
+    {
+      fichaId: 'cleide-exemplo',
+      origem: 'meu-inss',
+      extraidoEm: '2026-06-30',
+      vinculos: [
+        { empresa: 'Exemplo Têxtil Ltda', inicio: '2008-02', fim: '2013-05', insalubre: true },
+        { empresa: 'Exemplo Metalúrgica Ltda', inicio: '2013-08', fim: '2019-12', indicadorPcd: true, insalubre: true },
+        { empresa: 'Exemplo Serviços Ltda', inicio: '2020-02', indicadorPcd: true },
+      ],
+    },
   ]
 }

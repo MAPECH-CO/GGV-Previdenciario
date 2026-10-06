@@ -5,6 +5,7 @@ import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { doJuridico, obterParecer, registrarParecer, type ParecerNaTela } from '../dados/parecer.ts'
 import { usePerfil } from '../dados/perfis.ts'
+import { enquadramentoDoCaso } from '../dados/deficiencia.ts'
 import { agora } from '../dados/servidor.ts'
 import { isoParaData } from '../campos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
@@ -247,6 +248,18 @@ export function DarParecer({ processoId }: { processoId: string }) {
                       <li key={m}>• {m}</li>
                     ))}
                   </ul>
+                </section>
+              )}
+
+              {processo.beneficio.startsWith('aposentadoria-pcd') && (
+                <section className={styles.cartao} aria-labelledby="pcd">
+                  <h2 id="pcd" className={styles.cartaoTitulo}>
+                    Enquadramento dos períodos PCD
+                  </h2>
+                  <p>{enquadramentoDoCaso(processo.id) ?? 'Sem os dados da deficiência ainda: registre na linha do tempo.'}</p>
+                  <a className={styles.atalho} href={`/casos/${processo.id}/deficiencia`}>
+                    Linha do tempo da deficiência
+                  </a>
                 </section>
               )}
 

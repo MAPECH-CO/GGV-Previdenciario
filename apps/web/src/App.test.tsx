@@ -100,6 +100,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Este caso não tem pedido de complemento' })).toBeTruthy()
   })
 
+  it('GGVP-42 · em /casos/:id/deficiencia abre a linha do tempo da deficiência', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/cleide-exemplo-1/deficiencia" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Cleide Exemplo · Linha do tempo da deficiência' })).toBeTruthy()
+  })
+
   it('GGVP-18 · em /casos/:id/liberar abre a liberação; com ?perfil=atendimento, só a situação', async () => {
     zerarExemplo()
     render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)

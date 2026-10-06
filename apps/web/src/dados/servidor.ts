@@ -35,6 +35,7 @@ import type { Contrato } from './contrato.ts'
 import type { Roteiro } from '../regras/roteiro.ts'
 import type { ParecerDoCaso } from './parecer.ts'
 import type { Complemento } from './complemento.ts'
+import type { DeficienciaDoCaso } from './deficiencia.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -80,6 +81,8 @@ export type Banco = {
   pareceres?: ParecerDoCaso[]
   /** A pendência de complemento ao médico de cada caso (GGVP-20 abre, GGVP-29 conduz). */
   complementos?: Complemento[]
+  /** Os dados da deficiência de cada caso de Aposentadoria PCD (GGVP-42). Sem ele, começa da semente de deficiencia.ts. */
+  deficiencias?: DeficienciaDoCaso[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

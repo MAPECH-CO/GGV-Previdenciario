@@ -89,6 +89,9 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'boletim-ocorrencia', nome: 'Boletim de ocorrência' },
   { id: 'relatorio-escolar', nome: 'Relatório escolar' },
   { id: 'relatorio-terapia', nome: 'Relatório de terapia' },
+  // GGVP-42: as provas da deficiência na época de cada vínculo.
+  { id: 'aso', nome: 'ASO (atestado de saúde ocupacional)' },
+  { id: 'contratacao-cota', nome: 'Contratação por cota (PCD)' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

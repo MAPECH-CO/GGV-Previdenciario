@@ -257,3 +257,45 @@ export const Dispensa = z.object({
 3. **Quem é a sênior**: o "Trocar perfil" ganha uma segunda sênior de exemplo (Dr. Otávio), para a segunda aprovação ser de outra pessoa. Ao ligar no servidor, vem da sessão.
 4. **O parecer novo manda** (CA5): a dispensa vale até um parecer registrado depois dela; o portão sempre olha o registro ou a dispensa mais nova.
 5. **O chat recusa** (CA3): o pedido para pular, dispensar ou ignorar o parecer não vira ação: o chat responde que falta o parecer "Suficiente" confirmado por pessoa (G17) e que só duas sêniores dispensam, na tela do parecer. Sem card de confirmação.
+
+## GGVP-42 · Aposentadoria PCD: linha do tempo da deficiência
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/deficiencia` | sem quadro da linha do tempo; o mais próximo é a exigência do INSS da Aposentadoria PCD (`1581:764` e `1581:418`, "grau moderado · 20 anos · calculado por código (G19)") e o step_D1.13 `14:159` | Os dados da deficiência (início, grau, agravamentos, sexo para a contagem), a linha do tempo com cada vínculo do CNIS partido em "sem deficiência" e "com deficiência" por grau, o indicador PCD e a insalubridade do CNIS, os documentos da época de cada período e "sem prova da época" em cor de ação, e o enquadramento (grau preponderante, tempo convertido, mínimo e o que falta) calculado por código |
+| `/casos/:id/parecer` (muda) | step_D1.21M `14:195` | Na Aposentadoria PCD, a linha do enquadramento com o atalho para a linha do tempo |
+
+### Contrato (vai para `packages/contratos/deficiencia.ts`)
+
+```ts
+export const Grau = z.enum(['leve', 'moderada', 'grave'])
+export const DadosDaDeficiencia = z.object({
+  inicio: dataIso,                                            // a data de início da deficiência (CA1)
+  grau: Grau,                                                 // o grau no início
+  agravamentos: z.array(z.object({ data: dataIso, grau: Grau })),   // o grau muda a partir da data (CA2)
+  sexo: z.enum(['feminino', 'masculino']),                    // o mínimo da LC 142 muda com o sexo
+})
+// O Vinculo do CNIS (GGVP-57) ganha, opcionais: indicadorPcd (o indicador PCD do CNIS) e insalubre (resposta do Lucas, 01/10).
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/processos/:id/deficiencia` | | a linha do tempo e o enquadramento | `obterLinhaDoTempo` |
+| `PUT /api/processos/:id/deficiencia` | `DadosDaDeficiencia` | a linha do tempo | `salvarDeficiencia` |
+
+### Campos
+
+| Campo | Função de `campos` |
+|---|---|
+| Início da deficiência, data do agravamento | `normalizarData`, `validarData`, `dataParaIso`, `isoParaData`; não futura (`regras/formularios.ts`) |
+| Grau, novo grau, sexo para a contagem | lista fixa |
+
+### Decisões da história
+
+1. **O cálculo é código com teste (G19)**, em `regras/deficiencia.ts`: cada vínculo vira dias, partido na data de início e em cada agravamento; o tempo de cada grau é somado; o grau preponderante é o de mais tempo com deficiência (Decreto 3.048, art. 70-E, § 1º); o tempo dos outros graus e o sem deficiência são convertidos pelos fatores da tabela do art. 70-E (redação do Decreto 8.145/2013), por sexo; o mínimo é o da LC 142, art. 3º (grave 25/20, moderada 29/24, leve 33/28 anos, homem/mulher). A IA nunca calcula. Levar ao Lucas: conferir a tabela.
+2. **Documento da época** (CA3): laudo, atestado, relatório, prontuário, exame, ASO e contratação por cota com a data dentro do período com deficiência. ASO e contratação por cota entram no fim do catálogo único (o ASO como documento médico). Vêm da pasta do cliente (a leitura da GGVP-95) e, na semente da Cleide, de uma lista de exemplo.
+3. **Semente**: a Cleide (Aposentadoria PCD) ganha o CNIS de exemplo (três vínculos, com o indicador PCD e a insalubridade), a deficiência desde 06/2014, leve, com agravamento para moderada em 03/2019. O período moderado de 2019 fica sem prova da época, para a tela mostrar o aviso.
+4. **"Em qualquer tela"** (CA4): o enquadramento sai de uma função só, usada na linha do tempo e no parecer da Aposentadoria PCD. A tela da exigência do INSS (D2.05) é de outra história e usa a mesma função.
+5. **Insalubridade** (resposta do Lucas, 01/10): o período com deficiência e insalubridade fica marcado, como informativo para o processo; o cálculo da atividade especial não entra aqui.
