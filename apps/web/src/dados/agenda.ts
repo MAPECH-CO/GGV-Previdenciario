@@ -31,6 +31,7 @@ const PASSOS: Record<string, string> = {
   Entrevista: 'D1.09 · Atender e entrevistar',
   'Retirada da cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
   'Entregar cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
+  'Recontatar lead': 'D1.14 · Recontatar lead',
 }
 
 const nomeDaEquipe = (id: string) => EQUIPE.find((m) => m.id === id)?.nome ?? id
@@ -45,7 +46,8 @@ function doAgendamento(ficha: Ficha, a: Agendamento, hoje: string): EventoDaAgen
     duracao: a.duracao ?? 45,
     titulo: ficha.nome,
     oQue: a.oQue === 'Entrevista' ? 'Fazer entrevista' : a.oQue,
-    categoria: 'visitas',
+    // O recontato do lead que não fechou é um "Retorno a lead" (GGVP-60).
+    categoria: a.oQue === 'Recontatar lead' ? 'retornos' : 'visitas',
     tipo: a.tipo,
     responsavel: a.com,
     passo: PASSOS[a.oQue],

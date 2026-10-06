@@ -177,6 +177,14 @@ export type Ficha = {
   arquivos: Arquivo[]
   /** Ficha criada pela automação do scanner: pode chegar sem telefone (GGVP-17, CA15). */
   origem?: 'scanner'
+  /** O benefício do caso, decidido pela advogada (GGVP-51). Um só: outro benefício é processo novo (GGVP-124). */
+  beneficioDefinido?: BeneficioDefinido
+  /** Os cálculos de tempo e pontos sobre o CNIS, do mais antigo ao mais novo: refazer não apaga o anterior (GGVP-57). */
+  calculos?: Calculo[]
+  /** "Fechou com o escritório?" depois da entrevista: o motivo, o recontato ou o arquivo (GGVP-60). */
+  fechamento?: Fechamento
+  /** As novas demandas de quem já é cliente (GGVP-124). */
+  demandas?: Demanda[]
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -705,3 +713,137 @@ export type ConversaSemAudio = {
   participantes: string
   texto: string
 }
+
+// GGVP-51 em diante: o benefício definido com apoio do acervo. Espelho do Zod da design.md da change ggvp-6.
+
+/** Um caso da casa no acervo (simulado): a base da sugestão (CA2). */
+export type CasoDoAcervo = { id: string; titulo: string; beneficio: string; resultado: 'deferido' | 'indeferido'; resumo: string }
+
+/** Um requisito numérico calculado por código (CA7, G19). `atende` nulo: falta dado para calcular. */
+export type Requisito = { texto: string; atende: boolean | null }
+
+export type SugestaoDoBeneficio = {
+  /** O benefício que a advogada disse na entrevista: prevalece (CA1, G3). */
+  citado?: string
+  sugerido: string
+  alternativa?: string
+  base: CasoDoAcervo[]
+  porque: string
+  requisitos: Requisito[]
+}
+
+/** "Confirmar benefício" (CA4). */
+export type DecisaoDoBeneficio = { beneficio: string; conferi: true; motivoDaRecusa?: string }
+
+/** O registro da decisão (CA6). */
+export type BeneficioDefinido = {
+  beneficio: string
+  agendamentoId: string
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+  citado?: string
+  sugerido?: string
+  /** Os casos do acervo consultados. */
+  fontes: string[]
+  recusouSugestao: boolean
+  motivoDaRecusa?: string
+}
+
+/** Um vínculo do CNIS: aaaa-mm; sem fim, em aberto. */
+export type Vinculo = { empresa: string; inicio: string; fim?: string }
+
+/** O CNIS anexado ao caso: impresso pelo cliente ou baixado do Meu INSS (GGVP-57, CA4). */
+export type Cnis = { fichaId: string; origem: 'meu-inss' | 'impresso'; /** aaaa-mm-dd */ extraidoEm: string; vinculos: Vinculo[] }
+
+// GGVP-57 em diante: o cálculo de tempo e pontos sobre o CNIS. Espelho do Zod da design.md da change ggvp-6.
+
+export type TempoDeContribuicao = { anos: number; meses: number; dias: number }
+
+/** "Concluir": os números que o advogado calculou sobre o CNIS, nunca da IA (CA5, CA7, G19). */
+export type RegistroDoCalculo =
+  | { podeAposentar: true; tempo: TempoDeContribuicao; pontos: number; regra: string; conferi: true }
+  | { podeAposentar: false; tempo: TempoDeContribuicao; pontos: number; regra: string; /** dd/mm/aaaa */ dataPrevista: string; conferi: true }
+
+export type Calculo = {
+  tempo: TempoDeContribuicao
+  pontos: number
+  regra: string
+  podeAposentar: boolean
+  /** aaaa-mm-dd: quando poderá se aposentar, no "Ainda não" (CA2). */
+  dataPrevista?: string
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+  /** O CNIS usado: de onde veio e quando foi extraído (CA4). */
+  cnisOrigem: Cnis['origem']
+  cnisExtraidoEm: string
+}
+// GGVP-60 em diante: o fechamento depois da entrevista. Espelho do Zod da spec ggvp-60.
+
+/** Quem registra: a recusa do escritório só pelo Atendimento sênior ou pela advogada do atendimento (CA11). */
+export type PapelNoFechamento = 'atendimento' | 'atendimento-senior' | 'advogada-atendimento'
+
+/** Ficou de pensar (15 dias) ou pediu para esperar (30 dias) (CA12). */
+export type EsperaDoRecontato = 'pensar' | 'esperar'
+
+export type Fechamento = {
+  /** fechou; recontatar numa data; arquivado (sai das filas ativas); recalcular (o recontato voltou ao cálculo, D1.13). */
+  situacao: 'fechou' | 'recontatar' | 'arquivado' | 'recalcular'
+  /** Id do catálogo MOTIVOS_DE_NAO_FECHAR (G16). */
+  motivo?: string
+  detalhe?: string
+  espera?: EsperaDoRecontato
+  /** aaaa-mm-dd */
+  recontatarEm?: string
+  /** O compromisso "Recontatar lead" na agenda. */
+  recontatoId?: string
+  papel: PapelNoFechamento
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+}
+
+/** O que "Registrar" manda na tela do fechamento. */
+export type EnvioDoFechamento =
+  | { fechou: true }
+  | {
+      fechou: false
+      motivo: string
+      detalhe?: string
+      papel: PapelNoFechamento
+      /** Nulo: "Vale recontatar? Não", o lead é arquivado (CA7). */
+      recontatar: { data: string; espera?: EsperaDoRecontato } | null
+    }
+
+/** O resultado do recontato (CA10). */
+export type ResultadoDoRecontato =
+  | { resultado: 'calculo' }
+  | { resultado: 'nova-data'; data: string; espera?: EsperaDoRecontato }
+  | { resultado: 'arquivar'; motivo: string; detalhe?: string; papel: PapelNoFechamento }
+
+// GGVP-124 em diante: a nova demanda de quem já é cliente. Espelho do Zod da spec ggvp-124.
+
+/** Outro pedido; tentar de novo depois de perder; recurso ou defesa, que segue no mesmo processo e não abre demanda (CA8). */
+export type TipoDeDemanda = 'outro-pedido' | 'tentar-de-novo' | 'recurso-ou-defesa'
+
+export type Demanda = {
+  id: string
+  /** O que a pessoa quer agora. */
+  pretende: string
+  /** Id do catálogo de benefícios, com "Não sei ainda". */
+  beneficio: string
+  tipo: Exclude<TipoDeDemanda, 'recurso-ou-defesa'>
+  /** O Atendimento, no balcão ou na ficha; ou a advogada, que decidiu tentar de novo (CA9). */
+  abertaPor: 'atendimento' | 'advogada'
+  /** aaaa-mm-dd */
+  data: string
+  quem: string
+  /** aberta até o "Fechou com o escritório?" depois da entrevista (D1.14). */
+  situacao: 'aberta' | 'fechou' | 'nao-fechou'
+  /** Não fechou: o motivo e o detalhe (G16). */
+  motivo?: string
+  detalhe?: string
+}
+
+export type EnvioDaDemanda = { pretende: string; beneficio: string; tipo: TipoDeDemanda; abertaPor: Demanda['abertaPor'] }

@@ -144,3 +144,21 @@ export const PROFISSOES: ItemCatalogo[] = [
   'Vigilante',
   'Outra',
 ].map((nome) => ({ id: nome, nome }))
+
+/** Por que o lead não fechou (GGVP-60, CA6): a lista do cartão, com os quatro que o Lucas incluiu em 05/10. */
+export const MOTIVOS_DE_NAO_FECHAR: ItemCatalogo[] = [
+  { id: 'preco', nome: 'Preço' },
+  { id: 'desistiu', nome: 'Desistiu' },
+  { id: 'sem-direito', nome: 'Ainda não tem direito' },
+  { id: 'outro-escritorio', nome: 'Foi a outro escritório' },
+  { id: 'sem-retorno', nome: 'Sem retorno' },
+  { id: 'contato-invalido', nome: 'Contato inválido' },
+  { id: 'fez-sozinho', nome: 'Fez o processo sozinho' },
+  { id: 'falecido', nome: 'Falecido' },
+  { id: 'recusado', nome: 'Recusado pelo escritório' },
+  { id: 'outro', nome: 'Outro' },
+]
+
+export function nomeMotivo(id: string | undefined): string {
+  return MOTIVOS_DE_NAO_FECHAR.find((m) => m.id === id)?.nome ?? ''
+}

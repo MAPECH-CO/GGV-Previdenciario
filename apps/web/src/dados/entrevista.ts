@@ -77,6 +77,19 @@ function fecharEntrevista(banco: Banco, ficha: Ficha, a: Agendamento, g: Gravaca
   if (g.audio) ficha.transcricoes += 1
   const preparar = banco.tarefas.find((t) => t.id === `preparar-${a.id}`)
   if (preparar) preparar.concluida = true
+  // A advogada define o benefício com a sugestão do acervo (D1.12, GGVP-51).
+  if (!banco.tarefas.some((t) => t.id === `definir-${ficha.id}` && !t.concluida)) {
+    banco.tarefas.push({
+      id: `definir-${ficha.id}`,
+      codigo: 'D1.12',
+      cliente: { id: ficha.id, nome: ficha.nome },
+      acao: 'Definir benefício',
+      detalhe: [nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir', 'benefício sugerido, você decide (G3)'].join(' · '),
+      prazo: 'hoje',
+      href: `/entrevista/${a.id}/beneficio`,
+      setor: 'Jurídico',
+    })
+  }
   if (ficha.situacao !== 'lead') return undefined
   const id = `cadastrar-${ficha.id}`
   const existente = banco.tarefas.find((t) => t.id === id && !t.concluida)

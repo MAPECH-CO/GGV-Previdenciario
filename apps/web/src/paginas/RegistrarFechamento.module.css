@@ -1,0 +1,33 @@
+/* O resto vem de Balcao.module.css (telas de passo) e Campo.module.css (os campos). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.campos input,
+.campos select {
+  padding: 10px 14px;
+  background: var(--cor-fundo);
+  font-size: var(--fonte-14);
+}
+
+.texto {
+  font-size: var(--fonte-14);
+}
+
+.contato {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

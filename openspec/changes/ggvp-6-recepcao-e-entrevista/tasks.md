@@ -125,3 +125,48 @@
 - [x] 11.6 Playwright `e2e/transcricao.e2e.ts`: da entrevista encerrada à transcrição pronta, buscar, marcar prova, conferir e ver na ficha com o valor antigo no histórico, documentos ao checklist (CA1, CA2, CA6, CA7, CA8), falha e tentar de novo (CA3), a lista do Antônio pelo Atendimento (CA4), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 11.7 Ligar no servidor: trocar o corpo de `src/dados/transcricao.ts` por `fetch` e a transcrição pela OpenAI de verdade. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
 - [x] 11.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+<!-- Grupo benefício (sessão da Recepção, branch feat/GGVP-6-recepcao-e-entrevista): preencher só as seções deste bloco. -->
+
+## GGVP-51 · Definir o benefício com apoio do acervo
+
+- [x] 12.1 Contrato: tipos espelho do Zod da `design.md` em `apps/web/src/dados/tipos.ts` (caso do acervo, requisito, sugestão, decisão, `beneficioDefinido` na ficha, vínculo e CNIS). Verifica com `npm run typecheck`.
+- [x] 12.2 Regras com teste: `src/regras/beneficio.ts` (`beneficioCitado` pelos nomes de todo dia, `contribuicoes` do CNIS, dias de afastamento, `requisitosDoBeneficio`), com teste em `src/regras/regras.test.ts` (CA1, CA7). Verifica com `npx vitest run src/regras`.
+- [x] 12.3 Semente e servidor: o acervo de exemplo e a sugestão por sinais em `src/dados/acervo.ts`; `cnisDeExemplo` e a fala da Natália que cita o benefício em `exemplo.ts`; a tarefa "Definir benefício" ao encerrar a entrevista; `obterDefinicao` e `definirBeneficio` em `src/dados/beneficio.ts`, com teste em `src/dados/beneficio.test.ts` (CA1, CA2, CA3, CA6, CA8). Verifica com `npx vitest run src/dados`.
+- [x] 12.4 Tela `/entrevista/:agendamentoId/beneficio` (`src/paginas/DefinirBeneficio.tsx`, Figma `14:123` e `1581:348`): "A IA sugere · você confere", o citado, o sugerido, a base, o porquê, a alternativa, os requisitos, a decisão com "Outro benefício", o motivo da recusa, a conferência e "Confirmar benefício"; rota em `App.tsx`; teste em `DefinirBeneficio.test.tsx` e `App.test.tsx` (CA1, CA2, CA4, CA5, CA7). Verifica com `npx vitest run src/paginas/DefinirBeneficio.test.tsx src/App.test.tsx`.
+- [x] 12.5 Playwright `e2e/definir-beneficio.e2e.ts`: da entrevista da Josefa à sugestão com a base e os requisitos, recusar com motivo e ver no histórico (CA2, CA3, CA4, CA6, CA7), Natália com o benefício citado (CA1), tema escuro e fonte grande. Verifica com `npm run e2e`.
+- [ ] 12.6 Ligar no servidor: trocar o corpo de `src/dados/beneficio.ts` por `fetch` e o acervo simulado pelo RAG de verdade. Depende do GGVP-118, do banco do Mateus e da carga do acervo. **Fica aberta nesta história.**
+
+## GGVP-57 · Calcular tempo e pontos sobre o CNIS
+
+- [x] 13.1 Contrato: tipos espelho do Zod da `design.md` em `apps/web/src/dados/tipos.ts` (tempo, registro e cálculo; `calculos` na ficha). Verifica com `npm run typecheck`.
+- [x] 13.2 Regras com teste: `src/regras/calculo.ts` (`exigeCalculo`, `calculoPendente`, os erros dos campos pela biblioteca campos, `tempoFalado`, `REGRAS_DE_APOSENTADORIA`), com teste em `src/regras/regras.test.ts` (CA1, CA3, CA5, CA7). Verifica com `npx vitest run src/regras`.
+- [x] 13.3 Servidor de exemplo: a tarefa "Calcular tempo e pontos" ao definir benefício com cálculo; `obterCalculo` e `registrarCalculo` em `src/dados/calculo.ts`, com teste em `src/dados/calculo.test.ts` (CA1, CA2, CA3, CA4, CA5, CA6). Verifica com `npx vitest run src/dados`.
+- [x] 13.4 Tela `/entrevista/:agendamentoId/calculo` (`src/paginas/CalcularTempo.tsx`, Figma `14:159`): o CNIS com a origem e a data, os vínculos, tempo, pontos e regra, a idade, o cálculo anterior, "Já pode se aposentar?" com a data prevista, a conferência e "Concluir"; o "Caso em andamento" da ficha mostra o passo pendente; rota em `App.tsx`; teste em `CalcularTempo.test.tsx`, `FichaCliente.test.tsx` e `App.test.tsx` (CA1, CA2, CA3, CA4, CA5, CA7). Verifica com `npx vitest run src/paginas/CalcularTempo.test.tsx src/paginas/FichaCliente.test.tsx src/App.test.tsx`.
+- [x] 13.5 Playwright `e2e/calcular-tempo.e2e.ts`: do benefício com cálculo à tarefa na Central do Atendimento, calcular e concluir (CA1, CA4, CA5), refazer com "Ainda não" e a data prevista e ver o anterior (CA2, CA6), benefício sem cálculo sem o passo (CA3), tema escuro e fonte grande. Verifica com `npm run e2e`.
+- [ ] 13.6 Ligar no servidor: trocar o corpo de `src/dados/calculo.ts` por `fetch` e o CNIS de exemplo pelo anexado ao caso. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+- [ ] 13.7 No fim do grupo: rodar typecheck, lint, todos os testes e todo o Playwright; escrever `RELATORIO-grupo-beneficio.md` fora do git.
+
+<!-- Fim do grupo benefício. -->
+
+<!-- Grupo fechamento (árvore grupo-contrato, branch feat/GGVP-6-grupo-fechamento): preencher só as seções deste bloco. -->
+
+## GGVP-60 · Registrar por que não virou cliente e recontatar
+
+- [x] 14.1 Contrato: `Fechamento`, `EnvioDoFechamento`, `ResultadoDoRecontato` e `fechamento?` na ficha em `src/dados/tipos.ts`; `MOTIVOS_DE_NAO_FECHAR` em `src/dados/catalogos.ts`. Verifica com `npm run typecheck`.
+- [x] 14.2 Regra: `DIAS_PARA_PENSAR`, `DIAS_PARA_ESPERAR`, `dataSugeridaDeRecontato`, `motivoParadoDoFechamento`, `podeRegistrarOMotivo`, `precisaRegistrarFechamento` e `recontatoDevido` em `src/regras/fechamento.ts`, com teste em `src/regras/fechamento.test.ts` (CA1, CA5 a CA9, CA11, CA12). Verifica com `npx vitest run src/regras/fechamento.test.ts`.
+- [x] 14.3 Servidor de exemplo: `clienteFechou` (a ligação com o contrato), `obterFechamento`, `registrarFechamento`, `registrarRecontato` e `tarefasDeFechamento` em `src/dados/fechamento.ts`; o "Recontatar lead" como "Retornos a leads" na agenda (`dados/agenda.ts`) e o lead arquivado na busca do balcão (`regras/busca.ts`). Teste em `src/dados/fechamento.test.ts` (CA2 a CA11). Verifica com `npx vitest run src/dados/fechamento.test.ts src/regras/regras.test.ts src/dados/agenda.test.ts`.
+- [x] 14.4 Telas `/clientes/:fichaId/fechamento` (`src/paginas/RegistrarFechamento.tsx`, Figma `10:112`) e `/clientes/:fichaId/recontato` (`src/paginas/Recontatar.tsx`), o cartão "Fechamento" na ficha do cliente e as tarefas na Central; testes em `RegistrarFechamento.test.tsx` e `Recontatar.test.tsx` (CA1 a CA12). Verifica com `npx vitest run src/paginas/RegistrarFechamento.test.tsx src/paginas/Recontatar.test.tsx src/paginas/CentralAtendimento.test.tsx src/paginas/FichaCliente.test.tsx`.
+- [x] 14.5 Playwright `e2e/fechamento.e2e.ts`: recontato com a data sugerida, a agenda e a tarefa no dia (CA1, CA2, CA5, CA6, CA8, CA12), o lead arquivado no balcão e na ficha (CA4, CA7), "Sim, fechou" (CA5), tema escuro e fonte grande. Verifica com `npm run e2e -- fechamento`.
+- [ ] 14.6 Ligar no servidor: o corpo de `src/dados/fechamento.ts` vira `fetch`, `clienteFechou` vira o `fecharContrato` do contrato (GGVP-7), o último cálculo e a tela do cálculo vêm da GGVP-57 e o papel de quem registra vem do login (GGVP-78). **Fica aberta nesta história.**
+
+## GGVP-124 · Nova demanda de quem já é cliente
+
+- [x] 15.1 Contrato: `TipoDeDemanda`, `Demanda`, `EnvioDaDemanda` e `demandas?` na ficha em `src/dados/tipos.ts`. Verifica com `npm run typecheck`.
+- [x] 15.2 Regra: `motivoParadoDaDemanda`, `demandaAberta`, `entrevistaDaDemanda`, `precisaLigar`, `pessoaisNaPasta`, `documentosAPedir`, `nomeDaSubpasta` e `mandaBoasVindas` em `src/regras/novaDemanda.ts`; `precisaRegistrarFechamento` passa a valer para o cliente com a demanda entrevistada. Teste em `src/regras/novaDemanda.test.ts` (CA1 a CA3, CA5, CA7 a CA10). Verifica com `npx vitest run src/regras/novaDemanda.test.ts src/regras/fechamento.test.ts`.
+- [x] 15.3 Servidor de exemplo: `abrirDemanda` e `tarefasDeNovaDemanda` em `src/dados/novaDemanda.ts`; `registrarFechamento` responde pela demanda do cliente e chama o `clienteFechou` no "Sim, fechou". Teste em `src/dados/novaDemanda.test.ts` (CA1 a CA3, CA8, CA9). Verifica com `npx vitest run src/dados/novaDemanda.test.ts src/dados/fechamento.test.ts`.
+- [x] 15.4 Tela `/clientes/:fichaId/nova-demanda` (`src/paginas/NovaDemanda.tsx`, sem Figma próprio, no desenho das telas de passo), o botão "Nova demanda" na ficha do cliente, a demanda no "Registrar fechamento" e a tarefa "Ligar para o cliente" na Central; testes em `NovaDemanda.test.tsx` (CA1 a CA3, CA5, CA7 a CA9). Verifica com `npx vitest run src/paginas/NovaDemanda.test.tsx src/paginas/RegistrarFechamento.test.tsx src/paginas/FichaCliente.test.tsx src/paginas/CentralAtendimento.test.tsx`.
+- [x] 15.5 Playwright `e2e/nova-demanda.e2e.ts`: da ficha à marcação da entrevista (CA1, CA2, CA5, CA7), aberta pela advogada com a tarefa na Central (CA9), do balcão com recurso e defesa (CA8), tema escuro e fonte grande. Verifica com `npm run e2e -- nova-demanda`.
+- [ ] 15.6 Ligar no servidor: o corpo de `src/dados/novaDemanda.ts` vira `fetch`; o `clienteFechou` vira o `fecharContrato` (GGVP-7), que cria o processo novo e o kit novo (CA3, CA4) e passa a nomear a subpasta com `nomeDaSubpasta` (CA7); o checklist do benefício (GGVP-91) usa `documentosAPedir` (CA5); a mensagem de boas-vindas, quando existir, usa `mandaBoasVindas` (CA10); quem abre a demanda vem do login (GGVP-78). **Fica aberta nesta história.**
+
+<!-- Fim do grupo fechamento. -->

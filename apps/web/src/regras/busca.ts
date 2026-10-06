@@ -1,8 +1,8 @@
 // Busca do balcão (GGVP-16, CA1, CA2, CA5 e CA10): por nome, CPF ou telefone.
 import { normalizarTelefone } from '../campos.ts'
-import { nomeBeneficio } from '../dados/catalogos.ts'
+import { nomeBeneficio, nomeMotivo } from '../dados/catalogos.ts'
 import type { Agendamento, Ficha, ResultadoBusca } from '../dados/tipos.ts'
-import { dataCurta } from './datas.ts'
+import { dataCurta, hojeIso } from './datas.ts'
 
 /** Menos que isto não busca: 2 letras ou 3 dígitos. */
 export const MINIMO_LETRAS = 2
@@ -45,6 +45,10 @@ export const emAberto = (a: Agendamento) => !a.estado || a.estado === 'marcado'
 /** Onde a pessoa está, como o Atendimento lê. */
 export function etapaDaFicha(ficha: Ficha, hoje: string): string {
   if (ficha.situacao === 'cliente') return ficha.processos[0]?.etapa ?? 'Cliente · sem caso em andamento'
+  // O lead arquivado continua pesquisável, com o motivo e a data (GGVP-60, CA4 e CA7).
+  const f = ficha.fechamento
+  if (f?.situacao === 'arquivado') return `Lead arquivado · ${nomeMotivo(f.motivo)} · ${dataCurta(hojeIso(new Date(f.quando)), hoje)}`
+  if (f?.situacao === 'recontatar' && f.recontatarEm) return `Lead · recontatar em ${dataCurta(f.recontatarEm, hoje)} · ${nomeMotivo(f.motivo)}`
   const proximo = ficha.agendamentos.filter((a) => a.data >= hoje && emAberto(a)).sort((a, b) => a.data.localeCompare(b.data))[0]
   if (proximo) {
     const quando = proximo.data === hoje ? 'hoje' : dataCurta(proximo.data, hoje)

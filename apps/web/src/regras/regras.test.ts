@@ -14,6 +14,8 @@ import {
   preencherCadastro,
 } from './cadastro.ts'
 import { dataCurta, idadeEm } from './datas.ts'
+import { MENSAGENS_DO_CALCULO, calculoPendente, errosDoCalculo, exigeCalculo, motivoParaConcluir, paraRegistro, registroValido, tempoFalado, type ValoresDoCalculo } from './calculo.ts'
+import { beneficioCitado, contribuicoes, diasDesde, requisitosDoBeneficio } from './beneficio.ts'
 import { buscarTrechos, contagemDoTopo, marcarBusca, situacaoDaGravacao } from './transcricao.ts'
 import {
   PARTE_MAXIMA,
@@ -872,5 +874,100 @@ describe('GGVP-46 · Transcrever a entrevista', () => {
     expect(contagemDoTopo([g({ audio }), g({ audio }), g({ origem: 'registro' })])).toBe('2 gravações · 1 registro sem áudio')
     expect(contagemDoTopo([g({ audio })])).toBe('1 gravação')
     expect(contagemDoTopo([])).toBe('nenhuma conversa ainda')
+  })
+})
+
+describe('GGVP-51 · Definir o benefício com apoio do acervo', () => {
+  const advogada = (texto: string): Trecho => ({ aos: 0, quem: 'Dra. Paula', papel: 'advogada', texto })
+  const cliente = (texto: string): Trecho => ({ aos: 0, quem: 'Josefa', papel: 'cliente', texto })
+
+  it('CA1 · acha o benefício que a advogada citou, pelos nomes de todo dia; o que o cliente diz não conta', () => {
+    expect(beneficioCitado([advogada('Pelo que o senhor contou, o caminho é a aposentadoria por invalidez.')])).toBe('incapacidade-permanente')
+    expect(beneficioCitado([advogada('Vamos pedir o auxílio-doença.')])).toBe('incapacidade-temporaria')
+    expect(beneficioCitado([advogada('Primeiro pensei no BPC do idoso.'), advogada('Mas o caminho é o auxílio por incapacidade temporária.')])).toBe('incapacidade-temporaria')
+    expect(beneficioCitado([advogada('Aposentadoria por invalidez acidentária, pelo acidente.')])).toBe('incapacidade-permanente-acidentaria')
+    expect(beneficioCitado([cliente('Eu queria a aposentadoria por idade.'), advogada('Vou conferir os laudos com você.')])).toBeUndefined()
+  })
+
+  it('CA7 · carência pelos meses do CNIS, sem contar o mesmo mês duas vezes', () => {
+    const vinculos = [
+      { empresa: 'A', inicio: '2025-01', fim: '2025-06' },
+      { empresa: 'B', inicio: '2025-05', fim: '2025-08' },
+      { empresa: 'C', inicio: '2026-09' },
+    ]
+    expect(contribuicoes(vinculos, '2026-10-05')).toBe(10)
+    expect(contribuicoes(vinculos, '2025-03-31')).toBe(3)
+  })
+
+  it('CA7 · afastamento em dias e os requisitos de cada benefício, por código', () => {
+    expect(diasDesde('06/2026', '2026-10-05')).toBe(126)
+    expect(diasDesde('junho', '2026-10-05')).toBeNull()
+    const vinculos = [{ empresa: 'Exemplo Ltda', inicio: '2025-11', fim: '2026-05' }]
+    expect(requisitosDoBeneficio('incapacidade-temporaria', { vinculos, semTrabalharDesde: '09/2026' }, '2026-10-05')).toEqual([
+      { texto: 'Carência: 7 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)', atende: false },
+      { texto: 'Afastamento: 34 dias desde 09/2026; precisa de mais de 15 (calculado por código, G19)', atende: true },
+    ])
+    expect(requisitosDoBeneficio('incapacidade-permanente', {}, '2026-10-05')).toEqual([{ texto: 'Carência: sem CNIS no caso para contar as contribuições', atende: null }])
+    expect(requisitosDoBeneficio('loas-idoso', { nascimento: '1960-12-01' }, '2026-10-05')).toEqual([
+      { texto: 'Idade: 65 anos; o LOAS Idoso pede 65 (calculado por código, G19)', atende: true },
+    ])
+    expect(requisitosDoBeneficio('pensao-morte', {}, '2026-10-05')).toEqual([])
+  })
+})
+
+describe('GGVP-57 · Calcular tempo e pontos sobre o CNIS', () => {
+  const valores: ValoresDoCalculo = {
+    anos: '18',
+    meses: '4',
+    dias: '0',
+    pontos: '79,5',
+    regra: 'Transição por pontos (EC 103, art. 15)',
+    podeAposentar: 'sim',
+    dataPrevista: '',
+    conferi: true,
+  }
+
+  it('CA1 e CA3 · só os benefícios da lista "com cálculo" pedem o passo, e ele fica pendente até o primeiro cálculo', () => {
+    expect(['aposentadoria-idade', 'aposentadoria-especial', 'ctc', 'atualizacao-vinculos'].every(exigeCalculo)).toBe(true)
+    expect(['loas-idoso', 'incapacidade-temporaria', 'pensao-morte', 'revisao-vida-toda', 'divorcio', undefined].some(exigeCalculo)).toBe(false)
+    const definido = { beneficio: 'aposentadoria-idade', agendamentoId: 'a', quem: '', quando: '', fontes: [], recusouSugestao: false }
+    expect(calculoPendente({ ...natalia, beneficioDefinido: definido })).toBe(true)
+    expect(calculoPendente({ ...natalia, beneficioDefinido: { ...definido, beneficio: 'loas-idoso' } })).toBe(false)
+    expect(calculoPendente(natalia)).toBe(false)
+  })
+
+  it('CA5 e CA7 · os números são os digitados, conferidos pela biblioteca campos; "Concluir" espera a decisão e a conferência', () => {
+    expect(errosDoCalculo(valores, HOJE)).toEqual({})
+    expect(errosDoCalculo({ ...valores, anos: '1a', meses: '12', dias: '', pontos: '92.5', regra: '' }, HOJE)).toEqual({
+      anos: MENSAGENS_DO_CALCULO.anos,
+      meses: MENSAGENS_DO_CALCULO.meses,
+      dias: MENSAGENS_DO_CALCULO.dias,
+      pontos: MENSAGENS_DO_CALCULO.pontos,
+      regra: MENSAGENS_DO_CALCULO.regra,
+    })
+    expect(motivoParaConcluir({ ...valores, podeAposentar: '' }, HOJE)).toBe('Responda «Já pode se aposentar?».')
+    expect(motivoParaConcluir({ ...valores, conferi: false }, HOJE)).toBe('Marque «Conferi o cálculo com o CNIS».')
+    expect(paraRegistro(valores, HOJE)).toEqual({
+      podeAposentar: true,
+      tempo: { anos: 18, meses: 4, dias: 0 },
+      pontos: 79.5,
+      regra: 'Transição por pontos (EC 103, art. 15)',
+      conferi: true,
+    })
+    expect(registroValido(paraRegistro(valores, HOJE)!, HOJE)).toBe(true)
+    expect(registroValido({ ...paraRegistro(valores, HOJE)!, pontos: 950 }, HOJE)).toBe(false)
+  })
+
+  it('CA2 · "Ainda não" pede a data prevista, de hoje em diante', () => {
+    const ainda: ValoresDoCalculo = { ...valores, podeAposentar: 'nao', dataPrevista: '' }
+    expect(motivoParaConcluir(ainda, HOJE)).toBe('Escreva a data prevista em que poderá se aposentar.')
+    expect(motivoParaConcluir({ ...ainda, dataPrevista: '01/01/2020' }, HOJE)).toBe('Escreva a data prevista em que poderá se aposentar.')
+    expect(paraRegistro({ ...ainda, dataPrevista: '15/03/2028' }, HOJE)).toMatchObject({ podeAposentar: false, dataPrevista: '15/03/2028' })
+  })
+
+  it('o tempo como a pessoa lê', () => {
+    expect(tempoFalado({ anos: 18, meses: 4, dias: 0 })).toBe('18 anos e 4 meses')
+    expect(tempoFalado({ anos: 1, meses: 1, dias: 1 })).toBe('1 ano, 1 mês e 1 dia')
+    expect(tempoFalado({ anos: 0, meses: 0, dias: 0 })).toBe('0 dia')
   })
 })
