@@ -62,12 +62,12 @@
 
 ## GGVP-44 · Benefício deferido: prestação de contas e ida ao banco
 
-- [ ] 7.1 Contratos `PrestacaoDoCaso`, `SalvarPrestacao`, `ReceberPrestacao`, `IdaAoBancoDoCaso`, `AgendarIdaAoBanco` e `RegistrarEnvio`; teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 7.2 CA5 · Cálculo da prestação em `apps/api/src/fluxo/prestacao.ts` (centavos; honorários pelo piso; repasse); teste com centavos quebrados; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 7.3 CA1, CA2, CA4, CA5, CA6, CA7 · `GET` e `POST /api/casos/:id/prestacao` (carta ligada na vigília, percentual do contrato, conferência obrigatória, concluir abre Financeiro e Atendimento juntos, nova versão ao alterar); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 7.4 CA8, CA9 · `POST /api/casos/:id/prestacao/recebimento` (recebido com quem e quando; divergência com motivo volta à advogada; a mesma pessoa do OK não recebe); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 7.5 CA3, CA10, CA11, CA12 · `GET` e `POST /api/casos/:id/banco` (quatro campos obrigatórios, remarcar, sem valores) e `POST /api/casos/:id/banco/envio` (modelo, G8, registro da mensagem); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 7.6 Dados de exemplo: modelo "Confirmação da ida ao banco", contratos com 30% e um caso deferido com "Prestar contas" e a carta; verifica entrando como advogada.
-- [ ] 7.7 Telas "Prestar contas", "Receber a prestação" e "Agendar ida ao banco"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 7.8 Playwright: a advogada conclui a prestação, o Financeiro recebe, o Atendimento agenda e registra a confirmação; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 7.1 Contratos `PrestacaoDoCaso`, `SalvarPrestacao`, `ReceberPrestacao`, `IdaAoBancoDoCaso`, `AgendarIdaAoBanco` e `RegistrarEnvio`; teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 7.2 CA5 · Cálculo da prestação (`calcularPrestacao` em `packages/contratos`) (centavos; honorários pelo piso; repasse); teste com centavos quebrados; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.3 CA1, CA2, CA4, CA5, CA6, CA7 · `GET` e `POST /api/casos/:id/prestacao` (carta ligada na vigília, percentual do contrato, conferência obrigatória, concluir abre Financeiro e Atendimento juntos, nova versão ao alterar); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.4 CA8, CA9 · `POST /api/casos/:id/prestacao/recebimento` (recebido com quem e quando; divergência com motivo volta à advogada; a mesma pessoa do OK não recebe); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.5 CA3, CA10, CA11, CA12 · `GET` e `POST /api/casos/:id/banco` (quatro campos obrigatórios, remarcar, sem valores) e `POST /api/casos/:id/banco/envio` (modelo, G8, registro da mensagem); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.6 Dados de exemplo: modelo "Confirmação da ida ao banco", contratos com 30% e um caso deferido com "Prestar contas" e a carta; verifica entrando como advogada.
+- [x] 7.7 Telas "Prestar contas", "Receber a prestação" e "Agendar ida ao banco"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 7.8 Playwright: a advogada conclui a prestação, o Financeiro recebe, o Atendimento agenda e registra a confirmação; verifica com `pnpm --filter @ggv/web e2e`.
 - [ ] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

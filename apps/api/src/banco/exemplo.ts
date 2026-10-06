@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, credencialGovbr, decisao, documento, etapa, exigencia, parecerMedico, pessoa, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, modelo, parecerMedico, pessoa, resultadoInss, tarefa, usuario } from './esquema.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
 
@@ -131,4 +131,31 @@ export async function semearExemplos(banco: Banco) {
     { casoId: cu.id, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' },
     { casoId: cu.id, passo: 'D2.05', titulo: 'Tratar exigência do INSS', perfilDono: 'advogada' },
   ])
+
+  // Benefício deferido (GGVP-44): modelo da confirmação, contrato com 30% e um caso com "Prestar contas" e a carta.
+  await banco.insert(modelo).values({
+    tipo: 'mensagem',
+    nome: 'Confirmação da ida ao banco',
+    conteudo: 'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}. Quem vai com você: {acompanhante}. Qualquer dúvida, fale com o escritório. (modelo de exemplo)',
+  })
+  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
+  const [pv] = await banco.insert(pessoa).values({ nome: 'Vera Lúcia (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cv] = await banco.insert(caso).values({ pessoaId: pv.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+  await banco.insert(contrato).values({ casoId: cv.id, situacao: 'assinado', percentualHonorarios: '30.00' })
+  const [carta] = await banco
+    .insert(documento)
+    .values({
+      casoId: cv.id,
+      pessoaId: pv.id,
+      tipo: 'comunicacao_inss',
+      chaveArmazenamento: `exemplo/${cv.id}/carta`,
+      nomeOriginal: 'Carta de concessão (exemplo).pdf',
+      mime: 'application/pdf',
+      tamanho: 0,
+      hashSha256: 'exemplo',
+      origem: 'exemplo',
+    })
+    .returning()
+  await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
+  await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
 }

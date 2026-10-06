@@ -131,7 +131,8 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
       } else if (dados.diferenteDoPedido) {
         await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Analisar deferimento diferente do pedido', perfilDono: 'advogada' })
       } else {
-        await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada' })
+        // GGVP-44 CA4: a prestação nasce com a carta de concessão (a comunicação do deferimento).
+        await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: d.id })
       }
     })
     await historico(quem, indeferido ? 'indeferimento_registrado' : 'deferimento_registrado', pedido, `caso:${casoId}`, { diferenteDoPedido: dados.diferenteDoPedido })

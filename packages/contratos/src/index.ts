@@ -59,3 +59,4 @@ export type Erro = z.infer<typeof Erro>
 export * from './permissoes.ts'
 export * from './inss.ts'
 export * from './exigencia.ts'
+export * from './prestacao.ts'
