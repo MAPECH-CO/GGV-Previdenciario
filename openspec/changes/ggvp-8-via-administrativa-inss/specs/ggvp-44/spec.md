@@ -15,12 +15,12 @@ Registrar "Deferido" SHALL abrir a tarefa "Prestar contas" para a advogada. A ta
 - **Então** nasce a tarefa "Prestar contas" (Jurídico); a tarefa "Agendar ida ao banco" (Atendimento) só nasce quando a prestação é concluída, junto com a do Financeiro
 
 ### Requirement: CA2 · Concluir abre Financeiro e Atendimento ao mesmo tempo
-Concluir a prestação SHALL abrir, na mesma operação, a tarefa do Financeiro e a do Atendimento. Os valores MUST ficar visíveis só para o Financeiro e o Jurídico; o Atendimento agenda sem ver valores.
+Concluir a prestação SHALL abrir, na mesma operação, a tarefa do Financeiro e a do Atendimento. Os valores MUST ficar visíveis só para o Financeiro e para a advogada que faz a prestação (Pedro, 06/10: o financeiro do escritório é todo do Financeiro); a Sênior, o Sócio e o Atendimento não veem valores, e o Atendimento agenda sem ver valores.
 
 #### Scenario: CA2 · Prestação enviada
 - **Dado** a prestação de contas feita
 - **Quando** envio
-- **Então** o Financeiro recebe e só ele e o Jurídico veem os valores; ao mesmo tempo, o Atendimento recebe a tarefa de agendar a ida ao banco
+- **Então** o Financeiro recebe e só ele e a advogada que fez a prestação veem os valores; ao mesmo tempo, o Atendimento recebe a tarefa de agendar a ida ao banco
 
 ### Requirement: CA3 · Ida ao banco agendada gera a confirmação ao cliente
 Registrar a data da ida ao banco SHALL preparar a confirmação ao cliente pelo modelo aprovado; o envio MUST ser revisado por pessoa (Q5) e MUST NOT acontecer antes do OK da advogada na prestação (G8).

@@ -20,7 +20,7 @@ export const VersaoDaPrestacao = z.object({
 })
 export type VersaoDaPrestacao = z.infer<typeof VersaoDaPrestacao>
 
-/** GET /api/casos/:id/prestacao (só `prestacao.ver`: Financeiro e Jurídico, CA2). */
+/** GET /api/casos/:id/prestacao (só `prestacao.ver`: Financeiro e advogada, CA2). */
 export const PrestacaoDoCaso = z.object({
   casoId: z.uuid(),
   cliente: z.string(),

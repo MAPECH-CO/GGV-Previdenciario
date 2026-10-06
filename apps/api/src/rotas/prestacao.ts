@@ -69,7 +69,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     return (id: string | null) => linhas.find((l) => l.id === id)?.nome ?? null
   }
 
-  // CA2, CA4, CA5, CA8: valores só para o Financeiro e o Jurídico (`prestacao.ver`), com a carta e as versões.
+  // CA2, CA4, CA5, CA8: valores só para o Financeiro e a advogada que faz a prestação (`prestacao.ver`; Pedro, 06/10), com a carta e as versões.
   app.get<{ Params: { id: string } }>('/api/casos/:id/prestacao', { preHandler: exigir(banco, 'prestacao.ver', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const c = await clienteDo(casoId)
