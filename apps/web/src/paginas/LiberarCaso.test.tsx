@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
-import { obterParecer, registrarParecer } from '../dados/parecer.ts'
+import { obterParecer, pedirDispensa, registrarParecer, responderDispensa } from '../dados/parecer.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { LiberarCaso } from './LiberarCaso.tsx'
 
@@ -89,5 +89,42 @@ describe('Liberar ao Jurídico · tela do passo', () => {
     expect(resumo.textContent).toContain('Fichapreenchida')
     expect(resumo.textContent).toContain('BenefícioAuxílio Acidentário')
     expect(resumo.textContent).toContain('Parecer médicoSuficiente')
+  })
+
+  it('GGVP-33 CA1 e CA4 · com o parecer Insuficiente, o item diz o que falta e "Liberar" não habilita', async () => {
+    await completarRita()
+    const analise = (await obterParecer('rita-exemplo-1', 'juridico'))!.juridico!.analise!
+    const conferidos = Object.fromEntries(analise.itens.map((i) => [i.id, i.id === 'prognostico' ? 'ausente' : i.situacao]))
+    await registrarParecer(
+      'rita-exemplo-1',
+      { analise: analise.quando, conferidos, decisao: 'insuficiente', abordar: 'Qual a previsão de duração do quadro?' },
+      { perfil: 'advogada', nome: 'Dra. Paula (exemplo)' },
+    )
+    await abrir('rita-exemplo-1')
+    expect(screen.getByText(/Parecer médico Insuficiente \(G17\) · confirmado por Dra\. Paula \(exemplo\), 05\/10: falta o complemento do médico/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('checkbox', { name: /Checklist do LOAS Deficiente/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }))
+    expect(liberar().disabled).toBe(true)
+    expect(screen.getByText('Não dá para liberar ao Jurídico: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).')).toBeTruthy()
+  })
+
+  it('GGVP-33 CA2 · a dispensa de duas sêniores aparece no item do parecer e libera', async () => {
+    await completarRita()
+    const analise = (await obterParecer('rita-exemplo-1', 'juridico'))!.juridico!.analise!
+    const conferidos = Object.fromEntries(analise.itens.map((i) => [i.id, i.id === 'prognostico' ? 'ausente' : i.situacao]))
+    await registrarParecer(
+      'rita-exemplo-1',
+      { analise: analise.quando, conferidos, decisao: 'insuficiente', abordar: 'Qual a previsão de duração do quadro?' },
+      { perfil: 'advogada', nome: 'Dra. Paula (exemplo)' },
+    )
+    configurarExemplo({ agora: () => new Date(2026, 9, 5, 16, 0) })
+    await pedirDispensa('rita-exemplo-1', 'Prazo do juiz vence e o médico só atende em novembro.', { perfil: 'senior', nome: 'Dra. Renata (exemplo)' })
+    await responderDispensa('rita-exemplo-1', true, { perfil: 'senior-2', nome: 'Dr. Otávio (exemplo)' })
+    await abrir('rita-exemplo-1')
+    const parecer = screen.getByRole('checkbox', { name: /Parecer médico dispensado por duas sêniores \(G17\) · Dra\. Renata \(exemplo\) e Dr\. Otávio \(exemplo\), 05\/10/ }) as HTMLInputElement
+    expect(parecer.checked).toBe(true)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Checklist do LOAS Deficiente/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }))
+    expect(liberar().disabled).toBe(false)
   })
 })

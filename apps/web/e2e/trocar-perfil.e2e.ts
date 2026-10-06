@@ -17,7 +17,8 @@ test.describe('Trocar perfil (perfis de exemplo, só na tela)', () => {
   test('trocar leva à tela inicial da função e troca a ação do topo; a escolha fica', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: 'Atendimento', exact: true }).click()
-    await page.getByRole('menuitemradio', { name: /^Sênior/ }).click()
+    // Duas sêniores no menu (GGVP-33): a Dra. Renata.
+    await page.getByRole('menuitemradio', { name: /^Sênior Dra\. Renata/ }).click()
 
     // Sênior ainda não tem Central: cai na tela "não construída".
     await expect(page).toHaveURL('/senior')

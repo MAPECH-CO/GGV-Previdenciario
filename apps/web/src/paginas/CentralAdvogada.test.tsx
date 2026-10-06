@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registrarConfirmacao } from '../dados/confirmacao.ts'
 import { registrarTentativaDoComplemento } from '../dados/complemento.ts'
-import { obterParecer, registrarParecer } from '../dados/parecer.ts'
+import { obterParecer, pedirDispensa, registrarParecer } from '../dados/parecer.ts'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from './CentralAdvogada.tsx'
 
@@ -36,6 +36,12 @@ describe('Central da Advogada', () => {
     await registrarTentativaDoComplemento('rita-exemplo-1', { canal: 'ligacao', resultado: 'sem-resposta' })
     render(<CentralAdvogada />)
     expect(screen.getByRole('link', { name: 'Rita Exemplo · Decidir complemento' }).getAttribute('href')).toBe('/casos/rita-exemplo-1/complemento')
+  })
+
+  it('GGVP-33 CA2 · o pedido de dispensa chega à outra sênior como "Aprovar dispensa do parecer"', async () => {
+    await pedirDispensa('rita-exemplo-1', 'Prazo do juiz vence e o médico só atende em novembro.', { perfil: 'senior', nome: 'Dra. Renata (exemplo)' })
+    render(<CentralAdvogada />)
+    expect(screen.getByRole('link', { name: 'Rita Exemplo · Aprovar dispensa do parecer' }).getAttribute('href')).toBe('/casos/rita-exemplo-1/parecer/dispensa')
   })
 
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {

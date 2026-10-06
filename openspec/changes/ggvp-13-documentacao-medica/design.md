@@ -213,3 +213,47 @@ export const DecisaoDoComplemento = z.object({ justificativa: z.string().trim().
 2. **O laço é o da cobrança (GGVP-101)**: 2 tentativas, 3 dias entre elas, lembrete e, no limite, a sênior. Com prazo do juiz ou do INSS no caso (a cobrança aberta do processo), o limite é esse prazo e a tarefa fica urgente (resposta do Lucas, Q2). O limite sem prazo externo segue o da cobrança até o refinamento da régua geral (GGVP-94).
 3. **A pendência é uma só** (Q4): o parecer novo Insuficiente atualiza o que pedir; o Suficiente encerra (GGVP-20). O documento novo sobe pelo card como laudo novo (D1.02) e vai à comparação; a tela mostra ao Atendimento a prévia da IA (o que o documento novo responde e o que ainda falta, em perguntas), sem o conteúdo clínico. A palavra final é da advogada (G17).
 4. **A sênior no limite** decide uma nova tentativa com prazo ou a dispensa do parecer (GGVP-33).
+
+## GGVP-33 · Portão: sem parecer, o caso não anda
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/parecer/dispensa` | sem quadro da dispensa; visual das telas de passo e o aviso do Parecer médico `1654:2` ("Só a sênior dispensa o parecer, com justificativa") | A situação do parecer, a justificativa obrigatória, "Pedir a dispensa (1ª sênior)", "Aprovar a dispensa (2ª sênior)" ou "Recusar" para outra sênior, e o feito com as duas aprovações |
+| `/casos/:id/liberar` (muda) | step_D1.24 `10:264` | O item "Parecer médico" diz o que falta (Insuficiente, Contraditório ou sem confirmação humana) ou a dispensa com as duas sêniores |
+| janela do Parecer médico (muda) | `1654:2` | Para a sênior, "Dispensar o parecer"; a dispensa aprovada aparece com a justificativa |
+| `/advogada` (muda) | Central · Advogada `59:449` | "Aprovar dispensa do parecer" para a segunda sênior |
+| chat das Centrais (muda) | "Pergunte ou peça" | Pedido para pular o parecer é recusado, com o portão que falta |
+
+### Contrato (acrescenta a `packages/contratos/pareceres.ts`)
+
+```ts
+export const AcaoDoPortao = z.enum(['liberar', 'aprovar-inss', 'pedir-peticao'])   // D1.24, D2.01, D3.05
+export const Dispensa = z.object({
+  justificativa: z.string().trim().min(10).max(1000),
+  pedidaPor: z.string(), pedidaEm: z.string(),                 // 1ª sênior
+  aprovadaPor: z.string().optional(), aprovadaEm: z.string().optional(),   // 2ª sênior, outra pessoa
+  recusadaPor: z.string().optional(), recusadaEm: z.string().optional(),
+})
+// O Parecer do portão ganha a situação "dispensado".
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `POST /api/processos/:id/parecer/dispensa` | `{ justificativa }` | parecer do caso | `pedirDispensa` |
+| `POST /api/processos/:id/parecer/dispensa/aprovacao` | `{ aprova: boolean }` | parecer do caso | `responderDispensa` |
+
+### Campos
+
+| Campo | Regra |
+|---|---|
+| Justificativa | texto, obrigatório, de 10 a 1000 letras |
+
+### Decisões da história
+
+1. **A regra do portão é uma só** (`travaDoParecer` em `regras/liberacao.ts`) e vale para as três ações: liberar ao Jurídico (D1.24, esta change), aprovar para o INSS (D2.01, GGVP-23) e pedir a petição (D3.05, GGVP-63). As telas do D2.01 e do D3.05 são dessas histórias; elas chamam a mesma regra. A validação no servidor contra chamada direta é da GGVP-109.
+2. **Duas sêniores** (resposta do Lucas de 01/10, Q14): a primeira pede com a justificativa, a segunda, outra pessoa, aprova ou recusa. As duas aprovações e a justificativa ficam no histórico da ficha e na janela do parecer. O painel de indicadores (GGVP-75) não existe ainda: a dispensa fica registrada para ele ler.
+3. **Quem é a sênior**: o "Trocar perfil" ganha uma segunda sênior de exemplo (Dr. Otávio), para a segunda aprovação ser de outra pessoa. Ao ligar no servidor, vem da sessão.
+4. **O parecer novo manda** (CA5): a dispensa vale até um parecer registrado depois dela; o portão sempre olha o registro ou a dispensa mais nova.
+5. **O chat recusa** (CA3): o pedido para pular, dispensar ou ignorar o parecer não vira ação: o chat responde que falta o parecer "Suficiente" confirmado por pessoa (G17) e que só duas sêniores dispensam, na tela do parecer. Sem card de confirmação.

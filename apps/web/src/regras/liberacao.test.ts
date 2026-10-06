@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Checklist } from './checklist.ts'
-import { diasNaFila, idade, parecerEmOrdem, precisaDeParecer, travaDaLiberacao } from './liberacao.ts'
+import { diasNaFila, idade, parecerEmOrdem, precisaDeParecer, travaDaLiberacao, travaDoParecer } from './liberacao.ts'
 
 const completo: Checklist = { temLista: true, itens: [], completo: true, faltam: [] }
 const pronto = {
@@ -26,10 +26,32 @@ describe('Liberar o caso ao Jurídico (GGVP-18)', () => {
     expect(travaDaLiberacao({ ...pronto, checklist: { ...completo, completo: false, faltam: ['Comprovante de renda'] } })).toBe(
       'O checklist está incompleto. Falta: Comprovante de renda.',
     )
-    expect(travaDaLiberacao({ ...pronto, parecer: { situacao: 'pendente' } })).toBe('O parecer médico ainda não está "Suficiente", confirmado por pessoa (G17).')
+    expect(travaDaLiberacao({ ...pronto, parecer: { situacao: 'pendente' } })).toBe(
+      'Não dá para liberar ao Jurídico: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico (G17).',
+    )
     expect(travaDaLiberacao({ ...pronto, conferiAssinaturas: false })).toBe('Marque o checklist e as assinaturas e datas: os dois são conferência sua.')
     expect(travaDaLiberacao({ ...pronto, conferiChecklist: false })).toBe('Marque o checklist e as assinaturas e datas: os dois são conferência sua.')
     expect(travaDaLiberacao({ ...pronto, beneficio: 'loas-idoso', nomeBeneficio: 'LOAS Idoso', parecer: undefined })).toBeNull()
+  })
+
+  it('GGVP-33 CA1 · o G17 trava as três ações e diz o que falta em cada situação', () => {
+    const insuficiente = { situacao: 'insuficiente' as const, quem: 'Dra. Paula', data: '2026-10-06' }
+    expect(travaDoParecer('liberar', 'loas-deficiente', insuficiente)).toBe(
+      'Não dá para liberar ao Jurídico: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).',
+    )
+    expect(travaDoParecer('aprovar-inss', 'aposentadoria-pcd', { situacao: 'contraditorio' })).toBe(
+      'Não dá para aprovar para o INSS: um documento contradiz o requisito do benefício e o parecer está Contraditório (G18).',
+    )
+    expect(travaDoParecer('pedir-peticao', 'auxilio-acidente', undefined)).toBe('Não dá para pedir a petição: falta o parecer médico "Suficiente", confirmado por pessoa (G17).')
+    expect(travaDoParecer('pedir-peticao', 'auxilio-acidente', { situacao: 'pendente' })).toMatch(/ainda não foi confirmado por pessoa/)
+    expect(travaDoParecer('aprovar-inss', 'loas-deficiente', { situacao: 'suficiente' })).toBeNull()
+    expect(travaDoParecer('liberar', 'loas-idoso', undefined)).toBeNull()
+  })
+
+  it('GGVP-33 CA2 · a dispensa de duas sêniores põe o parecer em ordem nas três ações', () => {
+    const dispensado = { situacao: 'dispensado' as const, quem: 'Dra. Renata e Dr. Otávio', data: '2026-10-06', justificativa: 'prazo do juiz' }
+    expect(parecerEmOrdem('loas-deficiente', dispensado)).toBe(true)
+    for (const acao of ['liberar', 'aprovar-inss', 'pedir-peticao'] as const) expect(travaDoParecer(acao, 'loas-deficiente', dispensado)).toBeNull()
   })
 
   it('CA5 · a idade na fila em dias', () => {

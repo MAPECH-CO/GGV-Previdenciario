@@ -329,7 +329,17 @@ export function DarParecer({ processoId }: { processoId: string }) {
                 )}
               </section>
 
-              <p className={styles.aviso}>Só a sênior dispensa, com justificativa; documento que contradiz o requisito bloqueia (G17/G18).</p>
+              <p className={styles.aviso}>
+                Só a sênior dispensa, com justificativa; documento que contradiz o requisito bloqueia (G17/G18).
+                {perfil?.id.startsWith('senior') && (
+                  <>
+                    {' '}
+                    <a className={styles.avisoLink} href={`/casos/${processo.id}/parecer/dispensa`}>
+                      Dispensar o parecer
+                    </a>
+                  </>
+                )}
+              </p>
 
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={motivo !== null || registrando} onClick={registrar}>

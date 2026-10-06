@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
+import { recusaDoChat } from '../regras/parecer.ts'
 import styles from './ChatIA.module.css'
 
 type Props = {
@@ -34,6 +35,13 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
       return
     }
     if (!limpo) return
+    // Pular o parecer médico não vira ação: não há card para isso (GGVP-33, CA3).
+    const recusa = recusaDoChat(limpo)
+    if (recusa) {
+      setAviso(recusa)
+      setTexto('')
+      return
+    }
     if (!onEnviar) {
       setAviso('O chat ainda não está ligado ao servidor.')
       return

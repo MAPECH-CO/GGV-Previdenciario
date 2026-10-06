@@ -189,3 +189,41 @@ export function mensagemDoComplemento(d: { nome: string; beneficio: string; perg
     `Quando tiver o relatório, mande foto por aqui ou traga ao escritório até ${dataCurta(d.ate, d.hoje)}. Qualquer dúvida, é só responder esta mensagem.`
   )
 }
+
+/** O pedido de dispensa do parecer (GGVP-33): a primeira sênior pede com a justificativa; a segunda, outra pessoa, responde (Q14). */
+export type Dispensa = {
+  justificativa: string
+  pedidaPor: string
+  /** Data e hora ISO. */
+  pedidaEm: string
+  aprovadaPor?: string
+  aprovadaEm?: string
+  recusadaPor?: string
+  recusadaEm?: string
+}
+
+export const JUSTIFICATIVA_MINIMA = 10
+
+/** Por que a sênior ainda não pode pedir a dispensa; pronto, null (CA2). */
+export function motivoParaNaoPedirDispensa(justificativa: string): string | null {
+  if (justificativa.trim().length < JUSTIFICATIVA_MINIMA) return 'A justificativa é obrigatória: por que seguir sem a prova médica (G17).'
+  if (justificativa.length > TEXTO_MAXIMO_DO_PARECER) return `A justificativa vai até ${TEXTO_MAXIMO_DO_PARECER} letras.`
+  return null
+}
+
+/** Por que esta pessoa não pode aprovar a dispensa; pode, null. Uma pessoa sozinha nunca dispensa (Q14). */
+export function motivoParaNaoAprovarDispensa(dispensa: Dispensa | undefined, quem: string): string | null {
+  if (!dispensa) return 'Não há pedido de dispensa.'
+  if (dispensa.aprovadaPor || dispensa.recusadaPor) return 'O pedido de dispensa já foi respondido.'
+  if (dispensa.pedidaPor === quem) return 'Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior (G17).'
+  return null
+}
+
+const PULAR_O_PARECER = /\b(pul[ae]r?|dispens[ae]r?|ignor[ae]r?|passar por cima d[oe]|sem)\s+(o\s+)?parecer\b|\bliber[ae]r?\b.*\bsem\b.*\bparecer\b/i
+
+/** O chat recusa pular o parecer: não há card para isso (GGVP-33, CA3). Outro pedido, null. */
+export function recusaDoChat(texto: string): string | null {
+  return PULAR_O_PARECER.test(texto)
+    ? 'Não posso pular o parecer médico. O caso só é liberado, aprovado para o INSS ou tem petição pedida com o parecer "Suficiente" confirmado por pessoa (G17). Só duas sêniores dispensam, com justificativa, na tela do parecer.'
+    : null
+}

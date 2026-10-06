@@ -18,6 +18,7 @@ describe('tela inicial e ação de cada perfil', () => {
       senior: '/senior',
       financeiro: '/financeiro',
       documentacao: '/',
+      'senior-2': '/senior',
     })
   })
 

@@ -12,10 +12,13 @@ import {
   abaixoDe24Meses,
   abordarSugerido,
   analisar,
+  motivoParaNaoAprovarDispensa,
+  motivoParaNaoPedirDispensa,
   motivoParaNaoRegistrar,
   mudancas,
   situacaoFinal,
   type Conferidos,
+  type Dispensa,
   type ItemAnalisado,
   type LeituraMedica,
   type SituacaoDoItem,
@@ -84,7 +87,14 @@ export type RegistroDoParecer = {
   analise: string
 }
 
-export type ParecerDoCaso = { processoId: string; fichaId: string; analises: AnaliseDaIA[]; registros: RegistroDoParecer[] }
+export type ParecerDoCaso = {
+  processoId: string
+  fichaId: string
+  analises: AnaliseDaIA[]
+  registros: RegistroDoParecer[]
+  /** Os pedidos de dispensa do parecer, do primeiro ao último (GGVP-33). */
+  dispensas?: Dispensa[]
+}
 
 /** A comparação do laudo novo com o último laudo (Figma 2087:2). Só o Jurídico recebe. */
 export type Comparacao = {
@@ -99,7 +109,7 @@ export type Comparacao = {
 
 export type Visao = 'juridico' | 'atendimento'
 
-export type SituacaoNaTela = SituacaoDoParecer | 'pendente' | 'sem-documentos'
+export type SituacaoNaTela = SituacaoDoParecer | 'pendente' | 'sem-documentos' | 'dispensado'
 
 /** O parecer como a tela recebe. `juridico` só vem para o Jurídico: o resto não tem conteúdo clínico. */
 export type ParecerNaTela = {
@@ -122,6 +132,8 @@ export type ParecerNaTela = {
   faltaPedir: string[]
   abordar?: string
   historico: { situacao: SituacaoDoParecer; quem: string; quando: string; roteiro?: RoteiroUsado }[]
+  /** O último pedido de dispensa (GGVP-33): a justificativa e as duas sêniores aparecem no card (CA2). */
+  dispensa?: Dispensa
   juridico?: {
     analise?: AnaliseDaIA
     registro?: RegistroDoParecer
@@ -461,12 +473,20 @@ function comparar(p: ParecerDoCaso, laudoNovoEm: string): Comparacao | undefined
 
 const quandoCurto = (iso: string) => hojeIso(new Date(iso))
 
+/** A dispensa aprovada mais nova que o último registro: vale até um parecer registrado depois dela (GGVP-33, CA5). */
+function dispensaEmVigor(p: ParecerDoCaso): Dispensa | undefined {
+  const d = p.dispensas?.at(-1)
+  const registro = p.registros.at(-1)
+  return d?.aprovadaEm && (!registro || d.aprovadaEm > registro.quando) ? d : undefined
+}
+
 function naTela(banco: Banco, ficha: Ficha, processo: Processo, p: ParecerDoCaso, visao: Visao): ParecerNaTela {
   const analise = p.analises.at(-1)
   const registro = p.registros.at(-1)
   const laudoNovoEm = laudoNovoDo(ficha, processo)
   const roteiro = registro?.roteiro ?? analise?.roteiro
-  const situacao: SituacaoNaTela = registro?.situacao ?? (analise ? 'pendente' : 'sem-documentos')
+  const situacao: SituacaoNaTela = dispensaEmVigor(p) ? 'dispensado' : (registro?.situacao ?? (analise ? 'pendente' : 'sem-documentos'))
+  const dispensa = p.dispensas?.at(-1)
   const comFalta = registro && registro.situacao !== 'suficiente'
   const tela: ParecerNaTela = {
     ficha: { id: ficha.id, nome: ficha.nome },
@@ -483,6 +503,7 @@ function naTela(banco: Banco, ficha: Ficha, processo: Processo, p: ParecerDoCaso
     faltaPedir: comFalta ? registro.itens.filter((i) => i.tipo === 'obrigatorio' && i.situacao !== 'presente').map((i) => i.pergunta ?? i.texto) : [],
     ...(comFalta && registro.abordar && { abordar: registro.abordar }),
     historico: p.registros.map(({ situacao: s, quem, quando, roteiro: r }) => ({ situacao: s, quem, quando, ...(r && { roteiro: r }) })),
+    ...(dispensa && { dispensa }),
   }
   if (visao !== 'juridico') return tela
   const comparacao = laudoNovoEm ? comparar(p, laudoNovoEm) : undefined
@@ -581,9 +602,59 @@ export function parecerParaOPortao(banco: Banco, processoId: string): Parecer | 
   const caso = acharCaso(banco, processoId)
   if (!caso) return undefined
   const p = emDia(banco, caso.ficha, caso.processo)
+  const dispensa = dispensaEmVigor(p)
+  if (dispensa) return { situacao: 'dispensado', quem: `${dispensa.pedidaPor} e ${dispensa.aprovadaPor}`, data: quandoCurto(dispensa.aprovadaEm!), justificativa: dispensa.justificativa }
   const registro = p.registros.at(-1)
   if (registro) return { situacao: registro.situacao, quem: registro.quem, data: quandoCurto(registro.quando) }
   return p.analises.length > 0 ? { situacao: 'pendente' } : undefined
+}
+
+const ehSenior = (perfil: string | undefined) => perfil?.startsWith('senior') === true
+
+/** POST /api/processos/:id/parecer/dispensa. A primeira sênior pede, com a justificativa (GGVP-33, CA2). */
+export async function pedirDispensa(processoId: string, justificativa: string, quem: QuemRegistra): Promise<ParecerNaTela> {
+  await esperar()
+  if (!ehSenior(quem.perfil)) throw new Error('Só a sênior dispensa o parecer médico.')
+  const motivo = motivoParaNaoPedirDispensa(justificativa)
+  if (motivo) throw new Error(motivo)
+  const banco = ler()
+  const caso = acharCaso(banco, processoId)
+  if (!caso) throw new Error('Caso não encontrado')
+  const p = emDia(banco, caso.ficha, caso.processo)
+  if (p.registros.at(-1)?.situacao === 'suficiente') throw new Error('O parecer já está Suficiente: não há o que dispensar.')
+  if (dispensaEmVigor(p)) throw new Error('O parecer já foi dispensado.')
+  const ultima = p.dispensas?.at(-1)
+  if (ultima && !ultima.aprovadaPor && !ultima.recusadaPor) throw new Error('Já há um pedido de dispensa esperando a segunda sênior.')
+  p.dispensas = [...(p.dispensas ?? []), { justificativa: justificativa.trim(), pedidaPor: quem.nome, pedidaEm: agora().toISOString() }]
+  caso.ficha.historico.push(evento(`Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17). Justificativa: ${justificativa.trim()}`, quem.nome))
+  gravar(banco)
+  return naTela(banco, caso.ficha, caso.processo, p, 'juridico')
+}
+
+/** POST /api/processos/:id/parecer/dispensa/aprovacao. A segunda sênior, outra pessoa, aprova ou recusa (Q14). */
+export async function responderDispensa(processoId: string, aprova: boolean, quem: QuemRegistra): Promise<ParecerNaTela> {
+  await esperar()
+  if (!ehSenior(quem.perfil)) throw new Error('Só a sênior dispensa o parecer médico.')
+  const banco = ler()
+  const caso = acharCaso(banco, processoId)
+  if (!caso) throw new Error('Caso não encontrado')
+  const p = emDia(banco, caso.ficha, caso.processo)
+  const dispensa = p.dispensas?.at(-1)
+  const motivo = motivoParaNaoAprovarDispensa(dispensa, quem.nome)
+  if (motivo) throw new Error(motivo)
+  const quando = agora().toISOString()
+  if (aprova) Object.assign(dispensa!, { aprovadaPor: quem.nome, aprovadaEm: quando })
+  else Object.assign(dispensa!, { recusadaPor: quem.nome, recusadaEm: quando })
+  caso.ficha.historico.push(
+    evento(
+      aprova
+        ? `Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por ${dispensa!.pedidaPor} e ${quem.nome} (G17)`
+        : `Recusou a dispensa do parecer médico pedida por ${dispensa!.pedidaPor}: o caso continua esperando o parecer (G17)`,
+      quem.nome,
+    ),
+  )
+  gravar(banco)
+  return naTela(banco, caso.ficha, caso.processo, p, 'juridico')
 }
 
 /** A documentação médica na ficha do Atendimento: o resultado e quem confirmou, nunca o conteúdo. */
@@ -635,7 +706,24 @@ export function tarefasDoParecer(): Tarefa[] {
           },
         ]
       }
-      if (p.registros.at(-1)?.analise === analise.quando) return []
+      // A dispensa da sênior esperando a segunda aprovação (GGVP-33).
+      const dispensa = p.dispensas?.at(-1)
+      if (dispensa && !dispensa.aprovadaPor && !dispensa.recusadaPor) {
+        return [
+          {
+            id: `dispensa-${processo.id}`,
+            codigo: 'D1.24',
+            cliente: { id: ficha.id, nome: ficha.nome },
+            acao: 'Aprovar dispensa do parecer',
+            detalhe: `${beneficio} · pedida por ${dispensa.pedidaPor} · a segunda aprovação é de outra sênior (G17)`,
+            prazo: 'hoje',
+            urgente: true,
+            href: `/casos/${processo.id}/parecer/dispensa`,
+            processoId: processo.id,
+          },
+        ]
+      }
+      if (dispensaEmVigor(p) || p.registros.at(-1)?.analise === analise.quando) return []
       return [
         {
           id: `parecer-${processo.id}`,

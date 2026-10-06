@@ -123,6 +123,15 @@ describe('Central do Atendimento', () => {
     expect(campo.value).toBe('Qual é a próxima tarefa da Josefa?')
   })
 
+  it('GGVP-33 CA3 · o chat recusa pular o parecer e diz o portão que falta, sem card', () => {
+    render(<CentralAtendimento />)
+    const campo = screen.getByRole('textbox', { name: /Pergunte ou peça/ })
+    fireEvent.change(campo, { target: { value: 'libera a Rita sem o parecer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+    expect(screen.getByRole('status').textContent).toMatch(/^Não posso pular o parecer médico\..*\(G17\)\. Só duas sêniores dispensam/)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('enviar com o campo vazio não faz nada', () => {
     render(<CentralAtendimento />)
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))

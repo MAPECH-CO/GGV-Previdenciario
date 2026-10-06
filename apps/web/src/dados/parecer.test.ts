@@ -4,7 +4,17 @@ import { complementoAberto, tarefasDeComplemento } from './complemento.ts'
 import { enviarArquivos } from './documentos.ts'
 import { arquivarDocumentos, documentosLidos } from './leitura.ts'
 import { obterLiberacao } from './liberacao.ts'
-import { obterParecer, parecerParaOPortao, registrarParecer, resumoParaAFicha, tarefasDoParecer, type PedidoDeParecer } from './parecer.ts'
+import {
+  obterParecer,
+  parecerParaOPortao,
+  pedirDispensa,
+  registrarParecer,
+  responderDispensa,
+  resumoParaAFicha,
+  tarefasDoParecer,
+  type PedidoDeParecer,
+} from './parecer.ts'
+import { travaDoParecer } from '../regras/liberacao.ts'
 import { obterRoteiro, salvarRoteiro } from './roteiro.ts'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
 
@@ -224,5 +234,74 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
     const c = await documentosLidos('rita-exemplo')
     await arquivarDocumentos('rita-exemplo', { conferi: true, documentos: c!.documentos.filter((d) => d.situacao === 'a-conferir').map(({ id, tipo, data }) => ({ id, tipo, data })), duplicados: 'manter' })
     expect((await juridico('rita-exemplo-1')).documentos).toHaveLength(1)
+  })
+
+  describe('GGVP-33 · portão e dispensa', () => {
+    const RENATA = { perfil: 'senior', nome: 'Dra. Renata (exemplo)' }
+    const OTAVIO = { perfil: 'senior-2', nome: 'Dr. Otávio (exemplo)' }
+    const JUSTIFICATIVA = 'Prazo do juiz vence em dois dias e o médico só atende em novembro.'
+
+    it('CA1 · sem parecer em ordem, as três ações travam e dizem o que falta', async () => {
+      const pendente = parecerParaOPortao(ler(), 'rita-exemplo-1')
+      for (const acao of ['liberar', 'aprovar-inss', 'pedir-peticao'] as const) {
+        expect(travaDoParecer(acao, 'loas-deficiente', pendente)).toMatch(/ainda não foi confirmado por pessoa do Jurídico \(G17\)/)
+      }
+      const abordar = (await juridico('rita-exemplo-1')).juridico!.abordarSugerido
+      await registrarParecer('rita-exemplo-1', await pedido('rita-exemplo-1', 'insuficiente', { abordar }), PAULA)
+      expect(travaDoParecer('aprovar-inss', 'loas-deficiente', parecerParaOPortao(ler(), 'rita-exemplo-1'))).toBe(
+        'Não dá para aprovar para o INSS: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).',
+      )
+    })
+
+    it('CA2 · a dispensa pede justificativa e duas sêniores: quem pediu não aprova; aprovada, aparece no card e no histórico', async () => {
+      await expect(pedirDispensa('rita-exemplo-1', JUSTIFICATIVA, PAULA)).rejects.toThrow('Só a sênior dispensa o parecer médico.')
+      await expect(pedirDispensa('rita-exemplo-1', 'curta', RENATA)).rejects.toThrow('justificativa é obrigatória')
+      await pedirDispensa('rita-exemplo-1', JUSTIFICATIVA, RENATA)
+      await expect(pedirDispensa('rita-exemplo-1', JUSTIFICATIVA, OTAVIO)).rejects.toThrow('Já há um pedido de dispensa esperando a segunda sênior.')
+      expect(tarefasDoParecer().filter((t) => t.cliente?.id === 'rita-exemplo')).toEqual([
+        expect.objectContaining({ acao: 'Aprovar dispensa do parecer', href: '/casos/rita-exemplo-1/parecer/dispensa', detalhe: expect.stringContaining('pedida por Dra. Renata (exemplo)') }),
+      ])
+      await expect(responderDispensa('rita-exemplo-1', true, RENATA)).rejects.toThrow('Uma pessoa sozinha não dispensa o parecer')
+      expect(parecerParaOPortao(ler(), 'rita-exemplo-1')?.situacao).toBe('pendente')
+      const p = await responderDispensa('rita-exemplo-1', true, OTAVIO)
+      expect(p.situacao).toBe('dispensado')
+      expect(p.dispensa).toMatchObject({ pedidaPor: 'Dra. Renata (exemplo)', aprovadaPor: 'Dr. Otávio (exemplo)', justificativa: JUSTIFICATIVA })
+      expect(parecerParaOPortao(ler(), 'rita-exemplo-1')).toEqual({
+        situacao: 'dispensado',
+        quem: 'Dra. Renata (exemplo) e Dr. Otávio (exemplo)',
+        data: '2026-10-06',
+        justificativa: JUSTIFICATIVA,
+      })
+      for (const acao of ['liberar', 'aprovar-inss', 'pedir-peticao'] as const) expect(travaDoParecer(acao, 'loas-deficiente', parecerParaOPortao(ler(), 'rita-exemplo-1'))).toBeNull()
+      const historico = (await obterFicha('rita-exemplo'))!.historico.map((e) => [e.quem, e.oQue])
+      expect(historico.slice(-2)).toEqual([
+        ['Dra. Renata (exemplo)', `Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17). Justificativa: ${JUSTIFICATIVA}`],
+        ['Dr. Otávio (exemplo)', 'Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por Dra. Renata (exemplo) e Dr. Otávio (exemplo) (G17)'],
+      ])
+      // O Atendimento vê a dispensa e a justificativa no card.
+      expect((await obterParecer('rita-exemplo-1', 'atendimento'))?.dispensa?.justificativa).toBe(JUSTIFICATIVA)
+      expect(tarefasDoParecer().filter((t) => t.cliente?.id === 'rita-exemplo')).toEqual([])
+    })
+
+    it('CA2 · a segunda sênior pode recusar, e o caso continua esperando o parecer', async () => {
+      await pedirDispensa('rita-exemplo-1', JUSTIFICATIVA, RENATA)
+      const p = await responderDispensa('rita-exemplo-1', false, OTAVIO)
+      expect([p.situacao, p.dispensa?.recusadaPor]).toEqual(['pendente', 'Dr. Otávio (exemplo)'])
+    })
+
+    it('CA5 · o parecer refeito depois da dispensa passa a valer nos passos seguintes', async () => {
+      await pedirDispensa('rita-exemplo-1', JUSTIFICATIVA, RENATA)
+      await responderDispensa('rita-exemplo-1', true, OTAVIO)
+      agora = new Date(2026, 9, 7, 9, 0)
+      await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [pdf('relatorio medico.pdf', 'laudo', 91)] })
+      await registrarParecer('rita-exemplo-1', await pedido('rita-exemplo-1', 'suficiente'), PAULA)
+      expect(parecerParaOPortao(ler(), 'rita-exemplo-1')).toMatchObject({ situacao: 'suficiente', quem: 'Dra. Paula (exemplo)', data: '2026-10-07' })
+      // E o refeito Insuficiente também manda: a trava volta.
+      agora = new Date(2026, 9, 8, 9, 0)
+      await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [pdf('laudo incompleto.pdf', 'laudo', 92)] })
+      const abordar = 'Qual a previsão de duração do quadro?'
+      await registrarParecer('rita-exemplo-1', await pedido('rita-exemplo-1', 'insuficiente', { abordar }, { prognostico: 'ausente' }), PAULA)
+      expect(travaDoParecer('pedir-peticao', 'loas-deficiente', parecerParaOPortao(ler(), 'rita-exemplo-1'))).toMatch(/Insuficiente/)
+    })
   })
 })

@@ -11,7 +11,7 @@ import passo from '../paginas/Balcao.module.css'
 // Figma: "Overlay · Parecer médico" (1654:2), sobre as telas de passo (GGVP-20). O que o Atendimento vê: o resultado, os
 // documentos e o que falta pedir; o conteúdo clínico fica com o Jurídico.
 
-const ROTULOS: Record<SituacaoNaTela, string> = { ...NOMES_DO_PARECER, 'sem-documentos': 'Sem documentos' }
+const ROTULOS: Record<SituacaoNaTela, string> = { ...NOMES_DO_PARECER, 'sem-documentos': 'Sem documentos', dispensado: 'Dispensado' }
 
 function frase(p: ParecerNaTela): string {
   switch (p.situacao) {
@@ -23,6 +23,8 @@ function frase(p: ParecerNaTela): string {
       return `Um documento contradiz o requisito do ${p.beneficio}: o caso não avança (G18).`
     case 'pendente':
       return 'A IA analisou os documentos; falta a conferência do Jurídico (G17).'
+    case 'dispensado':
+      return 'Duas sêniores dispensaram o parecer, com justificativa: o caso segue assumindo o risco (G17).'
     default:
       return 'Nenhum documento médico chegou para este caso.'
   }
@@ -35,6 +37,7 @@ type Props = { processoId: string; /** A função da tela que abriu: vale até a
 export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
   const perfil = usePerfil(funcao)
   const juridico = doJuridico(perfil?.id)
+  const senior = perfil?.id.startsWith('senior') === true
   const janela = useRef<HTMLDialogElement>(null)
   const [p, setP] = useState<ParecerNaTela | null | undefined>(undefined)
   const [historico, setHistorico] = useState(false)
@@ -90,7 +93,7 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
         ) : (
           <>
             <div className={styles.resultado} data-situacao={p.situacao} role="status">
-              <span className={styles[p.situacao === 'sem-documentos' ? 'pendente' : p.situacao]}>{ROTULOS[p.situacao].toUpperCase()}</span>
+              <span className={styles[p.situacao === 'sem-documentos' ? 'pendente' : p.situacao === 'dispensado' ? 'suficiente' : p.situacao]}>{ROTULOS[p.situacao].toUpperCase()}</span>
               <div>
                 <p className={styles.resultadoTitulo}>{frase(p)}</p>
                 <p className={styles.detalhe}>
@@ -102,6 +105,23 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
                 {p.laudoNovoEm && <p className={styles.detalhe}>Laudo novo de {dataCurta(p.laudoNovoEm, hoje)} esperando a conferência do Jurídico.</p>}
               </div>
             </div>
+
+            {p.dispensa && (
+              <section aria-labelledby="dispensa">
+                <h3 id="dispensa" className={styles.secao}>
+                  Dispensa do parecer (G17)
+                </h3>
+                <p className={styles.detalhe}>
+                  Pedida por {p.dispensa.pedidaPor} em {curta(p.dispensa.pedidaEm)}
+                  {p.dispensa.aprovadaPor && p.dispensa.aprovadaEm
+                    ? ` · aprovada por ${p.dispensa.aprovadaPor} em ${curta(p.dispensa.aprovadaEm)}`
+                    : p.dispensa.recusadaPor
+                      ? ` · recusada por ${p.dispensa.recusadaPor}`
+                      : ' · esperando a segunda sênior'}
+                  . Justificativa: {p.dispensa.justificativa}
+                </p>
+              </section>
+            )}
 
             <section aria-labelledby="analisados">
               <h3 id="analisados" className={styles.secao}>
@@ -216,6 +236,11 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
               {juridico && (
                 <a className={passo.atalho} href={`/casos/${p.processo.id}/parecer`}>
                   Abrir o parecer
+                </a>
+              )}
+              {senior && p.precisaParecer && p.situacao !== 'suficiente' && (
+                <a className={passo.atalho} href={`/casos/${p.processo.id}/parecer/dispensa`}>
+                  Dispensar o parecer
                 </a>
               )}
             </div>

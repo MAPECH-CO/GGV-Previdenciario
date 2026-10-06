@@ -2,7 +2,7 @@
 // Só na tela: o login e as permissões de verdade são do Mateus. A escolha fica no navegador.
 import { useSyncExternalStore } from 'react'
 
-export type IdPerfil = 'atendimento' | 'atendimento-lider' | 'advogada' | 'senior' | 'financeiro' | 'documentacao'
+export type IdPerfil = 'atendimento' | 'atendimento-lider' | 'advogada' | 'senior' | 'financeiro' | 'documentacao' | 'senior-2'
 
 export type Perfil = {
   id: IdPerfil
@@ -27,6 +27,8 @@ export const PERFIS: Perfil[] = [
   { id: 'financeiro', rotulo: 'Financeiro', usuario: 'Marcos (exemplo)', inicio: '/financeiro' },
   // Sem Central própria no Figma: a Documentação trabalha na Central do Atendimento.
   { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/', acao: novoCliente },
+  // A segunda sênior: a dispensa do parecer médico pede duas sêniores de acordo (GGVP-33, resposta do Lucas, Q14).
+  { id: 'senior-2', rotulo: 'Sênior', usuario: 'Dr. Otávio (exemplo)', inicio: '/senior' },
 ]
 
 const CHAVE = 'ggv.perfil'

@@ -6,10 +6,13 @@ import {
   analisar,
   mensagemDoComplemento,
   mesesEntre,
+  motivoParaNaoAprovarDispensa,
+  motivoParaNaoPedirDispensa,
   motivoParaNaoRegistrar,
   orientacaoAoMedico,
   mudancas,
   problemaG20,
+  recusaDoChat,
   situacaoFinal,
   type Conferidos,
   type LeituraMedica,
@@ -151,5 +154,23 @@ describe('Parecer de suficiência (GGVP-20)', () => {
       'Olá, Rita! Aqui é do escritório GGV. Para o seu caso de LOAS Deficiente, precisamos de um relatório médico novo. Leve ao seu médico estas perguntas, para ele responder no relatório:\n1. Qual a previsão de duração do quadro?\nQuando tiver o relatório, mande foto por aqui ou traga ao escritório até 09/10. Qualquer dúvida, é só responder esta mensagem.',
     )
     expect(problemaG20(mensagem)).toBeNull()
+  })
+
+  it('GGVP-33 CA2 · a dispensa pede justificativa e duas sêniores: quem pediu não aprova', () => {
+    expect(motivoParaNaoPedirDispensa('curta')).toMatch(/justificativa é obrigatória/)
+    expect(motivoParaNaoPedirDispensa('Prazo do juiz vence amanhã e o médico só atende em novembro.')).toBeNull()
+    const pedido = { justificativa: 'prazo do juiz', pedidaPor: 'Dra. Renata (exemplo)', pedidaEm: '2026-10-06T15:00:00.000Z' }
+    expect(motivoParaNaoAprovarDispensa(pedido, 'Dra. Renata (exemplo)')).toBe('Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior (G17).')
+    expect(motivoParaNaoAprovarDispensa(pedido, 'Dr. Otávio (exemplo)')).toBeNull()
+    expect(motivoParaNaoAprovarDispensa({ ...pedido, aprovadaPor: 'Dr. Otávio (exemplo)' }, 'Dra. Clara')).toBe('O pedido de dispensa já foi respondido.')
+    expect(motivoParaNaoAprovarDispensa(undefined, 'Dr. Otávio (exemplo)')).toBe('Não há pedido de dispensa.')
+  })
+
+  it('GGVP-33 CA3 · o chat recusa pular o parecer e diz o portão; outro pedido passa', () => {
+    for (const pedido of ['pula o parecer da Rita', 'Libera o caso da Rita sem o parecer', 'dispensar parecer do Antônio', 'segue sem parecer mesmo']) {
+      expect(recusaDoChat(pedido), pedido).toMatch(/^Não posso pular o parecer médico\..*\(G17\)/)
+    }
+    expect(recusaDoChat('Resumo do caso da Rita')).toBeNull()
+    expect(recusaDoChat('qual o parecer da Rita?')).toBeNull()
   })
 })
