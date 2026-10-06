@@ -96,4 +96,4 @@
 - [x] 14.3 CA3, CA4, CA5, CA8, CA9, CA10 · `POST .../peticao/protocolo` (tribunal, CNJ, data, comprovante e travas confirmadas; confere os hashes; grava o protocolo, o CNJ do caso e as travas; o processo entra na vigília); teste, inclusive com arquivo trocado; verifica com `pnpm --filter @ggv/api test`.
 - [x] 14.4 CA11, CA12 · Tela "Petição inicial", parte do pacote e do protocolo (arquivos para baixar, travas com a evidência, tribunal e o botão do site numa página nova, CNJ, data, comprovante) e `D3.07` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 14.5 Playwright: a advogada pede a petição com o texto, edita uma vez, compara, aprova, vê as travas, protocola com CNJ, data e comprovante, e o processo entra na vigília; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 14.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 14.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
