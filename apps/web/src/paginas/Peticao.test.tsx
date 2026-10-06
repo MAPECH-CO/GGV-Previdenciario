@@ -15,6 +15,8 @@ const base = {
   versoes: [],
   atual: null,
   podePedir: true,
+  podeEditar: false,
+  podeAprovar: false,
 }
 
 function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
@@ -72,7 +74,7 @@ describe('Pedir a petição (GGVP-63)', () => {
         ],
       },
       versoes: [{ numero: 1, por: 'Gabi', em: '2026-10-07T13:00:00.000Z', oQueMudou: null, hash: 'abc', aprovadaPor: null, aprovadaEm: null }],
-      atual: { numero: 1, texto: 'Excelentíssimo Senhor Juiz...' },
+      atual: { numero: 1, texto: 'Excelentíssimo Senhor Juiz...', diferenca: null },
     })
     render(<Peticao casoId={CASO} />)
     expect((await screen.findByText(/Pedido por/)).textContent).toBe('Pedido por Gabi em 07/10/2026')
@@ -85,3 +87,69 @@ describe('Pedir a petição (GGVP-63)', () => {
     expect(screen.getByText('Excelentíssimo Senhor Juiz...')).toBeTruthy()
   })
 })
+
+describe('Conferir a petição (GGVP-67)', () => {
+  const pedida = {
+    ...base,
+    podePedir: false,
+    podeEditar: true,
+    podeAprovar: true,
+    pedido: { por: 'Gabi', em: '2026-10-07T13:00:00.000Z', instrucoes: '', opcoes: { tutelaUrgencia: false, precedentes: false, anexarCitados: true }, citados: [] },
+    versoes: [
+      { numero: 1, por: 'Gabi', em: '2026-10-07T13:00:00.000Z', oQueMudou: null, hash: 'aaa', aprovadaPor: null, aprovadaEm: null },
+      { numero: 2, por: 'Gabi', em: '2026-10-07T14:00:00.000Z', oQueMudou: 'Incluí a tutela', hash: 'bbb', aprovadaPor: null, aprovadaEm: null },
+    ],
+    atual: {
+      numero: 2,
+      texto: 'Dos fatos\nDa tutela de urgência\nDo direito',
+      diferenca: [
+        { tipo: 'igual', texto: 'Dos fatos' },
+        { tipo: 'incluido', texto: 'Da tutela de urgência' },
+        { tipo: 'igual', texto: 'Do direito' },
+        { tipo: 'removido', texto: 'Do pedido' },
+      ],
+    },
+  }
+
+  it('CA3, CA4 · mostra a versão inteira e destaca o que entrou e o que saiu desde a anterior', async () => {
+    servidor(pedida)
+    render(<Peticao casoId={CASO} />)
+    const mudou = await screen.findByRole('region', { name: 'O que mudou' })
+    expect(mudou.querySelector('ins')!.textContent).toBe('Da tutela de urgência')
+    expect(mudou.querySelector('del')!.textContent).toBe('Do pedido')
+    expect(screen.getByText('Versão 2 · Gabi em 07/10/2026 · Incluí a tutela')).toBeTruthy()
+  })
+
+  it('CA2, CA5, CA9 · "Aprovar" só habilita com as três marcações e aprova a última versão', async () => {
+    const fetch = servidor(pedida)
+    render(<Peticao casoId={CASO} />)
+    const aprovar = (await screen.findByRole('button', { name: 'Aprovar e enviar ao protocolo' })) as HTMLButtonElement
+    fireEvent.click(screen.getByLabelText('Li a petição na íntegra'))
+    fireEvent.click(screen.getByLabelText('Fundamentos, pedidos e valores conferem com o caso'))
+    expect(aprovar.disabled).toBe(true)
+    fireEvent.click(screen.getByLabelText('Nada contradiz o requisito do benefício (G18)'))
+    expect(aprovar.disabled).toBe(false)
+    fireEvent.click(aprovar)
+    expect((await screen.findByRole('status')).textContent).toBe('Versão 2 aprovada. O pacote foi para o protocolo.')
+    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    expect([String(post[0]), JSON.parse(post[1]!.body as string)]).toEqual([
+      `/api/casos/${CASO}/peticao/versoes/2/aprovacao`,
+      { liNaIntegra: true, conferem: true, nadaContradiz: true },
+    ])
+  })
+
+  it('CA1, CA10 · "Editar eu mesma" pede o que mudou e salva a versão seguinte', async () => {
+    const fetch = servidor(pedida, [201, { ok: true, numero: 3 }])
+    render(<Peticao casoId={CASO} />)
+    fireEvent.click(await screen.findByText('Não está boa? Editar eu mesma'))
+    fireEvent.change(screen.getByLabelText('Texto da nova versão'), { target: { value: 'Dos fatos\nDo direito\nDo valor da causa' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar nova versão' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que mudou nesta versão')
+    fireEvent.change(screen.getByLabelText('O que mudou nesta versão'), { target: { value: 'Valor da causa' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar nova versão' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Versão 3 salva. Ela precisa de nova conferência.')
+    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    expect(JSON.parse(post[1]!.body as string)).toEqual({ texto: 'Dos fatos\nDo direito\nDo valor da causa', oQueMudou: 'Valor da causa' })
+  })
+})
+

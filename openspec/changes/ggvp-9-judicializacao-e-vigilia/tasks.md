@@ -84,10 +84,10 @@
 
 ## GGVP-67 · Conferir a petição
 
-- [ ] 13.1 Diferença por parágrafo em `apps/api/src/fluxo/diferenca.ts`, com teste (igual, incluído, removido, texto vazio); contratos `NovaVersao` e `AprovarPeticao`; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
-- [ ] 13.2 CA1 a CA5, CA7 a CA10 · `POST .../peticao/versoes` e `POST .../peticao/versoes/:n/aprovacao` (versões numeradas; as três marcações, G6 e G18; versão nova depois da aprovação volta à conferência e fica no histórico; só a advogada); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 13.3 CA6 e GGVP-71 CA1, CA8, CA11 · pacote em `apps/api/src/fluxo/pacote.ts` com `pdf-lib` (dependência nova): PDF da petição com a assinatura padrão e o hash, a carta e os citados na ordem, imagem vira PDF; gerado na aprovação; teste que abre o PDF gerado e confere as páginas e os metadados; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 13.4 CA11 · Tela "Petição inicial", parte da conferência (versão inteira, diferença destacada, as três marcações, "Editar eu mesma") e `D3.06` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 13.1 Diferença por parágrafo em `apps/api/src/fluxo/diferenca.ts`, com teste (igual, incluído, removido, texto vazio); contratos `NovaVersao` e `AprovarPeticao`; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
+- [x] 13.2 CA1 a CA5, CA7 a CA10 · `POST .../peticao/versoes` e `POST .../peticao/versoes/:n/aprovacao` (versões numeradas; as três marcações, G6 e G18; versão nova depois da aprovação volta à conferência e fica no histórico; só a advogada); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 13.3 CA6 e GGVP-71 CA1, CA8, CA11 · pacote em `apps/api/src/fluxo/pacote.ts` com `pdf-lib` (dependência nova): PDF da petição com a assinatura padrão e o hash, a carta e os citados na ordem, imagem vira PDF; gerado na aprovação; teste que abre o PDF gerado e confere as páginas e os metadados; verifica com `pnpm --filter @ggv/api test`.
+- [x] 13.4 CA11 · Tela "Petição inicial", parte da conferência (versão inteira, diferença destacada, as três marcações, "Editar eu mesma") e `D3.06` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-71 · Pacote, travas e protocolo no tribunal
 

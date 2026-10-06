@@ -419,9 +419,33 @@ export const PeticaoInicial = z.object({
       aprovadaEm: z.string().nullable(),
     }),
   ),
-  /** A versão atual, inteira (GGVP-67 CA4). */
-  atual: z.object({ numero: z.number(), texto: z.string() }).nullable(),
+  /** A versão atual, inteira, e o que mudou desde a anterior, por parágrafo (GGVP-67 CA3, CA4); na versão 1, nada a comparar. */
+  atual: z
+    .object({
+      numero: z.number(),
+      texto: z.string(),
+      diferenca: z.array(z.object({ tipo: z.enum(['igual', 'incluido', 'removido']), texto: z.string() })).nullable(),
+    })
+    .nullable(),
   podePedir: z.boolean(),
+  /** GGVP-67: só a advogada confere, com "Conferir petição" aberta; a aprovada não se edita, mexer gera outra versão (CA7). */
+  podeEditar: z.boolean(),
+  podeAprovar: z.boolean(),
 })
 export type PeticaoInicial = z.infer<typeof PeticaoInicial>
+
+/** POST /api/casos/:id/peticao/versoes (GGVP-67 CA1, CA5, CA7, CA10): "Editar eu mesma" grava a versão seguinte, com o que mudou. */
+export const NovaVersao = z.object({
+  texto: z.string({ error: 'Escreva o texto da nova versão' }).trim().min(1, 'Escreva o texto da nova versão'),
+  oQueMudou: z.string({ error: 'Escreva o que mudou nesta versão' }).trim().min(1, 'Escreva o que mudou nesta versão'),
+})
+export type NovaVersao = z.infer<typeof NovaVersao>
+
+/** POST /api/casos/:id/peticao/versoes/:n/aprovacao (GGVP-67 CA2, CA5, CA9; G6, G18): "Aprovar" só com as três marcações. */
+export const AprovarPeticao = z.object({
+  liNaIntegra: z.literal(true, { error: 'Marque "Li a petição na íntegra"' }),
+  conferem: z.literal(true, { error: 'Marque "Fundamentos, pedidos e valores conferem com o caso"' }),
+  nadaContradiz: z.literal(true, { error: 'Marque "Nada contradiz o requisito do benefício (G18)"' }),
+})
+export type AprovarPeticao = z.infer<typeof AprovarPeticao>
 

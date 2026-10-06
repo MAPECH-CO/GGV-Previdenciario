@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   AnalisarExigenciaJuiz,
+  AprovarPeticao,
   AprovarVersao,
   AutorizarDilacao,
   ClassificarPublicacao,
   Despachar,
   EncerrarSemProva,
   NaoVouConseguir,
+  NovaVersao,
   PedirPeticao,
   ProtocolarManifestacao,
   RegistrarIndisponibilidade,
@@ -168,6 +170,21 @@ describe('GGVP-63 · pedir a petição', () => {
       { documentoId: null, nome: 'Laudo do INSS' },
     ])
     expect(erro(PedirPeticao.safeParse({ texto: 'x', citados: [{ nome: ' ' }] }))).toBe('Escreva o nome do documento que falta')
+  })
+})
+
+describe('GGVP-67 · conferir a petição', () => {
+  it('CA1, CA10 · a nova versão pede o texto e o que mudou', () => {
+    expect(NovaVersao.parse({ texto: ' Excelentíssimo ', oQueMudou: ' Corrigi o valor da causa ' })).toEqual({ texto: 'Excelentíssimo', oQueMudou: 'Corrigi o valor da causa' })
+    expect(erro(NovaVersao.safeParse({ texto: ' ', oQueMudou: 'x' }))).toBe('Escreva o texto da nova versão')
+    expect(erro(NovaVersao.safeParse({ texto: 'x' }))).toBe('Escreva o que mudou nesta versão')
+  })
+
+  it('CA5, CA9 (G6, G18) · aprovar pede as três marcações, uma por uma', () => {
+    expect(erro(AprovarPeticao.safeParse({}))).toBe('Marque "Li a petição na íntegra"')
+    expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true }))).toBe('Marque "Fundamentos, pedidos e valores conferem com o caso"')
+    expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true, conferem: true }))).toBe('Marque "Nada contradiz o requisito do benefício (G18)"')
+    expect(AprovarPeticao.parse({ liNaIntegra: true, conferem: true, nadaContradiz: true })).toEqual({ liNaIntegra: true, conferem: true, nadaContradiz: true })
   })
 })
 

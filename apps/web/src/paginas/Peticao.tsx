@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { isoParaData } from '@ggv/campos'
-import { PedirPeticao, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { AprovarPeticao, NovaVersao, PedirPeticao, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -109,9 +109,97 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
   )
 }
 
+/** "Editar eu mesma" (GGVP-67 CA1, CA10): a advogada muda o texto e diz o que mudou; sai a versão seguinte, numerada. */
+function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: string; aoSalvar: (t: string) => void }) {
+  const ids = { texto: useId(), oQueMudou: useId() }
+  const [novo, setNovo] = useState(texto)
+  const [oQueMudou, setOQueMudou] = useState('')
+  const [erro, setErro] = useState('')
+
+  async function salvar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    const entrada = NovaVersao.safeParse({ texto: novo, oQueMudou })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira a versão.')
+    const r = await chamarApi<{ numero: number }>(`/casos/${casoId}/peticao/versoes`, { method: 'POST', corpo: entrada.data })
+    if (!r.ok) return setErro(r.erro)
+    aoSalvar(`Versão ${r.dados.numero} salva. Ela precisa de nova conferência.`)
+  }
+
+  return (
+    <details>
+      <summary>Não está boa? Editar eu mesma</summary>
+      <form className={styles.cartao} onSubmit={salvar} noValidate>
+        <label className={styles.rotulo} htmlFor={ids.texto}>
+          Texto da nova versão
+        </label>
+        <textarea id={ids.texto} className={styles.campo} rows={14} value={novo} onChange={(e) => setNovo(e.target.value)} />
+        <label className={styles.rotulo} htmlFor={ids.oQueMudou}>
+          O que mudou nesta versão
+        </label>
+        <input id={ids.oQueMudou} className={styles.campo} value={oQueMudou} onChange={(e) => setOQueMudou(e.target.value)} />
+        {erro && (
+          <p className={styles.erro} role="alert">
+            {erro}
+          </p>
+        )}
+        <div className={styles.acoes}>
+          <button type="submit" className={styles.botaoSecundario}>
+            Salvar nova versão
+          </button>
+        </div>
+        <p className={styles.dica}>As versões anteriores ficam guardadas. Pedir outra versão à IA entra com o épico IA.</p>
+      </form>
+    </details>
+  )
+}
+
+/** Aprovar (GGVP-67 CA2, CA5, CA9; G6, G18): só com as três marcações; aprovada, o pacote vai para o protocolo. */
+function AprovarForm({ casoId, numero, aoAprovar }: { casoId: string; numero: number; aoAprovar: (t: string) => void }) {
+  const [marcas, setMarcas] = useState({ liNaIntegra: false, conferem: false, nadaContradiz: false })
+  const [erro, setErro] = useState('')
+  const rotulos: Record<keyof typeof marcas, string> = {
+    liNaIntegra: 'Li a petição na íntegra',
+    conferem: 'Fundamentos, pedidos e valores conferem com o caso',
+    nadaContradiz: 'Nada contradiz o requisito do benefício (G18)',
+  }
+
+  async function aprovar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    const entrada = AprovarPeticao.safeParse(marcas)
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira as marcações.')
+    const r = await chamarApi(`/casos/${casoId}/peticao/versoes/${numero}/aprovacao`, { method: 'POST', corpo: entrada.data })
+    if (!r.ok) return setErro(r.erro)
+    aoAprovar(`Versão ${numero} aprovada. O pacote foi para o protocolo.`)
+  }
+
+  return (
+    <form className={styles.cartao} onSubmit={aprovar} noValidate aria-label="Aprovar a versão">
+      <h2 className={styles.cartaoTitulo}>Conferir a versão {numero}</h2>
+      {(Object.keys(rotulos) as (keyof typeof marcas)[]).map((m) => (
+        <label key={m} className={styles.escolha}>
+          <input type="checkbox" checked={marcas[m]} onChange={() => setMarcas((a) => ({ ...a, [m]: !a[m] }))} />
+          {rotulos[m]}
+        </label>
+      ))}
+      {erro && (
+        <p className={styles.erro} role="alert">
+          {erro}
+        </p>
+      )}
+      <div className={styles.acoes}>
+        <button type="submit" className={styles.botao} disabled={!Object.values(marcas).every(Boolean)}>
+          Aprovar e enviar ao protocolo
+        </button>
+      </div>
+      <p className={styles.dica}>Ninguém assina: a petição sai com a assinatura padrão do escritório. Fica registrado quem aprovou (G6).</p>
+    </form>
+  )
+}
+
 /**
- * Petição inicial (GGVP-63): com todos os setores do despacho fechados, a advogada pede a petição (CA1); antes disso, o
- * pedido fica bloqueado e diz quem falta. A conferência (GGVP-67) e o protocolo (GGVP-71) seguem nesta mesma tela.
+ * Petição inicial (GGVP-63, GGVP-67): com todos os setores do despacho fechados, a advogada pede a petição (CA1); antes
+ * disso, o pedido fica bloqueado e diz quem falta. Depois, confere a versão inteira, com o que mudou desde a anterior,
+ * edita ela mesma ou aprova. O protocolo (GGVP-71) segue nesta mesma tela.
  */
 export function Peticao({ casoId }: { casoId: string }) {
   const [x, setX] = useState<PeticaoInicial | null>(null)
@@ -196,12 +284,41 @@ export function Peticao({ casoId }: { casoId: string }) {
         </section>
       )}
 
+      {x.versoes.length > 0 && (
+        <section className={styles.cartao} aria-label="Versões">
+          <h2 className={styles.cartaoTitulo}>Versões</h2>
+          <ol className={styles.lista}>
+            {x.versoes.map((v) => (
+              <li key={v.numero}>
+                Versão {v.numero} · {v.por} em {dia(v.em)}
+                {v.oQueMudou ? ` · ${v.oQueMudou}` : ''}
+                {v.aprovadaPor ? ` · aprovada por ${v.aprovadaPor} em ${dia(v.aprovadaEm)} · identificador ${v.hash.slice(0, 12)}` : ''}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {x.atual && (
         <section className={styles.cartao} aria-label="Versão atual">
-          <h2 className={styles.cartaoTitulo}>Versão {x.atual.numero}</h2>
+          <h2 className={styles.cartaoTitulo}>Versão {x.atual.numero}, inteira</h2>
           <p style={{ whiteSpace: 'pre-wrap' }}>{x.atual.texto}</p>
         </section>
       )}
+
+      {x.atual?.diferenca && (
+        <section className={styles.cartao} aria-label="O que mudou">
+          <h2 className={styles.cartaoTitulo}>O que mudou desde a versão {x.atual.numero - 1}</h2>
+          <ul className={styles.lista}>
+            {x.atual.diferenca.map((t, i) => (
+              <li key={i}>{t.tipo === 'incluido' ? <ins>{t.texto}</ins> : t.tipo === 'removido' ? <del>{t.texto}</del> : t.texto}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {x.podeAprovar && x.atual && <AprovarForm key={x.atual.numero} casoId={casoId} numero={x.atual.numero} aoAprovar={aoMudar} />}
+      {x.podeEditar && x.atual && <EditarEuMesma key={`e${x.atual.numero}`} casoId={casoId} texto={x.atual.texto} aoSalvar={aoMudar} />}
     </main>
   )
 }
