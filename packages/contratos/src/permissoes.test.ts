@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 4, digital: 'da7b98a0' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 5, digital: '3eb4c9f6' })
   })
 
   it('CA2 · só a Sênior aprova para o INSS', () => {
@@ -61,6 +61,14 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('financeiro', 'banco.agendar')).toBe(false)
   })
 
+  it('versão 5 · vigília: a Sênior reprocessa e casa a fila; a advogada vê e classifica', () => {
+    expect(pode('senior', 'vigilia.reprocessar')).toBe(true)
+    expect(pode('advogada', 'vigilia.reprocessar')).toBe(false)
+    expect(pode('senior', 'publicacao.casar')).toBe(true)
+    expect(pode('advogada', 'publicacao.classificar')).toBe(true)
+    expect(pode('atendimento', 'vigilia.ver')).toBe(false)
+  })
+
   it('perfil inventado ou vazio não pode nada', () => {
     expect(pode('admin', 'perfis.atribuir')).toBe(false)
     expect(pode(null, 'entrevista.ver')).toBe(false)
@@ -71,8 +79,8 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento: 5,
       atendimento_lider: 7,
       documentacao: 4,
-      advogada: 14,
-      senior: 14,
+      advogada: 16,
+      senior: 18,
       juridico_adm: 11,
       financeiro: 4,
       socio: 4,

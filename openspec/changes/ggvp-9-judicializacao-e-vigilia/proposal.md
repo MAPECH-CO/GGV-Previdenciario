@@ -17,7 +17,7 @@ Depois (próximos grupos, cada um com o seu `/opsx:propose`): exigência do juiz
 
 ## Travadas
 
-- **GGVP-26** e **GGVP-34** estão em "Tarefas pendentes" com o Mateus como revisor; as respostas que faltavam foram registradas nos cartões em 06/10. Entram no código quando o cartão for para "Refinada".
+- Nenhuma no grupo 1: a GGVP-26 e a GGVP-34 foram para "Refinada" em 06/10, com as respostas do revisor nos cartões.
 - **GGVP-83** tem uma dúvida aberta (o Jurídico não aparece entre os setores da exigência do juiz) e depende da GGVP-79; fica para o grupo da exigência do juiz.
 - **GGVP-67** depende da GGVP-63 (a IA escreve a petição); fica para o grupo da petição.
 

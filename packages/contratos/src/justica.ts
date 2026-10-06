@@ -1,0 +1,130 @@
+// Contratos da vigília e da publicação (GGVP-9, grupo 1). Tela e servidor validam com o mesmo schema.
+import { normalizarCnj, normalizarInteiro, validarCnj } from '@ggv/campos'
+import { z } from 'zod'
+
+export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
+export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
+  andamento: 'Só andamento',
+  exigencia: 'Intimação ou exigência',
+  merito: 'Decisão de mérito',
+}
+export const PRAZO_SEM_DIAS_NA_DECISAO = 5
+
+const Prazo = z.object({ inicio: z.string(), fim: z.string(), regra: z.string(), versao: z.number() })
+
+/** POST /api/publicacoes/:id/classificacao (GGVP-34, GGVP-37): a pessoa classifica; exigência e mérito pedem os dias. */
+export const ClassificarPublicacao = z
+  .object({
+    classe: z.enum(CLASSES_DE_ATO, { error: 'Escolha o tipo de ato' }),
+    semPrazoNaDecisao: z.boolean().default(false),
+    dias: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((v) => (v === undefined || v === '' ? null : normalizarInteiro(v))),
+  })
+  .refine((c) => c.classe === 'andamento' || c.semPrazoNaDecisao || (c.dias !== null && c.dias >= 1 && c.dias <= 120), {
+    message: 'Informe o prazo da publicação, em dias (1 a 120), ou marque "sem prazo na decisão"',
+    path: ['dias'],
+  })
+  .transform((c) => ({
+    classe: c.classe,
+    // CPC, art. 218, §3º: sem prazo na decisão, 5 dias.
+    dias: c.classe === 'andamento' ? null : c.semPrazoNaDecisao ? PRAZO_SEM_DIAS_NA_DECISAO : (c.dias as number),
+  }))
+export type ClassificarPublicacao = z.input<typeof ClassificarPublicacao>
+
+/** GET /api/publicacoes/:id (GGVP-74 CA4, GGVP-34 CA3). */
+export const PublicacaoParaLer = z.object({
+  id: z.uuid(),
+  casoId: z.uuid().nullable(),
+  cliente: z.string().nullable(),
+  numeroCnj: z.string().nullable(),
+  fonte: z.string(),
+  disponibilizadaEm: z.string(),
+  texto: z.string(),
+  classe: z.enum(CLASSES_DE_ATO).nullable(),
+  classificadaPor: z.string().nullable(),
+  classificadaEm: z.string().nullable(),
+  prazo: Prazo.nullable(),
+  feriadosCadastrados: z.boolean(),
+  podeClassificar: z.boolean(),
+})
+export type PublicacaoParaLer = z.infer<typeof PublicacaoParaLer>
+
+/** GET /api/casos/:id/publicacoes (GGVP-74 CA5, CA7). */
+export const PublicacoesDoCaso = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  publicacoes: z.array(
+    z.object({
+      id: z.uuid(),
+      disponibilizadaEm: z.string(),
+      fonte: z.string(),
+      trecho: z.string(),
+      classe: z.enum(CLASSES_DE_ATO).nullable(),
+      classificadaPor: z.string().nullable(),
+      prazo: Prazo.nullable(),
+    }),
+  ),
+})
+export type PublicacoesDoCaso = z.infer<typeof PublicacoesDoCaso>
+
+/** Item da fila de revisão da Sênior (GGVP-26 CA7, CA10, CA12). */
+export const ItemDaFila = z.object({
+  id: z.uuid(),
+  fonte: z.string(),
+  disponibilizadaEm: z.string(),
+  texto: z.string(),
+  partes: z.string().nullable(),
+  numeroCnj: z.string().nullable(),
+  motivo: z.string(),
+  idadeEmDias: z.number(),
+  prazoMinimo: Prazo,
+  diasUteisAtePrazo: z.number(),
+})
+export type ItemDaFila = z.infer<typeof ItemDaFila>
+
+/** POST /api/publicacoes/:id/vinculo (GGVP-26 CA8): vincular com CNJ válido, ou registrar que não é do escritório. */
+export const VincularPublicacao = z.discriminatedUnion(
+  'decisao',
+  [
+    z.object({
+      decisao: z.literal('vincular'),
+      numeroCnj: z
+        .string({ error: 'Informe o número CNJ do processo' })
+        .refine(validarCnj, 'Número CNJ inválido. Confira os 20 dígitos.')
+        .transform((v) => normalizarCnj(v)),
+    }),
+    z.object({ decisao: z.literal('fora_do_escritorio') }),
+  ],
+  { error: 'Escolha "Vincular a um processo" ou "Não é do escritório"' },
+)
+export type VincularPublicacao = z.input<typeof VincularPublicacao>
+
+/** GET /api/vigilia (GGVP-30 CA2, CA4, CA5, CA12; GGVP-26 CA6). */
+export const PainelDaVigilia = z.object({
+  dia: z.string(),
+  situacaoDoDia: z.enum(['ok', 'incompleta', 'sem_publicacao', 'em_andamento']),
+  rodadas: z.array(
+    z.object({
+      id: z.uuid(),
+      fonte: z.string(),
+      previstaPara: z.string(),
+      situacao: z.enum(['prevista', 'rodando', 'ok', 'falhou', 'nao_rodou']),
+      inicio: z.string().nullable(),
+      fim: z.string().nullable(),
+      capturadas: z.number(),
+      erro: z.string().nullable(),
+      reprocessadaPor: z.string().nullable(),
+      reprocessadaEm: z.string().nullable(),
+    }),
+  ),
+  previstas: z.number(),
+  concluidas: z.number(),
+  falhas: z.number(),
+  fila: z.array(ItemDaFila),
+  descartes: z.array(z.object({ quando: z.string(), fonte: z.string(), numeroCnj: z.string().nullable(), trecho: z.string(), motivo: z.string() })),
+  podeReprocessar: z.boolean(),
+  podeCasar: z.boolean(),
+})
+export type PainelDaVigilia = z.infer<typeof PainelDaVigilia>
