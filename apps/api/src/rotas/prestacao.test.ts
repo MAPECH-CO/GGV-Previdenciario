@@ -72,10 +72,12 @@ describe('GGVP-44 · prestação de contas', () => {
     expect(await abertas()).toEqual(['atendimento · Agendar ida ao banco', 'financeiro · Receber a prestação de contas'])
   })
 
-  it('CA2 · os valores só para o Financeiro e o Jurídico; o Atendimento recebe 403 e agenda sem ver valor', async () => {
+  it('CA2 · os valores só para o Financeiro e a advogada da prestação; Atendimento e Sênior recebem 403', async () => {
     await deferir()
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     expect((await chamar('ana', 'GET', '/prestacao')).statusCode).toBe(403)
+    await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'helena', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['senior'], trocarSenha: false })
+    expect((await chamar('helena', 'GET', '/prestacao')).statusCode).toBe(403)
     expect((await chamar('julia', 'GET', '/prestacao')).json().versoes[0].honorarios).toBe('3703.70')
     expect(JSON.stringify((await chamar('ana', 'GET', '/banco')).json())).not.toMatch(/3703|12345|honorario/)
   })
