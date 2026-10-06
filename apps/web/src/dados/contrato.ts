@@ -318,8 +318,10 @@ export async function fecharContrato(fichaId: string, beneficio: string): Promis
   while (ficha.processos.some((p) => p.id === `${fichaId}-${n}`)) n += 1
   const processo: Processo = { id: `${fichaId}-${n}`, beneficio, etapa: 'Contrato · preparar', proximaAcao: 'preparar o contrato', prazo: 'hoje' }
   ficha.processos.push(processo)
-  const kit = montarKit(beneficio)
-  const contrato: Contrato = { processoId: processo.id, fichaId, etapa: 'preparar', condicoes: SEM_CONDICOES, kit, abertoEm: agora().toISOString() }
+  // "Tem representante legal" do cadastro do lead (GGVP-43) já marca o LOAS representado; a pessoa confere no preparo.
+  const condicoes = { ...SEM_CONDICOES, representado: Boolean(ficha.representante?.nome) }
+  const kit = montarKit(beneficio, condicoes)
+  const contrato: Contrato = { processoId: processo.id, fichaId, etapa: 'preparar', condicoes, kit, abertoEm: agora().toISOString() }
   contratos(banco).push(contrato)
   ficha.historico.push(
     evento(
@@ -357,14 +359,22 @@ export async function salvarCondicoes(processoId: string, condicoes: CondicoesDo
 
 // GGVP-69 · preencher o contrato pelo modelo e conferir.
 
-/** Os campos do modelo para o caso, com o valor e de onde veio (CA1, CA5). */
+/** O RG e o representante que a ficha já tem desde o cadastro do lead (GGVP-43). Mãe e Pai do cadastro são genitora e genitor aqui. */
+function dadosDaFicha(ficha: Ficha): DadosDoContrato {
+  const r = ficha.representante
+  const parentesco = r?.parentesco === 'Mãe' ? 'genitora' : r?.parentesco === 'Pai' ? 'genitor' : undefined
+  const dados = { rg: ficha.rg, representanteNome: r?.nome, representanteCpf: r?.cpf, representanteRg: r?.rg, representanteParentesco: parentesco }
+  return Object.fromEntries(Object.entries(dados).filter(([, v]) => v)) as DadosDoContrato
+}
+
+/** Os campos do modelo para o caso, com o valor e de onde veio (CA1, CA5). O que o contrato guardou vale mais que a ficha. */
 export function camposDoCaso({ ficha, processo, contrato }: ContratoDoCaso): CampoPreenchido[] {
   return camposDoModelo({
     ficha,
     beneficio: processo.beneficio,
     nomeDoBeneficio: nomeBeneficio(processo.beneficio),
     condicoes: contrato.condicoes,
-    dados: contrato.dados ?? {},
+    dados: { ...dadosDaFicha(ficha), ...contrato.dados },
     corrigidos: contrato.corrigidos ?? [],
   })
 }

@@ -32,16 +32,16 @@ export type BoasVindas = {
 /** "Enviar pelo Chatwoot": só depois de alguém conferir a mensagem (CA4). */
 export type EnvioDasBoasVindas = { conferi: true; mensagem: string }
 
-/** Até a junção com o grupo contrato (GGVP-89): as cópias que vão junto, quando o contrato está assinado. */
-export function copiasDoKit(processo: Processo): string[] {
-  return contratoAssinado(processo) ? ['contrato', 'procuração'] : []
+/** As cópias que vão junto, quando o contrato do caso está assinado (GGVP-89). */
+export function copiasDoKit(banco: Banco, processo: Processo): string[] {
+  return contratoAssinado(banco, processo) ? ['contrato', 'procuração'] : []
 }
 
 function montar(banco: Banco, processoId: string): (BoasVindas & { fichaId: string; nome: string }) | null {
   const caso = checklistDoCaso(banco, processoId)
   if (!caso) return null
   const { ficha, processo, beneficio, checklist, conferencia } = caso
-  const copias = copiasDoKit(processo)
+  const copias = copiasDoKit(banco, processo)
   const registros = (banco.boasVindas ?? []).filter((r) => r.fichaId === ficha.id)
   const registro = registros.filter((r) => r.processoId === processoId).at(-1)
   const enviada = registros.find((r) => r.situacao === 'enviada')

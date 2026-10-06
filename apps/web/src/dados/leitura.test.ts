@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { obterContrato, simularRetornoDoZapSign } from './contrato.ts'
 import { enviarArquivos, receberLote } from './documentos.ts'
 import {
   arquivarDocumentos,
@@ -154,6 +155,17 @@ describe('Ler e arquivar os documentos · servidor de exemplo', () => {
     const resposta = await arquivarDocumentos('sebastiao-exemplo', { conferi: true, documentos: comoAIASugeriu(c!) })
     expect(resposta.contrato).toBe(true)
     expect((await obterFicha('sebastiao-exemplo'))?.historico.at(-1)?.oQue).toBe('O contrato assinado segue para a verificação do contrato (D1.19)')
+  })
+
+  it('CA4 · o contrato que esperava a leitura sai dela quando a Documentação arquiva o assinado (junção com a GGVP-85)', async () => {
+    await simularRetornoDoZapSign('nair-exemplo-1')
+    expect((await obterContrato('nair-exemplo-1'))?.contrato.etapa).toBe('leitura')
+    const c = await documentosLidos('nair-exemplo')
+    const resposta = await arquivarDocumentos('nair-exemplo', { conferi: true, documentos: comoAIASugeriu(c!) })
+    expect(resposta.contrato).toBe(true)
+    expect((await obterContrato('nair-exemplo-1'))?.contrato.etapa).toBe('copia')
+    const assinado = (await obterFicha('nair-exemplo'))?.arquivos.find((a) => a.tipo === 'contrato')
+    expect(assinado?.local).toBe('nair-exemplo-1')
   })
 
   it('CA3 e CA8 · o cadastro só muda com "Usar no cadastro", e o histórico não guarda o valor', async () => {

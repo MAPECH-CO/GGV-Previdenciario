@@ -3,6 +3,7 @@
 // LOAS, com que o portal nasce. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da spec da ggvp-91.
 import { juntar, montarChecklist, type Checklist, type Condicao, type DocumentoDoCaso, type ListaDoBeneficio } from '../regras/checklist.ts'
 import { nomeBeneficio } from './catalogos.ts'
+import { contratos } from './contrato.ts'
 import { leiturasDo } from './leitura.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Ficha, Processo, Tarefa } from './tipos.ts'
@@ -39,9 +40,14 @@ export const DA_ENTREVISTA: Record<string, { condicoes: Condicao[]; documentos: 
   'antonio-exemplo-1': { condicoes: [], documentos: ['notas-produtor', 'certidao'] },
 }
 
-/** Até a junção com o grupo contrato (GGVP-85): o contrato está assinado quando o caso já saiu das etapas "Contrato · …". */
-export function contratoAssinado(processo: Processo): boolean {
-  return !processo.etapa.startsWith('Contrato ·')
+/**
+ * O contrato do caso já foi assinado (GGVP-72, GGVP-77): da leitura em diante. Caso sem contrato no portal, aberto antes dele,
+ * vale a etapa do processo: assinado quando já saiu das etapas "Contrato · …".
+ */
+export function contratoAssinado(banco: Banco, processo: Processo): boolean {
+  const contrato = contratos(banco).find((c) => c.processoId === processo.id)
+  if (!contrato) return !processo.etapa.startsWith('Contrato ·')
+  return ['leitura', 'conferir', 'copia', 'entregue'].includes(contrato.etapa)
 }
 
 /** As miniaturas da semente ("RG", "CNIS"...), com o tipo da lista única. */
@@ -85,7 +91,7 @@ function montar(banco: Banco, processoId: string): ChecklistDoCaso | null {
     condicoes: entrevista.condicoes,
     daEntrevista: entrevista.documentos,
     documentos: documentosDoCaso(banco, ficha, processoId),
-    contratoAssinado: contratoAssinado(processo),
+    contratoAssinado: contratoAssinado(banco, processo),
   })
   const conferencia = banco.checklists?.filter((c) => c.processoId === processoId).at(-1)
   return { ficha, processo, beneficio: nomeBeneficio(processo.beneficio), checklist, condicoes: entrevista.condicoes, conferencia }

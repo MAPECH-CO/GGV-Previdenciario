@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   CLIENTE_DO_EXEMPLO_DOS_MODELOS,
   SEGREDO_DO_RETORNO_EXEMPLO,
+  camposDoCaso,
   concluirAssinaturaEmPapel,
   concluirLeituraDoContrato,
   configurarZapSign,
@@ -34,6 +35,18 @@ beforeEach(() => {
   configurarExemplo({ agora: () => hoje, latencia: 0 })
   configurarZapSign({ falhar: false })
   zerarExemplo()
+})
+
+describe('junção com o cadastro do lead (GGVP-43)', () => {
+  it('o RG e o representante que a ficha já tem entram no contrato; o que o contrato guardou vale mais', async () => {
+    const caso = (await obterContrato('cleide-exemplo-1'))!
+    const representante = { nome: 'Maria Exemplo', cpf: '', rg: 'AB123', parentesco: 'Mãe', estadoCivil: '', profissao: '' }
+    const valor = (campo: string, c = caso) => camposDoCaso({ ...c, ficha: { ...c.ficha, rg: '123456789', representante } }).find((x) => x.campo === campo)?.valor
+    expect(valor('rg')).toBe('123456789')
+    const loas = await fecharContrato('josefa-exemplo', 'loas-idoso')
+    expect(valor('representanteParentesco', { ...loas, contrato: { ...loas.contrato, condicoes: { ...loas.contrato.condicoes, representado: true } } })).toBe('Genitora')
+    expect(valor('rg', { ...caso, contrato: { ...caso.contrato, dados: { rg: '987654321' } } })).toBe('987654321')
+  })
 })
 
 describe('GGVP-65 · kit de documentos por benefício · servidor de exemplo', () => {

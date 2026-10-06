@@ -19,6 +19,7 @@ import {
   type DadosLidos,
 } from '../regras/leitura.ts'
 import { TIPOS_DE_DOCUMENTO, nomeBeneficio, nomeTipo } from './catalogos.ts'
+import { concluirLeituraDoContrato, leituraDeExemploDoContrato, obterContrato } from './contrato.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Arquivo, EventoHistorico, Ficha, Processo, Tarefa } from './tipos.ts'
@@ -233,7 +234,9 @@ export async function arquivarDocumentos(fichaId: string, pedido: Arquivamento):
     l.arquivadoEm = agora().toISOString()
     const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
     if (!arquivo) continue
-    const local = localDoTipo(l.tipo, caso?.id)
+    // O contrato assinado já chega na subpasta do processo dele (GGVP-72, GGVP-77): fica lá, mesmo com outro caso aberto.
+    const doProcesso = l.tipo === 'contrato' && ficha.processos.some((p) => p.id === arquivo.local)
+    const local = doProcesso ? arquivo.local : localDoTipo(l.tipo, caso?.id)
     if (local !== arquivo.local) {
       arquivo.nome = nomeSemSobrescrever(arquivo.nome, ficha.arquivos.filter((a) => a.local === local).map((a) => a.nome))
       l.arquivo = arquivo.nome
@@ -246,9 +249,15 @@ export async function arquivarDocumentos(fichaId: string, pedido: Arquivamento):
   const descarte = saem.size > 0 ? `; descartou ${saem.size === 1 ? '1 cópia menos legível' : `${saem.size} cópias menos legíveis`} (o original fica guardado)` : ''
   const registro = evento(`Arquivou ${documentos(arquivados.length)} lidos pela IA (${tipos})${descarte}; conferiu a leitura`)
   ficha.historico.push(registro)
-  const contrato = arquivados.some((l) => l.tipo === 'contrato')
+  const contratosLidos = arquivados.filter((l) => l.tipo === 'contrato')
+  const contrato = contratosLidos.length > 0
   if (contrato) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato (D1.19)'))
   gravar(banco)
+  // O contrato do caso esperava esta leitura: ela decide entre a conferência e a cópia (GGVP-85).
+  for (const processoId of new Set(contratosLidos.map((l) => ficha.arquivos.find((a) => a.nome === l.arquivo)?.local ?? ''))) {
+    const doCaso = await obterContrato(processoId)
+    if (doCaso?.contrato.etapa === 'leitura') await concluirLeituraDoContrato(processoId, leituraDeExemploDoContrato(doCaso.contrato))
+  }
   return { arquivados: arquivados.length, descartados: saem.size, contrato, processoId: caso?.id, evento: registro }
 }
 
