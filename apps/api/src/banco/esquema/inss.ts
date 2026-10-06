@@ -25,7 +25,8 @@ export const requerimentoInss = pgTable('requerimento_inss', {
   criadoEm: criadoEm(),
 }).enableRLS()
 
-export const ORIGENS_EXIGENCIA = ['inss', 'juizo'] as const
+/** `despacho`: o que a Sênior manda buscar depois do indeferido, antes da ação (GGVP-54, 58); sem prazo de fora. */
+export const ORIGENS_EXIGENCIA = ['inss', 'juizo', 'despacho'] as const
 export const SITUACOES_EXIGENCIA = ['aberta', 'cumprida', 'vencida', 'dilacao_pedida'] as const
 /** O que a exigência pede, decidido pela advogada (GGVP-39 CA8, G5). */
 export const PEDIDOS_EXIGENCIA = ['documentos', 'pericia', 'pericia_e_documentos'] as const
@@ -75,6 +76,8 @@ export const exigenciaItem = pgTable(
     situacao: text('situacao').notNull().default('pendente'),
     /** Por que não foi cumprido (GGVP-39 CA11). */
     motivo: text('motivo'),
+    /** A informação que o Atendimento conseguiu com o cliente, como prova do item (GGVP-58 CA1, CA7). */
+    informacao: text('informacao'),
     provaDocumentoId: uuid('prova_documento_id').references(() => documento.id),
     cumpridoEm: momento('cumprido_em'),
     cumpridoPor: uuid('cumprido_por').references(() => usuario.id),
@@ -122,6 +125,10 @@ export const resultadoInss = pgTable(
     dataDecisao: date('data_decisao').notNull(),
     beneficioConcedido: text('beneficio_concedido'),
     motivoIndeferimento: text('motivo_indeferimento'),
+    /** Banco de motivos (GGVP-52): o motivo com as palavras de quem viu, com quem e quando; gravar de novo atualiza. */
+    motivoEscrito: text('motivo_escrito'),
+    motivoEscritoPor: uuid('motivo_escrito_por').references(() => usuario.id),
+    motivoEscritoEm: momento('motivo_escrito_em'),
     documentoId: uuid('documento_id').references(() => documento.id),
     registradoPor: uuid('registrado_por').references(() => usuario.id),
     criadoEm: criadoEm(),

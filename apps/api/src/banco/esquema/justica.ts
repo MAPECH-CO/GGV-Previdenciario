@@ -1,5 +1,5 @@
 // Judicialização e vigília (GGVP-26, 30, 34, 37, 52, 54, 63, 67, 71, 74, 79, 83, 87).
-import { boolean, date, integer, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, date, integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
@@ -110,6 +110,10 @@ export const peticao = pgTable(
       .references(() => caso.id),
     tipo: text('tipo').notNull(),
     pedidaPor: uuid('pedida_por').references(() => usuario.id),
+    /** O pedido da petição inicial (GGVP-63 CA6, CA9): instruções, opções e os documentos citados, na ordem. */
+    instrucoes: text('instrucoes'),
+    opcoes: jsonb('opcoes'),
+    citados: jsonb('citados'),
     criadoEm: criadoEm(),
   },
   (t) => [emLista('peticao_tipo', t.tipo, TIPOS_PETICAO)],
@@ -132,6 +136,9 @@ export const peticaoVersao = pgTable(
     documentoId: uuid('documento_id').references(() => documento.id),
     aprovadaPor: uuid('aprovada_por').references(() => usuario.id),
     aprovadaEm: momento('aprovada_em'),
+    /** O pacote do protocolo da versão aprovada (GGVP-71 CA8): os arquivos na ordem, com o documento e o hash. */
+    pacote: jsonb('pacote'),
+    pacoteGeradoEm: momento('pacote_gerado_em'),
     criadoEm: criadoEm(),
   },
   (t) => [unique('peticao_versao_unica').on(t.peticaoId, t.numero)],

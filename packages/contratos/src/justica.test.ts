@@ -8,6 +8,7 @@ import {
   NaoVouConseguir,
   ProtocolarManifestacao,
   RegistrarIndisponibilidade,
+  RegistrarMotivo,
   RegistrarTentativa,
   VincularPublicacao,
 } from './justica.ts'
@@ -97,5 +98,13 @@ describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
     expect(EncerrarSemProva.parse({ alvo: 'pericia', id, motivo: ' Cliente faleceu antes da perícia ' })).toEqual({ alvo: 'pericia', id, motivo: 'Cliente faleceu antes da perícia' })
     expect(erro(EncerrarSemProva.safeParse({ alvo: 'item', id, motivo: '' }))).toBe('Escreva por que vai manifestar sem essa prova')
     expect(erro(EncerrarSemProva.safeParse({ alvo: 'item', motivo: 'x' }))).toBe('Escolha o item ou a perícia')
+  })
+})
+
+describe('GGVP-52 · registrar o motivo do indeferimento', () => {
+  it('CA1 · o motivo com as suas palavras é obrigatório e vem aparado', () => {
+    expect(RegistrarMotivo.parse({ motivo: '  Faltou o laudo da deficiência ' })).toEqual({ motivo: 'Faltou o laudo da deficiência' })
+    expect(erro(RegistrarMotivo.safeParse({ motivo: '   ' }))).toBe('Escreva o motivo com as suas palavras')
+    expect(erro(RegistrarMotivo.safeParse({}))).toBe('Escreva o motivo com as suas palavras')
   })
 })

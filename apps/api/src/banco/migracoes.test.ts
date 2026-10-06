@@ -59,6 +59,13 @@ describe('confiança dos dados', () => {
     await recusa(sql`insert into pessoa (nome, situacao) values ('Ana', 'inventado')`, /pessoa_situacao/)
   })
 
+  it('a exigência aceita a origem do despacho da Sênior (GGVP-54) e recusa outra', async () => {
+    const [{ id: pessoaId }] = (await db.execute<{ id: string }>(sql`insert into pessoa (nome) values ('Caio') returning id`)).rows
+    const [{ id: casoId }] = (await db.execute<{ id: string }>(sql`insert into caso (pessoa_id) values (${pessoaId}) returning id`)).rows
+    await db.execute(sql`insert into exigencia (caso_id, origem, descricao, recebida_em) values (${casoId}, 'despacho', 'Laudo', '2026-10-07')`)
+    await recusa(sql`insert into exigencia (caso_id, origem, descricao, recebida_em) values (${casoId}, 'outra', 'Laudo', '2026-10-07')`, /exigencia_origem/)
+  })
+
   it('CPF repetido não cria outra pessoa', async () => {
     await db.execute(sql`insert into pessoa (nome, cpf) values ('Ana', '52998224725')`)
     await recusa(sql`insert into pessoa (nome, cpf) values ('Outra', '52998224725')`, /unique|duplicate/i)

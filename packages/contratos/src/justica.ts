@@ -289,3 +289,24 @@ export type EncerrarSemProva = z.infer<typeof EncerrarSemProva>
 /** POST /api/casos/:id/manifestacao/indisponibilidade (CA13): a data em que o sistema do tribunal voltou; a prova vai junto. */
 export const RegistrarIndisponibilidade = z.object({ voltouEm: DataObrigatoria('Informe a data em que o sistema do tribunal voltou (dd/mm/aaaa)') })
 export type RegistrarIndisponibilidade = z.input<typeof RegistrarIndisponibilidade>
+
+// Grupo 3 (GGVP-52 a 71): do indeferido ao protocolo da petição inicial.
+
+/** GET /api/casos/:id/indeferimento (GGVP-52): a carta, o motivo do INSS e o motivo escrito, com quem e quando. */
+export const Indeferimento = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  dataDecisao: z.string(),
+  motivoInss: z.string().nullable(),
+  carta: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
+  motivoEscrito: z.object({ texto: z.string(), por: z.string(), em: z.string() }).nullable(),
+  podeRegistrar: z.boolean(),
+})
+export type Indeferimento = z.infer<typeof Indeferimento>
+
+/** POST /api/casos/:id/indeferimento/motivo (GGVP-52 CA1, CA4): o motivo com as palavras de quem viu; a carta vai no arquivo só se faltar. */
+export const RegistrarMotivo = z.object({
+  motivo: z.string({ error: 'Escreva o motivo com as suas palavras' }).trim().min(1, 'Escreva o motivo com as suas palavras'),
+})
+export type RegistrarMotivo = z.infer<typeof RegistrarMotivo>

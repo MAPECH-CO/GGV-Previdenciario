@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 6
+export const VERSAO_MATRIZ = 7
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -68,6 +68,9 @@ export const MATRIZ = {
   'exigencia_juiz.cumprir': ['atendimento', 'atendimento_lider', 'documentacao', 'juridico_adm'],
   'exigencia_juiz.manifestar': ['advogada'],
   'exigencia_juiz.autorizar_dilacao': ['senior'],
+  // Versão 7 (GGVP-58, 71): os laços do despacho da Sênior e o protocolo da petição inicial
+  'pendencia.cumprir': ['atendimento', 'atendimento_lider', 'documentacao'],
+  'peticao.protocolar': ['advogada'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

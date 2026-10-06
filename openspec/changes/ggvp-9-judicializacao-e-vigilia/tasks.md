@@ -55,11 +55,11 @@
 
 ## GGVP-52 · Registrar o motivo do indeferimento
 
-- [ ] 9.1 Matriz versão 7 (`pendencia.cumprir`, `peticao.protocolar`) em `packages/contratos/src/permissoes.ts`, com a impressão digital nova no teste; contratos `Indeferimento` e `RegistrarMotivo` em `justica.ts`; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 9.2 Migração 0011 pelo `db:gerar` (origem `despacho`, `exigencia_item.informacao`, motivo escrito no `resultado_inss`, pedido e citados na `peticao`, pacote na `peticao_versao`); verifica com o teste das migrações em `pnpm --filter @ggv/api test`.
-- [ ] 9.3 CA3 · `GET /api/casos/:id/documentos/:doc` em `apps/api/src/rotas/documentos.ts` (sensível só com `dado_saude.ver_detalhe`, gravando `acesso_dado_sensivel`); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 9.4 CA1 a CA7 · `GET /api/casos/:id/indeferimento` e `POST /api/casos/:id/indeferimento/motivo` em `apps/api/src/rotas/indeferimento.ts` (motivo e carta obrigatórios; grava sem duplicar; conclui `D3.01`; nasce "Despachar caso"; histórico); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 9.5 Tela "Registrar indeferimento" (`apps/web/src/paginas/RegistrarIndeferimento.tsx`), a rota no `App.tsx` e `D3.01` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 9.1 Matriz versão 7 (`pendencia.cumprir`, `peticao.protocolar`) em `packages/contratos/src/permissoes.ts`, com a impressão digital nova no teste; contratos `Indeferimento` e `RegistrarMotivo` em `justica.ts`; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 9.2 Migração 0011 pelo `db:gerar` (origem `despacho`, `exigencia_item.informacao`, motivo escrito no `resultado_inss`, pedido e citados na `peticao`, pacote na `peticao_versao`); verifica com o teste das migrações em `pnpm --filter @ggv/api test`.
+- [x] 9.3 CA3 · `GET /api/casos/:id/documentos/:doc` em `apps/api/src/rotas/documentos.ts` (sensível só com `dado_saude.ver_detalhe`, gravando `acesso_dado_sensivel`); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.4 CA1 a CA7 · `GET /api/casos/:id/indeferimento` e `POST /api/casos/:id/indeferimento/motivo` em `apps/api/src/rotas/indeferimento.ts` (motivo e carta obrigatórios; grava sem duplicar; conclui `D3.01`; nasce "Despachar caso"; histórico); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.5 Tela "Registrar indeferimento" (`apps/web/src/paginas/RegistrarIndeferimento.tsx`), a rota no `App.tsx` e `D3.01` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-54 · A IA analisa o motivo e a sênior despacha
 
