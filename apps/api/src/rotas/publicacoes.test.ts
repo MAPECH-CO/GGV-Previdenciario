@@ -78,3 +78,75 @@ describe('GGVP-26 · fila de revisão da Sênior', () => {
     expect((await chamar('helena', 'GET', '/api/tarefas')).json()).toEqual([])
   })
 })
+
+describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
+  const casar = async () => {
+    await casarPublicacoes(
+      banco,
+      [
+        { fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: '2026-10-05', texto: 'Intime-se para juntar laudo em 15 dias.', partes: null },
+        { fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: '2026-10-05', texto: 'Autos conclusos.', partes: null },
+      ],
+      agora,
+    )
+    const pubs = await banco.select().from(publicacao)
+    return { exigencia: pubs.find((p) => p.texto.startsWith('Intime'))!, andamento: pubs.find((p) => p.texto.startsWith('Autos'))! }
+  }
+  const classificar = async (id: string, corpo: object, apelido = 'gabi') => chamar(apelido, 'POST', `/api/publicacoes/${id}/classificacao`, corpo)
+  const filaDa = async (apelido: string) => (await chamar(apelido, 'GET', '/api/tarefas')).json().map((t: { titulo: string; prazo: string | null }) => [t.titulo, t.prazo])
+
+  it('CA6 · as publicações casadas viram uma linha "Ler publicação" na fila da advogada, com a tela do processo', async () => {
+    await casar()
+    const [l] = (await chamar('gabi', 'GET', '/api/tarefas')).json()
+    expect([l.titulo, l.cliente.nome, l.tela]).toEqual(['Ler publicação', 'Sebastião Cruz', `/casos/${casoId}/publicacoes`])
+  })
+
+  it('CA2, CA4 e GGVP-34 CA3 · exigência: a advogada classifica, vê o prazo com a regra e a tarefa nasce com o prazo', async () => {
+    const { exigencia } = await casar()
+    expect((await classificar(exigencia.id, { classe: 'exigencia' })).json().erro).toBe(
+      'Informe o prazo da publicação, em dias (1 a 120), ou marque "sem prazo na decisão"',
+    )
+    const r = (await classificar(exigencia.id, { classe: 'exigencia', dias: '15' })).json()
+    expect([r.prazo.inicio, r.prazo.fim, r.prazo.versao]).toEqual(['2026-10-07', '2026-10-27', 1])
+    const lida = (await chamar('gabi', 'GET', `/api/publicacoes/${exigencia.id}`)).json()
+    expect([lida.classe, lida.classificadaPor, lida.prazo.fim, lida.prazo.regra, lida.feriadosCadastrados]).toEqual([
+      'exigencia', 'gabi', '2026-10-27', r.prazo.regra, false,
+    ])
+    expect(await filaDa('gabi')).toEqual([
+      ['Analisar exigência do juiz', '2026-10-27'],
+      ['Ler publicação', null],
+    ])
+  })
+
+  it('CA1 · lidas todas as publicações do caso, "Ler publicação" sai da fila; o andamento não cria tarefa', async () => {
+    const { exigencia, andamento } = await casar()
+    await classificar(andamento.id, { classe: 'andamento' })
+    expect(await filaDa('gabi')).toEqual([['Ler publicação', null]])
+    await classificar(exigencia.id, { classe: 'merito', semPrazoNaDecisao: true })
+    expect(await filaDa('gabi')).toEqual([['Confirmar desfecho', '2026-10-13']])
+  })
+
+  it('CA5, CA7 e GGVP-34 CA10 · o processo lista as publicações com classe e prazo; reclassificar fica registrado', async () => {
+    const { exigencia, andamento } = await casar()
+    await classificar(andamento.id, { classe: 'andamento' })
+    await classificar(exigencia.id, { classe: 'exigencia', dias: 15 })
+    await classificar(andamento.id, { classe: 'exigencia', dias: 5 }, 'helena')
+    const lista = (await chamar('gabi', 'GET', `/api/casos/${casoId}/publicacoes`)).json().publicacoes
+    expect(lista.map((p: { classe: string; prazo: { fim: string } | null }) => [p.classe, p.prazo?.fim ?? null])).toEqual([
+      ['exigencia', '2026-10-27'],
+      ['exigencia', '2026-10-13'],
+    ])
+    const eventos = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'publicacao_reclassificada'))
+    expect(eventos).toHaveLength(1)
+    await classificar(exigencia.id, { classe: 'andamento' })
+    const depois = (await chamar('gabi', 'GET', `/api/publicacoes/${exigencia.id}`)).json()
+    expect([depois.classe, depois.prazo]).toEqual(['andamento', null])
+  })
+
+  it('só quem pode classifica; o Financeiro nem abre', async () => {
+    await banco.insert(usuario).values({ email: 'ana@exemplo.ggv', nome: 'ana', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['financeiro'], trocarSenha: false })
+    const { exigencia } = await casar()
+    expect((await classificar(exigencia.id, { classe: 'andamento' }, 'ana')).statusCode).toBe(403)
+    expect((await chamar('ana', 'GET', `/api/publicacoes/${exigencia.id}`)).statusCode).toBe(403)
+  })
+})

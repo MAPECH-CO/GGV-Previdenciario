@@ -52,6 +52,9 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  'D3a.01': (id) => `/casos/${id}/publicacoes`,
+  'D3a.02': (id) => `/casos/${id}/publicacoes`,
+  'D4.02': (id) => `/casos/${id}/publicacoes`,
 }
 
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date }

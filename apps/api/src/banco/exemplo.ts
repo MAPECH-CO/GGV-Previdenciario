@@ -4,7 +4,9 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, modelo, parecerMedico, pessoa, resultadoInss, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { momentoDoHorario } from '../vigilia/rodadas.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
 
@@ -158,4 +160,24 @@ export async function semearExemplos(banco: Banco) {
     .returning()
   await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
   await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
+
+  // Vigília do diário (GGVP-26, 30, 34, 37, 74): dois processos judiciais com número CNJ, que a fonte de exemplo
+  // reconhece, e a rodada das 08:00 de hoje com falha: reprocessar traz as publicações de exemplo do dia.
+  for (const [nome, cnj] of [
+    ['Otávio Lima (exemplo)', CNJ_EXEMPLO.exigencia],
+    ['Rosa Amaral (exemplo)', CNJ_EXEMPLO.merito],
+  ] as const) {
+    const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [cj] = await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'judicial' }).returning()
+    await banco.insert(identificadorCaso).values({ casoId: cj.id, tipo: 'cnj', valor: cnj })
+  }
+  const hojeBr = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10)
+  await banco.insert(rodadaVigilia).values({
+    fonte: 'exemplo',
+    previstaPara: momentoDoHorario(hojeBr, '08:00'),
+    inicio: momentoDoHorario(hojeBr, '08:00'),
+    fim: momentoDoHorario(hojeBr, '08:01'),
+    situacao: 'falhou',
+    erro: 'tempo esgotado: a fonte não respondeu em 60 s (exemplo)',
+  })
 }

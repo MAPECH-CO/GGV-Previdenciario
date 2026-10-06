@@ -1,11 +1,13 @@
 // Publicações da vigília (GGVP-26, GGVP-34, GGVP-37, GGVP-74): fila de revisão da Sênior, leitura e classificação.
-import { eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { VincularPublicacao, type Erro } from '@ggv/contratos'
+import { ClassificarPublicacao, PublicacaoParaLer, PublicacoesDoCaso, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { publicacao } from '../banco/esquema.ts'
+import { caso, pessoa, prazo, publicacao, publicacaoReclassificacao, tarefa, usuario } from '../banco/esquema.ts'
+import { feriadosDoProcesso } from '../fluxo/prazo-judicial.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { casoDoCnj, pedirLeitura } from '../vigilia/casar.ts'
+import { encaminhar } from '../vigilia/encaminhar.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 
 export const MSG_CNJ_SEM_CASO = 'Nenhum processo do escritório tem esse número CNJ.'
@@ -42,5 +44,90 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
     await pedirLeitura(banco, casoId)
     await historico(quem, 'publicacao_vinculada', pedido, `publicacao:${p.id}`, { casoId, numeroCnj: d.numeroCnj })
     return resposta.code(201).send({ ok: true, casoId })
+  })
+
+  const nomeDe = async (id: string | null) =>
+    id ? ((await banco.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, id)))[0]?.nome ?? null) : null
+
+  /** O prazo do encaminhamento atual; reclassificada para andamento, não tem prazo. */
+  const prazoDa = async (publicacaoId: string, classe: string | null) => {
+    if (classe === 'andamento') return null
+    const [p] = await banco.select().from(prazo).where(eq(prazo.publicacaoId, publicacaoId)).orderBy(desc(prazo.criadoEm)).limit(1)
+    return p ? { inicio: p.inicio, fim: p.fim, regra: p.regra, versao: p.regraVersao } : null
+  }
+
+  // GGVP-74 CA4 e GGVP-34 CA3: a publicação, a classificação e o prazo contado (com a regra e a versão).
+  app.get<{ Params: { id: string } }>('/api/publicacoes/:id', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+    const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, pedido.params.id))
+    if (!p || !p.casoId) return negar(resposta, 404, 'Publicação não encontrada.')
+    const [c] = await banco.select({ nome: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, p.casoId))
+    return PublicacaoParaLer.parse({
+      id: p.id,
+      casoId: p.casoId,
+      cliente: c?.nome ?? null,
+      numeroCnj: p.numeroCnj,
+      fonte: p.fonte,
+      disponibilizadaEm: p.disponibilizadaEm,
+      texto: p.texto,
+      classe: p.classe,
+      classificadaPor: await nomeDe(p.revisadaPor),
+      classificadaEm: p.revisadaEm?.toISOString() ?? null,
+      prazo: await prazoDa(p.id, p.classe),
+      feriadosCadastrados: (await feriadosDoProcesso(banco, p.numeroCnj)).size > 0,
+      podeClassificar: pode(pedido.perfilAtivo, 'publicacao.classificar'),
+    })
+  })
+
+  // GGVP-34 CA1, CA4, CA5, CA10 e GGVP-37: a pessoa classifica (ou reclassifica); o sistema conta e encaminha.
+  app.post<{ Params: { id: string } }>(
+    '/api/publicacoes/:id/classificacao',
+    { preHandler: exigir(banco, 'publicacao.classificar', agora) },
+    async (pedido, resposta) => {
+      const entrada = ClassificarPublicacao.safeParse(pedido.body)
+      if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
+      const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, pedido.params.id))
+      if (!p || !p.casoId) return negar(resposta, 404, 'Publicação não encontrada.')
+      const quem = pedido.usuario!.id
+      const { classe, dias } = entrada.data
+      const contado = await banco.transaction(async (tx) => {
+        if (p.classe && p.classe !== classe) await tx.insert(publicacaoReclassificacao).values({ publicacaoId: p.id, de: p.classe, para: classe, por: quem })
+        await tx.update(publicacao).set({ classe, revisadaPor: quem, revisadaEm: agora() }).where(eq(publicacao.id, p.id))
+        const prazoContado = await encaminhar(tx, p, classe, dias, agora())
+        // GGVP-74 CA1: lidas todas as publicações do caso, "Ler publicação" sai da fila.
+        const [naoLida] = await tx
+          .select({ id: publicacao.id })
+          .from(publicacao)
+          .where(and(eq(publicacao.casoId, p.casoId!), isNull(publicacao.classe)))
+          .limit(1)
+        if (!naoLida)
+          await tx
+            .update(tarefa)
+            .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+            .where(and(eq(tarefa.casoId, p.casoId!), eq(tarefa.passo, 'D3a.01'), isNull(tarefa.concluidaEm)))
+        return prazoContado
+      })
+      await historico(quem, p.classe ? 'publicacao_reclassificada' : 'publicacao_classificada', pedido, `publicacao:${p.id}`, { de: p.classe, para: classe })
+      return resposta.code(201).send({ ok: true, classe, prazo: contado ? { inicio: contado.inicio, fim: contado.fim, regra: contado.regra, versao: contado.versao } : null })
+    },
+  )
+
+  // GGVP-74 CA5, CA7: as publicações do processo, com a classificação, quem leu e o prazo.
+  app.get<{ Params: { id: string } }>('/api/casos/:id/publicacoes', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const [c] = await banco.select({ nome: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
+    if (!c) return negar(resposta, 404, 'Caso não encontrado.')
+    const linhas = await banco.select().from(publicacao).where(eq(publicacao.casoId, casoId)).orderBy(desc(publicacao.disponibilizadaEm), desc(publicacao.criadoEm))
+    const publicacoes = []
+    for (const p of linhas)
+      publicacoes.push({
+        id: p.id,
+        disponibilizadaEm: p.disponibilizadaEm,
+        fonte: p.fonte,
+        trecho: p.texto.trim().slice(0, 200),
+        classe: p.classe,
+        classificadaPor: await nomeDe(p.revisadaPor),
+        prazo: await prazoDa(p.id, p.classe),
+      })
+    return PublicacoesDoCaso.parse({ casoId, cliente: c.nome, publicacoes })
   })
 }

@@ -34,8 +34,8 @@ export const fonteDeExemplo: Fonte = {
     const exigencia =
       'Intime-se a parte autora para que, no prazo de 15 (quinze) dias, junte aos autos laudo médico atualizado, sob pena de extinção. (exemplo)'
     return [
-      { fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: dia, texto: exigencia, partes: 'Sebastião Cruz x INSS' },
-      { fonte: 'djen', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: dia, texto: `  ${exigencia.toUpperCase()} `, partes: 'Sebastião Cruz x INSS' },
+      { fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: dia, texto: exigencia, partes: 'Otávio Lima x INSS' },
+      { fonte: 'djen', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: dia, texto: `  ${exigencia.toUpperCase()} `, partes: 'Otávio Lima x INSS' },
       {
         fonte: 'djen',
         numeroCnj: CNJ_EXEMPLO.merito,
@@ -43,7 +43,7 @@ export const fonteDeExemplo: Fonte = {
         texto: 'Ante o exposto, JULGO PROCEDENTE o pedido para condenar o INSS a conceder o benefício. (exemplo)',
         partes: 'Rosa Amaral x INSS',
       },
-      { fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: dia, texto: 'Autos conclusos para despacho. (exemplo)', partes: 'Sebastião Cruz x INSS' },
+      { fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: dia, texto: 'Autos conclusos para despacho. (exemplo)', partes: 'Otávio Lima x INSS' },
       {
         fonte: 'aasp',
         numeroCnj: null,
