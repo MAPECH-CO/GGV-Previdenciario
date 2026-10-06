@@ -77,8 +77,8 @@ describe('GGVP-87 · manifestar', () => {
     expect([p.statusCode, p.json().erro]).toEqual([409, 'Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento, Documentação.'])
   })
 
-  it('CA1 · o último item provado faz nascer "Manifestar no processo" (uma vez) e a espera do cliente termina', async () => {
-    expect(await abertas()).not.toContain('advogada · Manifestar no processo')
+  it('CA1 · "Manifestar no processo" nasce na distribuição, com o prazo; com tudo provado, a espera do cliente termina e o protocolo libera', async () => {
+    expect(await abertas()).toEqual(['advogada · Manifestar no processo', 'atendimento · Cumprir exigência do juiz', 'documentacao · Cumprir exigência do juiz'])
     await provarTudo()
     expect(await abertas()).toEqual(['advogada · Manifestar no processo'])
     const [espera] = await banco.select().from(etapa).where(eq(etapa.passo, 'D3a.E2'))
@@ -120,7 +120,7 @@ describe('GGVP-87 · manifestar', () => {
     expect((await chamar('helena', 'POST', '/manifestacao/dilacao', { motivo: 'Cliente internado, sem como trazer o laudo' })).statusCode).toBe(201)
     expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json()).toEqual({ ok: true, tipo: 'dilacao' })
     const [x] = await banco.select().from(exigencia)
-    expect([x.situacao, (await abertas()).length]).toEqual(['dilacao_pedida', 2])
+    expect([x.situacao, (await abertas()).length]).toEqual(['dilacao_pedida', 3])
   })
 
   it('CA13 · tribunal fora do ar: com a prova e a data da volta, o prazo vai para o dia útil seguinte', async () => {
@@ -153,3 +153,64 @@ describe('GGVP-87 CA4 · perto do vencimento, a Sênior', () => {
     expect([x.situacao, await abertas()]).toEqual(['vencida', []])
   })
 })
+
+describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
+  const pendentes = async () => (await chamar('gabi', 'GET', '/manifestacao')).json().pendentes as { alvo: string; id: string; setor: string; descricao: string }[]
+  const encerrar = async (corpo: object, apelido = 'gabi') => chamar(apelido, 'POST', '/manifestacao/sem-prova', corpo)
+
+  it('o documento não existe: a advogada encerra o item com o motivo; o setor para de cobrar e o protocolo libera', async () => {
+    const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
+    for (const i of await banco.select().from(exigenciaItem)) if (i.perfilResponsavel === 'atendimento') await enviar('ana', `/exigencia-juiz/itens/${i.id}/prova`)
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: '' })).json().erro).toBe('Escreva por que vai manifestar sem essa prova')
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'x' }, 'helena')).statusCode).toBe(403)
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe: o médico do cliente faleceu' })).statusCode).toBe(201)
+    const m = (await chamar('gabi', 'GET', '/manifestacao')).json()
+    expect([m.faltam, m.semProva.map((e: { descricao: string; motivo: string; por: string }) => [e.descricao, e.motivo, e.por])]).toEqual([
+      [],
+      [['Laudo', 'O laudo não existe: o médico do cliente faleceu', 'gabi']],
+    ])
+    expect(await abertas()).toEqual(['advogada · Manifestar no processo'])
+    expect((await enviar('dora', `/exigencia-juiz/itens/${doc.id}/prova`)).json().erro).toBe('Este item foi encerrado pela advogada, sem a prova.')
+    await anexarEAprovar()
+    expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json()).toEqual({ ok: true, tipo: 'manifestacao' })
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'manifestacao_protocolada'))
+    expect((ev.detalhe as { semProva: unknown[] }).semProva).toEqual([{ descricao: 'Laudo', motivo: 'O laudo não existe: o médico do cliente faleceu' }])
+  })
+
+  it('com um item ainda pendente, encerrar outro não libera: o portão continua (G21)', async () => {
+    const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
+    await encerrar({ alvo: 'item', id: doc.id, motivo: 'Documento não existe' })
+    await anexarEAprovar()
+    expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json().erro).toBe('Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento.')
+  })
+})
+
+describe('GGVP-87 · perícia que não tem como ser feita (ajuste de 06/10)', () => {
+  beforeEach(async () => {
+    // Outro caso: só o documento e uma perícia médica.
+    const [p] = await banco.insert(pessoa).values({ nome: 'Marta Sales' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_deficiente', fase: 'judicial' }).returning()
+    casoId = c.id
+    const cnj = '00056787520264036301'
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: cnj })
+    await casarPublicacoes(banco, [{ fonte: 'aasp', numeroCnj: cnj, disponibilizadaEm: '2026-10-05', texto: 'Junte laudo e submeta-se a perícia.', partes: null }], AGORA)
+    const [pub] = await banco.select().from(publicacao).where(eq(publicacao.casoId, casoId))
+    await app.inject({ method: 'POST', url: `/api/publicacoes/${pub.id}/classificacao`, cookies: await cookieDe('gabi'), payload: { classe: 'exigencia', dias: 15 } })
+    await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [{ setor: 'documentacao', descricao: 'Laudo', prazoInterno: '20/10/2026' }], tiposPericia: ['medica'] })
+  })
+
+  it('com o documento entregue e a perícia pendente, não manifesta; encerrada com o motivo, libera e a tarefa de marcar é cancelada', async () => {
+    const antes = (await chamar('gabi', 'GET', '/manifestacao')).json().pendentes as { alvo: string; id: string }[]
+    await enviar('dora', `/exigencia-juiz/itens/${antes.find((p) => p.alvo === 'item')!.id}/prova`)
+    let m = (await chamar('gabi', 'GET', '/manifestacao')).json()
+    expect([m.faltam, m.pendentes.map((p: { alvo: string; setor: string }) => [p.alvo, p.setor]), m.podeEncerrarSemProva]).toEqual([['Perícia'], [['pericia', 'Jurídico administrativo']], true])
+    expect((await encerrar({ alvo: 'pericia', id: m.pendentes[0].id, motivo: 'O juiz cancelou a perícia; vamos pedir julgamento com o laudo' })).statusCode).toBe(201)
+    m = (await chamar('gabi', 'GET', '/manifestacao')).json()
+    expect([m.faltam, m.semProva[0].descricao]).toEqual([[], 'Perícia médica'])
+    expect((await chamar('gabi', 'GET', '/exigencia-juiz')).json().pericias).toEqual([{ tipo: 'medica', resultado: 'encerrada sem resultado' }])
+    expect(await abertas()).toEqual(['advogada · Manifestar no processo'])
+  })
+
+  const encerrar = async (corpo: object) => chamar('gabi', 'POST', '/manifestacao/sem-prova', corpo)
+})
+

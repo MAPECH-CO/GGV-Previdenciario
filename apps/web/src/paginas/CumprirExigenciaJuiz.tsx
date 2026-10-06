@@ -59,6 +59,8 @@ function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: stri
 
       {item.situacao === 'cumprido' ? (
         <span className={styles.selo}>Cumprido · {item.prova}</span>
+      ) : item.situacao === 'nao_cumprido' ? (
+        <span className={styles.selo}>Encerrado pela advogada, sem o documento{item.motivo ? `: ${item.motivo}` : ''}. Não precisa mais cobrar.</span>
       ) : (
         <>
           <section className={styles.cartao} aria-label="Enviar o documento">
@@ -161,7 +163,7 @@ export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
       </main>
     )
 
-  const pendentes = d.itens.filter((i) => i.situacao !== 'cumprido').length
+  const pendentes = d.itens.filter((i) => i.situacao === 'pendente').length
 
   return (
     <main className={styles.pagina}>

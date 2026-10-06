@@ -4,6 +4,7 @@ import {
   AprovarVersao,
   AutorizarDilacao,
   ClassificarPublicacao,
+  EncerrarSemProva,
   NaoVouConseguir,
   ProtocolarManifestacao,
   RegistrarIndisponibilidade,
@@ -87,5 +88,14 @@ describe('GGVP-87 · manifestar e protocolar', () => {
   it('dilação pede o motivo; a indisponibilidade pede a data da volta', () => {
     expect(erro(AutorizarDilacao.safeParse({ motivo: '' }))).toBe('Escreva o motivo da dilação')
     expect(RegistrarIndisponibilidade.parse({ voltouEm: '27/10/2026' })).toEqual({ voltouEm: '2026-10-27' })
+  })
+})
+
+describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
+  it('pede o item ou a perícia e o motivo', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(EncerrarSemProva.parse({ alvo: 'pericia', id, motivo: ' Cliente faleceu antes da perícia ' })).toEqual({ alvo: 'pericia', id, motivo: 'Cliente faleceu antes da perícia' })
+    expect(erro(EncerrarSemProva.safeParse({ alvo: 'item', id, motivo: '' }))).toBe('Escreva por que vai manifestar sem essa prova')
+    expect(erro(EncerrarSemProva.safeParse({ alvo: 'item', motivo: 'x' }))).toBe('Escolha o item ou a perícia')
   })
 })

@@ -11,7 +11,7 @@ import { ORIGEM_JUIZ, abrirPericiasDaExigencia, limitesDeCobranca } from '../flu
 import { somarDias } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
-import { abrirManifestacaoSePronta } from './manifestacao.ts'
+import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
 export const MSG_EVIDENCIA = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
@@ -77,8 +77,9 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
           .limit(1)
       : []
     const pericias = eP ? await banco.select({ tipo: pericia.tipo, resultado: pericia.resultado }).from(pericia).where(eq(pericia.chamadaPorEtapaId, eP.id)) : []
-    const faltam = [
-      ...new Set(itens.filter((i) => i.item.situacao !== 'cumprido').map((i) => ROTULO_SETOR[i.item.perfilResponsavel as keyof typeof ROTULO_SETOR] ?? i.item.perfilResponsavel)),
+    const emCurso = e.exigencia ? await situacaoDaExigenciaJuiz(banco, casoId) : null
+    const faltam = emCurso?.faltam ?? [
+      ...new Set(itens.filter((i) => i.item.situacao === 'pendente').map((i) => ROTULO_SETOR[i.item.perfilResponsavel as keyof typeof ROTULO_SETOR] ?? i.item.perfilResponsavel)),
       ...(pericias.some((p) => p.resultado === null) ? ['Perícia'] : []),
     ]
     const situacao = e.exigencia ? SITUACAO[e.exigencia.situacao as keyof typeof SITUACAO] : ciencia ? 'ciencia' : 'a_analisar'
@@ -100,12 +101,16 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
         provaEsperada: i.item.provaEsperada,
         prazoInterno: i.item.prazo,
         situacao: i.item.situacao,
+        motivo: i.item.motivo,
         prova: i.prova,
         tentativas: i.tarefa?.tentativas ?? 0,
         limite: i.tarefa?.limiteTentativas ?? null,
         escalada: Boolean(i.tarefa?.escaladaEm),
       })),
-      pericias,
+      // Perícia encerrada pela advogada sem resultado aparece como tal, não como "aguardando".
+      pericias: pericias.map((p) =>
+        p.resultado === null && emCurso && !emCurso.periciasPendentes.some((x) => x.tipo === p.tipo) ? { ...p, resultado: 'encerrada sem resultado' } : p,
+      ),
       faltam,
       podeDistribuir: pode(pedido.perfilAtivo, 'exigencia_juiz.distribuir') && situacao === 'a_analisar',
       vencida,
@@ -183,6 +188,9 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       // CA8: a perícia pedida pelo juiz abre sozinha a tarefa do Jurídico administrativo, com a origem D3a.
       if (d.tiposPericia.length) await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
       if (temItens) await tx.insert(etapa).values({ casoId, diagrama: 'D3a', passo: 'D3a.E2', situacao: 'aguardando_externo', aguardando: 'cliente responder ou entregar', iniciadaEm: agora() })
+      // GGVP-87 (ajuste do Mateus, 06/10): a advogada acompanha desde já, com o prazo do processo; o protocolo só libera
+      // com todos os itens provados, por documento ou pela justificativa dela (G21).
+      await tx.insert(tarefa).values({ casoId, passo: 'D3a.04', titulo: 'Manifestar no processo', perfilDono: 'advogada', prazo: fim, criadoEm: agora() })
     })
     await historico(quem, d.decisao === 'ciencia' ? 'exigencia_juiz_ciencia' : 'exigencia_juiz_distribuida', pedido, `caso:${casoId}`, {
       publicacao: e.publicacao.id,
@@ -246,6 +254,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
         provaEsperada: l.item.provaEsperada,
         prazoInterno: l.item.prazo,
         situacao: l.item.situacao,
+        motivo: l.item.motivo,
         prova: l.prova,
         proximoLembrete: l.tarefa && !l.tarefa.concluidaEm ? l.tarefa.prazo : null,
         limite: l.tarefa?.limiteTentativas ?? null,
@@ -262,6 +271,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
     if (!l || !l.tarefa) return void negar(resposta, 404, 'Item não encontrado.')
     if (l.item.perfilResponsavel !== setorDo(perfil)) return void negar(resposta, 403, MSG_ITEM_DE_OUTRO_SETOR)
     if (l.item.situacao === 'cumprido') return void negar(resposta, 409, 'Este item já foi cumprido.')
+    if (l.item.situacao === 'nao_cumprido') return void negar(resposta, 409, 'Este item foi encerrado pela advogada, sem a prova.')
     return l as typeof l & { tarefa: NonNullable<typeof l.tarefa> }
   }
 

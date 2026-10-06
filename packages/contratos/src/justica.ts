@@ -184,6 +184,8 @@ export const ExigenciaDoJuiz = z.object({
       provaEsperada: z.string().nullable(),
       prazoInterno: z.string().nullable(),
       situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
+      /** Encerrado sem a prova pela advogada: o motivo é a prova em texto (GGVP-68 CA2). */
+      motivo: z.string().nullable(),
       prova: z.string().nullable(),
       tentativas: z.number(),
       limite: z.number().nullable(),
@@ -214,6 +216,8 @@ export const ItensDoSetor = z.object({
       provaEsperada: z.string().nullable(),
       prazoInterno: z.string().nullable(),
       situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
+      /** Encerrado sem a prova pela advogada: o motivo é a prova em texto (GGVP-68 CA2). */
+      motivo: z.string().nullable(),
       prova: z.string().nullable(),
       proximoLembrete: z.string().nullable(),
       limite: z.number().nullable(),
@@ -241,7 +245,11 @@ export const Manifestacao = z.object({
   cliente: z.string(),
   prazo: z.object({ fim: z.string(), regra: z.string() }),
   faltam: z.array(z.string()),
-  pendentes: z.array(z.object({ setor: z.string(), descricao: z.string(), prazoInterno: z.string().nullable() })),
+  pendentes: z.array(
+    z.object({ alvo: z.enum(['item', 'pericia']), id: z.uuid(), setor: z.string(), descricao: z.string(), prazoInterno: z.string().nullable() }),
+  ),
+  /** Itens e perícias encerrados sem a prova, com o motivo, quem e quando: a manifestação precisa explicar ao juiz. */
+  semProva: z.array(z.object({ descricao: z.string(), motivo: z.string(), por: z.string(), em: z.string() })),
   versoes: z.array(
     z.object({ numero: z.number(), tipo: z.enum(['manifestacao', 'dilacao']), arquivo: z.string().nullable(), por: z.string(), em: z.string(), aprovadaPor: z.string().nullable(), aprovadaEm: z.string().nullable() }),
   ),
@@ -250,6 +258,7 @@ export const Manifestacao = z.object({
   podeAnexar: z.boolean(),
   podeProtocolar: z.boolean(),
   podeAutorizarDilacao: z.boolean(),
+  podeEncerrarSemProva: z.boolean(),
 })
 export type Manifestacao = z.infer<typeof Manifestacao>
 
@@ -264,6 +273,18 @@ export type ProtocolarManifestacao = z.input<typeof ProtocolarManifestacao>
 
 /** POST /api/casos/:id/manifestacao/dilacao (CA12): a Sênior autoriza o pedido de dilação, com o motivo. */
 export const AutorizarDilacao = z.object({ motivo: z.string({ error: 'Escreva o motivo da dilação' }).trim().min(1, 'Escreva o motivo da dilação') })
+
+/**
+ * POST /api/casos/:id/manifestacao/sem-prova (ajuste do Mateus, 06/10): o documento não existe ou a perícia não tem como
+ * ser feita. A advogada encerra o item, ou a perícia, com o motivo obrigatório; o motivo é a prova em texto do item
+ * (GGVP-68 CA2), e o portão continua: só manifesta com todos os itens provados, por documento ou por justificativa (G21).
+ */
+export const EncerrarSemProva = z.object({
+  alvo: z.enum(['item', 'pericia'], { error: 'Escolha o item ou a perícia' }),
+  id: z.uuid({ error: 'Escolha o item ou a perícia' }),
+  motivo: z.string({ error: 'Escreva por que vai manifestar sem essa prova' }).trim().min(1, 'Escreva por que vai manifestar sem essa prova'),
+})
+export type EncerrarSemProva = z.infer<typeof EncerrarSemProva>
 
 /** POST /api/casos/:id/manifestacao/indisponibilidade (CA13): a data em que o sistema do tribunal voltou; a prova vai junto. */
 export const RegistrarIndisponibilidade = z.object({ voltouEm: DataObrigatoria('Informe a data em que o sistema do tribunal voltou (dd/mm/aaaa)') })

@@ -7,7 +7,7 @@ Manifestar e protocolar: com todos os itens provados (G21), a advogada anexa a v
 ## ADDED Requirements
 
 ### Requirement: CA1 · Com todos os setores com OK, "Manifestar" ativa
-Com todos os itens com prova, "Manifestar" SHALL ficar ativo e a tarefa "Manifestar no processo" SHALL nascer para a advogada; a minuta da IA fica para o épico IA.
+A tarefa "Manifestar no processo" SHALL nascer para a advogada na distribuição da exigência, com o prazo do processo, para ela acompanhar (ajuste do Mateus, 06/10); "Manifestar" SHALL ficar ativo só com todos os itens com prova. A minuta da IA fica para o épico IA.
 
 #### Scenario: CA1 · Todos com OK
 - **Dado** todos os setores com OK
@@ -39,7 +39,7 @@ Um item sem prova perto do vencimento do prazo processual SHALL escalar para a S
 - **Então** a tarefa escala para a Sênior
 
 ### Requirement: CA5 · Bloqueado mostra quem falta e o prazo
-Com setor sem card ou perícia sem retorno, "Manifestar" MUST ficar bloqueado e SHALL mostrar quem falta e o prazo.
+Com setor sem card ou perícia sem retorno, "Manifestar" MUST ficar bloqueado e SHALL mostrar quem falta e o prazo. Se o documento não existe ou a perícia não tem como ser feita, a advogada SHALL poder encerrar aquele item, ou a perícia, com o motivo obrigatório, que fica como a prova em texto do item (GGVP-68 CA2), com quem e quando; o portão continua: sem prova em todos os itens, por documento ou por justificativa, não se manifesta (G21). O setor para de cobrar o item encerrado, e a manifestação registra os itens encerrados sem a prova (ajuste do Mateus, 06/10; o Lucas confirma em homologação).
 
 #### Scenario: CA5 · Setor pendente
 - **Dado** um setor sem card ou a perícia sem retorno

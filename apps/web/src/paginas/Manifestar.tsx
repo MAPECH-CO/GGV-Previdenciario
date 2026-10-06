@@ -1,11 +1,57 @@
 import { useEffect, useId, useState } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
-import { AprovarVersao, AutorizarDilacao, ProtocolarManifestacao, RegistrarIndisponibilidade, type Manifestacao } from '@ggv/contratos'
+import { AprovarVersao, AutorizarDilacao, EncerrarSemProva, ProtocolarManifestacao, RegistrarIndisponibilidade, type Manifestacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
 const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
 const ROTULO_TIPO = { manifestacao: 'Manifestação', dilacao: 'Pedido de dilação' } as const
+type Pendente = Manifestacao['pendentes'][number]
+
+/**
+ * Um item ou perícia que falta (G21). Se o documento não existe ou a perícia não tem como ser feita, a advogada encerra
+ * com o motivo, que fica como a prova em texto do item (GGVP-68 CA2; ajuste do Mateus, 06/10).
+ */
+function LinhaPendente({ casoId, p, podeEncerrar, aoEncerrar }: { casoId: string; p: Pendente; podeEncerrar: boolean; aoEncerrar: (texto: string) => void }) {
+  const idMotivo = useId()
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState('')
+
+  async function encerrar() {
+    const entrada = EncerrarSemProva.safeParse({ alvo: p.alvo, id: p.id, motivo })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escreva o motivo.')
+    const r = await chamarApi(`/casos/${casoId}/manifestacao/sem-prova`, { method: 'POST', corpo: entrada.data })
+    if (!r.ok) return setErro(r.erro)
+    aoEncerrar(`${p.descricao}: encerrado sem a prova, com o motivo. Explique isso na manifestação.`)
+  }
+
+  return (
+    <li>
+      {p.setor} · {p.descricao}
+      {p.prazoInterno ? ` · até ${dia(p.prazoInterno)}` : ''}
+      {podeEncerrar && (
+        <details>
+          <summary>{p.alvo === 'pericia' ? 'A perícia não tem como ser feita?' : 'O documento não existe?'} Manifestar sem essa prova</summary>
+          <label className={styles.rotulo} htmlFor={idMotivo}>
+            Por que vai manifestar sem essa prova
+          </label>
+          <input id={idMotivo} className={styles.campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+          {erro && (
+            <p className={styles.erro} role="alert">
+              {erro}
+            </p>
+          )}
+          <div className={styles.acoes}>
+            <button type="button" className={styles.botaoSecundario} onClick={() => void encerrar()}>
+              Encerrar sem a prova
+            </button>
+          </div>
+          <p className={styles.dica}>O motivo fica registrado com o seu nome e a data, e vai junto no histórico do protocolo.</p>
+        </details>
+      )}
+    </li>
+  )
+}
 
 /**
  * Manifestar e protocolar (GGVP-87). Sem IA, a advogada redige fora do portal e anexa a versão; aprova (G6); protocola
@@ -119,16 +165,28 @@ export function Manifestar({ casoId }: { casoId: string }) {
       ) : m.faltam.length > 0 ? (
         <section className={styles.cartao} aria-label="Bloqueado">
           <p className={styles.erro}>Manifestar bloqueado: falta {m.faltam.join(', ')} (G21).</p>
-          <ul className={styles.lista}>
+          <ul className={styles.lista} aria-label="Pendentes">
             {m.pendentes.map((p) => (
-              <li key={p.setor + p.descricao}>
-                {p.setor} · {p.descricao} · até {dia(p.prazoInterno)}
-              </li>
+              <LinhaPendente key={p.id} casoId={casoId} p={p} podeEncerrar={m.podeEncerrarSemProva} aoEncerrar={pronto} />
             ))}
           </ul>
         </section>
       ) : (
         <p className={styles.selo}>Todos os setores subiram a prova. Pode manifestar.</p>
+      )}
+
+      {m.semProva.length > 0 && (
+        <section className={styles.cartao} aria-label="Sem a prova">
+          <h2 className={styles.cartaoTitulo}>Encerrados sem a prova</h2>
+          <p className={styles.dica}>Explique ao juiz, na manifestação, por que estes itens vão sem a prova.</p>
+          <ul className={styles.lista}>
+            {m.semProva.map((e) => (
+              <li key={e.descricao + e.em}>
+                {e.descricao} · {e.motivo} · {e.por} em {dia(e.em)}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {feito && (

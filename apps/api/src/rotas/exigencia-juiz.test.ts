@@ -77,6 +77,7 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
     })
     // Lembrete a 2 dias (07/10), sem passar do prazo interno.
     expect(await abertas()).toEqual([
+      'advogada · Manifestar no processo · 2026-10-27',
       'atendimento · Cumprir exigência do juiz · 2026-10-06',
       'documentacao · Cumprir exigência do juiz · 2026-10-07',
       'juridico_adm · Cumprir exigência do juiz · 2026-10-07',
@@ -95,7 +96,7 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
 
   it('CA8 · perícia abre sozinha a tarefa do Jurídico administrativo, com a origem do juiz', async () => {
     await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', tiposPericia: ['medica'] })
-    expect(await abertas()).toEqual(['juridico_adm · Marcar perícia médica (exigência do juiz) · null'])
+    expect(await abertas()).toEqual(['advogada · Manifestar no processo · 2026-10-27', 'juridico_adm · Marcar perícia médica (exigência do juiz) · null'])
     expect((await chamar('gabi', 'GET', '/exigencia-juiz')).json().faltam).toEqual(['Perícia'])
   })
 
@@ -141,6 +142,7 @@ describe('GGVP-83 · laço dos setores', () => {
     expect((await tentar()).json()).toEqual({ ok: true, tentativas: 1, escalada: false })
     expect((await tentar()).json()).toEqual({ ok: true, tentativas: 2, escalada: true })
     expect(await abertas()).toEqual([
+      'advogada · Manifestar no processo · 2026-10-27',
       'atendimento · Cumprir exigência do juiz · 2026-10-07',
       'documentacao · Cumprir exigência do juiz · 2026-10-07',
       'senior · Exigência do juiz sem retorno: Trazer laudo médico atualizado (limite de tentativas) · null',
@@ -171,7 +173,11 @@ describe('GGVP-83 · laço dos setores', () => {
   it('CA2, CA3, CA10 · a advogada e a Sênior veem o status de cada setor e quem falta; o resultado da perícia volta', async () => {
     await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [ITEM], tiposPericia: ['social'] })
     // Documento e perícia juntos: duas tarefas separadas, cada uma na Central do seu perfil (GGVP-79 CA1, CA8).
-    expect(await abertas()).toEqual(['documentacao · Cumprir exigência do juiz · 2026-10-07', 'juridico_adm · Marcar avaliação social (exigência do juiz) · null'])
+    expect(await abertas()).toEqual([
+      'advogada · Manifestar no processo · 2026-10-27',
+      'documentacao · Cumprir exigência do juiz · 2026-10-07',
+      'juridico_adm · Marcar avaliação social (exigência do juiz) · null',
+    ])
     const item = await itemDo('documentacao')
     await provar('dora', item.id)
     let r = (await chamar('helena', 'GET', '/exigencia-juiz')).json()

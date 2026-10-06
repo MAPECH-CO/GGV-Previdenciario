@@ -3,7 +3,17 @@
 import { createHash } from 'node:crypto'
 import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AprovarVersao, AutorizarDilacao, Manifestacao, ProtocolarManifestacao, ROTULO_SETOR, RegistrarIndisponibilidade, pode, type Erro } from '@ggv/contratos'
+import {
+  AprovarVersao,
+  AutorizarDilacao,
+  EncerrarSemProva,
+  Manifestacao,
+  ProtocolarManifestacao,
+  ROTULO_SETOR,
+  RegistrarIndisponibilidade,
+  pode,
+  type Erro,
+} from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import {
@@ -36,7 +46,15 @@ type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const EM_CURSO = ['aberta', 'dilacao_pedida', 'vencida'] as const
 
-/** A exigência do juiz em curso do caso, com o que falta: itens sem prova e perícias sem resultado (G21, CA5). */
+const NOME_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social' } as Record<string, string>
+
+/** Item encerrado sem a prova pela advogada: o motivo é a prova em texto (GGVP-68 CA2; ajuste do Mateus, 06/10). */
+const semProva = (i: typeof exigenciaItem.$inferSelect) => i.situacao === 'nao_cumprido' && Boolean(i.motivo) && Boolean(i.cumpridoPor)
+
+/**
+ * A exigência do juiz em curso do caso, com o que falta (G21, CA5): itens sem documento e perícias sem resultado, a não
+ * ser que a advogada tenha encerrado com o motivo, que fica como a prova em texto do item.
+ */
 export async function situacaoDaExigenciaJuiz(banco: Banco, casoId: string) {
   const [x] = await banco
     .select()
@@ -52,21 +70,36 @@ export async function situacaoDaExigenciaJuiz(banco: Banco, casoId: string) {
     .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, ORIGEM_JUIZ.passo), gte(etapa.iniciadaEm, x.criadoEm)))
     .limit(1)
   const pericias = eP ? await banco.select().from(pericia).where(eq(pericia.chamadaPorEtapaId, eP.id)) : []
-  const pendentes = itens.filter((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId)
+  // A perícia encerrada sem resultado fica numa decisão da advogada, com o motivo (a tabela da perícia é do épico Perícia).
+  const dispensas = await banco
+    .select()
+    .from(decisao)
+    .where(and(eq(decisao.casoId, casoId), eq(decisao.passo, 'D3a.04'), eq(decisao.tipo, 'pericia_sem_resultado'), gte(decisao.decididoEm, x.criadoEm)))
+  const dispensada = new Map(dispensas.map((d) => [d.resultado, d] as const))
+  const pendentes = itens.filter((i) => !(i.situacao === 'cumprido' && i.provaDocumentoId) && !semProva(i))
+  const periciasPendentes = pericias.filter((p) => p.resultado === null && !dispensada.has(p.id))
   const faltam = [
     ...new Set(pendentes.map((i) => ROTULO_SETOR[i.perfilResponsavel as keyof typeof ROTULO_SETOR] ?? i.perfilResponsavel)),
-    ...(pericias.some((p) => p.resultado === null) ? ['Perícia'] : []),
+    ...(periciasPendentes.length ? ['Perícia'] : []),
   ]
-  return { exigencia: x, pendentes, faltam }
+  const encerradosSemProva = [
+    ...itens.filter(semProva).map((i) => ({ descricao: i.descricao, motivo: i.motivo!, por: i.cumpridoPor!, em: i.cumpridoEm! })),
+    ...pericias
+      .filter((p) => dispensada.has(p.id))
+      .map((p) => ({ descricao: NOME_PERICIA[p.tipo] ?? p.tipo, motivo: dispensada.get(p.id)!.justificativa ?? '', por: dispensada.get(p.id)!.decididoPor, em: dispensada.get(p.id)!.decididoEm })),
+  ]
+  return { exigencia: x, pendentes, periciasPendentes, pericias, faltam, encerradosSemProva }
 }
 
-/** CA1: quando nada falta, nasce "Manifestar no processo" para a advogada (uma vez) e a espera do cliente termina. */
+/**
+ * CA1: quando nada falta, a espera do cliente termina e "Manifestar no processo" fica pronta para a advogada (a tarefa
+ * nasce na distribuição, com o prazo do processo; se não houver, nasce aqui, uma vez).
+ */
 export async function abrirManifestacaoSePronta(banco: Banco, casoId: string, agora: Date) {
   const s = await situacaoDaExigenciaJuiz(banco, casoId)
   if (!s || s.faltam.length) return false
   const [ja] = await banco.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3a.04'), gte(tarefa.criadoEm, s.exigencia.criadoEm)))
-  if (ja) return false
-  await banco.insert(tarefa).values({ casoId, passo: 'D3a.04', titulo: 'Manifestar no processo', perfilDono: 'advogada', prazo: s.exigencia.prazo, criadoEm: agora })
+  if (!ja) await banco.insert(tarefa).values({ casoId, passo: 'D3a.04', titulo: 'Manifestar no processo', perfilDono: 'advogada', prazo: s.exigencia.prazo, criadoEm: agora })
   await banco
     .update(etapa)
     .set({ situacao: 'concluida', concluidaEm: agora })
@@ -143,7 +176,23 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
       cliente: c.nome,
       prazo: { fim: x.prazo ?? pz?.fim ?? '', regra: pz?.regra ?? '' },
       faltam: s?.faltam ?? [],
-      pendentes: (s?.pendentes ?? []).map((i) => ({ setor: ROTULO_SETOR[i.perfilResponsavel as keyof typeof ROTULO_SETOR] ?? i.perfilResponsavel, descricao: i.descricao, prazoInterno: i.prazo })),
+      pendentes: [
+        ...(s?.pendentes ?? []).map((i) => ({
+          alvo: 'item' as const,
+          id: i.id,
+          setor: ROTULO_SETOR[i.perfilResponsavel as keyof typeof ROTULO_SETOR] ?? i.perfilResponsavel,
+          descricao: i.descricao,
+          prazoInterno: i.prazo,
+        })),
+        ...(s?.periciasPendentes ?? []).map((p) => ({
+          alvo: 'pericia' as const,
+          id: p.id,
+          setor: 'Jurídico administrativo',
+          descricao: NOME_PERICIA[p.tipo] ?? p.tipo,
+          prazoInterno: null,
+        })),
+      ],
+      semProva: (s?.encerradosSemProva ?? []).map((e) => ({ descricao: e.descricao, motivo: e.motivo, por: nomes.get(e.por) ?? '', em: e.em.toISOString() })),
       versoes: versoes.map((v) => ({
         numero: v.numero,
         tipo: p!.tipo,
@@ -159,7 +208,55 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
       podeProtocolar:
         pode(pedido.perfilAtivo, 'exigencia_juiz.manifestar') && emCurso && Boolean(ultima?.aprovadaEm) && (p?.tipo === 'dilacao' ? autorizada : (s?.faltam.length ?? 1) === 0),
       podeAutorizarDilacao: pode(pedido.perfilAtivo, 'exigencia_juiz.autorizar_dilacao') && emCurso && !autorizada && (s?.faltam.length ?? 0) > 0,
+      podeEncerrarSemProva: pode(pedido.perfilAtivo, 'exigencia_juiz.manifestar') && emCurso && (s?.faltam.length ?? 0) > 0,
     })
+  })
+
+  // Ajuste do Mateus (06/10): o documento não existe ou a perícia não tem como ser feita. A advogada encerra o item,
+  // ou a perícia, com o motivo obrigatório; o motivo é a prova em texto (GGVP-68 CA2) e fica com quem e quando.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/manifestacao/sem-prova', { preHandler: exigir(banco, 'exigencia_juiz.manifestar', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const entrada = EncerrarSemProva.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
+    const s = await situacaoDaExigenciaJuiz(banco, casoId)
+    if (!s) return negar(resposta, 409, MSG_SEM_EXIGENCIA_JUIZ)
+    const d = entrada.data
+    const quem = pedido.usuario!.id
+    if (d.alvo === 'item') {
+      const item = s.pendentes.find((i) => i.id === d.id)
+      if (!item) return negar(resposta, 404, 'Este item não está pendente nesta exigência.')
+      await banco.transaction(async (tx) => {
+        await tx.update(exigenciaItem).set({ situacao: 'nao_cumprido', motivo: d.motivo, cumpridoPor: quem, cumpridoEm: agora() }).where(eq(exigenciaItem.id, item.id))
+        // O setor para de cobrar: a tarefa dele é cancelada e o lembrete some.
+        if (item.tarefaId)
+          await tx
+            .update(tarefa)
+            .set({ situacao: 'cancelada', concluidaEm: agora(), concluidaPor: quem, prazo: null })
+            .where(and(eq(tarefa.id, item.tarefaId), isNull(tarefa.concluidaEm)))
+      })
+    } else {
+      const p = s.periciasPendentes.find((x) => x.id === d.id)
+      if (!p) return negar(resposta, 404, 'Esta perícia não está pendente nesta exigência.')
+      await banco.insert(decisao).values({
+        casoId,
+        passo: 'D3a.04',
+        tipo: 'pericia_sem_resultado',
+        resultado: p.id,
+        justificativa: d.motivo,
+        decididoPor: quem,
+        perfil: pedido.perfilAtivo!,
+        decididoEm: agora(),
+      })
+      // Sem nenhuma perícia pendente, a tarefa de marcar (do Jurídico administrativo) não faz mais sentido.
+      if (s.periciasPendentes.length === 1)
+        await banco
+          .update(tarefa)
+          .set({ situacao: 'cancelada', concluidaEm: agora(), concluidaPor: quem })
+          .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'DP.01'), gte(tarefa.criadoEm, s.exigencia.criadoEm), isNull(tarefa.concluidaEm)))
+    }
+    await historico(quem, 'exigencia_juiz_sem_prova', pedido, `caso:${casoId}`, { alvo: d.alvo, id: d.id, motivo: d.motivo })
+    await abrirManifestacaoSePronta(banco, casoId, agora())
+    return resposta.code(201).send({ ok: true })
   })
 
   // CA6, CA7: a advogada anexa a versão a qualquer momento (sem IA, redige fora do portal); cada uma é numerada.
@@ -287,6 +384,7 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
       versao: ultima.numero,
       hash: ultima.hash,
       data: entrada.data.dataProtocolo,
+      semProva: s.encerradosSemProva.map((e) => ({ descricao: e.descricao, motivo: e.motivo })),
     })
     return resposta.code(201).send({ ok: true, tipo: p.tipo })
   })

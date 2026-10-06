@@ -10,7 +10,7 @@ type Setor = (typeof SETORES_DA_EXIGENCIA)[number]
 type TipoPericia = (typeof TIPOS_DE_PERICIA)[number]
 type ItemNaTela = { chave: number; setor: Setor | ''; descricao: string; provaEsperada: string; prazoInterno: string }
 const ROTULO_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social' } as const
-const ROTULO_ITEM = { pendente: 'Pendente', cumprido: 'Cumprido', nao_cumprido: 'Não cumprido' } as const
+const ROTULO_ITEM = { pendente: 'Pendente', cumprido: 'Cumprido', nao_cumprido: 'Encerrado sem a prova' } as const
 const dia = (iso: string | null) => (iso ? (isoParaData(iso) ?? iso) : '—')
 
 /** Uma linha de item (GGVP-79 CA7, CA13): setor, o que cumprir, prova esperada e prazo interno até o processual. */
@@ -144,6 +144,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
               <li key={i.id}>
                 {ROTULO_SETOR[i.setor]} · {i.descricao} · até {dia(i.prazoInterno)} · {ROTULO_ITEM[i.situacao]}
                 {i.prova ? ` · ${i.prova}` : ''}
+                {i.situacao === 'nao_cumprido' && i.motivo ? ` (${i.motivo})` : ''}
                 {i.limite ? ` · tentativas ${i.tentativas} de ${i.limite}` : ''}
                 {i.escalada ? ' · com a Sênior' : ''}
               </li>
