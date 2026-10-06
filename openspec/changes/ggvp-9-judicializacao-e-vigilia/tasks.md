@@ -51,4 +51,4 @@
 - [x] 8.4 CA4 · alerta da Sênior para a exigência do juiz (5 e 2 dias úteis; vencida decide); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 8.5 Tela "Manifestar" e dados de exemplo (uma exigência do juiz já classificada para a advogada analisar); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 8.6 Playwright: a advogada distribui à Documentação e ao Atendimento; os dois sobem a prova; a advogada anexa, aprova, protocola e o processo volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 8.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 8.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
