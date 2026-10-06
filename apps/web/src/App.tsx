@@ -74,6 +74,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz\/setor$/, tela: (id) => <Exige acao="exigencia_juiz.cumprir"><CumprirExigenciaJuiz casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/manifestacao$/, tela: (id) => <Exige acao="caso.ver"><Manifestar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/indeferimento$/, tela: (id) => <Exige acao="caso.ver"><RegistrarIndeferimento casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pendencias$/, tela: (id) => <Exige acao="pendencia.cumprir"><CumprirExigenciaJuiz casoId={id} origem="despacho" /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
   { padrao: /^\/vigilia$/, tela: () => <Exige acao="vigilia.ver"><PainelVigilia /></Exige> },
 ]

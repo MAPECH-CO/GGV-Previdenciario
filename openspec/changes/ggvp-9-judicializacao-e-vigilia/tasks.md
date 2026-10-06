@@ -69,11 +69,11 @@
 
 ## GGVP-58 · Laços dos setores até subir o card
 
-- [ ] 11.1 Contratos: `ItensDoSetor` com `origem`, `prazoProcessual` nulo e `informacao`; `SubirInformacao`; teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 11.2 CA1, CA2, CA4 a CA9, CA12 · as rotas do setor de `rotas/exigencia-juiz.ts` também em `/api/casos/:id/pendencias/...` (`pendencia.cumprir`, exigência `despacho`): informação escrita do Atendimento, documento da Documentação, limite e "não vou conseguir" sobem para a Sênior (`D3.04s`), espera `D3.E1`, lembrete cancelado ao subir; teste novo, e os da exigência do juiz continuam passando; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 11.3 CA3, CA10, CA11 · status de cada setor e da perícia no `GET` do despacho; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 11.4 CA13 · Tela do setor com a origem (`CumprirExigenciaJuiz.tsx`: "Cumprir pendência", sem o prazo do processo, informação escrita do Atendimento), a rota `/casos/:id/pendencias` e `D3.04`, `D3.04s` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 11.5 Playwright: a advogada registra o indeferido e o motivo; a Sênior despacha à Documentação com prazo e ao Atendimento sem prazo; o Atendimento sobe a informação e a Documentação, o documento; "Pedir a petição" aparece para a advogada; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 11.1 Contratos: `ItensDoSetor` com `origem`, `prazoProcessual` nulo e `informacao`; `SubirInformacao`; teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 11.2 CA1, CA2, CA4 a CA9, CA12 · as rotas do setor de `rotas/exigencia-juiz.ts` também em `/api/casos/:id/pendencias/...` (`pendencia.cumprir`, exigência `despacho`): informação escrita do Atendimento, documento da Documentação, limite e "não vou conseguir" sobem para a Sênior (`D3.04s`), espera `D3.E1`, lembrete cancelado ao subir; teste novo, e os da exigência do juiz continuam passando; verifica com `pnpm --filter @ggv/api test`.
+- [x] 11.3 CA3, CA10, CA11 · status de cada setor e da perícia no `GET` do despacho; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 11.4 CA13 · Tela do setor com a origem (`CumprirExigenciaJuiz.tsx`: "Cumprir pendência", sem o prazo do processo, informação escrita do Atendimento), a rota `/casos/:id/pendencias` e `D3.04`, `D3.04s` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 11.5 Playwright: a advogada registra o indeferido e o motivo; a Sênior despacha à Documentação com prazo e ao Atendimento sem prazo; o Atendimento sobe a informação e a Documentação, o documento; "Pedir a petição" aparece para a advogada; verifica com `pnpm --filter @ggv/web e2e`.
 - [ ] 11.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-63 · Pedir a petição e a IA escrever
@@ -91,7 +91,7 @@
 
 ## GGVP-71 · Pacote, travas e protocolo no tribunal
 
-- [ ] 14.1 Travas em `apps/api/src/fluxo/travas.ts` (Tema 350, CPF, pacote completo com o formato e o tamanho do tribunal), com teste; contrato `ProtocolarPeticao`; semente com `tribunais`, `peticao.assinatura` e CPF de exemplo para os três clientes que esperam o INSS; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
+- [ ] 14.1 Travas em `apps/api/src/fluxo/travas.ts` (Tema 350, CPF, pacote completo com o formato e o tamanho do tribunal), com teste; contrato `ProtocolarPeticao`; semente com `tribunais`, `peticao.assinatura` e CPF de exemplo para os clientes que esperam o INSS; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
 - [ ] 14.2 CA2, CA6, CA7, CA13 · travas com a evidência no `GET` da petição; documento que falta: subir ou pedir à Documentação, e o pacote gerado de novo; teste; verifica com `pnpm --filter @ggv/api test`.
 - [ ] 14.3 CA3, CA4, CA5, CA8, CA9, CA10 · `POST .../peticao/protocolo` (tribunal, CNJ, data, comprovante e travas confirmadas; confere os hashes; grava o protocolo, o CNJ do caso e as travas; o processo entra na vigília); teste, inclusive com arquivo trocado; verifica com `pnpm --filter @ggv/api test`.
 - [ ] 14.4 CA11, CA12 · Tela "Petição inicial", parte do pacote e do protocolo (arquivos para baixar, travas com a evidência, tribunal e o botão do site numa página nova, CNJ, data, comprovante) e `D3.07` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.

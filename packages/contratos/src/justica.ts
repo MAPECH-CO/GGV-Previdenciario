@@ -202,13 +202,17 @@ export const ExigenciaDoJuiz = z.object({
 })
 export type ExigenciaDoJuiz = z.infer<typeof ExigenciaDoJuiz>
 
-/** GET /api/casos/:id/exigencia-juiz/setor (GGVP-83 CA4, CA13): os itens do setor do perfil ativo. */
+/**
+ * GET /api/casos/:id/exigencia-juiz/setor (GGVP-83 CA4, CA13) e /api/casos/:id/pendencias/setor (GGVP-58 CA5, CA13):
+ * os itens do setor do perfil ativo. No despacho da Sênior, antes da ação, não há prazo processual.
+ */
 export const ItensDoSetor = z.object({
+  origem: z.enum(['juizo', 'despacho']),
   casoId: z.uuid(),
   cliente: z.string(),
   setor: z.enum(SETORES_DA_EXIGENCIA),
   pedidoPor: z.string().nullable(),
-  prazoProcessual: z.string(),
+  prazoProcessual: z.string().nullable(),
   itens: z.array(
     z.object({
       id: z.uuid(),
@@ -219,6 +223,8 @@ export const ItensDoSetor = z.object({
       /** Encerrado sem a prova pela advogada: o motivo é a prova em texto (GGVP-68 CA2). */
       motivo: z.string().nullable(),
       prova: z.string().nullable(),
+      /** A informação que o Atendimento conseguiu com o cliente (GGVP-58 CA1). */
+      informacao: z.string().nullable(),
       proximoLembrete: z.string().nullable(),
       limite: z.number().nullable(),
       escalada: z.boolean(),
@@ -227,6 +233,12 @@ export const ItensDoSetor = z.object({
   ),
 })
 export type ItensDoSetor = z.infer<typeof ItensDoSetor>
+
+/** POST /api/casos/:id/pendencias/itens/:item/prova (GGVP-58 CA1, CA7): o Atendimento sobe com a informação escrita. */
+export const SubirInformacao = z.object({
+  informacao: z.string({ error: 'Escreva a informação que conseguiu com o cliente' }).trim().min(1, 'Escreva a informação que conseguiu com o cliente'),
+})
+export type SubirInformacao = z.infer<typeof SubirInformacao>
 
 /** POST .../itens/:item/tentativas (GGVP-83 CA5, G15): data (a do registro), canal e resultado. */
 export const RegistrarTentativa = z.object({

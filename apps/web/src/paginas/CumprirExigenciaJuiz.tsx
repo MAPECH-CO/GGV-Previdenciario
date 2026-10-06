@@ -1,34 +1,59 @@
 import { useEffect, useId, useState } from 'react'
 import { isoParaData } from '@ggv/campos'
-import { NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, type ItensDoSetor } from '@ggv/contratos'
+import { NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, SubirInformacao, type ItensDoSetor } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
 type Item = ItensDoSetor['itens'][number]
+type Origem = ItensDoSetor['origem']
 const dia = (iso: string | null) => (iso ? (isoParaData(iso) ?? iso) : '—')
 const CANAIS = { whatsapp: 'WhatsApp', telefone: 'Telefone', email: 'E-mail', sms: 'SMS', presencial: 'Presencial' } as const
 const MSG_DOCUMENTO = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
+const MSG_INFORMACAO = 'Escreva a informação que conseguiu com o cliente ou anexe um documento (PDF ou imagem, até 25 MB).'
+/** A exigência do juiz (GGVP-83) e a pendência do despacho da Sênior (GGVP-58) usam o mesmo laço, em endereços próprios. */
+const DA_ORIGEM = {
+  juizo: { rota: 'exigencia-juiz', titulo: 'Cumprir exigência do juiz', dica: 'O documento fica como a prova do item: sem ele, a advogada não manifesta (G21).' },
+  despacho: { rota: 'pendencias', titulo: 'Cumprir pendência', dica: 'Sem o card de todos os setores, a advogada não pede a petição.' },
+} as const
 
 /**
- * Um item do laço (GGVP-83). O principal é enviar o documento pedido, que vira a prova do item (G21); se ainda não
- * conseguiu, registra a cobrança (G15); se não vai conseguir, avisa a Sênior com o motivo (ajuste do Mateus, 06/10).
+ * Um item do laço (GGVP-83, GGVP-58). O principal é subir a prova: o documento pedido ou, na pendência do despacho, a
+ * informação que o Atendimento conseguiu com o cliente (G21); se ainda não conseguiu, registra a cobrança (G15); se não
+ * vai conseguir, avisa a Sênior com o motivo (ajuste do Mateus, 06/10).
  */
-function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: string; item: Item; prazoProcessual: string; aoMudar: (texto: string) => void }) {
-  const ids = { canal: useId(), resultado: useId(), motivo: useId(), arquivo: useId() }
+function CartaoDoItem({
+  casoId,
+  origem,
+  escrever,
+  item,
+  prazoProcessual,
+  aoMudar,
+}: {
+  casoId: string
+  origem: Origem
+  escrever: boolean
+  item: Item
+  prazoProcessual: string | null
+  aoMudar: (texto: string) => void
+}) {
+  const ids = { canal: useId(), resultado: useId(), motivo: useId(), arquivo: useId(), informacao: useId() }
   const [canal, setCanal] = useState('')
   const [resultado, setResultado] = useState('')
   const [motivo, setMotivo] = useState('')
+  const [informacao, setInformacao] = useState('')
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [erro, setErro] = useState('')
-  const base = `/casos/${casoId}/exigencia-juiz/itens/${item.id}`
+  const base = `/casos/${casoId}/${DA_ORIGEM[origem].rota}/itens/${item.id}`
 
   async function enviarDocumento() {
-    if (!arquivo) return setErro(MSG_DOCUMENTO)
+    const escrita = escrever ? SubirInformacao.safeParse({ informacao }) : null
+    if (!arquivo && !escrita?.success) return setErro(escrever ? MSG_INFORMACAO : MSG_DOCUMENTO)
     const dados = new FormData()
-    dados.set('arquivo', arquivo)
+    if (arquivo) dados.set('arquivo', arquivo)
+    if (escrita?.success) dados.set('informacao', escrita.data.informacao)
     const r = await chamarApi(`${base}/prova`, { method: 'POST', corpo: dados })
     if (!r.ok) return setErro(r.erro)
-    aoMudar('Documento enviado. O item está cumprido.')
+    aoMudar(escrever ? 'Subiu no card. O item está concluído.' : 'Documento enviado. O item está cumprido.')
   }
 
   async function registrarCobranca() {
@@ -54,26 +79,41 @@ function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: stri
       <h2 className={styles.cartaoTitulo}>{item.descricao}</h2>
       {item.provaEsperada && <p>Documento que comprova: {item.provaEsperada}</p>}
       <p>
-        Entregar até <strong>{dia(item.prazoInterno)}</strong> · prazo do processo: {dia(prazoProcessual)}
+        {item.prazoInterno ? (
+          <>
+            Entregar até <strong>{dia(item.prazoInterno)}</strong>
+          </>
+        ) : (
+          'Sem prazo de entrega'
+        )}
+        {prazoProcessual ? ` · prazo do processo: ${dia(prazoProcessual)}` : ''}
       </p>
 
       {item.situacao === 'cumprido' ? (
-        <span className={styles.selo}>Cumprido · {item.prova}</span>
+        <span className={styles.selo}>Cumprido · {[item.informacao, item.prova].filter(Boolean).join(' · ')}</span>
       ) : item.situacao === 'nao_cumprido' ? (
         <span className={styles.selo}>Encerrado pela advogada, sem o documento{item.motivo ? `: ${item.motivo}` : ''}. Não precisa mais cobrar.</span>
       ) : (
         <>
-          <section className={styles.cartao} aria-label="Enviar o documento">
+          <section className={styles.cartao} aria-label={escrever ? 'Subir no card' : 'Enviar o documento'}>
+            {escrever && (
+              <>
+                <label className={styles.rotulo} htmlFor={ids.informacao}>
+                  O que conseguiu com o cliente
+                </label>
+                <textarea id={ids.informacao} className={styles.campo} rows={3} value={informacao} onChange={(e) => setInformacao(e.target.value)} />
+              </>
+            )}
             <label className={styles.rotulo} htmlFor={ids.arquivo}>
-              Documento
+              {escrever ? 'Documento (opcional)' : 'Documento'}
             </label>
             <input id={ids.arquivo} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
             <div className={styles.acoes}>
               <button type="button" className={styles.botao} onClick={() => void enviarDocumento()}>
-                Enviar documento e concluir
+                {escrever ? 'Consegui, subir no card' : 'Enviar documento e concluir'}
               </button>
             </div>
-            <p className={styles.dica}>O documento fica como a prova do item: sem ele, a advogada não manifesta (G21).</p>
+            <p className={styles.dica}>{DA_ORIGEM[origem].dica}</p>
           </section>
 
           {erro && (
@@ -140,21 +180,25 @@ function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: stri
   )
 }
 
-/** Cumprir a exigência do juiz (GGVP-83): o setor do perfil ativo vê e cumpre só os seus itens. */
-export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
+/**
+ * Cumprir a exigência do juiz (GGVP-83) ou a pendência do despacho da Sênior (GGVP-58): o setor do perfil ativo vê e
+ * cumpre só os seus itens. Na pendência, antes da ação, não há prazo do processo, e o Atendimento sobe a informação escrita.
+ */
+export function CumprirExigenciaJuiz({ casoId, origem = 'juizo' }: { casoId: string; origem?: Origem }) {
   const [d, setD] = useState<ItensDoSetor | null>(null)
   const [versao, setVersao] = useState(0)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const { rota, titulo } = DA_ORIGEM[origem]
 
   useEffect(() => {
-    void chamarApi<ItensDoSetor>(`/casos/${casoId}/exigencia-juiz/setor`).then((r) => (r.ok ? setD(r.dados) : setErro(r.erro)))
-  }, [casoId, versao])
+    void chamarApi<ItensDoSetor>(`/casos/${casoId}/${rota}/setor`).then((r) => (r.ok ? setD(r.dados) : setErro(r.erro)))
+  }, [casoId, rota, versao])
 
   if (!d)
     return (
       <main className={styles.pagina}>
-        <title>Cumprir exigência do juiz · GGV Previdenciário</title>
+        <title>{`${titulo} · GGV Previdenciário`}</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
@@ -164,21 +208,28 @@ export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
     )
 
   const pendentes = d.itens.filter((i) => i.situacao === 'pendente').length
+  const escrever = origem === 'despacho' && d.setor === 'atendimento'
+  const resumo =
+    origem === 'juizo'
+      ? pendentes === 0
+        ? 'Tudo entregue. A advogada já pode manifestar.'
+        : `O juiz pediu ${pendentes === 1 ? 'um documento' : `${pendentes} documentos`} ao seu setor. Envie cada um quando conseguir.`
+      : pendentes === 0
+        ? 'Tudo entregue pelo seu setor.'
+        : `A Sênior pediu ${pendentes === 1 ? 'um item' : `${pendentes} itens`} ao seu setor. Suba cada um no card quando conseguir.`
 
   return (
     <main className={styles.pagina}>
-      <title>Cumprir exigência do juiz · GGV Previdenciário</title>
+      <title>{`${titulo} · GGV Previdenciário`}</title>
       <a className={styles.voltar} href="/">
         ← Voltar ao início
       </a>
-      <h1 className={styles.titulo}>Cumprir exigência do juiz</h1>
+      <h1 className={styles.titulo}>{titulo}</h1>
       <p className={styles.subtitulo}>
         {d.cliente} · {ROTULO_SETOR[d.setor]}
         {d.pedidoPor ? ` · pedido por ${d.pedidoPor}` : ''}
       </p>
-      <p className={styles.dica}>
-        {pendentes === 0 ? 'Tudo entregue. A advogada já pode manifestar.' : `O juiz pediu ${pendentes === 1 ? 'um documento' : `${pendentes} documentos`} ao seu setor. Envie cada um quando conseguir.`}
-      </p>
+      <p className={styles.dica}>{resumo}</p>
       {feito && (
         <p className={styles.sucesso} role="status">
           {feito}
@@ -189,6 +240,8 @@ export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
           <CartaoDoItem
             key={`${i.id}-${i.situacao}-${i.tentativas.length}-${i.escalada}`}
             casoId={casoId}
+            origem={origem}
+            escrever={escrever}
             item={i}
             prazoProcessual={d.prazoProcessual}
             aoMudar={(texto) => {
@@ -198,7 +251,7 @@ export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
           />
         ))}
       </ul>
-      {d.itens.length === 0 && <p className={styles.dica}>Nada para o seu setor nesta exigência.</p>}
+      {d.itens.length === 0 && <p className={styles.dica}>{origem === 'juizo' ? 'Nada para o seu setor nesta exigência.' : 'Nada para o seu setor neste despacho.'}</p>}
     </main>
   )
 }

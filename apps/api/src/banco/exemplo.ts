@@ -106,8 +106,9 @@ export async function semearExemplos(banco: Banco) {
     await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
   }
 
-  // Casos em vigília, esperando o INSS (GGVP-35 e GGVP-48): um para cada resposta (deferido, indeferido e exigência).
-  for (const [i, nome] of ['Rita Gomes (exemplo)', 'Sebastião Cruz (exemplo)', 'Teresa Dias (exemplo)'].entries()) {
+  // Casos em vigília, esperando o INSS (GGVP-35 e GGVP-48): um para cada resposta (deferido, indeferido e exigência) e
+  // um para o caminho do indeferido até o protocolo da petição inicial (GGVP-9, grupo 3).
+  for (const [i, nome] of ['Rita Gomes (exemplo)', 'Sebastião Cruz (exemplo)', 'Teresa Dias (exemplo)', 'Vicente Prado (exemplo)'].entries()) {
     const [p] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
     const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
     await banco

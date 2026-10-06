@@ -154,7 +154,7 @@ Registrar indeferimento (`/casos/:id/indeferimento`), Despachar caso (`/casos/:i
 
 ### Dados de exemplo
 
-Os três clientes de exemplo que esperam o INSS (Rita Gomes, Sebastião Cruz e Teresa Dias) ganham CPF de exemplo válido; a configuração ganha `tribunais` (Justiça Federal, exemplo) e `peticao.assinatura` (exemplo). O caminho começa com a advogada registrando o indeferido com a carta ("Trazer a resposta do INSS"), porque a semente não grava arquivos no armazenamento.
+Um quarto cliente de exemplo esperando o INSS, Vicente Prado, fica para o caminho deste grupo (os outros três já servem aos testes da via administrativa, que rodam ao mesmo tempo). Os clientes que esperam o INSS ganham CPF de exemplo válido; a configuração ganha `tribunais` (Justiça Federal, exemplo) e `peticao.assinatura` (exemplo). O caminho começa com a advogada registrando o indeferido com a carta ("Trazer a resposta do INSS"), porque a semente não grava arquivos no armazenamento.
 
 ### Risks / Trade-offs
 

@@ -101,13 +101,14 @@ describe('Perícia pedida pelo juiz (GGVP-79 CA8)', () => {
 describe('Cumprir a exigência do juiz (GGVP-83)', () => {
   const ITEM_ID = '22222222-2222-4222-8222-222222222222'
   const setor = {
+    origem: 'juizo',
     casoId: CASO,
     cliente: 'Otávio Lima (exemplo)',
     setor: 'documentacao',
     pedidoPor: 'Gabi (exemplo)',
     prazoProcessual: '2026-10-27',
     itens: [
-      { id: ITEM_ID, descricao: 'Trazer laudo', provaEsperada: 'Laudo com data', prazoInterno: '2026-10-20', situacao: 'pendente', prova: null, proximoLembrete: '2026-10-07', limite: 3, escalada: false, tentativas: [] },
+      { id: ITEM_ID, descricao: 'Trazer laudo', provaEsperada: 'Laudo com data', prazoInterno: '2026-10-20', situacao: 'pendente', motivo: null, prova: null, informacao: null, proximoLembrete: '2026-10-07', limite: 3, escalada: false, tentativas: [] },
     ],
   }
 

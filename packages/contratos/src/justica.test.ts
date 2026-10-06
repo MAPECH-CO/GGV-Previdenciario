@@ -11,6 +11,7 @@ import {
   RegistrarIndisponibilidade,
   RegistrarMotivo,
   RegistrarTentativa,
+  SubirInformacao,
   VincularPublicacao,
 } from './justica.ts'
 
@@ -143,3 +144,11 @@ describe('GGVP-54 · despachar', () => {
     expect(erro(Despachar.safeParse({}))).toBe('Escolha "Nada falta" ou o que falta')
   })
 })
+
+describe('GGVP-58 · laços dos setores no despacho', () => {
+  it('CA1, CA7 · a informação do Atendimento é obrigatória e vem aparada', () => {
+    expect(SubirInformacao.parse({ informacao: ' Mora com o filho e a nora ' })).toEqual({ informacao: 'Mora com o filho e a nora' })
+    expect(erro(SubirInformacao.safeParse({ informacao: '' }))).toBe('Escreva a informação que conseguiu com o cliente')
+  })
+})
+
