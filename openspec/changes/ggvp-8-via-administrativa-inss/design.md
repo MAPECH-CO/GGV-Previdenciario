@@ -65,6 +65,7 @@ O grupo 1 já tem: a Central do perfil vinda do servidor, a decisão `D2.01 · a
 6. **Junção**: ao abrir a `D2.04`, abre também "Trazer a resposta do INSS" para a advogada (CA1 da GGVP-35).
 7. **Resposta do INSS** num envio com arquivo (a comunicação ou a carta), como o comprovante do protocolo: deferido grava `resultado_inss` e abre "Prestar contas" (GGVP-44) ou, se diferente do pedido, "Analisar deferimento diferente do pedido"; indeferido grava `resultado_inss` com o motivo do INSS, muda o caso para `judicial`, abre a etapa `D3.01` e a tarefa "Registrar indeferimento" com a carta (GGVP-48); exigência grava `exigencia` (origem INSS) e abre "Tratar exigência do INSS" (GGVP-39), com o prazo "a calcular".
 8. **Encerrar** (Sênior): caso `encerrado`, desfecho `desistencia`, motivo em `causa_desfecho`, tarefas abertas canceladas, histórico.
+9. **Datas** (ajuste de 05/10, pedido do Mateus na homologação local): a DER e a data da exigência usam o calendário do navegador, já em hoje, sem data futura; `hojeIso` entrou em `@ggv/campos`, e o contrato recusa data futura no servidor.
 
 ### Telas
 
@@ -74,3 +75,63 @@ A Central do Atendimento (tela do GGVP-120, do Pedro) passa a mostrar no topo as
 
 - O prazo da exigência fica "a calcular" até a GGVP-34 (calendário dos tribunais com o Lucas). A tarefa nasce sem prazo; risco de passar despercebida, mitigado por aparecer no topo da fila da advogada.
 - Sem `kit_documento` cadastrado, o G1 não barra nada; o aviso na tela deixa isso visível até a GGVP-65 cadastrar os kits.
+
+## Grupo 3 · GGVP-39 e GGVP-44
+
+### Context
+
+O grupo 2 deixa a exigência gravada (`exigencia`, origem INSS) com a tarefa "Tratar exigência do INSS" para a advogada, e o deferido com "Prestar contas" e o `resultado_inss` ligado à comunicação. O banco já tem `exigencia_item` (prova e quem cumpriu), `tarefa` com `tentativas`, `limite_tentativas` e escalada, `tentativa` (G15), `pericia`, `prestacao_contas` (G8 e "pessoas diferentes" no próprio banco), `agendamento` (tipo `ida_ao_banco`), `mensagem`, `modelo`, `configuracao` e `feriado`. A matriz já tem `prestacao.ver`, `prestacao.dar_ok` e `prestacao.registrar_recebimento`.
+
+### Goals / Non-Goals
+
+**Goals:** a advogada decide o que a exigência pede e o sistema abre as tarefas certas com o prazo contado em código; a Documentação cobra, junta a prova item a item e responde (G21, G15); a Sênior é avisada perto do vencimento; a prestação de contas calcula os valores em código, versiona e, ao concluir, abre o Financeiro e o Atendimento juntos; o Atendimento agenda a ida ao banco e registra a confirmação revisada.
+
+**Non-Goals:** IA (classificação sugerida e resposta redigida: épico GGVP-14); envio automático pelo WhatsApp; a contagem de prazos judiciais e o calendário dos tribunais (GGVP-34); registrar o resultado da perícia (épico Perícia); custas, lançamento e recibo no Financeiro; agenda visual (só a data na tarefa e no agendamento).
+
+### Decisions
+
+1. **Matriz versão 4**, quatro ações novas: `exigencia_inss.tratar` (advogada), `exigencia_inss.cumprir` (documentacao), `exigencia_inss.decidir_vencida` (senior) e `banco.agendar` (atendimento, atendimento_lider). A prestação usa as que já existem (`prestacao.ver`, `prestacao.dar_ok`, `prestacao.registrar_recebimento`).
+2. **Prazo da exigência do INSS em código** (`apps/api/src/fluxo/prazo-inss.ts`), pela regra que a GGVP-34 já traz no CA11: dias corridos, começando no dia seguinte ao da exigência; o fim em sábado, domingo ou feriado da tabela `feriado` passa para o próximo dia útil (Lei 9.784, art. 66). O número de dias é o que está na comunicação do INSS, informado pela advogada (obrigatório, inteiro de 1 a 120). Teste com fim de semana, feriado e véspera. A contagem só vale para o INSS; a judicial continua com a GGVP-34.
+3. **Dias úteis do alerta** (CA14) pela mesma tabela `feriado`. O alerta é calculado ao montar a fila da Sênior (`GET /api/tarefas`), sem agendador: item pendente e prazo a 5 dias úteis ou menos vira a linha "Exigência perto do prazo" (urgente); a 2 ou menos, vai para o topo; vencido, a linha é "Exigência vencida: pedir dilação ou registrar a perda" e abre a tela da exigência com as duas ações da Sênior.
+4. **Decidir a exigência** (`POST /api/casos/:id/exigencia`, advogada): `pede` = `documentos` | `pericia` | `pericia_e_documentos`; itens (texto, ao menos um quando há documentos); tipos de perícia (ao menos um quando há perícia); dias do INSS; prazo de entrega da Documentação (calendário, obrigatório quando há documentos, até o prazo do INSS). Grava `exigencia.pede`, `exigencia.prazo`, os `exigencia_item` (Documentação) e conclui "Tratar exigência do INSS". Documentos ou os dois: abre "Cumprir exigência do INSS" (`D2.05d`, documentacao) com prazo, limite do G15 e a etapa `D2.E3` "cliente entregar o documento". Só perícia: cria as `pericia` e abre a tarefa de perícia do Jurídico administrativo, como a GGVP-31.
+5. **Limites (Q1)** vêm de `configuracao`: `cobranca.limite` (tentativas) e `cobranca.intervalo_dias` (próximo lembrete). Sem configuração, o card avisa "limite de cobranças não configurado" e não escala; os dados de exemplo trazem 3 e 2. Nenhum número fixo no código.
+6. **Cobrança** (`POST /api/casos/:id/exigencia/cobrancas`, Documentação): canal (`whatsapp`, `telefone`, `email`, `sms`, `presencial`) e resultado (`entregou`, `sem_resposta`, `vai_entregar`); grava `tentativa`, soma em `tarefa.tentativas` e marca o próximo lembrete (`tarefa.prazo` = hoje + intervalo, sem passar do prazo de entrega). Com o limite atingido e resultado sem entrega, a tarefa escala (`escalada_em`, `escalada_para = senior`) e abre "Cobrança sem retorno" para a Sênior (CA5).
+7. **Item** (`POST /api/casos/:id/exigencia/itens/:item`, multipart, Documentação): anexa a prova (PDF ou imagem) e marca cumprido, ou marca "não cumprido" com motivo. Colunas novas `exigencia_item.situacao` (`pendente`, `cumprido`, `nao_cumprido`) e `exigencia_item.motivo`.
+8. **Responder no portal** (`POST /api/casos/:id/exigencia/resposta`, multipart, Documentação): recusa sem prova em todos os itens (G21); data da resposta (calendário, sem data futura) e comprovante obrigatórios. Grava a exigência como `cumprida`, conclui o card e a `D2.E3`. Com perícia pedida (`pericia_e_documentos`): cria as `pericia` e abre a tarefa de perícia (CA3, CA6). Sem perícia: abre a etapa `D2.E4` (aguardando "INSS analisar a resposta") e a tarefa "Trazer a resposta do INSS", para a vigília seguir (CA4).
+9. **Volta da perícia** (`avancarExigencia`, em `apps/api/src/fluxo/`): com o resultado de todas as perícias chamadas pela exigência, devolve o caso à vigília como no item 8. Quem chama é o registro do resultado da perícia (épico Perícia); aqui fica a função com teste.
+10. **Sênior no vencido** (`POST /api/casos/:id/exigencia/vencida`): `dilacao` (exigência `dilacao_pedida`, novo prazo pelo calendário) ou `perda` (exigência `vencida`, tarefas da exigência canceladas); histórico nos dois.
+11. **Prestação de contas** (`GET` e `POST /api/casos/:id/prestacao`, advogada): valor recebido (atrasados, por `normalizarDecimal` e `validarDecimal` de `@ggv/campos`), percentual (vem de `contrato.percentual_honorarios`; sem ele, a advogada informa), forma e prazo de pagamento, "Conferi os valores com a carta de concessão". Cálculo em código (`apps/api/src/fluxo/prestacao.ts`), em centavos inteiros: honorários = piso(recebido × percentual / 100), repasse = recebido − honorários. Teste com centavos quebrados. A carta é a comunicação do deferido (`resultado_inss.documento_id`), ligada à tarefa quando ela nasce (CA4, ajuste na rota da vigília).
+12. **Concluir** grava a versão com o OK da advogada e, na mesma transação, conclui "Prestar contas" e abre "Receber a prestação de contas" (financeiro) e "Agendar ida ao banco" (atendimento). **Alterar** depois de concluída cria a versão seguinte (nova linha, `versao` + 1, com quem e quando), mantém a anterior e reabre o recebimento do Financeiro se ainda não houve.
+13. **Recebimento** (`POST /api/casos/:id/prestacao/recebimento`, Financeiro): `recebido` grava quem e quando (o banco já recusa a mesma pessoa do OK); `divergencia` exige motivo, grava na versão e abre "Corrigir a prestação: <motivo>" para a advogada.
+14. **Ida ao banco** (`GET` e `POST /api/casos/:id/banco`, Atendimento): data (calendário), hora, agência ou local e quem acompanha, todos obrigatórios; coluna nova `agendamento.acompanhante`. Remarcar cancela o agendamento anterior e cria outro. Depois de gravar, a tela mostra a mensagem montada pelo modelo "Confirmação da ida ao banco" (tipo `mensagem`, ativo); a pessoa revisa, envia pelo celular e clica "Enviei pelo WhatsApp", que grava `mensagem` (canal, texto, quem aprovou, quem enviou, quando) e `prestacao_contas.cliente_avisado_em`. Sem o OK da advogada, o servidor recusa o envio (G8). Sem modelo ativo, a tela diz "modelo não cadastrado" e não registra.
+15. **Valores só para quem pode** (CA2): `GET /api/casos/:id/banco` não devolve valor nenhum; as telas do Financeiro e da advogada usam `prestacao.ver`.
+16. **Migração 0007**: `exigencia.pede`, `exigencia.dias_inss`; `exigencia_item.situacao`, `exigencia_item.motivo`; `prestacao_contas.versao` (único por caso), `percentual_honorarios`, `forma_pagamento`, `prazo_pagamento`, `carta_documento_id`, `divergencia`; `contrato.percentual_honorarios`; `agendamento.acompanhante`. O Mateus roda `db:migrar` no Supabase depois do merge.
+
+### Contratos (`packages/contratos`)
+
+`ExigenciaDoCaso`, `DecidirExigencia`, `RegistrarCobranca`, `CumprirItem`, `ResponderExigencia`, `DecidirVencida`, `PrestacaoDoCaso`, `SalvarPrestacao`, `ReceberPrestacao`, `IdaAoBancoDoCaso`, `AgendarIdaAoBanco` e `RegistrarEnvio`.
+
+### Campos de formulário
+
+| Campo | Como |
+|---|---|
+| Datas (prazo de entrega, resposta, dilação, ida ao banco, prazo de pagamento) | calendário do navegador, com `isoParaData` e `hojeIso` de `@ggv/campos` |
+| Dias do INSS | `normalizarInteiro` e `validarInteiro` |
+| Valor recebido | `normalizarDecimal`, `validarDecimal` e `formatarDecimal` |
+| Percentual de honorários | `normalizarDecimal` e `validarDecimal` (0 a 100) |
+| Hora | `<input type="time">` (sem função em `campos`; o servidor confere `hh:mm`) |
+
+### Telas
+
+Tratar exigência (`/casos/:id/exigencia`, advogada; a Sênior vê as ações do vencido), Cumprir exigência (`/casos/:id/exigencia/documentos`, Documentação: itens com status, cobranças e "Anexar e responder" travado até todos os itens terem prova), Prestar contas (`/casos/:id/prestacao`), Receber a prestação (`/casos/:id/prestacao/recebimento`, Financeiro, com o agendamento) e Agendar ida ao banco (`/casos/:id/banco`, Atendimento, sem valores).
+
+### Dados de exemplo
+
+Configuração `cobranca.limite` = 3 e `cobranca.intervalo_dias` = 2; modelo "Confirmação da ida ao banco"; contrato com 30% para os casos de exemplo; um caso com exigência registrada esperando a advogada (Ulisses) e um deferido com "Prestar contas" e a carta (Vera).
+
+### Risks / Trade-offs
+
+- A tabela `feriado` começa vazia: o prazo só pula fim de semana até alguém cadastrar os feriados (GGVP-34 e Lucas). A tela avisa "feriados não cadastrados" enquanto ela estiver vazia.
+- O alerta da Sênior é calculado ao abrir a fila; se ninguém abrir, ninguém vê. Agendador (pg-boss) fica para quando houver notificação.
+- Arredondar os honorários para baixo é escolha do revisor (a favor do cliente); o Lucas valida em homologação.
+- Exigência que não é documento nem perícia (esclarecimento, ida à agência) segue sem caminho próprio: pergunta aberta ao Lucas desde 01/10; até lá, a advogada usa "Documentos" com o item descrito.

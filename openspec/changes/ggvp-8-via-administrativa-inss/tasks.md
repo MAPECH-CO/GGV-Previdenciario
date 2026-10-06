@@ -45,3 +45,29 @@
 - [x] 5.4 Tela: "Indeferido" na Vigília exige a carta; "Encerrar sem judicializar" para a Sênior; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 5.5 Playwright: indeferido com a carta abre "Registrar indeferimento" para a advogada; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-39 · Tratar exigência do INSS
+
+- [ ] 6.1 Matriz versão 4 (`exigencia_inss.tratar`, `exigencia_inss.cumprir`, `exigencia_inss.decidir_vencida`, `banco.agendar`) e contratos `ExigenciaDoCaso`, `DecidirExigencia`, `RegistrarCobranca`, `CumprirItem`, `ResponderExigencia` e `DecidirVencida`; teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [ ] 6.2 Migração 0007 (colunas novas da exigência, do item, da prestação, do contrato e do agendamento); verifica com `pnpm --filter @ggv/api test` (o banco embutido aplica as migrações).
+- [ ] 6.3 CA7 · Prazo do INSS em `apps/api/src/fluxo/prazo-inss.ts` (dias corridos a partir do dia seguinte; fim sem expediente vai ao próximo dia útil; tabela `feriado`) e dias úteis até o prazo; teste com fim de semana, feriado e véspera; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 6.4 CA1, CA2, CA6, CA7, CA8, CA9, CA10 · `GET /api/casos/:id/exigencia` e `POST /api/casos/:id/exigencia` (decidir: itens, tipos de perícia, dias do INSS, prazo de entrega até o prazo do INSS, card da Documentação com limite e lembrete, ou tarefa de perícia); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 6.5 CA5, CA11, CA12 · `POST /api/casos/:id/exigencia/cobrancas` (tentativa com data, canal e resultado; limite da configuração; escalada à Sênior) e `POST /api/casos/:id/exigencia/itens/:item` (prova ou "não cumprido" com motivo); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 6.6 CA2, CA3, CA4, CA6, CA13 · `POST /api/casos/:id/exigencia/resposta` (G21, data e comprovante, perícia depois dos documentos, volta à vigília) e `avancarExigencia` (resultado das perícias devolve à vigília); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 6.7 CA14 · Fila da Sênior: "Exigência perto do prazo" a 5 dias úteis, topo a 2, vencida com "pedir dilação ou registrar a perda"; `POST /api/casos/:id/exigencia/vencida`; teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 6.8 Dados de exemplo: configuração de cobrança (3 e 2) e um caso com exigência esperando a advogada; verifica entrando como advogada.
+- [ ] 6.9 Telas "Tratar exigência" (advogada e Sênior) e "Cumprir exigência" (Documentação); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 6.10 Playwright: a advogada decide "Documentos", a Documentação cobra, junta a prova e responde, e o caso volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
+- [ ] 6.11 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-44 · Benefício deferido: prestação de contas e ida ao banco
+
+- [ ] 7.1 Contratos `PrestacaoDoCaso`, `SalvarPrestacao`, `ReceberPrestacao`, `IdaAoBancoDoCaso`, `AgendarIdaAoBanco` e `RegistrarEnvio`; teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [ ] 7.2 CA5 · Cálculo da prestação em `apps/api/src/fluxo/prestacao.ts` (centavos; honorários pelo piso; repasse); teste com centavos quebrados; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 7.3 CA1, CA2, CA4, CA5, CA6, CA7 · `GET` e `POST /api/casos/:id/prestacao` (carta ligada na vigília, percentual do contrato, conferência obrigatória, concluir abre Financeiro e Atendimento juntos, nova versão ao alterar); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 7.4 CA8, CA9 · `POST /api/casos/:id/prestacao/recebimento` (recebido com quem e quando; divergência com motivo volta à advogada; a mesma pessoa do OK não recebe); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 7.5 CA3, CA10, CA11, CA12 · `GET` e `POST /api/casos/:id/banco` (quatro campos obrigatórios, remarcar, sem valores) e `POST /api/casos/:id/banco/envio` (modelo, G8, registro da mensagem); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 7.6 Dados de exemplo: modelo "Confirmação da ida ao banco", contratos com 30% e um caso deferido com "Prestar contas" e a carta; verifica entrando como advogada.
+- [ ] 7.7 Telas "Prestar contas", "Receber a prestação" e "Agendar ida ao banco"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 7.8 Playwright: a advogada conclui a prestação, o Financeiro recebe, o Atendimento agenda e registra a confirmação; verifica com `pnpm --filter @ggv/web e2e`.
+- [ ] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
