@@ -53,3 +53,49 @@ Dois casos judiciais com número CNJ (TRF3, JEF) e a configuração dos horário
 - Sem IA, toda publicação casada passa pela fila da advogada, inclusive os andamentos: mais trabalho até o épico IA, mas nenhum prazo escapa (GGVP-37 CA6).
 - Prazo em dobro do INSS e prazos de recurso por rito ficam com a pessoa (ela informa os dias); a regra fica versionada para quando o Lucas detalhar.
 - Feriados e suspensões dos tribunais começam vazios; a tela avisa até alguém cadastrar.
+
+## Grupo 2 · GGVP-79, GGVP-83 e GGVP-87
+
+### Context
+
+O grupo 1 deixa, para a exigência do juiz, a tarefa "Analisar exigência do juiz" (advogada, passo `D3a.02`) com o prazo processual em `prazo` (ligado pela `tarefa.prazo_processual_id` e pela publicação), e a etapa `D3a.02` aberta. A exigência do INSS (GGVP-39) já tem o mesmo desenho que este grupo precisa: `exigencia` (com `origem = 'juizo'` aceito pelo banco e `publicacao_id`), `exigencia_item` (setor, prazo, prova, situação), cobrança em `tentativa` com o limite da configuração (G15), escalada à Sênior, abertura de perícia e alerta perto do vencimento. O banco tem `peticao` (tipo `manifestacao` e `dilacao`), `peticao_versao` (número, hash, quem aprovou e quando) e `protocolo_judicial` (versão, tribunal, data, comprovante, quem).
+
+### Goals / Non-Goals
+
+**Goals:** a advogada distribui a exigência do juiz em itens por setor, com o prazo interno até o processual (G5, G21); cada setor cumpre com tentativas limitadas e prova (G15, G21), e sobe para a Sênior quando não consegue; com tudo provado, a advogada anexa a versão, aprova (G6) e protocola, e o processo volta para a vigília; perto do vencimento, a Sênior é avisada; vencido, decide.
+
+**Non-Goals:** IA (sugestão de itens e minuta); a decisão da Sênior sobre o laço que passou do limite (GGVP-94); marcar e remarcar a perícia (épico Perícia); peticionar no sistema do tribunal (o protocolo é feito lá e registrado aqui).
+
+### Decisions
+
+14. **Reaproveitar a exigência** com `origem = 'juizo'`: `exigencia` (texto = a publicação, `publicacao_id`, prazo = o fim do prazo processual), `exigencia_item` (um por setor e pedido) e a mesma cobrança limitada da configuração (`cobranca.limite`, `cobranca.intervalo_dias`). Nada de tabela nova para a exigência.
+15. **Setores**: Atendimento (`atendimento`), Jurídico (`juridico_adm`, resposta do revisor de 06/10: o Jurídico entra), Documentação (`documentacao`) e Perícia (tipos médica ou social, abre a tarefa de perícia do Jurídico administrativo com a origem D3a).
+16. **Analisar** (`GET` e `POST /api/casos/:id/exigencia-juiz`, `exigencia_juiz.analisar`, que já existe na matriz para advogada e Sênior; a confirmação da distribuição fica só com a advogada, ação nova `exigencia_juiz.distribuir`): `ciencia` grava a decisão (quem e quando), conclui a tarefa e a etapa `D3a.02` e volta para a vigília, sem tarefa (CA2, CA6). `cumprir` exige ao menos um item ou perícia; cada item tem setor, o que cumprir, prova esperada (opcional) e prazo interno (calendário), que não passa do fim do prazo processual (CA7). Para cada item, uma tarefa "Cumprir exigência do juiz" (passo `D3a.03`, perfil do setor, prazo = próximo lembrete ou o prazo interno, limite do G15); a etapa `D3a.E2` (esperando o cliente) abre.
+17. **Laço do setor** (tela `/casos/:id/exigencia-juiz/setor`, `exigencia_juiz.cumprir`, nova, para atendimento, documentacao e juridico_adm): o setor vê só os itens do seu perfil, com o pedido, quem pediu, o prazo interno, o processual e as tentativas (CA4). "Ainda não" registra a tentativa (data, canal, resultado), conta no limite e marca o próximo lembrete; no limite, sobe para a Sênior ("Exigência do juiz sem retorno", passo `D3a.03`) e a tarefa continua com o setor (CA5, CA8). "Não vou conseguir" exige o motivo e sobe antes do limite (CA14). "Consegui" exige a evidência (PDF ou imagem), que vira a prova do item; a tarefa conclui e o lembrete some (CA6, CA11).
+18. **Manifestar** (`GET /api/casos/:id/manifestacao`, `POST .../versoes` multipart, `POST .../versoes/:n/aprovacao`, `POST .../protocolo` multipart; `exigencia_juiz.manifestar`, nova, advogada): quando o último item ganha prova (e a perícia pedida tem resultado), nasce "Manifestar no processo" (passo `D3a.04`) (CA1). A advogada anexa versões (arquivo; cada uma numerada, com o hash e o documento) a qualquer momento (CA6); aprovar marca `aprovada_por` e `aprovada_em` (G6). Protocolar exige a data (calendário, sem data futura), o comprovante, a última versão aprovada e nenhum item sem prova (G21); versão nova depois da aprovação bloqueia até nova aprovação, e a tentativa fica no histórico (CA3, CA9). Grava `protocolo_judicial` (tribunal pelo CNJ), conclui a exigência, as tarefas e as etapas, e o processo volta para a vigília (CA2, CA10).
+19. **Dilação** (CA12): a Sênior autoriza (`POST /api/casos/:id/manifestacao/dilacao`, `exigencia_juiz.autorizar_dilacao`, nova); a advogada protocola a peça de dilação (`peticao.tipo = 'dilacao'`) com os itens pendentes listados e o motivo, sem o bloqueio do G21.
+20. **Tribunal fora do ar** (CA13): a advogada registra a indisponibilidade com a prova e a data da volta; o fim do prazo passa a ser o primeiro dia útil depois da volta (Lei 11.419, art. 10, §2º), em código (`prazoDepoisDaIndisponibilidade` em `prazo-judicial.ts`), num `prazo` novo com a regra.
+21. **Alerta da Sênior** (GGVP-87 CA4): `alertasDeExigencia` passa a olhar as duas origens; o título diz "do juiz" ou "do INSS". Vencida com item sem prova: a mesma decisão da exigência do INSS ("pedi dilação" ou "registrar a perda").
+22. **Matriz versão 6**: `exigencia_juiz.distribuir` (advogada), `exigencia_juiz.cumprir` (atendimento, atendimento_lider, documentacao, juridico_adm), `exigencia_juiz.manifestar` (advogada), `exigencia_juiz.autorizar_dilacao` (senior).
+23. **Migração 0010**: `exigencia_item.tarefa_id` (a tarefa do setor), `exigencia_item.prova_esperada`, `peticao_versao.documento_id`.
+
+### Contratos (`packages/contratos/src/justica.ts`)
+
+`ExigenciaDoJuiz` (texto, prazo processual com a regra, itens com setor e status, perícias, quem falta, `podeDistribuir`), `AnalisarExigenciaJuiz` (`ciencia`, ou `cumprir` com itens e tipos de perícia), `ItensDoSetor`, `RegistrarTentativa`, `NaoVouConseguir`, `Manifestacao` (versões, aprovada, bloqueios, `podeProtocolar`), `ProtocolarManifestacao` (data), `RegistrarIndisponibilidade` (data da volta).
+
+### Campos de formulário
+
+| Campo | Como |
+|---|---|
+| Prazo interno, data do protocolo, data da volta do sistema | calendário do navegador, com `isoParaData` e `hojeIso` de `@ggv/campos` |
+| O que cumprir, prova esperada, motivo | texto, aparado; o contrato exige quando é obrigatório |
+
+### Telas
+
+Analisar a exigência do juiz (`/casos/:id/exigencia-juiz`, advogada; a Sênior e o Jurídico veem o status de cada setor), Cumprir a exigência do juiz (`/casos/:id/exigencia-juiz/setor`, um setor por vez) e Manifestar (`/casos/:id/manifestacao`).
+
+### Risks / Trade-offs
+
+- A mesma tabela serve às duas exigências; uma mudança na do INSS pode afetar a do juiz. Os testes das duas rodam juntos.
+- Sem IA, a advogada monta todos os itens à mão. É mais lento, mas nada nasce sem ela (G5).
+- O protocolo no tribunal é feito fora do portal; aqui fica o registro (data, comprovante, versão). Se alguém registrar sem protocolar de fato, o portal não percebe: a Sênior confere pela publicação seguinte.

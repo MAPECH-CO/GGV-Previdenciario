@@ -29,3 +29,26 @@
 - [x] 5.3 Telas "Painel da vigília", "Ler publicação" e "Publicações do processo"; a Central mostra o contexto no lugar do cliente; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 5.4 Playwright: a Sênior vê o alarme, reprocessa e vincula um item da fila; a advogada lê uma exigência e a tarefa "Analisar exigência do juiz" aparece com o prazo; reclassifica um andamento; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 5.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-79 · Analisar a exigência e criar a tarefa do setor
+
+- [ ] 6.1 Matriz versão 6 e contratos `ExigenciaDoJuiz` e `AnalisarExigenciaJuiz`; migração 0010; teste; verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
+- [ ] 6.2 CA1, CA2, CA4 a CA10, CA12, CA13 · `GET` e `POST /api/casos/:id/exigencia-juiz` (ciência registrada e volta à vigília; itens por setor com prazo interno até o processual; tarefas dos setores com o limite; perícia com a origem D3a; só advogada distribui); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 6.3 Tela "Analisar a exigência do juiz" (texto, prazo com a regra, itens editáveis, status de cada setor); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+
+## GGVP-83 · Laços dos setores na exigência do juiz
+
+- [ ] 7.1 Contratos `ItensDoSetor`, `RegistrarTentativa` e `NaoVouConseguir`; teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [ ] 7.2 CA1, CA4 a CA8, CA11, CA13, CA14 · `GET /api/casos/:id/exigencia-juiz/setor`, tentativas, "não vou conseguir" e "consegui" com a evidência; teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 7.3 CA2, CA3, CA10 · status de cada setor e o resultado da perícia na análise; teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 7.4 Tela "Cumprir a exigência do juiz" (um setor por vez); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+
+## GGVP-87 · Manifestar e protocolar
+
+- [ ] 8.1 Contratos `Manifestacao`, `ProtocolarManifestacao` e `RegistrarIndisponibilidade`; `prazoDepoisDaIndisponibilidade` com teste (Lei 11.419, art. 10, §2º); verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
+- [ ] 8.2 CA1, CA3, CA5, CA6, CA9 · "Manifestar no processo" quando o último item ganha prova; versões, aprovação e bloqueios; teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 8.3 CA2, CA10, CA12, CA13 · protocolo (volta à vigília, linha do processo), dilação com o OK da Sênior e tribunal fora do ar; teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 8.4 CA4 · alerta da Sênior para a exigência do juiz (5 e 2 dias úteis; vencida decide); teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 8.5 Tela "Manifestar" e dados de exemplo (uma exigência do juiz já classificada para a advogada analisar); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 8.6 Playwright: a advogada distribui à Documentação e ao Atendimento; os dois sobem a prova; a advogada anexa, aprova, protocola e o processo volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
+- [ ] 8.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
