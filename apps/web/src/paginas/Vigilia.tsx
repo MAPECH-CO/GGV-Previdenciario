@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { normalizarData, validarData } from '@ggv/campos'
+import { isoParaData } from '@ggv/campos'
 import { EncerrarCaso, RespostaDoInss, type VigiliaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
@@ -8,6 +8,8 @@ import styles from './Passo.module.css'
 type Tipo = 'deferido' | 'indeferido' | 'exigencia'
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
+/** Hoje no fuso de quem usa, em aaaa-mm-dd (o formato do calendário do navegador). */
+const hojeIso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 
 /** GGVP-48: a Sênior pode encerrar o indeferido em vez de levar à Justiça, com o motivo. */
 function EncerrarSemJudicializar({ casoId, aoEncerrar }: { casoId: string; aoEncerrar: () => void }) {
@@ -54,8 +56,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
   const [caso, setCaso] = useState<VigiliaDoCaso | null>(null)
   const [tipo, setTipo] = useState<Tipo | null>(null)
   const [texto, setTexto] = useState('')
-  const [data, setData] = useState('')
-  const [erroData, setErroData] = useState('')
+  const [data, setData] = useState(hojeIso) // calendário do navegador, já em hoje; aceita datas anteriores, não futuras
   const [motivoInss, setMotivoInss] = useState('')
   const [diferente, setDiferente] = useState(false)
   const [arquivo, setArquivo] = useState<File | null>(null)
@@ -73,7 +74,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
     evento.preventDefault()
     const campos =
       tipo === 'exigencia'
-        ? { tipo, texto, data }
+        ? { tipo, texto, data: isoParaData(data) ?? '' }
         : { tipo: 'decisao', resultado: tipo ?? undefined, texto, diferenteDoPedido: diferente, motivoInss: tipo === 'indeferido' ? motivoInss : undefined }
     const entrada = RespostaDoInss.safeParse(campos)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
@@ -174,20 +175,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
               <label className={styles.rotulo} htmlFor={ids.data}>
                 Data da exigência
               </label>
-              <input
-                id={ids.data}
-                className={styles.campo}
-                inputMode="numeric"
-                placeholder="dd/mm/aaaa"
-                value={data}
-                aria-invalid={erroData ? true : undefined}
-                onChange={(e) => {
-                  setData(normalizarData(e.target.value))
-                  setErroData('')
-                }}
-                onBlur={() => setErroData(data && !validarData(data) ? 'Data inválida. Use dd/mm/aaaa.' : '')}
-              />
-              {erroData && <p className={styles.erroCampo}>{erroData}</p>}
+              <input id={ids.data} className={styles.campo} type="date" max={hojeIso()} value={data} onChange={(e) => setData(e.target.value)} />
               <p className={styles.dica}>O prazo para cumprir fica "a calcular" até a regra de prazo entrar.</p>
             </>
           )}

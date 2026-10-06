@@ -45,12 +45,24 @@ describe('Vigília do Meu INSS (GGVP-35)', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
-  it('CA6 · exigência pede a data no formato dd/mm/aaaa', async () => {
+  it('CA6 · a data da exigência abre no calendário, já em hoje, sem data futura', async () => {
     servidor(emVigilia)
     render(<Vigilia casoId={CASO} />)
     fireEvent.click(await screen.findByLabelText('Exigência'))
-    fireEvent.change(screen.getByLabelText('Data da exigência'), { target: { value: '03102026' } })
-    expect((screen.getByLabelText('Data da exigência') as HTMLInputElement).value).toBe('03/10/2026')
+    const campo = screen.getByLabelText('Data da exigência') as HTMLInputElement
+    expect([campo.type, campo.value, campo.max]).toEqual(['date', campo.max, campo.max])
+    expect(campo.value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('CA6 · exigência envia a data escolhida no calendário', async () => {
+    const fetch = servidor(emVigilia, [201, { ok: true, aberto: 'exigencia' }])
+    render(<Vigilia casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Exigência'))
+    fireEvent.change(screen.getByLabelText('Texto da exigência'), { target: { value: 'Trazer CadÚnico' } })
+    fireEvent.change(screen.getByLabelText('Data da exigência'), { target: { value: '2026-10-03' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
+    expect((await screen.findByRole('status')).textContent).toContain('continua vigiado')
+    expect((fetch.mock.calls[1][1]!.body as FormData).get('data')).toBe('03/10/2026')
   })
 
   it('CA3 · deferido com a comunicação: diz o que o sistema abriu', async () => {

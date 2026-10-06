@@ -76,6 +76,9 @@ describe('RespostaDoInss (GGVP-35, GGVP-48)', () => {
     expect(RespostaDoInss.safeParse({ tipo: 'exigencia', texto: 'x', data: '32/10/2026' }).error?.issues[0]?.message).toBe(
       'Informe a data da exigência (dd/mm/aaaa)',
     )
+    expect(RespostaDoInss.safeParse({ tipo: 'exigencia', texto: 'x', data: '01/01/2099' }).error?.issues[0]?.message).toBe(
+      'A data da exigência não pode ser no futuro',
+    )
     expect(RespostaDoInss.safeParse({ texto: 'x' }).error?.issues[0]?.message).toBe('Escolha "Decisão" ou "Exigência"')
   })
 

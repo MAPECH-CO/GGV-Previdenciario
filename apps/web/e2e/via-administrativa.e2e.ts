@@ -129,7 +129,7 @@ test('GGVP-35 · a advogada registra um deferido e uma exigência; o Atendimento
   await page.getByRole('link', { name: 'Teresa Dias (exemplo) · Trazer a resposta do INSS' }).click()
   await page.getByLabel('Exigência').check()
   await page.getByLabel('Texto da exigência').fill('Apresentar inscrição no CadÚnico atualizada.')
-  await page.getByLabel('Data da exigência').fill('03102026')
+  await page.getByLabel('Data da exigência').fill('2026-10-03')
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('status')).toContainText('o caso continua vigiado')
   await page.goto('/')

@@ -140,7 +140,11 @@ export const RespostaDoInss = z.discriminatedUnion(
     z.object({
       tipo: z.literal('exigencia'),
       texto: z.string().trim().min(1, 'Cole o texto da exigência'),
-      data: DataObrigatoria('Informe a data da exigência (dd/mm/aaaa)'),
+      // Sem data futura: a exigência já chegou. Folga de um dia pelo fuso (UTC).
+      data: DataObrigatoria('Informe a data da exigência (dd/mm/aaaa)').refine(
+        (iso) => iso <= new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+        'A data da exigência não pode ser no futuro',
+      ),
     }),
   ],
   { error: 'Escolha "Decisão" ou "Exigência"' },
