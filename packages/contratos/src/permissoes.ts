@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 1
+export const VERSAO_MATRIZ = 2
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -35,6 +35,7 @@ export const MATRIZ = {
   'caso.liberar_ao_juridico': ['documentacao'],
   'caso.aprovar_para_inss': ['senior'],
   'protocolo_inss.registrar': ['juridico_adm'],
+  'pericia.decidir': ['advogada'],
   'pericia.abrir_tarefa': [],
   'pericia.marcar': ['juridico_adm'],
   'pericia.decidir_documento_novo': ['juridico_adm'],

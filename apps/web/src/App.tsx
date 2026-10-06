@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ROTULO_PERFIL, ehPerfil, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
 import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { CentralEmConstrucao } from './paginas/CentralEmConstrucao.tsx'
+import { DecidirPericia } from './paginas/DecidirPericia.tsx'
 import { Entrar } from './paginas/Entrar.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
+import { Protocolar } from './paginas/Protocolar.tsx'
+import { Exige } from './paginas/SemPermissao.tsx'
 import { SemPerfil } from './paginas/SemPerfil.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
 import { TrocarSenha } from './paginas/TrocarSenha.tsx'
@@ -39,7 +42,17 @@ function ComSessao({ caminho }: { caminho: string }) {
   )
 }
 
+/** Telas de passo (GGVP-8). Cada uma dentro de <Exige>: sem a permissão, nem monta (GGVP-96 CA11). */
+const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
+]
+
 function Inicio({ caminho, perfil }: { caminho: string; perfil: string }) {
+  for (const { padrao, tela } of TELAS_DE_CASO) {
+    const achou = caminho.match(padrao)
+    if (achou) return tela(achou[1])
+  }
   if (caminho !== '/') return <NaoConstruida caminho={caminho} />
   if (NA_CENTRAL_DO_ATENDIMENTO.includes(perfil)) return <CentralAtendimento />
   // As Centrais dos outros perfis entram com as histórias de cada épico (GGVP-78).

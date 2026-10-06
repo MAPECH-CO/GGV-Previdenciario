@@ -26,7 +26,7 @@ export function TarefaLinha({ tarefa }: Props) {
             ) : (
               <strong className={styles.quem}>{contexto}</strong>
             )}
-            <a className={styles.acao} href={`/tarefas/${tarefa.id}`} aria-label={`${quem} · ${acao}`}>
+            <a className={styles.acao} href={tarefa.href ?? `/tarefas/${tarefa.id}`} aria-label={`${quem} · ${acao}`}>
               {' · '}
               {acao}
             </a>
