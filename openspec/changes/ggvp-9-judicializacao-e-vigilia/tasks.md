@@ -74,7 +74,7 @@
 - [x] 11.3 CA3, CA10, CA11 · status de cada setor e da perícia no `GET` do despacho; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 11.4 CA13 · Tela do setor com a origem (`CumprirExigenciaJuiz.tsx`: "Cumprir pendência", sem o prazo do processo, informação escrita do Atendimento), a rota `/casos/:id/pendencias` e `D3.04`, `D3.04s` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 11.5 Playwright: a advogada registra o indeferido e o motivo; a Sênior despacha à Documentação com prazo e ao Atendimento sem prazo; o Atendimento sobe a informação e a Documentação, o documento; "Pedir a petição" aparece para a advogada; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 11.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 11.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-63 · Pedir a petição e a IA escrever
 
