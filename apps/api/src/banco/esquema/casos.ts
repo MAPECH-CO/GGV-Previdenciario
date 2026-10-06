@@ -122,8 +122,8 @@ export const agendamento = pgTable(
     tipo: text('tipo').notNull(),
     quando: momento('quando').notNull(),
     local: text('local'),
-    /** Quem acompanha o cliente na ida ao banco (GGVP-44 CA10). */
-    acompanhante: text('acompanhante'),
+    /** Quem do escritório acompanha o cliente na ida ao banco, se alguém for (GGVP-44 CA10, ajuste do Mateus em 05/10). */
+    acompanhanteId: uuid('acompanhante_id').references(() => usuario.id),
     situacao: text('situacao').notNull().default('marcado'),
     confirmadoEm: momento('confirmado_em'),
     criadoPor: uuid('criado_por').references(() => usuario.id),

@@ -8,7 +8,7 @@ import styles from './Passo.module.css'
 const ROTULO_CANAL = { whatsapp: 'WhatsApp', telefone: 'Telefone', email: 'E-mail', sms: 'SMS' } as const
 
 /**
- * Agendar ida ao banco (GGVP-44, Atendimento): data, hora, local e quem acompanha (CA10), sem ver valores (CA2).
+ * Agendar ida ao banco (GGVP-44, Atendimento): data, hora e local; quem acompanha é opcional e vem da equipe (CA10). Sem valores (CA2).
  * Depois, a mensagem do modelo para revisar e enviar pelo celular; o portal registra o envio (CA3, CA11, Q5).
  */
 export function IdaAoBanco({ casoId }: { casoId: string }) {
@@ -18,7 +18,7 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
   const [data, setData] = useState('')
   const [hora, setHora] = useState('')
   const [local, setLocal] = useState('')
-  const [acompanhante, setAcompanhante] = useState('')
+  const [acompanhanteId, setAcompanhanteId] = useState('')
   const [canal, setCanal] = useState('whatsapp')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
@@ -29,7 +29,7 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
 
   async function agendar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const corpo = { data: isoParaData(data) ?? '', hora, local, acompanhante }
+    const corpo = { data: isoParaData(data) ?? '', hora, local, acompanhanteId }
     const entrada = AgendarIdaAoBanco.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const r = await chamarApi(`/casos/${casoId}/banco`, { method: 'POST', corpo })
@@ -73,7 +73,7 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
       {b.agendamento && (
         <section className={styles.cartao} aria-label="Agendada">
           <span className={styles.selo}>
-            {b.agendamento.data} às {b.agendamento.hora} · {b.agendamento.local} · acompanha: {b.agendamento.acompanhante}
+            {b.agendamento.data} às {b.agendamento.hora} · {b.agendamento.local} · acompanha: {b.agendamento.acompanhante ?? 'ninguém do escritório'}
           </span>
         </section>
       )}
@@ -105,9 +105,16 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
           </label>
           <input id={ids.local} className={styles.campo} value={local} onChange={(e) => setLocal(e.target.value)} />
           <label className={styles.rotulo} htmlFor={ids.acompanhante}>
-            Quem acompanha o cliente
+            Quem do escritório acompanha (opcional)
           </label>
-          <input id={ids.acompanhante} className={styles.campo} value={acompanhante} onChange={(e) => setAcompanhante(e.target.value)} />
+          <select id={ids.acompanhante} className={styles.campo} value={acompanhanteId} onChange={(e) => setAcompanhanteId(e.target.value)}>
+            <option value="">Ninguém do escritório</option>
+            {b.equipe.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
           <div className={styles.acoes}>
             <button type="submit" className={styles.botao}>
               {b.agendamento ? 'Remarcar' : 'Agendar'}

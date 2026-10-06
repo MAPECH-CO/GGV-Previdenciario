@@ -1,6 +1,6 @@
 // Benefício deferido (GGVP-44): prestação de contas da advogada (G8), recebimento do Financeiro e ida ao banco
 // agendada pelo Atendimento, com a confirmação ao cliente pelo modelo, revisada por pessoa (Q5).
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import {
   AgendarIdaAoBanco,
@@ -78,8 +78,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const [carta] = def?.documentoId ? await banco.select({ id: documento.id, nome: documento.nomeOriginal }).from(documento).where(eq(documento.id, def.documentoId)) : []
     const [ct] = await banco.select({ percentual: contrato.percentualHonorarios }).from(contrato).where(eq(contrato.casoId, casoId)).orderBy(desc(contrato.criadoEm)).limit(1)
     const versoes = await versoesDo(casoId)
-    const nome = await nomes(versoes.flatMap((v) => [v.okAdvogadaPor, v.recebidaPor]))
     const ag = await agendamentoAtual(casoId)
+    const nome = await nomes([...versoes.flatMap((v) => [v.okAdvogadaPor, v.recebidaPor]), ag?.acompanhanteId ?? null])
     const atual = versoes[0]
     return PrestacaoDoCaso.parse({
       casoId,
@@ -101,7 +101,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         recebidaEm: v.recebidaEm?.toISOString() ?? null,
         divergencia: v.divergencia,
       })),
-      agendamento: ag ? { quando: ag.quando.toISOString(), local: ag.local ?? '', acompanhante: ag.acompanhante ?? '' } : null,
+      agendamento: ag ? { quando: ag.quando.toISOString(), local: ag.local ?? '', acompanhante: nome(ag.acompanhanteId) } : null,
       podeEditar: pode(pedido.perfilAtivo, 'prestacao.dar_ok') && def !== null,
       podeReceber: pode(pedido.perfilAtivo, 'prestacao.registrar_recebimento') && atual !== undefined && !atual.recebidaEm && !atual.divergencia,
     })
@@ -127,7 +127,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         honorarios: valores.honorarios,
         valorCliente: valores.repasse,
         percentualHonorarios: d.percentual.toFixed(2),
-        formaPagamento: d.formaPagamento,
+        formaPagamento: d.formaPagamento ?? null,
         prazoPagamento: d.prazoPagamento,
         cartaDocumentoId: def.documentoId,
         okAdvogadaPor: quem,
@@ -199,11 +199,19 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const m = await modeloAtivo()
     const [atual] = await versoesDo(casoId)
     const [tarefaDoBanco] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06b'))).limit(1)
+    const acompanhante = ag ? (await nomes([ag.acompanhanteId]))(ag.acompanhanteId) : null
+    // {acompanhamento}: a frase só aparece quando alguém do escritório vai junto.
     const texto =
       ag && m && c
-        ? montar(m.conteudo, { cliente: c.nome, data: dataBr(ag.quando), hora: horaBr(ag.quando), local: ag.local ?? '', acompanhante: ag.acompanhante ?? '' })
+        ? montar(m.conteudo, {
+            cliente: c.nome,
+            data: dataBr(ag.quando),
+            hora: horaBr(ag.quando),
+            local: ag.local ?? '',
+            acompanhamento: acompanhante ? ` ${acompanhante}, do escritório, vai com você.` : '',
+          })
         : null
-    return { c, ag, m, okAdvogada: Boolean(atual?.okAdvogadaEm), tarefaDoBanco: tarefaDoBanco ?? null, texto, atual }
+    return { c, ag, m, acompanhante, okAdvogada: Boolean(atual?.okAdvogadaEm), tarefaDoBanco: tarefaDoBanco ?? null, texto, atual }
   }
 
   // CA2, CA3, CA10: o Atendimento vê o agendamento e a mensagem para revisar, sem valor nenhum.
@@ -217,10 +225,16 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       .innerJoin(usuario, eq(mensagem.enviadaPor, usuario.id))
       .where(eq(mensagem.casoId, casoId))
       .orderBy(desc(mensagem.criadoEm))
+    const equipe = await banco
+      .select({ id: usuario.id, nome: usuario.nome })
+      .from(usuario)
+      .where(sql`cardinality(${usuario.perfis}) > 0`)
+      .orderBy(asc(usuario.nome))
     return IdaAoBancoDoCaso.parse({
       casoId,
       cliente: s.c.nome,
-      agendamento: s.ag ? { id: s.ag.id, data: dataBr(s.ag.quando), hora: horaBr(s.ag.quando), local: s.ag.local ?? '', acompanhante: s.ag.acompanhante ?? '' } : null,
+      agendamento: s.ag ? { id: s.ag.id, data: dataBr(s.ag.quando), hora: horaBr(s.ag.quando), local: s.ag.local ?? '', acompanhante: s.acompanhante } : null,
+      equipe,
       mensagem: s.texto,
       modeloCadastrado: s.m !== null,
       okAdvogada: s.okAdvogada,
@@ -238,6 +252,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
     if (!s.tarefaDoBanco) return negar(resposta, 409, MSG_ANTES_DA_PRESTACAO)
     const d = entrada.data
+    if (d.acompanhanteId) {
+      const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
+      if (!u || u.perfis.length === 0) return negar(resposta, 400, 'Escolha quem acompanha na lista')
+    }
     const quem = pedido.usuario!.id
     await banco.transaction(async (tx) => {
       if (s.ag) await tx.update(agendamento).set({ situacao: 'cancelado' }).where(eq(agendamento.id, s.ag.id))
@@ -248,7 +266,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         // Hora de Brasília (sem horário de verão desde 2019).
         quando: new Date(`${d.data}T${d.hora}:00-03:00`),
         local: d.local,
-        acompanhante: d.acompanhante,
+        acompanhanteId: d.acompanhanteId ?? null,
         criadoPor: quem,
       })
       // Remarcou: o convite precisa sair de novo (CA12).

@@ -170,7 +170,7 @@ test('GGVP-48 · indeferido com a carta vai para a Justiça; a Sênior pode ence
 // Grupo 3: exigência do INSS (Ulisses, de exemplo, esperando a advogada decidir).
 const emDias = (n: number) => new Date(Date.now() + n * 86_400_000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 
-test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a prova e responde; o caso volta para a vigília', async ({ page, context }) => {
+test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a prova e entrega; a advogada responde; o caso volta para a vigília', async ({ page, context }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Tratar exigência do INSS' }).click()
@@ -187,7 +187,7 @@ test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a
   await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Cumprir exigência do INSS' }).click()
-  await expect(page.getByRole('button', { name: 'Anexar e responder' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Entregar ao Jurídico' })).toBeDisabled()
   await page.getByLabel('Canal').selectOption('whatsapp')
   await page.getByLabel('Resultado').selectOption('vai_entregar')
   await page.getByRole('button', { name: 'Registrar cobrança' }).click()
@@ -197,12 +197,17 @@ test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a
     await page.getByRole('listitem').filter({ hasText: item }).getByRole('button', { name: 'Anexar' }).click()
     await expect(page.getByRole('listitem').filter({ hasText: item })).toContainText('Cumprido')
   }
-  await page.getByLabel('Comprovante da resposta').setInputFiles({ name: 'resposta.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') })
-  await page.getByRole('button', { name: 'Anexar e responder' }).click()
-  await expect(page.getByRole('status')).toContainText('voltou para a vigília')
+  await page.getByRole('button', { name: 'Entregar ao Jurídico' }).click()
+  await expect(page.getByRole('status')).toContainText('A advogada recebeu a tarefa de responder')
 
   await context.clearCookies()
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Responder exigência no portal do INSS' }).click()
+  await expect(page.getByRole('list', { name: 'Itens' })).toContainText('CadÚnico atualizado · Cumprido · doc.pdf')
+  await page.getByLabel('Comprovante da resposta').setInputFiles({ name: 'resposta.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') })
+  await page.getByRole('button', { name: 'Registrar a resposta' }).click()
+  await expect(page.getByRole('status')).toContainText('voltou para a vigília')
   await page.goto('/')
   await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Trazer a resposta do INSS' }).click()
   await expect(page.getByText(/Esperando: INSS analisar a resposta/)).toBeVisible()
@@ -215,7 +220,7 @@ test('GGVP-44 · a advogada conclui a prestação; o Financeiro recebe; o Atendi
   await expect(page.getByText('Carta de concessão (exemplo).pdf')).toBeVisible()
   await page.getByLabel('Valor recebido (atrasados)').fill('12.345,67')
   await expect(page.getByLabel('Valores calculados')).toHaveText('Honorários R$ 3.703,70 · repasse ao cliente R$ 8.641,97 (calculado pelo sistema)')
-  await page.getByLabel('Forma de pagamento').fill('Pix')
+  await page.getByLabel('Forma de pagamento (opcional)').selectOption('pix')
   await page.getByLabel('Prazo de pagamento').fill(emDias(20))
   await page.getByRole('button', { name: 'Concluir a prestação' }).click()
   await expect(page.getByRole('alert')).toHaveText('Marque "Conferi os valores com a carta de concessão"')
@@ -231,9 +236,10 @@ test('GGVP-44 · a advogada conclui a prestação; o Financeiro recebe; o Atendi
   await page.getByLabel('Data').fill(emDias(10))
   await page.getByLabel('Hora').fill('10:00')
   await page.getByLabel('Agência ou local').fill('Caixa, agência Centro')
-  await page.getByLabel('Quem acompanha o cliente').fill('Ana (exemplo)')
+  await page.getByLabel('Quem do escritório acompanha (opcional)').selectOption({ label: 'Ana (exemplo)' })
   await page.getByRole('button', { name: 'Agendar' }).click()
   await expect(page.getByLabel('Mensagem')).toContainText('Olá, Vera Lúcia (exemplo)! Seu benefício foi concedido.')
+  await expect(page.getByLabel('Mensagem')).toContainText('Ana (exemplo), do escritório, vai com você.')
   await page.getByRole('button', { name: 'Revisei e enviei' }).click()
   await expect(page.getByLabel('Avisos enviados')).toContainText('WhatsApp · Ana (exemplo)')
 

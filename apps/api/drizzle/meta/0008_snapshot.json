@@ -1,5 +1,5 @@
 {
-  "id": "de545d34-cba2-47c7-bbaa-60c635e2f952",
+  "id": "4573a563-8f18-4844-adc0-2fb001f0a45b",
   "prevId": "f20ec9f2-efab-466e-a3fe-8d094b719630",
   "version": "7",
   "dialect": "postgresql",
@@ -735,9 +735,9 @@
           "primaryKey": false,
           "notNull": false
         },
-        "acompanhante": {
-          "name": "acompanhante",
-          "type": "text",
+        "acompanhante_id": {
+          "name": "acompanhante_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -789,6 +789,19 @@
           "tableTo": "caso",
           "columnsFrom": [
             "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "agendamento_acompanhante_id_usuario_id_fk": {
+          "name": "agendamento_acompanhante_id_usuario_id_fk",
+          "tableFrom": "agendamento",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "acompanhante_id"
           ],
           "columnsTo": [
             "id"

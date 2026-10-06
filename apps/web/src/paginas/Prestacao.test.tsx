@@ -22,7 +22,7 @@ const versao1 = {
   percentual: '30.00',
   honorarios: '3703.70',
   repasse: '8641.97',
-  formaPagamento: 'Pix',
+  formaPagamento: 'pix',
   prazoPagamento: '2026-10-30',
   por: 'Gabi',
   em: '2026-10-05T15:00:00.000Z',
@@ -39,6 +39,7 @@ const banco = {
   okAdvogada: true,
   avisos: [],
   podeAgendar: true,
+  equipe: [{ id: '33333333-3333-4333-8333-333333333333', nome: 'Ana (exemplo)' }],
 }
 
 function servidor(get: object, post: [number, unknown] = [201, { ok: true, versao: 1 }]) {
@@ -64,7 +65,7 @@ describe('Prestar contas (GGVP-44)', () => {
     const fetch = servidor(prestacao)
     render(<PrestarContas casoId={CASO} />)
     fireEvent.change(await screen.findByLabelText('Valor recebido (atrasados)'), { target: { value: '1.000,00' } })
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), { target: { value: 'Pix' } })
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Escolha', 'Pix', 'Transferência bancária', 'Boleto', 'Dinheiro'])
     fireEvent.change(screen.getByLabelText('Prazo de pagamento'), { target: { value: '2026-10-30' } })
     fireEvent.click(screen.getByRole('button', { name: 'Concluir a prestação' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Marque "Conferi os valores com a carta de concessão"')
@@ -101,7 +102,14 @@ describe('Receber a prestação (GGVP-44, Financeiro)', () => {
 })
 
 describe('Agendar ida ao banco (GGVP-44, Atendimento)', () => {
-  it('CA10 · os quatro campos são obrigatórios', async () => {
+  it('CA10 · quem acompanha é escolhido na equipe, e pode ser ninguém', async () => {
+    servidor(banco)
+    render(<IdaAoBanco casoId={CASO} />)
+    const campo = (await screen.findByLabelText('Quem do escritório acompanha (opcional)')) as HTMLSelectElement
+    expect([...campo.options].map((o) => o.textContent)).toEqual(['Ninguém do escritório', 'Ana (exemplo)'])
+  })
+
+  it('CA10 · data, hora e local são obrigatórios', async () => {
     const fetch = servidor(banco)
     render(<IdaAoBanco casoId={CASO} />)
     fireEvent.change(await screen.findByLabelText('Data'), { target: { value: '2026-10-15' } })

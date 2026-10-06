@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Benefício deferido: o deferimento abre a prestação de contas da advogada; concluída a prestação, o Financeiro recebe e o Atendimento agenda a ida ao banco com o cliente, ao mesmo tempo. Respostas do revisor de 05/10: o aviso ao cliente só sai depois do OK da advogada (Q7, G8); a prestação tem valor recebido, honorários pelo percentual do contrato e repasse ao cliente, calculados por código; o Financeiro marca "Recebido" ou "Divergência" (com motivo, volta para a advogada); a mensagem ao cliente vai pelo WhatsApp com o modelo aprovado, sempre revisada por pessoa e registrada (Q5).
+Benefício deferido: o deferimento abre a prestação de contas da advogada; concluída a prestação, o Financeiro recebe e o Atendimento agenda a ida ao banco com o cliente, ao mesmo tempo. Respostas do revisor de 05/10: o aviso ao cliente só sai depois do OK da advogada (Q7, G8); a prestação tem valor recebido, honorários pelo percentual do contrato e repasse ao cliente, calculados por código; o Financeiro marca "Recebido" ou "Divergência" (com motivo, volta para a advogada); a mensagem ao cliente vai pelo WhatsApp com o modelo aprovado, sempre revisada por pessoa e registrada (Q5). Ajustes do Mateus na homologação local de 05/10: forma de pagamento opcional e escolhida numa lista fechada (opções a confirmar com o Lucas); quem acompanha o cliente é opcional e escolhido entre os usuários do portal.
 
 ## ADDED Requirements
 
@@ -63,7 +63,7 @@ Antes da prestação concluída, a Central do Financeiro MUST NOT ter tarefa com
 - **Então** não há tarefa com ação para ela
 
 ### Requirement: CA8 · O Financeiro vê os valores e a versão concluída
-A tarefa do Financeiro SHALL mostrar os valores (recebido, honorários, repasse), a forma e o prazo de pagamento e a versão concluída da prestação.
+A tarefa do Financeiro SHALL mostrar os valores (recebido, honorários, repasse), a forma (opcional, de uma lista fechada) e o prazo de pagamento e a versão concluída da prestação.
 
 #### Scenario: CA8 · O Financeiro abre a tarefa
 - **Dado** a prestação recebida
@@ -79,12 +79,12 @@ Registrar o recebimento SHALL gravar quem recebeu e quando; quem deu o OK na pre
 - **Então** ficam registrados quem recebeu e quando; divergência de valores volta para a advogada com o motivo
 
 ### Requirement: CA10 · Agendamento com data, hora, local e acompanhante
-Agendar a ida ao banco MUST exigir data, hora, agência ou local e quem acompanha o cliente; o Financeiro SHALL ver o agendamento.
+Agendar a ida ao banco MUST exigir data, hora e agência ou local; quem acompanha o cliente é opcional e, quando há, MUST ser um usuário do portal (ajuste de 05/10). O Financeiro SHALL ver o agendamento.
 
 #### Scenario: CA10 · O Atendimento agenda
 - **Dado** a tarefa de agendar a ida ao banco
 - **Quando** o Atendimento agenda
-- **Então** data, hora, agência ou local e quem acompanha o cliente são obrigatórios, e o Financeiro vê o agendamento
+- **Então** data, hora, agência ou local são obrigatórios, quem acompanha é escolhido entre os usuários do portal (ou ninguém), e o Financeiro vê o agendamento
 
 ### Requirement: CA11 · Confirmação pelo modelo, registrada
 A confirmação ao cliente MUST usar o modelo aprovado e SHALL ficar registrada com data, canal e texto enviado.

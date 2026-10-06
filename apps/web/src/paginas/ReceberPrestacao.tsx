@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { formatarDecimal, isoParaData } from '@ggv/campos'
-import { ReceberPrestacao as Contrato, type PrestacaoDoCaso } from '@ggv/contratos'
+import { ROTULO_FORMA_DE_PAGAMENTO, ReceberPrestacao as Contrato, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -66,7 +66,8 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
             </li>
             <li>Repasse ao cliente: {reais(v.repasse)}</li>
             <li>
-              Forma de pagamento: {v.formaPagamento ?? '—'} · prazo {dia(v.prazoPagamento)}
+              Forma de pagamento: {v.formaPagamento ? (ROTULO_FORMA_DE_PAGAMENTO[v.formaPagamento as keyof typeof ROTULO_FORMA_DE_PAGAMENTO] ?? v.formaPagamento) : '—'} · prazo{' '}
+              {dia(v.prazoPagamento)}
             </li>
           </ul>
           {v.recebidaPor && <span className={styles.selo}>Recebida por {v.recebidaPor} em {dia(v.recebidaEm)}</span>}
@@ -81,7 +82,7 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
         {p.agendamento ? (
           <p>
             {new Date(p.agendamento.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })} · {p.agendamento.local} ·
-            acompanha: {p.agendamento.acompanhante}
+            acompanha: {p.agendamento.acompanhante ?? 'ninguém do escritório'}
           </p>
         ) : (
           <p className={styles.dica}>Ainda não agendada pelo Atendimento.</p>

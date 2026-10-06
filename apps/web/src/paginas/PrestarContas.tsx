@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarDecimal, isoParaData, normalizarDecimal } from '@ggv/campos'
-import { SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
+import { FORMAS_DE_PAGAMENTO, ROTULO_FORMA_DE_PAGAMENTO, SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -129,9 +129,16 @@ export function PrestarContas({ casoId }: { casoId: string }) {
             </p>
           )}
           <label className={styles.rotulo} htmlFor={ids.forma}>
-            Forma de pagamento
+            Forma de pagamento (opcional)
           </label>
-          <input id={ids.forma} className={styles.campo} value={forma} onChange={(e) => setForma(e.target.value)} />
+          <select id={ids.forma} className={styles.campo} value={forma} onChange={(e) => setForma(e.target.value)}>
+            <option value="">Escolha</option>
+            {FORMAS_DE_PAGAMENTO.map((f) => (
+              <option key={f} value={f}>
+                {ROTULO_FORMA_DE_PAGAMENTO[f]}
+              </option>
+            ))}
+          </select>
           <label className={styles.rotulo} htmlFor={ids.prazo}>
             Prazo de pagamento
           </label>

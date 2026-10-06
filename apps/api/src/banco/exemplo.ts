@@ -136,7 +136,7 @@ export async function semearExemplos(banco: Banco) {
   await banco.insert(modelo).values({
     tipo: 'mensagem',
     nome: 'Confirmação da ida ao banco',
-    conteudo: 'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}. Quem vai com você: {acompanhante}. Qualquer dúvida, fale com o escritório. (modelo de exemplo)',
+    conteudo: 'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}. {acompanhamento} Qualquer dúvida, fale com o escritório. (modelo de exemplo)',
   })
   const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const [pv] = await banco.insert(pessoa).values({ nome: 'Vera Lúcia (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()

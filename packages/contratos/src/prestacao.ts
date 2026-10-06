@@ -28,7 +28,7 @@ export const PrestacaoDoCaso = z.object({
   carta: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
   percentualContrato: z.string().nullable(),
   versoes: z.array(VersaoDaPrestacao),
-  agendamento: z.object({ quando: z.string(), local: z.string(), acompanhante: z.string() }).nullable(),
+  agendamento: z.object({ quando: z.string(), local: z.string(), acompanhante: z.string().nullable() }).nullable(),
   podeEditar: z.boolean(),
   podeReceber: z.boolean(),
 })
@@ -41,11 +41,21 @@ const Decimal = (mensagem: string, maximo = Number.MAX_SAFE_INTEGER / 100) =>
     .refine((n) => n !== null && n >= 0 && n <= maximo, mensagem)
     .transform((n) => n as number)
 
+/** Opções fechadas, para o painel não ter "débito" e "Debito" (ajuste do Mateus em 05/10; lista a confirmar com o Lucas). */
+export const FORMAS_DE_PAGAMENTO = ['pix', 'transferencia', 'boleto', 'dinheiro'] as const
+export const ROTULO_FORMA_DE_PAGAMENTO: Record<(typeof FORMAS_DE_PAGAMENTO)[number], string> = {
+  pix: 'Pix',
+  transferencia: 'Transferência bancária',
+  boleto: 'Boleto',
+  dinheiro: 'Dinheiro',
+}
+const vazioEhNada = (v: unknown) => (v === '' || v === null ? undefined : v)
+
 /** POST /api/casos/:id/prestacao (CA5): concluir exige a conferência com a carta. Honorários e repasse são do servidor. */
 export const SalvarPrestacao = z.object({
   valorRecebido: Decimal('Informe o valor recebido (atrasados), como 1.234,56').refine((n) => n > 0, 'Informe o valor recebido (atrasados), como 1.234,56'),
   percentual: Decimal('Informe o percentual de honorários do contrato (0 a 100)', 100),
-  formaPagamento: z.string({ error: 'Informe a forma de pagamento' }).trim().min(1, 'Informe a forma de pagamento'),
+  formaPagamento: z.preprocess(vazioEhNada, z.enum(FORMAS_DE_PAGAMENTO, { error: 'Escolha a forma de pagamento da lista' }).optional()),
   prazoPagamento: DataObrigatoria('Informe o prazo de pagamento (dd/mm/aaaa)'),
   conferiCarta: z.literal(true, { error: 'Marque "Conferi os valores com a carta de concessão"' }),
 })
@@ -66,7 +76,9 @@ export type ReceberPrestacao = z.infer<typeof ReceberPrestacao>
 export const IdaAoBancoDoCaso = z.object({
   casoId: z.uuid(),
   cliente: z.string(),
-  agendamento: z.object({ id: z.uuid(), data: z.string(), hora: z.string(), local: z.string(), acompanhante: z.string() }).nullable(),
+  agendamento: z.object({ id: z.uuid(), data: z.string(), hora: z.string(), local: z.string(), acompanhante: z.string().nullable() }).nullable(),
+  /** Usuários do portal, para escolher quem acompanha (CA10). */
+  equipe: z.array(z.object({ id: z.uuid(), nome: z.string() })),
   /** Texto montado pelo modelo aprovado, para a pessoa revisar antes de enviar (Q5). `null`: sem modelo ou sem agendamento. */
   mensagem: z.string().nullable(),
   modeloCadastrado: z.boolean(),
@@ -76,12 +88,12 @@ export const IdaAoBancoDoCaso = z.object({
 })
 export type IdaAoBancoDoCaso = z.infer<typeof IdaAoBancoDoCaso>
 
-/** POST /api/casos/:id/banco (CA10, CA12): os quatro campos são obrigatórios. */
+/** POST /api/casos/:id/banco (CA10, CA12): data, hora e local obrigatórios; quem acompanha é opcional e vem da equipe. */
 export const AgendarIdaAoBanco = z.object({
   data: DataObrigatoria('Informe a data da ida ao banco (dd/mm/aaaa)'),
   hora: z.string({ error: 'Informe a hora (hh:mm)' }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe a hora (hh:mm)'),
   local: z.string({ error: 'Informe a agência ou o local' }).trim().min(1, 'Informe a agência ou o local'),
-  acompanhante: z.string({ error: 'Informe quem acompanha o cliente' }).trim().min(1, 'Informe quem acompanha o cliente'),
+  acompanhanteId: z.preprocess(vazioEhNada, z.uuid({ error: 'Escolha quem acompanha na lista' }).optional()),
 })
 export type AgendarIdaAoBanco = z.input<typeof AgendarIdaAoBanco>
 
