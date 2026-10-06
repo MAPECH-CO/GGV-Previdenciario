@@ -21,6 +21,7 @@ import { AnalisarExigenciaJuiz } from './paginas/AnalisarExigenciaJuiz.tsx'
 import { CumprirExigenciaJuiz } from './paginas/CumprirExigenciaJuiz.tsx'
 import { Manifestar } from './paginas/Manifestar.tsx'
 import { RegistrarIndeferimento } from './paginas/RegistrarIndeferimento.tsx'
+import { DespacharCaso } from './paginas/Despachar.tsx'
 import { Exige } from './paginas/SemPermissao.tsx'
 import { SemPerfil } from './paginas/SemPerfil.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
@@ -73,6 +74,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz\/setor$/, tela: (id) => <Exige acao="exigencia_juiz.cumprir"><CumprirExigenciaJuiz casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/manifestacao$/, tela: (id) => <Exige acao="caso.ver"><Manifestar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/indeferimento$/, tela: (id) => <Exige acao="caso.ver"><RegistrarIndeferimento casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
   { padrao: /^\/vigilia$/, tela: () => <Exige acao="vigilia.ver"><PainelVigilia /></Exige> },
 ]
 

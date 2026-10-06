@@ -63,9 +63,9 @@
 
 ## GGVP-54 · A IA analisa o motivo e a sênior despacha
 
-- [ ] 10.1 Contratos `Despacho` e `Despachar` (`nada_falta`, ou `acionar` com o que obter, "Essa tarefa tem prazo?" e a data, e as perícias); teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 10.2 CA1 a CA9 · `GET` e `POST /api/casos/:id/despacho` em `rotas/indeferimento.ts` (decisão `D3.03` com autora, data e setores; exigência `despacho` com um item e "Cumprir pendência" por setor; perícia com o Jurídico administrativo; "Pedir a petição" nasce; só a Sênior); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 10.3 CA10 · Tela "Despachar caso" (`apps/web/src/paginas/Despachar.tsx`: histórico do caso, setores com o que obter e o prazo opcional, "nada falta", "Encerrar sem judicializar" pela rota da GGVP-48; só leitura para a advogada), a rota e `D3.03` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 10.1 Contratos `Despacho` e `Despachar` (`nada_falta`, ou `acionar` com o que obter, "Essa tarefa tem prazo?" e a data, e as perícias); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 10.2 CA1 a CA9 · `GET` e `POST /api/casos/:id/despacho` em `rotas/indeferimento.ts` (decisão `D3.03` com autora, data e setores; exigência `despacho` com um item e "Cumprir pendência" por setor; perícia com o Jurídico administrativo; "Pedir a petição" nasce; só a Sênior); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 10.3 CA10 · Tela "Despachar caso" (`apps/web/src/paginas/Despachar.tsx`: histórico do caso, setores com o que obter e o prazo opcional, "nada falta", "Encerrar sem judicializar" pela rota da GGVP-48; só leitura para a advogada), a rota e `D3.03` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-58 · Laços dos setores até subir o card
 

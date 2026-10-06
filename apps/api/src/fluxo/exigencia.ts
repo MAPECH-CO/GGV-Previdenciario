@@ -33,10 +33,11 @@ export async function tiposDecididos(banco: Banco | Tx, casoId: string): Promise
   return (d?.justificativa ?? '').split(',').filter((t): t is Tipo => t === 'medica' || t === 'social')
 }
 
-/** De onde vem a perícia: a exigência do INSS (D2.05) ou a do juiz (D3a, GGVP-79 CA8). */
+/** De onde vem a perícia: a exigência do INSS (D2.05), a do juiz (D3a, GGVP-79 CA8) ou o despacho da Sênior (D3, GGVP-54 CA5). */
 export const ORIGEM_INSS = { diagrama: 'D2', passo: 'D2.05', rotulo: 'exigência do INSS' } as const
 export const ORIGEM_JUIZ = { diagrama: 'D3a', passo: 'D3a.03', rotulo: 'exigência do juiz' } as const
-type Origem = typeof ORIGEM_INSS | typeof ORIGEM_JUIZ
+export const ORIGEM_DESPACHO = { diagrama: 'D3', passo: 'D3.03', rotulo: 'despacho da Sênior' } as const
+type Origem = typeof ORIGEM_INSS | typeof ORIGEM_JUIZ | typeof ORIGEM_DESPACHO
 
 /** CA2, CA3, CA6: abre as perícias pedidas pela exigência e a tarefa do Jurídico administrativo, como a GGVP-31. */
 export async function abrirPericiasDaExigencia(tx: Tx, casoId: string, tipos: Tipo[], quem: string, agora: Date, origem: Origem = ORIGEM_INSS) {

@@ -10,7 +10,7 @@ const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a d
 const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
 
 /** GGVP-48: a Sênior pode encerrar o indeferido em vez de levar à Justiça, com o motivo. */
-function EncerrarSemJudicializar({ casoId, aoEncerrar }: { casoId: string; aoEncerrar: () => void }) {
+export function EncerrarSemJudicializar({ casoId, aoEncerrar }: { casoId: string; aoEncerrar: () => void }) {
   const idMotivo = useId()
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState('')

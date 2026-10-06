@@ -4,6 +4,7 @@ import {
   AprovarVersao,
   AutorizarDilacao,
   ClassificarPublicacao,
+  Despachar,
   EncerrarSemProva,
   NaoVouConseguir,
   ProtocolarManifestacao,
@@ -106,5 +107,39 @@ describe('GGVP-52 · registrar o motivo do indeferimento', () => {
     expect(RegistrarMotivo.parse({ motivo: '  Faltou o laudo da deficiência ' })).toEqual({ motivo: 'Faltou o laudo da deficiência' })
     expect(erro(RegistrarMotivo.safeParse({ motivo: '   ' }))).toBe('Escreva o motivo com as suas palavras')
     expect(erro(RegistrarMotivo.safeParse({}))).toBe('Escreva o motivo com as suas palavras')
+  })
+})
+
+describe('GGVP-54 · despachar', () => {
+  it('CA3 · "nada falta" segue sem itens', () => {
+    expect(Despachar.parse({ decisao: 'nada_falta' })).toEqual({ decisao: 'nada_falta' })
+  })
+
+  it('CA2, CA6 · cada setor com o que obter; "Essa tarefa tem prazo?" Sim pede a data, Não vai sem prazo', () => {
+    expect(
+      Despachar.parse({
+        decisao: 'acionar',
+        itens: [
+          { setor: 'documentacao', descricao: ' Laudo atualizado ', temPrazo: true, prazo: '20/10/2026' },
+          { setor: 'atendimento', descricao: 'Quem mora com a cliente', temPrazo: false },
+        ],
+      }),
+    ).toEqual({
+      decisao: 'acionar',
+      itens: [
+        { setor: 'documentacao', descricao: 'Laudo atualizado', prazo: '2026-10-20' },
+        { setor: 'atendimento', descricao: 'Quem mora com a cliente', prazo: null },
+      ],
+      tiposPericia: [],
+    })
+    expect(erro(Despachar.safeParse({ decisao: 'acionar', itens: [{ setor: 'documentacao', descricao: 'Laudo', temPrazo: true }] }))).toBe('Informe a data de entrega (dd/mm/aaaa)')
+    expect(erro(Despachar.safeParse({ decisao: 'acionar', itens: [{ setor: 'documentacao', descricao: ' ', temPrazo: false }] }))).toBe('Escreva o que o setor deve obter')
+    expect(erro(Despachar.safeParse({ decisao: 'acionar', itens: [{ setor: 'documentacao', descricao: 'Laudo' }] }))).toBe('Responda "Essa tarefa tem prazo?"')
+  })
+
+  it('CA2, CA5 · acionar pede ao menos um setor ou a perícia; a perícia sozinha vale', () => {
+    expect(erro(Despachar.safeParse({ decisao: 'acionar', itens: [] }))).toBe('Marque ao menos um setor ou a perícia')
+    expect(Despachar.parse({ decisao: 'acionar', tiposPericia: ['medica'] })).toEqual({ decisao: 'acionar', itens: [], tiposPericia: ['medica'] })
+    expect(erro(Despachar.safeParse({}))).toBe('Escolha "Nada falta" ou o que falta')
   })
 })

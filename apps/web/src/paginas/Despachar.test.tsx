@@ -1,0 +1,107 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DespacharCaso } from './Despachar.tsx'
+
+const CASO = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
+const CARTA = '22222222-2222-4222-8222-222222222222'
+const base = {
+  casoId: CASO,
+  cliente: 'Sebastião Cruz (exemplo)',
+  beneficio: 'bpc_loas_idoso',
+  indeferimento: {
+    dataDecisao: '2026-10-06',
+    motivoInss: 'Renda per capita acima do limite',
+    carta: { id: CARTA, nome: 'carta-inss.pdf' },
+    motivoEscrito: { texto: 'O INSS somou a renda do filho', por: 'Gabi', em: '2026-10-07T13:00:00.000Z' },
+  },
+  despacho: null,
+  setores: [],
+  pericias: [],
+  faltam: [],
+  podeDespachar: true,
+  podeEncerrar: true,
+}
+
+function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
+  const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+    init?.method === 'POST' ? new Response(JSON.stringify(post[1]), { status: post[0] }) : new Response(JSON.stringify(get), { status: 200 }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  return fetch
+}
+const corpoDoPost = (fetch: ReturnType<typeof servidor>, caminho: string) =>
+  JSON.parse(fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith(caminho))![1]!.body as string)
+afterEach(() => vi.unstubAllGlobals())
+
+describe('Despachar caso (GGVP-54)', () => {
+  it('CA1 · mostra o histórico: a decisão do INSS, a carta e o motivo escrito, com quem e quando', async () => {
+    servidor(base)
+    render(<DespacharCaso casoId={CASO} />)
+    expect((await screen.findByText(/Motivo no sistema do INSS/)).textContent).toBe('Motivo no sistema do INSS: Renda per capita acima do limite')
+    expect(screen.getByRole('link', { name: 'Abrir a carta de indeferimento (carta-inss.pdf)' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${CARTA}`)
+    expect(screen.getByText(/Motivo com as palavras de quem viu/).textContent).toBe('Motivo com as palavras de quem viu: O INSS somou a renda do filho (Gabi em 07/10/2026)')
+  })
+
+  it('CA3 · "nada falta" segue para pedir a petição', async () => {
+    const fetch = servidor(base)
+    render(<DespacharCaso casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Não, nada falta'))
+    fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Despacho registrado. "Pedir a petição" foi para a fila das advogadas.')
+    expect(corpoDoPost(fetch, '/despacho')).toEqual({ decisao: 'nada_falta' })
+  })
+
+  it('CA2, CA6 · cada pedido tem o setor e o que obter; "Essa tarefa tem prazo?" Sim pede a data de entrega', async () => {
+    const fetch = servidor(base)
+    render(<DespacharCaso casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Sim, falta'))
+    fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escolha o setor de cada pedido')
+    fireEvent.change(screen.getByLabelText('Setor'), { target: { value: 'documentacao' } })
+    fireEvent.change(screen.getByLabelText('O que o setor deve obter'), { target: { value: 'Laudo atualizado' } })
+    fireEvent.click(screen.getByLabelText('Sim'))
+    fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Informe a data de entrega (dd/mm/aaaa)')
+    fireEvent.change(screen.getByLabelText('Data de entrega'), { target: { value: '2026-10-20' } })
+    fireEvent.click(screen.getByLabelText('Perícia médica'))
+    fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Despacho registrado. Cada setor recebeu "Cumprir pendência".')
+    expect(corpoDoPost(fetch, '/despacho')).toEqual({
+      decisao: 'acionar',
+      itens: [{ setor: 'documentacao', descricao: 'Laudo atualizado', temPrazo: true, prazo: '20/10/2026' }],
+      tiposPericia: ['medica'],
+    })
+  })
+
+  it('CA9 e GGVP-58 CA11 · despachado, mostra quem despachou, quando, e o status de cada setor', async () => {
+    servidor({
+      ...base,
+      podeDespachar: false,
+      podeEncerrar: false,
+      despacho: { decisao: 'acionar', por: 'Helena', em: '2026-10-07T14:00:00.000Z' },
+      setores: [
+        { setor: 'atendimento', descricao: 'Quem mora com a cliente', prazo: null, situacao: 'cumprido', escalada: false },
+        { setor: 'documentacao', descricao: 'Laudo atualizado', prazo: '2026-10-20', situacao: 'pendente', escalada: true },
+      ],
+      pericias: [{ tipo: 'medica', resultado: null }],
+      faltam: ['Documentação', 'Perícia'],
+    })
+    render(<DespacharCaso casoId={CASO} />)
+    expect((await screen.findByText(/Despachado por/)).textContent).toBe('Despachado por Helena em 07/10/2026: setores acionados')
+    expect(screen.getByText('Falta: Documentação, Perícia.')).toBeTruthy()
+    const linhas = screen.getByRole('list', { name: 'Setores acionados' }).querySelectorAll('li')
+    expect([...linhas].map((l) => l.textContent)).toEqual([
+      'Atendimento · Quem mora com a cliente · sem prazo · concluído',
+      'Documentação · Laudo atualizado · até 20/10/2026 · aberto · com a Sênior',
+      'Jurídico administrativo · marcar a perícia médica · aguardando o resultado',
+    ])
+    expect(screen.queryByRole('button', { name: 'Despachar' })).toBeNull()
+  })
+
+  it('a advogada vê só a leitura enquanto a Sênior não despacha', async () => {
+    servidor({ ...base, podeDespachar: false, podeEncerrar: false })
+    render(<DespacharCaso casoId={CASO} />)
+    expect(await screen.findByText('Esperando o despacho da Sênior.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Encerrar o caso' })).toBeNull()
+  })
+})

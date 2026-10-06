@@ -1,5 +1,5 @@
 // Contratos da vigília e da publicação (GGVP-9, grupo 1). Tela e servidor validam com o mesmo schema.
-import { normalizarCnj, normalizarInteiro, validarCnj } from '@ggv/campos'
+import { dataParaIso, normalizarCnj, normalizarInteiro, validarCnj, validarData } from '@ggv/campos'
 import { z } from 'zod'
 import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
 
@@ -310,3 +310,63 @@ export const RegistrarMotivo = z.object({
   motivo: z.string({ error: 'Escreva o motivo com as suas palavras' }).trim().min(1, 'Escreva o motivo com as suas palavras'),
 })
 export type RegistrarMotivo = z.infer<typeof RegistrarMotivo>
+
+/** Setores do despacho da Sênior (GGVP-54 CA2): o Jurídico administrativo entra só pela perícia (CA5). */
+export const SETORES_DO_DESPACHO = ['atendimento', 'documentacao'] as const
+
+/** CA6: o que o setor deve obter e "Essa tarefa tem prazo?": com "Sim", a data de entrega; com "Não", sem prazo. */
+const ItemDoDespacho = z
+  .object({
+    setor: z.enum(SETORES_DO_DESPACHO, { error: 'Escolha o setor de cada pedido' }),
+    descricao: z.string({ error: 'Escreva o que o setor deve obter' }).trim().min(1, 'Escreva o que o setor deve obter'),
+    temPrazo: z.boolean({ error: 'Responda "Essa tarefa tem prazo?"' }),
+    prazo: z.string().optional(),
+  })
+  .refine((i) => !i.temPrazo || validarData(i.prazo ?? ''), { message: 'Informe a data de entrega (dd/mm/aaaa)', path: ['prazo'] })
+  .transform((i) => ({ setor: i.setor, descricao: i.descricao, prazo: i.temPrazo ? (dataParaIso(i.prazo) as string) : null }))
+
+/** POST /api/casos/:id/despacho (GGVP-54 CA2, CA3, CA5, CA6; G4): "nada falta", ou os setores acionados e a perícia. */
+export const Despachar = z.discriminatedUnion(
+  'decisao',
+  [
+    z.object({ decisao: z.literal('nada_falta') }),
+    z
+      .object({
+        decisao: z.literal('acionar'),
+        itens: z.array(ItemDoDespacho).default([]),
+        tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+      })
+      .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Marque ao menos um setor ou a perícia', path: ['itens'] }),
+  ],
+  { error: 'Escolha "Nada falta" ou o que falta' },
+)
+export type Despachar = z.input<typeof Despachar>
+
+/** GET /api/casos/:id/despacho (GGVP-54 CA1, CA9; GGVP-58 CA3, CA11): o histórico do caso, o despacho e o status dos setores. */
+export const Despacho = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  indeferimento: z.object({
+    dataDecisao: z.string(),
+    motivoInss: z.string().nullable(),
+    carta: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
+    motivoEscrito: z.object({ texto: z.string(), por: z.string(), em: z.string() }).nullable(),
+  }),
+  despacho: z.object({ decisao: z.enum(['nada_falta', 'acionar']), por: z.string(), em: z.string() }).nullable(),
+  setores: z.array(
+    z.object({
+      setor: z.enum(SETORES_DO_DESPACHO),
+      descricao: z.string(),
+      prazo: z.string().nullable(),
+      situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
+      escalada: z.boolean(),
+    }),
+  ),
+  pericias: z.array(z.object({ tipo: z.enum(TIPOS_DE_PERICIA), resultado: z.string().nullable() })),
+  /** Quem ainda não subiu o card (GGVP-58 CA3). */
+  faltam: z.array(z.string()),
+  podeDespachar: z.boolean(),
+  podeEncerrar: z.boolean(),
+})
+export type Despacho = z.infer<typeof Despacho>
