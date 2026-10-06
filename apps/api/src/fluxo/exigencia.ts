@@ -9,8 +9,14 @@ type Tipo = 'medica' | 'social'
 
 const NOME_PERICIA: Record<Tipo, string> = { medica: 'perícia médica', social: 'avaliação social' }
 
-/** Limites do G15 vindos da configuração do escritório (GGVP-104). Sem configuração: `null`, e nada escala. */
-export async function limitesDeCobranca(banco: Banco | Tx): Promise<{ limite: number | null; intervaloDias: number | null }> {
+/**
+ * Sem configuração do escritório, vale o que o Lucas respondeu em 05/10 (GGVP-122, pergunta 6): 2 tentativas, com 3 dias
+ * entre elas, também para cobrar documentos. O portão G15 nunca fica desligado por falta de configuração.
+ */
+export const LIMITES_PADRAO = { limite: 2, intervaloDias: 3 } as const
+
+/** Limites do G15 vindos da configuração do escritório (GGVP-104); o que faltar vem de `LIMITES_PADRAO`. */
+export async function limitesDeCobranca(banco: Banco | Tx): Promise<{ limite: number; intervaloDias: number }> {
   const linhas = await banco
     .select()
     .from(configuracao)
@@ -19,7 +25,10 @@ export async function limitesDeCobranca(banco: Banco | Tx): Promise<{ limite: nu
     const v = linhas.find((l) => l.chave === chave)?.valor
     return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : null
   }
-  return { limite: valor('cobranca.limite'), intervaloDias: valor('cobranca.intervalo_dias') }
+  return {
+    limite: valor('cobranca.limite') ?? LIMITES_PADRAO.limite,
+    intervaloDias: valor('cobranca.intervalo_dias') ?? LIMITES_PADRAO.intervaloDias,
+  }
 }
 
 /** Tipos de perícia que a advogada escolheu ao decidir a exigência (decisão D2.05, G5). */

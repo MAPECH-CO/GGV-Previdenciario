@@ -196,7 +196,7 @@ test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a
   await page.getByLabel('Canal').selectOption('whatsapp')
   await page.getByLabel('Resultado').selectOption('vai_entregar')
   await page.getByRole('button', { name: 'Registrar cobrança' }).click()
-  await expect(page.getByText(/Cobranças: 1 de 3/)).toBeVisible()
+  await expect(page.getByText(/Cobranças: 1 de 2/)).toBeVisible()
   for (const item of ['CadÚnico atualizado', 'Comprovante de renda']) {
     await page.getByLabel(`Documento de “${item}”`).setInputFiles({ name: 'doc.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') })
     await page.getByRole('listitem').filter({ hasText: item }).getByRole('button', { name: 'Anexar' }).click()
