@@ -93,17 +93,17 @@ export async function avancarExigencia(banco: Banco, casoId: string, agora = new
 export const EXIGENCIA_EM_CURSO = ['aberta', 'dilacao_pedida'] as const
 
 /**
- * CA14 (G21): exigências do INSS com item pendente e prazo a 5 dias úteis ou menos, para a fila da Sênior.
+ * CA14 (G21; GGVP-87 CA4): exigências do INSS e do juiz com item pendente e prazo a 5 dias úteis ou menos, para a fila da Sênior.
  * Calculado ao montar a fila, sem agendador. `diasUteis` negativo: vencida.
  */
 export async function alertasDeExigencia(banco: Banco, hoje: string) {
   const linhas = await banco
-    .selectDistinct({ exigenciaId: exigencia.id, casoId: exigencia.casoId, prazo: exigencia.prazo, cliente: { id: pessoa.id, nome: pessoa.nome }, beneficio: caso.beneficio })
+    .selectDistinct({ exigenciaId: exigencia.id, origem: exigencia.origem, casoId: exigencia.casoId, prazo: exigencia.prazo, cliente: { id: pessoa.id, nome: pessoa.nome }, beneficio: caso.beneficio })
     .from(exigencia)
     .innerJoin(exigenciaItem, and(eq(exigenciaItem.exigenciaId, exigencia.id), inArray(exigenciaItem.situacao, ['pendente', 'nao_cumprido'])))
     .innerJoin(caso, eq(exigencia.casoId, caso.id))
     .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
-    .where(and(eq(exigencia.origem, 'inss'), inArray(exigencia.situacao, [...EXIGENCIA_EM_CURSO]), isNotNull(exigencia.prazo)))
+    .where(and(inArray(exigencia.situacao, [...EXIGENCIA_EM_CURSO]), isNotNull(exigencia.prazo)))
   const feriados = await feriadosNacionais(banco)
   return linhas
     .map((l) => ({ ...l, prazo: l.prazo!, diasUteis: diasUteisAte(hoje, l.prazo!, feriados) }))

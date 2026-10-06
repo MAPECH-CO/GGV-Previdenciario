@@ -56,6 +56,7 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3a.02': (id) => `/casos/${id}/exigencia-juiz`,
   'D3a.03': (id) => `/casos/${id}/exigencia-juiz/setor`,
   'D3a.03s': (id) => `/casos/${id}/exigencia-juiz`,
+  'D3a.04': (id) => `/casos/${id}/manifestacao`,
   'D4.02': (id) => `/casos/${id}/publicacoes`,
 }
 
@@ -114,14 +115,14 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       TarefaDaCentral.parse({
         id: a.exigenciaId,
         casoId: a.casoId,
-        passo: 'D2.05',
+        passo: a.origem === 'juizo' ? 'D3a.02' : 'D2.05',
         cliente: a.cliente,
         titulo:
           a.diasUteis < 0
-            ? 'Exigência do INSS vencida: pedir dilação ou registrar a perda'
-            : `Exigência do INSS perto do prazo: ${a.diasUteis === 0 ? 'vence hoje' : a.diasUteis === 1 ? '1 dia útil' : `${a.diasUteis} dias úteis`}`,
+            ? `Exigência ${a.origem === 'juizo' ? 'do juiz' : 'do INSS'} vencida: pedir dilação ou registrar a perda`
+            : `Exigência ${a.origem === 'juizo' ? 'do juiz' : 'do INSS'} perto do prazo: ${a.diasUteis === 0 ? 'vence hoje' : a.diasUteis === 1 ? '1 dia útil' : `${a.diasUteis} dias úteis`}`,
         detalhe: (a.beneficio ?? 'benefício a definir').replaceAll('_', ' '),
-        tela: TELA_DO_PASSO['D2.05'](a.casoId),
+        tela: TELA_DO_PASSO[a.origem === 'juizo' ? 'D3a.02' : 'D2.05'](a.casoId),
         prazo: a.prazo,
         urgente: true,
       })

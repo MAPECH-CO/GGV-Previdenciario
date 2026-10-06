@@ -26,6 +26,10 @@ export function prazoJudicial(disponibilizadaEm: string, dias: number, feriados:
   return { publicacao, inicio, fim, regra: REGRA_PRAZO_JUDICIAL.texto, versao: REGRA_PRAZO_JUDICIAL.versao }
 }
 
+/** CA13 (GGVP-87; Lei 11.419, art. 10, §2º): sistema do tribunal fora do ar no último dia, o prazo vai para o primeiro dia útil depois da volta. */
+export const REGRA_INDISPONIBILIDADE = { versao: 1, texto: 'Sistema do tribunal fora do ar no último dia: primeiro dia útil depois da volta (Lei 11.419, art. 10, §2º)' }
+export const prazoDepoisDaIndisponibilidade = (voltouEm: string, feriados: ReadonlySet<string>) => proximoDiaUtil(voltouEm, feriados)
+
 /** Tribunal no formato "J.TR" (ex.: "4.03", TRF3), tirado do número CNJ de 20 dígitos. */
 export const tribunalDoCnj = (cnj: string | null) => (cnj && /^\d{20}$/.test(cnj) ? `${cnj[13]}.${cnj.slice(14, 16)}` : null)
 

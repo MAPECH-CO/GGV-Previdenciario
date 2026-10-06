@@ -4,7 +4,8 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
 
@@ -180,4 +181,25 @@ export async function semearExemplos(banco: Banco) {
     situacao: 'falhou',
     erro: 'tempo esgotado: a fonte não respondeu em 60 s (exemplo)',
   })
+
+  // Exigência do juiz (GGVP-79, 83, 87): uma intimação já lida e classificada, esperando a advogada distribuir.
+  const [pp] = await banco.insert(pessoa).values({ nome: 'Paulo Reis (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cp] = await banco.insert(caso).values({ pessoaId: pp.id, beneficio: 'aposentadoria_pcd', fase: 'judicial' }).returning()
+  const cnjPaulo = '00077771820264036301'
+  await banco.insert(identificadorCaso).values({ casoId: cp.id, tipo: 'cnj', valor: cnjPaulo })
+  const [intimacao] = await banco
+    .insert(publicacao)
+    .values({
+      fonte: 'exemplo',
+      numeroCnj: cnjPaulo,
+      casoId: cp.id,
+      disponibilizadaEm: hojeBr,
+      texto: 'Intime-se a parte autora para, em 15 dias, juntar laudo médico atualizado e cópia integral da carteira de trabalho. (exemplo)',
+      hash: `exemplo-${cp.id}`,
+      classe: 'exigencia',
+      revisadaPor: advogada.id,
+      revisadaEm: new Date(),
+    })
+    .returning()
+  await banco.transaction((tx) => encaminhar(tx, intimacao, 'exigencia', 15, new Date()))
 }

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { feriado } from '../banco/esquema.ts'
-import { REGRA_PRAZO_JUDICIAL, feriadosDoProcesso, prazoJudicial, tribunalDoCnj } from './prazo-judicial.ts'
+import { REGRA_PRAZO_JUDICIAL, feriadosDoProcesso, prazoDepoisDaIndisponibilidade, prazoJudicial, tribunalDoCnj } from './prazo-judicial.ts'
 
 const NADA = new Set<string>()
 
@@ -66,5 +66,14 @@ describe('GGVP-34 CA9 · calendário do tribunal pelo número CNJ', () => {
   it('entram os nacionais e os do tribunal do processo, não os de outro tribunal', async () => {
     expect([...(await feriadosDoProcesso(banco, '00012349620264036301'))].sort()).toEqual(['2026-10-08', '2026-11-02'])
     expect([...(await feriadosDoProcesso(banco, null))]).toEqual(['2026-11-02'])
+  })
+})
+
+describe('GGVP-87 CA13 · sistema do tribunal fora do ar no último dia (Lei 11.419, art. 10, §2º)', () => {
+  it('o prazo passa para o primeiro dia útil depois da volta', () => {
+    // Voltou na terça 27/10: prazo na quarta 28/10.
+    expect(prazoDepoisDaIndisponibilidade('2026-10-27', NADA)).toBe('2026-10-28')
+    // Voltou na sexta 30/10: segunda 02/11 é feriado nacional (Finados) → terça 03/11.
+    expect(prazoDepoisDaIndisponibilidade('2026-10-30', new Set(['2026-11-02']))).toBe('2026-11-03')
   })
 })

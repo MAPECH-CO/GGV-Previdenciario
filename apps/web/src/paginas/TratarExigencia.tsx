@@ -84,7 +84,7 @@ function ResponderNoPortal({ casoId, aoResponder }: { casoId: string; aoResponde
 }
 
 /** A Sênior decide a exigência vencida com item pendente (CA14): pedir dilação ou registrar a perda. */
-function DecidirVencidaForm({ casoId, aoDecidir }: { casoId: string; aoDecidir: (texto: string) => void }) {
+export function DecidirVencidaForm({ casoId, aoDecidir, rota = 'exigencia' }: { casoId: string; aoDecidir: (texto: string) => void; rota?: string }) {
   const ids = { prazo: useId(), motivo: useId() }
   const [decisao, setDecisao] = useState<'dilacao' | 'perda' | null>(null)
   const [novoPrazo, setNovoPrazo] = useState('')
@@ -95,7 +95,7 @@ function DecidirVencidaForm({ casoId, aoDecidir }: { casoId: string; aoDecidir: 
     evento.preventDefault()
     const entrada = DecidirVencida.safeParse(decisao === 'dilacao' ? { decisao, novoPrazo: isoParaData(novoPrazo) ?? '' } : { decisao, motivo })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
-    const r = await chamarApi(`/casos/${casoId}/exigencia/vencida`, { method: 'POST', corpo: decisao === 'dilacao' ? { decisao, novoPrazo: isoParaData(novoPrazo) } : { decisao, motivo } })
+    const r = await chamarApi(`/casos/${casoId}/${rota}/vencida`, { method: 'POST', corpo: decisao === 'dilacao' ? { decisao, novoPrazo: isoParaData(novoPrazo) } : { decisao, motivo } })
     if (!r.ok) return setErro(r.erro)
     aoDecidir(decisao === 'dilacao' ? 'Dilação registrada com o novo prazo.' : 'Perda registrada no histórico.')
   }

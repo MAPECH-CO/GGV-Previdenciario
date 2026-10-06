@@ -16,6 +16,8 @@ const exigenciaDoJuiz = {
   pericias: [],
   faltam: [],
   podeDistribuir: true,
+  vencida: false,
+  podeDecidirVencida: false,
 }
 
 function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {

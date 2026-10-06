@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { AnalisarExigenciaJuiz, ClassificarPublicacao, NaoVouConseguir, RegistrarTentativa, VincularPublicacao } from './justica.ts'
+import {
+  AnalisarExigenciaJuiz,
+  AprovarVersao,
+  AutorizarDilacao,
+  ClassificarPublicacao,
+  NaoVouConseguir,
+  ProtocolarManifestacao,
+  RegistrarIndisponibilidade,
+  RegistrarTentativa,
+  VincularPublicacao,
+} from './justica.ts'
 
 const erro = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues[0]?.message
 const CNJ_VALIDO = '0001234-96.2026.4.03.6301'
@@ -64,5 +74,18 @@ describe('GGVP-83 · laço do setor', () => {
     expect(erro(RegistrarTentativa.safeParse({ canal: 'telefone', resultado: '' }))).toBe('Escreva o resultado da tentativa')
     expect(erro(RegistrarTentativa.safeParse({ resultado: 'x' }))).toBe('Escolha o canal da tentativa')
     expect(erro(NaoVouConseguir.safeParse({ motivo: ' ' }))).toBe('Escreva por que não vai conseguir')
+  })
+})
+
+describe('GGVP-87 · manifestar e protocolar', () => {
+  it('aprovar pede a marcação (G6); protocolar pede a data, não futura', () => {
+    expect(erro(AprovarVersao.safeParse({ aprovei: false }))).toBe('Marque "Aprovei a versão da manifestação (G6)"')
+    expect(ProtocolarManifestacao.parse({ dataProtocolo: '05/10/2026' })).toEqual({ dataProtocolo: '2026-10-05' })
+    expect(erro(ProtocolarManifestacao.safeParse({ dataProtocolo: '01/01/2099' }))).toBe('A data do protocolo não pode ser no futuro')
+  })
+
+  it('dilação pede o motivo; a indisponibilidade pede a data da volta', () => {
+    expect(erro(AutorizarDilacao.safeParse({ motivo: '' }))).toBe('Escreva o motivo da dilação')
+    expect(RegistrarIndisponibilidade.parse({ voltouEm: '27/10/2026' })).toEqual({ voltouEm: '2026-10-27' })
   })
 })

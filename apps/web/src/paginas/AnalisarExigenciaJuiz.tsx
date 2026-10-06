@@ -4,6 +4,7 @@ import { hojeIso, isoParaData } from '@ggv/campos'
 import { AnalisarExigenciaJuiz as Contrato, ROTULO_SETOR, SETORES_DA_EXIGENCIA, TIPOS_DE_PERICIA, type ExigenciaDoJuiz } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
+import { DecidirVencidaForm } from './TratarExigencia.tsx'
 
 type Setor = (typeof SETORES_DA_EXIGENCIA)[number]
 type TipoPericia = (typeof TIPOS_DE_PERICIA)[number]
@@ -158,6 +159,17 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {x.podeDecidirVencida && (
+        <DecidirVencidaForm
+          casoId={casoId}
+          rota="exigencia-juiz"
+          aoDecidir={(texto) => {
+            setFeito(texto)
+            setVersao((v) => v + 1)
+          }}
+        />
       )}
 
       {x.podeDistribuir && (

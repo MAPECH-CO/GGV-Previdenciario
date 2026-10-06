@@ -1,9 +1,9 @@
 // Exigência do juiz (GGVP-79, 83, 87): a advogada analisa e distribui aos setores (G5); cada setor cumpre com
 // tentativas limitadas e prova (G15, G21); com tudo provado, a advogada manifesta. Reaproveita `exigencia` com a
 // origem `juizo`, os itens, a cobrança e a perícia da exigência do INSS.
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AnalisarExigenciaJuiz, ExigenciaDoJuiz, ItensDoSetor, NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, pode, type Erro } from '@ggv/contratos'
+import { AnalisarExigenciaJuiz, DecidirVencida, ExigenciaDoJuiz, ItensDoSetor, NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, pode, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, prazo, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
@@ -11,6 +11,7 @@ import { ORIGEM_JUIZ, abrirPericiasDaExigencia, limitesDeCobranca } from '../flu
 import { somarDias } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
+import { abrirManifestacaoSePronta } from './manifestacao.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
 export const MSG_EVIDENCIA = 'Anexe a evidência do item (PDF ou imagem, até 25 MB).'
@@ -81,6 +82,9 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       ...(pericias.some((p) => p.resultado === null) ? ['Perícia'] : []),
     ]
     const situacao = e.exigencia ? SITUACAO[e.exigencia.situacao as keyof typeof SITUACAO] : ciencia ? 'ciencia' : 'a_analisar'
+    const vencida =
+      Boolean(e.exigencia && ['aberta', 'dilacao_pedida'].includes(e.exigencia.situacao) && e.exigencia.prazo && e.exigencia.prazo < hoje(agora())) &&
+      itens.some((i) => i.item.situacao !== 'cumprido')
     return ExigenciaDoJuiz.parse({
       casoId,
       cliente: c.nome,
@@ -104,6 +108,8 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       pericias,
       faltam,
       podeDistribuir: pode(pedido.perfilAtivo, 'exigencia_juiz.distribuir') && situacao === 'a_analisar',
+      vencida,
+      podeDecidirVencida: pode(pedido.perfilAtivo, 'exigencia_inss.decidir_vencida') && vencida,
     })
   })
 
@@ -152,6 +158,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
           publicacaoId: e.publicacao.id,
           pede: temItens ? (d.tiposPericia.length ? 'pericia_e_documentos' : 'documentos') : 'pericia',
           analisadaPor: quem,
+          criadoEm: agora(),
         })
         .returning()
       // CA1, CA10, CA13: um item e uma tarefa por pedido, na Central do setor, com o prazo interno e o processual ao lado.
@@ -326,7 +333,35 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
           .where(eq(tarefa.id, l.tarefa.id))
       })
       await historico(quem, 'exigencia_juiz_item_cumprido', pedido, `caso:${casoId}`, { item: l.item.id })
+      // GGVP-87 CA1: com o último item provado (e a perícia resolvida), nasce "Manifestar no processo".
+      await abrirManifestacaoSePronta(banco, casoId, agora())
       return resposta.code(201).send({ ok: true })
     },
   )
+
+  // GGVP-87 CA4 (resposta do revisor de 06/10): vencida com item sem prova, a Sênior pede dilação ou registra a perda.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/exigencia-juiz/vencida', { preHandler: exigir(banco, 'exigencia_inss.decidir_vencida', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const entrada = DecidirVencida.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
+    const [x] = await banco
+      .select()
+      .from(exigencia)
+      .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo')))
+      .orderBy(desc(exigencia.criadoEm))
+      .limit(1)
+    if (!x || !['aberta', 'dilacao_pedida'].includes(x.situacao) || !x.prazo || x.prazo >= hoje(agora())) return negar(resposta, 409, 'A exigência não está vencida.')
+    const quem = pedido.usuario!.id
+    const d = entrada.data
+    await banco.transaction(async (tx) => {
+      if (d.decisao === 'dilacao') return void (await tx.update(exigencia).set({ situacao: 'dilacao_pedida', prazo: d.novoPrazo }).where(eq(exigencia.id, x.id)))
+      await tx.update(exigencia).set({ situacao: 'vencida' }).where(eq(exigencia.id, x.id))
+      await tx
+        .update(tarefa)
+        .set({ situacao: 'cancelada', concluidaEm: agora(), concluidaPor: quem })
+        .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D3a.03', 'D3a.03s', 'D3a.04']), isNull(tarefa.concluidaEm)))
+    })
+    await historico(quem, d.decisao === 'dilacao' ? 'exigencia_juiz_dilacao_pedida' : 'exigencia_juiz_perdida', pedido, `caso:${casoId}`, d)
+    return resposta.code(201).send({ ok: true })
+  })
 }

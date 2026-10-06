@@ -45,10 +45,10 @@
 
 ## GGVP-87 · Manifestar e protocolar
 
-- [ ] 8.1 Contratos `Manifestacao`, `ProtocolarManifestacao` e `RegistrarIndisponibilidade`; `prazoDepoisDaIndisponibilidade` com teste (Lei 11.419, art. 10, §2º); verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
-- [ ] 8.2 CA1, CA3, CA5, CA6, CA9 · "Manifestar no processo" quando o último item ganha prova; versões, aprovação e bloqueios; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 8.3 CA2, CA10, CA12, CA13 · protocolo (volta à vigília, linha do processo), dilação com o OK da Sênior e tribunal fora do ar; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 8.4 CA4 · alerta da Sênior para a exigência do juiz (5 e 2 dias úteis; vencida decide); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 8.5 Tela "Manifestar" e dados de exemplo (uma exigência do juiz já classificada para a advogada analisar); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 8.6 Playwright: a advogada distribui à Documentação e ao Atendimento; os dois sobem a prova; a advogada anexa, aprova, protocola e o processo volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 8.1 Contratos `Manifestacao`, `ProtocolarManifestacao` e `RegistrarIndisponibilidade`; `prazoDepoisDaIndisponibilidade` com teste (Lei 11.419, art. 10, §2º); verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
+- [x] 8.2 CA1, CA3, CA5, CA6, CA9 · "Manifestar no processo" quando o último item ganha prova; versões, aprovação e bloqueios; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 8.3 CA2, CA10, CA12, CA13 · protocolo (volta à vigília, linha do processo), dilação com o OK da Sênior e tribunal fora do ar; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 8.4 CA4 · alerta da Sênior para a exigência do juiz (5 e 2 dias úteis; vencida decide); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 8.5 Tela "Manifestar" e dados de exemplo (uma exigência do juiz já classificada para a advogada analisar); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 8.6 Playwright: a advogada distribui à Documentação e ao Atendimento; os dois sobem a prova; a advogada anexa, aprova, protocola e o processo volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
 - [ ] 8.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

@@ -1,7 +1,7 @@
 // Contratos da vigília e da publicação (GGVP-9, grupo 1). Tela e servidor validam com o mesmo schema.
 import { normalizarCnj, normalizarInteiro, validarCnj } from '@ggv/campos'
 import { z } from 'zod'
-import { DataObrigatoria, TIPOS_DE_PERICIA } from './inss.ts'
+import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
 
 export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
 export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
@@ -194,6 +194,9 @@ export const ExigenciaDoJuiz = z.object({
   /** Setores que ainda não subiram o card (GGVP-83 CA3). */
   faltam: z.array(z.string()),
   podeDistribuir: z.boolean(),
+  /** GGVP-87 CA4: vencida com item sem prova, a Sênior pede dilação ou registra a perda. */
+  vencida: z.boolean(),
+  podeDecidirVencida: z.boolean(),
 })
 export type ExigenciaDoJuiz = z.infer<typeof ExigenciaDoJuiz>
 
@@ -231,3 +234,37 @@ export type RegistrarTentativa = z.infer<typeof RegistrarTentativa>
 /** POST .../itens/:item/nao-vou-conseguir (GGVP-83 CA14): sobe para a Sênior antes do limite, com o motivo. */
 export const NaoVouConseguir = z.object({ motivo: z.string({ error: 'Escreva por que não vai conseguir' }).trim().min(1, 'Escreva por que não vai conseguir') })
 export type NaoVouConseguir = z.infer<typeof NaoVouConseguir>
+
+/** GET /api/casos/:id/manifestacao (GGVP-87): versões, aprovação (G6), o que falta (G21) e o protocolo. */
+export const Manifestacao = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  prazo: z.object({ fim: z.string(), regra: z.string() }),
+  faltam: z.array(z.string()),
+  pendentes: z.array(z.object({ setor: z.string(), descricao: z.string(), prazoInterno: z.string().nullable() })),
+  versoes: z.array(
+    z.object({ numero: z.number(), tipo: z.enum(['manifestacao', 'dilacao']), arquivo: z.string().nullable(), por: z.string(), em: z.string(), aprovadaPor: z.string().nullable(), aprovadaEm: z.string().nullable() }),
+  ),
+  dilacaoAutorizada: z.boolean(),
+  protocolo: z.object({ em: z.string(), versao: z.number(), tipo: z.string(), por: z.string() }).nullable(),
+  podeAnexar: z.boolean(),
+  podeProtocolar: z.boolean(),
+  podeAutorizarDilacao: z.boolean(),
+})
+export type Manifestacao = z.infer<typeof Manifestacao>
+
+/** POST .../manifestacao/versoes/:n/aprovacao (G6): a advogada aprova o conteúdo daquela versão. */
+export const AprovarVersao = z.object({ aprovei: z.literal(true, { error: 'Marque "Aprovei a versão da manifestação (G6)"' }) })
+
+/** POST /api/casos/:id/manifestacao/protocolo (CA3, CA12): data do protocolo; o comprovante vai no mesmo envio. */
+export const ProtocolarManifestacao = z.object({
+  dataProtocolo: DataObrigatoria('Informe a data do protocolo (dd/mm/aaaa)').refine(naoFutura, 'A data do protocolo não pode ser no futuro'),
+})
+export type ProtocolarManifestacao = z.input<typeof ProtocolarManifestacao>
+
+/** POST /api/casos/:id/manifestacao/dilacao (CA12): a Sênior autoriza o pedido de dilação, com o motivo. */
+export const AutorizarDilacao = z.object({ motivo: z.string({ error: 'Escreva o motivo da dilação' }).trim().min(1, 'Escreva o motivo da dilação') })
+
+/** POST /api/casos/:id/manifestacao/indisponibilidade (CA13): a data em que o sistema do tribunal voltou; a prova vai junto. */
+export const RegistrarIndisponibilidade = z.object({ voltouEm: DataObrigatoria('Informe a data em que o sistema do tribunal voltou (dd/mm/aaaa)') })
+export type RegistrarIndisponibilidade = z.input<typeof RegistrarIndisponibilidade>
