@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, etapa, eventoAuditoria, exigencia, exigenciaItem, pericia, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -144,6 +144,8 @@ describe('GGVP-39 · a Documentação cumpre', () => {
     const [a, b] = await itens()
     await cumprir(a.id)
     expect((await entregar()).json().erro).toBe(MSG_G21)
+    const [bloqueio] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(bloqueio.detalhe).toMatchObject({ portao: 'G21', passo: 'D2.05', faltam: 1 })
     expect((await responder()).json().erro).toBe(MSG_SEM_ENTREGA)
     await cumprir(b.id)
     expect((await entregar()).statusCode).toBe(201)

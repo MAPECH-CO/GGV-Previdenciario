@@ -159,7 +159,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao}>
+            <button type="submit" className={styles.botao} disabled={!conferi}>
               {atual ? 'Registrar nova versão' : 'Concluir a prestação'}
             </button>
           </div>

@@ -16,7 +16,7 @@ import {
   tarefa,
 } from '../banco/esquema.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
 export const MSG_G1 = 'Checklist incompleto (G1): faltam'
@@ -29,6 +29,7 @@ type ItemParecer = { item: string; atendido: boolean }
 
 export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
 
   async function montar(casoId: string, perfilAtivo: string | null) {
     const [c] = await banco
@@ -87,8 +88,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
 
   const daSenior = { preHandler: exigir(banco, 'caso.aprovar_para_inss', agora) }
 
-  async function recusar(pedido: FastifyRequest, resposta: FastifyReply, casoId: string, portao: string, erro: string) {
-    await historico(pedido.usuario!.id, 'conferencia_recusada', pedido, `caso:${casoId}`, { portao })
+  async function recusar(pedido: FastifyRequest, resposta: FastifyReply, casoId: string, portao: 'G1' | 'G17', erro: string) {
+    await bloqueio(pedido, casoId, portao, 'D2.01', {}, 'conferencia_recusada')
     return negar(resposta, 409, erro)
   }
 

@@ -89,6 +89,7 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(MSG_LAUDO_NOVO)
     const recusas = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'conferencia_recusada')
     expect(recusas).toHaveLength(3)
+    expect(recusas.map((e) => (e.detalhe as { portao: string }).portao).sort()).toEqual(['G17', 'G17', 'G17'])
   })
 
   it('G17 · a dispensa da Sênior, com justificativa, libera a aprovação', async () => {

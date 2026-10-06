@@ -184,7 +184,7 @@ export function Protocolar({ casoId }: { casoId: string }) {
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao} disabled={enviando || !caso.okSenior}>
+            <button type="submit" className={styles.botao} disabled={enviando || !caso.okSenior || !revisado}>
               {enviando ? 'Registrando…' : 'Registrar protocolo'}
             </button>
           </div>

@@ -15,6 +15,7 @@ import { PrestarContas } from './paginas/PrestarContas.tsx'
 import { ReceberPrestacao } from './paginas/ReceberPrestacao.tsx'
 import { IdaAoBanco } from './paginas/IdaAoBanco.tsx'
 import { PainelVigilia } from './paginas/PainelVigilia.tsx'
+import { Tentativas } from './paginas/Tentativas.tsx'
 import { LerPublicacao } from './paginas/LerPublicacao.tsx'
 import { PublicacoesDoProcesso } from './paginas/PublicacoesDoProcesso.tsx'
 import { AnalisarExigenciaJuiz } from './paginas/AnalisarExigenciaJuiz.tsx'
@@ -77,6 +78,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/peticao$/, tela: (id) => <Exige acao="peticao.ver"><Peticao casoId={id} /></Exige> },
   { padrao: /^\/vigilia$/, tela: () => <Exige acao="vigilia.ver"><PainelVigilia /></Exige> },
+  { padrao: /^\/gestao\/tentativas$/, tela: () => <Exige acao="gestao.ver"><Tentativas /></Exige> },
 ]
 
 function Inicio({ caminho, perfil }: { caminho: string; perfil: string }) {

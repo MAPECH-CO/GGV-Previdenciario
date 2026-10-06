@@ -33,7 +33,7 @@ import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
@@ -74,6 +74,7 @@ const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
 export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazenamento, agora = () => new Date() }: Opcoes) {
   app.register(fastifyMultipart, { limits: { fileSize: TAMANHO_MAXIMO, files: 1, fields: 10 } })
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
 
   /** G2: o OK é a última decisão D2.01 aprovada (fluxo/conferencia.ts). */
   async function okDaSeniorAprovado(casoId: string) {
@@ -209,7 +210,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
     const [c] = await banco.select({ id: caso.id }).from(caso).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
     if (!(await okDaSeniorAprovado(casoId))) {
-      await historico(pedido.usuario!.id, 'protocolo_recusado_sem_ok', pedido, `caso:${casoId}`)
+      await bloqueio(pedido, casoId, 'G2', 'D2.02', {}, 'protocolo_recusado_sem_ok')
       return negar(resposta, 409, MSG_SEM_OK_SENIOR)
     }
     const [jaTem] = await banco.select({ id: requerimentoInss.id }).from(requerimentoInss).where(eq(requerimentoInss.casoId, casoId))

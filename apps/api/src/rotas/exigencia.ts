@@ -8,7 +8,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { EXIGENCIA_EM_CURSO, abrirPericiasDaExigencia, esperarAnaliseDoInss, limitesDeCobranca, tiposDecididos } from '../fluxo/exigencia.ts'
 import { REGRA_PRAZO_INSS, feriadosNacionais, prazoInss, somarDias } from '../fluxo/prazo-inss.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
 export const MSG_SEM_EXIGENCIA = 'Este caso não tem exigência do INSS aberta.'
@@ -27,6 +27,7 @@ const ABERTAS = ['aberta', 'em_andamento', 'aguardando'] as const
 
 export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
 
   const ultimaExigencia = async (casoId: string) =>
     (
@@ -270,7 +271,11 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
       if (!card) return negar(resposta, 409, MSG_SEM_CARD)
       const x = (await ultimaExigencia(casoId))!
       const itens = await itensDa(x.id)
-      if (itens.length === 0 || itens.some((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId)) return negar(resposta, 409, MSG_G21)
+      const semProva = itens.filter((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId).length
+      if (itens.length === 0 || semProva) {
+        await bloqueio(pedido, casoId, 'G21', 'D2.05', { faltam: semProva })
+        return negar(resposta, 409, MSG_G21)
+      }
       const quem = pedido.usuario!.id
       const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }
       await banco.transaction(async (tx) => {
@@ -299,7 +304,11 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
       if (!(await respostaPendente(casoId))) return negar(resposta, 409, MSG_SEM_ENTREGA)
       const x = (await ultimaExigencia(casoId))!
       const itens = await itensDa(x.id)
-      if (itens.length === 0 || itens.some((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId)) return negar(resposta, 409, MSG_G21)
+      const semProva = itens.filter((i) => i.situacao !== 'cumprido' || !i.provaDocumentoId).length
+      if (itens.length === 0 || semProva) {
+        await bloqueio(pedido, casoId, 'G21', 'D2.05', { faltam: semProva })
+        return negar(resposta, 409, MSG_G21)
+      }
       const arquivo = formulario.arquivo
       if (!arquivo || !TIPOS_DE_ANEXO.includes(arquivo.mime)) return negar(resposta, 400, MSG_COMPROVANTE_RESPOSTA)
       const quem = pedido.usuario!.id

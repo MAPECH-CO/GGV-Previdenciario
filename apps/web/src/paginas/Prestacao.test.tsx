@@ -67,8 +67,8 @@ describe('Prestar contas (GGVP-44)', () => {
     fireEvent.change(await screen.findByLabelText('Valor recebido (atrasados)'), { target: { value: '1.000,00' } })
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Escolha', 'Pix', 'Transferência bancária', 'Boleto', 'Dinheiro'])
     fireEvent.change(screen.getByLabelText('Prazo de pagamento'), { target: { value: '2026-10-30' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Concluir a prestação' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Marque "Conferi os valores com a carta de concessão"')
+    // GGVP-109 CA3: sem a conferência marcada, o botão fica desabilitado.
+    expect((screen.getByRole('button', { name: 'Concluir a prestação' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByLabelText('Conferi os valores com a carta de concessão'))
     fireEvent.click(screen.getByRole('button', { name: 'Concluir a prestação' }))
     expect((await screen.findByRole('status')).textContent).toContain('O Financeiro recebeu e o Atendimento vai agendar')

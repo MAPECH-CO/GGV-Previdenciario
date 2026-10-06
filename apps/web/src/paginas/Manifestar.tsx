@@ -218,7 +218,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
                 Aprovei a versão da manifestação (G6)
               </label>
               <div className={styles.acoes}>
-                <button type="button" className={styles.botao} onClick={() => void aprovar(ultima.numero)}>
+                <button type="button" className={styles.botao} disabled={!aprovei} onClick={() => void aprovar(ultima.numero)}>
                   Aprovar a versão {ultima.numero}
                 </button>
               </div>

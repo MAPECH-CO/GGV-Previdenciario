@@ -75,6 +75,8 @@ describe('GGVP-87 · manifestar', () => {
     await anexarEAprovar()
     const p = await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })
     expect([p.statusCode, p.json().erro]).toEqual([409, 'Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento, Documentação.'])
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G21', passo: 'D3a.04', faltam: 2, perfil: 'advogada' })
   })
 
   it('CA1 · "Manifestar no processo" nasce na distribuição, com o prazo; com tudo provado, a espera do cliente termina e o protocolo libera', async () => {

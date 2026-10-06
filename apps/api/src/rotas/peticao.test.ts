@@ -88,6 +88,8 @@ describe('GGVP-63 · pedir a petição', () => {
     expect((await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)).json().erro).toBe(
       'Pedir a petição fica bloqueado até todos os setores subirem o card. Falta: Documentação.',
     )
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'setores', passo: 'D3.05', faltam: 1 })
     expect(await abertas()).toEqual(['advogada · Pedir a petição', 'documentacao · Cumprir pendência'])
   })
 
@@ -296,6 +298,8 @@ describe('GGVP-71 · protocolar no tribunal', () => {
   it('CA3 · com uma trava falhando, o protocolo fica bloqueado e diz qual', async () => {
     await banco.update(pessoa).set({ cpf: '52916384782' }).where(eq(pessoa.nome, 'Vicente Prado'))
     expect((await protocolar()).json().erro).toBe('Trava falhando: CPF conferido (Na petição: 613.748.259-64 · no cadastro: 529.163.847-82).')
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G7', passo: 'D3.07', travas: ['CPF conferido'] })
   })
 
   it('CA4, CA8, CA10 · registra o protocolo da versão aprovada; o CNJ entra no caso para a vigília, as travas e quem protocolou ficam', async () => {
