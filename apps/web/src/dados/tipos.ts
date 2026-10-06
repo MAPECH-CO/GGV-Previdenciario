@@ -127,11 +127,19 @@ export type Ficha = {
   telefone: string
   email?: string
   estadoCivil?: string
+  /** Rua e número; o bairro fica à parte (GGVP-43). */
   endereco?: string
+  bairro?: string
   cidadeUf?: string
   /** Só números. */
   cep?: string
   profissao?: string
+  /** Só letras e números (GGVP-43). */
+  rg?: string
+  /** O representante legal, para o contrato (GGVP-43, CA6). */
+  representante?: Representante
+  /** O que o cliente precisa trazer, conferido pela advogada na transcrição: o checklist do benefício começa daqui (GGVP-46, CA7). */
+  checklist?: string[]
   /** Id do catálogo de fontes. */
   comoChegou?: string
   /** Nome de quem indicou. Não vira captador. */
@@ -554,3 +562,146 @@ export type SegundaFicha = {
 export type RegistroDaRenovacao =
   | { resultado: 'renovou'; senha: string; conferiMeuInss: true }
   | { resultado: 'nao-conseguiu'; motivo: string; aviseiOCliente: true }
+
+// GGVP-40 em diante: a entrevista gravada e a transcrição. Espelho do Zod da design.md da change ggvp-6.
+
+export type Papel = 'advogada' | 'cliente' | 'atendimento'
+
+export type Trecho = {
+  /** Segundos desde o início do áudio. */
+  aos: number
+  quem: string
+  papel: Papel
+  texto: string
+  /** Marcado como prova (GGVP-46, CA6). */
+  prova?: boolean
+}
+
+/** Campos da ficha que a entrevista pode atualizar, depois de conferidos (GGVP-46, CA6). */
+export type CampoDaEntrevista = 'telefone' | 'estadoCivil' | 'profissao' | 'contatoApoio'
+
+export type InformacaoExtraida = {
+  id: string
+  rotulo: string
+  valor: string
+  destino: 'ficha' | 'documentacao' | 'cofre' | 'processo'
+  campo?: CampoDaEntrevista
+  /** Data e hora ISO da conferência: antes dela, a ficha não muda. */
+  conferidaEm?: string
+}
+
+export type AcaoNaGravacao = {
+  acao: 'avisou' | 'gravou' | 'pausou' | 'retomou' | 'abriu-cofre' | 'guardou-senha' | 'falhou' | 'encerrou' | 'sem-audio' | 'subiu-arquivo' | 'enviou-audio'
+  /** Data e hora ISO. */
+  quando: string
+  /** Onde estava a gravação, em segundos. */
+  aos: number
+}
+
+export type Audio = {
+  nome: string
+  formato: string
+  /** Em bytes. Sem limite (CA10). */
+  tamanho: number
+  /** Partes de até 24 MB para a transcrição (CA10). */
+  partes: number
+}
+
+export type EstadoDaTranscricao = 'aguardando-internet' | 'transcrevendo' | 'falhou' | 'pronta' | 'sem-audio'
+
+export type Gravacao = {
+  id: string
+  fichaId: string
+  agendamentoId?: string
+  /** aaaa-mm-dd */
+  data: string
+  /** "Entrevista com a advogada", "Telefone: indeferimento e próximo passo". */
+  titulo: string
+  /** "vídeo", "telefone", "presencial", "WhatsApp". */
+  canal: string
+  participantes: string[]
+  /** Em segundos. */
+  duracao: number
+  origem: 'portal' | 'arquivo' | 'registro'
+  /** Data e hora ISO do aviso de gravação (G10). */
+  avisoEm?: string
+  estado: 'gravando' | 'pausada' | 'falhou' | 'encerrada'
+  acoes: AcaoNaGravacao[]
+  /** Guardado para sempre no caso (CA13). */
+  audio?: Audio
+  transcricao: EstadoDaTranscricao
+  motivoDaFalha?: string
+  trechos: Trecho[]
+  resumo?: string
+  extraidas: InformacaoExtraida[]
+  /** O que o cliente precisa trazer: vai ao checklist do benefício depois de conferido (GGVP-46, CA7). */
+  documentos: string[]
+  documentosConferidosEm?: string
+  /** A conversa sem áudio, escrita por quem participou. */
+  registro?: string
+  /** Entrevista com a advogada: tem dado de saúde, o Atendimento vê só a data, quem participou e a duração. */
+  soJuridico: boolean
+  /** "ficha atualizada", "benefício definido". */
+  marcas: string[]
+}
+
+/** O que a tela da entrevista lê. */
+export type Entrevista = { ficha: Ficha; agendamento: Agendamento; gravacao?: Gravacao }
+
+/** O áudio gravado fora do portal, como a ligação do Chatwoot baixada (CA9). */
+export type AudioDeFora = { nome: string; tipo: string; tamanho: number }
+
+/** Encerrar devolve a gravação e a tarefa nova da advogada (CA5). */
+export type RespostaDoEncerramento = { gravacao: Gravacao; tarefa?: TarefaEncaminhada }
+
+// GGVP-43 em diante: o cadastro do lead depois da entrevista. Espelho do Zod da design.md da change ggvp-6.
+
+export type Representante = {
+  nome: string
+  /** Só números. */
+  cpf: string
+  rg: string
+  parentesco: string
+  estadoCivil: string
+  profissao: string
+}
+
+/** O que a tela "Cadastrar lead" manda, como foi digitado; o servidor normaliza e valida de novo. */
+export type Cadastro = {
+  nome: string
+  cpf: string
+  rg: string
+  /** dd/mm/aaaa; não obrigatória. */
+  nascimento: string
+  estadoCivil: string
+  profissao: string
+  telefone: string
+  cep: string
+  /** Rua e número. */
+  rua: string
+  bairro: string
+  cidade: string
+  uf: string
+}
+
+/** `base`: o que a tela abriu, para não apagar o que outra pessoa salvou enquanto isso (CA11). */
+export type PedidoDeCadastro = { base: Cadastro; valores: Cadastro; representante?: Representante }
+
+export type RespostaDoCadastro =
+  | { resultado: 'salvo'; ficha: Ficha }
+  | { resultado: 'cpf-de-outra-ficha'; id: string; nome: string }
+  | { resultado: 'conflito'; campos: { campo: keyof Cadastro; deles: string; meu: string }[] }
+
+// GGVP-46 em diante: as transcrições do caso. Espelho do Zod da design.md da change ggvp-6.
+
+export type CanalDaConversa = 'WhatsApp' | 'Telefone' | 'Presencial' | 'Vídeo'
+
+/** "Registrar nova conversa": a conversa sem áudio, escrita por quem participou (CA6). */
+export type ConversaSemAudio = {
+  /** dd/mm/aaaa */
+  data: string
+  canal: CanalDaConversa
+  titulo: string
+  participantes: string
+  texto: string
+}

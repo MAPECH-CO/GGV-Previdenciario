@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  CHAVE,
   QUEM,
   buscarNoBalcao,
   conferirDuplicidade,
@@ -146,7 +147,7 @@ describe('servidor de exemplo', () => {
 
   it('o que se grava sobrevive à recarga da página (sessionStorage)', async () => {
     await criarFicha(ivone)
-    expect(sessionStorage.getItem('ggv.exemplo.v4')).toContain('Ivone Teste')
+    expect(sessionStorage.getItem(CHAVE)).toContain('Ivone Teste')
     expect(await obterPasta('drive-rosa-1')).toMatchObject({ caminho: 'Clientes/2024' })
   })
 })

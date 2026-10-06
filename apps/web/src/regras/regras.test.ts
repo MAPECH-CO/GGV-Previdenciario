@@ -1,8 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
-import type { EventoDaAgenda, Ficha, PastaDrive } from '../dados/tipos.ts'
+import type { Cadastro, EventoDaAgenda, Ficha, Gravacao, InformacaoExtraida, PastaDrive, Trecho } from '../dados/tipos.ts'
 import { bateNaBusca, buscar, etapaDaFicha, fichasCitadas, semAcento } from './busca.ts'
+import {
+  MENSAGEM_RG,
+  cadastroDaFicha,
+  errosDoCadastro,
+  estadoCivilDaLista,
+  faltaParaOKit,
+  fichaDoCadastro,
+  mesclar,
+  oQueFaltaNoCadastro,
+  preencherCadastro,
+} from './cadastro.ts'
 import { dataCurta, idadeEm } from './datas.ts'
+import { buscarTrechos, contagemDoTopo, marcarBusca, situacaoDaGravacao } from './transcricao.ts'
+import {
+  PARTE_MAXIMA,
+  SENHA_RETIRADA,
+  documentosDaEntrevista,
+  ehAudio,
+  juntarPartes,
+  minutos,
+  partesDoAudio,
+  pendenciasDaEntrevista,
+  relogio,
+  roteiroDaEntrevista,
+  situacaoDaInformacao,
+  tirarSenhas,
+} from './entrevista.ts'
 import { fichaComCpf, fichasParecidas } from './duplicidade.ts'
 import {
   MENSAGEM,
@@ -657,5 +683,194 @@ describe('segunda ficha, de auxílio acidentário (GGVP-28)', () => {
     expect(motivoParaIniciar(sim)).toBe('A cliente ainda não preencheu a segunda ficha (auxílio acidentário).')
     expect(motivoParaIniciar({ ...sim, segundaFicha: { data: HOJE, origem: 'papel', respostas, emBranco: [] } })).toBeNull()
     expect(motivoParaIniciar({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })).toBeNull()
+  })
+})
+
+describe('GGVP-40 · Entrevistar com gravação', () => {
+  const lead = ficha({ id: 'lead', nome: 'Josefa Teste', telefone: '11900000002', situacao: 'lead', beneficioInteresse: 'loas-idoso' })
+  const fala = (texto: string, papel: Trecho['papel'] = 'cliente', aos = 0): Trecho => ({ aos, quem: papel === 'cliente' ? 'Josefa' : 'Dra. Paula', papel, texto })
+
+  /** Senhas de teste faladas: nenhuma pode sobrar no texto (CA7). */
+  const SENHAS_DE_TESTE = ['Teste#2026', 'girassol123', 'TesteSenha99', 'Maria@1950', 'girassol', 'abc$teste', '19501950']
+
+  it('CA3 e CA7 · a senha dita sai do texto, em várias formas de falar, e o resto da conversa fica', () => {
+    const conversa = [
+      fala('Me conta desde quando você está afastada.', 'advogada'),
+      fala('Parei em 06/2026. Recebi auxílio por dois meses em 2024; meu telefone é (11) 90000-0021.'),
+      fala('Minha senha do gov.br é Teste#2026, doutora.'),
+      fala('A senha é girassol123'),
+      fala('senha: TesteSenha99'),
+      fala('E a senha do Meu INSS, qual é?', 'advogada'),
+      fala('É Maria@1950, a mesma.'),
+      fala('a senha é girassol'),
+      fala('Anotei a senha abc$teste e também 19501950 no papel.'),
+    ]
+    const limpo = tirarSenhas(conversa)
+    const texto = limpo.map((t) => t.texto).join(' | ')
+    for (const senha of SENHAS_DE_TESTE) expect(texto).not.toContain(senha)
+    expect(texto).toContain(SENHA_RETIRADA)
+    expect(limpo[1].texto).toBe(conversa[1].texto)
+    expect(limpo[0].texto).toBe(conversa[0].texto)
+    expect(limpo[2].texto).toBe(`Minha senha do gov.br é ${SENHA_RETIRADA}, doutora.`)
+  })
+
+  it('CA9 · aceita qualquer formato de áudio, pelo tipo ou pela extensão', () => {
+    expect(ehAudio({ nome: 'ligacao-chatwoot.ogg', tipo: '' })).toBe(true)
+    expect(ehAudio({ nome: 'gravacao', tipo: 'audio/x-something' })).toBe(true)
+    expect(ehAudio({ nome: 'WhatsApp Ptt.OPUS', tipo: 'application/octet-stream' })).toBe(true)
+    expect(ehAudio({ nome: 'audio.amr', tipo: '' })).toBe(true)
+    expect(ehAudio({ nome: 'laudo.pdf', tipo: 'application/pdf' })).toBe(false)
+  })
+
+  it('CA10 · sem limite: divide em partes de até 24 MB e junta o texto na ordem, com o tempo corrido', () => {
+    expect(partesDoAudio(10 * 1024 * 1024)).toBe(1)
+    expect(partesDoAudio(PARTE_MAXIMA)).toBe(1)
+    expect(partesDoAudio(PARTE_MAXIMA + 1)).toBe(2)
+    expect(partesDoAudio(300 * 1024 * 1024)).toBe(13)
+    const juntas = juntarPartes([
+      { inicio: 0, trechos: [fala('um', 'advogada', 0), fala('dois', 'cliente', 600)] },
+      { inicio: 1200, trechos: [fala('três', 'advogada', 5)] },
+    ])
+    expect(juntas.map((t) => [t.aos, t.texto])).toEqual([
+      [0, 'um'],
+      [600, 'dois'],
+      [1205, 'três'],
+    ])
+  })
+
+  it('CA11 · relógio, duração e o roteiro com o acidentário, a senha e, no LOAS, a casa', () => {
+    expect(relogio(462)).toBe('00:07:42')
+    expect(relogio(3725)).toBe('01:02:05')
+    expect(minutos(2292)).toBe('38 min')
+    expect(minutos(20)).toBe('1 min')
+    const roteiro = roteiroDaEntrevista({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })
+    expect(roteiro[1]).toBe('Acidentário já decidido antes da entrevista (D1.07): não · sem senha no cofre (G9)')
+    expect(roteiro.at(-1)).toBe('Quem mora na casa e a renda de cada um')
+    expect(roteiroDaEntrevista({ ...lead, beneficioInteresse: 'incapacidade-temporaria' })).toHaveLength(5)
+  })
+
+  it('a IA marca cada informação e aponta as pendências e os documentos', () => {
+    const extraidas: InformacaoExtraida[] = [
+      { id: 'telefone', rotulo: 'Telefone', valor: '11900000002', destino: 'ficha', campo: 'telefone' },
+      { id: 'estado-civil', rotulo: 'Estado civil', valor: 'União estável', destino: 'ficha', campo: 'estadoCivil' },
+      { id: 'laudos', rotulo: 'Laudos citados', valor: '2 laudos do ortopedista', destino: 'documentacao' },
+      { id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre', destino: 'cofre' },
+    ]
+    expect(extraidas.map((e) => situacaoDaInformacao(e, lead))).toEqual(['confirmado', 'detectado', 'pedir', 'cofre'])
+    expect(pendenciasDaEntrevista(lead, extraidas)).toEqual([
+      'Pedir 2 laudos do ortopedista (kit, G1).',
+      'Perguntar se houve acidente de trabalho (muda o benefício).',
+      'Confirmar o CEP e o contato de apoio.',
+    ])
+    expect(documentosDaEntrevista({ ...lead, documentos: [{ nome: 'RG', detalhe: 'ok' }] }, extraidas)).toEqual([
+      'CPF',
+      'Comprovante de residência',
+      'CNIS',
+      '2 laudos do ortopedista',
+    ])
+  })
+})
+
+describe('GGVP-43 · Cadastrar o lead depois da entrevista', () => {
+  const completo: Cadastro = {
+    nome: 'Josefa Exemplo',
+    cpf: CPF_COM_PONTOS,
+    rg: '12.345.678-x',
+    nascimento: '10/03/1958',
+    estadoCivil: 'União estável',
+    profissao: 'Auxiliar de limpeza',
+    telefone: '(11) 90000-0002',
+    cep: '01001-000',
+    rua: 'Praça da Sé, 10',
+    bairro: 'Sé',
+    cidade: 'São Paulo',
+    uf: 'sp',
+  }
+
+  it('CA3 e CA5 · os campos do modelo do contrato; CPF com dígito errado não passa; o que falta, na ordem da tela', () => {
+    expect(errosDoCadastro(completo, HOJE)).toEqual({})
+    expect(errosDoCadastro({ ...completo, cpf: CPF_ERRADO, rg: '12', estadoCivil: 'Casado', uf: 'XX' }, HOJE)).toEqual({
+      cpf: 'CPF inválido: confira os 11 números.',
+      rg: MENSAGEM_RG,
+      estadoCivil: 'Escolha na lista.',
+      uf: 'UF com 2 letras, como SP.',
+    })
+    const vazio = { ...completo, rg: '', estadoCivil: '', cep: '', nascimento: '' }
+    expect(oQueFaltaNoCadastro(vazio, undefined, HOJE)).toEqual(['RG', 'Estado civil', 'CEP'])
+  })
+
+  it('CA6 · com representante, os campos dele também', () => {
+    const representante = { nome: 'Renata Exemplo', cpf: '', rg: '', parentesco: 'Mãe', estadoCivil: '', profissao: 'Diarista' }
+    expect(oQueFaltaNoCadastro(completo, representante, HOJE)).toEqual(['CPF do representante', 'RG do representante', 'Estado civil do representante'])
+  })
+
+  it('CA4 · sem os campos do modelo, o kit não é gerado e diz o que falta', () => {
+    expect(faltaParaOKit(antonio)).toEqual(['estado civil', 'profissão', 'RG', 'endereço'])
+    const cadastrada = { ...antonio, ...fichaDoCadastro(completo) }
+    expect(faltaParaOKit(cadastrada)).toEqual([])
+    expect(faltaParaOKit({ ...cadastrada, representante: { nome: 'Renata Exemplo', cpf: '', rg: '', parentesco: 'Mãe', estadoCivil: '', profissao: '' } })).toEqual([
+      'dados do representante',
+    ])
+  })
+
+  it('o estado civil da ficha antiga vira o da lista; a ficha guarda o cadastro normalizado', () => {
+    expect(['Casado', 'casada', 'VIÚVA', 'união estável', 'separado'].map(estadoCivilDaLista)).toEqual(['Casado(a)', 'Casado(a)', 'Viúvo(a)', 'União estável', ''])
+    expect(fichaDoCadastro(completo)).toMatchObject({ cpf: CPF_DE_TESTE, rg: '12345678X', nascimento: '1958-03-10', telefone: '11900000002', cep: '01001000', cidadeUf: 'São Paulo / SP' })
+    expect(cadastroDaFicha({ ...josefa, ...fichaDoCadastro(completo) })).toEqual({ ...completo, rg: '12345678X', uf: 'SP' })
+  })
+
+  it('CA1 e CA8 · preenche pela ficha e pela entrevista; a diferença aparece para escolher', () => {
+    const extraidas: InformacaoExtraida[] = [
+      { id: 'telefone', rotulo: 'Telefone', valor: '11900000021', destino: 'ficha', campo: 'telefone' },
+      { id: 'estado-civil', rotulo: 'Estado civil', valor: 'União estável', destino: 'ficha', campo: 'estadoCivil' },
+      { id: 'profissao', rotulo: 'Profissão', valor: 'Auxiliar de limpeza', destino: 'ficha', campo: 'profissao' },
+    ]
+    const { valores, origem, divergencias } = preencherCadastro(josefa, extraidas)
+    expect(valores).toMatchObject({ nome: 'Josefa Teste', telefone: '(11) 90000-0002', estadoCivil: 'União estável', profissao: 'Auxiliar de limpeza' })
+    expect(origem).toMatchObject({ nome: 'ficha', telefone: 'ficha', estadoCivil: 'entrevista', profissao: 'entrevista' })
+    expect(divergencias).toEqual([{ campo: 'telefone', ficha: '(11) 90000-0002', entrevista: '(11) 90000-0021' }])
+  })
+
+  it('CA11 · a mescla guarda o que o outro salvou e acusa o campo que os dois mexeram', () => {
+    const base = { telefone: 'a', rg: '', estadoCivil: '' }
+    const atual = { telefone: 'b', rg: '', estadoCivil: 'Casado(a)' }
+    expect(mesclar(base, { telefone: 'a', rg: '123456', estadoCivil: '' }, atual)).toEqual({ valores: { telefone: 'b', rg: '123456', estadoCivil: 'Casado(a)' }, conflitos: [] })
+    expect(mesclar(base, { telefone: 'c', rg: '', estadoCivil: 'Casado(a)' }, atual).conflitos).toEqual(['telefone'])
+  })
+})
+
+describe('GGVP-46 · Transcrever a entrevista', () => {
+  const trechos: Trecho[] = [
+    { aos: 0, quem: 'Dra. Paula', papel: 'advogada', texto: 'Antes de porteiro, o senhor trabalhou na roça?' },
+    { aos: 4, quem: 'Antônio', papel: 'cliente', texto: 'Trabalhei de 2018 a 2020 na lavoura, como RURAL, sem carteira.' },
+    { aos: 9, quem: 'Antônio', papel: 'cliente', texto: 'Tenho as notas do produtor rural e o sindicato tem registro.' },
+  ]
+
+  it('CA2 · a busca acha a palavra sem acento e sem maiúscula e marca o trecho', () => {
+    expect(buscarTrechos(trechos, 'rural').map((t) => t.aos)).toEqual([4, 9])
+    expect(buscarTrechos(trechos, 'roca').map((t) => t.aos)).toEqual([0])
+    expect(buscarTrechos(trechos, '  ')).toHaveLength(3)
+    expect(marcarBusca('Trabalhei na roça e na ROÇA.', 'roca')).toEqual([
+      { texto: 'Trabalhei na ', marca: false },
+      { texto: 'roça', marca: true },
+      { texto: ' e na ', marca: false },
+      { texto: 'ROÇA', marca: true },
+      { texto: '.', marca: false },
+    ])
+  })
+
+  it('CA3 e CA4 · o selo de cada gravação e a contagem do topo', () => {
+    const g = (parcial: Partial<Gravacao>): Gravacao => ({
+      id: 'g', fichaId: 'f', data: HOJE, titulo: 't', canal: 'vídeo', participantes: [], duracao: 60, origem: 'portal', estado: 'encerrada',
+      acoes: [], transcricao: 'pronta', trechos: [], extraidas: [], documentos: [], soJuridico: true, marcas: [], ...parcial,
+    })
+    const audio = { nome: 'a.webm', formato: 'webm', tamanho: 1, partes: 1 }
+    expect(situacaoDaGravacao(g({ marcas: ['ficha atualizada'] }))).toBe('transcrita · ficha atualizada')
+    expect(situacaoDaGravacao(g({ transcricao: 'falhou' }))).toBe('transcrição falhou')
+    expect(situacaoDaGravacao(g({ transcricao: 'sem-audio', origem: 'registro' }))).toBe('só registro')
+    expect(situacaoDaGravacao(g({ estado: 'gravando' }))).toBe('gravando')
+    expect(contagemDoTopo([g({ audio }), g({ audio }), g({ origem: 'registro' })])).toBe('2 gravações · 1 registro sem áudio')
+    expect(contagemDoTopo([g({ audio })])).toBe('1 gravação')
+    expect(contagemDoTopo([])).toBe('nenhuma conversa ainda')
   })
 })

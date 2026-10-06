@@ -3,7 +3,7 @@ import { conferirSenhaLida, guardarSenhaNoCofre, naoSabeASenha } from './cofre.t
 import { registrarConfirmacao } from './confirmacao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { conferirTelefone, lerFichaEmPapel, salvarFichaDeAtendimento } from './fichaAtendimento.ts'
-import { configurarExemplo, gravar, ler, obterFicha, tarefasDoSetor, zerarExemplo } from './servidor.ts'
+import { CHAVE, configurarExemplo, gravar, ler, obterFicha, tarefasDoSetor, zerarExemplo } from './servidor.ts'
 import type { EnvioDaFicha } from './tipos.ts'
 
 /** Senha de teste: não pode aparecer em lugar nenhum depois de guardada (CA9). */
@@ -56,7 +56,7 @@ describe('Ficha de atendimento · servidor de exemplo', () => {
     const { senhaGov } = await guardarSenhaNoCofre('josefa-exemplo', SENHA_DE_TESTE)
     expect(senhaGov).toEqual({ situacao: 'no-cofre', atualizadaEm: agora.toISOString(), por: 'Você (Atendimento)' })
     expect(JSON.stringify(ler())).not.toContain(SENHA_DE_TESTE)
-    expect(sessionStorage.getItem('ggv.exemplo.v4')).not.toContain(SENHA_DE_TESTE)
+    expect(sessionStorage.getItem(CHAVE)).not.toContain(SENHA_DE_TESTE)
     expect(ler().cofre.map((r) => r.acao)).toEqual(['guardou'])
     expect((await obterFicha('josefa-exemplo'))?.historico.at(-1)?.oQue).toBe('Guardou a senha do gov.br no cofre')
     await expect(guardarSenhaNoCofre('josefa-exemplo', '')).rejects.toThrow('Senha vazia')

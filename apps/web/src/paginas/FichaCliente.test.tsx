@@ -21,6 +21,15 @@ const digitar = (rotulo: string, valor: string) => fireEvent.change(campo(rotulo
 const historico = () => within(screen.getByRole('list', { name: 'Histórico' }))
 
 describe('Ficha do cliente · visão do Atendimento', () => {
+  it('GGVP-46 · "Transcrições (2)" abre a janela das conversas do caso, na visão do Atendimento', async () => {
+    await abrir('antonio-exemplo')
+    fireEvent.click(screen.getByRole('button', { name: 'Transcrições (2)' }))
+    expect(await screen.findByRole('heading', { name: 'Transcrições do caso' })).toBeTruthy()
+    expect(screen.getByText('2 gravações · 1 registro sem áudio')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Entrevista com a advogada/ }))
+    expect(screen.getByText(/Só o Jurídico abre o resumo, a transcrição e o áudio/)).toBeTruthy()
+  })
+
   it('mostra os blocos do Figma 73:199, nada de petição nem valores, e da senha só a situação', async () => {
     await abrir('antonio-exemplo')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cliente')
@@ -39,7 +48,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText('Próxima: nenhuma marcada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Marcar entrevista' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
 
-    for (const nome of ['Transcrições (2)', 'Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)']) {
+    for (const nome of ['Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)']) {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), String(nome)).toBe('true')
     }
     // GGVP-24: a ficha mostra só a situação da senha do gov.br, nunca a senha nem campo para ela.
