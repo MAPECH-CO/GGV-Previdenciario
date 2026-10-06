@@ -8,7 +8,7 @@
     "start": "node --experimental-strip-types src/principal.ts",
     "typecheck": "tsc",
     "lint": "oxlint",
-    "test": "vitest run --testTimeout=20000 --hookTimeout=20000",
+    "test": "vitest run --testTimeout=20000 --hookTimeout=20000 --maxWorkers=4",
     "db:gerar": "drizzle-kit generate",
     "db:migrar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/migrar.ts",
     "usuario:criar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts criar",
