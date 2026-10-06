@@ -11,7 +11,7 @@ import { agora } from '../dados/servidor.ts'
 import type { EsperaDoRecontato, PapelNoFechamento, ResultadoDoRecontato } from '../dados/tipos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { erroDataDoCompromisso } from '../regras/formularios.ts'
-import { erroDoRecontato, podeRegistrarOMotivo, recontatoDevido, TAMANHO_DO_DETALHE } from '../regras/fechamento.ts'
+import { beneficioDoFechamento, erroDoRecontato, podeRegistrarOMotivo, recontatoDevido, TAMANHO_DO_DETALHE } from '../regras/fechamento.ts'
 import styles from './Balcao.module.css'
 import proprio from './RegistrarFechamento.module.css'
 
@@ -123,7 +123,7 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
                 : 'recontato'
             }
             ficha={ficha}
-            beneficio={ficha.beneficioInteresse}
+            beneficio={beneficioDoFechamento(ficha)}
             instrucoes={
               semDireito
                 ? `Ligue para ${primeiro}: na entrevista, ainda não podia se aposentar. Se quiser seguir, o caso volta para o cálculo de ` +

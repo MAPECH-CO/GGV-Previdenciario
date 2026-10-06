@@ -31,12 +31,24 @@ export type EstadoDoFechamento = {
   data: string
   /** O benefício que a advogada definiu; sem ele, "Sim, fechou" não segue para o kit. */
   beneficio: string | undefined
+  /** O benefício exige o cálculo de tempo e pontos e ele ainda não foi feito (GGVP-57, CA1): "Sim, fechou" espera. */
+  calculoPendente?: boolean
 }
+
+/**
+ * O benefício que fecha. No lead, o que a advogada definiu (GGVP-51) ou, sem ele, o de interesse da ficha. Na nova demanda
+ * do cliente, o da demanda, que a abertura grava como benefício de interesse (GGVP-124).
+ */
+export const beneficioDoFechamento = (ficha: Pick<Ficha, 'demandas' | 'beneficioDefinido' | 'beneficioInteresse'>) =>
+  (!ficha.demandas?.length && ficha.beneficioDefinido?.beneficio) || ficha.beneficioInteresse
 
 /** Por que "Registrar" ainda não habilita; nulo quando habilita (CA1, CA5, CA6, CA11, CA12). */
 export function motivoParadoDoFechamento(e: EstadoDoFechamento, hoje: string): string | null {
   if (e.fechou === null) return 'Responda se fechou com o escritório.'
-  if (e.fechou) return !e.beneficio || e.beneficio === 'nao-sei' ? 'Falta o benefício definido pela advogada (D1.12).' : null
+  if (e.fechou) {
+    if (!e.beneficio || e.beneficio === 'nao-sei') return 'Falta o benefício definido pela advogada (D1.12).'
+    return e.calculoPendente ? 'Falta calcular o tempo e os pontos (D1.13): obrigatório antes de fechar.' : null
+  }
   if (!e.motivo) return 'Escolha o motivo: sem ele o lead não pode ser encerrado (G16).'
   if (!podeRegistrarOMotivo(e.motivo, e.papel)) return 'A recusa do escritório é registrada pelo Atendimento sênior ou pela advogada do atendimento.'
   if (e.detalhe.length > TAMANHO_DO_DETALHE) return `Detalhe até ${TAMANHO_DO_DETALHE} caracteres.`

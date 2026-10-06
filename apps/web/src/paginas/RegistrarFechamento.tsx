@@ -9,7 +9,8 @@ import { obterFechamento, registrarFechamento, type DadosDoFechamento } from '..
 import { agora } from '../dados/servidor.ts'
 import type { EsperaDoRecontato, PapelNoFechamento } from '../dados/tipos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
-import { DIAS_PARA_ESPERAR, DIAS_PARA_PENSAR, erroDoRecontato, motivoParadoDoFechamento } from '../regras/fechamento.ts'
+import { calculoPendente } from '../regras/calculo.ts'
+import { DIAS_PARA_ESPERAR, DIAS_PARA_PENSAR, beneficioDoFechamento, erroDoRecontato, motivoParadoDoFechamento } from '../regras/fechamento.ts'
 import { demandaAberta, nomeDaSubpasta } from '../regras/novaDemanda.ts'
 import styles from './Balcao.module.css'
 import proprio from './RegistrarFechamento.module.css'
@@ -55,13 +56,13 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
   }
 
   const { ficha, entrevista } = dados
-  const beneficio = ficha.beneficioInteresse
+  const beneficio = beneficioDoFechamento(ficha)
   // O cliente responde pela nova demanda (GGVP-124): sem recontato; "Não fechou" encerra a demanda com o motivo.
   // O lead que acabou de fechar já é cliente, mas segue nesta tela pelo fechamento dele.
   const porDemanda = ficha.situacao === 'cliente' && (ficha.fechamento?.situacao !== 'fechou' || (ficha.demandas?.length ?? 0) > 0)
   const demanda = porDemanda ? (demandaAberta(ficha) ?? ficha.demandas?.at(-1)) : undefined
   const pendente = porDemanda ? demanda?.situacao === 'aberta' : !ficha.fechamento || ficha.fechamento.situacao === 'recalcular'
-  const motivoParado = motivoParadoDoFechamento({ fechou, motivo, detalhe, papel, recontatar: porDemanda ? false : recontatar, data, beneficio }, hoje)
+  const motivoParado = motivoParadoDoFechamento({ fechou, motivo, detalhe, papel, recontatar: porDemanda ? false : recontatar, data, beneficio, calculoPendente: !porDemanda && calculoPendente(ficha) }, hoje)
   const primeiro = ficha.nome.split(' ')[0]
   const subtitulo =
     fechou === true

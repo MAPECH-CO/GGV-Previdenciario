@@ -3,8 +3,10 @@
 // clienteFechou passa a ser o fecharContrato, que já cria o processo e o kit.
 import { dataParaIso, formatarTelefone, normalizarData } from '../campos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
+import { calculoPendente, pontosFalados, tempoFalado } from '../regras/calculo.ts'
 import {
   TAMANHO_DO_DETALHE,
+  beneficioDoFechamento,
   entrevistaRealizada,
   motivoParadoDoFechamento,
   podeRegistrarOMotivo,
@@ -29,8 +31,13 @@ export const rotaDoCalculo = (ficha: Ficha) => {
   return entrevista ? `/entrevista/${entrevista.id}/calculo` : `/clientes/${ficha.id}`
 }
 
-/** O último cálculo de tempo e pontos (GGVP-57, grupo benefício). Ainda não existe aqui: a junção liga. */
-export const ultimoCalculo = (_ficha: Ficha): string | undefined => undefined
+/** O último cálculo de tempo e pontos (GGVP-57), em uma linha, para o recontato. */
+export function ultimoCalculo(ficha: Ficha): string | undefined {
+  const c = ficha.calculos?.at(-1)
+  if (!c) return undefined
+  const quando = c.podeAposentar ? 'pode se aposentar' : `ainda não pode${c.dataPrevista ? `, previsto para ${c.dataPrevista.split('-').reverse().join('/')}` : ''}`
+  return `${tempoFalado(c.tempo)} · ${pontosFalados(c.pontos)} pontos · ${quando}`
+}
 
 function acharFicha(banco: Banco, fichaId: string): Ficha {
   const ficha = banco.fichas.find((f) => f.id === fichaId)
@@ -108,7 +115,7 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
   if (demanda && !envio.fechou && envio.recontatar) throw new Error('A nova demanda não tem recontato')
   const parado = motivoParadoDoFechamento(
     envio.fechou
-      ? { fechou: true, motivo: '', detalhe: '', papel: 'atendimento', recontatar: false, data: '', beneficio: ficha.beneficioInteresse }
+      ? { fechou: true, motivo: '', detalhe: '', papel: 'atendimento', recontatar: false, data: '', beneficio: beneficioDoFechamento(ficha), calculoPendente: !demanda && calculoPendente(ficha) }
       : {
           fechou: false,
           motivo: MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === envio.motivo) ? envio.motivo : '',
@@ -116,7 +123,7 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
           papel: envio.papel,
           recontatar: envio.recontatar !== null,
           data: envio.recontatar?.data ?? '',
-          beneficio: ficha.beneficioInteresse,
+          beneficio: beneficioDoFechamento(ficha),
         },
     hoje,
   )
@@ -125,7 +132,7 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
     if (demanda) demanda.situacao = 'fechou'
     else ficha.fechamento = { situacao: 'fechou', papel: 'atendimento', quem: QUEM, quando }
     gravar(banco)
-    return clienteFechou(fichaId, ficha.beneficioInteresse!)
+    return clienteFechou(fichaId, beneficioDoFechamento(ficha)!)
   } else {
     const detalhe = envio.detalhe?.trim() || undefined
     const quem = QUEM_NO_PAPEL[envio.papel]
@@ -213,7 +220,7 @@ export function tarefasDeFechamento(): Tarefa[] {
           cliente,
           acao: 'Registrar fechamento',
           detalhe: [
-            nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir',
+            nomeBeneficio(beneficioDoFechamento(ficha)) || 'benefício a definir',
             `entrevista em ${dataCurta(entrevista.data, hoje)}`,
             ...(ficha.fechamento?.situacao === 'recalcular' ? ['voltou do recontato ao cálculo'] : []),
             ...(ficha.situacao === 'cliente' ? ['nova demanda de quem já é cliente'] : []),

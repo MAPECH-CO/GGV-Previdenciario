@@ -5,6 +5,7 @@ import {
   DIAS_PARA_ESPERAR,
   DIAS_PARA_PENSAR,
   arquivado,
+  beneficioDoFechamento,
   dataSugeridaDeRecontato,
   motivoParadoDoFechamento,
   podeRegistrarOMotivo,
@@ -25,6 +26,21 @@ const estado = (e: Partial<EstadoDoFechamento>): EstadoDoFechamento => ({
   data: '',
   beneficio: 'loas-idoso',
   ...e,
+})
+
+describe('junção com o benefício definido e o cálculo (GGVP-51 e GGVP-57)', () => {
+  const definido = { beneficio: 'aposentadoria-idade', agendamentoId: 'e1', quem: '', quando: '', fontes: [], recusouSugestao: false }
+  it('no lead, fecha o benefício que a advogada definiu; na nova demanda, o da demanda', () => {
+    expect(beneficioDoFechamento({ beneficioInteresse: 'loas-idoso', beneficioDefinido: definido })).toBe('aposentadoria-idade')
+    expect(beneficioDoFechamento({ beneficioInteresse: 'loas-idoso' })).toBe('loas-idoso')
+    const demanda = { id: 'd1', pretende: '', beneficio: 'auxilio-acidente', tipo: 'outro-pedido' as const, abertaPor: 'atendimento' as const, data: HOJE, quem: '', situacao: 'aberta' as const }
+    expect(beneficioDoFechamento({ beneficioInteresse: 'auxilio-acidente', beneficioDefinido: definido, demandas: [demanda] })).toBe('auxilio-acidente')
+  })
+  it('"Sim, fechou" espera o cálculo de tempo e pontos; "Não fechou" não espera', () => {
+    expect(motivoParadoDoFechamento(estado({ fechou: true, calculoPendente: true }), HOJE)).toMatch(/calcular o tempo e os pontos/)
+    expect(motivoParadoDoFechamento(estado({ fechou: true, calculoPendente: false }), HOJE)).toBeNull()
+    expect(motivoParadoDoFechamento(estado({ fechou: false, calculoPendente: true }), HOJE)).toBeNull()
+  })
 })
 
 describe('GGVP-60 · registrar por que não virou cliente e recontatar', () => {
