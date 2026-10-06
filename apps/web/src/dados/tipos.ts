@@ -179,6 +179,8 @@ export type Ficha = {
   origem?: 'scanner'
   /** "Fechou com o escritório?" depois da entrevista: o motivo, o recontato ou o arquivo (GGVP-60). */
   fechamento?: Fechamento
+  /** As novas demandas de quem já é cliente (GGVP-124). */
+  demandas?: Demanda[]
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -750,3 +752,29 @@ export type ResultadoDoRecontato =
   | { resultado: 'calculo' }
   | { resultado: 'nova-data'; data: string; espera?: EsperaDoRecontato }
   | { resultado: 'arquivar'; motivo: string; detalhe?: string; papel: PapelNoFechamento }
+
+// GGVP-124 em diante: a nova demanda de quem já é cliente. Espelho do Zod da spec ggvp-124.
+
+/** Outro pedido; tentar de novo depois de perder; recurso ou defesa, que segue no mesmo processo e não abre demanda (CA8). */
+export type TipoDeDemanda = 'outro-pedido' | 'tentar-de-novo' | 'recurso-ou-defesa'
+
+export type Demanda = {
+  id: string
+  /** O que a pessoa quer agora. */
+  pretende: string
+  /** Id do catálogo de benefícios, com "Não sei ainda". */
+  beneficio: string
+  tipo: Exclude<TipoDeDemanda, 'recurso-ou-defesa'>
+  /** O Atendimento, no balcão ou na ficha; ou a advogada, que decidiu tentar de novo (CA9). */
+  abertaPor: 'atendimento' | 'advogada'
+  /** aaaa-mm-dd */
+  data: string
+  quem: string
+  /** aberta até o "Fechou com o escritório?" depois da entrevista (D1.14). */
+  situacao: 'aberta' | 'fechou' | 'nao-fechou'
+  /** Não fechou: o motivo e o detalhe (G16). */
+  motivo?: string
+  detalhe?: string
+}
+
+export type EnvioDaDemanda = { pretende: string; beneficio: string; tipo: TipoDeDemanda; abertaPor: Demanda['abertaPor'] }

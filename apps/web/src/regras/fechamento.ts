@@ -3,6 +3,7 @@ import type { EsperaDoRecontato, Ficha, PapelNoFechamento } from '../dados/tipos
 import { somarDias } from './agenda.ts'
 import { emAberto } from './busca.ts'
 import { erroDataDoCompromisso } from './formularios.ts'
+import { demandaAberta, entrevistaDaDemanda } from './novaDemanda.ts'
 
 /** Ficou de pensar: recontatar 15 dias depois (Lucas, 05/10). */
 export const DIAS_PARA_PENSAR = 15
@@ -51,10 +52,15 @@ export function entrevistaRealizada(ficha: Pick<Ficha, 'agendamentos'>) {
 
 /**
  * O lead entrevistado que ainda não teve o "Fechou com o escritório?" registrado, ou que voltou do recontato ao cálculo
- * (CA5, CA10). Arquivado ou à espera do recontato, não.
+ * (CA5, CA10). Arquivado ou à espera do recontato, não. O cliente, com a nova demanda aberta e a entrevista dela feita
+ * (GGVP-124, CA3).
  */
-export function precisaRegistrarFechamento(ficha: Pick<Ficha, 'situacao' | 'agendamentos' | 'fechamento'>): boolean {
-  if (ficha.situacao !== 'lead' || !entrevistaRealizada(ficha)) return false
+export function precisaRegistrarFechamento(ficha: Pick<Ficha, 'situacao' | 'agendamentos' | 'fechamento' | 'demandas'>): boolean {
+  if (ficha.situacao === 'cliente') {
+    const demanda = demandaAberta(ficha)
+    return demanda !== undefined && entrevistaDaDemanda(ficha, demanda)?.estado === 'realizado'
+  }
+  if (!entrevistaRealizada(ficha)) return false
   return !ficha.fechamento || ficha.fechamento.situacao === 'recalcular'
 }
 

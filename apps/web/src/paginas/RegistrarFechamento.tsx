@@ -10,6 +10,7 @@ import { agora } from '../dados/servidor.ts'
 import type { EsperaDoRecontato, PapelNoFechamento } from '../dados/tipos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { DIAS_PARA_ESPERAR, DIAS_PARA_PENSAR, erroDoRecontato, motivoParadoDoFechamento } from '../regras/fechamento.ts'
+import { demandaAberta, nomeDaSubpasta } from '../regras/novaDemanda.ts'
 import styles from './Balcao.module.css'
 import proprio from './RegistrarFechamento.module.css'
 
@@ -55,15 +56,27 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
 
   const { ficha, entrevista } = dados
   const beneficio = ficha.beneficioInteresse
-  const pendente = !ficha.fechamento || ficha.fechamento.situacao === 'recalcular'
-  const motivoParado = motivoParadoDoFechamento({ fechou, motivo, detalhe, papel, recontatar, data, beneficio }, hoje)
+  // O cliente responde pela nova demanda (GGVP-124): sem recontato; "Não fechou" encerra a demanda com o motivo.
+  // O lead que acabou de fechar já é cliente, mas segue nesta tela pelo fechamento dele.
+  const porDemanda = ficha.situacao === 'cliente' && (ficha.fechamento?.situacao !== 'fechou' || (ficha.demandas?.length ?? 0) > 0)
+  const demanda = porDemanda ? (demandaAberta(ficha) ?? ficha.demandas?.at(-1)) : undefined
+  const pendente = porDemanda ? demanda?.situacao === 'aberta' : !ficha.fechamento || ficha.fechamento.situacao === 'recalcular'
+  const motivoParado = motivoParadoDoFechamento({ fechou, motivo, detalhe, papel, recontatar: porDemanda ? false : recontatar, data, beneficio }, hoje)
+  const primeiro = ficha.nome.split(' ')[0]
   const subtitulo =
     fechou === true
       ? 'fechou · segue para o kit do benefício'
       : fechou === false
         ? 'não fechou · por que não virou cliente'
         : `depois da entrevista${entrevista ? ` de ${dataCurta(entrevista.data, hoje)}` : ''} · fechou com o escritório?`
-  const botao = fechou === true ? 'Registrar fechamento' : recontatar === false ? 'Registrar e arquivar o lead' : 'Registrar e agendar retorno'
+  const botao =
+    fechou === true
+      ? 'Registrar fechamento'
+      : porDemanda
+        ? 'Registrar e encerrar a demanda'
+        : recontatar === false
+          ? 'Registrar e arquivar o lead'
+          : 'Registrar e agendar retorno'
 
   function mudarMotivo(campo: 'motivo' | 'detalhe' | 'papel', valor: string) {
     if (campo === 'motivo') setMotivo(valor)
@@ -114,11 +127,41 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
             }
           />
 
-          {!pendente && f ? (
+          {!pendente && porDemanda ? (
+            demanda ? (
+              <section className={registrado ? styles.feito : styles.cartao} aria-labelledby="registrado">
+                <h2 id="registrado" className={registrado ? styles.feitoTitulo : styles.cartaoTitulo}>
+                  {demanda.situacao === 'fechou'
+                    ? `✓ Fechou: ${nomeBeneficio(beneficio)} é processo novo na mesma ficha`
+                    : '✓ Nova demanda encerrada com o motivo'}
+                </h2>
+                <p>
+                  {demanda.situacao === 'fechou'
+                    ? `Segue para o kit do benefício (D1.15), com a subpasta «${nomeDaSubpasta(beneficio!, hoje)}» na pasta do cliente.`
+                    : `${nomeMotivo(demanda.motivo)}${demanda.detalhe ? ` (${demanda.detalhe})` : ''}. ${primeiro} segue cliente nos outros processos.`}
+                </p>
+                <div className={styles.atalhos}>
+                  <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
+                    Abrir a ficha do cliente
+                  </a>
+                  <a className={styles.atalho} href="/">
+                    Voltar ao início
+                  </a>
+                </div>
+              </section>
+            ) : (
+              <p className={styles.aviso}>
+                Não há nova demanda aberta para {primeiro}.{' '}
+                <a className={styles.avisoLink} href={`/clientes/${ficha.id}/nova-demanda`}>
+                  Abrir a nova demanda
+                </a>
+              </p>
+            )
+          ) : !pendente && f ? (
             <section className={registrado ? styles.feito : styles.cartao} aria-labelledby="registrado">
               <h2 id="registrado" className={registrado ? styles.feitoTitulo : styles.cartaoTitulo}>
                 {f.situacao === 'fechou'
-                  ? `✓ Fechou com o escritório: ${ficha.nome.split(' ')[0]} é cliente`
+                  ? `✓ Fechou com o escritório: ${primeiro} é cliente`
                   : f.situacao === 'recontatar'
                     ? `✓ Registrado: recontatar em ${dataCurta(f.recontatarEm!, hoje)}`
                     : '✓ Lead arquivado com o motivo'}
@@ -142,7 +185,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
             </section>
           ) : (
             <>
-              {f?.situacao === 'recalcular' && (
+              {!porDemanda && f?.situacao === 'recalcular' && (
                 <p className={styles.aviso}>
                   Voltou do recontato ao cálculo de tempo e pontos (motivo de antes: {nomeMotivo(f.motivo) || 'sem motivo'}). Registre de novo se
                   fechou.
@@ -153,10 +196,16 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                   <h2 id="fechou" className={styles.cartaoTitulo}>
                     Fechou com o escritório
                   </h2>
-                  {beneficio && beneficio !== 'nao-sei' ? (
+                  {beneficio && beneficio !== 'nao-sei' && porDemanda ? (
                     <p className={proprio.texto}>
-                      {ficha.nome.split(' ')[0]} vira cliente com {nomeBeneficio(beneficio)}, o benefício que a advogada definiu, e o caso segue
-                      para o kit do benefício (D1.15).
+                      Processo novo de {nomeBeneficio(beneficio)}, o benefício que a advogada definiu, na mesma ficha: número novo, kit novo
+                      (contrato e procuração) e a subpasta «{nomeDaSubpasta(beneficio, hoje)}». Os documentos pessoais que já estão na pasta
+                      não são pedidos de novo.
+                    </p>
+                  ) : beneficio && beneficio !== 'nao-sei' ? (
+                    <p className={proprio.texto}>
+                      {primeiro} vira cliente com {nomeBeneficio(beneficio)}, o benefício que a advogada definiu, e o caso segue para o kit do
+                      benefício (D1.15).
                     </p>
                   ) : (
                     <p className={styles.aviso}>
@@ -176,7 +225,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                   </h2>
                   <div className={proprio.campos}>
                     <CamposDoMotivo motivo={motivo} detalhe={detalhe} papel={papel} aoMudar={mudarMotivo} />
-                    {recontatar !== false && (
+                    {recontatar !== false && !porDemanda && (
                       <CampoDoRecontato
                         data={data}
                         espera={espera}
@@ -194,7 +243,9 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                 </section>
               )}
 
-              <p className={styles.trava}>Todo lead que não vira cliente fica com o motivo registrado (G16).</p>
+              <p className={styles.trava}>
+                {porDemanda ? 'Toda demanda que não fecha fica com o motivo registrado (G16).' : 'Todo lead que não vira cliente fica com o motivo registrado (G16).'}
+              </p>
 
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={motivoParado !== null || registrando} onClick={registrar}>
@@ -228,31 +279,35 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
               </button>
             </div>
           </div>
-          <div className={styles.decisao}>
-            <p id="recontatar-pergunta">Se «Não fechou»: Vale recontatar numa data prevista?</p>
-            <div className={styles.ladoOpcoes} role="radiogroup" aria-labelledby="recontatar-pergunta">
-              <button
-                type="button"
-                role="radio"
-                className={styles.chip}
-                aria-checked={recontatar === true}
-                disabled={!pendente || fechou !== false}
-                onClick={() => setRecontatar(true)}
-              >
-                Sim, agendar recontato
-              </button>
-              <button
-                type="button"
-                role="radio"
-                className={styles.chip}
-                aria-checked={recontatar === false}
-                disabled={!pendente || fechou !== false}
-                onClick={() => setRecontatar(false)}
-              >
-                Não, arquivar o lead
-              </button>
+          {porDemanda ? (
+            <p className={styles.ladoSub}>Cliente com nova demanda: sem recontato; «Não fechou» encerra a demanda com o motivo.</p>
+          ) : (
+            <div className={styles.decisao}>
+              <p id="recontatar-pergunta">Se «Não fechou»: Vale recontatar numa data prevista?</p>
+              <div className={styles.ladoOpcoes} role="radiogroup" aria-labelledby="recontatar-pergunta">
+                <button
+                  type="button"
+                  role="radio"
+                  className={styles.chip}
+                  aria-checked={recontatar === true}
+                  disabled={!pendente || fechou !== false}
+                  onClick={() => setRecontatar(true)}
+                >
+                  Sim, agendar recontato
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  className={styles.chip}
+                  aria-checked={recontatar === false}
+                  disabled={!pendente || fechou !== false}
+                  onClick={() => setRecontatar(false)}
+                >
+                  Não, arquivar o lead
+                </button>
+              </div>
             </div>
-          </div>
+          )}
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             <li>

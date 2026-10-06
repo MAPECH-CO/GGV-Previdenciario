@@ -12,6 +12,7 @@ import {
   recontatoDevido,
   recontatoEmAberto,
 } from '../regras/fechamento.ts'
+import { demandaAberta } from '../regras/novaDemanda.ts'
 import { BENEFICIOS, MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
 import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa } from './tipos.ts'
@@ -92,7 +93,8 @@ const dataIso = (data: string) => dataParaIso(normalizarData(data))
  * POST /api/fichas/:id/fechamento. "Fechou com o escritório?" é obrigatória (CA5). Sim: vira cliente e segue para o kit
  * (D1.15). Não: o motivo da lista é obrigatório (CA1, CA6, G16), com o detalhe opcional; a recusa do escritório só pelo
  * Atendimento sênior ou pela advogada do atendimento (CA11). Vale recontatar: a data vai à agenda e a tarefa nasce nesse
- * dia (CA2, CA8). Não vale: o lead é arquivado com o motivo e sai das filas ativas (CA7).
+ * dia (CA2, CA8). Não vale: o lead é arquivado com o motivo e sai das filas ativas (CA7). Fechou: chama o clienteFechou. O cliente
+ * responde pela nova demanda (GGVP-124): fechou, segue o mesmo caminho; não fechou, a demanda se encerra com o motivo.
  */
 export async function registrarFechamento(fichaId: string, envio: EnvioDoFechamento): Promise<{ ficha: Ficha }> {
   await esperar()
@@ -100,6 +102,10 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
   const ficha = acharFicha(banco, fichaId)
   const hoje = hojeIso(agora())
   const quando = agora().toISOString()
+  // O cliente responde pela nova demanda (GGVP-124): não fechou, a demanda se encerra com o motivo, sem recontato.
+  const demanda = ficha.situacao === 'cliente' ? demandaAberta(ficha) : undefined
+  if (ficha.situacao === 'cliente' && !demanda) throw new Error('Não há nova demanda aberta')
+  if (demanda && !envio.fechou && envio.recontatar) throw new Error('A nova demanda não tem recontato')
   const parado = motivoParadoDoFechamento(
     envio.fechou
       ? { fechou: true, motivo: '', detalhe: '', papel: 'atendimento', recontatar: false, data: '', beneficio: ficha.beneficioInteresse }
@@ -116,13 +122,18 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
   )
   if (parado) throw new Error(parado)
   if (envio.fechou) {
-    fecharNaFicha(ficha, ficha.beneficioInteresse!)
-    ficha.fechamento = { situacao: 'fechou', papel: 'atendimento', quem: QUEM, quando }
+    if (demanda) demanda.situacao = 'fechou'
+    else ficha.fechamento = { situacao: 'fechou', papel: 'atendimento', quem: QUEM, quando }
+    gravar(banco)
+    return clienteFechou(fichaId, ficha.beneficioInteresse!)
   } else {
     const detalhe = envio.detalhe?.trim() || undefined
     const quem = QUEM_NO_PAPEL[envio.papel]
     const motivo = nomeMotivo(envio.motivo)
-    if (envio.recontatar) {
+    if (demanda) {
+      Object.assign(demanda, { situacao: 'nao-fechou', motivo: envio.motivo, ...(detalhe && { detalhe }) })
+      ficha.historico.push(evento(`Nova demanda não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Segue cliente nos outros processos (G16)`, quem))
+    } else if (envio.recontatar) {
       const em = dataIso(envio.recontatar.data)!
       ficha.fechamento = {
         situacao: 'recontatar',
@@ -205,6 +216,7 @@ export function tarefasDeFechamento(): Tarefa[] {
             nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir',
             `entrevista em ${dataCurta(entrevista.data, hoje)}`,
             ...(ficha.fechamento?.situacao === 'recalcular' ? ['voltou do recontato ao cálculo'] : []),
+            ...(ficha.situacao === 'cliente' ? ['nova demanda de quem já é cliente'] : []),
           ].join(' · '),
           prazo: 'hoje',
           href: `/clientes/${ficha.id}/fechamento`,

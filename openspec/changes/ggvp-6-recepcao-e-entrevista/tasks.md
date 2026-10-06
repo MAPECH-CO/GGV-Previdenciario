@@ -147,4 +147,11 @@
 
 ## GGVP-124 · Nova demanda de quem já é cliente
 
+- [x] 15.1 Contrato: `TipoDeDemanda`, `Demanda`, `EnvioDaDemanda` e `demandas?` na ficha em `src/dados/tipos.ts`. Verifica com `npm run typecheck`.
+- [x] 15.2 Regra: `motivoParadoDaDemanda`, `demandaAberta`, `entrevistaDaDemanda`, `precisaLigar`, `pessoaisNaPasta`, `documentosAPedir`, `nomeDaSubpasta` e `mandaBoasVindas` em `src/regras/novaDemanda.ts`; `precisaRegistrarFechamento` passa a valer para o cliente com a demanda entrevistada. Teste em `src/regras/novaDemanda.test.ts` (CA1 a CA3, CA5, CA7 a CA10). Verifica com `npx vitest run src/regras/novaDemanda.test.ts src/regras/fechamento.test.ts`.
+- [x] 15.3 Servidor de exemplo: `abrirDemanda` e `tarefasDeNovaDemanda` em `src/dados/novaDemanda.ts`; `registrarFechamento` responde pela demanda do cliente e chama o `clienteFechou` no "Sim, fechou". Teste em `src/dados/novaDemanda.test.ts` (CA1 a CA3, CA8, CA9). Verifica com `npx vitest run src/dados/novaDemanda.test.ts src/dados/fechamento.test.ts`.
+- [x] 15.4 Tela `/clientes/:fichaId/nova-demanda` (`src/paginas/NovaDemanda.tsx`, sem Figma próprio, no desenho das telas de passo), o botão "Nova demanda" na ficha do cliente, a demanda no "Registrar fechamento" e a tarefa "Ligar para o cliente" na Central; testes em `NovaDemanda.test.tsx` (CA1 a CA3, CA5, CA7 a CA9). Verifica com `npx vitest run src/paginas/NovaDemanda.test.tsx src/paginas/RegistrarFechamento.test.tsx src/paginas/FichaCliente.test.tsx src/paginas/CentralAtendimento.test.tsx`.
+- [x] 15.5 Playwright `e2e/nova-demanda.e2e.ts`: da ficha à marcação da entrevista (CA1, CA2, CA5, CA7), aberta pela advogada com a tarefa na Central (CA9), do balcão com recurso e defesa (CA8), tema escuro e fonte grande. Verifica com `npm run e2e -- nova-demanda`.
+- [ ] 15.6 Ligar no servidor: o corpo de `src/dados/novaDemanda.ts` vira `fetch`; o `clienteFechou` vira o `fecharContrato` (GGVP-7), que cria o processo novo e o kit novo (CA3, CA4) e passa a nomear a subpasta com `nomeDaSubpasta` (CA7); o checklist do benefício (GGVP-91) usa `documentosAPedir` (CA5); a mensagem de boas-vindas, quando existir, usa `mandaBoasVindas` (CA10); quem abre a demanda vem do login (GGVP-78). **Fica aberta nesta história.**
+
 <!-- Fim do grupo fechamento. -->

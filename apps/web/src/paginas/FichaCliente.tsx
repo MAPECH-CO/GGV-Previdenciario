@@ -84,9 +84,16 @@ export function FichaCliente({ id }: { id: string }) {
           { texto: 'Atendimento não vê petição nem valores', tom: 'acento' },
         ]}
         acao={
-          <button type="button" className={styles.transcricoes} onClick={() => setTranscricoes(true)}>
-            <span aria-hidden="true">▶ </span>Transcrições ({ficha.transcricoes})
-          </button>
+          <>
+            {ficha.situacao === 'cliente' && (
+              <a className={styles.novaDemanda} href={`/clientes/${ficha.id}/nova-demanda`}>
+                + Nova demanda
+              </a>
+            )}
+            <button type="button" className={styles.transcricoes} onClick={() => setTranscricoes(true)}>
+              <span aria-hidden="true">▶ </span>Transcrições ({ficha.transcricoes})
+            </button>
+          </>
         }
       />
       <main className={styles.pagina}>
