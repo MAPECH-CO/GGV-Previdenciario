@@ -12,6 +12,8 @@ import { registrarRotasVigilia } from './rotas/vigilia.ts'
 import { registrarRotasExigencia } from './rotas/exigencia.ts'
 import { registrarRotasPrestacao } from './rotas/prestacao.ts'
 import { registrarRotasPublicacoes } from './rotas/publicacoes.ts'
+import { registrarRotasVigiliaDiario } from './rotas/vigilia-diario.ts'
+import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
 type Opcoes = {
@@ -30,10 +32,12 @@ type Opcoes = {
   cofre?: Cofre
   /** Onde os arquivos ficam. Padrão: Supabase Storage com as variáveis, ou a pasta local. */
   armazenamento?: Armazenamento
+  /** Fontes da vigília; padrão: as do ambiente (`FONTES_PUBLICACAO`). */
+  fontes?: Fonte[]
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes }: Opcoes = {}) {
   const app = Fastify({ logger })
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
 
@@ -57,6 +61,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
     registrarRotasPublicacoes(app, { banco, agora })
+    registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

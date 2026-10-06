@@ -32,6 +32,7 @@ import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
+import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
@@ -138,6 +139,8 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       }),
     }))
     return [
+      // GGVP-30 CA1, CA11: rodada com falha vem antes de tudo.
+      ...(await alarmesDaVigilia(banco, agora())),
       ...alertas.filter((a) => a.diasUteis <= 2).map(linha),
       ...fila.filter((f) => f.urgente).map((f) => f.linha),
       ...visiveis,
