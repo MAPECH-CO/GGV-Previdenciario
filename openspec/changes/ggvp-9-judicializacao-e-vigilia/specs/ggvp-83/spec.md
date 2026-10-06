@@ -46,8 +46,8 @@ Cada tentativa sem sucesso SHALL registrar data, canal e resultado, e a tela SHA
 - **Quando** registro "Ainda não, registrar tentativa"
 - **Então** ficam data, canal e resultado, e a tela mostra a tentativa e o limite
 
-### Requirement: CA6 · Subir no card exige a evidência
-"Consegui, subir no card" MUST exigir a evidência anexada, que SHALL virar a prova do item (G21); o setor aparece como concluído.
+### Requirement: CA6 · Concluir o item exige o documento
+"Consegui, subir no card" (na tela, "Enviar documento e concluir", ajuste do Mateus de 06/10) MUST exigir o documento anexado, que SHALL virar a prova do item (G21); o setor aparece como concluído.
 
 #### Scenario: CA6 · Consegui
 - **Dado** "Consegui, subir no card"

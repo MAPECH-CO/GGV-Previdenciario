@@ -14,7 +14,7 @@ import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta } from './manifestacao.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
-export const MSG_EVIDENCIA = 'Anexe a evidência do item (PDF ou imagem, até 25 MB).'
+export const MSG_EVIDENCIA = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
 export const MSG_ITEM_DE_OUTRO_SETOR = 'Este item é de outro setor.'
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
@@ -307,7 +307,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
     },
   )
 
-  // GGVP-83 CA1, CA6, CA11 (G21): só sai do laço cumprindo, com a evidência, que vira a prova do item.
+  // GGVP-83 CA1, CA6, CA11 (G21): só sai do laço cumprindo, com o documento, que vira a prova do item.
   app.post<{ Params: { id: string; item: string } }>(
     '/api/casos/:id/exigencia-juiz/itens/:item/prova',
     { preHandler: exigir(banco, 'exigencia_juiz.cumprir', agora) },

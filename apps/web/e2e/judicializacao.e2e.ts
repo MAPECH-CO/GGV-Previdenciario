@@ -85,9 +85,9 @@ test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atend
     await page.goto('/')
     await page.getByRole('link', { name: 'Paulo Reis (exemplo) · Cumprir exigência do juiz' }).click()
     await expect(page.getByText(/prazo do processo/)).toBeVisible()
-    await page.getByLabel('Evidência').setInputFiles(PDF(nome))
-    await page.getByRole('button', { name: 'Consegui, subir no card' }).click()
-    await expect(page.getByRole('status')).toHaveText('Prova enviada. O item está cumprido.')
+    await page.getByLabel('Documento', { exact: true }).setInputFiles(PDF(nome))
+    await page.getByRole('button', { name: 'Enviar documento e concluir' }).click()
+    await expect(page.getByRole('status')).toHaveText('Documento enviado. O item está cumprido.')
   }
 
   await context.clearCookies()

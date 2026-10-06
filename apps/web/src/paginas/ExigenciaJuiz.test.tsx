@@ -83,6 +83,21 @@ describe('Analisar a exigência do juiz (GGVP-79)', () => {
   })
 })
 
+describe('Perícia pedida pelo juiz (GGVP-79 CA8)', () => {
+  it('aparece entre os setores acionados, com quem marca: o Jurídico administrativo', async () => {
+    servidor({ ...exigenciaDoJuiz, situacao: 'em_cumprimento', podeDistribuir: false, faltam: ['Perícia'], pericias: [{ tipo: 'medica', resultado: null }] })
+    render(<AnalisarExigenciaJuiz casoId={CASO} />)
+    expect((await screen.findByText(/Jurídico administrativo · marcar/)).textContent).toBe('Jurídico administrativo · marcar a perícia médica · aguardando o resultado')
+  })
+
+  it('no formulário, avisa que a marcação vai para o Jurídico administrativo', async () => {
+    servidor(exigenciaDoJuiz)
+    render(<AnalisarExigenciaJuiz casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Precisa cumprir'))
+    expect(screen.getByText(/Quem marca é o Jurídico administrativo/)).toBeTruthy()
+  })
+})
+
 describe('Cumprir a exigência do juiz (GGVP-83)', () => {
   const ITEM_ID = '22222222-2222-4222-8222-222222222222'
   const setor = {
@@ -99,26 +114,27 @@ describe('Cumprir a exigência do juiz (GGVP-83)', () => {
   it('CA4, CA13 · mostra o pedido, quem pediu, o prazo interno e o processual, e a contagem de tentativas', async () => {
     servidor(setor)
     render(<CumprirExigenciaJuiz casoId={CASO} />)
-    expect((await screen.findByText(/Prazo interno/)).textContent).toContain('prazo do processo: 27/10/2026')
+    expect((await screen.findByText(/Entregar até/)).textContent).toContain('prazo do processo: 27/10/2026')
     expect(screen.getByText(/pedido por Gabi/)).toBeTruthy()
-    expect(screen.getByText(/Tentativa 0 de 3/)).toBeTruthy()
+    expect(screen.getByText(/Registrar cobrança ao cliente \(0 de 3/)).toBeTruthy()
+    expect(screen.getByText('Documento que comprova: Laudo com data')).toBeTruthy()
   })
 
-  it('CA5 · tentativa sem canal não envia; CA6 · "Consegui" sem evidência não envia', async () => {
+  it('CA5 · cobrança sem canal não envia; CA6 · enviar sem o documento não envia', async () => {
     const fetch = servidor(setor)
     render(<CumprirExigenciaJuiz casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Ainda não, registrar tentativa' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Registrar cobrança' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escolha o canal da tentativa')
-    fireEvent.click(screen.getByRole('button', { name: 'Consegui, subir no card' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Anexe a evidência do item (PDF ou imagem, até 25 MB).')
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar documento e concluir' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Anexe o documento do item (PDF ou imagem, até 25 MB).')
     expect(fetch.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true)
   })
 
-  it('CA6 · com a evidência, sobe o card', async () => {
+  it('CA6 · com o documento, conclui o item', async () => {
     servidor(setor)
     render(<CumprirExigenciaJuiz casoId={CASO} />)
-    fireEvent.change(await screen.findByLabelText('Evidência'), { target: { files: [new File(['%PDF'], 'laudo.pdf', { type: 'application/pdf' })] } })
-    fireEvent.click(screen.getByRole('button', { name: 'Consegui, subir no card' }))
-    expect((await screen.findByRole('status')).textContent).toBe('Prova enviada. O item está cumprido.')
+    fireEvent.change(await screen.findByLabelText('Documento'), { target: { files: [new File(['%PDF'], 'laudo.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar documento e concluir' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Documento enviado. O item está cumprido.')
   })
 })

@@ -161,7 +161,7 @@ describe('GGVP-83 · laço dos setores', () => {
     await distribuir()
     const item = await itemDo('documentacao')
     expect((await provar('ana', item.id)).json().erro).toBe('Este item é de outro setor.')
-    expect((await provar('dora', item.id, null)).json().erro).toBe('Anexe a evidência do item (PDF ou imagem, até 25 MB).')
+    expect((await provar('dora', item.id, null)).json().erro).toBe('Anexe o documento do item (PDF ou imagem, até 25 MB).')
     expect((await provar('dora', item.id)).statusCode).toBe(201)
     const [t] = await banco.select().from(tarefa).where(eq(tarefa.id, item.tarefaId!))
     expect([t.situacao, t.prazo]).toEqual(['concluida', null])
@@ -170,6 +170,8 @@ describe('GGVP-83 · laço dos setores', () => {
 
   it('CA2, CA3, CA10 · a advogada e a Sênior veem o status de cada setor e quem falta; o resultado da perícia volta', async () => {
     await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [ITEM], tiposPericia: ['social'] })
+    // Documento e perícia juntos: duas tarefas separadas, cada uma na Central do seu perfil (GGVP-79 CA1, CA8).
+    expect(await abertas()).toEqual(['documentacao · Cumprir exigência do juiz · 2026-10-07', 'juridico_adm · Marcar avaliação social (exigência do juiz) · null'])
     const item = await itemDo('documentacao')
     await provar('dora', item.id)
     let r = (await chamar('helena', 'GET', '/exigencia-juiz')).json()

@@ -34,7 +34,7 @@ function LinhaDoItem({ item, prazoFim, mudar, remover }: { item: ItemNaTela; pra
       </label>
       <input id={ids.descricao} className={styles.campo} value={item.descricao} onChange={(e) => mudar({ ...item, descricao: e.target.value })} />
       <label className={styles.rotulo} htmlFor={ids.prova}>
-        Prova esperada (opcional)
+        Documento que comprova (opcional)
       </label>
       <input id={ids.prova} className={styles.campo} value={item.provaEsperada} onChange={(e) => mudar({ ...item, provaEsperada: e.target.value })} />
       <label className={styles.rotulo} htmlFor={ids.prazo}>
@@ -135,7 +135,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
         </p>
       )}
 
-      {x.itens.length > 0 && (
+      {(x.itens.length > 0 || x.pericias.length > 0) && (
         <section className={styles.cartao} aria-label="Setores acionados">
           <h2 className={styles.cartaoTitulo}>Setores acionados</h2>
           {x.faltam.length > 0 ? <p className={styles.dica}>Falta: {x.faltam.join(', ')}.</p> : <p className={styles.dica}>Todos os setores subiram a prova.</p>}
@@ -148,17 +148,14 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
                 {i.escalada ? ' · com a Sênior' : ''}
               </li>
             ))}
+            {/* GGVP-79 CA8: a perícia pedida pelo juiz é marcada pelo Jurídico administrativo, numa tarefa separada. */}
+            {x.pericias.map((p) => (
+              <li key={p.tipo}>
+                Jurídico administrativo · marcar a {ROTULO_PERICIA[p.tipo].toLowerCase()} · {p.resultado ? `resultado: ${p.resultado}` : 'aguardando o resultado'}
+              </li>
+            ))}
           </ul>
         </section>
-      )}
-      {x.pericias.length > 0 && (
-        <ul className={styles.lista} aria-label="Perícias">
-          {x.pericias.map((p) => (
-            <li key={p.tipo}>
-              {ROTULO_PERICIA[p.tipo]}: {p.resultado ?? 'aguardando o resultado'}
-            </li>
-          ))}
-        </ul>
       )}
 
       {x.podeDecidirVencida && (
@@ -214,6 +211,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
               </div>
               <fieldset className={styles.cartao}>
                 <legend className={styles.rotulo}>O juiz pediu perícia?</legend>
+                <p className={styles.dica}>Quem marca é o Jurídico administrativo: a tarefa vai para a Central dele, separada dos documentos.</p>
                 {TIPOS_DE_PERICIA.map((t) => (
                   <label key={t} className={styles.escolha}>
                     <input type="checkbox" checked={tipos.includes(t)} onChange={() => setTipos((a) => (a.includes(t) ? a.filter((y) => y !== t) : [...a, t]))} />

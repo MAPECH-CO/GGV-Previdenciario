@@ -7,8 +7,12 @@ import styles from './Passo.module.css'
 type Item = ItensDoSetor['itens'][number]
 const dia = (iso: string | null) => (iso ? (isoParaData(iso) ?? iso) : '—')
 const CANAIS = { whatsapp: 'WhatsApp', telefone: 'Telefone', email: 'E-mail', sms: 'SMS', presencial: 'Presencial' } as const
+const MSG_DOCUMENTO = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
 
-/** Um item do laço (GGVP-83): tentar de novo (G15), subir para a Sênior com o motivo, ou subir a prova (G21). */
+/**
+ * Um item do laço (GGVP-83). O principal é enviar o documento pedido, que vira a prova do item (G21); se ainda não
+ * conseguiu, registra a cobrança (G15); se não vai conseguir, avisa a Sênior com o motivo (ajuste do Mateus, 06/10).
+ */
 function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: string; item: Item; prazoProcessual: string; aoMudar: (texto: string) => void }) {
   const ids = { canal: useId(), resultado: useId(), motivo: useId(), arquivo: useId() }
   const [canal, setCanal] = useState('')
@@ -18,15 +22,24 @@ function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: stri
   const [erro, setErro] = useState('')
   const base = `/casos/${casoId}/exigencia-juiz/itens/${item.id}`
 
-  async function tentar() {
+  async function enviarDocumento() {
+    if (!arquivo) return setErro(MSG_DOCUMENTO)
+    const dados = new FormData()
+    dados.set('arquivo', arquivo)
+    const r = await chamarApi(`${base}/prova`, { method: 'POST', corpo: dados })
+    if (!r.ok) return setErro(r.erro)
+    aoMudar('Documento enviado. O item está cumprido.')
+  }
+
+  async function registrarCobranca() {
     const entrada = RegistrarTentativa.safeParse({ canal: canal || undefined, resultado })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const r = await chamarApi<{ tentativas: number; escalada: boolean }>(`${base}/tentativas`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
-    aoMudar(r.dados.escalada ? 'Tentativa registrada. O limite foi atingido: a Sênior foi avisada e a tarefa continua com o setor.' : 'Tentativa registrada.')
+    aoMudar(r.dados.escalada ? 'Cobrança registrada. O limite foi atingido: a Sênior foi avisada e a tarefa continua com o setor.' : 'Cobrança registrada.')
   }
 
-  async function subirParaSenior() {
+  async function avisarSenior() {
     const entrada = NaoVouConseguir.safeParse({ motivo })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escreva o motivo.')
     const r = await chamarApi(`${base}/nao-vou-conseguir`, { method: 'POST', corpo: entrada.data })
@@ -34,86 +47,90 @@ function CartaoDoItem({ casoId, item, prazoProcessual, aoMudar }: { casoId: stri
     aoMudar('A Sênior foi avisada, com o motivo.')
   }
 
-  async function subirProva() {
-    if (!arquivo) return setErro('Anexe a evidência do item (PDF ou imagem, até 25 MB).')
-    const dados = new FormData()
-    dados.set('arquivo', arquivo)
-    const r = await chamarApi(`${base}/prova`, { method: 'POST', corpo: dados })
-    if (!r.ok) return setErro(r.erro)
-    aoMudar('Prova enviada. O item está cumprido.')
-  }
+  const contagem = item.limite ? `${item.tentativas.length} de ${item.limite}` : `${item.tentativas.length}, limite não configurado`
 
   return (
     <li className={styles.cartao}>
       <h2 className={styles.cartaoTitulo}>{item.descricao}</h2>
-      {item.provaEsperada && <p className={styles.dica}>Prova esperada: {item.provaEsperada}</p>}
+      {item.provaEsperada && <p>Documento que comprova: {item.provaEsperada}</p>}
       <p>
-        Prazo interno: <strong>{dia(item.prazoInterno)}</strong> · prazo do processo: {dia(prazoProcessual)}
-        {item.proximoLembrete ? ` · próximo lembrete: ${dia(item.proximoLembrete)}` : ''}
+        Entregar até <strong>{dia(item.prazoInterno)}</strong> · prazo do processo: {dia(prazoProcessual)}
       </p>
+
       {item.situacao === 'cumprido' ? (
         <span className={styles.selo}>Cumprido · {item.prova}</span>
       ) : (
         <>
-          <p className={styles.dica}>
-            {item.limite ? `Tentativa ${item.tentativas.length} de ${item.limite}` : `Tentativas: ${item.tentativas.length} (limite não configurado)`}
-            {item.escalada ? ' · já com a Sênior; a tarefa continua com o setor' : ''}
-          </p>
-          {item.tentativas.length > 0 && (
-            <ol className={styles.lista} aria-label="Tentativas">
-              {item.tentativas.map((t) => (
-                <li key={t.quando}>
-                  {new Date(t.quando).toLocaleDateString('pt-BR')} · {CANAIS[t.canal as keyof typeof CANAIS] ?? t.canal} · {t.resultado} · {t.quem}
-                </li>
-              ))}
-            </ol>
-          )}
-          <label className={styles.rotulo} htmlFor={ids.canal}>
-            Canal
-          </label>
-          <select id={ids.canal} className={styles.campo} value={canal} onChange={(e) => setCanal(e.target.value)}>
-            <option value="">Escolha</option>
-            {Object.entries(CANAIS).map(([v, r]) => (
-              <option key={v} value={v}>
-                {r}
-              </option>
-            ))}
-          </select>
-          <label className={styles.rotulo} htmlFor={ids.resultado}>
-            Resultado da tentativa
-          </label>
-          <input id={ids.resultado} className={styles.campo} value={resultado} onChange={(e) => setResultado(e.target.value)} />
-          <div className={styles.acoes}>
-            <button type="button" className={styles.botaoSecundario} onClick={() => void tentar()}>
-              Ainda não, registrar tentativa
-            </button>
-          </div>
-          <label className={styles.rotulo} htmlFor={ids.arquivo}>
-            Evidência
-          </label>
-          <input id={ids.arquivo} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
-          <div className={styles.acoes}>
-            <button type="button" className={styles.botao} onClick={() => void subirProva()}>
-              Consegui, subir no card
-            </button>
-          </div>
-          {!item.escalada && (
-            <>
-              <label className={styles.rotulo} htmlFor={ids.motivo}>
-                Não vai conseguir? Por quê
-              </label>
-              <input id={ids.motivo} className={styles.campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-              <div className={styles.acoes}>
-                <button type="button" className={styles.botaoSecundario} onClick={() => void subirParaSenior()}>
-                  Subir para a Sênior
-                </button>
-              </div>
-            </>
-          )}
+          <section className={styles.cartao} aria-label="Enviar o documento">
+            <label className={styles.rotulo} htmlFor={ids.arquivo}>
+              Documento
+            </label>
+            <input id={ids.arquivo} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+            <div className={styles.acoes}>
+              <button type="button" className={styles.botao} onClick={() => void enviarDocumento()}>
+                Enviar documento e concluir
+              </button>
+            </div>
+            <p className={styles.dica}>O documento fica como a prova do item: sem ele, a advogada não manifesta (G21).</p>
+          </section>
+
           {erro && (
             <p className={styles.erro} role="alert">
               {erro}
             </p>
+          )}
+
+          <details>
+            <summary>
+              Ainda não conseguiu? Registrar cobrança ao cliente ({contagem}
+              {item.proximoLembrete ? ` · próximo lembrete ${dia(item.proximoLembrete)}` : ''})
+            </summary>
+            {item.tentativas.length > 0 && (
+              <ol className={styles.lista} aria-label="Cobranças">
+                {item.tentativas.map((t) => (
+                  <li key={t.quando}>
+                    {new Date(t.quando).toLocaleDateString('pt-BR')} · {CANAIS[t.canal as keyof typeof CANAIS] ?? t.canal} · {t.resultado} · {t.quem}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <label className={styles.rotulo} htmlFor={ids.canal}>
+              Canal
+            </label>
+            <select id={ids.canal} className={styles.campo} value={canal} onChange={(e) => setCanal(e.target.value)}>
+              <option value="">Escolha</option>
+              {Object.entries(CANAIS).map(([v, r]) => (
+                <option key={v} value={v}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <label className={styles.rotulo} htmlFor={ids.resultado}>
+              O que o cliente respondeu
+            </label>
+            <input id={ids.resultado} className={styles.campo} value={resultado} onChange={(e) => setResultado(e.target.value)} />
+            <div className={styles.acoes}>
+              <button type="button" className={styles.botaoSecundario} onClick={() => void registrarCobranca()}>
+                Registrar cobrança
+              </button>
+            </div>
+          </details>
+
+          {item.escalada ? (
+            <p className={styles.dica}>A Sênior já foi avisada; a tarefa continua com o setor.</p>
+          ) : (
+            <details>
+              <summary>Não vai conseguir? Avisar a Sênior</summary>
+              <label className={styles.rotulo} htmlFor={ids.motivo}>
+                Por que não vai conseguir
+              </label>
+              <input id={ids.motivo} className={styles.campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+              <div className={styles.acoes}>
+                <button type="button" className={styles.botaoSecundario} onClick={() => void avisarSenior()}>
+                  Avisar a Sênior
+                </button>
+              </div>
+            </details>
           )}
         </>
       )}
@@ -144,6 +161,8 @@ export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
       </main>
     )
 
+  const pendentes = d.itens.filter((i) => i.situacao !== 'cumprido').length
+
   return (
     <main className={styles.pagina}>
       <title>Cumprir exigência do juiz · GGV Previdenciário</title>
@@ -154,6 +173,9 @@ export function CumprirExigenciaJuiz({ casoId }: { casoId: string }) {
       <p className={styles.subtitulo}>
         {d.cliente} · {ROTULO_SETOR[d.setor]}
         {d.pedidoPor ? ` · pedido por ${d.pedidoPor}` : ''}
+      </p>
+      <p className={styles.dica}>
+        {pendentes === 0 ? 'Tudo entregue. A advogada já pode manifestar.' : `O juiz pediu ${pendentes === 1 ? 'um documento' : `${pendentes} documentos`} ao seu setor. Envie cada um quando conseguir.`}
       </p>
       {feito && (
         <p className={styles.sucesso} role="status">

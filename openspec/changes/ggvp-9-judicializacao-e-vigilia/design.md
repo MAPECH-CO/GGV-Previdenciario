@@ -79,6 +79,8 @@ O grupo 1 deixa, para a exigência do juiz, a tarefa "Analisar exigência do jui
 22. **Matriz versão 6**: `exigencia_juiz.distribuir` (advogada), `exigencia_juiz.cumprir` (atendimento, atendimento_lider, documentacao, juridico_adm), `exigencia_juiz.manifestar` (advogada), `exigencia_juiz.autorizar_dilacao` (senior).
 23. **Migração 0010**: `exigencia_item.tarefa_id` (a tarefa do setor), `exigencia_item.prova_esperada`, `peticao_versao.documento_id`.
 
+24. **Ajuste da homologação local (Mateus, 06/10)**: no card do setor, a ação principal é "Enviar documento e concluir" (o campo se chama "Documento", não "evidência"); "Registrar cobrança ao cliente" e "Avisar a Sênior" ficam recolhidos abaixo. Na análise da advogada, "Prova esperada" virou "Documento que comprova", e a perícia aparece entre os setores acionados, com quem marca (Jurídico administrativo), porque a tarefa dela vai para outra Central e parecia não ter subido.
+
 ### Contratos (`packages/contratos/src/justica.ts`)
 
 `ExigenciaDoJuiz` (texto, prazo processual com a regra, itens com setor e status, perícias, quem falta, `podeDistribuir`), `AnalisarExigenciaJuiz` (`ciencia`, ou `cumprir` com itens e tipos de perícia), `ItensDoSetor`, `RegistrarTentativa`, `NaoVouConseguir`, `Manifestacao` (versões, aprovada, bloqueios, `podeProtocolar`), `ProtocolarManifestacao` (data), `RegistrarIndisponibilidade` (data da volta).
