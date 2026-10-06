@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AnalisarExigenciaJuiz } from './AnalisarExigenciaJuiz.tsx'
+import { CumprirExigenciaJuiz } from './CumprirExigenciaJuiz.tsx'
 
 const CASO = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
 const exigenciaDoJuiz = {
@@ -77,5 +78,45 @@ describe('Analisar a exigência do juiz (GGVP-79)', () => {
     expect((await screen.findByText(/Falta: Atendimento/)).textContent).toBe('Falta: Atendimento.')
     expect(screen.getByText(/Atendimento · CTPS/).textContent).toContain('com a Sênior')
     expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull()
+  })
+})
+
+describe('Cumprir a exigência do juiz (GGVP-83)', () => {
+  const ITEM_ID = '22222222-2222-4222-8222-222222222222'
+  const setor = {
+    casoId: CASO,
+    cliente: 'Otávio Lima (exemplo)',
+    setor: 'documentacao',
+    pedidoPor: 'Gabi (exemplo)',
+    prazoProcessual: '2026-10-27',
+    itens: [
+      { id: ITEM_ID, descricao: 'Trazer laudo', provaEsperada: 'Laudo com data', prazoInterno: '2026-10-20', situacao: 'pendente', prova: null, proximoLembrete: '2026-10-07', limite: 3, escalada: false, tentativas: [] },
+    ],
+  }
+
+  it('CA4, CA13 · mostra o pedido, quem pediu, o prazo interno e o processual, e a contagem de tentativas', async () => {
+    servidor(setor)
+    render(<CumprirExigenciaJuiz casoId={CASO} />)
+    expect((await screen.findByText(/Prazo interno/)).textContent).toContain('prazo do processo: 27/10/2026')
+    expect(screen.getByText(/pedido por Gabi/)).toBeTruthy()
+    expect(screen.getByText(/Tentativa 0 de 3/)).toBeTruthy()
+  })
+
+  it('CA5 · tentativa sem canal não envia; CA6 · "Consegui" sem evidência não envia', async () => {
+    const fetch = servidor(setor)
+    render(<CumprirExigenciaJuiz casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ainda não, registrar tentativa' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escolha o canal da tentativa')
+    fireEvent.click(screen.getByRole('button', { name: 'Consegui, subir no card' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Anexe a evidência do item (PDF ou imagem, até 25 MB).')
+    expect(fetch.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true)
+  })
+
+  it('CA6 · com a evidência, sobe o card', async () => {
+    servidor(setor)
+    render(<CumprirExigenciaJuiz casoId={CASO} />)
+    fireEvent.change(await screen.findByLabelText('Evidência'), { target: { files: [new File(['%PDF'], 'laudo.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Consegui, subir no card' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Prova enviada. O item está cumprido.')
   })
 })

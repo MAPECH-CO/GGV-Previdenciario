@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AnalisarExigenciaJuiz, ClassificarPublicacao, VincularPublicacao } from './justica.ts'
+import { AnalisarExigenciaJuiz, ClassificarPublicacao, NaoVouConseguir, RegistrarTentativa, VincularPublicacao } from './justica.ts'
 
 const erro = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues[0]?.message
 const CNJ_VALIDO = '0001234-96.2026.4.03.6301'
@@ -55,5 +55,14 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
       'Informe o prazo interno de cada item (dd/mm/aaaa)',
     )
     expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir', itens: [{ ...item, setor: 'financeiro' }] }))).toBe('Escolha o setor de cada item')
+  })
+})
+
+describe('GGVP-83 · laço do setor', () => {
+  it('tentativa pede canal e resultado; "não vou conseguir" pede o motivo', () => {
+    expect(RegistrarTentativa.parse({ canal: 'telefone', resultado: ' Não atendeu ' })).toEqual({ canal: 'telefone', resultado: 'Não atendeu' })
+    expect(erro(RegistrarTentativa.safeParse({ canal: 'telefone', resultado: '' }))).toBe('Escreva o resultado da tentativa')
+    expect(erro(RegistrarTentativa.safeParse({ resultado: 'x' }))).toBe('Escolha o canal da tentativa')
+    expect(erro(NaoVouConseguir.safeParse({ motivo: ' ' }))).toBe('Escreva por que não vai conseguir')
   })
 })

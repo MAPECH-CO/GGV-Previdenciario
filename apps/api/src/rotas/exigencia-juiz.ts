@@ -3,15 +3,18 @@
 // origem `juizo`, os itens, a cobrança e a perícia da exigência do INSS.
 import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AnalisarExigenciaJuiz, ExigenciaDoJuiz, ROTULO_SETOR, pode, type Erro } from '@ggv/contratos'
+import { AnalisarExigenciaJuiz, ExigenciaDoJuiz, ItensDoSetor, NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, pode, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, prazo, publicacao, tarefa } from '../banco/esquema.ts'
+import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, prazo, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { somarDias } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
+export const MSG_EVIDENCIA = 'Anexe a evidência do item (PDF ou imagem, até 25 MB).'
+export const MSG_ITEM_DE_OUTRO_SETOR = 'Este item é de outro setor.'
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -19,7 +22,7 @@ const hoje = (agora: Date) => new Date(agora.getTime() - 3 * 3_600_000).toISOStr
 const br = (iso: string) => iso.split('-').reverse().join('/')
 const SITUACAO = { aberta: 'em_cumprimento', cumprida: 'cumprida', vencida: 'vencida', dilacao_pedida: 'dilacao_pedida' } as const
 
-export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   /** A exigência do juiz do caso: a que espera a análise (tarefa D3a.02 aberta) ou a última distribuída. */
@@ -181,4 +184,149 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, agora
     return resposta.code(201).send({ ok: true })
   })
 
+  /** O setor do perfil ativo: o líder do Atendimento cumpre o que é do Atendimento. */
+  const setorDo = (perfil: string | null | undefined) => (perfil === 'atendimento_lider' ? 'atendimento' : (perfil ?? ''))
+
+  /** O item, da exigência do juiz aberta do caso, e a tarefa do setor que o cumpre. */
+  async function itemDoCaso(casoId: string, itemId: string) {
+    const [l] = await banco
+      .select({ item: exigenciaItem, exigencia, tarefa })
+      .from(exigenciaItem)
+      .innerJoin(exigencia, eq(exigenciaItem.exigenciaId, exigencia.id))
+      .leftJoin(tarefa, eq(exigenciaItem.tarefaId, tarefa.id))
+      .where(and(eq(exigenciaItem.id, itemId), eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo')))
+    return l ?? null
+  }
+
+  async function subirParaSenior(casoId: string, tarefaId: string, motivo: string) {
+    await banco.update(tarefa).set({ escaladaEm: agora(), escaladaPara: 'senior' }).where(eq(tarefa.id, tarefaId))
+    await banco.insert(tarefa).values({ casoId, passo: 'D3a.03s', titulo: `Exigência do juiz sem retorno: ${motivo}`, perfilDono: 'senior' })
+  }
+
+  // GGVP-83 CA4, CA13: os itens do setor, com o pedido, quem pediu, o prazo interno, o processual e as tentativas.
+  app.get<{ Params: { id: string } }>('/api/casos/:id/exigencia-juiz/setor', { preHandler: exigir(banco, 'exigencia_juiz.cumprir', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const setor = setorDo(pedido.perfilAtivo)
+    const [c] = await banco.select({ nome: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
+    const [x] = await banco
+      .select()
+      .from(exigencia)
+      .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo')))
+      .orderBy(desc(exigencia.criadoEm))
+      .limit(1)
+    if (!c || !x) return negar(resposta, 404, 'Não há exigência do juiz para o seu setor neste caso.')
+    const linhas = await banco
+      .select({ item: exigenciaItem, prova: documento.nomeOriginal, tarefa })
+      .from(exigenciaItem)
+      .leftJoin(documento, eq(exigenciaItem.provaDocumentoId, documento.id))
+      .leftJoin(tarefa, eq(exigenciaItem.tarefaId, tarefa.id))
+      .where(and(eq(exigenciaItem.exigenciaId, x.id), eq(exigenciaItem.perfilResponsavel, setor)))
+      .orderBy(asc(exigenciaItem.descricao))
+    const [quem] = x.analisadaPor ? await banco.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, x.analisadaPor)) : []
+    const itens = []
+    for (const l of linhas) {
+      const tentativas = l.tarefa
+        ? await banco
+            .select({ quando: tentativa.quando, canal: tentativa.canal, resultado: tentativa.resultado, quem: usuario.nome })
+            .from(tentativa)
+            .innerJoin(usuario, eq(tentativa.registradaPor, usuario.id))
+            .where(eq(tentativa.tarefaId, l.tarefa.id))
+            .orderBy(asc(tentativa.quando))
+        : []
+      itens.push({
+        id: l.item.id,
+        descricao: l.item.descricao,
+        provaEsperada: l.item.provaEsperada,
+        prazoInterno: l.item.prazo,
+        situacao: l.item.situacao,
+        prova: l.prova,
+        proximoLembrete: l.tarefa && !l.tarefa.concluidaEm ? l.tarefa.prazo : null,
+        limite: l.tarefa?.limiteTentativas ?? null,
+        escalada: Boolean(l.tarefa?.escaladaEm),
+        tentativas: tentativas.map((t) => ({ quando: t.quando.toISOString(), canal: t.canal ?? '', resultado: t.resultado, quem: t.quem })),
+      })
+    }
+    return ItensDoSetor.parse({ casoId, cliente: c.nome, setor, pedidoPor: quem?.nome ?? null, prazoProcessual: x.prazo, itens })
+  })
+
+  /** Confere que o item é do setor de quem pede e ainda está aberto. */
+  async function itemDoSetor(casoId: string, itemId: string, perfil: string | null | undefined, resposta: FastifyReply) {
+    const l = await itemDoCaso(casoId, itemId)
+    if (!l || !l.tarefa) return void negar(resposta, 404, 'Item não encontrado.')
+    if (l.item.perfilResponsavel !== setorDo(perfil)) return void negar(resposta, 403, MSG_ITEM_DE_OUTRO_SETOR)
+    if (l.item.situacao === 'cumprido') return void negar(resposta, 409, 'Este item já foi cumprido.')
+    return l as typeof l & { tarefa: NonNullable<typeof l.tarefa> }
+  }
+
+  // GGVP-83 CA5, CA7, CA8 (G15): a tentativa conta no limite; no limite, sobe para a Sênior e continua com o setor.
+  app.post<{ Params: { id: string; item: string } }>(
+    '/api/casos/:id/exigencia-juiz/itens/:item/tentativas',
+    { preHandler: exigir(banco, 'exigencia_juiz.cumprir', agora) },
+    async (pedido, resposta) => {
+      const entrada = RegistrarTentativa.safeParse(pedido.body)
+      if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
+      const l = await itemDoSetor(pedido.params.id, pedido.params.item, pedido.perfilAtivo, resposta)
+      if (!l) return resposta
+      const quem = pedido.usuario!.id
+      const { intervaloDias } = await limitesDeCobranca(banco)
+      const numero = l.tarefa.tentativas + 1
+      const lembrete = intervaloDias ? somarDias(hoje(agora()), intervaloDias) : l.tarefa.prazo
+      const escala = l.tarefa.limiteTentativas !== null && numero >= l.tarefa.limiteTentativas && !l.tarefa.escaladaEm
+      await banco.insert(tentativa).values({ tarefaId: l.tarefa.id, quando: agora(), canal: entrada.data.canal, resultado: entrada.data.resultado, registradaPor: quem })
+      await banco
+        .update(tarefa)
+        .set({ tentativas: numero, prazo: lembrete && l.item.prazo && lembrete > l.item.prazo ? l.item.prazo : lembrete })
+        .where(eq(tarefa.id, l.tarefa.id))
+      if (escala) await subirParaSenior(pedido.params.id, l.tarefa.id, `${l.item.descricao} (limite de tentativas)`)
+      await historico(quem, 'tentativa_exigencia_juiz', pedido, `caso:${pedido.params.id}`, { item: l.item.id, numero, escalada: escala })
+      return resposta.code(201).send({ ok: true, tentativas: numero, escalada: escala })
+    },
+  )
+
+  // GGVP-83 CA14: o setor que sabe que não vai conseguir sobe antes do limite, com o motivo.
+  app.post<{ Params: { id: string; item: string } }>(
+    '/api/casos/:id/exigencia-juiz/itens/:item/nao-vou-conseguir',
+    { preHandler: exigir(banco, 'exigencia_juiz.cumprir', agora) },
+    async (pedido, resposta) => {
+      const entrada = NaoVouConseguir.safeParse(pedido.body)
+      if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Escreva o motivo.')
+      const l = await itemDoSetor(pedido.params.id, pedido.params.item, pedido.perfilAtivo, resposta)
+      if (!l) return resposta
+      if (l.tarefa.escaladaEm) return negar(resposta, 409, 'Este item já está com a Sênior.')
+      await banco.update(exigenciaItem).set({ motivo: entrada.data.motivo }).where(eq(exigenciaItem.id, l.item.id))
+      await subirParaSenior(pedido.params.id, l.tarefa.id, `${l.item.descricao}: ${entrada.data.motivo}`)
+      await historico(pedido.usuario!.id, 'exigencia_juiz_nao_vai_conseguir', pedido, `caso:${pedido.params.id}`, { item: l.item.id })
+      return resposta.code(201).send({ ok: true })
+    },
+  )
+
+  // GGVP-83 CA1, CA6, CA11 (G21): só sai do laço cumprindo, com a evidência, que vira a prova do item.
+  app.post<{ Params: { id: string; item: string } }>(
+    '/api/casos/:id/exigencia-juiz/itens/:item/prova',
+    { preHandler: exigir(banco, 'exigencia_juiz.cumprir', agora) },
+    async (pedido, resposta) => {
+      const formulario = await lerFormulario(pedido)
+      const arquivo = formulario?.arquivo
+      if (!arquivo || !TIPOS_DE_ANEXO.includes(arquivo.mime)) return negar(resposta, 400, MSG_EVIDENCIA)
+      const casoId = pedido.params.id
+      const l = await itemDoSetor(casoId, pedido.params.item, pedido.perfilAtivo, resposta)
+      if (!l) return resposta
+      const quem = pedido.usuario!.id
+      const dados = await guardarArquivo(armazenamento, casoId, arquivo, 'prova-exigencia-juiz')
+      await banco.transaction(async (tx) => {
+        const [doc] = await tx.insert(documento).values({ casoId, tipo: 'prova_exigencia_juiz', origem: 'portal', recebidoPor: quem, ...dados }).returning()
+        await tx
+          .update(exigenciaItem)
+          .set({ situacao: 'cumprido', provaDocumentoId: doc.id, cumpridoEm: agora(), cumpridoPor: quem })
+          .where(eq(exigenciaItem.id, l.item.id))
+        // CA11: concluída, a tarefa não tem mais lembrete.
+        await tx
+          .update(tarefa)
+          .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem, prazo: null, evidenciaDocumentoId: doc.id })
+          .where(eq(tarefa.id, l.tarefa.id))
+      })
+      await historico(quem, 'exigencia_juiz_item_cumprido', pedido, `caso:${casoId}`, { item: l.item.id })
+      return resposta.code(201).send({ ok: true })
+    },
+  )
 }

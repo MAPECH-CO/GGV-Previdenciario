@@ -196,3 +196,38 @@ export const ExigenciaDoJuiz = z.object({
   podeDistribuir: z.boolean(),
 })
 export type ExigenciaDoJuiz = z.infer<typeof ExigenciaDoJuiz>
+
+/** GET /api/casos/:id/exigencia-juiz/setor (GGVP-83 CA4, CA13): os itens do setor do perfil ativo. */
+export const ItensDoSetor = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  setor: z.enum(SETORES_DA_EXIGENCIA),
+  pedidoPor: z.string().nullable(),
+  prazoProcessual: z.string(),
+  itens: z.array(
+    z.object({
+      id: z.uuid(),
+      descricao: z.string(),
+      provaEsperada: z.string().nullable(),
+      prazoInterno: z.string().nullable(),
+      situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
+      prova: z.string().nullable(),
+      proximoLembrete: z.string().nullable(),
+      limite: z.number().nullable(),
+      escalada: z.boolean(),
+      tentativas: z.array(z.object({ quando: z.string(), canal: z.string(), resultado: z.string(), quem: z.string() })),
+    }),
+  ),
+})
+export type ItensDoSetor = z.infer<typeof ItensDoSetor>
+
+/** POST .../itens/:item/tentativas (GGVP-83 CA5, G15): data (a do registro), canal e resultado. */
+export const RegistrarTentativa = z.object({
+  canal: z.enum(['whatsapp', 'telefone', 'email', 'sms', 'presencial'], { error: 'Escolha o canal da tentativa' }),
+  resultado: z.string({ error: 'Escreva o resultado da tentativa' }).trim().min(1, 'Escreva o resultado da tentativa'),
+})
+export type RegistrarTentativa = z.infer<typeof RegistrarTentativa>
+
+/** POST .../itens/:item/nao-vou-conseguir (GGVP-83 CA14): sobe para a Sênior antes do limite, com o motivo. */
+export const NaoVouConseguir = z.object({ motivo: z.string({ error: 'Escreva por que não vai conseguir' }).trim().min(1, 'Escreva por que não vai conseguir') })
+export type NaoVouConseguir = z.infer<typeof NaoVouConseguir>

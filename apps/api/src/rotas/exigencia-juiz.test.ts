@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, identificadorCaso, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
@@ -105,5 +105,77 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
     await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia' })
     expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia' })).json().erro).toBe(MSG_NADA_A_ANALISAR)
     expect(await banco.select().from(exigenciaItem)).toEqual([])
+  })
+})
+
+describe('GGVP-83 · laço dos setores', () => {
+  const PDF = { nome: 'prova.pdf', mime: 'application/pdf', conteudo: '%PDF-1.4' }
+  function formulario(arquivo: typeof PDF | null) {
+    const f = '----ggv'
+    const partes = arquivo ? [`--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="${arquivo.nome}"\r\nContent-Type: ${arquivo.mime}\r\n\r\n${arquivo.conteudo}\r\n`] : []
+    return { payload: partes.join('') + `--${f}--\r\n`, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }
+  }
+  const distribuir = () =>
+    chamar('gabi', 'POST', '/exigencia-juiz', {
+      decisao: 'cumprir',
+      itens: [ITEM, { setor: 'atendimento', descricao: 'Pedir a carteira de trabalho', prazoInterno: '15/10/2026' }],
+    })
+  const itemDo = async (setor: string) => (await banco.select().from(exigenciaItem).where(eq(exigenciaItem.perfilResponsavel, setor)))[0]
+  const provar = async (apelido: string, itemId: string, arquivo: typeof PDF | null = PDF) =>
+    app.inject({ method: 'POST', url: `/api/casos/${casoId}/exigencia-juiz/itens/${itemId}/prova`, cookies: await cookieDe(apelido), ...formulario(arquivo) })
+
+  it('CA4, CA13 · o setor vê só os seus itens, com o pedido, quem pediu, o prazo interno e o processual', async () => {
+    await distribuir()
+    const r = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json()
+    expect([r.setor, r.pedidoPor, r.prazoProcessual, r.itens.map((i: { descricao: string }) => i.descricao)]).toEqual([
+      'documentacao', 'gabi', '2026-10-27', ['Trazer laudo médico atualizado'],
+    ])
+    expect([r.itens[0].prazoInterno, r.itens[0].proximoLembrete, r.itens[0].provaEsperada]).toEqual(['2026-10-20', '2026-10-07', 'Laudo com CID e data'])
+    expect((await chamar('gabi', 'GET', '/exigencia-juiz/setor')).statusCode).toBe(403)
+  })
+
+  it('CA5, CA8 · cada tentativa conta; no limite, sobe para a Sênior e a tarefa continua com o setor', async () => {
+    await distribuir()
+    const item = await itemDo('documentacao')
+    const tentar = async () => chamar('dora', 'POST', `/exigencia-juiz/itens/${item.id}/tentativas`, { canal: 'telefone', resultado: 'Cliente não atendeu' })
+    expect((await tentar()).json()).toEqual({ ok: true, tentativas: 1, escalada: false })
+    expect((await tentar()).json()).toEqual({ ok: true, tentativas: 2, escalada: true })
+    expect(await abertas()).toEqual([
+      'atendimento · Cumprir exigência do juiz · 2026-10-07',
+      'documentacao · Cumprir exigência do juiz · 2026-10-07',
+      'senior · Exigência do juiz sem retorno: Trazer laudo médico atualizado (limite de tentativas) · null',
+    ])
+    const r = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json()
+    expect([r.itens[0].tentativas.length, r.itens[0].tentativas[0].canal, r.itens[0].escalada, r.itens[0].limite]).toEqual([2, 'telefone', true, 2])
+  })
+
+  it('CA14 · "não vou conseguir" sobe antes do limite, com o motivo', async () => {
+    await distribuir()
+    const item = await itemDo('atendimento')
+    expect((await chamar('ana', 'POST', `/exigencia-juiz/itens/${item.id}/nao-vou-conseguir`, { motivo: '' })).json().erro).toBe('Escreva por que não vai conseguir')
+    expect((await chamar('ana', 'POST', `/exigencia-juiz/itens/${item.id}/nao-vou-conseguir`, { motivo: 'O cliente diz que a carteira não existe' })).statusCode).toBe(201)
+    expect(await abertas()).toContain('senior · Exigência do juiz sem retorno: Pedir a carteira de trabalho: O cliente diz que a carteira não existe · null')
+  })
+
+  it('CA1, CA6, CA11 · só sai cumprindo, com a evidência; concluída, sem lembrete; item de outro setor é recusado', async () => {
+    await distribuir()
+    const item = await itemDo('documentacao')
+    expect((await provar('ana', item.id)).json().erro).toBe('Este item é de outro setor.')
+    expect((await provar('dora', item.id, null)).json().erro).toBe('Anexe a evidência do item (PDF ou imagem, até 25 MB).')
+    expect((await provar('dora', item.id)).statusCode).toBe(201)
+    const [t] = await banco.select().from(tarefa).where(eq(tarefa.id, item.tarefaId!))
+    expect([t.situacao, t.prazo]).toEqual(['concluida', null])
+    expect((await provar('dora', item.id)).statusCode).toBe(409)
+  })
+
+  it('CA2, CA3, CA10 · a advogada e a Sênior veem o status de cada setor e quem falta; o resultado da perícia volta', async () => {
+    await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [ITEM], tiposPericia: ['social'] })
+    const item = await itemDo('documentacao')
+    await provar('dora', item.id)
+    let r = (await chamar('helena', 'GET', '/exigencia-juiz')).json()
+    expect([r.faltam, r.itens[0].situacao, r.itens[0].prova]).toEqual([['Perícia'], 'cumprido', 'prova.pdf'])
+    await banco.update(pericia).set({ resultado: 'favoravel' })
+    r = (await chamar('gabi', 'GET', '/exigencia-juiz')).json()
+    expect([r.faltam, r.pericias]).toEqual([[], [{ tipo: 'social', resultado: 'favoravel' }]])
   })
 })
