@@ -31,6 +31,7 @@ import type { Cofre } from '../cofre.ts'
 import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
+import { itensDaFila } from '../vigilia/fila.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
@@ -119,7 +120,30 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         urgente: true,
       })
     const alertas = await alertasDeExigencia(banco, hoje(agora()))
-    return [...alertas.filter((a) => a.diasUteis <= 2).map(linha), ...visiveis, ...alertas.filter((a) => a.diasUteis > 2).map(linha)]
+    // GGVP-26 CA3, CA12: cada item da fila de revisão é "Casar publicação", com o contexto no lugar do cliente;
+    // com o prazo mínimo a 2 dias úteis ou menos, vai para o topo.
+    const fila = (await itensDaFila(banco, agora())).map((f) => ({
+      urgente: f.diasUteisAtePrazo <= 2,
+      linha: TarefaDaCentral.parse({
+        id: f.id,
+        casoId: null,
+        passo: 'D4.01',
+        cliente: null,
+        contexto: 'Fila de revisão',
+        titulo: 'Casar publicação',
+        detalhe: `${f.motivo} · ${f.fonte}${f.idadeEmDias >= 1 ? ` · há ${f.idadeEmDias} dia${f.idadeEmDias > 1 ? 's' : ''} na fila` : ''}`,
+        tela: '/vigilia',
+        prazo: f.prazoMinimo.fim,
+        urgente: f.diasUteisAtePrazo <= 2 || f.idadeEmDias >= 1,
+      }),
+    }))
+    return [
+      ...alertas.filter((a) => a.diasUteis <= 2).map(linha),
+      ...fila.filter((f) => f.urgente).map((f) => f.linha),
+      ...visiveis,
+      ...alertas.filter((a) => a.diasUteis > 2).map(linha),
+      ...fila.filter((f) => !f.urgente).map((f) => f.linha),
+    ]
   })
 
   const comCaso = { preHandler: exigir(banco, 'protocolo_inss.registrar', agora) }

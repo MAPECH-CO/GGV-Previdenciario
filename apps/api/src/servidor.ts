@@ -11,6 +11,7 @@ import { registrarRotasInss } from './rotas/inss.ts'
 import { registrarRotasVigilia } from './rotas/vigilia.ts'
 import { registrarRotasExigencia } from './rotas/exigencia.ts'
 import { registrarRotasPrestacao } from './rotas/prestacao.ts'
+import { registrarRotasPublicacoes } from './rotas/publicacoes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
 type Opcoes = {
@@ -55,6 +56,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
+    registrarRotasPublicacoes(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

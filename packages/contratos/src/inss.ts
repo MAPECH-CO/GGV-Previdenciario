@@ -5,9 +5,12 @@ import { z } from 'zod'
 /** Linha da Central do perfil (GET /api/tarefas). Título e detalhe nunca levam CID nem diagnóstico. */
 export const TarefaDaCentral = z.object({
   id: z.uuid(),
-  casoId: z.uuid(),
+  /** Nulo quando a tarefa é de um contexto, não de um caso (fila de revisão, vigília). */
+  casoId: z.uuid().nullable(),
   passo: z.string().nullable(),
-  cliente: z.object({ id: z.uuid(), nome: z.string() }),
+  cliente: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
+  /** O que aparece no lugar do cliente: "Fila de revisão", "Vigília das publicações" (GGVP-26, GGVP-30 CA11). */
+  contexto: z.string().nullable().default(null),
   titulo: z.string(),
   detalhe: z.string(),
   /** Caminho da tela do passo, quando ela existe. */
