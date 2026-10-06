@@ -8,7 +8,7 @@ export function diferenca(antes: string, depois: string): Trecho[] {
   const a = antes.split('\n')
   const b = depois.split('\n')
   // t[i][j]: tamanho da maior subsequência comum entre a[i..] e b[j..].
-  const t = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0))
+  const t = Array.from({ length: a.length + 1 }, () => Array.from({ length: b.length + 1 }, () => 0))
   for (let i = a.length - 1; i >= 0; i--)
     for (let j = b.length - 1; j >= 0; j--) t[i][j] = a[i] === b[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1])
   const trechos: Trecho[] = []
