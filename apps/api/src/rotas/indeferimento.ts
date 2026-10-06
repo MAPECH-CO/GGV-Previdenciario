@@ -7,7 +7,6 @@ import { Despachar, Despacho, ROTULO_SETOR, pode, type Erro } from '@ggv/contrat
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, limitesDeCobranca } from '../fluxo/exigencia.ts'
-import { somarDias } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_INDEFERIMENTO = 'Este caso não tem indeferimento registrado.'
@@ -114,7 +113,7 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
     const quem = pedido.usuario!.id
     const l = await indeferimentoDo(casoId)
     const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }
-    const { limite, intervaloDias } = await limitesDeCobranca(banco)
+    const { limite } = await limitesDeCobranca(banco)
     const itens = d.decisao === 'acionar' ? d.itens : []
     const tipos = d.decisao === 'acionar' ? d.tiposPericia : []
     // CA9: a autora, a data e os setores acionados ficam na decisão (G4: a sugestão da IA, quando houver, vai em `sugestaoIa`).
@@ -146,11 +145,10 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
           })
           .returning()
         for (const i of itens) {
-          const lembrete = intervaloDias ? somarDias(hoje(agora()), intervaloDias) : null
-          const prazo = lembrete && i.prazo ? (lembrete < i.prazo ? lembrete : i.prazo) : (lembrete ?? i.prazo)
+          // CA6: o prazo é só o que a Sênior deu ("Essa tarefa tem prazo?" = Não, sem prazo); o limite de tentativas é o G15.
           const [doSetor] = await tx
             .insert(tarefa)
-            .values({ casoId, passo: 'D3.04', titulo: 'Cumprir pendência', perfilDono: i.setor, prazo, limiteTentativas: limite, criadoEm: agora() })
+            .values({ casoId, passo: 'D3.04', titulo: 'Cumprir pendência', perfilDono: i.setor, prazo: i.prazo, limiteTentativas: limite, criadoEm: agora() })
             .returning()
           await tx.insert(exigenciaItem).values({ exigenciaId: x.id, descricao: i.descricao, perfilResponsavel: i.setor, prazo: i.prazo, tarefaId: doSetor.id })
         }
