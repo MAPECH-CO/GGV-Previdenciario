@@ -17,6 +17,8 @@ import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
 import { tarefasDeCompletarTelefone } from '../dados/documentos.ts'
 import { tarefasDoSetor } from '../dados/servidor.ts'
 import styles from './CentralAtendimento.module.css'
+import { tarefasDeFechamento } from '../dados/fechamento.ts'
+import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -36,6 +38,8 @@ export function CentralAtendimento() {
     ...tarefasDeConfirmarAgendamento(),
     ...tarefasDeCompletarTelefone(),
     ...tarefasAtendimento,
+    ...tarefasDeFechamento(),
+    ...tarefasDeNovaDemanda(),
   ])
 
   return (

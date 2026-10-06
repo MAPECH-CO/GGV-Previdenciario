@@ -181,6 +181,10 @@ export type Ficha = {
   beneficioDefinido?: BeneficioDefinido
   /** Os cálculos de tempo e pontos sobre o CNIS, do mais antigo ao mais novo: refazer não apaga o anterior (GGVP-57). */
   calculos?: Calculo[]
+  /** "Fechou com o escritório?" depois da entrevista: o motivo, o recontato ou o arquivo (GGVP-60). */
+  fechamento?: Fechamento
+  /** As novas demandas de quem já é cliente (GGVP-124). */
+  demandas?: Demanda[]
 }
 
 /** Uma pessoa na lista da busca do balcão. */
@@ -775,3 +779,71 @@ export type Calculo = {
   cnisOrigem: Cnis['origem']
   cnisExtraidoEm: string
 }
+// GGVP-60 em diante: o fechamento depois da entrevista. Espelho do Zod da spec ggvp-60.
+
+/** Quem registra: a recusa do escritório só pelo Atendimento sênior ou pela advogada do atendimento (CA11). */
+export type PapelNoFechamento = 'atendimento' | 'atendimento-senior' | 'advogada-atendimento'
+
+/** Ficou de pensar (15 dias) ou pediu para esperar (30 dias) (CA12). */
+export type EsperaDoRecontato = 'pensar' | 'esperar'
+
+export type Fechamento = {
+  /** fechou; recontatar numa data; arquivado (sai das filas ativas); recalcular (o recontato voltou ao cálculo, D1.13). */
+  situacao: 'fechou' | 'recontatar' | 'arquivado' | 'recalcular'
+  /** Id do catálogo MOTIVOS_DE_NAO_FECHAR (G16). */
+  motivo?: string
+  detalhe?: string
+  espera?: EsperaDoRecontato
+  /** aaaa-mm-dd */
+  recontatarEm?: string
+  /** O compromisso "Recontatar lead" na agenda. */
+  recontatoId?: string
+  papel: PapelNoFechamento
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+}
+
+/** O que "Registrar" manda na tela do fechamento. */
+export type EnvioDoFechamento =
+  | { fechou: true }
+  | {
+      fechou: false
+      motivo: string
+      detalhe?: string
+      papel: PapelNoFechamento
+      /** Nulo: "Vale recontatar? Não", o lead é arquivado (CA7). */
+      recontatar: { data: string; espera?: EsperaDoRecontato } | null
+    }
+
+/** O resultado do recontato (CA10). */
+export type ResultadoDoRecontato =
+  | { resultado: 'calculo' }
+  | { resultado: 'nova-data'; data: string; espera?: EsperaDoRecontato }
+  | { resultado: 'arquivar'; motivo: string; detalhe?: string; papel: PapelNoFechamento }
+
+// GGVP-124 em diante: a nova demanda de quem já é cliente. Espelho do Zod da spec ggvp-124.
+
+/** Outro pedido; tentar de novo depois de perder; recurso ou defesa, que segue no mesmo processo e não abre demanda (CA8). */
+export type TipoDeDemanda = 'outro-pedido' | 'tentar-de-novo' | 'recurso-ou-defesa'
+
+export type Demanda = {
+  id: string
+  /** O que a pessoa quer agora. */
+  pretende: string
+  /** Id do catálogo de benefícios, com "Não sei ainda". */
+  beneficio: string
+  tipo: Exclude<TipoDeDemanda, 'recurso-ou-defesa'>
+  /** O Atendimento, no balcão ou na ficha; ou a advogada, que decidiu tentar de novo (CA9). */
+  abertaPor: 'atendimento' | 'advogada'
+  /** aaaa-mm-dd */
+  data: string
+  quem: string
+  /** aberta até o "Fechou com o escritório?" depois da entrevista (D1.14). */
+  situacao: 'aberta' | 'fechou' | 'nao-fechou'
+  /** Não fechou: o motivo e o detalhe (G16). */
+  motivo?: string
+  detalhe?: string
+}
+
+export type EnvioDaDemanda = { pretende: string; beneficio: string; tipo: TipoDeDemanda; abertaPor: Demanda['abertaPor'] }
