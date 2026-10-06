@@ -124,4 +124,4 @@
 - [x] 11.5 Ligações: "Transcrições (n)" da ficha do cliente abre a janela; a entrevista encerrada e o cadastro abrem a janela do Jurídico; teste em `FichaCliente.test.tsx` e `EntrevistaAoVivo.test.tsx` (CA1, CA4). Verifica com `npx vitest run src/paginas/FichaCliente.test.tsx src/paginas/EntrevistaAoVivo.test.tsx`.
 - [x] 11.6 Playwright `e2e/transcricao.e2e.ts`: da entrevista encerrada à transcrição pronta, buscar, marcar prova, conferir e ver na ficha com o valor antigo no histórico, documentos ao checklist (CA1, CA2, CA6, CA7, CA8), falha e tentar de novo (CA3), a lista do Antônio pelo Atendimento (CA4), tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 11.7 Ligar no servidor: trocar o corpo de `src/dados/transcricao.ts` por `fetch` e a transcrição pela OpenAI de verdade. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
-- [ ] 11.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 11.8 No fim do grupo: rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
