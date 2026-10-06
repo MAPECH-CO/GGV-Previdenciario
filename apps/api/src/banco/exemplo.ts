@@ -115,8 +115,8 @@ export async function semearExemplos(banco: Banco) {
 
   // Exigência do INSS (GGVP-39): limites de cobrança do escritório (Q1, exemplo) e um caso esperando a advogada decidir.
   await banco.insert(configuracao).values([
-    { chave: 'cobranca.limite', valor: 3 },
-    { chave: 'cobranca.intervalo_dias', valor: 2 },
+    { chave: 'cobranca.limite', valor: 2 },
+    { chave: 'cobranca.intervalo_dias', valor: 3 },
   ])
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
