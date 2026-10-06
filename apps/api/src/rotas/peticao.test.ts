@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
@@ -7,10 +7,11 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, documento, etapa, eventoAuditoria, exigenciaItem, pessoa, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_CITADO_DE_OUTRO_CASO, MSG_NADA_A_CONFERIR, MSG_NADA_A_PEDIR, MSG_SO_A_ULTIMA } from './peticao.ts'
+import { MSG_COMPROVANTE } from './manifestacao.ts'
+import { MSG_CITADO_DE_OUTRO_CASO, MSG_CITADO_NAO_FALTA, MSG_CNJ_DE_OUTRO_CASO, MSG_DOCUMENTO_QUE_FALTA, MSG_NADA_A_CONFERIR, MSG_NADA_A_PEDIR, MSG_PROTOCOLADA, MSG_SO_A_ULTIMA } from './peticao.ts'
 
 // A petição inicial (GGVP-63, 67, 71), do pedido ao protocolo, pelas rotas de verdade desde o registro do indeferido.
 const SENHA = 'senha-do-portal-1'
@@ -19,6 +20,7 @@ let banco: Banco
 let fechar: () => Promise<void>
 let app: ReturnType<typeof criarServidor>
 let arquivos: Armazenamento
+let pastaArquivos: string
 let casoId: string
 
 async function cookieDe(apelido: string) {
@@ -65,7 +67,8 @@ const laudoDaDocumentacao = async () => {
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  arquivos = armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-')))
+  pastaArquivos = mkdtempSync(join(tmpdir(), 'arq-'))
+  arquivos = armazenamentoLocal(pastaArquivos)
   app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos })
   for (const [apelido, perfil] of [['gabi', 'advogada'], ['helena', 'senior'], ['dora', 'documentacao'], ['ana', 'atendimento']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -101,8 +104,8 @@ describe('GGVP-63 · pedir a petição', () => {
       instrucoes: 'Pedir a concessão desde a DER',
       opcoes: { tutelaUrgencia: true, precedentes: false, anexarCitados: true },
       citados: [
-        { documentoId: laudo.id, nome: 'laudo.pdf' },
-        { documentoId: null, nome: 'CNIS atualizado' },
+        { documentoId: laudo.id, nome: 'laudo.pdf', pedidoADocumentacao: false },
+        { documentoId: null, nome: 'CNIS atualizado', pedidoADocumentacao: false },
       ],
     })
     expect([x.versoes.map((v: { numero: number; por: string }) => [v.numero, v.por]), x.atual, x.podePedir]).toEqual([
@@ -211,6 +214,122 @@ describe('GGVP-67 · conferir a petição', () => {
     expect((await aprovar(1, MARCACOES, 'helena')).statusCode).toBe(403)
     const negados = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acesso_negado'))
     expect(negados.map((e) => (e.detalhe as { acao: string }).acao)).toContain('peticao.aprovar')
+  })
+})
+
+describe('GGVP-71 · pacote e travas', () => {
+  const TEXTO = 'Vicente Prado, CPF 613.748.259-64, vem requerer o benefício.'
+  const MARCACOES = { liNaIntegra: true, conferem: true, nadaContradiz: true }
+  type Trava = { chave: string; ok: boolean; evidencia: string }
+  const travas = async () => Object.fromEntries(((await ler()).travas as Trava[]).map((t) => [t.chave, [t.ok, t.evidencia]]))
+
+  beforeEach(async () => {
+    await banco.update(pessoa).set({ cpf: '61374825964' }).where(eq(pessoa.nome, 'Vicente Prado'))
+    await banco.insert(configuracao).values({ chave: 'tribunais', valor: [{ nome: 'Justiça Federal', site: 'https://exemplo.jus.br', tamanhoMaximoMb: 10 }] })
+    const laudo = await laudoDaDocumentacao()
+    await chamar('gabi', 'POST', '/peticao/pedido', { texto: TEXTO, citados: [{ documentoId: laudo.id }, { nome: 'CNIS atualizado' }] })
+    expect((await chamar('gabi', 'POST', '/peticao/versoes/1/aprovacao', MARCACOES)).statusCode).toBe(201)
+  })
+
+  it('CA1, CA2, CA6, CA7, CA11 · o pacote para baixar e as três travas, cada uma com a evidência; o que falta trava', async () => {
+    const x = await ler()
+    expect(x.pacote.map((a: { papel: string; nome: string }) => [a.papel, a.nome])).toEqual([
+      ['peticao', 'peticao-inicial-v1.pdf'],
+      ['carta', 'carta.pdf'],
+      ['citado', 'laudo.pdf'],
+    ])
+    expect([x.tribunais, x.podeProtocolar]).toEqual([[{ nome: 'Justiça Federal', site: 'https://exemplo.jus.br', tamanhoMaximoMb: 10 }], true])
+    expect(await travas()).toEqual({
+      tema350: [true, 'No pacote: carta.pdf'],
+      cpf: [true, 'Na petição: 613.748.259-64 · no cadastro: 613.748.259-64'],
+      pacote: [false, 'Falta: CNIS atualizado'],
+    })
+    expect((await ler('helena')).podeProtocolar).toBe(false)
+  })
+
+  it('CA13 · a advogada sobe o documento que falta, e o pacote é gerado de novo com ele', async () => {
+    expect((await enviar('gabi', '/peticao/citados/0/documento', {}, PDF('outro.pdf'))).json().erro).toBe(MSG_CITADO_NAO_FALTA)
+    expect((await enviar('gabi', '/peticao/citados/1/documento', {}, null)).json().erro).toBe(MSG_DOCUMENTO_QUE_FALTA)
+    expect((await enviar('gabi', '/peticao/citados/1/documento', {}, PDF('cnis.pdf'))).statusCode).toBe(201)
+    const x = await ler()
+    expect(x.pedido.citados[1]).toMatchObject({ nome: 'cnis.pdf', pedidoADocumentacao: false })
+    expect(x.pacote.map((a: { nome: string }) => a.nome)).toEqual(['peticao-inicial-v1.pdf', 'carta.pdf', 'laudo.pdf', 'cnis.pdf'])
+    expect((await travas()).pacote).toEqual([true, '4 arquivos em PDF: peticao-inicial-v1.pdf, carta.pdf, laudo.pdf, cnis.pdf'])
+  })
+
+  it('CA13 · ou pede à Documentação: nasce "Cumprir pendência"; entregue, a advogada escolhe o documento e o pacote fica completo', async () => {
+    expect((await chamar('gabi', 'POST', '/peticao/citados/1/pedido')).statusCode).toBe(201)
+    expect((await chamar('gabi', 'POST', '/peticao/citados/1/pedido')).json().erro).toBe('Este documento já foi pedido à Documentação.')
+    expect(await abertas()).toEqual(['advogada · Protocolar na Justiça', 'documentacao · Cumprir pendência'])
+    expect((await ler()).pedido.citados[1].pedidoADocumentacao).toBe(true)
+    const [item] = await banco.select().from(exigenciaItem).where(eq(exigenciaItem.descricao, 'Documento para a petição: CNIS atualizado'))
+    expect((await enviar('dora', `/pendencias/itens/${item.id}/prova`, {}, PDF('cnis-entregue.pdf'))).statusCode).toBe(201)
+    const [entregue] = await banco.select().from(documento).where(eq(documento.nomeOriginal, 'cnis-entregue.pdf'))
+    expect((await enviar('gabi', '/peticao/citados/1/documento', { documentoId: entregue.id }, null)).statusCode).toBe(201)
+    expect((await travas()).pacote[0]).toBe(true)
+  })
+})
+
+describe('GGVP-71 · protocolar no tribunal', () => {
+  const CNJ = '0001234-96.2026.4.03.6301'
+  const CAMPOS = { tribunal: 'Justiça Federal', numeroCnj: CNJ, dataProtocolo: '06/10/2026', conferiTema350: 'true', conferiCpf: 'true', conferiPacote: 'true' }
+  const protocolar = (campos: Record<string, string> = CAMPOS, arquivo: Arquivo | null = PDF('comprovante.pdf'), apelido = 'gabi') =>
+    enviar(apelido, '/peticao/protocolo', campos, arquivo)
+
+  beforeEach(async () => {
+    await banco.update(pessoa).set({ cpf: '61374825964' }).where(eq(pessoa.nome, 'Vicente Prado'))
+    await banco.insert(configuracao).values({ chave: 'tribunais', valor: [{ nome: 'Justiça Federal', site: 'https://exemplo.jus.br', tamanhoMaximoMb: 10 }] })
+    const laudo = await laudoDaDocumentacao()
+    await chamar('gabi', 'POST', '/peticao/pedido', { texto: 'Vicente Prado, CPF 613.748.259-64, vem requerer.', citados: [{ documentoId: laudo.id }] })
+    await chamar('gabi', 'POST', '/peticao/versoes/1/aprovacao', { liNaIntegra: true, conferem: true, nadaContradiz: true })
+  })
+
+  it('CA5, CA6 · comprovante, número do processo válido, data e a confirmação de cada trava são obrigatórios; só a advogada protocola', async () => {
+    expect((await protocolar(CAMPOS, null)).json().erro).toBe(MSG_COMPROVANTE)
+    expect((await protocolar({ ...CAMPOS, numeroCnj: '123' })).json().erro).toBe('Número do processo inválido. Confira os 20 dígitos do CNJ.')
+    expect((await protocolar({ ...CAMPOS, conferiCpf: 'false' })).json().erro).toBe('Confirme a trava do CPF pela evidência')
+    expect((await protocolar({ ...CAMPOS, tribunal: 'Outro' })).json().erro).toBe('Escolha um tribunal da configuração do escritório.')
+    expect((await protocolar(CAMPOS, PDF('comprovante.pdf'), 'helena')).statusCode).toBe(403)
+    expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
+  })
+
+  it('CA3 · com uma trava falhando, o protocolo fica bloqueado e diz qual', async () => {
+    await banco.update(pessoa).set({ cpf: '52916384782' }).where(eq(pessoa.nome, 'Vicente Prado'))
+    expect((await protocolar()).json().erro).toBe('Trava falhando: CPF conferido (Na petição: 613.748.259-64 · no cadastro: 529.163.847-82).')
+  })
+
+  it('CA4, CA8, CA10 · registra o protocolo da versão aprovada; o CNJ entra no caso para a vigília, as travas e quem protocolou ficam', async () => {
+    expect((await protocolar()).statusCode).toBe(201)
+    const x = await ler()
+    expect([x.protocolo, x.podeProtocolar]).toEqual([
+      { em: '2026-10-06T15:00:00.000Z', numero: '00012349620264036301', tribunal: 'Justiça Federal', por: 'gabi', versao: 1 },
+      false,
+    ])
+    const [cnj] = await banco.select().from(identificadorCaso).where(and(eq(identificadorCaso.casoId, casoId), eq(identificadorCaso.tipo, 'cnj')))
+    expect(cnj.valor).toBe('00012349620264036301')
+    const travas = await banco.select().from(decisao).where(eq(decisao.tipo, 'trava_g7'))
+    expect(travas.map((t) => t.resultado).sort()).toEqual(['cpf', 'pacote', 'tema350'])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_protocolada'))
+    expect(ev.detalhe).toMatchObject({ versao: 1, hash: x.versoes[0].hash, numero: '00012349620264036301' })
+    expect(await abertas()).toEqual([])
+    expect((await protocolar()).json().erro).toBe(MSG_PROTOCOLADA)
+    expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: 'x', oQueMudou: 'y' })).json().erro).toBe(MSG_PROTOCOLADA)
+  })
+
+  it('CA9 · um arquivo do pacote trocado depois da aprovação bloqueia o protocolo e a divergência fica registrada', async () => {
+    const [carta] = await banco.select().from(documento).where(eq(documento.nomeOriginal, 'carta.pdf'))
+    writeFileSync(join(pastaArquivos, carta.chaveArmazenamento), '%PDF-1.4 outra carta')
+    expect((await protocolar()).json().erro).toBe('O pacote mudou depois da aprovação: carta.pdf. O protocolo fica bloqueado; gere o pacote de novo e confira.')
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pacote_divergente'))
+    expect(ev.detalhe).toMatchObject({ arquivos: ['carta.pdf'], versao: 1 })
+    expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
+  })
+
+  it('o mesmo número de processo não vai para dois casos', async () => {
+    const [p] = await banco.insert(pessoa).values({ nome: 'Outra' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id }).returning()
+    await banco.insert(identificadorCaso).values({ casoId: c.id, tipo: 'cnj', valor: '00012349620264036301' })
+    expect((await protocolar()).json().erro).toBe(MSG_CNJ_DE_OUTRO_CASO)
   })
 })
 

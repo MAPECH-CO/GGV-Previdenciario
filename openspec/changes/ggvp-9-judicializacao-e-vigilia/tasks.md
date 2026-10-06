@@ -91,9 +91,9 @@
 
 ## GGVP-71 · Pacote, travas e protocolo no tribunal
 
-- [ ] 14.1 Travas em `apps/api/src/fluxo/travas.ts` (Tema 350, CPF, pacote completo com o formato e o tamanho do tribunal), com teste; contrato `ProtocolarPeticao`; semente com `tribunais`, `peticao.assinatura` e CPF de exemplo para os clientes que esperam o INSS; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
-- [ ] 14.2 CA2, CA6, CA7, CA13 · travas com a evidência no `GET` da petição; documento que falta: subir ou pedir à Documentação, e o pacote gerado de novo; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 14.3 CA3, CA4, CA5, CA8, CA9, CA10 · `POST .../peticao/protocolo` (tribunal, CNJ, data, comprovante e travas confirmadas; confere os hashes; grava o protocolo, o CNJ do caso e as travas; o processo entra na vigília); teste, inclusive com arquivo trocado; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 14.4 CA11, CA12 · Tela "Petição inicial", parte do pacote e do protocolo (arquivos para baixar, travas com a evidência, tribunal e o botão do site numa página nova, CNJ, data, comprovante) e `D3.07` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 14.5 Playwright: a advogada pede a petição com o texto, edita uma vez, compara, aprova, vê as travas, protocola com CNJ, data e comprovante, e o processo entra na vigília; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 14.1 Travas em `apps/api/src/fluxo/travas.ts` (Tema 350, CPF, pacote completo com o formato e o tamanho do tribunal), com teste; contrato `ProtocolarPeticao`; semente com `tribunais`, `peticao.assinatura` e CPF de exemplo para os clientes que esperam o INSS; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
+- [x] 14.2 CA2, CA6, CA7, CA13 · travas com a evidência no `GET` da petição; documento que falta: subir ou pedir à Documentação, e o pacote gerado de novo; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 14.3 CA3, CA4, CA5, CA8, CA9, CA10 · `POST .../peticao/protocolo` (tribunal, CNJ, data, comprovante e travas confirmadas; confere os hashes; grava o protocolo, o CNJ do caso e as travas; o processo entra na vigília); teste, inclusive com arquivo trocado; verifica com `pnpm --filter @ggv/api test`.
+- [x] 14.4 CA11, CA12 · Tela "Petição inicial", parte do pacote e do protocolo (arquivos para baixar, travas com a evidência, tribunal e o botão do site numa página nova, CNJ, data, comprovante) e `D3.07` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 14.5 Playwright: a advogada pede a petição com o texto, edita uma vez, compara, aprova, vê as travas, protocola com CNJ, data e comprovante, e o processo entra na vigília; verifica com `pnpm --filter @ggv/web e2e`.
 - [ ] 14.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

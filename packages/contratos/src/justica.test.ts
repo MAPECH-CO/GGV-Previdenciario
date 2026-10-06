@@ -11,6 +11,7 @@ import {
   NovaVersao,
   PedirPeticao,
   ProtocolarManifestacao,
+  ProtocolarPeticao,
   RegistrarIndisponibilidade,
   RegistrarTentativa,
   SubirInformacao,
@@ -185,6 +186,22 @@ describe('GGVP-67 · conferir a petição', () => {
     expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true }))).toBe('Marque "Fundamentos, pedidos e valores conferem com o caso"')
     expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true, conferem: true }))).toBe('Marque "Nada contradiz o requisito do benefício (G18)"')
     expect(AprovarPeticao.parse({ liNaIntegra: true, conferem: true, nadaContradiz: true })).toEqual({ liNaIntegra: true, conferem: true, nadaContradiz: true })
+  })
+})
+
+describe('GGVP-71 · protocolar a petição inicial', () => {
+  const OK = { tribunal: 'Justiça Federal', numeroCnj: CNJ_VALIDO, dataProtocolo: '06/10/2026', conferiTema350: true, conferiCpf: true, conferiPacote: true }
+
+  it('CA5 · número do processo (CNJ válido) e data obrigatórios; sem data futura', () => {
+    expect(ProtocolarPeticao.parse(OK)).toMatchObject({ numeroCnj: '00012349620264036301', dataProtocolo: '2026-10-06' })
+    expect(erro(ProtocolarPeticao.safeParse({ ...OK, numeroCnj: '0001234-00.2026.4.03.6301' }))).toBe('Número do processo inválido. Confira os 20 dígitos do CNJ.')
+    expect(erro(ProtocolarPeticao.safeParse({ ...OK, dataProtocolo: '01/01/2099' }))).toBe('A data do protocolo não pode ser no futuro')
+    expect(erro(ProtocolarPeticao.safeParse({ ...OK, tribunal: ' ' }))).toBe('Escolha o tribunal')
+  })
+
+  it('CA6 (G7) · cada trava é confirmada pela evidência', () => {
+    expect(erro(ProtocolarPeticao.safeParse({ ...OK, conferiCpf: false }))).toBe('Confirme a trava do CPF pela evidência')
+    expect(erro(ProtocolarPeticao.safeParse({ ...OK, conferiTema350: undefined }))).toBe('Confirme a trava Tema 350 pela evidência')
   })
 })
 

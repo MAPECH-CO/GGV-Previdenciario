@@ -17,6 +17,11 @@ const base = {
   podePedir: true,
   podeEditar: false,
   podeAprovar: false,
+  pacote: null,
+  travas: [],
+  tribunais: [],
+  protocolo: null,
+  podeProtocolar: false,
 }
 
 function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
@@ -69,8 +74,8 @@ describe('Pedir a petição (GGVP-63)', () => {
         instrucoes: 'Concessão desde a DER',
         opcoes: { tutelaUrgencia: true, precedentes: false, anexarCitados: true },
         citados: [
-          { documentoId: LAUDO, nome: 'laudo.pdf' },
-          { documentoId: null, nome: 'CNIS atualizado' },
+          { documentoId: LAUDO, nome: 'laudo.pdf', pedidoADocumentacao: false },
+          { documentoId: null, nome: 'CNIS atualizado', pedidoADocumentacao: false },
         ],
       },
       versoes: [{ numero: 1, por: 'Gabi', em: '2026-10-07T13:00:00.000Z', oQueMudou: null, hash: 'abc', aprovadaPor: null, aprovadaEm: null }],
@@ -150,6 +155,91 @@ describe('Conferir a petição (GGVP-67)', () => {
     expect((await screen.findByRole('status')).textContent).toBe('Versão 3 salva. Ela precisa de nova conferência.')
     const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
     expect(JSON.parse(post[1]!.body as string)).toEqual({ texto: 'Dos fatos\nDo direito\nDo valor da causa', oQueMudou: 'Valor da causa' })
+  })
+})
+
+describe('Pacote, travas e protocolo (GGVP-71)', () => {
+  const PECA = '44444444-4444-4444-8444-444444444444'
+  const travaOk = (chave: string, nome: string, evidencia: string) => ({ chave, nome, criterio: `Critério de ${nome}`, ok: true, evidencia })
+  const aprovada = {
+    ...base,
+    podePedir: false,
+    podeProtocolar: true,
+    documentos: [{ id: LAUDO, nome: 'laudo.pdf' }],
+    pedido: {
+      por: 'Gabi',
+      em: '2026-10-07T13:00:00.000Z',
+      instrucoes: '',
+      opcoes: { tutelaUrgencia: false, precedentes: false, anexarCitados: true },
+      citados: [
+        { documentoId: LAUDO, nome: 'laudo.pdf', pedidoADocumentacao: false },
+        { documentoId: null, nome: 'CNIS atualizado', pedidoADocumentacao: false },
+      ],
+    },
+    versoes: [{ numero: 1, por: 'Gabi', em: '2026-10-07T13:00:00.000Z', oQueMudou: null, hash: 'abcdef1234567890', aprovadaPor: 'Gabi', aprovadaEm: '2026-10-07T14:00:00.000Z' }],
+    atual: { numero: 1, texto: 'Excelentíssimo...', diferenca: null },
+    pacote: [
+      { documentoId: PECA, nome: 'peticao-inicial-v1.pdf', papel: 'peticao' },
+      { documentoId: LAUDO, nome: 'laudo.pdf', papel: 'citado' },
+    ],
+    travas: [
+      travaOk('tema350', 'Tema 350', 'No pacote: carta.pdf'),
+      travaOk('cpf', 'CPF conferido', 'Na petição: 613.748.259-64 · no cadastro: 613.748.259-64'),
+      { chave: 'pacote', nome: 'Pacote completo', criterio: 'Critério', ok: false, evidencia: 'Falta: CNIS atualizado' },
+    ],
+    tribunais: [{ nome: 'Justiça Federal', site: 'https://exemplo.jus.br', tamanhoMaximoMb: 10 }],
+  }
+  const completo = { ...aprovada, travas: [...aprovada.travas.slice(0, 2), travaOk('pacote', 'Pacote completo', '3 arquivos em PDF')], pedido: { ...aprovada.pedido, citados: aprovada.pedido.citados.slice(0, 1) } }
+
+  it('CA2, CA3, CA6, CA11 · o pacote para baixar, as travas com a evidência; com uma falhando, o protocolo fica bloqueado e diz qual', async () => {
+    servidor(aprovada)
+    render(<Peticao casoId={CASO} />)
+    expect((await screen.findByRole('link', { name: 'peticao-inicial-v1.pdf' })).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${PECA}`)
+    expect(screen.getByText('Evidência: Falta: CNIS atualizado')).toBeTruthy()
+    expect(screen.getByText('Trava falhando: Pacote completo. O protocolo fica bloqueado.')).toBeTruthy()
+    const tribunal = screen.getByRole('link', { name: 'Abrir o site do tribunal' })
+    expect([tribunal.getAttribute('href'), tribunal.getAttribute('target')]).toEqual(['https://exemplo.jus.br', '_blank'])
+    expect((screen.getByRole('button', { name: 'Protocolar no tribunal' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('CA13 · o documento que falta: subir, ou pedir à Documentação', async () => {
+    const fetch = servidor(aprovada)
+    render(<Peticao casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Pedir à Documentação' }))
+    expect((await screen.findByRole('status')).textContent).toBe('CNIS atualizado: pedido à Documentação, que recebeu "Cumprir pendência".')
+    fireEvent.change(screen.getByLabelText('Subir o documento'), { target: { files: [new File(['%PDF'], 'cnis.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Usar no pacote' }))
+    expect((await screen.findByText('CNIS atualizado: no pacote. O pacote foi gerado de novo.')).getAttribute('role')).toBe('status')
+    const urls = fetch.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url]) => String(url))
+    expect(urls).toEqual([`/api/casos/${CASO}/peticao/citados/1/pedido`, `/api/casos/${CASO}/peticao/citados/1/documento`])
+  })
+
+  it('CA5, CA6 · "Protocolar no tribunal" só habilita com as travas conferidas, o número do processo, a data e o comprovante', async () => {
+    const fetch = servidor(completo)
+    render(<Peticao casoId={CASO} />)
+    const botao = (await screen.findByRole('button', { name: 'Protocolar no tribunal' })) as HTMLButtonElement
+    fireEvent.change(screen.getByLabelText('Número do processo (CNJ)'), { target: { value: '00012349620264036301' } })
+    fireEvent.change(screen.getByLabelText('Comprovante do protocolo'), { target: { files: [new File(['%PDF'], 'comprovante.pdf', { type: 'application/pdf' })] } })
+    expect(botao.disabled).toBe(true)
+    for (const t of ['Tema 350', 'CPF conferido', 'Pacote completo']) fireEvent.click(screen.getByLabelText(`Conferi ${t} pela evidência`))
+    expect([botao.disabled, (screen.getByLabelText('Número do processo (CNJ)') as HTMLInputElement).value]).toEqual([false, '0001234-96.2026.4.03.6301'])
+    fireEvent.click(botao)
+    expect((await screen.findByRole('status')).textContent).toBe('Petição protocolada. O processo entrou na vigília.')
+    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    const corpo = post[1]!.body as FormData
+    expect([String(post[0]), corpo.get('tribunal'), corpo.get('conferiPacote'), (corpo.get('arquivo') as File).name]).toEqual([
+      `/api/casos/${CASO}/peticao/protocolo`,
+      'Justiça Federal',
+      'true',
+      'comprovante.pdf',
+    ])
+  })
+
+  it('CA4, CA10 · protocolada, mostra quando, onde, o processo, a versão e quem protocolou', async () => {
+    servidor({ ...completo, podeProtocolar: false, protocolo: { em: '2026-10-06T15:00:00.000Z', numero: '00012349620264036301', tribunal: 'Justiça Federal', por: 'Gabi', versao: 1 } })
+    render(<Peticao casoId={CASO} />)
+    expect((await screen.findByText(/no tribunal/)).textContent).toBe('Em 06/10/2026 no tribunal Justiça Federal · processo 0001234-96.2026.4.03.6301 · versão 1 · por Gabi')
+    expect(screen.queryByRole('button', { name: 'Protocolar no tribunal' })).toBeNull()
   })
 })
 

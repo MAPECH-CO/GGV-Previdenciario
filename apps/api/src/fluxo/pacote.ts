@@ -2,6 +2,12 @@
 // identificador da versão no rodapé e nos metadados, e a imagem que vira PDF de uma página. O tribunal só aceita PDF.
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 
+/**
+ * Um arquivo do pacote, na ordem (GGVP-71 CA8): o documento guardado, o de origem (o citado, mesmo quando a imagem virou
+ * PDF), o nome, o hash do conteúdo e o papel no pacote.
+ */
+export type ArquivoDoPacote = { documentoId: string; origemId: string; nome: string; hash: string; papel: 'peticao' | 'carta' | 'citado' }
+
 const A4: [number, number] = [595.28, 841.89]
 const MARGEM = { esquerda: 85, direita: 57, topo: 85, base: 70 }
 const TAMANHO = 12

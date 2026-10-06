@@ -57,6 +57,7 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3.04s': (id) => `/casos/${id}/despacho`,
   'D3.05': (id) => `/casos/${id}/peticao`,
   'D3.06': (id) => `/casos/${id}/peticao`,
+  'D3.07': (id) => `/casos/${id}/peticao`,
   'D3a.01': (id) => `/casos/${id}/publicacoes`,
   'D3a.02': (id) => `/casos/${id}/exigencia-juiz`,
   'D3a.03': (id) => `/casos/${id}/exigencia-juiz/setor`,

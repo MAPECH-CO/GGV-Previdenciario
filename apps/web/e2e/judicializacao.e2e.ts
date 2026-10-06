@@ -166,3 +166,39 @@ test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior
   await expect(page.getByRole('link', { name: 'Vicente Prado (exemplo) · Pedir a petição' })).toBeVisible()
 })
 
+// Continua o caso do Vicente Prado (a mesma série): do pedido da petição ao protocolo no tribunal.
+test('GGVP-63, GGVP-67 e GGVP-71 · a advogada pede a petição, edita, compara, aprova, confere as travas e protocola; o processo entra na vigília', async ({ page }) => {
+  const V1 = 'Excelentíssimo Senhor Juiz Federal\nVicente Prado, CPF 613.748.259-64, vem requerer o benefício.\nDo pedido'
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Vicente Prado (exemplo) · Pedir a petição' }).click()
+  await expect(page.getByRole('heading', { name: 'Petição inicial' })).toBeVisible()
+  await page.getByLabel('laudo.pdf').check()
+  await page.getByLabel('Texto da petição (versão 1)').fill(V1)
+  await page.getByRole('button', { name: 'Pedir a petição' }).click()
+  await expect(page.getByRole('status')).toHaveText('Petição pedida. A versão 1 foi para a conferência.')
+
+  await page.getByText('Não está boa? Editar eu mesma').click()
+  await page.getByLabel('Texto da nova versão').fill(V1.replace('\nDo pedido', '\nDa tutela de urgência\nDo pedido'))
+  await page.getByLabel('O que mudou nesta versão').fill('Incluí a tutela de urgência')
+  await page.getByRole('button', { name: 'Salvar nova versão' }).click()
+  await expect(page.getByRole('status')).toHaveText('Versão 2 salva. Ela precisa de nova conferência.')
+  await expect(page.getByRole('region', { name: 'O que mudou' }).locator('ins')).toHaveText('Da tutela de urgência')
+
+  await page.getByLabel('Li a petição na íntegra').check()
+  await page.getByLabel('Fundamentos, pedidos e valores conferem com o caso').check()
+  await page.getByLabel('Nada contradiz o requisito do benefício (G18)').check()
+  await page.getByRole('button', { name: 'Aprovar e enviar ao protocolo' }).click()
+  await expect(page.getByRole('status')).toHaveText('Versão 2 aprovada. O pacote foi para o protocolo.')
+
+  await expect(page.getByRole('region', { name: 'Pacote' }).getByRole('link', { name: 'peticao-inicial-v2.pdf' })).toBeVisible()
+  await expect(page.getByText('Evidência: Na petição: 613.748.259-64 · no cadastro: 613.748.259-64')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Abrir o site do tribunal' })).toHaveAttribute('target', '_blank')
+  for (const trava of ['Tema 350', 'CPF conferido', 'Pacote completo']) await page.getByLabel(`Conferi ${trava} pela evidência`).check()
+  await page.getByLabel('Número do processo (CNJ)').fill('00098765820264036301')
+  await page.getByLabel('Comprovante do protocolo').setInputFiles(PDF('comprovante.pdf'))
+  await page.getByRole('button', { name: 'Protocolar no tribunal' }).click()
+  await expect(page.getByRole('status')).toHaveText('Petição protocolada. O processo entrou na vigília.')
+  await expect(page.getByRole('region', { name: 'Protocolo' })).toContainText('processo 0009876-58.2026.4.03.6301 · versão 2')
+})
+

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { isoParaData } from '@ggv/campos'
-import { AprovarPeticao, NovaVersao, PedirPeticao, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
+import { AprovarPeticao, NovaVersao, PedirPeticao, ProtocolarPeticao, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -196,10 +196,179 @@ function AprovarForm({ casoId, numero, aoAprovar }: { casoId: string; numero: nu
   )
 }
 
+/** Um documento citado que falta (GGVP-71 CA13): subir o arquivo, usar um documento do caso ou pedir à Documentação. */
+function DocumentoQueFalta({ casoId, x, indice, nome, pedido, aoResolver }: { casoId: string; x: PeticaoInicial; indice: number; nome: string; pedido: boolean; aoResolver: (t: string) => void }) {
+  const ids = { arquivo: useId(), documento: useId() }
+  const [arquivo, setArquivo] = useState<File | null>(null)
+  const [documentoId, setDocumentoId] = useState('')
+  const [erro, setErro] = useState('')
+
+  async function usar() {
+    if (!arquivo && !documentoId) return setErro('Anexe o documento (PDF ou imagem, até 25 MB) ou escolha um documento do caso.')
+    const dados = new FormData()
+    if (arquivo) dados.set('arquivo', arquivo)
+    else dados.set('documentoId', documentoId)
+    const r = await chamarApi(`/casos/${casoId}/peticao/citados/${indice}/documento`, { method: 'POST', corpo: dados })
+    if (!r.ok) return setErro(r.erro)
+    aoResolver(`${nome}: no pacote. O pacote foi gerado de novo.`)
+  }
+
+  async function pedirADocumentacao() {
+    const r = await chamarApi(`/casos/${casoId}/peticao/citados/${indice}/pedido`, { method: 'POST' })
+    if (!r.ok) return setErro(r.erro)
+    aoResolver(`${nome}: pedido à Documentação, que recebeu "Cumprir pendência".`)
+  }
+
+  return (
+    <li>
+      Falta: {nome}
+      {pedido ? ' · pedido à Documentação' : ''}
+      <label className={styles.rotulo} htmlFor={ids.arquivo}>
+        Subir o documento
+      </label>
+      <input id={ids.arquivo} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+      <label className={styles.rotulo} htmlFor={ids.documento}>
+        Ou usar um documento do caso
+      </label>
+      <select id={ids.documento} className={styles.campo} value={documentoId} onChange={(e) => setDocumentoId(e.target.value)}>
+        <option value="">Escolha</option>
+        {x.documentos.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.nome}
+          </option>
+        ))}
+      </select>
+      {erro && (
+        <p className={styles.erro} role="alert">
+          {erro}
+        </p>
+      )}
+      <div className={styles.acoes}>
+        <button type="button" className={styles.botaoSecundario} onClick={() => void usar()}>
+          Usar no pacote
+        </button>
+        {!pedido && (
+          <button type="button" className={styles.botaoSecundario} onClick={() => void pedirADocumentacao()}>
+            Pedir à Documentação
+          </button>
+        )}
+      </div>
+    </li>
+  )
+}
+
 /**
- * Petição inicial (GGVP-63, GGVP-67): com todos os setores do despacho fechados, a advogada pede a petição (CA1); antes
- * disso, o pedido fica bloqueado e diz quem falta. Depois, confere a versão inteira, com o que mudou desde a anterior,
- * edita ela mesma ou aprova. O protocolo (GGVP-71) segue nesta mesma tela.
+ * Protocolar no tribunal (GGVP-71 CA3, CA5, CA6, CA11; G7): o botão do tribunal abre o site de peticionamento numa página
+ * nova (o portal não envia nada); "Protocolar no tribunal" só habilita com as travas passando e confirmadas pela
+ * evidência, o número do processo, a data e o comprovante.
+ */
+function ProtocolarForm({ casoId, x, aoProtocolar }: { casoId: string; x: PeticaoInicial; aoProtocolar: (t: string) => void }) {
+  const ids = { tribunal: useId(), cnj: useId(), data: useId(), comprovante: useId() }
+  const [tribunal, setTribunal] = useState(x.tribunais[0]?.nome ?? '')
+  const [cnj, setCnj] = useState('')
+  const [data, setData] = useState(() => hojeIso())
+  const [comprovante, setComprovante] = useState<File | null>(null)
+  const [conferi, setConferi] = useState<Record<string, boolean>>({})
+  const [erro, setErro] = useState('')
+  const falhando = x.travas.filter((t) => !t.ok)
+  const site = x.tribunais.find((t) => t.nome === tribunal)?.site
+  const pronto = falhando.length === 0 && x.travas.every((t) => conferi[t.chave]) && Boolean(cnj && data && comprovante)
+
+  async function protocolar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    const campos = {
+      tribunal,
+      numeroCnj: cnj,
+      dataProtocolo: isoParaData(data) ?? '',
+      conferiTema350: Boolean(conferi.tema350),
+      conferiCpf: Boolean(conferi.cpf),
+      conferiPacote: Boolean(conferi.pacote),
+    }
+    const entrada = ProtocolarPeticao.safeParse(campos)
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o protocolo.')
+    if (!comprovante) return setErro('Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).')
+    const dados = new FormData()
+    for (const [k, v] of Object.entries(campos)) dados.set(k, String(v))
+    dados.set('arquivo', comprovante)
+    const r = await chamarApi(`/casos/${casoId}/peticao/protocolo`, { method: 'POST', corpo: dados })
+    if (!r.ok) return setErro(r.erro)
+    aoProtocolar('Petição protocolada. O processo entrou na vigília.')
+  }
+
+  return (
+    <form className={styles.cartao} onSubmit={protocolar} noValidate aria-label="Protocolar no tribunal">
+      <h2 className={styles.cartaoTitulo}>Protocolar no tribunal</h2>
+      <fieldset className={styles.cartao} aria-label="Travas">
+        <legend className={styles.rotulo}>Travas antes de protocolar (G7)</legend>
+        {x.travas.map((t) => (
+          <div key={t.chave}>
+            <span className={t.ok ? styles.selo : `${styles.selo} ${styles.seloAlerta}`}>
+              {t.nome}: {t.ok ? 'ok' : 'falhando'}
+            </span>
+            <p className={styles.dica}>{t.criterio}</p>
+            <p>Evidência: {t.evidencia}</p>
+            <label className={styles.escolha}>
+              <input type="checkbox" disabled={!t.ok} checked={Boolean(conferi[t.chave])} onChange={() => setConferi((a) => ({ ...a, [t.chave]: !a[t.chave] }))} />
+              Conferi {t.nome} pela evidência
+            </label>
+          </div>
+        ))}
+      </fieldset>
+      <label className={styles.rotulo} htmlFor={ids.tribunal}>
+        Tribunal
+      </label>
+      <select id={ids.tribunal} className={styles.campo} value={tribunal} onChange={(e) => setTribunal(e.target.value)}>
+        {x.tribunais.map((t) => (
+          <option key={t.nome} value={t.nome}>
+            {t.nome}
+          </option>
+        ))}
+      </select>
+      {site && (
+        <a href={site} target="_blank" rel="noreferrer">
+          Abrir o site do tribunal
+        </a>
+      )}
+      <p className={styles.dica}>Baixe os arquivos do pacote e anexe lá; o portal não envia nada ao tribunal.</p>
+      <label className={styles.rotulo} htmlFor={ids.cnj}>
+        Número do processo (CNJ)
+      </label>
+      <input
+        id={ids.cnj}
+        className={styles.campo}
+        inputMode="numeric"
+        value={cnj}
+        onChange={(e) => setCnj(normalizarCnj(e.target.value).length === 20 ? formatarCnj(e.target.value) : e.target.value)}
+      />
+      <label className={styles.rotulo} htmlFor={ids.data}>
+        Data do protocolo
+      </label>
+      <input id={ids.data} className={styles.campo} type="date" max={hojeIso()} value={data} onChange={(e) => setData(e.target.value)} />
+      <label className={styles.rotulo} htmlFor={ids.comprovante}>
+        Comprovante do protocolo
+      </label>
+      <input id={ids.comprovante} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setComprovante(e.target.files?.[0] ?? null)} />
+      {falhando.length > 0 && (
+        <p className={`${styles.selo} ${styles.seloAlerta}`}>Trava falhando: {falhando.map((t) => t.nome).join(', ')}. O protocolo fica bloqueado.</p>
+      )}
+      {erro && (
+        <p className={styles.erro} role="alert">
+          {erro}
+        </p>
+      )}
+      <div className={styles.acoes}>
+        <button type="submit" className={styles.botao} disabled={!pronto}>
+          Protocolar no tribunal
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/**
+ * Petição inicial (GGVP-63, GGVP-67, GGVP-71): com todos os setores do despacho fechados, a advogada pede a petição (CA1);
+ * antes disso, o pedido fica bloqueado e diz quem falta. Depois, confere a versão inteira, com o que mudou desde a anterior,
+ * edita ela mesma ou aprova; aprovada, baixa o pacote, confere as três travas e registra o protocolo.
  */
 export function Peticao({ casoId }: { casoId: string }) {
   const [x, setX] = useState<PeticaoInicial | null>(null)
@@ -318,6 +487,62 @@ export function Peticao({ casoId }: { casoId: string }) {
       )}
 
       {x.podeAprovar && x.atual && <AprovarForm key={x.atual.numero} casoId={casoId} numero={x.atual.numero} aoAprovar={aoMudar} />}
+
+      {x.protocolo && (
+        <section className={styles.cartao} aria-label="Protocolo">
+          <h2 className={styles.cartaoTitulo}>Protocolada</h2>
+          <p>
+            Em {dia(x.protocolo.em)} no tribunal {x.protocolo.tribunal} · processo {formatarCnj(x.protocolo.numero)} · versão {x.protocolo.versao} · por {x.protocolo.por}
+          </p>
+          <p className={styles.dica}>O processo entrou na vigília das publicações.</p>
+        </section>
+      )}
+
+      {x.pacote && (
+        <section className={styles.cartao} aria-label="Pacote">
+          <h2 className={styles.cartaoTitulo}>Pacote do protocolo</h2>
+          <ol className={styles.lista}>
+            {x.pacote.map((a) => (
+              <li key={a.documentoId}>
+                <a href={`/api/casos/${casoId}/documentos/${a.documentoId}`} target="_blank" rel="noreferrer">
+                  {a.nome}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+      {!x.pacote && x.podeProtocolar && (
+        <section className={styles.cartao} aria-label="Pacote">
+          <p className={`${styles.selo} ${styles.seloAlerta}`}>O pacote ainda não foi gerado.</p>
+          <div className={styles.acoes}>
+            <button
+              type="button"
+              className={styles.botaoSecundario}
+              onClick={() =>
+                void chamarApi(`/casos/${casoId}/peticao/pacote`, { method: 'POST' }).then((r) => (r.ok ? aoMudar('Pacote gerado.') : setErro(r.erro)))
+              }
+            >
+              Gerar o pacote
+            </button>
+          </div>
+        </section>
+      )}
+
+      {x.podeProtocolar && x.pedido && x.pedido.citados.some((c) => !c.documentoId) && (
+        <section className={styles.cartao} aria-label="Documentos que faltam">
+          <h2 className={styles.cartaoTitulo}>Documentos que faltam no pacote</h2>
+          <ul className={styles.lista}>
+            {x.pedido.citados.map((c, i) =>
+              c.documentoId ? null : (
+                <DocumentoQueFalta key={`${i}-${c.nome}`} casoId={casoId} x={x} indice={i} nome={c.nome} pedido={c.pedidoADocumentacao} aoResolver={aoMudar} />
+              ),
+            )}
+          </ul>
+        </section>
+      )}
+
+      {x.podeProtocolar && <ProtocolarForm casoId={casoId} x={x} aoProtocolar={aoMudar} />}
       {x.podeEditar && x.atual && <EditarEuMesma key={`e${x.atual.numero}`} casoId={casoId} texto={x.atual.texto} aoSalvar={aoMudar} />}
     </main>
   )

@@ -108,8 +108,10 @@ export async function semearExemplos(banco: Banco) {
 
   // Casos em vigília, esperando o INSS (GGVP-35 e GGVP-48): um para cada resposta (deferido, indeferido e exigência) e
   // um para o caminho do indeferido até o protocolo da petição inicial (GGVP-9, grupo 3).
+  // CPFs de exemplo, válidos só nos dígitos verificadores, para a trava do CPF da petição (GGVP-71).
+  const cpfs = ['27183946509', '38492715600', '52916384782', '61374825964']
   for (const [i, nome] of ['Rita Gomes (exemplo)', 'Sebastião Cruz (exemplo)', 'Teresa Dias (exemplo)', 'Vicente Prado (exemplo)'].entries()) {
-    const [p] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [p] = await banco.insert(pessoa).values({ nome, cpf: cpfs[i], situacao: 'cliente', origem: 'exemplo' }).returning()
     const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
     await banco
       .insert(etapa)
@@ -203,4 +205,11 @@ export async function semearExemplos(banco: Banco) {
     })
     .returning()
   await banco.transaction((tx) => encaminhar(tx, intimacao, 'exigencia', 15, new Date()))
+
+  // Petição inicial (GGVP-63, 67, 71): o tribunal do protocolo, com o site e o tamanho por arquivo (Q8: o escritório
+  // confirma na configuração), e a assinatura padrão da petição. Valores de exemplo.
+  await banco.insert(configuracao).values([
+    { chave: 'tribunais', valor: [{ nome: 'Justiça Federal da 3ª Região (exemplo)', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: 10 }] },
+    { chave: 'peticao.assinatura', valor: 'Glauco (exemplo)\nAdvogado responsável · OAB/UF 000.000 (exemplo)' },
+  ])
 }

@@ -405,7 +405,8 @@ export const PeticaoInicial = z.object({
       em: z.string(),
       instrucoes: z.string(),
       opcoes: OpcoesDoPedido,
-      citados: z.array(z.object({ documentoId: z.uuid().nullable(), nome: z.string() })),
+      /** GGVP-71 CA13: o que falta pode ter sido pedido à Documentação. */
+      citados: z.array(z.object({ documentoId: z.uuid().nullable(), nome: z.string(), pedidoADocumentacao: z.boolean() })),
     })
     .nullable(),
   versoes: z.array(
@@ -431,6 +432,15 @@ export const PeticaoInicial = z.object({
   /** GGVP-67: só a advogada confere, com "Conferir petição" aberta; a aprovada não se edita, mexer gera outra versão (CA7). */
   podeEditar: z.boolean(),
   podeAprovar: z.boolean(),
+  /** GGVP-71 CA1, CA8, CA11: o pacote da versão aprovada, na ordem, para baixar; nulo enquanto não foi gerado. */
+  pacote: z.array(z.object({ documentoId: z.uuid(), nome: z.string(), papel: z.enum(['peticao', 'carta', 'citado']) })).nullable(),
+  /** GGVP-71 CA2, CA6, CA7 (G7): as três travas, com o critério, o status e a evidência; vazias antes da aprovação. */
+  travas: z.array(z.object({ chave: z.enum(['tema350', 'cpf', 'pacote']), nome: z.string(), criterio: z.string(), ok: z.boolean(), evidencia: z.string() })),
+  /** GGVP-71 CA11 (Q8): os tribunais da configuração do escritório, com o site de peticionamento e o tamanho por arquivo. */
+  tribunais: z.array(z.object({ nome: z.string(), site: z.string(), tamanhoMaximoMb: z.number() })),
+  /** GGVP-71 CA4, CA10: o protocolo registrado. */
+  protocolo: z.object({ em: z.string(), numero: z.string(), tribunal: z.string(), por: z.string(), versao: z.number() }).nullable(),
+  podeProtocolar: z.boolean(),
 })
 export type PeticaoInicial = z.infer<typeof PeticaoInicial>
 
@@ -448,4 +458,21 @@ export const AprovarPeticao = z.object({
   nadaContradiz: z.literal(true, { error: 'Marque "Nada contradiz o requisito do benefício (G18)"' }),
 })
 export type AprovarPeticao = z.infer<typeof AprovarPeticao>
+
+/**
+ * POST /api/casos/:id/peticao/protocolo (GGVP-71 CA3, CA5, CA6, CA11; G7), com o comprovante no mesmo envio: o tribunal
+ * da configuração, o número do processo (CNJ), a data e a confirmação de cada trava pela evidência.
+ */
+export const ProtocolarPeticao = z.object({
+  tribunal: z.string({ error: 'Escolha o tribunal' }).trim().min(1, 'Escolha o tribunal'),
+  numeroCnj: z
+    .string({ error: 'Informe o número do processo (CNJ)' })
+    .refine(validarCnj, 'Número do processo inválido. Confira os 20 dígitos do CNJ.')
+    .transform((v) => normalizarCnj(v)),
+  dataProtocolo: DataObrigatoria('Informe a data do protocolo (dd/mm/aaaa)').refine(naoFutura, 'A data do protocolo não pode ser no futuro'),
+  conferiTema350: z.literal(true, { error: 'Confirme a trava Tema 350 pela evidência' }),
+  conferiCpf: z.literal(true, { error: 'Confirme a trava do CPF pela evidência' }),
+  conferiPacote: z.literal(true, { error: 'Confirme a trava do pacote pela evidência' }),
+})
+export type ProtocolarPeticao = z.input<typeof ProtocolarPeticao>
 
