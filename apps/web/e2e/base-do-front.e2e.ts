@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 type Tokens = {
   cores: Record<string, { claro: string; escuro: string }>
@@ -7,6 +8,9 @@ type Tokens = {
 }
 
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
+
+// Desde o login (GGVP-117), as telas com dado pedem sessão.
+test.beforeEach(({ page }) => entrarPelaApi(page))
 
 /** "#121417" → "rgb(18, 20, 23)", que é como o navegador devolve a cor calculada. */
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`

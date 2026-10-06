@@ -37,3 +37,6 @@ desktop.ini
 *.gdoc
 *.gsheet
 *.gslides
+
+# banco embutido da máquina do dev (apps/api/.banco-local)
+.banco-local*/

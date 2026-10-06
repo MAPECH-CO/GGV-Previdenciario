@@ -1,9 +1,13 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App.tsx'
 import { PERFIS } from './perfis.ts'
 
 const perfil = (id: string) => PERFIS.find((p) => p.id === id)!
+
+// As telas abrem depois de o servidor confirmar a sessão (GGVP-117): aqui ele responde com um usuário de exemplo.
+const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfil: 'atendimento', trocarSenha: false }
+afterEach(() => vi.unstubAllGlobals())
 
 describe('tela inicial e ação de cada perfil', () => {
   it('segue o mapa: Atendimento e Documentação na Central do Atendimento, Advogada na dela', () => {
@@ -23,10 +27,11 @@ describe('tela inicial e ação de cada perfil', () => {
     expect(perfil('atendimento').acao).toEqual({ rotulo: '+ Novo cliente', href: '/clientes/novo' })
   })
 
-  it('função sem Central ainda cai em "Esta tela ainda não foi construída"', () => {
+  it('função sem Central ainda cai em "Esta tela ainda não foi construída"', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(usuario), { status: 200 })))
     for (const id of ['atendimento-lider', 'senior', 'financeiro']) {
       const { unmount } = render(<App caminho={perfil(id).inicio} />)
-      expect(screen.getByRole('heading', { name: 'Esta tela ainda não foi construída' }), id).toBeTruthy()
+      expect(await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' }), id).toBeTruthy()
       unmount()
     }
   })

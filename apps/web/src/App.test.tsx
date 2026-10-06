@@ -1,27 +1,40 @@
 import { cleanup, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
 import { zerarExemplo } from './dados/servidor.ts'
 
+// As telas abrem depois de o servidor confirmar a sessão (GGVP-117): aqui ele responde com um usuário de exemplo.
+const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfil: 'atendimento', trocarSenha: false }
+
+function servidorResponde(status: number, corpo: unknown) {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })))
+}
+
+beforeEach(() => servidorResponde(200, usuario))
+afterEach(() => vi.unstubAllGlobals())
+
 describe('App', () => {
-  it('na raiz abre a Central do Atendimento', () => {
+  it('na raiz abre a Central do Atendimento', async () => {
     render(<App caminho="/" />)
-    expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
+    expect((await screen.findByRole('heading', { name: 'O que você tem que fazer' }))).toBeTruthy()
   })
 
-  it('em /tokens abre o guia de tokens', () => {
+  it('em /tokens abre o guia de tokens, sem pedir sessão', () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
     render(<App caminho="/tokens" />)
     expect(screen.getByRole('heading', { name: 'Tokens do Figma' })).toBeTruthy()
+    expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('em /balcao abre o balcão', () => {
+  it('em /balcao abre o balcão', async () => {
     render(<App caminho="/balcao" />)
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Balcão · Receber quem chegou')
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Balcão · Receber quem chegou')
   })
 
-  it('em /clientes/novo abre o cadastro de novo cliente', () => {
+  it('em /clientes/novo abre o cadastro de novo cliente', async () => {
     render(<App caminho="/clientes/novo" />)
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Novo cliente')
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Novo cliente')
   })
 
   it('em /clientes/:id abre a ficha daquele cliente; id que não existe avisa', async () => {
@@ -73,11 +86,11 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: 'Liberar ao Jurídico' })).toBeNull()
   })
 
-  it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', () => {
+  it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', async () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Agenda')
-    expect(screen.getByRole('tab', { name: 'Lista' }).getAttribute('aria-selected')).toBe('true')
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Agenda')
+    expect((await screen.findByRole('tab', { name: 'Lista' })).getAttribute('aria-selected')).toBe('true')
   })
 
   it('GGVP-123 · em /agenda/marcar/:id abre a marcação; com ?remarcar=, a remarcação', async () => {
@@ -104,7 +117,7 @@ describe('App', () => {
   it('GGVP-32 · em /advogada abre a Central da Advogada e em /entrevista/:id/preparar, a preparação', async () => {
     zerarExemplo()
     render(<App caminho="/advogada" />)
-    expect(screen.getByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
+    expect((await screen.findByRole('heading', { name: 'Início da Advogada' }))).toBeTruthy()
     cleanup()
     render(<App caminho="/entrevista/josefa-entrevista/preparar" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Preparar entrevista' })).toBeTruthy()
@@ -149,10 +162,34 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Calcular tempo e pontos' })).toBeTruthy()
   })
 
-  it('em rota sem tela avisa que não foi construída e mostra o caminho', () => {
+  it('em rota sem tela avisa que não foi construída e mostra o caminho', async () => {
     render(<App caminho="/relatorios" />)
-    expect(screen.getByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeTruthy()
-    expect(screen.getByText('/relatorios')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Voltar ao início' }).getAttribute('href')).toBe('/')
+    expect((await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' }))).toBeTruthy()
+    expect((await screen.findByText('/relatorios'))).toBeTruthy()
+    expect((await screen.findByRole('link', { name: 'Voltar ao início' })).getAttribute('href')).toBe('/')
+  })
+
+  it('GGVP-117 CA4 · sem perfil mostra o aviso e nenhuma tela de caso', async () => {
+    servidorResponde(200, { ...usuario, perfil: null })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Sem perfil, fale com a gestão.' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()
+  })
+
+  it('GGVP-117 CA1 · senha provisória: abre a troca de senha antes de qualquer tela', async () => {
+    servidorResponde(200, { ...usuario, trocarSenha: true })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Crie a sua senha' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()
+  })
+
+  it('GGVP-117 CA3 · sem sessão vai para o login guardando a tela de volta, e não mostra nada', async () => {
+    servidorResponde(401, { erro: 'Sua sessão expirou. Entre de novo.' })
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, pathname: '/clientes/novo', search: '?aba=2', assign })
+    const { container } = render(<App caminho="/clientes/novo" />)
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledOnce())
+    expect(assign.mock.calls[0][0]).toBe('/entrar?volta=%2Fclientes%2Fnovo%3Faba%3D2')
+    expect(container.textContent).toBe('')
   })
 })

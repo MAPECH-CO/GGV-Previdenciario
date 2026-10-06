@@ -4,9 +4,9 @@ import { defineConfig } from 'vitest/config'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // kit/campos fica fora de apps/web e o servidor de desenvolvimento precisa poder servi-la (src/campos.ts).
-  // Porta por variável (PORTA_WEB) para rodar sessões em paralelo, cada uma na sua árvore; sem ela, 5173.
-  server: { port: Number(process.env.PORTA_WEB ?? 5173), strictPort: true, fs: { allow: ['.', '../../kit/campos/src'] } },
+  // /api vai para a API local na mesma origem, para o cookie da sessão valer (GGVP-117). PORTA_API muda no Playwright.
+  // Porta da tela por variável (PORTA_WEB) para rodar sessões em paralelo, cada uma na sua árvore; sem ela, 5173.
+  server: { port: Number(process.env.PORTA_WEB ?? 5173), strictPort: true, proxy: { '/api': `http://127.0.0.1:${process.env.PORTA_API ?? 3000}` } },
   test: {
     // No Windows, com o repositório no OneDrive, o pool "forks" estoura o tempo ao subir o worker.
     pool: 'threads',

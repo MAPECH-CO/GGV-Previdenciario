@@ -1,3 +1,4 @@
+import { sair } from '../api.ts'
 import { usePerfilEscolhido } from '../dados/perfis.ts'
 import { BotoesPreferencias } from './BotoesPreferencias.tsx'
 import styles from './Topbar.module.css'
@@ -58,6 +59,9 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
       )}
       <BotoesPreferencias />
       <TrocarPerfil funcao={funcao} />
+      <button type="button" className={styles.sair} onClick={() => void sair()}>
+        Sair
+      </button>
     </header>
   )
 }
