@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Hook UserPromptSubmit do kit. Nunca bloqueia. Só lembra ao Claude em que ponto a história está.
+// Hook UserPromptSubmit do kit. Nunca bloqueia. Só lembra ao Claude em que ponto o épico está.
 // Entrada: JSON do Claude Code no stdin. Saída: JSON com additionalContext (ou nada).
 'use strict';
 const fs = require('fs');
@@ -11,13 +11,20 @@ function sh(cmd, cwd) {
   catch { return ''; }
 }
 
-function contarTarefas(arquivo) {
-  try {
-    const t = fs.readFileSync(arquivo, 'utf8');
-    const feitas = (t.match(/^\s*- \[[xX]\]/gm) || []).length;
-    const abertas = (t.match(/^\s*- \[ \]/gm) || []).length;
-    return { feitas, total: feitas + abertas };
-  } catch { return null; }
+// Lê o tasks.md da change do épico: uma seção "## GGVP-n · título" por história.
+function lerTarefas(arquivo) {
+  let t;
+  try { t = fs.readFileSync(arquivo, 'utf8'); } catch { return null; }
+  const secoes = [];
+  let atual = null;
+  for (const linha of t.split(/\r?\n/)) {
+    const h = linha.match(/^##\s+(GGVP-\d+)\s*[·:-]?\s*(.*)$/i);
+    if (h) { atual = { chave: h[1].toUpperCase(), titulo: h[2].trim(), feitas: 0, abertas: 0 }; secoes.push(atual); continue; }
+    if (!atual) continue;
+    if (/^\s*- \[[xX]\]/.test(linha)) atual.feitas++;
+    else if (/^\s*- \[ \]/.test(linha)) atual.abertas++;
+  }
+  return secoes;
 }
 
 function main() {
@@ -32,35 +39,30 @@ function main() {
   const linhas = [];
 
   if (!m) {
-    linhas.push(`Kit GGV · branch \`${branch}\`, sem chave GGVP-n.`);
-    linhas.push('Se o pedido é desenvolvimento: não edite código aqui. Peça para rodar `kit/nova-historia GGVP-n` primeiro (cria a branch da história).');
+    linhas.push(`Kit GGV · branch \`${branch}\`, sem épico.`);
+    linhas.push('Se o pedido é desenvolvimento: não escreva código aqui. Responda só "digite /epico <nome do épico>". O /epico cria a branch e a change do épico.');
   } else {
-    const chave = `GGVP-${m[1]}`;
+    const epico = `GGVP-${m[1]}`;
     const dirChanges = path.join(raiz, 'openspec', 'changes');
     let change = null;
     try {
       change = fs.readdirSync(dirChanges, { withFileTypes: true })
-        .filter(d => d.isDirectory() && d.name !== 'archive' && d.name.toLowerCase().includes(`ggvp-${m[1]}`))
+        .filter(d => d.isDirectory() && d.name !== 'archive' && d.name.toLowerCase().startsWith(`ggvp-${m[1]}-`))
         .map(d => d.name)[0] || null;
     } catch { /* sem openspec */ }
 
-    let historia = '';
-    try {
-      const cand = path.join(raiz, 'docs', 'requisitos', 'candidatas');
-      historia = fs.readdirSync(cand).filter(f => f.toUpperCase().startsWith(`${chave}-`)).map(f => `docs/requisitos/candidatas/${f}`)[0] || '';
-    } catch { /* sem candidatas */ }
-
     if (!change) {
-      linhas.push(`Kit GGV · história ${chave}, branch \`${branch}\`, SEM change do OpenSpec.`);
-      linhas.push(`Não escreva código. Leia a história (${historia || 'Jira ' + chave}) e responda com o comando pronto para colar: /opsx:propose "${chave}: <título curto>". Se o pedido mistura histórias, um comando por história. Critério com [decidir] aberto: pergunte antes de propor.`);
+      linhas.push(`Kit GGV · épico ${epico}, branch \`${branch}\`, SEM change do épico em openspec/changes/.`);
+      linhas.push('Não escreva código antes de o /epico criar a change (proposal, design, tasks). Só história em "Refinada" no Jira vira código.');
     } else {
-      const t = contarTarefas(path.join(dirChanges, change, 'tasks.md'));
-      const prog = t ? `${t.feitas}/${t.total} tarefas` : 'tasks.md ainda não existe';
-      linhas.push(`Kit GGV · história ${chave}, change \`${change}\`, ${prog}.`);
-      if (t && t.total > 0 && t.feitas === t.total) {
-        linhas.push('Todas as tarefas marcadas. Rode as verificações (typecheck, lint, testes, Playwright se há tela), mostre a saída e pergunte "Agora ok?". Com o ok, o dev roda /ok.');
+      const secoes = lerTarefas(path.join(dirChanges, change, 'tasks.md')) || [];
+      const feitas = secoes.filter(s => s.abertas === 0 && s.feitas > 0).length;
+      const atual = secoes.find(s => s.abertas > 0);
+      linhas.push(`Kit GGV · épico ${epico}, change \`${change}\`, ${feitas} história(s) com tarefas todas marcadas.`);
+      if (atual) {
+        linhas.push(`História atual: ${atual.chave} · ${atual.titulo || ''} · ${atual.feitas}/${atual.feitas + atual.abertas} tarefas. Uma tarefa por vez, com teste e saída na tela. Ao terminar ou depois de cada ajuste: verificações e a pergunta "Agora ok?". Com o ok: commit com a chave da história, push, cartão para "Em análise", próxima história. Sem subagente. Menor mudança que cumpre o critério. Fale simples: sem id de tela, de card ou nome de arquivo na conversa.`);
       } else {
-        linhas.push('Siga o tasks.md, uma tarefa por vez, com teste. Ao terminar ou depois de cada ajuste: verificações, saída na tela, e a pergunta "Agora ok?". Sem subagente. Menor mudança que cumpre o critério.');
+        linhas.push('Nenhuma história aberta no tasks.md. Próxima: a primeira do épico em "Refinada" e sem responsável, na ordem de kit/entrega-09-10.md. Nenhuma refinada: liste o que falta e quem revisa, e pare.');
       }
     }
   }

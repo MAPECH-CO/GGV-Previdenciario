@@ -1,0 +1,23 @@
+{
+  "name": "@ggv/contratos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Schemas Zod que a tela e o servidor compartilham: o mesmo schema valida o formulário e o corpo da requisição.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc",
+    "lint": "oxlint",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ggv/campos": "workspace:*",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.3"
+  }
+}

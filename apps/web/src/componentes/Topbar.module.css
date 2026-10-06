@@ -68,3 +68,14 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+.sair {
+  padding: 7px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  cursor: pointer;
+}

@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import type { UsuarioDaSessao } from '@ggv/contratos'
+import { chamarApi } from './api.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
@@ -17,6 +20,9 @@ import { ReceberDocumento } from './paginas/ReceberDocumento.tsx'
 import { RenovarSenha } from './paginas/RenovarSenha.tsx'
 import { SegundaFicha } from './paginas/SegundaFicha.tsx'
 import { Tokens } from './paginas/Tokens.tsx'
+import { Entrar } from './paginas/Entrar.tsx'
+import { SemPerfil } from './paginas/SemPerfil.tsx'
+import { TrocarSenha } from './paginas/TrocarSenha.tsx'
 import { DefinirBeneficio } from './paginas/DefinirBeneficio.tsx'
 import { CalcularTempo } from './paginas/CalcularTempo.tsx'
 import { RegistrarFechamento } from './paginas/RegistrarFechamento.tsx'
@@ -24,11 +30,32 @@ import { Recontatar } from './paginas/Recontatar.tsx'
 import { NovaDemanda } from './paginas/NovaDemanda.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
+// Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
 export function App({ caminho = window.location.pathname, busca = window.location.search }: { caminho?: string; busca?: string }) {
+  if (caminho === '/entrar') return <Entrar />
+  if (caminho === '/tokens') return <Tokens />
+  return <ComSessao caminho={caminho} busca={busca} />
+}
+
+function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
+  const [usuario, setUsuario] = useState<UsuarioDaSessao | null>(null)
+
+  useEffect(() => {
+    // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
+    void chamarApi<UsuarioDaSessao>('/sessao').then((r) => r.ok && setUsuario(r.dados))
+  }, [])
+
+  if (!usuario) return null
+  if (usuario.trocarSenha) return <TrocarSenha />
+  if (!usuario.perfil) return <SemPerfil nome={usuario.nome} />
+  return <Telas caminho={caminho} busca={busca} />
+}
+
+/** As telas do portal, já com sessão. Os dados ainda são os de exemplo (src/dados/). */
+function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   const parametros = new URLSearchParams(busca)
   if (caminho === '/') return <CentralAtendimento />
   if (caminho === '/advogada') return <CentralAdvogada />
-  if (caminho === '/tokens') return <Tokens />
   if (caminho === '/balcao') return <Balcao />
   if (caminho === '/clientes/novo') return <NovoCliente />
   if (caminho === '/agenda') return <Agenda vistaInicial={(parametros.get('ver') as Vista | null) ?? undefined} />
