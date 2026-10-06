@@ -20,13 +20,13 @@
 
 ## GGVP-23 · Conferência do sênior antes do INSS
 
-- [ ] 3.1 Matriz versão 3 (`caso.ver`, `inss.registrar_resposta`, `caso.encerrar`) e contratos `CasoParaConferencia`, `DecidirConferencia` e `DispensarParecer` em `packages/contratos`; teste em `permissoes.test.ts` e `inss.test.ts`; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 3.2 CA1, CA4, CA5, CA6 · `GET /api/casos/:id/conferencia` em `apps/api/src/rotas/inss.ts` (checklist G1, parecer G17, laudo novo esperando, `podeDecidir`); teste em `rotas/inss.test.ts`; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 3.3 CA2, CA3, CA5, CA7, CA8, CA9, CA10 · `POST /api/casos/:id/conferencia` e `POST /api/casos/:id/parecer/dispensa`: portões G1 e G17 no servidor, aprovar abre as duas tarefas juntas, reprovar com motivo e prazo opcional, nova liberação sem herdar o OK, recusa a outro perfil com histórico; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 3.4 Dados de exemplo: um caso esperando a conferência com parecer "Suficiente" e um sem parecer; pensão por morte em destaque na fila; verifica entrando como Sênior.
-- [ ] 3.5 CA1, CA3, CA4, CA5, CA8 · Tela "Conferência" em `apps/web/src/paginas/Conferencia.tsx` (só leitura para quem não é Sênior); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 3.6 Playwright: a Sênior aprova um caso e as tarefas aparecem para o Jurídico administrativo e para a advogada; reprova outro sem motivo e vê a recusa; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.1 Matriz versão 3 (`caso.ver`, `inss.registrar_resposta`, `caso.encerrar`) e contratos `CasoParaConferencia`, `DecidirConferencia` e `DispensarParecer` em `packages/contratos`; teste em `permissoes.test.ts` e `inss.test.ts`; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 3.2 CA1, CA4, CA5, CA6 · `GET /api/casos/:id/conferencia` em `apps/api/src/rotas/inss.ts` (checklist G1, parecer G17, laudo novo esperando, `podeDecidir`); teste em `rotas/inss.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.3 CA2, CA3, CA5, CA7, CA8, CA9, CA10 · `POST /api/casos/:id/conferencia` e `POST /api/casos/:id/parecer/dispensa`: portões G1 e G17 no servidor, aprovar abre as duas tarefas juntas, reprovar com motivo e prazo opcional, nova liberação sem herdar o OK, recusa a outro perfil com histórico; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.4 Dados de exemplo: um caso esperando a conferência com parecer "Suficiente" e um sem parecer; pensão por morte em destaque na fila; verifica entrando como Sênior.
+- [x] 3.5 CA1, CA3, CA4, CA5, CA8 · Tela "Conferência" em `apps/web/src/paginas/Conferencia.tsx` (só leitura para quem não é Sênior); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 3.6 Playwright: a Sênior aprova um caso e as tarefas aparecem para o Jurídico administrativo e para a advogada; reprova outro sem motivo e vê a recusa; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-35 · Vigiar o Meu INSS todo dia (entra quando o cartão estiver em "Refinada")
 

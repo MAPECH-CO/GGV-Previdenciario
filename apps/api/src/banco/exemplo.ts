@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, credencialGovbr, decisao, documento, pessoa, tarefa, usuario } from './esquema.ts'
+import { caso, credencialGovbr, decisao, documento, parecerMedico, pessoa, tarefa, usuario } from './esquema.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
 
@@ -66,5 +66,40 @@ export async function semearExemplos(banco: Banco) {
       { casoId: c.id, passo: 'D2.02', titulo: 'Protocolar no Meu INSS', perfilDono: 'juridico_adm' },
       { casoId: c.id, passo: 'D2.03', titulo: 'Decidir perícia', perfilDono: 'advogada' },
     ])
+  }
+
+  // Casos esperando a conferência da Sênior (GGVP-23): um pronto para aprovar (pensão por morte, em destaque)
+  // e um sem parecer médico, que o servidor barra até a dispensa justificada (G17).
+  for (const ex of [
+    { nome: 'Antônia Lima (exemplo)', beneficio: 'pensao_morte', parecer: 'suficiente' as const },
+    { nome: 'Benedito Alves (exemplo)', beneficio: 'auxilio_acidente', parecer: null },
+  ]) {
+    const [p] = await banco.insert(pessoa).values({ nome: ex.nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: ex.beneficio, fase: 'atendimento' }).returning()
+    for (const [j, nome] of DOCUMENTOS_DE_EXEMPLO.entries())
+      await banco.insert(documento).values({
+        casoId: c.id,
+        pessoaId: p.id,
+        tipo: nome.toLowerCase().replaceAll(' ', '_'),
+        sensivel: nome === 'Laudo médico',
+        chaveArmazenamento: `exemplo/${c.id}/${j}`,
+        nomeOriginal: `${nome} (exemplo).pdf`,
+        mime: 'application/pdf',
+        tamanho: 0,
+        hashSha256: 'exemplo',
+        origem: 'exemplo',
+      })
+    if (ex.parecer)
+      await banco.insert(parecerMedico).values({
+        casoId: c.id,
+        roteiroVersao: 1,
+        resultado: ex.parecer,
+        itens: [
+          { item: 'Natureza do impedimento', atendido: true },
+          { item: 'Data de início', atendido: true },
+          { item: 'Limitações funcionais', atendido: true },
+        ],
+      })
+    await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
   }
 }

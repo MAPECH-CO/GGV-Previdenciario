@@ -60,3 +60,55 @@ export const DecidirPericia = z.discriminatedUnion('precisa', [
   }),
 ], { error: 'Responda se o caso precisa de perícia' })
 export type DecidirPericia = z.infer<typeof DecidirPericia>
+
+/** GET /api/casos/:id/conferencia (GGVP-23). Parecer só com o resultado e os itens; nunca o CID nem o texto do laudo. */
+export const CasoParaConferencia = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  /** G1. `cadastrado` falso: não há kit do benefício, e a tela avisa. */
+  checklist: z.object({ cadastrado: z.boolean(), completo: z.boolean(), faltam: z.array(z.string()) }),
+  documentos: z.array(z.object({ id: z.uuid(), tipo: z.string(), nome: z.string() })),
+  /** G17. Nulo: ainda sem parecer. */
+  parecer: z
+    .object({
+      resultado: z.enum(['suficiente', 'insuficiente', 'contraditorio', 'dispensado']),
+      itens: z.array(z.object({ item: z.string(), atendido: z.boolean() })),
+      justificativaDispensa: z.string().nullable(),
+    })
+    .nullable(),
+  laudoNovoEsperando: z.boolean(),
+  temFicha: z.boolean(),
+  kitAssinado: z.boolean(),
+  /** Só a Sênior decide; os outros perfis veem para leitura (CA4). */
+  podeDecidir: z.boolean(),
+  situacao: z.enum(['aguardando', 'aprovado', 'reprovado']),
+})
+export type CasoParaConferencia = z.infer<typeof CasoParaConferencia>
+
+const DataOpcional = z
+  .string()
+  .refine(validarData, 'Informe a data do ajuste (dd/mm/aaaa)')
+  .transform((d) => dataParaIso(d) as string)
+
+/** POST /api/casos/:id/conferencia (GGVP-23): aprovar, ou reprovar com motivo e "Essa tarefa tem prazo?". */
+export const DecidirConferencia = z.discriminatedUnion(
+  'decisao',
+  [
+    z.object({ decisao: z.literal('aprovar') }),
+    z
+      .object({
+        decisao: z.literal('reprovar'),
+        motivo: z.string().trim().min(1, 'Escreva o que o Atendimento precisa ajustar'),
+        temPrazo: z.boolean({ error: 'Responda se a tarefa tem prazo' }),
+        prazo: DataOpcional.optional(),
+      })
+      .refine((r) => !r.temPrazo || r.prazo, { message: 'Informe a data do ajuste (dd/mm/aaaa)', path: ['prazo'] }),
+  ],
+  { error: 'Escolha aprovar ou reprovar' },
+)
+export type DecidirConferencia = z.input<typeof DecidirConferencia>
+
+/** POST /api/casos/:id/parecer/dispensa (G17): só a Sênior, com justificativa. */
+export const DispensarParecer = z.object({ justificativa: z.string().trim().min(1, 'Escreva por que o parecer é dispensado') })
+export type DispensarParecer = z.infer<typeof DispensarParecer>

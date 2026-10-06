@@ -2,7 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import fastifyMultipart from '@fastify/multipart'
 import bcrypt from 'bcryptjs'
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import {
   CasoParaProtocolo,
@@ -26,9 +26,9 @@ import {
   pessoa,
   requerimentoInss,
   tarefa,
-  usuario,
 } from '../banco/esquema.ts'
 import type { Cofre } from '../cofre.ts'
+import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -39,6 +39,7 @@ const TAMANHO_MAXIMO = 25 * 1024 * 1024
 
 /** Tela de cada passo, quando já existe. */
 const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
+  'D2.01': (id) => `/casos/${id}/conferencia`,
   'D2.02': (id) => `/casos/${id}/protocolo`,
   'D2.03': (id) => `/casos/${id}/pericia`,
 }
@@ -52,15 +53,9 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
   app.register(fastifyMultipart, { limits: { fileSize: TAMANHO_MAXIMO, files: 1, fields: 10 } })
   const historico = registrarHistorico(banco, agora)
 
-  /** G2: o OK vem só do registro da Sênior na conferência (última decisão D2.01), nunca de marcação de outro perfil. */
-  async function okDaSenior(casoId: string) {
-    const [d] = await banco
-      .select({ resultado: decisao.resultado, por: usuario.nome, em: decisao.decididoEm })
-      .from(decisao)
-      .innerJoin(usuario, eq(decisao.decididoPor, usuario.id))
-      .where(and(eq(decisao.casoId, casoId), eq(decisao.passo, 'D2.01'), eq(decisao.tipo, 'aprovacao_inss')))
-      .orderBy(desc(decisao.decididoEm))
-      .limit(1)
+  /** G2: o OK é a última decisão D2.01 aprovada (fluxo/conferencia.ts). */
+  async function okDaSeniorAprovado(casoId: string) {
+    const d = await okDaSenior(banco, casoId)
     return d?.resultado === 'aprovado' ? { por: d.por, em: d.em.toISOString() } : null
   }
 
@@ -82,7 +77,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       .orderBy(asc(tarefa.prazo), asc(tarefa.criadoEm))
     const visiveis = []
     for (const l of linhas) {
-      if (l.tarefa.passo === 'D2.02' && !(await okDaSenior(l.tarefa.casoId))) continue
+      if (l.tarefa.passo === 'D2.02' && !(await okDaSeniorAprovado(l.tarefa.casoId))) continue
       visiveis.push(
         TarefaDaCentral.parse({
           id: l.tarefa.id,
@@ -93,7 +88,8 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
           detalhe: (l.beneficio ?? 'benefício a definir').replaceAll('_', ' '),
           tela: l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.tarefa.casoId) : null,
           prazo: l.tarefa.prazo,
-          urgente: l.tarefa.prazo !== null && l.tarefa.prazo <= hoje(agora()),
+          // Pensão por morte em destaque na fila da Sênior (regra dos 90 dias do óbito; resposta do revisor de 05/10).
+          urgente: (l.tarefa.prazo !== null && l.tarefa.prazo <= hoje(agora())) || (l.tarefa.passo === 'D2.01' && l.beneficio === 'pensao_morte'),
         }),
       )
     }
@@ -121,7 +117,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       casoId: c.id,
       cliente: c.cliente,
       beneficio: c.beneficio,
-      okSenior: await okDaSenior(c.id),
+      okSenior: await okDaSeniorAprovado(c.id),
       documentos: docs,
       temSenhaNoCofre: Boolean(senha),
       jaProtocolado: Boolean(protocolo),
@@ -147,7 +143,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
 
     const [c] = await banco.select({ id: caso.id }).from(caso).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
-    if (!(await okDaSenior(casoId))) {
+    if (!(await okDaSeniorAprovado(casoId))) {
       await historico(pedido.usuario!.id, 'protocolo_recusado_sem_ok', pedido, `caso:${casoId}`)
       return negar(resposta, 409, MSG_SEM_OK_SENIOR)
     }
@@ -220,7 +216,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Responda se o caso precisa de perícia')
     const [c] = await banco.select({ id: caso.id }).from(caso).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
-    if (!(await okDaSenior(casoId))) return negar(resposta, 409, 'A perícia é decidida depois do OK da Sênior.')
+    if (!(await okDaSeniorAprovado(casoId))) return negar(resposta, 409, 'A perícia é decidida depois do OK da Sênior.')
     const [jaDecidida] = await banco
       .select({ id: etapa.id })
       .from(etapa)

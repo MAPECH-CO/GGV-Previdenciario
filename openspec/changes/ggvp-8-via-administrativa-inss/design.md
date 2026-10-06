@@ -68,7 +68,7 @@ O grupo 1 já tem: a Central do perfil vinda do servidor, a decisão `D2.01 · a
 
 ### Telas
 
-Conferência (`/casos/:id/conferencia`, só leitura para quem não é Sênior), Vigília (`/casos/:id/vigilia`: o que o caso espera e desde quando, e o registro da resposta) e o botão "Encerrar sem judicializar" para a Sênior no caso indeferido.
+A Central do Atendimento (tela do GGVP-120, do Pedro) passa a mostrar no topo as tarefas que o servidor tem para o perfil, acima das de exemplo, para o ajuste pedido pela Sênior aparecer (CA3; decisão do Mateus em 05/10, avisada ao Pedro no PR). Conferência (`/casos/:id/conferencia`, só leitura para quem não é Sênior), Vigília (`/casos/:id/vigilia`: o que o caso espera e desde quando, e o registro da resposta) e o botão "Encerrar sem judicializar" para a Sênior no caso indeferido.
 
 ### Risks / Trade-offs
 

@@ -6,6 +6,7 @@ import { Saude } from '@ggv/contratos'
 import { abrirArmazenamento, type Armazenamento } from './armazenamento.ts'
 import type { Banco } from './banco/conexao.ts'
 import { chaveDoCofre, criarCofre, type Cofre } from './cofre.ts'
+import { registrarRotasConferencia } from './rotas/conferencia.ts'
 import { registrarRotasInss } from './rotas/inss.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
@@ -45,6 +46,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
 
   if (banco) {
     registrarSessao(app, { banco, agora, cookieSeguro })
+    registrarRotasConferencia(app, { banco, agora })
     registrarRotasInss(app, {
       banco,
       agora,

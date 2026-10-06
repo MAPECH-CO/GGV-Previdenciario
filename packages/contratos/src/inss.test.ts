@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DecidirPericia, RegistrarProtocolo } from './inss.ts'
+import { DecidirConferencia, DecidirPericia, DispensarParecer, RegistrarProtocolo } from './inss.ts'
 
 describe('RegistrarProtocolo (GGVP-27 CA4)', () => {
   it('aceita número, DER em dd/mm/aaaa e a conferência marcada; guarda só dígitos e a data em ISO', () => {
@@ -27,5 +27,29 @@ describe('DecidirPericia (GGVP-31 CA5)', () => {
   it('recusa sem resposta e "sim" sem tipo', () => {
     expect(DecidirPericia.safeParse({}).success).toBe(false)
     expect(DecidirPericia.safeParse({ precisa: true, tipos: [] }).error?.issues[0]?.message).toBe('Escolha a perícia médica, a avaliação social ou as duas')
+  })
+})
+
+describe('DecidirConferencia (GGVP-23)', () => {
+  it('aprovar não pede nada; reprovar pede motivo e, com prazo, a data', () => {
+    expect(DecidirConferencia.parse({ decisao: 'aprovar' })).toEqual({ decisao: 'aprovar' })
+    expect(DecidirConferencia.parse({ decisao: 'reprovar', motivo: ' Falta o laudo ', temPrazo: true, prazo: '10/10/2026' })).toEqual({
+      decisao: 'reprovar',
+      motivo: 'Falta o laudo',
+      temPrazo: true,
+      prazo: '2026-10-10',
+    })
+    expect(DecidirConferencia.parse({ decisao: 'reprovar', motivo: 'Falta o laudo', temPrazo: false })).toMatchObject({ temPrazo: false })
+  })
+
+  it('CA8 · reprovar sem motivo, ou com prazo sem data, é recusado com mensagem clara', () => {
+    const erro = (d: unknown) => DecidirConferencia.safeParse(d).error?.issues[0]?.message
+    expect(erro({ decisao: 'reprovar', motivo: '  ', temPrazo: false })).toBe('Escreva o que o Atendimento precisa ajustar')
+    expect(erro({ decisao: 'reprovar', motivo: 'x', temPrazo: true })).toBe('Informe a data do ajuste (dd/mm/aaaa)')
+    expect(erro({ decisao: 'talvez' })).toBe('Escolha aprovar ou reprovar')
+  })
+
+  it('G17 · dispensar o parecer pede justificativa', () => {
+    expect(DispensarParecer.safeParse({ justificativa: '' }).error?.issues[0]?.message).toBe('Escreva por que o parecer é dispensado')
   })
 })
