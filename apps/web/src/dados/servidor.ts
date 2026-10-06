@@ -32,6 +32,7 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 import type { Contrato } from './contrato.ts'
+import type { Roteiro } from '../regras/roteiro.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -71,6 +72,8 @@ export type Banco = {
   cobrancas?: Cobranca[]
   /** Quem liberou cada caso ao Jurídico, e quando (GGVP-18). */
   liberacoes?: Liberacao[]
+  /** Os roteiros de conteúdo mínimo, com as versões (GGVP-93). Sem ele, começa da semente de roteiro.ts. */
+  roteiros?: Roteiro[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
