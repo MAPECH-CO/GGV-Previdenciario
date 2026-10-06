@@ -85,6 +85,15 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Aposentadoria da Pessoa com Deficiência · Roteiro de conteúdo mínimo' })).toBeTruthy()
   })
 
+  it('GGVP-20 · em /casos/:id/laudo-novo e /casos/:id/parecer abrem a análise do laudo novo e o parecer', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/antonio-exemplo-1/laudo-novo" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Analisar laudo novo' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/rita-exemplo-1/parecer" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Dar parecer médico' })).toBeTruthy()
+  })
+
   it('GGVP-18 · em /casos/:id/liberar abre a liberação; com ?perfil=atendimento, só a situação', async () => {
     zerarExemplo()
     render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)

@@ -38,7 +38,8 @@ describe('Preparação da conversa · servidor de exemplo', () => {
       urgente: true,
       href: '/entrevista/josefa-entrevista/preparar',
     })
-    expect(fila.map((t) => t.cliente?.nome)).toEqual(['Josefa Exemplo', 'Maria Exemplo', 'Antônio Exemplo', 'Antônio Exemplo', 'Pedro Exemplo', 'Lúcia Exemplo'])
+    // O "Analisar laudo novo" do Antônio nasce do caso, em parecer.ts (GGVP-20).
+    expect(fila.map((t) => t.cliente?.nome)).toEqual(['Josefa Exemplo', 'Maria Exemplo', 'Antônio Exemplo', 'Pedro Exemplo', 'Lúcia Exemplo'])
   })
 
   it('CA2, CA3 e CA5 · a preparação traz o resumo da IA, os pontos e a anotação do primeiro contato', async () => {

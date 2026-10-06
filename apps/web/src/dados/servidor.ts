@@ -33,6 +33,8 @@ import type {
 } from './tipos.ts'
 import type { Contrato } from './contrato.ts'
 import type { Roteiro } from '../regras/roteiro.ts'
+import type { ParecerDoCaso } from './parecer.ts'
+import type { Complemento } from './complemento.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -74,6 +76,10 @@ export type Banco = {
   liberacoes?: Liberacao[]
   /** Os roteiros de conteúdo mínimo, com as versões (GGVP-93). Sem ele, começa da semente de roteiro.ts. */
   roteiros?: Roteiro[]
+  /** A análise da IA e o registro do parecer médico de cada caso (GGVP-20). Sem ele, começa da semente de parecer.ts. */
+  pareceres?: ParecerDoCaso[]
+  /** A pendência de complemento ao médico de cada caso (GGVP-20 abre, GGVP-29 conduz). */
+  complementos?: Complemento[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

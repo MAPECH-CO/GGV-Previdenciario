@@ -158,7 +158,8 @@ export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos): P
       acao: 'Analisar laudo novo',
       detalhe: [caso ? nomeBeneficio(caso.beneficio) : 'sem caso em andamento', `laudo novo de ${dataCurta(hoje, hoje)}`].join(' · '),
       prazo: 'hoje',
-      href: caso ? `/processos/${caso.id}` : `/clientes/${ficha.id}`,
+      // A análise e a comparação do laudo novo (GGVP-20).
+      href: caso ? `/casos/${caso.id}/laudo-novo` : `/clientes/${ficha.id}`,
       processoId: caso?.id,
       setor: 'Jurídico',
     })

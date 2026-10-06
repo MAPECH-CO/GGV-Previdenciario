@@ -1,6 +1,7 @@
 // EXEMPLO. Tarefas de exemplo da Central da Advogada, com os textos do protótipo do Figma (frame 59:449) e só as
 // pessoas de exemplo.ts (nomes com "Exemplo"). As do Figma com gente que não está na semente ficaram de fora. As tarefas
-// que o portal cria (Preparar entrevista, Cadastrar lead...) vêm do servidor de exemplo (preparacao.ts).
+// que o portal cria (Preparar entrevista, Cadastrar lead...) vêm do servidor de exemplo (preparacao.ts). O "Analisar laudo novo"
+// do Antônio nasce do caso (parecer.ts, GGVP-20).
 import type { Tarefa } from './tipos.ts'
 
 const cliente = (id: string, nome: string) => ({ id, nome })
@@ -13,15 +14,6 @@ export const tarefasAdvogada: Tarefa[] = [
     acao: 'Decidir perícia',
     detalhe: 'Auxílio por Incapacidade Temporária · protocolo feito hoje',
     prazo: 'hoje',
-  },
-  {
-    id: 'a2',
-    codigo: 'D1.21M',
-    cliente: cliente('antonio-exemplo', 'Antônio Exemplo'),
-    acao: 'Analisar laudo novo',
-    detalhe: 'Aposentadoria por Incapacidade Permanente · enviado pelo Atendimento em 29/09 · resumo e comparação da IA prontos',
-    prazo: 'hoje',
-    urgente: true,
   },
   {
     id: 'a3',

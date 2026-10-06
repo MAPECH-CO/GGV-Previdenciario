@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
+import { obterParecer, registrarParecer } from '../dados/parecer.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { LiberarCaso } from './LiberarCaso.tsx'
 
@@ -19,13 +20,17 @@ async function arquivarTudo(fichaId: string) {
 
 async function completarRita() {
   await arquivarTudo('rita-exemplo')
-  const faltam = ['cpf', 'comprovante-renda', 'cadunico', 'grupo-familiar', 'declaracao-moradia']
+  // O relatório médico completa o laudo, e a advogada registra o parecer Suficiente (GGVP-20).
+  const faltam = ['cpf', 'comprovante-renda', 'cadunico', 'grupo-familiar', 'declaracao-moradia', 'laudo']
   await enviarArquivos('rita-exemplo', {
     origem: 'card',
     arquivos: faltam.map((tipo, i) => ({ nome: `${tipo}.pdf`, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(40 + i).padStart(64, '0') })),
   })
   await arquivarTudo('rita-exemplo')
   await conferirChecklist('rita-exemplo-1')
+  const analise = (await obterParecer('rita-exemplo-1', 'juridico'))!.juridico!.analise!
+  const conferidos = Object.fromEntries(analise.itens.map((i) => [i.id, i.situacao]))
+  await registrarParecer('rita-exemplo-1', { analise: analise.quando, conferidos, decisao: 'suficiente' }, { perfil: 'advogada', nome: 'Dra. Paula (exemplo)' })
 }
 
 async function abrir(processoId: string, perfil?: 'atendimento') {
@@ -67,6 +72,15 @@ describe('Liberar ao Jurídico · tela do passo', () => {
     expect(screen.queryByRole('button', { name: 'Liberar ao Jurídico' })).toBeNull()
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(screen.getByRole('status').textContent).toContain('Você está como Atendimento: vê só a situação')
+  })
+
+  it('GGVP-20 · "Abrir ›" do parecer e "Parecer médico" abrem a janela do parecer, na visão da Documentação', async () => {
+    await abrir('sebastiao-exemplo-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir o parecer médico' }))
+    const janela = await screen.findByRole('dialog', { name: 'Parecer médico de suficiência' })
+    expect((await within(janela).findByRole('status')).textContent).toContain('SUFICIENTE')
+    expect(within(janela).queryByRole('list', { name: 'Roteiro aplicado' })).toBeNull()
+    expect(within(janela).getByText('Nada: a documentação cobre o que o benefício exige.')).toBeTruthy()
   })
 
   it('o resumo do que foi coletado: ficha, entrevista, benefício e parecer', async () => {

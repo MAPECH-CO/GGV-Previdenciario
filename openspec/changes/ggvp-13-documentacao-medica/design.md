@@ -105,3 +105,65 @@ Sem endpoint novo: `GET /api/fichas/:id/documentos-lidos` e `POST .../arquivar` 
 5. **Laudo novo pelo card** (CA4) já passa pela mesma leitura (a GGVP-17 marca `aguardaLeitura`); a comparação com o processo é da GGVP-20, que liga a tarefa "Analisar laudo novo" à tela dela.
 6. **Pistas do tipo** (`regras/arquivos.ts`): atestado, relatório médico, exame, CAT, boletim de ocorrência, relatório escolar e de terapia ganham pista própria; antes, atestado virava laudo.
 7. CA5 a CA10 já valem desde a GGVP-81 e a GGVP-91 (dono identificado, confiança, duplicado, mesma leitura, original guardado, checklist recalculado): a spec repete o critério e os testes provam com documento médico.
+
+## GGVP-20 · Parecer de suficiência da documentação médica
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/laudo-novo` | Laudo novo · resumo e comparação da IA `2087:2` | O resumo da IA, a comparação com o último laudo (o que mudou em destaque), o que o laudo novo passa a cobrir diante do roteiro e o que ainda falta, e "Ir para o parecer" |
+| `/casos/:id/parecer` | step_D1.21M `14:195` | O laudo novo, a matriz do roteiro item a item (presente, ausente ou contraditório, com o documento, a página e o trecho), a conferência de cada item, "Suficiente — liberar" ou "Insuficiente — pedir complemento", o campo "o que o documento deve abordar" já sugerido pela IA (G20), "Registrar parecer" e o histórico do parecer |
+| janela sobre as telas de passo | Overlay · Parecer médico `1654:2` | O resultado, quem confirmou e quando, os documentos analisados e o roteiro aplicado; para Atendimento e Documentação, só o resultado, os documentos e o que falta pedir |
+| `/advogada` (muda) | Central · Advogada `59:449` | "Analisar laudo novo" e "Dar parecer médico" nascem do caso, no lugar da linha fixa |
+
+O "Parecer médico" das instruções das telas de passo (conferir documento, checklist, cobrança, liberar) e o "Abrir ›" da liberação passam a abrir a janela. A ficha do cliente (visão do Atendimento) mostra em "Documentação médica" o resultado e quem confirmou, sem o conteúdo.
+
+### Contrato (vai para `packages/contratos/pareceres.ts`)
+
+```ts
+export const SituacaoDoItem = z.enum(['presente', 'ausente', 'contraditorio'])
+export const Evidencia = z.object({ documentoId: z.string(), documento: z.string(), pagina: z.number().int().positive(), trecho: z.string() })  // só Jurídico
+export const ItemAnalisado = z.object({ id: z.string(), tipo: z.enum(['obrigatorio', 'contradicao']), texto: z.string(), pergunta: z.string().optional(),
+  situacao: SituacaoDoItem, evidencia: Evidencia.optional() })
+export const AnaliseDaIA = z.object({
+  quando: z.string(), roteiro: z.object({ id: z.string(), nome: z.string(), versao: z.number() }).optional(),   // sem roteiro: conferência manual (GGVP-93, CA3)
+  documentos: z.array(DocumentoAnalisado), itens: z.array(ItemAnalisado),
+  sugestao: z.enum(['suficiente', 'insuficiente', 'contraditorio', 'sem-roteiro']),
+  mudou: z.array(z.string()),                                      // CA4: o que mudou desde a análise anterior
+})
+export const RegistroDoParecer = z.object({
+  decisao: z.enum(['suficiente', 'insuficiente']),
+  itens: z.array(z.object({ id: z.string(), situacao: SituacaoDoItem })),   // a conferência de cada item (CA3)
+  abordar: z.string().trim().max(1000).optional(),                 // obrigatório no Insuficiente e no Contraditório; regra do G20 (CA8)
+  conferenciaManual: z.string().trim().max(1000).optional(),       // obrigatório sem roteiro (GGVP-93, CA3)
+})
+// Resposta: o parecer do caso na visão do perfil da sessão (o Atendimento não recebe trecho, página, resumo nem comparação).
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/processos/:id/parecer` | | parecer do caso na visão do perfil | `obterParecer` |
+| `POST /api/processos/:id/parecer` | `RegistroDoParecer` | parecer do caso | `registrarParecer` |
+
+### Campos
+
+| Campo | Regra |
+|---|---|
+| Conferência de cada item | lista fixa: confere com a IA, ou corrige para presente, ausente ou contraditório |
+| A documentação médica é suficiente? | "Suficiente — liberar" ou "Insuficiente — pedir complemento"; com contradição conferida, só "Insuficiente", e o parecer fica "Contraditório" (G18) |
+| O que o documento deve abordar | texto, obrigatório no Insuficiente, até 1000 letras; `problemaG20` recusa código de CID, "diagnóstico", grau, conclusão, aspas e "escreva que" |
+| O que você conferiu (sem roteiro) | texto, obrigatório, de 10 a 1000 letras |
+
+Nenhum campo da biblioteca `campos`. O servidor de exemplo valida de novo com as mesmas regras de `regras/parecer.ts`.
+
+### Decisões da história
+
+1. **A análise é calculada dos documentos médicos do caso** (os lidos pela GGVP-95, a conferir ou arquivados, fora a quarentena e o ilegível, mais os da semente do Sebastião e do Antônio). Quando o conjunto muda, nasce uma análise nova com o roteiro em vigor e "o que mudou" (CA4, GGVP-93 CA4). A análise guarda o texto dos itens e a versão do roteiro: o caso analisado mostra a versão que usou (GGVP-93 CA2).
+2. **IA simulada.** Tabelas da semente dizem o que cada documento cobre (o laudo da Rita cobre três dos cinco itens do LOAS; os do Sebastião, todos; os do Antônio, todos, com o laudo novo de 29/09 do Figma `2087:2`). Laudo, relatório e prontuário que sobem pelo card cobrem todo item obrigatório, salvo pistas no nome: "incapacidade total", "nao consolidada" e "temporaria" acham a contradição do roteiro; "incompleto" não cobre nada. Atestado, exame e os outros não cobrem item obrigatório.
+3. **Regra numérica do LOAS** (contradição "menos de 24 meses", G19): `mesesEntre` e `abaixoDe24Meses` em `regras/parecer.ts`, com teste; a IA só extrai as datas.
+4. **A IA sugere, a advogada registra.** Sem registro, o portão vê "pendente" (sem confirmação humana). O registro exige cada item conferido; "Suficiente" só com todo obrigatório presente e nenhuma contradição; com contradição conferida, o parecer é "Contraditório" (G18). Quem registra é a pessoa do perfil (Dra. Paula na semente), com a data (CA3).
+5. **Insuficiente e Contraditório abrem a pendência de complemento** (CA5): o registro guarda "o que o documento deve abordar", já sugerido pela IA com as perguntas do roteiro para os itens ausentes (resposta do Lucas, 01/10, na GGVP-29) e, na contradição, os documentos complementares. A tela e o laço do complemento são da GGVP-29.
+6. **Laudo novo** (CA6): a ficha e o processo mostram "Laudo novo" até o registro do parecer, que limpa a marca e conclui a tarefa "Analisar laudo novo". A comparação usa o último laudo antes dele; o resumo diz o que o laudo novo passa a cobrir e o que ainda falta (resposta do Lucas, 01/10). A IA só compara o que está nos documentos: não sugere CID, grau nem conclusão (CA7).
+7. **O parecer de exemplo da liberação sai.** `PARECERES_DE_EXEMPLO` (GGVP-18) dá lugar ao registro de verdade do servidor de exemplo: o Sebastião (Suficiente, Dra. Paula, 15/07, Figma `1654:2`) e o Antônio (Suficiente em 20/09, com o laudo novo de 29/09 esperando) vêm da semente; a Rita passa a depender do parecer da advogada.
+8. **Tarefas da advogada** nascem do caso: "Analisar laudo novo" (laudo novo esperando) e "Dar parecer médico" (análise mais nova que o último registro). A linha fixa do Antônio sai de `advogada.ts`; a tarefa que o envio pelo card cria (GGVP-17) passa a abrir a tela do laudo novo.

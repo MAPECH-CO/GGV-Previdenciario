@@ -39,6 +39,8 @@ import { RegistrarFechamento } from './paginas/RegistrarFechamento.tsx'
 import { Recontatar } from './paginas/Recontatar.tsx'
 import { NovaDemanda } from './paginas/NovaDemanda.tsx'
 import { Roteiro } from './paginas/Roteiro.tsx'
+import { AnalisarLaudoNovo } from './paginas/AnalisarLaudoNovo.tsx'
+import { DarParecer } from './paginas/DarParecer.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -126,5 +128,9 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (caminho === '/roteiros') return <Roteiro />
   const roteiro = /^\/roteiros\/([^/]+)$/.exec(caminho)
   if (roteiro) return <Roteiro id={decodeURIComponent(roteiro[1])} />
+  const laudoNovo = /^\/casos\/([^/]+)\/laudo-novo$/.exec(caminho)
+  if (laudoNovo) return <AnalisarLaudoNovo processoId={decodeURIComponent(laudoNovo[1])} />
+  const parecer = /^\/casos\/([^/]+)\/parecer$/.exec(caminho)
+  if (parecer) return <DarParecer processoId={decodeURIComponent(parecer[1])} />
   return <NaoConstruida caminho={caminho} />
 }

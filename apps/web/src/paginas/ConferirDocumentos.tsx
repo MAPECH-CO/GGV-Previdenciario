@@ -242,7 +242,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
             <p className={styles.subtitulo}>{digital ? 'digitais' : 'digitalizados'} · ler e arquivar</p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processo?.id}>
             A IA leu os documentos {digital ? 'que chegaram pelo card' : 'digitalizados'} de {ficha.nome.split(' ')[0]} e sugeriu tipo e
             data de cada um. Abra cada um, confira a leitura e se a imagem está legível.
             {loas && ` Para ${beneficio} o kit precisa de RG e CPF de todos da casa, comprovante de renda e de residência e CadÚnico: o que faltar vai para a cobrança (D1.23).`}{' '}

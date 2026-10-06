@@ -95,7 +95,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
             <p className={styles.subtitulo}>{jaEraCliente(ficha, processo.id) ? 'já era cliente · sem boas-vindas' : 'cliente novo · boas-vindas'}</p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId}>
             Situação do checklist calculada pelo sistema a partir dos documentos arquivados e registro das boas-vindas. Confira cada
             item: documento sem assinatura ou com a data em branco não vale (G1), e documento em quarentena não conta.
           </InstrucoesPasso>

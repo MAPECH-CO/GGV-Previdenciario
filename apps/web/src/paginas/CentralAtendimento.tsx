@@ -26,6 +26,7 @@ import { tarefasDoContrato } from '../dados/contrato.ts'
 import { tarefasDeFechamento } from '../dados/fechamento.ts'
 import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
+import { tarefasDeComplemento } from '../dados/complemento.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -54,6 +55,7 @@ export function CentralAtendimento() {
     ...tarefasDeFechamento(),
     ...tarefasDeNovaDemanda(),
     ...tarefasDePedirLegivel(),
+    ...tarefasDeComplemento(),
   ])
 
   return (

@@ -15,11 +15,21 @@ describe('Central da Advogada', () => {
     expect(screen.getByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
   })
 
+  it('GGVP-20 · o laudo novo do Antônio e o parecer da Rita nascem do caso, com a tela de cada um', () => {
+    render(<CentralAdvogada />)
+    const laudo = screen.getByRole('link', { name: 'Antônio Exemplo · Analisar laudo novo' })
+    expect(laudo.getAttribute('href')).toBe('/casos/antonio-exemplo-1/laudo-novo')
+    expect(laudo.closest('li')?.textContent).toContain('enviado pelo Atendimento em 29/09 · resumo e comparação da IA prontos')
+    const parecer = screen.getByRole('link', { name: 'Rita Exemplo · Dar parecer médico' })
+    expect(parecer.getAttribute('href')).toBe('/casos/rita-exemplo-1/parecer')
+    expect(parecer.closest('li')?.textContent).toContain('LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)')
+  })
+
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {
     render(<CentralAdvogada />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(6)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (6)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(7)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (7)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (12)' })).toBeTruthy()
     for (const nome of ['Resumo do caso', 'Criar tarefa', 'Perícias da semana', 'Como o perito avalia?', 'Gerar peça']) {
       expect(screen.getByRole('button', { name: nome })).toBeTruthy()

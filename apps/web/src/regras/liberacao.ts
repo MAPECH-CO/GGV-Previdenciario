@@ -17,8 +17,8 @@ export const BENEFICIOS_COM_PARECER = [
   'auxilio-acidente',
 ]
 
-/** O registro do parecer médico (GGVP-20): quem confirmou e quando. */
-export type Parecer = { situacao: 'suficiente' | 'insuficiente' | 'pendente'; quem?: string; /** aaaa-mm-dd */ data?: string }
+/** O registro do parecer médico (GGVP-20): quem confirmou e quando. "pendente": a IA sugeriu e ninguém conferiu ainda. */
+export type Parecer = { situacao: 'suficiente' | 'insuficiente' | 'pendente' | 'contraditorio'; quem?: string; /** aaaa-mm-dd */ data?: string }
 
 export const precisaDeParecer = (beneficio: string) => BENEFICIOS_COM_PARECER.includes(beneficio)
 
