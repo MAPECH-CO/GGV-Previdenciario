@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 4
+export const VERSAO_MATRIZ = 5
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -26,10 +26,12 @@ export const MATRIZ = {
   'laudo.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   'dado_saude.ver_detalhe': JURIDICO,
   'peticao.ver': JURIDICO,
-  'valores.ver': ['financeiro', 'socio'],
-  'prestacao.ver': ['financeiro', 'advogada', 'senior', 'socio'],
+  // O financeiro do escritório é todo do Financeiro (Pedro, 06/10). A advogada vê os valores só na prestação de
+  // contas, que é ela quem faz; o Sócio vê só totais do escritório, no painel da GGVP-75.
+  'valores.ver': ['financeiro'],
+  'prestacao.ver': ['financeiro', 'advogada'],
   'gestao.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
-  /** Ver o caso só para leitura (GGVP-23 CA4). Financeiro e Sócio veem prestação e Gestão, não o caso. */
+  /** Ver o caso só para leitura (GGVP-23 CA4). Financeiro vê prestação e Gestão; o Sócio, Gestão; nenhum dos dois vê o caso. */
   'caso.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // Fazer
   'laudo.subir': ['atendimento', 'atendimento_lider'],

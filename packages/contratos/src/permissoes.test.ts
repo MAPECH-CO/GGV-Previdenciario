@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 4, digital: 'da7b98a0' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 5, digital: '77c71910' })
   })
 
   it('CA2 · só a Sênior aprova para o INSS', () => {
@@ -37,9 +37,10 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(acoesDe('financeiro')).toEqual(['gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver'])
   })
 
-  it('CA12 · dado de saúde em detalhe só para o Jurídico; valores só Financeiro e Sócio', () => {
+  it('CA12 · dado de saúde em detalhe só para o Jurídico; valores só o Financeiro, e a prestação também a advogada', () => {
     expect(PERFIS.filter((p) => pode(p, 'dado_saude.ver_detalhe'))).toEqual(['advogada', 'senior', 'juridico_adm'])
-    expect(PERFIS.filter((p) => pode(p, 'valores.ver'))).toEqual(['financeiro', 'socio'])
+    expect(PERFIS.filter((p) => pode(p, 'valores.ver'))).toEqual(['financeiro'])
+    expect(PERFIS.filter((p) => pode(p, 'prestacao.ver'))).toEqual(['advogada', 'financeiro'])
   })
 
   it('GGVP-23 · só a Sênior encerra; Financeiro e Sócio não abrem o caso', () => {
@@ -72,10 +73,10 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento_lider: 7,
       documentacao: 4,
       advogada: 14,
-      senior: 14,
+      senior: 13,
       juridico_adm: 11,
       financeiro: 4,
-      socio: 4,
+      socio: 2,
     })
   })
 })

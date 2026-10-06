@@ -95,7 +95,7 @@ Tela que o perfil ativo não pode abrir SHALL mostrar "Sem permissão" e MUST NO
 - **Então** vê "sem permissão" e nenhum dado do caso é carregado
 
 ### Requirement: CA12 · Dado de saúde, petição e valores não saem para quem não pode
-A matriz SHALL dizer quem vê dado de saúde em detalhe (advogada, Sênior, Jurídico administrativo), petição e valores (Financeiro e Sócio). As rotas de caso e de busca MUST filtrar por ela quando existirem.
+A matriz SHALL dizer quem vê dado de saúde em detalhe (advogada, Sênior, Jurídico administrativo), petição (Jurídico) e valores (só o Financeiro; a advogada vê os da prestação de contas que ela faz, e o Sócio só totais do escritório, na GGVP-75; Pedro, 06/10). As rotas de caso e de busca MUST filtrar por ela quando existirem.
 
 #### Scenario: CA12 · Atendimento pede dado de saúde
 - **Dado** um perfil sem acesso a dado de saúde, petição ou valores
