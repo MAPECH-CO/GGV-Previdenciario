@@ -53,6 +53,19 @@ export const PublicacaoParaLer = z.object({
 })
 export type PublicacaoParaLer = z.infer<typeof PublicacaoParaLer>
 
+/** O que a IA devolve na leitura da publicação (GGVP-34, GGVP-74): só lê os dias escritos; a data final é do código. */
+export const LeituraDaPublicacaoPelaIa = z.object({
+  classe: z.enum(CLASSES_DE_ATO),
+  dias: z.number().int().min(1).max(120).nullable(),
+  resumo: z.string().trim().min(1),
+})
+/** POST /api/publicacoes/:id/sugestao. Sem sugestão (sem chave, falha ou fora do formato): `sugestao` nulo e o motivo. */
+export const SugestaoDePublicacao = z.object({
+  sugestao: LeituraDaPublicacaoPelaIa.extend({ chamadaId: z.uuid(), modelo: z.string(), alerta: z.string().nullable() }).nullable(),
+  motivo: z.string().nullable(),
+})
+export type SugestaoDePublicacao = z.infer<typeof SugestaoDePublicacao>
+
 /** GET /api/casos/:id/publicacoes (GGVP-74 CA5, CA7). */
 export const PublicacoesDoCaso = z.object({
   casoId: z.uuid(),

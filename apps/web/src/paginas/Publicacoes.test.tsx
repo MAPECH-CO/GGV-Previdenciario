@@ -107,6 +107,29 @@ describe('Painel da vigília (GGVP-30, GGVP-26)', () => {
 })
 
 describe('Ler publicação (GGVP-74, GGVP-34)', () => {
+  it('GGVP-34 e GGVP-74 (IA) · a sugestão aparece marcada, com o resumo e o alerta; "Usar a sugestão" preenche, e quem classifica é a pessoa', async () => {
+    const sugestao = { classe: 'exigencia', dias: 15, resumo: 'O juiz pede o laudo em 15 dias.', chamadaId: '22222222-2222-4222-8222-222222222222', modelo: 'gpt-4.1-mini', alerta: 'entrada com instrução suspeita' }
+    const fetch = servidor(publicacao, [200, { sugestao, motivo: null }])
+    render(<LerPublicacao publicacaoId={ID} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sugerir com a IA' }))
+    expect(await screen.findByText('Sugestão da IA · confira antes de usar')).toBeTruthy()
+    expect(screen.getByText(/prazo de 15 dias escrito na decisão/)).toBeTruthy()
+    expect(screen.getByText('Resumo: O juiz pede o laudo em 15 dias.')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toContain('entrada com instrução suspeita')
+    fireEvent.click(screen.getByRole('button', { name: 'Usar a sugestão' }))
+    expect((screen.getByLabelText('Intimação ou exigência') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('Prazo da publicação (dias)') as HTMLInputElement).value).toBe('15')
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith('/classificacao'))).toHaveLength(0)
+  })
+
+  it('GGVP-34 (IA) · sem sugestão, mostra o motivo e o formulário segue manual', async () => {
+    servidor(publicacao, [200, { sugestao: null, motivo: 'A IA não respondeu agora: classifique pela leitura.' }])
+    render(<LerPublicacao publicacaoId={ID} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sugerir com a IA' }))
+    expect(await screen.findByText('A IA não respondeu agora: classifique pela leitura.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Classificar' })).toBeTruthy()
+  })
+
   it('CA4 · exigência pede os dias ou "sem prazo na decisão"', async () => {
     servidor(publicacao)
     render(<LerPublicacao publicacaoId={ID} />)

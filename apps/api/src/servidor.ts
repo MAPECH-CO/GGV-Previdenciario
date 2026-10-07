@@ -24,6 +24,7 @@ import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
+import { criarIa, type Ia } from './ia/ia.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
@@ -45,10 +46,12 @@ type Opcoes = {
   armazenamento?: Armazenamento
   /** Fontes da vigília; padrão: as do ambiente (`FONTES_PUBLICACAO`). */
   fontes?: Fonte[]
+  /** A IA (GGVP-106). Padrão: chaves do ambiente; sem chave, desligada. O teste passa uma IA com `fetch` falso. */
+  ia?: Ia
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia }: Opcoes = {}) {
   const app = Fastify({ logger })
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
 
@@ -72,7 +75,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
-    registrarRotasPublicacoes(app, { banco, agora })
+    registrarRotasPublicacoes(app, { banco, agora, ia: ia ?? criarIa({ banco, agora }) })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos })
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })

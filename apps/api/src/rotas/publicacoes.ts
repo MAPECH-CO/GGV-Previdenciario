@@ -1,10 +1,11 @@
 // Publicações da vigília (GGVP-26, GGVP-34, GGVP-37, GGVP-74): fila de revisão da Sênior, leitura e classificação.
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { ClassificarPublicacao, PublicacaoParaLer, PublicacoesDoCaso, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
+import { ClassificarPublicacao, LeituraDaPublicacaoPelaIa, PublicacaoParaLer, PublicacoesDoCaso, SugestaoDePublicacao, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, pessoa, prazo, publicacao, publicacaoReclassificacao, tarefa, usuario } from '../banco/esquema.ts'
 import { feriadosDoProcesso } from '../fluxo/prazo-judicial.ts'
+import type { Ia } from '../ia/ia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { casoDoCnj, pedirLeitura } from '../vigilia/casar.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
@@ -12,10 +13,10 @@ import { itensDaFila } from '../vigilia/fila.ts'
 
 export const MSG_CNJ_SEM_CASO = 'Nenhum processo do escritório tem esse número CNJ.'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   // GGVP-26 CA7, CA10, CA12: a fila da Sênior, com a idade e o prazo mínimo de cada item.
@@ -55,6 +56,29 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
     const [p] = await banco.select().from(prazo).where(eq(prazo.publicacaoId, publicacaoId)).orderBy(desc(prazo.criadoEm)).limit(1)
     return p ? { inicio: p.inicio, fim: p.fim, regra: p.regra, versao: p.regraVersao } : null
   }
+
+  // GGVP-34 e GGVP-74 (épico IA): a IA sugere o tipo de ato, os dias escritos e um resumo. Nada classifica: só guarda a
+  // classe sugerida, e quem classifica, conta o prazo e encaminha é a pessoa, na rota da classificação.
+  app.post<{ Params: { id: string } }>('/api/publicacoes/:id/sugestao', { preHandler: exigir(banco, 'publicacao.classificar', agora) }, async (pedido, resposta) => {
+    const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, pedido.params.id))
+    if (!p || !p.casoId) return negar(resposta, 404, 'Publicação não encontrada.')
+    const s = await ia.sugerir('classificar_publicacao', {
+      casoId: p.casoId,
+      quem: pedido.usuario!.id,
+      conteudo: p.texto,
+      fontes: [{ tipo: 'publicacao', referencia: `publicacao:${p.id}` }],
+    })
+    if (!s) return SugestaoDePublicacao.parse({ sugestao: null, motivo: 'A IA não respondeu agora: classifique pela leitura.' })
+    let lida: ReturnType<typeof LeituraDaPublicacaoPelaIa.safeParse>
+    try {
+      lida = LeituraDaPublicacaoPelaIa.safeParse(JSON.parse(s.texto))
+    } catch {
+      lida = LeituraDaPublicacaoPelaIa.safeParse(null)
+    }
+    if (!lida.success) return SugestaoDePublicacao.parse({ sugestao: null, motivo: 'A IA respondeu fora do formato: classifique pela leitura.' })
+    await banco.update(publicacao).set({ classeSugeridaIa: lida.data.classe }).where(eq(publicacao.id, p.id))
+    return SugestaoDePublicacao.parse({ sugestao: { ...lida.data, chamadaId: s.chamadaId, modelo: s.modelo, alerta: s.alerta }, motivo: null })
+  })
 
   // GGVP-74 CA4 e GGVP-34 CA3: a publicação, a classificação e o prazo contado (com a regra e a versão).
   app.get<{ Params: { id: string } }>('/api/publicacoes/:id', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {

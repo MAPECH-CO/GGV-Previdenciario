@@ -44,12 +44,15 @@ export const FINALIDADES = {
   resumo_resultado: {
     versao: 1,
     saude: false,
+    json: false,
     instrucao: 'Escreva, em linguagem simples, um resumo do resultado do processo para o cliente, sem estratégia interna do escritório.',
   },
   classificar_publicacao: {
-    versao: 1,
+    versao: 2,
     saude: false,
-    instrucao: 'Diga se a publicação é exigência do juiz, decisão de mérito ou só andamento, e o prazo em dias se houver. Responda numa linha.',
+    json: true,
+    instrucao:
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
   },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
@@ -142,6 +145,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
             { role: 'system', content: `${REGRAS_DA_IA}\n\n${f.instrucao}` },
             { role: 'user', content: `<conteudo>\n${pedido.conteudo}\n</conteudo>` },
           ],
+          ...(f.json && { response_format: { type: 'json_object' } }),
         }),
         signal: AbortSignal.timeout(30_000),
       })

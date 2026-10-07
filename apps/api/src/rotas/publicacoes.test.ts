@@ -7,6 +7,7 @@ import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MOTIVO_SEM_CNJ, casarPublicacoes } from '../vigilia/casar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { criarIa } from '../ia/ia.ts'
 import { MSG_CNJ_SEM_CASO } from './publicacoes.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -112,6 +113,33 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     const [gabi] = await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, 'gabi@exemplo.ggv'))
     const [lida] = await banco.select().from(publicacao).where(eq(publicacao.id, andamento.id))
     expect([lida.classe, lida.revisadaPor, lida.revisadaEm instanceof Date]).toEqual(['andamento', gabi.id, true])
+  })
+
+  /** A API com uma IA falsa que responde `texto`, como a OpenAI. */
+  const comIa = (texto: string) => {
+    const fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: texto } }] }))
+    app = criarServidor({ banco, agora: () => agora, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste' }, fetch }) })
+  }
+
+  it('GGVP-34 e GGVP-74 (IA) · a IA sugere o tipo, os dias e o resumo; a publicação continua sem classe até a advogada classificar', async () => {
+    const { exigencia } = await casar()
+    comIa(JSON.stringify({ classe: 'exigencia', dias: 15, resumo: 'O juiz pede o laudo em 15 dias.' }))
+    const r = (await chamar('gabi', 'POST', `/api/publicacoes/${exigencia.id}/sugestao`)).json()
+    expect([r.sugestao.classe, r.sugestao.dias, r.sugestao.resumo, r.sugestao.alerta, r.motivo]).toEqual(['exigencia', 15, 'O juiz pede o laudo em 15 dias.', null, null])
+    const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, exigencia.id))
+    expect([p.classe, p.classeSugeridaIa, p.revisadaPor]).toEqual([null, 'exigencia', null])
+    expect(await filaDa('gabi')).toEqual([['Ler publicação', null]])
+    expect((await classificar(exigencia.id, { classe: 'exigencia', dias: '15' })).statusCode).toBe(201)
+  })
+
+  it('GGVP-34 (IA) · resposta fora do formato ou sem chave: sem sugestão, com o motivo', async () => {
+    const { exigencia } = await casar()
+    comIa('Acho que é uma exigência.')
+    expect((await chamar('gabi', 'POST', `/api/publicacoes/${exigencia.id}/sugestao`)).json()).toEqual({ sugestao: null, motivo: 'A IA respondeu fora do formato: classifique pela leitura.' })
+    comIa(JSON.stringify({ classe: 'outra', dias: 15, resumo: 'x' }))
+    expect((await chamar('gabi', 'POST', `/api/publicacoes/${exigencia.id}/sugestao`)).json().sugestao).toBeNull()
+    app = criarServidor({ banco, agora: () => agora, ia: criarIa({ banco, ambiente: {} }) })
+    expect((await chamar('gabi', 'POST', `/api/publicacoes/${exigencia.id}/sugestao`)).json().motivo).toBe('A IA não respondeu agora: classifique pela leitura.')
   })
 
   it('CA2, CA4 e GGVP-34 CA3 · exigência: a advogada classifica, vê o prazo com a regra e a tarefa nasce com o prazo', async () => {

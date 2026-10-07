@@ -15,3 +15,10 @@
 - [x] 2.2 CA1, CA3, CA7 · Servidor: detector de instrução suspeita na entrada e na saída e de CID na saída; alerta na chamada e no histórico do caso (`ia_alerta`); saída com CID barrada; testes de ataque.
 - [x] 2.3 CA1, CA10 · Teste: publicação com instrução escondida, sugestão da IA e a publicação continua sem classe até a advogada classificar.
 - [x] 2.4 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?".
+
+## GGVP-34 e GGVP-74 · A IA na leitura da publicação
+
+- [x] 3.1 Contrato `SugestaoDePublicacao` em `packages/contratos/src/justica.ts`; a finalidade `classificar_publicacao` responde em JSON (classe, dias, resumo).
+- [x] 3.2 Servidor: a API monta a IA (`criarServidor` aceita uma IA de teste); `POST /api/publicacoes/:id/sugestao` (perfil `publicacao.classificar`) confere o formato e guarda a classe sugerida; nada classifica; testes com IA falsa.
+- [x] 3.3 Tela "Ler publicação": "Sugerir com a IA", a sugestão marcada, o resumo, o alerta e "Usar a sugestão"; testes de tela.
+- [x] 3.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
