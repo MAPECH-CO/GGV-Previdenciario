@@ -10,6 +10,7 @@ export const paraLinha = (t: TarefaDaCentral): Tarefa => ({
   id: t.id,
   codigo: t.passo ?? '',
   cliente: t.cliente,
+  contexto: t.contexto ?? undefined,
   acao: t.titulo,
   detalhe: t.detalhe,
   prazo: formatarPrazo(t.prazo),

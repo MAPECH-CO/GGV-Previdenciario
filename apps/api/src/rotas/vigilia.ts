@@ -110,6 +110,7 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
         resultado: dados.resultado,
         dataDecisao: hoje(agora()),
         motivoIndeferimento: indeferido ? dados.motivoInss : null,
+        ...(indeferido ? { motivoEscrito: dados.motivoEscrito, motivoEscritoPor: quem, motivoEscritoEm: agora() } : {}),
         documentoId: d.id,
         registradoPor: quem,
       })
@@ -124,10 +125,13 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
         .set(fecharVigilia)
         .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.04'), isNull(tarefa.concluidaEm)))
       if (indeferido) {
-        // GGVP-48: o caso vai para a Justiça; a tarefa já traz a carta (evidência) e o motivo do INSS (no resultado).
+        // GGVP-48 e GGVP-52 (ajuste do Mateus, 06/10): o caso vai para a Justiça. Quem viu o indeferido já escreveu o
+        // motivo com as suas palavras, que vai para o banco de motivos; a Sênior recebe "Despachar caso", com a carta,
+        // sem a tarefa "Registrar indeferimento" à parte.
         await tx.update(caso).set({ fase: 'judicial', atualizadoEm: agora() }).where(eq(caso.id, casoId))
-        await tx.insert(etapa).values({ casoId, diagrama: 'D3', passo: 'D3.01', situacao: 'aberta', iniciadaEm: agora() })
-        await tx.insert(tarefa).values({ casoId, passo: 'D3.01', titulo: 'Registrar indeferimento', perfilDono: 'advogada', evidenciaDocumentoId: d.id })
+        await tx.insert(etapa).values({ casoId, diagrama: 'D3', passo: 'D3.01', situacao: 'concluida', iniciadaEm: agora(), concluidaEm: agora(), concluidaPor: quem })
+        await tx.insert(etapa).values({ casoId, diagrama: 'D3', passo: 'D3.03', situacao: 'aberta', iniciadaEm: agora() })
+        await tx.insert(tarefa).values({ casoId, passo: 'D3.03', titulo: 'Despachar caso', perfilDono: 'senior', evidenciaDocumentoId: d.id, criadoEm: agora() })
       } else if (dados.diferenteDoPedido) {
         await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Analisar deferimento diferente do pedido', perfilDono: 'advogada' })
       } else {

@@ -1,11 +1,12 @@
 // Judicialização e vigília (GGVP-26, 30, 34, 37, 52, 54, 63, 67, 71, 74, 79, 83, 87).
-import { date, integer, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, date, integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
 import { documento } from './documentos.ts'
 
 export const CLASSES_ATO = ['andamento', 'exigencia', 'merito'] as const
+export const FILAS_PUBLICACAO = ['revisao'] as const
 
 /** Publicação do diário, casada pelo CNJ normalizado; repetida é descartada pelo hash; sem CNJ vai para a fila de revisão. */
 export const publicacao = pgTable(
@@ -23,9 +24,17 @@ export const publicacao = pgTable(
     confiancaIa: numeric('confianca_ia', { precision: 4, scale: 3 }),
     revisadaPor: uuid('revisada_por').references(() => usuario.id),
     revisadaEm: momento('revisada_em'),
+    /** Partes citadas, como vieram da fonte (GGVP-26 CA7). */
+    partes: text('partes'),
+    /** `revisao`: sem CNJ ou CNJ desconhecido, esperando a Sênior (GGVP-26 CA3, CA5). */
+    fila: text('fila'),
+    motivoFila: text('motivo_fila'),
+    vinculadaPor: uuid('vinculada_por').references(() => usuario.id),
+    vinculadaEm: momento('vinculada_em'),
+    foraDoEscritorio: boolean('fora_do_escritorio').notNull().default(false),
     criadoEm: criadoEm(),
   },
-  (t) => [emLista('publicacao_classe', t.classe, CLASSES_ATO)],
+  (t) => [emLista('publicacao_classe', t.classe, CLASSES_ATO), emLista('publicacao_fila', t.fila, FILAS_PUBLICACAO)],
 ).enableRLS()
 
 export const SITUACOES_RODADA = ['prevista', 'rodando', 'ok', 'falhou', 'nao_rodou'] as const
@@ -43,6 +52,7 @@ export const rodadaVigilia = pgTable(
     capturadas: integer('capturadas').notNull().default(0),
     erro: text('erro'),
     reprocessadaPor: uuid('reprocessada_por').references(() => usuario.id),
+    reprocessadaEm: momento('reprocessada_em'),
   },
   (t) => [unique('rodada_unica').on(t.fonte, t.previstaPara), emLista('rodada_situacao', t.situacao, SITUACOES_RODADA)],
 ).enableRLS()
@@ -58,6 +68,34 @@ export const prazo = pgTable('prazo', {
   inicio: date('inicio').notNull(),
   fim: date('fim').notNull(),
   regra: text('regra').notNull(),
+  /** Versão da regra de contagem usada (GGVP-34 CA6). */
+  regraVersao: integer('regra_versao').notNull().default(1),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/** Publicação repetida descartada, com o motivo (GGVP-26 CA2, CA6). */
+export const publicacaoDescarte = pgTable('publicacao_descarte', {
+  id: id(),
+  fonte: text('fonte').notNull(),
+  numeroCnj: text('numero_cnj'),
+  disponibilizadaEm: date('disponibilizada_em').notNull(),
+  trecho: text('trecho').notNull(),
+  motivo: text('motivo').notNull(),
+  publicacaoId: uuid('publicacao_id').references(() => publicacao.id),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/** Cada reclassificação, para medir o acerto da IA quando ela existir (GGVP-34 CA10, GGVP-37 CA7). */
+export const publicacaoReclassificacao = pgTable('publicacao_reclassificacao', {
+  id: id(),
+  publicacaoId: uuid('publicacao_id')
+    .notNull()
+    .references(() => publicacao.id),
+  de: text('de').notNull(),
+  para: text('para').notNull(),
+  por: uuid('por')
+    .notNull()
+    .references(() => usuario.id),
   criadoEm: criadoEm(),
 }).enableRLS()
 
@@ -72,6 +110,10 @@ export const peticao = pgTable(
       .references(() => caso.id),
     tipo: text('tipo').notNull(),
     pedidaPor: uuid('pedida_por').references(() => usuario.id),
+    /** O pedido da petição inicial (GGVP-63 CA6, CA9): instruções, opções e os documentos citados, na ordem. */
+    instrucoes: text('instrucoes'),
+    opcoes: jsonb('opcoes'),
+    citados: jsonb('citados'),
     criadoEm: criadoEm(),
   },
   (t) => [emLista('peticao_tipo', t.tipo, TIPOS_PETICAO)],
@@ -90,8 +132,13 @@ export const peticaoVersao = pgTable(
     hash: text('hash').notNull(),
     geradaPor: text('gerada_por').notNull(),
     pedidoDeMudanca: text('pedido_de_mudanca'),
+    /** A versão anexada pela advogada (GGVP-87; sem IA, ela redige fora do portal). */
+    documentoId: uuid('documento_id').references(() => documento.id),
     aprovadaPor: uuid('aprovada_por').references(() => usuario.id),
     aprovadaEm: momento('aprovada_em'),
+    /** O pacote do protocolo da versão aprovada (GGVP-71 CA8): os arquivos na ordem, com o documento e o hash. */
+    pacote: jsonb('pacote'),
+    pacoteGeradoEm: momento('pacote_gerado_em'),
     criadoEm: criadoEm(),
   },
   (t) => [unique('peticao_versao_unica').on(t.peticaoId, t.numero)],

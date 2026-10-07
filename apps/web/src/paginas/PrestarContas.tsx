@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { formatarDecimal, isoParaData, normalizarDecimal } from '@ggv/campos'
 import { FORMAS_DE_PAGAMENTO, ROTULO_FORMA_DE_PAGAMENTO, SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { Moldura } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const reais = (texto: string | null) => (texto === null ? '—' : `R$ ${formatarDecimal(Number(texto))}`)
@@ -12,7 +13,7 @@ const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso
  * Prestação de contas do benefício deferido (GGVP-44, advogada). Os valores são calculados por código (CA5): a tela
  * mostra a prévia com a mesma conta do servidor. Concluir abre o Financeiro e o Atendimento juntos (CA2).
  */
-export function PrestarContas({ casoId }: { casoId: string }) {
+export function PrestarContas({ casoId, embutida = false }: { casoId: string; embutida?: boolean }) {
   const ids = { valor: useId(), percentual: useId(), forma: useId(), prazo: useId(), conferi: useId() }
   const [p, setP] = useState<PrestacaoDoCaso | null>(null)
   const [versao, setVersao] = useState(0)
@@ -56,26 +57,31 @@ export function PrestarContas({ casoId }: { casoId: string }) {
 
   if (!p)
     return (
-      <main className={styles.pagina}>
-        <title>Prestar contas · GGV Previdenciário</title>
+      <Moldura titulo="Prestar contas" embutida={embutida}>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </Moldura>
     )
 
   const atual = p.versoes[0]
 
   return (
-    <main className={styles.pagina}>
-      <title>Prestar contas · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Prestação de contas do benefício deferido</h1>
-      <p className={styles.subtitulo}>{p.cliente}</p>
+    <Moldura
+      titulo="Prestar contas"
+      embutida={embutida}
+      cabecalho={
+        <>
+          <a className={styles.voltar} href="/">
+            ← Voltar ao início
+          </a>
+          <h1 className={styles.titulo}>Prestação de contas do benefício deferido</h1>
+          <p className={styles.subtitulo}>{p.cliente}</p>
+        </>
+      }
+    >
 
       <section className={styles.cartao} aria-label="Carta de concessão">
         <h2 className={styles.cartaoTitulo}>Carta de concessão</h2>
@@ -160,6 +166,6 @@ export function PrestarContas({ casoId }: { casoId: string }) {
           <p className={styles.dica}>Ao concluir, o Financeiro recebe e o Atendimento agenda a ida ao banco, ao mesmo tempo.</p>
         </form>
       )}
-    </main>
+    </Moldura>
   )
 }

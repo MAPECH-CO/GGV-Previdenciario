@@ -64,6 +64,27 @@
       "when": 1791254038021,
       "tag": "0008_exigencia_prestacao_e_banco",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791256275716,
+      "tag": "0009_publicacao_e_vigilia",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791258865146,
+      "tag": "0010_exigencia_do_juiz",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791313039049,
+      "tag": "0011_indeferido_ao_protocolo",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,10 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, modelo, parecerMedico, pessoa, resultadoInss, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { encaminhar } from '../vigilia/encaminhar.ts'
+import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { momentoDoHorario } from '../vigilia/rodadas.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
 
@@ -103,9 +106,12 @@ export async function semearExemplos(banco: Banco) {
     await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
   }
 
-  // Casos em vigília, esperando o INSS (GGVP-35 e GGVP-48): um para cada resposta (deferido, indeferido e exigência).
-  for (const [i, nome] of ['Rita Gomes (exemplo)', 'Sebastião Cruz (exemplo)', 'Teresa Dias (exemplo)'].entries()) {
-    const [p] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+  // Casos em vigília, esperando o INSS (GGVP-35 e GGVP-48): um para cada resposta (deferido, indeferido e exigência) e
+  // um para o caminho do indeferido até o protocolo da petição inicial (GGVP-9, grupo 3).
+  // CPFs de exemplo, válidos só nos dígitos verificadores, para a trava do CPF da petição (GGVP-71).
+  const cpfs = ['27183946509', '38492715600', '52916384782', '61374825964']
+  for (const [i, nome] of ['Rita Gomes (exemplo)', 'Sebastião Cruz (exemplo)', 'Teresa Dias (exemplo)', 'Vicente Prado (exemplo)'].entries()) {
+    const [p] = await banco.insert(pessoa).values({ nome, cpf: cpfs[i], situacao: 'cliente', origem: 'exemplo' }).returning()
     const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
     await banco
       .insert(etapa)
@@ -158,4 +164,52 @@ export async function semearExemplos(banco: Banco) {
     .returning()
   await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
   await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
+
+  // Vigília do diário (GGVP-26, 30, 34, 37, 74): dois processos judiciais com número CNJ, que a fonte de exemplo
+  // reconhece, e a rodada das 08:00 de hoje com falha: reprocessar traz as publicações de exemplo do dia.
+  for (const [nome, cnj] of [
+    ['Otávio Lima (exemplo)', CNJ_EXEMPLO.exigencia],
+    ['Rosa Amaral (exemplo)', CNJ_EXEMPLO.merito],
+  ] as const) {
+    const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [cj] = await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'judicial' }).returning()
+    await banco.insert(identificadorCaso).values({ casoId: cj.id, tipo: 'cnj', valor: cnj })
+  }
+  const hojeBr = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10)
+  await banco.insert(rodadaVigilia).values({
+    fonte: 'exemplo',
+    previstaPara: momentoDoHorario(hojeBr, '08:00'),
+    inicio: momentoDoHorario(hojeBr, '08:00'),
+    fim: momentoDoHorario(hojeBr, '08:01'),
+    situacao: 'falhou',
+    erro: 'tempo esgotado: a fonte não respondeu em 60 s (exemplo)',
+  })
+
+  // Exigência do juiz (GGVP-79, 83, 87): uma intimação já lida e classificada, esperando a advogada distribuir.
+  const [pp] = await banco.insert(pessoa).values({ nome: 'Paulo Reis (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cp] = await banco.insert(caso).values({ pessoaId: pp.id, beneficio: 'aposentadoria_pcd', fase: 'judicial' }).returning()
+  const cnjPaulo = '00077771820264036301'
+  await banco.insert(identificadorCaso).values({ casoId: cp.id, tipo: 'cnj', valor: cnjPaulo })
+  const [intimacao] = await banco
+    .insert(publicacao)
+    .values({
+      fonte: 'exemplo',
+      numeroCnj: cnjPaulo,
+      casoId: cp.id,
+      disponibilizadaEm: hojeBr,
+      texto: 'Intime-se a parte autora para, em 15 dias, juntar laudo médico atualizado e cópia integral da carteira de trabalho. (exemplo)',
+      hash: `exemplo-${cp.id}`,
+      classe: 'exigencia',
+      revisadaPor: advogada.id,
+      revisadaEm: new Date(),
+    })
+    .returning()
+  await banco.transaction((tx) => encaminhar(tx, intimacao, 'exigencia', 15, new Date()))
+
+  // Petição inicial (GGVP-63, 67, 71): o tribunal do protocolo, com o site e o tamanho por arquivo (Q8: o escritório
+  // confirma na configuração), e a assinatura padrão da petição. Valores de exemplo.
+  await banco.insert(configuracao).values([
+    { chave: 'tribunais', valor: [{ nome: 'Justiça Federal da 3ª Região (exemplo)', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: 10 }] },
+    { chave: 'peticao.assinatura', valor: 'Glauco (exemplo)\nAdvogado responsável · OAB/UF 000.000 (exemplo)' },
+  ])
 }

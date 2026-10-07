@@ -23,6 +23,15 @@ describe('GGVP-39 CA7 · prazo da exigência do INSS (Lei 9.784, art. 66)', () =
   })
 })
 
+describe('GGVP-34 CA11 · o prazo do INSS é em dias corridos', () => {
+  it('o fim de semana no meio do prazo conta; só o fim sem expediente anda para o próximo dia útil', () => {
+    // segunda 05/10 + 10 dias corridos = quinta 15/10 (em dias úteis seria segunda 19/10)
+    expect(prazoInss('2026-10-05', 10, SEM_FERIADO)).toBe('2026-10-15')
+    // sexta 02/10 + 1 = sábado 03/10 → segunda 05/10
+    expect(prazoInss('2026-10-02', 1, SEM_FERIADO)).toBe('2026-10-05')
+  })
+})
+
 describe('GGVP-39 CA14 · dias úteis até o prazo', () => {
   it('conta só dias úteis, de amanhã até o prazo', () => {
     // segunda 05/10 → sexta 09/10: terça a sexta = 4

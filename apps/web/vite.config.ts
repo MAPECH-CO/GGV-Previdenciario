@@ -11,5 +11,8 @@ export default defineConfig({
     pool: 'threads',
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Os "after" na ordem em que foram definidos: primeiro o cleanup do setup desmonta a tela, depois cada arquivo
+    // desliga o fetch simulado. Na ordem inversa (padrão), a tela recarregava no meio e chamava a rede de verdade.
+    sequence: { hooks: 'list' },
   },
 })

@@ -32,6 +32,8 @@ import type { Cofre } from '../cofre.ts'
 import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
+import { itensDaFila } from '../vigilia/fila.ts'
+import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
@@ -50,6 +52,18 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  'D3.03': (id) => `/casos/${id}/despacho`,
+  'D3.04': (id) => `/casos/${id}/pendencias`,
+  'D3.04s': (id) => `/casos/${id}/despacho`,
+  'D3.05': (id) => `/casos/${id}/peticao`,
+  'D3.06': (id) => `/casos/${id}/peticao`,
+  'D3.07': (id) => `/casos/${id}/peticao`,
+  'D3a.01': (id) => `/casos/${id}/publicacoes`,
+  'D3a.02': (id) => `/casos/${id}/exigencia-juiz`,
+  'D3a.03': (id) => `/casos/${id}/exigencia-juiz/setor`,
+  'D3a.03s': (id) => `/casos/${id}/exigencia-juiz`,
+  'D3a.04': (id) => `/casos/${id}/manifestacao`,
+  'D4.02': (id) => `/casos/${id}/publicacoes`,
 }
 
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date }
@@ -107,19 +121,44 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       TarefaDaCentral.parse({
         id: a.exigenciaId,
         casoId: a.casoId,
-        passo: 'D2.05',
+        passo: a.origem === 'juizo' ? 'D3a.02' : 'D2.05',
         cliente: a.cliente,
         titulo:
           a.diasUteis < 0
-            ? 'Exigência do INSS vencida: pedir dilação ou registrar a perda'
-            : `Exigência do INSS perto do prazo: ${a.diasUteis === 0 ? 'vence hoje' : a.diasUteis === 1 ? '1 dia útil' : `${a.diasUteis} dias úteis`}`,
+            ? `Exigência ${a.origem === 'juizo' ? 'do juiz' : 'do INSS'} vencida: pedir dilação ou registrar a perda`
+            : `Exigência ${a.origem === 'juizo' ? 'do juiz' : 'do INSS'} perto do prazo: ${a.diasUteis === 0 ? 'vence hoje' : a.diasUteis === 1 ? '1 dia útil' : `${a.diasUteis} dias úteis`}`,
         detalhe: (a.beneficio ?? 'benefício a definir').replaceAll('_', ' '),
-        tela: TELA_DO_PASSO['D2.05'](a.casoId),
+        tela: TELA_DO_PASSO[a.origem === 'juizo' ? 'D3a.02' : 'D2.05'](a.casoId),
         prazo: a.prazo,
         urgente: true,
       })
     const alertas = await alertasDeExigencia(banco, hoje(agora()))
-    return [...alertas.filter((a) => a.diasUteis <= 2).map(linha), ...visiveis, ...alertas.filter((a) => a.diasUteis > 2).map(linha)]
+    // GGVP-26 CA3, CA12: cada item da fila de revisão é "Casar publicação", com o contexto no lugar do cliente;
+    // com o prazo mínimo a 2 dias úteis ou menos, vai para o topo.
+    const fila = (await itensDaFila(banco, agora())).map((f) => ({
+      urgente: f.diasUteisAtePrazo <= 2,
+      linha: TarefaDaCentral.parse({
+        id: f.id,
+        casoId: null,
+        passo: 'D4.01',
+        cliente: null,
+        contexto: 'Fila de revisão',
+        titulo: 'Casar publicação',
+        detalhe: `${f.motivo} · ${f.fonte}${f.idadeEmDias >= 1 ? ` · há ${f.idadeEmDias} dia${f.idadeEmDias > 1 ? 's' : ''} na fila` : ''}`,
+        tela: '/vigilia',
+        prazo: f.prazoMinimo.fim,
+        urgente: f.diasUteisAtePrazo <= 2 || f.idadeEmDias >= 1,
+      }),
+    }))
+    return [
+      // GGVP-30 CA1, CA11: rodada com falha vem antes de tudo.
+      ...(await alarmesDaVigilia(banco, agora())),
+      ...alertas.filter((a) => a.diasUteis <= 2).map(linha),
+      ...fila.filter((f) => f.urgente).map((f) => f.linha),
+      ...visiveis,
+      ...alertas.filter((a) => a.diasUteis > 2).map(linha),
+      ...fila.filter((f) => !f.urgente).map((f) => f.linha),
+    ]
   })
 
   const comCaso = { preHandler: exigir(banco, 'protocolo_inss.registrar', agora) }

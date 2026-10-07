@@ -34,8 +34,9 @@ describe('migrações', () => {
     for (const nome of ['caso', 'evento_auditoria', 'pessoa', 'sessao', 'tarefa', 'usuario']) expect(t).toContain(nome)
     for (const nome of ['identificador_caso', 'etapa', 'decisao', 'documento', 'documento_medico', 'parecer_medico',
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
-      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao']) expect(t).toContain(nome)
-    expect(t).toHaveLength(43)
+      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao',
+      'publicacao_descarte', 'publicacao_reclassificacao']) expect(t).toContain(nome)
+    expect(t).toHaveLength(45)
   })
 
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {
@@ -65,6 +66,13 @@ describe('confiança dos dados', () => {
 
   it('estado fora da lista é recusado pelo banco', async () => {
     await recusa(sql`insert into pessoa (nome, situacao) values ('Ana', 'inventado')`, /pessoa_situacao/)
+  })
+
+  it('a exigência aceita a origem do despacho da Sênior (GGVP-54) e recusa outra', async () => {
+    const [{ id: pessoaId }] = (await db.execute<{ id: string }>(sql`insert into pessoa (nome) values ('Caio') returning id`)).rows
+    const [{ id: casoId }] = (await db.execute<{ id: string }>(sql`insert into caso (pessoa_id) values (${pessoaId}) returning id`)).rows
+    await db.execute(sql`insert into exigencia (caso_id, origem, descricao, recebida_em) values (${casoId}, 'despacho', 'Laudo', '2026-10-07')`)
+    await recusa(sql`insert into exigencia (caso_id, origem, descricao, recebida_em) values (${casoId}, 'outra', 'Laudo', '2026-10-07')`, /exigencia_origem/)
   })
 
   it('CPF repetido não cria outra pessoa', async () => {

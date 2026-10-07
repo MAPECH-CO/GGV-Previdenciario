@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/campos'
 import { DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { Moldura } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const ROTULO_PEDE = { documentos: 'Documentos', pericia: 'Perícia', pericia_e_documentos: 'Perícia e documentos' } as const
@@ -84,7 +85,7 @@ function ResponderNoPortal({ casoId, aoResponder }: { casoId: string; aoResponde
 }
 
 /** A Sênior decide a exigência vencida com item pendente (CA14): pedir dilação ou registrar a perda. */
-function DecidirVencidaForm({ casoId, aoDecidir }: { casoId: string; aoDecidir: (texto: string) => void }) {
+export function DecidirVencidaForm({ casoId, aoDecidir, rota = 'exigencia' }: { casoId: string; aoDecidir: (texto: string) => void; rota?: string }) {
   const ids = { prazo: useId(), motivo: useId() }
   const [decisao, setDecisao] = useState<'dilacao' | 'perda' | null>(null)
   const [novoPrazo, setNovoPrazo] = useState('')
@@ -95,7 +96,7 @@ function DecidirVencidaForm({ casoId, aoDecidir }: { casoId: string; aoDecidir: 
     evento.preventDefault()
     const entrada = DecidirVencida.safeParse(decisao === 'dilacao' ? { decisao, novoPrazo: isoParaData(novoPrazo) ?? '' } : { decisao, motivo })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
-    const r = await chamarApi(`/casos/${casoId}/exigencia/vencida`, { method: 'POST', corpo: decisao === 'dilacao' ? { decisao, novoPrazo: isoParaData(novoPrazo) } : { decisao, motivo } })
+    const r = await chamarApi(`/casos/${casoId}/${rota}/vencida`, { method: 'POST', corpo: decisao === 'dilacao' ? { decisao, novoPrazo: isoParaData(novoPrazo) } : { decisao, motivo } })
     if (!r.ok) return setErro(r.erro)
     aoDecidir(decisao === 'dilacao' ? 'Dilação registrada com o novo prazo.' : 'Perda registrada no histórico.')
   }
@@ -148,7 +149,7 @@ function DecidirVencidaForm({ casoId, aoDecidir }: { casoId: string; aoDecidir: 
  * Tratar exigência do INSS (GGVP-39). A advogada decide o que a exigência pede (G5): documentos (card da Documentação
  * com os itens e o prazo de entrega), perícia (tarefa do Jurídico administrativo) ou os dois (primeiro os documentos).
  */
-export function TratarExigencia({ casoId }: { casoId: string }) {
+export function TratarExigencia({ casoId, embutida = false }: { casoId: string; embutida?: boolean }) {
   const ids = { dias: useId(), itens: useId(), entrega: useId() }
   const [x, setX] = useState<ExigenciaDoCaso | null>(null)
   const [versao, setVersao] = useState(0)
@@ -194,26 +195,31 @@ export function TratarExigencia({ casoId }: { casoId: string }) {
 
   if (!x)
     return (
-      <main className={styles.pagina}>
-        <title>Tratar exigência do INSS · GGV Previdenciário</title>
+      <Moldura titulo="Tratar exigência do INSS" embutida={embutida}>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </Moldura>
     )
 
   return (
-    <main className={styles.pagina}>
-      <title>Tratar exigência do INSS · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Tratar exigência do INSS</h1>
-      <p className={styles.subtitulo}>
-        {x.cliente} · {rotuloBeneficio(x.beneficio)}
-      </p>
+    <Moldura
+      titulo="Tratar exigência do INSS"
+      embutida={embutida}
+      cabecalho={
+        <>
+          <a className={styles.voltar} href="/">
+            ← Voltar ao início
+          </a>
+          <h1 className={styles.titulo}>Tratar exigência do INSS</h1>
+          <p className={styles.subtitulo}>
+            {x.cliente} · {rotuloBeneficio(x.beneficio)}
+          </p>
+        </>
+      }
+    >
       <ResumoDaExigencia x={x} />
 
       {feito && (
@@ -328,6 +334,6 @@ export function TratarExigencia({ casoId }: { casoId: string }) {
           }}
         />
       )}
-    </main>
+    </Moldura>
   )
 }

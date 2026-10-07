@@ -68,6 +68,12 @@ describe('RespostaDoInss (GGVP-35, GGVP-48)', () => {
     )
   })
 
+  it('GGVP-52 · indeferida pede também o motivo com as palavras de quem viu, no mesmo registro', () => {
+    const indeferido = { tipo: 'decisao', resultado: 'indeferido', texto: 'x', motivoInss: 'Renda acima do limite' } as const
+    expect(RespostaDoInss.safeParse(indeferido).error?.issues[0]?.message).toBe('Escreva o motivo com as suas palavras')
+    expect(RespostaDoInss.parse({ ...indeferido, motivoEscrito: ' O INSS somou a renda do filho ' })).toMatchObject({ motivoEscrito: 'O INSS somou a renda do filho' })
+  })
+
   it('CA6 · exigência pede texto e data válida; sem tipo, pede a escolha', () => {
     expect(RespostaDoInss.parse({ tipo: 'exigencia', texto: 'Apresentar CNIS', data: '05/10/2026' })).toEqual({
       tipo: 'exigencia',
