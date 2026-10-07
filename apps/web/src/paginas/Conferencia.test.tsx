@@ -11,6 +11,7 @@ const base: CasoParaConferencia = {
   checklist: { cadastrado: false, completo: true, faltam: [] },
   documentos: [{ id: '11111111-1111-4111-8111-111111111111', tipo: 'rg', nome: 'RG e CPF.pdf' }],
   parecer: { resultado: 'suficiente', itens: [{ item: 'Data de início', atendido: true }], justificativaDispensa: null },
+  parecerRestrito: false,
   laudoNovoEsperando: false,
   temFicha: true,
   kitAssinado: true,
@@ -45,6 +46,13 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     expect(await screen.findByText(/Só leitura/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Aprovar' })).toBeNull()
     expect(screen.queryByRole('button', { name: /Reprovar/ })).toBeNull()
+  })
+
+  it('GGVP-96 CA12 · para quem não vê dado de saúde, o parecer aparece como restrito, não como ausente', async () => {
+    servidor({ ...base, parecer: null, parecerRestrito: true, podeDecidir: false })
+    render(<Conferencia casoId={CASO} />)
+    expect(await screen.findByText('Parecer médico restrito ao Jurídico.')).toBeTruthy()
+    expect(screen.queryByText('Sem parecer médico.')).toBeNull()
   })
 
   it('CA5 · sem parecer, Aprovar fica desligado e a dispensa aparece', async () => {

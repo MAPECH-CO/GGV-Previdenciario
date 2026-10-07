@@ -27,7 +27,8 @@ export const MATRIZ = {
   'dado_saude.ver_detalhe': JURIDICO,
   'peticao.ver': JURIDICO,
   // O financeiro do escritório é todo do Financeiro (Pedro, 06/10). A advogada vê os valores só na prestação de
-  // contas, que é ela quem faz; o Sócio vê só totais do escritório, no painel da GGVP-75.
+  // contas, que é ela quem faz; o Sócio vê só totais do escritório, no painel da GGVP-75. Valor da causa e renda per
+  // capita do LOAS não são financeiro do escritório: são dado jurídico e seguem para a advogada (Pedro, 07/10).
   'valores.ver': ['financeiro'],
   'prestacao.ver': ['financeiro', 'advogada'],
   'gestao.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],

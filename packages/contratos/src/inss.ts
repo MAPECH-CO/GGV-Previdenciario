@@ -86,6 +86,8 @@ export const CasoParaConferencia = z.object({
       justificativaDispensa: z.string().nullable(),
     })
     .nullable(),
+  /** GGVP-96 CA12: perfil sem `dado_saude.ver_detalhe` não recebe o parecer (vem nulo) e a tela diz que é restrito. */
+  parecerRestrito: z.boolean(),
   laudoNovoEsperando: z.boolean(),
   temFicha: z.boolean(),
   kitAssinado: z.boolean(),

@@ -74,6 +74,8 @@ Decisão do Mateus em 05/10: o banco nasce inteiro agora, desenhado a partir das
 
 ### Tabelas por área
 
+Todas nascem da **GGVP-129** (modelo de dados, criada em 07/10 para o modelo de 05/10). A história de cada épico que grava ou lê a tabela está na tabela de origem (`apps/api/src/banco/esquema/*.ts`, comentário do topo); as que nenhuma história refinada usa ainda ficam prontas para o épico que as citar.
+
 | Área | Tabelas |
 |---|---|
 | Acesso | `usuario` (perfis em lista, GGVP-96), `sessao` (perfil ativo), `evento_auditoria`, `acesso_dado_sensivel` |
