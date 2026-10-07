@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
-import { AprovarPeticao, NovaVersao, PedirPeticao, ProtocolarPeticao, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { AprovarPeticao, NovaVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -15,7 +15,7 @@ const ROTULO_OPCAO: Record<keyof OpcoesDoPedido, string> = {
 
 /**
  * O pedido da petição inicial (GGVP-63 CA6, CA9): instruções, opções, os documentos citados na ordem (com o nome do que
- * ainda falta) e o texto da versão 1, que a advogada escreve ou cola até a minuta da IA (épico IA jurídica).
+ * ainda falta) e o texto da versão 1, que a advogada escreve, cola ou parte da minuta da IA (épico IA), sempre revisando.
  */
 function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; aoPedir: (texto: string) => void }) {
   const ids = { instrucoes: useId(), falta: useId(), texto: useId() }
@@ -26,11 +26,27 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
   const [nomeQueFalta, setNomeQueFalta] = useState('')
   const [texto, setTexto] = useState('')
   const [erro, setErro] = useState('')
+  const [minuta, setMinuta] = useState<MinutaDaIa | null>(null)
+  const [escrevendo, setEscrevendo] = useState(false)
   const nomeDo = (id: string) => x.documentos.find((d) => d.id === id)?.nome ?? id
+
+  const citados = () => [...marcados.map((documentoId) => ({ documentoId })), ...faltando.map((nome) => ({ nome }))]
+
+  /** A IA escreve a versão 1 com o que está marcado; o texto cai na caixa para a advogada revisar. */
+  async function pedirMinuta() {
+    setEscrevendo(true)
+    const r = await chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/minuta`, { method: 'POST', corpo: { instrucoes, opcoes, citados: citados() } })
+    setEscrevendo(false)
+    if (!r.ok) return setErro(r.erro)
+    setErro('')
+    setMinuta(r.dados)
+    if (r.dados.sugestao) setTexto(r.dados.sugestao.texto)
+  }
 
   async function pedir(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const corpo = { instrucoes, opcoes, citados: [...marcados.map((documentoId) => ({ documentoId })), ...faltando.map((nome) => ({ nome }))], texto }
+    const chamadaIaId = minuta?.sugestao?.chamadaId
+    const corpo = { instrucoes, opcoes, citados: citados(), texto, ...(chamadaIaId && { chamadaIaId }) }
     const entrada = PedirPeticao.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o pedido.')
     const r = await chamarApi(`/casos/${casoId}/peticao/pedido`, { method: 'POST', corpo })
@@ -90,11 +106,31 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
           </ol>
         )}
       </fieldset>
+      <div className={styles.acoes}>
+        <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void pedirMinuta()}>
+          {escrevendo ? 'A IA está escrevendo…' : 'Escrever a versão 1 com a IA'}
+        </button>
+      </div>
+      {minuta?.motivo && <p className={styles.dica}>{minuta.motivo}</p>}
+      {minuta?.aviso && <p className={styles.dica}>{minuta.aviso}</p>}
+      {minuta?.sugestao && (
+        <section className={styles.cartao} aria-label="Minuta da IA">
+          <span className={`${styles.selo} ${styles.seloAlerta}`}>Minuta da IA · revise antes de pedir; você assina o conteúdo (G6)</span>
+          {minuta.sugestao.alerta && (
+            <p className={styles.erroCampo} role="alert">
+              Atenção: {minuta.sugestao.alerta}.
+            </p>
+          )}
+          <p className={styles.dica}>
+            Fontes usadas: {minuta.sugestao.fontes.map((f) => f.trecho ?? f.referencia).join(' · ') || 'só os dados do caso'} ({minuta.sugestao.modelo})
+          </p>
+        </section>
+      )}
       <label className={styles.rotulo} htmlFor={ids.texto}>
         Texto da petição (versão 1)
       </label>
       <textarea id={ids.texto} className={styles.campo} rows={14} value={texto} onChange={(e) => setTexto(e.target.value)} />
-      <p className={styles.dica}>Escreva ou cole o texto. Ele vai para a conferência; a minuta pela IA entra com o épico IA.</p>
+      <p className={styles.dica}>Escreva, cole ou parta da minuta da IA. O texto vai para a conferência; o que estiver em [completar] é seu.</p>
       {erro && (
         <p className={styles.erro} role="alert">
           {erro}

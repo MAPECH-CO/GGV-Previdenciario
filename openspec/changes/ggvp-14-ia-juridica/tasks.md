@@ -22,3 +22,11 @@
 - [x] 3.2 Servidor: a API monta a IA (`criarServidor` aceita uma IA de teste); `POST /api/publicacoes/:id/sugestao` (perfil `publicacao.classificar`) confere o formato e guarda a classe sugerida; nada classifica; testes com IA falsa.
 - [x] 3.3 Tela "Ler publicação": "Sugerir com a IA", a sugestão marcada, o resumo, o alerta e "Usar a sugestão"; testes de tela.
 - [x] 3.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-63 · A IA escreve a versão 1 da petição inicial
+
+- [x] 4.1 IA: finalidade `minuta_peticao` (leva dado de saúde; pode citar o CID que está no caso, por isso não barra CID); a regra de CID passa a valer por finalidade.
+- [x] 4.2 Contratos: `PedirMinuta` e `MinutaDaIa`; `PedirPeticao` aceita `chamadaIaId`.
+- [x] 4.3 Servidor: `POST /api/casos/:id/peticao/minuta` monta o conteúdo do caso e devolve a sugestão com as fontes, sem gravar petição; o pedido com `chamadaIaId` marca a versão 1 como "minuta da IA"; testes com IA falsa.
+- [x] 4.4 Tela "Pedir a petição": "Escrever a versão 1 com a IA" preenche a caixa, com as fontes e os avisos; testes de tela.
+- [x] 4.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

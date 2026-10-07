@@ -34,6 +34,27 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Pedir a petição (GGVP-63)', () => {
+  it('épico IA · "Escrever a versão 1 com a IA" preenche a caixa, mostra as fontes e o aviso; o pedido leva a chamada', async () => {
+    const CHAMADA = '44444444-4444-4444-8444-444444444444'
+    const sugestao = { chamadaId: CHAMADA, sugestao: true, texto: 'EXCELENTÍSSIMO SENHOR JUIZ... [completar: valor da causa]', fontes: [{ tipo: 'documento', referencia: `documento:${LAUDO}`, trecho: 'laudo.pdf' }], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null }
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method !== 'POST') return new Response(JSON.stringify(base))
+      if (String(url).endsWith('/peticao/minuta')) return new Response(JSON.stringify({ sugestao, motivo: null, aviso: 'Sem referência na casa: o acervo ainda não tem casos para consultar.' }))
+      return new Response(JSON.stringify({ ok: true }), { status: 201 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    render(<Peticao casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Escrever a versão 1 com a IA' }))
+    expect(await screen.findByText(/Minuta da IA · revise antes de pedir/)).toBeTruthy()
+    expect((screen.getByLabelText('Texto da petição (versão 1)') as HTMLTextAreaElement).value).toBe(sugestao.texto)
+    expect(screen.getByText(/Fontes usadas: laudo\.pdf/)).toBeTruthy()
+    expect(screen.getByText('Sem referência na casa: o acervo ainda não tem casos para consultar.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir a petição' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Petição pedida. A versão 1 foi para a conferência.')
+    const envio = fetch.mock.calls.find(([url]) => String(url).endsWith('/peticao/pedido'))!
+    expect(JSON.parse(String(envio[1]!.body))).toMatchObject({ texto: sugestao.texto, chamadaIaId: CHAMADA })
+  })
+
   it('CA1 · com setor pendente, o pedido fica bloqueado e diz quem falta', async () => {
     servidor({ ...base, faltam: ['Documentação'] })
     render(<Peticao casoId={CASO} />)

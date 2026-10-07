@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
@@ -133,6 +134,53 @@ describe('GGVP-63 · pedir a petição', () => {
       .returning()
     expect((await chamar('gabi', 'POST', '/peticao/pedido', { ...PEDIDO, citados: [{ documentoId: doc.id }] })).json().erro).toBe(MSG_CITADO_DE_OUTRO_CASO)
     expect(await abertas()).toEqual(['advogada · Pedir a petição'])
+  })
+})
+
+describe('Épico IA · a minuta da petição inicial', () => {
+  const MINUTA = 'EXCELENTÍSSIMO SENHOR JUIZ FEDERAL DO JUIZADO ESPECIAL FEDERAL... (laudo.pdf) ... [completar: valor da causa]'
+  let pedidos: string[] = []
+  beforeEach(() => {
+    pedidos = []
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      pedidos.push(String(init?.body))
+      return new Response(JSON.stringify({ choices: [{ message: { content: MINUTA } }] }))
+    }
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+  })
+
+  it('com setor pendente, a minuta espera; com tudo fechado, a IA escreve com o caso e as fontes, e nada é gravado', async () => {
+    expect((await chamar('gabi', 'POST', '/peticao/minuta', { instrucoes: '' })).json().erro).toBe('A minuta espera todos os setores subirem o card. Falta: Documentação.')
+    const laudo = await laudoDaDocumentacao()
+    const corpo = { instrucoes: 'Pedir desde a DER', opcoes: { tutelaUrgencia: true }, citados: [{ documentoId: laudo.id }, { nome: 'CNIS atualizado' }] }
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', corpo)).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.motivo, r.aviso]).toEqual([MINUTA, true, null, null])
+    expect(r.sugestao.fontes.map((f: { tipo: string; trecho?: string }) => [f.tipo, f.trecho])).toEqual([
+      ['documento', 'laudo.pdf'],
+      ['caso', 'O INSS somou a renda do filho'],
+    ])
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    for (const trecho of ['Vicente Prado', 'BPC/LOAS Idoso', 'O INSS somou a renda do filho', 'Laudo atualizado', 'laudo.pdf; CNIS atualizado (ainda falta)', 'Tutela de urgência: pedir', 'Pedir desde a DER'])
+      expect(enviado).toContain(trecho)
+    expect((await ler()).pedido).toBeNull()
+    expect(await abertas()).toEqual(['advogada · Pedir a petição'])
+  })
+
+  it('"usar precedentes" com o acervo vazio avisa "sem referência na casa"; a versão 1 pedida da minuta fica marcada', async () => {
+    await laudoDaDocumentacao()
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
+    expect(r.aviso).toBe('Sem referência na casa: o acervo ainda não tem casos para consultar.')
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
+    const [v] = await banco.select().from(peticaoVersao)
+    expect([v.numero, v.geradaPor, v.conteudo]).toEqual([1, 'gabi · minuta da IA', MINUTA])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_pedida'))
+    expect((ev.detalhe as { chamadaIa: string }).chamadaIa).toBe(r.sugestao.chamadaId)
+  })
+
+  it('sem a IA, a tela recebe o motivo e a advogada escreve como antes', async () => {
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: {} }) })
+    await laudoDaDocumentacao()
+    expect((await chamar('gabi', 'POST', '/peticao/minuta', {})).json()).toEqual({ sugestao: null, motivo: 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso: null })
   })
 })
 

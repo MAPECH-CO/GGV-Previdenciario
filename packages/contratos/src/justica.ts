@@ -3,6 +3,7 @@ import { dataParaIso, normalizarCnj, normalizarInteiro, validarCnj, validarData 
 import { z } from 'zod'
 import { Lembrete, TentativaDoLaco } from './exigencia.ts'
 import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
+import { SugestaoDaIa } from './ia.ts'
 
 export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
 export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
@@ -413,8 +414,17 @@ export const PedirPeticao = z.object({
   opcoes: OpcoesDoPedido.default({ tutelaUrgencia: false, precedentes: false, anexarCitados: true }),
   citados: z.array(Citado).default([]),
   texto: z.string({ error: 'Escreva ou cole o texto da petição (versão 1)' }).trim().min(1, 'Escreva ou cole o texto da petição (versão 1)'),
+  /** Épico IA: a versão 1 partiu da minuta da IA (a chamada fica no histórico e a versão, marcada). */
+  chamadaIaId: z.uuid().optional(),
 })
 export type PedirPeticao = z.input<typeof PedirPeticao>
+
+/** POST /api/casos/:id/peticao/minuta (épico IA): o que a advogada já escolheu; a IA escreve a versão 1, sem gravar nada. */
+export const PedirMinuta = PedirPeticao.pick({ instrucoes: true, opcoes: true, citados: true })
+export type PedirMinuta = z.input<typeof PedirMinuta>
+/** A minuta como sugestão (com as fontes), ou nula com o motivo; `aviso`: "sem referência na casa" (GGVP-45 CA2). */
+export const MinutaDaIa = z.object({ sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable(), aviso: z.string().nullable() })
+export type MinutaDaIa = z.infer<typeof MinutaDaIa>
 
 /** GET /api/casos/:id/peticao (GGVP-63; a conferência e o protocolo entram com a GGVP-67 e a GGVP-71). */
 export const PeticaoInicial = z.object({
