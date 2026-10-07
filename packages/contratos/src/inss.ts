@@ -52,6 +52,9 @@ export type RegistrarProtocolo = z.input<typeof RegistrarProtocolo>
 
 export const TIPOS_COMPROVANTE = ['application/pdf', 'image/jpeg', 'image/png'] as const
 
+/** Quantos segundos a senha do gov.br fica na tela (G9). O servidor manda e a tela escreve no botão. */
+export const SEGUNDOS_SENHA = 60
+
 /** POST /api/casos/:id/cofre (G9): a tela mostra a senha só por `segundos`. */
 export const SenhaDoCofre = z.object({ senha: z.string(), segundos: z.number() })
 export type SenhaDoCofre = z.infer<typeof SenhaDoCofre>

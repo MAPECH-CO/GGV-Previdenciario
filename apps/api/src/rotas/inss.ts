@@ -8,6 +8,7 @@ import {
   CasoParaProtocolo,
   DecidirPericia,
   RegistrarProtocolo,
+  SEGUNDOS_SENHA,
   TIPOS_COMPROVANTE,
   TarefaDaCentral,
   type Erro,
@@ -37,7 +38,6 @@ import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
-export const SEGUNDOS_SENHA = 60
 const TAMANHO_MAXIMO = 25 * 1024 * 1024
 
 /** Tela de cada passo, quando já existe. */
