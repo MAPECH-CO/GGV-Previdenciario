@@ -33,6 +33,7 @@ export function registrarRotasIa(app: FastifyInstance, { banco, agora = () => ne
         quando: c.quando.toISOString(),
         fontes: c.fontes as FonteDaIa[],
         saida: veSaida ? c.saida : null,
+        alerta: c.alerta,
       })),
     })
   })

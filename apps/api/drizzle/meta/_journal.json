@@ -99,6 +99,13 @@
       "when": 1791413423580,
       "tag": "0013_registro_da_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791414265924,
+      "tag": "0014_alerta_da_ia",
+      "breakpoints": true
     }
   ]
 }

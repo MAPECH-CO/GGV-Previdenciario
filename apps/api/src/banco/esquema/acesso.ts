@@ -80,6 +80,8 @@ export const chamadaIa = pgTable(
     saida: text('saida'),
     situacao: text('situacao').notNull(),
     erro: text('erro'),
+    /** GGVP-110 CA3, CA7: instrução suspeita na entrada ou na saída, ou CID na saída. Só o motivo, nunca o trecho. */
+    alerta: text('alerta'),
     duracaoMs: integer('duracao_ms'),
     quando: momento('quando').notNull().defaultNow(),
   },

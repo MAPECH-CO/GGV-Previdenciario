@@ -10,6 +10,7 @@ describe('GGVP-106 · sugestão da IA', () => {
       fontes: [{ tipo: 'publicacao', referencia: 'publicacao:1' }],
       modelo: 'gpt-4.1-mini',
       geradaEm: '2026-10-07T20:00:00.000Z',
+      alerta: null,
     }
     expect(SugestaoDaIa.parse(ok).sugestao).toBe(true)
     expect(SugestaoDaIa.safeParse({ ...ok, sugestao: false }).success).toBe(false)

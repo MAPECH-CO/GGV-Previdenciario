@@ -21,6 +21,8 @@ export const SugestaoDaIa = z.object({
   fontes: z.array(FonteDaIa),
   modelo: z.string(),
   geradaEm: z.string(),
+  /** GGVP-110 CA3: a saída repetiu instrução suspeita; a tela avisa a pessoa antes de ela usar a sugestão. */
+  alerta: z.string().nullable(),
 })
 export type SugestaoDaIa = z.infer<typeof SugestaoDaIa>
 
@@ -35,6 +37,7 @@ export const ChamadaDaIa = z.object({
   quando: z.string(),
   fontes: z.array(FonteDaIa),
   saida: z.string().nullable(),
+  alerta: z.string().nullable(),
 })
 export type ChamadaDaIa = z.infer<typeof ChamadaDaIa>
 export const ChamadasDaIa = z.object({ chamadas: z.array(ChamadaDaIa) })

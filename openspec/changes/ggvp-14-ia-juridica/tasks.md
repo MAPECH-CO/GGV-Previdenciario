@@ -8,3 +8,10 @@
 - [x] 1.4 CA4 · `GET /api/casos/:id/ia`: auditoria para a gestão e o Jurídico; saída só para quem vê dado de saúde, com o acesso registrado; testes.
 - [x] 1.5 `pnpm dev` da API lê também o `.env.ia`; o módulo lê as chaves do ambiente (`process.env`) por padrão. A primeira rota que usar a IA instancia o módulo.
 - [x] 1.6 Rodar typecheck, lint e testes (sem tela nesta história); colar a saída; perguntar "Agora ok?".
+
+## GGVP-110 · Conteúdo malicioso não manipula a IA
+
+- [x] 2.1 CA3 · Banco: coluna `alerta` em `chamada_ia` (migração 0014); `SugestaoDaIa` ganha `alerta`.
+- [x] 2.2 CA1, CA3, CA7 · Servidor: detector de instrução suspeita na entrada e na saída e de CID na saída; alerta na chamada e no histórico do caso (`ia_alerta`); saída com CID barrada; testes de ataque.
+- [x] 2.3 CA1, CA10 · Teste: publicação com instrução escondida, sugestão da IA e a publicação continua sem classe até a advogada classificar.
+- [x] 2.4 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?".
