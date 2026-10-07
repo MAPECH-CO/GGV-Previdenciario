@@ -14,7 +14,7 @@ Os perfis saem das raias do BPMN. Toda tela inicial tem o mesmo formato: **"O qu
 | **Gestão do escritório** (proposto, não está no BPMN) | nenhuma | Configurações | Mantém kits por benefício, modelos, limites de cobrança, mensagens padrão e perfis | (conforme o papel) |
 | **Sócio** (proposto, não está no BPMN) | nenhuma | Painel de resultado (GGVP-75) | Acompanha deferimento, procedência, extinções sem mérito e rendimento, só em totais do escritório | Valor ou dado de saúde de cliente individual |
 
-**Valores e financeiro** (Pedro, 06/10): o financeiro do escritório é todo do Financeiro. Ninguém mais vê valores, com três exceções: a advogada responsável vê os valores só na prestação de contas que ela faz; o Sócio vê só totais do escritório; o percentual de honorários aparece no contrato que o Atendimento confere e o cliente assina.
+**Valores e financeiro** (Pedro, 06/10): o financeiro do escritório é todo do Financeiro. Ninguém mais vê valores, com três exceções: a advogada responsável vê os valores só na prestação de contas que ela faz; o Sócio vê só totais do escritório; o percentual de honorários aparece no contrato que o Atendimento confere e o cliente assina. O valor da causa e a renda per capita do LOAS não são financeiro do escritório: são dado jurídico e continuam visíveis para a advogada (Pedro, 07/10).
 
 **Sistema** e **IA** também são raias, mas não são perfis de pessoa. Tudo o que fazem aparece para as pessoas como sugestão, tarefa ou registro no histórico do card.
 

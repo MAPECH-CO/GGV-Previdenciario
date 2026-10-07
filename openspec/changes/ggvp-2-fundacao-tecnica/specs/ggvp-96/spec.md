@@ -103,7 +103,7 @@ A matriz SHALL dizer quem vê dado de saúde em detalhe (advogada, Sênior, Jur�
 - **Então** eles não vêm
 
 ### Requirement: CA13 · Acesso a dado de saúde registrado
-Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem, quando, caso), na tabela de acessos sensíveis.
+Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem, quando, caso), na tabela de acessos sensíveis. Aberto nesta change: aqui só nasce a tabela (`acesso_dado_sensivel`, que só cresce, GGVP-129 CA3). A gravação entra com as rotas que devolvem dado de saúde, cada uma com teste: a conferência da Sênior na Via administrativa (PR #14, parecer médico) e a de documentos na Judicialização (PR #16).
 
 #### Scenario: CA13 · Perfil autorizado acessa dado de saúde
 - **Dado** um perfil autorizado
@@ -111,7 +111,7 @@ Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem,
 - **Então** o acesso fica registrado (quem, quando, caso)
 
 ### Requirement: CA14 · Relatórios seguem o perfil
-Relatórios e exportações MUST seguir as mesmas restrições da matriz, quando existirem.
+Relatórios e exportações MUST seguir as mesmas restrições da matriz, quando existirem. Aberto nesta change: os relatórios nascem na Garantia (PR #18: exportação do histórico e relatório de prazos), e o teste vai lá.
 
 #### Scenario: CA14 · Gerar relatório
 - **Dado** relatórios e exportações

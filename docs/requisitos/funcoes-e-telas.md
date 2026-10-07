@@ -83,7 +83,7 @@ Nenhuma decisão é da raia.
 **Histórias:** **nenhuma tem o perfil Financeiro** — a tarefa está sob GGVP-44 (advogada) e GGVP-98
 (Atendimento). **Lacuna de backlog: falta história própria para desenhar a home do Financeiro.**
 **Nunca vê:** entrevista, petição, laudos. O aviso ao cliente depende do OK da advogada (G8).
-**Dono do financeiro:** todo o financeiro do escritório é do Financeiro; ninguém mais vê valores, exceto a advogada na prestação de contas que ela faz e o Sócio em totais (Pedro, 06/10).
+**Dono do financeiro:** todo o financeiro do escritório é do Financeiro; ninguém mais vê valores, exceto a advogada na prestação de contas que ela faz e o Sócio em totais (Pedro, 06/10). Valor da causa e renda per capita do LOAS são dado jurídico e continuam para a advogada (Pedro, 07/10).
 **Home:** prestações de contas recebidas; botões Clientes, Processos, Gestão e Financeiro (recebido, a receber, lançamentos), ver `docs/prototipo/figma.md`.
 
 ## Gestão / Administração (proposto, fora do BPMN)

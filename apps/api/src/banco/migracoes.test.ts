@@ -55,6 +55,15 @@ describe('confiança dos dados', () => {
     await recusa(sql`delete from evento_auditoria`, /não pode ser alterado/)
   })
 
+  it('o registro de acesso a dado de saúde também só cresce (GGVP-129 CA3)', async () => {
+    const [{ id: u }] = (
+      await db.execute<{ id: string }>(sql`insert into usuario (email, nome, senha_hash) values ('jur@exemplo.ggv', 'Jur', 'x') returning id`)
+    ).rows
+    await db.execute(sql`insert into acesso_dado_sensivel (usuario_id, perfil, recurso) values (${u}, 'advogada', 'documento:x')`)
+    await recusa(sql`update acesso_dado_sensivel set perfil = 'senior'`, /não pode ser alterado/)
+    await recusa(sql`delete from acesso_dado_sensivel`, /não pode ser alterado/)
+  })
+
   it('estado fora da lista é recusado pelo banco', async () => {
     await recusa(sql`insert into pessoa (nome, situacao) values ('Ana', 'inventado')`, /pessoa_situacao/)
   })
@@ -95,5 +104,23 @@ describe('confiança dos dados', () => {
           values (${casoId}, 1000, 300, 700, now())`,
       /prestacao_aviso_depois_do_ok/,
     )
+  })
+
+  it('prestação: com o OK já dado, quem deu o OK não registra o recebimento depois; outra pessoa registra (GGVP-96 CA16)', async () => {
+    const [{ id: pessoaId }] = (await db.execute<{ id: string }>(sql`insert into pessoa (nome) values ('Dora') returning id`)).rows
+    const [{ id: casoId }] = (await db.execute<{ id: string }>(sql`insert into caso (pessoa_id) values (${pessoaId}) returning id`)).rows
+    const [{ id: adv }, { id: fin }] = (
+      await db.execute<{ id: string }>(
+        sql`insert into usuario (email, nome, senha_hash) values ('adv2@exemplo.ggv', 'Adv', 'x'), ('fin@exemplo.ggv', 'Fin', 'x') returning id`,
+      )
+    ).rows
+    const [{ id }] = (
+      await db.execute<{ id: string }>(
+        sql`insert into prestacao_contas (caso_id, valor_recebido, honorarios, valor_cliente, ok_advogada_por, ok_advogada_em)
+            values (${casoId}, 1000, 300, 700, ${adv}, now()) returning id`,
+      )
+    ).rows
+    await recusa(sql`update prestacao_contas set recebida_por = ${adv}, recebida_em = now() where id = ${id}`, /prestacao_pessoas_diferentes/)
+    await db.execute(sql`update prestacao_contas set recebida_por = ${fin}, recebida_em = now() where id = ${id}`)
   })
 })

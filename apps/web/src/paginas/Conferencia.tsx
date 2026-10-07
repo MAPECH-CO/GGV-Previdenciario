@@ -126,7 +126,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
             </ul>
           </>
         ) : (
-          <p className={styles.dica}>Sem parecer médico.</p>
+          <p className={styles.dica}>{caso.parecerRestrito ? 'Parecer médico restrito ao Jurídico.' : 'Sem parecer médico.'}</p>
         )}
         {caso.laudoNovoEsperando && <p className={styles.erroCampo}>Há laudo novo esperando conferência.</p>}
       </section>

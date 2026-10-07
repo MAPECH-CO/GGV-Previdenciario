@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import { MSG_G17, MSG_LAUDO_NOVO, MSG_NAO_ESPERA } from './conferencia.ts'
@@ -62,6 +62,19 @@ describe('GGVP-23 · abrir a conferência', () => {
     await parecer('suficiente')
     const r = (await ver('helena')).json()
     expect(r.parecer).toEqual({ resultado: 'suficiente', itens: [{ item: 'data de início', atendido: true }], justificativaDispensa: null })
+  })
+
+  it('GGVP-96 CA12 e CA13 · o parecer só vai ao Jurídico, e cada leitura fica registrada (quem, quando, caso)', async () => {
+    await parecer('suficiente')
+    const ana = (await ver('ana')).json()
+    expect([ana.parecer, ana.parecerRestrito]).toEqual([null, true])
+    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
+    const igor = (await ver('igor')).json()
+    expect([igor.parecer?.resultado, igor.parecerRestrito]).toEqual(['suficiente', false])
+    const acessos = await banco.select().from(acessoDadoSensivel)
+    expect(acessos.map((x) => [x.usuarioId, x.perfil, x.casoId, x.recurso.startsWith('parecer:'), x.quando instanceof Date])).toEqual([
+      [ids.igor, 'juridico_adm', casoId, true, true],
+    ])
   })
 })
 
