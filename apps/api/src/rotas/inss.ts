@@ -116,7 +116,8 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         }),
       )
     }
-    if (pedido.perfilAtivo !== 'senior') return visiveis
+    // GGVP-68 CA4 (Lucas, 02/10): os alertas de vencimento da exigência vão à Sênior e ao líder do administrativo.
+    if (pedido.perfilAtivo !== 'senior' && pedido.perfilAtivo !== 'atendimento_lider') return visiveis
     // GGVP-39 CA14: a 5 dias úteis, alerta; a 2 ou menos (ou vencida), no topo da fila.
     const linha = (a: Awaited<ReturnType<typeof alertasDeExigencia>>[number]) =>
       TarefaDaCentral.parse({
@@ -134,6 +135,8 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         urgente: true,
       })
     const alertas = await alertasDeExigencia(banco, hoje(agora()))
+    if (pedido.perfilAtivo === 'atendimento_lider')
+      return [...alertas.filter((a) => a.diasUteis <= 2).map(linha), ...visiveis, ...alertas.filter((a) => a.diasUteis > 2).map(linha)]
     // GGVP-26 CA3, CA12: cada item da fila de revisão é "Casar publicação", com o contexto no lugar do cliente;
     // com o prazo mínimo a 2 dias úteis ou menos, vai para o topo.
     const fila = (await itensDaFila(banco, agora())).map((f) => ({
