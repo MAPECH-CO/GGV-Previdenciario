@@ -7,11 +7,12 @@ import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
+import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { tarefasDaAdvogada } from '../dados/preparacao.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
-// conversa pede "minha fila". A troca de perfil no topo é da GGVP-78; esta Central abre por /advogada.
+// conversa pede "minha fila". É a tela inicial de quem entra como Advogada (App.tsx); também abre por /advogada.
 const navegacao: ItemNavegacao[] = [
   { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/advogada' },
   { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
@@ -19,7 +20,11 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
-  const [tarefas] = useState(tarefasDaAdvogada)
+  const [deExemplo] = useState(tarefasDaAdvogada)
+  // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
+  // continuam embaixo até a Recepção gravar no servidor (GGVP-125).
+  const doServidor = useTarefasDoServidor() ?? []
+  const tarefas = [...doServidor, ...deExemplo]
 
   return (
     <>

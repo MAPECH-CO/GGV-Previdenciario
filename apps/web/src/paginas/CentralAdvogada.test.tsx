@@ -13,8 +13,8 @@ describe('Central da Advogada', () => {
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {
     render(<CentralAdvogada />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(5)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (5)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (2)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (12)' })).toBeTruthy()
     for (const nome of ['Resumo do caso', 'Criar tarefa', 'Perícias da semana', 'Como o perito avalia?', 'Gerar peça']) {
       expect(screen.getByRole('button', { name: nome })).toBeTruthy()
