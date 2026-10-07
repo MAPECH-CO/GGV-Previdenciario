@@ -13,7 +13,9 @@ import {
   NOMES_DA_INSTANCIA,
   NOMES_DO_TIPO,
   ORIGENS,
+  O_QUE_LEVAR,
   cobrarHoje,
+  escolherOrientacao,
   esperaOInss,
   etapaEmPericia,
   mensagemDoLembrete,
@@ -22,12 +24,15 @@ import {
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
   passouDoLimiteDosDocumentos,
+  problemaDaOrientacao,
   prazoFalado,
   prazosDaPericia,
   proximaTentativa,
   situacaoDaPericia,
   type Instancia,
+  type Jurimetria,
   type LidoDoComprovante,
+  type ModoDaOrientacao,
   type OrigemDaPericia,
   type SituacaoDaPericia,
   type TipoDePericia,
@@ -35,6 +40,7 @@ import {
 import { problemaG20 } from '../regras/parecer.ts'
 import { emVigor } from '../regras/roteiro.ts'
 import { nomeBeneficio } from './catalogos.ts'
+import { perfilDoPerito, peritosDo, reconhecerPerito, type PerfilDoPerito } from './peritos.ts'
 import { roteiroDoCaso } from './roteiro.ts'
 import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
 import type { Arquivo, EventoDaAgenda, Ficha, Processo, Tarefa } from './tipos.ts'
@@ -53,6 +59,24 @@ export type PedidoDePericia = {
   oQuePede?: string
   /** D3 e D3a: a data e o local que vêm do juízo, lidos da publicação (resposta do Lucas, 02/10, GGVP-53). */
   dataDoJuizo?: { data: string; hora: string; local: string }
+  /** O nome do perito na publicação ou no processo, quando há (GGVP-61, CA2, CA6). */
+  peritoLido?: string
+}
+
+/** A orientação para o cliente, montada pela IA quando a data é registrada (GGVP-61, DP.05). */
+export type OrientacaoDaPericia = {
+  modo: ModoDaOrientacao
+  /** Por que saiu a padrão (CA5, CA6). */
+  motivo?: string
+  peritoId?: string
+  /** A versão do perfil usada: quantos laudos formavam o perfil (CA9). */
+  versaoDoPerfil?: number
+  /** Os números do sistema, quando a amostra é suficiente (CA12, G22). */
+  jurimetria?: Jurimetria
+  texto: string
+  geradaEm: string
+  /** A verificação achou instrução proibida: bloqueada, pede revisão (CA8). */
+  bloqueio?: string
 }
 
 /** A perícia marcada: o que o comprovante disse (conferido) ou o que veio do juízo. */
@@ -146,6 +170,11 @@ export type Pericia = {
   lembrete?: { para: string; enviadoEm?: string; por?: string; mensagem?: string }
   /** O que a Documentação reúne quando a perícia pede documento novo (GGVP-56). */
   documentos?: DocumentosDaPericia
+  /** O perito reconhecido na base (GGVP-61). Sem ele, a orientação padrão. */
+  peritoId?: string
+  /** O nome lido que o sistema não reconheceu: a pergunta de um clique (CA6). */
+  peritoLido?: string
+  orientacao?: OrientacaoDaPericia
   historico: EventoDaPericia[]
 }
 
@@ -176,6 +205,8 @@ export type PericiaNaTela = {
     /** Passou dos 10 dias antes com documento faltando: a advogada responsável decide (G15). */
     passouDoLimite: boolean
   }
+  /** O perito reconhecido e o perfil dele (GGVP-61). */
+  perfil?: PerfilDoPerito
 }
 
 /** Cada item do kit: anexado é o documento do tipo dele que entrou na pasta depois do pedido (GGVP-56, CA1, CA2, CA4). */
@@ -260,6 +291,12 @@ function criar(banco: Banco, processoId: string, pedido: PedidoDePericia, quando
       { quando: iso, quem: SISTEMA, oQue: `Agendou o lembrete da véspera para ${dataCurta(pericia.lembrete.para, hojeIso(quando))}`, passo: 'DP.04' },
     )
   }
+  if (pedido.peritoLido) {
+    const perito = reconhecerPerito(banco, pedido.peritoLido)
+    if (perito) pericia.peritoId = perito.id
+    else pericia.peritoLido = pedido.peritoLido
+  }
+  if (pericia.marcacao) montarOrientacao(banco, pericia, quando)
   pericias.push(pericia)
   return pericia
 }
@@ -329,6 +366,7 @@ function marcar(banco: Banco, pericia: Pericia, m: { comprovante: { nome: string
       ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação (DP.03)', passo: 'DP.02' }
       : { quando, quem, oQue: 'A perícia não pede documento novo: segue para ligar e orientar (DP.06)', passo: 'DP.02' },
   )
+  montarOrientacao(banco, pericia, agora())
 }
 
 /** Hoje (ou n dias antes), à hora dada, no fuso local. */
@@ -366,9 +404,10 @@ function semear(banco: Banco): Pericia[] {
   const lido = { ...leitura(pedro, 'comprovante.pdf', hoje), data: diaUtil(somarDias(hoje, 16)), hora: '09:00' }
   marcar(banco, pedro, { comprovante: { nome: 'comprovante_avaliacao_social_pedro.pdf' }, lido, pedeDocumentoNovo: true }, IGOR)
   // A marcação do Pedro foi ontem à tarde: o histórico guarda a hora em que aconteceu.
-  for (const e of pedro.historico.slice(-4)) e.quando = em(-1, 14, 20).toISOString()
+  for (const e of pedro.historico.slice(-5)) e.quando = em(-1, 14, 20).toISOString()
   pedro.marcacao!.registradaEm = em(-1, 14, 20).toISOString()
   pedro.documentos!.abertaEm = em(-1, 14, 20).toISOString()
+  pedro.orientacao!.geradaEm = em(-1, 14, 20).toISOString()
   criar(
     banco,
     'antonio-exemplo-1',
@@ -378,6 +417,7 @@ function semear(banco: Banco): Pericia[] {
       instancia: 'juizo',
       pedidaPor: 'Juízo da Vara Federal de Santo Amaro (exemplo)',
       oQuePede: 'perícia médica judicial pedida pelo juiz, com o perito nomeado na publicação',
+      peritoLido: 'Dr. A. Prado',
       dataDoJuizo: { data: diaUtil(somarDias(hoje, 9)), hora: '10:30', local: 'Vara Federal de Santo Amaro (exemplo) · sala de perícias' },
     },
     em(-1, 9, 40),
@@ -416,6 +456,7 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
     ...(marcacao && { prazos: prazosDaPericia(marcacao.data) }),
     lembreteHoje: !!marcacao && !!lembrete && !lembrete.enviadoEm && hoje >= lembrete.para && hoje <= marcacao.data,
     documentos: documentosNaTela(ficha, pericia, hoje, marcacao && prazosDaPericia(marcacao.data).documentosAte),
+    perfil: pericia.peritoId ? perfilDoPerito(peritosDo(banco).find((p) => p.id === pericia.peritoId)!) : undefined,
   }
 }
 
@@ -619,8 +660,16 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
         ? `O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: ${quando}.`
         : `A ${tipo} de ${primeiro} está marcada para ${quando}; o sistema leu o comprovante e pôs na agenda e na ficha.`
     const documentos = pericia.pedeDocumentoNovo ? ` A Documentação reúne o que a perícia pede até ${dataCurta(t.prazos.documentosAte, hoje)}.` : ''
+    const o = pericia.orientacao
+    const orientacao = !o
+      ? ''
+      : o.bloqueio
+        ? ' A orientação montada pela IA foi bloqueada pela verificação e pede revisão.'
+        : o.modo === 'perfil' && t.perfil
+          ? ` O perfil de ${t.perfil.perito.nome} está na base e a orientação já segue esse perfil (DP.05).`
+          : ' A orientação padrão já está montada (DP.05).'
     return (
-      `${como}${documentos} Até ${dataCurta(t.prazos.preparoAte, hoje)}, o Jurídico administrativo liga para ${primeiro} com a orientação; ` +
+      `${como}${documentos}${orientacao} Até ${dataCurta(t.prazos.preparoAte, hoje)}, o Jurídico administrativo liga para ${primeiro} com a orientação; ` +
       `na véspera, ${dataCurta(t.prazos.vespera, hoje)}, sai o lembrete.`
     )
   }
@@ -695,6 +744,24 @@ export function tarefasDoJuridicoAdm(): Tarefa[] {
         codigo: 'DP.02',
         acao: 'Subir o comprovante do INSS',
         detalhe: [t.beneficio, NOMES_DO_TIPO[pericia.tipo], 'marcada no Meu INSS; o comprovante ainda não saiu (DP.E1)', 'lembrete diário'].join(' · '),
+        prazo: prazo.texto,
+        urgente: prazo.urgente,
+      })
+    }
+    // A orientação pronta (GGVP-61): depois dos documentos, quando a perícia pede, o Jurídico administrativo liga e orienta (DP.06).
+    if (t.situacao === 'agendada' && pericia.orientacao && (!pericia.pedeDocumentoNovo || pericia.documentos?.concluida) && t.prazos) {
+      const prazo = prazoFalado(t.prazos.preparoAte, hoje)
+      const m = pericia.marcacao!
+      const como = pericia.orientacao.bloqueio
+        ? 'orientação bloqueada pela verificação: revisar'
+        : `orientação da IA pronta (${pericia.orientacao.modo === 'perfil' ? 'pelo perfil do perito' : 'padrão'})`
+      tarefas.push({
+        ...base,
+        href: `/casos/${processo.id}/pericia`,
+        id: `pericia-orientar-${pericia.id}`,
+        codigo: 'DP.06',
+        acao: 'Orientar para a perícia',
+        detalhe: [t.beneficio, `${NOMES_DO_TIPO[pericia.tipo]} em ${dataCurta(m.data, hoje)}${m.origem === 'juizo' ? ' (data lida da publicação pelo sistema)' : ''}`, como, 'ligar para o cliente'].join(' · '),
         prazo: prazo.texto,
         urgente: prazo.urgente,
       })
@@ -937,4 +1004,164 @@ export function tarefasDeDecidirDocumentoDaPericia(): Tarefa[] {
       href: `/casos/${t.processo.id}/pericia`,
       processoId: t.processo.id,
     }))
+}
+
+// GGVP-61 · A orientação da perícia, padrão ou pelo perfil do perito (DP.05, sem tela própria).
+
+const nomeCurto = (nome: string) => nome.replace(/\s*\(exemplo\)$/, '')
+
+/**
+ * DP.05: a IA monta a orientação quando a data é registrada (CA1, CA2, CA7), padrão ou pelo perfil do perito (regra
+ * unificada, Lucas 02/10). IA simulada: o texto sai do dado da perícia, do acervo do benefício e do perfil. Antes de chegar
+ * ao Jurídico administrativo, a verificação barra instrução proibida (CA4, CA8). `pedido` simula um pedido feito à IA,
+ * que ela segue sem filtro: é o teste dos pedidos maliciosos (CA10).
+ */
+export function montarOrientacao(banco: Banco, pericia: Pericia, quando: Date, pedido?: string): OrientacaoDaPericia {
+  const m = pericia.marcacao
+  if (!m) throw new Error('A perícia ainda não tem data')
+  const { ficha } = fichaDoProcesso(banco, pericia.processoId)!
+  const perito = pericia.peritoId ? peritosDo(banco).find((p) => p.id === pericia.peritoId) : undefined
+  const perfil = perito && perito.laudos.length > 0 ? perfilDoPerito(perito) : undefined
+  const escolha = escolherOrientacao({ instancia: pericia.instancia, peritoId: pericia.peritoId, peritoLido: pericia.peritoLido, temPerfil: !!perfil })
+  const primeiro = ficha.nome.split(' ')[0]
+  const social = pericia.tipo === 'social'
+  const linhas = [
+    `Orientação para a ${NOMES_DO_TIPO[pericia.tipo]} de ${primeiro}`,
+    `Quando: ${diaFalado(m.data)}, às ${m.hora}.`,
+    `Onde: ${m.local}.${social ? ' A visita é na sua casa.' : ''}`,
+    `O que levar: ${O_QUE_LEVAR[pericia.tipo]}.`,
+    social
+      ? 'Como é a visita: a assistente social vai até a casa, conversa com quem mora ali e vê como a família vive. Mostre a casa como ela é no dia a dia e responda com calma.'
+      : 'Como é a perícia: o médico perito conversa sobre a sua saúde e o seu trabalho e examina você. Conte como é o seu dia, com calma e com sinceridade.',
+  ]
+  if (escolha.modo === 'perfil' && perfil) {
+    linhas.push(
+      `O que ${nomeCurto(perfil.perito.nome)} costuma observar: ${perfil.observou.join('; ')}.`,
+      `O que costuma perguntar: ${perfil.perguntou.join('; ')}.`,
+      `O que costuma pedir: ${perfil.pediu.join('; ')}.`,
+    )
+  } else {
+    linhas.push(
+      social
+        ? 'Pelo acervo do benefício: tenha à mão o CadÚnico e os comprovantes de renda e de despesas da casa.'
+        : 'Pelo acervo do benefício: leve os documentos em ordem e a lista dos remédios que usa.',
+    )
+  }
+  linhas.push('Fale sempre a verdade sobre a sua situação: esta orientação só prepara você para o dia.')
+  const texto = [...linhas, ...(pedido ? [pedido] : [])].join('\n')
+  const bloqueio = problemaDaOrientacao(texto) ?? undefined
+  const iso = quando.toISOString()
+  pericia.orientacao = {
+    modo: escolha.modo,
+    ...(escolha.motivo && { motivo: escolha.motivo }),
+    ...(perfil && { peritoId: perfil.perito.id, versaoDoPerfil: perfil.versao }),
+    // A jurimetria só entra com amostra suficiente; abaixo do mínimo, nada dela segue (CA12, G22).
+    ...(perfil?.jurimetria.suficiente && { jurimetria: perfil.jurimetria }),
+    texto,
+    geradaEm: iso,
+    ...(bloqueio && { bloqueio }),
+  }
+  pericia.historico.push({
+    quando: iso,
+    quem: SISTEMA,
+    oQue: bloqueio
+      ? `A verificação bloqueou a orientação montada pela IA e pede revisão: ${bloqueio}`
+      : perfil && escolha.modo === 'perfil'
+        ? `Montou a orientação pelo perfil de ${perfil.perito.nome} (versão ${perfil.versao}, IA e acervo)`
+        : `Montou a orientação padrão (IA e acervo): ${escolha.motivo}`,
+    passo: 'DP.05',
+  })
+  return pericia.orientacao
+}
+
+/** A pergunta de um clique (CA6): a equipe liga o perito quando a informação chega; a orientação sai de novo pelo perfil. */
+export function ligarPerito(processoId: string, peritoId: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (banco, pericia) => {
+    const perito = peritosDo(banco).find((p) => p.id === peritoId)
+    if (!perito) throw new Error('Perito não encontrado.')
+    pericia.peritoId = perito.id
+    delete pericia.peritoLido
+    pericia.historico.push({ quando: agora().toISOString(), quem, oQue: `Ligou o perito: ${perito.nome}`, passo: 'DP.05' })
+    if (pericia.marcacao) montarOrientacao(banco, pericia, agora())
+  })
+}
+
+/** Os peritos que a pergunta de um clique oferece: os do mesmo tipo da perícia (CA6). */
+export function peritosParaLigar(tipo: TipoDePericia): { id: string; nome: string; especialidade: string }[] {
+  return peritosDo(lerComPericias())
+    .filter((p) => p.tipo === tipo)
+    .map(({ id, nome, especialidade }) => ({ id, nome, especialidade }))
+}
+
+/** Os processos com o perito, para a janela da jurimetria (Figma 2184:2). */
+export function processosComOPerito(peritoId: string): { processoId: string; cliente: string; sub: string }[] {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  return (banco.pericias ?? [])
+    .filter((p) => p.peritoId === peritoId)
+    .map((p) => {
+      const t = naTela(banco, p)
+      const m = p.marcacao
+      return { processoId: p.processoId, cliente: t.ficha.nome, sub: m ? `perícia ${dataCurta(m.data, hoje)}, ${m.hora} · ${m.local}` : NOMES_DA_SITUACAO_CURTA[t.situacao] }
+    })
+}
+
+const NOMES_DA_SITUACAO_CURTA: Record<SituacaoDaPericia, string> = {
+  'aguardando-inss': 'esperando o INSS',
+  marcar: 'para marcar',
+  'aguardando-comprovante': 'esperando o comprovante',
+  agendada: 'agendada',
+  'na-advogada': 'com a advogada',
+}
+
+/** A recusa do chat fica registrada (CA11, G11): quem pediu, quando e o quê. */
+export function registrarRecusaDoChat(texto: string, quem: string) {
+  const banco = ler()
+  ;(banco.recusasDoChat ??= []).push({ quando: agora().toISOString(), quem, texto })
+  gravar(banco)
+}
+
+/** O que a recusa registrou, para a auditoria. */
+export function recusasDoChat(): { quando: string; quem: string; texto: string }[] {
+  return ler().recusasDoChat ?? []
+}
+
+/**
+ * "Dica para a perícia" no chat (Figma 2186:857): o resumo da orientação do cliente citado, o perito e a tarefa. Só
+ * responde e orienta. Os números da jurimetria vêm do sistema; com amostra pequena, "amostra insuficiente" (G22).
+ */
+export async function dicaParaAPericia(texto: string): Promise<{ texto: string; itens: ItemDoChat[] } | null> {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  const pericia = (banco.pericias ?? []).find((p) => {
+    const ficha = banco.fichas.find((f) => f.id === p.fichaId)!
+    return new RegExp(`\\b${ficha.nome.split(' ')[0]}\\b`, 'i').test(texto) && p.orientacao
+  })
+  if (!pericia?.orientacao || !pericia.marcacao) return null
+  const t = naTela(banco, pericia)
+  const primeiro = t.ficha.nome.split(' ')[0]
+  const m = pericia.marcacao
+  const tarefa: ItemDoChat = {
+    cliente: t.ficha.nome,
+    acao: 'Orientar para a perícia',
+    sub: `${diaFalado(m.data)}, ${m.hora} · ${m.local}${t.prazos ? ` · ligar até ${dataCurta(t.prazos.preparoAte, hoje)}` : ''}`,
+    href: `/casos/${pericia.processoId}/pericia`,
+  }
+  if (pericia.orientacao.modo === 'perfil' && t.perfil) {
+    const j = t.perfil.jurimetria
+    const numeros = j.suficiente ? `${j.laudos} laudos, ${j.taxa}% favoráveis` : `${j.laudos} laudos: amostra insuficiente`
+    return {
+      texto:
+        `Pelo perfil de ${nomeCurto(t.perfil.perito.nome)} (${numeros}), peça para ${primeiro} levar ${t.perfil.pediu.join(' e ')}. ` +
+        `O perito costuma perguntar ${t.perfil.perguntou.join(' e ')}. Na ligação: conte a ${primeiro} como é a perícia e lembre de responder com calma e com sinceridade.`,
+      itens: [
+        { cliente: t.perfil.perito.nome, acao: 'Ver o perfil do perito', sub: numeros, href: `/casos/${pericia.processoId}/pericia?perito=1` },
+        tarefa,
+      ],
+    }
+  }
+  return {
+    texto: `A orientação de ${primeiro} é a padrão: ${pericia.orientacao.motivo}. Ela já traz data, local, o que levar e como é a ${NOMES_DO_TIPO[pericia.tipo]}.`,
+    itens: [tarefa],
+  }
 }

@@ -1,0 +1,140 @@
+/* Janela "Jurimetria · Perito" (Figma 2184:2). */
+.janela {
+  width: min(680px, calc(100vw - 32px));
+  padding: 0;
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rotulo {
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.nome {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.suficiente,
+.insuficiente {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  font-size: var(--fonte-11);
+}
+
+.suficiente {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.insuficiente {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.sub {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 22px;
+  font-size: var(--fonte-13);
+}
+
+.secao {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.numeros {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 6px 16px;
+}
+
+.numeros dt {
+  color: var(--cor-texto-suave);
+}
+
+.numeros dd {
+  font-weight: 600;
+}
+
+.par {
+  display: contents;
+}
+
+.lista,
+.processos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.dica {
+  padding: 10px 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+}
+
+.processo {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  color: var(--cor-texto);
+}
+
+.pe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 22px 16px;
+  border-top: 1px solid var(--cor-linha);
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+.botao {
+  padding: 8px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .numeros {
+    grid-template-columns: 1fr;
+  }
+}

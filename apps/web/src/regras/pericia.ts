@@ -2,6 +2,7 @@
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
 import { somarDias } from './agenda.ts'
 import { dataCurta } from './datas.ts'
+import { problemaG20 } from './parecer.ts'
 
 export type TipoDePericia = 'medica' | 'social'
 export type Instancia = 'inss' | 'juizo'
@@ -161,3 +162,66 @@ export function cobrarHoje(cobrancas: { dia: string }[], hoje: string, documento
 
 /** Passou dos 10 dias antes da perícia com documento faltando: sobe para a advogada responsável (G15, por ser perícia). */
 export const passouDoLimiteDosDocumentos = (hoje: string, documentosAte?: string) => documentosAte !== undefined && hoje > documentosAte
+
+// GGVP-61 · A orientação da perícia, padrão ou pelo perfil do perito.
+
+/** A jurimetria do perito: com 5 perícias já começa o estudo, mas o mínimo para mostrar é 10 (Lucas, 02/10). Abaixo, "amostra insuficiente" (G22). */
+export const AMOSTRA_MINIMA_DO_PERITO = 10
+
+export type Jurimetria = { laudos: number; favoraveis: number; taxa: number; diasAteOLaudo: number; suficiente: boolean }
+
+/** Os números vêm do sistema, não do modelo (G19, G22): contagem, taxa favorável e tempo médio até o laudo. */
+export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; dias: number }[]): Jurimetria {
+  const favoraveis = laudos.filter((l) => l.resultado === 'favoravel').length
+  const n = laudos.length
+  return {
+    laudos: n,
+    favoraveis,
+    taxa: n ? Math.round((favoraveis / n) * 100) : 0,
+    diasAteOLaudo: n ? Math.round(laudos.reduce((s, l) => s + l.dias, 0) / n) : 0,
+    suficiente: n >= AMOSTRA_MINIMA_DO_PERITO,
+  }
+}
+
+export type ModoDaOrientacao = 'padrao' | 'perfil'
+
+/**
+ * A regra unificada (Lucas, 02/10): sabendo quem é o perito e tendo perfil no acervo, a orientação sai pelo perfil, seja
+ * médica ou social, no INSS ou no juízo. Não sabendo, sai a padrão e registra o motivo (CA2, CA5, CA6).
+ */
+export function escolherOrientacao(p: { instancia: Instancia; peritoId?: string; peritoLido?: string; temPerfil: boolean }): { modo: ModoDaOrientacao; motivo?: string } {
+  if (p.peritoId && p.temPerfil) return { modo: 'perfil' }
+  if (p.peritoId) return { modo: 'padrao', motivo: 'o perito ainda não tem perfil no acervo' }
+  if (p.peritoLido) return { modo: 'padrao', motivo: `o sistema não reconheceu o perito ${p.peritoLido}: ligue o perito certo na página do processo` }
+  return { modo: 'padrao', motivo: p.instancia === 'inss' ? 'o comprovante do INSS não traz o perito: informe quando o nome chegar' : 'o perito ainda não foi nomeado' }
+}
+
+/** Instruções que a orientação nunca dá (G11): esconder, mudar, simular a situação real, mentir; e a frase pronta (G20). */
+const REGRAS_G11: [RegExp, string][] = [
+  [/\b(escond|ocult|omit)\w*/i, 'A orientação nunca manda esconder ou omitir a situação real (G11).'],
+  [/\b(simul|fing|finj|disfar[cç])\w*/i, 'A orientação nunca manda simular ou fingir (G11).'],
+  [/\bment(ir|ira)\b|\bmint(a|am)\b|\bmentira/i, 'A orientação nunca manda mentir (G11).'],
+  [
+    /\b(mud|alter|troqu|tir|retir|empreste|emprest)\w*\s+(\S+\s+){0,3}(a situa[cç][aã]o|da casa|a casa|m[oó]ve|carro|moto|eletro|geladeira|televis|tv\b|renda|quem mora)/i,
+    'A orientação nunca manda mudar a situação real da casa (G11).',
+  ],
+  [/\b(diga|fale|responda|conte|repita)\s+(ao perito\s+|à perita\s+|à assistente social\s+|ao médico\s+)?que\b/i, 'Sem frase pronta para o cliente repetir (G20).'],
+  [/\bexager[ea]\b|\baumente\b|\bpiore\b/i, 'A orientação nunca manda exagerar a situação (G11).'],
+]
+
+/**
+ * A verificação antes de a orientação chegar ao Jurídico administrativo (CA4, CA8, CA10): G11 e G20 (sem diagnóstico, CID,
+ * grau, conclusão nem frase pronta). Encontrou, bloqueia e pede revisão. Sem problema, null.
+ */
+export function problemaDaOrientacao(texto: string): string | null {
+  return REGRAS_G11.find(([regra]) => regra.test(texto))?.[1] ?? problemaG20(texto)
+}
+
+const PEDIDO_PROIBIDO = /\b(escond|ocult|omit|simul|fing|finj|disfar[cç]|ment(ir|ira)\b|mint(a|am)\b|mentira|exager)|\b(mud|alter|tir|retir)\w*\s+(\S+\s+){0,3}(a situa[cç][aã]o|da casa|a casa|m[oó]ve|carro|geladeira|televis|renda)/i
+
+/** O chat recusa pedir orientação para esconder, mudar ou simular a situação real (CA11, G11). Outro pedido, null. */
+export function recusaDoChatNaPericia(texto: string): string | null {
+  return PEDIDO_PROIBIDO.test(texto)
+    ? 'Não posso orientar a esconder, mudar ou simular a situação real: isso é fraude e põe o processo e o escritório em risco (G11). O pedido ficou registrado.'
+    : null
+}

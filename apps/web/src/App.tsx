@@ -158,6 +158,6 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   const cobrancaPericia = /^\/casos\/([^/]+)\/pericia\/cobranca$/.exec(caminho)
   if (cobrancaPericia) return <CobrarDocumentoPericia processoId={decodeURIComponent(cobrancaPericia[1])} />
   const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
-  if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} />
+  if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} abrirPerito={parametros.get('perito') === '1'} />
   return <NaoConstruida caminho={caminho} />
 }

@@ -39,6 +39,7 @@ import type { DeficienciaDoCaso } from './deficiencia.ts'
 import type { AcidenteDoCaso } from './acidente.ts'
 import type { CriancaDoCaso } from './infantil.ts'
 import type { Pericia } from './pericia.ts'
+import type { Perito } from './peritos.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -92,6 +93,10 @@ export type Banco = {
   criancas?: CriancaDoCaso[]
   /** As perícias de cada caso, da tarefa aberta pelo sistema ao resultado (épico GGVP-10). Sem ela, começa da semente de pericia.ts. */
   pericias?: Pericia[]
+  /** Os peritos e o perfil de cada um, formado dos laudos do acervo (GGVP-61, GGVP-73). Sem ele, começa da semente de peritos.ts. */
+  peritos?: Perito[]
+  /** Os pedidos recusados no chat por mandar esconder ou mudar a situação real (GGVP-61, CA11, G11). */
+  recusasDoChat?: { quando: string; quem: string; texto: string }[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { identificarCliente } from '../dados/documentos.ts'
-import { lerComprovante, periciaParaMarcarDaFicha, periciasParaMarcar, registrarMarcacao, type ItemDoChat } from '../dados/pericia.ts'
+import { dicaParaAPericia, lerComprovante, periciaParaMarcarDaFicha, periciasParaMarcar, registrarMarcacao, type ItemDoChat } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -56,8 +56,13 @@ export function ChatDaPericia({ exemplo, sugestoes }: { exemplo: string; sugesto
   const ia = (m: Omit<Mensagem, 'id' | 'de'>) => setMensagens((x) => [...x, { id: ++proximoId, de: 'ia', ...m }])
   const mudarAcao = (id: number, mudanca: Partial<Acao>) => setMensagens((x) => x.map((m) => (m.id === id && m.acao ? { ...m, acao: { ...m.acao, ...mudanca } } : m)))
 
-  function aoEnviar(texto: string) {
+  async function aoEnviar(texto: string) {
     setMensagens((m) => [...m, { id: ++proximoId, de: 'voce', texto }])
+    // "Dica para a perícia" (Figma 2186:857): a orientação do cliente citado, o perito e a tarefa (GGVP-61).
+    if (!PERICIAS_PARA_MARCAR.test(texto) && /dica|orienta[cç][aã]o/i.test(texto)) {
+      const dica = await dicaParaAPericia(texto)
+      return ia({ texto: '', resposta: dica ?? { texto: 'Não achei a orientação: diga o nome do cliente da perícia marcada.' } })
+    }
     ia({ texto: '', resposta: responder(texto) })
   }
 
@@ -103,7 +108,7 @@ export function ChatDaPericia({ exemplo, sugestoes }: { exemplo: string; sugesto
 
   const hoje = hojeIso(agora())
   return (
-    <ChatIA exemplo={exemplo} sugestoes={sugestoes} onEnviar={aoEnviar} onAnexo={aoAnexo}>
+    <ChatIA exemplo={exemplo} sugestoes={sugestoes} onEnviar={(texto) => void aoEnviar(texto)} onAnexo={aoAnexo}>
       {mensagens.length > 0 && (
         <ol className={conversa.conversa} aria-label="Conversa">
           {mensagens.map((m) => (

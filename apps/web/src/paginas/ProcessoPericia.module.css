@@ -301,3 +301,13 @@
     gap: 2px;
   }
 }
+
+/* GGVP-61: o texto da orientação. */
+.orientacao {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+  font-family: inherit;
+  font-size: var(--fonte-13);
+  white-space: pre-wrap;
+}

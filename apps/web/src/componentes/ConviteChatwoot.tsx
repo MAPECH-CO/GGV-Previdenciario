@@ -5,7 +5,7 @@ import { obterCobranca, registrarTentativa } from '../dados/cobranca.ts'
 import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confirmacao.ts'
 import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import { obterCobrancaDaPericia, obterLembrete, registrarCobrancaDaPericia, registrarLembrete } from '../dados/pericia.ts'
-import { lerPerfil } from '../dados/perfis.ts'
+import { usePerfilEscolhido } from '../dados/perfis.ts'
 import styles from './ConviteChatwoot.module.css'
 
 /** O convite da entrevista (GGVP-123), a confirmação dela (GGVP-21), a cobrança dos documentos pendentes (GGVP-101) ou o pedido de complemento ao médico (GGVP-29). */
@@ -13,7 +13,7 @@ type Assunto = 'convite' | 'confirmacao' | 'cobranca' | 'complemento' | 'pericia
 
 type Props = { agendamentoId: string; assunto?: Assunto; aoEnviado: () => void; aoFechar: () => void }
 
-const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Promise<{ nome: string; telefone: string; mensagem: string }>; enviar: (id: string, mensagem: string) => Promise<unknown> }> = {
+const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Promise<{ nome: string; telefone: string; mensagem: string }>; enviar: (id: string, mensagem: string, quem?: string) => Promise<unknown> }> = {
   convite: { rotulo: 'Mensagem do convite (confira antes de enviar)', carregar: prepararConvite, enviar: registrarConvite },
   confirmacao: {
     rotulo: 'Mensagem de confirmação (confira antes de enviar)',
@@ -48,13 +48,13 @@ const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Prom
   'pericia-lembrete': {
     rotulo: 'Lembrete da véspera da perícia (confira antes de enviar)',
     carregar: obterLembrete,
-    enviar: (id, mensagem) => registrarLembrete(id, mensagem, lerPerfil()?.usuario),
+    enviar: (id, mensagem, quem) => registrarLembrete(id, mensagem, quem),
   },
   // O id é o do processo; a cobrança diária do que a perícia pede, pela Documentação (GGVP-56; Lucas, 02/10).
   'pericia-cobranca': {
     rotulo: 'Cobrança dos documentos da perícia (confira antes de enviar)',
     carregar: obterCobrancaDaPericia,
-    enviar: (id, mensagem) => registrarCobrancaDaPericia(id, mensagem, lerPerfil()?.usuario),
+    enviar: (id, mensagem, quem) => registrarCobrancaDaPericia(id, mensagem, quem),
   },
 }
 
@@ -64,6 +64,8 @@ const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Prom
  */
 export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado, aoFechar }: Props) {
   const conversaDe = CONVERSA[assunto]
+  // Quem está na tela assina o envio (GGVP-53, GGVP-56).
+  const perfil = usePerfilEscolhido()
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<{ nome: string; telefone: string } | null>(null)
   const [mensagem, setMensagem] = useState('')
@@ -95,7 +97,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
     setEnviando(true)
     setErro('')
     try {
-      await conversaDe.enviar(agendamentoId, mensagem)
+      await conversaDe.enviar(agendamentoId, mensagem, perfil?.usuario)
       aoEnviado()
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para enviar.')

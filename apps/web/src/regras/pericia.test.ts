@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AMOSTRA_MINIMA_DO_PERITO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   cobrarHoje,
   ORIGENS,
+  escolherOrientacao,
   esperaOInss,
   etapaEmPericia,
+  jurimetria,
   mensagemDoLembrete,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
@@ -12,8 +15,10 @@ import {
   passouDoLimite,
   passouDoLimiteDosDocumentos,
   prazoFalado,
+  problemaDaOrientacao,
   prazosDaPericia,
   proximaTentativa,
+  recusaDoChatNaPericia,
   situacaoDaPericia,
 } from './pericia.ts'
 
@@ -123,5 +128,52 @@ describe('GGVP-56 · reunir o que a perícia pede', () => {
     expect(passouDoLimiteDosDocumentos('2026-10-14', '2026-10-13')).toBe(true)
     // Sem a data da perícia ainda, não há limite.
     expect(passouDoLimiteDosDocumentos('2026-12-01', undefined)).toBe(false)
+  })
+})
+
+describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito', () => {
+  it('CA2, CA5, CA6 · regra unificada: perito conhecido com perfil → pelo perfil; senão, a padrão com o motivo', () => {
+    expect(escolherOrientacao({ instancia: 'juizo', peritoId: 'a-prado', temPerfil: true })).toEqual({ modo: 'perfil' })
+    expect(escolherOrientacao({ instancia: 'inss', peritoId: 'x', temPerfil: false })).toEqual({ modo: 'padrao', motivo: 'o perito ainda não tem perfil no acervo' })
+    expect(escolherOrientacao({ instancia: 'juizo', peritoLido: 'Dr. Fulano', temPerfil: false }).motivo).toBe(
+      'o sistema não reconheceu o perito Dr. Fulano: ligue o perito certo na página do processo',
+    )
+    expect(escolherOrientacao({ instancia: 'inss', temPerfil: false }).motivo).toBe('o comprovante do INSS não traz o perito: informe quando o nome chegar')
+  })
+
+  it('CA4, CA8, CA10 · a verificação bloqueia os pedidos maliciosos (esconder, mudar, simular, diagnóstico pronto)', () => {
+    const maliciosos = [
+      'Diga ao perito que mora sozinho.',
+      'Esconda o carro na garagem do vizinho antes da visita.',
+      'Tire a televisão e a geladeira nova da sala.',
+      'Finja que não consegue andar quando o perito chegar.',
+      'Omita a renda do filho que mora com você.',
+      'Minta sobre quem mora na casa.',
+      'Exagere a dor na hora do exame.',
+      'Leve ao médico o diagnóstico de depressão grave.',
+      'Peça para o laudo trazer o CID F32.',
+      'Fale "não consigo trabalhar" para o perito.',
+    ]
+    for (const pedido of maliciosos) expect(problemaDaOrientacao(pedido), pedido).not.toBeNull()
+    const permitida =
+      'Orientação para a perícia médica de Maria\nQuando: quarta, 21/10, às 08:30.\nO que levar: documento com foto, laudos e exames.\n' +
+      'Como é a perícia: o médico perito conversa sobre a sua saúde e o seu trabalho e examina você. Conte como é o seu dia, com calma e com sinceridade.\n' +
+      'Fale sempre a verdade sobre a sua situação: esta orientação só prepara você para o dia.'
+    expect(problemaDaOrientacao(permitida)).toBeNull()
+  })
+
+  it('CA11 · o chat recusa pedir orientação para esconder ou mudar a situação real', () => {
+    expect(recusaDoChatNaPericia('Como faço para esconder a renda do filho na avaliação social?')).toContain('(G11). O pedido ficou registrado.')
+    expect(recusaDoChatNaPericia('dá para tirar os móveis novos da casa antes da visita?')).not.toBeNull()
+    expect(recusaDoChatNaPericia('Qual a orientação para a perícia do Antônio?')).toBeNull()
+  })
+
+  it('CA12, G22 · jurimetria por código: taxa, tempo até o laudo e amostra mínima de 10', () => {
+    const laudos = (n: number, fav: number) => Array.from({ length: n }, (_, i) => ({ resultado: (i < fav ? 'favoravel' : 'desfavoravel') as 'favoravel' | 'desfavoravel', dias: 10 + i }))
+    expect(AMOSTRA_MINIMA_DO_PERITO).toBe(10)
+    expect(jurimetria(laudos(34, 24))).toMatchObject({ laudos: 34, favoraveis: 24, taxa: 71, suficiente: true })
+    expect(jurimetria(laudos(9, 5)).suficiente).toBe(false)
+    expect(jurimetria(laudos(10, 5))).toMatchObject({ taxa: 50, suficiente: true, diasAteOLaudo: 15 })
+    expect(jurimetria([])).toMatchObject({ laudos: 0, taxa: 0, suficiente: false })
   })
 })

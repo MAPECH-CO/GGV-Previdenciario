@@ -5,7 +5,8 @@ import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { formatarCpf } from '../campos.ts'
 import { nomeTipo } from '../dados/catalogos.ts'
-import { autorizarRemarcacao, decidirFaltaDaPericia, hrefDoPasso, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
+import { JurimetriaPerito } from '../componentes/JurimetriaPerito.tsx'
+import { autorizarRemarcacao, decidirFaltaDaPericia, hrefDoPasso, ligarPerito, peritosParaLigar, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
@@ -47,11 +48,12 @@ function estadoDaEtapa(etapa: string, atual: string, t: PericiaNaTela): 'feita' 
   return 'feita'
 }
 
-export function ProcessoPericia({ processoId }: { processoId: string }) {
+export function ProcessoPericia({ processoId, abrirPerito = false }: { processoId: string; /** "Ver o perfil do perito" do chat (GGVP-61). */ abrirPerito?: boolean }) {
   const perfil = usePerfil('Advogada')
   const juridico = JURIDICO.includes(perfil?.id ?? 'advogada')
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
-  const [aberto, setAberto] = useState<'parecer' | 'anexar' | null>(null)
+  const [aberto, setAberto] = useState<'parecer' | 'anexar' | 'perito' | null>(abrirPerito ? 'perito' : null)
+  const [verOrientacao, setVerOrientacao] = useState(false)
   const [aviso, setAviso] = useState('')
   const [justificativa, setJustificativa] = useState('')
   const [decisao, setDecisao] = useState('')
@@ -86,6 +88,16 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
   const dia = (iso: string) => `${diaCurto(iso)}/${iso.slice(5, 7)}`
   const etiqueta = m?.origem === 'comprovante' ? 'comprovante lido pelo sistema' : m?.origem === 'juizo' ? 'data lida da publicação' : NOMES_DA_SITUACAO[t.situacao].toLowerCase()
   const advogada = (perfil?.id ?? 'advogada') === 'advogada'
+
+  async function ligar(peritoId: string, nome: string) {
+    setErro('')
+    try {
+      setT(await ligarPerito(processoId, peritoId, perfil?.usuario ?? 'Advogada'))
+      setAviso(`Perito ligado: ${nome}. A orientação foi montada de novo pelo perfil dele.`)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não deu para ligar o perito.')
+    }
+  }
 
   async function decidirFalta() {
     setErro('')
@@ -237,6 +249,22 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
                 </span>
                 <span className={`${styles.situacao} ${COR_DA_SITUACAO[t.situacao]}`}>{NOMES_DA_SITUACAO[t.situacao]}</span>
               </div>
+              {pericia.orientacao && (
+                <div className={styles.pericia}>
+                  <span>
+                    <strong>Orientação ao cliente</strong>
+                    <span className={styles.nota}>
+                      {pericia.orientacao.modo === 'perfil' && t.perfil
+                        ? `pelo perfil de ${t.perfil.perito.nome}, versão ${pericia.orientacao.versaoDoPerfil} (IA e acervo)`
+                        : `padrão: ${pericia.orientacao.motivo}`}
+                    </span>
+                    <button type="button" className={styles.link} aria-expanded={verOrientacao} onClick={() => setVerOrientacao(!verOrientacao)}>
+                      {verOrientacao ? 'Esconder a orientação' : 'Ver a orientação'}
+                    </button>
+                  </span>
+                  <span className={`${styles.situacao} ${pericia.orientacao.bloqueio ? styles.alerta : styles.ok}`}>{pericia.orientacao.bloqueio ? 'Bloqueada' : 'Montada'}</span>
+                </div>
+              )}
               {t.documentos && (
                 <div className={styles.pericia}>
                   <span>
@@ -251,6 +279,59 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
                 </div>
               )}
             </section>
+
+            {pericia.orientacao && verOrientacao && (
+              <section className={styles.cartao} aria-labelledby="orientacao">
+                <h2 id="orientacao" className={styles.cartaoTitulo}>
+                  Orientação para o cliente
+                </h2>
+                <pre className={styles.orientacao} aria-label="Texto da orientação">
+                  {pericia.orientacao.texto}
+                </pre>
+                {pericia.orientacao.bloqueio ? (
+                  <p className={passo.trava}>Bloqueada pela verificação, pede revisão: {pericia.orientacao.bloqueio}</p>
+                ) : (
+                  <p className={styles.nota}>
+                    Verificada antes de chegar ao Jurídico administrativo: sem instrução para esconder, mudar ou simular a situação, sem diagnóstico, CID nem frase
+                    pronta (G11, G20).
+                  </p>
+                )}
+                {juridico &&
+                  (t.perfil ? (
+                    <p>
+                      Jurimetria de {t.perfil.perito.nome}:{' '}
+                      {t.perfil.jurimetria.suficiente
+                        ? `${t.perfil.jurimetria.taxa}% favoráveis em ${t.perfil.jurimetria.laudos} laudos`
+                        : `amostra insuficiente (${t.perfil.jurimetria.laudos} laudos): não entra na orientação nem vai ao cliente (G22)`}
+                      .{' '}
+                      <button type="button" className={styles.link} onClick={() => setAberto('perito')}>
+                        Ver a jurimetria do perito
+                      </button>
+                    </p>
+                  ) : (
+                    <p className={styles.nota}>A jurimetria não foi feita: o perito ainda não é conhecido.</p>
+                  ))}
+              </section>
+            )}
+
+            {!pericia.peritoId && pericia.orientacao && (
+              <section className={styles.cartao} aria-labelledby="quem-e-o-perito">
+                <h2 id="quem-e-o-perito" className={styles.cartaoTitulo}>
+                  Quem é o perito?
+                </h2>
+                <p>
+                  {pericia.peritoLido ? `O sistema não reconheceu o perito ${pericia.peritoLido}.` : 'O perito ainda não é conhecido.'} Nada trava: vale a
+                  orientação padrão e a jurimetria não foi feita. Se algum documento disser quem é o perito, ligue aqui em um clique.
+                </p>
+                <div className={passo.atalhos} role="group" aria-label="Ligar o perito">
+                  {peritosParaLigar(pericia.tipo).map((p) => (
+                    <button key={p.id} type="button" className={passo.atalho} onClick={() => void ligar(p.id, p.nome)}>
+                      {p.nome} · {p.especialidade}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {t.documentos?.passouDoLimite && (
               <section className={styles.cartao} aria-labelledby="decisao-documento">
@@ -447,6 +528,7 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
         </div>
       </main>
       <AbaSuporte />
+      {aberto === 'perito' && t.perfil && juridico && <JurimetriaPerito perfil={t.perfil} aoFechar={() => setAberto(null)} />}
       {aberto === 'parecer' && <ParecerMedico processoId={processoId} funcao={perfil?.rotulo ?? 'Advogada'} aoFechar={() => setAberto(null)} />}
       {aberto === 'anexar' && (
         <ConferirEnviar
