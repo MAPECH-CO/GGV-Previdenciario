@@ -10,6 +10,7 @@ Nenhuma outra história vira código sem base: repositório com a stack decidida
 2. **GGVP-119** · Ambiente: homologação no Coolify com deploy a cada merge e Postgres de dev por pessoa · perfil: time de desenvolvimento.
 3. **GGVP-117** · Entrar no portal com e-mail e senha · perfil: todos. (Refinada; no Jira está no épico GGVP-13 e ainda com o nome do Lucas.)
 4. **GGVP-96** · Perfis e permissões · perfil: todos. (Refinada; no Jira está no épico GGVP-13 e ainda com o nome do Lucas.)
+5. **GGVP-129** · Modelo de dados do portal: tabelas de todos os épicos, RLS, travas no banco e LGPD · perfil: time de desenvolvimento. (Feito em 05/10 sem cartão; o cartão nasceu na revisão geral de 07/10.)
 
 ## Travadas
 

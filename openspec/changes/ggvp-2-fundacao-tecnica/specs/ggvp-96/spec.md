@@ -103,7 +103,7 @@ A matriz SHALL dizer quem vê dado de saúde em detalhe (advogada, Sênior, Jur�
 - **Então** eles não vêm
 
 ### Requirement: CA13 · Acesso a dado de saúde registrado
-Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem, quando, caso), na tabela de acessos sensíveis.
+Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem, quando, caso), na tabela de acessos sensíveis. Esta change cria a tabela (GGVP-129); a gravação nasce com a primeira rota que devolve dado de saúde, a de documentos da GGVP-13 (PR #18, `apps/api/src/rotas/documentos.ts`, com teste em `documentos.test.ts`).
 
 #### Scenario: CA13 · Perfil autorizado acessa dado de saúde
 - **Dado** um perfil autorizado
@@ -111,7 +111,7 @@ Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem,
 - **Então** o acesso fica registrado (quem, quando, caso)
 
 ### Requirement: CA14 · Relatórios seguem o perfil
-Relatórios e exportações MUST seguir as mesmas restrições da matriz, quando existirem.
+Relatórios e exportações MUST seguir as mesmas restrições da matriz, quando existirem. Nesta change não há relatório nem exportação; o critério vale para as histórias que os criarem (GGVP-99, PR #18).
 
 #### Scenario: CA14 · Gerar relatório
 - **Dado** relatórios e exportações
