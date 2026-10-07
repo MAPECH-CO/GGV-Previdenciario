@@ -1,5 +1,5 @@
 // DADOS DE EXEMPLO, só para o banco local da máquina do dev. Nenhuma pessoa é real, e os arquivos não existem.
-// Senha de todos: SENHA_DE_EXEMPLO. Nunca rodar contra homologação nem produção.
+// Senha de todos: SENHA_DE_EXEMPLO. Nunca em produção; na homologação, só pelo `homologacao:preparar` (GGVP-126), que troca as senhas.
 import bcrypt from 'bcryptjs'
 import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'

@@ -1,10 +1,11 @@
 import { PERFIS } from '@ggv/contratos'
 import bcrypt from 'bcryptjs'
-import { count, eq } from 'drizzle-orm'
+import { count, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from './conexao.ts'
-import { configuracao, usuario } from './esquema.ts'
-import { SENHA_DE_EXEMPLO, usuariosDeExemplo } from './exemplo.ts'
+import { caso, configuracao, tarefa, usuario } from './esquema.ts'
+import { SENHA_DE_EXEMPLO, semearExemplos, usuariosDeExemplo } from './exemplo.ts'
+import { LIMITES_PADRAO } from '../fluxo/exigencia.ts'
 import { prepararHomologacao } from './homologacao.ts'
 
 const HOMOLOGACAO = { AMBIENTE: 'homologacao' }
@@ -18,6 +19,11 @@ beforeEach(async () => {
 afterEach(() => fechar())
 
 const usuarios = async () => (await banco.select({ total: count() }).from(usuario))[0].total
+/** Onde os casos estão parados: os passos das tarefas abertas, e quantos casos há. */
+const retrato = async (b: Banco) => ({
+  passos: [...new Set((await b.select({ passo: tarefa.passo }).from(tarefa).where(isNull(tarefa.concluidaEm))).map((t) => t.passo))].sort(),
+  casos: (await b.select({ total: count() }).from(caso))[0].total,
+})
 const limites = async () => Object.fromEntries((await banco.select().from(configuracao)).map((c) => [c.chave, c.valor]))
 
 describe('homologação com usuários e dados de teste (GGVP-126)', () => {
@@ -27,7 +33,18 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     expect([await usuarios(), await limites()]).toEqual([1, {}])
   })
 
-  it('CA1, CA3 · a semente dos testes roda mesmo com outro usuário no banco; cada usuário de exemplo tem senha provisória própria, e a pública não vale', async () => {
+  it('CA3 · cada passo que a semente dos testes cobre fica com caso parado nele, mesmo com outro usuário no banco', async () => {
+    // A referência é a semente no banco vazio da máquina do dev: o que ela deixa em cada passo, a homologação também tem.
+    const referencia = await abrirBancoEmbutido()
+    await semearExemplos(referencia.banco)
+    const esperado = await retrato(referencia.banco)
+    await referencia.fechar()
+    await prepararHomologacao(banco, HOMOLOGACAO)
+    expect(esperado.passos.length).toBeGreaterThan(0)
+    expect(await retrato(banco)).toEqual(esperado)
+  })
+
+  it('CA1 · a semente roda mesmo com outro usuário no banco; cada usuário de exemplo tem senha provisória própria, e a pública não vale', async () => {
     const credenciais = await prepararHomologacao(banco, HOMOLOGACAO)
     expect(credenciais.map((c) => c.email)).toEqual(usuariosDeExemplo.map((u) => u.email))
     expect(PERFIS.filter((p) => !credenciais.some((c) => c.perfis.includes(p)))).toEqual([])
@@ -41,14 +58,15 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
   it('CA2 · grava os limites de cobrança do Lucas: 2 tentativas, 3 dias entre elas', async () => {
     await prepararHomologacao(banco, HOMOLOGACAO)
     const l = await limites()
-    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([2, 3])
+    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([LIMITES_PADRAO.limite, LIMITES_PADRAO.intervaloDias])
+    expect(LIMITES_PADRAO).toEqual({ limite: 2, intervaloDias: 3 })
   })
 
   it('CA2 · o que o escritório já tinha configurado fica, mesmo com a semente gravando a configuração de exemplo', async () => {
     await banco.insert(configuracao).values({ chave: 'cobranca.limite', valor: 4 })
     await prepararHomologacao(banco, HOMOLOGACAO)
     const l = await limites()
-    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([4, 3])
+    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([4, LIMITES_PADRAO.intervaloDias])
   })
 
   it('CA4 · rodar de novo não duplica nada e não troca a senha já entregue', async () => {

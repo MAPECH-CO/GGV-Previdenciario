@@ -9,11 +9,12 @@ import { eq, inArray } from 'drizzle-orm'
 import { abrirBanco, type Banco } from './conexao.ts'
 import { configuracao, usuario } from './esquema.ts'
 import { semearExemplos, usuariosDeExemplo } from './exemplo.ts'
+import { LIMITES_PADRAO } from '../fluxo/exigencia.ts'
 
-/** CA2: os limites de cobrança do Lucas (05/10 e 07/10): 2 tentativas, com 3 dias úteis entre elas. */
+/** CA2: os limites de cobrança do Lucas (05/10 e 07/10), os mesmos que o servidor usa sem configuração (G15). */
 const LIMITES_DO_LUCAS = [
-  { chave: 'cobranca.limite', valor: 2 },
-  { chave: 'cobranca.intervalo_dias', valor: 3 },
+  { chave: 'cobranca.limite', valor: LIMITES_PADRAO.limite },
+  { chave: 'cobranca.intervalo_dias', valor: LIMITES_PADRAO.intervaloDias },
 ]
 
 export type Credencial = { nome: string; email: string; perfis: string[]; senha: string }
