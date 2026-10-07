@@ -9,6 +9,7 @@ import { DocumentosPessoais } from '../componentes/DocumentosPessoais.tsx'
 import { EdicaoCliente } from '../componentes/EdicaoCliente.tsx'
 import { ListaDatada } from '../componentes/ListaDatada.tsx'
 import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
+import { RegistrarConversa } from '../componentes/RegistrarConversa.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
@@ -30,6 +31,8 @@ export function FichaCliente({ id }: { id: string }) {
   const [enviados, setEnviados] = useState('')
   // A janela "Transcrições" (GGVP-46), na visão do Atendimento.
   const [transcricoes, setTranscricoes] = useState(false)
+  // A janela "Registrar conversa" do "Iniciar conversa" (GGVP-76).
+  const [conversa, setConversa] = useState(false)
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export function FichaCliente({ id }: { id: string }) {
         <div className={styles.esquerda}>
           <Cartao rotulo={`Dados de ${ficha.nome}`}>
             <CabecalhoCliente ficha={ficha} hoje={hoje} />
-            <EdicaoCliente ficha={ficha} hoje={hoje} aoSalvar={setFicha} />
+            <EdicaoCliente ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
           </Cartao>
           <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />
           <PastasDosProcessos ficha={ficha} hoje={hoje} />
@@ -137,6 +140,7 @@ export function FichaCliente({ id }: { id: string }) {
       {transcricoes && (
         <Transcricoes ficha={ficha} perfil="atendimento" aoFechar={() => setTranscricoes(false)} aoMudar={async () => setFicha(await obterFicha(id))} />
       )}
+      {conversa && <RegistrarConversa ficha={ficha} aoFechar={() => setConversa(false)} />}
       {envio && <ConferirEnviar fichaId={ficha.id} origem="card" iniciais={envio} aoEnviar={aoEnviar} aoFechar={() => setEnvio(null)} />}
     </>
   )

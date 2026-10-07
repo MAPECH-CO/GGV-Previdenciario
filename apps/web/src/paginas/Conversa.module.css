@@ -1,0 +1,29 @@
+/* Figma step_D5.01 (2281:2) e step_D5.04 (2282:2): o que as telas de passo do Balcão não têm. */
+.setor {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.linhaDoTitulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fonte-13);
+}
+
+.texto {
+  font-size: var(--fonte-14);
+  white-space: pre-wrap;
+}

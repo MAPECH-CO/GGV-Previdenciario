@@ -105,15 +105,15 @@ describe('Transcrições do caso · janela', () => {
     expect(await screen.findByText(/✓ Conferida e enviada ao checklist do benefício em 05\/10/)).toBeTruthy()
   })
 
-  it('CA6 · registrar uma conversa sem áudio', async () => {
+  it('CA6 e GGVP-76 · "Registrar nova conversa" abre a janela da conversa; só escrita, aparece aqui como "só registro"', async () => {
     await abrir('antonio-exemplo', 'atendimento')
     fireEvent.click(screen.getByRole('button', { name: 'Registrar nova conversa' }))
-    fireEvent.change(screen.getByLabelText('Data *'), { target: { value: '04/10/2026' } })
-    fireEvent.change(screen.getByLabelText('Por onde *'), { target: { value: 'Telefone' } })
-    fireEvent.change(screen.getByLabelText('Assunto *'), { target: { value: 'dúvida sobre a perícia' } })
-    fireEvent.change(screen.getByLabelText('Quem participou *'), { target: { value: 'Atendimento, Antônio' } })
-    fireEvent.change(screen.getByLabelText('O que foi conversado *'), { target: { value: 'Explicamos o que levar na perícia.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Registrar conversa' }))
+    const janela = screen.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
+    fireEvent.click(within(janela).getByRole('radio', { name: 'Ligação' }))
+    fireEvent.click(within(janela).getByRole('radio', { name: 'Sem áudio · só o registro escrito' }))
+    fireEvent.change(within(janela).getByLabelText('Resumo da conversa *'), { target: { value: 'Explicamos o que levar na perícia.' } })
+    fireEvent.click(within(janela).getByRole('button', { name: 'Salvar o registro' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: /Registrar conversa com o cliente/ })).toBeNull())
     expect(await screen.findByText('Explicamos o que levar na perícia.')).toBeTruthy()
     // O contador do topo se atualiza depois da lista: espera por ele, em vez de conferir na hora.
     expect(await screen.findByText('2 gravações · 2 registros sem áudio')).toBeTruthy()

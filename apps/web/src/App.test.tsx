@@ -192,6 +192,12 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Calcular tempo e pontos' })).toBeTruthy()
   })
 
+  it('GGVP-76 · a conversa com o cliente (D5.01)', async () => {
+    zerarExemplo()
+    render(<App caminho="/conversas/conversa-pedro-ligacao" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })).toBeTruthy()
+  })
+
   it('em rota sem tela avisa que não foi construída e mostra o caminho', async () => {
     render(<App caminho="/relatorios" />)
     expect((await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' }))).toBeTruthy()

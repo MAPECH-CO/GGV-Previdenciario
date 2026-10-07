@@ -12,6 +12,8 @@ import { tarefasDeDecidirCobranca } from '../dados/cobranca.ts'
 import { tarefasDaFilaDaSenior } from '../dados/liberacao.ts'
 import { tarefasDoParecer } from '../dados/parecer.ts'
 import { tarefasDeDecidirComplemento } from '../dados/complemento.ts'
+import { tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
@@ -25,7 +27,9 @@ export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
   // A cobrança que passou do limite chega à sênior (GGVP-101, CA7), e o caso liberado pela Documentação também (GGVP-18, CA1).
   // O laudo novo e o parecer médico nascem do caso (GGVP-20).
-  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento()])
+  // A conversa com o cliente é da pessoa que a abriu (GGVP-76).
+  const perfil = usePerfil('Advogada')
+  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDeRegistrarConversa(perfil?.usuario)])
 
   return (
     <>

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { encerrarGravacao, iniciarGravacao, transcrever } from './entrevista.ts'
 import { configurarExemplo, obterFicha, tarefasDoSetor, zerarExemplo } from './servidor.ts'
 import * as transcricao from './transcricao.ts'
-import { conferirDocumentos, conferirInformacoes, marcarProva, obterGravacoes, registrarConversa } from './transcricao.ts'
+import { conferirDocumentos, conferirInformacoes, marcarProva, obterGravacoes } from './transcricao.ts'
 
 const AGORA = new Date(2026, 9, 5, 14, 32)
 
@@ -67,13 +67,5 @@ describe('Transcrever a entrevista · servidor de exemplo', () => {
     const g = await marcarProva('antonio-entrevista', 6, true)
     expect(g.trechos.filter((t) => t.prova).map((t) => t.aos)).toEqual([6, 140, 348, 352])
     expect((await marcarProva('antonio-entrevista', 6, false)).trechos.find((t) => t.aos === 6)?.prova).toBeUndefined()
-  })
-
-  it('CA6 · registrar uma conversa sem áudio', async () => {
-    const conversa = { data: '04/10/2026', canal: 'Telefone' as const, titulo: 'dúvida sobre a perícia', participantes: 'Atendimento, Antônio', texto: 'Explicamos o que levar na perícia.' }
-    await expect(registrarConversa('antonio-exemplo', { ...conversa, data: '06/10/2026' }, 'atendimento')).rejects.toThrow('Conversa incompleta ou inválida')
-    const g = await registrarConversa('antonio-exemplo', conversa, 'atendimento')
-    expect(g).toMatchObject({ data: '2026-10-04', titulo: 'Telefone: dúvida sobre a perícia', participantes: ['Atendimento', 'Antônio'], transcricao: 'sem-audio', soJuridico: false })
-    expect((await obterGravacoes('antonio-exemplo'))[0].id).toBe(g.id)
   })
 })

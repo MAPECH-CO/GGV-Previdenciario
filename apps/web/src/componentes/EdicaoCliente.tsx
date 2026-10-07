@@ -66,7 +66,18 @@ function valoresDa(f: Ficha): ValoresFicha {
 }
 
 /** "Editar dados do cliente" (Figma 73:228 a 73:297). Valida ao sair do campo e de novo ao salvar (CA15). */
-export function EdicaoCliente({ ficha, hoje, aoSalvar }: { ficha: Ficha; hoje: string; aoSalvar: (ficha: Ficha) => void }) {
+export function EdicaoCliente({
+  ficha,
+  hoje,
+  aoSalvar,
+  aoIniciarConversa,
+}: {
+  ficha: Ficha
+  hoje: string
+  aoSalvar: (ficha: Ficha) => void
+  /** "Iniciar conversa" abre a janela "Registrar conversa" (GGVP-76, CA9). */
+  aoIniciarConversa: () => void
+}) {
   const [valores, setValores] = useState(() => valoresDa(ficha))
   const [erros, setErros] = useState<Erros>({})
   const [salvando, setSalvando] = useState(false)
@@ -132,9 +143,9 @@ export function EdicaoCliente({ ficha, hoje, aoSalvar }: { ficha: Ficha; hoje: s
         <button type="submit" className={styles.salvar} disabled={salvando}>
           {salvando ? 'salvando…' : 'Salvar alterações'}
         </button>
-        {/* Registrar contato é de outra história: avisa que está indisponível. */}
-        <button type="button" className={styles.botao} aria-disabled="true">
-          Registrar contato
+        {/* O Figma chama de "Registrar contato"; o cartão GGVP-76 (CA9, Pedro 07/10), de "Iniciar conversa". Vale o cartão. */}
+        <button type="button" className={styles.botao} onClick={aoIniciarConversa}>
+          Iniciar conversa
         </button>
         {/* O cartão chama de "Marcar entrevista" (GGVP-123, CA1); o Figma, de "Marcar reunião". Vale o cartão. */}
         <a className={styles.botao} href={`/agenda/marcar/${ficha.id}`}>

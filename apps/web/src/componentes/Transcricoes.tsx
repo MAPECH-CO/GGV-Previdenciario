@@ -2,12 +2,12 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { formatarTelefone, isoParaData } from '../campos.ts'
 import { transcrever } from '../dados/entrevista.ts'
 import { agora } from '../dados/servidor.ts'
-import { CANAIS_DA_CONVERSA, conferirDocumentos, conferirInformacoes, marcarProva, obterGravacoes, registrarConversa } from '../dados/transcricao.ts'
-import type { ConversaSemAudio, Ficha, Gravacao, InformacaoExtraida } from '../dados/tipos.ts'
+import { conferirDocumentos, conferirInformacoes, marcarProva, obterGravacoes } from '../dados/transcricao.ts'
+import type { Ficha, Gravacao, InformacaoExtraida } from '../dados/tipos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { minutos, relogio } from '../regras/entrevista.ts'
-import { soNumeroEMascara } from '../regras/formularios.ts'
 import { buscarTrechos, contagemDoTopo, marcarBusca, situacaoDaGravacao } from '../regras/transcricao.ts'
+import { RegistrarConversa } from './RegistrarConversa.tsx'
 import styles from './Transcricoes.module.css'
 
 type Props = {
@@ -28,8 +28,6 @@ const DESTINO: Record<InformacaoExtraida['destino'], string> = {
   processo: 'processo',
 }
 
-const CONVERSA_VAZIA: ConversaSemAudio = { data: '', canal: 'WhatsApp', titulo: '', participantes: '', texto: '' }
-
 /** Figma: "Overlay · Transcrições do processo" (1626:2). Áudio e texto ficam guardados para sempre (CA5). */
 export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Props) {
   const janela = useRef<HTMLDialogElement>(null)
@@ -41,8 +39,8 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
   const [documentosConferidos, setDocumentosConferidos] = useState(false)
   const [ouvindo, setOuvindo] = useState(false)
   const [tocando, setTocando] = useState(false)
+  // "Registrar nova conversa" abre a janela da conversa com o cliente (GGVP-76).
   const [registrando, setRegistrando] = useState(false)
-  const [conversa, setConversa] = useState(CONVERSA_VAZIA)
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
   const travado = useRef(false)
@@ -76,7 +74,6 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
 
   function trocar(id: string) {
     setSelecionada(id)
-    setRegistrando(false)
     setBusca('')
     setMarcadas(new Set())
     setDocumentosConferidos(false)
@@ -100,14 +97,6 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
     } finally {
       travado.current = false
       setOcupado(false)
-    }
-  }
-
-  async function registrar() {
-    const nova = await fazer(() => registrarConversa(ficha.id, conversa, perfil), true)
-    if (nova) {
-      setConversa(CONVERSA_VAZIA)
-      trocar(nova.id)
     }
   }
 
@@ -147,7 +136,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
           <ul>
             {gravacoes.map((x) => (
               <li key={x.id}>
-                <button type="button" className={styles.item} aria-pressed={x.id === selecionada && !registrando} onClick={() => trocar(x.id)}>
+                <button type="button" className={styles.item} aria-pressed={x.id === selecionada} onClick={() => trocar(x.id)}>
                   <span className={styles.itemQuando}>
                     {dataCurta(x.data, hoje)} · {x.audio ? minutos(x.duracao) : 'sem áudio'}
                   </span>
@@ -175,50 +164,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
             </p>
           )}
 
-          {registrando ? (
-            <div className={styles.formulario}>
-              <h3 className={styles.detalheTitulo}>Registrar nova conversa (sem áudio)</h3>
-              <label className={styles.rotulo}>
-                Data *
-                <input
-                  className={styles.entrada}
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="dd/mm/aaaa"
-                  value={conversa.data}
-                  onChange={(e) => setConversa((c) => ({ ...c, data: soNumeroEMascara(e.target.value) }))}
-                />
-              </label>
-              <label className={styles.rotulo}>
-                Por onde *
-                <select className={styles.entrada} value={conversa.canal} onChange={(e) => setConversa((c) => ({ ...c, canal: e.target.value as ConversaSemAudio['canal'] }))}>
-                  {CANAIS_DA_CONVERSA.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.rotulo}>
-                Assunto *
-                <input className={styles.entrada} maxLength={120} value={conversa.titulo} onChange={(e) => setConversa((c) => ({ ...c, titulo: e.target.value }))} />
-              </label>
-              <label className={styles.rotulo}>
-                Quem participou *
-                <input className={styles.entrada} maxLength={120} value={conversa.participantes} onChange={(e) => setConversa((c) => ({ ...c, participantes: e.target.value }))} />
-              </label>
-              <label className={styles.rotulo}>
-                O que foi conversado *
-                <textarea className={styles.entrada} rows={4} maxLength={4000} value={conversa.texto} onChange={(e) => setConversa((c) => ({ ...c, texto: e.target.value }))} />
-              </label>
-              <div className={styles.acoes}>
-                <button type="button" className={styles.primario} disabled={ocupado} onClick={registrar}>
-                  Registrar conversa
-                </button>
-                <button type="button" className={styles.botao} onClick={() => setRegistrando(false)}>
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          ) : !g ? (
+          {!g ? (
             <p className={styles.nota}>Nenhuma conversa registrada ainda.</p>
           ) : (
             <>
@@ -434,6 +380,21 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
           )}
         </section>
       </div>
+      {registrando && (
+        <RegistrarConversa
+          ficha={ficha}
+          funcao={perfil === 'juridico' ? 'Advogada' : 'Atendimento'}
+          aoFechar={() => setRegistrando(false)}
+          aoAbrir={async (c) => {
+            // Com gravação, a conversa acontece na tela do passo; só escrita, aparece aqui mesmo, como "só registro".
+            if (c.modo !== 'escrito') return window.location.assign(`/conversas/${c.id}`)
+            setRegistrando(false)
+            setGravacoes(await obterGravacoes(ficha.id))
+            trocar(c.gravacaoId!)
+            aoMudar?.()
+          }}
+        />
+      )}
     </dialog>
   )
 }

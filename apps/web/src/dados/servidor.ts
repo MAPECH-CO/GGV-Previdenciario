@@ -38,6 +38,7 @@ import type { Complemento } from './complemento.ts'
 import type { DeficienciaDoCaso } from './deficiencia.ts'
 import type { AcidenteDoCaso } from './acidente.ts'
 import type { CriancaDoCaso } from './infantil.ts'
+import type { Conversa } from './conversa.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -89,6 +90,8 @@ export type Banco = {
   acidentes?: AcidenteDoCaso[]
   /** A condição e as terapias de cada criança do LOAS Deficiente de menor de 16 anos (GGVP-50). Dado de saúde. */
   criancas?: CriancaDoCaso[]
+  /** As conversas com o lead ou o cliente, do fluxo D5 (GGVP-12). Sem ela, começa da semente de conversa.ts. */
+  conversas?: Conversa[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

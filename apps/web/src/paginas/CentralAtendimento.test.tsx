@@ -1,23 +1,26 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
+import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
   zerarExemplo()
+  window.localStorage.clear()
+  iniciarPerfil('')
 })
 
 describe('Central do Atendimento', () => {
-  it('mostra a fila de 16 tarefas e os totais nas abas', () => {
+  it('mostra a fila de 17 tarefas e os totais nas abas', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(16)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(17)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (17)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (9)' }).getAttribute('aria-selected')).toBe('false')
   })
 
@@ -102,7 +105,7 @@ describe('Central do Atendimento', () => {
     expect(screen.getByText('Tarefas do setor: tela ainda não construída.')).toBeTruthy()
 
     fireEvent.keyDown(setor, { key: 'ArrowLeft' })
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (17)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
   })
 
@@ -154,5 +157,17 @@ describe('Central do Atendimento', () => {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), nome).toBe('true')
     }
     expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
+  })
+
+  it('GGVP-76 CA8 · "Registrar conversa" da ligação que a Bruna abriu: o nome do cliente e a tarefa; outra pessoa não vê', () => {
+    render(<CentralAtendimento />)
+    const registrar = screen.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })
+    expect(registrar.getAttribute('href')).toBe('/conversas/conversa-pedro-ligacao')
+    expect(registrar.closest('li')?.textContent).toContain('ligou com informação nova sobre a exigência do INSS · ligou às 09:15 · subir a gravação da ligação')
+    expect(within(registrar.closest('li')!).getByRole('link', { name: 'Pedro Exemplo' }).getAttribute('href')).toBe('/clientes/pedro-exemplo')
+    cleanup()
+    trocarPerfil('documentacao')
+    render(<CentralAtendimento />)
+    expect(screen.queryByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toBeNull()
   })
 })
