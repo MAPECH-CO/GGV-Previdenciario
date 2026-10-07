@@ -38,6 +38,38 @@
 - [x] 4.4 Telas: a orientação, a pergunta do perito e a jurimetria na página do processo (`ProcessoPericia.tsx`, janela `JurimetriaPerito.tsx`, Figma `2184:2`); a "Dica para a perícia" no chat (Figma `2186:857`); a recusa do G11 no chat das Centrais (`ChatIA.tsx`). A janela do Chatwoot e o chat assinam com a pessoa do perfil. Teste em `OrientacaoPericia.test.tsx` (CA2, CA5, CA6, CA7, CA9, CA11, CA12). Verifica com `pnpm vitest run src/paginas/OrientacaoPericia.test.tsx`.
 - [x] 4.5 Playwright `e2e/pericia-orientacao.e2e.ts`: a orientação padrão da Maria, a do Antônio pelo perfil do perito com a versão, o perito do Pedro ligado em um clique, a jurimetria com amostra insuficiente e o pedido malicioso recusado no chat (CA1 a CA12); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-orientacao`.
 - [ ] 4.6 Ligar no servidor: a IA de verdade monta a orientação sobre o acervo (RAG do D4), o perito nomeado vem do acervo e a jurimetria da GGVP-59; o corpo de `dados/pericia.ts` e `dados/peritos.ts` vira `fetch`. **Ponta para ligar com a GGVP-59. Fica aberta nesta história.**
-- [ ] 4.7 Rodar typecheck, lint, testes e Playwright; colar a saída; gravar o teste em vídeo do grupo; perguntar "Agora ok?" (no fim do grupo 1).
+- [x] 4.7 Rodar typecheck, lint, testes e Playwright; colar a saída; gravar o teste em vídeo do grupo; perguntar "Agora ok?" (no fim do grupo 1).
 
-<!-- Grupo 2: preparar o cliente, comparecimento, resultado e perfil do perito. As seções entram quando o grupo começar. -->
+<!-- Grupo 2: preparar o cliente, comparecimento, resultado e perfil do perito. -->
+
+## GGVP-62 · Preparar o cliente
+
+- [ ] 5.1 Contrato: a preparação e as recusas do envio na `Pericia` (`src/dados/pericia.ts`). Verifica com `pnpm typecheck`.
+- [ ] 5.2 Servidor de exemplo: `enviarOrientacao` (verifica de novo, recusa e registra; guarda o texto, o canal e a data), a preparação que cai quando a data muda, a tarefa "Orientar para a perícia" na tela nova e a resposta "o cliente ligou" do chat, com teste em `src/dados/pericia.test.ts` (CA1 a CA8). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [ ] 5.3 Tela `/casos/:id/pericia/orientar` (`src/paginas/OrientarPericia.tsx`, Figma `10:405`) e o chat (Figma `2107:1091`). Teste em `OrientarPericia.test.tsx` (CA1 a CA8). Verifica com `pnpm vitest run src/paginas/OrientarPericia.test.tsx`.
+- [ ] 5.4 Playwright `e2e/pericia-preparar.e2e.ts` (CA1 a CA8); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-preparar`.
+- [ ] 5.5 Ligar no servidor: o envio pelo Chatwoot de verdade (GGVP-102) e a verificação no servidor do Mateus. **Fica aberta nesta história.**
+
+## GGVP-66 · Comparecimento e remarcação
+
+- [ ] 6.1 Regra: `periciaJaPassou`, `HORA_DA_CONFIRMACAO` e o estado da confirmação, com teste em `src/regras/pericia.test.ts` (CA1, CA6, CA7, CA8). Verifica com `pnpm vitest run src/regras/pericia.test.ts`.
+- [ ] 6.2 Servidor de exemplo: `confirmarPresenca`, `registrarComparecimento` (faltou remarca e conta no limite; compareceu espera o resultado), as tarefas e os alertas, com teste em `src/dados/pericia.test.ts` (CA1 a CA9). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [ ] 6.3 Tela `/casos/:id/pericia/comparecimento` (`src/paginas/ComparecimentoPericia.tsx`, Figma `1818:289`) e "Marcar como realizado" na agenda. Teste em `ComparecimentoPericia.test.tsx` (CA1 a CA9). Verifica com `pnpm vitest run src/paginas/ComparecimentoPericia.test.tsx`.
+- [ ] 6.4 Playwright `e2e/pericia-comparecimento.e2e.ts` (CA1 a CA9); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-comparecimento`.
+- [ ] 6.5 Ligar no servidor: a confirmação pelo Chatwoot e os alertas pelo servidor. **Fica aberta nesta história.**
+
+## GGVP-70 · Conferir o resultado e decidir o próximo passo
+
+- [ ] 7.1 Regra: `motivoParaNaoRegistrarResultado`, `CONFERENCIAS_DO_RESULTADO` e como cada origem segue, com teste em `src/regras/pericia.test.ts` (CA2 a CA6). Verifica com `pnpm vitest run src/regras/pericia.test.ts`.
+- [ ] 7.2 Servidor de exemplo: `resultadoNoGerid` (ponta da vigília), `lerLaudoDaPericia` (IA simulada), `registrarResultado` (favorável, desfavorável, nova perícia, volta à origem, histórico com a indicação da IA), a tarefa da advogada e as respostas do chat, com teste em `src/dados/pericia.test.ts` (CA1 a CA9). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [ ] 7.3 Tela `/casos/:id/pericia/resultado` (`src/paginas/ResultadoPericia.tsx`, Figma `14:556` e `1579:431`), a página do processo com o resultado e o chat da advogada (Figma `2107:667`, `2186:2`). Teste em `ResultadoPericia.test.tsx` (CA1 a CA9). Verifica com `pnpm vitest run src/paginas/ResultadoPericia.test.tsx`.
+- [ ] 7.4 Playwright `e2e/pericia-resultado.e2e.ts` (CA1 a CA9); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
+- [ ] 7.5 Ligar no servidor: a vigília do GERID (Mateus), a leitura do laudo pela IA de verdade e o retorno ao D2 (`avancarJuncaoD2`, `avancarExigencia`). **Ponta para ligar na junção com o INSS. Fica aberta nesta história.**
+
+## GGVP-73 · Atualizar o perfil do perito
+
+- [ ] 8.1 Servidor de exemplo: o laudo entra no perfil ao registrar o resultado (sem dado pessoal, sem duplicar); o laudo do perito não reconhecido fica fora das contas até ligar; com teste em `src/dados/pericia.test.ts` (CA1 a CA7). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [ ] 8.2 Telas: o feito do resultado com a versão do perfil, a pergunta de um clique e o histórico do perfil na janela da jurimetria. Teste em `ResultadoPericia.test.tsx` (CA1, CA3, CA6, CA7). Verifica com `pnpm vitest run src/paginas/ResultadoPericia.test.tsx`.
+- [ ] 8.3 Playwright no `e2e/pericia-resultado.e2e.ts`: o laudo atualiza o perfil (CA1, CA3). Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
+- [ ] 8.4 Ligar no servidor: a extração pela IA de verdade e o acervo (RAG) com o perfil; a GGVP-59 lê dele. **Fica aberta nesta história.**
+- [ ] 8.5 Rodar typecheck, lint, testes e Playwright; colar a saída; gravar o teste em vídeo do grupo; perguntar "Agora ok?" (no fim do grupo 2).

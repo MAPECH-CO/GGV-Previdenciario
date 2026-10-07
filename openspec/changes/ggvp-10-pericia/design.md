@@ -179,6 +179,63 @@ O passo DP.05 não tem tela própria: o sistema monta a orientação com a IA qu
 6. **Jurimetria** (CA3 [v2] e CA12): os números vêm de `jurimetria` (código), sobre os laudos de exemplo de `dados/peritos.ts`; abaixo de 10 laudos, "amostra insuficiente", e a jurimetria não entra na orientação ao cliente (G22). A recomendação da GGVP-38 fica para quando ela existir.
 7. **O que a orientação traz** (CA7): data, local, o que levar e, na social, como é a visita em casa.
 
-## Grupo 2
+## GGVP-62 · Preparar o cliente
 
-As seções da GGVP-62, GGVP-66, GGVP-70 e GGVP-73 entram aqui quando o grupo 2 começar, com as telas step_DP.06 `10:405`, step_DP.07 `1818:289`, step_DP.08 `14:556`, o resultado da perícia `1579:431` e `1579:117`, os chats do Figma (`2107:1091`, `2107:667`, `2186:2`) e o evento da agenda `2164:795`.
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/pericia/orientar` | step_DP.06 `10:405` | O que fazer na ligação, a orientação (padrão ou pelo perfil), a regra de ouro (G11), o que levar, o documento de orientação para conferir, editar e imprimir, "Revisei a orientação", o contato (ligar e WhatsApp), "Enviar orientação" pelo Chatwoot e "Registrar a ligação e a orientação"; o feito com o texto guardado |
+| chat da Central do Jurídico administrativo | o cliente ligou `2107:1091` | "O Pedro me ligou. O que eu falo?": a próxima tarefa, a orientação pronta e o atalho "Orientar para a perícia", sem executar nada |
+
+### Decisões da história
+
+1. **Revisar antes** (CA3): "Enviar orientação" e "Registrar a ligação e a orientação" só habilitam com "Revisei a orientação".
+2. **O servidor verifica de novo** (CA4, CA6): `enviarOrientacao` passa o texto, editado ou não, por `problemaDaOrientacao`; com problema, recusa e registra a tentativa na perícia (quem, quando e o motivo).
+3. **Canal** (CA2, Q5): Chatwoot (simulado, como documento e instrução) ou ligação; o histórico grava a data e o canal; o texto enviado fica guardado na perícia (CA7).
+4. **Data ou local mudados** (CA5): o comprovante novo monta a orientação de novo e a preparação anterior deixa de valer: a tarefa "Orientar para a perícia" volta.
+
+## GGVP-66 · Comparecimento e remarcação
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/pericia/comparecimento` | step_DP.07 `1818:289` | Antes da perícia: a confirmação de presença da véspera (confirmou, não confirmou, não vai poder ir: remarcar na hora com o motivo). Depois do dia e da hora: "O cliente compareceu?" (Compareceu, Faltou), a justificativa, o aviso do limite (G15) e "Registrar" |
+| `/agenda` (muda) | Evento da agenda das perícias `2164:513` | "Marcar como realizado" abre o registro do comparecimento |
+
+### Decisões da história
+
+1. **Quando dá para registrar** (CA1): depois do dia e da hora da perícia (`periciaJaPassou`, código com teste).
+2. **Faltou** (CA2, CA3, CA9) usa a remarcação da GGVP-53: a data sai, volta "Remarcar perícia" e conta no limite (2); passou, sobe para a advogada responsável.
+3. **Compareceu** (CA5): espera o resultado (`DP.E3`, `DP.E4`) e a advogada recebe "Conferir resultado da perícia" (GGVP-70).
+4. **Alertas** (CA6, CA8): no dia seguinte sem registro, a tarefa fica "atrasada" e diz que falta registrar; sem a presença confirmada até as 16h da véspera (`HORA_DA_CONFIRMACAO`, parâmetro: o cartão diz "a definir"), a tarefa vira "presença não confirmada: contatar o cliente".
+
+## GGVP-70 · Conferir o resultado e decidir o próximo passo
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/casos/:id/pericia/resultado` | step_DP.08 `14:556` e Resultado da perícia `1579:431` | Anexar o laudo ou o registro do GERID, o resumo do laudo pela IA (conclusão, coerência com o pedido, jurimetria do perito, ponto de atenção), "Favorável — seguir" ou "Desfavorável — avaliar nova perícia", a indicação da IA no desfavorável, "vale pedir nova perícia?", as conferências, "Registrar resultado", quesitos e impugnação (peças da IA, de outra história); ao lado, as decisões, as travas e como segue |
+| `/advogada` (muda) | Central · Advogada `59:449`, chats `2107:667` e `2186:2` | "Conferir resultado da perícia"; o chat responde "perícias da semana" (cada item abre a página do processo) e "como o perito avalia" |
+| `/casos/:id/pericia` (muda) | Processo do cliente · resultado da perícia `1579:117` | O resultado no card e na linha; o prazo de 15 dias para manifestar no judicial (G12) |
+
+### Decisões da história
+
+1. **O resultado sai** (CA1): depois do "Compareceu", a advogada já tem a tarefa, esperando o GERID; `resultadoNoGerid` (ponta para a vigília do GERID do Mateus) a deixa urgente. Anexar o laudo na tela também conta como resultado disponível.
+2. **IA simulada**: o resumo do laudo sai do nome do arquivo ("desfavoravel" faz o laudo desfavorável); no desfavorável, a IA diz por que e indica se vale nova perícia, e isso vai para o histórico (Lucas, 02/10). A advogada decide.
+3. **Conferências** (CA5 e a resposta "segue dessa forma"): "Li o laudo na íntegra", o parecer médico "Suficiente" (G17), a DII calculada por código (G19) e sem contradição com o benefício (G18), todas marcadas.
+4. **Volta à origem** (CA2, CA4, CA6): a perícia fecha e o histórico diz como o diagrama de origem segue (pedido ao INSS: completa a junção antes da vigília; exigência do INSS: volta à vigília D2.04; despacho ou juiz: volta ao judicial, com 15 dias para manifestar, G12). **Ponta para ligar na junção com o INSS**: `avancarJuncaoD2` e `avancarExigencia` do Mateus.
+5. **Nova perícia** (CA3): a perícia recomeça para o Jurídico administrativo marcar, sem contar como remarcação.
+
+## GGVP-73 · Atualizar o perfil do perito
+
+Sem tela própria (DP.09 é passo da IA). Aparece no feito do resultado, na janela da jurimetria (`2184:2`, com o histórico do perfil) e na pergunta de um clique.
+
+### Decisões da história
+
+1. **Ao registrar o resultado com laudo** (CA1, CA2): a IA extrai o que o perito observou, perguntou e pediu (simulado por tipo de perícia) e acrescenta um laudo ao perfil, com a referência do caso no acervo, sem nome nem CPF (CA4). Médica e social (Lucas, 02/10).
+2. **Um laudo, um registro** (CA3, CA5): o perfil é a lista de laudos; a versão é quantos laudos o formam. O mesmo laudo da mesma perícia não entra duas vezes.
+3. **Perito não reconhecido** (CA6): o laudo fica guardado na perícia, fora das contas, até a pergunta de um clique ligar o perito; aí entra no perfil.
+4. **Os números são código** (CA7): `jurimetria`; a semente dos peritos só vai para o armazenamento da aba quando um laudo novo muda um perfil.
