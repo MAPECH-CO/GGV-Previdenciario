@@ -20,6 +20,8 @@ export const usuariosDeExemplo = [
   { email: 'documentacao@exemplo.ggv', nome: 'Fábio (exemplo)', perfis: ['documentacao'], trocarSenha: false },
   { email: 'advogada@exemplo.ggv', nome: 'Gabi (exemplo)', perfis: ['advogada'], trocarSenha: false },
   { email: 'senior@exemplo.ggv', nome: 'Helena (exemplo)', perfis: ['senior'], trocarSenha: false },
+  // A dispensa do parecer pede duas Sêniores diferentes (G17, Q14); o nome bate com o exemplo da tela do Pedro.
+  { email: 'senior2@exemplo.ggv', nome: 'Otávio (exemplo, segunda Sênior)', perfis: ['senior'], trocarSenha: false },
   { email: 'juridico@exemplo.ggv', nome: 'Igor (exemplo)', perfis: ['juridico_adm'], trocarSenha: false },
   { email: 'financeiro@exemplo.ggv', nome: 'Júlia (exemplo)', perfis: ['financeiro'], trocarSenha: false },
   { email: 'socio@exemplo.ggv', nome: 'Lauro (exemplo)', perfis: ['socio'], trocarSenha: false },
@@ -44,6 +46,7 @@ export async function semearExemplos(banco: Banco) {
     .values(usuariosDeExemplo.map((u) => ({ ...u, senhaHash })))
     .returning()
   const senior = usuarios.find((u) => u.perfis.includes('senior'))!
+  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const cofre = criarCofre(chaveDoCofre())
 
   for (const [i, ex] of casosDeExemplo.entries()) {
@@ -97,6 +100,9 @@ export async function semearExemplos(banco: Banco) {
         casoId: c.id,
         roteiroVersao: 1,
         resultado: ex.parecer,
+        // G17: confirmado por pessoa do Jurídico; sem isso, o portão vê só a sugestão da IA.
+        confirmadoPor: advogada.id,
+        confirmadoEm: new Date(),
         itens: [
           { item: 'Natureza do impedimento', atendido: true },
           { item: 'Data de início', atendido: true },
@@ -161,7 +167,6 @@ export async function semearExemplos(banco: Banco) {
     nome: 'Confirmação da ida ao banco',
     conteudo: 'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}. {acompanhamento} Qualquer dúvida, fale com o escritório. (modelo de exemplo)',
   })
-  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const [pv] = await banco.insert(pessoa).values({ nome: 'Vera Lúcia (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cv] = await banco.insert(caso).values({ pessoaId: pv.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
   await banco.insert(contrato).values({ casoId: cv.id, situacao: 'assinado', percentualHonorarios: '30.00' })

@@ -244,3 +244,52 @@ export const ConfiguracaoDoEscritorio = z.object({
   podeEditar: z.boolean(),
 })
 export type ConfiguracaoDoEscritorio = z.infer<typeof ConfiguracaoDoEscritorio>
+
+/**
+ * Portão do parecer médico (G17, G18; GGVP-109 no servidor, GGVP-33 na tela): uma regra só, que a tela e o servidor
+ * importam daqui. Vale para liberar ao Jurídico (D1.24), aprovar para o INSS (D2.01) e pedir a petição (D3.05).
+ */
+export const ACOES_DO_PORTAO = { liberar: 'liberar ao Jurídico', 'aprovar-inss': 'aprovar para o INSS', 'pedir-peticao': 'pedir a petição' } as const
+export type AcaoDoPortao = keyof typeof ACOES_DO_PORTAO
+
+/** Os benefícios com laudo na matriz de `docs/requisitos/roteiro-laudos.md`: pedem parecer "Suficiente". */
+export const BENEFICIOS_COM_PARECER: readonly Beneficio[] = [
+  'bpc_loas_deficiente',
+  'aposentadoria_pcd',
+  'aposentadoria_incapacidade_permanente',
+  'auxilio_incapacidade_temporaria',
+  'auxilio_acidente',
+]
+/** Benefício ainda não definido pede parecer: na dúvida, o portão fica fechado. */
+export const precisaDeParecer = (beneficio: string | null) => beneficio === null || (BENEFICIOS_COM_PARECER as readonly string[]).includes(beneficio)
+
+/** "pendente": a IA sugeriu e nenhuma pessoa do Jurídico confirmou. "dispensado": duas Sêniores diferentes (Q14). */
+export type SituacaoDoParecer = 'suficiente' | 'insuficiente' | 'pendente' | 'contraditorio' | 'dispensado'
+export type ParecerDoPortao = { situacao: SituacaoDoParecer; contradicoes?: { id: string; texto: string }[] }
+
+/** Por que a ação não segue pelo G17, dizendo o que falta; em ordem, null. Regra é código com teste, nunca modelo. */
+export function travaDoParecer(
+  acao: AcaoDoPortao,
+  beneficio: string | null,
+  parecer: ParecerDoPortao | null | undefined,
+  { laudoNovoEsperando = false, dispensaPedida = false }: { laudoNovoEsperando?: boolean; dispensaPedida?: boolean } = {},
+): string | null {
+  if (!precisaDeParecer(beneficio)) return null
+  const fazer = `Não dá para ${ACOES_DO_PORTAO[acao]}`
+  if (parecer?.contradicoes?.length)
+    return `${fazer}: a análise da IA achou documento que contradiz o requisito do benefício (${parecer.contradicoes.map((c) => c.texto.toLowerCase()).join('; ')}). O caso fica parado até o Jurídico conferir o parecer (G18).`
+  const emOrdem = parecer?.situacao === 'suficiente' || parecer?.situacao === 'dispensado'
+  if (emOrdem && laudoNovoEsperando) return `${fazer}: há laudo novo esperando a conferência do Jurídico (G17).`
+  if (emOrdem) return null
+  if (dispensaPedida) return `${fazer}: a dispensa do parecer foi pedida e espera a aprovação de outra Sênior (G17).`
+  switch (parecer?.situacao) {
+    case 'insuficiente':
+      return `${fazer}: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).`
+    case 'contraditorio':
+      return `${fazer}: um documento contradiz o requisito do benefício e o parecer está Contraditório (G18).`
+    case 'pendente':
+      return `${fazer}: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico (G17).`
+    default:
+      return `${fazer}: falta o parecer médico "Suficiente", confirmado por pessoa (G17).`
+  }
+}

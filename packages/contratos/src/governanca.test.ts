@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EntradaDii, EntradaIncapacidade, EntradaLoas24, TentativasBloqueadas } from './governanca.ts'
+import { EntradaDii, EntradaIncapacidade, EntradaLoas24, TentativasBloqueadas, travaDoParecer } from './governanca.ts'
 
 const erros = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues.map((i) => i.message)
 
@@ -59,5 +59,31 @@ describe('configuração do escritório (GGVP-104)', () => {
     const repetido = { itens: [{ tipoDocumento: 'rg', obrigatorio: true }, { tipoDocumento: 'rg', obrigatorio: false }] }
     expect(PublicarKit.safeParse(repetido).error?.issues.map((i) => i.message)).toEqual(['Cada documento entra uma vez no kit'])
     expect(BENEFICIOS.every((b) => ROTULO_BENEFICIO[b])).toBe(true)
+  })
+})
+
+describe('travaDoParecer (G17, G18; GGVP-109 e GGVP-33)', () => {
+  const LOAS = 'bpc_loas_deficiente'
+  it('em ordem: "Suficiente" ou dispensado; benefício sem laudo não pede parecer', () => {
+    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'suficiente' })).toBeNull()
+    expect(travaDoParecer('liberar', LOAS, { situacao: 'dispensado' })).toBeNull()
+    expect(travaDoParecer('aprovar-inss', 'pensao_morte', null)).toBeNull()
+  })
+
+  it('cada motivo diz a ação e o que falta', () => {
+    expect(travaDoParecer('aprovar-inss', LOAS, null)).toBe('Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa (G17).')
+    expect(travaDoParecer('liberar', LOAS, { situacao: 'insuficiente' })).toMatch(/^Não dá para liberar ao Jurídico: o parecer médico está Insuficiente/)
+    expect(travaDoParecer('pedir-peticao', LOAS, { situacao: 'contraditorio' })).toMatch(/^Não dá para pedir a petição: .*Contraditório \(G18\)/)
+    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'pendente' })).toMatch(/não foi confirmado por pessoa do Jurídico \(G17\)/)
+    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'suficiente', contradicoes: [{ id: 'x', texto: 'Menos de 24 meses' }] })).toMatch(/\(menos de 24 meses\).*\(G18\)/)
+  })
+
+  it('laudo novo esperando trava mesmo com o parecer em ordem; dispensa pedida espera a segunda Sênior', () => {
+    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'suficiente' }, { laudoNovoEsperando: true })).toMatch(/laudo novo esperando/)
+    expect(travaDoParecer('aprovar-inss', LOAS, null, { dispensaPedida: true })).toMatch(/espera a aprovação de outra Sênior/)
+  })
+
+  it('benefício ainda não definido pede parecer: na dúvida, fechado', () => {
+    expect(travaDoParecer('aprovar-inss', null, null)).not.toBeNull()
   })
 })

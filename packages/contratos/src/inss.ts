@@ -88,6 +88,10 @@ export const CasoParaConferencia = z.object({
     .nullable(),
   /** GGVP-96 CA12: perfil sem `dado_saude.ver_detalhe` não recebe o parecer (vem nulo) e a tela diz que é restrito. */
   parecerRestrito: z.boolean(),
+  /** G17 pela regra única do contrato (`travaDoParecer`): por que aprovar não segue; em ordem, nulo. */
+  travaDoParecer: z.string().nullable(),
+  /** Dispensa pedida por uma Sênior, esperando outra (Q14). Só para o Jurídico; `podeResponder`: Sênior que não pediu. */
+  dispensa: z.object({ pedidaPor: z.string(), justificativa: z.string(), podeResponder: z.boolean() }).nullable(),
   laudoNovoEsperando: z.boolean(),
   temFicha: z.boolean(),
   kitAssinado: z.boolean(),
@@ -120,9 +124,19 @@ export const DecidirConferencia = z.discriminatedUnion(
 )
 export type DecidirConferencia = z.input<typeof DecidirConferencia>
 
-/** POST /api/casos/:id/parecer/dispensa (G17): só a Sênior, com justificativa. */
-export const DispensarParecer = z.object({ justificativa: z.string().trim().min(1, 'Escreva por que o parecer é dispensado') })
+/** POST /api/casos/:id/parecer/dispensa (G17, GGVP-33): a primeira Sênior pede, com justificativa de 10 a 1000 letras. */
+export const DispensarParecer = z.object({
+  justificativa: z
+    .string()
+    .trim()
+    .min(10, 'Escreva por que o parecer é dispensado (10 letras ou mais)')
+    .max(1000, 'A justificativa vai até 1000 letras'),
+})
 export type DispensarParecer = z.infer<typeof DispensarParecer>
+
+/** POST /api/casos/:id/parecer/dispensa/aprovacao (G17, GGVP-33, Q14): a segunda Sênior, outra pessoa, aprova ou recusa. */
+export const ResponderDispensa = z.object({ aprova: z.boolean({ error: 'Escolha aprovar ou recusar a dispensa' }) })
+export type ResponderDispensa = z.infer<typeof ResponderDispensa>
 
 export const DataObrigatoria = (mensagem: string) =>
   z

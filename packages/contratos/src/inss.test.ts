@@ -51,7 +51,8 @@ describe('DecidirConferencia (GGVP-23)', () => {
   })
 
   it('G17 · dispensar o parecer pede justificativa', () => {
-    expect(DispensarParecer.safeParse({ justificativa: '' }).error?.issues[0]?.message).toBe('Escreva por que o parecer é dispensado')
+    expect(DispensarParecer.safeParse({ justificativa: 'curta' }).error?.issues[0]?.message).toBe('Escreva por que o parecer é dispensado (10 letras ou mais)')
+    expect(DispensarParecer.safeParse({ justificativa: 'Benefício por idade, sem laudo' }).success).toBe(true)
   })
 })
 

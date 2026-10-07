@@ -8,6 +8,7 @@
 - [x] 1.4 CA9 · Tela "Tentativas bloqueadas" em `apps/web/src/paginas/Tentativas.tsx`, rota `/gestao/tentativas` e link no topo da Central para `gestao.ver`; teste de tela.
 - [x] 1.5 CA3 · Botão principal desabilitado até a conferência em `Protocolar.tsx`, `Manifestar.tsx` e `PrestarContas.tsx`; testes de tela.
 - [x] 1.6 Playwright em `apps/web/e2e/governanca.e2e.ts`: o Atendimento chama direto pela API uma ação fora do perfil, o servidor recusa, e a Sênior vê a tentativa, com o cliente, em "Tentativas bloqueadas".
+- [x] 1.8 CA2 e G17 (junção com a GGVP-33 do Pedro, 07/10) · `travaDoParecer` em `packages/contratos/src/governanca.ts`, regra única da tela e do servidor (sem parecer, insuficiente, contraditório, só sugerido pela IA, laudo novo, dispensa esperando; benefício sem laudo não pede); a conferência usa a regra; a dispensa é de duas Sêniores diferentes (Q14): `POST /api/casos/:id/parecer/dispensa` pede, `POST .../dispensa/aprovacao` aprova ou recusa, a mesma pessoa é recusada e registrada; semente com a segunda Sênior (Otávio) e o parecer de exemplo confirmado pela advogada; testes do contrato, da API e da tela.
 - [x] 1.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-25 · Regras objetivas calculadas por código

@@ -38,7 +38,10 @@ const DESCRICAO: Record<string, string> = {
   manifestacao_protocolada: 'Manifestação protocolada',
   dilacao_autorizada: 'Dilação autorizada pela Sênior',
   caso_encerrado: 'Caso encerrado',
-  parecer_dispensado: 'Parecer médico dispensado pela Sênior (G17)',
+  parecer_dispensado: 'Parecer médico dispensado: a segunda Sênior aprovou (G17)',
+  dispensa_parecer_pedida: 'Dispensa do parecer médico pedida pela Sênior (G17)',
+  dispensa_parecer_negada: 'Dispensa do parecer médico recusada pela segunda Sênior (G17)',
+  dispensa_parecer_recusada: 'Recusado: quem pediu a dispensa do parecer tentou aprová-la (G17)',
   cofre_senha_lida: 'Senha do gov.br revelada pelo cofre',
   cofre_senha_cadastrada: 'Senha do gov.br cadastrada no cofre',
   cofre_senha_trocada: 'Senha do gov.br trocada no cofre',
@@ -58,6 +61,7 @@ const DECISAO: Record<string, string> = {
   trava_g7: 'Travas do protocolo conferidas (G7)',
   pericia: 'Decisão sobre a perícia',
   protocolo_inss: 'Protocolo no Meu INSS',
+  dispensa_parecer: 'Dispensa do parecer médico (duas Sêniores)',
 }
 const legivel = (nome: string) => nome.replaceAll('_', ' ').replace(/^./, (l) => l.toUpperCase())
 const UUID = /^[0-9a-f-]{36}$/

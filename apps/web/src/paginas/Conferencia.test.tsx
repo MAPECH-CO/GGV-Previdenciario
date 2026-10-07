@@ -12,6 +12,8 @@ const base: CasoParaConferencia = {
   documentos: [{ id: '11111111-1111-4111-8111-111111111111', tipo: 'rg', nome: 'RG e CPF.pdf' }],
   parecer: { resultado: 'suficiente', itens: [{ item: 'Data de início', atendido: true }], justificativaDispensa: null },
   parecerRestrito: false,
+  travaDoParecer: null,
+  dispensa: null,
   laudoNovoEsperando: false,
   temFicha: true,
   kitAssinado: true,
@@ -55,12 +57,30 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     expect(screen.queryByText('Sem parecer médico.')).toBeNull()
   })
 
-  it('CA5 · sem parecer, Aprovar fica desligado e a dispensa aparece', async () => {
-    servidor({ ...base, parecer: null })
+  const SEM_PARECER = 'Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa (G17).'
+
+  it('CA5 · sem parecer, Aprovar fica desligado com a trava do servidor, e a Sênior pode pedir a dispensa', async () => {
+    servidor({ ...base, parecer: null, travaDoParecer: SEM_PARECER })
     render(<Conferencia casoId={CASO} />)
     expect(((await screen.findByRole('button', { name: 'Aprovar' })) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText('Sem parecer médico "Suficiente" ou dispensa justificada (G17).')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Dispensar o parecer' })).toBeTruthy()
+    expect(screen.getByText(SEM_PARECER)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pedir a dispensa do parecer' })).toBeTruthy()
+  })
+
+  it('G17 e Q14 · dispensa pedida: quem pediu espera outra Sênior; a outra aprova ou recusa', async () => {
+    const dispensa = { pedidaPor: 'Helena', justificativa: 'Laudo do INSS já reconhece', podeResponder: false }
+    servidor({ ...base, parecer: null, travaDoParecer: 'espera a aprovação de outra Sênior', dispensa })
+    const { unmount } = render(<Conferencia casoId={CASO} />)
+    expect(await screen.findByText(/Espera a aprovação de outra Sênior/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Aprovar a dispensa' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pedir a dispensa do parecer' })).toBeNull()
+    unmount()
+    const fetch = servidor({ ...base, parecer: null, travaDoParecer: 'espera', dispensa: { ...dispensa, podeResponder: true } })
+    render(<Conferencia casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Aprovar a dispensa' }))
+    await screen.findByRole('button', { name: 'Recusar a dispensa' })
+    const envio = fetch.mock.calls.find(([url]) => String(url).endsWith('/parecer/dispensa/aprovacao'))
+    expect(JSON.parse(String(envio?.[1]?.body))).toEqual({ aprova: true })
   })
 
   it('CA3 e CA8 · reprovar pede motivo e a resposta do prazo antes de enviar', async () => {
