@@ -34,6 +34,8 @@ O comando SHALL gravar os limites de cobrança que o Lucas definiu em 05/10 e 07
 
 ### Requirement: CA3 · Um caso inventado em cada passo pronto
 O comando SHALL rodar a mesma semente dos testes, que cada épico estende com os seus casos de exemplo. Cada passo pronto no servidor quando o comando roda MUST ter ao menos um caso inventado parado nele.
+- Hoje (07/10) têm servidor os passos do INSS: conferência da Sênior, protocolo, perícia e vigília do Meu INSS. Justiça e Garantia entram com os PRs da fila.
+- Recepção, Abertura, documentação médica, Perícia e Relacionamento ainda gravam no navegador. Esta parte do CA3 fica parcial até a GGVP-125 e a GGVP-132 ligarem essas telas no servidor.
 
 #### Scenario: CA3 · Passos prontos
 - **Dado** cada passo pronto (Recepção, Abertura, documentação médica, Perícia, Relacionamento, INSS e Justiça)

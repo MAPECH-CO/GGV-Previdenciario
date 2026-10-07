@@ -1,11 +1,13 @@
 import { PERFIS } from '@ggv/contratos'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import { count, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from './conexao.ts'
 import { caso, configuracao, tarefa, usuario } from './esquema.ts'
 import { SENHA_DE_EXEMPLO, semearExemplos, usuariosDeExemplo } from './exemplo.ts'
-import { LIMITES_PADRAO, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { prepararHomologacao } from './homologacao.ts'
 
 const HOMOLOGACAO = { AMBIENTE: 'homologacao' }
@@ -40,8 +42,10 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     const esperado = await retrato(referencia.banco)
     await referencia.fechar()
     await prepararHomologacao(banco, HOMOLOGACAO)
-    expect(esperado.passos.length).toBeGreaterThan(0)
     expect(await retrato(banco)).toEqual(esperado)
+    // Os passos do INSS que já têm servidor: conferência da Sênior, protocolo, perícia e vigília do Meu INSS. Recepção,
+    // Abertura, documentação médica, Perícia e Relacionamento ganham caso no banco com a GGVP-125 e a GGVP-132.
+    expect(esperado.passos).toEqual(expect.arrayContaining(['D2.01', 'D2.02', 'D2.03', 'D2.04']))
   })
 
   it('CA1 · a semente roda mesmo com outro usuário no banco; cada usuário de exemplo tem senha provisória própria, e a pública não vale', async () => {
@@ -59,7 +63,7 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     expect(await limitesDeCobranca(banco)).toEqual({ limite: 2, intervaloDias: 3 })
     await prepararHomologacao(banco, HOMOLOGACAO)
     const l = await limites()
-    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([LIMITES_PADRAO.limite, LIMITES_PADRAO.intervaloDias])
+    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([2, 3])
     expect(await limitesDeCobranca(banco)).toEqual({ limite: 2, intervaloDias: 3 })
   })
 
@@ -67,7 +71,7 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     await banco.insert(configuracao).values({ chave: 'cobranca.limite', valor: 4 })
     await prepararHomologacao(banco, HOMOLOGACAO)
     const l = await limites()
-    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([4, LIMITES_PADRAO.intervaloDias])
+    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([4, 3])
   })
 
   it('CA4 · rodar de novo não duplica nada e não troca a senha já entregue', async () => {
@@ -82,5 +86,24 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     expect(antes.onde.casos).toBeGreaterThan(0)
     expect(await prepararHomologacao(banco, HOMOLOGACAO)).toEqual([])
     expect(await foto()).toEqual(antes)
+  })
+
+  it('as senhas aparecem antes do fim da transação: se mostrar falhar, nada fica gravado', async () => {
+    const falha = prepararHomologacao(banco, HOMOLOGACAO, () => {
+      throw new Error('o terminal caiu')
+    })
+    await expect(falha).rejects.toThrow('o terminal caiu')
+    expect([await usuarios(), (await retrato(banco)).casos]).toEqual([1, 0])
+  })
+
+  it('CA5 · na linha de comando: sem DATABASE_URL avisa, e sem AMBIENTE=homologacao recusa antes de tocar no banco', () => {
+    const comando = fileURLToPath(new URL('./homologacao.ts', import.meta.url))
+    const rodar = (env: Record<string, string>) =>
+      spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', comando, 'preparar'], { env: { PATH: process.env.PATH ?? '', ...env }, encoding: 'utf8' })
+    const semBanco = rodar({})
+    expect([semBanco.status, semBanco.stderr.trim()]).toEqual([1, 'Sem DATABASE_URL: o comando roda no app de homologação, com o banco dele.'])
+    // Porta 1: se o comando tentasse conectar, o erro seria de conexão, e não a recusa.
+    const producao = rodar({ DATABASE_URL: 'postgres://ninguem@127.0.0.1:1/nenhum', AMBIENTE: 'producao' })
+    expect([producao.status, producao.stderr.trim()]).toEqual([1, 'Recusado: os dados de teste só entram com AMBIENTE=homologacao, nunca em produção.'])
   })
 })

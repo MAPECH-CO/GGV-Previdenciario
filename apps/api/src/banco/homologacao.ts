@@ -19,8 +19,15 @@ const LIMITES_DO_LUCAS = [
 
 export type Credencial = { nome: string; email: string; perfis: string[]; senha: string }
 
-/** Prepara a homologação e devolve as senhas provisórias criadas agora; já preparada, devolve lista vazia (CA4). */
-export async function prepararHomologacao(banco: Banco, ambiente: Record<string, string | undefined> = process.env): Promise<Credencial[]> {
+/**
+ * Prepara a homologação e devolve as senhas provisórias criadas agora; já preparada, devolve lista vazia (CA4).
+ * `mostrar` recebe as senhas antes do fim da transação: se mostrar falhar, nada fica gravado e nenhuma senha se perde.
+ */
+export async function prepararHomologacao(
+  banco: Banco,
+  ambiente: Record<string, string | undefined> = process.env,
+  mostrar: (credenciais: Credencial[]) => void = () => {},
+): Promise<Credencial[]> {
   if (ambiente.AMBIENTE !== 'homologacao') throw new Error('Recusado: os dados de teste só entram com AMBIENTE=homologacao, nunca em produção.')
   // Semente e senhas na mesma transação: a senha pública dos exemplos nunca chega a valer na homologação (CA1).
   return banco.transaction(async (tx) => {
@@ -45,6 +52,7 @@ export async function prepararHomologacao(banco: Banco, ambiente: Record<string,
         .where(eq(usuario.email, u.email))
       credenciais.push({ nome: u.nome, email: u.email, perfis: [...u.perfis], senha })
     }
+    mostrar(credenciais)
     return credenciais
   })
 }
@@ -54,12 +62,12 @@ if (process.argv[2] === 'preparar') {
     if (!process.env.DATABASE_URL) throw new Error('Sem DATABASE_URL: o comando roda no app de homologação, com o banco dele.')
     const { banco, fechar } = await abrirBanco()
     try {
-      const credenciais = await prepararHomologacao(banco)
-      if (credenciais.length === 0) console.log('Homologação já preparada: nada foi gravado de novo, e nenhuma senha mudou.')
-      else {
+      const credenciais = await prepararHomologacao(banco, process.env, (lista) => {
         console.log('Senhas provisórias. Aparecem só agora: entregue ao Lucas fora do repositório, do Jira e do chat.')
-        for (const c of credenciais) console.log(`${c.email} · ${c.perfis.join(', ') || 'sem perfil'} · ${c.senha}`)
-      }
+        for (const c of lista) console.log(`${c.email} · ${c.perfis.join(', ') || 'sem perfil'} · ${c.senha}`)
+        console.log('Se o comando terminar com erro depois desta lista, nada foi gravado e estas senhas não valem: rode de novo.')
+      })
+      if (credenciais.length === 0) console.log('Homologação já preparada: nada foi gravado de novo, e nenhuma senha mudou.')
     } finally {
       await fechar()
     }

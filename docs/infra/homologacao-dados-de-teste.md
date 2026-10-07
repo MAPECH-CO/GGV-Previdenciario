@@ -27,6 +27,8 @@ Depois de a fila de PRs entrar na `main` e do deploy.
    - Ela aparece uma vez só.
    - Entregue as senhas ao Lucas por um canal fora do repositório, do Jira e do chat.
    - Cada pessoa troca a senha no primeiro acesso.
+   - Se o comando terminar com erro depois da lista, nada foi gravado e essas senhas não valem. Rode de novo.
+   - Se a lista se perder depois de um fim sem erro (terminal fechado, por exemplo), as senhas dos usuários de exemplo não têm como ser vistas de novo. Crie logins novos para o teste com o `usuario:criar` (abaixo), que mostra uma senha provisória nova.
 
 ## O que entra
 
