@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { situacaoDaGravacao } from '../regras/transcricao.ts'
-import { abrirConversa, anexarAudio, conversaDaGravacao, finalizarConversa, gravarConversa, obterConversa, tarefasDeRegistrarConversa, transcreverConversa, type NovaConversa, type QuemAge } from './conversa.ts'
+import {
+  abrirConversa,
+  anexarAudio,
+  conferirConversa,
+  conversaDaGravacao,
+  finalizarConversa,
+  gravarConversa,
+  obterConversa,
+  obterVersoes,
+  tarefasDeRegistrarConversa,
+  transcreverConversa,
+  voltarParaVersao,
+  type NovaConversa,
+  type QuemAge,
+} from './conversa.ts'
 import { registrarAcao } from './entrevista.ts'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
 import { obterGravacoes } from './transcricao.ts'
@@ -108,6 +122,13 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     expect(tarefasDeRegistrarConversa('Bruna (exemplo)').at(-1)?.detalhe).toContain('finalizar a conversa')
     await finalizarConversa(c.id, { aos: 30 })
     await anexarAudio('conversa-pedro-ligacao', { nome: 'ligacao-pedro.ogg', tipo: 'audio/ogg', tamanho: 1000, avisoNaGravacao: true })
+    // Gravada, falta só a conferência de quem conversou (GGVP-84); conferida, sai da Central.
+    expect(tarefasDeRegistrarConversa('Bruna (exemplo)').map((t) => t.detalhe.split(' · ').at(-1))).toEqual(['conferir a conversa (D5.04)', 'conferir a conversa (D5.04)'])
+    for (const id of ['conversa-pedro-ligacao', c.id]) {
+      const { conversa } = await transcreverConversa(id)
+      const doAtendimento = conversa.analise!.mudancas.filter((m) => m.campo !== 'fato')
+      await conferirConversa(id, { decisoes: doAtendimento.map((m) => ({ id: m.id, decisao: 'desfeita' as const })), pendencia: { surgiu: false } }, BRUNA)
+    }
     expect(tarefasDeRegistrarConversa('Bruna (exemplo)')).toEqual([])
   })
 })
@@ -190,5 +211,100 @@ describe('Transcrever e identificar o que mudou · servidor de exemplo (GGVP-80)
     expect((await transcreverConversa(c.id)).conversa.analise).toBeUndefined()
     expect(conversaDaGravacao(c.gravacaoId!)).toBe(c.id)
     expect(conversaDaGravacao('antonio-entrevista')).toBeUndefined()
+  })
+})
+
+describe('Atualizar ficha e processo com desfazer · servidor de exemplo (GGVP-84)', () => {
+  async function transcritaDaMaria() {
+    const c = await abrirConversa('maria-exemplo', PRESENCIAL, BRUNA)
+    await gravarConversa(c.id, { avisei: true })
+    await finalizarConversa(c.id, { aos: 116 })
+    const { conversa } = await transcreverConversa(c.id)
+    const id = (campo: string) => conversa.analise!.mudancas.find((m) => m.campo === campo)!.id
+    return { c, id }
+  }
+  const SENIOR: QuemAge = { quem: 'Dra. Renata (exemplo)', perfil: 'senior' }
+  const PAULA: QuemAge = { quem: 'Dra. Paula (exemplo)', perfil: 'advogada' }
+
+  it('CA1, CA4, CA5 e CA6 · só quem conversou confere; nada entra antes; entra o confirmado e o corrigido, o desfeito não', async () => {
+    const { c, id } = await transcritaDaMaria()
+    const decisoes = [
+      { id: id('endereco'), decisao: 'confirmada' as const },
+      { id: id('telefone'), decisao: 'corrigida' as const, valor: '(11) 90000-0055' },
+      { id: id('pericia'), decisao: 'confirmada' as const },
+      { id: id('documento'), decisao: 'desfeita' as const },
+    ]
+    await expect(conferirConversa(c.id, { decisoes, pendencia: { surgiu: false } }, { quem: 'Carla (exemplo)', perfil: 'atendimento-lider' })).rejects.toThrow(
+      'Quem confere é quem fez a conversa: Bruna (exemplo).',
+    )
+    await expect(conferirConversa(c.id, { decisoes }, BRUNA)).rejects.toThrow('Responda "Surgiu pendência?".')
+    await expect(conferirConversa(c.id, { decisoes: decisoes.slice(1), pendencia: { surgiu: false } }, BRUNA)).rejects.toThrow('Confirme, corrija ou desfaça: endereço.')
+    await expect(conferirConversa(c.id, { decisoes: [...decisoes, { id: id('fato'), decisao: 'confirmada' }], pendencia: { surgiu: false } }, BRUNA)).rejects.toThrow(
+      'A mudança de fato novo é de a advogada responsável ou a Sênior.',
+    )
+    expect((await obterFicha('maria-exemplo'))!.telefone).toBe('11900000004')
+
+    const { ficha, gravacao, conversa } = await conferirConversa(c.id, { decisoes, pendencia: { surgiu: false } }, BRUNA)
+    expect([ficha.endereco, ficha.telefone]).toEqual(['Rua Exemplo das Acácias, 45', '11900000055'])
+    expect(conversa.conferidaEm).toBe(AGORA.toISOString())
+    expect(gravacao!.extraidas.map((e) => [e.rotulo, Boolean(e.conferidaEm)])).toEqual([
+      ['Endereço', true],
+      ['Telefone de contato', true],
+      ['Data da perícia do INSS', true],
+      ['Fato novo', false],
+      ['Documento citado', true],
+      ['Senha do gov.br', true],
+    ])
+    expect(gravacao!.marcas).toContain('ficha atualizada')
+    const historico = ficha.historico.map((e) => e.oQue)
+    expect(historico).toContain('Atualizou na ficha, pela conversa, o telefone de contato: «(11) 90000-0004» → «(11) 90000-0055»')
+    expect(historico).toContain('Atualizou no processo, pela conversa, o data da perícia do INSS: «02/10/2026» → «16/10/2026»')
+    expect(historico.at(-1)).toBe(
+      'Conferiu a conversa de hoje: 2 confirmada(s), 1 corrigida(s), 1 desfeita(s); sem pendência; o caso segue de onde parou (Administrativo · perícia em 02/10)',
+    )
+    expect(historico.join(' ')).not.toMatch(/Relatório da alta/)
+  })
+
+  it('CA3 e CA7 · o caso volta para onde estava: a etapa e a próxima ação do processo não mudam', async () => {
+    const antes = (await obterFicha('maria-exemplo'))!.processos[0]
+    const { c, id } = await transcritaDaMaria()
+    const decisoes = ['endereco', 'telefone', 'pericia', 'documento'].map((campo) => ({ id: id(campo), decisao: 'confirmada' as const }))
+    const { ficha } = await conferirConversa(c.id, { decisoes, pendencia: { surgiu: false } }, BRUNA)
+    expect(ficha.processos[0]).toEqual(antes)
+  })
+
+  it('CA8 · o fato novo fica para o Jurídico, que confere só ele depois', async () => {
+    const { c, id } = await transcritaDaMaria()
+    const decisoes = ['endereco', 'telefone', 'pericia', 'documento'].map((campo) => ({ id: id(campo), decisao: 'desfeita' as const }))
+    await conferirConversa(c.id, { decisoes, pendencia: { surgiu: false } }, BRUNA)
+    await expect(conferirConversa(c.id, { decisoes: [{ id: id('fato'), decisao: 'confirmada' }] }, BRUNA)).rejects.toThrow('é de a advogada responsável ou a Sênior')
+    const { gravacao, ficha } = await conferirConversa(c.id, { decisoes: [{ id: id('fato'), decisao: 'confirmada' }] }, PAULA)
+    expect(gravacao!.extraidas.every((e) => e.conferidaEm)).toBe(true)
+    expect(ficha.historico.at(-1)).toMatchObject({ quem: 'Dra. Paula (exemplo)', oQue: 'Registrou no processo um fato novo dito na conversa (dado de saúde: só o Jurídico vê)' })
+    expect((await obterVersoes('maria-exemplo')).filter((v) => v.campo === 'fato').map((v) => v.valor)).toEqual(['Três dias no hospital no fim de setembro'])
+  })
+
+  it('CA2 · cada versão com quem e quando; só a Sênior volta uma versão, e a volta fica no histórico', async () => {
+    const { c, id } = await transcritaDaMaria()
+    const decisoes = ['endereco', 'telefone', 'pericia', 'documento'].map((campo) => ({ id: id(campo), decisao: 'confirmada' as const }))
+    await conferirConversa(c.id, { decisoes, pendencia: { surgiu: false } }, BRUNA)
+    const telefone = { fichaId: 'maria-exemplo', onde: 'ficha' as const, campo: 'telefone' as const }
+    expect((await obterVersoes('maria-exemplo')).filter((v) => v.campo === 'telefone').map((v) => [v.valor, v.quem, v.origem])).toEqual([
+      ['11900000004', 'Valor de antes da conversa', 'antes'],
+      ['11900000044', 'Bruna (exemplo)', 'conversa'],
+    ])
+    await expect(voltarParaVersao(telefone, 0, PAULA)).rejects.toThrow('Só a Sênior volta uma versão.')
+    await expect(voltarParaVersao(telefone, 1, SENIOR)).rejects.toThrow('Essa já é a versão em vigor.')
+    await expect(voltarParaVersao({ ...telefone, onde: 'processo', campo: 'fato' }, 0, SENIOR)).rejects.toThrow('não têm versão para voltar')
+    const versoes = await voltarParaVersao(telefone, 0, SENIOR)
+    expect(versoes.filter((v) => v.campo === 'telefone').at(-1)).toMatchObject({ valor: '11900000004', quem: 'Dra. Renata (exemplo)', origem: 'volta' })
+    const ficha = (await obterFicha('maria-exemplo'))!
+    expect(ficha.telefone).toBe('11900000004')
+    expect(ficha.historico.at(-1)?.quem).toBe('Dra. Renata (exemplo)')
+    expect(ficha.historico.at(-1)?.oQue).toMatch(/^Voltou o telefone de contato para a versão de .* \(Valor de antes da conversa\): «\(11\) 90000-0044» → «\(11\) 90000-0004»$/)
+    // A data da perícia, campo do processo, também tem versão.
+    const pericia = { fichaId: 'maria-exemplo', processoId: 'maria-exemplo-1', onde: 'processo' as const, campo: 'pericia' as const }
+    await voltarParaVersao(pericia, 0, SENIOR)
+    expect((await obterVersoes('maria-exemplo')).filter((v) => v.campo === 'pericia').at(-1)?.valor).toBe('2026-10-02')
   })
 })

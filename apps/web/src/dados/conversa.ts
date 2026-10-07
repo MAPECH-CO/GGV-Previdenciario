@@ -3,15 +3,22 @@
 // mesmo cofre, e a transcrição usa o mesmo motor (montarTranscricao). Sem microfone e sem OpenAI: a conversa é a de
 // exemplo. Nada aqui apaga áudio (Q11, Lucas 06/10). Ligar no servidor: trocar o corpo de cada função por fetch no
 // endpoint da design.md (change ggvp-12).
-import { hojeIso, hora } from '../regras/datas.ts'
+import { dataHora, hojeIso, hora } from '../regras/datas.ts'
 import {
+  CAMPOS_DA_CONVERSA,
   CANAIS_DO_REGISTRO,
   COM_QUEM,
   motivoParaNaoAbrir,
   papelDoPerfil,
+  motivoParaNaoConferir,
   oQueMudou,
   oQuePrecisaAtualizar,
+  podeVoltarVersao,
+  valorGuardado,
   valorLido,
+  type CampoDaFicha,
+  type DecisaoDaMudanca,
+  type VersaoDoCampo,
   type CampoDoProcesso,
   type CanalDoRegistro,
   type ComQuem,
@@ -51,6 +58,10 @@ export type Conversa = {
   motivo?: string
   /** O que a IA achou na conversa transcrita (GGVP-80). */
   analise?: AnaliseDaConversa
+  /** A conferência de quem conversou, na hora (GGVP-84), e a do Jurídico no que só ele pode. */
+  decisoes?: DecisaoDaMudanca[]
+  /** Data e hora ISO da conferência de quem conversou; depois dela, o caso segue de onde parou. */
+  conferidaEm?: string
 }
 
 /** O quadro da IA depois de transcrever: o que mudou, o que precisa atualizar, a observação e o combinado (GGVP-80). */
@@ -62,8 +73,12 @@ export type AnaliseDaConversa = { mudancas: Mudanca[]; atualizar: Dito['onde'][]
  */
 const CAMPOS_DO_PROCESSO_DE_EXEMPLO: Record<string, Partial<Record<CampoDoProcesso, string>>> = { 'maria-exemplo-1': { pericia: '2026-10-02' } }
 
-function camposDoProcesso(processoId: string | undefined): Partial<Record<CampoDoProcesso, string>> | null {
-  return processoId ? { ...CAMPOS_DO_PROCESSO_DE_EXEMPLO[processoId] } : null
+/** Os campos do processo em vigor: a semente e, por cima, a última versão de cada um (GGVP-84). */
+function camposDoProcesso(banco: Banco, processoId: string | undefined): Partial<Record<CampoDoProcesso, string>> | null {
+  if (!processoId) return null
+  const campos = { ...CAMPOS_DO_PROCESSO_DE_EXEMPLO[processoId] }
+  for (const v of banco.versoes ?? []) if (v.processoId === processoId) campos[v.campo as CampoDoProcesso] = v.valor
+  return campos
 }
 
 /** O que a tela pede ao abrir a conversa (Figma 2144:2). */
@@ -312,7 +327,7 @@ const comMaiuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.sl
  */
 function analisar(banco: Banco, c: Conversa, ficha: Ficha, g: Gravacao, ditas: FalaDaConversa[]): AnaliseDaConversa {
   const ditos = ditas.flatMap((f) => (f.diz ?? []).map((d) => ({ ...d, aos: f.aos, trecho: tirarSenhas([f])[0].texto })))
-  const mudancas = oQueMudou(ditos, ficha, camposDoProcesso(c.processoId))
+  const mudancas = oQueMudou(ditos, ficha, camposDoProcesso(banco, c.processoId))
   const saude = mudancas.some((m) => m.saude)
   const senhaDita = ditas.some((f) => f.senha)
   const pendencia = ditas.find((f) => f.combinado)?.combinado
@@ -374,6 +389,7 @@ function faltaNaConversa(c: Conversa, g: Gravacao | undefined): string | null {
   if (c.modo === 'arquivo' && !g) return 'subir a gravação da ligação'
   if (c.modo === 'tempo-real' && !g) return 'gravar depois do aviso (G10)'
   if (g && g.estado !== 'encerrada') return 'finalizar a conversa'
+  if (!c.conferidaEm) return 'conferir a conversa (D5.04)'
   return null
 }
 
@@ -404,4 +420,119 @@ export function tarefasDeRegistrarConversa(usuario: string | undefined): Tarefa[
 /** A conversa de uma gravação: as Transcrições levam à conferência dela, em vez de "Conferir e levar" (GGVP-80, CA6). */
 export function conversaDaGravacao(gravacaoId: string): string | undefined {
   return ler().conversas?.find((c) => c.gravacaoId === gravacaoId)?.id
+}
+
+// GGVP-84 · Atualizar ficha e processo com desfazer.
+
+/** "Surgiu pendência?" (GGVP-88). Nesta história, só o "Não"; a tarefa entra com a GGVP-88. */
+export type NovaPendencia = { surgiu: false }
+
+/** O que a tela manda ao conferir: a decisão de cada mudança e, na conferência de quem conversou, a pendência. */
+export type Conferencia = { decisoes: DecisaoDaMudanca[]; pendencia?: NovaPendencia }
+
+type Alvo = Pick<VersaoDoCampo, 'fichaId' | 'processoId' | 'onde' | 'campo'>
+
+const mesmoCampo = (v: Alvo, a: Alvo) => v.fichaId === a.fichaId && v.processoId === a.processoId && v.onde === a.onde && v.campo === a.campo
+
+/** Fato novo e documento citado somam ao caso: não têm versão anterior nem volta. */
+const somaAoCaso = (campo: VersaoDoCampo['campo']) => campo === 'fato' || campo === 'documento'
+
+/** Leva à ficha ou ao processo uma mudança conferida, com o valor de antes na lista de versões (CA2, CA6, G14). */
+function aplicar(banco: Banco, c: Conversa, ficha: Ficha, m: Mudanca, valor: string, quem: string) {
+  const alvo: Alvo = { fichaId: ficha.id, processoId: m.onde === 'processo' ? c.processoId : undefined, onde: m.onde, campo: m.campo }
+  const versoes = (banco.versoes ??= [])
+  const antes = m.onde === 'ficha' ? (ficha[m.campo as CampoDaFicha] ?? '') : (camposDoProcesso(banco, c.processoId)?.[m.campo as CampoDoProcesso] ?? '')
+  if (!somaAoCaso(m.campo) && !versoes.some((v) => mesmoCampo(v, alvo))) {
+    versoes.push({ ...alvo, valor: antes, quem: 'Valor de antes da conversa', quando: c.abertaEm, origem: 'antes' })
+  }
+  versoes.push({ ...alvo, valor, quem, quando: agora().toISOString(), origem: 'conversa', conversaId: c.id })
+  if (m.onde === 'ficha') ficha[m.campo as CampoDaFicha] = valor
+  const onde = m.onde === 'ficha' ? 'na ficha' : 'no processo'
+  ficha.historico.push(
+    evento(
+      m.saude
+        ? 'Registrou no processo um fato novo dito na conversa (dado de saúde: só o Jurídico vê)'
+        : somaAoCaso(m.campo)
+          ? `Registrou ${onde}, pela conversa, o ${m.rotulo}: «${valor}»`
+          : `Atualizou ${onde}, pela conversa, o ${m.rotulo}: «${valorLido(m.campo, antes)}» → «${valorLido(m.campo, valor)}»`,
+      quem,
+    ),
+  )
+}
+
+/**
+ * POST /api/conversas/:id/conferencia. Quem fez a conversa confere na hora, antes de gravar (CA4, CA5; Pedro 07/10): só
+ * entra o que foi confirmado ou corrigido; o desfeito não muda nada (CA1, CA6, G14). O que o perfil não pode fica para
+ * quem pode (CA8): depois, o Jurídico confere só isso. A etapa do processo não muda: o caso segue de onde parou (CA3, CA7).
+ */
+export async function conferirConversa(conversaId: string, conferencia: Conferencia, por: QuemAge): Promise<ConversaAberta> {
+  await esperar()
+  const banco = ler()
+  const { conversa: c, ficha, gravacao: g } = acharConversa(banco, conversaId)
+  const primeira = !c.conferidaEm
+  if (primeira && por.quem !== c.quem) throw new Error(`Quem confere é quem fez a conversa: ${c.quem}.`)
+  if (primeira && !conferencia.pendencia) throw new Error('Responda "Surgiu pendência?".')
+  if (conferencia.pendencia?.surgiu) throw new Error('A tarefa da pendência ainda não está pronta.')
+  const mudancas = c.analise?.mudancas ?? []
+  const decididas = (c.decisoes ?? []).map((d) => d.id)
+  const motivo = motivoParaNaoConferir(mudancas, conferencia.decisoes, papelDoPerfil(por.perfil), decididas)
+  if (motivo) throw new Error(motivo)
+  if (!primeira && conferencia.decisoes.length === 0) throw new Error('Não há nada para conferir.')
+  const quando = agora().toISOString()
+  for (const d of conferencia.decisoes) {
+    const m = mudancas.find((x) => x.id === d.id)!
+    if (d.decisao !== 'desfeita') aplicar(banco, c, ficha, m, d.decisao === 'corrigida' ? valorGuardado(m.campo, d.valor!) : m.depois, por.quem)
+    const extraida = g?.extraidas.find((e) => e.id === d.id)
+    if (extraida) extraida.conferidaEm = quando
+  }
+  c.decisoes = [...(c.decisoes ?? []), ...conferencia.decisoes]
+  if (g && conferencia.decisoes.some((d) => d.decisao !== 'desfeita' && mudancas.find((m) => m.id === d.id)?.onde === 'ficha') && !g.marcas.includes('ficha atualizada')) {
+    g.marcas.push('ficha atualizada')
+  }
+  if (primeira) {
+    c.conferidaEm = quando
+    const senha = g?.extraidas.find((e) => e.destino === 'cofre')
+    if (senha) senha.conferidaEm = quando
+    const conta = (decisao: DecisaoDaMudanca['decisao']) => conferencia.decisoes.filter((d) => d.decisao === decisao).length
+    const processo = ficha.processos.find((p) => p.id === c.processoId)
+    ficha.historico.push(
+      evento(
+        `Conferiu a conversa de hoje: ${conta('confirmada')} confirmada(s), ${conta('corrigida')} corrigida(s), ${conta('desfeita')} desfeita(s); ` +
+          `sem pendência; o caso segue de onde parou${processo ? ` (${processo.etapa})` : ''}`,
+        por.quem,
+      ),
+    )
+  }
+  gravar(banco)
+  return { conversa: c, ficha, gravacao: g }
+}
+
+/** GET /api/fichas/:id/versoes. As versões dos campos da ficha e dos processos dela, da mais antiga à mais nova. */
+export async function obterVersoes(fichaId: string): Promise<VersaoDoCampo[]> {
+  return (ler().versoes ?? []).filter((v) => v.fichaId === fichaId)
+}
+
+/**
+ * POST /api/fichas/:id/versoes/:campo/volta. Só a Sênior (CA2, Pedro 07/10): o campo volta ao valor da versão escolhida, e a
+ * volta vira versão nova, com quem e quando, e entra no histórico da ficha.
+ */
+export async function voltarParaVersao(alvo: Alvo, indice: number, por: QuemAge): Promise<VersaoDoCampo[]> {
+  await esperar()
+  if (!podeVoltarVersao(por.perfil)) throw new Error('Só a Sênior volta uma versão.')
+  if (somaAoCaso(alvo.campo)) throw new Error('Fato novo e documento citado somam ao caso: não têm versão para voltar.')
+  const banco = ler()
+  const ficha = banco.fichas.find((f) => f.id === alvo.fichaId)
+  const doCampo = (banco.versoes ?? []).filter((v) => mesmoCampo(v, alvo))
+  const versao = doCampo[indice]
+  if (!ficha || !versao) throw new Error('Versão não encontrada')
+  if (indice === doCampo.length - 1) throw new Error('Essa já é a versão em vigor.')
+  const atual = doCampo.at(-1)!.valor
+  banco.versoes!.push({ ...alvo, valor: versao.valor, quem: por.quem, quando: agora().toISOString(), origem: 'volta' })
+  if (alvo.onde === 'ficha') ficha[alvo.campo as CampoDaFicha] = versao.valor
+  const rotulo = CAMPOS_DA_CONVERSA[alvo.campo]
+  ficha.historico.push(
+    evento(`Voltou o ${rotulo} para a versão de ${dataHora(versao.quando)} (${versao.quem}): «${valorLido(alvo.campo, atual)}» → «${valorLido(alvo.campo, versao.valor)}»`, por.quem),
+  )
+  gravar(banco)
+  return banco.versoes!.filter((v) => v.fichaId === alvo.fichaId)
 }

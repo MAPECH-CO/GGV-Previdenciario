@@ -39,6 +39,7 @@ import type { DeficienciaDoCaso } from './deficiencia.ts'
 import type { AcidenteDoCaso } from './acidente.ts'
 import type { CriancaDoCaso } from './infantil.ts'
 import type { Conversa } from './conversa.ts'
+import type { VersaoDoCampo } from '../regras/conversa.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -92,6 +93,8 @@ export type Banco = {
   criancas?: CriancaDoCaso[]
   /** As conversas com o lead ou o cliente, do fluxo D5 (GGVP-12). Sem ela, começa da semente de conversa.ts. */
   conversas?: Conversa[]
+  /** As versões dos campos mudados pela conversa, com quem e quando (GGVP-84, G14). */
+  versoes?: VersaoDoCampo[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

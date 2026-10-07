@@ -4,13 +4,19 @@ import {
   COM_QUEM,
   MODOS_DO_REGISTRO,
   ONDE,
+  erroDoValor,
   modoDoCanal,
+  motivoParaNaoConferir,
   motivoParaNaoAbrir,
   oQueMudou,
   oQuePrecisaAtualizar,
   papelDoPerfil,
+  podeConfirmar,
+  podeVoltarVersao,
+  valorGuardado,
   valorLido,
   type Dito,
+  type Mudanca,
   type PedidoDeConversa,
 } from './conversa.ts'
 
@@ -93,5 +99,46 @@ describe('Identificar o que mudou (GGVP-80)', () => {
     expect(valorLido('pericia', '2026-10-16')).toBe('16/10/2026')
     expect(valorLido('endereco', '')).toBe('—')
     expect(ONDE).toEqual({ ficha: 'Ficha do cliente', processo: 'Campos do processo' })
+  })
+})
+
+describe('Conferir o que a IA quer mudar (GGVP-84)', () => {
+  const m = (id: string, campo: Mudanca['campo'], onde: Mudanca['onde'] = 'ficha'): Mudanca => ({ id, onde, campo, rotulo: campo, antes: '', depois: 'x', aos: 0, trecho: '' })
+  const mudancas = [m('a', 'endereco'), m('b', 'telefone'), m('c', 'fato', 'processo')]
+
+  it('CA8 · o fato novo, que pode ser dado de saúde, só o Jurídico confirma; o resto, quem conversou', () => {
+    expect(podeConfirmar('endereco', 'atendimento')).toBe(true)
+    expect(podeConfirmar('pericia', 'atendimento')).toBe(true)
+    expect(podeConfirmar('fato', 'atendimento')).toBe(false)
+    expect(podeConfirmar('fato', 'juridico')).toBe(true)
+    expect(podeConfirmar('endereco', null)).toBe(false)
+  })
+
+  it('CA4, CA5 e CA8 · cada mudança que o perfil pode tem decisão; a de outro perfil fica sem; a corrigida passa pela biblioteca de campos', () => {
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'a', decisao: 'confirmada' }], 'atendimento')).toBe('Confirme, corrija ou desfaça: telefone.')
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'a', decisao: 'confirmada' }, { id: 'b', decisao: 'desfeita' }], 'atendimento')).toBeNull()
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'a', decisao: 'confirmada' }, { id: 'b', decisao: 'desfeita' }, { id: 'c', decisao: 'confirmada' }], 'atendimento')).toBe(
+      'A mudança de fato é de a advogada responsável ou a Sênior.',
+    )
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'a', decisao: 'confirmada' }, { id: 'b', decisao: 'corrigida', valor: '9999' }], 'atendimento')).toBe('Corrija telefone: Telefone com DDD.')
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'z', decisao: 'confirmada' }], 'atendimento')).toBe('Essa mudança não está na conversa.')
+    // Depois da conferência de quem conversou, o Jurídico confere só o que ficou.
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'c', decisao: 'confirmada' }], 'juridico', ['a', 'b'])).toBeNull()
+    expect(motivoParaNaoConferir(mudancas, [{ id: 'a', decisao: 'desfeita' }], 'juridico', ['a', 'b'])).toBe('Essa mudança não está na conversa.')
+  })
+
+  it('o valor corrigido: erro pela biblioteca de campos e o valor como fica guardado', () => {
+    expect(erroDoValor('telefone', '(11) 90000-0055')).toBeUndefined()
+    expect(erroDoValor('email', 'maria@')).toBe('E-mail inválido.')
+    expect(erroDoValor('pericia', '31/02/2026')).toBe('Data no formato dd/mm/aaaa.')
+    expect(erroDoValor('endereco', ' x ')).toBe('De 2 a 200 letras.')
+    expect(valorGuardado('telefone', '(11) 90000-0055')).toBe('11900000055')
+    expect(valorGuardado('pericia', '17/10/2026')).toBe('2026-10-17')
+    expect(valorGuardado('endereco', ' Rua Exemplo, 1 ')).toBe('Rua Exemplo, 1')
+  })
+
+  it('CA2 · só a Sênior volta uma versão', () => {
+    expect(['senior', 'senior-2'].map((p) => podeVoltarVersao(p as 'senior'))).toEqual([true, true])
+    expect(['advogada', 'atendimento', undefined].map((p) => podeVoltarVersao(p as 'advogada'))).toEqual([false, false, false])
   })
 })

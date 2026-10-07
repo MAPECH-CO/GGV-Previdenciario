@@ -10,6 +10,7 @@ import { EdicaoCliente } from '../componentes/EdicaoCliente.tsx'
 import { ListaDatada } from '../componentes/ListaDatada.tsx'
 import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
 import { RegistrarConversa } from '../componentes/RegistrarConversa.tsx'
+import { HistoricoDeVersoes } from '../componentes/HistoricoDeVersoes.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
@@ -33,6 +34,10 @@ export function FichaCliente({ id }: { id: string }) {
   const [transcricoes, setTranscricoes] = useState(false)
   // A janela "Registrar conversa" do "Iniciar conversa" (GGVP-76).
   const [conversa, setConversa] = useState(false)
+  // As versões dos campos mudados pela conversa, com "Voltar para esta versão" para a Sênior (GGVP-84).
+  const [versoes, setVersoes] = useState(false)
+  // A volta de versão muda a ficha por fora do formulário: a chave nova refaz o formulário com os valores de agora.
+  const [recarga, setRecarga] = useState(0)
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -104,7 +109,7 @@ export function FichaCliente({ id }: { id: string }) {
         <div className={styles.esquerda}>
           <Cartao rotulo={`Dados de ${ficha.nome}`}>
             <CabecalhoCliente ficha={ficha} hoje={hoje} />
-            <EdicaoCliente ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
+            <EdicaoCliente key={recarga} ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
           </Cartao>
           <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />
           <PastasDosProcessos ficha={ficha} hoje={hoje} />
@@ -121,6 +126,9 @@ export function FichaCliente({ id }: { id: string }) {
               vazio="Nada registrado ainda."
               itens={historico.map((e, i) => ({ chave: `${e.quando}-${i}`, quando: dataHora(e.quando), rotulo: e.quem, texto: e.oQue }))}
             />
+            <button type="button" className={styles.versoes} onClick={() => setVersoes(true)}>
+              Ver versões
+            </button>
           </Cartao>
         </div>
         <div className={styles.direita}>
@@ -141,6 +149,16 @@ export function FichaCliente({ id }: { id: string }) {
         <Transcricoes ficha={ficha} perfil="atendimento" aoFechar={() => setTranscricoes(false)} aoMudar={async () => setFicha(await obterFicha(id))} />
       )}
       {conversa && <RegistrarConversa ficha={ficha} aoFechar={() => setConversa(false)} />}
+      {versoes && (
+        <HistoricoDeVersoes
+          ficha={ficha}
+          aoFechar={async () => {
+            setVersoes(false)
+            setFicha(await obterFicha(id))
+            setRecarga((n) => n + 1)
+          }}
+        />
+      )}
       {envio && <ConferirEnviar fichaId={ficha.id} origem="card" iniciais={envio} aoEnviar={aoEnviar} aoFechar={() => setEnvio(null)} />}
     </>
   )

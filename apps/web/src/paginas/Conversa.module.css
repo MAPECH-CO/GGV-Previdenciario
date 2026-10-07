@@ -95,3 +95,69 @@
   color: var(--cor-superficie);
   font-weight: 600;
 }
+
+/* A conferência campo por campo (GGVP-84, Figma step_D5.04 2282:2). */
+.conferencia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.linhaConferencia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-13);
+}
+
+.oQue {
+  flex: 1 1 320px;
+}
+
+.botoesDaLinha {
+  display: flex;
+  gap: 6px;
+}
+
+.botoesDaLinha button[aria-pressed='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.situacao,
+.quemPode {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-12);
+}
+
+.situacao {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.situacao[data-situacao='desfeita'] {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.quemPode {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.correcao {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fonte-12);
+}

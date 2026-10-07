@@ -1,5 +1,5 @@
 // A conversa com o lead ou o cliente (fluxo D5, GGVP-12): canal, com quem, modo e quem pode. Regra, não IA.
-import { formatarTelefone, isoParaData, normalizarTelefone } from '../campos.ts'
+import { dataParaIso, formatarTelefone, isoParaData, normalizarData, normalizarTelefone, validarData, validarEmail, validarTelefone } from '../campos.ts'
 import type { IdPerfil } from '../dados/perfis.ts'
 
 /** O canal da decisão "Canal da conversa" do Miro. WhatsApp e vídeo saem (Lucas, 06/10). */
@@ -124,4 +124,71 @@ export function oQueMudou(
 /** A decisão ◯ "O que precisa atualizar?" do Miro: a ficha, o processo ou os dois. */
 export function oQuePrecisaAtualizar(mudancas: Mudanca[]): Dito['onde'][] {
   return (['ficha', 'processo'] as const).filter((onde) => mudancas.some((m) => m.onde === onde))
+}
+
+// GGVP-84 · Atualizar ficha e processo com desfazer.
+
+/** O fato novo pode ser dado de saúde: só o Jurídico confirma. O resto, quem conversou (Atendimento ou Jurídico). */
+export function podeConfirmar(campo: Mudanca['campo'], papel: PapelNaConversa | null): boolean {
+  if (!papel) return false
+  return campo !== 'fato' || papel === 'juridico'
+}
+
+/** Quem pode, para a mudança que o perfil não pode confirmar (CA8). */
+export const QUEM_PODE = 'a advogada responsável ou a Sênior'
+
+export type DecisaoDaMudanca = { id: string; decisao: 'confirmada' | 'corrigida' | 'desfeita'; valor?: string }
+
+/** O tamanho dos campos de texto da conversa ao corrigir. */
+export const TAMANHO_DO_VALOR = { minimo: 2, maximo: 200 }
+
+/** O erro do valor corrigido, pela biblioteca de campos (o servidor confere de novo com a mesma). */
+export function erroDoValor(campo: Mudanca['campo'], valor: string): string | undefined {
+  if (campo === 'telefone') return validarTelefone(valor) ? undefined : 'Telefone com DDD.'
+  if (campo === 'email') return validarEmail(valor) ? undefined : 'E-mail inválido.'
+  if (campo === 'pericia') return validarData(valor) ? undefined : 'Data no formato dd/mm/aaaa.'
+  const t = valor.trim().length
+  return t >= TAMANHO_DO_VALOR.minimo && t <= TAMANHO_DO_VALOR.maximo ? undefined : `De ${TAMANHO_DO_VALOR.minimo} a ${TAMANHO_DO_VALOR.maximo} letras.`
+}
+
+/** O valor corrigido como fica guardado: telefone só com números, data aaaa-mm-dd. */
+export function valorGuardado(campo: Mudanca['campo'], valor: string): string {
+  if (campo === 'telefone') return normalizarTelefone(valor)
+  if (campo === 'pericia') return dataParaIso(normalizarData(valor)) ?? valor
+  return valor.trim()
+}
+
+/**
+ * O que falta para conferir (CA4, CA5, CA8): cada mudança que o perfil pode confirmar tem decisão; corrigida, com valor
+ * válido; a que o perfil não pode, fica sem decisão. `decididas`: as que já foram conferidas antes.
+ */
+export function motivoParaNaoConferir(mudancas: Mudanca[], decisoes: DecisaoDaMudanca[], papel: PapelNaConversa | null, decididas: string[] = []): string | null {
+  const porId = new Map(decisoes.map((d) => [d.id, d]))
+  for (const d of decisoes) {
+    const m = mudancas.find((x) => x.id === d.id)
+    if (!m || decididas.includes(d.id)) return 'Essa mudança não está na conversa.'
+    if (!podeConfirmar(m.campo, papel)) return `A mudança de ${m.rotulo} é de ${QUEM_PODE}.`
+    if (d.decisao === 'corrigida' && erroDoValor(m.campo, d.valor ?? '')) return `Corrija ${m.rotulo}: ${erroDoValor(m.campo, d.valor ?? '')}`
+  }
+  const falta = mudancas.filter((m) => !decididas.includes(m.id) && podeConfirmar(m.campo, papel) && !porId.has(m.id))
+  return falta.length ? `Confirme, corrija ou desfaça: ${falta.map((m) => m.rotulo).join(', ')}.` : null
+}
+
+/** Uma versão de um campo mudado pela conversa (CA2, G14): o valor de antes, cada mudança e cada volta. */
+export type VersaoDoCampo = {
+  fichaId: string
+  processoId?: string
+  onde: Dito['onde']
+  campo: Mudanca['campo']
+  valor: string
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+  origem: 'antes' | 'conversa' | 'volta'
+  conversaId?: string
+}
+
+/** Só a Sênior volta uma versão (Pedro, 07/10). */
+export function podeVoltarVersao(id: IdPerfil | undefined): boolean {
+  return id === 'senior' || id === 'senior-2'
 }
