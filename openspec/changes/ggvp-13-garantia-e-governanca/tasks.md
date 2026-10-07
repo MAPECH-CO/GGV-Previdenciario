@@ -42,6 +42,7 @@
 - [x] 5.3 CA9 · PUT, PATCH e DELETE no histórico recusados e registrados; teste (o banco já recusa, com teste).
 - [x] 5.4 CA12 · Pedido da gestão, autorização do Sócio e exportação, tudo no histórico; teste.
 - [x] 5.5 CA14 · GET `/api/gestao/prazos` com os prazos cumpridos e perdidos; teste.
+- [x] 5.8 GGVP-96 CA14 (aberto na Fundação) · o relatório de prazos e a exportação do histórico seguem a matriz: perfil a perfil, só a gestão gera; a exportação por quem não vê saúde nem valores não leva o parecer nem os valores da prestação; teste em `historico.test.ts`.
 - [x] 5.6 Telas "Histórico do processo" (`/casos/:id/historico`, com o pedido e a autorização da exportação) e "Prazos cumpridos e perdidos" (`/gestao/prazos`); links; testes de tela.
 
 ## GGVP-103 · Cofre de senhas do gov.br

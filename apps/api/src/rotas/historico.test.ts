@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { PERFIS, pode } from '@ggv/contratos'
+import { caso, decisao, eventoAuditoria, parecerMedico, pessoa, prestacaoContas, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_EXPORTACAO_EM_CURSO, MSG_HISTORICO_IMUTAVEL, TITULO_AUTORIZAR } from './historico.ts'
@@ -116,5 +117,22 @@ describe('GGVP-99 · histórico de quem fez o quê', () => {
       ],
     ])
     expect((await chamar('gabi', 'GET', '/api/gestao/prazos')).statusCode).toBe(403)
+  })
+
+  it('GGVP-96 CA14 · relatório e exportação seguem a matriz: só a gestão gera, e nada de saúde nem de valores sai', async () => {
+    for (const perfil of PERFIS) {
+      await banco.insert(usuario).values({ email: `p-${perfil}@exemplo.ggv`, nome: perfil, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+      expect([perfil, (await chamar(`p-${perfil}`, 'GET', '/api/gestao/prazos')).statusCode]).toEqual([perfil, pode(perfil, 'gestao.ver') ? 200 : 403])
+    }
+    await banco.insert(parecerMedico).values({ casoId, roteiroVersao: 1, resultado: 'dispensado', justificativaDispensa: 'CID F32 em tratamento', itens: [{ item: 'CID F32', atendido: true }] })
+    await banco.insert(prestacaoContas).values({ casoId, valorRecebido: '1234.56', honorarios: '370.37', valorCliente: '864.19' })
+    // A líder do Atendimento é da gestão, mas não vê dado de saúde nem valores.
+    expect([pode('atendimento_lider', 'dado_saude.ver_detalhe'), pode('atendimento_lider', 'valores.ver')]).toEqual([false, false])
+    const url = `/api/casos/${casoId}/historico/exportacao`
+    expect((await chamar('p-atendimento_lider', 'POST', url, { motivo: 'Pedido do titular' })).statusCode).toBe(201)
+    expect((await chamar('lauro', 'POST', `${url}/autorizacao`)).statusCode).toBe(201)
+    const exportado = await chamar('p-atendimento_lider', 'GET', url)
+    expect(exportado.statusCode).toBe(200)
+    expect(exportado.body).not.toMatch(/F32|1234|370\.37|864\.19/)
   })
 })
