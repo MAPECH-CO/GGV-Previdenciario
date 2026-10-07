@@ -1,4 +1,4 @@
-GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96 (GGVP-108 e GGVP-105 ainda não refinadas).
+GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129 (GGVP-108 e GGVP-105 ainda não refinadas).
 
 ## Por quê
 
@@ -10,6 +10,7 @@ Nenhuma outra história vira código sem base: repositório com a stack decidida
 2. **GGVP-119** · Ambiente: homologação no Coolify com deploy a cada merge e Postgres de dev por pessoa · perfil: time de desenvolvimento.
 3. **GGVP-117** · Entrar no portal com e-mail e senha · perfil: todos. (Refinada; no Jira está no épico GGVP-13 e ainda com o nome do Lucas.)
 4. **GGVP-96** · Perfis e permissões · perfil: todos. (Refinada; no Jira está no épico GGVP-13 e ainda com o nome do Lucas.)
+5. **GGVP-129** · Modelo de dados do portal: tabelas de todos os épicos, RLS, travas no banco e LGPD · perfil: time de desenvolvimento. (Criada na revisão de 07/10 para dar história ao modelo feito em 05/10; no Jira, em "Tarefas pendentes".)
 
 ## Travadas
 
