@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eventoAuditoria, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
-import { COOKIE, MSG_EXPIRADA, MSG_INVALIDO, MSG_SEM_PERFIL, MSG_TRAVADO, MSG_TROCAR } from './rotas.ts'
+import { COOKIE, MSG_EXPIRADA, MSG_INVALIDO, MSG_PERFIL_ALHEIO, MSG_SEM_PERFIL, MSG_SEM_PERMISSAO, MSG_TRAVADO, MSG_TROCAR, exigir } from './rotas.ts'
 
 const SENHA = 'senha-certa-123'
 let banco: Banco
@@ -13,7 +13,7 @@ let relogio: Date
 
 async function criarUsuario(email: string, extra: Partial<typeof usuario.$inferInsert> = {}) {
   const senhaHash = await bcrypt.hash(SENHA, 4)
-  await banco.insert(usuario).values({ email, nome: 'Ana', senhaHash, perfil: 'atendimento', trocarSenha: false, ...extra })
+  await banco.insert(usuario).values({ email, nome: 'Ana', senhaHash, perfis: ['atendimento'], trocarSenha: false, ...extra })
 }
 
 function servidor() {
@@ -41,7 +41,7 @@ describe('CA1 · entrar', () => {
     const app = servidor()
     const r = await entrar(app, '  Ana@Exemplo.GGV ')
     expect(r.statusCode).toBe(200)
-    expect(r.json()).toEqual({ nome: 'Ana', email: 'ana@exemplo.ggv', perfil: 'atendimento', trocarSenha: false })
+    expect(r.json()).toEqual({ nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false })
     const cookie = r.cookies.find((c) => c.name === COOKIE)!
     expect(cookie.httpOnly).toBe(true)
     expect(cookie.expires).toEqual(new Date('2026-10-05T20:00:00Z'))
@@ -119,10 +119,10 @@ describe('CA2 · senha errada', () => {
 
 describe('CA4 · sem perfil', () => {
   it('entra, mas nenhuma rota de caso responde', async () => {
-    await criarUsuario('caio@exemplo.ggv', { perfil: null })
+    await criarUsuario('caio@exemplo.ggv', { perfis: [] })
     const app = servidor()
     const login = await entrar(app, 'caio@exemplo.ggv')
-    expect(login.json().perfil).toBeNull()
+    expect(login.json().perfilAtivo).toBeNull()
     const r = await app.inject({ method: 'GET', url: '/api/casos', cookies: cookieDe(login) })
     expect(r.statusCode).toBe(403)
     expect(r.json()).toEqual({ erro: MSG_SEM_PERFIL })
@@ -173,5 +173,53 @@ describe('CA7 · histórico', () => {
     ])
     expect(eventos[0].quando).toEqual(relogio)
     expect(eventos[0].detalhe).toEqual({ ip: '127.0.0.1' })
+  })
+})
+
+describe('GGVP-96 · perfis', () => {
+  it('CA10 · "Entrar como…": troca só para perfil atribuído, e a troca vai para o histórico', async () => {
+    await criarUsuario('eva@exemplo.ggv', { perfis: ['atendimento_lider', 'atendimento'] })
+    const app = servidor()
+    const login = await entrar(app, 'eva@exemplo.ggv')
+    expect(login.json().perfilAtivo).toBe('atendimento_lider')
+    const cookies = cookieDe(login)
+
+    const alheio = await app.inject({ method: 'POST', url: '/api/sessao/perfil', cookies, payload: { perfil: 'senior' } })
+    expect([alheio.statusCode, alheio.json()]).toEqual([403, { erro: MSG_PERFIL_ALHEIO }])
+
+    const troca = await app.inject({ method: 'POST', url: '/api/sessao/perfil', cookies, payload: { perfil: 'atendimento' } })
+    expect(troca.json().perfilAtivo).toBe('atendimento')
+    expect((await app.inject({ method: 'GET', url: '/api/sessao', cookies })).json().perfilAtivo).toBe('atendimento')
+
+    const eventos = await banco.select().from(eventoAuditoria)
+    const trocas = eventos.filter((e) => e.acao.startsWith('troca_de_perfil')).map((e) => [e.acao, e.detalhe])
+    expect(trocas).toEqual([
+      ['troca_de_perfil_recusada', { ip: '127.0.0.1', pedido: 'senior' }],
+      ['troca_de_perfil', { ip: '127.0.0.1', de: 'atendimento_lider', para: 'atendimento' }],
+    ])
+  })
+
+  it('CA8 e CA10 · sem o perfil Sênior, aprovar pela API é recusado e registrado; com ele, passa', async () => {
+    await criarUsuario('ana@exemplo.ggv')
+    await criarUsuario('helena@exemplo.ggv', { perfis: ['senior'] })
+    const app = servidor()
+    app.post('/api/casos/:id/aprovar', { preHandler: exigir(banco, 'caso.aprovar_para_inss', () => relogio) }, async () => ({ aprovado: true }))
+
+    const atendimento = cookieDe(await entrar(app, 'ana@exemplo.ggv'))
+    const recusa = await app.inject({ method: 'POST', url: '/api/casos/1/aprovar', cookies: atendimento })
+    expect([recusa.statusCode, recusa.json()]).toEqual([403, { erro: MSG_SEM_PERMISSAO }])
+    const [negado] = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'acesso_negado')
+    expect([negado.alvo, negado.detalhe]).toEqual(['/api/casos/:id/aprovar', { ip: '127.0.0.1', acao: 'caso.aprovar_para_inss', perfil: 'atendimento' }])
+
+    const senior = cookieDe(await entrar(app, 'helena@exemplo.ggv'))
+    expect((await app.inject({ method: 'POST', url: '/api/casos/1/aprovar', cookies: senior })).json()).toEqual({ aprovado: true })
+  })
+
+  it('perfil tirado pelo Sócio deixa de valer na sessão aberta', async () => {
+    await criarUsuario('eva@exemplo.ggv', { perfis: ['atendimento_lider', 'atendimento'] })
+    const app = servidor()
+    const cookies = cookieDe(await entrar(app, 'eva@exemplo.ggv'))
+    await banco.update(usuario).set({ perfis: ['atendimento'] }).where(eq(usuario.email, 'eva@exemplo.ggv'))
+    expect((await app.inject({ method: 'GET', url: '/api/sessao', cookies })).json().perfilAtivo).toBe('atendimento')
   })
 })

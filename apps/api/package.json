@@ -12,6 +12,7 @@
     "db:gerar": "drizzle-kit generate",
     "db:migrar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/migrar.ts",
     "usuario:criar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts criar",
+    "usuario:perfis": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts perfis",
     "usuario:destravar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts destravar"
   },
   "dependencies": {

@@ -85,6 +85,7 @@ Os comentários do board são regra de negócio; viram critério de aceite ou po
 
 - **💡 DICA** — "O aviso ao cliente só nasce depois do OK da advogada responsável na prestação de contas." → portão **G8** (`docs/requisitos/portoes-governanca.md`).
 - **📝 OBSERVAÇÃO** — "Processo bom e ruim viram exemplo: a próxima petição parecida consulta os dois." → alimenta o acervo do D4 (busca antes de escrever).
+- **📝 OBSERVAÇÃO** (D3b.03, Financeiro) — "Valores: o financeiro do escritório é todo do Financeiro. A advogada vê os valores só na prestação de contas, que é ela quem faz; o Sócio vê só totais (Pedro, 06/10/2026)." Colocada no Miro em 06/10/2026.
 
 ## A conferir (divergências board × README)
 

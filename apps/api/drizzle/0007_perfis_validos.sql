@@ -1,0 +1,1 @@
+ALTER TABLE "usuario" ADD CONSTRAINT "usuario_perfis_validos" CHECK ("usuario"."perfis" <@ ARRAY['atendimento', 'atendimento_lider', 'documentacao', 'advogada', 'senior', 'juridico_adm', 'financeiro', 'socio']::text[]);
