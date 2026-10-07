@@ -50,6 +50,6 @@
 - [x] 5.4 CA9, CA10, CA11 · Tela: "Entrar como…" na barra do topo com os perfis da pessoa; Central pelo perfil ativo; "Sem permissão"; verifica com `pnpm --filter @ggv/web test`.
 - [x] 5.5 Playwright: trocar de perfil e ver a recusa; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 5.7 CA16 · Teste do caminho real: o OK já dado e o recebimento registrado depois pela mesma pessoa é recusado, por outra é aceito (`migracoes.test.ts`); verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.8 CA13 · Aberto aqui: esta branch não tem rota que devolva dado de saúde. A gravação em `acesso_dado_sensivel` entra na Judicialização (PR #16, `apps/api/src/rotas/documentos.ts`, com teste). Falta a conferência da Sênior (PR #14, `GET /api/casos/:id/conferencia`), que devolve o parecer médico.
+- [ ] 5.8 CA13 · Aberto aqui: esta branch não tem rota que devolva dado de saúde. A gravação em `acesso_dado_sensivel` entra com as rotas que devolvem dado de saúde, cada uma com teste: a conferência da Sênior na Via administrativa (PR #14, `GET /api/casos/:id/conferencia`, parecer médico) e os documentos na Judicialização (PR #16, `apps/api/src/rotas/documentos.ts`).
 - [ ] 5.9 CA14 · Aberto aqui: relatórios e exportações só existem na Garantia (PR #18: exportação do histórico e relatório de prazos); o teste vai lá.
 - [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

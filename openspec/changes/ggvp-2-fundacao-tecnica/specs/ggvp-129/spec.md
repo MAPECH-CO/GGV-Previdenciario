@@ -63,7 +63,7 @@ O banco MUST recusar a mesma pessoa no OK e no recebimento, e o aviso ao cliente
 - **Então** o banco recusa
 
 ### Requirement: CA8 · Dado de saúde em tabela própria, com leitura registrada
-Dado de saúde SHALL ficar em `documento_medico`, `parecer_medico` e `pericia`. A gravação de cada leitura em `acesso_dado_sensivel` entra com as rotas que devolvem esse dado (GGVP-96 CA13): a de documentos, na Judicialização (PR #16).
+Dado de saúde SHALL ficar em `documento_medico`, `parecer_medico` e `pericia`. A gravação de cada leitura em `acesso_dado_sensivel` entra com as rotas que devolvem esse dado (GGVP-96 CA13): a conferência da Sênior (PR #14) e a de documentos (PR #16).
 
 #### Scenario: CA8 · Ler dado de saúde
 - **Dado** um dado de saúde
