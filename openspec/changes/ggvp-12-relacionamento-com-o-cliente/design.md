@@ -264,7 +264,145 @@ export const Pendencia = NovaPendencia.and(z.object({ tarefaId: z.string().optio
    depois, a Sênior recebe "Pendência atrasada" e decide um novo prazo ou dá por cumprida.
 4. **O caso volta ao D1 de onde parou** (CA1, CA2): a pendência não muda a etapa do processo.
 
-<!-- Grupo 2: GGVP-102 e GGVP-111. -->
+## GGVP-102 · Mensagens ao cliente com modelo e registro
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/clientes/:id` (muda) | Cliente · dados `73:199` | "Mensagem ao cliente" no topo abre a janela; o envio aparece em "Últimos contatos" com a data, o canal com a hora e o status, e o texto (CA2, CA4) |
+| janela "Mensagem ao cliente" | no visual da janela do convite (Marcar reunião `73:459`); os textos dos passos D3b.03 `10:320`, D3b.06 `1818:206` e DP.06 `10:405` | O modelo (catálogo único), o processo, o texto preenchido para revisar (o aprovado pelo Jurídico não muda), a IA apontando termo jurídico e frase longa, o que não pode sair (G9, G11, G20), o cliente na central do Chatwoot (contato, conversas com a de mais mensagens primeiro, "Copiar a mensagem", "Abrir a conversa"), "Enviar pelo Chatwoot", o status e a falha na tela |
+| janela do Chatwoot do convite, da confirmação, da cobrança e do complemento (muda) | `73:459`, `73:371` | O mesmo cliente na central do Chatwoot e o mesmo envio com registro; a falha fica na tela e no histórico e nada mais é registrado |
+
+### Contrato (vai para `packages/contratos/mensagens.ts`)
+
+```ts
+export const IdDoModelo = z.enum(['convite', 'lembrete', 'confirmacao', 'boas-vindas', 'cobranca', 'complemento',
+  'resultado-favoravel', 'resultado-desfavoravel', 'pericia-orientacao', 'pericia-presenca'])
+export const MensagemPronta = z.object({
+  modelo: IdDoModelo, texto: z.string(), editavel: z.boolean(), trava: z.string().nullable(),     // CA1, CA7, CA8
+  contato: z.object({ id: z.number(), nome: z.string(), telefone: z.string() }).nullable(),      // CA6
+  conversas: z.array(z.object({ id: z.number(), caixa: z.string(), situacao: z.enum(['aberta', 'resolvida']), mensagens: z.number(), ultimaEm: z.string() })),
+})
+export const PedidoDeMensagem = z.object({ modelo: IdDoModelo, texto: z.string().trim().min(1).max(1000), conversa: z.number().int().min(0), processoId: z.string().optional() })
+export const MensagemAoCliente = z.object({
+  id: z.string(), fichaId: z.string(), processoId: z.string().optional(), modelo: IdDoModelo, texto: z.string(),
+  canal: z.literal('Chatwoot'), conversa: z.number(), quando: z.string(), quem: z.string(),
+  status: z.enum(['enviada', 'entregue', 'lida', 'falhou']), erro: z.string().optional(),      // CA4, CA5
+})
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `GET /api/fichas/:id/mensagens/:modelo?processo=` | | `MensagemPronta` | `prepararMensagem` |
+| `POST /api/fichas/:id/mensagens` | `PedidoDeMensagem` | `MensagemAoCliente` | `enviarMensagem` |
+| `GET /api/fichas/:id/mensagens` | | `MensagemAoCliente[]` | `mensagensDoCliente` |
+
+### Campos
+
+| Campo | Regra |
+|---|---|
+| Modelo, processo, conversa do Chatwoot | lista fixa |
+| Mensagem | texto, de 1 a 1000 letras; `problemasDaMensagem` bloqueia G9, G11 e G20 e aponta termo jurídico e frase longa |
+
+Nenhum campo da biblioteca `campos` (o telefone do contato vem da ficha, já normalizado). O servidor de exemplo confere de
+novo a trava do modelo e o texto.
+
+### Decisões da história
+
+1. **Catálogo único de modelos** (`MODELOS_DE_MENSAGEM` em `regras/mensagens.ts`): o convite usa o `mensagemDoConvite` da
+   agenda, a confirmação, a cobrança e o complemento usam a mensagem que as telas deles já montam; os outros são montados
+   em `dados/mensagens.ts` com os dados do cliente e do caso (CA1, CA10). Texto em frases curtas, sem termo jurídico (CA3).
+2. **A IA sugere, a pessoa decide** (CA3): `problemasDaMensagem` aponta termo jurídico (com a palavra simples) e frase com
+   mais de 25 palavras; quem envia decide. O que não pode sair bloqueia, na tela e no servidor: pedir a senha do gov.br
+   (G9), orientar a esconder ou mudar a situação real (G11) e diagnóstico, CID ou frase pronta (`problemaG20`, o mesmo do
+   parecer).
+3. **Resultado** (CA7, CA8): o favorável só com o OK da advogada na prestação de contas, que é da GGVP-11; aqui ele chega
+   de exemplo (a Lúcia Exemplo, Dra. Paula). O desfavorável, só com o texto aprovado pelo Jurídico. Nos dois, o texto
+   aprovado não muda.
+4. **Pela central do Chatwoot** (CA6): o portal busca o contato pelo telefone da ficha (com o mesmo nome, quando mãe e filha
+   dividem o número), lista as conversas com a de mais mensagens primeiro, copia a mensagem e oferece "Abrir a conversa".
+   O envio vai pela conversa escolhida. Sem contato, o envio falha com o motivo.
+5. **Registro e falha** (CA2, CA4, CA5): cada envio fica com o texto final, o canal, a data e a hora e o status que o
+   Chatwoot devolve; em "Últimos contatos", "Chatwoot · 14:32 · entregue". A falha aparece na tela em que a pessoa está e
+   fica no histórico; nada é reenviado sozinho, e a mesma mensagem já entregue na mesma conversa não sai de novo.
+6. **Perícia** (CA9): os modelos da perícia usam a data da perícia em vigor no processo (a mesma que a conversa atualiza).
+
+### Ponta para ligar no Chatwoot (estudada na documentação da API, developers.chatwoot.com)
+
+A configuração do ambiente guarda `CHATWOOT_URL` (`https://chatwoot.mapech.com.br`), `CHATWOOT_CONTA`, `CHATWOOT_CAIXA` e
+`CHATWOOT_TOKEN` (nunca no código; o token só quando o Pedro mandar). O servidor chama o Chatwoot com o cabeçalho
+`api_access_token`; a tela nunca vê o token. O que dá para usar:
+
+| O que o portal faz | Chamada do Chatwoot | Função de exemplo que ela troca |
+|---|---|---|
+| Achar o contato pelo telefone | `GET /api/v1/accounts/{conta}/contacts/search?q={telefone}` (nome, identificador, e-mail ou telefone; devolve `payload[]` com `id`, `name`, `phone_number`, `contact_inboxes`) | `buscarContatos` |
+| Listar as conversas do contato | `GET /api/v1/accounts/{conta}/contacts/{id}/conversations` (devolve `id`, `status`, `inbox_id`, `messages`, `last_non_activity_message`, `unread_count`, `last_activity_at`) | `conversasDoContato` |
+| Contar as mensagens, para ordenar | `GET /api/v1/accounts/{conta}/conversations/{id}/messages` | `conversasDoContato` (campo `mensagens`) |
+| Mandar a mensagem | `POST /api/v1/accounts/{conta}/conversations/{id}/messages` com `content`, `message_type: "outgoing"`, `private: false`; no WhatsApp oficial fora das 24 horas, `template_params` com o modelo aprovado | `enviarNaConversa` |
+| Saber se chegou | o `status` da mensagem (`sent`, `delivered`, `read`, `failed`) e, na falha, `external_error`; o webhook `message_updated` da conta avisa a mudança | `enviarNaConversa` (devolve `status` e `erro`) |
+| Abrir a conversa | `{CHATWOOT_URL}/app/accounts/{conta}/conversations/{id}` | `linkDaConversa` |
+| Conversa nova, quando não há | `POST /api/v1/accounts/{conta}/conversations` com `source_id` do `contact_inboxes`, `inbox_id` e `contact_id` | (não usada: a central já tem a conversa) |
+
+Levar ao Lucas: no WhatsApp oficial, mensagem fora da janela de 24 horas só sai com modelo aprovado pela Meta; os textos do
+catálogo viram esses modelos.
+
+## GGVP-111 · Terceiro não se passa pelo cliente
+
+### Telas e rotas
+
+| Rota | Figma | O que faz |
+|---|---|---|
+| `/clientes/:id` (muda) | Cliente · dados `73:199` | Mudar telefone ou e-mail no formulário pede "Como você confirmou que é o cliente?" (chamada de vídeo ou no escritório) e "a alteração vai em contrato novo"; o cartão "Dados bancários para o repasse" com "Mudar dados bancários", a segunda confirmação e o aviso ao contato anterior |
+| `/conversas/:id` (muda) | step_D5.01 `2281:2`, Registrar conversa `2144:2` | Na ligação, ou com quem não é o cliente, o roteiro de segurança: confirmar a identidade antes de passar dado do caso; sem verificação, só "vamos retornar pelo contato cadastrado" |
+| `/conversas/:id/conferir` (muda) | step_D5.04 `2282:2` | Telefone e e-mail ditos numa ligação, ou por quem não é o cliente, só mudam com a verificação e o contrato novo |
+| janela "Mensagem ao cliente" (muda) | `73:459` | Todo modelo termina com "O escritório nunca pede a sua senha do gov.br por mensagem."; nos da perícia, o lembrete da verificação na ligação |
+| `/` (Central do Atendimento, muda) | chat "o cliente ligou" `2107:2` | "O cliente me ligou": a próxima tarefa dele e o lembrete de confirmar a identidade antes de passar dado do caso |
+| `/advogada` (muda) | Central · Advogada `59:449` | "Dados bancários mudaram" quando o caso está perto da prestação de contas |
+
+### Contrato (vai para `packages/contratos/seguranca.ts`)
+
+```ts
+export const ComoVerificou = z.enum(['video', 'presencial'])                       // Lucas, 07/10
+export const Verificacao = z.object({ como: ComoVerificou, contratoNovo: z.literal(true) })   // CA1
+export const DadosBancarios = z.object({ banco: z.string().trim().min(2).max(60), agencia: z.string().regex(/^\d{4}(-\d)?$/),
+  conta: z.string().regex(/^\d{3,12}-[\dXx]$/), pix: z.string().trim().max(80).optional() })
+export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verificacao: Verificacao })   // CA1, CA5
+// Conferência da conversa (GGVP-84) e edição da ficha passam a levar `verificacao` quando o telefone ou o e-mail mudam.
+```
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `PATCH /api/fichas/:id` (muda) | `EdicaoFicha` e `verificacao` | ficha | `salvarFichaVerificada` |
+| `GET /api/fichas/:id/dados-bancarios` | | os dados em vigor e o pedido aberto | `obterDadosBancarios` |
+| `POST /api/fichas/:id/dados-bancarios` | `PedidoDeMudancaBancaria` | o pedido aberto | `pedirMudancaBancaria` |
+| `POST /api/fichas/:id/dados-bancarios/confirmacao` | — (a segunda pessoa) | os dados em vigor | `confirmarMudancaBancaria` |
+
+### Campos
+
+| Campo | Regra |
+|---|---|
+| Como confirmou que é o cliente | lista fixa: chamada de vídeo ou no escritório |
+| A alteração vai em contrato novo | caixa de marcar, obrigatória |
+| Banco, agência, conta, Pix | texto; agência com 4 números (e o dígito), conta com números e o dígito; o servidor confere de novo |
+
+### Decisões da história
+
+1. **A verificação é a do escritório** (Lucas, 07/10): chamada de vídeo ou o cliente no escritório, e a alteração vai em
+   contrato novo. O contrato novo é do épico de abertura (ZapSign); aqui a pessoa marca que a alteração vai nele.
+2. **Dado protegido** (CA1, CA8): telefone, e-mail e dados bancários. Na conversa presencial com o próprio cliente, ele está
+   no escritório: vale a verificação. Na ligação, ou com familiar, contato de apoio, médico ou clínica, a mudança só entra
+   com a verificação marcada na conferência. Na ficha, mudar telefone ou e-mail pede a verificação. O servidor recusa sem.
+3. **Dados bancários** (CA2, CA5): a mudança nasce como pedido, com a verificação; outra pessoa (Atendimento líder, advogada
+   ou Sênior) confirma; a confirmação avisa o contato anterior pelo Chatwoot e, com o caso perto da prestação de contas
+   (sentença procedente, RPV ou benefício deferido), alerta a advogada e o Financeiro. A Central do Financeiro não existe
+   ainda: o alerta dele fica guardado para ela.
+4. **Retorno pelo contato cadastrado** (CA3, CA6): na tela da conversa por ligação, ou com quem não é o cliente, o roteiro
+   de segurança mostra o número cadastrado e a frase "vamos retornar pelo contato cadastrado"; nas mensagens da perícia, o
+   lembrete da verificação antes de passar data, local e orientação.
+5. **Nunca a senha** (CA4): todo modelo termina com a frase do escritório; o texto que pede a senha não sai (G9, GGVP-102).
+6. **O chat** (CA7): "o cliente me ligou" responde com a próxima tarefa do cliente e lembra de confirmar a identidade. O
+   resto do chat é da GGVP-82.
 
 ## Risks / Trade-offs
 

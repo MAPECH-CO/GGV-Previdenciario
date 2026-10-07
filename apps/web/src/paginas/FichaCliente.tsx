@@ -11,6 +11,7 @@ import { ListaDatada } from '../componentes/ListaDatada.tsx'
 import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
 import { RegistrarConversa } from '../componentes/RegistrarConversa.tsx'
 import { HistoricoDeVersoes } from '../componentes/HistoricoDeVersoes.tsx'
+import { MensagemAoCliente } from '../componentes/MensagemAoCliente.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
@@ -38,6 +39,8 @@ export function FichaCliente({ id }: { id: string }) {
   const [versoes, setVersoes] = useState(false)
   // A volta de versão muda a ficha por fora do formulário: a chave nova refaz o formulário com os valores de agora.
   const [recarga, setRecarga] = useState(0)
+  // A janela "Mensagem ao cliente", com modelo e registro (GGVP-102).
+  const [mensagem, setMensagem] = useState(false)
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -99,6 +102,9 @@ export function FichaCliente({ id }: { id: string }) {
                 + Nova demanda
               </a>
             )}
+            <button type="button" className={styles.novaDemanda} onClick={() => setMensagem(true)}>
+              Mensagem ao cliente
+            </button>
             <button type="button" className={styles.transcricoes} onClick={() => setTranscricoes(true)}>
               <span aria-hidden="true">▶ </span>Transcrições ({ficha.transcricoes})
             </button>
@@ -149,6 +155,7 @@ export function FichaCliente({ id }: { id: string }) {
         <Transcricoes ficha={ficha} perfil="atendimento" aoFechar={() => setTranscricoes(false)} aoMudar={async () => setFicha(await obterFicha(id))} />
       )}
       {conversa && <RegistrarConversa ficha={ficha} aoFechar={() => setConversa(false)} />}
+      {mensagem && <MensagemAoCliente ficha={ficha} aoFechar={() => setMensagem(false)} aoEnviar={async () => setFicha(await obterFicha(id))} />}
       {versoes && (
         <HistoricoDeVersoes
           ficha={ficha}

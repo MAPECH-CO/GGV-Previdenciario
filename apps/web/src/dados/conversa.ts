@@ -655,3 +655,8 @@ export async function novoPrazoDaPendencia(conversaId: string, prazo: string, po
   gravar(banco)
   return { conversa, ficha, gravacao }
 }
+
+/** A data da perícia do INSS em vigor no processo (aaaa-mm-dd), para as mensagens da perícia (GGVP-102, CA9). */
+export function periciaDoProcesso(processoId: string): string | undefined {
+  return camposDoProcesso(ler(), processoId)?.pericia
+}
