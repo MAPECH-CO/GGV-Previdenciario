@@ -15,7 +15,7 @@ Com o OK da advogada e a prestação recebida, a fila do Financeiro SHALL ter a 
 - **Então** vê a tarefa com o nome do cliente e a ação de avisar e agendar a ida ao banco
 
 ### Requirement: CA2 · O aviso grava o caso no acervo como processo bom
-Com o aviso enviado e a ida ao banco agendada, o caso SHALL entrar no acervo como processo bom, com o desfecho do caso, uma vez só, e a baixa SHALL ficar no histórico. O desfecho fica para a conferência da jurimetria (GGVP-41, G22).
+Com o aviso enviado e a ida ao banco agendada, o caso SHALL entrar no acervo como processo bom, com o desfecho do caso, uma vez só, e a baixa SHALL ficar no histórico. O desfecho fica para a conferência da jurimetria (GGVP-41 CA5).
 
 #### Scenario: CA2 · Registrar o aviso
 - **Dado** o aviso feito e a ida ao banco agendada

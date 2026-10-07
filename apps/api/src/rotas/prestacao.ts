@@ -324,7 +324,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       })
       await tx.update(prestacaoContas).set({ clienteAvisadoEm: agora() }).where(eq(prestacaoContas.id, s.atual!.id))
       if (s.tarefaDoBanco) await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, s.tarefaDoBanco.id))
-      // O desfecho fica sem conferência: a que põe o caso nas contas da jurimetria é da GGVP-41 (G22).
+      // O desfecho fica sem conferência: a que põe o caso nas contas da jurimetria é da GGVP-41 (CA5).
       const [noAcervo] = await tx.select({ id: processoAcervo.id }).from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
       if (!noAcervo) await tx.insert(processoAcervo).values({ casoId, beneficio: s.c!.beneficio, desfecho, fonte: 'portal' })
     })

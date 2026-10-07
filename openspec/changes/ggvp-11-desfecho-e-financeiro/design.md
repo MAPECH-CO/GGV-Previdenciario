@@ -13,7 +13,7 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 3. **"Valores conferem com o comprovante"** (CA3): `ReceberPrestacao` com `recebido` exige `valoresConferem: true`; o servidor confere de novo.
 4. **Quem acompanha é obrigatório e do Atendimento** (CA6, Lucas Q24): `acompanhanteId` obrigatório; o servidor recusa quem não tem o perfil Atendimento. Agendar abre para essa pessoa a tarefa "Levar ao banco", com a data como prazo e o nome dela como responsável; remarcar atualiza a tarefa (CA7). É dali que a Agenda lê.
 5. **Recusa registrada** (CA8): quem deu o OK e tenta receber leva 409 e o evento `portao_bloqueado` com o portão G8 e o motivo, que aparece em "Tentativas bloqueadas".
-6. **Aviso grava no acervo** (CA2): o envio do aviso grava o caso em `processo_acervo` (uma vez por caso, `fonte: portal`, desfecho do caso) e registra a baixa no histórico. O desfecho fica sem conferência (`desfecho_conferido_por` nulo): a conferência que põe o caso nas contas da jurimetria é da GGVP-41 (G22).
+6. **Aviso grava no acervo** (CA2): o envio do aviso grava o caso em `processo_acervo` (uma vez por caso, `fonte: portal`, desfecho do caso) e registra a baixa no histórico. O desfecho fica sem conferência (`desfecho_conferido_por` nulo): a conferência que põe o caso nas contas da jurimetria é da GGVP-41 (CA5).
 7. **Confirmar recebimento** (CA9): `POST /api/casos/:id/banco/confirmacao`, do Financeiro, depois do aviso: a ida ao banco fica "realizado", "Levar ao banco" conclui e o caso vai para a fase "encerrado".
 8. **Canal**: o Chatwoot é a plataforma; o canal que vai na mensagem continua o do cliente (WhatsApp, telefone, e-mail, SMS). Sem migração.
 
