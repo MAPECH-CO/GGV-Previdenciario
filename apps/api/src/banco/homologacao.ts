@@ -4,6 +4,8 @@
 // provisória aleatória, com troca no primeiro acesso. A lista aparece uma vez, para quem rodou, e é entregue ao Lucas
 // fora do repositório, do Jira e do chat. Só roda com AMBIENTE=homologacao; fora dela, recusa sem gravar nada (CA5).
 import { randomBytes } from 'node:crypto'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import bcrypt from 'bcryptjs'
 import { eq, inArray } from 'drizzle-orm'
 import { abrirBanco, type Banco } from './conexao.ts'
@@ -57,7 +59,9 @@ export async function prepararHomologacao(
   })
 }
 
-if (process.argv[2] === 'preparar') {
+// Só quando o arquivo é executado direto (`node homologacao.ts preparar`); importar o módulo nunca roda o comando.
+const executadoDireto = !!process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (executadoDireto && process.argv[2] === 'preparar') {
   try {
     if (!process.env.DATABASE_URL) throw new Error('Sem DATABASE_URL: o comando roda no app de homologação, com o banco dele.')
     const { banco, fechar } = await abrirBanco()
