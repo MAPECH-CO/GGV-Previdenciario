@@ -3,7 +3,7 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { Campo } from '../componentes/Campo.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
-import { dataParaIso, formatarCep, formatarCpf, formatarTelefone, normalizarData, validarCpf, validarTelefone } from '../campos.ts'
+import { dataParaIso, formatarCep, formatarCpf, formatarTelefone, normalizarData, validarCep, validarCpf, validarTelefone } from '../campos.ts'
 import { buscarEndereco, obterCadastro, salvarCadastro } from '../dados/cadastro.ts'
 import { PROFISSOES, nomeBeneficio, type ItemCatalogo } from '../dados/catalogos.ts'
 import { entrarNaEdicao } from '../dados/presenca.ts'
@@ -134,7 +134,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
   }
 
   async function preencherPeloCep(valor: string) {
-    if (valor.replace(/\D/g, '').length !== 8) return
+    if (!validarCep(valor)) return
     const endereco = await buscarEndereco(valor)
     if (!endereco) return setCep('CEP não encontrado: digite o endereço.')
     setCep('Endereço pelo CEP (ViaCEP simulado): confira e complete o número.')
