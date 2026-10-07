@@ -2,7 +2,7 @@ GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte s
 
 ## Por quê
 
-O escritório quer medir se o portal melhora o resultado e o rendimento. Os épicos anteriores já gravam casos, resultados do INSS, desfechos na Justiça, exigências, pareceres, perícias e prestações de contas. A Gestão mostra os indicadores calculados em código, só com dado real e sem taxa de amostra pequena (G22).
+O escritório quer medir se o portal melhora o resultado e o rendimento. Os épicos anteriores já gravam casos, resultados do INSS, desfechos na Justiça, exigências, pareceres, perícias e prestações de contas. A Gestão mostra os indicadores calculados em código, só com dado real e com o número de casos ao lado de cada taxa (G22).
 
 ## Histórias na ordem
 
@@ -14,7 +14,7 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Recorte** por benefício, perito, juízo e advogada.
    - **Extinções sem mérito** em destaque.
    - **Pareceres dispensados** comparados aos suficientes.
-   - **Totais de honorários e tempo até o dinheiro** só para o Sócio e o Financeiro.
+   - **Totais em dinheiro** só para o Sócio e o Financeiro.
    - **Raio-X de 979 processos** como referência.
 
 Um ponto de "Agora ok?" no fim de cada história.
@@ -22,7 +22,7 @@ Um ponto de "Agora ok?" no fim de cada história.
 ## Travadas
 
 - **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria, e **GGVP-64** · Juízo identificado: mostrar a jurimetria: em "Tarefas pendentes", sem revisão (revisor: Mateus).
-- **"O Sócio é perfil do portal" (Q20):** o Pedro levou a escolha ao Lucas em 07/10. Até a resposta, vale a escolha atual: o Sócio vê a Gestão inteira, com os valores só em total.
+- **Q20 (Sócio como perfil):** com o Lucas desde 07/10; até a resposta, o Sócio vê a Gestão inteira, com os valores só em total.
 
 ## Fora do escopo
 
@@ -35,4 +35,4 @@ Um ponto de "Agora ok?" no fim de cada história.
 
 ## Portões envolvidos
 
-G22: amostra abaixo do mínimo aparece como "amostra insuficiente" e nunca chega ao cliente.
+G22 (regra de 07/10): toda porcentagem aparece com o número de casos e a data da base; não há amostra mínima.

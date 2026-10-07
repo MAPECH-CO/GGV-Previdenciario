@@ -9,14 +9,15 @@ test('GGVP-75 · o Sócio abre os resultados pelo topo: os indicadores com os ca
   await page.goto('/')
   await page.getByRole('link', { name: 'Resultados' }).click()
   await expect(page.getByRole('heading', { name: 'Resultados do escritório' })).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText(/Deferimento no INSS: \d+% · \d+ casos/)
+  await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText(/Deferimento no INSS: \d+% em \d+ casos · base de \d{2}\/\d{2}\/\d{4}/)
   await expect(page.getByRole('list', { name: 'Extinções por causa' })).toContainText('Não cumpriu determinação do juízo (exemplo)')
   await expect(page.getByRole('list', { name: 'Valores do escritório' })).toContainText(/Honorários recebidos: R\$ [\d.]+,\d{2}/)
 
   await page.getByLabel('Recorte', { exact: true }).selectOption('beneficio')
   await page.getByRole('button', { name: 'Ver resultados' }).click()
-  await expect(page.getByRole('list', { name: 'BPC/LOAS Deficiente' })).toContainText(/Deferimento no INSS: \d+% · \d+ casos/)
-  await expect(page.getByRole('list', { name: 'Aposentadoria da Pessoa com Deficiência' })).toContainText(/Deferimento no INSS: amostra insuficiente · \d casos?/)
+  // G22 de 07/10: sem amostra mínima, o grupo com poucos casos também mostra a taxa, com os casos e a data da base.
+  await expect(page.getByRole('list', { name: 'BPC/LOAS Deficiente' })).toContainText(/Deferimento no INSS: \d+% em \d+ casos · base de/)
+  await expect(page.getByRole('list', { name: 'Aposentadoria da Pessoa com Deficiência' })).toContainText(/Deferimento no INSS: \d+% em \d casos? · base de/)
 })
 
 test('GGVP-75 · a Sênior vê o painel, sem os totais em dinheiro', async ({ page }) => {

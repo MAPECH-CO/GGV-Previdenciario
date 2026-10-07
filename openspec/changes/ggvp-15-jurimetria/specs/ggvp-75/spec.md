@@ -6,7 +6,7 @@ Painel de resultado para os sócios: a Gestão mostra os indicadores do escritó
 - **Recortes:** benefício, perito, juízo e advogada.
 - **Destaques:** as extinções sem mérito, com a causa; e os pareceres dispensados comparados aos suficientes.
 - **Valores:** os totais em dinheiro aparecem só para o Sócio e o Financeiro.
-- **Amostra:** abaixo de 8 casos, aparece "amostra insuficiente" (G22).
+- **Amostra:** toda taxa aparece com o número de casos ao lado e a data da base; não há amostra mínima (G22, regra de 07/10).
 - **Referências:** o Raio-X de 979 processos entra como referência. A operação de 2026 e a base do acervo mostram "sem dados ainda" enquanto não houver dado.
 
 Quem vê: a Gestão (Sócio, Sênior, líder do Atendimento e Financeiro). Q20: o Sócio é perfil do portal; o Pedro levou a confirmação ao Lucas em 07/10.
@@ -77,10 +77,10 @@ Cada indicador MUST vir de cálculo em código a partir dos desfechos gravados. 
 - **Quando** é mostrado
 - **Então** vem de cálculo em código a partir dos desfechos gravados; caso com dado incerto fica fora das contas e nada trava
 
-### Requirement: CA8 · Amostra insuficiente (G22)
-Um recorte com menos de 8 casos no denominador MUST mostrar "amostra insuficiente" no lugar da taxa (G22). O mínimo (`AMOSTRA_MINIMA = 8`) é o mesmo que a Gestão do protótipo usa.
+### Requirement: CA8 · Toda taxa com os casos e a data da base (G22)
+Um recorte com poucos casos SHALL mostrar a taxa com o número de casos ao lado e a data da base. Não há amostra mínima: toda carteira MUST aparecer (G22; Lucas, 06/10; Pedro, 07/10).
 
 #### Scenario: CA8 · Poucos casos
 - **Dado** um recorte com poucos casos
 - **Quando** aparece
-- **Então** mostra "amostra insuficiente" no lugar da taxa (G22); a Gestão do Figma só mostra carteiras com 8 ou mais casos decididos
+- **Então** mostra a taxa com o número de casos ao lado e a data da base; não há amostra mínima, toda carteira aparece (G22; Lucas, 06/10; Pedro, 07/10)

@@ -30,12 +30,12 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     expect([painel.extincoes.casos, painel.extincoes.decididos, painel.baseDoAcervo.situacao, painel.totais]).toEqual([0, 0, 'sem_dados', null])
   })
 
-  it('CA1, CA8 · cada indicador traz o número de casos; a taxa só sai com 8 casos, abaixo disso "amostra insuficiente"', async () => {
+  it('CA1, CA8 · cada indicador traz o número de casos; sem amostra mínima, a taxa sai mesmo com poucos casos (G22 de 07/10)', async () => {
     for (const r of ['deferido', 'deferido', 'deferido', 'deferido', 'deferido', 'deferido', 'indeferido', 'indeferido'] as const) await decisaoInss(await novoCaso(), r)
     for (const desfecho of ['procedente_total', 'procedente_parcial', 'improcedente'] as const) await novoCaso({ desfecho, encerradoEm: as('2026-08-01') })
     const painel = await painelDeResultados(banco, PERIODO)
     expect(indicador(painel, 'deferimento_inss')).toMatchObject({ casos: 8, valor: 0.75, situacao: 'ok' })
-    expect(indicador(painel, 'procedencia')).toMatchObject({ casos: 3, valor: null, situacao: 'amostra_insuficiente' })
+    expect(indicador(painel, 'procedencia')).toMatchObject({ casos: 3, valor: 2 / 3, situacao: 'ok' })
     expect(painel.operacao).toBe('com_dados')
   })
 
@@ -96,7 +96,7 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     for (let i = 0; i < 8; i++) await comParecer('suficiente', i < 6 ? 'deferido' : 'indeferido')
     const painel = await painelDeResultados(banco, PERIODO)
     expect(painel.pareceres.dispensados).toBe(2)
-    expect(painel.pareceres.exitoComDispensa).toMatchObject({ casos: 2, situacao: 'amostra_insuficiente' })
+    expect(painel.pareceres.exitoComDispensa).toMatchObject({ casos: 2, valor: 0.5, situacao: 'ok' })
     expect(painel.pareceres.exitoComSuficiente).toMatchObject({ casos: 8, valor: 0.75, situacao: 'ok' })
     expect(indicador(painel, 'pareceres_dispensados')).toMatchObject({ casos: 2, unidade: 'casos' })
   })
@@ -114,7 +114,7 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     expect((await painelDeResultados(banco, PERIODO)).totais).toBeNull()
     const totais = (await painelDeResultados(banco, { ...PERIODO, verTotais: true })).totais
     expect(totais).toMatchObject({ honorariosRecebidos: '2000.00', recebimentos: 2 })
-    expect(totais?.diasAteReceber).toMatchObject({ casos: 2, unidade: 'dias', valor: null, situacao: 'amostra_insuficiente' })
+    expect(totais?.diasAteReceber).toMatchObject({ casos: 2, unidade: 'dias', valor: 60, situacao: 'ok' })
   })
 
   it('CA1 · o recorte por juízo (pelo número CNJ) e por advogada; caso sem o dado fica fora dos grupos', async () => {

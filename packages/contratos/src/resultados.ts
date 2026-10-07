@@ -2,9 +2,6 @@
 import { dataParaIso, validarData } from '@ggv/campos'
 import { z } from 'zod'
 
-/** G22 (CA8): abaixo de 8 casos no denominador, a taxa não sai. É o mínimo que a Gestão do protótipo usa. */
-export const AMOSTRA_MINIMA = 8
-
 export const RECORTES = ['beneficio', 'perito', 'juizo', 'advogada'] as const
 export const Recorte = z.enum(RECORTES)
 export type Recorte = z.infer<typeof Recorte>
@@ -20,9 +17,10 @@ const data = (rotulo: string) =>
 export const PedidoDoPainel = z.object({ de: data('inicial').optional(), ate: data('final').optional(), recorte: Recorte.optional() })
 export type PedidoDoPainel = z.input<typeof PedidoDoPainel>
 
-export const SITUACOES_INDICADOR = ['ok', 'amostra_insuficiente', 'sem_dados'] as const
+/** G22 (regra de 07/10): não há amostra mínima; toda taxa sai com o número de casos e a data da base (CA8). */
+export const SITUACOES_INDICADOR = ['ok', 'sem_dados'] as const
 
-/** Um número do painel, sempre com quantos casos o compõem (CA1). `valor` é nulo quando a amostra não basta. */
+/** Um número do painel, sempre com quantos casos o compõem (CA1). `valor` é nulo só sem nenhum caso. */
 export const Indicador = z.object({
   chave: z.string(),
   rotulo: z.string(),

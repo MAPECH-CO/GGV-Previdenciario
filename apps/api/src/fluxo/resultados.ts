@@ -1,7 +1,7 @@
 // Painel de resultado para os sócios (GGVP-75): cada indicador é calculado em código a partir dos desfechos gravados
-// (CA7), pela data do seu evento no período; caso com dado incerto fica fora e nada trava. Abaixo de AMOSTRA_MINIMA
-// casos, a taxa não sai (CA8, G22).
-import { AMOSTRA_MINIMA, ROTULO_BENEFICIO, type Beneficio, type Indicador, type PainelDeResultados, type Recorte } from '@ggv/contratos'
+// (CA7), pela data do seu evento no período; caso com dado incerto fica fora e nada trava. Não há amostra mínima: toda
+// taxa sai com o número de casos (CA8, G22 de 07/10).
+import { ROTULO_BENEFICIO, type Beneficio, type Indicador, type PainelDeResultados, type Recorte } from '@ggv/contratos'
 import { count, max, sql } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
@@ -14,12 +14,10 @@ const EXTINTO = 'extinto_sem_merito'
 const TRIBUNAL_DO_JTR: Record<string, string> = { '401': 'TRF1', '402': 'TRF2', '403': 'TRF3', '404': 'TRF4', '405': 'TRF5', '406': 'TRF6', '826': 'TJSP' }
 const UM_DIA_MS = 86_400_000
 
-/** Uma taxa só sai com a amostra mínima (CA8, G22); sem nenhum caso, "sem dados ainda" (CA5). */
+/** Toda taxa sai, com o número de casos (CA8, G22 de 07/10); sem nenhum caso, "sem dados ainda" (CA5). */
 export function taxa(chave: string, rotulo: string, exitos: number, casos: number): Indicador {
   const base = { chave, rotulo, casos, unidade: 'taxa' as const }
-  if (casos === 0) return { ...base, valor: null, situacao: 'sem_dados' }
-  if (casos < AMOSTRA_MINIMA) return { ...base, valor: null, situacao: 'amostra_insuficiente' }
-  return { ...base, valor: exitos / casos, situacao: 'ok' }
+  return casos === 0 ? { ...base, valor: null, situacao: 'sem_dados' } : { ...base, valor: exitos / casos, situacao: 'ok' }
 }
 
 const contagem = (chave: string, rotulo: string, casos: number): Indicador => ({ chave, rotulo, casos, valor: casos, unidade: 'casos', situacao: 'ok' })
@@ -112,7 +110,7 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
     totais = {
       honorariosRecebidos: (centavos / 100).toFixed(2),
       recebimentos: recebidas.length,
-      diasAteReceber: { ...tempo, unidade: 'dias', valor: tempo.situacao === 'ok' ? mediana(dias) : null },
+      diasAteReceber: { ...tempo, unidade: 'dias', valor: dias.length ? mediana(dias) : null },
     }
   }
 

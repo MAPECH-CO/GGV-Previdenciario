@@ -23,7 +23,7 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
 - extinções sem mérito em destaque, com a causa (CA2);
 - pareceres dispensados contra suficientes (CA3);
 - totais em dinheiro só para Sócio e Financeiro (CA4);
-- "amostra insuficiente" abaixo do mínimo (CA8, G22);
+- toda taxa com o número de casos e a data da base, sem amostra mínima (CA8, G22 de 07/10);
 - Raio-X como referência e "sem dados ainda" na operação vazia (CA5) e na base do acervo (CA6).
 
 **Non-Goals:** a lista de casos por trás de cada número; a exportação do painel; o acervo (GGVP-55); a jurimetria de perito e de juízo nos casos (GGVP-59, GGVP-64).
@@ -32,7 +32,7 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
 
 1. **Contrato** (`packages/contratos/src/resultados.ts`, novo):
    - `PedidoDoPainel` (`de`, `ate` em AAAA-MM-DD; `recorte`: benefício, perito, juízo ou advogada);
-   - `Indicador`: `chave`, `rotulo`, `casos` (os que compõem o número), `valor` (taxa de 0 a 1, ou dias) e `situacao` (`ok`, `amostra_insuficiente`, `sem_dados`);
+   - `Indicador`: `chave`, `rotulo`, `casos` (os que compõem o número), `valor` (taxa de 0 a 1, ou dias) e `situacao` (`ok`, `sem_dados`);
    - `PainelDeResultados`: período, indicadores do escritório, grupos do recorte, extinções por causa, pareceres, `totais` (nulo para quem não pode ver), operação e base do acervo;
    - `RAIO_X`: os agregados do Raio-X, numa constante que a tela lê do contrato (não passa pelo servidor).
 2. **Cálculo** (`apps/api/src/fluxo/resultados.ts`), cada indicador pela data do seu evento no período:
@@ -47,7 +47,9 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
      - honorários recebidos = soma de `honorarios` das prestações com `recebida_em` no período;
      - tempo até o dinheiro = mediana dos dias entre a abertura do caso e o recebimento.
    - **Dado incerto** (CA7): caso sem a data do evento, ou com valor fora da lista, fica fora da conta e não trava nada.
-3. **Amostra mínima** (CA8, G22): `AMOSTRA_MINIMA = 8` casos no denominador, em código e com teste. É o mínimo que a Gestão do protótipo já usa. Abaixo dele, a taxa não sai e aparece "amostra insuficiente". Sem nenhum caso, aparece "sem dados ainda".
+3. **Sem amostra mínima** (CA8, regra do G22 de 07/10: Lucas, 06/10; Pedro, 07/10): toda taxa sai, com o número de casos e a data da base ao lado, como "73% em 11 casos · base de 07/10/2026".
+   - A base é o fim do período, no máximo hoje.
+   - Sem nenhum caso, aparece "sem dados ainda".
 4. **Recortes:**
    - benefício: `caso.beneficio`, com o rótulo do catálogo;
    - perito: o perito da perícia do caso;
@@ -73,7 +75,7 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
 
 ### Risks / Trade-offs
 
-- **Poucos casos:** com poucos casos decididos, quase tudo sai "amostra insuficiente". É o que o G22 pede, e os dados de exemplo trazem um recorte com amostra para a tela poder ser conferida.
+- **Poucos casos:** com poucos casos, a taxa oscila muito; o número de casos ao lado é o que deixa a pessoa julgar o número (G22).
 - **Matriz de permissões:** a versão 11 pode conflitar com outro PR que suba a matriz ao mesmo tempo. Resolve-se no merge, com a impressão digital nova.
 - **Juízo pela origem do CNJ:** é o código da unidade, não o nome da vara. O nome entra quando houver o cadastro de juízos (GGVP-64).
 

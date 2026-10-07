@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useId, useState } from 'react'
 import { formatarDecimal, isoParaData, normalizarData, validarData } from '@ggv/campos'
-import { AMOSTRA_MINIMA, RAIO_X, RECORTES, ROTULO_RECORTE, type Indicador, type PainelDeResultados } from '@ggv/contratos'
+import { RAIO_X, RECORTES, ROTULO_RECORTE, type Indicador, type PainelDeResultados } from '@ggv/contratos'
 import { chamarApi, type Resposta } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -11,12 +11,11 @@ const textoDaBase = (b: Base) =>
   `${b.processos} processos · ${b.conferidos} conferidos, nas contas · ${b.aguardandoConferencia} aguardando conferência, fora das contas · base de ${isoParaData(b.dataDaBase)}`
 const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
 
-/** O número, ou por que ele não sai (CA8: amostra insuficiente; CA5: sem dados ainda), sempre com os casos (CA1). */
-function texto(i: Indicador) {
-  if (i.situacao === 'sem_dados') return `${i.rotulo}: sem dados ainda`
+/** O número com os casos e a data da base (CA1, CA8, G22 de 07/10); sem nenhum caso, "sem dados ainda" (CA5). */
+function texto(i: Indicador, base: string) {
   if (i.unidade === 'casos') return `${i.rotulo}: ${casos(i.casos)}`
-  if (i.situacao === 'amostra_insuficiente' || i.valor === null) return `${i.rotulo}: amostra insuficiente · ${casos(i.casos)}`
-  return `${i.rotulo}: ${i.unidade === 'taxa' ? `${Math.round(i.valor * 100)}%` : `${i.valor} dias`} · ${casos(i.casos)}`
+  if (i.situacao === 'sem_dados' || i.valor === null) return `${i.rotulo}: sem dados ainda`
+  return `${i.rotulo}: ${i.unidade === 'taxa' ? `${Math.round(i.valor * 100)}%` : `${Math.round(i.valor)} dias`} em ${casos(i.casos)} · base de ${base}`
 }
 
 /**
@@ -49,6 +48,7 @@ export function Resultados() {
     void chamarApi<PainelDeResultados>(`/gestao/resultados?${new URLSearchParams({ de, ate, ...(recorte && { recorte }) })}`).then(mostrar)
   }
 
+  const base = isoParaData(painel?.periodo.ate) ?? ''
   const [dispensa, suficiente] = [painel?.pareceres.exitoComDispensa.valor ?? null, painel?.pareceres.exitoComSuficiente.valor ?? null]
   const diferenca = dispensa !== null && suficiente !== null ? Math.round((dispensa - suficiente) * 100) : null
 
@@ -60,7 +60,7 @@ export function Resultados() {
       </a>
       <h1 className={styles.titulo}>Resultados do escritório</h1>
       <p className={styles.subtitulo}>
-        Cada número vem dos desfechos gravados no portal, com quantos casos o compõem. Abaixo de {AMOSTRA_MINIMA} casos, a taxa não sai.
+        Cada número vem dos desfechos gravados no portal, com o número de casos e a data da base. Não há amostra mínima: toda amostra conta (G22).
       </p>
 
       <form className={styles.cartao} onSubmit={aplicar} noValidate aria-label="Período e recorte">
@@ -123,7 +123,7 @@ export function Resultados() {
             ) : (
               <ul className={styles.lista} aria-label="Indicadores do escritório">
                 {painel.indicadores.map((i) => (
-                  <li key={i.chave}>{texto(i)}</li>
+                  <li key={i.chave}>{texto(i, base)}</li>
                 ))}
               </ul>
             )}
@@ -153,8 +153,8 @@ export function Resultados() {
             <h2 className={styles.cartaoTitulo}>Pareceres médicos dispensados</h2>
             <ul className={styles.lista} aria-label="Pareceres dispensados">
               <li>Dispensados pela Sênior no período: {painel.pareceres.dispensados}</li>
-              <li>{texto(painel.pareceres.exitoComDispensa)}</li>
-              <li>{texto(painel.pareceres.exitoComSuficiente)}</li>
+              <li>{texto(painel.pareceres.exitoComDispensa, base)}</li>
+              <li>{texto(painel.pareceres.exitoComSuficiente, base)}</li>
               {diferenca !== null && <li>Diferença: {diferenca > 0 ? `+${diferenca}` : diferenca} pontos</li>}
             </ul>
           </section>
@@ -167,7 +167,7 @@ export function Resultados() {
                   Honorários recebidos: {reais(painel.totais.honorariosRecebidos)} · {painel.totais.recebimentos}{' '}
                   {painel.totais.recebimentos === 1 ? 'recebimento' : 'recebimentos'}
                 </li>
-                <li>{texto(painel.totais.diasAteReceber)}</li>
+                <li>{texto(painel.totais.diasAteReceber, base)}</li>
               </ul>
             </section>
           )}
@@ -182,7 +182,7 @@ export function Resultados() {
                     <strong>{g.nome}</strong>
                   </li>
                   {g.indicadores.map((i) => (
-                    <li key={i.chave}>{texto(i)}</li>
+                    <li key={i.chave}>{texto(i, base)}</li>
                   ))}
                 </ul>
               ))}

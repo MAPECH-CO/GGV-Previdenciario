@@ -87,6 +87,8 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect((await resultados('rui')).json().periodo).toEqual({ de: `${hoje.slice(0, 4)}-01-01`, ate: hoje })
     const r = (await resultados('rui', '?de=01/02/2026&ate=31/03/2026&recorte=juizo')).json()
     expect([r.periodo, r.recorte]).toEqual([{ de: '2026-02-01', ate: '2026-03-31' }, { por: 'juizo', grupos: [] }])
+    // A data da base (G22) é o fim do período: depois de hoje não há dado.
+    expect((await resultados('rui', '?ate=31/12/2099')).json().periodo.ate).toBe(hoje)
   })
 
   it('data inválida e período invertido voltam com a mensagem', async () => {

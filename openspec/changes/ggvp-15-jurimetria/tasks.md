@@ -10,6 +10,8 @@
 - [x] 1.6 CA2, CA3, CA5 · Conferir a tela com a Gestão do Sócio do protótipo (v2 de 02/10) e trazer ao Raio-X "o que o cartório mais cobra" e "onde julgam", às extinções o total de decididos e aos pareceres a diferença em pontos; verifica com `pnpm --filter @ggv/web test`.
 - [x] 1.7 Playwright: o Sócio vê os indicadores e os totais; a Sênior vê o painel sem os totais; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 1.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 1.9 CA8 · Regra nova do G22 (Lucas, 06/10; Pedro, 07/10): sem amostra mínima, toda taxa com o número de casos e a data da base. Muda o contrato (`Indicador` sem "amostra insuficiente"), o cálculo, a rota (a base é o fim do período, no máximo hoje) e a tela; verifica com os testes de contrato, API e tela.
+- [x] 1.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-55 · Subir lote avulso de processos no acervo pelo chat e ver a base em uso na Gestão (a parte sem chat)
 

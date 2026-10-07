@@ -15,7 +15,7 @@ const painel: PainelDeResultados = {
   periodo: { de: '2026-01-01', ate: '2026-10-07' },
   indicadores: [
     ind('deferimento_inss', 'Deferimento no INSS', 11, 8 / 11, 'taxa', 'ok'),
-    ind('procedencia', 'Procedência na Justiça', 1, null, 'taxa', 'amostra_insuficiente'),
+    ind('procedencia', 'Procedência na Justiça', 1, 1, 'taxa', 'ok'),
     ind('extincoes', 'Extinções sem mérito', 1, 1, 'casos', 'ok'),
     ind('exigencias_no_prazo', 'Exigências cumpridas no prazo', 0, null, 'taxa', 'sem_dados'),
     ind('pareceres_dispensados', 'Pareceres dispensados', 0, 0, 'casos', 'ok'),
@@ -27,7 +27,7 @@ const painel: PainelDeResultados = {
     exitoComDispensa: ind('exito_com_dispensa', 'Êxito com parecer dispensado', 0, null, 'taxa', 'sem_dados'),
     exitoComSuficiente: ind('exito_com_suficiente', 'Êxito com parecer suficiente', 0, null, 'taxa', 'sem_dados'),
   },
-  totais: { honorariosRecebidos: '4500.00', recebimentos: 1, diasAteReceber: ind('dias_ate_receber', 'Tempo até o dinheiro', 1, null, 'dias', 'amostra_insuficiente') },
+  totais: { honorariosRecebidos: '4500.00', recebimentos: 1, diasAteReceber: ind('dias_ate_receber', 'Tempo até o dinheiro', 1, 60, 'dias', 'ok') },
   operacao: 'com_dados',
   baseDoAcervo: { situacao: 'sem_dados' },
 }
@@ -41,12 +41,12 @@ const itens = async (nome: string) => within(await screen.findByRole('list', { n
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Resultados do escritório (GGVP-75)', () => {
-  it('CA1, CA8 · cada indicador com o número de casos; abaixo da amostra, "amostra insuficiente"', async () => {
+  it('CA1, CA8 · cada taxa com o número de casos e a data da base; sem amostra mínima (G22 de 07/10)', async () => {
     servidor(painel)
     render(<Resultados />)
     expect(await itens('Indicadores do escritório')).toEqual([
-      'Deferimento no INSS: 73% · 11 casos',
-      'Procedência na Justiça: amostra insuficiente · 1 caso',
+      'Deferimento no INSS: 73% em 11 casos · base de 07/10/2026',
+      'Procedência na Justiça: 100% em 1 caso · base de 07/10/2026',
       'Extinções sem mérito: 1 caso',
       'Exigências cumpridas no prazo: sem dados ainda',
       'Pareceres dispensados: 0 casos',
@@ -71,8 +71,8 @@ describe('Resultados do escritório (GGVP-75)', () => {
     render(<Resultados />)
     expect(await itens('Pareceres dispensados')).toEqual([
       'Dispensados pela Sênior no período: 12',
-      'Êxito com parecer dispensado: 58% · 12 casos',
-      'Êxito com parecer suficiente: 71% · 86 casos',
+      'Êxito com parecer dispensado: 58% em 12 casos · base de 07/10/2026',
+      'Êxito com parecer suficiente: 71% em 86 casos · base de 07/10/2026',
       'Diferença: -13 pontos',
     ])
   })
@@ -80,7 +80,7 @@ describe('Resultados do escritório (GGVP-75)', () => {
   it('CA4 · os valores aparecem quando o servidor os manda; sem os totais, a tela não mostra valor nenhum', async () => {
     servidor(painel)
     const { unmount } = render(<Resultados />)
-    expect(await itens('Valores do escritório')).toEqual(['Honorários recebidos: R$ 4.500,00 · 1 recebimento', 'Tempo até o dinheiro: amostra insuficiente · 1 caso'])
+    expect(await itens('Valores do escritório')).toEqual(['Honorários recebidos: R$ 4.500,00 · 1 recebimento', 'Tempo até o dinheiro: 60 dias em 1 caso · base de 07/10/2026'])
     unmount()
     servidor({ ...painel, totais: null })
     render(<Resultados />)
@@ -127,6 +127,6 @@ describe('Resultados do escritório (GGVP-75)', () => {
     servidor({ ...painel, recorte: { por: 'beneficio', grupos: [{ nome: 'BPC/LOAS Deficiente', indicadores: [ind('deferimento_inss', 'Deferimento no INSS', 8, 0.75, 'taxa', 'ok')] }] } })
     render(<Resultados />)
     expect(await screen.findByRole('heading', { name: 'Por benefício' })).toBeTruthy()
-    expect(await itens('BPC/LOAS Deficiente')).toEqual(['BPC/LOAS Deficiente', 'Deferimento no INSS: 75% · 8 casos'])
+    expect(await itens('BPC/LOAS Deficiente')).toEqual(['BPC/LOAS Deficiente', 'Deferimento no INSS: 75% em 8 casos · base de 07/10/2026'])
   })
 })

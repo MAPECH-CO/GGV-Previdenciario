@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AMOSTRA_MINIMA, PainelDeResultados, PedidoDoPainel, RAIO_X } from './resultados.ts'
+import { Indicador, PainelDeResultados, PedidoDoPainel, RAIO_X } from './resultados.ts'
 
 describe('painel de resultado para os sócios (GGVP-75)', () => {
   it('o período vem em dd/mm/aaaa, pela biblioteca campos, e sai em AAAA-MM-DD; tudo é opcional', () => {
@@ -13,8 +13,10 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect(PedidoDoPainel.safeParse({ recorte: 'cliente' }).success).toBe(false)
   })
 
-  it('CA8 · a amostra mínima é 8 (G22); CA5 · o Raio-X traz só agregados de 979 processos', () => {
-    expect(AMOSTRA_MINIMA).toBe(8)
+  it('CA8 · sem amostra mínima: "amostra insuficiente" não existe mais (G22 de 07/10); CA5 · o Raio-X traz só agregados de 979 processos', () => {
+    const indicador = { chave: 'x', rotulo: 'X', casos: 3, valor: 2 / 3, unidade: 'taxa', situacao: 'amostra_insuficiente' }
+    expect(Indicador.safeParse(indicador).success).toBe(false)
+    expect(Indicador.parse({ ...indicador, situacao: 'ok' }).valor).toBeCloseTo(0.667, 3)
     expect([RAIO_X.processos, RAIO_X.geradoEm, RAIO_X.indicadores.length]).toEqual([979, '2026-09-21', 6])
     expect([RAIO_X.cartorioCobra.processos, RAIO_X.cartorioCobra.itens.length, RAIO_X.ondeJulgam.length]).toEqual([588, 7, 6])
   })

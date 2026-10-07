@@ -73,7 +73,9 @@ export function registrarRotasGestao(app: FastifyInstance, { banco, agora = () =
     const entrada = PedidoDoPainel.safeParse(pedido.query)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira o período.')
     const hoje = hojeEmBrasilia(agora())
-    const { de = `${hoje.slice(0, 4)}-01-01`, ate = hoje, recorte = null } = entrada.data
+    // A data da base (G22) é o fim do período; depois de hoje não há dado, então o fim vai no máximo até hoje.
+    const ate = entrada.data.ate && entrada.data.ate < hoje ? entrada.data.ate : hoje
+    const { de = `${hoje.slice(0, 4)}-01-01`, recorte = null } = entrada.data
     if (de > ate) return negar(resposta, 400, 'A data inicial vem antes da final.')
     return PainelDeResultados.parse(await painelDeResultados(banco, { de, ate, recorte, verTotais: pode(pedido.perfilAtivo, 'valores.ver_totais') }))
   })
