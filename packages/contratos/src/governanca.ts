@@ -98,3 +98,52 @@ export const ResultadoDaRegra = z.object({
   detalhes: z.array(z.object({ rotulo: z.string(), valor: z.string() })),
 })
 export type ResultadoDaRegra = z.infer<typeof ResultadoDaRegra>
+
+/** GGVP-99 CA7, CA11: um evento da linha do processo. `quem` é a pessoa ou "Sistema"; o detalhe interno não sai. */
+export const EventoDoHistorico = z.object({
+  quando: z.string(),
+  quem: z.string(),
+  origem: z.enum(['pessoa', 'sistema']),
+  passo: z.string().nullable(),
+  descricao: z.string(),
+})
+export type EventoDoHistorico = z.infer<typeof EventoDoHistorico>
+
+/** GET /api/casos/:id/historico (GGVP-99 CA11, `caso.ver`): a linha do processo e a exportação em curso (CA12). */
+export const HistoricoDoCaso = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  eventos: z.array(EventoDoHistorico),
+  exportacao: z.object({ situacao: z.enum(['pedida', 'autorizada']), pedidaPor: z.string(), motivo: z.string(), pedidaEm: z.string() }).nullable(),
+  podePedirExportacao: z.boolean(),
+  podeAutorizarExportacao: z.boolean(),
+  /** Só quem pediu, depois da autorização da direção. */
+  podeExportar: z.boolean(),
+})
+export type HistoricoDoCaso = z.infer<typeof HistoricoDoCaso>
+
+/** POST /api/casos/:id/historico/exportacao (GGVP-99 CA12): a gestão pede, com o motivo; a direção autoriza. */
+export const PedirExportacao = z.object({
+  motivo: z.string({ error: 'Escreva o motivo do pedido' }).trim().min(1, 'Escreva o motivo do pedido'),
+})
+export type PedirExportacao = z.infer<typeof PedirExportacao>
+
+/** GET /api/gestao/prazos (GGVP-99 CA14): prazos cumpridos e perdidos, tirados do histórico. */
+export const PrazosDoEscritorio = z.object({
+  cumpridos: z.number(),
+  perdidos: z.number(),
+  itens: z.array(
+    z.object({ quando: z.string(), casoId: z.uuid().nullable(), cliente: z.string().nullable(), situacao: z.enum(['cumprido', 'perdido']), descricao: z.string() }),
+  ),
+})
+export type PrazosDoEscritorio = z.infer<typeof PrazosDoEscritorio>
+
+/** POST /api/pessoas/:id/cofre (GGVP-103 CA4, CA11): a senha entra só pelo cofre. Senha não leva trim. */
+export const CadastrarSenhaGovbr = z.object({ senha: z.string({ error: 'Digite a senha do gov.br' }).min(1, 'Digite a senha do gov.br') })
+export type CadastrarSenhaGovbr = z.infer<typeof CadastrarSenhaGovbr>
+
+/** GET /api/gestao/cofre (GGVP-103 CA6): os usos do cofre por pessoa, sem o valor. */
+export const UsoDoCofre = z.object({
+  pessoas: z.array(z.object({ quem: z.string(), leituras: z.number(), cadastros: z.number(), recusas: z.number(), ultimoUso: z.string().nullable() })),
+})
+export type UsoDoCofre = z.infer<typeof UsoDoCofre>

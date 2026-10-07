@@ -34,3 +34,23 @@
 - [x] 4.3 CA5, CA14 · Servidor: acionamento, última tentativa e a peça que cumpriu (`exigencia-juiz.ts`, `indeferimento.ts`); testes.
 - [x] 4.4 CA5, CA14 · Telas: status de cada setor com o acionamento e a última tentativa, e a peça no item cumprido (`AnalisarExigenciaJuiz.tsx`, `Despachar.tsx`); testes de tela.
 - [ ] 4.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-99 · Histórico de quem fez o quê, incluindo a IA
+
+- [x] 5.1 Contratos `EventoDoHistorico`, `HistoricoDoCaso`, `PedirExportacao` e `PrazosDoEscritorio`; matriz versão 9 (`historico.autorizar_exportacao`); teste.
+- [x] 5.2 CA3, CA7, CA11 · GET `/api/casos/:id/historico` (eventos e decisões, em ordem, com a descrição) em `apps/api/src/rotas/historico.ts`; teste.
+- [x] 5.3 CA9 · PUT, PATCH e DELETE no histórico recusados e registrados; teste (o banco já recusa, com teste).
+- [x] 5.4 CA12 · Pedido da gestão, autorização do Sócio e exportação, tudo no histórico; teste.
+- [x] 5.5 CA14 · GET `/api/gestao/prazos` com os prazos cumpridos e perdidos; teste.
+- [x] 5.6 Telas "Histórico do processo" (`/casos/:id/historico`, com o pedido e a autorização da exportação) e "Prazos cumpridos e perdidos" (`/gestao/prazos`); links; testes de tela.
+
+## GGVP-103 · Cofre de senhas do gov.br
+
+- [x] 6.1 Contratos `CadastrarSenhaGovbr` e `UsoDoCofre`; matriz versão 9 (`cofre.cadastrar`); teste.
+- [x] 6.2 CA4, CA6, CA11 · POST `/api/pessoas/:id/cofre` (cadastrar ou trocar, sem o valor no registro); teste.
+- [x] 6.3 CA5, CA6, CA7 · Revelar só com tarefa de gov.br aberta, com o motivo; alerta fora do padrão para a Sênior; GET `/api/gestao/cofre`; testes.
+- [x] 6.4 CA10 · `apagarSenhasVencidas` (1 ano depois do último encerramento), no relógio diário; teste.
+- [x] 6.5 CA9 · Teste que procura a senha de teste no histórico e na exportação.
+- [x] 6.6 Telas: o componente do cofre (cadastrar ou trocar) no protocolo e para a ficha; "Uso do cofre" para a gestão (`/gestao/cofre`); testes de tela.
+- [x] 6.7 Playwright: o Jurídico administrativo cadastra a senha pelo cofre e revela; a gestão vê o uso no relatório, sem o valor.
+- [ ] 6.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

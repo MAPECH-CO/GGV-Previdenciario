@@ -20,7 +20,13 @@ export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
       <Topbar
         itens={[
           { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-          ...(gestao ? [{ id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' }] : []),
+          ...(gestao
+            ? [
+                { id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },
+                { id: 'prazos', glifo: '⏱', rotulo: 'Prazos', href: '/gestao/prazos' },
+                { id: 'cofre', glifo: '🔒', rotulo: 'Uso do cofre', href: '/gestao/cofre' },
+              ]
+            : []),
         ]}
         ativo="inicio"
         funcao={rotulo}

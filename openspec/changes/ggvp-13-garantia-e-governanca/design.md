@@ -69,3 +69,28 @@ Os laços de cobrança já existem nos passos do portal: a exigência do juiz (D
 ### Risks / Trade-offs
 
 - Mudar o intervalo para dias úteis muda as datas de lembrete das histórias da Judicialização. Os testes delas passam a contar dias úteis.
+
+## Grupo 3 · GGVP-99, GGVP-103 e GGVP-104
+
+### Context
+
+O histórico (`evento_auditoria`) já recebe os eventos de cada passo, e o banco já recusa alterar ou apagar a tabela (trava da fundação, com teste). As decisões de pessoa ficam em `decisao`. O cofre do gov.br já cifra a senha (AES-256-GCM, chave em `COFRE_CHAVE`) e já revela por 60 segundos com a senha do portal (GGVP-27). Faltam a linha do processo, a recusa pela API, a exportação autorizada, o relatório de prazos, o cadastro pelo cofre, a trava de uso por tarefa, o relatório e o alerta do cofre, a guarda de 1 ano e a configuração do escritório.
+
+### Decisions
+
+1. **A linha do processo (GGVP-99 CA7, CA11)** junta, em ordem cronológica, os eventos do caso (`alvo = caso:<id>`) e as decisões. A descrição vem de um mapa de ação para texto. O `detalhe` não sai na tela, porque pode ter códigos internos, e a linha não leva dado de saúde.
+2. **A recusa pela API (CA9):** PUT, PATCH e DELETE em `/api/casos/:id/historico` e em `/api/casos/:id/historico/:evento` respondem 403 e gravam `historico_alteracao_recusada`. Não há ação na matriz para isso.
+3. **A exportação (CA12, Lucas 01/10):** a gestão pede com o motivo, e a direção (o Sócio, ação nova `historico.autorizar_exportacao`) autoriza pela tarefa "Autorizar exportação do histórico". Autorizada, quem pediu baixa a trilha (JSON). O estado sai dos próprios eventos: `exportacao_pedida`, `exportacao_autorizada` e `historico_exportado`.
+4. **O relatório de prazos (CA14)** lê os eventos de cumprimento (`exigencia_inss_respondida`, `manifestacao_protocolada`) e de perda (`exigencia_perdida`, `exigencia_juiz_perdida`), para a gestão.
+5. **O cofre:** a ação nova `cofre.cadastrar` (Atendimento, líder e Jurídico) cadastra e troca a senha por POST `/api/pessoas/:id/cofre`. Revelar exige tarefa aberta de gov.br no caso: protocolar no Meu INSS (D2.02) ou marcar a perícia (DP.01, DP.02). Cada ação grava quem, o caso, o motivo e nunca o valor. O relatório de usos por pessoa fica em GET `/api/gestao/cofre`. O alerta (leituras no dia acima do limite, ou fora do horário) vira tarefa da Sênior, uma por pessoa por dia; os limites estão em `cofre.alerta.leituras_por_dia` e `cofre.alerta.horario`. A guarda de 1 ano é a função `apagarSenhasVencidas`, que roda uma vez por dia no relógio do servidor.
+6. **Matriz na versão 9:** `cofre.cadastrar` e `historico.autorizar_exportacao`. O Pedro precisa saber, por causa do número da versão.
+
+### Contratos (`packages/contratos/src/governanca.ts`)
+
+- `EventoDoHistorico`, `HistoricoDoCaso` (com o estado da exportação), `PedirExportacao` (`motivo`) e `PrazosDoEscritorio`.
+- `CadastrarSenhaGovbr` (`senha`, obrigatória) e `UsoDoCofre` (por pessoa: leituras, cadastros e trocas, recusas e o último uso).
+
+### Campos de formulário
+
+- Senha do gov.br: campo de senha, sem `autocomplete`, que vai direto ao cofre. Não é campo de texto da ficha.
+- Motivo da exportação: texto obrigatório.

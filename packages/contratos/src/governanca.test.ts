@@ -40,3 +40,12 @@ describe('DecidirLaco (GGVP-94 CA9)', () => {
     expect(DecidirLaco.safeParse({ oQueFazer: ' ' }).error?.issues.map((i) => i.message)).toEqual(['Escreva o que o setor deve fazer'])
   })
 })
+
+describe('histórico e cofre (GGVP-99, GGVP-103)', () => {
+  it('o motivo da exportação é obrigatório; a senha do gov.br não perde espaço', async () => {
+    const { CadastrarSenhaGovbr, PedirExportacao } = await import('./governanca.ts')
+    expect(PedirExportacao.safeParse({ motivo: '  ' }).error?.issues.map((i) => i.message)).toEqual(['Escreva o motivo do pedido'])
+    expect(CadastrarSenhaGovbr.parse({ senha: ' a b ' })).toEqual({ senha: ' a b ' })
+    expect(CadastrarSenhaGovbr.safeParse({ senha: '' }).error?.issues.map((i) => i.message)).toEqual(['Digite a senha do gov.br'])
+  })
+})
