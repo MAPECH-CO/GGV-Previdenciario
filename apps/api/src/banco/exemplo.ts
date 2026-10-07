@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
@@ -254,4 +254,38 @@ export async function semearExemplos(banco: Banco) {
     .values([-6, -3, -1].map((d) => ({ tarefaId: cartao.id, quando: new Date(Date.now() + d * 86_400_000), canal: 'whatsapp', resultado: 'sem_resposta', registradaPor: documentacao.id })))
   await banco.insert(tarefa).values({ casoId: cw.id, passo: 'D2.05', titulo: 'Cobrança sem retorno: exigência do INSS', perfilDono: 'senior' })
   await banco.insert(etapa).values({ casoId: cw.id, diagrama: 'D2', passo: 'D2.E3', situacao: 'aguardando_externo', aguardando: 'cliente entregar o documento', iniciadaEm: new Date() })
+
+  // Painel de resultado para os sócios (GGVP-75): dez decisões do INSS dos últimos dias, oito do LOAS (dá a taxa) e duas da
+  // aposentadoria da pessoa com deficiência (amostra insuficiente no recorte por benefício); uma extinção sem mérito com
+  // a causa, uma procedência e um recebimento de honorários, para os totais do Sócio e do Financeiro. Sem tarefa: não
+  // entram em fila nenhuma.
+  const financeiro = usuarios.find((u) => u.perfis.includes('financeiro'))!
+  const diasAtras = (dias: number) => new Date(Date.now() - dias * 86_400_000)
+  for (let i = 0; i < 10; i++) {
+    const [pd] = await banco.insert(pessoa).values({ nome: `Cliente decidido ${i + 1} (exemplo)`, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [cd] = await banco
+      .insert(caso)
+      .values({ pessoaId: pd.id, beneficio: i < 8 ? 'bpc_loas_deficiente' : 'aposentadoria_pcd', fase: 'administrativa', advogadaResponsavelId: advogada.id, criadoEm: diasAtras(120 + i) })
+      .returning()
+    await banco.insert(resultadoInss).values({ casoId: cd.id, resultado: [2, 5, 9].includes(i) ? 'indeferido' : 'deferido', dataDecisao: daqui(-(2 + i)), registradoPor: advogada.id })
+    if (i === 0)
+      await banco.insert(prestacaoContas).values({
+        casoId: cd.id,
+        valorRecebido: '15000.00',
+        honorarios: '4500.00',
+        valorCliente: '10500.00',
+        okAdvogadaPor: advogada.id,
+        okAdvogadaEm: diasAtras(2),
+        recebidaPor: financeiro.id,
+        recebidaEm: diasAtras(1),
+        clienteAvisadoEm: diasAtras(1),
+      })
+  }
+  for (const [nome, desfecho, causaDesfecho] of [
+    ['Sônia Teles (exemplo)', 'extinto_sem_merito', 'Não cumpriu determinação do juízo (exemplo)'],
+    ['Renato Dias (exemplo)', 'procedente_parcial', null],
+  ] as const) {
+    const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
+  }
 }

@@ -11,7 +11,7 @@ import styles from './NaoConstruida.module.css'
  */
 export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
   const tarefas = useTarefasDoServidor()
-  // GGVP-109 CA9: a gestão chega à lista das tentativas bloqueadas pelo topo.
+  // GGVP-109 CA9 e GGVP-75: a gestão chega às tentativas bloqueadas e aos resultados pelo topo.
   const gestao = usePode('gestao.ver')
 
   return (
@@ -25,6 +25,7 @@ export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
                 { id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },
                 { id: 'prazos', glifo: '⏱', rotulo: 'Prazos', href: '/gestao/prazos' },
                 { id: 'cofre', glifo: '🔒', rotulo: 'Uso do cofre', href: '/gestao/cofre' },
+                { id: 'resultados', glifo: '📊', rotulo: 'Resultados', href: '/gestao/resultados' },
                 { id: 'configuracao', glifo: '⚙', rotulo: 'Configuração', href: '/configuracao' },
               ]
             : []),
