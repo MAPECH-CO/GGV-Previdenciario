@@ -68,10 +68,14 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
   })
 
   it('CA2 · o que o escritório já tinha configurado fica, mesmo com a semente gravando a configuração de exemplo', async () => {
-    await banco.insert(configuracao).values({ chave: 'cobranca.limite', valor: 4 })
+    // Uma chave que a semente também grava e outra que só o escritório tem: as duas ficam como estavam.
+    await banco.insert(configuracao).values([
+      { chave: 'cobranca.limite', valor: 4 },
+      { chave: 'escritorio.chave_propria', valor: { qualquer: 'valor' } },
+    ])
     await prepararHomologacao(banco, HOMOLOGACAO)
     const l = await limites()
-    expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([4, 3])
+    expect([l['cobranca.limite'], l['cobranca.intervalo_dias'], l['escritorio.chave_propria']]).toEqual([4, 3, { qualquer: 'valor' }])
   })
 
   it('CA4 · rodar de novo não duplica nada e não troca a senha já entregue', async () => {
