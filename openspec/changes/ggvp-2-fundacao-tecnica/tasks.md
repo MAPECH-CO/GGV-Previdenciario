@@ -31,7 +31,7 @@
 - [x] 3.5 Banco local de exemplo: sem `DATABASE_URL`, a API usa Postgres embutido em `apps/api/.banco-local/` com usuários de exemplo; comandos `usuario:criar` e `usuario:destravar` (resposta do Lucas, Q1 e Q2); verifica com `pnpm dev` e entrando na tela.
 - [x] 3.6 CA1, CA2, CA3, CA4 · Telas "Entrar", "Trocar a senha" e "Sem perfil"; o portal confere a sessão e manda ao login com a volta para a mesma tela; "Sair" na barra do topo; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 3.7 CA1, CA2, CA3, CA4 · Playwright do login com a API no ar; verifica com `pnpm --filter @ggv/web e2e`.
-- [x] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado na revisão geral de 07/10 (branch com a regra dos valores): typecheck e lint sem erro; campos 9, contratos 20, API 37, tela 51, Playwright 14, todos passando (com a máquina carregada, 3 testes de tela estouraram o tempo e passaram rodados um por vez). De novo em 07/10, com o teste do CA16 e do GGVP-129: contratos 20, API 39, tela 51, Playwright 14.
 
 ## GGVP-129 · Modelo de dados do portal (base de todos os épicos, decisão de 05/10)
 
@@ -52,4 +52,4 @@
 - [x] 5.7 CA16 · Teste do caminho real: o OK já dado e o recebimento registrado depois pela mesma pessoa é recusado, por outra é aceito (`migracoes.test.ts`); verifica com `pnpm --filter @ggv/api test`.
 - [ ] 5.8 CA13 · Aberto aqui: esta branch não tem rota que devolva dado de saúde. A gravação em `acesso_dado_sensivel` entra com as rotas que devolvem dado de saúde, cada uma com teste: a conferência da Sênior na Via administrativa (PR #14, `GET /api/casos/:id/conferencia`, parecer médico) e os documentos na Judicialização (PR #16, `apps/api/src/rotas/documentos.ts`).
 - [ ] 5.9 CA14 · Aberto aqui: relatórios e exportações só existem na Garantia (PR #18: exportação do histórico e relatório de prazos); o teste vai lá.
-- [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado na revisão geral de 07/10 (branch com a regra dos valores): typecheck e lint sem erro; campos 9, contratos 20, API 37, tela 51, Playwright 14, todos passando (com a máquina carregada, 3 testes de tela estouraram o tempo e passaram rodados um por vez). De novo em 07/10, com o teste do CA16 e do GGVP-129: contratos 20, API 39, tela 51, Playwright 14.
