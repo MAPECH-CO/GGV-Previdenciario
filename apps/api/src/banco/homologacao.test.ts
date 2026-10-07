@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from './conexao.ts'
 import { caso, configuracao, tarefa, usuario } from './esquema.ts'
 import { SENHA_DE_EXEMPLO, semearExemplos, usuariosDeExemplo } from './exemplo.ts'
-import { LIMITES_PADRAO } from '../fluxo/exigencia.ts'
+import { LIMITES_PADRAO, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { prepararHomologacao } from './homologacao.ts'
 
 const HOMOLOGACAO = { AMBIENTE: 'homologacao' }
@@ -55,11 +55,12 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     }
   })
 
-  it('CA2 · grava os limites de cobrança do Lucas: 2 tentativas, 3 dias entre elas', async () => {
+  it('CA2 · grava os limites de cobrança do Lucas (2 tentativas, 3 dias); sem configuração, o servidor já usa os mesmos (G15)', async () => {
+    expect(await limitesDeCobranca(banco)).toEqual({ limite: 2, intervaloDias: 3 })
     await prepararHomologacao(banco, HOMOLOGACAO)
     const l = await limites()
     expect([l['cobranca.limite'], l['cobranca.intervalo_dias']]).toEqual([LIMITES_PADRAO.limite, LIMITES_PADRAO.intervaloDias])
-    expect(LIMITES_PADRAO).toEqual({ limite: 2, intervaloDias: 3 })
+    expect(await limitesDeCobranca(banco)).toEqual({ limite: 2, intervaloDias: 3 })
   })
 
   it('CA2 · o que o escritório já tinha configurado fica, mesmo com a semente gravando a configuração de exemplo', async () => {
@@ -71,8 +72,15 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
 
   it('CA4 · rodar de novo não duplica nada e não troca a senha já entregue', async () => {
     await prepararHomologacao(banco, HOMOLOGACAO)
-    const antes = { usuarios: await usuarios(), limites: await limites(), hashes: await banco.select({ email: usuario.email, senhaHash: usuario.senhaHash }).from(usuario) }
+    const foto = async () => ({
+      usuarios: await usuarios(),
+      onde: await retrato(banco),
+      limites: await limites(),
+      hashes: await banco.select({ email: usuario.email, senhaHash: usuario.senhaHash }).from(usuario),
+    })
+    const antes = await foto()
+    expect(antes.onde.casos).toBeGreaterThan(0)
     expect(await prepararHomologacao(banco, HOMOLOGACAO)).toEqual([])
-    expect({ usuarios: await usuarios(), limites: await limites(), hashes: await banco.select({ email: usuario.email, senhaHash: usuario.senhaHash }).from(usuario) }).toEqual(antes)
+    expect(await foto()).toEqual(antes)
   })
 })
