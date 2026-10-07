@@ -6,6 +6,7 @@ import {
   adiarCobrancaDaPericia,
   autorizarRemarcacao,
   clienteLigou,
+  confirmarPresenca,
   concluirDocumentos,
   decidirFaltaDaPericia,
   dicaParaAPericia,
@@ -24,6 +25,7 @@ import {
   pedirAoMedicoNaPericia,
   recusasDoChat,
   registrarCobrancaDaPericia,
+  registrarComparecimento,
   registrarLembrete,
   registrarMarcacao,
   registrarRecusaDoChat,
@@ -470,5 +472,120 @@ O laudo deve trazer o CID M54.5.`
     expect(clienteLigou('O cliente me ligou').texto).toBe('Diga o nome do cliente que ligou: eu mostro a próxima tarefa e a orientação.')
     await enviarOrientacao('antonio-exemplo-1', { texto: await textoDo('antonio-exemplo-1'), canal: 'ligacao', revisei: true }, IGOR)
     expect(clienteLigou('O Antônio ligou de novo').texto).toContain('Antônio já recebeu a orientação em 07/10 (na ligação).')
+  })
+})
+
+describe('GGVP-66 · comparecimento e remarcação', () => {
+  const ANTONIO = 'antonio-exemplo-1'
+  const doAntonio = () => tarefasDoJuridicoAdm().filter((t) => t.cliente?.id === 'antonio-exemplo')
+  // A semente nasce em 07/10: a perícia do Antônio fica em 16/10, 10:30, antes de o relógio andar.
+  beforeEach(() => void doAntonio())
+
+  it('CA7, CA8 · na véspera, a confirmação de presença na Central; passou das 16h sem confirmar, o alerta para contatar', async () => {
+    agora = new Date(2026, 9, 14, 9, 0)
+    expect(doAntonio().some((t) => t.acao === 'Confirmar presença na perícia')).toBe(false)
+    agora = new Date(2026, 9, 15, 9, 0)
+    expect(doAntonio().find((t) => t.acao === 'Confirmar presença na perícia')).toMatchObject({
+      codigo: 'DP.07',
+      detalhe: 'Aposentadoria por Incapacidade Permanente · perícia médica amanhã, 10:30 · confirmar até 16h',
+      prazo: 'hoje',
+      urgente: true,
+      href: '/casos/antonio-exemplo-1/pericia/comparecimento',
+    })
+    agora = new Date(2026, 9, 15, 16, 30)
+    expect(doAntonio().find((t) => t.acao === 'Confirmar presença na perícia')?.detalhe).toBe(
+      'Aposentadoria por Incapacidade Permanente · perícia médica amanhã, 10:30 · presença não confirmada até 16h: contatar o cliente',
+    )
+  })
+
+  it('CA7 · o resultado da confirmação fica registrado: sem confirmar, a tarefa segue; confirmado, sai', async () => {
+    agora = new Date(2026, 9, 15, 10, 0)
+    await expect(confirmarPresenca(ANTONIO, { confirmou: false }, IGOR)).rejects.toThrow('Diga o que aconteceu na tentativa (não atendeu, caixa postal…).')
+    await confirmarPresenca(ANTONIO, { confirmou: false, observacao: 'não atendeu' }, IGOR)
+    expect(doAntonio().find((t) => t.acao === 'Confirmar presença na perícia')?.detalhe).toContain('não confirmou: não atendeu')
+    const t = await confirmarPresenca(ANTONIO, { confirmou: true }, IGOR)
+    expect(t.pericia.marcacao!.confirmacao).toEqual({ quando: agora.toISOString(), quem: IGOR, confirmou: true })
+    expect(t.pericia.historico.slice(-2).map((e) => e.oQue)).toEqual(['Não conseguiu confirmar a presença: não atendeu', 'Confirmou a presença do cliente na perícia'])
+    expect(doAntonio().some((t) => t.acao === 'Confirmar presença na perícia')).toBe(false)
+  })
+
+  it('CA1 · só depois do dia e da hora: "Registrar comparecimento"; a orientação e a confirmação saem da Central', async () => {
+    agora = new Date(2026, 9, 16, 10, 0)
+    await expect(registrarComparecimento(ANTONIO, { compareceu: true }, IGOR)).rejects.toThrow(
+      'A perícia ainda não aconteceu: o comparecimento abre depois de 16/10, 10:30.',
+    )
+    agora = new Date(2026, 9, 16, 11, 0)
+    expect(doAntonio().map((t) => t.acao)).toEqual(['Registrar comparecimento'])
+    expect(doAntonio()[0]).toMatchObject({ codigo: 'DP.07', prazo: 'hoje', href: '/casos/antonio-exemplo-1/pericia/comparecimento' })
+    expect((await obterPericia(ANTONIO))!.jaPassou).toBe(true)
+  })
+
+  it('CA6 · no dia seguinte sem registro, o alerta para o Jurídico administrativo', () => {
+    agora = new Date(2026, 9, 17, 9, 0)
+    expect(doAntonio()[0]).toMatchObject({
+      acao: 'Registrar comparecimento',
+      prazo: 'atrasada desde 16/10',
+      urgente: true,
+      detalhe:
+        'Aposentadoria por Incapacidade Permanente · perícia médica em 16/10, 10:30 · Vara Federal de Santo Amaro (exemplo) · sala de perícias · alerta: o comparecimento não foi registrado',
+    })
+  })
+
+  it('CA4, CA5 · compareceu: espera o perito e o resultado, e a advogada responsável acompanha no processo', async () => {
+    agora = new Date(2026, 9, 16, 14, 0)
+    const t = await registrarComparecimento(ANTONIO, { compareceu: true, justificativa: '  ' }, IGOR)
+    expect(t.situacao).toBe('aguardando-resultado')
+    expect(t.pericia.marcacao!.comparecimento).toEqual({ quando: agora.toISOString(), quem: IGOR, compareceu: true })
+    expect(t.pericia.historico.slice(-2)).toEqual([
+      { quando: agora.toISOString(), quem: IGOR, oQue: 'Registrou que Antônio compareceu à perícia médica', passo: 'DP.07' },
+      { quando: agora.toISOString(), quem: 'Sistema', oQue: 'Esperando o perito e o resultado (DP.E3, DP.E4): a advogada responsável acompanha no processo', passo: 'DP.E4' },
+    ])
+    expect(doAntonio()).toEqual([])
+    expect(tarefasDaAdvogadaNaPericia()).toMatchObject([
+      {
+        codigo: 'DP.08',
+        acao: 'Conferir resultado da perícia',
+        cliente: { id: 'antonio-exemplo' },
+        detalhe: 'Aposentadoria por Incapacidade Permanente · perícia médica feita em 16/10 · esperando o resultado no processo',
+        urgente: false,
+      },
+    ])
+    const evento = (await eventosDaAgenda('2026-10-16', '2026-10-16')).find((e) => e.categoria === 'pericias')!
+    expect(evento.estado).toBe('realizado')
+    await expect(remarcarPericia(ANTONIO, 'tentar de novo', IGOR)).rejects.toThrow('A perícia já foi feita: o cliente compareceu.')
+  })
+
+  it('CA2, CA4 · não compareceu: a justificativa fica, a tarefa volta para remarcar e conta no limite', async () => {
+    agora = new Date(2026, 9, 16, 14, 0)
+    const t = await registrarComparecimento(ANTONIO, { compareceu: false, justificativa: 'internado na véspera' }, IGOR)
+    expect(t.situacao).toBe('marcar')
+    expect(t.pericia.remarcacoes).toBe(1)
+    expect(t.pericia.marcacoesAnteriores!.at(-1)!.comparecimento).toMatchObject({ compareceu: false, justificativa: 'internado na véspera' })
+    expect(t.pericia.historico.slice(-2).map((e) => e.oQue)).toEqual([
+      'Registrou que Antônio não compareceu (internado na véspera)',
+      'Remarcação 1: Antônio não compareceu (internado na véspera)',
+    ])
+    expect(doAntonio().map((x) => x.acao)).toEqual(['Remarcar perícia'])
+  })
+
+  it('CA3 · a falta que passa do limite sobe para a advogada responsável (G15), nunca para a sênior', async () => {
+    const banco = ler()
+    banco.pericias!.find((p) => p.processoId === ANTONIO)!.remarcacoes = 2
+    gravar(banco)
+    agora = new Date(2026, 9, 16, 14, 0)
+    const t = await registrarComparecimento(ANTONIO, { compareceu: false }, IGOR)
+    expect(t.situacao).toBe('na-advogada')
+    expect(t.pericia.historico.at(-3)?.oQue).toBe('Registrou que Antônio não compareceu (sem justificativa)')
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável (G15)')
+    expect(doAntonio()).toEqual([])
+    expect(tarefasDaAdvogadaNaPericia()).toMatchObject([{ acao: 'Decidir a perícia', cliente: { id: 'antonio-exemplo' } }])
+  })
+
+  it('CA9 · o cliente avisa antes que não pode ir: remarca na hora, com o motivo, e conta no limite', async () => {
+    agora = new Date(2026, 9, 15, 10, 0)
+    const t = await remarcarPericia(ANTONIO, 'avisou que vai estar internado', IGOR)
+    expect(t.pericia.remarcacoes).toBe(1)
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('Remarcação 1: avisou que vai estar internado')
+    expect(doAntonio().map((x) => x.acao)).toEqual(['Remarcar perícia'])
   })
 })

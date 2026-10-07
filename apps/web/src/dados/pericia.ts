@@ -8,6 +8,7 @@ import { dataCurta, hojeIso } from '../regras/datas.ts'
 import {
   DIAS_ANTES_DOCUMENTOS,
   DIAS_ANTES_PREPARO,
+  HORA_DA_CONFIRMACAO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   MINIMO_DA_FALTA,
   NOMES_DA_INSTANCIA,
@@ -15,6 +16,7 @@ import {
   ORIGENS,
   O_QUE_LEVAR,
   cobrarHoje,
+  confirmacaoDaPresenca,
   escolherOrientacao,
   esperaOInss,
   etapaEmPericia,
@@ -24,6 +26,7 @@ import {
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
   passouDoLimiteDosDocumentos,
+  periciaJaPassou,
   problemaDaOrientacao,
   prazoFalado,
   prazosDaPericia,
@@ -86,6 +89,10 @@ export type MarcacaoDaPericia = LidoDoComprovante & {
   origem: 'comprovante' | 'juizo'
   registradaEm: string
   registradaPor: string
+  /** A confirmação de presença da véspera (GGVP-66, CA7): confirmou ou não, quem, quando e a observação. */
+  confirmacao?: { quando: string; quem: string; confirmou: boolean; observacao?: string }
+  /** Depois do dia e da hora (GGVP-66, CA1): compareceu ou faltou, com a justificativa, se houver (CA4). */
+  comparecimento?: { quando: string; quem: string; compareceu: boolean; justificativa?: string }
 }
 
 /** Um item do que levar à perícia: os tipos de documento que valem e se é laudo (o pedido ao médico, G20). */
@@ -215,6 +222,10 @@ export type PericiaNaTela = {
   }
   /** O perito reconhecido e o perfil dele (GGVP-61). */
   perfil?: PerfilDoPerito
+  /** Passou o dia e a hora da perícia marcada: o comparecimento pode ser registrado (GGVP-66, CA1). */
+  jaPassou: boolean
+  /** A confirmação de presença da véspera, enquanto a perícia não passou e ninguém confirmou (GGVP-66, CA7, CA8). */
+  presenca?: 'ainda-nao' | 'fazer' | 'atrasada'
 }
 
 /** Cada item do kit: anexado é o documento do tipo dele que entrou na pasta depois do pedido (GGVP-56, CA1, CA2, CA4). */
@@ -458,6 +469,7 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
   const { marcacao, lembrete } = pericia
   // Depois de uma remarcação, a tentativa diária recomeça do dia dela.
   const desde = hojeIso(new Date(pericia.remarcadaEm ?? pericia.liberadaEm ?? pericia.abertaEm))
+  const jaPassou = situacao === 'agendada' && periciaJaPassou(marcacao!, agora())
   return {
     pericia,
     ficha,
@@ -467,9 +479,11 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
     etapa: etapaEmPericia(pericia, hoje),
     ...(situacao === 'marcar' && { proximaTentativa: proximaTentativa(pericia.tentativas.filter((x) => x.dia >= desde), desde) }),
     ...(marcacao && { prazos: prazosDaPericia(marcacao.data) }),
-    lembreteHoje: !!marcacao && !!lembrete && !lembrete.enviadoEm && hoje >= lembrete.para && hoje <= marcacao.data,
+    lembreteHoje: situacao === 'agendada' && !jaPassou && !!lembrete && !lembrete.enviadoEm && hoje >= lembrete.para && hoje <= marcacao!.data,
     documentos: documentosNaTela(ficha, pericia, hoje, marcacao && prazosDaPericia(marcacao.data).documentosAte),
     perfil: pericia.peritoId ? perfilDoPerito(peritosDo(banco).find((p) => p.id === pericia.peritoId)!) : undefined,
+    jaPassou,
+    ...(situacao === 'agendada' && !jaPassou && !marcacao!.confirmacao?.confirmou && { presenca: confirmacaoDaPresenca(marcacao!.data, agora()) }),
   }
 }
 
@@ -545,23 +559,29 @@ export function remarcarPericia(processoId: string, motivo: string, quem: string
   return mudar(processoId, (_banco, pericia) => {
     if (motivo.trim().length < MINIMO_DO_MOTIVO) throw new Error('Diga o motivo da remarcação.')
     if (!pericia.marcacao && !pericia.esperaComprovante) throw new Error('Esta perícia ainda não foi marcada.')
-    const quando = agora().toISOString()
-    if (pericia.marcacao) (pericia.marcacoesAnteriores ??= []).push(pericia.marcacao)
-    delete pericia.marcacao
-    delete pericia.esperaComprovante
-    delete pericia.lembrete
-    pericia.remarcacoes += 1
-    pericia.remarcadaEm = quando
-    pericia.historico.push({ quando, quem, oQue: `Remarcação ${pericia.remarcacoes}: ${motivo.trim()}`, passo: 'DP.02' })
-    if (passouDoLimite(pericia)) {
-      pericia.historico.push({
-        quando,
-        quem: SISTEMA,
-        oQue: `Passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a perícia subiu para a advogada responsável (G15)`,
-        passo: 'DP.02',
-      })
-    }
+    if (situacaoDaPericia(pericia) === 'aguardando-resultado') throw new Error('A perícia já foi feita: o cliente compareceu.')
+    remarcar(pericia, motivo.trim(), quem)
   })
+}
+
+/** A data sai e volta "Remarcar perícia", contando no limite; passou dele, sobe para a advogada responsável (G15). */
+function remarcar(pericia: Pericia, motivo: string, quem: string) {
+  const quando = agora().toISOString()
+  if (pericia.marcacao) (pericia.marcacoesAnteriores ??= []).push(pericia.marcacao)
+  delete pericia.marcacao
+  delete pericia.esperaComprovante
+  delete pericia.lembrete
+  pericia.remarcacoes += 1
+  pericia.remarcadaEm = quando
+  pericia.historico.push({ quando, quem, oQue: `Remarcação ${pericia.remarcacoes}: ${motivo}`, passo: 'DP.02' })
+  if (passouDoLimite(pericia)) {
+    pericia.historico.push({
+      quando,
+      quem: SISTEMA,
+      oQue: `Passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a perícia subiu para a advogada responsável (G15)`,
+      passo: 'DP.02',
+    })
+  }
 }
 
 export const MINIMO_DA_JUSTIFICATIVA = 10
@@ -652,6 +672,16 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
       `Jurídico administrativo, que marca a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre, G9). ${depois}`
     )
   }
+  if (t.situacao === 'aguardando-resultado') {
+    const m = pericia.marcacao!
+    return (
+      `${primeiro} compareceu à ${tipo} de ${dataCurta(m.data, hojeIso(agora()))}. Agora o caso espera o perito e o resultado (DP.E3, DP.E4): ` +
+      `a advogada responsável acompanha ${pericia.instancia === 'inss' ? 'no GERID' : 'no processo'} e confere o resultado (DP.08).`
+    )
+  }
+  if (t.jaPassou) {
+    return `A ${tipo} de ${primeiro} já passou: o Jurídico administrativo registra se ${primeiro} compareceu. Se faltou, a perícia volta para remarcar e conta no limite (G15).`
+  }
   if (t.situacao === 'na-advogada') {
     return (
       `A perícia passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma (G15). ` +
@@ -703,14 +733,15 @@ function detalheDaTarefa(t: PericiaNaTela): string {
 }
 
 /** A orientação pronta e ainda não passada ao cliente; com documento novo, só depois da Documentação (GGVP-61, GGVP-62). */
-const paraOrientar = ({ situacao, pericia: p }: PericiaNaTela) =>
-  situacao === 'agendada' && !!p.orientacao && !p.preparacao && (!p.pedeDocumentoNovo || !!p.documentos?.concluida)
+const paraOrientar = ({ situacao, jaPassou, pericia: p }: PericiaNaTela) =>
+  situacao === 'agendada' && !jaPassou && !!p.orientacao && !p.preparacao && (!p.pedeDocumentoNovo || !!p.documentos?.concluida)
 
 /** Para onde "Ver a perícia" leva: a tela do passo em que a perícia está. */
 export function hrefDoPasso(t: PericiaNaTela): string {
   const base = `/casos/${t.processo.id}/pericia`
   if (t.situacao === 'aguardando-inss') return `${base}/aberta`
   if (paraOrientar(t)) return `${base}/orientar`
+  if (t.jaPassou || (t.presenca && t.presenca !== 'ainda-nao')) return `${base}/comparecimento`
   if (t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante' || t.situacao === 'agendada') return `${base}/marcar`
   return base
 }
@@ -785,6 +816,46 @@ export function tarefasDoJuridicoAdm(): Tarefa[] {
         urgente: prazo.urgente,
       })
     }
+    const comparecimento = `/casos/${processo.id}/pericia/comparecimento`
+    // A confirmação de presença da véspera (GGVP-66, CA7); passou das 16h sem confirmar, o alerta para contatar o cliente (CA8).
+    if (t.presenca && t.presenca !== 'ainda-nao') {
+      const m = pericia.marcacao!
+      const tentou = m.confirmacao ? [`não confirmou: ${m.confirmacao.observacao}`] : []
+      tarefas.push({
+        ...base,
+        href: comparecimento,
+        id: `pericia-presenca-${pericia.id}`,
+        codigo: 'DP.07',
+        acao: 'Confirmar presença na perícia',
+        detalhe: [
+          t.beneficio,
+          `${NOMES_DO_TIPO[pericia.tipo]} ${m.data === hoje ? 'hoje' : 'amanhã'}, ${m.hora}`,
+          ...tentou,
+          t.presenca === 'atrasada' ? `presença não confirmada até ${HORA_DA_CONFIRMACAO}h: contatar o cliente` : `confirmar até ${HORA_DA_CONFIRMACAO}h`,
+        ].join(' · '),
+        prazo: 'hoje',
+        urgente: true,
+      })
+    }
+    // Passou o dia e a hora (CA1); no dia seguinte, sem registro, vira alerta (CA6).
+    if (t.jaPassou) {
+      const m = pericia.marcacao!
+      tarefas.push({
+        ...base,
+        href: comparecimento,
+        id: `pericia-comparecimento-${pericia.id}`,
+        codigo: 'DP.07',
+        acao: 'Registrar comparecimento',
+        detalhe: [
+          t.beneficio,
+          `${NOMES_DO_TIPO[pericia.tipo]} em ${dataCurta(m.data, hoje)}, ${m.hora}`,
+          m.local,
+          ...(hoje >= t.prazos!.diaSeguinte ? ['alerta: o comparecimento não foi registrado'] : []),
+        ].join(' · '),
+        prazo: prazoFalado(m.data, hoje).texto,
+        urgente: true,
+      })
+    }
     // O lembrete da véspera (CA7): o Jurídico confere a mensagem e envia pelo Chatwoot (Q5).
     if (t.lembreteHoje) {
       const m = pericia.marcacao!
@@ -807,18 +878,42 @@ export function tarefasDaAdvogadaNaPericia(): Tarefa[] {
   const banco = lerComPericias()
   return (banco.pericias ?? [])
     .map((p) => naTela(banco, p))
-    .filter((t) => t.situacao === 'na-advogada')
-    .map((t) => ({
-      id: `pericia-limite-${t.pericia.id}`,
-      codigo: 'DP.02',
-      cliente: { id: t.ficha.id, nome: t.ficha.nome },
-      acao: 'Decidir a perícia',
-      detalhe: [t.beneficio, NOMES_DO_TIPO[t.pericia.tipo], `${t.pericia.remarcacoes} remarcações: passou do limite (G15)`].join(' · '),
-      prazo: 'hoje',
-      urgente: true,
-      href: `/casos/${t.processo.id}/pericia`,
-      processoId: t.processo.id,
-    }))
+    .flatMap((t): Tarefa[] => {
+      const comum = { cliente: { id: t.ficha.id, nome: t.ficha.nome }, href: `/casos/${t.processo.id}/pericia`, processoId: t.processo.id }
+      if (t.situacao === 'na-advogada') {
+        return [
+          {
+            ...comum,
+            id: `pericia-limite-${t.pericia.id}`,
+            codigo: 'DP.02',
+            acao: 'Decidir a perícia',
+            detalhe: [t.beneficio, NOMES_DO_TIPO[t.pericia.tipo], `${t.pericia.remarcacoes} remarcações: passou do limite (G15)`].join(' · '),
+            prazo: 'hoje',
+            urgente: true,
+          },
+        ]
+      }
+      // Compareceu (GGVP-66, CA5): a advogada responsável acompanha o resultado no GERID ou no processo (GGVP-70).
+      if (t.situacao === 'aguardando-resultado') {
+        const m = t.pericia.marcacao!
+        return [
+          {
+            ...comum,
+            id: `pericia-resultado-${t.pericia.id}`,
+            codigo: 'DP.08',
+            acao: 'Conferir resultado da perícia',
+            detalhe: [
+              t.beneficio,
+              `${NOMES_DO_TIPO[t.pericia.tipo]} feita em ${dataCurta(m.data, hojeIso(agora()))}`,
+              `esperando o resultado ${t.pericia.instancia === 'inss' ? 'no GERID' : 'no processo'}`,
+            ].join(' · '),
+            prazo: 'esperando o resultado',
+            urgente: false,
+          },
+        ]
+      }
+      return []
+    })
 }
 
 const PASSO_NA_AGENDA = { comprovante: 'DP.02 · Marcar a perícia no INSS', juizo: 'DP.04 · Data do juízo, lida da publicação' }
@@ -842,7 +937,7 @@ export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[]
         categoria: 'pericias',
         responsavel: 'Jurídico administrativo',
         passo: PASSO_NA_AGENDA[m.origem],
-        estado: m.data < hoje ? 'confirmar' : 'agendado',
+        estado: m.comparecimento ? (m.comparecimento.compareceu ? 'realizado' : 'faltou') : m.data < hoje ? 'confirmar' : 'agendado',
         fichaId: achado.ficha.id,
         remarcacoes: p.remarcacoes,
         processoId: p.processoId,
@@ -1131,6 +1226,7 @@ const NOMES_DA_SITUACAO_CURTA: Record<SituacaoDaPericia, string> = {
   'aguardando-comprovante': 'esperando o comprovante',
   agendada: 'agendada',
   'na-advogada': 'com a advogada',
+  'aguardando-resultado': 'esperando o resultado',
 }
 
 /** A recusa do chat fica registrada (CA11, G11): quem pediu, quando e o quê. */
@@ -1259,4 +1355,56 @@ export function clienteLigou(texto: string): { texto: string; itens?: ItemDoChat
     texto: `A próxima tarefa é sua: ${tarefa.acao.toLowerCase()} de ${primeiro}. A orientação sai quando a perícia tiver data.`,
     itens: [{ cliente: ficha.nome, acao: tarefa.acao, sub: `${tarefa.detalhe} · ${tarefa.prazo}`, href: tarefa.href! }],
   }
+}
+
+// GGVP-66 · Comparecimento e remarcação (DP.07).
+
+/** A confirmação de presença (CA7): confirmou ou não, com a observação; fica registrada. Não pode ir: é remarcar (CA9). */
+export function confirmarPresenca(processoId: string, c: { confirmou: boolean; observacao?: string }, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    const m = pericia.marcacao
+    if (!m || situacaoDaPericia(pericia) !== 'agendada' || periciaJaPassou(m, agora())) throw new Error('Não há perícia por vir para confirmar.')
+    const observacao = c.observacao?.trim() || undefined
+    if (!c.confirmou && !observacao) throw new Error('Diga o que aconteceu na tentativa (não atendeu, caixa postal…).')
+    const quando = agora().toISOString()
+    m.confirmacao = { quando, quem, confirmou: c.confirmou, ...(observacao && { observacao }) }
+    pericia.historico.push({
+      quando,
+      quem,
+      oQue: c.confirmou ? `Confirmou a presença do cliente na perícia${observacao ? ` (${observacao})` : ''}` : `Não conseguiu confirmar a presença: ${observacao}`,
+      passo: 'DP.07',
+    })
+  })
+}
+
+/**
+ * Depois do dia e da hora (CA1): compareceu, o caso espera o resultado com a advogada responsável (CA5); faltou, a data sai e
+ * volta "Remarcar perícia", contando no limite (CA2), que, passado, sobe para a advogada (CA3, G15). A justificativa, se
+ * houver (CA4).
+ */
+export function registrarComparecimento(processoId: string, r: { compareceu: boolean; justificativa?: string }, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (banco, pericia, hoje) => {
+    const m = pericia.marcacao
+    if (!m || situacaoDaPericia(pericia) !== 'agendada') throw new Error('Esta perícia não está agendada.')
+    if (!periciaJaPassou(m, agora())) throw new Error(`A perícia ainda não aconteceu: o comparecimento abre depois de ${dataCurta(m.data, hoje)}, ${m.hora}.`)
+    const quando = agora().toISOString()
+    const justificativa = r.justificativa?.trim() || undefined
+    m.comparecimento = { quando, quem, compareceu: r.compareceu, ...(justificativa && { justificativa }) }
+    const primeiro = fichaDoProcesso(banco, processoId)!.ficha.nome.split(' ')[0]
+    const porque = justificativa ? ` (${justificativa})` : ''
+    if (r.compareceu) {
+      pericia.historico.push(
+        { quando, quem, oQue: `Registrou que ${primeiro} compareceu à ${NOMES_DO_TIPO[pericia.tipo]}${porque}`, passo: 'DP.07' },
+        {
+          quando,
+          quem: SISTEMA,
+          oQue: `Esperando o perito e o resultado (DP.E3, DP.E4): a advogada responsável acompanha ${pericia.instancia === 'inss' ? 'no GERID' : 'no processo'}`,
+          passo: 'DP.E4',
+        },
+      )
+      return
+    }
+    pericia.historico.push({ quando, quem, oQue: `Registrou que ${primeiro} não compareceu${porque || ' (sem justificativa)'}`, passo: 'DP.07' })
+    remarcar(pericia, `${primeiro} não compareceu${porque}`, quem)
+  })
 }

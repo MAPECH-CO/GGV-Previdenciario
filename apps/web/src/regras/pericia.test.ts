@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   AMOSTRA_MINIMA_DO_PERITO,
+  HORA_DA_CONFIRMACAO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   cobrarHoje,
+  confirmacaoDaPresenca,
   ORIGENS,
   escolherOrientacao,
   esperaOInss,
@@ -13,6 +15,7 @@ import {
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
+  periciaJaPassou,
   passouDoLimiteDosDocumentos,
   prazoFalado,
   problemaDaOrientacao,
@@ -175,5 +178,29 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
     expect(jurimetria(laudos(9, 5)).suficiente).toBe(false)
     expect(jurimetria(laudos(10, 5))).toMatchObject({ taxa: 50, suficiente: true, diasAteOLaudo: 15 })
     expect(jurimetria([])).toMatchObject({ laudos: 0, taxa: 0, suficiente: false })
+  })
+})
+
+describe('GGVP-66 · comparecimento e remarcação', () => {
+  it('CA1 · o comparecimento abre depois do dia e da hora da perícia', () => {
+    const m = { data: '2026-10-16', hora: '10:30' }
+    expect(periciaJaPassou(m, new Date(2026, 9, 16, 10, 29))).toBe(false)
+    expect(periciaJaPassou(m, new Date(2026, 9, 16, 10, 30))).toBe(true)
+    expect(periciaJaPassou(m, new Date(2026, 9, 17, 8, 0))).toBe(true)
+  })
+
+  it('CA7, CA8 · a confirmação abre na véspera; passou das 16h (parâmetro) ou chegou o dia, atrasada', () => {
+    expect(HORA_DA_CONFIRMACAO).toBe(16)
+    expect(confirmacaoDaPresenca('2026-10-16', new Date(2026, 9, 14, 17, 0))).toBe('ainda-nao')
+    expect(confirmacaoDaPresenca('2026-10-16', new Date(2026, 9, 15, 15, 59))).toBe('fazer')
+    expect(confirmacaoDaPresenca('2026-10-16', new Date(2026, 9, 15, 16, 0))).toBe('atrasada')
+    expect(confirmacaoDaPresenca('2026-10-16', new Date(2026, 9, 16, 8, 0))).toBe('atrasada')
+  })
+
+  it('CA5 · compareceu: a perícia espera o resultado', () => {
+    const marcada = { liberadaEm: 'x', marcacao: {} }
+    expect(situacaoDaPericia(marcada)).toBe('agendada')
+    expect(situacaoDaPericia({ ...marcada, marcacao: { comparecimento: { compareceu: true } } })).toBe('aguardando-resultado')
+    expect(situacaoDaPericia({ ...marcada, marcacao: { comparecimento: { compareceu: false } } })).toBe('agendada')
   })
 })

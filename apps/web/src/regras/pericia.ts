@@ -1,7 +1,7 @@
 // Perícia (épico GGVP-10): regras puras, sem React. Prazo e número são código com teste (G19); o servidor de exemplo e,
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
 import { somarDias } from './agenda.ts'
-import { dataCurta } from './datas.ts'
+import { dataCurta, hojeIso } from './datas.ts'
 import { problemaG20 } from './parecer.ts'
 
 export type TipoDePericia = 'medica' | 'social'
@@ -70,17 +70,18 @@ export const LIMITE_DE_REMARCACOES_DA_PERICIA = 2
 export const passouDoLimite = (p: { remarcacoes: number; autorizadas?: number }) =>
   p.remarcacoes > LIMITE_DE_REMARCACOES_DA_PERICIA + (p.autorizadas ?? 0)
 
-export type SituacaoDaPericia = 'aguardando-inss' | 'marcar' | 'aguardando-comprovante' | 'agendada' | 'na-advogada'
+export type SituacaoDaPericia = 'aguardando-inss' | 'marcar' | 'aguardando-comprovante' | 'agendada' | 'na-advogada' | 'aguardando-resultado'
 
 /** Onde a perícia está, para o cartão "Perícias" e para a tela do passo. */
 export function situacaoDaPericia(p: {
   liberadaEm?: string
   esperaComprovante?: unknown
-  marcacao?: unknown
+  marcacao?: { comparecimento?: { compareceu: boolean } }
   remarcacoes?: number
   autorizadas?: number
 }): SituacaoDaPericia {
-  if (p.marcacao) return 'agendada'
+  // Compareceu (GGVP-66, CA5): espera o perito e o resultado (DP.E3, DP.E4).
+  if (p.marcacao) return p.marcacao.comparecimento?.compareceu ? 'aguardando-resultado' : 'agendada'
   if (!p.liberadaEm) return 'aguardando-inss'
   if (passouDoLimite({ remarcacoes: p.remarcacoes ?? 0, autorizadas: p.autorizadas })) return 'na-advogada'
   return p.esperaComprovante ? 'aguardando-comprovante' : 'marcar'
@@ -92,6 +93,7 @@ export const NOMES_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   'aguardando-comprovante': 'Esperando o comprovante',
   agendada: 'Agendada',
   'na-advogada': 'Com a advogada',
+  'aguardando-resultado': 'Esperando o resultado',
 }
 
 export const MINIMO_DO_QUE_ACONTECEU = 5
@@ -224,4 +226,30 @@ export function recusaDoChatNaPericia(texto: string): string | null {
   return PEDIDO_PROIBIDO.test(texto)
     ? 'Não posso orientar a esconder, mudar ou simular a situação real: isso é fraude e põe o processo e o escritório em risco (G11). O pedido ficou registrado.'
     : null
+}
+
+// GGVP-66 · Comparecimento e remarcação (DP.07).
+
+/**
+ * Até que hora da véspera a presença tem de estar confirmada (CA8). O cartão diz "a definir": fica 16h, parâmetro; levar ao
+ * Lucas.
+ */
+export const HORA_DA_CONFIRMACAO = 16
+
+/** Passou o dia e a hora da perícia: dá para registrar o comparecimento (CA1). */
+export function periciaJaPassou(m: { data: string; hora: string }, agora: Date): boolean {
+  const [ano, mes, dia] = m.data.split('-').map(Number)
+  const [hora, minuto] = m.hora.split(':').map(Number)
+  return agora.getTime() >= new Date(ano, mes - 1, dia, hora, minuto).getTime()
+}
+
+/**
+ * A confirmação de presença (CA7, CA8): antes da véspera, ainda não; na véspera até 16h, a fazer; depois disso (e no dia),
+ * atrasada: contatar o cliente.
+ */
+export function confirmacaoDaPresenca(data: string, agora: Date): 'ainda-nao' | 'fazer' | 'atrasada' {
+  const vespera = somarDias(data, -1)
+  const hoje = hojeIso(agora)
+  if (hoje < vespera) return 'ainda-nao'
+  return hoje === vespera && agora.getHours() < HORA_DA_CONFIRMACAO ? 'fazer' : 'atrasada'
 }

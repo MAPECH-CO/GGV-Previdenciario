@@ -52,10 +52,10 @@
 
 ## GGVP-66 · Comparecimento e remarcação
 
-- [ ] 6.1 Regra: `periciaJaPassou`, `HORA_DA_CONFIRMACAO` e o estado da confirmação, com teste em `src/regras/pericia.test.ts` (CA1, CA6, CA7, CA8). Verifica com `pnpm vitest run src/regras/pericia.test.ts`.
-- [ ] 6.2 Servidor de exemplo: `confirmarPresenca`, `registrarComparecimento` (faltou remarca e conta no limite; compareceu espera o resultado), as tarefas e os alertas, com teste em `src/dados/pericia.test.ts` (CA1 a CA9). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
-- [ ] 6.3 Tela `/casos/:id/pericia/comparecimento` (`src/paginas/ComparecimentoPericia.tsx`, Figma `1818:289`) e "Marcar como realizado" na agenda. Teste em `ComparecimentoPericia.test.tsx` (CA1 a CA9). Verifica com `pnpm vitest run src/paginas/ComparecimentoPericia.test.tsx`.
-- [ ] 6.4 Playwright `e2e/pericia-comparecimento.e2e.ts` (CA1 a CA9); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-comparecimento`.
+- [x] 6.1 Regra: `periciaJaPassou`, `HORA_DA_CONFIRMACAO` e o estado da confirmação, com teste em `src/regras/pericia.test.ts` (CA1, CA6, CA7, CA8). Verifica com `pnpm vitest run src/regras/pericia.test.ts`.
+- [x] 6.2 Servidor de exemplo: `confirmarPresenca`, `registrarComparecimento` (faltou remarca e conta no limite; compareceu espera o resultado), as tarefas e os alertas, com teste em `src/dados/pericia.test.ts` (CA1 a CA9). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [x] 6.3 Tela `/casos/:id/pericia/comparecimento` (`src/paginas/ComparecimentoPericia.tsx`, Figma `1818:289`) e "Marcar como realizado" na agenda. Teste em `ComparecimentoPericia.test.tsx` (CA1 a CA9). Verifica com `pnpm vitest run src/paginas/ComparecimentoPericia.test.tsx`.
+- [x] 6.4 Playwright `e2e/pericia-comparecimento.e2e.ts` (CA1 a CA9); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-comparecimento`.
 - [ ] 6.5 Ligar no servidor: a confirmação pelo Chatwoot e os alertas pelo servidor. **Fica aberta nesta história.**
 
 ## GGVP-70 · Conferir o resultado e decidir o próximo passo

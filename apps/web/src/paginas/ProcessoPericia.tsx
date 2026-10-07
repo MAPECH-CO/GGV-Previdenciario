@@ -36,6 +36,7 @@ const COR_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   'aguardando-comprovante': styles.alerta,
   agendada: styles.alerta,
   'na-advogada': styles.alerta,
+  'aguardando-resultado': styles.neutro,
 }
 
 /** Feita, atual ou ainda não chegou. A exigência do INSS só aparece feita quando a perícia veio dela, ou no judicial. */

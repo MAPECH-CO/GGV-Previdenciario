@@ -15,7 +15,8 @@ const ESTADO: Record<EventoDaAgenda['estado'], string> = {
 
 /**
  * O evento da perícia na agenda (Figma 2164:513, 2164:653 e 2164:702): quando, cliente, detalhe e passo; "Abrir o
- * processo" e "Remarcar". Remarcar é com o Jurídico administrativo e tem limite (G15). O comparecimento é da GGVP-66.
+ * processo", "Marcar como realizado" (o comparecimento, GGVP-66) e "Remarcar". Remarcar é com o Jurídico administrativo e
+ * tem limite (G15).
  */
 export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; aoFechar: () => void }) {
   const janela = useRef<HTMLDialogElement>(null)
@@ -70,10 +71,10 @@ export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; a
         <a className={styles.primario} href={processo}>
           Abrir o processo
         </a>
-        {/* O comparecimento (DP.07) é da GGVP-66. */}
-        <button type="button" className={styles.botao} aria-disabled="true">
+        {/* O comparecimento (DP.07, GGVP-66): depois do dia e da hora, a tela registra se o cliente foi. */}
+        <a className={styles.botao} href={`/casos/${evento.processoId}/pericia/comparecimento`}>
           Marcar como realizado
-        </button>
+        </a>
         <a className={styles.botao} href={`/casos/${evento.processoId}/pericia/marcar?remarcar=1`}>
           Remarcar
         </a>
