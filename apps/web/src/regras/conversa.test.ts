@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, modoDoCanal, motivoParaNaoAbrir, papelDoPerfil, type PedidoDeConversa } from './conversa.ts'
+import {
+  CANAIS_DO_REGISTRO,
+  COM_QUEM,
+  MODOS_DO_REGISTRO,
+  ONDE,
+  modoDoCanal,
+  motivoParaNaoAbrir,
+  oQueMudou,
+  oQuePrecisaAtualizar,
+  papelDoPerfil,
+  valorLido,
+  type Dito,
+  type PedidoDeConversa,
+} from './conversa.ts'
 
 const pedido: PedidoDeConversa = { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real', processoId: 'maria-exemplo-1' }
 
@@ -39,5 +52,46 @@ describe('Registrar a conversa (GGVP-76)', () => {
     expect(motivoParaNaoAbrir({ ...pedido, modo: 'escrito', registro: ' ab ' }, 'atendimento', processos)).toBe('Escreva o resumo da conversa.')
     expect(motivoParaNaoAbrir({ ...pedido, modo: 'escrito', registro: 'Tirou dúvida sobre a perícia.' }, 'atendimento', processos)).toBeNull()
     expect(motivoParaNaoAbrir({ ...pedido, modo: 'escrito', registro: 'a'.repeat(4001) }, 'atendimento', processos)).toBe('O resumo vai até 4000 letras.')
+  })
+})
+
+describe('Identificar o que mudou (GGVP-80)', () => {
+  const dito = (d: Dito, aos = 20) => ({ ...d, aos, trecho: 'trecho' })
+  const ficha = { telefone: '11900000004', endereco: '', estadoCivil: 'Casada' }
+
+  it('CA2 e CA5 · só o que é diferente do guardado, marcado ficha ou processo, com o trecho e a hora', () => {
+    const mudancas = oQueMudou(
+      [
+        dito({ onde: 'ficha', campo: 'endereco', valor: 'Rua Exemplo das Acácias, 45' }),
+        dito({ onde: 'ficha', campo: 'telefone', valor: '(11) 90000-0044' }, 38),
+        dito({ onde: 'ficha', campo: 'estadoCivil', valor: ' casada ' }),
+        dito({ onde: 'processo', campo: 'pericia', valor: '2026-10-16' }, 56),
+        dito({ onde: 'processo', campo: 'fato', valor: 'Três dias no hospital', saude: true }, 66),
+      ],
+      ficha,
+      { pericia: '2026-10-02' },
+    )
+    expect(mudancas.map((m) => [m.onde, m.campo, m.antes, m.depois, m.aos])).toEqual([
+      ['ficha', 'endereco', '', 'Rua Exemplo das Acácias, 45', 20],
+      ['ficha', 'telefone', '11900000004', '(11) 90000-0044', 38],
+      ['processo', 'pericia', '2026-10-02', '2026-10-16', 56],
+      ['processo', 'fato', '', 'Três dias no hospital', 66],
+    ])
+    expect(mudancas[0]).toMatchObject({ rotulo: 'endereço', trecho: 'trecho' })
+    expect(mudancas[3].saude).toBe(true)
+    expect(oQuePrecisaAtualizar(mudancas)).toEqual(['ficha', 'processo'])
+  })
+
+  it('o telefone dito igual ao guardado, com outra máscara, não é mudança; sem processo, o do processo fica de fora', () => {
+    const mudancas = oQueMudou([dito({ onde: 'ficha', campo: 'telefone', valor: '(11) 90000-0004' }), dito({ onde: 'processo', campo: 'pericia', valor: '2026-10-16' })], ficha, null)
+    expect(mudancas).toEqual([])
+    expect(oQuePrecisaAtualizar(mudancas)).toEqual([])
+  })
+
+  it('o valor como a pessoa lê: telefone com máscara, data dd/mm/aaaa, vazio é traço', () => {
+    expect(valorLido('telefone', '11900000044')).toBe('(11) 90000-0044')
+    expect(valorLido('pericia', '2026-10-16')).toBe('16/10/2026')
+    expect(valorLido('endereco', '')).toBe('—')
+    expect(ONDE).toEqual({ ficha: 'Ficha do cliente', processo: 'Campos do processo' })
   })
 })

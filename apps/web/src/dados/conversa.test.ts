@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { situacaoDaGravacao } from '../regras/transcricao.ts'
-import { abrirConversa, anexarAudio, finalizarConversa, gravarConversa, obterConversa, tarefasDeRegistrarConversa, transcreverConversa, type NovaConversa, type QuemAge } from './conversa.ts'
+import { abrirConversa, anexarAudio, conversaDaGravacao, finalizarConversa, gravarConversa, obterConversa, tarefasDeRegistrarConversa, transcreverConversa, type NovaConversa, type QuemAge } from './conversa.ts'
 import { registrarAcao } from './entrevista.ts'
-import { configurarExemplo, obterFicha, zerarExemplo } from './servidor.ts'
+import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
 import { obterGravacoes } from './transcricao.ts'
 
 const AGORA = new Date(2026, 9, 7, 14, 32)
@@ -109,5 +109,86 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     await finalizarConversa(c.id, { aos: 30 })
     await anexarAudio('conversa-pedro-ligacao', { nome: 'ligacao-pedro.ogg', tipo: 'audio/ogg', tamanho: 1000, avisoNaGravacao: true })
     expect(tarefasDeRegistrarConversa('Bruna (exemplo)')).toEqual([])
+  })
+})
+
+describe('Transcrever e identificar o que mudou · servidor de exemplo (GGVP-80)', () => {
+  async function conversaDaMaria(pedido: NovaConversa = PRESENCIAL) {
+    const c = await abrirConversa('maria-exemplo', pedido, BRUNA)
+    if (pedido.modo === 'arquivo') await anexarAudio(c.id, { nome: 'ligacao.ogg', tipo: 'audio/ogg', tamanho: 4096, avisoNaGravacao: true })
+    else {
+      await gravarConversa(c.id, { avisei: true })
+      await finalizarConversa(c.id, { aos: 116 })
+    }
+    return transcreverConversa(c.id)
+  }
+
+  it('CA2 e CA5 · a lista do que mudou, marcada ficha ou processo, com o trecho e a hora; o que precisa atualizar; o combinado', async () => {
+    const { conversa } = await conversaDaMaria()
+    const a = conversa.analise!
+    expect(a.mudancas.map((m) => [m.onde, m.rotulo, m.antes, m.depois, m.aos])).toEqual([
+      ['ficha', 'endereço', '', 'Rua Exemplo das Acácias, 45', 20],
+      ['ficha', 'telefone de contato', '11900000004', '11900000044', 38],
+      ['processo', 'data da perícia do INSS', '2026-10-02', '2026-10-16', 56],
+      ['processo', 'fato novo', '', 'Três dias no hospital no fim de setembro', 66],
+      ['processo', 'documento citado', '', 'Relatório da alta hospitalar', 66],
+    ])
+    expect(a.mudancas[1].trecho).toBe('Não, troquei de número: agora é (11) 90000-0044.')
+    expect(a.atualizar).toEqual(['ficha', 'processo'])
+    expect(a.pendencia).toBe('Documentação: receber e digitalizar o relatório da alta hospitalar.')
+    expect(a.observacao).toBe(
+      'A senha do gov.br foi dita em voz alta: saiu da transcrição e foi para o cofre (G9). Tem fato novo de saúde: só o Jurídico vê e confirma, e a transcrição fica só para o Jurídico.',
+    )
+  })
+
+  it('CA1 e CA6 · o texto fica no card, com as informações extraídas e o resumo; nada vai para a ficha antes de conferir (G14)', async () => {
+    const { gravacao: g, ficha } = await conversaDaMaria()
+    expect(g!.extraidas.map((e) => [e.rotulo, e.valor, e.destino, e.conferidaEm])).toEqual([
+      ['Endereço', 'Rua Exemplo das Acácias, 45', 'ficha', undefined],
+      ['Telefone de contato', '(11) 90000-0044', 'ficha', undefined],
+      ['Data da perícia do INSS', '16/10/2026', 'processo', undefined],
+      ['Fato novo', 'Três dias no hospital no fim de setembro', 'processo', undefined],
+      ['Documento citado', 'Relatório da alta hospitalar', 'processo', undefined],
+      ['Senha do gov.br', 'dita na conversa: foi para o cofre; não consta na transcrição (G9)', 'cofre', undefined],
+    ])
+    expect(g!.resumo).toBe(
+      'Presencial, com cliente: endereço, telefone de contato, data da perícia do INSS, fato novo de saúde, documento citado. Combinado: Documentação: receber e digitalizar o relatório da alta hospitalar.',
+    )
+    expect([ficha.telefone, ficha.endereco]).toEqual(['11900000004', undefined])
+    expect(ficha.contatos.at(-1)).toEqual({ data: '2026-10-07', canal: 'Presencial (gravada, G10)', texto: g!.resumo })
+    expect(ficha.historico.map((e) => e.oQue).join(' ')).not.toMatch(/hospital/)
+  })
+
+  it('CA3 e CA8 · a senha dita vai para o cofre (só a trilha) e não fica em lugar nenhum; com dado de saúde, a transcrição é só do Jurídico', async () => {
+    const { gravacao: g, ficha } = await conversaDaMaria()
+    expect(g!.trechos.find((t) => t.aos === 86)?.texto).toBe('A minha senha do gov.br é [senha retirada: vai ao cofre], pode anotar.')
+    expect(ficha.senhaGov).toMatchObject({ situacao: 'no-cofre', por: 'IA, dita na conversa' })
+    expect(ler().cofre.at(-1)).toMatchObject({ fichaId: 'maria-exemplo', quem: 'Sistema (IA)', acao: 'guardou' })
+    expect(JSON.stringify(ler())).not.toContain(SENHA_DITA)
+    expect(g!.soJuridico).toBe(true)
+  })
+
+  it('CA4 · vale para a ligação anexada; no lead sem processo, só a ficha muda e o combinado é do Atendimento', async () => {
+    const ligacao = await conversaDaMaria({ canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' })
+    expect(ligacao.conversa.analise!.mudancas).toHaveLength(5)
+    const c = await abrirConversa('josefa-exemplo', PRESENCIAL, BRUNA)
+    await gravarConversa(c.id, { avisei: true })
+    await finalizarConversa(c.id, { aos: 116 })
+    const { conversa, gravacao } = await transcreverConversa(c.id)
+    expect(conversa.analise!.atualizar).toEqual(['ficha'])
+    expect(conversa.analise!.pendencia).toBe('Atendimento: pedir o comprovante do endereço novo.')
+    expect(gravacao!.soJuridico).toBe(false)
+  })
+
+  it('quem falou não foi o cliente: a observação avisa', async () => {
+    const { conversa } = await conversaDaMaria({ ...PRESENCIAL, comQuem: 'familiar' })
+    expect(conversa.analise!.observacao).toContain('Quem falou não foi o cliente: confira antes de mudar dado de contato.')
+  })
+
+  it('CA9 · só escrita: sem transcrição nem análise; a gravação leva à conversa', async () => {
+    const c = await abrirConversa('maria-exemplo', { ...PRESENCIAL, modo: 'escrito', registro: 'Perguntou da perícia.' }, BRUNA)
+    expect((await transcreverConversa(c.id)).conversa.analise).toBeUndefined()
+    expect(conversaDaGravacao(c.gravacaoId!)).toBe(c.id)
+    expect(conversaDaGravacao('antonio-entrevista')).toBeUndefined()
   })
 })

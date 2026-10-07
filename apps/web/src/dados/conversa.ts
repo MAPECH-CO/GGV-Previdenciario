@@ -9,13 +9,19 @@ import {
   COM_QUEM,
   motivoParaNaoAbrir,
   papelDoPerfil,
+  oQueMudou,
+  oQuePrecisaAtualizar,
+  valorLido,
+  type CampoDoProcesso,
   type CanalDoRegistro,
   type ComQuem,
   type Dito,
   type ModoDoRegistro,
+  type Mudanca,
   type PapelNaConversa,
 } from '../regras/conversa.ts'
-import { ehAudio, minutos, partesDoAudio } from '../regras/entrevista.ts'
+import { ehAudio, minutos, partesDoAudio, tirarSenhas } from '../regras/entrevista.ts'
+import { registrarNoCofre } from './cofre.ts'
 import { BYTES_POR_SEGUNDO, montarTranscricao } from './entrevista.ts'
 import type { IdPerfil } from './perfis.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
@@ -43,6 +49,21 @@ export type Conversa = {
   finalizadaEm?: string
   /** O que a pessoa contou ao abrir, para a Central (a ligação da semente). */
   motivo?: string
+  /** O que a IA achou na conversa transcrita (GGVP-80). */
+  analise?: AnaliseDaConversa
+}
+
+/** O quadro da IA depois de transcrever: o que mudou, o que precisa atualizar, a observação e o combinado (GGVP-80). */
+export type AnaliseDaConversa = { mudancas: Mudanca[]; atualizar: Dito['onde'][]; observacao: string; pendencia?: string }
+
+/**
+ * Os campos do processo que a conversa compara (GGVP-80, CA5). Até a página do processo existir (GGVP-86), vêm daqui:
+ * a perícia da Maria Exemplo, marcada para 02/10.
+ */
+const CAMPOS_DO_PROCESSO_DE_EXEMPLO: Record<string, Partial<Record<CampoDoProcesso, string>>> = { 'maria-exemplo-1': { pericia: '2026-10-02' } }
+
+function camposDoProcesso(processoId: string | undefined): Partial<Record<CampoDoProcesso, string>> | null {
+  return processoId ? { ...CAMPOS_DO_PROCESSO_DE_EXEMPLO[processoId] } : null
 }
 
 /** O que a tela pede ao abrir a conversa (Figma 2144:2). */
@@ -282,6 +303,47 @@ export async function anexarAudio(conversaId: string, arquivo: AudioDaLigacao): 
   return { conversa, ficha, gravacao: g }
 }
 
+const comMaiuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1)
+
+/**
+ * A IA simulada depois da transcrição (GGVP-80): extrai o que foi dito; a comparação com a ficha e o processo é código
+ * (`oQueMudou`). A senha dita sai do texto e vai para o cofre, só a trilha (G9). Nada muda na ficha aqui: só depois de
+ * conferido por quem conversou (G14).
+ */
+function analisar(banco: Banco, c: Conversa, ficha: Ficha, g: Gravacao, ditas: FalaDaConversa[]): AnaliseDaConversa {
+  const ditos = ditas.flatMap((f) => (f.diz ?? []).map((d) => ({ ...d, aos: f.aos, trecho: tirarSenhas([f])[0].texto })))
+  const mudancas = oQueMudou(ditos, ficha, camposDoProcesso(c.processoId))
+  const saude = mudancas.some((m) => m.saude)
+  const senhaDita = ditas.some((f) => f.senha)
+  const pendencia = ditas.find((f) => f.combinado)?.combinado
+  if (senhaDita) {
+    registrarNoCofre(banco, ficha.id, 'guardou', 'Sistema (IA)')
+    ficha.senhaGov = { situacao: 'no-cofre', atualizadaEm: agora().toISOString(), por: 'IA, dita na conversa' }
+    ficha.historico.push(evento('A senha do gov.br dita na conversa foi para o cofre; não consta na transcrição (G9)', 'Sistema (IA)'))
+  }
+  // Dado de saúde: como na entrevista com a advogada, a transcrição inteira fica só para o Jurídico.
+  if (saude) g.soJuridico = true
+  const cofre = senhaDita || g.acoes.some((a) => a.acao === 'guardou-senha')
+  g.extraidas = [
+    ...mudancas.map((m) => ({ id: m.id, rotulo: comMaiuscula(m.rotulo), valor: valorLido(m.campo, m.depois), destino: m.onde })),
+    ...(cofre
+      ? [{ id: 'senha', rotulo: 'Senha do gov.br', valor: `${senhaDita ? 'dita na conversa' : 'digitada no cofre'}: foi para o cofre; não consta na transcrição (G9)`, destino: 'cofre' as const }]
+      : []),
+  ]
+  const oQue = mudancas.map((m) => (m.saude ? 'fato novo de saúde' : m.rotulo))
+  g.resumo = `${comMaiuscula(comQuemFalado(c))}: ${oQue.length ? oQue.join(', ') : 'nada muda na ficha nem no processo'}.${pendencia ? ` Combinado: ${pendencia}` : ''}`
+  // Tudo fica no histórico do contato (GGVP-76, CA9), sem o conteúdo de saúde.
+  ficha.contatos.push({ data: hojeIso(agora()), canal: `${CANAIS_DO_REGISTRO[c.canal].rotulo} (gravada, G10)`, texto: g.resumo })
+  const observacao = [
+    senhaDita && 'A senha do gov.br foi dita em voz alta: saiu da transcrição e foi para o cofre (G9).',
+    saude && 'Tem fato novo de saúde: só o Jurídico vê e confirma, e a transcrição fica só para o Jurídico.',
+    c.comQuem !== 'cliente' && 'Quem falou não foi o cliente: confira antes de mudar dado de contato.',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  return { mudancas, atualizar: oQuePrecisaAtualizar(mudancas), observacao: observacao || 'Nada fora do comum na conversa.', pendencia }
+}
+
 /**
  * POST /api/conversas/:id/transcricao. A OpenAI simulada, com o mesmo motor da entrevista: as falas da conversa de
  * exemplo, nas partes do áudio, com quem fala e sem senha (G9). `falhar` simula a falha; chamar de novo tenta outra vez.
@@ -295,10 +357,11 @@ export async function transcreverConversa(conversaId: string, opcoes: { falhar?:
     g.transcricao = 'falhou'
     g.motivoDaFalha = 'o serviço de transcrição não respondeu'
   } else {
-    g.trechos = montarTranscricao(g, falasDaConversa(ficha, conversa)).trechos
-    g.resumo = `Conversa por ${comQuemFalado(conversa)}, registrada por ${conversa.quem}.`
+    const { trechos, ditas } = montarTranscricao(g, falasDaConversa(ficha, conversa))
+    g.trechos = trechos
     g.transcricao = 'pronta'
     g.motivoDaFalha = undefined
+    conversa.analise = analisar(banco, conversa, ficha, g, ditas)
     // O texto fica no card, nas Transcrições, com acesso por perfil; o histórico só registra o fato (GGVP-80, CA1).
     ficha.historico.push(evento('A transcrição da conversa ficou pronta: está nas Transcrições do card', 'Sistema (IA)'))
   }
@@ -336,4 +399,9 @@ export function tarefasDeRegistrarConversa(usuario: string | undefined): Tarefa[
         },
       ]
     })
+}
+
+/** A conversa de uma gravação: as Transcrições levam à conferência dela, em vez de "Conferir e levar" (GGVP-80, CA6). */
+export function conversaDaGravacao(gravacaoId: string): string | undefined {
+  return ler().conversas?.find((c) => c.gravacaoId === gravacaoId)?.id
 }

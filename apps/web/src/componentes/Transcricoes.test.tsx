@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { abrirConversa, anexarAudio, transcreverConversa } from '../dados/conversa.ts'
 import { encerrarGravacao, iniciarGravacao, transcrever } from '../dados/entrevista.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { Transcricoes } from './Transcricoes.tsx'
@@ -117,5 +118,16 @@ describe('Transcrições do caso · janela', () => {
     expect(await screen.findByText('Explicamos o que levar na perícia.')).toBeTruthy()
     // O contador do topo se atualiza depois da lista: espera por ele, em vez de conferir na hora.
     expect(await screen.findByText('2 gravações · 2 registros sem áudio')).toBeTruthy()
+  })
+
+  it('GGVP-80 CA6 · a conversa com o cliente mostra o que a IA extraiu e leva à conferência dela, em vez de "Conferir e levar"', async () => {
+    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' }, { quem: 'Dra. Paula (exemplo)', perfil: 'advogada' })
+    await anexarAudio(c.id, { nome: 'ligacao.ogg', tipo: 'audio/ogg', tamanho: 4096, avisoNaGravacao: true })
+    await transcreverConversa(c.id)
+    await abrir('maria-exemplo', 'juridico')
+    expect(screen.getByText('Telefone de contato')).toBeTruthy()
+    expect(screen.getAllByText('a conferir na conversa')).toHaveLength(6)
+    expect(screen.queryByRole('button', { name: 'Conferir e levar' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Conferir na conversa (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
   })
 })

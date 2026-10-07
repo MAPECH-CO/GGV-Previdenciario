@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { abrirConversa, gravarConversa } from '../dados/conversa.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { abrirConversa, finalizarConversa, gravarConversa, transcreverConversa } from '../dados/conversa.ts'
+import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { Conversa } from './Conversa.tsx'
 
@@ -115,5 +115,49 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
   it('conversa que não existe avisa', async () => {
     render(<Conversa conversaId="nao-existe" />)
     expect(await screen.findByRole('heading', { name: 'Conversa não encontrada' })).toBeTruthy()
+  })
+})
+
+describe('Transcrever e identificar o que mudou · tela (GGVP-80)', () => {
+  async function transcrita() {
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' }, BRUNA)
+    await gravarConversa(c.id, { avisei: true })
+    await finalizarConversa(c.id, { aos: 116 })
+    await transcreverConversa(c.id)
+    return c
+  }
+
+  it('CA2, CA5 e GGVP-76 CA9 · o que mudou, os dados novos, o que precisa atualizar, a observação e o combinado; o Atendimento não vê o fato de saúde', async () => {
+    const c = await transcrita()
+    render(<Conversa conversaId={c.id} />)
+    const quadro = await screen.findByRole('region', { name: 'O que a IA encontrou na conversa' })
+    const mudou = within(quadro).getByRole('list', { name: 'O que mudou' })
+    expect(within(mudou).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '• Ficha · telefone de contato: (11) 90000-0004 → (11) 90000-0044 (dito às 14:32)«Não, troquei de número: agora é (11) 90000-0044.»',
+      '• Processo · data da perícia do INSS: 02/10/2026 → 16/10/2026 (dito às 14:32)«Mandou: remarcaram a perícia para 16/10, às 8h30.»',
+    ])
+    const novos = within(quadro).getByRole('list', { name: 'Dados novos' })
+    expect(within(novos).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '• Ficha · endereço: Rua Exemplo das Acácias, 45 (dito às 14:32)«Mudei de casa. Agora moro na Rua Exemplo das Acácias, 45.»',
+      '• Processo · fato novo de saúde · só o Jurídico vê',
+      // O trecho é a mesma fala do fato de saúde: o Atendimento não vê.
+      '• Processo · documento citado: Relatório da alta hospitalar (dito às 14:33)',
+    ])
+    expect(within(quadro).getByText('✓ Ficha do cliente').getAttribute('data-marcado')).toBe('true')
+    expect(within(quadro).getByText('✓ Campos do processo')).toBeTruthy()
+    expect(within(quadro).getByText(/A senha do gov.br foi dita em voz alta/)).toBeTruthy()
+    expect(within(quadro).getByText('Documentação: receber e digitalizar o relatório da alta hospitalar.')).toBeTruthy()
+    expect(within(quadro).getByRole('link', { name: 'Conferir e atualizar (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
+    expect(screen.getByText('A transcrição completa fica só para o Jurídico: a conversa tem dado de saúde.')).toBeTruthy()
+    expect(quadro.textContent).not.toMatch(/hospital no fim de setembro/i)
+  })
+
+  it('a advogada vê o fato de saúde e a transcrição', async () => {
+    const c = await transcrita()
+    trocarPerfil('advogada')
+    render(<Conversa conversaId={c.id} />)
+    const quadro = await screen.findByRole('region', { name: 'O que a IA encontrou na conversa' })
+    expect(within(quadro).getByText(/Processo · fato novo: Três dias no hospital no fim de setembro/)).toBeTruthy()
+    expect(within(screen.getByRole('list', { name: 'Falas' })).getAllByRole('listitem').length).toBeGreaterThan(5)
   })
 })

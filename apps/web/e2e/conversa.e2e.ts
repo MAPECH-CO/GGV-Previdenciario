@@ -10,7 +10,7 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 /** A senha que a cliente fala em voz alta na conversa de exemplo: não pode aparecer na tela (G9). */
 const SENHA_DITA = 'Exemplo@2026'
 
-test('GGVP-76 CA1, CA3 a CA7 e CA9 · pelo card, conversa presencial com o aviso, transcrição em tempo real sem a senha, e finalizar', async ({ page }) => {
+test('GGVP-76 CA1, CA3 a CA7 e CA9, e GGVP-80 · pelo card, conversa presencial com o aviso, transcrição sem a senha, finalizar e o que mudou', async ({ page }) => {
   await page.clock.install()
   await page.goto('/clientes/maria-exemplo')
   await page.getByRole('button', { name: 'Iniciar conversa' }).click()
@@ -41,9 +41,23 @@ test('GGVP-76 CA1, CA3 a CA7 e CA9 · pelo card, conversa presencial com o aviso
   const transcricoes = page.getByRole('dialog', { name: 'Transcrições do caso' })
   await expect(transcricoes.getByRole('button', { name: /Presencial · cliente.*presencial · Bruna \(exemplo\) \+ Maria Exemplo.*transcrita/ })).toBeVisible()
   await expect(page.locator('body')).not.toContainText(SENHA_DITA)
+  await transcricoes.getByRole('button', { name: 'Fechar' }).click()
+
+  // GGVP-80: o quadro da IA, com o que mudou e os dados novos; o fato de saúde só o Jurídico vê.
+  const quadro = page.getByRole('region', { name: 'O que a IA encontrou na conversa' })
+  await expect(quadro.getByRole('list', { name: 'O que mudou' })).toContainText('Ficha · telefone de contato: (11) 90000-0004 → (11) 90000-0044')
+  await expect(quadro.getByRole('list', { name: 'O que mudou' })).toContainText('Processo · data da perícia do INSS: 02/10/2026 → 16/10/2026')
+  await expect(quadro.getByRole('list', { name: 'Dados novos' })).toContainText('Ficha · endereço: Rua Exemplo das Acácias, 45')
+  await expect(quadro.getByRole('list', { name: 'Dados novos' })).toContainText('Processo · fato novo de saúde · só o Jurídico vê')
+  await expect(quadro).not.toContainText('hospital no fim de setembro')
+  await expect(quadro.getByText('✓ Ficha do cliente')).toBeVisible()
+  await expect(quadro.getByText('✓ Campos do processo')).toBeVisible()
+  await expect(quadro.getByText(/A senha do gov.br foi dita em voz alta: saiu da transcrição e foi para o cofre \(G9\)/)).toBeVisible()
+  await expect(quadro.getByText('Documentação: receber e digitalizar o relatório da alta hospitalar.')).toBeVisible()
+  await expect(quadro.getByRole('link', { name: 'Conferir e atualizar (D5.04)' })).toBeVisible()
 })
 
-test('GGVP-76 CA2 e CA8 · a ligação do Pedro Exemplo na Central: subir a gravação com o aviso; a tarefa sai da Central', async ({ page }) => {
+test('GGVP-76 CA2 e CA8, e GGVP-80 CA4 · a ligação do Pedro Exemplo na Central: subir a gravação com o aviso, a IA marca o que mudou; a tarefa sai da Central', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })).toBeVisible()
@@ -53,6 +67,7 @@ test('GGVP-76 CA2 e CA8 · a ligação do Pedro Exemplo na Central: subir a grav
   await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
   await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
   await expect(page.getByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'O que a IA encontrou na conversa' }).getByRole('list', { name: 'Dados novos' })).toContainText('Ficha · endereço')
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toHaveCount(0)

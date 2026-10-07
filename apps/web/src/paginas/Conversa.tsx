@@ -9,7 +9,7 @@ import { registrarAcao } from '../dados/entrevista.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import type { Gravacao, SenhaGov } from '../dados/tipos.ts'
-import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, type CanalDoRegistro } from '../regras/conversa.ts'
+import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, ONDE, papelDoPerfil, valorLido, type CanalDoRegistro, type Mudanca } from '../regras/conversa.ts'
 import { hojeIso, hora } from '../regras/datas.ts'
 import { minutos, relogio, tirarSenhas } from '../regras/entrevista.ts'
 import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
@@ -112,6 +112,12 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const processo = ficha.processos.find((p) => p.id === c.processoId)
   const encerrada = g?.estado === 'encerrada'
   const papel = c.papel === 'juridico' ? 'Jurídico' : 'Atendimento'
+  // Dado de saúde só para o Jurídico, pelo perfil de quem está na tela.
+  const juridico = papelDoPerfil(perfil?.id) === 'juridico'
+  const analise = g?.transcricao === 'pronta' ? c.analise : undefined
+  const falasDeSaude = new Set(analise?.mudancas.filter((m) => m.saude).map((m) => m.aos))
+  const ditoAs = (aos: number) =>
+    g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
   const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)} (G10)` : ''
   // A transcrição ao vivo já sai sem a senha dita em voz alta (G9).
   const aoVivo = g && c.modo === 'tempo-real' ? tirarSenhas(falasDaConversa(ficha, c).filter((f) => f.aos <= segundos)) : []
@@ -313,7 +319,9 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 </div>
               )}
 
-              {trechos.length === 0 ? (
+              {encerrada && g.soJuridico && !juridico ? (
+                <p className={vivo.vazio}>A transcrição completa fica só para o Jurídico: a conversa tem dado de saúde.</p>
+              ) : trechos.length === 0 ? (
                 <p className={vivo.vazio}>A transcrição aparece aqui quando a gravação começar.</p>
               ) : (
                 <ol className={vivo.falas} aria-label="Falas">
@@ -392,6 +400,69 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   Ver a transcrição
                 </button>
               </div>
+            </section>
+          )}
+
+          {analise && (
+            <section className={proprio.ia} aria-labelledby="o-que-a-ia-achou">
+              <h2 id="o-que-a-ia-achou" className={proprio.iaTitulo}>
+                <span aria-hidden="true">✦ </span>O que a IA encontrou na conversa
+              </h2>
+              {(
+                [
+                  ['O que mudou', analise.mudancas.filter((m) => m.antes)],
+                  ['Dados novos', analise.mudancas.filter((m) => !m.antes)],
+                ] as [string, Mudanca[]][]
+              ).map(([titulo, lista]) => (
+                <div key={titulo} className={proprio.iaParte}>
+                  <h3 className={proprio.iaSub}>{titulo}</h3>
+                  {lista.length === 0 ? (
+                    <p className={base.nota}>Nada.</p>
+                  ) : (
+                    <ul className={proprio.mudancas} aria-label={titulo}>
+                      {lista.map((m) =>
+                        m.saude && !juridico ? (
+                          <li key={m.id}>• {m.onde === 'ficha' ? 'Ficha' : 'Processo'} · fato novo de saúde · só o Jurídico vê</li>
+                        ) : (
+                          <li key={m.id}>
+                            • {m.onde === 'ficha' ? 'Ficha' : 'Processo'} · {m.rotulo}: {m.antes ? `${valorLido(m.campo, m.antes)} → ` : ''}
+                            {valorLido(m.campo, m.depois)} ({ditoAs(m.aos)})
+                            {/* O trecho da mesma fala do fato de saúde também é dado de saúde: só o Jurídico vê. */}
+                            {(juridico || !falasDeSaude.has(m.aos)) && <span className={proprio.trecho}>«{m.trecho}»</span>}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              <div className={proprio.iaParte}>
+                <h3 className={proprio.iaSub}>O que precisa atualizar</h3>
+                <p className={proprio.chips}>
+                  {(['ficha', 'processo'] as const).map((onde) => (
+                    <span key={onde} className={proprio.chip} data-marcado={analise.atualizar.includes(onde)}>
+                      {analise.atualizar.includes(onde) ? '✓ ' : ''}
+                      {ONDE[onde]}
+                    </span>
+                  ))}
+                </p>
+              </div>
+              <div className={proprio.iaParte}>
+                <h3 className={proprio.iaSub}>Observação</h3>
+                <p>{analise.observacao}</p>
+              </div>
+              {analise.pendencia && (
+                <div className={proprio.iaParte}>
+                  <h3 className={proprio.iaSub}>Combinado na conversa</h3>
+                  <p>{analise.pendencia}</p>
+                </div>
+              )}
+              <div className={base.atalhos}>
+                <a className={vivo.primario} href={`/conversas/${c.id}/conferir`}>
+                  Conferir e atualizar (D5.04)
+                </a>
+              </div>
+              <p className={base.nota}>A IA só muda o que foi dito; nada vai para a ficha nem para o processo sem você conferir (G14).</p>
             </section>
           )}
         </div>

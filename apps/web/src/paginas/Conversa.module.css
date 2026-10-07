@@ -27,3 +27,71 @@
   font-size: var(--fonte-14);
   white-space: pre-wrap;
 }
+
+/* O quadro da IA depois de transcrever (GGVP-80): o que mudou, os dados novos, o que precisa atualizar e a observação. */
+.ia {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.iaTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.iaTitulo span {
+  color: var(--cor-acento);
+}
+
+.iaParte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.iaSub {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.mudancas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trecho {
+  display: block;
+  padding-left: 12px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-style: italic;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 3px 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.chip[data-marcado='true'] {
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-weight: 600;
+}

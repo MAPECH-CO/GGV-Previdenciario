@@ -1,4 +1,5 @@
 // A conversa com o lead ou o cliente (fluxo D5, GGVP-12): canal, com quem, modo e quem pode. Regra, não IA.
+import { formatarTelefone, isoParaData, normalizarTelefone } from '../campos.ts'
 import type { IdPerfil } from '../dados/perfis.ts'
 
 /** O canal da decisão "Canal da conversa" do Miro. WhatsApp e vídeo saem (Lucas, 06/10). */
@@ -60,4 +61,67 @@ export function motivoParaNaoAbrir(p: PedidoDeConversa, papel: PapelNaConversa |
   if (p.modo === 'escrito' && texto.length < TAMANHO_DO_REGISTRO.minimo) return 'Escreva o resumo da conversa.'
   if (texto.length > TAMANHO_DO_REGISTRO.maximo) return `O resumo vai até ${TAMANHO_DO_REGISTRO.maximo} letras.`
   return null
+}
+
+// GGVP-80 · Transcrever e identificar o que mudou.
+
+/** Os campos que a conversa pode mudar, com o nome que a pessoa lê e onde ficam (CA5). */
+export const CAMPOS_DA_CONVERSA: Record<CampoDaFicha | CampoDoProcesso, string> = {
+  telefone: 'telefone de contato',
+  endereco: 'endereço',
+  contatoApoio: 'contato de apoio',
+  estadoCivil: 'estado civil',
+  email: 'e-mail',
+  pericia: 'data da perícia do INSS',
+  fato: 'fato novo',
+  documento: 'documento citado',
+}
+
+export const ONDE: Record<Dito['onde'], string> = { ficha: 'Ficha do cliente', processo: 'Campos do processo' }
+
+/** Uma mudança que a conversa traz: o valor de antes (vazio: dado novo), o dito, e o trecho de onde saiu (CA5). */
+export type Mudanca = {
+  id: string
+  onde: Dito['onde']
+  campo: CampoDaFicha | CampoDoProcesso
+  rotulo: string
+  antes: string
+  depois: string
+  /** Segundos desde o início do áudio. */
+  aos: number
+  trecho: string
+  saude?: true
+}
+
+/** O valor como a pessoa lê: telefone com máscara, data dd/mm/aaaa. */
+export function valorLido(campo: Mudanca['campo'], valor: string): string {
+  if (!valor) return '—'
+  if (campo === 'telefone') return formatarTelefone(valor)
+  if (campo === 'pericia') return isoParaData(valor) ?? valor
+  return valor
+}
+
+const igual = (campo: Mudanca['campo'], a: string, b: string) =>
+  campo === 'telefone' ? normalizarTelefone(a) === normalizarTelefone(b) : a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * O que mudou (CA2, CA5): cada coisa dita, comparada com a ficha e com os campos do processo. O que é igual ao guardado
+ * não entra. Fato novo e documento citado sempre entram: somam ao caso. Sem processo, o que é do processo fica de fora.
+ */
+export function oQueMudou(
+  ditos: (Dito & { aos: number; trecho: string })[],
+  ficha: Partial<Record<CampoDaFicha, string>>,
+  processo: Partial<Record<CampoDoProcesso, string>> | null,
+): Mudanca[] {
+  return ditos.flatMap((d, i) => {
+    if (d.onde === 'processo' && !processo) return []
+    const antes = d.onde === 'ficha' ? (ficha[d.campo] ?? '') : d.campo === 'pericia' ? (processo![d.campo] ?? '') : ''
+    if (antes && igual(d.campo, antes, d.valor)) return []
+    return [{ id: `${d.onde}-${d.campo}-${i}`, onde: d.onde, campo: d.campo, rotulo: CAMPOS_DA_CONVERSA[d.campo], antes, depois: d.valor, aos: d.aos, trecho: d.trecho, ...(d.saude && { saude: true as const }) }]
+  })
+}
+
+/** A decisão ◯ "O que precisa atualizar?" do Miro: a ficha, o processo ou os dois. */
+export function oQuePrecisaAtualizar(mudancas: Mudanca[]): Dito['onde'][] {
+  return (['ficha', 'processo'] as const).filter((onde) => mudancas.some((m) => m.onde === onde))
 }

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { formatarTelefone, isoParaData } from '../campos.ts'
 import { transcrever } from '../dados/entrevista.ts'
 import { agora } from '../dados/servidor.ts'
+import { conversaDaGravacao } from '../dados/conversa.ts'
 import { conferirDocumentos, conferirInformacoes, marcarProva, obterGravacoes } from '../dados/transcricao.ts'
 import type { Ficha, Gravacao, InformacaoExtraida } from '../dados/tipos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
@@ -68,6 +69,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
 
   const g = gravacoes.find((x) => x.id === selecionada)
   const fechada = g?.soJuridico && perfil === 'atendimento'
+  const daConversa = g && conversaDaGravacao(g.id)
   const trechos = g ? buscarTrechos(g.trechos, busca) : []
   const provas = g?.trechos.filter((t) => t.prova).length ?? 0
   const numero = ficha.processos[0]?.numero
@@ -242,6 +244,8 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                             </span>
                             {e.conferidaEm ? (
                               <span className={styles.conferida}>✓ conferida</span>
+                            ) : daConversa ? (
+                              <span className={styles.conferir}>a conferir na conversa</span>
                             ) : (
                               <label className={styles.conferir}>
                                 <input
@@ -263,7 +267,13 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                         ))}
                       </ul>
                     )}
-                    {g.extraidas.some((e) => !e.conferidaEm) && (
+                    {/* A conversa com o cliente se confere na tela dela, por quem conversou (GGVP-84): um caminho só. */}
+                    {daConversa && g.extraidas.some((e) => !e.conferidaEm) && (
+                      <a className={styles.primario} href={`/conversas/${daConversa}/conferir`}>
+                        Conferir na conversa (D5.04)
+                      </a>
+                    )}
+                    {!daConversa && g.extraidas.some((e) => !e.conferidaEm) && (
                       <button
                         type="button"
                         className={styles.primario}
