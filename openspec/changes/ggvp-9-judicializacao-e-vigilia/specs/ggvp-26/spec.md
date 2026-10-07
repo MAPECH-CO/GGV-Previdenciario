@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Receber e casar a publicação pelo número CNJ: as publicações chegam das fontes (AASP e DJEN; fonte de exemplo até as credenciais) já ligadas ao processo, sem repetidas; as sem CNJ, ou com CNJ que não existe no sistema, vão para a fila de revisão da Sênior (resposta do revisor de 06/10).
+Receber e casar a publicação pelo número CNJ: as publicações chegam das fontes (AASP e DJEN, as reais desde o grupo 4, de 07/10; a fonte de exemplo fica para a máquina do dev e os testes) já ligadas ao processo, sem repetidas; as sem CNJ, ou com CNJ que não existe no sistema, vão para a fila de revisão da Sênior (resposta do revisor de 06/10).
 
 ## ADDED Requirements
 
