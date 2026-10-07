@@ -24,7 +24,7 @@ Cada portão abaixo vira critério de aceite nas histórias indicadas. Nenhum po
 | G18 | Documento que contradiz o requisito do benefício bloqueia o caso (por exemplo, "incapacidade total" na Aposentadoria PCD; lesão não consolidada no Auxílio-Acidente) | Roteiro de laudos (v2) | GGVP-20 |
 | G19 | Regras numéricas (24 meses no LOAS, mais de 15 dias e janela de 60 dias na incapacidade temporária, períodos PCD) são calculadas por código com teste, nunca pela IA | Roteiro de laudos (v2) | GGVP-25 |
 | G20 | A orientação ao médico ou ao cliente lista o que o documento deve abordar, sem sugerir diagnóstico, CID, grau, conclusão nem frase pronta | Roteiro de laudos (v2), no espírito de G11 | GGVP-29 |
-| G21 | Toda exigência do juízo ou do INSS vira item com prazo, responsável e prova; sem prova em todos os itens, não se manifesta; perto do vencimento, escala para a sênior | Conversa de 26/09 (v2) | GGVP-68 |
+| G21 | Toda exigência do juízo ou do INSS vira item com prazo, responsável e prova; sem prova em todos os itens, não se manifesta. Prova é o documento anexado ou o texto registrado com quem e quando (GGVP-68 CA2); o item sem documento encerrado pela advogada com o motivo conta como prova em texto (leitura aceita pelo Pedro em 07/10, o Lucas confere na homologação; GGVP-87). Perto do vencimento, escala para a sênior | Conversa de 26/09 (v2) | GGVP-68, GGVP-87 |
 | G22 | Jurimetria com amostra abaixo do mínimo aparece como "amostra insuficiente" e nunca chega ao cliente | Conversa de 26/09 (v2) | GGVP-59, GGVP-64 |
 
 ---
