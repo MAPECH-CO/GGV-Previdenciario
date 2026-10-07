@@ -1,5 +1,5 @@
-// Auxílio-Acidente: os documentos que provam o acidente, por circunstância (GGVP-47, resposta do Lucas de 01/10 que
-// fecha a Q19). A tabela é configuração do escritório (dados/checklist.ts); aqui, o que se aplica ao caso, a válvula da CAT
+// Auxílio-Acidente: os documentos que provam o acidente, por circunstância (GGVP-47, respostas do Lucas de 01/10, que
+// fecha a Q19, e de 07/10). A tabela é configuração do escritório (dados/checklist.ts); aqui, o que se aplica ao caso, a válvula da CAT
 // e do PPP e o bloqueio da categoria. Trava é código com teste, nunca resposta de modelo.
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { erroData } from './formularios.ts'
@@ -40,8 +40,8 @@ export type DadosDoAcidente = {
   categoria: Categoria
   /** aaaa-mm-dd */
   acidenteEm: string
-  /** Puxa o prontuário (condicional). */
-  internacao: boolean
+  /** Houve auxílio por incapacidade temporária antes: puxa a cópia do processo (condicional). */
+  auxilioAnterior: boolean
   recusados: ComValvula[]
 }
 
@@ -72,12 +72,18 @@ export function bloqueioDoAcidente(d: DadosDoAcidente): string | null {
 
 /** Os complementares do caso pela tabela do escritório: o que se aplica e o que o empregador recusou. */
 export function complementares(tabela: TabelaDoAcidente, d: DadosDoAcidente): Complementar[] {
-  return tabela[d.circunstancia]
-    .filter((c) => (c.tipo === 'cat' || c.tipo === 'ppp' ? COM_VINCULO.includes(d.categoria) : true))
+  const comVinculo = COM_VINCULO.includes(d.categoria)
+  const linhas = tabela[d.circunstancia]
+  // Sem empregador (o segurado especial, o rural), o acidente se prova pelo boletim e pelas fotos (resposta do Lucas, 07/10).
+  const semEmpregador = !comVinculo && d.circunstancia !== 'ocupacional'
+  const fotos = linhas.some((c) => c.tipo === 'fotos-acidente') ? [] : [{ tipo: 'fotos-acidente', exigencia: 'obrigatorio' as const }]
+  return linhas
+    .filter((c) => (c.tipo === 'cat' || c.tipo === 'ppp' ? comVinculo : true))
+    .flatMap((c) => (semEmpregador && c.tipo === 'boletim-ocorrencia' ? [{ ...c, exigencia: 'obrigatorio' as const }, ...fotos] : [c]))
     .map((c) => ({
       tipo: c.tipo,
       exigencia: c.exigencia,
-      aplica: c.exigencia !== 'condicional' || d.internacao,
+      aplica: c.exigencia !== 'condicional' || d.auxilioAnterior,
       recusado: (c.tipo === 'cat' || c.tipo === 'ppp') && d.recusados.includes(c.tipo),
     }))
 }
@@ -87,7 +93,7 @@ export type ValoresDoAcidente = {
   circunstancia: Circunstancia | ''
   categoria: Categoria | ''
   acidenteEm: string
-  internacao: boolean
+  auxilioAnterior: boolean
   recusados: ComValvula[]
 }
 
@@ -106,7 +112,7 @@ export function paraDados(v: ValoresDoAcidente, hoje: string): DadosDoAcidente |
     circunstancia: v.circunstancia as Circunstancia,
     categoria: v.categoria as Categoria,
     acidenteEm: dataParaIso(normalizarData(v.acidenteEm))!,
-    internacao: v.internacao,
+    auxilioAnterior: v.auxilioAnterior,
     recusados: v.recusados,
   }
 }

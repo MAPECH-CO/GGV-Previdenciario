@@ -90,7 +90,7 @@ export function roteirosDeExemplo(): Roteiro[] {
       o('lesao', 'Tipo de lesão, CID e data do acidente', 'Qual é o tipo de lesão e a data do acidente?'),
       x('nao-consolidada', 'Lesão ainda não consolidada'),
       x('sem-reducao', 'Laudo sem redução da capacidade para o trabalho habitual (a redução mínima basta, Tema 416 do STJ)'),
-      c('provas', 'CAT, boletim de ocorrência, ficha do pronto-socorro, prontuário da internação ou cirurgia, exames de imagem da época e posteriores à alta'),
+      c('provas', 'CAT, boletim de ocorrência (obrigatório no trânsito, no doméstico e sem empregador, com as fotos do acidente), ficha do pronto-socorro, prontuário, exames de imagem da época e posteriores à alta, e a cópia do processo do auxílio por incapacidade temporária, se houve'),
     ]),
     roteiro('loas-idoso', 'BPC/LOAS Idoso (socioeconômico)', ['loas-idoso'], false, LUCAS, '2026-10-01', [
       o('idade', 'Idade de 65 anos ou mais', 'Documento com a data de nascimento.'),

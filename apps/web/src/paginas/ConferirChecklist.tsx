@@ -53,7 +53,7 @@ function selo(item: ItemDoChecklist): { texto: string; classe: string } {
   return item.motivo?.startsWith('o empregador') ? { texto: 'pendência', classe: proprio.problema } : { texto: 'não conta', classe: proprio.neutro }
 }
 
-const VAZIO: ValoresDoAcidente = { circunstancia: '', categoria: '', acidenteEm: '', internacao: false, recusados: [] }
+const VAZIO: ValoresDoAcidente = { circunstancia: '', categoria: '', acidenteEm: '', auxilioAnterior: false, recusados: [] }
 
 /** A tela começa do que foi salvo; sem nada salvo, do que a segunda ficha diz. */
 function valoresDe(t: AcidenteNaTela): ValoresDoAcidente {
@@ -99,7 +99,7 @@ function CartaoDoAcidente({ processoId, aoSalvar }: { processoId: string; aoSalv
   // CAT e PPP só aparecem para recusar quando a circunstância e a categoria pedem (CA2).
   const comValvula: ComValvula[] =
     v.circunstancia && v.categoria
-      ? complementares(TABELA_DO_ACIDENTE, { circunstancia: v.circunstancia, categoria: v.categoria, acidenteEm: '', internacao: false, recusados: [] })
+      ? complementares(TABELA_DO_ACIDENTE, { circunstancia: v.circunstancia, categoria: v.categoria, acidenteEm: '', auxilioAnterior: false, recusados: [] })
           .map((c) => c.tipo)
           .filter((t): t is ComValvula => t === 'cat' || t === 'ppp')
       : []
@@ -177,8 +177,8 @@ function CartaoDoAcidente({ processoId, aoSalvar }: { processoId: string; aoSalv
         </label>
       </div>
       <label className={proprio.marcar}>
-        <input type="checkbox" checked={v.internacao} disabled={!pode} onChange={(e) => mudar({ internacao: e.target.checked })} />
-        Houve internação ou cirurgia (o prontuário entra no checklist)
+        <input type="checkbox" checked={v.auxilioAnterior} disabled={!pode} onChange={(e) => mudar({ auxilioAnterior: e.target.checked })} />
+        Houve auxílio por incapacidade temporária antes (a cópia do processo entra no checklist)
       </label>
       {comValvula.map((tipo) => (
         <label key={tipo} className={proprio.marcar}>

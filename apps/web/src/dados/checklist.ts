@@ -34,27 +34,39 @@ const AUXILIO_ACIDENTE: ListaDoBeneficio = { obrigatorios: ['rg', 'cpf', 'cnis',
 export const LISTAS_DE_DOCUMENTOS: Record<string, ListaDoBeneficio> = { 'loas-idoso': LOAS, 'loas-deficiente': LOAS, 'auxilio-acidente': AUXILIO_ACIDENTE }
 
 /**
- * Os complementares do Auxílio-Acidente por circunstância (GGVP-47): resposta do Lucas de 01/10, que fecha a Q19. O Lucas
- * fixou a CAT, o PPP, o boletim (desejável em todas) e a regra do condicional; a ficha do pronto-socorro e os exames seguem a
- * lista da história como obrigatórios, e o prontuário como condicional da internação ou cirurgia. Levar ao Lucas: conferir.
+ * Os complementares do Auxílio-Acidente por circunstância (GGVP-47): respostas do Lucas de 01/10 (Q19) e de 07/10, no grupo.
+ * O prontuário vale para todos os casos, mesmo sem internação ou cirurgia, porque mostra a evolução e as sequelas. No
+ * trânsito e no doméstico o boletim de ocorrência é obrigatório e entram as fotos do acidente. A cópia do processo do auxílio
+ * por incapacidade temporária entra se houve um antes (o condicional).
  */
-const PROVAS_DO_ACIDENTE = (cat: boolean, ppp: boolean, prontoSocorro: boolean) => [
-  ...(cat ? [{ tipo: 'cat', exigencia: 'obrigatorio' as const }] : []),
-  ...(ppp ? [{ tipo: 'ppp', exigencia: 'obrigatorio' as const }] : []),
-  { tipo: 'boletim-ocorrencia', exigencia: 'desejavel' as const },
-  ...(prontoSocorro ? [{ tipo: 'ficha-pronto-socorro', exigencia: 'obrigatorio' as const }] : []),
-  { tipo: 'prontuario', exigencia: 'condicional' as const },
-  { tipo: 'exame-imagem-epoca', exigencia: 'obrigatorio' as const },
-  { tipo: 'exame-pos-alta', exigencia: 'obrigatorio' as const },
+const obrigatorio = (tipo: string) => ({ tipo, exigencia: 'obrigatorio' as const })
+const BOLETIM_DESEJAVEL = { tipo: 'boletim-ocorrencia', exigencia: 'desejavel' as const }
+const PROCESSO_ANTERIOR = { tipo: 'processo-auxilio-anterior', exigencia: 'condicional' as const }
+const DE_TRABALHO = [
+  obrigatorio('cat'),
+  BOLETIM_DESEJAVEL,
+  obrigatorio('ficha-pronto-socorro'),
+  obrigatorio('prontuario'),
+  obrigatorio('exame-imagem-epoca'),
+  obrigatorio('exame-pos-alta'),
+  PROCESSO_ANTERIOR,
+]
+const PREVIDENCIARIO = [
+  obrigatorio('boletim-ocorrencia'),
+  obrigatorio('fotos-acidente'),
+  obrigatorio('ficha-pronto-socorro'),
+  obrigatorio('prontuario'),
+  obrigatorio('exame-imagem-epoca'),
+  obrigatorio('exame-pos-alta'),
 ]
 
 export const TABELA_DO_ACIDENTE: TabelaDoAcidente = {
-  trabalho: PROVAS_DO_ACIDENTE(true, false, true),
-  trajeto: PROVAS_DO_ACIDENTE(true, false, true),
-  // Na doença ocupacional o nexo pode vir pelo NTEP: o PPP é obrigatório, e não há pronto-socorro.
-  ocupacional: PROVAS_DO_ACIDENTE(true, true, false),
-  transito: PROVAS_DO_ACIDENTE(false, false, true),
-  domestico: PROVAS_DO_ACIDENTE(false, false, true),
+  trabalho: DE_TRABALHO,
+  trajeto: DE_TRABALHO,
+  // Na doença ocupacional o nexo pode vir pelo NTEP: o PPP é obrigatório, não há pronto-socorro, e os exames mostram o quadro e a evolução.
+  ocupacional: [obrigatorio('cat'), obrigatorio('ppp'), BOLETIM_DESEJAVEL, obrigatorio('prontuario'), obrigatorio('exame-evolucao'), PROCESSO_ANTERIOR],
+  transito: PREVIDENCIARIO,
+  domestico: PREVIDENCIARIO,
 }
 
 const SEM_CIRCUNSTANCIA = 'Marque a circunstância do acidente: o que é obrigatório depende dela.'

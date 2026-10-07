@@ -10,11 +10,11 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 
 const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`conteúdo de ${name}`) })
 
-async function marcar(page: Page, circunstancia: string, internacao: boolean) {
+async function marcar(page: Page, circunstancia: string, auxilioAnterior: boolean) {
   await page.getByRole('combobox', { name: 'Circunstância' }).selectOption(circunstancia)
   await page.getByRole('combobox', { name: 'Categoria do segurado' }).selectOption('empregado')
   await page.getByRole('textbox', { name: 'Data do acidente' }).fill('15/03/2024')
-  await page.getByRole('checkbox', { name: /Houve internação ou cirurgia/ }).setChecked(internacao)
+  await page.getByRole('checkbox', { name: /Houve auxílio por incapacidade temporária antes/ }).setChecked(auxilioAnterior)
   await page.getByRole('button', { name: 'Salvar a circunstância' }).click()
   await expect(page.getByRole('status')).toHaveText('Circunstância salva: o checklist foi refeito.')
 }
@@ -34,7 +34,7 @@ async function chegam(page: Page, tipos: [string, string][]) {
   await expect(page.getByRole('heading', { name: /✓ Arquivado às/ })).toBeVisible()
 }
 
-test('CA1 e CA2 · a circunstância muda o checklist: o trânsito sem CAT, o trabalho com a CAT e o prontuário da internação', async ({ page }) => {
+test('CA1 e CA2 · a circunstância muda o checklist: o trânsito sem CAT e com boletim e fotos, o trabalho com a CAT e o processo do auxílio anterior', async ({ page }) => {
   await page.goto('/casos/sebastiao-exemplo-1/checklist')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sebastião Exemplo · Conferir checklist')
   await expect(page.getByText(/Liberar ao Jurídico: bloqueado\. Marque a circunstância do acidente/)).toBeVisible()
@@ -44,7 +44,9 @@ test('CA1 e CA2 · a circunstância muda o checklist: o trânsito sem CAT, o tra
   const itens = page.getByRole('list', { name: 'Checklist · Auxílio Acidentário' })
   await expect(itens.getByRole('listitem').filter({ hasText: 'Ficha do pronto-socorro' })).toContainText('obrigatório')
   await expect(itens.getByRole('listitem').filter({ hasText: 'CAT' })).toHaveCount(0)
-  await expect(itens.getByRole('listitem').filter({ hasText: 'Prontuário' })).toContainText('não conta')
+  await expect(itens.getByRole('listitem').filter({ hasText: 'Boletim de ocorrência' })).toContainText('obrigatório')
+  await expect(itens.getByRole('listitem').filter({ hasText: 'Fotos do acidente' })).toContainText('obrigatório')
+  await expect(itens.getByRole('listitem').filter({ hasText: 'Prontuário' })).toContainText('obrigatório')
 
   await marcar(page, 'trabalho', true)
   await expect(page.getByText('B94 · auxílio-acidente acidentário')).toBeVisible()
@@ -52,12 +54,14 @@ test('CA1 e CA2 · a circunstância muda o checklist: o trânsito sem CAT, o tra
   await expect(cat).toContainText('obrigatório')
   await expect(cat).toContainText('ok')
   await expect(itens.getByRole('listitem').filter({ hasText: 'Boletim de ocorrência' })).toContainText('desejável: não conta para o completo')
-  await expect(itens.getByRole('listitem').filter({ hasText: 'Prontuário' })).toContainText('falta')
+  const processo = itens.getByRole('listitem').filter({ hasText: 'Cópia do processo do auxílio' })
+  await expect(processo).toContainText('condicional')
+  await expect(processo).toContainText('falta')
 })
 
 test('CA3 · chegam a ficha do pronto-socorro, o prontuário e o exame da época: completo, e a Documentação libera (G1)', async ({ page }) => {
   await page.goto('/casos/sebastiao-exemplo-1/checklist')
-  await marcar(page, 'trabalho', true)
+  await marcar(page, 'trabalho', false)
   await expect(page.getByText(/Falta: Ficha do pronto-socorro, Prontuário e Exame de imagem da época do acidente/)).toBeVisible()
 
   await chegam(page, [
@@ -81,7 +85,7 @@ test('CA3 · chegam a ficha do pronto-socorro, o prontuário e o exame da época
 
 test('CA4 · o laudo de lesão não consolidada trava a liberação (G18) e sugere a troca de benefício', async ({ page }) => {
   await page.goto('/casos/sebastiao-exemplo-1/checklist')
-  await marcar(page, 'trabalho', true)
+  await marcar(page, 'trabalho', false)
   await chegam(page, [
     ['pronto socorro.pdf', 'ficha-pronto-socorro'],
     ['prontuario cirurgia.pdf', 'prontuario'],

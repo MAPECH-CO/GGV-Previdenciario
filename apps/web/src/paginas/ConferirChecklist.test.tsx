@@ -112,7 +112,7 @@ describe('Checklist do Auxílio-Acidente · tela do passo (GGVP-47)', () => {
     escolher('Circunstância', 'trabalho')
     expect(screen.getByText('B94 · auxílio-acidente acidentário')).toBeTruthy()
     expect(screen.getByRole('checkbox', { name: /O empregador recusou a CAT/ })).toBeTruthy()
-    fireEvent.click(screen.getByRole('checkbox', { name: /Houve internação ou cirurgia/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Houve auxílio por incapacidade temporária antes/ }))
     fireEvent.click(salvar)
     await screen.findByText('CAT (Comunicação de Acidente de Trabalho)')
     expect((await obterFicha('sebastiao-exemplo'))?.historico.at(-1)?.oQue).toBe(
@@ -125,14 +125,15 @@ describe('Checklist do Auxílio-Acidente · tela do passo (GGVP-47)', () => {
     escolher('Circunstância', 'trabalho')
     escolher('Categoria do segurado', 'empregado')
     fireEvent.change(screen.getByRole('textbox', { name: 'Data do acidente' }), { target: { value: '15/03/2024' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: /Houve internação ou cirurgia/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Houve auxílio por incapacidade temporária antes/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Salvar a circunstância' }))
     await screen.findByText('CAT (Comunicação de Acidente de Trabalho)')
     expect(item('CAT (Comunicação de Acidente de Trabalho)').textContent).toBe('CAT (Comunicação de Acidente de Trabalho)obrigatóriook')
     expect(item('Boletim de ocorrência').textContent).toBe('Boletim de ocorrênciadesejável: não conta para o completonão conta')
-    expect(item('Prontuário').textContent).toBe('Prontuáriocondicionalfalta')
+    expect(item('Prontuário').textContent).toBe('Prontuárioobrigatóriofalta')
     expect(item('Exame posterior à alta').textContent).toBe('Exame posterior à altaobrigatóriook')
-    expect(screen.getByText(/Liberar ao Jurídico: bloqueado\. O checklist está incompleto\. Falta: Ficha do pronto-socorro, Prontuário e Exame de imagem da época do acidente\./)).toBeTruthy()
+    expect(item('Cópia do processo do auxílio por incapacidade temporária').textContent).toBe('Cópia do processo do auxílio por incapacidade temporáriacondicionalfalta')
+    expect(screen.getByText(/Liberar ao Jurídico: bloqueado\. O checklist está incompleto\. Falta: Ficha do pronto-socorro, Prontuário, Exame de imagem da época do acidente e Cópia do processo do auxílio por incapacidade temporária\./)).toBeTruthy()
   })
 
   it('CA2 · a categoria facultativo trava na hora, antes de salvar', async () => {

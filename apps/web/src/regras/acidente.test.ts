@@ -6,7 +6,7 @@ const TABELA: TabelaDoAcidente = {
   trabalho: [
     { tipo: 'cat', exigencia: 'obrigatorio' },
     { tipo: 'boletim-ocorrencia', exigencia: 'desejavel' },
-    { tipo: 'prontuario', exigencia: 'condicional' },
+    { tipo: 'processo-auxilio-anterior', exigencia: 'condicional' },
   ],
   trajeto: [{ tipo: 'cat', exigencia: 'obrigatorio' }],
   ocupacional: [
@@ -24,7 +24,7 @@ const dados = (resto: Partial<DadosDoAcidente> = {}): DadosDoAcidente => ({
   circunstancia: 'trabalho',
   categoria: 'empregado',
   acidenteEm: '2024-03-15',
-  internacao: false,
+  auxilioAnterior: false,
   recusados: [],
   ...resto,
 })
@@ -38,20 +38,30 @@ describe('Auxílio-Acidente: prova do acidente (GGVP-47)', () => {
     expect(especie('domestico')).toBe('B36 · auxílio-acidente previdenciário')
   })
 
-  it('CA1 · cada complementar com a exigência; o condicional se aplica só com internação ou cirurgia', () => {
+  it('CA1 · cada complementar com a exigência; o condicional se aplica só se houve auxílio por incapacidade temporária antes', () => {
     expect(complementares(TABELA, dados()).map((c) => [c.tipo, c.exigencia, c.aplica])).toEqual([
       ['cat', 'obrigatorio', true],
       ['boletim-ocorrencia', 'desejavel', true],
-      ['prontuario', 'condicional', false],
+      ['processo-auxilio-anterior', 'condicional', false],
     ])
-    expect(complementares(TABELA, dados({ internacao: true })).find((c) => c.tipo === 'prontuario')?.aplica).toBe(true)
+    expect(complementares(TABELA, dados({ auxilioAnterior: true })).find((c) => c.tipo === 'processo-auxilio-anterior')?.aplica).toBe(true)
   })
 
   it('CA2 · a circunstância e a categoria ajustam o obrigatório: CAT e PPP só com vínculo', () => {
     expect(complementares(TABELA, dados({ circunstancia: 'transito' })).map((c) => c.tipo)).toEqual(['boletim-ocorrencia', 'ficha-pronto-socorro'])
     expect(complementares(TABELA, dados({ circunstancia: 'ocupacional' })).map((c) => c.tipo)).toEqual(['cat', 'ppp'])
     expect(complementares(TABELA, dados({ circunstancia: 'ocupacional', categoria: 'avulso' })).map((c) => c.tipo)).toEqual(['cat', 'ppp'])
-    expect(complementares(TABELA, dados({ categoria: 'especial' })).map((c) => c.tipo)).toEqual(['boletim-ocorrencia', 'prontuario'])
+  })
+
+  it('Lucas, 07/10 · sem empregador (o rural): sem CAT, o boletim vira obrigatório e entram as fotos do acidente', () => {
+    expect(complementares(TABELA, dados({ categoria: 'especial' })).map((c) => [c.tipo, c.exigencia])).toEqual([
+      ['boletim-ocorrencia', 'obrigatorio'],
+      ['fotos-acidente', 'obrigatorio'],
+      ['processo-auxilio-anterior', 'condicional'],
+    ])
+    // Com empregador, a CAT prova o acidente e o boletim segue desejável; na doença ocupacional não há boletim nem fotos.
+    expect(complementares(TABELA, dados()).find((c) => c.tipo === 'boletim-ocorrencia')?.exigencia).toBe('desejavel')
+    expect(complementares(TABELA, dados({ circunstancia: 'ocupacional', categoria: 'especial' }))).toEqual([])
   })
 
   it('CA3 · a válvula: a CAT ou o PPP recusados pelo empregador ficam marcados', () => {
@@ -71,11 +81,11 @@ describe('Auxílio-Acidente: prova do acidente (GGVP-47)', () => {
   })
 
   it('a tela salva só com a circunstância, a categoria e a data do acidente que não seja futura', () => {
-    const v = { circunstancia: 'trajeto' as const, categoria: 'empregado' as const, acidenteEm: '15/03/2024', internacao: true, recusados: [] }
+    const v = { circunstancia: 'trajeto' as const, categoria: 'empregado' as const, acidenteEm: '15/03/2024', auxilioAnterior: true, recusados: [] }
     expect(motivoParaNaoSalvar({ ...v, circunstancia: '' }, '2026-10-06')).toBe('Escolha a circunstância do acidente.')
     expect(motivoParaNaoSalvar({ ...v, categoria: '' }, '2026-10-06')).toBe('Escolha a categoria do segurado.')
     expect(motivoParaNaoSalvar({ ...v, acidenteEm: '01/01/2030' }, '2026-10-06')).toBe('Data do acidente em dd/mm/aaaa, que não seja futura.')
     expect(motivoParaNaoSalvar({ ...v, acidenteEm: '31/02/2024' }, '2026-10-06')).toBe('Data do acidente em dd/mm/aaaa, que não seja futura.')
-    expect(paraDados(v, '2026-10-06')).toEqual({ circunstancia: 'trajeto', categoria: 'empregado', acidenteEm: '2024-03-15', internacao: true, recusados: [] })
+    expect(paraDados(v, '2026-10-06')).toEqual({ circunstancia: 'trajeto', categoria: 'empregado', acidenteEm: '2024-03-15', auxilioAnterior: true, recusados: [] })
   })
 })
