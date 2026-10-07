@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { entrarPelaApi } from './entrar.ts'
+import { SENHA_DE_EXEMPLO, entrarPelaApi } from './entrar.ts'
 
 // Garantia e governança (GGVP-13). Usuários e casos de exemplo do banco local; nenhum é real.
 
@@ -36,4 +36,25 @@ test('GGVP-94 · a cobrança passou do limite: a Sênior vê o laço, devolve à
   await page.getByRole('link', { name: 'Wagner Costa (exemplo) · Cumprir exigência do INSS' }).click()
   await expect(page.getByRole('list', { name: 'Cobranças' })).toContainText('Decisão da Sênior · Ligar para a filha e pedir o CadÚnico por foto · Helena (exemplo)')
   await expect(page.getByText(/Próximo lembrete em/)).toContainText('para Documentação · pela Central de tarefas · “Cumprir exigência do INSS”')
+})
+
+test('GGVP-103 · o Jurídico administrativo guarda a senha do gov.br pelo cofre e revela; a gestão vê o uso, sem a senha', async ({ page }) => {
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Lúcia Prado (exemplo) · Protocolar no Meu INSS' }).click()
+  await expect(page.getByText('Este cliente não tem senha do gov.br no cofre.')).toBeVisible()
+  await page.getByText('Cadastrar a senha do gov.br no cofre').click()
+  await page.getByLabel('Senha do gov.br').fill('gov-lucia-e2e')
+  await page.getByRole('button', { name: 'Guardar no cofre' }).click()
+  await expect(page.getByText('Senha guardada no cofre.')).toBeVisible()
+  await page.getByRole('button', { name: 'Ver a senha do gov.br' }).click()
+  await page.getByLabel('Confirme com a sua senha do portal').fill(SENHA_DE_EXEMPLO)
+  await page.getByRole('button', { name: 'Mostrar por 60 segundos' }).click()
+  await expect(page.getByText(/Senha do gov.br: gov-lucia-e2e/)).toBeVisible()
+
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Uso do cofre' }).click()
+  await expect(page.getByRole('list', { name: 'Uso do cofre por pessoa' })).toContainText('Igor (exemplo) · leituras 1 · cadastros e trocas 1 · recusas 0')
+  await expect(page.locator('body')).not.toContainText('gov-lucia-e2e')
 })

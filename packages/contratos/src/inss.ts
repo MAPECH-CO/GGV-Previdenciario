@@ -23,6 +23,8 @@ export type TarefaDaCentral = z.infer<typeof TarefaDaCentral>
 /** GET /api/casos/:id/protocolo (GGVP-27). Documentos só com tipo e nome: o conteúdo não sai daqui. */
 export const CasoParaProtocolo = z.object({
   casoId: z.uuid(),
+  /** GGVP-103 CA11: o cliente, para cadastrar ou trocar a senha do gov.br pelo cofre. */
+  pessoaId: z.uuid(),
   cliente: z.string(),
   beneficio: z.string().nullable(),
   okSenior: z.object({ por: z.string(), em: z.string() }).nullable(),

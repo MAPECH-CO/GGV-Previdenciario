@@ -31,6 +31,7 @@ import type { Cofre } from '../cofre.ts'
 import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
+import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -38,6 +39,7 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
 export const SEGUNDOS_SENHA = 60
+export const MSG_COFRE_SEM_TAREFA = 'A senha do gov.br só abre com uma tarefa aberta que use o gov.br: protocolar no Meu INSS ou marcar a perícia.'
 const TAMANHO_MAXIMO = 25 * 1024 * 1024
 
 /** Tela de cada passo, quando já existe. */
@@ -58,6 +60,9 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3.05': (id) => `/casos/${id}/peticao`,
   'D3.06': (id) => `/casos/${id}/peticao`,
   'D3.07': (id) => `/casos/${id}/peticao`,
+  // GGVP-99 CA12: o Sócio autoriza a exportação na linha do processo; GGVP-103 CA7: o alerta do cofre abre o mesmo lugar.
+  historico: (id) => `/casos/${id}/historico`,
+  cofre: (id) => `/casos/${id}/historico`,
   'D3a.01': (id) => `/casos/${id}/publicacoes`,
   'D3a.02': (id) => `/casos/${id}/exigencia-juiz`,
   'D3a.03': (id) => `/casos/${id}/exigencia-juiz/setor`,
@@ -189,6 +194,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       okSenior: await okDaSeniorAprovado(c.id),
       documentos: docs,
       temSenhaNoCofre: Boolean(senha),
+      pessoaId: c.pessoaId,
       jaProtocolado: Boolean(protocolo),
     })
   })
@@ -263,6 +269,15 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
   // GGVP-27 CA6 (G9): a senha do gov.br só depois de a pessoa confirmar a própria senha do portal; tempo limitado; histórico.
   app.post<{ Params: { id: string }; Body: { senhaDoPortal?: string } }>('/api/casos/:id/cofre', comCaso, async (pedido, resposta) => {
     const quem = pedido.usuario!
+    // GGVP-103 CA5: só com tarefa aberta no caso que use o gov.br; a tarefa é o motivo que vai para o histórico (CA6).
+    const [tarefaDoGov] = await banco
+      .select({ passo: tarefa.passo, titulo: tarefa.titulo })
+      .from(tarefa)
+      .where(and(eq(tarefa.casoId, pedido.params.id), inArray(tarefa.passo, [...PASSOS_COM_GOVBR]), isNull(tarefa.concluidaEm)))
+    if (!tarefaDoGov) {
+      await historico(quem.id, 'cofre_uso_recusado', pedido, `caso:${pedido.params.id}`)
+      return negar(resposta, 403, MSG_COFRE_SEM_TAREFA)
+    }
     if (!pedido.body?.senhaDoPortal || !(await bcrypt.compare(pedido.body.senhaDoPortal, quem.senhaHash))) {
       await historico(quem.id, 'cofre_negado', pedido, `caso:${pedido.params.id}`)
       return negar(resposta, 403, 'A senha do portal não confere.')
@@ -273,7 +288,9 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       .innerJoin(credencialGovbr, eq(credencialGovbr.pessoaId, caso.pessoaId))
       .where(eq(caso.id, pedido.params.id))
     if (!credencial) return negar(resposta, 404, 'Este cliente não tem senha do gov.br no cofre.')
-    await historico(quem.id, 'cofre_senha_lida', pedido, `caso:${pedido.params.id}`, { pessoa: credencial.pessoaId })
+    await historico(quem.id, 'cofre_senha_lida', pedido, `caso:${pedido.params.id}`, { pessoa: credencial.pessoaId, motivo: tarefaDoGov.titulo, passo: tarefaDoGov.passo })
+    // GGVP-103 CA7: uso fora do padrão (volume ou horário) avisa a Sênior.
+    await alertarUsoForaDoPadrao(banco, quem.id, pedido.params.id, agora())
     resposta.header('cache-control', 'no-store')
     return { senha: cofre.decifrar(credencial), segundos: SEGUNDOS_SENHA } satisfies SenhaDoCofre
   })

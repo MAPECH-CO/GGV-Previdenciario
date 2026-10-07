@@ -123,6 +123,9 @@ export async function semearExemplos(banco: Banco) {
   await banco.insert(configuracao).values([
     { chave: 'cobranca.limite', valor: 3 },
     { chave: 'cobranca.intervalo_dias', valor: 3 }, // dias úteis entre as tentativas (Lucas, 02/10; GGVP-94)
+    // GGVP-103 CA7 (Q1): o uso do cofre fora do padrão avisa a Sênior. Valores de exemplo, a confirmar com o escritório.
+    { chave: 'cofre.alerta.leituras_por_dia', valor: 10 },
+    { chave: 'cofre.alerta.horario', valor: { inicio: 7, fim: 20 } },
   ])
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
