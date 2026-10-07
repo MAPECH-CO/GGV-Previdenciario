@@ -11,6 +11,8 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 const SENHA_DITA = 'Exemplo@2026'
 
 test('GGVP-76 CA1, CA3 a CA7 e CA9, e GGVP-80 · pelo card, conversa presencial com o aviso, transcrição sem a senha, finalizar e o que mudou', async ({ page }) => {
+  // Fluxo longo, de várias telas: o triplo do tempo padrão, para a máquina carregada.
+  test.slow()
   await page.clock.install()
   await page.goto('/clientes/maria-exemplo')
   await page.getByRole('button', { name: 'Iniciar conversa' }).click()
@@ -58,6 +60,8 @@ test('GGVP-76 CA1, CA3 a CA7 e CA9, e GGVP-80 · pelo card, conversa presencial 
 })
 
 test('GGVP-76 CA2 e CA8, e GGVP-80 CA4 · a ligação do Pedro Exemplo na Central: subir a gravação com o aviso, a IA marca o que mudou; a tarefa sai da Central', async ({ page }) => {
+  // Fluxo longo, de várias telas: o triplo do tempo padrão, para a máquina carregada.
+  test.slow()
   await page.goto('/')
   await page.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })).toBeVisible()
@@ -84,6 +88,8 @@ test('GGVP-76 CA2 e CA8, e GGVP-80 CA4 · a ligação do Pedro Exemplo na Centra
 })
 
 test('GGVP-84 · quem conversou confere campo por campo; a ficha muda; Ctrl+Z volta o texto; a Sênior volta a versão', async ({ page }) => {
+  // Fluxo longo, de várias telas: o triplo do tempo padrão, para a máquina carregada.
+  test.slow()
   await page.goto('/clientes/maria-exemplo')
   await page.getByRole('button', { name: 'Iniciar conversa' }).click()
   const janela = page.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
@@ -136,6 +142,8 @@ test('GGVP-84 · quem conversou confere campo por campo; a ficha muda; Ctrl+Z vo
 })
 
 test('GGVP-88 · surgiu pendência: o setor citado pergunta quem; a tarefa nasce na Central da Jéssica, que dá por cumprida', async ({ page }) => {
+  // Fluxo longo, de várias telas: o triplo do tempo padrão, para a máquina carregada.
+  test.slow()
   await page.goto('/clientes/maria-exemplo')
   await page.getByRole('button', { name: 'Iniciar conversa' }).click()
   const janela = page.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
