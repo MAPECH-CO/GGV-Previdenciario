@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 2, digital: '49d2a4ef' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 5, digital: '77c71910' })
   })
 
   it('CA2 · só a Sênior aprova para o INSS', () => {
@@ -43,8 +43,23 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(PERFIS.filter((p) => pode(p, 'prestacao.ver'))).toEqual(['advogada', 'financeiro'])
   })
 
+  it('GGVP-23 · só a Sênior encerra; Financeiro e Sócio não abrem o caso', () => {
+    expect(PERFIS.filter((p) => pode(p, 'caso.encerrar'))).toEqual(['senior'])
+    expect(pode('financeiro', 'caso.ver')).toBe(false)
+    expect(pode('socio', 'caso.ver')).toBe(false)
+    expect(pode('atendimento', 'caso.ver')).toBe(true)
+  })
+
   it('CA10 · só o Sócio atribui perfis', () => {
     expect(PERFIS.filter((p) => pode(p, 'perfis.atribuir'))).toEqual(['socio'])
+  })
+
+  it('versão 4 · exigência do INSS e ida ao banco: cada ação só no seu perfil', () => {
+    expect(pode('advogada', 'exigencia_inss.tratar')).toBe(true)
+    expect(pode('documentacao', 'exigencia_inss.cumprir')).toBe(true)
+    expect(pode('advogada', 'exigencia_inss.cumprir')).toBe(false)
+    expect(pode('senior', 'exigencia_inss.decidir_vencida')).toBe(true)
+    expect(pode('financeiro', 'banco.agendar')).toBe(false)
   })
 
   it('perfil inventado ou vazio não pode nada', () => {
@@ -54,12 +69,12 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 3,
-      atendimento_lider: 5,
-      documentacao: 2,
-      advogada: 10,
-      senior: 9,
-      juridico_adm: 9,
+      atendimento: 5,
+      atendimento_lider: 7,
+      documentacao: 4,
+      advogada: 14,
+      senior: 13,
+      juridico_adm: 11,
       financeiro: 4,
       socio: 2,
     })

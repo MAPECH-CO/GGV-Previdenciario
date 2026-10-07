@@ -3,7 +3,14 @@ import fastifyStatic from '@fastify/static'
 import { sql } from 'drizzle-orm'
 import Fastify from 'fastify'
 import { Saude } from '@ggv/contratos'
+import { abrirArmazenamento, type Armazenamento } from './armazenamento.ts'
 import type { Banco } from './banco/conexao.ts'
+import { chaveDoCofre, criarCofre, type Cofre } from './cofre.ts'
+import { registrarRotasConferencia } from './rotas/conferencia.ts'
+import { registrarRotasInss } from './rotas/inss.ts'
+import { registrarRotasVigilia } from './rotas/vigilia.ts'
+import { registrarRotasExigencia } from './rotas/exigencia.ts'
+import { registrarRotasPrestacao } from './rotas/prestacao.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
 type Opcoes = {
@@ -18,10 +25,14 @@ type Opcoes = {
   agora?: () => Date
   /** Cookie só por HTTPS (homologação). */
   cookieSeguro?: boolean
+  /** Cofre do gov.br (G9). Padrão: chave do COFRE_CHAVE. */
+  cofre?: Cofre
+  /** Onde os arquivos ficam. Padrão: Supabase Storage com as variáveis, ou a pasta local. */
+  armazenamento?: Armazenamento
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento }: Opcoes = {}) {
   const app = Fastify({ logger })
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
 
@@ -36,7 +47,15 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     }
   })
 
-  if (banco) registrarSessao(app, { banco, agora, cookieSeguro })
+  if (banco) {
+    registrarSessao(app, { banco, agora, cookieSeguro })
+    registrarRotasConferencia(app, { banco, agora })
+    const arquivos = armazenamento ?? abrirArmazenamento()
+    registrarRotasInss(app, { banco, agora, cofre: cofre ?? criarCofre(chaveDoCofre()), armazenamento: arquivos })
+    registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasPrestacao(app, { banco, agora })
+  }
 
   if (pastaTela && existsSync(pastaTela)) {
     app.register(fastifyStatic, { root: pastaTela })

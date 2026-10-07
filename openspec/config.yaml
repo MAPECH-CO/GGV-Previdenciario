@@ -11,7 +11,7 @@ context: |
 rules:
   proposal:
     - A primeira linha cita o épico (GGVP-n e título), e a lista das histórias na ordem de kit/entrega-09-10.md, cada uma com chave, título e perfil que usa.
-    - Até 400 palavras. Seções fixas: "Por quê", "Histórias na ordem", "Fora do escopo", "Portões envolvidos".
+    - 'Até 400 palavras. Seções fixas: "Por quê", "Histórias na ordem", "Fora do escopo", "Portões envolvidos".'
     - Só história em "Refinada" no Jira entra na lista. História com dúvida aberta ou [decidir] fica numa seção "Travadas", com a pergunta e quem responde, e não vira código.
   specs:
     - Uma spec por história. Um requisito por critério de aceite, na ordem da história, com o número do critério no título.
@@ -24,7 +24,7 @@ rules:
     - Sem abstração nova, camada nova ou dependência nova sem uma linha dizendo por quê.
   tasks:
     - Uma seção "## GGVP-n · título" por história, acrescentada quando a história começa. Tarefa de no máximo 2 horas. Cada tarefa diz o arquivo que cria ou muda e o teste que a prova.
-    - Ordem dentro da seção: contrato → teste → servidor → tela → teste ponta a ponta com Playwright quando há tela. Tela sem servidor ainda: tarefa "ligar no servidor" fica aberta na seção.
+    - 'Ordem dentro da seção: contrato → teste → servidor → tela → teste ponta a ponta com Playwright quando há tela. Tela sem servidor ainda: tarefa "ligar no servidor" fica aberta na seção.'
     - A última tarefa de cada seção é sempre "Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar 'Agora ok?'".
 
 operations:

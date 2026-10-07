@@ -6,6 +6,7 @@ import { ChatIA } from '../componentes/ChatIA.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
+import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import {
   exemploChatAtendimento,
   sugestoesChatAtendimento,
@@ -22,6 +23,10 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAtendimento() {
   const [aba, setAba] = useState('minhas')
+  // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
+  // continuam embaixo até a história desta Central ligar a fila inteira no servidor (GGVP-78).
+  const doServidor = useTarefasDoServidor() ?? []
+  const tarefas = [...doServidor, ...tarefasAtendimento]
 
   return (
     <>
@@ -42,7 +47,7 @@ export function CentralAtendimento() {
             ativa={aba}
             onMudar={setAba}
             abas={[
-              { id: 'minhas', rotulo: `Minhas tarefas (${tarefasAtendimento.length})` },
+              { id: 'minhas', rotulo: `Minhas tarefas (${tarefas.length})` },
               { id: 'setor', rotulo: `Tarefas do setor (${totalTarefasSetorAtendimento})` },
             ]}
           />
@@ -51,9 +56,9 @@ export function CentralAtendimento() {
               <>
                 <div className={styles.titulo}>
                   <h2 className={styles.tituloTexto}>O que você tem que fazer</h2>
-                  <span className={styles.contagem}>{tarefasAtendimento.length}</span>
+                  <span className={styles.contagem}>{tarefas.length}</span>
                 </div>
-                <ListaTarefas tarefas={tarefasAtendimento} />
+                <ListaTarefas tarefas={tarefas} />
               </>
             ) : (
               <p className={styles.emConstrucao}>Tarefas do setor: tela ainda não construída.</p>

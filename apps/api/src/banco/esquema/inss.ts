@@ -27,6 +27,9 @@ export const requerimentoInss = pgTable('requerimento_inss', {
 
 export const ORIGENS_EXIGENCIA = ['inss', 'juizo'] as const
 export const SITUACOES_EXIGENCIA = ['aberta', 'cumprida', 'vencida', 'dilacao_pedida'] as const
+/** O que a exigência pede, decidido pela advogada (GGVP-39 CA8, G5). */
+export const PEDIDOS_EXIGENCIA = ['documentos', 'pericia', 'pericia_e_documentos'] as const
+export const SITUACOES_ITEM_EXIGENCIA = ['pendente', 'cumprido', 'nao_cumprido'] as const
 
 /** Exigência do INSS ou do juízo (G21): vira itens com prazo, responsável e prova. */
 export const exigencia = pgTable(
@@ -40,27 +43,41 @@ export const exigencia = pgTable(
     descricao: text('descricao').notNull(),
     recebidaEm: date('recebida_em').notNull(),
     prazo: date('prazo'),
+    /** Dias que o INSS deu, como estão na comunicação; o prazo é contado em código (GGVP-39 CA7). */
+    diasInss: integer('dias_inss'),
+    pede: text('pede'),
     publicacaoId: uuid('publicacao_id'),
     situacao: text('situacao').notNull().default('aberta'),
     analisadaPor: uuid('analisada_por').references(() => usuario.id),
     criadoEm: criadoEm(),
   },
-  (t) => [emLista('exigencia_origem', t.origem, ORIGENS_EXIGENCIA), emLista('exigencia_situacao', t.situacao, SITUACOES_EXIGENCIA)],
+  (t) => [
+    emLista('exigencia_origem', t.origem, ORIGENS_EXIGENCIA),
+    emLista('exigencia_situacao', t.situacao, SITUACOES_EXIGENCIA),
+    emLista('exigencia_pede', t.pede, PEDIDOS_EXIGENCIA),
+  ],
 ).enableRLS()
 
-export const exigenciaItem = pgTable('exigencia_item', {
-  id: id(),
-  exigenciaId: uuid('exigencia_id')
-    .notNull()
-    .references(() => exigencia.id),
-  descricao: text('descricao').notNull(),
-  perfilResponsavel: text('perfil_responsavel').notNull(),
-  responsavelId: uuid('responsavel_id').references(() => usuario.id),
-  prazo: date('prazo'),
-  provaDocumentoId: uuid('prova_documento_id').references(() => documento.id),
-  cumpridoEm: momento('cumprido_em'),
-  cumpridoPor: uuid('cumprido_por').references(() => usuario.id),
-}).enableRLS()
+export const exigenciaItem = pgTable(
+  'exigencia_item',
+  {
+    id: id(),
+    exigenciaId: uuid('exigencia_id')
+      .notNull()
+      .references(() => exigencia.id),
+    descricao: text('descricao').notNull(),
+    perfilResponsavel: text('perfil_responsavel').notNull(),
+    responsavelId: uuid('responsavel_id').references(() => usuario.id),
+    prazo: date('prazo'),
+    situacao: text('situacao').notNull().default('pendente'),
+    /** Por que não foi cumprido (GGVP-39 CA11). */
+    motivo: text('motivo'),
+    provaDocumentoId: uuid('prova_documento_id').references(() => documento.id),
+    cumpridoEm: momento('cumprido_em'),
+    cumpridoPor: uuid('cumprido_por').references(() => usuario.id),
+  },
+  (t) => [emLista('exigencia_item_situacao', t.situacao, SITUACOES_ITEM_EXIGENCIA)],
+).enableRLS()
 
 export const TIPOS_PERICIA = ['medica', 'social'] as const
 export const RESULTADOS_PERICIA = ['favoravel', 'desfavoravel'] as const

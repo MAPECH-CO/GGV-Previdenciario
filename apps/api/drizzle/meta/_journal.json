@@ -57,6 +57,13 @@
       "when": 1791243741833,
       "tag": "0007_perfis_validos",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791254038021,
+      "tag": "0008_exigencia_prestacao_e_banco",
+      "breakpoints": true
     }
   ]
 }

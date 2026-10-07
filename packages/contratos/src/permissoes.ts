@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 2
+export const VERSAO_MATRIZ = 5
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -32,12 +32,17 @@ export const MATRIZ = {
   'valores.ver': ['financeiro'],
   'prestacao.ver': ['financeiro', 'advogada'],
   'gestao.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
+  /** Ver o caso só para leitura (GGVP-23 CA4). Financeiro vê prestação e Gestão; o Sócio, Gestão; nenhum dos dois vê o caso. */
+  'caso.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // Fazer
   'laudo.subir': ['atendimento', 'atendimento_lider'],
   'laudo.conferir': ['advogada'],
   'caso.liberar_ao_juridico': ['documentacao'],
   'caso.aprovar_para_inss': ['senior'],
+  'caso.encerrar': ['senior'],
+  'inss.registrar_resposta': JURIDICO,
   'protocolo_inss.registrar': ['juridico_adm'],
+  'pericia.decidir': ['advogada'],
   'pericia.abrir_tarefa': [],
   'pericia.marcar': ['juridico_adm'],
   'pericia.decidir_documento_novo': ['juridico_adm'],
@@ -51,6 +56,11 @@ export const MATRIZ = {
   'prestacao.registrar_recebimento': ['financeiro'],
   'tarefa.atribuir': ['atendimento_lider', 'senior'],
   'perfis.atribuir': ['socio'],
+  // Versão 4 (GGVP-39 e GGVP-44): exigência do INSS e ida ao banco
+  'exigencia_inss.tratar': ['advogada'],
+  'exigencia_inss.cumprir': ['documentacao'],
+  'exigencia_inss.decidir_vencida': ['senior'],
+  'banco.agendar': ['atendimento', 'atendimento_lider'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

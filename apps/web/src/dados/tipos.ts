@@ -21,4 +21,6 @@ export type Tarefa = {
   prazo?: string
   /** Prazo vencido ou estourado: ponto e prazo em cor de ação. */
   urgente?: boolean
+  /** Tela do passo, quando já existe (GGVP-8); sem ela, a linha abre /tarefas/:id. */
+  href?: string
 }
