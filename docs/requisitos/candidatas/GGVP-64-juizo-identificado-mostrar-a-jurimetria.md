@@ -14,7 +14,7 @@
 1. **Dado** o processo distribuído, **quando** a publicação chega, **então** o card mostra vara e juiz e o link para o painel.
 2. **Dado** o painel do juízo, **quando** abro, **então** vejo procedência por benefício, tempo médio e os entendimentos recorrentes com os processos de exemplo.
 3. **Dado** o pedido da petição (GGVP-63) ou a decisão de recorrer (GGVP-100), **quando** a IA gera a minuta ou a recomendação, **então** cita o que usou da jurimetria do juízo.
-4. **Dado** amostra abaixo do mínimo, **quando** abro, **então** vejo "amostra insuficiente" (G22).
+4. **Dado** um juízo com poucos processos na base, **quando** abro, **então** vejo cada porcentagem com o número de processos ao lado e a data da base; não há amostra mínima (G22).
 
 ## Fora do escopo desta história
 - A definir no refinamento.
@@ -23,7 +23,7 @@
 - Quem usa: advogada responsável. Quem vê e quem edita: a definir no refinamento, conforme `docs/requisitos/perfis.md`.
 
 ## Portões de governança
-- **G22**: Jurimetria com amostra abaixo do mínimo aparece como "amostra insuficiente" e nunca chega ao cliente
+- **G22**: Toda porcentagem de jurimetria aparece com o número de casos e a data da base; não há amostra mínima; o número fica fora do texto da peça que vai ao juiz
 
 ## Tela ou referência
 - Figma: a desenhar, no arquivo do perfil "advogada responsável".
