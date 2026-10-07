@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { boolean, check, date, integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
+import { documento } from './documentos.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 import { pessoa } from './pessoas.ts'
 
@@ -20,6 +21,14 @@ export const prestacaoContas = pgTable(
     valorRecebido: numeric('valor_recebido', { precision: 14, scale: 2 }).notNull(),
     honorarios: numeric('honorarios', { precision: 14, scale: 2 }).notNull(),
     valorCliente: numeric('valor_cliente', { precision: 14, scale: 2 }).notNull(),
+    /** Alterar depois de concluída grava a versão seguinte; a anterior fica (GGVP-44 CA6). */
+    versao: integer('versao').notNull().default(1),
+    percentualHonorarios: numeric('percentual_honorarios', { precision: 5, scale: 2 }),
+    formaPagamento: text('forma_pagamento'),
+    prazoPagamento: date('prazo_pagamento'),
+    cartaDocumentoId: uuid('carta_documento_id').references(() => documento.id),
+    /** Motivo da divergência registrada pelo Financeiro (GGVP-44 CA9). */
+    divergencia: text('divergencia'),
     okAdvogadaPor: uuid('ok_advogada_por').references(() => usuario.id),
     okAdvogadaEm: momento('ok_advogada_em'),
     recebidaPor: uuid('recebida_por').references(() => usuario.id),
@@ -28,6 +37,7 @@ export const prestacaoContas = pgTable(
     criadoEm: criadoEm(),
   },
   (t) => [
+    unique('prestacao_versao_unica').on(t.casoId, t.versao),
     check('prestacao_pessoas_diferentes', sql`${t.okAdvogadaPor} is null or ${t.recebidaPor} is null or ${t.okAdvogadaPor} <> ${t.recebidaPor}`),
     check('prestacao_aviso_depois_do_ok', sql`${t.clienteAvisadoEm} is null or ${t.okAdvogadaEm} is not null`),
   ],

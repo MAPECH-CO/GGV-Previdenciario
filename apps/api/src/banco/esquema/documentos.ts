@@ -1,5 +1,5 @@
 // Documentos, documentação médica e contrato (GGVP-17, 18, 20, 29, 33, 65, 69, 72, 77, 93, 95).
-import { bigint, boolean, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { bigint, boolean, date, integer, jsonb, numeric, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
@@ -96,6 +96,8 @@ export const contrato = pgTable(
     modeloId: uuid('modelo_id'),
     modeloVersao: integer('modelo_versao'),
     situacao: text('situacao').notNull().default('rascunho'),
+    /** Percentual de honorários do contrato; a prestação de contas calcula com ele (GGVP-44 CA5). */
+    percentualHonorarios: numeric('percentual_honorarios', { precision: 5, scale: 2 }),
     assinatura: text('assinatura'),
     zapsignId: text('zapsign_id').unique(),
     documentoId: uuid('documento_id').references(() => documento.id),

@@ -12,7 +12,7 @@
 
 ## Critérios de aceite
 1. **Dado** "Deferido", **quando** registro a decisão, **então** nascem a tarefa "Prestação de contas" (Jurídico) e a tarefa "Agendar a ida ao banco" (Atendimento).
-2. **Dado** a prestação de contas feita, **quando** envio, **então** o Financeiro recebe e só ele e o Jurídico veem os valores.
+2. **Dado** a prestação de contas feita, **quando** envio, **então** o Financeiro recebe e só ele e a advogada que fez a prestação veem os valores (Pedro, 06/10: o financeiro do escritório é todo do Financeiro).
 3. **Dado** a ida ao banco agendada, **quando** o Atendimento registra a data, **então** o cliente recebe a confirmação.
 
 ## Fora do escopo desta história
