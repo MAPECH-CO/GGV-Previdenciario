@@ -77,3 +77,17 @@ Toda tentativa bloqueada SHALL ficar no histórico com quem, quando, o caso e o 
 - **Dado** qualquer tentativa bloqueada
 - **Quando** acontece
 - **Então** fica registrada (quem, quando, caso e portão), e a gestão consegue ver as tentativas
+
+### Requirement: CA2 e G17 · Regra única do parecer, confirmação de pessoa e dispensa por duas Sêniores
+A trava do parecer SHALL ser uma regra só, `travaDoParecer` em `packages/contratos`, usada pela tela (GGVP-33) e pelo servidor. O parecer só sugerido pela IA, sem pessoa do Jurídico que o confirme, MUST NOT abrir o portão. A dispensa MUST ser de duas Sêniores diferentes (Lucas, 01/10, Q14): uma pede com justificativa, outra aprova ou recusa; se a mesma pessoa tenta aprovar, o servidor recusa e registra a tentativa. Benefício sem laudo não pede parecer; benefício ainda não definido pede.
+
+#### Scenario: CA2 · Parecer só da IA
+- **Dado** um parecer "Suficiente" sugerido pela IA e sem confirmação de pessoa
+- **Quando** a Sênior tenta aprovar para o INSS
+- **Então** o servidor recusa, diz que falta a confirmação do Jurídico, e registra a tentativa (G17)
+
+#### Scenario: G17 · Dispensa pela mesma Sênior
+- **Dado** uma dispensa do parecer pedida por uma Sênior
+- **Quando** a mesma Sênior tenta aprová-la
+- **Então** o servidor recusa e registra a tentativa; só outra Sênior aprova, e aí o portão abre
+
