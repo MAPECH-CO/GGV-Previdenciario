@@ -101,6 +101,19 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     expect([l.titulo, l.cliente.nome, l.tela]).toEqual(['Ler publicação', 'Sebastião Cruz', `/casos/${casoId}/publicacoes`])
   })
 
+  it('GGVP-37 CA6 · nada vira só andamento sem uma pessoa: casada, a publicação chega sem classe; só a leitura da advogada a registra', async () => {
+    const { andamento } = await casar()
+    expect((await banco.select().from(publicacao)).map((p) => [p.classe, p.revisadaPor])).toEqual([
+      [null, null],
+      [null, null],
+    ])
+    expect(await filaDa('gabi')).toEqual([['Ler publicação', null]])
+    await classificar(andamento.id, { classe: 'andamento' })
+    const [gabi] = await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, 'gabi@exemplo.ggv'))
+    const [lida] = await banco.select().from(publicacao).where(eq(publicacao.id, andamento.id))
+    expect([lida.classe, lida.revisadaPor, lida.revisadaEm instanceof Date]).toEqual(['andamento', gabi.id, true])
+  })
+
   it('CA2, CA4 e GGVP-34 CA3 · exigência: a advogada classifica, vê o prazo com a regra e a tarefa nasce com o prazo', async () => {
     const { exigencia } = await casar()
     expect((await classificar(exigencia.id, { classe: 'exigencia' })).json().erro).toBe(
@@ -109,8 +122,8 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     const r = (await classificar(exigencia.id, { classe: 'exigencia', dias: '15' })).json()
     expect([r.prazo.inicio, r.prazo.fim, r.prazo.versao]).toEqual(['2026-10-07', '2026-10-27', 1])
     const lida = (await chamar('gabi', 'GET', `/api/publicacoes/${exigencia.id}`)).json()
-    expect([lida.classe, lida.classificadaPor, lida.prazo.fim, lida.prazo.regra, lida.feriadosCadastrados]).toEqual([
-      'exigencia', 'gabi', '2026-10-27', r.prazo.regra, false,
+    expect([lida.classe, lida.classificadaPor, lida.prazo.inicio, lida.prazo.fim, lida.prazo.regra, lida.feriadosCadastrados]).toEqual([
+      'exigencia', 'gabi', '2026-10-07', '2026-10-27', r.prazo.regra, false,
     ])
     expect(await filaDa('gabi')).toEqual([
       ['Analisar exigência do juiz', '2026-10-27'],

@@ -5,6 +5,7 @@
 - [x] 1.1 Matriz versão 5 (`vigilia.ver`, `vigilia.reprocessar`, `publicacao.casar`, `publicacao.classificar`) e contratos de `justica.ts` (`ClassificarPublicacao`, `PublicacaoParaLer`, `PublicacoesDoCaso`); teste; verifica com `pnpm --filter @ggv/contratos test`.
 - [x] 1.2 Migração 0009 (fila e vínculo da publicação, versão da regra do prazo, reprocessamento da rodada, descartes e reclassificações); verifica com `pnpm --filter @ggv/api test`.
 - [x] 1.3 CA2, CA6, CA7, CA8, CA9 · Prazo judicial em `apps/api/src/fluxo/prazo-judicial.ts` (Lei 11.419, art. 4º; dias úteis; 5 dias sem prazo; feriados nacionais e do tribunal do CNJ; regra versionada); teste com véspera de feriado, fim de semana e suspensão; verifica com `pnpm --filter @ggv/api test`.
+- [x] 1.4 CA3, CA11 (revisão de 07/10) · CA3: a leitura da publicação devolve a data inicial, a final e a regra (`publicacoes.test.ts`; a tela já tinha teste). CA11: teste próprio de dias corridos, com o fim de semana no meio contando (`prazo-inss.test.ts`).
 
 ## GGVP-26 · Receber e casar a publicação pelo número CNJ
 
@@ -17,10 +18,12 @@
 - [x] 3.1 CA7, CA8, CA9 · Rodadas em `apps/api/src/vigilia/rodadas.ts` (planejar o dia, rodar com tempo-limite, falha com erro, "não rodou") e o relógio em `principal.ts`; teste com fonte que falha; verifica com `pnpm --filter @ggv/api test`.
 - [x] 3.2 CA1, CA3, CA5, CA6, CA11 · `TarefaDaCentral` com `contexto`; linha "Reprocessar vigília" no topo da fila da Sênior; `POST /api/vigilia/rodadas/:id/reprocessar`; registro ao suporte na falha de credencial; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 3.3 CA2, CA4, CA12 e GGVP-26 CA6 · `GET /api/vigilia` (rodadas do dia, contagem, situação do dia, fila e a consulta dos descartes); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.4 CA10 (revisão de 07/10) · as fontes vêm só do ambiente e o banco não tem coluna onde caiba credencial de fonte (`fontes.test.ts`); segredo no código, o gitleaks do CI barra.
 
 ## GGVP-37 · Encaminhar pelo tipo de ato
 
 - [x] 4.1 CA1 a CA7 · Encaminhar em `apps/api/src/vigilia/encaminhar.ts` (andamento sem tarefa; exigência com "Analisar exigência do juiz"; mérito com "Confirmar desfecho"; reclassificar cancela e refaz); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.2 CA6 (revisão de 07/10) · casada, a publicação chega sem classe e sem leitor; só a classificação da advogada a registra como andamento, com quem e quando (`publicacoes.test.ts`).
 
 ## GGVP-74 · Vigiar o processo e ler a publicação
 
