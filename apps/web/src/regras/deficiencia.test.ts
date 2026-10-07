@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FATORES, MINIMO_LC_142, enquadramento, grauEm, motivoParaNaoSalvar, paraDados, periodos, tempo, type DadosDaDeficiencia } from './deficiencia.ts'
+import { FATORES, MINIMO_COM_DEFICIENCIA, MINIMO_LC_142, cenarios, enquadramento, grauEm, motivoParaNaoSalvar, paraDados, periodos, tempo, type DadosDaDeficiencia } from './deficiencia.ts'
 
 const dados: DadosDaDeficiencia = { inicio: '2011-01-01', grau: 'leve', agravamentos: [{ data: '2012-01-01', grau: 'grave' }], sexo: 'feminino' }
 const vinculo = { empresa: 'Exemplo Ltda', inicio: '2010-01', fim: '2012-12', indicadorPcd: true }
@@ -58,6 +58,24 @@ describe('Linha do tempo da deficiência (GGVP-42)', () => {
     }, [], '2026-10-06')
     expect(enquadramento(empate, 'feminino')?.preponderante).toBe('moderada')
     expect(enquadramento(periodos([{ empresa: 'A', inicio: '2005-01', fim: '2009-12' }], dados, [], '2026-10-06'), 'feminino')).toBeUndefined()
+  })
+
+  it('Lucas, 07/10 · o tempo como pessoa com deficiência conta para o mínimo de 15 anos, sem conversão', () => {
+    const e = enquadramento(periodos([vinculo], dados, [], '2026-10-06'), 'feminino')!
+    expect([e.comDeficiencia, e.faltaComDeficiencia]).toEqual([365 + 366, MINIMO_COM_DEFICIENCIA * 365 - 731])
+    const longo = enquadramento(periodos([{ empresa: 'A', inicio: '2011-01', fim: '2026-06' }], dados, [], '2026-10-06'), 'feminino')!
+    expect(longo.faltaComDeficiencia).toBe(0)
+  })
+
+  it('Lucas, 07/10 · na entrevista, os três cenários: todo o tempo com deficiência como leve, moderada ou grave', () => {
+    const ps = periodos([vinculo], dados, [], '2026-10-06')
+    // 731 dias com deficiência e 365 sem: o sem deficiência converte pelo fator do grau do cenário (0,93, 0,8 e 0,67).
+    expect(cenarios(ps, 'feminino').map((c) => [c.grau, c.enquadramento.preponderante, c.enquadramento.convertido, c.enquadramento.minimo])).toEqual([
+      ['leve', 'leve', 731 + 339, 28],
+      ['moderada', 'moderada', 731 + 292, 24],
+      ['grave', 'grave', 731 + 245, 20],
+    ])
+    expect(cenarios(periodos([{ empresa: 'A', inicio: '2005-01', fim: '2009-12' }], dados, [], '2026-10-06'), 'feminino')).toEqual([])
   })
 
   it('CA4 · a tabela de conversão do art. 70-E e os mínimos da LC 142, por sexo', () => {

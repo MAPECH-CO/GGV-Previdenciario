@@ -142,7 +142,14 @@ export type Enquadramento = {
   minimo: number
   /** Quanto falta para o mínimo, em dias; zero quando já tem. */
   falta: number
+  /** O tempo com deficiência (qualquer grau), sem conversão, em dias. */
+  comDeficiencia: number
+  /** Quanto falta para os 15 anos como pessoa com deficiência, em dias; zero quando já tem. */
+  faltaComDeficiencia: number
 }
+
+/** Pelo menos 15 anos de contribuição na condição de pessoa com deficiência para ter direito (resposta do Lucas, 07/10). */
+export const MINIMO_COM_DEFICIENCIA = 15
 
 /** O enquadramento dos períodos PCD (CA4, G19); sem período com deficiência, nenhum. */
 export function enquadramento(ps: Periodo[], sexo: Sexo): Enquadramento | undefined {
@@ -160,7 +167,34 @@ export function enquadramento(ps: Periodo[], sexo: Sexo): Enquadramento | undefi
     .filter((f) => f.dias > 0)
   const convertido = faixas.reduce((s, f) => s + f.convertidos, 0)
   const minimo = MINIMO_LC_142[sexo][preponderante]
-  return { preponderante, faixas, convertido, minimo, falta: Math.max(0, minimo * 365 - convertido) }
+  const dias = comDeficiencia.reduce((s, x) => s + x.d, 0)
+  return {
+    preponderante,
+    faixas,
+    convertido,
+    minimo,
+    falta: Math.max(0, minimo * 365 - convertido),
+    comDeficiencia: dias,
+    faltaComDeficiencia: Math.max(0, MINIMO_COM_DEFICIENCIA * 365 - dias),
+  }
+}
+
+export type Cenario = { grau: Grau; enquadramento: Enquadramento }
+
+/**
+ * Na entrevista, o escritório calcula todos os cenários (leve, moderada e grave): trabalha com qualquer grau que tenha
+ * chance de ser comprovado, e o grau efetivo é definido na perícia (resposta do Lucas, 07/10). Cada cenário trata todo o
+ * período com deficiência como daquele grau.
+ */
+export function cenarios(ps: Periodo[], sexo: Sexo): Cenario[] {
+  if (!ps.some((p) => p.grau)) return []
+  return ORDEM.map((grau) => ({
+    grau,
+    enquadramento: enquadramento(
+      ps.map((p) => (p.grau ? { ...p, grau } : p)),
+      sexo,
+    )!,
+  }))
 }
 
 /** O que a tela digita. */
