@@ -1,7 +1,7 @@
 // DADOS DE EXEMPLO, só para o banco local da máquina do dev. Nenhuma pessoa é real.
 // Senha de todos: SENHA_DE_EXEMPLO. Nunca rodar contra homologação nem produção.
 import bcrypt from 'bcryptjs'
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { usuario } from './esquema.ts'
 
@@ -23,7 +23,8 @@ export const usuariosDeExemplo = [
 
 /** Só semeia banco vazio: não mexe em quem já existe. */
 export async function semearExemplos(banco: Banco) {
-  const [{ total }] = await banco.select({ total: count() }).from(usuario)
+  // GGVP-126 CA4: "vazio" é sem os usuários de exemplo; a homologação já tem o usuário de quem cuida dela.
+  const [{ total }] = await banco.select({ total: count() }).from(usuario).where(eq(usuario.email, usuariosDeExemplo[0].email))
   if (total > 0) return
   const senhaHash = await bcrypt.hash(SENHA_DE_EXEMPLO, 10)
   await banco.insert(usuario).values(usuariosDeExemplo.map((u) => ({ ...u, senhaHash })))

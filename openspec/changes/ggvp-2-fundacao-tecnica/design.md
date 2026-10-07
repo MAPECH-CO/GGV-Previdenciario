@@ -89,3 +89,30 @@ Todas nascem da **GGVP-129** (modelo de dados, criada em 07/10 para o modelo de 
 | Jurimetria e acervo | `perito`, `juizo`, `processo_acervo` (desfecho conferido por pessoa entra nas contas, G22) |
 | Mensagens | `mensagem` (canal, modelo, quem enviou, aprovação quando exigida) |
 | Configuração | `configuracao` (limites Q1, prazo de guarda), `roteiro_laudo` (versionado, GGVP-93), `kit_documento` (G1), `modelo` (contrato e mensagens), `feriado` (contagem de prazo) |
+
+## GGVP-126 · Homologação com usuários e dados de teste
+
+### Context
+
+Com `DATABASE_URL`, o servidor não cria usuário nem caso: a semente (`semearExemplos`) só roda no banco embutido da máquina do dev. Na homologação já existe o usuário do Mateus, e a semente olhava "qualquer usuário" para não rodar duas vezes. Os casos de exemplo de cada passo entram na semente junto com o PR de cada épico.
+
+### Decisions
+
+1. **Comando** `pnpm --filter @ggv/api homologacao:preparar` (`apps/api/src/banco/homologacao.ts`), no mesmo padrão do `usuario:criar`: usa o banco do `DATABASE_URL` e recusa sem ele.
+2. **Nunca em produção** (CA5): só roda com `AMBIENTE=homologacao`, variável que existe só no app de homologação do Coolify. Sem ela, para antes de gravar qualquer coisa.
+3. **A mesma semente dos testes** (CA3): o comando chama `semearExemplos`. O que entra é o que está na `main` quando o comando roda.
+   - Hoje entram só os usuários. Com a fila de PRs mesclada, entram os casos do INSS, da Justiça, da Garantia, do Desfecho e da Jurimetria.
+   - As telas que ainda gravam no navegador ganham caso no banco com a GGVP-125 e a GGVP-132.
+   - Por isso o comando roda depois de a fila entrar na `main`.
+4. **Senha provisória** (CA1): na mesma transação da semente, cada usuário de exemplo ganha uma senha aleatória, com troca no primeiro acesso.
+   - A senha pública dos exemplos nunca chega a valer na homologação.
+   - A lista sai uma vez, no terminal de quem rodou, para entregar ao Lucas fora do repositório, do Jira e do chat.
+5. **Não duplica** (CA4): a semente passa a olhar se os usuários de exemplo já estão no banco. Rodar de novo não grava nada e não troca senha.
+6. **Configuração** (CA2): o comando grava `cobranca.limite` = 2 e `cobranca.intervalo_dias` = 3 se faltarem; o que existir fica. Sem configuração, o servidor usa `LIMITES_PADRAO` (2 e 3), que vem no PR #18 (Garantia), com teste lá.
+7. **Mudança mínima na semente:** só a checagem do começo de `semearExemplos`. Os PRs da fila acrescentam casos no meio e no fim do arquivo, e assim não há conflito.
+
+### Risks / Trade-offs
+
+- **Rodar antes da fila:** o comando não duplica, então também não completa. Os casos dos épicos que entrarem depois ficam de fora. Rode depois dos merges; antes disso, só recriando o banco da homologação.
+- **Senha no terminal:** a lista aparece uma vez, para quem rodou. Não vai para log, repositório, Jira nem chat.
+

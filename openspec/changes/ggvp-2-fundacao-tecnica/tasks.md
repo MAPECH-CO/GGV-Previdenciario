@@ -53,3 +53,11 @@
 - [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado na revisão geral de 07/10 (branch com a regra dos valores): typecheck e lint sem erro; campos 9, contratos 20, API 37, tela 51, Playwright 14, todos passando (com a máquina carregada, 3 testes de tela estouraram o tempo e passaram rodados um por vez). De novo em 07/10, com o teste do CA16 e do GGVP-129: contratos 20, API 39, tela 51, Playwright 14.
 
 > CA13 e CA14 da GGVP-96 saíram desta change (revisão geral de 07/10): o CA13 entra com as rotas que devolvem dado de saúde (conferência no PR #14, documentos no PR #18) e o CA14 com a exportação e o relatório de prazos (PR #18), cada um com teste lá.
+
+## GGVP-126 · Homologação com usuários e dados de teste
+
+- [x] 6.1 CA4 · A semente olha se os usuários de exemplo já estão no banco (antes, qualquer usuário), só no começo de `semearExemplos` (`apps/api/src/banco/exemplo.ts`); verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.2 CA1, CA2, CA3, CA4, CA5 · Comando `homologacao:preparar` (`apps/api/src/banco/homologacao.ts`): recusa sem `AMBIENTE=homologacao`; semente e senhas numa transação; senha provisória aleatória por usuário de exemplo, com troca no primeiro acesso; limites de cobrança se faltarem; teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.3 Como rodar no Coolify e entregar as senhas, em `docs/infra/homologacao-dados-de-teste.md`; verifica lendo.
+- [x] 6.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
