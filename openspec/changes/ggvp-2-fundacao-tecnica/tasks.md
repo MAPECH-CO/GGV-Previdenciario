@@ -59,5 +59,6 @@
 - [x] 6.1 CA4 · A semente olha se os usuários de exemplo já estão no banco (antes, qualquer usuário), só no começo de `semearExemplos` (`apps/api/src/banco/exemplo.ts`); verifica com `pnpm --filter @ggv/api test`.
 - [x] 6.2 CA1, CA2, CA3, CA4, CA5 · Comando `homologacao:preparar` (`apps/api/src/banco/homologacao.ts`): recusa sem `AMBIENTE=homologacao`; semente e senhas numa transação; senha provisória aleatória por usuário de exemplo, com troca no primeiro acesso; limites de cobrança se faltarem; teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
 - [x] 6.3 Como rodar no Coolify e entregar as senhas, em `docs/infra/homologacao-dados-de-teste.md`; verifica lendo.
-- [x] 6.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 6.4 CA3, a parte que falta · Recepção, Abertura, documentação médica, Perícia e Relacionamento com caso de exemplo no banco, quando a GGVP-125 e a GGVP-132 ligarem essas telas no servidor; o teste do CA3 passa a afirmar esses passos; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
