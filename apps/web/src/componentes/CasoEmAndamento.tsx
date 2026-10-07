@@ -35,17 +35,13 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
             <span className={styles.numero}>{p.numero ?? 'Processo ainda sem número'}</span>
             <span className={styles.selos}>
               <span className={styles.beneficio}>◆ {nomeBeneficio(p.beneficio)}</span>
-              <span className={styles.etapa}>{pericia ?? p.etapa}</span>
+              <span className={styles.etapa}>{p.etapa}</span>
+              {pericia && <span className={styles.etapa}>{pericia}</span>}
             </span>
+            {p.proximaAcao && <span className={styles.acao}>O que o Atendimento faz agora: {p.proximaAcao}.</span>}
             {/* A perícia é toda do Jurídico administrativo desde 29/09 (Lucas): o Atendimento não age nela. */}
-            {pericia ? (
-              <span className={styles.acao}>A perícia está com o Jurídico administrativo.</span>
-            ) : (
-              <>
-                {p.proximaAcao && <span className={styles.acao}>O que o Atendimento faz agora: {p.proximaAcao}.</span>}
-                {p.prazo && <span className={p.urgente ? styles.urgente : styles.prazo}>{p.prazo}</span>}
-              </>
-            )}
+            {pericia && <span className={styles.acao}>A perícia está com o Jurídico administrativo.</span>}
+            {p.prazo && <span className={p.urgente ? styles.urgente : styles.prazo}>{p.prazo}</span>}
           </a>
         )
       })}

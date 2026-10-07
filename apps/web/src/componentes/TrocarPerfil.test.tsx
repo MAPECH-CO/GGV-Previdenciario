@@ -15,7 +15,7 @@ describe('TrocarPerfil', () => {
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
-  it('abre "Entrar como…" com os 7 perfis de exemplo (duas sêniores, GGVP-33), o atual marcado, e o glossário e o sair indisponíveis', () => {
+  it('abre "Entrar como…" com os 8 perfis de exemplo (duas sêniores, GGVP-33; o Jurídico administrativo, épico GGVP-10), o atual marcado, e o glossário e o sair indisponíveis', () => {
     render(<TrocarPerfil funcao="Atendimento" />)
     fireEvent.click(screen.getByRole('button', { name: 'Atendimento' }))
 
@@ -29,6 +29,7 @@ describe('TrocarPerfil', () => {
       'Financeiro',
       'Documentação',
       'Sênior',
+      'Jurídico administrativo',
     ])
     expect(perfis.filter((p) => p.getAttribute('aria-checked') === 'true')).toHaveLength(1)
     expect(perfis[0].getAttribute('aria-checked')).toBe('true')
