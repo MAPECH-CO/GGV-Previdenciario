@@ -83,8 +83,8 @@ function complementaresDoCaso(banco: Banco, ficha: Ficha, processo: Processo): {
   }
   if (ehInfantil(ficha, processo)) {
     const crianca = criancaDoCaso(banco, processo.id)
-    // Sem a condição, o escolar já entra (vale para todas), e o checklist espera a advogada.
-    const relatorios = relatoriosDaCrianca(crianca ?? { condicoes: [], terapias: [] })
+    // Sem a condição, nenhum relatório entra ainda, e o checklist espera a advogada.
+    const relatorios = relatoriosDaCrianca(crianca ?? { condicoes: [], terapias: [], escola: false })
     const pedidos = relatorios.map((tipo) => ({ tipo, exigencia: 'obrigatorio' as const, aplica: true, recusado: false }))
     return { complementares: pedidos, ...(!crianca && { bloqueio: SEM_CONDICAO }) }
   }

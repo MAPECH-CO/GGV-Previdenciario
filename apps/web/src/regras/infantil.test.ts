@@ -10,10 +10,11 @@ describe('BPC/LOAS de menor de 16 anos (GGVP-50)', () => {
     expect(menorDe16(undefined, '2026-10-06')).toBe(false)
   })
 
-  it('CA2 · os relatórios por condição: o escolar para todas, o CAPS só na saúde mental, a neurologia e as terapias que a criança faz', () => {
-    expect(relatoriosDaCrianca({ condicoes: [], terapias: [] })).toEqual(['relatorio-escolar'])
-    expect(relatoriosDaCrianca({ condicoes: ['neurologica'], terapias: ['to', 'fono'] })).toEqual(['relatorio-escolar', 'relatorio-neurologia', 'relatorio-fono', 'relatorio-to'])
-    expect(relatoriosDaCrianca({ condicoes: ['saude-mental', 'neurologica'], terapias: ['fono', 'to', 'psicologia'] })).toEqual([
+  it('CA2 · os relatórios por condição: o escolar só para quem vai à escola ou à creche, o CAPS só na saúde mental, a neurologia e as terapias', () => {
+    expect(relatoriosDaCrianca({ condicoes: [], terapias: [], escola: false })).toEqual([])
+    expect(relatoriosDaCrianca({ condicoes: [], terapias: [], escola: true })).toEqual(['relatorio-escolar'])
+    expect(relatoriosDaCrianca({ condicoes: ['neurologica'], terapias: ['to', 'fono'], escola: false })).toEqual(['relatorio-neurologia', 'relatorio-fono', 'relatorio-to'])
+    expect(relatoriosDaCrianca({ condicoes: ['saude-mental', 'neurologica'], terapias: ['fono', 'to', 'psicologia'], escola: true })).toEqual([
       'relatorio-escolar',
       'relatorio-caps',
       'relatorio-neurologia',

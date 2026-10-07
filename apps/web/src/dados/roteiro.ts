@@ -142,7 +142,7 @@ export function roteirosDeExemplo(): Roteiro[] {
       x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'),
       c(
         'relatorios',
-        'Relatórios por condição: o escolar para todas; o do CAPS na saúde mental; o da neurologia na paralisia cerebral, na má formação e parecidos; fono, terapia ocupacional e psicologia conforme a terapia que a criança faz',
+        'Relatórios por condição: o escolar se a criança vai à escola ou à creche; o do CAPS na saúde mental; o da neurologia na paralisia cerebral, na má formação e parecidos; fono, terapia ocupacional e psicologia conforme a terapia que a criança faz',
       ),
       c('gastos', 'Provas de gastos que levam à miserabilidade: aluguel, remédios, gastos hospitalares, alimentação'),
     ]),
