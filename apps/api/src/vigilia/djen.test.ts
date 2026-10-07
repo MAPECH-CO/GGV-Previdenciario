@@ -99,19 +99,37 @@ describe('fonte DJEN (grupo 4, decisões 44 e 47)', () => {
     expect(esperas).toEqual([2000])
   })
 
+  it('sem resposta (rede fora ou tempo esgotado), também tenta de novo uma vez, depois de 2 s', async () => {
+    let chamadas = 0
+    const esperas: number[] = []
+    const instavel = {
+      buscar: (async () => {
+        chamadas++
+        if (chamadas === 1) throw new TypeError('fetch failed')
+        return json({ count: 1, items: [comunicacao(1)] })
+      }) as typeof fetch,
+      esperar: async (ms: number) => void esperas.push(ms),
+    }
+    expect(await fonteDjen([OAB], ['TRF3'], instavel).buscar(DE, ATE)).toHaveLength(1)
+    expect([chamadas, esperas]).toEqual([2, [2000]])
+  })
+
   it('o erro que fica vira falha da API, que também avisa o suporte (GGVP-30 CA8)', async () => {
     const duasVezes = redeGravada([json({}, 500), json({}, 500)])
     await expect(fonteDjen([OAB], ['TRF3'], duasVezes.rede).buscar(DE, ATE)).rejects.toThrow('api: o DJEN respondeu 500')
     const recusa = redeGravada([json({}, 403)])
     await expect(fonteDjen([OAB], ['TRF3'], recusa.rede).buscar(DE, ATE)).rejects.toThrow('api: o DJEN respondeu 403')
     expect(recusa.pedidos).toHaveLength(1)
+    let chamadas = 0
     const semRede = {
       buscar: (async () => {
+        chamadas++
         throw new TypeError('fetch failed')
       }) as typeof fetch,
       esperar: async () => {},
     }
     await expect(fonteDjen([OAB], ['TRF3'], semRede).buscar(DE, ATE)).rejects.toThrow('api: o DJEN não respondeu')
+    expect(chamadas).toBe(2)
   })
 })
 

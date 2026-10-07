@@ -199,7 +199,7 @@ A consulta de 07/10 ao DJEN com a OAB de uma advogada do escritório, de 01/09 a
 
 44. **DJEN** (`apps/api/src/vigilia/djen.ts`): `GET https://comunicaapi.pje.jus.br/api/v1/comunicacao`, pública e sem chave.
     - **Consulta:** para cada OAB de `DJEN_OABS` (`numero/UF`, número só com dígitos, como `123456/SP`) e cada tribunal da vigília, envia `numeroOab`, `ufOab`, `siglaTribunal`, `dataDisponibilizacaoInicio` e `dataDisponibilizacaoFim`, com os dias da janela no horário de Brasília. Usa `itensPorPagina=50`, página a página até cobrir o `count`.
-    - **Ritmo:** meio segundo entre as chamadas; HTTP 5xx tenta de novo uma vez, depois de 2 s.
+    - **Ritmo:** meio segundo entre as chamadas. Sem resposta em 25 s (rede fora ou tempo esgotado) ou HTTP 5xx tenta de novo uma vez, depois de 2 s; as duas tentativas cabem nos 60 s da rodada. A nova tentativa sem resposta é ajuste de 07/10: na rodada real, um soluço da rede tinha virado alarme.
     - **Filtros:** a mesma comunicação achada por duas OABs conta uma vez, pelo `id`. Comunicação cancelada (`ativo` falso ou `data_cancelamento` preenchida) fica de fora.
     - **Mapa:** `numero_processo` → `numeroCnj`; `data_disponibilizacao` → `disponibilizadaEm`; `texto` sem HTML → `texto`; os nomes de `destinatarios` → `partes`.
 45. **AASP** (`apps/api/src/vigilia/aasp.ts`): `GET https://intimacaoapi.aasp.org.br/api/Associado/intimacao/json?chave=...&data=...`, para cada dia da janela e cada chave de `AASP_CHAVES`.

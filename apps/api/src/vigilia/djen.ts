@@ -7,6 +7,8 @@ const POR_PAGINA = 50
 /** O DJEN não publica limite de taxa e responde 500 sob rajada: meio segundo entre as chamadas. */
 const INTERVALO_MS = 500
 const NOVA_TENTATIVA_MS = 2_000
+/** Duas tentativas cabem nos 60 s da rodada: 25 + 2 + 25. */
+const TEMPO_POR_CHAMADA_MS = 25_000
 
 export type Oab = { numero: string; uf: string }
 
@@ -22,22 +24,25 @@ type Comunicacao = {
 }
 
 export function fonteDjen(oabs: Oab[], tribunais: string[], { buscar, esperar }: Rede = redeDeVerdade): Fonte {
-  // Rede fora e resposta de erro viram falha da API, que também avisa o suporte (GGVP-30 CA8).
-  async function chamar(url: string) {
+  /** Sem resposta (rede fora ou tempo esgotado), devolve nulo. */
+  async function chamar(url: string): Promise<Response | null> {
     try {
-      return await buscar(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30_000) })
-    } catch (e) {
-      throw new Error('api: o DJEN não respondeu', { cause: e })
+      return await buscar(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TEMPO_POR_CHAMADA_MS) })
+    } catch {
+      return null
     }
   }
 
+  // Sem resposta ou 5xx tenta de novo uma vez, depois de 2 s. O resto vira falha da API, que também avisa o suporte
+  // (GGVP-30 CA8; ajuste de 07/10: um soluço da rede na rodada real virou alarme).
   async function pagina(params: Record<string, string>): Promise<{ count: number; items: Comunicacao[] }> {
     const url = `${URL_DJEN}?${new URLSearchParams(params)}`
     let resposta = await chamar(url)
-    if (resposta.status >= 500) {
+    if (!resposta || resposta.status >= 500) {
       await esperar(NOVA_TENTATIVA_MS)
       resposta = await chamar(url)
     }
+    if (!resposta) throw new Error('api: o DJEN não respondeu')
     if (!resposta.ok) throw new Error(`api: o DJEN respondeu ${resposta.status}`)
     return resposta.json()
   }
