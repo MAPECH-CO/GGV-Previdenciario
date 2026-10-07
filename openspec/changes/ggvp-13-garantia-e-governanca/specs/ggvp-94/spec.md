@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Tarefa com laço, lembrete e escalonamento (G15), nos laços que o portal já tem: a exigência do juiz (D3a.03), as pendências do despacho (D3.04) e a cobrança da exigência do INSS (D2.05). O lembrete é a tarefa na Central do setor, na data do próximo lembrete. Respostas do Lucas (02/10): 3 tentativas com 3 dias úteis entre elas; com prazo do juiz ou do INSS, o prazo manda e as tentativas se comprimem para caber nele; passou do limite, sobe para a Sênior. As esperas por quem é de fora (CA5) são proposta do Fernando, não aprovada, e ficam fora. O portal não envia mensagem sozinho: o lembrete sai pela Central.
+Tarefa com laço, lembrete e escalonamento (G15), nos laços que o portal já tem: a exigência do juiz (D3a.03), as pendências do despacho (D3.04) e a cobrança da exigência do INSS (D2.05). O lembrete é a tarefa na Central do setor, na data do próximo lembrete. Respostas do Lucas: 3 dias úteis entre as tentativas (02/10) e 2 tentativas (05/10, GGVP-122); com prazo do juiz ou do INSS, o prazo manda e as tentativas se comprimem para caber nele; passou do limite, sobe para a Sênior. As esperas por quem é de fora (CA5) são proposta do Fernando, não aprovada, e ficam fora. O portal não envia mensagem sozinho: o lembrete sai pela Central.
 
 ## ADDED Requirements
 
 ### Requirement: CA1 · Lembrete no intervalo
-Passado o intervalo sem conclusão, o responsável SHALL receber o lembrete na Central do setor (a tarefa fica para hoje), e cada tentativa registrada SHALL contar no card. O intervalo MUST ser de 3 dias úteis (parâmetro `cobranca.intervalo_dias`, Q1, resposta do Lucas de 02/10); com prazo, as tentativas que faltam se comprimem para caber antes dele, com pelo menos 1 dia útil, e o lembrete MUST NOT passar do prazo.
+Passado o intervalo sem conclusão, o responsável SHALL receber o lembrete na Central do setor (a tarefa fica para hoje), e cada tentativa registrada SHALL contar no card. O intervalo MUST ser de 3 dias úteis (parâmetro `cobranca.intervalo_dias`, Q1, resposta do Lucas de 02/10); com prazo, as tentativas que faltam se comprimem para caber antes dele, com pelo menos 1 dia útil, e o lembrete MUST NOT passar do prazo. A pendência do despacho que a Sênior mandou sem prazo nasce sem data (revisão de 06/10, GGVP-54 CA6), e o lembrete começa na primeira tentativa.
 
 #### Scenario: CA1 · O intervalo passa
 - **Dado** uma tarefa de cobrança criada
@@ -15,7 +15,7 @@ Passado o intervalo sem conclusão, o responsável SHALL receber o lembrete na C
 - **Então** o responsável recebe um lembrete e a tentativa conta no card
 
 ### Requirement: CA2 · No limite, sobe com o histórico
-Atingido o limite de tentativas (parâmetro `cobranca.limite`, 3), a tarefa SHALL aparecer na fila da Sênior com o histórico das tentativas. Na perícia, a remarcação sobe para a advogada responsável (épico Perícia).
+Atingido o limite de tentativas (parâmetro `cobranca.limite`, 2 pela resposta do Lucas de 05/10, GGVP-122; sem configuração, vale esse padrão), a tarefa SHALL aparecer na fila da Sênior com o histórico das tentativas. Na perícia, a remarcação sobe para a advogada responsável (épico Perícia).
 
 #### Scenario: CA2 · A última tentativa falha
 - **Dado** uma tarefa que atingiu o limite de tentativas

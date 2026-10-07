@@ -121,7 +121,7 @@ export async function semearExemplos(banco: Banco) {
 
   // Exigência do INSS (GGVP-39): limites de cobrança do escritório (Q1, exemplo) e um caso esperando a advogada decidir.
   await banco.insert(configuracao).values([
-    { chave: 'cobranca.limite', valor: 3 },
+    { chave: 'cobranca.limite', valor: 2 }, // Lucas, 05/10 (GGVP-122, pergunta 6)
     { chave: 'cobranca.intervalo_dias', valor: 3 }, // dias úteis entre as tentativas (Lucas, 02/10; GGVP-94)
     // GGVP-103 CA7 (Q1): o uso do cofre fora do padrão avisa a Sênior. Valores de exemplo, a confirmar com o escritório.
     { chave: 'cofre.alerta.leituras_por_dia', valor: 10 },

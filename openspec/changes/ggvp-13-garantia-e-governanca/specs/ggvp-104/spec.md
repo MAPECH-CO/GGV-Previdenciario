@@ -3,7 +3,7 @@
 ## Purpose
 
 Configuração do escritório: a gestão (Sócio e Sênior) mantém numa tela só os limites dos laços, os kits de documentos de cada benefício (o checklist do G1) e as mensagens padrão, sem pedir mudança no código. Toda mudança fica no histórico com quem mudou, o antes e o depois. O kit tem versão: muda para os casos novos, e o caso aberto continua com o kit da época. Respostas do Lucas (02/10):
-- Limites: cobrança de documento com 3 tentativas a cada 3 dias úteis, e passou disso sobe para a Sênior. Cliente sumido com 3 tentativas em 10 dias. Remarcação de perícia com 1 e sobe para a advogada responsável. Com prazo do juiz ou do INSS, o prazo manda.
+- Limites: cobrança de documento com 2 tentativas (a resposta de 05/10, GGVP-122, mudou as 3 de 02/10) a cada 3 dias úteis, e passou disso sobe para a Sênior. Cliente sumido com 3 tentativas em 10 dias. Remarcação de perícia com 1 e sobe para a advogada responsável. Com prazo do juiz ou do INSS, o prazo manda.
 - Contratos: os 7 Contratos Completos convertidos podem ser ativados com as regras do portal.
 - Kit do LOAS: a ficha de grupo familiar é obrigatória em todo LOAS, e as três declarações são condicionais.
 
@@ -36,7 +36,7 @@ Qualquer mudança de configuração SHALL ficar no histórico com quem mudou, o 
 - **Então** fica no histórico com quem mudou
 
 ### Requirement: CA4 · Cada laço com o seu limite
-A gestão SHALL definir os limites de cada laço, e cada laço MUST usar o seu: a cobrança de documento (3 tentativas, a cada 3 dias úteis) sobe para a Sênior; o contato com o cliente sumido (3 tentativas em 10 dias); a remarcação de perícia (1) sobe para a advogada responsável. Os limites do alerta do cofre (GGVP-103) ficam na mesma tela. Valores do Lucas (02/10), editáveis.
+A gestão SHALL definir os limites de cada laço, e cada laço MUST usar o seu: a cobrança de documento (2 tentativas, a cada 3 dias úteis) sobe para a Sênior; o contato com o cliente sumido (3 tentativas em 10 dias); a remarcação de perícia (1) sobe para a advogada responsável. Os limites do alerta do cofre (GGVP-103) ficam na mesma tela. Valores do Lucas (02/10), editáveis.
 
 #### Scenario: CA4 · Definir os limites
 - **Dado** os limites de cobrança e de remarcação

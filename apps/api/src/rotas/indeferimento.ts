@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { Despachar, Despacho, ROTULO_SETOR, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
-import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_INDEFERIMENTO = 'Este caso não tem indeferimento registrado.'
@@ -157,10 +157,10 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
           })
           .returning()
         for (const i of itens) {
-          const prazo = await lembreteDoLaco(tx, hoje(agora()), i.prazo, limite ?? 1)
+          // CA6: o prazo é só o que a Sênior deu ("Essa tarefa tem prazo?" = Não, sem prazo); o limite de tentativas é o G15.
           const [doSetor] = await tx
             .insert(tarefa)
-            .values({ casoId, passo: 'D3.04', titulo: 'Cumprir pendência', perfilDono: i.setor, prazo, limiteTentativas: limite, criadoEm: agora() })
+            .values({ casoId, passo: 'D3.04', titulo: 'Cumprir pendência', perfilDono: i.setor, prazo: i.prazo, limiteTentativas: limite, criadoEm: agora() })
             .returning()
           await tx.insert(exigenciaItem).values({ exigenciaId: x.id, descricao: i.descricao, perfilResponsavel: i.setor, prazo: i.prazo, tarefaId: doSetor.id })
         }
