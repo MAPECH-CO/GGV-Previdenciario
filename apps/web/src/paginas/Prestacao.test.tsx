@@ -39,6 +39,8 @@ const banco = {
   okAdvogada: true,
   avisos: [],
   podeAgendar: true,
+  podeConfirmar: false,
+  encerrado: false,
   equipe: [{ id: '33333333-3333-4333-8333-333333333333', nome: 'Ana (exemplo)' }],
 }
 
@@ -71,7 +73,7 @@ describe('Prestar contas (GGVP-44)', () => {
     expect((screen.getByRole('button', { name: 'Concluir a prestação' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByLabelText('Conferi os valores com a carta de concessão'))
     fireEvent.click(screen.getByRole('button', { name: 'Concluir a prestação' }))
-    expect((await screen.findByRole('status')).textContent).toContain('O Financeiro recebeu e o Atendimento vai agendar')
+    expect((await screen.findByRole('status')).textContent).toContain('O Financeiro recebe e, depois, avisa o cliente')
     expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true)
   })
 
@@ -92,21 +94,47 @@ describe('Receber a prestação (GGVP-44, Financeiro)', () => {
     expect(screen.getByText(/Caixa · acompanha: Ana/)).toBeTruthy()
   })
 
+  it('GGVP-98 CA3 · "Receber e lançar" só com "Valores conferem com o comprovante"', async () => {
+    const fetch = servidor({ ...prestacao, versoes: [versao1], podeEditar: false, podeReceber: true })
+    render(<ReceberPrestacao casoId={CASO} />)
+    const lancar = (await screen.findByRole('button', { name: 'Receber e lançar' })) as HTMLButtonElement
+    expect(lancar.disabled).toBe(true)
+    fireEvent.click(screen.getByLabelText('Valores conferem com o comprovante'))
+    fireEvent.click(lancar)
+    expect((await screen.findByRole('status')).textContent).toContain('avise o cliente e marque a ida ao banco')
+    const envio = fetch.mock.calls.find(([, init]) => init?.method === 'POST')
+    expect(JSON.parse(String(envio?.[1]?.body))).toEqual({ resultado: 'recebido', valoresConferem: true })
+  })
+
   it('CA9 · divergência pede o motivo', async () => {
     servidor({ ...prestacao, versoes: [versao1], podeEditar: false, podeReceber: true })
     render(<ReceberPrestacao casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Divergência' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Divergência, devolver à advogada' }))
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar divergência' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva qual é a divergência')
   })
 })
 
-describe('Agendar ida ao banco (GGVP-44, Atendimento)', () => {
-  it('CA10 · quem acompanha é escolhido na equipe, e pode ser ninguém', async () => {
+describe('Avisar e agendar a ida ao banco (GGVP-44 e GGVP-98, Financeiro)', () => {
+  it('GGVP-98 CA6 · quem leva o cliente é obrigatório e vem do Atendimento', async () => {
     servidor(banco)
     render(<IdaAoBanco casoId={CASO} />)
-    const campo = (await screen.findByLabelText('Quem do escritório acompanha (opcional)')) as HTMLSelectElement
-    expect([...campo.options].map((o) => o.textContent)).toEqual(['Ninguém do escritório', 'Ana (exemplo)'])
+    const campo = (await screen.findByLabelText('Quem do Atendimento leva o cliente')) as HTMLSelectElement
+    expect([...campo.options].map((o) => o.textContent)).toEqual(['Escolha', 'Ana (exemplo)'])
+    fireEvent.change(screen.getByLabelText('Data'), { target: { value: '2026-10-15' } })
+    fireEvent.change(screen.getByLabelText('Hora'), { target: { value: '10:00' } })
+    fireEvent.change(screen.getByLabelText('Agência ou local'), { target: { value: 'Caixa' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Agendar' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escolha quem do Atendimento acompanha o cliente')
+  })
+
+  it('GGVP-98 CA9 · depois do aviso, "Confirmar recebimento" fecha o caso', async () => {
+    const agendamento = { id: '11111111-1111-4111-8111-111111111111', data: '15/10/2026', hora: '10:00', local: 'Caixa', acompanhante: 'Ana' }
+    const fetch = servidor({ ...banco, agendamento, podeConfirmar: true })
+    render(<IdaAoBanco casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar recebimento' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Recebimento confirmado. Caso encerrado.')
+    expect(fetch.mock.calls.some(([url, init]) => String(url).endsWith('/banco/confirmacao') && init?.method === 'POST')).toBe(true)
   })
 
   it('CA10 · data, hora e local são obrigatórios', async () => {
