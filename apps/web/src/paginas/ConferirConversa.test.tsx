@@ -126,3 +126,75 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     expect(within(janela).queryByRole('button', { name: /Voltar telefone de contato/ })).toBeNull()
   })
 })
+
+describe('Pendência da conversa vira tarefa · tela (GGVP-88)', () => {
+  async function comPendencia(id: string) {
+    await abrir(id)
+    fireEvent.click(botao('Desfazer'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Sim — criar a tarefa no card (D5.05)' }))
+  }
+
+  it('CA1, CA3 e CA4 · citou o setor: pergunta quem do setor; escolhida a pessoa, a tarefa nasce no card com o combinado e o prazo', async () => {
+    const c = await conversaTranscrita()
+    await comPendencia(c.id)
+    const combinado = screen.getByLabelText('O que ficou combinado *') as HTMLTextAreaElement
+    expect(combinado.value).toBe('Documentação: receber e digitalizar o relatório da alta hospitalar.')
+    const escolha = screen.getByRole('group', { name: 'Escolha o responsável' })
+    expect(within(escolha).getByText('Documentação tem 1 pessoa. Quem fica com esta tarefa?')).toBeTruthy()
+    expect(within(escolha).getByText(/responsável: a escolher/)).toBeTruthy()
+    expect(screen.getByText('Escolha quem fica com a tarefa.')).toBeTruthy()
+    fireEvent.click(within(escolha).getByRole('radio', { name: 'Jéssica (exemplo)' }))
+    expect(screen.getByText('Prazo de hoje em diante (dd/mm/aaaa).')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Prazo *'), { target: { value: '10/10/2026' } })
+    const confirmar = screen.getByRole('group', { name: 'Ação para confirmar' })
+    expect(confirmar.textContent).toContain('Maria Exemplo · Cumprir pendência')
+    expect(confirmar.textContent).toContain('vence 10/10 · responsável: Jéssica (exemplo)')
+    fireEvent.click(botao('Confirmar'))
+    const pendencia = await screen.findByRole('group', { name: 'Pendência da conversa' })
+    expect(pendencia.textContent).toContain(
+      'Tarefa no card: Jéssica (exemplo) (Documentação · ADM) · Cumprir pendência · Documentação: receber e digitalizar o relatório da alta hospitalar.',
+    )
+    expect(within(pendencia).getByRole('status').textContent).toBe('Vence 10/10.')
+    // Quem conversou não é o responsável: não dá por cumprida.
+    expect(within(pendencia).queryByRole('button', { name: 'Marcar como cumprida' })).toBeNull()
+  })
+
+  it('CA3 · citou a pessoa, é ela ("Trocar" muda); sem ninguém citado, pergunta quem é, entre todos', async () => {
+    const c = await conversaTranscrita()
+    await comPendencia(c.id)
+    const combinado = screen.getByLabelText('O que ficou combinado *')
+    fireEvent.change(combinado, { target: { value: 'A Carla liga para a clínica na sexta.' } })
+    const confirmar = screen.getByRole('group', { name: 'Ação para confirmar' })
+    expect(confirmar.textContent).toContain('Responsável: Carla (exemplo) · Atendimento')
+    fireEvent.click(within(confirmar).getByRole('button', { name: 'Trocar' }))
+    expect(within(screen.getByRole('group', { name: 'Escolha o responsável' })).getAllByRole('radio')).toHaveLength(7)
+    fireEvent.change(combinado, { target: { value: 'Ligar de novo na sexta.' } })
+    const escolha = screen.getByRole('group', { name: 'Escolha o responsável' })
+    expect(within(escolha).getByText('Quem fica com esta tarefa?')).toBeTruthy()
+    expect(within(escolha).getAllByRole('radio')).toHaveLength(7)
+  })
+
+  it('CA2 · não surgiu pendência: nenhuma tarefa nasce', async () => {
+    const c = await conversaTranscrita()
+    await abrir(c.id)
+    fireEvent.click(botao('Desfazer'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Não — confirmar e voltar ao D1' }))
+    fireEvent.click(botao('Confirmar'))
+    expect(await screen.findByText('Não surgiu pendência: nenhuma tarefa nasceu.')).toBeTruthy()
+  })
+
+  it('o responsável abre a tarefa e dá por cumprida', async () => {
+    const c = await conversaTranscrita()
+    await comPendencia(c.id)
+    fireEvent.click(within(screen.getByRole('group', { name: 'Escolha o responsável' })).getByRole('radio', { name: 'Jéssica (exemplo)' }))
+    fireEvent.change(screen.getByLabelText('Prazo *'), { target: { value: '10/10/2026' } })
+    fireEvent.click(botao('Confirmar'))
+    await screen.findByRole('group', { name: 'Pendência da conversa' })
+    cleanup()
+    trocarPerfil('documentacao')
+    render(<ConferirConversa conversaId={c.id} />)
+    const pendencia = await screen.findByRole('group', { name: 'Pendência da conversa' })
+    fireEvent.click(within(pendencia).getByRole('button', { name: 'Marcar como cumprida' }))
+    expect(await within(pendencia).findByText('✓ Cumprida por Jéssica (exemplo) em 07/10/2026 14:32.')).toBeTruthy()
+  })
+})

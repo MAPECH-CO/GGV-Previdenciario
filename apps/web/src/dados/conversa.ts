@@ -3,7 +3,8 @@
 // mesmo cofre, e a transcrição usa o mesmo motor (montarTranscricao). Sem microfone e sem OpenAI: a conversa é a de
 // exemplo. Nada aqui apaga áudio (Q11, Lucas 06/10). Ligar no servidor: trocar o corpo de cada função por fetch no
 // endpoint da design.md (change ggvp-12).
-import { dataHora, hojeIso, hora } from '../regras/datas.ts'
+import { dataParaIso, normalizarData } from '../campos.ts'
+import { dataCurta, dataHora, hojeIso, hora } from '../regras/datas.ts'
 import {
   CAMPOS_DA_CONVERSA,
   CANAIS_DO_REGISTRO,
@@ -11,9 +12,11 @@ import {
   motivoParaNaoAbrir,
   papelDoPerfil,
   motivoParaNaoConferir,
+  motivoParaNaoCriarPendencia,
   oQueMudou,
   oQuePrecisaAtualizar,
   podeVoltarVersao,
+  situacaoDaPendencia,
   valorGuardado,
   valorLido,
   type CampoDaFicha,
@@ -25,14 +28,15 @@ import {
   type Dito,
   type ModoDoRegistro,
   type Mudanca,
+  type Pessoa,
   type PapelNaConversa,
 } from '../regras/conversa.ts'
 import { ehAudio, minutos, partesDoAudio, tirarSenhas } from '../regras/entrevista.ts'
 import { registrarNoCofre } from './cofre.ts'
 import { BYTES_POR_SEGUNDO, montarTranscricao } from './entrevista.ts'
-import type { IdPerfil } from './perfis.ts'
+import { PERFIS, type IdPerfil } from './perfis.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Ficha, Gravacao, Tarefa, Trecho } from './tipos.ts'
+import type { Ficha, Gravacao, Setor, Tarefa, Trecho } from './tipos.ts'
 
 /** A conversa do D5: quem conduziu, o canal, com quem e como foi registrada. Espelho do Zod da design.md. */
 export type Conversa = {
@@ -62,6 +66,8 @@ export type Conversa = {
   decisoes?: DecisaoDaMudanca[]
   /** Data e hora ISO da conferência de quem conversou; depois dela, o caso segue de onde parou. */
   conferidaEm?: string
+  /** O que ficou pendente e virou tarefa no card (GGVP-88). Sem ela, não surgiu pendência. */
+  pendencia?: Pendencia
 }
 
 /** O quadro da IA depois de transcrever: o que mudou, o que precisa atualizar, a observação e o combinado (GGVP-80). */
@@ -424,8 +430,20 @@ export function conversaDaGravacao(gravacaoId: string): string | undefined {
 
 // GGVP-84 · Atualizar ficha e processo com desfazer.
 
-/** "Surgiu pendência?" (GGVP-88). Nesta história, só o "Não"; a tarefa entra com a GGVP-88. */
-export type NovaPendencia = { surgiu: false }
+/** "Surgiu pendência?" (GGVP-88): o combinado, quem fica com a tarefa (nunca presumido) e o prazo (dd/mm/aaaa). */
+export type NovaPendencia = { surgiu: false } | { surgiu: true; texto: string; responsavel: string; prazo: string }
+
+/** A pendência que virou tarefa no card (GGVP-88). */
+export type Pendencia = {
+  texto: string
+  responsavel: string
+  setor: Setor
+  /** aaaa-mm-dd */
+  prazo: string
+  criadaEm: string
+  cumpridaEm?: string
+  cumpridaPor?: string
+}
 
 /** O que a tela manda ao conferir: a decisão de cada mudança e, na conferência de quem conversou, a pendência. */
 export type Conferencia = { decisoes: DecisaoDaMudanca[]; pendencia?: NovaPendencia }
@@ -472,7 +490,10 @@ export async function conferirConversa(conversaId: string, conferencia: Conferen
   const primeira = !c.conferidaEm
   if (primeira && por.quem !== c.quem) throw new Error(`Quem confere é quem fez a conversa: ${c.quem}.`)
   if (primeira && !conferencia.pendencia) throw new Error('Responda "Surgiu pendência?".')
-  if (conferencia.pendencia?.surgiu) throw new Error('A tarefa da pendência ainda não está pronta.')
+  const p = primeira && conferencia.pendencia?.surgiu ? conferencia.pendencia : undefined
+  const pessoas = pessoasDoEscritorio()
+  const motivoDaPendencia = p && motivoParaNaoCriarPendencia(p, pessoas, hojeIso(agora()))
+  if (motivoDaPendencia) throw new Error(motivoDaPendencia)
   const mudancas = c.analise?.mudancas ?? []
   const decididas = (c.decisoes ?? []).map((d) => d.id)
   const motivo = motivoParaNaoConferir(mudancas, conferencia.decisoes, papelDoPerfil(por.perfil), decididas)
@@ -494,11 +515,17 @@ export async function conferirConversa(conversaId: string, conferencia: Conferen
     const senha = g?.extraidas.find((e) => e.destino === 'cofre')
     if (senha) senha.conferidaEm = quando
     const conta = (decisao: DecisaoDaMudanca['decisao']) => conferencia.decisoes.filter((d) => d.decisao === decisao).length
-    const processo = ficha.processos.find((p) => p.id === c.processoId)
+    const processo = ficha.processos.find((x) => x.id === c.processoId)
+    // A tarefa nasce no card, para o responsável escolhido (CA1, CA3); sem pendência, nenhuma (CA2).
+    if (p) {
+      const setor = pessoas.find((x) => x.nome === p.responsavel)!.setor
+      c.pendencia = { texto: p.texto.trim(), responsavel: p.responsavel, setor, prazo: dataParaIso(normalizarData(p.prazo))!, criadaEm: quando }
+    }
+    const pendencia = c.pendencia ? `pendência para ${c.pendencia.responsavel} (${c.pendencia.setor}) até ${dataCurta(c.pendencia.prazo, hojeIso(agora()))}: ${c.pendencia.texto}` : 'sem pendência'
     ficha.historico.push(
       evento(
         `Conferiu a conversa de hoje: ${conta('confirmada')} confirmada(s), ${conta('corrigida')} corrigida(s), ${conta('desfeita')} desfeita(s); ` +
-          `sem pendência; o caso segue de onde parou${processo ? ` (${processo.etapa})` : ''}`,
+          `${pendencia}; o caso segue de onde parou${processo ? ` (${processo.etapa})` : ''}`,
         por.quem,
       ),
     )
@@ -535,4 +562,96 @@ export async function voltarParaVersao(alvo: Alvo, indice: number, por: QuemAge)
   )
   gravar(banco)
   return banco.versoes!.filter((v) => v.fichaId === alvo.fichaId)
+}
+
+// GGVP-88 · Pendência da conversa vira tarefa.
+
+const SETOR_DO_PERFIL: Record<IdPerfil, Setor> = {
+  atendimento: 'Atendimento',
+  'atendimento-lider': 'Atendimento',
+  advogada: 'Jurídico',
+  senior: 'Jurídico',
+  'senior-2': 'Jurídico',
+  documentacao: 'Documentação · ADM',
+  financeiro: 'Financeiro',
+}
+
+const SENIORES: IdPerfil[] = ['senior', 'senior-2']
+
+/** Quem pode ficar com a tarefa: as pessoas do "Trocar perfil", num lugar só. Ao ligar no servidor, as pessoas do escritório. */
+export function pessoasDoEscritorio(): Pessoa[] {
+  return PERFIS.map((p) => ({ nome: p.usuario, setor: SETOR_DO_PERFIL[p.id] }))
+}
+
+/**
+ * "nome · Cumprir pendência", com o combinado embaixo, na Central do responsável (CA4). Vencido o prazo, o lembrete e a
+ * tarefa urgente; três dias depois, a Sênior recebe "Pendência atrasada" (CA5).
+ */
+export function tarefasDePendencia(quem: { usuario: string; id: IdPerfil } | undefined): Tarefa[] {
+  const banco = ler()
+  const hoje = hojeIso(agora())
+  return conversasDo(banco).flatMap((c) => {
+    const p = c.pendencia
+    const ficha = banco.fichas.find((f) => f.id === c.fichaId)
+    if (!p || !ficha || !quem) return []
+    const situacao = situacaoDaPendencia(p.prazo, hoje, Boolean(p.cumpridaEm))
+    const prazo = dataCurta(p.prazo, hoje)
+    const comum = { codigo: 'D5.05', cliente: { id: ficha.id, nome: ficha.nome }, href: `/conversas/${c.id}/conferir`, processoId: c.processoId }
+    const tarefas: Tarefa[] = []
+    if (situacao !== 'cumprida' && p.responsavel === quem.usuario) {
+      tarefas.push({
+        ...comum,
+        id: `pendencia-${c.id}`,
+        acao: 'Cumprir pendência',
+        detalhe: situacao === 'no-prazo' ? p.texto : `${p.texto} · lembrete: o prazo venceu em ${prazo}`,
+        prazo: situacao === 'no-prazo' ? `vence ${prazo}` : `venceu ${prazo}`,
+        urgente: situacao !== 'no-prazo',
+      })
+    }
+    if (situacao === 'na-senior' && SENIORES.includes(quem.id)) {
+      tarefas.push({
+        ...comum,
+        id: `pendencia-atrasada-${c.id}`,
+        acao: 'Pendência atrasada',
+        detalhe: `${p.responsavel} · ${p.texto} · venceu em ${prazo} · novo prazo ou dar por cumprida`,
+        prazo: 'hoje',
+        urgente: true,
+      })
+    }
+    return tarefas
+  })
+}
+
+function pendenciaAberta(banco: Banco, conversaId: string) {
+  const achado = acharConversa(banco, conversaId)
+  const p = achado.conversa.pendencia
+  if (!p || p.cumpridaEm) throw new Error('Não há pendência aberta nesta conversa.')
+  return { ...achado, p }
+}
+
+/** POST /api/conversas/:id/pendencia/cumprida. O responsável ou a Sênior dá a pendência por cumprida; sai da Central. */
+export async function cumprirPendencia(conversaId: string, por: QuemAge): Promise<ConversaAberta> {
+  await esperar()
+  const banco = ler()
+  const { conversa, ficha, gravacao, p } = pendenciaAberta(banco, conversaId)
+  if (por.quem !== p.responsavel && !SENIORES.includes(por.perfil!)) throw new Error(`A pendência é de ${p.responsavel}; a Sênior também pode dar por cumprida.`)
+  Object.assign(p, { cumpridaEm: agora().toISOString(), cumpridaPor: por.quem })
+  ficha.historico.push(evento(`Cumpriu a pendência da conversa: ${p.texto}`, por.quem))
+  gravar(banco)
+  return { conversa, ficha, gravacao }
+}
+
+/** POST /api/conversas/:id/pendencia/prazo. Só a Sênior, com a pendência atrasada: um prazo novo, de hoje em diante (CA5). */
+export async function novoPrazoDaPendencia(conversaId: string, prazo: string, por: QuemAge): Promise<ConversaAberta> {
+  await esperar()
+  if (!SENIORES.includes(por.perfil!)) throw new Error('Só a Sênior dá um prazo novo à pendência atrasada.')
+  const banco = ler()
+  const { conversa, ficha, gravacao, p } = pendenciaAberta(banco, conversaId)
+  const hoje = hojeIso(agora())
+  const novo = dataParaIso(normalizarData(prazo))
+  if (!novo || novo < hoje) throw new Error('Prazo de hoje em diante (dd/mm/aaaa).')
+  ficha.historico.push(evento(`Deu um prazo novo à pendência da conversa (${p.responsavel}): ${dataCurta(p.prazo, hoje)} → ${dataCurta(novo, hoje)}`, por.quem))
+  p.prazo = novo
+  gravar(banco)
+  return { conversa, ficha, gravacao }
 }

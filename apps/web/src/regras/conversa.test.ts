@@ -7,6 +7,10 @@ import {
   erroDoValor,
   modoDoCanal,
   motivoParaNaoConferir,
+  motivoParaNaoCriarPendencia,
+  responsavelDaPendencia,
+  situacaoDaPendencia,
+  type Pessoa,
   motivoParaNaoAbrir,
   oQueMudou,
   oQuePrecisaAtualizar,
@@ -140,5 +144,44 @@ describe('Conferir o que a IA quer mudar (GGVP-84)', () => {
   it('CA2 · só a Sênior volta uma versão', () => {
     expect(['senior', 'senior-2'].map((p) => podeVoltarVersao(p as 'senior'))).toEqual([true, true])
     expect(['advogada', 'atendimento', undefined].map((p) => podeVoltarVersao(p as 'advogada'))).toEqual([false, false, false])
+  })
+})
+
+describe('Pendência da conversa vira tarefa (GGVP-88)', () => {
+  const pessoas: Pessoa[] = [
+    { nome: 'Bruna (exemplo)', setor: 'Atendimento' },
+    { nome: 'Carla (exemplo)', setor: 'Atendimento' },
+    { nome: 'Dra. Paula (exemplo)', setor: 'Jurídico' },
+    { nome: 'Dra. Renata (exemplo)', setor: 'Jurídico' },
+    { nome: 'Jéssica (exemplo)', setor: 'Documentação · ADM' },
+  ]
+
+  it('CA3 · citou a pessoa, é ela; citou só o setor, pergunta quem do setor; ninguém, pergunta quem é; nunca presume', () => {
+    expect(responsavelDaPendencia('A Jessica recebe o relatório da alta.', pessoas)).toEqual({ tipo: 'pessoa', pessoa: pessoas[4] })
+    expect(responsavelDaPendencia('Dra. Paula liga para a clínica', pessoas)).toEqual({ tipo: 'pessoa', pessoa: pessoas[2] })
+    expect(responsavelDaPendencia('Documentação: receber e digitalizar o relatório.', pessoas)).toEqual({ tipo: 'setor', setor: 'Documentação · ADM', opcoes: [pessoas[4]] })
+    expect(responsavelDaPendencia('a advogada confere o laudo', pessoas)).toEqual({ tipo: 'setor', setor: 'Jurídico', opcoes: [pessoas[2], pessoas[3]] })
+    expect(responsavelDaPendencia('Ligar de novo na sexta', pessoas)).toEqual({ tipo: 'perguntar', opcoes: pessoas })
+    expect(responsavelDaPendencia('Bruna ou Carla liga na sexta', pessoas)).toEqual({ tipo: 'perguntar', opcoes: [pessoas[0], pessoas[1]] })
+    // "Carlos" não é a Carla: o nome inteiro, não um pedaço.
+    expect(responsavelDaPendencia('o Carlos trouxe o papel', pessoas).tipo).toBe('perguntar')
+  })
+
+  it('CA1 · o que falta para criar a tarefa: o combinado, o responsável e o prazo de hoje em diante', () => {
+    const ok = { texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' }
+    expect(motivoParaNaoCriarPendencia(ok, pessoas, '2026-10-07')).toBeNull()
+    expect(motivoParaNaoCriarPendencia({ ...ok, texto: 'ok' }, pessoas, '2026-10-07')).toBe('Escreva o que ficou combinado (de 5 a 500 letras).')
+    expect(motivoParaNaoCriarPendencia({ ...ok, responsavel: undefined }, pessoas, '2026-10-07')).toBe('Escolha quem fica com a tarefa.')
+    expect(motivoParaNaoCriarPendencia({ ...ok, responsavel: 'Fulano' }, pessoas, '2026-10-07')).toBe('Escolha quem fica com a tarefa.')
+    expect(motivoParaNaoCriarPendencia({ ...ok, prazo: '06/10/2026' }, pessoas, '2026-10-07')).toBe('Prazo de hoje em diante (dd/mm/aaaa).')
+    expect(motivoParaNaoCriarPendencia({ ...ok, prazo: '07/10/2026' }, pessoas, '2026-10-07')).toBeNull()
+  })
+
+  it('CA5 · o laço: no prazo; vencido, o lembrete; três dias depois, a Sênior; cumprida sai do laço', () => {
+    expect(situacaoDaPendencia('2026-10-10', '2026-10-10', false)).toBe('no-prazo')
+    expect(situacaoDaPendencia('2026-10-10', '2026-10-11', false)).toBe('lembrete')
+    expect(situacaoDaPendencia('2026-10-10', '2026-10-12', false)).toBe('lembrete')
+    expect(situacaoDaPendencia('2026-10-10', '2026-10-13', false)).toBe('na-senior')
+    expect(situacaoDaPendencia('2026-10-10', '2026-10-20', true)).toBe('cumprida')
   })
 })

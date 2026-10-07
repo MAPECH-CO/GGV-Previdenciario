@@ -27,7 +27,7 @@ import { tarefasDeFechamento } from '../dados/fechamento.ts'
 import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
 import { tarefasDeComplemento } from '../dados/complemento.ts'
-import { tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
@@ -61,6 +61,7 @@ export function CentralAtendimento() {
     ...tarefasDePedirLegivel(),
     ...tarefasDeComplemento(),
     ...tarefasDeRegistrarConversa(perfil?.usuario),
+    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
   ])
 
   return (

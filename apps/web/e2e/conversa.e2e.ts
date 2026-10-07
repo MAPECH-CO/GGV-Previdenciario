@@ -135,6 +135,41 @@ test('GGVP-84 · quem conversou confere campo por campo; a ficha muda; Ctrl+Z vo
   await expect(page.getByLabel('Telefone / WhatsApp *')).toHaveValue('(11) 90000-0004')
 })
 
+test('GGVP-88 · surgiu pendência: o setor citado pergunta quem; a tarefa nasce na Central da Jéssica, que dá por cumprida', async ({ page }) => {
+  await page.goto('/clientes/maria-exemplo')
+  await page.getByRole('button', { name: 'Iniciar conversa' }).click()
+  const janela = page.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
+  await janela.getByRole('radio', { name: 'Ligação', exact: true }).click()
+  await janela.getByRole('button', { name: 'Anexar o áudio' }).click()
+  await page.getByLabel(/Áudio da ligação/).setInputFiles({ name: 'ligacao-maria.ogg', mimeType: 'audio/ogg', buffer: Buffer.alloc(4096) })
+  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }).check()
+  await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
+  await page.getByRole('link', { name: 'Conferir e atualizar (D5.04)' }).click()
+
+  const concluir = page.getByRole('group', { name: 'Concluir a conferência' })
+  await concluir.getByRole('button', { name: 'Desfazer' }).click()
+  await page.getByRole('radio', { name: 'Sim — criar a tarefa no card (D5.05)' }).click()
+  await expect(page.getByLabel('O que ficou combinado *')).toHaveValue('Documentação: receber e digitalizar o relatório da alta hospitalar.')
+  const escolha = page.getByRole('group', { name: 'Escolha o responsável' })
+  await expect(escolha).toContainText('Documentação tem 1 pessoa. Quem fica com esta tarefa?')
+  await escolha.getByRole('radio', { name: 'Jéssica (exemplo)' }).click()
+  await page.getByLabel('Prazo *').fill('31/12/2026')
+  await expect(page.getByRole('group', { name: 'Ação para confirmar' })).toContainText('vence 31/12 · responsável: Jéssica (exemplo)')
+  await concluir.getByRole('button', { name: 'Confirmar' }).click()
+  await expect(page.getByRole('group', { name: 'Pendência da conversa' })).toContainText('Tarefa no card: Jéssica (exemplo) (Documentação · ADM) · Cumprir pendência')
+
+  await page.goto('/?perfil=documentacao')
+  const cumprir = page.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })
+  await expect(cumprir.locator('xpath=ancestor::li')).toContainText('Documentação: receber e digitalizar o relatório da alta hospitalar.')
+  // O perfil escolhido pelo endereço vale para a página aberta: a tarefa abre já como a Jéssica.
+  await page.goto(`${await cumprir.getAttribute('href')}?perfil=documentacao`)
+  await page.getByRole('group', { name: 'Pendência da conversa' }).getByRole('button', { name: 'Marcar como cumprida' }).click()
+  await expect(page.getByText(/✓ Cumprida por Jéssica \(exemplo\) em/)).toBeVisible()
+  await page.goto('/?perfil=documentacao')
+  await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })).toHaveCount(0)
+})
+
 test('GGVP-76 CA7 · pelas Transcrições, o registro escrito aparece como "só registro", com quem registrou', async ({ page }) => {
   await page.goto('/clientes/maria-exemplo')
   await page.getByRole('button', { name: /Transcrições/ }).click()

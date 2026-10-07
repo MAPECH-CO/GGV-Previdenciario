@@ -4,6 +4,7 @@ import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
+import { abrirConversa, conferirConversa } from '../dados/conversa.ts'
 import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
@@ -169,5 +170,16 @@ describe('Central do Atendimento', () => {
     trocarPerfil('documentacao')
     render(<CentralAtendimento />)
     expect(screen.queryByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toBeNull()
+  })
+
+  it('GGVP-88 CA4 · "Cumprir pendência" na Central do responsável, com o nome do cliente e o combinado embaixo', async () => {
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'escrito', registro: 'Trouxe o relatório da alta.' }, { quem: 'Bruna (exemplo)', perfil: 'atendimento' })
+    await conferirConversa(c.id, { decisoes: [], pendencia: { surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' } }, { quem: 'Bruna (exemplo)', perfil: 'atendimento' })
+    trocarPerfil('documentacao')
+    render(<CentralAtendimento />)
+    const cumprir = screen.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })
+    expect(cumprir.getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
+    expect(cumprir.closest('li')?.textContent).toContain('Receber o relatório da alta.')
+    expect(cumprir.closest('li')?.textContent).toContain('vence 10/10')
   })
 })

@@ -4,21 +4,36 @@ import { HistoricoDeVersoes } from '../componentes/HistoricoDeVersoes.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { conferirConversa, obterConversa, type ConversaAberta } from '../dados/conversa.ts'
+import { dataParaIso, normalizarData } from '../campos.ts'
+import {
+  conferirConversa,
+  cumprirPendencia,
+  novoPrazoDaPendencia,
+  obterConversa,
+  pessoasDoEscritorio,
+  type ConversaAberta,
+  type QuemAge,
+} from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
+import { agora } from '../dados/servidor.ts'
 import {
   CANAIS_DO_REGISTRO,
   QUEM_PODE,
+  TAMANHO_DO_COMBINADO,
   erroDoValor,
   motivoParaNaoConferir,
+  motivoParaNaoCriarPendencia,
   papelDoPerfil,
   podeConfirmar,
+  responsavelDaPendencia,
+  situacaoDaPendencia,
   valorLido,
   type DecisaoDaMudanca,
   type Mudanca,
 } from '../regras/conversa.ts'
-import { hora } from '../regras/datas.ts'
+import { dataCurta, dataHora, hojeIso, hora } from '../regras/datas.ts'
 import { relogio } from '../regras/entrevista.ts'
+import { soNumeroEMascara } from '../regras/formularios.ts'
 import base from './Balcao.module.css'
 import proprio from './Conversa.module.css'
 import vivo from './EntrevistaAoVivo.module.css'
@@ -34,7 +49,13 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   const idCorrecao = useId()
   const [dados, setDados] = useState<ConversaAberta | null | undefined>(undefined)
   const [decisoes, setDecisoes] = useState<Decisoes>({})
-  const [pendencia, setPendencia] = useState<'nao' | null>(null)
+  const [pendencia, setPendencia] = useState<'nao' | 'sim' | null>(null)
+  // O combinado: sem edição, o que a IA ouviu na conversa (GGVP-88).
+  const [combinado, setCombinado] = useState<string | null>(null)
+  const [prazo, setPrazo] = useState('')
+  const [escolhido, setEscolhido] = useState<string | undefined>()
+  const [trocando, setTrocando] = useState(false)
+  const [novoPrazo, setNovoPrazo] = useState('')
   const [transcricoes, setTranscricoes] = useState(false)
   const [historico, setHistorico] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -76,10 +97,26 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   const lista = Object.values(decisoes).filter((d) => abertas.some((m) => m.id === d.id))
   const falasDeSaude = new Set(mudancas.filter((m) => m.saude).map((m) => m.aos))
   const pronta = !g || g.transcricao === 'pronta' || g.transcricao === 'sem-audio'
+  const hoje = hojeIso(agora())
+  const pessoas = pessoasDoEscritorio()
+  const texto = combinado ?? c.analise?.pendencia ?? ''
+  // A regra do chat (CA3): citou a pessoa, é ela; citou o setor, pergunta quem do setor; ninguém, pergunta quem é.
+  const auto = responsavelDaPendencia(texto, pessoas)
+  const responsavel = escolhido ?? (auto.tipo === 'pessoa' && !trocando ? auto.pessoa.nome : undefined)
+  const opcoes = trocando ? pessoas : auto.tipo === 'pessoa' ? [] : auto.opcoes
   const motivoParado = !pronta
     ? 'A transcrição ainda não ficou pronta.'
     : (motivoParaNaoConferir(mudancas, lista, papel, [...jaDecididas.keys()]) ??
-      (primeira && pendencia === null ? 'Responda "Surgiu pendência?".' : !primeira && lista.length === 0 ? 'Confira o que ficou para o Jurídico.' : null))
+      (primeira && pendencia === null
+        ? 'Responda "Surgiu pendência?".'
+        : primeira && pendencia === 'sim'
+          ? motivoParaNaoCriarPendencia({ texto, responsavel, prazo }, pessoas, hoje)
+          : !primeira && lista.length === 0
+            ? 'Confira o que ficou para o Jurídico.'
+            : null))
+  const p = c.pendencia
+  const situacaoDaTarefa = p && situacaoDaPendencia(p.prazo, hoje, Boolean(p.cumpridaEm))
+  const senior = perfil?.id === 'senior' || perfil?.id === 'senior-2'
   const ditoAs = (aos: number) =>
     g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
 
@@ -93,10 +130,28 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
     setEnviando(true)
     setErro('')
     try {
-      setDados(await conferirConversa(c.id, { decisoes: lista, ...(primeira && { pendencia: { surgiu: false as const } }) }, { quem: perfil.usuario, perfil: perfil.id }))
+      const nova = pendencia === 'sim' ? { surgiu: true as const, texto, responsavel: responsavel!, prazo } : { surgiu: false as const }
+      setDados(await conferirConversa(c.id, { decisoes: lista, ...(primeira && { pendencia: nova }) }, { quem: perfil.usuario, perfil: perfil.id }))
       setDecisoes({})
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para conferir.')
+    } finally {
+      travado.current = false
+      setEnviando(false)
+    }
+  }
+
+  /** Dar por cumprida ou o prazo novo da Sênior (GGVP-88, CA5). */
+  async function naPendencia(acao: (por: QuemAge) => Promise<ConversaAberta>) {
+    if (travado.current || !perfil) return
+    travado.current = true
+    setEnviando(true)
+    setErro('')
+    try {
+      setDados(await acao({ quem: perfil.usuario, perfil: perfil.id }))
+      setNovoPrazo('')
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Não deu para registrar.')
     } finally {
       travado.current = false
       setEnviando(false)
@@ -227,11 +282,79 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
                   <button type="button" role="radio" className={base.opcao} aria-checked={pendencia === 'nao'} disabled={!podeAgir} onClick={() => setPendencia('nao')}>
                     Não — confirmar e voltar ao D1
                   </button>
-                  {/* A tarefa da pendência é da GGVP-88. */}
-                  <button type="button" role="radio" className={base.opcao} aria-checked={false} aria-disabled="true">
+                  <button type="button" role="radio" className={base.opcao} aria-checked={pendencia === 'sim'} disabled={!podeAgir} onClick={() => setPendencia('sim')}>
                     Sim — criar a tarefa no card (D5.05)
                   </button>
                 </div>
+                {pendencia === 'sim' && (
+                  <div className={proprio.pendencia}>
+                    <label className={proprio.campo} htmlFor={`${idCorrecao}-combinado`}>
+                      O que ficou combinado *
+                      <textarea
+                        id={`${idCorrecao}-combinado`}
+                        className={vivo.texto}
+                        rows={3}
+                        maxLength={TAMANHO_DO_COMBINADO.maximo}
+                        value={texto}
+                        onChange={(e) => {
+                          setCombinado(e.target.value)
+                          setEscolhido(undefined)
+                          setTrocando(false)
+                        }}
+                      />
+                    </label>
+                    <label className={proprio.campo} htmlFor={`${idCorrecao}-prazo`}>
+                      Prazo *
+                      <input
+                        id={`${idCorrecao}-prazo`}
+                        className={vivo.texto}
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="dd/mm/aaaa"
+                        value={prazo}
+                        onChange={(e) => setPrazo(soNumeroEMascara(e.target.value))}
+                      />
+                    </label>
+                    {/* Figma 2052:186 e 2176:2: "Escolha o responsável" e "Ação para confirmar". */}
+                    <div className={proprio.responsavel} role="group" aria-label={responsavel ? 'Ação para confirmar' : 'Escolha o responsável'}>
+                      <span className={proprio.selo}>{responsavel ? 'Ação para confirmar' : 'Escolha o responsável'}</span>
+                      <p className={proprio.previa}>
+                        <span className={proprio.nova}>nova</span>
+                        <span>
+                          <strong>{ficha.nome}</strong> · Cumprir pendência
+                          <span className={proprio.previaDetalhe}>
+                            {[texto || 'o combinado', `vence ${dataParaIso(normalizarData(prazo)) ? dataCurta(dataParaIso(normalizarData(prazo))!, hoje) : '—'}`].join(' · ')}
+                            {' · '}responsável: {responsavel ?? 'a escolher'}
+                          </span>
+                        </span>
+                      </p>
+                      {responsavel && !opcoes.length ? (
+                        <p>
+                          Responsável: <strong>{responsavel}</strong> · {pessoas.find((x) => x.nome === responsavel)?.setor}{' '}
+                          <button type="button" className={proprio.trocar} onClick={() => (setEscolhido(undefined), setTrocando(true))}>
+                            Trocar
+                          </button>
+                        </p>
+                      ) : (
+                        <>
+                          <p>
+                            {auto.tipo === 'setor' && !trocando
+                              ? `${auto.setor.split(' ·')[0]} tem ${auto.opcoes.length} ${auto.opcoes.length === 1 ? 'pessoa' : 'pessoas'}. Quem fica com esta tarefa?`
+                              : 'Quem fica com esta tarefa?'}
+                          </p>
+                          <div className={base.ladoOpcoes} role="radiogroup" aria-label="Responsável">
+                            {opcoes.map((x) => (
+                              <button key={x.nome} type="button" role="radio" className={base.chip} aria-checked={escolhido === x.nome} onClick={() => setEscolhido(x.nome)}>
+                                {x.nome}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      <p className={base.nota}>Se você escrever o nome (ex.: “a Jéssica recebe…”), ela já fica como responsável. Sem nome nem setor, eu pergunto quem é.</p>
+                    </div>
+                  </div>
+                )}
               </section>
               <p className={base.aviso}>
                 A tarefa da pendência nasce com responsável: se você citar a pessoa, é ela; se citar só o setor, o sistema pergunta quem
@@ -246,6 +369,52 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
               <p>
                 O caso segue de onde parou{processo ? `: ${processo.etapa}${processo.proximaAcao ? ` · ${processo.proximaAcao}` : ''}` : ''}.
               </p>
+              {p ? (
+                <div className={proprio.pendencia} role="group" aria-label="Pendência da conversa">
+                  <p>
+                    <strong>Tarefa no card:</strong> {p.responsavel} ({p.setor}) · Cumprir pendência · {p.texto}
+                  </p>
+                  <p role="status">
+                    {situacaoDaTarefa === 'cumprida' && `✓ Cumprida por ${p.cumpridaPor} em ${dataHora(p.cumpridaEm!)}.`}
+                    {situacaoDaTarefa === 'no-prazo' && `Vence ${dataCurta(p.prazo, hoje)}.`}
+                    {situacaoDaTarefa === 'lembrete' && `O prazo venceu em ${dataCurta(p.prazo, hoje)}: lembrete ao responsável.`}
+                    {situacaoDaTarefa === 'na-senior' && `O prazo venceu em ${dataCurta(p.prazo, hoje)}: subiu para a Sênior decidir.`}
+                  </p>
+                  {situacaoDaTarefa !== 'cumprida' && (perfil?.usuario === p.responsavel || senior) && (
+                    <div className={base.atalhos}>
+                      <button type="button" className={base.atalho} disabled={enviando} onClick={() => naPendencia((por) => cumprirPendencia(c.id, por))}>
+                        Marcar como cumprida
+                      </button>
+                    </div>
+                  )}
+                  {senior && (situacaoDaTarefa === 'lembrete' || situacaoDaTarefa === 'na-senior') && (
+                    <div className={base.atalhos}>
+                      <label className={proprio.campo} htmlFor={`${idCorrecao}-novo-prazo`}>
+                        Prazo novo
+                        <input
+                          id={`${idCorrecao}-novo-prazo`}
+                          className={vivo.texto}
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="dd/mm/aaaa"
+                          value={novoPrazo}
+                          onChange={(e) => setNovoPrazo(soNumeroEMascara(e.target.value))}
+                        />
+                      </label>
+                      <button type="button" className={base.atalho} disabled={enviando || novoPrazo.length < 10} onClick={() => naPendencia((por) => novoPrazoDaPendencia(c.id, novoPrazo, por))}>
+                        Dar prazo novo
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p>Não surgiu pendência: nenhuma tarefa nasceu.</p>
+              )}
+              {erro && !podeAgir && (
+                <p role="alert" className={base.motivo}>
+                  {erro}
+                </p>
+              )}
               <div className={base.atalhos}>
                 <a className={base.atalho} href={`/clientes/${ficha.id}`}>
                   Abrir o card do cliente
@@ -289,6 +458,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
           <ul className={base.ladoLista}>
             <li>• Cada mudança da IA confirmada, corrigida ou desfeita*</li>
             <li>• «Surgiu pendência?» respondida*</li>
+            <li>• Se «Sim»: o que ficou combinado*, prazo* e responsável* (nunca presumido)</li>
           </ul>
           <h3 className={base.ladoSecao}>Travas</h3>
           <p className={base.ladoSub}>

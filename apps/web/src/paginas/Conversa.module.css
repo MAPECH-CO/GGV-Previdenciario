@@ -161,3 +161,60 @@
   gap: 4px;
   font-size: var(--fonte-12);
 }
+
+/* "Surgiu pendência? Sim" e a escolha do responsável (GGVP-88; Figma 2052:186 e 2176:2). */
+.pendencia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--fonte-13);
+}
+
+.responsavel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+}
+
+.selo {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+}
+
+.previa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-painel-neutro);
+}
+
+.nova {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+}
+
+.previaDetalhe {
+  display: block;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.trocar {
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font-weight: 600;
+}

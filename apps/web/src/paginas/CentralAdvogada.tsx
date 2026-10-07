@@ -12,7 +12,7 @@ import { tarefasDeDecidirCobranca } from '../dados/cobranca.ts'
 import { tarefasDaFilaDaSenior } from '../dados/liberacao.ts'
 import { tarefasDoParecer } from '../dados/parecer.ts'
 import { tarefasDeDecidirComplemento } from '../dados/complemento.ts'
-import { tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
 
@@ -29,7 +29,7 @@ export function CentralAdvogada() {
   // O laudo novo e o parecer médico nascem do caso (GGVP-20).
   // A conversa com o cliente é da pessoa que a abriu (GGVP-76).
   const perfil = usePerfil('Advogada')
-  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDeRegistrarConversa(perfil?.usuario)])
+  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDeRegistrarConversa(perfil?.usuario), ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id })])
 
   return (
     <>

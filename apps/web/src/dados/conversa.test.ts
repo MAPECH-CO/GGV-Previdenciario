@@ -5,7 +5,11 @@ import {
   anexarAudio,
   conferirConversa,
   conversaDaGravacao,
+  cumprirPendencia,
   finalizarConversa,
+  novoPrazoDaPendencia,
+  pessoasDoEscritorio,
+  tarefasDePendencia,
   gravarConversa,
   obterConversa,
   obterVersoes,
@@ -13,6 +17,7 @@ import {
   transcreverConversa,
   voltarParaVersao,
   type NovaConversa,
+  type NovaPendencia,
   type QuemAge,
 } from './conversa.ts'
 import { registrarAcao } from './entrevista.ts'
@@ -306,5 +311,72 @@ describe('Atualizar ficha e processo com desfazer · servidor de exemplo (GGVP-8
     const pericia = { fichaId: 'maria-exemplo', processoId: 'maria-exemplo-1', onde: 'processo' as const, campo: 'pericia' as const }
     await voltarParaVersao(pericia, 0, SENIOR)
     expect((await obterVersoes('maria-exemplo')).filter((v) => v.campo === 'pericia').at(-1)?.valor).toBe('2026-10-02')
+  })
+})
+
+describe('Pendência da conversa vira tarefa · servidor de exemplo (GGVP-88)', () => {
+  const JESSICA = { usuario: 'Jéssica (exemplo)', id: 'documentacao' as const }
+  const RENATA = { usuario: 'Dra. Renata (exemplo)', id: 'senior' as const }
+
+  async function conferidaCom(pendencia: NovaPendencia) {
+    const c = await abrirConversa('maria-exemplo', { ...PRESENCIAL, modo: 'escrito', registro: 'Trouxe o relatório da alta; vai deixar com a Documentação.' }, BRUNA)
+    return conferirConversa(c.id, { decisoes: [], pendencia }, BRUNA)
+  }
+
+  it('CA1 e CA4 · surgiu pendência: a tarefa nasce com o responsável, na Central dele, com o nome do cliente e o combinado embaixo', async () => {
+    await expect(conferidaCom({ surgiu: true, texto: 'Receber o relatório da alta.', responsavel: '', prazo: '10/10/2026' })).rejects.toThrow('Escolha quem fica com a tarefa.')
+    await expect(conferidaCom({ surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '06/10/2026' })).rejects.toThrow('Prazo de hoje em diante')
+    const { conversa, ficha } = await conferidaCom({ surgiu: true, texto: ' Documentação: receber e digitalizar o relatório da alta. ', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' })
+    expect(conversa.pendencia).toMatchObject({ texto: 'Documentação: receber e digitalizar o relatório da alta.', responsavel: 'Jéssica (exemplo)', setor: 'Documentação · ADM', prazo: '2026-10-10' })
+    expect(ficha.historico.at(-1)?.oQue).toBe(
+      'Conferiu a conversa de hoje: 0 confirmada(s), 0 corrigida(s), 0 desfeita(s); pendência para Jéssica (exemplo) (Documentação · ADM) até 10/10: Documentação: receber e digitalizar o relatório da alta.; o caso segue de onde parou (Administrativo · perícia em 02/10)',
+    )
+    expect(tarefasDePendencia(JESSICA)).toEqual([
+      {
+        id: `pendencia-${conversa.id}`,
+        codigo: 'D5.05',
+        cliente: { id: 'maria-exemplo', nome: 'Maria Exemplo' },
+        acao: 'Cumprir pendência',
+        detalhe: 'Documentação: receber e digitalizar o relatório da alta.',
+        prazo: 'vence 10/10',
+        urgente: false,
+        href: `/conversas/${conversa.id}/conferir`,
+        processoId: 'maria-exemplo-1',
+      },
+    ])
+    expect(tarefasDePendencia({ usuario: 'Bruna (exemplo)', id: 'atendimento' })).toEqual([])
+    // O caso volta ao D1 de onde parou: a etapa não muda.
+    expect(ficha.processos[0].etapa).toBe('Administrativo · perícia em 02/10')
+  })
+
+  it('CA2 · não surgiu pendência: nenhuma tarefa nasce', async () => {
+    const { conversa } = await conferidaCom({ surgiu: false })
+    expect(conversa.pendencia).toBeUndefined()
+    expect(pessoasDoEscritorio().flatMap((p) => tarefasDePendencia({ usuario: p.nome, id: 'senior' }))).toEqual([])
+  })
+
+  it('CA5 · vencido o prazo, o lembrete e a tarefa urgente; três dias depois, a Sênior decide: prazo novo ou cumprida', async () => {
+    const { conversa } = await conferidaCom({ surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '08/10/2026' })
+    configurarExemplo({ agora: () => new Date(2026, 9, 9, 9, 0) })
+    expect(tarefasDePendencia(JESSICA)[0]).toMatchObject({ detalhe: 'Receber o relatório da alta. · lembrete: o prazo venceu em 08/10', prazo: 'venceu 08/10', urgente: true })
+    expect(tarefasDePendencia(RENATA)).toEqual([])
+    configurarExemplo({ agora: () => new Date(2026, 9, 11, 9, 0) })
+    expect(tarefasDePendencia(RENATA)).toEqual([
+      expect.objectContaining({ acao: 'Pendência atrasada', detalhe: 'Jéssica (exemplo) · Receber o relatório da alta. · venceu em 08/10 · novo prazo ou dar por cumprida', urgente: true }),
+    ])
+    await expect(novoPrazoDaPendencia(conversa.id, '15/10/2026', BRUNA)).rejects.toThrow('Só a Sênior')
+    await expect(novoPrazoDaPendencia(conversa.id, '10/10/2026', { quem: RENATA.usuario, perfil: 'senior' })).rejects.toThrow('Prazo de hoje em diante')
+    await novoPrazoDaPendencia(conversa.id, '15/10/2026', { quem: RENATA.usuario, perfil: 'senior' })
+    expect(tarefasDePendencia(RENATA)).toEqual([])
+    expect(tarefasDePendencia(JESSICA)[0]).toMatchObject({ prazo: 'vence 15/10', urgente: false })
+  })
+
+  it('o responsável ou a Sênior dá por cumprida; outra pessoa, não; cumprida, sai da Central', async () => {
+    const { conversa } = await conferidaCom({ surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' })
+    await expect(cumprirPendencia(conversa.id, BRUNA)).rejects.toThrow('A pendência é de Jéssica (exemplo)')
+    const { ficha } = await cumprirPendencia(conversa.id, { quem: 'Jéssica (exemplo)', perfil: 'documentacao' })
+    expect(ficha.historico.at(-1)).toMatchObject({ quem: 'Jéssica (exemplo)', oQue: 'Cumpriu a pendência da conversa: Receber o relatório da alta.' })
+    expect(tarefasDePendencia(JESSICA)).toEqual([])
+    await expect(cumprirPendencia(conversa.id, { quem: 'Jéssica (exemplo)', perfil: 'documentacao' })).rejects.toThrow('Não há pendência aberta')
   })
 })

@@ -1,6 +1,10 @@
 // A conversa com o lead ou o cliente (fluxo D5, GGVP-12): canal, com quem, modo e quem pode. Regra, não IA.
 import { dataParaIso, formatarTelefone, isoParaData, normalizarData, normalizarTelefone, validarData, validarEmail, validarTelefone } from '../campos.ts'
 import type { IdPerfil } from '../dados/perfis.ts'
+import type { Setor } from '../dados/tipos.ts'
+import { somarDias } from './agenda.ts'
+import { semAcento } from './busca.ts'
+import { DIAS_ENTRE_COBRANCAS } from './cobranca.ts'
 
 /** O canal da decisão "Canal da conversa" do Miro. WhatsApp e vídeo saem (Lucas, 06/10). */
 export type CanalDoRegistro = 'ligacao' | 'presencial'
@@ -191,4 +195,62 @@ export type VersaoDoCampo = {
 /** Só a Sênior volta uma versão (Pedro, 07/10). */
 export function podeVoltarVersao(id: IdPerfil | undefined): boolean {
   return id === 'senior' || id === 'senior-2'
+}
+
+// GGVP-88 · Pendência da conversa vira tarefa.
+
+/** Uma pessoa do escritório que pode ficar com a tarefa: o nome e o setor. */
+export type Pessoa = { nome: string; setor: Setor }
+
+/** Como o setor aparece no que a pessoa escreve ("a Documentação recebe", "a advogada liga"). */
+const SETORES_FALADOS: [RegExp, Setor][] = [
+  [/\bdocumentacao\b/, 'Documentação · ADM'],
+  [/\batendimento\b/, 'Atendimento'],
+  [/\b(juridico|advogad[ao]|senior)\b/, 'Jurídico'],
+  [/\bfinanceiro\b/, 'Financeiro'],
+]
+
+/** O primeiro nome, sem "Dra." e sem "(exemplo)": como a pessoa cita a colega. */
+const primeiroNome = (nome: string) => semAcento(nome.replace(/^(dra?\.)\s+/i, '').split(' ')[0])
+
+export type Responsavel =
+  | { tipo: 'pessoa'; pessoa: Pessoa }
+  | { tipo: 'setor'; setor: Setor; opcoes: Pessoa[] }
+  | { tipo: 'perguntar'; opcoes: Pessoa[] }
+
+/**
+ * A regra do chat de 30/09 (CA3): citou a pessoa, é ela; citou só o setor, pergunta quem do setor; não citou ninguém,
+ * pergunta quem é. O responsável nunca é presumido: com duas pessoas citadas, pergunta entre elas.
+ */
+export function responsavelDaPendencia(texto: string, pessoas: Pessoa[]): Responsavel {
+  const dito = semAcento(texto)
+  const citadas = pessoas.filter((p) => new RegExp(`\\b${primeiroNome(p.nome)}\\b`).test(dito))
+  if (citadas.length === 1) return { tipo: 'pessoa', pessoa: citadas[0] }
+  if (citadas.length > 1) return { tipo: 'perguntar', opcoes: citadas }
+  const setor = SETORES_FALADOS.find(([padrao]) => padrao.test(dito))?.[1]
+  if (setor) return { tipo: 'setor', setor, opcoes: pessoas.filter((p) => p.setor === setor) }
+  return { tipo: 'perguntar', opcoes: pessoas }
+}
+
+/** O tamanho do que ficou combinado. */
+export const TAMANHO_DO_COMBINADO = { minimo: 5, maximo: 500 }
+
+/** O que falta para criar a tarefa da pendência (CA1, CA3): o combinado, o responsável escolhido e o prazo de hoje em diante. */
+export function motivoParaNaoCriarPendencia(p: { texto: string; responsavel?: string; prazo: string }, pessoas: Pessoa[], hoje: string): string | null {
+  const t = p.texto.trim().length
+  if (t < TAMANHO_DO_COMBINADO.minimo || t > TAMANHO_DO_COMBINADO.maximo) return `Escreva o que ficou combinado (de ${TAMANHO_DO_COMBINADO.minimo} a ${TAMANHO_DO_COMBINADO.maximo} letras).`
+  if (!p.responsavel || !pessoas.some((x) => x.nome === p.responsavel)) return 'Escolha quem fica com a tarefa.'
+  const prazo = dataParaIso(normalizarData(p.prazo))
+  if (!prazo || prazo < hoje) return 'Prazo de hoje em diante (dd/mm/aaaa).'
+  return null
+}
+
+/**
+ * O laço da pendência (CA5). A régua geral é da GGVP-94; até ela, vale o laço da cobrança: vencido o prazo, o lembrete e a
+ * tarefa urgente; passados os dias entre cobranças, sobe para a Sênior.
+ */
+export function situacaoDaPendencia(prazo: string, hoje: string, cumprida: boolean): 'cumprida' | 'no-prazo' | 'lembrete' | 'na-senior' {
+  if (cumprida) return 'cumprida'
+  if (prazo >= hoje) return 'no-prazo'
+  return somarDias(prazo, DIAS_ENTRE_COBRANCAS) <= hoje ? 'na-senior' : 'lembrete'
 }
