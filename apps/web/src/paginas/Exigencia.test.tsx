@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CumprirExigencia } from './CumprirExigencia.tsx'
 import { TratarExigencia } from './TratarExigencia.tsx'
@@ -49,7 +49,12 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
-afterEach(() => vi.unstubAllGlobals())
+// Desmonta antes de devolver o fetch de verdade: a recarga depois de "Entregar ao Jurídico" não pode cair no
+// intervalo e chamar a API com endereço relativo (erro solto que derrubava o CI de vez em quando).
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('Tratar exigência do INSS (GGVP-39)', () => {
   it('CA7 · mostra o texto e, com os dias, o prazo contado pelo servidor', async () => {
