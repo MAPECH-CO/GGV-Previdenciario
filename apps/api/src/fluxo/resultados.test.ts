@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, pessoa, prestacaoContas, resultadoInss, usuario } from '../banco/esquema.ts'
+import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, pessoa, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { painelDeResultados } from './resultados.ts'
 
 let banco: Banco
@@ -142,5 +142,15 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     await decisaoInss(id, 'deferido')
     expect((await painelDeResultados(banco, { ...PERIODO, recorte: 'perito' })).recorte?.grupos.map((g) => g.nome)).toEqual(['Dr. Exemplo'])
     expect((await painelDeResultados(banco, { ...PERIODO, recorte: 'beneficio' })).recorte?.grupos).toHaveLength(1)
+  })
+
+  it('GGVP-55 CA3 · a base do acervo: processos, conferidos, os que aguardam conferência e a data da entrada mais recente', async () => {
+    const [helena] = await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'Helena (exemplo)', senhaHash: 'x' }).returning()
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000011220204036301', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'importacao', criadoEm: as('2026-09-21') },
+      { numeroCnj: '00000021220204036301', desfecho: 'improcedente', fonte: 'lote', criadoEm: as('2026-10-02') },
+      { numeroCnj: '00000031220204036301', fonte: 'lote', criadoEm: as('2026-10-02') },
+    ])
+    expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toEqual({ situacao: 'com_dados', processos: 3, conferidos: 1, aguardandoConferencia: 1, dataDaBase: '2026-10-02' })
   })
 })

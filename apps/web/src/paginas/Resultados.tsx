@@ -5,6 +5,10 @@ import { chamarApi, type Resposta } from '../api.ts'
 import styles from './Passo.module.css'
 
 const casos = (n: number) => `${n} ${n === 1 ? 'caso' : 'casos'}`
+type Base = Extract<PainelDeResultados['baseDoAcervo'], { situacao: 'com_dados' }>
+/** GGVP-55 CA3: os totais e a data da base em uso; os que aguardam conferência ficam fora das contas. */
+const textoDaBase = (b: Base) =>
+  `${b.processos} processos · ${b.conferidos} conferidos, nas contas · ${b.aguardandoConferencia} aguardando conferência, fora das contas · base de ${isoParaData(b.dataDaBase)}`
 const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
 
 /** O número, ou por que ele não sai (CA8: amostra insuficiente; CA5: sem dados ainda), sempre com os casos (CA1). */
@@ -229,7 +233,7 @@ export function Resultados() {
 
       <section className={styles.cartao}>
         <h2 className={styles.cartaoTitulo}>Base do acervo</h2>
-        <p className={styles.dica}>Sem dados ainda.</p>
+        <p className={styles.dica}>{painel?.baseDoAcervo.situacao === 'com_dados' ? textoDaBase(painel.baseDoAcervo) : 'Sem dados ainda.'}</p>
       </section>
     </main>
   )

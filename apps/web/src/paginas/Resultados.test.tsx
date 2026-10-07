@@ -114,6 +114,15 @@ describe('Resultados do escritório (GGVP-75)', () => {
     expect(chamada).toHaveBeenCalledTimes(2)
   })
 
+  it('GGVP-55 CA3 · a base do acervo com os totais, os que aguardam conferência fora das contas e a data da base', async () => {
+    servidor({ ...painel, baseDoAcervo: { situacao: 'com_dados', processos: 8, conferidos: 3, aguardandoConferencia: 4, dataDaBase: '2026-10-02' } })
+    render(<Resultados />)
+    await screen.findByRole('list', { name: 'Indicadores do escritório' })
+    expect(screen.getByRole('heading', { name: 'Base do acervo' }).nextElementSibling?.textContent).toBe(
+      '8 processos · 3 conferidos, nas contas · 4 aguardando conferência, fora das contas · base de 02/10/2026',
+    )
+  })
+
   it('CA1 · o recorte mostra os indicadores de cada grupo', async () => {
     servidor({ ...painel, recorte: { por: 'beneficio', grupos: [{ nome: 'BPC/LOAS Deficiente', indicadores: [ind('deferimento_inss', 'Deferimento no INSS', 8, 0.75, 'taxa', 'ok')] }] } })
     render(<Resultados />)

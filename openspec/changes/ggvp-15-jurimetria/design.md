@@ -76,3 +76,45 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
 - **Poucos casos:** com poucos casos decididos, quase tudo sai "amostra insuficiente". É o que o G22 pede, e os dados de exemplo trazem um recorte com amostra para a tela poder ser conferida.
 - **Matriz de permissões:** a versão 11 pode conflitar com outro PR que suba a matriz ao mesmo tempo. Resolve-se no merge, com a impressão digital nova.
 - **Juízo pela origem do CNJ:** é o código da unidade, não o nome da vara. O nome entra quando houver o cadastro de juízos (GGVP-64).
+
+## GGVP-55 · Subir lote avulso de processos no acervo pelo chat e ver a base em uso na Gestão (a parte sem chat)
+
+### Context
+
+A tabela `processo_acervo` já existe e ninguém escreve nela ainda. Ela tem `desfecho`, `desfecho_conferido_por`, `fonte` e `criado_em`. O lote pelo chat (CA4, CA5) e a leitura dos PDFs pela IA ficam para depois de 09/10 (`kit/entrega-09-10.md`: chat com ação e IA fora). Esta entrega é a base do acervo na Gestão (CA3) e a conferência dos desfechos (CA7), sobre processos que já estão no acervo.
+
+### Decisions
+
+1. **Contrato** (`packages/contratos/src/acervo.ts`, novo):
+   - `DESFECHOS_DO_ACERVO`: procedente, procedente em parte, acordo, improcedente, extinto sem mérito e desistência, como o Raio-X classifica;
+   - `ConferenciaDoAcervo` (os pendentes e quantos já foram conferidos);
+   - `ConferirDesfecho` (o desfecho conferido: o mesmo lido, ou o corrigido).
+
+   O `baseDoAcervo` do painel ganha o caso com dados: processos, conferidos, aguardando conferência e data da base.
+2. **Sem tabela nova e sem migração:**
+   - aguardando conferência = desfecho lido e sem `desfecho_conferido_por`; nas contas = conferido;
+   - corrigir troca o desfecho e grava o antes e o depois no histórico;
+   - a data da base é a da entrada mais recente, em Brasília;
+   - nada se apaga: a entrada nova soma à anterior.
+3. **Item da Central:** a Sênior vê "Conferir desfechos do lote · N processos" (D4.05) só enquanto houver pendente.
+   - É como a fila de revisão da vigília, sem linha em `tarefa`, que exige caso.
+4. **Endpoints:** `GET /api/acervo/conferencia` e `POST /api/acervo/processos/:id/conferencia`, com `exigir('acervo.conferir_desfecho')`.
+   - Matriz versão 12, ação nova só da Sênior.
+   - Processo já conferido: 409.
+5. **Tela "Conferir desfechos do lote"** (`/acervo/conferencia`): uma linha por processo, com "Confere" e "Corrigir".
+   - Ficam de fora a seleção múltipla e a confiança da IA: são sugestões da v2, e ainda não há IA.
+
+### Campos de formulário
+
+- "Corrigir": seleção fixa (`DESFECHOS_DO_ACERVO`), validada pelo contrato na tela e no servidor.
+- Número do processo: só exibido, com `formatarCnj` da `campos`.
+
+### Telas
+
+- "Conferir desfechos do lote" (`/acervo/conferencia`), aberta pela Central da Sênior.
+- A linha "Base do acervo" na tela Resultados da Gestão.
+
+### Risks / Trade-offs
+
+- **Desfecho lido sem a IA:** enquanto não há lote pelo chat, os processos do acervo vêm dos dados de exemplo; a conferência funciona igual quando o lote chegar.
+- **Matriz de permissões:** a versão 12 vem logo depois da 11 deste mesmo PR; conflito com outro PR se resolve no merge, com a impressão digital nova.

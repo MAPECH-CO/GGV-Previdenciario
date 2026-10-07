@@ -32,5 +32,7 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
       baseDoAcervo: { situacao: 'sem_dados' as const },
     }
     expect(PainelDeResultados.parse(painel).totais).toBeNull()
+    const base = { situacao: 'com_dados' as const, processos: 12, conferidos: 9, aguardandoConferencia: 3, dataDaBase: '2026-10-06' }
+    expect(PainelDeResultados.parse({ ...painel, baseDoAcervo: base }).baseDoAcervo).toEqual(base)
   })
 })

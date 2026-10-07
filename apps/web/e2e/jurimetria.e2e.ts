@@ -27,3 +27,24 @@ test('GGVP-75 · a Sênior vê o painel, sem os totais em dinheiro', async ({ pa
   await expect(page.getByRole('list', { name: 'Valores do escritório' })).toHaveCount(0)
   await expect(page.getByText(/R\$/)).toHaveCount(0)
 })
+
+test('GGVP-55 · a Sênior abre "Conferir desfechos do lote" pela Central, confere um e corrige outro; a Gestão mostra a base do acervo', async ({ page }) => {
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: /Conferir desfechos do lote/ }).click()
+  await expect(page.getByRole('heading', { name: 'Conferir desfechos do lote' })).toBeVisible()
+  const lista = page.getByRole('list', { name: 'Desfechos para conferir' })
+
+  await lista.getByRole('listitem').filter({ hasText: '0001123-45.2018.4.03.6301' }).getByRole('button', { name: 'Confere' }).click()
+  await expect(page.getByRole('status')).toHaveText('Desfecho conferido.')
+
+  const outro = lista.getByRole('listitem').filter({ hasText: '0004512-33.2019.4.03.6301' })
+  await outro.getByRole('button', { name: 'Corrigir' }).click()
+  await outro.getByLabel('Desfecho correto').selectOption('extinto_sem_merito')
+  await outro.getByRole('button', { name: 'Salvar a correção' }).click()
+  await expect(page.getByRole('status')).toHaveText('Desfecho corrigido para Extinto sem mérito.')
+  await expect(lista.getByRole('listitem')).toHaveCount(2)
+
+  await page.goto('/gestao/resultados')
+  await expect(page.getByText(/\d+ processos · \d+ conferidos, nas contas · \d+ aguardando conferência, fora das contas · base de 02\/10\/2026/)).toBeVisible()
+})

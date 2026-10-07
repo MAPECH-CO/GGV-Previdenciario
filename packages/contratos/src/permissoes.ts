@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 11
+export const VERSAO_MATRIZ = 12
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -67,6 +67,8 @@ export const MATRIZ = {
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],
   'publicacao.casar': ['senior'],
+  // Versão 12 (GGVP-55 CA7): só o desfecho conferido pela Sênior entra nas contas da jurimetria.
+  'acervo.conferir_desfecho': ['senior'],
   'publicacao.classificar': ['advogada', 'senior'],
   // Versão 6 (GGVP-79, 83, 87): exigência do juiz; o Jurídico entre os setores é o Jurídico administrativo
   'exigencia_juiz.distribuir': ['advogada'],

@@ -82,7 +82,17 @@ export const PainelDeResultados = z.object({
   totais: z.object({ honorariosRecebidos: z.string(), recebimentos: z.number().int(), diasAteReceber: Indicador }).nullable(),
   /** CA5: "sem dados ainda" enquanto o escritório não tiver caso decidido no portal. */
   operacao: z.enum(['com_dados', 'sem_dados']),
-  /** CA6: o acervo ainda não existe (GGVP-55). */
-  baseDoAcervo: z.object({ situacao: z.literal('sem_dados') }),
+  /** CA6 e GGVP-55 CA3: a base do acervo, com os que aguardam conferência fora das contas; sem acervo, "sem dados ainda". */
+  baseDoAcervo: z.discriminatedUnion('situacao', [
+    z.object({ situacao: z.literal('sem_dados') }),
+    z.object({
+      situacao: z.literal('com_dados'),
+      processos: z.number().int(),
+      conferidos: z.number().int(),
+      aguardandoConferencia: z.number().int(),
+      /** AAAA-MM-DD: a entrada mais recente, em Brasília. */
+      dataDaBase: z.string(),
+    }),
+  ]),
 })
 export type PainelDeResultados = z.infer<typeof PainelDeResultados>

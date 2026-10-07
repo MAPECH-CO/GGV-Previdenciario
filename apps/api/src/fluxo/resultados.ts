@@ -2,8 +2,9 @@
 // (CA7), pela data do seu evento no período; caso com dado incerto fica fora e nada trava. Abaixo de AMOSTRA_MINIMA
 // casos, a taxa não sai (CA8, G22).
 import { AMOSTRA_MINIMA, ROTULO_BENEFICIO, type Beneficio, type Indicador, type PainelDeResultados, type Recorte } from '@ggv/contratos'
+import { count, max, sql } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, resultadoInss, usuario } from '../banco/esquema.ts'
+import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { hojeEmBrasilia as diaEmBrasilia } from '../vigilia/fila.ts'
 
 const PROCEDENTES = new Set(['procedente_total', 'procedente_parcial'])
@@ -115,6 +116,16 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
     }
   }
 
+  // GGVP-55 CA3: a base em uso não depende do período. Aguardando = desfecho lido e sem conferência, fora das contas.
+  const [acervo] = await banco
+    .select({
+      processos: count(),
+      conferidos: count(processoAcervo.desfechoConferidoPor),
+      aguardando: sql`count(*) filter (where ${processoAcervo.desfecho} is not null and ${processoAcervo.desfechoConferidoPor} is null)`.mapWith(Number),
+      ultimaEntrada: max(processoAcervo.criadoEm),
+    })
+    .from(processoAcervo)
+
   return {
     periodo: { de, ate },
     indicadores: [...indicadores(() => true), contagem('pareceres_dispensados', 'Pareceres dispensados', dispensados)],
@@ -131,7 +142,15 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
     },
     totais,
     operacao: decisoes.size + judiciais.length > 0 ? 'com_dados' : 'sem_dados',
-    baseDoAcervo: { situacao: 'sem_dados' },
+    baseDoAcervo: acervo.ultimaEntrada
+      ? {
+          situacao: 'com_dados',
+          processos: acervo.processos,
+          conferidos: acervo.conferidos,
+          aguardandoConferencia: acervo.aguardando,
+          dataDaBase: diaEmBrasilia(acervo.ultimaEntrada),
+        }
+      : { situacao: 'sem_dados' },
   }
 }
 

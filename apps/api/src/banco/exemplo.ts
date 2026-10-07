@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, processoAcervo, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
@@ -288,4 +288,19 @@ export async function semearExemplos(banco: Banco) {
     const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
     await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
   }
+
+  // Acervo (GGVP-55): três processos da base histórica já conferidos pela Sênior, quatro do lote de 02/10 com o desfecho
+  // lido esperando a conferência e um que ainda não tem desfecho, para a "Base do acervo" e "Conferir desfechos do lote".
+  const base = new Date(Date.UTC(2026, 8, 21, 15))
+  const lote = new Date(Date.UTC(2026, 9, 2, 15))
+  await banco.insert(processoAcervo).values([
+    { numeroCnj: '50001014520234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001024520234036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001034520234036301', beneficio: 'aposentadoria_pcd', desfecho: 'acordo', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '00045123320194036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00077819020204036301', beneficio: 'auxilio_incapacidade_temporaria', desfecho: 'procedente_parcial', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00011234520184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
+  ])
 }
