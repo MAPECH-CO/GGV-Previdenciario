@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 10, digital: '5df401de' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 11, digital: 'fb1b3949' })
   })
 
   it('CA2 · só a Sênior aprova para o INSS', () => {
@@ -34,7 +34,7 @@ describe('matriz de permissões (GGVP-96)', () => {
   })
 
   it('CA1 e CA12 · Financeiro vê prestação e valores, nunca entrevista, laudos, saúde nem petição', () => {
-    expect(acoesDe('financeiro')).toEqual(['gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver'])
+    expect(acoesDe('financeiro')).toEqual(['banco.agendar', 'gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver'])
   })
 
   it('CA12 · dado de saúde em detalhe só para o Jurídico; valores só o Financeiro, e a prestação também a advogada', () => {
@@ -59,7 +59,11 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('documentacao', 'exigencia_inss.cumprir')).toBe(true)
     expect(pode('advogada', 'exigencia_inss.cumprir')).toBe(false)
     expect(pode('senior', 'exigencia_inss.decidir_vencida')).toBe(true)
-    expect(pode('financeiro', 'banco.agendar')).toBe(false)
+  })
+
+  it('versão 11 · a ida ao banco é do Financeiro (GGVP-98); o Atendimento não marca', () => {
+    expect(pode('financeiro', 'banco.agendar')).toBe(true)
+    expect(pode('atendimento', 'banco.agendar')).toBe(false)
   })
 
   it('versão 5 · vigília: a Sênior reprocessa e casa a fila; a advogada vê e classifica', () => {
@@ -77,13 +81,13 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 8,
-      atendimento_lider: 10,
+      atendimento: 7,
+      atendimento_lider: 9,
       documentacao: 6,
       advogada: 20,
       senior: 20,
       juridico_adm: 13,
-      financeiro: 4,
+      financeiro: 5,
       socio: 4,
     })
   })

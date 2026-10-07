@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 10
+export const VERSAO_MATRIZ = 11
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -60,7 +60,8 @@ export const MATRIZ = {
   'exigencia_inss.tratar': ['advogada'],
   'exigencia_inss.cumprir': ['documentacao'],
   'exigencia_inss.decidir_vencida': ['senior'],
-  'banco.agendar': ['atendimento', 'atendimento_lider'],
+  // Versão 11 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
+  'banco.agendar': ['financeiro'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],

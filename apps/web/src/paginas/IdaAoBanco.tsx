@@ -8,8 +8,9 @@ import styles from './Passo.module.css'
 const ROTULO_CANAL = { whatsapp: 'WhatsApp', telefone: 'Telefone', email: 'E-mail', sms: 'SMS' } as const
 
 /**
- * Agendar ida ao banco (GGVP-44, Atendimento): data, hora e local; quem acompanha é opcional e vem da equipe (CA10). Sem valores (CA2).
- * Depois, a mensagem do modelo para revisar e enviar pelo celular; o portal registra o envio (CA3, CA11, Q5).
+ * Avisar resultado e agendar a ida ao banco (GGVP-44 e GGVP-98, Financeiro; Lucas, 06/10): data, hora, local e quem do
+ * Atendimento leva o cliente, todos obrigatórios (CA6). Depois, a mensagem do modelo para revisar e enviar; o portal registra
+ * o envio (CA5). Feita a ida, "Confirmar recebimento" fecha o caso (CA9).
  */
 export function IdaAoBanco({ casoId }: { casoId: string }) {
   const ids = { data: useId(), hora: useId(), local: useId(), acompanhante: useId(), canal: useId() }
@@ -45,14 +46,22 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
     const r = await chamarApi(`/casos/${casoId}/banco/envio`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
     setErro('')
-    setFeito('Envio registrado.')
+    setFeito('Envio registrado. O caso entrou no acervo como processo bom.')
+    setVersao((v) => v + 1)
+  }
+
+  async function confirmar() {
+    const r = await chamarApi(`/casos/${casoId}/banco/confirmacao`, { method: 'POST', corpo: {} })
+    if (!r.ok) return setErro(r.erro)
+    setErro('')
+    setFeito('Recebimento confirmado. Caso encerrado.')
     setVersao((v) => v + 1)
   }
 
   if (!b)
     return (
       <main className={styles.pagina}>
-        <title>Agendar ida ao banco · GGV Previdenciário</title>
+        <title>Avisar e agendar a ida ao banco · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
@@ -63,17 +72,17 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
 
   return (
     <main className={styles.pagina}>
-      <title>Agendar ida ao banco · GGV Previdenciário</title>
+      <title>Avisar e agendar a ida ao banco · GGV Previdenciário</title>
       <a className={styles.voltar} href="/">
         ← Voltar ao início
       </a>
-      <h1 className={styles.titulo}>Agendar ida ao banco</h1>
+      <h1 className={styles.titulo}>Avisar resultado e agendar a ida ao banco</h1>
       <p className={styles.subtitulo}>{b.cliente}</p>
 
       {b.agendamento && (
         <section className={styles.cartao} aria-label="Agendada">
           <span className={styles.selo}>
-            {b.agendamento.data} às {b.agendamento.hora} · {b.agendamento.local} · acompanha: {b.agendamento.acompanhante ?? 'ninguém do escritório'}
+            {b.agendamento.data} às {b.agendamento.hora} · {b.agendamento.local} · leva: {b.agendamento.acompanhante ?? '—'}
           </span>
         </section>
       )}
@@ -105,10 +114,10 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
           </label>
           <input id={ids.local} className={styles.campo} value={local} onChange={(e) => setLocal(e.target.value)} />
           <label className={styles.rotulo} htmlFor={ids.acompanhante}>
-            Quem do escritório acompanha (opcional)
+            Quem do Atendimento leva o cliente
           </label>
           <select id={ids.acompanhante} className={styles.campo} value={acompanhanteId} onChange={(e) => setAcompanhanteId(e.target.value)}>
-            <option value="">Ninguém do escritório</option>
+            <option value="">Escolha</option>
             {b.equipe.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.nome}
@@ -122,7 +131,7 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
           </div>
         </form>
       ) : (
-        <p className={styles.dica}>A ida ao banco é agendada depois da prestação de contas concluída.</p>
+        !b.encerrado && <p className={styles.dica}>A ida ao banco é agendada depois que o Financeiro recebe a prestação.</p>
       )}
 
       {b.agendamento && (
@@ -166,6 +175,18 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
           )}
         </section>
       )}
+
+      {b.podeConfirmar && (
+        <section className={styles.cartao} aria-label="Confirmar recebimento">
+          <p className={styles.dica}>Depois da ida ao banco, confirme que o cliente recebeu. O caso fecha.</p>
+          <div className={styles.acoes}>
+            <button type="button" className={styles.botao} onClick={() => void confirmar()}>
+              Confirmar recebimento
+            </button>
+          </div>
+        </section>
+      )}
+      {b.encerrado && <span className={styles.selo}>Recebimento confirmado · caso encerrado</span>}
     </main>
   )
 }

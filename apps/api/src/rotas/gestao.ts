@@ -17,6 +17,7 @@ const DESCRICAO: Record<string, string> = {
   'G6:D3a.04': 'Protocolar a manifestação sem a versão aprovada (G6)',
   'G21:D3a.04': 'Manifestar no processo sem prova em todos os itens (G21)',
   'G8:D3b.03': 'Avisar o cliente antes do OK da advogada na prestação de contas (G8)',
+  'G8:D2.06r': 'Registrar o recebimento da prestação em que deu o OK (quem dá o OK não recebe)',
 }
 const UUID = /^[0-9a-f-]{36}$/
 type Detalhe = { portao?: PortaoDeBloqueio; passo?: string; perfil?: string | null; acao?: string; casoId?: string }

@@ -61,23 +61,23 @@ export const SalvarPrestacao = z.object({
 })
 export type SalvarPrestacao = z.input<typeof SalvarPrestacao>
 
-/** POST /api/casos/:id/prestacao/recebimento (CA9). */
+/** POST /api/casos/:id/prestacao/recebimento (GGVP-44 CA9; GGVP-98 CA3: lançar só com os valores conferidos). */
 export const ReceberPrestacao = z.discriminatedUnion(
   'resultado',
   [
-    z.object({ resultado: z.literal('recebido') }),
+    z.object({ resultado: z.literal('recebido'), valoresConferem: z.literal(true, { error: 'Marque "Valores conferem com o comprovante"' }) }),
     z.object({ resultado: z.literal('divergencia'), motivo: z.string().trim().min(1, 'Escreva qual é a divergência') }),
   ],
   { error: 'Escolha "Recebido" ou "Divergência"' },
 )
 export type ReceberPrestacao = z.infer<typeof ReceberPrestacao>
 
-/** GET /api/casos/:id/banco: o Atendimento agenda sem ver valores (CA2). */
+/** GET /api/casos/:id/banco: o Financeiro avisa e marca a ida ao banco (GGVP-98, Lucas 06/10). */
 export const IdaAoBancoDoCaso = z.object({
   casoId: z.uuid(),
   cliente: z.string(),
   agendamento: z.object({ id: z.uuid(), data: z.string(), hora: z.string(), local: z.string(), acompanhante: z.string().nullable() }).nullable(),
-  /** Usuários do portal, para escolher quem acompanha (CA10). */
+  /** Quem pode levar o cliente ao banco: o Atendimento (GGVP-98 CA6). */
   equipe: z.array(z.object({ id: z.uuid(), nome: z.string() })),
   /** Texto montado pelo modelo aprovado, para a pessoa revisar antes de enviar (Q5). `null`: sem modelo ou sem agendamento. */
   mensagem: z.string().nullable(),
@@ -85,6 +85,9 @@ export const IdaAoBancoDoCaso = z.object({
   okAdvogada: z.boolean(),
   avisos: z.array(z.object({ quando: z.string(), canal: z.string(), texto: z.string(), quem: z.string() })),
   podeAgendar: z.boolean(),
+  /** GGVP-98 CA9: depois do aviso, o Financeiro confirma o recebimento e o caso fecha. */
+  podeConfirmar: z.boolean(),
+  encerrado: z.boolean(),
 })
 export type IdaAoBancoDoCaso = z.infer<typeof IdaAoBancoDoCaso>
 
@@ -93,7 +96,7 @@ export const AgendarIdaAoBanco = z.object({
   data: DataObrigatoria('Informe a data da ida ao banco (dd/mm/aaaa)'),
   hora: z.string({ error: 'Informe a hora (hh:mm)' }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe a hora (hh:mm)'),
   local: z.string({ error: 'Informe a agência ou o local' }).trim().min(1, 'Informe a agência ou o local'),
-  acompanhanteId: z.preprocess(vazioEhNada, z.uuid({ error: 'Escolha quem acompanha na lista' }).optional()),
+  acompanhanteId: z.preprocess(vazioEhNada, z.uuid({ error: 'Escolha quem do Atendimento acompanha o cliente' })),
 })
 export type AgendarIdaAoBanco = z.input<typeof AgendarIdaAoBanco>
 
