@@ -4,6 +4,8 @@
 
 Perfis e permissões: cada pessoa tem um ou mais perfis e vê e faz só o que o BPMN prevê para a raia dela. Uma matriz de permissões versionada, em `packages/contratos`, vale para a tela e para o servidor. Respostas do PO de 02/10: Sênior e advogada responsável são pessoas diferentes; Sócio é perfil (Lucas e Glauco) e vê a Gestão com valores; os líderes do Atendimento e a Sênior atribuem tarefas; dado de saúde em detalhe só para o Jurídico, e o Atendimento só confere se os documentos estão ok.
 
+Fora desta change, por critério (revisão geral de 07/10): o **CA13** (registrar cada acesso a dado de saúde) entra com as rotas que devolvem dado de saúde, cada uma com teste: a conferência da Sênior (PR #14) e os documentos (PR #18). O **CA14** (relatórios e exportações seguem o perfil) entra com a exportação do histórico e o relatório de prazos (PR #18). Aqui nasce só a tabela `acesso_dado_sensivel` (GGVP-129 CA3 e CA8).
+
 ## ADDED Requirements
 
 ### Requirement: CA1 · Financeiro vê a prestação e não vê entrevista, laudos nem petição
@@ -101,22 +103,6 @@ A matriz SHALL dizer quem vê dado de saúde em detalhe (advogada, Sênior, Jur�
 - **Dado** um perfil sem acesso a dado de saúde, petição ou valores
 - **Quando** pede esses dados à API (inclusive na busca)
 - **Então** eles não vêm
-
-### Requirement: CA13 · Acesso a dado de saúde registrado
-Todo acesso a dado de saúde por perfil autorizado SHALL ficar registrado (quem, quando, caso), na tabela de acessos sensíveis. Aberto nesta change: aqui só nasce a tabela (`acesso_dado_sensivel`, que só cresce, GGVP-129 CA3). A gravação entra com as rotas que devolvem dado de saúde, cada uma com teste: a conferência da Sênior na Via administrativa (PR #14, parecer médico) e a de documentos na Judicialização (PR #16).
-
-#### Scenario: CA13 · Perfil autorizado acessa dado de saúde
-- **Dado** um perfil autorizado
-- **Quando** acessa dado de saúde
-- **Então** o acesso fica registrado (quem, quando, caso)
-
-### Requirement: CA14 · Relatórios seguem o perfil
-Relatórios e exportações MUST seguir as mesmas restrições da matriz, quando existirem. Aberto nesta change: os relatórios nascem na Garantia (PR #18: exportação do histórico e relatório de prazos), e o teste vai lá.
-
-#### Scenario: CA14 · Gerar relatório
-- **Dado** relatórios e exportações
-- **Quando** alguém os gera
-- **Então** seguem as mesmas restrições do perfil
 
 ### Requirement: CA15 · Matriz versionada com teste por perfil
 A matriz SHALL ter número de versão e teste por perfil; mudar a matriz sem mudar a versão MUST quebrar o teste.
