@@ -119,8 +119,8 @@ export function peritosDeExemplo(): Perito[] {
   ]
 }
 
-/** Os peritos do banco; sem eles, a semente. */
-export const peritosDo = (banco: Banco): Perito[] => (banco.peritos ??= peritosDeExemplo())
+/** Os peritos do banco; sem eles, a semente, que não vai para o armazenamento da aba até um laudo novo mudar um perfil (GGVP-73). */
+export const peritosDo = (banco: Banco): Perito[] => banco.peritos ?? peritosDeExemplo()
 
 const sem = (nome: string) => nome.replace(/\s*\(exemplo\)$/, '').toLowerCase()
 
