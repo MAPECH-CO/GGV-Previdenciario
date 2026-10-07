@@ -25,6 +25,6 @@ Cada portão abaixo vira critério de aceite nas histórias indicadas. Nenhum po
 | G19 | Regras numéricas (24 meses no LOAS, mais de 15 dias e janela de 60 dias na incapacidade temporária, períodos PCD) são calculadas por código com teste, nunca pela IA | Roteiro de laudos (v2) | GGVP-25 |
 | G20 | A orientação ao médico ou ao cliente lista o que o documento deve abordar, sem sugerir diagnóstico, CID, grau, conclusão nem frase pronta | Roteiro de laudos (v2), no espírito de G11 | GGVP-29 |
 | G21 | Toda exigência do juízo ou do INSS vira item com prazo, responsável e prova; sem prova em todos os itens, não se manifesta; perto do vencimento, escala para a sênior | Conversa de 26/09 (v2) | GGVP-68 |
-| G22 | Jurimetria com amostra abaixo do mínimo aparece como "amostra insuficiente" e nunca chega ao cliente | Conversa de 26/09 (v2) | GGVP-59, GGVP-64 |
+| G22 | Toda porcentagem de jurimetria aparece com o número de casos ao lado e a data da base (por exemplo, "71% em 34 laudos · base de 07/10"). Não há amostra mínima: toda amostra conta. O número vem de código com teste, a IA só explica, e ele fica fora do texto da peça que vai ao juiz | Conversa de 26/09 (v2); Lucas, 06/10; Pedro, 07/10 | GGVP-59, GGVP-63, GGVP-64, GGVP-75 |
 
 ---

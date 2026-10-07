@@ -64,7 +64,7 @@ export const juizo = pgTable(
   (t) => [unique('juizo_unico').on(t.tribunal, t.nome)],
 ).enableRLS()
 
-/** Acervo do escritório (D4): só desfecho conferido por pessoa entra nas contas da jurimetria (G22, GGVP-55 CA7). */
+/** Acervo do escritório (D4): só desfecho conferido por pessoa entra nas contas da jurimetria (GGVP-41 CA5, GGVP-55 CA7). */
 export const processoAcervo = pgTable('processo_acervo', {
   id: id(),
   numeroCnj: text('numero_cnj').unique(),

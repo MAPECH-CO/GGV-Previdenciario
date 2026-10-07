@@ -26,7 +26,7 @@ Nenhuma: as seis estão em "Refinada", com as respostas do revisor de 06/10 nos 
 
 - AASP e DJEN reais: entram com as credenciais; até lá, fonte de exemplo.
 - IA (GGVP-14): classificar, sugerir itens, analisar o motivo, minuta, pontos de atenção e chat. Sem IA, a pessoa decide e escreve.
-- Jurimetria e amostra mínima (GGVP-15, GGVP-64, G22); parecer médico no pedido (GGVP-63 CA5, v2).
+- Jurimetria, com a porcentagem e o número de casos (GGVP-15, GGVP-64, G22); parecer médico no pedido (GGVP-63 CA5, v2).
 - A decisão da Sênior quando o laço passa do limite (GGVP-94), a atribuição pelo líder e a remarcação da perícia (épico Perícia).
 - Google Drive (GGVP-107): os arquivos ficam no armazenamento privado do portal.
 - Enviar o pacote ao tribunal: a advogada anexa lá; o portal registra.
