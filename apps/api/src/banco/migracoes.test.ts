@@ -35,8 +35,8 @@ describe('migrações', () => {
     for (const nome of ['identificador_caso', 'etapa', 'decisao', 'documento', 'documento_medico', 'parecer_medico',
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
       'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao',
-      'publicacao_descarte', 'publicacao_reclassificacao']) expect(t).toContain(nome)
-    expect(t).toHaveLength(45)
+      'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia']) expect(t).toContain(nome)
+    expect(t).toHaveLength(46)
   })
 
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {

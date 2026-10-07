@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --experimental-strip-types --env-file-if-exists=../../.env src/principal.ts",
+    "dev": "node --experimental-strip-types --env-file-if-exists=../../.env --env-file-if-exists=../../.env.ia src/principal.ts",
     "start": "node --experimental-strip-types src/principal.ts",
     "typecheck": "tsc",
     "lint": "oxlint",

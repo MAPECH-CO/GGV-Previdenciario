@@ -1,8 +1,8 @@
 // Acesso: quem entra, sessão e histórico (GGVP-117, GGVP-96, GGVP-99).
 import { sql } from 'drizzle-orm'
 import { boolean, check, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
-import { PERFIS } from '@ggv/contratos'
-import { criadoEm, id, momento } from './comum.ts'
+import { FORNECEDORES_DE_IA, PERFIS, SITUACOES_DA_CHAMADA } from '@ggv/contratos'
+import { criadoEm, emLista, id, momento } from './comum.ts'
 
 /** Quem entra no portal. Só o hash da senha; `perfis` vazio até o Sócio atribuir (GGVP-96). */
 export const usuario = pgTable('usuario', {
@@ -59,3 +59,29 @@ export const acessoDadoSensivel = pgTable('acesso_dado_sensivel', {
   recurso: text('recurso').notNull(),
   quando: momento('quando').notNull().defaultNow(),
 }).enableRLS()
+
+/**
+ * Toda chamada à IA (GGVP-106 CA4): quem pediu, para quê, qual modelo, o que voltou. A entrada fica só resumida (tamanho
+ * e hash), nunca o conteúdo. A saída pode ter dado de saúde: a auditoria só a mostra a quem vê dado de saúde.
+ */
+export const chamadaIa = pgTable(
+  'chamada_ia',
+  {
+    id: id(),
+    finalidade: text('finalidade').notNull(),
+    fornecedor: text('fornecedor').notNull(),
+    modelo: text('modelo').notNull(),
+    versaoInstrucao: integer('versao_instrucao').notNull(),
+    casoId: uuid('caso_id'),
+    pedidaPor: uuid('pedida_por').references(() => usuario.id),
+    entradaTamanho: integer('entrada_tamanho').notNull(),
+    entradaHash: text('entrada_hash').notNull(),
+    fontes: jsonb('fontes').notNull().default([]),
+    saida: text('saida'),
+    situacao: text('situacao').notNull(),
+    erro: text('erro'),
+    duracaoMs: integer('duracao_ms'),
+    quando: momento('quando').notNull().defaultNow(),
+  },
+  (t) => [emLista('chamada_ia_fornecedor', t.fornecedor, FORNECEDORES_DE_IA), emLista('chamada_ia_situacao', t.situacao, SITUACOES_DA_CHAMADA)],
+).enableRLS()
