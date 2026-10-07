@@ -49,3 +49,15 @@ describe('histórico e cofre (GGVP-99, GGVP-103)', () => {
     expect(CadastrarSenhaGovbr.safeParse({ senha: '' }).error?.issues.map((i) => i.message)).toEqual(['Digite a senha do gov.br'])
   })
 })
+
+describe('configuração do escritório (GGVP-104)', () => {
+  it('parâmetro é número inteiro pelo campos; o kit não repete documento e não fica vazio; todo benefício tem rótulo', async () => {
+    const { BENEFICIOS, PublicarKit, ROTULO_BENEFICIO, SalvarParametro } = await import('./governanca.ts')
+    expect(SalvarParametro.parse({ valor: '3' })).toEqual({ valor: 3 })
+    expect(SalvarParametro.safeParse({ valor: '3,5' }).error?.issues.map((i) => i.message)).toEqual(['Informe um número inteiro'])
+    expect(PublicarKit.safeParse({ itens: [] }).error?.issues.map((i) => i.message)).toEqual(['O kit precisa de ao menos um documento'])
+    const repetido = { itens: [{ tipoDocumento: 'rg', obrigatorio: true }, { tipoDocumento: 'rg', obrigatorio: false }] }
+    expect(PublicarKit.safeParse(repetido).error?.issues.map((i) => i.message)).toEqual(['Cada documento entra uma vez no kit'])
+    expect(BENEFICIOS.every((b) => ROTULO_BENEFICIO[b])).toBe(true)
+  })
+})

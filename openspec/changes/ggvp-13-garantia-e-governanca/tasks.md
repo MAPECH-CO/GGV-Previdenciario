@@ -25,7 +25,7 @@
 - [x] 3.4 CA8, CA9, CA10 · Servidor: decisão da Sênior no laço que subiu (juízo, despacho e INSS), com a decisão gravada, a contagem zerada, o próximo lembrete e a tarefa da Sênior fechada; testes.
 - [x] 3.5 Telas: o lembrete no card do setor e da Documentação; a Sênior decide no item que subiu (exigência do juiz, despacho e exigência do INSS); testes de tela.
 - [x] 3.6 Playwright: o setor cobra até o limite, a Sênior decide, e o setor vê a decisão e o próximo lembrete.
-- [ ] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-68 · Lista de exigências com prazo, responsável e prova
 
@@ -33,7 +33,7 @@
 - [x] 4.2 CA4, CA15 · Servidor: os alertas da exigência também para o "Atendimento · líder", no topo a 2 dias úteis (`inss.ts`); teste.
 - [x] 4.3 CA5, CA14 · Servidor: acionamento, última tentativa e a peça que cumpriu (`exigencia-juiz.ts`, `indeferimento.ts`); testes.
 - [x] 4.4 CA5, CA14 · Telas: status de cada setor com o acionamento e a última tentativa, e a peça no item cumprido (`AnalisarExigenciaJuiz.tsx`, `Despachar.tsx`); testes de tela.
-- [ ] 4.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 4.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-99 · Histórico de quem fez o quê, incluindo a IA
 
@@ -53,4 +53,14 @@
 - [x] 6.5 CA9 · Teste que procura a senha de teste no histórico e na exportação.
 - [x] 6.6 Telas: o componente do cofre (cadastrar ou trocar) no protocolo e para a ficha; "Uso do cofre" para a gestão (`/gestao/cofre`); testes de tela.
 - [x] 6.7 Playwright: o Jurídico administrativo cadastra a senha pelo cofre e revela; a gestão vê o uso no relatório, sem o valor.
-- [ ] 6.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-104 · Configuração do escritório
+
+- [x] 7.1 Contratos `BENEFICIOS`, `ROTULO_BENEFICIO`, `ConfiguracaoDoEscritorio`, `SalvarParametro`, `PublicarKit` e `SalvarMensagem`; matriz versão 10 (`configuracao.editar`); testes.
+- [x] 7.2 CA1, CA6 · Migração 0012 (versão do kit) e a conferência lendo a versão vigente na abertura do caso; teste.
+- [x] 7.3 CA3, CA4 · GET `/api/configuracao` e PUT dos parâmetros, com validação e histórico; teste.
+- [x] 7.4 CA1, CA3, CA5 · PUT do kit (publica a versão seguinte) e das mensagens, com histórico; teste.
+- [x] 7.5 Tela "Configuração do escritório" (`/configuracao`) e o link no topo da Central; testes de tela.
+- [x] 7.6 Playwright: a Sênior muda o limite de cobrança e publica o kit de um benefício; a mudança aparece no histórico da configuração.
+- [x] 7.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

@@ -25,6 +25,7 @@ export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
                 { id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },
                 { id: 'prazos', glifo: '⏱', rotulo: 'Prazos', href: '/gestao/prazos' },
                 { id: 'cofre', glifo: '🔒', rotulo: 'Uso do cofre', href: '/gestao/cofre' },
+                { id: 'configuracao', glifo: '⚙', rotulo: 'Configuração', href: '/configuracao' },
               ]
             : []),
         ]}

@@ -1,4 +1,5 @@
 // Contratos da garantia e governança (GGVP-13): tentativas bloqueadas (GGVP-109) e regras do roteiro em código (GGVP-25).
+import { normalizarInteiro, validarInteiro } from '@ggv/campos'
 import { z } from 'zod'
 import { DataObrigatoria } from './inss.ts'
 
@@ -147,3 +148,99 @@ export const UsoDoCofre = z.object({
   pessoas: z.array(z.object({ quem: z.string(), leituras: z.number(), cadastros: z.number(), recusas: z.number(), ultimoUso: z.string().nullable() })),
 })
 export type UsoDoCofre = z.infer<typeof UsoDoCofre>
+
+/** O catálogo de benefícios do escritório (GGVP-104 CA5): um só, para o banco, a configuração e as telas. */
+export const BENEFICIOS = [
+  'bpc_loas_deficiente',
+  'bpc_loas_idoso',
+  'aposentadoria_pcd',
+  'aposentadoria_idade',
+  'aposentadoria_tempo',
+  'aposentadoria_especial',
+  'aposentadoria_incapacidade_permanente',
+  'auxilio_incapacidade_temporaria',
+  'auxilio_acidente',
+  'pensao_morte',
+  'salario_maternidade',
+  'outro',
+] as const
+export type Beneficio = (typeof BENEFICIOS)[number]
+export const ROTULO_BENEFICIO: Record<Beneficio, string> = {
+  bpc_loas_deficiente: 'BPC/LOAS Deficiente',
+  bpc_loas_idoso: 'BPC/LOAS Idoso',
+  aposentadoria_pcd: 'Aposentadoria da Pessoa com Deficiência',
+  aposentadoria_idade: 'Aposentadoria por Idade',
+  aposentadoria_tempo: 'Aposentadoria por Tempo de Contribuição',
+  aposentadoria_especial: 'Aposentadoria Especial',
+  aposentadoria_incapacidade_permanente: 'Aposentadoria por Incapacidade Permanente',
+  auxilio_incapacidade_temporaria: 'Auxílio por Incapacidade Temporária',
+  auxilio_acidente: 'Auxílio-Acidente',
+  pensao_morte: 'Pensão por Morte',
+  salario_maternidade: 'Salário-Maternidade',
+  outro: 'Outro',
+}
+
+/**
+ * GGVP-104 CA4: os parâmetros que a gestão edita, cada um com o rótulo e a faixa. Valores do Lucas (02/10) nos dados
+ * de exemplo. Os laços de contato e de remarcação são de outros épicos, que leem a mesma chave.
+ */
+export const PARAMETROS_DO_ESCRITORIO = {
+  'cobranca.limite': { rotulo: 'Cobrança de documento: tentativas até subir para a Sênior', min: 1, max: 20 },
+  'cobranca.intervalo_dias': { rotulo: 'Cobrança de documento: dias úteis entre as tentativas', min: 1, max: 30 },
+  'contato.limite': { rotulo: 'Cliente sumido: tentativas de contato até subir para a Sênior', min: 1, max: 20 },
+  'contato.janela_dias': { rotulo: 'Cliente sumido: dias para as tentativas de contato', min: 1, max: 60 },
+  'pericia.remarcacao.limite': { rotulo: 'Remarcação de perícia: remarcações até subir para a advogada responsável', min: 0, max: 10 },
+  'cofre.alerta.leituras_por_dia': { rotulo: 'Cofre do gov.br: leituras por pessoa no dia antes do alerta', min: 1, max: 100 },
+  'cofre.alerta.hora_inicio': { rotulo: 'Cofre do gov.br: começo do horário sem alerta (hora)', min: 0, max: 23 },
+  'cofre.alerta.hora_fim': { rotulo: 'Cofre do gov.br: fim do horário sem alerta (hora)', min: 1, max: 24 },
+} as const
+export type Parametro = keyof typeof PARAMETROS_DO_ESCRITORIO
+export const PARAMETROS = Object.keys(PARAMETROS_DO_ESCRITORIO) as Parametro[]
+
+/** PUT /api/configuracao/parametros/:chave: número inteiro pelo `campos`; a faixa de cada um, o servidor confere. */
+export const SalvarParametro = z.object({
+  valor: z
+    .unknown()
+    .refine(validarInteiro, 'Informe um número inteiro')
+    .transform((v) => normalizarInteiro(v) as number),
+})
+export type SalvarParametro = z.input<typeof SalvarParametro>
+
+/** PUT /api/configuracao/kits/:beneficio (CA1): a versão seguinte do kit, com os documentos e quais são obrigatórios. */
+export const PublicarKit = z
+  .object({
+    itens: z
+      .array(
+        z.object({
+          tipoDocumento: z.string({ error: 'Escreva o documento' }).trim().min(1, 'Escreva o documento'),
+          obrigatorio: z.boolean(),
+        }),
+      )
+      .min(1, 'O kit precisa de ao menos um documento'),
+  })
+  .refine((k) => new Set(k.itens.map((i) => i.tipoDocumento)).size === k.itens.length, { message: 'Cada documento entra uma vez no kit', path: ['itens'] })
+export type PublicarKit = z.input<typeof PublicarKit>
+
+/** PUT /api/configuracao/mensagens/:id: o texto da mensagem padrão. */
+export const SalvarMensagem = z.object({ conteudo: z.string({ error: 'Escreva a mensagem' }).trim().min(1, 'Escreva a mensagem') })
+export type SalvarMensagem = z.infer<typeof SalvarMensagem>
+
+/** GET /api/configuracao (GGVP-104, `gestao.ver`; editar com `configuracao.editar`). */
+export const ConfiguracaoDoEscritorio = z.object({
+  parametros: z.array(z.object({ chave: z.string(), rotulo: z.string(), valor: z.number().nullable(), min: z.number(), max: z.number() })),
+  kits: z.array(
+    z.object({
+      beneficio: z.enum(BENEFICIOS),
+      versao: z.number().nullable(),
+      vigenteDesde: z.string().nullable(),
+      itens: z.array(z.object({ tipoDocumento: z.string(), obrigatorio: z.boolean() })),
+    }),
+  ),
+  /** Os tipos de documento já usados, para a gestão não escrever um que nenhuma tela usa. */
+  tiposDeDocumento: z.array(z.string()),
+  mensagens: z.array(z.object({ id: z.uuid(), nome: z.string(), conteudo: z.string() })),
+  /** CA3: as últimas mudanças, com quem, quando e o que mudou. */
+  historico: z.array(z.object({ quando: z.string(), quem: z.string(), descricao: z.string() })),
+  podeEditar: z.boolean(),
+})
+export type ConfiguracaoDoEscritorio = z.infer<typeof ConfiguracaoDoEscritorio>

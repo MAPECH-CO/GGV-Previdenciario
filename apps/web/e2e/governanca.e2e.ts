@@ -58,3 +58,26 @@ test('GGVP-103 · o Jurídico administrativo guarda a senha do gov.br pelo cofre
   await expect(page.getByRole('list', { name: 'Uso do cofre por pessoa' })).toContainText('Igor (exemplo) · leituras 1 · cadastros e trocas 1 · recusas 0')
   await expect(page.locator('body')).not.toContainText('gov-lucia-e2e')
 })
+
+test('GGVP-104 · a Sênior muda um parâmetro e publica o kit de um benefício; a mudança fica no histórico da configuração', async ({ page }) => {
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Configuração' }).click()
+  await expect(page.getByRole('heading', { name: 'Configuração do escritório' })).toBeVisible()
+  const janela = page.getByLabel('Cliente sumido: dias para as tentativas de contato (de 1 a 60)')
+  await expect(janela).toHaveValue('10')
+  await janela.fill('12')
+  await page.getByRole('button', { name: 'Salvar: Cliente sumido: dias para as tentativas de contato' }).click()
+  await expect(page.getByRole('status')).toHaveText('Parâmetro salvo.')
+
+  await page.getByLabel('Benefício', { exact: true }).selectOption('salario_maternidade')
+  const kit = page.getByRole('region', { name: 'Kit de Salário-Maternidade' })
+  await kit.getByLabel('Acrescentar documento').fill('certidao_de_nascimento')
+  await kit.getByRole('button', { name: 'Acrescentar' }).click()
+  await kit.getByRole('button', { name: 'Publicar a versão 1' }).click()
+  await expect(page.getByRole('status')).toHaveText('Kit publicado: a versão 1 vale para os casos novos.')
+  const historico = page.getByRole('region', { name: 'Histórico da configuração' })
+  await expect(historico).toContainText('Kit de Salário-Maternidade: versão 1 publicada, com 1 documento(s)')
+  await expect(historico).toContainText('Cliente sumido: dias para as tentativas de contato: 10 → 12')
+})
+

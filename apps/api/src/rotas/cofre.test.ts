@@ -37,7 +37,8 @@ beforeEach(async () => {
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   await banco.insert(configuracao).values([
     { chave: 'cofre.alerta.leituras_por_dia', valor: 2 },
-    { chave: 'cofre.alerta.horario', valor: { inicio: 7, fim: 20 } },
+    { chave: 'cofre.alerta.hora_inicio', valor: 7 },
+    { chave: 'cofre.alerta.hora_fim', valor: 20 },
   ])
   const [p] = await banco.insert(pessoa).values({ nome: 'Maria Souza', situacao: 'cliente' }).returning()
   pessoaId = p.id

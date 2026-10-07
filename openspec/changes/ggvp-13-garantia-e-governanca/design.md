@@ -94,3 +94,12 @@ O histórico (`evento_auditoria`) já recebe os eventos de cada passo, e o banco
 
 - Senha do gov.br: campo de senha, sem `autocomplete`, que vai direto ao cofre. Não é campo de texto da ficha.
 - Motivo da exportação: texto obrigatório.
+
+### Configuração do escritório (GGVP-104)
+
+1. **Uma tela, três partes:** limites e parâmetros (a tabela `configuracao`), kits por benefício (`kit_documento`, o checklist do G1) e mensagens padrão (`modelo`, tipo `mensagem`). Quem edita é a gestão do escritório (ação nova `configuracao.editar`: Sócio e Sênior, matriz versão 10). Quem tem `gestao.ver` vê.
+2. **Parâmetros editáveis numa lista fechada**, cada um com o rótulo e a validação: `cobranca.limite` e `cobranca.intervalo_dias` (dias úteis), `contato.limite` e `contato.janela_dias` (cliente sumido), `pericia.remarcacao.limite` e os limites do cofre (`cofre.alerta.leituras_por_dia`, `cofre.alerta.horario`). Os valores do Lucas (02/10) entram nos dados de exemplo. Os laços de contato e de remarcação são de outros épicos, que leem a mesma chave.
+3. **Kit com versão (CA1, CA6), migração 0012:** `kit_documento` ganha `versao`, `vigente_desde` e `revogado_em`, e o único passa a ser benefício, documento e versão. Publicar revoga a versão vigente e grava a seguinte. A conferência da Sênior lê a versão vigente quando o caso foi aberto (`caso.criado_em`). Assim o caso aberto fica com o kit da época sem coluna nova no caso.
+4. **Histórico (CA3):** cada mudança grava `configuracao_alterada`, `kit_publicado` ou `mensagem_alterada`, com quem, o antes e o depois, alvo `configuracao`.
+5. **Catálogo (CA5):** `BENEFICIOS` e `ROTULO_BENEFICIO` passam para `packages/contratos`. O banco (a trava `caso_beneficio`) e as telas leem dali.
+6. **Fora (CA2, CA7 a CA10):** os modelos de contrato e a liberação ao Jurídico são do épico Abertura e documentação, e o ZapSign real não entra até 09/10.

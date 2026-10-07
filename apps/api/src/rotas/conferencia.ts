@@ -1,5 +1,5 @@
 // Conferência da Sênior antes do INSS (GGVP-23): G1 (checklist), G2 (só a Sênior) e G17 (parecer médico) no servidor.
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { CasoParaConferencia, DecidirConferencia, DispensarParecer, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
@@ -33,7 +33,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
 
   async function montar(casoId: string, perfilAtivo: string | null) {
     const [c] = await banco
-      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome })
+      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm })
       .from(caso)
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
       .where(eq(caso.id, casoId))
@@ -44,7 +44,18 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(documento.criadoEm)
     const kit = c.beneficio
-      ? await banco.select({ tipo: kitDocumento.tipoDocumento }).from(kitDocumento).where(and(eq(kitDocumento.beneficio, c.beneficio), eq(kitDocumento.obrigatorio, true)))
+      ? await banco
+          .select({ tipo: kitDocumento.tipoDocumento })
+          .from(kitDocumento)
+          .where(
+            and(
+              eq(kitDocumento.beneficio, c.beneficio),
+              eq(kitDocumento.obrigatorio, true),
+              // GGVP-104 CA1, CA6: o caso fica com o kit vigente quando foi aberto.
+              lte(kitDocumento.vigenteDesde, c.abertoEm),
+              or(isNull(kitDocumento.revogadoEm), gt(kitDocumento.revogadoEm, c.abertoEm)),
+            ),
+          )
       : []
     const tem = new Set(docs.map((d) => d.tipo))
     const faltam = kit.map((k) => k.tipo).filter((t) => !tem.has(t))

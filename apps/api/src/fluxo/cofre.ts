@@ -26,16 +26,18 @@ export async function apagarSenhasVencidas(banco: Banco, agora: Date) {
   return apagadas
 }
 
-/** Os limites do alerta (Q1): leituras por pessoa no dia e o horário de expediente, da configuração do escritório. */
+/** Os limites do alerta (Q1): leituras por pessoa no dia e o horário sem alerta, da configuração do escritório (GGVP-104). */
 async function limitesDoAlerta(banco: Banco) {
-  const linhas = await banco.select().from(configuracao).where(inArray(configuracao.chave, ['cofre.alerta.leituras_por_dia', 'cofre.alerta.horario']))
-  const por = (chave: string) => linhas.find((l) => l.chave === chave)?.valor
-  const leituras = por('cofre.alerta.leituras_por_dia')
-  const horario = por('cofre.alerta.horario') as { inicio?: number; fim?: number } | undefined
-  return {
-    leiturasPorDia: typeof leituras === 'number' && leituras > 0 ? leituras : null,
-    horario: horario && typeof horario.inicio === 'number' && typeof horario.fim === 'number' ? { inicio: horario.inicio, fim: horario.fim } : null,
+  const linhas = await banco
+    .select()
+    .from(configuracao)
+    .where(inArray(configuracao.chave, ['cofre.alerta.leituras_por_dia', 'cofre.alerta.hora_inicio', 'cofre.alerta.hora_fim']))
+  const numero = (chave: string) => {
+    const v = linhas.find((l) => l.chave === chave)?.valor
+    return typeof v === 'number' && Number.isInteger(v) ? v : null
   }
+  const [leituras, inicio, fim] = [numero('cofre.alerta.leituras_por_dia'), numero('cofre.alerta.hora_inicio'), numero('cofre.alerta.hora_fim')]
+  return { leiturasPorDia: leituras !== null && leituras > 0 ? leituras : null, horario: inicio !== null && fim !== null ? { inicio, fim } : null }
 }
 
 /**

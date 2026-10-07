@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
@@ -125,8 +125,22 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'cobranca.intervalo_dias', valor: 3 }, // dias úteis entre as tentativas (Lucas, 02/10; GGVP-94)
     // GGVP-103 CA7 (Q1): o uso do cofre fora do padrão avisa a Sênior. Valores de exemplo, a confirmar com o escritório.
     { chave: 'cofre.alerta.leituras_por_dia', valor: 10 },
-    { chave: 'cofre.alerta.horario', valor: { inicio: 7, fim: 20 } },
+    { chave: 'cofre.alerta.hora_inicio', valor: 7 },
+    { chave: 'cofre.alerta.hora_fim', valor: 20 },
+    // GGVP-104 CA4 (Lucas, 02/10): cliente sumido, 3 tentativas em 10 dias; remarcação de perícia, 1, e sobe para a advogada.
+    { chave: 'contato.limite', valor: 3 },
+    { chave: 'contato.janela_dias', valor: 10 },
+    { chave: 'pericia.remarcacao.limite', valor: 1 },
   ])
+  // GGVP-104 (Lucas, 02/10): no LOAS, a ficha de grupo familiar é obrigatória e as três declarações são condicionais.
+  // A versão 1 vale desde sempre, para os casos de exemplo já abertos.
+  const kitLoas = [
+    ...['documento_de_identidade', 'cpf', 'comprovante_de_residencia', 'cadunico', 'ficha_de_grupo_familiar'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: true })),
+    ...['declaracao_de_moradia', 'declaracao_de_uniao_estavel', 'declaracao_de_separacao_de_fato'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: false })),
+  ]
+  await banco
+    .insert(kitDocumento)
+    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T00:00:00Z') }))))
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
   await banco.insert(etapa).values({ casoId: cu.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date() })

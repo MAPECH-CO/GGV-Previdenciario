@@ -68,9 +68,11 @@ describe('GGVP-23 · abrir a conferência', () => {
 describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
   it('G1 · com o kit do benefício cadastrado, falta de documento barra e diz qual', async () => {
     await parecer('suficiente')
+    // O kit vigente antes de o caso abrir (GGVP-104 CA1: o caso fica com o kit da época).
+    const desde = new Date('2026-01-01T00:00:00Z')
     await banco.insert(kitDocumento).values([
-      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'rg' },
-      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia' },
+      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'rg', vigenteDesde: desde },
+      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia', vigenteDesde: desde },
     ])
     const r = await decidir('helena', { decisao: 'aprovar' })
     expect([r.statusCode, r.json().erro]).toEqual([409, 'Checklist incompleto (G1): faltam comprovante_de_residencia.'])
