@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, somenteDigitos } from '@ggv/campos'
-import { RegistrarProtocolo, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
+import { RegistrarProtocolo, SEGUNDOS_SENHA, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -62,7 +62,7 @@ function SenhaDoGov({ casoId }: { casoId: string }) {
       )}
       <div className={styles.acoes}>
         <button type="submit" className={styles.botao}>
-          Mostrar por 60 segundos
+          Mostrar por {SEGUNDOS_SENHA} segundos
         </button>
         <button type="button" className={styles.botaoSecundario} onClick={() => setPedindo(false)}>
           Cancelar
