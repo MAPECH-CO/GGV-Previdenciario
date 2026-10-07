@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { CasoParaConferencia, DecidirConferencia, DispensarParecer, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import {
+  acessoDadoSensivel,
   caso,
   contrato,
   decisao,
@@ -30,7 +31,7 @@ type ItemParecer = { item: string; atendido: boolean }
 export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
-  async function montar(casoId: string, perfilAtivo: string | null) {
+  async function montar(casoId: string, perfilAtivo: string | null, quem?: string) {
     const [c] = await banco
       .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome })
       .from(caso)
@@ -60,6 +61,12 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       .from(contrato)
       .where(and(eq(contrato.casoId, casoId), eq(contrato.situacao, 'assinado')))
       .limit(1)
+    // GGVP-96 CA12 e CA13: o parecer é dado de saúde; só o Jurídico recebe, e cada leitura de pessoa (`quem`) fica
+    // registrada. O aprovar usa o parecer só para o portão G17, sem mostrar: não registra.
+    const veParecer = pode(perfilAtivo, 'dado_saude.ver_detalhe')
+    if (quem && parecer && veParecer) {
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: quem, perfil: perfilAtivo!, casoId, recurso: `parecer:${parecer.id}`, quando: agora() })
+    }
     const ok = await okDaSenior(banco, casoId)
     const espera = await esperandoConferencia(banco, casoId)
     return CasoParaConferencia.parse({
@@ -68,9 +75,10 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       beneficio: c.beneficio,
       checklist: { cadastrado: kit.length > 0, completo: faltam.length === 0, faltam },
       documentos: docs,
-      parecer: parecer
+      parecer: parecer && veParecer
         ? { resultado: parecer.resultado, itens: (parecer.itens as ItemParecer[]) ?? [], justificativaDispensa: parecer.justificativaDispensa }
         : null,
+      parecerRestrito: !veParecer,
       laudoNovoEsperando: Boolean(laudoNovo),
       temFicha: Boolean(ficha),
       kitAssinado: Boolean(assinado),
@@ -81,7 +89,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
 
   // CA1, CA4, CA5, CA6: quem tem `caso.ver` abre; só a Sênior com o caso na fila pode decidir.
   app.get<{ Params: { id: string } }>('/api/casos/:id/conferencia', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
-    const dados = await montar(pedido.params.id, pedido.perfilAtivo)
+    const dados = await montar(pedido.params.id, pedido.perfilAtivo, pedido.usuario!.id)
     return dados ?? negar(resposta, 404, 'Caso não encontrado.')
   })
 
