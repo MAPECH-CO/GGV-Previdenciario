@@ -202,3 +202,68 @@
   height: 18px;
   accent-color: var(--cor-acento);
 }
+
+/* As linhas da orientação (Figma 10:405): o rótulo à esquerda, o valor à direita, separadas por traço. */
+.linhas {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.linhas div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.linhas dt {
+  color: var(--cor-texto-suave);
+}
+
+.linhas dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* O documento de orientação: texto corrido, quebra de linha como o cliente vai ler. */
+.documento {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .linhas div {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .linhas dd {
+    text-align: left;
+  }
+}
+
+/* Imprimir: só o documento de orientação sai no papel. */
+.impressao {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .impressao,
+  .impressao * {
+    visibility: visible;
+  }
+
+  .impressao {
+    display: block;
+    position: absolute;
+    inset: 0;
+    white-space: pre-wrap;
+  }
+}

@@ -44,10 +44,10 @@
 
 ## GGVP-62 · Preparar o cliente
 
-- [ ] 5.1 Contrato: a preparação e as recusas do envio na `Pericia` (`src/dados/pericia.ts`). Verifica com `pnpm typecheck`.
-- [ ] 5.2 Servidor de exemplo: `enviarOrientacao` (verifica de novo, recusa e registra; guarda o texto, o canal e a data), a preparação que cai quando a data muda, a tarefa "Orientar para a perícia" na tela nova e a resposta "o cliente ligou" do chat, com teste em `src/dados/pericia.test.ts` (CA1 a CA8). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
-- [ ] 5.3 Tela `/casos/:id/pericia/orientar` (`src/paginas/OrientarPericia.tsx`, Figma `10:405`) e o chat (Figma `2107:1091`). Teste em `OrientarPericia.test.tsx` (CA1 a CA8). Verifica com `pnpm vitest run src/paginas/OrientarPericia.test.tsx`.
-- [ ] 5.4 Playwright `e2e/pericia-preparar.e2e.ts` (CA1 a CA8); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-preparar`.
+- [x] 5.1 Contrato: a preparação e as recusas do envio na `Pericia` (`src/dados/pericia.ts`). Verifica com `pnpm typecheck`.
+- [x] 5.2 Servidor de exemplo: `enviarOrientacao` (verifica de novo, recusa e registra; guarda o texto, o canal e a data), a preparação que cai quando a data muda, a tarefa "Orientar para a perícia" na tela nova e a resposta "o cliente ligou" do chat, com teste em `src/dados/pericia.test.ts` (CA1 a CA8). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [x] 5.3 Tela `/casos/:id/pericia/orientar` (`src/paginas/OrientarPericia.tsx`, Figma `10:405`) e o chat (Figma `2107:1091`). Teste em `OrientarPericia.test.tsx` (CA1 a CA8). Verifica com `pnpm vitest run src/paginas/OrientarPericia.test.tsx`.
+- [x] 5.4 Playwright `e2e/pericia-preparar.e2e.ts` (CA1 a CA8); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-preparar`.
 - [ ] 5.5 Ligar no servidor: o envio pelo Chatwoot de verdade (GGVP-102) e a verificação no servidor do Mateus. **Fica aberta nesta história.**
 
 ## GGVP-66 · Comparecimento e remarcação

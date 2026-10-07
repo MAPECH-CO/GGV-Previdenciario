@@ -175,8 +175,16 @@ export type Pericia = {
   /** O nome lido que o sistema não reconheceu: a pergunta de um clique (CA6). */
   peritoLido?: string
   orientacao?: OrientacaoDaPericia
+  /** A orientação passada ao cliente (GGVP-62, DP.06): o canal, quem, quando e o texto enviado (CA2, CA7). */
+  preparacao?: PreparacaoDaPericia
+  /** Os envios que a verificação do servidor recusou (GGVP-62, CA6): quem, quando, o motivo e o texto. */
+  enviosRecusados?: { quando: string; quem: string; motivo: string; texto: string }[]
   historico: EventoDaPericia[]
 }
+
+/** Chatwoot (documento e instrução, Lucas 02/10 Q5) ou a ligação. */
+export type CanalDaOrientacao = 'chatwoot' | 'ligacao'
+export type PreparacaoDaPericia = { quando: string; quem: string; canal: CanalDaOrientacao; texto: string }
 
 /** Quem faz sozinho. */
 export const SISTEMA = 'Sistema'
@@ -367,6 +375,11 @@ function marcar(banco: Banco, pericia: Pericia, m: { comprovante: { nome: string
       : { quando, quem, oQue: 'A perícia não pede documento novo: segue para ligar e orientar (DP.06)', passo: 'DP.02' },
   )
   montarOrientacao(banco, pericia, agora())
+  // Data ou local mudados (GGVP-62, CA5): a orientação saiu de novo e a preparação de antes deixa de valer.
+  if (pericia.preparacao && anterior && (anterior.data !== m.lido.data || anterior.hora !== m.lido.hora || anterior.local !== m.lido.local)) {
+    delete pericia.preparacao
+    pericia.historico.push({ quando, quem: SISTEMA, oQue: 'A data ou o local mudou: a orientação passada antes deixou de valer; ligar e orientar de novo', passo: 'DP.06' })
+  }
 }
 
 /** Hoje (ou n dias antes), à hora dada, no fuso local. */
@@ -668,10 +681,11 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
         : o.modo === 'perfil' && t.perfil
           ? ` O perfil de ${t.perfil.perito.nome} está na base e a orientação já segue esse perfil (DP.05).`
           : ' A orientação padrão já está montada (DP.05).'
-    return (
-      `${como}${documentos}${orientacao} Até ${dataCurta(t.prazos.preparoAte, hoje)}, o Jurídico administrativo liga para ${primeiro} com a orientação; ` +
-      `na véspera, ${dataCurta(t.prazos.vespera, hoje)}, sai o lembrete.`
-    )
+    const p = pericia.preparacao
+    const preparo = p
+      ? ` ${primeiro} já recebeu a orientação ${p.canal === 'chatwoot' ? 'pelo Chatwoot' : 'na ligação'}, em ${dataCurta(hojeIso(new Date(p.quando)), hoje)};`
+      : ` Até ${dataCurta(t.prazos.preparoAte, hoje)}, o Jurídico administrativo liga para ${primeiro} com a orientação;`
+    return `${como}${documentos}${orientacao}${preparo} na véspera, ${dataCurta(t.prazos.vespera, hoje)}, sai o lembrete.`
   }
   const como =
     pericia.instancia === 'inss'
@@ -688,10 +702,15 @@ function detalheDaTarefa(t: PericiaNaTela): string {
   return [t.beneficio, NOMES_DO_TIPO[pericia.tipo], deOnde, onde].join(' · ')
 }
 
+/** A orientação pronta e ainda não passada ao cliente; com documento novo, só depois da Documentação (GGVP-61, GGVP-62). */
+const paraOrientar = ({ situacao, pericia: p }: PericiaNaTela) =>
+  situacao === 'agendada' && !!p.orientacao && !p.preparacao && (!p.pedeDocumentoNovo || !!p.documentos?.concluida)
+
 /** Para onde "Ver a perícia" leva: a tela do passo em que a perícia está. */
 export function hrefDoPasso(t: PericiaNaTela): string {
   const base = `/casos/${t.processo.id}/pericia`
   if (t.situacao === 'aguardando-inss') return `${base}/aberta`
+  if (paraOrientar(t)) return `${base}/orientar`
   if (t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante' || t.situacao === 'agendada') return `${base}/marcar`
   return base
 }
@@ -749,15 +768,15 @@ export function tarefasDoJuridicoAdm(): Tarefa[] {
       })
     }
     // A orientação pronta (GGVP-61): depois dos documentos, quando a perícia pede, o Jurídico administrativo liga e orienta (DP.06).
-    if (t.situacao === 'agendada' && pericia.orientacao && (!pericia.pedeDocumentoNovo || pericia.documentos?.concluida) && t.prazos) {
+    if (paraOrientar(t) && t.prazos) {
       const prazo = prazoFalado(t.prazos.preparoAte, hoje)
       const m = pericia.marcacao!
-      const como = pericia.orientacao.bloqueio
+      const como = pericia.orientacao!.bloqueio
         ? 'orientação bloqueada pela verificação: revisar'
-        : `orientação da IA pronta (${pericia.orientacao.modo === 'perfil' ? 'pelo perfil do perito' : 'padrão'})`
+        : `orientação da IA pronta (${pericia.orientacao!.modo === 'perfil' ? 'pelo perfil do perito' : 'padrão'})`
       tarefas.push({
         ...base,
-        href: `/casos/${processo.id}/pericia`,
+        href: `/casos/${processo.id}/pericia/orientar`,
         id: `pericia-orientar-${pericia.id}`,
         codigo: 'DP.06',
         acao: 'Orientar para a perícia',
@@ -1145,7 +1164,7 @@ export async function dicaParaAPericia(texto: string): Promise<{ texto: string; 
     cliente: t.ficha.nome,
     acao: 'Orientar para a perícia',
     sub: `${diaFalado(m.data)}, ${m.hora} · ${m.local}${t.prazos ? ` · ligar até ${dataCurta(t.prazos.preparoAte, hoje)}` : ''}`,
-    href: `/casos/${pericia.processoId}/pericia`,
+    href: `/casos/${pericia.processoId}/pericia/orientar`,
   }
   if (pericia.orientacao.modo === 'perfil' && t.perfil) {
     const j = t.perfil.jurimetria
@@ -1163,5 +1182,81 @@ export async function dicaParaAPericia(texto: string): Promise<{ texto: string; 
   return {
     texto: `A orientação de ${primeiro} é a padrão: ${pericia.orientacao.motivo}. Ela já traz data, local, o que levar e como é a ${NOMES_DO_TIPO[pericia.tipo]}.`,
     itens: [tarefa],
+  }
+}
+
+// GGVP-62 · Preparar o cliente: o Jurídico administrativo revisa a orientação e passa ao cliente (DP.06).
+
+/**
+ * POST /api/processos/:id/pericia/orientacao. Só com "Revisei a orientação" (CA3). O servidor verifica de novo o texto,
+ * editado ou não (CA4); com instrução proibida, recusa e registra a tentativa (CA6). Guarda o texto, o canal e a data
+ * (CA2, CA7). O Chatwoot é simulado (GGVP-102).
+ */
+export async function enviarOrientacao(
+  processoId: string,
+  o: { texto: string; canal: CanalDaOrientacao; revisei: boolean },
+  quem: string,
+): Promise<PericiaNaTela> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDo(banco, processoId)
+  if (!pericia) throw new Error('Este caso não tem perícia')
+  if (!pericia.marcacao || !pericia.orientacao) throw new Error('A orientação ainda não está pronta.')
+  if (!o.revisei) throw new Error('Marque "Revisei a orientação" antes de enviar.')
+  const texto = o.texto.trim()
+  if (!texto) throw new Error('Escreva a orientação.')
+  if (o.canal === 'chatwoot' && !fichaDoProcesso(banco, processoId)!.ficha.telefone) throw new Error('Sem telefone: complete na ficha antes de enviar.')
+  const quando = agora().toISOString()
+  const motivo = problemaDaOrientacao(texto)
+  if (motivo) {
+    ;(pericia.enviosRecusados ??= []).push({ quando, quem, motivo, texto })
+    pericia.historico.push({ quando, quem: SISTEMA, oQue: `Recusou o envio da orientação por ${quem}: ${motivo}`, passo: 'DP.06' })
+    gravar(banco)
+    throw new Error(motivo)
+  }
+  pericia.preparacao = { quando, quem, canal: o.canal, texto }
+  pericia.historico.push({
+    quando,
+    quem,
+    oQue: o.canal === 'chatwoot' ? 'Enviou a orientação pelo Chatwoot, como documento e instrução' : 'Ligou para o cliente e passou a orientação',
+    passo: 'DP.06',
+  })
+  gravar(banco)
+  return naTela(banco, pericia)
+}
+
+/**
+ * "O Pedro me ligou. O que eu falo?" (Figma 2107:1091): a próxima tarefa do cliente na Central do Jurídico
+ * administrativo e, com a orientação pronta, o resumo dela (CA8). Só responde e orienta: não executa nada.
+ */
+export function clienteLigou(texto: string): { texto: string; itens?: ItemDoChat[] } {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  const ficha = banco.fichas.find((f) => (banco.pericias ?? []).some((p) => p.fichaId === f.id) && new RegExp(`\\b${f.nome.split(' ')[0]}\\b`, 'i').test(texto))
+  if (!ficha) return { texto: 'Diga o nome do cliente que ligou: eu mostro a próxima tarefa e a orientação.' }
+  const primeiro = ficha.nome.split(' ')[0]
+  const tarefa = tarefasDoJuridicoAdm().find((t) => t.cliente?.id === ficha.id)
+  const pericia = banco.pericias!.filter((p) => p.fichaId === ficha.id).at(-1)!
+  const m = pericia.marcacao
+  if (!tarefa) {
+    const feita = pericia.preparacao
+    return {
+      texto: feita
+        ? `${primeiro} já recebeu a orientação em ${dataCurta(hojeIso(new Date(feita.quando)), hoje)} (${feita.canal === 'chatwoot' ? 'pelo Chatwoot' : 'na ligação'}). Se for dúvida, repasse o que está guardado no caso; se a data mudou, a tarefa volta.`
+        : `${primeiro} não tem tarefa sua agora na perícia. A situação está na página do processo.`,
+      itens: [{ cliente: ficha.nome, acao: 'Ver a perícia', sub: m ? `perícia ${dataCurta(m.data, hoje)}, ${m.hora}` : NOMES_DA_SITUACAO_CURTA[situacaoDaPericia(pericia)], href: `/casos/${pericia.processoId}/pericia` }],
+    }
+  }
+  if (tarefa.codigo === 'DP.06' && m) {
+    return {
+      texto:
+        `A próxima tarefa é sua: orientar ${primeiro} para a perícia de ${dataCurta(m.data, hoje)}. A orientação da IA está pronta com data, local, o que levar e como é a ${NOMES_DO_TIPO[pericia.tipo]}: ` +
+        `${diaFalado(m.data)}, às ${m.hora}, em ${m.local}; levar ${O_QUE_LEVAR[pericia.tipo]}. Nunca oriente a esconder ou mudar a situação real (G11).`,
+      itens: [{ cliente: ficha.nome, acao: tarefa.acao, sub: `perícia ${dataCurta(m.data, hoje)} · ${pericia.orientacao?.bloqueio ? 'orientação bloqueada: revisar' : 'orientação da IA pronta'}`, href: tarefa.href! }],
+    }
+  }
+  return {
+    texto: `A próxima tarefa é sua: ${tarefa.acao.toLowerCase()} de ${primeiro}. A orientação sai quando a perícia tiver data.`,
+    itens: [{ cliente: ficha.nome, acao: tarefa.acao, sub: `${tarefa.detalhe} · ${tarefa.prazo}`, href: tarefa.href! }],
   }
 }

@@ -5,9 +5,11 @@ import {
   abordarSugeridoNaPericia,
   adiarCobrancaDaPericia,
   autorizarRemarcacao,
+  clienteLigou,
   concluirDocumentos,
   decidirFaltaDaPericia,
   dicaParaAPericia,
+  enviarOrientacao,
   esperarComprovante,
   etapaDaPericia,
   iniciarPericia,
@@ -385,7 +387,7 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
 
   it('a orientação pronta vira "Orientar para a perícia" no Jurídico administrativo; com documento novo, só depois da Documentação', async () => {
     const antonio = tarefasDoJuridicoAdm().find((t) => t.cliente?.id === 'antonio-exemplo')!
-    expect(antonio).toMatchObject({ codigo: 'DP.06', acao: 'Orientar para a perícia', prazo: 'até 13/10', href: '/casos/antonio-exemplo-1/pericia' })
+    expect(antonio).toMatchObject({ codigo: 'DP.06', acao: 'Orientar para a perícia', prazo: 'até 13/10', href: '/casos/antonio-exemplo-1/pericia/orientar' })
     expect(antonio.detalhe).toBe(
       'Aposentadoria por Incapacidade Permanente · perícia médica em 16/10 (data lida da publicação pelo sistema) · orientação da IA pronta (pelo perfil do perito) · ligar para o cliente',
     )
@@ -396,5 +398,77 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
     const dica = (await dicaParaAPericia('Qual a orientação para a perícia do Antônio com o Dr. A. Prado?'))!
     expect(dica.texto).toContain('Pelo perfil de Dr. A. Prado (34 laudos, 71% favoráveis), peça para Antônio levar')
     expect(dica.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado (exemplo) · Ver o perfil do perito', 'Antônio Exemplo · Orientar para a perícia'])
+  })
+})
+
+describe('GGVP-62 · preparar o cliente', () => {
+  const ORIENTAR_ANTONIO = 'Antônio Exemplo · Orientar para a perícia'
+  const textoDo = async (id: string) => (await obterPericia(id))!.pericia.orientacao!.texto
+
+  it('CA3 · sem "Revisei a orientação", o servidor recusa o envio', async () => {
+    const texto = await textoDo('antonio-exemplo-1')
+    await expect(enviarOrientacao('antonio-exemplo-1', { texto, canal: 'ligacao', revisei: false }, IGOR)).rejects.toThrow('Marque "Revisei a orientação" antes de enviar.')
+    expect((await obterPericia('antonio-exemplo-1'))!.pericia.preparacao).toBeUndefined()
+    expect(linhas()).toContain(ORIENTAR_ANTONIO)
+  })
+
+  it('CA2, CA7 · a ligação registrada: o histórico com a data e o canal, o texto guardado no caso e a tarefa sai da Central', async () => {
+    agora = new Date(2026, 9, 8, 11, 15)
+    const texto = await textoDo('antonio-exemplo-1')
+    const t = await enviarOrientacao('antonio-exemplo-1', { texto, canal: 'ligacao', revisei: true }, IGOR)
+    expect(t.pericia.preparacao).toEqual({ quando: agora.toISOString(), quem: IGOR, canal: 'ligacao', texto })
+    expect(t.pericia.historico.at(-1)).toEqual({ quando: agora.toISOString(), quem: IGOR, oQue: 'Ligou para o cliente e passou a orientação', passo: 'DP.06' })
+    expect(linhas()).not.toContain(ORIENTAR_ANTONIO)
+  })
+
+  it('CA2 · pelo Chatwoot: o canal fica no histórico, como documento e instrução', async () => {
+    const t = await enviarOrientacao('antonio-exemplo-1', { texto: await textoDo('antonio-exemplo-1'), canal: 'chatwoot', revisei: true }, IGOR)
+    expect(t.pericia.preparacao?.canal).toBe('chatwoot')
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('Enviou a orientação pelo Chatwoot, como documento e instrução')
+  })
+
+  it('CA4, CA6 · o texto editado à mão com instrução proibida: o servidor recusa e a tentativa fica registrada', async () => {
+    const texto = `${await textoDo('antonio-exemplo-1')}
+Esconda o carro na garagem do vizinho antes do dia.`
+    await expect(enviarOrientacao('antonio-exemplo-1', { texto, canal: 'chatwoot', revisei: true }, IGOR)).rejects.toThrow(
+      'A orientação nunca manda esconder ou omitir a situação real (G11).',
+    )
+    const comCid = `${await textoDo('antonio-exemplo-1')}
+O laudo deve trazer o CID M54.5.`
+    await expect(enviarOrientacao('antonio-exemplo-1', { texto: comCid, canal: 'ligacao', revisei: true }, IGOR)).rejects.toThrow(/G20/)
+    const p = (await obterPericia('antonio-exemplo-1'))!.pericia
+    expect(p.preparacao).toBeUndefined()
+    expect(p.enviosRecusados).toHaveLength(2)
+    expect(p.enviosRecusados![0]).toMatchObject({ quem: IGOR, motivo: 'A orientação nunca manda esconder ou omitir a situação real (G11).', texto })
+    expect(p.historico.at(-2)?.oQue).toBe(`Recusou o envio da orientação por ${IGOR}: A orientação nunca manda esconder ou omitir a situação real (G11).`)
+    expect(linhas()).toContain(ORIENTAR_ANTONIO)
+  })
+
+  it('CA5 · a data mudou com o comprovante novo: a orientação sai de novo, a preparação de antes deixa de valer e a tarefa volta', async () => {
+    await marcarMaria()
+    await enviarOrientacao('maria-exemplo-1', { texto: await textoDo('maria-exemplo-1'), canal: 'ligacao', revisei: true }, IGOR)
+    expect(linhas()).not.toContain('Maria Exemplo · Orientar para a perícia')
+    const t = await marcarMaria(false, 'comprovante novo 2026-10-28.pdf')
+    expect(t.pericia.preparacao).toBeUndefined()
+    expect(t.pericia.orientacao!.texto).toContain('Quando: quarta, 28/10, às 08:30.')
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('A data ou o local mudou: a orientação passada antes deixou de valer; ligar e orientar de novo')
+    expect(linhas()).toContain('Maria Exemplo · Orientar para a perícia')
+  })
+
+  it('CA8 · "o cliente me ligou": a próxima tarefa e a orientação pronta, sem executar nada', async () => {
+    const r = clienteLigou('O Antônio me ligou. O que eu falo para ele?')
+    expect(r.texto).toBe(
+      'A próxima tarefa é sua: orientar Antônio para a perícia de 16/10. A orientação da IA está pronta com data, local, o que levar e como é a perícia médica: ' +
+        'sexta, 16/10, às 10:30, em Vara Federal de Santo Amaro (exemplo) · sala de perícias; levar documento com foto, carteira de trabalho, laudos, ' +
+        'exames, receitas e atestados. Nunca oriente a esconder ou mudar a situação real (G11).',
+    )
+    expect(r.itens).toEqual([
+      { cliente: 'Antônio Exemplo', acao: 'Orientar para a perícia', sub: 'perícia 16/10 · orientação da IA pronta', href: '/casos/antonio-exemplo-1/pericia/orientar' },
+    ])
+    expect((await obterPericia('antonio-exemplo-1'))!.pericia.preparacao).toBeUndefined()
+    expect(clienteLigou('A Maria ligou agora').texto).toBe('A próxima tarefa é sua: marcar perícia de Maria. A orientação sai quando a perícia tiver data.')
+    expect(clienteLigou('O cliente me ligou').texto).toBe('Diga o nome do cliente que ligou: eu mostro a próxima tarefa e a orientação.')
+    await enviarOrientacao('antonio-exemplo-1', { texto: await textoDo('antonio-exemplo-1'), canal: 'ligacao', revisei: true }, IGOR)
+    expect(clienteLigou('O Antônio ligou de novo').texto).toContain('Antônio já recebeu a orientação em 07/10 (na ligação).')
   })
 })

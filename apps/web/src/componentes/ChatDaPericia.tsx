@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { identificarCliente } from '../dados/documentos.ts'
-import { dicaParaAPericia, lerComprovante, periciaParaMarcarDaFicha, periciasParaMarcar, registrarMarcacao, type ItemDoChat } from '../dados/pericia.ts'
+import { clienteLigou, dicaParaAPericia, lerComprovante, periciaParaMarcarDaFicha, periciasParaMarcar, registrarMarcacao, type ItemDoChat } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -58,6 +58,8 @@ export function ChatDaPericia({ exemplo, sugestoes }: { exemplo: string; sugesto
 
   async function aoEnviar(texto: string) {
     setMensagens((m) => [...m, { id: ++proximoId, de: 'voce', texto }])
+    // "O cliente me ligou" (Figma 2107:1091): a próxima tarefa e a orientação pronta (GGVP-62, CA8).
+    if (/\blig(ou|aram)\b/i.test(texto)) return ia({ texto: '', resposta: clienteLigou(texto) })
     // "Dica para a perícia" (Figma 2186:857): a orientação do cliente citado, o perito e a tarefa (GGVP-61).
     if (!PERICIAS_PARA_MARCAR.test(texto) && /dica|orienta[cç][aã]o/i.test(texto)) {
       const dica = await dicaParaAPericia(texto)

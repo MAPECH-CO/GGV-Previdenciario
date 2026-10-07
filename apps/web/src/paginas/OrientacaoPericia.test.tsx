@@ -57,7 +57,7 @@ describe('GGVP-61 · o chat (Figma 2186:857) e a recusa do G11', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     expect(await screen.findByText(/Pelo perfil de Dr\. A\. Prado \(34 laudos, 71% favoráveis\)/)).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
-    expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia'])
+    expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia/orientar'])
     expect(screen.getByRole('link', { name: 'Antônio Exemplo · Orientar para a perícia' })).toBeTruthy()
   })
 
