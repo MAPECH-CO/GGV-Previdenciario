@@ -7,6 +7,7 @@ import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { abrirExplicacaoDoResultado } from '../rotas/resultado.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
@@ -186,6 +187,15 @@ export async function semearExemplos(banco: Banco) {
     .returning()
   await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
   await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
+
+  // Caso perdido (GGVP-22): improcedente, sem recurso; a advogada escreve e aprova o resumo para o cliente. Até o
+  // "Não recorrer" (GGVP-100) existir, o caminho abre pela semente.
+  const [pPerdido] = await banco.insert(pessoa).values({ nome: 'Paulo Mendes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cPerdido] = await banco
+    .insert(caso)
+    .values({ pessoaId: pPerdido.id, beneficio: 'auxilio_incapacidade_temporaria', fase: 'judicial', desfecho: 'improcedente' })
+    .returning()
+  await abrirExplicacaoDoResultado(banco, cPerdido.id)
 
   // Vigília do diário (GGVP-26, 30, 34, 37, 74): dois processos judiciais com número CNJ, que a fonte de exemplo
   // reconhece, e a rodada das 08:00 de hoje com falha: reprocessar traz as publicações de exemplo do dia.

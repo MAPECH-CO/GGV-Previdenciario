@@ -33,3 +33,24 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 | Quem acompanha | lista do Atendimento, obrigatória |
 | Valores conferem com o comprovante | caixa obrigatória para "Receber e lançar" |
 | Motivo da divergência | texto obrigatório |
+
+## GGVP-22 · Explicar o resultado ao cliente
+
+### Decisions
+
+1. **Sem IA até 09/10:** o Jurídico (advogada ou Sênior) escreve e aprova o resumo; a tela mostra quem aprovou e quando (Lucas, 06/10). Quando a IA voltar, ela só sugere o texto, guardado em `decisao.sugestao_ia`.
+2. **O resumo é decisão de pessoa:** `decisao` com `tipo: resumo_cliente`, o texto em `justificativa` e quem fala em `resultado`. Sem tabela nova.
+3. **Quem fala** (CA5): "Eu ligo" deixa "Explicar resultado" com a advogada (responsável ela mesma); no padrão, vai ao Atendimento.
+4. **Cada contato** (CA4) é uma linha de `atendimento` (canal, início, quem, o que foi explicado; sem contato fica com o resumo vazio). A tela lista os atendimentos do caso depois do resumo aprovado (a entrevista vem sempre antes).
+5. **Fecha** (CA2): "Expliquei ao cliente" conclui a tarefa e põe o caso na fase "encerrado"; a tela mostra "Perdemos: estudo registrado".
+6. **Entrada:** `abrirExplicacaoDoResultado(casoId)` abre "Aprovar o resumo para o cliente" para a advogada. Quem chama, quando existirem: o "Não recorrer" (GGVP-100, com o Lucas: dúvida aberta sobre quem escreve e protocola o recurso) e o estudo de caso (GGVP-19, depende da IA). Até lá, a semente traz o Paulo Mendes (exemplo).
+7. **Permissões** (matriz versão 12): `resultado.aprovar_resumo` para advogada e Sênior; `resultado.explicar` para Atendimento, líder e advogada. A tela abre com `caso.ver`; o Financeiro não abre.
+
+### Campos
+
+| Campo | Regra |
+|---|---|
+| O que dizer ao cliente | texto, de 20 a 2000 letras |
+| Quem fala com o cliente | escolha obrigatória: Atendimento ou advogada |
+| Canal | lista fechada (telefone, WhatsApp, presencial, vídeo) |
+| O que foi explicado | texto obrigatório em "Expliquei ao cliente" |

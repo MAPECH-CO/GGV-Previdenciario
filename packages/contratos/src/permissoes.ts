@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 11
+export const VERSAO_MATRIZ = 12
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -81,6 +81,9 @@ export const MATRIZ = {
   'historico.autorizar_exportacao': ['socio'],
   // GGVP-104: a gestão do escritório muda limites, kits e mensagens sem mexer no código.
   'configuracao.editar': ['socio', 'senior'],
+  // Versão 12 (GGVP-22, Lucas 06/10): o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica ao cliente.
+  'resultado.aprovar_resumo': ['advogada', 'senior'],
+  'resultado.explicar': ['atendimento', 'atendimento_lider', 'advogada'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ
