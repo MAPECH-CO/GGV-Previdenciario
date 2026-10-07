@@ -165,3 +165,40 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* GGVP-56: o que a perícia pede, item a item, e as conferências. */
+.itens {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.itemPericia {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+}
+
+.itemNome {
+  font-size: var(--fonte-14);
+  font-weight: 500;
+}
+
+.marcar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fonte-14);
+}
+
+.marcar input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cor-acento);
+}

@@ -5,7 +5,7 @@ import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { formatarCpf } from '../campos.ts'
 import { nomeTipo } from '../dados/catalogos.ts'
-import { autorizarRemarcacao, hrefDoPasso, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
+import { autorizarRemarcacao, decidirFaltaDaPericia, hrefDoPasso, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
@@ -54,6 +54,7 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
   const [aberto, setAberto] = useState<'parecer' | 'anexar' | null>(null)
   const [aviso, setAviso] = useState('')
   const [justificativa, setJustificativa] = useState('')
+  const [decisao, setDecisao] = useState('')
   const [erro, setErro] = useState('')
 
   useEffect(() => {
@@ -85,6 +86,17 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
   const dia = (iso: string) => `${diaCurto(iso)}/${iso.slice(5, 7)}`
   const etiqueta = m?.origem === 'comprovante' ? 'comprovante lido pelo sistema' : m?.origem === 'juizo' ? 'data lida da publicação' : NOMES_DA_SITUACAO[t.situacao].toLowerCase()
   const advogada = (perfil?.id ?? 'advogada') === 'advogada'
+
+  async function decidirFalta() {
+    setErro('')
+    try {
+      setT(await decidirFaltaDaPericia(processoId, decisao, perfil?.usuario ?? 'Advogada'))
+      setDecisao('')
+      setAviso('Decisão registrada: a Documentação segue com ela.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não deu para registrar.')
+    }
+  }
 
   async function autorizar() {
     setErro('')
@@ -225,7 +237,49 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
                 </span>
                 <span className={`${styles.situacao} ${COR_DA_SITUACAO[t.situacao]}`}>{NOMES_DA_SITUACAO[t.situacao]}</span>
               </div>
+              {t.documentos && (
+                <div className={styles.pericia}>
+                  <span>
+                    <strong>Documentos da perícia</strong>
+                    <span className={styles.nota}>
+                      {pericia.documentos!.concluida
+                        ? `reunidos pela Documentação em ${dataCurta(hojeIso(new Date(pericia.documentos!.concluida.quando)), hoje)}`
+                        : `${t.documentos.itens.filter((i) => i.arquivo).length} de ${t.documentos.itens.length} anexados · a Documentação reúne${t.prazos ? ` até ${dataCurta(t.prazos.documentosAte, hoje)}` : ''}`}
+                    </span>
+                  </span>
+                  <span className={`${styles.situacao} ${pericia.documentos!.concluida ? styles.ok : styles.alerta}`}>{pericia.documentos!.concluida ? 'Feito' : 'Pendente'}</span>
+                </div>
+              )}
             </section>
+
+            {t.documentos?.passouDoLimite && (
+              <section className={styles.cartao} aria-labelledby="decisao-documento">
+                <h2 id="decisao-documento" className={styles.cartaoTitulo}>
+                  Documento da perícia em falta (G15)
+                </h2>
+                <p>
+                  Passou do limite de 10 dias antes da perícia e ainda falta: {t.documentos.faltando.map((i) => i.nome.toLowerCase()).join(', ')}. A advogada
+                  responsável decide como segue; a Documentação registra a falta com justificativa e conclui.
+                </p>
+                {pericia.documentos!.decisaoDaAdvogada ? (
+                  <p className={styles.nota}>
+                    Decidido por {pericia.documentos!.decisaoDaAdvogada.quem}: {pericia.documentos!.decisaoDaAdvogada.texto}
+                  </p>
+                ) : advogada ? (
+                  <>
+                    <label className={proprio.campo}>
+                      Decisão *
+                      <textarea rows={2} maxLength={300} value={decisao} onChange={(e) => setDecisao(e.target.value)} />
+                    </label>
+                    <button type="button" className={passo.principalBotao} disabled={decisao.trim().length < 10} onClick={() => void decidirFalta()}>
+                      Registrar a decisão
+                    </button>
+                  </>
+                ) : (
+                  <p className={styles.nota}>A decisão aparece para a advogada responsável.</p>
+                )}
+              </section>
+            )}
 
             {t.situacao === 'na-advogada' && (
               <section className={styles.cartao} aria-labelledby="decisao-advogada">

@@ -1,19 +1,30 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { eventosDaAgenda, tarefasDeConfirmar } from './agenda.ts'
+import { enviarArquivos } from './documentos.ts'
 import {
+  abordarSugeridoNaPericia,
+  adiarCobrancaDaPericia,
   autorizarRemarcacao,
+  concluirDocumentos,
+  decidirFaltaDaPericia,
   esperarComprovante,
   etapaDaPericia,
   iniciarPericia,
+  justificarFalta,
   lerComprovante,
   liberarAgendamento,
+  obterCobrancaDaPericia,
   obterLembrete,
   obterPericia,
+  pedirAoMedicoNaPericia,
+  registrarCobrancaDaPericia,
   registrarLembrete,
   registrarMarcacao,
   registrarTentativa,
   remarcarPericia,
   tarefasDaAdvogadaNaPericia,
+  tarefasDaDocumentacaoNaPericia,
+  tarefasDeDecidirDocumentoDaPericia,
   tarefasDoJuridicoAdm,
 } from './pericia.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from './servidor.ts'
@@ -198,5 +209,96 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
   it('a perícia que passou não vira "confirmar entrevista" no Atendimento: o comparecimento é do Jurídico administrativo', async () => {
     agora = new Date(2026, 9, 20, 9, 0)
     expect(tarefasDeConfirmar().some((t) => t.cliente?.id === 'antonio-exemplo')).toBe(false)
+  })
+})
+
+const arquivo = (nome: string, tipo: string, n: number) => ({ nome, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(n).padStart(64, '0') })
+
+describe('GGVP-56 · reunir o que a perícia pede', () => {
+  it('CA3 · "Não" no documento novo: a tarefa da Documentação não nasce', async () => {
+    await marcarMaria(false)
+    expect(tarefasDaDocumentacaoNaPericia().some((t) => t.cliente?.id === 'maria-exemplo')).toBe(false)
+    expect((await obterPericia('maria-exemplo-1'))!.documentos).toBeUndefined()
+  })
+
+  it('CA1 · perícia médica com "Sim": a lista de laudos e exames, até 10 dias antes', async () => {
+    await marcarMaria(true)
+    const t = (await obterPericia('maria-exemplo-1'))!
+    expect(t.documentos!.itens.map((i) => i.item.nome)).toEqual(['Laudo médico recente (até 30 dias)', 'Exames', 'Receitas', 'Atestados de afastamento'])
+    expect(tarefasDaDocumentacaoNaPericia().find((x) => x.cliente?.id === 'maria-exemplo')).toMatchObject({
+      codigo: 'DP.03',
+      acao: 'Reunir documentos da perícia',
+      prazo: 'até 11/10',
+      href: '/casos/maria-exemplo-1/pericia/documentos',
+    })
+  })
+
+  it('CA2 · avaliação social: CadÚnico, grupo familiar e as declarações; a Documentação reúne e cobra', () => {
+    const doPedro = tarefasDaDocumentacaoNaPericia().filter((t) => t.cliente?.id === 'pedro-exemplo')
+    expect(doPedro.map((t) => t.acao)).toEqual(['Reunir documentos da perícia', 'Cobrar documento da perícia'])
+    expect(doPedro[0].detalhe).toBe('LOAS Idoso · avaliação social em 23/10 · faltam 4')
+    expect(doPedro[1].detalhe).toContain('cadúnico atualizado, composição do grupo familiar, declaração de moradia')
+  })
+
+  it('CA4 · o que chega pela pasta segue a leitura da IA do D1 e conta como anexado', async () => {
+    await enviarArquivos('pedro-exemplo', { origem: 'card', arquivos: [arquivo('cadunico pedro.pdf', 'cadunico', 1)] })
+    const t = (await obterPericia('pedro-exemplo-1'))!
+    expect(t.documentos!.itens.find((i) => i.item.id === 'cadunico')!.arquivo).toMatchObject({ nome: 'cadunico pedro.pdf', aguardaLeitura: true })
+    expect(t.documentos!.faltando.map((i) => i.id)).toEqual(['grupo-familiar', 'moradia', 'uniao-separacao'])
+  })
+
+  it('CA5, CA6 · concluir pede o pendente resolvido e as conferências; grava quem e quando e volta ao Jurídico administrativo', async () => {
+    const DOC = 'Jéssica (exemplo)'
+    const todas = ['cadunico', 'grupo-familiar', 'leitura']
+    await expect(concluirDocumentos('pedro-exemplo-1', { conferidas: todas }, DOC)).rejects.toThrow('Faltam 4 itens')
+    await enviarArquivos('pedro-exemplo', { origem: 'card', arquivos: [arquivo('cadunico.pdf', 'cadunico', 2), arquivo('grupo familiar.pdf', 'grupo-familiar', 3)] })
+    await expect(justificarFalta('pedro-exemplo-1', 'moradia', 'oi', DOC)).rejects.toThrow('Diga por que o documento falta.')
+    await justificarFalta('pedro-exemplo-1', 'moradia', 'mora em casa própria, com escritura na pasta', DOC)
+    await justificarFalta('pedro-exemplo-1', 'uniao-separacao', 'não se aplica: viúvo', DOC)
+    await expect(concluirDocumentos('pedro-exemplo-1', { conferidas: ['leitura'] }, DOC)).rejects.toThrow('Marque as conferências.')
+    const t = await concluirDocumentos('pedro-exemplo-1', { conferidas: todas }, DOC)
+    expect(t.pericia.documentos!.concluida).toMatchObject({ quem: DOC, conferidas: todas })
+    expect(t.pericia.historico.slice(-2).map((e) => e.oQue)).toEqual([
+      'Concluiu os documentos da perícia: 2 anexados, 2 com a falta justificada',
+      'O fluxo voltou ao Jurídico administrativo: ligar e orientar o cliente (DP.06)',
+    ])
+    expect(tarefasDaDocumentacaoNaPericia().some((x) => x.cliente?.id === 'pedro-exemplo')).toBe(false)
+  })
+
+  it('CA6 · sem o comprovante ainda, a conclusão volta ao Jurídico administrativo para subir o comprovante', async () => {
+    await esperarComprovante('maria-exemplo-1', { pedeDocumentoNovo: true }, IGOR)
+    expect(tarefasDaDocumentacaoNaPericia().find((x) => x.cliente?.id === 'maria-exemplo')?.prazo).toBe('sem data ainda')
+    for (const item of ['laudo-recente', 'exames', 'receitas', 'atestados']) await justificarFalta('maria-exemplo-1', item, 'o médico só atende no fim do mês', 'Jéssica (exemplo)')
+    const t = await concluirDocumentos('maria-exemplo-1', { conferidas: ['laudos-exames', 'leitura'] }, 'Jéssica (exemplo)')
+    expect(t.pericia.historico.at(-1)!.oQue).toBe('O fluxo voltou ao Jurídico administrativo: subir o comprovante do INSS (DP.02)')
+  })
+
+  it('CA7 · o pedido ao médico lista o que abordar, com as perguntas do roteiro; o servidor recusa diagnóstico e CID (G20)', async () => {
+    await marcarMaria(true)
+    const sugerido = await abordarSugeridoNaPericia('maria-exemplo-1')
+    expect(sugerido.startsWith('O relatório médico precisa responder:\n• ')).toBe(true)
+    await expect(pedirAoMedicoNaPericia('maria-exemplo-1', 'Escreva que a paciente tem CID M54.5', 'Jéssica (exemplo)')).rejects.toThrow('G20')
+    await expect(pedirAoMedicoNaPericia('maria-exemplo-1', 'Confirme o diagnóstico de lombalgia', 'Jéssica (exemplo)')).rejects.toThrow('G20')
+    const t = await pedirAoMedicoNaPericia('maria-exemplo-1', sugerido, 'Jéssica (exemplo)')
+    expect(t.pericia.documentos!.pedidosAoMedico).toMatchObject([{ abordar: sugerido }])
+    const { mensagem } = await obterCobrancaDaPericia('maria-exemplo-1')
+    expect(mensagem).toContain('ainda precisamos de: laudo médico recente (até 30 dias); exames; receitas; atestados de afastamento.')
+    expect(mensagem).toContain(`Para o laudo, leve ao seu médico este pedido; ele responde com as palavras dele:\n${sugerido}`)
+  })
+
+  it('Lucas, 02/10 · a cobrança é diária e, passados os 10 dias antes, sobe para a advogada responsável (G15)', async () => {
+    const { mensagem } = await obterCobrancaDaPericia('pedro-exemplo-1')
+    await registrarCobrancaDaPericia('pedro-exemplo-1', mensagem, 'Jéssica (exemplo)')
+    expect(tarefasDaDocumentacaoNaPericia().filter((t) => t.cliente?.id === 'pedro-exemplo').map((t) => t.acao)).toEqual(['Reunir documentos da perícia'])
+    agora = new Date(2026, 9, 8, 9, 0)
+    expect(tarefasDaDocumentacaoNaPericia().filter((t) => t.cliente?.id === 'pedro-exemplo').map((t) => t.acao)).toContain('Cobrar documento da perícia')
+    await adiarCobrancaDaPericia('pedro-exemplo-1', 'Jéssica (exemplo)')
+    expect(tarefasDaDocumentacaoNaPericia().filter((t) => t.cliente?.id === 'pedro-exemplo').map((t) => t.acao)).not.toContain('Cobrar documento da perícia')
+
+    agora = new Date(2026, 9, 14, 9, 0)
+    expect(tarefasDaDocumentacaoNaPericia().filter((t) => t.cliente?.id === 'pedro-exemplo').map((t) => t.acao)).toEqual(['Reunir documentos da perícia'])
+    expect(tarefasDeDecidirDocumentoDaPericia()).toMatchObject([{ acao: 'Decidir documento da perícia', cliente: { id: 'pedro-exemplo' }, href: '/casos/pedro-exemplo-1/pericia' }])
+    await decidirFaltaDaPericia('pedro-exemplo-1', 'Seguir sem a declaração; a visita confere a moradia.', 'Dra. Paula (exemplo)')
+    expect(tarefasDeDecidirDocumentoDaPericia()).toEqual([])
   })
 })

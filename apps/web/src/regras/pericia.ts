@@ -140,3 +140,24 @@ export function mensagemDoLembrete(d: { nome: string; tipo: TipoDePericia; data:
     `Leve ${O_QUE_LEVAR[d.tipo]}. Chegue com antecedência. Qualquer dúvida, é só responder esta mensagem.`
   )
 }
+
+/** A falta de um item da perícia é registrada com justificativa (GGVP-56, CA5). */
+export const MINIMO_DA_FALTA = 5
+
+/**
+ * "Concluir" só habilita com cada item anexado ou com a falta justificada, e com as conferências marcadas (GGVP-56, CA5).
+ * Sem problema, null.
+ */
+export function motivoParaNaoConcluirDocumentos(d: { faltando: number; conferidas: string[]; exigidas: string[] }): string | null {
+  if (d.faltando > 0) return d.faltando === 1 ? 'Falta 1 item: anexe ou registre a falta com justificativa.' : `Faltam ${d.faltando} itens: anexe ou registre a falta com justificativa.`
+  if (!d.exigidas.every((c) => d.conferidas.includes(c))) return 'Marque as conferências.'
+  return null
+}
+
+/** A cobrança da perícia é diária e vai até 10 dias antes dela (Lucas, 02/10): hoje ainda não cobrou e não passou do limite. */
+export function cobrarHoje(cobrancas: { dia: string }[], hoje: string, documentosAte?: string): boolean {
+  return !cobrancas.some((c) => c.dia === hoje) && !passouDoLimiteDosDocumentos(hoje, documentosAte)
+}
+
+/** Passou dos 10 dias antes da perícia com documento faltando: sobe para a advogada responsável (G15, por ser perícia). */
+export const passouDoLimiteDosDocumentos = (hoje: string, documentosAte?: string) => documentosAte !== undefined && hoje > documentosAte

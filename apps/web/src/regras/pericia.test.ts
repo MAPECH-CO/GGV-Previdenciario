@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   LIMITE_DE_REMARCACOES_DA_PERICIA,
+  cobrarHoje,
   ORIGENS,
   esperaOInss,
   etapaEmPericia,
   mensagemDoLembrete,
+  motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
+  passouDoLimiteDosDocumentos,
   prazoFalado,
   prazosDaPericia,
   proximaTentativa,
@@ -99,5 +102,26 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
     const social = mensagemDoLembrete({ nome: 'Pedro Exemplo', tipo: 'social', data: '2026-10-23', hora: '09:00', local: 'visita domiciliar' }, 'sexta, 23/10')
     expect(social).toContain('A visita da assistente social é na sua casa (visita domiciliar).')
     expect(social).toContain('o CadÚnico')
+  })
+})
+
+describe('GGVP-56 · reunir o que a perícia pede', () => {
+  it('CA5 · "Concluir" só com cada item anexado ou justificado e as conferências marcadas', () => {
+    const exigidas = ['laudos-exames', 'leitura']
+    expect(motivoParaNaoConcluirDocumentos({ faltando: 2, conferidas: exigidas, exigidas })).toBe('Faltam 2 itens: anexe ou registre a falta com justificativa.')
+    expect(motivoParaNaoConcluirDocumentos({ faltando: 1, conferidas: exigidas, exigidas })).toBe('Falta 1 item: anexe ou registre a falta com justificativa.')
+    expect(motivoParaNaoConcluirDocumentos({ faltando: 0, conferidas: ['leitura'], exigidas })).toBe('Marque as conferências.')
+    expect(motivoParaNaoConcluirDocumentos({ faltando: 0, conferidas: exigidas, exigidas })).toBeNull()
+  })
+
+  it('Lucas, 02/10 · cobrança diária até 10 dias antes; depois, sobe para a advogada', () => {
+    expect(cobrarHoje([], '2026-10-07', '2026-10-13')).toBe(true)
+    expect(cobrarHoje([{ dia: '2026-10-07' }], '2026-10-07', '2026-10-13')).toBe(false)
+    expect(cobrarHoje([{ dia: '2026-10-07' }], '2026-10-08', '2026-10-13')).toBe(true)
+    expect(cobrarHoje([], '2026-10-14', '2026-10-13')).toBe(false)
+    expect(passouDoLimiteDosDocumentos('2026-10-13', '2026-10-13')).toBe(false)
+    expect(passouDoLimiteDosDocumentos('2026-10-14', '2026-10-13')).toBe(true)
+    // Sem a data da perícia ainda, não há limite.
+    expect(passouDoLimiteDosDocumentos('2026-12-01', undefined)).toBe(false)
   })
 })

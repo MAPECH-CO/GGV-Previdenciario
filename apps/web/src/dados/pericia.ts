@@ -9,15 +9,19 @@ import {
   DIAS_ANTES_DOCUMENTOS,
   DIAS_ANTES_PREPARO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
+  MINIMO_DA_FALTA,
   NOMES_DA_INSTANCIA,
   NOMES_DO_TIPO,
   ORIGENS,
+  cobrarHoje,
   esperaOInss,
   etapaEmPericia,
   mensagemDoLembrete,
+  motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
+  passouDoLimiteDosDocumentos,
   prazoFalado,
   prazosDaPericia,
   proximaTentativa,
@@ -28,7 +32,10 @@ import {
   type SituacaoDaPericia,
   type TipoDePericia,
 } from '../regras/pericia.ts'
+import { problemaG20 } from '../regras/parecer.ts'
+import { emVigor } from '../regras/roteiro.ts'
 import { nomeBeneficio } from './catalogos.ts'
+import { roteiroDoCaso } from './roteiro.ts'
 import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
 import type { Arquivo, EventoDaAgenda, Ficha, Processo, Tarefa } from './tipos.ts'
 
@@ -55,6 +62,56 @@ export type MarcacaoDaPericia = LidoDoComprovante & {
   origem: 'comprovante' | 'juizo'
   registradaEm: string
   registradaPor: string
+}
+
+/** Um item do que levar à perícia: os tipos de documento que valem e se é laudo (o pedido ao médico, G20). */
+export type ItemDaPericia = { id: string; nome: string; tipos: string[]; laudo?: boolean }
+
+/**
+ * O kit da perícia, por tipo: configuração do escritório (Lucas, 02/10: "os kits são exatamente os docs que estão prontos
+ * por tipo de processo"). As declarações valem para a avaliação social (Lucas, 02/10, Q3). Ligar no servidor: vem da
+ * configuração, como a lista de cada benefício (GGVP-91).
+ */
+export const KIT_DA_PERICIA: Record<TipoDePericia, ItemDaPericia[]> = {
+  medica: [
+    { id: 'laudo-recente', nome: 'Laudo médico recente (até 30 dias)', tipos: ['laudo', 'relatorio-medico'], laudo: true },
+    { id: 'exames', nome: 'Exames', tipos: ['exame', 'exame-imagem-epoca', 'exame-pos-alta'] },
+    { id: 'receitas', nome: 'Receitas', tipos: ['receita'] },
+    { id: 'atestados', nome: 'Atestados de afastamento', tipos: ['atestado'] },
+  ],
+  social: [
+    { id: 'cadunico', nome: 'CadÚnico atualizado', tipos: ['cadunico'] },
+    { id: 'grupo-familiar', nome: 'Composição do grupo familiar', tipos: ['grupo-familiar'] },
+    { id: 'moradia', nome: 'Declaração de moradia', tipos: ['declaracao-moradia'] },
+    { id: 'uniao-separacao', nome: 'Declaração de união estável ou de separação de fato, quando houver', tipos: ['declaracao-uniao-estavel', 'declaracao-separacao'] },
+  ],
+}
+
+/** As conferências antes de concluir (Figma 10:522) e a da leitura da IA do que chegou (GGVP-56, CA4). */
+export const CONFERENCIAS_DA_PERICIA: Record<TipoDePericia, { id: string; rotulo: string }[]> = {
+  medica: [
+    { id: 'laudos-exames', rotulo: 'Laudos e exames' },
+    { id: 'leitura', rotulo: 'Conferi a leitura da IA do que chegou (papel digitalizado ou pelo card)' },
+  ],
+  social: [
+    { id: 'cadunico', rotulo: 'CadÚnico (se BPC/social)' },
+    { id: 'grupo-familiar', rotulo: 'Composição do grupo familiar' },
+    { id: 'leitura', rotulo: 'Conferi a leitura da IA do que chegou (papel digitalizado ou pelo card)' },
+  ],
+}
+
+/** A tarefa da Documentação na perícia (DP.03): nasce só com "Sim" no documento novo (GGVP-56, CA3). */
+export type DocumentosDaPericia = {
+  abertaEm: string
+  /** Id do item → por que falta (CA5). */
+  faltas: Record<string, string>
+  /** A cobrança diária, pela Documentação (Lucas, 02/10). */
+  cobrancas: { dia: string; quando: string; quem: string; como: 'chatwoot' | 'adiada'; mensagem?: string }[]
+  /** O que o laudo deve abordar, para o médico (CA7, G20). */
+  pedidosAoMedico: { quando: string; quem: string; abordar: string }[]
+  /** Passou do limite (10 dias antes): o que a advogada responsável decidiu (G15). */
+  decisaoDaAdvogada?: { quando: string; quem: string; texto: string }
+  concluida?: { quando: string; quem: string; conferidas: string[] }
 }
 
 export type Pericia = {
@@ -87,6 +144,8 @@ export type Pericia = {
   pedeDocumentoNovo?: boolean
   /** O lembrete da véspera (GGVP-53, CA7): o dia e, depois de enviado, quando, por quem e o texto. */
   lembrete?: { para: string; enviadoEm?: string; por?: string; mensagem?: string }
+  /** O que a Documentação reúne quando a perícia pede documento novo (GGVP-56). */
+  documentos?: DocumentosDaPericia
   historico: EventoDaPericia[]
 }
 
@@ -108,6 +167,40 @@ export type PericiaNaTela = {
   prazos?: ReturnType<typeof prazosDaPericia>
   /** É a véspera (ou o dia) e o lembrete ainda não saiu (GGVP-53, CA7). */
   lembreteHoje: boolean
+  /** O que a perícia pede, item a item, anexado ou com a falta justificada (GGVP-56). */
+  documentos?: {
+    itens: { item: ItemDaPericia; arquivo?: Arquivo; falta?: string }[]
+    faltando: ItemDaPericia[]
+    /** Hoje ainda não cobrou e não passou dos 10 dias antes. */
+    cobrarHoje: boolean
+    /** Passou dos 10 dias antes com documento faltando: a advogada responsável decide (G15). */
+    passouDoLimite: boolean
+  }
+}
+
+/** Cada item do kit: anexado é o documento do tipo dele que entrou na pasta depois do pedido (GGVP-56, CA1, CA2, CA4). */
+function documentosNaTela(ficha: Ficha, pericia: Pericia, hoje: string, ate?: string): PericiaNaTela['documentos'] {
+  const d = pericia.documentos
+  if (!d) return undefined
+  const desde = hojeIso(new Date(d.abertaEm))
+  const itens = KIT_DA_PERICIA[pericia.tipo].map((item) => ({
+    item,
+    arquivo: ficha.arquivos.filter((a) => item.tipos.includes(a.tipo) && a.data >= desde).at(-1),
+    falta: d.faltas[item.id],
+  }))
+  const faltando = itens.filter((i) => !i.arquivo && !i.falta).map((i) => i.item)
+  const aberta = !d.concluida && faltando.length > 0
+  return {
+    itens,
+    faltando,
+    cobrarHoje: aberta && cobrarHoje(d.cobrancas, hoje, ate),
+    passouDoLimite: aberta && passouDoLimiteDosDocumentos(hoje, ate),
+  }
+}
+
+/** "Sim" no documento novo abre a tarefa da Documentação, uma só por perícia (GGVP-56, CA1 a CA3). */
+function abrirDocumentos(pericia: Pericia, quando: string) {
+  pericia.documentos ??= { abertaEm: quando, faltas: {}, cobrancas: [], pedidosAoMedico: [] }
 }
 
 function fichaDoProcesso(banco: Banco, processoId: string): { ficha: Ficha; processo: Processo } | null {
@@ -214,6 +307,7 @@ function marcar(banco: Banco, pericia: Pericia, m: { comprovante: { nome: string
   pericia.marcacao = { ...m.lido, comprovante: nome, origem: 'comprovante', registradaEm: quando, registradaPor: quem }
   pericia.lembrete = { para: prazosDaPericia(m.lido.data).vespera }
   pericia.pedeDocumentoNovo = m.pedeDocumentoNovo
+  if (m.pedeDocumentoNovo) abrirDocumentos(pericia, quando)
   delete pericia.esperaComprovante
   const novaData = `${dataCurta(m.lido.data, hoje)}, ${m.lido.hora}`
   pericia.historico.push(
@@ -274,6 +368,7 @@ function semear(banco: Banco): Pericia[] {
   // A marcação do Pedro foi ontem à tarde: o histórico guarda a hora em que aconteceu.
   for (const e of pedro.historico.slice(-4)) e.quando = em(-1, 14, 20).toISOString()
   pedro.marcacao!.registradaEm = em(-1, 14, 20).toISOString()
+  pedro.documentos!.abertaEm = em(-1, 14, 20).toISOString()
   criar(
     banco,
     'antonio-exemplo-1',
@@ -320,6 +415,7 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
     ...(situacao === 'marcar' && { proximaTentativa: proximaTentativa(pericia.tentativas.filter((x) => x.dia >= desde), desde) }),
     ...(marcacao && { prazos: prazosDaPericia(marcacao.data) }),
     lembreteHoje: !!marcacao && !!lembrete && !lembrete.enviadoEm && hoje >= lembrete.para && hoje <= marcacao.data,
+    documentos: documentosNaTela(ficha, pericia, hoje, marcacao && prazosDaPericia(marcacao.data).documentosAte),
   }
 }
 
@@ -378,6 +474,7 @@ export function esperarComprovante(processoId: string, d: { pedeDocumentoNovo: b
     const quando = agora().toISOString()
     pericia.esperaComprovante = { desde: quando }
     pericia.pedeDocumentoNovo = d.pedeDocumentoNovo
+    if (d.pedeDocumentoNovo) abrirDocumentos(pericia, quando)
     pericia.historico.push(
       { quando, quem, oQue: 'Marcou no Meu INSS; o comprovante ainda não saiu: a tarefa espera, com lembrete diário', passo: 'DP.E1' },
       d.pedeDocumentoNovo
@@ -667,4 +764,177 @@ export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[]
       },
     ]
   })
+}
+
+// GGVP-56 · Reunir o que a perícia pede: a Documentação reúne, cobra todo dia até 10 dias antes e conclui.
+
+function comDocumentos(pericia: Pericia): DocumentosDaPericia {
+  if (!pericia.documentos) throw new Error('Esta perícia não pede documento novo.')
+  if (pericia.documentos.concluida) throw new Error('Os documentos desta perícia já foram concluídos.')
+  return pericia.documentos
+}
+
+/** A falta de um item, com justificativa (CA5). */
+export function justificarFalta(processoId: string, itemId: string, justificativa: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    const d = comDocumentos(pericia)
+    const item = KIT_DA_PERICIA[pericia.tipo].find((i) => i.id === itemId)
+    if (!item) throw new Error('Item da perícia não encontrado.')
+    if (justificativa.trim().length < MINIMO_DA_FALTA) throw new Error('Diga por que o documento falta.')
+    d.faltas[itemId] = justificativa.trim()
+    pericia.historico.push({ quando: agora().toISOString(), quem, oQue: `Registrou a falta de ${item.nome.toLowerCase()}: ${justificativa.trim()}`, passo: 'DP.03' })
+  })
+}
+
+/** Concluir (CA5, CA6): cada item anexado ou justificado e as conferências; grava quem e quando e volta ao Jurídico administrativo. */
+export function concluirDocumentos(processoId: string, c: { conferidas: string[] }, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (banco, pericia, hoje) => {
+    const d = comDocumentos(pericia)
+    const { ficha } = fichaDoProcesso(banco, processoId)!
+    const ate = pericia.marcacao && prazosDaPericia(pericia.marcacao.data).documentosAte
+    const na = documentosNaTela(ficha, pericia, hoje, ate)!
+    const exigidas = CONFERENCIAS_DA_PERICIA[pericia.tipo].map((x) => x.id)
+    const motivo = motivoParaNaoConcluirDocumentos({ faltando: na.faltando.length, conferidas: c.conferidas, exigidas })
+    if (motivo) throw new Error(motivo)
+    const quando = agora().toISOString()
+    d.concluida = { quando, quem, conferidas: c.conferidas }
+    const anexados = na.itens.filter((i) => i.arquivo).length
+    const faltas = na.itens.length - anexados
+    const volta = pericia.marcacao ? 'ligar e orientar o cliente (DP.06)' : 'subir o comprovante do INSS (DP.02)'
+    pericia.historico.push(
+      { quando, quem, oQue: `Concluiu os documentos da perícia: ${anexados} anexado${anexados === 1 ? '' : 's'}${faltas ? `, ${faltas} com a falta justificada` : ''}`, passo: 'DP.03' },
+      { quando, quem: SISTEMA, oQue: `O fluxo voltou ao Jurídico administrativo: ${volta}`, passo: 'DP.03' },
+    )
+  })
+}
+
+/** O que o laudo deve abordar, sugerido pela IA com as perguntas do roteiro do benefício (CA7). A Documentação confere. */
+export async function abordarSugeridoNaPericia(processoId: string): Promise<string> {
+  const banco = lerComPericias()
+  const achado = fichaDoProcesso(banco, processoId)
+  const roteiro = achado ? roteiroDoCaso(banco, achado.processo.beneficio) : undefined
+  const perguntas = roteiro ? emVigor(roteiro).itens.filter((i) => i.tipo === 'obrigatorio' && i.pergunta).map((i) => `• ${i.pergunta}`) : []
+  return perguntas.length > 0 ? `O relatório médico precisa responder:\n${perguntas.join('\n')}` : ''
+}
+
+/** O pedido ao médico (CA7): só o que o documento deve abordar; o servidor recusa diagnóstico, CID, grau, conclusão e frase pronta (G20). */
+export function pedirAoMedicoNaPericia(processoId: string, abordar: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    const d = comDocumentos(pericia)
+    if (!abordar.trim()) throw new Error('Escreva o que o documento deve abordar.')
+    const problema = problemaG20(abordar)
+    if (problema) throw new Error(problema)
+    const quando = agora().toISOString()
+    d.pedidosAoMedico.push({ quando, quem, abordar: abordar.trim() })
+    pericia.historico.push({ quando, quem, oQue: 'Preparou o pedido ao médico do laudo da perícia (o que o documento deve abordar, G20)', passo: 'DP.03' })
+  })
+}
+
+/** A mensagem de cobrança do que falta, com o pedido ao médico quando há, para conferir no Chatwoot. */
+export async function obterCobrancaDaPericia(processoId: string): Promise<{ nome: string; telefone: string; mensagem: string }> {
+  const t = await obterPericia(processoId)
+  if (!t?.documentos) throw new Error('Esta perícia não pede documento novo.')
+  const hoje = hojeIso(agora())
+  const primeiro = t.ficha.nome.split(' ')[0]
+  const ate = t.prazos?.documentosAte
+  const pedido = t.pericia.documentos!.pedidosAoMedico.at(-1)
+  const quais = t.documentos.faltando.map((i) => i.nome.toLowerCase()).join('; ')
+  const de = t.pericia.marcacao ? ` de ${dataCurta(t.pericia.marcacao.data, hoje)}` : ''
+  const mensagem =
+    `Olá, ${primeiro}! Aqui é do escritório GGV. Para a sua ${NOMES_DO_TIPO[t.pericia.tipo]}${de}, ainda precisamos de: ${quais}. ` +
+    `Mande foto por aqui ou traga ao escritório${ate ? ` até ${dataCurta(ate, hoje)}` : ''}.` +
+    (pedido ? `\n\nPara o laudo, leve ao seu médico este pedido; ele responde com as palavras dele:\n${pedido.abordar}\n\n` : ' ') +
+    'Qualquer dúvida, é só responder esta mensagem.'
+  return { nome: t.ficha.nome, telefone: t.ficha.telefone, mensagem }
+}
+
+/** A cobrança do dia, enviada pelo Chatwoot depois de conferida (Lucas, 02/10: a Documentação cobra, todo dia). */
+export function registrarCobrancaDaPericia(processoId: string, mensagem: string, quem = 'Documentação'): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia, hoje) => {
+    const d = comDocumentos(pericia)
+    const quando = agora().toISOString()
+    d.cobrancas.push({ dia: hoje, quando, quem, como: 'chatwoot', mensagem })
+    pericia.historico.push({ quando, quem, oQue: 'Cobrou pelo Chatwoot o que a perícia pede e ainda falta', passo: 'DP.03' })
+  })
+}
+
+/** "Adiar": a cobrança de hoje fica para amanhã. */
+export function adiarCobrancaDaPericia(processoId: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia, hoje) => {
+    const d = comDocumentos(pericia)
+    const quando = agora().toISOString()
+    d.cobrancas.push({ dia: hoje, quando, quem, como: 'adiada' })
+    pericia.historico.push({ quando, quem, oQue: 'Adiou a cobrança dos documentos da perícia para amanhã', passo: 'DP.03' })
+  })
+}
+
+/** Passou dos 10 dias antes com documento faltando: a advogada responsável registra o que decidiu (G15). */
+export function decidirFaltaDaPericia(processoId: string, texto: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    const d = comDocumentos(pericia)
+    if (texto.trim().length < MINIMO_DA_JUSTIFICATIVA) throw new Error('Escreva a decisão (pelo menos 10 letras).')
+    const quando = agora().toISOString()
+    d.decisaoDaAdvogada = { quando, quem, texto: texto.trim() }
+    pericia.historico.push({ quando, quem, oQue: `Decidiu sobre o documento que falta (G15): ${texto.trim()}`, passo: 'DP.03' })
+  })
+}
+
+/** As tarefas da Documentação na Central do Atendimento: reunir e, quando é dia, cobrar (CA1, CA2, CA3). */
+export function tarefasDaDocumentacaoNaPericia(): Tarefa[] {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  const tarefas: Tarefa[] = []
+  for (const t of (banco.pericias ?? []).map((p) => naTela(banco, p))) {
+    const { pericia, ficha, processo, documentos } = t
+    if (!documentos || pericia.documentos!.concluida) continue
+    const cliente = { id: ficha.id, nome: ficha.nome }
+    const quando = `${NOMES_DO_TIPO[pericia.tipo]}${pericia.marcacao ? ` em ${dataCurta(pericia.marcacao.data, hoje)}` : ''}`
+    const prazo = t.prazos ? prazoFalado(t.prazos.documentosAte, hoje) : { texto: 'sem data ainda', urgente: false }
+    const quantos = documentos.faltando.length
+    tarefas.push({
+      id: `pericia-documentos-${pericia.id}`,
+      codigo: 'DP.03',
+      cliente,
+      acao: 'Reunir documentos da perícia',
+      detalhe: [t.beneficio, quando, quantos ? `falta${quantos === 1 ? '' : 'm'} ${quantos}` : 'tudo anexado: conferir e concluir'].join(' · '),
+      prazo: prazo.texto,
+      urgente: prazo.urgente,
+      href: `/casos/${processo.id}/pericia/documentos`,
+      processoId: processo.id,
+    })
+    if (documentos.cobrarHoje) {
+      tarefas.push({
+        id: `pericia-cobrar-${pericia.id}`,
+        codigo: 'DP.03',
+        cliente,
+        acao: 'Cobrar documento da perícia',
+        detalhe: [t.beneficio, documentos.faltando.map((i) => i.nome.toLowerCase()).join(', '), 'cobrança diária'].join(' · '),
+        prazo: 'hoje',
+        urgente: true,
+        href: `/casos/${processo.id}/pericia/cobranca`,
+        processoId: processo.id,
+      })
+    }
+  }
+  return tarefas
+}
+
+/** Passou dos 10 dias antes com documento faltando e sem decisão: a advogada responsável decide (G15). */
+export function tarefasDeDecidirDocumentoDaPericia(): Tarefa[] {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  return (banco.pericias ?? [])
+    .map((p) => naTela(banco, p))
+    .filter((t) => t.documentos?.passouDoLimite && !t.pericia.documentos!.decisaoDaAdvogada)
+    .map((t) => ({
+      id: `pericia-falta-${t.pericia.id}`,
+      codigo: 'DP.03',
+      cliente: { id: t.ficha.id, nome: t.ficha.nome },
+      acao: 'Decidir documento da perícia',
+      detalhe: [t.beneficio, `falta ${t.documentos!.faltando.map((i) => i.nome.toLowerCase()).join(', ')}`, `perícia em ${dataCurta(t.pericia.marcacao!.data, hoje)} (G15)`].join(' · '),
+      prazo: 'hoje',
+      urgente: true,
+      href: `/casos/${t.processo.id}/pericia`,
+      processoId: t.processo.id,
+    }))
 }
