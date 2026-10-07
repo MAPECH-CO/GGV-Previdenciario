@@ -1,0 +1,303 @@
+/* Página do processo com a perícia em destaque (Figma 2179:2, 2179:333, 2179:664). */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 32px 32px;
+}
+
+.cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.numero {
+  font-size: var(--fonte-24);
+  font-weight: 600;
+}
+
+.etiqueta {
+  padding: 3px 9px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.transcricoes {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cliente {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+.cliente a {
+  color: var(--cor-acento);
+  font-weight: 600;
+}
+
+.acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legenda {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.etapas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.etapas li {
+  flex: 1 1 100px;
+}
+
+.etapas a,
+.etapas span {
+  display: block;
+  padding: 6px 8px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-6);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-12);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.feita span,
+.nao-houve span {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto);
+}
+
+.atual a {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-weight: 600;
+}
+
+.nao-chegou span {
+  color: var(--cor-texto-suave-2);
+}
+
+.resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.resumo > div {
+  display: flex;
+  flex: 1 1 600px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+}
+
+.destaque {
+  border: 2px solid var(--cor-acento);
+}
+
+.cartaoTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.nota {
+  display: block;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+.grupo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.evento {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.pericia {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pericia > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.situacao {
+  padding: 3px 9px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+  white-space: nowrap;
+}
+
+.alerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.neutro {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.ok {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.dados,
+.prazos {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+}
+
+.dados dt {
+  color: var(--cor-texto-suave);
+}
+
+.prazos dt {
+  font-weight: 600;
+}
+
+.urgente {
+  color: var(--cor-erro);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font-size: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.documentos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.documentos li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pdf {
+  padding: 4px 5px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-10);
+}
+
+.soltar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px dashed var(--cor-linha-2);
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  text-align: left;
+}
+
+.soltar > span:first-child {
+  color: var(--cor-acento);
+  font-size: var(--fonte-22);
+}
+
+@media (max-width: 1100px) {
+  .grade {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .pagina {
+    padding: 16px;
+  }
+
+  .evento {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

@@ -44,6 +44,9 @@ import { DarParecer } from './paginas/DarParecer.tsx'
 import { PedirComplemento } from './paginas/PedirComplemento.tsx'
 import { DispensarParecer } from './paginas/DispensarParecer.tsx'
 import { LinhaDaDeficiencia } from './paginas/LinhaDaDeficiencia.tsx'
+import { CentralJuridicoAdm } from './paginas/CentralJuridicoAdm.tsx'
+import { PericiaAberta } from './paginas/PericiaAberta.tsx'
+import { ProcessoPericia } from './paginas/ProcessoPericia.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -141,5 +144,11 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (dispensa) return <DispensarParecer processoId={decodeURIComponent(dispensa[1])} />
   const deficiencia = /^\/casos\/([^/]+)\/deficiencia$/.exec(caminho)
   if (deficiencia) return <LinhaDaDeficiencia processoId={decodeURIComponent(deficiencia[1])} />
+  // Perícia (épico GGVP-10): a Central do Jurídico administrativo, a página do processo com a perícia e os passos DP.
+  if (caminho === '/juridico-administrativo') return <CentralJuridicoAdm />
+  const periciaAberta = /^\/casos\/([^/]+)\/pericia\/aberta$/.exec(caminho)
+  if (periciaAberta) return <PericiaAberta processoId={decodeURIComponent(periciaAberta[1])} />
+  const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
+  if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} />
   return <NaoConstruida caminho={caminho} />
 }

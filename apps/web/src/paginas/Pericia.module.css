@@ -1,0 +1,102 @@
+/* Telas da perícia (épico GGVP-10): o que as telas de passo (Balcao.module.css) ainda não tinham. */
+
+/* "Sistema", "Judicial · perícia": o selo azul do Figma. */
+.selo {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.quadro {
+  padding: 16px 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-15);
+}
+
+.prazos {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  font-size: var(--fonte-13);
+}
+
+.prazos dt {
+  color: var(--cor-texto-suave);
+}
+
+.historico {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--fonte-13);
+}
+
+.evento {
+  display: grid;
+  grid-template-columns: 112px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.quando {
+  color: var(--cor-texto-suave);
+}
+
+.quem {
+  color: var(--cor-texto-suave);
+}
+
+.passo {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  white-space: nowrap;
+}
+
+.ia {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.iaTitulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.iaTitulo::before {
+  content: '✦ ';
+  color: var(--cor-acento);
+}
+
+.secundario {
+  padding: 12px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .evento {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .prazos {
+    grid-template-columns: 1fr;
+  }
+}

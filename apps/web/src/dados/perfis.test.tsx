@@ -19,6 +19,8 @@ describe('tela inicial e ação de cada perfil', () => {
       financeiro: '/financeiro',
       documentacao: '/',
       'senior-2': '/senior',
+      // A perícia é do Jurídico administrativo desde 29/09 (épico GGVP-10).
+      'juridico-adm': '/juridico-administrativo',
     })
   })
 

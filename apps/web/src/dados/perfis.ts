@@ -2,7 +2,7 @@
 // Só na tela: o login e as permissões de verdade são do Mateus. A escolha fica no navegador.
 import { useSyncExternalStore } from 'react'
 
-export type IdPerfil = 'atendimento' | 'atendimento-lider' | 'advogada' | 'senior' | 'financeiro' | 'documentacao' | 'senior-2'
+export type IdPerfil = 'atendimento' | 'atendimento-lider' | 'advogada' | 'senior' | 'financeiro' | 'documentacao' | 'senior-2' | 'juridico-adm'
 
 export type Perfil = {
   id: IdPerfil
@@ -29,6 +29,9 @@ export const PERFIS: Perfil[] = [
   { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/', acao: novoCliente },
   // A segunda sênior: a dispensa do parecer médico pede duas sêniores de acordo (GGVP-33, resposta do Lucas, Q14).
   { id: 'senior-2', rotulo: 'Sênior', usuario: 'Dr. Otávio (exemplo)', inicio: '/senior' },
+  // Quem cuida da perícia desde 29/09 (Lucas): marca, orienta o cliente e registra o comparecimento (épico GGVP-10).
+  // O nome de exemplo é o do servidor do Mateus (perfil juridico_adm).
+  { id: 'juridico-adm', rotulo: 'Jurídico administrativo', usuario: 'Igor (exemplo)', inicio: '/juridico-administrativo' },
 ]
 
 const CHAVE = 'ggv.perfil'

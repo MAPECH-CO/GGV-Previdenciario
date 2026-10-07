@@ -7,14 +7,7 @@ import type { Tarefa } from './tipos.ts'
 const cliente = (id: string, nome: string) => ({ id, nome })
 
 export const tarefasAdvogada: Tarefa[] = [
-  {
-    id: 'a1',
-    codigo: 'D2.03',
-    cliente: cliente('maria-exemplo', 'Maria Exemplo'),
-    acao: 'Decidir perícia',
-    detalhe: 'Auxílio por Incapacidade Temporária · protocolo feito hoje',
-    prazo: 'hoje',
-  },
+  // O "Decidir perícia" da Maria (D2.03) saiu: é da GGVP-31, e na semente a perícia dela já foi pedida (dados/pericia.ts).
   {
     id: 'a3',
     codigo: 'D3a.02',
