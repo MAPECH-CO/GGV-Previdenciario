@@ -2,12 +2,12 @@
 // prova de cada item e responde no portal (G21); a Sênior decide a vencida. O prazo é contado em código (G12).
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { CumprirItem, DecidirExigencia, DecidirVencida, ExigenciaDoCaso, RegistrarCobranca, ResponderExigencia, pode, type Erro } from '@ggv/contratos'
+import { CumprirItem, DecidirExigencia, DecidirLaco, DecidirVencida, ExigenciaDoCaso, RegistrarCobranca, ResponderExigencia, pode, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa, tentativa, usuario } from '../banco/esquema.ts'
-import { EXIGENCIA_EM_CURSO, abrirPericiasDaExigencia, esperarAnaliseDoInss, limitesDeCobranca, tiposDecididos } from '../fluxo/exigencia.ts'
-import { REGRA_PRAZO_INSS, feriadosNacionais, prazoInss, somarDias } from '../fluxo/prazo-inss.ts'
+import { EXIGENCIA_EM_CURSO, abrirPericiasDaExigencia, esperarAnaliseDoInss, lembreteDescrito, lembreteDoLaco, limitesDeCobranca, tiposDecididos } from '../fluxo/exigencia.ts'
+import { REGRA_PRAZO_INSS, feriadosNacionais, prazoInss } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
@@ -18,6 +18,8 @@ export const MSG_G21 = 'Só responde com documento anexado em todos os itens (G2
 export const MSG_COMPROVANTE_RESPOSTA = 'Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).'
 export const MSG_PROVA = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
 export const MSG_SEM_ENTREGA = 'A Documentação ainda não entregou as provas ao Jurídico.'
+/** A tarefa da Sênior quando a cobrança passa do limite (G15). */
+const TITULO_ESCALADA = 'Cobrança sem retorno: exigência do INSS'
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -127,6 +129,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
           ? {
               prazoEntrega: itens[0]?.item.prazo ?? null,
               proximoLembrete: cardAtivo ? card.prazo : null,
+              lembrete: cardAtivo ? lembreteDescrito(card, 'Documentação', card.tentativas) : null,
               tentativas: card.tentativas,
               limite: card.limiteTentativas,
               escalada: card.escaladaEm !== null,
@@ -137,6 +140,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
         podeCumprir: pode(pedido.perfilAtivo, 'exigencia_inss.cumprir') && Boolean(cardAtivo),
         podeResponder: pode(pedido.perfilAtivo, 'exigencia_inss.tratar') && Boolean(await respostaPendente(casoId)),
         podeDecidirVencida: pode(pedido.perfilAtivo, 'exigencia_inss.decidir_vencida') && vencida,
+        podeDecidirLaco: pode(pedido.perfilAtivo, 'exigencia_inss.decidir_vencida') && Boolean(cardAtivo && card?.escaladaEm),
       })
     },
   )
@@ -153,7 +157,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
     const prazo = prazoInss(x.recebidaEm, d.diasInss, await feriadosNacionais(banco))
     if (d.prazoEntrega && d.prazoEntrega > prazo) return negar(resposta, 400, `O prazo de entrega não pode passar do prazo do INSS (${br(prazo)}).`)
     const quem = pedido.usuario!.id
-    const { limite, intervaloDias } = await limitesDeCobranca(banco)
+    const { limite } = await limitesDeCobranca(banco)
     await banco.transaction(async (tx) => {
       await tx.update(exigencia).set({ pede: d.pede, diasInss: d.diasInss, prazo, analisadaPor: quem }).where(eq(exigencia.id, x.id))
       // G5 e CA10: quem decide é a advogada; a decisão fica com autora e horário.
@@ -174,13 +178,13 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
       if (d.pede === 'pericia') return abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora())
       // CA1, CA6, CA9: card da Documentação com os itens, o prazo de entrega e o próximo lembrete (Q1).
       for (const descricao of d.itens) await tx.insert(exigenciaItem).values({ exigenciaId: x.id, descricao, perfilResponsavel: 'documentacao', prazo: d.prazoEntrega })
-      const lembrete = intervaloDias ? somarDias(hoje(agora()), intervaloDias) : d.prazoEntrega!
+      const lembrete = await lembreteDoLaco(tx, hoje(agora()), d.prazoEntrega ?? null, limite ?? 1)
       await tx.insert(tarefa).values({
         casoId,
         passo: 'D2.05d',
         titulo: 'Cumprir exigência do INSS',
         perfilDono: 'documentacao',
-        prazo: lembrete < d.prazoEntrega! ? lembrete : d.prazoEntrega,
+        prazo: lembrete,
         limiteTentativas: limite,
       })
       await tx.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.E3', situacao: 'aguardando_externo', aguardando: 'cliente entregar o documento', iniciadaEm: agora() })
@@ -188,6 +192,33 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
     await historico(quem, 'exigencia_inss_decidida', pedido, `caso:${casoId}`, { pede: d.pede, itens: d.itens.length, prazo })
     return resposta.code(201).send({ ok: true, prazo })
   })
+
+  // GGVP-94 CA8 a CA10 (G15): a cobrança que passou do limite volta para a Documentação com o que a Sênior decidiu.
+  app.post<{ Params: { id: string } }>(
+    '/api/casos/:id/exigencia/cobrancas/decisao',
+    { preHandler: exigir(banco, 'exigencia_inss.decidir_vencida', agora) },
+    async (pedido, resposta) => {
+      const casoId = pedido.params.id
+      const entrada = DecidirLaco.safeParse(pedido.body)
+      if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
+      const card = await cardAberto(casoId)
+      if (!card?.escaladaEm) return negar(resposta, 409, 'A cobrança deste caso não está com a Sênior.')
+      const quem = pedido.usuario!.id
+      const [primeiro] = await itensDa((await ultimaExigencia(casoId))!.id)
+      const lembrete = (await lembreteDoLaco(banco, hoje(agora()), primeiro?.prazo ?? null, card.limiteTentativas ?? 1)) ?? card.prazo
+      await banco.transaction(async (tx) => {
+        await tx.insert(tentativa).values({ tarefaId: card.id, quando: agora(), canal: 'decisao_senior', resultado: entrada.data.oQueFazer, registradaPor: quem })
+        await tx.update(tarefa).set({ tentativas: 0, escaladaEm: null, escaladaPara: null, prazo: lembrete }).where(eq(tarefa.id, card.id))
+        await tx.insert(decisao).values({ casoId, passo: 'D2.05', tipo: 'laco_escalado', resultado: 'volta_ao_setor', justificativa: entrada.data.oQueFazer, decididoPor: quem, perfil: pedido.perfilAtivo! })
+        await tx
+          .update(tarefa)
+          .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+          .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.05'), eq(tarefa.perfilDono, 'senior'), eq(tarefa.titulo, TITULO_ESCALADA), isNull(tarefa.concluidaEm)))
+      })
+      await historico(quem, 'laco_decidido', pedido, `caso:${casoId}`, { origem: 'inss' })
+      return resposta.code(201).send({ ok: true, proximoLembrete: lembrete })
+    },
+  )
 
   // CA5, CA12 (G15): cada cobrança conta no limite; passou dele sem entrega, sobe para a Sênior.
   app.post<{ Params: { id: string } }>(
@@ -200,23 +231,23 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
       const card = await cardAberto(casoId)
       if (!card) return negar(resposta, 409, MSG_SEM_CARD)
       const quem = pedido.usuario!.id
-      const { intervaloDias } = await limitesDeCobranca(banco)
       const x = (await ultimaExigencia(casoId))!
       const [primeiro] = await itensDa(x.id)
       const tentativas = card.tentativas + 1
       const escala = card.limiteTentativas !== null && tentativas >= card.limiteTentativas && entrada.data.resultado !== 'entregou' && card.escaladaEm === null
-      const lembrete = intervaloDias ? somarDias(hoje(agora()), intervaloDias) : card.prazo
+      const restantes = Math.max(1, (card.limiteTentativas ?? tentativas + 1) - tentativas)
+      const lembrete = (await lembreteDoLaco(banco, hoje(agora()), primeiro?.prazo ?? null, restantes)) ?? card.prazo
       await banco.transaction(async (tx) => {
         await tx.insert(tentativa).values({ tarefaId: card.id, quando: agora(), canal: entrada.data.canal, resultado: entrada.data.resultado, registradaPor: quem })
         await tx
           .update(tarefa)
           .set({
             tentativas,
-            prazo: lembrete && primeiro?.prazo && lembrete > primeiro.prazo ? primeiro.prazo : lembrete,
+            prazo: lembrete,
             ...(escala ? { escaladaEm: agora(), escaladaPara: 'senior' } : {}),
           })
           .where(eq(tarefa.id, card.id))
-        if (escala) await tx.insert(tarefa).values({ casoId, passo: 'D2.05', titulo: 'Cobrança sem retorno: exigência do INSS', perfilDono: 'senior' })
+        if (escala) await tx.insert(tarefa).values({ casoId, passo: 'D2.05', titulo: TITULO_ESCALADA, perfilDono: 'senior' })
       })
       await historico(quem, 'cobranca_registrada', pedido, `caso:${casoId}`, { ...entrada.data, tentativas, escalada: escala })
       return resposta.code(201).send({ ok: true, tentativas, escalada: escala })

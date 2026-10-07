@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
@@ -122,7 +122,7 @@ export async function semearExemplos(banco: Banco) {
   // Exigência do INSS (GGVP-39): limites de cobrança do escritório (Q1, exemplo) e um caso esperando a advogada decidir.
   await banco.insert(configuracao).values([
     { chave: 'cobranca.limite', valor: 3 },
-    { chave: 'cobranca.intervalo_dias', valor: 2 },
+    { chave: 'cobranca.intervalo_dias', valor: 3 }, // dias úteis entre as tentativas (Lucas, 02/10; GGVP-94)
   ])
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
@@ -212,4 +212,24 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'tribunais', valor: [{ nome: 'Justiça Federal da 3ª Região (exemplo)', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: 10 }] },
     { chave: 'peticao.assinatura', valor: 'Glauco (exemplo)\nAdvogado responsável · OAB/UF 000.000 (exemplo)' },
   ])
+
+  // Laço que passou do limite (GGVP-94): a Documentação cobrou 3 vezes sem retorno, e a cobrança subiu para a Sênior.
+  const documentacao = usuarios.find((u) => u.perfis.includes('documentacao'))!
+  const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10)
+  const [pw] = await banco.insert(pessoa).values({ nome: 'Wagner Costa (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cw] = await banco.insert(caso).values({ pessoaId: pw.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+  const [xw] = await banco
+    .insert(exigencia)
+    .values({ casoId: cw.id, origem: 'inss', descricao: 'Apresentar o CadÚnico atualizado. (exemplo)', recebidaEm: daqui(-10), pede: 'documentos', diasInss: 30, prazo: daqui(20), analisadaPor: advogada.id })
+    .returning()
+  const [cartao] = await banco
+    .insert(tarefa)
+    .values({ casoId: cw.id, passo: 'D2.05d', titulo: 'Cumprir exigência do INSS', perfilDono: 'documentacao', prazo: daqui(1), tentativas: 3, limiteTentativas: 3, escaladaEm: new Date(), escaladaPara: 'senior' })
+    .returning()
+  await banco.insert(exigenciaItem).values({ exigenciaId: xw.id, descricao: 'CadÚnico atualizado', perfilResponsavel: 'documentacao', prazo: daqui(15) })
+  await banco
+    .insert(tentativa)
+    .values([-6, -3, -1].map((d) => ({ tarefaId: cartao.id, quando: new Date(Date.now() + d * 86_400_000), canal: 'whatsapp', resultado: 'sem_resposta', registradaPor: documentacao.id })))
+  await banco.insert(tarefa).values({ casoId: cw.id, passo: 'D2.05', titulo: 'Cobrança sem retorno: exigência do INSS', perfilDono: 'senior' })
+  await banco.insert(etapa).values({ casoId: cw.id, diagrama: 'D2', passo: 'D2.E3', situacao: 'aguardando_externo', aguardando: 'cliente entregar o documento', iniciadaEm: new Date() })
 }

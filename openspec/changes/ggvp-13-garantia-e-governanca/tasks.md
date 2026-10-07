@@ -16,3 +16,21 @@
 - [x] 2.2 CA1 a CA5, CA8 · Regras em `apps/api/src/fluxo/regras.ts` (24 meses, 15 dias na janela de 60, períodos PCD, DII × carência e qualidade, "não calculável: falta X"), com teste em `regras.test.ts`.
 - [x] 2.3 CA6, CA7 · POST `/api/regras/:regra` (`laudo.conferir`) em `apps/api/src/rotas/regras.ts`, devolvendo entradas, fundamento e versão; teste. A tela é a conferência médica do Pedro, que chama esta rota.
 - [x] 2.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-94 · Tarefa com laço, lembrete e escalonamento
+
+- [x] 3.1 Contratos `DecidirLaco` e `Lembrete` (em `ItensDoSetor` e no card da exigência do INSS) em `packages/contratos`; teste.
+- [x] 3.2 CA1 · `proximoLembrete` em `apps/api/src/fluxo/exigencia.ts` (dias úteis, compressão pelo prazo, nunca depois dele), com teste.
+- [x] 3.3 CA1, CA6, CA7, CA11 · Servidor: lembrete em dias úteis na distribuição, no despacho e em cada tentativa (`exigencia-juiz.ts`, `exigencia.ts`, `indeferimento.ts`), lembrete descrito no card, configuração de exemplo em 3 dias úteis; testes.
+- [x] 3.4 CA8, CA9, CA10 · Servidor: decisão da Sênior no laço que subiu (juízo, despacho e INSS), com a decisão gravada, a contagem zerada, o próximo lembrete e a tarefa da Sênior fechada; testes.
+- [x] 3.5 Telas: o lembrete no card do setor e da Documentação; a Sênior decide no item que subiu (exigência do juiz, despacho e exigência do INSS); testes de tela.
+- [x] 3.6 Playwright: o setor cobra até o limite, a Sênior decide, e o setor vê a decisão e o próximo lembrete.
+- [ ] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-68 · Lista de exigências com prazo, responsável e prova
+
+- [x] 4.1 Contratos: `acionadoEm` e `ultimaTentativa` nos itens da exigência do juiz e nos setores do despacho; `peca` na exigência do juiz; teste.
+- [x] 4.2 CA4, CA15 · Servidor: os alertas da exigência também para o "Atendimento · líder", no topo a 2 dias úteis (`inss.ts`); teste.
+- [x] 4.3 CA5, CA14 · Servidor: acionamento, última tentativa e a peça que cumpriu (`exigencia-juiz.ts`, `indeferimento.ts`); testes.
+- [x] 4.4 CA5, CA14 · Telas: status de cada setor com o acionamento e a última tentativa, e a peça no item cumprido (`AnalisarExigenciaJuiz.tsx`, `Despachar.tsx`); testes de tela.
+- [ ] 4.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

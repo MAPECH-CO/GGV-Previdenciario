@@ -32,3 +32,11 @@ describe('entradas das regras (GGVP-25)', () => {
     expect(erros(EntradaDii.safeParse({ competencias: ['13/2026'] }))).toEqual(['Competência no formato mm/aaaa'])
   })
 })
+
+describe('DecidirLaco (GGVP-94 CA9)', () => {
+  it('o que o setor deve fazer é obrigatório', async () => {
+    const { DecidirLaco } = await import('./exigencia.ts')
+    expect(DecidirLaco.parse({ oQueFazer: ' Ligar para a filha ' })).toEqual({ oQueFazer: 'Ligar para a filha' })
+    expect(DecidirLaco.safeParse({ oQueFazer: ' ' }).error?.issues.map((i) => i.message)).toEqual(['Escreva o que o setor deve fazer'])
+  })
+})

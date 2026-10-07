@@ -126,6 +126,33 @@ describe('GGVP-39 · a Documentação cumpre', () => {
     expect([r.card.tentativas, r.card.escalada, r.card.cobrancas[0].canal, r.card.cobrancas[0].quem]).toEqual([3, true, 'whatsapp', 'dora'])
   })
 
+  it('GGVP-94 CA11 · o card diz o que o próximo lembrete é; CA9, CA10 · a Sênior decide a cobrança que subiu e ela volta à Documentação', async () => {
+    await decidir(DOCS)
+    expect((await ver('dora')).json().card.lembrete).toEqual({
+      gatilho: 'Sem retorno desde o acionamento',
+      destinatario: 'Documentação',
+      canal: 'Central de tarefas',
+      modelo: 'Cumprir exigência do INSS',
+    })
+    await cobrar('sem_resposta')
+    await cobrar('sem_resposta')
+    expect((await ver('helena')).json().podeDecidirLaco).toBe(true)
+    const decidirLaco = async (apelido: string, oQueFazer: string) =>
+      app.inject({ method: 'POST', url: url('/cobrancas/decisao'), cookies: await cookieDe(apelido), payload: { oQueFazer } })
+    expect((await decidirLaco('dora', 'Ir à casa da cliente')).statusCode).toBe(403)
+    expect((await decidirLaco('helena', '')).json().erro).toBe('Escreva o que o setor deve fazer')
+    expect((await decidirLaco('helena', 'Pedir ao filho que traga o CadÚnico')).statusCode).toBe(201)
+    expect(await abertas()).not.toContain('senior · Cobrança sem retorno: exigência do INSS')
+    const r = (await ver('dora')).json()
+    expect([r.card.tentativas, r.card.escalada, r.card.cobrancas.at(-1).canal, r.card.cobrancas.at(-1).resultado]).toEqual([
+      0,
+      false,
+      'decisao_senior',
+      'Pedir ao filho que traga o CadÚnico',
+    ])
+    expect((await decidirLaco('helena', 'De novo')).statusCode).toBe(409)
+  })
+
   it('CA11 · item cumprido com prova; não cumprido com motivo', async () => {
     await decidir(DOCS)
     const [a, b] = await itens()
@@ -193,6 +220,17 @@ describe('GGVP-39 CA14 · perto do vencimento, a Sênior', () => {
     expect(await fila()).toEqual(['Outra tarefa da Sênior', 'Exigência do INSS perto do prazo: 5 dias úteis'])
     await prazo('2026-10-07')
     expect(await fila()).toEqual(['Exigência do INSS perto do prazo: 2 dias úteis', 'Outra tarefa da Sênior'])
+  })
+
+  it('GGVP-68 CA4 · o líder do administrativo também recebe o alerta, no topo a 2 dias úteis', async () => {
+    await banco.insert(usuario).values({ email: 'eva@exemplo.ggv', nome: 'eva', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
+    await decidir(DOCS)
+    const doLider = async () =>
+      (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('eva') })).json().map((t: { titulo: string; urgente: boolean }) => [t.titulo, t.urgente])
+    await prazo('2026-10-12')
+    expect(await doLider()).toEqual([['Exigência do INSS perto do prazo: 5 dias úteis', true]])
+    await prazo('2026-10-07')
+    expect((await doLider())[0]).toEqual(['Exigência do INSS perto do prazo: 2 dias úteis', true])
   })
 
   it('com todos os itens cumpridos, não alerta', async () => {

@@ -159,6 +159,40 @@ describe('GGVP-83 · laço dos setores', () => {
     expect(await abertas()).toContain('senior · Exigência do juiz sem retorno: Pedir a carteira de trabalho: O cliente diz que a carteira não existe · null')
   })
 
+  it('GGVP-94 CA6, CA11 · o card mostra o próximo lembrete e o que ele diz', async () => {
+    await distribuir()
+    const r = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json()
+    expect([r.itens[0].proximoLembrete, r.itens[0].lembrete]).toEqual([
+      '2026-10-07',
+      { gatilho: 'Sem retorno desde o acionamento', destinatario: 'Documentação', canal: 'Central de tarefas', modelo: 'Cumprir exigência do juiz' },
+    ])
+  })
+
+  it('GGVP-94 CA8, CA9, CA10 · a Sênior vê o laço do item que subiu e decide com o texto; volta ao setor, zerado, com o próximo lembrete', async () => {
+    await distribuir()
+    const item = await itemDo('documentacao')
+    for (let n = 0; n < 2; n++) await chamar('dora', 'POST', `/exigencia-juiz/itens/${item.id}/tentativas`, { canal: 'telefone', resultado: 'Cliente não atendeu' })
+    const doItem = async () => (await chamar('helena', 'GET', '/exigencia-juiz')).json().itens.find((i: { id: string }) => i.id === item.id)
+    const visto = await doItem()
+    expect([visto.podeDecidir, visto.historicoDoLaco.map((t: { resultado: string }) => t.resultado), visto.acionadoEm]).toEqual([
+      true,
+      ['Cliente não atendeu', 'Cliente não atendeu'],
+      AGORA.toISOString(),
+    ])
+    const decidir = (apelido: string, oQueFazer: string) => chamar(apelido, 'POST', `/exigencia-juiz/itens/${item.id}/decisao`, { oQueFazer })
+    expect((await decidir('helena', ' ')).json().erro).toBe('Escreva o que o setor deve fazer')
+    expect((await decidir('gabi', 'Ligar para a filha')).statusCode).toBe(403)
+    expect((await decidir('helena', 'Ligar para a filha e pedir o laudo por foto')).json()).toEqual({ ok: true, proximoLembrete: '2026-10-07' })
+    expect((await abertas()).some((t) => t.startsWith('senior · Exigência do juiz sem retorno'))).toBe(false)
+    const depois = await doItem()
+    expect([depois.tentativas, depois.escalada, depois.podeDecidir]).toEqual([0, false, false])
+    const card = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json().itens[0]
+    expect(card.tentativas.at(-1)).toMatchObject({ canal: 'decisao_senior', resultado: 'Ligar para a filha e pedir o laudo por foto', quem: 'helena' })
+    const [d] = await banco.select().from(decisao).where(eq(decisao.tipo, 'laco_escalado'))
+    expect([d.passo, d.justificativa, d.perfil]).toEqual(['D3a.03s', 'Ligar para a filha e pedir o laudo por foto', 'senior'])
+    expect((await decidir('helena', 'De novo')).statusCode).toBe(409)
+  })
+
   it('CA1, CA6, CA11 · só sai cumprindo, com a evidência; concluída, sem lembrete; item de outro setor é recusado', async () => {
     await distribuir()
     const item = await itemDo('documentacao')

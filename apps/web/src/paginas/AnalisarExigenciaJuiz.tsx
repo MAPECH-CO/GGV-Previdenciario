@@ -1,4 +1,6 @@
 import { useEffect, useId, useState } from 'react'
+import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
+import { dataDe, ultimaDoLaco } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
 import { AnalisarExigenciaJuiz as Contrato, ROTULO_SETOR, SETORES_DA_EXIGENCIA, TIPOS_DE_PERICIA, type ExigenciaDoJuiz } from '@ggv/contratos'
@@ -145,8 +147,23 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
                 {ROTULO_SETOR[i.setor]} · {i.descricao} · até {dia(i.prazoInterno)} · {ROTULO_ITEM[i.situacao]}
                 {i.prova ? ` · ${i.prova}` : ''}
                 {i.situacao === 'nao_cumprido' && i.motivo ? ` (${i.motivo})` : ''}
+                {i.situacao === 'cumprido' && x.peca ? ` · na manifestação (versão ${x.peca.versao}) protocolada em ${dataDe(x.peca.protocoladaEm)}` : ''}
+                {i.acionadoEm ? ` · acionado em ${dataDe(i.acionadoEm)}` : ''}
+                {i.situacao === 'pendente' ? ` · ${ultimaDoLaco(i.historicoDoLaco)}` : ''}
                 {i.limite ? ` · tentativas ${i.tentativas} de ${i.limite}` : ''}
                 {i.escalada ? ' · com a Sênior' : ''}
+                {i.podeDecidir && (
+                  <div className={styles.cartao} aria-label={`Laço de ${ROTULO_SETOR[i.setor]}`}>
+                    <HistoricoDoLaco historico={i.historicoDoLaco} />
+                    <DecisaoDoLaco
+                      url={`/casos/${casoId}/exigencia-juiz/itens/${i.id}/decisao`}
+                      aoDecidir={(aviso) => {
+                        setFeito(aviso)
+                        setVersao((v) => v + 1)
+                      }}
+                    />
+                  </div>
+                )}
               </li>
             ))}
             {/* GGVP-79 CA8: a perícia pedida pelo juiz é marcada pelo Jurídico administrativo, numa tarefa separada. */}

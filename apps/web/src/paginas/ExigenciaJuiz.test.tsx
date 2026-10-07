@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AnalisarExigenciaJuiz } from './AnalisarExigenciaJuiz.tsx'
 import { CumprirExigenciaJuiz } from './CumprirExigenciaJuiz.tsx'
@@ -18,6 +18,48 @@ const exigenciaDoJuiz = {
   podeDistribuir: true,
   vencida: false,
   podeDecidirVencida: false,
+}
+
+const LACO = [{ quando: '2026-10-06T13:00:00.000Z', canal: 'telefone', resultado: 'Não atendeu', quem: 'Ana' }]
+const emCumprimento = {
+  situacao: 'em_cumprimento',
+  podeDistribuir: false,
+  faltam: ['Atendimento'],
+  peca: null,
+  itens: [
+    {
+      id: '22222222-2222-4222-8222-222222222222',
+      setor: 'documentacao',
+      descricao: 'Laudo',
+      provaEsperada: null,
+      prazoInterno: '2026-10-20',
+      situacao: 'cumprido',
+      motivo: null,
+      prova: 'laudo.pdf',
+      tentativas: 1,
+      limite: 3,
+      escalada: false,
+      acionadoEm: '2026-10-05T15:00:00.000Z',
+      historicoDoLaco: [],
+      podeDecidir: false,
+    },
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      setor: 'atendimento',
+      descricao: 'CTPS',
+      provaEsperada: null,
+      prazoInterno: '2026-10-20',
+      situacao: 'pendente',
+      motivo: null,
+      prova: null,
+      tentativas: 3,
+      limite: 3,
+      escalada: true,
+      acionadoEm: '2026-10-05T15:00:00.000Z',
+      historicoDoLaco: LACO,
+      podeDecidir: false,
+    },
+  ],
 }
 
 function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
@@ -65,21 +107,41 @@ describe('Analisar a exigência do juiz (GGVP-79)', () => {
     expect(JSON.parse(post[1]!.body as string)).toMatchObject({ decisao: 'cumprir', itens: [{ setor: 'documentacao', prazoInterno: '20/10/2026' }] })
   })
 
-  it('GGVP-83 CA3, CA10 · em cumprimento, mostra o status de cada setor e quem falta; sem formulário', async () => {
-    servidor({
-      ...exigenciaDoJuiz,
-      situacao: 'em_cumprimento',
-      podeDistribuir: false,
-      faltam: ['Atendimento'],
-      itens: [
-        { id: '22222222-2222-4222-8222-222222222222', setor: 'documentacao', descricao: 'Laudo', provaEsperada: null, prazoInterno: '2026-10-20', situacao: 'cumprido', prova: 'laudo.pdf', tentativas: 1, limite: 3, escalada: false },
-        { id: '33333333-3333-4333-8333-333333333333', setor: 'atendimento', descricao: 'CTPS', provaEsperada: null, prazoInterno: '2026-10-20', situacao: 'pendente', prova: null, tentativas: 3, limite: 3, escalada: true },
-      ],
-    })
+  it('GGVP-83 CA3, CA10 e GGVP-68 CA14 · em cumprimento, mostra o status de cada setor, o acionamento, a última tentativa e quem falta', async () => {
+    servidor({ ...exigenciaDoJuiz, ...emCumprimento })
     render(<AnalisarExigenciaJuiz casoId={CASO} />)
     expect((await screen.findByText(/Falta: Atendimento/)).textContent).toBe('Falta: Atendimento.')
-    expect(screen.getByText(/Atendimento · CTPS/).textContent).toContain('com a Sênior')
+    expect(screen.getByText(/Atendimento · CTPS/).textContent).toBe(
+      'Atendimento · CTPS · até 20/10/2026 · Pendente · acionado em 05/10/2026 · última: 06/10/2026, Telefone, Não atendeu · tentativas 3 de 3 · com a Sênior',
+    )
     expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Devolver ao setor' })).toBeNull()
+  })
+
+  it('GGVP-94 CA8, CA9, CA10 · a Sênior vê o laço do item que subiu e o devolve ao setor com o que fazer', async () => {
+    const fetch = servidor(
+      { ...exigenciaDoJuiz, ...emCumprimento, itens: emCumprimento.itens.map((i) => (i.escalada ? { ...i, podeDecidir: true } : i)) },
+      [201, { ok: true, proximoLembrete: '2026-10-09' }],
+    )
+    render(<AnalisarExigenciaJuiz casoId={CASO} />)
+    const laco = await screen.findByLabelText('Laço de Atendimento')
+    expect(within(laco).getAllByRole('listitem').map((l) => l.textContent)).toEqual(['06/10/2026 · Telefone · Não atendeu · Ana'])
+    const devolver = within(laco).getByRole('button', { name: 'Devolver ao setor' }) as HTMLButtonElement
+    expect(devolver.disabled).toBe(true)
+    fireEvent.change(within(laco).getByLabelText('O que o setor deve fazer'), { target: { value: 'Pedir a CTPS digital pelo app' } })
+    fireEvent.click(devolver)
+    expect((await screen.findByRole('status')).textContent).toBe('Decisão registrada. A tarefa voltou ao setor, com o próximo lembrete em 09/10/2026.')
+    const [url, init] = fetch.mock.calls.find(([, i]) => i?.method === 'POST')!
+    expect([String(url), JSON.parse(init!.body as string)]).toEqual([
+      `/api/casos/${CASO}/exigencia-juiz/itens/33333333-3333-4333-8333-333333333333/decisao`,
+      { oQueFazer: 'Pedir a CTPS digital pelo app' },
+    ])
+  })
+
+  it('GGVP-68 CA5 · protocolada a manifestação, o item cumprido mostra a peça que o cumpriu', async () => {
+    servidor({ ...exigenciaDoJuiz, ...emCumprimento, situacao: 'cumprida', faltam: [], peca: { versao: 2, protocoladaEm: '2026-10-08T14:00:00.000Z' } })
+    render(<AnalisarExigenciaJuiz casoId={CASO} />)
+    expect((await screen.findByText(/Documentação · Laudo/)).textContent).toContain('· na manifestação (versão 2) protocolada em 08/10/2026')
   })
 })
 
@@ -119,6 +181,15 @@ describe('Cumprir a exigência do juiz (GGVP-83)', () => {
     expect(screen.getByText(/pedido por Gabi/)).toBeTruthy()
     expect(screen.getByText(/Registrar cobrança ao cliente \(0 de 3/)).toBeTruthy()
     expect(screen.getByText('Documento que comprova: Laudo com data')).toBeTruthy()
+  })
+
+  it('GGVP-94 CA6, CA11 · o próximo lembrete com o que ele diz', async () => {
+    const lembrete = { gatilho: 'Sem retorno desde o acionamento', destinatario: 'Documentação', canal: 'Central de tarefas', modelo: 'Cumprir exigência do juiz' }
+    servidor({ ...setor, itens: setor.itens.map((i) => ({ ...i, lembrete })) })
+    render(<CumprirExigenciaJuiz casoId={CASO} />)
+    expect((await screen.findByText(/Próximo lembrete em/)).textContent).toBe(
+      'Próximo lembrete em 07/10/2026 · para Documentação · pela Central de tarefas · “Cumprir exigência do juiz” · sem retorno desde o acionamento',
+    )
   })
 
   it('CA5 · cobrança sem canal não envia; CA6 · enviar sem o documento não envia', async () => {

@@ -1,6 +1,7 @@
 // Contratos da vigília e da publicação (GGVP-9, grupo 1). Tela e servidor validam com o mesmo schema.
 import { dataParaIso, normalizarCnj, normalizarInteiro, validarCnj, validarData } from '@ggv/campos'
 import { z } from 'zod'
+import { Lembrete, TentativaDoLaco } from './exigencia.ts'
 import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
 
 export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
@@ -190,8 +191,15 @@ export const ExigenciaDoJuiz = z.object({
       tentativas: z.number(),
       limite: z.number().nullable(),
       escalada: z.boolean(),
+      /** GGVP-68 CA14: quando o setor foi acionado e o laço (tentativas e decisões da Sênior), do mais antigo ao mais novo. */
+      acionadoEm: z.string().nullable(),
+      historicoDoLaco: z.array(TentativaDoLaco),
+      /** GGVP-94 CA9: a Sênior decide o item que passou do limite. */
+      podeDecidir: z.boolean(),
     }),
   ),
+  /** GGVP-68 CA5: a peça que cumpriu os itens, depois do protocolo da manifestação. */
+  peca: z.object({ versao: z.number(), protocoladaEm: z.string() }).nullable(),
   pericias: z.array(z.object({ tipo: z.enum(TIPOS_DE_PERICIA), resultado: z.string().nullable() })),
   /** Setores que ainda não subiram o card (GGVP-83 CA3). */
   faltam: z.array(z.string()),
@@ -226,9 +234,10 @@ export const ItensDoSetor = z.object({
       /** A informação que o Atendimento conseguiu com o cliente (GGVP-58 CA1). */
       informacao: z.string().nullable(),
       proximoLembrete: z.string().nullable(),
+      lembrete: Lembrete.nullable(),
       limite: z.number().nullable(),
       escalada: z.boolean(),
-      tentativas: z.array(z.object({ quando: z.string(), canal: z.string(), resultado: z.string(), quem: z.string() })),
+      tentativas: z.array(TentativaDoLaco),
     }),
   ),
 })
@@ -351,11 +360,17 @@ export const Despacho = z.object({
   despacho: z.object({ decisao: z.enum(['nada_falta', 'acionar']), por: z.string(), em: z.string() }).nullable(),
   setores: z.array(
     z.object({
+      id: z.uuid(),
       setor: z.enum(SETORES_DO_DESPACHO),
       descricao: z.string(),
       prazo: z.string().nullable(),
       situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
       escalada: z.boolean(),
+      /** GGVP-68 CA14: quando o setor foi acionado e o laço (tentativas e decisões da Sênior), do mais antigo ao mais novo. */
+      acionadoEm: z.string().nullable(),
+      historicoDoLaco: z.array(TentativaDoLaco),
+      /** GGVP-94 CA9: a Sênior decide o item que passou do limite. */
+      podeDecidir: z.boolean(),
     }),
   ),
   pericias: z.array(z.object({ tipo: z.enum(TIPOS_DE_PERICIA), resultado: z.string().nullable() })),

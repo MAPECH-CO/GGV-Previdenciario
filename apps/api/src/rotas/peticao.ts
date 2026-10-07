@@ -8,9 +8,8 @@ import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
-import { limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import { somarDias } from '../fluxo/prazo-inss.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
@@ -425,7 +424,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       if (!l) return resposta
       if (l.citados[l.i].itemId) return negar(resposta, 409, 'Este documento já foi pedido à Documentação.')
       const quem = pedido.usuario!.id
-      const { limite, intervaloDias } = await limitesDeCobranca(banco)
+      const { limite } = await limitesDeCobranca(banco)
       const itemId = await banco.transaction(async (tx) => {
         const [x] = await tx
           .select()
@@ -449,7 +448,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
             passo: 'D3.04',
             titulo: 'Cumprir pendência',
             perfilDono: 'documentacao',
-            prazo: intervaloDias ? somarDias(hoje(agora()), intervaloDias) : null,
+            prazo: await lembreteDoLaco(tx, hoje(agora()), null, limite ?? 1),
             limiteTentativas: limite,
             criadoEm: agora(),
           })

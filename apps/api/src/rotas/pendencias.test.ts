@@ -101,6 +101,19 @@ describe('GGVP-58 · laços dos setores até subir o card', () => {
     expect([doc.itens[0].tentativas.length, doc.itens[0].escalada]).toEqual([2, true])
   })
 
+  it('GGVP-94 CA8, CA9, CA10 · no despacho, a Sênior vê o laço do setor que subiu, decide, e a pendência volta ao setor', async () => {
+    const item = await itemDo('documentacao')
+    for (let n = 0; n < 2; n++) await chamar('dora', 'POST', `/pendencias/itens/${item.id}/tentativas`, { canal: 'whatsapp', resultado: 'Cliente não respondeu' })
+    const setor = async () => (await chamar('helena', 'GET', '/despacho')).json().setores.find((s: { id: string }) => s.id === item.id)
+    const visto = await setor()
+    expect([visto.podeDecidir, visto.historicoDoLaco.length, visto.acionadoEm]).toEqual([true, 2, AGORA.toISOString()])
+    expect((await chamar('helena', 'POST', `/pendencias/itens/${item.id}/decisao`, { oQueFazer: 'Pedir o laudo ao posto de saúde' })).statusCode).toBe(201)
+    expect(await abertas()).not.toContain('senior · Pendência sem retorno: Laudo atualizado (limite de tentativas)')
+    expect([(await setor()).escalada, (await setor()).podeDecidir]).toEqual([false, false])
+    const doc = (await chamar('dora', 'GET', '/pendencias/setor')).json()
+    expect(doc.itens[0].tentativas.at(-1)).toMatchObject({ canal: 'decisao_senior', resultado: 'Pedir o laudo ao posto de saúde' })
+  })
+
   it('CA1, CA7, CA12 · o Atendimento sobe com a informação escrita; sem ela, nem documento, não sobe; o lembrete some', async () => {
     const item = await itemDo('atendimento')
     expect((await enviar('ana', `/pendencias/itens/${item.id}/prova`, {}, null)).json().erro).toBe(MSG_INFORMACAO)

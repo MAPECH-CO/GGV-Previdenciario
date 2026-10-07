@@ -40,3 +40,32 @@ Não há formulário novo neste grupo. As datas de entrada das regras usam `vali
 
 - A carência e a qualidade de segurado são a leitura da lei, e o Lucas confere na homologação. Os valores ficam como constantes nomeadas, com o artigo ao lado.
 - A lista da gestão lê até 200 eventos, os mais recentes. Paginação só quando a gestão pedir.
+
+## Grupo 2 · GGVP-94 e GGVP-68
+
+### Context
+
+Os laços de cobrança já existem nos passos do portal: a exigência do juiz (D3a.03) e as pendências do despacho (D3.04), com o mesmo código (`LACOS`), e a cobrança da exigência do INSS (D2.05). Cada tentativa grava data, canal e resultado, o limite vem da configuração, o card mostra o próximo lembrete, e no limite a tarefa sobe para a Sênior. O lembrete é a própria tarefa na Central, na data do próximo lembrete. Os alertas da exigência a 5 e 2 dias úteis já aparecem na fila da Sênior (GGVP-39 CA14). Faltam o intervalo em dias úteis com a compressão pelo prazo, o lembrete descrito no card, a decisão da Sênior quando o laço passa do limite, o alerta ao líder do administrativo, o status de cada setor com o acionamento e a última tentativa, e o item ligado à peça.
+
+### Decisions
+
+1. **Lembrete sem tabela nova.** Ele continua sendo a tarefa na Central (canal "Central de tarefas"). A função pura `proximoLembrete(hoje, intervalo, prazo, restantes, feriados)` em `fluxo/exigencia.ts` conta dias úteis com os feriados nacionais. Sem prazo de fora, o intervalo é o da configuração (`cobranca.intervalo_dias`, 3 dias úteis, Lucas 02/10). Com prazo, as tentativas que faltam se comprimem para caber antes dele, com pelo menos 1 dia útil, e o lembrete nunca passa do prazo.
+2. **O card descreve o lembrete** (CA11): gatilho (intervalo sem retorno), destinatário (o setor), canal (Central de tarefas), modelo (o título da tarefa) e a data.
+3. **Decisão da Sênior no laço que subiu** (CA8 a CA10): o texto "O que o setor deve fazer" é obrigatório, porque as opções do Figma seguem em aberto (Q1). A decisão grava uma linha em `decisao` e entra no histórico do laço como uma tentativa com canal `decisao_senior`. Depois zera a contagem, tira a escalada, marca o próximo lembrete e fecha a tarefa da Sênior quando não sobra item escalado no laço. As permissões são as da Sênior que já existem: `exigencia_juiz.autorizar_dilacao` (juízo), `caso.despachar_indeferimento` (despacho) e `exigencia_inss.decidir_vencida` (INSS). A matriz fica na versão 8.
+4. **CA12:** o portal não envia nada sozinho, então não há falha de envio nem reenvio. Quando houver canal de fora, a falha vira tarefa do Atendimento.
+5. **GGVP-68 CA4:** os alertas da exigência vão também para o "Atendimento · líder" (Lucas, 02/10), com o mesmo topo da fila a 2 dias úteis. O alerta abre a tela da exigência (`caso.ver`), onde está o item com o histórico (CA15).
+6. **CA14 e CA5:** cada item da exigência traz a data do acionamento (a criação da tarefa do setor), a última tentativa e, depois do protocolo, a peça que o cumpriu (a manifestação protocolada, com a versão e a data).
+
+### Contratos
+
+- `DecidirLaco` (`oQueFazer`, obrigatório) para POST `/api/casos/:id/{exigencia-juiz|pendencias}/itens/:item/decisao` e POST `/api/casos/:id/exigencia/cobrancas/decisao`.
+- `Lembrete` (gatilho, destinatário, canal, modelo, data) nos itens de `ItensDoSetor` e no card da exigência do INSS.
+- `ExigenciaDoJuiz.itens[]` ganha `acionadoEm` e `ultimaTentativa`; `ExigenciaDoJuiz` ganha `peca` (versão e data do protocolo); `Despacho.setores[]` ganha `acionadoEm` e `ultimaTentativa`.
+
+### Campos de formulário
+
+- "O que o setor deve fazer": texto livre, obrigatório, validado pelo contrato. Não há CPF, data nem número.
+
+### Risks / Trade-offs
+
+- Mudar o intervalo para dias úteis muda as datas de lembrete das histórias da Judicialização. Os testes delas passam a contar dias úteis.
