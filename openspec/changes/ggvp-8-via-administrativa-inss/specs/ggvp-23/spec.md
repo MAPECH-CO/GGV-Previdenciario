@@ -85,3 +85,17 @@ Quem não tem o perfil Sênior e tenta aprovar ou reprovar chamando o servidor d
 - **Dado** alguém sem o perfil Sênior que tenta aprovar ou reprovar por fora da tela
 - **Quando** envia
 - **Então** a ação é recusada no servidor e registrada
+
+### Requirement: GGVP-96 CA12 e CA13 · O parecer da conferência só para o Jurídico, com a leitura registrada
+O parecer médico da conferência MUST ir só para quem tem `dado_saude.ver_detalhe` (advogada, Sênior, Jurídico administrativo); os outros perfis recebem o parecer vazio e a marca de restrito, e a tela diz "Parecer médico restrito ao Jurídico.". Cada leitura do parecer por pessoa SHALL ficar em `acesso_dado_sensivel` (quem, quando, caso); o aprovar usa o parecer só para o portão G17 e não grava.
+
+#### Scenario: GGVP-96 CA12 · Atendimento abre a conferência
+- **Dado** um caso com parecer médico
+- **Quando** o Atendimento abre a conferência
+- **Então** não recebe o parecer, vê que ele é restrito ao Jurídico, e nada é registrado
+
+#### Scenario: GGVP-96 CA13 · Jurídico abre a conferência
+- **Dado** um caso com parecer médico
+- **Quando** alguém do Jurídico abre a conferência
+- **Então** recebe o parecer, e a leitura fica registrada com quem, quando e o caso
+
