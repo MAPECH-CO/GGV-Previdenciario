@@ -8,6 +8,7 @@ import {
   CasoParaProtocolo,
   DecidirPericia,
   RegistrarProtocolo,
+  SEGUNDOS_SENHA,
   TIPOS_COMPROVANTE,
   TarefaDaCentral,
   type Erro,
@@ -38,7 +39,6 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
-export const SEGUNDOS_SENHA = 60
 export const MSG_COFRE_SEM_TAREFA = 'A senha do gov.br só abre com uma tarefa aberta que use o gov.br: protocolar no Meu INSS ou marcar a perícia.'
 const TAMANHO_MAXIMO = 25 * 1024 * 1024
 
