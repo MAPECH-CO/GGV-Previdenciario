@@ -358,6 +358,10 @@ export type EventoDaAgenda = {
   gravar?: boolean
   /** Entrevista de lead que ainda espera a confirmação (GGVP-21). */
   aConfirmar?: boolean
+  /** A perícia (épico GGVP-10): o caso dela, para abrir o processo. */
+  processoId?: string
+  /** A perícia: a agência, a sala do juízo ou a visita domiciliar. */
+  local?: string
 }
 
 /** "Marcar e enviar convite" (CA1, CA3); com `remarcar`, o motivo é obrigatório (CA7). */

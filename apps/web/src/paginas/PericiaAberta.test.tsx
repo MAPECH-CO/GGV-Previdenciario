@@ -67,16 +67,13 @@ describe('GGVP-49 · Central do Jurídico administrativo (Figma 2051:173 e 2107:
     const { fireEvent } = await import('@testing-library/react')
     render(<CentralJuridicoAdm />)
     expect(screen.getByRole('link', { name: 'Maria Exemplo · Marcar perícia' }).getAttribute('href')).toBe('/casos/maria-exemplo-1/pericia/marcar')
-    expect(screen.getByRole('link', { name: 'Pedro Exemplo · Marcar perícia' })).toBeTruthy()
     expect(screen.getByText('Jurídico administrativo')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Perícias para marcar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(screen.getByText('Duas perícias esperam você. Marque no portal do INSS e suba o comprovante: eu leio data, hora, local e tipo.')).toBeTruthy()
+    // GGVP-53: o Pedro já foi marcado na semente; só a Maria espera.
+    expect(screen.getByText('Uma perícia espera você. Marque no portal do INSS e suba o comprovante: eu leio data, hora, local e tipo.')).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
-    expect(itens.map((i) => i.textContent)).toEqual([
-      'Maria Exemplo · Marcar perícia ›o INSS já liberou o agendamento · hoje',
-      'Pedro Exemplo · Marcar perícia ›o INSS já liberou o agendamento · atrasada desde 05/10',
-    ])
+    expect(itens.map((i) => i.textContent)).toEqual(['Maria Exemplo · Marcar perícia ›o INSS já liberou o agendamento · hoje'])
   })
 })
 

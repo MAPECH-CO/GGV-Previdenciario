@@ -4,10 +4,12 @@ import { prepararConvite, registrarConvite } from '../dados/agenda.ts'
 import { obterCobranca, registrarTentativa } from '../dados/cobranca.ts'
 import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confirmacao.ts'
 import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
+import { obterLembrete, registrarLembrete } from '../dados/pericia.ts'
+import { lerPerfil } from '../dados/perfis.ts'
 import styles from './ConviteChatwoot.module.css'
 
 /** O convite da entrevista (GGVP-123), a confirmação dela (GGVP-21), a cobrança dos documentos pendentes (GGVP-101) ou o pedido de complemento ao médico (GGVP-29). */
-type Assunto = 'convite' | 'confirmacao' | 'cobranca' | 'complemento'
+type Assunto = 'convite' | 'confirmacao' | 'cobranca' | 'complemento' | 'pericia-lembrete'
 
 type Props = { agendamentoId: string; assunto?: Assunto; aoEnviado: () => void; aoFechar: () => void }
 
@@ -41,6 +43,12 @@ const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Prom
       return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
     },
     enviar: (id) => registrarTentativaDoComplemento(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
+  },
+  // O id é o do processo; o lembrete da véspera da perícia, revisado pelo Jurídico antes de sair (GGVP-53, CA7; Q5).
+  'pericia-lembrete': {
+    rotulo: 'Lembrete da véspera da perícia (confira antes de enviar)',
+    carregar: obterLembrete,
+    enviar: (id, mensagem) => registrarLembrete(id, mensagem, lerPerfil()?.usuario),
   },
 }
 

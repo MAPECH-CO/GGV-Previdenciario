@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { ORIGENS, esperaOInss, etapaEmPericia, prazoFalado, prazosDaPericia, proximaTentativa, situacaoDaPericia } from './pericia.ts'
+import {
+  LIMITE_DE_REMARCACOES_DA_PERICIA,
+  ORIGENS,
+  esperaOInss,
+  etapaEmPericia,
+  mensagemDoLembrete,
+  motivoParaNaoRegistrarMarcacao,
+  motivoParaNaoRegistrarTentativa,
+  passouDoLimite,
+  prazoFalado,
+  prazosDaPericia,
+  proximaTentativa,
+  situacaoDaPericia,
+} from './pericia.ts'
 
 describe('GGVP-49 · iniciar a tarefa de perícia', () => {
   it('CA1 · o caso mostra "Em perícia" com o diagrama de origem, e a data quando já existe', () => {
@@ -45,5 +58,46 @@ describe('GGVP-49 · iniciar a tarefa de perícia', () => {
     expect(prazoFalado('2026-10-08', '2026-10-07')).toEqual({ texto: 'amanhã', urgente: false })
     expect(prazoFalado('2026-10-05', '2026-10-07')).toEqual({ texto: 'atrasada desde 05/10', urgente: true })
     expect(prazoFalado('2026-10-17', '2026-10-07')).toEqual({ texto: 'até 17/10', urgente: false })
+  })
+})
+
+describe('GGVP-53 · marcar a perícia com o cliente', () => {
+  it('CA1 · a tentativa sem sucesso pede o dia (não futuro) e o que aconteceu', () => {
+    expect(motivoParaNaoRegistrarTentativa({ dia: null, oQueAconteceu: 'sem vaga' }, '2026-10-07')).toBe('Informe o dia da tentativa (dd/mm/aaaa).')
+    expect(motivoParaNaoRegistrarTentativa({ dia: '2026-10-08', oQueAconteceu: 'sem vaga' }, '2026-10-07')).toBe('O dia da tentativa não pode ser no futuro.')
+    expect(motivoParaNaoRegistrarTentativa({ dia: '2026-10-07', oQueAconteceu: ' ok ' }, '2026-10-07')).toBe('Diga o que aconteceu na tentativa.')
+    expect(motivoParaNaoRegistrarTentativa({ dia: '2026-10-07', oQueAconteceu: 'portal fora do ar' }, '2026-10-07')).toBeNull()
+  })
+
+  it('CA3, CA4 · "Registrar a perícia" só com o comprovante, a leitura conferida e a resposta do documento novo', () => {
+    const lido = { data: '2026-10-21', hora: '08:30', local: 'Agência INSS (exemplo)' }
+    const hoje = '2026-10-07'
+    expect(motivoParaNaoRegistrarMarcacao({ lido, pedeDocumentoNovo: true }, hoje)).toBe('Anexe o comprovante do INSS (PDF).')
+    expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', pedeDocumentoNovo: true }, hoje)).toBe('Espere a leitura do comprovante.')
+    expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido: { ...lido, data: '2026-10-06' }, pedeDocumentoNovo: true }, hoje)).toBe(
+      'Confira a data da perícia: ela não pode ser passada.',
+    )
+    expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido: { ...lido, hora: '25:00' }, pedeDocumentoNovo: true }, hoje)).toBe('Confira a hora da perícia.')
+    expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido }, hoje)).toBe('Responda se a perícia pede documento novo.')
+    expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido, pedeDocumentoNovo: false }, hoje)).toBeNull()
+  })
+
+  it('CA9 · G15: passou de 2 remarcações, sobe para a advogada; cada autorização dela vale uma a mais', () => {
+    expect(LIMITE_DE_REMARCACOES_DA_PERICIA).toBe(2)
+    expect(passouDoLimite({ remarcacoes: 2 })).toBe(false)
+    expect(passouDoLimite({ remarcacoes: 3 })).toBe(true)
+    expect(passouDoLimite({ remarcacoes: 3, autorizadas: 1 })).toBe(false)
+    expect(situacaoDaPericia({ liberadaEm: 'x', remarcacoes: 3 })).toBe('na-advogada')
+  })
+
+  it('CA7 · o lembrete da véspera traz data, hora, local e o que levar; na social, a visita em casa', () => {
+    const medica = mensagemDoLembrete({ nome: 'Maria Exemplo', tipo: 'medica', data: '2026-10-21', hora: '08:30', local: 'Agência INSS (exemplo)' }, 'quarta, 21/10')
+    expect(medica).toBe(
+      'Olá, Maria! Aqui é do escritório GGV. Lembrete: a sua perícia médica é amanhã, quarta, 21/10, às 08:30. O local é Agência INSS (exemplo). ' +
+        'Leve documento com foto, carteira de trabalho, laudos, exames, receitas e atestados. Chegue com antecedência. Qualquer dúvida, é só responder esta mensagem.',
+    )
+    const social = mensagemDoLembrete({ nome: 'Pedro Exemplo', tipo: 'social', data: '2026-10-23', hora: '09:00', local: 'visita domiciliar' }, 'sexta, 23/10')
+    expect(social).toContain('A visita da assistente social é na sua casa (visita domiciliar).')
+    expect(social).toContain('o CadÚnico')
   })
 })

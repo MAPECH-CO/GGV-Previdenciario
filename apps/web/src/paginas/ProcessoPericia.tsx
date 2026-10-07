@@ -5,9 +5,10 @@ import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { formatarCpf } from '../campos.ts'
 import { nomeTipo } from '../dados/catalogos.ts'
-import { hrefDoPasso, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
+import { autorizarRemarcacao, hrefDoPasso, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
+import { diaCurto } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { NOMES_DA_INSTANCIA, NOMES_DA_SITUACAO, NOMES_DO_TIPO, prazoFalado, type SituacaoDaPericia } from '../regras/pericia.ts'
 import passo from './Balcao.module.css'
@@ -33,6 +34,7 @@ const COR_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   marcar: styles.alerta,
   'aguardando-comprovante': styles.alerta,
   agendada: styles.alerta,
+  'na-advogada': styles.alerta,
 }
 
 /** Feita, atual ou ainda não chegou. A exigência do INSS só aparece feita quando a perícia veio dela, ou no judicial. */
@@ -51,6 +53,8 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
   const [aberto, setAberto] = useState<'parecer' | 'anexar' | null>(null)
   const [aviso, setAviso] = useState('')
+  const [justificativa, setJustificativa] = useState('')
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     let valendo = true
@@ -77,6 +81,21 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
   const tipo = NOMES_DO_TIPO[pericia.tipo]
   const verAPericia = hrefDoPasso(t)
   const linhaAntes = ficha.historico.slice(-4)
+  const m = pericia.marcacao
+  const dia = (iso: string) => `${diaCurto(iso)}/${iso.slice(5, 7)}`
+  const etiqueta = m?.origem === 'comprovante' ? 'comprovante lido pelo sistema' : m?.origem === 'juizo' ? 'data lida da publicação' : NOMES_DA_SITUACAO[t.situacao].toLowerCase()
+  const advogada = (perfil?.id ?? 'advogada') === 'advogada'
+
+  async function autorizar() {
+    setErro('')
+    try {
+      setT(await autorizarRemarcacao(processoId, justificativa, perfil?.usuario ?? 'Advogada'))
+      setJustificativa('')
+      setAviso('Remarcação autorizada: a tarefa de marcar volta para o Jurídico administrativo.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não deu para registrar.')
+    }
+  }
 
   return (
     <>
@@ -88,7 +107,7 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
             <h1 className={styles.numero}>{processo.numero ?? 'Processo ainda sem número'}</h1>
             <span className={proprio.selo}>{judicial ? 'Judicial · perícia' : 'Administrativo · perícia'}</span>
             <span className={passo.beneficio}>◆ {t.beneficio}</span>
-            <span className={styles.etiqueta}>{NOMES_DA_SITUACAO[t.situacao].toLowerCase()}</span>
+            <span className={styles.etiqueta}>{etiqueta}</span>
             <button type="button" className={styles.transcricoes} aria-disabled="true" title="As transcrições abrem pela ficha (GGVP-102)">
               ▶ Transcrições ({ficha.transcricoes})
             </button>
@@ -96,6 +115,7 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
           <p className={styles.cliente}>
             <a href={`/clientes/${ficha.id}`}>{ficha.nome}</a>
             {ficha.idade !== undefined && ` · ${ficha.idade} anos`} · {NOMES_DA_INSTANCIA[pericia.instancia]} · Dra. Paula · {t.etapa}
+            {m && <strong className={styles.urgente}>{` · perícia ${dia(m.data)}, ${m.hora}`}</strong>}
           </p>
         </header>
 
@@ -192,16 +212,50 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
                     {NOMES_DA_INSTANCIA[pericia.instancia]} · {tipo}
                   </strong>
                   <span className={styles.nota}>
-                    {t.situacao === 'aguardando-inss'
-                      ? 'esperando o INSS liberar o agendamento (D2.E1)'
-                      : t.proximaTentativa
-                        ? `para marcar · tentativa diária · a próxima é ${prazoFalado(t.proximaTentativa, hoje).texto}`
-                        : 'esperando o comprovante do INSS (DP.E1)'}
+                    {m
+                      ? `${dia(m.data)} · ${m.hora} · ${m.local}`
+                      : t.situacao === 'aguardando-inss'
+                        ? 'esperando o INSS liberar o agendamento (D2.E1)'
+                        : t.situacao === 'na-advogada'
+                          ? `${pericia.remarcacoes} remarcações: passou do limite (G15)`
+                          : t.proximaTentativa
+                            ? `para marcar · tentativa diária · a próxima é ${prazoFalado(t.proximaTentativa, hoje).texto}`
+                            : 'esperando o comprovante do INSS (DP.E1)'}
                   </span>
                 </span>
                 <span className={`${styles.situacao} ${COR_DA_SITUACAO[t.situacao]}`}>{NOMES_DA_SITUACAO[t.situacao]}</span>
               </div>
             </section>
+
+            {t.situacao === 'na-advogada' && (
+              <section className={styles.cartao} aria-labelledby="decisao-advogada">
+                <h2 id="decisao-advogada" className={styles.cartaoTitulo}>
+                  Decisão da advogada responsável (G15)
+                </h2>
+                <p>
+                  A perícia já teve {pericia.remarcacoes} remarcações e passou do limite. Só a advogada responsável autoriza mais uma, com justificativa; a
+                  tarefa de marcar volta para o Jurídico administrativo.
+                </p>
+                {advogada ? (
+                  <>
+                    <label className={proprio.campo}>
+                      Justificativa *
+                      <textarea rows={2} maxLength={300} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} />
+                    </label>
+                    <button type="button" className={passo.principalBotao} disabled={justificativa.trim().length < 10} onClick={() => void autorizar()}>
+                      Autorizar mais uma remarcação
+                    </button>
+                  </>
+                ) : (
+                  <p className={styles.nota}>A decisão aparece para a advogada responsável.</p>
+                )}
+                {erro && (
+                  <p role="alert" className={passo.motivo}>
+                    {erro}
+                  </p>
+                )}
+              </section>
+            )}
 
             <section className={styles.cartao} aria-labelledby="dados">
               <h2 id="dados" className={styles.cartaoTitulo}>
@@ -262,8 +316,29 @@ export function ProcessoPericia({ processoId }: { processoId: string }) {
                     <dd>Esperando liberar o agendamento (D2.E1)</dd>
                   </>
                 )}
-                <dt>Depois</dt>
-                <dd>Com a data: documentos até 10 dias antes, preparação até 3 dias antes e lembrete na véspera</dd>
+                {m && t.prazos ? (
+                  <>
+                    <dt className={styles.urgente}>{dataCurta(m.data, hoje)}</dt>
+                    <dd>
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}, {m.hora} · {m.local}
+                    </dd>
+                    {pericia.pedeDocumentoNovo && (
+                      <>
+                        <dt>{dataCurta(t.prazos.documentosAte, hoje)}</dt>
+                        <dd>Documentos da perícia prontos (10 dias antes)</dd>
+                      </>
+                    )}
+                    <dt>{dataCurta(t.prazos.preparoAte, hoje)}</dt>
+                    <dd>Orientar o cliente (até 3 dias antes)</dd>
+                    <dt>{dataCurta(t.prazos.vespera, hoje)}</dt>
+                    <dd>Lembrete da véspera{pericia.lembrete?.enviadoEm ? ' · enviado' : ''}</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt>Depois</dt>
+                    <dd>Com a data: documentos até 10 dias antes, preparação até 3 dias antes e lembrete na véspera</dd>
+                  </>
+                )}
               </dl>
             </section>
 

@@ -3,26 +3,34 @@
 // do juiz (D3a): ponta para ligar na junção com o INSS. A semente faz o papel dessas decisões para os clientes de exemplo.
 // Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-10). IA, Meu INSS,
 // GERID e Chatwoot são simulados.
-import { hojeIso } from '../regras/datas.ts'
+import { diaDaSemana, diaFalado, somarDias } from '../regras/agenda.ts'
+import { dataCurta, hojeIso } from '../regras/datas.ts'
 import {
   DIAS_ANTES_DOCUMENTOS,
   DIAS_ANTES_PREPARO,
+  LIMITE_DE_REMARCACOES_DA_PERICIA,
   NOMES_DA_INSTANCIA,
   NOMES_DO_TIPO,
   ORIGENS,
   esperaOInss,
   etapaEmPericia,
+  mensagemDoLembrete,
+  motivoParaNaoRegistrarMarcacao,
+  motivoParaNaoRegistrarTentativa,
+  passouDoLimite,
   prazoFalado,
+  prazosDaPericia,
   proximaTentativa,
   situacaoDaPericia,
   type Instancia,
+  type LidoDoComprovante,
   type OrigemDaPericia,
   type SituacaoDaPericia,
   type TipoDePericia,
 } from '../regras/pericia.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
-import type { Ficha, Processo, Tarefa } from './tipos.ts'
+import type { Arquivo, EventoDaAgenda, Ficha, Processo, Tarefa } from './tipos.ts'
 
 /** Um passo da perícia: quem fez, quando e o passo do BPMN. O que o sistema faz sozinho grava "Sistema" (GGVP-49, CA4). */
 export type EventoDaPericia = { quando: string; quem: string; oQue: string; passo: string }
@@ -36,6 +44,17 @@ export type PedidoDePericia = {
   pedidaPor: string
   /** O que a perícia pede, quando se sabe (GGVP-49, CA3). */
   oQuePede?: string
+  /** D3 e D3a: a data e o local que vêm do juízo, lidos da publicação (resposta do Lucas, 02/10, GGVP-53). */
+  dataDoJuizo?: { data: string; hora: string; local: string }
+}
+
+/** A perícia marcada: o que o comprovante disse (conferido) ou o que veio do juízo. */
+export type MarcacaoDaPericia = LidoDoComprovante & {
+  /** O nome do PDF do INSS; sem ele, a data veio do juízo. */
+  comprovante?: string
+  origem: 'comprovante' | 'juizo'
+  registradaEm: string
+  registradaPor: string
 }
 
 export type Pericia = {
@@ -55,6 +74,19 @@ export type Pericia = {
   liberadaEm?: string
   tentativas: { dia: string; oQueAconteceu: string; quem: string; quando: string }[]
   remarcacoes: number
+  /** Data e hora ISO da última remarcação: a tentativa diária recomeça dali. */
+  remarcadaEm?: string
+  /** Remarcações a mais que a advogada responsável autorizou depois do limite (G15). */
+  autorizadas?: number
+  /** Marcada no Meu INSS, mas o comprovante ainda não saiu (espera DP.E1, GGVP-53 CA6). */
+  esperaComprovante?: { desde: string }
+  marcacao?: MarcacaoDaPericia
+  /** As datas que a perícia já teve: a troca fica no histórico (GGVP-53, CA8). */
+  marcacoesAnteriores?: MarcacaoDaPericia[]
+  /** "A perícia pede documento novo?" (GGVP-53, CA4). */
+  pedeDocumentoNovo?: boolean
+  /** O lembrete da véspera (GGVP-53, CA7): o dia e, depois de enviado, quando, por quem e o texto. */
+  lembrete?: { para: string; enviadoEm?: string; por?: string; mensagem?: string }
   historico: EventoDaPericia[]
 }
 
@@ -72,6 +104,10 @@ export type PericiaNaTela = {
   etapa: string
   /** O dia da próxima tentativa de marcar (tentativa diária). */
   proximaTentativa?: string
+  /** Com a data: documentos até 10 dias antes, preparação até 3 dias antes, véspera e dia seguinte. */
+  prazos?: ReturnType<typeof prazosDaPericia>
+  /** É a véspera (ou o dia) e o lembrete ainda não saiu (GGVP-53, CA7). */
+  lembreteHoje: boolean
 }
 
 function fichaDoProcesso(banco: Banco, processoId: string): { ficha: Ficha; processo: Processo } | null {
@@ -121,8 +157,84 @@ function criar(banco: Banco, processoId: string, pedido: PedidoDePericia, quando
         : { quando: iso, quem: SISTEMA, oQue: 'Esperando o INSS liberar o agendamento', passo: 'D2.E1' },
     )
   }
+  // Judicial (resposta do Lucas, 02/10, GGVP-53): a data do juízo é lida da publicação e posta na agenda sozinha.
+  if (pedido.dataDoJuizo) {
+    const { data, hora, local } = pedido.dataDoJuizo
+    pericia.marcacao = { data, hora, local, modalidade: 'presencial', tipo: pedido.tipo, origem: 'juizo', registradaEm: iso, registradaPor: SISTEMA }
+    pericia.lembrete = { para: prazosDaPericia(data).vespera }
+    pericia.historico.push(
+      { quando: iso, quem: SISTEMA, oQue: `Leu a data na publicação e pôs na agenda e na ficha: ${dataCurta(data, hojeIso(quando))}, ${hora}, ${local}`, passo: 'DP.04' },
+      { quando: iso, quem: SISTEMA, oQue: `Agendou o lembrete da véspera para ${dataCurta(pericia.lembrete.para, hojeIso(quando))}`, passo: 'DP.04' },
+    )
+  }
   pericias.push(pericia)
   return pericia
+}
+
+/** O que a IA leu do comprovante da semente: o local de cada caso. Outro PDF cai numa agência de exemplo. */
+const LOCAIS_DOS_COMPROVANTES: Record<string, string> = {
+  'maria-exemplo-1': 'Agência INSS Santo Amaro (exemplo)',
+  'pedro-exemplo-1': 'visita domiciliar · Agência INSS Penha (exemplo)',
+}
+
+/** O primeiro dia útil a partir de `iso`. */
+function diaUtil(iso: string): string {
+  let dia = iso
+  while (diaDaSemana(dia) === 0 || diaDaSemana(dia) === 6) dia = somarDias(dia, 1)
+  return dia
+}
+
+/**
+ * IA simulada (CA2): o que o comprovante do INSS diz. A data vem do nome do arquivo quando ele traz uma (aaaa-mm-dd);
+ * senão, duas semanas adiante (uma a mais a cada data trocada), num dia útil, às 08:30. O perito nunca vem.
+ */
+function leitura(pericia: Pericia, nome: string, hoje: string): LidoDoComprovante {
+  const doNome = /(\d{4}-\d{2}-\d{2})/.exec(nome)?.[1]
+  const data = doNome ?? diaUtil(somarDias(hoje, 14 + 7 * (pericia.marcacoesAnteriores?.length ?? 0)))
+  return {
+    data,
+    hora: '08:30',
+    local: LOCAIS_DOS_COMPROVANTES[pericia.processoId] ?? 'Agência INSS (exemplo)',
+    modalidade: pericia.tipo === 'social' ? 'visita domiciliar' : 'presencial',
+    tipo: pericia.tipo,
+  }
+}
+
+/** Grava a marcação conferida: pasta, agenda, ficha, lembrete e a decisão do documento novo (CA2, CA4, CA8). */
+function marcar(banco: Banco, pericia: Pericia, m: { comprovante: { nome: string; hash?: string }; lido: LidoDoComprovante; pedeDocumentoNovo: boolean }, quem: string) {
+  const { ficha } = fichaDoProcesso(banco, pericia.processoId)!
+  const quando = agora().toISOString()
+  const hoje = hojeIso(agora())
+  const nomes = ficha.arquivos.map((a) => a.nome)
+  const nome = nomes.includes(m.comprovante.nome) ? m.comprovante.nome.replace(/(\.pdf)$/i, ' (2)$1') : m.comprovante.nome
+  const arquivo: Arquivo = { nome, tipo: 'comprovante-pericia', local: pericia.processoId, data: hoje, origem: 'card', repetido: false, aguardaLeitura: false, hash: m.comprovante.hash }
+  ficha.arquivos.push(arquivo)
+  const anterior = pericia.marcacao ?? (pericia.remarcadaEm ? pericia.marcacoesAnteriores?.at(-1) : undefined)
+  if (pericia.marcacao) (pericia.marcacoesAnteriores ??= []).push(pericia.marcacao)
+  pericia.marcacao = { ...m.lido, comprovante: nome, origem: 'comprovante', registradaEm: quando, registradaPor: quem }
+  pericia.lembrete = { para: prazosDaPericia(m.lido.data).vespera }
+  pericia.pedeDocumentoNovo = m.pedeDocumentoNovo
+  delete pericia.esperaComprovante
+  const novaData = `${dataCurta(m.lido.data, hoje)}, ${m.lido.hora}`
+  pericia.historico.push(
+    { quando, quem, oQue: `Marcou a ${NOMES_DO_TIPO[pericia.tipo]} no Meu INSS e subiu o comprovante (${nome})`, passo: 'DP.02' },
+    { quando, quem: SISTEMA, oQue: `Leu o comprovante (${novaData}, ${m.lido.local}) e pôs na agenda e na ficha`, passo: 'DP.04' },
+  )
+  pericia.historico.push(
+    anterior && (anterior.data !== m.lido.data || anterior.hora !== m.lido.hora)
+      ? {
+          quando,
+          quem: SISTEMA,
+          oQue: `Data trocada: ${dataCurta(anterior.data, hoje)}, ${anterior.hora} → ${novaData}; lembrete reprogramado para ${dataCurta(pericia.lembrete.para, hoje)}`,
+          passo: 'DP.04',
+        }
+      : { quando, quem: SISTEMA, oQue: `Agendou o lembrete da véspera para ${dataCurta(pericia.lembrete.para, hoje)}`, passo: 'DP.04' },
+  )
+  pericia.historico.push(
+    m.pedeDocumentoNovo
+      ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação (DP.03)', passo: 'DP.02' }
+      : { quando, quem, oQue: 'A perícia não pede documento novo: segue para ligar e orientar (DP.06)', passo: 'DP.02' },
+  )
 }
 
 /** Hoje (ou n dias antes), à hora dada, no fuso local. */
@@ -132,15 +244,18 @@ function em(dias: number, horas: number, minutos = 0): Date {
 }
 
 const DRA_PAULA = 'Dra. Paula (exemplo)'
+/** O Jurídico administrativo de exemplo (o mesmo do servidor do Mateus). */
+const IGOR = 'Igor (exemplo)'
 
 /**
  * A semente, pelo mesmo caminho do `iniciarPericia`: a Maria (perícia médica pedida pela advogada no D2.03 ontem; o INSS
- * liberou o agendamento hoje cedo) e o Pedro (avaliação social pedida na exigência do INSS, liberada há dois dias).
+ * liberou o agendamento hoje cedo), o Pedro (avaliação social pedida na exigência do INSS, já marcada pelo Igor, com
+ * documento novo para a Documentação) e o Antônio (perícia médica pedida pelo juiz; a data veio da publicação).
  */
 function semear(banco: Banco): Pericia[] {
   banco.pericias = []
   criar(banco, 'maria-exemplo-1', { origem: 'd2-necessidade', tipo: 'medica', instancia: 'inss', pedidaPor: DRA_PAULA }, em(-1, 16, 10), em(0, 8))
-  criar(
+  const pedro = criar(
     banco,
     'pedro-exemplo-1',
     {
@@ -152,6 +267,25 @@ function semear(banco: Banco): Pericia[] {
     },
     em(-3, 11),
     em(-2, 9),
+  )
+  const hoje = hojeIso(agora())
+  const lido = { ...leitura(pedro, 'comprovante.pdf', hoje), data: diaUtil(somarDias(hoje, 16)), hora: '09:00' }
+  marcar(banco, pedro, { comprovante: { nome: 'comprovante_avaliacao_social_pedro.pdf' }, lido, pedeDocumentoNovo: true }, IGOR)
+  // A marcação do Pedro foi ontem à tarde: o histórico guarda a hora em que aconteceu.
+  for (const e of pedro.historico.slice(-4)) e.quando = em(-1, 14, 20).toISOString()
+  pedro.marcacao!.registradaEm = em(-1, 14, 20).toISOString()
+  criar(
+    banco,
+    'antonio-exemplo-1',
+    {
+      origem: 'd3a-juiz',
+      tipo: 'medica',
+      instancia: 'juizo',
+      pedidaPor: 'Juízo da Vara Federal de Santo Amaro (exemplo)',
+      oQuePede: 'perícia médica judicial pedida pelo juiz, com o perito nomeado na publicação',
+      dataDoJuizo: { data: diaUtil(somarDias(hoje, 9)), hora: '10:30', local: 'Vara Federal de Santo Amaro (exemplo) · sala de perícias' },
+    },
+    em(-1, 9, 40),
   )
   return banco.pericias
 }
@@ -173,6 +307,9 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
   const { ficha, processo } = fichaDoProcesso(banco, pericia.processoId)!
   const hoje = hojeIso(agora())
   const situacao = situacaoDaPericia(pericia)
+  const { marcacao, lembrete } = pericia
+  // Depois de uma remarcação, a tentativa diária recomeça do dia dela.
+  const desde = hojeIso(new Date(pericia.remarcadaEm ?? pericia.liberadaEm ?? pericia.abertaEm))
   return {
     pericia,
     ficha,
@@ -180,8 +317,134 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
     beneficio: nomeBeneficio(processo.beneficio),
     situacao,
     etapa: etapaEmPericia(pericia, hoje),
-    ...(situacao === 'marcar' && { proximaTentativa: proximaTentativa(pericia.tentativas, hojeIso(new Date(pericia.liberadaEm!))) }),
+    ...(situacao === 'marcar' && { proximaTentativa: proximaTentativa(pericia.tentativas.filter((x) => x.dia >= desde), desde) }),
+    ...(marcacao && { prazos: prazosDaPericia(marcacao.data) }),
+    lembreteHoje: !!marcacao && !!lembrete && !lembrete.enviadoEm && hoje >= lembrete.para && hoje <= marcacao.data,
   }
+}
+
+/** Lê o banco, acha a perícia do processo e aplica a mudança; grava e devolve a perícia na tela. */
+async function mudar(processoId: string, mudanca: (banco: Banco, pericia: Pericia, hoje: string) => void): Promise<PericiaNaTela> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDo(banco, processoId)
+  if (!pericia) throw new Error('Este caso não tem perícia')
+  mudanca(banco, pericia, hojeIso(agora()))
+  gravar(banco)
+  return naTela(banco, pericia)
+}
+
+const podeMarcar = (p: Pericia) => ['marcar', 'aguardando-comprovante'].includes(situacaoDaPericia(p))
+
+/** POST /api/processos/:id/pericia/tentativas. A tentativa sem sucesso: o dia e o que aconteceu; a tarefa continua (CA1). */
+export function registrarTentativa(processoId: string, t: { dia: string; oQueAconteceu: string }, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia, hoje) => {
+    const motivo = motivoParaNaoRegistrarTentativa(t, hoje)
+    if (motivo) throw new Error(motivo)
+    if (!podeMarcar(pericia)) throw new Error('Esta perícia não está para marcar.')
+    const quando = agora().toISOString()
+    pericia.tentativas.push({ dia: t.dia, oQueAconteceu: t.oQueAconteceu.trim(), quem, quando })
+    pericia.historico.push({ quando, quem, oQue: `Tentativa sem sucesso em ${dataCurta(t.dia, hoje)}: ${t.oQueAconteceu.trim()}`, passo: 'DP.02' })
+  })
+}
+
+/** POST /api/processos/:id/pericia/comprovante/leitura. IA simulada: lê data, hora, local e tipo; o perito não vem (CA2, CA3). */
+export async function lerComprovante(processoId: string, nome: string): Promise<LidoDoComprovante> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDo(banco, processoId)
+  if (!pericia) throw new Error('Este caso não tem perícia')
+  return leitura(pericia, nome, hojeIso(agora()))
+}
+
+/** POST /api/processos/:id/pericia/marcacao. Registra a perícia conferida (CA2, CA3, CA4); de novo, troca a data (CA8). */
+export function registrarMarcacao(
+  processoId: string,
+  m: { comprovante: { nome: string; hash?: string }; lido: LidoDoComprovante; pedeDocumentoNovo: boolean },
+  quem: string,
+): Promise<PericiaNaTela> {
+  return mudar(processoId, (banco, pericia, hoje) => {
+    const motivo = motivoParaNaoRegistrarMarcacao({ comprovante: m.comprovante.nome, lido: m.lido, pedeDocumentoNovo: m.pedeDocumentoNovo }, hoje)
+    if (motivo) throw new Error(motivo)
+    if (!podeMarcar(pericia) && situacaoDaPericia(pericia) !== 'agendada') throw new Error('Esta perícia não está para marcar.')
+    marcar(banco, pericia, m, quem)
+  })
+}
+
+/** Marcada no Meu INSS sem o comprovante ainda (DP.E1): a tarefa espera, com lembrete diário (CA6). */
+export function esperarComprovante(processoId: string, d: { pedeDocumentoNovo: boolean }, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    if (!podeMarcar(pericia)) throw new Error('Esta perícia não está para marcar.')
+    const quando = agora().toISOString()
+    pericia.esperaComprovante = { desde: quando }
+    pericia.pedeDocumentoNovo = d.pedeDocumentoNovo
+    pericia.historico.push(
+      { quando, quem, oQue: 'Marcou no Meu INSS; o comprovante ainda não saiu: a tarefa espera, com lembrete diário', passo: 'DP.E1' },
+      d.pedeDocumentoNovo
+        ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação (DP.03)', passo: 'DP.02' }
+        : { quando, quem, oQue: 'A perícia não pede documento novo', passo: 'DP.02' },
+    )
+  })
+}
+
+export const MINIMO_DO_MOTIVO = 3
+
+/** Remarcar (CA8, CA9): a data sai, a tentativa de marcar recomeça e a remarcação conta no limite (G15). */
+export function remarcarPericia(processoId: string, motivo: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    if (motivo.trim().length < MINIMO_DO_MOTIVO) throw new Error('Diga o motivo da remarcação.')
+    if (!pericia.marcacao && !pericia.esperaComprovante) throw new Error('Esta perícia ainda não foi marcada.')
+    const quando = agora().toISOString()
+    if (pericia.marcacao) (pericia.marcacoesAnteriores ??= []).push(pericia.marcacao)
+    delete pericia.marcacao
+    delete pericia.esperaComprovante
+    delete pericia.lembrete
+    pericia.remarcacoes += 1
+    pericia.remarcadaEm = quando
+    pericia.historico.push({ quando, quem, oQue: `Remarcação ${pericia.remarcacoes}: ${motivo.trim()}`, passo: 'DP.02' })
+    if (passouDoLimite(pericia)) {
+      pericia.historico.push({
+        quando,
+        quem: SISTEMA,
+        oQue: `Passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a perícia subiu para a advogada responsável (G15)`,
+        passo: 'DP.02',
+      })
+    }
+  })
+}
+
+export const MINIMO_DA_JUSTIFICATIVA = 10
+
+/** A advogada responsável, no limite (G15), autoriza mais uma remarcação, com justificativa: volta ao Jurídico administrativo. */
+export function autorizarRemarcacao(processoId: string, justificativa: string, quem: string): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    if (situacaoDaPericia(pericia) !== 'na-advogada') throw new Error('Esta perícia não está com a advogada.')
+    if (justificativa.trim().length < MINIMO_DA_JUSTIFICATIVA) throw new Error('Escreva a justificativa (pelo menos 10 letras).')
+    pericia.autorizadas = (pericia.autorizadas ?? 0) + 1
+    pericia.historico.push({ quando: agora().toISOString(), quem, oQue: `Autorizou mais uma remarcação (G15): ${justificativa.trim()}`, passo: 'DP.02' })
+  })
+}
+
+/** A mensagem do lembrete da véspera, para conferir no Chatwoot (CA7). */
+export async function obterLembrete(processoId: string): Promise<{ nome: string; telefone: string; mensagem: string }> {
+  const t = await obterPericia(processoId)
+  if (!t?.pericia.marcacao) throw new Error('A perícia ainda não tem data')
+  const { marcacao } = t.pericia
+  return {
+    nome: t.ficha.nome,
+    telefone: t.ficha.telefone,
+    mensagem: mensagemDoLembrete({ nome: t.ficha.nome, tipo: marcacao.tipo, data: marcacao.data, hora: marcacao.hora, local: marcacao.local }, diaFalado(marcacao.data)),
+  }
+}
+
+/** POST /api/processos/:id/pericia/lembrete. Enviado pelo Chatwoot depois de revisado pelo Jurídico (CA7, Q5). */
+export function registrarLembrete(processoId: string, mensagem: string, quem = 'Jurídico administrativo'): Promise<PericiaNaTela> {
+  return mudar(processoId, (_banco, pericia) => {
+    if (!pericia.marcacao || !pericia.lembrete) throw new Error('A perícia ainda não tem data')
+    const quando = agora().toISOString()
+    pericia.lembrete = { ...pericia.lembrete, enviadoEm: quando, por: quem, mensagem }
+    pericia.historico.push({ quando, quem, oQue: 'Enviou o lembrete da véspera pelo Chatwoot: data, hora, local e o que levar', passo: 'DP.04' })
+  })
 }
 
 /** Chamado pela GGVP-31 (D2.03), pelo despacho da sênior (D3) e pelo pedido do juiz (D3a). Ponta para ligar na junção. */
@@ -238,6 +501,32 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
       `Jurídico administrativo, que marca a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre, G9). ${depois}`
     )
   }
+  if (t.situacao === 'na-advogada') {
+    return (
+      `A perícia passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma (G15). ` +
+      `Se autorizar, a tarefa de marcar volta para o Jurídico administrativo.`
+    )
+  }
+  if (t.situacao === 'aguardando-comprovante') {
+    return (
+      `A ${tipo} de ${primeiro} já foi marcada no Meu INSS, mas o comprovante ainda não saiu (DP.E1). O Jurídico administrativo recebe ` +
+      `um lembrete por dia até subir o comprovante; o sistema lê data, hora, local e tipo. ${depois}`
+    )
+  }
+  if (t.situacao === 'agendada' && pericia.marcacao && t.prazos) {
+    const m = pericia.marcacao
+    const hoje = hojeIso(agora())
+    const quando = `${diaFalado(m.data)}, às ${m.hora}, em ${m.local}`
+    const como =
+      m.origem === 'juizo'
+        ? `O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: ${quando}.`
+        : `A ${tipo} de ${primeiro} está marcada para ${quando}; o sistema leu o comprovante e pôs na agenda e na ficha.`
+    const documentos = pericia.pedeDocumentoNovo ? ` A Documentação reúne o que a perícia pede até ${dataCurta(t.prazos.documentosAte, hoje)}.` : ''
+    return (
+      `${como}${documentos} Até ${dataCurta(t.prazos.preparoAte, hoje)}, o Jurídico administrativo liga para ${primeiro} com a orientação; ` +
+      `na véspera, ${dataCurta(t.prazos.vespera, hoje)}, sai o lembrete.`
+    )
+  }
   const como =
     pericia.instancia === 'inss'
       ? `pelo Meu INSS (senha no cofre, G9), tentando todo dia até conseguir, e sobe o comprovante: o sistema lê data, hora, local e tipo`
@@ -257,8 +546,15 @@ function detalheDaTarefa(t: PericiaNaTela): string {
 export function hrefDoPasso(t: PericiaNaTela): string {
   const base = `/casos/${t.processo.id}/pericia`
   if (t.situacao === 'aguardando-inss') return `${base}/aberta`
-  if (t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante') return `${base}/marcar`
+  if (t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante' || t.situacao === 'agendada') return `${base}/marcar`
   return base
+}
+
+/** O chat acha a perícia para marcar do cliente que a mensagem cita (GGVP-53, CA5). Sem ela, nada. */
+export function periciaParaMarcarDaFicha(fichaId: string): { processoId: string; beneficio: string } | null {
+  const banco = lerComPericias()
+  const pericia = (banco.pericias ?? []).find((p) => p.fichaId === fichaId && podeMarcar(p))
+  return pericia ? { processoId: pericia.processoId, beneficio: naTela(banco, pericia).beneficio } : null
 }
 
 /** Uma linha do chat da Central (Figma 2107:892): o cliente, a ação, o porquê curto e o prazo. */
@@ -284,21 +580,91 @@ export function periciasParaMarcar(): ItemDoChat[] {
 export function tarefasDoJuridicoAdm(): Tarefa[] {
   const banco = lerComPericias()
   const hoje = hojeIso(agora())
-  return (banco.pericias ?? [])
-    .map((p) => naTela(banco, p))
-    .filter((t) => t.situacao === 'marcar')
-    .map((t) => {
+  const tarefas: Tarefa[] = []
+  for (const t of (banco.pericias ?? []).map((p) => naTela(banco, p))) {
+    const { pericia, ficha, processo } = t
+    const base = { cliente: { id: ficha.id, nome: ficha.nome }, processoId: processo.id, href: `/casos/${processo.id}/pericia/marcar` }
+    if (t.situacao === 'marcar') {
       const prazo = prazoFalado(t.proximaTentativa!, hoje)
-      return {
-        id: `pericia-marcar-${t.pericia.id}`,
+      const acao = pericia.remarcacoes > 0 ? 'Remarcar perícia' : 'Marcar perícia'
+      tarefas.push({ ...base, id: `pericia-marcar-${pericia.id}`, codigo: 'DP.02', acao, detalhe: detalheDaTarefa(t), prazo: prazo.texto, urgente: prazo.urgente })
+    }
+    // A espera do comprovante (DP.E1, CA6): lembrete diário até ele sair.
+    if (t.situacao === 'aguardando-comprovante') {
+      const prazo = prazoFalado(somarDias(hojeIso(new Date(pericia.esperaComprovante!.desde)), 1), hoje)
+      tarefas.push({
+        ...base,
+        id: `pericia-comprovante-${pericia.id}`,
         codigo: 'DP.02',
-        cliente: { id: t.ficha.id, nome: t.ficha.nome },
-        acao: t.pericia.remarcacoes > 0 ? 'Remarcar perícia' : 'Marcar perícia',
-        detalhe: detalheDaTarefa(t),
+        acao: 'Subir o comprovante do INSS',
+        detalhe: [t.beneficio, NOMES_DO_TIPO[pericia.tipo], 'marcada no Meu INSS; o comprovante ainda não saiu (DP.E1)', 'lembrete diário'].join(' · '),
         prazo: prazo.texto,
         urgente: prazo.urgente,
-        href: `/casos/${t.processo.id}/pericia/marcar`,
-        processoId: t.processo.id,
-      }
-    })
+      })
+    }
+    // O lembrete da véspera (CA7): o Jurídico confere a mensagem e envia pelo Chatwoot (Q5).
+    if (t.lembreteHoje) {
+      const m = pericia.marcacao!
+      tarefas.push({
+        ...base,
+        id: `pericia-lembrete-${pericia.id}`,
+        codigo: 'DP.04',
+        acao: 'Enviar o lembrete da véspera',
+        detalhe: [t.beneficio, `${NOMES_DO_TIPO[pericia.tipo]} em ${dataCurta(m.data, hoje)}, ${m.hora}`, m.local].join(' · '),
+        prazo: 'hoje',
+        urgente: true,
+      })
+    }
+  }
+  return tarefas
+}
+
+/** As da advogada responsável: a perícia que passou do limite de remarcações (CA9, G15). Nunca a sênior. */
+export function tarefasDaAdvogadaNaPericia(): Tarefa[] {
+  const banco = lerComPericias()
+  return (banco.pericias ?? [])
+    .map((p) => naTela(banco, p))
+    .filter((t) => t.situacao === 'na-advogada')
+    .map((t) => ({
+      id: `pericia-limite-${t.pericia.id}`,
+      codigo: 'DP.02',
+      cliente: { id: t.ficha.id, nome: t.ficha.nome },
+      acao: 'Decidir a perícia',
+      detalhe: [t.beneficio, NOMES_DO_TIPO[t.pericia.tipo], `${t.pericia.remarcacoes} remarcações: passou do limite (G15)`].join(' · '),
+      prazo: 'hoje',
+      urgente: true,
+      href: `/casos/${t.processo.id}/pericia`,
+      processoId: t.processo.id,
+    }))
+}
+
+const PASSO_NA_AGENDA = { comprovante: 'DP.02 · Marcar a perícia no INSS', juizo: 'DP.04 · Data do juízo, lida da publicação' }
+
+/** A perícia marcada na agenda (CA2): categoria "Perícias", com o passo e o caso. Ligado em dados/agenda.ts. */
+export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[] {
+  const pericias = banco.pericias ?? semear(structuredClone(banco))
+  return pericias.flatMap((p): EventoDaAgenda[] => {
+    const achado = fichaDoProcesso(banco, p.processoId)
+    if (!p.marcacao || !achado) return []
+    const m = p.marcacao
+    const tipo = NOMES_DO_TIPO[p.tipo]
+    return [
+      {
+        id: `pericia:${p.id}`,
+        data: m.data,
+        hora: m.hora,
+        duracao: 60,
+        titulo: achado.ficha.nome,
+        oQue: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+        categoria: 'pericias',
+        responsavel: 'Jurídico administrativo',
+        passo: PASSO_NA_AGENDA[m.origem],
+        estado: m.data < hoje ? 'confirmar' : 'agendado',
+        fichaId: achado.ficha.id,
+        remarcacoes: p.remarcacoes,
+        processoId: p.processoId,
+        local: m.local,
+      },
+    ]
+  })
 }

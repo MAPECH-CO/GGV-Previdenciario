@@ -62,7 +62,8 @@ export function cruzam(a: Intervalo, b: Intervalo): boolean {
 
 /** Quem já está no horário: o portal avisa e deixa confirmar, porque são duas salas (CA3). */
 export function horarioOcupado(eventos: EventoDaAgenda[], novo: Intervalo): EventoDaAgenda[] {
-  return eventos.filter((e) => e.estado !== 'faltou' && cruzam(e, novo))
+  // A perícia é do cliente, na agência ou no juízo: não ocupa a sala do escritório (épico GGVP-10).
+  return eventos.filter((e) => e.estado !== 'faltou' && e.categoria !== 'pericias' && cruzam(e, novo))
 }
 
 /** Cheio quando todos os horários do dia já têm compromisso. */

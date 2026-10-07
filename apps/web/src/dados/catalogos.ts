@@ -103,6 +103,8 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'relatorio-fono', nome: 'Relatório de fonoaudiologia' },
   { id: 'relatorio-to', nome: 'Relatório de terapia ocupacional' },
   { id: 'relatorio-psicologia', nome: 'Relatório de psicologia' },
+  // Épico GGVP-10: o comprovante do agendamento que o Jurídico administrativo sobe (GGVP-53).
+  { id: 'comprovante-pericia', nome: 'Comprovante da perícia (INSS)' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

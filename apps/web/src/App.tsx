@@ -47,6 +47,7 @@ import { LinhaDaDeficiencia } from './paginas/LinhaDaDeficiencia.tsx'
 import { CentralJuridicoAdm } from './paginas/CentralJuridicoAdm.tsx'
 import { PericiaAberta } from './paginas/PericiaAberta.tsx'
 import { ProcessoPericia } from './paginas/ProcessoPericia.tsx'
+import { MarcarPericia } from './paginas/MarcarPericia.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -148,6 +149,8 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (caminho === '/juridico-administrativo') return <CentralJuridicoAdm />
   const periciaAberta = /^\/casos\/([^/]+)\/pericia\/aberta$/.exec(caminho)
   if (periciaAberta) return <PericiaAberta processoId={decodeURIComponent(periciaAberta[1])} />
+  const marcarPericia = /^\/casos\/([^/]+)\/pericia\/marcar$/.exec(caminho)
+  if (marcarPericia) return <MarcarPericia processoId={decodeURIComponent(marcarPericia[1])} remarcar={parametros.get('remarcar') === '1'} />
   const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
   if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} />
   return <NaoConstruida caminho={caminho} />
