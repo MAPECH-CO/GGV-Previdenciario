@@ -92,6 +92,17 @@ describe('GGVP-137 · a Perícia no servidor, do lado da tela', () => {
     expect(peritosParaLigar('medica', CASO)).toEqual([])
   })
 
+  it('CA4 · quem entra depois na mesma aba recebe só a visão dele: a perícia do Jurídico, com o laudo, sai da cópia', async () => {
+    const t = daApi()
+    const doJuridico = { ...t, pericia: { ...t.pericia, resultado: { laudo: { nome: 'laudo.pdf', anexadoEm: AGORA.toISOString(), leitura: {} as never } } } }
+    ligarServidor({ 'GET /api/pericias': () => [doJuridico], 'GET /api/pericias/tarefas': () => [], 'GET /api/peritos': () => [] })
+    await sincronizarPericias(true)
+    vi.unstubAllGlobals()
+    ligarServidor({ 'GET /api/pericias': () => [t], 'GET /api/pericias/tarefas': () => [] })
+    await sincronizarPericias(false)
+    expect(ler().pericias!.find((p) => p.id === PERICIA)!.resultado).toBeUndefined()
+  })
+
   it('CA1, CA2 · a tentativa vai à rota com o contrato e a tela recebe a perícia que o servidor gravou', async () => {
     const t = daApi()
     const gravada = { ...t, pericia: { ...t.pericia, tentativas: [{ dia: '2026-10-08', oQueAconteceu: 'Sem vaga hoje', quem: 'Igor', quando: AGORA.toISOString() }] } }

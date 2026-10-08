@@ -210,7 +210,10 @@ export async function sincronizarPericias(juridico: boolean) {
   // Os peritos (com a jurimetria) são só do Jurídico: os outros perfis nem pedem, para não virar tentativa bloqueada.
   peritosDoBanco = juridico ? await noBanco<typeof peritosDoBanco>('/peritos') : []
   tarefasDoBanco = tarefas
+  // A cópia das perícias do servidor é trocada inteira: quem entra depois, na mesma aba, não fica com o que a pessoa de
+  // antes via (o laudo e a leitura são só do Jurídico).
   const banco = lerComPericias()
+  banco.pericias = (banco.pericias ?? []).filter((p) => !doServidor(p.processoId))
   for (const t of lista) receberEm(banco, t)
   gravar(banco)
 }
