@@ -61,6 +61,26 @@ describe('GGVP-99 · histórico de quem fez o quê', () => {
     expect([r.podePedirExportacao, r.exportacao]).toEqual([false, null])
   })
 
+  it('GGVP-135 (P19) · os eventos da petição, da exigência e da pendência saem com o nome da equipe, com acento', async () => {
+    await banco.insert(eventoAuditoria).values(
+      ['peticao_versao_nova', 'peticao_versao_apos_aprovacao', 'pendencia_cumprida', 'exigencia_juiz_perdida', 'publicacao_vinculada'].map((acao, i) => ({
+        quem: ids.gabi,
+        acao,
+        alvo: `caso:${casoId}`,
+        quando: new Date(`2026-10-0${i + 1}T12:00:00Z`),
+        detalhe: {},
+      })),
+    )
+    const r = (await chamar('gabi', 'GET', `/api/casos/${casoId}/historico`)).json()
+    expect(r.eventos.map((e: { descricao: string }) => e.descricao)).toEqual([
+      'Petição: versão nova',
+      'Petição: versão nova depois da aprovação',
+      'Pendência cumprida',
+      'Exigência do juiz perdida',
+      'Publicação vinculada ao processo',
+    ])
+  })
+
   it('CA9 · editar ou apagar o histórico pela API é recusado e registrado', async () => {
     for (const metodo of ['PUT', 'DELETE'] as const) {
       const r = await chamar('helena', metodo, `/api/casos/${casoId}/historico/qualquer`, {})

@@ -22,6 +22,7 @@ import {
   type SituacaoDoItem,
 } from '../regras/parecer.ts'
 import styles from './Balcao.module.css'
+import passo from './Passo.module.css'
 import proprio from './Parecer.module.css'
 
 // Figma: step_D1.21M "Dar parecer médico" (14:195), com a matriz do roteiro item a item que o cartão pede (GGVP-20, CA1 a
@@ -278,9 +279,30 @@ export function DarParecer({ processoId }: { processoId: string }) {
                         <a href={`/roteiros/${analise.roteiro.id}`}>ver o roteiro</a> ·{' '}
                       </>
                     )}
-                    A IA sugere <span className={proprio[analise.sugestao === 'sem-roteiro' ? 'pendente' : analise.sugestao]}>{NOMES_DO_PARECER[analise.sugestao]}</span>{' '}
-                    em {curta(analise.quando)}. Confirme ou corrija cada item.
+                    {analise.motivo ? (
+                      'Confira cada item pela sua leitura dos documentos.'
+                    ) : (
+                      <>
+                        A IA sugere <span className={proprio[analise.sugestao === 'sem-roteiro' ? 'pendente' : analise.sugestao]}>{NOMES_DO_PARECER[analise.sugestao]}</span>{' '}
+                        em {curta(analise.quando)}. Confirme ou corrija cada item.
+                      </>
+                    )}
                   </p>
+                  {/* GGVP-134 (CA4, CA5): a sugestão da IA vem marcada, com o alerta e as fontes; sem a IA, o motivo. */}
+                  {analise.motivo && <p className={passo.dica}>{analise.motivo}</p>}
+                  {analise.ia && (
+                    <>
+                      <span className={`${passo.selo} ${passo.seloAlerta}`}>Sugestão da IA · quem registra o parecer é você (G17)</span>
+                      {analise.ia.alertas.map((a) => (
+                        <p key={a} className={passo.erroCampo} role="alert">
+                          Atenção: {a}.
+                        </p>
+                      ))}
+                      <p className={passo.dica}>
+                        Fontes: {analise.ia.fontes.join(' · ')} ({analise.ia.modelo})
+                      </p>
+                    </>
+                  )}
                   <h3 className={proprio.secao}>Itens obrigatórios</h3>
                   <ul className={proprio.itens} aria-label="Itens obrigatórios">
                     {obrigatorios.map(linhaDoItem)}

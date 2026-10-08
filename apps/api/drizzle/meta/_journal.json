@@ -138,8 +138,15 @@
     {
       "idx": 19,
       "version": "7",
-      "when": 1791498319163,
-      "tag": "0019_base_de_conhecimento",
+      "when": 1791497335388,
+      "tag": "0019_documentacao_medica",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791501281239,
+      "tag": "0020_base_de_conhecimento",
       "breakpoints": true
     }
   ]

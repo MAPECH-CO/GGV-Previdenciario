@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 17, digital: '60dfc674' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 18, digital: '9fdc9dba' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -89,6 +89,15 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('atendimento', 'vigilia.ver')).toBe(false)
   })
 
+  it('versão 18 · documentação médica no servidor: o Jurídico registra o parecer e o dado de saúde; só a Sênior edita o roteiro', () => {
+    expect(PERFIS.filter((p) => pode(p, 'roteiro.editar'))).toEqual(['senior'])
+    expect(PERFIS.filter((p) => pode(p, 'parecer.registrar'))).toEqual(['advogada', 'senior'])
+    expect(PERFIS.filter((p) => pode(p, 'dado_saude.registrar'))).toEqual(['advogada', 'senior'])
+    expect(PERFIS.filter((p) => pode(p, 'complemento.cobrar'))).toEqual(['atendimento', 'atendimento_lider'])
+    expect(PERFIS.filter((p) => pode(p, 'complemento.decidir'))).toEqual(['senior'])
+    expect(PERFIS.filter((p) => pode(p, 'acidente.registrar'))).toEqual(['documentacao', 'advogada', 'senior'])
+  })
+
   it('GGVP-137 · a Documentação reúne o que a perícia pede; no limite (G15) e no resultado, só a advogada, nunca a Sênior', () => {
     expect(PERFIS.filter((p) => pode(p, 'pericia.reunir_documentos'))).toEqual(['documentacao'])
     expect(PERFIS.filter((p) => pode(p, 'pericia.decidir_no_limite'))).toEqual(['advogada'])
@@ -121,11 +130,11 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 12,
-      atendimento_lider: 15,
-      documentacao: 8,
-      advogada: 31,
-      senior: 32,
+      atendimento: 13,
+      atendimento_lider: 16,
+      documentacao: 9,
+      advogada: 34,
+      senior: 37,
       juridico_adm: 17,
       financeiro: 6,
       socio: 5,

@@ -21,6 +21,8 @@ export const REGRAS_DA_IA = [
  * GGVP-110: frases de quem tenta mandar na IA pelo conteúdo. Na entrada, o conteúdo segue como dado e a chamada ganha
  * alerta; na saída, a sugestão chega com alerta para a pessoa ver antes de usar.
  */
+/** A marca do bloco dentro do conteúdo fecharia o bloco antes da hora: vai neutralizada e conta como suspeita. */
+const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
 const SUSPEITAS = [
   /ignor(e|a|ar|em)\s+(as\s+|todas\s+as\s+|estas\s+|essas\s+)?(instru|regras|ordens|orienta)/i,
   /desconsider(e|a|ar)\s+(as\s+|todas\s+as\s+)?(instru|regras|ordens)/i,
@@ -29,6 +31,7 @@ const SUSPEITAS = [
   /voc[êe]\s+agora\s+[ée]/i,
   /confirm(e|ar)\s+e\s+envi(e|ar)/i,
   /classifique\s+como/i,
+  MARCA_DO_BLOCO,
 ]
 /** G20 (GGVP-110 CA7): código de doença da CID-10 (letra, dois dígitos e, se houver, a subcategoria). */
 const CID = /\b[A-TV-Z]\d{2}(\.\d{1,2})?\b/
@@ -152,6 +155,21 @@ export const FINALIDADES = {
       '{"analise": "em até 5 frases: por que o INSS negou e o que rebate isso", "nadaFalta": true se o caso já tem o que precisa para a petição, "itens": [{"setor": "atendimento" | "documentacao", "descricao": "o que o setor deve obter, concreto"}], "pericias": ["medica" | "social"]}.',
       'Atendimento fala com o cliente (pedir documento que só ele tem, laudo do médico assistente); Documentação busca e organiza documento (CNIS, processo administrativo, carta). No máximo um item por setor. Peça perícia só se o motivo for médico ou social.',
       'Use só o que está no conteúdo; não invente documento que o caso não tem como se tivesse. Se nadaFalta for true, itens e pericias vazios.',
+    ].join(' '),
+  },
+  // GGVP-134 (CA1, CA3): o que um documento médico cobre do roteiro do benefício. Leva o laudo (dado de saúde); a saída vai
+  // só ao Jurídico, mas o trecho não leva código de doença (G20). As datas são copiadas; a conta dos 24 meses é do código.
+  cobertura_do_roteiro: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a conferir se um documento médico do cliente cobre o roteiro de conteúdo mínimo do benefício.',
+      'Leia o roteiro (cada item com id, tipo e texto) e o texto do documento, e responda só com um objeto JSON:',
+      '{"cobre": [{"item": "id de um item obrigatório", "pagina": número da página ou 1, "trecho": "frase curta copiada do documento que mostra o item"}], "contradiz": [{"item": "id de uma contradição", "pagina": número, "trecho": "frase copiada"}], "datas": {"inicio": "aaaa-mm ou aaaa-mm-dd", "cessacao": "aaaa-mm ou aaaa-mm-dd"} ou null}.',
+      'Só marque o item que o documento aborda de fato; na dúvida, deixe de fora. O trecho é cópia do documento, sem código de doença (CID).',
+      'Em "datas", copie a data de início do quadro e a de cessação prevista que estiverem escritas; sem elas, null. Não calcule nada. Use só o que está no conteúdo.',
     ].join(' '),
   },
   /**
@@ -356,7 +374,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
           model: modeloTexto,
           messages: [
             { role: 'system', content: `${REGRAS_DA_IA}\n\n${f.instrucao}` },
-            { role: 'user', content: `<conteudo>\n${pedido.conteudo}\n</conteudo>` },
+            { role: 'user', content: `<conteudo>\n${pedido.conteudo.replace(new RegExp(MARCA_DO_BLOCO, 'gi'), '[marca removida]')}\n</conteudo>` },
           ],
           ...(f.json && { response_format: { type: 'json_object' } }),
         }),

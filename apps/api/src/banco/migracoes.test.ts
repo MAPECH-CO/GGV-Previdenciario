@@ -37,7 +37,8 @@ describe('migrações', () => {
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
       'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao',
       'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'acervo_trecho']) expect(t).toContain(nome)
-    expect(t).toHaveLength(53)
+    expect(t).toContain('documentacao_medica')
+    expect(t).toHaveLength(54)
   })
 
   it('GGVP-141 · a base de conhecimento do acervo: pgvector ligado e o índice HNSW pela distância de cosseno (ADR-013)', async () => {

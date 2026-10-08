@@ -1,5 +1,5 @@
 {
-  "id": "e555d620-1cf8-403e-8c14-d8e42e1e8aa0",
+  "id": "dcbfdc04-ecdf-45c7-a413-cb6fc2bca994",
   "prevId": "45ad65ca-8fdd-44a9-bd19-10b7cee00d8a",
   "version": "7",
   "dialect": "postgresql",
@@ -2335,6 +2335,71 @@
       },
       "isRLSEnabled": true
     },
+    "public.documentacao_medica": {
+      "name": "documentacao_medica",
+      "schema": "",
+      "columns": {
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parte": {
+          "name": "parte",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "documento": {
+          "name": "documento",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "documentacao_medica_caso_id_caso_id_fk": {
+          "name": "documentacao_medica_caso_id_caso_id_fk",
+          "tableFrom": "documentacao_medica",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "documentacao_medica_caso_id_parte_pk": {
+          "name": "documentacao_medica_caso_id_parte_pk",
+          "columns": [
+            "caso_id",
+            "parte"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "documentacao_medica_parte": {
+          "name": "documentacao_medica_parte",
+          "value": "\"documentacao_medica\".\"parte\" in ('parecer', 'complemento', 'deficiencia', 'acidente', 'crianca')"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "public.documento": {
       "name": "documento",
       "schema": "",
@@ -4341,121 +4406,6 @@
       },
       "isRLSEnabled": true
     },
-    "public.acervo_trecho": {
-      "name": "acervo_trecho",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "origem": {
-          "name": "origem",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referencia": {
-          "name": "referencia",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "beneficio": {
-          "name": "beneficio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "texto": {
-          "name": "texto",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "so_juridico": {
-          "name": "so_juridico",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(1536)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hash": {
-          "name": "hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "acervo_trecho_vetor": {
-          "name": "acervo_trecho_vetor",
-          "columns": [
-            {
-              "expression": "embedding",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "vector_cosine_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "hnsw",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "acervo_trecho_caso_id_caso_id_fk": {
-          "name": "acervo_trecho_caso_id_caso_id_fk",
-          "tableFrom": "acervo_trecho",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "acervo_trecho_hash_unique": {
-          "name": "acervo_trecho_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "hash"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.configuracao": {
       "name": "configuracao",
       "schema": "",
@@ -5339,6 +5289,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "autor_id": {
+          "name": "autor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -5348,7 +5304,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "roteiro_laudo_autor_id_usuario_id_fk": {
+          "name": "roteiro_laudo_autor_id_usuario_id_fk",
+          "tableFrom": "roteiro_laudo",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "autor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "roteiro_versao_unica": {

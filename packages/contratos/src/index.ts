@@ -72,6 +72,13 @@ export * from './juizo.ts'
 // O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
 export * from './chat.ts'
 
+// A documentação médica no servidor (GGVP-132): roteiro, parecer, complemento, deficiência, acidente e criança.
+export * from './roteiros.ts'
+export * from './pareceres.ts'
+export * from './deficiencia.ts'
+export * from './acidente.ts'
+export * from './infantil.ts'
+
 // O Relacionamento com o cliente no servidor (GGVP-138): a conversa, as mensagens e a segurança do contato.
 export * from './conversas.ts'
 export * from './mensagens.ts'
