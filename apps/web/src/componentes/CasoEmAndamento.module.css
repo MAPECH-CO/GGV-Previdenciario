@@ -64,3 +64,13 @@
   color: var(--cor-texto-suave-2);
   font-size: var(--fonte-11);
 }
+
+.atalhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: -2px 0 4px;
+  padding: 0 10px;
+  list-style: none;
+  font-size: var(--fonte-12);
+}
