@@ -210,6 +210,18 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     expect(pedidos.filter((p) => p.url.endsWith('/audio/transcriptions'))).toHaveLength(2)
   })
 
+  it('só a gravação do portal em curso, ou a que espera a internet, recebe parte do áudio', async () => {
+    montar()
+    const { agendamentoId } = await entrevistaConfirmada()
+    const deFora = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
+    const parte = comArquivo('parte-1.webm', 'audio/webm', 'parte um', { inicio: '0' })
+    expect((await subir(`/api/gravacoes/${deFora.id}/audio`, parte)).json().erro).toBe('Esta gravação não recebe mais áudio.')
+    const { gravacao } = await json('gabi', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })
+    await json('gabi', `/api/gravacoes/${gravacao.id}/encerrar`, { aos: 60, online: true })
+    expect((await subir(`/api/gravacoes/${gravacao.id}/audio`, parte)).json().erro).toBe('Esta gravação não recebe mais áudio.')
+    expect(await banco.select().from(documento)).toHaveLength(1)
+  })
+
   it('CA12 da entrevista · sem internet, o áudio guardado sobe depois e a última parte manda para a transcrição', async () => {
     montar()
     const { agendamentoId } = await entrevistaConfirmada()
@@ -233,6 +245,15 @@ describe('GGVP-133 CA4 · a chave temporária do texto ao vivo', () => {
     expect((await app.inject({ method: 'POST', url, cookies: await cookieDe('ana') })).statusCode).toBe(403)
     await json('gabi', `/api/gravacoes/${gravacao.id}/encerrar`, { aos: 60, online: true })
     expect((await json('gabi', url)).erro).toBe('A gravação não está em curso.')
+  })
+
+  it('sem a autorização de dado de saúde do escritório, a entrevista não abre o texto ao vivo', async () => {
+    const { pedidos } = montar({ OPENAI_API_KEY: 'chave-de-teste-openai' })
+    const { agendamentoId } = await entrevistaConfirmada()
+    const { gravacao } = await json('gabi', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })
+    const r = await app.inject({ method: 'POST', url: `/api/gravacoes/${gravacao.id}/chave-ao-vivo`, cookies: await cookieDe('gabi') })
+    expect([r.statusCode, r.json().erro]).toEqual([503, MSG_SEM_AO_VIVO])
+    expect(pedidos).toEqual([])
   })
 
   it('sem a chave do serviço, a tela segue sem texto ao vivo e com o motivo', async () => {

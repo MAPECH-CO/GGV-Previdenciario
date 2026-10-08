@@ -201,6 +201,9 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
       const achadoComAudio = await acharGravacao(pedido.params.id)
       if (!achadoComAudio) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
       const { gravacao: g } = achadoComAudio
+      // Só a gravação do portal em curso (ou que falhou) e a encerrada que espera a internet recebem áudio.
+      const recebe = g.origem === 'portal' && (g.estado !== 'encerrada' || g.transcricao === 'aguardando-internet')
+      if (!recebe) return negar(resposta, 400, 'Esta gravação não recebe mais áudio.')
       const id = await guardarAudio(real, g, arquivo, pedido.usuario!.id)
       const antes = g.audio?.documentos ? g.audio : undefined
       const documentos = [...(antes?.documentos ?? []), { id, inicio }]

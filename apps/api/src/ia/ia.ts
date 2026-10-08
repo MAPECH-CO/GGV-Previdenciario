@@ -441,11 +441,23 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
 
   /**
    * GGVP-133 CA4: a chave temporária do texto ao vivo, uma por sessão de gravação, pedida pelo servidor. A chave de
-   * verdade nunca vai ao navegador. Os termos do glossário entram como dica de escrita. Sem chave ou falhou: nulo.
+   * verdade nunca vai ao navegador. Os termos do glossário entram como dica de escrita. O áudio ao vivo vai direto do
+   * navegador à OpenAI: a gravação com dado de saúde só abre com a autorização do escritório, e cada chave fica no
+   * registro (finalidade `transcrever_ao_vivo`). Sem chave, recusada ou falhou: nulo.
    */
-  async function chaveAoVivo(termos: string[]) {
+  async function chaveAoVivo(pedido: Quem & { termos: string[]; sensivel: boolean; referencia: string }) {
+    const inicio = Date.now()
+    const prompt = pedido.termos.join(', ').slice(0, 1000)
+    const base = { finalidade: 'transcrever_ao_vivo', fornecedor: 'openai' as const, modelo: modeloAoVivo, versaoInstrucao: 1, alvo: pedido, entrada: prompt, fontes: [{ tipo: 'documento' as const, referencia: pedido.referencia }] }
+    if (pedido.sensivel && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
     const chave = ambiente.OPENAI_API_KEY
-    if (!chave) return null
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
     try {
       const resposta = await fetch(OPENAI_CHAVE_AO_VIVO, {
         method: 'POST',
@@ -454,7 +466,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
           expires_after: { anchor: 'created_at', seconds: 600 },
           session: {
             type: 'transcription',
-            audio: { input: { transcription: { model: modeloAoVivo, language: 'pt', prompt: termos.join(', ').slice(0, 1000) }, turn_detection: { type: 'server_vad' } } },
+            audio: { input: { transcription: { model: modeloAoVivo, language: 'pt', prompt }, turn_detection: { type: 'server_vad' } } },
           },
         }),
         signal: AbortSignal.timeout(15_000),
@@ -462,8 +474,11 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
       if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
       const corpo = (await resposta.json()) as { value?: string; expires_at?: number }
       if (!corpo.value) throw new Error('OpenAI respondeu sem chave')
+      // A chave temporária não vai ao registro: só o fato de ter sido entregue.
+      await registrar({ ...base, saida: null, situacao: 'ok', inicio })
       return { chave: corpo.value, expiraEm: new Date((corpo.expires_at ?? 0) * 1000).toISOString(), modelo: modeloAoVivo }
-    } catch {
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
       return null
     }
   }

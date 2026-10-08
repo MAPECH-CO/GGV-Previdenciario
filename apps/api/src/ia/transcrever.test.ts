@@ -74,9 +74,11 @@ describe('GGVP-133 · transcrever (OpenAI)', () => {
 })
 
 describe('GGVP-133 CA4 · a chave temporária do texto ao vivo', () => {
-  it('o servidor pede a chave temporária com a chave dele; a resposta só traz a temporária, com os termos do glossário de dica', async () => {
+  const AO_VIVO = { casoId: null, termos: ['LOAS', 'CNIS'], sensivel: true, referencia: 'gravacao:g1' }
+
+  it('o servidor pede a chave temporária com a chave dele; a resposta só traz a temporária, com os termos do glossário de dica; a entrega fica no registro, sem a chave', async () => {
     const fetch = servico({ value: 'ek_temporaria', expires_at: 1791500000 })
-    const r = await criarIa({ banco, ambiente: CHAVES, fetch }).chaveAoVivo(['LOAS', 'CNIS'])
+    const r = await criarIa({ banco, ambiente: CHAVES, fetch }).chaveAoVivo({ ...AO_VIVO, quem })
     expect(r).toEqual({ chave: 'ek_temporaria', expiraEm: new Date(1791500000 * 1000).toISOString(), modelo: 'gpt-4o-transcribe' })
     expect(JSON.stringify(r)).not.toContain('chave-de-teste-openai')
     const [url, init] = fetch.mock.calls[0]
@@ -84,12 +86,23 @@ describe('GGVP-133 CA4 · a chave temporária do texto ao vivo', () => {
     expect(url).toBe('https://api.openai.com/v1/realtime/client_secrets')
     expect(corpo.session.type).toBe('transcription')
     expect(corpo.session.audio.input.transcription).toEqual({ model: 'gpt-4o-transcribe', language: 'pt', prompt: 'LOAS, CNIS' })
+    const [c] = await banco.select().from(chamadaIa)
+    expect([c.finalidade, c.situacao, c.pedidaPor, c.saida]).toEqual(['transcrever_ao_vivo', 'ok', quem, null])
+    expect(JSON.stringify(c)).not.toContain('ek_temporaria')
+  })
+
+  it('gravação com dado de saúde sem a autorização do escritório: recusa, sem chamar o serviço', async () => {
+    const fetch = servico({ value: 'ek_temporaria', expires_at: 1791500000 })
+    expect(await criarIa({ banco, ambiente: { OPENAI_API_KEY: 'x' }, fetch }).chaveAoVivo({ ...AO_VIVO, quem })).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+    expect((await banco.select().from(chamadaIa)).map((c) => [c.finalidade, c.situacao])).toEqual([['transcrever_ao_vivo', 'recusada']])
   })
 
   it('sem chave, ou com o serviço fora, não há texto ao vivo', async () => {
     const fetch = servico({}, 500)
-    expect(await criarIa({ banco, ambiente: {}, fetch }).chaveAoVivo([])).toBeNull()
+    expect(await criarIa({ banco, ambiente: { IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }).chaveAoVivo({ ...AO_VIVO, quem })).toBeNull()
     expect(fetch).not.toHaveBeenCalled()
-    expect(await criarIa({ banco, ambiente: CHAVES, fetch }).chaveAoVivo([])).toBeNull()
+    expect(await criarIa({ banco, ambiente: CHAVES, fetch }).chaveAoVivo({ ...AO_VIVO, quem })).toBeNull()
+    expect((await banco.select().from(chamadaIa)).map((c) => c.situacao).sort()).toEqual(['desligada', 'falhou'])
   })
 })

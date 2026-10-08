@@ -20,7 +20,8 @@ export function registrarRotasTranscricao(app: FastifyInstance, { banco, agora =
     if (!achado) return resposta.code(404).send({ erro: 'Gravação não encontrada.' } satisfies Erro)
     const { gravacao: g } = achado
     if (g.origem !== 'portal' || (g.estado !== 'gravando' && g.estado !== 'pausada')) return resposta.code(400).send({ erro: 'A gravação não está em curso.' } satisfies Erro)
-    const chave = await ia.chaveAoVivo((await termosDoGlossario(banco)).map((t) => t.termo))
+    const termos = (await termosDoGlossario(banco)).map((t) => t.termo)
+    const chave = await ia.chaveAoVivo({ casoId: null, quem: pedido.usuario!.id, termos, sensivel: g.soJuridico, referencia: `gravacao:${g.id}` })
     if (!chave) return resposta.code(503).send({ erro: MSG_SEM_AO_VIVO } satisfies Erro)
     return ChaveAoVivo.parse(chave)
   })
