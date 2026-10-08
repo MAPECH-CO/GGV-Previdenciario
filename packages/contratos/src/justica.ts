@@ -3,6 +3,7 @@ import { dataParaIso, normalizarCnj, normalizarInteiro, validarCnj, validarData 
 import { z } from 'zod'
 import { Lembrete, TentativaDoLaco } from './exigencia.ts'
 import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
+import { SugestaoDaIa } from './ia.ts'
 
 export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
 export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
@@ -52,6 +53,19 @@ export const PublicacaoParaLer = z.object({
   podeClassificar: z.boolean(),
 })
 export type PublicacaoParaLer = z.infer<typeof PublicacaoParaLer>
+
+/** O que a IA devolve na leitura da publicação (GGVP-34, GGVP-74): só lê os dias escritos; a data final é do código. */
+export const LeituraDaPublicacaoPelaIa = z.object({
+  classe: z.enum(CLASSES_DE_ATO),
+  dias: z.number().int().min(1).max(120).nullable(),
+  resumo: z.string().trim().min(1),
+})
+/** POST /api/publicacoes/:id/sugestao. Sem sugestão (sem chave, falha ou fora do formato): `sugestao` nulo e o motivo. */
+export const SugestaoDePublicacao = z.object({
+  sugestao: LeituraDaPublicacaoPelaIa.extend({ chamadaId: z.uuid(), modelo: z.string(), alerta: z.string().nullable() }).nullable(),
+  motivo: z.string().nullable(),
+})
+export type SugestaoDePublicacao = z.infer<typeof SugestaoDePublicacao>
 
 /** GET /api/casos/:id/publicacoes (GGVP-74 CA5, CA7). */
 export const PublicacoesDoCaso = z.object({
@@ -154,18 +168,40 @@ const ItemDaExigenciaJuiz = z.object({
 export const AnalisarExigenciaJuiz = z.discriminatedUnion(
   'decisao',
   [
-    z.object({ decisao: z.literal('ciencia') }),
+    // Épico IA (GGVP-79 CA3): a decisão que partiu da sugestão guarda a chamada à parte do que a advogada escolheu.
+    z.object({ decisao: z.literal('ciencia'), chamadaIaId: z.uuid().optional() }),
     z
       .object({
         decisao: z.literal('cumprir'),
         itens: z.array(ItemDaExigenciaJuiz).default([]),
         tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+        chamadaIaId: z.uuid().optional(),
       })
       .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Inclua ao menos um item ou a perícia', path: ['itens'] }),
   ],
   { error: 'Escolha "Só ciência" ou "Precisa cumprir"' },
 )
 export type AnalisarExigenciaJuiz = z.input<typeof AnalisarExigenciaJuiz>
+
+/** Épico IA (GGVP-79 CA3): o que a IA devolve, em JSON. "Só ciência" sem itens; senão, os itens por setor e a perícia. */
+export const AnaliseDaExigenciaPelaIa = z.object({
+  resumo: z.string().trim().min(1),
+  ciencia: z.boolean(),
+  itens: z
+    .array(z.object({ setor: z.enum(SETORES_DA_EXIGENCIA), descricao: z.string().trim().min(1), provaEsperada: z.string().trim().nullable().default(null) }))
+    .default([]),
+  pericias: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+})
+export type AnaliseDaExigenciaPelaIa = z.infer<typeof AnaliseDaExigenciaPelaIa>
+
+/** POST /api/casos/:id/exigencia-juiz/sugestao. Sem sugestão (sem chave, falha, fora do formato): `leitura` nula e o motivo. */
+export const SugestaoDaExigencia = z.object({
+  sugestao: SugestaoDaIa.nullable(),
+  leitura: AnaliseDaExigenciaPelaIa.nullable(),
+  motivo: z.string().nullable(),
+  aviso: z.string().nullable(),
+})
+export type SugestaoDaExigencia = z.infer<typeof SugestaoDaExigencia>
 
 /** GET /api/casos/:id/exigencia-juiz (GGVP-79 CA5; GGVP-83 CA2, CA3, CA10). */
 export const ExigenciaDoJuiz = z.object({
@@ -327,16 +363,20 @@ const ItemDoDespacho = z
   .refine((i) => !i.temPrazo || validarData(i.prazo ?? ''), { message: 'Informe a data de entrega (dd/mm/aaaa)', path: ['prazo'] })
   .transform((i) => ({ setor: i.setor, descricao: i.descricao, prazo: i.temPrazo ? (dataParaIso(i.prazo) as string) : null }))
 
+/** Épico IA (GGVP-54 CA4): o despacho que partiu da análise da IA guarda a chamada à parte do que a Sênior decidiu. */
+const ChamadaIaOpcional = z.uuid().optional()
+
 /** POST /api/casos/:id/despacho (GGVP-54 CA2, CA3, CA5, CA6; G4): "nada falta", ou os setores acionados e a perícia. */
 export const Despachar = z.discriminatedUnion(
   'decisao',
   [
-    z.object({ decisao: z.literal('nada_falta') }),
+    z.object({ decisao: z.literal('nada_falta'), chamadaIaId: ChamadaIaOpcional }),
     z
       .object({
         decisao: z.literal('acionar'),
         itens: z.array(ItemDoDespacho).default([]),
         tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+        chamadaIaId: ChamadaIaOpcional,
       })
       .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Marque ao menos um setor ou a perícia', path: ['itens'] })
       // CA2, CA6: cada setor recebe a própria tarefa, uma só (ajuste do Mateus, 06/10).
@@ -345,6 +385,25 @@ export const Despachar = z.discriminatedUnion(
   { error: 'Escolha "Nada falta" ou o que falta' },
 )
 export type Despachar = z.input<typeof Despachar>
+
+/** Épico IA (GGVP-54 CA1): o que a IA devolve, em JSON. "nada falta" sem itens; senão, o que cada setor deve obter. */
+export const AnaliseDoIndeferimentoPelaIa = z.object({
+  analise: z.string().trim().min(1),
+  nadaFalta: z.boolean(),
+  itens: z.array(z.object({ setor: z.enum(SETORES_DO_DESPACHO), descricao: z.string().trim().min(1) })).default([]),
+  pericias: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+})
+export type AnaliseDoIndeferimentoPelaIa = z.infer<typeof AnaliseDoIndeferimentoPelaIa>
+
+/** POST /api/casos/:id/despacho/analise. Sem sugestão (sem chave, falha, fora do formato): `leitura` nula e o motivo. */
+export const AnaliseDoDespacho = z.object({
+  sugestao: SugestaoDaIa.nullable(),
+  leitura: AnaliseDoIndeferimentoPelaIa.nullable(),
+  motivo: z.string().nullable(),
+  /** GGVP-45 CA2: o acervo não tinha nada parecido. */
+  aviso: z.string().nullable(),
+})
+export type AnaliseDoDespacho = z.infer<typeof AnaliseDoDespacho>
 
 /** GET /api/casos/:id/despacho (GGVP-54 CA1, CA9; GGVP-58 CA3, CA11): o histórico do caso, o despacho e o status dos setores. */
 export const Despacho = z.object({
@@ -400,8 +459,20 @@ export const PedirPeticao = z.object({
   opcoes: OpcoesDoPedido.default({ tutelaUrgencia: false, precedentes: false, anexarCitados: true }),
   citados: z.array(Citado).default([]),
   texto: z.string({ error: 'Escreva ou cole o texto da petição (versão 1)' }).trim().min(1, 'Escreva ou cole o texto da petição (versão 1)'),
+  /** Épico IA: a versão 1 partiu da minuta da IA (a chamada fica no histórico e a versão, marcada). */
+  chamadaIaId: z.uuid().optional(),
 })
 export type PedirPeticao = z.input<typeof PedirPeticao>
+
+/** POST /api/casos/:id/peticao/minuta (épico IA): o que a advogada já escolheu; a IA escreve a versão 1, sem gravar nada. */
+export const PedirMinuta = PedirPeticao.pick({ instrucoes: true, opcoes: true, citados: true }).extend({
+  /** Sugestão pronta (07/10): "Escrever de novo com a IA" pede outra minuta mesmo com o mesmo pedido. */
+  refazer: z.boolean().optional(),
+})
+export type PedirMinuta = z.input<typeof PedirMinuta>
+/** A minuta como sugestão (com as fontes), ou nula com o motivo; `aviso`: "sem referência na casa" (GGVP-45 CA2). */
+export const MinutaDaIa = z.object({ sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable(), aviso: z.string().nullable() })
+export type MinutaDaIa = z.infer<typeof MinutaDaIa>
 
 /** GET /api/casos/:id/peticao (GGVP-63; a conferência e o protocolo entram com a GGVP-67 e a GGVP-71). */
 export const PeticaoInicial = z.object({
@@ -463,8 +534,16 @@ export type PeticaoInicial = z.infer<typeof PeticaoInicial>
 export const NovaVersao = z.object({
   texto: z.string({ error: 'Escreva o texto da nova versão' }).trim().min(1, 'Escreva o texto da nova versão'),
   oQueMudou: z.string({ error: 'Escreva o que mudou nesta versão' }).trim().min(1, 'Escreva o que mudou nesta versão'),
+  /** Épico IA (GGVP-67 CA1): a versão partiu da sugestão da IA; sai marcada "versão da IA". */
+  chamadaIaId: z.uuid().optional(),
 })
 export type NovaVersao = z.infer<typeof NovaVersao>
+
+/** POST /api/casos/:id/peticao/versoes/sugestao (GGVP-67 CA1, CA5): "Não está boa", com o que mudar. Responde `MinutaDaIa`. */
+export const PedirOutraVersao = z.object({
+  oQueMudar: z.string({ error: 'Escreva o que mudar' }).trim().min(1, 'Escreva o que mudar'),
+})
+export type PedirOutraVersao = z.infer<typeof PedirOutraVersao>
 
 /** POST /api/casos/:id/peticao/versoes/:n/aprovacao (GGVP-67 CA2, CA5, CA9; G6, G18): "Aprovar" só com as três marcações. */
 export const AprovarPeticao = z.object({
