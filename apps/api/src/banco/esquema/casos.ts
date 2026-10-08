@@ -42,6 +42,21 @@ export const caso = pgTable(
   ],
 ).enableRLS()
 
+/**
+ * O contrato do caso da Recepção (GGVP-65 em diante; GGVP-125, bloco 4a), no formato das telas: o kit, o preenchimento, a
+ * assinatura, a conferência e a cópia, com a etapa do processo que as telas mostram. Um por caso.
+ */
+export const contratoRecepcao = pgTable('contrato_recepcao', {
+  casoId: uuid('caso_id')
+    .primaryKey()
+    .references(() => caso.id),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  dados: jsonb('dados').notNull(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
 export const TIPOS_IDENTIFICADOR = ['nb', 'protocolo_inss', 'cnj'] as const
 
 /** Números do caso, só dígitos, com histórico: o caso aparece pelo NB ou protocolo no INSS e pelo CNJ na Justiça (GGVP-108 CA3). */

@@ -222,3 +222,65 @@ test('a advogada pede a segunda ficha; a Atendimento salva do papel; a seção m
   expect(await advogada.evaluate(() => JSON.stringify(sessionStorage))).not.toContain(MEDICO)
   await juridico.close()
 })
+
+// GGVP-125, bloco 4a · o "fechou" vira caso no banco do portal: outra sessão recebe "Preparar contrato".
+test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra sessão recebe "Preparar contrato"', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  await page.goto('/clientes/novo')
+  await page.getByLabel('Nome completo *').fill('Lia Fechou Teste')
+  await page.getByLabel('Idade *').fill('47')
+  await page.getByLabel('Telefone / WhatsApp *').fill('11922221100')
+  await page.getByLabel('O que a pessoa pretende *').fill('Afastada do trabalho, sem receber.')
+  await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
+  // O primeiro dia já tem os quatro horários com entrevistas dos outros testes: o segundo dia oferecido.
+  await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').nth(1).click()
+  await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
+  await page.getByRole('button', { name: /^Marcar/ }).click()
+  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Fechou Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  const { fichaId, entrevista } = await page.evaluate(() => {
+    const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
+      (x) => x.nome === 'Lia Fechou Teste',
+    )!
+    return { fichaId: f.id, entrevista: f.agendamentos[0].id }
+  })
+
+  const origem = new URL(page.url()).origin
+  const juridico = await browser.newContext({ baseURL: origem })
+  const advogada = await juridico.newPage()
+  await advogada.clock.install()
+  await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
+  await advogada.goto(`/entrevista/${entrevista}/gravacao`)
+  await advogada.getByRole('button', { name: 'Gravar' }).click()
+  await advogada.getByRole('checkbox', { name: 'Avisei o cliente que a conversa será gravada' }).check()
+  await advogada.getByRole('button', { name: 'Começar a gravar' }).click()
+  // O relógio só conta depois que o servidor abriu a gravação: sem esperar, a conversa sai vazia e a IA não sugere nada.
+  await expect(advogada.getByText(/● Gravando/)).toBeVisible()
+  await advogada.clock.runFor(70_000)
+  await advogada.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
+  await expect(advogada.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+  await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await advogada.getByRole('radio', { name: 'Aceitar: Auxílio por Incapacidade Temporária' }).click()
+  await advogada.getByRole('checkbox', { name: 'Conferi a recomendação com a entrevista' }).check()
+  await advogada.getByRole('button', { name: 'Confirmar benefício' }).click()
+  await expect(advogada.getByRole('heading', { name: '✓ Benefício definido: Auxílio por Incapacidade Temporária' })).toBeVisible()
+  await juridico.close()
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Lia Fechou Teste · Registrar fechamento' }).click()
+  await page.getByRole('radio', { name: 'Sim, fechou' }).click()
+  await page.getByRole('button', { name: 'Registrar fechamento' }).click()
+  await expect(page.getByText('✓ Fechou com o escritório: Lia é cliente')).toBeVisible()
+
+  const ficha = await (await page.request.get(`/api/fichas/${fichaId}`)).json()
+  expect(ficha).toMatchObject({ situacao: 'cliente', processos: [{ beneficio: 'incapacidade-temporaria', etapa: 'Contrato · preparar' }] })
+  expect(ficha.processos[0].id).toMatch(/^[0-9a-f-]{36}$/)
+
+  // Outro computador do Atendimento: a tarefa do contrato chega pela cópia das telas.
+  const atendimento = await browser.newContext({ baseURL: origem })
+  const outra = await atendimento.newPage()
+  await entrarPelaApi(outra)
+  await outra.goto('/')
+  await expect(outra.getByRole('link', { name: 'Lia Fechou Teste · Preparar contrato' })).toBeVisible()
+  await atendimento.close()
+})

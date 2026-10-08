@@ -18,7 +18,7 @@ import {
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { compromissoInterno, fichaRecepcao } from '../banco/esquema.ts'
+import { compromissoInterno, contratoRecepcao, fichaRecepcao } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type {
@@ -36,7 +36,7 @@ import { DURACOES, HORARIOS, equipeDaEntrevista, estadoDoEvento, horarioOcupado,
 import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
 import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
@@ -151,6 +151,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     tarefas: await tarefas(),
     internos: await internos(),
     gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
+    contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
   }))
 
   // GGVP-16 CA4 e GGVP-17 CA1, CA3: o balcão manda ao setor, com a ficha e o agendamento; quem veio entregar documento

@@ -133,3 +133,16 @@ A leitura da segunda ficha em papel (simulada até o scanner e a IA entrarem) e 
 - **Dado** a segunda ficha salva com a seção médica
 - **Quando** é salva de novo no tablet com os campos médicos em branco
 - **Então** a seção médica que estava salva continua
+
+### Requirement: Bloco 4a · O "fechou" vira caso no banco do portal, com o contrato
+Quando o cliente fecha (o "Fechou com o escritório?" ou a nova demanda), o servidor SHALL criar o caso em `caso` (fase atendimento, com o benefício do catálogo do portal) e o contrato do caso com o kit do benefício, e o lead SHALL virar cliente na ficha e na pessoa do portal. As condições do kit e a geração do contrato pelo modelo SHALL gravar no servidor, com as regras do Pedro (conferências, correções no histórico, campo obrigatório vazio e sobra do modelo não seguem, CPF de outra ficha não grava). Os processos e os contratos da Recepção SHALL ir à cópia das telas.
+
+#### Scenario: O caso nasce no fechamento
+- **Dado** um lead do balcão com o benefício definido pela advogada
+- **Quando** a Atendimento registra que ele fechou
+- **Então** o caso existe no banco do portal, em atendimento, a pessoa é cliente, e a tarefa "Preparar contrato" aparece na Central de qualquer computador
+
+#### Scenario: Contrato gerado no servidor
+- **Dado** o contrato do caso para preparar
+- **Quando** a Atendimento confere e gera o contrato pelo modelo
+- **Então** a versão gerada fica no contrato do banco, e o caso segue para colher a assinatura

@@ -252,3 +252,22 @@ export type RenovacaoDaSenha = z.infer<typeof RenovacaoDaSenha>
 /** PUT /api/fichas/:id/segunda-ficha: as respostas, campo a campo, e de onde vieram. */
 export const EnvioDaSegundaFicha = z.object({ respostas: z.record(z.string().max(40), Texto(4000)), origem: z.enum(['papel', 'tablet']) })
 export type EnvioDaSegundaFicha = z.infer<typeof EnvioDaSegundaFicha>
+
+// Bloco 4a (GGVP-125): fechar e preparar o contrato (GGVP-65, GGVP-69). O kit, os campos do modelo e as conferências são
+// os das telas, no servidor; aqui só a forma.
+/** POST /api/fichas/:id/processos: o cliente fechou o benefício; nasce o caso, com o contrato e o kit. */
+export const FechamentoDoCaso = z.object({ beneficio: Texto(100) })
+export type FechamentoDoCaso = z.infer<typeof FechamentoDoCaso>
+
+/** PUT /api/processos/:id/contrato/condicoes: o que o caso diz e muda o kit do LOAS (GGVP-65 CA2, CA8). */
+export const CondicoesDoKit = z.object({ representado: z.boolean(), moradia: z.boolean(), uniaoEstavel: z.boolean(), separacaoDeFato: z.boolean() })
+export type CondicoesDoKit = z.infer<typeof CondicoesDoKit>
+
+/** POST /api/processos/:id/contrato/gerar: a decisão, o que corrigir, as conferências e as correções (GGVP-69). */
+export const EnvioDoContrato = z.object({
+  aprovados: z.boolean(),
+  oQueCorrigir: Opcional(500),
+  conferencias: z.record(z.string().max(40), z.boolean()),
+  correcoes: z.record(z.string().max(40), Texto(300)),
+})
+export type EnvioDoContrato = z.infer<typeof EnvioDoContrato>

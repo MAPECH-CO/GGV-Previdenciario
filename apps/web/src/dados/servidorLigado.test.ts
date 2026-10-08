@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista } from './agenda.ts'
 import { definirBeneficio } from './beneficio.ts'
 import { guardarSenhaNoCofre } from './cofre.ts'
+import { fecharContrato, gerarContrato, tarefasDoContrato, type Contrato } from './contrato.ts'
 import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
@@ -12,6 +13,7 @@ import { registrarFechamento } from './fechamento.ts'
 import { obterPreparacao, tarefasDaAdvogada } from './preparacao.ts'
 import { lerSegundaFichaEmPapel } from './segundaFicha.ts'
 import { respostasVazias } from '../regras/segundaFicha.ts'
+import { CONFERENCIAS, type IdDaConferencia } from '../regras/contrato.ts'
 import { obterGravacoes } from './transcricao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { buscarNoBalcao, configurarExemplo, criarFicha, gravar, ler, ligarPasta, obterFicha, salvarFicha, sincronizarRecepcao, zerarExemplo } from './servidor.ts'
@@ -195,7 +197,7 @@ const MARCACAO: Marcacao = { tipo: 'presencial', data: '2026-10-06', hora: '14:0
 
 describe('GGVP-125 · bloco 2: agenda e confirmação no servidor, em modo misto', () => {
   it('ao abrir a tela, a cópia recebe fichas, tarefas e compromissos; a tarefa que sumiu lá foi concluída', async () => {
-    let doServidor = { fichas: [doBanco()], tarefas: [tarefa('preparar-x', 'Preparar entrevista', 'Jurídico')], internos: [{ id: OUTRO, titulo: 'Gravação', data: '2026-10-06', hora: '10:00', duracao: 60, responsavel: 'atendimento', estado: 'marcado' as const }], gravacoes: [] }
+    let doServidor = { fichas: [doBanco()], tarefas: [tarefa('preparar-x', 'Preparar entrevista', 'Jurídico')], internos: [{ id: OUTRO, titulo: 'Gravação', data: '2026-10-06', hora: '10:00', duracao: 60, responsavel: 'atendimento', estado: 'marcado' as const }], gravacoes: [], contratos: [] }
     ligarServidor({ 'GET /api/recepcao': () => doServidor })
     await sincronizarRecepcao()
     expect(ler().fichas.some((f) => f.id === ID)).toBe(true)
@@ -217,7 +219,7 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor, em modo misto
 
   it('três vias na agenda: o compromisso que só existe aqui fica; o que mudou lá vem de lá', async () => {
     let ficha = doBanco({ agendamentos: [entrevista(`${ID}-ag-1`)] })
-    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [ficha], tarefas: [], internos: [], gravacoes: [] }) })
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [ficha], tarefas: [], internos: [], gravacoes: [], contratos: [] }) })
     await sincronizarRecepcao()
     // Aqui, uma tela ainda não ligada marca a retirada da cópia do contrato.
     mexerAqui((f) => f.agendamentos.push(entrevista(`${ID}-ag-local`, { oQue: 'Retirada da cópia do contrato' })))
@@ -302,7 +304,7 @@ const gravacao = (id: string, extra: Partial<Gravacao> = {}): Gravacao => ({
 describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor, em modo misto', () => {
   it('a cópia recebe as gravações que o perfil pode ver; a que não veio mais sai daqui', async () => {
     let gravacoes = [gravacao(`gravacao-${OUTRO}`)]
-    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [doBanco()], tarefas: [], internos: [], gravacoes }) })
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [doBanco()], tarefas: [], internos: [], gravacoes, contratos: [] }) })
     await sincronizarRecepcao()
     expect((await obterGravacoes(ID)).map((g) => g.id)).toEqual([`gravacao-${OUTRO}`])
     // Outro perfil na mesma aba (sem dado de saúde): a entrevista do Jurídico não fica na cópia.
@@ -413,7 +415,7 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     const a = entrevista(`${ID}-ag-1`)
     const segundaFicha = { data: '2026-10-05', origem: 'papel' as const, respostas: { ...respostasVazias(), empresa: 'Exemplo Indústria Ltda', historico: 'Prendeu a mão.' }, emBranco: [] }
     const fetch = ligarServidor({
-      'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [a], segundaFicha })], tarefas: [], internos: [], gravacoes: [] }),
+      'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [a], segundaFicha })], tarefas: [], internos: [], gravacoes: [], contratos: [] }),
       [`GET /api/fichas/${ID}/segunda-ficha`]: () => ({ medicos: { doencas: MEDICO }, lida: false }),
     })
     await sincronizarRecepcao()
@@ -421,5 +423,48 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     expect(preparacao?.ficha.segundaFicha?.respostas).toMatchObject({ empresa: 'Exemplo Indústria Ltda', doencas: MEDICO })
     expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/fichas/${ID}/segunda-ficha`)
     expect(JSON.stringify(ler())).not.toContain(MEDICO)
+  })
+})
+
+describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', () => {
+  const CASO = '9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b'
+  const condicoes = { representado: false, moradia: false, uniaoEstavel: false, separacaoDeFato: false }
+  const contrato = (extra: Partial<Contrato> = {}): Contrato => ({ processoId: CASO, fichaId: ID, etapa: 'preparar', condicoes, kit: null, abertoEm: '2026-10-05T17:40:00.000Z', ...extra })
+  const processo = { id: CASO, beneficio: 'loas-idoso', etapa: 'Contrato · preparar', proximaAcao: 'preparar o contrato', prazo: 'hoje' }
+  const cliente = (extra: Partial<Ficha> = {}) =>
+    doBanco({ situacao: 'cliente', desde: '10/2026', processos: [processo], historico: [CRIOU, naHora('2026-10-05T17:40:00.000Z', 'Fechou LOAS')], ...extra })
+
+  it('fechou numa ficha do servidor: o caso nasce lá; a cópia recebe o cliente, o processo e o contrato, sem perder os da semente', async () => {
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/processos`]: () => ({ ficha: cliente(), processo, contrato: contrato() }),
+    })
+    await criarFicha(ivone)
+    const r = await fecharContrato(ID, 'loas-idoso')
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ beneficio: 'loas-idoso' })
+    expect(r.processo.id).toBe(CASO)
+    expect(ler().fichas.find((f) => f.id === ID)).toMatchObject({ situacao: 'cliente', processos: [{ id: CASO, etapa: 'Contrato · preparar' }] })
+    const processos = ler().contratos!.map((c) => c.processoId)
+    expect(processos).toContain(CASO)
+    expect(processos).toContain('cleide-exemplo-1')
+    expect(tarefasDoContrato().map((t) => [t.cliente?.nome, t.acao])).toContainEqual(['Ivone Teste', 'Preparar contrato'])
+  })
+
+  it('gerar o contrato de um caso do servidor: o servidor gera; a cópia recebe o contrato e a ficha', async () => {
+    const gerado = contrato({ etapa: 'assinatura', documento: { versao: 1, geradoEm: '2026-10-05T18:00:00.000Z', campos: [], textos: [] } })
+    ligarServidor({
+      'GET /api/recepcao': () => ({ fichas: [cliente()], tarefas: [], internos: [], gravacoes: [], contratos: [contrato()] }),
+      [`POST /api/processos/${CASO}/contrato/gerar`]: () => ({
+        resultado: 'gerado',
+        contrato: gerado,
+        ficha: cliente({ processos: [{ ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }] }),
+      }),
+    })
+    await sincronizarRecepcao()
+    const conferencias = Object.fromEntries(CONFERENCIAS.map((c) => [c.id, true])) as Record<IdDaConferencia, boolean>
+    expect(await gerarContrato(CASO, { aprovados: true, conferencias, correcoes: {} })).toEqual({ resultado: 'gerado', contrato: gerado })
+    expect(ler().contratos!.find((c) => c.processoId === CASO)?.etapa).toBe('assinatura')
+    expect(ler().fichas.find((f) => f.id === ID)?.processos[0].etapa).toBe('Contrato · assinatura')
   })
 })

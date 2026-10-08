@@ -156,3 +156,13 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.27 Telas: ler e salvar a segunda ficha das fichas do servidor; a preparação da entrevista busca a seção médica ao abrir, sem guardar no navegador; testes.
 - [x] 125.28 Playwright: a Atendimento salva a segunda ficha de um lead do balcão; a advogada vê a seção médica na preparação; a cópia da Atendimento não traz os campos médicos.
 - [x] 125.29 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 4a · Fechar e preparar o contrato
+
+- [x] 125.30 Telas do Pedro: os tipos do contrato e as funções puras (campos do caso, textos dos modelos) vão para `regras/contratoDoCaso.ts`, reexportados por `dados/contrato.ts`, para o servidor não carregar o banco de exemplo.
+- [x] 125.31 Banco: `contrato_recepcao` (o contrato do caso, no formato das telas, com a etapa do processo) e a migração.
+- [x] 125.32 Contratos: fechar (benefício), condições do kit e geração do contrato.
+- [x] 125.33 Servidor: `POST /api/fichas/:id/processos` (cria o caso em `caso` e o contrato; o lead vira cliente), `PUT /api/processos/:id/contrato/condicoes`, `POST /api/processos/:id/contrato/gerar`; os processos das fichas com a etapa do contrato; os contratos na cópia das telas; testes.
+- [x] 125.34 Telas: fechar, condições e gerar chamando a API para as fichas do servidor; processos e contratos na cópia em três vias; testes.
+- [x] 125.35 Playwright: do lead do balcão com o benefício definido ao "fechou", ao "Preparar contrato" em outra sessão e ao contrato gerado.
+- [ ] 125.36 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

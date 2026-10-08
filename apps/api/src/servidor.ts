@@ -37,6 +37,7 @@ import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
 import { registrarRotasRecepcaoDecisoes } from './rotas/recepcao-decisoes.ts'
 import { registrarRotasRecepcaoSegundaFicha } from './rotas/recepcao-segunda-ficha.ts'
+import { registrarRotasRecepcaoContrato } from './rotas/recepcao-contrato.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -119,6 +120,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcaoEntrevista(app, { banco, agora })
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
     registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
+    registrarRotasRecepcaoContrato(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

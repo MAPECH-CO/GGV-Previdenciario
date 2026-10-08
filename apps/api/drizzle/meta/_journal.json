@@ -127,6 +127,13 @@
       "when": 1791484172022,
       "tag": "0017_segunda_ficha_medica",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791486710005,
+      "tag": "0018_contrato_da_recepcao",
+      "breakpoints": true
     }
   ]
 }
