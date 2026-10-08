@@ -37,3 +37,16 @@
   color: var(--cor-texto-suave);
   font-size: var(--fonte-14);
 }
+
+/* GGVP-135: o atalho do estado vazio para a busca (GGVP-78, CA4). */
+.atalhoDaBusca {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-8);
+  background: transparent;
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  cursor: pointer;
+}
