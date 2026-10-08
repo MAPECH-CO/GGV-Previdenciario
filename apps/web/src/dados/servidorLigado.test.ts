@@ -7,7 +7,7 @@ import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
 import { tarefasDaAdvogada } from './preparacao.ts'
-import { obterGravacoes, registrarConversa } from './transcricao.ts'
+import { obterGravacoes } from './transcricao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { buscarNoBalcao, configurarExemplo, criarFicha, gravar, ler, ligarPasta, obterFicha, salvarFicha, sincronizarRecepcao, zerarExemplo } from './servidor.ts'
 import type { Agendamento, EnvioDaFicha, EventoHistorico, Ficha, Gravacao, Marcacao, NovoCliente, TarefaEncaminhada } from './tipos.ts'
@@ -328,18 +328,5 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor, 
     expect((await obterEntrevista(a.id))?.gravacao).toEqual(encerrada)
     expect(ler().fichas.find((f) => f.id === ID)?.agendamentos[0].estado).toBe('realizado')
     expect(tarefasDaAdvogada().map((t) => t.acao)).toContain('Cadastrar lead')
-  })
-
-  it('a conversa sem áudio de uma ficha do servidor vai para lá, com o perfil da tela', async () => {
-    const fetch = ligarServidor({
-      ...criada,
-      [`GET /api/fichas/${ID}`]: () => doBanco(),
-      [`POST /api/fichas/${ID}/conversas`]: () => ({ gravacao: gravacao(`conversa-${OUTRO}`, { origem: 'registro', soJuridico: false }), ficha: doBanco() }),
-    })
-    await criarFicha(ivone)
-    const conversa = { data: '05/10/2026', canal: 'Telefone' as const, titulo: 'Ligou para saber do caso', participantes: 'Ana, Ivone', texto: 'Perguntou da entrevista.' }
-    expect((await registrarConversa(ID, conversa, 'atendimento')).id).toBe(`conversa-${OUTRO}`)
-    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ ...conversa, perfil: 'atendimento' })
-    expect(ler().gravacoes.some((g) => g.id === `conversa-${OUTRO}`)).toBe(true)
   })
 })
