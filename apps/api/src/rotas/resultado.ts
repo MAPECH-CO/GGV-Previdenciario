@@ -2,9 +2,11 @@
 // interna, e decide quem fala (Lucas, 06/10); quem fala registra cada contato. Sem IA até 09/10: o texto é do Jurídico.
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AprovarResumo, RegistrarContato, ResultadoParaExplicar, pode, type Erro } from '@ggv/contratos'
+import { AprovarResumo, ROTULO_BENEFICIO, RegistrarContato, ResultadoParaExplicar, SugestaoDoResumo, pode, type Beneficio, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { atendimento, caso, decisao, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { atendimento, caso, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir } from '../sessao/rotas.ts'
 
 export const TITULO_RESUMO = 'Aprovar o resumo para o cliente'
@@ -15,7 +17,7 @@ export const MSG_OUTRA_PESSOA = 'Quem registra o contato é quem ficou com a exp
 /** As ações do histórico que registram um contato desta explicação; cada uma guarda o atendimento e a tarefa. */
 const CONTATO_REGISTRADO = ['resultado_explicado', 'resultado_sem_contato']
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -26,8 +28,9 @@ function ehDeQuemFala(t: { perfilDono: string | null; responsavelId: string | nu
 }
 
 /**
- * Abre o caminho do resultado perdido: "Aprovar o resumo para o cliente" para a advogada, uma vez. Quem chama: o
- * "Não recorrer" (GGVP-100) e o estudo de caso (GGVP-19), quando existirem; até lá, a semente.
+ * Abre o caminho do resultado perdido: "Aprovar o resumo para o cliente" para a advogada, se não houver uma aberta.
+ * Quem chama: o estudo de caso (GGVP-19, só na primeira vez do caso) e, quando existirem, o "Não recorrer"
+ * (GGVP-100); hoje também a semente.
  */
 export async function abrirExplicacaoDoResultado(tx: Banco | Tx, casoId: string) {
   const [aberta] = await tx
@@ -37,7 +40,7 @@ export async function abrirExplicacaoDoResultado(tx: Banco | Tx, casoId: string)
   if (!aberta) await tx.insert(tarefa).values({ casoId, passo: 'D3b.06r', titulo: TITULO_RESUMO, perfilDono: 'advogada' })
 }
 
-export function registrarRotasResultado(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasResultado(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
 
   const aberta = async (casoId: string, passo: string) =>
     (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, passo), isNull(tarefa.concluidaEm))).limit(1))[0] ?? null
@@ -93,6 +96,40 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     })
   })
 
+  // Épico IA (CA3, Lucas 06/10): a IA escreve um rascunho do resumo, com o benefício, o desfecho e a última decisão de
+  // mérito; não grava nada. O Jurídico completa e aprova pela rota do resumo. Sugestão pronta (07/10): a mesma função
+  // serve à rota e ao preparo em segundo plano.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/resultado/sugestao', { preHandler: exigir(banco, 'resultado.aprovar_resumo', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    if (!(await aberta(casoId, 'D3b.06r'))) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
+    return (await rascunho(casoId, pedido.usuario!.id)) ?? negar(resposta, 404, 'Caso não encontrado.')
+  })
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D3b.06r'),
+    (casoId) => rascunho(casoId, null, { soPreparar: true }),
+  )
+
+  async function rascunho(casoId: string, quem: string | null, como: ComoSugerir = {}) {
+    const [c] = await banco.select({ nome: pessoa.nome, beneficio: caso.beneficio, desfecho: caso.desfecho }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
+    if (!c) return null
+    const [decisaoDeMerito] = await banco
+      .select({ id: publicacao.id, texto: publicacao.texto })
+      .from(publicacao)
+      .where(and(eq(publicacao.casoId, casoId), eq(publicacao.classe, 'merito')))
+      .orderBy(desc(publicacao.disponibilizadaEm))
+      .limit(1)
+    const conteudo = [
+      `Cliente: ${c.nome}`,
+      `Benefício pedido: ${c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não informado'}`,
+      `Resultado: ${c.desfecho ?? 'perdemos'}`,
+      // Sem o texto da decisão, a IA não pode explicar o porquê (ela inventava um motivo); a advogada completa.
+      `Texto da decisão: ${decisaoDeMerito?.texto ?? 'não está no sistema; o motivo fica para a advogada completar'}`,
+    ].join('\n')
+    const fontes = decisaoDeMerito ? [{ tipo: 'publicacao' as const, referencia: `publicacao:${decisaoDeMerito.id}` }] : [{ tipo: 'caso' as const, referencia: `caso:${casoId}` }]
+    const s = await ia.sugerir('resumo_resultado', { casoId, quem, conteudo, fontes }, como)
+    return SugestaoDoResumo.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: escreva o resumo.' })
+  }
+
   // CA3, CA5: o Jurídico aprova o resumo (decisão de pessoa) e escolhe quem fala; nasce "Explicar resultado" para ele.
   app.post<{ Params: { id: string } }>('/api/casos/:id/resultado/resumo', { preHandler: exigir(banco, 'resultado.aprovar_resumo', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
@@ -101,7 +138,7 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     const pendente = await aberta(casoId, 'D3b.06r')
     if (!pendente) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
     const quem = pedido.usuario!.id
-    const { texto, quemFala } = entrada.data
+    const { texto, quemFala, chamadaIaId } = entrada.data
     const feito = await banco.transaction(async (tx) => {
       // A condição vai no próprio update: duas aprovações ao mesmo tempo, só a primeira fecha a tarefa e segue.
       const [fechada] = await tx
@@ -116,6 +153,8 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
         tipo: 'resumo_cliente',
         resultado: quemFala,
         justificativa: texto,
+        // Épico IA: o rascunho da IA fica à parte do que o Jurídico aprovou.
+        sugestaoIa: chamadaIaId ? { chamadaId: chamadaIaId } : null,
         decididoPor: quem,
         perfil: pedido.perfilAtivo!,
         decididoEm: agora(),

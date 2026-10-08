@@ -1,6 +1,7 @@
 // Contratos da Via administrativa no INSS (GGVP-8). Tela e servidor validam com o mesmo schema.
 import { dataParaIso, somenteDigitos, validarData } from '@ggv/campos'
 import { z } from 'zod'
+import { SugestaoDaIa } from './ia.ts'
 
 /** Linha da Central do perfil (GET /api/tarefas). Título e detalhe nunca levam CID nem diagnóstico. */
 export const TarefaDaCentral = z.object({
@@ -198,3 +199,76 @@ export type VigiliaDoCaso = z.infer<typeof VigiliaDoCaso>
 /** POST /api/casos/:id/encerrar (GGVP-48): só a Sênior, com o motivo (cliente desistiu, sem chance). */
 export const EncerrarCaso = z.object({ motivo: z.string().trim().min(1, 'Escreva por que o caso é encerrado') })
 export type EncerrarCaso = z.infer<typeof EncerrarCaso>
+
+/**
+ * POST /api/casos/:id/chance (GGVP-131, recorte da conferência da Sênior). O número é do código, com os casos e a data
+ * da base (G22); sem caso decidido, `porcentagem` nulo. Os fatores são sugestão da IA: ela explica, não calcula.
+ */
+export const ChanceDeExito = z.object({
+  casos: z.number().int(),
+  favoraveis: z.number().int(),
+  porcentagem: z.number().int().nullable(),
+  baseEm: z.string().nullable(),
+  regra: z.string(),
+  fatores: SugestaoDaIa.nullable(),
+  motivoIa: z.string().nullable(),
+})
+export type ChanceDeExito = z.infer<typeof ChanceDeExito>
+
+const Itens = z.array(z.string().trim().min(1))
+
+/**
+ * GGVP-38: a recomendação da IA antes de marcar a perícia. Quesitos e assistente técnico só na perícia do juiz; "o que
+ * levar" vai para a orientação do cliente, sem CID nem diagnóstico.
+ */
+export const RecomendacaoDaIa = z.object({
+  oQueLevar: Itens.min(1),
+  pontosFortes: Itens.default([]),
+  pontosFracos: Itens.default([]),
+  quesitos: Itens.default([]),
+  assistenteTecnico: z.object({ indicar: z.boolean(), porque: z.string().trim().min(1) }).nullable().default(null),
+})
+export type RecomendacaoDaIa = z.infer<typeof RecomendacaoDaIa>
+
+/** POST /api/pericias/:id/recomendacao/sugestao: a recomendação pronta, ou nula com o motivo. */
+export const RecomendacaoDaPericia = z.object({ sugestao: SugestaoDaIa.nullable(), recomendacao: RecomendacaoDaIa.nullable(), motivo: z.string().nullable() })
+export type RecomendacaoDaPericia = z.infer<typeof RecomendacaoDaPericia>
+
+/** POST /api/pericias/:id/recomendacao (GGVP-38 CA4): o que a advogada aprovou, editado ou não. */
+export const AprovarRecomendacao = z.object({
+  oQueLevar: z.array(z.string().trim().min(1)).min(1, 'Deixe ao menos um item em "O que levar"'),
+  quesitos: z.array(z.string().trim().min(1)).default([]),
+  assistenteTecnico: z.boolean().nullable().default(null),
+  chamadaIaId: z.uuid().optional(),
+})
+export type AprovarRecomendacao = z.input<typeof AprovarRecomendacao>
+
+/** GET /api/casos/:id/pericias (GGVP-38): as perícias do caso e a recomendação aprovada de cada uma. */
+export const PericiasDoCaso = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  pericias: z.array(
+    z.object({
+      id: z.uuid(),
+      tipo: z.enum(TIPOS_DE_PERICIA),
+      /** Pedida pelo juiz: traz quesitos e assistente técnico (CA3). */
+      judicial: z.boolean(),
+      origem: z.string(),
+      resultado: z.string().nullable(),
+      aprovada: z
+        .object({ oQueLevar: z.array(z.string()), quesitos: z.array(z.string()), assistenteTecnico: z.boolean().nullable(), por: z.string(), em: z.string() })
+        .nullable(),
+    }),
+  ),
+  podeAprovar: z.boolean(),
+})
+export type PericiasDoCaso = z.infer<typeof PericiasDoCaso>
+
+/** O que fica gravado na aprovação (GGVP-38 CA4), com a perícia: a decisão é por caso, a recomendação é por perícia. */
+export const RecomendacaoAprovada = z.object({
+  periciaId: z.uuid(),
+  oQueLevar: z.array(z.string()),
+  quesitos: z.array(z.string()),
+  assistenteTecnico: z.boolean().nullable(),
+})
+export type RecomendacaoAprovada = z.infer<typeof RecomendacaoAprovada>

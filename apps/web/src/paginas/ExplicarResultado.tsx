@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AprovarResumo, CANAIS_DO_CONTATO, ROTULO_CANAL_DO_CONTATO, RegistrarContato, type ResultadoParaExplicar } from '@ggv/contratos'
+import { AprovarResumo, CANAIS_DO_CONTATO, ROTULO_CANAL_DO_CONTATO, RegistrarContato, type ResultadoParaExplicar, type SugestaoDoResumo } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -8,7 +8,8 @@ const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyl
 
 /**
  * Explicar o resultado ao cliente (GGVP-22). O Jurídico escreve e aprova o resumo, sem estratégia interna, e escolhe
- * quem fala (CA3, CA5); quem fala vê o resumo com o nome de quem aprovou e registra cada contato (CA4). Sem IA até 09/10.
+ * quem fala (CA3, CA5); quem fala vê o resumo com o nome de quem aprovou e registra cada contato (CA4). A IA (épico
+ * GGVP-14) só escreve um rascunho, que o Jurídico completa antes de aprovar.
  */
 export function ExplicarResultado({ casoId }: { casoId: string }) {
   const ids = { texto: useId(), canal: useId(), explicado: useId() }
@@ -20,6 +21,7 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
   const [explicado, setExplicado] = useState('')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [ia, setIa] = useState<SugestaoDoResumo | null>(null)
 
   useEffect(() => {
     void chamarApi<ResultadoParaExplicar>(`/casos/${casoId}/resultado`).then((x) => (x.ok ? setR(x.dados) : setErro(x.erro)))
@@ -33,9 +35,22 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
     setVersao((v) => v + 1)
   }
 
+  // Épico IA e sugestão pronta (07/10): o rascunho da IA chega sozinho ao abrir (preparado em segundo plano) e entra na
+  // caixa se ela ainda está vazia; o Jurídico completa e aprova.
+  useEffect(() => {
+    if (!r?.podeAprovar || r.resumo) return
+    void chamarApi<SugestaoDoResumo>(`/casos/${casoId}/resultado/sugestao`, { method: 'POST', corpo: {} }).then((x) => {
+      if (!x.ok) return setIa({ sugestao: null, motivo: x.erro })
+      setIa(x.dados)
+      const s = x.dados.sugestao
+      if (s) setTexto((t) => t || s.texto)
+    })
+  }, [casoId, r?.podeAprovar, r?.resumo])
+
   function aprovar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const entrada = AprovarResumo.safeParse({ texto, quemFala: quemFala || undefined })
+    const chamadaIaId = ia?.sugestao?.chamadaId
+    const entrada = AprovarResumo.safeParse({ texto, quemFala: quemFala || undefined, ...(chamadaIaId && { chamadaIaId }) })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o resumo.')
     void enviar('resumo', entrada.data, entrada.data.quemFala === 'advogada' ? 'Resumo aprovado. A explicação ficou com você.' : 'Resumo aprovado. O Atendimento vai explicar ao cliente.')
   }
@@ -91,6 +106,11 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
         <form className={styles.cartao} onSubmit={aprovar} noValidate>
           <h2 className={styles.cartaoTitulo}>Resumo para o cliente</h2>
           <p className={styles.dica}>Em linguagem simples e sem estratégia interna: é o que o cliente vai ouvir.</p>
+          {!ia && <p className={styles.dica}>A IA está escrevendo o rascunho…</p>}
+          {ia?.motivo && <p className={styles.dica}>{ia.motivo}</p>}
+          {ia?.sugestao && (
+            <span className={`${styles.selo} ${styles.seloAlerta}`}>Rascunho da IA · complete e confira antes de aprovar</span>
+          )}
           <label className={styles.rotulo} htmlFor={ids.texto}>
             O que dizer ao cliente
           </label>

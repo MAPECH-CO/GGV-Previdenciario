@@ -3,16 +3,20 @@
 // origem `juizo`, os itens, a cobrança e a perícia da exigência do INSS.
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AnalisarExigenciaJuiz, DecidirLaco, DecidirVencida, ExigenciaDoJuiz, ItensDoSetor, NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, SubirInformacao, pode, type Erro } from '@ggv/contratos'
+import { AnaliseDaExigenciaPelaIa, AnalisarExigenciaJuiz, DecidirLaco, ROTULO_BENEFICIO, SugestaoDaExigencia, type Beneficio, type FonteDaIa, DecidirVencida, ExigenciaDoJuiz, ItensDoSetor, NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, SubirInformacao, pode, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, peticao, peticaoVersao, prazo, protocoloJudicial, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, lacosDas, lembreteDescrito, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
+import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
+export const MSG_IA_SEM_SUGESTAO = 'A IA não respondeu agora: analise pela sua leitura.'
 export const MSG_EVIDENCIA = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
 export const MSG_ITEM_DE_OUTRO_SETOR = 'Este item é de outro setor.'
 export const MSG_INFORMACAO = 'Escreva a informação que conseguiu com o cliente ou anexe um documento (PDF ou imagem, até 25 MB).'
@@ -35,13 +39,13 @@ const HISTORICO = {
   despacho: { tentativa: 'tentativa_pendencia', naoVai: 'pendencia_nao_vai_conseguir', cumprido: 'pendencia_cumprida', prova: 'prova_pendencia' },
 } as const
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia: Ia; preparo: Preparo }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => new Date(agora.getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
 const br = (iso: string) => iso.split('-').reverse().join('/')
 const SITUACAO = { aberta: 'em_cumprimento', cumprida: 'cumprida', vencida: 'vencida', dilacao_pedida: 'dilacao_pedida' } as const
 
-export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   /** A exigência do juiz do caso: a que espera a análise (tarefa D3a.02 aberta) ou a última distribuída. */
@@ -153,6 +157,44 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
     })
   })
 
+  // Épico IA (GGVP-79 CA3, G5): a IA lê a publicação com o caso e o acervo e sugere "só ciência" ou os itens por setor.
+  // Não grava nada: a sugestão só preenche o formulário, e quem decide é a advogada. Sugestão pronta (07/10): a mesma
+  // função serve à rota e ao preparo em segundo plano.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/exigencia-juiz/sugestao', { preHandler: exigir(banco, 'exigencia_juiz.distribuir', agora) }, async (pedido, resposta) => {
+    return (await sugerirTarefas(pedido.params.id, pedido.usuario!.id)) ?? negar(resposta, 409, MSG_NADA_A_ANALISAR)
+  })
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D3a.02'),
+    (casoId) => sugerirTarefas(casoId, null, { soPreparar: true }),
+  )
+
+  async function sugerirTarefas(casoId: string, quem: string | null, como: ComoSugerir = {}) {
+    const e = await exigenciaDoCaso(casoId)
+    if (!e?.tarefaAnalise) return null
+    const [c] = await banco.select({ beneficio: caso.beneficio }).from(caso).where(eq(caso.id, casoId))
+    const docs = await banco
+      .select({ nome: documento.nomeOriginal, tipo: documento.tipo })
+      .from(documento)
+      .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
+      .orderBy(asc(documento.criadoEm))
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto })
+    const conteudo = [
+      `Benefício: ${c?.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não definido'}`,
+      `Prazo do processo contado pelo sistema: até ${e.prazo.fim}`,
+      `Publicação de ${e.publicacao.disponibilizadaEm}:`,
+      e.publicacao.texto,
+      `Documentos do caso: ${docs.length ? docs.map((d) => `${d.nome} (${d.tipo})`).join('; ') : 'nenhum'}`,
+      ...(acervo.length ? ['Trechos do acervo da casa (outros casos):', ...acervo.map((a) => `- ${a.trecho}`)] : []),
+    ].join('\n')
+    const fontes: FonteDaIa[] = [{ tipo: 'publicacao', referencia: `publicacao:${e.publicacao.id}` }, ...acervo]
+    const aviso = acervo.length ? null : MSG_SEM_REFERENCIA
+    const validar = (texto: string) => AnaliseDaExigenciaPelaIa.safeParse(lerJson(texto)).success
+    const s = await ia.sugerir('analisar_exigencia_juiz', { casoId, quem, conteudo, fontes }, { ...como, validar })
+    if (!s) return SugestaoDaExigencia.parse({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_SUGESTAO, aviso })
+    const leitura = AnaliseDaExigenciaPelaIa.parse(lerJson(s.texto))
+    return SugestaoDaExigencia.parse({ sugestao: { ...s, texto: leitura.resumo }, leitura, motivo: null, aviso })
+  }
+
   // GGVP-79 CA1, CA2, CA6 a CA10, CA13: "só ciência" ou "precisa cumprir", com os itens por setor (G5, G21).
   app.post<{ Params: { id: string } }>('/api/casos/:id/exigencia-juiz', { preHandler: exigir(banco, 'exigencia_juiz.distribuir', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
@@ -175,6 +217,8 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
         tipo: 'exigencia_juiz',
         resultado: d.decisao,
         justificativa: e.publicacao.id,
+        // Épico IA (CA3): a decisão que partiu da sugestão guarda a chamada; a saída da IA fica em `chamada_ia`.
+        sugestaoIa: d.chamadaIaId ? { chamadaId: d.chamadaIaId } : null,
         decididoPor: quem,
         perfil: pedido.perfilAtivo!,
         decididoEm: agora(),

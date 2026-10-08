@@ -22,3 +22,7 @@ const limparCofre = () => void apagarSenhasVencidas(banco, new Date())
 limparCofre()
 setInterval(limparCofre, 24 * 3_600_000)
 await app.listen({ port: Number(process.env.PORTA ?? 3000), host: process.env.HOST ?? '127.0.0.1' })
+// Sugestão pronta (Mateus, 07/10): a IA prepara em segundo plano a sugestão de cada tarefa aberta; ao subir e a cada 5 min.
+const prepararSugestoes = () => void app.prepararSugestoes()
+prepararSugestoes()
+setInterval(prepararSugestoes, 5 * 60_000)

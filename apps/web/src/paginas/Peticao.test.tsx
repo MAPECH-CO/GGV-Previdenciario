@@ -34,11 +34,52 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Pedir a petição (GGVP-63)', () => {
+  it('épico IA · ao abrir, a minuta já está na caixa, escrita com o padrão do pedido, com as fontes e o aviso; o pedido leva a chamada', async () => {
+    const CHAMADA = '44444444-4444-4444-8444-444444444444'
+    const sugestao = { chamadaId: CHAMADA, sugestao: true, texto: 'EXCELENTÍSSIMO SENHOR JUIZ... [completar: valor da causa]', fontes: [{ tipo: 'documento', referencia: `documento:${LAUDO}`, trecho: 'laudo.pdf' }], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null }
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method !== 'POST') return new Response(JSON.stringify(base))
+      if (String(url).endsWith('/peticao/minuta')) return new Response(JSON.stringify({ sugestao, motivo: null, aviso: 'Sem referência na casa: o acervo ainda não tem casos para consultar.' }))
+      return new Response(JSON.stringify({ ok: true }), { status: 201 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    render(<Peticao casoId={CASO} />)
+    expect(await screen.findByText(/Minuta da IA · revise antes de pedir/)).toBeTruthy()
+    const auto = fetch.mock.calls.find(([url]) => String(url).endsWith('/peticao/minuta'))!
+    expect(JSON.parse(String(auto[1]!.body))).toEqual({ instrucoes: '', opcoes: { tutelaUrgencia: false, precedentes: true, anexarCitados: true }, citados: [{ documentoId: LAUDO }] })
+    expect((screen.getByLabelText('laudo.pdf') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('Texto da petição (versão 1)') as HTMLTextAreaElement).value).toBe(sugestao.texto)
+    expect(screen.getByText(/Fontes usadas: laudo\.pdf/)).toBeTruthy()
+    expect(screen.getByText('Sem referência na casa: o acervo ainda não tem casos para consultar.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir a petição' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Petição pedida. A versão 1 foi para a conferência.')
+    const envio = fetch.mock.calls.find(([url]) => String(url).endsWith('/peticao/pedido'))!
+    expect(JSON.parse(String(envio[1]!.body))).toMatchObject({ texto: sugestao.texto, chamadaIaId: CHAMADA })
+  })
+
   it('CA1 · com setor pendente, o pedido fica bloqueado e diz quem falta', async () => {
     servidor({ ...base, faltam: ['Documentação'] })
     render(<Peticao casoId={CASO} />)
     expect((await screen.findByText(/Bloqueado até/)).textContent).toBe('Bloqueado até todos os setores subirem o card. Falta: Documentação.')
     expect((screen.getByRole('button', { name: 'Pedir a petição' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('épico IA · "Escrever de novo com a IA" manda o que está marcado agora, pede outra minuta e troca o texto da caixa', async () => {
+    const minuta = (texto: string) => ({ sugestao: { chamadaId: '44444444-4444-4444-8444-444444444444', sugestao: true, texto, fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null }, motivo: null, aviso: null })
+    let vez = 0
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method !== 'POST') return new Response(JSON.stringify(base))
+      if (String(url).endsWith('/peticao/minuta')) return new Response(JSON.stringify(minuta(vez++ ? 'Segunda minuta' : 'Primeira minuta')))
+      return new Response(JSON.stringify({ ok: true }), { status: 201 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    render(<Peticao casoId={CASO} />)
+    await screen.findByDisplayValue('Primeira minuta')
+    fireEvent.click(screen.getByLabelText('Pedir tutela de urgência'))
+    fireEvent.click(screen.getByRole('button', { name: 'Escrever de novo com a IA' }))
+    await screen.findByDisplayValue('Segunda minuta')
+    const corpo = JSON.parse(String(fetch.mock.calls.filter(([url]) => String(url).endsWith('/peticao/minuta'))[1][1]!.body))
+    expect([corpo.refazer, corpo.opcoes.tutelaUrgencia]).toEqual([true, true])
   })
 
   it('CA6, CA9 · o texto é obrigatório; o pedido leva as instruções, as opções e os citados na ordem, com o que falta', async () => {
@@ -48,17 +89,16 @@ describe('Pedir a petição (GGVP-63)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva ou cole o texto da petição (versão 1)')
     fireEvent.change(screen.getByLabelText('Instruções (opcional)'), { target: { value: 'Concessão desde a DER' } })
     fireEvent.click(screen.getByLabelText('Pedir tutela de urgência'))
-    fireEvent.click(screen.getByLabelText('laudo.pdf'))
     fireEvent.change(screen.getByLabelText('Falta algum documento? Escreva o nome'), { target: { value: 'CNIS atualizado' } })
     fireEvent.click(screen.getByRole('button', { name: 'Incluir o que falta' }))
     expect([...screen.getByRole('list', { name: 'Ordem no pacote' }).querySelectorAll('li')].map((l) => l.textContent)).toEqual(['laudo.pdf', 'CNIS atualizado · falta'])
     fireEvent.change(screen.getByLabelText('Texto da petição (versão 1)'), { target: { value: 'Excelentíssimo Senhor Juiz...' } })
     fireEvent.click(screen.getByRole('button', { name: 'Pedir a petição' }))
     expect((await screen.findByRole('status')).textContent).toBe('Petição pedida. A versão 1 foi para a conferência.')
-    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    const post = fetch.mock.calls.find(([url]) => String(url).endsWith('/peticao/pedido'))!
     expect(JSON.parse(post[1]!.body as string)).toEqual({
       instrucoes: 'Concessão desde a DER',
-      opcoes: { tutelaUrgencia: true, precedentes: false, anexarCitados: true },
+      opcoes: { tutelaUrgencia: true, precedentes: true, anexarCitados: true },
       citados: [{ documentoId: LAUDO }, { nome: 'CNIS atualizado' }],
       texto: 'Excelentíssimo Senhor Juiz...',
     })
@@ -146,7 +186,7 @@ describe('Conferir a petição (GGVP-67)', () => {
   it('CA1, CA10 · "Editar eu mesma" pede o que mudou e salva a versão seguinte', async () => {
     const fetch = servidor(pedida, [201, { ok: true, numero: 3 }])
     render(<Peticao casoId={CASO} />)
-    fireEvent.click(await screen.findByText('Não está boa? Editar eu mesma'))
+    fireEvent.click(await screen.findByText('Não está boa? Pedir outra versão à IA ou editar eu mesma'))
     fireEvent.change(screen.getByLabelText('Texto da nova versão'), { target: { value: 'Dos fatos\nDo direito\nDo valor da causa' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar nova versão' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que mudou nesta versão')
@@ -155,6 +195,30 @@ describe('Conferir a petição (GGVP-67)', () => {
     expect((await screen.findByRole('status')).textContent).toBe('Versão 3 salva. Ela precisa de nova conferência.')
     const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
     expect(JSON.parse(post[1]!.body as string)).toEqual({ texto: 'Dos fatos\nDo direito\nDo valor da causa', oQueMudou: 'Valor da causa' })
+  })
+
+  it('épico IA · "Pedir outra versão à IA" exige o que mudar, preenche a caixa marcada e a versão salva leva a chamada', async () => {
+    const CHAMADA = '55555555-5555-4555-8555-555555555555'
+    const V3 = 'Dos fatos\nDa tutela de urgência\nDo direito'
+    const sugestao = { chamadaId: CHAMADA, sugestao: true, texto: V3, fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T13:00:00.000Z', alerta: null }
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith('/versoes/sugestao')) return new Response(JSON.stringify({ sugestao, motivo: null, aviso: null }))
+      return init?.method === 'POST' ? new Response(JSON.stringify({ ok: true, numero: 3 }), { status: 201 }) : new Response(JSON.stringify(pedida))
+    })
+    vi.stubGlobal('fetch', fetch)
+    render(<Peticao casoId={CASO} />)
+    fireEvent.click(await screen.findByText('Não está boa? Pedir outra versão à IA ou editar eu mesma'))
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir outra versão à IA' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que mudar')
+    fireEvent.change(screen.getByLabelText('O que mudar'), { target: { value: 'Incluir a tutela' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir outra versão à IA' }))
+    expect(await screen.findByText('Versão da IA · revise antes de salvar; você aprova o conteúdo (G6)')).toBeTruthy()
+    expect((screen.getByLabelText('Texto da nova versão') as HTMLTextAreaElement).value).toBe(V3)
+    expect((screen.getByLabelText('O que mudou nesta versão') as HTMLInputElement).value).toBe('Incluir a tutela')
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar nova versão' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Versão 3 salva. Ela precisa de nova conferência.')
+    const post = fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith('/peticao/versoes'))!
+    expect(JSON.parse(post[1]!.body as string)).toEqual({ texto: V3, oQueMudou: 'Incluir a tutela', chamadaIaId: CHAMADA })
   })
 })
 
