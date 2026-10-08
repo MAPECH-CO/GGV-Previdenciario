@@ -6,7 +6,7 @@ import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, mensagemDaCon
 import { emAberto } from '../regras/busca.ts'
 import { linkDoMeet } from './agenda.ts'
 import { nomeBeneficio } from './catalogos.ts'
-import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { QUEM, agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type {
   Agendamento,
   CanalDoContato,
@@ -80,6 +80,14 @@ export async function obterConfirmacao(agendamentoId: string): Promise<DadosDaCo
 
 /** POST /api/agendamentos/:id/confirmacao/mensagem. A mensagem conferida e enviada no Chatwoot fica em "Últimos contatos". */
 export async function registrarMensagemDeConfirmacao(agendamentoId: string, mensagem: string): Promise<{ evento: EventoHistorico }> {
+  if (agendamentoDoServidor(agendamentoId)) {
+    const r = await noBanco<{ evento: EventoHistorico; ficha: Ficha }>(`/agendamentos/${agendamentoId}/confirmacao/mensagem`, {
+      method: 'POST',
+      corpo: { mensagem: mensagem.trim() },
+    })
+    receber(r)
+    return { evento: r.evento }
+  }
   await esperar()
   const banco = ler()
   const achado = acharAgendamento(banco, agendamentoId)
@@ -140,11 +148,20 @@ function abrirPreenchimento(banco: Banco, ficha: Ficha, a: Agendamento): TarefaE
  * (CA3); sem ficha, a pendência da ficha (CA2, CA7). Sem resposta: a próxima em 3 dias e, na segunda, a sênior (CA6).
  */
 export async function registrarConfirmacao(agendamentoId: string, r: RegistroDaConfirmacao): Promise<RespostaDaConfirmacao> {
-  await esperar()
+  if (!agendamentoDoServidor(agendamentoId)) await esperar()
   const valido =
     (r.canal === 'ligacao' || r.canal === 'mensagem') &&
     (r.resultado === 'sem-resposta' || (r.resultado === 'confirmou' && typeof r.jaPreencheuFicha === 'boolean'))
   if (!valido) throw new Error('Registro inválido')
+  if (agendamentoDoServidor(agendamentoId)) {
+    // GGVP-125: a confirmação e as tarefas que ela abre (preparar, preencher, a da sênior) ficam no servidor.
+    const { ficha, tarefas, ...resposta } = await noBanco<RespostaDaConfirmacao & { ficha: Ficha; tarefas: TarefaEncaminhada[] }>(
+      `/agendamentos/${agendamentoId}/confirmacao`,
+      { method: 'POST', corpo: r },
+    )
+    receber({ ficha, tarefas })
+    return resposta
+  }
 
   const banco = ler()
   const hoje = hojeIso(agora())

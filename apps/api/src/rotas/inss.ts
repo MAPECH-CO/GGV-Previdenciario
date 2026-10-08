@@ -33,6 +33,7 @@ import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
+import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -161,12 +162,31 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         urgente: f.diasUteisAtePrazo <= 2 || f.idadeEmDias >= 1,
       }),
     }))
+    // GGVP-55 CA7: a conferência dos desfechos do acervo aparece só enquanto houver processo esperando.
+    const acervo = (await conferenciaDoAcervo(banco)).pendentes
+    const conferir = acervo.length
+      ? [
+          TarefaDaCentral.parse({
+            id: ID_CONFERIR_DESFECHOS,
+            casoId: null,
+            passo: 'D4.05',
+            cliente: null,
+            contexto: 'Acervo',
+            titulo: 'Conferir desfechos do lote',
+            detalhe: `${acervo.length} ${acervo.length === 1 ? 'processo' : 'processos'}`,
+            tela: '/acervo/conferencia',
+            prazo: null,
+            urgente: false,
+          }),
+        ]
+      : []
     return [
       // GGVP-30 CA1, CA11: rodada com falha vem antes de tudo.
       ...(await alarmesDaVigilia(banco, agora())),
       ...alertas.filter((a) => a.diasUteis <= 2).map(linha),
       ...fila.filter((f) => f.urgente).map((f) => f.linha),
       ...visiveis,
+      ...conferir,
       ...alertas.filter((a) => a.diasUteis > 2).map(linha),
       ...fila.filter((f) => !f.urgente).map((f) => f.linha),
     ]

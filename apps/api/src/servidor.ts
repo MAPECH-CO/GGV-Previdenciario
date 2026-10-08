@@ -19,6 +19,7 @@ import { registrarRotasDocumentos } from './rotas/documentos.ts'
 import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
 import { registrarRotasGestao } from './rotas/gestao.ts'
+import { registrarRotasAcervo } from './rotas/acervo.ts'
 import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
@@ -26,6 +27,9 @@ import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
+import { registrarRotasRecepcao } from './rotas/recepcao.ts'
+import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
+import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -80,11 +84,15 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasIndeferimento(app, { banco, agora })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasGestao(app, { banco, agora })
+    registrarRotasAcervo(app, { banco, agora })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
     registrarRotasConfiguracao(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora })
+    registrarRotasRecepcao(app, { banco, agora })
+    registrarRotasRecepcaoAgenda(app, { banco, agora })
+    registrarRotasRecepcaoEntrevista(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

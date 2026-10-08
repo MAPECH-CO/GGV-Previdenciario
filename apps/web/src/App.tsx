@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ROTULO_PERFIL, ehPerfil, type UsuarioDaSessao } from '@ggv/contratos'
+import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
+import { sincronizarRecepcao } from './dados/servidor.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
@@ -25,6 +26,8 @@ import { IdaAoBanco } from './paginas/IdaAoBanco.tsx'
 import { ExplicarResultado } from './paginas/ExplicarResultado.tsx'
 import { PainelVigilia } from './paginas/PainelVigilia.tsx'
 import { Tentativas } from './paginas/Tentativas.tsx'
+import { Resultados } from './paginas/Resultados.tsx'
+import { ConferirAcervo } from './paginas/ConferirAcervo.tsx'
 import { Historico } from './paginas/Historico.tsx'
 import { Prazos, UsoDoCofreTela } from './paginas/Gestao.tsx'
 import { Configuracao } from './paginas/Configuracao.tsx'
@@ -101,7 +104,13 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
 
   useEffect(() => {
     // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
-    void chamarApi<UsuarioDaSessao>('/sessao').then((r) => r.ok && setUsuario(r.dados))
+    void chamarApi<UsuarioDaSessao>('/sessao').then(async (r) => {
+      if (!r.ok) return
+      // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
+      // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
+      if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
+      setUsuario(r.dados)
+    })
   }, [])
 
   if (!usuario) return null
@@ -138,6 +147,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/gestao\/tentativas$/, tela: () => <Exige acao="gestao.ver"><Tentativas /></Exige> },
   { padrao: /^\/gestao\/prazos$/, tela: () => <Exige acao="gestao.ver"><Prazos /></Exige> },
   { padrao: /^\/gestao\/cofre$/, tela: () => <Exige acao="gestao.ver"><UsoDoCofreTela /></Exige> },
+  { padrao: /^\/gestao\/resultados$/, tela: () => <Exige acao="gestao.ver"><Resultados /></Exige> },
+  { padrao: /^\/acervo\/conferencia$/, tela: () => <Exige acao="acervo.conferir_desfecho"><ConferirAcervo /></Exige> },
   { padrao: /^\/configuracao$/, tela: () => <Exige acao="gestao.ver"><Configuracao /></Exige> },
   // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
