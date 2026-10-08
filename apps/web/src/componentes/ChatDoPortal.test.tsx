@@ -168,3 +168,29 @@ describe('GGVP-82 CA6 · o Suporte nas outras telas', () => {
     window.history.pushState({}, '', '/')
   })
 })
+
+describe('GGVP-82 CA6 · gravar áudio', () => {
+  it('a fala vira texto no campo, para conferir antes de enviar', () => {
+    class Fala {
+      lang = ''
+      interimResults = true
+      onresult: ((e: { results: { transcript: string }[][] }) => void) | null = null
+      onend: (() => void) | null = null
+      onerror: (() => void) | null = null
+      start() {
+        this.onresult?.({ results: [[{ transcript: 'o que falta no caso da Maria Exemplo' }]] })
+        this.onend?.()
+      }
+      stop() {}
+    }
+    ;(window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition = Fala
+    try {
+      chat()
+      fireEvent.click(screen.getByRole('button', { name: 'Gravar áudio' }))
+      expect((screen.getByLabelText('✦ Pergunte ou peça') as HTMLTextAreaElement).value).toBe('o que falta no caso da Maria Exemplo')
+      expect(screen.getByRole('button', { name: 'Gravar áudio' }).getAttribute('aria-pressed')).toBe('false')
+    } finally {
+      delete (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
+    }
+  })
+})
