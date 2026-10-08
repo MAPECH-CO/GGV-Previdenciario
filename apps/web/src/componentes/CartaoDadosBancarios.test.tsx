@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, tarefasDoSetor, zerarExemplo } from '../dados/servidor.ts'
@@ -62,5 +62,15 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     expect(botao('Pedir a mudança').disabled).toBe(true)
     fireEvent.click(botao('Cancelar'))
     expect(botao('Mudar dados bancários')).toBeTruthy()
+  })
+
+  it('GGVP-138 · a ficha fora do banco: a API recusa e o cartão fica sem dados, sem erro solto', async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ erro: 'Ficha não encontrada.' }), { status: 404 }))
+    vi.stubGlobal('fetch', fetch)
+    render(comSessao(<CartaoDadosBancarios fichaId="fora-do-banco" aoMudar={() => {}} />))
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/fichas/fora-do-banco/dados-bancarios', expect.anything()))
+    expect(cartao().getByText('Nenhum dado bancário cadastrado.')).toBeTruthy()
+    expect(cartao().queryByRole('alert')).toBeNull()
+    vi.unstubAllGlobals()
   })
 })

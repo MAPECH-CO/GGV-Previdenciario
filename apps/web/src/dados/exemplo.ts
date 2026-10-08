@@ -3,7 +3,7 @@
 // até o benefício no localhost. Sai quando o servidor de verdade existir.
 import { isoParaData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
-import type { Cnis, EnvioDaFicha, Ficha, Gravacao, InformacaoExtraida, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha, Trecho } from './tipos.ts'
+import type { Cnis, EnvioDaFicha, Ficha, Gravacao, InformacaoExtraida, LoteDigitalizado, PastaDrive, Processo, RespostasDaSegundaFicha, Setor, Trecho } from './tipos.ts'
 
 /** O único CPF da semente: o CPF de teste público 000.000.001-91, para o caso "CPF repetido". */
 export const CPF_DE_TESTE = '00000000191'
@@ -427,3 +427,24 @@ export function cnisDeExemplo(): Cnis[] {
     },
   ]
 }
+
+/**
+ * As pessoas dos registros de exemplo e as que entram no portal de exemplo (a semente de `apps/api/src/banco/exemplo.ts`),
+ * com o setor: o chat (GGVP-82), que ainda é de exemplo, e os testes. A pendência da conversa usa as do servidor (GGVP-138).
+ */
+export const PESSOAS_DO_ESCRITORIO_DE_EXEMPLO: { nome: string; setor: Setor }[] = [
+  { nome: 'Carla (exemplo)', setor: 'Atendimento' },
+  { nome: 'Dra. Paula (exemplo)', setor: 'Jurídico' },
+  { nome: 'Dra. Renata (exemplo)', setor: 'Jurídico' },
+  { nome: 'Marcos (exemplo)', setor: 'Financeiro' },
+  { nome: 'Jéssica (exemplo)', setor: 'Documentação · ADM' },
+  { nome: 'Dr. Otávio (exemplo)', setor: 'Jurídico' },
+  { nome: 'Ana (exemplo)', setor: 'Atendimento' },
+  { nome: 'Eva (exemplo, líder e atendimento)', setor: 'Atendimento' },
+  { nome: 'Fábio (exemplo)', setor: 'Documentação · ADM' },
+  { nome: 'Gabi (exemplo)', setor: 'Jurídico' },
+  { nome: 'Helena (exemplo)', setor: 'Jurídico' },
+  { nome: 'Otávio (exemplo, segunda Sênior)', setor: 'Jurídico' },
+  { nome: 'Igor (exemplo)', setor: 'Jurídico' },
+  { nome: 'Júlia (exemplo)', setor: 'Financeiro' },
+]

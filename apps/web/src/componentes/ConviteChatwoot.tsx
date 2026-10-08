@@ -5,9 +5,11 @@ import { obterCobranca, registrarTentativa } from '../dados/cobranca.ts'
 import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confirmacao.ts'
 import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import { obterCobrancaDaPericia, obterLembrete, registrarCobrancaDaPericia, registrarLembrete } from '../dados/pericia.ts'
+import { buscarContatos, conversasDoContato, enviarNaConversa } from '../dados/chatwoot.ts'
 import { clienteNoChatwoot, enviarMensagem, type MensagemPronta } from '../dados/mensagens.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, type IdDoModelo } from '../regras/mensagens.ts'
+import { doServidor } from '../dados/servidor.ts'
+import { comAvisoDaSenha, ordenarConversas, problemasDaMensagem, type IdDoModelo } from '../regras/mensagens.ts'
 import { ConversaNoChatwoot } from './ConversaNoChatwoot.tsx'
 import styles from './ConviteChatwoot.module.css'
 
@@ -17,6 +19,26 @@ type Assunto = 'convite' | 'confirmacao' | 'cobranca' | 'complemento' | 'pericia
 type Props = { agendamentoId: string; assunto?: Assunto; aoEnviado: () => void; aoFechar: () => void }
 
 type Carregada = { nome: string; telefone: string; mensagem: string; fichaId: string }
+
+/**
+ * O cliente que só existe na semente de exemplo (as áreas desta janela ainda não estão no servidor): o Chatwoot simulado
+ * direto na tela, com os mesmos portões (G9, G11, G20) e sem registro no servidor (GGVP-138, Pedro 08/10). O cliente do
+ * banco vai pela API, com o registro do envio.
+ */
+const daSemente = {
+  async cliente(c: Carregada): Promise<Pick<MensagemPronta, 'contato' | 'conversas'>> {
+    const contatos = c.telefone ? await buscarContatos(c.telefone) : []
+    const contato = contatos.find((x) => x.nome === c.nome) ?? contatos[0] ?? null
+    return { contato, conversas: contato ? ordenarConversas(await conversasDoContato(contato)) : [] }
+  },
+  async enviar(conversa: number | undefined, texto: string): Promise<{ status: 'entregue' | 'falhou'; erro?: string }> {
+    const problema = problemasDaMensagem(texto).bloqueia[0]
+    if (problema) throw new Error(problema)
+    if (!conversa) return { status: 'falhou', erro: 'o Chatwoot não achou o contato deste telefone' }
+    const r = await enviarNaConversa(conversa, texto)
+    return r.status === 'failed' ? { status: 'falhou', erro: r.erro } : { status: 'entregue' }
+  },
+}
 
 /** Os assuntos em que o id é o do processo: o envio fica ligado a ele (GGVP-102). */
 const DO_PROCESSO: Assunto[] = ['cobranca', 'complemento', 'pericia-lembrete', 'pericia-cobranca']
@@ -82,7 +104,6 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
   // Quem está na tela assina o envio (GGVP-53, GGVP-56); sem escolha, quem costuma mandar o modelo (GGVP-102, CA9).
   // Quem está na sessão (sem sessão, ninguém).
   const escolhido = usePerfil()
-  const perfil = usePerfil(MODELOS_DE_MENSAGEM[conversaDe.modelo].quem)
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<Carregada | null>(null)
   const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas'> | null>(null)
@@ -105,7 +126,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
       setConversa(c)
       // Todo modelo diz que o escritório nunca pede a senha do gov.br por mensagem (GGVP-111, CA4).
       setMensagem(comAvisoDaSenha(c.mensagem))
-      const noChatwoot = await clienteNoChatwoot(c.fichaId)
+      const noChatwoot = doServidor(c.fichaId) ? await clienteNoChatwoot(c.fichaId) : await daSemente.cliente(c)
       if (!valendo) return
       setCliente(noChatwoot)
       setEscolhida(noChatwoot.conversas[0]?.id)
@@ -122,12 +143,18 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
     setErro('')
     try {
       // Primeiro o Chatwoot: se não sai, a falha fica na tela e no histórico, e nada mais é registrado (CA5).
-      const envio = await enviarMensagem(
-        conversa!.fichaId,
-        { modelo: conversaDe.modelo, texto: mensagem, conversa: escolhida ?? 0, processoId: DO_PROCESSO.includes(assunto) ? agendamentoId : undefined, noCard: false },
-        { quem: perfil?.usuario ?? 'Atendimento', perfil: perfil?.id },
-      )
-      if (envio.status === 'falhou') return setErro(`A mensagem não saiu pelo Chatwoot: ${envio.erro}. Ficou no histórico; nada foi reenviado sozinho.`)
+      const envio = doServidor(conversa!.fichaId)
+        ? await enviarMensagem(conversa!.fichaId, {
+            modelo: conversaDe.modelo,
+            texto: mensagem,
+            conversa: escolhida ?? 0,
+            processoId: DO_PROCESSO.includes(assunto) ? agendamentoId : undefined,
+            noCard: false,
+          })
+        : await daSemente.enviar(escolhida, mensagem)
+      // A falha do cliente do banco fica no histórico dele, no servidor; a do cliente de exemplo, só na tela.
+      const depois = doServidor(conversa!.fichaId) ? 'Ficou no histórico; nada foi reenviado sozinho.' : 'Nada foi reenviado sozinho.'
+      if (envio.status === 'falhou') return setErro(`A mensagem não saiu pelo Chatwoot: ${envio.erro}. ${depois}`)
       await conversaDe.enviar(agendamentoId, mensagem, escolhido?.usuario)
       aoEnviado()
     } catch (e) {
