@@ -85,6 +85,8 @@ test('CA4 · outro perfil vê só a situação', async ({ page }) => {
 })
 
 test('tema escuro e fonte grande na liberação', async ({ page }) => {
+  // A seção "Conferir" é da Documentação: o Atendimento vê só a situação.
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/sebastiao-exemplo-1/liberar?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sebastião Exemplo · Liberar ao Jurídico')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
