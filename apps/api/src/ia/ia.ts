@@ -159,7 +159,10 @@ export type Finalidade = keyof typeof FINALIDADES
 
 const OPENAI = 'https://api.openai.com/v1/chat/completions'
 const MISTRAL_OCR = 'https://api.mistral.ai/v1/ocr'
-const hash = (texto: string | Uint8Array) => createHash('sha256').update(texto).digest('hex')
+const OPENAI_VETOR = 'https://api.openai.com/v1/embeddings'
+/** O tamanho do vetor do acervo (ADR-013); a coluna `acervo_trecho.embedding` tem o mesmo. */
+export const DIMENSOES_DO_VETOR = 1536
+const hash =(texto: string | Uint8Array) => createHash('sha256').update(texto).digest('hex')
 
 type Opcoes = { banco: Banco; ambiente?: Ambiente; fetch?: typeof globalThis.fetch; agora?: () => Date }
 type Quem = { casoId: string | null; quem: string | null }
@@ -182,6 +185,7 @@ export const lerJson = (texto: string): unknown => {
 export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetch, agora = () => new Date() }: Opcoes) {
   const modeloTexto = ambiente.OPENAI_MODELO || 'gpt-4.1-mini'
   const modeloOcr = ambiente.MISTRAL_MODELO_OCR || 'mistral-ocr-latest'
+  const modeloVetor = ambiente.OPENAI_MODELO_VETOR || 'text-embedding-3-small'
   const saudeAutorizada = ambiente.IA_PERMITE_DADO_DE_SAUDE === 'sim'
 
   async function registrar(dados: {
@@ -366,7 +370,44 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
+  /**
+   * GGVP-141 CA4: o vetor do texto (embeddings da OpenAI), para a busca por significado no acervo (ADR-013), com registro
+   * sem o conteúdo. O texto já chega anonimizado; saúde só com autorização. Sem chave, recusado ou falhou: nulo, e a busca
+   * segue só por palavra.
+   */
+  async function vetor(pedido: Quem & { texto: string; saude: boolean; referencia: string }): Promise<number[] | null> {
+    const inicio = Date.now()
+    const fontes: FonteDaIa[] = [{ tipo: 'acervo', referencia: pedido.referencia }]
+    const base = { finalidade: 'vetor_acervo', fornecedor: 'openai' as const, modelo: modeloVetor, versaoInstrucao: 1, alvo: pedido, entrada: pedido.texto, fontes }
+    if (pedido.saude && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const resposta = await fetch(OPENAI_VETOR, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ model: modeloVetor, input: pedido.texto, dimensions: DIMENSOES_DO_VETOR }),
+        signal: AbortSignal.timeout(30_000),
+      })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { data?: { embedding?: number[] }[] }
+      const v = corpo.data?.[0]?.embedding
+      if (v?.length !== DIMENSOES_DO_VETOR) throw new Error('OpenAI respondeu sem o vetor')
+      await registrar({ ...base, saida: `${v.length} dimensões`, situacao: 'ok', inicio })
+      return v
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
   /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
-  return { sugerir, lerDocumento, ligada: Boolean(ambiente.OPENAI_API_KEY) }
+  return { sugerir, lerDocumento, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saude: saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>

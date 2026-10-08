@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eq } from 'drizzle-orm'
 import { caso, chamadaIa, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { FINALIDADES, REGRAS_DA_IA, criarIa, instrucaoSuspeita, lerJson, temCid } from './ia.ts'
+import { DIMENSOES_DO_VETOR, FINALIDADES, REGRAS_DA_IA, criarIa, instrucaoSuspeita, lerJson, temCid } from './ia.ts'
 
 let banco: Banco
 let fechar: () => Promise<void>
@@ -107,6 +107,32 @@ describe('GGVP-106 · ler documento (Mistral OCR)', () => {
     const ia = criarIa({ banco, ambiente: { ...CHAVES, IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch })
     expect((await ia.lerDocumento({ casoId: CASO, quem, arquivo: PDF, mime: 'image/jpeg', sensivel: true, referencia: 'documento:3' }))?.texto).toBe('Laudo')
     expect(JSON.parse(String(fetch.mock.calls[0][1]?.body)).document.type).toBe('image_url')
+  })
+})
+
+describe('GGVP-141 · vetor do acervo (embeddings da OpenAI)', () => {
+  const VETOR = Array.from({ length: DIMENSOES_DO_VETOR }, (_, i) => i / DIMENSOES_DO_VETOR)
+  const texto = 'Petição aprovada: a renda do filho que mora à parte não entra no cálculo.'
+  const pedido = (saude = false) => ({ casoId: CASO, quem, texto, saude, referencia: `caso:${CASO}` })
+
+  it('CA4 · devolve o vetor pelo modelo de embeddings e registra a chamada sem o conteúdo', async () => {
+    const fetch = servico({ data: [{ embedding: VETOR }] })
+    expect(await criarIa({ banco, ambiente: CHAVES, fetch }).vetor(pedido())).toEqual(VETOR)
+    const corpo = JSON.parse(String(fetch.mock.calls[0][1]?.body)) as { model: string; input: string; dimensions: number }
+    expect([fetch.mock.calls[0][0], corpo.model, corpo.input, corpo.dimensions]).toEqual(['https://api.openai.com/v1/embeddings', 'text-embedding-3-small', texto, DIMENSOES_DO_VETOR])
+    const [c] = await banco.select().from(chamadaIa)
+    expect([c.finalidade, c.fornecedor, c.situacao, c.saida, c.entradaTamanho]).toEqual(['vetor_acervo', 'openai', 'ok', `${DIMENSOES_DO_VETOR} dimensões`, texto.length])
+    expect(JSON.stringify(c)).not.toContain('renda do filho')
+  })
+
+  it('CA4 · sem chave, com saúde sem autorização ou com falha: nulo e registrado; com a autorização, a saúde vai', async () => {
+    const fetch = servico({ data: [{ embedding: VETOR }] })
+    expect(await criarIa({ banco, ambiente: {}, fetch }).vetor(pedido())).toBeNull()
+    expect(await criarIa({ banco, ambiente: CHAVES, fetch }).vetor(pedido(true))).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(await criarIa({ banco, ambiente: CHAVES, fetch: servico({ error: 'x' }, 500) }).vetor(pedido())).toBeNull()
+    expect((await banco.select().from(chamadaIa)).map((c) => c.situacao).sort()).toEqual(['desligada', 'falhou', 'recusada'])
+    expect(await criarIa({ banco, ambiente: { ...CHAVES, IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }).vetor(pedido(true))).toEqual(VETOR)
   })
 })
 

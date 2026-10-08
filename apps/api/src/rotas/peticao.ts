@@ -13,7 +13,7 @@ import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { fonteDoJuizo, juizoDoCaso, jurimetriaDoJuizo } from '../fluxo/juizo.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { FINALIDADES, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -255,7 +255,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const itensDoParecer = ((parecer?.itens as { item: string; atendido: boolean }[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
     // GGVP-45 CA1, CA2: com "usar precedentes", o acervo é consultado antes de escrever, pelo motivo, provas e instruções.
     const acervo = d.opcoes.precedentes
-      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' ') })
+      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' '), saude: FINALIDADES.minuta_peticao.saude, ia })
       : []
     const conteudo = [
       `Cliente (autor): ${c.nome}`,

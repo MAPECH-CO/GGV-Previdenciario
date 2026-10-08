@@ -127,6 +127,13 @@
       "when": 1791483509900,
       "tag": "0017_relacionamento_no_servidor",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791493704104,
+      "tag": "0018_base_de_conhecimento",
+      "breakpoints": true
     }
   ]
 }

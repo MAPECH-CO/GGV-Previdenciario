@@ -212,13 +212,17 @@ Nenhuma tela nova.
    - Sem chave, ou com saúde sem autorização, devolve nulo, e a busca segue só por palavra.
 4. **Alimentar o acervo** (CA1, CA3): `alimentarAcervo` lê as fontes de hoje e as conversas conferidas, anonimiza com a mesma `anonimizar` e calcula o hash.
    - Grava só o que ainda não está lá e depois calcula o vetor do que falta.
-   - Roda em segundo plano, no mesmo relógio da sugestão pronta (a cada 5 minutos).
-   - A conversa com mudança de saúde, ou com gravação só do Jurídico, entra com `so_juridico`.
+   - Roda em segundo plano numa chamada própria do servidor, na mesma batida de 5 minutos da sugestão pronta, logo depois dela. Dentro da rodada das sugestões, ela mexeria nos testes das rotas que rodam essa rodada.
+   - Entram com `so_juridico`:
+     - os documentos do caso (petição aprovada, decisão de mérito, motivo de indeferimento e estudo de caso), que podem trazer dado de saúde;
+     - a conversa com mudança de saúde ou com gravação só do Jurídico.
+
+     O modelo da casa não tem dado de cliente.
 5. **Busca híbrida** (CA2): `buscarNoAcervo` faz a busca por palavra de hoje e, quando há vetor da consulta, a busca por significado nos trechos.
    - As duas listas se misturam pelas posições (RRF, k = 60).
    - A saída são as mesmas fontes de hoje: `tipo: acervo`, a referência e o trecho.
    - O mesmo caso fica de fora, e o benefício filtra como hoje.
-   - Trecho `so_juridico` só entra com `saude: true`, que os fluxos do Jurídico passam: a minuta, o estudo e o despacho.
+   - Trecho `so_juridico` só entra com `saude: true`. Os 5 fluxos que buscam no acervo passam a saúde pela finalidade da IA, e todas essas finalidades já levam dado de saúde: a minuta da petição, o estudo de caso, a análise do indeferimento, a exigência do juiz e a recomendação da perícia.
 
 ### Campos de formulário
 

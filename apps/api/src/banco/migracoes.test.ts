@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite'
+import { vector } from '@electric-sql/pglite/vector'
 import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
@@ -6,8 +7,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import * as esquema from './esquema.ts'
 import { pastaMigracoes } from './migrar.ts'
 
-// Postgres em memória: roda na máquina e no CI sem Docker. Um banco para o arquivo todo.
-const db = drizzle(new PGlite(), { schema: esquema })
+// Postgres em memória: roda na máquina e no CI sem Docker. Um banco para o arquivo todo, com pgvector (ADR-013).
+const db = drizzle(new PGlite({ extensions: { vector } }), { schema: esquema })
 beforeAll(() => migrate(db, { migrationsFolder: pastaMigracoes }))
 afterAll(() => db.$client.close())
 
@@ -35,8 +36,13 @@ describe('migrações', () => {
     for (const nome of ['identificador_caso', 'etapa', 'decisao', 'documento', 'documento_medico', 'parecer_medico',
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
       'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao',
-      'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario']) expect(t).toContain(nome)
-    expect(t).toHaveLength(52)
+      'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'acervo_trecho']) expect(t).toContain(nome)
+    expect(t).toHaveLength(53)
+  })
+
+  it('GGVP-141 · a base de conhecimento do acervo: pgvector ligado e o índice HNSW pela distância de cosseno (ADR-013)', async () => {
+    const { rows } = await db.execute<{ indexdef: string }>(sql`select indexdef from pg_indexes where indexname = 'acervo_trecho_vetor'`)
+    expect(rows[0]?.indexdef).toMatch(/USING hnsw \(embedding vector_cosine_ops\)/)
   })
 
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {

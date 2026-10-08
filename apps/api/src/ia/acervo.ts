@@ -3,13 +3,19 @@
 // motivo de indeferimento, modelo de petição ativo) e o estudo de caso da IA (GGVP-19, automático, marcado como da IA).
 // O trecho sai sem dado pessoal do cliente de origem (CA6).
 // ponytail: to_tsvector calculado na hora, sem índice; índice GIN ou embeddings (pgvector) quando o acervo crescer.
-import { sql } from 'drizzle-orm'
+// GGVP-141 (ADR-013): o acervo se alimenta sozinho, em trechos com vetor, para a busca também pelo sentido.
+import { createHash } from 'node:crypto'
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { FonteDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
+import { acervoTrecho } from '../banco/esquema.ts'
+import type { Ia } from './ia.ts'
 
 export const MSG_SEM_REFERENCIA = 'Sem referência na casa: nada parecido no acervo; a IA usou só o caso.'
 
-type Busca = { casoId: string; beneficio: string | null; consulta: string; limite?: number }
+/** `saude`: trecho só do Jurídico entra (os fluxos passam pela finalidade da IA). `ia`: com ela, também pelo sentido (GGVP-141). */
+type Busca = { casoId: string; beneficio: string | null; consulta: string; limite?: number; saude?: boolean; ia?: Ia }
+type Achado = { chave: string; de: string; referencia: string; texto: string }
 type Linha = { de: string; origem: string; texto: string; nome: string | null }
 
 const PARTICULAS = new Set(['da', 'de', 'do', 'das', 'dos', 'e'])
@@ -41,39 +47,135 @@ function recortar(texto: string, termos: string[]) {
   return `${inicio ? '…' : ''}${texto.slice(inicio, inicio + 400).trim()}${inicio + 400 < texto.length ? '…' : ''}`
 }
 
-/** CA1, CA4: até `limite` trechos de outros casos (mesmo benefício quando há) e modelos, do mais parecido ao menos. */
-export async function buscarNoAcervo(banco: Banco, { casoId, beneficio, consulta, limite = 3 }: Busca): Promise<FonteDaIa[]> {
-  const termos = palavras(consulta)
-  if (!termos.length) return []
-  // PGlite e node-postgres devolvem `rows`; o tipo genérico do Drizzle não diz.
-  const { rows } = (await banco.execute(sql`
-    with fonte as (
-      select 'Petição aprovada' as de, p.caso_id, null::uuid as modelo_id, v.conteudo as texto
+/**
+ * As fontes do acervo (GGVP-45, GGVP-19, GGVP-141): o que uma pessoa aprovou, registrou ou conferiu. Documento do caso pode
+ * trazer dado de saúde e fica só para o Jurídico (`so_juridico`); o modelo da casa não tem dado de cliente. A conversa
+ * conferida é só do Jurídico quando trouxe fato de saúde ou veio de gravação só do Jurídico.
+ */
+const FONTES = sql`
+      select 'Petição aprovada' as de, p.caso_id, null::uuid as modelo_id, v.conteudo as texto, true as so_juridico, null::uuid as pessoa_id, 'caso:' || p.caso_id as referencia
         from peticao_versao v join peticao p on p.id = v.peticao_id where v.aprovada_em is not null
       union all
-      select 'Decisão de mérito', pu.caso_id, null, pu.texto from publicacao pu where pu.classe = 'merito' and pu.caso_id is not null
+      select 'Decisão de mérito', pu.caso_id, null, pu.texto, true, null, 'caso:' || pu.caso_id from publicacao pu where pu.classe = 'merito' and pu.caso_id is not null
       union all
-      select 'Motivo de indeferimento', r.caso_id, null, coalesce(r.motivo_escrito, r.motivo_indeferimento)
+      select 'Motivo de indeferimento', r.caso_id, null, coalesce(r.motivo_escrito, r.motivo_indeferimento), true, null, 'caso:' || r.caso_id
         from resultado_inss r where r.resultado = 'indeferido' and coalesce(r.motivo_escrito, r.motivo_indeferimento) is not null
       union all
-      select 'Modelo da casa', null, m.id, m.conteudo from modelo m where m.tipo = 'peticao' and m.ativo
+      select 'Modelo da casa', null, m.id, m.conteudo, false, null, 'modelo:' || m.id from modelo m where m.tipo = 'peticao' and m.ativo
       union all
       -- GGVP-19 CA2: o estudo de caso do processo perdido (automático, da IA), com o motivo e o aprendizado.
-      select 'Estudo de caso da IA', ci.caso_id, null, concat_ws(' ', ci.saida::jsonb ->> 'motivo', ci.saida::jsonb ->> 'aprendizado')
+      select 'Estudo de caso da IA', ci.caso_id, null, concat_ws(' ', ci.saida::jsonb ->> 'motivo', ci.saida::jsonb ->> 'aprendizado'), true, null, 'caso:' || ci.caso_id
         from chamada_ia ci where ci.finalidade = 'estudo_de_caso' and ci.situacao = 'ok'
-    ),
+      union all
+      -- GGVP-141 CA1: a conversa conferida do Relacionamento, com o registro e a observação.
+      select 'Conversa conferida', a.caso_id, null, concat_ws(' ', a.dados ->> 'registro', a.dados -> 'analise' ->> 'observacao'),
+             jsonb_path_exists(a.dados, '$.analise.mudancas[*] ? (@.saude == true)')
+               or exists (select 1 from gravacao_recepcao g where g.id = a.dados ->> 'gravacaoId' and g.so_juridico),
+             a.pessoa_id, 'conversa:' || a.id
+        from atendimento a where a.dados ->> 'conferidaEm' is not null`
+
+/** RRF: cada lista dá 1/(k + posição) a cada item; k = 60, o valor de referência do método. */
+const K_DO_RRF = 60
+
+/**
+ * CA1, CA4 (GGVP-45) e CA2 (GGVP-141): até `limite` trechos de outros casos (mesmo benefício quando há) e modelos, do mais
+ * parecido ao menos. Junta a busca por palavra com a busca por significado, quando há vetor, misturadas por RRF, sempre
+ * com a fonte.
+ */
+export async function buscarNoAcervo(banco: Banco, { casoId, beneficio, consulta, limite = 3, saude = false, ia }: Busca): Promise<FonteDaIa[]> {
+  const termos = palavras(consulta)
+  if (!termos.length) return []
+  const candidatos = limite * 3
+  // PGlite e node-postgres devolvem `rows`; o tipo genérico do Drizzle não diz.
+  const { rows } = (await banco.execute(sql`
+    with fonte as (${FONTES}),
     achados as (
       select f.*, pe.nome, ts_rank(to_tsvector('portuguese', f.texto), q) as nota
         from fonte f
         left join caso c on c.id = f.caso_id
-        left join pessoa pe on pe.id = c.pessoa_id,
+        left join pessoa pe on pe.id = coalesce(c.pessoa_id, f.pessoa_id),
         to_tsquery('portuguese', ${termos.join(' | ')}) q
        where to_tsvector('portuguese', f.texto) @@ q
+         and (${saude}::boolean or not f.so_juridico)
          and (f.modelo_id is not null or (f.caso_id <> ${casoId} and (${beneficio}::text is null or c.beneficio = ${beneficio})))
        order by nota desc
-       limit ${limite}
+       limit ${candidatos}
     )
-    select de, nome, coalesce('caso:' || caso_id, 'modelo:' || modelo_id) as origem, texto from achados order by nota desc`)) as unknown as { rows: Linha[] }
+    select de, nome, referencia as origem, texto from achados order by nota desc`)) as unknown as { rows: Linha[] }
   // CA6: anonimiza o texto inteiro antes de recortar, para o corte não deixar meio endereço para trás.
-  return rows.map((r) => ({ tipo: 'acervo', referencia: r.origem, trecho: `${r.de}: ${recortar(anonimizar(r.texto, r.nome), termos)}` }))
+  const porPalavra: Achado[] = rows.map((r) => ({ chave: `${r.de}|${r.origem}`, de: r.de, referencia: r.origem, texto: anonimizar(r.texto, r.nome) }))
+  const porSentido = await buscarPorSentido(banco, { casoId, beneficio, consulta, saude, ia, candidatos })
+  const nota = new Map<string, { achado: Achado; nota: number }>()
+  for (const lista of [porPalavra, porSentido])
+    lista.forEach((achado, i) => {
+      const x = nota.get(achado.chave) ?? { achado, nota: 0 }
+      x.nota += 1 / (K_DO_RRF + i + 1)
+      nota.set(achado.chave, x)
+    })
+  return [...nota.values()]
+    .sort((a, b) => b.nota - a.nota)
+    .slice(0, limite)
+    .map(({ achado }) => ({ tipo: 'acervo', referencia: achado.referencia, trecho: `${achado.de}: ${recortar(achado.texto, termos)}` }))
+}
+
+/** GGVP-141 CA2: os trechos mais perto da consulta pelo sentido (pgvector, cosseno). Sem a IA ou sem vetor no acervo, nada. */
+async function buscarPorSentido(
+  banco: Banco,
+  { casoId, beneficio, consulta, saude, ia, candidatos }: { casoId: string; beneficio: string | null; consulta: string; saude: boolean; ia?: Ia; candidatos: number },
+): Promise<Achado[]> {
+  if (!ia?.ligada) return []
+  const [algum] = await banco.select({ id: acervoTrecho.id }).from(acervoTrecho).where(isNotNull(acervoTrecho.embedding)).limit(1)
+  if (!algum) return []
+  const v = await ia.vetor({ casoId, quem: null, texto: consulta.slice(0, LIMITE_DO_VETOR), saude, referencia: `consulta:caso:${casoId}` })
+  if (!v) return []
+  const { rows } = (await banco.execute(sql`
+    select t.origem as de, t.referencia, t.texto
+      from acervo_trecho t
+     where t.embedding is not null
+       and (${saude}::boolean or not t.so_juridico)
+       and (t.referencia like 'modelo:%' or (t.caso_id <> ${casoId} and (${beneficio}::text is null or t.beneficio = ${beneficio})))
+     order by t.embedding <=> ${JSON.stringify(v)}::vector
+     limit ${candidatos}`)) as unknown as { rows: { de: string; referencia: string; texto: string }[] }
+  return rows.map((r) => ({ chave: `${r.de}|${r.referencia}`, de: r.de, referencia: r.referencia, texto: r.texto }))
+}
+
+/** ponytail: corte simples para caber no modelo de embeddings; recortar o texto em pedaços quando o acervo pedir. */
+const LIMITE_DO_VETOR = 8000
+/** Vetores por rodada, para a rodada não demorar nem gastar de uma vez; o resto fica para a próxima. */
+const VETORES_POR_RODADA = 50
+
+/**
+ * GGVP-141 CA1, CA3, CA4: o acervo se alimenta sozinho, na rodada da sugestão pronta. Grava, anonimizado, o que ainda não
+ * está lá (pelo hash) e calcula pelo motor o vetor do que falta. Trecho só do Jurídico ganha vetor só com a autorização.
+ * ponytail: lê as fontes inteiras a cada rodada; com milhares de itens, guardar a última leitura por fonte.
+ */
+export async function alimentarAcervo(banco: Banco, ia: Ia) {
+  const { rows } = (await banco.execute(sql`
+    with fonte as (${FONTES})
+    select f.de, f.caso_id, f.referencia, f.texto, f.so_juridico, c.beneficio, pe.nome
+      from fonte f
+      left join caso c on c.id = f.caso_id
+      left join pessoa pe on pe.id = coalesce(c.pessoa_id, f.pessoa_id)
+     where f.referencia is not null and coalesce(trim(f.texto), '') <> ''`)) as unknown as {
+    rows: { de: string; caso_id: string | null; referencia: string; texto: string; so_juridico: boolean; beneficio: string | null; nome: string | null }[]
+  }
+  const trechos = rows.map((r) => {
+    const texto = anonimizar(r.texto, r.nome)
+    const hash = createHash('sha256').update(`${r.de}\n${r.referencia}\n${texto}`).digest('hex')
+    return { origem: r.de, referencia: r.referencia, casoId: r.caso_id, beneficio: r.beneficio, texto, soJuridico: r.so_juridico, hash }
+  })
+  const novos = trechos.length ? await banco.insert(acervoTrecho).values(trechos).onConflictDoNothing({ target: acervoTrecho.hash }).returning({ id: acervoTrecho.id }) : []
+  const semVetor = await banco
+    .select({ id: acervoTrecho.id, casoId: acervoTrecho.casoId, referencia: acervoTrecho.referencia, texto: acervoTrecho.texto, soJuridico: acervoTrecho.soJuridico })
+    .from(acervoTrecho)
+    .where(and(isNull(acervoTrecho.embedding), ia.saude ? undefined : eq(acervoTrecho.soJuridico, false)))
+    .limit(VETORES_POR_RODADA)
+  let vetores = 0
+  for (const t of semVetor) {
+    const v = await ia.vetor({ casoId: t.casoId, quem: null, texto: t.texto.slice(0, LIMITE_DO_VETOR), saude: t.soJuridico, referencia: t.referencia })
+    if (!v) continue
+    await banco.update(acervoTrecho).set({ embedding: v }).where(eq(acervoTrecho.id, t.id))
+    vetores++
+  }
+  return { novos: novos.length, vetores }
 }
