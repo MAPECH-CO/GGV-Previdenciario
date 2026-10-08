@@ -69,14 +69,14 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
 
   if (banco) {
     registrarSessao(app, { banco, agora, cookieSeguro })
-    registrarRotasConferencia(app, { banco, agora })
+    const motorIa = ia ?? criarIa({ banco, agora })
+    registrarRotasConferencia(app, { banco, agora, ia: motorIa })
     const arquivos = armazenamento ?? abrirArmazenamento()
     const cofreDoGov = cofre ?? criarCofre(chaveDoCofre())
     registrarRotasInss(app, { banco, agora, cofre: cofreDoGov, armazenamento: arquivos })
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
-    const motorIa = ia ?? criarIa({ banco, agora })
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos })

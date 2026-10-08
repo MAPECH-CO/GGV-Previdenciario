@@ -71,6 +71,17 @@ export const FINALIDADES = {
       'Não mencione a organização interna do escritório (setores, Sênior, despacho, tarefas): a peça fala só do autor, do INSS e das provas.',
     ].join(' '),
   },
+  /** GGVP-131: a IA explica os fatores da chance; o número vem do código e chega pronto no conteúdo. */
+  fatores_da_chance: {
+    versao: 1,
+    saude: true,
+    json: false,
+    barrarCid: false,
+    instrucao: [
+      'Para a Sênior do escritório, liste em tópicos curtos: (1) os fatores do caso que puxam a chance de êxito para cima; (2) os que puxam para baixo; (3) o que fazer para a chance subir, com a ação concreta (por exemplo, trazer o relatório do médico assistente ou o documento da época).',
+      'Use só o que está no conteúdo. Não calcule nem invente porcentagem: se houver número, ele vem do sistema e você só o cita como está.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 

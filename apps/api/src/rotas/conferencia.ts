@@ -1,7 +1,7 @@
 // Conferência da Sênior antes do INSS (GGVP-23): G1 (checklist), G2 (só a Sênior) e G17 (parecer médico) no servidor.
-import { and, desc, eq, gt, isNull, lte, or } from 'drizzle-orm'
+import { and, desc, eq, gt, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { CasoParaConferencia, DecidirConferencia, DispensarParecer, ResponderDispensa, pode, travaDoParecer, type Erro, type SituacaoDoParecer } from '@ggv/contratos'
+import { CasoParaConferencia, ChanceDeExito, DecidirConferencia, DispensarParecer, ROTULO_BENEFICIO, ResponderDispensa, pode, travaDoParecer, type Beneficio, type Erro, type SituacaoDoParecer } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import {
   acessoDadoSensivel,
@@ -14,9 +14,13 @@ import {
   kitDocumento,
   parecerMedico,
   pessoa,
+  processoAcervo,
+  resultadoInss,
   tarefa,
   usuario,
 } from '../banco/esquema.ts'
+import { REGRA_DA_CHANCE, calcularChance } from '../fluxo/chance.ts'
+import type { Ia } from '../ia/ia.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -26,7 +30,7 @@ export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e es
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
 export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 type ItemParecer = { item: string; atendido: boolean }
 type LinhaParecer = typeof parecerMedico.$inferSelect
@@ -35,7 +39,7 @@ type LinhaParecer = typeof parecerMedico.$inferSelect
 const situacaoDo = (p: LinhaParecer | undefined): SituacaoDoParecer | null =>
   !p ? null : p.confirmadoPor ? (p.resultado as SituacaoDoParecer) : 'pendente'
 
-export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
 
@@ -184,6 +188,42 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     })
     await historico(quem, 'caso_reprovado_na_conferencia', pedido, `caso:${casoId}`, { temPrazo: Boolean(prazo) })
     return resposta.code(201).send({ ok: true, situacao: 'reprovado' })
+  })
+
+  // GGVP-131 (recorte de 07/10): a chance de êxito na conferência. O número vem do código, a partir dos desfechos
+  // conferidos do acervo com o mesmo benefício; a IA lê o caso e explica os fatores. Fica no histórico (CA10).
+  app.post<{ Params: { id: string } }>('/api/casos/:id/chance', daSenior, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const dados = await montar(casoId, pedido.perfilAtivo)
+    if (!dados) return negar(resposta, 404, 'Caso não encontrado.')
+    const acervo = dados.beneficio
+      ? await banco
+          .select({ desfecho: processoAcervo.desfecho, criadoEm: processoAcervo.criadoEm })
+          .from(processoAcervo)
+          .where(and(eq(processoAcervo.beneficio, dados.beneficio), isNotNull(processoAcervo.desfechoConferidoPor)))
+      : []
+    const conta = calcularChance(acervo.map((a) => a.desfecho))
+    const baseEm = conta.casos ? new Date(Math.max(...acervo.map((a) => a.criadoEm.getTime()))).toISOString() : null
+    const [indeferido] = await banco
+      .select({ motivo: resultadoInss.motivoEscrito, motivoInss: resultadoInss.motivoIndeferimento })
+      .from(resultadoInss)
+      .where(and(eq(resultadoInss.casoId, casoId), eq(resultadoInss.resultado, 'indeferido')))
+      .orderBy(desc(resultadoInss.criadoEm))
+      .limit(1)
+    const [parecer] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, casoId)).orderBy(desc(parecerMedico.criadoEm)).limit(1)
+    const itens = ((parecer?.itens as ItemParecer[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
+    const conteudo = [
+      `Benefício: ${dados.beneficio ? (ROTULO_BENEFICIO[dados.beneficio as Beneficio] ?? dados.beneficio) : 'não definido'}`,
+      `Parecer médico: ${parecer ? `${parecer.resultado}${itens.length ? ` (${itens.join('; ')})` : ''}` : 'não há'}`,
+      `Checklist: ${!dados.checklist.cadastrado ? 'kit não cadastrado' : dados.checklist.completo ? 'completo' : `faltam ${dados.checklist.faltam.join(', ')}`}`,
+      `Laudo novo esperando conferência: ${dados.laudoNovoEsperando ? 'sim' : 'não'}`,
+      `Indeferimento anterior: ${indeferido ? (indeferido.motivo ?? indeferido.motivoInss ?? 'sem motivo registrado') : 'não há'}`,
+      `Chance calculada pelo sistema: ${conta.porcentagem === null ? 'sem casos parecidos na casa ainda' : `${conta.porcentagem}% em ${conta.casos} casos parecidos`}`,
+    ].join('\n')
+    const quem = pedido.usuario!.id
+    const fatores = await ia.sugerir('fatores_da_chance', { casoId, quem, conteudo, fontes: [{ tipo: 'regra', referencia: REGRA_DA_CHANCE }] })
+    await historico(quem, 'chance_mostrada', pedido, `caso:${casoId}`, { casos: conta.casos, porcentagem: conta.porcentagem, baseEm, chamada: fatores?.chamadaId ?? null })
+    return ChanceDeExito.parse({ ...conta, baseEm, regra: REGRA_DA_CHANCE, fatores, motivoIa: fatores ? null : 'A IA não respondeu agora: os fatores ficam com a sua leitura.' })
   })
 
   // G17 e GGVP-33 (Lucas, 01/10, Q14): a dispensa é de duas Sêniores diferentes. A primeira pede, com justificativa.

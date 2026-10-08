@@ -1,6 +1,7 @@
 // Contratos da Via administrativa no INSS (GGVP-8). Tela e servidor validam com o mesmo schema.
 import { dataParaIso, somenteDigitos, validarData } from '@ggv/campos'
 import { z } from 'zod'
+import { SugestaoDaIa } from './ia.ts'
 
 /** Linha da Central do perfil (GET /api/tarefas). Título e detalhe nunca levam CID nem diagnóstico. */
 export const TarefaDaCentral = z.object({
@@ -198,3 +199,18 @@ export type VigiliaDoCaso = z.infer<typeof VigiliaDoCaso>
 /** POST /api/casos/:id/encerrar (GGVP-48): só a Sênior, com o motivo (cliente desistiu, sem chance). */
 export const EncerrarCaso = z.object({ motivo: z.string().trim().min(1, 'Escreva por que o caso é encerrado') })
 export type EncerrarCaso = z.infer<typeof EncerrarCaso>
+
+/**
+ * POST /api/casos/:id/chance (GGVP-131, recorte da conferência da Sênior). O número é do código, com os casos e a data
+ * da base (G22); sem caso decidido, `porcentagem` nulo. Os fatores são sugestão da IA: ela explica, não calcula.
+ */
+export const ChanceDeExito = z.object({
+  casos: z.number().int(),
+  favoraveis: z.number().int(),
+  porcentagem: z.number().int().nullable(),
+  baseEm: z.string().nullable(),
+  regra: z.string(),
+  fatores: SugestaoDaIa.nullable(),
+  motivoIa: z.string().nullable(),
+})
+export type ChanceDeExito = z.infer<typeof ChanceDeExito>

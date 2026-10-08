@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import { travaDoParecer } from '@ggv/contratos'
@@ -201,5 +202,45 @@ describe('GGVP-23 · decidir', () => {
     await banco.update(caso).set({ beneficio: 'pensao_morte' }).where(eq(caso.id, casoId))
     const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('helena') })).json()
     expect([linha.titulo, linha.urgente, linha.tela]).toEqual(['Conferir antes do INSS', true, `/casos/${casoId}/conferencia`])
+  })
+})
+
+describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () => {
+  const FATORES = 'Puxa para cima: parecer suficiente. Puxa para baixo: nenhum. Para subir: manter o laudo atualizado.'
+  let enviado = ''
+  beforeEach(() => {
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      enviado = JSON.parse(String(init?.body)).messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: FATORES } }] }))
+    }
+    app = criarServidor({ banco, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+  })
+  const chance = async (apelido: string) => app.inject({ method: 'POST', url: `/api/casos/${casoId}/chance`, cookies: await cookieDe(apelido) })
+
+  it('CA2, CA4, CA10 · o número vem do acervo conferido do mesmo benefício, com os casos e a base; a IA explica; fica no histórico', async () => {
+    const conferido = { beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfechoConferidoPor: ids.helena }
+    await banco.insert(processoAcervo).values([
+      { ...conferido, desfecho: 'deferido' },
+      { ...conferido, desfecho: 'procedente_total' },
+      { ...conferido, desfecho: 'procedente_parcial' },
+      { ...conferido, desfecho: 'improcedente' },
+      { ...conferido, desfecho: 'desistencia' },
+      { beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfecho: 'improcedente' },
+      { ...conferido, beneficio: 'pensao_morte', desfecho: 'improcedente' },
+    ])
+    await parecer('suficiente')
+    const r = (await chance('helena')).json()
+    expect([r.casos, r.favoraveis, r.porcentagem, typeof r.baseEm, r.fatores.texto, r.fatores.sugestao]).toEqual([4, 3, 75, 'string', FATORES, true])
+    expect(enviado).toContain('Chance calculada pelo sistema: 75% em 4 casos parecidos')
+    expect(enviado).toContain('Parecer médico: suficiente')
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))
+    expect(ev.detalhe).toMatchObject({ casos: 4, porcentagem: 75, chamada: r.fatores.chamadaId })
+  })
+
+  it('CA2 · sem casos parecidos, sem número; CA9 · o Atendimento não vê', async () => {
+    const r = (await chance('helena')).json()
+    expect([r.casos, r.porcentagem, r.baseEm]).toEqual([0, null, null])
+    expect(enviado).toContain('sem casos parecidos na casa ainda')
+    expect((await chance('ana')).statusCode).toBe(403)
   })
 })

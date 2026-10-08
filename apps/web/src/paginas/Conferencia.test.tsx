@@ -32,6 +32,21 @@ function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Conferência da Sênior (GGVP-23)', () => {
+  it('GGVP-131 · "Ver a chance de êxito" mostra o número com os casos e a base, e os fatores como sugestão; sem casos, sem número', async () => {
+    const chance = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', motivoIa: null, fatores: { chamadaId: '66666666-6666-4666-8666-666666666666', sugestao: true, texto: 'Para subir: trazer o relatório do médico assistente.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null } }
+    servidor(base, [200, chance])
+    const { unmount } = render(<Conferencia casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver a chance de êxito' }))
+    expect((await screen.findByText(/75% em 4 casos parecidos/)).textContent).toBe('75% em 4 casos parecidos · base de 07/10/2026')
+    expect(screen.getByText('Fatores sugeridos pela IA · confira')).toBeTruthy()
+    expect(screen.getByText('Para subir: trazer o relatório do médico assistente.')).toBeTruthy()
+    unmount()
+    servidor(base, [200, { ...chance, casos: 0, favoraveis: 0, porcentagem: null, baseEm: null, fatores: null, motivoIa: 'A IA não respondeu agora: os fatores ficam com a sua leitura.' }])
+    render(<Conferencia casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver a chance de êxito' }))
+    expect(await screen.findByText('Sem casos parecidos na casa ainda: sem porcentagem.')).toBeTruthy()
+  })
+
   it('CA1 e CA5 · mostra benefício, documentos e o parecer item a item; aprovar envia e confirma', async () => {
     const fetch = servidor(base)
     render(<Conferencia casoId={CASO} />)

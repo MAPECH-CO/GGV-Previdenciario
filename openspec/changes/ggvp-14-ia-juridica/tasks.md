@@ -37,3 +37,11 @@
 - [x] 5.2 Servidor: `POST /api/casos/:id/resultado/sugestao` (perfil `resultado.aprovar_resumo`), com o benefício, o desfecho e o texto da última decisão de mérito; não grava; a aprovação guarda a chamada em `sugestao_ia`; testes com IA falsa.
 - [x] 5.3 Tela "Explicar o resultado": "Sugerir o resumo com a IA" preenche a caixa, com o selo; testes de tela.
 - [x] 5.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-131 · Chance de êxito (primeiro recorte: conferência da Sênior)
+
+- [x] 6.1 CA2 · Regra em código, com teste: `calcularChance` (favoráveis sobre decididos, sem desistência), em `apps/api/src/fluxo/chance.ts`.
+- [x] 6.2 Contrato `ChanceDeExito`; finalidade `fatores_da_chance` (explica, não calcula).
+- [x] 6.3 CA2, CA4, CA9, CA10 · `POST /api/casos/:id/chance` (perfil `caso.aprovar_para_inss`): desfechos conferidos do mesmo benefício, número com casos e base, fatores da IA, histórico `chance_mostrada`; testes com IA falsa.
+- [x] 6.4 Tela da conferência: "Ver a chance de êxito", o número ou "sem casos parecidos na casa ainda", e os fatores como sugestão; testes de tela.
+- [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

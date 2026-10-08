@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
+import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -25,6 +25,8 @@ export function Conferencia({ casoId }: { casoId: string }) {
   const [justificativa, setJustificativa] = useState('')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [chance, setChance] = useState<ChanceDeExito | null>(null)
+  const [calculando, setCalculando] = useState(false)
 
   const carregar = () => chamarApi<CasoParaConferencia>(`/casos/${casoId}/conferencia`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
   useEffect(() => {
@@ -58,6 +60,15 @@ export function Conferencia({ casoId }: { casoId: string }) {
     setErro('')
     setModo('nada')
     await carregar()
+  }
+
+  /** GGVP-131: o número vem do sistema (acervo conferido); a IA só explica os fatores. */
+  async function verChance() {
+    setCalculando(true)
+    const r = await chamarApi<ChanceDeExito>(`/casos/${casoId}/chance`, { method: 'POST', corpo: {} })
+    setCalculando(false)
+    if (!r.ok) return setErro(r.erro)
+    setChance(r.dados)
   }
 
   /** A segunda Sênior, outra pessoa, aprova ou recusa (Q14). O servidor recusa quem pediu. */
@@ -156,6 +167,38 @@ export function Conferencia({ casoId }: { casoId: string }) {
           </div>
         )}
       </section>
+
+      {caso.podeDecidir && (
+        <section className={styles.cartao} aria-label="Chance de êxito">
+          <h2 className={styles.cartaoTitulo}>Chance de êxito</h2>
+          {!chance ? (
+            <button type="button" className={styles.botaoSecundario} disabled={calculando} onClick={() => void verChance()}>
+              {calculando ? 'Calculando…' : 'Ver a chance de êxito'}
+            </button>
+          ) : (
+            <>
+              <p>
+                {chance.porcentagem === null ? (
+                  'Sem casos parecidos na casa ainda: sem porcentagem.'
+                ) : (
+                  <strong>
+                    {chance.porcentagem}% em {chance.casos} {chance.casos === 1 ? 'caso parecido' : 'casos parecidos'}
+                    {chance.baseEm ? ` · base de ${new Date(chance.baseEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+                  </strong>
+                )}
+              </p>
+              <p className={styles.dica}>Calculado pelo sistema: {chance.regra}.</p>
+              {chance.fatores && (
+                <>
+                  <span className={`${styles.selo} ${styles.seloAlerta}`}>Fatores sugeridos pela IA · confira</span>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{chance.fatores.texto}</p>
+                </>
+              )}
+              {chance.motivoIa && <p className={styles.dica}>{chance.motivoIa}</p>}
+            </>
+          )}
+        </section>
+      )}
 
       {feito ? (
         <p className={styles.sucesso} role="status">
