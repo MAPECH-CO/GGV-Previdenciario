@@ -31,6 +31,7 @@ import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
 import { registrarRotasGlossario } from './rotas/glossario.ts'
+import { registrarRotasTranscricao } from './rotas/transcricao.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
@@ -115,8 +116,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
-    registrarRotasRecepcaoEntrevista(app, { banco, agora })
+    registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasGlossario(app, { banco, agora })
+    registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

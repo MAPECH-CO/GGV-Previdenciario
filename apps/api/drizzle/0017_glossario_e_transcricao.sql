@@ -10,6 +10,8 @@ CREATE TABLE "glossario_termo" (
 );
 --> statement-breakpoint
 ALTER TABLE "glossario_termo" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "chamada_ia" ADD COLUMN "audio_segundos" integer;--> statement-breakpoint
+ALTER TABLE "chamada_ia" ADD COLUMN "custo_estimado" numeric(10, 4);--> statement-breakpoint
 ALTER TABLE "glossario_termo" ADD CONSTRAINT "glossario_termo_alterado_por_usuario_id_fk" FOREIGN KEY ("alterado_por") REFERENCES "public"."usuario"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "glossario_termo_unico" ON "glossario_termo" USING btree (lower("termo"));--> statement-breakpoint
 -- GGVP-143 CA3: o glossário nasce com os benefícios do catálogo (ROTULO_BENEFICIO, menos "Outro"), as siglas mais usadas

@@ -8,3 +8,13 @@
 - [x] 1.4 Seção "Glossário do escritório" na Configuração (`apps/web/src/paginas/Configuracao.tsx`); testes de tela.
 - [x] 1.5 Playwright: a Sênior acrescenta, corrige e tira um termo; a mudança aparece no histórico da configuração (`apps/web/e2e/glossario.e2e.ts`).
 - [x] 1.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-133 · Transcrição de áudio de verdade (parte 2: a entrevista)
+
+- [x] 2.1 CA1, CA9, CA11 · A terceira porta do motor, `transcrever` (OpenAI, com quem fala), com o registro do modelo, da duração e do custo em `chamada_ia` (colunas novas) e a trava de dado de saúde (`apps/api/src/ia/ia.ts`); teste com `fetch` falso.
+- [x] 2.2 CA3, CA5, CA7 · A finalidade `arrumar_transcricao` (glossário e contexto do caso, quem fala, o original ao lado) e o fluxo da transcrição com `tirarSenhas` no servidor (`apps/api/src/fluxo/transcricao.ts`); testes.
+- [x] 2.3 CA1, CA2, CA6, CA8, CA10 · O áudio de verdade vira documento nas rotas que já existem da entrevista (só acréscimo em `rotas/recepcao-entrevista.ts`), a transcrição pelo motor, o texto na pasta do cliente e o preparo em segundo plano; testes da API.
+- [x] 2.4 CA4 · A chave temporária do texto ao vivo, pelo servidor (`apps/api/src/rotas/transcricao.ts`); teste.
+- [x] 2.5 CA2, CA4, CA8 · Tela: gravar com o microfone e mandar o áudio; texto ao vivo; a caixa do áudio de fora manda o arquivo, com o aviso da ligação do Chatwoot; testes de tela.
+- [x] 2.6 Playwright: a advogada sobe a gravação de uma ligação na entrevista.
+- [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

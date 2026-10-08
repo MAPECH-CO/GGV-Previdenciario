@@ -1,7 +1,10 @@
 // EXEMPLO. Servidor de exemplo da entrevista gravada (GGVP-40), sobre o mesmo banco de servidor.ts. Sem microfone e sem
 // OpenAI: a gravação é um relógio e a transcrição é a conversa de exemplo, já sem senha (G9). Nada aqui apaga áudio
 // (CA13). Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-6), gravar com
-// o MediaRecorder e transcrever pela OpenAI.
+// o MediaRecorder e transcrever pela OpenAI. GGVP-133: nas fichas do servidor, o áudio de verdade (do microfone, em
+// partes, ou o arquivo de fora) vai para lá, e a transcrição vem da OpenAI pelo motor de IA do servidor.
+import type { ChaveAoVivo } from '@ggv/contratos'
+import { chamarApi } from '../api.ts'
 import { dataCurta, hojeIso, hora } from '../regras/datas.ts'
 import { documentosDaEntrevista, ehAudio, juntarPartes, partesDoAudio, resumoDaEntrevista, tirarSenhas } from '../regras/entrevista.ts'
 import { TIPOS_DE_ENTREVISTA, nomeBeneficio } from './catalogos.ts'
@@ -35,8 +38,12 @@ function acharEntrevista(banco: Banco, agendamentoId: string): { ficha: Ficha; a
 
 type DoServidor = { gravacao: Gravacao; tarefa?: TarefaEncaminhada; ficha?: Ficha; tarefas?: TarefaEncaminhada[] }
 
+/** GGVP-133: uma parte do áudio de verdade, gravada pelo microfone, e onde ela começa na gravação (segundos). */
+export type ParteDoAudio = { audio: Blob; inicio: number }
+const extensaoDo = (tipo: string) => (tipo.includes('ogg') ? 'ogg' : tipo.includes('mp4') ? 'm4a' : 'webm')
+
 /** GGVP-125, bloco 3a: a entrevista das fichas do servidor grava lá; a cópia daqui recebe a gravação, a ficha e as tarefas. */
-async function pedirAoServidor(caminho: string, corpo: object): Promise<DoServidor> {
+async function pedirAoServidor(caminho: string, corpo: object | FormData): Promise<DoServidor> {
   const r = await noBanco<DoServidor>(caminho, { method: 'POST', corpo })
   receber(r)
   return r
@@ -201,7 +208,12 @@ export async function encerrarGravacao(gravacaoId: string, fim: { aos: number; o
 }
 
 /** POST /api/gravacoes/:id/audio. A internet voltou: o áudio guardado no computador sobe uma vez só (CA12). */
-export async function enviarAudioGuardado(gravacaoId: string): Promise<Gravacao> {
+export async function enviarAudioGuardado(gravacaoId: string, partes: ParteDoAudio[] = []): Promise<Gravacao> {
+  if (gravacaoDoServidor(gravacaoId) && partes.length > 0) {
+    let g: Gravacao | undefined
+    for (const [i, parte] of partes.entries()) g = await enviarParteDoAudio(gravacaoId, parte, i === partes.length - 1)
+    return g!
+  }
   if (gravacaoDoServidor(gravacaoId)) return (await pedirAoServidor(`/gravacoes/${gravacaoId}/audio`, {})).gravacao
   await esperar()
   const banco = ler()
@@ -234,9 +246,15 @@ export async function registrarSemAudio(gravacaoId: string, notas: string): Prom
 }
 
 /** POST /api/entrevistas/:id/audio. Áudio gravado fora do portal, de qualquer formato e tamanho (CA9, CA10). */
-export async function subirAudio(agendamentoId: string, arquivo: AudioDeFora): Promise<RespostaDoEncerramento> {
+export async function subirAudio(agendamentoId: string, arquivo: AudioDeFora, conteudo?: Blob): Promise<RespostaDoEncerramento> {
   await esperar()
   if (!ehAudio(arquivo)) throw new Error('Esse arquivo não é de áudio.')
+  // GGVP-133 CA2: na ficha do servidor, o arquivo de verdade (a ligação baixada do Chatwoot) vai para a pasta do cliente.
+  if (agendamentoDoServidor(agendamentoId) && conteudo) {
+    const corpo = new FormData()
+    corpo.append('arquivo', conteudo, arquivo.nome)
+    return encerramento(await pedirAoServidor(`/entrevistas/${agendamentoId}/audio`, corpo))
+  }
   if (agendamentoDoServidor(agendamentoId)) return encerramento(await pedirAoServidor(`/entrevistas/${agendamentoId}/audio`, arquivo))
   const banco = ler()
   const achado = acharEntrevista(banco, agendamentoId)
@@ -301,4 +319,19 @@ export async function transcrever(gravacaoId: string, opcoes: { falhar?: boolean
   g.motivoDaFalha = undefined
   gravar(banco)
   return g
+}
+
+/** POST /api/gravacoes/:id/audio (GGVP-133): uma parte do áudio de verdade vai para a pasta do cliente, no servidor. */
+export async function enviarParteDoAudio(gravacaoId: string, parte: ParteDoAudio, ultima = false): Promise<Gravacao> {
+  const corpo = new FormData()
+  corpo.append('inicio', String(Math.round(parte.inicio)))
+  if (ultima) corpo.append('ultima', 'sim')
+  corpo.append('arquivo', parte.audio, `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
+  return (await pedirAoServidor(`/gravacoes/${gravacaoId}/audio`, corpo)).gravacao
+}
+
+/** POST /api/gravacoes/:id/chave-ao-vivo (GGVP-133 CA4): a chave temporária do texto ao vivo, ou o motivo de não ter. */
+export async function pedirChaveAoVivo(gravacaoId: string): Promise<ChaveAoVivo | { erro: string }> {
+  const r = await chamarApi<ChaveAoVivo>(`/gravacoes/${gravacaoId}/chave-ao-vivo`, { method: 'POST' })
+  return r.ok ? r.dados : { erro: r.erro }
 }

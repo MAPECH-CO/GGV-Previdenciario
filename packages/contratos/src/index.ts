@@ -73,3 +73,6 @@ export * from './chat.ts'
 
 // Glossário do escritório (GGVP-143): os termos que a transcrição e a IA usam.
 export * from './glossario.ts'
+
+// Transcrição de verdade (GGVP-133): o texto arrumado pela IA e a chave temporária do texto ao vivo.
+export * from './transcricao.ts'
