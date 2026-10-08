@@ -3,7 +3,7 @@ import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
 import { dataDe, ultimaDoLaco } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
-import { Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type Despacho } from '@ggv/contratos'
+import { Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type AnaliseDoDespacho, type Despacho } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 import { EncerrarSemJudicializar } from './Vigilia.tsx'
@@ -63,6 +63,7 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
   const [tipos, setTipos] = useState<TipoPericia[]>([])
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [analise, setAnalise] = useState<AnaliseDoDespacho | null>(null)
 
   useEffect(() => {
     void chamarApi<Despacho>(`/casos/${casoId}/despacho`).then((r) => (r.ok ? setX(r.dados) : setErro(r.erro)))
@@ -74,8 +75,24 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
       return marcado ? resto : { ...m, [s]: { descricao: '', temPrazo: null, prazo: '' } }
     })
 
+  // Épico IA (GGVP-54 CA1) e sugestão pronta (07/10): a análise chega sozinha ao abrir (preparada em segundo plano) e
+  // preenche o que a Sênior ainda não escolheu (CA4, G4); o prazo continua pergunta dela. Nada é gravado.
+  useEffect(() => {
+    if (!x?.podeDespachar) return
+    void chamarApi<AnaliseDoDespacho>(`/casos/${casoId}/despacho/analise`, { method: 'POST' }).then((r) => {
+      if (!r.ok) return setAnalise({ sugestao: null, leitura: null, motivo: r.erro, aviso: null })
+      setAnalise(r.dados)
+      const l = r.dados.leitura
+      if (!l) return
+      setDecisao((d) => d ?? (l.nadaFalta ? 'nada_falta' : 'acionar'))
+      setMarcados((m) => (Object.keys(m).length ? m : Object.fromEntries(l.itens.map((i) => [i.setor, { descricao: i.descricao, temPrazo: null, prazo: '' }]))))
+      setTipos((t) => (t.length ? t : l.pericias))
+    })
+  }, [casoId, x?.podeDespachar])
+
   async function despachar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
+    const chamadaIaId = analise?.sugestao?.chamadaId
     const corpo =
       decisao === 'acionar'
         ? {
@@ -85,8 +102,9 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
               return p ? [{ setor: s, descricao: p.descricao, temPrazo: p.temPrazo ?? undefined, prazo: p.temPrazo ? (isoParaData(p.prazo) ?? '') : undefined }] : []
             }),
             tiposPericia: tipos,
+            ...(chamadaIaId && { chamadaIaId }),
           }
-        : { decisao: decisao ?? undefined }
+        : { decisao: decisao ?? undefined, ...(chamadaIaId && { chamadaIaId }) }
     const entrada = Contrato.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o despacho.')
     const r = await chamarApi(`/casos/${casoId}/despacho`, { method: 'POST', corpo })
@@ -181,6 +199,36 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
         </section>
       ) : (
         !x.podeDespachar && <p className={styles.dica}>Esperando o despacho da Sênior.</p>
+      )}
+
+      {x.podeDespachar && (
+        <section className={styles.cartao} aria-label="Análise da IA">
+          <h2 className={styles.cartaoTitulo}>Análise da IA</h2>
+          {!analise && <p className={styles.dica}>A IA está lendo o caso…</p>}
+          {analise?.motivo && <p className={styles.dica}>{analise.motivo}</p>}
+          {analise?.aviso && <p className={styles.dica}>{analise.aviso}</p>}
+          {analise?.sugestao && analise.leitura && (
+            <>
+              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · quem despacha é você (G4)</span>
+              {analise.sugestao.alerta && (
+                <p className={styles.erroCampo} role="alert">
+                  Atenção: {analise.sugestao.alerta}.
+                </p>
+              )}
+              <p>{analise.sugestao.texto}</p>
+              <p className={styles.dica}>
+                Sugere:{' '}
+                {analise.leitura.nadaFalta
+                  ? 'nada falta.'
+                  : [...analise.leitura.itens.map((i) => `${ROTULO_SETOR[i.setor]}: ${i.descricao}`), ...analise.leitura.pericias.map((t) => ROTULO_PERICIA[t])].join(' · ')}
+              </p>
+              <p className={styles.dica}>
+                Fontes: {analise.sugestao.fontes.map((f) => f.trecho ?? f.referencia).join(' · ')} ({analise.sugestao.modelo})
+              </p>
+              <p className={styles.dica}>O formulário abaixo já veio com a sugestão: confira, responda o prazo e mude o que quiser.</p>
+            </>
+          )}
+        </section>
       )}
 
       {x.podeDespachar && (

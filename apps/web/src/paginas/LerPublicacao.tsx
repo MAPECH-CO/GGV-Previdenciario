@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarCnj, isoParaData, somenteDigitos } from '@ggv/campos'
-import { CLASSES_DE_ATO, ClassificarPublicacao, ROTULO_CLASSE, type PublicacaoParaLer } from '@ggv/contratos'
+import { CLASSES_DE_ATO, ClassificarPublicacao, ROTULO_CLASSE, type PublicacaoParaLer, type SugestaoDePublicacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -15,7 +15,8 @@ const DESTINO: Record<Classe, string> = {
 
 /**
  * Ler a publicação (GGVP-74, GGVP-34): a pessoa confirma ou corrige o tipo de ato; o sistema conta o prazo em código,
- * pelo lado seguro (G12), e encaminha (GGVP-37). Até o épico IA, quem classifica é a pessoa.
+ * pelo lado seguro (G12), e encaminha (GGVP-37). A IA (épico GGVP-14) só sugere o tipo, os dias e um resumo; quem
+ * classifica é a pessoa.
  */
 export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
   const ids = { dias: useId(), sem: useId() }
@@ -26,6 +27,7 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
   const [semPrazo, setSemPrazo] = useState(false)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [ia, setIa] = useState<SugestaoDePublicacao | null>(null)
 
   useEffect(() => {
     void chamarApi<PublicacaoParaLer>(`/publicacoes/${publicacaoId}`).then((r) => {
@@ -46,6 +48,21 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
     setFeito(`${ROTULO_CLASSE[entrada.data.classe]}. ${DESTINO[entrada.data.classe]}`)
     setVersao((v) => v + 1)
   }
+
+  // Épico IA e sugestão pronta (07/10): a publicação ainda sem classe abre com a leitura da IA (preparada em segundo
+  // plano), que preenche o tipo e os dias se a pessoa ainda não escolheu; quem classifica é ela.
+  useEffect(() => {
+    if (!p?.podeClassificar || p.classe) return
+    void chamarApi<SugestaoDePublicacao>(`/publicacoes/${publicacaoId}/sugestao`, { method: 'POST', corpo: {} }).then((r) => {
+      if (!r.ok) return setIa({ sugestao: null, motivo: r.erro })
+      setIa(r.dados)
+      const s = r.dados.sugestao
+      if (!s) return
+      setClasse((c) => c ?? s.classe)
+      setDias((d) => d || (s.dias === null ? '' : String(s.dias)))
+      setSemPrazo((x) => x || (s.classe !== 'andamento' && s.dias === null))
+    })
+  }, [publicacaoId, p?.podeClassificar, p?.classe])
 
   if (!p)
     return (
@@ -97,6 +114,33 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
         <p className={styles.sucesso} role="status">
           {feito}
         </p>
+      )}
+
+      {p.podeClassificar && !p.classe && (
+        <section className={styles.cartao} aria-label="Sugestão da IA">
+          <h2 className={styles.cartaoTitulo}>Sugestão da IA</h2>
+          {!ia && <p className={styles.dica}>A IA está lendo…</p>}
+          {ia?.motivo && <p className={styles.dica}>{ia.motivo}</p>}
+          {ia?.sugestao && (
+            <>
+              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · confira antes de usar</span>
+              {ia.sugestao.alerta && (
+                <p className={styles.erroCampo} role="alert">
+                  Atenção: {ia.sugestao.alerta}. Leia o texto original antes de decidir.
+                </p>
+              )}
+              <p>
+                {ROTULO_CLASSE[ia.sugestao.classe]}
+                {ia.sugestao.dias !== null ? ` · prazo de ${ia.sugestao.dias} dias escrito na decisão` : ''}
+              </p>
+              <p className={styles.dica}>Resumo: {ia.sugestao.resumo}</p>
+              <p className={styles.dica}>
+                O formulário abaixo já veio com a sugestão: confira e classifique. A data final do prazo é contada pelo sistema; a IA só lê os dias
+                escritos ({ia.sugestao.modelo}).
+              </p>
+            </>
+          )}
+        </section>
       )}
 
       {p.podeClassificar && (

@@ -117,8 +117,15 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1791478113410,
-      "tag": "0016_segunda_ficha_medica",
+      "when": 1791477280851,
+      "tag": "0016_registro_da_ia",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791484172022,
+      "tag": "0017_segunda_ficha_medica",
       "breakpoints": true
     }
   ]
