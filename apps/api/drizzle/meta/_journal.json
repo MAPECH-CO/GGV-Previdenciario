@@ -92,6 +92,27 @@
       "when": 1791333774623,
       "tag": "0012_configuracao_do_escritorio",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791431868818,
+      "tag": "0013_ficha_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791445639547,
+      "tag": "0014_agenda_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791464765972,
+      "tag": "0015_gravacao_da_recepcao",
+      "breakpoints": true
     }
   ]
 }

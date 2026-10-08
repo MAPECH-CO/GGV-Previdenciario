@@ -1,5 +1,5 @@
 // Pessoas: lead e cliente, vínculos, consentimento e o cofre do gov.br (GGVP-16, 43, 60, 103, 108).
-import { customType, date, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { boolean, customType, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 
@@ -92,4 +92,62 @@ export const credencialGovbr = pgTable('credencial_govbr', {
   atualizadaPor: uuid('atualizada_por').references(() => usuario.id),
   criadoEm: criadoEm(),
   atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
+/**
+ * A ficha da Recepção (GGVP-125, bloco 1), no formato das telas do Pedro: dados pessoais, triagem, contatos e o
+ * histórico. Uma por pessoa; os dados principais também ficam em `pessoa`, que o resto do portal usa. Sem senha: a do
+ * gov.br vai só para o cofre (G9). ponytail: documento por enquanto; normalizar em tabelas quando a ligação terminar.
+ */
+export const fichaRecepcao = pgTable('ficha_recepcao', {
+  pessoaId: uuid('pessoa_id')
+    .primaryKey()
+    .references(() => pessoa.id),
+  documento: jsonb('documento').notNull(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
+/**
+ * As tarefas da Recepção (GGVP-125, bloco 2), no formato da Central das telas: encaminhar ao setor, preencher ficha,
+ * preparar entrevista, cadastrar lead. O id é o das telas ("preparar-<entrevista>"), uma por motivo. A `tarefa` do
+ * portal pede um caso, e o lead ainda não tem. ponytail: juntar com `tarefa` quando o lead ganhar caso.
+ */
+export const tarefaRecepcao = pgTable('tarefa_recepcao', {
+  id: text('id').primaryKey(),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  setor: text('setor').notNull(),
+  dados: jsonb('dados').notNull(),
+  concluidaEm: momento('concluida_em'),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/** Compromisso da agenda sem cliente, como "gravação amanhã" (GGVP-123, CA5). */
+export const compromissoInterno = pgTable('compromisso_interno', {
+  id: id(),
+  titulo: text('titulo').notNull(),
+  data: date('data').notNull(),
+  hora: text('hora').notNull(),
+  duracao: integer('duracao').notNull(),
+  /** Id da equipe das telas (catálogo EQUIPE). */
+  responsavel: text('responsavel').notNull(),
+  estado: text('estado').notNull().default('marcado'),
+  criadoPor: uuid('criado_por').references(() => usuario.id),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/**
+ * As gravações e as conversas sem áudio da Recepção (GGVP-40, GGVP-46; GGVP-125, bloco 3a), no formato das telas,
+ * guardadas para sempre. A entrevista com a advogada tem dado de saúde: `so_juridico` (só vai às telas com
+ * `dado_saude.ver_detalhe`).
+ */
+export const gravacaoRecepcao = pgTable('gravacao_recepcao', {
+  id: text('id').primaryKey(),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  soJuridico: boolean('so_juridico').notNull(),
+  dados: jsonb('dados').notNull(),
+  criadoEm: criadoEm(),
 }).enableRLS()

@@ -25,9 +25,11 @@ async function preencherMinimo(page: Page, nome: string, telefone: string) {
   await page.getByLabel('O que a pessoa pretende *').fill(PRETENDE)
 }
 
+// Com o lead no servidor (GGVP-125), a busca junta o banco do portal, que tem a "Rosa Amaral (exemplo)": por isso a busca
+// de quem não existe é "rosana", a ficha nova tem o id do banco e a contagem final olha só a Rosa Exemplo.
 test('CA3, CA13, CA14 e CA16 · do balcão ao novo cliente e à ficha, com uma ficha e uma pasta só', async ({ page }) => {
   await page.goto('/balcao')
-  await buscar(page, 'rosa')
+  await buscar(page, 'rosana')
   await page.getByRole('link', { name: '+ Novo cliente' }).click()
   await expect(page).toHaveURL('/clientes/novo')
 
@@ -37,14 +39,14 @@ test('CA3, CA13, CA14 e CA16 · do balcão ao novo cliente e à ficha, com uma f
   await pastas.getByRole('radio', { name: 'Clientes/2024/Rosa Exemplo' }).check()
   await pastas.getByRole('button', { name: 'Usar esta pasta' }).click()
 
-  await expect(page).toHaveURL('/clientes/rosa-exemplo')
+  await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
   await expect(page.getByRole('heading', { level: 2, name: 'Rosa Exemplo' })).toBeVisible()
   await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText(PRETENDE)
   await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Ligou à pasta que já existia no Drive: Clientes/2024/Rosa Exemplo')
 
   await page.goto('/balcao')
   await buscar(page, 'rosa')
-  await expect(page.getByRole('status')).toHaveText('1 pessoa encontrada')
+  await expect(page.getByRole('list', { name: 'Pessoas encontradas' }).getByRole('button', { name: /Rosa Exemplo/ })).toHaveCount(1)
 })
 
 test('CA6 · CPF que já existe abre a ficha que já existe', async ({ page }) => {
