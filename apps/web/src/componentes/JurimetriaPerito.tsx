@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { processosComOPerito } from '../dados/pericia.ts'
 import type { PerfilDoPerito } from '../dados/peritos.ts'
+import { agora } from '../dados/servidor.ts'
+import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { AMOSTRA_MINIMA_DO_PERITO, type Jurimetria } from '../regras/pericia.ts'
 import janelas from './DetalheCompromisso.module.css'
 import styles from './JurimetriaPerito.module.css'
@@ -80,6 +82,21 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
             Com menos de {AMOSTRA_MINIMA_DO_PERITO} laudos, a dica pelo perfil não vai ao cliente (G22): vale a orientação padrão.
           </p>
         )}
+
+        {/* O histórico do perfil: um registro por laudo, sem sobrescrever; a versão é quantos laudos o formam (GGVP-73, CA3). */}
+        <h3 className={styles.secao}>
+          Histórico do perfil · {perfil.versao} laudos
+        </h3>
+        <ul className={styles.lista} aria-label="Últimos laudos do perfil">
+          {perito.laudos
+            .slice(-5)
+            .reverse()
+            .map((l) => (
+              <li key={l.id}>
+                • {dataCurta(l.data, hojeIso(agora()))} · {l.caso} · {l.assunto} · {l.resultado === 'favoravel' ? 'favorável' : 'desfavorável'}
+              </li>
+            ))}
+        </ul>
 
         {processos.length > 0 && (
           <>

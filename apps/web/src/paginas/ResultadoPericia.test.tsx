@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { obterPericia, registrarComparecimento, tarefasDoJuridicoAdm } from '../dados/pericia.ts'
+import { lerComprovante, obterPericia, registrarComparecimento, registrarMarcacao, tarefasDoJuridicoAdm } from '../dados/pericia.ts'
 import { iniciarPerfil } from '../dados/perfis.ts'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from './CentralAdvogada.tsx'
@@ -118,5 +118,40 @@ describe('GGVP-70 · o chat da advogada (Figma 2107:667 e 2186:2)', () => {
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
     expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia/resultado'])
     expect(itens[1].textContent).toContain('Antônio Exemplo · Conferir resultado da perícia')
+  })
+})
+
+describe('GGVP-73 · o laudo atualiza o perfil do perito', () => {
+  it('CA1, CA3 · registrado o laudo, o perfil ganha um registro: a versão e o histórico na janela do perito', async () => {
+    await abrirEAnexar('laudo_pericia_antonio.pdf')
+    fireEvent.click(screen.getByRole('radio', { name: 'Favorável — seguir' }))
+    conferirTudo()
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar resultado' }))
+    const perfil = within(await screen.findByRole('region', { name: 'Perfil do perito' }))
+    expect(perfil.getByText(/A IA atualizou o perfil de Dr\. A\. Prado \(exemplo\): versão 35, formada por 35 laudos/)).toBeTruthy()
+    fireEvent.click(perfil.getByRole('button', { name: 'Ver o perfil do perito' }))
+    const janela = within(screen.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' }))
+    expect(janela.getByText('Histórico do perfil · 35 laudos')).toBeTruthy()
+    const ultimos = within(janela.getByRole('list', { name: 'Últimos laudos do perfil' })).getAllByRole('listitem')
+    expect(ultimos[0].textContent).toBe('• 20/10 · 0000001-00.2025.4.03.0000 · coluna · favorável')
+  })
+
+  it('CA6 · perito não reconhecido: a pergunta de um clique liga o laudo e o perfil é atualizado', async () => {
+    const lido = await lerComprovante('maria-exemplo-1', 'comprovante_maria.pdf')
+    await registrarMarcacao('maria-exemplo-1', { comprovante: { nome: 'comprovante_maria.pdf' }, lido, pedeDocumentoNovo: false }, 'Igor (exemplo)')
+    agora = new Date(2026, 10, 3, 11, 0)
+    await registrarComparecimento('maria-exemplo-1', { compareceu: true }, 'Igor (exemplo)')
+    render(<ResultadoPericia processoId="maria-exemplo-1" />)
+    await screen.findByRole('heading', { name: 'Maria Exemplo · Conferir resultado da perícia' })
+    fireEvent.change(screen.getByLabelText(/Laudo ou registro do GERID/), { target: { files: [pdf('laudo_maria.pdf')] } })
+    expect(await screen.findByText('perito não identificado: sem jurimetria')).toBeTruthy()
+    fireEvent.click(screen.getByRole('radio', { name: 'Favorável — seguir' }))
+    conferirTudo()
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar resultado' }))
+    const pergunta = within(await screen.findByRole('region', { name: 'Quem foi o perito deste laudo?' }))
+    expect(pergunta.getByText(/até lá, o laudo fica fora das contas/)).toBeTruthy()
+    fireEvent.click(pergunta.getByRole('button', { name: 'Dr. R. Menezes (exemplo) · Perito médico do INSS' }))
+    expect(await screen.findByText('Laudo ligado a Dr. R. Menezes (exemplo): o perfil foi atualizado.')).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'Perfil do perito' })).getByText(/versão 7, formada por 7 laudos/)).toBeTruthy()
   })
 })

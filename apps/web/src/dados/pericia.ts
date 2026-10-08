@@ -48,7 +48,7 @@ import {
 import { problemaG20 } from '../regras/parecer.ts'
 import { emVigor } from '../regras/roteiro.ts'
 import { nomeBeneficio } from './catalogos.ts'
-import { perfilDoPerito, peritosDo, reconhecerPerito, type PerfilDoPerito } from './peritos.ts'
+import { acrescentarLaudo, perfilDoPerito, peritosDo, reconhecerPerito, type PerfilDoPerito } from './peritos.ts'
 import { roteiroDoCaso } from './roteiro.ts'
 import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
 import type { Arquivo, EventoDaAgenda, Ficha, Processo, Tarefa } from './tipos.ts'
@@ -207,6 +207,8 @@ export type LeituraDoLaudo = {
   porque?: string
   /** No desfavorável: a indicação da IA de pedir nova perícia. Quem decide é a advogada. */
   valeNovaPericia?: boolean
+  /** O assunto do laudo, para os números por assunto do perfil (GGVP-73, G22). */
+  assunto: string
   /** O que o perito observou, perguntou e pediu, para o perfil dele (GGVP-73). */
   observou: string[]
   perguntou: string[]
@@ -219,6 +221,8 @@ export type ResultadoDaPericia = {
   laudo?: { nome: string; anexadoEm: string; leitura: LeituraDoLaudo }
   /** O que a advogada registrou (CA2 a CA5); no judicial, até quando manifestar (G12). */
   registrado?: { quando: string; quem: string; favoravel: boolean; novaPericia?: boolean; conferidas: string[]; manifestarAte?: string }
+  /** O laudo no perfil do perito (GGVP-73): entrou, ou espera a pergunta de um clique, fora das contas (CA6). */
+  noPerfil?: 'atualizado' | 'aguardando-perito'
 }
 
 /** Chatwoot (documento e instrução, Lucas 02/10 Q5) ou a ligação. */
@@ -1463,8 +1467,8 @@ export function registrarComparecimento(processoId: string, r: { compareceu: boo
 function leituraDoLaudo(pericia: Pericia, beneficio: string, nome: string): LeituraDoLaudo {
   const social = pericia.tipo === 'social'
   const conteudo = social
-    ? { observou: ['quem mora na casa e a renda de cada um', 'as condições da moradia'], perguntou: ['quem ajuda nas despesas da casa'], pediu: ['comprovantes de renda e de despesas'] }
-    : { observou: ['como a pessoa senta, levanta e anda'], perguntou: ['quanto tempo a pessoa aguenta sentada e em pé'], pediu: ['laudos e receitas dos últimos 12 meses'] }
+    ? { assunto: 'renda familiar', observou: ['quem mora na casa e a renda de cada um', 'as condições da moradia'], perguntou: ['quem ajuda nas despesas da casa'], pediu: ['comprovantes de renda e de despesas'] }
+    : { assunto: 'coluna', observou: ['como a pessoa senta, levanta e anda'], perguntou: ['quanto tempo a pessoa aguenta sentada e em pé'], pediu: ['laudos e receitas dos últimos 12 meses'] }
   if (!/desfavor/i.test(nome)) {
     return {
       favoravel: true,
@@ -1580,16 +1584,18 @@ export function registrarResultado(
         agora(),
       )
       pericia.historico.push({ quando, quem: SISTEMA, oQue: `Abriu a nova perícia para o Jurídico administrativo marcar (não conta como remarcação): ${outra.id}`, passo: 'DP.10' })
-      return
+    } else {
+      pericia.historico.push({
+        quando,
+        quem: SISTEMA,
+        oQue:
+          `O resultado subiu no card e voltou para quem pediu (${ORIGENS[pericia.origem].rotulo}): ${COMO_SEGUE[pericia.origem]}` +
+          (manifestarAte ? `, até ${dataCurta(manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)` : ''),
+        passo: 'DP.08',
+      })
     }
-    pericia.historico.push({
-      quando,
-      quem: SISTEMA,
-      oQue:
-        `O resultado subiu no card e voltou para quem pediu (${ORIGENS[pericia.origem].rotulo}): ${COMO_SEGUE[pericia.origem]}` +
-        (manifestarAte ? `, até ${dataCurta(manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)` : ''),
-      passo: 'DP.08',
-    })
+    // O laudo segue para o perfil do perito, na médica e na social (CA7; GGVP-73).
+    laudoNoPerfil(banco, pericia, quando)
   })
 }
 
@@ -1665,4 +1671,76 @@ export function comoOPeritoAvalia(texto: string): { texto: string; itens: ItemDo
       ...itens,
     ],
   }
+}
+
+// GGVP-73 · Atualizar o perfil do perito (DP.09, sem tela própria).
+
+const DIA = 24 * 60 * 60 * 1000
+
+/**
+ * DP.09: a IA grava no perfil do perito o que ele observou, perguntou e pediu, com a referência do caso e sem dado pessoal
+ * do cliente (CA1, CA2, CA4); um registro por laudo, sem sobrescrever nem duplicar (CA3, CA5). Sem perito reconhecido, o
+ * laudo fica fora das contas até a pergunta de um clique (CA6). Os números do perfil são código (CA7).
+ */
+function laudoNoPerfil(banco: Banco, pericia: Pericia, quando: string) {
+  const r = pericia.resultado!
+  if (!pericia.peritoId) {
+    r.noPerfil = 'aguardando-perito'
+    pericia.historico.push({ quando, quem: SISTEMA, oQue: 'O laudo não tem perito reconhecido: fica fora das contas até alguém ligar o perito (um clique)', passo: 'DP.09' })
+    return
+  }
+  const { processo } = fichaDoProcesso(banco, pericia.processoId)!
+  const { leitura, anexadoEm } = r.laudo!
+  const data = hojeIso(new Date(anexadoEm))
+  const caso = processo.numero ?? `caso-${banco.pericias!.indexOf(pericia) + 1}`
+  const entrou = acrescentarLaudo(banco, pericia.peritoId, {
+    id: `laudo-${pericia.id}`,
+    caso,
+    data,
+    tipo: pericia.tipo,
+    assunto: leitura.assunto,
+    resultado: r.registrado!.favoravel ? 'favoravel' : 'desfavoravel',
+    dias: Math.max(0, Math.round((Date.parse(data) - Date.parse(pericia.marcacao!.data)) / DIA)),
+    observou: leitura.observou,
+    perguntou: leitura.perguntou,
+    pediu: leitura.pediu,
+  })
+  r.noPerfil = 'atualizado'
+  const perito = peritosDo(banco).find((p) => p.id === pericia.peritoId)!
+  pericia.historico.push({
+    quando,
+    quem: SISTEMA,
+    oQue: entrou
+      ? `A IA atualizou o perfil de ${perito.nome}: versão ${perito.laudos.length}, com o que o perito observou, perguntou e pediu (referência do caso: ${caso}, sem dado pessoal)`
+      : `O laudo já estava no perfil de ${perito.nome}: nada se duplicou`,
+    passo: 'DP.09',
+  })
+}
+
+/** A IA roda de novo sobre o laudo registrado: o mesmo laudo não se duplica no perfil (CA5). */
+export async function atualizarPerfilComOLaudo(processoId: string): Promise<PericiaNaTela> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDoResultado(banco, processoId)
+  if (!pericia?.resultado?.registrado) throw new Error('O resultado ainda não foi registrado.')
+  laudoNoPerfil(banco, pericia, agora().toISOString())
+  gravar(banco)
+  return naTela(banco, pericia)
+}
+
+/** A pergunta de um clique (CA6): ligado o perito, o laudo sai da espera e entra no perfil dele. */
+export async function ligarPeritoDoLaudo(processoId: string, peritoId: string, quem: string): Promise<PericiaNaTela> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDoResultado(banco, processoId)
+  if (pericia?.resultado?.noPerfil !== 'aguardando-perito') throw new Error('Este laudo não espera o perito.')
+  const perito = peritosDo(banco).find((p) => p.id === peritoId)
+  if (!perito) throw new Error('Perito não encontrado.')
+  pericia.peritoId = perito.id
+  delete pericia.peritoLido
+  const quando = agora().toISOString()
+  pericia.historico.push({ quando, quem, oQue: `Ligou o laudo ao perito: ${perito.nome}`, passo: 'DP.09' })
+  laudoNoPerfil(banco, pericia, quando)
+  gravar(banco)
+  return naTela(banco, pericia)
 }

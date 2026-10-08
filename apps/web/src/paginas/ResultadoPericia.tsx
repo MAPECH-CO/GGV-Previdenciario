@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
-import { lerLaudoDaPericia, obterResultado, registrarResultado, type LeituraDoLaudo, type PericiaNaTela } from '../dados/pericia.ts'
+import { JurimetriaPerito } from '../componentes/JurimetriaPerito.tsx'
+import {
+  lerLaudoDaPericia,
+  ligarPeritoDoLaudo,
+  obterResultado,
+  peritosParaLigar,
+  registrarResultado,
+  type LeituraDoLaudo,
+  type PericiaNaTela,
+} from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -34,6 +43,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
   const [favoravel, setFavoravel] = useState<boolean>()
   const [novaPericia, setNovaPericia] = useState<boolean>()
   const [conferidas, setConferidas] = useState<string[]>([])
+  const [verPerfil, setVerPerfil] = useState(false)
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
   const travado = useRef(false)
@@ -78,6 +88,21 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
     const hash = await hashDoConteudo(await arquivo.arrayBuffer())
     setLaudo({ nome: arquivo.name, tamanho: arquivo.size, hash })
     setLeitura(await lerLaudoDaPericia(processoId, arquivo.name))
+  }
+
+  async function ligar(peritoId: string) {
+    if (travado.current) return
+    travado.current = true
+    setErro('')
+    try {
+      const feito = await ligarPeritoDoLaudo(processoId, peritoId, quem)
+      setT(feito)
+      setAviso(`Laudo ligado a ${feito.perfil?.perito.nome}: o perfil foi atualizado.`)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não deu para ligar o perito.')
+    } finally {
+      travado.current = false
+    }
   }
 
   async function registrar() {
@@ -151,7 +176,40 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                 Ver a página do processo
               </a>
             </section>
-          ) : (
+          ) : null}
+
+          {/* DP.09 (GGVP-73): o laudo no perfil do perito, ou a pergunta de um clique quando o perito não foi reconhecido. */}
+          {r && pericia.resultado!.noPerfil === 'atualizado' && t.perfil && (
+            <section className={styles.cartao} aria-labelledby="perfil-do-perito">
+              <h2 id="perfil-do-perito" className={styles.cartaoTitulo}>
+                Perfil do perito
+              </h2>
+              <p>
+                A IA atualizou o perfil de {t.perfil.perito.nome}: versão {t.perfil.versao}, formada por {t.perfil.versao} laudos. O laudo entrou com a referência do
+                caso, sem dado pessoal do cliente; os números são do sistema.
+              </p>
+              <button type="button" className={proprio.secundario} onClick={() => setVerPerfil(true)}>
+                Ver o perfil do perito
+              </button>
+            </section>
+          )}
+          {r && pericia.resultado!.noPerfil === 'aguardando-perito' && (
+            <section className={styles.cartao} aria-labelledby="quem-foi-o-perito">
+              <h2 id="quem-foi-o-perito" className={styles.cartaoTitulo}>
+                Quem foi o perito deste laudo?
+              </h2>
+              <p>O sistema não reconheceu o perito. Um clique liga o laudo ao perfil dele; até lá, o laudo fica fora das contas.</p>
+              <div className={styles.atalhos} role="group" aria-label="Ligar o laudo ao perito">
+                {peritosParaLigar(pericia.tipo).map((p) => (
+                  <button key={p.id} type="button" className={proprio.secundario} onClick={() => void ligar(p.id)}>
+                    {p.nome} · {p.especialidade}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {r ? null : (
             <>
               <section className={styles.cartao} aria-labelledby="laudo">
                 <h2 id="laudo" className={styles.cartaoTitulo}>
@@ -310,6 +368,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
         </aside>
       </main>
       <AbaSuporte />
+      {verPerfil && t.perfil && <JurimetriaPerito perfil={t.perfil} aoFechar={() => setVerPerfil(false)} />}
     </>
   )
 }

@@ -68,8 +68,8 @@
 
 ## GGVP-73 · Atualizar o perfil do perito
 
-- [ ] 8.1 Servidor de exemplo: o laudo entra no perfil ao registrar o resultado (sem dado pessoal, sem duplicar); o laudo do perito não reconhecido fica fora das contas até ligar; com teste em `src/dados/pericia.test.ts` (CA1 a CA7). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
-- [ ] 8.2 Telas: o feito do resultado com a versão do perfil, a pergunta de um clique e o histórico do perfil na janela da jurimetria. Teste em `ResultadoPericia.test.tsx` (CA1, CA3, CA6, CA7). Verifica com `pnpm vitest run src/paginas/ResultadoPericia.test.tsx`.
-- [ ] 8.3 Playwright no `e2e/pericia-resultado.e2e.ts`: o laudo atualiza o perfil (CA1, CA3). Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
+- [x] 8.1 Servidor de exemplo: o laudo entra no perfil ao registrar o resultado (sem dado pessoal, sem duplicar); o laudo do perito não reconhecido fica fora das contas até ligar; com teste em `src/dados/pericia.test.ts` (CA1 a CA7). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [x] 8.2 Telas: o feito do resultado com a versão do perfil, a pergunta de um clique e o histórico do perfil na janela da jurimetria. Teste em `ResultadoPericia.test.tsx` (CA1, CA3, CA6, CA7). Verifica com `pnpm vitest run src/paginas/ResultadoPericia.test.tsx`.
+- [x] 8.3 Playwright no `e2e/pericia-resultado.e2e.ts`: o laudo atualiza o perfil (CA1, CA3). Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
 - [ ] 8.4 Ligar no servidor: a extração pela IA de verdade e o acervo (RAG) com o perfil; a GGVP-59 lê dele. **Fica aberta nesta história.**
 - [ ] 8.5 Rodar typecheck, lint, testes e Playwright; colar a saída; gravar o teste em vídeo do grupo; perguntar "Agora ok?" (no fim do grupo 2).

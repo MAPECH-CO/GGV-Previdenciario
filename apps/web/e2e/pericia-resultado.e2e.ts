@@ -30,7 +30,7 @@ async function conferirTudo(page: Page) {
   for (const caixa of await page.getByRole('region', { name: 'Conferência (você decide; a IA só resume)' }).getByRole('checkbox').all()) await caixa.check()
 }
 
-test('CA1, CA2, CA5, CA8 · favorável: o resumo da IA, a jurimetria do sistema, as conferências e a volta ao juízo com 15 dias', async ({ page }) => {
+test('CA1, CA2, CA5, CA8 e o perfil do perito · favorável: o resumo da IA, a jurimetria do sistema, as conferências e a volta ao juízo com 15 dias', async ({ page }) => {
   test.setTimeout(120_000)
   await antonioCompareceu(page)
   await page.goto(ADVOGADA)
@@ -48,6 +48,11 @@ test('CA1, CA2, CA5, CA8 · favorável: o resumo da IA, a jurimetria do sistema,
   await page.getByRole('button', { name: 'Registrar resultado' }).click()
   await expect(page.getByRole('heading', { name: '✓ Resultado registrado: favorável' })).toBeVisible()
   await expect(page.getByText(/volta ao judicial \(D3a\): manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/)).toBeVisible()
+  // GGVP-73: o laudo entrou no perfil do perito, um registro a mais (CA1, CA3).
+  await expect(page.getByRole('region', { name: 'Perfil do perito' })).toContainText('versão 35, formada por 35 laudos')
+  await page.getByRole('button', { name: 'Ver o perfil do perito' }).click()
+  await expect(page.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' })).toContainText('Histórico do perfil · 35 laudos')
+  await page.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' }).getByRole('button', { name: 'Fechar' }).last().click()
 
   await page.getByRole('link', { name: 'Ver a página do processo' }).click()
   // A primeira abertura da página do processo compila a tela no servidor de desenvolvimento: nesta máquina passa dos 5 s.

@@ -5,6 +5,7 @@ import {
   abordarSugeridoNaPericia,
   adiarCobrancaDaPericia,
   autorizarRemarcacao,
+  atualizarPerfilComOLaudo,
   clienteLigou,
   comoOPeritoAvalia,
   confirmarPresenca,
@@ -20,6 +21,7 @@ import {
   ligarPerito,
   lerComprovante,
   liberarAgendamento,
+  ligarPeritoDoLaudo,
   montarOrientacao,
   obterCobrancaDaPericia,
   obterLembrete,
@@ -643,7 +645,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(t.situacao).toBe('concluida')
     expect(t.pericia.resultado!.registrado).toMatchObject({ quem: DRA_PAULA, favoravel: true, manifestarAte: '2026-10-31' })
     expect(t.ficha.arquivos.at(-1)).toMatchObject({ nome: 'laudo_pericia_antonio.pdf', tipo: 'laudo-pericia', local: ANTONIO })
-    expect(t.pericia.historico.slice(-2).map((e) => e.oQue)).toEqual([
+    expect(t.pericia.historico.slice(-3, -1).map((e) => e.oQue)).toEqual([
       'Registrou o resultado: favorável (laudo laudo_pericia_antonio.pdf)',
       'O resultado subiu no card e voltou para quem pediu (D3a · pedido do juiz): volta ao judicial (D3a): manifestar sobre o laudo, até 31/10 (15 dias, G12)',
     ])
@@ -657,7 +659,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(lido).toMatchObject({ favoravel: false, valeNovaPericia: true })
     expect(lido.porque).toBe('O perito não comentou os laudos e os exames do escritório, que mostram a limitação há mais de um ano.')
     const t = await registrarResultado(ANTONIO, { laudo: laudo('laudo_desfavoravel_antonio.pdf'), favoravel: false, novaPericia: true, conferidas: MEDICA }, DRA_PAULA)
-    expect(t.pericia.historico.slice(-3).map((e) => e.oQue)).toEqual([
+    expect(t.pericia.historico.slice(-4, -1).map((e) => e.oQue)).toEqual([
       'A IA indicou: O perito não comentou os laudos e os exames do escritório, que mostram a limitação há mais de um ano. Vale pedir nova perícia: sim.',
       'Decidiu pedir nova perícia',
       'Abriu a nova perícia para o Jurídico administrativo marcar (não conta como remarcação): pericia-antonio-exemplo-1-2',
@@ -674,7 +676,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     await antonioCompareceu()
     const t = await registrarResultado(ANTONIO, { laudo: laudo('laudo_desfavoravel.pdf'), favoravel: false, novaPericia: false, conferidas: MEDICA }, DRA_PAULA)
     expect(t.situacao).toBe('concluida')
-    expect(t.pericia.historico.slice(-2).map((e) => e.oQue)).toEqual([
+    expect(t.pericia.historico.slice(-3, -1).map((e) => e.oQue)).toEqual([
       'Decidiu não pedir nova perícia: o caso volta à origem marcado como desfavorável',
       'O resultado subiu no card e voltou para quem pediu (D3a · pedido do juiz): volta ao judicial (D3a): manifestar sobre o laudo, até 31/10 (15 dias, G12)',
     ])
@@ -688,11 +690,11 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     await registrarComparecimento('maria-exemplo-1', { compareceu: true }, IGOR)
     await registrarComparecimento('pedro-exemplo-1', { compareceu: true }, IGOR)
     const maria = await registrarResultado('maria-exemplo-1', { laudo: laudo('laudo_maria.pdf'), favoravel: true, conferidas: MEDICA }, DRA_PAULA)
-    expect(maria.pericia.historico.at(-1)?.oQue).toBe(
+    expect(maria.pericia.historico.at(-2)?.oQue).toBe(
       'O resultado subiu no card e voltou para quem pediu (D2 · necessidade inicial): o D2 segue: completa a junção antes da vigília do INSS',
     )
     const pedro = await registrarResultado('pedro-exemplo-1', { laudo: laudo('laudo_social_pedro.pdf'), favoravel: false, novaPericia: false, conferidas: ['laudo', 'beneficio'] }, DRA_PAULA)
-    expect(pedro.pericia.historico.at(-1)?.oQue).toBe('O resultado subiu no card e voltou para quem pediu (D2 · exigência do INSS): o D2 segue: volta à vigília do INSS (D2.04)')
+    expect(pedro.pericia.historico.at(-2)?.oQue).toBe('O resultado subiu no card e voltou para quem pediu (D2 · exigência do INSS): o D2 segue: volta à vigília do INSS (D2.04)')
     expect(pedro.pericia.resultado!.registrado!.manifestarAte).toBeUndefined()
   })
 
@@ -713,5 +715,86 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(r.texto).toContain('Os números vêm do sistema; eu só resumo os laudos.')
     expect(r.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado · Ver o perfil do perito', 'Antônio Exemplo · Perícia médica'])
     expect(comoOPeritoAvalia('Como o perito avalia?')).toBeNull()
+  })
+})
+
+describe('GGVP-73 · atualizar o perfil do perito', () => {
+  const ANTONIO = 'antonio-exemplo-1'
+  const MEDICA = ['laudo', 'parecer', 'dii', 'beneficio']
+  const pradoNo = () => ler().peritos?.find((p) => p.id === 'a-prado')
+
+  /** O Antônio compareceu em 16/10 e a advogada registra o laudo em 20/10. */
+  async function registrarAntonio(nome = 'laudo_pericia_antonio.pdf', favoravel = true) {
+    await obterPericia(ANTONIO)
+    agora = new Date(2026, 9, 16, 14, 0)
+    await registrarComparecimento(ANTONIO, { compareceu: true }, IGOR)
+    agora = new Date(2026, 9, 20, 9, 0)
+    return registrarResultado(ANTONIO, { laudo: { nome }, favoravel, novaPericia: favoravel ? undefined : false, conferidas: MEDICA }, DRA_PAULA)
+  }
+
+  it('CA1, CA2, CA3 · o laudo entra no perfil, um registro a mais, com o que o perito observou, perguntou e pediu; a mudança fica no histórico', async () => {
+    expect(ler().peritos).toBeUndefined()
+    const t = await registrarAntonio()
+    const prado = pradoNo()!
+    expect(prado.laudos).toHaveLength(35)
+    expect(prado.laudos.at(-1)).toEqual({
+      id: 'laudo-pericia-antonio-exemplo-1-1',
+      caso: '0000001-00.2025.4.03.0000',
+      data: '2026-10-20',
+      tipo: 'medica',
+      assunto: 'coluna',
+      resultado: 'favoravel',
+      dias: 4,
+      observou: ['como a pessoa senta, levanta e anda'],
+      perguntou: ['quanto tempo a pessoa aguenta sentada e em pé'],
+      pediu: ['laudos e receitas dos últimos 12 meses'],
+    })
+    expect(prado.laudos.slice(0, 34).map((l) => l.id)).toEqual(Array.from({ length: 34 }, (_, i) => `laudo-a-prado-${i + 1}`))
+    expect(t.pericia.resultado!.noPerfil).toBe('atualizado')
+    expect(t.pericia.historico.at(-1)).toMatchObject({
+      quem: 'Sistema',
+      oQue: 'A IA atualizou o perfil de Dr. A. Prado (exemplo): versão 35, com o que o perito observou, perguntou e pediu (referência do caso: 0000001-00.2025.4.03.0000, sem dado pessoal)',
+      passo: 'DP.09',
+    })
+    expect(t.perfil!.versao).toBe(35)
+  })
+
+  it('CA4 · o perfil não guarda dado pessoal do cliente: nem nome, nem CPF, nem telefone', async () => {
+    await registrarAntonio()
+    const ficha = (await obterFicha('antonio-exemplo'))!
+    const gravado = JSON.stringify(pradoNo())
+    for (const dado of [ficha.nome, ficha.nome.split(' ')[0], ficha.cpf, ficha.telefone].filter(Boolean)) expect(gravado).not.toContain(dado)
+  })
+
+  it('CA5 · a IA roda outra vez sobre o mesmo laudo: nada se duplica', async () => {
+    await registrarAntonio()
+    const t = await atualizarPerfilComOLaudo(ANTONIO)
+    expect(pradoNo()!.laudos).toHaveLength(35)
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('O laudo já estava no perfil de Dr. A. Prado (exemplo): nada se duplicou')
+  })
+
+  it('CA6 · laudo sem perito reconhecido: nada trava, fica fora das contas e entra com um clique', async () => {
+    await marcarMaria()
+    agora = new Date(2026, 9, 21, 11, 0)
+    await registrarComparecimento('maria-exemplo-1', { compareceu: true }, IGOR)
+    const t = await registrarResultado('maria-exemplo-1', { laudo: { nome: 'laudo_maria.pdf' }, favoravel: true, conferidas: MEDICA }, DRA_PAULA)
+    expect(t.situacao).toBe('concluida')
+    expect(t.pericia.resultado!.noPerfil).toBe('aguardando-perito')
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('O laudo não tem perito reconhecido: fica fora das contas até alguém ligar o perito (um clique)')
+    expect(ler().peritos).toBeUndefined()
+    const ligado = await ligarPeritoDoLaudo('maria-exemplo-1', 'r-menezes', DRA_PAULA)
+    expect(ligado.pericia.resultado!.noPerfil).toBe('atualizado')
+    expect(ler().peritos!.find((p) => p.id === 'r-menezes')!.laudos).toHaveLength(7)
+    expect(ligado.pericia.historico.slice(-2).map((e) => e.oQue)).toEqual([
+      'Ligou o laudo ao perito: Dr. R. Menezes (exemplo)',
+      'A IA atualizou o perfil de Dr. R. Menezes (exemplo): versão 7, com o que o perito observou, perguntou e pediu (referência do caso: caso-1, sem dado pessoal)',
+    ])
+    await expect(ligarPeritoDoLaudo('maria-exemplo-1', 'a-prado', DRA_PAULA)).rejects.toThrow('Este laudo não espera o perito.')
+  })
+
+  it('CA7 · os números vêm de código: o desfavorável muda a taxa pela contagem', async () => {
+    const t = await registrarAntonio('laudo_desfavoravel.pdf', false)
+    expect(t.perfil!.jurimetria).toMatchObject({ laudos: 35, favoraveis: 24, taxa: 69 })
+    expect(t.perfil!.porAssunto.find((a) => a.assunto === 'coluna')!.jurimetria).toMatchObject({ laudos: 9, suficiente: false })
   })
 })

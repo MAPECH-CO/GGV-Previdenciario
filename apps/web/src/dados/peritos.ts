@@ -149,3 +149,15 @@ export function perfilDoPerito(perito: Perito): PerfilDoPerito {
     pediu: maisFrequentes(perito.laudos.map((l) => l.pediu)),
   }
 }
+
+/**
+ * O laudo novo entra no perfil do perito (GGVP-73): um registro por laudo, sem sobrescrever (CA3) e sem duplicar (CA5).
+ * Na primeira mudança, a semente vai para o banco. Devolve se entrou.
+ */
+export function acrescentarLaudo(banco: Banco, peritoId: string, laudo: LaudoDoPerfil): boolean {
+  const perito = (banco.peritos ??= peritosDeExemplo()).find((p) => p.id === peritoId)
+  if (!perito) throw new Error('Perito não encontrado.')
+  if (perito.laudos.some((l) => l.id === laudo.id)) return false
+  perito.laudos.push(laudo)
+  return true
+}
