@@ -104,6 +104,21 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [x] 11.1 GGVP-98 · CA8: o Mateus decidiu que a separação de funções fica sem número na lista de portões. A Q21 ficou marcada como respondida em `docs/requisitos/duvidas-abertas.md`. Proposal, design e os comentários do código (`governanca.ts`, `prestacao.ts` e o teste) deixaram de dizer "até o Lucas decidir".
 - [x] 11.2 Rodar a verificação: typecheck, lint, `openspec validate --all --strict` e os testes dos contratos e da rota da prestação.
 
+## Nona revisão do PR (08/10)
+
+- [x] 12.1 GGVP-98 · CA6: o servidor recusa a ida ao banco numa data que já passou (400), no dia de Brasília (`hojeEmBrasilia`). A tela já limitava com `min`.
+  - Teste novo na rota: ontem é recusado e nada é agendado; hoje passa.
+  - Os testes da prestação usam um relógio fixo (08/10/2026), para as datas de exemplo (15/10 e 20/10) seguirem no futuro.
+  - O Playwright da via administrativa marca a data daqui a 10 dias e não muda.
+- [x] 12.2 Comentário de `AgendarIdaAoBanco` (`packages/contratos/src/prestacao.ts`): dizia que quem acompanha é opcional, mas o contrato e o CA6 exigem. Corrigido.
+- [x] 12.3 Fuso fixo `-03:00` na rota (revisão, "Prazo"): é a hora de Brasília, sem horário de verão desde 2019, a mesma regra de `hojeEmBrasilia` e das outras rotas, e o comentário está na linha. Fica.
+- [x] 12.4 Hora sem a `campos` (revisão, "Campos"): a `campos` não tem campo de hora. Segue a pendência da tarefa 9.2.
+- [x] 12.5 `abrirExplicacaoDoResultado` na rota e importada pela semente (revisão, "aceitável"): o estudo de caso do #26 (`estudo.ts`) já importa de `rotas/resultado.ts`, e mover agora quebraria o #26 no merge. Fica onde está.
+- [x] 12.6 Rodar a verificação, sobre a `main` com o #22:
+  - typecheck e lint sem erro; `openspec validate --all --strict` com 13 de 13;
+  - contratos 100 e API 329 (1 teste novo);
+  - Playwright da via administrativa com 11 de 11, incluindo a ida ao banco.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.

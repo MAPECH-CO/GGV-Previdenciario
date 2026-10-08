@@ -17,6 +17,7 @@ import {
 import type { Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarBloqueio } from '../sessao/rotas.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
@@ -28,6 +29,7 @@ export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebime
 export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
 export const MSG_ANTES_DO_RECEBIMENTO = 'Registre o recebimento da prestação atual antes de avisar o cliente.'
 export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
+export const MSG_DATA_PASSADA = 'A ida ao banco não pode ser marcada numa data que já passou.'
 export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
 export const TITULO_LEVAR = 'Levar ao banco'
 /** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
@@ -292,6 +294,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.tarefaDoBanco) return negar(resposta, 409, MSG_ANTES_DA_PRESTACAO)
     const d = entrada.data
+    // CA6: a tela já limita a data a partir de hoje; o servidor confere de novo, no dia de Brasília.
+    if (d.data < hojeEmBrasilia(agora())) return negar(resposta, 400, MSG_DATA_PASSADA)
     const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
     if (!u || !u.perfis.some((p) => ATENDIMENTO.includes(p))) return negar(resposta, 400, MSG_ACOMPANHANTE)
     const quem = pedido.usuario!.id

@@ -14,7 +14,7 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
    - Caso encerrado não aceita versão nova.
    - O recebimento leva a condição no próprio update, e só o primeiro de dois pedidos ao mesmo tempo conta (quarta revisão de 08/10).
 3. **"Valores conferem com o comprovante"** (CA3): `ReceberPrestacao` com `recebido` exige `valoresConferem: true`; o servidor confere de novo.
-4. **Quem acompanha é obrigatório e do Atendimento** (CA6, Lucas Q24): `acompanhanteId` obrigatório; o servidor recusa quem não tem o perfil Atendimento. Agendar abre para essa pessoa a tarefa "Levar ao banco", com a data como prazo e o nome dela como responsável; remarcar atualiza a tarefa (CA7). É dali que a Agenda lê.
+4. **Quem acompanha é obrigatório e do Atendimento** (CA6, Lucas Q24): `acompanhanteId` obrigatório; o servidor recusa quem não tem o perfil Atendimento. Agendar abre para essa pessoa a tarefa "Levar ao banco", com a data como prazo e o nome dela como responsável; remarcar atualiza a tarefa (CA7). É dali que a Agenda lê. A data é hoje ou depois: a tela limita com `min`, e o servidor recusa data que já passou (400), no dia de Brasília (`hojeEmBrasilia`) (nona revisão de 08/10).
 5. **Recusa registrada** (CA8): quem deu o OK e tenta receber leva 409 e o evento `portao_bloqueado` com o portão `funcoes` (separação de funções) e o motivo, que aparece em "Tentativas bloqueadas". Era G8, mas o G8 é "o aviso só sai depois do OK". O código `funcoes` fica sem número na lista G1 a G22 (decisão do Mateus, 08/10; Q21 respondida).
 6. **Aviso grava no acervo** (CA2): o envio do aviso grava o caso em `processo_acervo` (uma vez por caso, `fonte: portal`, desfecho do caso) e registra a baixa no histórico. O desfecho fica sem conferência (`desfecho_conferido_por` nulo): a conferência que põe o caso nas contas da jurimetria é da GGVP-41 (CA5). Caso sem desfecho e sem deferimento registrado não entra como processo bom: o aviso é recusado (409) até o resultado ser registrado (revisão de 08/10). O histórico do aviso e da baixa vai na mesma transação do acervo (segunda revisão de 08/10).
 7. **Confirmar recebimento** (CA9): `POST /api/casos/:id/banco/confirmacao`, do Financeiro, depois do aviso: a ida ao banco fica "realizado", "Levar ao banco" conclui e o caso vai para a fase "encerrado". O caso encerrado não reabre: agendar a ida ao banco e avisar o cliente devolvem 409, e nenhuma tarefa nasce (revisão de 08/10).
@@ -25,14 +25,14 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 ### Contratos (`packages/contratos/src/prestacao.ts`)
 
 - `ReceberPrestacao`: `{ resultado: 'recebido', valoresConferem: true }` ou `{ resultado: 'divergencia', motivo }`.
-- `AgendarIdaAoBanco`: `acompanhanteId` obrigatório.
+- `AgendarIdaAoBanco`: `acompanhanteId` obrigatório. A data que já passou é recusada na rota, que sabe o dia de hoje.
 - `IdaAoBancoDoCaso`: `equipe` só com o Atendimento; `podeConfirmar` e `encerrado`.
 
 ### Campos
 
 | Campo | Regra |
 |---|---|
-| Data da ida ao banco | `normalizarData`, `validarData`, `dataParaIso` (`DataObrigatoria`) |
+| Data da ida ao banco | `normalizarData`, `validarData`, `dataParaIso` (`DataObrigatoria`); hoje ou depois, conferido de novo no servidor |
 | Hora | hh:mm (o contrato já confere; `validarHora` ainda falta na `campos`) |
 | Agência ou local | texto obrigatório |
 | Quem acompanha | lista do Atendimento, obrigatória |
