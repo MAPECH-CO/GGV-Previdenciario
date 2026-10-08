@@ -69,7 +69,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
 
   const g = gravacoes.find((x) => x.id === selecionada)
   const fechada = g?.soJuridico && perfil === 'atendimento'
-  const daConversa = g && conversaDaGravacao(g.id)
+  const daConversa = g && conversaDaGravacao(g)
   const trechos = g ? buscarTrechos(g.trechos, busca) : []
   const provas = g?.trechos.filter((t) => t.prova).length ?? 0
   const numero = ficha.processos[0]?.numero

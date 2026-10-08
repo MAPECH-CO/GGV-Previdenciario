@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1791483125013,
-      "tag": "0017_pericia_no_servidor",
+      "when": 1791483509900,
+      "tag": "0017_relacionamento_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791486585815,
+      "tag": "0018_pericia_no_servidor",
       "breakpoints": true
     }
   ]

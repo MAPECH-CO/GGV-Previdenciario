@@ -36,6 +36,9 @@ import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
 import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
+import { registrarRotasConversa } from './rotas/conversa.ts'
+import { registrarRotasMensagens } from './rotas/mensagens.ts'
+import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -116,6 +119,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora })
+    registrarRotasConversa(app, { banco, agora })
+    registrarRotasMensagens(app, { banco, agora })
+    registrarRotasSeguranca(app, { banco, agora })
     registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
   }
 

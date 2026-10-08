@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { marcarEntrevista } from '../dados/agenda.ts'
-import { mensagensDoCliente } from '../dados/mensagens.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { ConviteChatwoot } from './ConviteChatwoot.tsx'
 
@@ -49,7 +48,9 @@ describe('Convite pelo Chatwoot (simulado)', () => {
     expect((screen.getByRole('button', { name: 'Enviar' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('GGVP-102 CA6 e CA10 · o convite sai pela conversa do cliente no Chatwoot, com o modelo e o registro do envio', async () => {
+  // O cliente de exemplo sai pelo Chatwoot simulado na tela, sem registro no servidor (GGVP-138); o do banco vai pela API,
+  // com o registro (apps/api/src/rotas/mensagens.test.ts e e2e/recepcao-servidor.e2e.ts).
+  it('GGVP-102 CA6 e CA10 · o convite sai pela conversa do cliente no Chatwoot', async () => {
     const id = await marcar('josefa-exemplo')
     const aoEnviado = vi.fn()
     render(<ConviteChatwoot agendamentoId={id} aoEnviado={aoEnviado} aoFechar={vi.fn()} />)
@@ -57,17 +58,15 @@ describe('Convite pelo Chatwoot (simulado)', () => {
     expect(within(chatwoot).getByRole('link', { name: 'Abrir a conversa' }).getAttribute('href')).toMatch(/\/conversations\/5001$/)
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     await waitFor(() => expect(aoEnviado).toHaveBeenCalled())
-    expect(await mensagensDoCliente('josefa-exemplo')).toEqual([expect.objectContaining({ modelo: 'convite', canal: 'Chatwoot', conversa: 5001, status: 'entregue' })])
   })
 
-  it('GGVP-102 CA5 · a falha do Chatwoot fica na tela e no histórico, e o convite não é registrado como enviado', async () => {
+  it('GGVP-102 CA5 · a falha do Chatwoot fica na tela, e o convite não é registrado como enviado', async () => {
     const id = await marcar('nair-exemplo')
     const aoEnviado = vi.fn()
     render(<ConviteChatwoot agendamentoId={id} aoEnviado={aoEnviado} aoFechar={vi.fn()} />)
     await screen.findByRole('region', { name: 'Na central do Chatwoot' })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(await screen.findByText('A mensagem não saiu pelo Chatwoot: o WhatsApp recusou: o número não tem WhatsApp. Ficou no histórico; nada foi reenviado sozinho.')).toBeTruthy()
+    expect(await screen.findByText('A mensagem não saiu pelo Chatwoot: o WhatsApp recusou: o número não tem WhatsApp. Nada foi reenviado sozinho.')).toBeTruthy()
     expect(aoEnviado).not.toHaveBeenCalled()
-    expect((await obterFicha('nair-exemplo'))!.historico.at(-1)?.oQue).toMatch(/não saiu pelo Chatwoot/)
   })
 })

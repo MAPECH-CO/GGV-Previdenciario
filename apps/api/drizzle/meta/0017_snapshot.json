@@ -1,5 +1,5 @@
 {
-  "id": "8e37c0d1-cbfb-4f1c-be22-2f4e051b2205",
+  "id": "12b92faa-42c6-489c-9e16-6e52438f0f86",
   "prevId": "8577ac40-75c0-4c8b-a265-244c55df2302",
   "version": "7",
   "dialect": "postgresql",
@@ -1293,6 +1293,12 @@
         "resumo": {
           "name": "resumo",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -3113,12 +3119,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "documento": {
-          "name": "documento",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -4610,6 +4610,30 @@
           "primaryKey": false,
           "notNull": false
         },
+        "modelo": {
+          "name": "modelo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conversa_chatwoot": {
+          "name": "conversa_chatwoot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "erro": {
+          "name": "erro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -4680,6 +4704,10 @@
         "mensagem_canal": {
           "name": "mensagem_canal",
           "value": "\"mensagem\".\"canal\" in ('whatsapp', 'sms', 'email', 'telefone')"
+        },
+        "mensagem_status": {
+          "name": "mensagem_status",
+          "value": "\"mensagem\".\"status\" in ('enviada', 'entregue', 'lida', 'falhou')"
         }
       },
       "isRLSEnabled": true
@@ -4791,12 +4819,6 @@
         "especialidade": {
           "name": "especialidade",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "perfil": {
-          "name": "perfil",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -5213,6 +5235,278 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.dado_bancario": {
+      "name": "dado_bancario",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "banco": {
+          "name": "banco",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agencia": {
+          "name": "agencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conta": {
+          "name": "conta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pix": {
+          "name": "pix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verificacao": {
+          "name": "verificacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pedido_por": {
+          "name": "pedido_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pedido_em": {
+          "name": "pedido_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confirmado_por": {
+          "name": "confirmado_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confirmado_em": {
+          "name": "confirmado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descartado_em": {
+          "name": "descartado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dado_bancario_pessoa_id_pessoa_id_fk": {
+          "name": "dado_bancario_pessoa_id_pessoa_id_fk",
+          "tableFrom": "dado_bancario",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "dado_bancario_pedido_por_usuario_id_fk": {
+          "name": "dado_bancario_pedido_por_usuario_id_fk",
+          "tableFrom": "dado_bancario",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "pedido_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "dado_bancario_confirmado_por_usuario_id_fk": {
+          "name": "dado_bancario_confirmado_por_usuario_id_fk",
+          "tableFrom": "dado_bancario",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "confirmado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "dado_bancario_verificacao": {
+          "name": "dado_bancario_verificacao",
+          "value": "\"dado_bancario\".\"verificacao\" in ('video', 'presencial')"
+        },
+        "dado_bancario_pessoas_diferentes": {
+          "name": "dado_bancario_pessoas_diferentes",
+          "value": "\"dado_bancario\".\"confirmado_por\" is null or \"dado_bancario\".\"confirmado_por\" <> \"dado_bancario\".\"pedido_por\""
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.versao_campo": {
+      "name": "versao_campo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "onde": {
+          "name": "onde",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "campo": {
+          "name": "campo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quem": {
+          "name": "quem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quando": {
+          "name": "quando",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origem": {
+          "name": "origem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conversa_id": {
+          "name": "conversa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "versao_campo_pessoa_id_pessoa_id_fk": {
+          "name": "versao_campo_pessoa_id_pessoa_id_fk",
+          "tableFrom": "versao_campo",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "versao_campo_caso_id_caso_id_fk": {
+          "name": "versao_campo_caso_id_caso_id_fk",
+          "tableFrom": "versao_campo",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "versao_campo_conversa_id_atendimento_id_fk": {
+          "name": "versao_campo_conversa_id_atendimento_id_fk",
+          "tableFrom": "versao_campo",
+          "tableTo": "atendimento",
+          "columnsFrom": [
+            "conversa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "versao_campo_onde": {
+          "name": "versao_campo_onde",
+          "value": "\"versao_campo\".\"onde\" in ('ficha', 'processo')"
+        },
+        "versao_campo_origem": {
+          "name": "versao_campo_origem",
+          "value": "\"versao_campo\".\"origem\" in ('antes', 'conversa', 'volta')"
+        }
+      },
       "isRLSEnabled": true
     }
   },

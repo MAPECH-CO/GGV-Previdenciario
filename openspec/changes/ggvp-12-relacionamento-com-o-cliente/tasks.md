@@ -63,3 +63,21 @@
 - [x] 6.4 Telas: a verificação no formulário da ficha (`EdicaoCliente.tsx`) e na conferência (`ConferirConversa.tsx`); o cartão "Dados bancários para o repasse" (`CartaoDadosBancarios.tsx`) no card; o roteiro de segurança na conversa por ligação ou com quem não é o cliente (`Conversa.tsx`); o lembrete nas mensagens da perícia (`MensagemAoCliente.tsx`); "o cliente me ligou" no chat da Central (`LaudoPeloChat.tsx`, com o `ChatIA` avisando o resto como antes). Teste em `CartaoDadosBancarios.test.tsx`, `FichaCliente.test.tsx`, `ConferirConversa.test.tsx`, `Conversa.test.tsx` e `LaudoPeloChat.test.tsx` (CA1 a CA8). Verifica com `pnpm vitest run src/componentes src/paginas`.
 - [x] 6.5 Playwright `e2e/seguranca.e2e.ts`: o telefone do Antônio com a verificação; a conta da Lúcia com a segunda confirmação, o aviso e o alerta da advogada; o roteiro na ligação e o lembrete no chat; a frase da senha na mensagem (CA1 a CA7). A conferência da ligação em `e2e/conversa.e2e.ts` passa a marcar a verificação. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5187 pnpm exec playwright test seguranca conversa --workers=1`.
 - [ ] 6.6 Ligar no servidor: os endpoints da design (`PATCH /api/fichas/:id` com a verificação e os de dados bancários), a segunda confirmação pela matriz de perfis, o alerta na Central do Financeiro quando ela existir e o aviso pelo Chatwoot de verdade (5.6). **Fica aberta nesta história.**
+
+## GGVP-138 · Ligar no servidor as telas do Relacionamento (Pedro, 08/10)
+
+No padrão da Recepção (spec `ggvp-138`), sobre a ficha e a gravação dela no banco. Sem modo misto nesta área: o servidor
+de exemplo sai das telas e fica só nos testes.
+
+### Parte 1 · O servidor
+
+- [x] 138.1 Contratos (`packages/contratos/src/conversas.ts`, `mensagens.ts` e `seguranca.ts`), em Zod: os pedidos e o que a tela recebe.
+- [x] 138.2 Banco: a conversa em `atendimento` (coluna `dados`), a mensagem em `mensagem` (modelo, conversa do Chatwoot, status e erro), e as tabelas novas `versao_campo` e `dado_bancario`, com RLS.
+- [x] 138.3 Rotas (`apps/api/src/rotas/conversa.ts`, `mensagens.ts` e `seguranca.ts`) com o perfil da sessão, as regras puras das telas, os portões e o histórico; o portão do telefone e do e-mail na edição da ficha da Recepção; testes por perfil, dos portões e do histórico.
+
+### Parte 2 · As telas
+
+- [x] 138.4 As funções da área chamando só a API; a Central com as tarefas da conversa do servidor; a conferência com as pessoas do escritório do servidor; a gravação ligada à conversa (`conversaId`).
+- [x] 138.5 O servidor de exemplo da área nos testes (`apps/web/src/test/relacionamento/`), instalado no setup; os testes de dados conferem a rota e o corpo de cada função.
+- [x] 138.6 Playwright com login de verdade: a conversa da Ana chega à ficha que a advogada abre; a pendência na Central da Eva; a Sênior volta a versão; mensagens e segurança com leads do banco.
+- [x] 138.7 Migração (0017) e versão da matriz (16) geradas de novo sobre a main mais nova, logo antes do pedido.
