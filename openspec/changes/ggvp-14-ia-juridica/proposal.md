@@ -1,4 +1,4 @@
-GGVP-14 · IA jurídica e knowledge graph · histórias: GGVP-106 (agora), GGVP-110; depois GGVP-38, GGVP-41, GGVP-45.
+GGVP-14 · IA jurídica e knowledge graph · histórias: GGVP-106, GGVP-110 e as da IA nas telas (abaixo), inclusive GGVP-38, GGVP-45 e GGVP-19; depois GGVP-41.
 
 ## Por quê
 
@@ -10,7 +10,7 @@ Branch empilhada na Garantia (`feat/GGVP-13-garantia-e-governanca`, PR #18), que
 
 1. **GGVP-106** · Guardrails de IA e do chat: a IA sugere, a pessoa confirma, tudo registrado · sistema.
 2. **GGVP-110** · Conteúdo malicioso não manipula a IA · sistema.
-3. **GGVP-38** · Recomendação sobre a perícia; **GGVP-41** · Medir ganho e perda e gravar no acervo; **GGVP-45** · Buscar no acervo antes de escrever: depois, quando o acervo tiver dado.
+3. **GGVP-41** · Medir ganho e perda e gravar no acervo: depois, quando o acervo tiver dado. A **GGVP-38** e a **GGVP-45**, antes previstas para depois, entraram neste pedido (itens 8 e 13 abaixo).
 
 ## Autorização do escritório (07/10)
 
