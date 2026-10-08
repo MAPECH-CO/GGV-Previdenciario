@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 12
+export const VERSAO_MATRIZ = 13
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -84,7 +84,13 @@ export const MATRIZ = {
   'historico.autorizar_exportacao': ['socio'],
   // GGVP-104: a gestão do escritório muda limites, kits e mensagens sem mexer no código.
   'configuracao.editar': ['socio', 'senior'],
-  // Versão 13 (GGVP-132, Pedro, 08/10): a documentação médica no servidor. Só a Sênior edita a régua do roteiro (GGVP-93).
+  // Versão 11 (GGVP-125, bloco 1): a ficha da Recepção no servidor. Quem trabalha com o caso cadastra e edita a ficha
+  // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
+  // renumera a versão.
+  'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
+  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
+  'entrevista.gravar': JURIDICO,
+  // Versão 14 (GGVP-132, Pedro, 08/10): a documentação médica no servidor. Só a Sênior edita a régua do roteiro (GGVP-93).
   'roteiro.editar': ['senior'],
   // O parecer médico é do Jurídico que confere o caso: a advogada e a Sênior (GGVP-20 CA3). A IA nunca registra (G17).
   'parecer.registrar': ['advogada', 'senior'],

@@ -1,4 +1,5 @@
 // A entrevista gravada (GGVP-40): relógio, áudio, partes e a senha que não pode ficar no texto (G9). Regra, não IA.
+import { nomeBeneficio } from '../dados/catalogos.ts'
 import type { Ficha, InformacaoExtraida, Trecho } from '../dados/tipos.ts'
 
 const doisDigitos = (n: number) => String(n).padStart(2, '0')
@@ -106,4 +107,19 @@ export function documentosDaEntrevista(ficha: Ficha, extraidas: InformacaoExtrai
   const deSempre = ['RG', 'CPF', 'Comprovante de residência', 'CNIS'].filter((d) => !naPasta.has(d.toLowerCase()))
   const citados = extraidas.filter((e) => e.destino === 'documentacao').map((e) => e.valor.charAt(0).toUpperCase() + e.valor.slice(1))
   return [...deSempre, ...citados]
+}
+
+/** O resumo que a IA faria da entrevista (simulado): junta o que foi dito, sem concluir o benefício (G3). */
+export function resumoDaEntrevista(ficha: Ficha, extraidas: InformacaoExtraida[]): string {
+  const valor = (id: string) => extraidas.find((e) => e.id === id)?.valor
+  const partes = [
+    valor('desde') && `sem trabalhar desde ${valor('desde')}`,
+    valor('vinculo') && `último vínculo: ${valor('vinculo')}`,
+    valor('pedido') && `pedido anterior: ${valor('pedido')}`,
+    valor('laudos') && `citou ${valor('laudos')}`,
+    valor('estado-civil') && `estado civil: ${valor('estado-civil')}`,
+  ].filter(Boolean)
+  const beneficio = ficha.beneficioInteresse && ficha.beneficioInteresse !== 'nao-sei' ? ` Procura ${nomeBeneficio(ficha.beneficioInteresse)}.` : ''
+  const dito = partes.length ? `${partes.join('; ')}.` : 'a gravação foi curta: pouco a resumir.'
+  return `${ficha.nome}: ${dito}${beneficio} O benefício é a advogada que define (D1.12, G3).`
 }
