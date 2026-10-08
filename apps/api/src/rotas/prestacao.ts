@@ -15,7 +15,7 @@ import {
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, documento, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
@@ -334,9 +334,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       // O desfecho fica sem conferência: a que põe o caso nas contas da jurimetria é da GGVP-41 (CA5).
       const [noAcervo] = await tx.select({ id: processoAcervo.id }).from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
       if (!noAcervo) await tx.insert(processoAcervo).values({ casoId, beneficio: s.c!.beneficio, desfecho, fonte: 'portal' })
+      // O histórico vai na mesma transação: o aviso, o acervo e a baixa ficam juntos, ou nenhum fica.
+      const evento = (acao: string, detalhe: Record<string, unknown>) => ({ quem, acao, alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, ...detalhe } })
+      await tx.insert(eventoAuditoria).values([evento('cliente_avisado_ida_ao_banco', { canal: entrada.data.canal }), evento('baixa_registrada', { acervo: 'processo_bom' })])
     })
-    await historico(quem, 'cliente_avisado_ida_ao_banco', pedido, `caso:${casoId}`, { canal: entrada.data.canal })
-    await historico(quem, 'baixa_registrada', pedido, `caso:${casoId}`, { acervo: 'processo_bom' })
     return resposta.code(201).send({ ok: true })
   })
 
