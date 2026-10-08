@@ -26,6 +26,7 @@ export const MSG_MESMA_PESSOA = 'Quem deu o OK na prestação não registra o re
 export const MSG_ACOMPANHANTE = 'Escolha quem do Atendimento acompanha o cliente'
 export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebimento.'
 export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
+export const MSG_ANTES_DO_RECEBIMENTO = 'Registre o recebimento da prestação atual antes de avisar o cliente.'
 export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
 export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
 export const TITULO_LEVAR = 'Levar ao banco'
@@ -133,10 +134,12 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (!def) return negar(resposta, 409, MSG_SEM_DEFERIDO)
     const d = entrada.data
     const valores = calcularPrestacao(d.valorRecebido, d.percentual)
-    const [anterior] = await versoesDo(casoId)
-    const versao = (anterior?.versao ?? 0) + 1
     const quem = pedido.usuario!.id
-    await banco.transaction(async (tx) => {
+    // CA9: caso encerrado não ganha versão nova. A versão é contada com o caso travado, para duas não saírem iguais.
+    const versao = await banco.transaction(async (tx) => {
+      if (!(await casoAberto(tx, casoId))) return null
+      const [anterior] = await tx.select({ versao: prestacaoContas.versao }).from(prestacaoContas).where(eq(prestacaoContas.casoId, casoId)).orderBy(desc(prestacaoContas.versao)).limit(1)
+      const versao = (anterior?.versao ?? 0) + 1
       await tx.insert(prestacaoContas).values({
         casoId,
         versao,
@@ -161,7 +164,9 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06r'), inArray(tarefa.situacao, [...ABERTAS])))
       if (!doFinanceiro) await tx.insert(tarefa).values({ casoId, passo: 'D2.06r', titulo: 'Receber a prestação de contas', perfilDono: 'financeiro' })
       await noHistorico(tx, quem, versao === 1 ? 'prestacao_concluida' : 'prestacao_alterada', pedido, casoId, { versao })
+      return versao
     })
+    if (versao === null) return negar(resposta, 409, MSG_ENCERRADO)
     return resposta.code(201).send({ ok: true, versao, ...valores })
   })
 
@@ -183,11 +188,14 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         return negar(resposta, 409, MSG_MESMA_PESSOA)
       }
       const d = entrada.data
-      await banco.transaction(async (tx) => {
-        await tx
+      const feito = await banco.transaction(async (tx) => {
+        // A condição vai no próprio update: dois recebimentos ao mesmo tempo, só o primeiro conta.
+        const [esperando] = await tx
           .update(prestacaoContas)
           .set(d.resultado === 'recebido' ? { recebidaPor: quem, recebidaEm: agora() } : { divergencia: d.motivo })
-          .where(eq(prestacaoContas.id, atual.id))
+          .where(and(eq(prestacaoContas.id, atual.id), isNull(prestacaoContas.recebidaEm), isNull(prestacaoContas.divergencia)))
+          .returning({ id: prestacaoContas.id })
+        if (!esperando) return false
         await tx
           .update(tarefa)
           .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
@@ -200,7 +208,9 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
           if (!doAviso) await tx.insert(tarefa).values({ casoId, passo: 'D2.06b', titulo: TITULO_AVISO, perfilDono: 'financeiro' })
         }
         await noHistorico(tx, quem, d.resultado === 'recebido' ? 'prestacao_recebida' : 'prestacao_divergente', pedido, casoId, { versao: atual.versao })
+        return true
       })
+      if (!feito) return negar(resposta, 409, 'Não há prestação esperando o recebimento.')
       return resposta.code(201).send({ ok: true })
     },
   )
@@ -323,6 +333,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       await bloqueio(pedido, casoId, 'G8', 'D3b.03')
       return negar(resposta, 409, MSG_G8)
     }
+    // CA4: versão nova depois do recebimento volta para o Financeiro; o aviso espera o novo recebimento.
+    if (!s.atual.recebidaEm) return negar(resposta, 409, MSG_ANTES_DO_RECEBIMENTO)
     if (!s.m || !s.texto) return negar(resposta, 409, 'Modelo "Confirmação da ida ao banco" não cadastrado.')
     // CA2: só entra no acervo como processo bom o caso com o resultado registrado; sem ele, o aviso espera.
     const desfecho = s.c.desfecho ?? ((await deferimento(casoId)) ? 'deferido' : null)
