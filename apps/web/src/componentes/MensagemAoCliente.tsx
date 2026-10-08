@@ -50,14 +50,16 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
 
   useEffect(() => {
     let valendo = true
-    prepararMensagem(ficha.id, modelo, processoId).then((p) => {
-      if (!valendo) return
-      setPronta(p)
-      setTexto(p.texto)
-      setConversa(p.conversas[0]?.id)
-      setResultado(null)
-      setErro('')
-    })
+    prepararMensagem(ficha.id, modelo, processoId)
+      .then((p) => {
+        if (!valendo) return
+        setPronta(p)
+        setTexto(p.texto)
+        setConversa(p.conversas[0]?.id)
+        setResultado(null)
+        setErro('')
+      })
+      .catch((e: Error) => valendo && setErro(e.message))
     return () => {
       valendo = false
     }

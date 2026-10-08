@@ -35,11 +35,14 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
 
   useEffect(() => {
     let valendo = true
-    obterDadosBancarios(fichaId).then((r) => {
-      if (!valendo) return
-      setAtual(r.atual)
-      setPedido(r.pedido)
-    })
+    // A ficha da semente não está no banco: a API recusa e o cartão fica sem dados.
+    obterDadosBancarios(fichaId)
+      .then((r) => {
+        if (!valendo) return
+        setAtual(r.atual)
+        setPedido(r.pedido)
+      })
+      .catch(() => undefined)
     return () => {
       valendo = false
     }

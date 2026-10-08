@@ -79,4 +79,13 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     await abrir('marta-exemplo', 'boas-vindas')
     expect(screen.getByText('O Chatwoot não achou o contato deste telefone: confira o telefone na ficha.')).toBeTruthy()
   })
+
+  it('GGVP-138 · a API recusa: a janela diz por quê e nada sai, sem erro solto', async () => {
+    const ficha = (await obterFicha('maria-exemplo'))!
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ erro: 'Ficha não encontrada.' }), { status: 404 })))
+    render(comSessao(<MensagemAoCliente ficha={ficha} modeloInicial="boas-vindas" aoFechar={() => {}} aoEnviar={vi.fn()} />))
+    expect((await screen.findByRole('alert')).textContent).toBe('Ficha não encontrada.')
+    expect(enviar().disabled).toBe(true)
+    vi.unstubAllGlobals()
+  })
 })

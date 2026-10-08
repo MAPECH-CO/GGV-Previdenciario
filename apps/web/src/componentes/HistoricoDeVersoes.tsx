@@ -28,9 +28,11 @@ export function HistoricoDeVersoes({ ficha, funcao = 'Atendimento', aoFechar }: 
       if (!dialogo.open) dialogo.showModal()
     } else dialogo?.setAttribute('open', '')
     let valendo = true
-    obterVersoes(ficha.id).then((v) => {
-      if (valendo) setVersoes(v)
-    })
+    obterVersoes(ficha.id)
+      .then((v) => {
+        if (valendo) setVersoes(v)
+      })
+      .catch((e: Error) => valendo && setErro(e.message))
     return () => {
       valendo = false
     }

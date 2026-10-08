@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirConversa, conferirConversa, finalizarConversa, gravarConversa, transcreverConversa } from '../dados/conversa.ts'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
@@ -51,5 +51,13 @@ describe('Histórico do processo · versões dos campos (GGVP-84, CA2)', () => {
     await within(telefone).findByText('07/10/2026 14:32 · Dra. Renata (exemplo) · em vigor')
     expect(within(telefone).getAllByRole('listitem')).toHaveLength(3)
     expect((await obterFicha('maria-exemplo'))!.telefone).toBe('11900000004')
+  })
+
+  it('GGVP-138 · a API recusa: a janela diz por quê, sem erro solto', async () => {
+    const ficha = (await obterFicha('maria-exemplo'))!
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ erro: 'Ficha não encontrada.' }), { status: 404 })))
+    render(comSessao(<HistoricoDeVersoes ficha={ficha} aoFechar={() => {}} />))
+    expect((await screen.findByRole('alert')).textContent).toBe('Ficha não encontrada.')
+    vi.unstubAllGlobals()
   })
 })
