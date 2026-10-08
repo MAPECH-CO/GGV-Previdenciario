@@ -18,5 +18,16 @@
 - [x] 2.4 Semente: um caso de exemplo perdido, com "Aprovar o resumo para o cliente" para a advogada.
 - [x] 2.5 Tela "Explicar o resultado" (`/casos/:id/resultado`): o Jurídico escreve e aprova, escolhendo quem fala; quem fala vê o resumo com o aprovador e registra cada contato; testes de tela.
 - [x] 2.6 Playwright: a advogada aprova e passa ao Atendimento; o Atendimento registra sem contato e depois explicado; o caso fecha.
-- [ ] 2.8 Ligar `abrirExplicacaoDoResultado` no "Não recorrer" (GGVP-100) e no estudo de caso (GGVP-19), quando eles existirem.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## Entrada na main (08/10)
+
+A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", foi para o próximo PR do épico, junto com a GGVP-100 (ver a proposal). A parte do estudo de caso já está no PR da IA.
+
+- [x] 3.1 Base do PR na `main`, porque a Garantia entrou em 07/10, e a `main` mesclada na branch, sem conflito.
+- [ ] 3.2 Matriz: quem entra depois renumera. Se o #23 (Jurimetria, também com as versões 11 e 12) entrar antes, as duas versões deste PR passam para as próximas livres, com a impressão digital nova no teste.
+- [x] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10, com a main mesclada:
+  - typecheck e lint sem erro;
+  - `openspec validate --all --strict` com 11 de 11;
+  - contratos 88, API 271, tela 1.117 e Playwright 202, todos passando.
+  - Quatro arquivos de tela não subiram por tempo esgotado ao iniciar com a máquina cheia. Rodados de novo à parte, passaram com 189 testes.
