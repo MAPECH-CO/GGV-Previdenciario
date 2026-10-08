@@ -44,6 +44,7 @@ import {
   type OrigemDaPericia,
   type SituacaoDaPericia,
   type TipoDePericia,
+  numerosDaJurimetria,
 } from '../regras/pericia.ts'
 import { problemaG20 } from '../regras/parecer.ts'
 import { emVigor } from '../regras/roteiro.ts'
@@ -1224,8 +1225,8 @@ export function montarOrientacao(banco: Banco, pericia: Pericia, quando: Date, p
     modo: escolha.modo,
     ...(escolha.motivo && { motivo: escolha.motivo }),
     ...(perfil && { peritoId: perfil.perito.id, versaoDoPerfil: perfil.versao }),
-    // A jurimetria só entra com amostra suficiente; abaixo do mínimo, nada dela segue (CA12, G22).
-    ...(perfil?.jurimetria.suficiente && { jurimetria: perfil.jurimetria }),
+    // A jurimetria entra quando o perito tem laudo no acervo; sem amostra mínima (CA12, G22).
+    ...(perfil?.jurimetria.laudos && { jurimetria: perfil.jurimetria }),
     texto,
     geradaEm: iso,
     ...(bloqueio && { bloqueio }),
@@ -1320,7 +1321,7 @@ export async function dicaParaAPericia(texto: string): Promise<{ texto: string; 
   }
   if (pericia.orientacao.modo === 'perfil' && t.perfil) {
     const j = t.perfil.jurimetria
-    const numeros = j.suficiente ? `${j.laudos} laudos, ${j.taxa}% favoráveis` : `${j.laudos} laudos: amostra insuficiente`
+    const numeros = numerosDaJurimetria(j, hojeIso(agora()))
     return {
       texto:
         `Pelo perfil de ${nomeCurto(t.perfil.perito.nome)} (${numeros}), peça para ${primeiro} levar ${t.perfil.pediu.join(' e ')}. ` +
@@ -1658,13 +1659,11 @@ export function comoOPeritoAvalia(texto: string): { texto: string; itens: ItemDo
   if (!perito) return null
   const perfil = perfilDoPerito(perito)
   const j = perfil.jurimetria
-  const geral = j.suficiente ? `${j.laudos} laudos, ${j.taxa}% favoráveis` : `${j.laudos} laudos (amostra insuficiente, G22)`
+  const geral = numerosDaJurimetria(j, hoje)
   const doAssunto = perfil.porAssunto.find((a) => new RegExp(`\\b${a.assunto.split(' ')[0]}`, 'i').test(texto))
   const assunto = !doAssunto
     ? ''
-    : doAssunto.jurimetria.suficiente
-      ? ` Em ${doAssunto.assunto}: ${doAssunto.jurimetria.laudos} laudos, ${doAssunto.jurimetria.taxa}% favoráveis.`
-      : ` Em ${doAssunto.assunto} ainda são poucos laudos (${doAssunto.jurimetria.laudos}), então a porcentagem não aparece (G22).`
+    : ` Em ${doAssunto.assunto}: ${numerosDaJurimetria(doAssunto.jurimetria, hoje)} (G22).`
   const pericias = (banco.pericias ?? []).filter((p) => p.peritoId === perito.id)
   const itens = pericias.map((p): ItemDoChat => {
     const t = naTela(banco, p)

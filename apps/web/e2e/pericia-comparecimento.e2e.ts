@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-66 · Comparecimento e remarcação: a confirmação de presença da véspera do Antônio (perícia do juízo em 16/10,
 // 10:30), o alerta das 16h, o "não vai poder ir" que remarca na hora, o comparecimento depois do dia e da hora, a falta que
@@ -9,17 +10,19 @@ type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
-const CENTRAL = '/juridico-administrativo?perfil=juridico-adm'
-const ANTONIO = '/casos/antonio-exemplo-1/pericia/comparecimento?perfil=juridico-adm'
+const CENTRAL = '/juridico-administrativo'
+const ANTONIO = '/casos/antonio-exemplo-1/pericia/comparecimento'
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 7, 10, 0))
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(CENTRAL)
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Orientar para a perícia' })).toBeVisible()
 })
 
 test('CA7, CA8 · na véspera a confirmação; às 16h o alerta; "não consegui" fica registrado e "confirmou" tira da Central', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 15, 16, 30))
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(CENTRAL)
   await expect(page.getByText(/presença não confirmada até 16h: contatar o cliente/)).toBeVisible()
   await page.getByRole('link', { name: 'Antônio Exemplo · Confirmar presença na perícia' }).click()
@@ -34,6 +37,7 @@ test('CA7, CA8 · na véspera a confirmação; às 16h o alerta; "não consegui"
   await page.getByRole('button', { name: 'Registrar a confirmação' }).click()
   await expect(page.getByRole('status')).toHaveText('Presença confirmada e registrada.')
 
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(CENTRAL)
   await expect(page.getByRole('heading', { name: /O que você tem que fazer/ })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Confirmar presença na perícia' })).toHaveCount(0)
@@ -41,19 +45,22 @@ test('CA7, CA8 · na véspera a confirmação; às 16h o alerta; "não consegui"
 
 test('CA9 · o cliente avisa antes que não vai poder ir: remarca na hora, com o motivo, e volta para marcar', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 15, 10, 0))
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(ANTONIO)
   await page.getByRole('radio', { name: 'Não vai poder ir' }).click()
   await expect(page.getByText('Remarcar na hora: remarcação 1 · limite 2 (G15); passou, sobe para a advogada.')).toBeVisible()
   await page.getByLabel('Motivo da remarcação *').fill('vai estar internado')
   await page.getByRole('button', { name: 'Remarcar agora' }).click()
   await expect(page.getByRole('heading', { name: '✓ Remarcação registrada' })).toBeVisible()
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(CENTRAL)
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Remarcar perícia' })).toBeVisible()
 })
 
 test('CA1, CA4, CA5 · pela agenda, "Marcar como realizado"; compareceu, e a advogada fica com o resultado', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 16, 14, 0))
-  await page.goto('/agenda?perfil=juridico-adm')
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
+  await page.goto('/agenda')
   await page.getByRole('button', { name: /Perícias Antônio Exemplo Perícia médica/ }).click()
   const janela = page.getByRole('dialog', { name: /Antônio Exemplo/ })
   await janela.getByRole('link', { name: 'Marcar como realizado' }).click()
@@ -64,12 +71,14 @@ test('CA1, CA4, CA5 · pela agenda, "Marcar como realizado"; compareceu, e a adv
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('region', { name: '✓ Comparecimento registrado' })).toContainText('a advogada responsável acompanha no processo')
 
-  await page.goto('/advogada?perfil=advogada')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/advogada')
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Conferir resultado da perícia' })).toBeVisible()
 })
 
 test('CA2, CA6 · sem registro no dia seguinte, o alerta; faltou, a tarefa volta para remarcar', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 17, 9, 0))
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(CENTRAL)
   await expect(page.getByText(/alerta: o comparecimento não foi registrado/)).toBeVisible()
   await page.getByRole('link', { name: 'Antônio Exemplo · Registrar comparecimento' }).click()
@@ -78,13 +87,15 @@ test('CA2, CA6 · sem registro no dia seguinte, o alerta; faltou, a tarefa volta
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('heading', { name: '✓ Falta registrada' })).toBeVisible()
   await expect(page.getByText('A perícia voltou para remarcar: 1ª remarcação, limite 2 (G15).')).toBeVisible()
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto(CENTRAL)
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Remarcar perícia' })).toBeVisible()
 })
 
 test('tema escuro e fonte grande no comparecimento', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 16, 14, 0))
-  await page.goto(`${ANTONIO}&tema=escuro&fonte=grande`)
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
+  await page.goto(`${ANTONIO}?tema=escuro&fonte=grande`)
   await expect(page.getByRole('heading', { name: 'Antônio Exemplo · Registrar comparecimento' })).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
   await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)

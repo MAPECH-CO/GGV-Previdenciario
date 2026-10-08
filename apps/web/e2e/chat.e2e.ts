@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-82 · Conversar com o portal: o chat abaixo da busca da Central e na aba Suporte das outras telas, sobre o motor único.
 // Consulta (o caso e o passo, o valor que o perfil não vê, a jurimetria) e ação (o cartão com Responsável e Trocar, o portão,
@@ -15,7 +16,8 @@ async function perguntar(page: import('@playwright/test').Page, texto: string) {
 }
 
 test('CA1, CA3, CA5, CA7, CA9 · a advogada consulta o caso e cria uma tarefa pelo chat, com o responsável trocado', async ({ page }) => {
-  await page.goto('/advogada?perfil=advogada')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/advogada')
   await perguntar(page, 'O que falta no caso do Antônio Exemplo?')
   await expect(page.getByText(/está em Vigília · exigência do juiz/)).toBeVisible()
   await expect(page.getByRole('list', { name: 'Tarefas sugeridas' }).getByRole('link')).toHaveAttribute('href', '/casos/antonio-exemplo-1')
@@ -25,17 +27,19 @@ test('CA1, CA3, CA5, CA7, CA9 · a advogada consulta o caso e cria uma tarefa pe
   const cartao = page.getByRole('group', { name: 'Ação para confirmar · Antônio Exemplo · Cobrar documento' })
   await expect(cartao).toContainText('Responsável: Jéssica (exemplo)')
   await cartao.getByRole('button', { name: 'Trocar' }).click()
-  await cartao.getByLabel('Quem fica com a tarefa').selectOption('Bruna (exemplo)')
+  await cartao.getByLabel('Quem fica com a tarefa').selectOption('Ana (exemplo)')
   await cartao.getByRole('button', { name: 'Confirmar e criar a tarefa' }).click()
-  await expect(page.getByText(/✓ Feito: tarefa «Antônio Exemplo · Cobrar documento» criada para Bruna/)).toBeVisible()
+  await expect(page.getByText(/✓ Feito: tarefa «Antônio Exemplo · Cobrar documento» criada para Ana/)).toBeVisible()
 
   // A ação aparece no histórico do caso: o nome, a hora e "feito pelo chat" (CA5).
-  await page.goto('/casos/antonio-exemplo-1?perfil=advogada')
-  await expect(page.getByRole('list', { name: 'Linha · Vigília' })).toContainText('Criou a tarefa «Antônio Exemplo · Cobrar documento» para Bruna (exemplo) · feito pelo chat')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/casos/antonio-exemplo-1')
+  await expect(page.getByRole('list', { name: 'Linha · Vigília' })).toContainText('Criou a tarefa «Antônio Exemplo · Cobrar documento» para Ana (exemplo) · feito pelo chat')
 })
 
 test('CA2, CA4, CA8 · o Atendimento: o valor que não vê, o portão e a petição fora do perfil', async ({ page }) => {
-  await page.goto('/?perfil=atendimento')
+  await entrarPelaApi(page)
+  await page.goto('/')
   await perguntar(page, 'Qual o valor da prestação de contas da Lúcia Exemplo?')
   await expect(page.getByText(/não tem acesso a esse valor/)).toBeVisible()
   await expect(page.locator('main')).not.toContainText('R$')
@@ -50,7 +54,8 @@ test('CA2, CA4, CA8 · o Atendimento: o valor que não vê, o portão e a petiç
 })
 
 test('CA6, CA10 · o Suporte na página do processo responde sobre o caso; a jurimetria vem do sistema', async ({ page }) => {
-  await page.goto('/casos/pedro-exemplo-1?perfil=advogada')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/casos/pedro-exemplo-1')
   await page.getByRole('button', { name: '✦ Suporte' }).click()
   const suporte = page.getByRole('dialog', { name: 'Suporte interno' })
   await suporte.getByLabel('✦ Pergunte ou peça').fill('O que falta aqui?')
@@ -58,11 +63,12 @@ test('CA6, CA10 · o Suporte na página do processo responde sobre o caso; a jur
   await expect(suporte.getByText(/Pedro Exemplo \(loas idoso\) está em INSS/)).toBeVisible()
   await suporte.getByLabel('✦ Pergunte ou peça').fill('Como o Dr. A. Prado avalia?')
   await suporte.getByRole('button', { name: 'Enviar' }).click()
-  await expect(suporte.getByText(/71% · 24 de 34 laudos favoráveis/)).toBeVisible()
+  await expect(suporte.getByText(/laudos favoráveis 71% · 24 de 34 laudos/)).toBeVisible()
 })
 
 test('tema escuro e fonte grande no chat da Central', async ({ page }) => {
-  await page.goto('/advogada?perfil=advogada&tema=escuro&fonte=grande')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/advogada?tema=escuro&fonte=grande')
   await perguntar(page, 'Protocola o pedido da Nair Exemplo no INSS')
   await expect(page.getByText('Portão G2')).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))

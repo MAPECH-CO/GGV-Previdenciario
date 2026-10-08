@@ -13,7 +13,7 @@ beforeEach(() => {
   zerarExemplo()
 })
 
-const ATENDIMENTO = { id: 'atendimento', usuario: 'Bruna (exemplo)' }
+const ATENDIMENTO = { id: 'atendimento', usuario: 'Ana (exemplo)' }
 const ADVOGADA = { id: 'advogada', usuario: 'Dra. Paula (exemplo)' }
 const SENIOR = { id: 'senior', usuario: 'Dra. Renata (exemplo)' }
 const FINANCEIRO = { id: 'financeiro', usuario: 'Marcos (exemplo)' }
@@ -63,7 +63,7 @@ describe('GGVP-82 · o chat que consulta', () => {
 
   it('CA10 · jurimetria: os números vêm do sistema, com o número de casos, sem amostra mínima, e a IA cita as fontes', async () => {
     const r = await pergunta('Como o Dr. A. Prado costuma avaliar problemas de coluna?', ADVOGADA)
-    expect(r.sugestao.texto).toContain('71% · 24 de 34 laudos favoráveis')
+    expect(r.sugestao.texto).toContain('laudos favoráveis 71% · 24 de 34 laudos')
     expect(r.sugestao.texto).toContain('em coluna, 75% · 6 de 8')
     expect(r.sugestao.texto).not.toMatch(/amostra/i)
     expect(r.sugestao.fontes.some((f) => f.tipo === 'acervo')).toBe(true)
@@ -87,7 +87,7 @@ describe('GGVP-82 · o chat que consulta', () => {
     expect(parecer).toMatchObject({ tipo: 'recusa', portao: 'G17' })
     const fraude = await pergunta('Como faço para esconder a renda do filho na avaliação social?')
     expect(fraude).toMatchObject({ tipo: 'recusa', portao: 'G11' })
-    expect(recusasDoChat()).toMatchObject([{ quem: 'Bruna (exemplo)' }])
+    expect(recusasDoChat()).toMatchObject([{ quem: 'Ana (exemplo)' }])
   })
 
   it('o cliente ligou: a próxima tarefa com o lembrete da identidade (Atendimento) ou a orientação (Jurídico administrativo)', async () => {
@@ -140,18 +140,18 @@ describe('GGVP-82 · o chat que executa', () => {
 
   it('CA7 · só o setor: pergunta quem do setor; ninguém: pergunta quem é; "para mim": quem pediu; "Trocar" muda o responsável', async () => {
     const setor = await pergunta('Cria uma tarefa para a Documentação cobrar o laudo que falta da Rita Exemplo até amanhã', ADVOGADA)
-    expect(setor).toMatchObject({ tipo: 'pergunta', opcoes: ['Jéssica (exemplo)'] })
+    expect(setor).toMatchObject({ tipo: 'pergunta', opcoes: ['Jéssica (exemplo)', 'Fábio (exemplo)'] })
     expect(setor.sugestao.texto).toBe('Quem do setor Documentação · ADM fica com a tarefa?')
     const ninguem = await pergunta('Cria uma tarefa de cobrar o laudo da Rita Exemplo', ADVOGADA)
     expect(ninguem.tipo).toBe('pergunta')
-    expect(ninguem.opcoes).toContain('Bruna (exemplo)')
+    expect(ninguem.opcoes).toContain('Ana (exemplo)')
     const mim = await pergunta('Cria uma tarefa para mim: ligar para o cliente Antônio Exemplo', ADVOGADA)
     expect(mim.acao!.responsavel!.nome).toBe('Dra. Paula (exemplo)')
     expect(mim.acao!.titulo).toBe('Antônio Exemplo · Ligar para o cliente')
 
     const r = await pergunta('Cria uma tarefa para a Jéssica cobrar o documento da Rita Exemplo', ADVOGADA)
-    await confirmarAcao(r.acao!.id, ADVOGADA, { responsavel: 'Bruna (exemplo)' })
-    expect(tarefasCriadasPeloChat('Bruna (exemplo)')[0].acao).toBe('Cobrar documento')
+    await confirmarAcao(r.acao!.id, ADVOGADA, { responsavel: 'Ana (exemplo)' })
+    expect(tarefasCriadasPeloChat('Ana (exemplo)')[0].acao).toBe('Cobrar documento')
     expect(tarefasCriadasPeloChat('Jéssica (exemplo)')).toEqual([])
   })
 
@@ -189,7 +189,7 @@ describe('GGVP-82 · CA12 · o arquivo anexado', () => {
     await confirmarAcao(r.acao!.id, ATENDIMENTO, { arquivos: [pdf('laudo_antonio.pdf')] })
     expect((await obterFicha('antonio-exemplo'))!.arquivos[0]).toMatchObject({ nome: 'laudo_antonio.pdf', origem: 'chat' })
     const caso = (await obterCaso('antonio-exemplo-1', ATENDIMENTO))!
-    expect(caso.linha.at(-1)).toMatchObject({ peloChat: true, quem: 'Bruna (exemplo)' })
+    expect(caso.linha.at(-1)).toMatchObject({ peloChat: true, quem: 'Ana (exemplo)' })
   })
 
   it('comprovante do INSS: a IA não escolhe nem sugere o perito; confirmar pede a resposta do documento novo', async () => {

@@ -1,19 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-93 · Roteiro de conteúdo mínimo por benefício: a sênior edita e nasce a versão 2; a advogada só vê; o Atendimento
-// não vê. Cada teste começa da semente de exemplo.ts.
+// não vê. Cada teste começa da semente de exemplo.ts. Cada perfil entra pela API com o usuário de exemplo.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 test('CA1 e CA2 · a sênior abre o roteiro do LOAS Deficiente, edita um item e salva a versão 2', async ({ page }) => {
-  await page.goto('/roteiros?perfil=senior')
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/roteiros')
   // GGVP-50: o roteiro infantil também começa com "BPC/LOAS Deficiente"; o do adulto é o primeiro.
   await expect(page.getByRole('link', { name: /BPC\/LOAS Deficiente/ }).first()).toHaveAttribute('href', '/roteiros/loas-deficiente')
-  // O perfil escolhido pelo endereço vale para a página aberta (dados/perfis.ts).
-  await page.goto('/roteiros/loas-deficiente?perfil=senior')
+  await page.goto('/roteiros/loas-deficiente')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('BPC/LOAS Deficiente · Roteiro de conteúdo mínimo')
   await expect(page.getByRole('list', { name: 'Contradições que bloqueiam (G18)' })).toContainText('menor que 24 meses')
 
@@ -27,15 +28,18 @@ test('CA1 e CA2 · a sênior abre o roteiro do LOAS Deficiente, edita um item e 
 })
 
 test('CA1 · a advogada vê o roteiro sem editar; o Atendimento não vê', async ({ page }) => {
-  await page.goto('/roteiros/pcd?perfil=advogada')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/roteiros/pcd')
   await expect(page.getByRole('list', { name: 'Contradições que bloqueiam (G18)' })).toContainText('incapacidade total para o trabalho')
   await expect(page.getByRole('button', { name: 'Editar o roteiro' })).toHaveCount(0)
-  await page.goto('/roteiros/pcd?perfil=atendimento')
+  await entrarPelaApi(page)
+  await page.goto('/roteiros/pcd')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('O roteiro de laudos é do Jurídico')
 })
 
 test('tema escuro e fonte grande no roteiro', async ({ page }) => {
-  await page.goto('/roteiros/auxilio-acidente?perfil=senior&tema=escuro&fonte=grande')
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/roteiros/auxilio-acidente?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Auxílio-Acidente · Roteiro de conteúdo mínimo')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
   await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)

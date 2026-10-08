@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { lerComprovante, obterPericia, registrarComparecimento, registrarMarcacao, tarefasDoJuridicoAdm } from '../dados/pericia.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from './CentralAdvogada.tsx'
 import { ProcessoPericia } from './ProcessoPericia.tsx'
@@ -14,7 +14,7 @@ beforeEach(async () => {
   configurarExemplo({ agora: () => agora, latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('?perfil=advogada')
+  entrarComo('advogada')
   // A semente nasce em 07/10; o Antônio vai à perícia do juízo em 16/10, 10:30, e o caso passa a esperar o resultado.
   await obterPericia('antonio-exemplo-1')
   agora = new Date(2026, 9, 16, 14, 0)
@@ -25,7 +25,7 @@ beforeEach(async () => {
 const pdf = (nome: string) => new File([`conteúdo de ${nome}`], nome, { type: 'application/pdf' })
 
 async function abrirEAnexar(nome: string) {
-  render(<ResultadoPericia processoId="antonio-exemplo-1" />)
+  render(comSessao(<ResultadoPericia processoId="antonio-exemplo-1" />))
   await screen.findByRole('heading', { name: 'Antônio Exemplo · Conferir resultado da perícia' })
   fireEvent.change(screen.getByLabelText(/Laudo ou registro do GERID/), { target: { files: [pdf(nome)] } })
   return within(await screen.findByRole('region', { name: 'Resumo do laudo pela IA' }))
@@ -39,7 +39,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
   it('CA5, CA8 · o resumo do laudo pela IA, com a jurimetria do perito do sistema (G22); registrar só com tudo respondido', async () => {
     const resumo = await abrirEAnexar('laudo_pericia_antonio.pdf')
     expect(resumo.getByText('Favorável · incapacidade para o trabalho habitual')).toBeTruthy()
-    expect(resumo.getByText('71% favorável em 34 laudos · amostra suficiente (G22)')).toBeTruthy()
+    expect(resumo.getByText(/^71% · 24 de 34 laudos · base de \d\d\/\d\d \(G22\)$/)).toBeTruthy()
     const registrar = screen.getByRole('button', { name: 'Registrar resultado' }) as HTMLButtonElement
     expect(registrar.disabled).toBe(true)
     expect(screen.getByText('Informe se o resultado foi favorável ou desfavorável.')).toBeTruthy()
@@ -47,7 +47,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     expect(screen.getByText('Marque as conferências antes de registrar.')).toBeTruthy()
     conferirTudo()
     expect(registrar.disabled).toBe(false)
-    expect(screen.getByText('Jurimetria com amostra baixa aparece como insuficiente e não chega ao cliente (G22).')).toBeTruthy()
+    expect(screen.getByText('Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima (G22).')).toBeTruthy()
   })
 
   it('CA2, CA6 · favorável no judicial: o feito diz como volta ao juízo, com o prazo de 15 dias (G12)', async () => {
@@ -91,7 +91,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     conferirTudo()
     fireEvent.click(screen.getByRole('button', { name: 'Registrar resultado' }))
     await screen.findByRole('heading', { name: '✓ Resultado registrado: favorável' })
-    render(<ProcessoPericia processoId="antonio-exemplo-1" />)
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
     const pericias = within(await screen.findByRole('region', { name: 'Perícias' }))
     expect(pericias.getByText('Favorável')).toBeTruthy()
     expect(within(screen.getByRole('region', { name: 'Prazos' })).getByText('Manifestação sobre o laudo (15 dias, G12)')).toBeTruthy()
@@ -100,7 +100,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
 
 describe('GGVP-70 · o chat da advogada (Figma 2107:667 e 2186:2)', () => {
   it('CA9 · "perícias da semana": cada item abre a página do processo, não a Agenda', async () => {
-    render(<CentralAdvogada />)
+    render(comSessao(<CentralAdvogada />))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Quais perícias temos esta semana?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     expect(await screen.findByText(/^Uma perícia até 26\/10\. Cada uma abre o processo do cliente, com a perícia em destaque\./)).toBeTruthy()
@@ -110,11 +110,11 @@ describe('GGVP-70 · o chat da advogada (Figma 2107:667 e 2186:2)', () => {
     expect(item.textContent).toContain('INSS · 23/10, 09:00')
   })
 
-  it('"como o perito avalia": os números do sistema com o número de laudos, sem amostra mínima (GGVP-82, Lucas 06/10), e a conferência do resultado', async () => {
-    render(<CentralAdvogada />)
+  it('"como o perito avalia": os números do sistema, a amostra pequena com o número de laudos (G22) e a conferência do resultado', async () => {
+    render(comSessao(<CentralAdvogada />))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Como o Dr. A. Prado costuma avaliar problemas de coluna?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(await screen.findByText(/em coluna, \d+% · \d+ de 8/)).toBeTruthy()
+    expect(await screen.findByText(/em coluna, 75% · 6 de 8 laudos · base de \d\d\/\d\d/)).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
     expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia/resultado'])
     expect(itens[1].textContent).toContain('Antônio Exemplo · Conferir resultado da perícia')
@@ -141,7 +141,7 @@ describe('GGVP-73 · o laudo atualiza o perfil do perito', () => {
     await registrarMarcacao('maria-exemplo-1', { comprovante: { nome: 'comprovante_maria.pdf' }, lido, pedeDocumentoNovo: false }, 'Igor (exemplo)')
     agora = new Date(2026, 10, 3, 11, 0)
     await registrarComparecimento('maria-exemplo-1', { compareceu: true }, 'Igor (exemplo)')
-    render(<ResultadoPericia processoId="maria-exemplo-1" />)
+    render(comSessao(<ResultadoPericia processoId="maria-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Maria Exemplo · Conferir resultado da perícia' })
     fireEvent.change(screen.getByLabelText(/Laudo ou registro do GERID/), { target: { files: [pdf('laudo_maria.pdf')] } })
     expect(await screen.findByText('perito não identificado: sem jurimetria')).toBeTruthy()

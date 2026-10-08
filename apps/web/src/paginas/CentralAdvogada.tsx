@@ -8,11 +8,9 @@ import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
+import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { tarefasDaAdvogada } from '../dados/preparacao.ts'
-import { tarefasDeDecidirCobranca } from '../dados/cobranca.ts'
-import { tarefasDaFilaDaSenior } from '../dados/liberacao.ts'
-import { tarefasDoParecer } from '../dados/parecer.ts'
-import { tarefasDeDecidirComplemento } from '../dados/complemento.ts'
+import { daSenior, tarefasDoParecer } from '../dados/parecer.ts'
 // A perícia que passou do limite de remarcações sobe para a advogada responsável (épico GGVP-10, G15).
 import { tarefasDaAdvogadaNaPericia, tarefasDeDecidirDocumentoDaPericia } from '../dados/pericia.ts'
 import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
@@ -20,7 +18,7 @@ import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
-// conversa pede "minha fila". A troca de perfil no topo é da GGVP-78; esta Central abre por /advogada.
+// conversa pede "minha fila". É a tela inicial de quem entra como Advogada (App.tsx); também abre por /advogada.
 const navegacao: ItemNavegacao[] = [
   { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/advogada' },
   { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
@@ -28,11 +26,23 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
-  // A cobrança que passou do limite chega à sênior (GGVP-101, CA7), e o caso liberado pela Documentação também (GGVP-18, CA1).
-  // O laudo novo e o parecer médico nascem do caso (GGVP-20).
+  // O laudo novo e o parecer médico nascem do caso (GGVP-20); a aprovação da dispensa é da outra sênior (GGVP-33).
   // A conversa com o cliente é da pessoa que a abriu (GGVP-76).
   const perfil = usePerfil('Advogada')
-  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDaAdvogadaNaPericia(), ...tarefasDeDecidirDocumentoDaPericia(), ...tarefasDeRegistrarConversa(perfil?.usuario), ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }), ...tarefasCriadasPeloChat(perfil?.usuario)])
+  const [deExemplo] = useState(() => [
+    ...tarefasDaAdvogada(),
+    ...tarefasDoParecer().filter((t) => !daSenior(t)),
+    ...tarefasDaAdvogadaNaPericia(),
+    ...tarefasDeDecidirDocumentoDaPericia(),
+    ...tarefasDeRegistrarConversa(perfil?.usuario),
+    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
+    // GGVP-82: e as tarefas que o chat criou para a pessoa.
+    ...tarefasCriadasPeloChat(perfil?.usuario),
+  ])
+  // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
+  // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
+  const doServidor = useTarefasDoServidor() ?? []
+  const tarefas = [...doServidor, ...deExemplo]
 
   return (
     <>

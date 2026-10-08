@@ -57,7 +57,7 @@ describe('TrocarSenha', () => {
 
 describe('UsuarioDaSessao', () => {
   it('não carrega a senha nem o hash', () => {
-    const u = UsuarioDaSessao.parse({ nome: 'Ana', email: 'a@b.co', perfil: null, trocarSenha: false, senhaHash: 'x' })
+    const u = UsuarioDaSessao.parse({ nome: 'Ana', email: 'a@b.co', perfis: [], perfilAtivo: null, trocarSenha: false, senhaHash: 'x' })
     expect(u).not.toHaveProperty('senhaHash')
   })
 })

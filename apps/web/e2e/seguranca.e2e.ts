@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-111 · Terceiro não se passa pelo cliente. Telefone, e-mail e dados bancários só mudam com o cliente verificado
 // (chamada de vídeo ou no escritório) e em contrato novo; a conta da Lúcia Exemplo é de mentira, para o repasse da pensão.
@@ -39,7 +40,9 @@ test('CA2 e CA5 · a conta da Lúcia muda com a segunda confirmação de outra p
   await cartao.getByRole('button', { name: 'Confirmar a mudança (segunda pessoa)' }).click()
   await expect(cartao.getByRole('alert')).toHaveText('A segunda confirmação é de outra pessoa, não de quem pediu.')
 
-  await page.goto('/clientes/lucia-exemplo?perfil=atendimento-lider')
+  // A segunda confirmação é de outra pessoa: a Eva, líder do Atendimento, entra pela API.
+  await entrarPelaApi(page, 'lider@exemplo.ggv')
+  await page.goto('/clientes/lucia-exemplo')
   await cartao.getByRole('button', { name: 'Confirmar a mudança (segunda pessoa)' }).click()
   await expect(cartao.getByRole('status')).toHaveText('Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')
   await expect(cartao).toContainText('Banco Exemplo Dois · agência 0002 · conta 65432-1')
@@ -48,7 +51,8 @@ test('CA2 e CA5 · a conta da Lúcia muda com a segunda confirmação de outra p
     '«Banco Exemplo · agência 0001 · conta 12345-6 · Pix: o telefone cadastrado» → «Banco Exemplo Dois · agência 0002 · conta 65432-1»',
   )
 
-  await page.goto('/advogada?perfil=advogada')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/advogada')
   await expect(page.getByRole('link', { name: 'Lúcia Exemplo · Dados bancários mudaram' })).toBeVisible()
 })
 

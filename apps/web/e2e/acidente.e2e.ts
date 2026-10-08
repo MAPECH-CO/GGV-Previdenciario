@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-47 · Auxílio-Acidente: prova do acidente. O Sebastião da semente: a circunstância que muda o checklist, os
 // documentos que completam o checklist e liberam o caso, e o laudo de lesão não consolidada que trava (G18).
@@ -33,6 +34,9 @@ async function chegam(page: Page, tipos: [string, string][]) {
   await page.getByRole('button', { name: 'Arquivar' }).click()
   await expect(page.getByRole('heading', { name: /✓ Arquivado às/ })).toBeVisible()
 }
+
+// Entra pela API com o usuário de exemplo: o checklist e a liberação são da Documentação.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, 'documentacao@exemplo.ggv'))
 
 test('CA1 e CA2 · a circunstância muda o checklist: o trânsito sem CAT e com boletim e fotos, o trabalho com a CAT e o processo do auxílio anterior', async ({ page }) => {
   await page.goto('/casos/sebastiao-exemplo-1/checklist')

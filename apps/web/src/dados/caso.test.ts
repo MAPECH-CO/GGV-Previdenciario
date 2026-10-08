@@ -5,7 +5,7 @@ import { configurarExemplo, zerarExemplo } from './servidor.ts'
 let agora = new Date(2026, 9, 7, 10, 0)
 
 const ADVOGADA = { id: 'advogada', usuario: 'Dra. Paula (exemplo)' }
-const ATENDIMENTO = { id: 'atendimento', usuario: 'Bruna (exemplo)' }
+const ATENDIMENTO = { id: 'atendimento', usuario: 'Ana (exemplo)' }
 const JURIDICO_ADM = { id: 'juridico-adm', usuario: 'Igor (exemplo)' }
 const FINANCEIRO = { id: 'financeiro', usuario: 'Marcos (exemplo)' }
 const SENIOR = { id: 'senior', usuario: 'Dra. Renata (exemplo)' }
@@ -46,7 +46,7 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
   it('CA3 · os setores que ainda não subiram o card', async () => {
     const antonio = await obterCaso('antonio-exemplo-1', ADVOGADA)
     expect(antonio!.pendentes!.setores).toEqual(['Documentação', 'Perícia'])
-    expect(antonio!.pendentes!.itens.find((l) => l.setor === 'Atendimento')!.subiu!.quem).toBe('Bruna (exemplo)')
+    expect(antonio!.pendentes!.itens.find((l) => l.setor === 'Atendimento')!.subiu!.quem).toBe('Ana (exemplo)')
     expect((await obterCaso('maria-exemplo-1', ADVOGADA))!.pendentes).toBeNull()
   })
 
@@ -70,9 +70,9 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
     expect(antonio!.perito!.id).toBe('a-prado')
     const j = jurimetriaDoJuizoDoCaso('vf-santo-amaro')!
     expect(j.numeros.casos).toBe(24)
-    expect(j.numeros.porBeneficio.find((b) => b.beneficio === 'incapacidade-permanente')!.texto).toBe('58% · 7 de 12')
+    expect(j.numeros.porBeneficio.find((b) => b.beneficio === 'incapacidade-permanente')!.texto).toMatch(/^58% · 7 de 12 casos · base de \d\d\/\d\d$/)
     // Quatro casos também mostram número: não há amostra mínima (Lucas, 06/10).
-    expect(j.numeros.porBeneficio.find((b) => b.beneficio === 'loas-deficiente')!.texto).toBe('25% · 1 de 4')
+    expect(j.numeros.porBeneficio.find((b) => b.beneficio === 'loas-deficiente')!.texto).toMatch(/^25% · 1 de 4 casos · base de \d\d\/\d\d$/)
     expect(j.processos.map((p) => p.cliente)).toContain('Antônio Exemplo')
     expect(perfilDoPeritoDoCaso('r-menezes')!.jurimetria.laudos).toBe(6)
   })

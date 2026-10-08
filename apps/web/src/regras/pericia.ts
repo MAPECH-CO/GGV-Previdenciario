@@ -1,6 +1,7 @@
 // Perícia (épico GGVP-10): regras puras, sem React. Prazo e número são código com teste (G19); o servidor de exemplo e,
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
 import { somarDias } from './agenda.ts'
+import { taxaComCasos } from './caso.ts'
 import { dataCurta, hojeIso } from './datas.ts'
 import { problemaG20 } from './parecer.ts'
 
@@ -177,10 +178,16 @@ export const passouDoLimiteDosDocumentos = (hoje: string, documentosAte?: string
 
 // GGVP-61 · A orientação da perícia, padrão ou pelo perfil do perito.
 
-/** A jurimetria do perito: com 5 perícias já começa o estudo, mas o mínimo para mostrar é 10 (Lucas, 02/10). Abaixo, "amostra insuficiente" (G22). */
-export const AMOSTRA_MINIMA_DO_PERITO = 10
+/**
+ * A jurimetria do perito (G22, Lucas em 06/10 e Pedro em 07/10, no lugar do mínimo de 10 laudos de 02/10): não há amostra
+ * mínima, toda amostra conta, e toda porcentagem aparece com o número de laudos e a data da base.
+ */
+export type Jurimetria = { laudos: number; favoraveis: number; taxa: number; diasAteOLaudo: number }
 
-export type Jurimetria = { laudos: number; favoraveis: number; taxa: number; diasAteOLaudo: number; suficiente: boolean }
+/** Os laudos favoráveis do perito, pela regra única do G22 (`taxaComCasos`): "71% · 24 de 34 laudos · base de 07/10". */
+export function numerosDaJurimetria(j: Jurimetria, base: string): string {
+  return j.laudos ? taxaComCasos(j.favoraveis, j.laudos, base, 'laudos') : 'nenhum laudo no acervo'
+}
 
 /** Os números vêm do sistema, não do modelo (G19, G22): contagem, taxa favorável e tempo médio até o laudo. */
 export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; dias: number }[]): Jurimetria {
@@ -191,7 +198,6 @@ export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; di
     favoraveis,
     taxa: n ? Math.round((favoraveis / n) * 100) : 0,
     diasAteOLaudo: n ? Math.round(laudos.reduce((s, l) => s + l.dias, 0) / n) : 0,
-    suficiente: n >= AMOSTRA_MINIMA_DO_PERITO,
   }
 }
 

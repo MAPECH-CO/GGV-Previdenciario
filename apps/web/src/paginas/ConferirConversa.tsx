@@ -125,7 +125,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
             : null))
   const p = c.pendencia
   const situacaoDaTarefa = p && situacaoDaPendencia(p.prazo, hoje, Boolean(p.cumpridaEm))
-  const senior = perfil?.id === 'senior' || perfil?.id === 'senior-2'
+  const senior = perfil?.id === 'senior'
   const ditoAs = (aos: number) =>
     g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
 

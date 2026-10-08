@@ -6,7 +6,7 @@ import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confi
 import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import { obterCobrancaDaPericia, obterLembrete, registrarCobrancaDaPericia, registrarLembrete } from '../dados/pericia.ts'
 import { clienteNoChatwoot, enviarMensagem, type MensagemPronta } from '../dados/mensagens.ts'
-import { usePerfil, usePerfilEscolhido } from '../dados/perfis.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, type IdDoModelo } from '../regras/mensagens.ts'
 import { ConversaNoChatwoot } from './ConversaNoChatwoot.tsx'
 import styles from './ConviteChatwoot.module.css'
@@ -80,7 +80,8 @@ const CONVERSA: Record<Assunto, { rotulo: string; modelo: IdDoModelo; carregar: 
 export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado, aoFechar }: Props) {
   const conversaDe = CONVERSA[assunto]
   // Quem está na tela assina o envio (GGVP-53, GGVP-56); sem escolha, quem costuma mandar o modelo (GGVP-102, CA9).
-  const escolhido = usePerfilEscolhido()
+  // Quem está na sessão (sem sessão, ninguém).
+  const escolhido = usePerfil()
   const perfil = usePerfil(MODELOS_DE_MENSAGEM[conversaDe.modelo].quem)
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<Carregada | null>(null)

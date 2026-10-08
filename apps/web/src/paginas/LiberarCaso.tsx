@@ -9,13 +9,22 @@ import { juntar } from '../regras/checklist.ts'
 import { dataCurta, dataHora, hojeIso, hora } from '../regras/datas.ts'
 import { ehMedico } from '../regras/leitura.ts'
 import { PERFIS, parecerEmOrdem, travaDaLiberacao, type Perfil } from '../regras/liberacao.ts'
+import { useSessao } from '../sessao.ts'
 import styles from './Balcao.module.css'
 import documentos from './ConferirDocumentos.module.css'
 import proprio from './LiberarCaso.module.css'
 
 // Figma: step_D1.24 "Liberar ao Jurídico" (10:264), no visual das telas de passo (GGVP-18).
 
-export function LiberarCaso({ processoId, perfil = 'documentacao' }: { processoId: string; /** Sem login ainda: ?perfil= na rota (CA4). */ perfil?: Perfil }) {
+/** Quem libera vem do perfil da sessão (CA4): a Documentação libera; o Jurídico e os outros veem só a situação. */
+function paraLiberacao(perfilAtivo: string | null | undefined): Perfil {
+  if (perfilAtivo === 'documentacao') return 'documentacao'
+  return perfilAtivo === 'advogada' || perfilAtivo === 'senior' || perfilAtivo === 'juridico_adm' ? 'juridico' : 'atendimento'
+}
+
+export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: string; /** Só nos testes; na tela, vale o perfil da sessão. */ perfil?: Perfil }) {
+  const sessao = useSessao()
+  const perfil = doTeste ?? paraLiberacao(sessao?.perfilAtivo)
   const [caso, setCaso] = useState<CasoParaLiberar | null | undefined>(undefined)
   const [conferiChecklist, setConferiChecklist] = useState(false)
   const [conferiAssinaturas, setConferiAssinaturas] = useState(false)

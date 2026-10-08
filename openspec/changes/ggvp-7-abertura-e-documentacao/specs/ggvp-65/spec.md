@@ -37,7 +37,7 @@ Decisões:
 1. A tabela do cartão vira `KITS` em `regras/contrato.ts`, com os ids do catálogo `BENEFICIOS`. Aposentadorias: Especial, por Contribuição, por Idade, Rural, PCD por Contribuição e PCD por Idade. Auxílio incapacidade: Incapacidade Temporária, Incapacidade Permanente e Incapacidade Permanente Acidentária (o termo de incapacidade temporária e permanente cobre a permanente). Empréstimo fraudulento é o "Empréstimo Indevido" do catálogo. Benefício fora da tabela (Pensão por Morte, as revisões...) fecha sem kit e a tela avisa: nada é gerado. Levar ao Lucas.
 2. O kit fica guardado no contrato do processo: cada processo tem o seu (CA9), mesmo cliente e mesmos documentos.
 3. LOAS: a ficha de grupo familiar vai sempre; as declarações entram por quatro perguntas na tela ("Condições do caso"), que montam o kit de novo. As perguntas seguem a tabela do Lucas (GGVP-104) quando ela vier escrita. O representado só vale no LOAS.
-4. "O cliente fecha" é `fecharContrato`: o lead vira cliente, nasce o processo em "Contrato · preparar" e a tarefa. Quem chama é a definição do benefício na entrevista e a nova demanda (GGVP-124), que ainda não existem; a semente traz a Cleide com a Aposentadoria PCD para preparar.
+4. "O cliente fecha" é `fecharContrato`: o lead vira cliente, nasce o processo em "Contrato · preparar" e a tarefa. Quem chama é o "Sim, fechou" do fechamento (GGVP-60) e a nova demanda (GGVP-124), da Recepção, ligados em `ea33f2c` depois que a Recepção chegou a esta branch; a semente traz a Cleide com a Aposentadoria PCD para preparar.
 5. A tarefa nasce do contrato (`tarefasDoContrato`); a linha fixa "Cleide · Conferir contrato" sai de `atendimento.ts`.
 
 ## ADDED Requirements

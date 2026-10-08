@@ -31,4 +31,25 @@
 - [x] 3.5 Banco local de exemplo: sem `DATABASE_URL`, a API usa Postgres embutido em `apps/api/.banco-local/` com usuários de exemplo; comandos `usuario:criar` e `usuario:destravar` (resposta do Lucas, Q1 e Q2); verifica com `pnpm dev` e entrando na tela.
 - [x] 3.6 CA1, CA2, CA3, CA4 · Telas "Entrar", "Trocar a senha" e "Sem perfil"; o portal confere a sessão e manda ao login com a volta para a mesma tela; "Sair" na barra do topo; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 3.7 CA1, CA2, CA3, CA4 · Playwright do login com a API no ar; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado na revisão geral de 07/10 (branch com a regra dos valores): typecheck e lint sem erro; campos 9, contratos 20, API 37, tela 51, Playwright 14, todos passando (com a máquina carregada, 3 testes de tela estouraram o tempo e passaram rodados um por vez). De novo em 07/10, com o teste do CA16 e do GGVP-129: contratos 20, API 39, tela 51, Playwright 14.
+
+## GGVP-129 · Modelo de dados do portal (base de todos os épicos, decisão de 05/10)
+
+- [x] 4.1 Desenhar o modelo por área e as regras de LGPD em `design.md` ("Modelo de dados do portal"); verifica lendo o arquivo.
+- [x] 4.2 Esquema Drizzle por área em `apps/api/src/banco/esquema/` (37 tabelas novas; `pessoa`, `caso` e `tarefa` ganham colunas), estados com `check` e RLS em todas; migração `0003_modelo_de_dados`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.3 Histórico só cresce: gatilho recusa `update` e `delete` em `evento_auditoria` e `acesso_dado_sensivel` (migração `0004_historico_so_cresce`); teste em `migracoes.test.ts`.
+- [x] 4.4 Testes de confiança: estado fora da lista, CPF repetido, número de processo em dois casos, prestação com a mesma pessoa no OK e no recebimento e aviso antes do OK; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.6 CA3 · O teste do histórico também cobre `acesso_dado_sensivel`; spec `specs/ggvp-129/spec.md`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.5 Aplicar no Supabase "Portal Operacional" com `pnpm --filter @ggv/api db:migrar`; verifica pelo conector: 43 tabelas, todas com RLS.
+
+## GGVP-96 · Perfis e permissões
+
+- [x] 5.1 CA2, CA4, CA5, CA6, CA7, CA12, CA15 · Matriz em `packages/contratos/src/permissoes.ts`: 8 perfis, ações, `pode(perfil, acao)` e versão com impressão digital; teste por perfil; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 5.2 Banco: `usuario.perfis` (lista) no lugar de `usuario.perfil`, `sessao.perfil_ativo`; migrações; verifica com o teste das migrações.
+- [x] 5.3 CA3, CA8, CA10 · API: login abre no primeiro perfil; `POST /api/sessao/perfil` só para perfil atribuído, com histórico; `exigir(acao)` recusa com 403 e histórico; comando `usuario:perfis` só por Sócio, com histórico; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.4 CA9, CA10, CA11 · Tela: "Entrar como…" na barra do topo com os perfis da pessoa; Central pelo perfil ativo; "Sem permissão"; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.5 Playwright: trocar de perfil e ver a recusa; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 5.7 CA16 · Teste do caminho real: o OK já dado e o recebimento registrado depois pela mesma pessoa é recusado, por outra é aceito (`migracoes.test.ts`); verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado na revisão geral de 07/10 (branch com a regra dos valores): typecheck e lint sem erro; campos 9, contratos 20, API 37, tela 51, Playwright 14, todos passando (com a máquina carregada, 3 testes de tela estouraram o tempo e passaram rodados um por vez). De novo em 07/10, com o teste do CA16 e do GGVP-129: contratos 20, API 39, tela 51, Playwright 14.
+
+> CA13 e CA14 da GGVP-96 saíram desta change (revisão geral de 07/10): o CA13 entra com as rotas que devolvem dado de saúde (conferência no PR #14, documentos no PR #18) e o CA14 com a exportação e o relatório de prazos (PR #18), cada um com teste lá.

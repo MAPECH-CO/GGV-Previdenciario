@@ -85,14 +85,18 @@ export function setoresPendentes<T extends { setor: string; subiu?: unknown }>(l
   return [...new Set(lacos.filter((l) => !l.subiu).map((l) => l.setor))]
 }
 
-/** Percentual com o número de casos ao lado, sem amostra mínima (Lucas, 06/10): "58% · 7 de 12". */
-export function taxaComCasos(favoraveis: number, casos: number): string {
+/**
+ * Toda porcentagem de jurimetria, num lugar só (G22; Lucas 06/10, Pedro 07/10): sem amostra mínima, com o número de casos
+ * ao lado e a data da base. "58% · 7 de 12 casos · base de 07/10".
+ */
+export function taxaComCasos(favoraveis: number, casos: number, base: string, unidade = 'casos'): string {
   if (casos === 0) return 'sem casos no acervo'
-  return `${Math.round((favoraveis / casos) * 100)}% · ${favoraveis} de ${casos}`
+  const nome = casos === 1 ? unidade.replace(/s$/, '') : unidade
+  return `${Math.round((favoraveis / casos) * 100)}% · ${favoraveis} de ${casos} ${nome} · base de ${base.slice(8, 10)}/${base.slice(5, 7)}`
 }
 
 /** A jurimetria do juízo por benefício (CA6): contagem, procedentes e tempo médio até a sentença, do acervo. */
-export function jurimetriaDoJuizo(decisoes: { beneficio: string; procedente: boolean; meses: number }[]) {
+export function jurimetriaDoJuizo(decisoes: { beneficio: string; procedente: boolean; meses: number }[], base: string) {
   const porBeneficio = new Map<string, { procedentes: number; casos: number }>()
   for (const d of decisoes) {
     const x = porBeneficio.get(d.beneficio) ?? { procedentes: 0, casos: 0 }
@@ -102,7 +106,7 @@ export function jurimetriaDoJuizo(decisoes: { beneficio: string; procedente: boo
   }
   return {
     casos: decisoes.length,
-    porBeneficio: [...porBeneficio].map(([beneficio, x]) => ({ beneficio, ...x, texto: taxaComCasos(x.procedentes, x.casos) })),
+    porBeneficio: [...porBeneficio].map(([beneficio, x]) => ({ beneficio, ...x, texto: taxaComCasos(x.procedentes, x.casos, base) })),
     mesesAteASentenca: decisoes.length ? Math.round(decisoes.reduce((s, d) => s + d.meses, 0) / decisoes.length) : 0,
   }
 }
@@ -110,7 +114,7 @@ export function jurimetriaDoJuizo(decisoes: { beneficio: string; procedente: boo
 /** Quem vê o quê no caso: o Jurídico vê tudo; o Financeiro vê valores, sem saúde nem estratégia; os outros, sem os dois. */
 export type VisaoDoCaso = 'juridico' | 'financeiro' | 'atendimento'
 
-const JURIDICO = ['advogada', 'senior', 'senior-2', 'juridico-adm']
+const JURIDICO = ['advogada', 'senior', 'juridico-adm']
 
 export function visaoDoPerfil(perfil: string | undefined): VisaoDoCaso {
   if (perfil && JURIDICO.includes(perfil)) return 'juridico'

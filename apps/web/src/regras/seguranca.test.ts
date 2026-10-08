@@ -35,10 +35,10 @@ describe('Terceiro não se passa pelo cliente (GGVP-111)', () => {
     expect(erroDosDadosBancarios({ banco: 'Banco Exemplo', agencia: '1', conta: '12345-6' })).toMatch(/^Agência/)
     expect(erroDosDadosBancarios({ banco: 'Banco Exemplo', agencia: '0001', conta: '123456' })).toMatch(/^Conta/)
     expect(erroDosDadosBancarios({ banco: '', agencia: '0001', conta: '12345-6' })).toBe('Escreva o banco.')
-    expect(podeConfirmarSegunda('atendimento-lider', 'Carla (exemplo)', 'Bruna (exemplo)')).toBeNull()
-    expect(podeConfirmarSegunda('advogada', 'Dra. Paula (exemplo)', 'Bruna (exemplo)')).toBeNull()
-    expect(podeConfirmarSegunda('atendimento', 'Bruna (exemplo)', 'Bruna (exemplo)')).toBe('A segunda confirmação é de outra pessoa, não de quem pediu.')
-    expect(podeConfirmarSegunda('documentacao', 'Jéssica (exemplo)', 'Bruna (exemplo)')).toBe('A segunda confirmação é do Atendimento líder, da advogada ou da Sênior.')
+    expect(podeConfirmarSegunda('atendimento-lider', 'Carla (exemplo)', 'Ana (exemplo)')).toBeNull()
+    expect(podeConfirmarSegunda('advogada', 'Dra. Paula (exemplo)', 'Ana (exemplo)')).toBeNull()
+    expect(podeConfirmarSegunda('atendimento', 'Ana (exemplo)', 'Ana (exemplo)')).toBe('A segunda confirmação é de outra pessoa, não de quem pediu.')
+    expect(podeConfirmarSegunda('documentacao', 'Jéssica (exemplo)', 'Ana (exemplo)')).toBe('A segunda confirmação é do Atendimento líder, da advogada ou da Sênior.')
   })
 
   it('CA2 · perto da prestação de contas: ganho na sentença, RPV ou benefício deferido', () => {

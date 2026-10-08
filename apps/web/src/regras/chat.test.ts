@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { acaoDaLista, entenderPedido, foraDoPerfil, grupoDoPerfil, portaoDoPedido, responsavelDaTarefa, tipoDoAnexo, tituloDaTarefa } from './chat.ts'
 
 const PESSOAS = [
-  { nome: 'Bruna (exemplo)', setor: 'Atendimento' },
+  { nome: 'Ana (exemplo)', setor: 'Atendimento' },
   { nome: 'Dra. Paula (exemplo)', setor: 'Jurídico' },
   { nome: 'Dra. Renata (exemplo)', setor: 'Jurídico' },
   { nome: 'Jéssica (exemplo)', setor: 'Documentação · ADM' },
@@ -99,7 +99,6 @@ describe('GGVP-82 · CA9 · o título usa o cliente e uma ação da lista fixa d
 
   it('o grupo da lista de cada perfil', () => {
     expect(grupoDoPerfil('documentacao')).toBe('atendimento')
-    expect(grupoDoPerfil('senior-2')).toBe('senior')
     expect(grupoDoPerfil('juridico-adm')).toBe('juridico-adm')
   })
 })

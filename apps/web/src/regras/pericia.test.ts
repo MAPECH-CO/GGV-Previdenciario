@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  AMOSTRA_MINIMA_DO_PERITO,
   CONFERENCIAS_DO_RESULTADO,
   HORA_DA_CONFIRMACAO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
@@ -11,6 +10,7 @@ import {
   esperaOInss,
   etapaEmPericia,
   jurimetria,
+  numerosDaJurimetria,
   mensagemDoLembrete,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
@@ -174,13 +174,16 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
     expect(recusaDoChatNaPericia('Qual a orientação para a perícia do Antônio?')).toBeNull()
   })
 
-  it('CA12, G22 · jurimetria por código: taxa, tempo até o laudo e amostra mínima de 10', () => {
+  it('CA12, G22 · jurimetria por código: taxa e tempo até o laudo; sem amostra mínima, com o número de laudos e a data da base', () => {
     const laudos = (n: number, fav: number) => Array.from({ length: n }, (_, i) => ({ resultado: (i < fav ? 'favoravel' : 'desfavoravel') as 'favoravel' | 'desfavoravel', dias: 10 + i }))
-    expect(AMOSTRA_MINIMA_DO_PERITO).toBe(10)
-    expect(jurimetria(laudos(34, 24))).toMatchObject({ laudos: 34, favoraveis: 24, taxa: 71, suficiente: true })
-    expect(jurimetria(laudos(9, 5)).suficiente).toBe(false)
-    expect(jurimetria(laudos(10, 5))).toMatchObject({ taxa: 50, suficiente: true, diasAteOLaudo: 15 })
-    expect(jurimetria([])).toMatchObject({ laudos: 0, taxa: 0, suficiente: false })
+    expect(jurimetria(laudos(34, 24))).toMatchObject({ laudos: 34, favoraveis: 24, taxa: 71 })
+    expect(jurimetria(laudos(10, 5))).toMatchObject({ taxa: 50, diasAteOLaudo: 15 })
+    expect(jurimetria([])).toMatchObject({ laudos: 0, taxa: 0 })
+    expect(numerosDaJurimetria(jurimetria(laudos(34, 24)), '2026-10-07')).toBe('71% · 24 de 34 laudos · base de 07/10')
+    // Toda amostra conta (G22): com poucos laudos, a porcentagem aparece do mesmo jeito.
+    expect(numerosDaJurimetria(jurimetria(laudos(8, 5)), '2026-10-07')).toBe('63% · 5 de 8 laudos · base de 07/10')
+    expect(numerosDaJurimetria(jurimetria(laudos(1, 1)), '2026-10-07')).toBe('100% · 1 de 1 laudo · base de 07/10')
+    expect(numerosDaJurimetria(jurimetria([]), '2026-10-07')).toBe('nenhum laudo no acervo')
   })
 })
 

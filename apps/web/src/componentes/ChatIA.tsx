@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
 import { recusaImediata } from '../dados/chat.ts'
-import { usePerfilEscolhido } from '../dados/perfis.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import styles from './ChatIA.module.css'
 
 /** O reconhecimento de fala do navegador (Chrome e Edge). Sem ele, "Gravar áudio" avisa e a pessoa digita. */
@@ -34,7 +34,8 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
   const [aviso, setAviso] = useState('')
   const [gravando, setGravando] = useState(false)
   const reconhecimento = useRef<Reconhecimento | null>(null)
-  const perfil = usePerfilEscolhido()
+  // Quem está na sessão (sem sessão, ninguém).
+  const perfil = usePerfil()
 
   /** "Gravar áudio" (GGVP-82, CA6): a fala vira texto no campo, para a pessoa conferir antes de enviar. */
   function gravar() {

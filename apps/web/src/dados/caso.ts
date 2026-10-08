@@ -115,7 +115,7 @@ export type Juizo = { id: string; nome: string; juiz: string; decisoes: { benefi
 
 const DRA_PAULA = 'Dra. Paula (exemplo)'
 const DRA_RENATA = 'Dra. Renata (exemplo)'
-const BRUNA = 'Bruna (exemplo)'
+const BRUNA = 'Ana (exemplo)'
 const JESSICA = 'Jéssica (exemplo)'
 const IGOR = 'Igor (exemplo)'
 const MARCOS = 'Marcos (exemplo)'
@@ -597,7 +597,7 @@ export function jurimetriaDoJuizoDoCaso(juizoId: string) {
   const banco = ler()
   const juizo = (banco.juizos ?? juizosDeExemplo()).find((j) => j.id === juizoId)
   if (!juizo) return null
-  const numeros = jurimetriaDoJuizo(juizo.decisoes)
+  const numeros = jurimetriaDoJuizo(juizo.decisoes, hojeIso(agora()))
   const processos = (banco.casos ?? [])
     .filter((c) => c.juizoId === juizoId)
     .flatMap((c) => {

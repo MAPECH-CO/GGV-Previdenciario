@@ -11,7 +11,7 @@ import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
-import { NOMES_DA_INSTANCIA, NOMES_DA_SITUACAO, NOMES_DO_TIPO, prazoFalado, type SituacaoDaPericia } from '../regras/pericia.ts'
+import { NOMES_DA_INSTANCIA, NOMES_DA_SITUACAO, NOMES_DO_TIPO, numerosDaJurimetria, prazoFalado, type SituacaoDaPericia } from '../regras/pericia.ts'
 import passo from './Balcao.module.css'
 import proprio from './Pericia.module.css'
 import styles from './ProcessoPericia.module.css'
@@ -28,7 +28,7 @@ const navegacao: ItemNavegacao[] = [
 /** As etapas do processo, na ordem do Figma ("Ações do processo"). Só a etapa atual abre; as outras são de outras histórias. */
 const ETAPAS = ['Entrevista', 'Pedido ao INSS', 'Exigência INSS', 'Perícia INSS', 'Despacho', 'Petição', 'Perícia judicial', 'Exigência do juiz', 'Minuta', 'Sentença · recurso', 'Prestação de contas']
 
-const JURIDICO = ['advogada', 'senior', 'senior-2', 'juridico-adm']
+const JURIDICO = ['advogada', 'senior', 'juridico-adm']
 
 const COR_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   'aguardando-inss': styles.neutro,
@@ -332,9 +332,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                   (t.perfil ? (
                     <p>
                       Jurimetria de {t.perfil.perito.nome}:{' '}
-                      {t.perfil.jurimetria.suficiente
-                        ? `${t.perfil.jurimetria.taxa}% favoráveis em ${t.perfil.jurimetria.laudos} laudos`
-                        : `amostra insuficiente (${t.perfil.jurimetria.laudos} laudos): não entra na orientação nem vai ao cliente (G22)`}
+                      {numerosDaJurimetria(t.perfil.jurimetria, hoje)} (G22)
                       .{' '}
                       <button type="button" className={styles.link} onClick={() => setAberto('perito')}>
                         Ver a jurimetria do perito

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from '../paginas/CentralAdvogada.tsx'
 import { PaginaDoCaso } from '../paginas/PaginaDoCaso.tsx'
@@ -10,11 +10,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 10, 0), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 function chat(funcao = 'Advogada') {
-  render(<ChatDoPortal exemplo="Ex.:" sugestoes={['Criar tarefa']} funcao={funcao} />)
+  render(comSessao(<ChatDoPortal exemplo="Ex.:" sugestoes={['Criar tarefa']} funcao={funcao} />))
 }
 
 function enviar(texto: string, arquivos: string[] = []) {
@@ -34,7 +34,7 @@ describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186
   })
 
   it('CA2 · o Atendimento pede o valor da prestação de contas: não tem acesso e o valor não aparece', async () => {
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     chat('Atendimento')
     enviar('Qual o valor da prestação de contas da Lúcia Exemplo?')
     expect(await screen.findByText(/não tem acesso a esse valor/)).toBeTruthy()
@@ -44,7 +44,7 @@ describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186
   it('CA10 · jurimetria com os números do sistema, o número de casos, sem amostra mínima, e as fontes', async () => {
     chat()
     enviar('Como o Dr. A. Prado avalia?')
-    expect(await screen.findByText(/71% · 24 de 34 laudos favoráveis/)).toBeTruthy()
+    expect(await screen.findByText(/laudos favoráveis 71% · 24 de 34 laudos/)).toBeTruthy()
     expect(screen.getByText(/^Fontes: regra do sistema jurimetria calculada pelo sistema, sem amostra mínima/)).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/amostra insuficiente/i)
   })
@@ -62,22 +62,22 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
 
     // Trocar o responsável.
     fireEvent.click(within(cartao).getByRole('button', { name: 'Trocar' }))
-    fireEvent.change(within(cartao).getByLabelText('Quem fica com a tarefa'), { target: { value: 'Bruna (exemplo)' } })
-    expect(cartao.textContent).toContain('Responsável: Bruna (exemplo)')
+    fireEvent.change(within(cartao).getByLabelText('Quem fica com a tarefa'), { target: { value: 'Ana (exemplo)' } })
+    expect(cartao.textContent).toContain('Responsável: Ana (exemplo)')
     fireEvent.click(within(cartao).getByRole('button', { name: 'Confirmar e criar a tarefa' }))
-    expect(await screen.findByText(/✓ Feito: tarefa «Antônio Exemplo · Cobrar documento» criada para Bruna \(exemplo\)\./)).toBeTruthy()
+    expect(await screen.findByText(/✓ Feito: tarefa «Antônio Exemplo · Cobrar documento» criada para Ana \(exemplo\)\./)).toBeTruthy()
 
     cleanup()
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     const { CentralAtendimento } = await import('../paginas/CentralAtendimento.tsx')
-    render(<CentralAtendimento />)
+    render(comSessao(<CentralAtendimento />))
     expect(screen.getAllByRole('link', { name: /Antônio Exemplo · Cobrar documento/ }).some((l) => l.closest('li')!.textContent!.includes('criada pelo chat por Dra. Paula (exemplo)'))).toBe(true)
 
     cleanup()
-    iniciarPerfil('?perfil=advogada')
-    render(<PaginaDoCaso processoId="antonio-exemplo-1" />)
+    entrarComo('advogada')
+    render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
     const linha = await screen.findByRole('list', { name: 'Linha · Vigília' })
-    expect(linha.textContent).toContain('Dra. Paula (exemplo): Criou a tarefa «Antônio Exemplo · Cobrar documento» para Bruna (exemplo) · feito pelo chat')
+    expect(linha.textContent).toContain('Dra. Paula (exemplo): Criou a tarefa «Antônio Exemplo · Cobrar documento» para Ana (exemplo) · feito pelo chat')
   })
 
   it('CA3 · cancelar não faz nada', async () => {
@@ -87,9 +87,9 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
     fireEvent.click(within(cartao).getByRole('button', { name: 'Cancelar' }))
     expect(screen.getByText('Cancelado: nada foi feito.')).toBeTruthy()
     cleanup()
-    iniciarPerfil('?perfil=documentacao')
+    entrarComo('documentacao')
     const { CentralAtendimento } = await import('../paginas/CentralAtendimento.tsx')
-    render(<CentralAtendimento />)
+    render(comSessao(<CentralAtendimento />))
     expect(screen.queryByText(/criada pelo chat/)).toBeNull()
   })
 
@@ -102,7 +102,7 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
   })
 
   it('CA8 · o Atendimento pede uma petição: "Fora do seu perfil" e "Criar tarefa para a Dra. Paula"', async () => {
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     chat('Atendimento')
     enviar('Faz a petição do BPC da Rita Exemplo.')
     expect(await screen.findByText('Seu perfil (Atendimento) não gera peça jurídica: isso é da advogada do caso. Posso criar a tarefa para a Dra. Paula.')).toBeTruthy()
@@ -110,13 +110,13 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
     fireEvent.click(within(cartao).getByRole('button', { name: 'Criar tarefa para a Dra. Paula' }))
     expect(await screen.findByText(/✓ Feito: tarefa «Rita Exemplo · Pedir petição» criada para Dra\. Paula/)).toBeTruthy()
     cleanup()
-    iniciarPerfil('?perfil=advogada')
-    render(<CentralAdvogada />)
+    entrarComo('advogada')
+    render(comSessao(<CentralAdvogada />))
     expect(screen.getByRole('link', { name: /Rita Exemplo · Pedir petição/ })).toBeTruthy()
   })
 
   it('CA12 · comprovante de RPV no Financeiro: o cartão lista os passos e as travas (G19, G8)', async () => {
-    iniciarPerfil('?perfil=financeiro')
+    entrarComo('financeiro')
     chat('Financeiro')
     enviar('comprovante do RPV da Lúcia Exemplo', ['rpv_lucia.pdf'])
     const cartao = await screen.findByRole('group', { name: 'Ação para confirmar · Lúcia Exemplo · Lançar prestação de contas' })
@@ -132,7 +132,7 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
   })
 
   it('CA12 · lote de PDFs para o acervo, na sênior', async () => {
-    iniciarPerfil('?perfil=senior')
+    entrarComo('senior')
     chat('Sênior')
     enviar('Sobe esses processos antigos no acervo', ['proc-1.pdf', 'proc-2.pdf'])
     const cartao = await screen.findByRole('group', { name: 'Ação para confirmar · Acervo · 2 processos' })
@@ -152,9 +152,9 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
 
 describe('GGVP-82 CA6 · o Suporte nas outras telas', () => {
   it('na página do processo, o Suporte abre o chat do caso: a pergunta sem nome é sobre ele', async () => {
-    iniciarPerfil('?perfil=advogada')
+    entrarComo('advogada')
     window.history.pushState({}, '', '/casos/pedro-exemplo-1')
-    render(<PaginaDoCaso processoId="pedro-exemplo-1" />)
+    render(comSessao(<PaginaDoCaso processoId="pedro-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Linha do processo · completa' })
     fireEvent.click(screen.getByRole('button', { name: '✦ Suporte' }))
     const suporte = screen.getByRole('dialog', { name: 'Suporte interno' })

@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-29 · Pedir o complemento ao médico do cliente: do parecer Insuficiente da Rita à orientação enviada pelo Chatwoot
 // simulado; o relatório anexado vira laudo novo, a prévia da IA diz que responde ao pedido, a advogada refaz o parecer e
-// o pedido se encerra. Cada teste começa da semente.
+// o pedido se encerra. Cada teste começa da semente. Cada pessoa entra pela API com o usuário de exemplo do perfil dela.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -13,6 +14,7 @@ const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buff
 
 /** A advogada confere a análise como veio e registra a decisão. */
 async function darParecer(page: Page, decisao: 'Suficiente — liberar' | 'Insuficiente — pedir complemento') {
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/casos/rita-exemplo-1/parecer')
   const selects = page.getByRole('combobox', { name: /^Conferência:/ })
   await expect(selects.first()).toBeVisible()
@@ -27,6 +29,7 @@ test('CA1, CA2, CA4, CA5 e CA6 · da orientação ao médico ao pedido encerrado
   test.slow()
   await darParecer(page, 'Insuficiente — pedir complemento')
 
+  await entrarPelaApi(page)
   await page.goto('/')
   await page.getByRole('link', { name: 'Rita Exemplo · Pedir complemento ao médico' }).click()
   await expect(page).toHaveURL('/casos/rita-exemplo-1/complemento')
@@ -50,10 +53,12 @@ test('CA1, CA2, CA4, CA5 e CA6 · da orientação ao médico ao pedido encerrado
   await expect(page.getByText(/responde a tudo o que foi pedido/)).toBeVisible()
 
   // A advogada compara e refaz o parecer: o pedido se encerra.
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/advogada')
   await page.getByRole('link', { name: 'Rita Exemplo · Analisar laudo novo' }).click()
   await expect(page.getByText('Passa a cobrir', { exact: true })).toBeVisible()
   await darParecer(page, 'Suficiente — liberar')
+  await entrarPelaApi(page)
   await page.goto('/casos/rita-exemplo-1/complemento')
   await expect(page.getByRole('heading', { name: '✓ Complemento encerrado' })).toBeVisible()
   await page.goto('/')

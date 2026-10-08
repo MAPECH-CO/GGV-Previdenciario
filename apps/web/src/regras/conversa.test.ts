@@ -42,7 +42,8 @@ describe('Registrar a conversa (GGVP-76)', () => {
   it('Atendimento e Jurídico conduzem a conversa; Documentação e Financeiro, não (Lucas, 06/10)', () => {
     expect(papelDoPerfil('atendimento')).toBe('atendimento')
     expect(papelDoPerfil('atendimento-lider')).toBe('atendimento')
-    expect(['advogada', 'senior', 'senior-2'].map((p) => papelDoPerfil(p as 'advogada'))).toEqual(['juridico', 'juridico', 'juridico'])
+    // A segunda sênior entra pelo login com o perfil Sênior: não há perfil à parte.
+    expect(['advogada', 'senior'].map((p) => papelDoPerfil(p as 'advogada'))).toEqual(['juridico', 'juridico'])
     expect(papelDoPerfil('documentacao')).toBeNull()
     expect(papelDoPerfil('financeiro')).toBeNull()
     expect(motivoParaNaoAbrir(pedido, null, ['maria-exemplo-1'])).toBe('A conversa com o cliente é do Atendimento e do Jurídico.')
@@ -142,14 +143,14 @@ describe('Conferir o que a IA quer mudar (GGVP-84)', () => {
   })
 
   it('CA2 · só a Sênior volta uma versão', () => {
-    expect(['senior', 'senior-2'].map((p) => podeVoltarVersao(p as 'senior'))).toEqual([true, true])
+    expect(podeVoltarVersao('senior')).toBe(true)
     expect(['advogada', 'atendimento', undefined].map((p) => podeVoltarVersao(p as 'advogada'))).toEqual([false, false, false])
   })
 })
 
 describe('Pendência da conversa vira tarefa (GGVP-88)', () => {
   const pessoas: Pessoa[] = [
-    { nome: 'Bruna (exemplo)', setor: 'Atendimento' },
+    { nome: 'Ana (exemplo)', setor: 'Atendimento' },
     { nome: 'Carla (exemplo)', setor: 'Atendimento' },
     { nome: 'Dra. Paula (exemplo)', setor: 'Jurídico' },
     { nome: 'Dra. Renata (exemplo)', setor: 'Jurídico' },
@@ -162,7 +163,7 @@ describe('Pendência da conversa vira tarefa (GGVP-88)', () => {
     expect(responsavelDaPendencia('Documentação: receber e digitalizar o relatório.', pessoas)).toEqual({ tipo: 'setor', setor: 'Documentação · ADM', opcoes: [pessoas[4]] })
     expect(responsavelDaPendencia('a advogada confere o laudo', pessoas)).toEqual({ tipo: 'setor', setor: 'Jurídico', opcoes: [pessoas[2], pessoas[3]] })
     expect(responsavelDaPendencia('Ligar de novo na sexta', pessoas)).toEqual({ tipo: 'perguntar', opcoes: pessoas })
-    expect(responsavelDaPendencia('Bruna ou Carla liga na sexta', pessoas)).toEqual({ tipo: 'perguntar', opcoes: [pessoas[0], pessoas[1]] })
+    expect(responsavelDaPendencia('Ana ou Carla liga na sexta', pessoas)).toEqual({ tipo: 'perguntar', opcoes: [pessoas[0], pessoas[1]] })
     // "Carlos" não é a Carla: o nome inteiro, não um pedaço.
     expect(responsavelDaPendencia('o Carlos trouxe o papel', pessoas).tipo).toBe('perguntar')
   })

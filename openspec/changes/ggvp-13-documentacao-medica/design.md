@@ -12,7 +12,7 @@
 2. **Arquivo comum só com acréscimo.** Em `servidor.ts` (tipo `Banco`), `exemplo.ts`, `tipos.ts`, `catalogos.ts`, `perfis.ts`, `App.tsx` e nas Centrais: acrescentar no fim, sem reordenar nem reformatar. Campo novo no `Banco` é opcional (`roteiros?`, `pareceres?`, `complementos?`) e a chave do `sessionStorage` não muda. Rota nova vai dentro de `Telas`, depois da conferência de sessão.
 3. **Dado de saúde por perfil.** Conteúdo clínico (trecho, página, CID, texto do laudo, a comparação) só para o Jurídico: advogada e sênior. Atendimento e Documentação veem que o documento existe (tipo, data, emitente), o resultado do parecer e o que falta pedir, em linguagem simples. O servidor de exemplo devolve a visão de cada perfil (`visao: 'juridico' | 'atendimento'`); ao ligar no servidor, o perfil vem da sessão. Nada de saúde vai para o histórico: só o que aconteceu.
 4. **A IA sugere, a pessoa decide.** A análise da IA é sempre "sugerida"; o parecer só vale com o registro de uma pessoa do Jurídico (G17). A IA nunca sugere diagnóstico, CID, grau nem conclusão (G20). IA simulada por tabelas da semente e, no que sobe pelo card, por pistas no nome do arquivo, como a GGVP-17 e a GGVP-81 já fazem.
-5. **Quem fez.** A tela manda o nome da pessoa do perfil escolhido (`usePerfil`); sem escolha, o da função da tela. Ao ligar no servidor, vem da sessão.
+5. **Quem fez.** A tela manda o nome da pessoa da sessão (`usePerfil`, desde a junção com o `main` em 08/10 um adaptador do login: o perfil ativo e o nome de quem entrou). O "Trocar perfil" de exemplo saiu; vale o "Entrar como…" da GGVP-96. Sem sessão, só nos testes de uma tela sozinha, vale a função da tela.
 6. **Portas.** Portal na 5173. Playwright desta sessão: `PORTA_E2E_API=3193` e `PORTA_E2E_WEB=5193`, para não pegar a porta de outra sessão.
 
 ## GGVP-93 · Roteiro de conteúdo mínimo por benefício
@@ -250,11 +250,16 @@ export const Dispensa = z.object({
 |---|---|
 | Justificativa | texto, obrigatório, de 10 a 1000 letras |
 
+### Regras em comum com o servidor (junção de 08/10)
+
+- **24 meses do LOAS**: a conta (`mesesEntre`) e o mínimo (`MESES_LOAS`) estão em `@ggv/contratos`; a tela (`regras/parecer.ts`) e a regra `loas_24_meses` do servidor (GGVP-25) importam de lá.
+- **Tempo com deficiência (PCD)**: a tela calcula a linha do tempo com o grau e a conversão (`regras/deficiencia.ts`); o servidor tem a regra `periodos_pcd`, só com o tempo na condição. As duas contam cada dia uma vez quando dois vínculos correm juntos (decisão do Pedro, 08/10). Ao ligar no servidor (GGVP-125), a conversão por grau e o mínimo de 15 anos (Lucas, 07/10) passam para a regra do servidor, e a tela chama `/api/regras/periodos_pcd`.
+
 ### Decisões da história
 
-1. **A regra do portão é uma só** (`travaDoParecer` em `regras/liberacao.ts`) e vale para as três ações: liberar ao Jurídico (D1.24, esta change), aprovar para o INSS (D2.01, GGVP-23) e pedir a petição (D3.05, GGVP-63). As telas do D2.01 e do D3.05 são dessas histórias; elas chamam a mesma regra. A validação no servidor contra chamada direta é da GGVP-109.
+1. **A regra do portão é uma só** (`travaDoParecer` em `@ggv/contratos`, da GGVP-109; `regras/liberacao.ts` só traduz o benefício da tela para o catálogo do servidor e acrescenta a sugestão de troca do Auxílio-Acidente) e vale para as três ações: liberar ao Jurídico (D1.24, esta change), aprovar para o INSS (D2.01, GGVP-23) e pedir a petição (D3.05, GGVP-63). As telas do D2.01 e do D3.05 são dessas histórias; elas chamam a mesma regra. A validação no servidor contra chamada direta é da GGVP-109.
 2. **Duas sêniores** (resposta do Lucas de 01/10, Q14): a primeira pede com a justificativa, a segunda, outra pessoa, aprova ou recusa. As duas aprovações e a justificativa ficam no histórico da ficha e na janela do parecer. O painel de indicadores (GGVP-75) não existe ainda: a dispensa fica registrada para ele ler.
-3. **Quem é a sênior**: o "Trocar perfil" ganha uma segunda sênior de exemplo (Dr. Otávio), para a segunda aprovação ser de outra pessoa. Ao ligar no servidor, vem da sessão.
+3. **Quem é a sênior**: vem da sessão. Os usuários de exemplo têm duas sêniores (Helena e Otávio), para a segunda aprovação ser de outra pessoa. A dispensa esperando a segunda sênior e o complemento a decidir aparecem na tela inicial da Sênior, não na Central da Advogada.
 4. **O parecer novo manda** (CA5): a dispensa vale até um parecer registrado depois dela; o portão sempre olha o registro ou a dispensa mais nova.
 5. **O chat recusa** (CA3): o pedido para pular, dispensar ou ignorar o parecer não vira ação: o chat responde que falta o parecer "Suficiente" confirmado por pessoa (G17) e que só duas sêniores dispensam, na tela do parecer. Sem card de confirmação.
 

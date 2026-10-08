@@ -24,6 +24,7 @@ import {
   ORIGENS,
   motivoParaNaoRegistrarResultado,
   prazoParaManifestar,
+  numerosDaJurimetria,
 } from '../regras/pericia.ts'
 import styles from './Balcao.module.css'
 import proprio from './Pericia.module.css'
@@ -242,9 +243,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                     <dd>
                       {!t.perfil
                         ? 'perito não identificado: sem jurimetria'
-                        : j!.suficiente
-                          ? `${j!.taxa}% favorável em ${j!.laudos} laudos · amostra suficiente (G22)`
-                          : `${j!.laudos} laudos · amostra insuficiente (G22)`}
+                        : `${numerosDaJurimetria(j!, hoje)} (G22)`}
                     </dd>
                     <dt>Ponto de atenção</dt>
                     <dd>{lido.pontoDeAtencao}</dd>
@@ -299,7 +298,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                 ))}
               </section>
 
-              <p className={styles.aviso}>Jurimetria com amostra baixa aparece como insuficiente e não chega ao cliente (G22).</p>
+              <p className={styles.aviso}>Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima (G22).</p>
 
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={motivo !== null} onClick={() => void registrar()}>

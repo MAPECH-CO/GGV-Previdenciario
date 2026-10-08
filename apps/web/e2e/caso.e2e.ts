@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-86 · Navegar pelo caso numa linha só: a página do processo do Antônio (judicial, exigência do juiz, perícia pedida
 // pelo juiz e laudo novo), a do Pedro (administrativo, perito ainda não conhecido) e a visão do Atendimento. Cada teste
@@ -10,7 +11,8 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 test('CA1 a CA6, CA8 a CA12 · a advogada percorre o caso do Antônio numa linha só', async ({ page }) => {
-  await page.goto('/casos/antonio-exemplo-1?perfil=advogada')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/casos/antonio-exemplo-1')
   const etapas = page.getByRole('navigation', { name: 'Etapas do processo' })
   await expect(etapas.locator('[aria-current="step"]')).toContainText('Vigília')
   await expect(etapas.getByRole('link', { name: /Em perícia/ })).toHaveAttribute('href', '/casos/antonio-exemplo-1/pericia')
@@ -42,14 +44,16 @@ test('CA1 a CA6, CA8 a CA12 · a advogada percorre o caso do Antônio numa linha
 })
 
 test('CA7, CA13 · o Jurídico administrativo identifica o perito do Pedro em um clique; o caso aparece pelo NB', async ({ page }) => {
-  await page.goto('/casos/pedro-exemplo-1?perfil=juridico-adm')
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
+  await page.goto('/casos/pedro-exemplo-1')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('456.123.789-6')
   await page.getByRole('group', { name: 'Identificar o perito' }).getByRole('button', { name: /Sra\. L\. Assis/ }).click()
   await expect(page.getByText(/Perito identificado: Sra\. L\. Assis/)).toBeVisible()
 })
 
 test('Permissão · o Atendimento vê o caso sem petição, estratégia, valores nem saúde', async ({ page }) => {
-  await page.goto('/casos/antonio-exemplo-1?perfil=atendimento')
+  await entrarPelaApi(page)
+  await page.goto('/casos/antonio-exemplo-1')
   await expect(page.getByRole('heading', { name: 'Linha do processo · completa' })).toBeVisible()
   await expect(page.getByText('Petição, estratégia e valores não aparecem para o Atendimento.')).toBeVisible()
   await expect(page.locator('main')).not.toContainText('R$')
@@ -60,7 +64,8 @@ test('Permissão · o Atendimento vê o caso sem petição, estratégia, valores
 })
 
 test('tema escuro e fonte grande na página do processo', async ({ page }) => {
-  await page.goto('/casos/antonio-exemplo-1?perfil=advogada&tema=escuro&fonte=grande')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/casos/antonio-exemplo-1?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { name: 'Linha do processo · completa' })).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
   await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)

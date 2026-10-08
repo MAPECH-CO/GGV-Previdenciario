@@ -10,7 +10,7 @@ import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa 
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
-import { etapaAtual, podeVerValor, taxaComCasos, visaoDoPerfil } from '../regras/caso.ts'
+import { etapaAtual, podeVerValor, visaoDoPerfil } from '../regras/caso.ts'
 import {
   acaoDaLista,
   entenderPedido,
@@ -28,7 +28,7 @@ import {
 } from '../regras/chat.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { recusaDoChat } from '../regras/parecer.ts'
-import { NOMES_DO_TIPO, prazosDaPericia, recusaDoChatNaPericia } from '../regras/pericia.ts'
+import { NOMES_DO_TIPO, numerosDaJurimetria, prazosDaPericia, recusaDoChatNaPericia } from '../regras/pericia.ts'
 import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
 import { complementoDo, jurimetriaDoJuizoDoCaso, juizosDeExemplo, obterCaso, type QuemPergunta } from './caso.ts'
 import { tarefasDeDecidirCobranca } from './cobranca.ts'
@@ -47,7 +47,7 @@ import {
   registrarRecusaDoChat,
   type ItemDoChat,
 } from './pericia.ts'
-import { PERFIS } from './perfis.ts'
+import type { IdPerfil } from './perfis.ts'
 import { perfilDoPerito, peritosDo } from './peritos.ts'
 import { agora, esperar, gravar, ler } from './servidor.ts'
 import type { Tarefa } from './tipos.ts'
@@ -105,15 +105,28 @@ function comCartao(texto: string, acao: Omit<CartaoDeAcao, 'id'>, quem: QuemPerg
 
 const link = (i: ItemDoChat): LinkDoChat => ({ rotulo: `${i.cliente} · ${i.acao}`, sub: i.sub, href: i.href })
 const primeiro = (nome: string) => nome.split(' ')[0]
-const rotuloDoPerfil = (id: string) => PERFIS.find((p) => p.id === id)?.rotulo ?? 'Atendimento'
+/**
+ * As pessoas de exemplo por perfil, para o chat dizer de quem é a tarefa. Eram as do "Trocar perfil", que saiu com o login
+ * (o Atendimento é a Ana, como na semente do servidor). Ao ligar no servidor (GGVP-125), vêm de lá.
+ */
+const PESSOAS_POR_PERFIL: { id: IdPerfil; rotulo: string; usuario: string }[] = [
+  { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Ana (exemplo)' },
+  { id: 'atendimento-lider', rotulo: 'Atendimento · líder', usuario: 'Carla (exemplo)' },
+  { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)' },
+  { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)' },
+  { id: 'financeiro', rotulo: 'Financeiro', usuario: 'Marcos (exemplo)' },
+  { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)' },
+  { id: 'juridico-adm', rotulo: 'Jurídico administrativo', usuario: 'Igor (exemplo)' },
+]
+const rotuloDoPerfil = (id: string) => PESSOAS_POR_PERFIL.find((p) => p.id === id)?.rotulo ?? 'Atendimento'
 
 /** A pessoa do perfil, pelo nome, com o setor do escritório (pessoasDoEscritorio, a mesma da conversa). */
 function pessoas(): Pessoa[] {
   const vistas = new Set<string>()
   return pessoasDoEscritorio().filter((p) => !vistas.has(p.nome) && vistas.add(p.nome))
 }
-const perfilDaPessoa = (nome: string) => PERFIS.find((p) => p.usuario === nome)?.id
-const advogadaDoCaso = () => PERFIS.find((p) => p.id === 'advogada')!.usuario
+const perfilDaPessoa = (nome: string) => PESSOAS_POR_PERFIL.find((p) => p.usuario === nome)?.id
+const advogadaDoCaso = () => PESSOAS_POR_PERFIL.find((p) => p.id === 'advogada')!.usuario
 /** "Dra. Paula (exemplo)" → "a Dra. Paula"; "Igor (exemplo)" → "Igor". */
 const comArtigo = (nome: string) => {
   const curto = nome.replace(/\s*\(exemplo\)$/, '')
@@ -223,7 +236,8 @@ function jurimetria(texto: string, quem: QuemPergunta): RespostaDoChat {
     const perfil = perfilDoPerito(perito)
     const j = perfil.jurimetria
     const doAssunto = perfil.porAssunto.find((a) => t.includes(semAcento(a.assunto).split(' ')[0]))
-    const numeros = `${taxaComCasos(j.favoraveis, j.laudos)} laudos favoráveis${doAssunto ? `; em ${doAssunto.assunto}, ${taxaComCasos(doAssunto.jurimetria.favoraveis, doAssunto.jurimetria.laudos)}` : ''}; laudo em ${j.diasAteOLaudo} dias em média`
+    const hoje = hojeIso(agora())
+    const numeros = `laudos favoráveis ${numerosDaJurimetria(j, hoje)}${doAssunto ? `; em ${doAssunto.assunto}, ${numerosDaJurimetria(doAssunto.jurimetria, hoje)}` : ''}; laudo em ${j.diasAteOLaudo} dias em média`
     const links = (comoOPeritoAvalia(texto)?.itens ?? []).map(link)
     return resposta(
       `${perito.nome}, pelo acervo: ${numeros}. Pelos laudos, costuma observar ${perfil.observou.slice(0, 2).join(' e ')} e perguntar ${perfil.perguntou.join(' e ')}. Os números são do sistema; eu só resumo os laudos.`,
@@ -343,7 +357,7 @@ function ACOES_SUGERIDAS(grupo: ReturnType<typeof grupoDoPerfil>): string[] {
 async function foraDoMeuPerfil(texto: string, intencao: Intencao, quem: QuemPergunta, processoId?: string): Promise<RespostaDoChat | null> {
   const fora = foraDoPerfil(intencao, quem.id)
   if (!fora) return null
-  const dono = fora.dono === 'advogada' ? advogadaDoCaso() : PERFIS.find((p) => grupoDoPerfil(p.id) === fora.dono)!.usuario
+  const dono = fora.dono === 'advogada' ? advogadaDoCaso() : PESSOAS_POR_PERFIL.find((p) => grupoDoPerfil(p.id) === fora.dono)!.usuario
   const pessoa = pessoas().find((p) => p.nome === dono)!
   const oQue = intencao === 'pedir-peca' ? 'não gera peça jurídica' : intencao === 'subir-acervo' ? 'não alimenta o acervo' : 'não marca a perícia'
   const explica = `Seu perfil (${rotuloDoPerfil(quem.id)}) ${oQue}: isso é ${fora.quem}. Posso criar a tarefa para ${comArtigo(dono)}.`

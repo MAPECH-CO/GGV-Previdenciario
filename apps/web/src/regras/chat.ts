@@ -160,7 +160,7 @@ export type GrupoDoPerfil = keyof typeof ACOES_DO_PERFIL
 export function grupoDoPerfil(perfil: string | undefined): GrupoDoPerfil {
   if (perfil === 'juridico-adm') return 'juridico-adm'
   if (perfil === 'advogada') return 'advogada'
-  if (perfil === 'senior' || perfil === 'senior-2') return 'senior'
+  if (perfil === 'senior') return 'senior'
   if (perfil === 'financeiro') return 'financeiro'
   return 'atendimento'
 }

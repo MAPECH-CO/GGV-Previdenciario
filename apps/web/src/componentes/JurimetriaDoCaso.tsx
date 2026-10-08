@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { jurimetriaDoJuizoDoCaso, perfilDoPeritoDoCaso } from '../dados/caso.ts'
 import { processosComOPerito } from '../dados/pericia.ts'
-import { taxaComCasos } from '../regras/caso.ts'
+import { agora } from '../dados/servidor.ts'
+import { hojeIso } from '../regras/datas.ts'
+import { numerosDaJurimetria } from '../regras/pericia.ts'
 import janelas from './DetalheCompromisso.module.css'
 import styles from './JurimetriaPerito.module.css'
 
@@ -53,11 +55,11 @@ export function JurimetriaDoCaso({ tipo, id, aoFechar }: Props) {
             <h3 className={styles.secao}>Laudos favoráveis</h3>
             <dl className={styles.numeros}>
               <dt>Todos os laudos</dt>
-              <dd>{taxaComCasos(perfil.jurimetria.favoraveis, perfil.jurimetria.laudos)}</dd>
+              <dd>{numerosDaJurimetria(perfil.jurimetria, hojeIso(agora()))}</dd>
               {perfil.porAssunto.map((a) => (
                 <div key={a.assunto} className={styles.par}>
                   <dt>{a.assunto.charAt(0).toUpperCase() + a.assunto.slice(1)}</dt>
-                  <dd>{taxaComCasos(a.jurimetria.favoraveis, a.jurimetria.laudos)}</dd>
+                  <dd>{numerosDaJurimetria(a.jurimetria, hojeIso(agora()))}</dd>
                 </div>
               ))}
               <dt>Tempo até o laudo</dt>

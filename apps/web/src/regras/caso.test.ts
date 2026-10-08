@@ -89,20 +89,21 @@ describe('GGVP-86 · o caso numa linha só', () => {
     expect(identificacao('judicial', {}).valor).toBe('número CNJ ainda não lido')
   })
 
-  it('CA6 · os números da jurimetria vêm do código, com o número de casos ao lado e sem amostra mínima', () => {
-    expect(taxaComCasos(7, 12)).toBe('58% · 7 de 12')
-    expect(taxaComCasos(1, 3)).toBe('33% · 1 de 3')
-    expect(taxaComCasos(0, 0)).toBe('sem casos no acervo')
+  it('CA6 e G22 · os números da jurimetria vêm do código, com o número de casos ao lado e a data da base, sem amostra mínima', () => {
+    expect(taxaComCasos(7, 12, '2026-10-07')).toBe('58% · 7 de 12 casos · base de 07/10')
+    expect(taxaComCasos(1, 3, '2026-10-07')).toBe('33% · 1 de 3 casos · base de 07/10')
+    expect(taxaComCasos(1, 1, '2026-10-07', 'laudos')).toBe('100% · 1 de 1 laudo · base de 07/10')
+    expect(taxaComCasos(0, 0, '2026-10-07')).toBe('sem casos no acervo')
     const j = jurimetriaDoJuizo([
       { beneficio: 'a', procedente: true, meses: 10 },
       { beneficio: 'a', procedente: false, meses: 12 },
       { beneficio: 'b', procedente: true, meses: 11 },
-    ])
+    ], '2026-10-07')
     expect(j.casos).toBe(3)
     expect(j.mesesAteASentenca).toBe(11)
     expect(j.porBeneficio).toEqual([
-      { beneficio: 'a', procedentes: 1, casos: 2, texto: '50% · 1 de 2' },
-      { beneficio: 'b', procedentes: 1, casos: 1, texto: '100% · 1 de 1' },
+      { beneficio: 'a', procedentes: 1, casos: 2, texto: '50% · 1 de 2 casos · base de 07/10' },
+      { beneficio: 'b', procedentes: 1, casos: 1, texto: '100% · 1 de 1 caso · base de 07/10' },
     ])
   })
 

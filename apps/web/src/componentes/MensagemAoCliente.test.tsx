@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { MensagemAoCliente } from './MensagemAoCliente.tsx'
 
@@ -8,11 +8,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function abrir(fichaId: string, modeloInicial?: 'pericia-orientacao' | 'resultado-favoravel' | 'boas-vindas', aoEnviar = vi.fn()) {
-  render(<MensagemAoCliente ficha={(await obterFicha(fichaId))!} modeloInicial={modeloInicial} aoFechar={() => {}} aoEnviar={aoEnviar} />)
+  render(comSessao(<MensagemAoCliente ficha={(await obterFicha(fichaId))!} modeloInicial={modeloInicial} aoFechar={() => {}} aoEnviar={aoEnviar} />))
   await screen.findByRole('region', { name: 'Na central do Chatwoot' })
   return aoEnviar
 }
@@ -54,7 +54,7 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     expect(texto().value).toMatch(/^Olá, Lúcia! Boa notícia/)
     fireEvent.change(screen.getByRole('combobox', { name: 'Modelo' }), { target: { value: 'resultado-desfavoravel' } })
     expect(await screen.findByText('Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.')).toBeTruthy()
-    render(<MensagemAoCliente ficha={(await obterFicha('antonio-exemplo'))!} modeloInicial="resultado-favoravel" aoFechar={() => {}} />)
+    render(comSessao(<MensagemAoCliente ficha={(await obterFicha('antonio-exemplo'))!} modeloInicial="resultado-favoravel" aoFechar={() => {}} />))
     expect(await screen.findByText('Falta o OK da advogada na prestação de contas: o aviso só sai depois dele (G8).')).toBeTruthy()
   })
 

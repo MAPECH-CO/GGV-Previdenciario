@@ -29,11 +29,13 @@ export const Entrar = z.object({
 })
 export type Entrar = z.infer<typeof Entrar>
 
-/** Quem está na sessão. `perfil` nulo: entrou, mas ainda sem perfil (GGVP-96). Nunca leva a senha. */
+/** Quem está na sessão. `perfis` vazio: entrou, mas ainda sem perfil (GGVP-96). Nunca leva a senha. */
 export const UsuarioDaSessao = z.object({
   nome: z.string(),
   email: z.string(),
-  perfil: z.string().nullable(),
+  perfis: z.array(z.string()),
+  /** Perfil escolhido no "Entrar como…"; nulo quando a pessoa não tem nenhum. */
+  perfilAtivo: z.string().nullable(),
   /** Senha provisória da gestão: troca obrigatória antes de qualquer tela (GGVP-117, Q1). */
   trocarSenha: z.boolean(),
 })
@@ -47,9 +49,19 @@ export const TrocarSenha = z.object({
 })
 export type TrocarSenha = z.infer<typeof TrocarSenha>
 
+/** POST /api/sessao/perfil: "Entrar como…" (GGVP-96 CA10). */
+export const TrocarPerfil = z.object({ perfil: z.string() })
+export type TrocarPerfil = z.infer<typeof TrocarPerfil>
+
 /** Corpo de toda resposta de erro da API. */
 export const Erro = z.object({ erro: z.string() })
 export type Erro = z.infer<typeof Erro>
+export * from './permissoes.ts'
+export * from './inss.ts'
+export * from './exigencia.ts'
+export * from './prestacao.ts'
+export * from './justica.ts'
+export * from './governanca.ts'
 
 // O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
 export * from './chat.ts'
