@@ -115,7 +115,11 @@ export function FichaCliente({ id }: { id: string }) {
       <main className={styles.pagina}>
         <div className={styles.esquerda}>
           <Cartao rotulo={`Dados de ${ficha.nome}`}>
-            <CabecalhoCliente ficha={ficha} hoje={hoje} />
+            <CabecalhoCliente
+              ficha={ficha}
+              hoje={hoje}
+              laudoHref={ficha.processos.length ? `/casos/${(ficha.processos.find((p) => p.laudoNovoEm) ?? ficha.processos[0]).id}/laudo-novo` : undefined}
+            />
             <EdicaoCliente key={recarga} ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
           </Cartao>
           <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />

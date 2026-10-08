@@ -31,7 +31,7 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
         // Em perícia (GGVP-49, CA1): a etapa diz o diagrama de origem e o caso abre a página do processo com a perícia.
         const pericia = etapaDaPericia(p.id)
         return (
-          <a key={p.id} className={styles.caso} href={pericia ? `/casos/${p.id}/pericia` : `/processos/${p.id}`}>
+          <a key={p.id} className={styles.caso} href={pericia ? `/casos/${p.id}/pericia` : `/casos/${p.id}`}>
             <span className={styles.numero}>{p.numero ?? 'Processo ainda sem número'}</span>
             <span className={styles.selos}>
               <span className={styles.beneficio}>◆ {nomeBeneficio(p.beneficio)}</span>
