@@ -85,6 +85,25 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - Playwright do desfecho, da via administrativa e da governança, um de cada vez: 16 de 16 em 1,4 min.
   - Numa primeira rodada, com a máquina cheia (6,2 min), 3 falharam, e o detalhe não ficou guardado. Rodando de novo, passaram todos.
 
+## Quinta revisão do PR (08/10)
+
+- [x] 9.1 GGVP-98 · CA8: a pergunta ao Lucas sobre a separação de funções (o código `funcoes` fora da lista G1 a G22) fica como pendência aberta. Ela é a Q21 em `docs/requisitos/duvidas-abertas.md`, marcada como "não bloqueia", e a proposal aponta para ela.
+- [x] 9.2 Hora da ida ao banco (revisão, ATENÇÃO): a expressão própria do contrato e o campo nativo da tela vêm da GGVP-44, já na `main`, e ficam fora deste PR. A `campos` ainda não tem `validarHora`, pendência anotada na proposal.
+- [x] 9.3 Rodar a verificação. Só mudou documentação: `openspec validate --all --strict` sem erro.
+
+## Sétima revisão do PR (08/10)
+
+- [x] 10.1 GGVP-98 e GGVP-22: as candidatas em `docs/requisitos/candidatas/` ganharam no topo uma nota com o refinamento do Lucas de 06/10 e o épico GGVP-11 (conferido no Jira), apontando para o cartão e a spec que valem:
+  - na GGVP-98, o aviso e a ida ao banco são do Financeiro, e o Atendimento leva;
+  - na GGVP-22, a tarefa é "Explicar resultado", de quem fala.
+- [x] 10.2 Reescrever as mensagens antigas (squash), como a revisão sugeriu, pede reescrever o histórico e forçar o envio, o que é proibido neste repositório, e o combinado é merge sem squash. Fica o plano do PR: depois do merge, devolver os cartões que a automação mover.
+- [x] 10.3 Rodar a verificação. Só mudou documentação: `openspec validate --all --strict` sem erro.
+
+## Q21 respondida (08/10)
+
+- [x] 11.1 GGVP-98 · CA8: o Mateus decidiu que a separação de funções fica sem número na lista de portões. A Q21 ficou marcada como respondida em `docs/requisitos/duvidas-abertas.md`. Proposal, design e os comentários do código (`governanca.ts`, `prestacao.ts` e o teste) deixaram de dizer "até o Lucas decidir".
+- [x] 11.2 Rodar a verificação: typecheck, lint, `openspec validate --all --strict` e os testes dos contratos e da rota da prestação.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.

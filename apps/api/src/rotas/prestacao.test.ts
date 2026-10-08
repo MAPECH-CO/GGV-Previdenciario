@@ -141,7 +141,7 @@ describe('GGVP-44 · prestação de contas', () => {
     const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/prestacao/recebimento`, cookies, payload: RECEBIDO })
     expect([r.statusCode, r.json().erro]).toEqual([409, MSG_MESMA_PESSOA])
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
-    // Separação de funções, e não o G8 (que é "o aviso só sai depois do OK"): código neutro até o Lucas decidir.
+    // Separação de funções, e não o G8 (que é "o aviso só sai depois do OK"): código neutro, sem número (Q21, 08/10).
     expect(b.detalhe).toMatchObject({ portao: 'funcoes', passo: 'D2.06r', perfil: 'financeiro', motivo: 'ok_e_recebimento' })
   })
 })
