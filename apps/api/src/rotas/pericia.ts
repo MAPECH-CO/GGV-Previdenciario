@@ -30,7 +30,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, documento, etapa, pericia, perito, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -103,17 +103,27 @@ type DoCaso = { mundo: MundoDaPericia; casoId: string; linhas: Map<string, typeo
  * nem a justificativa da falta. O perfil do perito e os laudos da pasta também saem. Os números do perito nunca vão ao cliente.
  */
 const PASSOS_DO_JURIDICO = new Set(['DP.08', 'DP.09', 'DP.10'])
+/**
+ * Os passos com texto livre de quem marca, confirma, remarca ou decide (o motivo pode dizer da saúde: "internado"): fora do
+ * Jurídico, o histórico fica só com o que aconteceu, sem o porquê. Os textos da Documentação (DP.03) são dela e ficam.
+ */
+const COM_TEXTO_LIVRE = /^(Tentativa sem sucesso em [^:]+|Remarcação \d+|Autorizou mais uma remarcação \(G15\)|Decidiu sobre o documento que falta \(G15\)|Não conseguiu confirmar a presença|Confirmou a presença do cliente na perícia|Registrou que \S+ (compareceu à [^(]+|não compareceu))/
+const semPorque = (oQue: string) => COM_TEXTO_LIVRE.exec(oQue)?.[0].trim() ?? oQue
 
 function semSaude(p: Pericia): Pericia {
   const marcacao = (m: NonNullable<Pericia['marcacao']>) => ({
     ...m,
+    ...(m.confirmacao && { confirmacao: { quando: m.confirmacao.quando, quem: m.confirmacao.quem, confirmou: m.confirmacao.confirmou } }),
     ...(m.comparecimento && { comparecimento: { quando: m.comparecimento.quando, quem: m.comparecimento.quem, compareceu: m.comparecimento.compareceu } }),
   })
+  const d = p.documentos
   const o = p.orientacao
   return {
     ...p,
     resultado: p.resultado?.disponivelEm ? { disponivelEm: p.resultado.disponivelEm } : undefined,
-    historico: p.historico.filter((e) => !PASSOS_DO_JURIDICO.has(e.passo)),
+    historico: p.historico.filter((e) => !PASSOS_DO_JURIDICO.has(e.passo)).map((e) => ({ ...e, oQue: semPorque(e.oQue) })),
+    tentativas: p.tentativas.map((t) => ({ ...t, oQueAconteceu: '' })),
+    documentos: d && { ...d, ...(d.decisaoDaAdvogada && { decisaoDaAdvogada: { ...d.decisaoDaAdvogada, texto: '' } }) },
     orientacao: o && {
       modo: o.modo,
       ...(o.motivo && { motivo: o.motivo }),
@@ -267,6 +277,17 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     })
   }
 
+  /**
+   * Marcada (ou esperando o comprovante), a tarefa "Marcar perícia" que o INSS abriu no DP.01 (GGVP-31) se conclui: a partir
+   * daqui a perícia anda pelas tarefas desta rota, sem a mesma tarefa duas vezes na Central.
+   */
+  async function concluirTarefaDoInss(casoId: string, quem: string) {
+    await banco
+      .update(tarefa)
+      .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+      .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'DP.01'), isNull(tarefa.concluidaEm)))
+  }
+
   const juridico = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
 
   /** Um PDF do multipart (o comprovante ou o laudo) e o JSON do campo `dados`. */
@@ -360,9 +381,22 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return tarefas
   })
 
+  // A cópia das telas (modo misto): as perícias em andamento de todos os casos, na visão do perfil, para a agenda, o chat
+  // e as páginas que ainda leem a cópia do navegador. ponytail: lê caso a caso; juntar numa consulta quando crescer.
+  app.get('/api/pericias', com('caso.ver'), async (pedido): Promise<PericiaNaTela[]> => {
+    const casos = [...new Set((await banco.select({ casoId: pericia.casoId }).from(pericia)).map((l) => l.casoId))]
+    const lista: PericiaNaTela[] = []
+    for (const casoId of casos) {
+      const d = await doCaso(casoId)
+      const p = d && periciaDo(d.mundo, casoId)
+      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido), d.sensiveis))
+    }
+    return lista
+  })
+
   // GGVP-61 CA6: os peritos que a pergunta de um clique oferece, do mesmo tipo. Só o Jurídico (a jurimetria é dele).
   app.get<{ Querystring: { tipo?: string } }>('/api/peritos', com('dado_saude.ver_detalhe'), async (pedido) => {
-    return (await peritos()).filter((p) => !pedido.query.tipo || p.tipo === pedido.query.tipo).map(({ id, nome, especialidade }) => ({ id, nome, especialidade }))
+    return (await peritos()).filter((p) => !pedido.query.tipo || p.tipo === pedido.query.tipo).map(({ id, nome, especialidade, tipo }) => ({ id, nome, especialidade, tipo }))
   })
 
   // GGVP-49 CA2 (D2.E1): o INSS liberou o agendamento; a tarefa entra na Central do Jurídico administrativo.
@@ -396,6 +430,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return mudar(pedido, resposta, { acao: 'pericia_marcada', passo: 'DP.02', detalhe: { pedeDocumentoNovo: entrada.data.pedeDocumentoNovo } }, async (n, quem) => {
       mudancas.marcacao(n, { comprovante: { nome: arquivo.nome, hash }, lido: entrada.data.lido, pedeDocumentoNovo: entrada.data.pedeDocumentoNovo }, quem)
       await guardarArquivo(pedido, n, arquivo, hash, 'comprovante-pericia', false)
+      await concluirTarefaDoInss(n.pericia.processoId, pedido.usuario!.id)
     })
   })
 
@@ -423,7 +458,10 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   // GGVP-53 CA6 (DP.E1): marcada no Meu INSS, sem o comprovante ainda.
   app.post<ComId>('/api/processos/:id/pericia/espera-do-comprovante', com('pericia.marcar'), (pedido, resposta) => {
     const e = corpo(EsperaDoComprovante, pedido, resposta)
-    return e && mudar(pedido, resposta, { acao: 'pericia_espera_comprovante', passo: 'DP.E1', detalhe: e }, (n, quem) => mudancas.esperarComprovante(n, e, quem))
+    return e && mudar(pedido, resposta, { acao: 'pericia_espera_comprovante', passo: 'DP.E1', detalhe: e }, async (n, quem) => {
+      mudancas.esperarComprovante(n, e, quem)
+      await concluirTarefaDoInss(n.pericia.processoId, pedido.usuario!.id)
+    })
   })
 
   // GGVP-53 CA8, CA9: remarcar; passou do limite, sobe para a advogada responsável (G15).

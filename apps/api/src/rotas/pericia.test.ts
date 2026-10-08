@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, documento, eventoAuditoria, pericia, perito, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, decisao, documento, eventoAuditoria, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -104,6 +104,9 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     await post('igor', '/liberacao')
     const tarefas = (await app.inject({ method: 'GET', url: '/api/pericias/tarefas', cookies: await de('igor') })).json()
     expect(tarefas.map((t: { acao: string; cliente: { nome: string } }) => `${t.cliente.nome} · ${t.acao}`)).toEqual(['Maria Souza · Marcar perícia'])
+    // A cópia das telas recebe a perícia, na visão do perfil.
+    const lista = (await app.inject({ method: 'GET', url: '/api/pericias', cookies: await de('dora') })).json()
+    expect(lista.map((t: { processo: { id: string } }) => t.processo.id)).toEqual([casoId])
     // A Central de outro perfil não recebe a tarefa do Jurídico administrativo.
     expect((await app.inject({ method: 'GET', url: '/api/pericias/tarefas', cookies: await de('dora') })).json()).toEqual([])
   })
@@ -124,6 +127,8 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect((await acoes()).filter((a) => a === 'acesso_negado')).toHaveLength(7)
 
     const ok = await post('igor', '/tentativas', tentativa)
+    // Fora do Jurídico, a tentativa aparece sem o texto livre de quem marcou.
+    expect(JSON.stringify((await ver('dora')).json().pericia)).not.toContain('Sem vaga')
     expect(ok.statusCode).toBe(200)
     expect(ok.json().pericia.tentativas).toHaveLength(1)
     const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_tentativa_registrada'))
@@ -140,8 +145,12 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect(leitura).not.toHaveProperty('perito')
     const sem = await app.inject({ method: 'POST', url: url('/marcacao'), cookies: await de('igor'), ...multipart('comprovante', { lido, pedeDocumentoNovo: false }) })
     expect([sem.statusCode, sem.json().erro]).toEqual([400, MSG_ARQUIVO_PDF])
+    const dp01 = async () => (await banco.select().from(tarefa).where(eq(tarefa.passo, 'DP.01')))[0].situacao
+    expect(await dp01()).toBe('aberta')
     const r = await marcar(true)
     expect(r.statusCode).toBe(200)
+    // A tarefa "Marcar perícia" que o INSS abriu se conclui: a Central não mostra a mesma tarefa duas vezes.
+    expect(await dp01()).toBe('concluida')
     expect([r.json().situacao, r.json().pericia.marcacao.local, r.json().prazos.documentosAte]).toEqual(['agendada', lido.local, '2026-10-12'])
     const [doc] = await banco.select().from(documento).where(eq(documento.casoId, casoId))
     expect([doc.tipo, doc.nomeOriginal, doc.sensivel]).toEqual(['comprovante-pericia', 'comprovante.pdf', false])
