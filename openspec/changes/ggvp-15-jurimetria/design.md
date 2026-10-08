@@ -179,3 +179,58 @@ Nenhuma tela nova.
 - **Poucos processos:** a taxa oscila. O número de processos ao lado é o que deixa a advogada julgar (G22).
 - **Tempo até a sentença:** hoje, só os processos protocolados pelo portal com a data da decisão gravada têm as duas datas. Os importados ficam fora até o estudo trazer a data da distribuição.
 - **A inicial ainda não tem número:** a minuta da petição inicial é escrita antes do protocolo, quando o caso quase nunca tem número de processo. A fonte do juízo só vem quando o caso já tem um número (por exemplo, um novo processo depois de um perdido). Prever o juízo pela cidade do cliente fica para a parte 2, se o escritório quiser.
+
+## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
+
+### Context
+
+- **A busca de hoje** (`buscarNoAcervo`, GGVP-45) é por palavra, com o full text do PostgreSQL calculado na hora. Ela olha cinco fontes: a petição aprovada, a decisão de mérito, o motivo de indeferimento, o modelo de petição e o estudo de caso da IA. O trecho sai anonimizado (`anonimizar`).
+- **O motor** (`ia.ts`) registra cada chamada em `chamada_ia`. Dado de saúde só passa com `IA_PERMITE_DADO_DE_SAUDE=sim`.
+- **A conversa do Relacionamento** fica em `atendimento.dados` (JSON), com `conferidaEm` quando a pessoa confere. A análise marca a mudança de saúde (`saude`), e a gravação pode ser só do Jurídico (`soJuridico`).
+- **No banco embutido:** o PGlite dos testes (0.3.16) traz a extensão `vector`, e o Drizzle 0.44 tem o tipo `vector`.
+- **A escolha técnica** foi registrada pelo Pedro na GGVP-134 (08/10) e vira o ADR-013.
+
+### Decisions
+
+1. **ADR-013** (`docs/decisoes/ADR-013-base-de-conhecimento.md`):
+   - pgvector no PostgreSQL do Supabase, com índice HNSW;
+   - busca híbrida, misturada por RRF;
+   - embeddings da OpenAI (`text-embedding-3-small`, 1536 dimensões);
+   - TypeScript dentro da API, sem banco nem serviço novo.
+2. **Tabela `acervo_trecho`** (migração nova), com RLS ligado:
+   - `origem`: o rótulo da fonte;
+   - `referencia`: `caso:<id>` ou `modelo:<id>`, a mesma da busca de hoje;
+   - `caso_id` e `beneficio`;
+   - `texto`: já anonimizado;
+   - `so_juridico`;
+   - `embedding vector(1536)`: nulo até ser calculado, com índice HNSW pela distância de cosseno;
+   - `hash`: único, para não duplicar (CA3);
+   - `criado_em`.
+
+   A migração liga a extensão (`create extension if not exists vector`), e o banco embutido passa a carregá-la.
+3. **Vetor pelo motor** (CA4): `ia.vetor(texto, { saude })` chama o endpoint de embeddings da OpenAI e registra em `chamada_ia`, com a finalidade `vetor_acervo`.
+   - Sem chave, ou com saúde sem autorização, devolve nulo, e a busca segue só por palavra.
+4. **Alimentar o acervo** (CA1, CA3): `alimentarAcervo` lê as fontes de hoje e as conversas conferidas, anonimiza com a mesma `anonimizar` e calcula o hash.
+   - Grava só o que ainda não está lá e depois calcula o vetor do que falta.
+   - Roda em segundo plano, no mesmo relógio da sugestão pronta (a cada 5 minutos).
+   - A conversa com mudança de saúde, ou com gravação só do Jurídico, entra com `so_juridico`.
+5. **Busca híbrida** (CA2): `buscarNoAcervo` faz a busca por palavra de hoje e, quando há vetor da consulta, a busca por significado nos trechos.
+   - As duas listas se misturam pelas posições (RRF, k = 60).
+   - A saída são as mesmas fontes de hoje: `tipo: acervo`, a referência e o trecho.
+   - O mesmo caso fica de fora, e o benefício filtra como hoje.
+   - Trecho `so_juridico` só entra com `saude: true`, que os fluxos do Jurídico passam: a minuta, o estudo e o despacho.
+
+### Campos de formulário
+
+Nenhum.
+
+### Telas
+
+Nenhuma tela nova. As fontes aparecem onde já aparecem.
+
+### Risks / Trade-offs
+
+- **Número da migração:** é o mesmo da migração do PR da Perícia (#42), e quem mesclar depois renumera.
+- **Extensão no Supabase:** se o usuário do banco não puder criar a extensão, a migração falha e o container não sobe; o Coolify mantém a versão anterior. Ligar a extensão no painel do Supabase antes do deploy.
+- **Custo:** só o que é novo ganha vetor, porque o hash evita recalcular. A consulta também gasta uma chamada de embeddings.
+- **Leitura das fontes:** a cada rodada, alimentar lê as fontes inteiras e compara pelo hash. Com milhares de itens, guardar a última data lida por fonte.

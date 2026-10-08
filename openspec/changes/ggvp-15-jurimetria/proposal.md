@@ -1,4 +1,4 @@
-GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75 e GGVP-64 (parte 1); GGVP-59 espera a Perícia no servidor (abaixo).
+GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75, GGVP-64 (parte 1) e GGVP-141 (parte 1); GGVP-59 espera a Perícia no servidor (abaixo).
 
 ## Por quê
 
@@ -20,6 +20,12 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Juízo do processo** pelo número CNJ: tribunal e unidade de origem, a mesma regra do painel (CA1, a identificação).
    - **Números do juízo** calculados em código, só com desfecho conferido: procedência por benefício e tempo até a sentença, cada um com os processos e a data da base (CA2, CA4, CA5).
    - **Minuta da petição:** a jurimetria do juízo entra nas fontes, só para a advogada, e o número fica fora do texto que vai ao juiz (CA3, CA6).
+4. **GGVP-141** · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado · IA e sistema. A parte 1 (Mateus, 08/10):
+   - **ADR-013**, a base de conhecimento, antes do código.
+   - **Trechos do acervo** com vetor (pgvector, índice HNSW), anonimizados e com a marca de dado de saúde (CA1, CA3).
+   - **Vetores pela OpenAI**, pelo motor, com registro (CA4).
+   - **O acervo se alimenta sozinho**, em segundo plano: as fontes que a busca já usa e a conversa conferida do Relacionamento (CA1).
+   - **Busca híbrida:** sentido e palavra misturados por RRF, sempre com a fonte (CA2).
 
 Um ponto de "Agora ok?" no fim de cada história.
 
@@ -41,6 +47,7 @@ Um ponto de "Agora ok?" no fim de cada história.
   - os entendimentos recorrentes: pedem o texto das decisões no acervo (GGVP-141);
   - a sobreposição na página do caso lendo do servidor: a página do caso ainda roda com dados de exemplo no navegador;
   - a recomendação de recurso (CA3 e CA6, D3b.04): segue a GGVP-100, travada pela Q26.
+- **GGVP-141, a parte 2:** o parecer, o laudo e o resultado da perícia entram quando os PRs #39 e #42 forem mesclados, e a transcrição entra com a GGVP-133.
 
 ## Portões envolvidos
 

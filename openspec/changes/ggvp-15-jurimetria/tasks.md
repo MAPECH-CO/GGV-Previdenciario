@@ -45,3 +45,23 @@
 - [ ] 3.9 CA2 · Entendimentos recorrentes com os processos de exemplo, quando o acervo tiver o texto das decisões (GGVP-141).
 - [ ] 3.10 CA1, CA2 · A sobreposição da página do caso lendo `GET /api/casos/:id/juizo`, quando a página do caso for ao servidor; Playwright.
 - [ ] 3.11 CA3, CA6 · A recomendação de recurso com o indicador e o número de processos (D3b.04), com a GGVP-100.
+
+## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
+
+- [ ] 4.1 ADR-013 em `docs/decisoes/ADR-013-base-de-conhecimento.md`; verifica lendo.
+- [ ] 4.2 CA1, CA3 · Migração da tabela `acervo_trecho`, com a extensão `vector`, o índice HNSW e o RLS ligado; o banco embutido carrega a extensão; verifica com o teste das migrações.
+- [ ] 4.3 CA4 · `ia.vetor` no motor: embeddings da OpenAI com registro em `chamada_ia`. Sem chave, devolve nulo; saúde só com autorização. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 4.4 CA1, CA3 · `alimentarAcervo`:
+  - as fontes de hoje e a conversa conferida, anonimizadas e com a saúde marcada;
+  - sem duplicar;
+  - o vetor do que falta;
+  - em segundo plano.
+
+  Teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 4.5 CA2 · Busca híbrida em `buscarNoAcervo` (RRF, k = 60), sempre com a fonte. Sem vetor, só palavra; trecho de saúde só com `saude: true`, que os fluxos do Jurídico passam. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 4.6 Rodar typecheck, lint, testes e o Playwright das telas que usam a IA; colar a saída; perguntar "Agora ok?".
+
+## GGVP-141, parte 2 (depois dos PRs #39 e #42 e da GGVP-133)
+
+- [ ] 4.7 CA1 · O parecer, o laudo e o resultado da perícia conferidos entram no acervo.
+- [ ] 4.8 CA1 · A transcrição conferida entra no acervo.
