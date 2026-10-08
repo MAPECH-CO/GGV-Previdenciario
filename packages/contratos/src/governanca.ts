@@ -307,3 +307,25 @@ export function travaDoParecer(
       return `${fazer}: falta o parecer médico "Suficiente", confirmado por pessoa (G17).`
   }
 }
+
+/**
+ * GET /api/casos/:id/fluxo (GGVP-105 CA2, CA7, `caso.ver`): onde o caso está no BPMN. Cada passo com o diagrama, a
+ * situação, a junção e, na espera, por quem; as perícias com o passo que chamou e o resultado.
+ */
+export const EstadoDoFluxo = z.object({
+  casoId: z.uuid(),
+  fase: z.string(),
+  passos: z.array(
+    z.object({
+      diagrama: z.string(),
+      passo: z.string(),
+      situacao: z.enum(['aberta', 'aguardando_externo', 'concluida', 'cancelada']),
+      juncao: z.string().nullable(),
+      aguardando: z.string().nullable(),
+      iniciadaEm: z.string(),
+      concluidaEm: z.string().nullable(),
+    }),
+  ),
+  pericias: z.array(z.object({ tipo: z.string(), chamadaPor: z.string().nullable(), resultado: z.string().nullable() })),
+})
+export type EstadoDoFluxo = z.infer<typeof EstadoDoFluxo>

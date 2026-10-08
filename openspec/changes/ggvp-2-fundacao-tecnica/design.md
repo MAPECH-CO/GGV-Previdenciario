@@ -116,3 +116,35 @@ Com `DATABASE_URL`, o servidor não cria usuário nem caso: a semente (`semearEx
 - **Rodar antes da fila:** o comando não duplica, então também não completa. Os casos dos épicos que entrarem depois ficam de fora. Rode depois dos merges; antes disso, só recriando o banco da homologação.
 - **Senha no terminal:** a lista aparece uma vez, para quem rodou. Não vai para log, repositório, Jira nem chat.
 
+## GGVP-105 · Motor de fluxo
+
+### Context
+
+O modelo de dados nasceu com o motor (05/10): `etapa` (passo do BPMN, junção, perícia chamada, espera), `tarefa`
+(raia, tentativas, limite, escalada), `tentativa`, `evento_externo` e `decisao`. Cada épico ligou os seus passos nas
+próprias rotas, e cada rota confere o passo antes de agir (CA1). Por isso o motor não é uma camada nova: são as rotas,
+mais três peças que faltavam a todas.
+
+### Decisions
+
+1. **Estado do fluxo** (CA2, CA7): `GET /api/casos/:id/fluxo` (`caso.ver`, contrato `EstadoDoFluxo`). Mostra os passos
+   em ordem, com o diagrama, a situação, a junção e por quem espera, e as perícias com o passo que chamou e o resultado.
+2. **Toda transição no histórico** (CA10): um gatilho no banco (migração 0018) grava `passo_<situação>` no
+   `evento_auditoria` quando a etapa abre ou muda de situação. Quem é quem concluiu, ou "sistema". O histórico do
+   caso descreve cada um. Gatilho, e não código em cada rota, para nenhuma rota esquecer.
+3. **Esperas vencidas** (CA8, G15): `vencerEsperas`, ao subir a API e a cada 24 h (`principal.ts`). A tarefa de laço
+   (com `limite_tentativas`) com o prazo vencido conta a tentativa "sem resposta até o prazo", com o canal "sistema", e
+   ganha o prazo do próximo lembrete (`lembreteDoLaco`, dias úteis e feriados). No limite, ganha `escalada_em` e uma
+   tarefa "Laço sem retorno: <título>" para a Sênior ou, na perícia (`DP.*`), para a advogada. É o mesmo laço que a
+   pessoa registra nas exigências.
+4. **Saídas entre diagramas** (CA9): sem trava central no banco. Muitos testes montam o caso direto num diagrama, e
+   uma trava que errasse um caminho legítimo pararia a homologação. As saídas são as que as rotas fazem, cada uma com
+   o seu teste.
+
+### Risks / Trade-offs
+
+- **Histórico mais longo:** cada passo vira uma ou duas linhas. É o que o CA10 pede.
+- **Rodada a cada 24 h desde a subida:** não é exatamente à meia-noite. Basta para o laço não parar.
+- **Ainda não ligado:** registrar o resultado da perícia (telas da Perícia) e abrir o subfluxo do laudo novo a partir
+  do laudo que chega (chat e Documentação) esperam essas rotas no servidor (tarefa 9.5).
+

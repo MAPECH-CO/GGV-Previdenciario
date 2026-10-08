@@ -68,6 +68,11 @@ const DESCRICAO: Record<string, string> = {
   exportacao_pedida: 'Exportação do histórico pedida',
   exportacao_autorizada: 'Exportação do histórico autorizada pela direção',
   historico_exportado: 'Histórico exportado',
+  // GGVP-105 CA10: cada mudança de passo, gravada pelo banco; o passo sai entre parênteses.
+  passo_aberta: 'Passo aberto',
+  passo_aguardando_externo: 'Esperando quem está fora do escritório',
+  passo_concluida: 'Passo concluído',
+  passo_cancelada: 'Passo cancelado',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',

@@ -62,3 +62,12 @@
 - [ ] 6.4 CA3, a parte que falta · Recepção, Abertura, documentação médica, Perícia e Relacionamento com caso de exemplo no banco, quando a GGVP-125 e a GGVP-132 ligarem essas telas no servidor; o teste do CA3 passa a afirmar esses passos; verifica com `pnpm --filter @ggv/api test`.
 - [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+## GGVP-105 · Motor de fluxo: fases, perícia como subprocesso, junções, laços e esperas externas
+
+- [x] 9.1 CA2, CA7 · Contrato `EstadoDoFluxo` e rota `GET /api/casos/:id/fluxo` (`caso.ver`): cada passo com o diagrama, a situação, a junção e por quem espera, e as perícias com o passo que chamou e o resultado; teste em `apps/api/src/rotas/fluxo.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.2 CA10 · Gatilho no banco: todo passo que abre, espera, conclui ou é cancelado grava o evento de auditoria (migração); o histórico descreve cada um; teste em `src/rotas/fluxo.test.ts`.
+- [x] 9.3 CA8 · Rodada diária das esperas vencidas (`apps/api/src/fluxo/esperas.ts`): a tarefa de laço com prazo vencido conta a tentativa, ganha o prazo seguinte pelo intervalo da configuração e, no limite, sobe uma vez para a Sênior (na perícia, para a advogada); liga no `principal.ts`; teste em `src/fluxo/esperas.test.ts`.
+- [x] 9.4 CA1, CA2, CA3, CA4, CA6, CA9, CA11, CA12 · Já feitos nas rotas de cada épico, conferidos rodando os testes: vigília, petição e protocolo (CA1), junção do D2, despacho e prestação (CA2), exigência do INSS e do juiz (CA3, CA4, CA6), indeferido e encaminhar a publicação (CA9), casar a publicação e o protocolo repetido (CA11), Central (CA12).
+- [ ] 9.5 CA3, CA5 · Ligar no servidor: o resultado da perícia (telas da Perícia, GGVP-10) e o subfluxo do laudo novo a partir do laudo que chega (chat e Documentação), quando essas rotas existirem.
+- [ ] 9.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+

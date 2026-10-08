@@ -6,6 +6,7 @@ import { criarServidor } from './servidor.ts'
 import { fontesAtivas } from './vigilia/fontes.ts'
 import { ligarRelogio } from './vigilia/rodadas.ts'
 import { apagarSenhasVencidas } from './fluxo/cofre.ts'
+import { vencerEsperas } from './fluxo/esperas.ts'
 
 const { banco } = await abrirBanco()
 
@@ -21,6 +22,11 @@ ligarRelogio(banco, fontesAtivas())
 const limparCofre = () => void apagarSenhasVencidas(banco, new Date())
 limparCofre()
 setInterval(limparCofre, 24 * 3_600_000)
+// Esperas vencidas (GGVP-105 CA8, G15): uma vez por dia, o laço vencido conta a tentativa e, no limite, sobe.
+// ponytail: a cada 24 h desde que a API sobe; virar exatamente à meia-noite quando o escritório pedir.
+const vencer = () => void vencerEsperas(banco, new Date()).catch((erro) => app.log.error({ erro }, 'rodada das esperas vencidas falhou'))
+vencer()
+setInterval(vencer, 24 * 3_600_000)
 await app.listen({ port: Number(process.env.PORTA ?? 3000), host: process.env.HOST ?? '127.0.0.1' })
 // Sugestão pronta (Mateus, 07/10): a IA prepara em segundo plano a sugestão de cada tarefa aberta; ao subir e a cada 5 min.
 const prepararSugestoes = () => void app.prepararSugestoes()
