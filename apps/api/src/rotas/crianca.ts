@@ -1,11 +1,10 @@
 // O LOAS Deficiente de menor de 16 anos no servidor (GGVP-50, ligado pela GGVP-132). As rotas têm a forma da design.md da
 // change ggvp-13 e as regras são as das telas (menor de 16 pela data de nascimento, G19; os relatórios por condição). A
 // condição da criança é dado de saúde: só o Jurídico marca e vê, e cada leitura fica registrada.
-import { eq } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import { DadosDaCrianca, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel } from '../banco/esquema.ts'
 import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -20,16 +19,11 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 
 export function registrarRotasCrianca(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
-  const { acharCaso, lerParte, gravarParte } = criarCasoMedico(banco, agora)
+  const { acharCaso, anotar, nomeDe, lerParte, gravarParte } = criarCasoMedico(banco, agora)
   /** CA1: o LOAS Deficiente de beneficiário menor de 16 anos hoje. */
   const infantil = (c: CasoMedico) => c.processo.beneficio === 'loas-deficiente' && menorDe16(c.ficha.nascimento, hojeEmBrasilia(agora()))
   const idade = (c: CasoMedico) => idadeEm(c.ficha.nascimento!, hojeEmBrasilia(agora()))
   const SEM_CONDICAO = { condicoes: [], terapias: [], escola: false }
-
-  async function nomeDe(pedido: FastifyRequest) {
-    const [u] = await banco.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, pedido.usuario!.id))
-    return u?.nome ?? 'Alguém do Jurídico'
-  }
 
   // Quem não é do Jurídico vê se é infantil e os relatórios que o caso pede, nunca a condição.
   app.get<{ Params: { id: string } }>('/api/processos/:id/crianca', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta): Promise<CriancaNaTela | Erro> => {
@@ -53,6 +47,7 @@ export function registrarRotasCrianca(app: FastifyInstance, { banco, agora = () 
     const registro: CriancaDoCaso = { condicoes: [...new Set(d.condicoes)], terapias: [...new Set(d.terapias)], escola: d.escola, processoId: c.id, quem: await nomeDe(pedido), quando: agora().toISOString() }
     await gravarParte(c.id, 'crianca', registro)
     // Dado de saúde fica fora do histórico: só o que aconteceu.
+    await anotar(c, 'Marcou a condição e as terapias da criança (roteiro infantil)', pedido)
     await historico(pedido.usuario!.id, 'crianca_registrada', pedido, `caso:${c.id}`)
     return { infantil: true, idade: idade(c), dados: registro, relatorios: relatoriosDaCrianca(registro).map(nomeTipo) } satisfies CriancaNaTela
   })

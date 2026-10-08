@@ -2,6 +2,7 @@
 // fecha a Q19, e de 07/10). A tabela é configuração do escritório (dados/checklist.ts); aqui, o que se aplica ao caso, a válvula da CAT
 // e do PPP e o bloqueio da categoria. Trava é código com teste, nunca resposta de modelo.
 import { dataParaIso, normalizarData } from '../campos.ts'
+import type { Ficha } from '../dados/tipos.ts'
 import { erroData } from './formularios.ts'
 
 export type Circunstancia = 'trabalho' | 'trajeto' | 'ocupacional' | 'transito' | 'domestico'
@@ -126,4 +127,15 @@ export type AcidenteDoCaso = DadosDoAcidente & { processoId: string; quem: strin
 export type SugestaoDoAcidente = Partial<Pick<ValoresDoAcidente, 'circunstancia' | 'categoria' | 'acidenteEm'>>
 
 export type AcidenteNaTela = { dados?: AcidenteDoCaso; sugestao?: SugestaoDoAcidente }
+
+/** A sugestão da segunda ficha (GGVP-28): trabalho, empregado com carteira e a data do acidente, se a pessoa disse. */
+export function sugestaoDaSegundaFicha(ficha: Pick<Ficha, 'segundaFicha'>): SugestaoDoAcidente | undefined {
+  const r = ficha.segundaFicha?.respostas
+  if (!r) return undefined
+  return {
+    ...(r.deTrabalho === 'sim' && { circunstancia: 'trabalho' as const }),
+    ...(/clt|carteira/i.test(r.vinculo) && { categoria: 'empregado' as const }),
+    ...(r.acidenteEm && { acidenteEm: r.acidenteEm }),
+  }
+}
 

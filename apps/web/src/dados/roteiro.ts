@@ -4,7 +4,8 @@
 import { ROTEIRO_INFANTIL } from '../regras/infantil.ts'
 import { motivoParaNaoSalvar, novaVersao, roteiroDoBeneficio, type ItemDoRoteiro, type Roteiro } from '../regras/roteiro.ts'
 import { roteirosDoEscritorio } from '../regras/roteirosDoEscritorio.ts'
-import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
+import { doBancoOuNulo } from './parecer.ts'
+import { agora, esperar, gravar, ler, noBanco, servidorLigado, type Banco } from './servidor.ts'
 
 /** A semente: a régua do escritório. */
 export const roteirosDeExemplo = roteirosDoEscritorio
@@ -24,6 +25,8 @@ export function roteiroDoCaso(banco: Banco, beneficio: string, menorDe16 = false
 
 /** GET /api/roteiros */
 export async function obterRoteiros(): Promise<Roteiro[]> {
+  // Com o servidor ligado (GGVP-132), a régua é a do banco: a mesma para todo o escritório.
+  if (servidorLigado()) return noBanco<Roteiro[]>('/roteiros')
   const banco = ler()
   const roteiros = roteirosDo(banco)
   gravar(banco)
@@ -32,6 +35,7 @@ export async function obterRoteiros(): Promise<Roteiro[]> {
 
 /** GET /api/roteiros/:id */
 export async function obterRoteiro(id: string): Promise<Roteiro | null> {
+  if (servidorLigado()) return doBancoOuNulo<Roteiro>(`/roteiros/${id}`)
   return (await obterRoteiros()).find((r) => r.id === id) ?? null
 }
 
@@ -40,6 +44,7 @@ export const editaRoteiro = (perfil: string | undefined) => perfil?.startsWith('
 
 /** POST /api/roteiros/:id/versoes. Só a sênior; valida de novo; nasce a versão seguinte, com autor e data (CA2). */
 export async function salvarRoteiro(id: string, itens: ItemDoRoteiro[], quem: { perfil?: string; nome: string }): Promise<Roteiro> {
+  if (servidorLigado()) return noBanco<Roteiro>(`/roteiros/${id}/versoes`, { method: 'POST', corpo: { itens } })
   await esperar()
   if (!editaRoteiro(quem.perfil)) throw new Error('Só a sênior edita o roteiro.')
   const motivo = motivoParaNaoSalvar(itens)

@@ -3,14 +3,15 @@
 // (GGVP-132) usam a mesma. A IA ainda é simulada (pistas no nome do arquivo); a de verdade é da GGVP-134.
 import { isoParaData } from '../campos.ts'
 import { nomeBeneficio, nomeTipo } from '../dados/catalogos.ts'
-import type { Ficha, Processo } from '../dados/tipos.ts'
+import type { Ficha, Processo, Tarefa } from '../dados/tipos.ts'
 import { semAcento } from './busca.ts'
-import { dataCurta } from './datas.ts'
-import { precisaDeParecer } from './liberacao.ts'
+import { dataCurta, hojeIso } from './datas.ts'
+import { precisaDeParecer, type Parecer } from './liberacao.ts'
 import {
   abaixoDe24Meses,
   abordarSugerido,
   analisar,
+  NOMES_DO_PARECER,
   motivoParaNaoRegistrar,
   mudancas,
   situacaoFinal,
@@ -398,3 +399,84 @@ export function previaDoComplemento(p: ParecerDoCaso): PreviaDoComplemento | und
     faltam: pedidos.filter((i) => situacaoAgora.get(i.id) !== 'presente').map(pergunta),
   }
 }
+
+/** O parecer para o portão (G17): o último registro; com análise e sem registro, "pendente" (sem confirmação humana). */
+export function parecerDoPortao(p: ParecerDoCaso): Parecer | undefined {
+  const registro = p.registros.at(-1)
+  // G18: a contradição da análise que ninguém do Jurídico conferiu ainda trava (GGVP-47, CA4); conferida, vale o registro.
+  const analise = p.analises.at(-1)
+  const contradicoes = analise && analise.quando !== registro?.analise ? analise.itens.filter((i) => i.situacao === 'contraditorio').map(({ id, texto }) => ({ id, texto })) : []
+  const g18 = contradicoes.length > 0 ? { contradicoes } : {}
+  const dispensa = dispensaEmVigor(p)
+  const dia = (iso: string) => hojeIso(new Date(iso))
+  if (dispensa) return { situacao: 'dispensado', quem: `${dispensa.pedidaPor} e ${dispensa.aprovadaPor}`, data: dia(dispensa.aprovadaEm!), justificativa: dispensa.justificativa, ...g18 }
+  if (registro) return { situacao: registro.situacao, quem: registro.quem, data: dia(registro.quando), ...g18 }
+  return analise ? { situacao: 'pendente', ...g18 } : undefined
+}
+
+/**
+ * As tarefas que o parecer do caso abre: "Aprovar dispensa do parecer" para a segunda sênior, "Analisar laudo novo" e
+ * "Dar parecer médico" para a advogada. `cardJaAbriu`: a tarefa do laudo novo que o envio pelo card já criou (GGVP-17).
+ */
+export function tarefasDoCaso(d: {
+  ficha: Pick<Ficha, 'id' | 'nome'>
+  processo: Processo
+  p: ParecerDoCaso
+  laudoNovoEm?: string
+  hoje: string
+  cardJaAbriu?: boolean
+}): Tarefa[] {
+  const { ficha, processo, p, laudoNovoEm, hoje } = d
+  const beneficio = nomeBeneficio(processo.beneficio)
+  const cliente = { id: ficha.id, nome: ficha.nome }
+  const doCaso: Tarefa[] = []
+  // A dispensa da sênior esperando a segunda aprovação (GGVP-33): vale também para o caso ainda sem documento médico.
+  const dispensa = p.dispensas?.at(-1)
+  const esperandoDispensa = dispensa !== undefined && !dispensa.aprovadaPor && !dispensa.recusadaPor
+  if (esperandoDispensa) {
+    doCaso.push({
+      id: `dispensa-${processo.id}`,
+      codigo: 'D1.24',
+      cliente,
+      acao: 'Aprovar dispensa do parecer',
+      detalhe: `${beneficio} · pedida por ${dispensa.pedidaPor} · a segunda aprovação é de outra sênior (G17)`,
+      prazo: 'hoje',
+      urgente: true,
+      href: `/casos/${processo.id}/parecer/dispensa`,
+      processoId: processo.id,
+    })
+  }
+  const analise = p.analises.at(-1)
+  if (!analise) return doCaso
+  if (laudoNovoEm) {
+    if (d.cardJaAbriu) return doCaso
+    return [
+      ...doCaso,
+      {
+        id: `laudo-novo-${processo.id}`,
+        codigo: 'D1.21M',
+        cliente,
+        acao: 'Analisar laudo novo',
+        detalhe: `${beneficio} · enviado pelo Atendimento em ${dataCurta(laudoNovoEm, hoje)} · resumo e comparação da IA prontos`,
+        prazo: 'hoje',
+        urgente: true,
+        href: `/casos/${processo.id}/laudo-novo`,
+        processoId: processo.id,
+      },
+    ]
+  }
+  if (esperandoDispensa || dispensaEmVigor(p) || p.registros.at(-1)?.analise === analise.quando) return doCaso
+  return [
+    {
+      id: `parecer-${processo.id}`,
+      codigo: 'D1.21M',
+      cliente,
+      acao: 'Dar parecer médico',
+      detalhe: `${beneficio} · ${analise.sugestao === 'sem-roteiro' ? 'benefício sem roteiro: conferência manual' : `a IA sugere ${NOMES_DO_PARECER[analise.sugestao]}`} · confira item a item (G17)`,
+      prazo: 'hoje',
+      href: `/casos/${processo.id}/parecer`,
+      processoId: processo.id,
+    },
+  ]
+}
+

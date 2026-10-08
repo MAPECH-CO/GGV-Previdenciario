@@ -78,7 +78,7 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('atendimento', 'vigilia.ver')).toBe(false)
   })
 
-  it('versão 13 · documentação médica no servidor: o Jurídico registra o parecer e o dado de saúde; só a Sênior edita o roteiro', () => {
+  it('versão 14 · documentação médica no servidor: o Jurídico registra o parecer e o dado de saúde; só a Sênior edita o roteiro', () => {
     expect(PERFIS.filter((p) => pode(p, 'roteiro.editar'))).toEqual(['senior'])
     expect(PERFIS.filter((p) => pode(p, 'parecer.registrar'))).toEqual(['advogada', 'senior'])
     expect(PERFIS.filter((p) => pode(p, 'dado_saude.registrar'))).toEqual(['advogada', 'senior'])

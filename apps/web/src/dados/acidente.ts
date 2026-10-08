@@ -2,25 +2,15 @@
 // documentos por circunstância fica em checklist.ts, com a lista de cada benefício. Ligar no servidor: trocar o corpo de
 // cada função por fetch no endpoint da spec da ggvp-47.
 import { isoParaData } from '../campos.ts'
-import { CATEGORIAS, CIRCUNSTANCIAS, especie, motivoParaNaoSalvar, type AcidenteDoCaso, type AcidenteNaTela, type DadosDoAcidente, type SugestaoDoAcidente } from '../regras/acidente.ts'
+import { CATEGORIAS, CIRCUNSTANCIAS, especie, motivoParaNaoSalvar, sugestaoDaSegundaFicha, type AcidenteDoCaso, type AcidenteNaTela, type DadosDoAcidente } from '../regras/acidente.ts'
 import { hojeIso } from '../regras/datas.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Ficha } from './tipos.ts'
+import { doBancoOuNulo } from './parecer.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 
 export type { AcidenteDoCaso, AcidenteNaTela, SugestaoDoAcidente } from '../regras/acidente.ts'
 
 /** A circunstância salva do caso, para o checklist. */
 export const acidenteDoCaso = (banco: Banco, processoId: string): AcidenteDoCaso | undefined => banco.acidentes?.find((a) => a.processoId === processoId)
-
-function sugestaoDa(ficha: Ficha): SugestaoDoAcidente | undefined {
-  const r = ficha.segundaFicha?.respostas
-  if (!r) return undefined
-  return {
-    ...(r.deTrabalho === 'sim' && { circunstancia: 'trabalho' as const }),
-    ...(/clt|carteira/i.test(r.vinculo) && { categoria: 'empregado' as const }),
-    ...(r.acidenteEm && { acidenteEm: r.acidenteEm }),
-  }
-}
 
 function acharCaso(banco: Banco, processoId: string) {
   const ficha = banco.fichas.find((f) => f.processos.some((p) => p.id === processoId))
@@ -30,11 +20,12 @@ function acharCaso(banco: Banco, processoId: string) {
 
 /** GET /api/processos/:id/acidente */
 export async function obterAcidente(processoId: string): Promise<AcidenteNaTela | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<AcidenteNaTela>(`/processos/${processoId}/acidente`)
   const banco = ler()
   const caso = acharCaso(banco, processoId)
   if (!caso) return null
   const dados = acidenteDoCaso(banco, processoId)
-  const sugestao = sugestaoDa(caso.ficha)
+  const sugestao = sugestaoDaSegundaFicha(caso.ficha)
   return { ...(dados && { dados }), ...(sugestao && { sugestao }) }
 }
 
@@ -42,6 +33,7 @@ const podeSalvar = (perfil: string | undefined) => perfil === 'documentacao' || 
 
 /** PUT /api/processos/:id/acidente. A Documentação ou o Jurídico; o servidor confere de novo. */
 export async function salvarAcidente(processoId: string, dados: DadosDoAcidente, quem: { perfil?: string; nome: string }): Promise<AcidenteDoCaso> {
+  if (doServidor(processoId)) return noBanco<AcidenteDoCaso>(`/processos/${processoId}/acidente`, { method: 'PUT', corpo: dados })
   await esperar()
   if (!podeSalvar(quem.perfil)) throw new Error('Só a Documentação ou o Jurídico marcam a circunstância do acidente.')
   const motivo = motivoParaNaoSalvar({ ...dados, acidenteEm: isoParaData(dados.acidenteEm) ?? '' }, hojeIso(agora()))

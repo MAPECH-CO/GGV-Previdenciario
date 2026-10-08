@@ -2,12 +2,13 @@
 // mesmo banco de servidor.ts. A pendência nasce do parecer Insuficiente ou Contraditório e é uma só por caso: um parecer
 // novo atualiza o que pedir; o Suficiente encerra. O laço é o da cobrança (GGVP-101, G15). Ligar no servidor: trocar o
 // corpo de cada função por fetch no endpoint da design (seção GGVP-29) e mandar pelo Chatwoot de verdade (GGVP-102).
-import { CANAIS, RESULTADOS, TENTATIVAS_DE_COBRANCA, motivoParaNaoDecidir } from '../regras/cobranca.ts'
+import { CANAIS, RESULTADOS, motivoParaNaoDecidir } from '../regras/cobranca.ts'
 import {
   abrirNaLista,
   complementoNaTela,
   doProcesso,
   encerrarNaLista,
+  tarefasDoComplemento,
   type Complemento,
   type ComplementoNaTela,
   type DadosDoPedido,
@@ -17,8 +18,8 @@ import {
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { cobrancasDo } from './cobranca.ts'
-import { previaDoComplemento } from './parecer.ts'
-import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { doBancoOuNulo, doServidorAs, previaDoComplemento } from './parecer.ts'
+import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 import type { Tarefa } from './tipos.ts'
 
 export type { Complemento, ComplementoNaTela, DecisaoDoComplemento, SituacaoDoComplemento, TentativaDoComplemento } from '../regras/complemento.ts'
@@ -57,6 +58,7 @@ function doCaso(banco: Banco, processoId: string): ComplementoNaTela | null {
 
 /** GET /api/processos/:id/complemento */
 export async function obterComplemento(processoId: string): Promise<ComplementoNaTela | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<ComplementoNaTela>(`/processos/${processoId}/complemento`)
   const banco = ler()
   const tela = doCaso(banco, processoId)
   gravar(banco)
@@ -72,6 +74,7 @@ function abertoOuErro(banco: Banco, processoId: string): ComplementoNaTela {
 
 /** POST /api/processos/:id/complemento/tentativas. O laço da cobrança: a segunda sem resposta sobe para a sênior (CA3, G15). */
 export async function registrarTentativaDoComplemento(processoId: string, registro: TentativaDoComplemento): Promise<ComplementoNaTela> {
+  if (doServidor(processoId)) return noBanco<ComplementoNaTela>(`/processos/${processoId}/complemento/tentativas`, { method: 'POST', corpo: registro })
   await esperar()
   const banco = ler()
   const atual = abertoOuErro(banco, processoId)
@@ -89,6 +92,7 @@ export async function registrarTentativaDoComplemento(processoId: string, regist
 
 /** POST /api/processos/:id/complemento/decisoes. Só a sênior, no limite: nova tentativa com prazo e justificativa (CA3, G15). */
 export async function decidirComplemento(processoId: string, decisao: DecisaoDoComplemento, quem: { perfil?: string; nome: string }): Promise<ComplementoNaTela> {
+  if (doServidor(processoId)) return noBanco<ComplementoNaTela>(`/processos/${processoId}/complemento/decisoes`, { method: 'POST', corpo: decisao })
   await esperar()
   if (!quem.perfil?.startsWith('senior')) throw new Error('Só a sênior decide o complemento que passou do limite.')
   const banco = ler()
@@ -109,8 +113,6 @@ export async function decidirComplemento(processoId: string, decisao: DecisaoDoC
   return montar(banco, complemento)!
 }
 
-const pontos = (n: number) => `${n} ${n === 1 ? 'ponto' : 'pontos'} para o médico abordar`
-
 /** "Pedir complemento ao médico" na Central do Atendimento: uma por caso com a pendência aberta, com a tentativa e o lembrete. */
 export function tarefasDeComplemento(): Tarefa[] {
   const banco = ler()
@@ -119,53 +121,23 @@ export function tarefasDeComplemento(): Tarefa[] {
     .filter((c) => !c.encerrado)
     .flatMap((c) => {
       const tela = montar(banco, c)
-      if (!tela) return []
-      const { ficha, beneficio, situacao, tentativa, proxima } = tela
-      return [
-        {
-          id: `complemento-${c.processoId}`,
-          codigo: 'D1.21M',
-          cliente: { id: ficha.id, nome: ficha.nome },
-          acao: 'Pedir complemento ao médico',
-          detalhe: [
-            beneficio,
-            `parecer ${c.parecer === 'contraditorio' ? 'Contraditório' : 'Insuficiente'}`,
-            pontos(c.perguntas.length),
-            situacao === 'na-senior' ? 'passou do limite: na sênior (G15)' : `${tentativa}ª tentativa`,
-          ].join(' · '),
-          prazo: situacao === 'na-senior' ? 'na sênior' : proxima <= hoje ? 'hoje' : dataCurta(proxima, hoje),
-          urgente: tela.urgente,
-          href: `/casos/${c.processoId}/complemento`,
-          processoId: c.processoId,
-        },
-      ]
+      return tela ? [tarefasDoComplemento(tela, hoje).pedir] : []
     })
   gravar(banco)
-  return tarefas
+  return [...tarefas, ...doServidorAs(banco, /^complemento-/)]
 }
 
 /** "Decidir complemento" na Central da Advogada: o complemento que passou do limite chega à sênior (CA3, G15). */
 export function tarefasDeDecidirComplemento(): Tarefa[] {
   const banco = ler()
+  const hoje = hojeIso(agora())
   const tarefas = complementosDo(banco)
     .filter((c) => !c.encerrado)
     .flatMap((c) => {
       const tela = montar(banco, c)
-      if (!tela || tela.situacao !== 'na-senior') return []
-      return [
-        {
-          id: `decidir-complemento-${c.processoId}`,
-          codigo: 'D1.21M',
-          cliente: { id: tela.ficha.id, nome: tela.ficha.nome },
-          acao: 'Decidir complemento',
-          detalhe: `${tela.beneficio} · ${TENTATIVAS_DE_COBRANCA} tentativas sem o relatório · nova tentativa ou dispensa do parecer (G15, G17)`,
-          prazo: 'hoje',
-          urgente: true,
-          href: `/casos/${c.processoId}/complemento`,
-          processoId: c.processoId,
-        },
-      ]
+      const decidir = tela && tarefasDoComplemento(tela, hoje).decidir
+      return decidir ? [decidir] : []
     })
   gravar(banco)
-  return tarefas
+  return [...tarefas, ...doServidorAs(banco, /^decidir-complemento-/)]
 }

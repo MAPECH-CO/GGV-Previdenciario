@@ -9,7 +9,8 @@ import { tempoFalado } from '../regras/calculo.ts'
 import { cnisDoCaso } from './beneficio.ts'
 import { nomeBeneficio, nomeTipo } from './catalogos.ts'
 import { leiturasDo } from './leitura.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { doBancoOuNulo } from './parecer.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 import type { Ficha, Processo } from './tipos.ts'
 
 export type { DeficienciaDoCaso, LinhaDoTempo } from '../regras/deficiencia.ts'
@@ -63,6 +64,7 @@ function montar(banco: Banco, ficha: Ficha, processo: Processo): LinhaDoTempo {
 
 /** GET /api/processos/:id/deficiencia */
 export async function obterLinhaDoTempo(processoId: string): Promise<LinhaDoTempo | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<LinhaDoTempo>(`/processos/${processoId}/deficiencia`)
   const banco = ler()
   const caso = acharCaso(banco, processoId)
   if (!caso) return null
@@ -73,6 +75,7 @@ export async function obterLinhaDoTempo(processoId: string): Promise<LinhaDoTemp
 
 /** PUT /api/processos/:id/deficiencia. Só o Jurídico; valida de novo com a mesma regra da tela (CA2). */
 export async function salvarDeficiencia(processoId: string, dados: DadosDaDeficiencia, quem: { perfil?: string; nome: string }): Promise<LinhaDoTempo> {
+  if (doServidor(processoId)) return noBanco<LinhaDoTempo>(`/processos/${processoId}/deficiencia`, { method: 'PUT', corpo: dados })
   await esperar()
   if (quem.perfil !== 'advogada' && !quem.perfil?.startsWith('senior')) throw new Error('Só o Jurídico registra os dados da deficiência.')
   const motivo = motivoParaNaoSalvar(

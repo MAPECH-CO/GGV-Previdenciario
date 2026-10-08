@@ -2,16 +2,15 @@
 // change ggvp-13 e as regras são as das telas (regras/complemento.ts e o laço da cobrança, G15), com o perfil da sessão. O
 // parecer Insuficiente ou Contraditório abre a pendência (rotas/parecer.ts). O Chatwoot continua simulado (GGVP-102): a
 // tentativa fica registrada, nada sai para o cliente daqui.
-import { eq } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import { DecisaoDoComplemento, TentativaDoComplemento, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { usuario } from '../banco/esquema.ts'
 import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
-import { motivoParaNaoDecidir } from '../../../web/src/regras/cobranca.ts'
+import { CANAIS, RESULTADOS, motivoParaNaoDecidir } from '../../../web/src/regras/cobranca.ts'
+import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { complementoNaTela, doProcesso, type Complemento, type ComplementoNaTela } from '../../../web/src/regras/complemento.ts'
 import { previaDoComplemento } from '../../../web/src/regras/parecerDoCaso.ts'
 import { criarParecerDoCaso } from './parecer.ts'
@@ -23,9 +22,9 @@ export const MSG_AINDA_NO_LIMITE = 'O complemento ainda não passou do limite.'
 type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-export function registrarRotasComplemento(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const historico = registrarHistorico(banco, agora)
-  const { acharCaso, lerParte, gravarParte } = criarCasoMedico(banco, agora)
+/** O complemento do caso, comum às rotas e à sincronização das Centrais. */
+export function criarComplementoDoCaso(banco: Banco, agora: () => Date) {
+  const { lerParte } = criarCasoMedico(banco, agora)
   const { emDia } = criarParecerDoCaso(banco, agora)
 
   /** O complemento do caso como a tela do Atendimento recebe: o resultado e o que pedir, sem conteúdo clínico (CA6). */
@@ -34,14 +33,17 @@ export function registrarRotasComplemento(app: FastifyInstance, { banco, agora =
     const atual = doProcesso(lista, c.id)
     if (!atual) return null
     const previa = previaDoComplemento((await emDia(c)).p)
-    const tela = complementoNaTela(atual, { ficha: c.ficha, processo: c.processo, beneficio: nomeBeneficio(c.processo.beneficio), hoje: hojeEmBrasilia(agora()), ...(previa && { previa }) })
+    const tela = complementoNaTela(atual, { ficha: { id: c.ficha.id, nome: c.ficha.nome, telefone: c.ficha.telefone }, processo: c.processo, beneficio: nomeBeneficio(c.processo.beneficio), hoje: hojeEmBrasilia(agora()), ...(previa && { previa }) })
     return { lista, tela }
   }
 
-  async function nomeDe(pedido: FastifyRequest) {
-    const [u] = await banco.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, pedido.usuario!.id))
-    return u?.nome ?? 'Alguém do escritório'
-  }
+  return { montar }
+}
+
+export function registrarRotasComplemento(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+  const historico = registrarHistorico(banco, agora)
+  const { acharCaso, anotar, nomeDe, gravarParte } = criarCasoMedico(banco, agora)
+  const { montar } = criarComplementoDoCaso(banco, agora)
 
   app.get<{ Params: { id: string } }>('/api/processos/:id/complemento', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
     const c = await acharCaso(pedido.params.id)
@@ -63,6 +65,7 @@ export function registrarRotasComplemento(app: FastifyInstance, { banco, agora =
     const complemento = m.tela.complemento
     complemento.tentativas = [...(complemento.tentativas ?? []), { dia: hojeEmBrasilia(agora()), ...entrada.data, quem: await nomeDe(pedido) }]
     await gravarParte(c.id, 'complemento', m.lista)
+    await anotar(c, `Complemento ao médico: ${complemento.tentativas.length}ª tentativa por ${CANAIS[entrada.data.canal]} (${RESULTADOS[entrada.data.resultado]})`, pedido)
     await historico(pedido.usuario!.id, 'complemento_tentativa_registrada', pedido, `caso:${c.id}`, { tentativa: complemento.tentativas.length, ...entrada.data })
     return resposta.code(201).send((await montar(c))!.tela)
   })
@@ -84,6 +87,7 @@ export function registrarRotasComplemento(app: FastifyInstance, { banco, agora =
     complemento.decisoes = [...(complemento.decisoes ?? []), { opcao: 'nova-tentativa', justificativa, prazo, quando: agora().toISOString(), quem: await nomeDe(pedido) }]
     complemento.adiadaPara = prazo
     await gravarParte(c.id, 'complemento', m.lista)
+    await anotar(c, `Complemento ao médico: a sênior decidiu nova tentativa até ${dataCurta(prazo, hojeEmBrasilia(agora()))}. Justificativa: ${justificativa}`, pedido)
     await historico(pedido.usuario!.id, 'complemento_decidido', pedido, `caso:${c.id}`, { opcao: 'nova-tentativa', prazo })
     return resposta.code(201).send((await montar(c))!.tela)
   })

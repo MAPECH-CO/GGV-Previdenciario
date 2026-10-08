@@ -43,8 +43,10 @@ beforeEach(async () => {
 afterEach(() => fechar())
 
 describe('GGVP-132 · a linha do tempo da deficiência no servidor (GGVP-42)', () => {
-  it('CA3 · só o Jurídico abre: as provas da época vêm dos documentos do caso, e a leitura fica registrada', async () => {
-    expect((await ver('ana')).statusCode).toBe(403)
+  it('CA3 · só o Jurídico vê: as provas da época vêm dos documentos do caso, e a leitura fica registrada', async () => {
+    const ana = (await ver('ana')).json()
+    expect([ana.ficha.nome, ana.dados, ana.provas, ana.periodos]).toEqual(['Cleide Exemplo', undefined, [], []])
+    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
     const r = (await ver('gabi')).json()
     expect([r.beneficio, r.dados, r.periodos, r.provas.map((p: { tipo: string; data: string }) => [p.tipo, p.data])]).toEqual([
       'PCD Aposentadoria por Contribuição',

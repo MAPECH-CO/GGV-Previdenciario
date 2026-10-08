@@ -30,6 +30,7 @@ import { registrarRotasComplemento } from './rotas/complemento.ts'
 import { registrarRotasDeficiencia } from './rotas/deficiencia.ts'
 import { registrarRotasAcidente } from './rotas/acidente.ts'
 import { registrarRotasCrianca } from './rotas/crianca.ts'
+import { registrarRotasDocumentacaoMedica } from './rotas/documentacao-medica.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
@@ -103,6 +104,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasDeficiencia(app, { banco, agora })
     registrarRotasAcidente(app, { banco, agora })
     registrarRotasCrianca(app, { banco, agora })
+    registrarRotasDocumentacaoMedica(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

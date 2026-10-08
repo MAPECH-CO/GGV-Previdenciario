@@ -2,8 +2,8 @@
 // criança é dado de saúde: só o Jurídico marca e vê. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint
 // da spec da ggvp-50.
 import { nomeTipo } from './catalogos.ts'
-import { doJuridico } from './parecer.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { doBancoOuNulo, doJuridico } from './parecer.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 import type { Ficha, Processo } from './tipos.ts'
 import { hojeIso, idadeEm } from '../regras/datas.ts'
 import { CONDICOES_DA_CRIANCA, TERAPIAS, menorDe16, relatoriosDaCrianca, type CriancaDoCaso, type CriancaNaTela, type DadosDaCrianca } from '../regras/infantil.ts'
@@ -26,6 +26,7 @@ const idadeDa = (ficha: Ficha) => idadeEm(ficha.nascimento!, hojeIso(agora()))
 
 /** GET /api/processos/:id/crianca. Quem não é do Jurídico não recebe a condição. */
 export async function obterCrianca(processoId: string, perfil: string | undefined): Promise<CriancaNaTela | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<CriancaNaTela>(`/processos/${processoId}/crianca`)
   const banco = ler()
   const caso = acharCaso(banco, processoId)
   if (!caso) return null
@@ -37,6 +38,7 @@ export async function obterCrianca(processoId: string, perfil: string | undefine
 
 /** PUT /api/processos/:id/crianca. Só o Jurídico; o histórico registra que marcou, sem a condição. */
 export async function salvarCrianca(processoId: string, dados: DadosDaCrianca, quem: { perfil?: string; nome: string }): Promise<CriancaNaTela> {
+  if (doServidor(processoId)) return noBanco<CriancaNaTela>(`/processos/${processoId}/crianca`, { method: 'PUT', corpo: dados })
   await esperar()
   if (!doJuridico(quem.perfil)) throw new Error('Só o Jurídico marca a condição da criança.')
   if (dados.condicoes.some((c) => !(c in CONDICOES_DA_CRIANCA)) || dados.terapias.some((t) => !(t in TERAPIAS))) throw new Error('Condição ou terapia fora da lista.')

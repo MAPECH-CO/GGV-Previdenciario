@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, processoAcervo, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, documentoMedico, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, processoAcervo, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
@@ -304,4 +304,14 @@ export async function semearExemplos(banco: Banco) {
     { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
   ])
+
+  // Documentação médica no servidor (GGVP-132): o laudo de LOAS da Lúcia já foi lido e classificado e espera o parecer
+  // do Jurídico. A IA simulada lê pelo nome do arquivo: "incompleto" não cobre nenhum item do roteiro.
+  const [pl] = await banco.insert(pessoa).values({ nome: 'Lúcia Prado (exemplo)', situacao: 'cliente', origem: 'exemplo', telefone: '11955550101' }).returning()
+  const [cl] = await banco.insert(caso).values({ pessoaId: pl.id, beneficio: 'bpc_loas_deficiente', fase: 'atendimento' }).returning()
+  const [laudo] = await banco
+    .insert(documento)
+    .values({ casoId: cl.id, pessoaId: pl.id, tipo: 'laudo', sensivel: true, chaveArmazenamento: `exemplo/${cl.id}/laudo`, nomeOriginal: 'Laudo médico incompleto (exemplo).pdf', mime: 'application/pdf', tamanho: 0, hashSha256: 'exemplo', origem: 'exemplo' })
+    .returning()
+  await banco.insert(documentoMedico).values({ documentoId: laudo.id, tipo: 'laudo', dataEmissao: '2026-09-15', profissional: 'Dra. Clínica (exemplo)' })
 }

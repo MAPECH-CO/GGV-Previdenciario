@@ -3,10 +3,10 @@
 // só o Jurídico vê e registra, e cada leitura fica registrada. ponytail: o CNIS ainda não está no servidor (bloco 3 da
 // Recepção); sem ele a linha mostra os dados e as provas, sem os períodos.
 import { and, asc, eq, isNull, ne, or } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { DadosDaDeficiencia, type Erro } from '@ggv/contratos'
+import type { FastifyInstance, FastifyReply } from 'fastify'
+import { DadosDaDeficiencia, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, documento, documentoMedico, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, documento, documentoMedico } from '../banco/esquema.ts'
 import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -20,7 +20,7 @@ const NA_TELA: Record<string, string> = { relatorio: 'relatorio-medico' }
 
 export function registrarRotasDeficiencia(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
-  const { acharCaso, lerParte, gravarParte } = criarCasoMedico(banco, agora)
+  const { acharCaso, anotar, nomeDe, lerParte, gravarParte } = criarCasoMedico(banco, agora)
 
   /** As provas da época (CA3): os documentos do caso e os pessoais que são laudo, atestado, ASO, contratação por cota... */
   async function provasDo(c: CasoMedico): Promise<Prova[]> {
@@ -42,15 +42,12 @@ export function registrarRotasDeficiencia(app: FastifyInstance, { banco, agora =
     return linhaDoTempo({ ficha: c.ficha, processo: c.processo, beneficio: nomeBeneficio(c.processo.beneficio), ...(dados && { dados }), provas: await provasDo(c) })
   }
 
-  async function nomeDe(pedido: FastifyRequest) {
-    const [u] = await banco.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, pedido.usuario!.id))
-    return u?.nome ?? 'Alguém do Jurídico'
-  }
-
-  // GGVP-96 CA12, CA13: o grau e as provas são dado de saúde; só o Jurídico abre, e a leitura fica registrada.
-  app.get<{ Params: { id: string } }>('/api/processos/:id/deficiencia', { preHandler: exigir(banco, 'dado_saude.ver_detalhe', agora) }, async (pedido, resposta) => {
+  // GGVP-96 CA12, CA13: o grau e as provas são dado de saúde. Quem não é do Jurídico abre a tela e vê só de quem é o caso;
+  // a leitura do Jurídico fica registrada.
+  app.get<{ Params: { id: string } }>('/api/processos/:id/deficiencia', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
     const c = await acharCaso(pedido.params.id)
     if (!c) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
+    if (!pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')) return linhaDoTempo({ ficha: c.ficha, processo: c.processo, beneficio: nomeBeneficio(c.processo.beneficio), provas: [] })
     await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: c.id, recurso: `deficiencia:${c.id}`, quando: agora() })
     return montar(c)
   })
@@ -70,6 +67,7 @@ export function registrarRotasDeficiencia(app: FastifyInstance, { banco, agora =
     const registro: DeficienciaDoCaso = { ...d, processoId: c.id, quem: await nomeDe(pedido), quando: agora().toISOString() }
     await gravarParte(c.id, 'deficiencia', registro)
     // Dado de saúde fica fora do histórico: só o que aconteceu.
+    await anotar(c, `Atualizou os dados da deficiência na linha do tempo (${nomeBeneficio(c.processo.beneficio)})`, pedido)
     await historico(pedido.usuario!.id, 'deficiencia_registrada', pedido, `caso:${c.id}`)
     return montar(c)
   })

@@ -1,8 +1,9 @@
 // A pendência de complemento ao médico do cliente (GGVP-20 abre, GGVP-29 conduz). Regra pura: o servidor de exemplo e o
 // servidor de verdade (GGVP-132) usam a mesma. A pendência é uma só por caso: um parecer novo atualiza o que pedir; o
 // Suficiente encerra. O laço é o da cobrança (GGVP-101, G15).
-import type { Ficha, Processo } from '../dados/tipos.ts'
+import type { Ficha, Processo, Tarefa } from '../dados/tipos.ts'
 import {
+  TENTATIVAS_DE_COBRANCA,
   ateQuando,
   motivoParaNaoCobrar,
   naSenior,
@@ -14,7 +15,7 @@ import {
   type PrazoExterno,
   type TentativaDeCobranca,
 } from './cobranca.ts'
-import { hojeIso } from './datas.ts'
+import { dataCurta, hojeIso } from './datas.ts'
 import { mensagemDoComplemento, orientacaoAoMedico, type SituacaoDoParecer } from './parecer.ts'
 import type { PreviaDoComplemento } from './parecerDoCaso.ts'
 
@@ -127,6 +128,48 @@ export function complementoNaTela(
 export const doProcesso = (lista: Complemento[], processoId: string) => {
   const todos = lista.filter((c) => c.processoId === processoId)
   return todos.find((x) => !x.encerrado) ?? todos.at(-1)
+}
+
+const pontos = (n: number) => `${n} ${n === 1 ? 'ponto' : 'pontos'} para o médico abordar`
+
+/**
+ * As tarefas do complemento aberto: "Pedir complemento ao médico" na Central do Atendimento, com a tentativa e o lembrete,
+ * e "Decidir complemento" para a sênior quando passa do limite (CA3, G15).
+ */
+export function tarefasDoComplemento(tela: ComplementoNaTela, hoje: string): { pedir: Tarefa; decidir?: Tarefa } {
+  const { complemento: c, ficha, beneficio, situacao, tentativa, proxima } = tela
+  const cliente = { id: ficha.id, nome: ficha.nome }
+  return {
+    pedir: {
+      id: `complemento-${c.processoId}`,
+      codigo: 'D1.21M',
+      cliente,
+      acao: 'Pedir complemento ao médico',
+      detalhe: [
+        beneficio,
+        `parecer ${c.parecer === 'contraditorio' ? 'Contraditório' : 'Insuficiente'}`,
+        pontos(c.perguntas.length),
+        situacao === 'na-senior' ? 'passou do limite: na sênior (G15)' : `${tentativa}ª tentativa`,
+      ].join(' · '),
+      prazo: situacao === 'na-senior' ? 'na sênior' : proxima <= hoje ? 'hoje' : dataCurta(proxima, hoje),
+      urgente: tela.urgente,
+      href: `/casos/${c.processoId}/complemento`,
+      processoId: c.processoId,
+    },
+    ...(situacao === 'na-senior' && {
+      decidir: {
+        id: `decidir-complemento-${c.processoId}`,
+        codigo: 'D1.21M',
+        cliente,
+        acao: 'Decidir complemento',
+        detalhe: `${beneficio} · ${TENTATIVAS_DE_COBRANCA} tentativas sem o relatório · nova tentativa ou dispensa do parecer (G15, G17)`,
+        prazo: 'hoje',
+        urgente: true,
+        href: `/casos/${c.processoId}/complemento`,
+        processoId: c.processoId,
+      },
+    }),
+  }
 }
 
 export type { CanalDaCobranca }

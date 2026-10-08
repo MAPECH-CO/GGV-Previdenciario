@@ -16,10 +16,12 @@ import {
   lido,
   montarAnalise as analisarDocumentos,
   naTela as naTelaDoPerfil,
+  parecerDoPortao,
   perguntasQueFaltam,
   previaDoComplemento as previaDoParecer,
   registrar,
   registroDoPedido,
+  tarefasDoCaso,
   type AnaliseDaIA,
   type DocumentoLido,
   type ModeloDeComparacao,
@@ -35,7 +37,8 @@ import { nomeBeneficio } from './catalogos.ts'
 import { abrirComplemento, encerrarComplemento } from './complemento.ts'
 import { leiturasDo } from './leitura.ts'
 import { roteiroDoCaso } from './roteiro.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { chamarApi } from '../api.ts'
+import { agora, doServidor, espelhar, esperar, evento, gravar, ler, noBanco, servidorLigado, type Banco } from './servidor.ts'
 import type { Ficha, Processo, Tarefa } from './tipos.ts'
 
 export {
@@ -272,6 +275,8 @@ function naTela(banco: Banco, ficha: Ficha, processo: Processo, p: ParecerDoCaso
 
 /** GET /api/processos/:id/parecer, na visão do perfil da sessão. */
 export async function obterParecer(processoId: string, visao: Visao): Promise<ParecerNaTela | null> {
+  // Caso do servidor (GGVP-132): a visão vem do perfil da sessão, lá.
+  if (doServidor(processoId)) return doBancoOuNulo<ParecerNaTela>(`/processos/${processoId}/parecer`)
   const banco = ler()
   const caso = acharCaso(banco, processoId)
   if (!caso) return null
@@ -282,6 +287,7 @@ export async function obterParecer(processoId: string, visao: Visao): Promise<Pa
 
 /** POST /api/processos/:id/parecer. Só o Jurídico; valida de novo; a IA nunca registra (CA3, CA8, G17, G18, G20). */
 export async function registrarParecer(processoId: string, pedido: PedidoDeParecer, quem: QuemRegistra): Promise<ParecerNaTela> {
+  if (doServidor(processoId)) return noBanco<ParecerNaTela>(`/processos/${processoId}/parecer`, { method: 'POST', corpo: pedido })
   await esperar()
   if (!doJuridico(quem.perfil)) throw new Error('Só o Jurídico registra o parecer médico.')
   const banco = ler()
@@ -331,18 +337,9 @@ export async function registrarParecer(processoId: string, pedido: PedidoDeParec
 
 /** O parecer para o portão (G17): o último registro; com análise e sem registro, "pendente" (sem confirmação humana). */
 export function parecerParaOPortao(banco: Banco, processoId: string): Parecer | undefined {
+  if (doServidor(processoId)) return banco.documentacaoMedica?.portoes[processoId]
   const caso = acharCaso(banco, processoId)
-  if (!caso) return undefined
-  const p = emDia(banco, caso.ficha, caso.processo)
-  const registro = p.registros.at(-1)
-  // G18: a contradição da análise que ninguém do Jurídico conferiu ainda trava (GGVP-47, CA4); conferida, vale o registro.
-  const analise = p.analises.at(-1)
-  const contradicoes = analise && analise.quando !== registro?.analise ? analise.itens.filter((i) => i.situacao === 'contraditorio').map(({ id, texto }) => ({ id, texto })) : []
-  const g18 = contradicoes.length > 0 ? { contradicoes } : {}
-  const dispensa = dispensaEmVigor(p)
-  if (dispensa) return { situacao: 'dispensado', quem: `${dispensa.pedidaPor} e ${dispensa.aprovadaPor}`, data: quandoCurto(dispensa.aprovadaEm!), justificativa: dispensa.justificativa, ...g18 }
-  if (registro) return { situacao: registro.situacao, quem: registro.quem, data: quandoCurto(registro.quando), ...g18 }
-  return analise ? { situacao: 'pendente', ...g18 } : undefined
+  return caso ? parecerDoPortao(emDia(banco, caso.ficha, caso.processo)) : undefined
 }
 
 /** Os tipos dos documentos médicos da semente do caso (a CAT, os exames e os laudos do Sebastião), para o checklist (GGVP-47). */
@@ -352,6 +349,7 @@ const ehSenior = (perfil: string | undefined) => perfil?.startsWith('senior') ==
 
 /** POST /api/processos/:id/parecer/dispensa. A primeira sênior pede, com a justificativa (GGVP-33, CA2). */
 export async function pedirDispensa(processoId: string, justificativa: string, quem: QuemRegistra): Promise<ParecerNaTela> {
+  if (doServidor(processoId)) return noBanco<ParecerNaTela>(`/processos/${processoId}/parecer/dispensa`, { method: 'POST', corpo: { justificativa } })
   await esperar()
   if (!ehSenior(quem.perfil)) throw new Error('Só a sênior dispensa o parecer médico.')
   const motivo = motivoParaNaoPedirDispensa(justificativa)
@@ -372,6 +370,7 @@ export async function pedirDispensa(processoId: string, justificativa: string, q
 
 /** POST /api/processos/:id/parecer/dispensa/aprovacao. A segunda sênior, outra pessoa, aprova ou recusa (Q14). */
 export async function responderDispensa(processoId: string, aprova: boolean, quem: QuemRegistra): Promise<ParecerNaTela> {
+  if (doServidor(processoId)) return noBanco<ParecerNaTela>(`/processos/${processoId}/parecer/dispensa/aprovacao`, { method: 'POST', corpo: { aprova } })
   await esperar()
   if (!ehSenior(quem.perfil)) throw new Error('Só a sênior dispensa o parecer médico.')
   const banco = ler()
@@ -402,6 +401,7 @@ export function resumoParaAFicha(fichaId: string): string | undefined {
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) return undefined
   const partes = ficha.processos.flatMap((processo) => {
+    if (doServidor(processo.id)) return []
     const p = emDia(banco, ficha, processo)
     const analise = p.analises.at(-1)
     if (!analise) return []
@@ -426,63 +426,39 @@ export function tarefasDoParecer(): Tarefa[] {
   const hoje = hojeIso(agora())
   const tarefas = banco.fichas.flatMap((ficha) =>
     ficha.processos.flatMap((processo): Tarefa[] => {
-      const p = emDia(banco, ficha, processo)
-      const beneficio = nomeBeneficio(processo.beneficio)
-      const doCaso: Tarefa[] = []
-      // A dispensa da sênior esperando a segunda aprovação (GGVP-33): vale também para o caso ainda sem documento médico.
-      const dispensa = p.dispensas?.at(-1)
-      const esperandoDispensa = dispensa !== undefined && !dispensa.aprovadaPor && !dispensa.recusadaPor
-      if (esperandoDispensa) {
-        doCaso.push({
-          id: `dispensa-${processo.id}`,
-          codigo: 'D1.24',
-          cliente: { id: ficha.id, nome: ficha.nome },
-          acao: 'Aprovar dispensa do parecer',
-          detalhe: `${beneficio} · pedida por ${dispensa.pedidaPor} · a segunda aprovação é de outra sênior (G17)`,
-          prazo: 'hoje',
-          urgente: true,
-          href: `/casos/${processo.id}/parecer/dispensa`,
-          processoId: processo.id,
-        })
-      }
-      const analise = p.analises.at(-1)
-      if (!analise) return doCaso
+      if (doServidor(processo.id)) return []
       const laudoNovoEm = laudoNovoDo(ficha, processo)
-      if (laudoNovoEm) {
-        // A tarefa que o envio pelo card já criou (GGVP-17) vale; a da semente nasce aqui.
-        if (banco.tarefas.some((x) => x.processoId === processo.id && x.acao === 'Analisar laudo novo' && !x.concluida)) return doCaso
-        return [
-          ...doCaso,
-          {
-            id: `laudo-novo-${processo.id}`,
-            codigo: 'D1.21M',
-            cliente: { id: ficha.id, nome: ficha.nome },
-            acao: 'Analisar laudo novo',
-            detalhe: `${beneficio} · enviado pelo Atendimento em ${dataCurta(laudoNovoEm, hoje)} · resumo e comparação da IA prontos`,
-            prazo: 'hoje',
-            urgente: true,
-            href: `/casos/${processo.id}/laudo-novo`,
-            processoId: processo.id,
-          },
-        ]
-      }
-      if (esperandoDispensa || dispensaEmVigor(p) || p.registros.at(-1)?.analise === analise.quando) return doCaso
-      return [
-        {
-          id: `parecer-${processo.id}`,
-          codigo: 'D1.21M',
-          cliente: { id: ficha.id, nome: ficha.nome },
-          acao: 'Dar parecer médico',
-          detalhe: `${beneficio} · ${analise.sugestao === 'sem-roteiro' ? 'benefício sem roteiro: conferência manual' : `a IA sugere ${NOMES_DO_PARECER[analise.sugestao]}`} · confira item a item (G17)`,
-          prazo: 'hoje',
-          href: `/casos/${processo.id}/parecer`,
-          processoId: processo.id,
-        },
-      ]
+      // A tarefa que o envio pelo card já criou (GGVP-17) vale; a da semente nasce aqui.
+      const cardJaAbriu = banco.tarefas.some((x) => x.processoId === processo.id && x.acao === 'Analisar laudo novo' && !x.concluida)
+      return tarefasDoCaso({ ficha, processo, p: emDia(banco, ficha, processo), ...(laudoNovoEm && { laudoNovoEm }), hoje, cardJaAbriu })
     }),
   )
   gravar(banco)
-  return tarefas
+  return [...tarefas, ...doServidorAs(banco, /^(dispensa|laudo-novo|parecer)-/)]
+}
+
+/** As tarefas dos casos do servidor, da última sincronização, pelo começo do id (GGVP-132). */
+export const doServidorAs = (banco: Banco, ids: RegExp): Tarefa[] => (banco.documentacaoMedica?.tarefas ?? []).filter((t) => ids.test(t.id))
+
+/** GET de um caso do servidor: o que veio, ou null quando o caso não existe lá. */
+export async function doBancoOuNulo<T>(caminho: string): Promise<T | null> {
+  const r = await chamarApi<T>(caminho)
+  if (r.ok) return r.dados
+  if (r.status === 404) return null
+  throw new Error(r.erro)
+}
+
+/**
+ * GET /api/documentacao-medica. Ao abrir cada tela, depois da Recepção: as Centrais recebem as tarefas do parecer e do
+ * complemento dos casos do servidor, e o portão (G17) das telas ainda não ligadas recebe o parecer de cada caso.
+ */
+export async function sincronizarDocumentacaoMedica() {
+  if (!servidorLigado()) return
+  const r = await noBanco<{ fichas: Ficha[]; tarefas: Tarefa[]; portoes: Record<string, Parecer> }>('/documentacao-medica')
+  for (const f of r.fichas) espelhar(f)
+  const banco = ler()
+  banco.documentacaoMedica = { tarefas: r.tarefas, portoes: r.portoes }
+  gravar(banco)
 }
 
 /** A prévia do complemento (GGVP-29), sobre o parecer do caso em dia. */
