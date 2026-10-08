@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, processoAcervo, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, peticao, peticaoVersao, prestacaoContas, processoAcervo, protocoloJudicial, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { abrirExplicacaoDoResultado } from '../rotas/resultado.ts'
@@ -313,5 +313,23 @@ export async function semearExemplos(banco: Banco) {
     { numeroCnj: '00011234520184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
+  ])
+
+  // Juízo identificado (GGVP-64): mais três processos conferidos no JEF de São Paulo (TRF3 · 6301), a unidade dos processos
+  // judiciais de exemplo. O do portal tem o protocolo da inicial e a data da decisão, para o tempo até a sentença aparecer.
+  // Entram com a data da importação, para não mudar a base do acervo (GGVP-55).
+  const [pm] = await banco.insert(pessoa).values({ nome: 'Marta Lopes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cm] = await banco
+    .insert(caso)
+    .values({ pessoaId: pm.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho: 'procedente_total', encerradoEm: new Date(Date.UTC(2026, 3, 14, 15)) })
+    .returning()
+  await banco.insert(identificadorCaso).values({ casoId: cm.id, tipo: 'cnj', valor: '00034567120254036301' })
+  const [pi] = await banco.insert(peticao).values({ casoId: cm.id, tipo: 'inicial' }).returning()
+  const [vi] = await banco.insert(peticaoVersao).values({ peticaoId: pi.id, numero: 1, conteudo: 'Petição inicial (exemplo)', hash: 'exemplo', geradaPor: advogada.nome, aprovadaPor: advogada.id }).returning()
+  await banco.insert(protocoloJudicial).values({ peticaoVersaoId: vi.id, tribunal: 'TRF3', numero: '0003456-71.2025.4.03.6301', protocoladoEm: new Date(Date.UTC(2025, 3, 7, 15)), protocoladoPor: advogada.id })
+  await banco.insert(processoAcervo).values([
+    { casoId: cm.id, beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, dataDecisao: '2026-04-14', fonte: 'portal', criadoEm: base },
+    { numeroCnj: '50001048820234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001057320234036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_parcial', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
   ])
 }

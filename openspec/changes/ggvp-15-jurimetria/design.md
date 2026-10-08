@@ -178,3 +178,4 @@ Nenhuma tela nova.
 - **Unidade de origem não é a vara:** onde a unidade tem várias varas (por exemplo, o JEF de São Paulo, 6301), a conta junta as varas. O nome da vara e o do juiz entram na parte 2.
 - **Poucos processos:** a taxa oscila. O número de processos ao lado é o que deixa a advogada julgar (G22).
 - **Tempo até a sentença:** hoje, só os processos protocolados pelo portal com a data da decisão gravada têm as duas datas. Os importados ficam fora até o estudo trazer a data da distribuição.
+- **A inicial ainda não tem número:** a minuta da petição inicial é escrita antes do protocolo, quando o caso quase nunca tem número de processo. A fonte do juízo só vem quando o caso já tem um número (por exemplo, um novo processo depois de um perdido). Prever o juízo pela cidade do cliente fica para a parte 2, se o escritório quiser.

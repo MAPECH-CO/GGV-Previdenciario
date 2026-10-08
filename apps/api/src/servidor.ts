@@ -20,6 +20,7 @@ import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
 import { registrarRotasGestao } from './rotas/gestao.ts'
 import { registrarRotasAcervo } from './rotas/acervo.ts'
+import { registrarRotasJuizo } from './rotas/juizo.ts'
 import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
@@ -107,6 +108,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora })
+    registrarRotasJuizo(app, { banco, agora })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
