@@ -28,7 +28,26 @@ export function problemaDoArquivo(arquivo: { nome: string; tamanho: number }): s
 const PISTAS: [RegExp, string][] = [
   [/ficha de atendimento auxilio acidente/, 'ficha-acidente'],
   [/ficha de atendimento/, 'ficha-atendimento'],
-  [/\blaudo|atestado/, 'laudo'],
+  // GGVP-95: cada documento médico com o seu tipo; antes, atestado virava laudo.
+  [/relatorio escolar|escola/, 'relatorio-escolar'],
+  // GGVP-50: o relatório de cada terapia e o do CAPS e da neurologia, antes do de terapia comum.
+  [/\bcaps\b/, 'relatorio-caps'],
+  [/relatorio (da |de )?neuro/, 'relatorio-neurologia'],
+  [/fono/, 'relatorio-fono'],
+  [/terapia ocupacional/, 'relatorio-to'],
+  [/psicolog/, 'relatorio-psicologia'],
+  [/relatorio de terapia|terapia|fono|psicolog/, 'relatorio-terapia'],
+  [/relatorio/, 'relatorio-medico'],
+  [/\blaudo/, 'laudo'],
+  [/atestado/, 'atestado'],
+  [/\bcat\b|comunicacao de acidente/, 'cat'],
+  [/boletim|\bbo\b/, 'boletim-ocorrencia'],
+  // GGVP-47: o exame da época do acidente e o posterior à alta, antes do exame comum.
+  [/(exame|ressonancia|raio x|tomografia).*(epoca|do acidente)/, 'exame-imagem-epoca'],
+  [/(exame|ressonancia|raio x|tomografia).*(pos alta|apos a alta)/, 'exame-pos-alta'],
+  [/exame|ressonancia|raio x|tomografia|ultrassom/, 'exame'],
+  [/pronto socorro/, 'ficha-pronto-socorro'],
+  [/\bppp\b|perfil profissiografico/, 'ppp'],
   [/receita/, 'receita'],
   [/prontuario/, 'prontuario'],
   [/\brg\b|identidade/, 'rg'],

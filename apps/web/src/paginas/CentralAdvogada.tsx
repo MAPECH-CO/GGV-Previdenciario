@@ -9,6 +9,7 @@ import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { tarefasDaAdvogada } from '../dados/preparacao.ts'
+import { daSenior, tarefasDoParecer } from '../dados/parecer.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
@@ -20,7 +21,8 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
-  const [deExemplo] = useState(tarefasDaAdvogada)
+  // O laudo novo e o parecer médico nascem do caso (GGVP-20); a aprovação da dispensa é da outra sênior (GGVP-33).
+  const [deExemplo] = useState(() => [...tarefasDaAdvogada(), ...tarefasDoParecer().filter((t) => !daSenior(t))])
   // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []

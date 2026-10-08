@@ -101,6 +101,12 @@ describe('Receber documento · servidor de exemplo', () => {
     expect(tarefasDeCompletarTelefone()).toEqual([])
   })
 
+  it('GGVP-29 CA5 · relatório médico e prontuário também são laudo novo; atestado e exame, não', async () => {
+    expect(await pelaFicha('rita-exemplo', arquivo('atestado.pdf', 'atestado', 1), arquivo('exame.pdf', 'exame', 2))).toMatchObject({ laudoNovo: false })
+    expect(await pelaFicha('rita-exemplo', arquivo('relatorio medico.pdf', 'relatorio-medico', 3))).toMatchObject({ laudoNovo: true })
+    expect((await obterFicha('rita-exemplo'))?.processos[0].laudoNovoEm).toBe('2026-10-05')
+  })
+
   it('CA6, CA7 e CA9 · laudo novo marca a ficha e o processo, a IA resume só para o Jurídico e a advogada recebe a tarefa', async () => {
     const resposta = await pelaFicha('antonio-exemplo', arquivo('laudo_ortopedia_set2026.pdf', 'laudo', 1))
     expect(resposta).toMatchObject({ resultado: 'enviado', laudoNovo: true })

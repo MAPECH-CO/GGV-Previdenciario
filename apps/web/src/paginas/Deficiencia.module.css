@@ -1,0 +1,181 @@
+/* O resto vem de Balcao.module.css e Parecer.module.css: o visual das telas de passo (a linha do tempo não tem quadro
+   próprio no Figma; as cores dos graus seguem os tokens, e "sem prova da época" é a cor de ação, GGVP-42). */
+.campos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fonte-12);
+}
+
+.campo input,
+.campo select {
+  padding: 9px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-14);
+}
+
+.agravamentos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tirar {
+  padding: 9px 0;
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.amostra {
+  display: inline-block;
+  width: 22px;
+  height: 10px;
+  margin-right: -6px;
+  border-radius: 3px;
+}
+
+.amostra,
+.trecho {
+  background: var(--cor-painel-neutro);
+}
+
+.amostra[data-faixa='leve'],
+.trecho[data-faixa='leve'] {
+  background: var(--cor-advogada-suave);
+}
+
+.amostra[data-faixa='moderada'],
+.trecho[data-faixa='moderada'] {
+  background: var(--cor-senior-suave);
+}
+
+.amostra[data-faixa='grave'],
+.trecho[data-faixa='grave'] {
+  background: var(--cor-erro-suave);
+}
+
+.amostra[data-sem-prova],
+.trecho[data-sem-prova] {
+  background: var(--cor-acento);
+}
+
+.vinculos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vinculo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vinculoTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: var(--fonte-14);
+}
+
+.selo {
+  padding: 2px 8px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.barra {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: var(--raio-6);
+}
+
+.trecho {
+  min-width: 4px;
+}
+
+.periodos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fonte-13);
+}
+
+.periodo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--cor-linha);
+}
+
+.periodo[data-sem-prova] {
+  border-left-color: var(--cor-acento);
+  background: var(--cor-acento-suave);
+}
+
+.semProva {
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.resumo {
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+.totais {
+  display: grid;
+  grid-template-columns: minmax(140px, 260px) 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: var(--fonte-14);
+}
+
+.totais dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.totais dd {
+  margin: 0;
+}

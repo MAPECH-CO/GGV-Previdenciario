@@ -81,6 +81,32 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'declaracao-uniao-estavel', nome: 'Declaração de união estável' },
   { id: 'declaracao-separacao', nome: 'Declaração de separação de fato' },
   { id: 'notas-produtor', nome: 'Notas do produtor rural' },
+  // GGVP-95: os documentos médicos que a IA classifica (laudo, receita e prontuário já estão acima).
+  { id: 'atestado', nome: 'Atestado médico' },
+  { id: 'relatorio-medico', nome: 'Relatório médico' },
+  { id: 'exame', nome: 'Exame' },
+  { id: 'cat', nome: 'CAT (Comunicação de Acidente de Trabalho)' },
+  { id: 'boletim-ocorrencia', nome: 'Boletim de ocorrência' },
+  { id: 'relatorio-escolar', nome: 'Relatório escolar' },
+  { id: 'relatorio-terapia', nome: 'Relatório de terapia' },
+  // GGVP-42: as provas da deficiência na época de cada vínculo.
+  { id: 'aso', nome: 'ASO (atestado de saúde ocupacional)' },
+  { id: 'contratacao-cota', nome: 'Contratação por cota (PCD)' },
+  // GGVP-47: as provas do acidente que ainda não estavam (CAT, boletim e prontuário já estão acima).
+  { id: 'ficha-pronto-socorro', nome: 'Ficha do pronto-socorro' },
+  { id: 'exame-imagem-epoca', nome: 'Exame de imagem da época do acidente' },
+  { id: 'exame-pos-alta', nome: 'Exame posterior à alta' },
+  { id: 'ppp', nome: 'PPP (Perfil Profissiográfico Previdenciário)' },
+  // Respostas do Lucas de 07/10 (GGVP-47): fotos, exames da doença ocupacional e a cópia do processo do auxílio anterior.
+  { id: 'fotos-acidente', nome: 'Fotos do acidente' },
+  { id: 'exame-evolucao', nome: 'Exames do quadro e da evolução' },
+  { id: 'processo-auxilio-anterior', nome: 'Cópia do processo do auxílio por incapacidade temporária' },
+  // GGVP-50: os relatórios do caso da criança, por condição e por terapia (o escolar já está acima).
+  { id: 'relatorio-caps', nome: 'Relatório do CAPS' },
+  { id: 'relatorio-neurologia', nome: 'Relatório da neurologia' },
+  { id: 'relatorio-fono', nome: 'Relatório de fonoaudiologia' },
+  { id: 'relatorio-to', nome: 'Relatório de terapia ocupacional' },
+  { id: 'relatorio-psicologia', nome: 'Relatório de psicologia' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

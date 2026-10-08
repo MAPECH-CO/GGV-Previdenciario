@@ -32,6 +32,12 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 import type { Contrato } from './contrato.ts'
+import type { Roteiro } from '../regras/roteiro.ts'
+import type { ParecerDoCaso } from './parecer.ts'
+import type { Complemento } from './complemento.ts'
+import type { DeficienciaDoCaso } from './deficiencia.ts'
+import type { AcidenteDoCaso } from './acidente.ts'
+import type { CriancaDoCaso } from './infantil.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -71,6 +77,18 @@ export type Banco = {
   cobrancas?: Cobranca[]
   /** Quem liberou cada caso ao Jurídico, e quando (GGVP-18). */
   liberacoes?: Liberacao[]
+  /** Os roteiros de conteúdo mínimo, com as versões (GGVP-93). Sem ele, começa da semente de roteiro.ts. */
+  roteiros?: Roteiro[]
+  /** A análise da IA e o registro do parecer médico de cada caso (GGVP-20). Sem ele, começa da semente de parecer.ts. */
+  pareceres?: ParecerDoCaso[]
+  /** A pendência de complemento ao médico de cada caso (GGVP-20 abre, GGVP-29 conduz). */
+  complementos?: Complemento[]
+  /** Os dados da deficiência de cada caso de Aposentadoria PCD (GGVP-42). Sem ele, começa da semente de deficiencia.ts. */
+  deficiencias?: DeficienciaDoCaso[]
+  /** A circunstância do acidente de cada caso de Auxílio-Acidente (GGVP-47). Sem ela, o checklist pede para marcar. */
+  acidentes?: AcidenteDoCaso[]
+  /** A condição e as terapias de cada criança do LOAS Deficiente de menor de 16 anos (GGVP-50). Dado de saúde. */
+  criancas?: CriancaDoCaso[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

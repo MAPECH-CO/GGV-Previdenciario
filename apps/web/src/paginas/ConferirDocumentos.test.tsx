@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { enviarArquivos } from '../dados/documentos.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { ConferirDocumentos } from './ConferirDocumentos.tsx'
 
@@ -32,7 +33,7 @@ describe('Conferir documento · tela do passo', () => {
     ])
     expect(screen.getByText('2 para conferir com atenção')).toBeTruthy()
     // Documento médico: a Documentação confirma, sem abrir o conteúdo (CA16).
-    expect(lidos().getByText('o conteúdo fica com o Jurídico')).toBeTruthy()
+    expect(lidos().getByText('o conteúdo fica com o Jurídico, que recebe a análise da IA')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Antes de concluir' })).toBeTruthy()
   })
 
@@ -114,4 +115,37 @@ describe('Conferir documento · tela do passo', () => {
     expect(screen.getByRole('heading', { name: 'Nada para conferir' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Arquivar' })).toBeNull()
   })
+
+  it('GGVP-95 CA1 · o documento médico mostra o tipo, a data de emissão, o médico e o registro, sem o conteúdo', async () => {
+    await abrir()
+    const laudo = lidos().getByText('Laudo médico').closest('li')!
+    expect(laudo.textContent).toContain('digitalizado · emitido em 20/08/2026 · Dra. Exemplo Neurologista · CRM-SP 000000 · confiança 62%')
+    expect(laudo.textContent).toContain('documento médico')
+    expect(within(laudo as HTMLElement).queryByRole('link', { name: /Abrir/ })).toBeNull()
+  })
+
+  it('GGVP-95 CA2 · reclassificar o laudo mostra o que a IA sugeriu, e a correção vai para o histórico', async () => {
+    await abrir()
+    fireEvent.click(screen.getByRole('button', { name: 'Reclassificar' }))
+    fireEvent.change(screen.getByRole('combobox', { name: /Tipo de Laudo medico/ }), { target: { value: 'relatorio-medico' } })
+    expect(lidos().getByText('corrigido: a IA sugeriu Laudo médico')).toBeTruthy()
+    fireEvent.click(screen.getByRole('radio', { name: 'Manter os dois' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Conferi os documentos lidos pela IA' }))
+    fireEvent.click(arquivar())
+    await screen.findByRole('heading', { name: '✓ Arquivado às 14:32' })
+    expect((await obterFicha('rita-exemplo'))?.historico.at(-2)?.oQue).toMatch(/^Corrigiu a classificação de Laudo medico .*: a IA sugeriu Laudo médico; ficou Relatório médico$/)
+  })
+
+  it('GGVP-95 CA3 · o ilegível aparece à parte, com o original guardado e a pendência do Atendimento', async () => {
+    await enviarArquivos('maria-exemplo', {
+      origem: 'card',
+      arquivos: [{ nome: 'laudo ilegivel.pdf', formato: 'pdf', tamanho: 1000, tipo: 'laudo', hash: '9'.padStart(64, '0') }],
+    })
+    await abrir('maria-exemplo')
+    const ilegiveis = screen.getByRole('list', { name: 'Documentos ilegíveis' })
+    expect(ilegiveis.textContent).toContain('Laudo médico · laudo ilegivel.pdf')
+    expect(ilegiveis.textContent).toContain('O original fica guardado na pasta; o Atendimento recebeu «Pedir documento legível»')
+    expect(screen.queryByRole('button', { name: 'Arquivar' })).toBeNull()
+  })
 })
+

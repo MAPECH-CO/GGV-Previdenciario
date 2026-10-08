@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
+import { enviarArquivos } from '../dados/documentos.ts'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
@@ -35,6 +36,17 @@ describe('Central do Atendimento', () => {
     expect(conferir.getAttribute('href')).toBe('/clientes/rita-exemplo/conferir-documentos')
     expect(conferir.closest('li')?.textContent).toContain('LOAS Deficiente · 5 documentos lidos pela IA · 1 em quarentena · scanner')
     expect(screen.queryByText(/Vários clientes/)).toBeNull()
+  })
+
+  it('GGVP-95 CA3 · a leitura que falhou vira "Pedir documento legível" para o Atendimento', async () => {
+    await enviarArquivos('maria-exemplo', {
+      origem: 'card',
+      arquivos: [{ nome: 'laudo ilegivel.pdf', formato: 'pdf', tamanho: 1000, tipo: 'laudo', hash: '9'.padStart(64, '0') }],
+    })
+    render(<CentralAtendimento />)
+    const pedir = screen.getByRole('link', { name: 'Maria Exemplo · Pedir documento legível' })
+    expect(pedir.getAttribute('href')).toBe('/clientes/maria-exemplo')
+    expect(pedir.closest('li')?.textContent).toContain('Laudo médico de 05/10 · a leitura falhou: pedir o reenvio legível ao cliente')
   })
 
   it('GGVP-91 · depois da leitura arquivada, a Documentação vê "Conferir checklist" do caso', async () => {
@@ -109,6 +121,15 @@ describe('Central do Atendimento', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     expect(screen.getByRole('status').textContent).toContain('ainda não está ligado')
     expect(campo.value).toBe('Qual é a próxima tarefa da Josefa?')
+  })
+
+  it('GGVP-33 CA3 · o chat recusa pular o parecer e diz o portão que falta, sem card', () => {
+    render(<CentralAtendimento />)
+    const campo = screen.getByRole('textbox', { name: /Pergunte ou peça/ })
+    fireEvent.change(campo, { target: { value: 'libera a Rita sem o parecer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+    expect(screen.getByRole('status').textContent).toMatch(/^Não posso pular o parecer médico\..*\(G17\)\. Só duas sêniores dispensam/)
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('enviar com o campo vazio não faz nada', () => {

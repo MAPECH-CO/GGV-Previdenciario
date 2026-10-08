@@ -84,7 +84,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
     )
   }
 
-  const { ficha, processo, documentos, destinos } = conferencia
+  const { ficha, processo, documentos, destinos, ilegiveis } = conferencia
   const recarregar = async () => aplicar(await documentosLidos(fichaId))
   const aConferir = documentos.filter((d) => d.situacao === 'a-conferir')
   const emQuarentena = documentos.filter((d) => d.situacao === 'quarentena')
@@ -242,7 +242,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
             <p className={styles.subtitulo}>{digital ? 'digitais' : 'digitalizados'} · ler e arquivar</p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processo?.id}>
             A IA leu os documentos {digital ? 'que chegaram pelo card' : 'digitalizados'} de {ficha.nome.split(' ')[0]} e sugeriu tipo e
             data de cada um. Abra cada um, confira a leitura e se a imagem está legível.
             {loas && ` Para ${beneficio} o kit precisa de RG e CPF de todos da casa, comprovante de renda e de residência e CadÚnico: o que faltar vai para a cobrança (D1.23).`}{' '}
@@ -343,7 +343,8 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                           <span className={proprio.info}>
                             <span className={proprio.nome}>{nomeTipo(e.tipo)}</span>
                             <span className={proprio.detalhe}>
-                              {d.origem === 'scanner' ? 'digitalizado' : 'anexado ao card'} · {e.data || 'sem data'} · confiança {d.confianca}%
+                              {d.origem === 'scanner' ? 'digitalizado' : 'anexado ao card'} · {ehMedico(e.tipo) ? `emitido em ${e.data || 'data não lida'}` : e.data || 'sem data'}
+                              {ehMedico(e.tipo) && ` · ${d.emitente ?? 'emitente não lido'}${d.registro ? ` · ${d.registro}` : ''}`} · confiança {d.confianca}%
                             </span>
                             <span className={proprio.selos}>
                               {baixaConfianca(d.confianca) && <span className={proprio.seloAlerta}>baixa confiança: confira com atenção</span>}
@@ -353,6 +354,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                               {d.semAssinatura && <span className={proprio.seloAlerta}>sem assinatura (G1)</span>}
                               {d.dataEmBranco && <span className={proprio.seloAlerta}>data em branco (G1)</span>}
                               {ehMedico(e.tipo) && <span className={proprio.selo}>documento médico</span>}
+                              {e.tipo !== d.tipo && <span className={proprio.seloAlerta}>corrigido: a IA sugeriu {nomeTipo(d.tipo)}</span>}
                             </span>
                           </span>
                           {reclassificar ? (
@@ -376,7 +378,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                               />
                             </span>
                           ) : ehMedico(e.tipo) ? (
-                            <span className={proprio.detalhe}>o conteúdo fica com o Jurídico</span>
+                            <span className={proprio.detalhe}>o conteúdo fica com o Jurídico, que recebe a análise da IA</span>
                           ) : (
                             <a className={proprio.abrir} href={`/clientes/${ficha.id}`} aria-label={`Abrir ${nomeTipo(e.tipo)}`}>
                               Abrir
@@ -441,6 +443,26 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
           )}
 
           {quarentena}
+
+          {ilegiveis.length > 0 && (
+            <section className={styles.cartao} aria-labelledby="ilegiveis">
+              <h2 id="ilegiveis" className={styles.cartaoTitulo}>
+                Ilegíveis · a leitura falhou
+              </h2>
+              <ul className={proprio.quarentena} aria-label="Documentos ilegíveis">
+                {ilegiveis.map((d) => (
+                  <li key={d.id}>
+                    <span>
+                      <strong>{nomeTipo(d.tipo)}</strong> · {d.arquivo}
+                    </span>
+                    <span className={proprio.motivoQuarentena}>
+                      A IA não conseguiu ler. O original fica guardado na pasta; o Atendimento recebeu «Pedir documento legível» para pedir o reenvio ao cliente.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {!feito && aConferir.length > 0 && (
             <>

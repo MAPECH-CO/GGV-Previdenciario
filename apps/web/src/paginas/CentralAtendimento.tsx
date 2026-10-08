@@ -26,6 +26,8 @@ import styles from './CentralAtendimento.module.css'
 import { tarefasDoContrato } from '../dados/contrato.ts'
 import { tarefasDeFechamento } from '../dados/fechamento.ts'
 import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
+import { tarefasDePedirLegivel } from '../dados/leitura.ts'
+import { tarefasDeComplemento } from '../dados/complemento.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -53,6 +55,8 @@ export function CentralAtendimento() {
     ...tarefasDeLiberar(),
     ...tarefasDeFechamento(),
     ...tarefasDeNovaDemanda(),
+    ...tarefasDePedirLegivel(),
+    ...tarefasDeComplemento(),
   ])
   // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
+import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { liberarAoJuridico, obterLiberacao, type CasoParaLiberar } from '../dados/liberacao.ts'
 import { agora } from '../dados/servidor.ts'
@@ -29,6 +30,8 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
   const [conferiAssinaturas, setConferiAssinaturas] = useState(false)
   const [liberando, setLiberando] = useState(false)
   const [erro, setErro] = useState('')
+  // A janela do parecer médico (GGVP-20), na visão da Documentação.
+  const [parecerAberto, setParecerAberto] = useState(false)
   const travado = useRef(false)
 
   useEffect(() => {
@@ -58,11 +61,22 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
   const parecerOk = parecerEmOrdem(processo.beneficio, parecer)
   const trava = travaDaLiberacao({ checklist, beneficio: processo.beneficio, nomeBeneficio: beneficio, parecer, conferiChecklist, conferiAssinaturas })
   const confirmado = parecer?.quem ? ` · confirmado por ${parecer.quem}${parecer.data ? `, ${dataCurta(parecer.data, hoje)}` : ''}` : ''
+  // O que o registro diz e, se não está em ordem, o que falta (GGVP-33, CA1 e CA4).
   const textoParecer = !precisaParecer
     ? `Parecer médico: não se aplica a ${beneficio} — registro, você não marca`
-    : parecerOk
-      ? `Parecer médico Suficiente (G17)${confirmado} — registro, você não marca`
-      : 'Parecer médico (G17): ainda não está Suficiente — registro do Jurídico, você não marca'
+    : parecer?.contradicoes?.length
+      ? 'Parecer médico (G18): a IA achou contradição num documento que o Jurídico ainda não conferiu — registro, você não marca'
+      : parecer?.situacao === 'dispensado'
+      ? `Parecer médico dispensado por duas sêniores (G17) · ${parecer.quem}${parecer.data ? `, ${dataCurta(parecer.data, hoje)}` : ''} — registro, você não marca`
+      : parecerOk
+        ? `Parecer médico Suficiente (G17)${confirmado} — registro, você não marca`
+        : parecer?.situacao === 'contraditorio'
+          ? `Parecer médico Contraditório (G18)${confirmado}: o caso não avança — registro do Jurídico, você não marca`
+          : parecer?.situacao === 'insuficiente'
+            ? `Parecer médico Insuficiente (G17)${confirmado}: falta o complemento do médico — registro do Jurídico, você não marca`
+            : parecer?.situacao === 'pendente'
+              ? 'Parecer médico (G17): a IA analisou, falta a conferência do Jurídico — registro, você não marca'
+              : 'Parecer médico (G17): ainda não está Suficiente — registro do Jurídico, você não marca'
 
   async function liberar() {
     if (travado.current || trava) return
@@ -100,7 +114,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
             <p className={styles.subtitulo}>{beneficio} · conferir a documentação</p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId}>
             Antes de liberar o caso de {ficha.nome.split(' ')[0]} ao Jurídico, confira o kit do {beneficio}: {juntar(checklist.itens.map((i) => i.nome))}.
             {precisaParecer && ' O parecer médico precisa estar "Suficiente", confirmado por pessoa (G17).'} Abra cada documento antes de liberar.
           </InstrucoesPasso>
@@ -179,10 +193,21 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
               <dd>{beneficio}</dd>
               <dd />
               <dt>Parecer médico</dt>
-              <dd className={proprio.destaque}>{!precisaParecer ? 'não se aplica' : parecerOk ? 'Suficiente' : 'pendente'}</dd>
+              <dd className={proprio.destaque}>
+                {!precisaParecer
+                  ? 'não se aplica'
+                  : parecer?.situacao === 'dispensado'
+                    ? 'Dispensado'
+                    : parecerOk
+                      ? 'Suficiente'
+                      : parecer?.situacao === 'insuficiente'
+                        ? 'Insuficiente'
+                        : parecer?.situacao === 'contraditorio'
+                          ? 'Contraditório'
+                          : 'pendente'}
+              </dd>
               <dd>
-                {/* O parecer é da GGVP-20. */}
-                <button type="button" className={proprio.abrir} aria-disabled="true" aria-label="Abrir o parecer médico">
+                <button type="button" className={proprio.abrir} aria-label="Abrir o parecer médico" onClick={() => setParecerAberto(true)}>
                   Abrir ›
                 </button>
               </dd>
@@ -249,6 +274,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
         </aside>
       </main>
       <AbaSuporte />
+      {parecerAberto && <ParecerMedico processoId={processoId} funcao="Documentação" aoFechar={() => setParecerAberto(false)} />}
     </>
   )
 }

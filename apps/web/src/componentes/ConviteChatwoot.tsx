@@ -3,10 +3,11 @@ import { formatarTelefone } from '../campos.ts'
 import { prepararConvite, registrarConvite } from '../dados/agenda.ts'
 import { obterCobranca, registrarTentativa } from '../dados/cobranca.ts'
 import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confirmacao.ts'
+import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import styles from './ConviteChatwoot.module.css'
 
-/** O convite da entrevista (GGVP-123), a confirmação dela (GGVP-21) ou a cobrança dos documentos pendentes (GGVP-101). */
-type Assunto = 'convite' | 'confirmacao' | 'cobranca'
+/** O convite da entrevista (GGVP-123), a confirmação dela (GGVP-21), a cobrança dos documentos pendentes (GGVP-101) ou o pedido de complemento ao médico (GGVP-29). */
+type Assunto = 'convite' | 'confirmacao' | 'cobranca' | 'complemento'
 
 type Props = { agendamentoId: string; assunto?: Assunto; aoEnviado: () => void; aoFechar: () => void }
 
@@ -30,6 +31,16 @@ const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Prom
       return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
     },
     enviar: (id) => registrarTentativa(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
+  },
+  // O id é o do processo; o envio da orientação conta como tentativa, ainda sem resposta (GGVP-29, CA3).
+  complemento: {
+    rotulo: 'Mensagem com a orientação ao médico (confira antes de enviar)',
+    carregar: async (id) => {
+      const dados = await obterComplemento(id)
+      if (!dados) throw new Error('Complemento não encontrado')
+      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
+    },
+    enviar: (id) => registrarTentativaDoComplemento(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
   },
 }
 
