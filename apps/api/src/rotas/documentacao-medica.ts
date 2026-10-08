@@ -3,7 +3,6 @@
 // conteúdo clínico: só o resultado e o que fazer. ponytail: monta caso a caso; um resumo no banco quando crescer.
 import { eq, isNotNull } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
-import type { Banco } from '../banco/conexao.ts'
 import { decisao, documentacaoMedica, documento, documentoMedico } from '../banco/esquema.ts'
 import { criarCasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir } from '../sessao/rotas.ts'
@@ -13,16 +12,17 @@ import { tarefasDoComplemento } from '../../../web/src/regras/complemento.ts'
 import type { Parecer } from '../../../web/src/regras/liberacao.ts'
 import { parecerDoPortao, tarefasDoCaso } from '../../../web/src/regras/parecerDoCaso.ts'
 import { criarComplementoDoCaso } from './complemento.ts'
-import { criarParecerDoCaso } from './parecer.ts'
+import { criarParecerDoCaso, type ComIa } from './parecer.ts'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = ComIa
 
 export type DocumentacaoMedicaDoServidor = { fichas: Ficha[]; tarefas: Tarefa[]; portoes: Record<string, Parecer> }
 
-export function registrarRotasDocumentacaoMedica(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasDocumentacaoMedica(app: FastifyInstance, opcoes: Opcoes) {
+  const { banco, agora = () => new Date() } = opcoes
   const { acharCaso } = criarCasoMedico(banco, agora)
-  const { emDia } = criarParecerDoCaso(banco, agora)
-  const { montar } = criarComplementoDoCaso(banco, agora)
+  const { emDia } = criarParecerDoCaso(opcoes)
+  const { montar } = criarComplementoDoCaso(opcoes)
 
   /** Os casos com documentação médica: documento médico, parecer, complemento ou pedido de dispensa. */
   async function casosComDocumentacao(): Promise<string[]> {
@@ -43,7 +43,7 @@ export function registrarRotasDocumentacaoMedica(app: FastifyInstance, { banco, 
       const c = await acharCaso(id)
       if (!c) continue
       fichas.set(c.ficha.id, c.ficha)
-      const { p, laudoNovoEm } = await emDia(c)
+      const { p, laudoNovoEm } = await emDia(c, { semChamar: true })
       tarefas.push(...tarefasDoCaso({ ficha: c.ficha, processo: c.processo, p, ...(laudoNovoEm && { laudoNovoEm }), hoje }))
       const portao = parecerDoPortao(p)
       if (portao) portoes[id] = portao

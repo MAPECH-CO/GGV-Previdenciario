@@ -35,6 +35,8 @@ export type DocumentoAnalisado = {
   resumo?: string
   /** Os itens do roteiro que a IA achou neste documento. */
   cobre?: string[]
+  /** A IA não leu este documento agora (desligada, sem autorização ou fora do formato): a pessoa confere (GGVP-134, CA5). */
+  semIa?: true
 }
 
 export type RoteiroUsado = { id: string; nome: string; versao: number }
@@ -53,6 +55,10 @@ export type AnaliseDaIA = {
   mudou: string[]
   /** Os documentos lidos: quando mudam, nasce outra análise. */
   assinatura: string
+  /** A IA de verdade (GGVP-134): o modelo, as chamadas registradas, os alertas e as fontes, para a tela mostrar. */
+  ia?: { modelo: string; chamadas: string[]; alertas: string[]; fontes: string[] }
+  /** Por que a análise segue manual, sem a IA (CA5). */
+  motivo?: string
 }
 
 /** O item como a advogada conferiu (CA3). */
@@ -201,9 +207,9 @@ export function lerDocumentoSimulado(doc: { tipo: string; arquivo: string }, ite
 
 export const comoCitar = (d: Pick<DocumentoAnalisado, 'tipo' | 'data'>) => `${nomeTipo(d.tipo)} · ${isoParaData(d.data) ?? d.data}`
 
-const assinaturaDe = (docs: Pick<DocumentoAnalisado, 'id' | 'tipo'>[]) =>
+const assinaturaDe = (docs: Pick<DocumentoAnalisado, 'id' | 'tipo' | 'semIa'>[]) =>
   docs
-    .map((d) => `${d.id}:${d.tipo}`)
+    .map((d) => `${d.id}:${d.tipo}${d.semIa ? ':manual' : ''}`)
     .sort()
     .join('|')
 
@@ -211,7 +217,14 @@ const assinaturaDe = (docs: Pick<DocumentoAnalisado, 'id' | 'tipo'>[]) =>
 export const comLaudo = (r: Roteiro | undefined): Roteiro | undefined | null => (!r ? undefined : r.laudo ? r : null)
 
 /** A análise dos documentos com o roteiro em vigor; a mesma de antes se os documentos não mudaram (CA4). */
-export function montarAnalise(roteiro: Roteiro | undefined | null, lidos: DocumentoLido[], anterior: AnaliseDaIA | undefined, quando: string): AnaliseDaIA | undefined {
+export function montarAnalise(
+  roteiro: Roteiro | undefined | null,
+  lidos: DocumentoLido[],
+  anterior: AnaliseDaIA | undefined,
+  quando: string,
+  /** O que a IA de verdade deixou (GGVP-134); sem ele, a IA simulada da semente. */
+  daIa: Pick<AnaliseDaIA, 'ia' | 'motivo'> = {},
+): AnaliseDaIA | undefined {
   if (roteiro === null) return undefined
   const versao = roteiro && emVigor(roteiro)
   const itensDoRoteiro = versao?.itens ?? []
@@ -221,7 +234,15 @@ export function montarAnalise(roteiro: Roteiro | undefined | null, lidos: Docume
       : d,
   )
   if (docs.length === 0) return undefined
-  const documentos: DocumentoAnalisado[] = docs.map(({ id, tipo, data, emitente, resumo, cobre }) => ({ id, tipo, data, ...(emitente && { emitente }), ...(resumo && { resumo }), cobre: Object.keys(cobre) }))
+  const documentos: DocumentoAnalisado[] = docs.map(({ id, tipo, data, emitente, resumo, cobre, semIa }) => ({
+    id,
+    tipo,
+    data,
+    ...(emitente && { emitente }),
+    ...(resumo && { resumo }),
+    cobre: Object.keys(cobre),
+    ...(semIa && { semIa }),
+  }))
   const assinatura = assinaturaDe(documentos)
   if (anterior?.assinatura === assinatura) return anterior
   const leituras: LeituraMedica[] = docs.map((d) => ({ documentoId: d.id, documento: comoCitar(d), data: d.data, cobre: d.cobre, contradiz: d.contradiz ?? {} }))
@@ -236,6 +257,8 @@ export function montarAnalise(roteiro: Roteiro | undefined | null, lidos: Docume
     sugestao: roteiro ? sugestao : 'sem-roteiro',
     mudou: mudancas(anterior?.itens, itens, novos),
     assinatura,
+    ...(daIa.ia && { ia: daIa.ia }),
+    ...(daIa.motivo && { motivo: daIa.motivo }),
   }
 }
 
@@ -472,7 +495,7 @@ export function tarefasDoCaso(d: {
       codigo: 'D1.21M',
       cliente,
       acao: 'Dar parecer médico',
-      detalhe: `${beneficio} · ${analise.sugestao === 'sem-roteiro' ? 'benefício sem roteiro: conferência manual' : `a IA sugere ${NOMES_DO_PARECER[analise.sugestao]}`} · confira item a item (G17)`,
+      detalhe: `${beneficio} · ${analise.sugestao === 'sem-roteiro' ? 'benefício sem roteiro: conferência manual' : analise.motivo ? 'a IA não leu os documentos: confira pela sua leitura' : `a IA sugere ${NOMES_DO_PARECER[analise.sugestao]}`} · confira item a item (G17)`,
       prazo: 'hoje',
       href: `/casos/${processo.id}/parecer`,
       processoId: processo.id,

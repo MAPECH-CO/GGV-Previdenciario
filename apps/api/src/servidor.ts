@@ -123,12 +123,12 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora })
     registrarRotasRoteiros(app, { banco, agora })
-    registrarRotasParecer(app, { banco, agora })
-    registrarRotasComplemento(app, { banco, agora })
+    registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
     registrarRotasDeficiencia(app, { banco, agora })
     registrarRotasAcidente(app, { banco, agora })
     registrarRotasCrianca(app, { banco, agora })
-    registrarRotasDocumentacaoMedica(app, { banco, agora })
+    registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

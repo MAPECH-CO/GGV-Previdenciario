@@ -55,9 +55,10 @@ describe('GGVP-132 · o complemento ao médico no servidor (GGVP-29)', () => {
   it('CA1, CA6 · o Atendimento vê o resultado, as perguntas e a orientação, sem conteúdo clínico; o Financeiro nem abre', async () => {
     const r = (await ver('ana')).json()
     expect([r.situacao, r.tentativa, r.complemento.parecer, r.ficha]).toEqual(['aberto', 1, 'insuficiente', { id: expect.any(String), nome: 'Rita Exemplo', telefone: '11999990000' }])
-    expect(r.complemento.perguntas[0]).toBe('Qual a previsão de duração do quadro?')
+    // Sem chave, a IA fica desligada e a análise segue manual: todo item obrigatório falta.
+    expect(r.complemento.perguntas[0]).toBe('Qual é a natureza do impedimento do paciente?')
     expect(r.orientacao).toContain('Qual a previsão de duração do quadro?')
-    expect(JSON.stringify(r)).not.toContain('(exemplo)')
+    expect(JSON.stringify(r)).not.toMatch(/trecho|evidencia/)
     expect((await ver('julia')).statusCode).toBe(403)
   })
 

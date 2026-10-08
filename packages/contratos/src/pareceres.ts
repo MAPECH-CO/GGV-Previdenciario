@@ -27,3 +27,16 @@ export const DecisaoDoComplemento = z.object({
   prazo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Informe o novo prazo, depois de hoje (dd/mm/aaaa).'),
 })
 export type DecisaoDoComplemento = z.infer<typeof DecisaoDoComplemento>
+
+const Lido = z.object({ item: z.string().trim().min(1).max(60), pagina: z.number().int().min(1).max(999).default(1), trecho: z.string().trim().min(1).max(500) })
+const MesOuDia = z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/)
+
+/** O que a IA devolve sobre um documento médico (GGVP-134, CA1 e CA3): o que ele cobre e contradiz do roteiro, com o trecho. */
+export const CoberturaDoRoteiroPelaIa = z.object({
+  cobre: z.array(Lido).max(40).default([]),
+  contradiz: z.array(Lido).max(40).default([]),
+  /** Copiadas do documento: a conta dos 24 meses do LOAS é do código (G19). */
+  datas: z.object({ inicio: MesOuDia, cessacao: MesOuDia.optional() }).nullable().default(null),
+})
+export type CoberturaDoRoteiroPelaIa = z.infer<typeof CoberturaDoRoteiroPelaIa>
+

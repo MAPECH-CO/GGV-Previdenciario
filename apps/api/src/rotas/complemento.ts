@@ -4,7 +4,6 @@
 // tentativa fica registrada, nada sai para o cliente daqui.
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { DecisaoDoComplemento, TentativaDoComplemento, type Erro } from '@ggv/contratos'
-import type { Banco } from '../banco/conexao.ts'
 import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -13,26 +12,27 @@ import { CANAIS, RESULTADOS, motivoParaNaoDecidir } from '../../../web/src/regra
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { complementoNaTela, doProcesso, type Complemento, type ComplementoNaTela } from '../../../web/src/regras/complemento.ts'
 import { previaDoComplemento } from '../../../web/src/regras/parecerDoCaso.ts'
-import { criarParecerDoCaso } from './parecer.ts'
+import { criarParecerDoCaso, type ComIa } from './parecer.ts'
 
 export const MSG_SEM_COMPLEMENTO = 'Complemento não encontrado.'
 export const MSG_COMPLEMENTO_ENCERRADO = 'O complemento já foi encerrado.'
 export const MSG_AINDA_NO_LIMITE = 'O complemento ainda não passou do limite.'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = ComIa
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /** O complemento do caso, comum às rotas e à sincronização das Centrais. */
-export function criarComplementoDoCaso(banco: Banco, agora: () => Date) {
+export function criarComplementoDoCaso(opcoes: ComIa) {
+  const { banco, agora = () => new Date() } = opcoes
   const { lerParte } = criarCasoMedico(banco, agora)
-  const { emDia } = criarParecerDoCaso(banco, agora)
+  const { emDia } = criarParecerDoCaso(opcoes)
 
   /** O complemento do caso como a tela do Atendimento recebe: o resultado e o que pedir, sem conteúdo clínico (CA6). */
   async function montar(c: CasoMedico): Promise<{ lista: Complemento[]; tela: ComplementoNaTela } | null> {
     const lista = (await lerParte<Complemento[]>(c.id, 'complemento')) ?? []
     const atual = doProcesso(lista, c.id)
     if (!atual) return null
-    const previa = previaDoComplemento((await emDia(c)).p)
+    const previa = previaDoComplemento((await emDia(c, { semChamar: true })).p)
     const tela = complementoNaTela(atual, { ficha: { id: c.ficha.id, nome: c.ficha.nome, telefone: c.ficha.telefone }, processo: c.processo, beneficio: nomeBeneficio(c.processo.beneficio), hoje: hojeEmBrasilia(agora()), ...(previa && { previa }) })
     return { lista, tela }
   }
@@ -40,10 +40,11 @@ export function criarComplementoDoCaso(banco: Banco, agora: () => Date) {
   return { montar }
 }
 
-export function registrarRotasComplemento(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasComplemento(app: FastifyInstance, opcoes: Opcoes) {
+  const { banco, agora = () => new Date() } = opcoes
   const historico = registrarHistorico(banco, agora)
   const { acharCaso, anotar, nomeDe, gravarParte } = criarCasoMedico(banco, agora)
-  const { montar } = criarComplementoDoCaso(banco, agora)
+  const { montar } = criarComplementoDoCaso(opcoes)
 
   app.get<{ Params: { id: string } }>('/api/processos/:id/complemento', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
     const c = await acharCaso(pedido.params.id)
