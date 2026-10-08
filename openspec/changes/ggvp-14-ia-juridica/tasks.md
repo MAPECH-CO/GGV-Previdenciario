@@ -51,3 +51,16 @@
 - [x] 7.1 GGVP-22: sem a publicação de mérito, a IA é avisada de que o motivo fica para a advogada; instrução `resumo_resultado` v3 (o porquê só do texto da decisão, senão "[completar: o motivo da decisão]"); teste.
 - [x] 7.2 GGVP-131: o laudo novo vai à IA em frase inteira, não em "sim/não"; teste.
 - [x] 7.3 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-45 · Buscar no acervo antes de escrever
+
+- [x] 8.1 `buscarNoAcervo` com busca por texto em português, mesmo benefício, sem o próprio caso, até 3 trechos anonimizados; testes (CA1, CA2, CA4, CA6).
+- [x] 8.2 Minuta da petição: com "Usar precedentes", os trechos vão à IA e às fontes; sem nada, "Sem referência na casa"; instrução `minuta_peticao` v3 (a tese sim, fato e nome de outro cliente não; sem número); testes (CA1, CA2, CA5).
+- [x] 8.3 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-54 · A IA analisa o motivo do indeferimento
+
+- [x] 9.1 Contratos: `AnaliseDoIndeferimentoPelaIa`, `AnaliseDoDespacho`; `Despachar` aceita `chamadaIaId`.
+- [x] 9.2 Servidor: finalidade `analisar_indeferimento`; `POST /api/casos/:id/despacho/analise` (perfil `caso.despachar_indeferimento`, despacho esperando) com o caso e o acervo; o despacho guarda `sugestao_ia`; testes com IA falsa (CA1, CA4).
+- [x] 9.3 Tela "Despachar caso": "Analisar com a IA", a análise marcada como sugestão, as fontes e "Usar a sugestão"; testes de tela.
+- [x] 9.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

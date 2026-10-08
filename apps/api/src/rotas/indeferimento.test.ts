@@ -6,7 +6,9 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, etapa, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, decisao, etapa, eventoAuditoria, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_NADA_A_DESPACHAR } from './indeferimento.ts'
@@ -140,5 +142,58 @@ describe('GGVP-54 · a Sênior despacha', () => {
     const pedido = { setor: 'atendimento', descricao: 'teste', temPrazo: false }
     expect((await despachar({ decisao: 'acionar', itens: [pedido, pedido] })).json().erro).toBe('Cada setor recebe um pedido só')
     expect(await abertas()).toEqual(['senior · Despachar caso'])
+  })
+})
+
+describe('Épico IA · a IA analisa o indeferimento e a Sênior despacha (GGVP-54 CA1, CA4; G4)', () => {
+  const LEITURA = {
+    analise: 'O INSS somou a renda do filho que mora à parte. Provar a moradia separada rebate o motivo.',
+    nadaFalta: false,
+    itens: [{ setor: 'documentacao', descricao: 'Comprovante de residência do filho' }],
+    pericias: ['social'],
+  }
+  let enviado = ''
+  const comIa = (resposta: string) => {
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      enviado = JSON.parse(String(init?.body)).messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: resposta } }] }))
+    }
+    app = criarServidor({
+      banco,
+      agora: () => AGORA,
+      armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))),
+      ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }),
+    })
+  }
+  const analisar = async (apelido = 'helena') => app.inject({ method: 'POST', url: `/api/casos/${casoId}/despacho/analise`, cookies: await cookieDe(apelido) })
+
+  it('CA1 · a Sênior recebe a análise com o motivo, os documentos e o acervo; o Atendimento não pode pedir; nada é gravado', async () => {
+    const [p] = await banco.insert(pessoa).values({ nome: 'Rosa Antunes' }).returning()
+    const [outro] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'judicial' }).returning()
+    await banco.insert(resultadoInss).values({ casoId: outro.id, resultado: 'indeferido', dataDecisao: '2026-08-01', motivoEscrito: 'O INSS somou a renda do filho casado de Rosa Antunes.' })
+    comIa(JSON.stringify(LEITURA))
+    expect((await analisar('ana')).statusCode).toBe(403)
+    const r = (await analisar()).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.leitura.itens, r.leitura.pericias, r.motivo, r.aviso]).toEqual([LEITURA.analise, true, LEITURA.itens, ['social'], null, null])
+    expect(r.sugestao.fontes.map((f: { tipo: string; referencia: string }) => f.tipo)).toEqual(['caso', 'acervo'])
+    for (const trecho of ['BPC/LOAS Idoso', 'Renda per capita acima de 1/4', 'O INSS somou a renda do filho', 'carta-inss.pdf', 'Trechos do acervo da casa']) expect(enviado).toContain(trecho)
+    expect(enviado).not.toContain('Rosa')
+    expect(await banco.select().from(decisao).where(eq(decisao.tipo, 'despacho'))).toEqual([])
+    expect(await abertas()).toEqual(['senior · Despachar caso'])
+  })
+
+  it('CA1 · resposta fora do formato vira "sem sugestão"; sem nada parecido no acervo, avisa', async () => {
+    comIa('Acho que falta o CNIS.')
+    expect((await analisar()).json()).toEqual({ sugestao: null, leitura: null, motivo: 'A IA respondeu fora do formato: despache pela sua leitura.', aviso: MSG_SEM_REFERENCIA })
+  })
+
+  it('CA4 · a Sênior despacha diferente da sugestão: o despacho vale e a chamada da IA fica à parte; sem despacho esperando, não há análise', async () => {
+    comIa(JSON.stringify(LEITURA))
+    const r = (await analisar()).json()
+    const feito = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/despacho`, cookies: await cookieDe('helena'), payload: { decisao: 'nada_falta', chamadaIaId: r.sugestao.chamadaId } })
+    expect(feito.statusCode).toBe(201)
+    const [d] = await banco.select().from(decisao).where(eq(decisao.tipo, 'despacho'))
+    expect([d.resultado, d.sugestaoIa]).toEqual(['nada_falta', { chamadaId: r.sugestao.chamadaId }])
+    expect((await analisar()).json().erro).toBe(MSG_NADA_A_DESPACHAR)
   })
 })

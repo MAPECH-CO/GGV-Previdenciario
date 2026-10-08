@@ -59,7 +59,7 @@ export const FINALIDADES = {
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {
-    versao: 2,
+    versao: 3,
     saude: true,
     json: false,
     barrarCid: false,
@@ -69,6 +69,7 @@ export const FINALIDADES = {
       'Use só os fatos, documentos e dados do conteúdo; o que faltar, escreva [completar: o que falta]. Cite os documentos pelo nome, entre parênteses.',
       'Não invente jurisprudência, número de processo, data nem dado médico. Não ponha porcentagem nem número de jurimetria.',
       'Não mencione a organização interna do escritório (setores, Sênior, despacho, tarefas): a peça fala só do autor, do INSS e das provas.',
+      'Trechos do acervo da casa, quando houver, mostram como o escritório já argumentou: aproveite a tese e a estrutura, nunca fatos, nomes, datas ou dados de outro cliente.',
     ].join(' '),
   },
   /** GGVP-131: a IA explica os fatores da chance; o número vem do código e chega pronto no conteúdo. */
@@ -80,6 +81,20 @@ export const FINALIDADES = {
     instrucao: [
       'Para a Sênior do escritório, liste em tópicos curtos: (1) os fatores do caso que puxam a chance de êxito para cima; (2) os que puxam para baixo; (3) o que fazer para a chance subir, com a ação concreta (por exemplo, trazer o relatório do médico assistente ou o documento da época).',
       'Use só o que está no conteúdo. Não calcule nem invente porcentagem: se houver número, ele vem do sistema e você só o cita como está.',
+    ].join(' '),
+  },
+  /** GGVP-54 (G4): a IA analisa o indeferimento e sugere o que falta; quem despacha é a Sênior. Leitura interna. */
+  analisar_indeferimento: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a Sênior de um escritório previdenciário a despachar um caso indeferido pelo INSS que vai para a Justiça.',
+      'Leia o motivo do indeferimento, o parecer médico, os documentos do caso e, se houver, os trechos do acervo (como a casa respondeu a indeferimentos parecidos), e responda só com um objeto JSON:',
+      '{"analise": "em até 5 frases: por que o INSS negou e o que rebate isso", "nadaFalta": true se o caso já tem o que precisa para a petição, "itens": [{"setor": "atendimento" | "documentacao", "descricao": "o que o setor deve obter, concreto"}], "pericias": ["medica" | "social"]}.',
+      'Atendimento fala com o cliente (pedir documento que só ele tem, laudo do médico assistente); Documentação busca e organiza documento (CNIS, processo administrativo, carta). No máximo um item por setor. Peça perícia só se o motivo for médico ou social.',
+      'Use só o que está no conteúdo; não invente documento que o caso não tem como se tivesse. Se nadaFalta for true, itens e pericias vazios.',
     ].join(' '),
   },
 } as const

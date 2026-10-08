@@ -7,9 +7,10 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AprovarPeticao, MinutaDaIa, NovaVersao, PedirMinuta, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, processoAcervo, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
 import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
 import type { Ia } from '../ia/ia.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
@@ -229,6 +230,10 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const citados = d.citados.map((x) => (x.documentoId ? docs.find((y) => y.id === x.documentoId)!.nome : `${x.nome} (ainda falta)`))
     const motivo = indeferido?.motivoEscrito ?? indeferido?.motivoIndeferimento ?? null
     const itensDoParecer = ((parecer?.itens as { item: string; atendido: boolean }[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
+    // GGVP-45 CA1, CA2: com "usar precedentes", o acervo é consultado antes de escrever, pelo motivo, provas e instruções.
+    const acervo = d.opcoes.precedentes
+      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' ') })
+      : []
     const conteudo = [
       `Cliente (autor): ${c.nome}`,
       `Benefício pedido: ${c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : '[completar]'}`,
@@ -238,15 +243,15 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       `Documentos citados, na ordem: ${citados.length ? citados.join('; ') : 'nenhum'}`,
       `Tutela de urgência: ${d.opcoes.tutelaUrgencia ? 'pedir' : 'não pedir'}`,
       `Instruções da advogada: ${d.instrucoes || 'nenhuma'}`,
+      ...(acervo.length ? ['Trechos do acervo da casa (outros casos; só a tese serve, nunca os fatos de outro cliente):', ...acervo.map((a) => `- ${a.trecho}`)] : []),
     ].join('\n')
     const fontes: FonteDaIa[] = [
       ...docs.map((x) => ({ tipo: 'documento' as const, referencia: `documento:${x.id}`, trecho: x.nome })),
       ...(indeferido ? [{ tipo: 'caso' as const, referencia: `indeferimento:${indeferido.id}`, trecho: motivo ?? undefined }] : []),
       ...(parecer ? [{ tipo: 'caso' as const, referencia: `parecer:${parecer.id}`, trecho: parecer.resultado }] : []),
+      ...acervo,
     ]
-    // GGVP-45 CA2: o acervo ainda não tem a busca; com "usar precedentes" marcado, a tela avisa.
-    const [algumCaso] = d.opcoes.precedentes ? await banco.select({ id: processoAcervo.id }).from(processoAcervo).limit(1) : [undefined]
-    const aviso = d.opcoes.precedentes ? (algumCaso ? 'A busca no acervo ainda não entrou: a minuta não usou precedentes da casa.' : 'Sem referência na casa: o acervo ainda não tem casos para consultar.') : null
+    const aviso = d.opcoes.precedentes && !acervo.length ? MSG_SEM_REFERENCIA : null
     const s = await ia.sugerir('minuta_peticao', { casoId, quem: pedido.usuario!.id, conteudo, fontes })
     return MinutaDaIa.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
   })

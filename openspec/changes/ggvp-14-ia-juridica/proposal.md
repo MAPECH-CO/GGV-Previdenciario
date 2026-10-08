@@ -14,7 +14,7 @@ Branch empilhada na Garantia (`feat/GGVP-13-garantia-e-governanca`, PR #18), que
 
 ## Autorização do escritório (07/10)
 
-O Mateus informou em 07/10 que o escritório autoriza o uso da IA no sistema inteiro, inclusive com dado de saúde (laudo, receita, parecer). A plataforma continua exigindo `IA_PERMITE_DADO_DE_SAUDE=sim` no ambiente (`.env.ia` e Coolify), para a autorização ficar explícita e poder ser desligada. Pedido ao Lucas: registrar a autorização no Jira.
+O Mateus informou em 07/10 que o escritório (Lucas, dono e PO) autoriza o uso da IA no sistema inteiro, inclusive com dado de saúde (laudo, receita, parecer). A plataforma continua exigindo `IA_PERMITE_DADO_DE_SAUDE=sim` no ambiente (`.env.ia` e Coolify), para a autorização ficar explícita e poder ser desligada. Não precisa de registro no Jira (Mateus, 07/10).
 
 ## A IA no que já existe (depois da plataforma)
 
@@ -24,6 +24,11 @@ Cada integração completa a parte de IA que a história deixou para este épico
 5. **GGVP-63** · Pedir a petição: a IA escreve a versão 1, com as fontes; a advogada confere e assina (G6).
 6. **GGVP-22** · Explicar o resultado: a IA sugere o resumo para o cliente; o Jurídico completa e aprova.
 7. **GGVP-131** · Chance de êxito do caso: recorte a combinar, depende de o acervo ter dados.
+
+## A IA que o BPMN pede e ainda faltava (07/10, Miro com as histórias)
+
+8. **GGVP-45** · Buscar no acervo antes de escrever: busca por texto no PostgreSQL sobre petições aprovadas, decisões de mérito, motivos de indeferimento e modelos, sem dado pessoal de outro cliente; entra na minuta e na análise do indeferimento.
+9. **GGVP-54** (parte de IA) · A IA analisa o motivo do indeferimento e sugere o que falta; a Sênior despacha (G4).
 
 ## Fora do escopo
 

@@ -7,7 +7,8 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticao, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -169,12 +170,28 @@ describe('Épico IA · a minuta da petição inicial', () => {
   it('"usar precedentes" com o acervo vazio avisa "sem referência na casa"; a versão 1 pedida da minuta fica marcada', async () => {
     await laudoDaDocumentacao()
     const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
-    expect(r.aviso).toBe('Sem referência na casa: o acervo ainda não tem casos para consultar.')
+    expect(r.aviso).toBe(MSG_SEM_REFERENCIA)
     expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
     const [v] = await banco.select().from(peticaoVersao)
     expect([v.numero, v.geradaPor, v.conteudo]).toEqual([1, 'gabi · minuta da IA', MINUTA])
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_pedida'))
     expect((ev.detalhe as { chamadaIa: string }).chamadaIa).toBe(r.sugestao.chamadaId)
+  })
+
+  it('GGVP-45 CA1, CA4, CA6 · "usar precedentes" leva à IA a petição aprovada de outro caso parecido, sem os dados do outro cliente', async () => {
+    await laudoDaDocumentacao()
+    const [p] = await banco.insert(pessoa).values({ nome: 'Rosa Antunes' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'judicial' }).returning()
+    const [pet] = await banco.insert(peticao).values({ casoId: c.id, tipo: 'inicial' }).returning()
+    const tese = 'Rosa Antunes, CPF 111.222.333-44: a renda do filho maior que mora à parte não entra no cálculo da renda per capita do grupo familiar.'
+    await banco.insert(peticaoVersao).values({ peticaoId: pet.id, numero: 1, conteudo: tese, hash: 'h', geradaPor: 'gabi', aprovadaEm: AGORA })
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
+    const doAcervo = r.sugestao.fontes.filter((f: { tipo: string }) => f.tipo === 'acervo')
+    expect([r.aviso, doAcervo.length, doAcervo[0].referencia]).toEqual([null, 1, `caso:${c.id}`])
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    expect(enviado).toContain('Trechos do acervo da casa')
+    expect(enviado).toContain('a renda do filho maior que mora à parte')
+    for (const dado of ['Rosa', 'Antunes', '111.222.333-44']) expect(enviado).not.toContain(dado)
   })
 
   it('sem a IA, a tela recebe o motivo e a advogada escreve como antes', async () => {

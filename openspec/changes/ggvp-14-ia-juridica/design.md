@@ -27,3 +27,18 @@ O banco já separa a sugestão da IA da decisão da pessoa (`decisao.sugestao_ia
 
 - `SugestaoDaIa`: `{ chamadaId, sugestao: true, texto, fontes: { tipo, referencia, trecho? }[], modelo, geradaEm }`.
 - `ChamadaDaIa` (auditoria): `{ id, finalidade, fornecedor, modelo, situacao, quem, quando, fontes, saida | null }`.
+
+## GGVP-45 · Buscar no acervo antes de escrever
+
+### Decisions
+- **Busca por texto no PostgreSQL, sem tabela nova.** `buscarNoAcervo` (`apps/api/src/ia/acervo.ts`) junta, numa consulta, petições aprovadas, decisões de mérito publicadas e motivos de indeferimento de outros casos (mesmo benefício quando o caso tem) e os modelos de petição ativos; ordena por `ts_rank` com `to_tsvector('portuguese')` contra as palavras do pedido (OU entre elas) e devolve até 3. Calculado na hora, sem índice: o acervo é pequeno. Índice GIN ou embeddings (pgvector) quando o volume ou a qualidade pedirem.
+- **Só o que uma pessoa aprovou ou registrou.** Versão não aprovada, rascunho da IA e publicação sem classe não entram.
+- **Anonimizar antes de sair do banco.** CPF, CEP, telefone, e-mail, endereço e o nome do cliente de origem viram marcadores; o trecho tem até 400 caracteres.
+- **A fonte diz a origem.** `tipo: 'acervo'`, `referencia: 'caso:<id>'` (ou `modelo:<id>`), `trecho: '<de onde>: <texto>'`.
+
+## GGVP-54 · A IA analisa o motivo do indeferimento
+
+### Decisions
+- Finalidade `analisar_indeferimento` (JSON, leva dado de saúde, não barra CID: é leitura interna da Sênior). Saída validada por `AnaliseDoIndeferimentoPelaIa`; fora do formato, sem sugestão.
+- A análise é pedida pelo botão na tela da Sênior. "Usar a sugestão" preenche o formulário; o prazo continua pergunta da Sênior.
+- `Despachar` aceita `chamadaIaId`; o despacho grava `decisao.sugestao_ia = { chamadaId }` (a saída completa está em `chamada_ia`).

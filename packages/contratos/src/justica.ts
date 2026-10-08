@@ -341,16 +341,20 @@ const ItemDoDespacho = z
   .refine((i) => !i.temPrazo || validarData(i.prazo ?? ''), { message: 'Informe a data de entrega (dd/mm/aaaa)', path: ['prazo'] })
   .transform((i) => ({ setor: i.setor, descricao: i.descricao, prazo: i.temPrazo ? (dataParaIso(i.prazo) as string) : null }))
 
+/** Épico IA (GGVP-54 CA4): o despacho que partiu da análise da IA guarda a chamada à parte do que a Sênior decidiu. */
+const ChamadaIaOpcional = z.uuid().optional()
+
 /** POST /api/casos/:id/despacho (GGVP-54 CA2, CA3, CA5, CA6; G4): "nada falta", ou os setores acionados e a perícia. */
 export const Despachar = z.discriminatedUnion(
   'decisao',
   [
-    z.object({ decisao: z.literal('nada_falta') }),
+    z.object({ decisao: z.literal('nada_falta'), chamadaIaId: ChamadaIaOpcional }),
     z
       .object({
         decisao: z.literal('acionar'),
         itens: z.array(ItemDoDespacho).default([]),
         tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+        chamadaIaId: ChamadaIaOpcional,
       })
       .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Marque ao menos um setor ou a perícia', path: ['itens'] })
       // CA2, CA6: cada setor recebe a própria tarefa, uma só (ajuste do Mateus, 06/10).
@@ -359,6 +363,25 @@ export const Despachar = z.discriminatedUnion(
   { error: 'Escolha "Nada falta" ou o que falta' },
 )
 export type Despachar = z.input<typeof Despachar>
+
+/** Épico IA (GGVP-54 CA1): o que a IA devolve, em JSON. "nada falta" sem itens; senão, o que cada setor deve obter. */
+export const AnaliseDoIndeferimentoPelaIa = z.object({
+  analise: z.string().trim().min(1),
+  nadaFalta: z.boolean(),
+  itens: z.array(z.object({ setor: z.enum(SETORES_DO_DESPACHO), descricao: z.string().trim().min(1) })).default([]),
+  pericias: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+})
+export type AnaliseDoIndeferimentoPelaIa = z.infer<typeof AnaliseDoIndeferimentoPelaIa>
+
+/** POST /api/casos/:id/despacho/analise. Sem sugestão (sem chave, falha, fora do formato): `leitura` nula e o motivo. */
+export const AnaliseDoDespacho = z.object({
+  sugestao: SugestaoDaIa.nullable(),
+  leitura: AnaliseDoIndeferimentoPelaIa.nullable(),
+  motivo: z.string().nullable(),
+  /** GGVP-45 CA2: o acervo não tinha nada parecido. */
+  aviso: z.string().nullable(),
+})
+export type AnaliseDoDespacho = z.infer<typeof AnaliseDoDespacho>
 
 /** GET /api/casos/:id/despacho (GGVP-54 CA1, CA9; GGVP-58 CA3, CA11): o histórico do caso, o despacho e o status dos setores. */
 export const Despacho = z.object({
