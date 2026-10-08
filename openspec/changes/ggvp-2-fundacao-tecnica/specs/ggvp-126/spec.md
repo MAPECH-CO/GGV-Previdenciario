@@ -16,11 +16,17 @@ Homologação com usuários e dados de teste. Um comando prepara a homologação
 O comando SHALL deixar ao menos um usuário de teste por perfil: Atendimento, líder, Documentação, Advogada, Sênior, Jurídico administrativo, Financeiro e Sócio.
 - Cada um MUST ter a sua senha provisória, com troca no primeiro acesso. Ela aparece uma vez para quem rodou o comando e é entregue fora do repositório.
 - A senha pública dos exemplos MUST NOT valer na homologação.
+- O comando MUST rodar com o servidor no ar. O que o servidor já gravou sozinho, como as rodadas do dia da vigília, não o impede (homologação de 08/10).
 
 #### Scenario: CA1 · Homologação nova
 - **Dado** a homologação nova
 - **Quando** o comando de preparação roda
 - **Então** existe um usuário de teste por perfil (Atendimento, líder, Documentação, Advogada, Sênior, Jurídico administrativo, Financeiro, Sócio), com senha provisória entregue fora do repositório
+
+#### Scenario: CA1 · Com o servidor no ar
+- **Dado** o app de homologação no ar, com as rodadas do dia da vigília já criadas pelo relógio
+- **Quando** o comando de preparação roda
+- **Então** os usuários de teste e a lista de senhas aparecem, e a rodada das 08:00 fica com a falha de exemplo, sem rodada repetida
 
 ### Requirement: CA2 · Limites de cobrança do Lucas
 O comando SHALL gravar os limites de cobrança que o Lucas definiu em 05/10 e 07/10: 2 tentativas, com 3 dias entre elas.
