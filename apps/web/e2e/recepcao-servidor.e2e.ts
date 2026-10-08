@@ -1,5 +1,13 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
+
+/** O convite sai pela conversa do cliente no Chatwoot: espera a conversa aparecer antes de enviar. */
+async function enviarConvite(page: Page, nome: string) {
+  const chatwoot = page.getByRole('dialog', { name: `Chatwoot · conversa com ${nome}` })
+  await expect(chatwoot.getByRole('radiogroup', { name: 'Conversas do cliente' })).toBeVisible()
+  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+}
 
 // GGVP-125, bloco 1 · o lead do balcão fica no banco do portal: outra pessoa, em outro computador, acha e abre a ficha.
 
@@ -43,9 +51,7 @@ test('a Atendimento marca e confirma a entrevista; a advogada vê "Preparar entr
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '14:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  const chatwoot = page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Agenda Teste' })
-  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  await enviarConvite(page, 'Lia Agenda Teste')
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Lia Agenda Teste · Confirmar agendamento' }).click()
@@ -78,8 +84,7 @@ test('a advogada grava e encerra a entrevista de um lead do balcão; a gravaçã
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Entrevista Teste' }).getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  await enviarConvite(page, 'Lia Entrevista Teste')
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Entrevista Teste')!.agendamentos[0].id,
   )
@@ -130,8 +135,7 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '10:30' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Decisao Teste' }).getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  await enviarConvite(page, 'Lia Decisao Teste')
   const { fichaId, entrevista } = await page.evaluate(() => {
     const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
       (x) => x.nome === 'Lia Decisao Teste',
@@ -186,14 +190,13 @@ test('a advogada pede a segunda ficha; a Atendimento salva do papel; a seção m
   await page.goto('/clientes/novo')
   await page.getByLabel('Nome completo *').fill('Lia Acidente Teste')
   await page.getByLabel('Idade *').fill('52')
-  await page.getByLabel('Telefone / WhatsApp *').fill('11933332211')
+  await page.getByLabel('Telefone / WhatsApp *').fill('11933331177')
   await page.getByLabel('O que a pessoa pretende *').fill('Acidente no trabalho, afastada.')
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Acidente Teste' }).getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  await enviarConvite(page, 'Lia Acidente Teste')
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Acidente Teste')!.agendamentos[0].id,
   )
@@ -236,8 +239,7 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').nth(1).click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Fechou Teste' }).getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  await enviarConvite(page, 'Lia Fechou Teste')
   const { fichaId, entrevista } = await page.evaluate(() => {
     const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
       (x) => x.nome === 'Lia Fechou Teste',
