@@ -21,6 +21,8 @@ export const REGRAS_DA_IA = [
  * GGVP-110: frases de quem tenta mandar na IA pelo conteúdo. Na entrada, o conteúdo segue como dado e a chamada ganha
  * alerta; na saída, a sugestão chega com alerta para a pessoa ver antes de usar.
  */
+/** A marca do bloco dentro do conteúdo fecharia o bloco antes da hora: vai neutralizada e conta como suspeita. */
+const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
 const SUSPEITAS = [
   /ignor(e|a|ar|em)\s+(as\s+|todas\s+as\s+|estas\s+|essas\s+)?(instru|regras|ordens|orienta)/i,
   /desconsider(e|a|ar)\s+(as\s+|todas\s+as\s+)?(instru|regras|ordens)/i,
@@ -29,6 +31,7 @@ const SUSPEITAS = [
   /voc[êe]\s+agora\s+[ée]/i,
   /confirm(e|ar)\s+e\s+envi(e|ar)/i,
   /classifique\s+como/i,
+  MARCA_DO_BLOCO,
 ]
 /** G20 (GGVP-110 CA7): código de doença da CID-10 (letra, dois dígitos e, se houver, a subcategoria). */
 const CID = /\b[A-TV-Z]\d{2}(\.\d{1,2})?\b/
@@ -300,7 +303,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
           model: modeloTexto,
           messages: [
             { role: 'system', content: `${REGRAS_DA_IA}\n\n${f.instrucao}` },
-            { role: 'user', content: `<conteudo>\n${pedido.conteudo}\n</conteudo>` },
+            { role: 'user', content: `<conteudo>\n${pedido.conteudo.replace(new RegExp(MARCA_DO_BLOCO, 'gi'), '[marca removida]')}\n</conteudo>` },
           ],
           ...(f.json && { response_format: { type: 'json_object' } }),
         }),
