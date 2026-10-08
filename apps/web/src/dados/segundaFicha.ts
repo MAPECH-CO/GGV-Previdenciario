@@ -15,7 +15,7 @@ import {
 import { registrarNoCofre } from './cofre.ts'
 import { leituraDaSegundaFicha } from './exemplo.ts'
 import { CLIENTE_NO_TABLET } from './fichaAtendimento.ts'
-import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { QUEM_ADVOGADA, agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type { Agendamento, Arquivo, Ficha, RespostasDaSegundaFicha, TarefaEncaminhada } from './tipos.ts'
 
 function acharAgendamento(banco: Banco, id: string): { ficha: Ficha; agendamento: Agendamento } {
@@ -54,6 +54,14 @@ export function pendenciaDoAtendimento(
 export async function registrarAnalise(agendamentoId: string, d: { acidentario: boolean }): Promise<{ tarefas: TarefaEncaminhada[] }> {
   await esperar()
   if (typeof d.acidentario !== 'boolean') throw new Error('Análise inválida')
+  if (agendamentoDoServidor(agendamentoId)) {
+    const r = await noBanco<{ abertas: TarefaEncaminhada[]; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/entrevistas/${agendamentoId}/analise`, {
+      method: 'POST',
+      corpo: d,
+    })
+    receber(r)
+    return { tarefas: r.abertas }
+  }
   const banco = ler()
   const { ficha, agendamento: a } = acharAgendamento(banco, agendamentoId)
   const quando = agora().toISOString()

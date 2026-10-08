@@ -86,3 +86,32 @@ A gravação da entrevista e a conversa registrada pelo Jurídico SHALL ir às t
 - **Dado** a advogada sem ter avisado o cliente
 - **Quando** pede para começar a gravar
 - **Então** o servidor recusa
+
+### Requirement: Bloco 3b · As decisões depois da entrevista ficam no banco do portal
+O cadastro do lead, a análise da ficha (auxílio acidentário), a definição do benefício, o cálculo de tempo e pontos, o fechamento ("Fechou com o escritório?"), o recontato e a nova demanda de quem já é cliente SHALL gravar no servidor, com as regras do Pedro e as tarefas que abrem e concluem. Definir o benefício, registrar o cálculo e analisar a ficha SHALL pedir a permissão nova `ficha.analisar` (Jurídico): a IA sugere e a advogada decide (G3). O papel de quem registra o fechamento SHALL vir do perfil da sessão, nunca do pedido.
+
+#### Scenario: Benefício definido pela advogada
+- **Dado** a entrevista de um lead do balcão gravada e transcrita
+- **Quando** a advogada define o benefício
+- **Então** a decisão fica na ficha do banco com quem decidiu, e "Definir benefício" sai da fila
+
+### Requirement: Bloco 3b · G16 no servidor
+O lead que não fecha SHALL ter o motivo da lista; "Recusado pelo escritório" MUST NOT ser registrado pelo perfil Atendimento; o lead arquivado SHALL ficar como `nao_virou_cliente` com o motivo na pessoa do portal, e as tarefas abertas dele se encerram.
+
+#### Scenario: Lead arquivado com o motivo
+- **Dado** um lead depois da entrevista
+- **Quando** o Atendimento registra que não fechou, sem recontato, com o motivo "Preço"
+- **Então** a pessoa fica `nao_virou_cliente` com o motivo, e as tarefas abertas dela se encerram
+
+#### Scenario: Recusa do escritório pelo Atendimento
+- **Dado** o perfil Atendimento
+- **Quando** registra o motivo "Recusado pelo escritório"
+- **Então** o servidor recusa
+
+### Requirement: Bloco 3b · A senha do gov.br vai ao cofre de verdade
+Nas fichas do servidor, guardar e renovar a senha do gov.br SHALL mandar a senha ao cofre do portal (`POST /api/pessoas/:id/cofre`), e a ficha SHALL guardar só a situação, quem e quando (G9); "não sei a senha" e a conferência da senha lida do papel SHALL ficar na ficha do banco.
+
+#### Scenario: Senha guardada na entrevista
+- **Dado** a advogada abrindo o cofre durante a entrevista de um lead do balcão
+- **Quando** digita a senha e guarda
+- **Então** a senha está cifrada no cofre do portal, e a ficha mostra só que está no cofre

@@ -136,7 +136,8 @@ export function criarFichario(banco: Banco, agora: () => Date) {
         .filter((c) => c.pessoaId === p.id && c.beneficio)
         .map((c) => ({ id: c.id, beneficio: NO_CATALOGO[c.beneficio!] ?? c.beneficio!, etapa: ETAPA[c.fase] ?? c.fase }))
       const doc = docs.get(p.id)
-      if (doc) return { ...doc, processos }
+      // A senha que está no cofre do portal vale mais que a situação guardada na ficha (G9).
+      if (doc) return { ...doc, processos, ...(noCofre.has(p.id) && doc.senhaGov.situacao !== 'no-cofre' && { senhaGov: { situacao: 'no-cofre' as const } }) }
       const [ano, mes] = p.criadoEm.toISOString().slice(0, 7).split('-')
       return {
         id: p.id,

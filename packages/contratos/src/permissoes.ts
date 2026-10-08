@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 13
+export const VERSAO_MATRIZ = 14
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -90,6 +90,8 @@ export const MATRIZ = {
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
   'entrevista.gravar': JURIDICO,
+  // GGVP-125, bloco 3b: analisar a ficha, definir o benefício e registrar o cálculo; a IA sugere, o Jurídico decide (G3).
+  'ficha.analisar': JURIDICO,
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

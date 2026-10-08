@@ -17,8 +17,8 @@ import {
 import { demandaAberta } from '../regras/novaDemanda.ts'
 import { MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
 import { fecharContrato } from './contrato.ts'
-import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa } from './tipos.ts'
+import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa, TarefaEncaminhada } from './tipos.ts'
 
 const QUEM_NO_PAPEL: Record<PapelNoFechamento, string> = {
   atendimento: QUEM,
@@ -76,6 +76,13 @@ function arquivar(banco: Banco, ficha: Ficha) {
   for (const t of banco.tarefas) if (t.cliente?.id === ficha.id && !t.concluida) t.concluida = true
 }
 
+/** As do servidor já se encerraram lá; as que ainda são só daqui (telas não ligadas) se encerram aqui. */
+function arquivarAqui(fichaId: string) {
+  const banco = ler()
+  arquivar(banco, banco.fichas.find((f) => f.id === fichaId)!)
+  gravar(banco)
+}
+
 const dataIso = (data: string) => dataParaIso(normalizarData(data))
 
 /**
@@ -86,6 +93,18 @@ const dataIso = (data: string) => dataParaIso(normalizarData(data))
  * responde pela nova demanda (GGVP-124): fechou, segue o mesmo caminho; não fechou, a demanda se encerra com o motivo.
  */
 export async function registrarFechamento(fichaId: string, envio: EnvioDoFechamento): Promise<{ ficha: Ficha }> {
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 3b: o fechamento e o G16 ficam no servidor, com o papel da sessão. Fechou: o contrato segue aqui,
+    // no modo exemplo, até o bloco 4.
+    const r = await noBanco<{ fechou: boolean; beneficio?: string; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/fichas/${fichaId}/fechamento`, {
+      method: 'POST',
+      corpo: envio.fechou ? envio : { fechou: false, motivo: envio.motivo, detalhe: envio.detalhe, recontatar: envio.recontatar },
+    })
+    const ficha = receber(r)!
+    if (r.fechou) return clienteFechou(fichaId, r.beneficio!)
+    if (ficha.fechamento?.situacao === 'arquivado') arquivarAqui(fichaId)
+    return { ficha: ler().fichas.find((f) => f.id === fichaId)! }
+  }
   await esperar()
   const banco = ler()
   const ficha = acharFicha(banco, fichaId)
@@ -151,6 +170,12 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
  * arquivado com o motivo (CA10).
  */
 export async function registrarRecontato(fichaId: string, r: ResultadoDoRecontato): Promise<{ ficha: Ficha }> {
+  if (doServidor(fichaId)) {
+    const corpo = r.resultado === 'arquivar' ? { resultado: 'arquivar', motivo: r.motivo, detalhe: r.detalhe } : r
+    const ficha = receber(await noBanco<{ ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/fichas/${fichaId}/recontato`, { method: 'POST', corpo }))!
+    if (ficha.fechamento?.situacao === 'arquivado') arquivarAqui(fichaId)
+    return { ficha: ler().fichas.find((f) => f.id === fichaId)! }
+  }
   await esperar()
   const banco = ler()
   const ficha = acharFicha(banco, fichaId)

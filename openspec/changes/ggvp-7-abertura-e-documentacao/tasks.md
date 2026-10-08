@@ -139,3 +139,11 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.16 Telas: as funções da entrevista e da transcrição chamando a API para as fichas do servidor; a cópia recebe as gravações; testes.
 - [x] 125.17 Playwright: a advogada grava e encerra a entrevista de um lead do balcão; outra sessão do Jurídico vê "Cadastrar lead"; a Atendimento não recebe a gravação.
 - [x] 125.18 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 3b · Cadastro, benefício, cálculo, fechamento, nova demanda e cofre
+
+- [x] 125.19 Contratos: cadastro, análise da ficha, decisão do benefício, cálculo, fechamento, recontato, nova demanda, situação do cofre e renovação (sem a senha); matriz com `ficha.analisar` (Jurídico).
+- [x] 125.20 Servidor: `PUT /api/fichas/:id/cadastro`, `POST /api/entrevistas/:id/analise`, `POST /api/entrevistas/:id/beneficio`, `POST /api/entrevistas/:id/calculo`, `POST /api/fichas/:id/fechamento`, `POST /api/fichas/:id/recontato`, `POST /api/fichas/:id/demandas`, `POST /api/fichas/:id/cofre/gov`, `POST /api/entrevistas/:id/renovacao`; G16 na pessoa; o papel do fechamento pela sessão; a situação do cofre lida do cofre de verdade; testes.
+- [x] 125.21 Telas: as funções do bloco chamando a API para as fichas do servidor; a senha vai ao cofre de verdade; "fechou" segue para o contrato do modo exemplo até o bloco 4; testes.
+- [x] 125.22 Playwright: do lead do balcão gravado à definição do benefício pela advogada e ao fechamento com o motivo; a senha guardada não fica na ficha nem no navegador.
+- [x] 125.23 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

@@ -169,3 +169,80 @@ export const ConversaRegistrada = z.object({
   perfil: z.enum(['juridico', 'atendimento']),
 })
 export type ConversaRegistrada = z.infer<typeof ConversaRegistrada>
+
+// Bloco 3b (GGVP-125): as decisões depois da entrevista. As regras (campos do cadastro, requisitos, cálculo, motivos de
+// não fechar, G16) são as do Pedro, no servidor; aqui só a forma.
+const DoCadastro = z.object({
+  nome: Texto(200),
+  cpf: Texto(20),
+  rg: Texto(30),
+  nascimento: Texto(10),
+  estadoCivil: Texto(60),
+  profissao: Texto(120),
+  telefone: Texto(30),
+  cep: Texto(10),
+  rua: Texto(300),
+  bairro: Texto(120),
+  cidade: Texto(120),
+  uf: Texto(2),
+})
+const Representante = z.object({ nome: Texto(200), cpf: Texto(20), rg: Texto(30), parentesco: Texto(60), estadoCivil: Texto(60), profissao: Texto(120) })
+
+/** PUT /api/fichas/:id/cadastro: `base` é o que a tela abriu, para não apagar o que outra pessoa salvou (GGVP-43 CA11). */
+export const PedidoDeCadastro = z.object({ base: DoCadastro, valores: DoCadastro, representante: Representante.optional() })
+export type PedidoDeCadastro = z.infer<typeof PedidoDeCadastro>
+
+/** POST /api/entrevistas/:id/analise: "Pode ser auxílio acidentário?" (GGVP-28). */
+export const AnaliseDaFicha = z.object({ acidentario: z.boolean() })
+export type AnaliseDaFicha = z.infer<typeof AnaliseDaFicha>
+
+/** POST /api/entrevistas/:id/beneficio: a advogada decide, conferindo a sugestão com a entrevista (GGVP-51, G3). */
+export const DecisaoDoBeneficio = z.object({ beneficio: Texto(100), conferi: z.literal(true), motivoDaRecusa: Opcional(500) })
+export type DecisaoDoBeneficio = z.infer<typeof DecisaoDoBeneficio>
+
+const Tempo = z.object({ anos: z.number().int().min(0), meses: z.number().int().min(0), dias: z.number().int().min(0) })
+/** POST /api/entrevistas/:id/calculo: o advogado registra o que calculou sobre o CNIS; nenhum número vem da IA (G19). */
+export const RegistroDoCalculo = z.discriminatedUnion('podeAposentar', [
+  z.object({ podeAposentar: z.literal(true), tempo: Tempo, pontos: z.number().min(0), regra: Texto(200), conferi: z.literal(true) }),
+  z.object({ podeAposentar: z.literal(false), tempo: Tempo, pontos: z.number().min(0), regra: Texto(200), dataPrevista: Texto(10), conferi: z.literal(true) }),
+])
+export type RegistroDoCalculo = z.infer<typeof RegistroDoCalculo>
+
+const Espera = z.enum(['pensar', 'esperar'])
+/** POST /api/fichas/:id/fechamento: "Fechou com o escritório?" (GGVP-60, G16). O papel vem da sessão, não daqui. */
+export const EnvioDoFechamento = z.discriminatedUnion('fechou', [
+  z.object({ fechou: z.literal(true) }),
+  z.object({
+    fechou: z.literal(false),
+    motivo: Texto(60),
+    detalhe: Opcional(2000),
+    recontatar: z.object({ data: Texto(10), espera: Espera.optional() }).nullable(),
+  }),
+])
+export type EnvioDoFechamento = z.infer<typeof EnvioDoFechamento>
+
+/** POST /api/fichas/:id/recontato: o resultado do recontato (GGVP-60 CA10). O papel vem da sessão. */
+export const ResultadoDoRecontato = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('calculo') }),
+  z.object({ resultado: z.literal('nova-data'), data: Texto(10), espera: Espera.optional() }),
+  z.object({ resultado: z.literal('arquivar'), motivo: Texto(60), detalhe: Opcional(2000) }),
+])
+export type ResultadoDoRecontato = z.infer<typeof ResultadoDoRecontato>
+
+/** POST /api/fichas/:id/demandas: a nova demanda de quem já é cliente (GGVP-124). Quem abriu vem da sessão. */
+export const EnvioDaDemanda = z.object({ pretende: Texto(2000), beneficio: Texto(100), tipo: z.enum(['outro-pedido', 'tentar-de-novo', 'recurso-ou-defesa']) })
+export type EnvioDaDemanda = z.infer<typeof EnvioDaDemanda>
+
+/**
+ * POST /api/fichas/:id/cofre/gov: a situação da senha na ficha (G9). "guardou" só depois de a senha ir ao cofre do portal
+ * (`POST /api/pessoas/:id/cofre`); a senha nunca passa por aqui.
+ */
+export const SituacaoDaSenhaGov = z.object({ acao: z.enum(['guardou', 'nao-sabe', 'conferiu']) })
+export type SituacaoDaSenhaGov = z.infer<typeof SituacaoDaSenhaGov>
+
+/** POST /api/entrevistas/:id/renovacao (GGVP-36): "renovou" só depois de a senha nova ir ao cofre do portal. */
+export const RenovacaoDaSenha = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('renovou'), conferiMeuInss: z.literal(true) }),
+  z.object({ resultado: z.literal('nao-conseguiu'), motivo: Texto(300), aviseiOCliente: z.literal(true) }),
+])
+export type RenovacaoDaSenha = z.infer<typeof RenovacaoDaSenha>

@@ -3,9 +3,12 @@
 // atendimento). As regras do servidor têm os testes dele, na API.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista } from './agenda.ts'
+import { definirBeneficio } from './beneficio.ts'
+import { guardarSenhaNoCofre } from './cofre.ts'
 import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
+import { registrarFechamento } from './fechamento.ts'
 import { tarefasDaAdvogada } from './preparacao.ts'
 import { obterGravacoes } from './transcricao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
@@ -328,5 +331,62 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor, 
     expect((await obterEntrevista(a.id))?.gravacao).toEqual(encerrada)
     expect(ler().fichas.find((f) => f.id === ID)?.agendamentos[0].estado).toBe('realizado')
     expect(tarefasDaAdvogada().map((t) => t.acao)).toContain('Cadastrar lead')
+  })
+})
+
+describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor, em modo misto', () => {
+  it('o benefício da ficha do servidor é decidido lá; a cópia recebe a decisão e as tarefas', async () => {
+    const a = entrevista(`${ID}-ag-1`, { estado: 'realizado' })
+    const definida = { beneficio: 'loas-idoso', agendamentoId: a.id, quem: 'gabi', quando: '2026-10-05T18:00:00.000Z', fontes: [], recusouSugestao: false }
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco({ agendamentos: [a] }),
+      [`POST /api/entrevistas/${a.id}/beneficio`]: () => ({
+        ficha: doBanco({ agendamentos: [a], beneficioDefinido: definida, historico: [CRIOU, naHora('2026-10-05T18:00:00.000Z', 'Definiu o benefício do caso (D1.12): BPC')] }),
+        tarefas: [tarefa('definir-x', 'Definir benefício', 'Jurídico', true)],
+      }),
+    })
+    await criarFicha(ivone)
+    mexerAqui((_, banco) => banco.tarefas.push(tarefa('definir-x', 'Definir benefício', 'Jurídico')))
+    const r = await definirBeneficio(a.id, { beneficio: 'loas-idoso', conferi: true })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ beneficio: 'loas-idoso', conferi: true })
+    expect(r.ficha.beneficioDefinido).toEqual(definida)
+    expect(ler().tarefas.find((t) => t.id === 'definir-x')?.concluida).toBe(true)
+  })
+
+  it('não fechou e arquivado: as tarefas do servidor encerram lá, e as que são só daqui encerram aqui', async () => {
+    ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/fechamento`]: () => ({
+        fechou: false,
+        ficha: doBanco({ fechamento: { situacao: 'arquivado', motivo: 'preco', papel: 'atendimento', quem: 'Ana', quando: '2026-10-05T18:00:00.000Z' } }),
+        tarefas: [],
+      }),
+    })
+    await criarFicha(ivone)
+    mexerAqui((_, banco) => banco.tarefas.push(tarefa('so-daqui', 'Conferir contrato', 'Atendimento')))
+    const r = await registrarFechamento(ID, { fechou: false, motivo: 'preco', papel: 'atendimento', recontatar: null })
+    expect(r.ficha.fechamento).toMatchObject({ situacao: 'arquivado', motivo: 'preco' })
+    expect(ler().tarefas.find((t) => t.id === 'so-daqui')?.concluida).toBe(true)
+  })
+
+  it('G9: a senha vai ao cofre do portal; a rota da ficha recebe só a situação, e nada fica no navegador', async () => {
+    const SENHA = 'segredo-do-gov-77'
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/pessoas/${ID}/cofre`]: () => ({ ok: true, trocada: false }),
+      [`POST /api/fichas/${ID}/cofre/gov`]: () => ({ senhaGov: { situacao: 'no-cofre', por: 'Ana' }, ficha: doBanco({ senhaGov: { situacao: 'no-cofre', por: 'Ana' } }) }),
+    })
+    await criarFicha(ivone)
+    expect(await guardarSenhaNoCofre(ID, SENHA)).toEqual({ senhaGov: { situacao: 'no-cofre', por: 'Ana' } })
+    const ultimas = fetch.mock.calls.slice(-2).map((c) => [c[0], JSON.parse(String(c[1]?.body))])
+    expect(ultimas).toEqual([
+      [`/api/pessoas/${ID}/cofre`, { senha: SENHA }],
+      [`/api/fichas/${ID}/cofre/gov`, { acao: 'guardou' }],
+    ])
+    expect(JSON.stringify(ler())).not.toContain(SENHA)
+    expect(ler().fichas.find((f) => f.id === ID)?.senhaGov.situacao).toBe('no-cofre')
   })
 })

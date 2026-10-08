@@ -205,7 +205,26 @@ function espelharEm(banco: Banco, doBanco: Ficha): Ficha {
       contatos: [...local.contatos, ...doBanco.contatos.slice(antes.contatos.length)],
       agendamentos: mesclarAgenda(local.agendamentos, doBanco.agendamentos, antes.agendamentos),
     }
-    const campos = [...Object.keys(ROTULOS), 'indicadoPor', 'beneficioInteresse', 'fichaAtendimentoPreenchida', 'fichaAtendimento'] as (keyof Ficha)[]
+    const campos = [
+      ...Object.keys(ROTULOS),
+      'indicadoPor',
+      'beneficioInteresse',
+      'fichaAtendimentoPreenchida',
+      'fichaAtendimento',
+      // Blocos 3a e 3b.
+      'transcricoes',
+      'checklist',
+      'rg',
+      'bairro',
+      'representante',
+      'analise',
+      'beneficioDefinido',
+      'calculos',
+      'fechamento',
+      'demandas',
+      'senhaGov',
+      'renovacao',
+    ] as (keyof Ficha)[]
     for (const c of campos) if (!igual(doBanco[c], antes[c])) Object.assign(ficha, { [c]: doBanco[c] })
   }
   if (i >= 0) banco.fichas[i] = ficha

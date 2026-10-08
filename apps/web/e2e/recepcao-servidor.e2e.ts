@@ -114,3 +114,67 @@ test('a advogada grava e encerra a entrevista de um lead do balcão; a gravaçã
   await juridico.close()
   await outro.close()
 })
+
+// GGVP-125, bloco 3b · as decisões depois da entrevista no banco: a senha vai ao cofre do portal (G9), a advogada define
+// o benefício (G3) e a Atendimento, em outro computador, arquiva o lead com o motivo (G16).
+test('a advogada guarda a senha no cofre e define o benefício; a Atendimento arquiva o lead com o motivo', async ({ page, browser }) => {
+  // Duas sessões, a gravação, o cofre e o benefício: mais que os 30 s de um teste comum.
+  test.setTimeout(90_000)
+  const SENHA = 'Teste#Recepcao-3b-5521'
+  await page.goto('/clientes/novo')
+  await page.getByLabel('Nome completo *').fill('Lia Decisao Teste')
+  await page.getByLabel('Idade *').fill('66')
+  await page.getByLabel('Telefone / WhatsApp *').fill('11944443322')
+  await page.getByLabel('O que a pessoa pretende *').fill('Quer saber do BPC do idoso.')
+  await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
+  await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
+  await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '10:30' }).click()
+  await page.getByRole('button', { name: /^Marcar/ }).click()
+  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Decisao Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  const { fichaId, entrevista } = await page.evaluate(() => {
+    const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
+      (x) => x.nome === 'Lia Decisao Teste',
+    )!
+    return { fichaId: f.id, entrevista: f.agendamentos[0].id }
+  })
+
+  const juridico = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const advogada = await juridico.newPage()
+  await advogada.clock.install()
+  await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
+  await advogada.goto(`/entrevista/${entrevista}/gravacao`)
+  await advogada.getByRole('button', { name: 'Gravar' }).click()
+  await advogada.getByRole('checkbox', { name: 'Avisei o cliente que a conversa será gravada' }).check()
+  await advogada.getByRole('button', { name: 'Começar a gravar' }).click()
+  await advogada.clock.runFor(30_000)
+  await advogada.getByRole('button', { name: /Abrir o cofre/ }).click()
+  await advogada.getByLabel('Digite a senha (vai direto ao cofre)').fill(SENHA)
+  await advogada.getByRole('button', { name: 'Guardar no cofre' }).click()
+  await expect(advogada.getByText(/● Gravando/)).toBeVisible()
+  await advogada.clock.runFor(40_000)
+  await advogada.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
+  await expect(advogada.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+
+  await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await expect(advogada.getByRole('heading', { level: 1 })).toHaveText('Lia Decisao Teste · Definir benefício')
+  // A conversa simulada fala de afastamento: a IA sugere o auxílio por incapacidade, e a advogada aceita (G3).
+  await advogada.getByRole('radio', { name: 'Aceitar: Auxílio por Incapacidade Temporária' }).click()
+  await advogada.getByRole('checkbox', { name: 'Conferi a recomendação com a entrevista' }).check()
+  await advogada.getByRole('button', { name: 'Confirmar benefício' }).click()
+  await expect(advogada.getByRole('heading', { name: '✓ Benefício definido: Auxílio por Incapacidade Temporária' })).toBeVisible()
+  expect(await advogada.evaluate(() => JSON.stringify(sessionStorage))).not.toContain(SENHA)
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Lia Decisao Teste · Registrar fechamento' }).click()
+  await page.getByRole('radio', { name: 'Não fechou' }).click()
+  await page.getByLabel('Motivo *').selectOption('preco')
+  await page.getByRole('radio', { name: 'Não, arquivar o lead' }).click()
+  await page.getByRole('button', { name: 'Registrar e arquivar o lead' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Lead arquivado com o motivo' })).toBeVisible()
+
+  const ficha = await (await page.request.get(`/api/fichas/${fichaId}`)).json()
+  expect(ficha).toMatchObject({ fechamento: { situacao: 'arquivado', motivo: 'preco' }, beneficioDefinido: { beneficio: 'incapacidade-temporaria' }, senhaGov: { situacao: 'no-cofre' } })
+  expect(JSON.stringify(ficha)).not.toContain(SENHA)
+  await juridico.close()
+})
