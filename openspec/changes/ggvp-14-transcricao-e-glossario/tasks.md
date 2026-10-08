@@ -25,3 +25,11 @@
 - [x] 3.2 CA2, CA4 · O gancho comum do microfone (`dados/gravacaoDeVerdade.ts`), na entrevista e na conversa; a caixa da ligação manda o arquivo; o servidor falso dos testes do Relacionamento aceita o arquivo; testes de tela.
 - [x] 3.3 Playwright: a Atendimento sobe a gravação da ligação na conversa (`e2e/transcricao-ligacao.e2e.ts`).
 - [x] 3.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-140 · IA de verdade no Relacionamento: resumo da conversa e o que mudou na ficha
+
+- [x] 4.1 CA1 · Contrato `AnaliseDaConversaPelaIa` e `AnaliseDaConversa.daIa`; a finalidade `analisar_conversa` no motor (`apps/api/src/ia/ia.ts`).
+- [x] 4.2 CA1, CA2, CA3, CA4, CA5 · A rota da conversa lê com a IA de verdade depois da transcrição: os ditos passam pelo código (campo, valor, trecho) e pelo `oQueMudou`; senha descartada; o alerta do motor; o motivo quando a IA não respondeu; a conversa da advogada só com o Jurídico (`apps/api/src/rotas/conversa.ts`); testes com `fetch` falso em `transcricao-conversa.test.ts`.
+- [x] 4.3 CA1, CA4 · Tela: o quadro "O que a IA encontrou na conversa" mostra o resumo como sugestão da IA, o alerta e a fonte (`apps/web/src/paginas/Conversa.tsx`); teste em `ConversaDaIa.test.tsx`.
+- [x] 4.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+

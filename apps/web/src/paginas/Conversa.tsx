@@ -476,6 +476,19 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               <h2 id="o-que-a-ia-achou" className={proprio.iaTitulo}>
                 <span aria-hidden="true">✦ </span>O que a IA encontrou na conversa
               </h2>
+              {analise.daIa && (
+                <div className={proprio.iaParte}>
+                  <span className={proprio.selo}>Sugestão da IA · quem confere é você (G14)</span>
+                  {analise.daIa.alerta && (
+                    <p className={vivo.alerta} role="alert">
+                      Atenção: {analise.daIa.alerta}. A fala entrou como dado; nada muda sem você conferir (G14).
+                    </p>
+                  )}
+                  <h3 className={proprio.iaSub}>Resumo da conversa</h3>
+                  <p>{analise.daIa.resumo}</p>
+                  <p className={base.nota}>Fonte: a transcrição desta conversa ({analise.daIa.modelo}).</p>
+                </div>
+              )}
               {(
                 [
                   ['O que mudou', analise.mudancas.filter((m) => m.antes)],

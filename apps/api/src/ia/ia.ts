@@ -171,6 +171,22 @@ export const FINALIDADES = {
       'Responda só com um objeto JSON: {"falantes": {"A": "escritorio" | "cliente" | "terceiro"}, "falas": [{"i": 0, "texto": "a fala corrigida"}]}, com todas as falas, na mesma ordem e com o mesmo i.',
     ].join(' '),
   },
+  /**
+   * GGVP-140: lê a conversa do Relacionamento já transcrita e diz o que foi dito. O que mudou na ficha é o código que
+   * compara com o guardado; nada vai para a ficha sem quem conversou conferir (G14). Leitura interna: não vai ao cliente.
+   */
+  analisar_conversa: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a pessoa do escritório previdenciário (Atendimento ou advogada) a registrar uma conversa com o cliente, já transcrita.',
+      'Leia as falas e responda só com um objeto JSON: {"resumo": "a conversa em até 3 frases simples", "ditos": [{"campo": "telefone" | "endereco" | "contatoApoio" | "estadoCivil" | "email" | "pericia" | "fato" | "documento", "valor": "o que foi dito", "i": número da fala de onde saiu, "saude": true só se o fato é de saúde}], "combinado": "o que ficou combinado de fazer, ou null"}.',
+      'Só entra o que o cliente (ou quem falou por ele) disse de novo: telefone, endereço, contato de apoio, estado civil, e-mail, a data de uma perícia marcada (escreva dd/mm/aaaa só se a data foi dita), um fato novo do caso e um documento citado.',
+      'Telefone com DDD, só se foi dito inteiro. Não calcule datas nem complete o que não foi dito. Use só o que está no conteúdo; se nada mudou, "ditos" vazio.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 

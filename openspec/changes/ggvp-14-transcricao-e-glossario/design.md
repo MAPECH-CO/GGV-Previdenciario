@@ -67,6 +67,28 @@ Tabela `glossario_termo`: `id`, `termo`, `tipo` (lista fechada), `significado`, 
 ## GGVP-133 · Transcrição de áudio de verdade (parte 3: a conversa do Relacionamento)
 
 - **Rota que já existe (`rotas/conversa.ts`, só acréscimo e uma linha):** `POST /api/conversas/:id/audio` aceita também o arquivo (multipart). Na conversa por arquivo, é a gravação da ligação, com `avisoNaGravacao=sim` (G10); na conversa gravada agora, é uma parte do microfone, com `inicio`. O áudio vira documento na pasta do cliente. `guardarNoCard` não troca mais o áudio de verdade pelo simulado.
-- **Transcrição:** com o áudio guardado e o motor ligado, o mesmo fluxo da entrevista, com quem conduziu no papel do escritório (Atendimento ou advogada). Sem a chave do serviço, segue o que o Relacionamento já tinha: a conversa de exemplo, ou a falha com `RELACIONAMENTO_SIMULADO=nao`. A análise do que mudou é da GGVP-140: até lá, a conferência abre sem itens sugeridos (G14).
+- **Transcrição:** com o áudio guardado e o motor ligado, o mesmo fluxo da entrevista, com quem conduziu no papel do escritório (Atendimento ou advogada). Sem a chave do serviço, segue o que o Relacionamento já tinha: a conversa de exemplo, ou a falha com `RELACIONAMENTO_SIMULADO=nao`. A análise do que mudou é da GGVP-140 (abaixo).
 - **Texto ao vivo:** `POST /api/conversas/:id/chave-ao-vivo` (`conversa.registrar`), só na conversa presencial gravada agora; na ligação, não (CA4).
 - **Tela:** o microfone e o texto ao vivo saem da entrevista para um gancho comum (`dados/gravacaoDeVerdade.ts`), usado pelas duas telas.
+
+## GGVP-140 · IA de verdade no Relacionamento: resumo da conversa e o que mudou na ficha
+
+### Decisões
+
+- **A IA diz o que foi dito; o código decide o que mudou (CA2).** A finalidade `analisar_conversa` do motor (versão 1, com dado de saúde, JSON) lê a transcrição pronta e devolve o resumo, cada coisa dita (o campo, o valor como foi dito e o número da fala) e o combinado. A rota passa cada dito pelo código: o campo vai à ficha ou ao processo pelo nome, o valor é conferido pela biblioteca de campos (`erroDoValor`) e guardado no formato da ficha (`valorGuardado`), a hora e o trecho são os da transcrição, nunca os da IA. Depois, o mesmo `oQueMudou` do Relacionamento compara com a ficha e com os campos do processo: o igual ao guardado fica de fora. Nada vai para a ficha antes da conferência de quem conversou (G14).
+- **Um caminho só para a análise.** O miolo do `analisar` simulado virou `montarAnalise`, usado pelo exemplo e pela IA de verdade: a senha, a linha nos "Últimos contatos", a observação e o "O que precisa atualizar" saem do mesmo lugar.
+- **Senha (CA3, G9).** A IA recebe a transcrição já sem a senha. O que ela devolve com senha não passa: o dito é descartado, o combinado também, e o resumo vira um aviso.
+- **Instrução na fala (CA4).** A transcrição entra como dado dentro do `<conteudo>`; o alerta do motor vem na análise (`daIa.alerta`) e a tela mostra "Atenção" antes do resumo.
+- **IA fora, recusada ou fora do formato (CA5).** A transcrição fica pronta; a análise abre sem itens e a observação começa por "A IA não respondeu agora: leia a transcrição e confira o que mudou.", no padrão das outras telas do motor. Sem `IA_PERMITE_DADO_DE_SAUDE=sim`, o motor recusa a leitura, como em toda finalidade com dado de saúde.
+- **Quem vê.** Quem fez a conversa vê a transcrição e o resumo. A conversa da advogada fica só com o Jurídico (`soJuridico`), como no desenho do Relacionamento: para quem não vê dado de saúde, a rota devolve a conversa sem o texto, o resumo e a análise. O resumo da IA fica na análise da conversa, como sugestão; a linha dos "Últimos contatos" continua a do código.
+
+### Contratos
+
+- `AnaliseDaConversaPelaIa` (`packages/contratos/src/transcricao.ts`): `{ resumo, ditos: [{ campo: CampoDaConversa, valor, i, saude? }], combinado | null }`, para validar a saída do motor.
+- `AnaliseDaConversa.daIa?` (`packages/contratos/src/conversas.ts`): `{ resumo, chamadaId, modelo, alerta }`, quando a IA de verdade leu.
+
+### Limites conhecidos
+
+- Sem a chave do serviço, a conversa segue a transcrição e a análise de exemplo do Relacionamento; o Playwright roda assim e cobre o caminho manual. A leitura da IA de verdade é testada na API com `fetch` falso e na tela com a resposta do servidor posta por cima.
+- A análise roda uma vez, junto da transcrição. Se a IA falhou, a pessoa segue pela leitura; não há "Tentar de novo" só da análise.
+
