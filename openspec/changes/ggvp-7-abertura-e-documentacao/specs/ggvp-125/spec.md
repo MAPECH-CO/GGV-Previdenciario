@@ -65,3 +65,24 @@ As tarefas que o balcão, a agenda, a confirmação e a ficha de atendimento abr
 - **Dado** a Atendimento registrando que o lead confirmou e já preencheu a ficha
 - **Quando** a advogada abre a Central dela, em outro computador
 - **Então** a tarefa "Preparar entrevista" está lá
+
+### Requirement: Bloco 3a · A entrevista gravada e a transcrição ficam no banco do portal
+Começar a gravar (só com o aviso ao cliente registrado, G10), pausar e retomar, encerrar, registrar sem áudio, subir o áudio gravado fora, transcrever (simulada até a OpenAI entrar), conferir o que a transcrição trouxe, conferir os documentos, marcar a prova e registrar a conversa sem áudio SHALL gravar no servidor, com as regras do Pedro; o fim da entrevista SHALL concluir o "Preparar entrevista" e abrir o "Definir benefício" e, para o lead, o "Cadastrar lead" do Jurídico, no banco.
+
+#### Scenario: Entrevista gravada vista por outra advogada
+- **Dado** a advogada gravando e encerrando a entrevista de um lead do balcão
+- **Quando** outra advogada abre o caso no computador dela
+- **Então** vê a transcrição e as tarefas "Definir benefício" e "Cadastrar lead"
+
+### Requirement: Bloco 3a · A gravação com dado de saúde fica só com o Jurídico
+A gravação da entrevista e a conversa registrada pelo Jurídico SHALL ir às telas só para quem tem `dado_saude.ver_detalhe`; o Atendimento SHALL receber só as conversas que não são do Jurídico. Gravar e transcrever SHALL pedir a permissão nova `entrevista.gravar` (Jurídico). Gravar sem o aviso ao cliente MUST ser recusado (G10).
+
+#### Scenario: O Atendimento não recebe a transcrição
+- **Dado** uma entrevista gravada e transcrita
+- **Quando** a Atendimento abre uma tela
+- **Então** a cópia do navegador dela não traz essa gravação
+
+#### Scenario: Gravar sem o aviso
+- **Dado** a advogada sem ter avisado o cliente
+- **Quando** pede para começar a gravar
+- **Então** o servidor recusa

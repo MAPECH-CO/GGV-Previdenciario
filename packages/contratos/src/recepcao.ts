@@ -121,3 +121,51 @@ export const ConfirmacaoDoLead = z.discriminatedUnion('resultado', [
   z.object({ resultado: z.literal('sem-resposta'), canal: Canal }),
 ])
 export type ConfirmacaoDoLead = z.infer<typeof ConfirmacaoDoLead>
+
+// Bloco 3a (GGVP-125): a entrevista gravada e a transcrição (GGVP-40, GGVP-46). Gravação e transcrição seguem simuladas.
+/** POST /api/entrevistas/:id/gravacoes: só grava com o aviso ao cliente (G10). */
+export const InicioDaGravacao = z.object({ avisei: z.literal(true) })
+export type InicioDaGravacao = z.infer<typeof InicioDaGravacao>
+
+/** POST /api/gravacoes/:id/acoes: cada ação com o ponto do áudio, em segundos. */
+export const AcaoNaGravacaoPedida = z.object({ acao: z.enum(['pausou', 'retomou', 'abriu-cofre', 'guardou-senha', 'falhou']), aos: z.number().min(0) })
+export type AcaoNaGravacaoPedida = z.infer<typeof AcaoNaGravacaoPedida>
+
+/** POST /api/gravacoes/:id/encerrar: sem internet, o áudio espera no computador (CA12). */
+export const FimDaGravacao = z.object({ aos: z.number().min(0), online: z.boolean() })
+export type FimDaGravacao = z.infer<typeof FimDaGravacao>
+
+/** POST /api/gravacoes/:id/sem-audio: a gravação falhou e a advogada escreve o que foi conversado (CA8). */
+export const EntrevistaSemAudio = z.object({ notas: Texto(4000) })
+export type EntrevistaSemAudio = z.infer<typeof EntrevistaSemAudio>
+
+/** POST /api/entrevistas/:id/audio: o áudio gravado fora do portal (CA9, CA10); simulado: o nome, o tipo e o tamanho. */
+export const AudioGravadoFora = z.object({ nome: Texto(200), tipo: Texto(100), tamanho: z.number().int().min(0) })
+export type AudioGravadoFora = z.infer<typeof AudioGravadoFora>
+
+/** POST /api/gravacoes/:id/transcricao: `falhar` simula a falha do serviço (GGVP-46 CA3). */
+export const PedidoDeTranscricao = z.object({ falhar: z.boolean().optional() })
+export type PedidoDeTranscricao = z.infer<typeof PedidoDeTranscricao>
+
+/** POST /api/gravacoes/:id/conferencias: só o que a advogada conferiu sai da transcrição (CA6, G14). */
+export const ConferenciaDaTranscricao = z.object({ ids: z.array(Texto(60)).min(1).max(50) })
+export type ConferenciaDaTranscricao = z.infer<typeof ConferenciaDaTranscricao>
+
+/** POST /api/gravacoes/:id/documentos: a lista conferida vai ao checklist do benefício (CA7). */
+export const DocumentosDaEntrevista = z.object({ documentos: z.array(Texto(200)).min(1).max(50) })
+export type DocumentosDaEntrevista = z.infer<typeof DocumentosDaEntrevista>
+
+/** PATCH /api/gravacoes/:id/trechos/:aos: marca ou desmarca o trecho como prova (CA6). */
+export const ProvaNoTrecho = z.object({ prova: z.boolean() })
+export type ProvaNoTrecho = z.infer<typeof ProvaNoTrecho>
+
+/** POST /api/fichas/:id/conversas: a conversa sem áudio, escrita por quem participou (GGVP-46 CA6). */
+export const ConversaRegistrada = z.object({
+  data: Texto(10),
+  canal: z.enum(['WhatsApp', 'Telefone', 'Presencial', 'Vídeo']),
+  titulo: Texto(200),
+  participantes: Texto(200),
+  texto: Texto(5000),
+  perfil: z.enum(['juridico', 'atendimento']),
+})
+export type ConversaRegistrada = z.infer<typeof ConversaRegistrada>

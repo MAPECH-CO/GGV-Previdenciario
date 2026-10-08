@@ -3,10 +3,10 @@
 // (CA13). Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-6), gravar com
 // o MediaRecorder e transcrever pela OpenAI.
 import { dataCurta, hojeIso, hora } from '../regras/datas.ts'
-import { documentosDaEntrevista, ehAudio, juntarPartes, partesDoAudio, tirarSenhas } from '../regras/entrevista.ts'
+import { documentosDaEntrevista, ehAudio, juntarPartes, partesDoAudio, resumoDaEntrevista, tirarSenhas } from '../regras/entrevista.ts'
 import { TIPOS_DE_ENTREVISTA, nomeBeneficio } from './catalogos.ts'
 import { conversaDeExemplo } from './exemplo.ts'
-import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { QUEM_ADVOGADA, agendamentoDoServidor, agora, esperar, evento, gravacaoDoServidor, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type {
   AcaoNaGravacao,
   Agendamento,
@@ -14,7 +14,6 @@ import type {
   Entrevista,
   Ficha,
   Gravacao,
-  InformacaoExtraida,
   RespostaDoEncerramento,
   TarefaEncaminhada,
 } from './tipos.ts'
@@ -32,6 +31,16 @@ function acharEntrevista(banco: Banco, agendamentoId: string): { ficha: Ficha; a
   }
   return null
 }
+
+type DoServidor = { gravacao: Gravacao; tarefa?: TarefaEncaminhada; ficha?: Ficha; tarefas?: TarefaEncaminhada[] }
+
+/** GGVP-125, bloco 3a: a entrevista das fichas do servidor grava lá; a cópia daqui recebe a gravação, a ficha e as tarefas. */
+async function pedirAoServidor(caminho: string, corpo: object): Promise<DoServidor> {
+  const r = await noBanco<DoServidor>(caminho, { method: 'POST', corpo })
+  receber(r)
+  return r
+}
+const encerramento = ({ gravacao, tarefa }: DoServidor): RespostaDoEncerramento => ({ gravacao, tarefa })
 
 function acharGravacao(banco: Banco, gravacaoId: string): { gravacao: Gravacao; ficha: Ficha; agendamento?: Agendamento } {
   const gravacao = banco.gravacoes.find((g) => g.id === gravacaoId)
@@ -128,8 +137,9 @@ export async function obterEntrevista(agendamentoId: string): Promise<Entrevista
 
 /** POST /api/entrevistas/:id/gravacoes. Só grava com o aviso ao cliente registrado, com a hora (CA4, G10). */
 export async function iniciarGravacao(agendamentoId: string, inicio: { avisei: true }): Promise<Gravacao> {
-  await esperar()
   if (inicio.avisei !== true) throw new Error('Avise o cliente que a conversa será gravada antes de gravar (G10).')
+  if (agendamentoDoServidor(agendamentoId)) return (await pedirAoServidor(`/entrevistas/${agendamentoId}/gravacoes`, inicio)).gravacao
+  await esperar()
   const banco = ler()
   const achado = acharEntrevista(banco, agendamentoId)
   if (!achado) throw new Error('Entrevista não encontrada')
@@ -156,6 +166,7 @@ const ESTADO_DEPOIS: Partial<Record<AcaoNaGravacao['acao'], Gravacao['estado']>>
 
 /** POST /api/gravacoes/:id/acoes. Cada ação fica registrada com a hora e o ponto do áudio (CA5, CA6, CA8). */
 export async function registrarAcao(gravacaoId: string, nome: 'pausou' | 'retomou' | 'abriu-cofre' | 'guardou-senha' | 'falhou', aos: number): Promise<Gravacao> {
+  if (gravacaoDoServidor(gravacaoId)) return (await pedirAoServidor(`/gravacoes/${gravacaoId}/acoes`, { acao: nome, aos })).gravacao
   await esperar()
   const banco = ler()
   const { gravacao: g } = acharGravacao(banco, gravacaoId)
@@ -173,6 +184,7 @@ function audioDaGravacao(ficha: Ficha, g: Gravacao): Gravacao['audio'] {
 
 /** POST /api/gravacoes/:id/encerrar. O áudio fica no caso e vai para a transcrição; sem internet, espera (CA2, CA5, CA12). */
 export async function encerrarGravacao(gravacaoId: string, fim: { aos: number; online: boolean }): Promise<RespostaDoEncerramento> {
+  if (gravacaoDoServidor(gravacaoId)) return encerramento(await pedirAoServidor(`/gravacoes/${gravacaoId}/encerrar`, fim))
   await esperar()
   const banco = ler()
   const { gravacao: g, ficha, agendamento } = acharGravacao(banco, gravacaoId)
@@ -189,6 +201,7 @@ export async function encerrarGravacao(gravacaoId: string, fim: { aos: number; o
 
 /** POST /api/gravacoes/:id/audio. A internet voltou: o áudio guardado no computador sobe uma vez só (CA12). */
 export async function enviarAudioGuardado(gravacaoId: string): Promise<Gravacao> {
+  if (gravacaoDoServidor(gravacaoId)) return (await pedirAoServidor(`/gravacoes/${gravacaoId}/audio`, {})).gravacao
   await esperar()
   const banco = ler()
   const { gravacao: g } = acharGravacao(banco, gravacaoId)
@@ -204,6 +217,7 @@ export async function registrarSemAudio(gravacaoId: string, notas: string): Prom
   await esperar()
   const texto = notas.trim()
   if (texto.length < 3 || texto.length > 4000) throw new Error('Escreva o que foi conversado.')
+  if (gravacaoDoServidor(gravacaoId)) return encerramento(await pedirAoServidor(`/gravacoes/${gravacaoId}/sem-audio`, { notas: texto }))
   const banco = ler()
   const { gravacao: g, ficha, agendamento } = acharGravacao(banco, gravacaoId)
   acao(g, 'sem-audio', g.duracao)
@@ -222,6 +236,7 @@ export async function registrarSemAudio(gravacaoId: string, notas: string): Prom
 export async function subirAudio(agendamentoId: string, arquivo: AudioDeFora): Promise<RespostaDoEncerramento> {
   await esperar()
   if (!ehAudio(arquivo)) throw new Error('Esse arquivo não é de áudio.')
+  if (agendamentoDoServidor(agendamentoId)) return encerramento(await pedirAoServidor(`/entrevistas/${agendamentoId}/audio`, arquivo))
   const banco = ler()
   const achado = acharEntrevista(banco, agendamentoId)
   if (!achado) throw new Error('Entrevista não encontrada')
@@ -237,26 +252,12 @@ export async function subirAudio(agendamentoId: string, arquivo: AudioDeFora): P
   return { gravacao: g, tarefa }
 }
 
-/** O resumo que a IA faria da entrevista (simulado): junta o que foi dito, sem concluir o benefício (G3). */
-function resumoDaEntrevista(ficha: Ficha, extraidas: InformacaoExtraida[]): string {
-  const valor = (id: string) => extraidas.find((e) => e.id === id)?.valor
-  const partes = [
-    valor('desde') && `sem trabalhar desde ${valor('desde')}`,
-    valor('vinculo') && `último vínculo: ${valor('vinculo')}`,
-    valor('pedido') && `pedido anterior: ${valor('pedido')}`,
-    valor('laudos') && `citou ${valor('laudos')}`,
-    valor('estado-civil') && `estado civil: ${valor('estado-civil')}`,
-  ].filter(Boolean)
-  const beneficio = ficha.beneficioInteresse && ficha.beneficioInteresse !== 'nao-sei' ? ` Procura ${nomeBeneficio(ficha.beneficioInteresse)}.` : ''
-  const dito = partes.length ? `${partes.join('; ')}.` : 'a gravação foi curta: pouco a resumir.'
-  return `${ficha.nome}: ${dito}${beneficio} O benefício é a advogada que define (D1.12, G3).`
-}
-
 /**
  * POST /api/gravacoes/:id/transcricao. A OpenAI simulada: a conversa de exemplo até onde gravou, dividida nas partes do
  * áudio e juntada de novo (CA10), com quem fala (GGVP-46, CA8) e sem senha (CA3). `falhar` simula a falha (GGVP-46, CA3).
  */
 export async function transcrever(gravacaoId: string, opcoes: { falhar?: boolean } = {}): Promise<Gravacao> {
+  if (gravacaoDoServidor(gravacaoId)) return (await pedirAoServidor(`/gravacoes/${gravacaoId}/transcricao`, opcoes)).gravacao
   await esperar()
   const banco = ler()
   const { gravacao: g, ficha, agendamento } = acharGravacao(banco, gravacaoId)

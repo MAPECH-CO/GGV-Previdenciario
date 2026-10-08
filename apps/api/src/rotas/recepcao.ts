@@ -20,7 +20,7 @@ import {
 } from '@ggv/campos'
 import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, credencialGovbr, fichaRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS } from '../../../web/src/dados/catalogos.ts'
@@ -32,6 +32,7 @@ import type {
   EventoHistorico,
   Ficha,
   FichaResumo,
+  Gravacao,
   Processo,
   RespostaNovoCliente,
   TarefaEncaminhada,
@@ -44,6 +45,9 @@ import { ROTULOS_DA_FICHA, camposEmBranco, envioValido, type CampoDaFicha } from
 import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
 
 export const MSG_FICHA_NAO_ENCONTRADA = 'Ficha não encontrada.'
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+/** A hora em Brasília, também no servidor em UTC: "14:32". */
+export const horaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
 export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
 /** Quem preenche no tablet é o próprio cliente (GGVP-24). */
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
@@ -195,6 +199,49 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     await banco.insert(tarefaRecepcao).values({ id: t.id, pessoaId: t.cliente!.id, setor: t.setor, dados: t }).onConflictDoNothing()
   }
 
+  /** A tarefa que tem de estar aberta ("Definir benefício" depois de cada entrevista): a concluída volta a abrir. */
+  async function garantirAberta(t: TarefaEncaminhada) {
+    await banco
+      .insert(tarefaRecepcao)
+      .values({ id: t.id, pessoaId: t.cliente!.id, setor: t.setor, dados: t })
+      .onConflictDoUpdate({ target: tarefaRecepcao.id, set: { dados: t, concluidaEm: null } })
+  }
+
+  /** O compromisso pelo id das telas: "<id da ficha>-ag-<n>". */
+  async function acharAgendamento(id: string) {
+    const fichaId = id.slice(0, 36)
+    const ficha = UUID.test(fichaId) && id.startsWith(`${fichaId}-ag-`) ? (await fichas([fichaId]))[0] : undefined
+    const agendamento = ficha?.agendamentos.find((a) => a.id === id)
+    return ficha && agendamento ? { ficha, agendamento } : null
+  }
+
+  /** As gravações e conversas: todas, para quem vê dado de saúde; senão, só as que não são do Jurídico. */
+  async function gravacoes(todas: boolean): Promise<Gravacao[]> {
+    const linhas = await banco
+      .select()
+      .from(gravacaoRecepcao)
+      .where(todas ? undefined : eq(gravacaoRecepcao.soJuridico, false))
+      // Na ordem em que nasceram: a tela da entrevista lê a última.
+      .orderBy(gravacaoRecepcao.criadoEm, gravacaoRecepcao.id)
+    return linhas.map((l) => l.dados as Gravacao)
+  }
+
+  async function guardarGravacao(g: Gravacao) {
+    await banco
+      .insert(gravacaoRecepcao)
+      .values({ id: g.id, pessoaId: g.fichaId, soJuridico: g.soJuridico, dados: g })
+      .onConflictDoUpdate({ target: gravacaoRecepcao.id, set: { dados: g, soJuridico: g.soJuridico } })
+  }
+
+  /** A gravação, a ficha dela e o compromisso da entrevista. */
+  async function acharGravacao(id: string) {
+    const [linha] = await banco.select().from(gravacaoRecepcao).where(eq(gravacaoRecepcao.id, id))
+    if (!linha) return null
+    const gravacao = linha.dados as Gravacao
+    const [ficha] = await fichas([linha.pessoaId])
+    return ficha ? { gravacao, ficha, agendamento: ficha.agendamentos.find((a) => a.id === gravacao.agendamentoId) } : null
+  }
+
   async function concluirTarefas(pessoaId: string, acao: string, id?: string) {
     await banco
       .update(tarefaRecepcao)
@@ -239,7 +286,24 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     return tarefa
   }
 
-  return { hoje, evento, nomeDe, fichas, resumo, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao }
+  return {
+    hoje,
+    evento,
+    nomeDe,
+    fichas,
+    resumo,
+    guardar,
+    abrirTarefa,
+    garantirAberta,
+    concluirTarefas,
+    tarefas,
+    abrirPreparacao,
+    quandoNaConfirmacao,
+    acharAgendamento,
+    gravacoes,
+    guardarGravacao,
+    acharGravacao,
+  }
 }
 
 export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {

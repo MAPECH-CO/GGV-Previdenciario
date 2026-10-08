@@ -1,5 +1,5 @@
 // Pessoas: lead e cliente, vínculos, consentimento e o cofre do gov.br (GGVP-16, 43, 60, 103, 108).
-import { customType, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { boolean, customType, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 
@@ -134,5 +134,20 @@ export const compromissoInterno = pgTable('compromisso_interno', {
   responsavel: text('responsavel').notNull(),
   estado: text('estado').notNull().default('marcado'),
   criadoPor: uuid('criado_por').references(() => usuario.id),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/**
+ * As gravações e as conversas sem áudio da Recepção (GGVP-40, GGVP-46; GGVP-125, bloco 3a), no formato das telas,
+ * guardadas para sempre. A entrevista com a advogada tem dado de saúde: `so_juridico` (só vai às telas com
+ * `dado_saude.ver_detalhe`).
+ */
+export const gravacaoRecepcao = pgTable('gravacao_recepcao', {
+  id: text('id').primaryKey(),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  soJuridico: boolean('so_juridico').notNull(),
+  dados: jsonb('dados').notNull(),
   criadoEm: criadoEm(),
 }).enableRLS()

@@ -110,6 +110,16 @@ export async function noBanco<T>(caminho: string, init?: { method?: string; corp
   return r.dados
 }
 
+/** A gravação ou a conversa que nasceu no servidor: "gravacao-<uuid>" ou "conversa-<uuid>" (bloco 3a). */
+export const gravacaoDoServidor = (id: string) => doServidor(id.replace(/^(gravacao|conversa)-/, ''))
+
+/** A gravação que veio do servidor entra no lugar da que já existe aqui, ou no fim: a tela da entrevista lê a última. */
+function receberGravacaoEm(banco: Banco, g: Gravacao) {
+  const i = banco.gravacoes.findIndex((x) => x.id === g.id)
+  if (i >= 0) banco.gravacoes[i] = g
+  else banco.gravacoes.push(g)
+}
+
 /** O compromisso de uma ficha do servidor: o id é "<id da ficha>-ag-<n>". */
 export const agendamentoDoServidor = (id: string) => doServidor(id.slice(0, 36)) && id.startsWith(`${id.slice(0, 36)}-ag-`)
 
@@ -174,11 +184,12 @@ function receberTarefasEm(banco: Banco, doBanco: TarefaEncaminhada[], todasAbert
 }
 
 /** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa e o compromisso interno, para a cópia daqui. */
-export function receber(r: { ficha?: Ficha; tarefas?: TarefaEncaminhada[]; interno?: CompromissoGuardado }): Ficha | undefined {
+export function receber(r: { ficha?: Ficha; tarefas?: TarefaEncaminhada[]; interno?: CompromissoGuardado; gravacao?: Gravacao }): Ficha | undefined {
   const banco = ler()
   const ficha = r.ficha && espelharEm(banco, r.ficha)
   if (r.tarefas) receberTarefasEm(banco, r.tarefas, false)
   if (r.interno) banco.internos = [...banco.internos.filter((i) => i.id !== r.interno!.id), r.interno]
+  if (r.gravacao) receberGravacaoEm(banco, r.gravacao)
   gravar(banco)
   return ficha
 }
@@ -189,11 +200,13 @@ export function receber(r: { ficha?: Ficha; tarefas?: TarefaEncaminhada[]; inter
  */
 export async function sincronizarRecepcao() {
   if (!noServidor) return
-  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[] }>('/recepcao')
+  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[]; gravacoes: Gravacao[] }>('/recepcao')
   const banco = ler()
   for (const f of r.fichas) espelharEm(banco, f)
   receberTarefasEm(banco, r.tarefas, true)
   banco.internos = [...banco.internos.filter((i) => !doServidor(i.id)), ...r.internos]
+  // As do servidor vêm inteiras, e só as que este perfil pode ver: a entrevista com dado de saúde, só o Jurídico.
+  banco.gravacoes = [...banco.gravacoes.filter((g) => !gravacaoDoServidor(g.id)), ...r.gravacoes]
   gravar(banco)
 }
 

@@ -14,6 +14,7 @@ import {
   MensagemEnviada,
   NovoCompromissoInterno,
   ResultadoDoCompromisso,
+  pode,
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
@@ -35,7 +36,7 @@ import { DURACOES, HORARIOS, equipeDaEntrevista, estadoDoEvento, horarioOcupado,
 import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
 import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, criarFichario } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
@@ -48,11 +49,9 @@ const PASSOS: Record<string, string> = {
 }
 const CANAL = { ligacao: 'Ligação', mensagem: 'Chatwoot' } as const
 const CANAL_FALADO = { ligacao: 'ligação', mensagem: 'mensagem pelo Chatwoot' } as const
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 const nomeDaEquipe = (id: string) => EQUIPE.find((m) => m.id === id)?.nome ?? id
 const nomeDoTipo = (id: string | undefined) => TIPOS_DE_ENTREVISTA.find((t) => t.id === id)?.nome.toLowerCase() ?? ''
-const horaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
 const dataValida = (iso: string) => dataParaIso(iso.split('-').reverse().join('/')) === iso
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -103,7 +102,8 @@ const guardado = (l: typeof compromissoInterno.$inferSelect): CompromissoGuardad
 type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao } = criarFichario(banco, agora)
+  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes } =
+    criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const quandoNaAgenda = (a: { data: string; hora: string }) => `${dataCurta(a.data, hoje())} às ${a.hora}`
@@ -124,12 +124,6 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
 
   const fichaPeloId = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
 
-  /** O compromisso pelo id das telas: "<id da ficha>-ag-<n>". */
-  async function acharAgendamento(id: string) {
-    const ficha = id.startsWith(`${id.slice(0, 36)}-ag-`) ? await fichaPeloId(id.slice(0, 36)) : undefined
-    const agendamento = ficha?.agendamentos.find((a) => a.id === id)
-    return ficha && agendamento ? { ficha, agendamento } : null
-  }
   const novoId = (ficha: Ficha) => `${ficha.id}-ag-${randomUUID().slice(0, 8)}`
 
   /** A pendência do Atendimento: a ficha em papel preenchida e escaneada antes da entrevista (GGVP-21 CA2, CA7). */
@@ -150,8 +144,14 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     return tarefa
   }
 
-  // A cópia das telas: as fichas da Recepção, as tarefas abertas e os compromissos internos, ao abrir cada tela.
-  app.get('/api/recepcao', ver, async () => ({ fichas: await fichasDaRecepcao(), tarefas: await tarefas(), internos: await internos() }))
+  // A cópia das telas: as fichas da Recepção, as tarefas abertas, os compromissos internos e as gravações, ao abrir cada
+  // tela. A gravação com dado de saúde só vai a quem tem `dado_saude.ver_detalhe` (bloco 3a).
+  app.get('/api/recepcao', ver, async (pedido) => ({
+    fichas: await fichasDaRecepcao(),
+    tarefas: await tarefas(),
+    internos: await internos(),
+    gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
+  }))
 
   // GGVP-16 CA4 e GGVP-17 CA1, CA3: o balcão manda ao setor, com a ficha e o agendamento; quem veio entregar documento
   // vai sempre à Documentação, ligado ao caso em andamento.

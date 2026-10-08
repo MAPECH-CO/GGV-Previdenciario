@@ -130,3 +130,12 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.11 Playwright: a Atendimento marca e registra a confirmação; a advogada, em outra sessão, vê "Preparar entrevista" na Central e a entrevista na agenda.
 - [x] 125.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+
+### Bloco 3a · Entrevista gravada e transcrição
+
+- [x] 125.13 Banco: `gravacao_recepcao` (a gravação ou a conversa no formato das telas, por pessoa, com `so_juridico`) e a migração; matriz com `entrevista.gravar` (Jurídico).
+- [x] 125.14 Contratos: início (com o aviso), ação, fim, sem áudio, áudio de fora, transcrição, conferência, documentos, prova e conversa sem áudio.
+- [x] 125.15 Servidor: `POST /api/entrevistas/:id/gravacoes`, `POST /api/gravacoes/:id/acoes`, `POST /api/gravacoes/:id/encerrar`, `POST /api/gravacoes/:id/audio`, `POST /api/gravacoes/:id/sem-audio`, `POST /api/entrevistas/:id/audio`, `POST /api/gravacoes/:id/transcricao`, `POST /api/gravacoes/:id/conferencias`, `POST /api/gravacoes/:id/documentos`, `PATCH /api/gravacoes/:id/trechos/:aos`, `POST /api/fichas/:id/conversas`; as gravações na cópia das telas por perfil; o fim da entrevista abre e conclui as tarefas; testes.
+- [x] 125.16 Telas: as funções da entrevista e da transcrição chamando a API para as fichas do servidor; a cópia recebe as gravações; testes.
+- [x] 125.17 Playwright: a advogada grava e encerra a entrevista de um lead do balcão; outra sessão do Jurídico vê "Cadastrar lead"; a Atendimento não recebe a gravação.
+- [x] 125.18 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

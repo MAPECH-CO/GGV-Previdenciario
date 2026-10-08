@@ -84,6 +84,8 @@ export const MATRIZ = {
   // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
   // renumera a versão.
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
+  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
+  'entrevista.gravar': JURIDICO,
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

@@ -65,3 +65,52 @@ test('a Atendimento marca e confirma a entrevista; a advogada vê "Preparar entr
   await expect(advogada.getByRole('button', { name: /Lia Agenda Teste · Fazer entrevista/ }).filter({ hasText: 'agendado' })).toBeVisible()
   await outro.close()
 })
+
+// GGVP-125, bloco 3a · a entrevista gravada no banco: outra sessão do Jurídico recebe "Cadastrar lead"; a gravação, que
+// tem dado de saúde, não vai à cópia da Atendimento.
+test('a advogada grava e encerra a entrevista de um lead do balcão; a gravação fica só com o Jurídico', async ({ page, browser }) => {
+  await page.goto('/clientes/novo')
+  await page.getByLabel('Nome completo *').fill('Lia Entrevista Teste')
+  await page.getByLabel('Idade *').fill('61')
+  await page.getByLabel('Telefone / WhatsApp *').fill('11955554411')
+  await page.getByLabel('O que a pessoa pretende *').fill('Afastada do trabalho, sem receber.')
+  await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
+  await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
+  await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
+  await page.getByRole('button', { name: /^Marcar/ }).click()
+  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Entrevista Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  const entrevista = await page.evaluate(
+    () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Entrevista Teste')!.agendamentos[0].id,
+  )
+
+  const origem = new URL(page.url()).origin
+  const juridico = await browser.newContext({ baseURL: origem })
+  const advogada = await juridico.newPage()
+  await advogada.clock.install()
+  await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
+  await advogada.goto(`/entrevista/${entrevista}/gravacao`)
+  await expect(advogada.getByRole('heading', { level: 1 })).toHaveText('Entrevista com Lia Entrevista Teste')
+  await advogada.getByRole('button', { name: 'Gravar' }).click()
+  await advogada.getByRole('checkbox', { name: 'Avisei o cliente que a conversa será gravada' }).check()
+  await advogada.getByRole('button', { name: 'Começar a gravar' }).click()
+  await advogada.clock.runFor(70_000)
+  await advogada.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
+  await expect(advogada.getByRole('heading', { name: /✓ Entrevista encerrada/ })).toBeVisible()
+  await expect(advogada.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+
+  // Outra sessão do Jurídico, em outro computador.
+  const outro = await browser.newContext({ baseURL: origem })
+  const outraAdvogada = await outro.newPage()
+  await entrarPelaApi(outraAdvogada, 'advogada@exemplo.ggv')
+  await outraAdvogada.goto('/advogada')
+  await expect(outraAdvogada.getByRole('link', { name: 'Lia Entrevista Teste · Cadastrar lead' })).toBeVisible()
+
+  // A Atendimento abre uma tela: a cópia dela não traz a transcrição.
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
+  expect(await page.evaluate(() => sessionStorage.getItem('ggv.exemplo.v5'))).not.toContain('Lia Entrevista Teste: ')
+  expect(await advogada.evaluate(() => sessionStorage.getItem('ggv.exemplo.v5'))).toContain('Lia Entrevista Teste: ')
+  await juridico.close()
+  await outro.close()
+})
