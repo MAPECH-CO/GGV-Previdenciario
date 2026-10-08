@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { Despachar, Despacho, ROTULO_SETOR, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
-import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_INDEFERIMENTO = 'Este caso não tem indeferimento registrado.'
@@ -29,7 +29,7 @@ export async function situacaoDoDespacho(banco: Banco, casoId: string) {
     .limit(1)
   const itens = x
     ? await banco
-        .select({ item: exigenciaItem, escaladaEm: tarefa.escaladaEm })
+        .select({ item: exigenciaItem, escaladaEm: tarefa.escaladaEm, tarefaId: tarefa.id, acionadoEm: tarefa.criadoEm, concluidaEm: tarefa.concluidaEm })
         .from(exigenciaItem)
         .leftJoin(tarefa, eq(exigenciaItem.tarefaId, tarefa.id))
         .where(eq(exigenciaItem.exigenciaId, x.id))
@@ -87,6 +87,7 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       .orderBy(desc(decisao.decididoEm))
       .limit(1)
     const s = await situacaoDoDespacho(banco, casoId)
+    const lacos = await lacosDas(banco, s.itens.flatMap((i) => (i.tarefaId ? [i.tarefaId] : [])))
     const aguardando = Boolean(await tarefaAberta(casoId, 'D3.03'))
     return Despacho.parse({
       casoId,
@@ -94,7 +95,18 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       beneficio: l.beneficio,
       indeferimento: { dataDecisao: l.resultado.dataDecisao, motivoInss: l.resultado.motivoIndeferimento, ...(await cartaEMotivo(l.resultado)) },
       despacho: d ? { decisao: d.resultado, por: d.por, em: d.em.toISOString() } : null,
-      setores: s.itens.map((i) => ({ setor: i.item.perfilResponsavel, descricao: i.item.descricao, prazo: i.item.prazo, situacao: i.item.situacao, escalada: Boolean(i.escaladaEm) })),
+      // GGVP-68 CA14 e GGVP-94 CA8, CA9: o acionamento, o laço e, no item que passou do limite, a decisão da Sênior.
+      setores: s.itens.map((i) => ({
+        id: i.item.id,
+        setor: i.item.perfilResponsavel,
+        descricao: i.item.descricao,
+        prazo: i.item.prazo,
+        situacao: i.item.situacao,
+        escalada: Boolean(i.escaladaEm),
+        acionadoEm: i.acionadoEm?.toISOString() ?? null,
+        historicoDoLaco: (i.tarefaId && lacos.get(i.tarefaId)) || [],
+        podeDecidir: pode(pedido.perfilAtivo, 'caso.despachar_indeferimento') && Boolean(i.escaladaEm) && !i.concluidaEm,
+      })),
       pericias: s.pericias,
       faltam: s.faltam,
       podeDespachar: pode(pedido.perfilAtivo, 'caso.despachar_indeferimento') && aguardando,

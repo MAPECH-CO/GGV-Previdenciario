@@ -8,11 +8,10 @@ import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
-import { limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import { somarDias } from '../fluxo/prazo-inss.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { situacaoDoDespacho } from './indeferimento.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
@@ -46,6 +45,7 @@ export async function tribunaisDa(banco: Banco): Promise<Tribunal[]> {
 
 export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
 
   const tarefaAberta = async (casoId: string, passo: string) =>
     (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, passo), isNull(tarefa.concluidaEm))).limit(1))[0] ?? null
@@ -209,7 +209,10 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     if (!aguardando) return negar(resposta, 409, MSG_NADA_A_PEDIR)
     if (await peticaoDo(casoId)) return negar(resposta, 409, MSG_JA_PEDIDA)
     const { faltam } = await situacaoDoDespacho(banco, casoId)
-    if (faltam.length) return negar(resposta, 409, `Pedir a petição fica bloqueado até todos os setores subirem o card. Falta: ${faltam.join(', ')}.`)
+    if (faltam.length) {
+      await bloqueio(pedido, casoId, 'setores', 'D3.05', { faltam: faltam.length })
+      return negar(resposta, 409, `Pedir a petição fica bloqueado até todos os setores subirem o card. Falta: ${faltam.join(', ')}.`)
+    }
     const d = entrada.data
     // CA6: os citados são documentos deste caso, na ordem do pedido, ou o nome do que ainda falta.
     const ids = [...new Set(d.citados.flatMap((x) => (x.documentoId ? [x.documentoId] : [])))]
@@ -421,7 +424,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       if (!l) return resposta
       if (l.citados[l.i].itemId) return negar(resposta, 409, 'Este documento já foi pedido à Documentação.')
       const quem = pedido.usuario!.id
-      const { limite, intervaloDias } = await limitesDeCobranca(banco)
+      const { limite } = await limitesDeCobranca(banco)
       const itemId = await banco.transaction(async (tx) => {
         const [x] = await tx
           .select()
@@ -445,7 +448,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
             passo: 'D3.04',
             titulo: 'Cumprir pendência',
             perfilDono: 'documentacao',
-            prazo: intervaloDias ? somarDias(hoje(agora()), intervaloDias) : null,
+            prazo: await lembreteDoLaco(tx, hoje(agora()), null, limite ?? 1),
             limiteTentativas: limite,
             criadoEm: agora(),
           })
@@ -499,7 +502,10 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     // CA3: trava falhando bloqueia o protocolo e diz qual.
     const travas = await travasDa(casoId, aprovada, (p.citados ?? []) as Citado[], tribunal)
     const falhando = travas.filter((t) => !t.ok)
-    if (falhando.length) return negar(resposta, 409, `Trava falhando: ${falhando.map((t) => `${t.nome} (${t.evidencia})`).join('; ')}.`)
+    if (falhando.length) {
+      await bloqueio(pedido, casoId, 'G7', 'D3.07', { travas: falhando.map((t) => t.nome) })
+      return negar(resposta, 409, `Trava falhando: ${falhando.map((t) => `${t.nome} (${t.evidencia})`).join('; ')}.`)
+    }
     // CA9: o pacote não pode ter mudado depois da aprovação: confere o hash de cada arquivo no armazenamento.
     const divergentes: string[] = []
     for (const a of (aprovada.pacote ?? []) as ArquivoDoPacote[]) {
@@ -508,7 +514,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       if (!conteudo || hashDe(conteudo) !== a.hash) divergentes.push(a.nome)
     }
     if (divergentes.length) {
-      await historico(quem, 'pacote_divergente', pedido, `caso:${casoId}`, { arquivos: divergentes, versao: aprovada.numero })
+      await bloqueio(pedido, casoId, 'G7', 'D3.07', { arquivos: divergentes, versao: aprovada.numero }, 'pacote_divergente')
       return negar(resposta, 409, `O pacote mudou depois da aprovação: ${divergentes.join(', ')}. O protocolo fica bloqueado; gere o pacote de novo e confira.`)
     }
     const [outro] = await banco

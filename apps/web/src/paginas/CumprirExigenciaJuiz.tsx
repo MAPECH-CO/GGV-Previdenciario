@@ -2,6 +2,8 @@ import { useEffect, useId, useState } from 'react'
 import { isoParaData } from '@ggv/campos'
 import { NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, SubirInformacao, type ItensDoSetor } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TextoDoLembrete } from '../componentes/Laco.tsx'
+import { ROTULO_DO_CANAL } from '../componentes/rotulosDoLaco.ts'
 import styles from './Passo.module.css'
 
 type Item = ItensDoSetor['itens'][number]
@@ -127,11 +129,16 @@ function CartaoDoItem({
               Ainda não conseguiu? Registrar cobrança ao cliente ({contagem}
               {item.proximoLembrete ? ` · próximo lembrete ${dia(item.proximoLembrete)}` : ''})
             </summary>
+            {item.lembrete && (
+              <p className={styles.dica}>
+                <TextoDoLembrete data={item.proximoLembrete} lembrete={item.lembrete} />
+              </p>
+            )}
             {item.tentativas.length > 0 && (
               <ol className={styles.lista} aria-label="Cobranças">
                 {item.tentativas.map((t) => (
                   <li key={t.quando}>
-                    {new Date(t.quando).toLocaleDateString('pt-BR')} · {CANAIS[t.canal as keyof typeof CANAIS] ?? t.canal} · {t.resultado} · {t.quem}
+                    {new Date(t.quando).toLocaleDateString('pt-BR')} · {ROTULO_DO_CANAL[t.canal] ?? t.canal} · {t.resultado} · {t.quem}
                   </li>
                 ))}
               </ol>

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, documento, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_ANTES_DA_PRESTACAO, MSG_G8, MSG_SEM_DEFERIDO, MODELO_IDA_AO_BANCO } from './prestacao.ts'
@@ -148,6 +148,8 @@ describe('GGVP-44 · ida ao banco', () => {
     await chamar('ana', 'POST', '/banco', AGENDA())
     await banco.update(prestacaoContas).set({ okAdvogadaEm: null, okAdvogadaPor: null })
     expect((await chamar('ana', 'POST', '/banco/envio', { canal: 'whatsapp' })).json().erro).toBe(MSG_G8)
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G8', passo: 'D3b.03', perfil: 'atendimento' })
   })
 
   it('CA12 · remarcar cancela o anterior, o Financeiro vê o novo e o convite precisa sair de novo', async () => {

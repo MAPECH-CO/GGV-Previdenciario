@@ -98,8 +98,28 @@ describe('Despachar caso (GGVP-54)', () => {
       podeEncerrar: false,
       despacho: { decisao: 'acionar', por: 'Helena', em: '2026-10-07T14:00:00.000Z' },
       setores: [
-        { setor: 'atendimento', descricao: 'Quem mora com a cliente', prazo: null, situacao: 'cumprido', escalada: false },
-        { setor: 'documentacao', descricao: 'Laudo atualizado', prazo: '2026-10-20', situacao: 'pendente', escalada: true },
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          setor: 'atendimento',
+          descricao: 'Quem mora com a cliente',
+          prazo: null,
+          situacao: 'cumprido',
+          escalada: false,
+          acionadoEm: '2026-10-07T14:00:00.000Z',
+          historicoDoLaco: [],
+          podeDecidir: false,
+        },
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          setor: 'documentacao',
+          descricao: 'Laudo atualizado',
+          prazo: '2026-10-20',
+          situacao: 'pendente',
+          escalada: true,
+          acionadoEm: '2026-10-07T14:00:00.000Z',
+          historicoDoLaco: [{ quando: '2026-10-08T13:00:00.000Z', canal: 'whatsapp', resultado: 'Cliente não respondeu', quem: 'Dora' }],
+          podeDecidir: false,
+        },
       ],
       pericias: [{ tipo: 'medica', resultado: null }],
       faltam: ['Documentação', 'Perícia'],
@@ -109,8 +129,8 @@ describe('Despachar caso (GGVP-54)', () => {
     expect(screen.getByText('Falta: Documentação, Perícia.')).toBeTruthy()
     const linhas = screen.getByRole('list', { name: 'Setores acionados' }).querySelectorAll('li')
     expect([...linhas].map((l) => l.textContent)).toEqual([
-      'Atendimento · Quem mora com a cliente · sem prazo · concluído',
-      'Documentação · Laudo atualizado · até 20/10/2026 · aberto · com a Sênior',
+      'Atendimento · Quem mora com a cliente · sem prazo · concluído · acionado em 07/10/2026',
+      'Documentação · Laudo atualizado · até 20/10/2026 · aberto · acionado em 07/10/2026 · última: 08/10/2026, WhatsApp, Cliente não respondeu · com a Sênior',
       'Jurídico administrativo · marcar a perícia médica · aguardando o resultado',
     ])
     expect(screen.queryByRole('button', { name: 'Despachar' })).toBeNull()

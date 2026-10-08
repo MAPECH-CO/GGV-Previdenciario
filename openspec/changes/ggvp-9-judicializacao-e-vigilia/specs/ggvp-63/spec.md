@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Pedir a petição: com todos os setores fechados, a advogada pede a petição inicial, com as instruções, as opções e os documentos citados, e a versão 1 vai para a conferência (GGVP-67). Respostas do revisor de 06/10: sem IA até o épico IA jurídica, a advogada escreve ou cola o texto da versão 1 no portal; a jurimetria e a amostra mínima ficam para o épico Jurimetria; a identificação do juízo e o parecer médico no pedido ficam para a v2, como o cartão marca; qualquer advogada da fila pede.
+Pedir a petição: com todos os setores fechados, a advogada pede a petição inicial, com as instruções, as opções e os documentos citados, e a versão 1 vai para a conferência (GGVP-67). Respostas do revisor de 06/10: sem IA até o épico IA jurídica, a advogada escreve ou cola o texto da versão 1 no portal; a jurimetria fica para o épico Jurimetria (sem amostra mínima: a porcentagem vem com o número de casos, G22); a identificação do juízo e o parecer médico no pedido ficam para a v2, como o cartão marca; qualquer advogada da fila pede.
 
 ## ADDED Requirements
 
@@ -62,13 +62,13 @@ A jurimetria do juízo SHALL ficar dentro do pedido e na página do processo, se
 - **Quando** ela aparece
 - **Então** fica dentro do pedido e na página do processo; os números vêm de código e a IA só explica e cita as fontes
 
-### Requirement: CA8 · Amostra insuficiente (G22)
-Com a amostra abaixo do mínimo, o pedido SHALL mostrar "amostra insuficiente", sem porcentagem, e MUST NOT ficar bloqueado por isso (G22); entra com o épico Jurimetria.
+### Requirement: CA8 · Porcentagem com o número de casos (G22)
+A jurimetria no pedido SHALL mostrar cada porcentagem com o número de casos ao lado e a data da base; não há amostra mínima (Lucas, 06/10; Pedro, 07/10). O pedido MUST NOT ficar bloqueado por amostra pequena, e o número fica fora do texto da peça que vai ao juiz. Entra com o épico Jurimetria.
 
 #### Scenario: CA8 · Amostra pequena
-- **Dado** a jurimetria com amostra abaixo do mínimo
+- **Dado** a jurimetria com poucos casos na base
 - **Quando** peço a petição
-- **Então** aparece "amostra insuficiente", sem porcentagem; o pedido não fica bloqueado por isso
+- **Então** a porcentagem aparece com o número de casos e a data da base; o pedido não fica bloqueado por isso
 
 ### Requirement: CA9 · Instruções e opções registradas; o indeferimento sempre entra
 Confirmado o pedido, MUST ficar registradas as instruções e as opções escolhidas (pedir tutela de urgência, usar precedentes do acervo, anexar os documentos citados). Sem IA, a advogada escreve ou cola o texto da versão 1. O indeferimento do INSS (Tema 350) SHALL entrar sempre, sem opção, e a trava do protocolo confere (G7, GGVP-71).

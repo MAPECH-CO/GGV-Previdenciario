@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
@@ -20,6 +20,8 @@ export const usuariosDeExemplo = [
   { email: 'documentacao@exemplo.ggv', nome: 'Fábio (exemplo)', perfis: ['documentacao'], trocarSenha: false },
   { email: 'advogada@exemplo.ggv', nome: 'Gabi (exemplo)', perfis: ['advogada'], trocarSenha: false },
   { email: 'senior@exemplo.ggv', nome: 'Helena (exemplo)', perfis: ['senior'], trocarSenha: false },
+  // A dispensa do parecer pede duas Sêniores diferentes (G17, Q14); o nome bate com o exemplo da tela do Pedro.
+  { email: 'senior2@exemplo.ggv', nome: 'Otávio (exemplo, segunda Sênior)', perfis: ['senior'], trocarSenha: false },
   { email: 'juridico@exemplo.ggv', nome: 'Igor (exemplo)', perfis: ['juridico_adm'], trocarSenha: false },
   { email: 'financeiro@exemplo.ggv', nome: 'Júlia (exemplo)', perfis: ['financeiro'], trocarSenha: false },
   { email: 'socio@exemplo.ggv', nome: 'Lauro (exemplo)', perfis: ['socio'], trocarSenha: false },
@@ -44,6 +46,7 @@ export async function semearExemplos(banco: Banco) {
     .values(usuariosDeExemplo.map((u) => ({ ...u, senhaHash })))
     .returning()
   const senior = usuarios.find((u) => u.perfis.includes('senior'))!
+  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const cofre = criarCofre(chaveDoCofre())
 
   for (const [i, ex] of casosDeExemplo.entries()) {
@@ -97,6 +100,9 @@ export async function semearExemplos(banco: Banco) {
         casoId: c.id,
         roteiroVersao: 1,
         resultado: ex.parecer,
+        // G17: confirmado por pessoa do Jurídico; sem isso, o portão vê só a sugestão da IA.
+        confirmadoPor: advogada.id,
+        confirmadoEm: new Date(),
         itens: [
           { item: 'Natureza do impedimento', atendido: true },
           { item: 'Data de início', atendido: true },
@@ -121,9 +127,26 @@ export async function semearExemplos(banco: Banco) {
 
   // Exigência do INSS (GGVP-39): limites de cobrança do escritório (Q1, exemplo) e um caso esperando a advogada decidir.
   await banco.insert(configuracao).values([
-    { chave: 'cobranca.limite', valor: 2 },
-    { chave: 'cobranca.intervalo_dias', valor: 3 },
+    { chave: 'cobranca.limite', valor: 2 }, // Lucas, 05/10 (GGVP-122, pergunta 6)
+    { chave: 'cobranca.intervalo_dias', valor: 3 }, // dias úteis entre as tentativas (Lucas, 02/10; GGVP-94)
+    // GGVP-103 CA7 (Q1): o uso do cofre fora do padrão avisa a Sênior. Valores de exemplo, a confirmar com o escritório.
+    { chave: 'cofre.alerta.leituras_por_dia', valor: 10 },
+    { chave: 'cofre.alerta.hora_inicio', valor: 7 },
+    { chave: 'cofre.alerta.hora_fim', valor: 20 },
+    // GGVP-104 CA4 (Lucas, 02/10): cliente sumido, 3 tentativas em 10 dias; remarcação de perícia, 1, e sobe para a advogada.
+    { chave: 'contato.limite', valor: 3 },
+    { chave: 'contato.janela_dias', valor: 10 },
+    { chave: 'pericia.remarcacao.limite', valor: 1 },
   ])
+  // GGVP-104 (Lucas, 02/10): no LOAS, a ficha de grupo familiar é obrigatória e as três declarações são condicionais.
+  // A versão 1 vale desde sempre, para os casos de exemplo já abertos.
+  const kitLoas = [
+    ...['documento_de_identidade', 'cpf', 'comprovante_de_residencia', 'cadunico', 'ficha_de_grupo_familiar'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: true })),
+    ...['declaracao_de_moradia', 'declaracao_de_uniao_estavel', 'declaracao_de_separacao_de_fato'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: false })),
+  ]
+  await banco
+    .insert(kitDocumento)
+    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T00:00:00Z') }))))
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
   await banco.insert(etapa).values({ casoId: cu.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date() })
@@ -144,7 +167,6 @@ export async function semearExemplos(banco: Banco) {
     nome: 'Confirmação da ida ao banco',
     conteudo: 'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}. {acompanhamento} Qualquer dúvida, fale com o escritório. (modelo de exemplo)',
   })
-  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const [pv] = await banco.insert(pessoa).values({ nome: 'Vera Lúcia (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cv] = await banco.insert(caso).values({ pessoaId: pv.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
   await banco.insert(contrato).values({ casoId: cv.id, situacao: 'assinado', percentualHonorarios: '30.00' })
@@ -212,4 +234,24 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'tribunais', valor: [{ nome: 'Justiça Federal da 3ª Região (exemplo)', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: 10 }] },
     { chave: 'peticao.assinatura', valor: 'Glauco (exemplo)\nAdvogado responsável · OAB/UF 000.000 (exemplo)' },
   ])
+
+  // Laço que passou do limite (GGVP-94): a Documentação cobrou 3 vezes sem retorno, e a cobrança subiu para a Sênior.
+  const documentacao = usuarios.find((u) => u.perfis.includes('documentacao'))!
+  const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10)
+  const [pw] = await banco.insert(pessoa).values({ nome: 'Wagner Costa (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cw] = await banco.insert(caso).values({ pessoaId: pw.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+  const [xw] = await banco
+    .insert(exigencia)
+    .values({ casoId: cw.id, origem: 'inss', descricao: 'Apresentar o CadÚnico atualizado. (exemplo)', recebidaEm: daqui(-10), pede: 'documentos', diasInss: 30, prazo: daqui(20), analisadaPor: advogada.id })
+    .returning()
+  const [cartao] = await banco
+    .insert(tarefa)
+    .values({ casoId: cw.id, passo: 'D2.05d', titulo: 'Cumprir exigência do INSS', perfilDono: 'documentacao', prazo: daqui(1), tentativas: 3, limiteTentativas: 3, escaladaEm: new Date(), escaladaPara: 'senior' })
+    .returning()
+  await banco.insert(exigenciaItem).values({ exigenciaId: xw.id, descricao: 'CadÚnico atualizado', perfilResponsavel: 'documentacao', prazo: daqui(15) })
+  await banco
+    .insert(tentativa)
+    .values([-6, -3, -1].map((d) => ({ tarefaId: cartao.id, quando: new Date(Date.now() + d * 86_400_000), canal: 'whatsapp', resultado: 'sem_resposta', registradaPor: documentacao.id })))
+  await banco.insert(tarefa).values({ casoId: cw.id, passo: 'D2.05', titulo: 'Cobrança sem retorno: exigência do INSS', perfilDono: 'senior' })
+  await banco.insert(etapa).values({ casoId: cw.id, diagrama: 'D2', passo: 'D2.E3', situacao: 'aguardando_externo', aguardando: 'cliente entregar o documento', iniciadaEm: new Date() })
 }

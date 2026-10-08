@@ -1,19 +1,17 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { DecidirConferencia, DispensarParecer, type CasoParaConferencia } from '@ggv/contratos'
+import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
-const ROTULO_PARECER = { suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado pela Sênior' }
+const ROTULO_PARECER = { suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado por duas Sêniores' }
 
-/** Por que Aprovar ainda não vale (a mesma regra que o servidor confere: G1 e G17). */
+/** Por que Aprovar ainda não vale: G1 aqui; G17 vem do servidor, pela regra única do contrato (`travaDoParecer`). */
 function bloqueioDeAprovar(c: CasoParaConferencia): string | null {
   if (c.checklist.cadastrado && !c.checklist.completo) return `Checklist incompleto (G1): faltam ${c.checklist.faltam.join(', ')}.`
-  if (!c.parecer || !['suficiente', 'dispensado'].includes(c.parecer.resultado)) return 'Sem parecer médico "Suficiente" ou dispensa justificada (G17).'
-  if (c.laudoNovoEsperando) return 'Há laudo novo esperando conferência (G17).'
-  return null
+  return c.travaDoParecer
 }
 
 /** Conferência da Sênior antes do INSS (GGVP-23). Quem não é Sênior vê só para leitura (CA4). */
@@ -59,6 +57,15 @@ export function Conferencia({ casoId }: { casoId: string }) {
     if (!r.ok) return setErro(r.erro)
     setErro('')
     setModo('nada')
+    await carregar()
+  }
+
+  /** A segunda Sênior, outra pessoa, aprova ou recusa (Q14). O servidor recusa quem pediu. */
+  async function responderDispensa(aprova: boolean) {
+    const corpo = ResponderDispensa.parse({ aprova })
+    const r = await chamarApi(`/casos/${casoId}/parecer/dispensa/aprovacao`, { method: 'POST', corpo })
+    if (!r.ok) return setErro(r.erro)
+    setErro('')
     await carregar()
   }
 
@@ -129,6 +136,25 @@ export function Conferencia({ casoId }: { casoId: string }) {
           <p className={styles.dica}>{caso.parecerRestrito ? 'Parecer médico restrito ao Jurídico.' : 'Sem parecer médico.'}</p>
         )}
         {caso.laudoNovoEsperando && <p className={styles.erroCampo}>Há laudo novo esperando conferência.</p>}
+        {caso.dispensa && (
+          <div className={styles.cartao}>
+            <p className={styles.dica}>
+              Dispensa pedida por {caso.dispensa.pedidaPor}: {caso.dispensa.justificativa}
+            </p>
+            {caso.dispensa.podeResponder ? (
+              <div className={styles.acoes}>
+                <button type="button" className={styles.botao} onClick={() => void responderDispensa(true)}>
+                  Aprovar a dispensa
+                </button>
+                <button type="button" className={styles.botaoSecundario} onClick={() => void responderDispensa(false)}>
+                  Recusar a dispensa
+                </button>
+              </div>
+            ) : (
+              <p className={styles.dica}>Espera a aprovação de outra Sênior: uma pessoa sozinha não dispensa o parecer.</p>
+            )}
+          </div>
+        )}
       </section>
 
       {feito ? (
@@ -157,9 +183,9 @@ export function Conferencia({ casoId }: { casoId: string }) {
               <button type="button" className={styles.botaoSecundario} onClick={() => setModo('reprovar')}>
                 Reprovar, volta ao Atendimento
               </button>
-              {bloqueio?.includes('G17') && !caso.laudoNovoEsperando && (
+              {caso.travaDoParecer && !caso.laudoNovoEsperando && !caso.dispensa && (
                 <button type="button" className={styles.botaoSecundario} onClick={() => setModo('dispensar')}>
-                  Dispensar o parecer
+                  Pedir a dispensa do parecer
                 </button>
               )}
             </div>
@@ -213,7 +239,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
                 <textarea id={ids.justificativa} className={styles.campo} rows={3} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} />
                 <div className={styles.acoes}>
                   <button type="submit" className={styles.botao}>
-                    Dispensar com esta justificativa
+                    Pedir a dispensa a outra Sênior
                   </button>
                 </div>
               </form>

@@ -1,4 +1,6 @@
 import { useEffect, useId, useState } from 'react'
+import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
+import { ROTULO_RESULTADO_DA_COBRANCA } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/campos'
 import { DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
@@ -323,6 +325,21 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
             setVersao((v) => v + 1)
           }}
         />
+      )}
+
+      {/* GGVP-94 CA8 a CA10: a cobrança passou do limite; a Sênior vê o laço e diz o que a Documentação deve fazer. */}
+      {x.podeDecidirLaco && x.card && (
+        <section className={styles.cartao} aria-label="Cobrança sem retorno">
+          <h2 className={styles.cartaoTitulo}>Cobrança sem retorno: o limite de tentativas passou</h2>
+          <HistoricoDoLaco historico={x.card.cobrancas} rotuloResultado={ROTULO_RESULTADO_DA_COBRANCA} />
+          <DecisaoDoLaco
+            url={`/casos/${casoId}/exigencia/cobrancas/decisao`}
+            aoDecidir={(aviso) => {
+              setFeito(aviso)
+              setVersao((v) => v + 1)
+            }}
+          />
+        </section>
       )}
 
       {x.podeDecidirVencida && (

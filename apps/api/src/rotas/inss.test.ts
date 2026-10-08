@@ -118,6 +118,8 @@ describe('GGVP-27 · Protocolar no Meu INSS', () => {
     expect([r.statusCode, r.json()]).toEqual([409, { erro: MSG_SEM_OK_SENIOR }])
     expect(await banco.select().from(requerimentoInss)).toEqual([])
     expect((await banco.select().from(eventoAuditoria)).map((e) => e.acao)).toContain('protocolo_recusado_sem_ok')
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'protocolo_recusado_sem_ok'))
+    expect(b.detalhe).toMatchObject({ portao: 'G2', passo: 'D2.02' })
   })
 
   it('CA4 · número, DER, conferência e comprovante são obrigatórios, com mensagem clara', async () => {

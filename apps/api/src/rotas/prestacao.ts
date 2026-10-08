@@ -15,7 +15,7 @@ import {
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, documento, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
@@ -31,6 +31,7 @@ const horaBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, h
 
 export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
 
   const clienteDo = async (casoId: string) =>
     (
@@ -283,7 +284,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const s = await situacaoDoBanco(casoId)
     if (!s.c || !s.ag) return negar(resposta, 409, 'Agende a ida ao banco antes de avisar o cliente.')
-    if (!s.okAdvogada || !s.atual) return negar(resposta, 409, MSG_G8)
+    if (!s.okAdvogada || !s.atual) {
+      await bloqueio(pedido, casoId, 'G8', 'D3b.03')
+      return negar(resposta, 409, MSG_G8)
+    }
     if (!s.m || !s.texto) return negar(resposta, 409, 'Modelo "Confirmação da ida ao banco" não cadastrado.')
     const quem = pedido.usuario!.id
     await banco.transaction(async (tx) => {

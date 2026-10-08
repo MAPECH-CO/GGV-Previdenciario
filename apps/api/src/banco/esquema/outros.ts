@@ -64,7 +64,7 @@ export const juizo = pgTable(
   (t) => [unique('juizo_unico').on(t.tribunal, t.nome)],
 ).enableRLS()
 
-/** Acervo do escritório (D4): só desfecho conferido por pessoa entra nas contas da jurimetria (G22, GGVP-55 CA7). */
+/** Acervo do escritório (D4): só desfecho conferido por pessoa entra nas contas da jurimetria (GGVP-41 CA5, GGVP-55 CA7). */
 export const processoAcervo = pgTable('processo_acervo', {
   id: id(),
   numeroCnj: text('numero_cnj').unique(),
@@ -131,8 +131,12 @@ export const kitDocumento = pgTable(
     beneficio: text('beneficio').notNull(),
     tipoDocumento: text('tipo_documento').notNull(),
     obrigatorio: boolean('obrigatorio').notNull().default(true),
+    /** GGVP-104 CA1, CA6: cada publicação é uma versão; o caso usa a vigente quando foi aberto. */
+    versao: integer('versao').notNull().default(1),
+    vigenteDesde: momento('vigente_desde').notNull().defaultNow(),
+    revogadoEm: momento('revogado_em'),
   },
-  (t) => [unique('kit_unico').on(t.beneficio, t.tipoDocumento)],
+  (t) => [unique('kit_unico').on(t.beneficio, t.tipoDocumento, t.versao)],
 ).enableRLS()
 
 export const TIPOS_MODELO = ['contrato', 'mensagem', 'peticao'] as const

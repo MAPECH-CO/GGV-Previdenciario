@@ -46,8 +46,8 @@ describe('Protocolar no Meu INSS (GGVP-27)', () => {
     const der = screen.getByLabelText('Data de entrada do requerimento (DER)') as HTMLInputElement
     expect([der.type, der.value]).toEqual(['date', der.max]) // calendário, já em hoje, sem data futura
     fireEvent.change(der, { target: { value: '2026-10-05' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Registrar protocolo' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Marque "Revisei o requerimento antes de enviar"')
+    // GGVP-109 CA3: sem a revisão marcada, o botão fica desabilitado.
+    expect((screen.getByRole('button', { name: 'Registrar protocolo' }) as HTMLButtonElement).disabled).toBe(true)
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 

@@ -3,6 +3,8 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, somenteDigitos } from '@ggv/campos'
 import { RegistrarProtocolo, SEGUNDOS_SENHA, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { CofreGovbr } from '../componentes/CofreGovbr.tsx'
+import { usePode } from '../sessao.ts'
 import styles from './Passo.module.css'
 
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
@@ -84,10 +86,12 @@ export function Protocolar({ casoId }: { casoId: string }) {
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [versao, setVersao] = useState(0)
+  const cadastraNoCofre = usePode('cofre.cadastrar')
 
   useEffect(() => {
     void chamarApi<CasoParaProtocolo>(`/casos/${casoId}/protocolo`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
-  }, [casoId])
+  }, [casoId, versao])
 
   async function registrar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -153,6 +157,8 @@ export function Protocolar({ casoId }: { casoId: string }) {
           ))}
         </ol>
         {caso.temSenhaNoCofre ? <SenhaDoGov casoId={casoId} /> : <p className={styles.dica}>Este cliente não tem senha do gov.br no cofre.</p>}
+        {/* GGVP-103 CA4, CA11: a senha entra e muda só pelo cofre. */}
+        {cadastraNoCofre && <CofreGovbr pessoaId={caso.pessoaId} temSenha={caso.temSenhaNoCofre} aoGuardar={() => setVersao((v) => v + 1)} />}
       </section>
 
       {caso.jaProtocolado || feito ? (
@@ -184,7 +190,7 @@ export function Protocolar({ casoId }: { casoId: string }) {
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao} disabled={enviando || !caso.okSenior}>
+            <button type="submit" className={styles.botao} disabled={enviando || !caso.okSenior || !revisado}>
               {enviando ? 'Registrando…' : 'Registrar protocolo'}
             </button>
           </div>

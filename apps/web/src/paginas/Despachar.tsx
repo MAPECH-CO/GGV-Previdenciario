@@ -1,4 +1,6 @@
 import { useEffect, useId, useState } from 'react'
+import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
+import { dataDe, ultimaDoLaco } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
 import { Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type Despacho } from '@ggv/contratos'
@@ -149,9 +151,23 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
               {x.faltam.length > 0 ? <p className={styles.dica}>Falta: {x.faltam.join(', ')}.</p> : <p className={styles.dica}>Todos os setores subiram o card.</p>}
               <ul className={styles.lista} aria-label="Setores acionados">
                 {x.setores.map((s) => (
-                  <li key={s.setor + s.descricao}>
+                  <li key={s.id}>
                     {ROTULO_SETOR[s.setor]} · {s.descricao} · {s.prazo ? `até ${dia(s.prazo)}` : 'sem prazo'} · {ROTULO_ITEM[s.situacao]}
+                    {s.acionadoEm ? ` · acionado em ${dataDe(s.acionadoEm)}` : ''}
+                    {s.situacao === 'pendente' ? ` · ${ultimaDoLaco(s.historicoDoLaco)}` : ''}
                     {s.escalada ? ' · com a Sênior' : ''}
+                    {s.podeDecidir && (
+                      <div className={styles.cartao} aria-label={`Laço de ${ROTULO_SETOR[s.setor]}`}>
+                        <HistoricoDoLaco historico={s.historicoDoLaco} />
+                        <DecisaoDoLaco
+                          url={`/casos/${casoId}/pendencias/itens/${s.id}/decisao`}
+                          aoDecidir={(aviso) => {
+                            setFeito(aviso)
+                            setVersao((v) => v + 1)
+                          }}
+                        />
+                      </div>
+                    )}
                   </li>
                 ))}
                 {x.pericias.map((p) => (

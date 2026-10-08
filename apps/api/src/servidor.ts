@@ -18,6 +18,11 @@ import { registrarRotasManifestacao } from './rotas/manifestacao.ts'
 import { registrarRotasDocumentos } from './rotas/documentos.ts'
 import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
+import { registrarRotasGestao } from './rotas/gestao.ts'
+import { registrarRotasRegras } from './rotas/regras.ts'
+import { registrarRotasHistorico } from './rotas/historico.ts'
+import { registrarRotasCofre } from './rotas/cofre.ts'
+import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
@@ -61,7 +66,8 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarSessao(app, { banco, agora, cookieSeguro })
     registrarRotasConferencia(app, { banco, agora })
     const arquivos = armazenamento ?? abrirArmazenamento()
-    registrarRotasInss(app, { banco, agora, cofre: cofre ?? criarCofre(chaveDoCofre()), armazenamento: arquivos })
+    const cofreDoGov = cofre ?? criarCofre(chaveDoCofre())
+    registrarRotasInss(app, { banco, agora, cofre: cofreDoGov, armazenamento: arquivos })
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
@@ -72,6 +78,11 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasGestao(app, { banco, agora })
+    registrarRotasRegras(app, { banco, agora })
+    registrarRotasHistorico(app, { banco, agora })
+    registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
+    registrarRotasConfiguracao(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

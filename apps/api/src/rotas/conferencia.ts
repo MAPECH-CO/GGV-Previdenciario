@@ -1,7 +1,7 @@
 // Conferência da Sênior antes do INSS (GGVP-23): G1 (checklist), G2 (só a Sênior) e G17 (parecer médico) no servidor.
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { CasoParaConferencia, DecidirConferencia, DispensarParecer, pode, type Erro } from '@ggv/contratos'
+import { CasoParaConferencia, DecidirConferencia, DispensarParecer, ResponderDispensa, pode, travaDoParecer, type Erro, type SituacaoDoParecer } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import {
   acessoDadoSensivel,
@@ -15,25 +15,45 @@ import {
   parecerMedico,
   pessoa,
   tarefa,
+  usuario,
 } from '../banco/esquema.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
 export const MSG_G1 = 'Checklist incompleto (G1): faltam'
-export const MSG_G17 = 'Sem parecer médico "Suficiente" ou dispensa justificada (G17).'
-export const MSG_LAUDO_NOVO = 'Há laudo novo esperando conferência (G17).'
+export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e espera outra Sênior.'
+export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
+export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
 
 type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 type ItemParecer = { item: string; atendido: boolean }
+type LinhaParecer = typeof parecerMedico.$inferSelect
+
+/** G17: sem a confirmação de uma pessoa, o parecer é só sugestão da IA ("pendente"), e o portão não abre. */
+const situacaoDo = (p: LinhaParecer | undefined): SituacaoDoParecer | null =>
+  !p ? null : p.confirmadoPor ? (p.resultado as SituacaoDoParecer) : 'pendente'
 
 export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
+
+  /** O pedido de dispensa esperando resposta (Q14): há mais pedidos que respostas. */
+  async function dispensaPendente(casoId: string) {
+    const linhas = await banco
+      .select({ resultado: decisao.resultado, justificativa: decisao.justificativa, por: decisao.decididoPor, nome: usuario.nome })
+      .from(decisao)
+      .innerJoin(usuario, eq(decisao.decididoPor, usuario.id))
+      .where(and(eq(decisao.casoId, casoId), eq(decisao.tipo, 'dispensa_parecer')))
+      .orderBy(desc(decisao.decididoEm))
+    const pedidos = linhas.filter((l) => l.resultado === 'pedida')
+    return pedidos.length > linhas.length - pedidos.length ? pedidos[0] : null
+  }
 
   async function montar(casoId: string, perfilAtivo: string | null, quem?: string) {
     const [c] = await banco
-      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome })
+      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm })
       .from(caso)
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
       .where(eq(caso.id, casoId))
@@ -44,7 +64,18 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(documento.criadoEm)
     const kit = c.beneficio
-      ? await banco.select({ tipo: kitDocumento.tipoDocumento }).from(kitDocumento).where(and(eq(kitDocumento.beneficio, c.beneficio), eq(kitDocumento.obrigatorio, true)))
+      ? await banco
+          .select({ tipo: kitDocumento.tipoDocumento })
+          .from(kitDocumento)
+          .where(
+            and(
+              eq(kitDocumento.beneficio, c.beneficio),
+              eq(kitDocumento.obrigatorio, true),
+              // GGVP-104 CA1, CA6: o caso fica com o kit vigente quando foi aberto.
+              lte(kitDocumento.vigenteDesde, c.abertoEm),
+              or(isNull(kitDocumento.revogadoEm), gt(kitDocumento.revogadoEm, c.abertoEm)),
+            ),
+          )
       : []
     const tem = new Set(docs.map((d) => d.tipo))
     const faltam = kit.map((k) => k.tipo).filter((t) => !tem.has(t))
@@ -69,6 +100,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     }
     const ok = await okDaSenior(banco, casoId)
     const espera = await esperandoConferencia(banco, casoId)
+    const pendente = await dispensaPendente(casoId)
+    const situacao = situacaoDo(parecer)
     return CasoParaConferencia.parse({
       casoId: c.id,
       cliente: c.cliente,
@@ -79,6 +112,11 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
         ? { resultado: parecer.resultado, itens: (parecer.itens as ItemParecer[]) ?? [], justificativaDispensa: parecer.justificativaDispensa }
         : null,
       parecerRestrito: !veParecer,
+      travaDoParecer: travaDoParecer('aprovar-inss', c.beneficio, situacao && { situacao }, { laudoNovoEsperando: Boolean(laudoNovo), dispensaPedida: Boolean(pendente) }),
+      dispensa:
+        pendente && veParecer
+          ? { pedidaPor: pendente.nome, justificativa: pendente.justificativa ?? '', podeResponder: pode(perfilAtivo, 'caso.aprovar_para_inss') && pendente.por !== quem }
+          : null,
       laudoNovoEsperando: Boolean(laudoNovo),
       temFicha: Boolean(ficha),
       kitAssinado: Boolean(assinado),
@@ -95,8 +133,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
 
   const daSenior = { preHandler: exigir(banco, 'caso.aprovar_para_inss', agora) }
 
-  async function recusar(pedido: FastifyRequest, resposta: FastifyReply, casoId: string, portao: string, erro: string) {
-    await historico(pedido.usuario!.id, 'conferencia_recusada', pedido, `caso:${casoId}`, { portao })
+  async function recusar(pedido: FastifyRequest, resposta: FastifyReply, casoId: string, portao: 'G1' | 'G17', erro: string) {
+    await bloqueio(pedido, casoId, portao, 'D2.01', {}, 'conferencia_recusada')
     return negar(resposta, 409, erro)
   }
 
@@ -115,8 +153,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
 
     if (entrada.data.decisao === 'aprovar') {
       if (dados.checklist.cadastrado && !dados.checklist.completo) return recusar(pedido, resposta, casoId, 'G1', `${MSG_G1} ${dados.checklist.faltam.join(', ')}.`)
-      if (!dados.parecer || !['suficiente', 'dispensado'].includes(dados.parecer.resultado)) return recusar(pedido, resposta, casoId, 'G17', MSG_G17)
-      if (dados.laudoNovoEsperando) return recusar(pedido, resposta, casoId, 'G17', MSG_LAUDO_NOVO)
+      if (dados.travaDoParecer) return recusar(pedido, resposta, casoId, 'G17', dados.travaDoParecer)
       await banco.transaction(async (tx) => {
         await tx.insert(decisao).values({ ...base, resultado: 'aprovado' })
         // CA2: protocolo e "precisa de perícia?" ao mesmo tempo.
@@ -149,22 +186,56 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     return resposta.code(201).send({ ok: true, situacao: 'reprovado' })
   })
 
-  // G17: só a Sênior dispensa o parecer, com justificativa, na própria conferência (resposta do revisor de 05/10).
+  // G17 e GGVP-33 (Lucas, 01/10, Q14): a dispensa é de duas Sêniores diferentes. A primeira pede, com justificativa.
   app.post<{ Params: { id: string } }>('/api/casos/:id/parecer/dispensa', daSenior, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const entrada = DispensarParecer.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Justificativa obrigatória.')
     if (!(await esperandoConferencia(banco, casoId))) return negar(resposta, 409, MSG_NAO_ESPERA)
-    await banco.insert(parecerMedico).values({
+    if (await dispensaPendente(casoId)) return negar(resposta, 409, MSG_DISPENSA_JA_PEDIDA)
+    const quem = pedido.usuario!.id
+    await banco.insert(decisao).values({
       casoId,
-      roteiroVersao: 0,
-      resultado: 'dispensado',
-      justificativaDispensa: entrada.data.justificativa,
-      confirmadoPor: pedido.usuario!.id,
-      confirmadoEm: agora(),
-      criadoEm: agora(),
+      passo: 'D2.01',
+      tipo: 'dispensa_parecer',
+      resultado: 'pedida',
+      justificativa: entrada.data.justificativa,
+      decididoPor: quem,
+      perfil: pedido.perfilAtivo!,
+      decididoEm: agora(),
     })
-    await historico(pedido.usuario!.id, 'parecer_dispensado', pedido, `caso:${casoId}`)
+    await historico(quem, 'dispensa_parecer_pedida', pedido, `caso:${casoId}`)
+    return resposta.code(201).send({ ok: true })
+  })
+
+  // A segunda Sênior, outra pessoa, aprova ou recusa. A mesma pessoa é recusada, e a tentativa fica no histórico.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/parecer/dispensa/aprovacao', daSenior, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const entrada = ResponderDispensa.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Escolha aprovar ou recusar.')
+    const pendente = await dispensaPendente(casoId)
+    if (!pendente) return negar(resposta, 409, MSG_SEM_DISPENSA)
+    const quem = pedido.usuario!.id
+    if (pendente.por === quem) {
+      await bloqueio(pedido, casoId, 'G17', 'D2.01', { motivo: 'mesma_senior' }, 'dispensa_parecer_recusada')
+      return negar(resposta, 409, MSG_MESMA_SENIOR)
+    }
+    const { aprova } = entrada.data
+    await banco.transaction(async (tx) => {
+      const base = { casoId, passo: 'D2.01', tipo: 'dispensa_parecer', decididoPor: quem, perfil: pedido.perfilAtivo!, decididoEm: agora() }
+      await tx.insert(decisao).values({ ...base, resultado: aprova ? 'aprovada' : 'recusada' })
+      if (aprova)
+        await tx.insert(parecerMedico).values({
+          casoId,
+          roteiroVersao: 0,
+          resultado: 'dispensado',
+          justificativaDispensa: pendente.justificativa,
+          confirmadoPor: quem,
+          confirmadoEm: agora(),
+          criadoEm: agora(),
+        })
+    })
+    await historico(quem, aprova ? 'parecer_dispensado' : 'dispensa_parecer_negada', pedido, `caso:${casoId}`)
     return resposta.code(201).send({ ok: true })
   })
 }

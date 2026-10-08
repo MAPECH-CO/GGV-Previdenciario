@@ -35,7 +35,7 @@ import {
 } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ } from '../fluxo/exigencia.ts'
 import { REGRA_INDISPONIBILIDADE, feriadosDoProcesso, prazoDepoisDaIndisponibilidade, tribunalDoCnj } from '../fluxo/prazo-judicial.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
 export const MSG_SEM_EXIGENCIA_JUIZ = 'Este caso não tem exigência do juiz em cumprimento.'
@@ -109,6 +109,7 @@ export async function abrirManifestacaoSePronta(banco: Banco, casoId: string, ag
 
 export function registrarRotasManifestacao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
 
   /** A petição desta exigência (manifestação ou dilação), criada na primeira versão. */
   const peticaoDa = async (casoId: string, desde: Date) =>
@@ -343,12 +344,15 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
     const p = await peticaoDa(casoId, s.exigencia.criadoEm)
     const ultima = p ? (await versoesDa(p.id)).at(-1) : undefined
     if (!p || !ultima?.aprovadaEm) {
-      await historico(quem, 'protocolo_bloqueado', pedido, `caso:${casoId}`, { motivo: 'versao_nao_aprovada', versao: ultima?.numero ?? null })
+      await bloqueio(pedido, casoId, 'G6', 'D3a.04', { motivo: 'versao_nao_aprovada', versao: ultima?.numero ?? null }, 'protocolo_bloqueado')
       return negar(resposta, 409, MSG_VERSAO_NAO_APROVADA)
     }
     const dilacao = p.tipo === 'dilacao'
     if (dilacao && !(await dilacaoAutorizada(casoId, s.exigencia.criadoEm))) return negar(resposta, 409, 'O pedido de dilação precisa do OK da Sênior.')
-    if (!dilacao && s.faltam.length) return negar(resposta, 409, `Sem prova em todos os itens, não se manifesta (G21). Falta: ${s.faltam.join(', ')}.`)
+    if (!dilacao && s.faltam.length) {
+      await bloqueio(pedido, casoId, 'G21', 'D3a.04', { faltam: s.faltam.length })
+      return negar(resposta, 409, `Sem prova em todos os itens, não se manifesta (G21). Falta: ${s.faltam.join(', ')}.`)
+    }
     const arquivo = formulario.arquivo
     if (!arquivo || !TIPOS_DE_ANEXO.includes(arquivo.mime)) return negar(resposta, 400, MSG_COMPROVANTE)
     const dados = await guardarArquivo(armazenamento, casoId, arquivo, 'comprovante-protocolo-judicial')
