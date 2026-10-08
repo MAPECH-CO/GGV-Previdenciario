@@ -1,4 +1,4 @@
-GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75, GGVP-64 (parte 1) e GGVP-141 (parte 1); GGVP-59 espera a Perícia no servidor (abaixo).
+GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75, GGVP-64 (parte 1), GGVP-141 (parte 1) e GGVP-59 (parte 1).
 
 ## Por quê
 
@@ -26,12 +26,15 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Vetores pela OpenAI**, pelo motor, com registro (CA4).
    - **O acervo se alimenta sozinho**, em segundo plano: as fontes que a busca já usa e a conversa conferida do Relacionamento (CA1).
    - **Busca híbrida:** sentido e palavra misturados por RRF, sempre com a fonte (CA2).
+5. **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria · advogada responsável. A parte 1 (Mateus, 08/10), depois que a Perícia do Pedro entrou no servidor:
+   - **Nomeação de perito** vira uma classe da leitura da publicação: a IA sugere, e a pessoa classifica (CA1).
+   - **Quesitos e assistente técnico:** a tarefa da advogada, com o prazo do despacho ou, sem ele, 15 dias (CPC, art. 465, §1º), contado pelo código do prazo judicial (CA1, G12).
+   - **O perito do texto:** reconhecido entre os peritos da base. Não reconhecido, a pergunta de um clique da Perícia resolve, sem travar (CA1, CA6).
+   - **Já cobertos pela Perícia** (GGVP-61, GGVP-73 e GGVP-139): CA4, CA5, CA6, CA8, CA9 e CA10, e os números do perito em código, com o G22 (CA2, CA3 e CA7, por assunto).
 
 Um ponto de "Agora ok?" no fim de cada história.
 
 ## Travadas
-
-- **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria: refinada; espera a Perícia no servidor (PR #42 do Pedro), para não abrir conflito.
 - **Q20 (Sócio como perfil):** com o Lucas desde 07/10; até a resposta, o Sócio vê a Gestão inteira, com os valores só em total.
 
 ## Fora do escopo
@@ -48,6 +51,11 @@ Um ponto de "Agora ok?" no fim de cada história.
   - a sobreposição na página do caso lendo do servidor: a página do caso ainda roda com dados de exemplo no navegador;
   - a recomendação de recurso (CA3 e CA6, D3b.04): segue a GGVP-100, travada pela Q26.
 - **GGVP-141, a parte 2:** o parecer, o laudo e o resultado da perícia entram quando os PRs #39 e #42 forem mesclados, e a transcrição entra com a GGVP-133.
+- **GGVP-59, a parte 2:**
+  - ligar o perito direto na perícia judicial a partir da publicação, porque mexe no modelo da Perícia do Pedro;
+  - a sobreposição da página do caso lendo do servidor;
+  - a taxa por benefício e por CID, que hoje é por assunto;
+  - a pergunta no chat ("Como o perito avalia?").
 
 ## Portões envolvidos
 

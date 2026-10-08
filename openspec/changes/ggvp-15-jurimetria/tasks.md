@@ -65,3 +65,18 @@
 
 - [ ] 4.7 CA1 · O parecer, o laudo e o resultado da perícia conferidos entram no acervo.
 - [ ] 4.8 CA1 · A transcrição conferida entra no acervo.
+
+## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
+
+- [ ] 5.1 CA1 · Contrato: `nomeacao_perito` em `CLASSES_DE_ATO` ("Nomeação de perito"); sem prazo no despacho, 15 dias (CPC, art. 465, §1º). Teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [ ] 5.2 CA1 · Instrução de `classificar_publicacao` com a classe nova, em versão nova. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 5.3 CA1 · `encaminhar`: o destino DP.05 "Quesitos e assistente técnico" para a advogada, com o prazo contado. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 5.4 CA1, CA6 · `peritoDaPublicacao` e o histórico na classificação: `perito_nomeado` com o perito, ou não reconhecido. Teste da rota; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 5.5 Tela: a opção nova e a frase de destino na leitura da publicação. Teste Vitest e Playwright da judicialização; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-59, parte 2 (depois, com o Pedro e a página do caso no servidor)
+
+- [ ] 5.7 CA1 · Ligar o perito direto na perícia judicial a partir da publicação.
+- [ ] 5.8 CA2 · A sobreposição da página do caso lendo do servidor, com a taxa por benefício e por CID.
+- [ ] 5.9 CA2, CA7 · A pergunta no chat ("Como o perito avalia?").

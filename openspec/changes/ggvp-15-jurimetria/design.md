@@ -238,3 +238,44 @@ Nenhuma tela nova. As fontes aparecem onde já aparecem.
 - **Extensão no Supabase:** se o usuário do banco não puder criar a extensão, a migração falha e o container não sobe; o Coolify mantém a versão anterior. Ligar a extensão no painel do Supabase antes do deploy.
 - **Custo:** só o que é novo ganha vetor, porque o hash evita recalcular. A consulta também gasta uma chamada de embeddings.
 - **Leitura das fontes:** a cada rodada, alimentar lê as fontes inteiras e compara pelo hash. Com milhares de itens, guardar a última data lida por fonte.
+
+## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
+
+### Context
+
+- **A Perícia está no servidor** (GGVP-137 e GGVP-139, PR #8):
+  - o perfil do perito (`perito.perfil`), com um laudo por linha, atualizado quando a advogada confere o resultado (GGVP-73);
+  - a pergunta de um clique que liga o perito (`POST /api/processos/:id/pericia/perito`, GGVP-61 CA6);
+  - a orientação pelo perfil na Justiça e a padrão no INSS;
+  - os números do perito calculados em código, com o G22 (as regras `periciaNoCaso` das telas do Pedro, rodando no servidor).
+- **A leitura da publicação** (GGVP-34, 37 e 74) classifica em andamento, exigência e mérito. O prazo é contado em código (`prazoJudicial`), e `encaminhar` abre a tarefa da advogada pela classe. Sem prazo na decisão, valem 5 dias (CPC, art. 218, §3º).
+- **A tabela `perito`** tem o nome, o nome normalizado e as grafias conhecidas.
+- **Passos do BPMN:** o DP.05 (identificar o perito nomeado) e o D4.02N, ainda sem desenho no Miro.
+- **A tarefa** não tem campo de descrição: o perito vai ao histórico do caso.
+
+### Decisions
+
+1. **Classe nova** `nomeacao_perito` em `CLASSES_DE_ATO`, com o rótulo "Nomeação de perito".
+   - Entra na leitura da IA (`LeituraDaPublicacaoPelaIa`) e na instrução de `classificar_publicacao`, que ganha versão nova.
+   - A IA só sugere; quem classifica é a pessoa.
+2. **Prazo dos quesitos:** sem prazo no despacho, 15 dias (CPC, art. 465, §1º: quesitos, assistente técnico e impugnação do perito), no lugar dos 5 do art. 218.
+   - Com prazo no despacho, vale o do despacho.
+   - A contagem é a do prazo judicial: dias úteis e feriados do tribunal; na dúvida, a data mais cedo (G12).
+3. **Destino:** `encaminhar` abre a etapa DP e a tarefa "Quesitos e assistente técnico" (DP.05) para a advogada, com o prazo. Reclassificar desfaz como hoje: a tarefa aberta da nomeação é cancelada (GGVP-37 CA7).
+4. **O perito do texto** (`peritoDaPublicacao`): procura, no texto normalizado (minúsculo e sem acento), o nome normalizado e as grafias de cada perito da base. Se mais de um bater, vale o nome mais longo.
+   - Achou: o histórico grava `perito_nomeado`, com o perito e quantos laudos o perfil tem.
+   - Não achou: o histórico grava que o perito não foi reconhecido, e nada trava. A pergunta de um clique da Perícia resolve (CA6).
+
+### Campos de formulário
+
+- **"Tipo de ato":** seleção fixa (`CLASSES_DE_ATO`), com a opção nova, validada pelo contrato na tela e no servidor.
+- **"Dias":** o mesmo campo de hoje (1 a 120), ou "sem prazo na decisão".
+
+### Telas
+
+Nenhuma tela nova. A tela de leitura da publicação ganha a opção "Nomeação de perito" e a frase de destino: "Quesitos e assistente técnico na Central da advogada".
+
+### Risks / Trade-offs
+
+- **Nome do perito no texto:** o reconhecimento é pelo nome e pelas grafias da base. Perito novo, ou grafia diferente, fica como não reconhecido, e a pessoa liga pela pergunta de um clique.
+- **Perícia judicial:** nesta parte, o perito não é ligado direto na perícia judicial a partir da publicação; isso mexe no modelo da Perícia do Pedro e fica para a parte 2.
