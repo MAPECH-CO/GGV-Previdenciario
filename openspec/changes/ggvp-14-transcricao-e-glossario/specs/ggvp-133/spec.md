@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Transcrição de áudio de verdade: a entrevista, a conversa no escritório e a ligação gravada viram texto pela OpenAI, chamada só pelo servidor, pelo motor de IA, separando quem fala e com os termos do escritório escritos certo (glossário, GGVP-143). Combinado com o Mateus em 08/10: terceira porta do motor (`transcrever`), o áudio como `documento` no armazenamento que já existe, o preparo em segundo plano, `tirarSenhas` no servidor (G9) e a chave temporária para o texto ao vivo. A gravação da ligação do Chatwoot entra por uma caixa de enviar arquivo (Pedro, 08/10): o portal não busca nada no Chatwoot. Regra de dado de saúde de 08/10 (Pedro): quem gravou vê a transcrição; só o conteúdo médico fica com o Jurídico; sem filtro por palavra. Esta parte cobre a entrevista; a conversa do Relacionamento entra quando ele estiver no servidor (grupo 3).
+Transcrição de áudio de verdade: a entrevista, a conversa no escritório e a ligação gravada viram texto pela OpenAI, chamada só pelo servidor, pelo motor de IA, separando quem fala e com os termos do escritório escritos certo (glossário, GGVP-143). Combinado com o Mateus em 08/10: terceira porta do motor (`transcrever`), o áudio como `documento` no armazenamento que já existe, o preparo em segundo plano, `tirarSenhas` no servidor (G9) e a chave temporária para o texto ao vivo. A gravação da ligação do Chatwoot entra por uma caixa de enviar arquivo (Pedro, 08/10): o portal não busca nada no Chatwoot. Regra de dado de saúde de 08/10 (Pedro): quem gravou vê a transcrição; só o conteúdo médico fica com o Jurídico; sem filtro por palavra. A parte 2 cobre a entrevista; a parte 3, a conversa do Relacionamento.
 
 ## ADDED Requirements
 

@@ -35,3 +35,23 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
   await expect(advogada.getByRole('button', { name: 'Tentar de novo' })).toBeVisible()
   await juridico.close()
 })
+
+// GGVP-133, parte 3 · na conversa do Relacionamento, a Atendimento sobe a gravação da ligação baixada do Chatwoot. Sem a
+// chave do serviço, a transcrição segue a de exemplo do Relacionamento; o áudio de verdade fica no card.
+test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento; o áudio fica no card do cliente', async ({ page }) => {
+  await page.goto('/')
+  const r = await page.request.post('/api/fichas', { data: { nome: 'Rosa Ligacao Teste', idade: 66, pretende: 'Quer saber do BPC do idoso.', telefone: '11933332211', beneficioInteresse: 'loas-idoso', outraPessoa: false } })
+  expect(r.ok()).toBe(true)
+  await page.goto(`/clientes/${(await r.json()).id}`)
+  await page.getByRole('button', { name: 'Iniciar conversa' }).click()
+  const janela = page.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
+  await janela.getByRole('radio', { name: 'Ligação', exact: true }).click()
+  await janela.getByRole('button', { name: 'Anexar o áudio' }).click()
+  await expect(page.getByText(/A gravação da ligação fica na conversa do cliente no Chatwoot, como mensagem privada/)).toBeVisible()
+  await page.getByLabel(/Áudio da ligação/).setInputFiles({ name: 'ligacao-chatwoot.ogg', mimeType: 'audio/ogg', buffer: Buffer.from('OggS gravação da ligação') })
+  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }).check()
+  await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
+  await expect(page.getByText('O áudio ficou guardado no card do cliente: ligacao-chatwoot.ogg.')).toBeVisible()
+  await expect(page.getByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeVisible()
+})

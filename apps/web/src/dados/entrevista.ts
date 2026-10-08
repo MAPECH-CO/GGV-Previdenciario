@@ -40,7 +40,7 @@ type DoServidor = { gravacao: Gravacao; tarefa?: TarefaEncaminhada; ficha?: Fich
 
 /** GGVP-133: uma parte do áudio de verdade, gravada pelo microfone, e onde ela começa na gravação (segundos). */
 export type ParteDoAudio = { audio: Blob; inicio: number }
-const extensaoDo = (tipo: string) => (tipo.includes('ogg') ? 'ogg' : tipo.includes('mp4') ? 'm4a' : 'webm')
+export const extensaoDo = (tipo: string) => (tipo.includes('ogg') ? 'ogg' : tipo.includes('mp4') ? 'm4a' : 'webm')
 
 /** GGVP-125, bloco 3a: a entrevista das fichas do servidor grava lá; a cópia daqui recebe a gravação, a ficha e as tarefas. */
 async function pedirAoServidor(caminho: string, corpo: object | FormData): Promise<DoServidor> {

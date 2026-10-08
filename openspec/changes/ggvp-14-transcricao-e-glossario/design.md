@@ -63,3 +63,10 @@ Tabela `glossario_termo`: `id`, `termo`, `tipo` (lista fechada), `significado`, 
 - Arquivo de fora até 25 MB (o limite do envio e da OpenAI); dividir um arquivo maior pede uma ferramenta de áudio no servidor, que o portal não tem.
 - A amostra de voz da pessoa do escritório (CA3, nome certo pela voz) não tem onde ser gravada ainda; sem ela, o nome vem dos participantes, pelo papel que a IA marca.
 - O texto ao vivo e a transcrição foram testados só com serviço falso; o teste de verdade, com dado inventado, fica com o Mateus.
+
+## GGVP-133 · Transcrição de áudio de verdade (parte 3: a conversa do Relacionamento)
+
+- **Rota que já existe (`rotas/conversa.ts`, só acréscimo e uma linha):** `POST /api/conversas/:id/audio` aceita também o arquivo (multipart). Na conversa por arquivo, é a gravação da ligação, com `avisoNaGravacao=sim` (G10); na conversa gravada agora, é uma parte do microfone, com `inicio`. O áudio vira documento na pasta do cliente. `guardarNoCard` não troca mais o áudio de verdade pelo simulado.
+- **Transcrição:** com o áudio guardado e o motor ligado, o mesmo fluxo da entrevista, com quem conduziu no papel do escritório (Atendimento ou advogada). Sem a chave do serviço, segue o que o Relacionamento já tinha: a conversa de exemplo, ou a falha com `RELACIONAMENTO_SIMULADO=nao`. A análise do que mudou é da GGVP-140: até lá, a conferência abre sem itens sugeridos (G14).
+- **Texto ao vivo:** `POST /api/conversas/:id/chave-ao-vivo` (`conversa.registrar`), só na conversa presencial gravada agora; na ligação, não (CA4).
+- **Tela:** o microfone e o texto ao vivo saem da entrevista para um gancho comum (`dados/gravacaoDeVerdade.ts`), usado pelas duas telas.

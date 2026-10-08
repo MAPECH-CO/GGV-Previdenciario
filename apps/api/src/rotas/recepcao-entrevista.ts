@@ -446,7 +446,9 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
   if (real && preparo)
     preparo.registrar(
       async () =>
-        (await f.gravacoes(true)).filter((g) => g.estado === 'encerrada' && g.transcricao === 'transcrevendo' && g.audio?.documentos?.length).map((g) => g.id),
+        (await f.gravacoes(true))
+          .filter((g) => !g.conversaId && g.estado === 'encerrada' && g.transcricao === 'transcrevendo' && g.audio?.documentos?.length)
+          .map((g) => g.id),
       async (id) => {
         const achado = await acharGravacao(id)
         if (!achado || achado.gravacao.transcricao !== 'transcrevendo') return

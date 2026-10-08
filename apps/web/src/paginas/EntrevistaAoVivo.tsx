@@ -4,7 +4,7 @@ import { CampoCofre } from '../componentes/CampoCofre.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { formatarTelefone } from '../campos.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { abrirMicrofone, ouvirAoVivo, type FalaAoVivo, type Microfone } from '../dados/audio.ts'
+import { useGravacaoDeVerdade } from '../dados/gravacaoDeVerdade.ts'
 import {
   encerrarGravacao,
   enviarAudioGuardado,
@@ -16,7 +16,6 @@ import {
   registrarAcao,
   registrarSemAudio,
   transcrever,
-  type ParteDoAudio,
 } from '../dados/entrevista.ts'
 import type { Entrevista, Gravacao, InformacaoExtraida, RespostaDoEncerramento, SenhaGov, TarefaEncaminhada } from '../dados/tipos.ts'
 import { hora } from '../regras/datas.ts'
@@ -63,15 +62,15 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
   const pedindo = useRef(false)
   const falhouMicrofone = useRef(false)
   const falhouTranscricao = useRef(false)
-  // GGVP-133: na ficha do servidor, o microfone de verdade. `aoVivo` nulo: sem microfone, a tela segue com o relógio.
-  const microfone = useRef<Microfone | null>(null)
-  const tentouMicrofone = useRef(false)
-  const pararAoVivo = useRef<(() => void) | null>(null)
-  const pendentes = useRef<ParteDoAudio[]>([])
-  const enviando = useRef<Promise<void> | null>(null)
-  const segundosAgora = useRef(0)
-  const [aoVivo, setAoVivo] = useState<FalaAoVivo[] | null>(null)
-  const [semAoVivo, setSemAoVivo] = useState('')
+  // GGVP-133: na ficha do servidor, o microfone de verdade e o texto ao vivo. `aoVivo` nulo: sem microfone, segue o relógio.
+  const deVerdade = useGravacaoDeVerdade({
+    ligar: Boolean(g && g.estado === 'gravando' && gravacaoDoServidor(g.id)),
+    pausada: g?.estado === 'pausada',
+    segundos,
+    enviarParte: (parte) => enviarParteDoAudio(g!.id, parte),
+    pedirChave: g ? () => pedirChaveAoVivo(g.id) : null,
+  })
+  const { aoVivo, semAoVivo, tirarPendentes } = deVerdade
 
   useEffect(() => {
     let valendo = true
@@ -136,76 +135,10 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     fazer(() => registrarAcao(g.id, 'falhou', segundos))
   })
 
-  useEffect(() => {
-    segundosAgora.current = segundos
-  }, [segundos])
-
-  /** GGVP-133: as partes do áudio sobem para a pasta do cliente assim que ficam prontas; sem internet, esperam aqui. */
-  function enviarPendentes(gravacaoId: string): Promise<void> {
-    enviando.current ??= (async () => {
-      try {
-        while (pendentes.current.length > 0 && navigator.onLine) {
-          await enviarParteDoAudio(gravacaoId, pendentes.current[0])
-          pendentes.current.shift()
-        }
-      } catch {
-        // A parte fica guardada neste computador e sobe na próxima vez.
-      } finally {
-        enviando.current = null
-      }
-    })()
-    return enviando.current
-  }
-
-  // GGVP-133 CA4: gravando uma ficha do servidor, abre o microfone de verdade e o texto ao vivo pela chave temporária.
-  useEffect(() => {
-    if (!g || g.estado !== 'gravando' || !gravacaoDoServidor(g.id) || tentouMicrofone.current) return
-    tentouMicrofone.current = true
-    const id = g.id
-    void (async () => {
-      const m = await abrirMicrofone(
-        () => segundosAgora.current,
-        (parte) => {
-          pendentes.current.push(parte)
-          void enviarPendentes(id)
-        },
-      )
-      if (!m) return
-      microfone.current = m
-      setAoVivo([])
-      const chave = await pedirChaveAoVivo(id)
-      if ('erro' in chave) return setSemAoVivo(chave.erro)
-      pararAoVivo.current = await ouvirAoVivo(m.stream, chave.chave, setAoVivo)
-      if (!pararAoVivo.current) setSemAoVivo('O texto ao vivo não abriu: a transcrição sai quando a gravação terminar.')
-    })()
-  }, [g])
-
-  // Pausada (inclusive no cofre, G9), o microfone não grava nem manda som ao texto ao vivo.
-  useEffect(() => {
-    if (g?.estado === 'pausada') microfone.current?.pausar()
-    if (g?.estado === 'gravando') microfone.current?.retomar()
-  }, [g?.estado])
-
-  useEffect(
-    () => () => {
-      void microfone.current?.parar()
-      pararAoVivo.current?.()
-    },
-    [],
-  )
-
   /** Encerrar: o microfone fecha a última parte, as partes sobem e a gravação vai para a transcrição (CA1, CA10). */
   async function encerrar(gravacaoId: string) {
-    const m = microfone.current
-    microfone.current = null
-    pararAoVivo.current?.()
-    pararAoVivo.current = null
-    if (m) {
-      await m.parar()
-      await enviarPendentes(gravacaoId)
-      if (pendentes.current.length > 0) await enviarPendentes(gravacaoId)
-    }
-    return encerrarGravacao(gravacaoId, { aos: segundos, online: online && pendentes.current.length === 0 })
+    const restantes = await deVerdade.fechar()
+    return encerrarGravacao(gravacaoId, { aos: segundos, online: online && restantes.length === 0 })
   }
 
   // Encerrada: o áudio vai para a transcrição; sem internet, espera a conexão voltar e sobe uma vez só (CA5, CA12).
@@ -218,14 +151,13 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     falhouTranscricao.current ||= falhar
     ;(async () => {
       try {
-        const enviada = g.transcricao === 'aguardando-internet' ? await enviarAudioGuardado(g.id, [...pendentes.current]) : g
-        pendentes.current = []
+        const enviada = g.transcricao === 'aguardando-internet' ? await enviarAudioGuardado(g.id, tirarPendentes()) : g
         setG(await transcrever(enviada.id, { falhar }))
       } finally {
         pedindo.current = false
       }
     })()
-  }, [g, online, simular])
+  }, [g, online, simular, tirarPendentes])
 
   if (!dados) {
     return (
@@ -307,7 +239,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
               className={styles.secundario}
               disabled={ocupado}
               onClick={() => {
-                microfone.current?.pausar()
+                deVerdade.pausar()
                 fazer(() => registrarAcao(g.id, 'pausou', segundos))
               }}
             >
@@ -538,7 +470,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                   disabled={ocupado}
                   onClick={() => {
                     setCofre(true)
-                    microfone.current?.pausar()
+                    deVerdade.pausar()
                     fazer(() => registrarAcao(g.id, 'abriu-cofre', segundos))
                   }}
                 >

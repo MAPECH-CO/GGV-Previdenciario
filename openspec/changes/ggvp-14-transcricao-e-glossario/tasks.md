@@ -18,3 +18,10 @@
 - [x] 2.5 CA2, CA4, CA8 · Tela: gravar com o microfone e mandar o áudio; texto ao vivo; a caixa do áudio de fora manda o arquivo, com o aviso da ligação do Chatwoot; testes de tela.
 - [x] 2.6 Playwright: a advogada sobe a gravação de uma ligação na entrevista.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-133 · Transcrição de áudio de verdade (parte 3: a conversa do Relacionamento)
+
+- [x] 3.1 CA1, CA2, CA4, CA6, CA10 · A rota do áudio da conversa aceita o arquivo da ligação (com o aviso, G10) e a parte do microfone; a transcrição de verdade com a IA ligada (sem a chave, segue o exemplo do Relacionamento); a chave do texto ao vivo só na conversa no escritório; o preparo (só acréscimo em `rotas/conversa.ts`); testes em `transcricao-conversa.test.ts`.
+- [x] 3.2 CA2, CA4 · O gancho comum do microfone (`dados/gravacaoDeVerdade.ts`), na entrevista e na conversa; a caixa da ligação manda o arquivo; o servidor falso dos testes do Relacionamento aceita o arquivo; testes de tela.
+- [x] 3.3 Playwright: a Atendimento sobe a gravação da ligação na conversa (`e2e/transcricao-ligacao.e2e.ts`).
+- [x] 3.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

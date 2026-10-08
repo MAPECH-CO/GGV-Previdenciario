@@ -120,7 +120,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
-    registrarRotasConversa(app, { banco, agora })
+    registrarRotasConversa(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
     registrarRotasGlossario(app, { banco, agora })

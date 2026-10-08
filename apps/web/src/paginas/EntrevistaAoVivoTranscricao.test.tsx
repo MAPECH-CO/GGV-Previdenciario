@@ -96,7 +96,10 @@ describe('GGVP-133 · entrevista com o microfone de verdade', () => {
     fireEvent.click(botao('Pausar'))
     expect(microfone.pausar).toHaveBeenCalled()
     fireEvent.click(await screen.findByRole('button', { name: 'Retomar' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Encerrar e gerar resumo' }))
+    await screen.findByText(/● Gravando/)
+    const encerrar = (await screen.findByRole('button', { name: 'Encerrar e gerar resumo' })) as HTMLButtonElement
+    await waitFor(() => expect(encerrar.disabled).toBe(false))
+    fireEvent.click(encerrar)
 
     await waitFor(() => expect(entrevista.transcrever).toHaveBeenCalled())
     const enviou = vi.mocked(entrevista.enviarParteDoAudio)

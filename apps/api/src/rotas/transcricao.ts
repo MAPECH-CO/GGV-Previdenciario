@@ -8,9 +8,16 @@ import { termosDoGlossario } from '../fluxo/glossario.ts'
 import type { Ia } from '../ia/ia.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { criarFichario } from './recepcao.ts'
+import type { Gravacao } from '../../../web/src/dados/tipos.ts'
 
 type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
 export const MSG_SEM_AO_VIVO = 'O texto ao vivo não está disponível agora: a transcrição sai quando a gravação terminar.'
+
+/** A chave temporária de uma gravação em curso, com os termos do glossário de dica (a entrevista e a conversa usam). */
+export async function chaveDaGravacao(banco: Banco, ia: Ia, g: Gravacao, quem: string) {
+  const termos = (await termosDoGlossario(banco)).map((t) => t.termo)
+  return ia.chaveAoVivo({ casoId: null, quem, termos, sensivel: g.soJuridico, referencia: `gravacao:${g.id}` })
+}
 
 export function registrarRotasTranscricao(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
   const { acharGravacao } = criarFichario(banco, agora)
@@ -20,8 +27,7 @@ export function registrarRotasTranscricao(app: FastifyInstance, { banco, agora =
     if (!achado) return resposta.code(404).send({ erro: 'Gravação não encontrada.' } satisfies Erro)
     const { gravacao: g } = achado
     if (g.origem !== 'portal' || (g.estado !== 'gravando' && g.estado !== 'pausada')) return resposta.code(400).send({ erro: 'A gravação não está em curso.' } satisfies Erro)
-    const termos = (await termosDoGlossario(banco)).map((t) => t.termo)
-    const chave = await ia.chaveAoVivo({ casoId: null, quem: pedido.usuario!.id, termos, sensivel: g.soJuridico, referencia: `gravacao:${g.id}` })
+    const chave = await chaveDaGravacao(banco, ia, g, pedido.usuario!.id)
     if (!chave) return resposta.code(503).send({ erro: MSG_SEM_AO_VIVO } satisfies Erro)
     return ChaveAoVivo.parse(chave)
   })

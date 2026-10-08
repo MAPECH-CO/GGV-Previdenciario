@@ -1,6 +1,7 @@
 // GGVP-133: o áudio de verdade vai ao servidor, pelas rotas que já existem da entrevista. O servidor aqui é de mentira:
 // responde pela rota e guarda o formulário recebido; a transcrição tem os testes dela, na API.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { anexarAudio, enviarParteDaConversa, pedirChaveAoVivoDaConversa } from './conversa.ts'
 import { enviarAudioGuardado, enviarParteDoAudio, pedirChaveAoVivo, subirAudio } from './entrevista.ts'
 import { configurarExemplo, zerarExemplo } from './servidor.ts'
 import type { Gravacao } from './tipos.ts'
@@ -84,5 +85,26 @@ describe('GGVP-133 · o áudio de verdade vai ao servidor', () => {
     expect(await pedirChaveAoVivo(GRAVACAO)).toMatchObject({ chave: 'ek_temporaria' })
     ligarServidor({ [`POST /api/gravacoes/${GRAVACAO}/chave-ao-vivo`]: { status: 503, corpo: { erro: 'O texto ao vivo não está disponível agora.' } } })
     expect(await pedirChaveAoVivo(GRAVACAO)).toEqual({ erro: 'O texto ao vivo não está disponível agora.' })
+  })
+})
+
+describe('GGVP-133 · o áudio de verdade da conversa do Relacionamento', () => {
+  const CONVERSA = '7a2d3c4b-5e6f-4a70-9b8c-1d2e3f4a5b6c'
+  const aberta = { corpo: { conversa: { id: CONVERSA }, gravacao: gravacao({ conversaId: CONVERSA }) } }
+
+  it('CA2 · a ligação baixada do Chatwoot sobe como arquivo, com o aviso na gravação (G10); a parte do microfone, com onde começa', async () => {
+    const recebidos = ligarServidor({ [`POST /api/conversas/${CONVERSA}/audio`]: aberta })
+    const arquivo = new File(['ID3'], 'ligacao.mp3', { type: 'audio/mpeg' })
+    await anexarAudio(CONVERSA, { nome: arquivo.name, tipo: arquivo.type, tamanho: arquivo.size, avisoNaGravacao: true }, arquivo)
+    await enviarParteDaConversa(CONVERSA, { audio: new Blob(['um'], { type: 'audio/webm' }), inicio: 600 })
+    expect(recebidos.map((x) => campos(x.corpo!))).toEqual([
+      { avisoNaGravacao: 'sim', arquivo: 'ligacao.mp3 (3 B)' },
+      { inicio: '600', arquivo: 'parte-600.webm (2 B)' },
+    ])
+  })
+
+  it('CA4 · a chave temporária da conversa no escritório vem do servidor; na ligação, o motivo', async () => {
+    ligarServidor({ [`POST /api/conversas/${CONVERSA}/chave-ao-vivo`]: { status: 400, corpo: { erro: 'O texto ao vivo é só da conversa no escritório, gravada agora.' } } })
+    expect(await pedirChaveAoVivoDaConversa(CONVERSA)).toEqual({ erro: 'O texto ao vivo é só da conversa no escritório, gravada agora.' })
   })
 })
