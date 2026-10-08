@@ -64,6 +64,7 @@
 - [x] 6.6 CA1 · Correção da homologação de 08/10. No terminal do app, o comando parava com a rodada repetida (`rodada_unica`) e não gravava nada. A semente grava a rodada de exemplo das 08:00 de hoje, e o relógio da vigília, com o servidor no ar, já a tinha criado.
   - Correção: a semente só marca a falha de exemplo na rodada que já existe (`onConflictDoUpdate` pela chave fonte + horário).
   - Teste novo: `planejarDia` antes do comando, como no servidor. Antes da correção, ele falhava com o mesmo erro da homologação.
+  - Revisão do PR #40: o teste confere só a rodada das 08:00 (uma, com a falha) e que as outras seguem previstas, sem depender dos horários padrão da vigília.
 - [x] 6.7 Verificação de 08/10, na máquina carregada:
   - typecheck e lint sem erro; `openspec validate --all --strict` com 14 de 14;
   - os 9 testes do comando passaram, com o novo; Playwright da vigília (judicialização) com 6 de 6;
