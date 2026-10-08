@@ -1,8 +1,9 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
+import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { taxaComCasos } from '../regras/caso.ts'
 import styles from './Passo.module.css'
 
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
@@ -25,6 +26,8 @@ export function Conferencia({ casoId }: { casoId: string }) {
   const [justificativa, setJustificativa] = useState('')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [chance, setChance] = useState<ChanceDeExito | null>(null)
+  const [erroDaChance, setErroDaChance] = useState('')
 
   const carregar = () => chamarApi<CasoParaConferencia>(`/casos/${casoId}/conferencia`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
   useEffect(() => {
@@ -59,6 +62,13 @@ export function Conferencia({ casoId }: { casoId: string }) {
     setModo('nada')
     await carregar()
   }
+
+  // GGVP-131 e sugestão pronta (07/10): a chance aparece sozinha ao abrir. O número vem do sistema (acervo conferido); os
+  // fatores da IA ficam prontos em segundo plano.
+  useEffect(() => {
+    if (!caso?.podeDecidir) return
+    void chamarApi<ChanceDeExito>(`/casos/${casoId}/chance`, { method: 'POST', corpo: {} }).then((r) => (r.ok ? setChance(r.dados) : setErroDaChance(r.erro)))
+  }, [casoId, caso?.podeDecidir])
 
   /** A segunda Sênior, outra pessoa, aprova ou recusa (Q14). O servidor recusa quem pediu. */
   async function responderDispensa(aprova: boolean) {
@@ -156,6 +166,35 @@ export function Conferencia({ casoId }: { casoId: string }) {
           </div>
         )}
       </section>
+
+      {caso.podeDecidir && (
+        <section className={styles.cartao} aria-label="Chance de êxito">
+          <h2 className={styles.cartaoTitulo}>Chance de êxito</h2>
+          {!chance ? (
+            <p className={styles.dica}>{erroDaChance || 'Calculando…'}</p>
+          ) : (
+            <>
+              <p>
+                {chance.porcentagem === null || !chance.baseEm ? (
+                  'Sem casos parecidos na casa ainda: sem porcentagem.'
+                ) : (
+                  <strong>
+                    {taxaComCasos(chance.favoraveis, chance.casos, new Date(chance.baseEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}
+                  </strong>
+                )}
+              </p>
+              <p className={styles.dica}>Calculado pelo sistema: {chance.regra}.</p>
+              {chance.fatores && (
+                <>
+                  <span className={`${styles.selo} ${styles.seloAlerta}`}>Fatores sugeridos pela IA · confira</span>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{chance.fatores.texto}</p>
+                </>
+              )}
+              {chance.motivoIa && <p className={styles.dica}>{chance.motivoIa}</p>}
+            </>
+          )}
+        </section>
+      )}
 
       {feito ? (
         <p className={styles.sucesso} role="status">

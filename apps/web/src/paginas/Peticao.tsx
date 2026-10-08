@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
-import { AprovarPeticao, NovaVersao, PedirPeticao, ProtocolarPeticao, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { AprovarPeticao, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -15,22 +15,52 @@ const ROTULO_OPCAO: Record<keyof OpcoesDoPedido, string> = {
 
 /**
  * O pedido da petição inicial (GGVP-63 CA6, CA9): instruções, opções, os documentos citados na ordem (com o nome do que
- * ainda falta) e o texto da versão 1, que a advogada escreve ou cola até a minuta da IA (épico IA jurídica).
+ * ainda falta) e o texto da versão 1, que a advogada escreve, cola ou parte da minuta da IA (épico IA), sempre revisando.
  */
 function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; aoPedir: (texto: string) => void }) {
   const ids = { instrucoes: useId(), falta: useId(), texto: useId() }
   const [instrucoes, setInstrucoes] = useState('')
-  const [opcoes, setOpcoes] = useState<OpcoesDoPedido>({ tutelaUrgencia: false, precedentes: false, anexarCitados: true })
-  const [marcados, setMarcados] = useState<string[]>([])
+  // Sugestão pronta (07/10): o pedido abre no padrão com que a minuta foi preparada em segundo plano: todos os documentos
+  // do caso marcados, na ordem em que chegaram, e o acervo ligado (GGVP-45); a advogada desmarca o que não vai.
+  const [opcoes, setOpcoes] = useState<OpcoesDoPedido>({ tutelaUrgencia: false, precedentes: true, anexarCitados: true })
+  const [marcados, setMarcados] = useState<string[]>(() => x.documentos.map((d) => d.id))
   const [faltando, setFaltando] = useState<string[]>([])
   const [nomeQueFalta, setNomeQueFalta] = useState('')
   const [texto, setTexto] = useState('')
   const [erro, setErro] = useState('')
+  const [minuta, setMinuta] = useState<MinutaDaIa | null>(null)
+  const [escrevendo, setEscrevendo] = useState(true)
   const nomeDo = (id: string) => x.documentos.find((d) => d.id === id)?.nome ?? id
+
+  const citados = () => [...marcados.map((documentoId) => ({ documentoId })), ...faltando.map((nome) => ({ nome }))]
+
+  // Ao abrir, a minuta pronta (a mesma do segundo plano, sem nova chamada) entra na caixa se ela ainda está vazia.
+  useEffect(() => {
+    const padrao = { instrucoes: '', opcoes: { tutelaUrgencia: false, precedentes: true, anexarCitados: true }, citados: x.documentos.map((d) => ({ documentoId: d.id })) }
+    void chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/minuta`, { method: 'POST', corpo: padrao }).then((r) => {
+      setEscrevendo(false)
+      if (!r.ok) return setErro(r.erro)
+      setMinuta(r.dados)
+      const s = r.dados.sugestao
+      if (s) setTexto((t) => t || s.texto)
+    })
+  }, [casoId, x.documentos])
+
+  /** "Escrever de novo com a IA": outra minuta com o que está marcado agora; o texto novo substitui o da caixa. */
+  async function escreverDeNovo() {
+    setEscrevendo(true)
+    const r = await chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/minuta`, { method: 'POST', corpo: { instrucoes, opcoes, citados: citados(), refazer: true } })
+    setEscrevendo(false)
+    if (!r.ok) return setErro(r.erro)
+    setErro('')
+    setMinuta(r.dados)
+    if (r.dados.sugestao) setTexto(r.dados.sugestao.texto)
+  }
 
   async function pedir(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const corpo = { instrucoes, opcoes, citados: [...marcados.map((documentoId) => ({ documentoId })), ...faltando.map((nome) => ({ nome }))], texto }
+    const chamadaIaId = minuta?.sugestao?.chamadaId
+    const corpo = { instrucoes, opcoes, citados: citados(), texto, ...(chamadaIaId && { chamadaIaId }) }
     const entrada = PedirPeticao.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o pedido.')
     const r = await chamarApi(`/casos/${casoId}/peticao/pedido`, { method: 'POST', corpo })
@@ -90,11 +120,32 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
           </ol>
         )}
       </fieldset>
+      <div className={styles.acoes}>
+        <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void escreverDeNovo()}>
+          {escrevendo ? 'A IA está escrevendo…' : 'Escrever de novo com a IA'}
+        </button>
+      </div>
+      <p className={styles.dica}>A minuta já veio escrita com o que está marcado. Mudou as instruções, as opções ou os documentos? Escreva de novo.</p>
+      {minuta?.motivo && <p className={styles.dica}>{minuta.motivo}</p>}
+      {minuta?.aviso && <p className={styles.dica}>{minuta.aviso}</p>}
+      {minuta?.sugestao && (
+        <section className={styles.cartao} aria-label="Minuta da IA">
+          <span className={`${styles.selo} ${styles.seloAlerta}`}>Minuta da IA · revise antes de pedir; você assina o conteúdo (G6)</span>
+          {minuta.sugestao.alerta && (
+            <p className={styles.erroCampo} role="alert">
+              Atenção: {minuta.sugestao.alerta}.
+            </p>
+          )}
+          <p className={styles.dica}>
+            Fontes usadas: {minuta.sugestao.fontes.map((f) => f.trecho ?? f.referencia).join(' · ') || 'só os dados do caso'} ({minuta.sugestao.modelo})
+          </p>
+        </section>
+      )}
       <label className={styles.rotulo} htmlFor={ids.texto}>
         Texto da petição (versão 1)
       </label>
       <textarea id={ids.texto} className={styles.campo} rows={14} value={texto} onChange={(e) => setTexto(e.target.value)} />
-      <p className={styles.dica}>Escreva ou cole o texto. Ele vai para a conferência; a minuta pela IA entra com o épico IA.</p>
+      <p className={styles.dica}>Escreva, cole ou parta da minuta da IA. O texto vai para a conferência; o que estiver em [completar] é seu.</p>
       {erro && (
         <p className={styles.erro} role="alert">
           {erro}
@@ -109,16 +160,37 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
   )
 }
 
-/** "Editar eu mesma" (GGVP-67 CA1, CA10): a advogada muda o texto e diz o que mudou; sai a versão seguinte, numerada. */
+/**
+ * "Não está boa?" (GGVP-67 CA1, CA5, CA10): a advogada pede outra versão à IA com o que mudar (épico IA) ou edita ela
+ * mesma; nos dois casos, revisa o texto e salva a versão seguinte, numerada. A IA não grava nada (G6).
+ */
 function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: string; aoSalvar: (t: string) => void }) {
-  const ids = { texto: useId(), oQueMudou: useId() }
+  const ids = { texto: useId(), oQueMudou: useId(), oQueMudar: useId() }
   const [novo, setNovo] = useState(texto)
   const [oQueMudou, setOQueMudou] = useState('')
+  const [oQueMudar, setOQueMudar] = useState('')
+  const [daIa, setDaIa] = useState<MinutaDaIa | null>(null)
+  const [escrevendo, setEscrevendo] = useState(false)
   const [erro, setErro] = useState('')
+
+  async function pedirAIa() {
+    const entrada = PedirOutraVersao.safeParse({ oQueMudar })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escreva o que mudar')
+    setEscrevendo(true)
+    const r = await chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/versoes/sugestao`, { method: 'POST', corpo: entrada.data })
+    setEscrevendo(false)
+    if (!r.ok) return setErro(r.erro)
+    setErro('')
+    setDaIa(r.dados)
+    if (!r.dados.sugestao) return
+    setNovo(r.dados.sugestao.texto)
+    setOQueMudou(entrada.data.oQueMudar)
+  }
 
   async function salvar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const entrada = NovaVersao.safeParse({ texto: novo, oQueMudou })
+    const chamadaIaId = daIa?.sugestao?.chamadaId
+    const entrada = NovaVersao.safeParse({ texto: novo, oQueMudou, ...(chamadaIaId && { chamadaIaId }) })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira a versão.')
     const r = await chamarApi<{ numero: number }>(`/casos/${casoId}/peticao/versoes`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
@@ -127,7 +199,29 @@ function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: str
 
   return (
     <details>
-      <summary>Não está boa? Editar eu mesma</summary>
+      <summary>Não está boa? Pedir outra versão à IA ou editar eu mesma</summary>
+      <section className={styles.cartao} aria-label="Outra versão pela IA">
+        <label className={styles.rotulo} htmlFor={ids.oQueMudar}>
+          O que mudar
+        </label>
+        <input id={ids.oQueMudar} className={styles.campo} value={oQueMudar} onChange={(e) => setOQueMudar(e.target.value)} />
+        <div className={styles.acoes}>
+          <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void pedirAIa()}>
+            {escrevendo ? 'A IA está escrevendo…' : 'Pedir outra versão à IA'}
+          </button>
+        </div>
+        {daIa?.motivo && <p className={styles.dica}>{daIa.motivo}</p>}
+        {daIa?.sugestao && (
+          <>
+            <span className={`${styles.selo} ${styles.seloAlerta}`}>Versão da IA · revise antes de salvar; você aprova o conteúdo (G6)</span>
+            {daIa.sugestao.alerta && (
+              <p className={styles.erroCampo} role="alert">
+                Atenção: {daIa.sugestao.alerta}.
+              </p>
+            )}
+          </>
+        )}
+      </section>
       <form className={styles.cartao} onSubmit={salvar} noValidate>
         <label className={styles.rotulo} htmlFor={ids.texto}>
           Texto da nova versão
@@ -147,7 +241,7 @@ function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: str
             Salvar nova versão
           </button>
         </div>
-        <p className={styles.dica}>As versões anteriores ficam guardadas. Pedir outra versão à IA entra com o épico IA.</p>
+        <p className={styles.dica}>As versões anteriores ficam guardadas.</p>
       </form>
     </details>
   )

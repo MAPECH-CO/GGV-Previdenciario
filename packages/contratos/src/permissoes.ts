@@ -17,9 +17,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14 (as duas ações dele numa versão
-// só). Quem entrar depois renumera. Relacionamento no servidor 15.
-export const VERSAO_MATRIZ = 15
+// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
+// 16. Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 16
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -96,7 +96,11 @@ export const MATRIZ = {
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
   'entrevista.gravar': JURIDICO,
-  // Versão 15 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
+  // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
+  // indica novo processo, quem decide é a Sênior.
+  'estudo.ver': JURIDICO,
+  'estudo.revisar': ['senior'],
+  // Versão 16 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
   // a conversa é o Atendimento e o Jurídico (advogada e Sênior), como nas telas; só a Sênior volta uma versão e dá prazo
   // novo à pendência atrasada; a segunda confirmação dos dados bancários é do Atendimento líder, da advogada ou da Sênior.
   'conversa.registrar': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
