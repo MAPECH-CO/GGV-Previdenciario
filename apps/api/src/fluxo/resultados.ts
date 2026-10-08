@@ -31,6 +31,8 @@ function mediana(numeros: number[]): number {
 export type PedidoDoCalculo = { de: string; ate: string; recorte: Recorte | null; verTotais: boolean }
 
 export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTotais }: PedidoDoCalculo): Promise<PainelDeResultados> {
+  // ponytail: lê as tabelas inteiras e filtra o período em memória; serve para centenas de casos. Com milhares, levar o
+  // período para o where de cada consulta (data do evento) e os grupos do recorte para um group by.
   const noPeriodo = (dia: string | null | undefined): dia is string => !!dia && dia >= de && dia <= ate
   const casos = await banco
     .select({ id: caso.id, beneficio: caso.beneficio, advogadaId: caso.advogadaResponsavelId, desfecho: caso.desfecho, causa: caso.causaDesfecho, criadoEm: caso.criadoEm, encerradoEm: caso.encerradoEm })

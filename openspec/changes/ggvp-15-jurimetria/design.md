@@ -82,6 +82,10 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
   - O tribunal sai de uma tabela fixa de 7 códigos J.TR (`TRIBUNAL_DO_JTR`): TRF1 a TRF6 e TJSP.
   - Os outros tribunais aparecem pelo próprio código, como "5.15 · 0001".
   - A tabela sai quando entrar o cadastro de juízos.
+- **Leitura em memória:** o painel lê as tabelas inteiras (`caso`, `resultado_inss`, `exigencia`, `exigencia_item` e `parecer_medico`) e filtra o período em memória.
+  - Serve para centenas de casos, o volume da entrega de 09/10.
+  - Com milhares de casos, levar o período para o `where` de cada consulta, pela data do evento, e os grupos do recorte para um `group by`.
+  - O limite também está anotado no código (`painelDeResultados`).
 
 ## GGVP-55 · Subir lote avulso de processos no acervo pelo chat e ver a base em uso na Gestão (a parte sem chat)
 
