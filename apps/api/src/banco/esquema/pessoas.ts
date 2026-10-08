@@ -1,5 +1,5 @@
 // Pessoas: lead e cliente, vínculos, consentimento e o cofre do gov.br (GGVP-16, 43, 60, 103, 108).
-import { customType, date, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { customType, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 
@@ -105,4 +105,34 @@ export const fichaRecepcao = pgTable('ficha_recepcao', {
     .references(() => pessoa.id),
   documento: jsonb('documento').notNull(),
   atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
+/**
+ * As tarefas da Recepção (GGVP-125, bloco 2), no formato da Central das telas: encaminhar ao setor, preencher ficha,
+ * preparar entrevista, cadastrar lead. O id é o das telas ("preparar-<entrevista>"), uma por motivo. A `tarefa` do
+ * portal pede um caso, e o lead ainda não tem. ponytail: juntar com `tarefa` quando o lead ganhar caso.
+ */
+export const tarefaRecepcao = pgTable('tarefa_recepcao', {
+  id: text('id').primaryKey(),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  setor: text('setor').notNull(),
+  dados: jsonb('dados').notNull(),
+  concluidaEm: momento('concluida_em'),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/** Compromisso da agenda sem cliente, como "gravação amanhã" (GGVP-123, CA5). */
+export const compromissoInterno = pgTable('compromisso_interno', {
+  id: id(),
+  titulo: text('titulo').notNull(),
+  data: date('data').notNull(),
+  hora: text('hora').notNull(),
+  duracao: integer('duracao').notNull(),
+  /** Id da equipe das telas (catálogo EQUIPE). */
+  responsavel: text('responsavel').notNull(),
+  estado: text('estado').notNull().default('marcado'),
+  criadoPor: uuid('criado_por').references(() => usuario.id),
+  criadoEm: criadoEm(),
 }).enableRLS()

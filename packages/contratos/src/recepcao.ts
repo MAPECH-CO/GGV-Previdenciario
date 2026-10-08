@@ -69,3 +69,55 @@ export const EnvioDaFichaDeAtendimento = z.object({
   modelo: z.enum(['GGV', 'APA']).optional(),
 })
 export type EnvioDaFichaDeAtendimento = z.infer<typeof EnvioDaFichaDeAtendimento>
+
+// Bloco 2 (GGVP-125): a agenda, a confirmação e o encaminhamento do balcão. As regras (horários, durações, equipe,
+// limite de remarcação, tentativas) são as do Pedro, no servidor; aqui só a forma.
+const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const Hora = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+const TipoDeEntrevista = z.enum(['video', 'presencial', 'telefone'])
+const Canal = z.enum(['mensagem', 'ligacao'])
+
+/** POST /api/fichas/:id/agendamentos: marcar ou remarcar a entrevista (GGVP-123). */
+export const MarcacaoDaEntrevista = z.object({
+  tipo: TipoDeEntrevista,
+  data: Data,
+  hora: Hora,
+  duracao: z.number().int(),
+  com: Texto(60),
+  gravar: z.boolean(),
+  levar: z.boolean(),
+  pedirFicha: z.boolean(),
+  confirmarHorarioOcupado: z.boolean(),
+  remarcar: z.object({ agendamentoId: Texto(120), motivo: Texto(500) }).optional(),
+})
+export type MarcacaoDaEntrevista = z.infer<typeof MarcacaoDaEntrevista>
+
+/** POST /api/fichas/:id/entrevistas/agora: a pessoa já está aqui (GGVP-40). */
+export const EntrevistaAgora = z.object({ tipo: TipoDeEntrevista, com: Texto(60), duracao: z.number().int(), gravar: z.boolean() })
+export type EntrevistaAgora = z.infer<typeof EntrevistaAgora>
+
+/** POST /api/agendamentos/:id/resultado (CA6, CA8). */
+export const ResultadoDoCompromisso = z.object({ resultado: z.enum(['realizado', 'faltou']) })
+export type ResultadoDoCompromisso = z.infer<typeof ResultadoDoCompromisso>
+
+/** POST /api/agendamentos/:id/convite e /confirmacao/mensagem: a mensagem conferida e enviada no Chatwoot. */
+export const MensagemEnviada = z.object({ mensagem: Texto(2000) })
+export type MensagemEnviada = z.infer<typeof MensagemEnviada>
+
+/** POST /api/agenda/internos: compromisso sem cliente (CA5). */
+export const NovoCompromissoInterno = z.object({ titulo: Texto(80), data: Data, hora: Hora, duracao: z.number().int(), responsavel: Texto(60) })
+export type NovoCompromissoInterno = z.infer<typeof NovoCompromissoInterno>
+
+/** POST /api/fichas/:id/encaminhamentos: o balcão manda ao setor (GGVP-16 CA4, GGVP-17 CA1). */
+export const EncaminhamentoDoBalcao = z.object({
+  motivo: z.enum(['entrevista', 'outra-etapa', 'documento']),
+  setor: z.enum(['Jurídico', 'Documentação · ADM', 'Financeiro', 'Atendimento']),
+})
+export type EncaminhamentoDoBalcao = z.infer<typeof EncaminhamentoDoBalcao>
+
+/** POST /api/agendamentos/:id/confirmacao: o que o lead respondeu (GGVP-21). */
+export const ConfirmacaoDoLead = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('confirmou'), canal: Canal, jaPreencheuFicha: z.boolean() }),
+  z.object({ resultado: z.literal('sem-resposta'), canal: Canal }),
+])
+export type ConfirmacaoDoLead = z.infer<typeof ConfirmacaoDoLead>

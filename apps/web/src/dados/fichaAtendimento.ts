@@ -12,8 +12,8 @@ import { BENEFICIOS } from './catalogos.ts'
 import { registrarNoCofre } from './cofre.ts'
 import { abrirPreparacao } from './confirmacao.ts'
 import { leituraDeExemplo } from './exemplo.ts'
-import { agora, daSemente, doServidor, esperar, espelhar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
-import type { Arquivo, EnvioDaFicha, Ficha, LeituraDaFicha } from './tipos.ts'
+import { agora, daSemente, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Arquivo, EnvioDaFicha, Ficha, LeituraDaFicha, TarefaEncaminhada } from './tipos.ts'
 
 /** Quem preenche no tablet é o próprio cliente. */
 export const CLIENTE_NO_TABLET = 'Cliente (tablet)'
@@ -90,16 +90,16 @@ export async function salvarFichaDeAtendimento(
   const hoje = hojeIso(agora())
   if (!envioValido(envio, hoje) || !BENEFICIOS.some((b) => b.id === envio.beneficioInteresse)) throw new Error('Ficha de atendimento inválida')
   if (doServidor(fichaId)) {
-    // GGVP-125: a ficha do lead do balcão grava no servidor; as tarefas e a agenda ainda são as daqui.
+    // GGVP-125: a ficha do lead do balcão grava no servidor, que também conclui o "Preencher ficha" e abre o "Preparar
+    // entrevista" da entrevista confirmada.
     const daSementeComCpf = fichaComCpf(daSemente(ler().fichas), envio.cpf)
     if (daSementeComCpf) return { erro: 'cpf-de-outra-ficha', nome: daSementeComCpf.nome }
-    const r = await noBanco<{ ficha: Ficha } | { erro: 'cpf-de-outra-ficha'; nome: string }>(`/fichas/${fichaId}/ficha-de-atendimento`, {
-      method: 'PUT',
-      corpo: envio,
-    })
+    const r = await noBanco<{ ficha: Ficha; tarefas: TarefaEncaminhada[] } | { erro: 'cpf-de-outra-ficha'; nome: string }>(
+      `/fichas/${fichaId}/ficha-de-atendimento`,
+      { method: 'PUT', corpo: envio },
+    )
     if ('erro' in r) return r
-    espelhar(r.ficha)
-    return destravar(ler(), fichaId, hoje)
+    return { ficha: receber(r)! }
   }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)

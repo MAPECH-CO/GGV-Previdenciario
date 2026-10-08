@@ -36,3 +36,32 @@ As rotas SHALL usar o perfil da sessão: ver a ficha com `caso.ver`; cadastrar, 
 - **Dado** o perfil Financeiro
 - **Quando** chama o cadastro de um lead
 - **Então** é recusado, e a tentativa fica registrada
+
+### Requirement: Bloco 2 · A agenda e a confirmação ficam no banco do portal
+Marcar, remarcar e iniciar a entrevista agora, registrar realizado ou faltou, o convite, o compromisso interno e a confirmação do lead (mensagem e registro) SHALL gravar no servidor, na ficha do banco, com as regras do Pedro; o horário ocupado SHALL olhar a agenda do escritório inteiro. Ao abrir cada tela, a cópia do navegador SHALL trazer do servidor as fichas da Recepção, as tarefas abertas e os compromissos internos, para a agenda e as Centrais mostrarem o que outro computador gravou.
+
+#### Scenario: Entrevista marcada por um, vista por outro
+- **Dado** a Atendimento marcando a entrevista de um lead do balcão
+- **Quando** outra pessoa abre a agenda no computador dela
+- **Então** a entrevista está lá, e o mesmo horário avisa que está ocupado
+
+### Requirement: Bloco 2 · G15 no servidor
+O servidor SHALL recusar a terceira remarcação da mesma entrevista (resposta `limite`, a tela leva à advogada sênior), e a segunda tentativa de confirmação sem resposta SHALL passar a tarefa à advogada sênior, sem nova tentativa marcada.
+
+#### Scenario: Remarcação além do limite
+- **Dado** uma entrevista já remarcada duas vezes
+- **Quando** alguém pede outra remarcação
+- **Então** nada é marcado e a resposta é `limite`
+
+#### Scenario: Confirmação sem resposta duas vezes
+- **Dado** a primeira tentativa sem resposta e a nova tentativa no dia marcado
+- **Quando** a segunda também fica sem resposta
+- **Então** a tarefa "Confirmar agendamento" vai para a advogada sênior
+
+### Requirement: Bloco 2 · As tarefas da Recepção ficam no banco
+As tarefas que o balcão, a agenda, a confirmação e a ficha de atendimento abrem ou concluem (encaminhar ao setor, receber para a entrevista, preencher ficha, preparar entrevista, cadastrar lead, a confirmação da sênior) SHALL ficar no servidor, uma por motivo, e aparecer na Central do setor em qualquer computador.
+
+#### Scenario: A advogada recebe o "Preparar entrevista"
+- **Dado** a Atendimento registrando que o lead confirmou e já preencheu a ficha
+- **Quando** a advogada abre a Central dela, em outro computador
+- **Então** a tarefa "Preparar entrevista" está lá

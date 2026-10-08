@@ -15,9 +15,10 @@ import {
 } from '../regras/agenda.ts'
 import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from './catalogos.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { agendamentoDoServidor, agora, daSemente, doServidor, esperar, evento, gravar, ler, noBanco, receber, servidorLigado, type Banco } from './servidor.ts'
 import type {
   Agendamento,
+  CompromissoGuardado,
   CompromissoInterno,
   EventoDaAgenda,
   EventoHistorico,
@@ -25,6 +26,7 @@ import type {
   Marcacao,
   RespostaMarcacao,
   Tarefa,
+  TarefaEncaminhada,
 } from './tipos.ts'
 
 const PASSOS: Record<string, string> = {
@@ -112,7 +114,7 @@ const quando = (a: { data: string; hora: string }, hoje: string) => `${dataCurta
 
 /** POST /api/fichas/:id/agendamentos. Horário ocupado avisa e deixa confirmar (CA3); remarcar pede o motivo e tem limite (CA7, G15). */
 export async function marcarEntrevista(fichaId: string, m: Marcacao): Promise<RespostaMarcacao> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   const hoje = hojeIso(agora())
   const com = equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com)
   const valido =
@@ -124,6 +126,17 @@ export async function marcarEntrevista(fichaId: string, m: Marcacao): Promise<Re
     com !== undefined &&
     (!m.remarcar || m.remarcar.motivo.trim().length >= 3)
   if (!valido) throw new Error('Marcação inválida')
+  if (doServidor(fichaId)) {
+    // GGVP-125: a ficha do servidor marca lá, com a agenda do escritório; a semente daqui entra no horário ocupado.
+    const daqui = ler()
+    const semente = { ...daqui, fichas: daSemente(daqui.fichas), internos: daqui.internos.filter((i) => !doServidor(i.id)) }
+    const ocupadosAqui = horarioOcupado(eventosDoBanco(semente, hoje), m)
+    if (ocupadosAqui.length > 0 && !m.confirmarHorarioOcupado) return { resultado: 'ocupado', conflitos: ocupadosAqui }
+    const r = await noBanco<RespostaMarcacao & { ficha?: Ficha }>(`/fichas/${fichaId}/agendamentos`, { method: 'POST', corpo: m })
+    receber({ ficha: r.ficha })
+    delete r.ficha
+    return r
+  }
 
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
@@ -171,9 +184,17 @@ export async function marcarEntrevista(fichaId: string, m: Marcacao): Promise<Re
  * a entrevista (GGVP-40).
  */
 export async function iniciarEntrevistaAgora(fichaId: string, m: Pick<Marcacao, 'tipo' | 'com' | 'duracao' | 'gravar'>): Promise<Agendamento> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   const com = equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com)
   if (!com || !TIPOS_DE_ENTREVISTA.some((t) => t.id === m.tipo) || !DURACOES.includes(m.duracao)) throw new Error('Escolha o tipo e com quem')
+  if (doServidor(fichaId)) {
+    const r = await noBanco<{ agendamento: Agendamento; ficha: Ficha }>(`/fichas/${fichaId}/entrevistas/agora`, {
+      method: 'POST',
+      corpo: { tipo: m.tipo, com: m.com, duracao: m.duracao, gravar: m.gravar },
+    })
+    receber(r)
+    return r.agendamento
+  }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')
@@ -203,6 +224,15 @@ export async function iniciarEntrevistaAgora(fichaId: string, m: Pick<Marcacao, 
  * do Jurídico (CA6); "Faltou" grava a falta, e a tela abre o remarcar (CA8, CA9).
  */
 export async function registrarResultado(id: string, resultado: 'realizado' | 'faltou'): Promise<{ evento: EventoHistorico }> {
+  if (doServidor(id) || agendamentoDoServidor(id)) {
+    // O compromisso interno do servidor (id do banco) ou a entrevista de uma ficha de lá.
+    const r = await noBanco<{ evento: EventoHistorico; ficha?: Ficha; tarefas?: TarefaEncaminhada[]; interno?: CompromissoGuardado }>(
+      `/agendamentos/${id}/resultado`,
+      { method: 'POST', corpo: { resultado } },
+    )
+    receber(r)
+    return { evento: r.evento }
+  }
   await esperar()
   const banco = ler()
   const hoje = hojeIso(agora())
@@ -260,6 +290,11 @@ export async function prepararConvite(id: string): Promise<{ nome: string; telef
 
 /** POST /api/agendamentos/:id/convite. O convite enviado no Chatwoot fica em "Últimos contatos". */
 export async function registrarConvite(id: string, mensagem: string): Promise<{ evento: EventoHistorico }> {
+  if (agendamentoDoServidor(id)) {
+    const r = await noBanco<{ evento: EventoHistorico; ficha: Ficha }>(`/agendamentos/${id}/convite`, { method: 'POST', corpo: { mensagem: mensagem.trim() } })
+    receber(r)
+    return { evento: r.evento }
+  }
   await esperar()
   const banco = ler()
   const { ficha, agendamento } = acharAgendamento(banco, id)
@@ -286,6 +321,11 @@ export async function criarCompromissoInterno(c: CompromissoInterno): Promise<Ev
     c.duracao <= 480 &&
     EQUIPE.some((m) => m.id === c.responsavel && m.papel !== 'captador')
   if (!valido) throw new Error('Compromisso inválido')
+  if (servidorLigado()) {
+    const r = await noBanco<{ evento: EventoDaAgenda; interno: CompromissoGuardado }>('/agenda/internos', { method: 'POST', corpo: { ...c, titulo: c.titulo.trim() } })
+    receber(r)
+    return r.evento
+  }
   const banco = ler()
   banco.seq += 1
   const id = `interno-${banco.seq}`

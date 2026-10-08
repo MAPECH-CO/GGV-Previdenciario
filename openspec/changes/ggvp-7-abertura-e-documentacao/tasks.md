@@ -121,3 +121,12 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.5 Playwright: um lead cadastrado pela Atendimento achado pela advogada em outra sessão; os testes do Pedro seguem passando.
 - [x] 125.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+### Bloco 2 · Agenda e confirmação
+
+- [x] 125.7 Banco: `tarefa_recepcao` (a tarefa no formato das telas, por pessoa, com setor e quando foi concluída) e `compromisso_interno`; a migração.
+- [x] 125.8 Contratos: marcação, entrevista agora, resultado, convite, compromisso interno, encaminhamento, mensagem e registro da confirmação.
+- [x] 125.9 Servidor: `GET /api/recepcao` (fichas, tarefas abertas e compromissos internos, para a cópia do navegador); `POST /api/fichas/:id/agendamentos`, `POST /api/fichas/:id/entrevistas/agora`, `POST /api/fichas/:id/encaminhamentos`, `POST /api/agendamentos/:id/resultado`, `POST /api/agendamentos/:id/convite`, `POST /api/agenda/internos`, `POST /api/agendamentos/:id/confirmacao/mensagem`, `POST /api/agendamentos/:id/confirmacao`; G15 no servidor; as tarefas que abrem e concluem, também na ficha de atendimento; testes.
+- [x] 125.10 Telas: a cópia atualizada ao abrir cada tela, depois da sessão; as funções do bloco chamando a API para as fichas do servidor; a cópia em três vias com a agenda por compromisso; testes.
+- [x] 125.11 Playwright: a Atendimento marca e registra a confirmação; a advogada, em outra sessão, vê "Preparar entrevista" na Central e a entrevista na agenda.
+- [x] 125.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+

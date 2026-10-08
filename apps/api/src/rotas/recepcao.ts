@@ -3,7 +3,7 @@
 // ficha de atendimento), rodando aqui com o perfil da sessão. A ficha fica em `ficha_recepcao`, no formato das telas; a
 // pessoa, em `pessoa`, que o resto do portal usa.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   dataParaIso,
@@ -20,12 +20,25 @@ import {
 } from '@ggv/campos'
 import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, credencialGovbr, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, credencialGovbr, fichaRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS } from '../../../web/src/dados/catalogos.ts'
-import type { EdicaoFicha, EnvioDaFicha, EventoHistorico, Ficha, FichaResumo, Processo, RespostaNovoCliente } from '../../../web/src/dados/tipos.ts'
-import { buscar, etapaDaFicha } from '../../../web/src/regras/busca.ts'
-import { hojeIso } from '../../../web/src/regras/datas.ts'
+import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
+import type {
+  Agendamento,
+  EdicaoFicha,
+  EnvioDaFicha,
+  EventoHistorico,
+  Ficha,
+  FichaResumo,
+  Processo,
+  RespostaNovoCliente,
+  TarefaEncaminhada,
+} from '../../../web/src/dados/tipos.ts'
+import { buscar, emAberto, etapaDaFicha } from '../../../web/src/regras/busca.ts'
+import { confirmada } from '../../../web/src/regras/confirmacao.ts'
+import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf, fichasParecidas } from '../../../web/src/regras/duplicidade.ts'
 import { ROTULOS_DA_FICHA, camposEmBranco, envioValido, type CampoDaFicha } from '../../../web/src/regras/fichaAtendimento.ts'
 import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
@@ -90,9 +103,12 @@ function valoresAtuais(f: Ficha): Record<CampoDaFicha, string> {
 type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const historico = registrarHistorico(banco, agora)
-  const hoje = () => hojeIso(agora())
+/**
+ * O fichário da Recepção, comum aos blocos: ler e gravar as fichas, o histórico das telas e as tarefas da Recepção.
+ * "Hoje" é o de Brasília, também no servidor em UTC.
+ */
+export function criarFichario(banco: Banco, agora: () => Date) {
+  const hoje = () => hojeEmBrasilia(agora())
   const evento = (oQue: string, quem: string): EventoHistorico => ({ quando: agora().toISOString(), quem, oQue })
 
   async function nomeDe(pedido: FastifyRequest) {
@@ -174,6 +190,61 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
       .onConflictDoUpdate({ target: fichaRecepcao.pessoaId, set: { documento, atualizadoEm: agora() } })
   }
 
+  /** Abre a tarefa uma vez por motivo: o id é o das telas ("preparar-<entrevista>"); a que já existe fica como está. */
+  async function abrirTarefa(t: TarefaEncaminhada) {
+    await banco.insert(tarefaRecepcao).values({ id: t.id, pessoaId: t.cliente!.id, setor: t.setor, dados: t }).onConflictDoNothing()
+  }
+
+  async function concluirTarefas(pessoaId: string, acao: string, id?: string) {
+    await banco
+      .update(tarefaRecepcao)
+      .set({ concluidaEm: agora() })
+      .where(
+        and(
+          eq(tarefaRecepcao.pessoaId, pessoaId),
+          isNull(tarefaRecepcao.concluidaEm),
+          id ? eq(tarefaRecepcao.id, id) : sql`${tarefaRecepcao.dados}->>'acao' = ${acao}`,
+        ),
+      )
+  }
+
+  /** As tarefas da Recepção, no formato das telas: as abertas de todos, ou todas as de uma pessoa (com as concluídas). */
+  async function tarefas(pessoaId?: string): Promise<TarefaEncaminhada[]> {
+    const linhas = await banco
+      .select()
+      .from(tarefaRecepcao)
+      .where(pessoaId ? eq(tarefaRecepcao.pessoaId, pessoaId) : isNull(tarefaRecepcao.concluidaEm))
+    return linhas.map((t) => ({ ...(t.dados as TarefaEncaminhada), ...(t.concluidaEm && { concluida: true }) }))
+  }
+
+  const quandoNaConfirmacao = (a: Agendamento) => `${a.data === hoje() ? 'hoje' : dataCurta(a.data, hoje())} às ${a.hora}`
+
+  /** "Preparar entrevista" do Jurídico, uma só por entrevista (GGVP-21 CA3). A ficha de atendimento também chama. */
+  async function abrirPreparacao(ficha: Ficha, a: Agendamento, quem: string): Promise<TarefaEncaminhada> {
+    const id = `preparar-${a.id}`
+    const [existente] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, id))
+    if (existente) return existente.dados as TarefaEncaminhada
+    const tarefa: TarefaEncaminhada = {
+      id,
+      codigo: 'D1.06',
+      cliente: { id: ficha.id, nome: ficha.nome },
+      acao: 'Preparar entrevista',
+      detalhe: [nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir', `entrevista ${quandoNaConfirmacao(a)}`, 'ficha de atendimento preenchida'].join(' · '),
+      prazo: a.data === hoje() ? `antes das ${a.hora}` : dataCurta(a.data, hoje()),
+      href: `/entrevista/${a.id}/preparar`,
+      setor: 'Jurídico',
+    }
+    await abrirTarefa(tarefa)
+    ficha.historico.push(evento(`Mandou ao Jurídico: preparar a entrevista de ${quandoNaConfirmacao(a)}`, quem))
+    return tarefa
+  }
+
+  return { hoje, evento, nomeDe, fichas, resumo, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao }
+}
+
+export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+  const historico = registrarHistorico(banco, agora)
+  const { hoje, evento, nomeDe, fichas, resumo, guardar, concluirTarefas, tarefas, abrirPreparacao } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
 
@@ -341,8 +412,11 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
       mudou = (Object.keys(antes) as CampoDaFicha[]).filter((c) => antes[c] !== depois[c])
       if (mudou.length > 0) ficha.historico.push(evento(`Alterou na ficha de atendimento: ${juntar(mudou.map((c) => ROTULOS_DA_FICHA[c]))}`, quem))
     }
+    await concluirTarefas(ficha.id, 'Preencher ficha')
+    const entrevista = ficha.agendamentos.find((a) => a.oQue === 'Entrevista' && emAberto(a) && a.data >= hoje() && confirmada(a.confirmacao))
+    if (entrevista) await abrirPreparacao(ficha, entrevista, await nomeDe(pedido))
     await guardar(ficha)
     await historico(pedido.usuario!.id, 'ficha_atendimento_salva', pedido, `pessoa:${ficha.id}`, { primeira, campos: mudou, origem: envio.origem })
-    return { ficha }
+    return { ficha, tarefas: await tarefas(ficha.id) }
   })
 }

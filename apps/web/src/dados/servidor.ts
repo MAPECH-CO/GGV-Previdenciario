@@ -19,6 +19,7 @@ import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type { Cobranca } from './cobranca.ts'
 import type { Liberacao } from './liberacao.ts'
 import type {
+  Agendamento,
   CompromissoGuardado,
   EdicaoFicha,
   Encaminhamento,
@@ -76,6 +77,8 @@ export type Banco = {
   liberacoes?: Liberacao[]
   /** A última ficha que veio do servidor, por id: a base para saber o que mudou lá desde a cópia (GGVP-125). */
   espelhos?: Record<string, Ficha>
+  /** Os ids das tarefas que vieram do servidor (GGVP-125, bloco 2). */
+  tarefasDoBanco?: string[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
@@ -93,6 +96,9 @@ export function configurarExemplo(opcoes: { agora?: () => Date; latencia?: numbe
 }
 
 /** Ficha que nasceu no servidor: o id é o da pessoa no banco; as da semente têm id de nome ("rosa-exemplo"). */
+/** O modo misto está ligado (GGVP-125). */
+export const servidorLigado = () => noServidor
+
 export const doServidor = (id: string) => noServidor && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
 
 /** As fichas da semente, sem as cópias do servidor: as regras do balcão rodam nelas aqui e no banco lá. */
@@ -104,27 +110,91 @@ export async function noBanco<T>(caminho: string, init?: { method?: string; corp
   return r.dados
 }
 
+/** O compromisso de uma ficha do servidor: o id é "<id da ficha>-ag-<n>". */
+export const agendamentoDoServidor = (id: string) => doServidor(id.slice(0, 36)) && id.startsWith(`${id.slice(0, 36)}-ag-`)
+
+const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+/** A agenda, por compromisso: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
+function mesclarAgenda(local: Agendamento[], doBanco: Agendamento[], antes: Agendamento[]): Agendamento[] {
+  const lista = [...local]
+  for (const a of doBanco) {
+    const i = lista.findIndex((x) => x.id === a.id)
+    if (i < 0) lista.push(a)
+    else if (!igual(antes.find((x) => x.id === a.id), a)) lista[i] = a
+  }
+  return lista
+}
+
 /**
- * Copia a ficha do servidor para cá. Na primeira vez, inteira. Depois, em três vias: o campo do bloco 1 que mudou no
- * servidor desde a última cópia vem de lá; o resto fica como as telas daqui deixaram (agenda, pasta, contrato, casos).
+ * Copia a ficha do servidor para cá. Na primeira vez, inteira. Depois, em três vias, contra a última cópia: o campo
+ * dos blocos ligados que mudou no servidor vem de lá; o histórico e os contatos só crescem lá, e o que chegou entra no
+ * fim; o resto fica como as telas daqui deixaram (pasta, contrato, documentos, casos).
  */
-export function espelhar(doBanco: Ficha): Ficha {
-  const banco = ler()
+function espelharEm(banco: Banco, doBanco: Ficha): Ficha {
   const i = banco.fichas.findIndex((f) => f.id === doBanco.id)
   const antes = banco.espelhos?.[doBanco.id]
   let ficha = doBanco
   if (i >= 0 && antes) {
     const local = banco.fichas[i]
-    const novos = doBanco.historico.slice(antes.historico.length)
-    ficha = { ...local, historico: [...local.historico, ...novos].sort((a, b) => a.quando.localeCompare(b.quando)) }
+    ficha = {
+      ...local,
+      historico: [...local.historico, ...doBanco.historico.slice(antes.historico.length)].sort((a, b) => a.quando.localeCompare(b.quando)),
+      contatos: [...local.contatos, ...doBanco.contatos.slice(antes.contatos.length)],
+      agendamentos: mesclarAgenda(local.agendamentos, doBanco.agendamentos, antes.agendamentos),
+    }
     const campos = [...Object.keys(ROTULOS), 'indicadoPor', 'beneficioInteresse', 'fichaAtendimentoPreenchida', 'fichaAtendimento'] as (keyof Ficha)[]
-    for (const c of campos) if (JSON.stringify(doBanco[c]) !== JSON.stringify(antes[c])) Object.assign(ficha, { [c]: doBanco[c] })
+    for (const c of campos) if (!igual(doBanco[c], antes[c])) Object.assign(ficha, { [c]: doBanco[c] })
   }
   if (i >= 0) banco.fichas[i] = ficha
   else banco.fichas.push(ficha)
   banco.espelhos = { ...banco.espelhos, [doBanco.id]: doBanco }
+  return ficha
+}
+
+export function espelhar(doBanco: Ficha): Ficha {
+  const banco = ler()
+  const ficha = espelharEm(banco, doBanco)
   gravar(banco)
   return ficha
+}
+
+/**
+ * As tarefas da Recepção que vieram do servidor substituem as daqui com o mesmo id. Na cópia completa (todas as
+ * abertas), a do servidor que não veio foi concluída lá.
+ */
+function receberTarefasEm(banco: Banco, doBanco: TarefaEncaminhada[], todasAbertas: boolean) {
+  const vieram = new Set(doBanco.map((t) => t.id))
+  const conhecidas = new Set(banco.tarefasDoBanco)
+  banco.tarefas = banco.tarefas
+    .filter((t) => !vieram.has(t.id))
+    .map((t) => (todasAbertas && conhecidas.has(t.id) && !t.concluida ? { ...t, concluida: true } : t))
+  banco.tarefas.push(...doBanco)
+  banco.tarefasDoBanco = [...new Set([...conhecidas, ...vieram])]
+}
+
+/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa e o compromisso interno, para a cópia daqui. */
+export function receber(r: { ficha?: Ficha; tarefas?: TarefaEncaminhada[]; interno?: CompromissoGuardado }): Ficha | undefined {
+  const banco = ler()
+  const ficha = r.ficha && espelharEm(banco, r.ficha)
+  if (r.tarefas) receberTarefasEm(banco, r.tarefas, false)
+  if (r.interno) banco.internos = [...banco.internos.filter((i) => i.id !== r.interno!.id), r.interno]
+  gravar(banco)
+  return ficha
+}
+
+/**
+ * GET /api/recepcao. Ao abrir cada tela, depois da sessão: a cópia daqui recebe as fichas da Recepção, as tarefas
+ * abertas e os compromissos internos do servidor, para a agenda e as Centrais mostrarem o que outro computador gravou.
+ */
+export async function sincronizarRecepcao() {
+  if (!noServidor) return
+  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[] }>('/recepcao')
+  const banco = ler()
+  for (const f of r.fichas) espelharEm(banco, f)
+  receberTarefasEm(banco, r.tarefas, true)
+  banco.internos = [...banco.internos.filter((i) => !doServidor(i.id)), ...r.internos]
+  gravar(banco)
 }
 
 /** Volta à semente. */
@@ -373,6 +443,14 @@ function juntar(itens: string[]): string {
 
 /** POST /api/fichas/:id/encaminhamentos. O setor recebe a tarefa com a ficha e o agendamento (CA4); fica no histórico (CA8). */
 export async function encaminhar(dados: Encaminhamento): Promise<{ tarefa: TarefaEncaminhada; evento: EventoHistorico }> {
+  if (doServidor(dados.fichaId)) {
+    const r = await noBanco<{ tarefa: TarefaEncaminhada; evento: EventoHistorico; ficha: Ficha }>(`/fichas/${dados.fichaId}/encaminhamentos`, {
+      method: 'POST',
+      corpo: { motivo: dados.motivo, setor: dados.setor },
+    })
+    receber({ ficha: r.ficha, tarefas: [r.tarefa] })
+    return { tarefa: r.tarefa, evento: r.evento }
+  }
   await esperar()
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === dados.fichaId)
