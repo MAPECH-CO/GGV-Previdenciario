@@ -12,9 +12,11 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 2. **A tarefa do aviso nasce do recebimento** (CA4): o OK da advogada abre só "Receber a prestação de contas"; "Receber e lançar" abre "Avisar resultado e agendar a ida ao banco" para o Financeiro.
 3. **"Valores conferem com o comprovante"** (CA3): `ReceberPrestacao` com `recebido` exige `valoresConferem: true`; o servidor confere de novo.
 4. **Quem acompanha é obrigatório e do Atendimento** (CA6, Lucas Q24): `acompanhanteId` obrigatório; o servidor recusa quem não tem o perfil Atendimento. Agendar abre para essa pessoa a tarefa "Levar ao banco", com a data como prazo e o nome dela como responsável; remarcar atualiza a tarefa (CA7). É dali que a Agenda lê.
-5. **Recusa registrada** (CA8): quem deu o OK e tenta receber leva 409 e o evento `portao_bloqueado` com o portão G8 e o motivo, que aparece em "Tentativas bloqueadas".
+5. **Recusa registrada** (CA8): quem deu o OK e tenta receber leva 409 e o evento `portao_bloqueado` com o portão `funcoes` (separação de funções) e o motivo, que aparece em "Tentativas bloqueadas". Era G8, mas o G8 é "o aviso só sai depois do OK". Se `funcoes` vira portão oficial, com número, é pergunta ao Lucas (terceira revisão de 08/10).
 6. **Aviso grava no acervo** (CA2): o envio do aviso grava o caso em `processo_acervo` (uma vez por caso, `fonte: portal`, desfecho do caso) e registra a baixa no histórico. O desfecho fica sem conferência (`desfecho_conferido_por` nulo): a conferência que põe o caso nas contas da jurimetria é da GGVP-41 (CA5). Caso sem desfecho e sem deferimento registrado não entra como processo bom: o aviso é recusado (409) até o resultado ser registrado (revisão de 08/10). O histórico do aviso e da baixa vai na mesma transação do acervo (segunda revisão de 08/10).
 7. **Confirmar recebimento** (CA9): `POST /api/casos/:id/banco/confirmacao`, do Financeiro, depois do aviso: a ida ao banco fica "realizado", "Levar ao banco" conclui e o caso vai para a fase "encerrado". O caso encerrado não reabre: agendar a ida ao banco e avisar o cliente devolvem 409, e nenhuma tarefa nasce (revisão de 08/10).
+   - Agendar, avisar e confirmar travam o caso na transação (`select ... for update`) e conferem de novo se ele foi encerrado. Dois pedidos ao mesmo tempo passam um de cada vez.
+   - Todo o histórico da prestação vai na mesma transação da mudança (terceira revisão de 08/10).
 8. **Canal**: o Chatwoot é a plataforma; o canal que vai na mensagem continua o do cliente (WhatsApp, telefone, e-mail, SMS). Sem migração.
 
 ### Contratos (`packages/contratos/src/prestacao.ts`)
@@ -43,7 +45,7 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 3. **Quem fala** (CA5): "Eu ligo" deixa "Explicar resultado" com a advogada (responsável ela mesma); no padrão, vai ao Atendimento. Só quem ficou com a explicação registra o contato: a advogada que a pegou ou o Atendimento (o líder também). Outro perfil com `resultado.explicar` recebe 403 (revisão de 08/10).
 4. **Cada contato** (CA4) é uma linha de `atendimento` (canal, início, quem, o que foi explicado; sem contato fica com o resumo vazio).
    - A tela lista só os contatos desta explicação: cada registro grava no histórico o atendimento e a tarefa, e a lista sai dali. Outro atendimento do caso não entra (revisão de 08/10).
-   - ponytail: o vínculo vive no histórico; uma coluna `tarefa_id` em `atendimento` entra na próxima migração do épico (tarefa 6.1).
+   - ponytail: o vínculo vive no histórico; uma coluna `tarefa_id` em `atendimento` entra na próxima migração do épico (tarefa 7.1). A lista mostra os contatos da explicação mais recente, pela tarefa gravada no histórico (terceira revisão de 08/10).
    - O registro no histórico vai na mesma transação do atendimento (segunda revisão de 08/10).
 5. **Fecha** (CA2): "Expliquei ao cliente" conclui a tarefa e põe o caso na fase "encerrado"; a tela mostra "Perdemos: estudo registrado".
 6. **Entrada:** `abrirExplicacaoDoResultado(casoId)` abre "Aprovar o resumo para o cliente" para a advogada. Quem chama: o estudo de caso (GGVP-19), que já chama no PR da IA (#26), e o "Não recorrer" (GGVP-100), no próximo PR do épico. A semente traz o Paulo Mendes (exemplo).

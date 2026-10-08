@@ -27,5 +27,5 @@ A branch nasceu empilhada na Garantia (`feat/GGVP-13-garantia-e-governanca`), qu
 ## Portões envolvidos
 
 - **G8**: o aviso ao cliente só sai depois do OK da advogada na prestação.
-- Quem dá o OK não registra o recebimento (GGVP-96 CA16): o banco recusa, e o servidor recusa antes e registra a tentativa.
-- **Pergunta ao Lucas (revisão de 08/10):** a recusa de quem deu o OK e tenta registrar o recebimento é gravada como bloqueio do portão G8. Mas o `docs/requisitos/portoes-governanca.md` define o G8 como "o aviso só sai depois do OK". Essa separação de funções precisa de portão próprio? Até a resposta, fica como está.
+- Quem dá o OK não registra o recebimento (GGVP-96 CA16): o banco recusa, e o servidor recusa antes e registra a tentativa. A tentativa é gravada como `funcoes` (separação de funções), um código neutro como `setores` e `perfil`, e não como G8, que é "o aviso só sai depois do OK" (terceira revisão de 08/10).
+- **Pergunta ao Lucas (08/10):** a separação de funções vira portão oficial, com número em `docs/requisitos/portoes-governanca.md`? Até a resposta, fica com o código neutro, e o painel da gestão mostra a descrição certa.

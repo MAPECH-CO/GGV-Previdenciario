@@ -57,8 +57,20 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - contratos 88 e API 276, todos passando;
   - Playwright do desfecho e da via administrativa: 12 de 12.
 
+## Terceira revisão do PR (08/10)
+
+- [x] 6.1 GGVP-98: todo o histórico da prestação vai na mesma transação da mudança: o OK, o recebimento, o agendamento, o aviso e a confirmação.
+- [x] 6.2 GGVP-98 · CA9: agendar, avisar e confirmar travam o caso na transação (`for update`) e conferem de novo se ele foi encerrado. Dois pedidos ao mesmo tempo passam um de cada vez, e o segundo recebe 409 se o primeiro fechou o caso.
+- [x] 6.3 GGVP-22 · CA4: a lista mostra os contatos da explicação mais recente, pela tarefa gravada no histórico. A explicação reaberta não se mistura com a anterior. Teste da API.
+- [x] 6.4 GGVP-98 · CA8: a recusa de quem deu o OK e tenta receber é gravada como `funcoes` (separação de funções), e não como G8, que é "o aviso só sai depois do OK". A pergunta ao Lucas passa a ser se isso vira portão oficial, com número. Teste da API.
+- [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10:
+  - typecheck e lint sem erro;
+  - `openspec validate --all --strict` com 11 de 11;
+  - contratos 88 e API 277, todos passando;
+  - Playwright do desfecho, da via administrativa e da governança, um de cada vez: 16 de 16. Em sequência, o teste do cofre também passa.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
-- [ ] 6.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
+- [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
   - Ficou fora deste PR para não abrir mais um choque de migração: o #26 e o #29 já disputam os números a partir da 0013.
   - Até lá, o vínculo vem do histórico, gravado na mesma transação do atendimento (5.2).
