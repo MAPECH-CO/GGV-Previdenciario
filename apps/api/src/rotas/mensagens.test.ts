@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, eventoAuditoria, mensagem, pericia, usuario } from '../banco/esquema.ts'
+import { caso, eventoAuditoria, mensagem, pericia, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_CHATWOOT_DESLIGADO } from './mensagens.ts'
@@ -76,6 +76,10 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
     const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
     const url = `/api/fichas/${fichaId}/mensagens`
     expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 999 })).erro).toBe('Escolha a conversa do cliente no Chatwoot.')
+    // O processo tem de ser deste cliente.
+    const [outra] = await banco.insert(pessoa).values({ nome: 'Outra Pessoa' }).returning()
+    const [doOutro] = await banco.insert(caso).values({ pessoaId: outra.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+    expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id, processoId: doOutro.id })).erro).toBe('Processo não encontrado.')
     const enviada = await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })
     expect(enviada).toMatchObject({ modelo: 'boas-vindas', canal: 'Chatwoot', status: 'entregue', quem: 'ana', fichaId })
     expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })).id).toBe(enviada.id)

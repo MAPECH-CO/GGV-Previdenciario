@@ -135,6 +135,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
    * fica no histórico (CA5); a mesma mensagem já enviada na mesma conversa não sai de novo.
    */
   async function enviar(pedido: FastifyRequest, ficha: Ficha, p: PedidoDeEnvio): Promise<{ erro: string } | { mensagem: MensagemAoCliente }> {
+    if (p.processoId && !ficha.processos.some((x) => x.id === p.processoId)) return { erro: 'Processo não encontrado.' }
     const pronta = await preparar(ficha, p.modelo, p.processoId)
     if (pronta.trava) return { erro: pronta.trava }
     const texto = p.texto.trim()
