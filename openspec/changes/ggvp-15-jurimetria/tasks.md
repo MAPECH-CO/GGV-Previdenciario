@@ -22,3 +22,26 @@
 - [x] 2.5 CA3, CA7 · Tela "Conferir desfechos do lote" (`apps/web/src/paginas/ConferirAcervo.tsx`), a rota e a linha "Base do acervo" na tela Resultados; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 2.6 Playwright: a Sênior abre pela Central, confere um desfecho e corrige outro; a Gestão mostra a base com os que aguardam; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-64 · Juízo identificado: mostrar a jurimetria (parte 1)
+
+- [ ] 3.1 Contrato `JurimetriaDoJuizo` em `packages/contratos/src/juizo.ts`, exportado no índice; teste do formato; verifica com `pnpm --filter @ggv/contratos test`.
+- [ ] 3.2 CA1 (a identificação) · `juizoDoCnj` em `apps/api/src/fluxo/juizo.ts`: tribunal e unidade de origem, a regra que o painel já usa. O painel (`resultados.ts`) passa a chamar a mesma função; verifica com o teste do painel e um teste da função.
+- [ ] 3.3 CA2, CA4, CA5 · Cálculo da jurimetria do juízo em `apps/api/src/fluxo/juizo.ts`:
+  - o juízo vem do CNJ do acervo ou do caso ligado;
+  - a procedência por benefício conta só desfecho conferido;
+  - o tempo até a sentença conta só os processos com as duas datas;
+  - o texto sai com os processos e a data da base.
+
+  Teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 3.4 CA1, CA2 · `GET /api/casos/:id/juizo` com `estudo.ver`. Caso sem número do processo: 404. Teste por perfil: o Atendimento e o Financeiro não veem; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 3.5 CA3, CA6 · Minuta da petição: a jurimetria do juízo vai às fontes da resposta, fora do pedido ao modelo. Teste com `fetch` falso, que confere o pedido enviado ao modelo; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 3.6 Dados de exemplo: processos conferidos no acervo na unidade do caso judicial de exemplo, alguns com as duas datas; verifica pela rota com a advogada de exemplo.
+- [ ] 3.7 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?".
+
+## GGVP-64, parte 2 (depois do PR #21, da GGVP-141 e da página do caso no servidor)
+
+- [ ] 3.8 CA1 · Nome da vara e do juiz, pelo órgão da fonte de publicação ou pela IA lendo a publicação, conferido por pessoa; o card mostra vara e juiz.
+- [ ] 3.9 CA2 · Entendimentos recorrentes com os processos de exemplo, quando o acervo tiver o texto das decisões (GGVP-141).
+- [ ] 3.10 CA1, CA2 · A sobreposição da página do caso lendo `GET /api/casos/:id/juizo`, quando a página do caso for ao servidor; Playwright.
+- [ ] 3.11 CA3, CA6 · A recomendação de recurso com o indicador e o número de processos (D3b.04), com a GGVP-100.

@@ -128,3 +128,53 @@ A tabela `processo_acervo` já existe e ninguém escreve nela ainda. Ela tem `de
 
 - **Desfecho lido sem a IA:** enquanto não há lote pelo chat, os processos do acervo vêm dos dados de exemplo; a conferência funciona igual quando o lote chegar.
 - **Matriz de permissões:** a versão 12 vem logo depois da 11 deste mesmo PR; conflito com outro PR se resolve no merge, com a impressão digital nova.
+
+## GGVP-64 · Juízo identificado: mostrar a jurimetria (parte 1)
+
+### Context
+
+- **Na tela:** a sobreposição do juízo na página do caso existe (GGVP-86, do Pedro), com números de exemplo no navegador. A página do caso ainda não lê do servidor: não há `GET /api/casos/:id`.
+- **No painel (GGVP-75):** o juízo já sai do número CNJ, como "TRF3 · 6301": o tribunal pelo J.TR (`TRIBUNAL_DO_JTR`) e a unidade de origem pelos 4 últimos dígitos.
+- **No acervo (`processo_acervo`):** há `numero_cnj`, `caso_id`, `beneficio`, `desfecho`, `desfecho_conferido_por` e `data_decisao`. A tabela `juizo` existe, mas ninguém escreve nela.
+- **Datas:** o protocolo da inicial fica em `protocolo_judicial.protocolado_em`. O acervo gravado pelo portal (o aviso do deferido, GGVP-98) ainda não tem a data da decisão.
+- **Minuta da petição (GGVP-63):** monta as fontes (`FonteDaIa`) e chama o motor.
+- **Vara e juiz:** nenhuma fonte de publicação traz o nome da vara nem o do juiz.
+
+### Decisions
+
+1. **Juízo = tribunal + unidade de origem do CNJ**, a mesma regra do painel, numa função só (`juizoDoCnj`), que o painel também passa a usar.
+   - O CNJ do processo do acervo vem do `numero_cnj` ou, quando vazio, do identificador `cnj` do caso ligado.
+   - Não há tabela nova. A tabela `juizo` fica para quando houver o nome da vara (parte 2).
+2. **Contrato** (`packages/contratos/src/juizo.ts`, novo): `JurimetriaDoJuizo`.
+   - `juizo`: o rótulo, como "TRF3 · 6301".
+   - `base`: a data, em AAAA-MM-DD.
+   - `porBeneficio`: benefício, procedentes, decididos e o texto do G22, como "58% em 12 processos · base de 08/10".
+   - `tempoAteASentenca`: meses e processos, ou nulo.
+   - `processos`: o CNJ e o desfecho de cada processo do juízo que entrou na conta.
+3. **Cálculo em código** (`apps/api/src/fluxo/juizo.ts`), só com desfecho conferido (GGVP-55 CA7):
+   - **Procedência por benefício** = procedentes (total ou parcial) ÷ decididos no mérito (procedentes e improcedentes), a mesma regra do painel. Acordo, extinção e desistência ficam fora da taxa.
+   - **Tempo até a sentença** = média em meses entre o protocolo da inicial e a data da decisão, só dos processos que têm as duas datas. Os outros ficam fora da conta e nada trava.
+   - **Base** = hoje, em Brasília. Toda taxa sai com o número de processos e a data da base, sem amostra mínima (G22, regra de 07/10).
+4. **Rota:** `GET /api/casos/:id/juizo`, com `exigir('estudo.ver')`, que é do Jurídico.
+   - A jurimetria é interna: nunca vai ao cliente nem ao Atendimento. Não há versão nova da matriz.
+   - Caso sem número do processo: 404 com "O caso ainda não tem número de processo".
+5. **Minuta da petição** (CA3, CA6): com o juízo identificado, a resposta ganha uma fonte do tipo `acervo` com as taxas do juízo, no texto do G22, que a advogada vê nas fontes.
+   - A fonte entra depois do modelo: o modelo não recebe os números do juízo, nem no conteúdo nem nas fontes que vão a ele, então o número não tem como entrar no texto que vai ao juiz.
+   - O teste confere o pedido enviado ao modelo.
+6. **Dados de exemplo:** processos conferidos no acervo na unidade do caso judicial de exemplo, com benefícios variados. Alguns têm a data da decisão e estão ligados a caso com protocolo, para a taxa e o tempo aparecerem.
+
+### Campos de formulário
+
+Nenhum nesta parte.
+
+### Telas
+
+Nenhuma tela nova.
+- A fonte nova aparece na lista de fontes da minuta, que já existe.
+- A sobreposição da página do caso continua com os números de exemplo até a página ler do servidor (parte 2).
+
+### Risks / Trade-offs
+
+- **Unidade de origem não é a vara:** onde a unidade tem várias varas (por exemplo, o JEF de São Paulo, 6301), a conta junta as varas. O nome da vara e o do juiz entram na parte 2.
+- **Poucos processos:** a taxa oscila. O número de processos ao lado é o que deixa a advogada julgar (G22).
+- **Tempo até a sentença:** hoje, só os processos protocolados pelo portal com a data da decisão gravada têm as duas datas. Os importados ficam fora até o estudo trazer a data da distribuição.

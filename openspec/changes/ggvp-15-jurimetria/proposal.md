@@ -1,4 +1,4 @@
-GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat) e GGVP-75; GGVP-59 e GGVP-64 travadas (abaixo).
+GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75 e GGVP-64 (parte 1); GGVP-59 espera a Perícia no servidor (abaixo).
 
 ## Por quê
 
@@ -16,12 +16,16 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Pareceres dispensados** comparados aos suficientes.
    - **Totais em dinheiro** só para o Sócio e o Financeiro.
    - **Raio-X de 979 processos** como referência.
+3. **GGVP-64** · Juízo identificado: mostrar a jurimetria · advogada responsável. A parte 1 (Mateus, 08/10), sem migração e sem versão nova da matriz:
+   - **Juízo do processo** pelo número CNJ: tribunal e unidade de origem, a mesma regra do painel (CA1, a identificação).
+   - **Números do juízo** calculados em código, só com desfecho conferido: procedência por benefício e tempo até a sentença, cada um com os processos e a data da base (CA2, CA4, CA5).
+   - **Minuta da petição:** a jurimetria do juízo entra nas fontes, só para a advogada, e o número fica fora do texto que vai ao juiz (CA3, CA6).
 
 Um ponto de "Agora ok?" no fim de cada história.
 
 ## Travadas
 
-- **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria, e **GGVP-64** · Juízo identificado: mostrar a jurimetria: em "Tarefas pendentes", sem revisão (revisor: Mateus).
+- **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria: refinada; espera a Perícia no servidor (PR #42 do Pedro), para não abrir conflito.
 - **Q20 (Sócio como perfil):** com o Lucas desde 07/10; até a resposta, o Sócio vê a Gestão inteira, com os valores só em total.
 
 ## Fora do escopo
@@ -32,6 +36,11 @@ Um ponto de "Agora ok?" no fim de cada história.
   - a unificação de grafias (CA2) segue a GGVP-59;
   - o acervo que se alimenta sozinho (CA6) depende da IA e do Drive.
 - **O arquivo do Raio-X:** tem nome de cliente e dado de saúde. Entram só os agregados já publicados no protótipo.
+- **GGVP-64, a parte 2:**
+  - o nome da vara e do juiz: nenhuma fonte de publicação traz hoje, nem o DJEN do PR #21. Entra com o órgão da fonte ou com a IA lendo a publicação, conferido por pessoa;
+  - os entendimentos recorrentes: pedem o texto das decisões no acervo (GGVP-141);
+  - a sobreposição na página do caso lendo do servidor: a página do caso ainda roda com dados de exemplo no navegador;
+  - a recomendação de recurso (CA3 e CA6, D3b.04): segue a GGVP-100, travada pela Q26.
 
 ## Portões envolvidos
 
