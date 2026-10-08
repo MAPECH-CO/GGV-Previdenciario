@@ -73,3 +73,11 @@
 - [x] 8.3 Playwright no `e2e/pericia-resultado.e2e.ts`: o laudo atualiza o perfil (CA1, CA3). Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
 - [ ] 8.4 Ligar no servidor: a extração pela IA de verdade e o acervo (RAG) com o perfil; a GGVP-59 lê dele. **Fica aberta nesta história.**
 - [x] 8.5 Rodar typecheck, lint, testes e Playwright; colar a saída; gravar o teste em vídeo do grupo; perguntar "Agora ok?" (no fim do grupo 2).
+
+## GGVP-137 · Ligar no servidor as telas da Perícia
+
+- [x] 9.1 As regras e as mudanças da perícia saem do servidor de exemplo para `src/regras/periciaNoCaso.ts`, puras e com a hora vinda de fora; o servidor de exemplo e o de verdade usam as mesmas. Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [x] 9.2 Contratos em `packages/contratos/src/pericia.ts`; matriz v13 (`pericia.reunir_documentos`, `pericia.decidir_no_limite`, `pericia.conferir_resultado`); colunas `pericia.documento` e `perito.perfil`.
+- [x] 9.3 Rotas em `apps/api/src/rotas/pericia.ts`, com o perfil da sessão, os portões (G20, G11, dado de saúde) e o histórico; testes em `pericia.test.ts` (CA1 a CA6). Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/pericia.test.ts`.
+- [ ] 9.4 Telas no modo misto, depois do pedido #29: as funções de `dados/pericia.ts` chamam a API; testes de tela e o Playwright com login, da perícia marcada ao resultado (CA7).
+- [ ] 9.5 O servidor de exemplo da Perícia sai do código; a semente fica só para os testes (CA8). A migração e a versão da matriz refeitas sobre a main mais nova.

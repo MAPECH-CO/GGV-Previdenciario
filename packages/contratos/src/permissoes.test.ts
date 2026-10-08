@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 12, digital: 'd439c651' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 13, digital: 'f7b965af' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -78,6 +78,12 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('atendimento', 'vigilia.ver')).toBe(false)
   })
 
+  it('GGVP-137 · a Documentação reúne o que a perícia pede; no limite (G15) e no resultado, só a advogada, nunca a Sênior', () => {
+    expect(PERFIS.filter((p) => pode(p, 'pericia.reunir_documentos'))).toEqual(['documentacao'])
+    expect(PERFIS.filter((p) => pode(p, 'pericia.decidir_no_limite'))).toEqual(['advogada'])
+    expect(PERFIS.filter((p) => pode(p, 'pericia.conferir_resultado'))).toEqual(['advogada'])
+  })
+
   it('perfil inventado ou vazio não pode nada', () => {
     expect(pode('admin', 'perfis.atribuir')).toBe(false)
     expect(pode(null, 'entrevista.ver')).toBe(false)
@@ -87,8 +93,8 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
       atendimento: 8,
       atendimento_lider: 10,
-      documentacao: 6,
-      advogada: 20,
+      documentacao: 7,
+      advogada: 22,
       senior: 21,
       juridico_adm: 13,
       financeiro: 5,

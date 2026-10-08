@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { DataObrigatoria } from './inss.ts'
 
 /** Portões que a lista da gestão mostra (GGVP-109 CA9). `setores`: setor ou perícia sem retorno; `perfil`: ação fora do perfil. */
-export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil'] as const
+export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'G20'] as const
 export type PortaoDeBloqueio = (typeof PORTOES_DE_BLOQUEIO)[number]
 
 /** GET /api/gestao/tentativas (GGVP-109 CA9, `gestao.ver`): quem, quando, caso e portão, sem dado de saúde. */
