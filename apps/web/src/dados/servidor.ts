@@ -38,6 +38,8 @@ import type { Complemento } from './complemento.ts'
 import type { DeficienciaDoCaso } from './deficiencia.ts'
 import type { AcidenteDoCaso } from './acidente.ts'
 import type { CriancaDoCaso } from './infantil.ts'
+import type { Pericia } from './pericia.ts'
+import type { Perito } from './peritos.ts'
 import type { Conversa } from './conversa.ts'
 import type { VersaoDoCampo } from '../regras/conversa.ts'
 import type { AvisoAprovado, MensagemAoCliente } from './mensagens.ts'
@@ -93,6 +95,12 @@ export type Banco = {
   acidentes?: AcidenteDoCaso[]
   /** A condição e as terapias de cada criança do LOAS Deficiente de menor de 16 anos (GGVP-50). Dado de saúde. */
   criancas?: CriancaDoCaso[]
+  /** As perícias de cada caso, da tarefa aberta pelo sistema ao resultado (épico GGVP-10). Sem ela, começa da semente de pericia.ts. */
+  pericias?: Pericia[]
+  /** Os peritos e o perfil de cada um, formado dos laudos do acervo (GGVP-61, GGVP-73). Sem ele, começa da semente de peritos.ts. */
+  peritos?: Perito[]
+  /** Os pedidos recusados no chat por mandar esconder ou mudar a situação real (GGVP-61, CA11, G11). */
+  recusasDoChat?: { quando: string; quem: string; texto: string }[]
   /** As conversas com o lead ou o cliente, do fluxo D5 (GGVP-12). Sem ela, começa da semente de conversa.ts. */
   conversas?: Conversa[]
   /** As versões dos campos mudados pela conversa, com quem e quando (GGVP-84, G14). */

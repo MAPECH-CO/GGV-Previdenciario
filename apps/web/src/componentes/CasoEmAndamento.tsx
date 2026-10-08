@@ -1,4 +1,5 @@
 import { nomeBeneficio } from '../dados/catalogos.ts'
+import { etapaDaPericia } from '../dados/pericia.ts'
 import type { Ficha } from '../dados/tipos.ts'
 import { calculoPendente } from '../regras/calculo.ts'
 import { Cartao } from './Cartao.tsx'
@@ -26,17 +27,24 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
           {ficha.beneficioInteresse && ` Interesse: ${nomeBeneficio(ficha.beneficioInteresse)}.`}
         </p>
       )}
-      {processos.map((p) => (
-        <a key={p.id} className={styles.caso} href={`/processos/${p.id}`}>
-          <span className={styles.numero}>{p.numero ?? 'Processo ainda sem número'}</span>
-          <span className={styles.selos}>
-            <span className={styles.beneficio}>◆ {nomeBeneficio(p.beneficio)}</span>
-            <span className={styles.etapa}>{p.etapa}</span>
-          </span>
-          {p.proximaAcao && <span className={styles.acao}>O que o Atendimento faz agora: {p.proximaAcao}.</span>}
-          {p.prazo && <span className={p.urgente ? styles.urgente : styles.prazo}>{p.prazo}</span>}
-        </a>
-      ))}
+      {processos.map((p) => {
+        // Em perícia (GGVP-49, CA1): a etapa diz o diagrama de origem e o caso abre a página do processo com a perícia.
+        const pericia = etapaDaPericia(p.id)
+        return (
+          <a key={p.id} className={styles.caso} href={pericia ? `/casos/${p.id}/pericia` : `/processos/${p.id}`}>
+            <span className={styles.numero}>{p.numero ?? 'Processo ainda sem número'}</span>
+            <span className={styles.selos}>
+              <span className={styles.beneficio}>◆ {nomeBeneficio(p.beneficio)}</span>
+              <span className={styles.etapa}>{p.etapa}</span>
+              {pericia && <span className={styles.etapa}>{pericia}</span>}
+            </span>
+            {p.proximaAcao && <span className={styles.acao}>O que o Atendimento faz agora: {p.proximaAcao}.</span>}
+            {/* A perícia é toda do Jurídico administrativo desde 29/09 (Lucas): o Atendimento não age nela. */}
+            {pericia && <span className={styles.acao}>A perícia está com o Jurídico administrativo.</span>}
+            {p.prazo && <span className={p.urgente ? styles.urgente : styles.prazo}>{p.prazo}</span>}
+          </a>
+        )
+      })}
       <p className={styles.nota}>Petição, estratégia e valores não aparecem para o Atendimento.</p>
     </Cartao>
   )

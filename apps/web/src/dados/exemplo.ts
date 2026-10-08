@@ -109,7 +109,8 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
       { beneficio: 'aposentadoria-idade', etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' },
     ]),
     cliente(4, 'maria-exemplo', 'Maria Exemplo', [
-      { beneficio: 'incapacidade-temporaria', etapa: 'Administrativo · perícia em 02/10', proximaAcao: 'cobrar o laudo que a perícia pede', prazo: 'vence hoje', urgente: true },
+      // Épico GGVP-10: a perícia da Maria nasce de dados/pericia.ts, com a data e as tarefas dela; o Atendimento não age nela.
+      { beneficio: 'incapacidade-temporaria', etapa: 'Administrativo · perícia' },
     ]),
     // Dois benefícios, dois processos, uma ficha.
     cliente(

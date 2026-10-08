@@ -71,6 +71,15 @@ import { DarParecer } from './paginas/DarParecer.tsx'
 import { PedirComplemento } from './paginas/PedirComplemento.tsx'
 import { DispensarParecer } from './paginas/DispensarParecer.tsx'
 import { LinhaDaDeficiencia } from './paginas/LinhaDaDeficiencia.tsx'
+import { CentralJuridicoAdm } from './paginas/CentralJuridicoAdm.tsx'
+import { PericiaAberta } from './paginas/PericiaAberta.tsx'
+import { ProcessoPericia } from './paginas/ProcessoPericia.tsx'
+import { MarcarPericia } from './paginas/MarcarPericia.tsx'
+import { ReunirDocumentosPericia } from './paginas/ReunirDocumentosPericia.tsx'
+import { CobrarDocumentoPericia } from './paginas/CobrarDocumentoPericia.tsx'
+import { OrientarPericia } from './paginas/OrientarPericia.tsx'
+import { ComparecimentoPericia } from './paginas/ComparecimentoPericia.tsx'
+import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
 import { Conversa } from './paginas/Conversa.tsx'
 import { ConferirConversa } from './paginas/ConferirConversa.tsx'
 
@@ -140,6 +149,8 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     // Uma tela inicial por perfil, pelo perfil da sessão ("Entrar como...", GGVP-96; tela inicial, GGVP-78).
     if (NA_CENTRAL_DO_ATENDIMENTO.includes(perfil)) return <CentralAtendimento />
     if (perfil === 'advogada') return <CentralAdvogada />
+    // A perícia passou ao Jurídico administrativo (Lucas, 29/09): a Central dele, com o protocolo do INSS do servidor.
+    if (perfil === 'juridico_adm') return <CentralJuridicoAdm />
     // A cobrança que passou do limite (GGVP-101 CA7) e o caso liberado pela Documentação (GGVP-18 CA1) chegam à Sênior.
     // Da documentação médica: a dispensa esperando a segunda sênior (GGVP-33) e o complemento a decidir (GGVP-29).
     if (perfil === 'senior')
@@ -227,6 +238,24 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (dispensa) return <DispensarParecer processoId={decodeURIComponent(dispensa[1])} />
   const deficiencia = /^\/casos\/([^/]+)\/deficiencia$/.exec(caminho)
   if (deficiencia) return <LinhaDaDeficiencia processoId={decodeURIComponent(deficiencia[1])} />
+  // Perícia (épico GGVP-10): a Central do Jurídico administrativo, a página do processo com a perícia e os passos DP.
+  if (caminho === '/juridico-administrativo') return <CentralJuridicoAdm />
+  const periciaAberta = /^\/casos\/([^/]+)\/pericia\/aberta$/.exec(caminho)
+  if (periciaAberta) return <PericiaAberta processoId={decodeURIComponent(periciaAberta[1])} />
+  const marcarPericia = /^\/casos\/([^/]+)\/pericia\/marcar$/.exec(caminho)
+  if (marcarPericia) return <MarcarPericia processoId={decodeURIComponent(marcarPericia[1])} remarcar={parametros.get('remarcar') === '1'} />
+  const documentosPericia = /^\/casos\/([^/]+)\/pericia\/documentos$/.exec(caminho)
+  if (documentosPericia) return <ReunirDocumentosPericia processoId={decodeURIComponent(documentosPericia[1])} />
+  const cobrancaPericia = /^\/casos\/([^/]+)\/pericia\/cobranca$/.exec(caminho)
+  if (cobrancaPericia) return <CobrarDocumentoPericia processoId={decodeURIComponent(cobrancaPericia[1])} />
+  const orientarPericia = /^\/casos\/([^/]+)\/pericia\/orientar$/.exec(caminho)
+  if (orientarPericia) return <OrientarPericia processoId={decodeURIComponent(orientarPericia[1])} />
+  const comparecimentoPericia = /^\/casos\/([^/]+)\/pericia\/comparecimento$/.exec(caminho)
+  if (comparecimentoPericia) return <ComparecimentoPericia processoId={decodeURIComponent(comparecimentoPericia[1])} />
+  const resultadoPericia = /^\/casos\/([^/]+)\/pericia\/resultado$/.exec(caminho)
+  if (resultadoPericia) return <ResultadoPericia processoId={decodeURIComponent(resultadoPericia[1])} />
+  const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
+  if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} abrirPerito={parametros.get('perito') === '1'} />
   const conversa = /^\/conversas\/([^/]+)$/.exec(caminho)
   if (conversa) return <Conversa conversaId={decodeURIComponent(conversa[1])} simular={parametros.get('simular') ?? undefined} />
   const conferirConversa = /^\/conversas\/([^/]+)\/conferir$/.exec(caminho)

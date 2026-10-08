@@ -1,0 +1,269 @@
+/* Telas da perícia (épico GGVP-10): o que as telas de passo (Balcao.module.css) ainda não tinham. */
+
+/* "Sistema", "Judicial · perícia": o selo azul do Figma. */
+.selo {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.quadro {
+  padding: 16px 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-15);
+}
+
+.prazos {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  font-size: var(--fonte-13);
+}
+
+.prazos dt {
+  color: var(--cor-texto-suave);
+}
+
+.historico {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--fonte-13);
+}
+
+.evento {
+  display: grid;
+  grid-template-columns: 112px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.quando {
+  color: var(--cor-texto-suave);
+}
+
+.quem {
+  color: var(--cor-texto-suave);
+}
+
+.passo {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  white-space: nowrap;
+}
+
+.ia {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.iaTitulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.iaTitulo::before {
+  content: '✦ ';
+  color: var(--cor-acento);
+}
+
+.secundario {
+  padding: 12px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .evento {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .prazos {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* GGVP-53: o comprovante e o que o sistema leu dele. */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fonte-13);
+}
+
+.campo input[type='file'] {
+  padding: 10px;
+  border: 1px dashed var(--cor-linha-2);
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+}
+
+.arquivo {
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+  font-size: var(--fonte-14);
+}
+
+.lido {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+  font-size: var(--fonte-13);
+}
+
+.lido legend {
+  padding: 0 4px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.lido label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lido input {
+  padding: 8px 10px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+}
+
+.largo {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .lido {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* GGVP-56: o que a perícia pede, item a item, e as conferências. */
+.itens {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.itemPericia {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+}
+
+.itemNome {
+  font-size: var(--fonte-14);
+  font-weight: 500;
+}
+
+.marcar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fonte-14);
+}
+
+.marcar input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cor-acento);
+}
+
+/* As linhas da orientação (Figma 10:405): o rótulo à esquerda, o valor à direita, separadas por traço. */
+.linhas {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.linhas div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.linhas dt {
+  color: var(--cor-texto-suave);
+}
+
+.linhas dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* O documento de orientação: texto corrido, quebra de linha como o cliente vai ler. */
+.documento {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .linhas div {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .linhas dd {
+    text-align: left;
+  }
+}
+
+/* Imprimir: só o documento de orientação sai no papel. */
+.impressao {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .impressao,
+  .impressao * {
+    visibility: visible;
+  }
+
+  .impressao {
+    display: block;
+    position: absolute;
+    inset: 0;
+    white-space: pre-wrap;
+  }
+}

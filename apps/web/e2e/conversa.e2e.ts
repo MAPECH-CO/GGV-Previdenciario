@@ -114,7 +114,7 @@ test('GGVP-84 · quem conversou confere campo por campo; a ficha muda; Ctrl+Z vo
   await page.getByRole('radio', { name: 'Chamada de vídeo com o cliente' }).click()
   await page.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }).check()
   await page.getByRole('group', { name: 'Concluir a conferência' }).getByRole('button', { name: 'Confirmar' }).click()
-  await expect(page.getByText('O caso segue de onde parou: Administrativo · perícia em 02/10 · cobrar o laudo que a perícia pede.')).toBeVisible()
+  await expect(page.getByText('O caso segue de onde parou: Administrativo · perícia.')).toBeVisible()
 
   await page.goto('/clientes/maria-exemplo')
   await expect(page.getByLabel('Endereço')).toHaveValue('Rua Exemplo das Acácias, 45')

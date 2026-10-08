@@ -58,6 +58,12 @@ const PISTAS: [RegExp, string][] = [
   [/cnis/, 'cnis'],
   [/procuracao/, 'procuracao'],
   [/contrato/, 'contrato'],
+  // Épico GGVP-10: os documentos da avaliação social que a perícia pede (GGVP-56).
+  [/cad ?unico/, 'cadunico'],
+  [/grupo familiar/, 'grupo-familiar'],
+  [/moradia/, 'declaracao-moradia'],
+  [/uniao estavel/, 'declaracao-uniao-estavel'],
+  [/separacao/, 'declaracao-separacao'],
 ]
 
 /** "laudo_ortopedia.pdf" → 'laudo'; sem pista, 'outro'. */

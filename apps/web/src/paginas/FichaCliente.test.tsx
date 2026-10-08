@@ -51,6 +51,9 @@ describe('Ficha do cliente · visão do Atendimento', () => {
 
     const caso = screen.getByRole('link', { name: /Aposentadoria por Incapacidade Permanente/ })
     expect(caso.textContent).toContain('Judicial · exigência')
+    // Épico GGVP-10: a perícia judicial entra como linha a mais, sem esconder a exigência do juiz.
+    expect(caso.textContent).toContain('Em perícia · pedido do juiz (D3a) · perícia médica em')
+    expect(caso.getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
     expect(caso.textContent).toContain('vence em 2 dias')
     expect(within(screen.getByRole('list', { name: 'Documentos pessoais' })).getAllByRole('listitem')).toHaveLength(6)
     expect(within(screen.getByRole('list', { name: 'Últimos contatos' })).getAllByRole('listitem')[0].textContent).toContain('27/09')

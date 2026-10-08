@@ -8,15 +8,8 @@ import type { Tarefa } from './tipos.ts'
 const cliente = (id: string, nome: string) => ({ id, nome })
 
 export const tarefasAtendimento: Tarefa[] = [
-  {
-    id: 't1',
-    codigo: 'DP.03',
-    cliente: cliente('maria-exemplo', 'Maria Exemplo'),
-    acao: 'Cobrar documento',
-    detalhe: 'Auxílio por incapacidade temporária · perícia 02/10 · laudo médico que a perícia pede',
-    prazo: 'vence hoje',
-    urgente: true,
-  },
+  // O "Cobrar documento" e o "Reunir documentos da perícia" fixos da Maria (DP.03) saíram: nascem da perícia (épico GGVP-10,
+  // dados/pericia.ts), para a Documentação.
   {
     id: 't5',
     codigo: 'D2.06',
@@ -41,14 +34,6 @@ export const tarefasAtendimento: Tarefa[] = [
     detalhe: 'Aposentadoria por incapacidade permanente · 2 tentativas · CTPS e notas do produtor',
     prazo: 'vence 30/09',
     urgente: true,
-  },
-  {
-    id: 't10',
-    codigo: 'DP.03',
-    cliente: cliente('maria-exemplo', 'Maria Exemplo'),
-    acao: 'Reunir documentos da perícia',
-    detalhe: 'Auxílio por incapacidade temporária · perícia em 02/10',
-    prazo: 'até 01/10',
   },
   {
     id: 't12',

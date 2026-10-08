@@ -265,7 +265,7 @@ describe('Atualizar ficha e processo com desfazer · servidor de exemplo (GGVP-8
     expect(historico).toContain('Atualizou na ficha, pela conversa, o telefone de contato: «(11) 90000-0004» → «(11) 90000-0055»')
     expect(historico).toContain('Atualizou no processo, pela conversa, o data da perícia do INSS: «02/10/2026» → «16/10/2026»')
     expect(historico.at(-1)).toBe(
-      'Conferiu a conversa de hoje: 2 confirmada(s), 1 corrigida(s), 1 desfeita(s); sem pendência; o caso segue de onde parou (Administrativo · perícia em 02/10)',
+      'Conferiu a conversa de hoje: 2 confirmada(s), 1 corrigida(s), 1 desfeita(s); sem pendência; o caso segue de onde parou (Administrativo · perícia)',
     )
     expect(historico.join(' ')).not.toMatch(/Relatório da alta/)
   })
@@ -329,7 +329,7 @@ describe('Pendência da conversa vira tarefa · servidor de exemplo (GGVP-88)', 
     const { conversa, ficha } = await conferidaCom({ surgiu: true, texto: ' Documentação: receber e digitalizar o relatório da alta. ', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' })
     expect(conversa.pendencia).toMatchObject({ texto: 'Documentação: receber e digitalizar o relatório da alta.', responsavel: 'Jéssica (exemplo)', setor: 'Documentação · ADM', prazo: '2026-10-10' })
     expect(ficha.historico.at(-1)?.oQue).toBe(
-      'Conferiu a conversa de hoje: 0 confirmada(s), 0 corrigida(s), 0 desfeita(s); pendência para Jéssica (exemplo) (Documentação · ADM) até 10/10: Documentação: receber e digitalizar o relatório da alta.; o caso segue de onde parou (Administrativo · perícia em 02/10)',
+      'Conferiu a conversa de hoje: 0 confirmada(s), 0 corrigida(s), 0 desfeita(s); pendência para Jéssica (exemplo) (Documentação · ADM) até 10/10: Documentação: receber e digitalizar o relatório da alta.; o caso segue de onde parou (Administrativo · perícia)',
     )
     expect(tarefasDePendencia(JESSICA)).toEqual([
       {
@@ -346,7 +346,7 @@ describe('Pendência da conversa vira tarefa · servidor de exemplo (GGVP-88)', 
     ])
     expect(tarefasDePendencia({ usuario: 'Ana (exemplo)', id: 'atendimento' })).toEqual([])
     // O caso volta ao D1 de onde parou: a etapa não muda.
-    expect(ficha.processos[0].etapa).toBe('Administrativo · perícia em 02/10')
+    expect(ficha.processos[0].etapa).toBe('Administrativo · perícia')
   })
 
   it('CA2 · não surgiu pendência: nenhuma tarefa nasce', async () => {

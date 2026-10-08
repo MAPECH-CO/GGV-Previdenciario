@@ -61,7 +61,7 @@ function perguntar(texto: string) {
 describe('Chat · o cliente ligou (GGVP-111)', () => {
   it('CA7 · a próxima tarefa vem com o lembrete de confirmar a identidade', async () => {
     perguntar('A Maria Exemplo me ligou, qual é a próxima tarefa?')
-    const resposta = await screen.findByText(/^A próxima tarefa de Maria \(Administrativo · perícia em 02\/10\) é cobrar o laudo que a perícia pede/)
+    const resposta = await screen.findByText(/^Maria está em perícia \(.+\): a próxima tarefa é do Jurídico administrativo, na página da perícia\./)
     expect(resposta.textContent).toContain(LEMBRETE_DA_IDENTIDADE)
   })
 

@@ -22,6 +22,8 @@ const PADRAO: Record<string, Perfil> = {
   Documentação: { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/' },
   Advogada: { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)', inicio: '/advogada' },
   Sênior: { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)', inicio: '/' },
+  // Quem cuida da perícia desde 29/09 (Lucas): o nome é o do usuário de exemplo do servidor (juridico_adm).
+  'Jurídico administrativo': { id: 'juridico-adm', rotulo: 'Jurídico administrativo', usuario: 'Igor (exemplo)', inicio: '/' },
 }
 
 /** O perfil da sessão; sem sessão, o da função da tela (`padrao`, o rótulo). */

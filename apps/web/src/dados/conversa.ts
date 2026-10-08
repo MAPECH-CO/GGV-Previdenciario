@@ -35,6 +35,7 @@ import { ehAudio, minutos, partesDoAudio, tirarSenhas } from '../regras/entrevis
 import { registrarNoCofre } from './cofre.ts'
 import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type Verificacao } from '../regras/seguranca.ts'
 import { BYTES_POR_SEGUNDO, montarTranscricao } from './entrevista.ts'
+import { dataDaPericia } from './pericia.ts'
 import type { IdPerfil } from './perfis.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Ficha, Gravacao, Setor, Tarefa, Trecho } from './tipos.ts'
@@ -85,6 +86,9 @@ function camposDoProcesso(banco: Banco, processoId: string | undefined): Partial
   if (!processoId) return null
   const campos = { ...CAMPOS_DO_PROCESSO_DE_EXEMPLO[processoId] }
   for (const v of banco.versoes ?? []) if (v.processoId === processoId) campos[v.campo as CampoDoProcesso] = v.valor
+  // A data marcada na tela da perícia (épico GGVP-10) é a que vale: uma fonte só.
+  const marcada = dataDaPericia(banco, processoId)
+  if (marcada) campos.pericia = marcada
   return campos
 }
 
@@ -505,6 +509,11 @@ export async function conferirConversa(conversaId: string, conferencia: Conferen
   const motivo = motivoParaNaoConferir(mudancas, conferencia.decisoes, papelDoPerfil(por.perfil), decididas)
   if (motivo) throw new Error(motivo)
   if (!primeira && conferencia.decisoes.length === 0) throw new Error('Não há nada para conferir.')
+  // A perícia já marcada muda só pela remarcação, com a hora, o local e o limite de remarcações (épico GGVP-10, G15).
+  const novaData = conferencia.decisoes.some((d) => d.decisao !== 'desfeita' && mudancas.find((x) => x.id === d.id)?.campo === 'pericia')
+  if (novaData && c.processoId && dataDaPericia(banco, c.processoId)) {
+    throw new Error('A data da perícia já marcada muda pela remarcação, na tela da perícia: desfaça este item aqui e remarque lá.')
+  }
   // Telefone e e-mail só mudam com o cliente verificado e em contrato novo (GGVP-111, CA1, CA8): na conversa presencial com
   // o próprio cliente, ele está no escritório; na ligação, ou com outra pessoa, a pessoa marca como verificou.
   const verificacao = verificacaoDaConversa(c) ?? conferencia.verificacao ?? null

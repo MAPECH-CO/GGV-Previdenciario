@@ -12,6 +12,7 @@ const NOMES: Record<string, string> = {
   // A segunda sênior: a dispensa do parecer pede duas sêniores diferentes (GGVP-33, Q14).
   'senior-2': 'Dr. Otávio (exemplo)',
   juridico_adm: 'Igor (exemplo)',
+  'juridico-adm': 'Igor (exemplo)',
   'atendimento-lider': 'Carla (exemplo)',
   financeiro: 'Marcos (exemplo)',
 }

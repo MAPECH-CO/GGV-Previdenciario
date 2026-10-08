@@ -27,7 +27,7 @@ describe('Mensagens ao cliente · servidor de exemplo (GGVP-102)', () => {
     )
     expect((await prepararMensagem('maria-exemplo', 'cobranca')).texto).toContain('Olá, Maria!')
     expect((await prepararMensagem('antonio-exemplo', 'convite')).trava).toBe('Sem entrevista marcada: marque na agenda.')
-    expect((await prepararMensagem('antonio-exemplo', 'pericia-presenca')).trava).toBe('Sem perícia marcada no processo.')
+    expect((await prepararMensagem('rita-exemplo', 'pericia-presenca')).trava).toBe('Sem perícia marcada no processo.')
   })
 
   it('CA7 · o resultado favorável só depois do OK da advogada, com o texto que ela revisou (G8)', async () => {

@@ -1,6 +1,9 @@
 import { useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
+import { registrarRecusaDoChat } from '../dados/pericia.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import { recusaDoChat } from '../regras/parecer.ts'
+import { recusaDoChatNaPericia } from '../regras/pericia.ts'
 import styles from './ChatIA.module.css'
 
 type Props = {
@@ -23,6 +26,8 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
   const [texto, setTexto] = useState('')
   const [anexo, setAnexo] = useState<File | null>(null)
   const [aviso, setAviso] = useState('')
+  // Quem está na sessão (sem sessão, ninguém).
+  const perfil = usePerfil()
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -39,6 +44,14 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
     const recusa = recusaDoChat(limpo)
     if (recusa) {
       setAviso(recusa)
+      setTexto('')
+      return
+    }
+    // Orientação para esconder, mudar ou simular a situação real não vira ação, e o pedido fica registrado (GGVP-61, CA11, G11).
+    const fraude = recusaDoChatNaPericia(limpo)
+    if (fraude) {
+      registrarRecusaDoChat(limpo, perfil?.usuario ?? 'Você')
+      setAviso(fraude)
       setTexto('')
       return
     }

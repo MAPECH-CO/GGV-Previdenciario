@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Abas } from '../componentes/Abas.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
-import { ChatIA } from '../componentes/ChatIA.tsx'
+import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -10,6 +10,8 @@ import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada }
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { tarefasDaAdvogada } from '../dados/preparacao.ts'
 import { daSenior, tarefasDoParecer } from '../dados/parecer.ts'
+// A perícia que passou do limite de remarcações sobe para a advogada responsável (épico GGVP-10, G15).
+import { tarefasDaAdvogadaNaPericia, tarefasDeDecidirDocumentoDaPericia } from '../dados/pericia.ts'
 import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
@@ -29,6 +31,8 @@ export function CentralAdvogada() {
   const [deExemplo] = useState(() => [
     ...tarefasDaAdvogada(),
     ...tarefasDoParecer().filter((t) => !daSenior(t)),
+    ...tarefasDaAdvogadaNaPericia(),
+    ...tarefasDeDecidirDocumentoDaPericia(),
     ...tarefasDeRegistrarConversa(perfil?.usuario),
     ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
   ])
@@ -45,7 +49,7 @@ export function CentralAdvogada() {
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Advogada</h1>
           <CampoBusca />
-          <ChatIA exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
+          <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
           <Abas
             rotulo="Filas de tarefas"
             ativa={aba}

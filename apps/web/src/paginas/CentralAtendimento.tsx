@@ -28,6 +28,7 @@ import { tarefasDeFechamento } from '../dados/fechamento.ts'
 import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
 import { tarefasDeComplemento } from '../dados/complemento.ts'
+import { tarefasDaDocumentacaoNaPericia } from '../dados/pericia.ts'
 import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 
@@ -61,6 +62,8 @@ export function CentralAtendimento() {
     ...tarefasDeNovaDemanda(),
     ...tarefasDePedirLegivel(),
     ...tarefasDeComplemento(),
+    // A Documentação reúne e cobra o que a perícia pede (épico GGVP-10, GGVP-56).
+    ...tarefasDaDocumentacaoNaPericia(),
     ...tarefasDeRegistrarConversa(perfil?.usuario),
     ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
   ])

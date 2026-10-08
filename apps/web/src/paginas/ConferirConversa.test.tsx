@@ -66,7 +66,7 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Não — confirmar e voltar ao D1' }))
     fireEvent.click(botao('Confirmar'))
     expect(await screen.findByRole('heading', { name: '✓ Conversa conferida por Ana (exemplo)' })).toBeTruthy()
-    expect(screen.getByText('O caso segue de onde parou: Administrativo · perícia em 02/10 · cobrar o laudo que a perícia pede.')).toBeTruthy()
+    expect(screen.getByText('O caso segue de onde parou: Administrativo · perícia.')).toBeTruthy()
     const ficha = (await obterFicha('maria-exemplo'))!
     expect([ficha.endereco, ficha.telefone]).toEqual(['Rua Exemplo das Acácias, 45', '11900000055'])
     expect(within(linha(/documento citado/)).getByText('desfeita')).toBeTruthy()

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { enviarArquivos, identificarCliente } from '../dados/documentos.ts'
+import { periciaDoCliente } from '../dados/pericia.ts'
 import { obterFicha } from '../dados/servidor.ts'
 import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
 import type { ArquivoParaEnviar } from '../dados/tipos.ts'
@@ -65,9 +66,13 @@ export function LaudoPeloChat({ exemplo, sugestoes }: { exemplo: string; sugesto
     const ficha = (await obterFicha(achados[0].id))!
     const primeiro = ficha.nome.split(' ')[0]
     const caso = ficha.processos[0]
+    // A perícia vive na tela dela (épico GGVP-10): o caso em perícia não tem a próxima ação do Atendimento no processo.
+    const pericia = caso && periciaDoCliente(ficha.id)
     const proxima = caso?.proximaAcao
       ? `A próxima tarefa de ${primeiro} (${caso.etapa}) é ${caso.proximaAcao}${caso.prazo ? `, ${caso.prazo}` : ''}.`
-      : `${primeiro} não tem caso em andamento: veja a ficha.`
+      : pericia
+        ? `${primeiro} está em perícia (${pericia}): a próxima tarefa é do Jurídico administrativo, na página da perícia.`
+        : `${primeiro} não tem caso em andamento: veja a ficha.`
     responder(`${proxima} ${LEMBRETE_DA_IDENTIDADE}`)
   }
 
