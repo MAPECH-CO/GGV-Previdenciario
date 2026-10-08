@@ -125,4 +125,13 @@ describe('GGVP-22 · explicar ao cliente', () => {
     await chamar('ana', 'POST', '/resultado/contato', { resultado: 'sem_contato', canal: 'whatsapp' })
     expect((await chamar('ana', 'GET', '/resultado')).json().contatos.map((x: { canal: string }) => x.canal)).toEqual(['whatsapp'])
   })
+
+  it('CA4 · a explicação reaberta mostra só os contatos dela, e não os da anterior', async () => {
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    await chamar('ana', 'POST', '/resultado/contato', { resultado: 'explicado', canal: 'telefone', explicado: 'Expliquei o resultado ao cliente.' })
+    await abrirExplicacaoDoResultado(banco, casoId)
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    await chamar('ana', 'POST', '/resultado/contato', { resultado: 'sem_contato', canal: 'whatsapp' })
+    expect((await chamar('ana', 'GET', '/resultado')).json().contatos.map((x: { canal: string }) => x.canal)).toEqual(['whatsapp'])
+  })
 })

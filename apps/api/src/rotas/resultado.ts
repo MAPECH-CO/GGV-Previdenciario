@@ -55,14 +55,25 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
       .where(and(eq(decisao.casoId, casoId), eq(decisao.tipo, 'resumo_cliente')))
       .orderBy(desc(decisao.decididoEm))
       .limit(1)
-    // CA4: os contatos desta explicação, ligados à tarefa pelo histórico (cada registro guarda o atendimento). Outro
-    // atendimento do caso, mesmo depois do resumo, não entra.
+    // CA4: os contatos da explicação mais recente, ligados à tarefa pelo histórico (cada registro guarda o atendimento e
+    // a tarefa). Outro atendimento do caso, ou os contatos de uma explicação anterior, não entram.
     // ponytail: o vínculo vive no histórico; uma coluna `tarefa_id` em `atendimento` na próxima migração do épico.
-    const registros = await banco
-      .select({ detalhe: eventoAuditoria.detalhe })
-      .from(eventoAuditoria)
-      .where(and(eq(eventoAuditoria.alvo, `caso:${casoId}`), inArray(eventoAuditoria.acao, CONTATO_REGISTRADO)))
-    const idsDosContatos = registros.flatMap((r) => (r.detalhe as { atendimento?: string } | null)?.atendimento ?? [])
+    const [ultima] = await banco
+      .select({ id: tarefa.id })
+      .from(tarefa)
+      .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.06')))
+      .orderBy(desc(tarefa.criadoEm))
+      .limit(1)
+    const registros = ultima
+      ? await banco
+          .select({ detalhe: eventoAuditoria.detalhe })
+          .from(eventoAuditoria)
+          .where(and(eq(eventoAuditoria.alvo, `caso:${casoId}`), inArray(eventoAuditoria.acao, CONTATO_REGISTRADO)))
+      : []
+    const idsDosContatos = registros.flatMap((r) => {
+      const d = r.detalhe as { atendimento?: string; tarefa?: string } | null
+      return d?.tarefa === ultima?.id && d?.atendimento ? [d.atendimento] : []
+    })
     const contatos = idsDosContatos.length
       ? await banco
           .select({ quando: atendimento.inicio, canal: atendimento.canal, explicado: atendimento.resumo, quem: usuario.nome })
