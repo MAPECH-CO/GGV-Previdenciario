@@ -17,8 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-// O #23 (Jurimetria) usa as versões 11 e 12 e entra antes: o Desfecho ficou com 13 e 14 (revisão de 08/10). Quem
-// entrar depois renumera.
+// O #23 (Jurimetria) entrou antes com as versões 11 e 12; o Desfecho ficou com 13 e 14 (revisão de 08/10).
 export const VERSAO_MATRIZ = 14
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
@@ -32,6 +31,8 @@ export const MATRIZ = {
   // contas, que é ela quem faz; o Sócio vê só totais do escritório, no painel da GGVP-75. Valor da causa e renda per
   // capita do LOAS não são financeiro do escritório: são dado jurídico e seguem para a advogada (Pedro, 07/10).
   'valores.ver': ['financeiro'],
+  /** Os totais em dinheiro do painel de resultados (GGVP-75 CA4): honorários recebidos e tempo até o dinheiro. */
+  'valores.ver_totais': ['socio', 'financeiro'],
   'prestacao.ver': ['financeiro', 'advogada'],
   'gestao.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
   /** Ver o caso só para leitura (GGVP-23 CA4). Financeiro vê prestação e Gestão; o Sócio, Gestão; nenhum dos dois vê o caso. */
@@ -68,6 +69,8 @@ export const MATRIZ = {
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],
   'publicacao.casar': ['senior'],
+  // Versão 12 (GGVP-55 CA7): só o desfecho conferido pela Sênior entra nas contas da jurimetria.
+  'acervo.conferir_desfecho': ['senior'],
   'publicacao.classificar': ['advogada', 'senior'],
   // Versão 6 (GGVP-79, 83, 87): exigência do juiz; o Jurídico entre os setores é o Jurídico administrativo
   'exigencia_juiz.distribuir': ['advogada'],
