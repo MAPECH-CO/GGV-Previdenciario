@@ -2,7 +2,7 @@
 
 O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "Portal Operacional". A API serve a tela montada na mesma URL.
 
-Caminho de cada merge na `main`: a CI passa → o workflow **Imagem** publica `ghcr.io/femezher/ggv-previdenciario:main` (e a tag do commit) → chama o webhook do Coolify → o Coolify baixa a imagem e troca o container. A cada start, as migrações rodam no Supabase antes de a API subir; se falharem, o container não sobe e o Coolify mantém a versão anterior.
+Caminho de cada merge na `main`: a CI passa → o workflow **Imagem** publica `ghcr.io/mapech-co/ggv-previdenciario:main` (e a tag do commit) → chama o webhook do Coolify → o Coolify baixa a imagem e troca o container. A cada start, as migrações rodam no Supabase antes de a API subir; se falharem, o container não sobe e o Coolify mantém a versão anterior.
 
 Na máquina do dev não muda nada: `pnpm dev` sem `.env` usa o banco de exemplo na memória.
 
@@ -30,7 +30,7 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
 
 ## 3. App no Coolify
 
-1. No projeto: **+ New → Docker Image**. Image Name: `ghcr.io/femezher/ggv-previdenciario:main`.
+1. No projeto: **+ New → Docker Image**. Image Name: `ghcr.io/mapech-co/ggv-previdenciario:main`.
 2. **General → Ports Exposes:** `3000`. **Domains:** `https://prev-homolog.<dominio>` (com `https://`, o Coolify pede o certificado sozinho).
 3. **Environment Variables**, só de execução (não de build): `DATABASE_URL` com a URL do passo 1.2 e `COFRE_CHAVE` com a chave do passo 1.3.
 4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
@@ -44,7 +44,7 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
 
    ```powershell
    $t = (Read-Host "valor").Trim() -replace '\s',''
-   gh secret set COOLIFY_WEBHOOK --repo femezher/GGV-Previdenciario --body $t
+   gh secret set COOLIFY_WEBHOOK --repo MAPECH-CO/GGV-Previdenciario --body $t
    ```
 
    e o mesmo para `COOLIFY_TOKEN`. Nunca pelo prompt "Paste your secret".
@@ -55,7 +55,7 @@ A cada merge na `main`, com a CI verde, o workflow **Imagem** roda sozinho. Para
 
 Conferir:
 
-- No GitHub, o workflow **Imagem** termina verde e o pacote `ggv-previdenciario` aparece no perfil `femezher`.
+- No GitHub, o workflow **Imagem** termina verde e o pacote `ggv-previdenciario` aparece na organização `MAPECH-CO`.
 - No Coolify, o deploy termina e o container fica *healthy*.
 - `https://prev-homolog.<dominio>/saude` responde `"banco":"ligado"` e a tela de login abre.
 
