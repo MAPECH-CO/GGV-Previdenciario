@@ -51,6 +51,42 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Tarefa não encontrada' })).toBeTruthy()
   })
 
+  it('GGVP-81 · em /clientes/:id/conferir-documentos abre a conferência da leitura da IA', async () => {
+    zerarExemplo()
+    render(<App caminho="/clientes/rita-exemplo/conferir-documentos" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir documento' })).toBeTruthy()
+  })
+
+  it('GGVP-91 · em /casos/:id/checklist abre o checklist do caso; caso que não existe avisa', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/rita-exemplo-1/checklist" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Conferir checklist' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/nenhum/checklist" />)
+    expect(await screen.findByRole('heading', { name: 'Caso não encontrado' })).toBeTruthy()
+  })
+
+  it('GGVP-101 · em /casos/:id/cobranca e /cobranca/decidir abrem a cobrança e a decisão da sênior', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/antonio-exemplo-1/cobranca" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Cobrar documento' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/antonio-exemplo-1/cobranca/decidir" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Decidir cobrança' })).toBeTruthy()
+  })
+
+  it('GGVP-18 · em /casos/:id/liberar abre a liberação; quem libera vem da sessão, e o Atendimento só vê a situação', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)
+    expect(await screen.findByRole('button', { name: 'Liberar ao Jurídico' })).toBeTruthy()
+    cleanup()
+    servidorResponde(200, usuario)
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sebastião Exemplo · Liberar ao Jurídico' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Liberar ao Jurídico' })).toBeNull()
+  })
+
   it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', async () => {
     zerarExemplo()
     render(<App caminho="/agenda" busca="?ver=lista" />)
@@ -158,10 +194,12 @@ describe('App', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('GGVP-96 · cada perfil cai na sua Central; a da Sênior ainda não foi construída', async () => {
+  it('GGVP-96 · cada perfil cai na sua Central; a da Sênior ainda não foi construída, mas traz a fila dela', async () => {
+    zerarExemplo()
     servidorResponde(200, { ...usuario, perfis: ['senior'], perfilAtivo: 'senior' })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Central · Sênior' })).toBeTruthy()
+    expect((await screen.findByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
     expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
     expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
   })

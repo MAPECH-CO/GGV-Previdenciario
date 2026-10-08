@@ -10,6 +10,11 @@ import { IDADE_MAXIMA } from '../regras/formularios.ts'
 import { pastasDoCliente } from '../regras/pasta.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { fichasDeExemplo, gravacoesDeExemplo, pastasDeExemplo } from './exemplo.ts'
+import type { DocumentoLido } from './leitura.ts'
+import type { ConferenciaDoChecklist } from './checklist.ts'
+import type { RegistroDasBoasVindas } from './boasVindas.ts'
+import type { Cobranca } from './cobranca.ts'
+import type { Liberacao } from './liberacao.ts'
 import type {
   CompromissoGuardado,
   EdicaoFicha,
@@ -26,6 +31,7 @@ import type {
   Setor,
   TarefaEncaminhada,
 } from './tipos.ts'
+import type { Contrato } from './contrato.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -53,6 +59,18 @@ export type Banco = {
   /** As gravações e as conversas sem áudio, guardadas para sempre (GGVP-40, GGVP-46). */
   gravacoes: Gravacao[]
   seq: number
+  /** Um contrato por processo, do kit à cópia (GGVP-65 em diante). Sem ele, começa da semente de contrato.ts. */
+  contratos?: Contrato[]
+  /** O que a IA leu de cada documento que entrou, para a Documentação conferir e arquivar (GGVP-81). Nasce em leitura.ts. */
+  leituras?: DocumentoLido[]
+  /** Cada conferência do checklist de um caso (GGVP-91). */
+  checklists?: ConferenciaDoChecklist[]
+  /** Cada tentativa de envio das boas-vindas (GGVP-97). */
+  boasVindas?: RegistroDasBoasVindas[]
+  /** A cobrança dos documentos pendentes de cada caso (GGVP-101). */
+  cobrancas?: Cobranca[]
+  /** Quem liberou cada caso ao Jurídico, e quando (GGVP-18). */
+  liberacoes?: Liberacao[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

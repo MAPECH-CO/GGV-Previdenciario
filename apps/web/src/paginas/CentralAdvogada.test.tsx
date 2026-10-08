@@ -10,6 +10,11 @@ beforeEach(() => {
 })
 
 describe('Central da Advogada', () => {
+  it('GGVP-101 CA7 · a cobrança no limite é da sênior: não fica na fila da advogada (vai para a tela inicial da Sênior, App.test)', () => {
+    render(<CentralAdvogada />)
+    expect(screen.queryByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).toBeNull()
+  })
+
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {
     render(<CentralAdvogada />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()

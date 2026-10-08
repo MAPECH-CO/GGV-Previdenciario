@@ -39,7 +39,9 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar · servid
   it('CA5 · "Sim, fechou": vira cliente e segue para o kit; a tarefa sai', async () => {
     const { ficha } = await registrarFechamento('natalia-exemplo', { fechou: true })
     expect(ficha).toMatchObject({ situacao: 'cliente', desde: '10/2026', fechamento: { situacao: 'fechou' } })
-    expect(ficha.historico.at(-1)?.oQue).toBe('Fechou com o escritório: Auxílio por Incapacidade Temporária; virou cliente e segue para o kit do benefício (D1.15)')
+    // Na junção com o contrato (GGVP-65), o fechamento cria o processo com o kit e o "Preparar contrato".
+    expect(ficha.historico.at(-1)?.oQue).toMatch(/^Fechou Auxílio por Incapacidade Temporária: processo novo com o kit/)
+    expect(ficha.processos.at(-1)?.etapa).toBe('Contrato · preparar')
     expect(tarefasDeFechamento()).toEqual([])
   })
 
@@ -47,7 +49,7 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar · servid
     await expect(clienteFechou('josefa-exemplo', 'nao-sei')).rejects.toThrow('catálogo')
     const { ficha } = await clienteFechou('josefa-exemplo', 'loas-idoso')
     expect(ficha.situacao).toBe('cliente')
-    expect(ficha.processos).toEqual([])
+    expect(ficha.processos).toMatchObject([{ id: 'josefa-exemplo-1', beneficio: 'loas-idoso', etapa: 'Contrato · preparar' }])
   })
 
   it('CA1 e CA6 · "Não fechou" sem motivo não grava (G16)', async () => {

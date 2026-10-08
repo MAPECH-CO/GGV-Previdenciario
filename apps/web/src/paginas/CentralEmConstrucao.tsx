@@ -1,6 +1,7 @@
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
+import type { Tarefa } from '../dados/tipos.ts'
 import { usePode } from '../sessao.ts'
 import centralStyles from './CentralAtendimento.module.css'
 import styles from './NaoConstruida.module.css'
@@ -9,8 +10,9 @@ import styles from './NaoConstruida.module.css'
  * Início dos perfis que ainda não têm a Central desenhada em código (GGVP-78): a fila "O que você tem que fazer"
  * vem do servidor (GGVP-8), com a barra do topo, o "Entrar como…" e o "Sair".
  */
-export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
-  const tarefas = useTarefasDoServidor()
+export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string; /** Do servidor de exemplo, até a GGVP-125. */ deExemplo?: Tarefa[] }) {
+  const doServidor = useTarefasDoServidor()
+  const tarefas = doServidor && [...doServidor, ...deExemplo]
   // GGVP-109 CA9: a gestão chega à lista das tentativas bloqueadas pelo topo.
   const gestao = usePode('gestao.ver')
 

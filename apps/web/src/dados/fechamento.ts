@@ -15,7 +15,8 @@ import {
   recontatoEmAberto,
 } from '../regras/fechamento.ts'
 import { demandaAberta } from '../regras/novaDemanda.ts'
-import { BENEFICIOS, MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
+import { MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
+import { fecharContrato } from './contrato.ts'
 import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa } from './tipos.ts'
 
@@ -45,32 +46,13 @@ function acharFicha(banco: Banco, fichaId: string): Ficha {
   return ficha
 }
 
-/** Fecha na ficha: o lead vira cliente. Sem processo nem kit: isso é do fecharContrato, na junção com o contrato. */
-function fecharNaFicha(ficha: Ficha, beneficio: string) {
-  if (beneficio === 'nao-sei' || !BENEFICIOS.some((b) => b.id === beneficio)) throw new Error('Benefício fora do catálogo')
-  const hoje = hojeIso(agora())
-  const jaEraCliente = ficha.situacao === 'cliente'
-  ficha.situacao = 'cliente'
-  if (!jaEraCliente) ficha.desde = `${hoje.slice(5, 7)}/${hoje.slice(0, 4)}`
-  ficha.historico.push(
-    evento(
-      jaEraCliente
-        ? `Fechou ${nomeBeneficio(beneficio)}: caso novo na mesma ficha; segue para o kit do benefício (D1.15)`
-        : `Fechou com o escritório: ${nomeBeneficio(beneficio)}; virou cliente e segue para o kit do benefício (D1.15)`,
-    ),
-  )
-}
-
 /**
- * O cliente fechou: chamada pela decisão "Fechou com o escritório?" (GGVP-60) e pela nova demanda (GGVP-124). Mesma forma do
- * fecharContrato do contrato (GGVP-7): na junção, o corpo vira o dele, que cria o processo e o kit.
+ * O cliente fechou: chamada pela decisão "Fechou com o escritório?" (GGVP-60) e pela nova demanda (GGVP-124). É o
+ * fecharContrato do contrato (GGVP-65): o lead vira cliente, o processo nasce com número novo e o kit do benefício, e o
+ * Atendimento recebe "Preparar contrato".
  */
 export async function clienteFechou(fichaId: string, beneficio: string): Promise<{ ficha: Ficha }> {
-  await esperar()
-  const banco = ler()
-  const ficha = acharFicha(banco, fichaId)
-  fecharNaFicha(ficha, beneficio)
-  gravar(banco)
+  const { ficha } = await fecharContrato(fichaId, beneficio)
   return { ficha }
 }
 

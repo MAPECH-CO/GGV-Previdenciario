@@ -87,7 +87,9 @@ describe('GGVP-124 · nova demanda de quem já é cliente · servidor de exemplo
     expect(ficha.demandas?.[0].situacao).toBe('fechou')
     expect(ficha).toMatchObject({ situacao: 'cliente', desde: '03/2023' })
     expect(ficha.fechamento).toBeUndefined()
-    expect(ficha.historico.at(-1)?.oQue).toBe('Fechou Auxílio Acidentário: caso novo na mesma ficha; segue para o kit do benefício (D1.15)')
+    // Na junção com o contrato (GGVP-65): processo novo, com número novo e kit novo, na mesma ficha (CA3, CA4).
+    expect(ficha.historico.at(-1)?.oQue).toMatch(/^Fechou Auxílio Acidentário: processo novo com o kit/)
+    expect(ficha.processos.at(-1)).toMatchObject({ id: 'antonio-exemplo-2', etapa: 'Contrato · preparar' })
     expect(tarefasDeFechamento()).toEqual([])
   })
 

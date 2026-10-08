@@ -17,7 +17,13 @@ import { tarefasDeConfirmar } from '../dados/agenda.ts'
 import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
 import { tarefasDeCompletarTelefone } from '../dados/documentos.ts'
 import { tarefasDoSetor } from '../dados/servidor.ts'
+import { tarefasDeConferirDocumento } from '../dados/leitura.ts'
+import { tarefasDeConferirChecklist } from '../dados/checklist.ts'
+import { tarefasDeReenviarBoasVindas } from '../dados/boasVindas.ts'
+import { tarefasDeCobrar } from '../dados/cobranca.ts'
+import { tarefasDeLiberar } from '../dados/liberacao.ts'
 import styles from './CentralAtendimento.module.css'
+import { tarefasDoContrato } from '../dados/contrato.ts'
 import { tarefasDeFechamento } from '../dados/fechamento.ts'
 import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 
@@ -39,6 +45,12 @@ export function CentralAtendimento() {
     ...tarefasDeConfirmarAgendamento(),
     ...tarefasDeCompletarTelefone(),
     ...tarefasAtendimento,
+    ...tarefasDoContrato(),
+    ...tarefasDeConferirDocumento(),
+    ...tarefasDeConferirChecklist(),
+    ...tarefasDeReenviarBoasVindas(),
+    ...tarefasDeCobrar(),
+    ...tarefasDeLiberar(),
     ...tarefasDeFechamento(),
     ...tarefasDeNovaDemanda(),
   ])

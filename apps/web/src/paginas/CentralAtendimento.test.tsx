@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
+import { conferirChecklist } from '../dados/checklist.ts'
+import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
@@ -24,6 +27,47 @@ describe('Central do Atendimento', () => {
     expect(receber.getAttribute('href')).toBe(`/balcao/documento/${tarefa.id}`)
     expect(receber.closest('li')?.textContent).toContain('Aposentadoria por Incapacidade Permanente · Judicial · exigência')
     expect(screen.getByRole('link', { name: 'Marta Exemplo · Completar telefone' }).getAttribute('href')).toBe('/clientes/marta-exemplo')
+  })
+
+  it('GGVP-81 · a Documentação vê "Conferir documento" da Rita, com a quarentena, no lugar das linhas fixas', () => {
+    render(<CentralAtendimento />)
+    const conferir = screen.getByRole('link', { name: 'Rita Exemplo · Conferir documento' })
+    expect(conferir.getAttribute('href')).toBe('/clientes/rita-exemplo/conferir-documentos')
+    expect(conferir.closest('li')?.textContent).toContain('LOAS Deficiente · 5 documentos lidos pela IA · 1 em quarentena · scanner')
+    expect(screen.queryByText(/Vários clientes/)).toBeNull()
+  })
+
+  it('GGVP-91 · depois da leitura arquivada, a Documentação vê "Conferir checklist" do caso', async () => {
+    const c = await documentosLidos('rita-exemplo')
+    const documentos = c!.documentos.filter((d) => d.situacao === 'a-conferir').map(({ id, tipo, data }) => ({ id, tipo, data }))
+    await arquivarDocumentos('rita-exemplo', { conferi: true, documentos, duplicados: 'manter' })
+    render(<CentralAtendimento />)
+    const checklist = screen.getByRole('link', { name: 'Rita Exemplo · Conferir checklist' })
+    expect(checklist.getAttribute('href')).toBe('/casos/rita-exemplo-1/checklist')
+    expect(checklist.closest('li')?.textContent).toContain('LOAS Deficiente · 4 de 9 itens recebidos · leitura arquivada')
+  })
+
+  it('GGVP-97 CA6 · as boas-vindas que não saíram viram "Reenviar boas-vindas"', async () => {
+    await conferirChecklist('marta-exemplo-1')
+    await enviarBoasVindas('marta-exemplo-1', { conferi: true, mensagem: (await obterBoasVindas('marta-exemplo-1'))!.mensagem })
+    render(<CentralAtendimento />)
+    const tarefa = screen.getByRole('link', { name: 'Marta Exemplo · Reenviar boas-vindas' })
+    expect(tarefa.getAttribute('href')).toBe('/casos/marta-exemplo-1/checklist')
+    expect(tarefa.closest('li')?.textContent).toContain('não saíram pelo Chatwoot: a ficha não tem telefone')
+  })
+
+  it('GGVP-101 · a cobrança do Antônio, que passou para a sênior, continua à vista do Atendimento', () => {
+    render(<CentralAtendimento />)
+    const cobrar = screen.getByRole('link', { name: 'Antônio Exemplo · Cobrar documento' })
+    expect(cobrar.getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca')
+    expect(cobrar.closest('li')?.textContent).toContain('na sênior: decidir (G15) · prazo do juiz 07/10')
+  })
+
+  it('GGVP-18 CA5 · o Sebastião espera a liberação ao Jurídico, com a idade na fila', () => {
+    render(<CentralAtendimento />)
+    const liberar = screen.getByRole('link', { name: 'Sebastião Exemplo · Liberar ao Jurídico' })
+    expect(liberar.getAttribute('href')).toBe('/casos/sebastiao-exemplo-1/liberar')
+    expect(liberar.closest('li')?.textContent).toContain('na fila há 2 dias')
   })
 
   it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {

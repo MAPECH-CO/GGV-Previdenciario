@@ -22,7 +22,7 @@ export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
   const [deExemplo] = useState(tarefasDaAdvogada)
   // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
-  // continuam embaixo até a Recepção gravar no servidor (GGVP-125).
+  // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []
   const tarefas = [...doServidor, ...deExemplo]
 

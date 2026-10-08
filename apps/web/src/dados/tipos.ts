@@ -134,7 +134,7 @@ export type Ficha = {
   /** Só números. */
   cep?: string
   profissao?: string
-  /** Só letras e números (GGVP-43). */
+  /** Só letras e números (GGVP-43). Vem do cadastro ou da leitura do documento que a Documentação confirmou (GGVP-81, CA3). */
   rg?: string
   /** O representante legal, para o contrato (GGVP-43, CA6). */
   representante?: Representante

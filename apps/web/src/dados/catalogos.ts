@@ -73,6 +73,14 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'ficha-atendimento', nome: 'Ficha de atendimento' },
   { id: 'ficha-acidente', nome: 'Ficha de auxílio acidente' },
   { id: 'outro', nome: 'Outro documento' },
+  // GGVP-91: os do checklist do LOAS (cartões GGVP-91, critério 7, e GGVP-21) e os da exigência do Antônio na semente.
+  { id: 'comprovante-renda', nome: 'Comprovante de renda' },
+  { id: 'cadunico', nome: 'Cadastro Único (CadÚnico)' },
+  { id: 'grupo-familiar', nome: 'Ficha de grupo familiar' },
+  { id: 'declaracao-moradia', nome: 'Declaração de moradia' },
+  { id: 'declaracao-uniao-estavel', nome: 'Declaração de união estável' },
+  { id: 'declaracao-separacao', nome: 'Declaração de separação de fato' },
+  { id: 'notas-produtor', nome: 'Notas do produtor rural' },
 ]
 
 export function nomeTipo(id: string | undefined): string {
