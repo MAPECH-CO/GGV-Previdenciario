@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ROTULO_PERFIL, ehPerfil, type UsuarioDaSessao } from '@ggv/contratos'
+import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
+import { sincronizarRecepcao } from './dados/servidor.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
@@ -103,7 +104,13 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
 
   useEffect(() => {
     // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
-    void chamarApi<UsuarioDaSessao>('/sessao').then((r) => r.ok && setUsuario(r.dados))
+    void chamarApi<UsuarioDaSessao>('/sessao').then(async (r) => {
+      if (!r.ok) return
+      // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
+      // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
+      if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
+      setUsuario(r.dados)
+    })
   }, [])
 
   if (!usuario) return null

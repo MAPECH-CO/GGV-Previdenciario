@@ -17,7 +17,8 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-// O #23 (Jurimetria) entrou antes com as versões 11 e 12; o Desfecho ficou com 13 e 14 (revisão de 08/10).
+// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14 (as duas ações dele numa versão
+// só). Quem entrar depois renumera.
 export const VERSAO_MATRIZ = 14
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
@@ -63,7 +64,7 @@ export const MATRIZ = {
   'exigencia_inss.tratar': ['advogada'],
   'exigencia_inss.cumprir': ['documentacao'],
   'exigencia_inss.decidir_vencida': ['senior'],
-  // Versão 13 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
+  // Versão 14 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
   'banco.agendar': ['financeiro'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
   'vigilia.ver': ['senior', 'advogada'],
@@ -89,6 +90,12 @@ export const MATRIZ = {
   // Versão 14 (GGVP-22, Lucas 06/10): o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica ao cliente.
   'resultado.aprovar_resumo': ['advogada', 'senior'],
   'resultado.explicar': ['atendimento', 'atendimento_lider', 'advogada'],
+  // Versão 13 (GGVP-125, bloco 1): a ficha da Recepção no servidor. Quem trabalha com o caso cadastra e edita a ficha
+  // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
+  // renumera a versão.
+  'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
+  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
+  'entrevista.gravar': JURIDICO,
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

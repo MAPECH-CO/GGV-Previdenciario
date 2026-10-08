@@ -63,6 +63,7 @@ export * from './prestacao.ts'
 export * from './justica.ts'
 export * from './governanca.ts'
 export * from './desfecho.ts'
+export * from './recepcao.ts'
 export * from './acervo.ts'
 export * from './resultados.ts'
 
