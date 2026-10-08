@@ -117,8 +117,15 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1791476544375,
-      "tag": "0016_pericia_no_servidor",
+      "when": 1791477280851,
+      "tag": "0016_registro_da_ia",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791483125013,
+      "tag": "0017_pericia_no_servidor",
       "breakpoints": true
     }
   ]

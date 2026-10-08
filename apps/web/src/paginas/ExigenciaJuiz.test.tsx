@@ -62,9 +62,16 @@ const emCumprimento = {
   ],
 }
 
-function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
-  const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
-    init?.method === 'POST' ? new Response(JSON.stringify(post[1]), { status: post[0] }) : new Response(JSON.stringify(get), { status: 200 }),
+const SEM_SUGESTAO = { sugestao: null, leitura: null, motivo: 'A IA não respondeu agora: analise pela sua leitura.', aviso: null }
+
+/** A sugestão da IA chega sozinha ao abrir (sugestão pronta, 07/10): o POST dela responde à parte. */
+function servidor(get: object, post: [number, unknown] = [201, { ok: true }], sugestao: object = SEM_SUGESTAO) {
+  const fetch = vi.fn(async (url: string, init?: RequestInit) =>
+    String(url).endsWith('/exigencia-juiz/sugestao')
+      ? new Response(JSON.stringify(sugestao))
+      : init?.method === 'POST'
+        ? new Response(JSON.stringify(post[1]), { status: post[0] })
+        : new Response(JSON.stringify(get), { status: 200 }),
   )
   vi.stubGlobal('fetch', fetch)
   return fetch
@@ -88,7 +95,7 @@ describe('Analisar a exigência do juiz (GGVP-79)', () => {
     fireEvent.change(screen.getByLabelText('Prazo interno'), { target: { value: '2026-10-20' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escolha o setor de cada item')
-    expect(fetch.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true)
+    expect(fetch.mock.calls.filter(([url, init]) => init?.method === 'POST' && String(url).endsWith('/exigencia-juiz'))).toEqual([])
   })
 
   it('CA13 · inclui e remove itens; com setor, envia', async () => {
@@ -103,7 +110,7 @@ describe('Analisar a exigência do juiz (GGVP-79)', () => {
     fireEvent.change(screen.getByLabelText('Prazo interno'), { target: { value: '2026-10-20' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
     expect((await screen.findByRole('status')).textContent).toContain('Cumprir exigência do juiz')
-    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    const post = fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith('/exigencia-juiz'))!
     expect(JSON.parse(post[1]!.body as string)).toMatchObject({ decisao: 'cumprir', itens: [{ setor: 'documentacao', prazoInterno: '20/10/2026' }] })
   })
 
@@ -208,5 +215,34 @@ describe('Cumprir a exigência do juiz (GGVP-83)', () => {
     fireEvent.change(await screen.findByLabelText('Documento'), { target: { files: [new File(['%PDF'], 'laudo.pdf', { type: 'application/pdf' })] } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar documento e concluir' }))
     expect((await screen.findByRole('status')).textContent).toBe('Documento enviado. O item está cumprido.')
+  })
+})
+
+describe('Exigência do juiz · sugestão da IA (épico IA, GGVP-79 CA3)', () => {
+  const CHAMADA = '66666666-6666-4666-8666-666666666666'
+  const resposta = {
+    sugestao: { chamadaId: CHAMADA, sugestao: true, texto: 'O juiz mandou juntar laudo em 15 dias úteis.', fontes: [{ tipo: 'publicacao', referencia: 'publicacao:x' }], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T13:00:00.000Z', alerta: null },
+    leitura: { resumo: 'O juiz mandou juntar laudo em 15 dias úteis.', ciencia: false, itens: [{ setor: 'atendimento', descricao: 'Pedir o laudo ao cliente', provaEsperada: 'Laudo recente' }], pericias: [] },
+    motivo: null,
+    aviso: 'Sem referência na casa: nada parecido no acervo; a IA usou só o caso.',
+  }
+
+  it('ao abrir, a sugestão aparece pronta e preenche o formulário sem o prazo interno; a decisão leva a chamada', async () => {
+    const fetch = servidor(exigenciaDoJuiz, undefined, resposta)
+    render(<AnalisarExigenciaJuiz casoId={CASO} />)
+    expect(await screen.findByText('Sugestão da IA · quem decide é você (G5)')).toBeTruthy()
+    expect(screen.getByText('Sugere: Atendimento: Pedir o laudo ao cliente (prova: Laudo recente)')).toBeTruthy()
+    expect(screen.getByText(resposta.aviso)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Sugerir com a IA|Usar a sugestão/ })).toBeNull()
+    expect((screen.getByLabelText('Precisa cumprir') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('O que cumprir') as HTMLInputElement).value).toBe('Pedir o laudo ao cliente')
+    expect((screen.getByLabelText('Setor') as HTMLSelectElement).value).toBe('atendimento')
+    expect((screen.getByLabelText('Prazo interno') as HTMLInputElement).value).toBe('')
+    fireEvent.change(screen.getByLabelText('Prazo interno'), { target: { value: '2026-10-20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
+    await screen.findByText('Tarefas criadas. Cada setor recebeu "Cumprir exigência do juiz".')
+    const post = fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith('/exigencia-juiz'))!
+    const corpo = JSON.parse(post[1]!.body as string)
+    expect([corpo.decisao, corpo.chamadaIaId, corpo.itens[0].prazoInterno]).toEqual(['cumprir', CHAMADA, '20/10/2026'])
   })
 })

@@ -178,7 +178,7 @@ test('GGVP-63, GGVP-67 e GGVP-71 · a advogada pede a petição, edita, compara,
   await page.getByRole('button', { name: 'Pedir a petição' }).click()
   await expect(page.getByRole('status')).toHaveText('Petição pedida. A versão 1 foi para a conferência.')
 
-  await page.getByText('Não está boa? Editar eu mesma').click()
+  await page.getByText('Não está boa? Pedir outra versão à IA ou editar eu mesma').click()
   await page.getByLabel('Texto da nova versão').fill(V1.replace('\nDo pedido', '\nDa tutela de urgência\nDo pedido'))
   await page.getByLabel('O que mudou nesta versão').fill('Incluí a tutela de urgência')
   await page.getByRole('button', { name: 'Salvar nova versão' }).click()
