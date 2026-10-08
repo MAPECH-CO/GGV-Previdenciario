@@ -129,7 +129,8 @@ describe('Transcrições do caso · janela', () => {
     await anexarAudio(c.id, { nome: 'ligacao.ogg', tipo: 'audio/ogg', tamanho: 4096, avisoNaGravacao: true })
     await transcreverConversa(c.id)
     await abrir('maria-exemplo', 'juridico')
-    expect(screen.getByText('Telefone de contato')).toBeTruthy()
+    // A lista vem da API depois do título: espera por ela, em vez de conferir na hora.
+    expect(await screen.findByText('Telefone de contato')).toBeTruthy()
     expect(screen.getAllByText('a conferir na conversa')).toHaveLength(6)
     expect(screen.queryByRole('button', { name: 'Conferir e levar' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Conferir na conversa (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)

@@ -354,7 +354,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                   orientação padrão e a jurimetria não foi feita. Se algum documento disser quem é o perito, ligue aqui em um clique.
                 </p>
                 <div className={passo.atalhos} role="group" aria-label="Ligar o perito">
-                  {peritosParaLigar(pericia.tipo).map((p) => (
+                  {peritosParaLigar(pericia.tipo, pericia.processoId).map((p) => (
                     <button key={p.id} type="button" className={passo.atalho} onClick={() => void ligar(p.id, p.nome)}>
                       {p.nome} · {p.especialidade}
                     </button>

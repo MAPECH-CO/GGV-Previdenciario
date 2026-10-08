@@ -1,8 +1,8 @@
 // Documentos, documentação médica e contrato (GGVP-17, 18, 20, 29, 33, 65, 69, 72, 77, 93, 95).
-import { bigint, boolean, date, integer, jsonb, numeric, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { bigint, boolean, date, integer, jsonb, numeric, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
-import { criadoEm, emLista, id, momento } from './comum.ts'
+import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 import { pessoa } from './pessoas.ts'
 
 export const SITUACOES_DOCUMENTO = ['recebido', 'conferido', 'recusado'] as const
@@ -81,6 +81,27 @@ export const parecerMedico = pgTable(
     criadoEm: criadoEm(),
   },
   (t) => [emLista('parecer_resultado', t.resultado, RESULTADOS_PARECER)],
+).enableRLS()
+
+export const PARTES_DOCUMENTACAO_MEDICA = ['parecer', 'complemento', 'deficiencia', 'acidente', 'crianca'] as const
+
+/**
+ * A documentação médica do caso no formato das telas (GGVP-132): a análise e os registros do parecer, o complemento ao
+ * médico, a linha do tempo da deficiência, a circunstância do acidente e a condição da criança. Dado de saúde: só a API
+ * lê (RLS sem política), e só o Jurídico recebe o conteúdo. O que o resto do portal lê vai também para `parecer_medico`.
+ * ponytail: um documento por parte; dividir em tabelas quando a IA de verdade (GGVP-134) assentar o formato.
+ */
+export const documentacaoMedica = pgTable(
+  'documentacao_medica',
+  {
+    casoId: uuid('caso_id')
+      .notNull()
+      .references(() => caso.id),
+    parte: text('parte').notNull(),
+    documento: jsonb('documento').notNull(),
+    atualizadoEm: atualizadoEm(),
+  },
+  (t) => [primaryKey({ columns: [t.casoId, t.parte] }), emLista('documentacao_medica_parte', t.parte, PARTES_DOCUMENTACAO_MEDICA)],
 ).enableRLS()
 
 export const SITUACOES_CONTRATO = ['rascunho', 'conferido', 'enviado', 'assinado', 'cancelado'] as const

@@ -1,5 +1,5 @@
 {
-  "id": "18798b08-56d7-4199-bc97-8d70e7232da1",
+  "id": "45ad65ca-8fdd-44a9-bd19-10b7cee00d8a",
   "prevId": "12b92faa-42c6-489c-9e16-6e52438f0f86",
   "version": "7",
   "dialect": "postgresql",
@@ -162,18 +162,6 @@
         "duracao_ms": {
           "name": "duracao_ms",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "audio_segundos": {
-          "name": "audio_segundos",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "custo_estimado": {
-          "name": "custo_estimado",
-          "type": "numeric(10, 4)",
           "primaryKey": false,
           "notNull": false
         },
@@ -3131,6 +3119,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "documento": {
+          "name": "documento",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -4446,99 +4440,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.glossario_termo": {
-      "name": "glossario_termo",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "termo": {
-          "name": "termo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "tipo": {
-          "name": "tipo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "significado": {
-          "name": "significado",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "alterado_por": {
-          "name": "alterado_por",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "glossario_termo_unico": {
-          "name": "glossario_termo_unico",
-          "columns": [
-            {
-              "expression": "lower(\"termo\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "glossario_termo_alterado_por_usuario_id_fk": {
-          "name": "glossario_termo_alterado_por_usuario_id_fk",
-          "tableFrom": "glossario_termo",
-          "tableTo": "usuario",
-          "columnsFrom": [
-            "alterado_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "glossario_termo_tipo": {
-          "name": "glossario_termo_tipo",
-          "value": "\"glossario_termo\".\"tipo\" in ('beneficio', 'sigla', 'perito', 'juizo', 'outro')"
-        }
-      },
-      "isRLSEnabled": true
-    },
     "public.juizo": {
       "name": "juizo",
       "schema": "",
@@ -4924,6 +4825,12 @@
         "especialidade": {
           "name": "especialidade",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "perfil": {
+          "name": "perfil",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

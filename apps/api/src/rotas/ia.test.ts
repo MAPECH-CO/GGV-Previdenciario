@@ -22,7 +22,7 @@ const auditoria = async (apelido: string) => app.inject({ method: 'GET', url: `/
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco })
-  for (const [apelido, perfil] of [['gabi', 'advogada'], ['ana', 'atendimento'], ['julia', 'financeiro']] as const) {
+  for (const [apelido, perfil] of [['gabi', 'advogada'], ['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -55,5 +55,27 @@ describe('GGVP-106 CA4 · auditoria das chamadas à IA do caso', () => {
     expect(r.chamadas.map((c: { saida: string | null }) => c.saida)).toEqual([null, null])
     expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
     expect((await auditoria('julia')).statusCode).toBe(403)
+  })
+
+  describe('o trecho das fontes pode trazer texto de laudo: só o Jurídico o recebe', () => {
+    const trecho = 'Petição aprovada: o laudo descreve a doença do autor.'
+    type Fonte = { tipo: string; referencia: string; trecho?: string }
+    const fontesDe = (r: { chamadas: { fontes: Fonte[] }[] }) => r.chamadas.flatMap((c) => c.fontes)
+    beforeEach(async () => {
+      await criarIa({ banco, ambiente: {} }).sugerir('resumo_resultado', { casoId, quem: ids.gabi, conteudo: 'y', fontes: [{ tipo: 'acervo', referencia: 'acervo:peticao-1', trecho }] })
+    })
+
+    it('o Jurídico recebe o trecho, e a leitura da chamada com trecho fica registrada', async () => {
+      expect(fontesDe((await auditoria('gabi')).json())).toContainEqual({ tipo: 'acervo', referencia: 'acervo:peticao-1', trecho })
+      const acessos = await banco.select().from(acessoDadoSensivel)
+      expect(acessos.map((a) => a.usuarioId)).toEqual([ids.gabi, ids.gabi])
+    })
+
+    it.each(['ana', 'dora'])('%s recebe as fontes só com tipo e referência, e nada é registrado', async (apelido) => {
+      const fontes = fontesDe((await auditoria(apelido)).json())
+      expect(fontes).toContainEqual({ tipo: 'acervo', referencia: 'acervo:peticao-1' })
+      expect(fontes.filter((f) => 'trecho' in f)).toEqual([])
+      expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
+    })
   })
 })

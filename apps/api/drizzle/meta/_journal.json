@@ -131,8 +131,22 @@
     {
       "idx": 18,
       "version": "7",
-      "when": 1791488509270,
-      "tag": "0018_glossario_e_transcricao",
+      "when": 1791486585815,
+      "tag": "0018_pericia_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791497335388,
+      "tag": "0019_documentacao_medica",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791499769191,
+      "tag": "0020_glossario_e_transcricao",
       "breakpoints": true
     }
   ]

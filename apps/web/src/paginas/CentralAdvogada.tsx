@@ -51,7 +51,7 @@ export function CentralAdvogada() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Advogada</h1>
-          <CampoBusca />
+          <CampoBusca tarefas={tarefas} />
           <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
           <Abas
             rotulo="Filas de tarefas"

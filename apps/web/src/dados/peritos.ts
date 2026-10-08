@@ -2,7 +2,6 @@
 // perito, Mateus, ainda sem refino) e com o acervo de processos, de onde vem o perito nomeado. Nomes "(exemplo)": nenhum é
 // real. O perfil não guarda dado pessoal do cliente (GGVP-73, CA4): cada laudo tem só a referência do caso.
 import { jurimetria, type Jurimetria, type TipoDePericia } from '../regras/pericia.ts'
-import type { Banco } from './servidor.ts'
 
 /** Um laudo do acervo no perfil do perito: o que ele observou, perguntou e pediu. Sem nome nem CPF do cliente. */
 export type LaudoDoPerfil = {
@@ -119,13 +118,16 @@ export function peritosDeExemplo(): Perito[] {
   ]
 }
 
+/** Onde os peritos ficam: o banco de exemplo ou o que o servidor monta. */
+export type ComPeritos = { peritos?: Perito[] }
+
 /** Os peritos do banco; sem eles, a semente, que não vai para o armazenamento da aba até um laudo novo mudar um perfil (GGVP-73). */
-export const peritosDo = (banco: Banco): Perito[] => banco.peritos ?? peritosDeExemplo()
+export const peritosDo = (banco: ComPeritos): Perito[] => banco.peritos ?? peritosDeExemplo()
 
 const sem = (nome: string) => nome.replace(/\s*\(exemplo\)$/, '').toLowerCase()
 
 /** O perito pelo nome lido na publicação ou no processo; não reconhecido, nada (GGVP-61, CA6). */
-export function reconhecerPerito(banco: Banco, nome: string): Perito | undefined {
+export function reconhecerPerito(banco: ComPeritos, nome: string): Perito | undefined {
   return peritosDo(banco).find((p) => sem(p.nome) === sem(nome))
 }
 
@@ -154,7 +156,7 @@ export function perfilDoPerito(perito: Perito): PerfilDoPerito {
  * O laudo novo entra no perfil do perito (GGVP-73): um registro por laudo, sem sobrescrever (CA3) e sem duplicar (CA5).
  * Na primeira mudança, a semente vai para o banco. Devolve se entrou.
  */
-export function acrescentarLaudo(banco: Banco, peritoId: string, laudo: LaudoDoPerfil): boolean {
+export function acrescentarLaudo(banco: ComPeritos, peritoId: string, laudo: LaudoDoPerfil): boolean {
   const perito = (banco.peritos ??= peritosDeExemplo()).find((p) => p.id === peritoId)
   if (!perito) throw new Error('Perito não encontrado.')
   if (perito.laudos.some((l) => l.id === laudo.id)) return false
