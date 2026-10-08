@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eventoAuditoria, processoAcervo, usuario } from '../banco/esquema.ts'
+import { ID_CONFERIR_DESFECHOS } from '../fluxo/acervo.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -21,7 +22,7 @@ const conferencia = async (apelido: string) => app.inject({ method: 'GET', url: 
 const conferir = async (apelido: string, id: string, desfecho: string) =>
   app.inject({ method: 'POST', url: `/api/acervo/processos/${id}/conferencia`, cookies: await cookieDe(apelido), payload: { desfecho } })
 const itemDaCentral = async (apelido: string) =>
-  ((await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe(apelido) })).json() as { titulo: string; detalhe: string; tela: string | null }[]).find(
+  ((await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe(apelido) })).json() as { id: string; titulo: string; detalhe: string; tela: string | null }[]).find(
     (t) => t.titulo === 'Conferir desfechos do lote',
   )
 
@@ -86,9 +87,11 @@ describe('conferir desfechos do lote (GGVP-55)', () => {
   })
 
   it('CA7 · na Central da Sênior, "Conferir desfechos do lote" aparece só enquanto houver processo esperando', async () => {
-    expect(await itemDaCentral('helena')).toMatchObject({ detalhe: '2 processos', tela: '/acervo/conferencia' })
+    expect(await itemDaCentral('helena')).toMatchObject({ id: ID_CONFERIR_DESFECHOS, detalhe: '2 processos', tela: '/acervo/conferencia' })
+    await conferir('helena', lidos[0], 'improcedente')
+    expect(await itemDaCentral('helena')).toMatchObject({ id: ID_CONFERIR_DESFECHOS, detalhe: '1 processo' })
     expect(await itemDaCentral('gabi')).toBeUndefined()
-    for (const id of lidos) await conferir('helena', id, 'improcedente')
+    await conferir('helena', lidos[1], 'improcedente')
     expect(await itemDaCentral('helena')).toBeUndefined()
   })
 })

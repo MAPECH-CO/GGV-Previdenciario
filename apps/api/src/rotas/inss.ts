@@ -33,7 +33,7 @@ import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
-import { conferenciaDoAcervo } from '../fluxo/acervo.ts'
+import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -165,7 +165,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
     const conferir = acervo.length
       ? [
           TarefaDaCentral.parse({
-            id: acervo[0].id,
+            id: ID_CONFERIR_DESFECHOS,
             casoId: null,
             passo: 'D4.05',
             cliente: null,
