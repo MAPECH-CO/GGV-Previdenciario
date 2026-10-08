@@ -150,7 +150,9 @@ abrir outro.
 1. **A publicação falhou sozinha:** se a migração do banco falha ou a saúde do portal (`/saude`) não responde, o Coolify
    não troca a versão e mantém a anterior no ar. Nada a fazer além de ler o log do deploy e avisar.
 2. **A publicação subiu, mas quebrou o portal:** no Coolify, no app de homologação (`ggv-prev-homologacao`), abra a
-   lista de deploys e volte ao último deploy que estava bom (Rollback, ou novo deploy daquele commit). Confira
+   lista de deploys e volte ao último deploy que estava bom (Rollback, ou novo deploy daquele commit). Desde a noite de
+   08/10 o Coolify roda a imagem que o GitHub publica a cada merge, com a tag de cada commit
+   (`docs/infra/homologacao.md`): voltar é rodar a imagem com a tag do último commit bom. Confira
    `/saude` (deve responder `"banco":"ligado"`) e entre com um usuário de teste.
 3. **Para deixar a `main` igual à versão boa:** abra um PR que reverte a mescla que quebrou
    (`git revert -m 1 <commit da mescla>`), com o outro dev revisando. Ao mesclar, a homologação publica de novo, sozinha.
@@ -195,6 +197,12 @@ Encontrados na passada de 08/10. Não foram corrigidos aqui. Perfil, passo e o q
 | P16 | Sênior, Sócio e Financeiro | SE6: Configuração, kit por benefício | O kit mostra códigos ("cadunico", "comprovante_de_residencia", "Tirar declaracao_de_moradia") em vez dos nomes, e "Versão 1, desde 31/12/1999, 22:00". | GGVP-104 |
 | P17 | Atendimento, Documentação, Advogada, Sênior | Prazos do INSS e da Justiça | A tela avisa "Feriados não cadastrados: por enquanto o prazo só pula sábado e domingo". O lado seguro (G12) vale só para fim de semana. | GGVP-34, GGVP-39 |
 | P18 | Jurídico administrativo | JA2: chat "Perícias para marcar" | Responde "Nenhuma perícia espera marcação agora" mesmo com a perícia da Antônia (servidor) aberta. | GGVP-49, GGVP-82 |
+
+**Atualização da noite de 08/10.** A IA jurídica entrou na `main` depois deste roteiro ter sido percorrido. Onde a chave da
+IA estiver configurada na homologação, P8, P9 e P10 deixam de valer: a Sênior recebe a análise do indeferimento, a petição
+chega com a versão 1 escrita pela IA e o resumo do resultado chega com o rascunho. Sem a chave, a tela avisa e a pessoa
+escreve, como está acima. Entraram também a tela "Estudos de caso" (Jurídico) e a recomendação da perícia para a advogada;
+essas duas não foram percorridas neste roteiro.
 
 ### Leves: texto e aparência
 
