@@ -256,7 +256,7 @@ export async function semearExemplos(banco: Banco) {
   await banco.insert(etapa).values({ casoId: cw.id, diagrama: 'D2', passo: 'D2.E3', situacao: 'aguardando_externo', aguardando: 'cliente entregar o documento', iniciadaEm: new Date() })
 
   // Painel de resultado para os sócios (GGVP-75): dez decisões do INSS dos últimos dias, oito do LOAS (dá a taxa) e duas da
-  // aposentadoria da pessoa com deficiência (amostra insuficiente no recorte por benefício); uma extinção sem mérito com
+  // aposentadoria da pessoa com deficiência (poucos casos no recorte por benefício, com a taxa ao lado, G22); uma extinção sem mérito com
   // a causa, uma procedência e um recebimento de honorários, para os totais do Sócio e do Financeiro. Sem tarefa: não
   // entram em fila nenhuma.
   const financeiro = usuarios.find((u) => u.perfis.includes('financeiro'))!

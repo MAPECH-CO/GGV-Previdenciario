@@ -153,4 +153,14 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     ])
     expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toEqual({ situacao: 'com_dados', processos: 3, conferidos: 1, aguardandoConferencia: 1, dataDaBase: '2026-10-02' })
   })
+
+  it('GGVP-55 CA3 · uma entrada nova soma à base: a anterior fica guardada, e a data da base passa a ser a da mais recente', async () => {
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000051220204036301', desfecho: 'improcedente', fonte: 'importacao', criadoEm: as('2026-09-21') },
+      { numeroCnj: '00000061220204036301', desfecho: 'acordo', fonte: 'importacao', criadoEm: as('2026-09-21') },
+    ])
+    expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toMatchObject({ processos: 2, dataDaBase: '2026-09-21' })
+    await banco.insert(processoAcervo).values({ numeroCnj: '00000071220204036301', desfecho: 'procedente_total', fonte: 'lote', criadoEm: as('2026-10-02') })
+    expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toMatchObject({ processos: 3, aguardandoConferencia: 3, dataDaBase: '2026-10-02' })
+  })
 })
