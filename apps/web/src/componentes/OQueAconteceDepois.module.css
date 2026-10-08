@@ -1,0 +1,27 @@
+.passos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.passo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--fonte-12);
+}
+
+.numero {
+  display: flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}

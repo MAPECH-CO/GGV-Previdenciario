@@ -6,6 +6,7 @@
 - **15 épicos** (GGVP-1 a GGVP-15) e **89 histórias** (GGVP-16 a GGVP-104), todas em *Backlog* ("Tarefas pendentes") com o rótulo `a-validar-bpmn`: nenhuma está Pronta pela DoR até o refinamento de 30/09 e as respostas de `duvidas-abertas.md`.
 - Fluxo: `Backlog → Pronta → Em desenvolvimento → Em revisão → Em homologação → Aceita`.
 - Rótulos: dono (`lucas`, `pedro`, `mateus`, `fernando`), passo (`bpmn-d1-05`), `a-validar-bpmn`, `spike`, `divida-tecnica`.
+- Ajuste de 29/09/2026 (Lucas): a perícia saiu do Atendimento. GGVP-53, 61, 62 e 66 passaram para o Jurídico administrativo (estagiário ou assistente jurídico); GGVP-49 (o sistema abre a tarefa), 56 (só quando a perícia pede documento novo) e 59 (o perito não vem no PDF do INSS) mudaram o texto; GGVP-31, 70 e 94 foram acertados no mesmo sentido.
 
 ## Épicos
 | Chave | Épico |
@@ -107,11 +108,11 @@ Prioridade do PO de 1 (maior) a 5; estimativa P/M/G. Clique na chave para abrir 
 | Chave | História | Passo BPMN | Perfil | Prio | Est. |
 |---|---|---|---|---|---|
 | [GGVP-49](https://mapech.atlassian.net/browse/GGVP-49) | Iniciar a tarefa de perícia | DP.01 | advogada responsável | 1 | P |
-| [GGVP-53](https://mapech.atlassian.net/browse/GGVP-53) | Marcar a perícia com o cliente | DP.02, DP.04 | Atendimento | 1 | M |
+| [GGVP-53](https://mapech.atlassian.net/browse/GGVP-53) | Marcar a perícia com o cliente | DP.02, DP.04 | Jurídico administrativo (estagiário ou assistente jurídico) | 1 | M |
 | [GGVP-56](https://mapech.atlassian.net/browse/GGVP-56) | Reunir o que a perícia pede | DP.03 | Documentação | 2 | P |
-| [GGVP-61](https://mapech.atlassian.net/browse/GGVP-61) | Orientação da perícia, padrão ou pelo perfil do perito | DP.05 | Atendimento | 2 | G |
-| [GGVP-62](https://mapech.atlassian.net/browse/GGVP-62) | Preparar o cliente | DP.06 | Atendimento | 2 | P |
-| [GGVP-66](https://mapech.atlassian.net/browse/GGVP-66) | Comparecimento e remarcação | DP.07 | Atendimento | 1 | P |
+| [GGVP-61](https://mapech.atlassian.net/browse/GGVP-61) | Orientação da perícia, padrão ou pelo perfil do perito | DP.05 | Jurídico administrativo (estagiário ou assistente jurídico) | 2 | G |
+| [GGVP-62](https://mapech.atlassian.net/browse/GGVP-62) | Preparar o cliente | DP.06 | Jurídico administrativo (estagiário ou assistente jurídico) | 2 | P |
+| [GGVP-66](https://mapech.atlassian.net/browse/GGVP-66) | Comparecimento e remarcação | DP.07 | Jurídico administrativo (estagiário ou assistente jurídico) | 1 | P |
 | [GGVP-70](https://mapech.atlassian.net/browse/GGVP-70) | Conferir o resultado e decidir o próximo passo | DP.08, DP.10 | advogada responsável | 1 | M |
 | [GGVP-73](https://mapech.atlassian.net/browse/GGVP-73) | Atualizar o perfil do perito | DP.09 | advogada responsável | 3 | M |
 

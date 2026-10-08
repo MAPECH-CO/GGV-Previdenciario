@@ -1,0 +1,434 @@
+/* Figma step_D1.01 (10:3): coluna de 900 e painel de 340, com 24 entre eles. */
+.pagina {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+  padding: 26px 20px;
+}
+
+.principal {
+  display: flex;
+  flex: 0 1 900px;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.cabecalho {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+}
+
+.codigo {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.titulo {
+  font-size: var(--fonte-24);
+  font-weight: 400;
+}
+
+.titulo strong {
+  font-weight: 600;
+}
+
+.subtitulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+/* "O que você deve fazer" */
+.instrucoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+}
+
+.instrucoesTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.estrela {
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+}
+
+.instrucoesTitulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.beneficio {
+  padding: 4px 10px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.instrucoesDe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.instrucoesTexto {
+  font-size: var(--fonte-13);
+}
+
+.atalhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.atalho {
+  padding: 7px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+/* Cartão branco: "Quem chegou?" e "O que o cliente veio fazer?" */
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+}
+
+/* Botão solto dentro do cartão: do tamanho do texto, não da largura do cartão. */
+.cartao > .atalho {
+  align-self: flex-start;
+}
+
+.cartaoTitulo {
+  font-size: var(--fonte-15);
+  font-weight: 500;
+}
+
+.busca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+}
+
+.busca:focus-within {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.lupa {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-16);
+}
+
+.buscaEntrada {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--fonte-15);
+}
+
+.buscaEntrada::placeholder {
+  color: var(--cor-texto-suave-2);
+}
+
+.contagem {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.contagem:empty {
+  display: none;
+}
+
+.resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pessoa {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  text-align: left;
+}
+
+.pessoa:hover {
+  background: var(--cor-fundo);
+}
+
+.pessoa[aria-pressed='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento-suave);
+}
+
+.pessoaTopo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pessoaNome {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.seloCliente,
+.seloLead {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.seloCliente {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.seloLead {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.pessoaLinha {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.pessoaHoje {
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.ninguem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.novoCliente {
+  padding: 7px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.opcao {
+  padding: 12px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.opcao[aria-checked='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.setor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setorRotulo {
+  font-size: var(--fonte-13);
+}
+
+.setores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Opção pequena (pílula), como as do painel "Antes de concluir". */
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.chip:disabled,
+.atalho:disabled,
+.opcao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chip[aria-checked='true'],
+.chip[data-ativa='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.aviso,
+.trava {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+}
+
+.avisoLink {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.principalBotao {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.principalBotao:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.motivo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.feito {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--cor-ok);
+  border-radius: var(--raio-14);
+  background: var(--cor-ok-suave);
+  font-size: var(--fonte-13);
+}
+
+.feitoTitulo {
+  color: var(--cor-ok);
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+/* Painel "Antes de concluir" */
+.lado {
+  display: flex;
+  flex: 0 0 340px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+}
+
+.ladoTitulo {
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+.ladoSub {
+  color: var(--cor-texto-suave);
+}
+
+.ladoSecao {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.decisao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ladoOpcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ladoLista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

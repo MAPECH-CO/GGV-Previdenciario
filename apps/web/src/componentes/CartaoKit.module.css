@@ -1,0 +1,86 @@
+/* Kit do benefício (GGVP-65). O cartão e o aviso vêm de Balcao.module.css (telas de passo). */
+.linha {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.linha strong {
+  color: var(--cor-texto);
+  font-weight: 600;
+}
+
+.documentos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.documento {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.documento:last-child {
+  border-bottom: 0;
+}
+
+.marca {
+  color: var(--cor-ok);
+  font-weight: 600;
+}
+
+.detalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.selo {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.assinam {
+  font-size: var(--fonte-13);
+}
+
+.condicoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+}
+
+.legenda {
+  padding: 0 4px;
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.ajuda {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.condicao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.condicao input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}

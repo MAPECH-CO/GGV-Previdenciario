@@ -19,6 +19,8 @@ Grupo 3, auditoria e configuração:
 6. **GGVP-103** · Cofre de senhas do gov.br · Atendimento e Jurídico.
 7. **GGVP-104** · Configuração do escritório · gestão.
 
+Também entra o CA14 da **GGVP-96** (os relatórios seguem o perfil), que saiu da Fundação em 07/10 e vem com o relatório de prazos e a exportação do histórico (tarefa 5.8).
+
 Um "Agora ok?" no fim de cada grupo.
 
 ## Travadas

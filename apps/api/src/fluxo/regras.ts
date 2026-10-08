@@ -1,6 +1,6 @@
 // Regras numéricas do roteiro de laudos (GGVP-25, G19): código puro com teste, nunca a IA. `hoje` entra como dado, e o
 // mesmo insumo dá sempre o mesmo resultado (CA8). Mudou a regra: suba a versão, e quem guardou o resultado guarda a antiga.
-import type { EntradaDii, EntradaIncapacidade, EntradaLoas24, EntradaPcd, Regra, ResultadoDaRegra } from '@ggv/contratos'
+import { MESES_LOAS, mesesEntre, type EntradaDii, type EntradaIncapacidade, type EntradaLoas24, type EntradaPcd, type Regra, type ResultadoDaRegra } from '@ggv/contratos'
 import { somarDias } from './prazo-inss.ts'
 
 export const REGRAS_DO_ROTEIRO = {
@@ -18,7 +18,6 @@ export const REGRAS_DO_ROTEIRO = {
   },
 } as const satisfies Record<Regra, { versao: number; fundamento: string }>
 
-export const MESES_LOAS = 24
 export const DIAS_INCAPACIDADE = 15
 export const JANELA_DIAS = 60
 export const CARENCIA = 12
@@ -30,11 +29,6 @@ type Linha = { rotulo: string; valor: string }
 const br = (iso: string) => iso.split('-').reverse().join('/')
 const diasEntre = (de: string, ate: string) => Math.round((Date.parse(ate) - Date.parse(de)) / 86_400_000)
 /** Meses completos de `de` até `ate`. */
-const mesesEntre = (de: string, ate: string) => {
-  const [a1, m1, d1] = de.split('-').map(Number)
-  const [a2, m2, d2] = ate.split('-').map(Number)
-  return (a2 - a1) * 12 + (m2 - m1) - (d2 < d1 ? 1 : 0)
-}
 /** Mês como número (ano × 12 + mês - 1), para contar competências. */
 const indiceDoMes = (ano: number, mes: number) => ano * 12 + mes - 1
 const competencia = (c: string) => indiceDoMes(Number(c.slice(3)), Number(c.slice(0, 2)))

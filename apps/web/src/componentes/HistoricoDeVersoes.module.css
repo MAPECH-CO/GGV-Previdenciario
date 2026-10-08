@@ -1,0 +1,126 @@
+/* Figma "Overlay · Histórico do processo" (59:11). */
+.janela {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  margin: auto;
+  padding: 20px 22px;
+  overflow-y: auto;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela:not([open]) {
+  display: none;
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titulo {
+  font-size: var(--fonte-17);
+  font-weight: 600;
+}
+
+.selo {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.sub,
+.quando {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.fechar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-22);
+  line-height: 1;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.campoTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.versoes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.versao {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  font-size: var(--fonte-13);
+}
+
+.versao > :not(.ponto) {
+  grid-column: 2;
+}
+
+.ponto {
+  grid-row: 1 / span 3;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--cor-acento);
+}
+
+.voltar {
+  justify-self: start;
+  padding: 4px 10px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.voltar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}

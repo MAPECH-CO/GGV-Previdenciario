@@ -1,0 +1,88 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.titulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Com fonte grande ou tela estreita, o campo desce para a linha de baixo em vez de espremer. */
+.linha > * {
+  min-width: 11rem;
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.salvar,
+.botao {
+  padding: 8px 14px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.salvar {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.salvar:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.botao {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.aviso {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  max-width: 700px;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+/* Mudar telefone ou e-mail: a verificação do cliente e o contrato novo (GGVP-111, CA1). */
+.verificacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.legenda {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

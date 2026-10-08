@@ -1,0 +1,114 @@
+/* O resto vem de Balcao.module.css (telas de passo) e Campo.module.css (os campos). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.perfil {
+  padding: 3px 8px;
+  border-radius: var(--raio-16);
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+}
+
+.texto {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.alerta {
+  padding: 10px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-alerta-2-suave);
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-13);
+}
+
+.vinculos,
+.anteriores {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vinculos li,
+.anteriores li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.periodo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.grupo {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legenda {
+  margin-bottom: 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.linha > * {
+  flex: 1 1 120px;
+}
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.item dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.item dd {
+  margin: 0;
+  text-align: right;
+}
+
+.conferencia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.conferencia input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}

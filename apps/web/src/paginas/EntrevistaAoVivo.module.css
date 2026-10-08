@@ -1,0 +1,337 @@
+/* Figma 73:560: barra do topo com o estado da gravação, transcrição à esquerda e a coluna da IA à direita. */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+}
+
+.sair {
+  color: var(--cor-acento);
+  font-size: var(--fonte-14);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  gap: 12px;
+}
+
+.item {
+  padding: 7px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.titulos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 280px;
+}
+
+.titulo {
+  font-size: var(--fonte-20);
+  font-weight: 600;
+}
+
+.nome {
+  color: var(--cor-acento);
+}
+
+.linhaDeEstado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-12);
+}
+
+.estado {
+  color: var(--cor-texto-suave);
+  font-weight: 500;
+}
+
+.estado[data-estado='gravando'],
+.estado[data-estado='falhou'] {
+  color: var(--cor-erro);
+}
+
+.chipAcento,
+.chipNeutro {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+}
+
+.chipAcento {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.chipNeutro {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.botoes,
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primario,
+.secundario {
+  align-self: flex-start;
+  padding: 10px 14px;
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.secundario {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.primario:disabled,
+.secundario:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pagina {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 32px 32px;
+}
+
+.principal {
+  display: flex;
+  flex: 1 1 520px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.lado {
+  display: flex;
+  flex: 0 1 440px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cartao,
+.lembrete,
+.falha {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+}
+
+.lembrete {
+  border-color: var(--cor-acento);
+}
+
+.falha {
+  border-color: var(--cor-erro);
+  background: var(--cor-erro-suave);
+}
+
+.cartaoTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.frase {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--cor-acento);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-14);
+}
+
+.conferencia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.conferencia input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}
+
+.alerta {
+  padding: 10px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-alerta-2-suave);
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-13);
+}
+
+.campos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.texto {
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font: inherit;
+}
+
+.vazio {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.falas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fala {
+  display: grid;
+  grid-template-columns: 50px 96px 1fr;
+  gap: 8px;
+  font-size: var(--fonte-13);
+}
+
+.quando {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-12);
+}
+
+.quem {
+  color: var(--cor-advogada);
+  font-weight: 600;
+}
+
+.quem[data-papel='advogada'] {
+  color: var(--cor-acento);
+}
+
+.ia {
+  padding: 10px 14px;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-12);
+}
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: 116px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  font-size: var(--fonte-13);
+}
+
+.linha dt {
+  color: var(--cor-texto-suave);
+}
+
+.linha dd {
+  margin: 0;
+}
+
+.selo {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+  font-size: var(--fonte-11);
+}
+
+.selo[data-situacao='pedir'] {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.selo[data-situacao='cofre'] {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fonte-13);
+}
+
+.lista li[data-feito='true'] {
+  color: var(--cor-ok);
+}
+
+@media (max-width: 720px) {
+  .topo,
+  .pagina {
+    padding-inline: 16px;
+  }
+
+  .fala {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .fala > :last-child {
+    grid-column: 1 / -1;
+  }
+}

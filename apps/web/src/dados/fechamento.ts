@@ -1,0 +1,234 @@
+// EXEMPLO. Servidor de exemplo do fechamento depois da entrevista (GGVP-60), sobre o mesmo banco de servidor.ts. Ligar no
+// servidor: trocar o corpo de cada função por fetch no endpoint da spec ggvp-60. Na junção com o contrato (GGVP-7),
+// clienteFechou passa a ser o fecharContrato, que já cria o processo e o kit.
+import { dataParaIso, formatarTelefone, normalizarData } from '../campos.ts'
+import { dataCurta, hojeIso } from '../regras/datas.ts'
+import { calculoPendente, pontosFalados, tempoFalado } from '../regras/calculo.ts'
+import {
+  TAMANHO_DO_DETALHE,
+  beneficioDoFechamento,
+  entrevistaRealizada,
+  motivoParadoDoFechamento,
+  podeRegistrarOMotivo,
+  precisaRegistrarFechamento,
+  recontatoDevido,
+  recontatoEmAberto,
+} from '../regras/fechamento.ts'
+import { demandaAberta } from '../regras/novaDemanda.ts'
+import { MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
+import { fecharContrato } from './contrato.ts'
+import { QUEM, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa } from './tipos.ts'
+
+const QUEM_NO_PAPEL: Record<PapelNoFechamento, string> = {
+  atendimento: QUEM,
+  'atendimento-senior': 'Você (Atendimento sênior)',
+  'advogada-atendimento': 'Você (Advogada do atendimento)',
+}
+
+/** A tela do cálculo de tempo e pontos (D1.13, GGVP-57, grupo benefício). Até ela existir, cai em "ainda não construída". */
+export const rotaDoCalculo = (ficha: Ficha) => {
+  const entrevista = entrevistaRealizada(ficha)
+  return entrevista ? `/entrevista/${entrevista.id}/calculo` : `/clientes/${ficha.id}`
+}
+
+/** O último cálculo de tempo e pontos (GGVP-57), em uma linha, para o recontato. */
+export function ultimoCalculo(ficha: Ficha): string | undefined {
+  const c = ficha.calculos?.at(-1)
+  if (!c) return undefined
+  const quando = c.podeAposentar ? 'pode se aposentar' : `ainda não pode${c.dataPrevista ? `, previsto para ${c.dataPrevista.split('-').reverse().join('/')}` : ''}`
+  return `${tempoFalado(c.tempo)} · ${pontosFalados(c.pontos)} pontos · ${quando}`
+}
+
+function acharFicha(banco: Banco, fichaId: string): Ficha {
+  const ficha = banco.fichas.find((f) => f.id === fichaId)
+  if (!ficha) throw new Error('Ficha não encontrada')
+  return ficha
+}
+
+/**
+ * O cliente fechou: chamada pela decisão "Fechou com o escritório?" (GGVP-60) e pela nova demanda (GGVP-124). É o
+ * fecharContrato do contrato (GGVP-65): o lead vira cliente, o processo nasce com número novo e o kit do benefício, e o
+ * Atendimento recebe "Preparar contrato".
+ */
+export async function clienteFechou(fichaId: string, beneficio: string): Promise<{ ficha: Ficha }> {
+  const { ficha } = await fecharContrato(fichaId, beneficio)
+  return { ficha }
+}
+
+export type DadosDoFechamento = { ficha: Ficha; entrevista?: Agendamento }
+
+/** GET /api/fichas/:id/fechamento */
+export async function obterFechamento(fichaId: string): Promise<DadosDoFechamento | null> {
+  const ficha = ler().fichas.find((f) => f.id === fichaId)
+  return ficha ? { ficha, entrevista: entrevistaRealizada(ficha) } : null
+}
+
+function marcarRecontato(banco: Banco, ficha: Ficha, dataIso: string): string {
+  banco.seq += 1
+  const id = `recontato-${ficha.id}-${banco.seq}`
+  ficha.agendamentos.push({ id, data: dataIso, hora: '09:00', oQue: 'Recontatar lead', com: QUEM, tipo: 'telefone', duracao: 15 })
+  return id
+}
+
+/** O lead arquivado sai das filas ativas: as tarefas abertas dele se encerram (CA7). */
+function arquivar(banco: Banco, ficha: Ficha) {
+  for (const t of banco.tarefas) if (t.cliente?.id === ficha.id && !t.concluida) t.concluida = true
+}
+
+const dataIso = (data: string) => dataParaIso(normalizarData(data))
+
+/**
+ * POST /api/fichas/:id/fechamento. "Fechou com o escritório?" é obrigatória (CA5). Sim: vira cliente e segue para o kit
+ * (D1.15). Não: o motivo da lista é obrigatório (CA1, CA6, G16), com o detalhe opcional; a recusa do escritório só pelo
+ * Atendimento sênior ou pela advogada do atendimento (CA11). Vale recontatar: a data vai à agenda e a tarefa nasce nesse
+ * dia (CA2, CA8). Não vale: o lead é arquivado com o motivo e sai das filas ativas (CA7). Fechou: chama o clienteFechou. O cliente
+ * responde pela nova demanda (GGVP-124): fechou, segue o mesmo caminho; não fechou, a demanda se encerra com o motivo.
+ */
+export async function registrarFechamento(fichaId: string, envio: EnvioDoFechamento): Promise<{ ficha: Ficha }> {
+  await esperar()
+  const banco = ler()
+  const ficha = acharFicha(banco, fichaId)
+  const hoje = hojeIso(agora())
+  const quando = agora().toISOString()
+  // O cliente responde pela nova demanda (GGVP-124): não fechou, a demanda se encerra com o motivo, sem recontato.
+  const demanda = ficha.situacao === 'cliente' ? demandaAberta(ficha) : undefined
+  if (ficha.situacao === 'cliente' && !demanda) throw new Error('Não há nova demanda aberta')
+  if (demanda && !envio.fechou && envio.recontatar) throw new Error('A nova demanda não tem recontato')
+  const parado = motivoParadoDoFechamento(
+    envio.fechou
+      ? { fechou: true, motivo: '', detalhe: '', papel: 'atendimento', recontatar: false, data: '', beneficio: beneficioDoFechamento(ficha), calculoPendente: !demanda && calculoPendente(ficha) }
+      : {
+          fechou: false,
+          motivo: MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === envio.motivo) ? envio.motivo : '',
+          detalhe: envio.detalhe ?? '',
+          papel: envio.papel,
+          recontatar: envio.recontatar !== null,
+          data: envio.recontatar?.data ?? '',
+          beneficio: beneficioDoFechamento(ficha),
+        },
+    hoje,
+  )
+  if (parado) throw new Error(parado)
+  if (envio.fechou) {
+    if (demanda) demanda.situacao = 'fechou'
+    else ficha.fechamento = { situacao: 'fechou', papel: 'atendimento', quem: QUEM, quando }
+    gravar(banco)
+    return clienteFechou(fichaId, beneficioDoFechamento(ficha)!)
+  } else {
+    const detalhe = envio.detalhe?.trim() || undefined
+    const quem = QUEM_NO_PAPEL[envio.papel]
+    const motivo = nomeMotivo(envio.motivo)
+    if (demanda) {
+      Object.assign(demanda, { situacao: 'nao-fechou', motivo: envio.motivo, ...(detalhe && { detalhe }) })
+      ficha.historico.push(evento(`Nova demanda não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Segue cliente nos outros processos (G16)`, quem))
+    } else if (envio.recontatar) {
+      const em = dataIso(envio.recontatar.data)!
+      ficha.fechamento = {
+        situacao: 'recontatar',
+        motivo: envio.motivo,
+        ...(detalhe && { detalhe }),
+        ...(envio.recontatar.espera && { espera: envio.recontatar.espera }),
+        recontatarEm: em,
+        recontatoId: marcarRecontato(banco, ficha, em),
+        papel: envio.papel,
+        quem,
+        quando,
+      }
+      ficha.historico.push(evento(`Não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Recontatar em ${dataCurta(em, hoje)}`, quem))
+    } else {
+      ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel: envio.papel, quem, quando }
+      arquivar(banco, ficha)
+      ficha.historico.push(evento(`Não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Lead arquivado com o motivo (G16)`, quem))
+    }
+  }
+  gravar(banco)
+  return { ficha }
+}
+
+/**
+ * POST /api/fichas/:id/recontato. O resultado do recontato: o caso volta ao cálculo refeito (D1.13), ganha uma nova data ou é
+ * arquivado com o motivo (CA10).
+ */
+export async function registrarRecontato(fichaId: string, r: ResultadoDoRecontato): Promise<{ ficha: Ficha }> {
+  await esperar()
+  const banco = ler()
+  const ficha = acharFicha(banco, fichaId)
+  const f = ficha.fechamento
+  if (f?.situacao !== 'recontatar') throw new Error('Não há recontato marcado')
+  const hoje = hojeIso(agora())
+  const quando = agora().toISOString()
+  if (r.resultado === 'nova-data') {
+    const em = dataIso(r.data)
+    if (!em || em < hoje) throw new Error('Data do recontato inválida')
+    const feito = recontatoEmAberto(ficha)
+    if (feito) feito.estado = 'remarcado'
+    ficha.fechamento = { ...f, recontatarEm: em, ...(r.espera && { espera: r.espera }), recontatoId: marcarRecontato(banco, ficha, em), quem: QUEM, quando }
+    ficha.contatos.push({ data: hoje, canal: 'Recontato', texto: `Ainda não quer seguir; novo recontato em ${dataCurta(em, hoje)}.` })
+    ficha.historico.push(evento(`Recontatou: nova data em ${dataCurta(em, hoje)}`))
+  } else {
+    const feito = recontatoEmAberto(ficha)
+    if (feito) feito.estado = 'realizado'
+    if (r.resultado === 'calculo') {
+      ficha.fechamento = { ...f, situacao: 'recalcular', quem: QUEM, quando }
+      ficha.contatos.push({ data: hoje, canal: 'Recontato', texto: 'Quer seguir: o caso volta ao cálculo de tempo e pontos.' })
+      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos (D1.13)'))
+    } else {
+      const detalhe = r.detalhe?.trim() || undefined
+      const valido = MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === r.motivo) && podeRegistrarOMotivo(r.motivo, r.papel) && (detalhe?.length ?? 0) <= TAMANHO_DO_DETALHE
+      if (!valido) throw new Error('Motivo inválido')
+      const quem = QUEM_NO_PAPEL[r.papel]
+      ficha.fechamento = { situacao: 'arquivado', motivo: r.motivo, ...(detalhe && { detalhe }), papel: r.papel, quem, quando }
+      arquivar(banco, ficha)
+      ficha.contatos.push({ data: hoje, canal: 'Recontato', texto: `Não vai seguir: ${nomeMotivo(r.motivo)}.` })
+      ficha.historico.push(evento(`Recontatou e arquivou o lead: ${nomeMotivo(r.motivo)}${detalhe ? ` (${detalhe})` : ''} (G16)`, quem))
+    }
+  }
+  gravar(banco)
+  return { ficha }
+}
+
+/** As tarefas do Atendimento: "Registrar fechamento" depois da entrevista e "Recontatar lead" na data (CA5, CA8, CA9). */
+export function tarefasDeFechamento(): Tarefa[] {
+  const hoje = hojeIso(agora())
+  return ler().fichas.flatMap((ficha): Tarefa[] => {
+    const cliente = { id: ficha.id, nome: ficha.nome }
+    if (precisaRegistrarFechamento(ficha)) {
+      const entrevista = entrevistaRealizada(ficha)!
+      return [
+        {
+          id: `fechamento-${ficha.id}`,
+          codigo: 'D1.14',
+          cliente,
+          acao: 'Registrar fechamento',
+          detalhe: [
+            nomeBeneficio(beneficioDoFechamento(ficha)) || 'benefício a definir',
+            `entrevista em ${dataCurta(entrevista.data, hoje)}`,
+            ...(ficha.fechamento?.situacao === 'recalcular' ? ['voltou do recontato ao cálculo'] : []),
+            ...(ficha.situacao === 'cliente' ? ['nova demanda de quem já é cliente'] : []),
+          ].join(' · '),
+          prazo: 'hoje',
+          href: `/clientes/${ficha.id}/fechamento`,
+        },
+      ]
+    }
+    const { devido, atrasado } = recontatoDevido(ficha, hoje)
+    if (!devido) return []
+    return [
+      {
+        id: `recontato-${ficha.id}`,
+        codigo: 'D1.14',
+        cliente,
+        acao: 'Recontatar lead',
+        detalhe: [
+          `motivo: ${nomeMotivo(ficha.fechamento?.motivo).toLowerCase()}`,
+          `último cálculo: ${ultimoCalculo(ficha) ?? 'nenhum registrado'}`,
+          ficha.telefone ? formatarTelefone(ficha.telefone) : 'sem telefone',
+        ].join(' · '),
+        prazo: atrasado ? `atrasado desde ${dataCurta(ficha.fechamento!.recontatarEm!, hoje)}` : 'hoje',
+        urgente: atrasado,
+        href: `/clientes/${ficha.id}/recontato`,
+      },
+    ]
+  })
+}

@@ -1,0 +1,65 @@
+/* Mensagem ao cliente (GGVP-102): o que a janela do convite (ConviteChatwoot) não tem. */
+.janela {
+  width: min(600px, calc(100vw - 32px));
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.linha > * {
+  flex: 1 1 220px;
+}
+
+.lista {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-13);
+}
+
+.ia {
+  padding: 8px 10px;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-12);
+}
+
+.ia span {
+  color: var(--cor-acento);
+}
+
+.avisos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--raio-8);
+  background: var(--cor-alerta-2-suave);
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-12);
+  list-style: none;
+}
+
+.bloqueio {
+  padding: 8px 10px;
+  border-radius: var(--raio-8);
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}
+
+.ok {
+  padding: 8px 10px;
+  border-radius: var(--raio-8);
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+  font-size: var(--fonte-12);
+}

@@ -1,20 +1,20 @@
 # D3a · Depois do protocolo: vigília e exigências do juiz (revisão BPMN)
 
 **Frame do Miro:** [D3a · Depois do protocolo: vigília e exigências do juiz · revisão BPMN (para conferência)](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684977768761) (id `3458764684977768761`).
-**Imagem exportada:** [`img/D3a.jpg`](img/D3a.jpg) (mesma que abre em tela cheia no protótipo).
-**Estado:** revisão BPMN refeita com o PO em setembro de 2026. É a versão que vale (a da direita).
+**Imagem exportada:** [`img/D3a.jpg`](img/D3a.jpg). É o export de 28/09/2026: não mostra o ajuste de 29/09 e fica desatualizada até novo export do Miro. O protótipo do Figma já abre em tela cheia o desenho de 29/09, numa imagem gerada do conteúdo do board (ver `docs/prototipo/figma.md`).
+**Estado:** revisão BPMN refeita com o PO em setembro de 2026 e ajustada no Miro em 29/09/2026 (raia externa CLIENTE). É a versão que vale (a da direita).
 **Início:** Petição protocolada (vem de D3). **Fim:** decisão de mérito → ▶ SEGUE PARA D3b · desfecho do mérito; a manifestação sobre exigência/laudo volta o processo para a vigília (ciclo).
 
-Resumo do board: "O sistema vigia o processo, a IA lê cada publicação, o advogado analisa a exigência e cria a tarefa do setor responsável, com prazo. Cada setor acionado fica no próprio laço até cumprir (perícia pedida pelo juiz vai para o DP); depois o Jurídico manifesta e o processo volta para a vigília."
+Resumo do board: "O sistema vigia o processo, a IA lê cada publicação, o advogado analisa a exigência e cria a tarefa do setor responsável, com prazo. Cada setor acionado fica no próprio laço até cumprir (perícia pedida pelo juiz vai para o DP); depois o Jurídico manifesta e o processo volta para a vigília. Ajuste de 29/09/2026: raia externa CLIENTE; a resposta do cliente é uma espera dentro dos laços."
 
-Os textos estão transcritos literalmente do frame. Cada passo aponta para o código do `README.md` (`D3a.01`…`D3a.04`).
+Os textos estão transcritos literalmente do frame. Cada passo aponta para o código do `README.md` (`D3a.01`…`D3a.04`). Os cartões externos não têm código no Miro; os códigos `D3a.E1` a `D3a.E3` citados abaixo são a **proposta** de 29/09/2026, a confirmar com o PO.
 
 ## Como ler (legenda do board)
 
 - **[PESSOA]** caixa azul; **[IA]** caixa verde; **[SISTEMA]** caixa cinza; **[SCANNER]** caixa laranja.
 - Losango amarelo: pergunta — `✕` exclusiva, `◯` inclusiva, `✚` paralela.
 - Pílula cinza arredondada: vem de / segue para outro diagrama; caixa pontilhada cinza: entrou em outro diagrama (DP).
-- Linha cheia = trabalho segue; tracejada cinza = mensagem com o INSS/Justiça; pontilhada roxa = RAG; tracejada fina = liga comentário ao passo.
+- Linha cheia = trabalho segue; tracejada cinza = mensagem com quem está fora do escritório (Justiça ou cliente); pontilhada roxa = RAG; tracejada fina = liga comentário ao passo.
 
 ## Raias
 
@@ -24,6 +24,7 @@ Os textos estão transcritos literalmente do frame. Cada passo aponta para o có
 - **SISTEMA · REGRAS** — vigia o processo por API (AASP + DJEN, casa pelo CNJ).
 - **IA · LLM** — lê a publicação no contexto do processo e sugere as tarefas.
 - **JUSTIÇA** (raia externa, tracejada) — o juízo publica no diário e recebe a manifestação.
+- **CLIENTE** (raia externa, tracejada; nova em 29/09) — responde ou entrega o que a exigência pede. O passo externo **[EXTERNO]** é uma espera: o laço só segue quando o cliente responde ou entrega.
 
 ## Passos
 
@@ -31,15 +32,16 @@ Em ordem de fluxo. A raia aparece entre parênteses.
 
 **Evento inicial:** Petição protocolada (vem de D3), na raia SISTEMA · REGRAS.
 
-- **D3a.01 [SISTEMA]/[IA] Vigiar e ler a publicação** — **Vigiar por API** [SISTEMA] (AASP + DJEN, casa pelo CNJ; o juízo publica no diário) → **Ler a publicação** [IA] no contexto do processo. Decisão "O que saiu?".
+- **D3a.01 [SISTEMA]/[IA] Vigiar e ler a publicação** — **Vigiar por API** [SISTEMA] (AASP + DJEN, casa pelo CNJ; **[EXTERNO]** o juízo publica no diário, JUSTIÇA, proposta `D3a.E1`) → **Ler a publicação** [IA] no contexto do processo. Decisão "O que saiu?".
 - **D3a.02 [PESSOA] Analisar a exigência e criar a tarefa** (JURÍDICO) — o advogado analisa a exigência ou o despacho e cria a tarefa do setor responsável, com prazo na agenda. Decisão "Precisa cumprir algo?".
 - **D3a.03 [PESSOA] Laços dos setores** — gateway inclusivo `◯` "Quem precisa cumprir?" abre um ou mais laços em paralelo, cada setor no seu ritmo:
-    - **Atendimento:** **Atendimento: cumprir a exigência** — contatar o cliente pela informação → "Conseguiu a informação?": se sim, **Subir no card** (Atendimento registra e dá o OK); se não, tenta contato de novo.
+    - **Atendimento:** **Atendimento: cumprir a exigência** — contatar o cliente pela informação → "Conseguiu a informação?" (espera a mensagem "responde ao Atendimento" do cliente): se sim, **Subir no card** (Atendimento registra e dá o OK); se não, tenta contato de novo.
     - **Jurídico:** **Jurídico: cumprir a exigência** — tarefa definida pela advogada → "Tarefa cumprida?": se sim, **Subir no card** (Jurídico cumpriu e dá o OK); se não, continua na tarefa.
-    - **Documentação:** **Documentação: cumprir a exigência** — buscar os documentos pedidos → "Conseguiu o documento?": se sim, **Subir no card** (Documentação anexa e dá o OK); se não, cobra de novo.
+    - **Documentação:** **Documentação: cumprir a exigência** — buscar os documentos pedidos → "Conseguiu o documento?" (espera a mensagem "entrega o documento" do cliente): se sim, **Subir no card** (Documentação anexa e dá o OK); se não, cobra de novo.
+    - **Cliente:** **[EXTERNO] Cliente responde ou entrega — a informação ou o documento que a exigência pede** (CLIENTE; proposta `D3a.E2`) — manda "responde ao Atendimento" para "Conseguiu a informação?" e "entrega o documento" para "Conseguiu o documento?".
     - **Perícia:** **⤷ ENTROU NO DIAGRAMA DE PERÍCIA (DP)** — perícia ou avaliação social pedida pelo juiz; o resultado volta como card.
     - Os laços convergem no gateway inclusivo `◯` "Espera os setores acionados".
-- **D3a.04 [PESSOA] Manifestar e protocolar** (JURÍDICO) — sobre a exigência ou o laudo; o juízo recebe a manifestação. Depois, o processo volta para a vigília (D3a.01): a próxima publicação recomeça o ciclo.
+- **D3a.04 [PESSOA] Manifestar e protocolar** (JURÍDICO) — sobre a exigência ou o laudo; **[EXTERNO]** o juízo recebe a manifestação (JUSTIÇA; proposta `D3a.E3`). Depois, o processo volta para a vigília (D3a.01): a próxima publicação recomeça o ciclo.
 
 ## Decisões (gateways)
 
@@ -67,6 +69,8 @@ Em ordem de fluxo. A raia aparece entre parênteses.
 | Petição protocolada (D3) | D3 · Protocolar no tribunal | Evento inicial de D3a |
 | publicação (tracejado) | Juízo publica no diário (JUSTIÇA) | D3a.01 Vigiar por API |
 | ⤷ ENTROU NO DIAGRAMA DE PERÍCIA (DP) | D3a.03 laço de perícia | DP · Perícia padrão (resultado volta no card) |
+| responde ao Atendimento (tracejado) | Cliente responde ou entrega (CLIENTE) | "Conseguiu a informação?" |
+| entrega o documento (tracejado) | Cliente responde ou entrega (CLIENTE) | "Conseguiu o documento?" |
 | manifestação (tracejado) | D3a.04 Manifestar e protocolar | Juízo recebe a manifestação (JUSTIÇA) |
 | ▶ SEGUE PARA D3b · desfecho do mérito | "O que saiu?" (Decisão de mérito) | D3b · Desfecho do mérito |
 
@@ -93,3 +97,4 @@ Referência em `docs/requisitos/portoes-governanca.md`.
 
 - Após **Manifestar e protocolar** (e "Juízo recebe a manifestação"), o retorno à vigília é descrito só pela dica, sem seta sólida no frame. **A validar no board.**
 - Limites dos laços de Atendimento, Jurídico e Documentação: "a definir" (D3a.03 / G15).
+- Códigos dos cartões externos: a proposta `D3a.E1` a `D3a.E3` **não** foi gravada no Miro; aguarda o Lucas.

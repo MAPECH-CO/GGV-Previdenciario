@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EntradaDii, EntradaIncapacidade, EntradaLoas24, TentativasBloqueadas, travaDoParecer } from './governanca.ts'
+import { EntradaDii, EntradaIncapacidade, EntradaLoas24, MESES_LOAS, TentativasBloqueadas, mesesEntre, travaDoParecer } from './governanca.ts'
 
 const erros = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues.map((i) => i.message)
 
@@ -8,6 +8,14 @@ describe('TentativasBloqueadas (GGVP-109 CA9)', () => {
     const t = { quando: '2026-10-06T12:00:00.000Z', quem: 'Gabi', perfil: 'advogada', casoId: null, cliente: null, portao: 'G8', descricao: 'Aviso' }
     expect(TentativasBloqueadas.parse({ tentativas: [t] }).tentativas[0].portao).toBe('G8')
     expect(TentativasBloqueadas.safeParse({ tentativas: [{ ...t, portao: 'G99' }] }).success).toBe(false)
+  })
+})
+
+describe('meses do LOAS (G19): a mesma conta na tela e no servidor', () => {
+  it('o mês só conta quando o dia chega; 24 meses é o mínimo', () => {
+    expect(mesesEntre('2025-01', '2026-12')).toBe(23)
+    expect(mesesEntre('2025-01-15', '2027-01-14')).toBe(23)
+    expect(mesesEntre('2025-01-15', '2027-01-15')).toBe(MESES_LOAS)
   })
 })
 
