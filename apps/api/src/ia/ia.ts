@@ -167,6 +167,8 @@ export const FINALIDADES = {
       '{"cobre": [{"item": "id de um item obrigatório", "pagina": número da página ou 1, "trecho": "frase curta copiada do documento que mostra o item"}], "contradiz": [{"item": "id de uma contradição", "pagina": número, "trecho": "frase copiada"}], "datas": {"inicio": "aaaa-mm ou aaaa-mm-dd", "cessacao": "aaaa-mm ou aaaa-mm-dd"} ou null}.',
       'Só marque o item que o documento aborda de fato; na dúvida, deixe de fora. O trecho é cópia do documento, sem código de doença (CID).',
       'Em "datas", copie a data de início do quadro e a de cessação prevista que estiverem escritas; sem elas, null. Não calcule nada. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
   /**
    * GGVP-139 CA1: o comprovante do agendamento do INSS, lido pela Mistral, vira data, hora, local e modalidade para o
    * Jurídico administrativo conferir antes de registrar. Não leva dado de saúde. O perito nunca sai do comprovante.
