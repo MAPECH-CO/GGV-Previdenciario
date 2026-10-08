@@ -13,14 +13,14 @@ sincronização**. Os quatro trabalham com a mesma regra sem ninguém copiar nad
 entra por pull request como qualquer outra alteração.
 
 ## Pré-requisitos
-- Acesso de escrita ao repositório `femezher/GGV-Previdenciario`.
+- Acesso de escrita ao repositório `MAPECH-CO/GGV-Previdenciario`.
 - Conta própria do Claude com acesso ao Claude Code.
 - `git`, Node 22 ou mais novo, e o `gh`, que o `/epico` usa para abrir o pull request.
 
 ## Passo a passo
 Já tem o clone: `git switch main && git pull`. Não tem:
 ```
-git clone https://github.com/femezher/GGV-Previdenciario.git
+git clone https://github.com/MAPECH-CO/GGV-Previdenciario.git
 cd GGV-Previdenciario
 ```
 Depois, uma vez por máquina, o kit (`kit/LEIA-ME.md`):
