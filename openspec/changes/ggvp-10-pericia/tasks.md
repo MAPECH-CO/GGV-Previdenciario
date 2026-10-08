@@ -73,3 +73,17 @@
 - [x] 8.3 Playwright no `e2e/pericia-resultado.e2e.ts`: o laudo atualiza o perfil (CA1, CA3). Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
 - [ ] 8.4 Ligar no servidor: a extração pela IA de verdade e o acervo (RAG) com o perfil; a GGVP-59 lê dele. **Fica aberta nesta história.**
 - [x] 8.5 Rodar typecheck, lint, testes e Playwright; colar a saída; gravar o teste em vídeo do grupo; perguntar "Agora ok?" (no fim do grupo 2).
+
+## GGVP-137 · Ligar no servidor as telas da Perícia
+
+- [x] 9.1 As regras e as mudanças da perícia saem do servidor de exemplo para `src/regras/periciaNoCaso.ts`, puras e com a hora vinda de fora; o servidor de exemplo e o de verdade usam as mesmas. Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [x] 9.2 Contratos em `packages/contratos/src/pericia.ts`; matriz v13 (`pericia.reunir_documentos`, `pericia.decidir_no_limite`, `pericia.conferir_resultado`); colunas `pericia.documento` e `perito.perfil`.
+- [x] 9.3 Rotas em `apps/api/src/rotas/pericia.ts`, com o perfil da sessão, os portões (G20, G11, dado de saúde) e o histórico; testes em `pericia.test.ts` (CA1 a CA6). Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/pericia.test.ts`.
+- [x] 9.4 Telas no modo misto, depois do pedido #29: as funções de `dados/pericia.ts` chamam a API quando o caso é do servidor (`doServidor`), a cópia recebe a perícia e as Centrais, as tarefas do servidor (`sincronizarPericias`); o PDF sobe em multipart. Testes em `src/dados/periciaLigada.test.ts` e Playwright `e2e/pericia-servidor.e2e.ts`, com login, da perícia marcada ao resultado (CA7).
+- [ ] 9.5 O servidor de exemplo da Perícia sai do código; a semente fica só para os testes (CA8). Hoje o caminho de exemplo só atende os casos da semente ("-exemplo"), que os testes de tela e os Playwright da Perícia usam; tirá-lo pede refazer esses Playwright sobre casos do servidor. A migração (0016) e a matriz (v14) já estão sobre a main de 08/10.
+
+## GGVP-139 · IA de verdade na Perícia
+
+- [x] 10.1 Finalidades `ler_comprovante_pericia`, `orientacao_pericia` e `resumo_laudo_pericia` em `apps/api/src/ia/ia.ts`; contratos em `packages/contratos/src/pericia.ts`.
+- [x] 10.2 Rotas: a leitura do comprovante e do laudo pelo PDF (Mistral e OpenAI), a sugestão da orientação (com o preparo em segundo plano) e o resultado com a leitura conferida; os padrões do perito sem dado do cliente (`anonimizar`). Testes com `fetch` falso em `apps/api/src/rotas/pericia.test.ts` (CA1 a CA7).
+- [x] 10.3 Telas: marcar, orientar e resultado mostram a sugestão com o selo, as fontes e o alerta (`componentes/SugestaoDaPericia.tsx`); sem IA, o motivo. Testes em `src/paginas/PericiaComIa.test.tsx`.

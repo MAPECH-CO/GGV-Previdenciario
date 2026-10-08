@@ -234,7 +234,7 @@ Nenhuma tela nova. As fontes aparecem onde já aparecem.
 
 ### Risks / Trade-offs
 
-- **Número da migração:** é o mesmo da migração do PR da Perícia (#42), e quem mesclar depois renumera.
+- **Número da migração:** a Perícia entrou antes na `main` com a 0018 (08/10), e a migração do acervo foi renumerada para 0019 (`0019_base_de_conhecimento`).
 - **Extensão no Supabase:** se o usuário do banco não puder criar a extensão, a migração falha e o container não sobe; o Coolify mantém a versão anterior. Ligar a extensão no painel do Supabase antes do deploy.
 - **Custo:** só o que é novo ganha vetor, porque o hash evita recalcular. A consulta também gasta uma chamada de embeddings.
 - **Leitura das fontes:** a cada rodada, alimentar lê as fontes inteiras e compara pelo hash. Com milhares de itens, guardar a última data lida por fonte.

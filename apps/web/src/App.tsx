@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
 import { sincronizarRecepcao } from './dados/servidor.ts'
+import { sincronizarPericias } from './dados/pericia.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
@@ -112,6 +113,8 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
       // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
       // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
       if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
+      // GGVP-137: e as perícias, com as tarefas da Central de quem está na sessão.
+      if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarPericias(pode(r.dados.perfilAtivo, 'dado_saude.ver_detalhe')).catch(() => undefined)
       setUsuario(r.dados)
     })
   }, [])

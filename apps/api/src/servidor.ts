@@ -25,6 +25,7 @@ import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
+import { registrarRotasPericia } from './rotas/pericia.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
@@ -130,6 +131,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasConversa(app, { banco, agora })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
+    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasImportacao(app, { banco, agora })
     registrarRotasFeriados(app, { banco, agora })
     alimentar = async () => {
