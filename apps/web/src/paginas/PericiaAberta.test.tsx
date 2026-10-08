@@ -71,7 +71,7 @@ describe('GGVP-49 · Central do Jurídico administrativo (Figma 2051:173 e 2107:
     fireEvent.click(screen.getByRole('button', { name: 'Perícias para marcar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     // GGVP-53: o Pedro já foi marcado na semente; só a Maria espera.
-    expect(screen.getByText('Uma perícia espera você. Marque no portal do INSS e suba o comprovante: eu leio data, hora, local e tipo.')).toBeTruthy()
+    expect(await screen.findByText('Uma perícia espera você. Marque no portal do INSS e suba o comprovante: eu leio data, hora, local e tipo.')).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
     expect(itens.map((i) => i.textContent)).toEqual(['Maria Exemplo · Marcar perícia ›o INSS já liberou o agendamento · hoje'])
   })

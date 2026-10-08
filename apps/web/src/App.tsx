@@ -83,6 +83,7 @@ import { ComparecimentoPericia } from './paginas/ComparecimentoPericia.tsx'
 import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
 import { Conversa } from './paginas/Conversa.tsx'
 import { ConferirConversa } from './paginas/ConferirConversa.tsx'
+import { PaginaDoCaso } from './paginas/PaginaDoCaso.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -262,5 +263,8 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (conversa) return <Conversa conversaId={decodeURIComponent(conversa[1])} simular={parametros.get('simular') ?? undefined} />
   const conferirConversa = /^\/conversas\/([^/]+)\/conferir$/.exec(caminho)
   if (conferirConversa) return <ConferirConversa conversaId={decodeURIComponent(conferirConversa[1])} />
+  // Experiência por perfil (épico GGVP-5): o caso numa linha só (GGVP-86).
+  const caso = /^\/casos\/([^/]+)$/.exec(caminho)
+  if (caso) return <PaginaDoCaso processoId={decodeURIComponent(caso[1])} />
   return <NaoConstruida caminho={caminho} />
 }

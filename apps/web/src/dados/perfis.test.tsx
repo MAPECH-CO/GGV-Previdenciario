@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, renderHook, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import { usePerfil } from './perfis.ts'
 import { SessaoContexto } from '../sessao.ts'
@@ -40,5 +41,14 @@ describe('usePerfil: quem está agindo nas telas vem da sessão (GGVP-96)', () =
   it('sem sessão, a tela fica como foi desenhada: a função do padrão', () => {
     render(<Quem padrao="Documentação" />)
     expect(screen.getByText('documentacao · Documentação · Jéssica (exemplo)')).toBeTruthy()
+  })
+
+  it('o mesmo objeto enquanto a sessão não muda: a tela que põe o perfil num efeito não entra em laço', () => {
+    const usuario = usuarioDeTeste('advogada')
+    const comSessao = ({ children }: { children: ReactNode }) => <SessaoContexto value={usuario}>{children}</SessaoContexto>
+    const { result, rerender } = renderHook(() => usePerfil('Advogada'), { wrapper: comSessao })
+    const primeiro = result.current
+    rerender()
+    expect(result.current).toBe(primeiro)
   })
 })

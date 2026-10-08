@@ -1,10 +1,16 @@
 import { useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
-import { registrarRecusaDoChat } from '../dados/pericia.ts'
+import { recusaImediata } from '../dados/chat.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { recusaDoChat } from '../regras/parecer.ts'
-import { recusaDoChatNaPericia } from '../regras/pericia.ts'
 import styles from './ChatIA.module.css'
+
+/** O reconhecimento de fala do navegador (Chrome e Edge). Sem ele, "Gravar áudio" avisa e a pessoa digita. */
+type Reconhecimento = { lang: string; interimResults: boolean; start(): void; stop(): void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null }
+function novoReconhecimento(): Reconhecimento | null {
+  const w = window as unknown as { SpeechRecognition?: new () => Reconhecimento; webkitSpeechRecognition?: new () => Reconhecimento }
+  const Classe = w.SpeechRecognition ?? w.webkitSpeechRecognition
+  return Classe ? new Classe() : null
+}
 
 type Props = {
   /** Exemplo que aparece no campo vazio. */
@@ -13,8 +19,8 @@ type Props = {
   sugestoes: string[]
   /** Sem ligação com o servidor ainda (GGVP-82). Sem isto, ou com `false` (não tratou), o envio só avisa e mantém o texto. */
   onEnviar?: (texto: string) => boolean | void
-  /** Mensagem com arquivo anexado (GGVP-17, "Subir laudo novo"). Sem isto, "Anexar arquivo" fica indisponível. */
-  onAnexo?: (texto: string, anexo: File) => void
+  /** Mensagem com arquivos anexados (GGVP-17 e GGVP-82, CA12). Sem isto, "Anexar arquivo" fica indisponível. */
+  onAnexo?: (texto: string, anexos: File[]) => void
   /** A conversa, acima do campo. */
   children?: ReactNode
 }
@@ -24,34 +30,57 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
   const idCampo = useId()
   const campo = useRef<HTMLTextAreaElement>(null)
   const [texto, setTexto] = useState('')
-  const [anexo, setAnexo] = useState<File | null>(null)
+  const [anexos, setAnexos] = useState<File[]>([])
   const [aviso, setAviso] = useState('')
+  const [gravando, setGravando] = useState(false)
+  const reconhecimento = useRef<Reconhecimento | null>(null)
   // Quem está na sessão (sem sessão, ninguém).
   const perfil = usePerfil()
+
+  /** "Gravar áudio" (GGVP-82, CA6): a fala vira texto no campo, para a pessoa conferir antes de enviar. */
+  function gravar() {
+    if (gravando) {
+      reconhecimento.current?.stop()
+      return
+    }
+    const r = novoReconhecimento()
+    if (!r) {
+      setAviso('Este navegador não transforma a fala em texto: use o Chrome ou o Edge, ou digite a pergunta.')
+      return
+    }
+    r.lang = 'pt-BR'
+    r.interimResults = false
+    r.onresult = (e) => {
+      const fala = Array.from(e.results, (x) => x[0].transcript).join(' ').trim()
+      if (fala) setTexto((t) => (t ? `${t} ${fala}` : fala))
+    }
+    r.onend = () => setGravando(false)
+    r.onerror = () => {
+      setGravando(false)
+      setAviso('Não deu para ouvir: confira o microfone e tente de novo, ou digite a pergunta.')
+    }
+    reconhecimento.current = r
+    setAviso('')
+    setGravando(true)
+    r.start()
+  }
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     const limpo = texto.trim()
-    if (anexo && onAnexo) {
+    if (anexos.length && onAnexo) {
       setAviso('')
-      onAnexo(limpo, anexo)
+      onAnexo(limpo, anexos)
       setTexto('')
-      setAnexo(null)
+      setAnexos([])
       return
     }
     if (!limpo) return
-    // Pular o parecer médico não vira ação: não há card para isso (GGVP-33, CA3).
-    const recusa = recusaDoChat(limpo)
+    // Pular o parecer médico (GGVP-33, CA3) e orientar a esconder ou mudar a situação real (GGVP-61, CA11, G11, registrado):
+    // as recusas do motor do chat (GGVP-82), na hora e sem card.
+    const recusa = recusaImediata(limpo, perfil?.usuario ?? 'Você')
     if (recusa) {
       setAviso(recusa)
-      setTexto('')
-      return
-    }
-    // Orientação para esconder, mudar ou simular a situação real não vira ação, e o pedido fica registrado (GGVP-61, CA11, G11).
-    const fraude = recusaDoChatNaPericia(limpo)
-    if (fraude) {
-      registrarRecusaDoChat(limpo, perfil?.usuario ?? 'Você')
-      setAviso(fraude)
       setTexto('')
       return
     }
@@ -82,15 +111,15 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
       {children}
 
       <form className={styles.form} onSubmit={enviar}>
-        {anexo && (
-          <p className={styles.anexo}>
+        {anexos.map((anexo) => (
+          <p key={anexo.name} className={styles.anexo}>
             <span aria-hidden="true">▤ </span>
             {anexo.name}
-            <button type="button" className={styles.tirar} aria-label={`Tirar o anexo ${anexo.name}`} onClick={() => setAnexo(null)}>
+            <button type="button" className={styles.tirar} aria-label={`Tirar o anexo ${anexo.name}`} onClick={() => setAnexos((a) => a.filter((x) => x !== anexo))}>
               ×
             </button>
           </p>
-        )}
+        ))}
         <textarea
           ref={campo}
           id={idCampo}
@@ -102,16 +131,17 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
           onKeyDown={aoTeclar}
         />
         <div className={styles.acoes}>
-          {/* Gravar, e anexar fora do "Subir laudo novo", ainda não estão ligados (GGVP-82): avisam que estão indisponíveis. */}
           {onAnexo ? (
             <label className={styles.chip}>
               + Anexar arquivo
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
+                multiple
                 className="so-leitor"
                 onChange={(e) => {
-                  setAnexo(e.target.files?.[0] ?? null)
+                  const novos = Array.from(e.target.files ?? [])
+                  setAnexos((a) => [...a, ...novos.filter((n) => !a.some((x) => x.name === n.name))])
                   e.target.value = ''
                 }}
               />
@@ -121,11 +151,11 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
               + Anexar arquivo
             </button>
           )}
-          <button type="button" className={styles.chip} aria-disabled="true">
+          <button type="button" className={styles.chip} aria-pressed={gravando} onClick={gravar}>
             <span className={styles.gravar} aria-hidden="true">
               ●
             </span>
-            Gravar áudio
+            {gravando ? 'Parar de gravar' : 'Gravar áudio'}
           </button>
           <span className={styles.espaco} />
           <button type="submit" className={styles.enviar}>

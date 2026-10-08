@@ -26,9 +26,9 @@ describe('GGVP-61 · a orientação na página do processo (Figma 2179:664) e a 
     fireEvent.click(screen.getByRole('button', { name: 'Ver a jurimetria do perito' }))
     const janela = screen.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' })
     expect(within(janela).getByText('números do sistema (G22)')).toBeTruthy()
-    expect(within(janela).getByText(/^71% favorável em 34 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
+    expect(within(janela).getByText(/^71% · 24 de 34 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
     // Por assunto, a coluna tem 8 laudos: toda amostra conta, com o número de laudos ao lado (G22).
-    expect(within(janela).getByText(/^75% favorável em 8 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
+    expect(within(janela).getByText(/^75% · 6 de 8 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
     expect(within(janela).getByRole('link', { name: /Antônio Exemplo · perícia 16\/10, 10:30/ }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
   })
 
@@ -55,7 +55,7 @@ describe('GGVP-61 · o chat (Figma 2186:857) e a recusa do G11', () => {
     render(comSessao(<CentralJuridicoAdm />))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Qual a orientação para a perícia do Antônio com o Dr. A. Prado?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(await screen.findByText(/Pelo perfil de Dr\. A\. Prado \(71% favorável em 34 laudos · base de \d\d\/\d\d\)/)).toBeTruthy()
+    expect(await screen.findByText(/Pelo perfil de Dr\. A\. Prado \(71% · 24 de 34 laudos · base de \d\d\/\d\d\)/)).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
     expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia/orientar'])
     expect(screen.getByRole('link', { name: 'Antônio Exemplo · Orientar para a perícia' })).toBeTruthy()

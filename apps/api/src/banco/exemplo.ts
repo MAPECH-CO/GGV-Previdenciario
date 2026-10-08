@@ -1,7 +1,7 @@
 // DADOS DE EXEMPLO, só para o banco local da máquina do dev. Nenhuma pessoa é real, e os arquivos não existem.
-// Senha de todos: SENHA_DE_EXEMPLO. Nunca rodar contra homologação nem produção.
+// Senha de todos: SENHA_DE_EXEMPLO. Nunca em produção; na homologação, só pelo `homologacao:preparar` (GGVP-126), que troca as senhas.
 import bcrypt from 'bcryptjs'
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
@@ -39,7 +39,8 @@ const DOCUMENTOS_DE_EXEMPLO = ['RG e CPF', 'Comprovante de residência', 'Procur
 
 /** Só semeia banco vazio: não mexe em quem já existe. */
 export async function semearExemplos(banco: Banco) {
-  const [{ total }] = await banco.select({ total: count() }).from(usuario)
+  // GGVP-126 CA4: "vazio" é sem os usuários de exemplo; a homologação já tem o usuário de quem cuida dela.
+  const [{ total }] = await banco.select({ total: count() }).from(usuario).where(eq(usuario.email, usuariosDeExemplo[0].email))
   if (total > 0) return
   const senhaHash = await bcrypt.hash(SENHA_DE_EXEMPLO, 10)
   const usuarios = await banco

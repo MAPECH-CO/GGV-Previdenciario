@@ -118,13 +118,14 @@ describe('Central do Atendimento', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('enviar sem servidor avisa e mantém o texto, em vez de fingir que enviou', () => {
+  it('GGVP-82 · enviar uma pergunta: o motor do chat responde citando a cliente e o link para abrir', async () => {
     render(<CentralAtendimento />)
     const campo = screen.getByLabelText('✦ Pergunte ou peça') as HTMLTextAreaElement
     fireEvent.change(campo, { target: { value: 'Qual é a próxima tarefa da Josefa?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(screen.getByRole('status').textContent).toContain('ainda não está ligado')
-    expect(campo.value).toBe('Qual é a próxima tarefa da Josefa?')
+    expect(await screen.findByText(/^Josefa Exemplo ainda é lead, sem processo aberto\./)).toBeTruthy()
+    expect(within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getByRole('link').getAttribute('href')).toBe('/clientes/josefa-exemplo')
+    expect(campo.value).toBe('')
   })
 
   it('GGVP-33 CA3 · o chat recusa pular o parecer e diz o portão que falta, sem card', () => {
@@ -152,12 +153,15 @@ describe('Central do Atendimento', () => {
     expect(screen.getByRole('button', { name: '✦ Suporte' })).toBeTruthy()
   })
 
-  it('botões ainda não ligados avisam que estão indisponíveis e não prometem janela', () => {
+  it('GGVP-82 CA6 · "Gravar áudio" sem a fala do navegador avisa; o Suporte abre o mesmo chat à direita', () => {
     render(<CentralAtendimento />)
-    for (const nome of ['✦ Suporte', 'Gravar áudio']) {
-      expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), nome).toBe('true')
-    }
-    expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Gravar áudio' }))
+    expect(screen.getByRole('status').textContent).toContain('Este navegador não transforma a fala em texto')
+    fireEvent.click(screen.getByRole('button', { name: '✦ Suporte' }))
+    const suporte = screen.getByRole('dialog', { name: 'Suporte interno' })
+    expect(within(suporte).getByRole('textbox', { name: /Pergunte ou peça/ })).toBeTruthy()
+    fireEvent.click(within(suporte).getByRole('button', { name: 'Fechar o Suporte' }))
+    expect(screen.queryByRole('dialog', { name: 'Suporte interno' })).toBeNull()
   })
 
   it('GGVP-76 CA8 · "Registrar conversa" da ligação que a Ana abriu: o nome do cliente e a tarefa; outra pessoa não vê', () => {

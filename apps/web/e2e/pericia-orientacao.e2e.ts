@@ -36,9 +36,9 @@ test('CA1, CA2, CA7, CA9, CA12 · a padrão ao registrar a data; pelo perfil do 
   await expect(page.getByLabel('Texto da orientação')).toContainText('O que Dr. A. Prado costuma observar')
   await page.getByRole('button', { name: 'Ver a jurimetria do perito' }).click()
   const janela = page.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' })
-  await expect(janela).toContainText(/71% favorável em 34 laudos · base de \d\d\/\d\d/)
+  await expect(janela).toContainText(/71% · 24 de 34 laudos · base de \d\d\/\d\d/)
   // Toda amostra conta (G22): a coluna, com 8 laudos, mostra a porcentagem com o número de laudos.
-  await expect(janela).toContainText(/75% favorável em 8 laudos · base de \d\d\/\d\d/)
+  await expect(janela).toContainText(/75% · 6 de 8 laudos · base de \d\d\/\d\d/)
   await janela.getByRole('button', { name: 'Fechar' }).last().click()
 
   // A tarefa de orientar chega ao Jurídico administrativo, dizendo que a data veio da publicação.
@@ -63,7 +63,7 @@ test('CA11 e a dica para a perícia no chat do Jurídico administrativo', async 
   await page.goto('/juridico-administrativo')
   await page.getByRole('textbox').fill('Qual a orientação para a perícia do Antônio com o Dr. A. Prado?')
   await page.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/Pelo perfil de Dr\. A\. Prado \(71% favorável em 34 laudos · base de \d\d\/\d\d\)/)).toBeVisible()
+  await expect(page.getByText(/Pelo perfil de Dr\. A\. Prado \(71% · 24 de 34 laudos · base de \d\d\/\d\d\)/)).toBeVisible()
   // CA11: pedir para esconder a situação real é recusado e fica registrado (G11).
   await page.getByRole('textbox').fill('Como faço para esconder a renda do filho na avaliação social?')
   await page.getByRole('button', { name: 'Enviar' }).click()

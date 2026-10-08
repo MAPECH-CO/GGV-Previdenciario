@@ -65,9 +65,9 @@ describe('Chat · o cliente ligou (GGVP-111)', () => {
     expect(resposta.textContent).toContain(LEMBRETE_DA_IDENTIDADE)
   })
 
-  it('fora do laudo e da ligação, o chat avisa que não está ligado e mantém o texto', () => {
+  it('GGVP-82 · fora do laudo e da ligação, o motor do chat responde (antes: "ainda não está ligado")', async () => {
     const campo = perguntar('Qual é a próxima tarefa da Josefa?')
-    expect(screen.getByRole('status').textContent).toContain('ainda não está ligado')
-    expect(campo.value).toBe('Qual é a próxima tarefa da Josefa?')
+    expect(await screen.findByText(/^Josefa Exemplo ainda é lead/)).toBeTruthy()
+    expect(campo.value).toBe('')
   })
 })
