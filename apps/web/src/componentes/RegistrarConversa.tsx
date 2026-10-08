@@ -75,7 +75,7 @@ export function RegistrarConversa({ ficha, processoId: doProcesso, funcao = 'Ate
     setAbrindo(true)
     setErro('')
     try {
-      aoAbrir(await abrirConversa(ficha.id, { canal: canal!, comQuem, modo: modo!, processoId, registro: pedido.registro }, { quem: perfil.usuario, perfil: perfil.id }))
+      aoAbrir(await abrirConversa(ficha.id, { canal: canal!, comQuem, modo: modo!, processoId, registro: pedido.registro }))
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para abrir a conversa.')
     } finally {

@@ -73,7 +73,7 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
     setEnviando(true)
     setErro('')
     try {
-      setResultado(await enviarMensagem(ficha.id, { modelo, texto, conversa: conversa ?? 0, processoId }, { quem: perfil.usuario, perfil: perfil.id }))
+      setResultado(await enviarMensagem(ficha.id, { modelo, texto, conversa: conversa ?? 0, processoId }))
       aoEnviar?.()
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para enviar.')

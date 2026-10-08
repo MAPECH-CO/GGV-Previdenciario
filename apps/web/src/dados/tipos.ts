@@ -655,6 +655,8 @@ export type Gravacao = {
   soJuridico: boolean
   /** "ficha atualizada", "benefício definido". */
   marcas: string[]
+  /** A conversa do D5 desta gravação, quando ela é de uma conversa com o cliente (GGVP-138). */
+  conversaId?: string
 }
 
 /** O que a tela da entrevista lê. */

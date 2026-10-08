@@ -1,5 +1,4 @@
 import { useEffect, useId, useState } from 'react'
-import { usePerfil } from '../dados/perfis.ts'
 import { confirmarMudancaBancaria, obterDadosBancarios, pedirMudancaBancaria, type PedidoBancario, type RegistroBancario } from '../dados/seguranca.ts'
 import { dataHora } from '../regras/datas.ts'
 import { COMO_VERIFICOU, erroDosDadosBancarios, motivoParaNaoMudar, type ComoVerificou, type DadosBancarios } from '../regras/seguranca.ts'
@@ -18,7 +17,6 @@ const lido = (d: DadosBancarios) => `${d.banco} · agência ${d.agencia} · cont
  * advogada e o Financeiro recebem o alerta (CA2). Sem quadro no Figma: no visual dos cartões do card (73:199).
  */
 export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
-  const perfil = usePerfil('Atendimento')
   const id = useId()
   const [atual, setAtual] = useState<RegistroBancario | null>(null)
   const [pedido, setPedido] = useState<PedidoBancario | null>(null)
@@ -48,7 +46,6 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
   }, [fichaId])
 
   const motivo = erroDosDadosBancarios(dados) ?? motivoParaNaoMudar('dadosBancarios', verificacao)
-  const por = { quem: perfil?.usuario ?? 'Atendimento', perfil: perfil?.id }
 
   async function fazer(acao: () => Promise<unknown>, feito: string) {
     if (ocupado) return
@@ -88,7 +85,7 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
             {COMO_VERIFICOU[pedido.verificacao.como].toLowerCase()}; em contrato novo.
           </p>
           <p className={styles.nota}>Espera a segunda confirmação, de outra pessoa (Atendimento líder, advogada ou Sênior).</p>
-          <button type="button" className={styles.botao} disabled={ocupado} onClick={() => fazer(() => confirmarMudancaBancaria(fichaId, por), 'Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')}>
+          <button type="button" className={styles.botao} disabled={ocupado} onClick={() => fazer(() => confirmarMudancaBancaria(fichaId), 'Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')}>
             Confirmar a mudança (segunda pessoa)
           </button>
         </div>
@@ -119,7 +116,7 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
               type="button"
               className={styles.principal}
               disabled={motivo !== null || ocupado}
-              onClick={() => fazer(() => pedirMudancaBancaria(fichaId, { dados, verificacao }, por), 'Mudança pedida: espera a segunda confirmação.')}
+              onClick={() => fazer(() => pedirMudancaBancaria(fichaId, { dados, verificacao }), 'Mudança pedida: espera a segunda confirmação.')}
             >
               Pedir a mudança
             </button>

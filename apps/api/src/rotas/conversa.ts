@@ -234,6 +234,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
       // O que a conversa registrou não é dado de saúde: quem vê o caso vê a conversa (Pedro, 08/10).
       soJuridico: false,
       marcas: [],
+      conversaId: c.id,
     }
   }
 

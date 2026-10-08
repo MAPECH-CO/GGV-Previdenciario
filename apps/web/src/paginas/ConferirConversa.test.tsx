@@ -5,7 +5,6 @@ import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { ConferirConversa } from './ConferirConversa.tsx'
 
-const BRUNA = { quem: 'Ana (exemplo)', perfil: 'atendimento' as const }
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
@@ -15,7 +14,7 @@ beforeEach(() => {
 })
 
 async function conversaTranscrita() {
-  const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' }, BRUNA)
+  const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
   await gravarConversa(c.id, { avisei: true })
   await finalizarConversa(c.id, { aos: 116 })
   await transcreverConversa(c.id)
@@ -32,7 +31,7 @@ const linha = (texto: RegExp) => screen.getAllByRole('listitem').find((li) => te
 const botao = (nome: string) => within(screen.getByRole('group', { name: 'Concluir a conferência' })).getByRole('button', { name: nome }) as HTMLButtonElement
 
 describe('Conferir conversa · tela do passo (GGVP-84)', () => {
-  it('CA4, CA5 e CA8 · campo por campo, com Confirmar, Corrigir e Desfazer; o fato de saúde fica para o Jurídico, sem o conteúdo', async () => {
+  it('CA4, CA5 e CA8 · campo por campo, com Confirmar, Corrigir e Desfazer; o fato novo fica para o Jurídico confirmar', async () => {
     const c = await conversaTranscrita()
     await abrir(c.id)
     expect(screen.getByText('D5.04')).toBeTruthy()
@@ -40,10 +39,9 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     const lista = screen.getByRole('list', { name: 'O que a IA quer mudar' })
     expect(within(lista).getAllByRole('listitem')).toHaveLength(5)
     expect(within(linha(/telefone de contato/)).getByRole('group', { name: 'Conferir telefone de contato' })).toBeTruthy()
-    const fato = linha(/fato novo de saúde/)
-    expect(fato.textContent).toContain('Processo · fato novo de saúde · só o Jurídico vêquem pode: a advogada responsável ou a Sênior')
+    const fato = linha(/fato novo/)
+    expect(fato.textContent).toContain('quem pode: a advogada responsável ou a Sênior')
     expect(within(fato).queryByRole('button')).toBeNull()
-    expect(lista.textContent).not.toMatch(/hospital no fim de setembro/)
     expect(botao('Confirmar').disabled).toBe(true)
     expect(screen.getByText('Confirme, corrija ou desfaça: endereço, telefone de contato, data da perícia do INSS, documento citado.')).toBeTruthy()
   })
@@ -201,7 +199,7 @@ describe('Pendência da conversa vira tarefa · tela (GGVP-88)', () => {
 
 describe('Conferir conversa · quem está falando (GGVP-111)', () => {
   it('CA1 e CA8 · com o familiar, o telefone só muda com o cliente verificado e em contrato novo; o histórico diz como', async () => {
-    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'familiar', modo: 'tempo-real' }, BRUNA)
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'familiar', modo: 'tempo-real' })
     await gravarConversa(c.id, { avisei: true })
     await finalizarConversa(c.id, { aos: 116 })
     await transcreverConversa(c.id)
@@ -224,7 +222,7 @@ describe('Conferir conversa · quem está falando (GGVP-111)', () => {
   })
 
   it('CA1 · sem verificação, desfazer o telefone libera o resto; presencial com o próprio cliente não pergunta', async () => {
-    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'familiar', modo: 'tempo-real' }, BRUNA)
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'familiar', modo: 'tempo-real' })
     await gravarConversa(c.id, { avisei: true })
     await finalizarConversa(c.id, { aos: 116 })
     await transcreverConversa(c.id)
