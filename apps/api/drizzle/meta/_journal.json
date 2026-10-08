@@ -92,6 +92,13 @@
       "when": 1791333774623,
       "tag": "0012_configuracao_do_escritorio",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791474696966,
+      "tag": "0013_glossario_do_escritorio",
+      "breakpoints": true
     }
   ]
 }
