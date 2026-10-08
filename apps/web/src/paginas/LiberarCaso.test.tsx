@@ -29,7 +29,7 @@ async function completarRita() {
 }
 
 async function abrir(processoId: string, perfil?: 'atendimento') {
-  render(<LiberarCaso processoId={processoId} perfil={perfil} />)
+  render(<LiberarCaso processoId={processoId} perfil={perfil ?? 'documentacao'} />)
   await screen.findByRole('heading', { level: 1, name: /Liberar ao Jurídico/ })
 }
 

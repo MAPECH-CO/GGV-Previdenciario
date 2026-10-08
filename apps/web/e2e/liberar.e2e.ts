@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-18 · Liberar o caso ao Jurídico: o caminho inteiro da Rita no localhost, da leitura ao OK da Documentação e à fila
 // da sênior; o Sebastião travado sem lista; outro perfil vê só a situação. Cada teste começa da semente de exemplo.ts.
+// Quem libera vem do perfil da sessão: a Documentação entra pela API; a Sênior também, para ver a fila dela.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -11,6 +13,7 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`conteúdo de ${name}`) })
 
 test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documentação libera e a sênior recebe', async ({ page }) => {
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   // A pilha do scanner: arquivar.
   await page.goto('/clientes/rita-exemplo/conferir-documentos')
   await page.getByRole('radio', { name: 'Manter os dois' }).click()
@@ -58,13 +61,15 @@ test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documen
 
   await page.goto('/clientes/rita-exemplo')
   await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Caso liberado ao Jurídico pela Documentação')
-  await page.goto('/advogada')
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
   await expect(page.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Rita Exemplo · Conferir antes do INSS' }) })).toContainText(
     'liberado pela Documentação hoje',
   )
 })
 
 test('CA2 e CA5 · o Sebastião espera na fila há 2 dias e não libera: o benefício não tem lista', async ({ page }) => {
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Sebastião Exemplo · Liberar ao Jurídico' }).click()
   await expect(page).toHaveURL('/casos/sebastiao-exemplo-1/liberar')
@@ -73,7 +78,8 @@ test('CA2 e CA5 · o Sebastião espera na fila há 2 dias e não libera: o benef
 })
 
 test('CA4 · outro perfil vê só a situação', async ({ page }) => {
-  await page.goto('/casos/sebastiao-exemplo-1/liberar?perfil=juridico')
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/casos/sebastiao-exemplo-1/liberar')
   await expect(page.getByRole('status')).toContainText('Você está como Jurídico: vê só a situação')
   await expect(page.getByRole('button', { name: 'Liberar ao Jurídico' })).toHaveCount(0)
 })

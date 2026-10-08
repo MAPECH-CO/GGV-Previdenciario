@@ -10,16 +10,16 @@ beforeEach(() => {
 })
 
 describe('Central da Advogada', () => {
-  it('GGVP-101 CA7 · a cobrança do Antônio, no limite, chega à sênior como "Decidir cobrança"', () => {
+  it('GGVP-101 CA7 · a cobrança no limite é da sênior: não fica na fila da advogada (vai para a tela inicial da Sênior, App.test)', () => {
     render(<CentralAdvogada />)
-    expect(screen.getByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
+    expect(screen.queryByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).toBeNull()
   })
 
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {
     render(<CentralAdvogada />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (3)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (2)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (12)' })).toBeTruthy()
     for (const nome of ['Resumo do caso', 'Criar tarefa', 'Perícias da semana', 'Como o perito avalia?', 'Gerar peça']) {
       expect(screen.getByRole('button', { name: nome })).toBeTruthy()
