@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 13, digital: '156595fd' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 16, digital: '343a5038' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -46,7 +46,7 @@ describe('matriz de permissões (GGVP-96)', () => {
   })
 
   it('CA1 e CA12 · Financeiro vê prestação e valores, nunca entrevista, laudos, saúde nem petição', () => {
-    expect(acoesDe('financeiro')).toEqual(['gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver', 'valores.ver_totais'])
+    expect(acoesDe('financeiro')).toEqual(['banco.agendar', 'gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver', 'valores.ver_totais'])
   })
 
   it('CA12 · dado de saúde em detalhe só para o Jurídico; valores só o Financeiro, e a prestação também a advogada', () => {
@@ -71,7 +71,18 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('documentacao', 'exigencia_inss.cumprir')).toBe(true)
     expect(pode('advogada', 'exigencia_inss.cumprir')).toBe(false)
     expect(pode('senior', 'exigencia_inss.decidir_vencida')).toBe(true)
-    expect(pode('financeiro', 'banco.agendar')).toBe(false)
+  })
+
+  it('versão 14 · o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica (GGVP-22)', () => {
+    expect(PERFIS.filter((p) => pode(p, 'resultado.aprovar_resumo'))).toEqual(['advogada', 'senior'])
+    expect(pode('atendimento', 'resultado.explicar')).toBe(true)
+    expect(pode('atendimento', 'resultado.aprovar_resumo')).toBe(false)
+    expect(pode('financeiro', 'resultado.explicar')).toBe(false)
+  })
+
+  it('versão 14 · a ida ao banco é do Financeiro (GGVP-98); o Atendimento não marca', () => {
+    expect(pode('financeiro', 'banco.agendar')).toBe(true)
+    expect(pode('atendimento', 'banco.agendar')).toBe(false)
   })
 
   it('versão 5 · vigília: a Sênior reprocessa e casa a fila; a advogada vê e classifica', () => {
@@ -87,15 +98,26 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode(null, 'entrevista.ver')).toBe(false)
   })
 
+  it('GGVP-19 · o estudo de caso é do Jurídico (o Atendimento não vê); o novo processo, a Sênior decide', () => {
+    expect([pode('advogada', 'estudo.ver'), pode('juridico_adm', 'estudo.ver'), pode('atendimento', 'estudo.ver'), pode('financeiro', 'estudo.ver')]).toEqual([true, true, false, false])
+    expect([pode('senior', 'estudo.revisar'), pode('advogada', 'estudo.revisar')]).toEqual([true, false])
+  })
+
+  it('GGVP-125 · a ficha da Recepção: quem trabalha com o caso edita; Financeiro e Sócio, não', () => {
+    expect(PERFIS.filter((p) => pode(p, 'ficha.editar'))).toEqual(PERFIS.filter((p) => !['financeiro', 'socio'].includes(p)))
+    // Bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde, só o Jurídico.
+    expect(PERFIS.filter((p) => pode(p, 'entrevista.gravar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
+  })
+
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 8,
-      atendimento_lider: 10,
-      documentacao: 6,
-      advogada: 20,
-      senior: 22,
-      juridico_adm: 13,
-      financeiro: 5,
+      atendimento: 9,
+      atendimento_lider: 11,
+      documentacao: 7,
+      advogada: 25,
+      senior: 27,
+      juridico_adm: 16,
+      financeiro: 6,
       socio: 5,
     })
   })

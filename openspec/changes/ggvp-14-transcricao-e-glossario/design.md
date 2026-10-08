@@ -9,7 +9,7 @@ A Configuração do escritório (GGVP-104) já tem limites, kits e mensagens num
 ### Decisões
 
 - **Tela:** o Figma não tem tela do glossário de termos (o "Glossário" de lá é o dos códigos do BPMN e dos portões). A seção "Glossário do escritório" segue o padrão das outras seções da Configuração: lista por tipo, formulário para acrescentar, "Corrigir" e "Tirar" em cada termo.
-- **Quem:** ver com `gestao.ver`, como a página. Mudar só com `glossario.editar`, só a Sênior (matriz versão 13).
+- **Quem:** ver com `gestao.ver`, como a página. Mudar só com `glossario.editar`, só a Sênior (matriz versão 16).
 - **Histórico:** cada mudança grava, na mesma transação, um evento com alvo `configuracao` (`glossario_termo_acrescentado`, `glossario_termo_corrigido`, `glossario_termo_tirado`), com o antes e o depois. Aparece no "Histórico da configuração", descrito em `descrever` de `rotas/configuracao.ts`.
 - **Tirar:** apaga a linha; o termo fica no histórico (antes). Termo repetido (sem diferença de maiúscula) é recusado pelo banco (índice único em `lower(termo)`) e pela rota (409).
 - **Semente (CA3):** dentro da migração que cria a tabela, uma vez só: os rótulos de `ROTULO_BENEFICIO` (menos "Outro"), as oito siglas com o significado e os nomes de `perito` e `juizo`. Depois disso, termo novo é com a Sênior. O teste confere que os benefícios da semente são os do catálogo.

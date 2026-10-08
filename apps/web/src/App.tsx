@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ROTULO_PERFIL, ehPerfil, type UsuarioDaSessao } from '@ggv/contratos'
+import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
+import { sincronizarRecepcao } from './dados/servidor.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
@@ -22,6 +23,9 @@ import { CumprirExigencia } from './paginas/CumprirExigencia.tsx'
 import { PrestarContas } from './paginas/PrestarContas.tsx'
 import { ReceberPrestacao } from './paginas/ReceberPrestacao.tsx'
 import { IdaAoBanco } from './paginas/IdaAoBanco.tsx'
+import { ExplicarResultado } from './paginas/ExplicarResultado.tsx'
+import { Estudos } from './paginas/Estudos.tsx'
+import { Pericias } from './paginas/Pericias.tsx'
 import { PainelVigilia } from './paginas/PainelVigilia.tsx'
 import { Tentativas } from './paginas/Tentativas.tsx'
 import { Resultados } from './paginas/Resultados.tsx'
@@ -102,7 +106,13 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
 
   useEffect(() => {
     // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
-    void chamarApi<UsuarioDaSessao>('/sessao').then((r) => r.ok && setUsuario(r.dados))
+    void chamarApi<UsuarioDaSessao>('/sessao').then(async (r) => {
+      if (!r.ok) return
+      // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
+      // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
+      if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
+      setUsuario(r.dados)
+    })
   }, [])
 
   if (!usuario) return null
@@ -126,6 +136,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao$/, tela: (id) => <Exige acao="prestacao.ver"><PrestarContas casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao\/recebimento$/, tela: (id) => <Exige acao="prestacao.registrar_recebimento"><ReceberPrestacao casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/banco$/, tela: (id) => <Exige acao="banco.agendar"><IdaAoBanco casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/resultado$/, tela: (id) => <Exige acao="caso.ver"><ExplicarResultado casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="caso.ver"><PublicacoesDoProcesso casoId={id} /></Exige> },
   { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="caso.ver"><LerPublicacao publicacaoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz$/, tela: (id) => <Exige acao="caso.ver"><AnalisarExigenciaJuiz casoId={id} /></Exige> },
@@ -135,6 +146,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/peticao$/, tela: (id) => <Exige acao="peticao.ver"><Peticao casoId={id} /></Exige> },
   { padrao: /^\/vigilia$/, tela: () => <Exige acao="vigilia.ver"><PainelVigilia /></Exige> },
+  { padrao: /^\/estudos$/, tela: () => <Exige acao="estudo.ver"><Estudos /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericias$/, tela: (id) => <Exige acao="dado_saude.ver_detalhe"><Pericias casoId={id} /></Exige> },
   { padrao: /^\/gestao\/tentativas$/, tela: () => <Exige acao="gestao.ver"><Tentativas /></Exige> },
   { padrao: /^\/gestao\/prazos$/, tela: () => <Exige acao="gestao.ver"><Prazos /></Exige> },
   { padrao: /^\/gestao\/cofre$/, tela: () => <Exige acao="gestao.ver"><UsoDoCofreTela /></Exige> },
