@@ -178,3 +178,47 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   expect(JSON.stringify(ficha)).not.toContain(SENHA)
   await juridico.close()
 })
+
+// GGVP-125, bloco 3c · a segunda ficha no banco: a seção médica fica com o Jurídico, buscada só pela tela dele (LGPD).
+test('a advogada pede a segunda ficha; a Atendimento salva do papel; a seção médica só aparece na tela da advogada', async ({ page, browser }) => {
+  test.setTimeout(90_000)
+  const MEDICO = 'dor e perda de força na mão'
+  await page.goto('/clientes/novo')
+  await page.getByLabel('Nome completo *').fill('Lia Acidente Teste')
+  await page.getByLabel('Idade *').fill('52')
+  await page.getByLabel('Telefone / WhatsApp *').fill('11933332211')
+  await page.getByLabel('O que a pessoa pretende *').fill('Acidente no trabalho, afastada.')
+  await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
+  await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
+  await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
+  await page.getByRole('button', { name: /^Marcar/ }).click()
+  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Acidente Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  const entrevista = await page.evaluate(
+    () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Acidente Teste')!.agendamentos[0].id,
+  )
+
+  const juridico = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const advogada = await juridico.newPage()
+  await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
+  await advogada.goto(`/entrevista/${entrevista}/preparar`)
+  await advogada.getByRole('link', { name: 'Analisar a ficha' }).click()
+  await advogada.getByRole('radio', { name: 'Sim — abrir 2ª ficha' }).click()
+  await advogada.getByRole('button', { name: 'Confirmar' }).click()
+  await expect(advogada.getByText(/O Atendimento recebeu: "Preencher segunda ficha"/)).toBeVisible()
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Lia Acidente Teste · Preencher segunda ficha' }).click()
+  await page.getByRole('button', { name: 'Digitalizar a segunda ficha (scanner simulado)' }).click()
+  await expect(page.getByLabel('Empresa')).toHaveValue('Exemplo Indústria Ltda')
+  await expect(page.getByRole('region', { name: '5. Dados médicos' })).toContainText('Só o Jurídico vê')
+  await page.getByRole('button', { name: 'Enviar segunda ficha' }).click()
+  await expect(page.getByRole('heading', { name: /✓ Segunda ficha salva/ })).toBeVisible()
+  await page.goto('/')
+  expect(await page.evaluate(() => JSON.stringify(sessionStorage))).not.toContain(MEDICO)
+
+  await advogada.goto(`/entrevista/${entrevista}/preparar`)
+  await expect(advogada.getByRole('region', { name: 'Segunda ficha (auxílio acidentário)' })).toContainText(MEDICO)
+  expect(await advogada.evaluate(() => JSON.stringify(sessionStorage))).not.toContain(MEDICO)
+  await juridico.close()
+})

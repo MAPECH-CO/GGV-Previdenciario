@@ -224,12 +224,15 @@ function espelharEm(banco: Banco, doBanco: Ficha): Ficha {
       'demandas',
       'senhaGov',
       'renovacao',
+      // Bloco 3c: a segunda ficha vem sem os campos médicos, que só o Jurídico busca, ao abrir a tela.
+      'segundaFicha',
     ] as (keyof Ficha)[]
     for (const c of campos) if (!igual(doBanco[c], antes[c])) Object.assign(ficha, { [c]: doBanco[c] })
   }
   if (i >= 0) banco.fichas[i] = ficha
   else banco.fichas.push(ficha)
-  banco.espelhos = { ...banco.espelhos, [doBanco.id]: doBanco }
+  // Uma cópia à parte: sem o sessionStorage, a memória guarda o mesmo objeto, e mexer na ficha mexeria na base das três vias.
+  banco.espelhos = { ...banco.espelhos, [doBanco.id]: structuredClone(doBanco) }
   return ficha
 }
 

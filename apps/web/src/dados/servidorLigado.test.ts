@@ -9,7 +9,9 @@ import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
 import { registrarFechamento } from './fechamento.ts'
-import { tarefasDaAdvogada } from './preparacao.ts'
+import { obterPreparacao, tarefasDaAdvogada } from './preparacao.ts'
+import { lerSegundaFichaEmPapel } from './segundaFicha.ts'
+import { respostasVazias } from '../regras/segundaFicha.ts'
 import { obterGravacoes } from './transcricao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { buscarNoBalcao, configurarExemplo, criarFicha, gravar, ler, ligarPasta, obterFicha, salvarFicha, sincronizarRecepcao, zerarExemplo } from './servidor.ts'
@@ -388,5 +390,36 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor, e
     ])
     expect(JSON.stringify(ler())).not.toContain(SENHA)
     expect(ler().fichas.find((f) => f.id === ID)?.senhaGov.situacao).toBe('no-cofre')
+  })
+})
+
+describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médica só no Jurídico', () => {
+  const MEDICO = 'dor e perda de força na mão'
+
+  it('a leitura do papel de uma ficha do servidor vai lá; a imagem fica aqui; a seção médica não volta', async () => {
+    const arquivo = { nome: 'Ficha de atendimento AUXILIO ACIDENTE - Ivone Teste - 2026-10-05.pdf', tipo: 'ficha-acidente', local: 'pessoais', data: '2026-10-05', origem: 'scanner', repetido: false, aguardaLeitura: false }
+    ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/segunda-ficha/leitura`]: () => ({ arquivo, respostas: { empresa: 'Exemplo Indústria Ltda', doencas: '' }, senhaLida: false, ficha: doBanco() }),
+    })
+    await criarFicha(ivone)
+    const r = await lerSegundaFichaEmPapel(ID)
+    expect(r).toMatchObject({ senhaLida: false, respostas: { doencas: '' } })
+    expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([arquivo])
+  })
+
+  it('a preparação busca a seção médica ao abrir; ela fica só na tela, nunca na cópia do navegador', async () => {
+    const a = entrevista(`${ID}-ag-1`)
+    const segundaFicha = { data: '2026-10-05', origem: 'papel' as const, respostas: { ...respostasVazias(), empresa: 'Exemplo Indústria Ltda', historico: 'Prendeu a mão.' }, emBranco: [] }
+    const fetch = ligarServidor({
+      'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [a], segundaFicha })], tarefas: [], internos: [], gravacoes: [] }),
+      [`GET /api/fichas/${ID}/segunda-ficha`]: () => ({ medicos: { doencas: MEDICO }, lida: false }),
+    })
+    await sincronizarRecepcao()
+    const preparacao = await obterPreparacao(a.id)
+    expect(preparacao?.ficha.segundaFicha?.respostas).toMatchObject({ empresa: 'Exemplo Indústria Ltda', doencas: MEDICO })
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/fichas/${ID}/segunda-ficha`)
+    expect(JSON.stringify(ler())).not.toContain(MEDICO)
   })
 })

@@ -246,3 +246,9 @@ export const RenovacaoDaSenha = z.discriminatedUnion('resultado', [
   z.object({ resultado: z.literal('nao-conseguiu'), motivo: Texto(300), aviseiOCliente: z.literal(true) }),
 ])
 export type RenovacaoDaSenha = z.infer<typeof RenovacaoDaSenha>
+
+// Bloco 3c (GGVP-125): a segunda ficha (auxílio acidentário, GGVP-28). Os campos e as regras são os das telas; o servidor
+// fica só com os campos que conhece e guarda a seção médica à parte.
+/** PUT /api/fichas/:id/segunda-ficha: as respostas, campo a campo, e de onde vieram. */
+export const EnvioDaSegundaFicha = z.object({ respostas: z.record(z.string().max(40), Texto(4000)), origem: z.enum(['papel', 'tablet']) })
+export type EnvioDaSegundaFicha = z.infer<typeof EnvioDaSegundaFicha>

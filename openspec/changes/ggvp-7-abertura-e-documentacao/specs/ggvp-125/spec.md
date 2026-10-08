@@ -115,3 +115,21 @@ Nas fichas do servidor, guardar e renovar a senha do gov.br SHALL mandar a senha
 - **Dado** a advogada abrindo o cofre durante a entrevista de um lead do balcão
 - **Quando** digita a senha e guarda
 - **Então** a senha está cifrada no cofre do portal, e a ficha mostra só que está no cofre
+
+### Requirement: Bloco 3c · A segunda ficha fica no banco, com a seção médica só no Jurídico
+A leitura da segunda ficha em papel (simulada até o scanner e a IA entrarem) e o salvar da segunda ficha SHALL gravar no servidor, com as regras do Pedro: a ficha guarda a segunda ficha sem os campos médicos, e a seção médica SHALL ficar à parte, só para quem tem `dado_saude.ver_detalhe`. A tela do Jurídico que mostra a seção médica SHALL buscá-la ao abrir, e cada leitura SHALL ficar em `acesso_dado_sensivel`; a seção médica MUST NOT ficar guardada no navegador nem ir à cópia das telas. No tablet, campo médico que volta em branco MUST NOT apagar o que já estava salvo. A leitura simulada do papel MUST NOT dar a senha do gov.br como guardada no cofre do portal.
+
+#### Scenario: A seção médica não vai à Atendimento
+- **Dado** a segunda ficha de um lead do balcão salva, com a seção médica
+- **Quando** a Atendimento abre a ficha ou uma tela da Recepção
+- **Então** a ficha dela vem sem os campos médicos
+
+#### Scenario: A advogada lê a seção médica, e a leitura fica registrada
+- **Dado** a mesma segunda ficha
+- **Quando** a advogada abre a preparação da entrevista
+- **Então** vê a seção médica, e a leitura entra em `acesso_dado_sensivel`
+
+#### Scenario: Tablet sem a seção médica não apaga
+- **Dado** a segunda ficha salva com a seção médica
+- **Quando** é salva de novo no tablet com os campos médicos em branco
+- **Então** a seção médica que estava salva continua

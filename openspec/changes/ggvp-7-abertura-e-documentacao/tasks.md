@@ -147,3 +147,12 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.21 Telas: as funções do bloco chamando a API para as fichas do servidor; a senha vai ao cofre de verdade; "fechou" segue para o contrato do modo exemplo até o bloco 4; testes.
 - [x] 125.22 Playwright: do lead do balcão gravado à definição do benefício pela advogada e ao fechamento com o motivo; a senha guardada não fica na ficha nem no navegador.
 - [x] 125.23 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 3c · Segunda ficha médica
+
+- [x] 125.24 Banco: `segunda_ficha_medica` (a seção médica por pessoa, à parte da ficha) e a migração.
+- [x] 125.25 Contratos: envio da segunda ficha (respostas e origem).
+- [x] 125.26 Servidor: `POST /api/fichas/:id/segunda-ficha/leitura`, `PUT /api/fichas/:id/segunda-ficha` e `GET /api/fichas/:id/segunda-ficha` (só com `dado_saude.ver_detalhe`, cada leitura em `acesso_dado_sensivel`); a ficha sem os campos médicos; o tablet em branco não apaga; testes.
+- [x] 125.27 Telas: ler e salvar a segunda ficha das fichas do servidor; a preparação da entrevista busca a seção médica ao abrir, sem guardar no navegador; testes.
+- [x] 125.28 Playwright: a Atendimento salva a segunda ficha de um lead do balcão; a advogada vê a seção médica na preparação; a cópia da Atendimento não traz os campos médicos.
+- [x] 125.29 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
