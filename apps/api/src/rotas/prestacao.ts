@@ -183,7 +183,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       if (!atual || atual.recebidaEm || atual.divergencia) return negar(resposta, 409, 'Não há prestação esperando o recebimento.')
       const quem = pedido.usuario!.id
       if (atual.okAdvogadaPor === quem) {
-        // Separação de funções, e não o G8 ("o aviso só sai depois do OK"): código neutro até o Lucas decidir se vira portão.
+        // Separação de funções, e não o G8 ("o aviso só sai depois do OK"): código neutro, sem número (Mateus, 08/10; Q21).
         await bloqueio(pedido, casoId, 'funcoes', 'D2.06r', { motivo: 'ok_e_recebimento' })
         return negar(resposta, 409, MSG_MESMA_PESSOA)
       }
