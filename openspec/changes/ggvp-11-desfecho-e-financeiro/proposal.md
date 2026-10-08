@@ -28,4 +28,5 @@ A branch nasceu empilhada na Garantia (`feat/GGVP-13-garantia-e-governanca`), qu
 
 - **G8**: o aviso ao cliente só sai depois do OK da advogada na prestação.
 - Quem dá o OK não registra o recebimento (GGVP-96 CA16): o banco recusa, e o servidor recusa antes e registra a tentativa. A tentativa é gravada como `funcoes` (separação de funções), um código neutro como `setores` e `perfil`, e não como G8, que é "o aviso só sai depois do OK" (terceira revisão de 08/10).
-- **Pergunta ao Lucas (08/10):** a separação de funções vira portão oficial, com número em `docs/requisitos/portoes-governanca.md`? Até a resposta, fica com o código neutro, e o painel da gestão mostra a descrição certa.
+- **Pergunta ao Lucas (08/10), registrada como Q21 em `docs/requisitos/duvidas-abertas.md`:** a separação de funções vira portão oficial, com número em `docs/requisitos/portoes-governanca.md`? Até a resposta, fica com o código neutro, e o painel da gestão mostra a descrição certa. A pergunta não bloqueia: a regra já vale.
+- **Hora da ida ao banco:** o contrato confere hh:mm com uma expressão própria, e a tela usa o campo nativo. Os dois vêm da GGVP-44, já na `main`. A `campos` ainda não tem `validarHora`, e isso fica para uma história própria (revisão de 08/10).

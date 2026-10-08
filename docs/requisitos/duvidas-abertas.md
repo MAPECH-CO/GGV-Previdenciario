@@ -22,5 +22,6 @@
 | Q18 | Faltam roteiros para aposentadorias comuns, LOAS idoso (parte socioeconômica), Curatela e Isenção de IR (que também depende de laudo). Existem? | Roteiro (v2) | GGVP-93 |
 | Q19 | No Auxílio-Acidente, quais complementares são obrigatórios e quais são desejáveis em cada circunstância (trabalho, trajeto, trânsito, doméstico)? | Roteiro (v2) | GGVP-47 |
 | Q20 | "Sócio" é um perfil do portal? Quem vê o painel de resultado e os valores? | Conversa de 26/09 | GGVP-75, GGVP-96 |
+| Q21 | A separação de funções vira portão oficial, com número na lista G1 a G22? A regra é: quem dá o OK na prestação de contas não registra o recebimento. Hoje a tentativa é recusada no servidor e aparece em "Tentativas bloqueadas" com o código neutro `funcoes`. | Revisão do PR #22 (08/10) | GGVP-98, GGVP-96 (não bloqueia: a regra já vale; a resposta só decide o rótulo) |
 
 ---

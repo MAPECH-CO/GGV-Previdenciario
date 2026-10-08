@@ -85,6 +85,12 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - Playwright do desfecho, da via administrativa e da governança, um de cada vez: 16 de 16 em 1,4 min.
   - Numa primeira rodada, com a máquina cheia (6,2 min), 3 falharam, e o detalhe não ficou guardado. Rodando de novo, passaram todos.
 
+## Quinta revisão do PR (08/10)
+
+- [x] 9.1 GGVP-98 · CA8: a pergunta ao Lucas sobre a separação de funções (o código `funcoes` fora da lista G1 a G22) fica como pendência aberta. Ela é a Q21 em `docs/requisitos/duvidas-abertas.md`, marcada como "não bloqueia", e a proposal aponta para ela.
+- [x] 9.2 Hora da ida ao banco (revisão, ATENÇÃO): a expressão própria do contrato e o campo nativo da tela vêm da GGVP-44, já na `main`, e ficam fora deste PR. A `campos` ainda não tem `validarHora`, pendência anotada na proposal.
+- [x] 9.3 Rodar a verificação. Só mudou documentação: `openspec validate --all --strict` sem erro.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
