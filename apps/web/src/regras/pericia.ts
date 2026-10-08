@@ -177,10 +177,17 @@ export const passouDoLimiteDosDocumentos = (hoje: string, documentosAte?: string
 
 // GGVP-61 · A orientação da perícia, padrão ou pelo perfil do perito.
 
-/** A jurimetria do perito: com 5 perícias já começa o estudo, mas o mínimo para mostrar é 10 (Lucas, 02/10). Abaixo, "amostra insuficiente" (G22). */
-export const AMOSTRA_MINIMA_DO_PERITO = 10
+/**
+ * A jurimetria do perito (G22, Lucas em 06/10 e Pedro em 07/10, no lugar do mínimo de 10 laudos de 02/10): não há amostra
+ * mínima, toda amostra conta, e toda porcentagem aparece com o número de laudos e a data da base.
+ */
+export type Jurimetria = { laudos: number; favoraveis: number; taxa: number; diasAteOLaudo: number }
 
-export type Jurimetria = { laudos: number; favoraveis: number; taxa: number; diasAteOLaudo: number; suficiente: boolean }
+/** "71% favorável em 34 laudos · base de 07/10" (G22). Sem laudo no acervo, não há porcentagem. */
+export function numerosDaJurimetria(j: Jurimetria, base: string): string {
+  if (!j.laudos) return 'nenhum laudo no acervo'
+  return `${j.taxa}% favorável em ${j.laudos} ${j.laudos === 1 ? 'laudo' : 'laudos'} · base de ${base.slice(8, 10)}/${base.slice(5, 7)}`
+}
 
 /** Os números vêm do sistema, não do modelo (G19, G22): contagem, taxa favorável e tempo médio até o laudo. */
 export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; dias: number }[]): Jurimetria {
@@ -191,7 +198,6 @@ export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; di
     favoraveis,
     taxa: n ? Math.round((favoraveis / n) * 100) : 0,
     diasAteOLaudo: n ? Math.round(laudos.reduce((s, l) => s + l.dias, 0) / n) : 0,
-    suficiente: n >= AMOSTRA_MINIMA_DO_PERITO,
   }
 }
 

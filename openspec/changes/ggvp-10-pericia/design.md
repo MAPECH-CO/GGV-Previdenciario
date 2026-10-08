@@ -167,7 +167,7 @@ O passo DP.05 não tem tela própria: o sistema monta a orientação com a IA qu
 |---|---|---|
 | `/casos/:id/pericia` | perícia judicial marcada `2179:664` ("Orientação pelo perfil do perito montada") | No cartão "Perícias", a orientação (padrão ou pelo perfil, com o motivo e a versão do perfil), "Ver a orientação" com o texto, a verificação e a jurimetria do perito (G22); a pergunta de um clique para ligar o perito |
 | chat da Central do Jurídico administrativo | dica para a perícia `2186:857` | "Qual a orientação para a perícia do Antônio?": o resumo da orientação, o perito e a tarefa; o pedido para esconder ou mudar a situação é recusado e registrado (G11) |
-| janela "Jurimetria do perito" | Overlays · Jurimetria · Perito `2184:2`, `2184:53` | Laudos do acervo, taxa favorável, o que costuma observar, perguntar e pedir; "amostra insuficiente" abaixo de 10 laudos e nada vai ao cliente (G22) |
+| janela "Jurimetria do perito" | Overlays · Jurimetria · Perito `2184:2`, `2184:53` | Laudos do acervo, taxa favorável, o que costuma observar, perguntar e pedir; toda porcentagem com o número de laudos e a data da base, e nada vai ao cliente (G22) |
 
 ### Decisões da história
 
@@ -176,7 +176,7 @@ O passo DP.05 não tem tela própria: o sistema monta a orientação com a IA qu
 3. **O perito vem depois** (Lucas 02/10): a equipe informa quando a informação chega. A página do processo pergunta, em um clique, qual dos peritos da base é; ligado, a orientação é montada de novo pelo perfil, com a versão do perfil usada (CA9). Enquanto isso, nada trava: vale a padrão, e a tela avisa que a jurimetria não foi feita (CA6).
 4. **Verificação antes de chegar ao Jurídico** (CA4, CA8, CA10): `problemaDaOrientacao` junta a regra do G20 e a do G11 (esconder, omitir, mudar, simular, fingir, mentir, frase pronta para repetir ao perito). Texto barrado fica "bloqueado, pede revisão" e não vai à tarefa. Há teste com pedidos maliciosos.
 5. **O chat recusa** (CA11): pedir no chat uma orientação para esconder ou mudar a situação real é recusado com o G11, e a recusa fica registrada (`recusasDoChat` no servidor de exemplo), em qualquer Central.
-6. **Jurimetria** (CA3 [v2] e CA12): os números vêm de `jurimetria` (código), sobre os laudos de exemplo de `dados/peritos.ts`; abaixo de 10 laudos, "amostra insuficiente", e a jurimetria não entra na orientação ao cliente (G22). A recomendação da GGVP-38 fica para quando ela existir.
+6. **Jurimetria** (CA3 [v2] e CA12): os números vêm de `jurimetria` (código), sobre os laudos de exemplo de `dados/peritos.ts`; toda porcentagem com o número de laudos e a data da base, sem amostra mínima (G22 do main, Lucas 06/10 e Pedro 07/10; o mínimo de 10 laudos de 02/10 saiu na junção de 08/10), e os números não entram no texto que vai ao cliente. A recomendação da GGVP-38 fica para quando ela existir.
 7. **O que a orientação traz** (CA7): data, local, o que levar e, na social, como é a visita em casa.
 
 ## GGVP-62 · Preparar o cliente

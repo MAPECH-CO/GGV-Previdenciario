@@ -39,7 +39,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
   it('CA5, CA8 · o resumo do laudo pela IA, com a jurimetria do perito do sistema (G22); registrar só com tudo respondido', async () => {
     const resumo = await abrirEAnexar('laudo_pericia_antonio.pdf')
     expect(resumo.getByText('Favorável · incapacidade para o trabalho habitual')).toBeTruthy()
-    expect(resumo.getByText('71% favorável em 34 laudos · amostra suficiente (G22)')).toBeTruthy()
+    expect(resumo.getByText(/^71% favorável em 34 laudos · base de \d\d\/\d\d \(G22\)$/)).toBeTruthy()
     const registrar = screen.getByRole('button', { name: 'Registrar resultado' }) as HTMLButtonElement
     expect(registrar.disabled).toBe(true)
     expect(screen.getByText('Informe se o resultado foi favorável ou desfavorável.')).toBeTruthy()
@@ -47,7 +47,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     expect(screen.getByText('Marque as conferências antes de registrar.')).toBeTruthy()
     conferirTudo()
     expect(registrar.disabled).toBe(false)
-    expect(screen.getByText('Jurimetria com amostra baixa aparece como insuficiente e não chega ao cliente (G22).')).toBeTruthy()
+    expect(screen.getByText('Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima (G22).')).toBeTruthy()
   })
 
   it('CA2, CA6 · favorável no judicial: o feito diz como volta ao juízo, com o prazo de 15 dias (G12)', async () => {
@@ -110,11 +110,11 @@ describe('GGVP-70 · o chat da advogada (Figma 2107:667 e 2186:2)', () => {
     expect(item.textContent).toContain('INSS · 23/10, 09:00')
   })
 
-  it('"como o perito avalia": os números do sistema, a amostra pequena sem porcentagem (G22) e a conferência do resultado', async () => {
+  it('"como o perito avalia": os números do sistema, a amostra pequena com o número de laudos (G22) e a conferência do resultado', async () => {
     render(comSessao(<CentralAdvogada />))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Como o Dr. A. Prado costuma avaliar problemas de coluna?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(await screen.findByText(/Em coluna ainda são poucos laudos \(8\), então a porcentagem não aparece \(G22\)/)).toBeTruthy()
+    expect(await screen.findByText(/Em coluna: 75% favorável em 8 laudos · base de \d\d\/\d\d \(G22\)/)).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
     expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia/resultado'])
     expect(itens[1].textContent).toContain('Antônio Exemplo · Conferir resultado da perícia')

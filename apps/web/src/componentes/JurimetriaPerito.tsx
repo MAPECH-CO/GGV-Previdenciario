@@ -3,16 +3,16 @@ import { processosComOPerito } from '../dados/pericia.ts'
 import type { PerfilDoPerito } from '../dados/peritos.ts'
 import { agora } from '../dados/servidor.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
-import { AMOSTRA_MINIMA_DO_PERITO, type Jurimetria } from '../regras/pericia.ts'
+import { numerosDaJurimetria, type Jurimetria } from '../regras/pericia.ts'
 import janelas from './DetalheCompromisso.module.css'
 import styles from './JurimetriaPerito.module.css'
 
-const numeros = (j: Jurimetria) => (j.suficiente ? `${j.taxa}% · ${j.favoraveis} de ${j.laudos}` : `amostra insuficiente (${j.laudos} laudos)`)
+const numeros = (j: Jurimetria) => numerosDaJurimetria(j, hojeIso(agora()))
 
 /**
  * A jurimetria do perito (Figma 2184:2 e 2184:53): os números do acervo, calculados pelo sistema, o que ele costuma
- * perguntar, a dica para a ligação e os processos com ele. Com menos de 10 laudos, "amostra insuficiente" e nada vai ao
- * cliente (G22). A IA só resume o que os laudos dizem. Só para o Jurídico.
+ * perguntar, a dica para a ligação e os processos com ele. Toda porcentagem com o número de laudos e a data da base, sem
+ * amostra mínima (G22). A IA só resume o que os laudos dizem. Só para o Jurídico.
  */
 export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito; aoFechar: () => void }) {
   const janela = useRef<HTMLDialogElement>(null)
@@ -36,8 +36,8 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
             <strong id="perito-titulo" className={styles.nome}>
               {perito.nome}
             </strong>
-            <span className={jurimetria.suficiente ? styles.suficiente : styles.insuficiente}>
-              {jurimetria.suficiente ? 'amostra suficiente (G22)' : 'amostra insuficiente (G22)'}
+            <span className={jurimetria.laudos ? styles.suficiente : styles.insuficiente}>
+              números do sistema (G22)
             </span>
           </p>
           <p className={styles.sub}>
@@ -73,13 +73,13 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
         </ul>
 
         <h3 className={styles.secao}>Dica para orientar o cliente · use na ligação</h3>
-        {jurimetria.suficiente ? (
+        {jurimetria.laudos ? (
           <p className={styles.dica}>
             Leve {perfil.pediu.join(' e ')}. Conte como é o seu dia: {perfil.perguntou[0]}. Responda com calma e com sinceridade.
           </p>
         ) : (
           <p className={styles.sub}>
-            Com menos de {AMOSTRA_MINIMA_DO_PERITO} laudos, a dica pelo perfil não vai ao cliente (G22): vale a orientação padrão.
+            Sem laudo do perito no acervo, não há dica pelo perfil: vale a orientação padrão.
           </p>
         )}
 

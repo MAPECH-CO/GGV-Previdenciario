@@ -63,12 +63,12 @@ Registrado o resultado com laudo, o laudo SHALL seguir para a atualização do p
 - **Então** o laudo segue para a atualização do perfil do perito (DP.09, GGVP-73)
 
 ### Requirement: CA8 · A jurimetria do perito dentro da tarefa (G22)
-Com o perito identificado, a tarefa SHALL mostrar a jurimetria calculada pelo sistema, com o tamanho da amostra; abaixo do mínimo, "amostra insuficiente" (G22).
+Com o perito identificado, a tarefa SHALL mostrar a jurimetria calculada pelo sistema, com o número de laudos e a data da base, sem amostra mínima (G22).
 
 #### Scenario: CA8 · Perito identificado
 - **Dado** o perito identificado
 - **Quando** confiro o resultado
-- **Então** vejo, dentro da tarefa, a jurimetria do perito com o tamanho da amostra; amostra abaixo do mínimo aparece como "amostra insuficiente"
+- **Então** vejo, dentro da tarefa, a jurimetria do perito com o número de laudos e a data da base; toda amostra conta
 
 ### Requirement: CA9 · As perícias da semana abrem a página do processo
 Perguntado ao chat pelas perícias da semana, cada item SHALL abrir a página do processo do cliente com a perícia em destaque, e não a Agenda.

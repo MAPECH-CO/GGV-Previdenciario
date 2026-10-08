@@ -337,7 +337,7 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
   it('CA2, CA3, CA9, CA12 · perito reconhecido com perfil: pelo perfil, com a versão e a jurimetria do sistema', async () => {
     const t = (await obterPericia('antonio-exemplo-1'))!
     expect(t.pericia.peritoId).toBe('a-prado')
-    expect(t.pericia.orientacao).toMatchObject({ modo: 'perfil', peritoId: 'a-prado', versaoDoPerfil: 34, jurimetria: { laudos: 34, favoraveis: 24, taxa: 71, suficiente: true } })
+    expect(t.pericia.orientacao).toMatchObject({ modo: 'perfil', peritoId: 'a-prado', versaoDoPerfil: 34, jurimetria: { laudos: 34, favoraveis: 24, taxa: 71 } })
     expect(t.pericia.orientacao!.texto).toContain('O que Dr. A. Prado costuma observar: ')
     // Os números ficam com o Jurídico: o texto ao cliente não traz a jurimetria (G22).
     expect(t.pericia.orientacao!.texto).not.toMatch(/\d+%/)
@@ -369,13 +369,13 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
     expect(depois.pericia.historico.map((e) => e.oQue)).toContain('Ligou o perito: Dr. A. Prado (exemplo)')
   })
 
-  it('CA12, G22 · perito com amostra pequena: o perfil orienta, mas a jurimetria não entra', async () => {
+  it('CA12, G22 · perito com amostra pequena: o perfil orienta e a jurimetria entra, porque toda amostra conta', async () => {
     const t = await ligarPerito('maria-exemplo-1', 'r-menezes', IGOR)
     expect(t.pericia.orientacao).toBeUndefined()
     const marcada = await marcarMaria()
     expect(marcada.pericia.orientacao!.modo).toBe('perfil')
-    expect(marcada.pericia.orientacao!.jurimetria).toBeUndefined()
-    expect(marcada.perfil!.jurimetria).toMatchObject({ laudos: 6, suficiente: false })
+    expect(marcada.pericia.orientacao!.jurimetria).toMatchObject({ laudos: 6 })
+    expect(marcada.perfil!.jurimetria).toMatchObject({ laudos: 6 })
   })
 
   it('CA8, CA10 · pedido malicioso à IA: a verificação bloqueia a saída e a tarefa diz que precisa de revisão', async () => {
@@ -407,7 +407,7 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
 
   it('"Dica para a perícia" (Figma 2186:857): o perfil do perito, os números do sistema e a tarefa', async () => {
     const dica = (await dicaParaAPericia('Qual a orientação para a perícia do Antônio com o Dr. A. Prado?'))!
-    expect(dica.texto).toContain('Pelo perfil de Dr. A. Prado (34 laudos, 71% favoráveis), peça para Antônio levar')
+    expect(dica.texto).toMatch(/Pelo perfil de Dr\. A\. Prado \(71% favorável em 34 laudos · base de \d\d\/\d\d\), peça para Antônio levar/)
     expect(dica.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado (exemplo) · Ver o perfil do perito', 'Antônio Exemplo · Orientar para a perícia'])
   })
 })
@@ -709,9 +709,9 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     })
   })
 
-  it('"como o perito avalia" (Figma 2186:2): os números do sistema com a amostra (G22) e as perícias com ele', () => {
+  it('"como o perito avalia" (Figma 2186:2): os números do sistema com o número de laudos e a base (G22) e as perícias com ele', () => {
     const r = comoOPeritoAvalia('Como o Dr. A. Prado costuma avaliar problemas de coluna?')!
-    expect(r.texto).toContain('Pelo acervo, Dr. A. Prado tem 34 laudos, 71% favoráveis. Em coluna ainda são poucos laudos (8), então a porcentagem não aparece (G22).')
+    expect(r.texto).toMatch(/Pelo acervo, Dr\. A\. Prado tem 71% favorável em 34 laudos · base de \d\d\/\d\d\. Em coluna: 75% favorável em 8 laudos · base de \d\d\/\d\d \(G22\)\./)
     expect(r.texto).toContain('Os números vêm do sistema; eu só resumo os laudos.')
     expect(r.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado · Ver o perfil do perito', 'Antônio Exemplo · Perícia médica'])
     expect(comoOPeritoAvalia('Como o perito avalia?')).toBeNull()
@@ -795,6 +795,6 @@ describe('GGVP-73 · atualizar o perfil do perito', () => {
   it('CA7 · os números vêm de código: o desfavorável muda a taxa pela contagem', async () => {
     const t = await registrarAntonio('laudo_desfavoravel.pdf', false)
     expect(t.perfil!.jurimetria).toMatchObject({ laudos: 35, favoraveis: 24, taxa: 69 })
-    expect(t.perfil!.porAssunto.find((a) => a.assunto === 'coluna')!.jurimetria).toMatchObject({ laudos: 9, suficiente: false })
+    expect(t.perfil!.porAssunto.find((a) => a.assunto === 'coluna')!.jurimetria).toMatchObject({ laudos: 9 })
   })
 })

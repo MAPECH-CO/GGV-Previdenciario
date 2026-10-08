@@ -95,9 +95,9 @@ O pedido no chat de uma orientação para esconder ou mudar a situação real SH
 - **Então** o chat recusa e o pedido fica registrado (G11)
 
 ### Requirement: CA12 · Jurimetria por código; amostra pequena não chega ao cliente (G22)
-Os números da jurimetria do perito SHALL vir do sistema, e a IA só explica e cita as fontes; com amostra abaixo do mínimo (10 laudos, Lucas 02/10), a jurimetria SHALL aparecer como "amostra insuficiente" e MUST NOT chegar ao cliente (G22).
+Os números da jurimetria do perito SHALL vir do sistema, e a IA só explica e cita as fontes; toda porcentagem SHALL aparecer com o número de laudos e a data da base, sem amostra mínima (G22, Lucas 06/10 e Pedro 07/10, no lugar do mínimo de 10 laudos de 02/10), e os números MUST NOT chegar ao cliente.
 
 #### Scenario: CA12 · Jurimetria na orientação
 - **Dado** a jurimetria do perito usada na orientação
 - **Quando** a orientação é montada
-- **Então** os números vêm do sistema e a IA só explica e cita as fontes; com amostra abaixo do mínimo, a jurimetria aparece como "amostra insuficiente" e nunca chega ao cliente (G22)
+- **Então** os números vêm do sistema e a IA só explica e cita as fontes; toda porcentagem vem com o número de laudos e a data da base, sem amostra mínima, e os números nunca chegam ao cliente (G22)
