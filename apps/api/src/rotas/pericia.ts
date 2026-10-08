@@ -8,8 +8,12 @@ import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
-  ArquivoParaLer,
   AutorizacaoDeRemarcacao,
+  ComprovantePelaIa,
+  LaudoPelaIa,
+  LeituraDoComprovante,
+  LeituraDoLaudoPelaIa,
+  OrientacaoPelaIa,
   ComparecimentoNaPericia,
   ConclusaoDosDocumentos,
   DecisaoDaFalta,
@@ -30,21 +34,23 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
+import { anonimizar } from '../ia/acervo.ts'
+import { lerJson, type Ia } from '../ia/ia.ts'
+import type { Preparo } from '../ia/preparo.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import type { Perito } from '../../../web/src/dados/peritos.ts'
 import type { Ficha, Processo, Tarefa } from '../../../web/src/dados/tipos.ts'
 import { hojeIso } from '../../../web/src/regras/datas.ts'
 import { problemaG20 } from '../../../web/src/regras/parecer.ts'
-import type { OrigemDaPericia, TipoDePericia } from '../../../web/src/regras/pericia.ts'
+import { problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
 import {
   criarPericia,
-  leituraDoComprovante,
-  leituraDoLaudo,
   mudancas,
   naTela,
+  paraOrientar,
   periciaDo,
   periciaDoResultado,
   tarefasDaAdvogadaEm,
@@ -52,6 +58,7 @@ import {
   tarefasDeDecidirDocumentoEm,
   tarefasDoJuridicoAdmEm,
   type MundoDaPericia,
+  type LeituraDoLaudo,
   type NaPericia,
   type Pericia,
   type PericiaNaTela,
@@ -90,7 +97,7 @@ const NO_CATALOGO: Record<string, string> = {
 /** O perfil do perito na coluna `perfil` (GGVP-73): o tipo, onde atua e os laudos, sem dado pessoal do cliente. */
 type PerfilGuardado = Pick<Perito, 'tipo' | 'onde' | 'laudos'>
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; ia: Ia; preparo?: Preparo; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /** A perícia do caso montada para as rotas: o mundo das regras e as linhas do banco, para gravar depois. */
@@ -150,7 +157,7 @@ function visao(t: PericiaNaTela, juridico: boolean, sensiveis: Set<string>): Per
   }
 }
 
-export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamento, ia, preparo, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
   const com = (acao: Acao) => ({ preHandler: exigir(banco, acao, agora) })
@@ -410,14 +417,29 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return t && mudar(pedido, resposta, { acao: 'pericia_tentativa_registrada', passo: 'DP.02' }, (n, quem) => mudancas.tentativa(n, t, quem))
   })
 
-  // GGVP-53 CA2, CA3: IA simulada lê data, hora, local e tipo do comprovante; o perito nunca vem. A pessoa confere.
+  // GGVP-53 CA2, CA3 e GGVP-139 CA1: a IA lê o comprovante do INSS (a Mistral tira o texto do PDF, a OpenAI acha data,
+  // hora, local e modalidade). O tipo vem da perícia e o perito nunca vem. A pessoa confere antes de registrar; sem IA, o
+  // motivo, e os campos ficam para ela preencher.
   app.post<ComId>('/api/processos/:id/pericia/comprovante/leitura', com('pericia.marcar'), async (pedido, resposta) => {
-    const a = corpo(ArquivoParaLer, pedido, resposta)
-    if (!a) return
+    const { arquivo } = await lerMultipart(pedido)
+    if (!arquivo) return negar(resposta, 400, MSG_ARQUIVO_PDF)
     const d = await doCaso(pedido.params.id)
     const p = d && periciaDo(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, MSG_SEM_PERICIA)
-    return leituraDoComprovante(p, a.nome, hojeIso(agora()))
+    const sem = (motivo: string) => LeituraDoComprovante.parse({ lido: null, sugestao: null, motivo })
+    const quem = { casoId: d.casoId, quem: pedido.usuario!.id }
+    const doc = await ia.lerDocumento({ ...quem, arquivo: arquivo.conteudo, mime: arquivo.mime, sensivel: false, referencia: `pericia:${p.id}` })
+    if (!doc) return sem('A IA não leu o comprovante agora: confira o PDF e preencha a data, a hora e o local.')
+    const conteudo = [`Perícia pedida: ${p.tipo === 'social' ? 'avaliação social' : 'perícia médica'}`, 'Texto do comprovante:', doc.texto].join('\n')
+    const fontes = [{ tipo: 'documento' as const, referencia: `pericia:${p.id}`, trecho: `Comprovante do INSS (${arquivo.nome})` }]
+    const validar = (texto: string) => ComprovantePelaIa.safeParse(lerJson(texto)).success
+    const s = await ia.sugerir('ler_comprovante_pericia', { ...quem, conteudo, fontes }, { validar })
+    if (!s) return sem('A IA não achou a data, a hora e o local no comprovante: confira o PDF e preencha.')
+    const lida = ComprovantePelaIa.parse(lerJson(s.texto))
+    // A regra fica no código: o tipo é o da perícia pedida; o alerta da leitura do PDF chega junto com o da sugestão.
+    // O texto cru da IA não vai à tela: só a leitura limpa (um perito que a IA citasse fica de fora).
+    const lido = { ...lida, tipo: p.tipo }
+    return LeituraDoComprovante.parse({ lido, sugestao: { ...s, texto: JSON.stringify(lido), alerta: s.alerta ?? doc.alerta }, motivo: null })
   })
 
   // GGVP-53 CA2 a CA4, CA8: a marcação conferida, com o comprovante do INSS na pasta do caso.
@@ -526,6 +548,45 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return p && mudar(pedido, resposta, { acao: 'pericia_perito_ligado', passo: 'DP.05' }, (n, quem) => mudancas.perito(n, p.peritoId, quem))
   })
 
+  /**
+   * GGVP-139 CA2: a IA reescreve a orientação que o código montou (o roteiro e, na Justiça, o perfil do perito) para o
+   * cliente. A saída só fica se passar na verificação (G11, G20): a mesma que recusa o envio. O primeiro nome do cliente
+   * vai; o resto da ficha, não. `quem` nulo: o preparo em segundo plano.
+   */
+  async function orientar(casoId: string, quem: string | null, como: { soPreparar?: boolean; refazer?: boolean } = {}) {
+    const d = await doCaso(casoId)
+    const p = d && periciaDo(d.mundo, casoId)
+    if (!p?.orientacao || !p.marcacao) return OrientacaoPelaIa.parse({ texto: null, sugestao: null, motivo: 'A orientação sai quando a perícia tiver data.' })
+    const fontes = [
+      { tipo: 'regra' as const, referencia: `pericia:${p.id}`, trecho: `Orientação ${p.orientacao.modo === 'perfil' ? 'pelo perfil do perito' : 'padrão'} do escritório` },
+    ]
+    const validar = (texto: string) => !problemaDaOrientacao(texto)
+    const s = await ia.sugerir('orientacao_pericia', { casoId, quem, conteudo: p.orientacao.texto, fontes }, { ...como, validar })
+    if (!s) return OrientacaoPelaIa.parse({ texto: null, sugestao: null, motivo: 'A IA não escreveu a orientação agora: revise a que o sistema montou.' })
+    return OrientacaoPelaIa.parse({ texto: s.texto, sugestao: s, motivo: null })
+  }
+
+  // A sugestão da orientação: a pronta (sem nova chamada) ou feita agora; `refazer` pede outra versão.
+  app.post<ComId & { Querystring: { refazer?: string } }>('/api/processos/:id/pericia/orientacao/sugestao', com('pericia.orientar_cliente'), async (pedido, resposta) => {
+    if (!UUID.test(pedido.params.id)) return negar(resposta, 404, 'Caso não encontrado.')
+    return orientar(pedido.params.id, pedido.usuario!.id, { refazer: pedido.query.refazer === 'sim' })
+  })
+
+  // Sugestão pronta: em segundo plano, a orientação de cada perícia que espera o Jurídico administrativo orientar.
+  preparo?.registrar(
+    async () => {
+      const casos = [...new Set((await banco.select({ casoId: pericia.casoId }).from(pericia)).map((l) => l.casoId))]
+      const esperando: string[] = []
+      for (const casoId of casos) {
+        const d = await doCaso(casoId)
+        const p = d && periciaDo(d.mundo, casoId)
+        if (d && p && paraOrientar(naTela(d.mundo, p, agora()))) esperando.push(casoId)
+      }
+      return esperando
+    },
+    (casoId) => orientar(casoId, null, { soPreparar: true }),
+  )
+
   // GGVP-62: a orientação revisada vai ao cliente. O servidor verifica de novo (G11, G20): recusada, guarda a tentativa,
   // registra o portão e responde 400.
   app.post<ComId>('/api/processos/:id/pericia/orientacao', com('pericia.orientar_cliente'), async (pedido, resposta) => {
@@ -558,15 +619,55 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     mudar(pedido, resposta, { acao: 'pericia_resultado_disponivel', passo: 'DP.E4' }, (n) => mudancas.resultadoDisponivel(n), true),
   )
 
-  // GGVP-70 CA5: IA simulada resume o laudo; a advogada confere e decide.
+  /**
+   * GGVP-139 CA4: os padrões do perito vão ao perfil sem dado do cliente. A instrução pede; o código garante: o nome, o
+   * CPF, o telefone e o endereço do cliente viram marcadores (o mesmo `anonimizar` do acervo).
+   */
+  const semCliente = (l: LaudoPelaIa, nome: string): LeituraDoLaudo => ({
+    ...l,
+    porque: l.porque ?? undefined,
+    valeNovaPericia: l.valeNovaPericia ?? undefined,
+    assunto: anonimizar(l.assunto, nome),
+    observou: l.observou.map((x) => anonimizar(x, nome)),
+    perguntou: l.perguntou.map((x) => anonimizar(x, nome)),
+    pediu: l.pediu.map((x) => anonimizar(x, nome)),
+  })
+
+  // GGVP-70 CA5 e GGVP-139 CA3: a IA lê o laudo (dado de saúde: só com a autorização do escritório) e resume para a
+  // advogada, com as fontes; quem decide o resultado é ela. Sem IA, o motivo, e ela lê o PDF.
   app.post<ComId>('/api/processos/:id/pericia/laudo/leitura', com('pericia.conferir_resultado'), async (pedido, resposta) => {
-    const a = corpo(ArquivoParaLer, pedido, resposta)
-    if (!a) return
+    const { arquivo } = await lerMultipart(pedido)
+    if (!arquivo) return negar(resposta, 400, MSG_ARQUIVO_PDF)
     const d = await doCaso(pedido.params.id)
     const p = d && periciaDoResultado(d.mundo, d.casoId)
     if (!d || !p) return negar(resposta, 409, 'Esta perícia não espera resultado.')
-    return leituraDoLaudo(p, naTela(d.mundo, p, agora()).beneficio, a.nome)
+    const sem = (motivo: string) => LeituraDoLaudoPelaIa.parse({ leitura: null, sugestao: null, motivo })
+    const quem = { casoId: d.casoId, quem: pedido.usuario!.id }
+    const doc = await ia.lerDocumento({ ...quem, arquivo: arquivo.conteudo, mime: arquivo.mime, sensivel: true, referencia: `pericia:${p.id}` })
+    if (!doc) return sem('A IA não leu o laudo agora: leia o PDF e registre o resultado pela sua leitura.')
+    const beneficio = naTela(d.mundo, p, agora()).beneficio
+    const conteudo = [`Benefício pedido: ${beneficio}`, `Perícia: ${p.tipo === 'social' ? 'avaliação social' : 'perícia médica'}`, 'Texto do laudo:', doc.texto].join('\n')
+    const fontes = [{ tipo: 'documento' as const, referencia: `pericia:${p.id}`, trecho: `Laudo da perícia (${arquivo.nome})` }]
+    const validar = (texto: string) => LaudoPelaIa.safeParse(lerJson(texto)).success
+    const s = await ia.sugerir('resumo_laudo_pericia', { ...quem, conteudo, fontes }, { validar })
+    if (!s) return sem('A IA não resumiu o laudo agora: leia o PDF e registre o resultado pela sua leitura.')
+    const leitura = semCliente(LaudoPelaIa.parse(lerJson(s.texto)), d.mundo.fichas[0].nome)
+    return LeituraDoLaudoPelaIa.parse({ leitura, sugestao: { ...s, texto: JSON.stringify(leitura), alerta: s.alerta ?? doc.alerta }, motivo: null })
   })
+
+  /** A leitura que a advogada conferiu: a chamada da IA do mesmo caso, relida e limpa de novo; sem ela, o resultado manual. */
+  async function leituraConferida(casoId: string, chamadaIaId: string | undefined, favoravel: boolean | undefined, nome: string): Promise<LeituraDoLaudo> {
+    const [c] = chamadaIaId
+      ? await banco
+          .select({ saida: chamadaIa.saida })
+          .from(chamadaIa)
+          .where(and(eq(chamadaIa.id, chamadaIaId), eq(chamadaIa.casoId, casoId), eq(chamadaIa.finalidade, 'resumo_laudo_pericia'), eq(chamadaIa.situacao, 'ok')))
+      : []
+    const lida = c?.saida ? LaudoPelaIa.safeParse(lerJson(c.saida)) : null
+    if (lida?.success) return semCliente(lida.data, nome)
+    const conclusao = favoravel ? 'Favorável' : 'Desfavorável'
+    return { favoravel: !!favoravel, resumo: 'Registrado pela leitura da advogada, sem o resumo da IA.', conclusao, coerencia: '', pontoDeAtencao: '', assunto: 'sem assunto', observou: [], perguntou: [], pediu: [] }
+  }
 
   // GGVP-70 CA2 a CA6 e GGVP-73: o resultado conferido, com o laudo (dado de saúde) na pasta; fecha a perícia na junção
   // do D2 ou volta à vigília da exigência; o laudo entra no perfil do perito.
@@ -579,9 +680,10 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     const r = await mudar(
       pedido,
       resposta,
-      { acao: 'pericia_resultado_registrado', passo: 'DP.08', detalhe: { favoravel: entrada.data.favoravel, novaPericia: entrada.data.novaPericia === true } },
+      { acao: 'pericia_resultado_registrado', passo: 'DP.08', detalhe: { favoravel: entrada.data.favoravel, novaPericia: entrada.data.novaPericia === true, chamadaIa: entrada.data.chamadaIaId ?? null } },
       async (n, quem) => {
-        mudancas.resultado(n, { laudo: { nome: arquivo.nome, hash }, ...entrada.data }, quem, randomUUID())
+        const leitura = await leituraConferida(n.pericia.processoId, entrada.data.chamadaIaId, entrada.data.favoravel, n.mundo.fichas[0].nome)
+        mudancas.resultado(n, { laudo: { nome: arquivo.nome, hash }, ...entrada.data, leitura }, quem, randomUUID())
         await guardarArquivo(pedido, n, arquivo, hash, 'laudo-pericia', true)
       },
       true,

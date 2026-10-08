@@ -81,3 +81,9 @@
 - [x] 9.3 Rotas em `apps/api/src/rotas/pericia.ts`, com o perfil da sessão, os portões (G20, G11, dado de saúde) e o histórico; testes em `pericia.test.ts` (CA1 a CA6). Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/pericia.test.ts`.
 - [x] 9.4 Telas no modo misto, depois do pedido #29: as funções de `dados/pericia.ts` chamam a API quando o caso é do servidor (`doServidor`), a cópia recebe a perícia e as Centrais, as tarefas do servidor (`sincronizarPericias`); o PDF sobe em multipart. Testes em `src/dados/periciaLigada.test.ts` e Playwright `e2e/pericia-servidor.e2e.ts`, com login, da perícia marcada ao resultado (CA7).
 - [ ] 9.5 O servidor de exemplo da Perícia sai do código; a semente fica só para os testes (CA8). Hoje o caminho de exemplo só atende os casos da semente ("-exemplo"), que os testes de tela e os Playwright da Perícia usam; tirá-lo pede refazer esses Playwright sobre casos do servidor. A migração (0016) e a matriz (v14) já estão sobre a main de 08/10.
+
+## GGVP-139 · IA de verdade na Perícia
+
+- [x] 10.1 Finalidades `ler_comprovante_pericia`, `orientacao_pericia` e `resumo_laudo_pericia` em `apps/api/src/ia/ia.ts`; contratos em `packages/contratos/src/pericia.ts`.
+- [x] 10.2 Rotas: a leitura do comprovante e do laudo pelo PDF (Mistral e OpenAI), a sugestão da orientação (com o preparo em segundo plano) e o resultado com a leitura conferida; os padrões do perito sem dado do cliente (`anonimizar`). Testes com `fetch` falso em `apps/api/src/rotas/pericia.test.ts` (CA1 a CA7).
+- [x] 10.3 Telas: marcar, orientar e resultado mostram a sugestão com o selo, as fontes e o alerta (`componentes/SugestaoDaPericia.tsx`); sem IA, o motivo. Testes em `src/paginas/PericiaComIa.test.tsx`.

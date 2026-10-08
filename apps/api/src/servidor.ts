@@ -116,7 +116,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora })
-    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

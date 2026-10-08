@@ -2,6 +2,7 @@
 // pericia.ts); a forma é conferida aqui, e as regras (tentativa, marcação, documentos, orientação, comparecimento e
 // resultado) são as de apps/web/src/regras/periciaNoCaso.ts, rodando no servidor. A resposta é a perícia na tela.
 import { z } from 'zod'
+import { SugestaoDaIa } from './ia.ts'
 
 const Texto = (max: number) => z.string().trim().max(max)
 const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -11,10 +12,6 @@ const TipoDePericia = z.enum(['medica', 'social'])
 /** POST /api/processos/:id/pericia/tentativas: a tentativa sem sucesso de marcar (GGVP-53, CA1). */
 export const TentativaDeMarcar = z.object({ dia: Data, oQueAconteceu: Texto(300) })
 export type TentativaDeMarcar = z.infer<typeof TentativaDeMarcar>
-
-/** POST /api/processos/:id/pericia/comprovante/leitura e /laudo/leitura: o nome do arquivo que a IA lê (simulada). */
-export const ArquivoParaLer = z.object({ nome: Texto(200).min(1) })
-export type ArquivoParaLer = z.infer<typeof ArquivoParaLer>
 
 /** O que o comprovante do INSS diz, conferido pela pessoa (GGVP-53, CA2, CA3). Nunca traz o perito. */
 export const ComprovanteLido = z.object({ data: Data, hora: Hora, local: Texto(120), modalidade: Texto(60), tipo: TipoDePericia })
@@ -78,5 +75,58 @@ export type ComparecimentoNaPericia = z.infer<typeof ComparecimentoNaPericia>
  * POST /api/processos/:id/pericia/resultado, em multipart: `dados` (este JSON) e o arquivo `laudo` (PDF). O que a
  * advogada registrou (GGVP-70, CA2 a CA6). O laudo é dado de saúde.
  */
-export const ResultadoConferido = z.object({ favoravel: z.boolean().optional(), novaPericia: z.boolean().optional(), conferidas: z.array(Texto(60)).max(10) })
+export const ResultadoConferido = z.object({
+  favoravel: z.boolean().optional(),
+  novaPericia: z.boolean().optional(),
+  conferidas: z.array(Texto(60)).max(10),
+  /** A leitura da IA que a advogada conferiu (GGVP-139 CA3): o servidor relê a chamada; sem ela, o resultado é manual. */
+  chamadaIaId: z.uuid().optional(),
+})
 export type ResultadoConferido = z.infer<typeof ResultadoConferido>
+
+// GGVP-139 · a IA de verdade na Perícia, pelo motor do portal (apps/api/src/ia). A IA sugere; a pessoa confere e decide.
+
+/** O que a IA devolve do comprovante do INSS (GGVP-139 CA1): sem o perito, nunca. O tipo vem da perícia, não da IA. */
+export const ComprovantePelaIa = z.object({
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  hora: Hora,
+  local: Texto(120).min(3),
+  modalidade: Texto(60),
+})
+export type ComprovantePelaIa = z.infer<typeof ComprovantePelaIa>
+
+/**
+ * POST /api/processos/:id/pericia/comprovante/leitura, em multipart com o PDF em `comprovante`: a leitura sugerida, com a
+ * marca de sugestão, as fontes e o alerta; sem IA (desligada, recusada, fora do formato), `lido` nulo e o motivo.
+ */
+export const LeituraDoComprovante = z.object({ lido: ComprovanteLido.nullable(), sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable() })
+export type LeituraDoComprovante = z.infer<typeof LeituraDoComprovante>
+
+/**
+ * POST /api/processos/:id/pericia/orientacao/sugestao (GGVP-139 CA2): o texto da orientação escrito pela IA, já verificado
+ * (G11, G20), para a pessoa revisar; sem IA, `texto` nulo e o motivo, e fica a orientação que o código montou.
+ */
+export const OrientacaoPelaIa = z.object({ texto: z.string().nullable(), sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable() })
+export type OrientacaoPelaIa = z.infer<typeof OrientacaoPelaIa>
+
+const Itens = z.array(Texto(300)).max(10).default([])
+
+/** O que a IA devolve do laudo (GGVP-139 CA3, CA4): o resumo para a advogada e os padrões do perito para o perfil. */
+export const LaudoPelaIa = z.object({
+  favoravel: z.boolean(),
+  resumo: Texto(1000).min(1),
+  conclusao: Texto(300).min(1),
+  coerencia: Texto(1000).min(1),
+  pontoDeAtencao: Texto(1000).default(''),
+  porque: Texto(1000).nullable().optional(),
+  valeNovaPericia: z.boolean().nullable().optional(),
+  assunto: Texto(60).min(1),
+  observou: Itens,
+  perguntou: Itens,
+  pediu: Itens,
+})
+export type LaudoPelaIa = z.infer<typeof LaudoPelaIa>
+
+/** POST /api/processos/:id/pericia/laudo/leitura, em multipart com o PDF em `laudo`: a leitura sugerida, ou o motivo. */
+export const LeituraDoLaudoPelaIa = z.object({ leitura: LaudoPelaIa.nullable(), sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable() })
+export type LeituraDoLaudoPelaIa = z.infer<typeof LeituraDoLaudoPelaIa>
