@@ -2,10 +2,11 @@
 // dados bancários só mudam com o cliente verificado e em contrato novo; a mudança bancária tem a segunda confirmação, o
 // aviso ao contato anterior e o alerta da prestação de contas. Ligar no servidor: trocar o corpo de cada função por fetch
 // no endpoint da design.md (change ggvp-12).
-import { formatarTelefone, normalizarTelefone } from '../campos.ts'
+import { formatarTelefone } from '../campos.ts'
 import { dataHora } from '../regras/datas.ts'
 import {
   COMO_VERIFICOU,
+  camposProtegidosQueMudam,
   erroDosDadosBancarios,
   motivoParaNaoMudar,
   pertoDaPrestacao,
@@ -18,6 +19,9 @@ import type { QuemAge } from './conversa.ts'
 import { enviarMensagem, prepararMensagem } from './mensagens.ts'
 import { agora, esperar, evento, gravar, ler, salvarFicha, type Banco } from './servidor.ts'
 import type { EdicaoFicha, Ficha, TarefaEncaminhada } from './tipos.ts'
+
+// O que a edição muda de telefone e e-mail é regra pura, que o servidor também usa (GGVP-138).
+export { camposProtegidosQueMudam }
 
 /** Os dados bancários em vigor de uma ficha, com quem cadastrou e desde quando. */
 export type RegistroBancario = DadosBancarios & { fichaId: string; desde: string; quem: string }
@@ -141,12 +145,4 @@ export async function salvarFichaVerificada(
   }
   gravar(banco)
   return { ficha }
-}
-
-/** O telefone e o e-mail que a edição muda (CA1). Completar o que estava em branco (a ficha do scanner) não é mudança. */
-export function camposProtegidosQueMudam(ficha: Pick<Ficha, 'telefone' | 'email'>, edicao: Pick<EdicaoFicha, 'telefone' | 'email'>): ('telefone' | 'email')[] {
-  const antes = { telefone: normalizarTelefone(ficha.telefone ?? ''), email: (ficha.email ?? '').trim().toLowerCase() }
-  const mudaTelefone = antes.telefone !== '' && antes.telefone !== normalizarTelefone(edicao.telefone ?? '')
-  const mudaEmail = antes.email !== '' && antes.email !== (edicao.email ?? '').trim().toLowerCase()
-  return [mudaTelefone && ('telefone' as const), mudaEmail && ('email' as const)].filter((x): x is 'telefone' | 'email' => Boolean(x))
 }

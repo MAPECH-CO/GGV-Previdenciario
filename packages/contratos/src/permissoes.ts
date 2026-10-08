@@ -18,7 +18,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
 // Na junção da main (v12, Jurimetria) com a Recepção (v11), a matriz das duas é a versão 13.
-export const VERSAO_MATRIZ = 13
+export const VERSAO_MATRIZ = 14
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -91,6 +91,15 @@ export const MATRIZ = {
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
   'entrevista.gravar': JURIDICO,
+  // Versão 14 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
+  // a conversa é o Atendimento e o Jurídico (advogada e Sênior), como nas telas; só a Sênior volta uma versão e dá prazo
+  // novo à pendência atrasada; a segunda confirmação dos dados bancários é do Atendimento líder, da advogada ou da Sênior.
+  'conversa.registrar': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'ficha.voltar_versao': ['senior'],
+  'conversa.prazo_da_pendencia': ['senior'],
+  'mensagem.enviar': ['atendimento', 'atendimento_lider', ...JURIDICO],
+  'dados_bancarios.pedir': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'dados_bancarios.confirmar': ['atendimento_lider', 'advogada', 'senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ
