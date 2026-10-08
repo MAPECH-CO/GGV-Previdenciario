@@ -5,7 +5,7 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { atendimento, caso, decisao, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_SEM_EXPLICACAO, MSG_SEM_RESUMO_ESPERANDO, TITULO_EXPLICAR, TITULO_RESUMO, abrirExplicacaoDoResultado } from './resultado.ts'
+import { MSG_OUTRA_PESSOA, MSG_SEM_EXPLICACAO, MSG_SEM_RESUMO_ESPERANDO, TITULO_EXPLICAR, TITULO_RESUMO, abrirExplicacaoDoResultado } from './resultado.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -91,5 +91,25 @@ describe('GGVP-22 · explicar ao cliente', () => {
     const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
     expect([c.fase, c.encerradoEm !== null]).toEqual(['encerrado', true])
     expect(await banco.select().from(atendimento)).toHaveLength(2)
+  })
+
+  it('CA5 · só quem ficou com a explicação registra o contato: com a advogada, o Atendimento recebe 403', async () => {
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'advogada' })
+    expect((await chamar('ana', 'GET', '/resultado')).json().podeRegistrar).toBe(false)
+    const r = await chamar('ana', 'POST', '/resultado/contato', { resultado: 'explicado', canal: 'telefone', explicado: 'Expliquei o resultado ao cliente.' })
+    expect([r.statusCode, r.json().erro]).toEqual([403, MSG_OUTRA_PESSOA])
+    expect(await abertas()).toEqual([`advogada · ${TITULO_EXPLICAR}`])
+    expect((await chamar('gabi', 'GET', '/resultado')).json().podeRegistrar).toBe(true)
+    expect((await chamar('gabi', 'POST', '/resultado/contato', { resultado: 'sem_contato', canal: 'telefone' })).statusCode).toBe(201)
+  })
+
+  it('CA4 · os contatos mostrados são os desta explicação; outro atendimento do caso depois do resumo não entra', async () => {
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco
+      .insert(atendimento)
+      .values({ pessoaId: c.pessoaId, casoId, canal: 'telefone', responsavelId: ids.ana, inicio: new Date(Date.now() + 60_000), resumo: 'O cliente ligou para perguntar do INSS.' })
+    await chamar('ana', 'POST', '/resultado/contato', { resultado: 'sem_contato', canal: 'whatsapp' })
+    expect((await chamar('ana', 'GET', '/resultado')).json().contatos.map((x: { canal: string }) => x.canal)).toEqual(['whatsapp'])
   })
 })
