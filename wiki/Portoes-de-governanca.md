@@ -20,7 +20,7 @@ Cada portão abaixo vira critério de aceite nas histórias indicadas. Nenhum po
 | G12 | Na dúvida, o prazo é contado pelo lado mais seguro | D4, atenção | GGVP-34 |
 | G13 | A vigília roda 3 vezes por dia; rodada que falhou dispara alarme e nunca parece um dia sem publicação | D4, atenção | GGVP-30 |
 | G14 | A IA só muda o que foi dito na conversa; o valor antigo fica no histórico e o Jurídico pode desfazer | D5, dica | GGVP-84 |
-| G15 | Toda cobrança ou remarcação tem limite; passou dele, sobe para a sênior (ou o Jurídico, na perícia) | D1, D2, D3, D3a, DP | GGVP-94 |
+| G15 | Toda cobrança ou remarcação tem limite; passou dele, sobe para a sênior (na perícia, para a advogada responsável, decisão do Lucas de 29/09/2026) | D1, D2, D3, D3a, DP | GGVP-94 |
 | G16 | Todo lead que não vira cliente fica com o motivo registrado | D1, observação | GGVP-60 |
 | G17 | O caso só é liberado ao Jurídico, aprovado para o INSS ou tem petição pedida com parecer médico "Suficiente" confirmado por pessoa; só a sênior dispensa, com justificativa | Roteiro de laudos (v2) | GGVP-20, GGVP-33 |
 | G18 | Documento que contradiz o requisito do benefício bloqueia o caso (por exemplo, "incapacidade total" na Aposentadoria PCD; lesão não consolidada no Auxílio-Acidente) | Roteiro de laudos (v2) | GGVP-20 |

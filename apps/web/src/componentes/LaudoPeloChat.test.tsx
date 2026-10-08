@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { configurarExemplo, obterFicha, tarefasDoSetor, zerarExemplo } from '../dados/servidor.ts'
+import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
 import { LaudoPeloChat } from './LaudoPeloChat.tsx'
 
 beforeEach(() => {
@@ -46,5 +47,27 @@ describe('Chat · Subir laudo novo', () => {
     pedir('atualizar, por favor', 'laudo.pdf')
     expect(await screen.findByText(/Não identifiquei de quem é o laudo/)).toBeTruthy()
     expect(screen.queryByRole('region', { name: /Atualizar o laudo/ })).toBeNull()
+  })
+})
+
+function perguntar(texto: string) {
+  render(<LaudoPeloChat exemplo="Ex.:" sugestoes={[]} />)
+  const campo = screen.getByLabelText('✦ Pergunte ou peça') as HTMLTextAreaElement
+  fireEvent.change(campo, { target: { value: texto } })
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
+  return campo
+}
+
+describe('Chat · o cliente ligou (GGVP-111)', () => {
+  it('CA7 · a próxima tarefa vem com o lembrete de confirmar a identidade', async () => {
+    perguntar('A Maria Exemplo me ligou, qual é a próxima tarefa?')
+    const resposta = await screen.findByText(/^Maria está em perícia \(.+\): a próxima tarefa é do Jurídico administrativo, na página da perícia\./)
+    expect(resposta.textContent).toContain(LEMBRETE_DA_IDENTIDADE)
+  })
+
+  it('GGVP-82 · fora do laudo e da ligação, o motor do chat responde (antes: "ainda não está ligado")', async () => {
+    const campo = perguntar('Qual é a próxima tarefa da Josefa?')
+    expect(await screen.findByText(/^Josefa Exemplo ainda é lead/)).toBeTruthy()
+    expect(campo.value).toBe('')
   })
 })

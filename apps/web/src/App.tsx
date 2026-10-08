@@ -10,6 +10,8 @@ import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { CentralEmConstrucao } from './paginas/CentralEmConstrucao.tsx'
 import { tarefasDeDecidirCobranca } from './dados/cobranca.ts'
 import { tarefasDaFilaDaSenior } from './dados/liberacao.ts'
+import { daSenior, tarefasDoParecer } from './dados/parecer.ts'
+import { tarefasDeDecidirComplemento } from './dados/complemento.ts'
 import { Conferencia } from './paginas/Conferencia.tsx'
 import { DecidirPericia } from './paginas/DecidirPericia.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
@@ -65,6 +67,24 @@ import { CalcularTempo } from './paginas/CalcularTempo.tsx'
 import { RegistrarFechamento } from './paginas/RegistrarFechamento.tsx'
 import { Recontatar } from './paginas/Recontatar.tsx'
 import { NovaDemanda } from './paginas/NovaDemanda.tsx'
+import { Roteiro } from './paginas/Roteiro.tsx'
+import { AnalisarLaudoNovo } from './paginas/AnalisarLaudoNovo.tsx'
+import { DarParecer } from './paginas/DarParecer.tsx'
+import { PedirComplemento } from './paginas/PedirComplemento.tsx'
+import { DispensarParecer } from './paginas/DispensarParecer.tsx'
+import { LinhaDaDeficiencia } from './paginas/LinhaDaDeficiencia.tsx'
+import { CentralJuridicoAdm } from './paginas/CentralJuridicoAdm.tsx'
+import { PericiaAberta } from './paginas/PericiaAberta.tsx'
+import { ProcessoPericia } from './paginas/ProcessoPericia.tsx'
+import { MarcarPericia } from './paginas/MarcarPericia.tsx'
+import { ReunirDocumentosPericia } from './paginas/ReunirDocumentosPericia.tsx'
+import { CobrarDocumentoPericia } from './paginas/CobrarDocumentoPericia.tsx'
+import { OrientarPericia } from './paginas/OrientarPericia.tsx'
+import { ComparecimentoPericia } from './paginas/ComparecimentoPericia.tsx'
+import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
+import { Conversa } from './paginas/Conversa.tsx'
+import { ConferirConversa } from './paginas/ConferirConversa.tsx'
+import { PaginaDoCaso } from './paginas/PaginaDoCaso.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -134,8 +154,17 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     // Uma tela inicial por perfil, pelo perfil da sessão ("Entrar como...", GGVP-96; tela inicial, GGVP-78).
     if (NA_CENTRAL_DO_ATENDIMENTO.includes(perfil)) return <CentralAtendimento />
     if (perfil === 'advogada') return <CentralAdvogada />
+    // A perícia passou ao Jurídico administrativo (Lucas, 29/09): a Central dele, com o protocolo do INSS do servidor.
+    if (perfil === 'juridico_adm') return <CentralJuridicoAdm />
     // A cobrança que passou do limite (GGVP-101 CA7) e o caso liberado pela Documentação (GGVP-18 CA1) chegam à Sênior.
-    if (perfil === 'senior') return <CentralEmConstrucao rotulo={ROTULO_PERFIL.senior} deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior()]} />
+    // Da documentação médica: a dispensa esperando a segunda sênior (GGVP-33) e o complemento a decidir (GGVP-29).
+    if (perfil === 'senior')
+      return (
+        <CentralEmConstrucao
+          rotulo={ROTULO_PERFIL.senior}
+          deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer().filter(daSenior), ...tarefasDeDecidirComplemento()]}
+        />
+      )
     // As Centrais dos outros perfis entram com as histórias de cada épico (GGVP-78).
     return <CentralEmConstrucao rotulo={ehPerfil(perfil) ? ROTULO_PERFIL[perfil] : perfil} />
   }
@@ -201,5 +230,43 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (recontato) return <Recontatar fichaId={decodeURIComponent(recontato[1])} />
   const novaDemanda = /^\/clientes\/([^/]+)\/nova-demanda$/.exec(caminho)
   if (novaDemanda) return <NovaDemanda fichaId={decodeURIComponent(novaDemanda[1])} />
+  if (caminho === '/roteiros') return <Roteiro />
+  const roteiro = /^\/roteiros\/([^/]+)$/.exec(caminho)
+  if (roteiro) return <Roteiro id={decodeURIComponent(roteiro[1])} />
+  const laudoNovo = /^\/casos\/([^/]+)\/laudo-novo$/.exec(caminho)
+  if (laudoNovo) return <AnalisarLaudoNovo processoId={decodeURIComponent(laudoNovo[1])} />
+  const parecer = /^\/casos\/([^/]+)\/parecer$/.exec(caminho)
+  if (parecer) return <DarParecer processoId={decodeURIComponent(parecer[1])} />
+  const complemento = /^\/casos\/([^/]+)\/complemento$/.exec(caminho)
+  if (complemento) return <PedirComplemento processoId={decodeURIComponent(complemento[1])} />
+  const dispensa = /^\/casos\/([^/]+)\/parecer\/dispensa$/.exec(caminho)
+  if (dispensa) return <DispensarParecer processoId={decodeURIComponent(dispensa[1])} />
+  const deficiencia = /^\/casos\/([^/]+)\/deficiencia$/.exec(caminho)
+  if (deficiencia) return <LinhaDaDeficiencia processoId={decodeURIComponent(deficiencia[1])} />
+  // Perícia (épico GGVP-10): a Central do Jurídico administrativo, a página do processo com a perícia e os passos DP.
+  if (caminho === '/juridico-administrativo') return <CentralJuridicoAdm />
+  const periciaAberta = /^\/casos\/([^/]+)\/pericia\/aberta$/.exec(caminho)
+  if (periciaAberta) return <PericiaAberta processoId={decodeURIComponent(periciaAberta[1])} />
+  const marcarPericia = /^\/casos\/([^/]+)\/pericia\/marcar$/.exec(caminho)
+  if (marcarPericia) return <MarcarPericia processoId={decodeURIComponent(marcarPericia[1])} remarcar={parametros.get('remarcar') === '1'} />
+  const documentosPericia = /^\/casos\/([^/]+)\/pericia\/documentos$/.exec(caminho)
+  if (documentosPericia) return <ReunirDocumentosPericia processoId={decodeURIComponent(documentosPericia[1])} />
+  const cobrancaPericia = /^\/casos\/([^/]+)\/pericia\/cobranca$/.exec(caminho)
+  if (cobrancaPericia) return <CobrarDocumentoPericia processoId={decodeURIComponent(cobrancaPericia[1])} />
+  const orientarPericia = /^\/casos\/([^/]+)\/pericia\/orientar$/.exec(caminho)
+  if (orientarPericia) return <OrientarPericia processoId={decodeURIComponent(orientarPericia[1])} />
+  const comparecimentoPericia = /^\/casos\/([^/]+)\/pericia\/comparecimento$/.exec(caminho)
+  if (comparecimentoPericia) return <ComparecimentoPericia processoId={decodeURIComponent(comparecimentoPericia[1])} />
+  const resultadoPericia = /^\/casos\/([^/]+)\/pericia\/resultado$/.exec(caminho)
+  if (resultadoPericia) return <ResultadoPericia processoId={decodeURIComponent(resultadoPericia[1])} />
+  const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
+  if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} abrirPerito={parametros.get('perito') === '1'} />
+  const conversa = /^\/conversas\/([^/]+)$/.exec(caminho)
+  if (conversa) return <Conversa conversaId={decodeURIComponent(conversa[1])} simular={parametros.get('simular') ?? undefined} />
+  const conferirConversa = /^\/conversas\/([^/]+)\/conferir$/.exec(caminho)
+  if (conferirConversa) return <ConferirConversa conversaId={decodeURIComponent(conferirConversa[1])} />
+  // Experiência por perfil (épico GGVP-5): o caso numa linha só (GGVP-86).
+  const caso = /^\/casos\/([^/]+)$/.exec(caminho)
+  if (caso) return <PaginaDoCaso processoId={decodeURIComponent(caso[1])} />
   return <NaoConstruida caminho={caminho} />
 }

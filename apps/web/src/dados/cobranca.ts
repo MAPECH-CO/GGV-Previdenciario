@@ -79,8 +79,8 @@ function semear(banco: Banco, cobrancas: Cobranca[]) {
   })
 }
 
-/** As cobranças do banco: cada conferência incompleta abre a sua (CA1); sem nada faltando, fecha sozinha (CA9). */
-function cobrancasDo(banco: Banco): Cobranca[] {
+/** As cobranças do banco: cada conferência incompleta abre a sua (CA1); sem nada faltando, fecha sozinha (CA9). O complemento ao médico (GGVP-29) lê o prazo externo daqui. */
+export function cobrancasDo(banco: Banco): Cobranca[] {
   if (!banco.cobrancas) {
     banco.cobrancas = []
     semear(banco, banco.cobrancas)

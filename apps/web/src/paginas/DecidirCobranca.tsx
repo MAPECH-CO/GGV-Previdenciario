@@ -84,7 +84,7 @@ export function DecidirCobranca({ processoId }: { processoId: string }) {
             </p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Sênior">
             O laço de cobrança atingiu o limite. Registre a decisão; ela volta para o Atendimento.
           </InstrucoesPasso>
 

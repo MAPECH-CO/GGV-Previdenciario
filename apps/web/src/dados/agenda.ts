@@ -15,6 +15,7 @@ import {
 } from '../regras/agenda.ts'
 import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from './catalogos.ts'
+import { eventosDasPericias } from './pericia.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type {
   Agendamento,
@@ -77,7 +78,8 @@ function eventosDoBanco(banco: Banco, hoje: string): EventoDaAgenda[] {
       remarcacoes: 0,
     }),
   )
-  return [...dasFichas, ...internos].sort((a, b) => `${a.data} ${a.hora}`.localeCompare(`${b.data} ${b.hora}`))
+  // A perícia marcada entra na categoria "Perícias" (épico GGVP-10, GGVP-53 CA2).
+  return [...dasFichas, ...internos, ...eventosDasPericias(banco, hoje)].sort((a, b) => `${a.data} ${a.hora}`.localeCompare(`${b.data} ${b.hora}`))
 }
 
 /** GET /api/agenda?de=&ate= */
@@ -88,7 +90,8 @@ export async function eventosDaAgenda(de: string, ate: string): Promise<EventoDa
 /** Entrevista que passou sem registro: a Central do Atendimento lembra de confirmar se aconteceu (CA8). */
 export function tarefasDeConfirmar(): Tarefa[] {
   return eventosDoBanco(ler(), hojeIso(agora()))
-    .filter((e) => e.estado === 'confirmar' && e.fichaId)
+    // A perícia que passou é do Jurídico administrativo (o comparecimento, GGVP-66), não do Atendimento.
+    .filter((e) => e.estado === 'confirmar' && e.fichaId && e.categoria !== 'pericias')
     .map((e) => ({
       id: `confirmar-${e.id}`,
       codigo: 'D1.03',
@@ -243,7 +246,7 @@ export async function registrarResultado(id: string, resultado: 'realizado' | 'f
 }
 
 /** GET /api/agendamentos/:id/convite. A mensagem pronta para conferir no Chatwoot (CA4). */
-export async function prepararConvite(id: string): Promise<{ nome: string; telefone: string; mensagem: string }> {
+export async function prepararConvite(id: string): Promise<{ nome: string; telefone: string; mensagem: string; fichaId: string }> {
   const { ficha, agendamento: a } = acharAgendamento(ler(), id)
   const mensagem = mensagemDoConvite({
     nome: ficha.nome,
@@ -255,7 +258,7 @@ export async function prepararConvite(id: string): Promise<{ nome: string; telef
     levar: a.levar ?? true,
     gravar: a.gravar ?? true,
   })
-  return { nome: ficha.nome, telefone: ficha.telefone, mensagem }
+  return { nome: ficha.nome, telefone: ficha.telefone, mensagem, fichaId: ficha.id }
 }
 
 /** POST /api/agendamentos/:id/convite. O convite enviado no Chatwoot fica em "Últimos contatos". */

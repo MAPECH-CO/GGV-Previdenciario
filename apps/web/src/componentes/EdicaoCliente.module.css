@@ -62,3 +62,27 @@
   color: var(--cor-texto-suave-2);
   font-size: var(--fonte-11);
 }
+
+/* Mudar telefone ou e-mail: a verificação do cliente e o contrato novo (GGVP-111, CA1). */
+.verificacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.legenda {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.opcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

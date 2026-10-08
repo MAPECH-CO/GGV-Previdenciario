@@ -240,6 +240,30 @@ describe('arquivos da pasta do cliente (GGVP-17)', () => {
     expect(tipoSugerido('cargo.pdf')).toBe('outro')
   })
 
+  it('GGVP-95 CA1 · cada documento médico com o seu tipo: atestado não vira laudo', () => {
+    expect(tipoSugerido('atestado 15 dias.pdf')).toBe('atestado')
+    expect(tipoSugerido('Relatório médico - neurologia.pdf')).toBe('relatorio-medico')
+    expect(tipoSugerido('relatorio escolar 2026.pdf')).toBe('relatorio-escolar')
+    // GGVP-50: cada terapia com o seu relatório; a terapia sem nome continua comum.
+    expect(tipoSugerido('relatorio de terapia ocupacional.pdf')).toBe('relatorio-to')
+    expect(tipoSugerido('fonoaudiologia.pdf')).toBe('relatorio-fono')
+    expect(tipoSugerido('relatorio de terapia.pdf')).toBe('relatorio-terapia')
+    expect(tipoSugerido('relatorio psicologia.pdf')).toBe('relatorio-psicologia')
+    expect(tipoSugerido('relatorio CAPS infantil.pdf')).toBe('relatorio-caps')
+    expect(tipoSugerido('relatorio da neuropediatria.pdf')).toBe('relatorio-neurologia')
+    expect(tipoSugerido('CAT_acidente.pdf')).toBe('cat')
+    expect(tipoSugerido('boletim de ocorrência.jpg')).toBe('boletim-ocorrencia')
+    expect(tipoSugerido('ressonância coluna.pdf')).toBe('exame')
+  })
+
+  it('GGVP-47 · as provas do acidente: o exame da época, o posterior à alta, o pronto-socorro e o PPP', () => {
+    expect(tipoSugerido('raio x do acidente.pdf')).toBe('exame-imagem-epoca')
+    expect(tipoSugerido('exame da época.pdf')).toBe('exame-imagem-epoca')
+    expect(tipoSugerido('ressonância pós-alta.pdf')).toBe('exame-pos-alta')
+    expect(tipoSugerido('ficha do pronto socorro.pdf')).toBe('ficha-pronto-socorro')
+    expect(tipoSugerido('PPP_empresa.pdf')).toBe('ppp')
+  })
+
   it('CA13 · nome que já existe entra como "(2)", "(3)": nada é sobrescrito', () => {
     expect(nomeSemSobrescrever('rg.pdf', [])).toBe('rg.pdf')
     expect(nomeSemSobrescrever('rg.pdf', ['rg.pdf'])).toBe('rg (2).pdf')

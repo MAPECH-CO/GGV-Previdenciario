@@ -1,14 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
+import { dataParaIso, isoParaData, normalizarData } from '../campos.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CartaoBoasVindas } from '../componentes/CartaoBoasVindas.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
-import { conferirChecklist, obterChecklist, type ChecklistDoCaso, type ConferenciaDoChecklist } from '../dados/checklist.ts'
+import { obterAcidente, salvarAcidente, type AcidenteNaTela } from '../dados/acidente.ts'
+import { TABELA_DO_ACIDENTE, conferirChecklist, obterChecklist, type ChecklistDoCaso, type ConferenciaDoChecklist } from '../dados/checklist.ts'
+import { doJuridico } from '../dados/parecer.ts'
+import { usePerfil } from '../dados/perfis.ts'
+import { agora } from '../dados/servidor.ts'
+import {
+  CATEGORIAS,
+  CIRCUNSTANCIAS,
+  EXIGENCIAS,
+  bloqueioDoAcidente,
+  complementares,
+  especie,
+  motivoParaNaoSalvar,
+  paraDados,
+  type Categoria,
+  type Circunstancia,
+  type ComValvula,
+  type ValoresDoAcidente,
+} from '../regras/acidente.ts'
 import { jaEraCliente } from '../regras/boasVindas.ts'
 import { CONDICOES, juntar, motivoParaNaoLiberar, type ItemDoChecklist } from '../regras/checklist.ts'
-import { dataHora, hora } from '../regras/datas.ts'
+import { dataHora, hojeIso, hora } from '../regras/datas.ts'
 import styles from './Balcao.module.css'
 import proprio from './ConferirChecklist.module.css'
+import campos from './Deficiencia.module.css'
 
 // Figma: step_D1.21 "Checklist do benefício e boas-vindas" (1818:2), no visual das telas de passo (GGVP-91).
 
@@ -18,13 +38,179 @@ const SELO: Record<ItemDoChecklist['situacao'], { texto: string; classe: string 
   problema: { texto: 'problema', classe: proprio.problema },
 }
 
-/** A linha de apoio do item: por que falta ou por que entrou no checklist. */
+/** A linha de apoio do item: por que falta ou por que entrou no checklist; no Auxílio-Acidente, a exigência (GGVP-47). */
 function detalhe(item: ItemDoChecklist): string {
   const origem =
     item.de === 'condicao' && item.condicao ? `entra porque o cliente ${CONDICOES[item.condicao]}` : item.de === 'entrevista' ? 'pedido na entrevista' : ''
+  const exigencia = item.exigencia ? `${EXIGENCIAS[item.exigencia]}${item.exigencia === 'desejavel' ? ': não conta para o completo' : ''}` : ''
   const motivo = item.situacao === 'recebido' || item.motivo === 'falta' ? '' : item.motivo
-  return [motivo, origem].filter(Boolean).join(' · ')
+  return [exigencia, motivo, origem].filter(Boolean).join(' · ')
 }
+
+/** O selo do item: o que não conta para o completo não aparece como "falta" (GGVP-47, CA3). */
+function selo(item: ItemDoChecklist): { texto: string; classe: string } {
+  if (item.situacao !== 'pendente' || !item.naoConta) return SELO[item.situacao]
+  return item.motivo?.startsWith('o empregador') ? { texto: 'pendência', classe: proprio.problema } : { texto: 'não conta', classe: proprio.neutro }
+}
+
+const VAZIO: ValoresDoAcidente = { circunstancia: '', categoria: '', acidenteEm: '', auxilioAnterior: false, recusados: [] }
+
+/** A tela começa do que foi salvo; sem nada salvo, do que a segunda ficha diz. */
+function valoresDe(t: AcidenteNaTela): ValoresDoAcidente {
+  if (t.dados) return { ...t.dados, acidenteEm: isoParaData(t.dados.acidenteEm) ?? '' }
+  return { ...VAZIO, ...t.sugestao }
+}
+
+/**
+ * A circunstância do acidente (GGVP-47): define a espécie (B94 ou B36) e o que é obrigatório no checklist. Não há quadro
+ * no Figma; segue o visual das telas de passo. A Documentação ou o Jurídico salvam; o servidor confere de novo.
+ */
+function CartaoDoAcidente({ processoId, aoSalvar }: { processoId: string; aoSalvar: () => void }) {
+  const perfil = usePerfil('Documentação')
+  const pode = perfil?.id === 'documentacao' || doJuridico(perfil?.id)
+  const [tela, setTela] = useState<AcidenteNaTela | null | undefined>(undefined)
+  const [v, setV] = useState<ValoresDoAcidente>(VAZIO)
+  const [salvando, setSalvando] = useState(false)
+  const [aviso, setAviso] = useState('')
+  const [erro, setErro] = useState('')
+  const travado = useRef(false)
+  const hoje = hojeIso(agora())
+
+  useEffect(() => {
+    let valendo = true
+    obterAcidente(processoId).then((t) => {
+      if (!valendo) return
+      setTela(t)
+      if (t) setV(valoresDe(t))
+    })
+    return () => {
+      valendo = false
+    }
+  }, [processoId])
+
+  if (!tela) return null
+
+  const mudar = (x: Partial<ValoresDoAcidente>) => {
+    setV((a) => ({ ...a, ...x }))
+    setAviso('')
+  }
+  const motivo = motivoParaNaoSalvar(v, hoje)
+  const dados = paraDados(v, hoje)
+  // CAT e PPP só aparecem para recusar quando a circunstância e a categoria pedem (CA2).
+  const comValvula: ComValvula[] =
+    v.circunstancia && v.categoria
+      ? complementares(TABELA_DO_ACIDENTE, { circunstancia: v.circunstancia, categoria: v.categoria, acidenteEm: '', auxilioAnterior: false, recusados: [] })
+          .map((c) => c.tipo)
+          .filter((t): t is ComValvula => t === 'cat' || t === 'ppp')
+      : []
+  const bloqueio = dados && bloqueioDoAcidente(dados)
+  const recusar = (tipo: ComValvula, sim: boolean) => mudar({ recusados: sim ? [...v.recusados, tipo] : v.recusados.filter((r) => r !== tipo) })
+
+  async function salvar() {
+    if (travado.current || !dados) return
+    travado.current = true
+    setSalvando(true)
+    setErro('')
+    try {
+      const recusados = dados.recusados.filter((r) => comValvula.includes(r))
+      const salvo = await salvarAcidente(processoId, { ...dados, recusados }, { perfil: perfil?.id, nome: perfil?.usuario ?? '' })
+      setTela({ ...tela, dados: salvo })
+      setAviso('Circunstância salva: o checklist foi refeito.')
+      aoSalvar()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não deu para salvar a circunstância.')
+    } finally {
+      travado.current = false
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <section className={styles.cartao} aria-labelledby="acidente">
+      <div className={proprio.cartaoTopo}>
+        <h2 id="acidente" className={styles.cartaoTitulo}>
+          Circunstância do acidente
+        </h2>
+        {v.circunstancia && <span className={proprio.especie}>{especie(v.circunstancia)}</span>}
+      </div>
+      <p className={proprio.itemDetalhe}>
+        A circunstância define a espécie e o que é obrigatório no checklist.{' '}
+        {tela.dados
+          ? `Salva por ${tela.dados.quem} em ${dataHora(tela.dados.quando)}.`
+          : tela.sugestao
+            ? 'A segunda ficha já sugere o que está preenchido: confira antes de salvar.'
+            : 'Ainda não foi marcada.'}
+      </p>
+      <div className={campos.campos}>
+        <label className={campos.campo}>
+          Circunstância
+          <select value={v.circunstancia} disabled={!pode} onChange={(e) => mudar({ circunstancia: e.target.value as Circunstancia | '' })}>
+            <option value="">escolha…</option>
+            {Object.entries(CIRCUNSTANCIAS).map(([id, nome]) => (
+              <option key={id} value={id}>
+                {nome}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={campos.campo}>
+          Categoria do segurado
+          <select value={v.categoria} disabled={!pode} onChange={(e) => mudar({ categoria: e.target.value as Categoria | '' })}>
+            <option value="">escolha…</option>
+            {Object.entries(CATEGORIAS).map(([id, nome]) => (
+              <option key={id} value={id}>
+                {nome}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={campos.campo}>
+          Data do acidente
+          <input
+            inputMode="numeric"
+            placeholder="dd/mm/aaaa"
+            value={v.acidenteEm}
+            disabled={!pode}
+            onChange={(e) => mudar({ acidenteEm: e.target.value })}
+            onBlur={() => dataParaIso(normalizarData(v.acidenteEm)) && mudar({ acidenteEm: normalizarData(v.acidenteEm) })}
+          />
+        </label>
+      </div>
+      <label className={proprio.marcar}>
+        <input type="checkbox" checked={v.auxilioAnterior} disabled={!pode} onChange={(e) => mudar({ auxilioAnterior: e.target.checked })} />
+        Houve auxílio por incapacidade temporária antes (a cópia do processo entra no checklist)
+      </label>
+      {comValvula.map((tipo) => (
+        <label key={tipo} className={proprio.marcar}>
+          <input type="checkbox" checked={v.recusados.includes(tipo)} disabled={!pode} onChange={(e) => recusar(tipo, e.target.checked)} />
+          O empregador recusou {tipo === 'cat' ? 'a CAT' : 'o PPP'} (vira pendência e não trava)
+        </label>
+      ))}
+      {bloqueio && <p className={styles.aviso}>{bloqueio}</p>}
+      {pode ? (
+        <div className={styles.rodape}>
+          <button type="button" className={styles.principalBotao} disabled={!!motivo || salvando} onClick={salvar}>
+            {salvando ? 'salvando…' : 'Salvar a circunstância'}
+          </button>
+          {motivo && <p className={styles.motivo}>{motivo}</p>}
+        </div>
+      ) : (
+        <p className={styles.motivo}>Só a Documentação ou o Jurídico marcam a circunstância do acidente.</p>
+      )}
+      {aviso && (
+        <p role="status" className={styles.motivo}>
+          {aviso}
+        </p>
+      )}
+      {erro && (
+        <p role="alert" className={styles.motivo}>
+          {erro}
+        </p>
+      )}
+    </section>
+  )
+}
+
 
 export function ConferirChecklist({ processoId }: { processoId: string }) {
   // undefined: abrindo; null: o caso não existe.
@@ -36,6 +222,8 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
   const [versao, setVersao] = useState(0)
   // Trava no mesmo clique, antes de o React redesenhar o botão.
   const travado = useRef(false)
+  // Sobe quando a circunstância do acidente é salva: o checklist é refeito (GGVP-47).
+  const [recarga, setRecarga] = useState(0)
 
   useEffect(() => {
     let valendo = true
@@ -45,7 +233,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
     return () => {
       valendo = false
     }
-  }, [processoId])
+  }, [processoId, recarga])
 
   if (!caso) {
     return (
@@ -95,10 +283,12 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
             <p className={styles.subtitulo}>{jaEraCliente(ficha, processo.id) ? 'já era cliente · sem boas-vindas' : 'cliente novo · boas-vindas'}</p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId}>
             Situação do checklist calculada pelo sistema a partir dos documentos arquivados e registro das boas-vindas. Confira cada
             item: documento sem assinatura ou com a data em branco não vale (G1), e documento em quarentena não conta.
           </InstrucoesPasso>
+
+          {processo.beneficio === 'auxilio-acidente' && <CartaoDoAcidente processoId={processoId} aoSalvar={() => setRecarga((r) => r + 1)} />}
 
           <section className={styles.cartao} aria-labelledby="checklist">
             <div className={proprio.cartaoTopo}>
@@ -116,16 +306,18 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
                 (GGVP-104); até lá, o caso não pode ser liberado ao Jurídico.
               </p>
             )}
+            {checklist.bloqueio && <p className={styles.aviso}>{checklist.bloqueio}</p>}
             <ul className={proprio.itens} aria-label={`Checklist · ${beneficio}`}>
               {checklist.itens.map((item) => {
                 const texto = detalhe(item)
+                const s = selo(item)
                 return (
                   <li key={item.tipo} className={proprio.item}>
                     <span className={proprio.itemTexto}>
                       <span className={proprio.itemNome}>{item.nome}</span>
                       {texto && <span className={proprio.itemDetalhe}>{texto}</span>}
                     </span>
-                    <span className={SELO[item.situacao].classe}>{SELO[item.situacao].texto}</span>
+                    <span className={s.classe}>{s.texto}</span>
                   </li>
                 )
               })}
@@ -139,7 +331,8 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
           <p className={proprio.nota}>
             Lista de documentos de cada benefício: configuração do escritório (GGVP-104), com os nomes da lista única de
             documentos. O portal nasce com a do LOAS; as declarações de moradia, união estável e separação de fato entram quando o
-            caso pede.
+            caso pede. O Auxílio-Acidente tem o kit e a tabela por circunstância: os desejáveis aparecem, mas não contam para o
+            completo (G1).
           </p>
 
           {feito ? (
@@ -150,7 +343,9 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
               <p>
                 {feito.completo
                   ? 'Checklist completo: o caso segue para liberar ao Jurídico (D1.24).'
-                  : checklist.temLista
+                  : checklist.bloqueio && feito.faltam.length === 0
+                    ? `Checklist travado: ${checklist.bloqueio} O caso fica na Documentação.`
+                    : checklist.temLista
                     ? `Checklist incompleto. Falta: ${juntar(feito.faltam)}. A cobrança das pendências foi para o Atendimento (D1.23).`
                     : `Checklist sem lista aprovada para ${beneficio}: o caso fica na Documentação.`}{' '}
                 A conferência ficou no histórico da ficha.

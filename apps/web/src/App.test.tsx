@@ -75,6 +75,37 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Decidir cobrança' })).toBeTruthy()
   })
 
+  it('GGVP-93 · em /roteiros e /roteiros/:id abrem os roteiros de laudos', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
+    render(<App caminho="/roteiros" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Roteiros de laudos' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/roteiros/pcd" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Aposentadoria da Pessoa com Deficiência · Roteiro de conteúdo mínimo' })).toBeTruthy()
+  })
+
+  it('GGVP-20 · em /casos/:id/laudo-novo e /casos/:id/parecer abrem a análise do laudo novo e o parecer', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/antonio-exemplo-1/laudo-novo" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Analisar laudo novo' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/casos/rita-exemplo-1/parecer" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Dar parecer médico' })).toBeTruthy()
+  })
+
+  it('GGVP-29 · em /casos/:id/complemento abre o pedido de complemento; sem pedido, avisa', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/rita-exemplo-1/complemento" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Este caso não tem pedido de complemento' })).toBeTruthy()
+  })
+
+  it('GGVP-42 · em /casos/:id/deficiencia abre a linha do tempo da deficiência', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/cleide-exemplo-1/deficiencia" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Cleide Exemplo · Linha do tempo da deficiência' })).toBeTruthy()
+  })
+
   it('GGVP-18 · em /casos/:id/liberar abre a liberação; quem libera vem da sessão, e o Atendimento só vê a situação', async () => {
     zerarExemplo()
     servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
@@ -161,6 +192,12 @@ describe('App', () => {
     zerarExemplo()
     render(<App caminho="/entrevista/josefa-entrevista/calculo" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Calcular tempo e pontos' })).toBeTruthy()
+  })
+
+  it('GGVP-76 · a conversa com o cliente (D5.01)', async () => {
+    zerarExemplo()
+    render(<App caminho="/conversas/conversa-pedro-ligacao" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })).toBeTruthy()
   })
 
   it('em rota sem tela avisa que não foi construída e mostra o caminho', async () => {

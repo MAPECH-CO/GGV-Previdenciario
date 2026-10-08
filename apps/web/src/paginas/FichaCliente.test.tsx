@@ -30,6 +30,16 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText(/Só o Jurídico abre o resumo, a transcrição e o áudio/)).toBeTruthy()
   })
 
+  it('GGVP-76 CA9 · "Iniciar conversa" no card do cliente abre a janela "Registrar conversa"', async () => {
+    await abrir('maria-exemplo')
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar conversa' }))
+    const janela = await screen.findByRole('dialog', { name: /Registrar conversa com o cliente/ })
+    expect(within(janela).getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar (G10)' })).toBeTruthy()
+    expect(within(janela).getByRole('radio', { name: 'Anexar arquivo · o áudio de uma ligação já feita' })).toBeTruthy()
+    fireEvent.click(within(janela).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog', { name: /Registrar conversa com o cliente/ })).toBeNull()
+  })
+
   it('mostra os blocos do Figma 73:199, nada de petição nem valores, e da senha só a situação', async () => {
     await abrir('antonio-exemplo')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cliente')
@@ -41,6 +51,9 @@ describe('Ficha do cliente · visão do Atendimento', () => {
 
     const caso = screen.getByRole('link', { name: /Aposentadoria por Incapacidade Permanente/ })
     expect(caso.textContent).toContain('Judicial · exigência')
+    // Épico GGVP-10: a perícia judicial entra como linha a mais, sem esconder a exigência do juiz.
+    expect(caso.textContent).toContain('Em perícia · pedido do juiz (D3a) · perícia médica em')
+    expect(caso.getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
     expect(caso.textContent).toContain('vence em 2 dias')
     expect(within(screen.getByRole('list', { name: 'Documentos pessoais' })).getAllByRole('listitem')).toHaveLength(6)
     expect(within(screen.getByRole('list', { name: 'Últimos contatos' })).getAllByRole('listitem')[0].textContent).toContain('27/09')
@@ -48,13 +61,21 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText('Próxima: nenhuma marcada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Marcar entrevista' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
 
-    for (const nome of ['Trocar foto', 'Registrar contato', 'Marcar e iniciar reunião (com transcrição)']) {
+    for (const nome of ['Trocar foto', 'Marcar e iniciar reunião (com transcrição)']) {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), String(nome)).toBe('true')
     }
     // GGVP-24: a ficha mostra só a situação da senha do gov.br, nunca a senha nem campo para ela.
     expect(document.body.textContent?.match(/senha|cofre/gi)).toEqual(['senha', 'cofre'])
     expect(screen.getByText('gov.br: senha no cofre · atualizada em 12/07/2025 por Atendimento (G9)')).toBeTruthy()
     expect(document.querySelector('input[type="password"]')).toBeNull()
+  })
+
+  it('GGVP-20 · "Documentação médica" mostra o resultado do parecer e quem confirmou, sem o conteúdo dos laudos', async () => {
+    await abrir('antonio-exemplo')
+    const cartao = screen.getByRole('heading', { name: 'Documentação médica' }).closest('section')!
+    expect(cartao.textContent).toBe(
+      'Documentação médica4 documentos médicos · parecer "Suficiente" confirmado por Dra. Paula em 20/09 (G17). O conteúdo dos laudos não é exibido aqui. Laudo novo de 29/09 enviado ao Jurídico: aguarda a análise.',
+    )
   })
 
   it('GGVP-24 CA4 e CA6 · o cartão "Ficha de atendimento" mostra as respostas, o que ficou em branco e leva à ficha', async () => {
@@ -188,5 +209,23 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     await abrir('marta-exemplo')
     expect(screen.getByText('completar telefone')).toBeTruthy()
     expect(campo('Telefone / WhatsApp *').value).toBe('')
+  })
+})
+
+describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-111)', () => {
+  it('CA1 · mudar o telefone pede como confirmou que é o cliente e o contrato novo; o antigo e o novo ficam no histórico', async () => {
+    await abrir('antonio-exemplo')
+    const antes = campo('Telefone / WhatsApp *').value
+    digitar('Telefone / WhatsApp *', '(11) 90000-0044')
+    const verificacao = within(screen.getByRole('group', { name: 'Mudou o telefone: como você confirmou que é o cliente?' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Telefone, e-mail e dados bancários só mudam com o cliente verificado por chamada de vídeo ou no escritório.')).toBeTruthy()
+    expect((await obterFicha('antonio-exemplo'))!.telefone).toBe(telefoneDeExemplo(1))
+    fireEvent.click(verificacao.getByRole('radio', { name: 'Cliente no escritório' }))
+    fireEvent.click(verificacao.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Alterações salvas. Ficaram no histórico.')).toBeTruthy()
+    expect(historico().getByText(`Mudou o telefone (cliente no escritório; em contrato novo): «${antes}» → «(11) 90000-0044»`)).toBeTruthy()
+    expect(screen.queryByRole('group', { name: /como você confirmou que é o cliente/ })).toBeNull()
   })
 })
