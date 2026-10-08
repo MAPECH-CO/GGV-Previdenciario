@@ -35,6 +35,7 @@ import type {
   Gravacao,
   Processo,
   RespostaNovoCliente,
+  SenhaGov,
   TarefaEncaminhada,
 } from '../../../web/src/dados/tipos.ts'
 import { buscar, emAberto, etapaDaFicha } from '../../../web/src/regras/busca.ts'
@@ -86,6 +87,9 @@ const ROTULOS: Record<keyof EdicaoFicha, string> = {
   observacoes: 'observações',
 }
 
+/** A situação da senha do gov.br vem do cofre (G9): guardada por outra tela ou apagada depois de 1 ano, vale o cofre. */
+const senhaDoCofre = (s: SenhaGov, noCofre: boolean): SenhaGov => (noCofre === (s.situacao === 'no-cofre') ? s : { situacao: noCofre ? 'no-cofre' : 'sem-senha' })
+
 const juntar = (itens: string[]) => (itens.length <= 1 ? itens.join('') : `${itens.slice(0, -1).join(', ')} e ${itens.at(-1)}`)
 
 /** Os valores da ficha que o histórico compara na ficha de atendimento (CA10), pelo campo da tela. */
@@ -136,7 +140,7 @@ export function criarFichario(banco: Banco, agora: () => Date) {
         .filter((c) => c.pessoaId === p.id && c.beneficio)
         .map((c) => ({ id: c.id, beneficio: NO_CATALOGO[c.beneficio!] ?? c.beneficio!, etapa: ETAPA[c.fase] ?? c.fase }))
       const doc = docs.get(p.id)
-      if (doc) return { ...doc, processos }
+      if (doc) return { ...doc, processos, senhaGov: senhaDoCofre(doc.senhaGov, noCofre.has(p.id)) }
       const [ano, mes] = p.criadoEm.toISOString().slice(0, 7).split('-')
       return {
         id: p.id,

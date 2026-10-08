@@ -169,3 +169,11 @@ export const ConversaRegistrada = z.object({
   perfil: z.enum(['juridico', 'atendimento']),
 })
 export type ConversaRegistrada = z.infer<typeof ConversaRegistrada>
+
+// GGVP-146, parte 1: a senha do gov.br das telas da Recepção vai ao cofre do servidor (GGVP-103), cifrada.
+/** POST /api/entrevistas/:id/renovacao (GGVP-36): "renovou" leva a senha nova ao cofre; "nao-conseguiu", o motivo e o aviso. */
+export const RenovacaoDaSenhaGov = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('renovou'), senha: z.string().min(1).max(100), conferiMeuInss: z.literal(true) }),
+  z.object({ resultado: z.literal('nao-conseguiu'), motivo: Texto(300).min(3), aviseiOCliente: z.literal(true) }),
+])
+export type RenovacaoDaSenhaGov = z.infer<typeof RenovacaoDaSenhaGov>

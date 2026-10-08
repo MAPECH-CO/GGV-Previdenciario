@@ -1,7 +1,8 @@
 // EXEMPLO. O cofre simulado (GGVP-24; o cofre de verdade, com o "Revelar", é da GGVP-103). A senha vai e não volta: o
 // servidor de exemplo descarta o valor e guarda só quem, quando e de onde. Nunca em ficha, histórico, log nem
 // sessionStorage (G9). Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da design.md.
-import { QUEM, agora, esperar, evento, gravar, ler, type Banco, type RegistroDoCofre } from './servidor.ts'
+// Modo misto (GGVP-146): a ficha do servidor guarda e marca "não sei" no cofre de verdade; a cópia daqui recebe só a ficha.
+import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco, type RegistroDoCofre } from './servidor.ts'
 import type { Ficha, SenhaGov } from './tipos.ts'
 
 /** Tamanho aceito da senha do gov.br. */
@@ -18,10 +19,18 @@ export function registrarNoCofre(banco: Banco, fichaId: string, acao: RegistroDo
   banco.cofre.push({ fichaId, quando: agora().toISOString(), quem, acao })
 }
 
+/** A ficha do servidor: o pedido vai ao cofre de verdade e volta só a situação e a ficha, sem o valor. */
+async function noCofreDoServidor(caminho: string, corpo?: { senha: string }): Promise<{ senhaGov: SenhaGov }> {
+  const r = await noBanco<{ senhaGov: SenhaGov; ficha: Ficha }>(caminho, { method: 'POST', corpo })
+  receber({ ficha: r.ficha })
+  return { senhaGov: r.senhaGov }
+}
+
 /** POST /api/fichas/:id/cofre/gov. Guarda e devolve só a situação (CA2, CA8, CA9). */
 export async function guardarSenhaNoCofre(fichaId: string, senha: string): Promise<{ senhaGov: SenhaGov }> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   if (senha.length < TAMANHO_DA_SENHA.minimo || senha.length > TAMANHO_DA_SENHA.maximo) throw new Error('Senha vazia ou longa demais')
+  if (doServidor(fichaId)) return noCofreDoServidor(`/fichas/${fichaId}/cofre/gov`, { senha })
   const banco = ler()
   const ficha = acharFicha(banco, fichaId)
   // O valor da senha termina aqui: no servidor de verdade, vai cifrado para o cofre (GGVP-103).
@@ -34,6 +43,7 @@ export async function guardarSenhaNoCofre(fichaId: string, senha: string): Promi
 
 /** POST /api/fichas/:id/cofre/gov/nao-sabe. A ficha segue com o alerta de senha (CA3, GGVP-36). */
 export async function naoSabeASenha(fichaId: string): Promise<{ senhaGov: SenhaGov }> {
+  if (doServidor(fichaId)) return noCofreDoServidor(`/fichas/${fichaId}/cofre/gov/nao-sabe`)
   await esperar()
   const banco = ler()
   const ficha = acharFicha(banco, fichaId)

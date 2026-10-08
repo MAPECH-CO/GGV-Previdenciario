@@ -1,10 +1,16 @@
 // EXEMPLO. Servidor de exemplo da renovação da senha do gov.br (GGVP-36), sobre o mesmo banco de servidor.ts. A senha
 // vai e não volta: o servidor de exemplo descarta o valor e grava só a situação, quem, quando e a data em que funcionou.
 // Ligar no servidor: trocar o corpo por fetch no endpoint da design.md e guardar no cofre de verdade (GGVP-103).
+// Modo misto (GGVP-146): a entrevista de uma ficha do servidor renova no cofre de verdade; a senha não volta.
 import { hojeIso } from '../regras/datas.ts'
 import { TAMANHO_DA_SENHA, registrarNoCofre } from './cofre.ts'
-import { QUEM, agora, esperar, evento, gravar, ler } from './servidor.ts'
-import type { RegistroDaRenovacao, Renovacao, SenhaGov } from './tipos.ts'
+import { QUEM, agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Ficha, RegistroDaRenovacao, Renovacao, SenhaGov, TarefaEncaminhada } from './tipos.ts'
+
+/** A tarefa "Renovar senha do gov.br" da pessoa sai das Centrais, aqui e na cópia do servidor. */
+function concluirRenovar(banco: Banco, fichaId: string) {
+  for (const t of banco.tarefas) if (t.cliente?.id === fichaId && t.acao === 'Renovar senha do gov.br') t.concluida = true
+}
 
 /**
  * POST /api/entrevistas/:id/renovacao. "Renovou": a senha vai ao cofre, com a data em que funcionou (CA2, CA5, CA9, CA11);
@@ -12,12 +18,21 @@ import type { RegistroDaRenovacao, Renovacao, SenhaGov } from './tipos.ts'
  * A trilha do cofre grava quem, quando e a ação, nunca o valor (CA8).
  */
 export async function registrarRenovacao(agendamentoId: string, r: RegistroDaRenovacao): Promise<{ senhaGov: SenhaGov; renovacao: Renovacao }> {
-  await esperar()
+  if (!agendamentoDoServidor(agendamentoId)) await esperar()
   const valido =
     r.resultado === 'renovou'
       ? r.senha.length >= TAMANHO_DA_SENHA.minimo && r.senha.length <= TAMANHO_DA_SENHA.maximo && r.conferiMeuInss === true
       : r.resultado === 'nao-conseguiu' && r.motivo.trim().length >= 3 && r.motivo.trim().length <= 300 && r.aviseiOCliente === true
   if (!valido) throw new Error('Renovação inválida')
+  if (agendamentoDoServidor(agendamentoId)) {
+    type Resposta = { senhaGov: SenhaGov; renovacao: Renovacao; ficha: Ficha; tarefas: TarefaEncaminhada[] }
+    const resposta = await noBanco<Resposta>(`/entrevistas/${agendamentoId}/renovacao`, { method: 'POST', corpo: r })
+    receber({ ficha: resposta.ficha, tarefas: resposta.tarefas })
+    const banco = ler()
+    concluirRenovar(banco, resposta.ficha.id)
+    gravar(banco)
+    return { senhaGov: resposta.senhaGov, renovacao: resposta.renovacao }
+  }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.agendamentos.some((a) => a.id === agendamentoId))
   if (!ficha) throw new Error('Entrevista não encontrada')
@@ -41,7 +56,7 @@ export async function registrarRenovacao(agendamentoId: string, r: RegistroDaRen
     ficha.historico.push(evento(`Não conseguiu renovar a senha do gov.br: ${motivo}. Avisou o cliente; a entrevista segue`))
   }
   ficha.renovacao = renovacao
-  for (const t of banco.tarefas) if (t.cliente?.id === ficha.id && t.acao === 'Renovar senha do gov.br') t.concluida = true
+  concluirRenovar(banco, ficha.id)
   gravar(banco)
   return { senhaGov: ficha.senhaGov, renovacao }
 }

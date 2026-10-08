@@ -14,6 +14,15 @@ const LEITURAS = ['cofre_senha_lida']
 const CADASTROS = ['cofre_senha_cadastrada', 'cofre_senha_trocada']
 const RECUSAS = ['cofre_negado', 'cofre_uso_recusado']
 
+/** Cifra e guarda a senha da pessoa, no lugar da que existia. Devolve se trocou. As telas da Recepção também guardam por aqui (GGVP-146). */
+export async function guardarNoCofre(banco: Banco, cofre: Cofre, pessoaId: string, senha: string, quem: string, quando: Date) {
+  const cifrada = cofre.cifrar(senha)
+  const [existia] = await banco.select({ id: credencialGovbr.id }).from(credencialGovbr).where(eq(credencialGovbr.pessoaId, pessoaId))
+  if (existia) await banco.update(credencialGovbr).set({ ...cifrada, atualizadaPor: quem, atualizadoEm: quando }).where(eq(credencialGovbr.id, existia.id))
+  else await banco.insert(credencialGovbr).values({ pessoaId, ...cifrada, atualizadaPor: quem })
+  return Boolean(existia)
+}
+
 export function registrarRotasCofre(app: FastifyInstance, { banco, cofre, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
@@ -25,12 +34,9 @@ export function registrarRotasCofre(app: FastifyInstance, { banco, cofre, agora 
     const [p] = await banco.select({ id: pessoa.id }).from(pessoa).where(eq(pessoa.id, pessoaId))
     if (!p) return negar(resposta, 404, 'Cliente não encontrado.')
     const quem = pedido.usuario!.id
-    const cifrada = cofre.cifrar(entrada.data.senha)
-    const [existia] = await banco.select({ id: credencialGovbr.id }).from(credencialGovbr).where(eq(credencialGovbr.pessoaId, pessoaId))
-    if (existia) await banco.update(credencialGovbr).set({ ...cifrada, atualizadaPor: quem, atualizadoEm: agora() }).where(eq(credencialGovbr.id, existia.id))
-    else await banco.insert(credencialGovbr).values({ pessoaId, ...cifrada, atualizadaPor: quem })
-    await historico(quem, existia ? 'cofre_senha_trocada' : 'cofre_senha_cadastrada', pedido, `pessoa:${pessoaId}`, { perfil: pedido.perfilAtivo })
-    return resposta.code(201).send({ ok: true, trocada: Boolean(existia) })
+    const trocada = await guardarNoCofre(banco, cofre, pessoaId, entrada.data.senha, quem, agora())
+    await historico(quem, trocada ? 'cofre_senha_trocada' : 'cofre_senha_cadastrada', pedido, `pessoa:${pessoaId}`, { perfil: pedido.perfilAtivo })
+    return resposta.code(201).send({ ok: true, trocada })
   })
 
   // CA6: os usos por pessoa, para a gestão, sem o valor.

@@ -48,6 +48,8 @@ const DESCRICAO: Record<string, string> = {
   cofre_negado: 'Cofre do gov.br: a senha do portal não conferiu',
   cofre_uso_recusado: 'Cofre do gov.br: uso recusado, sem tarefa que use o gov.br',
   cofre_uso_fora_do_padrao: 'Cofre do gov.br: uso fora do padrão',
+  cofre_nao_sabe: 'Senha do gov.br: o cliente não sabe a senha',
+  cofre_renovacao_falhou: 'Senha do gov.br: não deu para renovar antes da entrevista',
   ficha_criada: 'Ficha criada no balcão',
   ficha_alterada: 'Ficha do cliente alterada',
   ficha_atendimento_salva: 'Ficha de atendimento salva',
