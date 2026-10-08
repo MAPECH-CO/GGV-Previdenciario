@@ -1,51 +1,73 @@
-# Homologação e bancos de dev (GGVP-119)
+# Homologação no Coolify (GGVP-119)
 
-Uma imagem só (o `Dockerfile` da raiz): a API serve a tela montada na mesma URL. A cada start, as migrações rodam antes; se falharem, ou se `/saude` não responder 200, o Coolify não troca a versão no ar.
+O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "Portal Operacional". A API serve a tela montada na mesma URL.
 
-## 1. Bancos no Postgres do Coolify
+Caminho de cada merge na `main`: a CI passa → o workflow **Imagem** publica `ghcr.io/femezher/ggv-previdenciario:main` (e a tag do commit) → chama o webhook do Coolify → o Coolify baixa a imagem e troca o container. A cada start, as migrações rodam no Supabase antes de a API subir; se falharem, o container não sobe e o Coolify mantém a versão anterior.
 
-No Coolify, abra o Postgres do projeto e rode no terminal dele (`psql -U postgres`), trocando cada senha por uma gerada na hora (`openssl rand -base64 24`):
+Na máquina do dev não muda nada: `pnpm dev` sem `.env` usa o banco de exemplo na memória.
 
-```sql
-CREATE ROLE prev_homolog LOGIN PASSWORD '<senha>';
-CREATE DATABASE prev_homolog OWNER prev_homolog;
-CREATE ROLE prev_pedro LOGIN PASSWORD '<senha>';
-CREATE DATABASE prev_pedro OWNER prev_pedro;
-CREATE ROLE prev_mateus LOGIN PASSWORD '<senha>';
-CREATE DATABASE prev_mateus OWNER prev_mateus;
+Nenhum valor desta página vai para o chat, o Jira ou o repositório.
+
+## 1. Antes de começar
+
+1. **Domínio com https.** No DNS de um domínio do escritório, crie um registro **A** `prev-homolog` com o IP da VPS do Coolify. O cookie da sessão só vale em https, e o endereço `sslip.io` que o Coolify gera fica em http: nele, o login não funciona.
+2. **Banco.** No Supabase, projeto "Portal Operacional": **Project Settings → Database → Reset database password**. Depois, em **Connect → Session pooler**, copie a URL com a senha nova. O endereço direto só funciona em rede com IPv6.
+3. **Chave do cofre do gov.br.** Gere na sua máquina e guarde num gerenciador de senhas (trocar depois deixa ilegíveis as senhas já guardadas no cofre):
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+
+## 2. O servidor entra no GHCR (uma vez)
+
+A imagem é privada, como o repositório. No GitHub: **Settings → Developer settings → Personal access tokens → Tokens (classic)**, um token só com `read:packages`. No servidor do Coolify (SSH, ou **Servers → Terminal** no Coolify), com o usuário que o Coolify usa:
+
+```bash
+docker login ghcr.io --username <seu-usuario-do-github>
 ```
 
-Cada pessoa recebe só a própria senha, por mensagem direta, e guarda no próprio `.env`. Senha nenhuma vai para o repositório, o Jira ou o chat do time.
+Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
 
-Conferir: `\l` lista os três bancos.
+## 3. App no Coolify
 
-## 2. O Postgres não abre para a internet
+1. No projeto: **+ New → Docker Image**. Image Name: `ghcr.io/femezher/ggv-previdenciario:main`.
+2. **General → Ports Exposes:** `3000`. **Domains:** `https://prev-homolog.<dominio>` (com `https://`, o Coolify pede o certificado sozinho).
+3. **Environment Variables**, só de execução (não de build): `DATABASE_URL` com a URL do passo 1.2 e `COFRE_CHAVE` com a chave do passo 1.3.
+4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
+5. **Webhooks:** copie a **Deploy webhook URL**.
 
-A porta 5432 fica fechada no firewall da VPS e o Postgres não ganha "porta pública" no Coolify. O dev chega no banco dele por túnel SSH:
+## 4. O GitHub avisa o Coolify
 
-```
-ssh -N -L 5433:localhost:5432 <usuario>@<ip-da-vps>
-```
+1. Coolify: **Settings → Advanced → API access: Enabled**.
+2. Coolify: **Keys & Tokens → API Tokens**, permissão **Deploy**. Copie o token.
+3. No PowerShell, na raiz do clone, um segredo de cada vez:
 
-Com o túnel aberto, o `.env` (copiado do `.env.example`) aponta para `localhost:5433`. Conferir: com `pnpm dev` no ar, `http://127.0.0.1:3000/saude` responde `"banco":"ligado"`.
+   ```powershell
+   $t = (Read-Host "valor").Trim() -replace '\s',''
+   gh secret set COOLIFY_WEBHOOK --repo femezher/GGV-Previdenciario --body $t
+   ```
 
-Se o Postgres roda num container do Coolify sem a porta 5432 publicada no host, troque `localhost:5432` do túnel pelo IP interno do container (aparece na página do Postgres no Coolify).
+   e o mesmo para `COOLIFY_TOKEN`. Nunca pelo prompt "Paste your secret".
 
-## 3. App de homologação no Coolify
+## 5. Primeiro deploy
 
-1. Novo recurso → repositório `femezher/GGV-Previdenciario` pela GitHub App do Coolify, branch `main`.
-2. Build pack: **Dockerfile** (o da raiz). Porta: **3000**.
-3. Variáveis de ambiente, marcadas como segredo: `DATABASE_URL=postgres://prev_homolog:<senha>@<host-interno-do-postgres>:5432/prev_homolog`. Mais nada.
-4. **Auto deploy** ligado: todo merge na `main` publica.
-5. Health check: caminho `/saude`, porta 3000 (o `Dockerfile` também traz um `HEALTHCHECK`).
-6. Domínio: o que o Coolify gerar, por enquanto. O domínio final fica para depois de 09/10.
+A cada merge na `main`, com a CI verde, o workflow **Imagem** roda sozinho. Para rodar à mão: **Actions → Imagem → Run workflow**, na `main`.
 
-Conferir: depois de um merge, o deploy termina em até 10 minutos, o log mostra "Migrações aplicadas." e a URL abre o portal.
+Conferir:
 
-## 4. Deploy que falha
+- No GitHub, o workflow **Imagem** termina verde e o pacote `ggv-previdenciario` aparece no perfil `femezher`.
+- No Coolify, o deploy termina e o container fica *healthy*.
+- `https://prev-homolog.<dominio>/saude` responde `"banco":"ligado"` e a tela de login abre.
 
-Migração com erro: o container sai antes de subir a API, o Coolify marca o deploy como falho e mantém a versão anterior. O erro fica no log do deploy. Banco fora do ar: `/saude` responde 503 e o health check reprova a versão nova do mesmo jeito.
+No Supabase só entram os usuários criados com `pnpm --filter @ggv/api usuario:criar` (com o `.env` apontando para ele); os usuários e casos de exemplo da máquina não vão para lá.
 
-## 5. Só dado de exemplo em homologação
+## 6. Deploy que falha
+
+- CI vermelha na `main`: o workflow **Imagem** nem roda.
+- Migração com erro: o container sai antes de subir a API. Banco fora do ar: `/saude` responde 503. Nos dois casos o Coolify mantém a versão anterior e o erro fica no log do deploy.
+- Sem `COFRE_CHAVE`: a API para na largada e o log mostra "Falta COFRE_CHAVE".
+- O servidor não baixa a imagem ("denied" ou "unauthorized"): refaça o passo 2.
+
+## 7. Só dado de exemplo em homologação
 
 Homologação recebe só dado inventado. Dado real de cliente nunca entra lá, porque inclui dado de saúde.
