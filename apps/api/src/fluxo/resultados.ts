@@ -57,9 +57,11 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   }
   const fechadas: { casoId: string; noPrazo: boolean }[] = []
   for (const e of await banco.select({ id: exigencia.id, casoId: exigencia.casoId, prazo: exigencia.prazo, situacao: exigencia.situacao }).from(exigencia)) {
+    // Sem prazo não há como dizer se foi no prazo: é dado incerto e fica fora da conta (CA7).
+    if (!e.prazo) continue
     const fechamento = e.situacao === 'cumprida' ? ultimoCumprimento.get(e.id) : e.situacao === 'vencida' ? e.prazo : null
     if (!noPeriodo(fechamento)) continue
-    fechadas.push({ casoId: e.casoId, noPrazo: e.situacao === 'cumprida' && (!e.prazo || fechamento <= e.prazo) })
+    fechadas.push({ casoId: e.casoId, noPrazo: e.situacao === 'cumprida' && fechamento <= e.prazo })
   }
 
   /** Os indicadores de um conjunto de casos: o escritório inteiro, ou um grupo do recorte. */

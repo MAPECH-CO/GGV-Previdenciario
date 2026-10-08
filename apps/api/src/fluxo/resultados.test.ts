@@ -67,11 +67,11 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     expect(indicador(painel, 'extincoes')).toMatchObject({ casos: 3, valor: 3, unidade: 'casos' })
   })
 
-  it('exigência cumprida no prazo, pelo último item cumprido; vencida ou cumprida depois do prazo fica fora do prazo', async () => {
-    const exigenciaCom = async (situacao: 'cumprida' | 'vencida', cumpridoEm: string | null) => {
+  it('exigência cumprida no prazo, pelo último item cumprido; vencida ou cumprida depois do prazo fica fora do prazo; sem prazo, fica fora da conta', async () => {
+    const exigenciaCom = async (situacao: 'cumprida' | 'vencida', cumpridoEm: string | null, prazo: string | null = '2026-04-20') => {
       const [e] = await banco
         .insert(exigencia)
-        .values({ casoId: await novoCaso(), origem: 'inss', descricao: 'Exigência (exemplo)', recebidaEm: '2026-04-01', prazo: '2026-04-20', situacao })
+        .values({ casoId: await novoCaso(), origem: 'inss', descricao: 'Exigência (exemplo)', recebidaEm: '2026-04-01', prazo, situacao })
         .returning()
       await banco.insert(exigenciaItem).values({ exigenciaId: e.id, descricao: 'Item (exemplo)', perfilResponsavel: 'documentacao', cumpridoEm: cumpridoEm ? as(cumpridoEm) : null })
     }
@@ -79,6 +79,8 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     await exigenciaCom('cumprida', '2026-04-25')
     await exigenciaCom('vencida', null)
     await exigenciaCom('vencida', null)
+    // CA7: cumprida, mas sem prazo, é dado incerto: não entra no numerador nem no denominador.
+    await exigenciaCom('cumprida', '2026-04-15', null)
     const painel = await painelDeResultados(banco, PERIODO)
     expect(indicador(painel, 'exigencias_no_prazo')).toMatchObject({ casos: 8, valor: 5 / 8, situacao: 'ok' })
   })

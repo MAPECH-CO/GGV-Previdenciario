@@ -41,6 +41,7 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
    - **Extinções sem mérito** (CA2): casos `extinto_sem_merito` encerrados no período, por `causa_desfecho` ("sem causa" quando falta), sobre os casos decididos no período ("3 de 59", como no protótipo). A meta é zero.
    - **Exigências cumpridas no prazo:** exigências cumpridas ou vencidas no período.
      - Está no prazo quando foi cumprida e o último `cumprido_em` dos itens é até o `prazo`.
+     - Exigência sem `prazo` fica fora da conta: não há como dizer se foi no prazo (dado incerto, CA7).
      - Taxa = no prazo ÷ fechadas.
    - **Pareceres dispensados** (CA3): quantos casos com parecer `dispensado`, e a taxa de êxito deles (deferido no INSS ou procedente na Justiça, entre os decididos) contra a dos casos com parecer `suficiente`.
    - **Totais** (CA4, só com `valores.ver_totais`):
