@@ -124,15 +124,22 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1791484172022,
-      "tag": "0017_segunda_ficha_medica",
+      "when": 1791483509900,
+      "tag": "0017_relacionamento_no_servidor",
       "breakpoints": true
     },
     {
       "idx": 18,
       "version": "7",
-      "when": 1791486710005,
-      "tag": "0018_contrato_da_recepcao",
+      "when": 1791491176812,
+      "tag": "0018_segunda_ficha_medica",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791491180034,
+      "tag": "0019_contrato_da_recepcao",
       "breakpoints": true
     }
   ]

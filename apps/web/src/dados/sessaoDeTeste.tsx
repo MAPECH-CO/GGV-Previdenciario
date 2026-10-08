@@ -24,6 +24,9 @@ export function entrarComo(perfil?: string) {
   perfilDoTeste = perfil
 }
 
+/** Quem está logado no teste, para o servidor falso agir como a sessão (GGVP-138); sem sessão, nada. */
+export const perfilDeTeste = () => perfilDoTeste
+
 export function usuarioDeTeste(perfil: string): UsuarioDaSessao {
   // Os ids da tela usam hífen (atendimento-lider); o perfil do servidor, sublinhado (atendimento_lider).
   const ativo = perfil === 'senior-2' ? 'senior' : perfil.replace('-', '_')

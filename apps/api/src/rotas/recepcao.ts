@@ -22,6 +22,7 @@ import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAten
 import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type {
@@ -431,6 +432,9 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     const edicao: EdicaoFicha = { ...e, cpf: e.cpf ? normalizarCpf(e.cpf) : undefined, telefone: normalizarTelefone(e.telefone), cep: e.cep ? normalizarCep(e.cep) : undefined }
     const dono = fichaComCpf(todas, edicao.cpf)
     if (dono && dono.id !== ficha.id) return { erro: 'cpf-de-outra-ficha', nome: dono.nome }
+    // GGVP-138 (GGVP-111 CA1): telefone e e-mail só mudam com o cliente verificado e em contrato novo.
+    const semVerificacao = await portaoDoContato(banco, agora, pedido, ficha, edicao)
+    if (semVerificacao) return negar(resposta, 400, semVerificacao)
     const mudou = (Object.keys(ROTULOS) as (keyof EdicaoFicha)[]).filter((campo) => (ficha[campo] ?? '') !== (edicao[campo] ?? ''))
     if (edicao.comoChegou !== 'indicacao') ficha.indicadoPor = undefined
     Object.assign(ficha, edicao)

@@ -102,9 +102,10 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
     expect(abertas(salvo.tarefas)).toEqual(['Definir benefício'])
     expect((await banco.select().from(pessoa).where(eq(pessoa.id, fichaId)))[0]).toMatchObject({ cpf: '52998224725', bairro: 'Sé', cidade: 'São Paulo', uf: 'SP' })
 
-    // Outra pessoa troca o telefone enquanto esta tela estava aberta com o antigo.
+    // Outra pessoa troca o telefone enquanto esta tela estava aberta com o antigo (com a cliente verificada: GGVP-111).
     const depois = cadastroDaFicha(salvo.ficha)
-    await json('ana', 'PATCH', `/api/fichas/${fichaId}`, { nome: 'Joana Ribeiro', telefone: '11911112222', cpf: '52998224725' })
+    const verificacao = { como: 'presencial', contratoNovo: true }
+    await json('ana', 'PATCH', `/api/fichas/${fichaId}`, { nome: 'Joana Ribeiro', telefone: '11911112222', cpf: '52998224725', verificacao })
     const conflito = await json('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base: depois, valores: { ...depois, telefone: '11933334444' } })
     expect(conflito).toMatchObject({ resultado: 'conflito', campos: [{ campo: 'telefone', meu: '(11) 93333-4444' }] })
 
