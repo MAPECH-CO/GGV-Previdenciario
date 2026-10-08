@@ -93,6 +93,7 @@ const DESCRICAO: Record<string, string> = {
   exigencia_juiz_dilacao_pedida: 'Exigência do juiz: dilação de prazo pedida',
   exigencia_juiz_ciencia: 'Exigência do juiz: só ciência, sem nada a cumprir',
   exigencia_juiz_distribuida: 'Exigência do juiz distribuída aos setores',
+  importacao_gravada: 'Planilha do escritório importada (clientes e processos)',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',

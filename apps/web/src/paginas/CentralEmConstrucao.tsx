@@ -29,6 +29,8 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
   const tarefas = doServidor && [...doServidor, ...deExemplo]
   // GGVP-109 CA9 e GGVP-75: a gestão chega às tentativas bloqueadas e aos resultados pelo topo.
   const gestao = usePode('gestao.ver')
+  // GGVP-146, parte 2: a importação da planilha do escritório.
+  const importar = usePode('configuracao.editar')
   // GGVP-19: o Jurídico chega aos estudos de caso feitos pela IA pelo topo.
   const estudos = usePode('estudo.ver')
   // GGVP-135 (P13): a Sênior edita os roteiros de laudos; antes, só pelo endereço.
@@ -55,6 +57,7 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
                 { id: 'configuracao', glifo: '⚙', rotulo: 'Configuração', href: '/configuracao' },
               ]
             : []),
+          ...(importar ? [{ id: 'importar', glifo: '⇪', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
         ]}
         ativo="inicio"
         funcao={rotulo}

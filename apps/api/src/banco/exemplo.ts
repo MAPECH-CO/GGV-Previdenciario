@@ -210,14 +210,17 @@ export async function semearExemplos(banco: Banco) {
     await banco.insert(identificadorCaso).values({ casoId: cj.id, tipo: 'cnj', valor: cnj })
   }
   const hojeBr = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10)
-  await banco.insert(rodadaVigilia).values({
-    fonte: 'exemplo',
-    previstaPara: momentoDoHorario(hojeBr, '08:00'),
+  const falhaDeExemplo = {
     inicio: momentoDoHorario(hojeBr, '08:00'),
     fim: momentoDoHorario(hojeBr, '08:01'),
     situacao: 'falhou',
     erro: 'tempo esgotado: a fonte não respondeu em 60 s (exemplo)',
-  })
+  } as const
+  // Na homologação o servidor já está no ar e o relógio já criou a rodada das 08:00: ela só passa a ter a falha.
+  await banco
+    .insert(rodadaVigilia)
+    .values({ fonte: 'exemplo', previstaPara: momentoDoHorario(hojeBr, '08:00'), ...falhaDeExemplo })
+    .onConflictDoUpdate({ target: [rodadaVigilia.fonte, rodadaVigilia.previstaPara], set: falhaDeExemplo })
 
   // Exigência do juiz (GGVP-79, 83, 87): uma intimação já lida e classificada, esperando a advogada distribuir.
   const [pp] = await banco.insert(pessoa).values({ nome: 'Paulo Reis (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()

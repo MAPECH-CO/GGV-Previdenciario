@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { somenteDigitos } from '@ggv/campos'
 import { BENEFICIOS, ROTULO_BENEFICIO, type Beneficio, type ConfiguracaoDoEscritorio } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { FeriadosDosTribunais } from '../componentes/FeriadosDosTribunais.tsx'
 import styles from './Passo.module.css'
 
 type Config = ConfiguracaoDoEscritorio
@@ -237,6 +238,8 @@ export function Configuracao() {
           )}
         </>
       )}
+      {/* GGVP-146, parte 3: os feriados e as suspensões dos tribunais, com o histórico deles. */}
+      {c && <FeriadosDosTribunais />}
     </main>
   )
 }
