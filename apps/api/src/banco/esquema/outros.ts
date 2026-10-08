@@ -118,7 +118,11 @@ export const configuracao = pgTable('configuracao', {
   atualizadoEm: atualizadoEm(),
 }).enableRLS()
 
-/** Roteiro de conteúdo mínimo por benefício, versionado (GGVP-93). */
+/**
+ * Roteiro de conteúdo mínimo por benefício, versionado (GGVP-93). A versão 1 é a régua do escritório, no código
+ * (`regras/roteirosDoEscritorio.ts`); aqui ficam as versões que a sênior salva depois (GGVP-132). `beneficio` guarda o
+ * id do roteiro, que vale para um ou mais benefícios.
+ */
 export const roteiroLaudo = pgTable(
   'roteiro_laudo',
   {
@@ -127,6 +131,8 @@ export const roteiroLaudo = pgTable(
     versao: integer('versao').notNull(),
     itens: jsonb('itens').notNull(),
     vigenteDesde: date('vigente_desde').notNull(),
+    /** Quem salvou a versão (GGVP-93 CA2). */
+    autorId: uuid('autor_id').references(() => usuario.id),
     criadoEm: criadoEm(),
   },
   (t) => [unique('roteiro_versao_unica').on(t.beneficio, t.versao)],

@@ -157,6 +157,21 @@ export const FINALIDADES = {
       'Use só o que está no conteúdo; não invente documento que o caso não tem como se tivesse. Se nadaFalta for true, itens e pericias vazios.',
     ].join(' '),
   },
+  // GGVP-134 (CA1, CA3): o que um documento médico cobre do roteiro do benefício. Leva o laudo (dado de saúde); a saída vai
+  // só ao Jurídico, mas o trecho não leva código de doença (G20). As datas são copiadas; a conta dos 24 meses é do código.
+  cobertura_do_roteiro: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a conferir se um documento médico do cliente cobre o roteiro de conteúdo mínimo do benefício.',
+      'Leia o roteiro (cada item com id, tipo e texto) e o texto do documento, e responda só com um objeto JSON:',
+      '{"cobre": [{"item": "id de um item obrigatório", "pagina": número da página ou 1, "trecho": "frase curta copiada do documento que mostra o item"}], "contradiz": [{"item": "id de uma contradição", "pagina": número, "trecho": "frase copiada"}], "datas": {"inicio": "aaaa-mm ou aaaa-mm-dd", "cessacao": "aaaa-mm ou aaaa-mm-dd"} ou null}.',
+      'Só marque o item que o documento aborda de fato; na dúvida, deixe de fora. O trecho é cópia do documento, sem código de doença (CID).',
+      'Em "datas", copie a data de início do quadro e a de cessação prevista que estiverem escritas; sem elas, null. Não calcule nada. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
   /**
    * GGVP-139 CA1: o comprovante do agendamento do INSS, lido pela Mistral, vira data, hora, local e modalidade para o
    * Jurídico administrativo conferir antes de registrar. Não leva dado de saúde. O perito nunca sai do comprovante.

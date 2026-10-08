@@ -68,6 +68,14 @@ const DESCRICAO: Record<string, string> = {
   exportacao_pedida: 'Exportação do histórico pedida',
   exportacao_autorizada: 'Exportação do histórico autorizada pela direção',
   historico_exportado: 'Histórico exportado',
+  // A documentação médica no servidor (GGVP-132): só o que aconteceu, nunca o conteúdo clínico.
+  roteiro_versao_salva: 'Versão nova do roteiro de laudos salva pela Sênior',
+  parecer_registrado: 'Parecer médico registrado pelo Jurídico (G17)',
+  complemento_tentativa_registrada: 'Tentativa de pedir o complemento ao médico registrada',
+  complemento_decidido: 'Complemento ao médico no limite: a Sênior decidiu nova tentativa (G15)',
+  deficiencia_registrada: 'Dados da deficiência registrados na linha do tempo',
+  acidente_registrado: 'Circunstância do acidente marcada',
+  crianca_registrada: 'Condição e terapias da criança marcadas (roteiro infantil)',
   // GGVP-135 (P19 do roteiro de 09/10): os eventos que saíam com o nome técnico, sem acento.
   tentativa_exigencia_juiz: 'Tentativa de cumprir a exigência do juiz',
   exigencia_juiz_nao_vai_conseguir: 'O setor avisou que não vai conseguir cumprir a exigência do juiz',
