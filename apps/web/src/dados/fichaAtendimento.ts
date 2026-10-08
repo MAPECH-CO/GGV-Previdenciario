@@ -12,7 +12,7 @@ import { BENEFICIOS } from './catalogos.ts'
 import { registrarNoCofre } from './cofre.ts'
 import { abrirPreparacao } from './confirmacao.ts'
 import { leituraDeExemplo } from './exemplo.ts'
-import { agora, esperar, evento, gravar, ler } from './servidor.ts'
+import { agora, daSemente, doServidor, esperar, espelhar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 import type { Arquivo, EnvioDaFicha, Ficha, LeituraDaFicha } from './tipos.ts'
 
 /** Quem preenche no tablet é o próprio cliente. */
@@ -86,9 +86,21 @@ export async function salvarFichaDeAtendimento(
   fichaId: string,
   envio: EnvioDaFicha,
 ): Promise<{ ficha: Ficha } | { erro: 'cpf-de-outra-ficha'; nome: string }> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   const hoje = hojeIso(agora())
   if (!envioValido(envio, hoje) || !BENEFICIOS.some((b) => b.id === envio.beneficioInteresse)) throw new Error('Ficha de atendimento inválida')
+  if (doServidor(fichaId)) {
+    // GGVP-125: a ficha do lead do balcão grava no servidor; as tarefas e a agenda ainda são as daqui.
+    const daSementeComCpf = fichaComCpf(daSemente(ler().fichas), envio.cpf)
+    if (daSementeComCpf) return { erro: 'cpf-de-outra-ficha', nome: daSementeComCpf.nome }
+    const r = await noBanco<{ ficha: Ficha } | { erro: 'cpf-de-outra-ficha'; nome: string }>(`/fichas/${fichaId}/ficha-de-atendimento`, {
+      method: 'PUT',
+      corpo: envio,
+    })
+    if ('erro' in r) return r
+    espelhar(r.ficha)
+    return destravar(ler(), fichaId, hoje)
+  }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')
@@ -135,7 +147,12 @@ export async function salvarFichaDeAtendimento(
     const mudou = (Object.keys(antes) as CampoDaFicha[]).filter((c) => antes[c] !== depois[c])
     if (mudou.length > 0) ficha.historico.push(evento(`Alterou na ficha de atendimento: ${juntar(mudou.map((c) => ROTULOS_DA_FICHA[c]))}`, quem))
   }
+  return destravar(banco, fichaId, hoje)
+}
 
+/** A ficha salva conclui a pendência "Preencher ficha" e, com a entrevista confirmada, abre o "Preparar entrevista". */
+function destravar(banco: Banco, fichaId: string, hoje: string) {
+  const ficha = banco.fichas.find((f) => f.id === fichaId)!
   for (const t of banco.tarefas) if (t.cliente?.id === ficha.id && t.acao === 'Preencher ficha') t.concluida = true
   const entrevista = ficha.agendamentos.find((a) => a.oQue === 'Entrevista' && emAberto(a) && a.data >= hoje && confirmada(a.confirmacao))
   if (entrevista) abrirPreparacao(banco, ficha, entrevista)

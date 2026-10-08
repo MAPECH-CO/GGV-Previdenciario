@@ -1,5 +1,5 @@
 // Pessoas: lead e cliente, vínculos, consentimento e o cofre do gov.br (GGVP-16, 43, 60, 103, 108).
-import { customType, date, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { customType, date, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 
@@ -91,5 +91,18 @@ export const credencialGovbr = pgTable('credencial_govbr', {
   renovarAte: date('renovar_ate'),
   atualizadaPor: uuid('atualizada_por').references(() => usuario.id),
   criadoEm: criadoEm(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
+/**
+ * A ficha da Recepção (GGVP-125, bloco 1), no formato das telas do Pedro: dados pessoais, triagem, contatos e o
+ * histórico. Uma por pessoa; os dados principais também ficam em `pessoa`, que o resto do portal usa. Sem senha: a do
+ * gov.br vai só para o cofre (G9). ponytail: documento por enquanto; normalizar em tabelas quando a ligação terminar.
+ */
+export const fichaRecepcao = pgTable('ficha_recepcao', {
+  pessoaId: uuid('pessoa_id')
+    .primaryKey()
+    .references(() => pessoa.id),
+  documento: jsonb('documento').notNull(),
   atualizadoEm: atualizadoEm(),
 }).enableRLS()

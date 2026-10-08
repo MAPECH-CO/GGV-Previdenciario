@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 10, digital: '5df401de' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 11, digital: '8f5c3531' })
   })
 
   it('CA2 · só a Sênior aprova para o INSS', () => {
@@ -75,14 +75,18 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode(null, 'entrevista.ver')).toBe(false)
   })
 
+  it('GGVP-125 · a ficha da Recepção: quem trabalha com o caso edita; Financeiro e Sócio, não', () => {
+    expect(PERFIS.filter((p) => pode(p, 'ficha.editar'))).toEqual(PERFIS.filter((p) => !['financeiro', 'socio'].includes(p)))
+  })
+
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 8,
-      atendimento_lider: 10,
-      documentacao: 6,
-      advogada: 20,
-      senior: 20,
-      juridico_adm: 13,
+      atendimento: 9,
+      atendimento_lider: 11,
+      documentacao: 7,
+      advogada: 21,
+      senior: 21,
+      juridico_adm: 14,
       financeiro: 4,
       socio: 4,
     })

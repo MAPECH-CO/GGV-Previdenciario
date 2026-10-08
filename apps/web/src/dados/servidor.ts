@@ -2,8 +2,11 @@
 // semente de exemplo.ts guardada no sessionStorage, porque os links recarregam a página e o que nasce no
 // balcão precisa chegar à ficha. Aba nova começa da semente. Ligar no servidor: trocar o corpo de cada
 // função por fetch no endpoint indicado, sobre o mesmo contrato.
+// Modo misto (GGVP-125), ligado no main.tsx: o lead e a ficha (bloco 1) já vão ao servidor de verdade; as pessoas da
+// semente continuam aqui. A ficha do servidor é copiada para cá, para as telas ainda não ligadas a acharem.
+import { chamarApi } from '../api.ts'
 import { normalizarCpf, validarCpf, validarNome, validarTelefone } from '../campos.ts'
-import { agendamentoDoDia, buscar, etapaDaFicha } from '../regras/busca.ts'
+import { agendamentoDoDia, buscar, etapaDaFicha, resultadoDaFicha } from '../regras/busca.ts'
 import { hojeIso, hora } from '../regras/datas.ts'
 import { fichaComCpf, fichasParecidas } from '../regras/duplicidade.ts'
 import { IDADE_MAXIMA } from '../regras/formularios.ts'
@@ -71,6 +74,8 @@ export type Banco = {
   cobrancas?: Cobranca[]
   /** Quem liberou cada caso ao Jurídico, e quando (GGVP-18). */
   liberacoes?: Liberacao[]
+  /** A última ficha que veio do servidor, por id: a base para saber o que mudou lá desde a cópia (GGVP-125). */
+  espelhos?: Record<string, Ficha>
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
@@ -78,11 +83,48 @@ export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; a
 let relogio = () => new Date()
 let latencia = 400
 let memoria: Banco | null = null
+let noServidor = false
 
-/** Para o teste: hora fixa e sem espera. */
-export function configurarExemplo(opcoes: { agora?: () => Date; latencia?: number }) {
+/** Para o teste: hora fixa e sem espera. `servidor`: o lead e a ficha vão ao servidor de verdade (GGVP-125). */
+export function configurarExemplo(opcoes: { agora?: () => Date; latencia?: number; servidor?: boolean }) {
   if (opcoes.agora) relogio = opcoes.agora
   if (opcoes.latencia !== undefined) latencia = opcoes.latencia
+  if (opcoes.servidor !== undefined) noServidor = opcoes.servidor
+}
+
+/** Ficha que nasceu no servidor: o id é o da pessoa no banco; as da semente têm id de nome ("rosa-exemplo"). */
+export const doServidor = (id: string) => noServidor && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+
+/** As fichas da semente, sem as cópias do servidor: as regras do balcão rodam nelas aqui e no banco lá. */
+export const daSemente = (fichas: Ficha[]) => fichas.filter((f) => !doServidor(f.id))
+
+export async function noBanco<T>(caminho: string, init?: { method?: string; corpo?: unknown }): Promise<T> {
+  const r = await chamarApi<T>(caminho, init)
+  if (!r.ok) throw new Error(r.erro)
+  return r.dados
+}
+
+/**
+ * Copia a ficha do servidor para cá. Na primeira vez, inteira. Depois, em três vias: o campo do bloco 1 que mudou no
+ * servidor desde a última cópia vem de lá; o resto fica como as telas daqui deixaram (agenda, pasta, contrato, casos).
+ */
+export function espelhar(doBanco: Ficha): Ficha {
+  const banco = ler()
+  const i = banco.fichas.findIndex((f) => f.id === doBanco.id)
+  const antes = banco.espelhos?.[doBanco.id]
+  let ficha = doBanco
+  if (i >= 0 && antes) {
+    const local = banco.fichas[i]
+    const novos = doBanco.historico.slice(antes.historico.length)
+    ficha = { ...local, historico: [...local.historico, ...novos].sort((a, b) => a.quando.localeCompare(b.quando)) }
+    const campos = [...Object.keys(ROTULOS), 'indicadoPor', 'beneficioInteresse', 'fichaAtendimentoPreenchida', 'fichaAtendimento'] as (keyof Ficha)[]
+    for (const c of campos) if (JSON.stringify(doBanco[c]) !== JSON.stringify(antes[c])) Object.assign(ficha, { [c]: doBanco[c] })
+  }
+  if (i >= 0) banco.fichas[i] = ficha
+  else banco.fichas.push(ficha)
+  banco.espelhos = { ...banco.espelhos, [doBanco.id]: doBanco }
+  gravar(banco)
+  return ficha
 }
 
 /** Volta à semente. */
@@ -147,30 +189,50 @@ function novoId(banco: Banco, nome: string): string {
   return id
 }
 
-/** GET /api/balcao/busca?termo= */
+/** POST /api/balcao/busca, com o termo no corpo (CPF e telefone fora do endereço). Junta a semente e o banco. */
 export async function buscarNoBalcao(termo: string): Promise<ResultadoBusca[]> {
-  return buscar(ler().fichas, termo, hojeIso(agora()))
+  const { fichas } = ler()
+  const hoje = hojeIso(agora())
+  const daqui = buscar(daSemente(fichas), termo, hoje)
+  if (!noServidor) return daqui
+  // Quem já tem cópia aqui sai dela, com o que as telas ainda não ligadas mudaram (a agenda, por exemplo).
+  const copias = new Map(fichas.map((f) => [f.id, f]))
+  const doBanco = (await noBanco<ResultadoBusca[]>('/balcao/busca', { method: 'POST', corpo: { termo } })).map((r) => {
+    const copia = copias.get(r.id)
+    return copia ? resultadoDaFicha(copia, hoje) : r
+  })
+  return [...daqui, ...doBanco].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
 /** GET /api/fichas/:id */
 export async function obterFicha(id: string): Promise<Ficha | null> {
-  return ler().fichas.find((f) => f.id === id) ?? null
+  if (!doServidor(id)) return ler().fichas.find((f) => f.id === id) ?? null
+  const r = await chamarApi<Ficha>(`/fichas/${id}`)
+  if (r.ok) return espelhar(r.dados)
+  if (r.status === 404) return null
+  throw new Error(r.erro)
 }
 
-/** O bloco "Já existe?" do Novo cliente: CPF repetido e fichas com telefone ou nome igual. */
+/** O bloco "Já existe?" do Novo cliente: CPF repetido e fichas com telefone ou nome igual, aqui e no banco. */
 export async function conferirDuplicidade(dados: { nome: string; telefone: string; cpf?: string }) {
-  const { fichas } = ler()
+  const fichas = daSemente(ler().fichas)
   const hoje = hojeIso(agora())
   const comCpf = fichaComCpf(fichas, dados.cpf)
-  return {
+  const daqui = {
     comCpf: comCpf && resumo(comCpf, hoje),
     parecidas: fichasParecidas(fichas, dados).map((f) => resumo(f, hoje)),
   }
+  if (!noServidor) return daqui
+  const doBanco = await noBanco<{ comCpf?: FichaResumo; parecidas: FichaResumo[] }>('/fichas/duplicidade', {
+    method: 'POST',
+    corpo: { nome: dados.nome, telefone: dados.telefone, cpf: dados.cpf },
+  })
+  return { comCpf: daqui.comCpf ?? doBanco.comCpf, parecidas: [...daqui.parecidas, ...doBanco.parecidas] }
 }
 
 /** POST /api/fichas. Valida de novo com campos; CPF repetido nunca grava (CA6); parecida só com "É outra pessoa" (CA9). */
 export async function criarFicha(dados: NovoCliente): Promise<RespostaNovoCliente> {
-  await esperar()
+  if (!noServidor) await esperar()
   const valido =
     validarNome(dados.nome) &&
     validarTelefone(dados.telefone) &&
@@ -185,11 +247,18 @@ export async function criarFicha(dados: NovoCliente): Promise<RespostaNovoClient
   const banco = ler()
   const hoje = hojeIso(agora())
   const cpf = dados.cpf ? normalizarCpf(dados.cpf) : undefined
-  const existente = fichaComCpf(banco.fichas, cpf)
+  const existente = fichaComCpf(daSemente(banco.fichas), cpf)
   if (existente) return { resultado: 'ja-existe', id: existente.id }
-  const parecidas = fichasParecidas(banco.fichas, dados)
+  const parecidas = fichasParecidas(daSemente(banco.fichas), dados)
   if (parecidas.length > 0 && !dados.outraPessoa) {
     return { resultado: 'parecidas', fichas: parecidas.map((f) => resumo(f, hoje)) }
+  }
+  if (noServidor) {
+    // POST /api/fichas: o servidor repete as regras sobre o banco e grava; a pasta do Drive ainda é a de exemplo.
+    const r = await noBanco<RespostaNovoCliente>('/fichas', { method: 'POST', corpo: dados })
+    if (r.resultado !== 'criada') return r
+    const ficha = espelhar(await noBanco<Ficha>(`/fichas/${r.id}`))
+    return { ...r, pastas: pastasDoCliente(ler().pastas, ficha) }
   }
 
   const [ano, mes] = hoje.split('-')
@@ -274,9 +343,15 @@ const ROTULOS: Record<keyof EdicaoFicha, string> = {
 
 /** PATCH /api/fichas/:id. Toda alteração entra no histórico com o que mudou. */
 export async function salvarFicha(id: string, edicao: EdicaoFicha): Promise<{ ficha: Ficha } | { erro: 'cpf-de-outra-ficha'; nome: string }> {
-  await esperar()
+  if (!doServidor(id)) await esperar()
   if (!validarNome(edicao.nome) || !validarTelefone(edicao.telefone) || (edicao.cpf !== undefined && !validarCpf(edicao.cpf))) {
     throw new Error('Dados da ficha inválidos')
+  }
+  if (doServidor(id)) {
+    const daSementeComCpf = fichaComCpf(daSemente(ler().fichas), edicao.cpf)
+    if (daSementeComCpf) return { erro: 'cpf-de-outra-ficha', nome: daSementeComCpf.nome }
+    const r = await noBanco<{ ficha: Ficha } | { erro: 'cpf-de-outra-ficha'; nome: string }>(`/fichas/${id}`, { method: 'PATCH', corpo: edicao })
+    return 'erro' in r ? r : { ficha: espelhar(r.ficha) }
   }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === id)

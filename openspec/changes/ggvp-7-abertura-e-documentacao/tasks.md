@@ -107,3 +107,17 @@
 - [ ] 11.6 Ligar no servidor: trocar o corpo das funções de `src/dados/liberacao.ts` por `fetch` nos endpoints da spec, tirar o perfil do login (a tela já usa o perfil da sessão; o servidor de exemplo ainda recebe o `perfil` que a tela manda, e o servidor de verdade confere o da sessão), ler o parecer da GGVP-20 e gravar no histórico do processo (GGVP-86). Depende do GGVP-118, do banco do Mateus, da GGVP-20 e da GGVP-86. **Fica aberta nesta história.**
 
 <!-- Fim do grupo documentos. -->
+
+## GGVP-125 · Ligar a Recepção e a Abertura no servidor (Mateus, 08/10)
+
+Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto até terminar: lead novo no servidor, semente de exemplo no navegador.
+
+### Bloco 1 · O lead e a ficha
+
+- [x] 125.1 Banco: tabela `ficha_recepcao` (a ficha da Recepção, por pessoa, no formato das telas) e a migração; a pessoa em `pessoa`.
+- [x] 125.2 Contratos (`packages/contratos/src/recepcao.ts`): busca, "Já existe?", novo cliente, edição da ficha e ficha de atendimento, em Zod; matriz com `ficha.editar`.
+- [x] 125.3 Servidor (`apps/api/src/rotas/recepcao.ts`): `POST /api/balcao/busca`, `POST /api/fichas/duplicidade`, `POST /api/fichas`, `GET /api/fichas/:id`, `PATCH /api/fichas/:id`, `PUT /api/fichas/:id/ficha-de-atendimento`, com as regras do Pedro, o perfil da sessão e o histórico; testes.
+- [x] 125.4 Telas: o modo servidor no `servidor.ts` (ligado na abertura do app; os testes seguem no modo exemplo), as funções do bloco chamando a API, a busca juntando os dois lados e a cópia da ficha para o modo exemplo; testes.
+- [x] 125.5 Playwright: um lead cadastrado pela Atendimento achado pela advogada em outra sessão; os testes do Pedro seguem passando.
+- [x] 125.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+

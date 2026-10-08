@@ -25,6 +25,7 @@ import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
+import { registrarRotasRecepcao } from './rotas/recepcao.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -83,6 +84,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
     registrarRotasConfiguracao(app, { banco, agora })
+    registrarRotasRecepcao(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {
