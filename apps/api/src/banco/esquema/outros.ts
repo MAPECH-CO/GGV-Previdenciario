@@ -50,6 +50,8 @@ export const perito = pgTable('perito', {
   nomeNormalizado: text('nome_normalizado').notNull().unique(),
   grafias: jsonb('grafias').notNull().default([]),
   especialidade: text('especialidade'),
+  /** O perfil do perito (GGVP-61, GGVP-73): o tipo, onde atua e um laudo por linha, sem dado pessoal do cliente. */
+  perfil: jsonb('perfil'),
   criadoEm: criadoEm(),
 }).enableRLS()
 

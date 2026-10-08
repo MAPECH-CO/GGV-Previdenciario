@@ -75,3 +75,12 @@ export * from './chat.ts'
 export * from './conversas.ts'
 export * from './mensagens.ts'
 export * from './seguranca.ts'
+
+// A Perícia ligada no servidor (GGVP-137): o que cada tela manda.
+export * from './pericia.ts'
+
+// O importador da planilha do escritório (GGVP-146, parte 2).
+export * from './importacao.ts'
+
+// Os feriados e as suspensões dos tribunais, na Configuração (GGVP-146, parte 3).
+export * from './feriados.ts'

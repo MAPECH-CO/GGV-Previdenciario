@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
 import { sincronizarRecepcao } from './dados/servidor.ts'
+import { sincronizarPericias } from './dados/pericia.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
 import { AnalisarFicha } from './paginas/AnalisarFicha.tsx'
 import { Balcao } from './paginas/Balcao.tsx'
@@ -33,6 +34,7 @@ import { ConferirAcervo } from './paginas/ConferirAcervo.tsx'
 import { Historico } from './paginas/Historico.tsx'
 import { Prazos, UsoDoCofreTela } from './paginas/Gestao.tsx'
 import { Configuracao } from './paginas/Configuracao.tsx'
+import { Importar } from './paginas/Importar.tsx'
 import { LerPublicacao } from './paginas/LerPublicacao.tsx'
 import { PublicacoesDoProcesso } from './paginas/PublicacoesDoProcesso.tsx'
 import { AnalisarExigenciaJuiz } from './paginas/AnalisarExigenciaJuiz.tsx'
@@ -111,6 +113,8 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
       // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
       // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
       if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
+      // GGVP-137: e as perícias, com as tarefas da Central de quem está na sessão.
+      if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarPericias(pode(r.dados.perfilAtivo, 'dado_saude.ver_detalhe')).catch(() => undefined)
       setUsuario(r.dados)
     })
   }, [])
@@ -154,6 +158,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/gestao\/resultados$/, tela: () => <Exige acao="gestao.ver"><Resultados /></Exige> },
   { padrao: /^\/acervo\/conferencia$/, tela: () => <Exige acao="acervo.conferir_desfecho"><ConferirAcervo /></Exige> },
   { padrao: /^\/configuracao$/, tela: () => <Exige acao="gestao.ver"><Configuracao /></Exige> },
+  // GGVP-146, parte 2: a planilha do escritório, pela gestão que muda a configuração.
+  { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
   // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
 ]

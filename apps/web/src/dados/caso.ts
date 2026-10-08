@@ -530,7 +530,7 @@ function montar(banco: Banco, processoId: string, quem: QuemPergunta | undefined
     tarefas.push({ setor: comoTarefa.setor, titulo: comoTarefa.titulo, responsavel: comoTarefa.responsavel, prazo: comoTarefa.prazo ?? '', paralela: true, href: emPericia.href })
     esperas.push(...esperasDaPericia(pericia))
     if (p.peritoId && pericia.perfil) perito = { id: p.peritoId, nome: pericia.perfil.perito.nome }
-    else if (p.peritoLido || p.marcacao) peritoParaIdentificar = { lido: p.peritoLido, opcoes: peritosParaLigar(p.tipo) }
+    else if (p.peritoLido || p.marcacao) peritoParaIdentificar = { lido: p.peritoLido, opcoes: peritosParaLigar(p.tipo, p.processoId) }
   }
   // As tarefas criadas pelo chat neste caso (GGVP-82, CA5).
   for (const t of banco.tarefasDoChat ?? []) {
