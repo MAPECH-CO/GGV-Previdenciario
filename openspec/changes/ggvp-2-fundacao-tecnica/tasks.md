@@ -61,4 +61,12 @@
 - [x] 6.3 Como rodar no Coolify e entregar as senhas, em `docs/infra/homologacao-dados-de-teste.md`; verifica lendo.
 - [ ] 6.4 CA3, a parte que falta · Recepção, Abertura, documentação médica, Perícia e Relacionamento com caso de exemplo no banco, quando a GGVP-125 e a GGVP-132 ligarem essas telas no servidor; o teste do CA3 passa a afirmar esses passos; verifica com `pnpm --filter @ggv/api test`.
 - [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.6 CA1 · Correção da homologação de 08/10. No terminal do app, o comando parava com a rodada repetida (`rodada_unica`) e não gravava nada. A semente grava a rodada de exemplo das 08:00 de hoje, e o relógio da vigília, com o servidor no ar, já a tinha criado.
+  - Correção: a semente só marca a falha de exemplo na rodada que já existe (`onConflictDoUpdate` pela chave fonte + horário).
+  - Teste novo: `planejarDia` antes do comando, como no servidor. Antes da correção, ele falhava com o mesmo erro da homologação.
+  - Revisão do PR #40: o teste confere só a rodada das 08:00 (uma, com a falha) e que as outras seguem previstas, sem depender dos horários padrão da vigília.
+- [x] 6.7 Verificação de 08/10, na máquina carregada:
+  - typecheck e lint sem erro; `openspec validate --all --strict` com 14 de 14;
+  - os 9 testes do comando passaram, com o novo; Playwright da vigília (judicialização) com 6 de 6;
+  - API inteira: dos 53 arquivos, só 43 iniciaram. Deles, 42 passaram; o que falhou (linha de comando do CA5, por tempo) passou rodando sozinho. A suíte inteira roda no CI do PR.
 
