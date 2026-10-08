@@ -262,8 +262,8 @@ export type PericiaNaTela = {
 /** O que a perícia precisa ler e mudar: as fichas (com os processos e os arquivos), as perícias e os peritos. */
 export type MundoDaPericia = ComPeritos & { fichas: Ficha[]; pericias?: Pericia[] }
 
-/** O comprovante ou o laudo que entrou: o nome e, quando há, o hash do conteúdo. */
-export type ArquivoEnviado = { nome: string; hash?: string }
+/** O comprovante ou o laudo que entrou: o nome, o hash do conteúdo e, para subir ao servidor, o próprio PDF. */
+export type ArquivoEnviado = { nome: string; hash?: string; arquivo?: Blob }
 
 export function fichaDoProcesso(mundo: MundoDaPericia, processoId: string): { ficha: Ficha; processo: Processo } | null {
   for (const ficha of mundo.fichas) {

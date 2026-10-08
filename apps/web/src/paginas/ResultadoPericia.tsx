@@ -39,7 +39,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
   const perfil = usePerfil('Advogada')
   const quem = perfil?.usuario ?? 'Advogada'
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
-  const [laudo, setLaudo] = useState<{ nome: string; tamanho: number; hash: string }>()
+  const [laudo, setLaudo] = useState<{ nome: string; tamanho: number; hash: string; arquivo: Blob }>()
   const [leitura, setLeitura] = useState<LeituraDoLaudo>()
   const [favoravel, setFavoravel] = useState<boolean>()
   const [novaPericia, setNovaPericia] = useState<boolean>()
@@ -87,7 +87,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
     const problema = problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size })
     if (problema || formatoDoArquivo(arquivo.name) !== 'pdf') return setErro(problema ?? 'O laudo (ou o registro do GERID) é um PDF.')
     const hash = await hashDoConteudo(await arquivo.arrayBuffer())
-    setLaudo({ nome: arquivo.name, tamanho: arquivo.size, hash })
+    setLaudo({ nome: arquivo.name, tamanho: arquivo.size, hash, arquivo })
     setLeitura(await lerLaudoDaPericia(processoId, arquivo.name))
   }
 
@@ -111,7 +111,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
     travado.current = true
     setErro('')
     try {
-      setT(await registrarResultado(processoId, { laudo: { nome: laudo.nome, hash: laudo.hash }, favoravel, novaPericia, conferidas }, quem))
+      setT(await registrarResultado(processoId, { laudo: { nome: laudo.nome, hash: laudo.hash, arquivo: laudo.arquivo }, favoravel, novaPericia, conferidas }, quem))
       setAviso('Resultado registrado.')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para registrar.')
@@ -201,7 +201,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
               </h2>
               <p>O sistema não reconheceu o perito. Um clique liga o laudo ao perfil dele; até lá, o laudo fica fora das contas.</p>
               <div className={styles.atalhos} role="group" aria-label="Ligar o laudo ao perito">
-                {peritosParaLigar(pericia.tipo).map((p) => (
+                {peritosParaLigar(pericia.tipo, pericia.processoId).map((p) => (
                   <button key={p.id} type="button" className={proprio.secundario} onClick={() => void ligar(p.id)}>
                     {p.nome} · {p.especialidade}
                   </button>

@@ -3,6 +3,9 @@
 // do juiz (D3a): ponta para ligar na junção com o INSS. A semente faz o papel dessas decisões para os clientes de exemplo.
 // As regras e as mudanças da perícia ficam em regras/periciaNoCaso.ts, as mesmas do servidor de verdade (GGVP-137). IA,
 // Meu INSS, GERID e Chatwoot são simulados.
+// Modo misto (GGVP-137), ligado no main.tsx, como a Recepção: a perícia de um caso do servidor (id uuid) vai à API
+// (rotas/pericia.ts) e a cópia daqui recebe o que veio de lá, para a agenda, o chat e as páginas que ainda leem a cópia. As
+// perícias da semente (casos "-exemplo") ficam aqui: servem aos testes de tela e ao Playwright.
 import { diaFalado, somarDias } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import {
@@ -52,7 +55,8 @@ import {
 import { emVigor } from '../regras/roteiro.ts'
 import { perfilDoPerito, peritosDo } from './peritos.ts'
 import { roteiroDoCaso } from './roteiro.ts'
-import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
+import { chamarApi } from '../api.ts'
+import { agora, doServidor, esperar, gravar, ler, noBanco, servidorLigado, type Banco } from './servidor.ts'
 import type { EventoDaAgenda, Tarefa } from './tipos.ts'
 
 export {
@@ -148,6 +152,76 @@ export function dataDaPericia(banco: Banco, processoId: string): string | undefi
   return periciaDo(banco, processoId)?.marcacao?.data
 }
 
+// O modo servidor (GGVP-137): a API devolve a perícia na tela; a cópia daqui recebe a perícia e, se faltar, a ficha.
+
+/** As tarefas e os peritos que vieram do servidor na última sincronização. */
+let tarefasDoBanco: Tarefa[] = []
+let peritosDoBanco: { id: string; nome: string; especialidade: string; tipo: TipoDePericia }[] = []
+
+function receberEm(banco: Banco, t: PericiaNaTela) {
+  const pericias = (banco.pericias ??= [])
+  for (const p of [...t.anteriores, t.pericia]) {
+    const i = pericias.findIndex((x) => x.id === p.id)
+    if (i >= 0) pericias[i] = p
+    else pericias.push(p)
+  }
+  if (banco.fichas.some((f) => f.processos.some((x) => x.id === t.processo.id))) return
+  const dona = banco.fichas.find((f) => f.id === t.ficha.id)
+  if (dona) dona.processos.push(t.processo)
+  else banco.fichas.push(t.ficha)
+}
+
+/** A perícia que a API devolveu entra na cópia daqui. */
+function receber(t: PericiaNaTela): PericiaNaTela {
+  const banco = lerComPericias()
+  receberEm(banco, t)
+  gravar(banco)
+  return t
+}
+
+/** POST na rota da perícia do processo, com o corpo do contrato (packages/contratos/src/pericia.ts). */
+const naApi = (processoId: string, caminho: string, corpo: unknown = {}) =>
+  noBanco<PericiaNaTela>(`/processos/${processoId}/pericia${caminho}`, { method: 'POST', corpo }).then(receber)
+
+/** GET da perícia: sem perícia (404), nada. */
+async function lerDaApi(processoId: string, caminho = ''): Promise<PericiaNaTela | null> {
+  const r = await chamarApi<PericiaNaTela>(`/processos/${processoId}/pericia${caminho}`)
+  if (r.ok) return receber(r.dados)
+  if (r.status === 404) return null
+  throw new Error(r.erro)
+}
+
+/** O PDF vai junto, em multipart: o JSON em `dados` e o arquivo no campo do servidor. */
+function comArquivo(campo: string, arquivo: Blob | undefined, nome: string, dados: object): FormData {
+  if (!arquivo) throw new Error('Anexe o PDF.')
+  const f = new FormData()
+  f.append('dados', JSON.stringify(dados))
+  f.append(campo, arquivo, nome)
+  return f
+}
+
+/**
+ * Ao abrir a tela, depois da sessão (App.tsx): a cópia daqui recebe as perícias do servidor, as tarefas da Central de quem
+ * está na sessão e, para o Jurídico, os peritos. Sem o modo servidor, nada.
+ */
+export async function sincronizarPericias(juridico: boolean) {
+  if (!servidorLigado()) return
+  const [lista, tarefas] = await Promise.all([noBanco<PericiaNaTela[]>('/pericias'), noBanco<Tarefa[]>('/pericias/tarefas')])
+  // Os peritos (com a jurimetria) são só do Jurídico: os outros perfis nem pedem, para não virar tentativa bloqueada.
+  peritosDoBanco = juridico ? await noBanco<typeof peritosDoBanco>('/peritos') : []
+  tarefasDoBanco = tarefas
+  const banco = lerComPericias()
+  for (const t of lista) receberEm(banco, t)
+  gravar(banco)
+}
+
+/** As tarefas da perícia: as da semente, daqui, e as do servidor, que vieram na sincronização (modo misto). */
+function tarefasDe(prefixos: RegExp, daqui: (banco: Banco, agora: Date) => Tarefa[]): Tarefa[] {
+  const banco = lerComPericias()
+  const daSemente = daqui({ ...banco, pericias: (banco.pericias ?? []).filter((p) => !doServidor(p.processoId)) }, agora())
+  return servidorLigado() ? [...daSemente, ...tarefasDoBanco.filter((t) => prefixos.test(t.id))] : daSemente
+}
+
 /** A perícia do processo, ou o erro de quem não tem. */
 function exigirPericia(banco: Banco, processoId: string): Pericia {
   const pericia = periciaDo(banco, processoId)
@@ -174,36 +248,42 @@ function exigirResultado(banco: Banco, processoId: string): Pericia {
 
 /** POST /api/processos/:id/pericia/tentativas. A tentativa sem sucesso: o dia e o que aconteceu; a tarefa continua (CA1). */
 export function registrarTentativa(processoId: string, t: { dia: string; oQueAconteceu: string }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/tentativas', t)
   return mudar(processoId, (n) => mudancas.tentativa(n, t, quem))
 }
 
 /** POST /api/processos/:id/pericia/comprovante/leitura. IA simulada: lê data, hora, local e tipo; o perito não vem (CA2, CA3). */
 export async function lerComprovante(processoId: string, nome: string): Promise<LidoDoComprovante> {
+  if (doServidor(processoId)) return noBanco<LidoDoComprovante>(`/processos/${processoId}/pericia/comprovante/leitura`, { method: 'POST', corpo: { nome } })
   await esperar()
   return leituraDoComprovante(exigirPericia(lerComPericias(), processoId), nome, hojeIso(agora()))
 }
 
 /** POST /api/processos/:id/pericia/marcacao. Registra a perícia conferida (CA2, CA3, CA4); de novo, troca a data (CA8). */
-export function registrarMarcacao(
+export async function registrarMarcacao(
   processoId: string,
   m: { comprovante: ArquivoEnviado; lido: LidoDoComprovante; pedeDocumentoNovo: boolean },
   quem: string,
 ): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/marcacao', comArquivo('comprovante', m.comprovante.arquivo, m.comprovante.nome, { lido: m.lido, pedeDocumentoNovo: m.pedeDocumentoNovo }))
   return mudar(processoId, (n) => mudancas.marcacao(n, m, quem))
 }
 
 /** Marcada no Meu INSS sem o comprovante ainda (DP.E1): a tarefa espera, com lembrete diário (CA6). */
 export function esperarComprovante(processoId: string, d: { pedeDocumentoNovo: boolean }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/espera-do-comprovante', d)
   return mudar(processoId, (n) => mudancas.esperarComprovante(n, d, quem))
 }
 
 /** Remarcar (CA8, CA9): a data sai, a tentativa de marcar recomeça e a remarcação conta no limite (G15). */
 export function remarcarPericia(processoId: string, motivo: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/remarcacao', { motivo })
   return mudar(processoId, (n) => mudancas.remarcacao(n, motivo, quem))
 }
 
 /** A advogada responsável, no limite (G15), autoriza mais uma remarcação, com justificativa: volta ao Jurídico administrativo. */
 export function autorizarRemarcacao(processoId: string, justificativa: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/autorizacao', { justificativa })
   return mudar(processoId, (n) => mudancas.autorizacao(n, justificativa, quem))
 }
 
@@ -222,6 +302,7 @@ export async function obterLembrete(processoId: string): Promise<{ nome: string;
 
 /** POST /api/processos/:id/pericia/lembrete. Enviado pelo Chatwoot depois de revisado pelo Jurídico (CA7, Q5). */
 export function registrarLembrete(processoId: string, mensagem: string, quem = 'Jurídico administrativo'): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/lembrete', { mensagem })
   return mudar(processoId, (n) => mudancas.lembrete(n, mensagem, quem))
 }
 
@@ -236,6 +317,7 @@ export async function iniciarPericia(processoId: string, pedido: PedidoDePericia
 
 /** A vigília do INSS viu o agendamento liberado (D2.E1): a tarefa entra na Central do Jurídico administrativo (CA2). */
 export async function liberarAgendamento(processoId: string): Promise<Pericia> {
+  if (doServidor(processoId)) return (await naApi(processoId, '/liberacao')).pericia
   await esperar()
   const banco = lerComPericias()
   const pericia = exigirPericia(banco, processoId)
@@ -246,6 +328,7 @@ export async function liberarAgendamento(processoId: string): Promise<Pericia> {
 
 /** GET /api/processos/:id/pericia */
 export async function obterPericia(processoId: string): Promise<PericiaNaTela | null> {
+  if (doServidor(processoId)) return lerDaApi(processoId)
   const banco = lerComPericias()
   const pericia = periciaDo(banco, processoId)
   return pericia ? naTela(banco, pericia, agora()) : null
@@ -363,12 +446,12 @@ export function periciasParaMarcar(): ItemDoChat[] {
 
 /** As tarefas da perícia na Central do Jurídico administrativo (CA2): "<nome> · Marcar perícia", liberadas. */
 export function tarefasDoJuridicoAdm(): Tarefa[] {
-  return tarefasDoJuridicoAdmEm(lerComPericias(), agora())
+  return tarefasDe(/^pericia-(marcar|comprovante|orientar|presenca|comparecimento|lembrete)-/, tarefasDoJuridicoAdmEm)
 }
 
 /** As da advogada responsável: a perícia que passou do limite de remarcações (CA9, G15) e o resultado. Nunca a sênior. */
 export function tarefasDaAdvogadaNaPericia(): Tarefa[] {
-  return tarefasDaAdvogadaEm(lerComPericias(), agora())
+  return tarefasDe(/^pericia-(limite|resultado)-/, tarefasDaAdvogadaEm)
 }
 
 const PASSO_NA_AGENDA = { comprovante: 'DP.02 · Marcar a perícia no INSS', juizo: 'DP.04 · Data do juízo, lida da publicação' }
@@ -406,11 +489,13 @@ export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[]
 
 /** A falta de um item, com justificativa (CA5). */
 export function justificarFalta(processoId: string, itemId: string, justificativa: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/faltas', { itemId, justificativa })
   return mudar(processoId, (n) => mudancas.falta(n, itemId, justificativa, quem))
 }
 
 /** Concluir (CA5, CA6): cada item anexado ou justificado e as conferências; grava quem e quando e volta ao Jurídico administrativo. */
 export function concluirDocumentos(processoId: string, c: { conferidas: string[] }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/documentos/conclusao', c)
   return mudar(processoId, (n) => mudancas.conclusaoDosDocumentos(n, c, quem))
 }
 
@@ -425,6 +510,7 @@ export async function abordarSugeridoNaPericia(processoId: string): Promise<stri
 
 /** O pedido ao médico (CA7): só o que o documento deve abordar; o servidor recusa diagnóstico, CID, grau, conclusão e frase pronta (G20). */
 export function pedirAoMedicoNaPericia(processoId: string, abordar: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/pedido-ao-medico', { abordar })
   return mudar(processoId, (n) => mudancas.pedidoAoMedico(n, abordar, quem))
 }
 
@@ -448,27 +534,30 @@ export async function obterCobrancaDaPericia(processoId: string): Promise<{ nome
 
 /** A cobrança do dia, enviada pelo Chatwoot depois de conferida (Lucas, 02/10: a Documentação cobra, todo dia). */
 export function registrarCobrancaDaPericia(processoId: string, mensagem: string, quem = 'Documentação'): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/cobranca', { mensagem })
   return mudar(processoId, (n) => mudancas.cobranca(n, mensagem, quem))
 }
 
 /** "Adiar": a cobrança de hoje fica para amanhã. */
 export function adiarCobrancaDaPericia(processoId: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/cobranca/adiamento')
   return mudar(processoId, (n) => mudancas.adiamentoDaCobranca(n, quem))
 }
 
 /** Passou dos 10 dias antes com documento faltando: a advogada responsável registra o que decidiu (G15). */
 export function decidirFaltaDaPericia(processoId: string, texto: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/decisao-da-falta', { texto })
   return mudar(processoId, (n) => mudancas.decisaoDaFalta(n, texto, quem))
 }
 
 /** As tarefas da Documentação na Central do Atendimento: reunir e, quando é dia, cobrar (CA1, CA2, CA3). */
 export function tarefasDaDocumentacaoNaPericia(): Tarefa[] {
-  return tarefasDaDocumentacaoEm(lerComPericias(), agora())
+  return tarefasDe(/^pericia-(documentos|cobrar)-/, tarefasDaDocumentacaoEm)
 }
 
 /** Passou dos 10 dias antes com documento faltando e sem decisão: a advogada responsável decide (G15). */
 export function tarefasDeDecidirDocumentoDaPericia(): Tarefa[] {
-  return tarefasDeDecidirDocumentoEm(lerComPericias(), agora())
+  return tarefasDe(/^pericia-falta-/, tarefasDeDecidirDocumentoEm)
 }
 
 // GGVP-61 · A orientação da perícia, padrão ou pelo perfil do perito (DP.05, sem tela própria).
@@ -482,11 +571,13 @@ export function montarOrientacao(banco: Banco, pericia: Pericia, quando: Date, p
 
 /** A pergunta de um clique (CA6): a equipe liga o perito quando a informação chega; a orientação sai de novo pelo perfil. */
 export function ligarPerito(processoId: string, peritoId: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/perito', { peritoId })
   return mudar(processoId, (n) => mudancas.perito(n, peritoId, quem))
 }
 
 /** Os peritos que a pergunta de um clique oferece: os do mesmo tipo da perícia (CA6). */
-export function peritosParaLigar(tipo: TipoDePericia): { id: string; nome: string; especialidade: string }[] {
+export function peritosParaLigar(tipo: TipoDePericia, processoId = ''): { id: string; nome: string; especialidade: string }[] {
+  if (doServidor(processoId)) return peritosDoBanco.filter((p) => p.tipo === tipo).map(({ id, nome, especialidade }) => ({ id, nome, especialidade }))
   return peritosDo(lerComPericias())
     .filter((p) => p.tipo === tipo)
     .map(({ id, nome, especialidade }) => ({ id, nome, especialidade }))
@@ -579,6 +670,7 @@ export async function enviarOrientacao(
   o: { texto: string; canal: CanalDaOrientacao; revisei: boolean },
   quem: string,
 ): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/orientacao', o)
   await esperar()
   const banco = lerComPericias()
   const pericia = exigirPericia(banco, processoId)
@@ -637,11 +729,13 @@ export function periciaDoCliente(fichaId: string): string | undefined {
 
 /** A confirmação de presença (CA7): confirmou ou não, com a observação; fica registrada. Não pode ir: é remarcar (CA9). */
 export function confirmarPresenca(processoId: string, c: { confirmou: boolean; observacao?: string }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/presenca', c)
   return mudar(processoId, (n) => mudancas.presenca(n, c, quem))
 }
 
 /** Depois do dia e da hora (CA1): compareceu, espera o resultado (CA5); faltou, volta "Remarcar perícia" (CA2, CA3, G15). */
 export function registrarComparecimento(processoId: string, r: { compareceu: boolean; justificativa?: string }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/comparecimento', r)
   return mudar(processoId, (n) => mudancas.comparecimento(n, r, quem))
 }
 
@@ -649,6 +743,7 @@ export function registrarComparecimento(processoId: string, r: { compareceu: boo
 
 /** GET /api/processos/:id/pericia/resultado */
 export async function obterResultado(processoId: string): Promise<PericiaNaTela | null> {
+  if (doServidor(processoId)) return lerDaApi(processoId, '/resultado')
   const banco = lerComPericias()
   const pericia = periciaDoResultado(banco, processoId)
   return pericia ? naTela(banco, pericia, agora()) : null
@@ -656,11 +751,13 @@ export async function obterResultado(processoId: string): Promise<PericiaNaTela 
 
 /** A vigília do GERID (ou a publicação do laudo) viu o resultado (DP.E4): a tarefa da advogada fica urgente (CA1). Ponta do Mateus. */
 export function resultadoNoGerid(processoId: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/resultado/disponivel')
   return mudar(processoId, (n) => mudancas.resultadoDisponivel(n), exigirResultado)
 }
 
 /** POST /api/processos/:id/pericia/laudo/leitura. IA simulada: o resumo do laudo, para a advogada conferir (CA5). */
 export async function lerLaudoDaPericia(processoId: string, nome: string): Promise<LeituraDoLaudo> {
+  if (doServidor(processoId)) return noBanco<LeituraDoLaudo>(`/processos/${processoId}/pericia/laudo/leitura`, { method: 'POST', corpo: { nome } })
   await esperar()
   const banco = lerComPericias()
   const pericia = exigirResultado(banco, processoId)
@@ -668,11 +765,12 @@ export async function lerLaudoDaPericia(processoId: string, nome: string): Promi
 }
 
 /** POST /api/processos/:id/pericia/resultado (CA2 a CA6): a regra está em regras/periciaNoCaso.ts. */
-export function registrarResultado(
+export async function registrarResultado(
   processoId: string,
   r: { laudo: ArquivoEnviado; favoravel?: boolean; novaPericia?: boolean; conferidas: string[] },
   quem: string,
 ): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/resultado', comArquivo('laudo', r.laudo.arquivo, r.laudo.nome, { favoravel: r.favoravel, novaPericia: r.novaPericia, conferidas: r.conferidas }))
   return mudar(processoId, (n) => void mudancas.resultado(n, r, quem))
 }
 
@@ -752,11 +850,13 @@ export function comoOPeritoAvalia(texto: string): { texto: string; itens: ItemDo
 
 /** A IA roda de novo sobre o laudo registrado: o mesmo laudo não se duplica no perfil (CA5). */
 export function atualizarPerfilComOLaudo(processoId: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/laudo/perfil')
   return mudar(processoId, (n) => mudancas.perfilComOLaudo(n), exigirResultado)
 }
 
 /** A pergunta de um clique (CA6): ligado o perito, o laudo sai da espera e entra no perfil dele. */
 export function ligarPeritoDoLaudo(processoId: string, peritoId: string, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/laudo/perito', { peritoId })
   return mudar(processoId, (n) => mudancas.peritoDoLaudo(n, peritoId, quem), (banco, id) => {
     const pericia = periciaDoResultado(banco, id)
     if (pericia?.resultado?.noPerfil !== 'aguardando-perito') throw new Error('Este laudo não espera o perito.')

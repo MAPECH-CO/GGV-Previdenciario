@@ -696,7 +696,7 @@ export async function confirmarAcao(
       const a = o.arquivos?.find((x) => x.nome === nome)
       await registrarMarcacao(
         acao.processoId!,
-        { comprovante: { nome, hash: a ? await hashDoConteudo(a.conteudo) : undefined }, lido: p.dados.lido as Parameters<typeof registrarMarcacao>[1]['lido'], pedeDocumentoNovo: o.escolha!.startsWith('Sim') },
+        { comprovante: { nome, hash: a ? await hashDoConteudo(a.conteudo) : undefined, arquivo: a && new Blob([a.conteudo], { type: 'application/pdf' }) }, lido: p.dados.lido as Parameters<typeof registrarMarcacao>[1]['lido'], pedeDocumentoNovo: o.escolha!.startsWith('Sim') },
         quem.usuario,
       )
       registrarNoCaso(acao.processoId, quem.usuario, 'Marcou a perícia com o comprovante do INSS', 'DP.02')
