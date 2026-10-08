@@ -239,3 +239,10 @@ Sem tela própria (DP.09 é passo da IA). Aparece no feito do resultado, na jane
 2. **Um laudo, um registro** (CA3, CA5): o perfil é a lista de laudos; a versão é quantos laudos o formam. O mesmo laudo da mesma perícia não entra duas vezes.
 3. **Perito não reconhecido** (CA6): o laudo fica guardado na perícia, fora das contas, até a pergunta de um clique ligar o perito; aí entra no perfil.
 4. **Os números são código** (CA7): `jurimetria`; a semente dos peritos só vai para o armazenamento da aba quando um laudo novo muda um perfil.
+
+## Decisões tomadas no código do grupo 2
+
+1. **Orientar (GGVP-62)**: editar o texto desmarca "Revisei a orientação". A tela avisa quando o texto vai ser recusado, mas deixa o envio chegar ao servidor, para a tentativa ficar registrada (CA6). O "WhatsApp" do contato envia o mesmo documento pelo Chatwoot. A tarefa sai da Central depois da hora da perícia.
+2. **Comparecimento (GGVP-66)**: a confirmação de presença e o comparecimento ficam na marcação; data nova, confirmação nova. "Não consegui confirmar" registra a tentativa e a tarefa segue na Central até confirmar ou a perícia passar. "Faltou" usa a mesma remarcação da GGVP-53.
+3. **Resultado (GGVP-70)**: na avaliação social, as conferências são "Li o laudo na íntegra" e a contradição com o benefício (G18); o parecer médico (G17) e a DII (G19) ficam para a perícia médica. O laudo vai para a pasta como "Laudo da perícia". O prazo para manifestar (G12) conta 15 dias corridos do registro. "Perícias da semana" são as marcadas de hoje a seis dias. Quesitos, impugnação e manifestação aparecem desabilitados: são peças da IA de outra história (G6). O chat da advogada usa o mesmo componente do chat do Jurídico administrativo.
+4. **Perfil do perito (GGVP-73)**: a referência do caso no perfil é o número do processo (sem ele, `caso-n`), nunca o nome do cliente. O assunto do laudo é simulado pelo tipo (médica: coluna; social: renda familiar). A IA pode rodar de novo sobre o mesmo laudo sem duplicar (`atualizarPerfilComOLaudo`).
