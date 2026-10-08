@@ -60,10 +60,10 @@
 
 ## GGVP-70 · Conferir o resultado e decidir o próximo passo
 
-- [ ] 7.1 Regra: `motivoParaNaoRegistrarResultado`, `CONFERENCIAS_DO_RESULTADO` e como cada origem segue, com teste em `src/regras/pericia.test.ts` (CA2 a CA6). Verifica com `pnpm vitest run src/regras/pericia.test.ts`.
-- [ ] 7.2 Servidor de exemplo: `resultadoNoGerid` (ponta da vigília), `lerLaudoDaPericia` (IA simulada), `registrarResultado` (favorável, desfavorável, nova perícia, volta à origem, histórico com a indicação da IA), a tarefa da advogada e as respostas do chat, com teste em `src/dados/pericia.test.ts` (CA1 a CA9). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
-- [ ] 7.3 Tela `/casos/:id/pericia/resultado` (`src/paginas/ResultadoPericia.tsx`, Figma `14:556` e `1579:431`), a página do processo com o resultado e o chat da advogada (Figma `2107:667`, `2186:2`). Teste em `ResultadoPericia.test.tsx` (CA1 a CA9). Verifica com `pnpm vitest run src/paginas/ResultadoPericia.test.tsx`.
-- [ ] 7.4 Playwright `e2e/pericia-resultado.e2e.ts` (CA1 a CA9); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
+- [x] 7.1 Regra: `motivoParaNaoRegistrarResultado`, `CONFERENCIAS_DO_RESULTADO` e como cada origem segue, com teste em `src/regras/pericia.test.ts` (CA2 a CA6). Verifica com `pnpm vitest run src/regras/pericia.test.ts`.
+- [x] 7.2 Servidor de exemplo: `resultadoNoGerid` (ponta da vigília), `lerLaudoDaPericia` (IA simulada), `registrarResultado` (favorável, desfavorável, nova perícia, volta à origem, histórico com a indicação da IA), a tarefa da advogada e as respostas do chat, com teste em `src/dados/pericia.test.ts` (CA1 a CA9). Verifica com `pnpm vitest run src/dados/pericia.test.ts`.
+- [x] 7.3 Tela `/casos/:id/pericia/resultado` (`src/paginas/ResultadoPericia.tsx`, Figma `14:556` e `1579:431`), a página do processo com o resultado e o chat da advogada (Figma `2107:667`, `2186:2`). Teste em `ResultadoPericia.test.tsx` (CA1 a CA9). Verifica com `pnpm vitest run src/paginas/ResultadoPericia.test.tsx`.
+- [x] 7.4 Playwright `e2e/pericia-resultado.e2e.ts` (CA1 a CA9); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm exec playwright test pericia-resultado`.
 - [ ] 7.5 Ligar no servidor: a vigília do GERID (Mateus), a leitura do laudo pela IA de verdade e o retorno ao D2 (`avancarJuncaoD2`, `avancarExigencia`). **Ponta para ligar na junção com o INSS. Fica aberta nesta história.**
 
 ## GGVP-73 · Atualizar o perfil do perito

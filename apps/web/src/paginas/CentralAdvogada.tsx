@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Abas } from '../componentes/Abas.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
-import { ChatIA } from '../componentes/ChatIA.tsx'
+import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -37,7 +37,7 @@ export function CentralAdvogada() {
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Advogada</h1>
           <CampoBusca />
-          <ChatIA exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
+          <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
           <Abas
             rotulo="Filas de tarefas"
             ativa={aba}

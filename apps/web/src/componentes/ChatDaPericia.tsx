@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { identificarCliente } from '../dados/documentos.ts'
-import { clienteLigou, dicaParaAPericia, lerComprovante, periciaParaMarcarDaFicha, periciasParaMarcar, registrarMarcacao, type ItemDoChat } from '../dados/pericia.ts'
+import { clienteLigou, comoOPeritoAvalia, dicaParaAPericia, lerComprovante, periciaParaMarcarDaFicha, periciasDaSemana, periciasParaMarcar, registrarMarcacao, type ItemDoChat } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -47,9 +47,10 @@ function responder(texto: string): Resposta {
 
 /**
  * "Pergunte ou peça" da Central do Jurídico administrativo (Figma 2051:173): as perícias para marcar (2107:892) e o
- * comprovante do INSS anexado (2085:2). O chat só responde e orienta; para executar algo, mostra um card para confirmar.
+ * comprovante do INSS anexado (2085:2). Na Central da advogada (`advogada`), as perícias da semana (2107:667) e como o
+ * perito avalia (2186:2), GGVP-70. O chat só responde e orienta; para executar algo, mostra um card para confirmar.
  */
-export function ChatDaPericia({ exemplo, sugestoes }: { exemplo: string; sugestoes: string[] }) {
+export function ChatDaPericia({ exemplo, sugestoes, advogada = false }: { exemplo: string; sugestoes: string[]; advogada?: boolean }) {
   const perfil = usePerfil('Jurídico administrativo')
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
   const travado = useRef(false)
@@ -58,6 +59,13 @@ export function ChatDaPericia({ exemplo, sugestoes }: { exemplo: string; sugesto
 
   async function aoEnviar(texto: string) {
     setMensagens((m) => [...m, { id: ++proximoId, de: 'voce', texto }])
+    if (advogada) {
+      if (/semana/i.test(texto)) return ia({ texto: '', resposta: periciasDaSemana() })
+      if (/perito|avalia/i.test(texto)) {
+        return ia({ texto: '', resposta: comoOPeritoAvalia(texto) ?? { texto: 'Diga o nome do perito: eu mostro os números do sistema e o que ele costuma avaliar.' } })
+      }
+      return ia({ texto: '', resposta: { texto: 'Aqui eu respondo sobre as perícias: use os atalhos abaixo. O resto do chat entra com a GGVP-82.' } })
+    }
     // "O cliente me ligou" (Figma 2107:1091): a próxima tarefa e a orientação pronta (GGVP-62, CA8).
     if (/\blig(ou|aram)\b/i.test(texto)) return ia({ texto: '', resposta: clienteLigou(texto) })
     // "Dica para a perícia" (Figma 2186:857): a orientação do cliente citado, o perito e a tarefa (GGVP-61).
@@ -110,7 +118,7 @@ export function ChatDaPericia({ exemplo, sugestoes }: { exemplo: string; sugesto
 
   const hoje = hojeIso(agora())
   return (
-    <ChatIA exemplo={exemplo} sugestoes={sugestoes} onEnviar={(texto) => void aoEnviar(texto)} onAnexo={aoAnexo}>
+    <ChatIA exemplo={exemplo} sugestoes={sugestoes} onEnviar={(texto) => void aoEnviar(texto)} onAnexo={advogada ? undefined : aoAnexo}>
       {mensagens.length > 0 && (
         <ol className={conversa.conversa} aria-label="Conversa">
           {mensagens.map((m) => (

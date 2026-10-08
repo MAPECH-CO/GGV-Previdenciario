@@ -6,8 +6,11 @@
 import { diaDaSemana, diaFalado, somarDias } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import {
+  COMO_SEGUE,
+  CONFERENCIAS_DO_RESULTADO,
   DIAS_ANTES_DOCUMENTOS,
   DIAS_ANTES_PREPARO,
+  DIAS_PARA_MANIFESTAR,
   HORA_DA_CONFIRMACAO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   MINIMO_DA_FALTA,
@@ -23,12 +26,14 @@ import {
   mensagemDoLembrete,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
+  motivoParaNaoRegistrarResultado,
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
   passouDoLimiteDosDocumentos,
   periciaJaPassou,
   problemaDaOrientacao,
   prazoFalado,
+  prazoParaManifestar,
   prazosDaPericia,
   proximaTentativa,
   situacaoDaPericia,
@@ -186,7 +191,34 @@ export type Pericia = {
   preparacao?: PreparacaoDaPericia
   /** Os envios que a verificação do servidor recusou (GGVP-62, CA6): quem, quando, o motivo e o texto. */
   enviosRecusados?: { quando: string; quem: string; motivo: string; texto: string }[]
+  /** O resultado (GGVP-70): disponível no GERID ou no processo, o laudo lido pela IA e o que a advogada registrou. */
+  resultado?: ResultadoDaPericia
   historico: EventoDaPericia[]
+}
+
+/** O que a IA leu do laudo (GGVP-70): o resumo e, no desfavorável, por que e se vale nova perícia. A advogada decide. */
+export type LeituraDoLaudo = {
+  favoravel: boolean
+  resumo: string
+  conclusao: string
+  coerencia: string
+  pontoDeAtencao: string
+  /** No desfavorável: por que foi desfavorável (Lucas, 02/10). */
+  porque?: string
+  /** No desfavorável: a indicação da IA de pedir nova perícia. Quem decide é a advogada. */
+  valeNovaPericia?: boolean
+  /** O que o perito observou, perguntou e pediu, para o perfil dele (GGVP-73). */
+  observou: string[]
+  perguntou: string[]
+  pediu: string[]
+}
+
+export type ResultadoDaPericia = {
+  /** O resultado apareceu no GERID ou no processo (DP.E4): a tarefa da advogada fica urgente (CA1). */
+  disponivelEm?: string
+  laudo?: { nome: string; anexadoEm: string; leitura: LeituraDoLaudo }
+  /** O que a advogada registrou (CA2 a CA5); no judicial, até quando manifestar (G12). */
+  registrado?: { quando: string; quem: string; favoravel: boolean; novaPericia?: boolean; conferidas: string[]; manifestarAte?: string }
 }
 
 /** Chatwoot (documento e instrução, Lucas 02/10 Q5) ou a ligação. */
@@ -226,6 +258,8 @@ export type PericiaNaTela = {
   jaPassou: boolean
   /** A confirmação de presença da véspera, enquanto a perícia não passou e ninguém confirmou (GGVP-66, CA7, CA8). */
   presenca?: 'ainda-nao' | 'fazer' | 'atrasada'
+  /** As perícias que o processo já teve antes desta, com o resultado de cada uma (GGVP-70). */
+  anteriores: Pericia[]
 }
 
 /** Cada item do kit: anexado é o documento do tipo dele que entrou na pasta depois do pedido (GGVP-56, CA1, CA2, CA4). */
@@ -483,6 +517,7 @@ function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
     documentos: documentosNaTela(ficha, pericia, hoje, marcacao && prazosDaPericia(marcacao.data).documentosAte),
     perfil: pericia.peritoId ? perfilDoPerito(peritosDo(banco).find((p) => p.id === pericia.peritoId)!) : undefined,
     jaPassou,
+    anteriores: (banco.pericias ?? []).slice(0, banco.pericias!.indexOf(pericia)).filter((p) => p.processoId === pericia.processoId),
     ...(situacao === 'agendada' && !jaPassou && !marcacao!.confirmacao?.confirmou && { presenca: confirmacaoDaPresenca(marcacao!.data, agora()) }),
   }
 }
@@ -672,6 +707,14 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
       `Jurídico administrativo, que marca a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre, G9). ${depois}`
     )
   }
+  const r = pericia.resultado?.registrado
+  if (t.situacao === 'concluida' && r) {
+    const hoje = hojeIso(agora())
+    return (
+      `O resultado da ${tipo} de ${primeiro} foi ${r.favoravel ? 'favorável' : 'desfavorável'}, registrado por ${r.quem} em ${dataCurta(hojeIso(new Date(r.quando)), hoje)}: ` +
+      `${COMO_SEGUE[pericia.origem]}${r.manifestarAte ? `, até ${dataCurta(r.manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)` : ''}.`
+    )
+  }
   if (t.situacao === 'aguardando-resultado') {
     const m = pericia.marcacao!
     return (
@@ -740,6 +783,7 @@ const paraOrientar = ({ situacao, jaPassou, pericia: p }: PericiaNaTela) =>
 export function hrefDoPasso(t: PericiaNaTela): string {
   const base = `/casos/${t.processo.id}/pericia`
   if (t.situacao === 'aguardando-inss') return `${base}/aberta`
+  if (t.situacao === 'aguardando-resultado' || t.situacao === 'concluida') return `${base}/resultado`
   if (paraOrientar(t)) return `${base}/orientar`
   if (t.jaPassou || (t.presenca && t.presenca !== 'ainda-nao')) return `${base}/comparecimento`
   if (t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante' || t.situacao === 'agendada') return `${base}/marcar`
@@ -896,19 +940,19 @@ export function tarefasDaAdvogadaNaPericia(): Tarefa[] {
       // Compareceu (GGVP-66, CA5): a advogada responsável acompanha o resultado no GERID ou no processo (GGVP-70).
       if (t.situacao === 'aguardando-resultado') {
         const m = t.pericia.marcacao!
+        const onde = t.pericia.instancia === 'inss' ? 'no GERID' : 'no processo'
+        // O resultado no GERID ou no processo deixa a tarefa urgente (GGVP-70, CA1).
+        const saiu = !!t.pericia.resultado?.disponivelEm
         return [
           {
             ...comum,
+            href: `/casos/${t.processo.id}/pericia/resultado`,
             id: `pericia-resultado-${t.pericia.id}`,
             codigo: 'DP.08',
             acao: 'Conferir resultado da perícia',
-            detalhe: [
-              t.beneficio,
-              `${NOMES_DO_TIPO[t.pericia.tipo]} feita em ${dataCurta(m.data, hojeIso(agora()))}`,
-              `esperando o resultado ${t.pericia.instancia === 'inss' ? 'no GERID' : 'no processo'}`,
-            ].join(' · '),
-            prazo: 'esperando o resultado',
-            urgente: false,
+            detalhe: [t.beneficio, `${NOMES_DO_TIPO[t.pericia.tipo]} feita em ${dataCurta(m.data, hojeIso(agora()))}`, saiu ? `resultado ${onde}` : `esperando o resultado ${onde}`].join(' · '),
+            prazo: saiu ? 'hoje' : 'esperando o resultado',
+            urgente: saiu,
           },
         ]
       }
@@ -1227,6 +1271,7 @@ const NOMES_DA_SITUACAO_CURTA: Record<SituacaoDaPericia, string> = {
   agendada: 'agendada',
   'na-advogada': 'com a advogada',
   'aguardando-resultado': 'esperando o resultado',
+  concluida: 'resultado registrado',
 }
 
 /** A recusa do chat fica registrada (CA11, G11): quem pediu, quando e o quê. */
@@ -1407,4 +1452,217 @@ export function registrarComparecimento(processoId: string, r: { compareceu: boo
     pericia.historico.push({ quando, quem, oQue: `Registrou que ${primeiro} não compareceu${porque || ' (sem justificativa)'}`, passo: 'DP.07' })
     remarcar(pericia, `${primeiro} não compareceu${porque}`, quem)
   })
+}
+
+// GGVP-70 · Conferir o resultado e decidir o próximo passo (DP.08, DP.10).
+
+/**
+ * IA simulada: o que o laudo (ou o registro do GERID) diz. "desfavoravel" no nome do arquivo faz o laudo desfavorável; no
+ * desfavorável, a IA diz por que e indica se vale pedir nova perícia (Lucas, 02/10). A advogada decide.
+ */
+function leituraDoLaudo(pericia: Pericia, beneficio: string, nome: string): LeituraDoLaudo {
+  const social = pericia.tipo === 'social'
+  const conteudo = social
+    ? { observou: ['quem mora na casa e a renda de cada um', 'as condições da moradia'], perguntou: ['quem ajuda nas despesas da casa'], pediu: ['comprovantes de renda e de despesas'] }
+    : { observou: ['como a pessoa senta, levanta e anda'], perguntou: ['quanto tempo a pessoa aguenta sentada e em pé'], pediu: ['laudos e receitas dos últimos 12 meses'] }
+  if (!/desfavor/i.test(nome)) {
+    return {
+      favoravel: true,
+      resumo: social
+        ? 'A assistente social constatou a vulnerabilidade: a renda da casa não cobre as despesas básicas e a família depende de ajuda.'
+        : 'O perito concluiu incapacidade para o trabalho habitual, coerente com os laudos e os exames do escritório.',
+      conclusao: social ? 'Favorável · vulnerabilidade constatada na visita' : 'Favorável · incapacidade para o trabalho habitual',
+      coerencia: `${beneficio}: atende. Nada contradiz o benefício pedido (G18).`,
+      pontoDeAtencao: social ? 'O laudo não cita a renda de todos que moram na casa; conferir o grupo familiar' : 'O laudo não cita a data do último vínculo; considerar quesito complementar',
+      ...conteudo,
+    }
+  }
+  return {
+    favoravel: false,
+    resumo: social
+      ? 'A assistente social não constatou a vulnerabilidade: considerou a renda declarada sem as despesas com saúde.'
+      : 'O perito não viu incapacidade atual: baseou-se no exame físico do dia.',
+    conclusao: social ? 'Desfavorável · vulnerabilidade não constatada' : 'Desfavorável · sem incapacidade atual',
+    coerencia: `${beneficio}: o laudo não reconhece o requisito do benefício pedido (G18).`,
+    pontoDeAtencao: 'O laudo não comenta os documentos que o escritório levou',
+    porque: social
+      ? 'A avaliação não considerou as despesas com saúde, que estão nos comprovantes do escritório.'
+      : 'O perito não comentou os laudos e os exames do escritório, que mostram a limitação há mais de um ano.',
+    valeNovaPericia: true,
+    ...conteudo,
+  }
+}
+
+/** A perícia do resultado: a que espera o resultado ou a última já conferida. */
+function periciaDoResultado(banco: Banco, processoId: string): Pericia | undefined {
+  return banco.pericias?.filter((p) => p.processoId === processoId && ['aguardando-resultado', 'concluida'].includes(situacaoDaPericia(p))).at(-1)
+}
+
+/** GET /api/processos/:id/pericia/resultado */
+export async function obterResultado(processoId: string): Promise<PericiaNaTela | null> {
+  const banco = lerComPericias()
+  const pericia = periciaDoResultado(banco, processoId)
+  return pericia ? naTela(banco, pericia) : null
+}
+
+/** A vigília do GERID (ou a publicação do laudo) viu o resultado (DP.E4): a tarefa da advogada fica urgente (CA1). Ponta do Mateus. */
+export async function resultadoNoGerid(processoId: string): Promise<PericiaNaTela> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDoResultado(banco, processoId)
+  if (!pericia || situacaoDaPericia(pericia) !== 'aguardando-resultado') throw new Error('Esta perícia não espera resultado.')
+  if (!pericia.resultado?.disponivelEm) {
+    const quando = agora().toISOString()
+    pericia.resultado = { ...pericia.resultado, disponivelEm: quando }
+    pericia.historico.push({
+      quando,
+      quem: SISTEMA,
+      oQue: `O resultado apareceu ${pericia.instancia === 'inss' ? 'no GERID' : 'no processo'}: a tarefa da advogada ficou urgente`,
+      passo: 'DP.E4',
+    })
+    gravar(banco)
+  }
+  return naTela(banco, pericia)
+}
+
+/** POST /api/processos/:id/pericia/laudo/leitura. IA simulada: o resumo do laudo, para a advogada conferir (CA5). */
+export async function lerLaudoDaPericia(processoId: string, nome: string): Promise<LeituraDoLaudo> {
+  await esperar()
+  const banco = lerComPericias()
+  const pericia = periciaDoResultado(banco, processoId)
+  if (!pericia) throw new Error('Esta perícia não espera resultado.')
+  return leituraDoLaudo(pericia, naTela(banco, pericia).beneficio, nome)
+}
+
+/**
+ * POST /api/processos/:id/pericia/resultado (CA2 a CA6). O laudo vai para a pasta; favorável, ou desfavorável sem nova
+ * perícia, o resultado sobe no card e volta para quem pediu; desfavorável com nova perícia, o Jurídico administrativo marca
+ * de novo, sem contar como remarcação. No desfavorável, a indicação da IA fica no histórico (Lucas, 02/10).
+ */
+export function registrarResultado(
+  processoId: string,
+  r: { laudo: { nome: string; hash?: string }; favoravel?: boolean; novaPericia?: boolean; conferidas: string[] },
+  quem: string,
+): Promise<PericiaNaTela> {
+  return mudar(processoId, (banco, pericia, hoje) => {
+    if (situacaoDaPericia(pericia) !== 'aguardando-resultado') throw new Error('Esta perícia não espera resultado.')
+    const exigidas = CONFERENCIAS_DO_RESULTADO[pericia.tipo].map((c) => c.id)
+    const motivo = motivoParaNaoRegistrarResultado({ laudo: !!r.laudo.nome.trim(), favoravel: r.favoravel, novaPericia: r.novaPericia, conferidas: r.conferidas }, exigidas)
+    if (motivo) throw new Error(motivo)
+    const { ficha, processo } = fichaDoProcesso(banco, processoId)!
+    const quando = agora().toISOString()
+    const nomes = ficha.arquivos.map((a) => a.nome)
+    const nome = nomes.includes(r.laudo.nome) ? r.laudo.nome.replace(/(\.pdf)$/i, ' (2)$1') : r.laudo.nome
+    ficha.arquivos.push({ nome, tipo: 'laudo-pericia', local: processoId, data: hoje, origem: 'card', repetido: false, aguardaLeitura: false, hash: r.laudo.hash })
+    const leitura = leituraDoLaudo(pericia, nomeBeneficio(processo.beneficio), nome)
+    const favoravel = r.favoravel!
+    const nova = !favoravel && r.novaPericia === true
+    const manifestarAte = pericia.instancia === 'juizo' && !nova ? prazoParaManifestar(hoje) : undefined
+    pericia.resultado = {
+      ...pericia.resultado,
+      laudo: { nome, anexadoEm: quando, leitura },
+      registrado: { quando, quem, favoravel, ...(!favoravel && { novaPericia: nova }), conferidas: r.conferidas, ...(manifestarAte && { manifestarAte }) },
+    }
+    pericia.historico.push({ quando, quem, oQue: `Registrou o resultado: ${favoravel ? 'favorável' : 'desfavorável'} (laudo ${nome})`, passo: 'DP.08' })
+    if (!favoravel) {
+      pericia.historico.push(
+        { quando, quem: SISTEMA, oQue: `A IA indicou: ${leitura.porque} Vale pedir nova perícia: ${leitura.valeNovaPericia ? 'sim' : 'não'}.`, passo: 'DP.10' },
+        { quando, quem, oQue: nova ? 'Decidiu pedir nova perícia' : 'Decidiu não pedir nova perícia: o caso volta à origem marcado como desfavorável', passo: 'DP.10' },
+      )
+    }
+    if (nova) {
+      const m = pericia.marcacao!
+      const outra = criar(
+        banco,
+        processoId,
+        { origem: pericia.origem, tipo: pericia.tipo, instancia: pericia.instancia, pedidaPor: quem, oQuePede: `nova ${NOMES_DO_TIPO[pericia.tipo]}, depois do resultado desfavorável de ${dataCurta(m.data, hoje)}` },
+        agora(),
+        agora(),
+      )
+      pericia.historico.push({ quando, quem: SISTEMA, oQue: `Abriu a nova perícia para o Jurídico administrativo marcar (não conta como remarcação): ${outra.id}`, passo: 'DP.10' })
+      return
+    }
+    pericia.historico.push({
+      quando,
+      quem: SISTEMA,
+      oQue:
+        `O resultado subiu no card e voltou para quem pediu (${ORIGENS[pericia.origem].rotulo}): ${COMO_SEGUE[pericia.origem]}` +
+        (manifestarAte ? `, até ${dataCurta(manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)` : ''),
+      passo: 'DP.08',
+    })
+  })
+}
+
+/**
+ * "Quais perícias temos esta semana?" (Figma 2107:667): as perícias marcadas de hoje a 6 dias. Cada item abre a página do
+ * processo, com a perícia em destaque, e não a Agenda (CA9).
+ */
+export function periciasDaSemana(): { texto: string; itens: ItemDoChat[] } {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  const ate = somarDias(hoje, 6)
+  const itens = (banco.pericias ?? [])
+    .filter((p) => p.marcacao && !p.marcacao.comparecimento && p.marcacao.data >= hoje && p.marcacao.data <= ate)
+    .sort((a, b) => `${a.marcacao!.data}${a.marcacao!.hora}`.localeCompare(`${b.marcacao!.data}${b.marcacao!.hora}`))
+    .map((p): ItemDoChat => {
+      const t = naTela(banco, p)
+      const m = p.marcacao!
+      const tipo = NOMES_DO_TIPO[p.tipo]
+      const onde = p.instancia === 'inss' ? 'INSS' : `judicial${t.perfil ? `, ${nomeCurto(t.perfil.perito.nome)}` : ''}`
+      return {
+        cliente: t.ficha.nome,
+        acao: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+        sub: `${onde} · ${dataCurta(m.data, hoje)}, ${m.hora}${p.preparacao ? ' · orientação passada' : ''}`,
+        href: `/casos/${p.processoId}/pericia`,
+      }
+    })
+  if (itens.length === 0) return { texto: `Nenhuma perícia marcada até ${dataCurta(ate, hoje)}.`, itens }
+  return {
+    texto:
+      `${itens.length === 1 ? 'Uma perícia' : `${itens.length} perícias`} até ${dataCurta(ate, hoje)}. Cada uma abre o processo do cliente, com a perícia em destaque. ` +
+      'A orientação ao cliente é do Jurídico administrativo; a conferência do resultado é sua (DP.08).',
+    itens,
+  }
+}
+
+/**
+ * "Como o Dr. A. Prado costuma avaliar problemas de coluna?" (Figma 2186:2): os números do sistema, com a amostra (G22), e o
+ * que a IA resume dos laudos; as perícias e as conferências com o perito. Sem perito citado, nada.
+ */
+export function comoOPeritoAvalia(texto: string): { texto: string; itens: ItemDoChat[] } | null {
+  const banco = lerComPericias()
+  const hoje = hojeIso(agora())
+  const perito = peritosDo(banco).find((p) => new RegExp(`\\b${nomeCurto(p.nome).split(' ').at(-1)}\\b`, 'i').test(texto))
+  if (!perito) return null
+  const perfil = perfilDoPerito(perito)
+  const j = perfil.jurimetria
+  const geral = j.suficiente ? `${j.laudos} laudos, ${j.taxa}% favoráveis` : `${j.laudos} laudos (amostra insuficiente, G22)`
+  const doAssunto = perfil.porAssunto.find((a) => new RegExp(`\\b${a.assunto.split(' ')[0]}`, 'i').test(texto))
+  const assunto = !doAssunto
+    ? ''
+    : doAssunto.jurimetria.suficiente
+      ? ` Em ${doAssunto.assunto}: ${doAssunto.jurimetria.laudos} laudos, ${doAssunto.jurimetria.taxa}% favoráveis.`
+      : ` Em ${doAssunto.assunto} ainda são poucos laudos (${doAssunto.jurimetria.laudos}), então a porcentagem não aparece (G22).`
+  const pericias = (banco.pericias ?? []).filter((p) => p.peritoId === perito.id)
+  const itens = pericias.map((p): ItemDoChat => {
+    const t = naTela(banco, p)
+    const m = p.marcacao
+    if (t.situacao === 'aguardando-resultado' || t.situacao === 'concluida') {
+      return { cliente: t.ficha.nome, acao: 'Conferir resultado da perícia', sub: `perícia de ${m ? dataCurta(m.data, hoje) : '—'} com ${nomeCurto(perito.nome)}`, href: `/casos/${p.processoId}/pericia/resultado` }
+    }
+    const tipo = NOMES_DO_TIPO[p.tipo]
+    return {
+      cliente: t.ficha.nome,
+      acao: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+      sub: `${m ? `${diaFalado(m.data)}, ${m.hora} · ${m.local}` : NOMES_DA_SITUACAO_CURTA[t.situacao]} · com ${nomeCurto(perito.nome)}`,
+      href: `/casos/${p.processoId}/pericia`,
+    }
+  })
+  return {
+    texto: `Pelo acervo, ${nomeCurto(perito.nome)} tem ${geral}.${assunto} Costuma perguntar ${perfil.perguntou.join(' e ')}. Os números vêm do sistema; eu só resumo os laudos.`,
+    itens: [
+      ...(pericias[0] ? [{ cliente: nomeCurto(perito.nome), acao: 'Ver o perfil do perito', sub: `${geral} · o que costuma perguntar`, href: `/casos/${pericias[0].processoId}/pericia?perito=1` }] : []),
+      ...itens,
+    ],
+  }
 }

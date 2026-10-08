@@ -37,6 +37,7 @@ const COR_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   agendada: styles.alerta,
   'na-advogada': styles.alerta,
   'aguardando-resultado': styles.neutro,
+  concluida: styles.ok,
 }
 
 /** Feita, atual ou ainda não chegou. A exigência do INSS só aparece feita quando a perícia veio dela, ou no judicial. */
@@ -89,6 +90,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
   const dia = (iso: string) => `${diaCurto(iso)}/${iso.slice(5, 7)}`
   const etiqueta = m?.origem === 'comprovante' ? 'comprovante lido pelo sistema' : m?.origem === 'juizo' ? 'data lida da publicação' : NOMES_DA_SITUACAO[t.situacao].toLowerCase()
   const advogada = (perfil?.id ?? 'advogada') === 'advogada'
+  const resultado = pericia.resultado?.registrado
 
   async function ligar(peritoId: string, nome: string) {
     setErro('')
@@ -223,7 +225,11 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                 </li>
               ))}
             </ol>
-            <p className={styles.nota}>Ainda não existem: a perícia feita e o resultado. Aparecem quando acontecerem.</p>
+            {t.situacao !== 'concluida' && (
+              <p className={styles.nota}>
+                {t.situacao === 'aguardando-resultado' ? 'Ainda não existe: o resultado. Aparece quando chegar.' : 'Ainda não existem: a perícia feita e o resultado. Aparecem quando acontecerem.'}
+              </p>
+            )}
           </section>
 
           <div className={styles.coluna}>
@@ -231,6 +237,21 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
               <h2 id="pericias" className={styles.cartaoTitulo}>
                 Perícias
               </h2>
+              {/* As perícias que o processo já teve, com o resultado (GGVP-70, Figma 1579:117). */}
+              {t.anteriores.map((p) => {
+                const r = p.resultado?.registrado
+                return (
+                  <div key={p.id} className={styles.pericia}>
+                    <span>
+                      <strong>
+                        {NOMES_DA_INSTANCIA[p.instancia]} · {NOMES_DO_TIPO[p.tipo]}
+                      </strong>
+                      <span className={styles.nota}>{p.marcacao ? `${dia(p.marcacao.data)} · ${p.marcacao.local}` : 'sem data'}</span>
+                    </span>
+                    <span className={`${styles.situacao} ${r?.favoravel ? styles.ok : styles.alerta}`}>{r ? (r.favoravel ? 'Favorável' : 'Desfavorável') : 'Encerrada'}</span>
+                  </div>
+                )
+              })}
               <div className={styles.pericia}>
                 <span>
                   <strong>
@@ -238,7 +259,13 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                   </strong>
                   <span className={styles.nota}>
                     {m
-                      ? `${dia(m.data)} · ${m.hora} · ${m.local}`
+                      ? `${dia(m.data)} · ${m.hora} · ${m.local}${
+                          resultado
+                            ? ` · laudo ${pericia.resultado!.laudo!.nome}`
+                            : t.situacao === 'aguardando-resultado'
+                              ? ` · compareceu · esperando o resultado ${pericia.instancia === 'inss' ? 'no GERID' : 'no processo'}`
+                              : ''
+                        }`
                       : t.situacao === 'aguardando-inss'
                         ? 'esperando o INSS liberar o agendamento (D2.E1)'
                         : t.situacao === 'na-advogada'
@@ -248,7 +275,11 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                             : 'esperando o comprovante do INSS (DP.E1)'}
                   </span>
                 </span>
-                <span className={`${styles.situacao} ${COR_DA_SITUACAO[t.situacao]}`}>{NOMES_DA_SITUACAO[t.situacao]}</span>
+                {resultado ? (
+                  <span className={`${styles.situacao} ${resultado.favoravel ? styles.ok : styles.alerta}`}>{resultado.favoravel ? 'Favorável' : 'Desfavorável'}</span>
+                ) : (
+                  <span className={`${styles.situacao} ${COR_DA_SITUACAO[t.situacao]}`}>{NOMES_DA_SITUACAO[t.situacao]}</span>
+                )}
               </div>
               {pericia.orientacao && (
                 <div className={styles.pericia}>
@@ -440,6 +471,12 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                 Prazos
               </h2>
               <dl className={styles.prazos}>
+                {resultado?.manifestarAte && (
+                  <>
+                    <dt className={styles.urgente}>{dataCurta(resultado.manifestarAte, hoje)}</dt>
+                    <dd>Manifestação sobre o laudo (15 dias, G12)</dd>
+                  </>
+                )}
                 {t.proximaTentativa && (
                   <>
                     <dt className={styles.urgente}>{dataCurta(t.proximaTentativa, hoje)}</dt>

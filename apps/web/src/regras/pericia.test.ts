@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   AMOSTRA_MINIMA_DO_PERITO,
+  CONFERENCIAS_DO_RESULTADO,
   HORA_DA_CONFIRMACAO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   cobrarHoje,
@@ -13,9 +14,11 @@ import {
   mensagemDoLembrete,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
+  motivoParaNaoRegistrarResultado,
   motivoParaNaoRegistrarTentativa,
   passouDoLimite,
   periciaJaPassou,
+  prazoParaManifestar,
   passouDoLimiteDosDocumentos,
   prazoFalado,
   problemaDaOrientacao,
@@ -202,5 +205,32 @@ describe('GGVP-66 · comparecimento e remarcação', () => {
     expect(situacaoDaPericia(marcada)).toBe('agendada')
     expect(situacaoDaPericia({ ...marcada, marcacao: { comparecimento: { compareceu: true } } })).toBe('aguardando-resultado')
     expect(situacaoDaPericia({ ...marcada, marcacao: { comparecimento: { compareceu: false } } })).toBe('agendada')
+  })
+})
+
+describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
+  it('CA5 · "Registrar resultado" pede o laudo, o resultado, a decisão do desfavorável e todas as conferências', () => {
+    const medica = CONFERENCIAS_DO_RESULTADO.medica.map((c) => c.id)
+    expect(medica).toEqual(['laudo', 'parecer', 'dii', 'beneficio'])
+    expect(CONFERENCIAS_DO_RESULTADO.social.map((c) => c.id)).toEqual(['laudo', 'beneficio'])
+    const ok = { laudo: true, favoravel: true, conferidas: medica }
+    expect(motivoParaNaoRegistrarResultado(ok, medica)).toBeNull()
+    expect(motivoParaNaoRegistrarResultado({ ...ok, laudo: false }, medica)).toBe('Anexe o laudo ou o registro do GERID.')
+    expect(motivoParaNaoRegistrarResultado({ ...ok, favoravel: undefined }, medica)).toBe('Informe se o resultado foi favorável ou desfavorável.')
+    expect(motivoParaNaoRegistrarResultado({ ...ok, favoravel: false }, medica)).toBe('Desfavorável: decida se vale pedir nova perícia.')
+    expect(motivoParaNaoRegistrarResultado({ ...ok, favoravel: false, novaPericia: false }, medica)).toBeNull()
+    expect(motivoParaNaoRegistrarResultado({ ...ok, conferidas: ['laudo', 'parecer', 'dii'] }, medica)).toBe('Marque as conferências antes de registrar.')
+  })
+
+  it('G12 · 15 dias corridos para manifestar, o lado seguro', () => {
+    expect(prazoParaManifestar('2026-10-16')).toBe('2026-10-31')
+  })
+
+  it('CA2, CA4 · o resultado registrado fecha a perícia e sobe no card do caso', () => {
+    const p = { origem: 'd3a-juiz' as const, tipo: 'medica' as const, liberadaEm: 'x', marcacao: { data: '2026-10-16', hora: '10:30' } }
+    expect(situacaoDaPericia({ liberadaEm: 'x', marcacao: {}, resultado: { registrado: {} } })).toBe('concluida')
+    expect(etapaEmPericia({ ...p, resultado: { registrado: { favoravel: false } } }, '2026-10-20')).toBe(
+      'Resultado da perícia · pedido do juiz (D3a) · perícia médica desfavorável',
+    )
   })
 })

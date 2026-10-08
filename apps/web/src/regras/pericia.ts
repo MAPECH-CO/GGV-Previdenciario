@@ -55,7 +55,13 @@ export function prazoFalado(dia: string, hoje: string): { texto: string; urgente
 }
 
 /** "Em perícia" ligado ao diagrama de origem (CA1); com a data, ela entra junto ("na ficha", GGVP-53 CA2). */
-export function etapaEmPericia(p: { origem: OrigemDaPericia; tipo: TipoDePericia; marcacao?: { data: string; hora: string } }, hoje: string): string {
+export function etapaEmPericia(
+  p: { origem: OrigemDaPericia; tipo: TipoDePericia; marcacao?: { data: string; hora: string }; resultado?: { registrado?: { favoravel: boolean } } },
+  hoje: string,
+): string {
+  // Com o resultado registrado, ele sobe no card do caso (GGVP-70, CA2).
+  const r = p.resultado?.registrado
+  if (r) return `Resultado da perícia · ${ORIGENS[p.origem].caso} · ${NOMES_DO_TIPO[p.tipo]} ${r.favoravel ? 'favorável' : 'desfavorável'}`
   const quando = p.marcacao ? ` em ${dataCurta(p.marcacao.data, hoje)}, ${p.marcacao.hora}` : ''
   return `Em perícia · ${ORIGENS[p.origem].caso} · ${NOMES_DO_TIPO[p.tipo]}${quando}`
 }
@@ -70,7 +76,7 @@ export const LIMITE_DE_REMARCACOES_DA_PERICIA = 2
 export const passouDoLimite = (p: { remarcacoes: number; autorizadas?: number }) =>
   p.remarcacoes > LIMITE_DE_REMARCACOES_DA_PERICIA + (p.autorizadas ?? 0)
 
-export type SituacaoDaPericia = 'aguardando-inss' | 'marcar' | 'aguardando-comprovante' | 'agendada' | 'na-advogada' | 'aguardando-resultado'
+export type SituacaoDaPericia = 'aguardando-inss' | 'marcar' | 'aguardando-comprovante' | 'agendada' | 'na-advogada' | 'aguardando-resultado' | 'concluida'
 
 /** Onde a perícia está, para o cartão "Perícias" e para a tela do passo. */
 export function situacaoDaPericia(p: {
@@ -79,7 +85,10 @@ export function situacaoDaPericia(p: {
   marcacao?: { comparecimento?: { compareceu: boolean } }
   remarcacoes?: number
   autorizadas?: number
+  resultado?: { registrado?: unknown }
 }): SituacaoDaPericia {
+  // O resultado registrado pela advogada fecha a perícia (GGVP-70): volta para quem pediu.
+  if (p.resultado?.registrado) return 'concluida'
   // Compareceu (GGVP-66, CA5): espera o perito e o resultado (DP.E3, DP.E4).
   if (p.marcacao) return p.marcacao.comparecimento?.compareceu ? 'aguardando-resultado' : 'agendada'
   if (!p.liberadaEm) return 'aguardando-inss'
@@ -94,6 +103,7 @@ export const NOMES_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   agendada: 'Agendada',
   'na-advogada': 'Com a advogada',
   'aguardando-resultado': 'Esperando o resultado',
+  concluida: 'Concluída',
 }
 
 export const MINIMO_DO_QUE_ACONTECEU = 5
@@ -252,4 +262,47 @@ export function confirmacaoDaPresenca(data: string, agora: Date): 'ainda-nao' | 
   const hoje = hojeIso(agora)
   if (hoje < vespera) return 'ainda-nao'
   return hoje === vespera && agora.getHours() < HORA_DA_CONFIRMACAO ? 'fazer' : 'atrasada'
+}
+
+// GGVP-70 · Conferir o resultado e decidir o próximo passo (DP.08, DP.10).
+
+/**
+ * As conferências antes de registrar o resultado (Figma 1579:431; Lucas, 02/10: seguem como estão). Na avaliação social, o
+ * parecer médico e a DII não se aplicam: ficam a leitura do laudo e a contradição com o benefício.
+ */
+export const CONFERENCIAS_DO_RESULTADO: Record<TipoDePericia, { id: string; rotulo: string }[]> = {
+  medica: [
+    { id: 'laudo', rotulo: 'Li o laudo na íntegra' },
+    { id: 'parecer', rotulo: 'Parecer médico "Suficiente" confirmado por pessoa (G17)' },
+    { id: 'dii', rotulo: 'DII compatível com carência e qualidade de segurado — calculado por código (G19)' },
+    { id: 'beneficio', rotulo: 'Sem contradição com o benefício pedido (G18)' },
+  ],
+  social: [
+    { id: 'laudo', rotulo: 'Li o laudo na íntegra' },
+    { id: 'beneficio', rotulo: 'Sem contradição com o benefício pedido (G18)' },
+  ],
+}
+
+/** "Registrar resultado" só com o laudo anexado, o resultado, a decisão do desfavorável e as conferências (CA5). Sem problema, null. */
+export function motivoParaNaoRegistrarResultado(
+  r: { laudo: boolean; favoravel?: boolean; novaPericia?: boolean; conferidas: string[] },
+  exigidas: string[],
+): string | null {
+  if (!r.laudo) return 'Anexe o laudo ou o registro do GERID.'
+  if (r.favoravel === undefined) return 'Informe se o resultado foi favorável ou desfavorável.'
+  if (!r.favoravel && r.novaPericia === undefined) return 'Desfavorável: decida se vale pedir nova perícia.'
+  if (exigidas.some((c) => !r.conferidas.includes(c))) return 'Marque as conferências antes de registrar.'
+  return null
+}
+
+/** O prazo para manifestar sobre o laudo no judicial (G12): 15 dias corridos, o lado seguro (em dias úteis daria mais). */
+export const DIAS_PARA_MANIFESTAR = 15
+export const prazoParaManifestar = (desde: string) => somarDias(desde, DIAS_PARA_MANIFESTAR)
+
+/** Como o diagrama de origem segue com o resultado (CA2, CA4, CA6). */
+export const COMO_SEGUE: Record<OrigemDaPericia, string> = {
+  'd2-necessidade': 'o D2 segue: completa a junção antes da vigília do INSS',
+  'd2-exigencia': 'o D2 segue: volta à vigília do INSS (D2.04)',
+  'd3-despacho': 'volta ao judicial (D3): manifestar sobre o laudo',
+  'd3a-juiz': 'volta ao judicial (D3a): manifestar sobre o laudo',
 }

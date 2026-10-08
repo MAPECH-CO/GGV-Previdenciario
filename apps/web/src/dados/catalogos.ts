@@ -105,6 +105,8 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'relatorio-psicologia', nome: 'Relatório de psicologia' },
   // Épico GGVP-10: o comprovante do agendamento que o Jurídico administrativo sobe (GGVP-53).
   { id: 'comprovante-pericia', nome: 'Comprovante da perícia (INSS)' },
+  // GGVP-70: o laudo da perícia (ou o registro do GERID) que a advogada anexa ao conferir o resultado.
+  { id: 'laudo-pericia', nome: 'Laudo da perícia' },
 ]
 
 export function nomeTipo(id: string | undefined): string {

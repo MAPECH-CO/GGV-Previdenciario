@@ -52,6 +52,7 @@ import { ReunirDocumentosPericia } from './paginas/ReunirDocumentosPericia.tsx'
 import { CobrarDocumentoPericia } from './paginas/CobrarDocumentoPericia.tsx'
 import { OrientarPericia } from './paginas/OrientarPericia.tsx'
 import { ComparecimentoPericia } from './paginas/ComparecimentoPericia.tsx'
+import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -163,6 +164,8 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (orientarPericia) return <OrientarPericia processoId={decodeURIComponent(orientarPericia[1])} />
   const comparecimentoPericia = /^\/casos\/([^/]+)\/pericia\/comparecimento$/.exec(caminho)
   if (comparecimentoPericia) return <ComparecimentoPericia processoId={decodeURIComponent(comparecimentoPericia[1])} />
+  const resultadoPericia = /^\/casos\/([^/]+)\/pericia\/resultado$/.exec(caminho)
+  if (resultadoPericia) return <ResultadoPericia processoId={decodeURIComponent(resultadoPericia[1])} />
   const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
   if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} abrirPerito={parametros.get('perito') === '1'} />
   return <NaoConstruida caminho={caminho} />
