@@ -1,29 +1,7 @@
 // Contrato do chat (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação. A IA só sugere e orienta; para
 // executar algo, mostra um cartão e nada acontece sem o clique. O chat herda as permissões de quem pergunta.
-//
-// Ponta para ligar no motor de IA (pedido #26, feat/GGVP-14-ia-juridica): `FonteDaIa` e `SugestaoDaIa` têm o mesmo nome
-// e a mesma forma das de `ia.ts` daquela branch. Na junção, as duas definições abaixo saem e passam a vir de `./ia.ts`.
 import { z } from 'zod'
-
-/** O que a IA usou: um documento do caso, uma publicação, um caso do acervo, uma regra do sistema ou o próprio caso. */
-export const FonteDaIa = z.object({
-  tipo: z.enum(['documento', 'publicacao', 'acervo', 'regra', 'caso']),
-  referencia: z.string(),
-  trecho: z.string().optional(),
-})
-export type FonteDaIa = z.infer<typeof FonteDaIa>
-
-/** Sempre sugestão, com fontes; quem decide é a pessoa. */
-export const SugestaoDaIa = z.object({
-  chamadaId: z.uuid(),
-  sugestao: z.literal(true),
-  texto: z.string(),
-  fontes: z.array(FonteDaIa),
-  modelo: z.string(),
-  geradaEm: z.string(),
-  alerta: z.string().nullable(),
-})
-export type SugestaoDaIa = z.infer<typeof SugestaoDaIa>
+import { SugestaoDaIa } from './ia.ts'
 
 /** Um arquivo anexado ao chat: só o nome e o tamanho viajam na pergunta; o conteúdo sobe pelo envio de arquivos. */
 export const AnexoDoChat = z.object({ nome: z.string().min(1).max(200), tamanho: z.number().int().min(0) })
