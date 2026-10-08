@@ -5,13 +5,15 @@ import type { UsuarioDaSessao } from '@ggv/contratos'
 import { SessaoContexto } from '../sessao.ts'
 
 const NOMES: Record<string, string> = {
-  atendimento: 'Bruna (exemplo)',
+  atendimento: 'Ana (exemplo)',
   documentacao: 'Jéssica (exemplo)',
   advogada: 'Dra. Paula (exemplo)',
   senior: 'Dra. Renata (exemplo)',
   // A segunda sênior: a dispensa do parecer pede duas sêniores diferentes (GGVP-33, Q14).
   'senior-2': 'Dr. Otávio (exemplo)',
   juridico_adm: 'Igor (exemplo)',
+  'atendimento-lider': 'Carla (exemplo)',
+  financeiro: 'Marcos (exemplo)',
 }
 
 let perfilDoTeste: string | undefined
@@ -22,7 +24,8 @@ export function entrarComo(perfil?: string) {
 }
 
 export function usuarioDeTeste(perfil: string): UsuarioDaSessao {
-  const ativo = perfil === 'senior-2' ? 'senior' : perfil
+  // Os ids da tela usam hífen (atendimento-lider); o perfil do servidor, sublinhado (atendimento_lider).
+  const ativo = perfil === 'senior-2' ? 'senior' : perfil.replace('-', '_')
   return { nome: NOMES[perfil] ?? perfil, email: `${perfil}@exemplo.ggv`, perfis: [ativo], perfilAtivo: ativo, trocarSenha: false }
 }
 

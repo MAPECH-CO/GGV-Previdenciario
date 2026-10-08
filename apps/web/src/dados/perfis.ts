@@ -18,7 +18,7 @@ export type Perfil = {
 
 /** Sem sessão (testes de uma tela sozinha), a tela fica como foi desenhada: a função do `padrao`. */
 const PADRAO: Record<string, Perfil> = {
-  Atendimento: { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Bruna (exemplo)', inicio: '/' },
+  Atendimento: { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Ana (exemplo)', inicio: '/' },
   Documentação: { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/' },
   Advogada: { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)', inicio: '/advogada' },
   Sênior: { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)', inicio: '/' },

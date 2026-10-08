@@ -1,9 +1,11 @@
 import { useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
 import { formatarCep, formatarCpf, formatarTelefone, isoParaData } from '../campos.ts'
 import { FONTES } from '../dados/catalogos.ts'
-import { salvarFicha } from '../dados/servidor.ts'
+import { usePerfil } from '../dados/perfis.ts'
+import { camposProtegidosQueMudam, salvarFichaVerificada } from '../dados/seguranca.ts'
 import type { Ficha } from '../dados/tipos.ts'
 import { soNumeroEMascara, validarEdicao, type ValoresFicha } from '../regras/formularios.ts'
+import { COMO_VERIFICOU, motivoParaNaoMudar, type ComoVerificou } from '../regras/seguranca.ts'
 import { Campo } from './Campo.tsx'
 import styles from './EdicaoCliente.module.css'
 
@@ -66,11 +68,26 @@ function valoresDa(f: Ficha): ValoresFicha {
 }
 
 /** "Editar dados do cliente" (Figma 73:228 a 73:297). Valida ao sair do campo e de novo ao salvar (CA15). */
-export function EdicaoCliente({ ficha, hoje, aoSalvar }: { ficha: Ficha; hoje: string; aoSalvar: (ficha: Ficha) => void }) {
+export function EdicaoCliente({
+  ficha,
+  hoje,
+  aoSalvar,
+  aoIniciarConversa,
+}: {
+  ficha: Ficha
+  hoje: string
+  aoSalvar: (ficha: Ficha) => void
+  /** "Iniciar conversa" abre a janela "Registrar conversa" (GGVP-76, CA9). */
+  aoIniciarConversa: () => void
+}) {
   const [valores, setValores] = useState(() => valoresDa(ficha))
   const [erros, setErros] = useState<Erros>({})
   const [salvando, setSalvando] = useState(false)
   const [aviso, setAviso] = useState('')
+  // Mudar telefone ou e-mail pede a verificação do cliente e o contrato novo (GGVP-111, CA1).
+  const [verificacao, setVerificacao] = useState<{ como?: ComoVerificou; contratoNovo?: true }>({})
+  const perfil = usePerfil('Atendimento')
+  const mudaContato = camposProtegidosQueMudam(ficha, { telefone: valores.telefone, email: valores.email })
   // Trava no mesmo clique, antes de o React redesenhar o botão (CA16).
   const travado = useRef(false)
   const regras = { cpfObrigatorio: ficha.situacao === 'cliente', hoje }
@@ -91,14 +108,19 @@ export function EdicaoCliente({ ficha, hoje, aoSalvar }: { ficha: Ficha; hoje: s
     const { erros: novos, dados } = validarEdicao(valores, regras)
     setErros(novos)
     if (!dados) return setAviso('Confira os campos marcados em vermelho.')
+    const semVerificacao = mudaContato.map((c) => motivoParaNaoMudar(c, verificacao)).find(Boolean)
+    if (semVerificacao) return setAviso(semVerificacao)
     travado.current = true
     setSalvando(true)
     try {
-      const resposta = await salvarFicha(ficha.id, dados)
+      const resposta = await salvarFichaVerificada(ficha.id, dados, mudaContato.length ? verificacao : null, { quem: perfil?.usuario ?? 'Atendimento', perfil: perfil?.id })
       if ('erro' in resposta) return setErros({ cpf: `Este CPF já está na ficha de ${resposta.nome}.` })
       setValores(valoresDa(resposta.ficha))
+      setVerificacao({})
       aoSalvar(resposta.ficha)
       setAviso('Alterações salvas. Ficaram no histórico.')
+    } catch (falha) {
+      setAviso(falha instanceof Error ? falha.message : 'Não deu para salvar.')
     } finally {
       travado.current = false
       setSalvando(false)
@@ -128,13 +150,33 @@ export function EdicaoCliente({ ficha, hoje, aoSalvar }: { ficha: Ficha; hoje: s
           ))}
         </div>
       ))}
+      {mudaContato.length > 0 && (
+        <fieldset className={styles.verificacao}>
+          <legend className={styles.legenda}>Mudou o {mudaContato.map((c) => (c === 'telefone' ? 'telefone' : 'e-mail')).join(' e o ')}: como você confirmou que é o cliente?</legend>
+          {(Object.keys(COMO_VERIFICOU) as ComoVerificou[]).map((como) => (
+            <label key={como} className={styles.opcao}>
+              <input type="radio" name="como-verificou" checked={verificacao.como === como} onChange={() => setVerificacao((v) => ({ ...v, como }))} />
+              {COMO_VERIFICOU[como]}
+            </label>
+          ))}
+          <label className={styles.opcao}>
+            <input
+              type="checkbox"
+              checked={verificacao.contratoNovo === true}
+              onChange={(e) => setVerificacao((v) => ({ ...v, contratoNovo: e.target.checked ? true : undefined }))}
+            />
+            A alteração vai em contrato novo
+          </label>
+          <p className={styles.nota}>Pedido por telefone ou mensagem, sem a verificação: não mude. Diga que vai retornar pelo contato cadastrado.</p>
+        </fieldset>
+      )}
       <div className={styles.botoes}>
         <button type="submit" className={styles.salvar} disabled={salvando}>
           {salvando ? 'salvando…' : 'Salvar alterações'}
         </button>
-        {/* Registrar contato é de outra história: avisa que está indisponível. */}
-        <button type="button" className={styles.botao} aria-disabled="true">
-          Registrar contato
+        {/* O Figma chama de "Registrar contato"; o cartão GGVP-76 (CA9, Pedro 07/10), de "Iniciar conversa". Vale o cartão. */}
+        <button type="button" className={styles.botao} onClick={aoIniciarConversa}>
+          Iniciar conversa
         </button>
         {/* O cartão chama de "Marcar entrevista" (GGVP-123, CA1); o Figma, de "Marcar reunião". Vale o cartão. */}
         <a className={styles.botao} href={`/agenda/marcar/${ficha.id}`}>

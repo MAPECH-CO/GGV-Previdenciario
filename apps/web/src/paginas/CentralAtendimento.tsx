@@ -28,6 +28,8 @@ import { tarefasDeFechamento } from '../dados/fechamento.ts'
 import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
 import { tarefasDeComplemento } from '../dados/complemento.ts'
+import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { usePerfil } from '../dados/perfis.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -40,6 +42,8 @@ export function CentralAtendimento() {
   // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as pendências do
   // Atendimento (GGVP-21), as fichas que o scanner criou sem telefone (GGVP-17, CA15), as entrevistas que passaram sem
   // registro (GGVP-123, CA8) e as que falta confirmar com o lead (GGVP-21).
+  // A conversa com o cliente é da pessoa que a abriu (GGVP-76): o nome vem da sessão.
+  const perfil = usePerfil('Atendimento')
   const [deExemplo] = useState(() => [
     ...tarefasDoSetor('Documentação · ADM'),
     ...tarefasDoSetor('Atendimento'),
@@ -57,6 +61,8 @@ export function CentralAtendimento() {
     ...tarefasDeNovaDemanda(),
     ...tarefasDePedirLegivel(),
     ...tarefasDeComplemento(),
+    ...tarefasDeRegistrarConversa(perfil?.usuario),
+    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
   ])
   // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).

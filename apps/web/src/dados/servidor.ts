@@ -38,6 +38,10 @@ import type { Complemento } from './complemento.ts'
 import type { DeficienciaDoCaso } from './deficiencia.ts'
 import type { AcidenteDoCaso } from './acidente.ts'
 import type { CriancaDoCaso } from './infantil.ts'
+import type { Conversa } from './conversa.ts'
+import type { VersaoDoCampo } from '../regras/conversa.ts'
+import type { AvisoAprovado, MensagemAoCliente } from './mensagens.ts'
+import type { PedidoBancario, RegistroBancario } from './seguranca.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -89,6 +93,18 @@ export type Banco = {
   acidentes?: AcidenteDoCaso[]
   /** A condição e as terapias de cada criança do LOAS Deficiente de menor de 16 anos (GGVP-50). Dado de saúde. */
   criancas?: CriancaDoCaso[]
+  /** As conversas com o lead ou o cliente, do fluxo D5 (GGVP-12). Sem ela, começa da semente de conversa.ts. */
+  conversas?: Conversa[]
+  /** As versões dos campos mudados pela conversa, com quem e quando (GGVP-84, G14). */
+  versoes?: VersaoDoCampo[]
+  /** Cada mensagem mandada ao cliente pelo Chatwoot, com o status de entrega (GGVP-102). */
+  mensagens?: MensagemAoCliente[]
+  /** O texto do resultado aprovado pelo Jurídico: o favorável com o OK da advogada (G8). Sem ele, a semente de mensagens.ts. */
+  avisosAprovados?: AvisoAprovado[]
+  /** Os dados bancários para o repasse, do mais antigo ao em vigor (GGVP-111). Sem eles, a semente de seguranca.ts. */
+  dadosBancarios?: RegistroBancario[]
+  /** A mudança dos dados bancários que espera a segunda confirmação (GGVP-111, CA5). */
+  pedidosBancarios?: PedidoBancario[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

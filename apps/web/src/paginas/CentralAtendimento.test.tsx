@@ -1,23 +1,27 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
+import { abrirConversa, conferirConversa } from '../dados/conversa.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
   zerarExemplo()
+  window.localStorage.clear()
+  entrarComo()
 })
 
 describe('Central do Atendimento', () => {
-  it('mostra a fila de 16 tarefas e os totais nas abas', () => {
+  it('mostra a fila de 17 tarefas e os totais nas abas', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(16)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(17)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (17)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (9)' }).getAttribute('aria-selected')).toBe('false')
   })
 
@@ -102,7 +106,7 @@ describe('Central do Atendimento', () => {
     expect(screen.getByText('Tarefas do setor: tela ainda não construída.')).toBeTruthy()
 
     fireEvent.keyDown(setor, { key: 'ArrowLeft' })
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (17)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
   })
 
@@ -154,6 +158,29 @@ describe('Central do Atendimento', () => {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), nome).toBe('true')
     }
     expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
+  })
+
+  it('GGVP-76 CA8 · "Registrar conversa" da ligação que a Ana abriu: o nome do cliente e a tarefa; outra pessoa não vê', () => {
+    render(<CentralAtendimento />)
+    const registrar = screen.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })
+    expect(registrar.getAttribute('href')).toBe('/conversas/conversa-pedro-ligacao')
+    expect(registrar.closest('li')?.textContent).toContain('ligou com informação nova sobre a exigência do INSS · ligou às 09:15 · subir a gravação da ligação')
+    expect(within(registrar.closest('li')!).getByRole('link', { name: 'Pedro Exemplo' }).getAttribute('href')).toBe('/clientes/pedro-exemplo')
+    cleanup()
+    entrarComo('documentacao')
+    render(comSessao(<CentralAtendimento />))
+    expect(screen.queryByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toBeNull()
+  })
+
+  it('GGVP-88 CA4 · "Cumprir pendência" na Central do responsável, com o nome do cliente e o combinado embaixo', async () => {
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'escrito', registro: 'Trouxe o relatório da alta.' }, { quem: 'Ana (exemplo)', perfil: 'atendimento' })
+    await conferirConversa(c.id, { decisoes: [], pendencia: { surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' } }, { quem: 'Ana (exemplo)', perfil: 'atendimento' })
+    entrarComo('documentacao')
+    render(comSessao(<CentralAtendimento />))
+    const cumprir = screen.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })
+    expect(cumprir.getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
+    expect(cumprir.closest('li')?.textContent).toContain('Receber o relatório da alta.')
+    expect(cumprir.closest('li')?.textContent).toContain('vence 10/10')
   })
 
   it('GGVP-23 CA3 · as tarefas do servidor (como o ajuste pedido pela Sênior) vêm no topo, acima das de exemplo', async () => {

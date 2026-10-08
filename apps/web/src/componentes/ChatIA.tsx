@@ -8,8 +8,8 @@ type Props = {
   exemplo: string
   /** Atalhos do perfil: clicar preenche o campo, não envia. */
   sugestoes: string[]
-  /** Sem ligação com o servidor ainda (GGVP-82). Sem isto, o envio só avisa. */
-  onEnviar?: (texto: string) => void
+  /** Sem ligação com o servidor ainda (GGVP-82). Sem isto, ou com `false` (não tratou), o envio só avisa e mantém o texto. */
+  onEnviar?: (texto: string) => boolean | void
   /** Mensagem com arquivo anexado (GGVP-17, "Subir laudo novo"). Sem isto, "Anexar arquivo" fica indisponível. */
   onAnexo?: (texto: string, anexo: File) => void
   /** A conversa, acima do campo. */
@@ -42,12 +42,11 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
       setTexto('')
       return
     }
-    if (!onEnviar) {
+    if (!onEnviar || onEnviar(limpo) === false) {
       setAviso('O chat ainda não está ligado ao servidor.')
       return
     }
     setAviso('')
-    onEnviar(limpo)
     setTexto('')
   }
 
