@@ -40,3 +40,4 @@ desktop.ini
 
 # banco embutido da máquina do dev (apps/api/.banco-local)
 .banco-local*/
+.arquivos-local/

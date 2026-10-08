@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { Roteiro } from './Roteiro.tsx'
 
@@ -8,12 +8,12 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 6, 15, 10), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 describe('Roteiro de laudos · tela', () => {
   it('CA1 · a lista traz cada roteiro com os benefícios e a versão; a régua documental diz "sem laudo"', async () => {
-    render(<Roteiro />)
+    render(comSessao(<Roteiro />))
     const lista = await screen.findByRole('list', { name: 'Roteiros' })
     const itens = within(lista).getAllByRole('link')
     // GGVP-50: o roteiro infantil é o último.
@@ -26,7 +26,7 @@ describe('Roteiro de laudos · tela', () => {
   })
 
   it('CA1 · a advogada vê os itens por tipo, com o texto do escritório e a pergunta ao médico, mas não edita', async () => {
-    render(<Roteiro id="auxilio-acidente" />)
+    render(comSessao(<Roteiro id="auxilio-acidente" />))
     await screen.findByRole('heading', { level: 1, name: 'Auxílio-Acidente · Roteiro de conteúdo mínimo' })
     const obrigatorios = screen.getByRole('list', { name: 'Obrigatórios · o que o documento precisa abordar' })
     expect(within(obrigatorios).getAllByRole('listitem')).toHaveLength(7)
@@ -42,8 +42,8 @@ describe('Roteiro de laudos · tela', () => {
   })
 
   it('CA2 · a sênior edita, a trava pede o texto, e salvar cria a versão 2 com autor e data', async () => {
-    iniciarPerfil('?perfil=senior')
-    render(<Roteiro id="loas-deficiente" />)
+    entrarComo('senior')
+    render(comSessao(<Roteiro id="loas-deficiente" />))
     fireEvent.click(await screen.findByRole('button', { name: 'Editar o roteiro' }))
     const textos = screen.getAllByRole('textbox', { name: 'Texto do item' })
     fireEvent.change(textos[2], { target: { value: '' } })
@@ -63,8 +63,8 @@ describe('Roteiro de laudos · tela', () => {
   })
 
   it('o Atendimento não vê o roteiro: ele é do Jurídico', async () => {
-    iniciarPerfil('?perfil=atendimento')
-    render(<Roteiro id="loas-deficiente" />)
+    entrarComo('atendimento')
+    render(comSessao(<Roteiro id="loas-deficiente" />))
     expect(screen.getByRole('heading', { level: 1, name: 'O roteiro de laudos é do Jurídico' })).toBeTruthy()
     expect(screen.getByText(/O que falta pedir ao cliente aparece no parecer médico do caso/)).toBeTruthy()
   })

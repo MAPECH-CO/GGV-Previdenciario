@@ -6,6 +6,7 @@ import { LaudoPeloChat } from '../componentes/LaudoPeloChat.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
+import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import {
   exemploChatAtendimento,
   sugestoesChatAtendimento,
@@ -39,7 +40,7 @@ export function CentralAtendimento() {
   // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as pendências do
   // Atendimento (GGVP-21), as fichas que o scanner criou sem telefone (GGVP-17, CA15), as entrevistas que passaram sem
   // registro (GGVP-123, CA8) e as que falta confirmar com o lead (GGVP-21).
-  const [tarefas] = useState(() => [
+  const [deExemplo] = useState(() => [
     ...tarefasDoSetor('Documentação · ADM'),
     ...tarefasDoSetor('Atendimento'),
     ...tarefasDeConfirmar(),
@@ -57,6 +58,10 @@ export function CentralAtendimento() {
     ...tarefasDePedirLegivel(),
     ...tarefasDeComplemento(),
   ])
+  // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
+  // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
+  const doServidor = useTarefasDoServidor() ?? []
+  const tarefas = [...doServidor, ...deExemplo]
 
   return (
     <>

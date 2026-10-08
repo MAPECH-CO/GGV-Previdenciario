@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { enviarArquivos } from '../dados/documentos.ts'
 import { salvarCrianca } from '../dados/infantil.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { ConferirChecklist } from './ConferirChecklist.tsx'
 
@@ -13,7 +13,7 @@ beforeEach(() => {
 })
 
 async function abrir(processoId = 'rita-exemplo-1') {
-  render(<ConferirChecklist processoId={processoId} />)
+  render(comSessao(<ConferirChecklist processoId={processoId} />))
   await screen.findByRole('heading', { level: 1, name: /Conferir checklist/ })
 }
 
@@ -81,7 +81,7 @@ describe('Conferir checklist · tela do passo', () => {
 })
 
 describe('Checklist do Auxílio-Acidente · tela do passo (GGVP-47)', () => {
-  beforeEach(() => iniciarPerfil(''))
+  beforeEach(() => entrarComo())
 
   async function abrirSebastiao() {
     await abrir('sebastiao-exemplo-1')
@@ -145,7 +145,7 @@ describe('Checklist do Auxílio-Acidente · tela do passo (GGVP-47)', () => {
   })
 
   it('quem não é da Documentação nem do Jurídico vê a circunstância, mas não marca', async () => {
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     await abrirSebastiao()
     expect(screen.getByText('Só a Documentação ou o Jurídico marcam a circunstância do acidente.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Salvar a circunstância' })).toBeNull()

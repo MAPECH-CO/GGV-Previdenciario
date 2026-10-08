@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
 import { zerarExemplo } from './dados/servidor.ts'
 
-// As telas abrem depois de o servidor confirmar a sessão (GGVP-117): aqui ele responde com um usuário de exemplo.
-const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfil: 'atendimento', trocarSenha: false }
+const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
 
 function servidorResponde(status: number, corpo: unknown) {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })))
@@ -78,6 +77,7 @@ describe('App', () => {
 
   it('GGVP-93 · em /roteiros e /roteiros/:id abrem os roteiros de laudos', async () => {
     zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
     render(<App caminho="/roteiros" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Roteiros de laudos' })).toBeTruthy()
     cleanup()
@@ -106,12 +106,14 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Cleide Exemplo · Linha do tempo da deficiência' })).toBeTruthy()
   })
 
-  it('GGVP-18 · em /casos/:id/liberar abre a liberação; com ?perfil=atendimento, só a situação', async () => {
+  it('GGVP-18 · em /casos/:id/liberar abre a liberação; quem libera vem da sessão, e o Atendimento só vê a situação', async () => {
     zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
     render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)
     expect(await screen.findByRole('button', { name: 'Liberar ao Jurídico' })).toBeTruthy()
     cleanup()
-    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" busca="?perfil=atendimento" />)
+    servidorResponde(200, usuario)
+    render(<App caminho="/casos/sebastiao-exemplo-1/liberar" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Sebastião Exemplo · Liberar ao Jurídico' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Liberar ao Jurídico' })).toBeNull()
   })
@@ -200,7 +202,7 @@ describe('App', () => {
   })
 
   it('GGVP-117 CA4 · sem perfil mostra o aviso e nenhuma tela de caso', async () => {
-    servidorResponde(200, { ...usuario, perfil: null })
+    servidorResponde(200, { ...usuario, perfis: [], perfilAtivo: null })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Sem perfil, fale com a gestão.' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()
@@ -221,5 +223,28 @@ describe('App', () => {
     await vi.waitFor(() => expect(assign).toHaveBeenCalledOnce())
     expect(assign.mock.calls[0][0]).toBe('/entrar?volta=%2Fclientes%2Fnovo%3Faba%3D2')
     expect(container.textContent).toBe('')
+  })
+
+  it('GGVP-96 · cada perfil cai na sua Central; a da Sênior ainda não foi construída, mas traz a fila dela', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['senior'], perfilAtivo: 'senior' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Central · Sênior' })).toBeTruthy()
+    expect((await screen.findByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
+    expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
+  })
+
+  it('GGVP-78 · a Advogada cai na Central dela, pelo perfil da sessão', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
+  })
+
+  it('GGVP-96 · a Documentação trabalha na Central do Atendimento', async () => {
+    servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
   })
 })
