@@ -751,7 +751,15 @@ export type BeneficioDefinido = {
 }
 
 /** Um vínculo do CNIS: aaaa-mm; sem fim, em aberto. */
-export type Vinculo = { empresa: string; inicio: string; fim?: string }
+export type Vinculo = {
+  empresa: string
+  inicio: string
+  fim?: string
+  /** O indicador PCD do CNIS no vínculo (GGVP-42, resposta do Lucas de 01/10). */
+  indicadorPcd?: boolean
+  /** Atividade insalubre no vínculo: informativo da linha do tempo da deficiência (GGVP-42). */
+  insalubre?: boolean
+}
 
 /** O CNIS anexado ao caso: impresso pelo cliente ou baixado do Meu INSS (GGVP-57, CA4). */
 export type Cnis = { fichaId: string; origem: 'meu-inss' | 'impresso'; /** aaaa-mm-dd */ extraidoEm: string; vinculos: Vinculo[] }

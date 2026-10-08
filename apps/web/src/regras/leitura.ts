@@ -8,8 +8,8 @@ import { umaLetraDeDiferenca } from './pasta.ts'
 /** Abaixo disto (em %), a leitura aparece marcada para a pessoa conferir com atenção (CA7). Levar ao Lucas. */
 export const CONFIANCA_MINIMA = 80
 
-/** Documentos médicos: a Documentação confirma que estão ok sem ver o conteúdo, e nunca são apagados (CA16). */
-export const TIPOS_MEDICOS = ['laudo', 'receita', 'prontuario']
+/** Documentos médicos: a Documentação confirma que estão ok sem ver o conteúdo, e nunca são apagados (CA16). Os sete do fim são da GGVP-95. */
+export const TIPOS_MEDICOS = ['laudo', 'receita', 'prontuario', 'atestado', 'relatorio-medico', 'exame', 'cat', 'boletim-ocorrencia', 'relatorio-escolar', 'relatorio-terapia', 'aso', 'ficha-pronto-socorro', 'exame-imagem-epoca', 'exame-pos-alta', 'exame-evolucao', 'relatorio-caps', 'relatorio-neurologia', 'relatorio-fono', 'relatorio-to', 'relatorio-psicologia']
 
 export type CampoLido = 'nome' | 'cpf' | 'rg' | 'endereco'
 

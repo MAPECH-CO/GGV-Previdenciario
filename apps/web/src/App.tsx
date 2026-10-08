@@ -10,6 +10,8 @@ import { CentralAtendimento } from './paginas/CentralAtendimento.tsx'
 import { CentralEmConstrucao } from './paginas/CentralEmConstrucao.tsx'
 import { tarefasDeDecidirCobranca } from './dados/cobranca.ts'
 import { tarefasDaFilaDaSenior } from './dados/liberacao.ts'
+import { daSenior, tarefasDoParecer } from './dados/parecer.ts'
+import { tarefasDeDecidirComplemento } from './dados/complemento.ts'
 import { Conferencia } from './paginas/Conferencia.tsx'
 import { DecidirPericia } from './paginas/DecidirPericia.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
@@ -63,6 +65,12 @@ import { CalcularTempo } from './paginas/CalcularTempo.tsx'
 import { RegistrarFechamento } from './paginas/RegistrarFechamento.tsx'
 import { Recontatar } from './paginas/Recontatar.tsx'
 import { NovaDemanda } from './paginas/NovaDemanda.tsx'
+import { Roteiro } from './paginas/Roteiro.tsx'
+import { AnalisarLaudoNovo } from './paginas/AnalisarLaudoNovo.tsx'
+import { DarParecer } from './paginas/DarParecer.tsx'
+import { PedirComplemento } from './paginas/PedirComplemento.tsx'
+import { DispensarParecer } from './paginas/DispensarParecer.tsx'
+import { LinhaDaDeficiencia } from './paginas/LinhaDaDeficiencia.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -131,7 +139,14 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     if (NA_CENTRAL_DO_ATENDIMENTO.includes(perfil)) return <CentralAtendimento />
     if (perfil === 'advogada') return <CentralAdvogada />
     // A cobrança que passou do limite (GGVP-101 CA7) e o caso liberado pela Documentação (GGVP-18 CA1) chegam à Sênior.
-    if (perfil === 'senior') return <CentralEmConstrucao rotulo={ROTULO_PERFIL.senior} deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior()]} />
+    // Da documentação médica: a dispensa esperando a segunda sênior (GGVP-33) e o complemento a decidir (GGVP-29).
+    if (perfil === 'senior')
+      return (
+        <CentralEmConstrucao
+          rotulo={ROTULO_PERFIL.senior}
+          deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer().filter(daSenior), ...tarefasDeDecidirComplemento()]}
+        />
+      )
     // As Centrais dos outros perfis entram com as histórias de cada épico (GGVP-78).
     return <CentralEmConstrucao rotulo={ehPerfil(perfil) ? ROTULO_PERFIL[perfil] : perfil} />
   }
@@ -197,5 +212,18 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
   if (recontato) return <Recontatar fichaId={decodeURIComponent(recontato[1])} />
   const novaDemanda = /^\/clientes\/([^/]+)\/nova-demanda$/.exec(caminho)
   if (novaDemanda) return <NovaDemanda fichaId={decodeURIComponent(novaDemanda[1])} />
+  if (caminho === '/roteiros') return <Roteiro />
+  const roteiro = /^\/roteiros\/([^/]+)$/.exec(caminho)
+  if (roteiro) return <Roteiro id={decodeURIComponent(roteiro[1])} />
+  const laudoNovo = /^\/casos\/([^/]+)\/laudo-novo$/.exec(caminho)
+  if (laudoNovo) return <AnalisarLaudoNovo processoId={decodeURIComponent(laudoNovo[1])} />
+  const parecer = /^\/casos\/([^/]+)\/parecer$/.exec(caminho)
+  if (parecer) return <DarParecer processoId={decodeURIComponent(parecer[1])} />
+  const complemento = /^\/casos\/([^/]+)\/complemento$/.exec(caminho)
+  if (complemento) return <PedirComplemento processoId={decodeURIComponent(complemento[1])} />
+  const dispensa = /^\/casos\/([^/]+)\/parecer\/dispensa$/.exec(caminho)
+  if (dispensa) return <DispensarParecer processoId={decodeURIComponent(dispensa[1])} />
+  const deficiencia = /^\/casos\/([^/]+)\/deficiencia$/.exec(caminho)
+  if (deficiencia) return <LinhaDaDeficiencia processoId={decodeURIComponent(deficiencia[1])} />
   return <NaoConstruida caminho={caminho} />
 }

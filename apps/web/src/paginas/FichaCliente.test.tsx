@@ -57,6 +57,14 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(document.querySelector('input[type="password"]')).toBeNull()
   })
 
+  it('GGVP-20 · "Documentação médica" mostra o resultado do parecer e quem confirmou, sem o conteúdo dos laudos', async () => {
+    await abrir('antonio-exemplo')
+    const cartao = screen.getByRole('heading', { name: 'Documentação médica' }).closest('section')!
+    expect(cartao.textContent).toBe(
+      'Documentação médica4 documentos médicos · parecer "Suficiente" confirmado por Dra. Paula em 20/09 (G17). O conteúdo dos laudos não é exibido aqui. Laudo novo de 29/09 enviado ao Jurídico: aguarda a análise.',
+    )
+  })
+
   it('GGVP-24 CA4 e CA6 · o cartão "Ficha de atendimento" mostra as respostas, o que ficou em branco e leva à ficha', async () => {
     await salvarFichaDeAtendimento('antonio-exemplo', {
       nome: 'Antônio Exemplo',

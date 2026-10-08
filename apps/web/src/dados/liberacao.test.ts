@@ -3,6 +3,7 @@ import { conferirChecklist } from './checklist.ts'
 import { enviarArquivos } from './documentos.ts'
 import { arquivarDocumentos, documentosLidos } from './leitura.ts'
 import { liberarAoJuridico, obterLiberacao, tarefasDaFilaDaSenior, tarefasDeLiberar } from './liberacao.ts'
+import { obterParecer, registrarParecer } from './parecer.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from './servidor.ts'
 
 beforeEach(() => {
@@ -16,10 +17,17 @@ async function arquivarTudo(fichaId: string) {
   await arquivarDocumentos(fichaId, { conferi: true, documentos, duplicados: 'manter' })
 }
 
-/** A Rita manda o que faltava, a Documentação arquiva e confere o checklist: completo. */
+/** A advogada confere a análise da IA como veio e registra "Suficiente" (GGVP-20). */
+async function parecerSuficiente(processoId: string) {
+  const analise = (await obterParecer(processoId, 'juridico'))!.juridico!.analise!
+  const conferidos = Object.fromEntries(analise.itens.map((i) => [i.id, i.situacao]))
+  await registrarParecer(processoId, { analise: analise.quando, conferidos, decisao: 'suficiente' }, { perfil: 'advogada', nome: 'Dra. Paula (exemplo)' })
+}
+
+/** A Rita manda o que faltava (com o relatório médico que completa o laudo), a Documentação arquiva e confere o checklist. */
 async function completarRita() {
   await arquivarTudo('rita-exemplo')
-  const faltam = ['cpf', 'comprovante-renda', 'cadunico', 'grupo-familiar', 'declaracao-moradia']
+  const faltam = ['cpf', 'comprovante-renda', 'cadunico', 'grupo-familiar', 'declaracao-moradia', 'laudo']
   await enviarArquivos('rita-exemplo', {
     origem: 'card',
     arquivos: faltam.map((tipo, i) => ({ nome: `${tipo}.pdf`, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(20 + i).padStart(64, '0') })),
@@ -46,12 +54,17 @@ describe('Liberar o caso ao Jurídico · servidor de exemplo', () => {
   })
 
   it('CA2 · checklist sem lista ou incompleto não libera e diz o que falta', async () => {
-    await expect(liberarAoJuridico('sebastiao-exemplo-1', tudoConferido)).rejects.toThrow('Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada')
+    await expect(liberarAoJuridico('antonio-exemplo-1', tudoConferido)).rejects.toThrow('Aposentadoria por Incapacidade Permanente ainda não tem lista de documentos obrigatórios aprovada')
+    // GGVP-47: o Auxílio-Acidente tem lista, mas espera a circunstância do acidente.
+    await expect(liberarAoJuridico('sebastiao-exemplo-1', tudoConferido)).rejects.toThrow('Marque a circunstância do acidente')
     await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('O checklist está incompleto. Falta: Documento pessoal (RG)')
   })
 
   it('CA1, CA6 e CA7 · completo, com o parecer Suficiente e as duas conferências: vai à fila da sênior e fica no histórico', async () => {
     expect((await completarRita()).completo).toBe(true)
+    // Sem o parecer da advogada, a análise da IA sozinha não libera (G17, GGVP-20).
+    await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('ainda não foi confirmado por pessoa do Jurídico (G17)')
+    await parecerSuficiente('rita-exemplo-1')
     expect(tarefasDeLiberar().map((t) => [t.cliente?.nome, t.prazo])).toEqual([
       ['Rita Exemplo', 'na fila desde hoje'],
       ['Sebastião Exemplo', 'na fila há 2 dias'],

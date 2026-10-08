@@ -93,7 +93,7 @@ export function CobrarDocumento({ processoId }: { processoId: string }) {
             </p>
           </div>
 
-          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id}>
+          <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Atendimento">
             Cobre de {ficha.nome.split(' ')[0]} o que falta no checklist do {beneficio} (G1). É a {c.tentativa}ª{ultima ? ' e última' : ''} tentativa: são{' '}
             {TENTATIVAS_DE_COBRANCA}, com {DIAS_ENTRE_COBRANCAS} dias entre elas; sem resposta, sobe para a sênior decidir (G15).
             {cobranca.prazo &&

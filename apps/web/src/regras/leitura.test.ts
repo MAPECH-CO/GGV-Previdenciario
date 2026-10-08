@@ -80,4 +80,10 @@ describe('Leitura dos documentos (GGVP-81)', () => {
   it('CA16 · laudo, receita e prontuário são documentos médicos', () => {
     expect(['laudo', 'receita', 'prontuario', 'rg'].map(ehMedico)).toEqual([true, true, true, false])
   })
+
+  it('GGVP-95 CA1 · os tipos médicos do cartão também são documento médico', () => {
+    const medicos = ['atestado', 'relatorio-medico', 'exame', 'cat', 'boletim-ocorrencia', 'relatorio-escolar', 'relatorio-terapia']
+    expect(medicos.every(ehMedico)).toBe(true)
+    expect(['cnis', 'comprovante-renda'].some(ehMedico)).toBe(false)
+  })
 })

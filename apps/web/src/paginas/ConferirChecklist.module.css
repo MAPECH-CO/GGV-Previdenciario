@@ -69,6 +69,58 @@
   color: var(--cor-alerta-2);
 }
 
+/* GGVP-47: o que não conta para o completo (desejável, condicional que não se aplica). */
+.neutro {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* GGVP-47: a espécie do Auxílio-Acidente (B94 ou B36) e as caixas da circunstância. */
+.especie {
+  padding: 2px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+/* GGVP-50: os grupos de caixas da condição e das terapias da criança. */
+.grupo {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.grupo legend {
+  padding: 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.marcar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: var(--fonte-14);
+}
+
+.marcar input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cor-ok);
+}
+
 /* "Em aberto: …" do Figma: caixa cinza com a nota da lista. */
 .nota {
   padding: 12px 14px;

@@ -15,6 +15,7 @@ import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { CartaoFechamento } from '../componentes/CartaoFechamento.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
+import { resumoParaAFicha } from '../dados/parecer.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import styles from './FichaCliente.module.css'
@@ -124,7 +125,8 @@ export function FichaCliente({ id }: { id: string }) {
           <CartaoFechamento fechamento={ficha.fechamento} hoje={hoje} fichaId={ficha.id} />
           <Cartao titulo="Documentação médica">
             <p className={styles.texto}>
-              {[ficha.documentacaoMedica ?? 'Nenhum laudo recebido ainda.', laudoNovo].filter(Boolean).join(' ')}
+              {/* O resultado do parecer (GGVP-20), nunca o conteúdo; sem análise ainda, o texto da semente. */}
+              {[resumoParaAFicha(ficha.id) ?? ficha.documentacaoMedica ?? 'Nenhum laudo recebido ainda.', laudoNovo].filter(Boolean).join(' ')}
             </p>
           </Cartao>
           <CartaoFichaAtendimento ficha={ficha} hoje={hoje} />
