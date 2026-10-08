@@ -1,5 +1,5 @@
 // Via administrativa no INSS e perícia (GGVP-23, 27, 31, 35, 39, 44, 48, 49, 53, 56, 61, 62, 66, 68, 70).
-import { boolean, date, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { boolean, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
@@ -106,6 +106,8 @@ export const pericia = pgTable(
     remarcacoes: integer('remarcacoes').notNull().default(0),
     resultado: text('resultado'),
     resultadoDocumentoId: uuid('resultado_documento_id').references(() => documento.id),
+    /** A perícia no formato das telas (GGVP-137): tentativas, marcação, documentos, orientação, resultado e o histórico. */
+    documento: jsonb('documento'),
     criadoEm: criadoEm(),
   },
   (t) => [emLista('pericia_tipo', t.tipo, TIPOS_PERICIA), emLista('pericia_resultado', t.resultado, RESULTADOS_PERICIA)],

@@ -3,7 +3,8 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { formatarTelefone } from '../campos.ts'
-import { enviarOrientacao, obterPericia, type CanalDaOrientacao, type PericiaNaTela } from '../dados/pericia.ts'
+import { SugestaoDaPericia } from '../componentes/SugestaoDaPericia.tsx'
+import { enviarOrientacao, obterPericia, sugerirOrientacao, type CanalDaOrientacao, type PericiaNaTela } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
@@ -21,6 +22,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
   const quem = perfil?.usuario ?? 'Jurídico administrativo'
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
   const [texto, setTexto] = useState('')
+  const [ia, setIa] = useState<Awaited<ReturnType<typeof sugerirOrientacao>>>()
   const [revisei, setRevisei] = useState(false)
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
@@ -31,7 +33,17 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
     obterPericia(processoId).then((x) => {
       if (!valendo) return
       setT(x)
-      setTexto(x?.pericia.orientacao?.texto ?? '')
+      const montada = x?.pericia.orientacao?.texto ?? ''
+      setTexto(montada)
+      // GGVP-139 CA2: a sugestão da IA chega pronta e entra no lugar da montada, se a pessoa ainda não mexeu.
+      if (!x?.pericia.orientacao || x.pericia.preparacao) return
+      void sugerirOrientacao(processoId)
+        .catch((e: unknown) => ({ texto: null, sugestao: null, motivo: e instanceof Error ? e.message : 'A IA não escreveu a orientação agora.' }))
+        .then((s) => {
+          if (!valendo) return
+          setIa(s)
+          if (s.texto) setTexto((atual) => (atual === montada ? s.texto! : atual))
+        })
     })
     return () => {
       valendo = false
@@ -168,6 +180,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
               <h2 id="documento" className={styles.cartaoTitulo}>
                 Documento de orientação
               </h2>
+              <SugestaoDaPericia ia={ia} selo="Orientação escrita pela IA · revise antes de enviar" />
               <label className={proprio.campo}>
                 Orientação para {primeiro} (confira e edite se precisar)
                 <textarea

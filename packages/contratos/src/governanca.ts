@@ -8,7 +8,7 @@ import { DataObrigatoria } from './inss.ts'
  * perfil; `funcoes`: separação de funções, quem deu o OK na prestação não registra o recebimento (GGVP-98 CA8). Fica
  * sem número na lista G1 a G22 (decisão do Mateus, 08/10; Q21).
  */
-export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'funcoes'] as const
+export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'funcoes', 'G20'] as const
 export type PortaoDeBloqueio = (typeof PORTOES_DE_BLOQUEIO)[number]
 
 /** GET /api/gestao/tentativas (GGVP-109 CA9, `gestao.ver`): quem, quando, caso e portão, sem dado de saúde. */
