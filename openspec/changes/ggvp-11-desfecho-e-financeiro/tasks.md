@@ -46,3 +46,19 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - A tela não mudou, e só os contratos leem a versão da matriz.
   - Playwright do desfecho, da via administrativa, da perícia, do login e da governança: 24 passaram juntos.
   - O teste do cofre falhou só ao rodar junto com a via administrativa: as duas leem o cofre do Igor no mesmo servidor, uma fragilidade que já vem da main. Sozinho, passou com 5 de 5.
+
+## Segunda revisão do PR (08/10)
+
+- [x] 5.1 GGVP-22 · CA1: teste da API para "Explicar resultado" na fila de quem fala. No padrão, ela vai para o Atendimento e não para a advogada. Quando a advogada liga, vai para ela.
+- [x] 5.2 GGVP-98 · CA2 e GGVP-22 · CA4: o histórico do aviso e da baixa e o registro do contato passam a ir na mesma transação do acervo e do atendimento. Assim, nenhum fica sem o outro.
+- [x] 5.3 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10:
+  - typecheck e lint sem erro;
+  - `openspec validate --all --strict` com 11 de 11;
+  - contratos 88 e API 276, todos passando;
+  - Playwright do desfecho e da via administrativa: 12 de 12.
+
+## Próximo PR do épico (adiado na revisão de 08/10)
+
+- [ ] 6.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
+  - Ficou fora deste PR para não abrir mais um choque de migração: o #26 e o #29 já disputam os números a partir da 0013.
+  - Até lá, o vínculo vem do histórico, gravado na mesma transação do atendimento (5.2).
