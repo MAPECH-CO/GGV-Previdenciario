@@ -90,7 +90,7 @@ export function roteirosDeExemplo(): Roteiro[] {
       o('lesao', 'Tipo de lesão, CID e data do acidente', 'Qual é o tipo de lesão e a data do acidente?'),
       x('nao-consolidada', 'Lesão ainda não consolidada'),
       x('sem-reducao', 'Laudo sem redução da capacidade para o trabalho habitual (a redução mínima basta, Tema 416 do STJ)'),
-      c('provas', 'CAT, boletim de ocorrência, ficha do pronto-socorro, prontuário da internação ou cirurgia, exames de imagem da época e posteriores à alta'),
+      c('provas', 'CAT, boletim de ocorrência (obrigatório no trânsito, no doméstico e sem empregador, com as fotos do acidente), ficha do pronto-socorro, prontuário, exames de imagem da época e posteriores à alta, e a cópia do processo do auxílio por incapacidade temporária, se houve'),
     ]),
     roteiro('loas-idoso', 'BPC/LOAS Idoso (socioeconômico)', ['loas-idoso'], false, LUCAS, '2026-10-01', [
       o('idade', 'Idade de 65 anos ou mais', 'Documento com a data de nascimento.'),
@@ -142,7 +142,7 @@ export function roteirosDeExemplo(): Roteiro[] {
       x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'),
       c(
         'relatorios',
-        'Relatórios por condição: o escolar para todas; o do CAPS na saúde mental; o da neurologia na paralisia cerebral, na má formação e parecidos; fono, terapia ocupacional e psicologia conforme a terapia que a criança faz',
+        'Relatórios por condição: o escolar se a criança vai à escola ou à creche; o do CAPS na saúde mental; o da neurologia na paralisia cerebral, na má formação e parecidos; fono, terapia ocupacional e psicologia conforme a terapia que a criança faz',
       ),
       c('gastos', 'Provas de gastos que levam à miserabilidade: aluguel, remédios, gastos hospitalares, alimentação'),
     ]),

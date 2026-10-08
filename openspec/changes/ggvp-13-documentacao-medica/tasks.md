@@ -63,6 +63,7 @@
 - [x] 6.4 Tela `/casos/:id/deficiencia` (`src/paginas/LinhaDaDeficiencia.tsx`): os dados da deficiência com os agravamentos, a linha do tempo por vínculo com o indicador PCD, a insalubridade, os documentos da época e "sem prova da época", e o enquadramento; rota em `App.tsx`; a linha do enquadramento no parecer da Aposentadoria PCD. Teste em `LinhaDaDeficiencia.test.tsx` e `DarParecer.test.tsx` (CA1 a CA4). Verifica com `pnpm vitest run src/paginas/LinhaDaDeficiencia.test.tsx src/paginas/DarParecer.test.tsx`.
 - [x] 6.5 Playwright `e2e/deficiencia.e2e.ts`: a linha do tempo da Cleide, o agravamento que muda o grau, o período sem prova da época e o enquadramento no parecer (CA1 a CA4); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test deficiencia`.
 - [ ] 6.6 Ligar no servidor: o CNIS de verdade (com o indicador PCD e os períodos especiais), os documentos da pasta e a tela da exigência do INSS (D2.05) usando `enquadramento`; o corpo de `dados/deficiencia.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+- [x] 6.7 Respostas do Lucas de 07/10: `cenarios` (todo o tempo com deficiência como leve, moderada e grave) e o tempo como pessoa com deficiência contra o mínimo de 15 anos, na regra e na tela, com teste em `src/regras/deficiencia.test.ts` e `LinhaDaDeficiencia.test.tsx`.
 
 ## GGVP-47 · Auxílio-Acidente: prova do acidente
 
@@ -72,14 +73,16 @@
 - [x] 7.4 Tela: o cartão "Circunstância do acidente" e os complementares no checklist (`ConferirChecklist.tsx`); a trava do G18 com a sugestão na liberação. Teste em `ConferirChecklist.test.tsx` e `LiberarCaso.test.tsx` (CA1 a CA4). Verifica com `pnpm vitest run src/paginas`.
 - [x] 7.5 Playwright `e2e/acidente.e2e.ts`: o Sebastião marca a circunstância, o checklist muda com o trânsito, os documentos chegam e o checklist fica completo, e o laudo de lesão não consolidada trava a liberação (CA1 a CA4); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test acidente checklist liberar`.
 - [ ] 7.6 Ligar no servidor: a tabela por circunstância na configuração do escritório (GGVP-104), a circunstância salva no banco e o G18 validado no servidor (GGVP-109); o corpo de `dados/acidente.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+- [x] 7.7 Respostas do Lucas de 07/10: a nova tabela por circunstância, o prontuário em todas, o boletim e as fotos no trânsito, no doméstico e sem empregador, e o condicional da cópia do processo do auxílio anterior no lugar da internação. Teste em `src/regras/acidente.test.ts`, `src/dados/acidente.test.ts`, `ConferirChecklist.test.tsx` e `e2e/acidente.e2e.ts`.
 
 ## GGVP-50 · BPC/LOAS de menor de 16 anos
 
 - [x] 8.1 Contrato: `CondicaoDaCrianca`, `Terapia` e `DadosDaCrianca` em `src/regras/infantil.ts`; `criancas?` no `Banco`; os cinco relatórios no fim do catálogo; o Davi no fim da semente. Verifica com `pnpm typecheck`.
-- [x] 8.2 Regra: `menorDe16` e `relatoriosDaCrianca` (escolar para todas, CAPS, neurologia e as terapias), com teste em `src/regras/infantil.test.ts` (CA1, CA2). Verifica com `pnpm vitest run src/regras/infantil.test.ts`.
+- [x] 8.2 Regra: `menorDe16` e `relatoriosDaCrianca` (escolar só para quem vai à escola ou à creche, resposta do Lucas de 07/10; CAPS, neurologia e as terapias), com teste em `src/regras/infantil.test.ts` (CA1, CA2). Verifica com `pnpm vitest run src/regras/infantil.test.ts`.
 - [x] 8.3 Servidor de exemplo: o roteiro infantil na semente; a análise do parecer com ele para menor de 16 anos; `obterCrianca` e `salvarCrianca` (só o Jurídico, histórico sem a condição) em `src/dados/infantil.ts`; os relatórios no checklist. Teste em `src/dados/infantil.test.ts` e `src/dados/roteiro.test.ts` (CA1, CA2). Verifica com `pnpm vitest run src/dados`.
 - [x] 8.4 Tela: o cartão "Criança · condição e terapias" no parecer; os relatórios e a trava no checklist. Teste em `DarParecer.test.tsx` e `ConferirChecklist.test.tsx` (CA1, CA2). Verifica com `pnpm vitest run src/paginas`.
 - [x] 8.5 Playwright `e2e/infantil.e2e.ts`: o Davi no parecer com o roteiro infantil, a advogada marca a condição e as terapias, e o checklist mostra os relatórios (CA1, CA2); a Documentação não vê a condição; tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test infantil`.
 - [ ] 8.6 Ligar no servidor: a condição salva no banco e a regra do menor de 16 anos validada no servidor; o corpo de `dados/infantil.ts` vira `fetch`. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+- [x] 8.7 Resposta do Lucas de 07/10: a caixa "Frequenta escola ou creche" no cartão da criança; sem ela, o escolar não entra. Teste em `src/regras/infantil.test.ts`, `src/dados/infantil.test.ts`, `DarParecer.test.tsx`, `ConferirChecklist.test.tsx` e `e2e/infantil.e2e.ts`.
 
 <!-- Fim do grupo 2. -->

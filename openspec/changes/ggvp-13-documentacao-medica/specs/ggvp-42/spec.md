@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A advogada responsável vê numa linha do tempo os vínculos do CNIS, a data de início da deficiência, o grau em cada período e os documentos contemporâneos de cada vínculo, para provar a deficiência durante os períodos de contribuição e o grau certo em cada um. Resposta do Lucas de 01/10: o sistema mostra os indicadores de PCD do CNIS e se há insalubridade nos períodos com deficiência. O enquadramento (grau e tempo) é cálculo em código (G19). Passos D1.13 e D1.21M do Miro. Figma: não há quadro da linha do tempo; os mais próximos são a exigência do INSS da Aposentadoria PCD (`1581:764`, `1581:418`) e o step_D1.13 `14:159`. Contrato na `design.md`, seção GGVP-42.
+A advogada responsável vê numa linha do tempo os vínculos do CNIS, a data de início da deficiência, o grau em cada período e os documentos contemporâneos de cada vínculo, para provar a deficiência durante os períodos de contribuição e o grau certo em cada um. Resposta do Lucas de 01/10: o sistema mostra os indicadores de PCD do CNIS e se há insalubridade nos períodos com deficiência. O enquadramento (grau e tempo) é cálculo em código (G19). Resposta do Lucas de 07/10: na entrevista aparecem todos os cenários (leve, moderada e grave) e o tempo como pessoa com deficiência contra o mínimo de 15 anos. Passos D1.13 e D1.21M do Miro. Figma: não há quadro da linha do tempo; os mais próximos são a exigência do INSS da Aposentadoria PCD (`1581:764`, `1581:418`) e o step_D1.13 `14:159`. Contrato na `design.md`, seção GGVP-42.
 
 ## ADDED Requirements
 

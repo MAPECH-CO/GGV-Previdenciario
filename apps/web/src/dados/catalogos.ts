@@ -97,6 +97,10 @@ export const TIPOS_DE_DOCUMENTO: ItemCatalogo[] = [
   { id: 'exame-imagem-epoca', nome: 'Exame de imagem da época do acidente' },
   { id: 'exame-pos-alta', nome: 'Exame posterior à alta' },
   { id: 'ppp', nome: 'PPP (Perfil Profissiográfico Previdenciário)' },
+  // Respostas do Lucas de 07/10 (GGVP-47): fotos, exames da doença ocupacional e a cópia do processo do auxílio anterior.
+  { id: 'fotos-acidente', nome: 'Fotos do acidente' },
+  { id: 'exame-evolucao', nome: 'Exames do quadro e da evolução' },
+  { id: 'processo-auxilio-anterior', nome: 'Cópia do processo do auxílio por incapacidade temporária' },
   // GGVP-50: os relatórios do caso da criança, por condição e por terapia (o escolar já está acima).
   { id: 'relatorio-caps', nome: 'Relatório do CAPS' },
   { id: 'relatorio-neurologia', nome: 'Relatório da neurologia' },

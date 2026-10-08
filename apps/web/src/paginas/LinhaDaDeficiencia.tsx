@@ -9,7 +9,7 @@ import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { tempoFalado } from '../regras/calculo.ts'
 import { dataHora, hojeIso } from '../regras/datas.ts'
-import { GRAUS, SEXOS, motivoParaNaoSalvar, paraDados, tempo, type Grau, type Periodo, type Sexo, type ValoresDaDeficiencia } from '../regras/deficiencia.ts'
+import { GRAUS, MINIMO_COM_DEFICIENCIA, SEXOS, motivoParaNaoSalvar, paraDados, tempo, type Grau, type Periodo, type Sexo, type ValoresDaDeficiencia } from '../regras/deficiencia.ts'
 import styles from './Balcao.module.css'
 import proprio from './Deficiencia.module.css'
 import parecer from './Parecer.module.css'
@@ -355,7 +355,43 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                       <dd>{e.minimo} anos</dd>
                       <dt>Falta</dt>
                       <dd>{e.falta === 0 ? 'nada: já tem o tempo' : duracao(e.falta)}</dd>
+                      <dt>Tempo como pessoa com deficiência (mínimo de {MINIMO_COM_DEFICIENCIA} anos)</dt>
+                      <dd>
+                        {duracao(e.comDeficiencia)}
+                        {e.faltaComDeficiencia === 0 ? ': já tem o mínimo' : `: faltam ${duracao(e.faltaComDeficiencia)}`}
+                      </dd>
                     </dl>
+                    {l.cenarios.length > 0 && (
+                      <>
+                        <h3 id="cenarios" className={styles.cartaoTitulo}>
+                          Todos os cenários
+                        </h3>
+                        <p className={parecer.detalhe}>
+                          Na entrevista o escritório calcula os três graus: trabalha com qualquer grau que tenha chance de ser comprovado, e o grau efetivo
+                          é definido na perícia.
+                        </p>
+                        <table className={parecer.comparacao} aria-labelledby="cenarios">
+                          <thead>
+                            <tr>
+                              <th scope="col">Se o grau for</th>
+                              <th scope="col">Convertido</th>
+                              <th scope="col">Mínimo</th>
+                              <th scope="col">Falta</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {l.cenarios.map((c) => (
+                              <tr key={c.grau}>
+                                <th scope="row">{GRAUS[c.grau]}</th>
+                                <td>{duracao(c.enquadramento.convertido)}</td>
+                                <td>{c.enquadramento.minimo} anos</td>
+                                <td>{c.enquadramento.falta === 0 ? 'nada: já tem o tempo' : duracao(c.enquadramento.falta)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
                     <p className={parecer.detalhe}>
                       Calculado por código (LC 142, art. 3º; Decreto 3.048, art. 70-E), nunca pela IA (G19). A mesma conta aparece no parecer e na resposta à
                       exigência do INSS.

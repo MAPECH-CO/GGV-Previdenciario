@@ -299,6 +299,7 @@ export const DadosDaDeficiencia = z.object({
 3. **Semente**: a Cleide (Aposentadoria PCD) ganha o CNIS de exemplo (três vínculos, com o indicador PCD e a insalubridade), a deficiência desde 06/2014, leve, com agravamento para moderada em 03/2019. O período moderado de 2019 fica sem prova da época, para a tela mostrar o aviso.
 4. **"Em qualquer tela"** (CA4): o enquadramento sai de uma função só, usada na linha do tempo e no parecer da Aposentadoria PCD. A tela da exigência do INSS (D2.05) é de outra história e usa a mesma função.
 5. **Insalubridade** (resposta do Lucas, 01/10): o período com deficiência e insalubridade fica marcado, como informativo para o processo; o cálculo da atividade especial não entra aqui.
+6. **Respostas do Lucas, 07/10**: a tabela do art. 70-E e os mínimos da LC 142 estão confirmados. Na entrevista, a tela mostra todos os cenários: todo o tempo com deficiência contado como leve, como moderada e como grave (`cenarios`), cada um com o convertido, o mínimo e o que falta. E mostra o tempo como pessoa com deficiência, sem conversão, contra o mínimo de 15 anos (`MINIMO_COM_DEFICIENCIA`).
 
 ## GGVP-47 · Auxílio-Acidente: prova do acidente
 
@@ -336,7 +337,7 @@ export const DadosDoAcidente = z.object({
 |---|---|
 | Data do acidente | `normalizarData`, `validarData`, `dataParaIso`, `isoParaData`; não futura (`regras/formularios.ts`) |
 | Circunstância, categoria | lista fixa |
-| Internação ou cirurgia, recusa do empregador | caixa de marcar |
+| Auxílio por incapacidade temporária antes, recusa do empregador | caixa de marcar |
 
 ### Decisões da história
 
@@ -346,6 +347,7 @@ export const DadosDoAcidente = z.object({
 4. **Antes de marcar a circunstância** o checklist mostra a lista base (RG, CPF, CNIS e laudo, do kit do Figma `10:264`) e trava: "Marque a circunstância do acidente". A segunda ficha sugere a data e o "foi acidente de trabalho"; quem salva é a Documentação ou o Jurídico.
 5. **G18** (CA4): a análise da IA que acha a contradição trava a liberação até uma pessoa do Jurídico conferir o parecer; depois, vale o parecer registrado. A contradição "sem redução da capacidade" entra no roteiro do Auxílio-Acidente.
 6. **Os documentos da semente do parecer** (a CAT, os exames e os laudos do Sebastião) contam no checklist, como os da pasta.
+7. **Respostas do Lucas, 07/10** (fecham os itens 1 e 2): a nova tabela. Trabalho e trajeto: CAT, ficha do pronto-socorro, prontuário e exames da época e posteriores à alta obrigatórios, boletim desejável. Doença ocupacional: CAT, PPP, prontuário e os exames do quadro e da evolução. Trânsito e doméstico: boletim de ocorrência e fotos do acidente obrigatórios, mais o pronto-socorro, o prontuário e os exames. O prontuário vale para todos, sem depender de internação ou cirurgia. O condicional passa a ser a cópia do processo do auxílio por incapacidade temporária, quando houve um antes (a caixa "Houve auxílio por incapacidade temporária antes" troca a da internação). Sem empregador (o segurado especial, o rural), não há CAT: o boletim vira obrigatório e entram as fotos, salvo na doença ocupacional. Três tipos novos no fim do catálogo: fotos do acidente, exames do quadro e da evolução (documento médico) e a cópia do processo do auxílio anterior.
 
 ## GGVP-50 · BPC/LOAS de menor de 16 anos
 
@@ -373,7 +375,7 @@ export const DadosDaCrianca = z.object({ condicoes: z.array(CondicaoDaCrianca), 
 
 | Campo | Função de `campos` |
 |---|---|
-| Condição, terapias | caixas de marcar (lista fixa) |
+| Condição, terapias, frequenta escola ou creche | caixas de marcar (lista fixa) |
 
 ### Decisões da história
 
@@ -382,3 +384,4 @@ export const DadosDaCrianca = z.object({ condicoes: z.array(CondicaoDaCrianca), 
 3. **Os relatórios por condição** (resposta do Lucas, 01/10) entram no checklist de documentos como obrigatórios, pelo mesmo caminho dos complementares do Auxílio-Acidente. Os cinco relatórios novos entram no fim do catálogo único como documentos médicos; a IA sugere o tipo pelo nome do arquivo (fono, terapia ocupacional, psicologia, CAPS, neurologia).
 4. **A condição é dado de saúde**: só o Jurídico marca e vê; o histórico registra que marcou, sem dizer a condição. A Documentação vê no checklist só o nome do relatório que falta.
 5. **Semente**: nenhum cliente da semente tinha menos de 16 anos; entra no fim o Davi Exemplo (7 anos, sem CPF), com o LOAS Deficiente esperando o parecer e um laudo de exemplo da neuropediatria.
+6. **Resposta do Lucas, 07/10**: o relatório escolar só entra se a criança vai à escola ou à creche (caixa no cartão, com o que o relatório conta: comunicação, interação, participação, comportamento, autonomia e dificuldades). Sem escola, valem os relatórios dos profissionais que acompanham a criança. Sem a condição marcada, o checklist não pede relatório e fica travado.

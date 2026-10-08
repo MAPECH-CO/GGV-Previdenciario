@@ -48,6 +48,14 @@ describe('Linha do tempo da deficiência · tela da advogada', () => {
     ])
   })
 
+  it('Lucas, 07/10 · os três cenários da entrevista e o tempo como pessoa com deficiência, com o mínimo de 15 anos', async () => {
+    await abrir()
+    const cenarios = within(screen.getByRole('table', { name: 'Todos os cenários' })).getAllByRole('row').slice(1)
+    expect(cenarios.map((l) => l.querySelector('th')?.textContent)).toEqual(['leve', 'moderada', 'grave'])
+    expect(cenarios.map((l) => l.querySelectorAll('td')[1]?.textContent)).toEqual(['28 anos', '24 anos', '20 anos'])
+    expect(screen.getByText('Tempo como pessoa com deficiência (mínimo de 15 anos)')).toBeTruthy()
+  })
+
   it('CA2 · registrar um agravamento: a trava pede o grau mais grave, e o salvo recalcula a linha e o enquadramento', async () => {
     await abrir()
     fireEvent.click(screen.getByRole('button', { name: '+ Agravamento' }))

@@ -34,7 +34,7 @@ export async function obterCrianca(processoId: string, perfil: string | undefine
   if (!caso) return null
   if (!ehInfantil(caso.ficha, caso.processo)) return { infantil: false, relatorios: [] }
   const dados = criancaDoCaso(banco, processoId)
-  const relatorios = relatoriosDaCrianca(dados ?? { condicoes: [], terapias: [] }).map(nomeTipo)
+  const relatorios = relatoriosDaCrianca(dados ?? { condicoes: [], terapias: [], escola: false }).map(nomeTipo)
   return { infantil: true, idade: idadeDa(caso.ficha), ...(dados && doJuridico(perfil) && { dados }), relatorios }
 }
 
@@ -47,7 +47,7 @@ export async function salvarCrianca(processoId: string, dados: DadosDaCrianca, q
   const caso = acharCaso(banco, processoId)
   if (!caso) throw new Error('Caso não encontrado')
   if (!ehInfantil(caso.ficha, caso.processo)) throw new Error('A condição da criança é do LOAS Deficiente de menor de 16 anos.')
-  const registro: CriancaDoCaso = { condicoes: [...new Set(dados.condicoes)], terapias: [...new Set(dados.terapias)], processoId, quem: quem.nome, quando: agora().toISOString() }
+  const registro: CriancaDoCaso = { condicoes: [...new Set(dados.condicoes)], terapias: [...new Set(dados.terapias)], escola: dados.escola === true, processoId, quem: quem.nome, quando: agora().toISOString() }
   banco.criancas = [...(banco.criancas ?? []).filter((c) => c.processoId !== processoId), registro]
   // Dado de saúde fica fora do histórico: só o que aconteceu.
   caso.ficha.historico.push(evento('Marcou a condição e as terapias da criança (roteiro infantil)', quem.nome))

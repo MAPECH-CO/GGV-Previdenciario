@@ -60,14 +60,14 @@ export async function salvarAcidente(processoId: string, dados: DadosDoAcidente,
     circunstancia: dados.circunstancia,
     categoria: dados.categoria,
     acidenteEm: dados.acidenteEm,
-    internacao: dados.internacao,
+    auxilioAnterior: dados.auxilioAnterior,
     recusados: dados.recusados.filter((r) => r === 'cat' || r === 'ppp'),
     processoId,
     quem: quem.nome,
     quando: agora().toISOString(),
   }
   banco.acidentes = [...(banco.acidentes ?? []).filter((a) => a.processoId !== processoId), registro]
-  // A internação é dado de saúde: fica fora do histórico.
+  // O auxílio anterior é dado de saúde: fica fora do histórico.
   caso.ficha.historico.push(
     evento(`Marcou a circunstância do acidente: ${CIRCUNSTANCIAS[dados.circunstancia]} · ${CATEGORIAS[dados.categoria]} · ${especie(dados.circunstancia)}`, quem.nome),
   )

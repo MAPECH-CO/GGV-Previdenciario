@@ -145,12 +145,13 @@ describe('BPC/LOAS de menor de 16 anos · o parecer da criança (GGVP-50)', () =
   it('CA2 · a advogada marca a condição e as terapias, e vê os relatórios que o checklist vai pedir', async () => {
     await abrir('davi-exemplo-1')
     const cartao = (await screen.findByRole('heading', { name: 'Criança · condição e terapias' })).closest('section')!
-    const relatorios = () => within(within(cartao).getByRole('list', { name: 'Relatórios que o caso pede' })).getAllByRole('listitem').map((li) => li.textContent)
-    expect(relatorios()).toEqual(['Relatório escolar'])
-    expect(within(cartao).getByText('Sem a condição marcada, o checklist pede só o relatório escolar e fica travado.')).toBeTruthy()
+    const relatorios = () => within(within(cartao).getByRole('list', { name: 'Relatórios que o caso pede' })).queryAllByRole('listitem').map((li) => li.textContent)
+    expect(relatorios()).toEqual([])
+    expect(within(cartao).getByText('Sem a condição marcada, o checklist fica travado: os relatórios dependem dela.')).toBeTruthy()
     fireEvent.click(within(cartao).getByRole('checkbox', { name: /Paralisia cerebral, má formação ou parecido/ }))
     fireEvent.click(within(cartao).getByRole('checkbox', { name: 'Fonoaudiologia' }))
     fireEvent.click(within(cartao).getByRole('checkbox', { name: 'Terapia ocupacional' }))
+    fireEvent.click(within(cartao).getByRole('checkbox', { name: /Frequenta escola ou creche/ }))
     fireEvent.click(within(cartao).getByRole('button', { name: 'Salvar a condição' }))
     expect(await within(cartao).findByText('Condição salva: o checklist pede os relatórios dela.')).toBeTruthy()
     expect(relatorios()).toEqual(['Relatório escolar', 'Relatório da neurologia', 'Relatório de fonoaudiologia', 'Relatório de terapia ocupacional'])
