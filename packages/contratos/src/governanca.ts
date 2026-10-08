@@ -3,8 +3,12 @@ import { normalizarInteiro, validarInteiro } from '@ggv/campos'
 import { z } from 'zod'
 import { DataObrigatoria } from './inss.ts'
 
-/** Portões que a lista da gestão mostra (GGVP-109 CA9). `setores`: setor ou perícia sem retorno; `perfil`: ação fora do perfil. */
-export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'G20'] as const
+/**
+ * Portões que a lista da gestão mostra (GGVP-109 CA9). `setores`: setor ou perícia sem retorno; `perfil`: ação fora do
+ * perfil; `funcoes`: separação de funções, quem deu o OK na prestação não registra o recebimento (GGVP-98 CA8). Fica
+ * sem número na lista G1 a G22 (decisão do Mateus, 08/10; Q21).
+ */
+export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'funcoes', 'G20'] as const
 export type PortaoDeBloqueio = (typeof PORTOES_DE_BLOQUEIO)[number]
 
 /** GET /api/gestao/tentativas (GGVP-109 CA9, `gestao.ver`): quem, quando, caso e portão, sem dado de saúde. */

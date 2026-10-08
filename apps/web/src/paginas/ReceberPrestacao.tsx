@@ -7,9 +7,13 @@ import styles from './Passo.module.css'
 const reais = (texto: string | null) => (texto === null ? '—' : `R$ ${formatarDecimal(Number(texto))}`)
 const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
 
-/** Receber a prestação de contas (GGVP-44, Financeiro): valores da versão concluída, agendamento, Recebido ou Divergência. */
+/**
+ * Receber a prestação de contas (GGVP-44 e GGVP-98, Financeiro): valores da versão concluída e o agendamento; "Receber e
+ * lançar" só com "Valores conferem com o comprovante" (CA3), ou "Divergência, devolver à advogada" com o motivo.
+ */
 export function ReceberPrestacao({ casoId }: { casoId: string }) {
   const idMotivo = useId()
+  const [conferem, setConferem] = useState(false)
   const [p, setP] = useState<PrestacaoDoCaso | null>(null)
   const [versao, setVersao] = useState(0)
   const [divergindo, setDivergindo] = useState(false)
@@ -27,7 +31,11 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
     const r = await chamarApi(`/casos/${casoId}/prestacao/recebimento`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
     setErro('')
-    setFeito(entrada.data.resultado === 'recebido' ? 'Recebimento registrado.' : 'Divergência registrada. A prestação voltou para a advogada.')
+    setFeito(
+      entrada.data.resultado === 'recebido'
+        ? 'Recebimento lançado. Agora avise o cliente e marque a ida ao banco.'
+        : 'Divergência registrada. A prestação voltou para a advogada.',
+    )
     setVersao((v) => v + 1)
   }
 
@@ -85,7 +93,7 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
             acompanha: {p.agendamento.acompanhante ?? 'ninguém do escritório'}
           </p>
         ) : (
-          <p className={styles.dica}>Ainda não agendada pelo Atendimento.</p>
+          <p className={styles.dica}>Ainda não agendada.</p>
         )}
       </section>
 
@@ -110,10 +118,16 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
               <textarea id={idMotivo} className={styles.campo} rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
             </>
           )}
+          {!divergindo && (
+            <label className={styles.escolha}>
+              <input type="checkbox" checked={conferem} onChange={(e) => setConferem(e.target.checked)} />
+              Valores conferem com o comprovante
+            </label>
+          )}
           <div className={styles.acoes}>
             {!divergindo && (
-              <button type="button" className={styles.botao} onClick={() => void registrar({ resultado: 'recebido' })}>
-                Recebido
+              <button type="button" className={styles.botao} disabled={!conferem} onClick={() => void registrar({ resultado: 'recebido', valoresConferem: true })}>
+                Receber e lançar
               </button>
             )}
             <button
@@ -121,7 +135,7 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
               className={styles.botaoSecundario}
               onClick={() => (divergindo ? void registrar({ resultado: 'divergencia', motivo }) : setDivergindo(true))}
             >
-              {divergindo ? 'Confirmar divergência' : 'Divergência'}
+              {divergindo ? 'Confirmar divergência' : 'Divergência, devolver à advogada'}
             </button>
           </div>
         </section>

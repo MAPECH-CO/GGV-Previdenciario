@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 14, digital: '779689f3' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 15, digital: 'defa2bc2' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -42,7 +42,7 @@ describe('matriz de permissões (GGVP-96)', () => {
   })
 
   it('CA1 e CA12 · Financeiro vê prestação e valores, nunca entrevista, laudos, saúde nem petição', () => {
-    expect(acoesDe('financeiro')).toEqual(['gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver', 'valores.ver_totais'])
+    expect(acoesDe('financeiro')).toEqual(['banco.agendar', 'gestao.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'valores.ver', 'valores.ver_totais'])
   })
 
   it('CA12 · dado de saúde em detalhe só para o Jurídico; valores só o Financeiro, e a prestação também a advogada', () => {
@@ -67,7 +67,18 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('documentacao', 'exigencia_inss.cumprir')).toBe(true)
     expect(pode('advogada', 'exigencia_inss.cumprir')).toBe(false)
     expect(pode('senior', 'exigencia_inss.decidir_vencida')).toBe(true)
-    expect(pode('financeiro', 'banco.agendar')).toBe(false)
+  })
+
+  it('versão 14 · o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica (GGVP-22)', () => {
+    expect(PERFIS.filter((p) => pode(p, 'resultado.aprovar_resumo'))).toEqual(['advogada', 'senior'])
+    expect(pode('atendimento', 'resultado.explicar')).toBe(true)
+    expect(pode('atendimento', 'resultado.aprovar_resumo')).toBe(false)
+    expect(pode('financeiro', 'resultado.explicar')).toBe(false)
+  })
+
+  it('versão 14 · a ida ao banco é do Financeiro (GGVP-98); o Atendimento não marca', () => {
+    expect(pode('financeiro', 'banco.agendar')).toBe(true)
+    expect(pode('atendimento', 'banco.agendar')).toBe(false)
   })
 
   it('versão 5 · vigília: a Sênior reprocessa e casa a fila; a advogada vê e classifica', () => {
@@ -100,10 +111,10 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento: 9,
       atendimento_lider: 11,
       documentacao: 8,
-      advogada: 24,
-      senior: 23,
+      advogada: 26,
+      senior: 24,
       juridico_adm: 15,
-      financeiro: 5,
+      financeiro: 6,
       socio: 5,
     })
   })
