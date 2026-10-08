@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ROTULO_BENEFICIO } from '@ggv/contratos'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, pessoa, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { painelDeResultados } from './resultados.ts'
@@ -101,6 +102,21 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     expect(painel.pareceres.exitoComDispensa).toMatchObject({ casos: 2, valor: 0.5, situacao: 'ok' })
     expect(painel.pareceres.exitoComSuficiente).toMatchObject({ casos: 8, valor: 0.75, situacao: 'ok' })
     expect(indicador(painel, 'pareceres_dispensados')).toMatchObject({ casos: 2, unidade: 'casos' })
+  })
+
+  it('CA1 · os pareceres dispensados também saem por grupo do recorte, mesmo no caso ainda sem decisão', async () => {
+    const dispensar = (casoId: string) =>
+      banco.insert(parecerMedico).values({ casoId, roteiroVersao: 1, resultado: 'dispensado', justificativaDispensa: 'Exemplo', criadoEm: as('2026-05-01') })
+    const decidido = await novoCaso({ beneficio: 'aposentadoria_pcd' })
+    await dispensar(decidido)
+    await decisaoInss(decidido, 'deferido')
+    await dispensar(await novoCaso({ beneficio: 'bpc_loas_idoso' }))
+    const painel = await painelDeResultados(banco, { ...PERIODO, recorte: 'beneficio' })
+    expect(painel.recorte?.grupos.map((g) => [g.nome, g.indicadores.find((i) => i.chave === 'pareceres_dispensados')?.casos])).toEqual([
+      [ROTULO_BENEFICIO.aposentadoria_pcd, 1],
+      [ROTULO_BENEFICIO.bpc_loas_idoso, 1],
+    ])
+    expect(indicador(painel, 'pareceres_dispensados')?.casos).toBe(2)
   })
 
   it('CA4 · os totais em dinheiro só saem para quem pode ver, somados em centavos', async () => {

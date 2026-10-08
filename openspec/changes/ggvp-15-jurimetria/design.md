@@ -57,7 +57,7 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
    - juízo: tribunal e origem do número CNJ, como "TRF3 · 6301";
    - advogada: a responsável pelo caso.
 
-   Os mesmos indicadores saem por grupo, cada um com a sua amostra.
+   Os mesmos indicadores do escritório saem por grupo, cada um com a sua amostra, inclusive os pareceres dispensados. Um caso entra no grupo quando tem decisão, exigência fechada ou parecer dispensado no período. Os totais em dinheiro (CA4) ficam só no escritório inteiro.
 5. **Endpoint:** `GET /api/gestao/resultados?de&ate&recorte`, com `exigir('gestao.ver')`.
    - Período padrão: de 1º de janeiro até hoje, em Brasília. As datas são validadas pela `campos` no servidor.
    - Matriz versão 11: ação nova `valores.ver_totais` (Sócio e Financeiro).
@@ -79,6 +79,9 @@ A Gestão (`gestao.ver`: Sócio, Sênior, líder do Atendimento e Financeiro) j�
 - **Poucos casos:** com poucos casos, a taxa oscila muito; o número de casos ao lado é o que deixa a pessoa julgar o número (G22).
 - **Matriz de permissões:** a versão 11 pode conflitar com outro PR que suba a matriz ao mesmo tempo. Resolve-se no merge, com a impressão digital nova.
 - **Juízo pela origem do CNJ:** é o código da unidade, não o nome da vara. O nome entra quando houver o cadastro de juízos (GGVP-64).
+  - O tribunal sai de uma tabela fixa de 7 códigos J.TR (`TRIBUNAL_DO_JTR`): TRF1 a TRF6 e TJSP.
+  - Os outros tribunais aparecem pelo próprio código, como "5.15 · 0001".
+  - A tabela sai quando entrar o cadastro de juízos.
 
 ## GGVP-55 · Subir lote avulso de processos no acervo pelo chat e ver a base em uso na Gestão (a parte sem chat)
 

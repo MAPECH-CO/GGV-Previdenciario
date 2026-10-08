@@ -64,7 +64,15 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
     fechadas.push({ casoId: e.casoId, noPrazo: e.situacao === 'cumprida' && fechamento <= e.prazo })
   }
 
-  /** Os indicadores de um conjunto de casos: o escritório inteiro, ou um grupo do recorte. */
+  // CA3: o último parecer de cada caso. O dispensado conta no período em que a Sênior o dispensou.
+  const ultimoParecer = new Map<string, { resultado: string; criadoEm: Date }>()
+  for (const p of await banco.select({ casoId: parecerMedico.casoId, resultado: parecerMedico.resultado, criadoEm: parecerMedico.criadoEm }).from(parecerMedico)) {
+    const atual = ultimoParecer.get(p.casoId)
+    if (!atual || p.criadoEm >= atual.criadoEm) ultimoParecer.set(p.casoId, p)
+  }
+  const dispensados = [...ultimoParecer].filter(([, p]) => p.resultado === 'dispensado' && noPeriodo(diaEmBrasilia(p.criadoEm))).map(([id]) => id)
+
+  /** Os indicadores de um conjunto de casos: o escritório inteiro, ou um grupo do recorte, com os mesmos indicadores (CA1). */
   function indicadores(doGrupo: (casoId: string) => boolean): Indicador[] {
     const inss = [...decisoes].filter(([id]) => doGrupo(id)).map(([, d]) => d)
     const merito = judiciais.filter((c) => doGrupo(c.id) && DE_MERITO.has(c.desfecho ?? ''))
@@ -74,22 +82,17 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
       taxa('procedencia', 'Procedência na Justiça', merito.filter((c) => PROCEDENTES.has(c.desfecho ?? '')).length, merito.length),
       contagem('extincoes', 'Extinções sem mérito', judiciais.filter((c) => doGrupo(c.id) && c.desfecho === EXTINTO).length),
       taxa('exigencias_no_prazo', 'Exigências cumpridas no prazo', exigencias.filter((e) => e.noPrazo).length, exigencias.length),
+      contagem('pareceres_dispensados', 'Pareceres dispensados', dispensados.filter((id) => doGrupo(id)).length),
     ]
   }
 
   // CA3: o êxito dos casos decididos no período, pelo último parecer do caso. A Justiça vale sobre o INSS.
-  const ultimoParecer = new Map<string, { resultado: string; criadoEm: Date }>()
-  for (const p of await banco.select({ casoId: parecerMedico.casoId, resultado: parecerMedico.resultado, criadoEm: parecerMedico.criadoEm }).from(parecerMedico)) {
-    const atual = ultimoParecer.get(p.casoId)
-    if (!atual || p.criadoEm >= atual.criadoEm) ultimoParecer.set(p.casoId, p)
-  }
   const exitoDoCaso = new Map<string, boolean>([...decisoes].map(([id, d]) => [id, d.resultado === 'deferido']))
   for (const c of judiciais) exitoDoCaso.set(c.id, PROCEDENTES.has(c.desfecho ?? ''))
   const exitoCom = (resultado: string) => {
     const ids = [...exitoDoCaso.keys()].filter((id) => ultimoParecer.get(id)?.resultado === resultado)
     return [ids.filter((id) => exitoDoCaso.get(id)).length, ids.length] as const
   }
-  const dispensados = [...ultimoParecer.values()].filter((p) => p.resultado === 'dispensado' && noPeriodo(diaEmBrasilia(p.criadoEm))).length
 
   // CA2: as extinções sem mérito, por causa, em destaque (a meta é zero).
   const porCausa = new Map<string, number>()
@@ -135,15 +138,17 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
 
   return {
     periodo: { de, ate },
-    indicadores: [...indicadores(() => true), contagem('pareceres_dispensados', 'Pareceres dispensados', dispensados)],
-    recorte: recorte ? { por: recorte, grupos: await gruposDoRecorte(banco, recorte, casoPorId, indicadores, [...decisoes.keys(), ...judiciais.map((c) => c.id), ...fechadas.map((e) => e.casoId)]) } : null,
+    indicadores: indicadores(() => true),
+    recorte: recorte
+      ? { por: recorte, grupos: await gruposDoRecorte(banco, recorte, casoPorId, indicadores, [...decisoes.keys(), ...judiciais.map((c) => c.id), ...fechadas.map((e) => e.casoId), ...dispensados]) }
+      : null,
     extincoes: {
       casos: judiciais.filter((c) => c.desfecho === EXTINTO).length,
       decididos: new Set([...decisoes.keys(), ...judiciais.map((c) => c.id)]).size,
       porCausa: [...porCausa].map(([causa, n]) => ({ causa, casos: n })).sort((a, b) => b.casos - a.casos),
     },
     pareceres: {
-      dispensados,
+      dispensados: dispensados.length,
       exitoComDispensa: taxa('exito_com_dispensa', 'Êxito com parecer dispensado', ...exitoCom('dispensado')),
       exitoComSuficiente: taxa('exito_com_suficiente', 'Êxito com parecer suficiente', ...exitoCom('suficiente')),
     },
