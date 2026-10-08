@@ -82,3 +82,12 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
 - **Permissões novas.** `estudo.ver` (Jurídico) e `estudo.revisar` (Sênior); matriz v13. Quem mesclar com o PR #23 renumera a versão, como já previsto.
 - **No acervo.** `buscarNoAcervo` passa a ler o motivo e o aprendizado dos estudos, como "Estudo de caso da IA".
 - **Baixar.** O arquivo é texto simples, montado na tela com os estudos listados (sem rota nova).
+
+## GGVP-38 · Recomendação sobre a perícia
+
+### Decisions
+- **Pronta, pelo preparo.** A rota de perícias registra no `preparo` as perícias sem resultado e sem recomendação aprovada; a rodada faz a recomendação (finalidade `recomendacao_pericia`, JSON validado por `RecomendacaoDaIa`, leva dado de saúde; não barra CID, porque os quesitos podem citar o CID do laudo, e a instrução tira CID e diagnóstico do "o que levar", que vai ao cliente). Feita a recomendação, nasce "Conferir a recomendação da perícia" (`DP.00`) para a advogada, uma por caso.
+- **Judicial é a do juiz.** A origem vem da etapa que pediu a perícia: `D3a` (exigência do juiz) é judicial e traz quesitos e assistente técnico; `D2` (INSS) e `D3` (despacho) não.
+- **Aprovação sem tabela nova.** A aprovação é uma `decisao` (passo `DP.00`, tipo `recomendacao_pericia`) com o que a advogada aprovou em JSON na justificativa (com o id da perícia) e a chamada da IA em `sugestao_ia`. A tarefa fecha quando nenhuma perícia do caso espera aprovação.
+- **Permissões que já existem.** Ver: `dado_saude.ver_detalhe` (Jurídico), porque a recomendação sai do parecer e dos laudos; aprovar: `pericia.decidir` (advogada), a mesma de "Precisa de perícia?". Sem versão nova da matriz.
+- **Sem o perito.** O perito ainda não é identificado (GGVP-59); o conteúdo diz "perito não identificado" e a recomendação sai sem a jurimetria dele.

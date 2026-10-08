@@ -73,6 +73,22 @@ export const FINALIDADES = {
       'Trechos do acervo da casa, quando houver, mostram como o escritório já argumentou: aproveite a tese e a estrutura, nunca fatos, nomes, datas ou dados de outro cliente.',
     ].join(' '),
   },
+  /**
+   * GGVP-38: a recomendação antes de marcar a perícia, para a advogada. Não barra CID: os quesitos podem citar o CID do
+   * laudo; o "o que levar", que vai para a orientação do cliente, sai sem CID nem diagnóstico pela instrução.
+   */
+  recomendacao_pericia: {
+    versao: 2,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você prepara a advogada de um escritório previdenciário para uma perícia do cliente (perícia médica ou avaliação social), antes de marcar.',
+      'Leia o benefício, o tipo e a origem da perícia, o parecer médico, os documentos que o benefício pede, os documentos do caso, o motivo do indeferimento, a ordem do juiz (se houver) e os trechos do acervo, e responda só com um objeto JSON:',
+      '{"oQueLevar": ["documento, exame ou receita a levar, concreto"], "pontosFortes": ["o que a prova já mostra a favor"], "pontosFracos": ["o que falta ou pesa contra, e como cobrir"], "quesitos": ["quesito ao perito"] só se a perícia é judicial, senão [], "assistenteTecnico": {"indicar": true ou false, "porque": "em uma frase"} só se a perícia é judicial, senão null}.',
+      '"oQueLevar" vai para a orientação do cliente: escreva cada documento em linguagem simples (por exemplo, "laudo do ortopedista", "receitas dos últimos meses"), nunca o nome do arquivo, e não cite CID, diagnóstico nem conclusão médica. Se falta um documento que o benefício pede, ponha em "oQueLevar" o que providenciar. Use só o que está no conteúdo; não invente exame que o caso não tem.',
+    ].join(' '),
+  },
   /** GGVP-19 (Lucas, 06/10): o estudo de caso do processo perdido, automático; estratégia interna, nunca vai ao cliente. */
   estudo_de_caso: {
     versao: 2,

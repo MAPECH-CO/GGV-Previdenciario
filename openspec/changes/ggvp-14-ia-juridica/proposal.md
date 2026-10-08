@@ -32,6 +32,7 @@ Cada integração completa a parte de IA que a história deixou para este épico
 10. **GGVP-67** (parte de IA) · Conferir a petição: "Não está boa" pede outra versão à IA com o que mudar; a advogada revisa e salva a versão seguinte.
 11. **GGVP-79** (parte de IA) · Exigência do juiz: a IA lê a publicação com o caso e sugere "só ciência" ou os itens por setor; a advogada decide (G5).
 12. **GGVP-19** (épico Desfecho, aqui porque depende desta plataforma) · Estudo de caso do processo perdido: automático depois do resultado negativo, numa tela de estudos; tarefa da Sênior só quando indica novo processo (Lucas, 06/10).
+13. **GGVP-38** · Recomendação sobre a perícia: pronta para a advogada antes de marcar (o que levar, pontos fortes e fracos; na perícia do juiz, quesitos e assistente técnico); sem a jurimetria do perito, que espera a GGVP-59.
 
 ## A sugestão chega pronta (Mateus, 07/10)
 

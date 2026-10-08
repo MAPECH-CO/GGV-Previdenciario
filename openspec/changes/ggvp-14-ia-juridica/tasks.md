@@ -93,3 +93,10 @@
 - [x] 13.2 Servidor: finalidade `estudo_de_caso`; preparo dos casos perdidos sem estudo; tarefa "Revisar estudo de caso" só com novo processo; `GET /api/estudos`; `POST /api/casos/:id/estudo/revisao`; o estudo no acervo; testes com IA falsa.
 - [x] 13.3 Tela "Estudos de caso" (`/estudos`): por benefício e chance, motivo e aprendizado, novo processo, revisão da Sênior, "Baixar os estudos"; atalho no topo para o Jurídico; testes de tela.
 - [x] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-38 · Recomendação sobre a perícia
+
+- [x] 14.1 Contratos: `RecomendacaoDaIa`, `RecomendacaoDaPericia`, `AprovarRecomendacao`, `PericiasDoCaso`.
+- [x] 14.2 Servidor: finalidade `recomendacao_pericia`; preparo das perícias sem resultado nem recomendação aprovada; tarefa "Conferir a recomendação da perícia" para a advogada; `GET /api/casos/:id/pericias`; `POST /api/pericias/:id/recomendacao/sugestao`; `POST /api/pericias/:id/recomendacao`; testes com IA falsa.
+- [x] 14.3 Tela "Perícias do caso" (`/casos/:id/pericias`): a recomendação pronta e editável (o que levar; na do juiz, quesitos e assistente técnico), "Aprovar a recomendação", a aprovada só para leitura; testes de tela.
+- [x] 14.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
