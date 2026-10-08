@@ -1,7 +1,6 @@
 import { useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
 import { formatarCep, formatarCpf, formatarTelefone, isoParaData } from '../campos.ts'
 import { FONTES } from '../dados/catalogos.ts'
-import { usePerfil } from '../dados/perfis.ts'
 import { camposProtegidosQueMudam, salvarFichaVerificada } from '../dados/seguranca.ts'
 import type { Ficha } from '../dados/tipos.ts'
 import { soNumeroEMascara, validarEdicao, type ValoresFicha } from '../regras/formularios.ts'
@@ -86,7 +85,6 @@ export function EdicaoCliente({
   const [aviso, setAviso] = useState('')
   // Mudar telefone ou e-mail pede a verificação do cliente e o contrato novo (GGVP-111, CA1).
   const [verificacao, setVerificacao] = useState<{ como?: ComoVerificou; contratoNovo?: true }>({})
-  const perfil = usePerfil('Atendimento')
   const mudaContato = camposProtegidosQueMudam(ficha, { telefone: valores.telefone, email: valores.email })
   // Trava no mesmo clique, antes de o React redesenhar o botão (CA16).
   const travado = useRef(false)
@@ -113,7 +111,7 @@ export function EdicaoCliente({
     travado.current = true
     setSalvando(true)
     try {
-      const resposta = await salvarFichaVerificada(ficha.id, dados, mudaContato.length ? verificacao : null, { quem: perfil?.usuario ?? 'Atendimento', perfil: perfil?.id })
+      const resposta = await salvarFichaVerificada(ficha.id, dados, mudaContato.length ? verificacao : null)
       if ('erro' in resposta) return setErros({ cpf: `Este CPF já está na ficha de ${resposta.nome}.` })
       setValores(valoresDa(resposta.ficha))
       setVerificacao({})

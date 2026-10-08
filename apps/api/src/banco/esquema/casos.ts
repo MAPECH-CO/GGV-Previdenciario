@@ -79,6 +79,11 @@ export const atendimento = pgTable(
     gravacaoDocumentoId: uuid('gravacao_documento_id'),
     transcricaoDocumentoId: uuid('transcricao_documento_id'),
     resumo: text('resumo'),
+    /**
+     * A conversa do D5 no formato das telas (GGVP-138): com quem, o modo, a análise da IA, as decisões da conferência e
+     * a pendência. A gravação fica em `gravacao_recepcao`, o mesmo motor da entrevista. ponytail: documento por enquanto.
+     */
+    dados: jsonb('dados'),
     criadoEm: criadoEm(),
   },
   (t) => [emLista('atendimento_canal', t.canal, CANAIS_ATENDIMENTO)],

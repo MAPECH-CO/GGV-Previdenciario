@@ -71,6 +71,11 @@ export * from './resultados.ts'
 // O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
 export * from './chat.ts'
 
+// O Relacionamento com o cliente no servidor (GGVP-138): a conversa, as mensagens e a segurança do contato.
+export * from './conversas.ts'
+export * from './mensagens.ts'
+export * from './seguranca.ts'
+
 // O importador da planilha do escritório (GGVP-146, parte 2).
 export * from './importacao.ts'
 
