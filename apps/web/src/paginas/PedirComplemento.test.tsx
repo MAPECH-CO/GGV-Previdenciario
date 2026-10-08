@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
 import { obterParecer, registrarParecer } from '../dados/parecer.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { PedirComplemento } from './PedirComplemento.tsx'
 
@@ -14,7 +14,7 @@ beforeEach(() => {
   configurarExemplo({ agora: () => agora, latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function parecer(decisao: 'suficiente' | 'insuficiente') {
@@ -24,7 +24,7 @@ async function parecer(decisao: 'suficiente' | 'insuficiente') {
 }
 
 async function abrir() {
-  render(<PedirComplemento processoId="rita-exemplo-1" />)
+  render(comSessao(<PedirComplemento processoId="rita-exemplo-1" />))
   await screen.findByRole('heading', { level: 1, name: /Pedir complemento ao médico/ })
 }
 
@@ -64,7 +64,7 @@ describe('Pedir complemento ao médico · tela do Atendimento', () => {
     await registrarTentativaDoComplemento('rita-exemplo-1', { canal: 'chatwoot', resultado: 'sem-resposta' })
     agora = new Date(2026, 9, 9, 10, 0)
     await registrarTentativaDoComplemento('rita-exemplo-1', { canal: 'ligacao', resultado: 'sem-resposta' })
-    iniciarPerfil('?perfil=senior')
+    entrarComo('senior')
     await abrir()
     expect(screen.getByText('Passou do limite: a sênior decide. O pedido continua à vista aqui.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Dispensar o parecer (duas sêniores)' }).getAttribute('href')).toBe('/casos/rita-exemplo-1/parecer/dispensa')

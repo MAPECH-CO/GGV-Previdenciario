@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-20 · Parecer de suficiência da documentação médica: a Rita da Central da Advogada ao parecer Insuficiente; o laudo
 // novo do Antônio comparado e mantido; a contradição da Cleide; a janela do parecer na liberação. Cada teste começa da semente.
@@ -16,6 +17,9 @@ async function conferirTudo(page: Page) {
   await expect(selects.first()).toBeVisible()
   for (let i = 0; i < (await selects.count()); i++) await selects.nth(i).selectOption('confere')
 }
+
+// A advogada entra pela API (o parecer é do Jurídico); o Atendimento e a Documentação entram quando o teste passa a eles.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, 'advogada@exemplo.ggv'))
 
 test('CA1, CA3, CA5 e CA8 · a Rita: da Central da Advogada ao parecer Insuficiente, com o pedido ao médico para o Atendimento', async ({ page }) => {
   await page.goto('/advogada')
@@ -38,6 +42,7 @@ test('CA1, CA3, CA5 e CA8 · a Rita: da Central da Advogada ao parecer Insuficie
   await registrar.click()
   await expect(page.getByRole('heading', { name: '✓ Parecer registrado: Insuficiente' })).toBeVisible()
 
+  await entrarPelaApi(page)
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Rita Exemplo · Pedir complemento ao médico' })).toHaveAttribute('href', '/casos/rita-exemplo-1/complemento')
 })
@@ -78,6 +83,7 @@ test('CA2 · o laudo com "incapacidade total" da Cleide deixa o parecer Contradi
 })
 
 test('dado de saúde · na liberação, a janela do parecer mostra à Documentação o resultado, sem o conteúdo', async ({ page }) => {
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/sebastiao-exemplo-1/liberar')
   await page.getByRole('button', { name: 'Abrir o parecer médico' }).click()
   const janela = page.getByRole('dialog', { name: 'Parecer médico de suficiência' })

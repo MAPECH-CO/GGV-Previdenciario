@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-12 · a conversa com o lead ou o cliente (fluxo D5). Cada teste abre um navegador novo e começa da semente de
-// exemplo.ts: a Maria Exemplo (perícia do INSS) e a ligação de hoje do Pedro Exemplo, que a Bruna ainda não subiu.
+// exemplo.ts: a Maria Exemplo (perícia do INSS) e a ligação de hoje do Pedro Exemplo, que a Ana ainda não subiu.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -41,7 +42,7 @@ test('GGVP-76 CA1, CA3 a CA7 e CA9, e GGVP-80 · pelo card, conversa presencial 
   await expect(page.getByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeVisible()
   await page.getByRole('button', { name: 'Ver a transcrição' }).click()
   const transcricoes = page.getByRole('dialog', { name: 'Transcrições do caso' })
-  await expect(transcricoes.getByRole('button', { name: /Presencial · cliente.*presencial · Bruna \(exemplo\) \+ Maria Exemplo.*transcrita/ })).toBeVisible()
+  await expect(transcricoes.getByRole('button', { name: /Presencial · cliente.*presencial · Ana \(exemplo\) \+ Maria Exemplo.*transcrita/ })).toBeVisible()
   await expect(page.locator('body')).not.toContainText(SENHA_DITA)
   await transcricoes.getByRole('button', { name: 'Fechar' }).click()
 
@@ -81,7 +82,7 @@ test('GGVP-76 CA2 e CA8, e GGVP-80 CA4 · a ligação do Pedro Exemplo na Centra
   await concluir.getByRole('button', { name: 'Desfazer' }).click()
   await page.getByRole('radio', { name: 'Não — confirmar e voltar ao D1' }).click()
   await concluir.getByRole('button', { name: 'Confirmar' }).click()
-  await expect(page.getByRole('heading', { name: '✓ Conversa conferida por Bruna (exemplo)' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '✓ Conversa conferida por Ana (exemplo)' })).toBeVisible()
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toHaveCount(0)
@@ -132,19 +133,20 @@ test('GGVP-84 · quem conversou confere campo por campo; a ficha muda; Ctrl+Z vo
   await expect(telefone).toHaveValue('(11) 90000-0055')
 
   // CA2: a Sênior abre as versões e volta o telefone para o de antes da conversa.
-  await page.goto('/clientes/maria-exemplo?perfil=senior')
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/clientes/maria-exemplo')
   await page.getByRole('button', { name: 'Ver versões' }).click()
   const versoes = page.getByRole('dialog', { name: /Histórico do processo/ })
   const doTelefone = versoes.getByRole('region', { name: 'Ficha · telefone de contato' })
   await expect(doTelefone.getByRole('listitem')).toHaveCount(2)
   await doTelefone.getByRole('button', { name: /Voltar telefone de contato para a versão de/ }).click()
   await expect(doTelefone.getByRole('listitem')).toHaveCount(3)
-  await expect(doTelefone.getByRole('listitem').first()).toContainText('Dra. Renata (exemplo) · em vigor(11) 90000-0004')
+  await expect(doTelefone.getByRole('listitem').first()).toContainText('Helena (exemplo) · em vigor(11) 90000-0004')
   await versoes.getByRole('button', { name: 'Fechar' }).click()
   await expect(page.getByLabel('Telefone / WhatsApp *')).toHaveValue('(11) 90000-0004')
 })
 
-test('GGVP-88 · surgiu pendência: o setor citado pergunta quem; a tarefa nasce na Central da Jéssica, que dá por cumprida', async ({ page }) => {
+test('GGVP-88 · surgiu pendência: o setor citado pergunta quem; a tarefa nasce na Central do Fábio, que dá por cumprida', async ({ page }) => {
   // Fluxo longo, de várias telas: o triplo do tempo padrão, para a máquina carregada.
   test.slow()
   await page.goto('/clientes/maria-exemplo')
@@ -162,21 +164,22 @@ test('GGVP-88 · surgiu pendência: o setor citado pergunta quem; a tarefa nasce
   await page.getByRole('radio', { name: 'Sim — criar a tarefa no card (D5.05)' }).click()
   await expect(page.getByLabel('O que ficou combinado *')).toHaveValue('Documentação: receber e digitalizar o relatório da alta hospitalar.')
   const escolha = page.getByRole('group', { name: 'Escolha o responsável' })
-  await expect(escolha).toContainText('Documentação tem 1 pessoa. Quem fica com esta tarefa?')
-  await escolha.getByRole('radio', { name: 'Jéssica (exemplo)' }).click()
+  await expect(escolha).toContainText('Documentação tem 2 pessoas. Quem fica com esta tarefa?')
+  // O Fábio é quem entra como Documentação no portal de exemplo.
+  await escolha.getByRole('radio', { name: 'Fábio (exemplo)' }).click()
   await page.getByLabel('Prazo *').fill('31/12/2026')
-  await expect(page.getByRole('group', { name: 'Ação para confirmar' })).toContainText('vence 31/12 · responsável: Jéssica (exemplo)')
+  await expect(page.getByRole('group', { name: 'Ação para confirmar' })).toContainText('vence 31/12 · responsável: Fábio (exemplo)')
   await concluir.getByRole('button', { name: 'Confirmar' }).click()
-  await expect(page.getByRole('group', { name: 'Pendência da conversa' })).toContainText('Tarefa no card: Jéssica (exemplo) (Documentação · ADM) · Cumprir pendência')
+  await expect(page.getByRole('group', { name: 'Pendência da conversa' })).toContainText('Tarefa no card: Fábio (exemplo) (Documentação · ADM) · Cumprir pendência')
 
-  await page.goto('/?perfil=documentacao')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
   const cumprir = page.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })
   await expect(cumprir.locator('xpath=ancestor::li')).toContainText('Documentação: receber e digitalizar o relatório da alta hospitalar.')
-  // O perfil escolhido pelo endereço vale para a página aberta: a tarefa abre já como a Jéssica.
-  await page.goto(`${await cumprir.getAttribute('href')}?perfil=documentacao`)
+  await page.goto((await cumprir.getAttribute('href'))!)
   await page.getByRole('group', { name: 'Pendência da conversa' }).getByRole('button', { name: 'Marcar como cumprida' }).click()
-  await expect(page.getByText(/✓ Cumprida por Jéssica \(exemplo\) em/)).toBeVisible()
-  await page.goto('/?perfil=documentacao')
+  await expect(page.getByText(/✓ Cumprida por Fábio \(exemplo\) em/)).toBeVisible()
+  await page.goto('/')
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })).toHaveCount(0)
 })
@@ -192,7 +195,7 @@ test('GGVP-76 CA7 · pelas Transcrições, o registro escrito aparece como "só 
   await janela.getByLabel('Resumo da conversa *').fill('Perguntou o que levar na perícia.')
   await janela.getByRole('button', { name: 'Salvar o registro' }).click()
   await expect(janela).toHaveCount(0)
-  await expect(transcricoes.getByRole('button', { name: /sem áudio.*Ligação · cliente.*ligação · Bruna \(exemplo\) \+ Maria Exemplo.*só registro/ })).toBeVisible()
+  await expect(transcricoes.getByRole('button', { name: /sem áudio.*Ligação · cliente.*ligação · Ana \(exemplo\) \+ Maria Exemplo.*só registro/ })).toBeVisible()
   await expect(transcricoes.getByText('Perguntou o que levar na perícia.')).toBeVisible()
 })
 

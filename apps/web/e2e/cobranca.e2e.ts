@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-101 · Cobrar os documentos pendentes: o checklist incompleto abre a cobrança, "Enviar cobrança" pelo Chatwoot
 // simulado, o limite de 2 tentativas e a decisão da sênior. Cada teste começa da semente de exemplo.ts.
@@ -36,7 +37,9 @@ test('CA7, CA8 e CA12 · a cobrança do Antônio passou do limite: a sênior dec
   await expect(page.getByText('Passou do limite: a sênior decide o que fazer. A cobrança continua à vista aqui.')).toBeVisible()
   await expect(page.getByText(/O prazo do juiz vence em/)).toBeVisible()
 
-  await page.goto('/advogada')
+  // A decisão é da Sênior: a cobrança chega à tela inicial dela.
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
   await page.getByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Antônio Exemplo · Decidir cobrança')
   await expect(page.getByRole('list', { name: 'Tentativas de cobrança' }).getByRole('listitem')).toHaveCount(2)
@@ -47,6 +50,7 @@ test('CA7, CA8 e CA12 · a cobrança do Antônio passou do limite: a sênior dec
   await registrar.click()
   await expect(page.getByRole('heading', { name: /✓ Decisão registrada às/ })).toBeVisible()
 
+  await entrarPelaApi(page)
   await page.goto('/')
   await expect(page.getByRole('listitem').filter({ has: page.getByRole('link', { name: 'Antônio Exemplo · Cobrar documento' }) })).toContainText(
     'decisão da sênior: pedir visita ao escritório',

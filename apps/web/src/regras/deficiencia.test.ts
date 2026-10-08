@@ -67,6 +67,14 @@ describe('Linha do tempo da deficiência (GGVP-42)', () => {
     expect(longo.faltaComDeficiencia).toBe(0)
   })
 
+  it('Pedro, 08/10 · dois vínculos ao mesmo tempo: cada dia conta uma vez, como no servidor', () => {
+    const junto = { empresa: 'Outra Ltda', inicio: '2011-07', fim: '2012-06', indicadorPcd: true }
+    const ps = periodos([vinculo, junto], dados, [], '2026-10-06')
+    // A linha do tempo mostra cada vínculo; a soma não repete os dias de 07/2011 a 06/2012.
+    expect(ps.filter((p) => p.grau).reduce((s, p) => s + p.dias, 0)).toBe(731 + 366)
+    expect(enquadramento(ps, 'feminino')!.comDeficiencia).toBe(731)
+  })
+
   it('Lucas, 07/10 · na entrevista, os três cenários: todo o tempo com deficiência como leve, moderada ou grave', () => {
     const ps = periodos([vinculo], dados, [], '2026-10-06')
     // 731 dias com deficiência e 365 sem: o sem deficiência converte pelo fator do grau do cenário (0,93, 0,8 e 0,67).

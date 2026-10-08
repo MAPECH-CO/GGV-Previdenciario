@@ -25,7 +25,7 @@ import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
 import { obterGravacoes } from './transcricao.ts'
 
 const AGORA = new Date(2026, 9, 7, 14, 32)
-const BRUNA: QuemAge = { quem: 'Bruna (exemplo)', perfil: 'atendimento' }
+const BRUNA: QuemAge = { quem: 'Ana (exemplo)', perfil: 'atendimento' }
 const PRESENCIAL: NovaConversa = { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' }
 /** A senha que a cliente fala em voz alta na conversa de exemplo: não pode sobrar em lugar nenhum (G9). */
 const SENHA_DITA = 'Exemplo@2026'
@@ -40,8 +40,8 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     await expect(abrirConversa('maria-exemplo', PRESENCIAL, { quem: 'Jéssica (exemplo)', perfil: 'documentacao' })).rejects.toThrow('do Atendimento e do Jurídico')
     await expect(abrirConversa('maria-exemplo', { ...PRESENCIAL, canal: 'whatsapp' as never }, BRUNA)).rejects.toThrow('Escolha o canal')
     const c = await abrirConversa('maria-exemplo', PRESENCIAL, BRUNA)
-    expect(c).toMatchObject({ fichaId: 'maria-exemplo', processoId: 'maria-exemplo-1', canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real', quem: 'Bruna (exemplo)', papel: 'atendimento', abertaEm: AGORA.toISOString() })
-    expect((await obterFicha('maria-exemplo'))!.historico.at(-1)).toMatchObject({ quem: 'Bruna (exemplo)', oQue: 'Abriu a conversa (presencial, com cliente): grava depois do aviso (G10)' })
+    expect(c).toMatchObject({ fichaId: 'maria-exemplo', processoId: 'maria-exemplo-1', canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real', quem: 'Ana (exemplo)', papel: 'atendimento', abertaEm: AGORA.toISOString() })
+    expect((await obterFicha('maria-exemplo'))!.historico.at(-1)).toMatchObject({ quem: 'Ana (exemplo)', oQue: 'Abriu a conversa (presencial, com cliente): grava depois do aviso (G10)' })
   })
 
   it('o lead sem processo tem a conversa na ficha dele, que é a mesma tela do cliente (Lucas, 06/10)', async () => {
@@ -54,7 +54,7 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     const c = await abrirConversa('maria-exemplo', PRESENCIAL, BRUNA)
     await expect(gravarConversa(c.id, {} as { avisei: true })).rejects.toThrow('antes de gravar (G10)')
     const g = await gravarConversa(c.id, { avisei: true })
-    expect(g).toMatchObject({ estado: 'gravando', avisoEm: AGORA.toISOString(), origem: 'portal', canal: 'presencial', participantes: ['Bruna (exemplo)', 'Maria Exemplo'], soJuridico: false })
+    expect(g).toMatchObject({ estado: 'gravando', avisoEm: AGORA.toISOString(), origem: 'portal', canal: 'presencial', participantes: ['Ana (exemplo)', 'Maria Exemplo'], soJuridico: false })
     expect(g.acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou'])
     expect((await obterFicha('maria-exemplo'))!.historico.at(-1)?.oQue).toBe('Avisou às 14:32 que a conversa seria gravada (G10) e começou a gravar')
     // Clique duplo ou página recarregada: a mesma gravação.
@@ -93,7 +93,7 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     const { gravacao: g, ficha } = await transcreverConversa(c.id)
     expect(g!.transcricao).toBe('pronta')
     expect(g!.duracao).toBe(116)
-    expect(g!.trechos[0]).toMatchObject({ aos: 0, quem: 'Bruna', papel: 'atendimento' })
+    expect(g!.trechos[0]).toMatchObject({ aos: 0, quem: 'Ana', papel: 'atendimento' })
     expect(g!.trechos[0].texto).toContain('esta ligação está sendo gravada')
     expect(g!.trechos.some((t) => t.quem === 'Maria' && t.papel === 'cliente')).toBe(true)
     expect(JSON.stringify(g)).not.toContain(SENHA_DITA)
@@ -105,14 +105,14 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     const c = await abrirConversa('maria-exemplo', { ...PRESENCIAL, modo: 'escrito', registro: 'Tirou dúvida sobre o que levar na perícia.' }, BRUNA)
     expect(c.finalizadaEm).toBe(AGORA.toISOString())
     const [g] = await obterGravacoes('maria-exemplo')
-    expect(g).toMatchObject({ id: c.gravacaoId, data: '2026-10-07', canal: 'presencial', participantes: ['Bruna (exemplo)', 'Maria Exemplo'], transcricao: 'sem-audio', registro: 'Tirou dúvida sobre o que levar na perícia.' })
+    expect(g).toMatchObject({ id: c.gravacaoId, data: '2026-10-07', canal: 'presencial', participantes: ['Ana (exemplo)', 'Maria Exemplo'], transcricao: 'sem-audio', registro: 'Tirou dúvida sobre o que levar na perícia.' })
     expect(g.audio).toBeUndefined()
     expect(situacaoDaGravacao(g)).toBe('só registro')
     expect((await obterConversa(c.id))!.gravacao?.id).toBe(g.id)
   })
 
   it('CA8 · "Registrar conversa" na Central de quem abriu e não terminou: a ligação do Pedro Exemplo, da semente', async () => {
-    const [tarefa] = tarefasDeRegistrarConversa('Bruna (exemplo)')
+    const [tarefa] = tarefasDeRegistrarConversa('Ana (exemplo)')
     expect(tarefa).toMatchObject({
       codigo: 'D5.01',
       cliente: { id: 'pedro-exemplo', nome: 'Pedro Exemplo' },
@@ -122,19 +122,19 @@ describe('Registrar a conversa · servidor de exemplo (GGVP-76)', () => {
     })
     expect(tarefasDeRegistrarConversa('Carla (exemplo)')).toEqual([])
     const c = await abrirConversa('maria-exemplo', PRESENCIAL, BRUNA)
-    expect(tarefasDeRegistrarConversa('Bruna (exemplo)').map((t) => t.detalhe.split(' · ').at(-1))).toEqual(['subir a gravação da ligação', 'gravar depois do aviso (G10)'])
+    expect(tarefasDeRegistrarConversa('Ana (exemplo)').map((t) => t.detalhe.split(' · ').at(-1))).toEqual(['subir a gravação da ligação', 'gravar depois do aviso (G10)'])
     await gravarConversa(c.id, { avisei: true })
-    expect(tarefasDeRegistrarConversa('Bruna (exemplo)').at(-1)?.detalhe).toContain('finalizar a conversa')
+    expect(tarefasDeRegistrarConversa('Ana (exemplo)').at(-1)?.detalhe).toContain('finalizar a conversa')
     await finalizarConversa(c.id, { aos: 30 })
     await anexarAudio('conversa-pedro-ligacao', { nome: 'ligacao-pedro.ogg', tipo: 'audio/ogg', tamanho: 1000, avisoNaGravacao: true })
     // Gravada, falta só a conferência de quem conversou (GGVP-84); conferida, sai da Central.
-    expect(tarefasDeRegistrarConversa('Bruna (exemplo)').map((t) => t.detalhe.split(' · ').at(-1))).toEqual(['conferir a conversa (D5.04)', 'conferir a conversa (D5.04)'])
+    expect(tarefasDeRegistrarConversa('Ana (exemplo)').map((t) => t.detalhe.split(' · ').at(-1))).toEqual(['conferir a conversa (D5.04)', 'conferir a conversa (D5.04)'])
     for (const id of ['conversa-pedro-ligacao', c.id]) {
       const { conversa } = await transcreverConversa(id)
       const doAtendimento = conversa.analise!.mudancas.filter((m) => m.campo !== 'fato')
       await conferirConversa(id, { decisoes: doAtendimento.map((m) => ({ id: m.id, decisao: 'desfeita' as const })), pendencia: { surgiu: false } }, BRUNA)
     }
-    expect(tarefasDeRegistrarConversa('Bruna (exemplo)')).toEqual([])
+    expect(tarefasDeRegistrarConversa('Ana (exemplo)')).toEqual([])
   })
 })
 
@@ -240,7 +240,7 @@ describe('Atualizar ficha e processo com desfazer · servidor de exemplo (GGVP-8
       { id: id('documento'), decisao: 'desfeita' as const },
     ]
     await expect(conferirConversa(c.id, { decisoes, pendencia: { surgiu: false } }, { quem: 'Carla (exemplo)', perfil: 'atendimento-lider' })).rejects.toThrow(
-      'Quem confere é quem fez a conversa: Bruna (exemplo).',
+      'Quem confere é quem fez a conversa: Ana (exemplo).',
     )
     await expect(conferirConversa(c.id, { decisoes }, BRUNA)).rejects.toThrow('Responda "Surgiu pendência?".')
     await expect(conferirConversa(c.id, { decisoes: decisoes.slice(1), pendencia: { surgiu: false } }, BRUNA)).rejects.toThrow('Confirme, corrija ou desfaça: endereço.')
@@ -296,7 +296,7 @@ describe('Atualizar ficha e processo com desfazer · servidor de exemplo (GGVP-8
     const telefone = { fichaId: 'maria-exemplo', onde: 'ficha' as const, campo: 'telefone' as const }
     expect((await obterVersoes('maria-exemplo')).filter((v) => v.campo === 'telefone').map((v) => [v.valor, v.quem, v.origem])).toEqual([
       ['11900000004', 'Valor de antes da conversa', 'antes'],
-      ['11900000044', 'Bruna (exemplo)', 'conversa'],
+      ['11900000044', 'Ana (exemplo)', 'conversa'],
     ])
     await expect(voltarParaVersao(telefone, 0, PAULA)).rejects.toThrow('Só a Sênior volta uma versão.')
     await expect(voltarParaVersao(telefone, 1, SENIOR)).rejects.toThrow('Essa já é a versão em vigor.')
@@ -344,7 +344,7 @@ describe('Pendência da conversa vira tarefa · servidor de exemplo (GGVP-88)', 
         processoId: 'maria-exemplo-1',
       },
     ])
-    expect(tarefasDePendencia({ usuario: 'Bruna (exemplo)', id: 'atendimento' })).toEqual([])
+    expect(tarefasDePendencia({ usuario: 'Ana (exemplo)', id: 'atendimento' })).toEqual([])
     // O caso volta ao D1 de onde parou: a etapa não muda.
     expect(ficha.processos[0].etapa).toBe('Administrativo · perícia em 02/10')
   })

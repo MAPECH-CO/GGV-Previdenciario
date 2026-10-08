@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
 import { abrirConversa, conferirConversa } from '../dados/conversa.ts'
-import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
@@ -13,7 +13,7 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 describe('Central do Atendimento', () => {
@@ -160,26 +160,47 @@ describe('Central do Atendimento', () => {
     expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
   })
 
-  it('GGVP-76 CA8 · "Registrar conversa" da ligação que a Bruna abriu: o nome do cliente e a tarefa; outra pessoa não vê', () => {
+  it('GGVP-76 CA8 · "Registrar conversa" da ligação que a Ana abriu: o nome do cliente e a tarefa; outra pessoa não vê', () => {
     render(<CentralAtendimento />)
     const registrar = screen.getByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })
     expect(registrar.getAttribute('href')).toBe('/conversas/conversa-pedro-ligacao')
     expect(registrar.closest('li')?.textContent).toContain('ligou com informação nova sobre a exigência do INSS · ligou às 09:15 · subir a gravação da ligação')
     expect(within(registrar.closest('li')!).getByRole('link', { name: 'Pedro Exemplo' }).getAttribute('href')).toBe('/clientes/pedro-exemplo')
     cleanup()
-    trocarPerfil('documentacao')
-    render(<CentralAtendimento />)
+    entrarComo('documentacao')
+    render(comSessao(<CentralAtendimento />))
     expect(screen.queryByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toBeNull()
   })
 
   it('GGVP-88 CA4 · "Cumprir pendência" na Central do responsável, com o nome do cliente e o combinado embaixo', async () => {
-    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'escrito', registro: 'Trouxe o relatório da alta.' }, { quem: 'Bruna (exemplo)', perfil: 'atendimento' })
-    await conferirConversa(c.id, { decisoes: [], pendencia: { surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' } }, { quem: 'Bruna (exemplo)', perfil: 'atendimento' })
-    trocarPerfil('documentacao')
-    render(<CentralAtendimento />)
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'escrito', registro: 'Trouxe o relatório da alta.' }, { quem: 'Ana (exemplo)', perfil: 'atendimento' })
+    await conferirConversa(c.id, { decisoes: [], pendencia: { surgiu: true, texto: 'Receber o relatório da alta.', responsavel: 'Jéssica (exemplo)', prazo: '10/10/2026' } }, { quem: 'Ana (exemplo)', perfil: 'atendimento' })
+    entrarComo('documentacao')
+    render(comSessao(<CentralAtendimento />))
     const cumprir = screen.getByRole('link', { name: 'Maria Exemplo · Cumprir pendência' })
     expect(cumprir.getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
     expect(cumprir.closest('li')?.textContent).toContain('Receber o relatório da alta.')
     expect(cumprir.closest('li')?.textContent).toContain('vence 10/10')
   })
+
+  it('GGVP-23 CA3 · as tarefas do servidor (como o ajuste pedido pela Sênior) vêm no topo, acima das de exemplo', async () => {
+    const ajuste = {
+      id: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6',
+      casoId: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c7',
+      passo: 'D1.ajuste',
+      cliente: { id: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c8', nome: 'Benedito Alves' },
+      titulo: 'Ajustar o caso: Falta o laudo',
+      detalhe: 'auxilio acidente',
+      tela: null,
+      prazo: null,
+      urgente: false,
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([ajuste]))))
+    render(<CentralAtendimento />)
+    expect(await screen.findByRole('tab', { name: 'Minhas tarefas (17)' })).toBeTruthy()
+    const [primeira] = within(screen.getByRole('tabpanel')).getAllByRole('listitem')
+    expect(primeira.textContent).toContain('Ajustar o caso: Falta o laudo')
+  })
 })
+
+afterEach(() => vi.unstubAllGlobals())

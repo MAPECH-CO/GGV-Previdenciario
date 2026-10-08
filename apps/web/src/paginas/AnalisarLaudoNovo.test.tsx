@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { enviarArquivos } from '../dados/documentos.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { AnalisarLaudoNovo } from './AnalisarLaudoNovo.tsx'
 
@@ -9,11 +9,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 6, 15, 10), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function abrir(processoId = 'antonio-exemplo-1') {
-  render(<AnalisarLaudoNovo processoId={processoId} />)
+  render(comSessao(<AnalisarLaudoNovo processoId={processoId} />))
   await screen.findByRole('heading', { level: 1, name: /Analisar laudo novo/ })
 }
 
@@ -44,7 +44,7 @@ describe('Analisar laudo novo · tela da advogada', () => {
   })
 
   it('dado de saúde · quem não é do Jurídico não vê o laudo nem a comparação', async () => {
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     await abrir()
     expect(screen.getByRole('status').textContent).toContain('O laudo e a comparação são do Jurídico')
     expect(screen.queryByRole('table')).toBeNull()

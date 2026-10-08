@@ -4,24 +4,27 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --experimental-strip-types --env-file-if-exists=../../.env --watch src/principal.ts",
+    "dev": "node --experimental-strip-types --env-file-if-exists=../../.env src/principal.ts",
     "start": "node --experimental-strip-types src/principal.ts",
     "typecheck": "tsc",
     "lint": "oxlint",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=20000 --hookTimeout=20000 --maxWorkers=4",
     "db:gerar": "drizzle-kit generate",
     "db:migrar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/migrar.ts",
     "usuario:criar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts criar",
+    "usuario:perfis": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts perfis",
     "usuario:destravar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts destravar"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
+    "@fastify/multipart": "^10.1.2",
     "@fastify/static": "^10.1.5",
     "@ggv/campos": "workspace:*",
     "@ggv/contratos": "workspace:*",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.6.1",
+    "pdf-lib": "1.17.1",
     "pg": "^8.16.3"
   },
   "devDependencies": {

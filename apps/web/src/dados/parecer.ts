@@ -714,6 +714,9 @@ export function resumoParaAFicha(fichaId: string): string | undefined {
 }
 
 /** "Analisar laudo novo" e "Dar parecer médico" na Central da Advogada, nascidos do caso. */
+/** A dispensa espera a segunda sênior (G17): vai para a tela inicial da Sênior; o resto do parecer é da advogada. */
+export const daSenior = (t: Tarefa) => t.id.startsWith('dispensa-')
+
 export function tarefasDoParecer(): Tarefa[] {
   const banco = ler()
   const hoje = hojeIso(agora())

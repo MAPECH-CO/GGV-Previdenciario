@@ -1,17 +1,17 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { abrirConversa, conferirConversa, finalizarConversa, gravarConversa, transcreverConversa } from '../dados/conversa.ts'
-import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { HistoricoDeVersoes } from './HistoricoDeVersoes.tsx'
 
-const BRUNA = { quem: 'Bruna (exemplo)', perfil: 'atendimento' as const }
+const BRUNA = { quem: 'Ana (exemplo)', perfil: 'atendimento' as const }
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function conversaConferida() {
@@ -27,10 +27,10 @@ async function conversaConferida() {
 describe('Histórico do processo · versões dos campos (GGVP-84, CA2)', () => {
   it('cada versão com quem e quando, da mais recente à mais antiga; o fato de saúde só para o Jurídico; sem "Voltar" para quem não é Sênior', async () => {
     await conversaConferida()
-    render(<HistoricoDeVersoes ficha={(await obterFicha('maria-exemplo'))!} aoFechar={() => {}} />)
+    render(comSessao(<HistoricoDeVersoes ficha={(await obterFicha('maria-exemplo'))!} aoFechar={() => {}} />))
     const endereco = await screen.findByRole('region', { name: 'Ficha · endereço' })
     expect(within(endereco).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '07/10/2026 14:32 · Bruna (exemplo) · em vigorRua Exemplo das Acácias, 45',
+      '07/10/2026 14:32 · Ana (exemplo) · em vigorRua Exemplo das Acácias, 45',
       '07/10/2026 14:32 · Valor de antes da conversa—',
     ])
     expect(screen.getByRole('region', { name: 'Processo · data da perícia do INSS' }).textContent).toContain('16/10/2026')
@@ -42,8 +42,8 @@ describe('Histórico do processo · versões dos campos (GGVP-84, CA2)', () => {
 
   it('a Sênior volta o telefone para a versão de antes; a volta vira versão nova e a ficha muda', async () => {
     await conversaConferida()
-    trocarPerfil('senior')
-    render(<HistoricoDeVersoes ficha={(await obterFicha('maria-exemplo'))!} aoFechar={() => {}} />)
+    entrarComo('senior')
+    render(comSessao(<HistoricoDeVersoes ficha={(await obterFicha('maria-exemplo'))!} aoFechar={() => {}} />))
     const telefone = await screen.findByRole('region', { name: 'Ficha · telefone de contato' })
     expect(screen.getByRole('region', { name: 'Processo · fato novo' }).textContent).toContain('Três dias no hospital no fim de setembro')
     // Fato novo e documento citado somam ao caso: sem "Voltar".

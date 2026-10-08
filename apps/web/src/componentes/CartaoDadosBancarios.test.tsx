@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, tarefasDoSetor, zerarExemplo } from '../dados/servidor.ts'
 import { CartaoDadosBancarios } from './CartaoDadosBancarios.tsx'
 
@@ -8,7 +8,7 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 const cartao = () => within(screen.getByRole('region', { name: 'Dados bancários para o repasse' }))
@@ -18,7 +18,9 @@ const digitar = (rotulo: string, valor: string) => fireEvent.change(cartao().get
 describe('Dados bancários para o repasse (GGVP-111)', () => {
   it('CA1 e CA5 · só pede a mudança com o cliente verificado e em contrato novo; quem pediu não confirma; outra pessoa confirma e o contato anterior é avisado', async () => {
     const aoMudar = vi.fn()
-    render(<CartaoDadosBancarios fichaId="lucia-exemplo" aoMudar={aoMudar} />)
+    // A sessão desde o começo: a troca de quem está logado mantém o cartão aberto (rerender).
+    entrarComo('atendimento')
+    const { rerender } = render(comSessao(<CartaoDadosBancarios fichaId="lucia-exemplo" aoMudar={aoMudar} />))
     expect(await cartao().findByText(/^Banco Exemplo · agência 0001 · conta 12345-6 · Pix: o telefone cadastrado · desde/)).toBeTruthy()
 
     fireEvent.click(botao('Mudar dados bancários'))
@@ -38,7 +40,8 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     fireEvent.click(botao('Confirmar a mudança (segunda pessoa)'))
     expect((await cartao().findByRole('alert')).textContent).toBe('A segunda confirmação é de outra pessoa, não de quem pediu.')
 
-    act(() => trocarPerfil('atendimento-lider'))
+    entrarComo('atendimento-lider')
+    rerender(comSessao(<CartaoDadosBancarios fichaId="lucia-exemplo" aoMudar={aoMudar} />))
     fireEvent.click(botao('Confirmar a mudança (segunda pessoa)'))
     expect(await cartao().findByText('Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')).toBeTruthy()
     expect(cartao().getByText(/^Banco Exemplo Dois · agência 0002 · conta 65432-1 · desde 07\/10\/2026/)).toBeTruthy()
@@ -49,7 +52,7 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
   })
 
   it('agência e conta erradas não seguem; cancelar volta ao cartão', async () => {
-    render(<CartaoDadosBancarios fichaId="maria-exemplo" aoMudar={() => {}} />)
+    render(comSessao(<CartaoDadosBancarios fichaId="maria-exemplo" aoMudar={() => {}} />))
     expect(await cartao().findByText('Nenhum dado bancário cadastrado.')).toBeTruthy()
     fireEvent.click(botao('Mudar dados bancários'))
     digitar('Banco *', 'Banco Exemplo')

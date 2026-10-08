@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-50 · BPC/LOAS de menor de 16 anos. O Davi da semente, de 7 anos: a análise com o roteiro infantil, a condição e as
 // terapias que a advogada marca no parecer, e os relatórios que o checklist passa a pedir. Cada teste começa da semente.
@@ -7,6 +8,9 @@ import { expect, test } from '@playwright/test'
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+// A advogada entra pela API (o parecer e o cartão da criança são do Jurídico); no teste do dado de saúde, a Documentação.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, 'advogada@exemplo.ggv'))
 
 test('CA1 · da Central da Advogada ao parecer do Davi, com o roteiro infantil', async ({ page }) => {
   await page.goto('/advogada')
@@ -48,7 +52,8 @@ test('CA2 · a advogada marca a condição e as terapias; o checklist pede os re
 })
 
 test('dado de saúde · a Documentação vê o parecer do Davi sem o cartão da condição', async ({ page }) => {
-  await page.goto('/casos/davi-exemplo-1/parecer?perfil=documentacao')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/casos/davi-exemplo-1/parecer')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Davi Exemplo · Dar parecer médico')
   await expect(page.getByRole('heading', { name: 'Criança · condição e terapias' })).toHaveCount(0)
 })

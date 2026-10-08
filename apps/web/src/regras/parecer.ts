@@ -1,6 +1,7 @@
 // O parecer de suficiência da documentação médica (GGVP-20): a IA cruza o roteiro do benefício (GGVP-93) com os documentos
 // e sugere; a advogada confere item a item e registra (G17). Contradição bloqueia (G18). A orientação ao médico não sugere
 // diagnóstico, CID, grau, conclusão nem frase pronta (G20). Regra numérica é código com teste, nunca resposta de modelo (G19).
+import { MESES_LOAS, mesesEntre } from '@ggv/contratos'
 import { dataCurta } from './datas.ts'
 import type { ItemDoRoteiro } from './roteiro.ts'
 
@@ -87,19 +88,12 @@ export function mudancas(antes: ItemAnalisado[] | undefined, depois: ItemAnalisa
   return linhas
 }
 
-/** Meses inteiros entre duas datas aaaa-mm ou aaaa-mm-dd (G19). */
-export function mesesEntre(inicio: string, fim: string): number {
-  const [ai, mi, di = 1] = inicio.split('-').map(Number)
-  const [af, mf, df = 1] = fim.split('-').map(Number)
-  return (af - ai) * 12 + (mf - mi) - (df < di ? 1 : 0)
-}
-
-/** O impedimento de longo prazo do LOAS dura no mínimo 24 meses (roteiro de laudos, G19). */
-export const MESES_MINIMOS_LOAS = 24
+// A conta dos meses e os 24 meses do LOAS são os do contrato, os mesmos da regra do servidor (GGVP-25).
+export { mesesEntre }
 
 /** Contradição do LOAS (CA2): do início até a cessação prevista, menos de 24 meses. Sem cessação prevista, não há. */
 export const abaixoDe24Meses = (inicio: string, cessacaoPrevista: string | undefined) =>
-  cessacaoPrevista !== undefined && mesesEntre(inicio, cessacaoPrevista) < MESES_MINIMOS_LOAS
+  cessacaoPrevista !== undefined && mesesEntre(inicio, cessacaoPrevista) < MESES_LOAS
 
 const REGRAS_G20: [RegExp, string][] = [
   [/\b[A-Z]\d{2}(\.\d{1,2})?\b/, 'Tire o código de doença (CID): a orientação não sugere diagnóstico (G20).'],

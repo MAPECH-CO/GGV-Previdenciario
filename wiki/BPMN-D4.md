@@ -3,12 +3,12 @@
 # D4 · O diário e o acervo que aprende (revisão BPMN)
 
 **Fonte:** frame "D4 · O diário e o acervo que aprende · revisão BPMN (para conferência)" no Miro, board `uXjVHjbveV4=`. [Abrir no Miro](https://miro.com/app/board/uXjVHjbveV4=/?moveToWidget=3458764684978380513) (frame `3458764684978380513`).
-**Estado:** revisão feita com o PO em setembro de 2026. Vale este frame; a versão antiga fica no board só como histórico.
+**Estado:** revisão feita com o PO em setembro de 2026. Em 29/09/2026 o resumo ganhou a nota da raia externa e a legenda ganhou "Externo"; o frame também foi descido 300 px no board, o que não muda o conteúdo. Vale este frame; a versão antiga fica no board só como histórico.
 **Início:** Publicação chega (AASP · DJEN), depois de o juízo disponibilizar a intimação. **Fim:** "Só andamento: registrado", ou "Peça nova nasce com o que a casa já aprendeu", ou "Acervo atualizado".
 
-Resumo do frame: *A publicação chega, é casada pelo número CNJ, classificada e o prazo é contado. Exigência segue para o D3a, mérito para o D3b, andamento só é registrado. O acervo aprende com os desfechos, e toda peça nova consulta esse acervo antes de ser escrita.*
+Resumo do frame: *A publicação chega, é casada pelo número CNJ, classificada e o prazo é contado. Exigência segue para o D3a, mérito para o D3b, andamento só é registrado. O acervo aprende com os desfechos, e toda peça nova consulta esse acervo antes de ser escrita. Ajuste de 29/09/2026: JUSTIÇA é raia externa; o escritório espera a publicação.*
 
-Cada passo aponta para o código acordado no README (`D4.01`…). O executor segue a legenda "Como ler" do board pela cor do cartão: **[Pessoa]** (azul), **[IA]** (verde), **[Sistema]** (cinza), **[Scanner]** (laranja), **[Externo]** (borda tracejada). Toda ação da IA tem uma pessoa que confere.
+Cada passo aponta para o código acordado no README (`D4.01`…). O executor segue a legenda "Como ler" do board pela cor do cartão: **[Pessoa]** (azul), **[IA]** (verde), **[Sistema]** (cinza), **[Scanner]** (laranja), **[Externo]** (borda tracejada). Toda ação da IA tem uma pessoa que confere. O cartão externo não tem código no Miro; o código `D4.E1` citado abaixo é a **proposta** de 29/09/2026, a confirmar com o PO.
 
 ## Raias
 
@@ -23,7 +23,7 @@ Na ordem das faixas do frame (de cima para baixo):
 
 ### JUSTIÇA (externa)
 
-- **[Externo]** Juízo disponibiliza a intimação — evento fora do escritório (linha tracejada cinza).
+- **[Externo]** Juízo disponibiliza a intimação — evento fora do escritório (linha tracejada cinza). É uma espera: o diário só anda quando a publicação chega (proposta `D4.E1`).
 
 ### SISTEMA · REGRAS
 
@@ -87,3 +87,4 @@ Os comentários do board são regra de negócio; viram critério de aceite ou po
 - Sem divergências de código: os sete passos `D4.01`…`D4.07` aparecem no board.
 - **D4.04** está desenhado como o gateway "Que tipo de ato é?" (não como um cartão de passo). Confirmar na validação se o código fica no gateway.
 - O passo novo `D4.02N` (Nomeação de perito e identificação do juízo), citado no README como ainda não desenhado, **não** aparece neste frame — segue pendente de desenho no Miro.
+- Código do cartão externo: a proposta `D4.E1` **não** foi gravada no Miro; aguarda o Lucas.

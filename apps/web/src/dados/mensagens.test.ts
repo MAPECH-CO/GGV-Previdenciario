@@ -4,7 +4,7 @@ import { NUNCA_PEDIMOS_A_SENHA } from '../regras/mensagens.ts'
 import { enviarMensagem, mensagensDoCliente, prepararMensagem } from './mensagens.ts'
 import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from './servidor.ts'
 
-const BRUNA = { quem: 'Bruna (exemplo)', perfil: 'atendimento' as const }
+const BRUNA = { quem: 'Ana (exemplo)', perfil: 'atendimento' as const }
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
@@ -66,10 +66,10 @@ describe('Mensagens ao cliente · servidor de exemplo (GGVP-102)', () => {
   it('CA2 e CA4 · enviada pelo Chatwoot: o texto final, o canal, a data, a hora e o status no card e no histórico; a mesma mensagem não sai duas vezes', async () => {
     const pronta = await prepararMensagem('maria-exemplo', 'pericia-orientacao')
     const enviada = await enviarMensagem('maria-exemplo', { modelo: 'pericia-orientacao', texto: ` ${pronta.texto} `, conversa: pronta.conversas[0].id }, BRUNA)
-    expect(enviada).toMatchObject({ fichaId: 'maria-exemplo', processoId: 'maria-exemplo-1', modelo: 'pericia-orientacao', texto: pronta.texto, canal: 'Chatwoot', quando: new Date(2026, 9, 7, 14, 32).toISOString(), quem: 'Bruna (exemplo)', status: 'entregue' })
+    expect(enviada).toMatchObject({ fichaId: 'maria-exemplo', processoId: 'maria-exemplo-1', modelo: 'pericia-orientacao', texto: pronta.texto, canal: 'Chatwoot', quando: new Date(2026, 9, 7, 14, 32).toISOString(), quem: 'Ana (exemplo)', status: 'entregue' })
     const ficha = (await obterFicha('maria-exemplo'))!
     expect(ficha.contatos.at(-1)).toEqual({ data: '2026-10-07', canal: 'Chatwoot · 14:32 · entregue', texto: pronta.texto })
-    expect(ficha.historico.at(-1)).toMatchObject({ quem: 'Bruna (exemplo)', oQue: 'Enviou pelo Chatwoot a mensagem «Perícia: data, o que levar e orientação» (entregue)' })
+    expect(ficha.historico.at(-1)).toMatchObject({ quem: 'Ana (exemplo)', oQue: 'Enviou pelo Chatwoot a mensagem «Perícia: data, o que levar e orientação» (entregue)' })
     const deNovo = await enviarMensagem('maria-exemplo', { modelo: 'pericia-orientacao', texto: pronta.texto, conversa: pronta.conversas[0].id }, BRUNA)
     expect(deNovo.id).toBe(enviada.id)
     expect((await mensagensDoCliente('maria-exemplo')).length).toBe(1)
