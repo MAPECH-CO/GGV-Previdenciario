@@ -17,9 +17,6 @@ const data = (rotulo: string) =>
 export const PedidoDoPainel = z.object({ de: data('inicial').optional(), ate: data('final').optional(), recorte: Recorte.optional() })
 export type PedidoDoPainel = z.input<typeof PedidoDoPainel>
 
-/** G22 (regra de 07/10): não há amostra mínima; toda taxa sai com o número de casos e a data da base (CA8). */
-export const SITUACOES_INDICADOR = ['ok', 'sem_dados'] as const
-
 /** Um número do painel, sempre com quantos casos o compõem (CA1). `valor` é nulo só sem nenhum caso. */
 export const Indicador = z.object({
   chave: z.string(),
@@ -28,7 +25,8 @@ export const Indicador = z.object({
   /** Taxa de 0 a 1, dias ou casos, conforme a `unidade`. */
   valor: z.number().nullable(),
   unidade: z.enum(['taxa', 'dias', 'casos']),
-  situacao: z.enum(SITUACOES_INDICADOR),
+  /** G22 (regra de 07/10): não há amostra mínima; só "sem_dados" quando não há nenhum caso (CA5, CA8). */
+  situacao: z.enum(['ok', 'sem_dados']),
 })
 export type Indicador = z.infer<typeof Indicador>
 

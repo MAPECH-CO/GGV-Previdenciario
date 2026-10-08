@@ -91,7 +91,10 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
 
   // CA2: as extinções sem mérito, por causa, em destaque (a meta é zero).
   const porCausa = new Map<string, number>()
-  for (const c of judiciais.filter((j) => j.desfecho === EXTINTO)) porCausa.set(c.causa?.trim() || 'sem causa registrada', (porCausa.get(c.causa?.trim() || 'sem causa registrada') ?? 0) + 1)
+  for (const c of judiciais.filter((j) => j.desfecho === EXTINTO)) {
+    const causa = c.causa?.trim() || 'sem causa registrada'
+    porCausa.set(causa, (porCausa.get(causa) ?? 0) + 1)
+  }
 
   // CA4: os totais em dinheiro, só para quem pode ver.
   let totais: PainelDeResultados['totais'] = null
@@ -100,17 +103,21 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
       (p) => p.recebidaEm && noPeriodo(diaEmBrasilia(p.recebidaEm)),
     )
     const centavos = recebidas.reduce((soma, p) => soma + Math.round(Number(p.honorarios) * 100), 0)
-    const dias = recebidas
-      .map((p) => {
-        const c = casoPorId.get(p.casoId)
-        return c && p.recebidaEm ? Math.round((p.recebidaEm.getTime() - c.criadoEm.getTime()) / UM_DIA_MS) : -1
-      })
-      .filter((d) => d >= 0)
-    const tempo = taxa('dias_ate_receber', 'Tempo até o dinheiro', 0, dias.length)
+    const dias = recebidas.flatMap((p) => {
+      const c = casoPorId.get(p.casoId)
+      return c && p.recebidaEm ? [Math.round((p.recebidaEm.getTime() - c.criadoEm.getTime()) / UM_DIA_MS)] : []
+    })
     totais = {
       honorariosRecebidos: (centavos / 100).toFixed(2),
       recebimentos: recebidas.length,
-      diasAteReceber: { ...tempo, unidade: 'dias', valor: dias.length ? mediana(dias) : null },
+      diasAteReceber: {
+        chave: 'dias_ate_receber',
+        rotulo: 'Tempo até o dinheiro',
+        casos: dias.length,
+        valor: dias.length ? mediana(dias) : null,
+        unidade: 'dias',
+        situacao: dias.length ? 'ok' : 'sem_dados',
+      },
     }
   }
 
