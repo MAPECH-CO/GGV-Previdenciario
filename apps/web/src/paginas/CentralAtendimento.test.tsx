@@ -1,14 +1,34 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { configurarExemplo, encaminhar, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 
+beforeEach(() => {
+  configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
+  zerarExemplo()
+})
+
 describe('Central do Atendimento', () => {
-  it('mostra a fila de 14 tarefas e os totais nas abas', () => {
+  it('mostra a fila de 16 tarefas e os totais nas abas', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(14)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (14)' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(16)
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Tarefas do setor (9)' }).getAttribute('aria-selected')).toBe('false')
+  })
+
+  it('GGVP-17 CA1, CA3 e CA15 · mostra o "Receber documento" do balcão, com o caso, e o "Completar telefone" da ficha do scanner', async () => {
+    const { tarefa } = await encaminhar({ fichaId: 'antonio-exemplo', motivo: 'documento', setor: 'Documentação · ADM' })
+    render(<CentralAtendimento />)
+    const receber = screen.getByRole('link', { name: 'Antônio Exemplo · Receber documento' })
+    expect(receber.getAttribute('href')).toBe(`/balcao/documento/${tarefa.id}`)
+    expect(receber.closest('li')?.textContent).toContain('Aposentadoria por Incapacidade Permanente · Judicial · exigência')
+    expect(screen.getByRole('link', { name: 'Marta Exemplo · Completar telefone' }).getAttribute('href')).toBe('/clientes/marta-exemplo')
+  })
+
+  it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {
+    render(<CentralAtendimento />)
+    expect(screen.getByRole('link', { name: 'Natália Exemplo · Confirmar se a entrevista aconteceu' }).getAttribute('href')).toBe('/agenda?ver=lista')
   })
 
   it('marca o Início como página atual e oferece o novo cliente', () => {
@@ -26,7 +46,7 @@ describe('Central do Atendimento', () => {
     expect(screen.getByText('Tarefas do setor: tela ainda não construída.')).toBeTruthy()
 
     fireEvent.keyDown(setor, { key: 'ArrowLeft' })
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (14)' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Minhas tarefas (16)' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
   })
 
@@ -65,7 +85,7 @@ describe('Central do Atendimento', () => {
 
   it('botões ainda não ligados avisam que estão indisponíveis e não prometem janela', () => {
     render(<CentralAtendimento />)
-    for (const nome of ['✦ Suporte', '+ Anexar arquivo', 'Gravar áudio']) {
+    for (const nome of ['✦ Suporte', 'Gravar áudio']) {
       expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), nome).toBe('true')
     }
     expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
@@ -85,7 +105,7 @@ describe('Central do Atendimento', () => {
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([ajuste]))))
     render(<CentralAtendimento />)
-    expect(await screen.findByRole('tab', { name: 'Minhas tarefas (15)' })).toBeTruthy()
+    expect(await screen.findByRole('tab', { name: 'Minhas tarefas (17)' })).toBeTruthy()
     const [primeira] = within(screen.getByRole('tabpanel')).getAllByRole('listitem')
     expect(primeira.textContent).toContain('Ajustar o caso: Falta o laudo')
   })

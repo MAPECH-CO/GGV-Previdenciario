@@ -1,0 +1,105 @@
+/* Figma 1941:2: página de 1440 com 40 de margem. */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 40px;
+}
+
+.topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titulo {
+  font-size: var(--fonte-24);
+  font-weight: 600;
+}
+
+.subtitulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+.novo {
+  padding: 9px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.barra,
+.abas,
+.navegacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Figma 1941:2: as abas são um seletor cinza, com a aba ativa em branco (e não o laranja das abas da Central). */
+.abas {
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro);
+}
+
+.abas [role='tab'],
+.protocolos {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.abas [role='tab'][aria-selected='true'] {
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+
+.navegacao {
+  gap: 6px;
+}
+
+.passo {
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.periodo {
+  margin-left: 8px;
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+.painel {
+  min-width: 0;
+}
+
+.nota {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+@media (max-width: 720px) {
+  .pagina {
+    padding: 16px;
+  }
+}

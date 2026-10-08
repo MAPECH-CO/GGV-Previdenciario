@@ -1,0 +1,39 @@
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-left: 3px solid var(--cat);
+  border-radius: var(--raio-6);
+  background: var(--cat-suave);
+  color: var(--cor-texto);
+  text-align: left;
+}
+
+.cartao[data-estado='realizado'],
+.cartao[data-estado='faltou'] {
+  opacity: 0.6;
+}
+
+.topo {
+  color: var(--cat);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+}
+
+.titulo {
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.oQue,
+.estado {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.estado {
+  font-style: italic;
+}

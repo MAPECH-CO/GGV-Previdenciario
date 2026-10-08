@@ -1,0 +1,131 @@
+.janela {
+  width: min(560px, calc(100vw - 32px));
+  margin: 48px auto auto;
+  padding: 18px 22px;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.fechar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-22);
+  line-height: 1;
+}
+
+.modos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.modo {
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.modo[aria-checked='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.linha > * {
+  min-width: 8rem;
+}
+
+.busca {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+}
+
+.achados {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.pessoa {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  text-align: left;
+}
+
+.nada {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.pe {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancelar,
+.salvar {
+  padding: 9px 16px;
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.cancelar {
+  border: 1px solid var(--cor-borda-controle);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.salvar {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}

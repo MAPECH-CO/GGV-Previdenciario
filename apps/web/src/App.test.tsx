@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
+import { zerarExemplo } from './dados/servidor.ts'
 
 const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
 
@@ -8,13 +9,13 @@ function servidorResponde(status: number, corpo: unknown) {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })))
 }
 
+beforeEach(() => servidorResponde(200, usuario))
 afterEach(() => vi.unstubAllGlobals())
 
 describe('App', () => {
-  it('com sessão, na raiz abre a Central do Atendimento', async () => {
-    servidorResponde(200, usuario)
+  it('na raiz abre a Central do Atendimento', async () => {
     render(<App caminho="/" />)
-    expect(await screen.findByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
+    expect((await screen.findByRole('heading', { name: 'O que você tem que fazer' }))).toBeTruthy()
   })
 
   it('em /tokens abre o guia de tokens, sem pedir sessão', () => {
@@ -25,29 +26,129 @@ describe('App', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('em rota sem tela avisa que não foi construída e mostra o caminho', async () => {
-    servidorResponde(200, usuario)
-    render(<App caminho="/clientes/novo" />)
-    expect(await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeTruthy()
-    expect(screen.getByText('/clientes/novo')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Voltar ao início' }).getAttribute('href')).toBe('/')
+  it('em /balcao abre o balcão', async () => {
+    render(<App caminho="/balcao" />)
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Balcão · Receber quem chegou')
   })
 
-  it('CA4 · sem perfil mostra o aviso e nenhuma tela de caso', async () => {
+  it('em /clientes/novo abre o cadastro de novo cliente', async () => {
+    render(<App caminho="/clientes/novo" />)
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Novo cliente')
+  })
+
+  it('em /clientes/:id abre a ficha daquele cliente; id que não existe avisa', async () => {
+    zerarExemplo()
+    render(<App caminho="/clientes/antonio-exemplo" />)
+    expect(await screen.findByRole('heading', { level: 2, name: 'Antônio Exemplo' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/clientes/ninguem" />)
+    expect(await screen.findByRole('heading', { name: 'Ficha não encontrada' })).toBeTruthy()
+  })
+
+  it('em /balcao/documento/:tarefa abre a tela de receber documento', async () => {
+    zerarExemplo()
+    render(<App caminho="/balcao/documento/nenhuma" />)
+    expect(await screen.findByRole('heading', { name: 'Tarefa não encontrada' })).toBeTruthy()
+  })
+
+  it('GGVP-123 · em /agenda abre a agenda, com a visão pedida', async () => {
+    zerarExemplo()
+    render(<App caminho="/agenda" busca="?ver=lista" />)
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Agenda')
+    expect((await screen.findByRole('tab', { name: 'Lista' })).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('GGVP-123 · em /agenda/marcar/:id abre a marcação; com ?remarcar=, a remarcação', async () => {
+    zerarExemplo()
+    render(<App caminho="/agenda/marcar/natalia-exemplo" busca="?remarcar=natalia-entrevista" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Remarcar a entrevista com Natália Exemplo' })).toBeTruthy()
+  })
+
+  it('GGVP-21 · em /agenda/confirmar/:id abre a confirmação do agendamento', async () => {
+    zerarExemplo()
+    render(<App caminho="/agenda/confirmar/josefa-entrevista" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Confirmar agendamento' })).toBeTruthy()
+  })
+
+  it('GGVP-24 · em /clientes/:id/ficha-de-atendimento abre a ficha; com ?modo=tablet, uma pergunta por vez', async () => {
+    zerarExemplo()
+    render(<App caminho="/clientes/josefa-exemplo/ficha-de-atendimento" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Preencher ficha' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/clientes/josefa-exemplo/ficha-de-atendimento" busca="?modo=tablet" />)
+    expect(await screen.findByText('Pergunta 1 de 11')).toBeTruthy()
+  })
+
+  it('GGVP-32 · em /advogada abre a Central da Advogada e em /entrevista/:id/preparar, a preparação', async () => {
+    zerarExemplo()
+    render(<App caminho="/advogada" />)
+    expect((await screen.findByRole('heading', { name: 'Início da Advogada' }))).toBeTruthy()
+    cleanup()
+    render(<App caminho="/entrevista/josefa-entrevista/preparar" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Preparar entrevista' })).toBeTruthy()
+  })
+
+  it('GGVP-28 e GGVP-36 · as telas de analisar a ficha, da segunda ficha e de renovar a senha', async () => {
+    zerarExemplo()
+    render(<App caminho="/entrevista/josefa-entrevista/analisar" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Analisar ficha' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/clientes/josefa-exemplo/segunda-ficha" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Preencher segunda ficha' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/entrevista/josefa-entrevista/renovar-senha" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Renovar senha do gov.br' })).toBeTruthy()
+  })
+
+  it('GGVP-40 · a tela do passo da entrevista e a da gravação', async () => {
+    zerarExemplo()
+    render(<App caminho="/entrevista/josefa-entrevista" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Fazer entrevista' })).toBeTruthy()
+    cleanup()
+    render(<App caminho="/entrevista/josefa-entrevista/gravacao" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Entrevista com Josefa Exemplo' })).toBeTruthy()
+  })
+
+  it('GGVP-43 · a tela de cadastrar o lead', async () => {
+    zerarExemplo()
+    render(<App caminho="/clientes/josefa-exemplo/cadastro" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Cadastrar lead' })).toBeTruthy()
+  })
+
+  it('GGVP-51 · a tela de definir o benefício', async () => {
+    zerarExemplo()
+    render(<App caminho="/entrevista/josefa-entrevista/beneficio" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Definir benefício' })).toBeTruthy()
+  })
+
+  it('GGVP-57 · a tela de calcular tempo e pontos', async () => {
+    zerarExemplo()
+    render(<App caminho="/entrevista/josefa-entrevista/calculo" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Calcular tempo e pontos' })).toBeTruthy()
+  })
+
+  it('em rota sem tela avisa que não foi construída e mostra o caminho', async () => {
+    render(<App caminho="/relatorios" />)
+    expect((await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' }))).toBeTruthy()
+    expect((await screen.findByText('/relatorios'))).toBeTruthy()
+    expect((await screen.findByRole('link', { name: 'Voltar ao início' })).getAttribute('href')).toBe('/')
+  })
+
+  it('GGVP-117 CA4 · sem perfil mostra o aviso e nenhuma tela de caso', async () => {
     servidorResponde(200, { ...usuario, perfis: [], perfilAtivo: null })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Sem perfil, fale com a gestão.' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()
   })
 
-  it('CA1 · senha provisória: abre a troca de senha antes de qualquer tela', async () => {
+  it('GGVP-117 CA1 · senha provisória: abre a troca de senha antes de qualquer tela', async () => {
     servidorResponde(200, { ...usuario, trocarSenha: true })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Crie a sua senha' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()
   })
 
-  it('CA3 · sem sessão vai para o login guardando a tela de volta, e não mostra nada', async () => {
+  it('GGVP-117 CA3 · sem sessão vai para o login guardando a tela de volta, e não mostra nada', async () => {
     servidorResponde(401, { erro: 'Sua sessão expirou. Entre de novo.' })
     const assign = vi.fn()
     vi.stubGlobal('location', { ...window.location, pathname: '/clientes/novo', search: '?aba=2', assign })
@@ -63,6 +164,13 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Central · Sênior' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
     expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
+  })
+
+  it('GGVP-78 · a Advogada cai na Central dela, pelo perfil da sessão', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
   })
 
   it('GGVP-96 · a Documentação trabalha na Central do Atendimento', async () => {
