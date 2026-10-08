@@ -1,0 +1,158 @@
+/* Telas de passo (GGVP-8): coluna única, blocos em cartão, sobre a base de tokens do Pedro. */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.voltar {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.titulo {
+  font-size: var(--fonte-22);
+  font-weight: 600;
+}
+
+.subtitulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.cartaoTitulo {
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+.selo {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.seloAlerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-texto);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 20px;
+  font-size: var(--fonte-14);
+}
+
+.rotulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.campo {
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-15);
+}
+
+.campo:focus-visible,
+.botao:focus-visible,
+.botaoSecundario:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.campo[aria-invalid='true'] {
+  border-color: var(--cor-erro);
+}
+
+.escolha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.erro {
+  padding: 10px 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+  font-size: var(--fonte-13);
+}
+
+.erroCampo {
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}
+
+.sucesso {
+  padding: 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-ok-suave);
+  font-size: var(--fonte-14);
+}
+
+.dica {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-12);
+}
+
+.acoes {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.botao {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.botaoSecundario {
+  padding: 9px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.senha {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fonte-16);
+  letter-spacing: 0.04em;
+}
