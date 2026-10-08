@@ -4,7 +4,7 @@
 // servidor: trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-12).
 import { hojeIso, hora } from '../regras/datas.ts'
 import { COMO, diaFalado, horaFalada, mensagemDoConvite } from '../regras/agenda.ts'
-import { MODELOS_DE_MENSAGEM, ordenarConversas, problemasDaMensagem, type IdDoModelo } from '../regras/mensagens.ts'
+import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, ordenarConversas, problemasDaMensagem, type IdDoModelo } from '../regras/mensagens.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { buscarContatos, conversasDoContato, enviarNaConversa, type ContatoChatwoot, type ConversaChatwoot } from './chatwoot.ts'
 import { obterCobranca } from './cobranca.ts'
@@ -108,6 +108,8 @@ async function textoDoModelo(banco: Banco, fichaId: string, modelo: IdDoModelo, 
       const aprovado = processo && avisosDo(banco).find((a) => a.processoId === processo.id && a.tipo === 'desfavoravel')
       return aprovado ? pronto(aprovado.texto, false) : travado('Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.')
     }
+    case 'aviso-de-mudanca':
+      return pronto(`Olá, ${primeiro}. Os dados para você receber os valores do seu caso mudaram hoje, a seu pedido. Se não foi você, ligue para o escritório agora.`)
     case 'pericia-orientacao':
     case 'pericia-presenca': {
       const pericia = processo && periciaDoProcesso(processo.id)
@@ -141,7 +143,8 @@ export async function prepararMensagem(fichaId: string, modelo: IdDoModelo, proc
   const pronta = await textoDoModelo(banco, fichaId, modelo, processoId)
   const ficha = banco.fichas.find((f) => f.id === fichaId)!
   gravar(banco)
-  return { modelo, ...pronta, ...(await noChatwoot(ficha.telefone, ficha.nome)) }
+  // Todo modelo diz que o escritório nunca pede a senha do gov.br por mensagem (GGVP-111, CA4).
+  return { modelo, ...pronta, texto: comAvisoDaSenha(pronta.texto), ...(await noChatwoot(ficha.telefone, ficha.nome)) }
 }
 
 /** `noCard: false`: a tela de origem (convite, cobrança...) já põe o contato no card; aqui fica só o registro do envio. */

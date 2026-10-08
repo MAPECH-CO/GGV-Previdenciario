@@ -11,6 +11,8 @@ import { agora } from '../dados/servidor.ts'
 import type { Gravacao, SenhaGov } from '../dados/tipos.ts'
 import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, ONDE, papelDoPerfil, valorLido, type CanalDoRegistro, type Mudanca } from '../regras/conversa.ts'
 import { hojeIso, hora } from '../regras/datas.ts'
+import { LEMBRETE_DA_IDENTIDADE, retornoPeloContato } from '../regras/seguranca.ts'
+import { formatarTelefone } from '../campos.ts'
 import { minutos, relogio, tirarSenhas } from '../regras/entrevista.ts'
 import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
 import base from './Balcao.module.css'
@@ -213,6 +215,17 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
             Quando usar: lead que ainda não foi aceito ou cliente com o caso em análise; dúvida sobre o processo ou informação nova que
             muda a ficha (D5 no Miro).
           </p>
+
+          {(c.canal === 'ligacao' || c.comQuem !== 'cliente') && (
+            <section className={base.cartao} aria-labelledby="roteiro-de-seguranca">
+              <h2 id="roteiro-de-seguranca" className={base.cartaoTitulo}>
+                Roteiro de segurança · quem está falando?
+              </h2>
+              <p className={proprio.texto}>{LEMBRETE_DA_IDENTIDADE}</p>
+              <p className={base.aviso}>{retornoPeloContato(ficha.telefone ? formatarTelefone(ficha.telefone) : 'o contato cadastrado')}</p>
+              <p className={base.nota}>Telefone, e-mail e dados bancários só mudam com o cliente verificado, por chamada de vídeo ou no escritório, em contrato novo.</p>
+            </section>
+          )}
 
           {recarregou && g?.estado === 'pausada' && <p className={vivo.alerta}>A página recarregou: a gravação ficou pausada em {relogio(segundos)}. Retome quando quiser.</p>}
           {erro && (

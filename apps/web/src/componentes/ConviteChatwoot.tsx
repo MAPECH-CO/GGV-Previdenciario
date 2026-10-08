@@ -6,7 +6,7 @@ import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confi
 import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import { clienteNoChatwoot, enviarMensagem, type MensagemPronta } from '../dados/mensagens.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import type { IdDoModelo } from '../regras/mensagens.ts'
+import { comAvisoDaSenha, type IdDoModelo } from '../regras/mensagens.ts'
 import { ConversaNoChatwoot } from './ConversaNoChatwoot.tsx'
 import styles from './ConviteChatwoot.module.css'
 
@@ -82,7 +82,8 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
     conversaDe.carregar(agendamentoId).then(async (c) => {
       if (!valendo) return
       setConversa(c)
-      setMensagem(c.mensagem)
+      // Todo modelo diz que o escritório nunca pede a senha do gov.br por mensagem (GGVP-111, CA4).
+      setMensagem(comAvisoDaSenha(c.mensagem))
       const noChatwoot = await clienteNoChatwoot(c.fichaId)
       if (!valendo) return
       setCliente(noChatwoot)

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { abrirConversa, finalizarConversa, gravarConversa, transcreverConversa } from '../dados/conversa.ts'
 import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
 import { Conversa } from './Conversa.tsx'
 
 /** A senha que a cliente fala em voz alta na conversa de exemplo: não pode aparecer na tela (G9). */
@@ -159,5 +160,20 @@ describe('Transcrever e identificar o que mudou · tela (GGVP-80)', () => {
     const quadro = await screen.findByRole('region', { name: 'O que a IA encontrou na conversa' })
     expect(within(quadro).getByText(/Processo · fato novo: Três dias no hospital no fim de setembro/)).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Falas' })).getAllByRole('listitem').length).toBeGreaterThan(5)
+  })
+})
+
+describe('Roteiro de segurança na conversa (GGVP-111)', () => {
+  it('CA3 e CA7 · na ligação, antes de passar dado do caso, confirmar a identidade ou retornar pelo contato cadastrado', async () => {
+    render(<Conversa conversaId="conversa-pedro-ligacao" passo={PASSO} />)
+    await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })
+    const roteiro = within(screen.getByRole('region', { name: 'Roteiro de segurança · quem está falando?' }))
+    expect(roteiro.getByText(LEMBRETE_DA_IDENTIDADE)).toBeTruthy()
+    expect(roteiro.getByText(/^Sem a verificação, não passe dado do caso\. Diga só: "Vou retornar pelo contato cadastrado", e ligue para \(11\) 90000-0008\.$/)).toBeTruthy()
+  })
+
+  it('CA8 · presencial com o próprio cliente, no escritório: sem o roteiro', async () => {
+    await abrirPresencial()
+    expect(screen.queryByRole('region', { name: 'Roteiro de segurança · quem está falando?' })).toBeNull()
   })
 })

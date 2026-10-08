@@ -109,6 +109,9 @@ test('GGVP-84 · quem conversou confere campo por campo; a ficha muda; Ctrl+Z vo
   await linha('data da perícia').getByRole('button', { name: 'Confirmar' }).click()
   await linha('documento citado').getByRole('button', { name: 'Desfazer' }).click()
   await page.getByRole('radio', { name: 'Não — confirmar e voltar ao D1' }).click()
+  // GGVP-111: na ligação, o telefone só muda com o cliente verificado e em contrato novo.
+  await page.getByRole('radio', { name: 'Chamada de vídeo com o cliente' }).click()
+  await page.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }).check()
   await page.getByRole('group', { name: 'Concluir a conferência' }).getByRole('button', { name: 'Confirmar' }).click()
   await expect(page.getByText('O caso segue de onde parou: Administrativo · perícia em 02/10 · cobrar o laudo que a perícia pede.')).toBeVisible()
 

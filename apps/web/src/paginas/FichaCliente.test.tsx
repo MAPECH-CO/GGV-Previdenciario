@@ -208,3 +208,21 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(campo('Telefone / WhatsApp *').value).toBe('')
   })
 })
+
+describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-111)', () => {
+  it('CA1 · mudar o telefone pede como confirmou que é o cliente e o contrato novo; o antigo e o novo ficam no histórico', async () => {
+    await abrir('antonio-exemplo')
+    const antes = campo('Telefone / WhatsApp *').value
+    digitar('Telefone / WhatsApp *', '(11) 90000-0044')
+    const verificacao = within(screen.getByRole('group', { name: 'Mudou o telefone: como você confirmou que é o cliente?' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Telefone, e-mail e dados bancários só mudam com o cliente verificado por chamada de vídeo ou no escritório.')).toBeTruthy()
+    expect((await obterFicha('antonio-exemplo'))!.telefone).toBe(telefoneDeExemplo(1))
+    fireEvent.click(verificacao.getByRole('radio', { name: 'Cliente no escritório' }))
+    fireEvent.click(verificacao.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Alterações salvas. Ficaram no histórico.')).toBeTruthy()
+    expect(historico().getByText(`Mudou o telefone (cliente no escritório; em contrato novo): «${antes}» → «(11) 90000-0044»`)).toBeTruthy()
+    expect(screen.queryByRole('group', { name: /como você confirmou que é o cliente/ })).toBeNull()
+  })
+})

@@ -33,6 +33,7 @@ import {
 } from '../regras/conversa.ts'
 import { ehAudio, minutos, partesDoAudio, tirarSenhas } from '../regras/entrevista.ts'
 import { registrarNoCofre } from './cofre.ts'
+import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type Verificacao } from '../regras/seguranca.ts'
 import { BYTES_POR_SEGUNDO, montarTranscricao } from './entrevista.ts'
 import { PERFIS, type IdPerfil } from './perfis.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
@@ -446,7 +447,12 @@ export type Pendencia = {
 }
 
 /** O que a tela manda ao conferir: a decisão de cada mudança e, na conferência de quem conversou, a pendência. */
-export type Conferencia = { decisoes: DecisaoDaMudanca[]; pendencia?: NovaPendencia }
+export type Conferencia = {
+  decisoes: DecisaoDaMudanca[]
+  pendencia?: NovaPendencia
+  /** Como quem conversou confirmou que é o cliente, para mudar telefone ou e-mail (GGVP-111, CA1). */
+  verificacao?: Partial<Verificacao>
+}
 
 type Alvo = Pick<VersaoDoCampo, 'fichaId' | 'processoId' | 'onde' | 'campo'>
 
@@ -499,7 +505,19 @@ export async function conferirConversa(conversaId: string, conferencia: Conferen
   const motivo = motivoParaNaoConferir(mudancas, conferencia.decisoes, papelDoPerfil(por.perfil), decididas)
   if (motivo) throw new Error(motivo)
   if (!primeira && conferencia.decisoes.length === 0) throw new Error('Não há nada para conferir.')
+  // Telefone e e-mail só mudam com o cliente verificado e em contrato novo (GGVP-111, CA1, CA8): na conversa presencial com
+  // o próprio cliente, ele está no escritório; na ligação, ou com outra pessoa, a pessoa marca como verificou.
+  const verificacao = verificacaoDaConversa(c) ?? conferencia.verificacao ?? null
+  const protegidas = conferencia.decisoes.filter((d) => d.decisao !== 'desfeita' && ehProtegido(mudancas.find((x) => x.id === d.id)!.campo))
+  for (const d of protegidas) {
+    const motivoDoContato = motivoParaNaoMudar(mudancas.find((x) => x.id === d.id)!.campo, verificacao)
+    if (motivoDoContato) throw new Error(motivoDoContato)
+  }
   const quando = agora().toISOString()
+  if (protegidas.length > 0) {
+    const quais = protegidas.map((d) => CAMPOS_DA_CONVERSA[mudancas.find((x) => x.id === d.id)!.campo]).join(' e ')
+    ficha.historico.push(evento(`Mudança de ${quais} com o cliente verificado (${COMO_VERIFICOU[verificacao!.como!].toLowerCase()}; em contrato novo)`, por.quem))
+  }
   for (const d of conferencia.decisoes) {
     const m = mudancas.find((x) => x.id === d.id)!
     if (d.decisao !== 'desfeita') aplicar(banco, c, ficha, m, d.decisao === 'corrigida' ? valorGuardado(m.campo, d.valor!) : m.depois, por.quem)

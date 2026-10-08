@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { enviarArquivos, identificarCliente } from '../dados/documentos.ts'
+import { obterFicha } from '../dados/servidor.ts'
+import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
 import type { ArquivoParaEnviar } from '../dados/tipos.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
 import { CartaoConfirmacao, type EstadoAcao } from './CartaoConfirmacao.tsx'
@@ -43,6 +45,32 @@ export function LaudoPeloChat({ exemplo, sugestoes }: { exemplo: string; sugesto
     )
   }
 
+  /** "O cliente me ligou, qual é a próxima tarefa?": a tarefa e o lembrete de confirmar a identidade (GGVP-111, CA7). */
+  function aoEnviar(texto: string) {
+    // O resto do chat é da GGVP-82: sem tratar, o chat avisa e mantém o texto.
+    if (!/ligou|liga[cç][aã]o/i.test(texto)) return false
+    setMensagens((m) => [...m, { id: ++proximoId, de: 'voce', texto }])
+    void proximaTarefa(texto)
+  }
+
+  async function proximaTarefa(texto: string) {
+    const achados = await identificarCliente(texto)
+    if (achados.length !== 1) {
+      return responder(
+        achados.length === 0
+          ? 'Não identifiquei o cliente. Escreva o nome completo de quem ligou.'
+          : `O nome bate com mais de um cliente (${achados.map((a) => a.nome).join(', ')}). Escreva o nome completo.`,
+      )
+    }
+    const ficha = (await obterFicha(achados[0].id))!
+    const primeiro = ficha.nome.split(' ')[0]
+    const caso = ficha.processos[0]
+    const proxima = caso?.proximaAcao
+      ? `A próxima tarefa de ${primeiro} (${caso.etapa}) é ${caso.proximaAcao}${caso.prazo ? `, ${caso.prazo}` : ''}.`
+      : `${primeiro} não tem caso em andamento: veja a ficha.`
+    responder(`${proxima} ${LEMBRETE_DA_IDENTIDADE}`)
+  }
+
   async function confirmar(mensagem: Mensagem) {
     const { cliente, arquivo } = mensagem.acao!
     const resposta = await enviarArquivos(cliente.id, { origem: 'chat', arquivos: [arquivo] })
@@ -50,7 +78,7 @@ export function LaudoPeloChat({ exemplo, sugestoes }: { exemplo: string; sugesto
   }
 
   return (
-    <ChatIA exemplo={exemplo} sugestoes={sugestoes} onAnexo={aoAnexo}>
+    <ChatIA exemplo={exemplo} sugestoes={sugestoes} onAnexo={aoAnexo} onEnviar={aoEnviar}>
       {mensagens.length > 0 && (
         <ol className={styles.conversa} aria-label="Conversa">
           {mensagens.map((m) => (

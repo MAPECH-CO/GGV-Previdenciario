@@ -5,6 +5,7 @@ import { usePerfil } from '../dados/perfis.ts'
 import type { Ficha } from '../dados/tipos.ts'
 import { hora } from '../regras/datas.ts'
 import { MODELOS_DE_MENSAGEM, problemasDaMensagem, type IdDoModelo } from '../regras/mensagens.ts'
+import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
 import { ConversaNoChatwoot } from './ConversaNoChatwoot.tsx'
 import base from './ConviteChatwoot.module.css'
 import styles from './MensagemAoCliente.module.css'
@@ -145,6 +146,7 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
           <p className={styles.ia}>
             <span aria-hidden="true">✦ </span>A IA preencheu com os dados do cliente e do caso, em frases curtas e sem termos jurídicos. Você confere e decide.
           </p>
+          {modelo.startsWith('pericia') && <p className={styles.avisos}>Na ligação da perícia, a mesma verificação: {LEMBRETE_DA_IDENTIDADE}</p>}
           {avisa.length > 0 && (
             <ul className={styles.avisos} aria-label="A IA aponta">
               {avisa.map((a) => (

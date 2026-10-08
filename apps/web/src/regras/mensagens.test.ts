@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MODELOS_DE_MENSAGEM, ordenarConversas, problemasDaMensagem } from './mensagens.ts'
+import { comAvisoDaSenha, MODELOS_DE_MENSAGEM, NUNCA_PEDIMOS_A_SENHA, ordenarConversas, problemasDaMensagem } from './mensagens.ts'
 
 describe('Mensagens ao cliente (GGVP-102)', () => {
   it('CA1, CA7, CA8 e CA9 · o catálogo único dos modelos, com as travas do resultado e a perícia do Jurídico administrativo', () => {
@@ -14,6 +14,7 @@ describe('Mensagens ao cliente (GGVP-102)', () => {
       'Aviso de resultado desfavorável',
       'Perícia: data, o que levar e orientação',
       'Perícia: confirmar a presença',
+      'Aviso de mudança dos dados',
     ])
     expect(MODELOS_DE_MENSAGEM['resultado-favoravel'].trava).toBe('ok-da-advogada')
     expect(MODELOS_DE_MENSAGEM['resultado-desfavoravel'].trava).toBe('texto-aprovado')
@@ -54,5 +55,13 @@ describe('Mensagens ao cliente (GGVP-102)', () => {
       { id: 2, mensagens: 12 },
     ]
     expect(ordenarConversas(conversas).map((c) => c.id)).toEqual([1, 2, 3])
+  })
+})
+
+describe('A frase da senha (GGVP-111)', () => {
+  it('CA4 · toda mensagem termina dizendo que o escritório nunca pede a senha do gov.br, uma vez só', () => {
+    expect(comAvisoDaSenha('Olá, Maria! ')).toBe(`Olá, Maria! ${NUNCA_PEDIMOS_A_SENHA}`)
+    expect(comAvisoDaSenha(comAvisoDaSenha('Olá, Maria!'))).toBe(`Olá, Maria! ${NUNCA_PEDIMOS_A_SENHA}`)
+    expect(comAvisoDaSenha('')).toBe('')
   })
 })

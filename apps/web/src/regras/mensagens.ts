@@ -12,6 +12,7 @@ export type IdDoModelo =
   | 'resultado-desfavoravel'
   | 'pericia-orientacao'
   | 'pericia-presenca'
+  | 'aviso-de-mudanca'
 
 /**
  * O catálogo único dos modelos (CA1): quem costuma mandar e a trava de cada um. O resultado favorável só depois do OK da
@@ -29,6 +30,16 @@ export const MODELOS_DE_MENSAGEM: Record<IdDoModelo, { nome: string; quem: 'Aten
   'resultado-desfavoravel': { nome: 'Aviso de resultado desfavorável', quem: 'Atendimento', trava: 'texto-aprovado' },
   'pericia-orientacao': { nome: 'Perícia: data, o que levar e orientação', quem: 'Jurídico administrativo' },
   'pericia-presenca': { nome: 'Perícia: confirmar a presença', quem: 'Jurídico administrativo' },
+  // GGVP-111, CA5: o aviso ao contato anterior quando os dados bancários mudam.
+  'aviso-de-mudanca': { nome: 'Aviso de mudança dos dados', quem: 'Atendimento' },
+}
+
+/** Todo modelo termina dizendo que o escritório nunca pede a senha do gov.br por mensagem (GGVP-111, CA4). */
+export const NUNCA_PEDIMOS_A_SENHA = 'O escritório nunca pede a sua senha do gov.br por mensagem.'
+
+/** O texto com a frase da senha no fim, uma vez só. */
+export function comAvisoDaSenha(texto: string): string {
+  return !texto.trim() || texto.includes(NUNCA_PEDIMOS_A_SENHA) ? texto : `${texto.trim()} ${NUNCA_PEDIMOS_A_SENHA}`
 }
 
 /** O termo jurídico e a palavra simples para o cliente (CA3): a operação relatou dificuldade com leitura. */

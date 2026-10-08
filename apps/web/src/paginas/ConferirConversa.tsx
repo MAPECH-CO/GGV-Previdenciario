@@ -32,6 +32,7 @@ import {
   type Mudanca,
 } from '../regras/conversa.ts'
 import { dataCurta, dataHora, hojeIso, hora } from '../regras/datas.ts'
+import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type ComoVerificou } from '../regras/seguranca.ts'
 import { relogio } from '../regras/entrevista.ts'
 import { soNumeroEMascara } from '../regras/formularios.ts'
 import base from './Balcao.module.css'
@@ -56,6 +57,8 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   const [escolhido, setEscolhido] = useState<string | undefined>()
   const [trocando, setTrocando] = useState(false)
   const [novoPrazo, setNovoPrazo] = useState('')
+  // Como quem conversou confirmou que é o cliente, para mudar telefone ou e-mail (GGVP-111).
+  const [verificacao, setVerificacao] = useState<{ como?: ComoVerificou; contratoNovo?: true }>({})
   const [transcricoes, setTranscricoes] = useState(false)
   const [historico, setHistorico] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -104,9 +107,15 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   const auto = responsavelDaPendencia(texto, pessoas)
   const responsavel = escolhido ?? (auto.tipo === 'pessoa' && !trocando ? auto.pessoa.nome : undefined)
   const opcoes = trocando ? pessoas : auto.tipo === 'pessoa' ? [] : auto.opcoes
+  // Telefone e e-mail só mudam com o cliente verificado (GGVP-111, CA1, CA8); presencial com o próprio cliente já vale.
+  const automatica = verificacaoDaConversa(c)
+  const pedeVerificacao = !automatica && abertas.some((m) => ehProtegido(m.campo))
+  const contatoMudando = lista.filter((d) => d.decisao !== 'desfeita').map((d) => mudancas.find((m) => m.id === d.id)!.campo).find(ehProtegido)
+  const motivoDoContato = contatoMudando && !automatica ? motivoParaNaoMudar(contatoMudando, verificacao) : null
   const motivoParado = !pronta
     ? 'A transcrição ainda não ficou pronta.'
     : (motivoParaNaoConferir(mudancas, lista, papel, [...jaDecididas.keys()]) ??
+      motivoDoContato ??
       (primeira && pendencia === null
         ? 'Responda "Surgiu pendência?".'
         : primeira && pendencia === 'sim'
@@ -131,7 +140,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
     setErro('')
     try {
       const nova = pendencia === 'sim' ? { surgiu: true as const, texto, responsavel: responsavel!, prazo } : { surgiu: false as const }
-      setDados(await conferirConversa(c.id, { decisoes: lista, ...(primeira && { pendencia: nova }) }, { quem: perfil.usuario, perfil: perfil.id }))
+      setDados(await conferirConversa(c.id, { decisoes: lista, verificacao, ...(primeira && { pendencia: nova }) }, { quem: perfil.usuario, perfil: perfil.id }))
       setDecisoes({})
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para conferir.')
@@ -271,6 +280,33 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
             </div>
             <p className={base.nota}>A IA só muda o que foi dito na conversa; o valor antigo fica no histórico e a Sênior pode voltar a versão (G14).</p>
           </section>
+
+          {pedeVerificacao && podeAgir && (
+            <section className={base.cartao} aria-labelledby="verificacao-do-cliente">
+              <h2 id="verificacao-do-cliente" className={base.cartaoTitulo}>
+                Telefone e e-mail: como você confirmou que é o cliente?
+              </h2>
+              <p className={base.motivo}>
+                {c.comQuem === 'cliente' ? 'Foi uma ligação' : 'Quem falou não foi o cliente'}: telefone e e-mail só mudam com o cliente verificado, por chamada de
+                vídeo ou no escritório, e a alteração vai em contrato novo. Sem isso, desfaça a mudança.
+              </p>
+              <div className={base.ladoOpcoes} role="radiogroup" aria-labelledby="verificacao-do-cliente">
+                {(Object.keys(COMO_VERIFICOU) as ComoVerificou[]).map((como) => (
+                  <button key={como} type="button" role="radio" className={base.chip} aria-checked={verificacao.como === como} onClick={() => setVerificacao((v) => ({ ...v, como }))}>
+                    {COMO_VERIFICOU[como]}
+                  </button>
+                ))}
+              </div>
+              <label className={vivo.conferencia}>
+                <input
+                  type="checkbox"
+                  checked={verificacao.contratoNovo === true}
+                  onChange={(e) => setVerificacao((v) => ({ ...v, contratoNovo: e.target.checked ? true : undefined }))}
+                />
+                A alteração vai em contrato novo
+              </label>
+            </section>
+          )}
 
           {primeira ? (
             <>

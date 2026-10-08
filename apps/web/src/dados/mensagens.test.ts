@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { linkDaConversa } from './chatwoot.ts'
+import { NUNCA_PEDIMOS_A_SENHA } from '../regras/mensagens.ts'
 import { enviarMensagem, mensagensDoCliente, prepararMensagem } from './mensagens.ts'
 import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from './servidor.ts'
 
@@ -14,15 +15,15 @@ describe('Mensagens ao cliente · servidor de exemplo (GGVP-102)', () => {
   it('CA1 e CA3 · os modelos vêm preenchidos com os dados do cliente e do caso, em frases curtas', async () => {
     expect((await prepararMensagem('josefa-exemplo', 'convite')).texto).toMatch(/^Olá, Josefa! Sua conversa com o escritório GGV está marcada para quarta, 07\/10, às 15h30, aqui no escritório\./)
     expect((await prepararMensagem('josefa-exemplo', 'lembrete')).texto).toBe(
-      'Olá, Josefa! Lembrete: sua conversa com o escritório GGV é quarta, 07/10, às 15h30, aqui no escritório. Traga RG, CPF e os laudos.',
+      'Olá, Josefa! Lembrete: sua conversa com o escritório GGV é quarta, 07/10, às 15h30, aqui no escritório. Traga RG, CPF e os laudos. O escritório nunca pede a sua senha do gov.br por mensagem.',
     )
     expect((await prepararMensagem('maria-exemplo', 'boas-vindas')).texto).toBe(
-      'Olá, Maria! Boas-vindas ao escritório GGV. Seu caso de Auxílio por Incapacidade Temporária começou. Qualquer dúvida, fale com a gente por aqui.',
+      'Olá, Maria! Boas-vindas ao escritório GGV. Seu caso de Auxílio por Incapacidade Temporária começou. Qualquer dúvida, fale com a gente por aqui. O escritório nunca pede a sua senha do gov.br por mensagem.',
     )
     const pericia = await prepararMensagem('maria-exemplo', 'pericia-orientacao')
     expect(pericia).toMatchObject({ editavel: true, trava: null })
     expect(pericia.texto).toBe(
-      'Olá, Maria! Sua perícia no INSS é sexta, 02/10. Chegue 30 minutos antes. Leve RG, os laudos originais, exames e receitas, em ordem de data. Conte ao perito, com a verdade, o que você sente no dia a dia.',
+      'Olá, Maria! Sua perícia no INSS é sexta, 02/10. Chegue 30 minutos antes. Leve RG, os laudos originais, exames e receitas, em ordem de data. Conte ao perito, com a verdade, o que você sente no dia a dia. O escritório nunca pede a sua senha do gov.br por mensagem.',
     )
     expect((await prepararMensagem('maria-exemplo', 'cobranca')).texto).toContain('Olá, Maria!')
     expect((await prepararMensagem('antonio-exemplo', 'convite')).trava).toBe('Sem entrevista marcada: marque na agenda.')
@@ -46,7 +47,7 @@ describe('Mensagens ao cliente · servidor de exemplo (GGVP-102)', () => {
     const banco = ler()
     banco.avisosAprovados = [{ processoId: 'maria-exemplo-1', tipo: 'desfavoravel', texto: 'Olá, Maria. O INSS negou o pedido. Vamos te ligar para explicar o que dá para fazer.', quem: 'Dra. Paula (exemplo)', quando: '2026-10-07T10:00:00.000Z' }]
     gravar(banco)
-    expect(await prepararMensagem('maria-exemplo', 'resultado-desfavoravel')).toMatchObject({ editavel: false, trava: null, texto: 'Olá, Maria. O INSS negou o pedido. Vamos te ligar para explicar o que dá para fazer.' })
+    expect(await prepararMensagem('maria-exemplo', 'resultado-desfavoravel')).toMatchObject({ editavel: false, trava: null, texto: 'Olá, Maria. O INSS negou o pedido. Vamos te ligar para explicar o que dá para fazer. ' + NUNCA_PEDIMOS_A_SENHA })
   })
 
   it('CA6 · o contato e as conversas do cliente no Chatwoot, a de mais mensagens primeiro; o número dividido acha o contato certo', async () => {

@@ -12,6 +12,7 @@ import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
 import { RegistrarConversa } from '../componentes/RegistrarConversa.tsx'
 import { HistoricoDeVersoes } from '../componentes/HistoricoDeVersoes.tsx'
 import { MensagemAoCliente } from '../componentes/MensagemAoCliente.tsx'
+import { CartaoDadosBancarios } from '../componentes/CartaoDadosBancarios.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
@@ -147,6 +148,7 @@ export function FichaCliente({ id }: { id: string }) {
             </p>
           </Cartao>
           <CartaoFichaAtendimento ficha={ficha} hoje={hoje} />
+          <CartaoDadosBancarios fichaId={ficha.id} aoMudar={async () => setFicha(await obterFicha(id))} />
           <Reunioes agendamentos={ficha.agendamentos} hoje={hoje} />
         </div>
       </main>

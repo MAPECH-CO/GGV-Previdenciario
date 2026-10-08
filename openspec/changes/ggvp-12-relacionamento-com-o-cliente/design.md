@@ -393,6 +393,7 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
 2. **Dado protegido** (CA1, CA8): telefone, e-mail e dados bancários. Na conversa presencial com o próprio cliente, ele está
    no escritório: vale a verificação. Na ligação, ou com familiar, contato de apoio, médico ou clínica, a mudança só entra
    com a verificação marcada na conferência. Na ficha, mudar telefone ou e-mail pede a verificação. O servidor recusa sem.
+   Completar o telefone ou o e-mail que estava em branco (a ficha que o scanner criou) não é mudança: não pede a verificação.
 3. **Dados bancários** (CA2, CA5): a mudança nasce como pedido, com a verificação; outra pessoa (Atendimento líder, advogada
    ou Sênior) confirma; a confirmação avisa o contato anterior pelo Chatwoot e, com o caso perto da prestação de contas
    (sentença procedente, RPV ou benefício deferido), alerta a advogada e o Financeiro. A Central do Financeiro não existe
