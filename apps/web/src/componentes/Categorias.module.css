@@ -1,0 +1,41 @@
+/* A cor de cada categoria da agenda (Figma 1941:2), pelos tokens: --cat é a cor forte, --cat-suave o fundo. */
+.visitas {
+  --cat: var(--cor-advogada);
+  --cat-suave: var(--cor-advogada-suave);
+}
+
+.pericias {
+  --cat: var(--cor-senior);
+  --cat-suave: var(--cor-senior-suave);
+}
+
+.audiencias {
+  --cat: var(--cor-erro);
+  --cat-suave: var(--cor-erro-suave);
+}
+
+.protocolos {
+  --cat: var(--cor-ok);
+  --cat-suave: var(--cor-ok-suave);
+}
+
+.prazos {
+  --cat: var(--cor-acento);
+  --cat-suave: var(--cor-acento-suave);
+}
+
+.bancos {
+  --cat: var(--cor-beneficio);
+  --cat-suave: var(--cor-beneficio-suave);
+}
+
+.retornos {
+  --cat: var(--cor-texto-suave);
+  --cat-suave: var(--cor-painel-neutro);
+}
+
+/* Passou sem registro: cinza até alguém confirmar (CA8). */
+.confirmar {
+  --cat: var(--cor-texto-suave-2);
+  --cat-suave: var(--cor-painel-neutro);
+}

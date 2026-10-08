@@ -1,0 +1,141 @@
+/* Figma 2164:280: janela de 580. */
+.janela {
+  width: min(580px, calc(100vw - 32px));
+  margin: 48px auto auto;
+  padding: 20px 22px 18px;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.textos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 400;
+}
+
+.titulo strong {
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.categoria,
+.passo,
+.estado {
+  padding: 2px 8px;
+  border-radius: var(--raio-pilula);
+  font-size: var(--fonte-11);
+}
+
+.categoria {
+  background: var(--cat-suave);
+  color: var(--cat);
+}
+
+.passo {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.estado {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.estado[data-estado='confirmar'] {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.fechar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-22);
+  line-height: 1;
+}
+
+.dados {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 32px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+}
+
+.dados dt {
+  color: var(--cor-texto-suave);
+}
+
+.dados dd {
+  margin: 0;
+}
+
+.dados a {
+  color: var(--cor-acento);
+  font-weight: 600;
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.primario,
+.botao {
+  padding: 9px 14px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.botao {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.alerta {
+  margin-bottom: 10px;
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  margin-top: 10px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}

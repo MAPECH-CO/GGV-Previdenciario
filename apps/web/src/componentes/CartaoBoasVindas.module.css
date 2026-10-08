@@ -1,0 +1,95 @@
+/* "Boas-vindas (D1.22)" do Figma 1818:2: rótulo, valor e o selo à direita. */
+.linhas {
+  display: grid;
+  grid-template-columns: minmax(110px, 230px) 1fr auto;
+  gap: 10px 16px;
+  align-items: center;
+  margin: 0;
+  font-size: var(--fonte-14);
+}
+
+.linhas dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.linhas dd {
+  margin: 0;
+}
+
+.ok,
+.falta {
+  justify-self: end;
+  padding: 2px 9px;
+  border-radius: var(--raio-pilula);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ok {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.falta {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fonte-12);
+}
+
+.campo textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-13);
+}
+
+.conferi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.conferi input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.enviar {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.enviar:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-13);
+}

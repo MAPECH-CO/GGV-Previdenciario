@@ -1,0 +1,77 @@
+/* Figma 73:371: coluna da esquerda e coluna de 420 à direita, com 14 entre elas. */
+.pagina {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 32px;
+}
+
+.esquerda,
+.direita {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.esquerda {
+  flex: 1 1 560px;
+}
+
+.direita {
+  flex: 1 1 320px;
+  max-width: 420px;
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.primario,
+.secundario {
+  padding: 8px 14px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.secundario {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.primario:disabled,
+.secundario:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.progresso {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+@media (max-width: 720px) {
+  .pagina {
+    padding: 16px;
+  }
+
+  .direita {
+    max-width: none;
+  }
+}

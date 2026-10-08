@@ -1,0 +1,67 @@
+/* O resto vem de Balcao.module.css: o visual das telas de passo (Figma step_*). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.advogada {
+  padding: 3px 8px;
+  border-radius: var(--raio-16);
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+}
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+}
+
+.linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.linha dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.linha dd {
+  margin: 0;
+  text-align: right;
+}
+
+.pontos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fonte-14);
+}
+
+.ponto[data-alerta='true'] {
+  color: var(--cor-alerta-2);
+  font-weight: 500;
+}
+
+.contato {
+  font-size: var(--fonte-14);
+}
+
+.contatoQuando {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

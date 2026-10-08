@@ -1,0 +1,84 @@
+/* O componente do cofre: um bloco à parte do formulário da ficha (G9). */
+.cofre {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+}
+
+.titulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.situacao {
+  color: var(--cor-ok);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.situacao[data-ok='false'] {
+  color: var(--cor-alerta-2);
+}
+
+.conferir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--raio-8);
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-12);
+}
+
+.linha {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.entradaEBotao {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entrada {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-6);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+}
+
+.botao {
+  padding: 7px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.botao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}

@@ -1,0 +1,28 @@
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+}
+
+.filtro[aria-pressed='false'] {
+  opacity: 0.5;
+}
+
+.ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--cat);
+}
