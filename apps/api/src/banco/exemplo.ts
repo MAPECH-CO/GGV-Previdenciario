@@ -305,13 +305,13 @@ export async function semearExemplos(banco: Banco) {
   const base = new Date(Date.UTC(2026, 8, 21, 15))
   const lote = new Date(Date.UTC(2026, 9, 2, 15))
   await banco.insert(processoAcervo).values([
-    { numeroCnj: '50001014520234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
-    { numeroCnj: '50001024520234036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
-    { numeroCnj: '50001034520234036301', beneficio: 'aposentadoria_pcd', desfecho: 'acordo', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
-    { numeroCnj: '00045123320194036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', fonte: 'lote', criadoEm: lote },
-    { numeroCnj: '00077819020204036301', beneficio: 'auxilio_incapacidade_temporaria', desfecho: 'procedente_parcial', fonte: 'lote', criadoEm: lote },
-    { numeroCnj: '00011234520184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
-    { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
-    { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '50001013620234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001022120234036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001030620234036301', beneficio: 'aposentadoria_pcd', desfecho: 'acordo', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '00045125220194036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00077816520204036301', beneficio: 'auxilio_incapacidade_temporaria', desfecho: 'procedente_parcial', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00011239320184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00099343720214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00055551920224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
   ])
 }

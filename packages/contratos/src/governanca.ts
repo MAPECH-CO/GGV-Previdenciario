@@ -128,6 +128,8 @@ export type EventoDoHistorico = z.infer<typeof EventoDoHistorico>
 export const HistoricoDoCaso = z.object({
   casoId: z.uuid(),
   cliente: z.string(),
+  /** GGVP-108 CA3: o número do caso na fase, só os dígitos: o CNJ na judicial; o NB ou o protocolo do INSS nas outras. */
+  numero: z.object({ tipo: z.enum(['nb', 'protocolo_inss', 'cnj']), valor: z.string() }).nullable().optional(),
   eventos: z.array(EventoDoHistorico),
   exportacao: z.object({ situacao: z.enum(['pedida', 'autorizada']), pedidaPor: z.string(), motivo: z.string(), pedidaEm: z.string() }).nullable(),
   podePedirExportacao: z.boolean(),

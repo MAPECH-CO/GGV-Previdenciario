@@ -1,10 +1,12 @@
 // Histórico de quem fez o quê (GGVP-99): a linha do processo, a recusa de quem tenta mexer no histórico, a exportação
 // com a autorização da direção e o relatório de prazos. O banco também recusa alterar ou apagar `evento_auditoria`.
+import { formatarCnj, formatarNb } from '@ggv/campos'
 import { HistoricoDoCaso, PedirExportacao, PrazosDoEscritorio, pode, type Erro } from '@ggv/contratos'
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, preHandlerAsyncHookHandler } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, decisao, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, decisao, eventoAuditoria, identificadorCaso, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { numeroDoCaso } from '../fluxo/identificadores.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_HISTORICO_IMUTAVEL = 'O histórico não se altera nem se apaga. Uma correção entra como evento novo.'
@@ -66,6 +68,12 @@ const DECISAO: Record<string, string> = {
   protocolo_inss: 'Protocolo no Meu INSS',
   dispensa_parecer: 'Dispensa do parecer médico (duas Sêniores)',
 }
+/** GGVP-108 CA3: cada número que o caso ganha entra na linha, formatado. */
+const NUMERO: Record<string, (valor: string) => string> = {
+  nb: (v) => `NB do caso: ${formatarNb(v)}`,
+  protocolo_inss: (v) => `Protocolo do INSS do caso: ${v}`,
+  cnj: (v) => `Número CNJ do caso: ${formatarCnj(v)}`,
+}
 const legivel = (nome: string) => nome.replaceAll('_', ' ').replace(/^./, (l) => l.toUpperCase())
 const UUID = /^[0-9a-f-]{36}$/
 const ESTADOS_DA_EXPORTACAO = ['exportacao_pedida', 'exportacao_autorizada', 'historico_exportado'] as const
@@ -109,8 +117,10 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
   // CA3, CA7, CA11: a linha do processo, dos eventos e das decisões, em ordem; sem o detalhe interno nem dado de saúde.
   app.get<{ Params: { id: string } }>('/api/casos/:id/historico', { preHandler: verOuAutorizar }, async (pedido, resposta) => {
     const casoId = pedido.params.id
-    const [c] = await banco.select({ cliente: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
+    const [c] = await banco.select({ cliente: pessoa.nome, fase: caso.fase }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
+    const numeros = await banco.select().from(identificadorCaso).where(eq(identificadorCaso.casoId, casoId))
+    const numero = numeroDoCaso(c.fase, numeros)
     const eventos = await eventosDoCaso(casoId)
     const decisoes = await banco.select().from(decisao).where(eq(decisao.casoId, casoId)).orderBy(asc(decisao.decididoEm))
     const ids = [...new Set([...eventos.map((e) => e.quem), ...decisoes.map((d) => d.decididoPor)].filter((q) => UUID.test(q)))]
@@ -130,11 +140,13 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
         passo: d.passo,
         descricao: `${DECISAO[d.tipo] ?? legivel(d.tipo)}: ${legivel(d.resultado).toLowerCase()}`,
       })),
+      ...numeros.map((n) => ({ quando: n.criadoEm, quem: 'Sistema', origem: 'sistema' as const, passo: null, descricao: NUMERO[n.tipo]?.(n.valor) ?? `${legivel(n.tipo)}: ${n.valor}` })),
     ].sort((a, b) => a.quando.getTime() - b.quando.getTime())
     const exportacao = await exportacaoDo(casoId)
     return HistoricoDoCaso.parse({
       casoId,
       cliente: c.cliente,
+      numero: numero && { tipo: numero.tipo, valor: numero.valor },
       eventos: pode(pedido.perfilAtivo, 'caso.ver') ? linha.map((l) => ({ ...l, quando: l.quando.toISOString() })) : [],
       exportacao: exportacao && {
         situacao: exportacao.situacao,

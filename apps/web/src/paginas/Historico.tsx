@@ -1,9 +1,13 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { PedirExportacao, type HistoricoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { formatarCnj, formatarNb } from '../campos.ts'
 import styles from './Passo.module.css'
 
 const momento = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
+
+/** GGVP-108 CA3: o caso aparece pelo número da fase, que o servidor escolhe. */
+const NUMERO = { cnj: (v: string) => `Processo ${formatarCnj(v)}`, nb: (v: string) => `NB ${formatarNb(v)}`, protocolo_inss: (v: string) => `Protocolo do INSS ${v}` }
 
 /**
  * Histórico do processo (GGVP-99): a linha montada do histórico, em ordem (CA11). A gestão pede a exportação com o
@@ -50,7 +54,12 @@ export function Historico({ casoId }: { casoId: string }) {
         ← Voltar ao início
       </a>
       <h1 className={styles.titulo}>Histórico do processo</h1>
-      {h && <p className={styles.subtitulo}>{h.cliente} · ninguém edita nem apaga o histórico; uma correção entra como evento novo</p>}
+      {h && (
+        <p className={styles.subtitulo}>
+          {h.cliente}
+          {h.numero ? ` · ${NUMERO[h.numero.tipo](h.numero.valor)}` : ''} · ninguém edita nem apaga o histórico; uma correção entra como evento novo
+        </p>
+      )}
       {erro && (
         <p className={styles.erro} role="alert">
           {erro}

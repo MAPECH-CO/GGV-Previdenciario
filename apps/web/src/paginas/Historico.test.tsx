@@ -42,6 +42,16 @@ describe('Histórico do processo (GGVP-99)', () => {
     expect(screen.queryByRole('region', { name: 'Exportação do histórico' })).toBeNull()
   })
 
+  it('GGVP-108 CA3 · o caso aparece pelo número da fase: o processo na Justiça, o protocolo no INSS', async () => {
+    servidor({ ...base, numero: { tipo: 'cnj', valor: '00011239320184036301' } })
+    const { unmount } = render(<Historico casoId={CASO} />)
+    expect((await screen.findByText(/Processo 0001123-93\.2018\.4\.03\.6301/)).textContent).toContain('Vera Lúcia (exemplo) · Processo 0001123-93.2018.4.03.6301 ·')
+    unmount()
+    servidor({ ...base, numero: { tipo: 'protocolo_inss', valor: '123456789' } })
+    render(<Historico casoId={CASO} />)
+    expect(await screen.findByText(/Protocolo do INSS 123456789/)).toBeTruthy()
+  })
+
   it('CA12 · a gestão pede a exportação com o motivo', async () => {
     const fetch = servidor({ ...base, podePedirExportacao: true })
     render(<Historico casoId={CASO} />)

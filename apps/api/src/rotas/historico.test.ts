@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { PERFIS, pode } from '@ggv/contratos'
-import { caso, decisao, eventoAuditoria, parecerMedico, pessoa, prestacaoContas, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, decisao, eventoAuditoria, identificadorCaso, parecerMedico, pessoa, prestacaoContas, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_EXPORTACAO_EM_CURSO, MSG_HISTORICO_IMUTAVEL, TITULO_AUTORIZAR } from './historico.ts'
@@ -40,6 +40,27 @@ beforeEach(async () => {
 afterEach(async () => {
   await app.close()
   await fechar()
+})
+
+describe('GGVP-108 CA3, CA5 · o caso aparece pelo número da fase, com os números no histórico', () => {
+  it('no INSS pelo protocolo; na Justiça pelo número CNJ; os dois ficam na linha, com a data', async () => {
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'protocolo_inss', valor: '123456789', criadoEm: new Date('2026-10-02T12:00:00Z') })
+    const historico = async () => (await chamar('gabi', 'GET', `/api/casos/${casoId}/historico`)).json()
+    expect((await historico()).numero).toEqual({ tipo: 'protocolo_inss', valor: '123456789' })
+
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: '00011239320184036301', criadoEm: new Date('2026-10-06T12:00:00Z') })
+    await banco.update(caso).set({ fase: 'judicial' }).where(eq(caso.id, casoId))
+    const r = await historico()
+    expect(r.numero).toEqual({ tipo: 'cnj', valor: '00011239320184036301' })
+    expect(r.eventos).toEqual([
+      { quando: '2026-10-02T12:00:00.000Z', quem: 'Sistema', origem: 'sistema', passo: null, descricao: 'Protocolo do INSS do caso: 123456789' },
+      { quando: '2026-10-06T12:00:00.000Z', quem: 'Sistema', origem: 'sistema', passo: null, descricao: 'Número CNJ do caso: 0001123-93.2018.4.03.6301' },
+    ])
+  })
+
+  it('sem número, o caso aparece sem número', async () => {
+    expect((await chamar('gabi', 'GET', `/api/casos/${casoId}/historico`)).json().numero).toBeNull()
+  })
 })
 
 describe('GGVP-99 · histórico de quem fez o quê', () => {
