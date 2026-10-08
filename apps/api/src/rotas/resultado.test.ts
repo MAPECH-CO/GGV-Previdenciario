@@ -135,3 +135,24 @@ describe('GGVP-22 · explicar ao cliente', () => {
     expect((await chamar('ana', 'GET', '/resultado')).json().contatos.map((x: { canal: string }) => x.canal)).toEqual(['whatsapp'])
   })
 })
+
+// O banco embutido atende uma consulta de cada vez, então aqui a disputa não acontece de verdade: os testes conferem o
+// resultado com dois pedidos juntos. No PostgreSQL, quem barra é a condição no update da aprovação e a trava (`for update`)
+// da tarefa no contato.
+describe('GGVP-22 · pedidos ao mesmo tempo (quarta revisão de 08/10)', () => {
+  it('CA3 · duas aprovações do resumo ao mesmo tempo: uma passa, a outra recebe 409, e nasce uma explicação só', async () => {
+    const aprovar = () => chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    const rs = await Promise.all([aprovar(), aprovar()])
+    expect(rs.map((r) => r.statusCode).sort()).toEqual([201, 409])
+    expect(await banco.select().from(decisao)).toHaveLength(1)
+    expect(await abertas()).toEqual([`atendimento · ${TITULO_EXPLICAR}`])
+  })
+
+  it('CA2 · dois "Expliquei" ao mesmo tempo: um passa, o outro recebe 409, e fica um atendimento só', async () => {
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    const explicar = () => chamar('ana', 'POST', '/resultado/contato', { resultado: 'explicado', canal: 'telefone', explicado: 'Expliquei o resultado ao cliente.' })
+    const rs = await Promise.all([explicar(), explicar()])
+    expect(rs.map((r) => r.statusCode).sort()).toEqual([201, 409])
+    expect(await banco.select().from(atendimento)).toHaveLength(1)
+  })
+})

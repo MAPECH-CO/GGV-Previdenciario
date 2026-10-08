@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AprovarResumo, RegistrarContato, ResultadoParaExplicar, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { atendimento, caso, decisao, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { exigir } from '../sessao/rotas.ts'
 
 export const TITULO_RESUMO = 'Aprovar o resumo para o cliente'
 export const TITULO_EXPLICAR = 'Explicar resultado'
@@ -38,7 +38,6 @@ export async function abrirExplicacaoDoResultado(tx: Banco | Tx, casoId: string)
 }
 
 export function registrarRotasResultado(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const historico = registrarHistorico(banco, agora)
 
   const aberta = async (casoId: string, passo: string) =>
     (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, passo), isNull(tarefa.concluidaEm))).limit(1))[0] ?? null
@@ -103,7 +102,14 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     if (!pendente) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
     const quem = pedido.usuario!.id
     const { texto, quemFala } = entrada.data
-    await banco.transaction(async (tx) => {
+    const feito = await banco.transaction(async (tx) => {
+      // A condição vai no próprio update: duas aprovações ao mesmo tempo, só a primeira fecha a tarefa e segue.
+      const [fechada] = await tx
+        .update(tarefa)
+        .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+        .where(and(eq(tarefa.id, pendente.id), isNull(tarefa.concluidaEm)))
+        .returning({ id: tarefa.id })
+      if (!fechada) return false
       await tx.insert(decisao).values({
         casoId,
         passo: 'D3b.06',
@@ -114,7 +120,6 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
         perfil: pedido.perfilAtivo!,
         decididoEm: agora(),
       })
-      await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, pendente.id))
       // CA5: caso complexo, a advogada fica com a tarefa; no padrão, vai ao Atendimento.
       await tx.insert(tarefa).values({
         casoId,
@@ -123,8 +128,10 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
         perfilDono: quemFala,
         responsavelId: quemFala === 'advogada' ? quem : null,
       })
+      await tx.insert(eventoAuditoria).values({ quem, acao: 'resumo_cliente_aprovado', alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, quemFala } })
+      return true
     })
-    await historico(quem, 'resumo_cliente_aprovado', pedido, `caso:${casoId}`, { quemFala })
+    if (!feito) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
     return resposta.code(201).send({ ok: true })
   })
 
@@ -139,7 +146,10 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     if (!ehDeQuemFala(t, quem, pedido.perfilAtivo)) return negar(resposta, 403, MSG_OUTRA_PESSOA)
     const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
     const d = entrada.data
-    await banco.transaction(async (tx) => {
+    const feito = await banco.transaction(async (tx) => {
+      // Trava a tarefa e confere de novo que segue aberta: dois "Expliquei" ao mesmo tempo, só o primeiro registra.
+      const [aindaAberta] = await tx.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.id, t.id), isNull(tarefa.concluidaEm))).for('update')
+      if (!aindaAberta) return false
       const [a] = await tx
         .insert(atendimento)
         .values({
@@ -164,7 +174,9 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
         quando: agora(),
         detalhe: { ip: pedido.ip, canal: d.canal, atendimento: a.id, tarefa: t.id },
       })
+      return true
     })
+    if (!feito) return negar(resposta, 409, MSG_SEM_EXPLICACAO)
     return resposta.code(201).send({ ok: true })
   })
 }
