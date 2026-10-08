@@ -230,7 +230,7 @@ function Cartao({ acao, c, aoConfirmar, aoCancelar, aoMudar }: { acao: CartaoDeA
           )}
         </div>
       </div>
-      <ol className={cartao.passos} aria-label="O que vou fazer">
+      <ol className={`${cartao.passos} ${styles.passos}`} aria-label="O que vou fazer">
         {acao.passos.map((p, i) => (
           <li key={p}>
             {i + 1} {p}

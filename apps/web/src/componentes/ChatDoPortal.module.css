@@ -71,3 +71,9 @@
   color: var(--cor-texto);
   font-size: var(--fonte-13);
 }
+
+/* Os passos já trazem o número no texto ("1 Subir…"), como no Figma 2085:2. */
+.passos {
+  padding-left: 0;
+  list-style: none;
+}
