@@ -70,6 +70,19 @@ describe('GGVP-22 · o Jurídico aprova o resumo', () => {
     expect((await chamar('ana', 'POST', '/resultado/contato', { resultado: 'sem_contato', canal: 'telefone' })).json().erro).toBe(MSG_SEM_EXPLICACAO)
     expect((await chamar('julia', 'GET', '/resultado')).statusCode).toBe(403)
   })
+
+  it('CA1 · "Explicar resultado" entra na fila de quem fala: do Atendimento no padrão, da advogada quando ela liga', async () => {
+    const naFila = async (apelido: string) =>
+      ((await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe(apelido) })).json() as { titulo: string }[]).filter((t) => t.titulo === TITULO_EXPLICAR).length
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    expect([await naFila('ana'), await naFila('gabi')]).toEqual([1, 0])
+    const [p] = await banco.insert(pessoa).values({ nome: 'Rosa Exemplo', situacao: 'cliente' }).returning()
+    const [outro] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'auxilio_incapacidade_temporaria', fase: 'judicial', desfecho: 'improcedente' }).returning()
+    await abrirExplicacaoDoResultado(banco, outro.id)
+    const r = await app.inject({ method: 'POST', url: `/api/casos/${outro.id}/resultado/resumo`, cookies: await cookieDe('gabi'), payload: { texto: RESUMO, quemFala: 'advogada' } })
+    expect(r.statusCode).toBe(201)
+    expect([await naFila('ana'), await naFila('gabi')]).toEqual([1, 1])
+  })
 })
 
 describe('GGVP-22 · explicar ao cliente', () => {

@@ -128,7 +128,7 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     if (!ehDeQuemFala(t, quem, pedido.perfilAtivo)) return negar(resposta, 403, MSG_OUTRA_PESSOA)
     const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
     const d = entrada.data
-    const contato = await banco.transaction(async (tx) => {
+    await banco.transaction(async (tx) => {
       const [a] = await tx
         .insert(atendimento)
         .values({
@@ -145,12 +145,14 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
         await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, t.id))
         await tx.update(caso).set({ fase: 'encerrado', encerradoEm: agora(), atualizadoEm: agora() }).where(eq(caso.id, casoId))
       }
-      return a.id
-    })
-    await historico(quem, d.resultado === 'explicado' ? 'resultado_explicado' : 'resultado_sem_contato', pedido, `caso:${casoId}`, {
-      canal: d.canal,
-      atendimento: contato,
-      tarefa: t.id,
+      // O registro no histórico é o que liga o contato à tarefa (CA4): vai na mesma transação do atendimento.
+      await tx.insert(eventoAuditoria).values({
+        quem,
+        acao: d.resultado === 'explicado' ? 'resultado_explicado' : 'resultado_sem_contato',
+        alvo: `caso:${casoId}`,
+        quando: agora(),
+        detalhe: { ip: pedido.ip, canal: d.canal, atendimento: a.id, tarefa: t.id },
+      })
     })
     return resposta.code(201).send({ ok: true })
   })
