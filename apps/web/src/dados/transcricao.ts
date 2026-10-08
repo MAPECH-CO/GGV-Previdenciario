@@ -4,8 +4,14 @@
 import { formatarTelefone } from '../campos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { relogio } from '../regras/entrevista.ts'
-import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { QUEM_ADVOGADA, agora, esperar, evento, gravacaoDoServidor, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type { Ficha, Gravacao, TarefaEncaminhada } from './tipos.ts'
+
+/** GGVP-125, bloco 3a: a transcrição das fichas do servidor muda lá; a cópia daqui recebe a gravação, a ficha e as tarefas. */
+async function noServidor(caminho: string, corpo: object, method = 'POST') {
+  const r = await noBanco<{ gravacao: Gravacao; ficha: Ficha; tarefas?: TarefaEncaminhada[] }>(caminho, { method, corpo })
+  return { gravacao: r.gravacao, ficha: receber(r)! }
+}
 
 function acharGravacao(banco: Banco, gravacaoId: string): { gravacao: Gravacao; ficha: Ficha } {
   const gravacao = banco.gravacoes.find((g) => g.id === gravacaoId)
@@ -28,6 +34,7 @@ export async function obterGravacoes(fichaId: string): Promise<Gravacao[]> {
 export async function conferirInformacoes(gravacaoId: string, ids: string[]): Promise<{ gravacao: Gravacao; ficha: Ficha }> {
   await esperar()
   if (ids.length === 0) throw new Error('Marque o que você conferiu.')
+  if (gravacaoDoServidor(gravacaoId)) return noServidor(`/gravacoes/${gravacaoId}/conferencias`, { ids })
   const banco = ler()
   const { gravacao: g, ficha } = acharGravacao(banco, gravacaoId)
   const hoje = hojeIso(agora())
@@ -67,6 +74,7 @@ export async function conferirDocumentos(gravacaoId: string, documentos: string[
   await esperar()
   const lista = documentos.map((d) => d.trim()).filter(Boolean)
   if (lista.length === 0 || lista.some((d) => d.length < 2 || d.length > 120)) throw new Error('Lista de documentos inválida')
+  if (gravacaoDoServidor(gravacaoId)) return (await noServidor(`/gravacoes/${gravacaoId}/documentos`, { documentos: lista })).gravacao
   const banco = ler()
   const { gravacao: g, ficha } = acharGravacao(banco, gravacaoId)
   g.documentos = lista
@@ -79,6 +87,7 @@ export async function conferirDocumentos(gravacaoId: string, documentos: string[
 
 /** PATCH /api/gravacoes/:id/trechos/:aos. Marca ou desmarca um trecho como prova (CA6). */
 export async function marcarProva(gravacaoId: string, aos: number, prova: boolean): Promise<Gravacao> {
+  if (gravacaoDoServidor(gravacaoId)) return (await noServidor(`/gravacoes/${gravacaoId}/trechos/${aos}`, { prova }, 'PATCH')).gravacao
   await esperar()
   const banco = ler()
   const { gravacao: g, ficha } = acharGravacao(banco, gravacaoId)

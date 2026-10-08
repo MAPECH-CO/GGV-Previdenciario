@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 13
+export const VERSAO_MATRIZ = 14
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -84,7 +84,13 @@ export const MATRIZ = {
   'historico.autorizar_exportacao': ['socio'],
   // GGVP-104: a gestão do escritório muda limites, kits e mensagens sem mexer no código.
   'configuracao.editar': ['socio', 'senior'],
-  // Versão 13 (GGVP-137, Pedro, 08/10): a Perícia no servidor. A Documentação reúne o que a perícia pede (DP.03); a advogada
+  // Versão 11 (GGVP-125, bloco 1): a ficha da Recepção no servidor. Quem trabalha com o caso cadastra e edita a ficha
+  // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
+  // renumera a versão.
+  'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
+  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
+  'entrevista.gravar': JURIDICO,
+  // Versão 14 (GGVP-137, Pedro, 08/10): a Perícia no servidor. A Documentação reúne o que a perícia pede (DP.03); a advogada
   // responsável decide no limite (G15), nunca a Sênior, e confere o resultado e o laudo (DP.08, DP.09).
   'pericia.reunir_documentos': ['documentacao'],
   'pericia.decidir_no_limite': ['advogada'],

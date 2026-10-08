@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 13, digital: 'f7b965af' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 14, digital: '779689f3' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -89,14 +89,20 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode(null, 'entrevista.ver')).toBe(false)
   })
 
+  it('GGVP-125 · a ficha da Recepção: quem trabalha com o caso edita; Financeiro e Sócio, não', () => {
+    expect(PERFIS.filter((p) => pode(p, 'ficha.editar'))).toEqual(PERFIS.filter((p) => !['financeiro', 'socio'].includes(p)))
+    // Bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde, só o Jurídico.
+    expect(PERFIS.filter((p) => pode(p, 'entrevista.gravar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
+  })
+
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 8,
-      atendimento_lider: 10,
-      documentacao: 7,
-      advogada: 22,
-      senior: 21,
-      juridico_adm: 13,
+      atendimento: 9,
+      atendimento_lider: 11,
+      documentacao: 8,
+      advogada: 24,
+      senior: 23,
+      juridico_adm: 15,
       financeiro: 5,
       socio: 5,
     })
