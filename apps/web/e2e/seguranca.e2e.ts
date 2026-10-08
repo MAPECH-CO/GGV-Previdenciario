@@ -62,7 +62,7 @@ test('CA3 e CA7 · na ligação, o roteiro de segurança; no chat, a próxima ta
   await page.getByLabel('✦ Pergunte ou peça').fill('A Maria Exemplo me ligou, qual é a próxima tarefa?')
   await page.getByRole('button', { name: 'Enviar' }).click()
   const conversa = page.getByRole('list', { name: 'Conversa' })
-  await expect(conversa).toContainText('A próxima tarefa de Maria (Administrativo · perícia em 02/10) é cobrar o laudo que a perícia pede')
+  await expect(conversa).toContainText(/Maria está em perícia \(.+\): a próxima tarefa é do Jurídico administrativo/)
   await expect(conversa).toContainText('Antes de passar dado do caso, confirme que é o cliente')
 })
 
