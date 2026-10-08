@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
+import { SugestaoDaPericia } from '../componentes/SugestaoDaPericia.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { JurimetriaPerito } from '../componentes/JurimetriaPerito.tsx'
 import {
-  lerLaudoDaPericia,
+  lerLaudoComIa,
   ligarPeritoDoLaudo,
   obterResultado,
   peritosParaLigar,
   registrarResultado,
   type LeituraDoLaudo,
+  type LeituraPelaIa,
   type PericiaNaTela,
 } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
@@ -39,8 +41,9 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
   const perfil = usePerfil('Advogada')
   const quem = perfil?.usuario ?? 'Advogada'
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
-  const [laudo, setLaudo] = useState<{ nome: string; tamanho: number; hash: string }>()
+  const [laudo, setLaudo] = useState<{ nome: string; tamanho: number; hash: string; arquivo: Blob }>()
   const [leitura, setLeitura] = useState<LeituraDoLaudo>()
+  const [ia, setIa] = useState<LeituraPelaIa<LeituraDoLaudo>>()
   const [favoravel, setFavoravel] = useState<boolean>()
   const [novaPericia, setNovaPericia] = useState<boolean>()
   const [conferidas, setConferidas] = useState<string[]>([])
@@ -87,8 +90,15 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
     const problema = problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size })
     if (problema || formatoDoArquivo(arquivo.name) !== 'pdf') return setErro(problema ?? 'O laudo (ou o registro do GERID) é um PDF.')
     const hash = await hashDoConteudo(await arquivo.arrayBuffer())
-    setLaudo({ nome: arquivo.name, tamanho: arquivo.size, hash })
-    setLeitura(await lerLaudoDaPericia(processoId, arquivo.name))
+    setLaudo({ nome: arquivo.name, tamanho: arquivo.size, hash, arquivo })
+    // A IA lê e resume (GGVP-139 CA3); sem ela, o motivo, e a advogada registra pela leitura dela.
+    const l = await lerLaudoComIa(processoId, arquivo, arquivo.name).catch((e: unknown) => ({
+      lido: null,
+      sugestao: null,
+      motivo: e instanceof Error ? e.message : 'A IA não leu o laudo agora: registre pela sua leitura.',
+    }))
+    setIa(l)
+    setLeitura(l.lido ?? undefined)
   }
 
   async function ligar(peritoId: string) {
@@ -111,7 +121,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
     travado.current = true
     setErro('')
     try {
-      setT(await registrarResultado(processoId, { laudo: { nome: laudo.nome, hash: laudo.hash }, favoravel, novaPericia, conferidas }, quem))
+      setT(await registrarResultado(processoId, { laudo: { nome: laudo.nome, hash: laudo.hash, arquivo: laudo.arquivo }, favoravel, novaPericia, conferidas, chamadaIaId: ia?.sugestao?.chamadaId }, quem))
       setAviso('Resultado registrado.')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para registrar.')
@@ -201,7 +211,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
               </h2>
               <p>O sistema não reconheceu o perito. Um clique liga o laudo ao perfil dele; até lá, o laudo fica fora das contas.</p>
               <div className={styles.atalhos} role="group" aria-label="Ligar o laudo ao perito">
-                {peritosParaLigar(pericia.tipo).map((p) => (
+                {peritosParaLigar(pericia.tipo, pericia.processoId).map((p) => (
                   <button key={p.id} type="button" className={proprio.secundario} onClick={() => void ligar(p.id)}>
                     {p.nome} · {p.especialidade}
                   </button>
@@ -228,11 +238,13 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                 </label>
               </section>
 
+              {!lido && <SugestaoDaPericia ia={ia} selo="" />}
               {lido && (
                 <section className={proprio.ia} aria-labelledby="resumo-laudo">
                   <h2 id="resumo-laudo" className={proprio.iaTitulo}>
                     Resumo do laudo pela IA
                   </h2>
+                  <SugestaoDaPericia ia={ia} selo="Sugestão da IA · quem decide o resultado é você" />
                   <p>{lido.resumo}</p>
                   <dl className={proprio.prazos}>
                     <dt>Conclusão</dt>

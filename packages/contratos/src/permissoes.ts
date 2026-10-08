@@ -17,9 +17,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15. Quem entrar depois
-// renumera.
-export const VERSAO_MATRIZ = 16
+// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
+// 16, Perícia no servidor 17, documentação médica no servidor 18. Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 18
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -100,7 +100,21 @@ export const MATRIZ = {
   // indica novo processo, quem decide é a Sênior.
   'estudo.ver': JURIDICO,
   'estudo.revisar': ['senior'],
-  // Versão 16 (GGVP-132, Pedro, 08/10): a documentação médica no servidor. Só a Sênior edita a régua do roteiro (GGVP-93).
+  // Versão 16 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
+  // a conversa é o Atendimento e o Jurídico (advogada e Sênior), como nas telas; só a Sênior volta uma versão e dá prazo
+  // novo à pendência atrasada; a segunda confirmação dos dados bancários é do Atendimento líder, da advogada ou da Sênior.
+  'conversa.registrar': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'ficha.voltar_versao': ['senior'],
+  'conversa.prazo_da_pendencia': ['senior'],
+  'mensagem.enviar': ['atendimento', 'atendimento_lider', ...JURIDICO],
+  'dados_bancarios.pedir': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'dados_bancarios.confirmar': ['atendimento_lider', 'advogada', 'senior'],
+  // Versão 17 (GGVP-137, Pedro, 08/10): a Perícia no servidor. A Documentação reúne o que a perícia pede (DP.03); a advogada
+  // responsável decide no limite (G15), nunca a Sênior, e confere o resultado e o laudo (DP.08, DP.09).
+  'pericia.reunir_documentos': ['documentacao'],
+  'pericia.decidir_no_limite': ['advogada'],
+  'pericia.conferir_resultado': ['advogada'],
+  // Versão 18 (GGVP-132, Pedro, 08/10): a documentação médica no servidor. Só a Sênior edita a régua do roteiro (GGVP-93).
   'roteiro.editar': ['senior'],
   // O parecer médico é do Jurídico que confere o caso: a advogada e a Sênior (GGVP-20 CA3). A IA nunca registra (G17).
   'parecer.registrar': ['advogada', 'senior'],

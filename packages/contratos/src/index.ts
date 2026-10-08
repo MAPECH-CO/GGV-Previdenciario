@@ -77,3 +77,17 @@ export * from './pareceres.ts'
 export * from './deficiencia.ts'
 export * from './acidente.ts'
 export * from './infantil.ts'
+
+// O Relacionamento com o cliente no servidor (GGVP-138): a conversa, as mensagens e a segurança do contato.
+export * from './conversas.ts'
+export * from './mensagens.ts'
+export * from './seguranca.ts'
+
+// A Perícia ligada no servidor (GGVP-137): o que cada tela manda.
+export * from './pericia.ts'
+
+// O importador da planilha do escritório (GGVP-146, parte 2).
+export * from './importacao.ts'
+
+// Os feriados e as suspensões dos tribunais, na Configuração (GGVP-146, parte 3).
+export * from './feriados.ts'

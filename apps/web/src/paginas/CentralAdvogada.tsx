@@ -13,7 +13,7 @@ import { tarefasDaAdvogada } from '../dados/preparacao.ts'
 import { daSenior, tarefasDoParecer } from '../dados/parecer.ts'
 // A perícia que passou do limite de remarcações sobe para a advogada responsável (épico GGVP-10, G15).
 import { tarefasDaAdvogadaNaPericia, tarefasDeDecidirDocumentoDaPericia } from '../dados/pericia.ts'
-import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { useTarefasDaConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
 
@@ -34,15 +34,15 @@ export function CentralAdvogada() {
     ...tarefasDoParecer().filter((t) => !daSenior(t)),
     ...tarefasDaAdvogadaNaPericia(),
     ...tarefasDeDecidirDocumentoDaPericia(),
-    ...tarefasDeRegistrarConversa(perfil?.usuario),
-    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
     // GGVP-82: e as tarefas que o chat criou para a pessoa.
     ...tarefasCriadasPeloChat(perfil?.usuario),
   ])
   // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []
-  const tarefas = [...doServidor, ...deExemplo]
+  // A conversa com o cliente e a pendência dela, do servidor, para quem está no login (GGVP-138).
+  const daConversa = useTarefasDaConversa() ?? []
+  const tarefas = [...doServidor, ...daConversa, ...deExemplo]
 
   return (
     <>

@@ -4,12 +4,11 @@ import { CampoCofre } from '../componentes/CampoCofre.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { anexarAudio, falasDaConversa, finalizarConversa, gravarConversa, obterConversa, transcreverConversa, type ConversaAberta } from '../dados/conversa.ts'
-import { registrarAcao } from '../dados/entrevista.ts'
+import { anexarAudio, falasDaConversa, finalizarConversa, gravarConversa, obterConversa, registrarAcaoNaConversa, transcreverConversa, type ConversaAberta } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
-import type { Gravacao, SenhaGov } from '../dados/tipos.ts'
-import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, ONDE, papelDoPerfil, valorLido, type CanalDoRegistro, type Mudanca } from '../regras/conversa.ts'
+import type { SenhaGov } from '../dados/tipos.ts'
+import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, ONDE, valorLido, type CanalDoRegistro, type Mudanca } from '../regras/conversa.ts'
 import { hojeIso, hora } from '../regras/datas.ts'
 import { LEMBRETE_DA_IDENTIDADE, retornoPeloContato } from '../regras/seguranca.ts'
 import { formatarTelefone } from '../campos.ts'
@@ -51,7 +50,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
       if (!valendo) return
       // A página recarregou no meio: a gravação volta pausada no último ponto guardado.
       if (d?.gravacao?.estado === 'gravando') {
-        d = { ...d, gravacao: await registrarAcao(d.gravacao.id, 'pausou', d.gravacao.duracao) }
+        d = await registrarAcaoNaConversa(conversaId, 'pausou', d.gravacao.duracao)
         if (!valendo) return
         setRecarregou(true)
       }
@@ -71,14 +70,14 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
     return () => clearInterval(relogioDaGravacao)
   }, [gravando, passo])
 
-  async function fazer(acao: () => Promise<Gravacao | ConversaAberta>) {
+  async function fazer(acao: () => Promise<ConversaAberta>) {
     if (travado.current) return
     travado.current = true
     setOcupado(true)
     setErro('')
     try {
       const r = await acao()
-      setDados((d) => ('conversa' in r ? r : d && { ...d, gravacao: r }))
+      setDados(r)
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para registrar.')
     } finally {
@@ -114,10 +113,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const processo = ficha.processos.find((p) => p.id === c.processoId)
   const encerrada = g?.estado === 'encerrada'
   const papel = c.papel === 'juridico' ? 'Jurídico' : 'Atendimento'
-  // Dado de saúde só para o Jurídico, pelo perfil de quem está na tela.
-  const juridico = papelDoPerfil(perfil?.id) === 'juridico'
   const analise = g?.transcricao === 'pronta' ? c.analise : undefined
-  const falasDeSaude = new Set(analise?.mudancas.filter((m) => m.saude).map((m) => m.aos))
   const ditoAs = (aos: number) =>
     g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
   const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)} (G10)` : ''
@@ -139,7 +135,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
     setDados({ ...dados!, ficha: { ...ficha, senhaGov } })
     if (senhaGov.situacao === 'no-cofre' && g) {
       setCofre(false)
-      fazer(() => registrarAcao(g.id, 'guardou-senha', segundos))
+      fazer(() => registrarAcaoNaConversa(c.id, 'guardou-senha', segundos))
     }
   }
 
@@ -251,7 +247,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   </button>
                 )}
                 {g?.estado === 'gravando' && (
-                  <button type="button" className={vivo.secundario} disabled={ocupado} onClick={() => fazer(() => registrarAcao(g.id, 'pausou', segundos))}>
+                  <button type="button" className={vivo.secundario} disabled={ocupado} onClick={() => fazer(() => registrarAcaoNaConversa(c.id, 'pausou', segundos))}>
                     Pausar
                   </button>
                 )}
@@ -262,7 +258,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                     disabled={ocupado}
                     onClick={() => {
                       setRecarregou(false)
-                      fazer(() => registrarAcao(g.id, 'retomou', segundos))
+                      fazer(() => registrarAcaoNaConversa(c.id, 'retomou', segundos))
                     }}
                   >
                     Retomar
@@ -275,7 +271,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                     disabled={ocupado}
                     onClick={() => {
                       setCofre(true)
-                      fazer(() => registrarAcao(g.id, 'abriu-cofre', segundos))
+                      fazer(() => registrarAcaoNaConversa(c.id, 'abriu-cofre', segundos))
                     }}
                   >
                     🔒 Abrir o cofre (pausa a gravação)
@@ -323,7 +319,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                     className={vivo.secundario}
                     onClick={() => {
                       setCofre(false)
-                      fazer(() => registrarAcao(g.id, 'retomou', segundos))
+                      fazer(() => registrarAcaoNaConversa(c.id, 'retomou', segundos))
                     }}
                   >
                     Fechar o cofre e retomar
@@ -332,9 +328,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 </div>
               )}
 
-              {encerrada && g.soJuridico && !juridico ? (
-                <p className={vivo.vazio}>A transcrição completa fica só para o Jurídico: a conversa tem dado de saúde.</p>
-              ) : trechos.length === 0 ? (
+              {trechos.length === 0 ? (
                 <p className={vivo.vazio}>A transcrição aparece aqui quando a gravação começar.</p>
               ) : (
                 <ol className={vivo.falas} aria-label="Falas">
@@ -433,18 +427,13 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                     <p className={base.nota}>Nada.</p>
                   ) : (
                     <ul className={proprio.mudancas} aria-label={titulo}>
-                      {lista.map((m) =>
-                        m.saude && !juridico ? (
-                          <li key={m.id}>• {m.onde === 'ficha' ? 'Ficha' : 'Processo'} · fato novo de saúde · só o Jurídico vê</li>
-                        ) : (
-                          <li key={m.id}>
-                            • {m.onde === 'ficha' ? 'Ficha' : 'Processo'} · {m.rotulo}: {m.antes ? `${valorLido(m.campo, m.antes)} → ` : ''}
-                            {valorLido(m.campo, m.depois)} ({ditoAs(m.aos)})
-                            {/* O trecho da mesma fala do fato de saúde também é dado de saúde: só o Jurídico vê. */}
-                            {(juridico || !falasDeSaude.has(m.aos)) && <span className={proprio.trecho}>«{m.trecho}»</span>}
-                          </li>
-                        ),
-                      )}
+                      {lista.map((m) => (
+                        <li key={m.id}>
+                          • {m.onde === 'ficha' ? 'Ficha' : 'Processo'} · {m.rotulo}: {m.antes ? `${valorLido(m.campo, m.antes)} → ` : ''}
+                          {valorLido(m.campo, m.depois)} ({ditoAs(m.aos)})
+                          <span className={proprio.trecho}>«{m.trecho}»</span>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>

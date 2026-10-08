@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { obterVersoes, voltarParaVersao } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import type { Ficha } from '../dados/tipos.ts'
-import { CAMPOS_DA_CONVERSA, papelDoPerfil, podeVoltarVersao, valorLido, type VersaoDoCampo } from '../regras/conversa.ts'
+import { CAMPOS_DA_CONVERSA, podeVoltarVersao, valorLido, type VersaoDoCampo } from '../regras/conversa.ts'
 import { dataHora } from '../regras/datas.ts'
 import styles from './HistoricoDeVersoes.module.css'
 
@@ -28,16 +28,17 @@ export function HistoricoDeVersoes({ ficha, funcao = 'Atendimento', aoFechar }: 
       if (!dialogo.open) dialogo.showModal()
     } else dialogo?.setAttribute('open', '')
     let valendo = true
-    obterVersoes(ficha.id).then((v) => {
-      if (valendo) setVersoes(v)
-    })
+    obterVersoes(ficha.id)
+      .then((v) => {
+        if (valendo) setVersoes(v)
+      })
+      .catch((e: Error) => valendo && setErro(e.message))
     return () => {
       valendo = false
     }
   }, [ficha.id])
 
   const senior = podeVoltarVersao(perfil?.id)
-  const juridico = papelDoPerfil(perfil?.id) === 'juridico'
   const grupos = new Map<string, VersaoDoCampo[]>()
   for (const v of versoes ?? []) {
     const chave = [v.onde, v.processoId ?? '', v.campo].join('|')
@@ -50,7 +51,7 @@ export function HistoricoDeVersoes({ ficha, funcao = 'Atendimento', aoFechar }: 
     setOcupado(true)
     setErro('')
     try {
-      setVersoes(await voltarParaVersao({ fichaId: v.fichaId, processoId: v.processoId, onde: v.onde, campo: v.campo }, indice, { quem: perfil.usuario, perfil: perfil.id }))
+      setVersoes(await voltarParaVersao({ fichaId: v.fichaId, processoId: v.processoId, onde: v.onde, campo: v.campo }, indice))
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para voltar a versão.')
     } finally {
@@ -80,7 +81,6 @@ export function HistoricoDeVersoes({ ficha, funcao = 'Atendimento', aoFechar }: 
       {[...grupos.values()].map((lista) => {
         const { onde, campo } = lista[0]
         const rotulo = CAMPOS_DA_CONVERSA[campo]
-        const oculto = campo === 'fato' && !juridico
         return (
           <section key={`${onde}-${lista[0].processoId}-${campo}`} className={styles.campo} aria-label={`${onde === 'ficha' ? 'Ficha' : 'Processo'} · ${rotulo}`}>
             <h3 className={styles.campoTitulo}>
@@ -97,7 +97,7 @@ export function HistoricoDeVersoes({ ficha, funcao = 'Atendimento', aoFechar }: 
                       {dataHora(v.quando)} · {v.quem}
                       {indice === lista.length - 1 && !somaAoCaso(campo) ? ' · em vigor' : ''}
                     </span>
-                    <span>{oculto ? 'fato novo de saúde · só o Jurídico vê' : valorLido(campo, v.valor)}</span>
+                    <span>{valorLido(campo, v.valor)}</span>
                     {senior && indice < lista.length - 1 && !somaAoCaso(campo) && (
                       <button
                         type="button"
