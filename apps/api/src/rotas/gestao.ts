@@ -21,7 +21,8 @@ const DESCRICAO: Record<string, string> = {
   'G21:D3a.04': 'Manifestar no processo sem prova em todos os itens (G21)',
   'G8:D3b.03': 'Avisar o cliente antes do OK da advogada na prestação de contas (G8)',
 }
-const UUID = /^[0-9a-f-]{36}$/
+/** Um id do banco no formato uuid, antes de ir à consulta (texto fora do formato faz o PostgreSQL falhar). */
+export const UUID = /^[0-9a-f-]{36}$/
 type Detalhe = { portao?: PortaoDeBloqueio; passo?: string; perfil?: string | null; acao?: string; casoId?: string }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 

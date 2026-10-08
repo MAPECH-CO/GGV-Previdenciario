@@ -7,9 +7,9 @@ import type { Banco } from '../banco/conexao.ts'
 import { processoAcervo } from '../banco/esquema.ts'
 import { conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { UUID } from './gestao.ts'
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
-const UUID = /^[0-9a-f-]{36}$/
 
 export function registrarRotasAcervo(app: FastifyInstance, { banco, agora = () => new Date() }: { banco: Banco; agora?: () => Date }) {
   const historico = registrarHistorico(banco, agora)
