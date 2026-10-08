@@ -179,10 +179,10 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
     expect(jurimetria(laudos(34, 24))).toMatchObject({ laudos: 34, favoraveis: 24, taxa: 71 })
     expect(jurimetria(laudos(10, 5))).toMatchObject({ taxa: 50, diasAteOLaudo: 15 })
     expect(jurimetria([])).toMatchObject({ laudos: 0, taxa: 0 })
-    expect(numerosDaJurimetria(jurimetria(laudos(34, 24)), '2026-10-07')).toBe('71% favorável em 34 laudos · base de 07/10')
+    expect(numerosDaJurimetria(jurimetria(laudos(34, 24)), '2026-10-07')).toBe('71% · 24 de 34 laudos · base de 07/10')
     // Toda amostra conta (G22): com poucos laudos, a porcentagem aparece do mesmo jeito.
-    expect(numerosDaJurimetria(jurimetria(laudos(8, 5)), '2026-10-07')).toBe('63% favorável em 8 laudos · base de 07/10')
-    expect(numerosDaJurimetria(jurimetria(laudos(1, 1)), '2026-10-07')).toBe('100% favorável em 1 laudo · base de 07/10')
+    expect(numerosDaJurimetria(jurimetria(laudos(8, 5)), '2026-10-07')).toBe('63% · 5 de 8 laudos · base de 07/10')
+    expect(numerosDaJurimetria(jurimetria(laudos(1, 1)), '2026-10-07')).toBe('100% · 1 de 1 laudo · base de 07/10')
     expect(numerosDaJurimetria(jurimetria([]), '2026-10-07')).toBe('nenhum laudo no acervo')
   })
 })

@@ -1,6 +1,7 @@
 // Quem está agindo nas telas da documentação médica: o perfil ativo e o nome da sessão (GGVP-96).
 // Antes era o seletor de exemplo ("Trocar perfil"); ele saiu (um menu só, o "Entrar como…") e a assinatura de
 // `usePerfil(padrao)` ficou, para as telas não mudarem uma por uma. Quem protege é o servidor; aqui a tela só esconde.
+import { useMemo } from 'react'
 import { ROTULO_PERFIL, ehPerfil } from '@ggv/contratos'
 import { useSessao } from '../sessao.ts'
 
@@ -26,11 +27,18 @@ const PADRAO: Record<string, Perfil> = {
   'Jurídico administrativo': { id: 'juridico-adm', rotulo: 'Jurídico administrativo', usuario: 'Igor (exemplo)', inicio: '/' },
 }
 
-/** O perfil da sessão; sem sessão, o da função da tela (`padrao`, o rótulo). */
+/**
+ * O perfil da sessão; sem sessão, o da função da tela (`padrao`, o rótulo). O mesmo objeto enquanto a sessão não muda:
+ * telas que põem o perfil num efeito (`useEffect(..., [perfil])`) não entram em laço.
+ */
 export function usePerfil(padrao?: string): Perfil | undefined {
   const sessao = useSessao()
+  const temSessao = sessao !== null
   const ativo = sessao?.perfilAtivo
-  if (!sessao) return padrao ? PADRAO[padrao] : undefined
-  if (!ehPerfil(ativo)) return undefined
-  return { id: ativo.replace('_', '-') as IdPerfil, rotulo: ROTULO_PERFIL[ativo], usuario: sessao.nome, inicio: '/' }
+  const nome = sessao?.nome
+  return useMemo(() => {
+    if (!temSessao) return padrao ? PADRAO[padrao] : undefined
+    if (!ehPerfil(ativo)) return undefined
+    return { id: ativo.replace('_', '-') as IdPerfil, rotulo: ROTULO_PERFIL[ativo], usuario: nome ?? '', inicio: '/' }
+  }, [temSessao, ativo, nome, padrao])
 }

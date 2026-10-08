@@ -1,0 +1,196 @@
+/* O caso numa linha só (GGVP-86). O resto vem de ProcessoPericia.module.css, a mesma página do Figma (72:2). */
+.rotuloId {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+  font-weight: 400;
+}
+
+.laudoNovo {
+  padding: 3px 9px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.historico {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}
+
+.contagem {
+  padding: 1px 7px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+}
+
+.etapas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.etapas li {
+  display: flex;
+  flex: 1 1 140px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.etapas li > button,
+.etapas li > span:first-child {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-6);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  text-align: center;
+}
+
+.etapas .feita > button {
+  background: var(--cor-painel-neutro);
+  cursor: pointer;
+}
+
+.etapas .feita > button[aria-expanded='true'] {
+  border-color: var(--cor-acento);
+}
+
+.etapas .atual > span:first-child {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-weight: 600;
+}
+
+.etapas .futura > span:first-child {
+  color: var(--cor-texto-suave-2);
+}
+
+/* Não se aplica: apagada, tracejada. */
+.etapas .nao-se-aplica > span:first-child {
+  border-style: dashed;
+  background: transparent;
+  color: var(--cor-texto-suave-2);
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.subEtapa {
+  font-size: var(--fonte-11);
+  font-weight: 400;
+  text-decoration: none;
+}
+
+/* "Em perícia" ligado à etapa que pediu (CA2), como a caixa pontilhada do BPMN. */
+.emPericia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1.5px dashed var(--cor-acento);
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  text-align: center;
+}
+
+.detalhe {
+  border-color: var(--cor-acento);
+}
+
+.detalheCabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.par {
+  display: contents;
+}
+
+.docTexto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.autor-pessoa,
+.autor-sistema,
+.autor-ia {
+  padding: 0 6px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+}
+
+.autor-pessoa {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.autor-sistema {
+  background: var(--cor-painel-neutro-3);
+  color: var(--cor-texto);
+}
+
+.autor-ia {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.peloChat {
+  color: var(--cor-acento);
+  font-style: normal;
+}
+
+.historicoLista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0;
+  font-size: var(--fonte-13);
+  list-style: none;
+}
+
+.historicoLista li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 3px solid var(--cor-acento);
+}
+
+/* Datas de outro ano (dd/mm/aaaa) cabem na coluna da linha. */
+.linhaLista > li {
+  grid-template-columns: 80px 1fr auto;
+}

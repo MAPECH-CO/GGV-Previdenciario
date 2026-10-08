@@ -9,7 +9,7 @@ function iniciais(nome: string): string {
 }
 
 /** Topo do bloco de dados (Figma 73:215): iniciais, nome, idade e resumo, contato preferido e laudo novo. */
-export function CabecalhoCliente({ ficha, hoje }: { ficha: Ficha; hoje: string }) {
+export function CabecalhoCliente({ ficha, hoje, laudoHref }: { ficha: Ficha; hoje: string; /** O aviso do laudo novo leva à análise do laudo (GGVP-86, CA5). */ laudoHref?: string }) {
   const idade = ficha.nascimento ? idadeEm(ficha.nascimento, hoje) : ficha.idade
   const linha = [idade !== undefined ? `${idade} anos` : '', ficha.resumo ?? ''].filter(Boolean).join(' · ')
   const preferido = ficha.contatoPreferido?.split(',')[0].trim()
@@ -25,7 +25,14 @@ export function CabecalhoCliente({ ficha, hoje }: { ficha: Ficha; hoje: string }
           {preferido && <span className={styles.chipOk}>{preferido} preferido</span>}
           {/* Ficha criada pelo scanner, que não lê telefone (GGVP-17, CA15). */}
           {!ficha.telefone && <span className={styles.chipAlerta}>completar telefone</span>}
-          {ficha.laudoNovoEm && <span className={styles.chipAcento}>Laudo novo · {dataCurta(ficha.laudoNovoEm, hoje)}</span>}
+          {ficha.laudoNovoEm &&
+            (laudoHref ? (
+              <a className={styles.chipAcento} href={laudoHref}>
+                Laudo novo · {dataCurta(ficha.laudoNovoEm, hoje)}
+              </a>
+            ) : (
+              <span className={styles.chipAcento}>Laudo novo · {dataCurta(ficha.laudoNovoEm, hoje)}</span>
+            ))}
         </p>
       </div>
       {/* Foto do cliente é de outra história: avisa que está indisponível. */}

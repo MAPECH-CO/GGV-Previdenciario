@@ -407,7 +407,7 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
 
   it('"Dica para a perícia" (Figma 2186:857): o perfil do perito, os números do sistema e a tarefa', async () => {
     const dica = (await dicaParaAPericia('Qual a orientação para a perícia do Antônio com o Dr. A. Prado?'))!
-    expect(dica.texto).toMatch(/Pelo perfil de Dr\. A\. Prado \(71% favorável em 34 laudos · base de \d\d\/\d\d\), peça para Antônio levar/)
+    expect(dica.texto).toMatch(/Pelo perfil de Dr\. A\. Prado \(71% · 24 de 34 laudos · base de \d\d\/\d\d\), peça para Antônio levar/)
     expect(dica.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado (exemplo) · Ver o perfil do perito', 'Antônio Exemplo · Orientar para a perícia'])
   })
 })
@@ -711,7 +711,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
 
   it('"como o perito avalia" (Figma 2186:2): os números do sistema com o número de laudos e a base (G22) e as perícias com ele', () => {
     const r = comoOPeritoAvalia('Como o Dr. A. Prado costuma avaliar problemas de coluna?')!
-    expect(r.texto).toMatch(/Pelo acervo, Dr\. A\. Prado tem 71% favorável em 34 laudos · base de \d\d\/\d\d\. Em coluna: 75% favorável em 8 laudos · base de \d\d\/\d\d \(G22\)\./)
+    expect(r.texto).toMatch(/Pelo acervo, Dr\. A\. Prado tem 71% · 24 de 34 laudos · base de \d\d\/\d\d\. Em coluna: 75% · 6 de 8 laudos · base de \d\d\/\d\d \(G22\)\./)
     expect(r.texto).toContain('Os números vêm do sistema; eu só resumo os laudos.')
     expect(r.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado · Ver o perfil do perito', 'Antônio Exemplo · Perícia médica'])
     expect(comoOPeritoAvalia('Como o perito avalia?')).toBeNull()

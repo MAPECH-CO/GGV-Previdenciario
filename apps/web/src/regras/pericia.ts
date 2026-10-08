@@ -1,6 +1,7 @@
 // Perícia (épico GGVP-10): regras puras, sem React. Prazo e número são código com teste (G19); o servidor de exemplo e,
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
 import { somarDias } from './agenda.ts'
+import { taxaComCasos } from './caso.ts'
 import { dataCurta, hojeIso } from './datas.ts'
 import { problemaG20 } from './parecer.ts'
 
@@ -183,10 +184,9 @@ export const passouDoLimiteDosDocumentos = (hoje: string, documentosAte?: string
  */
 export type Jurimetria = { laudos: number; favoraveis: number; taxa: number; diasAteOLaudo: number }
 
-/** "71% favorável em 34 laudos · base de 07/10" (G22). Sem laudo no acervo, não há porcentagem. */
+/** Os laudos favoráveis do perito, pela regra única do G22 (`taxaComCasos`): "71% · 24 de 34 laudos · base de 07/10". */
 export function numerosDaJurimetria(j: Jurimetria, base: string): string {
-  if (!j.laudos) return 'nenhum laudo no acervo'
-  return `${j.taxa}% favorável em ${j.laudos} ${j.laudos === 1 ? 'laudo' : 'laudos'} · base de ${base.slice(8, 10)}/${base.slice(5, 7)}`
+  return j.laudos ? taxaComCasos(j.favoraveis, j.laudos, base, 'laudos') : 'nenhum laudo no acervo'
 }
 
 /** Os números vêm do sistema, não do modelo (G19, G22): contagem, taxa favorável e tempo médio até o laudo. */

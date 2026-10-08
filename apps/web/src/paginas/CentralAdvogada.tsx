@@ -4,6 +4,7 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
@@ -35,6 +36,8 @@ export function CentralAdvogada() {
     ...tarefasDeDecidirDocumentoDaPericia(),
     ...tarefasDeRegistrarConversa(perfil?.usuario),
     ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
+    // GGVP-82: e as tarefas que o chat criou para a pessoa.
+    ...tarefasCriadasPeloChat(perfil?.usuario),
   ])
   // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
