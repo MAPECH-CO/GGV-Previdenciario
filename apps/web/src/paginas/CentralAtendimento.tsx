@@ -28,6 +28,8 @@ import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
 import { tarefasDeComplemento } from '../dados/complemento.ts'
 import { tarefasDaDocumentacaoNaPericia } from '../dados/pericia.ts'
+import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { usePerfil } from '../dados/perfis.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -40,6 +42,8 @@ export function CentralAtendimento() {
   // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as pendências do
   // Atendimento (GGVP-21), as fichas que o scanner criou sem telefone (GGVP-17, CA15), as entrevistas que passaram sem
   // registro (GGVP-123, CA8) e as que falta confirmar com o lead (GGVP-21).
+  // A conversa com o cliente é da pessoa que a abriu (GGVP-76): na Documentação, a da Jéssica; sem escolha, a da Bruna.
+  const perfil = usePerfil('Atendimento')
   const [tarefas] = useState(() => [
     ...tarefasDoSetor('Documentação · ADM'),
     ...tarefasDoSetor('Atendimento'),
@@ -59,6 +63,8 @@ export function CentralAtendimento() {
     ...tarefasDeComplemento(),
     // A Documentação reúne e cobra o que a perícia pede (épico GGVP-10, GGVP-56).
     ...tarefasDaDocumentacaoNaPericia(),
+    ...tarefasDeRegistrarConversa(perfil?.usuario),
+    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
   ])
 
   return (

@@ -23,6 +23,8 @@ async function darParecer(page: Page, decisao: 'Suficiente — liberar' | 'Insuf
 }
 
 test('CA1, CA2, CA4, CA5 e CA6 · da orientação ao médico ao pedido encerrado com o parecer refeito', async ({ page }) => {
+  // Fluxo longo, de várias telas; o envio passa também pela conversa do Chatwoot (GGVP-102): o triplo do tempo padrão.
+  test.slow()
   await darParecer(page, 'Insuficiente — pedir complemento')
 
   await page.goto('/')

@@ -14,6 +14,8 @@ import { tarefasDoParecer } from '../dados/parecer.ts'
 import { tarefasDeDecidirComplemento } from '../dados/complemento.ts'
 // A perícia que passou do limite de remarcações sobe para a advogada responsável (épico GGVP-10, G15).
 import { tarefasDaAdvogadaNaPericia, tarefasDeDecidirDocumentoDaPericia } from '../dados/pericia.ts'
+import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
@@ -27,7 +29,9 @@ export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
   // A cobrança que passou do limite chega à sênior (GGVP-101, CA7), e o caso liberado pela Documentação também (GGVP-18, CA1).
   // O laudo novo e o parecer médico nascem do caso (GGVP-20).
-  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDaAdvogadaNaPericia(), ...tarefasDeDecidirDocumentoDaPericia()])
+  // A conversa com o cliente é da pessoa que a abriu (GGVP-76).
+  const perfil = usePerfil('Advogada')
+  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDaAdvogadaNaPericia(), ...tarefasDeDecidirDocumentoDaPericia(), ...tarefasDeRegistrarConversa(perfil?.usuario), ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id })])
 
   return (
     <>

@@ -1,13 +1,11 @@
 // EXEMPLO. Servidor de exemplo das transcrições do caso (GGVP-46), sobre o mesmo banco de servidor.ts. A transcrição em
 // si (e o "tentar de novo") é `transcrever`, em entrevista.ts. Nada aqui apaga áudio nem texto (CA5). Ligar no servidor:
 // trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-6).
-import { dataParaIso, formatarTelefone, normalizarData } from '../campos.ts'
+import { formatarTelefone } from '../campos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { relogio } from '../regras/entrevista.ts'
-import { QUEM, QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { ConversaSemAudio, Ficha, Gravacao, TarefaEncaminhada } from './tipos.ts'
-
-export const CANAIS_DA_CONVERSA: ConversaSemAudio['canal'][] = ['WhatsApp', 'Telefone', 'Presencial', 'Vídeo']
+import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import type { Ficha, Gravacao, TarefaEncaminhada } from './tipos.ts'
 
 function acharGravacao(banco: Banco, gravacaoId: string): { gravacao: Gravacao; ficha: Ficha } {
   const gravacao = banco.gravacoes.find((g) => g.id === gravacaoId)
@@ -88,49 +86,6 @@ export async function marcarProva(gravacaoId: string, aos: number, prova: boolea
   if (!trecho) throw new Error('Trecho não encontrado')
   trecho.prova = prova || undefined
   ficha.historico.push(evento(`${prova ? 'Marcou' : 'Desmarcou'} como prova o trecho de ${relogio(aos).slice(3)} (${g.titulo.toLowerCase()})`, QUEM_ADVOGADA))
-  gravar(banco)
-  return g
-}
-
-/** POST /api/fichas/:id/conversas. A conversa sem áudio, escrita por quem participou (CA6). */
-export async function registrarConversa(fichaId: string, conversa: ConversaSemAudio, perfil: 'juridico' | 'atendimento'): Promise<Gravacao> {
-  await esperar()
-  const data = dataParaIso(normalizarData(conversa.data))
-  const hoje = hojeIso(agora())
-  const tamanho = (v: string, min: number, max: number) => v.trim().length >= min && v.trim().length <= max
-  const valida =
-    data !== null &&
-    data <= hoje &&
-    CANAIS_DA_CONVERSA.includes(conversa.canal) &&
-    tamanho(conversa.titulo, 3, 120) &&
-    tamanho(conversa.participantes, 3, 120) &&
-    tamanho(conversa.texto, 3, 4000)
-  if (!valida) throw new Error('Conversa incompleta ou inválida')
-  const banco = ler()
-  const ficha = banco.fichas.find((f) => f.id === fichaId)
-  if (!ficha) throw new Error('Ficha não encontrada')
-  banco.seq += 1
-  const g: Gravacao = {
-    id: `conversa-${banco.seq}`,
-    fichaId,
-    data: data!,
-    titulo: `${conversa.canal}: ${conversa.titulo.trim()}`,
-    canal: conversa.canal,
-    participantes: conversa.participantes.split(/\s*[,+]\s*/).filter(Boolean),
-    duracao: 0,
-    origem: 'registro',
-    estado: 'encerrada',
-    acoes: [],
-    transcricao: 'sem-audio',
-    trechos: [],
-    extraidas: [],
-    documentos: [],
-    registro: conversa.texto.trim(),
-    soJuridico: perfil === 'juridico',
-    marcas: [],
-  }
-  banco.gravacoes.push(g)
-  ficha.historico.push(evento(`Registrou uma conversa sem áudio: ${g.titulo}`, perfil === 'juridico' ? QUEM_ADVOGADA : QUEM))
   gravar(banco)
   return g
 }

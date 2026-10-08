@@ -500,6 +500,12 @@ function lerComPericias(): Banco {
 /** A perícia em andamento do processo (a mais nova). */
 const periciaDo = (banco: Banco, processoId: string) => banco.pericias?.filter((p) => p.processoId === processoId).at(-1)
 
+/** A data marcada da perícia em andamento do processo (aaaa-mm-dd): a fonte única para a conversa e as mensagens (GGVP-84, GGVP-102). */
+export function dataDaPericia(banco: Banco, processoId: string): string | undefined {
+  if (!banco.pericias) semear(banco)
+  return periciaDo(banco, processoId)?.marcacao?.data
+}
+
 function naTela(banco: Banco, pericia: Pericia): PericiaNaTela {
   const { ficha, processo } = fichaDoProcesso(banco, pericia.processoId)!
   const hoje = hojeIso(agora())
@@ -636,13 +642,14 @@ export function autorizarRemarcacao(processoId: string, justificativa: string, q
 }
 
 /** A mensagem do lembrete da véspera, para conferir no Chatwoot (CA7). */
-export async function obterLembrete(processoId: string): Promise<{ nome: string; telefone: string; mensagem: string }> {
+export async function obterLembrete(processoId: string): Promise<{ nome: string; telefone: string; mensagem: string; fichaId: string }> {
   const t = await obterPericia(processoId)
   if (!t?.pericia.marcacao) throw new Error('A perícia ainda não tem data')
   const { marcacao } = t.pericia
   return {
     nome: t.ficha.nome,
     telefone: t.ficha.telefone,
+    fichaId: t.ficha.id,
     mensagem: mensagemDoLembrete({ nome: t.ficha.nome, tipo: marcacao.tipo, data: marcacao.data, hora: marcacao.hora, local: marcacao.local }, diaFalado(marcacao.data)),
   }
 }
@@ -1060,7 +1067,7 @@ export function pedirAoMedicoNaPericia(processoId: string, abordar: string, quem
 }
 
 /** A mensagem de cobrança do que falta, com o pedido ao médico quando há, para conferir no Chatwoot. */
-export async function obterCobrancaDaPericia(processoId: string): Promise<{ nome: string; telefone: string; mensagem: string }> {
+export async function obterCobrancaDaPericia(processoId: string): Promise<{ nome: string; telefone: string; mensagem: string; fichaId: string }> {
   const t = await obterPericia(processoId)
   if (!t?.documentos) throw new Error('Esta perícia não pede documento novo.')
   const hoje = hojeIso(agora())
@@ -1074,7 +1081,7 @@ export async function obterCobrancaDaPericia(processoId: string): Promise<{ nome
     `Mande foto por aqui ou traga ao escritório${ate ? ` até ${dataCurta(ate, hoje)}` : ''}.` +
     (pedido ? `\n\nPara o laudo, leve ao seu médico este pedido; ele responde com as palavras dele:\n${pedido.abordar}\n\n` : ' ') +
     'Qualquer dúvida, é só responder esta mensagem.'
-  return { nome: t.ficha.nome, telefone: t.ficha.telefone, mensagem }
+  return { nome: t.ficha.nome, telefone: t.ficha.telefone, mensagem, fichaId: t.ficha.id }
 }
 
 /** A cobrança do dia, enviada pelo Chatwoot depois de conferida (Lucas, 02/10: a Documentação cobra, todo dia). */
@@ -1404,6 +1411,15 @@ export function clienteLigou(texto: string): { texto: string; itens?: ItemDoChat
     texto: `A próxima tarefa é sua: ${tarefa.acao.toLowerCase()} de ${primeiro}. A orientação sai quando a perícia tiver data.`,
     itens: [{ cliente: ficha.nome, acao: tarefa.acao, sub: `${tarefa.detalhe} · ${tarefa.prazo}`, href: tarefa.href! }],
   }
+}
+
+/** A perícia do cliente em poucas palavras, para o chat da Central do Atendimento (GGVP-111, CA7): a data marcada ou a situação. */
+export function periciaDoCliente(fichaId: string): string | undefined {
+  const banco = lerComPericias()
+  const pericia = (banco.pericias ?? []).filter((p) => p.fichaId === fichaId).at(-1)
+  if (!pericia) return undefined
+  const m = pericia.marcacao
+  return m ? `perícia ${dataCurta(m.data, hojeIso(agora()))}, ${m.hora}` : NOMES_DA_SITUACAO_CURTA[situacaoDaPericia(pericia)]
 }
 
 // GGVP-66 · Comparecimento e remarcação (DP.07).

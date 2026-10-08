@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { abrirConversa, anexarAudio, transcreverConversa } from '../dados/conversa.ts'
 import { encerrarGravacao, iniciarGravacao, transcrever } from '../dados/entrevista.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { Transcricoes } from './Transcricoes.tsx'
@@ -105,17 +106,28 @@ describe('Transcrições do caso · janela', () => {
     expect(await screen.findByText(/✓ Conferida e enviada ao checklist do benefício em 05\/10/)).toBeTruthy()
   })
 
-  it('CA6 · registrar uma conversa sem áudio', async () => {
+  it('CA6 e GGVP-76 · "Registrar nova conversa" abre a janela da conversa; só escrita, aparece aqui como "só registro"', async () => {
     await abrir('antonio-exemplo', 'atendimento')
     fireEvent.click(screen.getByRole('button', { name: 'Registrar nova conversa' }))
-    fireEvent.change(screen.getByLabelText('Data *'), { target: { value: '04/10/2026' } })
-    fireEvent.change(screen.getByLabelText('Por onde *'), { target: { value: 'Telefone' } })
-    fireEvent.change(screen.getByLabelText('Assunto *'), { target: { value: 'dúvida sobre a perícia' } })
-    fireEvent.change(screen.getByLabelText('Quem participou *'), { target: { value: 'Atendimento, Antônio' } })
-    fireEvent.change(screen.getByLabelText('O que foi conversado *'), { target: { value: 'Explicamos o que levar na perícia.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Registrar conversa' }))
+    const janela = screen.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
+    fireEvent.click(within(janela).getByRole('radio', { name: 'Ligação' }))
+    fireEvent.click(within(janela).getByRole('radio', { name: 'Sem áudio · só o registro escrito' }))
+    fireEvent.change(within(janela).getByLabelText('Resumo da conversa *'), { target: { value: 'Explicamos o que levar na perícia.' } })
+    fireEvent.click(within(janela).getByRole('button', { name: 'Salvar o registro' }))
+    await vi.waitFor(() => expect(screen.queryByRole('dialog', { name: /Registrar conversa com o cliente/ })).toBeNull())
     expect(await screen.findByText('Explicamos o que levar na perícia.')).toBeTruthy()
     // O contador do topo se atualiza depois da lista: espera por ele, em vez de conferir na hora.
     expect(await screen.findByText('2 gravações · 2 registros sem áudio')).toBeTruthy()
+  })
+
+  it('GGVP-80 CA6 · a conversa com o cliente mostra o que a IA extraiu e leva à conferência dela, em vez de "Conferir e levar"', async () => {
+    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' }, { quem: 'Dra. Paula (exemplo)', perfil: 'advogada' })
+    await anexarAudio(c.id, { nome: 'ligacao.ogg', tipo: 'audio/ogg', tamanho: 4096, avisoNaGravacao: true })
+    await transcreverConversa(c.id)
+    await abrir('maria-exemplo', 'juridico')
+    expect(screen.getByText('Telefone de contato')).toBeTruthy()
+    expect(screen.getAllByText('a conferir na conversa')).toHaveLength(6)
+    expect(screen.queryByRole('button', { name: 'Conferir e levar' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Conferir na conversa (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
   })
 })

@@ -77,3 +77,15 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* "Ver versões" no cartão Histórico (GGVP-84): as versões dos campos que a conversa mudou. */
+.versoes {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}

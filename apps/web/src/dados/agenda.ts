@@ -246,7 +246,7 @@ export async function registrarResultado(id: string, resultado: 'realizado' | 'f
 }
 
 /** GET /api/agendamentos/:id/convite. A mensagem pronta para conferir no Chatwoot (CA4). */
-export async function prepararConvite(id: string): Promise<{ nome: string; telefone: string; mensagem: string }> {
+export async function prepararConvite(id: string): Promise<{ nome: string; telefone: string; mensagem: string; fichaId: string }> {
   const { ficha, agendamento: a } = acharAgendamento(ler(), id)
   const mensagem = mensagemDoConvite({
     nome: ficha.nome,
@@ -258,7 +258,7 @@ export async function prepararConvite(id: string): Promise<{ nome: string; telef
     levar: a.levar ?? true,
     gravar: a.gravar ?? true,
   })
-  return { nome: ficha.nome, telefone: ficha.telefone, mensagem }
+  return { nome: ficha.nome, telefone: ficha.telefone, mensagem, fichaId: ficha.id }
 }
 
 /** POST /api/agendamentos/:id/convite. O convite enviado no Chatwoot fica em "Últimos contatos". */

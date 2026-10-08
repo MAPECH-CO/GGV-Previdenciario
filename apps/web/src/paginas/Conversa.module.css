@@ -1,0 +1,220 @@
+/* Figma step_D5.01 (2281:2) e step_D5.04 (2282:2): o que as telas de passo do Balcão não têm. */
+.setor {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.linhaDoTitulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fonte-13);
+}
+
+.texto {
+  font-size: var(--fonte-14);
+  white-space: pre-wrap;
+}
+
+/* O quadro da IA depois de transcrever (GGVP-80): o que mudou, os dados novos, o que precisa atualizar e a observação. */
+.ia {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.iaTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.iaTitulo span {
+  color: var(--cor-acento);
+}
+
+.iaParte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.iaSub {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.mudancas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trecho {
+  display: block;
+  padding-left: 12px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-style: italic;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 3px 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.chip[data-marcado='true'] {
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-weight: 600;
+}
+
+/* A conferência campo por campo (GGVP-84, Figma step_D5.04 2282:2). */
+.conferencia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.linhaConferencia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-13);
+}
+
+.oQue {
+  flex: 1 1 320px;
+}
+
+.botoesDaLinha {
+  display: flex;
+  gap: 6px;
+}
+
+.botoesDaLinha button[aria-pressed='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.situacao,
+.quemPode {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-12);
+}
+
+.situacao {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.situacao[data-situacao='desfeita'] {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.quemPode {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta);
+}
+
+.correcao {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fonte-12);
+}
+
+/* "Surgiu pendência? Sim" e a escolha do responsável (GGVP-88; Figma 2052:186 e 2176:2). */
+.pendencia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--fonte-13);
+}
+
+.responsavel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-13);
+}
+
+.selo {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+}
+
+.previa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-painel-neutro);
+}
+
+.nova {
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+}
+
+.previaDetalhe {
+  display: block;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.trocar {
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font-weight: 600;
+}

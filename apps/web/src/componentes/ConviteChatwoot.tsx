@@ -5,7 +5,10 @@ import { obterCobranca, registrarTentativa } from '../dados/cobranca.ts'
 import { obterConfirmacao, registrarMensagemDeConfirmacao } from '../dados/confirmacao.ts'
 import { obterComplemento, registrarTentativaDoComplemento } from '../dados/complemento.ts'
 import { obterCobrancaDaPericia, obterLembrete, registrarCobrancaDaPericia, registrarLembrete } from '../dados/pericia.ts'
-import { usePerfilEscolhido } from '../dados/perfis.ts'
+import { clienteNoChatwoot, enviarMensagem, type MensagemPronta } from '../dados/mensagens.ts'
+import { usePerfil, usePerfilEscolhido } from '../dados/perfis.ts'
+import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, type IdDoModelo } from '../regras/mensagens.ts'
+import { ConversaNoChatwoot } from './ConversaNoChatwoot.tsx'
 import styles from './ConviteChatwoot.module.css'
 
 /** O convite da entrevista (GGVP-123), a confirmação dela (GGVP-21), a cobrança dos documentos pendentes (GGVP-101) ou o pedido de complemento ao médico (GGVP-29). */
@@ -13,46 +16,57 @@ type Assunto = 'convite' | 'confirmacao' | 'cobranca' | 'complemento' | 'pericia
 
 type Props = { agendamentoId: string; assunto?: Assunto; aoEnviado: () => void; aoFechar: () => void }
 
-const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Promise<{ nome: string; telefone: string; mensagem: string }>; enviar: (id: string, mensagem: string, quem?: string) => Promise<unknown> }> = {
-  convite: { rotulo: 'Mensagem do convite (confira antes de enviar)', carregar: prepararConvite, enviar: registrarConvite },
+type Carregada = { nome: string; telefone: string; mensagem: string; fichaId: string }
+
+/** Os assuntos em que o id é o do processo: o envio fica ligado a ele (GGVP-102). */
+const DO_PROCESSO: Assunto[] = ['cobranca', 'complemento', 'pericia-lembrete', 'pericia-cobranca']
+
+/** Cada assunto usa um modelo do catálogo da GGVP-102 (CA10) e sai pela conversa do cliente no Chatwoot (CA6). */
+const CONVERSA: Record<Assunto, { rotulo: string; modelo: IdDoModelo; carregar: (id: string) => Promise<Carregada>; enviar: (id: string, mensagem: string, quem?: string) => Promise<unknown> }> = {
+  convite: { rotulo: 'Mensagem do convite (confira antes de enviar)', modelo: 'convite', carregar: prepararConvite, enviar: registrarConvite },
   confirmacao: {
     rotulo: 'Mensagem de confirmação (confira antes de enviar)',
+    modelo: 'confirmacao',
     carregar: async (id) => {
       const dados = await obterConfirmacao(id)
       if (!dados) throw new Error('Compromisso não encontrado')
-      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
+      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem, fichaId: dados.ficha.id }
     },
     enviar: registrarMensagemDeConfirmacao,
   },
   // O id é o do processo; o envio conta como tentativa, ainda sem resposta (GGVP-101, CA6 e CA11).
   cobranca: {
     rotulo: 'Mensagem de cobrança (confira antes de enviar)',
+    modelo: 'cobranca',
     carregar: async (id) => {
       const dados = await obterCobranca(id)
       if (!dados) throw new Error('Cobrança não encontrada')
-      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
+      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem, fichaId: dados.ficha.id }
     },
     enviar: (id) => registrarTentativa(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
   },
   // O id é o do processo; o envio da orientação conta como tentativa, ainda sem resposta (GGVP-29, CA3).
   complemento: {
     rotulo: 'Mensagem com a orientação ao médico (confira antes de enviar)',
+    modelo: 'complemento',
     carregar: async (id) => {
       const dados = await obterComplemento(id)
       if (!dados) throw new Error('Complemento não encontrado')
-      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem }
+      return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem, fichaId: dados.ficha.id }
     },
     enviar: (id) => registrarTentativaDoComplemento(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
   },
   // O id é o do processo; o lembrete da véspera da perícia, revisado pelo Jurídico antes de sair (GGVP-53, CA7; Q5).
   'pericia-lembrete': {
     rotulo: 'Lembrete da véspera da perícia (confira antes de enviar)',
+    modelo: 'pericia-presenca',
     carregar: obterLembrete,
     enviar: (id, mensagem, quem) => registrarLembrete(id, mensagem, quem),
   },
   // O id é o do processo; a cobrança diária do que a perícia pede, pela Documentação (GGVP-56; Lucas, 02/10).
   'pericia-cobranca': {
     rotulo: 'Cobrança dos documentos da perícia (confira antes de enviar)',
+    modelo: 'cobranca',
     carregar: obterCobrancaDaPericia,
     enviar: (id, mensagem, quem) => registrarCobrancaDaPericia(id, mensagem, quem),
   },
@@ -60,14 +74,18 @@ const CONVERSA: Record<Assunto, { rotulo: string; carregar: (id: string) => Prom
 
 /**
  * A conversa do cliente no Chatwoot com a mensagem pronta, para conferir e enviar (GGVP-123, CA4; GGVP-21, CA1).
- * Simulada: o Chatwoot de verdade, com o modelo da mensagem, é da GGVP-102.
+ * Sai pela conversa do cliente no Chatwoot (GGVP-102, CA6), com o registro do envio e a falha na tela (CA4, CA5).
+ * O Chatwoot é simulado (dados/chatwoot.ts).
  */
 export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado, aoFechar }: Props) {
   const conversaDe = CONVERSA[assunto]
-  // Quem está na tela assina o envio (GGVP-53, GGVP-56).
-  const perfil = usePerfilEscolhido()
+  // Quem está na tela assina o envio (GGVP-53, GGVP-56); sem escolha, quem costuma mandar o modelo (GGVP-102, CA9).
+  const escolhido = usePerfilEscolhido()
+  const perfil = usePerfil(MODELOS_DE_MENSAGEM[conversaDe.modelo].quem)
   const janela = useRef<HTMLDialogElement>(null)
-  const [conversa, setConversa] = useState<{ nome: string; telefone: string } | null>(null)
+  const [conversa, setConversa] = useState<Carregada | null>(null)
+  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas'> | null>(null)
+  const [escolhida, setEscolhida] = useState<number | undefined>()
   const [mensagem, setMensagem] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
@@ -81,10 +99,15 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
       if (!dialogo.open) dialogo.showModal()
     } else dialogo?.setAttribute('open', '')
     let valendo = true
-    conversaDe.carregar(agendamentoId).then((c) => {
+    conversaDe.carregar(agendamentoId).then(async (c) => {
       if (!valendo) return
       setConversa(c)
-      setMensagem(c.mensagem)
+      // Todo modelo diz que o escritório nunca pede a senha do gov.br por mensagem (GGVP-111, CA4).
+      setMensagem(comAvisoDaSenha(c.mensagem))
+      const noChatwoot = await clienteNoChatwoot(c.fichaId)
+      if (!valendo) return
+      setCliente(noChatwoot)
+      setEscolhida(noChatwoot.conversas[0]?.id)
     })
     return () => {
       valendo = false
@@ -97,7 +120,14 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
     setEnviando(true)
     setErro('')
     try {
-      await conversaDe.enviar(agendamentoId, mensagem, perfil?.usuario)
+      // Primeiro o Chatwoot: se não sai, a falha fica na tela e no histórico, e nada mais é registrado (CA5).
+      const envio = await enviarMensagem(
+        conversa!.fichaId,
+        { modelo: conversaDe.modelo, texto: mensagem, conversa: escolhida ?? 0, processoId: DO_PROCESSO.includes(assunto) ? agendamentoId : undefined, noCard: false },
+        { quem: perfil?.usuario ?? 'Atendimento', perfil: perfil?.id },
+      )
+      if (envio.status === 'falhou') return setErro(`A mensagem não saiu pelo Chatwoot: ${envio.erro}. Ficou no histórico; nada foi reenviado sozinho.`)
+      await conversaDe.enviar(agendamentoId, mensagem, escolhido?.usuario)
       aoEnviado()
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para enviar.')
@@ -127,6 +157,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
         <span className={styles.rotulo}>{conversaDe.rotulo}</span>
         <textarea className={styles.texto} rows={6} maxLength={1000} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
       </label>
+      {cliente && <ConversaNoChatwoot contato={cliente.contato} conversas={cliente.conversas} escolhida={escolhida} aoEscolher={setEscolhida} texto={mensagem} />}
       {erro && (
         <p role="alert" className={styles.erro}>
           {erro}
