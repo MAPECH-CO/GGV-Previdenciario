@@ -22,7 +22,7 @@ describe('GGVP-135 · a Central da Sênior, do Financeiro e do Sócio, como as o
     render(comSessao(<CentralEmConstrucao rotulo="Sênior" />))
     expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
     expect(sugestoes()).toEqual(expect.arrayContaining(['O que estourou o limite?', 'Criar tarefa', 'Casos para conferir', 'Subir no acervo']))
-    expect(topo()).toEqual(['Início', 'Estudos de caso', 'Roteiros de laudos', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração'])
+    expect(topo()).toEqual(['Início', 'Estudos de caso', 'Roteiros de laudos', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Importar planilha'])
     expect(screen.getByRole('link', { name: /Roteiros de laudos/ }).getAttribute('href')).toBe('/roteiros')
   })
 
