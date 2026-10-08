@@ -119,6 +119,13 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - contratos 100 e API 329 (1 teste novo);
   - Playwright da via administrativa com 11 de 11, incluindo a ida ao banco.
 
+## Revisão do PR #37 (08/10)
+
+- [x] 13.1 GGVP-98 · CA6: a checagem comparava só o dia, então hoje numa hora que já passou era aceito, e a ida ficava no passado. Agora o servidor compara o momento inteiro, data e hora de Brasília, e o mesmo `quando` vai para o agendamento.
+  - Teste: ontem e hoje às 10:00 (o relógio fixo marca 12:00) são recusados, e nada é agendado; hoje às 14:00 passa.
+  - A mensagem passou a dizer "data ou hora que já passou".
+- [x] 13.2 Verificação: typecheck e lint sem erro; `openspec validate --all --strict` com 14 de 14; prestação 19 de 19; Playwright da via administrativa 11 de 11.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.

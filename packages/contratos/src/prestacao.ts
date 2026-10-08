@@ -93,7 +93,7 @@ export type IdaAoBancoDoCaso = z.infer<typeof IdaAoBancoDoCaso>
 
 /**
  * POST /api/casos/:id/banco (CA10, CA12 e GGVP-98 CA6): data, hora, local e quem acompanha obrigatórios. Quem acompanha
- * é do Atendimento. O servidor recusa data que já passou.
+ * é do Atendimento. O servidor recusa data ou hora que já passou.
  */
 export const AgendarIdaAoBanco = z.object({
   data: DataObrigatoria('Informe a data da ida ao banco (dd/mm/aaaa)'),

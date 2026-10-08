@@ -250,12 +250,15 @@ describe('GGVP-44 · ida ao banco', () => {
 })
 
 describe('GGVP-98 · nona revisão de 08/10', () => {
-  it('CA6 · a ida ao banco não é marcada no passado: o servidor recusa (400), e nada é agendado', async () => {
+  it('CA6 · a ida ao banco não é marcada no passado (ontem, ou hoje numa hora que já passou): 400, e nada é agendado', async () => {
     await ateOAviso()
-    const r = await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '07/10/2026' })
-    expect([r.statusCode, r.json().erro]).toEqual([400, MSG_DATA_PASSADA])
+    // Relógio fixo: agora são 12:00 de 08/10 em Brasília.
+    for (const passado of [{ data: '07/10/2026' }, { data: '08/10/2026', hora: '10:00' }]) {
+      const r = await chamar('julia', 'POST', '/banco', { ...AGENDA(), ...passado })
+      expect([r.statusCode, r.json().erro], JSON.stringify(passado)).toEqual([400, MSG_DATA_PASSADA])
+    }
     expect(await banco.select().from(agendamento)).toEqual([])
-    expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '08/10/2026' })).statusCode).toBe(201)
+    expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '08/10/2026', hora: '14:00' })).statusCode).toBe(201)
   })
 })
 
