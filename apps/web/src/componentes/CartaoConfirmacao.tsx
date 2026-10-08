@@ -9,10 +9,12 @@ type Props = {
   estado: EstadoAcao
   aoConfirmar: () => Promise<void>
   aoCancelar: () => void
+  /** A trava do perfil (GGVP-82): sem ela, a do Atendimento. */
+  nota?: string
 }
 
 /** Card "Ação para confirmar" do chat (Figma 2052:2): nada acontece antes de "Confirmar" (GGVP-17, CA8). */
-export function CartaoConfirmacao({ cliente, arquivo, estado, aoConfirmar, aoCancelar }: Props) {
+export function CartaoConfirmacao({ cliente, arquivo, estado, aoConfirmar, aoCancelar, nota }: Props) {
   const [enviando, setEnviando] = useState(false)
   // Trava no mesmo clique, antes de o React redesenhar o botão.
   const travado = useRef(false)
@@ -56,7 +58,7 @@ export function CartaoConfirmacao({ cliente, arquivo, estado, aoConfirmar, aoCan
         <li>Marcar «Laudo novo» na ficha e no processo</li>
         <li>Avisar a advogada responsável (D1.21M), com o resumo e a comparação da IA</li>
       </ol>
-      <p className={styles.nota}>Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.</p>
+      <p className={styles.nota}>{nota ?? 'Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.'}</p>
       <div className={styles.botoes}>
         <button type="button" className={styles.confirmar} disabled={enviando} onClick={confirmar}>
           {enviando ? 'enviando…' : 'Confirmar e enviar ao Jurídico'}

@@ -4,6 +4,7 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
@@ -31,7 +32,7 @@ export function CentralAdvogada() {
   // O laudo novo e o parecer médico nascem do caso (GGVP-20).
   // A conversa com o cliente é da pessoa que a abriu (GGVP-76).
   const perfil = usePerfil('Advogada')
-  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDaAdvogadaNaPericia(), ...tarefasDeDecidirDocumentoDaPericia(), ...tarefasDeRegistrarConversa(perfil?.usuario), ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id })])
+  const [tarefas] = useState(() => [...tarefasDaAdvogada(), ...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer(), ...tarefasDeDecidirComplemento(), ...tarefasDaAdvogadaNaPericia(), ...tarefasDeDecidirDocumentoDaPericia(), ...tarefasDeRegistrarConversa(perfil?.usuario), ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }), ...tarefasCriadasPeloChat(perfil?.usuario)])
 
   return (
     <>

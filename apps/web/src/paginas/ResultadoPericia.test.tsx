@@ -110,11 +110,11 @@ describe('GGVP-70 · o chat da advogada (Figma 2107:667 e 2186:2)', () => {
     expect(item.textContent).toContain('INSS · 23/10, 09:00')
   })
 
-  it('"como o perito avalia": os números do sistema, a amostra pequena sem porcentagem (G22) e a conferência do resultado', async () => {
+  it('"como o perito avalia": os números do sistema com o número de laudos, sem amostra mínima (GGVP-82, Lucas 06/10), e a conferência do resultado', async () => {
     render(<CentralAdvogada />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Como o Dr. A. Prado costuma avaliar problemas de coluna?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(await screen.findByText(/Em coluna ainda são poucos laudos \(8\), então a porcentagem não aparece \(G22\)/)).toBeTruthy()
+    expect(await screen.findByText(/em coluna, \d+% · \d+ de 8/)).toBeTruthy()
     const itens = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getAllByRole('link')
     expect(itens.map((i) => i.getAttribute('href'))).toEqual(['/casos/antonio-exemplo-1/pericia?perito=1', '/casos/antonio-exemplo-1/pericia/resultado'])
     expect(itens[1].textContent).toContain('Antônio Exemplo · Conferir resultado da perícia')

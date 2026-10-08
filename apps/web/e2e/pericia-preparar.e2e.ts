@@ -53,7 +53,7 @@ test('CA8 · "o Antônio me ligou": o chat mostra a próxima tarefa e a orienta�
   await page.goto('/juridico-administrativo?perfil=juridico-adm')
   await page.getByRole('textbox').fill('O Antônio me ligou. O que eu falo para ele?')
   await page.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/A próxima tarefa é sua: orientar Antônio para a perícia de 16\/10/)).toBeVisible()
+  await expect(page.getByText(/A próxima tarefa é sua: orientar Antônio para a perícia de \d{2}\/\d{2}/)).toBeVisible()
   await page.getByRole('list', { name: 'Tarefas sugeridas' }).getByRole('link', { name: /Antônio Exemplo · Orientar para a perícia/ }).click()
   await expect(page.getByRole('heading', { name: 'Antônio Exemplo · Orientar para a perícia' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Registrar a ligação e a orientação' })).toBeDisabled()

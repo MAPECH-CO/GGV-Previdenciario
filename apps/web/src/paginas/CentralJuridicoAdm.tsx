@@ -4,6 +4,8 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { tarefasCriadasPeloChat } from '../dados/chat.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { tarefasDoJuridicoAdm } from '../dados/pericia.ts'
@@ -25,7 +27,9 @@ const sugestoesChatJuridicoAdm = ['Perícias para marcar', 'O cliente me ligou',
 
 export function CentralJuridicoAdm() {
   const [aba, setAba] = useState('minhas')
-  const [tarefas] = useState(() => tarefasDoJuridicoAdm())
+  const perfil = usePerfil('Jurídico administrativo')
+  // GGVP-82: e as tarefas que o chat criou para a pessoa.
+  const [tarefas] = useState(() => [...tarefasDoJuridicoAdm(), ...tarefasCriadasPeloChat(perfil?.usuario)])
 
   return (
     <>

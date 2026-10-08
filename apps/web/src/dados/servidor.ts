@@ -45,6 +45,7 @@ import type { VersaoDoCampo } from '../regras/conversa.ts'
 import type { AvisoAprovado, MensagemAoCliente } from './mensagens.ts'
 import type { PedidoBancario, RegistroBancario } from './seguranca.ts'
 import type { ComplementoDoCaso, Juizo } from './caso.ts'
+import type { TarefaDoChat } from './chat.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -118,6 +119,10 @@ export type Banco = {
   casos?: ComplementoDoCaso[]
   /** Os juízos do acervo, para a jurimetria (GGVP-86, CA6). Sem eles, a semente de caso.ts. */
   juizos?: Juizo[]
+  /** As tarefas criadas pelo chat, na Central de quem vai fazer e no caso (GGVP-82, CA5, CA7, CA9). */
+  tarefasDoChat?: TarefaDoChat[]
+  /** Os lotes de PDFs que a sênior subiu no acervo pelo chat (GGVP-82, CA12; ponta da GGVP-131). */
+  lotesDoAcervo?: { quando: string; quem: string; entraram: number; ficaramDeFora: number }[]
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }

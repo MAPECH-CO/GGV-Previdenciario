@@ -1,0 +1,73 @@
+/* O chat do portal (GGVP-82). O resto vem de CartaoConfirmacao, ChatDaPericia e LaudoPeloChat. */
+.portao {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+}
+
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fora {
+  border-color: var(--cor-linha);
+}
+
+.seloFora {
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.caixa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  align-self: stretch;
+  padding: 10px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-painel-neutro-2);
+}
+
+.nova {
+  padding: 2px 8px;
+  border-radius: var(--raio-16);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+}
+
+.trocar {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.troca {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: var(--fonte-12);
+}
+
+.troca select {
+  padding: 6px 8px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}

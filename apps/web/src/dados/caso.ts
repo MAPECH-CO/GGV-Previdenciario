@@ -532,6 +532,10 @@ function montar(banco: Banco, processoId: string, quem: QuemPergunta | undefined
     if (p.peritoId && pericia.perfil) perito = { id: p.peritoId, nome: pericia.perfil.perito.nome }
     else if (p.peritoLido || p.marcacao) peritoParaIdentificar = { lido: p.peritoLido, opcoes: peritosParaLigar(p.tipo) }
   }
+  // As tarefas criadas pelo chat neste caso (GGVP-82, CA5).
+  for (const t of banco.tarefasDoChat ?? []) {
+    if (t.processoId === processoId && !t.concluida) tarefas.push({ setor: t.setor, titulo: t.titulo, responsavel: t.responsavel, prazo: t.prazo ?? '', peloChat: true })
+  }
   const laco = c.lacos
   const juizo = c.juizoId ? (banco.juizos ?? juizosDeExemplo()).find((j) => j.id === c.juizoId) : undefined
 

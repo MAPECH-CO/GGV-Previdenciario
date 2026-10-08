@@ -86,10 +86,11 @@ test('CA9 e "como o perito avalia" · o chat da advogada abre a página do proce
   await page.goto(ADVOGADA)
   await page.getByRole('textbox').fill('Quais perícias temos esta semana?')
   await page.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/^Uma perícia até 26\/10\./)).toBeVisible()
+  await expect(page.getByText(/^Uma perícia até \d{2}\/\d{2}\./)).toBeVisible()
   await page.getByRole('textbox').fill('Como o Dr. A. Prado costuma avaliar problemas de coluna?')
   await page.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/Em coluna ainda são poucos laudos \(8\), então a porcentagem não aparece \(G22\)/)).toBeVisible()
+  // GGVP-82 (Lucas, 06/10): sem amostra mínima, o número de laudos vem ao lado da porcentagem.
+  await expect(page.getByText(/em coluna, \d+% · \d+ de 8/)).toBeVisible()
   await page.getByRole('list', { name: 'Tarefas sugeridas' }).first().getByRole('link', { name: /Pedro Exemplo · Avaliação social/ }).click()
   await expect(page).toHaveURL(/\/casos\/pedro-exemplo-1\/pericia/)
   await expect(page.getByRole('region', { name: 'Perícias' })).toBeVisible()

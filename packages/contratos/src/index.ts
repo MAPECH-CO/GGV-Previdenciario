@@ -50,3 +50,6 @@ export type TrocarSenha = z.infer<typeof TrocarSenha>
 /** Corpo de toda resposta de erro da API. */
 export const Erro = z.object({ erro: z.string() })
 export type Erro = z.infer<typeof Erro>
+
+// O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
+export * from './chat.ts'

@@ -72,3 +72,55 @@ export const CasoNaTela = z.object({ /* ficha, processo, fase, identificacao, et
 - "O valor da causa e a renda por pessoa do LOAS": li que a advogada vê esses em qualquer caso; a restrição "do caso dela" ficou só na prestação de contas. Confirmar.
 - A Sênior não vê valores (a regra diz só Financeiro e Sócio). Não há perfil "Sócio" no "Trocar perfil" desta branch; a regra já o aceita (`socio`).
 - A semente do Antônio tem o número `0000001-00.2025.4.03.0000`, que não passa no dígito do CNJ: aparece como está. A Lúcia ganhou um CNJ válido.
+
+## GGVP-82 · Conversar com o portal em linguagem natural
+
+### Telas e rotas
+
+| Onde | Figma | O que faz |
+|---|---|---|
+| Centrais (`/`, `/advogada`, `/juridico-administrativo`) | Centrais `11:2`, `59:449`, `2051:173` | "✦ Pergunte ou peça" abaixo da busca: anexar arquivo (um ou vários), gravar áudio (a fala vira texto no campo, pela voz do navegador), enviar texto e as sugestões do perfil; a conversa com as respostas, os links, as fontes e os cartões |
+| aba "✦ Suporte" (todas as outras telas) | Overlay · Chat de suporte `60:2`, `60:193` | O mesmo chat num painel à direita, com o perfil de quem age e as sugestões dele; aberto de dentro de um caso, a pergunta sem nome de cliente é sobre ele; explica os portões ("O que é o G8?") |
+| respostas e cartões | Atendimento `2052:2`, `2107:2`, `2107:215`, `2186:631`, `2186:405`; Advogada `2052:186`, `2176:2`, `2176:195`, `2176:388`, `2086:2`, `2107:442`, `2107:667`, `2186:2`, `2186:211`; Estagiário `2085:2`, `2107:892`, `2107:1091`, `2186:857`; Sênior `2108:2`, `2107:1276`, `2107:1445`, `2186:1192`, `2186:1039`; Financeiro `2108:163`, `2107:1621`, `2107:1742`; títulos `2110:2` | Resposta com o caso e o passo e o link; recusa com o portão; pergunta de volta com as opções em um clique; cartão "Ação para confirmar" (ou "Fora do seu perfil") com os passos numerados, o que conferir, as travas, a linha "Responsável" com "Trocar", a escolha obrigatória quando há, "Confirmar" e "Cancelar" |
+
+### Um motor só (junção dos três chats)
+
+- `perguntar` (`dados/chat.ts`) é o caminho único de toda pergunta, de toda Central e do Suporte; `confirmarAcao` é o único que executa. `ChatDoPortal` é a casca única; `LaudoPeloChat` e `ChatDaPericia` viraram atalhos para ele, e os testes deles passam sobre o motor.
+- As recusas que já valiam viraram o primeiro passo do motor (`recusaImediata`): pular o parecer médico (G17) e pedir para esconder ou mudar a situação real na perícia (G11, a recusa fica registrada). O `ChatIA` chama a mesma função, na hora.
+- Os casos de antes viraram casos do motor, com as mesmas funções da perícia: "perícias para marcar", "o cliente me ligou" (com o lembrete de confirmar a identidade no Atendimento; com a orientação pronta no Jurídico administrativo), "dica para a perícia", "perícias da semana" e o comprovante do INSS anexado. O laudo novo do Atendimento segue o card da GGVP-17.
+- Testes antigos que mudaram de propósito: "enviar sem servidor avisa que não está ligado" (Central do Atendimento e LaudoPeloChat) passou a esperar a resposta do motor; "Suporte e Gravar áudio indisponíveis" passou a abrir o Suporte e a avisar quando o navegador não transforma fala em texto; "como o perito avalia" passou a mostrar a porcentagem com o número de laudos, sem amostra mínima (Lucas, 06/10); a resposta agora vem do servidor, então "Perícias para marcar" espera a resposta (`findByText`). Dois testes de navegador da perícia tinham a data de 07/10 escrita no texto: passaram a aceitar qualquer data.
+
+### Contrato (`packages/contratos/src/chat.ts`)
+
+`PerguntaDoChat` (texto, anexos com nome e tamanho, `processoId` do contexto), `RespostaDoChat` (`tipo`: resposta, recusa, pergunta ou ação; `sugestao`; `links`; `portao`; `opcoes`; `acao`), `CartaoDeAcao` (tipo, título, cliente, processo, passos, o que conferir, travas, responsável, fora do perfil, escolha, rótulo do botão) e `ConfirmacaoDoCartao`. `FonteDaIa` e `SugestaoDaIa` têm o mesmo nome e a mesma forma das de `packages/contratos/src/ia.ts` do pedido #26.
+
+**Ponta para ligar no motor de IA** (pedido #26, `feat/GGVP-14-ia-juridica`, Mateus): na junção, `FonteDaIa` e `SugestaoDaIa` saem de `chat.ts` e passam a vir de `./ia.ts`; `perguntar` vira `POST /api/chat` e a `sugestao` passa a vir do motor (com as fontes e o modelo de verdade, a chamada registrada para auditoria). As recusas, os portões, a regra do responsável, a lista fixa das ações, as permissões e os números ficam no servidor, como código, antes e depois do modelo. Aqui a IA é simulada no servidor de exemplo (`modelo: 'simulado · servidor de exemplo'`).
+
+| Endpoint (quando ligar no servidor) | Entrada | Saída | Função de exemplo |
+|---|---|---|---|
+| `POST /api/chat` | `PerguntaDoChat` + perfil da sessão | `RespostaDoChat` | `perguntar` |
+| `POST /api/chat/acoes/:id` | `ConfirmacaoDoCartao` + os arquivos | o resultado | `confirmarAcao` |
+| `DELETE /api/chat/acoes/:id` | | | `cancelarAcao` |
+| `GET /api/tarefas?criadasPeloChat` | perfil da sessão | `Tarefa[]` | `tarefasCriadasPeloChat` |
+
+### Decisões da história
+
+1. **Consulta** (CA1): o cliente citado (`identificarCliente`) ou o caso do contexto; a resposta diz a etapa, o passo, a identificação, a próxima ação, a perícia, os setores que faltam e as esperas, na visão do perfil (`obterCaso`), com o link "Abrir o caso". Lead sem processo: a ficha.
+2. **Sem acesso** (CA2): valores seguem `podeVerValor`; jurimetria e dica da perícia só o Jurídico. A recusa diz que não tem acesso e não traz o dado.
+3. **Cartão** (CA3): `perguntar` só monta o cartão e guarda a ação pendente no servidor; `confirmarAcao` executa; "Cancelar" apaga a pendente. Só quem pediu confirma.
+4. **Portões** (CA4, `portaoDoPedido`): protocolar no INSS sem o OK do sênior (G2); protocolar na Justiça (G7); aprovar parecer (G17), despacho (G4), exigência (G5), petição (G6); avisar o cliente (G8, e o chat não fala com o cliente); calcular valor ou honorários (G19); a senha do gov.br (G9, nunca devolvida); escolher ou sugerir o perito (a IA não escolhe).
+5. **Histórico** (CA5): toda ação confirmada entra na linha do caso com o nome, a hora e "feito pelo chat"; a tarefa criada aparece no caso ("criada pelo chat") e na Central de quem vai fazer.
+6. **Responsável** (CA7, `responsavelDaTarefa`): cita a pessoa, é ela; cita só o setor, o chat pergunta quem do setor; ninguém, pergunta quem é; "para mim", quem pediu. "Trocar" lista as pessoas do escritório; trocada a pessoa, a ação do título vem da lista dela quando o pedido cita uma.
+7. **Fora do perfil** (CA8, `foraDoPerfil`): petição ou peça fora da advogada e da sênior; marcar perícia fora do Jurídico; acervo fora da sênior. A recusa diz de quem é e o cartão "Criar tarefa para" quem pode.
+8. **Título** (CA9): "cliente · ação" com a ação da lista fixa do perfil de quem vai fazer (`ACOES_DO_PERFIL`, Glossário 2110:2); sem ação da lista no pedido, o chat pergunta qual. Sem cliente, o contexto ("Acervo").
+9. **Jurimetria** (CA10): os números são do sistema (`taxaComCasos`, `perfilDoPerito`, `jurimetriaDoJuizo`), com o número de casos ao lado, sem amostra mínima; a resposta cita as fontes (a regra e os laudos do acervo).
+10. **Perícias da semana** (CA11): `periciasDaSemana` da perícia; cada item abre `/casos/:id/pericia`, não a Agenda.
+11. **Anexos** (CA12, `tipoDoAnexo`): laudo novo (o Atendimento não vê o conteúdo), comprovante do INSS (a IA não escolhe nem sugere o perito; a pergunta do documento novo antes de confirmar), comprovante de RPV no Financeiro (o valor vem do comprovante, a IA não calcula honorários, G19; a advogada recebe "Aprovar prestação de contas" e o aviso só depois do OK, G8), lote de PDFs para o acervo na sênior (o que não dá para ler fica de fora, nada trava; ponta da GGVP-131) e documento comum.
+12. **Gravar áudio** (CA6): a fala vira texto no campo pela voz do navegador (Chrome e Edge), para a pessoa conferir antes de enviar; sem ela, o chat avisa.
+13. **Pedir a peça** (fora do escopo: escrever): a advogada pede a minuta com um cartão; a minuta entra na tarefa "Conferir petição" dela (G6). Quem escreve é a GGVP-63.
+
+### Anotado para o Lucas
+
+- As Centrais da Sênior e do Financeiro ainda não existem neste repositório (são de outras histórias): para esses perfis, o chat fica na aba Suporte, com as sugestões do Figma.
+- "Marca a perícia do Pedro" vira tarefa para o Jurídico administrativo quando a advogada pede; o Jurídico administrativo marca anexando o comprovante (o cartão vem com ele). Marcar entrevista abre a agenda do cliente.
+- O "Falar com uma pessoa" do Suporte (Chatwoot) ficou de fora: é a GGVP-102.

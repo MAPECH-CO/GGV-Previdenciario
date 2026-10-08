@@ -4,6 +4,7 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { LaudoPeloChat } from '../componentes/LaudoPeloChat.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import {
@@ -65,6 +66,8 @@ export function CentralAtendimento() {
     ...tarefasDaDocumentacaoNaPericia(),
     ...tarefasDeRegistrarConversa(perfil?.usuario),
     ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
+    // GGVP-82: as tarefas que o chat criou para a pessoa.
+    ...tarefasCriadasPeloChat(perfil?.usuario),
   ])
 
   return (
