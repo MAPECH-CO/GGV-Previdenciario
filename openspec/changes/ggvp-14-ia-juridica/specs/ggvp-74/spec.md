@@ -11,5 +11,5 @@ A sugestão da IA SHALL trazer um resumo curto da publicação, marcado como sug
 
 #### Scenario: IA · Ler com o resumo
 - **Dado** uma publicação casada
-- **Quando** a advogada pede a sugestão da IA
+- **Quando** a advogada abre a publicação
 - **Então** vê o resumo ao lado do texto original, marcado como sugestão

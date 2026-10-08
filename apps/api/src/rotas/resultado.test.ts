@@ -128,6 +128,18 @@ describe('Épico IA · a IA sugere o resumo do resultado', () => {
     expect(enviado).toContain('Texto da decisão: não está no sistema; o motivo fica para a advogada completar')
   })
 
+  it('Sugestão pronta (07/10) · a rodada deixa o rascunho pronto; ao abrir, aparece sem nova chamada', async () => {
+    let chamadas = 0
+    const fetch = async () => {
+      chamadas++
+      return new Response(JSON.stringify({ choices: [{ message: { content: RASCUNHO } }] }))
+    }
+    app = criarServidor({ banco, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste' }, fetch }) })
+    await app.prepararSugestoes()
+    const r = (await chamar('gabi', 'POST', '/resultado/sugestao')).json()
+    expect([r.sugestao.texto, chamadas]).toEqual([RASCUNHO, 1])
+  })
+
   it('saída com código de doença é barrada (G20), e o Jurídico escreve; depois do resumo aprovado, não há o que sugerir', async () => {
     comIa('O laudo mostrou F32.1 e por isso perdemos.')
     expect((await chamar('gabi', 'POST', '/resultado/sugestao')).json()).toEqual({ sugestao: null, motivo: 'A IA não escreveu agora: escreva o resumo.' })

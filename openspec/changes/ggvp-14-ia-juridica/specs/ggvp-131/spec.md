@@ -24,7 +24,7 @@ A chance SHALL aparecer na conferência da Sênior antes do INSS, com os fatores
 
 #### Scenario: CA4 · Ver a chance
 - **Dado** um caso na conferência da Sênior
-- **Quando** ela clica "Ver a chance de êxito"
+- **Quando** ela abre a conferência
 - **Então** vê o número (ou a falta dele) e os fatores sugeridos pela IA
 
 ### Requirement: CA9 · O Atendimento não vê a chance

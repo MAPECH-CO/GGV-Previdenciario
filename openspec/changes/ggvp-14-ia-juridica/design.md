@@ -40,7 +40,7 @@ O banco já separa a sugestão da IA da decisão da pessoa (`decisao.sugestao_ia
 
 ### Decisions
 - Finalidade `analisar_indeferimento` (JSON, leva dado de saúde, não barra CID: é leitura interna da Sênior). Saída validada por `AnaliseDoIndeferimentoPelaIa`; fora do formato, sem sugestão.
-- A análise é pedida pelo botão na tela da Sênior. "Usar a sugestão" preenche o formulário; o prazo continua pergunta da Sênior.
+- A análise chega pronta (ver "Sugestão pronta") e preenche o formulário; o prazo continua pergunta da Sênior.
 - `Despachar` aceita `chamadaIaId`; o despacho grava `decisao.sugestao_ia = { chamadaId }` (a saída completa está em `chamada_ia`).
 
 ## GGVP-67 · A IA faz outra versão da petição
@@ -49,3 +49,24 @@ O banco já separa a sugestão da IA da decisão da pessoa (`decisao.sugestao_ia
 - A IA não grava versão: a sugestão cai na caixa de "Editar eu mesma" e a rota de versões que já existe grava (com o tratamento do CA7 depois da aprovação). Uma rota de gravação só, um caminho para a versão nova.
 - Finalidade `nova_versao_peticao`: recebe a última versão e o pedido; mantém o resto do texto; mesmas regras da minuta (não inventar, sem organização interna, sem número de jurimetria). Leva dado de saúde e não barra CID (a peça cita o CID do laudo do caso).
 - A marca fica em `peticao_versao.gerada_por` ("<nome> · versão da IA"), como na versão 1 da minuta; a chamada vai para o histórico da versão nova (`chamadaIa`).
+
+## GGVP-79 · A IA sugere as tarefas da exigência do juiz
+
+### Decisions
+- Mesmo desenho da análise do indeferimento: finalidade `analisar_exigencia_juiz` (JSON, leva dado de saúde, não barra CID), saída validada por `AnaliseDaExigenciaPelaIa`, pronta ao abrir, sem gravar nada. O acervo é consultado pelo texto da publicação (GGVP-45).
+- A sugestão preenche decisão, itens (setor, o que cumprir, prova esperada) e perícia; o prazo interno fica vazio, porque é decisão da advogada e o servidor confere que não passa do processual.
+- A decisão `D3a.02` grava `sugestao_ia = { chamadaId }` quando a advogada partiu da sugestão.
+
+## Sugestão pronta, sem botão (Mateus, 07/10)
+
+### Context
+Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica para trás. Pedido do Mateus: em toda tarefa, a sugestão já aparece quando a pessoa abre; botão só para pedir algo novo (outra versão da petição).
+
+### Decisions
+- **Guardada pelo conteúdo, na tabela do registro.** `chamada_ia` já guarda `entrada_hash` (sha256 do conteúdo). `sugerir` procura a última chamada `ok` com a mesma finalidade, versão da instrução, modelo, caso e `entrada_hash` e devolve essa, sem chamar a IA. Sem tabela nova nem migração. ponytail: sem índice; índice em (`caso_id`, `entrada_hash`) quando o registro crescer.
+- **Só fica guardado o que passou no formato.** As rotas passam `validar` para `sugerir`; saída que não passa fica `falhou` ("saída fora do formato") e não é reaproveitada. A tela mostra uma mensagem só: "A IA não respondeu agora".
+- **Preparo em segundo plano.** Cada rota com IA registra no `preparo` como achar o que está esperando (tarefas abertas do passo, publicações sem classe) e como preparar a sugestão de um, com a mesma função da rota. `principal.ts` roda uma rodada ao subir e a cada 5 minutos; sem chave, não roda. Em segundo plano, cada conteúdo tem uma tentativa (`soPreparar`): falhou, só tenta de novo quando a pessoa abre.
+- **Pedidos iguais ao mesmo tempo, uma chamada.** `sugerir` junta numa chamada só os pedidos iguais em curso. ponytail: por processo; com mais de uma instância da API, trava no banco.
+- **A tela pede sozinha.** Ao abrir a tarefa, a tela chama a rota da sugestão (que devolve a guardada na hora) e preenche o formulário se a pessoa ainda não mexeu. Botão só para pedir de novo: "Escrever de novo com a IA" (minuta) e "Pedir outra versão à IA" (petição), que passam `refazer`.
+- **Minuta com o padrão do pedido.** Pronta com todos os documentos do caso marcados (na ordem em que chegaram, sem a carta, que entra sempre), "usar precedentes do acervo" marcado e sem instruções; a tela abre com o mesmo padrão marcado, para a minuta e o pacote baterem.
+- **Chance.** O histórico `chance_mostrada` continua só quando a tela mostra; a rodada de preparo não registra.

@@ -28,7 +28,6 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [ia, setIa] = useState<SugestaoDePublicacao | null>(null)
-  const [pensando, setPensando] = useState(false)
 
   useEffect(() => {
     void chamarApi<PublicacaoParaLer>(`/publicacoes/${publicacaoId}`).then((r) => {
@@ -50,19 +49,20 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
     setVersao((v) => v + 1)
   }
 
-  async function pedirSugestao() {
-    setPensando(true)
-    const r = await chamarApi<SugestaoDePublicacao>(`/publicacoes/${publicacaoId}/sugestao`, { method: 'POST', corpo: {} })
-    setPensando(false)
-    if (!r.ok) return setErro(r.erro)
-    setIa(r.dados)
-  }
-
-  function usarSugestao(s: NonNullable<SugestaoDePublicacao['sugestao']>) {
-    setClasse(s.classe)
-    setDias(s.dias === null ? '' : String(s.dias))
-    setSemPrazo(s.classe !== 'andamento' && s.dias === null)
-  }
+  // Épico IA e sugestão pronta (07/10): a publicação ainda sem classe abre com a leitura da IA (preparada em segundo
+  // plano), que preenche o tipo e os dias se a pessoa ainda não escolheu; quem classifica é ela.
+  useEffect(() => {
+    if (!p?.podeClassificar || p.classe) return
+    void chamarApi<SugestaoDePublicacao>(`/publicacoes/${publicacaoId}/sugestao`, { method: 'POST', corpo: {} }).then((r) => {
+      if (!r.ok) return setIa({ sugestao: null, motivo: r.erro })
+      setIa(r.dados)
+      const s = r.dados.sugestao
+      if (!s) return
+      setClasse((c) => c ?? s.classe)
+      setDias((d) => d || (s.dias === null ? '' : String(s.dias)))
+      setSemPrazo((x) => x || (s.classe !== 'andamento' && s.dias === null))
+    })
+  }, [publicacaoId, p?.podeClassificar, p?.classe])
 
   if (!p)
     return (
@@ -116,14 +116,10 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
         </p>
       )}
 
-      {p.podeClassificar && (
+      {p.podeClassificar && !p.classe && (
         <section className={styles.cartao} aria-label="Sugestão da IA">
           <h2 className={styles.cartaoTitulo}>Sugestão da IA</h2>
-          {!ia && (
-            <button type="button" className={styles.botaoSecundario} disabled={pensando} onClick={() => void pedirSugestao()}>
-              {pensando ? 'A IA está lendo…' : 'Sugerir com a IA'}
-            </button>
-          )}
+          {!ia && <p className={styles.dica}>A IA está lendo…</p>}
           {ia?.motivo && <p className={styles.dica}>{ia.motivo}</p>}
           {ia?.sugestao && (
             <>
@@ -138,12 +134,10 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
                 {ia.sugestao.dias !== null ? ` · prazo de ${ia.sugestao.dias} dias escrito na decisão` : ''}
               </p>
               <p className={styles.dica}>Resumo: {ia.sugestao.resumo}</p>
-              <div className={styles.acoes}>
-                <button type="button" className={styles.botaoSecundario} onClick={() => usarSugestao(ia.sugestao!)}>
-                  Usar a sugestão
-                </button>
-              </div>
-              <p className={styles.dica}>A data final do prazo é contada pelo sistema; a IA só lê os dias escritos ({ia.sugestao.modelo}).</p>
+              <p className={styles.dica}>
+                O formulário abaixo já veio com a sugestão: confira e classifique. A data final do prazo é contada pelo sistema; a IA só lê os dias
+                escritos ({ia.sugestao.modelo}).
+              </p>
             </>
           )}
         </section>

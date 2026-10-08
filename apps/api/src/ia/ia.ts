@@ -1,6 +1,7 @@
 // A porta única da IA (GGVP-106): a OpenAI sugere, a Mistral lê documento. A IA só sugere (CA1, CA2); toda chamada
 // fica registrada (CA4); sem chave, desliga e nada trava; dado de saúde só com autorização do escritório (LGPD).
 import { createHash } from 'node:crypto'
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
 import type { FonteDaIa, SugestaoDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { chamadaIa, eventoAuditoria } from '../banco/esquema.ts'
@@ -72,6 +73,20 @@ export const FINALIDADES = {
       'Trechos do acervo da casa, quando houver, mostram como o escritório já argumentou: aproveite a tese e a estrutura, nunca fatos, nomes, datas ou dados de outro cliente.',
     ].join(' '),
   },
+  /** GGVP-79 (G5): a IA lê a exigência do juiz com o caso e sugere as tarefas; quem decide é a advogada. Leitura interna. */
+  analisar_exigencia_juiz: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a analisar uma publicação judicial que pode exigir algo da parte autora.',
+      'Leia a publicação, o prazo, o benefício, os documentos do caso e, se houver, os trechos do acervo, e responda só com um objeto JSON:',
+      '{"resumo": "em até 3 frases: o que o juiz pediu e até quando", "ciencia": true se a publicação não pede nada à parte, "itens": [{"setor": "atendimento" | "juridico_adm" | "documentacao", "descricao": "o que o setor deve cumprir, concreto", "provaEsperada": "o documento que comprova, ou null"}], "pericias": ["medica" | "social"]}.',
+      'Atendimento fala com o cliente (documento ou informação que só ele tem); Documentação busca e organiza documento (CNIS, processo administrativo, comprovantes); Jurídico cuida do que é jurídico (cálculo, quesitos, manifestação técnica). Um item por pedido do juiz. Perícia só se o juiz a determinou.',
+      'Não calcule datas nem prazos. Use só o que está no conteúdo. Se ciencia for true, itens e pericias vazios.',
+    ].join(' '),
+  },
   /** GGVP-67: "Não está boa": a IA reescreve a última versão só com o que a advogada pediu. */
   nova_versao_peticao: {
     versao: 1,
@@ -119,6 +134,21 @@ const hash = (texto: string | Uint8Array) => createHash('sha256').update(texto).
 
 type Opcoes = { banco: Banco; ambiente?: Ambiente; fetch?: typeof globalThis.fetch; agora?: () => Date }
 type Quem = { casoId: string | null; quem: string | null }
+type Pedido = Quem & { conteudo: string; fontes: FonteDaIa[] }
+/**
+ * Sugestão pronta (07/10). `refazer`: chama de novo mesmo com sugestão guardada (outra versão, pedida pela pessoa).
+ * `soPreparar`: o preparo em segundo plano, uma tentativa por conteúdo. `validar`: a saída só fica guardada se passar.
+ */
+export type ComoSugerir = { refazer?: boolean; soPreparar?: boolean; validar?: (texto: string) => boolean }
+
+/** JSON da IA, ou nulo se ela respondeu outra coisa (a rota valida com o contrato dela). */
+export const lerJson = (texto: string): unknown => {
+  try {
+    return JSON.parse(texto)
+  } catch {
+    return null
+  }
+}
 
 export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetch, agora = () => new Date() }: Opcoes) {
   const modeloTexto = ambiente.OPENAI_MODELO || 'gpt-4.1-mini'
@@ -174,11 +204,53 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
   /** O erro que vai ao registro: o status e o tipo, nunca a chave nem o corpo do pedido. */
   const motivo = (e: unknown) => (e instanceof Error ? e.message.slice(0, 200) : 'erro desconhecido')
 
+  /** Pedidos iguais em curso (mesma chave) viram uma chamada só. ponytail: por processo; com mais de uma API, trava no banco. */
+  const emCurso = new Map<string, Promise<SugestaoDaIa | null>>()
+
   /**
    * CA1, CA2: devolve uma sugestão com as fontes, ou nulo (sem chave, recusada ou falha). Nunca grava decisão: quem
-   * decide é a rota da pessoa.
+   * decide é a rota da pessoa. Sugestão pronta (Mateus, 07/10): o mesmo caso com o mesmo conteúdo devolve a sugestão já
+   * registrada, sem nova chamada; só `refazer` (pedido explícito de outra versão) chama de novo.
    */
-  async function sugerir(finalidade: Finalidade, pedido: Quem & { conteudo: string; fontes: FonteDaIa[] }): Promise<SugestaoDaIa | null> {
+  async function sugerir(finalidade: Finalidade, pedido: Pedido, como: ComoSugerir = {}): Promise<SugestaoDaIa | null> {
+    const f = FINALIDADES[finalidade]
+    const entradaHash = hash(pedido.conteudo)
+    const mesma = and(
+      eq(chamadaIa.finalidade, finalidade),
+      eq(chamadaIa.versaoInstrucao, f.versao),
+      eq(chamadaIa.modelo, modeloTexto),
+      pedido.casoId ? eq(chamadaIa.casoId, pedido.casoId) : isNull(chamadaIa.casoId),
+      eq(chamadaIa.entradaHash, entradaHash),
+    )
+    const chave = [finalidade, f.versao, modeloTexto, pedido.casoId, entradaHash].join('|')
+    if (!como.refazer) {
+      // ponytail: sem índice; índice em (caso_id, entrada_hash) quando o registro crescer.
+      const [pronta] = await banco.select().from(chamadaIa).where(and(mesma, eq(chamadaIa.situacao, 'ok'))).orderBy(desc(chamadaIa.quando)).limit(1)
+      if (pronta?.saida)
+        return { chamadaId: pronta.id, sugestao: true, texto: pronta.saida, fontes: pronta.fontes as FonteDaIa[], modelo: pronta.modelo, geradaEm: pronta.quando.toISOString(), alerta: pronta.alerta }
+      // Em segundo plano, uma tentativa por conteúdo e por dia: falhou ou foi barrada, só a pessoa, ao abrir, tenta de novo.
+      if (como.soPreparar) {
+        const ontem = new Date(agora().getTime() - 24 * 3_600_000)
+        const [tentou] = await banco
+          .select({ id: chamadaIa.id })
+          .from(chamadaIa)
+          .where(and(mesma, inArray(chamadaIa.situacao, ['falhou', 'recusada']), gt(chamadaIa.quando, ontem)))
+          .limit(1)
+        if (tentou) return null
+      }
+      const andando = emCurso.get(chave)
+      if (andando) return andando
+    }
+    const promessa = chamar(finalidade, pedido, como.validar)
+    emCurso.set(chave, promessa)
+    try {
+      return await promessa
+    } finally {
+      if (emCurso.get(chave) === promessa) emCurso.delete(chave)
+    }
+  }
+
+  async function chamar(finalidade: Finalidade, pedido: Pedido, validar?: (texto: string) => boolean): Promise<SugestaoDaIa | null> {
     const f = FINALIDADES[finalidade]
     const inicio = Date.now()
     const base = { finalidade, fornecedor: 'openai' as const, modelo: modeloTexto, versaoInstrucao: f.versao, alvo: pedido, entrada: pedido.conteudo, fontes: pedido.fontes }
@@ -212,6 +284,11 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
       // GGVP-110 CA7 (G20): saída com código de doença não chega à tela.
       if (f.barrarCid && temCid(texto)) {
         await registrar({ ...base, saida: texto, situacao: 'recusada', alerta: 'saída com código de doença (G20)', inicio })
+        return null
+      }
+      // Sugestão pronta: só fica guardado (situação ok) o que passou no formato da rota.
+      if (validar && !validar(texto)) {
+        await registrar({ ...base, saida: texto, situacao: 'falhou', erro: 'saída fora do formato', inicio })
         return null
       }
       const alerta = instrucaoSuspeita(texto) ? 'saída repete instrução suspeita' : instrucaoSuspeita(pedido.conteudo) ? 'entrada com instrução suspeita' : null
@@ -260,6 +337,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
-  return { sugerir, lerDocumento }
+  /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
+  return { sugerir, lerDocumento, ligada: Boolean(ambiente.OPENAI_API_KEY) }
 }
 export type Ia = ReturnType<typeof criarIa>

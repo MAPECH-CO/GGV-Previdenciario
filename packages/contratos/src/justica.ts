@@ -168,18 +168,40 @@ const ItemDaExigenciaJuiz = z.object({
 export const AnalisarExigenciaJuiz = z.discriminatedUnion(
   'decisao',
   [
-    z.object({ decisao: z.literal('ciencia') }),
+    // Épico IA (GGVP-79 CA3): a decisão que partiu da sugestão guarda a chamada à parte do que a advogada escolheu.
+    z.object({ decisao: z.literal('ciencia'), chamadaIaId: z.uuid().optional() }),
     z
       .object({
         decisao: z.literal('cumprir'),
         itens: z.array(ItemDaExigenciaJuiz).default([]),
         tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+        chamadaIaId: z.uuid().optional(),
       })
       .refine((d) => d.itens.length > 0 || d.tiposPericia.length > 0, { message: 'Inclua ao menos um item ou a perícia', path: ['itens'] }),
   ],
   { error: 'Escolha "Só ciência" ou "Precisa cumprir"' },
 )
 export type AnalisarExigenciaJuiz = z.input<typeof AnalisarExigenciaJuiz>
+
+/** Épico IA (GGVP-79 CA3): o que a IA devolve, em JSON. "Só ciência" sem itens; senão, os itens por setor e a perícia. */
+export const AnaliseDaExigenciaPelaIa = z.object({
+  resumo: z.string().trim().min(1),
+  ciencia: z.boolean(),
+  itens: z
+    .array(z.object({ setor: z.enum(SETORES_DA_EXIGENCIA), descricao: z.string().trim().min(1), provaEsperada: z.string().trim().nullable().default(null) }))
+    .default([]),
+  pericias: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
+})
+export type AnaliseDaExigenciaPelaIa = z.infer<typeof AnaliseDaExigenciaPelaIa>
+
+/** POST /api/casos/:id/exigencia-juiz/sugestao. Sem sugestão (sem chave, falha, fora do formato): `leitura` nula e o motivo. */
+export const SugestaoDaExigencia = z.object({
+  sugestao: SugestaoDaIa.nullable(),
+  leitura: AnaliseDaExigenciaPelaIa.nullable(),
+  motivo: z.string().nullable(),
+  aviso: z.string().nullable(),
+})
+export type SugestaoDaExigencia = z.infer<typeof SugestaoDaExigencia>
 
 /** GET /api/casos/:id/exigencia-juiz (GGVP-79 CA5; GGVP-83 CA2, CA3, CA10). */
 export const ExigenciaDoJuiz = z.object({
@@ -443,7 +465,10 @@ export const PedirPeticao = z.object({
 export type PedirPeticao = z.input<typeof PedirPeticao>
 
 /** POST /api/casos/:id/peticao/minuta (épico IA): o que a advogada já escolheu; a IA escreve a versão 1, sem gravar nada. */
-export const PedirMinuta = PedirPeticao.pick({ instrucoes: true, opcoes: true, citados: true })
+export const PedirMinuta = PedirPeticao.pick({ instrucoes: true, opcoes: true, citados: true }).extend({
+  /** Sugestão pronta (07/10): "Escrever de novo com a IA" pede outra minuta mesmo com o mesmo pedido. */
+  refazer: z.boolean().optional(),
+})
 export type PedirMinuta = z.input<typeof PedirMinuta>
 /** A minuta como sugestão (com as fontes), ou nula com o motivo; `aviso`: "sem referência na casa" (GGVP-45 CA2). */
 export const MinutaDaIa = z.object({ sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable(), aviso: z.string().nullable() })

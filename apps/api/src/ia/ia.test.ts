@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eq } from 'drizzle-orm'
 import { caso, chamadaIa, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { FINALIDADES, REGRAS_DA_IA, criarIa, instrucaoSuspeita, temCid } from './ia.ts'
+import { FINALIDADES, REGRAS_DA_IA, criarIa, instrucaoSuspeita, lerJson, temCid } from './ia.ts'
 
 let banco: Banco
 let fechar: () => Promise<void>
@@ -159,5 +159,43 @@ describe('GGVP-110 · conteúdo malicioso não manipula a IA', () => {
       casoId: CASO, quem, arquivo: new Uint8Array([1, 2, 3]), mime: 'application/pdf', sensivel: false, referencia: 'documento:9',
     })
     expect([lido?.texto.startsWith('Comprovante.'), lido?.alerta]).toEqual([true, 'documento com instrução suspeita'])
+  })
+})
+
+describe('Sugestão pronta (Mateus, 07/10) · guardada pelo conteúdo', () => {
+  const pedido = (conteudo: string, casoId: string | null = CASO) => ({ casoId, quem, conteudo, fontes: FONTES })
+
+  it('o mesmo caso com o mesmo conteúdo devolve a sugestão guardada, sem nova chamada; conteúdo novo, outro caso ou "refazer" chamam', async () => {
+    const fetch = servico(OPENAI_OK)
+    const ia = criarIa({ banco, ambiente: CHAVES, fetch })
+    const a = await ia.sugerir('resumo_resultado', pedido('Sentença improcedente.'))
+    const b = await ia.sugerir('resumo_resultado', pedido('Sentença improcedente.'))
+    expect([b?.chamadaId, b?.texto, b?.fontes, fetch.mock.calls.length]).toEqual([a?.chamadaId, a?.texto, FONTES, 1])
+    await ia.sugerir('resumo_resultado', pedido('Sentença procedente.'))
+    await ia.sugerir('resumo_resultado', pedido('Sentença improcedente.', null))
+    const c = await ia.sugerir('resumo_resultado', pedido('Sentença improcedente.'), { refazer: true })
+    expect([fetch.mock.calls.length, c?.chamadaId === a?.chamadaId]).toEqual([4, false])
+  })
+
+  it('saída fora do formato fica "falhou" e não é guardada; pedidos iguais ao mesmo tempo viram uma chamada só', async () => {
+    const validar = (texto: string) => lerJson(texto) !== null
+    const torta = criarIa({ banco, ambiente: CHAVES, fetch: servico({ choices: [{ message: { content: 'não é JSON' } }] }) })
+    expect(await torta.sugerir('classificar_publicacao', pedido('Intime-se.'), { validar })).toBeNull()
+    expect((await banco.select().from(chamadaIa)).map((c) => [c.situacao, c.erro])).toEqual([['falhou', 'saída fora do formato']])
+    const fetch = servico({ choices: [{ message: { content: '{"classe":"andamento","dias":null,"resumo":"Vista."}' } }] })
+    const ia = criarIa({ banco, ambiente: CHAVES, fetch })
+    const [x, y] = await Promise.all([ia.sugerir('classificar_publicacao', pedido('Intime-se.'), { validar }), ia.sugerir('classificar_publicacao', pedido('Intime-se.'), { validar })])
+    expect([x?.chamadaId, fetch.mock.calls.length]).toEqual([y?.chamadaId, 1])
+  })
+
+  it('em segundo plano, uma tentativa por conteúdo: falhou, a rodada não chama de novo; quem abre a tarefa chama', async () => {
+    const fetch = servico({ erro: 'fora do ar' }, 500)
+    const ia = criarIa({ banco, ambiente: CHAVES, fetch })
+    expect(await ia.sugerir('resumo_resultado', pedido('Sentença.'), { soPreparar: true })).toBeNull()
+    expect(await ia.sugerir('resumo_resultado', pedido('Sentença.'), { soPreparar: true })).toBeNull()
+    expect(fetch.mock.calls.length).toBe(1)
+    await ia.sugerir('resumo_resultado', pedido('Sentença.'))
+    expect(fetch.mock.calls.length).toBe(2)
+    expect([ia.ligada, criarIa({ banco, ambiente: {} }).ligada]).toEqual([true, false])
   })
 })

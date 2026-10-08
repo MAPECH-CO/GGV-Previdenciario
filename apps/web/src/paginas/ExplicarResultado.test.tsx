@@ -19,7 +19,7 @@ const corpoDo = (fetch: ReturnType<typeof servidor>, fim: string) =>
   JSON.parse(String(fetch.mock.calls.find(([url, init]) => String(url).endsWith(fim) && init?.method === 'POST')?.[1]?.body))
 
 describe('Explicar o resultado (GGVP-22)', () => {
-  it('épico IA · "Sugerir o resumo com a IA" preenche a caixa com o selo, e a aprovação leva a chamada', async () => {
+  it('épico IA · ao abrir, o rascunho da IA já está na caixa, com o selo, e a aprovação leva a chamada', async () => {
     const CHAMADA = '55555555-5555-4555-8555-555555555555'
     const sugestao = { chamadaId: CHAMADA, sugestao: true, texto: 'O juiz entendeu que faltou prova da incapacidade.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null }
     const fetch = vi.fn(async (url: string, init?: RequestInit) =>
@@ -31,8 +31,8 @@ describe('Explicar o resultado (GGVP-22)', () => {
     )
     vi.stubGlobal('fetch', fetch)
     render(<ExplicarResultado casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Sugerir o resumo com a IA' }))
     expect(await screen.findByText('Rascunho da IA · complete e confira antes de aprovar')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Sugerir o resumo com a IA' })).toBeNull()
     expect((screen.getByLabelText('O que dizer ao cliente') as HTMLTextAreaElement).value).toBe(sugestao.texto)
     fireEvent.click(screen.getByLabelText('O Atendimento, no padrão'))
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar o resumo' }))

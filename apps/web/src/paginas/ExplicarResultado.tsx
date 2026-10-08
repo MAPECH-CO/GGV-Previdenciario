@@ -22,7 +22,6 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [ia, setIa] = useState<SugestaoDoResumo | null>(null)
-  const [escrevendo, setEscrevendo] = useState(false)
 
   useEffect(() => {
     void chamarApi<ResultadoParaExplicar>(`/casos/${casoId}/resultado`).then((x) => (x.ok ? setR(x.dados) : setErro(x.erro)))
@@ -36,15 +35,17 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
     setVersao((v) => v + 1)
   }
 
-  async function pedirRascunho() {
-    setEscrevendo(true)
-    const x = await chamarApi<SugestaoDoResumo>(`/casos/${casoId}/resultado/sugestao`, { method: 'POST', corpo: {} })
-    setEscrevendo(false)
-    if (!x.ok) return setErro(x.erro)
-    setErro('')
-    setIa(x.dados)
-    if (x.dados.sugestao) setTexto(x.dados.sugestao.texto)
-  }
+  // Épico IA e sugestão pronta (07/10): o rascunho da IA chega sozinho ao abrir (preparado em segundo plano) e entra na
+  // caixa se ela ainda está vazia; o Jurídico completa e aprova.
+  useEffect(() => {
+    if (!r?.podeAprovar || r.resumo) return
+    void chamarApi<SugestaoDoResumo>(`/casos/${casoId}/resultado/sugestao`, { method: 'POST', corpo: {} }).then((x) => {
+      if (!x.ok) return setIa({ sugestao: null, motivo: x.erro })
+      setIa(x.dados)
+      const s = x.dados.sugestao
+      if (s) setTexto((t) => t || s.texto)
+    })
+  }, [casoId, r?.podeAprovar, r?.resumo])
 
   function aprovar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -105,11 +106,7 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
         <form className={styles.cartao} onSubmit={aprovar} noValidate>
           <h2 className={styles.cartaoTitulo}>Resumo para o cliente</h2>
           <p className={styles.dica}>Em linguagem simples e sem estratégia interna: é o que o cliente vai ouvir.</p>
-          <div className={styles.acoes}>
-            <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void pedirRascunho()}>
-              {escrevendo ? 'A IA está escrevendo…' : 'Sugerir o resumo com a IA'}
-            </button>
-          </div>
+          {!ia && <p className={styles.dica}>A IA está escrevendo o rascunho…</p>}
           {ia?.motivo && <p className={styles.dica}>{ia.motivo}</p>}
           {ia?.sugestao && (
             <span className={`${styles.selo} ${styles.seloAlerta}`}>Rascunho da IA · complete e confira antes de aprovar</span>

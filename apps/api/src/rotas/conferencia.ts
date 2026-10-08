@@ -20,7 +20,8 @@ import {
   usuario,
 } from '../banco/esquema.ts'
 import { REGRA_DA_CHANCE, calcularChance } from '../fluxo/chance.ts'
-import type { Ia } from '../ia/ia.ts'
+import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -30,7 +31,7 @@ export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e es
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
 export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
 
-type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 type ItemParecer = { item: string; atendido: boolean }
 type LinhaParecer = typeof parecerMedico.$inferSelect
@@ -39,7 +40,7 @@ type LinhaParecer = typeof parecerMedico.$inferSelect
 const situacaoDo = (p: LinhaParecer | undefined): SituacaoDoParecer | null =>
   !p ? null : p.confirmadoPor ? (p.resultado as SituacaoDoParecer) : 'pendente'
 
-export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
+export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
 
@@ -194,8 +195,22 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
   // conferidos do acervo com o mesmo benefício; a IA lê o caso e explica os fatores. Fica no histórico (CA10).
   app.post<{ Params: { id: string } }>('/api/casos/:id/chance', daSenior, async (pedido, resposta) => {
     const casoId = pedido.params.id
-    const dados = await montar(casoId, pedido.perfilAtivo)
-    if (!dados) return negar(resposta, 404, 'Caso não encontrado.')
+    const quem = pedido.usuario!.id
+    const chance = await chanceDoCaso(casoId, pedido.perfilAtivo, quem)
+    if (!chance) return negar(resposta, 404, 'Caso não encontrado.')
+    const { casos, porcentagem, baseEm, fatores } = chance
+    await historico(quem, 'chance_mostrada', pedido, `caso:${casoId}`, { casos, porcentagem, baseEm, chamada: fatores?.chamadaId ?? null })
+    return chance
+  })
+  // Sugestão pronta (07/10): os fatores ficam prontos em segundo plano para a Sênior; a rodada não registra "mostrada".
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D2.01'),
+    (casoId) => chanceDoCaso(casoId, 'senior', null, { soPreparar: true }),
+  )
+
+  async function chanceDoCaso(casoId: string, perfil: string | null, quem: string | null, como: ComoSugerir = {}) {
+    const dados = await montar(casoId, perfil)
+    if (!dados) return null
     const acervo = dados.beneficio
       ? await banco
           .select({ desfecho: processoAcervo.desfecho, criadoEm: processoAcervo.criadoEm })
@@ -221,11 +236,9 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       `Indeferimento anterior: ${indeferido ? (indeferido.motivo ?? indeferido.motivoInss ?? 'sem motivo registrado') : 'não há'}`,
       `Chance calculada pelo sistema: ${conta.porcentagem === null ? 'sem casos parecidos na casa ainda' : `${conta.porcentagem}% em ${conta.casos} casos parecidos`}`,
     ].join('\n')
-    const quem = pedido.usuario!.id
-    const fatores = await ia.sugerir('fatores_da_chance', { casoId, quem, conteudo, fontes: [{ tipo: 'regra', referencia: REGRA_DA_CHANCE }] })
-    await historico(quem, 'chance_mostrada', pedido, `caso:${casoId}`, { casos: conta.casos, porcentagem: conta.porcentagem, baseEm, chamada: fatores?.chamadaId ?? null })
+    const fatores = await ia.sugerir('fatores_da_chance', { casoId, quem, conteudo, fontes: [{ tipo: 'regra', referencia: REGRA_DA_CHANCE }] }, como)
     return ChanceDeExito.parse({ ...conta, baseEm, regra: REGRA_DA_CHANCE, fatores, motivoIa: fatores ? null : 'A IA não respondeu agora: os fatores ficam com a sua leitura.' })
-  })
+  }
 
   // G17 e GGVP-33 (Lucas, 01/10, Q14): a dispensa é de duas Sêniores diferentes. A primeira pede, com justificativa.
   app.post<{ Params: { id: string } }>('/api/casos/:id/parecer/dispensa', daSenior, async (pedido, resposta) => {

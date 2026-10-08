@@ -5,7 +5,8 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AprovarResumo, ROTULO_BENEFICIO, RegistrarContato, ResultadoParaExplicar, SugestaoDoResumo, pode, type Beneficio, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { atendimento, caso, decisao, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import type { Ia } from '../ia/ia.ts'
+import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const TITULO_RESUMO = 'Aprovar o resumo para o cliente'
@@ -13,7 +14,7 @@ export const TITULO_EXPLICAR = 'Explicar resultado'
 export const MSG_SEM_RESUMO_ESPERANDO = 'Não há resultado esperando o resumo.'
 export const MSG_SEM_EXPLICACAO = 'Não há explicação ao cliente em aberto neste caso.'
 
-type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -29,7 +30,7 @@ export async function abrirExplicacaoDoResultado(tx: Banco | Tx, casoId: string)
   if (!aberta) await tx.insert(tarefa).values({ casoId, passo: 'D3b.06r', titulo: TITULO_RESUMO, perfilDono: 'advogada' })
 }
 
-export function registrarRotasResultado(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
+export function registrarRotasResultado(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   const aberta = async (casoId: string, passo: string) =>
@@ -68,12 +69,21 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
   })
 
   // Épico IA (CA3, Lucas 06/10): a IA escreve um rascunho do resumo, com o benefício, o desfecho e a última decisão de
-  // mérito; não grava nada. O Jurídico completa e aprova pela rota do resumo.
+  // mérito; não grava nada. O Jurídico completa e aprova pela rota do resumo. Sugestão pronta (07/10): a mesma função
+  // serve à rota e ao preparo em segundo plano.
   app.post<{ Params: { id: string } }>('/api/casos/:id/resultado/sugestao', { preHandler: exigir(banco, 'resultado.aprovar_resumo', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     if (!(await aberta(casoId, 'D3b.06r'))) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
+    return (await rascunho(casoId, pedido.usuario!.id)) ?? negar(resposta, 404, 'Caso não encontrado.')
+  })
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D3b.06r'),
+    (casoId) => rascunho(casoId, null, { soPreparar: true }),
+  )
+
+  async function rascunho(casoId: string, quem: string | null, como: ComoSugerir = {}) {
     const [c] = await banco.select({ nome: pessoa.nome, beneficio: caso.beneficio, desfecho: caso.desfecho }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
-    if (!c) return negar(resposta, 404, 'Caso não encontrado.')
+    if (!c) return null
     const [decisaoDeMerito] = await banco
       .select({ id: publicacao.id, texto: publicacao.texto })
       .from(publicacao)
@@ -88,9 +98,9 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
       `Texto da decisão: ${decisaoDeMerito?.texto ?? 'não está no sistema; o motivo fica para a advogada completar'}`,
     ].join('\n')
     const fontes = decisaoDeMerito ? [{ tipo: 'publicacao' as const, referencia: `publicacao:${decisaoDeMerito.id}` }] : [{ tipo: 'caso' as const, referencia: `caso:${casoId}` }]
-    const s = await ia.sugerir('resumo_resultado', { casoId, quem: pedido.usuario!.id, conteudo, fontes })
+    const s = await ia.sugerir('resumo_resultado', { casoId, quem, conteudo, fontes }, como)
     return SugestaoDoResumo.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: escreva o resumo.' })
-  })
+  }
 
   // CA3, CA5: o Jurídico aprova o resumo (decisão de pessoa) e escolhe quem fala; nasce "Explicar resultado" para ele.
   app.post<{ Params: { id: string } }>('/api/casos/:id/resultado/resumo', { preHandler: exigir(banco, 'resultado.aprovar_resumo', agora) }, async (pedido, resposta) => {

@@ -8,13 +8,15 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, parecerMedico, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import type { Ia } from '../ia/ia.ts'
+import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_INDEFERIMENTO = 'Este caso não tem indeferimento registrado.'
 export const MSG_NADA_A_DESPACHAR = 'Este caso não está esperando o despacho da Sênior.'
+export const MSG_IA_SEM_ANALISE = 'A IA não respondeu agora: despache pela sua leitura.'
 
-type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => new Date(agora.getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
 
@@ -47,7 +49,7 @@ export async function situacaoDoDespacho(banco: Banco, casoId: string) {
   return { exigencia: x ?? null, itens, pericias, faltam }
 }
 
-export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
+export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   /** O último indeferimento do caso, com o cliente. */
@@ -117,12 +119,21 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
   })
 
   // Épico IA (GGVP-54 CA1, G4): a IA lê o indeferimento, o parecer, os documentos e o acervo (GGVP-45) e sugere o que
-  // falta. Não grava nada: "Usar a sugestão" só preenche o formulário, e quem despacha é a Sênior.
+  // falta. Não grava nada: a sugestão só preenche o formulário, e quem despacha é a Sênior. Sugestão pronta (07/10): a
+  // mesma função serve à rota e ao preparo em segundo plano, que deixa a análise pronta antes de a Sênior abrir.
   app.post<{ Params: { id: string } }>('/api/casos/:id/despacho/analise', { preHandler: exigir(banco, 'caso.despachar_indeferimento', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     if (!(await tarefaAberta(casoId, 'D3.03'))) return negar(resposta, 409, MSG_NADA_A_DESPACHAR)
+    return (await analisar(casoId, pedido.usuario!.id)) ?? negar(resposta, 404, MSG_SEM_INDEFERIMENTO)
+  })
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D3.03'),
+    (casoId) => analisar(casoId, null, { soPreparar: true }),
+  )
+
+  async function analisar(casoId: string, quem: string | null, como: ComoSugerir = {}) {
     const l = await indeferimentoDo(casoId)
-    if (!l) return negar(resposta, 404, MSG_SEM_INDEFERIMENTO)
+    if (!l) return null
     const r = l.resultado
     const motivo = [r.motivoIndeferimento, r.motivoEscrito].filter(Boolean).join(' ')
     const [parecer] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, casoId)).orderBy(desc(parecerMedico.criadoEm)).limit(1)
@@ -147,17 +158,12 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       ...acervo,
     ]
     const aviso = acervo.length ? null : MSG_SEM_REFERENCIA
-    const s = await ia.sugerir('analisar_indeferimento', { casoId, quem: pedido.usuario!.id, conteudo, fontes })
-    if (!s) return AnaliseDoDespacho.parse({ sugestao: null, leitura: null, motivo: 'A IA não respondeu agora: despache pela sua leitura.', aviso })
-    let lida: ReturnType<typeof AnaliseDoIndeferimentoPelaIa.safeParse>
-    try {
-      lida = AnaliseDoIndeferimentoPelaIa.safeParse(JSON.parse(s.texto))
-    } catch {
-      lida = AnaliseDoIndeferimentoPelaIa.safeParse(null)
-    }
-    if (!lida.success) return AnaliseDoDespacho.parse({ sugestao: null, leitura: null, motivo: 'A IA respondeu fora do formato: despache pela sua leitura.', aviso })
-    return AnaliseDoDespacho.parse({ sugestao: { ...s, texto: lida.data.analise }, leitura: lida.data, motivo: null, aviso })
-  })
+    const validar = (texto: string) => AnaliseDoIndeferimentoPelaIa.safeParse(lerJson(texto)).success
+    const s = await ia.sugerir('analisar_indeferimento', { casoId, quem, conteudo, fontes }, { ...como, validar })
+    if (!s) return AnaliseDoDespacho.parse({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_ANALISE, aviso })
+    const leitura = AnaliseDoIndeferimentoPelaIa.parse(lerJson(s.texto))
+    return AnaliseDoDespacho.parse({ sugestao: { ...s, texto: leitura.analise }, leitura, motivo: null, aviso })
+  }
 
   // GGVP-54 CA2 a CA9 (G4): só a Sênior despacha; "nada falta" segue para a petição; os setores recebem "Cumprir pendência".
   app.post<{ Params: { id: string } }>('/api/casos/:id/despacho', { preHandler: exigir(banco, 'caso.despachar_indeferimento', agora) }, async (pedido, resposta) => {

@@ -71,3 +71,18 @@
 - [x] 10.2 Servidor: finalidade `nova_versao_peticao`; `POST /api/casos/:id/peticao/versoes/sugestao` (perfil `peticao.aprovar`, com pedido e sem protocolo) devolve a sugestão sem gravar; a versão salva com a chamada sai "<nome> · versão da IA"; testes com IA falsa.
 - [x] 10.3 Tela: "Pedir outra versão à IA" com "O que mudar" na conferência; o texto cai na caixa da nova versão, marcado; testes de tela.
 - [x] 10.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-79 · A IA sugere as tarefas da exigência do juiz
+
+- [x] 11.1 Contratos: `AnaliseDaExigenciaPelaIa`, `SugestaoDaExigencia`; `AnalisarExigenciaJuiz` aceita `chamadaIaId`.
+- [x] 11.2 Servidor: finalidade `analisar_exigencia_juiz`; `POST /api/casos/:id/exigencia-juiz/sugestao` (perfil `exigencia_juiz.distribuir`, análise esperando) com a publicação, o prazo, o caso e o acervo; a decisão guarda `sugestao_ia`; testes com IA falsa.
+- [x] 11.3 Tela "Exigência do juiz": "Sugerir com a IA", a sugestão marcada e "Usar a sugestão" (sem prazo interno); testes de tela.
+- [x] 11.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## Sugestão pronta, sem botão (Mateus, 07/10)
+
+- [x] 12.1 `sugerir`: devolve a chamada `ok` guardada para o mesmo conteúdo; `refazer`, `soPreparar` e `validar`; pedidos iguais em curso viram uma chamada; testes.
+- [x] 12.2 `preparo`: cada rota com IA registra como listar e preparar; rodada ao subir e a cada 5 minutos, só com chave; testes.
+- [x] 12.3 Rotas: a lógica de cada sugestão vira função usada pela rota e pelo preparo (despacho, exigência do juiz, publicação, resumo, chance, minuta); a minuta tem o padrão do pedido e aceita `refazer`.
+- [x] 12.4 Telas: a sugestão aparece ao abrir e preenche o formulário (Despachar caso, Exigência do juiz, Ler publicação, Explicar o resultado, Conferência, Pedir a petição), sem "Sugerir" nem "Usar a sugestão"; testes de tela.
+- [ ] 12.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

@@ -64,7 +64,6 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [analise, setAnalise] = useState<AnaliseDoDespacho | null>(null)
-  const [analisando, setAnalisando] = useState(false)
 
   useEffect(() => {
     void chamarApi<Despacho>(`/casos/${casoId}/despacho`).then((r) => (r.ok ? setX(r.dados) : setErro(r.erro)))
@@ -76,24 +75,20 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
       return marcado ? resto : { ...m, [s]: { descricao: '', temPrazo: null, prazo: '' } }
     })
 
-  /** Épico IA (GGVP-54 CA1): a IA lê o caso e o acervo e sugere; nada é gravado. */
-  async function analisar() {
-    setAnalisando(true)
-    const r = await chamarApi<AnaliseDoDespacho>(`/casos/${casoId}/despacho/analise`, { method: 'POST' })
-    setAnalisando(false)
-    if (!r.ok) return setErro(r.erro)
-    setErro('')
-    setAnalise(r.dados)
-  }
-
-  /** CA4: a sugestão só preenche o formulário; o prazo continua pergunta da Sênior, e ela muda o que quiser. */
-  function usarSugestao() {
-    const l = analise?.leitura
-    if (!l) return
-    setDecisao(l.nadaFalta ? 'nada_falta' : 'acionar')
-    setMarcados(Object.fromEntries(l.itens.map((i) => [i.setor, { descricao: i.descricao, temPrazo: null, prazo: '' }])))
-    setTipos(l.pericias)
-  }
+  // Épico IA (GGVP-54 CA1) e sugestão pronta (07/10): a análise chega sozinha ao abrir (preparada em segundo plano) e
+  // preenche o que a Sênior ainda não escolheu (CA4, G4); o prazo continua pergunta dela. Nada é gravado.
+  useEffect(() => {
+    if (!x?.podeDespachar) return
+    void chamarApi<AnaliseDoDespacho>(`/casos/${casoId}/despacho/analise`, { method: 'POST' }).then((r) => {
+      if (!r.ok) return setAnalise({ sugestao: null, leitura: null, motivo: r.erro, aviso: null })
+      setAnalise(r.dados)
+      const l = r.dados.leitura
+      if (!l) return
+      setDecisao((d) => d ?? (l.nadaFalta ? 'nada_falta' : 'acionar'))
+      setMarcados((m) => (Object.keys(m).length ? m : Object.fromEntries(l.itens.map((i) => [i.setor, { descricao: i.descricao, temPrazo: null, prazo: '' }]))))
+      setTipos((t) => (t.length ? t : l.pericias))
+    })
+  }, [casoId, x?.podeDespachar])
 
   async function despachar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -208,11 +203,8 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
 
       {x.podeDespachar && (
         <section className={styles.cartao} aria-label="Análise da IA">
-          <div className={styles.acoes}>
-            <button type="button" className={styles.botaoSecundario} disabled={analisando} onClick={() => void analisar()}>
-              {analisando ? 'A IA está lendo o caso…' : 'Analisar com a IA'}
-            </button>
-          </div>
+          <h2 className={styles.cartaoTitulo}>Análise da IA</h2>
+          {!analise && <p className={styles.dica}>A IA está lendo o caso…</p>}
           {analise?.motivo && <p className={styles.dica}>{analise.motivo}</p>}
           {analise?.aviso && <p className={styles.dica}>{analise.aviso}</p>}
           {analise?.sugestao && analise.leitura && (
@@ -233,11 +225,7 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
               <p className={styles.dica}>
                 Fontes: {analise.sugestao.fontes.map((f) => f.trecho ?? f.referencia).join(' · ')} ({analise.sugestao.modelo})
               </p>
-              <div className={styles.acoes}>
-                <button type="button" className={styles.botaoSecundario} onClick={usarSugestao}>
-                  Usar a sugestão
-                </button>
-              </div>
+              <p className={styles.dica}>O formulário abaixo já veio com a sugestão: confira, responda o prazo e mude o que quiser.</p>
             </>
           )}
         </section>

@@ -20,22 +20,36 @@ const ROTULO_OPCAO: Record<keyof OpcoesDoPedido, string> = {
 function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; aoPedir: (texto: string) => void }) {
   const ids = { instrucoes: useId(), falta: useId(), texto: useId() }
   const [instrucoes, setInstrucoes] = useState('')
-  const [opcoes, setOpcoes] = useState<OpcoesDoPedido>({ tutelaUrgencia: false, precedentes: false, anexarCitados: true })
-  const [marcados, setMarcados] = useState<string[]>([])
+  // Sugestão pronta (07/10): o pedido abre no padrão com que a minuta foi preparada em segundo plano: todos os documentos
+  // do caso marcados, na ordem em que chegaram, e o acervo ligado (GGVP-45); a advogada desmarca o que não vai.
+  const [opcoes, setOpcoes] = useState<OpcoesDoPedido>({ tutelaUrgencia: false, precedentes: true, anexarCitados: true })
+  const [marcados, setMarcados] = useState<string[]>(() => x.documentos.map((d) => d.id))
   const [faltando, setFaltando] = useState<string[]>([])
   const [nomeQueFalta, setNomeQueFalta] = useState('')
   const [texto, setTexto] = useState('')
   const [erro, setErro] = useState('')
   const [minuta, setMinuta] = useState<MinutaDaIa | null>(null)
-  const [escrevendo, setEscrevendo] = useState(false)
+  const [escrevendo, setEscrevendo] = useState(true)
   const nomeDo = (id: string) => x.documentos.find((d) => d.id === id)?.nome ?? id
 
   const citados = () => [...marcados.map((documentoId) => ({ documentoId })), ...faltando.map((nome) => ({ nome }))]
 
-  /** A IA escreve a versão 1 com o que está marcado; o texto cai na caixa para a advogada revisar. */
-  async function pedirMinuta() {
+  // Ao abrir, a minuta pronta (a mesma do segundo plano, sem nova chamada) entra na caixa se ela ainda está vazia.
+  useEffect(() => {
+    const padrao = { instrucoes: '', opcoes: { tutelaUrgencia: false, precedentes: true, anexarCitados: true }, citados: x.documentos.map((d) => ({ documentoId: d.id })) }
+    void chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/minuta`, { method: 'POST', corpo: padrao }).then((r) => {
+      setEscrevendo(false)
+      if (!r.ok) return setErro(r.erro)
+      setMinuta(r.dados)
+      const s = r.dados.sugestao
+      if (s) setTexto((t) => t || s.texto)
+    })
+  }, [casoId, x.documentos])
+
+  /** "Escrever de novo com a IA": outra minuta com o que está marcado agora; o texto novo substitui o da caixa. */
+  async function escreverDeNovo() {
     setEscrevendo(true)
-    const r = await chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/minuta`, { method: 'POST', corpo: { instrucoes, opcoes, citados: citados() } })
+    const r = await chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/minuta`, { method: 'POST', corpo: { instrucoes, opcoes, citados: citados(), refazer: true } })
     setEscrevendo(false)
     if (!r.ok) return setErro(r.erro)
     setErro('')
@@ -107,10 +121,11 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
         )}
       </fieldset>
       <div className={styles.acoes}>
-        <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void pedirMinuta()}>
-          {escrevendo ? 'A IA está escrevendo…' : 'Escrever a versão 1 com a IA'}
+        <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void escreverDeNovo()}>
+          {escrevendo ? 'A IA está escrevendo…' : 'Escrever de novo com a IA'}
         </button>
       </div>
+      <p className={styles.dica}>A minuta já veio escrita com o que está marcado. Mudou as instruções, as opções ou os documentos? Escreva de novo.</p>
       {minuta?.motivo && <p className={styles.dica}>{minuta.motivo}</p>}
       {minuta?.aviso && <p className={styles.dica}>{minuta.aviso}</p>}
       {minuta?.sugestao && (

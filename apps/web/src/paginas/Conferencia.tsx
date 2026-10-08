@@ -26,7 +26,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [chance, setChance] = useState<ChanceDeExito | null>(null)
-  const [calculando, setCalculando] = useState(false)
+  const [erroDaChance, setErroDaChance] = useState('')
 
   const carregar = () => chamarApi<CasoParaConferencia>(`/casos/${casoId}/conferencia`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
   useEffect(() => {
@@ -62,14 +62,12 @@ export function Conferencia({ casoId }: { casoId: string }) {
     await carregar()
   }
 
-  /** GGVP-131: o número vem do sistema (acervo conferido); a IA só explica os fatores. */
-  async function verChance() {
-    setCalculando(true)
-    const r = await chamarApi<ChanceDeExito>(`/casos/${casoId}/chance`, { method: 'POST', corpo: {} })
-    setCalculando(false)
-    if (!r.ok) return setErro(r.erro)
-    setChance(r.dados)
-  }
+  // GGVP-131 e sugestão pronta (07/10): a chance aparece sozinha ao abrir. O número vem do sistema (acervo conferido); os
+  // fatores da IA ficam prontos em segundo plano.
+  useEffect(() => {
+    if (!caso?.podeDecidir) return
+    void chamarApi<ChanceDeExito>(`/casos/${casoId}/chance`, { method: 'POST', corpo: {} }).then((r) => (r.ok ? setChance(r.dados) : setErroDaChance(r.erro)))
+  }, [casoId, caso?.podeDecidir])
 
   /** A segunda Sênior, outra pessoa, aprova ou recusa (Q14). O servidor recusa quem pediu. */
   async function responderDispensa(aprova: boolean) {
@@ -172,9 +170,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
         <section className={styles.cartao} aria-label="Chance de êxito">
           <h2 className={styles.cartaoTitulo}>Chance de êxito</h2>
           {!chance ? (
-            <button type="button" className={styles.botaoSecundario} disabled={calculando} onClick={() => void verChance()}>
-              {calculando ? 'Calculando…' : 'Ver a chance de êxito'}
-            </button>
+            <p className={styles.dica}>{erroDaChance || 'Calculando…'}</p>
           ) : (
             <>
               <p>

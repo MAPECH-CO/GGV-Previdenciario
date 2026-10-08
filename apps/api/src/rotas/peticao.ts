@@ -12,7 +12,8 @@ import { diferenca } from '../fluxo/diferenca.ts'
 import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import type { Ia } from '../ia/ia.ts'
+import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
@@ -31,7 +32,7 @@ export const MSG_DOCUMENTO_QUE_FALTA = 'Anexe o documento (PDF ou imagem, até 2
 export const MSG_NADA_A_PROTOCOLAR = 'Não há petição aprovada esperando o protocolo.'
 export const MSG_CNJ_DE_OUTRO_CASO = 'Este número de processo já está em outro caso.'
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia: Ia }
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia: Ia; preparo: Preparo }
 /** Um citado no pedido; o que falta pode ter sido pedido à Documentação (`itemId`, GGVP-71 CA13). */
 type Citado = { documentoId: string | null; nome: string; itemId?: string }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -46,7 +47,7 @@ export async function tribunaisDa(banco: Banco): Promise<Tribunal[]> {
   return Array.isArray(c?.valor) ? c.valor.filter(ehTribunal) : []
 }
 
-export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia }: Opcoes) {
+export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
 
@@ -80,6 +81,17 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       .orderBy(desc(resultadoInss.criadoEm))
       .limit(1)
     return c ?? null
+  }
+
+  /** Os documentos que o pedido pode citar, na ordem em que chegaram, sem a carta (que entra sempre) e sem o pacote. */
+  async function documentosDoPedido(casoId: string) {
+    const carta = await cartaDo(casoId)
+    const documentos = await banco
+      .select({ id: documento.id, nome: documento.nomeOriginal })
+      .from(documento)
+      .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm), ne(documento.tipo, 'pacote_peticao')))
+      .orderBy(asc(documento.criadoEm))
+    return { carta, documentos: documentos.filter((d) => d.id !== carta?.id) }
   }
 
   /**
@@ -134,12 +146,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const [c] = await banco.select({ nome: pessoa.nome, beneficio: caso.beneficio }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
     const { faltam } = await situacaoDoDespacho(banco, casoId)
-    const carta = await cartaDo(casoId)
-    const documentos = await banco
-      .select({ id: documento.id, nome: documento.nomeOriginal })
-      .from(documento)
-      .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm), ne(documento.tipo, 'pacote_peticao')))
-      .orderBy(asc(documento.criadoEm))
+    const { carta, documentos } = await documentosDoPedido(casoId)
     const p = await peticaoDo(casoId)
     const versoes = p ? await versoesDa(p.id) : []
     const ids = [p?.pedidaPor, ...versoes.map((v) => v.aprovadaPor)].filter((x): x is string => Boolean(x))
@@ -169,7 +176,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       beneficio: c.beneficio,
       faltam,
       carta,
-      documentos: documentos.filter((d) => d.id !== carta?.id),
+      documentos,
       pedido: p
         ? {
             por: nomes.get(p.pedidaPor ?? '') ?? '—',
@@ -203,16 +210,31 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
   })
 
   // Épico IA (GGVP-63): a IA escreve a versão 1 com o que o caso já tem, e devolve como sugestão, com as fontes. Não grava
-  // nada: a advogada revisa e pede a petição pela rota do pedido (G6).
+  // nada: a advogada revisa e pede a petição pela rota do pedido (G6). Sugestão pronta (07/10): com os setores fechados,
+  // a minuta fica pronta em segundo plano com o padrão do pedido, o mesmo que a tela abre marcado; "Escrever de novo com
+  // a IA" manda `refazer`.
   app.post<{ Params: { id: string } }>('/api/casos/:id/peticao/minuta', { preHandler: exigir(banco, 'peticao.pedir', agora) }, async (pedido, resposta) => {
-    const casoId = pedido.params.id
     const entrada = PedirMinuta.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira o pedido.')
-    if (!(await tarefaAberta(casoId, 'D3.05'))) return negar(resposta, 409, MSG_NADA_A_PEDIR)
-    if (await peticaoDo(casoId)) return negar(resposta, 409, MSG_JA_PEDIDA)
-    const d = entrada.data
+    const r = await escreverMinuta(pedido.params.id, pedido.usuario!.id, entrada.data, { refazer: entrada.data.refazer })
+    return 'erro' in r ? negar(resposta, r.status, r.erro) : r
+  })
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D3.05'),
+    async (casoId) => escreverMinuta(casoId, null, await pedidoPadrao(casoId), { soPreparar: true }),
+  )
+
+  /** O padrão do pedido, o mesmo que a tela abre marcado: todos os documentos (a carta entra sempre), o acervo, sem instruções. */
+  async function pedidoPadrao(casoId: string) {
+    const { documentos } = await documentosDoPedido(casoId)
+    return PedirMinuta.parse({ opcoes: { precedentes: true }, citados: documentos.map((x) => ({ documentoId: x.id })) })
+  }
+
+  async function escreverMinuta(casoId: string, quem: string | null, d: ReturnType<typeof PedirMinuta.parse>, como: ComoSugerir = {}): Promise<MinutaDaIa | { status: number; erro: string }> {
+    if (!(await tarefaAberta(casoId, 'D3.05'))) return { status: 409, erro: MSG_NADA_A_PEDIR }
+    if (await peticaoDo(casoId)) return { status: 409, erro: MSG_JA_PEDIDA }
     const [c] = await banco.select({ nome: pessoa.nome, beneficio: caso.beneficio }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
-    if (!c) return negar(resposta, 404, 'Caso não encontrado.')
+    if (!c) return { status: 404, erro: 'Caso não encontrado.' }
     const [indeferido] = await banco
       .select()
       .from(resultadoInss)
@@ -221,12 +243,12 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       .limit(1)
     const [parecer] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, casoId)).orderBy(desc(parecerMedico.criadoEm)).limit(1)
     const { itens, faltam } = await situacaoDoDespacho(banco, casoId)
-    if (faltam.length) return negar(resposta, 409, `A minuta espera todos os setores subirem o card. Falta: ${faltam.join(', ')}.`)
+    if (faltam.length) return { status: 409, erro: `A minuta espera todos os setores subirem o card. Falta: ${faltam.join(', ')}.` }
     const ids = d.citados.flatMap((x) => (x.documentoId ? [x.documentoId] : []))
     const docs = ids.length
       ? await banco.select({ id: documento.id, nome: documento.nomeOriginal }).from(documento).where(and(eq(documento.casoId, casoId), inArray(documento.id, ids)))
       : []
-    if (docs.length !== new Set(ids).size) return negar(resposta, 400, MSG_CITADO_DE_OUTRO_CASO)
+    if (docs.length !== new Set(ids).size) return { status: 400, erro: MSG_CITADO_DE_OUTRO_CASO }
     const citados = d.citados.map((x) => (x.documentoId ? docs.find((y) => y.id === x.documentoId)!.nome : `${x.nome} (ainda falta)`))
     const motivo = indeferido?.motivoEscrito ?? indeferido?.motivoIndeferimento ?? null
     const itensDoParecer = ((parecer?.itens as { item: string; atendido: boolean }[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
@@ -252,9 +274,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       ...acervo,
     ]
     const aviso = d.opcoes.precedentes && !acervo.length ? MSG_SEM_REFERENCIA : null
-    const s = await ia.sugerir('minuta_peticao', { casoId, quem: pedido.usuario!.id, conteudo, fontes })
+    const s = await ia.sugerir('minuta_peticao', { casoId, quem, conteudo, fontes }, como)
     return MinutaDaIa.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
-  })
+  }
 
   // GGVP-63 CA1, CA2, CA6, CA9, CA10: só com os setores fechados; grava o pedido e a versão 1 escrita pela advogada, que
   // vai para a conferência (GGVP-67).
@@ -323,7 +345,8 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const ultima = (await versoesDa(p.id)).at(-1)!
     const conteudo = [`Pedido da advogada: ${entrada.data.oQueMudar}`, `Última versão (${ultima.numero}):`, ultima.conteudo].join('\n')
     const fontes: FonteDaIa[] = [{ tipo: 'caso', referencia: `peticao_versao:${ultima.id}`, trecho: `Versão ${ultima.numero}` }]
-    const s = await ia.sugerir('nova_versao_peticao', { casoId, quem: pedido.usuario!.id, conteudo, fontes })
+    // Pedido explícito de outra versão: chama a IA de novo, mesmo com o mesmo pedido (sugestão pronta, 07/10).
+    const s = await ia.sugerir('nova_versao_peticao', { casoId, quem: pedido.usuario!.id, conteudo, fontes }, { refazer: true })
     return MinutaDaIa.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: edite você mesma.', aviso: null })
   })
 

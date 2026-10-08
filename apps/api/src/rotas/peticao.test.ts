@@ -194,6 +194,21 @@ describe('Épico IA · a minuta da petição inicial', () => {
     for (const dado of ['Rosa', 'Antunes', '111.222.333-44']) expect(enviado).not.toContain(dado)
   })
 
+  it('Sugestão pronta (07/10) · com os setores fechados, a rodada escreve a minuta com o padrão do pedido; a tela, com o mesmo padrão, recebe sem nova chamada', async () => {
+    await app.prepararSugestoes()
+    expect(pedidos).toEqual([]) // setor pendente: a minuta espera
+    await laudoDaDocumentacao()
+    await app.prepararSugestoes()
+    expect(pedidos).toHaveLength(1)
+    const x = await ler()
+    const padrao = { instrucoes: '', opcoes: { tutelaUrgencia: false, precedentes: true, anexarCitados: true }, citados: x.documentos.map((d: { id: string }) => ({ documentoId: d.id })) }
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', padrao)).json()
+    expect([r.sugestao.texto, pedidos.length]).toEqual([MINUTA, 1])
+    expect(JSON.parse(pedidos[0]).messages[1].content).toContain('laudo.pdf')
+    const deNovo = (await chamar('gabi', 'POST', '/peticao/minuta', { ...padrao, refazer: true })).json()
+    expect([deNovo.sugestao.chamadaId === r.sugestao.chamadaId, pedidos.length]).toEqual([false, 2])
+  })
+
   it('sem a IA, a tela recebe o motivo e a advogada escreve como antes', async () => {
     app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: {} }) })
     await laudoDaDocumentacao()

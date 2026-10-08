@@ -30,6 +30,11 @@ Cada integração completa a parte de IA que a história deixou para este épico
 8. **GGVP-45** · Buscar no acervo antes de escrever: busca por texto no PostgreSQL sobre petições aprovadas, decisões de mérito, motivos de indeferimento e modelos, sem dado pessoal de outro cliente; entra na minuta e na análise do indeferimento.
 9. **GGVP-54** (parte de IA) · A IA analisa o motivo do indeferimento e sugere o que falta; a Sênior despacha (G4).
 10. **GGVP-67** (parte de IA) · Conferir a petição: "Não está boa" pede outra versão à IA com o que mudar; a advogada revisa e salva a versão seguinte.
+11. **GGVP-79** (parte de IA) · Exigência do juiz: a IA lê a publicação com o caso e sugere "só ciência" ou os itens por setor; a advogada decide (G5).
+
+## A sugestão chega pronta (Mateus, 07/10)
+
+Em toda tarefa com IA, a sugestão já aparece quando a pessoa abre, preenchendo o formulário para ela conferir e confirmar; nada de botão para pedir. O sistema prepara em segundo plano e guarda pelo conteúdo. Botão só para pedir algo novo: outra versão da petição, ou a minuta de novo depois de mudar o pedido.
 
 ## Fora do escopo
 

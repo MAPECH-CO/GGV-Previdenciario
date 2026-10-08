@@ -7,11 +7,11 @@ A parte de IA que a GGVP-63 deixou para este épico: ao pedir a petição inicia
 ## ADDED Requirements
 
 ### Requirement: IA · A IA escreve a versão 1, com as fontes
-Com os setores fechados, "Escrever a versão 1 com a IA" SHALL devolver o texto da minuta como sugestão, com as fontes usadas (documentos citados, indeferimento, parecer), para a advogada revisar na caixa da versão 1. A minuta MUST NOT criar o pedido nem a versão: só o "Pedir a petição" da advogada grava.
+Com os setores fechados, a minuta da IA SHALL chegar pronta na caixa da versão 1 quando a advogada abre "Pedir a petição", escrita com o padrão do pedido (todos os documentos do caso marcados, "usar precedentes do acervo" marcado, sem instruções), como sugestão e com as fontes usadas (documentos citados, indeferimento, parecer, acervo). Se ela muda as instruções, as opções ou os documentos, "Escrever de novo com a IA" SHALL fazer outra minuta. A minuta MUST NOT criar o pedido nem a versão: só o "Pedir a petição" da advogada grava.
 
 #### Scenario: IA · Pedir a minuta
 - **Dado** um caso com os setores fechados, o indeferimento e o parecer registrados
-- **Quando** a advogada pede a minuta da IA
+- **Quando** a advogada abre "Pedir a petição"
 - **Então** o texto aparece na caixa da versão 1, marcado como sugestão, com as fontes; nenhuma petição é criada até ela pedir
 
 ### Requirement: IA · A versão 1 da IA fica marcada

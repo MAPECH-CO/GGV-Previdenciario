@@ -11,7 +11,7 @@ import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_NADA_A_DESPACHAR } from './indeferimento.ts'
+import { MSG_IA_SEM_ANALISE, MSG_NADA_A_DESPACHAR } from './indeferimento.ts'
 
 const SENHA = 'senha-do-portal-1'
 const AGORA = new Date('2026-10-07T13:00:00Z')
@@ -182,9 +182,32 @@ describe('Épico IA · a IA analisa o indeferimento e a Sênior despacha (GGVP-5
     expect(await abertas()).toEqual(['senior · Despachar caso'])
   })
 
+  it('Sugestão pronta (07/10) · a rodada deixa a análise pronta antes de a Sênior abrir; o que falhou não volta na rodada', async () => {
+    let chamadas = 0
+    let resposta = 'fora do ar'
+    const fetch = async () => {
+      chamadas++
+      return resposta === 'fora do ar' ? new Response('{}', { status: 500 }) : new Response(JSON.stringify({ choices: [{ message: { content: resposta } }] }))
+    }
+    app = criarServidor({
+      banco,
+      agora: () => AGORA,
+      armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))),
+      ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }),
+    })
+    await app.prepararSugestoes()
+    await app.prepararSugestoes()
+    expect(chamadas).toBe(1)
+    resposta = JSON.stringify(LEITURA)
+    const r = (await analisar()).json()
+    expect([r.leitura.itens, chamadas]).toEqual([LEITURA.itens, 2])
+    const outra = (await analisar()).json()
+    expect([outra.sugestao.chamadaId, chamadas]).toEqual([r.sugestao.chamadaId, 2])
+  })
+
   it('CA1 · resposta fora do formato vira "sem sugestão"; sem nada parecido no acervo, avisa', async () => {
     comIa('Acho que falta o CNIS.')
-    expect((await analisar()).json()).toEqual({ sugestao: null, leitura: null, motivo: 'A IA respondeu fora do formato: despache pela sua leitura.', aviso: MSG_SEM_REFERENCIA })
+    expect((await analisar()).json()).toEqual({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_ANALISE, aviso: MSG_SEM_REFERENCIA })
   })
 
   it('CA4 · a Sênior despacha diferente da sugestão: o despacho vale e a chamada da IA fica à parte; sem despacho esperando, não há análise', async () => {

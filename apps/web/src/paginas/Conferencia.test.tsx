@@ -21,9 +21,16 @@ const base: CasoParaConferencia = {
   situacao: 'aguardando',
 }
 
-function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, { ok: true }]) {
-  const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
-    init?.method === 'POST' ? new Response(JSON.stringify(decisao[1]), { status: decisao[0] }) : new Response(JSON.stringify(caso)),
+const SEM_CHANCE = { casos: 0, favoraveis: 0, porcentagem: null, baseEm: null, regra: 'mesmo benefício', fatores: null, motivoIa: 'A IA não respondeu agora: os fatores ficam com a sua leitura.' }
+
+/** A chance chega sozinha ao abrir (sugestão pronta, 07/10): o POST da chance responde à parte da decisão. */
+function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, { ok: true }], chance: object = SEM_CHANCE) {
+  const fetch = vi.fn(async (url: string, init?: RequestInit) =>
+    String(url).endsWith('/chance')
+      ? new Response(JSON.stringify(chance))
+      : init?.method === 'POST'
+        ? new Response(JSON.stringify(decisao[1]), { status: decisao[0] })
+        : new Response(JSON.stringify(caso)),
   )
   vi.stubGlobal('fetch', fetch)
   return fetch
@@ -32,19 +39,18 @@ function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Conferência da Sênior (GGVP-23)', () => {
-  it('GGVP-131 · "Ver a chance de êxito" mostra o número com os casos e a base, e os fatores como sugestão; sem casos, sem número', async () => {
+  it('GGVP-131 · a chance aparece sozinha ao abrir, com os casos e a base, e os fatores como sugestão; sem casos, sem número', async () => {
     const chance = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', motivoIa: null, fatores: { chamadaId: '66666666-6666-4666-8666-666666666666', sugestao: true, texto: 'Para subir: trazer o relatório do médico assistente.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null } }
-    servidor(base, [200, chance])
+    servidor(base, undefined, chance)
     const { unmount } = render(<Conferencia casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Ver a chance de êxito' }))
     expect((await screen.findByText(/75% em 4 casos parecidos/)).textContent).toBe('75% em 4 casos parecidos · base de 07/10/2026')
     expect(screen.getByText('Fatores sugeridos pela IA · confira')).toBeTruthy()
     expect(screen.getByText('Para subir: trazer o relatório do médico assistente.')).toBeTruthy()
     unmount()
-    servidor(base, [200, { ...chance, casos: 0, favoraveis: 0, porcentagem: null, baseEm: null, fatores: null, motivoIa: 'A IA não respondeu agora: os fatores ficam com a sua leitura.' }])
+    servidor(base)
     render(<Conferencia casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Ver a chance de êxito' }))
     expect(await screen.findByText('Sem casos parecidos na casa ainda: sem porcentagem.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /chance/i })).toBeNull()
   })
 
   it('CA1 e CA5 · mostra benefício, documentos e o parecer item a item; aprovar envia e confirma', async () => {
@@ -107,7 +113,7 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     fireEvent.click(screen.getByLabelText('Não'))
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar reprovação' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que o Atendimento precisa ajustar')
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch.mock.calls.filter(([url, init]) => init?.method === 'POST' && String(url).endsWith('/conferencia'))).toEqual([])
     fireEvent.change(screen.getByLabelText('O que o Atendimento precisa ajustar'), { target: { value: 'Falta a procuração' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar reprovação' }))
     expect((await screen.findByRole('status')).textContent).toContain('voltou para o Atendimento')

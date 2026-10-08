@@ -161,21 +161,21 @@ describe('Despachar caso · análise da IA (épico IA, GGVP-54 CA1, CA4)', () =>
     aviso: null,
   }
 
-  it('"Analisar com a IA" mostra a análise, o que sugere e as fontes; "Usar a sugestão" só preenche; o despacho leva a chamada', async () => {
+  it('ao abrir, a análise aparece pronta e já preenche o formulário; a Sênior responde o prazo e o despacho leva a chamada', async () => {
     const fetch = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).endsWith('/despacho/analise')) return new Response(JSON.stringify(analise))
       return init?.method === 'POST' ? new Response(JSON.stringify({ ok: true }), { status: 201 }) : new Response(JSON.stringify(base))
     })
     vi.stubGlobal('fetch', fetch)
     render(<DespacharCaso casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Analisar com a IA' }))
     expect(await screen.findByText('Sugestão da IA · quem despacha é você (G4)')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Analisar com a IA|Usar a sugestão/ })).toBeNull()
     expect(screen.getByText('Sugere: Documentação: Comprovante de residência do filho · Avaliação social')).toBeTruthy()
     expect(screen.getByText(/Petição aprovada: a renda do filho/)).toBeTruthy()
     const posts = () => fetch.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url]) => String(url).replace(/.*\/casos\/[^/]+/, ''))
     expect(posts()).toEqual(['/despacho/analise'])
 
-    fireEvent.click(screen.getByRole('button', { name: 'Usar a sugestão' }))
+    expect((screen.getByLabelText('Sim, falta') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByLabelText('O que a Documentação deve obter') as HTMLInputElement).value).toBe('Comprovante de residência do filho')
     expect((screen.getByLabelText('Avaliação social') as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
@@ -191,8 +191,7 @@ describe('Despachar caso · análise da IA (épico IA, GGVP-54 CA1, CA4)', () =>
   it('sem a IA, mostra o motivo e a Sênior despacha pela leitura', async () => {
     servidor(base, [200, { sugestao: null, leitura: null, motivo: 'A IA não respondeu agora: despache pela sua leitura.', aviso: null }])
     render(<DespacharCaso casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Analisar com a IA' }))
     expect(await screen.findByText('A IA não respondeu agora: despache pela sua leitura.')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Usar a sugestão' })).toBeNull()
+    expect((screen.getByLabelText('Não, nada falta') as HTMLInputElement).checked).toBe(false)
   })
 })

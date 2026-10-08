@@ -53,3 +53,32 @@ A instrução de sistema de toda finalidade SHALL mandar a IA não calcular e us
 - **Dado** qualquer finalidade
 - **Quando** a chamada é montada
 - **Então** a instrução de sistema traz a regra dos números
+
+### Requirement: A sugestão chega pronta, sem botão (Mateus, 07/10)
+Em toda tarefa com IA (despachar o caso, exigência do juiz, publicação sem classe, resumo do resultado, conferência da Sênior e pedido da petição), a sugestão SHALL estar pronta quando a pessoa abre a tarefa: o sistema a prepara em segundo plano para as tarefas abertas, e a tela a mostra ao abrir, sem botão, já preenchendo o formulário para a pessoa conferir e confirmar. Quem decide continua sendo a pessoa (G4, G5, G6). Botão só para pedir algo novo, como outra versão da petição.
+
+#### Scenario: Tarefa aberta já com a sugestão
+- **Dado** uma exigência do juiz esperando a análise, com a IA ligada
+- **Quando** o sistema faz a rodada de preparo e, depois, a advogada abre a tarefa
+- **Então** a sugestão aparece na hora, sem nova chamada à IA, com o formulário preenchido
+
+### Requirement: A sugestão fica guardada pelo conteúdo
+A mesma finalidade, com a mesma versão da instrução, o mesmo modelo, o mesmo caso e o mesmo conteúdo, SHALL devolver a sugestão já registrada, sem nova chamada; conteúdo novo (um documento novo, outro parecer) SHALL gerar outra. Só fica guardada a saída que passou no formato: resposta fora do formato MUST ficar registrada como falha. Pedido explícito de nova versão SHALL chamar a IA de novo.
+
+#### Scenario: Abrir de novo
+- **Dado** a sugestão já preparada
+- **Quando** outra pessoa abre a mesma tarefa
+- **Então** vê a mesma sugestão, e o registro da IA não ganha chamada nova
+
+#### Scenario: Conteúdo mudou
+- **Dado** a sugestão preparada e, depois, um documento novo no caso
+- **Quando** a tarefa é aberta
+- **Então** a IA faz outra sugestão, com o documento
+
+### Requirement: Em segundo plano, uma tentativa por conteúdo
+A rodada de preparo SHALL tentar uma vez cada conteúdo; se a IA falhar ou a saída for barrada, MUST NOT tentar de novo em segundo plano (quem abre a tarefa dispara nova tentativa). Sem chave, a rodada não roda.
+
+#### Scenario: Falha em segundo plano
+- **Dado** uma tentativa que falhou na rodada
+- **Quando** vem a próxima rodada
+- **Então** a IA não é chamada de novo para o mesmo conteúdo

@@ -11,7 +11,7 @@ A IA SHALL receber os trechos do acervo mais parecidos com o caso (até 3) e a s
 
 #### Scenario: CA1 · Minuta com precedentes
 - **Dado** outro caso do mesmo benefício com petição aprovada parecida com o motivo do indeferimento
-- **Quando** a advogada pede a minuta com "Usar precedentes do acervo" marcado
+- **Quando** a minuta é escrita com "Usar precedentes do acervo" marcado (o padrão do pedido)
 - **Então** a IA recebe o trecho e a minuta mostra a fonte do acervo
 
 ### Requirement: CA2 · Sem nada parecido, "sem referência na casa"

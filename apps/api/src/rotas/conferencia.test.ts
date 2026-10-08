@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -235,6 +235,17 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     expect(enviado).toContain('Parecer médico: suficiente')
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))
     expect(ev.detalhe).toMatchObject({ casos: 4, porcentagem: 75, chamada: r.fatores.chamadaId })
+  })
+
+  it('Sugestão pronta (07/10) · a rodada prepara os fatores sem registrar "mostrada"; ao abrir, mostra e registra, sem nova chamada', async () => {
+    await app.prepararSugestoes()
+    expect(enviado).toContain('Chance calculada pelo sistema')
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))).toEqual([])
+    const [chamada] = await banco.select().from(chamadaIa)
+    enviado = ''
+    const r = (await chance('helena')).json()
+    expect([r.fatores.chamadaId, enviado]).toEqual([chamada.id, ''])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))).toHaveLength(1)
   })
 
   it('CA2 · sem casos parecidos, sem número; CA9 · o Atendimento não vê', async () => {
