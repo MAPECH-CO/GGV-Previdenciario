@@ -42,11 +42,12 @@ export const temCid = (texto: string) => CID.test(texto.replace(/\(G\d{1,2}\)/g,
  */
 export const FINALIDADES = {
   resumo_resultado: {
-    versao: 1,
+    versao: 2,
     saude: false,
     json: false,
     barrarCid: true,
-    instrucao: 'Escreva, em linguagem simples, um resumo do resultado do processo para o cliente, sem estratégia interna do escritório.',
+    instrucao:
+      'Escreva um rascunho curto (até 6 frases) do que a pessoa do escritório vai explicar ao cliente sobre o resultado do processo: o que foi decidido e por quê, em linguagem simples, com respeito. Não prometa nada, não fale de estratégia interna do escritório, não culpe ninguém e não use termos técnicos sem explicar.',
   },
   classificar_publicacao: {
     versao: 2,

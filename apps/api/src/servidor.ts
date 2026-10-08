@@ -90,7 +90,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
     registrarRotasConfiguracao(app, { banco, agora })
     registrarRotasIa(app, { banco, agora })
-    registrarRotasResultado(app, { banco, agora })
+    registrarRotasResultado(app, { banco, agora, ia: motorIa })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { atendimento, caso, decisao, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { atendimento, caso, decisao, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_SEM_EXPLICACAO, MSG_SEM_RESUMO_ESPERANDO, TITULO_EXPLICAR, TITULO_RESUMO, abrirExplicacaoDoResultado } from './resultado.ts'
@@ -91,5 +92,39 @@ describe('GGVP-22 · explicar ao cliente', () => {
     const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
     expect([c.fase, c.encerradoEm !== null]).toEqual(['encerrado', true])
     expect(await banco.select().from(atendimento)).toHaveLength(2)
+  })
+})
+
+describe('Épico IA · a IA sugere o resumo do resultado', () => {
+  const RASCUNHO = 'O juiz entendeu que não ficou provada a incapacidade no período pedido, e por isso o pedido foi negado.'
+  let enviado = ''
+  const comIa = (texto: string) => {
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      enviado = JSON.parse(String(init?.body)).messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: texto } }] }))
+    }
+    app = criarServidor({ banco, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste' }, fetch }) })
+  }
+
+  it('a IA escreve com a decisão de mérito; nada é gravado; o resumo aprovado é o do Jurídico, com a chamada à parte', async () => {
+    await banco.insert(publicacao).values({ fonte: 'aasp', casoId, disponibilizadaEm: '2026-10-01', texto: 'Sentença: julgo improcedente o pedido.', hash: 'h-merito', classe: 'merito' })
+    comIa(RASCUNHO)
+    expect((await chamar('ana', 'POST', '/resultado/sugestao')).statusCode).toBe(403)
+    const r = (await chamar('gabi', 'POST', '/resultado/sugestao')).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.sugestao.fontes[0].tipo, r.motivo]).toEqual([RASCUNHO, true, 'publicacao', null])
+    expect(enviado).toContain('Sentença: julgo improcedente o pedido.')
+    expect(enviado).toContain('Auxílio por Incapacidade Temporária')
+    expect(await banco.select().from(decisao)).toEqual([])
+    const aprovado = `${RASCUNHO} O escritório não vai recorrer.`
+    expect((await chamar('gabi', 'POST', '/resultado/resumo', { texto: aprovado, quemFala: 'atendimento', chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
+    const [d] = await banco.select().from(decisao)
+    expect([d.justificativa, d.sugestaoIa, d.decididoPor]).toEqual([aprovado, { chamadaId: r.sugestao.chamadaId }, ids.gabi])
+  })
+
+  it('saída com código de doença é barrada (G20), e o Jurídico escreve; depois do resumo aprovado, não há o que sugerir', async () => {
+    comIa('O laudo mostrou F32.1 e por isso perdemos.')
+    expect((await chamar('gabi', 'POST', '/resultado/sugestao')).json()).toEqual({ sugestao: null, motivo: 'A IA não escreveu agora: escreva o resumo.' })
+    await chamar('gabi', 'POST', '/resultado/resumo', { texto: RESUMO, quemFala: 'atendimento' })
+    expect((await chamar('gabi', 'POST', '/resultado/sugestao')).json().erro).toBe(MSG_SEM_RESUMO_ESPERANDO)
   })
 })

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eq } from 'drizzle-orm'
 import { caso, chamadaIa, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { REGRAS_DA_IA, criarIa, instrucaoSuspeita, temCid } from './ia.ts'
+import { FINALIDADES, REGRAS_DA_IA, criarIa, instrucaoSuspeita, temCid } from './ia.ts'
 
 let banco: Banco
 let fechar: () => Promise<void>
@@ -33,7 +33,7 @@ describe('GGVP-106 · sugerir (OpenAI)', () => {
     expect([s?.sugestao, s?.texto, s?.fontes, s?.modelo]).toEqual([true, OPENAI_OK.choices[0].message.content, FONTES, 'gpt-4.1-mini'])
     const [c] = await banco.select().from(chamadaIa)
     expect([c.id, c.finalidade, c.fornecedor, c.situacao, c.casoId, c.pedidaPor, c.entradaTamanho, c.versaoInstrucao]).toEqual([
-      s?.chamadaId, 'resumo_resultado', 'openai', 'ok', CASO, quem, conteudo.length, 1,
+      s?.chamadaId, 'resumo_resultado', 'openai', 'ok', CASO, quem, conteudo.length, FINALIDADES.resumo_resultado.versao,
     ])
     expect(c.entradaHash).toMatch(/^[0-9a-f]{64}$/)
     expect(JSON.stringify(c)).not.toContain('falta de prova')

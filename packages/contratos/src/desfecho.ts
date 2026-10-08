@@ -1,5 +1,6 @@
 // Contratos do desfecho (GGVP-11): explicar o resultado ao cliente no caso perdido (GGVP-22).
 import { z } from 'zod'
+import { SugestaoDaIa } from './ia.ts'
 
 /** Quem fala com o cliente (GGVP-22 CA5, Lucas 06/10): a advogada, em caso complexo, ou o Atendimento, no padrão. */
 export const QUEM_FALA = ['advogada', 'atendimento'] as const
@@ -19,8 +20,14 @@ export const AprovarResumo = z.object({
     .min(20, 'Escreva o resumo para o cliente (20 letras ou mais)')
     .max(2000, 'O resumo vai até 2000 letras'),
   quemFala: z.enum(QUEM_FALA, { error: 'Escolha quem fala com o cliente' }),
+  /** Épico IA: o resumo partiu do rascunho da IA; a decisão guarda a chamada à parte do texto aprovado. */
+  chamadaIaId: z.uuid().optional(),
 })
 export type AprovarResumo = z.infer<typeof AprovarResumo>
+
+/** POST /api/casos/:id/resultado/sugestao (épico IA): o rascunho da IA, ou nulo com o motivo. */
+export const SugestaoDoResumo = z.object({ sugestao: SugestaoDaIa.nullable(), motivo: z.string().nullable() })
+export type SugestaoDoResumo = z.infer<typeof SugestaoDoResumo>
 
 const Canal = z.enum(CANAIS_DO_CONTATO, { error: 'Escolha o canal do contato' })
 

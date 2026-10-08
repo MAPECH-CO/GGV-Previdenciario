@@ -30,3 +30,10 @@
 - [x] 4.3 Servidor: `POST /api/casos/:id/peticao/minuta` monta o conteúdo do caso e devolve a sugestão com as fontes, sem gravar petição; o pedido com `chamadaIaId` marca a versão 1 como "minuta da IA"; testes com IA falsa.
 - [x] 4.4 Tela "Pedir a petição": "Escrever a versão 1 com a IA" preenche a caixa, com as fontes e os avisos; testes de tela.
 - [x] 4.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-22 · A IA sugere o resumo do resultado ao cliente
+
+- [x] 5.1 Contratos: `AprovarResumo` aceita `chamadaIaId`; resposta da sugestão (`SugestaoDoResumo`).
+- [x] 5.2 Servidor: `POST /api/casos/:id/resultado/sugestao` (perfil `resultado.aprovar_resumo`), com o benefício, o desfecho e o texto da última decisão de mérito; não grava; a aprovação guarda a chamada em `sugestao_ia`; testes com IA falsa.
+- [x] 5.3 Tela "Explicar o resultado": "Sugerir o resumo com a IA" preenche a caixa, com o selo; testes de tela.
+- [x] 5.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
