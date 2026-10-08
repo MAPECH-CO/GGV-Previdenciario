@@ -72,6 +72,19 @@ export const FINALIDADES = {
       'Trechos do acervo da casa, quando houver, mostram como o escritório já argumentou: aproveite a tese e a estrutura, nunca fatos, nomes, datas ou dados de outro cliente.',
     ].join(' '),
   },
+  /** GGVP-67: "Não está boa": a IA reescreve a última versão só com o que a advogada pediu. */
+  nova_versao_peticao: {
+    versao: 1,
+    saude: true,
+    json: false,
+    barrarCid: false,
+    instrucao: [
+      'Você recebe a última versão de uma petição previdenciária e o que a advogada pediu para mudar. Devolva a petição inteira, já com a mudança, sem comentário antes ou depois.',
+      'Mude só o que foi pedido e o que depende disso; o resto fica como está, palavra por palavra.',
+      'Não invente jurisprudência, número de processo, data nem dado médico; o que faltar, escreva [completar: o que falta]. Não ponha porcentagem nem número de jurimetria.',
+      'Não mencione a organização interna do escritório (setores, Sênior, despacho, tarefas).',
+    ].join(' '),
+  },
   /** GGVP-131: a IA explica os fatores da chance; o número vem do código e chega pronto no conteúdo. */
   fatores_da_chance: {
     versao: 1,

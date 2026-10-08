@@ -29,6 +29,7 @@ Cada integração completa a parte de IA que a história deixou para este épico
 
 8. **GGVP-45** · Buscar no acervo antes de escrever: busca por texto no PostgreSQL sobre petições aprovadas, decisões de mérito, motivos de indeferimento e modelos, sem dado pessoal de outro cliente; entra na minuta e na análise do indeferimento.
 9. **GGVP-54** (parte de IA) · A IA analisa o motivo do indeferimento e sugere o que falta; a Sênior despacha (G4).
+10. **GGVP-67** (parte de IA) · Conferir a petição: "Não está boa" pede outra versão à IA com o que mudar; a advogada revisa e salva a versão seguinte.
 
 ## Fora do escopo
 

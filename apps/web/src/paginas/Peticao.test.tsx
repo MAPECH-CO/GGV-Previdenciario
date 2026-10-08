@@ -167,7 +167,7 @@ describe('Conferir a petição (GGVP-67)', () => {
   it('CA1, CA10 · "Editar eu mesma" pede o que mudou e salva a versão seguinte', async () => {
     const fetch = servidor(pedida, [201, { ok: true, numero: 3 }])
     render(<Peticao casoId={CASO} />)
-    fireEvent.click(await screen.findByText('Não está boa? Editar eu mesma'))
+    fireEvent.click(await screen.findByText('Não está boa? Pedir outra versão à IA ou editar eu mesma'))
     fireEvent.change(screen.getByLabelText('Texto da nova versão'), { target: { value: 'Dos fatos\nDo direito\nDo valor da causa' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar nova versão' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que mudou nesta versão')
@@ -176,6 +176,30 @@ describe('Conferir a petição (GGVP-67)', () => {
     expect((await screen.findByRole('status')).textContent).toBe('Versão 3 salva. Ela precisa de nova conferência.')
     const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
     expect(JSON.parse(post[1]!.body as string)).toEqual({ texto: 'Dos fatos\nDo direito\nDo valor da causa', oQueMudou: 'Valor da causa' })
+  })
+
+  it('épico IA · "Pedir outra versão à IA" exige o que mudar, preenche a caixa marcada e a versão salva leva a chamada', async () => {
+    const CHAMADA = '55555555-5555-4555-8555-555555555555'
+    const V3 = 'Dos fatos\nDa tutela de urgência\nDo direito'
+    const sugestao = { chamadaId: CHAMADA, sugestao: true, texto: V3, fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T13:00:00.000Z', alerta: null }
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith('/versoes/sugestao')) return new Response(JSON.stringify({ sugestao, motivo: null, aviso: null }))
+      return init?.method === 'POST' ? new Response(JSON.stringify({ ok: true, numero: 3 }), { status: 201 }) : new Response(JSON.stringify(pedida))
+    })
+    vi.stubGlobal('fetch', fetch)
+    render(<Peticao casoId={CASO} />)
+    fireEvent.click(await screen.findByText('Não está boa? Pedir outra versão à IA ou editar eu mesma'))
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir outra versão à IA' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que mudar')
+    fireEvent.change(screen.getByLabelText('O que mudar'), { target: { value: 'Incluir a tutela' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Pedir outra versão à IA' }))
+    expect(await screen.findByText('Versão da IA · revise antes de salvar; você aprova o conteúdo (G6)')).toBeTruthy()
+    expect((screen.getByLabelText('Texto da nova versão') as HTMLTextAreaElement).value).toBe(V3)
+    expect((screen.getByLabelText('O que mudou nesta versão') as HTMLInputElement).value).toBe('Incluir a tutela')
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar nova versão' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Versão 3 salva. Ela precisa de nova conferência.')
+    const post = fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith('/peticao/versoes'))!
+    expect(JSON.parse(post[1]!.body as string)).toEqual({ texto: V3, oQueMudou: 'Incluir a tutela', chamadaIaId: CHAMADA })
   })
 })
 

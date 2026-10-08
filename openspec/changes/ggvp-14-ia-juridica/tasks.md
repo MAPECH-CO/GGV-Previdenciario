@@ -64,3 +64,10 @@
 - [x] 9.2 Servidor: finalidade `analisar_indeferimento`; `POST /api/casos/:id/despacho/analise` (perfil `caso.despachar_indeferimento`, despacho esperando) com o caso e o acervo; o despacho guarda `sugestao_ia`; testes com IA falsa (CA1, CA4).
 - [x] 9.3 Tela "Despachar caso": "Analisar com a IA", a análise marcada como sugestão, as fontes e "Usar a sugestão"; testes de tela.
 - [x] 9.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-67 · A IA faz outra versão da petição
+
+- [x] 10.1 Contratos: `PedirOutraVersao` ("O que mudar" obrigatório); `NovaVersao` aceita `chamadaIaId`.
+- [x] 10.2 Servidor: finalidade `nova_versao_peticao`; `POST /api/casos/:id/peticao/versoes/sugestao` (perfil `peticao.aprovar`, com pedido e sem protocolo) devolve a sugestão sem gravar; a versão salva com a chamada sai "<nome> · versão da IA"; testes com IA falsa.
+- [x] 10.3 Tela: "Pedir outra versão à IA" com "O que mudar" na conferência; o texto cai na caixa da nova versão, marcado; testes de tela.
+- [x] 10.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

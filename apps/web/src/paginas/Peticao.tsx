@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
-import { AprovarPeticao, NovaVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { AprovarPeticao, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -145,16 +145,37 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
   )
 }
 
-/** "Editar eu mesma" (GGVP-67 CA1, CA10): a advogada muda o texto e diz o que mudou; sai a versão seguinte, numerada. */
+/**
+ * "Não está boa?" (GGVP-67 CA1, CA5, CA10): a advogada pede outra versão à IA com o que mudar (épico IA) ou edita ela
+ * mesma; nos dois casos, revisa o texto e salva a versão seguinte, numerada. A IA não grava nada (G6).
+ */
 function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: string; aoSalvar: (t: string) => void }) {
-  const ids = { texto: useId(), oQueMudou: useId() }
+  const ids = { texto: useId(), oQueMudou: useId(), oQueMudar: useId() }
   const [novo, setNovo] = useState(texto)
   const [oQueMudou, setOQueMudou] = useState('')
+  const [oQueMudar, setOQueMudar] = useState('')
+  const [daIa, setDaIa] = useState<MinutaDaIa | null>(null)
+  const [escrevendo, setEscrevendo] = useState(false)
   const [erro, setErro] = useState('')
+
+  async function pedirAIa() {
+    const entrada = PedirOutraVersao.safeParse({ oQueMudar })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escreva o que mudar')
+    setEscrevendo(true)
+    const r = await chamarApi<MinutaDaIa>(`/casos/${casoId}/peticao/versoes/sugestao`, { method: 'POST', corpo: entrada.data })
+    setEscrevendo(false)
+    if (!r.ok) return setErro(r.erro)
+    setErro('')
+    setDaIa(r.dados)
+    if (!r.dados.sugestao) return
+    setNovo(r.dados.sugestao.texto)
+    setOQueMudou(entrada.data.oQueMudar)
+  }
 
   async function salvar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const entrada = NovaVersao.safeParse({ texto: novo, oQueMudou })
+    const chamadaIaId = daIa?.sugestao?.chamadaId
+    const entrada = NovaVersao.safeParse({ texto: novo, oQueMudou, ...(chamadaIaId && { chamadaIaId }) })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira a versão.')
     const r = await chamarApi<{ numero: number }>(`/casos/${casoId}/peticao/versoes`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
@@ -163,7 +184,29 @@ function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: str
 
   return (
     <details>
-      <summary>Não está boa? Editar eu mesma</summary>
+      <summary>Não está boa? Pedir outra versão à IA ou editar eu mesma</summary>
+      <section className={styles.cartao} aria-label="Outra versão pela IA">
+        <label className={styles.rotulo} htmlFor={ids.oQueMudar}>
+          O que mudar
+        </label>
+        <input id={ids.oQueMudar} className={styles.campo} value={oQueMudar} onChange={(e) => setOQueMudar(e.target.value)} />
+        <div className={styles.acoes}>
+          <button type="button" className={styles.botaoSecundario} disabled={escrevendo} onClick={() => void pedirAIa()}>
+            {escrevendo ? 'A IA está escrevendo…' : 'Pedir outra versão à IA'}
+          </button>
+        </div>
+        {daIa?.motivo && <p className={styles.dica}>{daIa.motivo}</p>}
+        {daIa?.sugestao && (
+          <>
+            <span className={`${styles.selo} ${styles.seloAlerta}`}>Versão da IA · revise antes de salvar; você aprova o conteúdo (G6)</span>
+            {daIa.sugestao.alerta && (
+              <p className={styles.erroCampo} role="alert">
+                Atenção: {daIa.sugestao.alerta}.
+              </p>
+            )}
+          </>
+        )}
+      </section>
       <form className={styles.cartao} onSubmit={salvar} noValidate>
         <label className={styles.rotulo} htmlFor={ids.texto}>
           Texto da nova versão
@@ -183,7 +226,7 @@ function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: str
             Salvar nova versão
           </button>
         </div>
-        <p className={styles.dica}>As versões anteriores ficam guardadas. Pedir outra versão à IA entra com o épico IA.</p>
+        <p className={styles.dica}>As versões anteriores ficam guardadas.</p>
       </form>
     </details>
   )

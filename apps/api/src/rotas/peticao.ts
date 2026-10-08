@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto'
 import { and, asc, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AprovarPeticao, MinutaDaIa, NovaVersao, PedirMinuta, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
+import { AprovarPeticao, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
@@ -311,6 +311,22 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     return resposta.code(201).send({ ok: true })
   })
 
+  // Épico IA (GGVP-67 CA1, CA5): "Não está boa": a IA reescreve a última versão com o que mudar. Não grava: o texto vai
+  // para a caixa da nova versão, e a advogada salva pela rota das versões (G6).
+  app.post<{ Params: { id: string } }>('/api/casos/:id/peticao/versoes/sugestao', { preHandler: exigir(banco, 'peticao.aprovar', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const entrada = PedirOutraVersao.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Escreva o que mudar')
+    const p = await peticaoDo(casoId)
+    if (!p) return negar(resposta, 409, MSG_SEM_PEDIDO)
+    if (await protocolada(p.id)) return negar(resposta, 409, MSG_PROTOCOLADA)
+    const ultima = (await versoesDa(p.id)).at(-1)!
+    const conteudo = [`Pedido da advogada: ${entrada.data.oQueMudar}`, `Última versão (${ultima.numero}):`, ultima.conteudo].join('\n')
+    const fontes: FonteDaIa[] = [{ tipo: 'caso', referencia: `peticao_versao:${ultima.id}`, trecho: `Versão ${ultima.numero}` }]
+    const s = await ia.sugerir('nova_versao_peticao', { casoId, quem: pedido.usuario!.id, conteudo, fontes })
+    return MinutaDaIa.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: edite você mesma.', aviso: null })
+  })
+
   // GGVP-67 CA1, CA5, CA7, CA10: "Editar eu mesma" grava a versão seguinte, numerada, com o que mudou; as anteriores ficam.
   // Depois da aprovação, a aprovada não muda: a nova volta para a conferência, e o protocolo espera (CA7).
   app.post<{ Params: { id: string } }>('/api/casos/:id/peticao/versoes', { preHandler: exigir(banco, 'peticao.aprovar', agora) }, async (pedido, resposta) => {
@@ -327,7 +343,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const hash = hashDe(entrada.data.texto)
     const depoisDaAprovacao = Boolean(ultima.aprovadaPor)
     await banco.transaction(async (tx) => {
-      await tx.insert(peticaoVersao).values({ peticaoId: p.id, numero, conteudo: entrada.data.texto, hash, geradaPor: u?.nome ?? 'advogada', pedidoDeMudanca: entrada.data.oQueMudou, criadoEm: agora() })
+      // Épico IA (GGVP-67 CA1): a versão que partiu da sugestão sai marcada, como a versão 1 da minuta.
+      const geradaPor = `${u?.nome ?? 'advogada'}${entrada.data.chamadaIaId ? ' · versão da IA' : ''}`
+      await tx.insert(peticaoVersao).values({ peticaoId: p.id, numero, conteudo: entrada.data.texto, hash, geradaPor, pedidoDeMudanca: entrada.data.oQueMudou, criadoEm: agora() })
       if (!depoisDaAprovacao) return
       // CA7: o protocolo da aprovada é cancelado e a conferência volta, com a versão nova.
       const cancelar = { situacao: 'cancelada' as const, concluidaEm: agora(), concluidaPor: quem }
@@ -352,6 +370,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       numero,
       hash,
       aprovada: depoisDaAprovacao ? ultima.numero : null,
+      chamadaIa: entrada.data.chamadaIaId ?? null,
     })
     return resposta.code(201).send({ ok: true, numero })
   })

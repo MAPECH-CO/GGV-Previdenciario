@@ -509,8 +509,16 @@ export type PeticaoInicial = z.infer<typeof PeticaoInicial>
 export const NovaVersao = z.object({
   texto: z.string({ error: 'Escreva o texto da nova versão' }).trim().min(1, 'Escreva o texto da nova versão'),
   oQueMudou: z.string({ error: 'Escreva o que mudou nesta versão' }).trim().min(1, 'Escreva o que mudou nesta versão'),
+  /** Épico IA (GGVP-67 CA1): a versão partiu da sugestão da IA; sai marcada "versão da IA". */
+  chamadaIaId: z.uuid().optional(),
 })
 export type NovaVersao = z.infer<typeof NovaVersao>
+
+/** POST /api/casos/:id/peticao/versoes/sugestao (GGVP-67 CA1, CA5): "Não está boa", com o que mudar. Responde `MinutaDaIa`. */
+export const PedirOutraVersao = z.object({
+  oQueMudar: z.string({ error: 'Escreva o que mudar' }).trim().min(1, 'Escreva o que mudar'),
+})
+export type PedirOutraVersao = z.infer<typeof PedirOutraVersao>
 
 /** POST /api/casos/:id/peticao/versoes/:n/aprovacao (GGVP-67 CA2, CA5, CA9; G6, G18): "Aprovar" só com as três marcações. */
 export const AprovarPeticao = z.object({

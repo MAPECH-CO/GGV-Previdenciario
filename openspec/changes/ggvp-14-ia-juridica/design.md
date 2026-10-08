@@ -42,3 +42,10 @@ O banco já separa a sugestão da IA da decisão da pessoa (`decisao.sugestao_ia
 - Finalidade `analisar_indeferimento` (JSON, leva dado de saúde, não barra CID: é leitura interna da Sênior). Saída validada por `AnaliseDoIndeferimentoPelaIa`; fora do formato, sem sugestão.
 - A análise é pedida pelo botão na tela da Sênior. "Usar a sugestão" preenche o formulário; o prazo continua pergunta da Sênior.
 - `Despachar` aceita `chamadaIaId`; o despacho grava `decisao.sugestao_ia = { chamadaId }` (a saída completa está em `chamada_ia`).
+
+## GGVP-67 · A IA faz outra versão da petição
+
+### Decisions
+- A IA não grava versão: a sugestão cai na caixa de "Editar eu mesma" e a rota de versões que já existe grava (com o tratamento do CA7 depois da aprovação). Uma rota de gravação só, um caminho para a versão nova.
+- Finalidade `nova_versao_peticao`: recebe a última versão e o pedido; mantém o resto do texto; mesmas regras da minuta (não inventar, sem organização interna, sem número de jurimetria). Leva dado de saúde e não barra CID (a peça cita o CID do laudo do caso).
+- A marca fica em `peticao_versao.gerada_por` ("<nome> · versão da IA"), como na versão 1 da minuta; a chamada vai para o histórico da versão nova (`chamadaIa`).

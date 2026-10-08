@@ -201,6 +201,40 @@ describe('Épico IA · a minuta da petição inicial', () => {
   })
 })
 
+describe('Épico IA · "Não está boa": a IA faz outra versão (GGVP-67 CA1, CA5)', () => {
+  const V1 = 'Dos fatos\nDo direito\nDo pedido'
+  const V2 = 'Dos fatos\nDa tutela de urgência\nDo direito\nDo pedido'
+  let pedidos: string[] = []
+  beforeEach(async () => {
+    pedidos = []
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      pedidos.push(String(init?.body))
+      return new Response(JSON.stringify({ choices: [{ message: { content: V2 } }] }))
+    }
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+    const laudo = await laudoDaDocumentacao()
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: V1, citados: [{ documentoId: laudo.id }] })).statusCode).toBe(201)
+  })
+
+  it('a IA reescreve a última versão com o que mudar, sem gravar; salva, sai a versão 2 marcada e a 1 fica', async () => {
+    expect((await chamar('gabi', 'POST', '/peticao/versoes/sugestao', { oQueMudar: ' ' })).json().erro).toBe('Escreva o que mudar')
+    expect((await chamar('helena', 'POST', '/peticao/versoes/sugestao', { oQueMudar: 'Incluir a tutela' })).statusCode).toBe(403)
+    const r = (await chamar('gabi', 'POST', '/peticao/versoes/sugestao', { oQueMudar: 'Incluir a tutela' })).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.motivo]).toEqual([V2, true, null])
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    for (const trecho of ['Pedido da advogada: Incluir a tutela', 'Última versão (1):', V1]) expect(enviado).toContain(trecho)
+    expect((await banco.select().from(peticaoVersao)).length).toBe(1)
+    expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: V2, oQueMudou: 'Incluir a tutela', chamadaIaId: r.sugestao.chamadaId })).json()).toEqual({ ok: true, numero: 2 })
+    const versoes = (await banco.select().from(peticaoVersao)).sort((a, b) => a.numero - b.numero)
+    expect(versoes.map((v) => [v.numero, v.geradaPor, v.pedidoDeMudanca])).toEqual([
+      [1, 'gabi', null],
+      [2, 'gabi · versão da IA', 'Incluir a tutela'],
+    ])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_versao_nova'))
+    expect((ev.detalhe as { chamadaIa: string }).chamadaIa).toBe(r.sugestao.chamadaId)
+  })
+})
+
 describe('GGVP-67 · conferir a petição', () => {
   const V1 = 'Dos fatos\nDo direito\nDo pedido'
   const MARCACOES = { liNaIntegra: true, conferem: true, nadaContradiz: true }
