@@ -36,6 +36,20 @@ import type {
   TarefaEncaminhada,
 } from './tipos.ts'
 import type { Contrato } from './contrato.ts'
+import type { Roteiro } from '../regras/roteiro.ts'
+import type { ParecerDoCaso } from './parecer.ts'
+import type { Complemento } from './complemento.ts'
+import type { DeficienciaDoCaso } from './deficiencia.ts'
+import type { AcidenteDoCaso } from './acidente.ts'
+import type { CriancaDoCaso } from './infantil.ts'
+import type { Pericia } from './pericia.ts'
+import type { Perito } from './peritos.ts'
+import type { Conversa } from './conversa.ts'
+import type { VersaoDoCampo } from '../regras/conversa.ts'
+import type { AvisoAprovado, MensagemAoCliente } from './mensagens.ts'
+import type { PedidoBancario, RegistroBancario } from './seguranca.ts'
+import type { ComplementoDoCaso, Juizo } from './caso.ts'
+import type { TarefaDoChat } from './chat.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -75,6 +89,44 @@ export type Banco = {
   cobrancas?: Cobranca[]
   /** Quem liberou cada caso ao Jurídico, e quando (GGVP-18). */
   liberacoes?: Liberacao[]
+  /** Os roteiros de conteúdo mínimo, com as versões (GGVP-93). Sem ele, começa da semente de roteiro.ts. */
+  roteiros?: Roteiro[]
+  /** A análise da IA e o registro do parecer médico de cada caso (GGVP-20). Sem ele, começa da semente de parecer.ts. */
+  pareceres?: ParecerDoCaso[]
+  /** A pendência de complemento ao médico de cada caso (GGVP-20 abre, GGVP-29 conduz). */
+  complementos?: Complemento[]
+  /** Os dados da deficiência de cada caso de Aposentadoria PCD (GGVP-42). Sem ele, começa da semente de deficiencia.ts. */
+  deficiencias?: DeficienciaDoCaso[]
+  /** A circunstância do acidente de cada caso de Auxílio-Acidente (GGVP-47). Sem ela, o checklist pede para marcar. */
+  acidentes?: AcidenteDoCaso[]
+  /** A condição e as terapias de cada criança do LOAS Deficiente de menor de 16 anos (GGVP-50). Dado de saúde. */
+  criancas?: CriancaDoCaso[]
+  /** As perícias de cada caso, da tarefa aberta pelo sistema ao resultado (épico GGVP-10). Sem ela, começa da semente de pericia.ts. */
+  pericias?: Pericia[]
+  /** Os peritos e o perfil de cada um, formado dos laudos do acervo (GGVP-61, GGVP-73). Sem ele, começa da semente de peritos.ts. */
+  peritos?: Perito[]
+  /** Os pedidos recusados no chat por mandar esconder ou mudar a situação real (GGVP-61, CA11, G11). */
+  recusasDoChat?: { quando: string; quem: string; texto: string }[]
+  /** As conversas com o lead ou o cliente, do fluxo D5 (GGVP-12). Sem ela, começa da semente de conversa.ts. */
+  conversas?: Conversa[]
+  /** As versões dos campos mudados pela conversa, com quem e quando (GGVP-84, G14). */
+  versoes?: VersaoDoCampo[]
+  /** Cada mensagem mandada ao cliente pelo Chatwoot, com o status de entrega (GGVP-102). */
+  mensagens?: MensagemAoCliente[]
+  /** O texto do resultado aprovado pelo Jurídico: o favorável com o OK da advogada (G8). Sem ele, a semente de mensagens.ts. */
+  avisosAprovados?: AvisoAprovado[]
+  /** Os dados bancários para o repasse, do mais antigo ao em vigor (GGVP-111). Sem eles, a semente de seguranca.ts. */
+  dadosBancarios?: RegistroBancario[]
+  /** A mudança dos dados bancários que espera a segunda confirmação (GGVP-111, CA5). */
+  pedidosBancarios?: PedidoBancario[]
+  /** O que a página do processo mostra além da ficha e da perícia: NB, juízo, linha, esperas, laços e tarefas (GGVP-86). */
+  casos?: ComplementoDoCaso[]
+  /** Os juízos do acervo, para a jurimetria (GGVP-86, CA6). Sem eles, a semente de caso.ts. */
+  juizos?: Juizo[]
+  /** As tarefas criadas pelo chat, na Central de quem vai fazer e no caso (GGVP-82, CA5, CA7, CA9). */
+  tarefasDoChat?: TarefaDoChat[]
+  /** Os lotes de PDFs que a sênior subiu no acervo pelo chat (GGVP-82, CA12; ponta da GGVP-131). */
+  lotesDoAcervo?: { quando: string; quem: string; entraram: number; ficaramDeFora: number }[]
   /** A última ficha que veio do servidor, por id: a base para saber o que mudou lá desde a cópia (GGVP-125). */
   espelhos?: Record<string, Ficha>
   /** Os ids das tarefas que vieram do servidor (GGVP-125, bloco 2). */

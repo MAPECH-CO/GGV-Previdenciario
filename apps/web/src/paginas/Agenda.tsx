@@ -5,6 +5,7 @@ import { AgendaLista } from '../componentes/AgendaLista.tsx'
 import { AgendaMes } from '../componentes/AgendaMes.tsx'
 import { AgendaSemana } from '../componentes/AgendaSemana.tsx'
 import { DetalheCompromisso } from '../componentes/DetalheCompromisso.tsx'
+import { DetalhePericia } from '../componentes/DetalhePericia.tsx'
 import { FiltrosDaAgenda } from '../componentes/FiltrosDaAgenda.tsx'
 import { NovoEvento } from '../componentes/NovoEvento.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -144,7 +145,9 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
         )}
       </main>
       <AbaSuporte />
-      {aberto && <DetalheCompromisso evento={aberto} aoMudar={mudou} aoFechar={() => setAberto(null)} navegar={navegar} />}
+      {/* A perícia tem o detalhe dela (épico GGVP-10, Figma 2164:513). */}
+      {aberto && aberto.categoria === 'pericias' && <DetalhePericia evento={aberto} aoFechar={() => setAberto(null)} />}
+      {aberto && aberto.categoria !== 'pericias' && <DetalheCompromisso evento={aberto} aoMudar={mudou} aoFechar={() => setAberto(null)} navegar={navegar} />}
       {novo && <NovoEvento hoje={hoje} aoCriado={mudou} aoFechar={() => setNovo(false)} navegar={navegar} />}
     </>
   )

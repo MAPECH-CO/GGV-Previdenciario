@@ -16,10 +16,11 @@ import type {
   Gravacao,
   RespostaDoEncerramento,
   TarefaEncaminhada,
+  Trecho,
 } from './tipos.ts'
 
 /** Áudio de voz a 128 kbit/s: 16 kB por segundo. Só para o tamanho do arquivo simulado. */
-const BYTES_POR_SEGUNDO = 16_000
+export const BYTES_POR_SEGUNDO = 16_000
 
 const advogadaDa = (a: Agendamento) => a.com ?? 'Advogada'
 const canalDo = (a: Agendamento) => (TIPOS_DE_ENTREVISTA.find((t) => t.id === (a.tipo ?? 'presencial'))?.nome ?? 'presencial').split(' ')[0].toLowerCase()
@@ -253,6 +254,25 @@ export async function subirAudio(agendamentoId: string, arquivo: AudioDeFora): P
 }
 
 /**
+ * O motor da transcrição simulada, o mesmo da entrevista e da conversa com o cliente (GGVP-80): as falas até onde gravou,
+ * divididas nas partes do áudio e juntadas de novo (CA10), com quem fala (GGVP-46, CA8) e sem senha (CA3). O áudio que
+ * subiu de fora dura a conversa inteira.
+ */
+export function montarTranscricao<F extends Trecho>(g: Gravacao, falas: F[]): { trechos: Trecho[]; ditas: F[] } {
+  if (g.origem === 'arquivo') g.duracao = falas.at(-1)!.aos + 10
+  const ditas = falas.filter((f) => f.aos <= g.duracao)
+  const partes = g.audio?.partes ?? 1
+  const tamanho = Math.ceil((g.duracao + 1) / partes)
+  const trechos = juntarPartes(
+    Array.from({ length: partes }, (_, i) => ({
+      inicio: i * tamanho,
+      trechos: ditas.filter((f) => f.aos >= i * tamanho && f.aos < (i + 1) * tamanho).map((f) => ({ aos: f.aos - i * tamanho, quem: f.quem, papel: f.papel, texto: f.texto })),
+    })),
+  )
+  return { trechos: tirarSenhas(trechos), ditas }
+}
+
+/**
  * POST /api/gravacoes/:id/transcricao. A OpenAI simulada: a conversa de exemplo até onde gravou, dividida nas partes do
  * áudio e juntada de novo (CA10), com quem fala (GGVP-46, CA8) e sem senha (CA3). `falhar` simula a falha (GGVP-46, CA3).
  */
@@ -268,22 +288,12 @@ export async function transcrever(gravacaoId: string, opcoes: { falhar?: boolean
     gravar(banco)
     return g
   }
-  const falas = conversaDeExemplo(ficha, agendamento ? advogadaDa(agendamento) : 'Advogada')
-  if (g.origem === 'arquivo') g.duracao = falas.at(-1)!.aos + 10
-  const ditas = falas.filter((f) => f.aos <= g.duracao)
-  const partes = g.audio?.partes ?? 1
-  const tamanho = Math.ceil((g.duracao + 1) / partes)
-  const trechos = juntarPartes(
-    Array.from({ length: partes }, (_, i) => ({
-      inicio: i * tamanho,
-      trechos: ditas.filter((f) => f.aos >= i * tamanho && f.aos < (i + 1) * tamanho).map((f) => ({ aos: f.aos - i * tamanho, quem: f.quem, papel: f.papel, texto: f.texto })),
-    })),
-  )
+  const { trechos, ditas } = montarTranscricao(g, conversaDeExemplo(ficha, agendamento ? advogadaDa(agendamento) : 'Advogada'))
   const extraidas = ditas.flatMap((f) => f.extrai ?? [])
   if (g.acoes.some((x) => x.acao === 'guardou-senha')) {
     extraidas.push({ id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre: não consta na transcrição (G9)', destino: 'cofre' })
   }
-  g.trechos = tirarSenhas(trechos)
+  g.trechos = trechos
   g.extraidas = extraidas
   g.resumo = resumoDaEntrevista(ficha, extraidas)
   g.documentos = documentosDaEntrevista(ficha, extraidas)

@@ -25,6 +25,16 @@ export type TentativasBloqueadas = z.infer<typeof TentativasBloqueadas>
 export const REGRAS = ['loas_24_meses', 'incapacidade_15_dias', 'periodos_pcd', 'dii_carencia_qualidade'] as const
 export type Regra = (typeof REGRAS)[number]
 
+/** Meses inteiros entre duas datas aaaa-mm ou aaaa-mm-dd: o mês só conta quando o dia chega (G19). A tela e o servidor usam esta. */
+export function mesesEntre(inicio: string, fim: string): number {
+  const [ai, mi, di = 1] = inicio.split('-').map(Number)
+  const [af, mf, df = 1] = fim.split('-').map(Number)
+  return (af - ai) * 12 + (mf - mi) - (df < di ? 1 : 0)
+}
+
+/** O impedimento de longo prazo do LOAS: 24 meses ou mais (Lei 8.742, art. 20, §10; G19). */
+export const MESES_LOAS = 24
+
 // Dado que falta não é erro de formulário: a regra responde "não calculável: falta X" (CA4). Formato errado é.
 const DataDaRegra = (oQue: string) => DataObrigatoria(`Informe ${oQue} (dd/mm/aaaa)`).optional()
 

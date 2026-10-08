@@ -2,13 +2,19 @@ import { useState } from 'react'
 import { Abas } from '../componentes/Abas.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
-import { ChatIA } from '../componentes/ChatIA.tsx'
+import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { exemploChatAdvogada, sugestoesChatAdvogada, totalTarefasSetorAdvogada } from '../dados/advogada.ts'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { tarefasDaAdvogada } from '../dados/preparacao.ts'
+import { daSenior, tarefasDoParecer } from '../dados/parecer.ts'
+// A perícia que passou do limite de remarcações sobe para a advogada responsável (épico GGVP-10, G15).
+import { tarefasDaAdvogadaNaPericia, tarefasDeDecidirDocumentoDaPericia } from '../dados/pericia.ts'
+import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
@@ -20,7 +26,19 @@ const navegacao: ItemNavegacao[] = [
 
 export function CentralAdvogada() {
   const [aba, setAba] = useState('minhas')
-  const [deExemplo] = useState(tarefasDaAdvogada)
+  // O laudo novo e o parecer médico nascem do caso (GGVP-20); a aprovação da dispensa é da outra sênior (GGVP-33).
+  // A conversa com o cliente é da pessoa que a abriu (GGVP-76).
+  const perfil = usePerfil('Advogada')
+  const [deExemplo] = useState(() => [
+    ...tarefasDaAdvogada(),
+    ...tarefasDoParecer().filter((t) => !daSenior(t)),
+    ...tarefasDaAdvogadaNaPericia(),
+    ...tarefasDeDecidirDocumentoDaPericia(),
+    ...tarefasDeRegistrarConversa(perfil?.usuario),
+    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
+    // GGVP-82: e as tarefas que o chat criou para a pessoa.
+    ...tarefasCriadasPeloChat(perfil?.usuario),
+  ])
   // As tarefas reais do servidor (perícia, vigília, exigência, prestação de contas, GGVP-8) vêm no topo; as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []
@@ -34,7 +52,7 @@ export function CentralAdvogada() {
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Advogada</h1>
           <CampoBusca />
-          <ChatIA exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
+          <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
           <Abas
             rotulo="Filas de tarefas"
             ativa={aba}

@@ -1,11 +1,12 @@
 // EXEMPLO. Servidor de exemplo da liberação do caso ao Jurídico (GGVP-18), sobre o mesmo banco de servidor.ts. Entra na
 // fila da Documentação o caso com o checklist conferido completo e o que a semente já traz na etapa "liberar ao Jurídico".
-// O parecer médico é da GGVP-20: até lá, vem de PARECERES_DE_EXEMPLO. Ligar no servidor: trocar o corpo de cada função
-// por fetch no endpoint da spec da ggvp-18; o perfil vem do login, não da tela.
+// O parecer médico é o registro da GGVP-20 (dados/parecer.ts). Ligar no servidor: trocar o corpo de cada função por fetch no
+// endpoint da spec da ggvp-18; o perfil vem do login, não da tela.
 import { somarDias } from '../regras/agenda.ts'
 import { dataCurta, hojeIso, hora } from '../regras/datas.ts'
 import { PERFIS, diasNaFila, idade, parecerEmOrdem, precisaDeParecer, travaDaLiberacao, type Parecer, type Perfil } from '../regras/liberacao.ts'
 import { checklistDoCaso, type ChecklistDoCaso } from './checklist.ts'
+import { parecerParaOPortao } from './parecer.ts'
 import { QUEM, QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Tarefa } from './tipos.ts'
 
@@ -29,13 +30,6 @@ export type CasoParaLiberar = ChecklistDoCaso & {
   naFilaDesde?: string
 }
 
-/** O parecer médico registrado pelo Jurídico, até a GGVP-20. O do Sebastião é o do Figma 10:264. */
-export const PARECERES_DE_EXEMPLO: Record<string, Parecer> = {
-  'sebastiao-exemplo-1': { situacao: 'suficiente', quem: 'Dra. Paula', data: '2026-07-15' },
-  'antonio-exemplo-1': { situacao: 'suficiente', quem: 'Jurídico' },
-  'rita-exemplo-1': { situacao: 'suficiente', quem: 'Dra. Paula', data: '2026-10-02' },
-}
-
 /** A etapa da semente de quem já espera a liberação. */
 const ETAPA_DA_FILA = 'Documentação · liberar ao Jurídico'
 
@@ -46,7 +40,7 @@ function montar(banco: Banco, processoId: string): CasoParaLiberar | null {
   const completa = caso.conferencia?.completo ? hojeIso(new Date(caso.conferencia.quando)) : undefined
   // ponytail: a semente não guarda desde quando o caso espera; 2 dias, como o "amanhã" do Figma 11:2.
   const naFilaDesde = completa ?? (caso.processo.etapa === ETAPA_DA_FILA ? somarDias(hojeIso(agora()), -2) : undefined)
-  return { ...caso, parecer: PARECERES_DE_EXEMPLO[processoId], precisaParecer: precisaDeParecer(caso.processo.beneficio), liberacao, naFilaDesde }
+  return { ...caso, parecer: parecerParaOPortao(banco, processoId), precisaParecer: precisaDeParecer(caso.processo.beneficio), liberacao, naFilaDesde }
 }
 
 /** GET /api/processos/:id/liberacao */

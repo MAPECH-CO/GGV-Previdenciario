@@ -11,7 +11,7 @@
 
 ## Critérios de aceite
 1. **Dado** uma tarefa de cobrança criada, **quando** o intervalo configurado passa sem conclusão, **então** o responsável recebe um lembrete e a tentativa conta no card.
-2. **Dado** uma tarefa que atingiu o limite de tentativas, **quando** a última tentativa falha, **então** a tarefa aparece na fila da sênior (ou do Jurídico, na perícia) com o histórico das tentativas.
+2. **Dado** uma tarefa que atingiu o limite de tentativas, **quando** a última tentativa falha, **então** a tarefa aparece na fila da sênior (ou da advogada responsável, na perícia) com o histórico das tentativas.
 3. **Dado** que a pessoa registra cada tentativa, **quando** abro a tarefa, **então** vejo data, canal e resultado de cada uma.
 4. **Dado** vários setores acionados no mesmo caso, **quando** um sobe o card e outro não, **então** o caso continua esperando e mostra quem falta (a "espera os setores acionados" do BPMN).
 
@@ -32,4 +32,4 @@
 - Q1: Limites e intervalos de cobrança, contato e remarcação ("a definir")
 
 ## Dúvidas respondidas pelo PO
-- (vazio)
+- Ajuste de 29/09/2026 (Lucas): na perícia, a remarcação é do Jurídico administrativo e, passado o limite, sobe para a advogada responsável.

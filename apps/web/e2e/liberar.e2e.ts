@@ -3,8 +3,9 @@ import { expect, test } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-18 · Liberar o caso ao Jurídico: o caminho inteiro da Rita no localhost, da leitura ao OK da Documentação e à fila
-// da sênior; o Sebastião travado sem lista; outro perfil vê só a situação. Cada teste começa da semente de exemplo.ts.
-// Quem libera vem do perfil da sessão: a Documentação entra pela API; a Sênior também, para ver a fila dela.
+// da sênior; o Sebastião travado sem a circunstância do acidente; outro perfil vê só a situação. Cada teste começa da
+// semente de exemplo.ts. Quem libera vem do perfil da sessão: a Documentação entra pela API; a Sênior também, para ver
+// a fila dela.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -31,6 +32,8 @@ test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documen
     ['cadunico.pdf', 'cadunico'],
     ['grupo familiar.pdf', 'grupo-familiar'],
     ['moradia.pdf', 'declaracao-moradia'],
+    // O relatório médico que completa o laudo (GGVP-20).
+    ['relatorio medico.pdf', 'laudo'],
   ]
   await janela.getByLabel(/Solte mais arquivos aqui/).setInputFiles(tipos.map(([nome]) => pdf(nome)))
   for (const [nome, tipo] of tipos) await janela.getByRole('combobox', { name: `Tipo de ${nome}` }).selectOption(tipo)
@@ -42,7 +45,18 @@ test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documen
   await page.getByRole('button', { name: 'Arquivar' }).click()
   await expect(page.getByText(/Nada falta\./)).toBeVisible()
 
+  // A advogada confere a análise da IA e registra o parecer Suficiente (GGVP-20).
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/casos/rita-exemplo-1/parecer')
+  const selects = page.getByRole('combobox', { name: /^Conferência:/ })
+  await expect(selects.first()).toBeVisible()
+  for (let i = 0; i < (await selects.count()); i++) await selects.nth(i).selectOption('confere')
+  await page.getByRole('radio', { name: 'Suficiente — liberar' }).click()
+  await page.getByRole('button', { name: 'Registrar parecer' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Parecer registrado: Suficiente' })).toBeVisible()
+
   // Checklist completo: a conferência manda o caso à fila de liberação.
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/rita-exemplo-1/checklist')
   await expect(page.getByText('Situação: completo')).toBeVisible()
   await page.getByRole('button', { name: 'Concluir a conferência' }).click()
@@ -68,13 +82,13 @@ test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documen
   )
 })
 
-test('CA2 e CA5 · o Sebastião espera na fila há 2 dias e não libera: o benefício não tem lista', async ({ page }) => {
+test('CA2 e CA5 · o Sebastião espera na fila há 2 dias e não libera: falta marcar a circunstância do acidente (GGVP-47)', async ({ page }) => {
   await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Sebastião Exemplo · Liberar ao Jurídico' }).click()
   await expect(page).toHaveURL('/casos/sebastiao-exemplo-1/liberar')
   await expect(page.getByRole('button', { name: 'Liberar ao Jurídico' })).toBeDisabled()
-  await expect(page.getByText(/Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada/)).toBeVisible()
+  await expect(page.getByText(/Marque a circunstância do acidente: o que é obrigatório depende dela\./)).toBeVisible()
 })
 
 test('CA4 · outro perfil vê só a situação', async ({ page }) => {

@@ -9,12 +9,17 @@ import { DocumentosPessoais } from '../componentes/DocumentosPessoais.tsx'
 import { EdicaoCliente } from '../componentes/EdicaoCliente.tsx'
 import { ListaDatada } from '../componentes/ListaDatada.tsx'
 import { PastasDosProcessos } from '../componentes/PastasDosProcessos.tsx'
+import { RegistrarConversa } from '../componentes/RegistrarConversa.tsx'
+import { HistoricoDeVersoes } from '../componentes/HistoricoDeVersoes.tsx'
+import { MensagemAoCliente } from '../componentes/MensagemAoCliente.tsx'
+import { CartaoDadosBancarios } from '../componentes/CartaoDadosBancarios.tsx'
 import { Reunioes } from '../componentes/Reunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { CartaoFechamento } from '../componentes/CartaoFechamento.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
+import { resumoParaAFicha } from '../dados/parecer.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import styles from './FichaCliente.module.css'
@@ -29,6 +34,14 @@ export function FichaCliente({ id }: { id: string }) {
   const [enviados, setEnviados] = useState('')
   // A janela "Transcrições" (GGVP-46), na visão do Atendimento.
   const [transcricoes, setTranscricoes] = useState(false)
+  // A janela "Registrar conversa" do "Iniciar conversa" (GGVP-76).
+  const [conversa, setConversa] = useState(false)
+  // As versões dos campos mudados pela conversa, com "Voltar para esta versão" para a Sênior (GGVP-84).
+  const [versoes, setVersoes] = useState(false)
+  // A volta de versão muda a ficha por fora do formulário: a chave nova refaz o formulário com os valores de agora.
+  const [recarga, setRecarga] = useState(0)
+  // A janela "Mensagem ao cliente", com modelo e registro (GGVP-102).
+  const [mensagem, setMensagem] = useState(false)
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -90,6 +103,9 @@ export function FichaCliente({ id }: { id: string }) {
                 + Nova demanda
               </a>
             )}
+            <button type="button" className={styles.novaDemanda} onClick={() => setMensagem(true)}>
+              Mensagem ao cliente
+            </button>
             <button type="button" className={styles.transcricoes} onClick={() => setTranscricoes(true)}>
               <span aria-hidden="true">▶ </span>Transcrições ({ficha.transcricoes})
             </button>
@@ -99,8 +115,12 @@ export function FichaCliente({ id }: { id: string }) {
       <main className={styles.pagina}>
         <div className={styles.esquerda}>
           <Cartao rotulo={`Dados de ${ficha.nome}`}>
-            <CabecalhoCliente ficha={ficha} hoje={hoje} />
-            <EdicaoCliente ficha={ficha} hoje={hoje} aoSalvar={setFicha} />
+            <CabecalhoCliente
+              ficha={ficha}
+              hoje={hoje}
+              laudoHref={ficha.processos.length ? `/casos/${(ficha.processos.find((p) => p.laudoNovoEm) ?? ficha.processos[0]).id}/laudo-novo` : undefined}
+            />
+            <EdicaoCliente key={recarga} ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
           </Cartao>
           <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />
           <PastasDosProcessos ficha={ficha} hoje={hoje} />
@@ -117,6 +137,9 @@ export function FichaCliente({ id }: { id: string }) {
               vazio="Nada registrado ainda."
               itens={historico.map((e, i) => ({ chave: `${e.quando}-${i}`, quando: dataHora(e.quando), rotulo: e.quem, texto: e.oQue }))}
             />
+            <button type="button" className={styles.versoes} onClick={() => setVersoes(true)}>
+              Ver versões
+            </button>
           </Cartao>
         </div>
         <div className={styles.direita}>
@@ -124,16 +147,30 @@ export function FichaCliente({ id }: { id: string }) {
           <CartaoFechamento fechamento={ficha.fechamento} hoje={hoje} fichaId={ficha.id} />
           <Cartao titulo="Documentação médica">
             <p className={styles.texto}>
-              {[ficha.documentacaoMedica ?? 'Nenhum laudo recebido ainda.', laudoNovo].filter(Boolean).join(' ')}
+              {/* O resultado do parecer (GGVP-20), nunca o conteúdo; sem análise ainda, o texto da semente. */}
+              {[resumoParaAFicha(ficha.id) ?? ficha.documentacaoMedica ?? 'Nenhum laudo recebido ainda.', laudoNovo].filter(Boolean).join(' ')}
             </p>
           </Cartao>
           <CartaoFichaAtendimento ficha={ficha} hoje={hoje} />
+          <CartaoDadosBancarios fichaId={ficha.id} aoMudar={async () => setFicha(await obterFicha(id))} />
           <Reunioes agendamentos={ficha.agendamentos} hoje={hoje} />
         </div>
       </main>
       <AbaSuporte />
       {transcricoes && (
         <Transcricoes ficha={ficha} perfil="atendimento" aoFechar={() => setTranscricoes(false)} aoMudar={async () => setFicha(await obterFicha(id))} />
+      )}
+      {conversa && <RegistrarConversa ficha={ficha} aoFechar={() => setConversa(false)} />}
+      {mensagem && <MensagemAoCliente ficha={ficha} aoFechar={() => setMensagem(false)} aoEnviar={async () => setFicha(await obterFicha(id))} />}
+      {versoes && (
+        <HistoricoDeVersoes
+          ficha={ficha}
+          aoFechar={async () => {
+            setVersoes(false)
+            setFicha(await obterFicha(id))
+            setRecarga((n) => n + 1)
+          }}
+        />
       )}
       {envio && <ConferirEnviar fichaId={ficha.id} origem="card" iniciais={envio} aoEnviar={aoEnviar} aoFechar={() => setEnvio(null)} />}
     </>

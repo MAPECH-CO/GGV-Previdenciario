@@ -4,6 +4,8 @@
 
 Cada candidata tem o cartão no Jira `GGVP` (mesma chave do arquivo), com os rótulos `a-validar-bpmn`, o do passo (`bpmn-d1-05`) e a chave provisória original (`prev-01`). Épicos GGVP-1 a GGVP-15.
 
+Ajuste de 29/09/2026 (Lucas): a perícia saiu do Atendimento. GGVP-53, 61, 62 e 66 passaram para o Jurídico administrativo (estagiário ou assistente jurídico); GGVP-49 (o sistema abre a tarefa), 56 (só quando a perícia pede documento novo) e 59 (o perito não vem no PDF do INSS) mudaram o texto; GGVP-31, 70 e 94 foram acertados no mesmo sentido.
+
 | Diagrama | Chave | História | Perfil | Passo | Prio. | Est. |
 |---|---|---|---|---|---|---|
 | Histórias transversais | [GGVP-78](GGVP-78-tela-inicial-o-que-e-meu-hoje.md) | Tela inicial "O que é meu hoje" por perfil | qualquer pessoa da equipe | todas as raias humanas | 1 | M |
@@ -69,11 +71,11 @@ Cada candidata tem o cartão no Jira `GGVP` (mesma chave do arquivo), com os ró
 | D4 | [GGVP-41](GGVP-41-medir-ganho-e-perda-e-gravar-no.md) | Medir ganho e perda e gravar no acervo | sênior | `D4.05`, `D4.06` | 2 | G |
 | D4 | [GGVP-45](GGVP-45-buscar-no-acervo-antes-de-escrever.md) | Buscar no acervo antes de escrever | advogada responsável | `D4.07` | 1 | M |
 | DP | [GGVP-49](GGVP-49-iniciar-a-tarefa-de-pericia.md) | Iniciar a tarefa de perícia | advogada responsável | `DP.01` | 1 | P |
-| DP | [GGVP-53](GGVP-53-marcar-a-pericia-com-o-cliente.md) | Marcar a perícia com o cliente | Atendimento | `DP.02`, `DP.04` | 1 | M |
+| DP | [GGVP-53](GGVP-53-marcar-a-pericia-com-o-cliente.md) | Marcar a perícia com o cliente | Jurídico administrativo (estagiário ou assistente jurídico) | `DP.02`, `DP.04` | 1 | M |
 | DP | [GGVP-56](GGVP-56-reunir-o-que-a-pericia-pede.md) | Reunir o que a perícia pede | Documentação | `DP.03` | 2 | P |
-| DP | [GGVP-61](GGVP-61-orientacao-da-pericia-padrao-ou-pelo-perfil.md) | Orientação da perícia, padrão ou pelo perfil do perito | Atendimento | `DP.05` | 2 | G |
-| DP | [GGVP-62](GGVP-62-preparar-o-cliente.md) | Preparar o cliente | Atendimento | `DP.06` | 2 | P |
-| DP | [GGVP-66](GGVP-66-comparecimento-e-remarcacao.md) | Comparecimento e remarcação | Atendimento | `DP.07` | 1 | P |
+| DP | [GGVP-61](GGVP-61-orientacao-da-pericia-padrao-ou-pelo-perfil.md) | Orientação da perícia, padrão ou pelo perfil do perito | Jurídico administrativo (estagiário ou assistente jurídico) | `DP.05` | 2 | G |
+| DP | [GGVP-62](GGVP-62-preparar-o-cliente.md) | Preparar o cliente | Jurídico administrativo (estagiário ou assistente jurídico) | `DP.06` | 2 | P |
+| DP | [GGVP-66](GGVP-66-comparecimento-e-remarcacao.md) | Comparecimento e remarcação | Jurídico administrativo (estagiário ou assistente jurídico) | `DP.07` | 1 | P |
 | DP | [GGVP-70](GGVP-70-conferir-o-resultado-e-decidir-o-proximo.md) | Conferir o resultado e decidir o próximo passo | advogada responsável | `DP.08`, `DP.10` | 1 | M |
 | DP | [GGVP-73](GGVP-73-atualizar-o-perfil-do-perito.md) | Atualizar o perfil do perito | advogada responsável | `DP.09` | 3 | M |
 | D5 | [GGVP-76](GGVP-76-registrar-a-conversa-por-telefone-ou-presencial.md) | Registrar a conversa por telefone ou presencial | Atendimento ou advogada | `D5.01` | 2 | M |

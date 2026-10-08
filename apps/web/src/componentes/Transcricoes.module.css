@@ -312,8 +312,7 @@
   gap: 10px;
 }
 
-.busca,
-.entrada {
+.busca {
   padding: 7px 10px;
   border: 1px solid var(--cor-borda-controle);
   border-radius: var(--raio-8);
@@ -387,25 +386,6 @@
 
 .erro {
   color: var(--cor-erro);
-}
-
-.formulario {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rotulo {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--cor-texto-suave);
-  font-size: var(--fonte-12);
-}
-
-.acoes {
-  display: flex;
-  gap: 8px;
 }
 
 @media (max-width: 720px) {

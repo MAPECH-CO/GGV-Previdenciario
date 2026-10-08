@@ -109,7 +109,8 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
       { beneficio: 'aposentadoria-idade', etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' },
     ]),
     cliente(4, 'maria-exemplo', 'Maria Exemplo', [
-      { beneficio: 'incapacidade-temporaria', etapa: 'Administrativo · perícia em 02/10', proximaAcao: 'cobrar o laudo que a perícia pede', prazo: 'vence hoje', urgente: true },
+      // Épico GGVP-10: a perícia da Maria nasce de dados/pericia.ts, com a data e as tarefas dela; o Atendimento não age nela.
+      { beneficio: 'incapacidade-temporaria', etapa: 'Administrativo · perícia' },
     ]),
     // Dois benefícios, dois processos, uma ficha.
     cliente(
@@ -130,15 +131,28 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
     cliente(10, 'rita-exemplo', 'Rita Exemplo', [
       { beneficio: 'loas-deficiente', etapa: 'Documentação · conferência', proximaAcao: 'conferir os documentos do balcão', prazo: 'hoje', urgente: true },
     ]),
-    cliente(7, 'sebastiao-exemplo', 'Sebastião Exemplo', [
-      { beneficio: 'auxilio-acidente', etapa: 'Documentação · liberar ao Jurídico', proximaAcao: 'conferir a documentação', prazo: 'amanhã' },
-    ]),
+    cliente(
+      7,
+      'sebastiao-exemplo',
+      'Sebastião Exemplo',
+      [{ beneficio: 'auxilio-acidente', etapa: 'Documentação · liberar ao Jurídico', proximaAcao: 'conferir a documentação', prazo: 'amanhã' }],
+      // GGVP-47: os documentos pessoais do kit do Auxílio-Acidente (Figma 10:264).
+      { documentos: [{ nome: 'RG', detalhe: 'frente e verso' }, { nome: 'CPF', detalhe: 'ok' }, { nome: 'CNIS', detalhe: '05/2026' }] },
+    ),
     cliente(8, 'pedro-exemplo', 'Pedro Exemplo', [
       { beneficio: 'loas-idoso', etapa: 'Administrativo · exigência do INSS', proximaAcao: 'responder a exigência', prazo: 'vence em 2 dias', urgente: true },
     ]),
     cliente(9, 'lucia-exemplo', 'Lúcia Exemplo', [
       { beneficio: 'pensao-morte', etapa: 'Judicial · sentença procedente', proximaAcao: 'avisar a cliente depois do OK da advogada', prazo: 'hoje', urgente: true },
     ]),
+    // GGVP-50: a criança do LOAS Deficiente, menor de 16 anos pela data de nascimento. Sem CPF: a semente não inventa número.
+    cliente(
+      11,
+      'davi-exemplo',
+      'Davi Exemplo',
+      [{ beneficio: 'loas-deficiente', etapa: 'Jurídico · parecer médico', proximaAcao: 'conferir o laudo com o roteiro infantil' }],
+      { nascimento: '2019-04-12' },
+    ),
   ]
 }
 
@@ -400,5 +414,16 @@ export function cnisDeExemplo(): Cnis[] {
     },
     { fichaId: 'natalia-exemplo', origem: 'impresso', extraidoEm: '2026-10-01', vinculos: [{ empresa: 'Exemplo Serviços Ltda', inicio: '2021-02', fim: '2026-04' }] },
     { fichaId: 'antonio-exemplo', origem: 'meu-inss', extraidoEm: '2026-07-30', vinculos: [{ empresa: 'Exemplo Condomínio', inicio: '2021-01', fim: '2026-02' }] },
+    // A Cleide da Aposentadoria PCD (GGVP-42): o indicador PCD e a insalubridade de cada vínculo.
+    {
+      fichaId: 'cleide-exemplo',
+      origem: 'meu-inss',
+      extraidoEm: '2026-06-30',
+      vinculos: [
+        { empresa: 'Exemplo Têxtil Ltda', inicio: '2008-02', fim: '2013-05', insalubre: true },
+        { empresa: 'Exemplo Metalúrgica Ltda', inicio: '2013-08', fim: '2019-12', indicadorPcd: true, insalubre: true },
+        { empresa: 'Exemplo Serviços Ltda', inicio: '2020-02', indicadorPcd: true },
+      ],
+    },
   ]
 }
