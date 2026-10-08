@@ -159,6 +159,13 @@ export function tarefasDoContrato(): Tarefa[] {
   })
 }
 
+/** O arquivo que o servidor anexou entra na pasta da cópia daqui; a pasta de verdade é a do Drive (GGVP-125, bloco 4b). */
+function anexarAqui(fichaId: string, arquivo: Arquivo) {
+  const banco = ler()
+  banco.fichas.find((f) => f.id === fichaId)?.arquivos.push(arquivo)
+  gravar(banco)
+}
+
 /** GET /api/processos/:id/contrato. Nulo quando o processo não tem contrato. */
 export async function obterContrato(processoId: string): Promise<ContratoDoCaso | null> {
   return achar(ler(), processoId)
@@ -329,6 +336,12 @@ export type RespostaDoEnvio = { resultado: 'gerado'; contrato: Contrato; mensage
  * (CA9). A mensagem do WhatsApp com o link sai pronta para conferir (CA12).
  */
 export async function enviarParaAssinatura(processoId: string): Promise<RespostaDoEnvio> {
+  if (doServidor(processoId)) {
+    // GGVP-125, bloco 4b: o documento no ZapSign (simulado) nasce no servidor; a cópia daqui recebe o contrato.
+    const r = await noBanco<{ contrato: Contrato; mensagem: string; ficha: Ficha }>(`/processos/${processoId}/contrato/zapsign`, { method: 'POST' })
+    receber(r)
+    return { resultado: 'gerado', contrato: r.contrato, mensagem: r.mensagem }
+  }
   await esperar()
   const banco = ler()
   const achado = achar(banco, processoId)
@@ -363,9 +376,18 @@ export async function enviarParaAssinatura(processoId: string): Promise<Resposta
  * foi atingido: o caso sobe para a advogada sênior e sai da Central do Atendimento (G15, CA11).
  */
 export async function registrarTentativaDeAssinatura(processoId: string, canal: CanalDaTentativa, mensagem?: string): Promise<Contrato> {
-  await esperar()
+  if (!doServidor(processoId)) await esperar()
   if (!(canal in NOMES_DOS_CANAIS)) throw new Error('Canal inválido')
   if (canal === 'whatsapp' && !mensagem?.trim()) throw new Error('Escreva a mensagem')
+  if (doServidor(processoId)) {
+    // GGVP-125, bloco 4b: a tentativa e o limite (G15) no servidor; a tarefa da sênior vem de lá.
+    const r = await noBanco<{ contrato: Contrato; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/processos/${processoId}/contrato/tentativas`, {
+      method: 'POST',
+      corpo: { canal, mensagem },
+    })
+    receber(r)
+    return r.contrato
+  }
   const banco = ler()
   const achado = achar(banco, processoId)
   if (!achado) throw new Error('Contrato não encontrado')
@@ -459,7 +481,18 @@ export async function receberRetornoDoZapSign(r: RetornoDoZapSign): Promise<{ re
 }
 
 /** EXEMPLO. O botão "Simular o retorno do ZapSign" faz o papel do webhook, com o segredo certo. */
-export async function simularRetornoDoZapSign(processoId: string) {
+export async function simularRetornoDoZapSign(processoId: string): Promise<{ resultado: 'anexado'; arquivo: Arquivo } | { resultado: 'repetido' }> {
+  if (doServidor(processoId)) {
+    // GGVP-125, bloco 4b: no servidor, o botão faz o papel do retorno; o segredo do retorno de verdade não vem à tela.
+    const r = await noBanco<{ resultado: 'anexado' | 'repetido'; arquivo?: Arquivo; contrato: Contrato; ficha: Ficha; tarefas?: TarefaEncaminhada[] }>(
+      `/processos/${processoId}/contrato/zapsign/retorno-simulado`,
+      { method: 'POST' },
+    )
+    receber(r)
+    if (r.resultado === 'repetido' || !r.arquivo) return { resultado: 'repetido' }
+    anexarAqui(r.ficha.id, r.arquivo)
+    return { resultado: 'anexado', arquivo: r.arquivo }
+  }
   const documentoId = (await obterContrato(processoId))?.contrato.assinatura?.zapsign?.documentoId
   if (!documentoId) throw new Error('Não há documento no ZapSign')
   return receberRetornoDoZapSign({ documentoId, eventoId: `${documentoId}-assinado`, status: 'assinado', segredo: SEGREDO_DO_RETORNO_EXEMPLO })
@@ -487,6 +520,13 @@ function paraOPapel(banco: Banco, processoId: string): ContratoDoCaso & { assina
  * contrato de honorários (CA1). Só na entrevista presencial (CA4).
  */
 export async function imprimirKit(processoId: string): Promise<{ contrato: Contrato; datas: { documento: string; data: string }[] }> {
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ contrato: Contrato; datas: { documento: string; data: string }[]; ficha: Ficha }>(`/processos/${processoId}/contrato/impressao`, {
+      method: 'POST',
+    })
+    receber(r)
+    return { contrato: r.contrato, datas: r.datas }
+  }
   await esperar()
   const banco = ler()
   const { ficha, contrato, assinatura } = paraOPapel(banco, processoId)
@@ -501,6 +541,12 @@ export async function imprimirKit(processoId: string): Promise<{ contrato: Contr
  * o arquivo aparece no card, para a leitura (GGVP-81, CA2).
  */
 export async function digitalizarContratoAssinado(processoId: string): Promise<Arquivo> {
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ arquivo: Arquivo; contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/digitalizacao`, { method: 'POST' })
+    receber(r)
+    anexarAqui(r.ficha.id, r.arquivo)
+    return r.arquivo
+  }
   await esperar()
   const banco = ler()
   const { ficha, processo, assinatura } = paraOPapel(banco, processoId)
@@ -525,6 +571,11 @@ export async function digitalizarContratoAssinado(processoId: string): Promise<A
 
 /** POST /api/processos/:id/contrato/assinatura-em-papel. Só conclui com a digitalização do contrato assinado anexada (CA3). */
 export async function concluirAssinaturaEmPapel(processoId: string): Promise<Contrato> {
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/assinatura-em-papel`, { method: 'POST' })
+    receber(r)
+    return r.contrato
+  }
   await esperar()
   const banco = ler()
   const { ficha, processo, contrato, assinatura } = paraOPapel(banco, processoId)

@@ -146,3 +146,21 @@ Quando o cliente fecha (o "Fechou com o escritório?" ou a nova demanda), o serv
 - **Dado** o contrato do caso para preparar
 - **Quando** a Atendimento confere e gera o contrato pelo modelo
 - **Então** a versão gerada fica no contrato do banco, e o caso segue para colher a assinatura
+
+### Requirement: Bloco 4b · A assinatura do contrato fica no banco do portal
+A assinatura do contrato do caso SHALL gravar no servidor, pelo ZapSign (simulado) ou em papel na hora, com as regras do Pedro: um documento no ZapSign por kit, e pedir de novo devolve o mesmo; o link e os lembretes SHALL ficar como tentativas com a data e o canal, a próxima 3 dias depois; com a segunda tentativa sem assinatura, o caso SHALL subir para a advogada sênior (G15), com a tarefa no banco, e sair da Central do Atendimento. O retorno do assinado SHALL anexar o arquivo uma vez só, levar o contrato à leitura e encerrar a tarefa da assinatura, inclusive a da sênior. O papel na hora SHALL valer só na entrevista presencial, antes do ZapSign, e só concluir com a digitalização do assinado. Enquanto o ZapSign não é contratado, o retorno é simulado pelo botão da tela, no servidor; o retorno de verdade (webhook com o segredo) entra com a ligação ao ZapSign, e o botão sai junto.
+
+#### Scenario: Assinatura pelo ZapSign
+- **Dado** o contrato gerado de um cliente do servidor
+- **Quando** a Atendimento envia para assinatura, manda o link pelo WhatsApp e o ZapSign devolve o assinado
+- **Então** o contrato do banco fica assinado, com o arquivo e a data, e segue para a leitura; outra sessão vê o mesmo
+
+#### Scenario: Limite de tentativas (G15)
+- **Dado** o link enviado e, 3 dias depois, ainda sem assinatura
+- **Quando** a Atendimento registra a segunda tentativa
+- **Então** a tarefa "Colher assinatura · limite de tentativas" abre no banco para a advogada sênior, e o retorno assinado a encerra
+
+#### Scenario: Papel na hora
+- **Dado** o contrato gerado de um cliente com entrevista presencial
+- **Quando** a Atendimento imprime o kit, digitaliza o assinado e conclui
+- **Então** o contrato do banco fica assinado em papel e segue para a leitura; sem a digitalização, não conclui; com entrevista por vídeo, o papel não é oferecido

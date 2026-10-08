@@ -164,5 +164,13 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.32 Contratos: fechar (benefício), condições do kit e geração do contrato.
 - [x] 125.33 Servidor: `POST /api/fichas/:id/processos` (cria o caso em `caso` e o contrato; o lead vira cliente), `PUT /api/processos/:id/contrato/condicoes`, `POST /api/processos/:id/contrato/gerar`; os processos das fichas com a etapa do contrato; os contratos na cópia das telas; testes.
 - [x] 125.34 Telas: fechar, condições e gerar chamando a API para as fichas do servidor; processos e contratos na cópia em três vias; testes.
-- [x] 125.35 Playwright: do lead do balcão com o benefício definido ao "fechou", ao "Preparar contrato" em outra sessão e ao contrato gerado.
-- [ ] 125.36 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 125.35 Playwright: do lead do balcão com o benefício definido ao "fechou" e ao "Preparar contrato" em outra sessão (a geração tem os testes do servidor e das telas, e o 125.40 gera pelas rotas).
+- [x] 125.36 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 4b · Colher a assinatura (ZapSign e papel)
+
+- [x] 125.37 Contratos: a tentativa de assinatura (canal e mensagem).
+- [x] 125.38 Servidor: `POST /api/processos/:id/contrato/zapsign`, `/tentativas` (G15: a tarefa da sênior no banco), `/zapsign/retorno-simulado`, `/impressao`, `/digitalizacao` e `/assinatura-em-papel`; testes.
+- [x] 125.39 Telas: enviar, tentar de novo, simular o retorno, imprimir, digitalizar e concluir chamando a API para os contratos do servidor; o arquivo assinado na pasta da cópia daqui; testes.
+- [x] 125.40 Playwright: do contrato gerado ao assinado pelo ZapSign e ao assinado em papel, visto de outra sessão.
+- [ ] 125.41 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

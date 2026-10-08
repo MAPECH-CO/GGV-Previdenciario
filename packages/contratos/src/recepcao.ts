@@ -271,3 +271,7 @@ export const EnvioDoContrato = z.object({
   correcoes: z.record(z.string().max(40), Texto(300)),
 })
 export type EnvioDoContrato = z.infer<typeof EnvioDoContrato>
+
+/** POST /api/processos/:id/contrato/tentativas: o link ou o lembrete, pelo WhatsApp (com a mensagem) ou por ligação (GGVP-72). */
+export const TentativaDoContrato = z.object({ canal: z.enum(['whatsapp', 'ligacao']), mensagem: Opcional(2000) })
+export type TentativaDoContrato = z.infer<typeof TentativaDoContrato>

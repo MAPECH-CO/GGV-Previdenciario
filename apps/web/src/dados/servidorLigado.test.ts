@@ -5,7 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista } from './agenda.ts'
 import { definirBeneficio } from './beneficio.ts'
 import { guardarSenhaNoCofre } from './cofre.ts'
-import { fecharContrato, gerarContrato, tarefasDoContrato, type Contrato } from './contrato.ts'
+import {
+  concluirAssinaturaEmPapel,
+  digitalizarContratoAssinado,
+  enviarParaAssinatura,
+  fecharContrato,
+  gerarContrato,
+  imprimirKit,
+  registrarTentativaDeAssinatura,
+  simularRetornoDoZapSign,
+  tarefasDoContrato,
+  type Contrato,
+} from './contrato.ts'
 import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
@@ -466,5 +477,91 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
     expect(await gerarContrato(CASO, { aprovados: true, conferencias, correcoes: {} })).toEqual({ resultado: 'gerado', contrato: gerado })
     expect(ler().contratos!.find((c) => c.processoId === CASO)?.etapa).toBe('assinatura')
     expect(ler().fichas.find((f) => f.id === ID)?.processos[0].etapa).toBe('Contrato · assinatura')
+  })
+
+  describe('bloco 4b: a assinatura', () => {
+    const paraAssinar = contrato({ etapa: 'assinatura' })
+    const noZapSign = (extra: Partial<NonNullable<Contrato['assinatura']>> = {}): Contrato => ({
+      ...paraAssinar,
+      assinatura: {
+        forma: 'digital',
+        tentativas: [],
+        zapsign: { documentoId: `zapsign-exemplo-${CASO}`, link: 'https://zapsign.exemplo/assinar/x', status: 'enviado', criadoEm: '2026-10-05T18:00:00.000Z', eventos: [] },
+        ...extra,
+      },
+    })
+    const assinando = cliente({ processos: [{ ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }] })
+    const assinadoEm = cliente({ processos: [{ ...processo, etapa: 'Contrato assinado em 05/10', proximaAcao: 'ler e arquivar o contrato assinado' }] })
+    const arquivo = { nome: 'Contrato assinado - Ivone Teste - 2026-10-05 (ZapSign, com evidências).pdf', tipo: 'contrato', local: CASO, data: '2026-10-05', origem: 'card' as const, repetido: false, aguardaLeitura: true }
+    const daSenior: TarefaEncaminhada = {
+      id: `senior-assinatura-${CASO}`,
+      codigo: 'D1.17',
+      cliente: { id: ID, nome: 'Ivone Teste' },
+      acao: 'Colher assinatura · limite de tentativas',
+      detalhe: 'LOAS',
+      prazo: 'hoje',
+      href: `/contrato/${CASO}/assinatura`,
+      processoId: CASO,
+      setor: 'Jurídico',
+    }
+    const comContrato = (c: Contrato) => ({ 'GET /api/recepcao': () => ({ fichas: [assinando], tarefas: [], internos: [], gravacoes: [], contratos: [c] }) })
+
+    it('ZapSign: o documento nasce lá; a tentativa vai com o canal e a mensagem; no limite, a tarefa da sênior chega aqui', async () => {
+      const fetch = ligarServidor({
+        ...comContrato(paraAssinar),
+        [`POST /api/processos/${CASO}/contrato/zapsign`]: () => ({ resultado: 'gerado', contrato: noZapSign(), mensagem: 'Olá, Ivone! Aqui está o link', ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/tentativas`]: () => ({ contrato: noZapSign({ naSenior: true }), ficha: assinando, tarefas: [daSenior] }),
+      })
+      await sincronizarRecepcao()
+      expect(await enviarParaAssinatura(CASO)).toEqual({ resultado: 'gerado', contrato: noZapSign(), mensagem: 'Olá, Ivone! Aqui está o link' })
+      expect(ler().contratos!.find((c) => c.processoId === CASO)?.assinatura?.zapsign?.status).toBe('enviado')
+      await expect(registrarTentativaDeAssinatura(CASO, 'whatsapp', ' ')).rejects.toThrow('Escreva a mensagem')
+      await registrarTentativaDeAssinatura(CASO, 'whatsapp', 'Olá, Ivone! Aqui está o link')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ canal: 'whatsapp', mensagem: 'Olá, Ivone! Aqui está o link' })
+      expect(ler().tarefas.find((t) => t.id === daSenior.id)?.setor).toBe('Jurídico')
+      // Na sênior, a tarefa do contrato sai da Central do Atendimento.
+      expect(tarefasDoContrato().map((t) => t.processoId)).not.toContain(CASO)
+    })
+
+    it('o retorno simulado vai ao servidor: o contrato assinado e a tarefa da sênior concluída vêm de lá; o arquivo fica na pasta daqui', async () => {
+      ligarServidor({
+        ...comContrato(noZapSign({ naSenior: true })),
+        [`POST /api/processos/${CASO}/contrato/zapsign/retorno-simulado`]: () => ({
+          resultado: 'anexado',
+          arquivo,
+          contrato: { ...noZapSign({ naSenior: true, arquivo: arquivo.nome, assinadoEm: '2026-10-05T19:00:00.000Z' }), etapa: 'leitura' },
+          ficha: assinadoEm,
+          tarefas: [{ ...daSenior, concluida: true }],
+        }),
+      })
+      await sincronizarRecepcao()
+      expect(await simularRetornoDoZapSign(CASO)).toEqual({ resultado: 'anexado', arquivo })
+      const aqui = ler()
+      expect(aqui.contratos!.find((c) => c.processoId === CASO)?.etapa).toBe('leitura')
+      expect(aqui.fichas.find((f) => f.id === ID)).toMatchObject({ processos: [{ etapa: 'Contrato assinado em 05/10' }], arquivos: [arquivo] })
+      expect(aqui.tarefas.find((t) => t.id === daSenior.id)?.concluida).toBe(true)
+    })
+
+    it('papel: imprimir, digitalizar e concluir vão ao servidor; a digitalização fica na pasta daqui', async () => {
+      const papel = { ...paraAssinar, assinatura: { forma: 'papel' as const, tentativas: [], impressoEm: '2026-10-05T18:10:00.000Z' } }
+      const digitalizado = { ...papel, assinatura: { ...papel.assinatura, arquivo: 'assinado.pdf' } }
+      const scanner = { ...arquivo, nome: 'assinado.pdf', origem: 'scanner' as const }
+      const fetch = ligarServidor({
+        ...comContrato(paraAssinar),
+        [`POST /api/processos/${CASO}/contrato/impressao`]: () => ({ contrato: papel, datas: [{ documento: 'Contrato de honorários', data: '05/10/2026' }], ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/digitalizacao`]: () => ({ arquivo: scanner, contrato: digitalizado, ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/assinatura-em-papel`]: () => ({ contrato: { ...digitalizado, etapa: 'leitura' }, ficha: assinadoEm }),
+      })
+      await sincronizarRecepcao()
+      expect((await imprimirKit(CASO)).datas).toEqual([{ documento: 'Contrato de honorários', data: '05/10/2026' }])
+      expect(await digitalizarContratoAssinado(CASO)).toEqual(scanner)
+      expect((await concluirAssinaturaEmPapel(CASO)).etapa).toBe('leitura')
+      expect(fetch.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${url}`).slice(-3)).toEqual([
+        `POST /api/processos/${CASO}/contrato/impressao`,
+        `POST /api/processos/${CASO}/contrato/digitalizacao`,
+        `POST /api/processos/${CASO}/contrato/assinatura-em-papel`,
+      ])
+      expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([scanner])
+    })
   })
 })

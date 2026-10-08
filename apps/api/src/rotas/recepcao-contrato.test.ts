@@ -12,7 +12,8 @@ let banco: Banco
 let fechar: () => Promise<void>
 let app: ReturnType<typeof criarServidor>
 // Quinta, 08/10/2026, meio-dia em Brasília.
-const relogio = new Date('2026-10-08T15:00:00Z')
+const INICIO = new Date('2026-10-08T15:00:00Z')
+let relogio = INICIO
 
 async function cookieDe(apelido: string) {
   const r = await app.inject({ method: 'POST', url: '/api/sessao', payload: { email: `${apelido}@exemplo.ggv`, senha: SENHA } })
@@ -39,6 +40,7 @@ const VALIDOS: Record<string, string> = {
 }
 
 beforeEach(async () => {
+  relogio = INICIO
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => relogio })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['julia', 'financeiro']] as const)
@@ -101,5 +103,88 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
       resultado: 'cpf-de-outra-ficha',
       nome: 'Marta Lima',
     })
+  })
+})
+
+describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
+  /** O contrato gerado, pronto para assinar: fecha e gera com os campos que faltam (o CPF, um por ficha). */
+  async function gerado(fichaId: string, cpf = VALIDOS.cpf) {
+    const { processo } = await fechou(fichaId)
+    const base = `/api/processos/${processo.id}/contrato`
+    const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+    const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, { ...VALIDOS, cpf }[c]]))
+    expect((await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })).resultado).toBe('gerado')
+    return base
+  }
+
+  it('ZapSign: um documento por kit; a segunda tentativa sem assinatura sobe para a sênior (G15); o retorno anexa uma vez e encerra a tarefa', async () => {
+    const base = await gerado(await lead())
+    expect((await chamar('julia', 'POST', `${base}/zapsign`)).statusCode).toBe(403)
+    const envio = await json('ana', 'POST', `${base}/zapsign`)
+    expect(envio).toMatchObject({ resultado: 'gerado', contrato: { assinatura: { forma: 'digital', tentativas: [], zapsign: { status: 'enviado' } } } })
+    const { documentoId, link } = envio.contrato.assinatura.zapsign
+    expect(envio.mensagem).toContain(link)
+    expect((await json('ana', 'POST', `${base}/zapsign`)).contrato.assinatura.zapsign.documentoId).toBe(documentoId)
+
+    expect((await chamar('ana', 'POST', `${base}/tentativas`, { canal: 'whatsapp' })).statusCode).toBe(400)
+    const primeira = await json('ana', 'POST', `${base}/tentativas`, { canal: 'whatsapp', mensagem: envio.mensagem })
+    expect(primeira.contrato.assinatura.tentativas).toMatchObject([{ data: '2026-10-08', canal: 'whatsapp', quem: 'ana' }])
+    expect(primeira.ficha.contatos.at(-1)).toMatchObject({ canal: 'WhatsApp', texto: 'Link do ZapSign enviado para assinar o contrato.' })
+    expect(await json('ana', 'POST', `${base}/tentativas`, { canal: 'ligacao' })).toEqual({ erro: 'Ainda não é dia de tentar de novo.' })
+
+    // Três dias depois, sem assinatura: a segunda tentativa é a última do Atendimento.
+    relogio = new Date('2026-10-11T15:00:00Z')
+    const segunda = await json('ana', 'POST', `${base}/tentativas`, { canal: 'ligacao' })
+    expect(segunda.contrato.assinatura).toMatchObject({ naSenior: true, tentativas: [{ canal: 'whatsapp' }, { canal: 'ligacao' }] })
+    const daSenior = { acao: 'Colher assinatura · limite de tentativas', setor: 'Jurídico', urgente: true }
+    expect(segunda.tarefas).toContainEqual(expect.objectContaining(daSenior))
+    expect(segunda.ficha.historico.at(-1).oQue).toBe('Subiu para a advogada sênior: 2 tentativas sem assinatura (G15)')
+    expect((await chamar('ana', 'POST', `${base}/tentativas`, { canal: 'ligacao' })).statusCode).toBe(400)
+
+    const retorno = await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
+    expect(retorno).toMatchObject({
+      resultado: 'anexado',
+      arquivo: { tipo: 'contrato', origem: 'card', aguardaLeitura: true },
+      contrato: { etapa: 'leitura', assinatura: { zapsign: { status: 'assinado', eventos: [`${documentoId}-assinado`] } } },
+    })
+    expect(retorno.contrato.assinatura.arquivo).toBe(retorno.arquivo.nome)
+    expect(retorno.ficha.processos[0]).toMatchObject({ etapa: 'Contrato assinado em 11/10', proximaAcao: 'ler e arquivar o contrato assinado' })
+    expect(retorno.tarefas).toContainEqual(expect.objectContaining({ ...daSenior, concluida: true }))
+    expect((await json('gabi', 'GET', '/api/recepcao')).tarefas.map((t: { acao: string }) => t.acao)).not.toContain(daSenior.acao)
+    expect((await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)).resultado).toBe('repetido')
+  })
+
+  it('papel na hora: só na entrevista presencial; imprime, digitaliza e só conclui com a digitalização; depois, nada de ZapSign', async () => {
+    const base = await gerado(await lead())
+    expect(await json('ana', 'POST', `${base}/digitalizacao`)).toEqual({ erro: 'Imprima o kit antes.' })
+    expect(await json('ana', 'POST', `${base}/assinatura-em-papel`)).toEqual({ erro: 'Anexe a digitalização do contrato assinado.' })
+    const impresso = await json('ana', 'POST', `${base}/impressao`)
+    expect(impresso.contrato.assinatura).toMatchObject({ forma: 'papel', impressoEm: expect.any(String) })
+    expect(impresso.datas.length).toBe(impresso.contrato.kit.documentos.length)
+    expect(impresso.datas.filter((d: { data: string }) => d.data !== 'em branco, à mão na assinatura')).toHaveLength(1)
+
+    const { arquivo } = await json('ana', 'POST', `${base}/digitalizacao`)
+    expect(arquivo).toMatchObject({ tipo: 'contrato', origem: 'scanner', aguardaLeitura: true })
+    expect(await json('ana', 'POST', `${base}/digitalizacao`)).toEqual({ erro: 'O contrato assinado já foi digitalizado.' })
+    expect(await json('ana', 'POST', `${base}/zapsign`)).toEqual({ erro: 'O contrato assinado em papel já foi digitalizado.' })
+
+    const concluido = await json('ana', 'POST', `${base}/assinatura-em-papel`)
+    expect(concluido.contrato).toMatchObject({ etapa: 'leitura', assinatura: { forma: 'papel', arquivo: arquivo.nome, assinadoEm: expect.any(String) } })
+    expect(concluido.ficha.processos[0]).toMatchObject({ etapa: 'Contrato assinado em 08/10' })
+    expect(concluido.ficha.historico.at(-1).oQue).toBe('Concluiu a assinatura em papel, com a digitalização anexada; segue para a leitura')
+  })
+
+  it('entrevista por vídeo: a assinatura vai pelo ZapSign, sem papel; com o documento no ZapSign, papel também não', async () => {
+    const fichaId = await lead()
+    const marcada = await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, {
+      tipo: 'video', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false,
+    })
+    expect(marcada.resultado).toBe('marcado')
+    const base = await gerado(fichaId)
+    expect(await json('ana', 'POST', `${base}/impressao`)).toEqual({ erro: 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.' })
+
+    const presencial = await gerado(await lead('Marta Lima', '11955554444'), '11144477735')
+    await json('ana', 'POST', `${presencial}/zapsign`)
+    expect(await json('ana', 'POST', `${presencial}/impressao`)).toEqual({ erro: 'O documento já foi para o ZapSign.' })
   })
 })

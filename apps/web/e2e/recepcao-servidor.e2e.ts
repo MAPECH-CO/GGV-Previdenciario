@@ -286,3 +286,57 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
   await expect(outra.getByRole('link', { name: 'Lia Fechou Teste · Preparar contrato' })).toBeVisible()
   await atendimento.close()
 })
+
+// GGVP-125, bloco 4b · a assinatura no banco: pelo ZapSign (simulado) e em papel na hora; outra sessão vê os dois assinados.
+test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assinado fica no banco', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const conferencias = { campos: true, datas: true, fichaLoas: true, codigoPenal: true }
+  /** Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. */
+  async function contratoGerado(nome: string, telefone: string, cpf: string): Promise<string> {
+    const api = page.request
+    const novo = { nome, idade: 66, pretende: 'Quer o BPC do idoso.', telefone, beneficioInteresse: 'loas-idoso', outraPessoa: false }
+    const { id } = await (await api.post('/api/fichas', { data: novo })).json()
+    const { processo } = await (await api.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
+    const gerar = `/api/processos/${processo.id}/contrato/gerar`
+    const { campos } = await (await api.post(gerar, { data: { aprovados: true, conferencias, correcoes: {} } })).json()
+    const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
+    const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
+    const gerado = await (await api.post(gerar, { data: { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes } })).json()
+    expect(gerado.resultado).toBe('gerado')
+    return processo.id
+  }
+
+  // Pelo ZapSign: o documento, o link pelo WhatsApp e o retorno do assinado (simulado).
+  const digital = await contratoGerado('Lia Zapsign Teste', '11933331188', '48271365991')
+  await page.goto(`/contrato/${digital}/assinatura`)
+  await page.getByRole('radio', { name: 'ZapSign (digital)' }).first().click()
+  await page.getByRole('button', { name: 'Enviar para assinatura' }).click()
+  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Zapsign Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  await expect(page.getByRole('list', { name: 'Tentativas de contato' })).toContainText('WhatsApp · link enviado')
+  await page.getByRole('button', { name: 'Simular o retorno do ZapSign (assinado)' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
+
+  // Em papel na hora (sem entrevista registrada, vale a presencial): imprimir, digitalizar e concluir.
+  const papel = await contratoGerado('Lia Papel Teste', '11933331199', '57382914682')
+  await page.goto(`/contrato/${papel}/assinatura`)
+  await page.getByRole('radio', { name: 'Em papel na hora' }).click()
+  await page.getByRole('button', { name: 'Imprimir o kit' }).click()
+  await page.getByRole('button', { name: 'Digitalizar o contrato assinado (scanner simulado)' }).click()
+  await page.getByRole('button', { name: 'Concluir a assinatura' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Contrato assinado em papel' })).toBeVisible()
+
+  // Outro computador: os dois contratos assinados vêm do banco.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const advogada = await outro.newPage()
+  await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
+  const { contratos } = await (await advogada.request.get('/api/recepcao')).json()
+  const assinados = Object.fromEntries(
+    (contratos as { processoId: string; etapa: string; assinatura?: { forma: string } }[])
+      .filter((c) => c.processoId === digital || c.processoId === papel)
+      .map((c) => [c.processoId, `${c.etapa} · ${c.assinatura?.forma}`]),
+  )
+  expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'leitura · papel' })
+  await advogada.goto(`/contrato/${digital}/assinatura`)
+  await expect(advogada.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
+  await outro.close()
+})
