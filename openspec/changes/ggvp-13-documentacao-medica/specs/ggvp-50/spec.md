@@ -15,7 +15,7 @@ No LOAS Deficiente com beneficiário menor de 16 anos pela data de nascimento, a
 - **Então** usa o roteiro infantil
 
 ### Requirement: CA2 · Os relatórios por condição e o item dos cuidados
-Com o roteiro infantil, o checklist SHALL mostrar os relatórios pela condição da criança (escolar para todas; CAPS na saúde mental; neurologia na paralisia cerebral, na má formação e parecidos; fonoaudiologia, terapia ocupacional e psicologia conforme a terapia) e o roteiro SHALL ter o item "necessidade de cuidados que limitam o trabalho dos responsáveis". A condição é dado de saúde: só o Jurídico a marca e a vê.
+Com o roteiro infantil, o checklist SHALL mostrar os relatórios pela condição da criança (escolar só para quem frequenta escola ou creche, resposta do Lucas de 07/10; CAPS na saúde mental; neurologia na paralisia cerebral, na má formação e parecidos; fonoaudiologia, terapia ocupacional e psicologia conforme a terapia) e o roteiro SHALL ter o item "necessidade de cuidados que limitam o trabalho dos responsáveis". A condição é dado de saúde: só o Jurídico a marca e a vê.
 
 #### Scenario: CA2 · Abrir o checklist
 - **Dado** o roteiro infantil

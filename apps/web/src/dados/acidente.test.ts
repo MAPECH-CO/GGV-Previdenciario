@@ -14,7 +14,7 @@ beforeEach(() => {
 })
 
 const JESSICA = { perfil: 'documentacao', nome: 'Jéssica (exemplo)' }
-const TRABALHO: DadosDoAcidente = { circunstancia: 'trabalho', categoria: 'empregado', acidenteEm: '2024-03-15', internacao: true, recusados: [] }
+const TRABALHO: DadosDoAcidente = { circunstancia: 'trabalho', categoria: 'empregado', acidenteEm: '2024-03-15', auxilioAnterior: false, recusados: [] }
 const tudoConferido = { perfil: 'documentacao' as const, conferiChecklist: true, conferiAssinaturas: true }
 
 async function arquivarTudo(fichaId: string) {
@@ -48,15 +48,16 @@ describe('Auxílio-Acidente: prova do acidente · servidor de exemplo', () => {
     expect(await obterAcidente('sebastiao-exemplo-1')).toEqual({})
   })
 
-  it('CA1 e CA2 · acidente de trabalho com internação: os complementares, cada um com a exigência e o status; a semente já traz a CAT e o exame posterior à alta', async () => {
-    await salvarAcidente('sebastiao-exemplo-1', TRABALHO, JESSICA)
+  it('CA1 e CA2 · acidente de trabalho com auxílio anterior: os complementares, cada um com a exigência e o status; a semente já traz a CAT e o exame posterior à alta', async () => {
+    await salvarAcidente('sebastiao-exemplo-1', { ...TRABALHO, auxilioAnterior: true }, JESSICA)
     expect((await itens()).slice(5)).toEqual([
       ['CAT (Comunicação de Acidente de Trabalho)', 'obrigatorio', 'recebido', false],
       ['Boletim de ocorrência', 'desejavel', 'pendente', true],
       ['Ficha do pronto-socorro', 'obrigatorio', 'pendente', false],
-      ['Prontuário', 'condicional', 'pendente', false],
+      ['Prontuário', 'obrigatorio', 'pendente', false],
       ['Exame de imagem da época do acidente', 'obrigatorio', 'pendente', false],
       ['Exame posterior à alta', 'obrigatorio', 'recebido', false],
+      ['Cópia do processo do auxílio por incapacidade temporária', 'condicional', 'pendente', false],
     ])
     expect((await obterFicha('sebastiao-exemplo'))?.historico.at(-1)).toMatchObject({
       quem: 'Jéssica (exemplo)',
@@ -64,11 +65,16 @@ describe('Auxílio-Acidente: prova do acidente · servidor de exemplo', () => {
     })
   })
 
-  it('CA2 · no trânsito a CAT sai; na doença ocupacional entra o PPP, com a válvula da recusa do empregador', async () => {
-    await salvarAcidente('sebastiao-exemplo-1', { ...TRABALHO, circunstancia: 'transito', internacao: false }, JESSICA)
+  it('CA2 · no trânsito a CAT sai, e o boletim e as fotos são obrigatórios; na doença ocupacional entra o PPP, com a válvula da recusa do empregador', async () => {
+    await salvarAcidente('sebastiao-exemplo-1', { ...TRABALHO, circunstancia: 'transito' }, JESSICA)
     const transito = await itens()
     expect(transito.map((i) => i[0])).not.toContain('CAT (Comunicação de Acidente de Trabalho)')
-    expect(transito.find((i) => i[0] === 'Prontuário')).toEqual(['Prontuário', 'condicional', 'pendente', true])
+    expect(transito.slice(5, 8)).toEqual([
+      ['Boletim de ocorrência', 'obrigatorio', 'pendente', false],
+      ['Fotos do acidente', 'obrigatorio', 'pendente', false],
+      ['Ficha do pronto-socorro', 'obrigatorio', 'pendente', false],
+    ])
+    expect(transito.find((i) => i[0] === 'Prontuário')).toEqual(['Prontuário', 'obrigatorio', 'pendente', false])
 
     await salvarAcidente('sebastiao-exemplo-1', { ...TRABALHO, circunstancia: 'ocupacional', recusados: ['ppp'] }, JESSICA)
     const ppp = (await obterChecklist('sebastiao-exemplo-1'))!.checklist.itens.find((i) => i.tipo === 'ppp')

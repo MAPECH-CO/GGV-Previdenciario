@@ -6,10 +6,12 @@ import { isoParaData } from '../campos.ts'
 import { hojeIso } from '../regras/datas.ts'
 import {
   TIPOS_DE_PROVA,
+  cenarios,
   enquadramento,
   motivoParaNaoSalvar,
   periodos,
   tempo,
+  type Cenario,
   type DadosDaDeficiencia,
   type Enquadramento,
   type Periodo,
@@ -33,6 +35,8 @@ export type LinhaDoTempo = {
   dados?: DeficienciaDoCaso
   periodos: Periodo[]
   enquadramento?: Enquadramento
+  /** Os três cenários (leve, moderada e grave), para a entrevista: o grau efetivo sai na perícia. */
+  cenarios: Cenario[]
   /** Todas as provas do caso, para a lista embaixo da linha. */
   provas: Prova[]
 }
@@ -92,6 +96,7 @@ function montar(banco: Banco, ficha: Ficha, processo: Processo): LinhaDoTempo {
     ...(dados && { dados }),
     periodos: ps,
     ...(e && { enquadramento: e }),
+    cenarios: dados ? cenarios(ps, dados.sexo) : [],
     provas,
   }
 }

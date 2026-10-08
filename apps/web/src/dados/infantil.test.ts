@@ -30,14 +30,14 @@ describe('BPC/LOAS de menor de 16 anos · servidor de exemplo', () => {
     expect((await obterParecer('rita-exemplo-1', 'juridico'))!.juridico!.analise!.roteiro?.id).toBe('loas-deficiente')
   })
 
-  it('CA2 · sem a condição marcada, o checklist pede o relatório escolar e espera a advogada', async () => {
+  it('CA2 · sem a condição marcada, o checklist ainda não pede relatório e espera a advogada', async () => {
     const c = (await obterChecklist('davi-exemplo-1'))!.checklist
-    expect(c.itens.filter((i) => i.de === 'complementar').map((i) => [i.nome, i.exigencia, i.situacao])).toEqual([['Relatório escolar', 'obrigatorio', 'pendente']])
+    expect(c.itens.filter((i) => i.de === 'complementar')).toEqual([])
     expect(c.bloqueio).toBe('A advogada marca a condição da criança no parecer: os relatórios que o caso pede dependem dela.')
   })
 
   it('CA2 · a advogada marca a condição e as terapias: o checklist pede os relatórios por condição; o histórico não leva a condição', async () => {
-    const tela = await salvarCrianca('davi-exemplo-1', { condicoes: ['neurologica'], terapias: ['fono', 'to'] }, PAULA)
+    const tela = await salvarCrianca('davi-exemplo-1', { condicoes: ['neurologica'], terapias: ['fono', 'to'], escola: true }, PAULA)
     expect(tela.relatorios).toEqual(['Relatório escolar', 'Relatório da neurologia', 'Relatório de fonoaudiologia', 'Relatório de terapia ocupacional'])
     const c = (await obterChecklist('davi-exemplo-1'))!.checklist
     expect(c.itens.filter((i) => i.de === 'complementar').map((i) => i.nome)).toEqual(tela.relatorios)
@@ -47,7 +47,7 @@ describe('BPC/LOAS de menor de 16 anos · servidor de exemplo', () => {
   })
 
   it('CA2 · o relatório que chega pelo card e é arquivado conta no checklist', async () => {
-    await salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: [] }, PAULA)
+    await salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: [], escola: true }, PAULA)
     await enviarArquivos('davi-exemplo', {
       origem: 'card',
       arquivos: [{ nome: 'relatorio CAPS infantil.pdf', formato: 'pdf', tamanho: 1000, tipo: 'relatorio-caps', hash: '9'.padStart(64, '0') }],
@@ -63,15 +63,16 @@ describe('BPC/LOAS de menor de 16 anos · servidor de exemplo', () => {
   })
 
   it('dado de saúde · só o Jurídico marca e vê a condição; os outros veem só os relatórios', async () => {
-    await expect(salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: [] }, { perfil: 'documentacao', nome: 'Jéssica' })).rejects.toThrow('Só o Jurídico')
-    await salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: [] }, PAULA)
-    expect(await obterCrianca('davi-exemplo-1', 'documentacao')).toEqual({ infantil: true, idade: 7, relatorios: ['Relatório escolar', 'Relatório do CAPS'] })
+    await expect(salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: [], escola: true }, { perfil: 'documentacao', nome: 'Jéssica' })).rejects.toThrow('Só o Jurídico')
+    // Sem escola nem creche, o escolar não entra (resposta do Lucas, 07/10).
+    await salvarCrianca('davi-exemplo-1', { condicoes: ['saude-mental'], terapias: [], escola: false }, PAULA)
+    expect(await obterCrianca('davi-exemplo-1', 'documentacao')).toEqual({ infantil: true, idade: 7, relatorios: ['Relatório do CAPS'] })
     expect((await obterCrianca('davi-exemplo-1', 'advogada'))?.dados?.condicoes).toEqual(['saude-mental'])
   })
 
   it('o servidor confere de novo: a lista e o caso de menor de 16 anos', async () => {
-    await expect(salvarCrianca('rita-exemplo-1', { condicoes: [], terapias: [] }, PAULA)).rejects.toThrow('menor de 16 anos')
-    await expect(salvarCrianca('davi-exemplo-1', { condicoes: ['outra' as 'neurologica'], terapias: [] }, PAULA)).rejects.toThrow('fora da lista')
+    await expect(salvarCrianca('rita-exemplo-1', { condicoes: [], terapias: [], escola: false }, PAULA)).rejects.toThrow('menor de 16 anos')
+    await expect(salvarCrianca('davi-exemplo-1', { condicoes: ['outra' as 'neurologica'], terapias: [], escola: false }, PAULA)).rejects.toThrow('fora da lista')
     expect(ler().criancas).toBeUndefined()
     expect(await obterCrianca('rita-exemplo-1', 'advogada')).toEqual({ infantil: false, relatorios: [] })
   })

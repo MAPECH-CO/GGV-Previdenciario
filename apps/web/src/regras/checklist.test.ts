@@ -104,7 +104,7 @@ describe('Checklist do Auxílio-Acidente (GGVP-47)', () => {
       ['laudo', undefined, 'recebido', undefined, undefined],
       ['cat', 'obrigatorio', 'pendente', 'falta', undefined],
       ['boletim-ocorrencia', 'desejavel', 'pendente', 'falta', true],
-      ['prontuario', 'condicional', 'pendente', 'só com internação ou cirurgia: não se aplica', true],
+      ['prontuario', 'condicional', 'pendente', 'só se houve auxílio por incapacidade temporária antes: não se aplica', true],
     ])
   })
 

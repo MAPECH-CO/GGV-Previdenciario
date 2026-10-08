@@ -83,7 +83,7 @@ function doComplementar(c: Complementar): Omit<ItemDoChecklist, 'nome' | 'situac
 /** Por que o complementar pendente não conta: a recusa do empregador vira pendência (válvula) e o condicional pode não se aplicar. */
 function motivoDoAcidente(c: Complementar): string | undefined {
   if (c.recusado) return 'o empregador recusou: pendência que não trava'
-  if (!c.aplica) return 'só com internação ou cirurgia: não se aplica'
+  if (!c.aplica) return 'só se houve auxílio por incapacidade temporária antes: não se aplica'
   return undefined
 }
 

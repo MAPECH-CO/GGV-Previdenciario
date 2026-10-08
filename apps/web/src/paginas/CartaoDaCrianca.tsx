@@ -11,7 +11,7 @@ const alternar = <T,>(lista: T[], item: T, sim: boolean) => (sim ? [...lista, it
 
 export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: string; perfil?: string; nome: string }) {
   const [tela, setTela] = useState<CriancaNaTela | null>(null)
-  const [d, setD] = useState<DadosDaCrianca>({ condicoes: [], terapias: [] })
+  const [d, setD] = useState<DadosDaCrianca>({ condicoes: [], terapias: [], escola: false })
   const [salvando, setSalvando] = useState(false)
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
@@ -22,7 +22,7 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
     obterCrianca(processoId, perfil).then((t) => {
       if (!valendo || !t) return
       setTela(t)
-      if (t.dados) setD({ condicoes: t.dados.condicoes, terapias: t.dados.terapias })
+      if (t.dados) setD({ condicoes: t.dados.condicoes, terapias: t.dados.terapias, escola: t.dados.escola === true })
     })
     return () => {
       valendo = false
@@ -82,6 +82,17 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
           </label>
         ))}
       </fieldset>
+      <fieldset className={proprio.grupo}>
+        <legend>Escola</legend>
+        <label className={proprio.marcar}>
+          <input type="checkbox" checked={d.escola} onChange={(e) => mudar({ escola: e.target.checked })} />
+          Frequenta escola ou creche (o relatório escolar entra no checklist)
+        </label>
+        <p className={proprio.itemDetalhe}>
+          O relatório escolar conta a comunicação, a interação, a participação, o comportamento, a autonomia e as dificuldades da
+          criança. Sem escola, valem os relatórios dos profissionais que a acompanham.
+        </p>
+      </fieldset>
       <h3 className={proprio.itemNome}>Relatórios que o caso pede</h3>
       <ul className={proprio.itens} aria-label="Relatórios que o caso pede">
         {tela.relatorios.map((r) => (
@@ -90,7 +101,7 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
           </li>
         ))}
       </ul>
-      {!tela.dados && <p className={styles.aviso}>Sem a condição marcada, o checklist pede só o relatório escolar e fica travado.</p>}
+      {!tela.dados && <p className={styles.aviso}>Sem a condição marcada, o checklist fica travado: os relatórios dependem dela.</p>}
       <div className={styles.rodape}>
         <button type="button" className={styles.principalBotao} disabled={salvando} onClick={salvar}>
           {salvando ? 'salvando…' : 'Salvar a condição'}

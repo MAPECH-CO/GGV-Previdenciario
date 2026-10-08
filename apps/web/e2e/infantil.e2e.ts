@@ -28,6 +28,7 @@ test('CA2 · a advogada marca a condição e as terapias; o checklist pede os re
   await cartao.getByRole('checkbox', { name: /Paralisia cerebral, má formação ou parecido/ }).check()
   await cartao.getByRole('checkbox', { name: 'Fonoaudiologia' }).check()
   await cartao.getByRole('checkbox', { name: 'Terapia ocupacional' }).check()
+  await cartao.getByRole('checkbox', { name: /Frequenta escola ou creche/ }).check()
   await cartao.getByRole('button', { name: 'Salvar a condição' }).click()
   await expect(cartao.getByRole('status')).toHaveText('Condição salva: o checklist pede os relatórios dela.')
   await expect(cartao.getByRole('list', { name: 'Relatórios que o caso pede' }).getByRole('listitem')).toHaveText([
