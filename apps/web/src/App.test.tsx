@@ -2,11 +2,13 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
 import { zerarExemplo } from './dados/servidor.ts'
+import { responderRelacionamento } from './test/relacionamento/rotas.ts'
 
 const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
 
+/** O servidor de mentira responde a sessão; o Relacionamento segue no servidor falso dele (GGVP-138). */
 function servidorResponde(status: number, corpo: unknown) {
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(corpo), { status })))
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => (await responderRelacionamento(url, init)) ?? new Response(JSON.stringify(corpo), { status })))
 }
 
 beforeEach(() => servidorResponde(200, usuario))

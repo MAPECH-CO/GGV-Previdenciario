@@ -13,7 +13,6 @@ const PASSO = 5
 /** A máquina lenta pede folga nos testes que esperam o relógio. */
 const ESPERA = { timeout: 15000 }
 const LONGO = 30000
-const BRUNA = { quem: 'Ana (exemplo)', perfil: 'atendimento' as const }
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
@@ -25,7 +24,7 @@ beforeEach(() => {
 const botao = (nome: string | RegExp) => screen.getByRole('button', { name: nome }) as HTMLButtonElement
 
 async function abrirPresencial() {
-  const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' }, BRUNA)
+  const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
   render(comSessao(<Conversa conversaId={c.id} passo={PASSO} />))
   await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Registrar conversa' })
   return c
@@ -57,7 +56,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
   it(
     'CA6 e CA9 · transcrição em tempo real sem a senha dita, o cofre pausa, e "Finalizar conversa" guarda o áudio e transcreve',
     async () => {
-      const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' }, BRUNA)
+      const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
       await gravarConversa(c.id, { avisei: true })
       // A página abre com a gravação já começada: volta pausada (recarregou no meio).
       render(comSessao(<Conversa conversaId={c.id} passo={PASSO} />))
@@ -94,7 +93,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
   })
 
   it('a transcrição falha: o aviso, o áudio guardado e "Tentar de novo"', async () => {
-    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' }, BRUNA)
+    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' })
     render(comSessao(<Conversa conversaId={c.id} passo={PASSO} simular="falha-da-transcricao" />))
     await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Registrar conversa' })
     fireEvent.change(screen.getByLabelText(/Áudio da ligação/), { target: { files: [new File(['x'], 'ligacao.mp3', { type: 'audio/mpeg' })] } })
@@ -106,7 +105,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
   })
 
   it('o registro escrito aparece como "só registro"', async () => {
-    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'escrito', registro: 'Perguntou o que levar na perícia.' }, BRUNA)
+    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'escrito', registro: 'Perguntou o que levar na perícia.' })
     render(comSessao(<Conversa conversaId={c.id} />))
     expect(await screen.findByRole('heading', { name: 'Registro escrito · só registro' })).toBeTruthy()
     expect(screen.getByText('Perguntou o que levar na perícia.')).toBeTruthy()
@@ -121,14 +120,14 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
 
 describe('Transcrever e identificar o que mudou · tela (GGVP-80)', () => {
   async function transcrita() {
-    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' }, BRUNA)
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
     await gravarConversa(c.id, { avisei: true })
     await finalizarConversa(c.id, { aos: 116 })
     await transcreverConversa(c.id)
     return c
   }
 
-  it('CA2, CA5 e GGVP-76 CA9 · o que mudou, os dados novos, o que precisa atualizar, a observação e o combinado; o Atendimento não vê o fato de saúde', async () => {
+  it('CA2, CA5 e GGVP-76 CA9 · o que mudou, os dados novos, o que precisa atualizar, a observação e o combinado; quem conversou vê tudo', async () => {
     const c = await transcrita()
     render(comSessao(<Conversa conversaId={c.id} />))
     const quadro = await screen.findByRole('region', { name: 'O que a IA encontrou na conversa' })
@@ -138,27 +137,25 @@ describe('Transcrever e identificar o que mudou · tela (GGVP-80)', () => {
       '• Processo · data da perícia do INSS: 02/10/2026 → 16/10/2026 (dito às 14:32)«Mandou: remarcaram a perícia para 16/10, às 8h30.»',
     ])
     const novos = within(quadro).getByRole('list', { name: 'Dados novos' })
-    expect(within(novos).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '• Ficha · endereço: Rua Exemplo das Acácias, 45 (dito às 14:32)«Mudei de casa. Agora moro na Rua Exemplo das Acácias, 45.»',
-      '• Processo · fato novo de saúde · só o Jurídico vê',
-      // O trecho é a mesma fala do fato de saúde: o Atendimento não vê.
-      '• Processo · documento citado: Relatório da alta hospitalar (dito às 14:33)',
-    ])
+    const itens = within(novos).getAllByRole('listitem')
+    expect(itens.map((li) => li.textContent?.split(':')[0])).toEqual(['• Ficha · endereço', '• Processo · fato novo', '• Processo · documento citado'])
+    expect(itens[0].textContent).toBe('• Ficha · endereço: Rua Exemplo das Acácias, 45 (dito às 14:32)«Mudei de casa. Agora moro na Rua Exemplo das Acácias, 45.»')
+    // O que a conversa registrou não é dado de saúde (Pedro, 08/10): quem conversou vê cada mudança com o trecho dela.
+    expect(itens.every((li) => li.textContent?.includes('«'))).toBe(true)
     expect(within(quadro).getByText('✓ Ficha do cliente').getAttribute('data-marcado')).toBe('true')
     expect(within(quadro).getByText('✓ Campos do processo')).toBeTruthy()
     expect(within(quadro).getByText(/A senha do gov.br foi dita em voz alta/)).toBeTruthy()
     expect(within(quadro).getByText('Documentação: receber e digitalizar o relatório da alta hospitalar.')).toBeTruthy()
     expect(within(quadro).getByRole('link', { name: 'Conferir e atualizar (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
-    expect(screen.getByText('A transcrição completa fica só para o Jurídico: a conversa tem dado de saúde.')).toBeTruthy()
-    expect(quadro.textContent).not.toMatch(/hospital no fim de setembro/i)
+    expect(within(screen.getByRole('list', { name: 'Falas' })).getAllByRole('listitem').length).toBeGreaterThan(5)
   })
 
-  it('a advogada vê o fato de saúde e a transcrição', async () => {
+  it('a advogada também vê a análise e a transcrição', async () => {
     const c = await transcrita()
     entrarComo('advogada')
     render(comSessao(<Conversa conversaId={c.id} />))
     const quadro = await screen.findByRole('region', { name: 'O que a IA encontrou na conversa' })
-    expect(within(quadro).getByText(/Processo · fato novo: Três dias no hospital no fim de setembro/)).toBeTruthy()
+    expect(within(quadro).getByText(/^• Processo · fato novo: /)).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Falas' })).getAllByRole('listitem').length).toBeGreaterThan(5)
   })
 })

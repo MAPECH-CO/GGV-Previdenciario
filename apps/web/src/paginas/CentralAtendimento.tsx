@@ -30,7 +30,7 @@ import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
 import { tarefasDeComplemento } from '../dados/complemento.ts'
 import { tarefasDaDocumentacaoNaPericia } from '../dados/pericia.ts'
-import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { useTarefasDaConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
@@ -65,15 +65,15 @@ export function CentralAtendimento() {
     ...tarefasDeComplemento(),
     // A Documentação reúne e cobra o que a perícia pede (épico GGVP-10, GGVP-56).
     ...tarefasDaDocumentacaoNaPericia(),
-    ...tarefasDeRegistrarConversa(perfil?.usuario),
-    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
     // GGVP-82: as tarefas que o chat criou para a pessoa.
     ...tarefasCriadasPeloChat(perfil?.usuario),
   ])
   // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []
-  const tarefas = [...doServidor, ...deExemplo]
+  // A conversa com o cliente e a pendência dela, do servidor, para quem está no login (GGVP-138).
+  const daConversa = useTarefasDaConversa() ?? []
+  const tarefas = [...doServidor, ...daConversa, ...deExemplo]
 
   return (
     <>

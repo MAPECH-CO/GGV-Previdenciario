@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1791484172022,
-      "tag": "0017_segunda_ficha_medica",
+      "when": 1791483509900,
+      "tag": "0017_relacionamento_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791487410172,
+      "tag": "0018_segunda_ficha_medica",
       "breakpoints": true
     }
   ]
