@@ -92,6 +92,7 @@ const DESCRICAO: Record<string, string> = {
   pericia_resultado_registrado: 'Resultado da perícia registrado pela advogada',
   pericia_perfil_atualizado: 'Perfil do perito atualizado com o laudo',
   pericia_perito_do_laudo: 'Laudo da perícia ligado ao perito',
+  importacao_gravada: 'Planilha do escritório importada (clientes e processos)',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',

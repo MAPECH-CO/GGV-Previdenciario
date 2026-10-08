@@ -34,6 +34,7 @@ import { ConferirAcervo } from './paginas/ConferirAcervo.tsx'
 import { Historico } from './paginas/Historico.tsx'
 import { Prazos, UsoDoCofreTela } from './paginas/Gestao.tsx'
 import { Configuracao } from './paginas/Configuracao.tsx'
+import { Importar } from './paginas/Importar.tsx'
 import { LerPublicacao } from './paginas/LerPublicacao.tsx'
 import { PublicacoesDoProcesso } from './paginas/PublicacoesDoProcesso.tsx'
 import { AnalisarExigenciaJuiz } from './paginas/AnalisarExigenciaJuiz.tsx'
@@ -157,6 +158,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/gestao\/resultados$/, tela: () => <Exige acao="gestao.ver"><Resultados /></Exige> },
   { padrao: /^\/acervo\/conferencia$/, tela: () => <Exige acao="acervo.conferir_desfecho"><ConferirAcervo /></Exige> },
   { padrao: /^\/configuracao$/, tela: () => <Exige acao="gestao.ver"><Configuracao /></Exige> },
+  // GGVP-146, parte 2: a planilha do escritório, pela gestão que muda a configuração.
+  { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
   // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
 ]
