@@ -54,6 +54,8 @@ test('CA1 a CA4, CA6, CA7 · revisar, a verificação recusa o texto proibido, e
 })
 
 test('CA8 · "o Antônio me ligou": o chat mostra a próxima tarefa e a orientação pronta, sem executar nada', async ({ page }) => {
+  // A data da perícia da semente anda com o dia de hoje: o relógio fica em 07/10, como nos outros testes da perícia.
+  await page.clock.setFixedTime(new Date(2026, 9, 7, 10, 0))
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/juridico-administrativo')
   await page.getByRole('textbox').fill('O Antônio me ligou. O que eu falo para ele?')
