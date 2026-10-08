@@ -69,3 +69,6 @@ export * from './resultados.ts'
 
 // O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
 export * from './chat.ts'
+
+// O importador da planilha do escritório (GGVP-146, parte 2).
+export * from './importacao.ts'

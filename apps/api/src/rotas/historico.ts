@@ -55,6 +55,7 @@ const DESCRICAO: Record<string, string> = {
   exportacao_pedida: 'Exportação do histórico pedida',
   exportacao_autorizada: 'Exportação do histórico autorizada pela direção',
   historico_exportado: 'Histórico exportado',
+  importacao_gravada: 'Planilha do escritório importada (clientes e processos)',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',
