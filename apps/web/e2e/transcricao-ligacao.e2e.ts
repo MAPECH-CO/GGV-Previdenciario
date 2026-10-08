@@ -40,7 +40,7 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
 // chave do serviço, a transcrição segue a de exemplo do Relacionamento; o áudio de verdade fica no card.
 test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento; o áudio fica no card do cliente', async ({ page }) => {
   await page.goto('/')
-  const r = await page.request.post('/api/fichas', { data: { nome: 'Rosa Ligacao Teste', idade: 66, pretende: 'Quer saber do BPC do idoso.', telefone: '11933332211', beneficioInteresse: 'loas-idoso', outraPessoa: false } })
+  const r = await page.request.post('/api/fichas', { data: { nome: 'Rosa Ligacao Teste', idade: 66, pretende: 'Quer saber do BPC do idoso.', telefone: '11933337788', beneficioInteresse: 'loas-idoso', outraPessoa: false } })
   expect(r.ok()).toBe(true)
   await page.goto(`/clientes/${(await r.json()).id}`)
   await page.getByRole('button', { name: 'Iniciar conversa' }).click()
