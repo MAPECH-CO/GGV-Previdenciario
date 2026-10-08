@@ -6,7 +6,7 @@ import { camposProtegidosQueMudam, confirmarMudancaBancaria, obterDadosBancarios
 import { configurarExemplo, obterFicha, tarefasDoSetor, zerarExemplo } from './servidor.ts'
 import type { EdicaoFicha, Ficha } from './tipos.ts'
 
-const BRUNA = { quem: 'Bruna (exemplo)', perfil: 'atendimento' as const }
+const BRUNA = { quem: 'Ana (exemplo)', perfil: 'atendimento' as const }
 const CARLA = { quem: 'Carla (exemplo)', perfil: 'atendimento-lider' as const }
 const JESSICA = { quem: 'Jéssica (exemplo)', perfil: 'documentacao' as const }
 const CONTA_NOVA = { banco: 'Banco Exemplo Dois', agencia: '0002', conta: '65432-1' }
@@ -45,7 +45,7 @@ describe('Terceiro não se passa pelo cliente · servidor de exemplo (GGVP-111)'
     if (!('ficha' in resposta)) throw new Error(resposta.erro)
     expect(resposta.ficha.telefone).toBe('11900000044')
     expect(resposta.ficha.historico.at(-1)).toMatchObject({
-      quem: 'Bruna (exemplo)',
+      quem: 'Ana (exemplo)',
       oQue: `Mudou o telefone (chamada de vídeo com o cliente; em contrato novo): «${formatarTelefone(maria.telefone!)}» → «(11) 90000-0044»`,
     })
     // O endereço não é dado protegido: muda sem a verificação.
@@ -66,16 +66,16 @@ describe('Terceiro não se passa pelo cliente · servidor de exemplo (GGVP-111)'
       'A mudança dos dados bancários é do Atendimento e do Jurídico.',
     )
     const pedido = await pedirMudancaBancaria('lucia-exemplo', { dados: CONTA_NOVA, verificacao: { como: 'presencial', contratoNovo: true } }, BRUNA)
-    expect(pedido).toMatchObject({ pediu: 'Bruna (exemplo)', dados: CONTA_NOVA })
+    expect(pedido).toMatchObject({ pediu: 'Ana (exemplo)', dados: CONTA_NOVA })
     // Até a segunda confirmação, nada muda.
     expect((await obterDadosBancarios('lucia-exemplo')).atual?.banco).toBe('Banco Exemplo')
     await expect(confirmarMudancaBancaria('lucia-exemplo', BRUNA)).rejects.toThrow('de outra pessoa, não de quem pediu')
 
     await confirmarMudancaBancaria('lucia-exemplo', CARLA)
-    expect(await obterDadosBancarios('lucia-exemplo')).toMatchObject({ atual: { ...CONTA_NOVA, quem: 'Bruna (exemplo)' }, pedido: null })
+    expect(await obterDadosBancarios('lucia-exemplo')).toMatchObject({ atual: { ...CONTA_NOVA, quem: 'Ana (exemplo)' }, pedido: null })
     const lucia = (await obterFicha('lucia-exemplo'))!
     expect(lucia.historico.map((e) => e.oQue)).toContain(
-      'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de Bruna (exemplo), segunda confirmação de Carla (exemplo)): ' +
+      'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de Ana (exemplo), segunda confirmação de Carla (exemplo)): ' +
         '«Banco Exemplo · agência 0001 · conta 12345-6 · Pix: o telefone cadastrado» → «Banco Exemplo Dois · agência 0002 · conta 65432-1»',
     )
   })

@@ -55,7 +55,7 @@ export function erroDosDadosBancarios(d: Partial<DadosBancarios>): string | null
 /** Quem dá a segunda confirmação da mudança bancária (CA5): outra pessoa, do Atendimento líder ou do Jurídico. */
 export function podeConfirmarSegunda(perfil: IdPerfil | undefined, quem: string, pediu: string): string | null {
   if (quem === pediu) return 'A segunda confirmação é de outra pessoa, não de quem pediu.'
-  if (perfil !== 'atendimento-lider' && perfil !== 'advogada' && perfil !== 'senior' && perfil !== 'senior-2') {
+  if (perfil !== 'atendimento-lider' && perfil !== 'advogada' && perfil !== 'senior') {
     return 'A segunda confirmação é do Atendimento líder, da advogada ou da Sênior.'
   }
   return null

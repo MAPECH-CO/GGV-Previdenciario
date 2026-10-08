@@ -36,7 +36,7 @@ import { registrarNoCofre } from './cofre.ts'
 import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type Verificacao } from '../regras/seguranca.ts'
 import { BYTES_POR_SEGUNDO, montarTranscricao } from './entrevista.ts'
 import { dataDaPericia } from './pericia.ts'
-import { PERFIS, type IdPerfil } from './perfis.ts'
+import type { IdPerfil } from './perfis.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Ficha, Gravacao, Setor, Tarefa, Trecho } from './tipos.ts'
 
@@ -116,7 +116,7 @@ export function conversasDeExemplo(hoje: string): Conversa[] {
       canal: 'ligacao',
       comQuem: 'cliente',
       modo: 'arquivo',
-      quem: 'Bruna (exemplo)',
+      quem: 'Ana (exemplo)',
       papel: 'atendimento',
       abertaEm: new Date(`${hoje}T09:15:00`).toISOString(),
       motivo: 'ligou com informação nova sobre a exigência do INSS',
@@ -593,23 +593,32 @@ export async function voltarParaVersao(alvo: Alvo, indice: number, por: QuemAge)
 
 // GGVP-88 · Pendência da conversa vira tarefa.
 
-const SETOR_DO_PERFIL: Record<IdPerfil, Setor> = {
-  atendimento: 'Atendimento',
-  'atendimento-lider': 'Atendimento',
-  advogada: 'Jurídico',
-  senior: 'Jurídico',
-  'senior-2': 'Jurídico',
-  // O Jurídico administrativo da perícia (épico GGVP-10).
-  'juridico-adm': 'Jurídico',
-  documentacao: 'Documentação · ADM',
-  financeiro: 'Financeiro',
-}
+/**
+ * Quem pode ficar com a tarefa, num lugar só. No servidor de exemplo: as pessoas dos registros de exemplo e as que entram
+ * no portal de exemplo (a semente de `apps/api/src/banco/exemplo.ts`), para a pendência chegar a quem faz login. Ao ligar
+ * no servidor (GGVP-125), as pessoas do escritório vêm de lá.
+ */
+const PESSOAS_DE_EXEMPLO: Pessoa[] = [
+  { nome: 'Carla (exemplo)', setor: 'Atendimento' },
+  { nome: 'Dra. Paula (exemplo)', setor: 'Jurídico' },
+  { nome: 'Dra. Renata (exemplo)', setor: 'Jurídico' },
+  { nome: 'Marcos (exemplo)', setor: 'Financeiro' },
+  { nome: 'Jéssica (exemplo)', setor: 'Documentação · ADM' },
+  { nome: 'Dr. Otávio (exemplo)', setor: 'Jurídico' },
+  { nome: 'Ana (exemplo)', setor: 'Atendimento' },
+  { nome: 'Eva (exemplo, líder e atendimento)', setor: 'Atendimento' },
+  { nome: 'Fábio (exemplo)', setor: 'Documentação · ADM' },
+  { nome: 'Gabi (exemplo)', setor: 'Jurídico' },
+  { nome: 'Helena (exemplo)', setor: 'Jurídico' },
+  { nome: 'Otávio (exemplo, segunda Sênior)', setor: 'Jurídico' },
+  { nome: 'Igor (exemplo)', setor: 'Jurídico' },
+  { nome: 'Júlia (exemplo)', setor: 'Financeiro' },
+]
 
-const SENIORES: IdPerfil[] = ['senior', 'senior-2']
+const SENIORES: IdPerfil[] = ['senior']
 
-/** Quem pode ficar com a tarefa: as pessoas do "Trocar perfil", num lugar só. Ao ligar no servidor, as pessoas do escritório. */
 export function pessoasDoEscritorio(): Pessoa[] {
-  return PERFIS.map((p) => ({ nome: p.usuario, setor: SETOR_DO_PERFIL[p.id] }))
+  return PESSOAS_DE_EXEMPLO
 }
 
 /**

@@ -47,7 +47,7 @@ export function modoDoCanal(canal: CanalDoRegistro): ModoDoRegistro {
 /** Quem pode conduzir e gravar a conversa: o Atendimento e o Jurídico. Os outros perfis, ninguém. */
 export function papelDoPerfil(id: IdPerfil | undefined): PapelNaConversa | null {
   if (id === 'atendimento' || id === 'atendimento-lider') return 'atendimento'
-  if (id === 'advogada' || id === 'senior' || id === 'senior-2') return 'juridico'
+  if (id === 'advogada' || id === 'senior') return 'juridico'
   return null
 }
 
@@ -194,7 +194,7 @@ export type VersaoDoCampo = {
 
 /** Só a Sênior volta uma versão (Pedro, 07/10). */
 export function podeVoltarVersao(id: IdPerfil | undefined): boolean {
-  return id === 'senior' || id === 'senior-2'
+  return id === 'senior'
 }
 
 // GGVP-88 · Pendência da conversa vira tarefa.

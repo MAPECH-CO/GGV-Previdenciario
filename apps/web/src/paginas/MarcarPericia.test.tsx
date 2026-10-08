@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { DetalhePericia } from '../componentes/DetalhePericia.tsx'
 import { eventosDaAgenda } from '../dados/agenda.ts'
 import { lerComprovante, obterPericia, registrarMarcacao, remarcarPericia } from '../dados/pericia.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from './CentralAdvogada.tsx'
 import { CentralJuridicoAdm } from './CentralJuridicoAdm.tsx'
@@ -17,13 +17,13 @@ beforeEach(() => {
   configurarExemplo({ agora: () => agora, latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('?perfil=juridico-adm')
+  entrarComo('juridico-adm')
 })
 
 const pdf = (nome: string) => new File([`conteúdo de ${nome}`], nome, { type: 'application/pdf' })
 
 async function abrir(remarcar = false) {
-  render(<MarcarPericia processoId="maria-exemplo-1" remarcar={remarcar} />)
+  render(comSessao(<MarcarPericia processoId="maria-exemplo-1" remarcar={remarcar} />))
   await screen.findByRole('heading', { level: 1, name: /Maria Exemplo · (Remarcar|Marcar) perícia/ })
 }
 
@@ -115,7 +115,7 @@ describe('GGVP-53 · Marcar a perícia (Figma 10:374)', () => {
 
 describe('GGVP-53 · o comprovante pelo chat (Figma 2085:2)', () => {
   it('CA5 · a IA lê e identifica a cliente; nada acontece antes de "Confirmar e marcar"', async () => {
-    render(<CentralJuridicoAdm />)
+    render(comSessao(<CentralJuridicoAdm />))
     fireEvent.change(screen.getByLabelText('+ Anexar arquivo'), { target: { files: [pdf('comprovante_pericia_maria.pdf')] } })
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Esse aqui é o comprovante da perícia da Maria Exemplo. Marcar.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
@@ -136,7 +136,7 @@ describe('GGVP-53 · o comprovante pelo chat (Figma 2085:2)', () => {
 describe('GGVP-53 · agenda, página do processo e o limite na Central da Advogada', () => {
   it('CA2 · o evento da perícia na agenda: abrir o processo e remarcar com o Jurídico administrativo (Figma 2164:513)', async () => {
     const [evento] = (await eventosDaAgenda('2026-10-16', '2026-10-16')).filter((e) => e.categoria === 'pericias')
-    render(<DetalhePericia evento={evento} aoFechar={() => {}} />)
+    render(comSessao(<DetalhePericia evento={evento} aoFechar={() => {}} />))
     expect(screen.getByRole('heading', { name: 'Antônio Exemplo · Perícia médica' })).toBeTruthy()
     expect(screen.getByText('DP.04')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Abrir o processo' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
@@ -145,8 +145,8 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
   })
 
   it('judicial · a página do processo diz que a data veio da publicação, e os prazos que ela define', async () => {
-    iniciarPerfil('?perfil=advogada')
-    render(<ProcessoPericia processoId="antonio-exemplo-1" />)
+    entrarComo('advogada')
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Perícias' })
     expect(screen.getByText('data lida da publicação')).toBeTruthy()
     expect(screen.getByText(/O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: sexta, 16\/10, às 10:30/)).toBeTruthy()
@@ -161,11 +161,11 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
       await registrarMarcacao('maria-exemplo-1', { comprovante: { nome: 'c.pdf' }, lido, pedeDocumentoNovo: false }, 'Igor (exemplo)')
       await remarcarPericia('maria-exemplo-1', motivo, 'Igor (exemplo)')
     }
-    iniciarPerfil('?perfil=advogada')
-    const { unmount } = render(<CentralAdvogada />)
+    entrarComo('advogada')
+    const { unmount } = render(comSessao(<CentralAdvogada />))
     expect(screen.getByRole('link', { name: 'Maria Exemplo · Decidir a perícia' }).getAttribute('href')).toBe('/casos/maria-exemplo-1/pericia')
     unmount()
-    render(<ProcessoPericia processoId="maria-exemplo-1" />)
+    render(comSessao(<ProcessoPericia processoId="maria-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Decisão da advogada responsável (G15)' })
     fireEvent.change(screen.getByLabelText(/Justificativa/), { target: { value: 'Cliente internada; o médico dá alta na semana que vem.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Autorizar mais uma remarcação' }))

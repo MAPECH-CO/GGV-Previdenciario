@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { enviarArquivos } from '../dados/documentos.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { DarParecer } from './DarParecer.tsx'
 import { LinhaDaDeficiencia } from './LinhaDaDeficiencia.tsx'
@@ -10,11 +10,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 6, 15, 10), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function abrir() {
-  render(<LinhaDaDeficiencia processoId="cleide-exemplo-1" />)
+  render(comSessao(<LinhaDaDeficiencia processoId="cleide-exemplo-1" />))
   await screen.findByRole('heading', { level: 1, name: /Linha do tempo da deficiência/ })
 }
 
@@ -75,7 +75,7 @@ describe('Linha do tempo da deficiência · tela da advogada', () => {
   })
 
   it('dado de saúde · quem não é do Jurídico não vê a linha do tempo', async () => {
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     await abrir()
     expect(screen.getByRole('status').textContent).toContain('A linha do tempo da deficiência é do Jurídico')
     expect(screen.queryByRole('list', { name: 'Vínculos do CNIS' })).toBeNull()
@@ -86,7 +86,7 @@ describe('Linha do tempo da deficiência · tela da advogada', () => {
       origem: 'card',
       arquivos: [{ nome: 'laudo neurologia.pdf', formato: 'pdf', tamanho: 1000, tipo: 'laudo', hash: '5'.padStart(64, '0') }],
     })
-    render(<DarParecer processoId="cleide-exemplo-1" />)
+    render(comSessao(<DarParecer processoId="cleide-exemplo-1" />))
     const cartao = (await screen.findByRole('heading', { name: 'Enquadramento dos períodos PCD' })).closest('section')!
     expect(cartao.textContent).toContain('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código (G19)')
     expect(within(cartao).getByRole('link', { name: 'Linha do tempo da deficiência' }).getAttribute('href')).toBe('/casos/cleide-exemplo-1/deficiencia')

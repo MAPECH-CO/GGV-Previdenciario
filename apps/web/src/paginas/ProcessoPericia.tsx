@@ -28,7 +28,7 @@ const navegacao: ItemNavegacao[] = [
 /** As etapas do processo, na ordem do Figma ("Ações do processo"). Só a etapa atual abre; as outras são de outras histórias. */
 const ETAPAS = ['Entrevista', 'Pedido ao INSS', 'Exigência INSS', 'Perícia INSS', 'Despacho', 'Petição', 'Perícia judicial', 'Exigência do juiz', 'Minuta', 'Sentença · recurso', 'Prestação de contas']
 
-const JURIDICO = ['advogada', 'senior', 'senior-2', 'juridico-adm']
+const JURIDICO = ['advogada', 'senior', 'juridico-adm']
 
 const COR_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   'aguardando-inss': styles.neutro,

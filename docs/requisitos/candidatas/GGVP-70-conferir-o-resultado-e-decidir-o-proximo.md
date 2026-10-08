@@ -12,7 +12,7 @@
 ## Critérios de aceite
 1. **Dado** a perícia feita, **quando** o resultado aparece no GERID ou no processo, **então** recebo a tarefa "Conferir o resultado".
 2. **Dado** "favorável", **quando** registro, **então** o resultado sobe no card e o caso volta ao diagrama de origem.
-3. **Dado** "desfavorável" e "vale pedir nova perícia", **quando** registro, **então** o Atendimento recebe a tarefa de marcar de novo.
+3. **Dado** "desfavorável" e "vale pedir nova perícia", **quando** registro, **então** o Jurídico administrativo recebe a tarefa de marcar de novo.
 4. **Dado** "desfavorável" e "não vale", **quando** registro, **então** o caso volta ao diagrama de origem marcado como desfavorável.
 
 ## Fora do escopo desta história
@@ -31,4 +31,4 @@
 - Nenhuma registrada. Conferir no refinamento.
 
 ## Dúvidas respondidas pelo PO
-- (vazio)
+- Ajuste de 29/09/2026 (Lucas): a nova perícia sobe para o Jurídico administrativo marcar de novo, não mais para o Atendimento (DP.10 "Pedir nova perícia").

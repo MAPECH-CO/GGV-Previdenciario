@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { DetalhePericia } from '../componentes/DetalhePericia.tsx'
 import { eventosDaAgenda } from '../dados/agenda.ts'
 import { obterPericia, tarefasDaAdvogadaNaPericia, tarefasDoJuridicoAdm } from '../dados/pericia.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, gravar, ler, zerarExemplo } from '../dados/servidor.ts'
 import { CentralJuridicoAdm } from './CentralJuridicoAdm.tsx'
 import { ComparecimentoPericia } from './ComparecimentoPericia.tsx'
@@ -15,20 +15,20 @@ beforeEach(async () => {
   configurarExemplo({ agora: () => agora, latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('?perfil=juridico-adm')
+  entrarComo('juridico-adm')
   // A semente nasce em 07/10: a perícia do Antônio fica em 16/10, 10:30 (data lida da publicação).
   await obterPericia('antonio-exemplo-1')
 })
 
 async function abrir(titulo: string) {
-  render(<ComparecimentoPericia processoId="antonio-exemplo-1" />)
+  render(comSessao(<ComparecimentoPericia processoId="antonio-exemplo-1" />))
   await screen.findByRole('heading', { name: `Antônio Exemplo · ${titulo}` })
 }
 
 describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
   it('CA7, CA8 · na véspera, a confirmação na Central; depois das 16h, o alerta; o resultado fica registrado', async () => {
     agora = new Date(2026, 9, 15, 16, 30)
-    render(<CentralJuridicoAdm />)
+    render(comSessao(<CentralJuridicoAdm />))
     const tarefa = await screen.findByRole('link', { name: 'Antônio Exemplo · Confirmar presença na perícia' })
     expect(tarefa.getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia/comparecimento')
     expect(screen.getByText(/presença não confirmada até 16h: contatar o cliente/)).toBeTruthy()
@@ -69,7 +69,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
 
   it('CA1 · antes do dia e da hora, não há "compareceu?"; depois, "Registrar" só com a resposta', async () => {
     agora = new Date(2026, 9, 16, 10, 0)
-    const { unmount } = render(<ComparecimentoPericia processoId="antonio-exemplo-1" />)
+    const { unmount } = render(comSessao(<ComparecimentoPericia processoId="antonio-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Antônio Exemplo · Confirmar presença na perícia' })
     expect(screen.queryByRole('radiogroup', { name: 'Antônio compareceu?' })).toBeNull()
     unmount()
@@ -118,7 +118,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
 
   it('CA6 · no dia seguinte sem registro, o alerta na Central', async () => {
     agora = new Date(2026, 9, 17, 9, 0)
-    render(<CentralJuridicoAdm />)
+    render(comSessao(<CentralJuridicoAdm />))
     expect(await screen.findByRole('link', { name: 'Antônio Exemplo · Registrar comparecimento' })).toBeTruthy()
     expect(screen.getByText(/alerta: o comparecimento não foi registrado/)).toBeTruthy()
   })
@@ -126,7 +126,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
   it('a agenda: "Marcar como realizado" abre o comparecimento', async () => {
     agora = new Date(2026, 9, 16, 14, 0)
     const evento = (await eventosDaAgenda('2026-10-16', '2026-10-16')).find((e) => e.categoria === 'pericias')!
-    render(<DetalhePericia evento={evento} aoFechar={() => {}} />)
+    render(comSessao(<DetalhePericia evento={evento} aoFechar={() => {}} />))
     expect(screen.getByRole('link', { name: 'Marcar como realizado' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia/comparecimento')
   })
 })

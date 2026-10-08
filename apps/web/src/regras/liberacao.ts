@@ -1,22 +1,26 @@
 // A liberação do caso ao Jurídico (GGVP-18, G1, G17). Trava é código com teste, nunca resposta de modelo.
+import { precisaDeParecer as precisaNoContrato, travaDoParecer as travaDoContrato, type AcaoDoPortao, type Beneficio } from '@ggv/contratos'
 import { SUGESTAO_DE_TROCA } from './acidente.ts'
-import { juntar, motivoParaNaoLiberar, type Checklist } from './checklist.ts'
+import { motivoParaNaoLiberar, type Checklist } from './checklist.ts'
 
 /** Quem pode estar na tela. Só a Documentação · ADM aperta o OK (CA4). */
 export type Perfil = 'documentacao' | 'atendimento' | 'juridico'
 
 export const PERFIS: Record<Perfil, string> = { documentacao: 'Documentação · ADM', atendimento: 'Atendimento', juridico: 'Jurídico' }
 
-/** Os benefícios da matriz de docs/requisitos/roteiro-laudos.md: estes pedem parecer médico "Suficiente" (G17). */
-export const BENEFICIOS_COM_PARECER = [
-  'loas-deficiente',
-  'aposentadoria-pcd',
-  'aposentadoria-pcd-idade',
-  'incapacidade-temporaria',
-  'incapacidade-permanente',
-  'incapacidade-permanente-acidentaria',
-  'auxilio-acidente',
-]
+/**
+ * O benefício da tela (servidor de exemplo) no catálogo do servidor. O G17 é uma regra só, `travaDoParecer` em
+ * `@ggv/contratos` (GGVP-109): a tela e o servidor importam a mesma. Só os benefícios com laudo precisam estar aqui.
+ */
+const NO_SERVIDOR: Record<string, Beneficio> = {
+  'loas-deficiente': 'bpc_loas_deficiente',
+  'aposentadoria-pcd': 'aposentadoria_pcd',
+  'aposentadoria-pcd-idade': 'aposentadoria_pcd',
+  'incapacidade-temporaria': 'auxilio_incapacidade_temporaria',
+  'incapacidade-permanente': 'aposentadoria_incapacidade_permanente',
+  'incapacidade-permanente-acidentaria': 'aposentadoria_incapacidade_permanente',
+  'auxilio-acidente': 'auxilio_acidente',
+}
 
 /**
  * O registro do parecer médico (GGVP-20): quem confirmou e quando. "pendente": a IA sugeriu e ninguém conferiu ainda.
@@ -33,38 +37,20 @@ export type Parecer = {
   contradicoes?: { id: string; texto: string }[]
 }
 
-/** As três ações que o G17 segura (GGVP-33, CA1): o OK da Documentação (D1.24), o da sênior antes do INSS (D2.01) e o pedido da petição (D3.05). */
-export type AcaoDoPortao = 'liberar' | 'aprovar-inss' | 'pedir-peticao'
+export type { AcaoDoPortao }
 
-export const ACOES_DO_PORTAO: Record<AcaoDoPortao, string> = { liberar: 'liberar ao Jurídico', 'aprovar-inss': 'aprovar para o INSS', 'pedir-peticao': 'pedir a petição' }
+export const precisaDeParecer = (beneficio: string) => precisaNoContrato(NO_SERVIDOR[beneficio] ?? beneficio)
 
-export const precisaDeParecer = (beneficio: string) => BENEFICIOS_COM_PARECER.includes(beneficio)
+/** Por que a ação não segue pelo G17, dizendo o que falta; em ordem, null (GGVP-33, CA1 e CA5). A regra é a do contrato. */
+export function travaDoParecer(acao: AcaoDoPortao, beneficio: string, parecer: Parecer | undefined): string | null {
+  const trava = travaDoContrato(acao, NO_SERVIDOR[beneficio] ?? beneficio, parecer)
+  // Na lesão não consolidada do Auxílio-Acidente, o caso muda de porta em vez de morrer (resposta do Lucas, 01/10).
+  const troca = trava && beneficio === 'auxilio-acidente' && parecer?.contradicoes?.some((c) => c.id === 'nao-consolidada')
+  return troca ? `${trava} ${SUGESTAO_DE_TROCA}` : trava
+}
 
 /** O parecer está em ordem: "Suficiente", dispensado por duas sêniores, ou o benefício nem pede parecer (CA7, G17). */
-export const parecerEmOrdem = (beneficio: string, parecer: Parecer | undefined) =>
-  !precisaDeParecer(beneficio) || ((parecer?.situacao === 'suficiente' || parecer?.situacao === 'dispensado') && !parecer.contradicoes?.length)
-
-/** Por que a ação não segue pelo G17, dizendo o que falta; em ordem, null (GGVP-33, CA1 e CA5). */
-export function travaDoParecer(acao: AcaoDoPortao, beneficio: string, parecer: Parecer | undefined): string | null {
-  if (parecerEmOrdem(beneficio, parecer)) return null
-  const fazer = `Não dá para ${ACOES_DO_PORTAO[acao]}`
-  if (parecer?.contradicoes?.length) {
-    // Na lesão não consolidada do Auxílio-Acidente, o caso muda de porta em vez de morrer (resposta do Lucas, 01/10).
-    const troca = beneficio === 'auxilio-acidente' && parecer.contradicoes.some((c) => c.id === 'nao-consolidada') ? ` ${SUGESTAO_DE_TROCA}` : ''
-    const textos = juntar(parecer.contradicoes.map((c) => c.texto.toLowerCase()))
-    return `${fazer}: a análise da IA achou documento que contradiz o requisito do benefício (${textos}). O caso fica parado até o Jurídico conferir o parecer (G18).${troca}`
-  }
-  switch (parecer?.situacao) {
-    case 'insuficiente':
-      return `${fazer}: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).`
-    case 'contraditorio':
-      return `${fazer}: um documento contradiz o requisito do benefício e o parecer está Contraditório (G18).`
-    case 'pendente':
-      return `${fazer}: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico (G17).`
-    default:
-      return `${fazer}: falta o parecer médico "Suficiente", confirmado por pessoa (G17).`
-  }
-}
+export const parecerEmOrdem = (beneficio: string, parecer: Parecer | undefined) => travaDoParecer('liberar', beneficio, parecer) === null
 
 /** Por que "Liberar ao Jurídico" não habilita; pronto, null (CA2, CA7). */
 export function travaDaLiberacao(d: {

@@ -151,9 +151,25 @@ export type Enquadramento = {
 /** Pelo menos 15 anos de contribuição na condição de pessoa com deficiência para ter direito (resposta do Lucas, 07/10). */
 export const MINIMO_COM_DEFICIENCIA = 15
 
+/**
+ * Os dias dos períodos, contando uma vez o dia em que dois vínculos correm juntos: atividade ao mesmo tempo não soma
+ * tempo (decisão do Pedro em 08/10, igual à regra `periodos_pcd` do servidor). O grau é da pessoa na data, então os
+ * períodos de uma mesma faixa se juntam sem conflito.
+ */
+function diasSemRepetir(ps: Periodo[]): number {
+  let total = 0
+  let ate = ''
+  for (const p of [...ps].sort((a, b) => a.inicio.localeCompare(b.inicio))) {
+    const de = ate && p.inicio <= ate ? somar(ate, 1) : p.inicio
+    if (de <= p.fim) total += dias(de, p.fim)
+    if (p.fim > ate) ate = p.fim
+  }
+  return total
+}
+
 /** O enquadramento dos períodos PCD (CA4, G19); sem período com deficiência, nenhum. */
 export function enquadramento(ps: Periodo[], sexo: Sexo): Enquadramento | undefined {
-  const porFaixa = (f: Faixa) => ps.filter((p) => (p.grau ?? 'sem') === f).reduce((s, p) => s + p.dias, 0)
+  const porFaixa = (f: Faixa) => diasSemRepetir(ps.filter((p) => (p.grau ?? 'sem') === f))
   const comDeficiencia = ORDEM.map((g) => ({ g, d: porFaixa(g) }))
   if (comDeficiencia.every((x) => x.d === 0)) return undefined
   // Empate: fica o grau mais grave, o de menor exigência.

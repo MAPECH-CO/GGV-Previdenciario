@@ -1,41 +1,44 @@
 import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { App } from '../App.tsx'
-import { PERFIS } from './perfis.ts'
+import { describe, expect, it } from 'vitest'
+import { usePerfil } from './perfis.ts'
+import { SessaoContexto } from '../sessao.ts'
+import { usuarioDeTeste } from './sessaoDeTeste.tsx'
 
-const perfil = (id: string) => PERFIS.find((p) => p.id === id)!
+function Quem({ padrao }: { padrao?: string }) {
+  const p = usePerfil(padrao)
+  return <p>{p ? `${p.id} · ${p.rotulo} · ${p.usuario}` : 'nenhum'}</p>
+}
 
-// As telas abrem depois de o servidor confirmar a sessão (GGVP-117): aqui ele responde com um usuário de exemplo.
-const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfil: 'atendimento', trocarSenha: false }
-afterEach(() => vi.unstubAllGlobals())
-
-describe('tela inicial e ação de cada perfil', () => {
-  it('segue o mapa: Atendimento e Documentação na Central do Atendimento, Advogada na dela', () => {
-    expect(Object.fromEntries(PERFIS.map((p) => [p.id, p.inicio]))).toEqual({
-      atendimento: '/',
-      'atendimento-lider': '/atendimento-lider',
-      advogada: '/advogada',
-      senior: '/senior',
-      financeiro: '/financeiro',
-      documentacao: '/',
-      'senior-2': '/senior',
-      // A perícia é do Jurídico administrativo desde 29/09 (épico GGVP-10).
-      'juridico-adm': '/juridico-administrativo',
-    })
+describe('usePerfil: quem está agindo nas telas vem da sessão (GGVP-96)', () => {
+  it('com sessão, vale o perfil ativo e o nome de quem entrou, não a função da tela', () => {
+    render(
+      <SessaoContexto value={usuarioDeTeste('senior')}>
+        <Quem padrao="Advogada" />
+      </SessaoContexto>,
+    )
+    expect(screen.getByText('senior · Sênior · Dra. Renata (exemplo)')).toBeTruthy()
   })
 
-  it('"+ Novo cliente" só onde o Figma tem: Atendimento, líder e a Documentação, que usa a Central do Atendimento', () => {
-    const comAcao = PERFIS.filter((p) => p.acao).map((p) => p.id)
-    expect(comAcao).toEqual(['atendimento', 'atendimento-lider', 'documentacao'])
-    expect(perfil('atendimento').acao).toEqual({ rotulo: '+ Novo cliente', href: '/clientes/novo' })
+  it('a segunda sênior é outra pessoa, com o mesmo perfil', () => {
+    render(
+      <SessaoContexto value={usuarioDeTeste('senior-2')}>
+        <Quem />
+      </SessaoContexto>,
+    )
+    expect(screen.getByText('senior · Sênior · Dr. Otávio (exemplo)')).toBeTruthy()
   })
 
-  it('função sem Central ainda cai em "Esta tela ainda não foi construída"', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(usuario), { status: 200 })))
-    for (const id of ['atendimento-lider', 'senior', 'financeiro']) {
-      const { unmount } = render(<App caminho={perfil(id).inicio} />)
-      expect(await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' }), id).toBeTruthy()
-      unmount()
-    }
+  it('o Atendimento líder vira o id com hífen que as telas já usavam', () => {
+    render(
+      <SessaoContexto value={usuarioDeTeste('atendimento_lider')}>
+        <Quem />
+      </SessaoContexto>,
+    )
+    expect(screen.getByText('atendimento-lider · Atendimento · líder · atendimento_lider')).toBeTruthy()
+  })
+
+  it('sem sessão, a tela fica como foi desenhada: a função do padrão', () => {
+    render(<Quem padrao="Documentação" />)
+    expect(screen.getByText('documentacao · Documentação · Jéssica (exemplo)')).toBeTruthy()
   })
 })

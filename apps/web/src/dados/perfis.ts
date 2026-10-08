@@ -1,83 +1,36 @@
-// Perfis de exemplo do "Trocar perfil" do Figma (overlay 59:979), para ver cada tela como cada função.
-// Só na tela: o login e as permissões de verdade são do Mateus. A escolha fica no navegador.
-import { useSyncExternalStore } from 'react'
+// Quem está agindo nas telas da documentação médica: o perfil ativo e o nome da sessão (GGVP-96).
+// Antes era o seletor de exemplo ("Trocar perfil"); ele saiu (um menu só, o "Entrar como…") e a assinatura de
+// `usePerfil(padrao)` ficou, para as telas não mudarem uma por uma. Quem protege é o servidor; aqui a tela só esconde.
+import { ROTULO_PERFIL, ehPerfil } from '@ggv/contratos'
+import { useSessao } from '../sessao.ts'
 
-export type IdPerfil = 'atendimento' | 'atendimento-lider' | 'advogada' | 'senior' | 'financeiro' | 'documentacao' | 'senior-2' | 'juridico-adm'
+export type IdPerfil = 'atendimento' | 'atendimento-lider' | 'documentacao' | 'advogada' | 'senior' | 'juridico-adm' | 'financeiro' | 'socio'
 
 export type Perfil = {
   id: IdPerfil
   /** O nome da função, como na barra do topo. */
   rotulo: string
-  /** Pessoa de exemplo com essa função. */
+  /** Quem está agindo: o nome da sessão. */
   usuario: string
-  /** A tela inicial da função. Sem a Central dela, o caminho cai em "Esta tela ainda não foi construída". */
+  /** A tela inicial: com sessão, sempre "/", e o App abre a Central do perfil ativo. */
   inicio: string
-  /** A ação principal da barra do topo, como na Central da função no Figma. */
-  acao?: { rotulo: string; href: string }
 }
 
-const novoCliente = { rotulo: '+ Novo cliente', href: '/clientes/novo' }
-
-export const PERFIS: Perfil[] = [
-  { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Bruna (exemplo)', inicio: '/', acao: novoCliente },
-  { id: 'atendimento-lider', rotulo: 'Atendimento · líder', usuario: 'Carla (exemplo)', inicio: '/atendimento-lider', acao: novoCliente },
-  // A Central da Advogada (/advogada) vem com a branch das telas; até as duas se juntarem, cai em "não construída".
-  { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)', inicio: '/advogada' },
-  { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)', inicio: '/senior' },
-  { id: 'financeiro', rotulo: 'Financeiro', usuario: 'Marcos (exemplo)', inicio: '/financeiro' },
-  // Sem Central própria no Figma: a Documentação trabalha na Central do Atendimento.
-  { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/', acao: novoCliente },
-  // A segunda sênior: a dispensa do parecer médico pede duas sêniores de acordo (GGVP-33, resposta do Lucas, Q14).
-  { id: 'senior-2', rotulo: 'Sênior', usuario: 'Dr. Otávio (exemplo)', inicio: '/senior' },
-  // Quem cuida da perícia desde 29/09 (Lucas): marca, orienta o cliente e registra o comparecimento (épico GGVP-10).
-  // O nome de exemplo é o do servidor do Mateus (perfil juridico_adm).
-  { id: 'juridico-adm', rotulo: 'Jurídico administrativo', usuario: 'Igor (exemplo)', inicio: '/juridico-administrativo' },
-]
-
-const CHAVE = 'ggv.perfil'
-const porId = (id: unknown) => PERFIS.find((p) => p.id === id)
-
-/** Ordem de prioridade: endereço (?perfil=advogada, útil para conferir telas) > escolhido > nenhum. */
-export function lerPerfil(busca: string = window.location.search): Perfil | undefined {
-  let salvo: string | null = null
-  try {
-    salvo = window.localStorage.getItem(CHAVE)
-  } catch {
-    // armazenamento bloqueado: vale a função da tela
-  }
-  return porId(new URLSearchParams(busca).get('perfil')) ?? porId(salvo)
+/** Sem sessão (testes de uma tela sozinha), a tela fica como foi desenhada: a função do `padrao`. */
+const PADRAO: Record<string, Perfil> = {
+  Atendimento: { id: 'atendimento', rotulo: 'Atendimento', usuario: 'Ana (exemplo)', inicio: '/' },
+  Documentação: { id: 'documentacao', rotulo: 'Documentação', usuario: 'Jéssica (exemplo)', inicio: '/' },
+  Advogada: { id: 'advogada', rotulo: 'Advogada', usuario: 'Dra. Paula (exemplo)', inicio: '/advogada' },
+  Sênior: { id: 'senior', rotulo: 'Sênior', usuario: 'Dra. Renata (exemplo)', inicio: '/' },
+  // Quem cuida da perícia desde 29/09 (Lucas): o nome é o do usuário de exemplo do servidor (juridico_adm).
+  'Jurídico administrativo': { id: 'juridico-adm', rotulo: 'Jurídico administrativo', usuario: 'Igor (exemplo)', inicio: '/' },
 }
 
-let atual = lerPerfil()
-const ouvintes = new Set<() => void>()
-
-/** Lê de novo o endereço e o navegador. A partida já lê sozinha; o teste usa para começar do zero. */
-export function iniciarPerfil(busca?: string) {
-  atual = lerPerfil(busca)
-}
-
-export function trocarPerfil(id: IdPerfil) {
-  atual = porId(id)
-  try {
-    window.localStorage.setItem(CHAVE, id)
-  } catch {
-    // sem armazenamento: a escolha vale só nesta aba
-  }
-  ouvintes.forEach((avisar) => avisar())
-}
-
-/** Só o perfil que a pessoa escolheu; sem escolha, nada, e a tela fica como foi desenhada. */
-export function usePerfilEscolhido(): Perfil | undefined {
-  return useSyncExternalStore(
-    (avisar) => {
-      ouvintes.add(avisar)
-      return () => ouvintes.delete(avisar)
-    },
-    () => atual,
-  )
-}
-
-/** O perfil escolhido; sem escolha, o da função da tela (`padrao`, o rótulo). */
+/** O perfil da sessão; sem sessão, o da função da tela (`padrao`, o rótulo). */
 export function usePerfil(padrao?: string): Perfil | undefined {
-  return usePerfilEscolhido() ?? PERFIS.find((p) => p.rotulo === padrao)
+  const sessao = useSessao()
+  const ativo = sessao?.perfilAtivo
+  if (!sessao) return padrao ? PADRAO[padrao] : undefined
+  if (!ehPerfil(ativo)) return undefined
+  return { id: ativo.replace('_', '-') as IdPerfil, rotulo: ROTULO_PERFIL[ativo], usuario: sessao.nome, inicio: '/' }
 }

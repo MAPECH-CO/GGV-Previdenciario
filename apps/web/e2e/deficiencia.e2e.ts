@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-42 · Aposentadoria PCD: linha do tempo da deficiência. A Cleide da semente: os vínculos do CNIS partidos em com e
 // sem deficiência, o período sem prova da época, o agravamento que muda o grau e o enquadramento calculado por código.
@@ -7,6 +8,9 @@ import { expect, test } from '@playwright/test'
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+// Entra pela API com o usuário de exemplo: a linha do tempo da deficiência é do Jurídico.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, 'advogada@exemplo.ggv'))
 
 test('CA1, CA3 e CA4 · a linha do tempo da Cleide: com e sem deficiência, sem prova da época e o enquadramento', async ({ page }) => {
   await page.goto('/casos/cleide-exemplo-1/deficiencia')

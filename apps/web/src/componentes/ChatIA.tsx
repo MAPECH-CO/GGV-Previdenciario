@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
 import { registrarRecusaDoChat } from '../dados/pericia.ts'
-import { usePerfilEscolhido } from '../dados/perfis.ts'
+import { usePerfil } from '../dados/perfis.ts'
 import { recusaDoChat } from '../regras/parecer.ts'
 import { recusaDoChatNaPericia } from '../regras/pericia.ts'
 import styles from './ChatIA.module.css'
@@ -26,7 +26,8 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
   const [texto, setTexto] = useState('')
   const [anexo, setAnexo] = useState<File | null>(null)
   const [aviso, setAviso] = useState('')
-  const perfil = usePerfilEscolhido()
+  // Quem está na sessão (sem sessão, ninguém).
+  const perfil = usePerfil()
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()

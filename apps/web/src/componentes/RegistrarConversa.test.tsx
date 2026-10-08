@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { obterGravacoes } from '../dados/transcricao.ts'
 import { RegistrarConversa } from './RegistrarConversa.tsx'
@@ -9,11 +9,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function abrir(fichaId: string, aoAbrir = vi.fn()) {
-  render(<RegistrarConversa ficha={(await obterFicha(fichaId))!} aoFechar={() => {}} aoAbrir={aoAbrir} />)
+  render(comSessao(<RegistrarConversa ficha={(await obterFicha(fichaId))!} aoFechar={() => {}} aoAbrir={aoAbrir} />))
   return aoAbrir
 }
 
@@ -45,7 +45,7 @@ describe('Registrar conversa · janela (GGVP-76)', () => {
     expect(screen.getByRole('radio', { name: 'Sem áudio · só o registro escrito' })).toBeTruthy()
     fireEvent.click(botao('Iniciar conversa'))
     await vi.waitFor(() => expect(aoAbrir).toHaveBeenCalled())
-    expect(aoAbrir.mock.calls[0][0]).toMatchObject({ fichaId: 'maria-exemplo', canal: 'presencial', modo: 'tempo-real', comQuem: 'cliente', quem: 'Bruna (exemplo)' })
+    expect(aoAbrir.mock.calls[0][0]).toMatchObject({ fichaId: 'maria-exemplo', canal: 'presencial', modo: 'tempo-real', comQuem: 'cliente', quem: 'Ana (exemplo)' })
   })
 
   it('CA4 · a ligação sugere anexar o arquivo; "Sem áudio" pede o resumo e salva como só registro', async () => {
@@ -68,12 +68,12 @@ describe('Registrar conversa · janela (GGVP-76)', () => {
     expect(screen.getByText('Escolha o processo da conversa.')).toBeTruthy()
     fireEvent.change(screen.getByRole('combobox', { name: 'Processo' }), { target: { value: 'cleide-exemplo-2' } })
     expect(botao('Iniciar conversa').disabled).toBe(false)
-    render(<RegistrarConversa ficha={(await obterFicha('josefa-exemplo'))!} aoFechar={() => {}} />)
+    render(comSessao(<RegistrarConversa ficha={(await obterFicha('josefa-exemplo'))!} aoFechar={() => {}} />))
     expect(screen.getByText('Josefa Exemplo · o registro fica na ficha do lead')).toBeTruthy()
   })
 
   it('Documentação e Financeiro não conduzem a conversa (Lucas, 06/10)', async () => {
-    trocarPerfil('documentacao')
+    entrarComo('documentacao')
     await abrir('maria-exemplo')
     fireEvent.click(radio('Canal', 'Presencial'))
     expect(screen.getByText('A conversa com o cliente é do Atendimento e do Jurídico.')).toBeTruthy()

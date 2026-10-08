@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-91 · Checklist de documentos obrigatórios do benefício: da leitura arquivada ao checklist calculado, a trava da
 // liberação, o benefício sem lista e o tema. Cada teste começa da semente de exemplo.ts.
@@ -7,6 +8,9 @@ import { expect, test } from '@playwright/test'
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+// Entra pela API com o usuário de exemplo: o checklist e a liberação são da Documentação.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, 'documentacao@exemplo.ggv'))
 
 test('CA1, CA3, CA5 e CA7 · da leitura arquivada ao checklist da Rita, incompleto, com a liberação bloqueada', async ({ page }) => {
   await page.goto('/clientes/rita-exemplo/conferir-documentos')

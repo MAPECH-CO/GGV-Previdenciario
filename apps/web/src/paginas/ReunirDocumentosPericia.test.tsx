@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { enviarArquivos } from '../dados/documentos.ts'
 import { lerComprovante, registrarMarcacao } from '../dados/pericia.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAtendimento } from './CentralAtendimento.tsx'
 import { CobrarDocumentoPericia } from './CobrarDocumentoPericia.tsx'
@@ -12,13 +12,13 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 10, 0), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('?perfil=documentacao')
+  entrarComo('documentacao')
 })
 
 const arquivo = (nome: string, tipo: string, n: number) => ({ nome, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(n).padStart(64, '0') })
 
 async function abrir() {
-  render(<ReunirDocumentosPericia processoId="pedro-exemplo-1" />)
+  render(comSessao(<ReunirDocumentosPericia processoId="pedro-exemplo-1" />))
   await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Reunir documentos da perícia' })
 }
 
@@ -63,7 +63,7 @@ describe('GGVP-56 · Reunir documentos da perícia (Figma 10:522)', () => {
   })
 
   it('a Central do Atendimento, onde a Documentação trabalha, mostra "Reunir" e "Cobrar" da perícia do Pedro', () => {
-    render(<CentralAtendimento />)
+    render(comSessao(<CentralAtendimento />))
     expect(screen.getByRole('link', { name: 'Pedro Exemplo · Reunir documentos da perícia' }).getAttribute('href')).toBe('/casos/pedro-exemplo-1/pericia/documentos')
     expect(screen.getByRole('link', { name: 'Pedro Exemplo · Cobrar documento da perícia' }).getAttribute('href')).toBe('/casos/pedro-exemplo-1/pericia/cobranca')
     // As linhas fixas da Maria saíram: a perícia dela ainda não foi marcada.
@@ -75,7 +75,7 @@ describe('GGVP-56 · Cobrar documento da perícia (Figma 10:239)', () => {
   it('CA7 · o pedido ao médico vem das perguntas do roteiro e o G20 barra CID e diagnóstico', async () => {
     const lido = await lerComprovante('maria-exemplo-1', 'c.pdf')
     await registrarMarcacao('maria-exemplo-1', { comprovante: { nome: 'c.pdf' }, lido, pedeDocumentoNovo: true }, 'Igor (exemplo)')
-    render(<CobrarDocumentoPericia processoId="maria-exemplo-1" />)
+    render(comSessao(<CobrarDocumentoPericia processoId="maria-exemplo-1" />))
     await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Cobrar documento' })
     expect(screen.getByText(/A cobrança tem limite; passou dele, sobe para a advogada responsável, por ser perícia \(G15\)/)).toBeTruthy()
     const abordar = screen.getByLabelText('O que o documento deve abordar') as HTMLTextAreaElement
@@ -87,7 +87,7 @@ describe('GGVP-56 · Cobrar documento da perícia (Figma 10:239)', () => {
   })
 
   it('"Enviar cobrança" abre o Chatwoot com a mensagem do que falta, para conferir', async () => {
-    render(<CobrarDocumentoPericia processoId="pedro-exemplo-1" />)
+    render(comSessao(<CobrarDocumentoPericia processoId="pedro-exemplo-1" />))
     await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Cobrar documento' })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar cobrança' }))
     const chatwoot = await screen.findByRole('dialog', { name: 'Chatwoot · conversa com Pedro Exemplo' })

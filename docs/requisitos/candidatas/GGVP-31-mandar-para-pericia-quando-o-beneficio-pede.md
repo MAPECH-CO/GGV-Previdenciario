@@ -10,10 +10,10 @@
 **Perfil:** advogada responsável
 
 ## Critérios de aceite
-1. **Dado** o caso aprovado, **quando** marco "precisa de perícia médica" ou "avaliação social", **então** o DP começa (GGVP-49).
+1. **Dado** o caso aprovado, **quando** marco "precisa de perícia médica" ou "avaliação social", **então** o sistema abre sozinho a tarefa de perícia e o DP começa (GGVP-49).
 2. **Dado** "sem perícia", **quando** marco, **então** o caso só espera o protocolo para entrar na vigília.
 3. **Dado** o protocolo feito e a perícia resolvida (ou sem perícia), **quando** os dois terminam, **então** o caso entra na vigília.
-4. **[v2]** **Dado** "precisa de perícia", **quando** marco, **então** a recomendação sobre a perícia (GGVP-38) é gerada antes de o Atendimento marcar.
+4. **[v2]** **Dado** "precisa de perícia", **quando** marco, **então** a recomendação sobre a perícia (GGVP-38) é gerada antes de o Jurídico administrativo marcar.
 
 ## Fora do escopo desta história
 - A definir no refinamento.
@@ -31,4 +31,4 @@
 - Nenhuma registrada. Conferir no refinamento.
 
 ## Dúvidas respondidas pelo PO
-- (vazio)
+- Ajuste de 29/09/2026 (Lucas): a advogada só decide; o sistema abre sozinho a tarefa de perícia, e quem marca é o Jurídico administrativo, não mais o Atendimento.

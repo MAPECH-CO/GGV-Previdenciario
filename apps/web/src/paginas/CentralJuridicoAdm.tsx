@@ -7,11 +7,12 @@ import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { tarefasDoJuridicoAdm } from '../dados/pericia.ts'
+import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import styles from './CentralAtendimento.module.css'
 
 // Figma: "Central de trabalho · Estagiário (Jurídico administrativo)" (2051:173). Mantida porque a perícia passou ao
 // Jurídico administrativo (Lucas, 29/09). As tarefas nascem da perícia (dados/pericia.ts); as do protocolo no INSS (D2.02)
-// são do Mateus e entram na junção.
+// vêm do servidor e ficam no topo (junção de 08/10). É a tela inicial de quem entra como Jurídico administrativo.
 const navegacao: ItemNavegacao[] = [
   { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/juridico-administrativo' },
   { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
@@ -25,7 +26,9 @@ const sugestoesChatJuridicoAdm = ['Perícias para marcar', 'O cliente me ligou',
 
 export function CentralJuridicoAdm() {
   const [aba, setAba] = useState('minhas')
-  const [tarefas] = useState(() => tarefasDoJuridicoAdm())
+  const [deExemplo] = useState(() => tarefasDoJuridicoAdm())
+  const doServidor = useTarefasDoServidor() ?? []
+  const tarefas = [...doServidor, ...deExemplo]
 
   return (
     <>

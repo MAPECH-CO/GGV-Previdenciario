@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { obterPericia, tarefasDoJuridicoAdm } from '../dados/pericia.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralJuridicoAdm } from './CentralJuridicoAdm.tsx'
 import { OrientarPericia } from './OrientarPericia.tsx'
@@ -10,13 +10,13 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 10, 0), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('?perfil=juridico-adm')
+  entrarComo('juridico-adm')
 })
 
 const documento = () => screen.getByRole('textbox', { name: /Orientação para Antônio/ }) as HTMLTextAreaElement
 
 async function abrirAntonio() {
-  render(<OrientarPericia processoId="antonio-exemplo-1" />)
+  render(comSessao(<OrientarPericia processoId="antonio-exemplo-1" />))
   await screen.findByRole('heading', { name: 'Antônio Exemplo · Orientar para a perícia' })
 }
 
@@ -74,14 +74,14 @@ describe('GGVP-62 · preparar o cliente (Figma 10:405)', () => {
   })
 
   it('a perícia sem data: a orientação ainda não está pronta', async () => {
-    render(<OrientarPericia processoId="maria-exemplo-1" />)
+    render(comSessao(<OrientarPericia processoId="maria-exemplo-1" />))
     expect(await screen.findByRole('heading', { name: 'A orientação ainda não está pronta' })).toBeTruthy()
   })
 })
 
 describe('GGVP-62 · o chat da Central (Figma 2107:1091)', () => {
   it('CA8 · "o Antônio me ligou": a próxima tarefa e a orientação pronta, só respondendo', async () => {
-    render(<CentralJuridicoAdm />)
+    render(comSessao(<CentralJuridicoAdm />))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'O Antônio me ligou. O que eu falo para ele?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     expect(await screen.findByText(/A próxima tarefa é sua: orientar Antônio para a perícia de 16\/10\. A orientação da IA está pronta/)).toBeTruthy()

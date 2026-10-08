@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { complementoAberto } from '../dados/complemento.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { DarParecer } from './DarParecer.tsx'
 
@@ -10,11 +10,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 6, 15, 10), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function abrir(processoId = 'rita-exemplo-1') {
-  render(<DarParecer processoId={processoId} />)
+  render(comSessao(<DarParecer processoId={processoId} />))
   await screen.findByRole('heading', { level: 1, name: /Dar parecer médico/ })
 }
 
@@ -119,7 +119,7 @@ describe('Dar parecer médico · tela da advogada', () => {
   })
 
   it('dado de saúde · o Atendimento não vê a matriz; vê o resultado na janela', async () => {
-    iniciarPerfil('?perfil=atendimento')
+    entrarComo('atendimento')
     await abrir()
     expect(screen.queryByRole('list', { name: 'Itens obrigatórios' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Ver o resultado do parecer' }))

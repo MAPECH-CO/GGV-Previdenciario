@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { obterParecer, pedirDispensa, registrarParecer, responderDispensa } from '../dados/parecer.ts'
-import { iniciarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { ParecerMedico } from './ParecerMedico.tsx'
 
@@ -9,11 +9,11 @@ beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 6, 15, 10), latencia: 0 })
   zerarExemplo()
   localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function abrir(processoId: string, funcao: string) {
-  render(<ParecerMedico processoId={processoId} funcao={funcao} aoFechar={() => {}} />)
+  render(comSessao(<ParecerMedico processoId={processoId} funcao={funcao} aoFechar={() => {}} />))
   await screen.findByRole('status')
 }
 
@@ -60,7 +60,7 @@ describe('Parecer médico de suficiência · janela', () => {
   })
 
   it('GGVP-33 · para a sênior, "Dispensar o parecer"; a dispensa aparece com a justificativa', async () => {
-    iniciarPerfil('?perfil=senior')
+    entrarComo('senior')
     await abrir('rita-exemplo-1', 'Sênior')
     expect(screen.getByRole('link', { name: 'Dispensar o parecer' }).getAttribute('href')).toBe('/casos/rita-exemplo-1/parecer/dispensa')
   })

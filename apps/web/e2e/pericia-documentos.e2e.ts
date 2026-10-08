@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-56 · Reunir o que a perícia pede: a Documentação recebe a lista da avaliação social do Pedro, anexa o que chega
 // (segue a leitura do D1), registra a falta com justificativa, confere e conclui; a cobrança diária com o pedido ao médico
@@ -13,7 +14,8 @@ const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buff
 
 test('CA2, CA4, CA5, CA6 · a lista da avaliação social, o anexo, a falta justificada, as conferências e a volta ao Jurídico administrativo', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/?perfil=documentacao')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
   await page.getByRole('link', { name: 'Pedro Exemplo · Reunir documentos da perícia' }).click()
   await expect(page).toHaveURL('/casos/pedro-exemplo-1/pericia/documentos')
   const lista = page.getByRole('list', { name: 'O que a perícia pede' })
@@ -49,13 +51,15 @@ test('CA2, CA4, CA5, CA6 · a lista da avaliação social, o anexo, a falta just
   // CA6: quem concluiu e quando; o fluxo volta ao Jurídico administrativo.
   await expect(page.getByRole('heading', { name: '✓ Documentos da perícia reunidos' })).toBeVisible()
   await expect(page.getByText(/O fluxo voltou ao Jurídico administrativo: ligar e orientar Pedro \(DP\.06\)/)).toBeVisible()
-  await page.goto('/?perfil=documentacao')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
   await expect(page.getByRole('link', { name: 'Pedro Exemplo · Reunir documentos da perícia' })).toHaveCount(0)
 })
 
 test('CA1, CA3, CA7 · a perícia médica da Maria pede documento novo; a cobrança com o pedido ao médico passa pelo G20', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.goto('/casos/maria-exemplo-1/pericia/marcar?perfil=juridico-adm')
+  await entrarPelaApi(page, 'juridico@exemplo.ggv')
+  await page.goto('/casos/maria-exemplo-1/pericia/marcar')
   await page.getByRole('radio', { name: 'Sim, marcado' }).click()
   await page.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf('comprovante_maria.pdf')])
   await expect(page.getByRole('group', { name: 'Lido do comprovante · confira' })).toBeVisible()
@@ -64,7 +68,8 @@ test('CA1, CA3, CA7 · a perícia médica da Maria pede documento novo; a cobran
   await expect(page.getByRole('heading', { name: '✓ Perícia registrada' })).toBeVisible()
 
   // CA1: a Documentação recebe a lista de laudos e exames.
-  await page.goto('/?perfil=documentacao')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
   await page.getByRole('link', { name: 'Maria Exemplo · Reunir documentos da perícia' }).click()
   await expect(page.getByRole('list', { name: 'O que a perícia pede' })).toContainText('Laudo médico recente (até 30 dias)')
   await page.getByRole('link', { name: 'Cobrar e pedir ao médico' }).click()
@@ -90,12 +95,14 @@ test('CA1, CA3, CA7 · a perícia médica da Maria pede documento novo; a cobran
   await expect(page.getByText('A cobrança de hoje já foi feita: a próxima é amanhã.')).toBeVisible()
 
   // CA3: a do Antônio (judicial, sem documento novo) não abre tarefa da Documentação.
-  await page.goto('/?perfil=documentacao')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Reunir documentos da perícia' })).toHaveCount(0)
 })
 
 test('tema escuro e fonte grande na lista da perícia', async ({ page }) => {
-  await page.goto('/casos/pedro-exemplo-1/pericia/documentos?perfil=documentacao&tema=escuro&fonte=grande')
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/casos/pedro-exemplo-1/pericia/documentos?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pedro Exemplo · Reunir documentos da perícia')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
   await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)

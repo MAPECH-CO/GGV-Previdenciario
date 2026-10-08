@@ -1,17 +1,17 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { abrirConversa, finalizarConversa, gravarConversa, transcreverConversa } from '../dados/conversa.ts'
-import { iniciarPerfil, trocarPerfil } from '../dados/perfis.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { ConferirConversa } from './ConferirConversa.tsx'
 
-const BRUNA = { quem: 'Bruna (exemplo)', perfil: 'atendimento' as const }
+const BRUNA = { quem: 'Ana (exemplo)', perfil: 'atendimento' as const }
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
-  iniciarPerfil('')
+  entrarComo()
 })
 
 async function conversaTranscrita() {
@@ -23,7 +23,7 @@ async function conversaTranscrita() {
 }
 
 async function abrir(id: string) {
-  render(<ConferirConversa conversaId={id} />)
+  render(comSessao(<ConferirConversa conversaId={id} />))
   await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Conferir conversa' })
 }
 
@@ -65,7 +65,7 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     expect((await obterFicha('maria-exemplo'))!.telefone).toBe('11900000004')
     fireEvent.click(screen.getByRole('radio', { name: 'Não — confirmar e voltar ao D1' }))
     fireEvent.click(botao('Confirmar'))
-    expect(await screen.findByRole('heading', { name: '✓ Conversa conferida por Bruna (exemplo)' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: '✓ Conversa conferida por Ana (exemplo)' })).toBeTruthy()
     expect(screen.getByText('O caso segue de onde parou: Administrativo · perícia.')).toBeTruthy()
     const ficha = (await obterFicha('maria-exemplo'))!
     expect([ficha.endereco, ficha.telefone]).toEqual(['Rua Exemplo das Acácias, 45', '11900000055'])
@@ -79,15 +79,15 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     fireEvent.click(botao('Desfazer'))
     fireEvent.click(screen.getByRole('radio', { name: 'Não — confirmar e voltar ao D1' }))
     fireEvent.click(botao('Confirmar'))
-    await screen.findByRole('heading', { name: '✓ Conversa conferida por Bruna (exemplo)' })
+    await screen.findByRole('heading', { name: '✓ Conversa conferida por Ana (exemplo)' })
     expect((await obterFicha('maria-exemplo'))!.telefone).toBe('11900000004')
   })
 
   it('CA4 · outra pessoa não confere: quem conversou confere, na hora; não nasce tarefa para outra pessoa', async () => {
     const c = await conversaTranscrita()
-    trocarPerfil('atendimento-lider')
+    entrarComo('atendimento-lider')
     await abrir(c.id)
-    expect(screen.getByText('Quem confere é quem fez a conversa: Bruna (exemplo), na hora. Não nasce tarefa para outra pessoa.')).toBeTruthy()
+    expect(screen.getByText('Quem confere é quem fez a conversa: Ana (exemplo), na hora. Não nasce tarefa para outra pessoa.')).toBeTruthy()
     expect(screen.queryByRole('group', { name: 'Concluir a conferência' })).toBeNull()
   })
 
@@ -99,8 +99,8 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     fireEvent.click(botao('Confirmar'))
     await screen.findByRole('heading', { name: /✓ Conversa conferida/ })
     cleanup()
-    trocarPerfil('advogada')
-    render(<ConferirConversa conversaId={c.id} />)
+    entrarComo('advogada')
+    render(comSessao(<ConferirConversa conversaId={c.id} />))
     const fato = (await screen.findAllByText(/Processo · fato novo: Três dias no hospital/)).at(-1)!.closest('li')!
     fireEvent.click(within(fato).getByRole('button', { name: 'Confirmar' }))
     fireEvent.click(botao('Confirmar'))
@@ -119,7 +119,7 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
     const janela = await screen.findByRole('dialog', { name: /Histórico do processo/ })
     const telefone = await within(janela).findByRole('region', { name: 'Ficha · telefone de contato' })
     expect(within(telefone).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '07/10/2026 14:32 · Bruna (exemplo) · em vigor(11) 90000-0044',
+      '07/10/2026 14:32 · Ana (exemplo) · em vigor(11) 90000-0044',
       '07/10/2026 14:32 · Valor de antes da conversa(11) 90000-0004',
     ])
     // Só a Sênior tem "Voltar para esta versão".
@@ -140,7 +140,7 @@ describe('Pendência da conversa vira tarefa · tela (GGVP-88)', () => {
     const combinado = screen.getByLabelText('O que ficou combinado *') as HTMLTextAreaElement
     expect(combinado.value).toBe('Documentação: receber e digitalizar o relatório da alta hospitalar.')
     const escolha = screen.getByRole('group', { name: 'Escolha o responsável' })
-    expect(within(escolha).getByText('Documentação tem 1 pessoa. Quem fica com esta tarefa?')).toBeTruthy()
+    expect(within(escolha).getByText('Documentação tem 2 pessoas. Quem fica com esta tarefa?')).toBeTruthy()
     expect(within(escolha).getByText(/responsável: a escolher/)).toBeTruthy()
     expect(screen.getByText('Escolha quem fica com a tarefa.')).toBeTruthy()
     fireEvent.click(within(escolha).getByRole('radio', { name: 'Jéssica (exemplo)' }))
@@ -167,11 +167,11 @@ describe('Pendência da conversa vira tarefa · tela (GGVP-88)', () => {
     const confirmar = screen.getByRole('group', { name: 'Ação para confirmar' })
     expect(confirmar.textContent).toContain('Responsável: Carla (exemplo) · Atendimento')
     fireEvent.click(within(confirmar).getByRole('button', { name: 'Trocar' }))
-    expect(within(screen.getByRole('group', { name: 'Escolha o responsável' })).getAllByRole('radio')).toHaveLength(8)
+    expect(within(screen.getByRole('group', { name: 'Escolha o responsável' })).getAllByRole('radio')).toHaveLength(14)
     fireEvent.change(combinado, { target: { value: 'Ligar de novo na sexta.' } })
     const escolha = screen.getByRole('group', { name: 'Escolha o responsável' })
     expect(within(escolha).getByText('Quem fica com esta tarefa?')).toBeTruthy()
-    expect(within(escolha).getAllByRole('radio')).toHaveLength(8)
+    expect(within(escolha).getAllByRole('radio')).toHaveLength(14)
   })
 
   it('CA2 · não surgiu pendência: nenhuma tarefa nasce', async () => {
@@ -191,8 +191,8 @@ describe('Pendência da conversa vira tarefa · tela (GGVP-88)', () => {
     fireEvent.click(botao('Confirmar'))
     await screen.findByRole('group', { name: 'Pendência da conversa' })
     cleanup()
-    trocarPerfil('documentacao')
-    render(<ConferirConversa conversaId={c.id} />)
+    entrarComo('documentacao')
+    render(comSessao(<ConferirConversa conversaId={c.id} />))
     const pendencia = await screen.findByRole('group', { name: 'Pendência da conversa' })
     fireEvent.click(within(pendencia).getByRole('button', { name: 'Marcar como cumprida' }))
     expect(await within(pendencia).findByText('✓ Cumprida por Jéssica (exemplo) em 07/10/2026 14:32.')).toBeTruthy()
@@ -217,7 +217,7 @@ describe('Conferir conversa · quem está falando (GGVP-111)', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }))
     expect(botao('Confirmar').disabled).toBe(false)
     fireEvent.click(botao('Confirmar'))
-    await screen.findByRole('heading', { name: '✓ Conversa conferida por Bruna (exemplo)' })
+    await screen.findByRole('heading', { name: '✓ Conversa conferida por Ana (exemplo)' })
     const ficha = (await obterFicha('maria-exemplo'))!
     expect(ficha.telefone).toBe('11900000044')
     expect(ficha.historico.map((e) => e.oQue)).toContain('Mudança de telefone de contato com o cliente verificado (chamada de vídeo com o cliente; em contrato novo)')
