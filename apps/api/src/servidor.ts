@@ -27,6 +27,7 @@ import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
+import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
@@ -103,6 +104,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasConfiguracao(app, { banco, agora })
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

@@ -70,3 +70,15 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
 - **A tela pede sozinha.** Ao abrir a tarefa, a tela chama a rota da sugestão (que devolve a guardada na hora) e preenche o formulário se a pessoa ainda não mexeu. Botão só para pedir de novo: "Escrever de novo com a IA" (minuta) e "Pedir outra versão à IA" (petição), que passam `refazer`.
 - **Minuta com o padrão do pedido.** Pronta com todos os documentos do caso marcados (na ordem em que chegaram, sem a carta, que entra sempre), "usar precedentes do acervo" marcado e sem instruções; a tela abre com o mesmo padrão marcado, para a minuta e o pacote baterem.
 - **Chance.** O histórico `chance_mostrada` continua só quando a tela mostra; a rodada de preparo não registra.
+
+## GGVP-19 · Estudo de caso do processo perdido
+
+### Decisions
+- **Automático, pelo preparo.** A rota de estudos registra no `preparo` os casos perdidos (`improcedente`, `extinto_sem_merito`) sem estudo `ok`; a rodada faz o estudo (finalidade `estudo_de_caso`, JSON, leva dado de saúde, não barra CID: é estratégia interna). Uma vez por caso: com estudo, o caso sai da lista.
+- **O estudo é a chamada da IA.** Sem tabela nova: o estudo é a saída `ok` (validada por `EstudoDaIa`) da finalidade `estudo_de_caso` em `chamada_ia`; a tela lê a mais nova de cada caso. A revisão da Sênior é uma `decisao` (passo `D3b.05`, tipo `estudo_caso`), com a chamada em `sugestao_ia`.
+- **CA4: o estudo abre a explicação.** Feito o estudo, `abrirExplicacaoDoResultado` (que agora não reabre se o caso já teve a tarefa); a confirmação do resultado, quando existir, chama a mesma função sem depender da IA.
+- **Tarefa só com novo processo.** Estudo com `novoProcesso` abre, uma vez por caso, "Revisar estudo de caso" (passo `D3b.05`) para a Sênior, que leva a `/estudos`. Decidir fecha a tarefa; abrir o novo processo é da GGVP-124.
+- **Chance sem número.** "Tínhamos mais/menos chance" é a leitura da IA sobre as provas do caso, não porcentagem (número é código, G19/G22).
+- **Permissões novas.** `estudo.ver` (Jurídico) e `estudo.revisar` (Sênior); matriz v13. Quem mesclar com o PR #23 renumera a versão, como já previsto.
+- **No acervo.** `buscarNoAcervo` passa a ler o motivo e o aprendizado dos estudos, como "Estudo de caso da IA".
+- **Baixar.** O arquivo é texto simples, montado na tela com os estudos listados (sem rota nova).

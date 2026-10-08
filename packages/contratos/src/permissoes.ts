@@ -17,7 +17,7 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 12
+export const VERSAO_MATRIZ = 13
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -84,6 +84,10 @@ export const MATRIZ = {
   // Versão 12 (GGVP-22, Lucas 06/10): o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica ao cliente.
   'resultado.aprovar_resumo': ['advogada', 'senior'],
   'resultado.explicar': ['atendimento', 'atendimento_lider', 'advogada'],
+  // Versão 13 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
+  // indica novo processo, quem decide é a Sênior.
+  'estudo.ver': JURIDICO,
+  'estudo.revisar': ['senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

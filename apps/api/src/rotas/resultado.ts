@@ -19,15 +19,13 @@ type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /**
- * Abre o caminho do resultado perdido: "Aprovar o resumo para o cliente" para a advogada, uma vez. Quem chama: o
- * "Não recorrer" (GGVP-100) e o estudo de caso (GGVP-19), quando existirem; até lá, a semente.
+ * Abre o caminho do resultado perdido: "Aprovar o resumo para o cliente" para a advogada, uma vez por caso (aprovada,
+ * não reabre). Quem chama: o estudo de caso (GGVP-19) e, quando existirem, a confirmação do resultado e o "Não
+ * recorrer" (GGVP-41, GGVP-100); hoje também a semente.
  */
 export async function abrirExplicacaoDoResultado(tx: Banco | Tx, casoId: string) {
-  const [aberta] = await tx
-    .select({ id: tarefa.id })
-    .from(tarefa)
-    .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.06r'), isNull(tarefa.concluidaEm)))
-  if (!aberta) await tx.insert(tarefa).values({ casoId, passo: 'D3b.06r', titulo: TITULO_RESUMO, perfilDono: 'advogada' })
+  const [ja] = await tx.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.06r'))).limit(1)
+  if (!ja) await tx.insert(tarefa).values({ casoId, passo: 'D3b.06r', titulo: TITULO_RESUMO, perfilDono: 'advogada' })
 }
 
 export function registrarRotasResultado(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {

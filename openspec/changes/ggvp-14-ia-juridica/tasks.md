@@ -86,3 +86,10 @@
 - [x] 12.3 Rotas: a lógica de cada sugestão vira função usada pela rota e pelo preparo (despacho, exigência do juiz, publicação, resumo, chance, minuta); a minuta tem o padrão do pedido e aceita `refazer`.
 - [x] 12.4 Telas: a sugestão aparece ao abrir e preenche o formulário (Despachar caso, Exigência do juiz, Ler publicação, Explicar o resultado, Conferência, Pedir a petição), sem "Sugerir" nem "Usar a sugestão"; testes de tela.
 - [ ] 12.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-19 · Estudo de caso do processo perdido
+
+- [x] 13.1 Contratos: `EstudoDaIa`, `EstudosDeCaso`, `RevisarEstudo`; matriz v13 com `estudo.ver` e `estudo.revisar`.
+- [x] 13.2 Servidor: finalidade `estudo_de_caso`; preparo dos casos perdidos sem estudo; tarefa "Revisar estudo de caso" só com novo processo; `GET /api/estudos`; `POST /api/casos/:id/estudo/revisao`; o estudo no acervo; testes com IA falsa.
+- [x] 13.3 Tela "Estudos de caso" (`/estudos`): por benefício e chance, motivo e aprendizado, novo processo, revisão da Sênior, "Baixar os estudos"; atalho no topo para o Jurídico; testes de tela.
+- [x] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

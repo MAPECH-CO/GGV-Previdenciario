@@ -1,6 +1,7 @@
 // Buscar no acervo antes de escrever (GGVP-45): o que a casa já viveu em outros casos, por texto em português, no
-// próprio PostgreSQL. Só entra o que uma pessoa aprovou ou registrou: petição aprovada, decisão de mérito classificada,
-// motivo de indeferimento e modelo de petição ativo. O trecho sai sem dado pessoal do cliente de origem (CA6).
+// próprio PostgreSQL. Entra o que uma pessoa aprovou ou registrou (petição aprovada, decisão de mérito classificada,
+// motivo de indeferimento, modelo de petição ativo) e o estudo de caso da IA (GGVP-19, automático, marcado como da IA).
+// O trecho sai sem dado pessoal do cliente de origem (CA6).
 // ponytail: to_tsvector calculado na hora, sem índice; índice GIN ou embeddings (pgvector) quando o acervo crescer.
 import { sql } from 'drizzle-orm'
 import type { FonteDaIa } from '@ggv/contratos'
@@ -56,6 +57,10 @@ export async function buscarNoAcervo(banco: Banco, { casoId, beneficio, consulta
         from resultado_inss r where r.resultado = 'indeferido' and coalesce(r.motivo_escrito, r.motivo_indeferimento) is not null
       union all
       select 'Modelo da casa', null, m.id, m.conteudo from modelo m where m.tipo = 'peticao' and m.ativo
+      union all
+      -- GGVP-19 CA2: o estudo de caso do processo perdido (automático, da IA), com o motivo e o aprendizado.
+      select 'Estudo de caso da IA', ci.caso_id, null, concat_ws(' ', ci.saida::jsonb ->> 'motivo', ci.saida::jsonb ->> 'aprendizado')
+        from chamada_ia ci where ci.finalidade = 'estudo_de_caso' and ci.situacao = 'ok'
     ),
     achados as (
       select f.*, pe.nome, ts_rank(to_tsvector('portuguese', f.texto), q) as nota

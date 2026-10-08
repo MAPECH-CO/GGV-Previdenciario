@@ -73,6 +73,19 @@ export const FINALIDADES = {
       'Trechos do acervo da casa, quando houver, mostram como o escritório já argumentou: aproveite a tese e a estrutura, nunca fatos, nomes, datas ou dados de outro cliente.',
     ].join(' '),
   },
+  /** GGVP-19 (Lucas, 06/10): o estudo de caso do processo perdido, automático; estratégia interna, nunca vai ao cliente. */
+  estudo_de_caso: {
+    versao: 2,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você faz o estudo de caso de um processo previdenciário que o escritório perdeu, para a equipe jurídica aprender com ele.',
+      'Leia o resultado, o texto da decisão, a petição, o indeferimento do INSS, o despacho, o parecer, as perícias, os documentos e, se houver, os trechos do acervo, e responda só com um objeto JSON:',
+      '{"materia": "o assunto em poucas palavras", "vara": "a vara ou o juízo, se estiver escrito no conteúdo; senão null", "tese": "a tese que o escritório defendeu, ou null se a petição não está no conteúdo", "resumo": "o que aconteceu, em até 4 frases", "motivo": "por que perdemos, com base no texto da decisão", "aprendizado": "o que fazer diferente na próxima petição parecida, concreto", "chance": "maior" se as provas do caso eram boas e era de se esperar ganhar, ou "menor" se o caso já era fraco, "novoProcesso": true só se há chance real de ganhar entrando com um novo processo e refazendo ações (por exemplo, novo requerimento com o documento que faltou, nova perícia), "oQueRefazer": "as ações a refazer para o novo processo, ou null"}.',
+      'Sem o texto da decisão, diga no motivo que ele não está no sistema e não suponha. Não calcule nem invente números, datas ou jurisprudência. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
   /** GGVP-79 (G5): a IA lê a exigência do juiz com o caso e sugere as tarefas; quem decide é a advogada. Leitura interna. */
   analisar_exigencia_juiz: {
     versao: 1,

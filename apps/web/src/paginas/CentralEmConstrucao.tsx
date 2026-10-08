@@ -13,6 +13,8 @@ export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
   const tarefas = useTarefasDoServidor()
   // GGVP-109 CA9: a gestão chega à lista das tentativas bloqueadas pelo topo.
   const gestao = usePode('gestao.ver')
+  // GGVP-19: o Jurídico chega aos estudos de caso feitos pela IA pelo topo.
+  const estudos = usePode('estudo.ver')
 
   return (
     <>
@@ -20,6 +22,7 @@ export function CentralEmConstrucao({ rotulo }: { rotulo: string }) {
       <Topbar
         itens={[
           { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
+          ...(estudos ? [{ id: 'estudos', glifo: '📚', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
           ...(gestao
             ? [
                 { id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },
