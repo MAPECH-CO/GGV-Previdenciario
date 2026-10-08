@@ -5,9 +5,11 @@ import bcrypt from 'bcryptjs'
 import { count, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from './conexao.ts'
-import { caso, configuracao, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, rodadaVigilia, tarefa, usuario } from './esquema.ts'
 import { SENHA_DE_EXEMPLO, semearExemplos, usuariosDeExemplo } from './exemplo.ts'
 import { limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { fontesAtivas } from '../vigilia/fontes.ts'
+import { planejarDia } from '../vigilia/rodadas.ts'
 import { prepararHomologacao } from './homologacao.ts'
 
 const HOMOLOGACAO = { AMBIENTE: 'homologacao' }
@@ -90,6 +92,15 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     expect(antes.onde.casos).toBeGreaterThan(0)
     expect(await prepararHomologacao(banco, HOMOLOGACAO)).toEqual([])
     expect(await foto()).toEqual(antes)
+  })
+
+  it('com o servidor no ar: o relógio da vigília já criou as rodadas do dia, e o comando roda mesmo assim', async () => {
+    // Na homologação, o comando roda no terminal do app, com o servidor de pé: as rodadas de hoje já existem (08/10).
+    await planejarDia(banco, fontesAtivas({}), new Date())
+    expect(await prepararHomologacao(banco, HOMOLOGACAO)).toHaveLength(usuariosDeExemplo.length)
+    const rodadas = await banco.select({ situacao: rodadaVigilia.situacao }).from(rodadaVigilia).orderBy(rodadaVigilia.previstaPara)
+    // A das 08:00 passa a ter a falha de exemplo, para reprocessar; as outras seguem previstas, sem rodada repetida.
+    expect(rodadas.map((r) => r.situacao)).toEqual(['falhou', 'prevista', 'prevista'])
   })
 
   it('as senhas aparecem antes do fim da transação: se mostrar falhar, nada fica gravado', async () => {
