@@ -48,3 +48,8 @@ export function isoParaData(iso: unknown): string | null {
   const br = `${m[3]}/${m[2]}/${m[1]}`;
   return validarData(br) ? br : null;
 }
+
+/** Hoje no fuso local, em "aaaa-mm-dd": o formato do calendário do navegador (`<input type="date">`). */
+export function hojeIso(agora: Date = new Date()): string {
+  return new Date(agora.getTime() - agora.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}

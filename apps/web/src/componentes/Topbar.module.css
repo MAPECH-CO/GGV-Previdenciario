@@ -69,6 +69,33 @@
   white-space: nowrap;
 }
 
+.funcao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro-3);
+}
+
+.avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento);
+}
+
+.funcaoNome {
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.seta {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
 .sair {
   padding: 7px 12px;
   border: 1px solid var(--cor-linha);
@@ -78,4 +105,68 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   cursor: pointer;
+}
+
+.entrarComo {
+  position: relative;
+}
+
+.funcao[aria-haspopup] {
+  cursor: pointer;
+}
+
+.funcao:focus-visible,
+.menuItem:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+.menuTitulo {
+  padding: 4px 8px 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.menuItem {
+  padding: 8px;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: transparent;
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--cor-painel-neutro-3);
+}
+
+.menuItem[aria-checked='true'] {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-weight: 600;
+}
+
+.menuErro {
+  padding: 6px 8px;
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
 }

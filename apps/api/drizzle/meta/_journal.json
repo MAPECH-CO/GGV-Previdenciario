@@ -15,6 +15,83 @@
       "when": 1791221581982,
       "tag": "0001_usuario_e_sessao",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791242520661,
+      "tag": "0002_rls_em_todas_as_tabelas",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791243387151,
+      "tag": "0003_modelo_de_dados",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791243396494,
+      "tag": "0004_historico_so_cresce",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791243717263,
+      "tag": "0005_usuario_sem_perfil_unico",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791243718571,
+      "tag": "0006_perfis_e_perfil_ativo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791243741833,
+      "tag": "0007_perfis_validos",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791254038021,
+      "tag": "0008_exigencia_prestacao_e_banco",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791256275716,
+      "tag": "0009_publicacao_e_vigilia",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791258865146,
+      "tag": "0010_exigencia_do_juiz",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791313039049,
+      "tag": "0011_indeferido_ao_protocolo",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791333774623,
+      "tag": "0012_configuracao_do_escritorio",
+      "breakpoints": true
     }
   ]
 }

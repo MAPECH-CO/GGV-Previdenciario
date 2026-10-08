@@ -5,10 +5,12 @@ const MARCA_ENTROU = 'ggv.entrou' // só diz "já entrou neste navegador", para 
 export type Resposta<T> = { ok: true; dados: T } | { ok: false; status: number; erro: string }
 
 export async function chamarApi<T>(caminho: string, init: { method?: string; corpo?: unknown } = {}): Promise<Resposta<T>> {
+  // FormData (envio com arquivo) vai como está: o navegador põe o content-type com a fronteira.
+  const formulario = init.corpo instanceof FormData
   const resposta = await fetch(`/api${caminho}`, {
     method: init.method ?? 'GET',
-    headers: init.corpo === undefined ? undefined : { 'content-type': 'application/json' },
-    body: init.corpo === undefined ? undefined : JSON.stringify(init.corpo),
+    headers: init.corpo === undefined || formulario ? undefined : { 'content-type': 'application/json' },
+    body: init.corpo === undefined ? undefined : formulario ? (init.corpo as FormData) : JSON.stringify(init.corpo),
     credentials: 'same-origin',
   })
   const tentativaDeEntrar = caminho === '/sessao' && init.method === 'POST' // 401 ali é senha errada, não sessão vencida
@@ -18,7 +20,11 @@ export async function chamarApi<T>(caminho: string, init: { method?: string; cor
   return resposta.ok ? { ok: true, dados: corpo as T } : { ok: false, status: resposta.status, erro: corpo.erro ?? 'Algo deu errado.' }
 }
 
+/** Depois do "Sair", um 401 de busca que ainda estava no caminho não deve mandar ao login com "volta". */
+let saindo = false
+
 export function irParaEntrar() {
+  if (saindo) return
   const volta = window.location.pathname + window.location.search
   const params = new URLSearchParams({ volta })
   if (lerMarca()) params.set('expirou', '1')
@@ -62,6 +68,7 @@ function lerMarca() {
 }
 
 export async function sair() {
+  saindo = true
   await chamarApi('/sessao', { method: 'DELETE' })
   marcarEntrou(false)
   window.location.assign('/entrar')

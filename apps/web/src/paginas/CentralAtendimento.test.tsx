@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enviarBoasVindas, obterBoasVindas } from '../dados/boasVindas.ts'
 import { conferirChecklist } from '../dados/checklist.ts'
 import { arquivarDocumentos, documentosLidos } from '../dados/leitura.ts'
@@ -134,4 +134,25 @@ describe('Central do Atendimento', () => {
     }
     expect(screen.getByRole('button', { name: '✦ Suporte' }).getAttribute('aria-haspopup')).toBeNull()
   })
+
+  it('GGVP-23 CA3 · as tarefas do servidor (como o ajuste pedido pela Sênior) vêm no topo, acima das de exemplo', async () => {
+    const ajuste = {
+      id: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6',
+      casoId: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c7',
+      passo: 'D1.ajuste',
+      cliente: { id: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c8', nome: 'Benedito Alves' },
+      titulo: 'Ajustar o caso: Falta o laudo',
+      detalhe: 'auxilio acidente',
+      tela: null,
+      prazo: null,
+      urgente: false,
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([ajuste]))))
+    render(<CentralAtendimento />)
+    expect(await screen.findByRole('tab', { name: 'Minhas tarefas (17)' })).toBeTruthy()
+    const [primeira] = within(screen.getByRole('tabpanel')).getAllByRole('listitem')
+    expect(primeira.textContent).toContain('Ajustar o caso: Falta o laudo')
+  })
 })
+
+afterEach(() => vi.unstubAllGlobals())
