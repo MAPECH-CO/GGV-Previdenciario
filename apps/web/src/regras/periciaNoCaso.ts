@@ -896,7 +896,7 @@ export const mudancas = {
    */
   resultado(
     { mundo, pericia, agora }: NaPericia,
-    r: { laudo: ArquivoEnviado; favoravel?: boolean; novaPericia?: boolean; conferidas: string[] },
+    r: { laudo: ArquivoEnviado; favoravel?: boolean; novaPericia?: boolean; conferidas: string[]; leitura?: LeituraDoLaudo },
     quem: string,
     novaId?: string,
   ): Pericia | undefined {
@@ -909,7 +909,8 @@ export const mudancas = {
     const quando = agora.toISOString()
     const nome = nomeNaPasta(ficha, r.laudo.nome)
     ficha.arquivos.push({ nome, tipo: 'laudo-pericia', local: pericia.processoId, data: hoje, origem: 'card', repetido: false, aguardaLeitura: false, hash: r.laudo.hash })
-    const leitura = leituraDoLaudo(pericia, nomeBeneficio(processo.beneficio), nome)
+    // A leitura da IA de verdade, conferida pela advogada (GGVP-139), vem do servidor; na semente, a simulada.
+    const leitura = r.leitura ?? leituraDoLaudo(pericia, nomeBeneficio(processo.beneficio), nome)
     const favoravel = r.favoravel!
     const nova = !favoravel && r.novaPericia === true
     const manifestarAte = pericia.instancia === 'juizo' && !nova ? prazoParaManifestar(hoje) : undefined

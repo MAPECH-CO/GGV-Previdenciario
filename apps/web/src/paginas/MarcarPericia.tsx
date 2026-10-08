@@ -2,15 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { ConviteChatwoot } from '../componentes/ConviteChatwoot.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
+import { SugestaoDaPericia } from '../componentes/SugestaoDaPericia.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { dataParaIso, formatarTelefone, isoParaData, normalizarData } from '../campos.ts'
 import {
   esperarComprovante,
-  lerComprovante,
+  lerComprovanteComIa,
   obterPericia,
   registrarMarcacao,
   registrarTentativa,
   remarcarPericia,
+  type LeituraPelaIa,
   type PericiaNaTela,
 } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
@@ -53,6 +55,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
   const [oQueAconteceu, setOQueAconteceu] = useState('')
   const [comprovante, setComprovante] = useState<{ nome: string; tamanho: number; hash: string; arquivo: Blob }>()
   const [lido, setLido] = useState<LidoDoComprovante>()
+  const [ia, setIa] = useState<LeituraPelaIa<LidoDoComprovante>>()
   const [data, setData] = useState('')
   const [pedeDocumento, setPedeDocumento] = useState<boolean>()
   const [motivoRemarcar, setMotivoRemarcar] = useState('')
@@ -106,6 +109,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
       setDeuCerto(undefined)
       setComprovante(undefined)
       setLido(undefined)
+      setIa(undefined)
       setPedeDocumento(undefined)
       setAbrirRemarcar(false)
       setTrocar(false)
@@ -123,9 +127,16 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
     if (problema || formatoDoArquivo(arquivo.name) !== 'pdf') return setErro(problema ?? 'O comprovante do INSS é um PDF.')
     const hash = await hashDoConteudo(await arquivo.arrayBuffer())
     setComprovante({ nome: arquivo.name, tamanho: arquivo.size, hash, arquivo })
-    const leitura = await lerComprovante(processoId, arquivo.name)
-    setLido(leitura)
-    setData(isoParaData(leitura.data) ?? '')
+    // A IA lê (GGVP-139 CA1); sem ela, os campos vêm vazios, com o motivo, e a pessoa preenche olhando o PDF.
+    const leitura = await lerComprovanteComIa(processoId, arquivo, arquivo.name).catch((e: unknown) => ({
+      lido: null,
+      sugestao: null,
+      motivo: e instanceof Error ? e.message : 'A IA não leu o comprovante agora: preencha.',
+    }))
+    const l = leitura.lido ?? { data: '', hora: '', local: '', modalidade: '', tipo: t!.pericia.tipo }
+    setIa(leitura)
+    setLido(l)
+    setData(isoParaData(l.data) ?? '')
   }
 
   const decisaoDocumento = (
@@ -228,6 +239,9 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
               {lido && (
                 <fieldset className={proprio.lido}>
                   <legend>Lido do comprovante · confira</legend>
+                  <div className={proprio.largo}>
+                    <SugestaoDaPericia ia={ia} selo="Leitura da IA · confira com o PDF antes de registrar" />
+                  </div>
                   <label>
                     Data (dd/mm/aaaa)
                     <input inputMode="numeric" maxLength={10} value={data} onChange={(e) => setData(e.target.value)} onBlur={() => setData(normalizarData(data))} />

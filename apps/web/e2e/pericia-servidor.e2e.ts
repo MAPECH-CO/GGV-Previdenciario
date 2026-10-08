@@ -41,8 +41,12 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   await igor.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf(`comprovante-${hojeIso()}.pdf`)])
   const lido = igor.getByRole('group', { name: 'Lido do comprovante · confira' })
   await expect(lido).toContainText('perito não consta no comprovante')
-  // A perícia é hoje cedo: a pessoa corrige a hora lida, e o comparecimento já abre.
+  // O Playwright roda sem chave de IA: a leitura volta vazia, com o motivo, e a pessoa preenche olhando o PDF. A perícia é
+  // hoje cedo, e o comparecimento já abre.
+  await expect(lido).toContainText('A IA não leu o comprovante agora')
+  await lido.getByLabel(/Data/).fill(new Date().toLocaleDateString('pt-BR'))
   await lido.getByLabel('Hora').fill('00:01')
+  await lido.getByLabel('Local').fill('Agência INSS Santo Amaro')
   await igor.getByRole('radio', { name: 'Não: seguir para ligar e orientar' }).click()
   await igor.getByRole('button', { name: 'Registrar a perícia' }).click()
   await expect(igor.getByRole('heading', { name: '✓ Perícia registrada' })).toBeVisible()
@@ -58,7 +62,7 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   await gabi.getByRole('link', { name: `${cliente} · Conferir resultado da perícia`, exact: true }).click()
   await expect(gabi).toHaveURL(`/casos/${casoId}/pericia/resultado`)
   await gabi.getByLabel(/Laudo ou registro do GERID/).setInputFiles([pdf('laudo_pericia.pdf')])
-  await expect(gabi.getByRole('region', { name: 'Resumo do laudo pela IA' })).toContainText('Favorável')
+  await expect(gabi.getByText(/A IA não leu o laudo agora/)).toBeVisible()
   await gabi.getByRole('radio', { name: 'Favorável — seguir' }).click()
   for (const caixa of await gabi.getByRole('region', { name: 'Conferência (você decide; a IA só resume)' }).getByRole('checkbox').all()) await caixa.check()
   await gabi.getByRole('button', { name: 'Registrar resultado' }).click()

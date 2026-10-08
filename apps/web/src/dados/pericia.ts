@@ -55,6 +55,7 @@ import {
 import { emVigor } from '../regras/roteiro.ts'
 import { perfilDoPerito, peritosDo } from './peritos.ts'
 import { roteiroDoCaso } from './roteiro.ts'
+import type { SugestaoDaIa } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { agora, doServidor, esperar, gravar, ler, noBanco, servidorLigado, type Banco } from './servidor.ts'
 import type { EventoDaAgenda, Tarefa } from './tipos.ts'
@@ -255,11 +256,26 @@ export function registrarTentativa(processoId: string, t: { dia: string; oQueAco
   return mudar(processoId, (n) => mudancas.tentativa(n, t, quem))
 }
 
-/** POST /api/processos/:id/pericia/comprovante/leitura. IA simulada: lê data, hora, local e tipo; o perito não vem (CA2, CA3). */
+/** A leitura de um PDF pela IA, como a tela recebe: o que ela leu, a marca de sugestão e, sem IA, o motivo (GGVP-139). */
+export type LeituraPelaIa<T> = { lido: T | null; sugestao: SugestaoDaIa | null; motivo: string | null }
+
+/** IA simulada da semente (CA2, CA3): lê data, hora, local e tipo do nome do arquivo; o perito não vem. */
 export async function lerComprovante(processoId: string, nome: string): Promise<LidoDoComprovante> {
-  if (doServidor(processoId)) return noBanco<LidoDoComprovante>(`/processos/${processoId}/pericia/comprovante/leitura`, { method: 'POST', corpo: { nome } })
+  // O chat (história própria) ainda lê pelo nome: no servidor, a leitura é pelo PDF, na tela de marcar.
+  if (doServidor(processoId)) throw new Error('Suba o comprovante na tela de marcar a perícia.')
   await esperar()
   return leituraDoComprovante(exigirPericia(lerComPericias(), processoId), nome, hojeIso(agora()))
+}
+
+/**
+ * POST /api/processos/:id/pericia/comprovante/leitura (GGVP-139 CA1): no servidor, a IA de verdade lê o PDF; na semente,
+ * a leitura simulada. A pessoa confere antes de registrar.
+ */
+export async function lerComprovanteComIa(processoId: string, arquivo: Blob, nome: string): Promise<LeituraPelaIa<LidoDoComprovante>> {
+  if (!doServidor(processoId)) return { lido: await lerComprovante(processoId, nome), sugestao: null, motivo: null }
+  const f = new FormData()
+  f.append('comprovante', arquivo, nome)
+  return noBanco<LeituraPelaIa<LidoDoComprovante>>(`/processos/${processoId}/pericia/comprovante/leitura`, { method: 'POST', corpo: f })
 }
 
 /** POST /api/processos/:id/pericia/marcacao. Registra a perícia conferida (CA2, CA3, CA4); de novo, troca a data (CA8). */
@@ -664,6 +680,15 @@ export async function dicaParaAPericia(texto: string): Promise<{ texto: string; 
 // GGVP-62 · Preparar o cliente: o Jurídico administrativo revisa a orientação e passa ao cliente (DP.06).
 
 /**
+ * POST /api/processos/:id/pericia/orientacao/sugestao (GGVP-139 CA2): no servidor, o texto que a IA escreveu, já
+ * verificado (G11, G20); na semente, nada: fica a orientação que o código montou.
+ */
+export async function sugerirOrientacao(processoId: string): Promise<{ texto: string | null; sugestao: SugestaoDaIa | null; motivo: string | null }> {
+  if (!doServidor(processoId)) return { texto: null, sugestao: null, motivo: null }
+  return noBanco(`/processos/${processoId}/pericia/orientacao/sugestao`, { method: 'POST' })
+}
+
+/**
  * POST /api/processos/:id/pericia/orientacao. Só com "Revisei a orientação" (CA3). O servidor verifica de novo o texto,
  * editado ou não (CA4); com instrução proibida, recusa e registra a tentativa (CA6). Guarda o texto, o canal e a data
  * (CA2, CA7). O Chatwoot é simulado (GGVP-102).
@@ -758,22 +783,35 @@ export function resultadoNoGerid(processoId: string): Promise<PericiaNaTela> {
   return mudar(processoId, (n) => mudancas.resultadoDisponivel(n), exigirResultado)
 }
 
-/** POST /api/processos/:id/pericia/laudo/leitura. IA simulada: o resumo do laudo, para a advogada conferir (CA5). */
+/** IA simulada da semente: o resumo do laudo, para a advogada conferir (CA5). */
 export async function lerLaudoDaPericia(processoId: string, nome: string): Promise<LeituraDoLaudo> {
-  if (doServidor(processoId)) return noBanco<LeituraDoLaudo>(`/processos/${processoId}/pericia/laudo/leitura`, { method: 'POST', corpo: { nome } })
+  if (doServidor(processoId)) throw new Error('Suba o laudo na tela do resultado.')
   await esperar()
   const banco = lerComPericias()
   const pericia = exigirResultado(banco, processoId)
   return leituraDoLaudoNoCaso(pericia, naTela(banco, pericia, agora()).beneficio, nome)
 }
 
+/**
+ * POST /api/processos/:id/pericia/laudo/leitura (GGVP-139 CA3): no servidor, a IA de verdade lê o laudo e resume; na
+ * semente, a leitura simulada. Quem decide o resultado é a advogada.
+ */
+export async function lerLaudoComIa(processoId: string, arquivo: Blob, nome: string): Promise<LeituraPelaIa<LeituraDoLaudo>> {
+  if (!doServidor(processoId)) return { lido: await lerLaudoDaPericia(processoId, nome), sugestao: null, motivo: null }
+  const f = new FormData()
+  f.append('laudo', arquivo, nome)
+  const r = await noBanco<{ leitura: LeituraDoLaudo | null; sugestao: SugestaoDaIa | null; motivo: string | null }>(`/processos/${processoId}/pericia/laudo/leitura`, { method: 'POST', corpo: f })
+  return { lido: r.leitura, sugestao: r.sugestao, motivo: r.motivo }
+}
+
 /** POST /api/processos/:id/pericia/resultado (CA2 a CA6): a regra está em regras/periciaNoCaso.ts. */
 export async function registrarResultado(
   processoId: string,
-  r: { laudo: ArquivoEnviado; favoravel?: boolean; novaPericia?: boolean; conferidas: string[] },
+  r: { laudo: ArquivoEnviado; favoravel?: boolean; novaPericia?: boolean; conferidas: string[]; chamadaIaId?: string },
   quem: string,
 ): Promise<PericiaNaTela> {
-  if (doServidor(processoId)) return naApi(processoId, '/resultado', comArquivo('laudo', r.laudo.arquivo, r.laudo.nome, { favoravel: r.favoravel, novaPericia: r.novaPericia, conferidas: r.conferidas }))
+  if (doServidor(processoId))
+    return naApi(processoId, '/resultado', comArquivo('laudo', r.laudo.arquivo, r.laudo.nome, { favoravel: r.favoravel, novaPericia: r.novaPericia, conferidas: r.conferidas, chamadaIaId: r.chamadaIaId }))
   return mudar(processoId, (n) => void mudancas.resultado(n, r, quem))
 }
 
