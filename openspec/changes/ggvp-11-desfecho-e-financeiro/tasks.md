@@ -27,8 +27,7 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [x] 3.1 Base do PR na `main`, porque a Garantia entrou em 07/10, e a `main` mesclada na branch, sem conflito.
 - [x] 3.2 Matriz: quem entra depois renumera. O #23 (Jurimetria, também com as versões 11 e 12) está à frente na fila, então este PR passou a usar as versões 13 e 14 (revisão de 08/10).
   - A impressão digital não muda, porque só depende do conteúdo da matriz.
-  - Quando o #23 entrar, a `main` mesclada traz as ações dele, e a impressão digital é recalculada.
-  - Se a ordem mudar, renumera de novo.
+  - O #23 entrou na `main` em 08/10. Mesclada a `main`, a matriz ficou na versão 14, com as ações das duas, e a impressão digital foi recalculada para `cfe0f314`. Contratos 99, API 311, typecheck, lint e `openspec validate --all --strict` (13 de 13) sem erro.
 - [x] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10, com a main mesclada:
   - typecheck e lint sem erro;
   - `openspec validate --all --strict` com 11 de 11;
