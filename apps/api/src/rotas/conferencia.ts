@@ -216,7 +216,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       `Benefício: ${dados.beneficio ? (ROTULO_BENEFICIO[dados.beneficio as Beneficio] ?? dados.beneficio) : 'não definido'}`,
       `Parecer médico: ${parecer ? `${parecer.resultado}${itens.length ? ` (${itens.join('; ')})` : ''}` : 'não há'}`,
       `Checklist: ${!dados.checklist.cadastrado ? 'kit não cadastrado' : dados.checklist.completo ? 'completo' : `faltam ${dados.checklist.faltam.join(', ')}`}`,
-      `Laudo novo esperando conferência: ${dados.laudoNovoEsperando ? 'sim' : 'não'}`,
+      // Frase inteira: com "sim/não" a IA lia "laudo novo não disponível".
+      dados.laudoNovoEsperando ? 'Chegou um laudo médico novo que ainda espera a conferência' : 'Nenhum laudo médico novo esperando conferência',
       `Indeferimento anterior: ${indeferido ? (indeferido.motivo ?? indeferido.motivoInss ?? 'sem motivo registrado') : 'não há'}`,
       `Chance calculada pelo sistema: ${conta.porcentagem === null ? 'sem casos parecidos na casa ainda' : `${conta.porcentagem}% em ${conta.casos} casos parecidos`}`,
     ].join('\n')

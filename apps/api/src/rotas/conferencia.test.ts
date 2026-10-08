@@ -241,6 +241,7 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     const r = (await chance('helena')).json()
     expect([r.casos, r.porcentagem, r.baseEm]).toEqual([0, null, null])
     expect(enviado).toContain('sem casos parecidos na casa ainda')
+    expect(enviado).toContain('Nenhum laudo médico novo esperando conferência')
     expect((await chance('ana')).statusCode).toBe(403)
   })
 })

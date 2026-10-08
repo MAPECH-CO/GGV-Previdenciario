@@ -121,6 +121,13 @@ describe('Épico IA · a IA sugere o resumo do resultado', () => {
     expect([d.justificativa, d.sugestaoIa, d.decididoPor]).toEqual([aprovado, { chamadaId: r.sugestao.chamadaId }, ids.gabi])
   })
 
+  it('sem o texto da decisão, a IA é avisada de que o motivo fica para a advogada', async () => {
+    comIa(RASCUNHO)
+    const r = (await chamar('gabi', 'POST', '/resultado/sugestao')).json()
+    expect([r.sugestao.fontes[0].tipo, r.motivo]).toEqual(['caso', null])
+    expect(enviado).toContain('Texto da decisão: não está no sistema; o motivo fica para a advogada completar')
+  })
+
   it('saída com código de doença é barrada (G20), e o Jurídico escreve; depois do resumo aprovado, não há o que sugerir', async () => {
     comIa('O laudo mostrou F32.1 e por isso perdemos.')
     expect((await chamar('gabi', 'POST', '/resultado/sugestao')).json()).toEqual({ sugestao: null, motivo: 'A IA não escreveu agora: escreva o resumo.' })

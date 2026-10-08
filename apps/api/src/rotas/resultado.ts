@@ -84,7 +84,8 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
       `Cliente: ${c.nome}`,
       `Benefício pedido: ${c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não informado'}`,
       `Resultado: ${c.desfecho ?? 'perdemos'}`,
-      `Texto da decisão: ${decisaoDeMerito?.texto ?? 'não há publicação de mérito registrada'}`,
+      // Sem o texto da decisão, a IA não pode explicar o porquê (ela inventava um motivo); a advogada completa.
+      `Texto da decisão: ${decisaoDeMerito?.texto ?? 'não está no sistema; o motivo fica para a advogada completar'}`,
     ].join('\n')
     const fontes = decisaoDeMerito ? [{ tipo: 'publicacao' as const, referencia: `publicacao:${decisaoDeMerito.id}` }] : [{ tipo: 'caso' as const, referencia: `caso:${casoId}` }]
     const s = await ia.sugerir('resumo_resultado', { casoId, quem: pedido.usuario!.id, conteudo, fontes })

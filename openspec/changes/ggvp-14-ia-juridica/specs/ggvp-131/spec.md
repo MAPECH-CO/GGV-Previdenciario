@@ -20,7 +20,7 @@ A chance SHALL ser calculada por código a partir dos desfechos conferidos do ac
 - **Então** vê "sem casos parecidos na casa ainda", sem porcentagem
 
 ### Requirement: CA4 · Na conferência da Sênior, com o parecer e o checklist
-A chance SHALL aparecer na conferência da Sênior antes do INSS, com os fatores que a IA lê do caso (parecer, checklist, motivo do indeferimento quando houver) e o que fazer para subir, marcados como sugestão.
+A chance SHALL aparecer na conferência da Sênior antes do INSS, com os fatores que a IA lê do caso (parecer, checklist, laudo novo esperando, motivo do indeferimento quando houver) e o que fazer para subir, marcados como sugestão. Cada fato vai à IA em frase inteira (por exemplo, "Nenhum laudo médico novo esperando conferência"), não em "sim/não", para ela não ler ao contrário.
 
 #### Scenario: CA4 · Ver a chance
 - **Dado** um caso na conferência da Sênior

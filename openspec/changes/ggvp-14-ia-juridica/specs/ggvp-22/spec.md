@@ -21,3 +21,11 @@ O rascunho MUST NOT trazer estratégia interna do escritório, e uma saída com 
 - **Dado** uma resposta da IA com um código de doença
 - **Quando** a sugestão é pedida
 - **Então** a tela diz que não há sugestão, e o Jurídico escreve
+
+### Requirement: IA · Sem o texto da decisão, a IA não explica o porquê
+Quando o caso não tem a publicação de mérito, o conteúdo enviado SHALL dizer que o texto da decisão não está no sistema, e o rascunho MUST NOT dizer nem supor o motivo: deixa "[completar: o motivo da decisão]" para a advogada.
+
+#### Scenario: IA · Caso sem publicação de mérito
+- **Dado** um caso perdido sem a publicação de mérito
+- **Quando** a advogada pede a sugestão da IA
+- **Então** a IA recebe "não está no sistema; o motivo fica para a advogada completar", e o rascunho diz só o resultado

@@ -45,3 +45,9 @@
 - [x] 6.3 CA2, CA4, CA9, CA10 · `POST /api/casos/:id/chance` (perfil `caso.aprovar_para_inss`): desfechos conferidos do mesmo benefício, número com casos e base, fatores da IA, histórico `chance_mostrada`; testes com IA falsa.
 - [x] 6.4 Tela da conferência: "Ver a chance de êxito", o número ou "sem casos parecidos na casa ainda", e os fatores como sugestão; testes de tela.
 - [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## Ajustes do teste no portal (07/10)
+
+- [x] 7.1 GGVP-22: sem a publicação de mérito, a IA é avisada de que o motivo fica para a advogada; instrução `resumo_resultado` v3 (o porquê só do texto da decisão, senão "[completar: o motivo da decisão]"); teste.
+- [x] 7.2 GGVP-131: o laudo novo vai à IA em frase inteira, não em "sim/não"; teste.
+- [x] 7.3 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
