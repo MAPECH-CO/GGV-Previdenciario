@@ -59,11 +59,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read # a ação lista os commits do PR
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      # A ação do gitleaks pede licença em repositório de organização (MAPECH-CO, 08/10); a ferramenta é livre e faz a
+      # mesma varredura: os commits do PR, ou os do push na main.
+      - name: gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSAO: 8.18.4
+          INTERVALO: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${VERSAO}"
+          curl -sSfLO "${base}/gitleaks_${VERSAO}_linux_x64.tar.gz"
+          curl -sSfLO "${base}/gitleaks_${VERSAO}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${VERSAO}_checksums.txt"
+          tar -xzf "gitleaks_${VERSAO}_linux_x64.tar.gz" gitleaks
+          # Push que cria o ramo não tem "antes": varre a história até o commit.
+          [[ "$INTERVALO" == 0000000* ]] && INTERVALO="$GITHUB_SHA"
+          ./gitleaks detect --source . --redact --verbose --log-opts="$INTERVALO"
