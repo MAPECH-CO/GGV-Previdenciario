@@ -2,17 +2,12 @@
 // documentos por circunstância fica em checklist.ts, com a lista de cada benefício. Ligar no servidor: trocar o corpo de
 // cada função por fetch no endpoint da spec da ggvp-47.
 import { isoParaData } from '../campos.ts'
-import { CATEGORIAS, CIRCUNSTANCIAS, especie, motivoParaNaoSalvar, type DadosDoAcidente, type ValoresDoAcidente } from '../regras/acidente.ts'
+import { CATEGORIAS, CIRCUNSTANCIAS, especie, motivoParaNaoSalvar, type AcidenteDoCaso, type AcidenteNaTela, type DadosDoAcidente, type SugestaoDoAcidente } from '../regras/acidente.ts'
 import { hojeIso } from '../regras/datas.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Ficha } from './tipos.ts'
 
-export type AcidenteDoCaso = DadosDoAcidente & { processoId: string; quem: string; quando: string }
-
-/** O que a segunda ficha já diz (GGVP-28): a tela começa daqui, e quem salva é a pessoa. */
-export type SugestaoDoAcidente = Partial<Pick<ValoresDoAcidente, 'circunstancia' | 'categoria' | 'acidenteEm'>>
-
-export type AcidenteNaTela = { dados?: AcidenteDoCaso; sugestao?: SugestaoDoAcidente }
+export type { AcidenteDoCaso, AcidenteNaTela, SugestaoDoAcidente } from '../regras/acidente.ts'
 
 /** A circunstância salva do caso, para o checklist. */
 export const acidenteDoCaso = (banco: Banco, processoId: string): AcidenteDoCaso | undefined => banco.acidentes?.find((a) => a.processoId === processoId)

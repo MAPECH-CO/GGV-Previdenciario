@@ -4,42 +4,15 @@
 // endpoint da design (seção GGVP-42) e ler o CNIS de verdade.
 import { isoParaData } from '../campos.ts'
 import { hojeIso } from '../regras/datas.ts'
-import {
-  TIPOS_DE_PROVA,
-  cenarios,
-  enquadramento,
-  motivoParaNaoSalvar,
-  periodos,
-  tempo,
-  type Cenario,
-  type DadosDaDeficiencia,
-  type Enquadramento,
-  type Periodo,
-  type Prova,
-} from '../regras/deficiencia.ts'
+import { TIPOS_DE_PROVA, linhaDoTempo, motivoParaNaoSalvar, tempo, type DadosDaDeficiencia, type DeficienciaDoCaso, type Enquadramento, type LinhaDoTempo, type Prova } from '../regras/deficiencia.ts'
 import { tempoFalado } from '../regras/calculo.ts'
 import { cnisDoCaso } from './beneficio.ts'
 import { nomeBeneficio, nomeTipo } from './catalogos.ts'
 import { leiturasDo } from './leitura.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Cnis, Ficha, Processo } from './tipos.ts'
+import type { Ficha, Processo } from './tipos.ts'
 
-/** Os dados da deficiência do caso, com quem registrou e quando. */
-export type DeficienciaDoCaso = DadosDaDeficiencia & { processoId: string; quem: string; /** Data e hora ISO. */ quando: string }
-
-export type LinhaDoTempo = {
-  ficha: Pick<Ficha, 'id' | 'nome'>
-  processo: Processo
-  beneficio: string
-  cnis?: Cnis
-  dados?: DeficienciaDoCaso
-  periodos: Periodo[]
-  enquadramento?: Enquadramento
-  /** Os três cenários (leve, moderada e grave), para a entrevista: o grau efetivo sai na perícia. */
-  cenarios: Cenario[]
-  /** Todas as provas do caso, para a lista embaixo da linha. */
-  provas: Prova[]
-}
+export type { DeficienciaDoCaso, LinhaDoTempo } from '../regras/deficiencia.ts'
 
 /** As provas da época na semente da Cleide: o período moderado de 2019 fica sem prova, para a tela mostrar o aviso (CA3). */
 const PROVAS_DA_SEMENTE: Record<string, Prova[]> = {
@@ -85,20 +58,7 @@ function provasDo(banco: Banco, ficha: Ficha, processoId: string): Prova[] {
 function montar(banco: Banco, ficha: Ficha, processo: Processo): LinhaDoTempo {
   const dados = deficienciasDo(banco).find((d) => d.processoId === processo.id)
   const cnis = cnisDoCaso(ficha.id)
-  const provas = provasDo(banco, ficha, processo.id)
-  const ps = dados && cnis ? periodos(cnis.vinculos, dados, provas, cnis.extraidoEm) : []
-  const e = dados ? enquadramento(ps, dados.sexo) : undefined
-  return {
-    ficha: { id: ficha.id, nome: ficha.nome },
-    processo,
-    beneficio: nomeBeneficio(processo.beneficio),
-    ...(cnis && { cnis }),
-    ...(dados && { dados }),
-    periodos: ps,
-    ...(e && { enquadramento: e }),
-    cenarios: dados ? cenarios(ps, dados.sexo) : [],
-    provas,
-  }
+  return linhaDoTempo({ ficha, processo, beneficio: nomeBeneficio(processo.beneficio), ...(cnis && { cnis }), ...(dados && { dados }), provas: provasDo(banco, ficha, processo.id) })
 }
 
 /** GET /api/processos/:id/deficiencia */

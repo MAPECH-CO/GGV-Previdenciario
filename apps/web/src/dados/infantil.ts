@@ -6,9 +6,9 @@ import { doJuridico } from './parecer.ts'
 import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
 import type { Ficha, Processo } from './tipos.ts'
 import { hojeIso, idadeEm } from '../regras/datas.ts'
-import { CONDICOES_DA_CRIANCA, TERAPIAS, menorDe16, relatoriosDaCrianca, type DadosDaCrianca } from '../regras/infantil.ts'
+import { CONDICOES_DA_CRIANCA, TERAPIAS, menorDe16, relatoriosDaCrianca, type CriancaDoCaso, type CriancaNaTela, type DadosDaCrianca } from '../regras/infantil.ts'
 
-export type CriancaDoCaso = DadosDaCrianca & { processoId: string; quem: string; quando: string }
+export type { CriancaDoCaso, CriancaNaTela } from '../regras/infantil.ts'
 
 /** O LOAS Deficiente de beneficiário menor de 16 anos hoje (CA1). A ficha é do beneficiário. */
 export const ehInfantil = (ficha: Ficha, processo: Processo) => processo.beneficio === 'loas-deficiente' && menorDe16(ficha.nascimento, hojeIso(agora()))
@@ -21,9 +21,6 @@ function acharCaso(banco: Banco, processoId: string) {
   const processo = ficha?.processos.find((p) => p.id === processoId)
   return ficha && processo ? { ficha, processo } : null
 }
-
-/** O que a tela do parecer mostra: se é infantil, a condição (só ao Jurídico) e os relatórios que o caso pede. */
-export type CriancaNaTela = { infantil: boolean; idade?: number; dados?: CriancaDoCaso; relatorios: string[] }
 
 const idadeDa = (ficha: Ficha) => idadeEm(ficha.nascimento!, hojeIso(agora()))
 

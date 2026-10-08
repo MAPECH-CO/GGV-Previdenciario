@@ -119,3 +119,11 @@ export function paraDados(v: ValoresDoAcidente, hoje: string): DadosDoAcidente |
 
 /** G18 no Auxílio-Acidente: na lesão não consolidada, o caso muda de porta em vez de morrer (resposta do Lucas, 01/10). */
 export const SUGESTAO_DE_TROCA = 'Sugestão: trocar para Auxílio por Incapacidade Temporária; o caso muda de porta.'
+
+export type AcidenteDoCaso = DadosDoAcidente & { processoId: string; quem: string; quando: string }
+
+/** O que a segunda ficha já diz (GGVP-28): a tela começa daqui, e quem salva é a pessoa. */
+export type SugestaoDoAcidente = Partial<Pick<ValoresDoAcidente, 'circunstancia' | 'categoria' | 'acidenteEm'>>
+
+export type AcidenteNaTela = { dados?: AcidenteDoCaso; sugestao?: SugestaoDoAcidente }
+

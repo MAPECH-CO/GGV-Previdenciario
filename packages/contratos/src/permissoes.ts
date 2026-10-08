@@ -84,6 +84,17 @@ export const MATRIZ = {
   'historico.autorizar_exportacao': ['socio'],
   // GGVP-104: a gestão do escritório muda limites, kits e mensagens sem mexer no código.
   'configuracao.editar': ['socio', 'senior'],
+  // Versão 13 (GGVP-132, Pedro, 08/10): a documentação médica no servidor. Só a Sênior edita a régua do roteiro (GGVP-93).
+  'roteiro.editar': ['senior'],
+  // O parecer médico é do Jurídico que confere o caso: a advogada e a Sênior (GGVP-20 CA3). A IA nunca registra (G17).
+  'parecer.registrar': ['advogada', 'senior'],
+  // O complemento ao médico (GGVP-29): o Atendimento tenta, e no limite a Sênior decide (G15).
+  'complemento.cobrar': ['atendimento', 'atendimento_lider'],
+  'complemento.decidir': ['senior'],
+  // A deficiência (GGVP-42) e a condição da criança (GGVP-50) são dado de saúde: só a advogada e a Sênior registram.
+  'dado_saude.registrar': ['advogada', 'senior'],
+  // A circunstância do acidente (GGVP-47): a Documentação ou o Jurídico marcam.
+  'acidente.registrar': ['documentacao', 'advogada', 'senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

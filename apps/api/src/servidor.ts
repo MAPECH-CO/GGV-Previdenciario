@@ -24,6 +24,12 @@ import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
+import { registrarRotasRoteiros } from './rotas/roteiros.ts'
+import { registrarRotasParecer } from './rotas/parecer.ts'
+import { registrarRotasComplemento } from './rotas/complemento.ts'
+import { registrarRotasDeficiencia } from './rotas/deficiencia.ts'
+import { registrarRotasAcidente } from './rotas/acidente.ts'
+import { registrarRotasCrianca } from './rotas/crianca.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 
@@ -85,6 +91,12 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
     registrarRotasConfiguracao(app, { banco, agora })
+    registrarRotasRoteiros(app, { banco, agora })
+    registrarRotasParecer(app, { banco, agora })
+    registrarRotasComplemento(app, { banco, agora })
+    registrarRotasDeficiencia(app, { banco, agora })
+    registrarRotasAcidente(app, { banco, agora })
+    registrarRotasCrianca(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {
