@@ -8,7 +8,7 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 
 ### Decisions
 
-1. **Um caminho para o INSS e para a Justiça** (Mateus, 07/10): as rotas `/api/casos/:id/prestacao/recebimento` e `/api/casos/:id/banco` servem os dois. `banco.agendar` passa a ser do Financeiro, e a matriz sobe uma versão. Era a 11; na revisão de 08/10 passou a 13, porque o #23 (Jurimetria) usa a 11 e a 12 e entra antes.
+1. **Um caminho para o INSS e para a Justiça** (Mateus, 07/10): as rotas `/api/casos/:id/prestacao/recebimento` e `/api/casos/:id/banco` servem os dois. `banco.agendar` passa a ser do Financeiro, e a matriz sobe uma versão. Era a 11. Em 08/10 a Jurimetria (11 e 12) e a Recepção no servidor (13) entraram antes na `main`, e o Desfecho ficou com a 14, uma versão só para as duas ações dele.
 2. **A tarefa do aviso nasce do recebimento** (CA4): o OK da advogada abre só "Receber a prestação de contas"; "Receber e lançar" abre "Avisar resultado e agendar a ida ao banco" para o Financeiro.
    - Versão nova depois do recebimento volta para o Financeiro, e o aviso espera o recebimento da versão atual.
    - Caso encerrado não aceita versão nova.
@@ -55,7 +55,7 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
    - O registro no histórico vai na mesma transação do atendimento (segunda revisão de 08/10).
 5. **Fecha** (CA2): "Expliquei ao cliente" conclui a tarefa e põe o caso na fase "encerrado"; a tela mostra "Perdemos: estudo registrado".
 6. **Entrada:** `abrirExplicacaoDoResultado(casoId)` abre "Aprovar o resumo para o cliente" para a advogada. Quem chama: o estudo de caso (GGVP-19), que já chama no PR da IA (#26), e o "Não recorrer" (GGVP-100), no próximo PR do épico. A semente traz o Paulo Mendes (exemplo).
-7. **Permissões** (matriz versão 12, que passou a 14 na revisão de 08/10 por causa do #23): `resultado.aprovar_resumo` para advogada e Sênior; `resultado.explicar` para Atendimento, líder e advogada. A tela abre com `caso.ver`; o Financeiro não abre.
+7. **Permissões** (matriz versão 12 na origem, hoje 14, a mesma da ida ao banco, depois da Jurimetria e da Recepção): `resultado.aprovar_resumo` para advogada e Sênior; `resultado.explicar` para Atendimento, líder e advogada. A tela abre com `caso.ver`; o Financeiro não abre.
 
 ### Campos
 

@@ -2,7 +2,7 @@
 
 ## GGVP-98 · Financeiro recebe e cliente é avisado
 
-- [x] 1.1 CA3, CA6 · Contratos: `ReceberPrestacao` com `valoresConferem`; `AgendarIdaAoBanco` com `acompanhanteId` obrigatório; `IdaAoBancoDoCaso` com `podeConfirmar` e `encerrado`; matriz versão 11, renumerada para 13 na 3.2 (`banco.agendar` do Financeiro); testes do contrato.
+- [x] 1.1 CA3, CA6 · Contratos: `ReceberPrestacao` com `valoresConferem`; `AgendarIdaAoBanco` com `acompanhanteId` obrigatório; `IdaAoBancoDoCaso` com `podeConfirmar` e `encerrado`; matriz versão 11, renumerada para 14 na 3.2 (`banco.agendar` do Financeiro); testes do contrato.
 - [x] 1.2 CA1, CA3, CA4, CA8 · Servidor: o OK abre só o recebimento; "Receber e lançar" exige a conferência e abre a tarefa do aviso do Financeiro; a mesma pessoa é recusada e registrada; testes da API.
 - [x] 1.3 CA6, CA7 · Servidor: acompanhante obrigatório e do Atendimento; agendar abre "Levar ao banco" para ele, remarcar move a tarefa; testes da API.
 - [x] 1.4 CA2, CA5, CA9 · Servidor: o aviso grava o acervo (processo bom) e a baixa; `POST /api/casos/:id/banco/confirmacao` fecha o caso; testes da API.
@@ -25,9 +25,10 @@
 A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", foi para o próximo PR do épico, junto com a GGVP-100 (ver a proposal). A parte do estudo de caso já está no PR da IA.
 
 - [x] 3.1 Base do PR na `main`, porque a Garantia entrou em 07/10, e a `main` mesclada na branch, sem conflito.
-- [x] 3.2 Matriz: quem entra depois renumera. O #23 (Jurimetria, também com as versões 11 e 12) está à frente na fila, então este PR passou a usar as versões 13 e 14 (revisão de 08/10).
-  - A impressão digital não muda, porque só depende do conteúdo da matriz.
-  - O #23 entrou na `main` em 08/10. Mesclada a `main`, a matriz ficou na versão 14, com as ações das duas, e a impressão digital foi recalculada para `cfe0f314`. Contratos 99, API 311, typecheck, lint e `openspec validate --all --strict` (13 de 13) sem erro.
+- [x] 3.2 Matriz: quem entra depois renumera. Em 08/10 entraram na `main`, antes deste PR, a Jurimetria (#23, versões 11 e 12) e a Recepção no servidor (#29, versão 13).
+  - O Desfecho ficou com a versão 14, uma só para as duas ações dele, a ida ao banco e o resumo do resultado.
+  - A impressão digital foi recalculada para `f102b510`, com as ações das três.
+  - Outra sessão já tinha mesclado a `main` com a Recepção na branch (5523f71). As duas resoluções foram juntadas, ficando com a ordem dela e acertando o rótulo da ida ao banco, que dizia 13.
 - [x] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10, com a main mesclada:
   - typecheck e lint sem erro;
   - `openspec validate --all --strict` com 11 de 11;
