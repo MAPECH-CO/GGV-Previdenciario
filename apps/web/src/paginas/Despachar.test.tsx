@@ -143,3 +143,55 @@ describe('Despachar caso (GGVP-54)', () => {
     expect(screen.queryByRole('button', { name: 'Encerrar o caso' })).toBeNull()
   })
 })
+
+describe('Despachar caso · análise da IA (épico IA, GGVP-54 CA1, CA4)', () => {
+  const CHAMADA = '33333333-3333-4333-8333-333333333333'
+  const analise = {
+    sugestao: {
+      chamadaId: CHAMADA,
+      sugestao: true,
+      texto: 'O INSS somou a renda do filho que mora à parte.',
+      fontes: [{ tipo: 'acervo', referencia: 'caso:x', trecho: 'Petição aprovada: a renda do filho que mora à parte não entra.' }],
+      modelo: 'gpt-4.1-mini',
+      geradaEm: '2026-10-07T13:00:00.000Z',
+      alerta: null,
+    },
+    leitura: { analise: 'O INSS somou a renda do filho que mora à parte.', nadaFalta: false, itens: [{ setor: 'documentacao', descricao: 'Comprovante de residência do filho' }], pericias: ['social'] },
+    motivo: null,
+    aviso: null,
+  }
+
+  it('ao abrir, a análise aparece pronta e já preenche o formulário; a Sênior responde o prazo e o despacho leva a chamada', async () => {
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith('/despacho/analise')) return new Response(JSON.stringify(analise))
+      return init?.method === 'POST' ? new Response(JSON.stringify({ ok: true }), { status: 201 }) : new Response(JSON.stringify(base))
+    })
+    vi.stubGlobal('fetch', fetch)
+    render(<DespacharCaso casoId={CASO} />)
+    expect(await screen.findByText('Sugestão da IA · quem despacha é você (G4)')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Analisar com a IA|Usar a sugestão/ })).toBeNull()
+    expect(screen.getByText('Sugere: Documentação: Comprovante de residência do filho · Avaliação social')).toBeTruthy()
+    expect(screen.getByText(/Petição aprovada: a renda do filho/)).toBeTruthy()
+    const posts = () => fetch.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url]) => String(url).replace(/.*\/casos\/[^/]+/, ''))
+    expect(posts()).toEqual(['/despacho/analise'])
+
+    expect((screen.getByLabelText('Sim, falta') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('O que a Documentação deve obter') as HTMLInputElement).value).toBe('Comprovante de residência do filho')
+    expect((screen.getByLabelText('Avaliação social') as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Responda "Essa tarefa tem prazo?"')
+
+    fireEvent.click(within(screen.getByRole('region', { name: 'Pedido para Documentação' })).getByLabelText('Não'))
+    fireEvent.click(screen.getByRole('button', { name: 'Despachar' }))
+    await screen.findByText('Despacho registrado. Cada setor recebeu "Cumprir pendência".')
+    const corpo = JSON.parse(fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith('/despacho'))![1]!.body as string)
+    expect([corpo.decisao, corpo.chamadaIaId, corpo.tiposPericia]).toEqual(['acionar', CHAMADA, ['social']])
+  })
+
+  it('sem a IA, mostra o motivo e a Sênior despacha pela leitura', async () => {
+    servidor(base, [200, { sugestao: null, leitura: null, motivo: 'A IA não respondeu agora: despache pela sua leitura.', aviso: null }])
+    render(<DespacharCaso casoId={CASO} />)
+    expect(await screen.findByText('A IA não respondeu agora: despache pela sua leitura.')).toBeTruthy()
+    expect((screen.getByLabelText('Não, nada falta') as HTMLInputElement).checked).toBe(false)
+  })
+})

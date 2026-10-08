@@ -1,10 +1,12 @@
 // Publicações da vigília (GGVP-26, GGVP-34, GGVP-37, GGVP-74): fila de revisão da Sênior, leitura e classificação.
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { ClassificarPublicacao, PublicacaoParaLer, PublicacoesDoCaso, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
+import { ClassificarPublicacao, LeituraDaPublicacaoPelaIa, PublicacaoParaLer, PublicacoesDoCaso, SugestaoDePublicacao, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, pessoa, prazo, publicacao, publicacaoReclassificacao, tarefa, usuario } from '../banco/esquema.ts'
 import { feriadosDoProcesso } from '../fluxo/prazo-judicial.ts'
+import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import type { Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { casoDoCnj, pedirLeitura } from '../vigilia/casar.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
@@ -12,10 +14,12 @@ import { itensDaFila } from '../vigilia/fila.ts'
 
 export const MSG_CNJ_SEM_CASO = 'Nenhum processo do escritório tem esse número CNJ.'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export const MSG_IA_SEM_LEITURA = 'A IA não respondeu agora: classifique pela leitura.'
+
+export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   // GGVP-26 CA7, CA10, CA12: a fila da Sênior, com a idade e o prazo mínimo de cada item.
@@ -54,6 +58,32 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
     if (classe === 'andamento') return null
     const [p] = await banco.select().from(prazo).where(eq(prazo.publicacaoId, publicacaoId)).orderBy(desc(prazo.criadoEm)).limit(1)
     return p ? { inicio: p.inicio, fim: p.fim, regra: p.regra, versao: p.regraVersao } : null
+  }
+
+  // GGVP-34 e GGVP-74 (épico IA): a IA sugere o tipo de ato, os dias escritos e um resumo. Nada classifica: só guarda a
+  // classe sugerida, e quem classifica, conta o prazo e encaminha é a pessoa, na rota da classificação. Sugestão pronta
+  // (07/10): a mesma função serve à rota e ao preparo, que lê em segundo plano toda publicação casada ainda sem classe.
+  app.post<{ Params: { id: string } }>('/api/publicacoes/:id/sugestao', { preHandler: exigir(banco, 'publicacao.classificar', agora) }, async (pedido, resposta) => {
+    return (await sugerirClasse(pedido.params.id, pedido.usuario!.id)) ?? negar(resposta, 404, 'Publicação não encontrada.')
+  })
+  preparo.registrar(
+    async () => (await banco.select({ id: publicacao.id }).from(publicacao).where(and(isNotNull(publicacao.casoId), isNull(publicacao.classe)))).map((p) => p.id),
+    (publicacaoId) => sugerirClasse(publicacaoId, null, { soPreparar: true }),
+  )
+
+  async function sugerirClasse(publicacaoId: string, quem: string | null, como: ComoSugerir = {}) {
+    const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, publicacaoId))
+    if (!p || !p.casoId) return null
+    const validar = (texto: string) => LeituraDaPublicacaoPelaIa.safeParse(lerJson(texto)).success
+    const s = await ia.sugerir(
+      'classificar_publicacao',
+      { casoId: p.casoId, quem, conteudo: p.texto, fontes: [{ tipo: 'publicacao', referencia: `publicacao:${p.id}` }] },
+      { ...como, validar },
+    )
+    if (!s) return SugestaoDePublicacao.parse({ sugestao: null, motivo: MSG_IA_SEM_LEITURA })
+    const lida = LeituraDaPublicacaoPelaIa.parse(lerJson(s.texto))
+    if (p.classeSugeridaIa !== lida.classe) await banco.update(publicacao).set({ classeSugeridaIa: lida.classe }).where(eq(publicacao.id, p.id))
+    return SugestaoDePublicacao.parse({ sugestao: { ...lida, chamadaId: s.chamadaId, modelo: s.modelo, alerta: s.alerta }, motivo: null })
   }
 
   // GGVP-74 CA4 e GGVP-34 CA3: a publicação, a classificação e o prazo contado (com a regra e a versão).

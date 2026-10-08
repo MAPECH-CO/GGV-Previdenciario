@@ -55,6 +55,12 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  'D3b.06r': (id) => `/casos/${id}/resultado`,
+  'D3b.06': (id) => `/casos/${id}/resultado`,
+  // GGVP-19 CA3: a revisão do estudo é na tela de estudos.
+  'D3b.05': () => '/estudos',
+  // GGVP-38: a recomendação da perícia, para a advogada conferir.
+  'DP.00': (id) => `/casos/${id}/pericias`,
   'D3.03': (id) => `/casos/${id}/despacho`,
   'D3.04': (id) => `/casos/${id}/pendencias`,
   'D3.04s': (id) => `/casos/${id}/despacho`,

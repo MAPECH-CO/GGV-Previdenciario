@@ -1,5 +1,5 @@
 {
-  "id": "5141de8e-84d9-432f-b560-df991455e821",
+  "id": "8577ac40-75c0-4c8b-a265-244c55df2302",
   "prevId": "dd3b27e4-8ad2-4fd2-84ec-f89b848bcceb",
   "version": "7",
   "dialect": "postgresql",
@@ -67,6 +67,141 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.chamada_ia": {
+      "name": "chamada_ia",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "finalidade": {
+          "name": "finalidade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fornecedor": {
+          "name": "fornecedor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modelo": {
+          "name": "modelo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "versao_instrucao": {
+          "name": "versao_instrucao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pedida_por": {
+          "name": "pedida_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entrada_tamanho": {
+          "name": "entrada_tamanho",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entrada_hash": {
+          "name": "entrada_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fontes": {
+          "name": "fontes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "saida": {
+          "name": "saida",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "situacao": {
+          "name": "situacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "erro": {
+          "name": "erro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alerta": {
+          "name": "alerta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duracao_ms": {
+          "name": "duracao_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quando": {
+          "name": "quando",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chamada_ia_pedida_por_usuario_id_fk": {
+          "name": "chamada_ia_pedida_por_usuario_id_fk",
+          "tableFrom": "chamada_ia",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "pedida_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "chamada_ia_fornecedor": {
+          "name": "chamada_ia_fornecedor",
+          "value": "\"chamada_ia\".\"fornecedor\" in ('openai', 'mistral')"
+        },
+        "chamada_ia_situacao": {
+          "name": "chamada_ia_situacao",
+          "value": "\"chamada_ia\".\"situacao\" in ('ok', 'desligada', 'recusada', 'falhou')"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.evento_auditoria": {
@@ -759,12 +894,6 @@
         },
         "origem": {
           "name": "origem",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drive_pasta_id": {
-          "name": "drive_pasta_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -2303,19 +2432,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "drive_arquivo_id": {
-          "name": "drive_arquivo_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drive_pendente": {
-          "name": "drive_pendente",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -3506,12 +3622,6 @@
         "pacote_gerado_em": {
           "name": "pacote_gerado_em",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pacote_drive_id": {
-          "name": "pacote_drive_id",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

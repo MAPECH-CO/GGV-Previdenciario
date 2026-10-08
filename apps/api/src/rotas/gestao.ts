@@ -20,6 +20,7 @@ const DESCRICAO: Record<string, string> = {
   'G6:D3a.04': 'Protocolar a manifestação sem a versão aprovada (G6)',
   'G21:D3a.04': 'Manifestar no processo sem prova em todos os itens (G21)',
   'G8:D3b.03': 'Avisar o cliente antes do OK da advogada na prestação de contas (G8)',
+  'funcoes:D2.06r': 'Registrar o recebimento da prestação em que deu o OK (separação de funções: quem dá o OK não recebe)',
 }
 /** Um id do banco no formato uuid, antes de ir à consulta (texto fora do formato faz o PostgreSQL falhar). */
 export const UUID = /^[0-9a-f-]{36}$/

@@ -17,7 +17,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 13
+// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
+// 16. Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 16
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -62,7 +64,8 @@ export const MATRIZ = {
   'exigencia_inss.tratar': ['advogada'],
   'exigencia_inss.cumprir': ['documentacao'],
   'exigencia_inss.decidir_vencida': ['senior'],
-  'banco.agendar': ['atendimento', 'atendimento_lider'],
+  // Versão 14 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
+  'banco.agendar': ['financeiro'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],
@@ -84,12 +87,28 @@ export const MATRIZ = {
   'historico.autorizar_exportacao': ['socio'],
   // GGVP-104: a gestão do escritório muda limites, kits e mensagens sem mexer no código.
   'configuracao.editar': ['socio', 'senior'],
-  // Versão 11 (GGVP-125, bloco 1): a ficha da Recepção no servidor. Quem trabalha com o caso cadastra e edita a ficha
+  // Versão 14 (GGVP-22, Lucas 06/10): o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica ao cliente.
+  'resultado.aprovar_resumo': ['advogada', 'senior'],
+  'resultado.explicar': ['atendimento', 'atendimento_lider', 'advogada'],
+  // Versão 13 (GGVP-125, bloco 1): a ficha da Recepção no servidor. Quem trabalha com o caso cadastra e edita a ficha
   // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
   // renumera a versão.
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
   'entrevista.gravar': JURIDICO,
+  // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
+  // indica novo processo, quem decide é a Sênior.
+  'estudo.ver': JURIDICO,
+  'estudo.revisar': ['senior'],
+  // Versão 16 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
+  // a conversa é o Atendimento e o Jurídico (advogada e Sênior), como nas telas; só a Sênior volta uma versão e dá prazo
+  // novo à pendência atrasada; a segunda confirmação dos dados bancários é do Atendimento líder, da advogada ou da Sênior.
+  'conversa.registrar': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'ficha.voltar_versao': ['senior'],
+  'conversa.prazo_da_pendencia': ['senior'],
+  'mensagem.enviar': ['atendimento', 'atendimento_lider', ...JURIDICO],
+  'dados_bancarios.pedir': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'dados_bancarios.confirmar': ['atendimento_lider', 'advogada', 'senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

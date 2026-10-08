@@ -117,8 +117,22 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1791477730667,
-      "tag": "0016_drive_do_escritorio",
+      "when": 1791477280851,
+      "tag": "0016_registro_da_ia",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791483509900,
+      "tag": "0017_relacionamento_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791486655727,
+      "tag": "0018_drive_do_escritorio",
       "breakpoints": true
     }
   ]

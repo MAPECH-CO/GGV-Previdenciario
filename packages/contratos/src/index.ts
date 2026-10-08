@@ -62,9 +62,16 @@ export * from './exigencia.ts'
 export * from './prestacao.ts'
 export * from './justica.ts'
 export * from './governanca.ts'
+export * from './ia.ts'
+export * from './desfecho.ts'
 export * from './recepcao.ts'
 export * from './acervo.ts'
 export * from './resultados.ts'
 
 // O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
 export * from './chat.ts'
+
+// O Relacionamento com o cliente no servidor (GGVP-138): a conversa, as mensagens e a segurança do contato.
+export * from './conversas.ts'
+export * from './mensagens.ts'
+export * from './seguranca.ts'

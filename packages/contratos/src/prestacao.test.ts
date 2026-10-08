@@ -19,17 +19,23 @@ describe('GGVP-44 · prestação de contas', () => {
 
   it('CA9 · divergência pede o motivo', () => {
     expect(erro(ReceberPrestacao.safeParse({ resultado: 'divergencia', motivo: ' ' }))).toBe('Escreva qual é a divergência')
-    expect(ReceberPrestacao.parse({ resultado: 'recebido' })).toEqual({ resultado: 'recebido' })
+    expect(ReceberPrestacao.parse({ resultado: 'recebido', valoresConferem: true })).toEqual({ resultado: 'recebido', valoresConferem: true })
+  })
+
+  it('GGVP-98 CA3 · "Receber e lançar" só com os valores conferidos', () => {
+    expect(erro(ReceberPrestacao.safeParse({ resultado: 'recebido' }))).toBe('Marque "Valores conferem com o comprovante"')
   })
 })
 
 describe('GGVP-44 · ida ao banco', () => {
-  it('CA10 · data, hora e local obrigatórios; quem acompanha é opcional e da equipe', () => {
-    const ok = { data: '15/10/2026', hora: '10:00', local: 'Caixa, agência Centro', acompanhanteId: '' }
-    expect(AgendarIdaAoBanco.parse(ok)).toEqual({ data: '2026-10-15', hora: '10:00', local: 'Caixa, agência Centro' })
+  it('CA10 e GGVP-98 CA6 · data, hora, local e quem acompanha obrigatórios', () => {
+    const ANA = '11111111-1111-4111-8111-111111111111'
+    const ok = { data: '15/10/2026', hora: '10:00', local: 'Caixa, agência Centro', acompanhanteId: ANA }
+    expect(AgendarIdaAoBanco.parse(ok)).toEqual({ data: '2026-10-15', hora: '10:00', local: 'Caixa, agência Centro', acompanhanteId: ANA })
+    expect(erro(AgendarIdaAoBanco.safeParse({ ...ok, acompanhanteId: '' }))).toBe('Escolha quem do Atendimento acompanha o cliente')
     expect(erro(AgendarIdaAoBanco.safeParse({ ...ok, hora: '25:00' }))).toBe('Informe a hora (hh:mm)')
     expect(erro(AgendarIdaAoBanco.safeParse({ ...ok, local: '' }))).toBe('Informe a agência ou o local')
-    expect(erro(AgendarIdaAoBanco.safeParse({ ...ok, acompanhanteId: 'Ana' }))).toBe('Escolha quem acompanha na lista')
+    expect(erro(AgendarIdaAoBanco.safeParse({ ...ok, acompanhanteId: 'Ana' }))).toBe('Escolha quem do Atendimento acompanha o cliente')
   })
 
   it('CA11 · o envio registra o canal', () => {
