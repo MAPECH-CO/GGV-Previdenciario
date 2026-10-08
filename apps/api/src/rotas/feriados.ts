@@ -3,7 +3,7 @@
 // na mesma transação, com o dia, o tribunal e o que era: nada se perde quando um feriado sai da lista.
 import { ANOS_DE_FERIADOS, FeriadosDoEscritorio, NovoFeriado, TRIBUNAIS_CONHECIDOS, pode, type Erro, type TribunalConhecido } from '@ggv/contratos'
 import { dataParaIso, isoParaData, normalizarData } from '@ggv/campos'
-import { asc, desc, eq, inArray } from 'drizzle-orm'
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
 import { eventoAuditoria, feriado, usuario } from '../banco/esquema.ts'
@@ -20,6 +20,8 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 const onde = (tribunal: TribunalConhecido | null | undefined) => (tribunal ? TRIBUNAIS_CONHECIDOS[tribunal] : 'nacional')
 /** Um dia por tribunal: a unicidade do banco não pega o nacional (tribunal nulo), então a conferência é aqui. */
 const chave = (data: string, tribunal: string | null) => `${data}|${tribunal ?? ''}`
+/** Uma mudança na lista por vez: duas gravações ao mesmo tempo não repetem o dia nacional. Sai no fim da transação. */
+const umaPorVez = (tx: Pick<Banco, 'execute'>) => tx.execute(sql`select pg_advisory_xact_lock(hashtext('feriados'))`)
 
 function descrever(acao: string, d: Detalhe) {
   if (acao === 'feriados_carregados') return `Carregou os feriados da lei de ${d.anos?.join(' e ')}: ${d.acrescentados} dia(s) acrescentado(s)`
@@ -49,6 +51,7 @@ export function registrarRotasFeriados(app: FastifyInstance, { banco, agora = ()
     const data = dataParaIso(normalizarData(entrada.data.data))!
     const quem = pedido.usuario!.id
     const criado = await banco.transaction(async (tx) => {
+      await umaPorVez(tx)
       const mesmoDia = await tx.select().from(feriado).where(eq(feriado.data, data))
       if (mesmoDia.some((f) => f.tribunal === tribunal)) return null
       const [f] = await tx.insert(feriado).values({ data, tribunal, descricao }).returning()
@@ -74,6 +77,7 @@ export function registrarRotasFeriados(app: FastifyInstance, { banco, agora = ()
   app.post('/api/configuracao/feriados/carga', editar, async (pedido) => {
     const quem = pedido.usuario!.id
     const acrescentados = await banco.transaction(async (tx) => {
+      await umaPorVez(tx)
       const existentes = new Set((await tx.select().from(feriado)).map((f) => chave(f.data, f.tribunal)))
       const novos = ANOS_DE_FERIADOS.flatMap((ano) => feriadosDaLei(ano)).filter((f) => !existentes.has(chave(f.data, f.tribunal)))
       if (novos.length > 0) await tx.insert(feriado).values(novos)
