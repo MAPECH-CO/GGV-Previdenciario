@@ -2,6 +2,12 @@
 
 > Candidata a história, diagrama **D3b · Desfecho do mérito**. Cartão no Jira: [GGVP-22](https://mapech.atlassian.net/browse/GGVP-22), rótulo `a-validar-bpmn`. Chave provisória original: GGVP-22. Fonte: BPMN do Miro (frames "revisão BPMN") e roteiro de laudos do escritório.
 
+> **Refinada no Jira (Lucas, 06/10), épico GGVP-11 Desfecho e financeiro.** O texto abaixo é o rascunho original e ficou para trás. Pela decisão do Lucas:
+> - o Jurídico escreve e aprova o resumo para o cliente e escolhe quem fala;
+> - a tarefa na fila é "Explicar resultado", de quem fala: o Atendimento no padrão, ou a advogada quando ela mesma liga.
+>
+> Valem o cartão no Jira e a spec `openspec/changes/ggvp-11-desfecho-e-financeiro/specs/ggvp-22/spec.md`.
+
 **Como** Atendimento\
 **quero** uma tarefa para falar com o cliente e explicar o resultado\
 **para** que ele entenda o desfecho.
