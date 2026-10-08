@@ -34,8 +34,11 @@ function descrever(acao: string, d: Detalhe) {
   return acao
 }
 
+/** Duas publicações ao mesmo tempo: a segunda bate na unicidade da versão (`kit_unico`, `modelo_versao_unica`). */
+const ehVersaoRepetida = (e: unknown) => [(e as { code?: string }).code, (e as { cause?: { code?: string } }).cause?.code].includes('23505')
+const MSG_PUBLICADO_AGORA = 'Outra pessoa publicou uma versão agora. Recarregue a página e confira.'
+
 export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const historico = registrarHistorico(banco, agora)
   const editar = { preHandler: exigir(banco, 'configuracao.editar', agora) }
 
   app.get('/api/configuracao', { preHandler: exigir(banco, 'gestao.ver', agora) }, async (pedido) => {
@@ -87,10 +90,13 @@ export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora 
       if (typeof inicio === 'number' && typeof fim === 'number' && inicio >= fim) return negar(resposta, 400, 'O começo do horário sem alerta vem antes do fim.')
     }
     const quem = pedido.usuario!.id
-    const [atual] = await banco.select().from(configuracao).where(eq(configuracao.chave, chave))
-    if (atual) await banco.update(configuracao).set({ valor, alteradoPor: quem, atualizadoEm: agora() }).where(eq(configuracao.chave, chave))
-    else await banco.insert(configuracao).values({ chave, valor, alteradoPor: quem })
-    await historico(quem, 'configuracao_alterada', pedido, 'configuracao', { chave, antes: atual?.valor ?? null, depois: valor })
+    // A mudança e o registro no histórico entram juntos ou não entram (GGVP-99).
+    await banco.transaction(async (tx) => {
+      const [atual] = await tx.select().from(configuracao).where(eq(configuracao.chave, chave))
+      if (atual) await tx.update(configuracao).set({ valor, alteradoPor: quem, atualizadoEm: agora() }).where(eq(configuracao.chave, chave))
+      else await tx.insert(configuracao).values({ chave, valor, alteradoPor: quem })
+      await registrarHistorico(tx, agora)(quem, 'configuracao_alterada', pedido, 'configuracao', { chave, antes: atual?.valor ?? null, depois: valor })
+    })
     return resposta.code(201).send({ ok: true, valor })
   })
 
@@ -101,19 +107,26 @@ export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora 
     const entrada = PublicarKit.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira o kit.')
     const quem = pedido.usuario!.id
-    const [{ ultima }] = await banco.select({ ultima: max(kitDocumento.versao) }).from(kitDocumento).where(eq(kitDocumento.beneficio, beneficio))
-    const versao = (ultima ?? 0) + 1
-    const antes = await banco
-      .select({ tipoDocumento: kitDocumento.tipoDocumento, obrigatorio: kitDocumento.obrigatorio })
-      .from(kitDocumento)
-      .where(and(eq(kitDocumento.beneficio, beneficio), isNull(kitDocumento.revogadoEm)))
     const momento = agora()
-    await banco.transaction(async (tx) => {
-      await tx.update(kitDocumento).set({ revogadoEm: momento }).where(and(eq(kitDocumento.beneficio, beneficio), isNull(kitDocumento.revogadoEm)))
-      await tx.insert(kitDocumento).values(entrada.data.itens.map((i) => ({ beneficio, tipoDocumento: i.tipoDocumento, obrigatorio: i.obrigatorio, versao, vigenteDesde: momento })))
-    })
-    await historico(quem, 'kit_publicado', pedido, 'configuracao', { beneficio, versao, itens: entrada.data.itens.length, antes, depois: entrada.data.itens })
-    return resposta.code(201).send({ ok: true, versao })
+    try {
+      // A versão é lida, gravada e registrada no histórico na mesma transação; a unicidade recusa a segunda publicação.
+      const versao = await banco.transaction(async (tx) => {
+        const [{ ultima }] = await tx.select({ ultima: max(kitDocumento.versao) }).from(kitDocumento).where(eq(kitDocumento.beneficio, beneficio))
+        const versao = (ultima ?? 0) + 1
+        const antes = await tx
+          .select({ tipoDocumento: kitDocumento.tipoDocumento, obrigatorio: kitDocumento.obrigatorio })
+          .from(kitDocumento)
+          .where(and(eq(kitDocumento.beneficio, beneficio), isNull(kitDocumento.revogadoEm)))
+        await tx.update(kitDocumento).set({ revogadoEm: momento }).where(and(eq(kitDocumento.beneficio, beneficio), isNull(kitDocumento.revogadoEm)))
+        await tx.insert(kitDocumento).values(entrada.data.itens.map((i) => ({ beneficio, tipoDocumento: i.tipoDocumento, obrigatorio: i.obrigatorio, versao, vigenteDesde: momento })))
+        await registrarHistorico(tx, agora)(quem, 'kit_publicado', pedido, 'configuracao', { beneficio, versao, itens: entrada.data.itens.length, antes, depois: entrada.data.itens })
+        return versao
+      })
+      return resposta.code(201).send({ ok: true, versao })
+    } catch (e) {
+      if (ehVersaoRepetida(e)) return negar(resposta, 409, MSG_PUBLICADO_AGORA)
+      throw e
+    }
   })
 
   // CA3: a mensagem padrão ganha versão nova; a anterior fica guardada, desativada.
@@ -126,11 +139,16 @@ export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora 
     if (!m) return negar(resposta, 404, 'Mensagem não encontrada.')
     const quem = pedido.usuario!.id
     const versao = m.versao + 1
-    await banco.transaction(async (tx) => {
-      await tx.update(modelo).set({ ativo: false }).where(eq(modelo.id, m.id))
-      await tx.insert(modelo).values({ tipo: 'mensagem', nome: m.nome, versao, conteudo: entrada.data.conteudo })
-    })
-    await historico(quem, 'mensagem_alterada', pedido, 'configuracao', { nome: m.nome, versao, antes: m.conteudo, depois: entrada.data.conteudo })
+    try {
+      await banco.transaction(async (tx) => {
+        await tx.update(modelo).set({ ativo: false }).where(eq(modelo.id, m.id))
+        await tx.insert(modelo).values({ tipo: 'mensagem', nome: m.nome, versao, conteudo: entrada.data.conteudo })
+        await registrarHistorico(tx, agora)(quem, 'mensagem_alterada', pedido, 'configuracao', { nome: m.nome, versao, antes: m.conteudo, depois: entrada.data.conteudo })
+      })
+    } catch (e) {
+      if (ehVersaoRepetida(e)) return negar(resposta, 409, MSG_PUBLICADO_AGORA)
+      throw e
+    }
     return resposta.code(201).send({ ok: true, versao })
   })
 }

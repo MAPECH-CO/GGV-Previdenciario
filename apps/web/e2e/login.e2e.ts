@@ -10,10 +10,11 @@ async function preencher(page: import('@playwright/test').Page, email: string, s
 }
 
 test('CA1 e CA3 · sem sessão vai ao login; depois de entrar, volta para a tela pedida; Sair encerra', async ({ page }) => {
-  await page.goto('/clientes/novo')
-  await expect(page).toHaveURL(/\/entrar\?volta=%2Fclientes%2Fnovo/)
+  // A Central da Sênior ainda não existe: a volta do login leva a ela, e ela avisa que não foi construída.
+  await page.goto('/senior')
+  await expect(page).toHaveURL(/\/entrar\?volta=%2Fsenior/)
   await preencher(page, ATENDIMENTO, SENHA_DE_EXEMPLO)
-  await expect(page).toHaveURL('/clientes/novo')
+  await expect(page).toHaveURL('/senior')
   await expect(page.getByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeVisible()
 
   await page.goto('/')

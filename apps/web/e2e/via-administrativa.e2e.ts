@@ -7,7 +7,7 @@ test.describe.configure({ mode: 'serial' })
 test('GGVP-27 · o Jurídico administrativo protocola um caso: senha do cofre, número, DER, comprovante e conferência', async ({ page }) => {
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Central · Jurídico administrativo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Início do Jurídico administrativo' })).toBeVisible()
   const protocolos = page.getByRole('link', { name: /· Protocolar no Meu INSS$/ })
   await expect(protocolos).toHaveCount(3)
   await protocolos.first().click()

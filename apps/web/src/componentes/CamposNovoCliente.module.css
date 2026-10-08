@@ -1,0 +1,15 @@
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Com fonte grande ou tela estreita, o campo desce para a linha de baixo em vez de espremer. */
+.linha > * {
+  min-width: 11rem;
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}

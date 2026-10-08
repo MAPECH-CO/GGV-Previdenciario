@@ -1,0 +1,76 @@
+.cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  display: flex;
+  flex: 0 0 64px;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  border-radius: 32px;
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.textos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nome {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.linha {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chipOk,
+.chipAlerta,
+.chipAcento {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.chipOk {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.chipAlerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.chipAcento {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.foto {
+  padding: 8px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}

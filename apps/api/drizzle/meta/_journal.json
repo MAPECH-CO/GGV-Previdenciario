@@ -96,15 +96,29 @@
     {
       "idx": 13,
       "version": "7",
-      "when": 1791413423580,
-      "tag": "0013_registro_da_ia",
+      "when": 1791431868818,
+      "tag": "0013_ficha_da_recepcao",
       "breakpoints": true
     },
     {
       "idx": 14,
       "version": "7",
-      "when": 1791414265924,
-      "tag": "0014_alerta_da_ia",
+      "when": 1791445639547,
+      "tag": "0014_agenda_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791464765972,
+      "tag": "0015_gravacao_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791477280851,
+      "tag": "0016_registro_da_ia",
       "breakpoints": true
     }
   ]

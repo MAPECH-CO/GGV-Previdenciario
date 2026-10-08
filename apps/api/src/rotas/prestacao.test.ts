@@ -5,7 +5,19 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_ACOMPANHANTE, MSG_ANTES_DA_PRESTACAO, MSG_ANTES_DO_AVISO, MSG_G8, MSG_MESMA_PESSOA, MSG_SEM_DEFERIDO, MODELO_IDA_AO_BANCO, TITULO_AVISO } from './prestacao.ts'
+import {
+  MSG_ACOMPANHANTE,
+  MSG_ANTES_DA_PRESTACAO,
+  MSG_ANTES_DO_AVISO,
+  MSG_ANTES_DO_RECEBIMENTO,
+  MSG_ENCERRADO,
+  MSG_G8,
+  MSG_MESMA_PESSOA,
+  MSG_SEM_DEFERIDO,
+  MSG_SEM_DESFECHO,
+  MODELO_IDA_AO_BANCO,
+  TITULO_AVISO,
+} from './prestacao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -129,7 +141,8 @@ describe('GGVP-44 · prestação de contas', () => {
     const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/prestacao/recebimento`, cookies, payload: RECEBIDO })
     expect([r.statusCode, r.json().erro]).toEqual([409, MSG_MESMA_PESSOA])
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
-    expect(b.detalhe).toMatchObject({ portao: 'G8', passo: 'D2.06r', perfil: 'financeiro', motivo: 'ok_e_recebimento' })
+    // Separação de funções, e não o G8 (que é "o aviso só sai depois do OK"): código neutro até o Lucas decidir.
+    expect(b.detalhe).toMatchObject({ portao: 'funcoes', passo: 'D2.06r', perfil: 'financeiro', motivo: 'ok_e_recebimento' })
   })
 })
 
@@ -206,5 +219,69 @@ describe('GGVP-44 · ida ao banco', () => {
     const v = (await chamar('julia', 'GET', '/banco')).json()
     expect([v.encerrado, v.podeConfirmar, v.podeAgendar]).toEqual([true, false, false])
     expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(409)
+  })
+
+  it('GGVP-98 CA9 · caso encerrado não reabre: agendar e avisar de novo devolvem 409, e nenhuma tarefa nasce', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/confirmacao')
+    for (const [resto, corpo] of [['/banco', AGENDA()], ['/banco/envio', { canal: 'whatsapp' }]] as const) {
+      const r = await chamar('julia', 'POST', resto, corpo)
+      expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
+    }
+    expect(await abertas()).toEqual([])
+    expect((await banco.select().from(agendamento)).map((a) => a.situacao)).toEqual(['realizado'])
+    expect(await banco.select().from(mensagem)).toHaveLength(1)
+  })
+
+  it('GGVP-98 CA2 · sem desfecho registrado, o aviso não sai e o caso não entra no acervo como processo bom', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await banco.update(resultadoInss).set({ resultado: 'indeferido' })
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_SEM_DESFECHO])
+    expect([await banco.select().from(processoAcervo), await banco.select().from(mensagem)]).toEqual([[], []])
+  })
+})
+
+describe('GGVP-98 · quarta revisão de 08/10', () => {
+  it('CA3 · na rota, lançar sem conferir os valores é recusado (400), e nada é recebido', async () => {
+    await deferir()
+    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'recebido', valoresConferem: false })).statusCode).toBe(400)
+    const [p] = await banco.select().from(prestacaoContas)
+    expect([p.recebidaEm, p.recebidaPor]).toEqual([null, null])
+  })
+
+  it('CA4 · versão nova depois do recebimento: o aviso espera o novo recebimento do Financeiro', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    expect((await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, valorRecebido: '12.000,00' })).statusCode).toBe(201)
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ANTES_DO_RECEBIMENTO])
+    await receber()
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).statusCode).toBe(201)
+  })
+
+  it('CA9 · caso encerrado não aceita versão nova da prestação, e nenhuma tarefa nasce', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/confirmacao')
+    const r = await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
+    expect(await abertas()).toEqual([])
+  })
+
+  // O banco embutido atende uma consulta de cada vez, então aqui a disputa não acontece de verdade: o teste confere o
+  // resultado com dois pedidos juntos. No PostgreSQL, quem barra é a condição no próprio update do recebimento.
+  it('CA4 · dois recebimentos ao mesmo tempo: um passa, o outro recebe 409, e o recebimento conta uma vez', async () => {
+    await deferir()
+    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    const rs = await Promise.all([receber(), receber()])
+    expect(rs.map((r) => r.statusCode).sort()).toEqual([201, 409])
+    expect(await banco.select().from(tarefa).where(eq(tarefa.passo, 'D2.06b'))).toHaveLength(1)
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'prestacao_recebida'))).toHaveLength(1)
   })
 })

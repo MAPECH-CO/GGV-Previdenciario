@@ -64,3 +64,9 @@ export * from './justica.ts'
 export * from './governanca.ts'
 export * from './ia.ts'
 export * from './desfecho.ts'
+export * from './recepcao.ts'
+export * from './acervo.ts'
+export * from './resultados.ts'
+
+// O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
+export * from './chat.ts'

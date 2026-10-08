@@ -1,0 +1,171 @@
+/* Figma "Overlay · Registrar conversa" (2144:2). */
+.janela {
+  width: min(640px, calc(100vw - 32px));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela:not([open]) {
+  display: none;
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.play {
+  color: var(--cor-acento);
+}
+
+.sub {
+  margin-top: 2px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.fechar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-22);
+  line-height: 1;
+}
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 22px;
+}
+
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+}
+
+.chip[aria-checked='true'] {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-13);
+}
+
+.entrada {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-13);
+  resize: vertical;
+}
+
+.ia {
+  padding: 10px 12px;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento-suave);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}
+
+.ia span {
+  color: var(--cor-acento);
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+.pe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--cor-linha);
+}
+
+.motivo {
+  flex: 1 1 100%;
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  text-align: right;
+}
+
+.primario,
+.secundario {
+  padding: 9px 16px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.primario:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secundario {
+  border: 1px solid var(--cor-borda-controle);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}

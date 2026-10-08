@@ -1,1 +1,0 @@
-ALTER TABLE "chamada_ia" ADD COLUMN "alerta" text;

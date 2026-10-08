@@ -31,17 +31,27 @@ O resumo SHALL ser escrito e aprovado por pessoa do Jurídico (advogada ou Sêni
 - **Então** ele vem aprovado pelo Jurídico, com o nome de quem aprovou
 
 ### Requirement: CA4 · Cada contato fica registrado
-Cada contato SHALL registrar a data, o canal e o que foi explicado. "Sem contato, tentar de novo" SHALL manter a tarefa aberta; "Expliquei ao cliente" SHALL concluí-la e exige o que foi explicado.
+Cada contato SHALL registrar a data, o canal e o que foi explicado. "Sem contato, tentar de novo" SHALL manter a tarefa aberta; "Expliquei ao cliente" SHALL concluí-la e exige o que foi explicado. A explicação SHALL mostrar só os contatos registrados nela, e não outro atendimento do caso.
 
 #### Scenario: CA4 · Sem contato e depois explicado
 - **Dado** a tarefa aberta
 - **Quando** registro "Sem contato" e depois "Expliquei ao cliente"
 - **Então** os dois contatos ficam com data e canal, a tarefa continua aberta depois do primeiro e conclui no segundo
 
+#### Scenario: CA4 · Só os contatos desta explicação
+- **Dado** outro atendimento do caso registrado depois do resumo
+- **Quando** abro a explicação
+- **Então** a lista de contatos mostra só os registrados nesta explicação
+
 ### Requirement: CA5 · A advogada decide quem fala com o cliente
-Ao aprovar o resumo, a advogada SHALL escolher se ela mesma fala com o cliente (a tarefa fica com ela) ou se passa ao Atendimento.
+Ao aprovar o resumo, a advogada SHALL escolher se ela mesma fala com o cliente (a tarefa fica com ela) ou se passa ao Atendimento. Só quem ficou com a explicação SHALL registrar o contato.
 
 #### Scenario: CA5 · Caso complexo
 - **Dado** um caso complexo
 - **Quando** a advogada aprova o resumo escolhendo "Eu ligo"
 - **Então** a tarefa "Explicar resultado" fica com ela, e não com o Atendimento
+
+#### Scenario: CA5 · Só quem fala registra
+- **Dado** a explicação com a advogada
+- **Quando** o Atendimento tenta registrar o contato
+- **Então** o portal recusa, e a tarefa continua com ela

@@ -1,0 +1,40 @@
+/* O resto vem de Balcao.module.css (telas de passo) e Campo.module.css (os campos). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 18px;
+  font-size: var(--fonte-14);
+  list-style: disc;
+}
+
+.texto {
+  padding: 10px 14px;
+  background: var(--cor-fundo);
+  font-size: var(--fonte-15);
+}
+
+.conferir {
+  gap: 14px;
+}
+
+.conferencia {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fonte-15);
+}
+
+.conferencia input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cor-acento);
+}

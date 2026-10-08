@@ -21,3 +21,61 @@
   transform: rotate(180deg);
   white-space: nowrap;
 }
+
+/* O painel do Suporte (Figma 60:2): à direita, por cima da tela, com o chat do portal (GGVP-82, CA6). */
+.painel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100vw);
+  height: 100vh;
+  border-left: 1px solid var(--cor-linha);
+  background: var(--cor-fundo);
+  box-shadow: -8px 0 24px rgb(0 0 0 / 12%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.titulo {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.sub {
+  font-size: var(--fonte-11);
+  opacity: 0.85;
+}
+
+.cabeca > div {
+  flex: 1;
+}
+
+.fechar {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--cor-superficie);
+  font-size: var(--fonte-18);
+}
+
+.corpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.pe {
+  padding: 8px 16px 12px;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}

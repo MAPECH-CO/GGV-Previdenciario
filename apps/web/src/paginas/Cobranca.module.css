@@ -1,0 +1,175 @@
+/* O resto vem de Balcao.module.css: o visual das telas de passo (Figma step_D1.23, 2106:3 e 1818:440). */
+.senior {
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-senior-suave);
+  color: var(--cor-senior);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.frase {
+  padding: 14px 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-15);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fonte-14);
+}
+
+.detalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+/* "Laço · Pendências" da tela da sênior: rótulo e valor. */
+.linhas {
+  display: grid;
+  grid-template-columns: minmax(110px, 230px) 1fr;
+  gap: 10px 16px;
+  margin: 0;
+  font-size: var(--fonte-14);
+}
+
+.linhas dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.linhas dd {
+  margin: 0;
+}
+
+/* "Contato do cliente": nome e telefone à esquerda, "Ligar" e "Chatwoot" à direita. */
+.contato {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pessoa {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nome {
+  font-size: var(--fonte-15);
+  font-weight: 500;
+}
+
+.botao {
+  padding: 9px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.botao:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.formulario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.formulario label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fonte-12);
+}
+
+.formulario input,
+.justificativa {
+  padding: 9px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-14);
+}
+
+.justificativa {
+  width: 100%;
+  background: var(--cor-fundo);
+}
+
+/* "Anexar o documento recebido": área tracejada do Figma 2106:3. */
+.anexar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 26px 14px;
+  border: 1.25px dashed var(--cor-borda-controle);
+  border-radius: var(--raio-14);
+  background: transparent;
+  color: var(--cor-texto);
+  text-align: center;
+}
+
+.seta {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-20);
+}
+
+.anexarTitulo {
+  font-size: var(--fonte-14);
+  font-weight: 500;
+}
+
+.anexarSub {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-12);
+}
+
+.secundario {
+  padding: 12px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.secundario:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.nota {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}

@@ -1,0 +1,89 @@
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.documento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-6);
+  text-align: center;
+}
+
+.miniatura {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 72px;
+  border-radius: 4px;
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-18);
+}
+
+.nome {
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.detalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-10);
+}
+
+.vazio {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.soltar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1.25px dashed var(--cor-borda-controle);
+  border-radius: var(--raio-10);
+  background: var(--cor-fundo);
+  text-align: left;
+}
+
+.icone {
+  flex: 0 0 24px;
+  height: 24px;
+  fill: none;
+  stroke: var(--cor-acento);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.soltarTitulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.soltarSub {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.aviso {
+  color: var(--cor-ok);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}

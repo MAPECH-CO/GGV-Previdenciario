@@ -1,0 +1,15 @@
+.proxima {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.botao {
+  width: 100%;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}

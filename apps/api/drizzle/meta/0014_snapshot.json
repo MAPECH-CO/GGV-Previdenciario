@@ -1,6 +1,6 @@
 {
-  "id": "4a1089cc-7257-4888-80e1-3a31d06a5103",
-  "prevId": "cd20cf04-5774-407f-934f-2d316c04319b",
+  "id": "95fa622a-89b7-41ce-a2a7-60d569d771d0",
+  "prevId": "6ca409d7-3e6b-4761-bc71-de01ba1f06d7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -67,141 +67,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "public.chamada_ia": {
-      "name": "chamada_ia",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "finalidade": {
-          "name": "finalidade",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fornecedor": {
-          "name": "fornecedor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "modelo": {
-          "name": "modelo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "versao_instrucao": {
-          "name": "versao_instrucao",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pedida_por": {
-          "name": "pedida_por",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entrada_tamanho": {
-          "name": "entrada_tamanho",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entrada_hash": {
-          "name": "entrada_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fontes": {
-          "name": "fontes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "saida": {
-          "name": "saida",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "situacao": {
-          "name": "situacao",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "erro": {
-          "name": "erro",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "alerta": {
-          "name": "alerta",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duracao_ms": {
-          "name": "duracao_ms",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "quando": {
-          "name": "quando",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "chamada_ia_pedida_por_usuario_id_fk": {
-          "name": "chamada_ia_pedida_por_usuario_id_fk",
-          "tableFrom": "chamada_ia",
-          "tableTo": "usuario",
-          "columnsFrom": [
-            "pedida_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chamada_ia_fornecedor": {
-          "name": "chamada_ia_fornecedor",
-          "value": "\"chamada_ia\".\"fornecedor\" in ('openai', 'mistral')"
-        },
-        "chamada_ia_situacao": {
-          "name": "chamada_ia_situacao",
-          "value": "\"chamada_ia\".\"situacao\" in ('ok', 'desligada', 'recusada', 'falhou')"
-        }
-      },
       "isRLSEnabled": true
     },
     "public.evento_auditoria": {
@@ -414,6 +279,90 @@
       },
       "isRLSEnabled": true
     },
+    "public.compromisso_interno": {
+      "name": "compromisso_interno",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "titulo": {
+          "name": "titulo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hora": {
+          "name": "hora",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duracao": {
+          "name": "duracao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsavel": {
+          "name": "responsavel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'marcado'"
+        },
+        "criado_por": {
+          "name": "criado_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "compromisso_interno_criado_por_usuario_id_fk": {
+          "name": "compromisso_interno_criado_por_usuario_id_fk",
+          "tableFrom": "compromisso_interno",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "criado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.consentimento": {
       "name": "consentimento",
       "schema": "",
@@ -598,6 +547,52 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.ficha_recepcao": {
+      "name": "ficha_recepcao",
+      "schema": "",
+      "columns": {
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "documento": {
+          "name": "documento",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ficha_recepcao_pessoa_id_pessoa_id_fk": {
+          "name": "ficha_recepcao_pessoa_id_pessoa_id_fk",
+          "tableFrom": "ficha_recepcao",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
@@ -827,6 +822,70 @@
           "value": "\"pessoa_vinculo\".\"tipo\" in ('responsavel_legal', 'curador', 'familiar', 'procurador')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.tarefa_recepcao": {
+      "name": "tarefa_recepcao",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "setor": {
+          "name": "setor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "concluida_em": {
+          "name": "concluida_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tarefa_recepcao_pessoa_id_pessoa_id_fk": {
+          "name": "tarefa_recepcao_pessoa_id_pessoa_id_fk",
+          "tableFrom": "tarefa_recepcao",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.agendamento": {

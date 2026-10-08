@@ -17,7 +17,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-export const VERSAO_MATRIZ = 13
+// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15. Quem entrar depois
+// renumera.
+export const VERSAO_MATRIZ = 15
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -30,6 +32,8 @@ export const MATRIZ = {
   // contas, que é ela quem faz; o Sócio vê só totais do escritório, no painel da GGVP-75. Valor da causa e renda per
   // capita do LOAS não são financeiro do escritório: são dado jurídico e seguem para a advogada (Pedro, 07/10).
   'valores.ver': ['financeiro'],
+  /** Os totais em dinheiro do painel de resultados (GGVP-75 CA4): honorários recebidos e tempo até o dinheiro. */
+  'valores.ver_totais': ['socio', 'financeiro'],
   'prestacao.ver': ['financeiro', 'advogada'],
   'gestao.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
   /** Ver o caso só para leitura (GGVP-23 CA4). Financeiro vê prestação e Gestão; o Sócio, Gestão; nenhum dos dois vê o caso. */
@@ -60,12 +64,14 @@ export const MATRIZ = {
   'exigencia_inss.tratar': ['advogada'],
   'exigencia_inss.cumprir': ['documentacao'],
   'exigencia_inss.decidir_vencida': ['senior'],
-  // Versão 11 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
+  // Versão 14 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
   'banco.agendar': ['financeiro'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],
   'publicacao.casar': ['senior'],
+  // Versão 12 (GGVP-55 CA7): só o desfecho conferido pela Sênior entra nas contas da jurimetria.
+  'acervo.conferir_desfecho': ['senior'],
   'publicacao.classificar': ['advogada', 'senior'],
   // Versão 6 (GGVP-79, 83, 87): exigência do juiz; o Jurídico entre os setores é o Jurídico administrativo
   'exigencia_juiz.distribuir': ['advogada'],
@@ -81,10 +87,16 @@ export const MATRIZ = {
   'historico.autorizar_exportacao': ['socio'],
   // GGVP-104: a gestão do escritório muda limites, kits e mensagens sem mexer no código.
   'configuracao.editar': ['socio', 'senior'],
-  // Versão 12 (GGVP-22, Lucas 06/10): o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica ao cliente.
+  // Versão 14 (GGVP-22, Lucas 06/10): o Jurídico aprova o resumo do resultado; a advogada ou o Atendimento explica ao cliente.
   'resultado.aprovar_resumo': ['advogada', 'senior'],
   'resultado.explicar': ['atendimento', 'atendimento_lider', 'advogada'],
-  // Versão 13 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
+  // Versão 13 (GGVP-125, bloco 1): a ficha da Recepção no servidor. Quem trabalha com o caso cadastra e edita a ficha
+  // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
+  // renumera a versão.
+  'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
+  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
+  'entrevista.gravar': JURIDICO,
+  // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
   // indica novo processo, quem decide é a Sênior.
   'estudo.ver': JURIDICO,
   'estudo.revisar': ['senior'],

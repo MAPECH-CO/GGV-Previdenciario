@@ -1,0 +1,194 @@
+import { useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
+import { formatarCep, formatarCpf, formatarTelefone, isoParaData } from '../campos.ts'
+import { FONTES } from '../dados/catalogos.ts'
+import { usePerfil } from '../dados/perfis.ts'
+import { camposProtegidosQueMudam, salvarFichaVerificada } from '../dados/seguranca.ts'
+import type { Ficha } from '../dados/tipos.ts'
+import { soNumeroEMascara, validarEdicao, type ValoresFicha } from '../regras/formularios.ts'
+import { COMO_VERIFICOU, motivoParaNaoMudar, type ComoVerificou } from '../regras/seguranca.ts'
+import { Campo } from './Campo.tsx'
+import styles from './EdicaoCliente.module.css'
+
+type Erros = Partial<Record<keyof ValoresFicha, string>>
+
+type Definicao = {
+  campo: keyof ValoresFicha
+  rotulo: string
+  /** Letra não entra: CPF, data, telefone e CEP. */
+  mascara?: boolean
+  inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
+  maxLength?: number
+}
+
+// As linhas do Figma 73:229 a 73:281, na mesma ordem.
+const LINHAS: Definicao[][] = [
+  [
+    { campo: 'nome', rotulo: 'Nome completo *', maxLength: 120 },
+    { campo: 'cpf', rotulo: 'CPF', mascara: true, inputMode: 'numeric', maxLength: 14 },
+    { campo: 'nascimento', rotulo: 'Data de nascimento', mascara: true, inputMode: 'numeric', maxLength: 10 },
+  ],
+  [
+    { campo: 'telefone', rotulo: 'Telefone / WhatsApp *', mascara: true, inputMode: 'tel', maxLength: 15 },
+    { campo: 'email', rotulo: 'E-mail', inputMode: 'email', maxLength: 120 },
+    { campo: 'estadoCivil', rotulo: 'Estado civil', maxLength: 40 },
+  ],
+  [
+    { campo: 'endereco', rotulo: 'Endereço', maxLength: 200 },
+    { campo: 'cidadeUf', rotulo: 'Cidade / UF', maxLength: 80 },
+    { campo: 'cep', rotulo: 'CEP', mascara: true, inputMode: 'numeric', maxLength: 9 },
+  ],
+  [
+    { campo: 'profissao', rotulo: 'Profissão / última atividade', maxLength: 200 },
+    { campo: 'comoChegou', rotulo: 'Como chegou' },
+    { campo: 'contatoPreferido', rotulo: 'Contato preferido', maxLength: 80 },
+  ],
+  [
+    { campo: 'contatoApoio', rotulo: 'Contato de apoio', maxLength: 200 },
+    { campo: 'observacoes', rotulo: 'Observações', maxLength: 1000 },
+  ],
+]
+
+function valoresDa(f: Ficha): ValoresFicha {
+  return {
+    nome: f.nome,
+    cpf: f.cpf ? formatarCpf(f.cpf) : '',
+    nascimento: isoParaData(f.nascimento) ?? '',
+    telefone: formatarTelefone(f.telefone),
+    email: f.email ?? '',
+    estadoCivil: f.estadoCivil ?? '',
+    endereco: f.endereco ?? '',
+    cidadeUf: f.cidadeUf ?? '',
+    cep: f.cep ? formatarCep(f.cep) : '',
+    profissao: f.profissao ?? '',
+    comoChegou: f.comoChegou ?? '',
+    contatoPreferido: f.contatoPreferido ?? '',
+    contatoApoio: f.contatoApoio ?? '',
+    observacoes: f.observacoes ?? '',
+  }
+}
+
+/** "Editar dados do cliente" (Figma 73:228 a 73:297). Valida ao sair do campo e de novo ao salvar (CA15). */
+export function EdicaoCliente({
+  ficha,
+  hoje,
+  aoSalvar,
+  aoIniciarConversa,
+}: {
+  ficha: Ficha
+  hoje: string
+  aoSalvar: (ficha: Ficha) => void
+  /** "Iniciar conversa" abre a janela "Registrar conversa" (GGVP-76, CA9). */
+  aoIniciarConversa: () => void
+}) {
+  const [valores, setValores] = useState(() => valoresDa(ficha))
+  const [erros, setErros] = useState<Erros>({})
+  const [salvando, setSalvando] = useState(false)
+  const [aviso, setAviso] = useState('')
+  // Mudar telefone ou e-mail pede a verificação do cliente e o contrato novo (GGVP-111, CA1).
+  const [verificacao, setVerificacao] = useState<{ como?: ComoVerificou; contratoNovo?: true }>({})
+  const perfil = usePerfil('Atendimento')
+  const mudaContato = camposProtegidosQueMudam(ficha, { telefone: valores.telefone, email: valores.email })
+  // Trava no mesmo clique, antes de o React redesenhar o botão (CA16).
+  const travado = useRef(false)
+  const regras = { cpfObrigatorio: ficha.situacao === 'cliente', hoje }
+  const fontes = FONTES.map((f) => (f.id === 'indicacao' && ficha.indicadoPor ? { ...f, nome: `Indicação (${ficha.indicadoPor})` } : f))
+
+  function mudar(d: Definicao, valor: string) {
+    setValores((v) => ({ ...v, [d.campo]: d.mascara ? soNumeroEMascara(valor) : valor }))
+    setAviso('')
+  }
+
+  function sair(campo: keyof ValoresFicha) {
+    setErros((e) => ({ ...e, [campo]: validarEdicao(valores, regras).erros[campo] }))
+  }
+
+  async function salvar(evento: FormEvent) {
+    evento.preventDefault()
+    if (travado.current) return
+    const { erros: novos, dados } = validarEdicao(valores, regras)
+    setErros(novos)
+    if (!dados) return setAviso('Confira os campos marcados em vermelho.')
+    const semVerificacao = mudaContato.map((c) => motivoParaNaoMudar(c, verificacao)).find(Boolean)
+    if (semVerificacao) return setAviso(semVerificacao)
+    travado.current = true
+    setSalvando(true)
+    try {
+      const resposta = await salvarFichaVerificada(ficha.id, dados, mudaContato.length ? verificacao : null, { quem: perfil?.usuario ?? 'Atendimento', perfil: perfil?.id })
+      if ('erro' in resposta) return setErros({ cpf: `Este CPF já está na ficha de ${resposta.nome}.` })
+      setValores(valoresDa(resposta.ficha))
+      setVerificacao({})
+      aoSalvar(resposta.ficha)
+      setAviso('Alterações salvas. Ficaram no histórico.')
+    } catch (falha) {
+      setAviso(falha instanceof Error ? falha.message : 'Não deu para salvar.')
+    } finally {
+      travado.current = false
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <form className={styles.form} onSubmit={salvar} noValidate aria-labelledby="editar-dados">
+      <h3 id="editar-dados" className={styles.titulo}>
+        Editar dados do cliente
+      </h3>
+      {LINHAS.map((linha) => (
+        <div key={linha[0].campo} className={styles.linha}>
+          {linha.map((d) => (
+            <Campo
+              key={d.campo}
+              id={`ficha-${d.campo}`}
+              rotulo={d.campo === 'cpf' && regras.cpfObrigatorio ? 'CPF *' : d.rotulo}
+              valor={valores[d.campo]}
+              aoMudar={(valor) => mudar(d, valor)}
+              aoSair={() => sair(d.campo)}
+              erro={erros[d.campo]}
+              opcoes={d.campo === 'comoChegou' ? fontes : undefined}
+              inputMode={d.inputMode}
+              maxLength={d.maxLength}
+            />
+          ))}
+        </div>
+      ))}
+      {mudaContato.length > 0 && (
+        <fieldset className={styles.verificacao}>
+          <legend className={styles.legenda}>Mudou o {mudaContato.map((c) => (c === 'telefone' ? 'telefone' : 'e-mail')).join(' e o ')}: como você confirmou que é o cliente?</legend>
+          {(Object.keys(COMO_VERIFICOU) as ComoVerificou[]).map((como) => (
+            <label key={como} className={styles.opcao}>
+              <input type="radio" name="como-verificou" checked={verificacao.como === como} onChange={() => setVerificacao((v) => ({ ...v, como }))} />
+              {COMO_VERIFICOU[como]}
+            </label>
+          ))}
+          <label className={styles.opcao}>
+            <input
+              type="checkbox"
+              checked={verificacao.contratoNovo === true}
+              onChange={(e) => setVerificacao((v) => ({ ...v, contratoNovo: e.target.checked ? true : undefined }))}
+            />
+            A alteração vai em contrato novo
+          </label>
+          <p className={styles.nota}>Pedido por telefone ou mensagem, sem a verificação: não mude. Diga que vai retornar pelo contato cadastrado.</p>
+        </fieldset>
+      )}
+      <div className={styles.botoes}>
+        <button type="submit" className={styles.salvar} disabled={salvando}>
+          {salvando ? 'salvando…' : 'Salvar alterações'}
+        </button>
+        {/* O Figma chama de "Registrar contato"; o cartão GGVP-76 (CA9, Pedro 07/10), de "Iniciar conversa". Vale o cartão. */}
+        <button type="button" className={styles.botao} onClick={aoIniciarConversa}>
+          Iniciar conversa
+        </button>
+        {/* O cartão chama de "Marcar entrevista" (GGVP-123, CA1); o Figma, de "Marcar reunião". Vale o cartão. */}
+        <a className={styles.botao} href={`/agenda/marcar/${ficha.id}`}>
+          Marcar entrevista
+        </a>
+        <p role="status" className={styles.aviso}>
+          {aviso}
+        </p>
+      </div>
+      <p className={styles.nota}>
+        Toda alteração fica no histórico (quem, quando, o que mudou). Dado de saúde só aparece para o Jurídico.
+      </p>
+    </form>
+  )
+}

@@ -19,6 +19,7 @@ import { registrarRotasDocumentos } from './rotas/documentos.ts'
 import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
 import { registrarRotasGestao } from './rotas/gestao.ts'
+import { registrarRotasAcervo } from './rotas/acervo.ts'
 import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
@@ -31,6 +32,9 @@ import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
+import { registrarRotasRecepcao } from './rotas/recepcao.ts'
+import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
+import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -99,6 +103,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasGestao(app, { banco, agora })
+    registrarRotasAcervo(app, { banco, agora })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
@@ -107,6 +112,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasRecepcao(app, { banco, agora })
+    registrarRotasRecepcaoAgenda(app, { banco, agora })
+    registrarRotasRecepcaoEntrevista(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

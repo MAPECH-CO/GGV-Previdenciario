@@ -1,0 +1,25 @@
+/* O resto vem de Balcao.module.css: o visual das telas de passo (Figma step_*). */
+.texto {
+  font-size: var(--fonte-13);
+}
+
+.conferencia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.conferencia input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}
+
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
