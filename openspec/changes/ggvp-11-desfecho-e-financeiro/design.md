@@ -10,6 +10,9 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 
 1. **Um caminho para o INSS e para a Justiça** (Mateus, 07/10): as rotas `/api/casos/:id/prestacao/recebimento` e `/api/casos/:id/banco` servem os dois. `banco.agendar` passa a ser do Financeiro, e a matriz sobe uma versão. Era a 11; na revisão de 08/10 passou a 13, porque o #23 (Jurimetria) usa a 11 e a 12 e entra antes.
 2. **A tarefa do aviso nasce do recebimento** (CA4): o OK da advogada abre só "Receber a prestação de contas"; "Receber e lançar" abre "Avisar resultado e agendar a ida ao banco" para o Financeiro.
+   - Versão nova depois do recebimento volta para o Financeiro, e o aviso espera o recebimento da versão atual.
+   - Caso encerrado não aceita versão nova.
+   - O recebimento leva a condição no próprio update, e só o primeiro de dois pedidos ao mesmo tempo conta (quarta revisão de 08/10).
 3. **"Valores conferem com o comprovante"** (CA3): `ReceberPrestacao` com `recebido` exige `valoresConferem: true`; o servidor confere de novo.
 4. **Quem acompanha é obrigatório e do Atendimento** (CA6, Lucas Q24): `acompanhanteId` obrigatório; o servidor recusa quem não tem o perfil Atendimento. Agendar abre para essa pessoa a tarefa "Levar ao banco", com a data como prazo e o nome dela como responsável; remarcar atualiza a tarefa (CA7). É dali que a Agenda lê.
 5. **Recusa registrada** (CA8): quem deu o OK e tenta receber leva 409 e o evento `portao_bloqueado` com o portão `funcoes` (separação de funções) e o motivo, que aparece em "Tentativas bloqueadas". Era G8, mas o G8 é "o aviso só sai depois do OK". Se `funcoes` vira portão oficial, com número, é pergunta ao Lucas (terceira revisão de 08/10).
@@ -43,6 +46,9 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
 1. **Sem IA até 09/10:** o Jurídico (advogada ou Sênior) escreve e aprova o resumo; a tela mostra quem aprovou e quando (Lucas, 06/10). Quando a IA voltar, ela só sugere o texto, guardado em `decisao.sugestao_ia`.
 2. **O resumo é decisão de pessoa:** `decisao` com `tipo: resumo_cliente`, o texto em `justificativa` e quem fala em `resultado`. Sem tabela nova.
 3. **Quem fala** (CA5): "Eu ligo" deixa "Explicar resultado" com a advogada (responsável ela mesma); no padrão, vai ao Atendimento. Só quem ficou com a explicação registra o contato: a advogada que a pegou ou o Atendimento (o líder também). Outro perfil com `resultado.explicar` recebe 403 (revisão de 08/10).
+   - A aprovação do resumo fecha a tarefa com a condição no próprio update, e o histórico vai na mesma transação.
+   - O contato trava a tarefa (`for update`) e confere que ela segue aberta.
+   - Dois pedidos ao mesmo tempo, só o primeiro passa (quarta revisão de 08/10).
 4. **Cada contato** (CA4) é uma linha de `atendimento` (canal, início, quem, o que foi explicado; sem contato fica com o resumo vazio).
    - A tela lista só os contatos desta explicação: cada registro grava no histórico o atendimento e a tarefa, e a lista sai dali. Outro atendimento do caso não entra (revisão de 08/10).
    - ponytail: o vínculo vive no histórico; uma coluna `tarefa_id` em `atendimento` entra na próxima migração do épico (tarefa 7.1). A lista mostra os contatos da explicação mais recente, pela tarefa gravada no histórico (terceira revisão de 08/10).

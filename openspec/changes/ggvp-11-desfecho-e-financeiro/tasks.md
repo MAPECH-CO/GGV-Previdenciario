@@ -69,6 +69,22 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - contratos 88 e API 277, todos passando;
   - Playwright do desfecho, da via administrativa e da governança, um de cada vez: 16 de 16. Em sequência, o teste do cofre também passa.
 
+## Quarta revisão do PR (08/10)
+
+- [x] 8.1 GGVP-98 · CA4: versão nova depois do recebimento volta para o Financeiro. O aviso espera o recebimento da versão atual (409 até lá). Teste da API.
+- [x] 8.2 GGVP-98 · CA9: o caso encerrado não aceita versão nova da prestação (409), e nenhuma tarefa nasce. A versão é contada com o caso travado, para duas não saírem iguais. Teste da API.
+- [x] 8.3 GGVP-98 · CA3, CA4: teste da rota para "lançar sem conferir" (400). Dois recebimentos ao mesmo tempo: a condição vai no próprio update, e só o primeiro conta. "Confirmar antes do aviso" já tinha teste, no começo do teste do CA9 (`MSG_ANTES_DO_AVISO`).
+- [x] 8.4 GGVP-22 · CA2, CA3: a aprovação do resumo fecha a tarefa com a condição no próprio update. O contato trava a tarefa (`for update`) e confere de novo que ela segue aberta. Dois pedidos ao mesmo tempo, só o primeiro passa.
+  - O histórico do resumo também vai na mesma transação.
+  - O banco embutido dos testes atende uma consulta de cada vez, então os testes de pedidos simultâneos conferem o resultado, mas não reproduzem a disputa. Quem barra no PostgreSQL é a condição e a trava.
+- [x] 8.5 Campos de data e hora (revisão, ATENÇÃO): os campos nativos de `PrestarContas.tsx` e `IdaAoBanco.tsx` já estavam na main, da GGVP-44. O valor passa por `isoParaData` da `campos`, e o servidor valida de novo com `DataObrigatoria`. Ficam fora deste PR.
+- [x] 8.6 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10:
+  - typecheck e lint sem erro;
+  - `openspec validate --all --strict` com 11 de 11;
+  - contratos 88 e API 283, todos passando;
+  - Playwright do desfecho, da via administrativa e da governança, um de cada vez: 16 de 16 em 1,4 min.
+  - Numa primeira rodada, com a máquina cheia (6,2 min), 3 falharam, e o detalhe não ficou guardado. Rodando de novo, passaram todos.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
