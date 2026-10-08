@@ -25,13 +25,20 @@ conferida SHALL atualizar a ficha da Recepção e a pessoa, com o valor de antes
 - **Quando** ela confere o endereço e o telefone, com o cliente verificado por chamada de vídeo
 - **Então** a advogada, no computador dela, abre a ficha e vê o endereço e o telefone novos e o histórico da mudança
 
-### Requirement: Perfil da sessão e portões no servidor (CA3, CA4)
+### Requirement: O perfil da sessão nas rotas (CA3)
 As rotas SHALL usar o perfil da sessão (`conversa.registrar`, `ficha.voltar_versao`, `conversa.prazo_da_pendencia`,
-`mensagem.enviar`, `dados_bancarios.pedir`, `dados_bancarios.confirmar`, `caso.ver`), nunca um perfil vindo do pedido. O
-servidor SHALL recusar: gravar sem o aviso (G10); a conferência de quem não fez a conversa; o fato novo confirmado por
-quem não é do Jurídico; telefone, e-mail e dados bancários sem o cliente verificado e o contrato novo (também na edição
-da ficha); a mensagem que pede a senha (G9), esconde a situação real (G11) ou sugere diagnóstico ou CID (G20); a
-segunda confirmação bancária de quem pediu. A recusa de portão SHALL ficar no histórico, sem o texto.
+`mensagem.enviar`, `dados_bancarios.pedir`, `dados_bancarios.confirmar`, `caso.ver`), nunca um perfil vindo do pedido.
+
+#### Scenario: Financeiro tenta abrir uma conversa
+- **Dado** o perfil Financeiro
+- **Quando** chama a abertura da conversa
+- **Então** é recusado, e a tentativa fica registrada
+
+### Requirement: Os portões no servidor (CA4)
+O servidor SHALL recusar: gravar sem o aviso (G10); a conferência de quem não fez a conversa; o fato novo confirmado por
+quem não é do Jurídico; telefone, e-mail e dados bancários sem o cliente verificado e o contrato novo, também na edição
+da ficha; a mensagem que pede a senha (G9), esconde a situação real (G11) ou sugere diagnóstico ou CID (G20); a segunda
+confirmação bancária de quem pediu. A recusa de portão SHALL ficar no histórico, sem o texto.
 
 #### Scenario: Mensagem que pede a senha
 - **Dado** a Ana enviando ao cliente um texto que pede a senha do gov.br
