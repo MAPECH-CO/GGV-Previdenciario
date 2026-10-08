@@ -17,9 +17,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
-// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Glossário 16. Quem entrar
-// depois renumera.
-export const VERSAO_MATRIZ = 16
+// Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
+// 16, Glossário 17. Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 17
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -100,7 +100,16 @@ export const MATRIZ = {
   // indica novo processo, quem decide é a Sênior.
   'estudo.ver': JURIDICO,
   'estudo.revisar': ['senior'],
-  // Versão 16 (GGVP-143, Pedro, 08/10): o glossário do escritório, que a transcrição e a IA usam, só a Sênior muda.
+  // Versão 16 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
+  // a conversa é o Atendimento e o Jurídico (advogada e Sênior), como nas telas; só a Sênior volta uma versão e dá prazo
+  // novo à pendência atrasada; a segunda confirmação dos dados bancários é do Atendimento líder, da advogada ou da Sênior.
+  'conversa.registrar': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'ficha.voltar_versao': ['senior'],
+  'conversa.prazo_da_pendencia': ['senior'],
+  'mensagem.enviar': ['atendimento', 'atendimento_lider', ...JURIDICO],
+  'dados_bancarios.pedir': ['atendimento', 'atendimento_lider', 'advogada', 'senior'],
+  'dados_bancarios.confirmar': ['atendimento_lider', 'advogada', 'senior'],
+  // Versão 17 (GGVP-143, Pedro, 08/10): o glossário do escritório, que a transcrição e a IA usam, só a Sênior muda.
   'glossario.editar': ['senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 

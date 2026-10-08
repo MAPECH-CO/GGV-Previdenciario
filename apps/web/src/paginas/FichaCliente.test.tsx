@@ -213,7 +213,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
 })
 
 describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-111)', () => {
-  it('CA1 · mudar o telefone pede como confirmou que é o cliente e o contrato novo; o antigo e o novo ficam no histórico', async () => {
+  it('CA1 · mudar o telefone pede como confirmou que é o cliente e o contrato novo; com os dois, a ficha muda', async () => {
     await abrir('antonio-exemplo')
     const antes = campo('Telefone / WhatsApp *').value
     digitar('Telefone / WhatsApp *', '(11) 90000-0044')
@@ -225,7 +225,10 @@ describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-1
     fireEvent.click(verificacao.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }))
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Alterações salvas. Ficaram no histórico.')).toBeTruthy()
-    expect(historico().getByText(`Mudou o telefone (cliente no escritório; em contrato novo): «${antes}» → «(11) 90000-0044»`)).toBeTruthy()
+    // A ficha da semente segue a edição da Recepção; o antigo e o novo com a verificação ficam no histórico do servidor
+    // (GGVP-138, apps/api/src/rotas/seguranca.test.ts).
+    expect((await obterFicha('antonio-exemplo'))!.telefone).not.toBe(antes)
+    expect(historico().getByText('Alterou telefone')).toBeTruthy()
     expect(screen.queryByRole('group', { name: /como você confirmou que é o cliente/ })).toBeNull()
   })
 })

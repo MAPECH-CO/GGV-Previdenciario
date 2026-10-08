@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 16, digital: '343a5038' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 17, digital: 'a415b78a' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -109,14 +109,22 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(PERFIS.filter((p) => pode(p, 'entrevista.gravar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
   })
 
+  it('GGVP-138 · o Relacionamento: conversa com o Atendimento e o Jurídico; versão e prazo só com a Sênior; a segunda confirmação bancária, não do Atendimento', () => {
+    expect(PERFIS.filter((p) => pode(p, 'conversa.registrar'))).toEqual(['atendimento', 'atendimento_lider', 'advogada', 'senior'])
+    expect(PERFIS.filter((p) => pode(p, 'ficha.voltar_versao'))).toEqual(['senior'])
+    expect(PERFIS.filter((p) => pode(p, 'conversa.prazo_da_pendencia'))).toEqual(['senior'])
+    expect(PERFIS.filter((p) => pode(p, 'dados_bancarios.confirmar'))).toEqual(['atendimento_lider', 'advogada', 'senior'])
+    expect(pode('financeiro', 'mensagem.enviar')).toBe(false)
+  })
+
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 9,
-      atendimento_lider: 11,
+      atendimento: 12,
+      atendimento_lider: 15,
       documentacao: 7,
-      advogada: 25,
-      senior: 27,
-      juridico_adm: 16,
+      advogada: 29,
+      senior: 33,
+      juridico_adm: 17,
       financeiro: 6,
       socio: 5,
     })

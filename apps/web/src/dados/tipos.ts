@@ -660,6 +660,8 @@ export type Gravacao = {
   soJuridico: boolean
   /** "ficha atualizada", "benefício definido". */
   marcas: string[]
+  /** A conversa do D5 desta gravação, quando ela é de uma conversa com o cliente (GGVP-138). */
+  conversaId?: string
   /** GGVP-133 CA10: o texto da transcrição, guardado como documento na pasta do cliente. */
   transcricaoDocumentoId?: string
   /** GGVP-133 CA7: o alerta do motor de IA (fala com instrução suspeita), para a pessoa ver antes de usar o texto. */

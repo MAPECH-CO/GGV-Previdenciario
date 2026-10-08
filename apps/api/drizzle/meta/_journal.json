@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1791483893386,
-      "tag": "0017_glossario_e_transcricao",
+      "when": 1791483509900,
+      "tag": "0017_relacionamento_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791488509270,
+      "tag": "0018_glossario_e_transcricao",
       "breakpoints": true
     }
   ]

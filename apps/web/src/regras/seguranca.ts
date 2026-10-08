@@ -1,6 +1,8 @@
 // Terceiro não se passa pelo cliente (GGVP-111): o dado protegido, a verificação e o que muda nos dados bancários. Regra,
 // não IA.
+import { normalizarTelefone } from '../campos.ts'
 import type { IdPerfil } from '../dados/perfis.ts'
+import type { EdicaoFicha, Ficha } from '../dados/tipos.ts'
 import type { CanalDoRegistro, ComQuem } from './conversa.ts'
 
 /** Como o escritório confirma que é o cliente: chamada de vídeo ou o cliente no escritório (Lucas, 07/10). */
@@ -64,4 +66,12 @@ export function podeConfirmarSegunda(perfil: IdPerfil | undefined, quem: string,
 /** Caso perto da prestação de contas (CA2): ganho na sentença, RPV ou benefício deferido. */
 export function pertoDaPrestacao(etapa: string): boolean {
   return /senten[cç]a procedente|\brpv\b|benef[ií]cio deferido|presta[cç][aã]o de contas/i.test(etapa)
+}
+
+/** O telefone e o e-mail que a edição muda (CA1). Completar o que estava em branco (a ficha do scanner) não é mudança. */
+export function camposProtegidosQueMudam(ficha: Pick<Ficha, 'telefone' | 'email'>, edicao: Pick<EdicaoFicha, 'telefone' | 'email'>): ('telefone' | 'email')[] {
+  const antes = { telefone: normalizarTelefone(ficha.telefone ?? ''), email: (ficha.email ?? '').trim().toLowerCase() }
+  const mudaTelefone = antes.telefone !== '' && antes.telefone !== normalizarTelefone(edicao.telefone ?? '')
+  const mudaEmail = antes.email !== '' && antes.email !== (edicao.email ?? '').trim().toLowerCase()
+  return [mudaTelefone && ('telefone' as const), mudaEmail && ('email' as const)].filter((x): x is 'telefone' | 'email' => Boolean(x))
 }
