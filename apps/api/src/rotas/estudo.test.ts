@@ -109,6 +109,14 @@ describe('GGVP-19 · estudo de caso do processo perdido', () => {
     expect([(await estudos()).json().estudos[0].estudo.chance, (await estudos()).json().estudos[0].estudo.tese]).toEqual(['menor', null])
   })
 
+  it('CA1 · explicação ao cliente já aprovada antes do estudo: o estudo não reabre', async () => {
+    comIa({ ...ESTUDO, novoProcesso: false, oQueRefazer: null })
+    await banco.insert(tarefa).values({ casoId, passo: 'D3b.06r', titulo: TITULO_RESUMO, perfilDono: 'advogada', concluidaEm: new Date() })
+    await app.prepararSugestoes()
+    expect(await chamadasDoEstudo()).toBe(1)
+    expect(await abertas()).toEqual([])
+  })
+
   it('CA2 · o estudo entra no acervo como "Estudo de caso da IA", com o caso de origem', async () => {
     await app.prepararSugestoes()
     const [p] = await banco.insert(pessoa).values({ nome: 'Outra' }).returning()

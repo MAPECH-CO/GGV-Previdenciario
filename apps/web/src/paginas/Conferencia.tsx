@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
 import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { taxaComCasos } from '../regras/caso.ts'
 import styles from './Passo.module.css'
 
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
@@ -174,12 +175,11 @@ export function Conferencia({ casoId }: { casoId: string }) {
           ) : (
             <>
               <p>
-                {chance.porcentagem === null ? (
+                {chance.porcentagem === null || !chance.baseEm ? (
                   'Sem casos parecidos na casa ainda: sem porcentagem.'
                 ) : (
                   <strong>
-                    {chance.porcentagem}% em {chance.casos} {chance.casos === 1 ? 'caso parecido' : 'casos parecidos'}
-                    {chance.baseEm ? ` · base de ${new Date(chance.baseEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+                    {taxaComCasos(chance.favoraveis, chance.casos, new Date(chance.baseEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}
                   </strong>
                 )}
               </p>

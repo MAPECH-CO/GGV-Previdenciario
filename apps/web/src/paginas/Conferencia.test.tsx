@@ -43,7 +43,7 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     const chance = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', motivoIa: null, fatores: { chamadaId: '66666666-6666-4666-8666-666666666666', sugestao: true, texto: 'Para subir: trazer o relatório do médico assistente.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null } }
     servidor(base, undefined, chance)
     const { unmount } = render(<Conferencia casoId={CASO} />)
-    expect((await screen.findByText(/75% em 4 casos parecidos/)).textContent).toBe('75% em 4 casos parecidos · base de 07/10/2026')
+    expect(await screen.findByText('75% · 3 de 4 casos · base de 07/10')).toBeTruthy()
     expect(screen.getByText('Fatores sugeridos pela IA · confira')).toBeTruthy()
     expect(screen.getByText('Para subir: trazer o relatório do médico assistente.')).toBeTruthy()
     unmount()

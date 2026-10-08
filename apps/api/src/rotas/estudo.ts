@@ -81,7 +81,9 @@ export function registrarRotasEstudo(app: FastifyInstance, { banco, agora = () =
       const [ja] = await banco.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.05'))).limit(1)
       if (!ja) await banco.insert(tarefa).values({ casoId, passo: 'D3b.05', titulo: TITULO_REVISAR, perfilDono: 'senior', criadoEm: agora() })
     }
-    await abrirExplicacaoDoResultado(banco, casoId)
+    // Só na primeira vez do caso: uma explicação já aprovada não reabre pelo estudo.
+    const [explicacao] = await banco.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.06r'))).limit(1)
+    if (!explicacao) await abrirExplicacaoDoResultado(banco, casoId)
     return s
   }
 
