@@ -302,6 +302,14 @@ describe('GGVP-71 · protocolar no tribunal', () => {
     expect(b.detalhe).toMatchObject({ portao: 'G7', passo: 'D3.07', travas: ['CPF conferido'] })
   })
 
+  it('GGVP-107 CA6 (G7) · com o Drive ligado, o protocolo espera o pacote salvo no Drive', async () => {
+    await app.close()
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, driveLigado: true })
+    expect((await protocolar()).json().erro).toBe('Trava falhando: Pacote completo (O pacote ainda não está no Drive; o portal salva sozinho em até um minuto).')
+    await banco.update(peticaoVersao).set({ pacoteDriveId: 'pasta-do-pacote' })
+    expect((await protocolar()).statusCode).toBe(201)
+  })
+
   it('CA4, CA8, CA10 · registra o protocolo da versão aprovada; o CNJ entra no caso para a vigília, as travas e quem protocolou ficam', async () => {
     expect((await protocolar()).statusCode).toBe(201)
     const x = await ler()

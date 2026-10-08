@@ -6,6 +6,7 @@ import { Saude } from '@ggv/contratos'
 import { abrirArmazenamento, type Armazenamento } from './armazenamento.ts'
 import type { Banco } from './banco/conexao.ts'
 import { chaveDoCofre, criarCofre, type Cofre } from './cofre.ts'
+import { abrirDrive } from './drive.ts'
 import { registrarRotasConferencia } from './rotas/conferencia.ts'
 import { registrarRotasInss } from './rotas/inss.ts'
 import { registrarRotasVigilia } from './rotas/vigilia.ts'
@@ -48,10 +49,12 @@ type Opcoes = {
   armazenamento?: Armazenamento
   /** Fontes da vigília; padrão: as do ambiente (`FONTES_PUBLICACAO`). */
   fontes?: Fonte[]
+  /** Drive do escritório ligado (GGVP-107): a trava do pacote cobra o pacote salvo lá. Padrão: as variáveis do Drive. */
+  driveLigado?: boolean
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, driveLigado }: Opcoes = {}) {
   const app = Fastify({ logger })
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
 
@@ -81,7 +84,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora })
-    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, driveLigado: driveLigado ?? abrirDrive() !== null })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora })
     registrarRotasRegras(app, { banco, agora })

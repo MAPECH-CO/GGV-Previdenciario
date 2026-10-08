@@ -62,3 +62,14 @@
 - [ ] 6.4 CA3, a parte que falta · Recepção, Abertura, documentação médica, Perícia e Relacionamento com caso de exemplo no banco, quando a GGVP-125 e a GGVP-132 ligarem essas telas no servidor; o teste do CA3 passa a afirmar esses passos; verifica com `pnpm --filter @ggv/api test`.
 - [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+## GGVP-107 · Integração com o Google Drive: pasta do cliente, banco de motivos e pacote de protocolo
+
+- [x] 7.1 CA4 · Cliente do Drive em `apps/api/src/drive.ts`: token da conta de serviço (JWT assinado com `node:crypto`), listar pastas e nomes, achar pela marca do portal, criar pasta, enviar arquivo (envio retomável) e ver onde o arquivo está; nada de mudar, mover, apagar ou compartilhar. Teste com fetch falso em `src/drive.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.2 CA1, CA2 · Colunas `pessoa.drive_pasta_id`, `documento.drive_arquivo_id` e `documento.drive_pendente` (o que já existia fica fora) e `peticao_versao.pacote_drive_id`, e a migração; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.3 CA1, CA2, CA3, CA7, CA8 · `apps/api/src/fluxo/arquivar.ts`: achar ou criar a pasta pela regra do balcão (`pastasDoCliente` das telas), nome "Tipo - Nome - AAAA-MM-DD" sem sobrescrever, guardar o id, tarefa da Documentação na falha e reprocessar pela marca, sem duplicar. Teste em `src/fluxo/arquivar.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.4 CA5 · O motivo de indeferimento fica só no banco (`resultado_inss`, de onde o acervo lê); nada vai para o Drive (decisão do Mateus em 08/10; o Lucas confirma na review). Teste em `src/fluxo/arquivar.test.ts`.
+- [x] 7.5 CA6 · O pacote do protocolo vai para "Pacote de protocolo - AAAA-MM-DD" na pasta do cliente; gerar de novo salva de novo; com o Drive ligado, a trava "pacote completo" acusa o pacote que não está no Drive (`fluxo/travas.ts`, `rotas/peticao.ts`). Testes em `src/fluxo/arquivar.test.ts` e `src/fluxo/travas.test.ts`.
+- [x] 7.6 CA3 · `src/principal.ts` roda o envio a cada minuto quando as variáveis do Drive existem; verifica subindo a API com o Drive.
+- [x] 7.7 CA1 a CA4 · Teste de verdade no Drive do escritório, com dado inventado, numa pasta de teste que o próprio teste cria e manda para a lixeira no fim (só o que ele criou): `src/drive.real.test.ts`, que só roda com as variáveis do Drive.
+- [x] 7.8 Tirar o "Google Drive não entra até 09/10" de `kit/entrega-09-10.md` e da proposta; verifica lendo.
+- [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado em 08/10 sobre a `main` com o PR #29: typecheck e lint sem erro; Drive com fetch falso e Drive de verdade passando; sem tela, sem Playwright. Na máquina do Mateus, o primeiro teste de 4 arquivos pesados passa do tempo também na `main` pura (máquina carregada); o CI decide.

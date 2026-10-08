@@ -28,7 +28,8 @@ export const MSG_DOCUMENTO_QUE_FALTA = 'Anexe o documento (PDF ou imagem, até 2
 export const MSG_NADA_A_PROTOCOLAR = 'Não há petição aprovada esperando o protocolo.'
 export const MSG_CNJ_DE_OUTRO_CASO = 'Este número de processo já está em outro caso.'
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
+/** `driveLigado`: a trava "pacote completo" cobra o pacote salvo no Drive (GGVP-107 CA6). */
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; driveLigado?: boolean }
 /** Um citado no pedido; o que falta pode ter sido pedido à Documentação (`itemId`, GGVP-71 CA13). */
 type Citado = { documentoId: string | null; nome: string; itemId?: string }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -43,7 +44,7 @@ export async function tribunaisDa(banco: Banco): Promise<Tribunal[]> {
   return Array.isArray(c?.valor) ? c.valor.filter(ehTribunal) : []
 }
 
-export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), driveLigado = false }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
 
@@ -122,7 +123,8 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
         // Imagem que não abre: fica de fora, e a trava "pacote completo" acusa.
       }
     }
-    await banco.update(peticaoVersao).set({ pacote: arquivos, pacoteGeradoEm: agora() }).where(eq(peticaoVersao.id, v.id))
+    // GGVP-107 CA6: pacote novo vai de novo para o Drive.
+    await banco.update(peticaoVersao).set({ pacote: arquivos, pacoteGeradoEm: agora(), pacoteDriveId: null }).where(eq(peticaoVersao.id, v.id))
   }
 
   // GGVP-63 CA1, CA6, CA9: quem falta, a carta, os documentos para citar, o pedido, as versões e a atual inteira.
@@ -366,7 +368,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
         )
       : {}
     const [cliente] = await banco.select({ cpf: pessoa.cpf }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
-    return [travaTema350(pacote), travaCpf(aprovada.conteudo, cliente?.cpf ?? null), travaPacote(citados, pacote, tamanhos, tribunal)]
+    // GGVP-107 CA6: com o Drive ligado, o pacote também tem de estar salvo lá.
+    const noDrive = driveLigado ? Boolean(aprovada.pacoteDriveId) : null
+    return [travaTema350(pacote), travaCpf(aprovada.conteudo, cliente?.cpf ?? null), travaPacote(citados, pacote, tamanhos, tribunal, noDrive)]
   }
 
   /** O citado `i` do pedido, que ainda falta, e a petição; antes do protocolo. */
