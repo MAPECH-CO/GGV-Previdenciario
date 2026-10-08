@@ -1,0 +1,118 @@
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: min(1000px, 100%);
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titulo {
+  font-size: var(--fonte-24);
+  font-weight: 600;
+}
+
+.sub {
+  max-width: 60ch;
+  margin-top: 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.secao {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.contagem {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-13);
+  font-weight: 400;
+}
+
+.nome {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: var(--fonte-12);
+}
+
+.valor {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.cores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.cor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.amostra {
+  height: 44px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+}
+
+.fontes {
+  overflow: hidden;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.fonte {
+  display: grid;
+  grid-template-columns: 110px 190px 1fr;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.fonte + .fonte {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.exemplo {
+  font-weight: 500;
+}
+
+.raios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.raio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.caixa {
+  width: 72px;
+  height: 48px;
+  border: 1px solid var(--cor-borda-controle);
+  background: var(--cor-acento-suave);
+}

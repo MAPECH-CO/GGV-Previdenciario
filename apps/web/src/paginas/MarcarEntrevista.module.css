@@ -1,0 +1,135 @@
+/* Figma 73:459: coluna da esquerda e coluna de 420 à direita, com 14 entre elas. */
+.pagina {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 32px;
+}
+
+.esquerda,
+.direita {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.esquerda {
+  flex: 1 1 560px;
+}
+
+.direita {
+  flex: 1 1 320px;
+  max-width: 420px;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.linha > * {
+  min-width: 11rem;
+}
+
+.antes {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.primario,
+.secundario {
+  padding: 8px 14px;
+  border-radius: var(--raio-8);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.primario:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.secundario {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.motivo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.ocupado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-alerta);
+  border-radius: var(--raio-8);
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-12);
+}
+
+.previa {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.feito {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--cor-ok);
+  border-radius: var(--raio-14);
+  background: var(--cor-ok-suave);
+  font-size: var(--fonte-13);
+}
+
+.feitoTitulo {
+  color: var(--cor-ok);
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.titulo {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .pagina {
+    padding: 16px;
+  }
+
+  .direita {
+    max-width: none;
+  }
+}

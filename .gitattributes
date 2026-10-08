@@ -1,0 +1,9 @@
+# Scripts do kit: bash exige LF; PowerShell aceita os dois.
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.ts text eol=lf
+*.js text eol=lf
+*.md text
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf

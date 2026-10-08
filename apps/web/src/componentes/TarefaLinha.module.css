@@ -1,0 +1,110 @@
+.linha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--cor-superficie);
+}
+
+.linha + .linha {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.linha:hover {
+  background: var(--cor-fundo);
+}
+
+/* O foco do link esticado aparece na linha toda. */
+.linha:has(.acao:focus-visible) {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: -2px;
+}
+
+.ponto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cor-acento);
+}
+
+.urgente .ponto {
+  background: var(--cor-erro);
+}
+
+.corpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.codigo {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.texto {
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+}
+
+.quem {
+  font-weight: 600;
+}
+
+.cliente {
+  position: relative;
+  z-index: 1;
+}
+
+.cliente:hover {
+  text-decoration: underline;
+}
+
+.acao:focus-visible {
+  outline: none;
+}
+
+.acao::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.detalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.prazo {
+  flex: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.urgente .prazo {
+  color: var(--cor-erro);
+}
+
+.seta {
+  flex: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-18);
+}

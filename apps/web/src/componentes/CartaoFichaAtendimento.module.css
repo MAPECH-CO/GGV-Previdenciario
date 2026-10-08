@@ -1,0 +1,34 @@
+.texto,
+.senha {
+  font-size: var(--fonte-12);
+}
+
+.senha {
+  color: var(--cor-ok);
+  font-weight: 500;
+}
+
+.respostas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fonte-12);
+}
+
+.respostas dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.branco {
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-12);
+}
+
+.link {
+  align-self: flex-start;
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  text-decoration: underline;
+}

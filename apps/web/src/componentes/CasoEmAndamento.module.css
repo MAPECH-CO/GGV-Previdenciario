@@ -1,0 +1,66 @@
+.caso {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+}
+
+.numero {
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.beneficio {
+  padding: 4px 10px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.etapa {
+  align-self: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.acao {
+  font-size: var(--fonte-12);
+}
+
+.prazo,
+.urgente {
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.prazo {
+  color: var(--cor-texto-suave);
+}
+
+.urgente {
+  color: var(--cor-erro);
+}
+
+.vazio {
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}

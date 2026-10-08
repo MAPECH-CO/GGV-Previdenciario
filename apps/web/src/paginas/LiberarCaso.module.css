@@ -1,0 +1,66 @@
+/* O resto vem de Balcao.module.css e ConferirDocumentos.module.css: o visual das telas de passo (Figma step_D1.24, 10:264). */
+.conferir {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  font-size: var(--fonte-14);
+}
+
+.item input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cor-ok);
+}
+
+.registro {
+  color: var(--cor-texto-suave);
+}
+
+/* "Resumo do que foi coletado": rótulo à esquerda, valor e "Abrir ›" à direita. */
+.resumo {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px 16px;
+  align-items: center;
+  margin: 0;
+  font-size: var(--fonte-14);
+}
+
+.resumo dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.resumo dd {
+  margin: 0;
+  text-align: right;
+}
+
+.destaque {
+  color: var(--cor-acento);
+  font-weight: 600;
+}
+
+.abrir {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.status {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro);
+  font-size: var(--fonte-14);
+}

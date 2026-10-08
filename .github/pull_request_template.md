@@ -1,15 +1,19 @@
-## História
-GGVP-___ · link do Jira
+## Épico
+GGVP-___ · nome do épico · link do Jira
+Change do OpenSpec: `openspec/changes/ggvp-___-...`
 
-## O que foi feito
+## Histórias neste PR
+- GGVP-___ · título
 
 ## Como foi testado
 
 ## O que ficou de fora e por quê
 
 ## Checklist (Definition of Done)
-- [ ] Escopo da história, nada além
-- [ ] Testes escritos e passando localmente
+- [ ] Cada commit cita a história (GGVP-n) e só mexe nela
+- [ ] Seções do `tasks.md` das histórias deste PR todas marcadas; `openspec validate --all --strict` sem erro
+- [ ] Campos de formulário pela biblioteca `campos`; portões validados no servidor
+- [ ] Testes escritos e passando localmente; Playwright nas telas
 - [ ] CI verde
 - [ ] Sem segredo, sem `.env`, sem dado real de cliente
 - [ ] Documentação atualizada quando muda comportamento

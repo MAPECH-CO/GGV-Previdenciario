@@ -1,0 +1,33 @@
+.campo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.campo:focus-within {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.lupa {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-16);
+}
+
+.entrada {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--fonte-15);
+}
+
+.entrada::placeholder {
+  color: var(--cor-texto-suave-2);
+}

@@ -1,0 +1,21 @@
+.lista {
+  display: flex;
+  gap: 6px;
+}
+
+.aba {
+  padding: 7px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aba[aria-selected='true'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}

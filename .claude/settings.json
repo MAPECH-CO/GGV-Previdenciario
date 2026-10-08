@@ -1,0 +1,77 @@
+{
+  "extraKnownMarketplaces": {
+    "ecc": { "source": { "source": "git", "url": "https://github.com/affaan-m/ECC.git" } },
+    "ponytail": { "source": { "source": "git", "url": "https://github.com/DietrichGebert/ponytail.git" } },
+    "mapech": { "source": { "source": "git", "url": "https://github.com/pedrogrigs/mapech-delivery-os.git" } }
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "ecc@ecc": true,
+    "ponytail@ponytail": true,
+    "mapech-delivery-os@mapech": true,
+
+    "superpowers@superpowers-dev": false,
+    "agenthub@claude-code-skills": false,
+    "autoresearch-agent@claude-code-skills": false,
+    "c-level-agents@claude-code-skills": false,
+    "engineering-skills@claude-code-skills": false,
+    "voltagent-qa-sec@voltagent-subagents": false,
+    "agent-teams@claude-code-workflows": false,
+    "full-stack-orchestration@claude-code-workflows": false,
+    "codex@openai-codex": false
+  },
+  "env": {
+    "ECC_HOOK_PROFILE": "minimal",
+    "ECC_SESSION_START_MAX_CHARS": "3000"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(openspec:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git switch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push -u origin HEAD)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr ready:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm run:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/kit/hooks/estado.js"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

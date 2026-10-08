@@ -1,0 +1,123 @@
+/* Telas de acesso (Entrar, Trocar a senha, Sem perfil): um cartão no meio da página, sobre a base de tokens. */
+.pagina {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(380px, 100%);
+  padding: 28px 24px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  font-size: var(--fonte-15);
+  font-weight: 600;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--raio-7);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 700;
+}
+
+.titulo {
+  margin-bottom: 8px;
+  font-size: var(--fonte-20);
+  font-weight: 600;
+}
+
+.texto {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+.rotulo {
+  margin-top: 8px;
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.campo {
+  padding: 11px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-15);
+}
+
+.campo:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.campo[aria-invalid='true'] {
+  border-color: var(--cor-erro);
+}
+
+.erroCampo,
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-13);
+}
+
+.erro {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-erro-suave);
+}
+
+.aviso {
+  padding: 10px 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-alerta-suave);
+  font-size: var(--fonte-13);
+}
+
+.botao {
+  margin-top: 12px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.botao:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.dica {
+  margin-top: 4px;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-12);
+}

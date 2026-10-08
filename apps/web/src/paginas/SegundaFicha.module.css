@@ -1,0 +1,142 @@
+/* O resto vem de Balcao.module.css (telas de passo) e Campo.module.css (os campos). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.texto {
+  font-size: var(--fonte-13);
+}
+
+.secao input,
+.secao select,
+.secao textarea {
+  padding: 10px 14px;
+  background: var(--cor-fundo);
+  font-size: var(--fonte-15);
+}
+
+.secao label {
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}
+
+.pessoais {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px 16px;
+  font-size: var(--fonte-14);
+}
+
+.pessoais dd {
+  margin: 0;
+}
+
+.pessoais dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+/* Tablet: uma pergunta por vez, letra grande (CA1). */
+.tablet {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.tabletTopo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-16);
+}
+
+.tabletTitulo {
+  font-size: var(--fonte-28);
+  font-weight: 600;
+}
+
+.tabletCartao {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+}
+
+.progresso {
+  color: var(--cor-acento);
+  font-size: var(--fonte-16);
+  font-weight: 600;
+}
+
+.tabletPergunta label,
+.tabletRotulo {
+  color: var(--cor-texto);
+  font-size: var(--fonte-24);
+  font-weight: 600;
+}
+
+.tabletPergunta input,
+.tabletPergunta select {
+  padding: 16px 18px;
+  font-size: var(--fonte-22);
+}
+
+.tabletPergunta p {
+  font-size: var(--fonte-16);
+}
+
+.tabletAjuda {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-18);
+}
+
+.tabletBotoes {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tabletBotao,
+.tabletPrincipal {
+  padding: 16px 28px;
+  border-radius: var(--raio-10);
+  font-size: var(--fonte-20);
+  font-weight: 600;
+}
+
+.tabletBotao {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.tabletPrincipal {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.tabletBotao:disabled,
+.tabletPrincipal:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tablet .secao label,
+.tablet .secao h2 {
+  font-size: var(--fonte-22);
+}
+
+.tablet .secao input,
+.tablet .secao select,
+.tablet .secao textarea {
+  padding: 14px 16px;
+  font-size: var(--fonte-20);
+}

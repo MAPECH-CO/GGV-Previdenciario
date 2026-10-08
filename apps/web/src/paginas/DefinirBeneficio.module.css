@@ -1,0 +1,133 @@
+/* O resto vem de Balcao.module.css: o visual das telas de passo (Figma step_*). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.advogada {
+  padding: 3px 8px;
+  border-radius: var(--raio-16);
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+}
+
+.texto {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cor-linha);
+  font-size: var(--fonte-14);
+}
+
+.linha dt {
+  flex: 0 0 140px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.linha dd {
+  margin: 0;
+  text-align: right;
+}
+
+.base {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.base li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.caso {
+  font-weight: 500;
+}
+
+.resumo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.requisitos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fonte-14);
+}
+
+.requisitos li[data-atende='true'] {
+  color: var(--cor-ok);
+}
+
+.requisitos li[data-atende='false'] {
+  color: var(--cor-erro);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.entrada {
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font: inherit;
+}
+
+.conferencia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.conferencia input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}
+
+@media (max-width: 720px) {
+  .linha {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .linha dd {
+    text-align: left;
+  }
+}

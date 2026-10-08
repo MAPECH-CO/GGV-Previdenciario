@@ -33,7 +33,7 @@ estagiário-assistente** vem de `perfis.md`, pelo texto das caixas. Regra de atr
   A perícia (DP.02, DP.06, DP.07) passou ao Jurídico administrativo em 29/09 (decisão do Lucas).
 **Histórias:** GGVP-16, 21, 36, 60, 65, 69, 72, 77, 85, 89, 97, 101, 18, 29, 102, 98,
 22. Compartilhadas: 58, 83, 76, 103.
-**Nunca vê:** petição, estratégia jurídica, valores da prestação de contas. Não decide benefício (G3),
+**Nunca vê:** petição, estratégia jurídica, valores (o percentual de honorários aparece só no contrato que confere). Não decide benefício (G3),
 suficiência médica (G17/G20) nem setor da exigência (G5); não protocola (G2/G7); cobrança tem limite
 que escala à sênior (G15).
 **Home:** agenda do dia; fila de tarefas (assinatura, verificação de contrato, cobrança, exigência,
@@ -58,7 +58,7 @@ remarcação que passou do limite, G15); conversa (D5.04); governança médica e
 conferir o laudo novo, e D4.02N).
 **Histórias:** GGVP-28, 32, 40, 43, 46, 51, 57, 31, 35, 39, 44, 48, 63, 67, 71, 74, 79, 87, 90, 92,
 100, 26, 34, 37, 45, 49, 70, 73, 80, 84, 88, 20, 25, 42, 50, 59, 64, 68. Compartilhadas: 86, 76, 52.
-**Nunca vê:** configurações do escritório. A IA sugere, ela decide e assina (G3, G4, G6, G17); aviso
+**Nunca vê:** valores fora da prestação de contas que ela faz; configurações do escritório. A IA sugere, ela decide e assina (G3, G4, G6, G17); aviso
 ao cliente só após o OK dela (G8).
 **Home:** entrevistas do dia com a ficha lida; casos com decisão; exigências e perícias a conferir;
 petições a pedir e conferir.
@@ -69,7 +69,7 @@ petições a pedir e conferir.
 (D3b.05); vigília 3×/dia com alarme (D4.01); medir ganho/perda e alimentar o acervo (D4.05–D4.06);
 importar o estudo prévio de peritos (D4.05); portão do parecer (G17).
 **Histórias:** GGVP-23, 54, 19, 30, 41, 55, 33, 93, 99, 94.
-**Nunca vê:** vê tudo do Jurídico. É quem despacha (G4), decide o que escalou (G15) e dispensa parecer
+**Nunca vê:** valores; vê o resto do Jurídico. É quem despacha (G4), decide o que escalou (G15) e dispensa parecer
 com justificativa (G17).
 **Home:** casos aguardando conferência; despachos pendentes; tarefas que estouraram o limite; estudos
 de caso. Botões Clientes, Processos e Gestão (painel de resultados a partir do Raio-X).
@@ -89,6 +89,7 @@ Nenhuma decisão é da raia.
 **Histórias:** **nenhuma tem o perfil Financeiro** — a tarefa está sob GGVP-44 (advogada) e GGVP-98
 (Atendimento). **Lacuna de backlog: falta história própria para desenhar a home do Financeiro.**
 **Nunca vê:** entrevista, petição, laudos. O aviso ao cliente depende do OK da advogada (G8).
+**Dono do financeiro:** todo o financeiro do escritório é do Financeiro; ninguém mais vê valores, exceto a advogada na prestação de contas que ela faz e o Sócio em totais (Pedro, 06/10). Valor da causa e renda per capita do LOAS são dado jurídico e continuam para a advogada (Pedro, 07/10).
 **Home:** prestações de contas recebidas; botões Clientes, Processos, Gestão e Financeiro (recebido, a receber, lançamentos), ver `docs/prototipo/figma.md`.
 
 ## Gestão / Administração (proposto, fora do BPMN)
@@ -101,8 +102,8 @@ conteúdo mínimo (D1.21M). Conforme conversado, também com **acesso ao Finance
 ## Sócio (proposto, fora do BPMN)
 **Raia:** nenhuma. **Tarefa:** acompanhar resultado (deferimento, procedência, extinções sem mérito,
 rendimento), ligado a D3b e à medição de D4.05.
-**História:** GGVP-75 (painel de resultado). **Nunca vê:** dado de saúde de cliente individual;
-jurimetria abaixo do mínimo aparece como "amostra insuficiente" (G22). **Home:** painel de resultado.
+**História:** GGVP-75 (painel de resultado). **Nunca vê:** valor ou dado de saúde de cliente individual (o rendimento aparece só em totais do escritório);
+toda porcentagem de jurimetria vem com o número de casos e a data da base, sem amostra mínima (G22). **Home:** painel de resultado.
 
 ## Cliente / lead (fora do portal interno)
 **Raia:** CLIENTE/LEAD (topo do D1, raia externa desde 29/09; origem do D5) e CLIENTE (raia externa no D2, D3, D3a e DP). **Tarefas:** preencher a ficha (D1.05) e a segunda
@@ -129,7 +130,7 @@ e mensagens. Não usa "O que é meu hoje" nem o chat interno.
 
 ## Pontos abertos (refinamento)
 - **Q9** sênior e advogada: perfis distintos ou a mesma pessoa em casos diferentes?
-- **Q20** "sócio" é perfil do portal e quem vê valores?
+- **Q20** "sócio" é perfil do portal? Quem vê valores já está decidido: só o Financeiro; a advogada só na prestação de contas; o Sócio só em totais (Pedro, 06/10).
 - **Q4** o cliente terá algum acesso ao portal?
 - **Financeiro**: criar história e home próprias, ou manter dentro de Atendimento/advogada?
 - **Passos novos** DP.00 e D4.02N ainda não desenhados no Miro; as telas ligadas a eles esperam. O D1.21M foi desenhado em 29/09 no subfluxo do laudo novo do D1.
