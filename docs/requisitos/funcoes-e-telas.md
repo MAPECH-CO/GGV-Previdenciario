@@ -97,7 +97,7 @@ conteúdo mínimo (D1.21M). Conforme conversado, também com **acesso ao Finance
 **Raia:** nenhuma. **Tarefa:** acompanhar resultado (deferimento, procedência, extinções sem mérito,
 rendimento), ligado a D3b e à medição de D4.05.
 **História:** GGVP-75 (painel de resultado). **Nunca vê:** valor ou dado de saúde de cliente individual (o rendimento aparece só em totais do escritório);
-jurimetria abaixo do mínimo aparece como "amostra insuficiente" (G22). **Home:** painel de resultado.
+toda porcentagem de jurimetria vem com o número de casos e a data da base, sem amostra mínima (G22). **Home:** painel de resultado.
 
 ## Cliente / lead (fora do portal interno)
 **Raia:** CLIENTE/LEAD (topo do D1; origem do D5). **Tarefas:** preencher a ficha (D1.05) e a segunda
