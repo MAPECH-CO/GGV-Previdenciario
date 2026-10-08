@@ -25,6 +25,8 @@ export const MODELO_IDA_AO_BANCO = 'Confirmação da ida ao banco'
 export const MSG_MESMA_PESSOA = 'Quem deu o OK na prestação não registra o recebimento.'
 export const MSG_ACOMPANHANTE = 'Escolha quem do Atendimento acompanha o cliente'
 export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebimento.'
+export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
+export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
 export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
 export const TITULO_LEVAR = 'Levar ao banco'
 /** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
@@ -269,6 +271,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const s = await situacaoDoBanco(casoId)
     if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
+    // CA9: o caso encerrado não reabre a ida ao banco nem cria outro "Levar ao banco".
+    if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.tarefaDoBanco) return negar(resposta, 409, MSG_ANTES_DA_PRESTACAO)
     const d = entrada.data
     const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
@@ -303,14 +307,17 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const entrada = RegistrarEnvio.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const s = await situacaoDoBanco(casoId)
+    if (s.c?.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.c || !s.ag) return negar(resposta, 409, 'Agende a ida ao banco antes de avisar o cliente.')
     if (!s.okAdvogada || !s.atual) {
       await bloqueio(pedido, casoId, 'G8', 'D3b.03')
       return negar(resposta, 409, MSG_G8)
     }
     if (!s.m || !s.texto) return negar(resposta, 409, 'Modelo "Confirmação da ida ao banco" não cadastrado.')
-    const quem = pedido.usuario!.id
+    // CA2: só entra no acervo como processo bom o caso com o resultado registrado; sem ele, o aviso espera.
     const desfecho = s.c.desfecho ?? ((await deferimento(casoId)) ? 'deferido' : null)
+    if (!desfecho) return negar(resposta, 409, MSG_SEM_DESFECHO)
+    const quem = pedido.usuario!.id
     await banco.transaction(async (tx) => {
       await tx.insert(mensagem).values({
         pessoaId: s.c!.pessoaId,
@@ -338,7 +345,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const casoId = pedido.params.id
     const s = await situacaoDoBanco(casoId)
     if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
-    if (s.c.fase === 'encerrado') return negar(resposta, 409, 'Este caso já foi encerrado.')
+    if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.ag || !s.atual?.clienteAvisadoEm) return negar(resposta, 409, MSG_ANTES_DO_AVISO)
     const quem = pedido.usuario!.id
     await banco.transaction(async (tx) => {

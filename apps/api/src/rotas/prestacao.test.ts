@@ -5,7 +5,18 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_ACOMPANHANTE, MSG_ANTES_DA_PRESTACAO, MSG_ANTES_DO_AVISO, MSG_G8, MSG_MESMA_PESSOA, MSG_SEM_DEFERIDO, MODELO_IDA_AO_BANCO, TITULO_AVISO } from './prestacao.ts'
+import {
+  MSG_ACOMPANHANTE,
+  MSG_ANTES_DA_PRESTACAO,
+  MSG_ANTES_DO_AVISO,
+  MSG_ENCERRADO,
+  MSG_G8,
+  MSG_MESMA_PESSOA,
+  MSG_SEM_DEFERIDO,
+  MSG_SEM_DESFECHO,
+  MODELO_IDA_AO_BANCO,
+  TITULO_AVISO,
+} from './prestacao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -206,5 +217,28 @@ describe('GGVP-44 · ida ao banco', () => {
     const v = (await chamar('julia', 'GET', '/banco')).json()
     expect([v.encerrado, v.podeConfirmar, v.podeAgendar]).toEqual([true, false, false])
     expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(409)
+  })
+
+  it('GGVP-98 CA9 · caso encerrado não reabre: agendar e avisar de novo devolvem 409, e nenhuma tarefa nasce', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/confirmacao')
+    for (const [resto, corpo] of [['/banco', AGENDA()], ['/banco/envio', { canal: 'whatsapp' }]] as const) {
+      const r = await chamar('julia', 'POST', resto, corpo)
+      expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
+    }
+    expect(await abertas()).toEqual([])
+    expect((await banco.select().from(agendamento)).map((a) => a.situacao)).toEqual(['realizado'])
+    expect(await banco.select().from(mensagem)).toHaveLength(1)
+  })
+
+  it('GGVP-98 CA2 · sem desfecho registrado, o aviso não sai e o caso não entra no acervo como processo bom', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await banco.update(resultadoInss).set({ resultado: 'indeferido' })
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_SEM_DESFECHO])
+    expect([await banco.select().from(processoAcervo), await banco.select().from(mensagem)]).toEqual([[], []])
   })
 })
