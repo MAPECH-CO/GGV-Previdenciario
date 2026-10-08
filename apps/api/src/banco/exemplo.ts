@@ -141,14 +141,15 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'pericia.remarcacao.limite', valor: 1 },
   ])
   // GGVP-104 (Lucas, 02/10): no LOAS, a ficha de grupo familiar é obrigatória e as três declarações são condicionais.
-  // A versão 1 vale desde sempre, para os casos de exemplo já abertos.
+  // A versão 1 vale desde sempre, para os casos de exemplo já abertos; ao meio-dia, para a data não virar 31/12/1999 no
+  // fuso de São Paulo (GGVP-135, P16).
   const kitLoas = [
     ...['documento_de_identidade', 'cpf', 'comprovante_de_residencia', 'cadunico', 'ficha_de_grupo_familiar'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: true })),
     ...['declaracao_de_moradia', 'declaracao_de_uniao_estavel', 'declaracao_de_separacao_de_fato'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: false })),
   ]
   await banco
     .insert(kitDocumento)
-    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T00:00:00Z') }))))
+    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T12:00:00Z') }))))
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
   await banco.insert(etapa).values({ casoId: cu.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date() })

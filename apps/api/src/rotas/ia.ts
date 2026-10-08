@@ -17,7 +17,10 @@ export function registrarRotasIa(app: FastifyInstance, { banco, agora = () => ne
       .where(eq(chamadaIa.casoId, casoId))
       .orderBy(desc(chamadaIa.quando))
     const veSaida = pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
-    const lidas = linhas.filter((l) => veSaida && l.c.saida !== null)
+    // O trecho das fontes pode trazer texto de laudo: segue a mesma regra da saída.
+    const fontes = (c: (typeof linhas)[number]['c']) =>
+      veSaida ? (c.fontes as FonteDaIa[]) : (c.fontes as FonteDaIa[]).map(({ tipo, referencia }) => ({ tipo, referencia }))
+    const lidas = linhas.filter((l) => veSaida && (l.c.saida !== null || (l.c.fontes as FonteDaIa[]).some((f) => f.trecho)))
     if (lidas.length)
       await banco.insert(acessoDadoSensivel).values(
         lidas.map((l) => ({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId, recurso: `chamada_ia:${l.c.id}`, quando: agora() })),
@@ -31,7 +34,7 @@ export function registrarRotasIa(app: FastifyInstance, { banco, agora = () => ne
         situacao: c.situacao,
         quem,
         quando: c.quando.toISOString(),
-        fontes: c.fontes as FonteDaIa[],
+        fontes: fontes(c),
         saida: veSaida ? c.saida : null,
         alerta: c.alerta,
       })),
