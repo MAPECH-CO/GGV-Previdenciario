@@ -2,7 +2,7 @@
 
 ## GGVP-98 · Financeiro recebe e cliente é avisado
 
-- [x] 1.1 CA3, CA6 · Contratos: `ReceberPrestacao` com `valoresConferem`; `AgendarIdaAoBanco` com `acompanhanteId` obrigatório; `IdaAoBancoDoCaso` com `podeConfirmar` e `encerrado`; matriz versão 11 (`banco.agendar` do Financeiro); testes do contrato.
+- [x] 1.1 CA3, CA6 · Contratos: `ReceberPrestacao` com `valoresConferem`; `AgendarIdaAoBanco` com `acompanhanteId` obrigatório; `IdaAoBancoDoCaso` com `podeConfirmar` e `encerrado`; matriz versão 11, renumerada para 13 na 3.2 (`banco.agendar` do Financeiro); testes do contrato.
 - [x] 1.2 CA1, CA3, CA4, CA8 · Servidor: o OK abre só o recebimento; "Receber e lançar" exige a conferência e abre a tarefa do aviso do Financeiro; a mesma pessoa é recusada e registrada; testes da API.
 - [x] 1.3 CA6, CA7 · Servidor: acompanhante obrigatório e do Atendimento; agendar abre "Levar ao banco" para ele, remarcar move a tarefa; testes da API.
 - [x] 1.4 CA2, CA5, CA9 · Servidor: o aviso grava o acervo (processo bom) e a baixa; `POST /api/casos/:id/banco/confirmacao` fecha o caso; testes da API.
@@ -12,7 +12,7 @@
 
 ## GGVP-22 · Explicar o resultado ao cliente
 
-- [x] 2.1 CA3, CA4, CA5 · Contratos em `packages/contratos/src/desfecho.ts`: `AprovarResumo`, `RegistrarContato`, `ResultadoParaExplicar`; matriz versão 12 (`resultado.aprovar_resumo`, `resultado.explicar`); testes do contrato.
+- [x] 2.1 CA3, CA4, CA5 · Contratos em `packages/contratos/src/desfecho.ts`: `AprovarResumo`, `RegistrarContato`, `ResultadoParaExplicar`; matriz versão 12, renumerada para 14 na 3.2 (`resultado.aprovar_resumo`, `resultado.explicar`); testes do contrato.
 - [x] 2.2 CA1, CA3, CA5 · Servidor: `abrirExplicacaoDoResultado` abre "Aprovar o resumo para o cliente" para a advogada; `POST /api/casos/:id/resultado/resumo` grava o resumo como decisão de pessoa e abre "Explicar resultado" para quem fala; testes da API.
 - [x] 2.3 CA2, CA4 · Servidor: `GET /api/casos/:id/resultado` e `POST /api/casos/:id/resultado/contato` (sem contato mantém; explicado conclui e encerra); testes da API.
 - [x] 2.4 Semente: um caso de exemplo perdido, com "Aprovar o resumo para o cliente" para a advogada.
@@ -25,9 +25,24 @@
 A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", foi para o próximo PR do épico, junto com a GGVP-100 (ver a proposal). A parte do estudo de caso já está no PR da IA.
 
 - [x] 3.1 Base do PR na `main`, porque a Garantia entrou em 07/10, e a `main` mesclada na branch, sem conflito.
-- [ ] 3.2 Matriz: quem entra depois renumera. Se o #23 (Jurimetria, também com as versões 11 e 12) entrar antes, as duas versões deste PR passam para as próximas livres, com a impressão digital nova no teste.
+- [x] 3.2 Matriz: quem entra depois renumera. O #23 (Jurimetria, também com as versões 11 e 12) está à frente na fila, então este PR passou a usar as versões 13 e 14 (revisão de 08/10).
+  - A impressão digital não muda, porque só depende do conteúdo da matriz.
+  - Quando o #23 entrar, a `main` mesclada traz as ações dele, e a impressão digital é recalculada.
+  - Se a ordem mudar, renumera de novo.
 - [x] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10, com a main mesclada:
   - typecheck e lint sem erro;
   - `openspec validate --all --strict` com 11 de 11;
   - contratos 88, API 271, tela 1.117 e Playwright 202, todos passando.
   - Quatro arquivos de tela não subiram por tempo esgotado ao iniciar com a máquina cheia. Rodados de novo à parte, passaram com 189 testes.
+
+## Revisão do PR (08/10)
+
+- [x] 4.1 GGVP-98 · CA2, CA9: o caso encerrado não reabre. Agendar a ida ao banco e avisar o cliente devolvem 409, e nenhuma tarefa nasce. O aviso sem desfecho nem deferimento registrado também devolve 409, e o caso não entra no acervo como processo bom. Testes da API.
+- [x] 4.2 GGVP-22 · CA4, CA5: só quem ficou com a explicação registra o contato, ou seja, a advogada que a pegou ou o Atendimento. A tela mostra só os contatos desta explicação, ligados à tarefa pelo histórico. Testes da API.
+- [x] 4.3 Rodar typecheck, lint, testes e Playwright; colar a saída. Em 08/10:
+  - typecheck e lint sem erro;
+  - `openspec validate --all --strict` com 11 de 11;
+  - contratos 88 e API 275 (4 testes novos), todos passando.
+  - A tela não mudou, e só os contratos leem a versão da matriz.
+  - Playwright do desfecho, da via administrativa, da perícia, do login e da governança: 24 passaram juntos.
+  - O teste do cofre falhou só ao rodar junto com a via administrativa: as duas leem o cofre do Igor no mesmo servidor, uma fragilidade que já vem da main. Sozinho, passou com 5 de 5.

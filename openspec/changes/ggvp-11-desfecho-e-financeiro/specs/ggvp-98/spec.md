@@ -15,12 +15,17 @@ Com o OK da advogada e a prestação recebida, a fila do Financeiro SHALL ter a 
 - **Então** vê a tarefa com o nome do cliente e a ação de avisar e agendar a ida ao banco
 
 ### Requirement: CA2 · O aviso grava o caso no acervo como processo bom
-Com o aviso enviado e a ida ao banco agendada, o caso SHALL entrar no acervo como processo bom, com o desfecho do caso, uma vez só, e a baixa SHALL ficar no histórico. O desfecho fica para a conferência da jurimetria (GGVP-41 CA5).
+Com o aviso enviado e a ida ao banco agendada, o caso SHALL entrar no acervo como processo bom, com o desfecho do caso, uma vez só, e a baixa SHALL ficar no histórico. O desfecho fica para a conferência da jurimetria (GGVP-41 CA5). Caso sem desfecho e sem deferimento registrado MUST NOT entrar como processo bom: o aviso é recusado até o resultado ser registrado.
 
 #### Scenario: CA2 · Registrar o aviso
 - **Dado** o aviso feito e a ida ao banco agendada
 - **Quando** o Financeiro registra o envio
 - **Então** o caso entra no acervo como processo bom e a baixa fica registrada
+
+#### Scenario: CA2 · Sem resultado registrado
+- **Dado** um caso sem desfecho e sem deferimento registrado
+- **Quando** o Financeiro tenta registrar o aviso
+- **Então** o portal recusa, nenhuma mensagem é gravada e o caso não entra no acervo
 
 ### Requirement: CA3 · Receber e lançar só com os valores conferidos
 O Financeiro SHALL ver o valor recebido, o repasse, a forma, o prazo e a versão aprovada, e escolher "Receber e lançar" ou "Divergência, devolver à advogada", com motivo obrigatório na divergência. "Receber e lançar" MUST exigir "Valores conferem com o comprovante", na tela e no servidor.
@@ -71,9 +76,14 @@ Quem deu o OK na prestação e tenta registrar o recebimento do mesmo caso MUST 
 - **Então** o servidor recusa e registra a tentativa
 
 ### Requirement: CA9 · Confirmar recebimento fecha o caso
-Depois do aviso, o Financeiro SHALL confirmar o recebimento: a ida ao banco fica realizada, a tarefa de quem acompanha conclui e o caso vai para "encerrado".
+Depois do aviso, o Financeiro SHALL confirmar o recebimento: a ida ao banco fica realizada, a tarefa de quem acompanha conclui e o caso vai para "encerrado". O caso encerrado MUST NOT reabrir: agendar a ida ao banco e avisar o cliente são recusados, e nenhuma tarefa nasce.
 
 #### Scenario: CA9 · Confirmar
 - **Dado** a ida ao banco feita
 - **Quando** o Financeiro registra "Confirmar recebimento"
 - **Então** o caso fecha; antes do aviso, a confirmação é recusada
+
+#### Scenario: CA9 · Caso encerrado não reabre
+- **Dado** o caso encerrado pela confirmação
+- **Quando** alguém tenta agendar de novo a ida ao banco ou avisar o cliente
+- **Então** o portal recusa, e nenhuma tarefa nasce
