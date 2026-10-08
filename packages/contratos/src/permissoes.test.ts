@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 15, digital: '8b5c7fd4' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 16, digital: '5716335c' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -116,11 +116,11 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 9,
-      atendimento_lider: 11,
-      documentacao: 7,
-      advogada: 25,
-      senior: 26,
+      atendimento: 10,
+      atendimento_lider: 12,
+      documentacao: 8,
+      advogada: 28,
+      senior: 31,
       juridico_adm: 16,
       financeiro: 6,
       socio: 5,

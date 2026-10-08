@@ -19,7 +19,7 @@ const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15. Quem entrar depois
 // renumera.
-export const VERSAO_MATRIZ = 15
+export const VERSAO_MATRIZ = 16
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
