@@ -22,7 +22,7 @@ import { configuracao, documento, eventoAuditoria, kitDocumento, modelo, usuario
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 type Opcoes = { banco: Banco; agora?: () => Date }
-type Detalhe = { chave?: Parametro; antes?: unknown; depois?: unknown; beneficio?: Beneficio; versao?: number; nome?: string; itens?: number }
+type Detalhe = { chave?: Parametro; antes?: unknown; depois?: unknown; beneficio?: Beneficio; versao?: number; nome?: string; itens?: number; termo?: string }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const UUID = /^[0-9a-f-]{36}$/
 
@@ -31,6 +31,13 @@ function descrever(acao: string, d: Detalhe) {
   if (acao === 'configuracao_alterada' && d.chave) return `${PARAMETROS_DO_ESCRITORIO[d.chave].rotulo}: ${d.antes ?? 'sem valor'} → ${d.depois}`
   if (acao === 'kit_publicado' && d.beneficio) return `Kit de ${ROTULO_BENEFICIO[d.beneficio]}: versão ${d.versao} publicada, com ${d.itens} documento(s)`
   if (acao === 'mensagem_alterada') return `Mensagem "${d.nome}": versão ${d.versao} publicada`
+  // GGVP-143: o glossário do escritório, na mesma linha do histórico.
+  if (acao === 'glossario_termo_acrescentado') return `Glossário: "${d.termo}" acrescentado`
+  if (acao === 'glossario_termo_tirado') return `Glossário: "${d.termo}" tirado`
+  if (acao === 'glossario_termo_corrigido') {
+    const novo = (d.depois as { termo?: string } | undefined)?.termo
+    return `Glossário: "${d.termo}" corrigido${novo && novo !== d.termo ? ` para "${novo}"` : ''}`
+  }
   return acao
 }
 

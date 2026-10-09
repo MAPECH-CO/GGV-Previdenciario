@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-43 · Cadastrar o lead depois da entrevista. Cada teste abre um navegador novo, então começa da semente de
 // exemplo.ts. A semente só tem um CPF, o de teste, que é do Antônio: o cadastro que salva é o dele.
@@ -7,6 +8,9 @@ import { expect, test, type Page } from '@playwright/test'
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+// As telas do Jurídico pedem o perfil (GGVP-135): a advogada entra pela API.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, ADVOGADA))
 
 /** A entrevista da Josefa gravada e encerrada, com o relógio do Playwright. */
 async function entrevistaEncerrada(page: Page) {
@@ -78,7 +82,7 @@ test('CA11 · duas abas na mesma ficha: a outra vê "está editando" na hora', a
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Cadastrar lead')
   const outra = await context.newPage()
   await outra.goto('/clientes/josefa-exemplo/cadastro')
-  await expect(page.getByRole('alert')).toContainText('Você (Advogada), em outra aba, está editando esta ficha agora.')
+  await expect(page.getByRole('alert')).toContainText('Gabi (exemplo), em outra aba, está editando esta ficha agora.')
   await expect(outra.getByRole('alert')).toContainText('em outra aba, está editando')
   await outra.close()
   await expect(page.getByRole('alert')).toHaveCount(0)
