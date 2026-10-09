@@ -39,6 +39,7 @@ import {
   periciaDo,
   periciaDoResultado,
   podeMarcar,
+  SISTEMA,
   tarefasDaAdvogadaEm,
   tarefasDaDocumentacaoEm,
   tarefasDeDecidirDocumentoEm,
@@ -208,11 +209,11 @@ function comArquivo(campo: string, arquivo: Blob | undefined, nome: string, dado
 export async function sincronizarPericias(juridico: boolean) {
   if (!servidorLigado()) return
   const [lista, tarefas] = await Promise.all([noBanco<PericiaNaTela[]>('/pericias'), noBanco<Tarefa[]>('/pericias/tarefas')])
-  // Os peritos (com a jurimetria) são só do Jurídico: os outros perfis nem pedem, para não virar tentativa bloqueada.
+  // Os peritos servem à pergunta de um clique, que é do Jurídico: os outros perfis nem pedem.
   peritosDoBanco = juridico ? await noBanco<typeof peritosDoBanco>('/peritos') : []
   tarefasDoBanco = tarefas
   // A cópia das perícias do servidor é trocada inteira: quem entra depois, na mesma aba, não fica com o que a pessoa de
-  // antes via (o laudo e a leitura são só do Jurídico).
+  // antes via (a leitura do laudo é só do Jurídico).
   const banco = lerComPericias()
   banco.pericias = (banco.pericias ?? []).filter((p) => !doServidor(p.processoId))
   for (const t of lista) receberEm(banco, t)
@@ -286,6 +287,23 @@ export async function registrarMarcacao(
 ): Promise<PericiaNaTela> {
   if (doServidor(processoId)) return naApi(processoId, '/marcacao', comArquivo('comprovante', m.comprovante.arquivo, m.comprovante.nome, { lido: m.lido, pedeDocumentoNovo: m.pedeDocumentoNovo }))
   return mudar(processoId, (n) => mudancas.marcacao(n, m, quem))
+}
+
+/**
+ * POST /api/processos/:id/pericia/documentos (GGVP-56, CA2, CA4): no caso do servidor, "Anexar" sobe o documento do item
+ * à pasta do caso e o item fica anexado. Na semente, o envio é pela janela "Conferir e enviar".
+ */
+export function anexarDocumentoDaPericia(processoId: string, itemId: string, arquivo: Blob, nome: string): Promise<PericiaNaTela> {
+  return naApi(processoId, '/documentos', comArquivo('documento', arquivo, nome, { itemId }))
+}
+
+/**
+ * POST /api/processos/:id/pericia/data-do-juizo (GGVP-137). A perícia do juízo sem data lida da publicação: o Jurídico
+ * administrativo registra a data, a hora e o local que o juízo designou; vão à agenda e à ficha como a lida.
+ */
+export function registrarDataDoJuizo(processoId: string, d: { data: string; hora: string; local: string }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/data-do-juizo', d)
+  return mudar(processoId, (n) => mudancas.dataDoJuizo(n, d, quem))
 }
 
 /** Marcada no Meu INSS sem o comprovante ainda (DP.E1): a tarefa espera, com lembrete diário (CA6). */
@@ -413,7 +431,9 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
     const quando = `${diaFalado(m.data)}, às ${m.hora}, em ${m.local}`
     const como =
       m.origem === 'juizo'
-        ? `O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: ${quando}.`
+        ? m.registradaPor === SISTEMA
+          ? `O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: ${quando}.`
+          : `${m.registradaPor} registrou a data que o juízo designou e ela está na agenda e na ficha: ${quando}.`
         : `A ${tipo} de ${primeiro} está marcada para ${quando}; o sistema leu o comprovante e pôs na agenda e na ficha.`
     const documentos = pericia.pedeDocumentoNovo ? ` A Documentação reúne o que a perícia pede até ${dataCurta(t.prazos.documentosAte, hoje)}.` : ''
     const o = pericia.orientacao
@@ -493,7 +513,7 @@ export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[]
         oQue: tipo.charAt(0).toUpperCase() + tipo.slice(1),
         categoria: 'pericias',
         responsavel: 'Jurídico administrativo',
-        passo: PASSO_NA_AGENDA[m.origem],
+        passo: m.origem === 'juizo' && m.registradaPor !== SISTEMA ? 'DP.04 · Data do juízo, registrada pelo Jurídico administrativo' : PASSO_NA_AGENDA[m.origem],
         estado: m.comparecimento ? (m.comparecimento.compareceu ? 'realizado' : 'faltou') : m.data < hoje ? 'confirmar' : 'agendado',
         fichaId: achado.ficha.id,
         remarcacoes: p.remarcacoes,

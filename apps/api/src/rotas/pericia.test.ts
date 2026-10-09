@@ -2,16 +2,20 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, documento, eventoAuditoria, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, configuracao, credencialGovbr, decisao, documento, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
-import { MSG_ARQUIVO_PDF } from './pericia.ts'
+import { casarPublicacoes } from '../vigilia/casar.ts'
+import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { MSG_COFRE_SEM_TAREFA } from './inss.ts'
+import { MSG_ANEXO, MSG_ARQUIVO_PDF } from './pericia.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -129,8 +133,8 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect((await acoes()).filter((a) => a === 'acesso_negado')).toHaveLength(7)
 
     const ok = await post('igor', '/tentativas', tentativa)
-    // Fora do Jurídico, a tentativa aparece sem o texto livre de quem marcou.
-    expect(JSON.stringify((await ver('dora')).json().pericia)).not.toContain('Sem vaga')
+    // O que a equipe escreveu, todo mundo do caso vê (saúde simples, 08/10).
+    expect((await ver('dora')).json().pericia.tentativas[0].oQueAconteceu).toBe(tentativa.oQueAconteceu)
     expect(ok.statusCode).toBe(200)
     expect(ok.json().pericia.tentativas).toHaveLength(1)
     const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_tentativa_registrada'))
@@ -221,20 +225,23 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     const laudos = (perfil.perfil as { laudos: object[] }).laudos
     expect(laudos).toHaveLength(1)
     expect(JSON.stringify(laudos)).not.toContain('Maria')
-    // O laudo é dado de saúde: sensível na pasta e fora da visão da Documentação.
+    // O PDF do laudo é sensível na pasta: só o Jurídico abre (rota dos documentos).
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
-    const daDora = (await ver('dora')).json()
-    expect([daDora.pericia.resultado.laudo, daDora.perfil, daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)]).toEqual([
-      undefined,
-      undefined,
-      ['comprovante-pericia'],
-    ])
-    // Nem pelo histórico: os passos do resultado e do perfil do perito ficam só com o Jurídico.
-    expect(Object.keys(daDora.pericia.resultado)).toEqual(['disponivelEm'])
-    expect(JSON.stringify(daDora)).not.toMatch(/Registrou o resultado|perfil de Dr|favorável/)
-    expect((await ver('dora', '/resultado')).statusCode).toBe(403)
-    expect((await ver('gabi', '/resultado')).json().pericia.resultado.laudo.leitura.favoravel).toBe(true)
+    // A Documentação vê o resultado, o laudo na pasta, o perito e os números dele; a leitura do laudo, os laudos do perfil
+    // e o assunto deles (conteúdo médico), não.
+    const acessos = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
+    for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
+      expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
+      expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
+      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto]).toEqual(['Dr. R. Menezes', 1, [], []])
+      expect(daDora.perfil.jurimetria.laudos).toBe(1)
+    }
+    expect(await acessos()).toEqual([])
+    // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.
+    const doJuridico = (await ver('gabi', '/resultado')).json()
+    expect([doJuridico.pericia.resultado.laudo.leitura.favoravel, doJuridico.perfil.porAssunto.map((a: { assunto: string }) => a.assunto)]).toEqual([true, ['sem assunto']])
+    expect(await acessos()).toEqual([[ids.gabi, casoId, `pericia:${linha.id}`]])
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
   })
 
@@ -383,6 +390,30 @@ describe('GGVP-139 · a IA de verdade na Perícia (fetch falso)', () => {
     expect(h.detalhe).toMatchObject({ chamadaIa: r.sugestao.chamadaId })
   })
 
+  it('saúde simples · o Atendimento vê o resultado e o que a equipe escreveu; a leitura do laudo fica com o Jurídico', async () => {
+    const LAUDO = { ...LAUDO_DA_IA, favoravel: false, resumo: 'O perito não viu incapacidade atual.', porque: 'O perito não comentou os exames do escritório.', valeNovaPericia: false }
+    comIa({ ocr: 'Laudo pericial. Conclusão: sem incapacidade atual.', texto: LAUDO })
+    await post('igor', '/tentativas', { dia: '2026-10-08', oQueAconteceu: 'Sem vaga no Meu INSS hoje' })
+    await compareceu()
+    const r = await lerLaudo()
+    const conferidas = ['laudo', 'parecer', 'dii', 'beneficio']
+    const dados = { favoravel: false, novaPericia: false, conferidas, chamadaIaId: r.sugestao.chamadaId }
+    expect((await app.inject({ method: 'POST', url: url('/resultado'), cookies: await de('gabi'), ...multipart('laudo', dados, PDF('laudo.pdf')) })).statusCode).toBe(200)
+
+    const doJuridico = (await ver('gabi')).json()
+    const daAna = (await ver('ana')).json()
+    // O que a equipe escreveu e o resultado: iguais para os dois.
+    expect(daAna.pericia.tentativas).toEqual(doJuridico.pericia.tentativas)
+    expect(daAna.pericia.orientacao).toEqual(doJuridico.pericia.orientacao)
+    expect(daAna.pericia.historico).toEqual(doJuridico.pericia.historico)
+    expect([daAna.etapa, daAna.pericia.resultado.registrado]).toEqual([doJuridico.etapa, doJuridico.pericia.resultado.registrado])
+    expect(daAna.pericia.historico.map((e: { oQue: string }) => e.oQue)).toContain('A IA indicou se vale pedir nova perícia: não (o porquê está no resumo do laudo)')
+    // A leitura do laudo: só o Jurídico; o Atendimento fica com o nome do arquivo e a data.
+    expect(doJuridico.pericia.resultado.laudo.leitura).toMatchObject({ resumo: LAUDO.resumo, porque: LAUDO.porque })
+    expect(daAna.pericia.resultado.laudo).toEqual({ nome: 'laudo.pdf', anexadoEm: doJuridico.pericia.resultado.laudo.anexadoEm })
+    expect(JSON.stringify(daAna)).not.toContain(LAUDO.porque)
+  })
+
   it('CA6 · sem a autorização de dado de saúde, o laudo nem vai à IA: a advogada recebe o motivo e registra pela leitura dela', async () => {
     const pedidos = comIa({ ocr: 'Laudo', texto: LAUDO_DA_IA, saude: false })
     await compareceu()
@@ -394,3 +425,151 @@ describe('GGVP-139 · a IA de verdade na Perícia (fetch falso)', () => {
   })
 })
 
+
+describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, anexar e cofre)', () => {
+  const tarefasDe = async (apelido: string) =>
+    (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await de(apelido) })).json().map((t: { passo: string; titulo: string; tela: string | null }) => [t.passo, t.titulo, t.tela])
+
+  it('a decisão (D2.03) leva à tela dela; a tarefa "Marcar perícia" do sistema (DP.01), à tela de marcar, onde o Jurídico administrativo registra a liberação', async () => {
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.03', titulo: 'Decidir perícia', perfilDono: 'advogada' })
+    expect(await tarefasDe('gabi')).toEqual([['D2.03', 'Decidir perícia', `/casos/${casoId}/pericia/decidir`]])
+    await decidirPericia()
+    expect(await tarefasDe('igor')).toEqual([['DP.01', 'Marcar perícia médica', `/casos/${casoId}/pericia/marcar`]])
+    // D2.E1: quem registra que o INSS liberou é o Jurídico administrativo (quem acompanha o Meu INSS).
+    for (const apelido of ['ana', 'dora', 'gabi']) expect([apelido, (await post(apelido, '/liberacao')).statusCode]).toEqual([apelido, 403])
+    const r = await post('igor', '/liberacao')
+    expect([r.statusCode, r.json().situacao, r.json().pericia.liberadaEm]).toEqual([200, 'marcar', relogio.toISOString()])
+    expect(await acoes()).toContain('pericia_liberada')
+  })
+
+  it('G9 · a senha do gov.br abre com a tarefa de marcar aberta: a do sistema (DP.01) e a da remarcação; agendada, não', async () => {
+    const cofre = criarCofre(chaveDoCofre({}))
+    app = criarServidor({ banco, agora: () => relogio, cofre, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), ia: criarIa({ banco, ambiente: {} }) })
+    for (const k of Object.keys(cookies)) delete cookies[k]
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco.insert(credencialGovbr).values({ pessoaId: c.pessoaId, ...cofre.cifrar('senha-gov-da-maria') })
+    const verSenha = async () => app.inject({ method: 'POST', url: `/api/casos/${casoId}/cofre`, cookies: await de('igor'), payload: { senhaDoPortal: SENHA } })
+    await decidirPericia()
+    expect((await verSenha()).json()).toEqual({ senha: 'senha-gov-da-maria', segundos: 60 })
+    await post('igor', '/liberacao')
+    await marcar(false)
+    const agendada = await verSenha()
+    expect([agendada.statusCode, agendada.json().erro]).toEqual([403, MSG_COFRE_SEM_TAREFA])
+    await post('igor', '/remarcacao', { motivo: 'O cliente pediu outra data' })
+    expect((await verSenha()).json().senha).toBe('senha-gov-da-maria')
+    const lidas = (await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'cofre_senha_lida'))).map((e) => (e.detalhe as { passo: string }).passo)
+    expect(lidas).toEqual(['DP.01', 'DP.02'])
+  })
+
+  it('GGVP-56 · "Anexar": a Documentação sobe o documento do item à pasta do caso e o item fica anexado', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    await marcar(true)
+    const anexar = async (apelido: string, dados: object, arquivo?: { nome: string; mime: string; conteudo: string }) =>
+      app.inject({ method: 'POST', url: url('/documentos'), cookies: await de(apelido), ...multipart('documento', dados, arquivo) })
+    expect((await anexar('igor', { itemId: 'laudo-recente' }, PDF('laudo.pdf'))).statusCode).toBe(403)
+    expect((await anexar('dora', { itemId: 'laudo-recente' })).json()).toEqual({ erro: MSG_ANEXO })
+    expect((await anexar('dora', { itemId: 'laudo-recente' }, { nome: 'laudo.txt', mime: 'text/plain', conteudo: 'x' })).json()).toEqual({ erro: MSG_ANEXO })
+    expect((await anexar('dora', { itemId: 'outro' }, PDF('laudo.pdf'))).json()).toEqual({ erro: 'Item da perícia não encontrado.' })
+    const r = await anexar('dora', { itemId: 'laudo-recente' }, PDF('laudo_maria.pdf'))
+    expect(r.statusCode).toBe(200)
+    const itens = r.json().documentos.itens.map((i: { item: { id: string }; arquivo?: { nome: string } }) => [i.item.id, i.arquivo?.nome ?? null])
+    expect(itens).toEqual([['laudo-recente', 'laudo_maria.pdf'], ['exames', null], ['receitas', null], ['atestados', null]])
+    // A foto do exame também vale; o documento da perícia médica é dado de saúde: sensível na pasta.
+    expect((await anexar('dora', { itemId: 'exames' }, { nome: 'exame.jpg', mime: 'image/jpeg', conteudo: 'jpeg' })).statusCode).toBe(200)
+    const docs = await banco.select().from(documento).where(and(eq(documento.casoId, casoId), eq(documento.sensivel, true)))
+    expect(docs.map((d) => [d.tipo, d.nomeOriginal]).sort()).toEqual([['exame', 'exame.jpg'], ['laudo', 'laudo_maria.pdf']])
+    // Os outros perfis do caso veem o item anexado (o status), e o histórico do servidor leva o item, sem o nome do arquivo.
+    expect((await ver('ana')).json().documentos.faltando.map((i: { id: string }) => i.id)).toEqual(['receitas', 'atestados'])
+    const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_documento_anexado'))
+    expect(h.detalhe).toMatchObject({ item: 'laudo-recente', passo: 'DP.03' })
+    expect(JSON.stringify(h.detalhe)).not.toContain('laudo_maria')
+  })
+
+  /** O juiz pede a perícia numa publicação do caso (D3a): a advogada classifica como exigência e distribui com os tipos. */
+  async function pedirPeloJuiz(texto: string, tiposPericia: string[]) {
+    await banco.insert(configuracao).values([
+      { chave: 'cobranca.limite', valor: 2 },
+      { chave: 'cobranca.intervalo_dias', valor: 2 },
+    ])
+    await banco.update(caso).set({ fase: 'judicial' }).where(eq(caso.id, casoId))
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: CNJ_EXEMPLO.exigencia })
+    await casarPublicacoes(banco, [{ fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: '2026-10-08', texto, partes: null }], relogio)
+    const [pub] = await banco.select().from(publicacao)
+    await app.inject({ method: 'POST', url: `/api/publicacoes/${pub.id}/classificacao`, cookies: await de('gabi'), payload: { classe: 'exigencia', dias: 15 } })
+    const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/exigencia-juiz`, cookies: await de('gabi'), payload: { decisao: 'cumprir', tiposPericia } })
+    expect(r.statusCode).toBe(201)
+  }
+  const marcarAbertas = () => banco.select().from(tarefa).where(and(eq(tarefa.passo, 'DP.01'), isNull(tarefa.concluidaEm)))
+
+  it('GGVP-53 · pedida pelo juiz: a data lida da publicação vai à agenda sozinha, e a tarefa de marcar fecha', async () => {
+    await pedirPeloJuiz('Defiro a prova pericial. Designo perícia médica para o dia 22/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro. Intimem-se.', ['medica'])
+    // Não há o que marcar: a tarefa do sistema fecha e a Central segue pela perícia (orientar o cliente).
+    expect(await marcarAbertas()).toEqual([])
+    const p = (await ver('igor')).json()
+    expect([p.situacao, p.pericia.origem, p.pericia.marcacao]).toMatchObject([
+      'agendada',
+      'd3a-juiz',
+      { data: '2026-10-22', hora: '10:30', local: 'sala de perícias da Vara Federal de Santo Amaro', origem: 'juizo', registradaPor: 'Sistema' },
+    ])
+    const [linha] = await banco.select().from(pericia)
+    expect(linha.agendadaPara?.toISOString()).toBe('2026-10-22T13:30:00.000Z')
+    const tarefas = (await app.inject({ method: 'GET', url: '/api/pericias/tarefas', cookies: await de('igor') })).json()
+    expect(tarefas.map((t: { acao: string }) => t.acao)).toEqual(['Orientar para a perícia'])
+  })
+
+  it('GGVP-53 · médica e social na mesma publicação, com o prazo do laudo pericial antes: cada uma com a sua data', async () => {
+    // Uma tarefa de marcar de outra origem, aberta, não é desta exigência: fica aberta.
+    await banco.insert(tarefa).values({ casoId, passo: 'DP.01', titulo: 'Marcar perícia médica (exigência do INSS)', perfilDono: 'juridico_adm' })
+    await pedirPeloJuiz(
+      'Intime-se o perito para entregar o laudo pericial até 30/11/2026 às 23h59. Designo perícia médica para 15/10/2026, às 10h, na sala 1. Designo perícia social com a assistente do juízo para 20/10/2026, às 14h, no domicílio.',
+      ['medica', 'social'],
+    )
+    expect((await marcarAbertas()).map((t) => t.titulo)).toEqual(['Marcar perícia médica (exigência do INSS)'])
+    await ver('igor')
+    const linhas = await banco.select().from(pericia)
+    expect(linhas.map((l) => [l.tipo, l.agendadaPara?.toISOString(), l.local]).sort()).toEqual([
+      ['medica', '2026-10-15T13:00:00.000Z', 'sala 1'],
+      ['social', '2026-10-20T17:00:00.000Z', 'domicílio'],
+    ])
+  })
+
+  it('GGVP-53 · só a médica com data na publicação: a social fica para marcar, e a tarefa de marcar continua aberta', async () => {
+    await pedirPeloJuiz('Designo perícia médica para 15/10/2026, às 10h, na sala 1. Determino estudo social, em data a ser designada.', ['medica', 'social'])
+    expect(await marcarAbertas()).toHaveLength(1)
+    await ver('igor')
+    const linhas = await banco.select().from(pericia)
+    expect(linhas.map((l) => [l.tipo, l.agendadaPara?.toISOString() ?? null]).sort()).toEqual([
+      ['medica', '2026-10-15T13:00:00.000Z'],
+      ['social', null],
+    ])
+  })
+
+  it('GGVP-137 · sem data lida, o Jurídico administrativo registra a data do juízo: vai à agenda e a tarefa de marcar fecha', async () => {
+    await pedirPeloJuiz('Designo perícia médica para 22/10/2026, às 10 horas, na sala 1 da Vara.', ['medica'])
+    expect(await marcarAbertas()).toHaveLength(1)
+    const antes = (await ver('igor')).json()
+    expect([antes.situacao, antes.pericia.instancia, antes.pericia.marcacao]).toEqual(['marcar', 'juizo', undefined])
+    const data = { data: '2026-10-22', hora: '10:00', local: 'Sala 1 da Vara Federal de Santo Amaro' }
+    // Só o Jurídico administrativo registra; o servidor confere de novo a data e a forma.
+    expect((await post('ana', '/data-do-juizo', data)).statusCode).toBe(403)
+    expect((await post('igor', '/data-do-juizo', { ...data, data: '2026-10-01' })).json()).toEqual({ erro: 'Confira a data da perícia: ela não pode ser passada.' })
+    expect((await post('igor', '/data-do-juizo', { ...data, hora: '10h' })).statusCode).toBe(400)
+    const r = await post('igor', '/data-do-juizo', data)
+    expect(r.statusCode).toBe(200)
+    expect([r.json().situacao, r.json().pericia.marcacao]).toMatchObject(['agendada', { ...data, origem: 'juizo', registradaPor: 'igor' }])
+    expect(r.json().pericia.historico.map((h: { oQue: string }) => h.oQue)).toContain('Registrou a data que o juízo designou e pôs na agenda e na ficha: 22/10, 10:00, Sala 1 da Vara Federal de Santo Amaro')
+    expect(await marcarAbertas()).toEqual([])
+    const [linha] = await banco.select().from(pericia)
+    expect(linha.agendadaPara?.toISOString()).toBe('2026-10-22T13:00:00.000Z')
+    expect(await acoes()).toContain('pericia_data_do_juizo_registrada')
+    // Já agendada, não registra de novo por aqui.
+    expect((await post('igor', '/data-do-juizo', data)).json()).toEqual({ erro: 'Esta perícia não está para marcar.' })
+  })
+
+  it('GGVP-137 · a perícia do INSS não recebe data do juízo: a data dela vem do comprovante', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    expect((await post('igor', '/data-do-juizo', { data: '2026-10-22', hora: '10:00', local: 'Sala 1' })).json()).toEqual({ erro: 'A data desta perícia vem do comprovante do INSS.' })
+  })
+})

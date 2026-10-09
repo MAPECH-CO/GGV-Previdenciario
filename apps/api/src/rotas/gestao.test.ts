@@ -56,15 +56,16 @@ describe('tentativas bloqueadas (GGVP-109)', () => {
       { quem: ids.gabi, acao: 'portao_bloqueado', alvo: `caso:${casoId}`, detalhe: { portao: 'G21', passo: 'D3a.04', perfil: 'advogada', faltam: 2 } },
       { quem: ids.gabi, acao: 'peticao_pedida', alvo: `caso:${casoId}`, detalhe: {} },
     ])
-    const lista = (await tentativas('julia')).json().tentativas
+    const lista = (await tentativas('rui')).json().tentativas
     expect(lista.map((t: { quem: string; descricao: string }) => [t.quem, t.descricao])).toEqual([
       ['gabi', 'Manifestar no processo sem prova em todos os itens (G21)'],
       ['ana', 'Avisar o cliente antes do OK da advogada na prestação de contas (G8)'],
     ])
   })
 
-  it('CA9 · só a gestão vê as tentativas', async () => {
+  it('CA9 · só a gestão vê as tentativas; o Financeiro, que no Figma vê só os Resultados, não (GGVP-96)', async () => {
     expect((await tentativas('gabi')).statusCode).toBe(403)
+    expect((await tentativas('julia')).statusCode).toBe(403)
   })
 })
 

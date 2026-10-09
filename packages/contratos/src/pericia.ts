@@ -23,6 +23,13 @@ export const ComprovanteLido = z.object({ data: Data, hora: Hora, local: Texto(1
 export const MarcacaoConferida = z.object({ lido: ComprovanteLido, pedeDocumentoNovo: z.boolean() })
 export type MarcacaoConferida = z.infer<typeof MarcacaoConferida>
 
+/**
+ * POST /api/processos/:id/pericia/data-do-juizo (GGVP-137): a data, a hora e o local que o juízo designou, registrados pelo
+ * Jurídico administrativo quando a publicação não os trouxe num formato que o sistema lê. A regra confere a data não passada.
+ */
+export const DataDoJuizo = z.object({ data: Data, hora: Hora, local: Texto(120) })
+export type DataDoJuizo = z.infer<typeof DataDoJuizo>
+
 /** POST /api/processos/:id/pericia/espera-do-comprovante: marcada no Meu INSS, sem comprovante ainda (DP.E1, CA6). */
 export const EsperaDoComprovante = z.object({ pedeDocumentoNovo: z.boolean() })
 export type EsperaDoComprovante = z.infer<typeof EsperaDoComprovante>
@@ -42,6 +49,13 @@ export type MensagemConferida = z.infer<typeof MensagemConferida>
 /** POST /api/processos/:id/pericia/faltas: a falta de um item do kit, com justificativa (GGVP-56, CA5). */
 export const FaltaNaPericia = z.object({ itemId: Texto(60), justificativa: Texto(500) })
 export type FaltaNaPericia = z.infer<typeof FaltaNaPericia>
+
+/**
+ * POST /api/processos/:id/pericia/documentos, em multipart: `dados` (este JSON) e o arquivo `documento` (PDF ou imagem).
+ * O item do kit que o documento cumpre (GGVP-56, CA2, CA4).
+ */
+export const AnexoNaPericia = z.object({ itemId: Texto(60).min(1) })
+export type AnexoNaPericia = z.infer<typeof AnexoNaPericia>
 
 /** POST /api/processos/:id/pericia/documentos/conclusao (GGVP-56, CA5, CA6). */
 export const ConclusaoDosDocumentos = z.object({ conferidas: z.array(Texto(60)).max(10) })

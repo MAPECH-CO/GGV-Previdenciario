@@ -3,7 +3,7 @@
 // trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-6).
 import { formatarTelefone } from '../campos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
-import { relogio } from '../regras/entrevista.ts'
+import { erroDaInformacao, relogio, valorDaInformacao } from '../regras/entrevista.ts'
 import { QUEM_ADVOGADA, agora, esperar, evento, gravacaoDoServidor, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type { Ficha, Gravacao, TarefaEncaminhada } from './tipos.ts'
 
@@ -30,23 +30,34 @@ export async function obterGravacoes(fichaId: string): Promise<Gravacao[]> {
 /**
  * POST /api/gravacoes/:id/conferencias. Só o que a advogada conferiu sai da transcrição (CA6, G14): o da ficha muda a
  * ficha, com o valor antigo no histórico; o da Documentação vira "Pedir documento"; cofre e processo ficam marcados.
+ * GGVP-133: `correcoes`, o valor que ela corrigiu num item, no lugar do que a IA ouviu.
  */
-export async function conferirInformacoes(gravacaoId: string, ids: string[]): Promise<{ gravacao: Gravacao; ficha: Ficha }> {
+export async function conferirInformacoes(gravacaoId: string, ids: string[], correcoes: { id: string; valor: string }[] = []): Promise<{ gravacao: Gravacao; ficha: Ficha }> {
   await esperar()
   if (ids.length === 0) throw new Error('Marque o que você conferiu.')
-  if (gravacaoDoServidor(gravacaoId)) return noServidor(`/gravacoes/${gravacaoId}/conferencias`, { ids })
+  if (gravacaoDoServidor(gravacaoId)) return noServidor(`/gravacoes/${gravacaoId}/conferencias`, { ids, correcoes })
   const banco = ler()
   const { gravacao: g, ficha } = acharGravacao(banco, gravacaoId)
+  const corrigidos = new Map(correcoes.map((c) => [c.id, c.valor]))
+  for (const [id, valor] of corrigidos) {
+    const info = g.extraidas.find((e) => e.id === id)
+    const erro = info ? erroDaInformacao(info, valor) : 'essa informação não está na transcrição'
+    if (erro) throw new Error(`Corrija ${info?.rotulo.toLowerCase() ?? 'o item'}: ${erro}.`)
+  }
   const hoje = hojeIso(agora())
   const quando = agora().toISOString()
   const deQuando = `da entrevista de ${dataCurta(g.data, hoje)}`
   for (const info of g.extraidas.filter((e) => ids.includes(e.id) && !e.conferidaEm)) {
     info.conferidaEm = quando
+    const falado = (v: string) => (info.campo === 'telefone' && v ? formatarTelefone(v) : v)
+    const ouvido = info.valor
+    const corrigido = corrigidos.get(info.id)
+    if (corrigido !== undefined) info.valor = valorDaInformacao(info, corrigido)
+    const correcao = info.valor !== ouvido ? ` (corrigido na conferência; a IA ouviu «${falado(ouvido)}»)` : ''
     if (info.destino === 'ficha' && info.campo) {
-      const falado = (v: string) => (info.campo === 'telefone' && v ? formatarTelefone(v) : v)
       const antes = ficha[info.campo] ?? ''
       ficha[info.campo] = info.valor
-      ficha.historico.push(evento(`Levou à ficha, ${deQuando}, ${info.rotulo.toLowerCase()}: «${falado(antes) || '—'}» → «${falado(info.valor)}»`, QUEM_ADVOGADA))
+      ficha.historico.push(evento(`Levou à ficha, ${deQuando}, ${info.rotulo.toLowerCase()}: «${falado(antes) || '—'}» → «${falado(info.valor)}»${correcao}`, QUEM_ADVOGADA))
       if (!g.marcas.includes('ficha atualizada')) g.marcas.push('ficha atualizada')
     }
     if (info.destino === 'documentacao') {
@@ -62,8 +73,9 @@ export async function conferirInformacoes(gravacaoId: string, ids: string[]): Pr
         setor: 'Documentação · ADM',
       }
       banco.tarefas.push(tarefa)
-      ficha.historico.push(evento(`Pediu à Documentação, ${deQuando}: ${info.valor}`, QUEM_ADVOGADA))
+      ficha.historico.push(evento(`Pediu à Documentação, ${deQuando}: ${info.valor}${correcao}`, QUEM_ADVOGADA))
     }
+    if (info.destino === 'processo') ficha.historico.push(evento(`Conferiu, ${deQuando}, ${info.rotulo.toLowerCase()}: «${info.valor}»${correcao}`, QUEM_ADVOGADA))
   }
   gravar(banco)
   return { gravacao: g, ficha }

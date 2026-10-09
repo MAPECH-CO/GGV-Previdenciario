@@ -69,6 +69,11 @@ beforeEach(async () => {
 afterEach(() => fechar())
 
 describe('GGVP-87 · manifestar', () => {
+  it('GGVP-96 · a manifestação é peça jurídica: o Atendimento e a Documentação não abrem; a Sênior, que também manifesta, sim', async () => {
+    for (const apelido of ['ana', 'dora']) expect((await chamar(apelido, 'GET', '/manifestacao')).statusCode, apelido).toBe(403)
+    expect((await chamar('helena', 'GET', '/manifestacao')).json().podeAnexar).toBe(true)
+  })
+
   it('CA5, CA6 · com setor pendente, mostra quem falta e não protocola; a versão pode ser anexada antes', async () => {
     const r = (await chamar('gabi', 'GET', '/manifestacao')).json()
     expect([r.faltam.sort(), r.podeAnexar, r.podeProtocolar]).toEqual([['Atendimento', 'Documentação'], true, false])
@@ -166,7 +171,8 @@ describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
     const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
     for (const i of await banco.select().from(exigenciaItem)) if (i.perfilResponsavel === 'atendimento') await enviar('ana', `/exigencia-juiz/itens/${i.id}/prova`)
     expect((await encerrar({ alvo: 'item', id: doc.id, motivo: '' })).json().erro).toBe('Escreva por que vai manifestar sem essa prova')
-    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'x' }, 'helena')).statusCode).toBe(403)
+    // A Sênior, advogada com mais poderes, também manifesta (GGVP-96); quem não é do Jurídico, não.
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'x' }, 'ana')).statusCode).toBe(403)
     expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe: o médico do cliente faleceu' })).statusCode).toBe(201)
     const m = (await chamar('gabi', 'GET', '/manifestacao')).json()
     expect([m.faltam, m.semProva.map((e: { descricao: string; motivo: string; por: string }) => [e.descricao, e.motivo, e.por])]).toEqual([

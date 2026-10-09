@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirConversa, finalizarConversa, gravarConversa, transcreverConversa } from '../dados/conversa.ts'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
@@ -10,11 +10,14 @@ import { Conversa } from './Conversa.tsx'
 const SENHA_DITA = 'Exemplo@2026'
 /** Um segundo de gravação em 5 ms. */
 const PASSO = 5
-/** A máquina lenta pede folga nos testes que esperam o relógio. */
+// GGVP-133: o microfone é de mentira. Por padrão ele fica abrindo (a gravação segue); o teste sem microfone diz o motivo.
+const abrirMicrofone = vi.hoisted(() => vi.fn())
+/** A máquina lenta pede folga nos testes que esperam o servidor falso. */
 const ESPERA = { timeout: 15000 }
-const LONGO = 30000
+vi.mock('../dados/audio.ts', () => ({ abrirMicrofone, ouvirAoVivo: vi.fn(async () => null) }))
 
 beforeEach(() => {
+  abrirMicrofone.mockImplementation(() => new Promise(() => {}))
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 14, 32), latencia: 0 })
   zerarExemplo()
   window.localStorage.clear()
@@ -53,30 +56,38 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
     expect((await screen.findByText(/● Gravando/)).textContent).toMatch(/● Gravando · 00:00:\d\d · aviso de gravação feito às 14:32 \(G10\)/)
   })
 
-  it(
-    'CA6 e CA9 · transcrição em tempo real sem a senha dita, o cofre pausa, e "Finalizar conversa" guarda o áudio e transcreve',
-    async () => {
-      const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
-      await gravarConversa(c.id, { avisei: true })
-      // A página abre com a gravação já começada: volta pausada (recarregou no meio).
-      render(comSessao(<Conversa conversaId={c.id} passo={PASSO} />))
-      expect(await screen.findByText(/A página recarregou: a gravação ficou pausada/)).toBeTruthy()
-      fireEvent.click(botao('Retomar'))
-      await screen.findByText(/Mudei de casa/, undefined, ESPERA)
-      fireEvent.click(botao('🔒 Abrir o cofre (pausa a gravação)'))
-      expect(await screen.findByText(/Pausada para a senha do gov.br/)).toBeTruthy()
-      fireEvent.click(botao('Fechar o cofre e retomar'))
-      await screen.findByText(/senha retirada: vai ao cofre/, undefined, ESPERA)
-      expect(document.body.textContent).not.toContain(SENHA_DITA)
-      fireEvent.click(botao('Finalizar conversa'))
-      await screen.findByRole('heading', { name: /✓ Conversa finalizada/ })
-      expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeTruthy()
-      expect(screen.getByText(/O áudio ficou guardado no card do cliente: conversa-maria-exemplo-2026-10-07.webm/)).toBeTruthy()
-      expect(document.body.textContent).not.toContain(SENHA_DITA)
-      expect(ler().gravacoes.at(-1)!.acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou', 'pausou', 'retomou', 'abriu-cofre', 'retomou', 'encerrou'])
-    },
-    LONGO,
-  )
+  it('CA9 · a página recarregou no meio: a gravação volta pausada e o cofre pausa de novo (G9)', async () => {
+    const c = await abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
+    await gravarConversa(c.id, { avisei: true })
+    render(comSessao(<Conversa conversaId={c.id} passo={PASSO} />))
+    expect(await screen.findByText(/A página recarregou: a gravação ficou pausada/)).toBeTruthy()
+    fireEvent.click(botao('Retomar'))
+    await screen.findByText(/● Gravando/)
+    fireEvent.click(botao('🔒 Abrir o cofre (pausa a gravação)'))
+    expect(await screen.findByText(/Pausada para a senha do gov.br/)).toBeTruthy()
+    fireEvent.click(botao('Fechar o cofre e retomar'))
+    await screen.findByText(/● Gravando/)
+    expect(ler().gravacoes.at(-1)!.acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou', 'pausou', 'retomou', 'abriu-cofre', 'retomou'])
+  })
+
+  it('GGVP-133 · sem microfone: o aviso com o motivo, nenhuma fala de exemplo, e a conversa fica registrada sem áudio', async () => {
+    abrirMicrofone.mockResolvedValue({ erro: 'o navegador não deu permissão ao microfone' })
+    await abrirPresencial()
+    fireEvent.click(botao('Gravar'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Avisei que a conversa será gravada' }))
+    fireEvent.click(botao('Começar a gravar'))
+    expect(await screen.findByRole('heading', { name: 'Sem microfone: o navegador não deu permissão ao microfone' }, ESPERA)).toBeTruthy()
+    expect(screen.getByText('Sem microfone: nada está sendo gravado nem transcrito.')).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Falas' })).toBeNull()
+    expect(document.body.textContent).not.toContain('Mudei de casa')
+    expect(await screen.findByLabelText('Subir o áudio gravado fora', undefined, ESPERA)).toBeTruthy()
+    fireEvent.click(botao('Registrar como sem áudio'))
+    fireEvent.change(screen.getByLabelText('O que foi conversado *'), { target: { value: 'Contou que mudou de casa; traz o comprovante.' } })
+    fireEvent.click(botao('Registrar sem áudio'))
+    expect(await screen.findByRole('heading', { name: '✓ Conversa registrada sem áudio' }, ESPERA)).toBeTruthy()
+    expect(ler().gravacoes.at(-1)!.acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou', 'falhou', 'sem-audio'])
+    expect(ler().gravacoes.at(-1)!.audio).toBeUndefined()
+  })
 
   it('CA2 · a ligação da Central: anexar o áudio pede o aviso na gravação; o áudio fica no card e vai para a transcrição', async () => {
     render(comSessao(<Conversa conversaId="conversa-pedro-ligacao" passo={PASSO} />))
@@ -148,6 +159,8 @@ describe('Transcrever e identificar o que mudou · tela (GGVP-80)', () => {
     expect(within(quadro).getByText('Documentação: receber e digitalizar o relatório da alta hospitalar.')).toBeTruthy()
     expect(within(quadro).getByRole('link', { name: 'Conferir e atualizar (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
     expect(within(screen.getByRole('list', { name: 'Falas' })).getAllByRole('listitem').length).toBeGreaterThan(5)
+    // A senha dita em voz alta não aparece no texto final (G9).
+    expect(document.body.textContent).not.toContain(SENHA_DITA)
   })
 
   it('a advogada também vê a análise e a transcrição', async () => {
