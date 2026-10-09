@@ -21,6 +21,11 @@ import {
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { exigir } from '../sessao/rotas.ts'
+import type { Armazenamento } from '../armazenamento.ts'
+import type { Ia } from '../ia/ia.ts'
+import type { Preparo } from '../ia/preparo.ts'
+import { guardarAudio, transcreverGravacao } from '../fluxo/transcricao.ts'
+import { lerFormulario } from './formulario.ts'
 import { TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import { conversaDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import type { AcaoNaGravacao, Agendamento, Ficha, Gravacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
@@ -51,9 +56,15 @@ const audioDaGravacao = (ficha: Ficha, g: Gravacao): Gravacao['audio'] => {
 }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+/** GGVP-133: o motor de IA, o armazenamento e o preparo ligam a transcrição de verdade; sem eles, segue o exemplo. */
+type Opcoes = { banco: Banco; agora?: () => Date; ia?: Ia; armazenamento?: Armazenamento; preparo?: Preparo }
 
-export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export const MSG_AUDIO_GRANDE = 'O áudio não chegou inteiro: cada arquivo vai até 25 MB.'
+const MSG_SEM_ARMAZENAMENTO = 'O armazenamento do áudio não está ligado.'
+const formatoDo = (nome: string) => nome.split('.').at(-1)?.toLowerCase() ?? ''
+
+export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, agora = () => new Date(), ia, armazenamento, preparo }: Opcoes) {
+  const real = ia && armazenamento ? { banco, ia, armazenamento } : null
   const f = criarFichario(banco, agora)
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, garantirAberta, concluirTarefas, tarefas, acharAgendamento, guardarGravacao, acharGravacao } = f
   const gravar = { preHandler: exigir(banco, 'entrevista.gravar', agora) }
@@ -169,7 +180,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     if (g.estado === 'encerrada') return { gravacao: g }
     acao(g, 'encerrou', entrada.data.aos)
     g.estado = 'encerrada'
-    g.audio = audioDaGravacao(ficha, g)
+    g.audio = g.audio?.documentos ? g.audio : audioDaGravacao(ficha, g)
     g.transcricao = entrada.data.online ? 'transcrevendo' : 'aguardando-internet'
     const tarefa = agendamento && (await fecharEntrevista(ficha, agendamento, g))
     ficha.historico.push(evento(`Encerrou a entrevista gravada (${Math.max(1, Math.round(g.duracao / 60))} min); o áudio ficou no caso`, await nomeDe(pedido)))
@@ -178,6 +189,32 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
 
   // CA12: a internet voltou; o áudio guardado no computador sobe uma vez só.
   app.post<{ Params: { id: string } }>('/api/gravacoes/:id/audio', gravar, async (pedido, resposta) => {
+    // GGVP-133: o áudio de verdade chega em partes e cada uma vira documento na pasta do cliente. A última parte de quem
+    // estava sem internet ("ultima") manda a gravação para a transcrição.
+    if (pedido.isMultipart()) {
+      if (!real) return negar(resposta, 503, MSG_SEM_ARMAZENAMENTO)
+      const formulario = await lerFormulario(pedido)
+      if (!formulario) return negar(resposta, 400, MSG_AUDIO_GRANDE)
+      const { arquivo, campos } = formulario
+      const inicio = Number(campos.inicio ?? 0)
+      if (!arquivo || !ehAudio({ nome: arquivo.nome, tipo: arquivo.mime }) || !Number.isFinite(inicio) || inicio < 0) return negar(resposta, 400, 'Esse arquivo não é de áudio.')
+      const achadoComAudio = await acharGravacao(pedido.params.id)
+      if (!achadoComAudio) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
+      const { gravacao: g } = achadoComAudio
+      // Só a gravação do portal em curso (ou que falhou) e a encerrada que espera a internet recebem áudio.
+      const recebe = g.origem === 'portal' && (g.estado !== 'encerrada' || g.transcricao === 'aguardando-internet')
+      if (!recebe) return negar(resposta, 400, 'Esta gravação não recebe mais áudio.')
+      const id = await guardarAudio(real, g, arquivo, pedido.usuario!.id)
+      const antes = g.audio?.documentos ? g.audio : undefined
+      const documentos = [...(antes?.documentos ?? []), { id, inicio }]
+      g.audio = { nome: antes?.nome ?? arquivo.nome, formato: formatoDo(arquivo.nome), tamanho: (antes?.tamanho ?? 0) + arquivo.conteudo.length, partes: documentos.length, documentos }
+      if (campos.ultima === 'sim' && g.transcricao === 'aguardando-internet') {
+        acao(g, 'enviou-audio', g.duracao)
+        g.transcricao = 'transcrevendo'
+      }
+      await guardarGravacao(g)
+      return { gravacao: g }
+    }
     const achado = await acharGravacao(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
     const { gravacao: g } = achado
@@ -199,7 +236,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     g.estado = 'encerrada'
     g.transcricao = 'sem-audio'
     g.registro = entrada.data.notas
-    if (g.duracao > 0) g.audio = audioDaGravacao(ficha, g)
+    if (g.duracao > 0 && !g.audio?.documentos) g.audio = audioDaGravacao(ficha, g)
     const tarefa = agendamento && (await fecharEntrevista(ficha, agendamento, g))
     ficha.historico.push(evento('Registrou a entrevista sem áudio: a gravação falhou', await nomeDe(pedido)))
     return salvar(g, ficha, tarefa)
@@ -207,6 +244,26 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
 
   // CA9, CA10: o áudio gravado fora do portal, de qualquer formato e tamanho, vai para a transcrição.
   app.post<{ Params: { id: string } }>('/api/entrevistas/:id/audio', gravar, async (pedido, resposta) => {
+    // GGVP-133 CA2: o arquivo de verdade (a gravação da ligação baixada da conversa do Chatwoot, ou outro áudio de fora)
+    // vira documento na pasta do cliente e vai para a transcrição. O portal não busca nada no Chatwoot.
+    if (pedido.isMultipart()) {
+      if (!real) return negar(resposta, 503, MSG_SEM_ARMAZENAMENTO)
+      const formulario = await lerFormulario(pedido)
+      if (!formulario) return negar(resposta, 400, MSG_AUDIO_GRANDE)
+      const arquivo = formulario.arquivo
+      if (!arquivo || !ehAudio({ nome: arquivo.nome, tipo: arquivo.mime })) return negar(resposta, 400, 'Esse arquivo não é de áudio.')
+      const achadoDeFora = await acharAgendamento(pedido.params.id)
+      if (!achadoDeFora) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
+      const { ficha, agendamento } = achadoDeFora
+      const g = novaGravacao(ficha, agendamento, 'arquivo')
+      g.estado = 'encerrada'
+      const id = await guardarAudio(real, g, arquivo, pedido.usuario!.id)
+      g.audio = { nome: arquivo.nome, formato: formatoDo(arquivo.nome), tamanho: arquivo.conteudo.length, partes: 1, documentos: [{ id, inicio: 0 }] }
+      acao(g, 'subiu-arquivo', 0)
+      const tarefa = await fecharEntrevista(ficha, agendamento, g)
+      ficha.historico.push(evento(`Subiu o áudio da entrevista gravado fora do portal (${arquivo.nome}); foi para a transcrição`, await nomeDe(pedido)))
+      return salvar(g, ficha, tarefa)
+    }
     const entrada = AudioGravadoFora.safeParse(pedido.body)
     if (!entrada.success || !ehAudio(entrada.data)) return negar(resposta, 400, 'Esse arquivo não é de áudio.')
     const achado = await acharAgendamento(pedido.params.id)
@@ -231,6 +288,13 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     if (!achado) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
     const { gravacao: g, ficha, agendamento } = achado
     if (g.estado !== 'encerrada' || (g.transcricao !== 'transcrevendo' && g.transcricao !== 'falhou')) return { gravacao: g }
+    // GGVP-133 CA1, CA8: com o áudio de verdade guardado, o texto vem da OpenAI, pelo motor; falhou, o áudio fica e a
+    // pessoa tenta de novo. Sem áudio guardado (gravação sem microfone), segue a conversa de exemplo abaixo.
+    if (g.audio?.documentos?.length && real) {
+      await transcreverGravacao(real, g, ficha, pedido.usuario!.id)
+      await guardarGravacao(g)
+      return { gravacao: g }
+    }
     if (entrada.data.falhar) {
       g.transcricao = 'falhou'
       g.motivoDaFalha = 'o serviço de transcrição não respondeu'
@@ -377,4 +441,19 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     const { tarefa: _, ...salvo } = await salvar(g, ficha)
     return salvo
   })
+
+  // GGVP-133: o preparo em segundo plano (a cada 5 minutos) transcreve as gravações com áudio de verdade que esperam.
+  if (real && preparo)
+    preparo.registrar(
+      async () =>
+        (await f.gravacoes(true))
+          .filter((g) => !g.conversaId && g.estado === 'encerrada' && g.transcricao === 'transcrevendo' && g.audio?.documentos?.length)
+          .map((g) => g.id),
+      async (id) => {
+        const achado = await acharGravacao(id)
+        if (!achado || achado.gravacao.transcricao !== 'transcrevendo') return
+        await transcreverGravacao(real, achado.gravacao, achado.ficha, null)
+        await guardarGravacao(achado.gravacao)
+      },
+    )
 }

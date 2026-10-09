@@ -263,8 +263,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                   {c.pendentes.motivo} · desde {curta(c.pendentes.desde)}
                 </p>
                 <ul className={styles.lista}>
-                  {c.pendentes.itens.map((l) => (
-                    <li key={l.setor} className={base.pericia}>
+                  {c.pendentes.itens.map((l, i) => (
+                    <li key={i} className={base.pericia}>
                       <span>
                         <strong>{l.setor}</strong>
                         <span className={base.nota}>{l.oQue}</span>
@@ -385,7 +385,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 <dt>Perito</dt>
                 <dd>
                   {c.perito ? (
-                    juridico ? (
+                    // O perito do caso do servidor ainda não tem a jurimetria aqui (sem id): só o nome.
+                    juridico && c.perito.id ? (
                       <button type="button" className={base.link} onClick={() => setJanela({ tipo: 'perito', id: c.perito!.id })}>
                         {c.perito.nome}
                       </button>
@@ -449,7 +450,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               ) : (
                 <ul className={base.documentos}>
                   {c.documentos.map((d) => (
-                    <li key={d.nome}>
+                    <li key={d.href ?? d.nome}>
                       <span className={base.pdf} aria-hidden="true">
                         PDF
                       </span>
@@ -565,7 +566,15 @@ function Documento({ doc, caso, hoje, aoFechar }: { doc: DocumentoDoCaso; caso: 
         ))}
       </ul>
       {d.aviso && <p className={passo.trava}>{d.aviso}</p>}
-      <p className={base.nota}>O arquivo abre no Drive do cliente (simulado).</p>
+      {!doc.href ? (
+        <p className={base.nota}>O arquivo abre no Drive do cliente (simulado).</p>
+      ) : (
+        !d.aviso && (
+          <a className={proprio.secundario} href={doc.href} target="_blank" rel="noreferrer">
+            Abrir o arquivo
+          </a>
+        )
+      )}
     </dialog>
   )
 }

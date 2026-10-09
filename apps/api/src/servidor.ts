@@ -33,6 +33,8 @@ import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
+import { registrarRotasGlossario } from './rotas/glossario.ts'
+import { registrarRotasTranscricao } from './rotas/transcricao.ts'
 import { registrarRotasRoteiros } from './rotas/roteiros.ts'
 import { registrarRotasParecer } from './rotas/parecer.ts'
 import { registrarRotasComplemento } from './rotas/complemento.ts'
@@ -45,11 +47,15 @@ import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
 import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
+import { registrarRotasRecepcaoDecisoes } from './rotas/recepcao-decisoes.ts'
+import { registrarRotasRecepcaoSegundaFicha } from './rotas/recepcao-segunda-ficha.ts'
+import { registrarRotasRecepcaoContrato } from './rotas/recepcao-contrato.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
 import { registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
+import { registrarRotasProcesso } from './rotas/processo.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -131,7 +137,10 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecepcao(app, { banco, agora, tarefasPorArea })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
-    registrarRotasRecepcaoEntrevista(app, { banco, agora })
+    registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    registrarRotasRecepcaoDecisoes(app, { banco, agora })
+    registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
+    registrarRotasRecepcaoContrato(app, { banco, agora })
     registrarRotasRoteiros(app, { banco, agora })
     registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
@@ -139,13 +148,16 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasAcidente(app, { banco, agora })
     registrarRotasCrianca(app, { banco, agora })
     registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
-    registrarRotasConversa(app, { banco, agora })
+    registrarRotasConversa(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
     registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, tarefasPorArea })
     registrarRotasSetor(app, { banco, agora, tarefasPorArea })
     registrarRotasImportacao(app, { banco, agora })
     registrarRotasFeriados(app, { banco, agora })
+    registrarRotasGlossario(app, { banco, agora })
+    registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
+    registrarRotasProcesso(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

@@ -92,5 +92,14 @@ export * from './importacao.ts'
 // Os feriados e as suspensões dos tribunais, na Configuração (GGVP-146, parte 3).
 export * from './feriados.ts'
 
+// Glossário do escritório (GGVP-143): os termos que a transcrição e a IA usam.
+export * from './glossario.ts'
+
+// Transcrição de verdade (GGVP-133): o texto arrumado pela IA e a chave temporária do texto ao vivo.
+export * from './transcricao.ts'
+
+// A página do processo lida do banco (GGVP-146, parte 5).
+export * from './processo.ts'
+
 // As tarefas do setor e quem faz cada uma (GGVP-147).
 export * from './setor.ts'

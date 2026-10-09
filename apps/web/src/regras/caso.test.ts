@@ -3,7 +3,9 @@ import {
   emOrdem,
   estadosDasEtapas,
   etapaAtual,
+  etapaAtualDoCaso,
   etapaDaOrigem,
+  etapaDoPasso,
   faseDoCaso,
   identificacao,
   jurimetriaDoJuizo,
@@ -128,5 +130,22 @@ describe('GGVP-86 · o caso numa linha só', () => {
     expect(podeVerValor('advogada', 'prestacao-de-contas', dela)).toBe(true)
     expect(podeVerValor('advogada', 'prestacao-de-contas', { advogadaDoCaso: false, naPrestacaoDeContas: true })).toBe(false)
     expect(podeVerValor('advogada', 'prestacao-de-contas', { advogadaDoCaso: true, naPrestacaoDeContas: false })).toBe(false)
+  })
+})
+
+describe('GGVP-146 (parte 5) · a etapa de um caso do servidor', () => {
+  it('o passo do BPMN diz a etapa; perícia e passo sem código não dizem', () => {
+    expect(['D1.09', 'D2.05', 'D2.E1', 'D3.07', 'D3a.E2', 'D3b.06r', 'D4.02'].map(etapaDoPasso)).toEqual(['entrevista', 'inss', 'inss', 'justica', 'vigilia', 'desfecho', 'desfecho'])
+    expect(['DP.01', 'historico', null, undefined, 'D9'].map(etapaDoPasso)).toEqual([null, null, null, null, null])
+  })
+
+  it('a mais adiantada entre os passos abertos; sem nenhum, a da fase; o deferido fica no INSS', () => {
+    expect(etapaAtualDoCaso('atendimento', ['D2.01', 'D1.24', 'DP.01', null], null)).toBe('inss')
+    expect(etapaAtualDoCaso('judicial', ['D3a.02', 'D3.07'], null)).toBe('vigilia')
+    expect(etapaAtualDoCaso('atendimento', [], null)).toBe('entrevista')
+    expect(etapaAtualDoCaso('administrativa', ['historico'], null)).toBe('inss')
+    expect(etapaAtualDoCaso('judicial', [], null)).toBe('justica')
+    expect(etapaAtualDoCaso('encerrado', [], 'procedente_total')).toBe('desfecho')
+    expect(etapaAtualDoCaso('encerrado', [], 'deferido')).toBe('inss')
   })
 })

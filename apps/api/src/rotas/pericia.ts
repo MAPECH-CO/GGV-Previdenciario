@@ -70,7 +70,7 @@ export const MSG_ARQUIVO_PDF = 'Anexe o PDF (até 25 MB).'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** De que passo a perícia nasceu (a etapa que a chamou): D2.03 (GGVP-31), D2.05 (exigência), D3.03 (despacho), D3a.03 (juiz). */
-const ORIGEM_DO_PASSO: Record<string, OrigemDaPericia> = {
+export const ORIGEM_DO_PASSO: Record<string, OrigemDaPericia> = {
   'D2.03': 'd2-necessidade',
   'D2.05': 'd2-exigencia',
   'D3.03': 'd3-despacho',

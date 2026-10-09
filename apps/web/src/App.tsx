@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
+import { ROTULO_PERFIL, ehPerfil, pode, type Acao, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
-import { sincronizarRecepcao } from './dados/servidor.ts'
+import { definirQuemFaz, sincronizarRecepcao } from './dados/servidor.ts'
 import { sincronizarDocumentacaoMedica } from './dados/parecer.ts'
 import { sincronizarPericias } from './dados/pericia.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
@@ -112,6 +112,8 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
     // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
     void chamarApi<UsuarioDaSessao>('/sessao').then(async (r) => {
       if (!r.ok) return
+      // GGVP-135: o que ainda grava só no navegador guarda no histórico o nome de quem entrou.
+      definirQuemFaz(r.dados.nome)
       // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
       // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
       if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
@@ -196,8 +198,47 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
   return <Telas caminho={caminho} busca={busca} />
 }
 
-/** Telas da Recepção e da Abertura. Os dados ainda são os de exemplo (src/dados/), até ligar no servidor (GGVP-125). */
+/**
+ * Quem abre cada tela de passo da Recepção, da Abertura e da Perícia: a raia do BPMN, pela ação da matriz (GGVP-135).
+ * Vale a primeira que casa; sem a permissão, "Sem permissão", e a tela nem monta. Sem linha aqui, a tela confere
+ * sozinha (documentação médica, roteiros, a perícia do caso) ou é de todos (agenda). Quem protege é o servidor.
+ */
+const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
+  // Jurídico (D1.06, D1.07, D1.09, D1.10, D1.12, D1.13): a Central da advogada, preparar, analisar, entrevistar, gravar,
+  // cadastrar o lead, definir o benefício e calcular tempo e pontos (o cálculo é do advogado, Pedro em 08/10).
+  [/^\/advogada$/, 'entrevista.gravar'],
+  // D1.08: a senha do gov.br vai ao cofre; o Atendimento renova, com o Jurídico.
+  [/^\/entrevista\/[^/]+\/renovar-senha$/, 'cofre.cadastrar'],
+  [/^\/entrevista\//, 'entrevista.gravar'],
+  [/^\/clientes\/[^/]+\/cadastro$/, 'entrevista.gravar'],
+  // G15: a cobrança que passou do limite, a Sênior decide (a mesma decisão do complemento ao médico).
+  [/^\/casos\/[^/]+\/cobranca\/decidir$/, 'complemento.decidir'],
+  // Perícia (DP): as mesmas ações que o servidor exige em cada passo.
+  [/^\/juridico-administrativo$/, 'pericia.marcar'],
+  [/^\/casos\/[^/]+\/pericia\/aberta$/, 'pericia.decidir'],
+  [/^\/casos\/[^/]+\/pericia\/marcar$/, 'pericia.marcar'],
+  [/^\/casos\/[^/]+\/pericia\/(documentos|cobranca)$/, 'pericia.reunir_documentos'],
+  [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
+  [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
+  [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
+  // D5: a conversa com o cliente, do Atendimento e do Jurídico.
+  [/^\/conversas\//, 'conversa.registrar'],
+  // O resto da Recepção e da Abertura: quem trabalha com o caso (Atendimento, Documentação e Jurídico). O Financeiro e
+  // o Sócio, não.
+  [/^\/(balcao|clientes|contrato)(\/|$)/, 'ficha.editar'],
+  [/^\/agenda\/(marcar|confirmar)\//, 'ficha.editar'],
+  [/^\/casos\/[^/]+\/cobranca$/, 'ficha.editar'],
+  [/^\/casos\/[^/]+$/, 'caso.ver'],
+]
+
 function Telas({ caminho, busca }: { caminho: string; busca: string }) {
+  const acao = ACESSO_DAS_TELAS.find(([padrao]) => padrao.test(caminho))?.[1]
+  const tela = <TelaDoCaminho caminho={caminho} busca={busca} />
+  return acao ? <Exige acao={acao}>{tela}</Exige> : tela
+}
+
+/** Telas da Recepção e da Abertura. Os dados ainda são os de exemplo (src/dados/), até ligar no servidor (GGVP-125). */
+function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const parametros = new URLSearchParams(busca)
   if (caminho === '/advogada') return <CentralAdvogada />
   if (caminho === '/balcao') return <Balcao />

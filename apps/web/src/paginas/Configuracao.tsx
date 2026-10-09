@@ -1,6 +1,16 @@
 import { useEffect, useId, useState } from 'react'
 import { somenteDigitos } from '@ggv/campos'
-import { BENEFICIOS, ROTULO_BENEFICIO, type Beneficio, type ConfiguracaoDoEscritorio } from '@ggv/contratos'
+import {
+  BENEFICIOS,
+  ROTULO_BENEFICIO,
+  ROTULO_TIPO_DE_TERMO,
+  SalvarTermo,
+  TIPOS_DE_TERMO,
+  type Beneficio,
+  type ConfiguracaoDoEscritorio,
+  type GlossarioDoEscritorio,
+  type TipoDeTermo,
+} from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { FeriadosDosTribunais } from '../componentes/FeriadosDosTribunais.tsx'
 import styles from './Passo.module.css'
@@ -137,9 +147,142 @@ function Mensagem({ m, podeEditar, aoPublicar }: { m: Config['mensagens'][number
   )
 }
 
+type Termo = GlossarioDoEscritorio['termos'][number]
+type Salvar = (caminho: string, corpo: unknown, aviso: string, metodo?: string) => void
+const TERMO_VAZIO: SalvarTermo = { termo: '', tipo: 'sigla', significado: '' }
+
+/** O termo, o tipo e o significado (GGVP-143): o mesmo formulário acrescenta e corrige; o contrato confere antes de enviar. */
+function FormularioDoTermo({ inicial, rotulo, aoSalvar, aoCancelar }: { inicial: SalvarTermo; rotulo: string; aoSalvar: (t: SalvarTermo) => void; aoCancelar?: () => void }) {
+  const id = useId()
+  const [t, setT] = useState(inicial)
+  const [erro, setErro] = useState('')
+  function enviar() {
+    const r = SalvarTermo.safeParse(t)
+    if (!r.success) return setErro(r.error.issues[0]?.message ?? 'Confira o termo.')
+    setErro('')
+    aoSalvar(t)
+  }
+  return (
+    <div role="group" aria-label={rotulo} className={styles.cartao}>
+      <label className={styles.rotulo} htmlFor={`${id}-termo`}>
+        Termo
+      </label>
+      <input id={`${id}-termo`} className={styles.campo} value={t.termo} onChange={(e) => setT({ ...t, termo: e.target.value })} />
+      <label className={styles.rotulo} htmlFor={`${id}-tipo`}>
+        Tipo
+      </label>
+      <select id={`${id}-tipo`} className={styles.campo} value={t.tipo} onChange={(e) => setT({ ...t, tipo: e.target.value as TipoDeTermo })}>
+        {TIPOS_DE_TERMO.map((tipo) => (
+          <option key={tipo} value={tipo}>
+            {ROTULO_TIPO_DE_TERMO[tipo]}
+          </option>
+        ))}
+      </select>
+      <label className={styles.rotulo} htmlFor={`${id}-significado`}>
+        Significado (opcional)
+      </label>
+      <input id={`${id}-significado`} className={styles.campo} value={t.significado ?? ''} onChange={(e) => setT({ ...t, significado: e.target.value })} />
+      {erro && <p className={styles.erroCampo}>{erro}</p>}
+      <div className={styles.acoes}>
+        <button type="button" className={styles.botao} disabled={JSON.stringify(t) === JSON.stringify(inicial)} onClick={enviar}>
+          {rotulo}
+        </button>
+        {aoCancelar && (
+          <button type="button" className={styles.botaoSecundario} onClick={aoCancelar}>
+            Cancelar
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Um termo do glossário: a Sênior corrige ou tira; o antes e o depois ficam no histórico da configuração. */
+function LinhaDoTermo({ t, podeEditar, salvar }: { t: Termo; podeEditar: boolean; salvar: Salvar }) {
+  const [corrigindo, setCorrigindo] = useState(false)
+  const caminho = `/configuracao/glossario/${t.id}`
+  if (corrigindo)
+    return (
+      <li>
+        <FormularioDoTermo
+          inicial={{ termo: t.termo, tipo: t.tipo, significado: t.significado ?? '' }}
+          rotulo="Salvar a correção"
+          aoSalvar={(novo) => salvar(caminho, novo, 'Termo corrigido.')}
+          aoCancelar={() => setCorrigindo(false)}
+        />
+      </li>
+    )
+  return (
+    <li>
+      {t.termo}
+      {t.significado && ` · ${t.significado}`}
+      {podeEditar && (
+        <>
+          {' '}
+          <button type="button" className={styles.botaoSecundario} aria-label={`Corrigir ${t.termo}`} onClick={() => setCorrigindo(true)}>
+            Corrigir
+          </button>{' '}
+          <button
+            type="button"
+            className={styles.botaoSecundario}
+            aria-label={`Tirar ${t.termo}`}
+            onClick={() => salvar(caminho, undefined, 'Termo tirado do glossário.', 'DELETE')}
+          >
+            Tirar
+          </button>
+        </>
+      )}
+    </li>
+  )
+}
+
+/**
+ * Glossário do escritório (GGVP-143): benefícios, siglas, peritos, juízos e varas que a transcrição e a IA usam.
+ * A gestão vê; só a Sênior acrescenta, corrige e tira (o servidor decide `podeEditar`).
+ */
+function Glossario({ versao, salvar, aoErro }: { versao: number; salvar: Salvar; aoErro: (erro: string) => void }) {
+  const [g, setG] = useState<GlossarioDoEscritorio | null>(null)
+  useEffect(() => {
+    void chamarApi<GlossarioDoEscritorio>('/configuracao/glossario').then((r) => (r.ok ? setG(r.dados) : aoErro(r.erro)))
+  }, [versao, aoErro])
+  if (!g) return null
+  return (
+    <section className={styles.cartao} aria-label="Glossário do escritório">
+      <h2 className={styles.cartaoTitulo}>Glossário do escritório</h2>
+      <p className={styles.dica}>
+        Benefícios, siglas, peritos, juízos e varas, escritos como o escritório escreve. A transcrição e a IA usam esta lista.
+        {!g.podeEditar && ' Quem muda é a Sênior.'}
+      </p>
+      {TIPOS_DE_TERMO.map((tipo) => {
+        const termos = g.termos.filter((t) => t.tipo === tipo)
+        if (termos.length === 0) return null
+        return (
+          <div key={tipo}>
+            <p className={styles.rotulo}>{ROTULO_TIPO_DE_TERMO[tipo]}</p>
+            <ul className={styles.lista} aria-label={`Glossário: ${ROTULO_TIPO_DE_TERMO[tipo]}`}>
+              {termos.map((t) => (
+                <LinhaDoTermo key={`${t.id}-${versao}`} t={t} podeEditar={g.podeEditar} salvar={salvar} />
+              ))}
+            </ul>
+          </div>
+        )
+      })}
+      {g.podeEditar && (
+        <FormularioDoTermo
+          key={`novo-${versao}`}
+          inicial={TERMO_VAZIO}
+          rotulo="Acrescentar ao glossário"
+          aoSalvar={(t) => salvar('/configuracao/glossario', t, 'Termo acrescentado ao glossário.', 'POST')}
+        />
+      )}
+    </section>
+  )
+}
+
 /**
  * Configuração do escritório (GGVP-104): limites dos laços, kits por benefício e mensagens padrão, numa tela só.
  * A gestão vê; o Sócio e a Sênior mudam. Toda mudança vai para o histórico, que aparece no fim da tela (CA3).
+ * O glossário do escritório (GGVP-143) é uma seção a mais, que só a Sênior muda.
  */
 export function Configuracao() {
   const idBeneficio = useId()
@@ -153,8 +296,8 @@ export function Configuracao() {
     void chamarApi<Config>('/configuracao').then((r) => (r.ok ? setC(r.dados) : setErro(r.erro)))
   }, [versao])
 
-  async function salvar(caminho: string, corpo: unknown, aviso: string) {
-    const r = await chamarApi(caminho, { method: 'PUT', corpo })
+  async function salvar(caminho: string, corpo: unknown, aviso: string, metodo = 'PUT') {
+    const r = await chamarApi(caminho, { method: metodo, corpo })
     if (!r.ok) {
       setFeito('')
       return setErro(r.erro)
@@ -223,6 +366,8 @@ export function Configuracao() {
               ))}
             </section>
           )}
+
+          <Glossario versao={versao} salvar={(caminho, corpo, aviso, metodo) => void salvar(caminho, corpo, aviso, metodo)} aoErro={setErro} />
 
           {c.historico.length > 0 && (
             <section className={styles.cartao} aria-label="Histórico da configuração">

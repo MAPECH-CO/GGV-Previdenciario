@@ -34,12 +34,12 @@ describe('migrações', () => {
     for (const nome of ['caso', 'evento_auditoria', 'pessoa', 'sessao', 'tarefa', 'usuario']) expect(t).toContain(nome)
     for (const nome of ['identificador_caso', 'etapa', 'decisao', 'documento', 'documento_medico', 'parecer_medico',
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
-      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao',
-      'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario']) expect(t).toContain(nome)
+      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao',
+      'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'glossario_termo']) expect(t).toContain(nome)
     expect(t).toContain('documentacao_medica')
     // GGVP-147: quem faz cada tarefa do setor.
     expect(t).toContain('atribuicao_tarefa')
-    expect(t).toHaveLength(54)
+    expect(t).toHaveLength(57)
   })
 
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {

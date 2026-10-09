@@ -59,6 +59,8 @@ test('CA7, CA8 e CA12 · a cobrança do Antônio passou do limite: a sênior dec
 
 test('tema escuro e fonte grande na cobrança e na decisão', async ({ page }) => {
   for (const caminho of ['/casos/antonio-exemplo-1/cobranca', '/casos/antonio-exemplo-1/cobranca/decidir']) {
+    // A decisão no limite (G15) é da Sênior: a tela pede o perfil dela (GGVP-135).
+    if (caminho.endsWith('/decidir')) await entrarPelaApi(page, 'senior@exemplo.ggv')
     await page.goto(`${caminho}?tema=escuro&fonte=grande`)
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Antônio Exemplo')
     await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))

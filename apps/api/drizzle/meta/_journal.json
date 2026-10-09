@@ -145,8 +145,22 @@
     {
       "idx": 20,
       "version": "7",
-      "when": 1791509451329,
-      "tag": "0020_tarefas_do_setor",
+      "when": 1791499769191,
+      "tag": "0020_glossario_e_transcricao",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791512535321,
+      "tag": "0021_segunda_ficha_e_contrato",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791521070736,
+      "tag": "0022_tarefas_do_setor",
       "breakpoints": true
     }
   ]

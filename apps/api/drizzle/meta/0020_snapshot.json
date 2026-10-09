@@ -1,5 +1,5 @@
 {
-  "id": "ac565621-3f5a-4fd4-b236-ee1f609b6f6b",
+  "id": "2f3fb4a9-543e-4137-a40f-81f783193945",
   "prevId": "dcbfdc04-ecdf-45c7-a413-cb6fc2bca994",
   "version": "7",
   "dialect": "postgresql",
@@ -162,6 +162,18 @@
         "duracao_ms": {
           "name": "duracao_ms",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "audio_segundos": {
+          "name": "audio_segundos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custo_estimado": {
+          "name": "custo_estimado",
+          "type": "numeric(10, 4)",
           "primaryKey": false,
           "notNull": false
         },
@@ -1624,97 +1636,6 @@
           "value": "\"identificador_caso\".\"tipo\" in ('nb', 'protocolo_inss', 'cnj')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.atribuicao_tarefa": {
-      "name": "atribuicao_tarefa",
-      "schema": "",
-      "columns": {
-        "tarefa_id": {
-          "name": "tarefa_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "responsavel_id": {
-          "name": "responsavel_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prazo": {
-          "name": "prazo",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prioridade": {
-          "name": "prioridade",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'normal'"
-        },
-        "recado": {
-          "name": "recado",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "avisar": {
-          "name": "avisar",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "atribuida_por": {
-          "name": "atribuida_por",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atribuida_em": {
-          "name": "atribuida_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "atribuicao_tarefa_responsavel_id_usuario_id_fk": {
-          "name": "atribuicao_tarefa_responsavel_id_usuario_id_fk",
-          "tableFrom": "atribuicao_tarefa",
-          "tableTo": "usuario",
-          "columnsFrom": [
-            "responsavel_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "atribuicao_tarefa_atribuida_por_usuario_id_fk": {
-          "name": "atribuicao_tarefa_atribuida_por_usuario_id_fk",
-          "tableFrom": "atribuicao_tarefa",
-          "tableTo": "usuario",
-          "columnsFrom": [
-            "atribuida_por"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.decisao": {
@@ -4594,6 +4515,99 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.glossario_termo": {
+      "name": "glossario_termo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "termo": {
+          "name": "termo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "significado": {
+          "name": "significado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alterado_por": {
+          "name": "alterado_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "glossario_termo_unico": {
+          "name": "glossario_termo_unico",
+          "columns": [
+            {
+              "expression": "lower(\"termo\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "glossario_termo_alterado_por_usuario_id_fk": {
+          "name": "glossario_termo_alterado_por_usuario_id_fk",
+          "tableFrom": "glossario_termo",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "alterado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "glossario_termo_tipo": {
+          "name": "glossario_termo_tipo",
+          "value": "\"glossario_termo\".\"tipo\" in ('beneficio', 'sigla', 'perito', 'juizo', 'outro')"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.juizo": {

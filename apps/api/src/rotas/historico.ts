@@ -322,3 +322,37 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
     return PrazosDoEscritorio.parse({ cumpridos: itens.filter((i) => i.situacao === 'cumprido').length, perdidos: itens.filter((i) => i.situacao === 'perdido').length, itens })
   })
 }
+
+/**
+ * A linha do caso para a página do processo (GGVP-146, parte 5): os mesmos eventos e decisões do GET /historico, com as
+ * mesmas palavras, sem o detalhe interno nem dado de saúde. ponytail: cópia da montagem do GET (este arquivo só recebe
+ * acréscimo); o GET pode passar a usar esta função numa mudança só dele.
+ */
+export async function linhaDoCaso(banco: Banco, casoId: string) {
+  const eventos = await banco
+    .select()
+    .from(eventoAuditoria)
+    .where(or(eq(eventoAuditoria.alvo, `caso:${casoId}`), sql`${eventoAuditoria.detalhe}->>'casoId' = ${casoId}`))
+    .orderBy(asc(eventoAuditoria.quando))
+  const decisoes = await banco.select().from(decisao).where(eq(decisao.casoId, casoId)).orderBy(asc(decisao.decididoEm))
+  const ids = [...new Set([...eventos.map((e) => e.quem), ...decisoes.map((d) => d.decididoPor)].filter((q) => UUID.test(q)))]
+  const nomes = new Map((ids.length ? await banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, ids)) : []).map((u) => [u.id, u.nome]))
+  return [
+    ...eventos.map((e) => ({
+      quando: e.quando,
+      quem: UUID.test(e.quem) ? (nomes.get(e.quem) ?? 'Pessoa removida') : e.quem === 'sistema' ? 'Sistema' : 'Sem sessão',
+      origem: e.quem === 'sistema' ? ('sistema' as const) : ('pessoa' as const),
+      passo: ((e.detalhe as { passo?: string }).passo ?? null) as string | null,
+      descricao: DESCRICAO[e.acao] ?? legivel(e.acao),
+    })),
+    ...decisoes.map((d) => ({
+      quando: d.decididoEm,
+      quem: nomes.get(d.decididoPor) ?? 'Pessoa removida',
+      origem: 'pessoa' as const,
+      passo: d.passo as string | null,
+      descricao: `${DECISAO[d.tipo] ?? legivel(d.tipo)}: ${legivel(d.resultado).toLowerCase()}`,
+    })),
+  ]
+    .sort((a, b) => a.quando.getTime() - b.quando.getTime())
+    .map((l) => ({ ...l, quando: l.quando.toISOString() }))
+}
