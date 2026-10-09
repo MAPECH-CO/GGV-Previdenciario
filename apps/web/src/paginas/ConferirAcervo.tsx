@@ -1,11 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import { formatarCnj } from '@ggv/campos'
 import {
+  CompletarAcervo,
   ConferirDesfecho,
   DESFECHOS_DO_ACERVO,
   ROTULO_BENEFICIO,
   ROTULO_DESFECHO_DO_ACERVO,
   TAMANHO_DA_TESE,
+  TAMANHO_DA_VARA,
   type Beneficio,
   type ConferenciaDoAcervo,
   type DesfechoDoAcervo,
@@ -104,6 +106,70 @@ function ProcessoDoLote({ p, aoConferir }: { p: Pendente; aoConferir: (conferenc
   )
 }
 
+type Incompleto = ConferenciaDoAcervo['incompletos'][number]
+type Campo = Incompleto['falta'][number]
+const ROTULO_DO_CAMPO: Record<Campo, string> = { vara: 'Vara', juiz: 'Juiz', tese: 'Tese' }
+
+/**
+ * GGVP-153: a pergunta de um clique. Cada campo que falta mostra o que o portal já conhece; clicar responde. Para um
+ * valor novo, a Sênior escreve e confirma. Sem resposta, o processo só fica fora daquele recorte: nada trava.
+ */
+function FaltaCompletar({ p, conhecidos, aoCompletar }: { p: Incompleto; conhecidos: ConferenciaDoAcervo['conhecidos']; aoCompletar: (c: ConferenciaDoAcervo, texto: string) => void }) {
+  const ids = { vara: useId(), juiz: useId(), tese: useId() }
+  const [novo, setNovo] = useState<Partial<Record<Campo, string>>>({})
+  const [erro, setErro] = useState('')
+
+  async function responder(campo: Campo, valor: string) {
+    const entrada = CompletarAcervo.safeParse({ [campo]: valor })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escolha ou escreva o que falta.')
+    const r = await chamarApi<ConferenciaDoAcervo>(`/acervo/processos/${p.id}/completar`, { method: 'POST', corpo: entrada.data })
+    if (!r.ok) return setErro(r.erro)
+    aoCompletar(r.dados, `${ROTULO_DO_CAMPO[campo]} completada: o processo volta a contar nesse recorte.`)
+  }
+
+  return (
+    <li className={styles.cartao}>
+      <strong>{p.numeroCnj ? formatarCnj(p.numeroCnj) : 'Processo do portal'}</strong>
+      {p.beneficio && <span> · {ROTULO_BENEFICIO[p.beneficio as Beneficio] ?? p.beneficio}</span>}
+      <p>Desfecho: {rotulo(p.desfecho)}</p>
+      {p.falta.map((campo) => (
+        <div key={campo}>
+          <p className={styles.rotulo}>{ROTULO_DO_CAMPO[campo]}: não identificada</p>
+          {conhecidos[campo].length > 0 && (
+            <div className={styles.acoes} role="group" aria-label={`${ROTULO_DO_CAMPO[campo]} que o portal conhece`}>
+              {conhecidos[campo].map((v) => (
+                <button key={v} type="button" className={styles.botaoSecundario} onClick={() => void responder(campo, v)}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className={styles.rotulo} htmlFor={ids[campo]}>
+            Outra ({ROTULO_DO_CAMPO[campo].toLowerCase()})
+          </label>
+          <input
+            id={ids[campo]}
+            className={styles.campo}
+            value={novo[campo] ?? ''}
+            maxLength={campo === 'tese' ? TAMANHO_DA_TESE : TAMANHO_DA_VARA}
+            onChange={(e) => setNovo({ ...novo, [campo]: e.target.value })}
+          />
+          <div className={styles.acoes}>
+            <button type="button" className={styles.botao} onClick={() => void responder(campo, novo[campo] ?? '')}>
+              Usar esta {ROTULO_DO_CAMPO[campo].toLowerCase()}
+            </button>
+          </div>
+        </div>
+      ))}
+      {erro && (
+        <p className={styles.erro} role="alert">
+          {erro}
+        </p>
+      )}
+    </li>
+  )
+}
+
 /**
  * Conferir desfechos do lote (GGVP-55 CA7): a Sênior confere ou corrige o desfecho lido de cada processo do acervo.
  * Só o conferido entra nas contas da jurimetria; os outros ficam no acervo para consulta, e nada trava. GGVP-41: os
@@ -152,6 +218,17 @@ export function ConferirAcervo() {
             <ProcessoDoLote key={p.id} p={p} aoConferir={aoConferir} />
           ))}
         </ul>
+      )}
+      {c && c.incompletos.length > 0 && (
+        <section aria-label="Falta completar">
+          <h2 className={styles.cartaoTitulo}>Falta completar</h2>
+          <p className={styles.dica}>Processos conferidos sem vara, juiz ou tese ficam fora desse recorte da Gestão até alguém completar.</p>
+          <ul className={styles.lista}>
+            {c.incompletos.map((p) => (
+              <FaltaCompletar key={p.id} p={p} conhecidos={c.conhecidos} aoCompletar={aoConferir} />
+            ))}
+          </ul>
+        </section>
       )}
       <p className={styles.dica}>Os não conferidos ficam no acervo para consulta, fora das contas. Nada trava.</p>
     </main>

@@ -1,11 +1,11 @@
 // Conferir desfechos do lote (GGVP-55 CA7): a Sênior confere ou corrige o desfecho lido de cada processo do acervo.
 // Só o conferido entra nas contas da jurimetria; o antes e o depois vão para o histórico. GGVP-41: o desfecho do portal
 // ganha a ficha da IA em segundo plano, e a Sênior confere a tese junto.
-import { ConferirDesfecho, type Erro } from '@ggv/contratos'
+import { CompletarAcervo, ConferirDesfecho, type Erro } from '@ggv/contratos'
 import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
-import { processoAcervo } from '../banco/esquema.ts'
+import { caso, processoAcervo } from '../banco/esquema.ts'
 import { conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { desfechosSemFicha, fichaDoDesfecho } from '../fluxo/ficha-do-desfecho.ts'
 import type { Ia } from '../ia/ia.ts'
@@ -48,6 +48,35 @@ export function registrarRotasAcervo(app: FastifyInstance, { banco, agora = () =
     if (!conferido) return negar(resposta, 409, antes.desfecho ? 'Esse desfecho já foi conferido.' : 'Esse processo ainda não tem desfecho lido.')
     const teses = tese === undefined ? {} : { teseAntes: antes.tese, tese: conferido.tese }
     await historico(quem, 'acervo_desfecho_conferido', pedido, `acervo:${id}`, { antes: antes.desfecho, depois: desfecho, ...teses })
+    return conferenciaDoAcervo(banco)
+  })
+
+  // GGVP-153 CA2, CA3: a pergunta de um clique só completa o que falta (o que já tem valor não muda). Vara e juiz vão ao
+  // caso, de onde a Gestão recorta; vara e tese, ao processo do acervo. Nada trava enquanto ninguém responde.
+  app.post<{ Params: { id: string } }>('/api/acervo/processos/:id/completar', daSenior, async (pedido, resposta) => {
+    const entrada = CompletarAcervo.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Escolha ou escreva o que falta.')
+    const id = pedido.params.id
+    const [linha] = UUID.test(id)
+      ? await banco
+          .select({ casoId: caso.id, tese: processoAcervo.tese, conferido: processoAcervo.desfechoConferidoPor, vara: caso.vara, juiz: caso.juiz })
+          .from(processoAcervo)
+          .innerJoin(caso, eq(processoAcervo.casoId, caso.id))
+          .where(eq(processoAcervo.id, id))
+      : []
+    if (!linha?.conferido) return negar(resposta, 404, 'Processo conferido não encontrado no acervo.')
+    const { vara, juiz, tese } = entrada.data
+    const novo = {
+      ...(vara && !linha.vara?.trim() && { vara }),
+      ...(juiz && !linha.juiz?.trim() && { juiz }),
+      ...(tese && !linha.tese?.trim() && { tese }),
+    }
+    if (!Object.keys(novo).length) return negar(resposta, 409, 'Esse processo já tem o que você mandou.')
+    await banco.transaction(async (tx) => {
+      if (novo.vara || novo.juiz) await tx.update(caso).set({ ...(novo.vara && { vara: novo.vara }), ...(novo.juiz && { juiz: novo.juiz }) }).where(eq(caso.id, linha.casoId))
+      if (novo.vara || novo.tese) await tx.update(processoAcervo).set({ ...(novo.vara && { vara: novo.vara }), ...(novo.tese && { tese: novo.tese }) }).where(eq(processoAcervo.id, id))
+    })
+    await historico(pedido.usuario!.id, 'acervo_completado', pedido, `acervo:${id}`, { caso: linha.casoId, antes: { vara: linha.vara, juiz: linha.juiz, tese: linha.tese }, depois: novo })
     return conferenciaDoAcervo(banco)
   })
 }
