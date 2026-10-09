@@ -107,3 +107,11 @@ Ao subir com as variáveis do Drive, a API SHALL ler uma vez as pastas "#5. CLIE
 - **Dado** a API sem as variáveis do Drive
 - **Quando** abro o `/saude`
 - **Então** ele diz `drive: "desligado"`, e nada chama o Google
+
+### Requirement: CA10 · Na homologação, o Drive só lê
+Com `GOOGLE_DRIVE_SO_LEITURA=sim`, a API SHALL fazer a leitura do CA9 e MUST NOT enviar nada ao Drive (a rodada de envio não liga), para o teste com cliente inventado não criar pastas no Drive real do escritório. O `/saude` SHALL dizer `drive: "so-leitura"`. Sem a variável, o envio funciona como nos CA1 a CA8. Pedido do Mateus em 09/10 ("não precisa que suba arquivo, que ele leia").
+
+#### Scenario: CA10 · Homologação só lê
+- **Dado** a API com as variáveis do Drive e `GOOGLE_DRIVE_SO_LEITURA=sim`
+- **Quando** sobe e um documento novo entra
+- **Então** o log mostra "Drive lido", o documento não vai para o Drive, e o `/saude` diz `drive: "so-leitura"`
