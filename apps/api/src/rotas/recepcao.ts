@@ -22,6 +22,7 @@ import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAten
 import type { Banco } from '../banco/conexao.ts'
 import { caso, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS } from '../../../web/src/dados/catalogos.ts'
@@ -105,7 +106,16 @@ function valoresAtuais(f: Ficha): Record<CampoDaFicha, string> {
   }
 }
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
+
+/** O setor das pendências da Recepção (o campo `setor` de cada uma) por perfil. */
+const SETOR_DA_RECEPCAO: Partial<Record<string, string>> = {
+  atendimento: 'Atendimento',
+  atendimento_lider: 'Atendimento',
+  advogada: 'Jurídico',
+  senior: 'Jurídico',
+  juridico_adm: 'Jurídico',
+}
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /**
@@ -307,11 +317,22 @@ export function criarFichario(banco: Banco, agora: () => Date) {
   }
 }
 
-export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, fichas, resumo, guardar, concluirTarefas, tarefas, abrirPreparacao } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
+
+  // GGVP-147: as pendências abertas da Recepção entram nas tarefas do setor, pelo setor de cada uma.
+  tarefasPorArea?.registrar(async (perfil) => {
+    const setor = SETOR_DA_RECEPCAO[perfil]
+    if (!setor) return []
+    const linhas = await banco
+      .select()
+      .from(tarefaRecepcao)
+      .where(and(eq(tarefaRecepcao.setor, setor), isNull(tarefaRecepcao.concluidaEm)))
+    return linhas.map((l) => l.dados as TarefaEncaminhada)
+  })
 
   // GGVP-16 CA1, CA2, CA5, CA10: busca por nome, CPF ou telefone, com a regra do balcão. O termo vem no corpo.
   app.post('/api/balcao/busca', ver, async (pedido, resposta) => {

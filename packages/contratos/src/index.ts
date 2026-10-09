@@ -91,3 +91,6 @@ export * from './importacao.ts'
 
 // Os feriados e as suspensões dos tribunais, na Configuração (GGVP-146, parte 3).
 export * from './feriados.ts'
+
+// As tarefas do setor e quem faz cada uma (GGVP-147).
+export * from './setor.ts'

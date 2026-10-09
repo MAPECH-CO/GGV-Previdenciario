@@ -37,7 +37,9 @@ describe('migrações', () => {
       'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao',
       'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario']) expect(t).toContain(nome)
     expect(t).toContain('documentacao_medica')
-    expect(t).toHaveLength(53)
+    // GGVP-147: quem faz cada tarefa do setor.
+    expect(t).toContain('atribuicao_tarefa')
+    expect(t).toHaveLength(54)
   })
 
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {

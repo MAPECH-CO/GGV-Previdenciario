@@ -23,6 +23,7 @@ const DESCRICAO: Record<string, string> = {
   caso_reprovado_na_conferencia: 'Caso devolvido na conferência da Sênior',
   caso_liberado_ao_juridico: 'Caso liberado ao Jurídico, para a conferência da Sênior',
   liberacao_recusada: 'Liberação ao Jurídico recusada',
+  tarefa_atribuida: 'Tarefa do setor atribuída pelo líder',
   protocolo_registrado: 'Protocolo no Meu INSS registrado',
   pericia_decidida: 'Decisão sobre a perícia',
   exigencia_inss_registrada: 'Exigência do INSS registrada',

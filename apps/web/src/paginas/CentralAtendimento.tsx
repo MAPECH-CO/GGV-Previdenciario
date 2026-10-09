@@ -1,19 +1,18 @@
 import { useState } from 'react'
-import { Abas } from '../componentes/Abas.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { LaudoPeloChat } from '../componentes/LaudoPeloChat.tsx'
-import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { ITENS_DA_GESTAO } from '../componentes/itensDaGestao.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
+import { juntarMinhas, useMinhasDoSetor } from '../dados/setor.ts'
 import {
   exemploChatAtendimento,
   sugestoesChatAtendimento,
   tarefasAtendimento,
-  totalTarefasSetorAtendimento,
 } from '../dados/atendimento.ts'
 import { tarefasDeConfirmar } from '../dados/agenda.ts'
 import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
@@ -42,7 +41,6 @@ const navegacao: ItemNavegacao[] = [
 ]
 
 export function CentralAtendimento() {
-  const [aba, setAba] = useState('minhas')
   // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as pendências do
   // Atendimento (GGVP-21), as fichas que o scanner criou sem telefone (GGVP-17, CA15), as entrevistas que passaram sem
   // registro (GGVP-123, CA8) e as que falta confirmar com o lead (GGVP-21).
@@ -75,7 +73,8 @@ export function CentralAtendimento() {
   const doServidor = useTarefasDoServidor() ?? []
   // A conversa com o cliente e a pendência dela, do servidor, para quem está no login (GGVP-138).
   const daConversa = useTarefasDaConversa() ?? []
-  const tarefas = [...doServidor, ...daConversa, ...deExemplo]
+  // GGVP-147: o que o líder deu a outra pessoa sai da fila; o que deu a esta pessoa entra no topo.
+  const tarefas = juntarMinhas([...doServidor, ...daConversa, ...deExemplo], useMinhasDoSetor())
   // O líder do Atendimento vê a Gestão no topo, como a matriz dá a ele (GGVP-135, P14).
   const gestao = usePode('gestao.ver')
 
@@ -93,28 +92,7 @@ export function CentralAtendimento() {
           <h1 className="so-leitor">Início do Atendimento</h1>
           <CampoBusca tarefas={tarefas} />
           <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={sugestoesChatAtendimento} />
-          <Abas
-            rotulo="Filas de tarefas"
-            ativa={aba}
-            onMudar={setAba}
-            abas={[
-              { id: 'minhas', rotulo: `Minhas tarefas (${tarefas.length})` },
-              { id: 'setor', rotulo: `Tarefas do setor (${totalTarefasSetorAtendimento})` },
-            ]}
-          />
-          <section role="tabpanel" id={`painel-${aba}`} aria-labelledby={`aba-${aba}`} className={styles.painel}>
-            {aba === 'minhas' ? (
-              <>
-                <div className={styles.titulo}>
-                  <h2 className={styles.tituloTexto}>O que você tem que fazer</h2>
-                  <span className={styles.contagem}>{tarefas.length}</span>
-                </div>
-                <ListaTarefas tarefas={tarefas} />
-              </>
-            ) : (
-              <p className={styles.emConstrucao}>Tarefas do setor: tela ainda não construída.</p>
-            )}
-          </section>
+          <FilasDeTarefas tarefas={tarefas} />
         </div>
       </main>
       <AbaSuporte />

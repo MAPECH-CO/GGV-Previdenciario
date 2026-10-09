@@ -55,9 +55,6 @@ export const tarefasAtendimento: Tarefa[] = [
   },
 ]
 
-/** Quantas tarefas a aba "Tarefas do setor" mostra no protótipo. */
-export const totalTarefasSetorAtendimento = 9
-
 export const exemploChatAtendimento = 'Ex.: “a Josefa me ligou, qual é a próxima tarefa dela?”'
 
 export const sugestoesChatAtendimento = [

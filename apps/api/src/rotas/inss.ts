@@ -37,6 +37,7 @@ import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
+import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
@@ -80,7 +81,7 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D4.02': (id) => `/casos/${id}/publicacoes`,
 }
 
-type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date }
+type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
@@ -92,7 +93,7 @@ const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
 export const DIAS_DE_AVISO_DO_AJUSTE = 2
 const pertoDeVencer = (prazo: string, agora: Date) => prazo <= hoje(new Date(agora.getTime() + DIAS_DE_AVISO_DO_AJUSTE * 86_400_000))
 
-export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazenamento, agora = () => new Date(), tarefasPorArea }: Opcoes) {
   app.register(fastifyMultipart, { limits: { fileSize: TAMANHO_MAXIMO, files: 1, fields: 10 } })
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
@@ -110,16 +111,16 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, passo), isNull(tarefa.concluidaEm)))
   }
 
-  // Central do perfil (GGVP-78): tarefas abertas da raia do perfil ativo. Protocolo sem OK da Sênior não aparece (GGVP-27 CA5).
-  app.get('/api/tarefas', async (pedido) => {
+  /** As tarefas do banco abertas na raia do perfil, como a Central mostra. */
+  async function tarefasDoPerfil(perfil: string): Promise<TarefaDaCentral[]> {
     const linhas = await banco
       .select({ tarefa, cliente: { id: pessoa.id, nome: pessoa.nome }, beneficio: caso.beneficio })
       .from(tarefa)
       .innerJoin(caso, eq(tarefa.casoId, caso.id))
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
-      .where(and(eq(tarefa.perfilDono, pedido.perfilAtivo!), inArray(tarefa.situacao, ['aberta', 'em_andamento'])))
+      .where(and(eq(tarefa.perfilDono, perfil), inArray(tarefa.situacao, ['aberta', 'em_andamento'])))
       .orderBy(asc(tarefa.prazo), asc(tarefa.criadoEm))
-    const visiveis = []
+    const visiveis: TarefaDaCentral[] = []
     for (const l of linhas) {
       if (l.tarefa.passo === 'D2.02' && !(await okDaSeniorAprovado(l.tarefa.casoId))) continue
       visiveis.push(
@@ -140,6 +141,26 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         }),
       )
     }
+    return visiveis
+  }
+  // GGVP-147: as tarefas do banco entram nas tarefas do setor, no formato da linha da Central.
+  tarefasPorArea?.registrar(async (perfil) =>
+    (await tarefasDoPerfil(perfil)).map((t) => ({
+      id: t.id,
+      codigo: t.passo ?? '',
+      cliente: t.cliente,
+      ...(t.contexto && { contexto: t.contexto }),
+      acao: t.titulo,
+      detalhe: t.detalhe,
+      ...(t.prazo && { prazo: `até ${t.prazo.slice(8, 10)}/${t.prazo.slice(5, 7)}` }),
+      urgente: t.urgente,
+      ...(t.tela && { href: t.tela }),
+    })),
+  )
+
+  // Central do perfil (GGVP-78): tarefas abertas da raia do perfil ativo. Protocolo sem OK da Sênior não aparece (GGVP-27 CA5).
+  app.get('/api/tarefas', async (pedido) => {
+    const visiveis = await tarefasDoPerfil(pedido.perfilAtivo!)
     // GGVP-68 CA4 (Lucas, 02/10): os alertas de vencimento da exigência vão à Sênior e ao líder do administrativo.
     if (pedido.perfilAtivo !== 'senior' && pedido.perfilAtivo !== 'atendimento_lider') return visiveis
     // GGVP-39 CA14: a 5 dias úteis, alerta; a 2 ou menos (ou vencida), no topo da fila.
