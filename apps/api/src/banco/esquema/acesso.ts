@@ -1,6 +1,6 @@
 // Acesso: quem entra, sessão e histórico (GGVP-117, GGVP-96, GGVP-99).
 import { sql } from 'drizzle-orm'
-import { boolean, check, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, integer, jsonb, numeric, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { FORNECEDORES_DE_IA, PERFIS, SITUACOES_DA_CHAMADA } from '@ggv/contratos'
 import { criadoEm, emLista, id, momento } from './comum.ts'
 
@@ -83,6 +83,9 @@ export const chamadaIa = pgTable(
     /** GGVP-110 CA3, CA7: instrução suspeita na entrada ou na saída, ou CID na saída. Só o motivo, nunca o trecho. */
     alerta: text('alerta'),
     duracaoMs: integer('duracao_ms'),
+    /** GGVP-133 CA9: na transcrição, a duração do áudio e o custo estimado em dólar (preço por minuto do modelo). */
+    audioSegundos: integer('audio_segundos'),
+    custoEstimado: numeric('custo_estimado', { precision: 10, scale: 4 }),
     quando: momento('quando').notNull().defaultNow(),
   },
   (t) => [emLista('chamada_ia_fornecedor', t.fornecedor, FORNECEDORES_DE_IA), emLista('chamada_ia_situacao', t.situacao, SITUACOES_DA_CHAMADA)],
