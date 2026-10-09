@@ -81,6 +81,18 @@ describe('Linha do tempo da deficiência · tela da advogada', () => {
     expect(screen.queryByRole('list', { name: 'Vínculos do CNIS' })).toBeNull()
   })
 
+  it('GGVP-137 · o Jurídico administrativo abre a linha do tempo só para ler: sem salvar nem mudar os dados', async () => {
+    entrarComo('juridico-adm')
+    await abrir()
+    expect(screen.getByRole('list', { name: 'Vínculos do CNIS' })).toBeTruthy()
+    expect(screen.getByText('Só leitura: quem registra os dados da deficiência é a advogada ou a sênior.')).toBeTruthy()
+    expect((screen.getByRole('textbox', { name: /Início da deficiência/ }) as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('combobox', { name: /Grau no início/ }) as HTMLSelectElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Salvar os dados da deficiência' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '+ Agravamento' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Tirar' })).toBeNull()
+  })
+
   it('CA4 · o mesmo enquadramento aparece no parecer da Aposentadoria PCD, com o atalho para a linha do tempo', async () => {
     await enviarArquivos('cleide-exemplo', {
       origem: 'card',

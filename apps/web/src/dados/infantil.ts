@@ -2,7 +2,7 @@
 // criança é dado de saúde: só o Jurídico marca e vê. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint
 // da spec da ggvp-50.
 import { nomeTipo } from './catalogos.ts'
-import { doBancoOuNulo, doJuridico } from './parecer.ts'
+import { doBancoOuNulo, doJuridico, registraSaude } from './parecer.ts'
 import { agora, doServidor, esperar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 import type { Ficha, Processo } from './tipos.ts'
 import { hojeIso, idadeEm } from '../regras/datas.ts'
@@ -40,7 +40,7 @@ export async function obterCrianca(processoId: string, perfil: string | undefine
 export async function salvarCrianca(processoId: string, dados: DadosDaCrianca, quem: { perfil?: string; nome: string }): Promise<CriancaNaTela> {
   if (doServidor(processoId)) return noBanco<CriancaNaTela>(`/processos/${processoId}/crianca`, { method: 'PUT', corpo: dados })
   await esperar()
-  if (!doJuridico(quem.perfil)) throw new Error('Só o Jurídico marca a condição da criança.')
+  if (!registraSaude(quem.perfil)) throw new Error('Só o Jurídico marca a condição da criança.')
   if (dados.condicoes.some((c) => !(c in CONDICOES_DA_CRIANCA)) || dados.terapias.some((t) => !(t in TERAPIAS))) throw new Error('Condição ou terapia fora da lista.')
   const banco = ler()
   const caso = acharCaso(banco, processoId)

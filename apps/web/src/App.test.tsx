@@ -364,6 +364,18 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
   })
 
+  it('GGVP-137 · a decisão da perícia (D2.03) fica em /pericia/decidir; /pericia é a página da perícia, também no caso do servidor', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
+    const id = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
+    render(<App caminho={`/casos/${id}/pericia/decidir`} />)
+    expect(await screen.findByRole('heading', { name: 'Precisa de perícia?' })).toBeTruthy()
+    cleanup()
+    render(<App caminho={`/casos/${id}/pericia`} />)
+    expect(await screen.findByRole('heading', { name: 'Este caso não tem perícia' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Precisa de perícia?' })).toBeNull()
+  })
+
   it('GGVP-96 · a Documentação trabalha na Central do Atendimento', async () => {
     servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
     render(<App caminho="/" />)
