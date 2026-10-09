@@ -37,9 +37,10 @@ export function travaCpf(texto: string, cpfDoCadastro: string | null): Trava {
 
 /**
  * Pacote completo: nenhum citado falta, todo citado foi lido e está no pacote, e cada arquivo (sempre PDF) cabe no
- * tamanho que o tribunal aceita. `tamanhos` é o tamanho, em bytes, de cada documento do pacote.
+ * tamanho que o tribunal aceita. `tamanhos` é o tamanho, em bytes, de cada documento do pacote. `noDrive`: se o pacote
+ * já foi salvo no Drive (GGVP-107 CA6); `null` com o Drive desligado, e a trava não cobra.
  */
-export function travaPacote(citados: Citado[], pacote: ArquivoDoPacote[] | null, tamanhos: Record<string, number>, tribunal: Tribunal | null): Trava {
+export function travaPacote(citados: Citado[], pacote: ArquivoDoPacote[] | null, tamanhos: Record<string, number>, tribunal: Tribunal | null, noDrive: boolean | null = null): Trava {
   const trava = { chave: 'pacote' as const, nome: 'Pacote completo', criterio: 'Os documentos citados na petição estão no pacote, em PDF e no tamanho aceito pelo tribunal.' }
   if (!pacote) return { ...trava, ok: false, evidencia: 'O pacote ainda não foi gerado.' }
   const mb = (bytes: number) => Math.round((bytes / 1_048_576) * 10) / 10
@@ -51,6 +52,7 @@ export function travaPacote(citados: Citado[], pacote: ArquivoDoPacote[] | null,
           .filter((a) => (tamanhos[a.documentoId] ?? 0) > tribunal.tamanhoMaximoMb * 1_048_576)
           .map((a) => `Grande demais para ${tribunal.nome}: ${a.nome} (${mb(tamanhos[a.documentoId])} MB; o limite é ${tribunal.tamanhoMaximoMb} MB)`)
       : []),
+    ...(noDrive === false ? ['O pacote ainda não está no Drive; o portal salva sozinho em até um minuto'] : []),
   ]
   return {
     ...trava,
