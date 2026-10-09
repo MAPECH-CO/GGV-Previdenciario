@@ -2,7 +2,8 @@
 // Pedro, importadas sem cópia (apps/web/src/regras/periciaNoCaso.ts), rodando aqui com o perfil da sessão. A perícia é a
 // mesma linha da tabela `pericia` que o INSS (GGVP-31), a exigência, o despacho e o juiz abrem; o formato das telas fica
 // na coluna `documento`, e as colunas da linha seguem o que a junção do D2 lê (o resultado fecha a perícia). A IA da leitura
-// do comprovante e do laudo continua simulada (a de verdade é da GGVP-139); o Chatwoot também.
+// do comprovante e do laudo continua simulada (a de verdade é da GGVP-139). O lembrete sai pelo correio do servidor
+// (rotas/mensagens.ts, GGVP-146); aqui fica só o registro.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
@@ -501,7 +502,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return a && mudar(pedido, resposta, { acao: 'pericia_remarcacao_autorizada', passo: 'DP.02' }, (n, quem) => mudancas.autorizacao(n, a.justificativa, quem))
   })
 
-  // GGVP-53 CA7: o lembrete da véspera, conferido e enviado pelo Chatwoot (simulado).
+  // GGVP-53 CA7: o lembrete da véspera, conferido e já enviado pelo correio do servidor (rotas/mensagens.ts).
   app.post<ComId>('/api/processos/:id/pericia/lembrete', com('pericia.marcar'), (pedido, resposta) => {
     const m = corpo(MensagemConferida, pedido, resposta)
     return m && mudar(pedido, resposta, { acao: 'pericia_lembrete_enviado', passo: 'DP.04' }, (n, quem) => mudancas.lembrete(n, m.mensagem, quem))

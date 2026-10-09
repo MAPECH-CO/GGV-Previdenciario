@@ -37,6 +37,11 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
    `CHATWOOT_CONTA` (o número da conta), `CHATWOOT_CAIXA` (o número da caixa de entrada) e `CHATWOOT_TOKEN` (o token de
    acesso de um agente da conta). Sem as quatro, as mensagens seguem simuladas. Em homologação, só uma conta e uma caixa de
    teste: a conta do escritório tem contatos reais, e a mensagem sai no WhatsApp deles.
+   **Trava da homologação:** fora de produção (`AMBIENTE` diferente de `producao`, inclusive sem a variável), o portal só
+   fala com o Chatwoot para os telefones de `CHATWOOT_PERMITIDOS`, separados por vírgula, em qualquer formato
+   (`+55 11 91234-5678, 21987654321`). Para os outros, não consulta nem envia: a mensagem fica no histórico do cliente como
+   não enviada ("o telefone está fora da lista de teste da homologação") e a tela diz isso. Sem a lista, nenhum telefone
+   recebe. Só o app de produção leva `AMBIENTE=producao`, e lá não há lista.
 4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
 5. **Webhooks:** copie a **Deploy webhook URL**.
 

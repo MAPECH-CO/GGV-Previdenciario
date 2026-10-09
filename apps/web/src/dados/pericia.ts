@@ -2,7 +2,7 @@
 // `iniciarPericia`, com a forma da decisão D2.03 do servidor do Mateus (GGVP-31), do despacho da sênior (D3) e do pedido
 // do juiz (D3a): ponta para ligar na junção com o INSS. A semente faz o papel dessas decisões para os clientes de exemplo.
 // As regras e as mudanças da perícia ficam em regras/periciaNoCaso.ts, as mesmas do servidor de verdade (GGVP-137). IA,
-// Meu INSS, GERID e Chatwoot são simulados.
+// Meu INSS e GERID são simulados; o lembrete do caso do servidor sai pelo Chatwoot do servidor (GGVP-146).
 // Modo misto (GGVP-137), ligado no main.tsx, como a Recepção: a perícia de um caso do servidor (id uuid) vai à API
 // (rotas/pericia.ts) e a cópia daqui recebe o que veio de lá, para a agenda, o chat e as páginas que ainda leem a cópia. As
 // perícias da semente (casos "-exemplo") ficam aqui: servem aos testes de tela e ao Playwright.
