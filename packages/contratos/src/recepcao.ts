@@ -329,3 +329,15 @@ export type MudancaDeCaso = z.infer<typeof MudancaDeCaso>
 /** POST /api/documentos-lidos/:id/cadastro: o campo que a IA leu e vai para o cadastro, um por vez. */
 export const CampoLidoNoCadastro = z.object({ campo: z.enum(['nome', 'cpf', 'rg', 'endereco']) })
 export type CampoLidoNoCadastro = z.infer<typeof CampoLidoNoCadastro>
+
+/** POST /api/processos/:id/cobranca/tentativas: a ligação ou o envio pelo Chatwoot, com o resultado (GGVP-101, CA6 e CA11). */
+export const TentativaDaCobranca = z.object({ canal: z.enum(['chatwoot', 'ligacao']), resultado: z.enum(['sem-resposta', 'respondeu']) })
+export type TentativaDaCobranca = z.infer<typeof TentativaDaCobranca>
+
+/** POST /api/processos/:id/cobranca/adiamento: a nova data; sem ela, o servidor responde o mesmo que a tela (CA10). */
+export const AdiamentoDaCobranca = z.object({ para: Data.nullable() })
+export type AdiamentoDaCobranca = z.infer<typeof AdiamentoDaCobranca>
+
+/** POST /api/processos/:id/cobranca/decisao: a decisão da Sênior no limite, com a justificativa (CA8). */
+export const DecisaoDaCobranca = z.object({ opcao: z.enum(['nova-tentativa', 'visita', 'suspender']), justificativa: Texto(1000), prazo: Data.optional() })
+export type DecisaoDaCobranca = z.infer<typeof DecisaoDaCobranca>

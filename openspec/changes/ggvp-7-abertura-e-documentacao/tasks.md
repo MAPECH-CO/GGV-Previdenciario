@@ -217,16 +217,16 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 
 ### Bloco 5c · Checklist, boas-vindas e cobrança no servidor
 
-- [ ] 125.67 Telas do Pedro: a tabela de nomes do kit, o kit como lista do benefício, os documentos e os complementares do caso e o contrato assinado vão para `regras/checklist.ts`, para o servidor usar os mesmos; testes.
-- [ ] 125.68 Banco: `conferencia_checklist`, `boas_vindas` e `cobranca_documento` e a migração 0024; matriz 23 com `cobranca.decidir` (só a Sênior).
-- [ ] 125.69 Contratos: a tentativa, o adiamento e a decisão da cobrança.
-- [ ] 125.70 Servidor: `GET /api/processos/:id/checklist` e `POST .../checklist/conferencia` (o kit vigente do escritório; os documentos lidos e arquivados, o contrato, o acidente e a criança do banco; a incompleta abre a cobrança); o checklist de cada caso no `GET /api/recepcao`; testes.
-- [ ] 125.71 Servidor: a liberação (G1) do caso da Recepção confere esse checklist (a última conferência completa e o de agora completo); testes.
-- [ ] 125.72 Servidor: `GET` e `POST /api/processos/:id/boas-vindas` ("Já enviei": uma vez por cliente novo, depois do checklist conferido; histórico e contatos); os registros no `GET /api/recepcao`; testes.
-- [ ] 125.73 Servidor: `GET /api/processos/:id/cobranca`, `POST .../tentativas`, `/adiamento` e `/decisao` (só a Sênior, no limite, com justificativa); a cobrança fecha sozinha quando chega tudo; as cobranças no `GET /api/recepcao`; testes.
-- [ ] 125.74 Telas: checklist, boas-vindas ("Enviar boas-vindas" na Central da Atendimento, a mensagem para copiar e "Já enviei") e cobrança chamando a API para os casos do servidor; o checklist, os registros e as cobranças do servidor na cópia; testes.
-- [ ] 125.75 Playwright: a Documentação confere o checklist incompleto de um caso do servidor; em outra sessão, a Atendimento vê "Cobrar documento" e registra a tentativa.
-- [ ] 125.76 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 125.67 Telas do Pedro: a tabela de nomes do kit, o kit como lista do benefício, os documentos e os complementares do caso e o contrato assinado vão para `regras/checklist.ts`, para o servidor usar os mesmos; testes.
+- [x] 125.68 Banco: `conferencia_checklist`, `boas_vindas` e `cobranca_documento` e a migração 0024; matriz 23 com `cobranca.decidir` (só a Sênior).
+- [x] 125.69 Contratos: a tentativa, o adiamento e a decisão da cobrança.
+- [x] 125.70 Servidor: `GET /api/processos/:id/checklist` e `POST .../checklist/conferencia` (o kit vigente do escritório; os documentos lidos e arquivados, o contrato, o acidente e a criança do banco; a incompleta abre a cobrança); o checklist de cada caso no `GET /api/recepcao`; testes.
+- [x] 125.71 Servidor: a liberação (G1) do caso da Recepção confere esse checklist (a última conferência completa e o de agora completo); testes.
+- [x] 125.72 Servidor: `GET` e `POST /api/processos/:id/boas-vindas` ("Já enviei": uma vez por cliente novo, depois do checklist conferido; histórico e contatos); os registros no `GET /api/recepcao`; testes.
+- [x] 125.73 Servidor: `GET /api/processos/:id/cobranca`, `POST .../tentativas`, `/adiamento` e `/decisao` (só a Sênior, no limite, com justificativa); a cobrança fecha sozinha quando chega tudo; as cobranças no `GET /api/recepcao`; testes.
+- [x] 125.74 Telas: checklist, boas-vindas ("Enviar boas-vindas" na Central da Atendimento, a mensagem para copiar e "Já enviei") e cobrança chamando a API para os casos do servidor; o checklist, os registros e as cobranças do servidor na cópia; testes.
+- [x] 125.75 Playwright: a Documentação confere o checklist incompleto de um caso do servidor; em outra sessão, a Atendimento vê "Cobrar documento" e registra a tentativa.
+- [x] 125.76 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ### Bloco 6 · A primeira liberação ao Jurídico no servidor (pedido do Pedro, 09/10; números 125.90 em diante para não colidir com o 5c)
 

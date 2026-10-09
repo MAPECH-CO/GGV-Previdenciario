@@ -423,3 +423,38 @@ test('a Atendimento envia o RG pelo card; a Documentação, em outra sessão, co
   expect(ficha?.arquivos).toEqual([expect.objectContaining({ nome: 'RG Lia.pdf', aguardaLeitura: false })])
   await outro.close()
 })
+
+// GGVP-125, bloco 5c · o checklist e a cobrança no banco: a Documentação confere o checklist incompleto de um caso do
+// servidor (o kit do escritório, com os nomes das telas), e a Atendimento, em outro computador, cobra e registra a ligação.
+test('a Documentação confere o checklist incompleto de um caso do servidor; a Atendimento, em outra sessão, cobra', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const novo = { nome: 'Lia Cobranca Teste', idade: 67, pretende: 'Quer o BPC do idoso.', telefone: '11933331144', cpf: '81537294628', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
+  const { processo } = await (await page.request.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
+  await page.goto('/')
+
+  // Outro computador: a Documentação confere o checklist, que o servidor calcula.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const documentacao = await outro.newPage()
+  await entrarPelaApi(documentacao, 'documentacao@exemplo.ggv')
+  await documentacao.goto(`/casos/${processo.id}/checklist`)
+  await documentacao.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Conferido às/ })).toBeVisible()
+  await outro.close()
+
+  // A Atendimento recebe a cobrança na Central e registra a ligação.
+  await page.goto('/')
+  const tarefa = page.getByRole('link', { name: 'Lia Cobranca Teste · Cobrar documento' })
+  await expect(page.getByRole('listitem').filter({ has: tarefa })).toContainText('1ª tentativa')
+  await tarefa.click()
+  await expect(page).toHaveURL(`/casos/${processo.id}/cobranca`)
+  await expect(page.getByRole('list', { name: 'Documentos pendentes' })).toContainText('Documento pessoal (RG)')
+  await page.getByRole('button', { name: 'Ligar' }).click()
+  await page.getByRole('radio', { name: 'Não atendeu (caixa postal ou sem resposta)' }).click()
+  await page.getByRole('button', { name: 'Registrar ligação' }).click()
+  await expect(page.getByRole('list', { name: 'Tentativas de cobrança' })).toContainText('1ª · ')
+
+  const { cobrancas } = await (await page.request.get('/api/recepcao')).json()
+  const daLia = (cobrancas as { processoId: string; tentativas: { canal: string; resultado: string }[] }[]).find((c) => c.processoId === processo.id)
+  expect(daLia?.tentativas).toEqual([expect.objectContaining({ canal: 'ligacao', resultado: 'sem-resposta' })])
+})

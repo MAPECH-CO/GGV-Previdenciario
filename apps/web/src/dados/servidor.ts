@@ -17,6 +17,7 @@ import type { DocumentoLido } from './leitura.ts'
 import type { ConferenciaDoChecklist } from './checklist.ts'
 import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type { Cobranca } from './cobranca.ts'
+import type { ChecklistNaCopia } from '../regras/checklist.ts'
 import type { Liberacao } from './liberacao.ts'
 import type {
   Arquivo,
@@ -91,6 +92,12 @@ export type Banco = {
   leituras?: DocumentoLido[]
   /** As leituras das fichas do servidor, que a IA (simulada) faz lá; vêm na cópia (GGVP-125, bloco 5b). */
   leiturasDoServidor?: DocumentoLido[]
+  /** O checklist de cada caso do servidor, calculado lá (o kit do escritório, o acidente e a criança); vem na cópia (bloco 5c). */
+  checklistsDoServidor?: ChecklistNaCopia[]
+  /** As boas-vindas que a Atendimento marcou como enviadas, nos casos do servidor (bloco 5c). */
+  boasVindasDoServidor?: RegistroDasBoasVindas[]
+  /** As cobranças dos casos do servidor (bloco 5c). */
+  cobrancasDoServidor?: Cobranca[]
   /** Cada conferência do checklist de um caso (GGVP-91). */
   checklists?: ConferenciaDoChecklist[]
   /** Cada tentativa de envio das boas-vindas (GGVP-97). */
@@ -295,6 +302,9 @@ export function receber(r: {
   contrato?: Contrato
   contratos?: Contrato[]
   leituras?: DocumentoLido[]
+  checklists?: ChecklistNaCopia[]
+  boasVindas?: RegistroDasBoasVindas[]
+  cobrancas?: Cobranca[]
 }): Ficha | undefined {
   const banco = ler()
   const ficha = r.ficha && espelharEm(banco, r.ficha)
@@ -308,8 +318,18 @@ export function receber(r: {
     const vieram = new Set(r.leituras.map((l) => l.id))
     banco.leiturasDoServidor = [...(banco.leiturasDoServidor ?? []).filter((l) => !vieram.has(l.id)), ...r.leituras]
   }
+  // Bloco 5c: o checklist, as boas-vindas e as cobranças que vieram do servidor entram no lugar das do mesmo caso.
+  if (r.checklists) banco.checklistsDoServidor = porCaso(banco.checklistsDoServidor, r.checklists)
+  if (r.boasVindas) banco.boasVindasDoServidor = porCaso(banco.boasVindasDoServidor, r.boasVindas)
+  if (r.cobrancas) banco.cobrancasDoServidor = porCaso(banco.cobrancasDoServidor, r.cobrancas)
   gravar(banco)
   return ficha
+}
+
+/** Os itens que vieram do servidor entram no lugar dos do mesmo processo. */
+function porCaso<T extends { processoId: string }>(antes: T[] | undefined, vieram: T[]): T[] {
+  const casos = new Set(vieram.map((v) => v.processoId))
+  return [...(antes ?? []).filter((a) => !casos.has(a.processoId)), ...vieram]
 }
 
 /**
@@ -325,6 +345,9 @@ export async function sincronizarRecepcao() {
     gravacoes: Gravacao[]
     contratos: Contrato[]
     leituras?: DocumentoLido[]
+    checklists?: ChecklistNaCopia[]
+    boasVindas?: RegistroDasBoasVindas[]
+    cobrancas?: Cobranca[]
   }>('/recepcao')
   const banco = ler()
   for (const f of r.fichas) espelharEm(banco, f)
@@ -335,6 +358,10 @@ export async function sincronizarRecepcao() {
   receberContratosEm(banco, r.contratos)
   // Bloco 5b: as leituras das fichas do servidor vêm inteiras.
   banco.leiturasDoServidor = r.leituras ?? []
+  // Bloco 5c: o checklist de cada caso, as boas-vindas e as cobranças do servidor vêm inteiros.
+  banco.checklistsDoServidor = r.checklists ?? []
+  banco.boasVindasDoServidor = r.boasVindas ?? []
+  banco.cobrancasDoServidor = r.cobrancas ?? []
   gravar(banco)
 }
 

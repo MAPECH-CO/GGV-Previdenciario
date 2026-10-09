@@ -40,7 +40,9 @@ describe('migrações', () => {
     expect(t).toContain('documentacao_medica')
     // GGVP-147: quem faz cada tarefa do setor.
     expect(t).toContain('atribuicao_tarefa')
-    expect(t).toHaveLength(59)
+    // GGVP-125, bloco 5c: a conferência do checklist, as boas-vindas e a cobrança dos documentos.
+    for (const nome of ['conferencia_checklist', 'boas_vindas', 'cobranca_documento']) expect(t).toContain(nome)
+    expect(t).toHaveLength(62)
   })
 
   it('GGVP-141 · a base de conhecimento do acervo: pgvector ligado e o índice HNSW pela distância de cosseno (ADR-013)', async () => {

@@ -28,6 +28,11 @@ import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista
 import { lerFichaEmPapel, salvarFichaDeAtendimento } from './fichaAtendimento.ts'
 import { enviarArquivos, receberLote, registrarRecebimento } from './documentos.ts'
 import { arquivarDocumentos, moverDocumento, tarefasDeConferirDocumento, type DocumentoLido } from './leitura.ts'
+import { conferirChecklist, obterChecklist, tarefasDeConferirChecklist } from './checklist.ts'
+import { enviarBoasVindas, tarefasDeReenviarBoasVindas, type RegistroDasBoasVindas } from './boasVindas.ts'
+import { decidirCobranca, pendenciasDeDocumento, registrarTentativa, tarefasDeCobrar, tarefasDeDecidirCobranca } from './cobranca.ts'
+import type { ChecklistNaCopia } from '../regras/checklist.ts'
+import type { Cobranca } from '../regras/cobranca.ts'
 import { registrarFechamento } from './fechamento.ts'
 import { obterPreparacao, tarefasDaAdvogada } from './preparacao.ts'
 import { lerSegundaFichaEmPapel } from './segundaFicha.ts'
@@ -811,5 +816,115 @@ describe('GGVP-125 · bloco 5b: a chegada, a leitura e o arquivo dos documentos 
     await registrarRecebimento('balcao-1', { forma: 'papel', conferiTipos: true, conferiPapel: false })
     expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ forma: 'papel', conferiTipos: true, conferiPapel: false })
     expect(ler().tarefas.find((t) => t.id === 'balcao-1')?.concluida).toBe(true)
+  })
+})
+
+describe('GGVP-125 · bloco 5c: o checklist, as boas-vindas e a cobrança no servidor', () => {
+  const PROC = '8b3e4d5c-6f70-4b81-8c9d-2e3f4a5b6c7d'
+  const cliente = () => doBanco({ situacao: 'cliente', processos: [{ id: PROC, beneficio: 'loas-idoso', etapa: 'Documentação' }] })
+  const conferencia = { processoId: PROC, quando: '2026-10-05T18:00:00.000Z', completo: false, faltam: ['RG'] }
+  const naCopia = (extra: Partial<ChecklistNaCopia> = {}): ChecklistNaCopia => ({
+    processoId: PROC,
+    beneficio: 'LOAS Idoso',
+    checklist: {
+      temLista: true,
+      itens: [
+        { tipo: 'contrato', nome: 'Contrato assinado (kit)', situacao: 'recebido', de: 'contrato' },
+        { tipo: 'rg', nome: 'RG', situacao: 'pendente', motivo: 'falta', de: 'beneficio' },
+      ],
+      completo: false,
+      faltam: ['RG'],
+    },
+    condicoes: [],
+    ...extra,
+  })
+  const arquivada: DocumentoLido = {
+    id: `${ID}/CPF.pdf`,
+    fichaId: ID,
+    arquivo: 'CPF.pdf',
+    origem: 'card',
+    tipo: 'cpf',
+    data: '2026-10-05',
+    confianca: 90,
+    lidos: { nome: 'Ivone Teste' },
+    situacao: 'arquivado',
+    lidoEm: '2026-10-05T16:00:00.000Z',
+    arquivadoEm: '2026-10-05T17:00:00.000Z',
+  }
+  const cobranca = (extra: Partial<Cobranca> = {}): Cobranca => ({ processoId: PROC, fichaId: ID, abertaEm: '2026-10-05', tentativas: [], decisoes: [], ...extra })
+  const sincronizar = (
+    rotas: Record<string, (corpo: unknown) => unknown>,
+    d: { checklists?: ChecklistNaCopia[]; boasVindas?: RegistroDasBoasVindas[]; cobrancas?: Cobranca[]; leituras?: DocumentoLido[] },
+  ) => ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [cliente()], tarefas: [], internos: [], gravacoes: [], contratos: [], ...d }), ...rotas })
+
+  it('o checklist calculado no servidor vem na cópia; conferir vai ao servidor, e a cobrança que ele abriu dá "Cobrar documento"', async () => {
+    const fetch = sincronizar(
+      {
+        [`GET /api/processos/${PROC}/checklist`]: () => ({ ficha: cliente(), processo: cliente().processos[0], ...naCopia() }),
+        [`POST /api/processos/${PROC}/checklist/conferencia`]: () => ({
+          conferencia,
+          ficha: cliente(),
+          checklists: [naCopia({ conferencia })],
+          cobrancas: [cobranca({ conferenciaEm: conferencia.quando })],
+        }),
+      },
+      { checklists: [naCopia()], leituras: [arquivada] },
+    )
+    await sincronizarRecepcao()
+    expect(tarefasDeConferirChecklist().find((t) => t.processoId === PROC)).toMatchObject({
+      acao: 'Conferir checklist',
+      detalhe: 'LOAS Idoso · 1 de 2 itens recebidos · leitura arquivada',
+    })
+    expect((await obterChecklist(PROC))?.checklist.faltam).toEqual(['RG'])
+
+    expect(await conferirChecklist(PROC)).toEqual(conferencia)
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/processos/${PROC}/checklist/conferencia`)
+    expect(tarefasDeConferirChecklist().some((t) => t.processoId === PROC)).toBe(false)
+    expect(tarefasDeCobrar().find((t) => t.processoId === PROC)).toMatchObject({ acao: 'Cobrar documento', detalhe: 'LOAS Idoso · RG pendente · 1ª tentativa' })
+    expect(pendenciasDeDocumento(PROC)).toEqual(['RG'])
+  })
+
+  it('boas-vindas: conferido o checklist, a Atendimento recebe "Enviar boas-vindas"; "Já enviei" vai ao servidor e a tarefa sai', async () => {
+    const registro: RegistroDasBoasVindas = { fichaId: ID, processoId: PROC, quando: '2026-10-05T18:10:00.000Z', situacao: 'enviada', mensagem: 'Olá, Ivone!' }
+    const fetch = sincronizar(
+      { [`POST /api/processos/${PROC}/boas-vindas`]: () => ({ boasVindas: { situacao: 'enviada', mensagem: 'Olá, Ivone!', copias: [], faltam: ['RG'], registro }, ficha: cliente() }) },
+      { checklists: [naCopia({ conferencia })] },
+    )
+    await sincronizarRecepcao()
+    expect(tarefasDeReenviarBoasVindas().find((t) => t.processoId === PROC)).toMatchObject({
+      acao: 'Enviar boas-vindas',
+      detalhe: 'LOAS Idoso · checklist conferido · 1 pendência',
+      href: `/casos/${PROC}/checklist`,
+    })
+    expect(await enviarBoasVindas(PROC, { conferi: true, mensagem: 'Olá, Ivone!' })).toEqual(registro)
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/processos/${PROC}/boas-vindas`)
+    expect(ler().boasVindasDoServidor).toEqual([registro])
+    expect(tarefasDeReenviarBoasVindas().some((t) => t.processoId === PROC)).toBe(false)
+  })
+
+  it('cobrança: no limite, "Decidir cobrança" sai da cópia; a tentativa e a decisão vão ao servidor', async () => {
+    const semResposta = (dia: string, canal: 'chatwoot' | 'ligacao') => ({ dia, canal, resultado: 'sem-resposta' as const, quem: 'Ana' })
+    const noLimite = cobranca({ tentativas: [semResposta('2026-10-01', 'chatwoot'), semResposta('2026-10-04', 'ligacao')] })
+    const decidida = cobranca({
+      ...noLimite,
+      adiadaPara: '2026-10-06',
+      decisoes: [{ opcao: 'visita', justificativa: 'Pedir que traga o RG', quando: '2026-10-05T18:20:00.000Z', quem: 'Sara' }],
+    })
+    const fetch = sincronizar(
+      {
+        [`POST /api/processos/${PROC}/cobranca/tentativas`]: () => ({ ficha: cliente(), cobrancas: [noLimite] }),
+        [`POST /api/processos/${PROC}/cobranca/decisao`]: () => ({ ficha: cliente(), cobrancas: [decidida] }),
+      },
+      { checklists: [naCopia({ conferencia })], cobrancas: [noLimite] },
+    )
+    await sincronizarRecepcao()
+    expect(tarefasDeDecidirCobranca().find((t) => t.processoId === PROC)).toMatchObject({ acao: 'Decidir cobrança', detalhe: 'LOAS Idoso · 2 tentativas sem resposta · limite (G15)' })
+
+    await registrarTentativa(PROC, { canal: 'ligacao', resultado: 'sem-resposta' })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ canal: 'ligacao', resultado: 'sem-resposta' })
+    await decidirCobranca(PROC, { opcao: 'visita', justificativa: 'Pedir que traga o RG' })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ opcao: 'visita', justificativa: 'Pedir que traga o RG' })
+    expect(ler().cobrancasDoServidor).toEqual([decidida])
+    expect(tarefasDeDecidirCobranca().some((t) => t.processoId === PROC)).toBe(false)
   })
 })

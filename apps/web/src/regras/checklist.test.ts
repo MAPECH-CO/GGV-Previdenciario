@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { montarChecklist, motivoParaNaoLiberar, type EntradaDoChecklist, type ListaDoBeneficio } from './checklist.ts'
+import type { Arquivo } from '../dados/tipos.ts'
+import {
+  complementaresDoCaso,
+  contratoAssinadoDo,
+  documentosDoCaso,
+  listaDoKit,
+  montarChecklist,
+  motivoParaNaoLiberar,
+  type EntradaDoChecklist,
+  type ListaDoBeneficio,
+} from './checklist.ts'
 
 const LOAS: ListaDoBeneficio = {
   obrigatorios: ['rg', 'grupo-familiar'],
@@ -123,5 +133,79 @@ describe('Checklist do Auxílio-Acidente (GGVP-47)', () => {
     const c = montarChecklist(acidente({ documentos: [{ tipo: 'laudo' }, { tipo: 'cat' }], bloqueio: 'Facultativo não tem direito ao auxílio-acidente: o caso trava na categoria.' }))
     expect([c.completo, c.faltam]).toEqual([false, []])
     expect(motivoParaNaoLiberar(c, 'Auxílio Acidentário')).toBe('Facultativo não tem direito ao auxílio-acidente: o caso trava na categoria.')
+  })
+})
+
+describe('GGVP-125 · bloco 5c: o que as telas e o servidor calculam igual', () => {
+  const kitDaSemente = [
+    ...['documento_de_identidade', 'cpf', 'comprovante_de_residencia', 'cadunico', 'ficha_de_grupo_familiar'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: true })),
+    ...['declaracao_de_moradia', 'declaracao_de_uniao_estavel', 'declaracao_de_separacao_de_fato'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: false })),
+    { tipoDocumento: 'cnis', obrigatorio: false },
+  ]
+
+  it('o kit do escritório vira a lista das telas: os nomes do banco traduzidos, as declarações condicionais e o opcional fora', () => {
+    expect(listaDoKit(kitDaSemente)).toEqual({
+      obrigatorios: ['rg', 'cpf', 'comprovante-residencia', 'cadunico', 'grupo-familiar'],
+      condicionais: [
+        { tipo: 'declaracao-moradia', quando: 'moradia' },
+        { tipo: 'declaracao-uniao-estavel', quando: 'uniao-estavel' },
+        { tipo: 'declaracao-separacao', quando: 'separacao-de-fato' },
+      ],
+    })
+    // Kit vazio: o benefício não tem lista aprovada (CA6).
+    expect(listaDoKit([])).toBeUndefined()
+  })
+
+  it('o RG que o card grava com o nome da tela conta como o documento de identidade do kit', () => {
+    const c = montarChecklist({ lista: listaDoKit(kitDaSemente), condicoes: [], daEntrevista: [], documentos: [{ tipo: 'rg' }, { tipo: 'cpf' }], contratoAssinado: true })
+    expect(c.itens.filter((i) => i.situacao === 'recebido').map((i) => i.tipo)).toEqual(['contrato', 'rg', 'cpf'])
+    expect(c.faltam).toHaveLength(3)
+  })
+
+  it('os documentos do caso: a pasta pessoal e a do processo, só o que já foi lido, o G1 da leitura e a quarentena', () => {
+    const arquivo = (nome: string, tipo: string, local: string, aguardaLeitura = false): Arquivo => ({ nome, tipo, local, data: '2026-10-09', origem: 'card', repetido: false, aguardaLeitura })
+    const ficha = {
+      documentos: [{ nome: 'CPF', detalhe: '' }],
+      arquivos: [
+        arquivo('RG.pdf', 'rg', 'pessoais'),
+        arquivo('Moradia.pdf', 'declaracao-moradia', 'caso-1'),
+        arquivo('CNIS.pdf', 'cnis', 'caso-2'),
+        arquivo('CadUnico.pdf', 'cadunico', 'pessoais', true),
+      ],
+    }
+    const leituras = [
+      { arquivo: 'Moradia.pdf', tipo: 'declaracao-moradia', situacao: 'arquivado' as const, semAssinatura: true },
+      { arquivo: 'Outro.pdf', tipo: 'grupo-familiar', situacao: 'quarentena' as const },
+    ]
+    expect(documentosDoCaso(ficha, leituras, 'caso-1', ['laudo'])).toEqual([
+      { tipo: 'cpf' },
+      { tipo: 'rg', semAssinatura: undefined, dataEmBranco: undefined },
+      { tipo: 'declaracao-moradia', semAssinatura: true, dataEmBranco: undefined },
+      { tipo: 'laudo' },
+      { tipo: 'grupo-familiar', quarentena: true },
+    ])
+  })
+
+  it('o contrato assinado: da leitura em diante; sem contrato no portal, vale a etapa do processo', () => {
+    expect(contratoAssinadoDo({ etapa: 'assinatura' }, 'Contrato · assinatura')).toBe(false)
+    expect(contratoAssinadoDo({ etapa: 'leitura' }, 'Contrato · leitura')).toBe(true)
+    expect(contratoAssinadoDo(undefined, 'Contrato · gerar')).toBe(false)
+    expect(contratoAssinadoDo(undefined, 'Documentação')).toBe(true)
+  })
+
+  it('os complementares: sem a circunstância do acidente ou a condição da criança, o checklist espera', () => {
+    expect(complementaresDoCaso({ beneficio: 'auxilio-acidente', infantil: false })).toEqual({ bloqueio: 'Marque a circunstância do acidente: o que é obrigatório depende dela.' })
+    const transito = complementaresDoCaso({
+      beneficio: 'auxilio-acidente',
+      infantil: false,
+      acidente: { circunstancia: 'transito', categoria: 'empregado', acidenteEm: '2026-01-10', auxilioAnterior: false, recusados: [] },
+    })
+    expect(transito.bloqueio).toBeUndefined()
+    expect(transito.complementares?.map((c) => c.tipo)).toEqual(['boletim-ocorrencia', 'fotos-acidente', 'ficha-pronto-socorro', 'prontuario', 'exame-imagem-epoca', 'exame-pos-alta'])
+    expect(complementaresDoCaso({ beneficio: 'loas-deficiente', infantil: true })).toEqual({
+      complementares: [],
+      bloqueio: 'A advogada marca a condição da criança no parecer: os relatórios que o caso pede dependem dela.',
+    })
+    expect(complementaresDoCaso({ beneficio: 'loas-idoso', infantil: false })).toEqual({})
   })
 })

@@ -183,6 +183,13 @@
       "when": 1791558913623,
       "tag": "0025_leitura_documento",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791558962949,
+      "tag": "0026_checklist_boas_vindas_cobranca",
+      "breakpoints": true
     }
   ]
 }
