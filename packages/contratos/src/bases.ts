@@ -80,14 +80,10 @@ export const ListaDeClientes = z.object({
 })
 export type ListaDeClientes = z.infer<typeof ListaDeClientes>
 
-/**
- * GET /api/processos e POST /api/processos/busca. `cliente`: os processos de um cliente (a contagem em Clientes); `caso`:
- * um só, para a página do processo achar o cliente quando abre direto pela lista.
- */
+/** GET /api/processos e POST /api/processos/busca. `cliente`: os processos de um cliente (a contagem em Clientes). */
 export const FiltrosDeProcessos = z.object({
   ...comum,
   cliente: z.uuid().optional(),
-  caso: z.uuid().optional(),
   foro: opcao,
   juiz: opcao,
   perito: opcao,

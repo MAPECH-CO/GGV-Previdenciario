@@ -93,7 +93,7 @@ describe('Clientes (GGVP-78)', () => {
       id: ids.seb,
       nome: 'Sebastião Nunes',
       cpf: '***.982.247-**',
-      beneficio: 'Auxílio-Acidente',
+      beneficio: 'Auxílio Acidentário',
       cidade: 'São Paulo · SP',
       processos: 1,
       situacao: 'em_andamento',
@@ -102,7 +102,7 @@ describe('Clientes (GGVP-78)', () => {
     expect(lista.clientes.find((c: { id: string }) => c.id === ids.cla)).toMatchObject({ situacao: 'administrativo', ultimoContato: '2026-10-08' })
     expect(lista.clientes.find((c: { id: string }) => c.id === ids.mar)).toMatchObject({ situacao: 'exito' })
     expect(lista.clientes.find((c: { id: string }) => c.id === ids.fer)).toMatchObject({ situacao: 'lead', processos: 0 })
-    expect(lista.opcoes).toEqual({ beneficios: ['Auxílio-Acidente', 'BPC/LOAS Deficiente', 'Pensão por Morte'], cidades: ['Guarulhos · SP', 'Santo André · SP', 'São Paulo · SP'] })
+    expect(lista.opcoes).toEqual({ beneficios: ['Auxílio Acidentário', 'LOAS Deficiente', 'Pensão por Morte'], cidades: ['Guarulhos · SP', 'Santo André · SP', 'São Paulo · SP'] })
   })
 
   it('a busca por nome, CPF ou telefone vem no corpo; os filtros e a situação cortam a lista', async () => {
@@ -127,6 +127,26 @@ describe('Clientes (GGVP-78)', () => {
     expect(p2.clientes).toHaveLength(4)
   })
 
+  it('a página além da última vira a última: a busca nova na página 3 não cai numa lista vazia', async () => {
+    const r = (await buscar('eva', '/api/clientes/busca', { busca: 'nunes', pagina: 3 })).json()
+    expect(r).toMatchObject({ total: 2, pagina: 1, paginas: 1 })
+    expect(r.clientes).toHaveLength(2)
+  })
+
+  it('um catálogo só: o lead que quer LOAS e o cliente com caso LOAS caem na mesma opção; "Não sei ainda" fica sem benefício', async () => {
+    const [liv] = await banco.insert(pessoa).values({ nome: 'Lívia Prado', situacao: 'lead' }).returning()
+    const [dav] = await banco.insert(pessoa).values({ nome: 'Davi Prado', situacao: 'lead' }).returning()
+    await banco.insert(fichaRecepcao).values([
+      { pessoaId: liv.id, documento: { id: liv.id, situacao: 'lead', nome: 'Lívia Prado', telefone: '', contatos: [], beneficioInteresse: 'loas-deficiente' } },
+      { pessoaId: dav.id, documento: { id: dav.id, situacao: 'lead', nome: 'Davi Prado', telefone: '', contatos: [], beneficioInteresse: 'nao-sei' } },
+    ])
+    const lista = (await listar('eva', '/api/clientes')).json()
+    expect(lista.opcoes.beneficios).toEqual(['Auxílio Acidentário', 'LOAS Deficiente', 'Pensão por Morte'])
+    expect(lista.clientes.find((c: { id: string }) => c.id === dav.id).beneficio).toBeNull()
+    const nomes = (await listar('eva', `/api/clientes?beneficio=${encodeURIComponent('LOAS Deficiente')}`)).json().clientes.map((c: { nome: string }) => c.nome)
+    expect(nomes).toEqual(['Clara Nunes', 'Lívia Prado'])
+  })
+
   it('filtro fora da lista é recusado', async () => {
     expect((await listar('eva', '/api/clientes?situacao=talvez')).statusCode).toBe(400)
   })
@@ -142,7 +162,7 @@ describe('Processos (GGVP-78)', () => {
       numero: '5005290-87.2026.4.03.6301',
       clienteId: ids.seb,
       autor: 'Sebastião Nunes',
-      beneficio: 'Auxílio-Acidente',
+      beneficio: 'Auxílio Acidentário',
       fase: 'judicial',
       foro: 'JEF São Paulo',
       juiz: null,
@@ -153,12 +173,7 @@ describe('Processos (GGVP-78)', () => {
     })
     expect(lista.processos.find((p: { id: string }) => p.id === ids.cc)).toMatchObject({ numero: '123.456.789-0', perito: 'Sr. Élcio Ramos (social)', fase: 'administrativa', ajuizadoEm: null })
     expect(lista.processos.find((p: { clienteId: string }) => p.clienteId === ids.mar)).toMatchObject({ desfecho: 'exito', numero: null })
-    expect(lista.opcoes).toEqual({ beneficios: ['Auxílio-Acidente', 'BPC/LOAS Deficiente', 'Pensão por Morte'], foros: ['JEF São Paulo'], juizes: [], peritos: ['Dr. Rui Tavares', 'Sr. Élcio Ramos (social)'] })
-  })
-
-  it('a ficha do cliente leva o mesmo CNJ, para a página do processo aberta pela lista mostrar o número', async () => {
-    const ficha = (await listar('gabi', `/api/fichas/${ids.seb}`)).json()
-    expect(ficha.processos).toEqual([{ id: ids.cs, beneficio: 'auxilio-acidente', etapa: 'Judicial', numero: '5005290-87.2026.4.03.6301' }])
+    expect(lista.opcoes).toEqual({ beneficios: ['Auxílio Acidentário', 'LOAS Deficiente', 'Pensão por Morte'], foros: ['JEF São Paulo'], juizes: [], peritos: ['Dr. Rui Tavares', 'Sr. Élcio Ramos (social)'] })
   })
 
   it('o desfecho conferido pela Sênior conta', async () => {
@@ -179,7 +194,6 @@ describe('Processos (GGVP-78)', () => {
     expect(await filtrar(`foro=${encodeURIComponent('JEF São Paulo')}`)).toEqual(['Sebastião Nunes'])
     expect(await filtrar('exito=exito')).toEqual(['Maria Souza'])
     expect(await filtrar(`cliente=${ids.cla}`)).toEqual(['Clara Nunes'])
-    expect(await filtrar(`caso=${ids.cs}`)).toEqual(['Sebastião Nunes'])
     expect(await filtrar('ordem=autor')).toEqual(['Clara Nunes', 'Maria Souza', 'Sebastião Nunes'])
   })
 })

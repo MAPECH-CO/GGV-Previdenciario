@@ -13,14 +13,14 @@ const CASO = '8b3e4c0a-5d6f-4e70-8b82-93a415c6d7e8'
 
 const clientes: ListaDeClientes = {
   clientes: [
-    { id: SEB, nome: 'Sebastião Nunes', cpf: '***.982.247-**', beneficio: 'Auxílio-Acidente', cidade: 'São Paulo · SP', processos: 2, situacao: 'em_andamento', ultimoContato: '2026-10-08' },
+    { id: SEB, nome: 'Sebastião Nunes', cpf: '***.982.247-**', beneficio: 'Auxílio Acidentário', cidade: 'São Paulo · SP', processos: 2, situacao: 'em_andamento', ultimoContato: '2026-10-08' },
     { id: CLA, nome: 'Fernanda Ruiz', cpf: null, beneficio: null, cidade: null, processos: 0, situacao: 'lead', ultimoContato: null },
   ],
   total: 2,
   leads: 1,
   pagina: 1,
   paginas: 3,
-  opcoes: { beneficios: ['Auxílio-Acidente'], cidades: ['São Paulo · SP'] },
+  opcoes: { beneficios: ['Auxílio Acidentário'], cidades: ['São Paulo · SP'] },
 }
 
 const processos: ListaDeProcessos = {
@@ -30,7 +30,7 @@ const processos: ListaDeProcessos = {
       numero: '5005290-87.2026.4.03.6301',
       clienteId: SEB,
       autor: 'Sebastião Nunes',
-      beneficio: 'Auxílio-Acidente',
+      beneficio: 'Auxílio Acidentário',
       fase: 'judicial',
       foro: 'JEF São Paulo',
       juiz: null,
@@ -43,7 +43,7 @@ const processos: ListaDeProcessos = {
   doAcervo: 1,
   pagina: 1,
   paginas: 1,
-  opcoes: { beneficios: ['Auxílio-Acidente'], foros: ['JEF São Paulo'], juizes: [], peritos: ['Dr. Rui Tavares'] },
+  opcoes: { beneficios: ['Auxílio Acidentário'], foros: ['JEF São Paulo'], juizes: [], peritos: ['Dr. Rui Tavares'] },
 }
 
 let pedidos: { url: string; metodo: string; corpo?: Record<string, string> }[] = []
@@ -80,7 +80,7 @@ describe('Clientes (GGVP-78)', () => {
     const tabela = await screen.findByRole('table', { name: 'Clientes' })
     expect(within(tabela).getAllByRole('columnheader').map((c) => c.textContent)).toEqual(['Cliente', 'CPF', 'Benefício', 'Cidade', 'Processos', 'Situação / êxito', 'Último contato'])
     const [, seb, fer] = within(tabela).getAllByRole('row')
-    expect(within(seb).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Sebastião Nunes', '***.982.247-**', 'Auxílio-Acidente', 'São Paulo · SP', '2', 'Em andamento', 'ontem'])
+    expect(within(seb).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Sebastião Nunes', '***.982.247-**', 'Auxílio Acidentário', 'São Paulo · SP', '2', 'Em andamento', 'ontem'])
     expect(within(seb).getByRole('link', { name: 'Sebastião Nunes' }).getAttribute('href')).toBe(`/clientes/${SEB}`)
     expect(within(seb).getByRole('link', { name: '2 processos de Sebastião Nunes' }).getAttribute('href')).toBe(`/processos?cliente=${SEB}`)
     expect(within(fer).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Fernanda Ruiz', '—', '—', '—', '0', 'Lead', '—'])
@@ -117,6 +117,18 @@ describe('Clientes (GGVP-78)', () => {
     await waitFor(() => expect(ultimo().url).toBe('/api/clientes?situacao=ativos&ordem=contato&pagina=1'))
   })
 
+  it('o termo novo volta à primeira página', async () => {
+    servidor(clientes)
+    entrarComo('atendimento-lider')
+    render(comSessao(<Clientes />))
+    await screen.findByRole('table', { name: 'Clientes' })
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima ›' }))
+    await waitFor(() => expect(ultimo().url).toBe('/api/clientes?situacao=ativos&ordem=contato&pagina=2'))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nome, CPF ou telefone' }), { target: { value: 'Renato' } })
+    await waitFor(() => expect(ultimo()).toMatchObject({ url: '/api/clientes/busca', corpo: { busca: 'Renato', pagina: '1' } }))
+    expect(pedidos.some((p) => p.corpo?.busca === 'Renato' && p.corpo.pagina !== '1')).toBe(false)
+  })
+
   it('Exportar CSV pede o filtro inteiro e baixa o arquivo', async () => {
     servidor(clientes)
     const criar = vi.fn(() => 'blob:clientes')
@@ -146,7 +158,7 @@ describe('Processos (GGVP-78)', () => {
     expect(within(linha).getAllByRole('cell').map((c) => c.textContent)).toEqual([
       '5005290-87.2026.4.03.6301Judicial',
       'Sebastião Nunes',
-      'Auxílio-Acidente',
+      'Auxílio Acidentário',
       'JEF São Paulo',
       '—',
       'Dr. Rui Tavares',
@@ -170,6 +182,17 @@ describe('Processos (GGVP-78)', () => {
     await waitFor(() => expect(ultimo().url).toBe(`/api/processos?fase=judicial&ordem=ajuizamento&cliente=${SEB}&pagina=1`))
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
     await waitFor(() => expect(ultimo().url).toBe('/api/processos?ordem=ajuizamento&pagina=1'))
+  })
+
+  it('o termo novo volta à primeira página', async () => {
+    servidor({ ...processos, paginas: 3 })
+    entrarComo('advogada')
+    render(comSessao(<Processos />))
+    await screen.findByRole('table', { name: 'Processos' })
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima ›' }))
+    await waitFor(() => expect(ultimo().url).toBe('/api/processos?ordem=ajuizamento&pagina=2'))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Autor, nº do processo ou CPF' }), { target: { value: 'Renato' } })
+    await waitFor(() => expect(ultimo()).toMatchObject({ url: '/api/processos/busca', corpo: { busca: 'Renato', pagina: '1' } }))
   })
 
   it('a busca pelo número vai no corpo do POST', async () => {

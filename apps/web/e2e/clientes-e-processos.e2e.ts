@@ -19,7 +19,7 @@ test('o líder do Atendimento chega a Clientes pelo topo, acha o cliente, abre o
   await expect(page).toHaveURL(/\/processos\?cliente=[0-9a-f-]{36}$/)
   const processos = page.getByRole('table', { name: 'Processos' })
   await expect(processos.getByRole('row')).toHaveCount(2)
-  await expect(processos.getByRole('row').nth(1)).toContainText('BPC/LOAS Deficiente')
+  await expect(processos.getByRole('row').nth(1)).toContainText('LOAS Deficiente')
 
   await processos.getByRole('link', { name: 'Renato Dias (exemplo)' }).click()
   await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)

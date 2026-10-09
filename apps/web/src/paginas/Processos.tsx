@@ -34,6 +34,11 @@ export function Processos({ cliente: doCliente }: { cliente?: string }) {
     }
   }, [filtros, cliente, termo, pagina])
 
+  // Filtro novo e termo novo voltam à primeira página: a página 3 da busca antiga pode não existir na nova.
+  function buscar(valor: string) {
+    setBusca(valor)
+    setPagina(1)
+  }
   const mudar = (campo: keyof typeof INICIO) => (valor: string) => {
     setFiltros((f) => ({ ...f, [campo]: valor }))
     setPagina(1)
@@ -60,7 +65,7 @@ export function Processos({ cliente: doCliente }: { cliente?: string }) {
       subtitulo="Todos os processos, administrativos e judiciais. Pesquise pelo autor, tribunal, juiz, perito, benefício ou êxito; clique para abrir o processo completo."
     >
       <div className={styles.filtros} role="group" aria-label="Filtros">
-        <CampoDaBusca rotulo="Autor, nº do processo ou CPF" valor={busca} aoMudar={setBusca} />
+        <CampoDaBusca rotulo="Autor, nº do processo ou CPF" valor={busca} aoMudar={buscar} />
         <Filtro rotulo="Tribunal" valor={filtros.foro} opcoes={comTodos(lista?.opcoes.foros ?? [])} aoMudar={mudar('foro')} />
         <Filtro rotulo="Juiz" valor={filtros.juiz} opcoes={comTodos(lista?.opcoes.juizes ?? [])} aoMudar={mudar('juiz')} />
         <Filtro rotulo="Perito" valor={filtros.perito} opcoes={comTodos(lista?.opcoes.peritos ?? [])} aoMudar={mudar('perito')} />

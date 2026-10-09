@@ -10,16 +10,21 @@ Cada caminho marcado "teste" tem teste de navegação no navegador, com o login 
 | Perfil | Tela inicial | Topo | Busca | Chat |
 |---|---|---|---|---|
 | Atendimento | Central do Atendimento | Início, Agenda, + Novo cliente | clientes, processos e a fila | sim |
-| Líder do Atendimento | Central do Atendimento | Início, Agenda, a Gestão (Tentativas bloqueadas, Prazos, Uso do cofre, Resultados, Configuração), + Novo cliente | clientes, processos e a fila | sim |
+| Líder do Atendimento | Central do Atendimento | Início, Agenda, Clientes, Processos, a Gestão (Tentativas bloqueadas, Prazos, Uso do cofre, Resultados, Configuração), + Novo cliente | clientes, processos e a fila | sim |
 | Documentação | Central do Atendimento | Início, Agenda, + Novo cliente | clientes, processos e a fila | sim |
-| Advogada | Central da Advogada | Início, Agenda | clientes, processos e a fila | sim |
-| Sênior | Central provisória | Início, Estudos de caso, Roteiros de laudos, a Gestão | clientes, processos e a fila | sim |
+| Advogada | Central da Advogada | Início, Agenda, Clientes, Processos | clientes, processos e a fila | sim |
+| Sênior | Central provisória | Início, Agenda, Clientes, Processos, Estudos de caso, Roteiros de laudos, a Gestão, Importar planilha | clientes, processos e a fila | sim |
 | Jurídico administrativo | Central do Jurídico administrativo | Início, Agenda | clientes e processos (a fila, quando a Perícia liberar a Central) | sim |
-| Financeiro | Central provisória | Início, a Gestão | só a fila (não vê o caso) | sim |
-| Sócio | Central provisória | Início, a Gestão | só a fila (não vê o caso) | sim |
+| Financeiro | Central provisória | Início, Agenda, a Gestão | só a fila (não vê o caso) | sim |
+| Sócio | Central provisória | Início, Agenda, a Gestão, Importar planilha | só a fila (não vê o caso) | sim |
+
+O topo vem do perfil da sessão em toda tela, não só na Central (GGVP-78): Clientes e Processos depois do Início e da
+Agenda para o líder do Atendimento, a Advogada e a Sênior (no Figma também para o Financeiro, que a matriz ainda não deixa
+ver o caso); a Gestão no fim para quem tem `gestao.ver`. "+ Novo cliente" fica só com o Atendimento, como no Figma.
 
 A busca segue a matriz de permissões: clientes e processos só para quem tem `caso.ver` (o servidor recusa a busca do balcão
-sem ela); todo perfil acha as tarefas da própria fila. Quem não vê o caso recebe o aviso na própria busca.
+e as listas de Clientes e Processos sem ela); todo perfil acha as tarefas da própria fila. Quem não vê o caso recebe o aviso
+na própria busca.
 
 ## Telas que só abriam pelo endereço
 
@@ -36,6 +41,8 @@ sem ela); todo perfil acha as tarefas da própria fila. Quem não vê o caso rec
 | Atalho da fila vazia para buscar cliente (GGVP-78 CA4) | Sênior | "Buscar um cliente" põe o foco na busca | corrigido |
 | Vigília das publicações e conferência do acervo | Sênior | Pela tarefa da Central, quando há rodada a reprocessar ou lote a conferir | sem mudança |
 | Estudos de caso | Advogada e Jurídico administrativo | Nenhum: o link está só no topo da Sênior | anotado (abaixo) |
+| Clientes (GGVP-78): a base de clientes e leads, com busca e filtros | Líder do Atendimento, Advogada e Sênior | Topo → "Clientes" → nome abre a ficha; a contagem abre os processos do cliente | novo, teste |
+| Processos (GGVP-78): todos os processos, com fase, benefício, foro, perito e desfecho | Líder do Atendimento, Advogada e Sênior | Topo → "Processos" → o número abre a página do processo; o autor abre a ficha | novo, teste |
 
 ## Os leves
 
@@ -50,10 +57,10 @@ sem ela); todo perfil acha as tarefas da própria fila. Quem não vê o caso rec
 | Item | Por quê | Quem |
 |---|---|---|
 | Nomes de exemplo misturados (P20): "Dra. Paula" e "Jéssica" nas telas do navegador; "Gabi (exemplo)" e "Fábio (exemplo)" no servidor | A troca passa pela documentação médica, a Perícia e a transcrição, que estão com grupos ativos. Fazer de uma vez, depois que eles entrarem | Pedro |
-| A busca e o chat do Financeiro e do Sócio | A matriz não dá `caso.ver` a eles, e a busca não acha cliente. O Figma do Financeiro diz que ele "busca pelo processo/nome" e o chat dele responde o "Resumo do cliente". Decidir se o Financeiro (e o Sócio) veem o caso na visão restrita | Lucas |
+| A busca, o chat, Clientes e Processos do Financeiro e do Sócio | A matriz não dá `caso.ver` a eles: a busca não acha cliente e o topo fica sem Clientes e Processos. O Figma do Financeiro põe as duas listas no topo, diz que ele "busca pelo processo/nome" e o chat dele responde o "Resumo do cliente". Decidir se o Financeiro (e o Sócio) veem o caso na visão restrita | Lucas |
 | Texto da fila vazia: o critério pede "Nada pendente para você hoje"; a Central provisória diz "Nada na sua fila agora." | A Central da Sênior está com o grupo 6 (Tarefas do setor): aqui só acréscimo. Trocar o texto junto com eles | grupo 6 |
-| Agenda, Clientes e Processos no topo da Sênior, do Financeiro e do líder, como no Figma | As telas "Clientes" e "Processos" não existem; criar tela fica fora desta história. A Agenda existe, mas ainda não foi conferida para esses perfis | Lucas (prioridade), Pedro |
 | A Gestão no Figma é um item só ("Gestão"); o portal tem os cinco itens no topo | Decisão de produto, sem impacto no acesso | Lucas |
+| O Juiz em Processos: a coluna e o filtro estão no Figma, mas ficam vazios | O banco guarda o juízo e o foro, ainda não o juiz; esperam a importação do acervo gravar | Mateus |
 | Tarefas do setor (P6), caso devolvido e liberação | Com o grupo 6 | grupo 6 |
 | "Ajustar o caso" (P2), "Levar ao banco" (P3) e as outras telas do servidor que faltam | Telas novas | Mateus |
 | Marcar a perícia que o servidor abre (P1, P18) e as tarefas de exemplo sem tela (P4, P5) | Ligação da Perícia no servidor e telas novas | Pedro (GGVP-137), Mateus |

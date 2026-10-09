@@ -10,7 +10,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { atendimento, caso, identificadorCaso, juizo, pericia, perito, pessoa, peticao, peticaoVersao, processoAcervo, protocoloJudicial } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
-import { criarFichario } from './recepcao.ts'
+import { criarFichario, NO_CATALOGO } from './recepcao.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import { desfechoDaLista, mascararCpf, situacaoDoCliente } from '../../../web/src/regras/bases.ts'
 import { bateNaBusca, MINIMO_DIGITOS } from '../../../web/src/regras/busca.ts'
@@ -20,11 +20,19 @@ export const MSG_FILTRO_INVALIDO = 'Filtro inválido.'
 type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const opcoes = (valores: (string | null)[]) => [...new Set(valores.filter((v): v is string => !!v))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-const paginar = <T>(linhas: T[], pagina: number, tudo: boolean) => ({
-  linhas: tudo ? linhas : linhas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA),
-  pagina: tudo ? 1 : pagina,
-  paginas: tudo ? 1 : Math.max(1, Math.ceil(linhas.length / POR_PAGINA)),
-})
+/** A página pedida além da última vira a última: o filtro novo nunca cai numa página vazia sem botão de voltar. */
+function paginar<T>(linhas: T[], pedida: number, tudo: boolean) {
+  if (tudo) return { linhas, pagina: 1, paginas: 1 }
+  const paginas = Math.max(1, Math.ceil(linhas.length / POR_PAGINA))
+  const pagina = Math.min(pedida, paginas)
+  return { linhas: linhas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), pagina, paginas }
+}
+/**
+ * Um catálogo só, o das telas (o da ficha e da página do processo): o caso traz o benefício do servidor, o lead o do
+ * interesse. "Não sei ainda" fica sem benefício.
+ */
+const rotuloDoBeneficio = (id: string | null | undefined) =>
+  !id || id === 'nao-sei' ? null : nomeBeneficio(NO_CATALOGO[id] ?? id) || (ROTULO_BENEFICIO[id as Beneficio] ?? id)
 
 export function registrarRotasBases(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
@@ -68,7 +76,7 @@ export function registrarRotasBases(app: FastifyInstance, { banco, agora = () =>
         numero: cnj ? formatarCnj(cnj) : nb ? formatarNb(nb) : (protocolo ?? null),
         clienteId: c.clienteId,
         autor: c.autor,
-        beneficio: c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : null,
+        beneficio: rotuloDoBeneficio(c.beneficio),
         fase: c.fase,
         foro: a?.foro ?? null,
         // ponytail: o banco ainda não guarda o juiz do juízo; a coluna e o filtro esperam a importação gravar.
@@ -109,7 +117,6 @@ export function registrarRotasBases(app: FastifyInstance, { banco, agora = () =>
         (l) =>
           (!f.busca || bate(l, f.busca)) &&
           (!f.cliente || l.clienteId === f.cliente) &&
-          (!f.caso || l.id === f.caso) &&
           (!f.beneficio || l.beneficio === f.beneficio) &&
           (!f.foro || l.foro === f.foro) &&
           (!f.juiz || l.juiz === f.juiz) &&
@@ -155,7 +162,7 @@ export function registrarRotasBases(app: FastifyInstance, { banco, agora = () =>
         id: ficha.id,
         nome: ficha.nome,
         cpf: mascararCpf(ficha.cpf),
-        beneficio: dele[0]?.beneficio ?? (nomeBeneficio(ficha.beneficioInteresse) || null),
+        beneficio: dele[0]?.beneficio ?? rotuloDoBeneficio(ficha.beneficioInteresse),
         cidade: ficha.cidadeUf ? ficha.cidadeUf.replace(/\s*\/\s*/, ' · ') : null,
         processos: dele.length,
         situacao: situacaoDoCliente(lead, dele),

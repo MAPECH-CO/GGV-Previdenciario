@@ -40,7 +40,11 @@ export function Clientes() {
     }
   }, [filtros, termo, pagina])
 
-  // Filtro novo volta à primeira página.
+  // Filtro novo e termo novo voltam à primeira página: a página 3 da busca antiga pode não existir na nova.
+  function buscar(valor: string) {
+    setBusca(valor)
+    setPagina(1)
+  }
   const mudar = (campo: keyof typeof INICIO) => (valor: string) => {
     setFiltros((f) => ({ ...f, [campo]: valor }))
     setPagina(1)
@@ -67,7 +71,7 @@ export function Clientes() {
       novoNaPagina
     >
       <div className={styles.filtros} role="group" aria-label="Filtros">
-        <CampoDaBusca rotulo="Buscar por nome, CPF ou telefone" valor={busca} aoMudar={setBusca} />
+        <CampoDaBusca rotulo="Buscar por nome, CPF ou telefone" valor={busca} aoMudar={buscar} />
         <Filtro rotulo="Benefício" valor={filtros.beneficio} opcoes={comTodos(lista?.opcoes.beneficios ?? [])} aoMudar={mudar('beneficio')} />
         <Filtro rotulo="Localização" valor={filtros.cidade} opcoes={comTodos(lista?.opcoes.cidades ?? [], 'Todas')} aoMudar={mudar('cidade')} />
         <Filtro rotulo="Êxito" valor={filtros.exito} opcoes={EXITOS} aoMudar={mudar('exito')} />
