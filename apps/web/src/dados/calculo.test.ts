@@ -32,8 +32,8 @@ const jaPode: RegistroDoCalculo = {
 describe('Calcular tempo e pontos · servidor de exemplo', () => {
   it('CA1 e CA4 · benefício com cálculo abre a tarefa do advogado do atendimento, com o CNIS do caso', async () => {
     const { tarefa } = await comBeneficio('aposentadoria-idade')
-    expect(tarefa).toMatchObject({ codigo: 'D1.13', acao: 'Calcular tempo e pontos', href: `/entrevista/${JOSEFA}/calculo`, setor: 'Atendimento' })
-    expect(tarefasDoSetor('Atendimento').map((t) => t.detalhe)).toContain('Aposentadoria por Idade · CNIS do Meu INSS de 02/10 · obrigatório antes do fechamento')
+    expect(tarefa).toMatchObject({ codigo: 'D1.13', acao: 'Calcular tempo e pontos', href: `/entrevista/${JOSEFA}/calculo`, setor: 'Jurídico' })
+    expect(tarefasDoSetor('Jurídico').map((t) => t.detalhe)).toContain('Aposentadoria por Idade · CNIS do Meu INSS de 02/10 · obrigatório antes do fechamento')
     expect(calculoPendente((await obterFicha('josefa-exemplo'))!)).toBe(true)
     const dados = (await obterCalculo(JOSEFA))!
     expect(dados.exige).toBe(true)
@@ -44,7 +44,7 @@ describe('Calcular tempo e pontos · servidor de exemplo', () => {
     await comBeneficio('aposentadoria-idade')
     const { tarefa } = await definirBeneficio(JOSEFA, { beneficio: 'loas-idoso', conferi: true })
     expect(tarefa).toBeUndefined()
-    expect(tarefasDoSetor('Atendimento').map((t) => t.acao)).not.toContain('Calcular tempo e pontos')
+    expect(tarefasDoSetor('Jurídico').map((t) => t.acao)).not.toContain('Calcular tempo e pontos')
     expect((await obterCalculo(JOSEFA))!.exige).toBe(false)
     await expect(registrarCalculo(JOSEFA, jaPode)).rejects.toThrow('O benefício deste caso não exige cálculo')
   })
@@ -69,7 +69,7 @@ describe('Calcular tempo e pontos · servidor de exemplo', () => {
       'Calculou tempo e pontos sobre o CNIS (D1.13): 18 anos e 4 meses, 79,5 pontos, Transição por pontos (EC 103, art. 15); já pode se aposentar',
     )
     expect(calculoPendente(ficha)).toBe(false)
-    expect(tarefasDoSetor('Atendimento').map((t) => t.acao)).not.toContain('Calcular tempo e pontos')
+    expect(tarefasDoSetor('Jurídico').map((t) => t.acao)).not.toContain('Calcular tempo e pontos')
   })
 
   it('CA2 e CA6 · refazer com "ainda não" guarda a data prevista e não apaga o cálculo anterior', async () => {

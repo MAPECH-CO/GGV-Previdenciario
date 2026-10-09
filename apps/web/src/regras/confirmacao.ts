@@ -22,7 +22,7 @@ export const DOCUMENTOS_QUE_TRAVAM = ['biometria', 'CadÚnico', 'senha do Meu IN
 
 export const oQueLevar = (beneficio: string | undefined) => O_QUE_LEVAR[beneficio ?? ''] ?? O_QUE_LEVAR_PADRAO
 
-export const confirmada = (c: Confirmacao | undefined) => c?.tentativas.some((t) => t.resultado === 'confirmou') ?? false
+export const confirmada = (c: Confirmacao | undefined) => c?.presente === true || (c?.tentativas.some((t) => t.resultado === 'confirmou') ?? false)
 
 /** O número da tentativa de agora: 1 e, depois de uma sem resposta, 2 (CA6). */
 export const tentativaAtual = (c: Confirmacao | undefined) => (c?.tentativas.length ?? 0) + 1
