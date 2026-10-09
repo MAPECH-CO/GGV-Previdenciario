@@ -48,6 +48,7 @@ import { registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
+import { registrarRotasProcesso } from './rotas/processo.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -141,6 +142,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasImportacao(app, { banco, agora })
     registrarRotasFeriados(app, { banco, agora })
+    registrarRotasProcesso(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

@@ -91,3 +91,6 @@ export * from './importacao.ts'
 
 // Os feriados e as suspensões dos tribunais, na Configuração (GGVP-146, parte 3).
 export * from './feriados.ts'
+
+// A página do processo lida do banco (GGVP-146, parte 5).
+export * from './processo.ts'

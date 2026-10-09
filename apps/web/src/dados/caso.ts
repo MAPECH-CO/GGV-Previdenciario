@@ -1,10 +1,14 @@
 // EXEMPLO. O caso numa linha só (GGVP-86): o que a página do processo mostra além da ficha e da perícia. A semente
 // complementa os processos de exemplo.ts (NB, juízo, linha do processo, esperas, laços dos setores, tarefas, prazos e
-// documentos), sem mexer neles. Ligar no servidor: `obterCaso` vira GET /api/casos/:id, com o perfil vindo da sessão.
+// documentos), sem mexer neles. Modo misto (GGVP-146, parte 5), como a Recepção e a perícia: o caso do servidor (id uuid)
+// vem de GET /api/casos/:id/processo, já na visão do perfil da sessão; os casos da semente ficam aqui, para os testes.
+import type { ProcessoDoCaso } from '@ggv/contratos'
+import { chamarApi } from '../api.ts'
+import { formatarDecimal } from '../campos.ts'
 import { nomeBeneficio, nomeTipo } from './catalogos.ts'
 import { ligarPerito, obterPericia, peritosParaLigar, type PericiaNaTela } from './pericia.ts'
 import { perfilDoPerito, peritosDo, type PerfilDoPerito } from './peritos.ts'
-import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
+import { agora, doServidor, esperar, gravar, ler, type Banco } from './servidor.ts'
 import type { Ficha, Processo } from './tipos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import {
@@ -13,6 +17,7 @@ import {
   ETAPAS_DO_CASO,
   etapaAtual,
   etapaDaOrigem,
+  etapaDoPasso,
   faseDoCaso,
   identificacao,
   jurimetriaDoJuizo,
@@ -27,7 +32,7 @@ import {
   type TipoDePrazo,
   type VisaoDoCaso,
 } from '../regras/caso.ts'
-import { dataCurta, hojeIso } from '../regras/datas.ts'
+import { dataCurta, hojeIso, idadeEm } from '../regras/datas.ts'
 import { NOMES_DA_SITUACAO, NOMES_DO_TIPO, ORIGENS, prazoFalado } from '../regras/pericia.ts'
 
 /** Quem fez: uma pessoa, o sistema ou a IA (CA10). */
@@ -77,6 +82,8 @@ export type DocumentoDoCaso = {
   saude?: boolean
   /** Petição ou estratégia: o Atendimento não vê. */
   restrito?: boolean
+  /** O arquivo no servidor (caso do servidor): o download confere o perfil de novo. */
+  href?: string
 }
 
 /** O que a semente acrescenta a cada processo. */
@@ -571,8 +578,116 @@ function montar(banco: Banco, processoId: string, quem: QuemPergunta | undefined
 /** Quem pergunta: o perfil e a pessoa (no main, vêm do login). */
 export type QuemPergunta = { id: string; usuario: string }
 
-/** GET /api/casos/:id: o caso na visão do perfil de quem pergunta. */
+const DA_EXIGENCIA = { inss: 'do INSS', juizo: 'do juiz', despacho: 'do despacho' } as const
+const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
+
+/**
+ * O caso do servidor (GGVP-146, parte 5): a rota já vem na visão do perfil da sessão (valores, conteúdo médico e peça só
+ * para quem pode); aqui só vira o formato da tela. O que o banco não tem fica de fora: juízo, laços dos setores,
+ * estratégia, laudo novo e a pergunta do perito (que a tela da perícia faz).
+ */
+async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined): Promise<CasoNaTela | null> {
+  const r = await chamarApi<ProcessoDoCaso>(`/casos/${processoId}/processo`)
+  if (!r.ok) return null
+  const p = r.dados
+  const hoje = hojeIso(agora())
+  const visao = visaoDoPerfil(quem?.id)
+  const fase: Fase = p.fase === 'judicial' || p.identificadores.cnj ? 'judicial' : 'administrativa'
+  const passoAtual = p.proximoPasso?.oQue ?? 'ainda não há próximo passo'
+  const estados = estadosDasEtapas(p.etapaAtual, { deferidoNoInss: p.desfecho === 'deferido' })
+
+  // O evento sem passo do BPMN (e o da perícia) fica na etapa do evento anterior.
+  let etapaDaVez: IdEtapa = 'entrevista'
+  const linha: EventoDoCaso[] = p.linha.map((l) => {
+    etapaDaVez = etapaDoPasso(l.passo) ?? etapaDaVez
+    return { quando: l.quando, quem: l.quem, tipo: l.origem, oQue: l.descricao, passo: l.passo ?? '', etapa: etapaDaVez }
+  })
+  const documentos: DocumentoDoCaso[] = p.documentos.map((d) => ({
+    nome: d.nome ?? 'Documento de saúde',
+    tipo: d.tipo,
+    origem: d.origem.charAt(0).toUpperCase() + d.origem.slice(1),
+    data: d.data,
+    saude: d.sensivel,
+    href: `/api/casos/${processoId}/documentos/${d.id}`,
+  }))
+  const prazos: PrazoDoCaso[] = [
+    ...p.exigencias.flatMap((x) =>
+      x.prazo ? [{ tipo: 'prazo' as const, quando: x.prazo, oQue: `Exigência ${DA_EXIGENCIA[x.origem]}: ${x.descricao} (G12)`, urgente: prazoFalado(x.prazo, hoje).urgente }] : [],
+    ),
+    ...p.prazos.map((z) => ({ tipo: 'prazo' as const, quando: z.fim, oQue: `Prazo processual (${z.regra})`, urgente: prazoFalado(z.fim, hoje).urgente })),
+  ].sort((a, b) => a.quando.localeCompare(b.quando))
+  const pe = p.pericia
+  const m = pe?.marcada
+  const s = p.saude
+  const cids = [...new Set((s?.documentos ?? []).flatMap((d) => (d.cid ? [d.cid] : [])))]
+
+  return {
+    ficha: {
+      id: p.pessoa.id,
+      nome: p.pessoa.nome,
+      cpf: p.pessoa.cpf ?? undefined,
+      idade: p.pessoa.nascimento ? idadeEm(p.pessoa.nascimento, hoje) : undefined,
+      transcricoes: p.transcricoes,
+      senhaGov: { situacao: p.senhaGovNoCofre ? 'no-cofre' : 'sem-senha' },
+    },
+    processo: { id: processoId, numero: p.identificadores.cnj ?? undefined, beneficio: p.beneficio ?? '', etapa: `${fase === 'judicial' ? 'Judicial' : 'Administrativo'} · ${passoAtual}` },
+    beneficio: nomeBeneficio(p.beneficio ?? undefined) || 'benefício a definir',
+    fase,
+    identificacao: identificacao(fase, { numero: p.identificadores.cnj ?? undefined, nb: p.identificadores.nb ?? undefined, protocolo: p.identificadores.protocolo ?? undefined }),
+    passoAtual,
+    etapas: ETAPAS_DO_CASO.map((et) => ({ ...et, estado: estados[et.id], eventos: linha.filter((ev) => ev.etapa === et.id), documentos: [] })),
+    emPericia:
+      pe && pe.situacao !== 'concluida'
+        ? {
+            etapa: etapaDaOrigem(pe.origem),
+            rotulo: `Em perícia · ${ORIGENS[pe.origem].caso} · ${NOMES_DO_TIPO[pe.tipo]}`,
+            situacao: NOMES_DA_SITUACAO[pe.situacao],
+            href: `/casos/${processoId}/pericia`,
+            responsavel: '',
+            data: m ? `${dataCurta(m.data, hoje)}, ${m.hora}${m.local ? ` · ${m.local}` : ''}` : undefined,
+          }
+        : undefined,
+    pendentes: null,
+    esperas: p.etapas.flatMap((e) =>
+      e.aguardando
+        ? [{ quem: /^cliente/i.test(e.aguardando) ? ('cliente' as const) : e.diagrama.startsWith('D3') ? ('justica' as const) : ('inss' as const), oQue: e.aguardando, desde: hojeIso(new Date(e.desde)) }]
+        : [],
+    ),
+    tarefas: p.tarefas.map((t) => ({
+      setor: t.setor,
+      titulo: t.titulo,
+      responsavel: t.responsavel ?? 'ainda sem responsável',
+      prazo: t.prazo ?? '',
+      href: t.tela ?? undefined,
+      prazoFalado: t.prazo ? prazoFalado(t.prazo, hoje) : undefined,
+    })),
+    linha,
+    prazos,
+    documentos,
+    perito: pe?.perito ? { id: '', nome: pe.perito } : undefined,
+    visao,
+    valores: p.valores
+      ? [
+          {
+            tipo: 'prestacao-de-contas',
+            rotulo: 'Prestação de contas',
+            valor: `recebido ${reais(p.valores.recebido)} · honorários ${reais(p.valores.honorarios)} · cliente ${reais(p.valores.cliente)} (versão ${p.valores.versao})`,
+          },
+        ]
+      : [],
+    saude: s
+      ? [
+          s.documentos.length ? `${s.documentos.length} ${s.documentos.length === 1 ? 'documento médico' : 'documentos médicos'}` : 'ainda não há documento médico',
+          ...(cids.length ? [`CID ${cids.join(', ')}`] : []),
+          s.parecer ? `parecer ${s.parecer.resultado}${s.parecer.confirmadoEm ? '' : ' (sugestão da IA, falta a pessoa confirmar)'}` : 'ainda não há parecer',
+        ].join(' · ')
+      : undefined,
+  }
+}
+
+/** GET /api/casos/:id/processo (caso do servidor) ou a semente: o caso na visão do perfil de quem pergunta. */
 export async function obterCaso(processoId: string, quem: QuemPergunta | undefined): Promise<CasoNaTela | null> {
+  if (doServidor(processoId)) return casoDoServidor(processoId, quem)
   // A perícia semeia o banco dela; o caso lê depois, para as duas sementes ficarem juntas.
   const pericia = await obterPericia(processoId)
   const banco = lerComCasos()

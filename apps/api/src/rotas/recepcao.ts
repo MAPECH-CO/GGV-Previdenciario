@@ -54,7 +54,7 @@ export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
 
 /** Os benefícios do servidor no catálogo das telas, para os casos que nasceram por outro caminho. */
-const NO_CATALOGO: Record<string, string> = {
+export const NO_CATALOGO: Record<string, string> = {
   bpc_loas_deficiente: 'loas-deficiente',
   bpc_loas_idoso: 'loas-idoso',
   aposentadoria_pcd: 'aposentadoria-pcd',
