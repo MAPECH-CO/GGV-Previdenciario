@@ -26,3 +26,20 @@ test('GGVP-22 · a advogada aprova o resumo e passa ao Atendimento; o Atendiment
   await expect(page.getByText('Perdemos: estudo registrado')).toBeVisible()
   await expect(page.getByLabel('Contatos')).toContainText('sem contato')
 })
+
+test('GGVP-100 · a Sênior decide recorrer, com justificativa; o recurso fica com a Sênior', async ({ page }) => {
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Sérgio Nunes (exemplo) · Decidir recurso' }).click()
+  await expect(page.getByText('contado pelo sistema (G12)')).toBeVisible()
+  const registrar = page.getByRole('button', { name: 'Registrar' })
+  await expect(registrar).toBeDisabled()
+  await page.getByRole('radio', { name: 'Sim, recorrer' }).click()
+  await expect(registrar).toBeDisabled()
+  await page.getByLabel('Justificativa *').fill('O laudo do perito ignorou o relatório do médico assistente.')
+  await registrar.click()
+  await expect(page.getByRole('heading', { name: '✓ Sim, recorrer' })).toBeVisible()
+
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Sérgio Nunes (exemplo) · Elaborar e protocolar o recurso' })).toBeVisible()
+})

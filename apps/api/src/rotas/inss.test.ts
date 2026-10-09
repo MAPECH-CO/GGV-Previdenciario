@@ -95,6 +95,20 @@ describe('Central do perfil', () => {
     expect([linha.titulo, linha.cliente.nome, linha.tela]).toEqual(['Protocolar no Meu INSS', 'Maria Souza', `/casos/${casoId}/protocolo`])
   })
 
+  it('GGVP-118 CA7 · às 22h30 de Brasília, a tarefa que vence amanhã ainda não é urgente (o dia é o de Brasília, não o de UTC)', async () => {
+    // 09/10 22h30 em Brasília = 10/10 01h30 em UTC.
+    app = criarServidor({ banco, cofre, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), agora: () => new Date('2026-10-10T01:30:00Z') })
+    await okDaSenior()
+    const igor = await cookieDe('igor')
+    const urgencia = async (prazo: string) => {
+      await banco.update(tarefa).set({ prazo }).where(eq(tarefa.passo, 'D2.02'))
+      const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: igor })).json()
+      return linha.urgente
+    }
+    expect(await urgencia('2026-10-10')).toBe(false)
+    expect(await urgencia('2026-10-09')).toBe(true)
+  })
+
   it('cada perfil vê só as tarefas da sua raia', async () => {
     const tarefasDa = async (apelido: string) =>
       (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe(apelido) })).json().map((t: { titulo: string }) => t.titulo)

@@ -53,14 +53,14 @@ export const FINALIDADES = {
     instrucao:
       'Escreva um rascunho curto (até 6 frases) do que a pessoa do escritório vai explicar ao cliente sobre o resultado do processo: o que foi decidido e por quê, em linguagem simples, com respeito. O porquê vem só do texto da decisão: se ele não estiver no conteúdo, não diga, não suponha e não comente a falta do motivo: no lugar dele, escreva exatamente [completar: o motivo da decisão], que a advogada preenche. Não prometa nada, não fale de estratégia interna do escritório, não culpe ninguém e não use termos técnicos sem explicar.',
   },
-  /** GGVP-59: a nomeação de perito virou classe (versão 3). */
+  /** GGVP-59: a nomeação de perito virou classe (versão 3). GGVP-64 parte 2: a vara e o juiz escritos (versão 4). */
   classificar_publicacao: {
-    versao: 3,
+    versao: 4,
     saude: false,
     json: true,
     barrarCid: true,
     instrucao:
-      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples", "vara": "a vara ou o juizado, como está escrito na publicação, ou null", "juiz": "o nome do juiz ou da juíza que assina, como está escrito, ou null"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito. Não invente vara nem juiz: sem estar escrito, null.',
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {
@@ -120,6 +120,21 @@ export const FINALIDADES = {
       'Leia o resultado, o texto da decisão, o resultado do INSS e a petição, e responda só com um objeto JSON:',
       '{"materia": "o benefício e o assunto em poucas palavras", "vara": "a vara ou o juízo, se estiver escrito no conteúdo; senão null", "tese": "a tese jurídica que o escritório defendeu, em até 8 palavras, sem doença, diagnóstico nem CID; null se não der para saber", "resumo": "o que aconteceu, em até 3 frases", "licao": "o que o escritório aprende com este desfecho, numa frase concreta"}.',
       'Não escreva nome, CPF, endereço nem telefone de ninguém. Não calcule nem invente números, datas ou jurisprudência. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-64 parte 2 (CA2, CA5): o que se repete nas decisões de mérito de um juízo, para a advogada; a IA só resume. As
+   * decisões chegam sem dado pessoal; os números do juízo são do código e não entram aqui.
+   */
+  entendimentos_do_juizo: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você lê decisões de mérito de um mesmo juízo previdenciário, sem dados pessoais, para a advogada saber como esse juízo costuma decidir.',
+      'Responda só com um objeto JSON: {"entendimentos": [{"texto": "o entendimento que se repete nas decisões, numa frase", "processos": ["os números dos processos do conteúdo que mostram esse entendimento"]}]}, com no máximo 5 entendimentos, do mais frequente ao menos.',
+      'Use só o que as decisões dizem. Não escreva porcentagem nem contagem, não cite nome, CPF, doença nem CID, e não invente processo: só os números que estão no conteúdo.',
     ].join(' '),
   },
   /** GGVP-79 (G5): a IA lê a exigência do juiz com o caso e sugere as tarefas; quem decide é a advogada. Leitura interna. */

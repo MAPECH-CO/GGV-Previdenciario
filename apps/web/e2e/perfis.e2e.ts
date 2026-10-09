@@ -30,7 +30,7 @@ test('cada perfil cai na sua Central: a da Sênior', async ({ page }) => {
   // A cópia do navegador fica ao sair (09/10): o roteiro troca de pessoa na mesma aba (ver sessao.ts).
 })
 
-test('GGVP-96 · o Financeiro vê só os Resultados da Gestão; o Sócio acha o cliente pela busca e lê a ficha', async ({ page }) => {
+test('GGVP-96 · o Financeiro vê só os Resultados da Gestão; o Sócio acha o cliente pela busca e lê a ficha inteira, com os dados bancários', async ({ page }) => {
   await entrarPelaApi(page, 'financeiro@exemplo.ggv')
   await page.goto('/')
   const topo = page.getByRole('navigation', { name: 'Principal' })
@@ -47,7 +47,8 @@ test('GGVP-96 · o Financeiro vê só os Resultados da Gestão; o Sócio acha o 
   await busca.press('Enter')
   await page.getByRole('region', { name: 'Resultado da busca' }).getByRole('link', { name: 'Rita Exemplo' }).click()
   await expect(page.getByRole('heading', { level: 2, name: 'Rita Exemplo' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Dados bancários para o repasse' })).toHaveCount(0)
+  // O Sócio lê tudo (Pedro, 09/10), inclusive os dados bancários do repasse.
+  await expect(page.getByRole('heading', { name: 'Dados bancários para o repasse' })).toBeVisible()
 })
 
 test('GGVP-96 · a Documentação não abre o contrato; o Jurídico administrativo não abre a entrevista', async ({ page }) => {

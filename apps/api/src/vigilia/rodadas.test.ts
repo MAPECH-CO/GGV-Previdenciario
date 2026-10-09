@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { configuracao, eventoAuditoria, rodadaVigilia } from '../banco/esquema.ts'
-import type { Fonte } from './fontes.ts'
+import { fontesAtivas, type Fonte } from './fontes.ts'
 import { batida, horariosDaVigilia, planejarDia, rodar } from './rodadas.ts'
 
 let banco: Banco
@@ -50,6 +50,18 @@ describe('GGVP-30 · rodadas da vigília', () => {
     })
     expect(await rodar(banco, r.id, semCredencial, as('2026-10-05T11:00:00Z'))).toEqual({ situacao: 'falhou', erro: 'credencial inválida (401)' })
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'alarme_suporte'))).length).toBe(1)
+  })
+
+  it('CA8, CA10 (grupo 4) · a chave da AASP recusada vira falha de credencial, sem a chave no erro nem no alarme ao suporte', async () => {
+    const chave = 'chave-secreta-de-teste-0123456789'
+    const recusa = { buscar: (async () => new Response('{}', { status: 401 })) as typeof fetch, esperar: async () => {} }
+    const [aasp] = fontesAtivas({ FONTES_PUBLICACAO: 'aasp', AASP_CHAVES: chave }, recusa)
+    await batida(banco, [aasp], as('2026-10-05T11:05:00Z'))
+    const [r] = await rodadas()
+    expect([r.fonte, r.situacao, r.erro]).toEqual(['aasp', 'falhou', 'credencial: a AASP recusou a chave 1 de 1 (HTTP 401)'])
+    const alarmes = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'alarme_suporte'))
+    expect(alarmes).toHaveLength(1)
+    expect(JSON.stringify(alarmes)).not.toContain(chave)
   })
 
   it('CA8 · tempo esgotado também é falha', async () => {

@@ -37,7 +37,7 @@ import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
-import { itensDaFila } from '../vigilia/fila.ts'
+import { hojeEmBrasilia, itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { aposErro, estaTravado } from '../sessao/regras.ts'
 import { MSG_TRAVADO, exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -64,6 +64,9 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  // GGVP-100: "Vale recorrer?" e, com "Recorrer", a tarefa do recurso abre a mesma tela (a decisão e o prazo).
+  'D3b.04': (id) => `/casos/${id}/recurso`,
+  'D3b.04r': (id) => `/casos/${id}/recurso`,
   // GGVP-98 (P3 do roteiro de 09/10): quem do Atendimento leva o cliente ao banco.
   'D2.06l': (id) => `/casos/${id}/banco/levar`,
   'D3b.06r': (id) => `/casos/${id}/resultado`,
@@ -97,7 +100,7 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
-const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
+const hoje = hojeEmBrasilia // CA7 (GGVP-118): o dia de Brasília, não o de UTC
 
 /**
  * GGVP-127 CA3: o ajuste com prazo fica com a cor de ação a partir destes dias antes de vencer. O cartão diz "perto de
