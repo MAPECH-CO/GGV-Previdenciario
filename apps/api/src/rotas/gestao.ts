@@ -70,8 +70,9 @@ export function registrarRotasGestao(app: FastifyInstance, { banco, agora = () =
   })
 
   // GGVP-75: o período padrão é o ano até hoje, em Brasília. Os totais em dinheiro só vão para quem tem
-  // `valores.ver_totais` (CA4); para os outros perfis o servidor manda `totais` nulo.
-  app.get('/api/gestao/resultados', { preHandler: exigir(banco, 'gestao.ver', agora) }, async (pedido, resposta) => {
+  // `valores.ver_totais` (CA4); para os outros perfis o servidor manda `totais` nulo. O Financeiro entra aqui, e não no resto
+  // da Gestão (GGVP-96).
+  app.get('/api/gestao/resultados', { preHandler: exigir(banco, 'resultados.ver', agora) }, async (pedido, resposta) => {
     const entrada = PedidoDoPainel.safeParse(pedido.query)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira o período.')
     const hoje = hojeEmBrasilia(agora())

@@ -16,11 +16,16 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 }
 
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
+/**
+ * A Sênior é advogada com mais poderes (Pedro, 07/10): faz os passos jurídicos da advogada. Ficam só com a advogada a decisão
+ * no limite da perícia e o resultado dela (G15: "nunca a Sênior", Lucas 29/09) e tudo de valores (a prestação de contas).
+ */
+const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
-// 21. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 21
+// 21, acesso por perfil 22 (09/10). Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 22
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -29,25 +34,27 @@ export const MATRIZ = {
   'laudo.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   'dado_saude.ver_detalhe': JURIDICO,
   'peticao.ver': JURIDICO,
-  // O financeiro do escritório é todo do Financeiro (Pedro, 06/10). A advogada vê os valores só na prestação de
-  // contas, que é ela quem faz; o Sócio vê só totais do escritório, no painel da GGVP-75. Valor da causa e renda per
-  // capita do LOAS não são financeiro do escritório: são dado jurídico e seguem para a advogada (Pedro, 07/10).
-  'valores.ver': ['financeiro'],
+  // O financeiro do escritório é do Financeiro (Pedro, 06/10). A advogada vê os valores só na prestação de contas, que é
+  // ela quem faz. O Sócio tem acesso total de leitura, inclusive os valores de cada cliente (Lucas, 07/10), sem fazer passo
+  // e sem dado de saúde. Valor da causa e renda per capita do LOAS não são financeiro do escritório: são dado jurídico e
+  // seguem para a advogada (Pedro, 07/10). A Sênior não vê valores.
+  'valores.ver': ['financeiro', 'socio'],
   /** Os totais em dinheiro do painel de resultados (GGVP-75 CA4): honorários recebidos e tempo até o dinheiro. */
   'valores.ver_totais': ['socio', 'financeiro'],
-  'prestacao.ver': ['financeiro', 'advogada'],
-  'gestao.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
-  /** Ver o caso só para leitura (GGVP-23 CA4). Financeiro vê prestação e Gestão; o Sócio, Gestão; nenhum dos dois vê o caso. */
-  'caso.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
+  'prestacao.ver': ['financeiro', 'advogada', 'socio'],
+  /** Prazos, tentativas bloqueadas, uso do cofre, configuração e a exportação da trilha. O Financeiro vê só os Resultados (Figma). */
+  'gestao.ver': ['socio', 'senior', 'atendimento_lider'],
+  /** Ver o caso só para leitura (GGVP-23 CA4). O Sócio lê tudo (Lucas, 07/10); o Financeiro vê a prestação e os Resultados, não o caso. */
+  'caso.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO, 'socio'],
   // Fazer
   'laudo.subir': ['atendimento', 'atendimento_lider'],
-  'laudo.conferir': ['advogada'],
+  'laudo.conferir': ADVOGADAS,
   'caso.liberar_ao_juridico': ['documentacao'],
   'caso.aprovar_para_inss': ['senior'],
   'caso.encerrar': ['senior'],
   'inss.registrar_resposta': JURIDICO,
   'protocolo_inss.registrar': ['juridico_adm'],
-  'pericia.decidir': ['advogada'],
+  'pericia.decidir': ADVOGADAS,
   'pericia.abrir_tarefa': [],
   'pericia.marcar': ['juridico_adm'],
   'pericia.decidir_documento_novo': ['juridico_adm'],
@@ -55,14 +62,14 @@ export const MATRIZ = {
   'pericia.registrar_comparecimento': ['juridico_adm'],
   'caso.despachar_indeferimento': ['senior'],
   'exigencia_juiz.analisar': ['advogada', 'senior'],
-  'peticao.pedir': ['advogada'],
-  'peticao.aprovar': ['advogada'],
+  'peticao.pedir': ADVOGADAS,
+  'peticao.aprovar': ADVOGADAS,
   'prestacao.dar_ok': ['advogada'],
   'prestacao.registrar_recebimento': ['financeiro'],
   'tarefa.atribuir': ['atendimento_lider', 'senior'],
   'perfis.atribuir': ['socio'],
   // Versão 4 (GGVP-39 e GGVP-44): exigência do INSS e ida ao banco
-  'exigencia_inss.tratar': ['advogada'],
+  'exigencia_inss.tratar': ADVOGADAS,
   'exigencia_inss.cumprir': ['documentacao'],
   'exigencia_inss.decidir_vencida': ['senior'],
   // Versão 14 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
@@ -77,13 +84,13 @@ export const MATRIZ = {
   'acervo.conferir_desfecho': ['senior'],
   'publicacao.classificar': ['advogada', 'senior'],
   // Versão 6 (GGVP-79, 83, 87): exigência do juiz; o Jurídico entre os setores é o Jurídico administrativo
-  'exigencia_juiz.distribuir': ['advogada'],
+  'exigencia_juiz.distribuir': ADVOGADAS,
   'exigencia_juiz.cumprir': ['atendimento', 'atendimento_lider', 'documentacao', 'juridico_adm'],
-  'exigencia_juiz.manifestar': ['advogada'],
+  'exigencia_juiz.manifestar': ADVOGADAS,
   'exigencia_juiz.autorizar_dilacao': ['senior'],
   // Versão 7 (GGVP-58, 71): os laços do despacho da Sênior e o protocolo da petição inicial
   'pendencia.cumprir': ['atendimento', 'atendimento_lider', 'documentacao'],
-  'peticao.protocolar': ['advogada'],
+  'peticao.protocolar': ADVOGADAS,
   // GGVP-103 CA11: a senha do gov.br entra e muda só pelo cofre, pelo Atendimento ou pelo Jurídico.
   'cofre.cadastrar': ['atendimento', 'atendimento_lider', ...JURIDICO],
   // GGVP-99 CA12 (Lucas, 01/10): ninguém exporta o histórico sem a autorização da direção.
@@ -97,10 +104,12 @@ export const MATRIZ = {
   // (Atendimento, Documentação e Jurídico); Financeiro e Sócio, não. Quem mesclar com os PRs da IA e da Jurimetria
   // renumera a versão.
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
-  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
-  'entrevista.gravar': JURIDICO,
-  // GGVP-125, bloco 3b: analisar a ficha, definir o benefício e registrar o cálculo; a IA sugere, o Jurídico decide (G3).
-  'ficha.analisar': JURIDICO,
+  // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde. Quem entrevista e analisa a ficha é "a
+  // doutora" (Miro): a advogada e a Sênior; o Jurídico administrativo faz protocolo e perícia (perfis.md).
+  'entrevista.gravar': ADVOGADAS,
+  // GGVP-125, bloco 3b: analisar a ficha, definir o benefício e registrar o cálculo; a IA sugere, a doutora decide (G3). O
+  // Jurídico administrativo não analisa a ficha (GGVP-96, 09/10).
+  'ficha.analisar': ADVOGADAS,
   // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
   // indica novo processo, quem decide é a Sênior.
   'estudo.ver': JURIDICO,
@@ -132,6 +141,12 @@ export const MATRIZ = {
   'acidente.registrar': ['documentacao', 'advogada', 'senior'],
   // Versão 19 (GGVP-143, Pedro, 08/10): o glossário do escritório, que a transcrição e a IA usam, só a Sênior muda.
   'glossario.editar': ['senior'],
+  // Versão 22 (GGVP-96, 09/10): o contrato (D1.16 a D1.20) é da raia do Atendimento; o % de honorários aparece só nele.
+  'contrato.conduzir': ['atendimento', 'atendimento_lider'],
+  // Os dados bancários do repasse (GGVP-111; LGPD, minimização): quem pede ou confirma a mudança e o Financeiro, que repassa.
+  'dados_bancarios.ver': ['atendimento', 'atendimento_lider', 'advogada', 'senior', 'financeiro'],
+  // O painel de resultados (GGVP-75): a gestão e o Financeiro, que no Figma vê só ele.
+  'resultados.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

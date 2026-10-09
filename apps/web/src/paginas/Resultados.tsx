@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useId, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react'
 import { formatarDecimal, isoParaData, normalizarData, validarData } from '@ggv/campos'
 import { RAIO_X, RECORTES, ROTULO_RECORTE, type Indicador, type PainelDeResultados } from '@ggv/contratos'
 import { chamarApi, type Resposta } from '../api.ts'
@@ -20,9 +20,10 @@ function texto(i: Indicador, base: string) {
 
 /**
  * Painel de resultado para os sócios (GGVP-75): o servidor calcula tudo a partir dos desfechos gravados (CA7) e só manda
- * os totais em dinheiro a quem pode ver (CA4). A tela não esconde nada sozinha. Só a gestão vê.
+ * os totais em dinheiro a quem pode ver (CA4). A tela não esconde nada sozinha. Só a gestão vê. Como tela inicial do
+ * Sócio (GGVP-78, perfis.md), `topo` traz a busca, o chat e a fila, no lugar do "Voltar ao início".
  */
-export function Resultados() {
+export function Resultados({ topo }: { topo?: ReactNode }) {
   const ids = { de: useId(), ate: useId(), recorte: useId() }
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
@@ -55,13 +56,16 @@ export function Resultados() {
   return (
     <main className={styles.pagina}>
       <title>Resultados · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
+      {!topo && (
+        <a className={styles.voltar} href="/">
+          ← Voltar ao início
+        </a>
+      )}
       <h1 className={styles.titulo}>Resultados do escritório</h1>
       <p className={styles.subtitulo}>
         Cada número vem dos desfechos gravados no portal, com o número de casos e a data da base. Não há amostra mínima: toda amostra conta (G22).
       </p>
+      {topo}
 
       <form className={styles.cartao} onSubmit={aplicar} noValidate aria-label="Período e recorte">
         <label className={styles.rotulo} htmlFor={ids.de}>

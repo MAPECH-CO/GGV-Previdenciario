@@ -27,7 +27,7 @@ test('CA1 a CA4 · a tentativa, o comprovante lido e conferido, a Documentação
   await page.goto('/juridico-administrativo')
   await page.getByRole('link', { name: 'Maria Exemplo · Marcar perícia' }).click()
   await expect(page).toHaveURL('/casos/maria-exemplo-1/pericia/marcar')
-  await expect(page.getByText('A marcação é pelo Meu INSS, com a senha do cofre (G9): nenhum campo de senha aqui. A IA não escolhe nem sugere o perito.')).toBeVisible()
+  await expect(page.getByText('A marcação é pelo Meu INSS, com a senha do cofre (G9): ela só aparece pelo «Ver a senha do gov.br», confirmada com a sua senha do portal, e some sozinha. A IA não escolhe nem sugere o perito.')).toBeVisible()
 
   // CA1: não deu; a tentativa pede o dia e o que aconteceu.
   await page.getByRole('radio', { name: 'Não, tentar de novo' }).click()

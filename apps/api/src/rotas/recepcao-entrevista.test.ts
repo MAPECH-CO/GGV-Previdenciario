@@ -1,10 +1,16 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { usuario } from '../banco/esquema.ts'
+import { MSG_SEM_AUDIO } from '../fluxo/transcricao.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_SEM_AVISO } from './recepcao-entrevista.ts'
+import { MSG_MANDE_O_ARQUIVO, MSG_SEM_AVISO } from './recepcao-entrevista.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -21,6 +27,45 @@ const chamar = async (apelido: string, method: 'GET' | 'POST' | 'PATCH', url: st
   app.inject({ method, url, cookies: await cookieDe(apelido), ...(payload ? { payload } : {}) })
 const json = async (apelido: string, method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
 type Tarefa = { acao: string; concluida?: boolean }
+
+// GGVP-133: a transcrição e a leitura são de verdade, pelo motor de IA, com a OpenAI de mentira (nenhuma chamada de verdade).
+const DIARIZADO = {
+  usage: { seconds: 300 },
+  segments: [
+    { speaker: 'A', start: 1, end: 5, text: 'Joana, a conversa está sendo gravada. Qual é o seu estado civil?' },
+    { speaker: 'B', start: 6, end: 12, text: 'União estável. Tenho dois laudos do ortopedista e a carta do INSS.' },
+    { speaker: 'B', start: 13, end: 16, text: 'Minha senha do gov.br é 123456.' },
+  ],
+}
+const LEITURA = {
+  resumo: 'Joana quer o BPC; vive em união estável e tem laudos e a carta do INSS.',
+  itens: [
+    { tipo: 'estadoCivil', valor: 'União estável', i: 1 },
+    { tipo: 'documento', valor: '2 laudos do ortopedista', i: 1 },
+    { tipo: 'documento', valor: 'carta de indeferimento do INSS', i: 1 },
+  ],
+}
+const openAiFalsa = (async (url: string | URL | Request, init?: RequestInit) => {
+  const resposta = (corpo: object) => new Response(JSON.stringify(corpo), { status: 200 })
+  if (String(url).endsWith('/audio/transcriptions')) return resposta(DIARIZADO)
+  const corpo = JSON.parse(String(init?.body)) as { messages: { content: string }[] }
+  if (corpo.messages[0].content.includes('entrevista inicial')) return resposta({ choices: [{ message: { content: JSON.stringify(LEITURA) } }] })
+  // Arrumar: o texto fica como está; o primeiro a falar é o escritório.
+  const falas = JSON.parse(corpo.messages[1].content.split('Falas:\n')[1].replace('\n</conteudo>', '')) as { i: number; falante: string; texto: string }[]
+  const arrumada = { falantes: Object.fromEntries(falas.map((f) => [f.falante, f.falante.endsWith('A') ? 'escritorio' : 'cliente'])), falas: falas.map(({ i, texto }) => ({ i, texto })) }
+  return resposta({ choices: [{ message: { content: JSON.stringify(arrumada) } }] })
+}) as typeof globalThis.fetch
+
+/** Uma parte do áudio do microfone, em multipart, como o navegador manda. */
+function parteDoAudio(inicio = 0) {
+  const f = '----ggv'
+  const payload = [
+    `--${f}\r\nContent-Disposition: form-data; name="inicio"\r\n\r\n${inicio}\r\n`,
+    `--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="parte-${inicio}.webm"\r\nContent-Type: audio/webm\r\n\r\náudio da parte\r\n`,
+    `--${f}--\r\n`,
+  ].join('')
+  return { payload, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }
+}
 const situacao = (tarefas: Tarefa[]) => tarefas.map((t) => [t.acao, t.concluida ?? false])
 
 /** Um lead do balcão com a entrevista amanhã às 14:00, confirmada com a ficha preenchida ("Preparar entrevista" aberta). */
@@ -32,9 +77,10 @@ async function entrevistaConfirmada() {
   return { fichaId, agendamentoId }
 }
 
-/** Grava, encerra aos 5 minutos e transcreve. */
+/** Grava (o áudio sobe em uma parte), encerra aos 5 minutos e transcreve. */
 async function entrevistaTranscrita(agendamentoId: string) {
   const { gravacao } = await json('gabi', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })
+  await app.inject({ method: 'POST', url: `/api/gravacoes/${gravacao.id}/audio`, cookies: await cookieDe('gabi'), ...parteDoAudio() })
   const encerrada = await json('gabi', 'POST', `/api/gravacoes/${gravacao.id}/encerrar`, { aos: 300, online: true })
   const { gravacao: transcrita } = await json('gabi', 'POST', `/api/gravacoes/${gravacao.id}/transcricao`, {})
   return { encerrada, transcrita }
@@ -42,8 +88,10 @@ async function entrevistaTranscrita(agendamentoId: string) {
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['helena', 'senior']] as const)
+  const ambiente = { OPENAI_API_KEY: 'chave-de-teste-openai', IA_PERMITE_DADO_DE_SAUDE: 'sim' }
+  const ia = criarIa({ banco, ambiente, fetch: openAiFalsa, agora: () => relogio })
+  app = criarServidor({ banco, agora: () => relogio, ia, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'entrevista-'))) })
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['helena', 'senior'], ['igor', 'juridico_adm']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -52,6 +100,11 @@ afterEach(async () => {
 })
 
 describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor', () => {
+  it('GGVP-96 · a entrevista é da advogada e da Sênior; o Jurídico administrativo não grava', async () => {
+    const { agendamentoId } = await entrevistaConfirmada()
+    expect((await chamar('igor', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })).statusCode).toBe(403)
+  })
+
   it('G10: sem o aviso não grava; só o Jurídico grava; a gravação aberta continua a mesma', async () => {
     const { agendamentoId } = await entrevistaConfirmada()
     const url = `/api/entrevistas/${agendamentoId}/gravacoes`
@@ -80,8 +133,8 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor',
     expect(encerrada.ficha.transcricoes).toBe(1)
 
     expect(transcrita.transcricao).toBe('pronta')
-    expect(transcrita.trechos.length).toBeGreaterThan(5)
-    expect(transcrita.resumo).toMatch(/^Joana Ribeiro: /)
+    expect(transcrita.trechos).toHaveLength(3)
+    expect(transcrita.resumo).toBe(LEITURA.resumo)
     // A senha do gov.br não fica no texto (G9).
     expect(JSON.stringify(transcrita.trechos)).not.toMatch(/senha (é|e) \d/i)
   })
@@ -115,15 +168,30 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor',
     expect(prova.ficha.historico.at(-1).oQue).toMatch(/^Marcou como prova o trecho de /)
   })
 
+  it('sem áudio guardado, nada é inventado: a transcrição diz o motivo e o registro sem áudio não cria áudio', async () => {
+    const { agendamentoId } = await entrevistaConfirmada()
+    const { gravacao } = await json('gabi', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })
+    const encerrada = await json('gabi', 'POST', `/api/gravacoes/${gravacao.id}/encerrar`, { aos: 120, online: true })
+    expect(encerrada.gravacao.audio).toBeUndefined()
+    const t = (await json('gabi', 'POST', `/api/gravacoes/${gravacao.id}/transcricao`, {})).gravacao
+    expect([t.transcricao, t.motivoDaFalha, t.trechos, t.resumo]).toEqual(['falhou', MSG_SEM_AUDIO, [], undefined])
+
+    const outra = (await json('gabi', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })).gravacao
+    await json('gabi', 'POST', `/api/gravacoes/${outra.id}/acoes`, { acao: 'falhou', aos: 40 })
+    const semAudio = (await json('gabi', 'POST', `/api/gravacoes/${outra.id}/sem-audio`, { notas: 'Sem microfone; conversamos sobre o BPC.' })).gravacao
+    expect(semAudio).toMatchObject({ estado: 'encerrada', transcricao: 'sem-audio', registro: 'Sem microfone; conversamos sobre o BPC.' })
+    expect(semAudio.audio).toBeUndefined()
+  })
+
   it('sem áudio, áudio de fora e a conversa sem áudio: a do Jurídico fica só com o Jurídico', async () => {
     const { fichaId, agendamentoId } = await entrevistaConfirmada()
     const { gravacao } = await json('gabi', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })
     const semAudio = await json('gabi', 'POST', `/api/gravacoes/${gravacao.id}/sem-audio`, { notas: 'O microfone falhou; conversamos sobre o BPC.' })
     expect(semAudio.gravacao).toMatchObject({ estado: 'encerrada', transcricao: 'sem-audio', registro: 'O microfone falhou; conversamos sobre o BPC.' })
 
-    expect((await chamar('gabi', 'POST', `/api/entrevistas/${agendamentoId}/audio`, { nome: 'laudo.pdf', tipo: 'application/pdf', tamanho: 10 })).statusCode).toBe(400)
-    const fora = await json('gabi', 'POST', `/api/entrevistas/${agendamentoId}/audio`, { nome: 'ligacao.mp3', tipo: 'audio/mpeg', tamanho: 1_000_000 })
-    expect(fora.gravacao).toMatchObject({ origem: 'arquivo', estado: 'encerrada', audio: { nome: 'ligacao.mp3', formato: 'mp3' } })
+    // Só o nome do arquivo não vira áudio no caso: o áudio de fora vai com o arquivo (o teste dele está em transcricao.test.ts).
+    const soONome = await chamar('gabi', 'POST', `/api/entrevistas/${agendamentoId}/audio`, { nome: 'ligacao.mp3', tipo: 'audio/mpeg', tamanho: 1_000_000 })
+    expect([soONome.statusCode, soONome.json().erro]).toEqual([400, MSG_MANDE_O_ARQUIVO])
 
     const conversa = { data: '07/10/2026', canal: 'Telefone', titulo: 'Ligou para saber do caso', participantes: 'Ana, Joana', texto: 'Perguntou quando é a entrevista.' }
     expect((await json('ana', 'POST', `/api/fichas/${fichaId}/conversas`, { ...conversa, perfil: 'atendimento' })).gravacao.soJuridico).toBe(false)
@@ -133,6 +201,6 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor',
     expect((await chamar('ana', 'POST', `/api/fichas/${fichaId}/conversas`, { ...conversa, data: '09/10/2026', perfil: 'atendimento' })).statusCode).toBe(400)
 
     expect((await json('ana', 'GET', '/api/recepcao')).gravacoes.map((g: { titulo: string }) => g.titulo)).toEqual(['Telefone: Ligou para saber do caso', 'Telefone: Ligou para saber do caso'])
-    expect((await json('gabi', 'GET', '/api/recepcao')).gravacoes).toHaveLength(5)
+    expect((await json('gabi', 'GET', '/api/recepcao')).gravacoes).toHaveLength(4)
   })
 })

@@ -1,0 +1,295 @@
+/* Clientes e Processos (GGVP-78, Figma 1927:605 e 1927:888): 1200 px de conteúdo, filtros em pílula e a tabela. */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titulo {
+  font-size: var(--fonte-24);
+  font-weight: 700;
+}
+
+.subtitulo {
+  max-width: 760px;
+  margin-top: 4px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.novo {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.busca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 300px;
+  min-width: 220px;
+  padding: 8px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+}
+
+.busca:focus-within {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.lupa {
+  color: var(--cor-texto-suave-2);
+}
+
+.entrada {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--fonte-13);
+}
+
+.entrada::placeholder {
+  color: var(--cor-texto-suave-2);
+}
+
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 0 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.filtro select,
+.ordem select {
+  /* Do tamanho da opção escolhida, como a pílula do Figma, e não da maior da lista. */
+  field-sizing: content;
+}
+
+.filtro select {
+  max-width: 220px;
+  padding: 8px 10px 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--cor-texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filtro:focus-within {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.filtro select:focus {
+  outline: 0;
+}
+
+.limpar,
+.exportar {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.resumo .espaco {
+  flex: 1;
+}
+
+.ordem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ordem select {
+  border: 0;
+  background: transparent;
+  color: var(--cor-texto-suave);
+  font: inherit;
+  cursor: pointer;
+}
+
+.moldura {
+  overflow-x: auto;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fonte-13);
+}
+
+.tabela th {
+  padding: 10px 12px;
+  background: var(--cor-painel-neutro-2);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 11px 12px;
+  border-top: 1px solid var(--cor-linha);
+  vertical-align: middle;
+}
+
+.tabela tbody tr:hover {
+  background: var(--cor-painel-neutro-3);
+}
+
+.link {
+  color: var(--cor-acento);
+  font-weight: 600;
+}
+
+.link:hover,
+.autor:hover {
+  text-decoration: underline;
+}
+
+/* O autor abre a ficha, mas lê como texto, como no Figma. */
+.autor {
+  color: var(--cor-texto);
+}
+
+.fase {
+  margin-top: 2px;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+.vazio {
+  padding: 24px 12px;
+  color: var(--cor-texto-suave);
+  text-align: center;
+}
+
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-13);
+}
+
+.rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+.paginas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.paginas button {
+  padding: 5px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  font-size: var(--fonte-12);
+}
+
+.paginas button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* As etiquetas da situação e do desfecho: azul em andamento, âmbar no INSS, verde ganho, vermelho perdido, cinza lead. */
+.tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.em_andamento {
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+}
+
+.administrativo {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.exito,
+.acordo {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.perdido,
+.extinto {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro-2);
+}
+
+/* A prestação de contas a lançar, no painel Financeiro (Figma 1930:4). */
+.lancar {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.lead {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}

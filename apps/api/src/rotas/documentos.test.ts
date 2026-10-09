@@ -9,7 +9,7 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, caso, documento, eventoAuditoria, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_DOCUMENTO_SENSIVEL } from './documentos.ts'
+import { MSG_DOCUMENTO_DE_PECA, MSG_DOCUMENTO_SENSIVEL, ehPeca } from './documentos.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -24,12 +24,12 @@ async function cookieDe(apelido: string) {
 }
 const baixar = async (apelido: string, doc: string, caso = casoId) => app.inject({ method: 'GET', url: `/api/casos/${caso}/documentos/${doc}`, cookies: await cookieDe(apelido) })
 
-async function guardar(nome: string, conteudo: string, sensivel = false, gravarArquivo = true, mime = 'application/pdf') {
+async function guardar(nome: string, conteudo: string, sensivel = false, gravarArquivo = true, mime = 'application/pdf', tipo = 'carta_inss') {
   const chave = `casos/${casoId}/${nome}`
   if (gravarArquivo) await arquivos.salvar(chave, Buffer.from(conteudo), mime)
   const [d] = await banco
     .insert(documento)
-    .values({ casoId, tipo: 'carta_inss', sensivel, chaveArmazenamento: chave, nomeOriginal: nome, mime, tamanho: conteudo.length, hashSha256: 'x', origem: 'portal' })
+    .values({ casoId, tipo, sensivel, chaveArmazenamento: chave, nomeOriginal: nome, mime, tamanho: conteudo.length, hashSha256: 'x', origem: 'portal' })
     .returning()
   return d.id
 }
@@ -71,6 +71,22 @@ describe('baixar documento do caso (GGVP-52 CA3, GGVP-71 CA11)', () => {
     expect((await baixar('gabi', doc)).statusCode).toBe(200)
     const acessos = await banco.select().from(acessoDadoSensivel)
     expect(acessos.map((a) => [a.perfil, a.casoId, a.recurso])).toEqual([['advogada', casoId, `documento:${doc}`]])
+  })
+
+  it('GGVP-96 · peça jurídica (o pacote da petição, as versões da manifestação): só quem vê a petição abre', async () => {
+    expect(['pacote_peticao', 'manifestacao_versao', 'dilacao_versao', 'carta_inss', 'citado_peticao', 'comprovante_protocolo_judicial'].filter(ehPeca)).toEqual([
+      'pacote_peticao',
+      'manifestacao_versao',
+      'dilacao_versao',
+    ])
+    const pacote = await guardar('peticao-inicial-v1.pdf', '%PDF-1.4 peça', false, true, 'application/pdf', 'pacote_peticao')
+    const versao = await guardar('manifestacao.pdf', '%PDF-1.4 manifestação', false, true, 'application/pdf', 'manifestacao_versao')
+    for (const doc of [pacote, versao]) {
+      expect((await baixar('ana', doc)).json().erro).toBe(MSG_DOCUMENTO_DE_PECA)
+      expect((await baixar('gabi', doc)).statusCode).toBe(200)
+    }
+    const negados = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acesso_negado'))
+    expect(negados.map((e) => (e.detalhe as { acao: string }).acao)).toEqual(['peticao.ver', 'peticao.ver'])
   })
 
   it('documento de outro caso, identificador inválido ou arquivo fora do armazenamento: não encontrado', async () => {

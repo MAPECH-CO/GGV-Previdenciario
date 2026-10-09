@@ -27,7 +27,8 @@ export function CentralJuridicoAdm() {
   const perfil = usePerfil('Jurídico administrativo')
   // GGVP-82: e as tarefas que o chat criou para a pessoa.
   const [deExemplo] = useState(() => [...tarefasDoJuridicoAdm(), ...tarefasCriadasPeloChat(perfil?.usuario)])
-  const doServidor = useTarefasDoServidor() ?? []
+  // GGVP-137: a tarefa "Marcar perícia" que o sistema abriu (DP.01) e a que a perícia calcula levam à mesma tela: fica uma.
+  const doServidor = (useTarefasDoServidor() ?? []).filter((s) => s.codigo !== 'DP.01' || !deExemplo.some((t) => t.href === s.href))
   // GGVP-147: o que o líder deu a outra pessoa sai da fila; o que deu a esta pessoa entra no topo.
   const tarefas = juntarMinhas([...doServidor, ...deExemplo], useMinhasDoSetor())
 
