@@ -7,7 +7,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { recebimentosConfirmados } from '../rotas/prestacao.ts'
 import { hojeEmBrasilia as diaEmBrasilia } from '../vigilia/fila.ts'
-import { DE_MERITO, PROCEDENTES, juizoDoCnj } from './juizo.ts'
+import { DE_MERITO, PROCEDENTES, juizoDoCnj, protocolosDaInicial } from './juizo.ts'
 
 const EXTINTO = 'extinto_sem_merito'
 const UM_DIA_MS = 86_400_000
@@ -20,10 +20,23 @@ export function taxa(chave: string, rotulo: string, exitos: number, casos: numbe
 
 const contagem = (chave: string, rotulo: string, casos: number): Indicador => ({ chave, rotulo, casos, valor: casos, unidade: 'casos', situacao: 'ok' })
 
-function mediana(numeros: number[]): number {
-  const o = [...numeros].sort((a, b) => a - b)
-  const meio = Math.floor(o.length / 2)
-  return o.length % 2 ? o[meio] : (o[meio - 1] + o[meio]) / 2
+/** GGVP-149 CA2, CA4: o tempo médio em dias, com o número de casos; sem nenhum caso, "sem dados ainda". */
+function media(chave: string, rotulo: string, dias: number[]): Indicador {
+  const base = { chave, rotulo, casos: dias.length, unidade: 'dias' as const }
+  return dias.length ? { ...base, valor: dias.reduce((s, d) => s + d, 0) / dias.length, situacao: 'ok' } : { ...base, valor: null, situacao: 'sem_dados' }
+}
+
+/** GGVP-149 CA3: os mais comuns primeiro, até 10; no empate, pela ordem alfabética. O mesmo texto com outra caixa ou espaço conta junto. */
+function maisComuns(textos: (string | null)[], semTexto: string) {
+  const grupos = new Map<string, { motivo: string; casos: number }>()
+  for (const t of textos) {
+    const motivo = t?.replace(/\s+/g, ' ').trim() || semTexto
+    const chave = motivo.toLocaleLowerCase('pt-BR')
+    const g = grupos.get(chave) ?? { motivo, casos: 0 }
+    g.casos++
+    grupos.set(chave, g)
+  }
+  return [...grupos.values()].sort((a, b) => b.casos - a.casos || a.motivo.localeCompare(b.motivo, 'pt-BR')).slice(0, 10)
 }
 
 export type PedidoDoCalculo = { de: string; ate: string; recorte: Recorte | null; verTotais: boolean }
@@ -38,15 +51,38 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   const casoPorId = new Map(casos.map((c) => [c.id, c]))
 
   // INSS: a última decisão do caso no período.
-  const decisoes = new Map<string, { resultado: string; dia: string }>()
-  for (const r of await banco.select({ casoId: resultadoInss.casoId, resultado: resultadoInss.resultado, dia: resultadoInss.dataDecisao }).from(resultadoInss)) {
+  // GGVP-149 CA3: o motivo que consta no sistema do INSS; o texto livre da equipe (motivo_escrito) não sai daqui.
+  const decisoes = new Map<string, { resultado: string; dia: string; motivo: string | null }>()
+  for (const r of await banco
+    .select({ casoId: resultadoInss.casoId, resultado: resultadoInss.resultado, dia: resultadoInss.dataDecisao, motivo: resultadoInss.motivoIndeferimento })
+    .from(resultadoInss)) {
     if (!noPeriodo(r.dia)) continue
     const atual = decisoes.get(r.casoId)
-    if (!atual || r.dia >= atual.dia) decisoes.set(r.casoId, { resultado: r.resultado, dia: r.dia })
+    if (!atual || r.dia >= atual.dia) decisoes.set(r.casoId, { resultado: r.resultado, dia: r.dia, motivo: r.motivo })
   }
 
   // Justiça: o desfecho do caso encerrado no período; desfecho sem a data de encerramento fica fora (CA7).
   const judiciais = casos.filter((c) => (DE_MERITO.has(c.desfecho ?? '') || c.desfecho === EXTINTO) && c.encerradoEm && noPeriodo(diaEmBrasilia(c.encerradoEm)))
+
+  // GGVP-149 CA2: do primeiro protocolo da inicial ao encerramento com decisão de mérito; sem o protocolo, fica fora.
+  const inicial = await protocolosDaInicial(banco)
+  const diasAteSentenca = new Map<string, number>()
+  for (const c of judiciais) {
+    const protocolo = inicial.get(c.id)
+    if (protocolo && c.encerradoEm && DE_MERITO.has(c.desfecho ?? '')) diasAteSentenca.set(c.id, Math.round((c.encerradoEm.getTime() - new Date(protocolo).getTime()) / UM_DIA_MS))
+  }
+
+  // GGVP-149 CA4: o dinheiro na mão é o recebimento confirmado depois da ida ao banco (GGVP-98 CA9), como no painel
+  // Financeiro (GGVP-78); o "Receber e lançar" vem antes e não conta. Os honorários são os da versão atual da prestação.
+  const honorarios = new Map<string, string>()
+  for (const p of await banco.select({ casoId: prestacaoContas.casoId, honorarios: prestacaoContas.honorarios }).from(prestacaoContas).orderBy(desc(prestacaoContas.versao)))
+    if (!honorarios.has(p.casoId)) honorarios.set(p.casoId, p.honorarios)
+  const recebidas = [...(await recebimentosConfirmados(banco))].filter(([casoId, quando]) => honorarios.has(casoId) && noPeriodo(diaEmBrasilia(quando)))
+  const diasAteReceber = new Map<string, number>()
+  for (const [casoId, quando] of recebidas) {
+    const c = casoPorId.get(casoId)
+    if (c) diasAteReceber.set(casoId, Math.round((quando.getTime() - c.criadoEm.getTime()) / UM_DIA_MS))
+  }
 
   // Exigências fechadas no período: a cumprida, pelo último item cumprido; a vencida, pelo prazo. Sem data, fica fora.
   const ultimoCumprimento = new Map<string, string>()
@@ -83,6 +119,8 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
       contagem('extincoes', 'Extinções sem mérito', judiciais.filter((c) => doGrupo(c.id) && c.desfecho === EXTINTO).length),
       taxa('exigencias_no_prazo', 'Exigências cumpridas no prazo', exigencias.filter((e) => e.noPrazo).length, exigencias.length),
       contagem('pareceres_dispensados', 'Pareceres dispensados', dispensados.filter((id) => doGrupo(id)).length),
+      media('dias_ate_sentenca', 'Tempo até a sentença', [...diasAteSentenca].filter(([id]) => doGrupo(id)).map(([, d]) => d)),
+      media('dias_ate_receber', 'Tempo até o dinheiro', [...diasAteReceber].filter(([id]) => doGrupo(id)).map(([, d]) => d)),
     ]
   }
 
@@ -102,32 +140,8 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   }
 
   // CA4: os totais em dinheiro, só para quem pode ver.
-  let totais: PainelDeResultados['totais'] = null
-  if (verTotais) {
-    // O dinheiro na mão: o recebimento confirmado depois da ida ao banco (GGVP-98 CA9), como no painel Financeiro (GGVP-78);
-    // o "Receber e lançar" vem antes e não conta. Os honorários são os da versão atual da prestação.
-    const honorarios = new Map<string, string>()
-    for (const p of await banco.select({ casoId: prestacaoContas.casoId, honorarios: prestacaoContas.honorarios }).from(prestacaoContas).orderBy(desc(prestacaoContas.versao)))
-      if (!honorarios.has(p.casoId)) honorarios.set(p.casoId, p.honorarios)
-    const recebidas = [...(await recebimentosConfirmados(banco))].filter(([casoId, quando]) => honorarios.has(casoId) && noPeriodo(diaEmBrasilia(quando)))
-    const centavos = recebidas.reduce((soma, [casoId]) => soma + Math.round(Number(honorarios.get(casoId)) * 100), 0)
-    const dias = recebidas.flatMap(([casoId, quando]) => {
-      const c = casoPorId.get(casoId)
-      return c ? [Math.round((quando.getTime() - c.criadoEm.getTime()) / UM_DIA_MS)] : []
-    })
-    totais = {
-      honorariosRecebidos: (centavos / 100).toFixed(2),
-      recebimentos: recebidas.length,
-      diasAteReceber: {
-        chave: 'dias_ate_receber',
-        rotulo: 'Tempo até o dinheiro',
-        casos: dias.length,
-        valor: dias.length ? mediana(dias) : null,
-        unidade: 'dias',
-        situacao: dias.length ? 'ok' : 'sem_dados',
-      },
-    }
-  }
+  const centavos = recebidas.reduce((soma, [casoId]) => soma + Math.round(Number(honorarios.get(casoId)) * 100), 0)
+  const totais: PainelDeResultados['totais'] = verTotais ? { honorariosRecebidos: (centavos / 100).toFixed(2), recebimentos: recebidas.length } : null
 
   // GGVP-55 CA3: a base em uso não depende do período. Aguardando = desfecho lido e sem conferência, fora das contas.
   const [acervo] = await banco
@@ -143,8 +157,27 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
     periodo: { de, ate },
     indicadores: indicadores(() => true),
     recorte: recorte
-      ? { por: recorte, grupos: await gruposDoRecorte(banco, recorte, casoPorId, indicadores, [...decisoes.keys(), ...judiciais.map((c) => c.id), ...fechadas.map((e) => e.casoId), ...dispensados]) }
+      ? {
+          por: recorte,
+          grupos: await gruposDoRecorte(banco, recorte, casoPorId, indicadores, [
+            ...decisoes.keys(),
+            ...judiciais.map((c) => c.id),
+            ...fechadas.map((e) => e.casoId),
+            ...dispensados,
+            ...diasAteReceber.keys(),
+          ]),
+        }
       : null,
+    motivos: {
+      indeferimento: maisComuns(
+        [...decisoes.values()].filter((d) => d.resultado === 'indeferido').map((d) => d.motivo),
+        'sem motivo registrado',
+      ),
+      derrota: maisComuns(
+        judiciais.filter((c) => c.desfecho === 'improcedente' || c.desfecho === EXTINTO).map((c) => c.causa),
+        'sem causa registrada',
+      ),
+    },
     extincoes: {
       casos: judiciais.filter((c) => c.desfecho === EXTINTO).length,
       decididos: new Set([...decisoes.keys(), ...judiciais.map((c) => c.id)]).size,

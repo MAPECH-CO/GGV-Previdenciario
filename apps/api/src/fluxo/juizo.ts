@@ -54,6 +54,20 @@ export function fonteDoJuizo(j: JurimetriaDoJuizo, beneficio: string | null): Fo
 const textoDaTaxa = (procedentes: number, decididos: number, base: string) =>
   `${Math.round((procedentes / decididos) * 100)}% em ${decididos} ${decididos === 1 ? 'processo' : 'processos'} · base de ${base.slice(8, 10)}/${base.slice(5, 7)}`
 
+/** O primeiro protocolo da petição inicial de cada caso: o começo do tempo até a sentença, aqui e na Gestão (GGVP-149). */
+export async function protocolosDaInicial(banco: Banco) {
+  return new Map(
+    (
+      await banco
+        .select({ casoId: peticao.casoId, em: min(protocoloJudicial.protocoladoEm) })
+        .from(protocoloJudicial)
+        .innerJoin(peticaoVersao, eq(peticaoVersao.id, protocoloJudicial.peticaoVersaoId))
+        .innerJoin(peticao, and(eq(peticao.id, peticaoVersao.peticaoId), eq(peticao.tipo, 'inicial')))
+        .groupBy(peticao.casoId)
+    ).map((r) => [r.casoId, r.em]),
+  )
+}
+
 /**
  * A jurimetria do juízo (CA2, CA4, CA5): só processos do acervo com desfecho conferido e de mérito. O CNJ vem do acervo
  * ou, quando falta, do caso ligado; processo sem benefício fica fora da taxa, e sem as duas datas, fora do tempo.
@@ -87,16 +101,7 @@ export async function jurimetriaDoJuizo(banco: Banco, juizo: string, agora: Date
   }
 
   // Do protocolo da inicial (o primeiro, se houver mais de um) à data da decisão.
-  const inicial = new Map(
-    (
-      await banco
-        .select({ casoId: peticao.casoId, em: min(protocoloJudicial.protocoladoEm) })
-        .from(protocoloJudicial)
-        .innerJoin(peticaoVersao, eq(peticaoVersao.id, protocoloJudicial.peticaoVersaoId))
-        .innerJoin(peticao, and(eq(peticao.id, peticaoVersao.peticaoId), eq(peticao.tipo, 'inicial')))
-        .groupBy(peticao.casoId)
-    ).map((r) => [r.casoId, r.em]),
-  )
+  const inicial = await protocolosDaInicial(banco)
   const dias = doJuizo.flatMap((p) => {
     const protocolo = p.casoId ? inicial.get(p.casoId) : undefined
     return protocolo && p.dataDecisao ? [(Date.parse(p.dataDecisao) - new Date(protocolo).getTime()) / 86_400_000] : []

@@ -79,6 +79,18 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect(daSenior.json()).toMatchObject({ totais: null, operacao: 'sem_dados', baseDoAcervo: { situacao: 'sem_dados' } })
   })
 
+  it('GGVP-149 CA5 · a líder do Atendimento vê os tempos e as taxas, e o servidor não manda nenhum valor em dinheiro', async () => {
+    await banco
+      .insert(usuario)
+      .values({ email: 'lia@exemplo.ggv', nome: 'lia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
+    const r = await resultados('lia')
+    expect(r.statusCode).toBe(200)
+    const painel = r.json()
+    expect(painel.totais).toBeNull()
+    expect(painel.indicadores.map((i: { chave: string }) => i.chave)).toEqual(expect.arrayContaining(['deferimento_inss', 'procedencia', 'dias_ate_sentenca', 'dias_ate_receber']))
+    expect(JSON.stringify(painel)).not.toMatch(/honorarios|recebimentos/i)
+  })
+
   it('só a gestão abre o painel', async () => {
     expect((await resultados('gabi')).statusCode).toBe(403)
   })

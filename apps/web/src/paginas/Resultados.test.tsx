@@ -19,6 +19,8 @@ const painel: PainelDeResultados = {
     ind('extincoes', 'Extinções sem mérito', 1, 1, 'casos', 'ok'),
     ind('exigencias_no_prazo', 'Exigências cumpridas no prazo', 0, null, 'taxa', 'sem_dados'),
     ind('pareceres_dispensados', 'Pareceres dispensados', 0, 0, 'casos', 'ok'),
+    ind('dias_ate_sentenca', 'Tempo até a sentença', 2, 90.4, 'dias', 'ok'),
+    ind('dias_ate_receber', 'Tempo até o dinheiro', 1, 60, 'dias', 'ok'),
   ],
   recorte: null,
   extincoes: { casos: 1, decididos: 12, porCausa: [{ causa: 'Não cumpriu determinação do juízo (exemplo)', casos: 1 }] },
@@ -27,7 +29,14 @@ const painel: PainelDeResultados = {
     exitoComDispensa: ind('exito_com_dispensa', 'Êxito com parecer dispensado', 0, null, 'taxa', 'sem_dados'),
     exitoComSuficiente: ind('exito_com_suficiente', 'Êxito com parecer suficiente', 0, null, 'taxa', 'sem_dados'),
   },
-  totais: { honorariosRecebidos: '4500.00', recebimentos: 1, diasAteReceber: ind('dias_ate_receber', 'Tempo até o dinheiro', 1, 60, 'dias', 'ok') },
+  motivos: {
+    indeferimento: [
+      { motivo: 'Falta de qualidade de segurado (exemplo)', casos: 3 },
+      { motivo: 'sem motivo registrado', casos: 1 },
+    ],
+    derrota: [],
+  },
+  totais: { honorariosRecebidos: '4500.00', recebimentos: 1 },
   operacao: 'com_dados',
   baseDoAcervo: { situacao: 'sem_dados' },
 }
@@ -50,6 +59,8 @@ describe('Resultados do escritório (GGVP-75)', () => {
       'Extinções sem mérito: 1 caso',
       'Exigências cumpridas no prazo: sem dados ainda',
       'Pareceres dispensados: 0 casos',
+      'Tempo até a sentença: 90 dias em 2 casos · base de 07/10/2026',
+      'Tempo até o dinheiro: 60 dias em 1 caso · base de 07/10/2026',
     ])
     expect((screen.getByLabelText('De') as HTMLInputElement).value).toBe('01/01/2026')
   })
@@ -80,13 +91,20 @@ describe('Resultados do escritório (GGVP-75)', () => {
   it('CA4 · os valores aparecem quando o servidor os manda; sem os totais, a tela não mostra valor nenhum', async () => {
     servidor(painel)
     const { unmount } = render(<Resultados />)
-    expect(await itens('Valores do escritório')).toEqual(['Honorários recebidos: R$ 4.500,00 · 1 recebimento', 'Tempo até o dinheiro: 60 dias em 1 caso · base de 07/10/2026'])
+    expect(await itens('Valores do escritório')).toEqual(['Honorários recebidos: R$ 4.500,00 · 1 recebimento'])
     unmount()
     servidor({ ...painel, totais: null })
     render(<Resultados />)
     await screen.findByRole('list', { name: 'Indicadores do escritório' })
     expect(screen.queryByRole('list', { name: 'Valores do escritório' })).toBeNull()
     expect(screen.queryByText(/R\$/)).toBeNull()
+  })
+
+  it('GGVP-149 CA3 · os motivos de indeferimento e de derrota mais comuns, cada um com o número de casos', async () => {
+    servidor(painel)
+    render(<Resultados />)
+    expect(await itens('Motivos de indeferimento')).toEqual(['Falta de qualidade de segurado (exemplo) · 3 casos', 'sem motivo registrado · 1 caso'])
+    expect(screen.getByText('Nenhuma derrota no período.')).toBeTruthy()
   })
 
   it('CA5, CA6 · sem caso decidido, a operação diz "sem dados ainda"; o Raio-X de 979 processos e a base do acervo aparecem', async () => {
