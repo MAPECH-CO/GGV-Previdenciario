@@ -96,3 +96,35 @@ export type EstudosDeCaso = z.infer<typeof EstudosDeCaso>
 /** POST /api/casos/:id/estudo/revisao (GGVP-19 CA3): a Sênior decide se entra com novo processo. */
 export const RevisarEstudo = z.object({ novoProcesso: z.boolean({ error: 'Escolha se vamos entrar com novo processo' }) })
 export type RevisarEstudo = z.infer<typeof RevisarEstudo>
+
+/** GGVP-100 (D3b.04): "Vale recorrer?" depois da sentença improcedente. Quem decide é a Sênior (Lucas, 07/10). */
+export const DECISOES_DO_RECURSO = ['recorrer', 'nao_recorrer'] as const
+export const ROTULO_DECISAO_DO_RECURSO: Record<(typeof DECISOES_DO_RECURSO)[number], string> = {
+  recorrer: 'Sim, recorrer',
+  nao_recorrer: 'Não, encerrar com estudo de caso',
+}
+
+/** POST /api/casos/:id/recurso (CA3): a escolha e a justificativa, sempre. */
+export const DecidirRecurso = z.object({
+  decisao: z.enum(DECISOES_DO_RECURSO, { error: 'Escolha se vale recorrer' }),
+  justificativa: z.string({ error: 'Escreva a justificativa' }).trim().min(1, 'Escreva a justificativa').max(2000, 'A justificativa vai até 2000 letras'),
+})
+export type DecidirRecurso = z.infer<typeof DecidirRecurso>
+
+/**
+ * GET /api/casos/:id/recurso. O prazo é contado pelo sistema, pelo lado seguro (CA4, G12). A chance é da jurimetria,
+ * calculada por código (CA8); nula enquanto não houver a do juízo. A IA nunca dá o número.
+ */
+export const RecursoDoCaso = z.object({
+  casoId: z.uuid(),
+  pessoaId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  sentenca: z.object({ disponibilizadaEm: z.string(), texto: z.string() }).nullable(),
+  prazo: z.object({ fim: z.string(), regra: z.string() }).nullable(),
+  chance: z.object({ porcentagem: z.number().int(), casos: z.number().int(), regra: z.string() }).nullable(),
+  decisao: z.object({ decisao: z.enum(DECISOES_DO_RECURSO), justificativa: z.string(), por: z.string(), em: z.string() }).nullable(),
+  /** A tarefa "Decidir recurso" está aberta e o perfil decide (a Sênior). */
+  podeDecidir: z.boolean(),
+})
+export type RecursoDoCaso = z.infer<typeof RecursoDoCaso>

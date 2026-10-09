@@ -5,7 +5,8 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, decisao, etapa, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_SEM_DESFECHO_ESPERANDO, PASSO_DECIDIR_RECURSO, PASSO_PAGAMENTO, TITULO_DECIDIR_RECURSO, TITULO_PAGAMENTO } from './desfecho.ts'
+import { MSG_SEM_DESFECHO_ESPERANDO, PASSO_PAGAMENTO, TITULO_PAGAMENTO } from './desfecho.ts'
+import { TITULO_DECIDIR } from './recurso.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -78,8 +79,8 @@ describe('GGVP-90 · confirmar o desfecho de mérito', () => {
   it('CA4 · improcedente: nasce "Decidir recurso" para a Sênior, com o prazo pelo lado seguro, e a etapa D4.02 fecha', async () => {
     expect((await chamar('helena', 'POST', { desfecho: 'improcedente' })).statusCode).toBe(201)
     // A sentença saiu em 05/10: 10 dias úteis vão a 20/10, antes do prazo da tarefa (21/10).
-    expect(await abertas()).toEqual([{ titulo: TITULO_DECIDIR_RECURSO, passo: PASSO_DECIDIR_RECURSO, responsavel: null, prazo: '2026-10-20' }])
-    const [t] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, PASSO_DECIDIR_RECURSO)))
+    expect(await abertas()).toEqual([{ titulo: TITULO_DECIDIR, passo: 'D3b.04', responsavel: null, prazo: '2026-10-20' }])
+    const [t] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.04')))
     expect(t.perfilDono).toBe('senior')
     const [e] = await banco.select().from(etapa).where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D4.02')))
     expect(e.situacao).toBe('concluida')
@@ -89,7 +90,7 @@ describe('GGVP-90 · confirmar o desfecho de mérito', () => {
     expect((await chamar('gabi', 'POST', { desfecho: 'extinto_sem_merito', causa: 'Não cumpriu determinação do juízo' })).statusCode).toBe(201)
     const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
     expect([c.desfecho, c.causaDesfecho]).toEqual(['extinto_sem_merito', 'Não cumpriu determinação do juízo'])
-    expect((await abertas()).map((t) => t.passo)).toEqual([PASSO_DECIDIR_RECURSO])
+    expect((await abertas()).map((t) => t.passo)).toEqual(['D3b.04'])
     const deNovo = await chamar('gabi', 'POST', { desfecho: 'procedente_total' })
     expect([deNovo.statusCode, deNovo.json().erro]).toEqual([409, MSG_SEM_DESFECHO_ESPERANDO])
   })
@@ -102,8 +103,8 @@ describe('GGVP-90 · confirmar o desfecho de mérito', () => {
   })
 
   it('CA4 · já há "Decidir recurso" aberta: não nasce outra', async () => {
-    await banco.insert(tarefa).values({ casoId, passo: PASSO_DECIDIR_RECURSO, titulo: TITULO_DECIDIR_RECURSO, perfilDono: 'senior', prazo: '2026-10-19' })
+    await banco.insert(tarefa).values({ casoId, passo: 'D3b.04', titulo: TITULO_DECIDIR, perfilDono: 'senior', prazo: '2026-10-19' })
     expect((await chamar('gabi', 'POST', { desfecho: 'improcedente' })).statusCode).toBe(201)
-    expect(await abertas()).toEqual([{ titulo: TITULO_DECIDIR_RECURSO, passo: PASSO_DECIDIR_RECURSO, responsavel: null, prazo: '2026-10-19' }])
+    expect(await abertas()).toEqual([{ titulo: TITULO_DECIDIR, passo: 'D3b.04', responsavel: null, prazo: '2026-10-19' }])
   })
 })

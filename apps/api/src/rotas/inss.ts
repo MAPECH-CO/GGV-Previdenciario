@@ -64,6 +64,9 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  // GGVP-100: "Vale recorrer?" e, com "Recorrer", a tarefa do recurso abre a mesma tela (a decisão e o prazo).
+  'D3b.04': (id) => `/casos/${id}/recurso`,
+  'D3b.04r': (id) => `/casos/${id}/recurso`,
   // GGVP-98 (P3 do roteiro de 09/10): quem do Atendimento leva o cliente ao banco.
   'D2.06l': (id) => `/casos/${id}/banco/levar`,
   'D3b.06r': (id) => `/casos/${id}/resultado`,
@@ -88,11 +91,9 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3a.03': (id) => `/casos/${id}/exigencia-juiz/setor`,
   'D3a.03s': (id) => `/casos/${id}/exigencia-juiz`,
   'D3a.04': (id) => `/casos/${id}/manifestacao`,
-  // GGVP-90: confirmar o desfecho e os dois passos seguintes abrem a mesma tela.
+  // GGVP-90: confirmar o desfecho e "Acompanhar pagamento" abrem a mesma tela.
   'D4.02': (id) => `/casos/${id}/desfecho`,
   'D3b.01': (id) => `/casos/${id}/desfecho`,
-  // Até a tela "Vale recorrer?" do #35 (GGVP-100), "Decidir recurso" abre a tela do desfecho.
-  'D3b.04': (id) => `/casos/${id}/desfecho`,
   // A tarefa "Marcar perícia" que o sistema abre (DP.01): a tela de marcar do caso, onde o Jurídico administrativo também
   // registra que o INSS liberou o agendamento.
   'DP.01': (id) => `/casos/${id}/pericia/marcar`,

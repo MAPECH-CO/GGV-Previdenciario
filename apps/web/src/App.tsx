@@ -29,6 +29,7 @@ import { IdaAoBanco } from './paginas/IdaAoBanco.tsx'
 import { ConfirmarDesfecho } from './paginas/ConfirmarDesfecho.tsx'
 import { LevarAoBanco } from './paginas/LevarAoBanco.tsx'
 import { ExplicarResultado } from './paginas/ExplicarResultado.tsx'
+import { DecidirRecurso } from './paginas/DecidirRecurso.tsx'
 import { Estudos } from './paginas/Estudos.tsx'
 import { Pericias } from './paginas/Pericias.tsx'
 import { PainelVigilia } from './paginas/PainelVigilia.tsx'
@@ -160,6 +161,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/banco\/levar$/, tela: (id) => <Exige acao="banco.levar"><LevarAoBanco casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/resultado$/, tela: (id) => <Exige acao="caso.ver"><ExplicarResultado casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/desfecho$/, tela: (id) => <Exige acao="caso.ver"><ConfirmarDesfecho casoId={id} /></Exige> },
+  // GGVP-100: a Sênior decide se recorre; a advogada responsável e o Sócio só leem.
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/recurso$/, tela: (id) => <Exige acao="recurso.ver"><DecidirRecurso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="caso.ver"><PublicacoesDoProcesso casoId={id} /></Exige> },
   { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="caso.ver"><LerPublicacao publicacaoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz$/, tela: (id) => <Exige acao="caso.ver"><AnalisarExigenciaJuiz casoId={id} /></Exige> },

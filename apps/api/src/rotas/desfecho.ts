@@ -5,46 +5,12 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { ConfirmarDesfecho, DesfechoParaConfirmar, ehProcedente, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, etapa, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { feriadosDoProcesso, prazoJudicial } from '../fluxo/prazo-judicial.ts'
 import { exigir } from '../sessao/rotas.ts'
+import { abrirDecisaoDoRecurso, sentencaEPrazo } from './recurso.ts'
 
 export const PASSO_CONFIRMAR = 'D4.02'
 export const PASSO_PAGAMENTO = 'D3b.01'
-/** Improcedente e extinção: a Sênior decide se recorre (GGVP-100, D3b.04); quem escreve e protocola o recurso são as Sêniores (Lucas, 09/10). */
-export const PASSO_DECIDIR_RECURSO = 'D3b.04'
 export const TITULO_PAGAMENTO = 'Acompanhar pagamento'
-export const TITULO_DECIDIR_RECURSO = 'Decidir recurso'
-/** O lado seguro do prazo do recurso (G12): 10 dias úteis, o menor entre o recurso inominado do JEF e a apelação, como no #35. */
-export const DIAS_DO_RECURSO = 10
-
-type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
-
-/** O prazo do recurso pelo lado seguro (G12): o da publicação ou 10 dias úteis da sentença, o que vier antes. */
-async function prazoDoRecurso(banco: Pick<Banco, 'select'>, sentenca: { em: string; cnj: string | null } | undefined, prazoDaPublicacao: string | null) {
-  const fim = sentenca ? prazoJudicial(sentenca.em, DIAS_DO_RECURSO, await feriadosDoProcesso(banco, sentenca.cnj)).fim : null
-  return prazoDaPublicacao && (!fim || prazoDaPublicacao < fim) ? prazoDaPublicacao : fim
-}
-
-/**
- * "Decidir recurso" (D3b.04) para a Sênior, com o prazo do recurso, se não houver uma aberta. O mesmo formato do
- * `abrirDecisaoDoRecurso` do #35 (GGVP-100): quando ele entrar, troca-se por "await abrirDecisaoDoRecurso(tx, casoId)".
- */
-async function abrirDecisaoDoRecurso(tx: Tx, casoId: string, prazoDaPublicacao: string | null) {
-  const [aberta] = await tx
-    .select({ id: tarefa.id })
-    .from(tarefa)
-    .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, PASSO_DECIDIR_RECURSO), isNull(tarefa.concluidaEm)))
-    .limit(1)
-  if (aberta) return
-  const [sentenca] = await tx
-    .select({ em: publicacao.disponibilizadaEm, cnj: publicacao.numeroCnj })
-    .from(publicacao)
-    .where(and(eq(publicacao.casoId, casoId), eq(publicacao.classe, 'merito')))
-    .orderBy(desc(publicacao.disponibilizadaEm))
-    .limit(1)
-  const prazo = await prazoDoRecurso(tx, sentenca, prazoDaPublicacao)
-  await tx.insert(tarefa).values({ casoId, passo: PASSO_DECIDIR_RECURSO, titulo: TITULO_DECIDIR_RECURSO, perfilDono: 'senior', prazo })
-}
 export const MSG_SEM_DESFECHO_ESPERANDO = 'Não há desfecho esperando a confirmação neste caso.'
 
 type Opcoes = { banco: Banco; agora?: () => Date }
@@ -69,12 +35,6 @@ export function registrarRotasDesfecho(app: FastifyInstance, { banco, agora = ()
       .where(and(eq(publicacao.casoId, casoId), eq(publicacao.classe, 'merito')))
       .orderBy(desc(publicacao.disponibilizadaEm))
       .limit(1)
-    const [ultima] = await banco
-      .select({ prazo: tarefa.prazo })
-      .from(tarefa)
-      .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, PASSO_CONFIRMAR)))
-      .orderBy(desc(tarefa.criadoEm))
-      .limit(1)
     const [feita] = await banco
       .select({ desfecho: decisao.resultado, texto: decisao.justificativa, em: decisao.decididoEm, por: usuario.nome })
       .from(decisao)
@@ -89,7 +49,8 @@ export function registrarRotasDesfecho(app: FastifyInstance, { banco, agora = ()
       cliente: c.nome,
       beneficio: c.beneficio,
       decisao: d ? { disponibilizadaEm: d.em, fonte: d.fonte, numeroCnj: d.cnj, texto: d.texto, classeSugeridaIa: d.sugerida, confiancaIa: d.confianca === null ? null : Number(d.confianca) } : null,
-      prazoRecurso: await prazoDoRecurso(banco, d, ultima?.prazo ?? null),
+      // O mesmo prazo que a Sênior recebe em "Decidir recurso" (G12, a conta do #35).
+      prazoRecurso: (await sentencaEPrazo(banco, casoId)).prazo?.fim ?? null,
       // ponytail: a decisão guarda a forma (procedente) ou a causa (extinção) no mesmo campo; coluna própria se precisar das duas.
       confirmado:
         feita && !pendente
@@ -155,7 +116,7 @@ export function registrarRotasDesfecho(app: FastifyInstance, { banco, agora = ()
       if (procedente) {
         await tx.insert(etapa).values({ casoId, diagrama: 'D3b', passo: PASSO_PAGAMENTO, situacao: 'aberta', iniciadaEm: agora() })
         await tx.insert(tarefa).values({ casoId, passo: PASSO_PAGAMENTO, titulo: TITULO_PAGAMENTO, perfilDono: 'advogada', responsavelId: c?.advogadaId ?? null })
-      } else await abrirDecisaoDoRecurso(tx, casoId, pendente.prazo)
+      } else await abrirDecisaoDoRecurso(tx, casoId)
       await tx.insert(eventoAuditoria).values({ quem, acao: 'desfecho_confirmado', alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, desfecho, forma: forma ?? null } })
       return true
     })
