@@ -40,7 +40,8 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set())
   const [documentosConferidos, setDocumentosConferidos] = useState(false)
   const [ouvindo, setOuvindo] = useState(false)
-  const [tocando, setTocando] = useState(false)
+  // GGVP-133: o valor que a advogada corrigiu em cada item, no lugar do que a IA ouviu.
+  const [corrigidos, setCorrigidos] = useState<Record<string, string>>({})
   // "Registrar nova conversa" abre a janela da conversa com o cliente (GGVP-76).
   const [registrando, setRegistrando] = useState(false)
   const [ocupado, setOcupado] = useState(false)
@@ -81,7 +82,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
     setMarcadas(new Set())
     setDocumentosConferidos(false)
     setOuvindo(false)
-    setTocando(false)
+    setCorrigidos({})
     setErro('')
   }
 
@@ -104,6 +105,11 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
   }
 
   const valorFalado = (e: InformacaoExtraida) => (e.campo === 'telefone' ? formatarTelefone(e.valor) : e.valor)
+  /** Só o que ela mudou vai como correção; o resto vale como a IA ouviu. */
+  const correcoes = (x: Gravacao) =>
+    x.extraidas.flatMap((e) => (marcadas.has(e.id) && corrigidos[e.id] !== undefined && corrigidos[e.id].trim() !== valorFalado(e) ? [{ id: e.id, valor: corrigidos[e.id] }] : []))
+  /** GGVP-133: o áudio e o texto de verdade, pela gravação, com a permissão dela. */
+  const arquivo = (x: Gravacao, documento: string) => `/api/gravacoes/${x.id}/arquivos/${documento}`
 
   return (
     <dialog ref={janela} className={styles.janela} aria-labelledby="transcricoes-titulo" onClose={aoFechar}>
@@ -185,6 +191,11 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                 >
                   Abrir áudio
                 </button>
+                {g.transcricaoDocumentoId && !fechada && (
+                  <a className={styles.botao} href={arquivo(g, g.transcricaoDocumentoId)} target="_blank" rel="noreferrer">
+                    Abrir o texto final
+                  </a>
+                )}
                 <button type="button" className={styles.botao} disabled={fechada} onClick={() => window.print()}>
                   Exportar PDF
                 </button>
@@ -225,7 +236,11 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                     <h4 id="resumo-titulo" className={styles.secaoTitulo}>
                       <span aria-hidden="true">✦ </span>Resumo pela IA
                     </h4>
-                    <p>{g.resumo}</p>
+                    {g.semIa ? (
+                      <p role="status">A IA não leu esta gravação: {g.semIa}. Leia a transcrição e preencha a ficha à mão.</p>
+                    ) : (
+                      <p>{g.resumo}</p>
+                    )}
                   </section>
 
                   <section id="extraidas" className={styles.secao} aria-labelledby="extraidas-titulo">
@@ -243,6 +258,22 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                             <span className={styles.destino} data-destino={e.destino}>
                               {DESTINO[e.destino]}
                             </span>
+                            {e.trecho && (
+                              <span className={styles.deOnde}>
+                                dito aos {relogio(e.aos ?? 0).slice(3)}: «{e.trecho}»
+                              </span>
+                            )}
+                            {!e.conferidaEm && !daConversa && e.destino !== 'cofre' && (
+                              <label className={styles.corrigir}>
+                                Corrigir: {e.rotulo.toLowerCase()}
+                                <input
+                                  type="text"
+                                  maxLength={200}
+                                  value={corrigidos[e.id] ?? valorFalado(e)}
+                                  onChange={(x) => setCorrigidos((c) => ({ ...c, [e.id]: x.target.value }))}
+                                />
+                              </label>
+                            )}
                             {e.conferidaEm ? (
                               <span className={styles.conferida}>✓ conferida</span>
                             ) : daConversa ? (
@@ -280,8 +311,9 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                         className={styles.primario}
                         disabled={marcadas.size === 0 || ocupado}
                         onClick={async () => {
-                          await fazer(async () => (await conferirInformacoes(g.id, [...marcadas])).gravacao, true)
+                          await fazer(async () => (await conferirInformacoes(g.id, [...marcadas], correcoes(g))).gravacao, true)
                           setMarcadas(new Set())
+                          setCorrigidos({})
                         }}
                       >
                         Conferir e levar
@@ -344,13 +376,20 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                     </div>
                     {ouvindo && g.audio && (
                       <div className={styles.player} role="group" aria-label={`Áudio: ${g.audio.nome}`}>
-                        <button type="button" className={styles.tocar} aria-label={tocando ? 'Pausar o áudio' : 'Tocar o áudio'} onClick={() => setTocando((t) => !t)}>
-                          {tocando ? '❚❚' : '▶'}
-                        </button>
-                        <span className={styles.barra} />
-                        <span className={styles.nota}>
-                          00:00 / {relogio(g.duracao).slice(3)} · {g.audio.nome} (áudio simulado)
-                        </span>
+                        {/* GGVP-133: o áudio guardado de verdade, parte por parte; o da semente de exemplo não tem arquivo. */}
+                        {g.audio.documentos?.length ? (
+                          g.audio.documentos.map((d, i, partes) => (
+                            <audio
+                              key={d.id}
+                              controls
+                              preload="none"
+                              src={arquivo(g, d.id)}
+                              aria-label={partes.length > 1 ? `Parte ${i + 1} do áudio, desde ${relogio(d.inicio).slice(3)}` : 'Áudio da gravação'}
+                            />
+                          ))
+                        ) : (
+                          <span className={styles.nota}>{g.audio.nome}: gravação de exemplo, sem arquivo guardado no portal para tocar.</span>
+                        )}
                       </div>
                     )}
                     {trechos.length === 0 ? (

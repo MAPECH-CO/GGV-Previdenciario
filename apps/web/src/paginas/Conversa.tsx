@@ -7,12 +7,12 @@ import { nomeBeneficio } from '../dados/catalogos.ts'
 import {
   anexarAudio,
   enviarParteDaConversa,
-  falasDaConversa,
   finalizarConversa,
   gravarConversa,
   obterConversa,
   pedirChaveAoVivoDaConversa,
   registrarAcaoNaConversa,
+  registrarConversaSemAudio,
   transcreverConversa,
   type ConversaAberta,
 } from '../dados/conversa.ts'
@@ -24,15 +24,15 @@ import { CANAIS_DO_REGISTRO, COM_QUEM, MODOS_DO_REGISTRO, ONDE, valorLido, type 
 import { hojeIso, hora } from '../regras/datas.ts'
 import { LEMBRETE_DA_IDENTIDADE, retornoPeloContato } from '../regras/seguranca.ts'
 import { formatarTelefone } from '../campos.ts'
-import { minutos, relogio, tirarSenhas } from '../regras/entrevista.ts'
+import { ehAudio, minutos, relogio } from '../regras/entrevista.ts'
 import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
 import base from './Balcao.module.css'
 import proprio from './Conversa.module.css'
 import vivo from './EntrevistaAoVivo.module.css'
 
 // Figma step_D5.01 (2281:2), com a transcrição ao vivo de "Atendimento · Reunião com transcrição" (73:560). A gravação é a
-// da entrevista (GGVP-40). Sem microfone, simulada: o relógio corre e a IA "ouve" a conversa de exemplo. GGVP-133: com o
-// microfone, o áudio de verdade vai ao servidor em partes e, na conversa no escritório, o texto ao vivo vem da OpenAI.
+// da entrevista (GGVP-40). GGVP-133: o áudio de verdade vai ao servidor em partes e, na conversa no escritório, o texto ao
+// vivo vem da OpenAI. Sem microfone, a tela avisa e não inventa falas: sobe o áudio gravado fora ou registra sem áudio.
 // `simular=falha-da-transcricao` abre a falha; `passo` é quantos milissegundos dura um segundo de gravação (o teste acelera).
 
 type Props = { conversaId: string; simular?: string; passo?: number }
@@ -41,6 +41,8 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const idAvisei = useId()
   const idArquivo = useId()
   const idAvisoNaLigacao = useId()
+  const idAudioDeFora = useId()
+  const idNotas = useId()
   const [dados, setDados] = useState<ConversaAberta | null | undefined>(undefined)
   const [segundos, setSegundos] = useState(0)
   const [lembrete, setLembrete] = useState(false)
@@ -50,11 +52,14 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [avisoNaLigacao, setAvisoNaLigacao] = useState(false)
   const [transcricoes, setTranscricoes] = useState(false)
+  const [semAudio, setSemAudio] = useState(false)
+  const [notas, setNotas] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [erro, setErro] = useState('')
   const travado = useRef(false)
   const pedindo = useRef(false)
   const falhou = useRef(false)
+  const falhouSemMicrofone = useRef(false)
   const perfil = usePerfil(dados?.conversa.papel === 'juridico' ? 'Advogada' : 'Atendimento')
 
   useEffect(() => {
@@ -86,6 +91,15 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
     pedirChave: dados?.conversa.canal === 'presencial' ? () => pedirChaveAoVivoDaConversa(conversaId) : null,
   })
 
+  const { semMicrofone } = deVerdade
+
+  /** Sem microfone (GGVP-133): o áudio gravado fora sobe nesta gravação e a conversa vai para a transcrição. */
+  async function subirDeFora(arquivo: File, aos: number) {
+    if (!ehAudio({ nome: arquivo.name, tipo: arquivo.type })) throw new Error('Esse arquivo não é de áudio.')
+    await enviarParteDaConversa(conversaId, { audio: arquivo, inicio: 0 })
+    return finalizarConversa(conversaId, { aos })
+  }
+
   /** Finalizar: o microfone fecha a última parte e as partes sobem antes; sem internet, o áudio espera aqui. */
   async function finalizar(id: string) {
     const restantes = await deVerdade.fechar()
@@ -113,6 +127,13 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
       setOcupado(false)
     }
   }
+
+  // GGVP-133: sem microfone, a gravação falha na hora, uma vez, com o motivo; nada de conversa de exemplo.
+  useEffect(() => {
+    if (!semMicrofone || !gravando || travado.current || falhouSemMicrofone.current) return
+    falhouSemMicrofone.current = true
+    fazer(() => registrarAcaoNaConversa(conversaId, 'falhou', segundos))
+  })
 
   // Finalizada ou anexada: o áudio vai para a transcrição (CA6), com o mesmo motor da entrevista.
   useEffect(() => {
@@ -145,9 +166,8 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const ditoAs = (aos: number) =>
     g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
   const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)} (G10)` : ''
-  // A transcrição ao vivo já sai sem a senha dita em voz alta (G9). Com o microfone de verdade, a de exemplo não aparece.
-  const aoVivo = g && c.modo === 'tempo-real' && deVerdade.aoVivo === null ? tirarSenhas(falasDaConversa(ficha, c).filter((f) => f.aos <= segundos)) : []
-  const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : aoVivo
+  // Só o texto final aparece aqui depois de finalizar; enquanto grava, o texto ao vivo da OpenAI. Nada de falas de exemplo.
+  const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : []
 
   const situacao = !g
     ? 'Antes de gravar · avise o cliente (G10)'
@@ -157,7 +177,9 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
         ? cofre
           ? `❚❚ Pausada para a senha do gov.br · ${relogio(segundos)} · nada entra no áudio (G9)`
           : `❚❚ Pausada · ${relogio(segundos)}${aviso}`
-        : `Encerrada · ${relogio(g.duracao)}${aviso}`
+        : g.estado === 'falhou'
+          ? `⚠ A gravação falhou · ${relogio(g.duracao)}`
+          : `Encerrada · ${relogio(g.duracao)}${aviso}`
 
   function aoMudarSenha(senhaGov: SenhaGov) {
     setDados({ ...dados!, ficha: { ...ficha, senhaGov } })
@@ -365,6 +387,52 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 </div>
               )}
 
+              {g?.estado === 'falhou' && (
+                <div className={vivo.falha} role="alert" aria-labelledby="gravacao-falhou">
+                  <h3 id="gravacao-falhou" className={vivo.cartaoTitulo}>
+                    {semMicrofone ? `Sem microfone: ${semMicrofone}` : 'A gravação falhou'}
+                  </h3>
+                  <p>Nada foi gravado nem transcrito. Suba o áudio gravado fora do portal ou registre a conversa sem áudio.</p>
+                  {semAudio ? (
+                    <div className={vivo.campos}>
+                      <label className={vivo.rotulo} htmlFor={idNotas}>
+                        O que foi conversado *
+                      </label>
+                      <textarea id={idNotas} className={vivo.texto} rows={4} maxLength={4000} value={notas} onChange={(e) => setNotas(e.target.value)} />
+                      <button
+                        type="button"
+                        className={vivo.primario}
+                        disabled={notas.trim().length < 3 || ocupado}
+                        onClick={() => fazer(() => registrarConversaSemAudio(c.id, notas))}
+                      >
+                        Registrar sem áudio
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={vivo.acoes}>
+                      <label className={vivo.primario} htmlFor={idAudioDeFora} data-desligado={ocupado}>
+                        {ocupado ? 'subindo…' : 'Subir o áudio gravado fora'}
+                      </label>
+                      <input
+                        id={idAudioDeFora}
+                        className="so-leitor"
+                        type="file"
+                        accept="audio/*"
+                        disabled={ocupado}
+                        onChange={(e) => {
+                          const arquivo = e.target.files?.[0]
+                          e.target.value = ''
+                          if (arquivo) fazer(() => subirDeFora(arquivo, g.duracao))
+                        }}
+                      />
+                      <button type="button" className={vivo.secundario} onClick={() => setSemAudio(true)}>
+                        Registrar como sem áudio
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {!encerrada && deVerdade.aoVivo !== null ? (
                 <>
                   {deVerdade.aoVivo.length === 0 ? (
@@ -380,6 +448,8 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   )}
                   <p className={base.nota}>O que vale no caso é o texto final, com quem fala, que sai ao finalizar.</p>
                 </>
+              ) : semMicrofone && !encerrada ? (
+                <p className={vivo.vazio}>Sem microfone: nada está sendo gravado nem transcrito.</p>
               ) : trechos.length === 0 ? (
                 <p className={vivo.vazio}>A transcrição aparece aqui quando a gravação começar.</p>
               ) : (

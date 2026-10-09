@@ -8,8 +8,8 @@ import { usePode } from '../sessao.ts'
 import styles from './Passo.module.css'
 
 
-/** Senha do gov.br do cofre (G9): pede a senha do portal, mostra por tempo limitado e some sozinha. */
-function SenhaDoGov({ casoId }: { casoId: string }) {
+/** Senha do gov.br do cofre (G9): pede a senha do portal, mostra por tempo limitado e some sozinha. Serve também a marcar a perícia. */
+export function SenhaDoGov({ casoId }: { casoId: string }) {
   const idSenha = useId()
   const [pedindo, setPedindo] = useState(false)
   const [senhaDoPortal, setSenhaDoPortal] = useState('')

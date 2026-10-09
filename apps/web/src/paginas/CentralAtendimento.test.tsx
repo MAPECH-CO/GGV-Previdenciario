@@ -184,6 +184,13 @@ describe('Central do Atendimento', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
+  it('GGVP-96 · a Documentação, que trabalha nesta Central, não recebe do chat as sugestões do Atendimento que não faz', () => {
+    entrarComo('documentacao')
+    render(comSessao(<CentralAtendimento />))
+    expect(screen.getByRole('button', { name: 'Documentos que faltam' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Subir laudo novo' })).toBeNull()
+  })
+
   it('GGVP-82 · enviar uma pergunta: o motor do chat responde citando a cliente e o link para abrir', async () => {
     render(<CentralAtendimento />)
     const campo = screen.getByLabelText('✦ Pergunte ou peça') as HTMLTextAreaElement
