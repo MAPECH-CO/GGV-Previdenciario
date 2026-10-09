@@ -95,7 +95,7 @@ describe('GGVP-99 · histórico de quem fez o quê', () => {
     expect((await chamar('gabi', 'POST', url, { motivo: 'Pedido do titular' })).statusCode).toBe(403)
     expect((await chamar('helena', 'POST', url, { motivo: ' ' })).json().erro).toBe('Escreva o motivo do pedido')
     expect((await chamar('helena', 'POST', url, { motivo: 'Pedido do titular dos dados (LGPD)' })).statusCode).toBe(201)
-    expect((await chamar('julia', 'POST', url, { motivo: 'Outro' })).json().erro).toBe(MSG_EXPORTACAO_EM_CURSO)
+    expect((await chamar('lauro', 'POST', url, { motivo: 'Outro' })).json().erro).toBe(MSG_EXPORTACAO_EM_CURSO)
     const [doSocio] = await banco.select().from(tarefa).where(and(eq(tarefa.titulo, TITULO_AUTORIZAR), isNull(tarefa.concluidaEm)))
     expect([doSocio.perfilDono, doSocio.passo]).toEqual(['socio', 'historico'])
     expect((await chamar('helena', 'GET', url)).statusCode).toBe(403)
@@ -109,7 +109,7 @@ describe('GGVP-99 · histórico de quem fez o quê', () => {
     expect((await chamar('helena', 'POST', `${url}/autorizacao`)).statusCode).toBe(403)
     expect((await chamar('lauro', 'POST', `${url}/autorizacao`)).statusCode).toBe(201)
     expect((await banco.select().from(tarefa).where(and(eq(tarefa.titulo, TITULO_AUTORIZAR), isNull(tarefa.concluidaEm))))).toEqual([])
-    expect((await chamar('julia', 'GET', url)).statusCode).toBe(403)
+    expect((await chamar('lauro', 'GET', url)).statusCode).toBe(403)
     const exportado = await chamar('helena', 'GET', url)
     expect([exportado.statusCode, exportado.headers['content-disposition']]).toEqual([200, `attachment; filename="historico-${casoId}.json"`])
     // A trilha sai completa: o pedido, a autorização e as tentativas negadas no caso (a da advogada e a da Sênior).
@@ -127,7 +127,9 @@ describe('GGVP-99 · histórico de quem fez o quê', () => {
       { quem: ids.gabi, acao: 'exigencia_inss_respondida', alvo: `caso:${casoId}`, quando: new Date('2026-10-01T12:00:00Z'), detalhe: {} },
       { quem: 'sistema', acao: 'exigencia_juiz_perdida', alvo: `caso:${casoId}`, quando: new Date('2026-10-02T12:00:00Z'), detalhe: {} },
     ])
-    const r = (await chamar('julia', 'GET', '/api/gestao/prazos')).json()
+    // GGVP-96: o Financeiro fica só com os Resultados da Gestão.
+    expect((await chamar('julia', 'GET', '/api/gestao/prazos')).statusCode).toBe(403)
+    const r = (await chamar('lauro', 'GET', '/api/gestao/prazos')).json()
     expect([r.cumpridos, r.perdidos, r.itens.map((i: { cliente: string; situacao: string; descricao: string }) => [i.cliente, i.situacao, i.descricao])]).toEqual([
       1,
       1,

@@ -11,7 +11,6 @@ import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { juntarMinhas, useMinhasDoSetor } from '../dados/setor.ts'
 import {
   exemploChatAtendimento,
-  sugestoesChatAtendimento,
   tarefasAtendimento,
   tarefasDocumentacao,
 } from '../dados/atendimento.ts'
@@ -35,6 +34,7 @@ import { useTarefasDaConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import type { Tarefa } from '../dados/tipos.ts'
 import { usePode, useSessao } from '../sessao.ts'
+import { grupoDoPerfil, SUGESTOES_DO_PERFIL } from '../regras/chat.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -110,7 +110,8 @@ export function CentralAtendimento() {
         <div className={styles.coluna}>
           <h1 className="so-leitor">{funcao === 'Documentação' ? 'Início da Documentação' : 'Início do Atendimento'}</h1>
           <CampoBusca tarefas={tarefas} />
-          <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={sugestoesChatAtendimento} />
+          {/* GGVP-96: a Documentação e o líder, que também abrem esta Central, com as sugestões do perfil deles. */}
+          <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={SUGESTOES_DO_PERFIL[grupoDoPerfil(perfil?.id)]} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>
       </main>

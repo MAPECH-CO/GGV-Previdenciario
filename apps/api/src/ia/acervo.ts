@@ -168,7 +168,7 @@ export async function alimentarAcervo(banco: Banco, ia: Ia) {
   const semVetor = await banco
     .select({ id: acervoTrecho.id, casoId: acervoTrecho.casoId, referencia: acervoTrecho.referencia, texto: acervoTrecho.texto, soJuridico: acervoTrecho.soJuridico })
     .from(acervoTrecho)
-    .where(and(isNull(acervoTrecho.embedding), ia.saude ? undefined : eq(acervoTrecho.soJuridico, false)))
+    .where(and(isNull(acervoTrecho.embedding), ia.saudeAutorizada ? undefined : eq(acervoTrecho.soJuridico, false)))
     .limit(VETORES_POR_RODADA)
   let vetores = 0
   for (const t of semVetor) {

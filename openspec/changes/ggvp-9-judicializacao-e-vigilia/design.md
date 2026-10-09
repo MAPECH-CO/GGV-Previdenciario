@@ -10,7 +10,7 @@ O modelo de dados da fundação já tem `publicacao` (fonte, CNJ, caso, data de 
 
 **Goals:** fontes de publicação atrás de uma interface, com uma fonte de exemplo até as credenciais; rodadas 3 vezes por dia com registro, alarme, "não rodou" e reprocessamento (G13); casamento pelo CNJ com descarte de repetidas registrado; fila de revisão da Sênior; leitura e classificação por pessoa; prazo judicial em código, versionado, pelo lado seguro (G12, G19); encaminhamento pelo tipo de ato.
 
-**Non-Goals:** AASP e DJEN reais (entram com as credenciais, em 07/10); IA (GGVP-14); tela de analisar a exigência do juiz (GGVP-79) e de confirmar o desfecho (GGVP-90); canal do alarme ao suporte técnico; prazo em dobro do INSS (CPC, art. 183) e regras de recurso por rito, que a pessoa informa ao classificar.
+**Non-Goals:** AASP e DJEN reais (entram no grupo 4, em 07/10); IA (GGVP-14); tela de analisar a exigência do juiz (GGVP-79) e de confirmar o desfecho (GGVP-90); canal do alarme ao suporte técnico; prazo em dobro do INSS (CPC, art. 183) e regras de recurso por rito, que a pessoa informa ao classificar.
 
 ### Decisions
 
@@ -126,7 +126,7 @@ O indeferido (GGVP-48, `rotas/vigilia.ts`) já põe o caso na fase `judicial`, a
 31. **Despachar** (`rotas/indeferimento.ts`; `GET /api/casos/:id/despacho`, `caso.ver`; `POST`, `caso.despachar_indeferimento`, só a Sênior; a recusa fica no histórico pelo `exigir`, CA8): o `GET` traz o histórico do caso (benefício, decisão do INSS com a data, carta, motivo do INSS, motivo escrito com quem e quando), o despacho feito e o status de cada setor. Entrada: `nada_falta`, ou `acionar` com itens (setor Atendimento ou Documentação, o que obter, "Essa tarefa tem prazo?" e a data com "Sim") e tipos de perícia. Grava a `decisao` (`D3.03`, `despacho`, o resultado e os setores, quem, o perfil; `sugestao_ia` vazia até o épico IA, G4, CA4, CA9). `acionar` reaproveita a exigência com `origem = 'despacho'`, sem prazo de fora, com um item e uma tarefa "Cumprir pendência" (`D3.04`, perfil do setor, prazo = próximo lembrete ou a data de entrega, limite do G15) por pedido; a perícia abre a tarefa de marcar do Jurídico administrativo (`ORIGEM_DESPACHO`, diagrama `D3`); abre a espera `D3.E1` (cliente). Nos dois casos nasce "Pedir a petição" (`D3.05`, advogada), que mostra quem falta até todos os setores fecharem, como "Manifestar no processo" (decisão 25).
 32. **Laço do setor nas duas origens** (GGVP-58): as quatro rotas do setor de `rotas/exigencia-juiz.ts` passam a ser registradas também em `/api/casos/:id/pendencias/...`, com `pendencia.cumprir` e a exigência `despacho` do caso. Muda só o que a história pede: título "Cumprir pendência"; prazo processual nulo, que a tela esconde (CA5); o Atendimento sobe com a informação escrita ou um documento, a Documentação com o documento (CA1, CA2, CA7); no limite ou com "não vou conseguir", sobe para a Sênior ("Pendência sem retorno", `D3.04s`) e continua com o setor (CA4, CA9); com o último item provado e a perícia resolvida, fecha a espera `D3.E1` (CA8). Alternativa descartada: copiar as rotas para outro arquivo (o mesmo laço em dois lugares).
 33. **Pedir a petição** (`rotas/peticao.ts`; `GET /api/casos/:id/peticao`, `peticao.ver`; `POST .../peticao/pedido`, `peticao.pedir`): o `GET` traz quem falta (itens e perícia do despacho), o pedido, as versões, a atual inteira com a diferença para a anterior, o pacote, as travas e os tribunais. O pedido só passa sem setor pendente (CA1); grava a `peticao` (`inicial`, quem pediu, instruções, opções e os documentos citados na ordem, com o nome do que falta) e a versão 1 escrita pela advogada (`gerada_por = 'advogada'`, hash SHA-256 do texto); conclui `D3.05` e abre "Conferir petição" (`D3.06`) (CA9, CA10). A carta de indeferimento entra sempre no pacote (Tema 350).
-34. **Conferir** (`POST .../peticao/versoes`, "Editar eu mesma"; `POST .../peticao/versoes/:n/aprovacao`; os dois com `peticao.aprovar`): editar grava a versão seguinte, numerada, com o que mudou; as anteriores ficam (GGVP-67 CA1, CA5, CA10). A diferença é por parágrafo, em código com teste (`fluxo/diferenca.ts`, LCS de linhas; sem dependência, são poucas linhas) (CA3, CA4). Aprovar exige as três marcações ("Li a petição na íntegra", "Fundamentos, pedidos e valores conferem com o caso", "Nada contradiz o requisito do benefício (G18)"), grava quem e quando (o hash já é o identificador, G6, CA2, CA6), gera o pacote (decisão 35), conclui `D3.06` e abre "Protocolar na Justiça" (`D3.07`). Versão nova depois da aprovação (CA7): a aprovada não muda; o pacote dela deixa de valer, `D3.07` é cancelada, `D3.06` volta e a tentativa fica no histórico. "Pedir outra versão à IA" e os pontos de atenção não aparecem até o épico IA.
+34. **Conferir** (`POST .../peticao/versoes`, "Editar eu mesma"; `POST .../peticao/versoes/:n/aprovacao`; os dois com `peticao.aprovar`): editar grava a versão seguinte, numerada, com o que mudou; as anteriores ficam (GGVP-67 CA1, CA5, CA10). A diferença é por parágrafo, em código com teste (`fluxo/diferenca.ts`, LCS de linhas; sem dependência, são poucas linhas) (CA3, CA4). Aprovar exige as três marcações ("Li a petição na íntegra", "Fundamentos, pedidos e valores conferem com o caso", "Nada contradiz o requisito do benefício (G18)"), grava quem e quando (o hash já é o identificador, G6, CA2, CA6), gera o pacote (decisão 35), conclui `D3.06` e abre "Protocolar na Justiça" (`D3.07`). Versão nova depois da aprovação (CA7): a aprovada não muda; o pacote dela deixa de valer, `D3.07` é cancelada, `D3.06` volta e a tentativa fica no histórico. "Pedir outra versão à IA" e os pontos de atenção não aparecem até o épico IA. Revisão de 08/10 (CA12): versão com marcador "[completar...]" não se aprova, pela regra única `faltaCompletar` (`packages/contratos/src/ia.ts`), a mesma do resumo ao cliente (GGVP-22 CA6).
 35. **Pacote** (`fluxo/pacote.ts`; GGVP-67 CA6, GGVP-71 CA1, CA8, CA11): na ordem, a petição em PDF (o texto aprovado, a assinatura padrão de `configuracao.peticao.assinatura` e, no rodapé e nos metadados, o hash da versão), a carta de indeferimento e os documentos citados na ordem do pedido; imagem vira PDF de uma página. Cada arquivo é guardado como `documento` (`pacote_peticao`) no armazenamento privado, com o hash, e a lista vai para `peticao_versao.pacote`. **Dependência nova: `pdf-lib`** (MIT, sem código nativo), porque o tribunal só aceita PDF e o portal precisa gerar o PDF da petição e converter as imagens; escrever PDF à mão, com fonte, acentos e quebra de linha, é mais código e mais risco.
 36. **Travas** (`fluxo/travas.ts`, funções puras com teste; GGVP-71 CA2, CA6, CA7): Tema 350, a carta de indeferimento está no pacote; CPF conferido, todo CPF escrito na petição (`normalizarCpf`, `validarCpf`) é igual ao do cadastro, e a petição tem ao menos um; pacote completo, nenhum citado falta, cada arquivo foi lido do armazenamento e cabe no formato e no tamanho do tribunal escolhido. Cada trava devolve o status e a evidência (o CPF dos dois lados, a carta, o que falta).
 37. **Documento que falta** (GGVP-71 CA13): a advogada sobe o arquivo (`POST .../peticao/citados/:i/documento`, `peticao.pedir`) ou pede à Documentação (`POST .../peticao/citados/:i/pedido`: um item "Cumprir pendência" na exigência `despacho` do caso, criada se não houver); com o documento, o citado é ligado e o pacote é gerado de novo.
@@ -177,3 +177,78 @@ Migração 0011 junto com as 0009 e 0010: `db:migrar` no Supabase depois do merg
 41. **O motivo vai no registro do indeferido.** Quem registra o indeferido em "Trazer a resposta do INSS" já escreve o motivo com as suas palavras (`RespostaDoInss.motivoEscrito`, obrigatório no indeferido), que vai para o banco de motivos com quem e quando; a etapa `D3.01` fica concluída na hora, e a Sênior recebe "Despachar caso" (`D3.03`) com a carta. Saem a tarefa "Registrar indeferimento", a tela e as rotas `GET /api/casos/:id/indeferimento` e `POST .../indeferimento/motivo` (decisão 29) e o `D3.01` da Central (decisão 40): a advogada fazia a mesma coisa duas vezes. Isso muda a GGVP-48 (CA1 e CA3: a primeira tarefa deixa de ser "Registrar indeferimento"); fica registrado nos cartões, e o Lucas confirma na homologação.
 42. **Um pedido por setor no despacho.** No despacho, cada setor se marca uma vez (caixa por setor, com o que obter e "Essa tarefa tem prazo?"), e o contrato recusa o mesmo setor duas vezes. Antes, a lista de pedidos com a escolha do setor deixava pedir duas vezes ao mesmo setor sem perceber, e um despacho para a Documentação e o Atendimento saiu com os dois pedidos para o Atendimento.
 43. **A resposta do INSS e o passo seguinte numa tela só, se quem registrou quiser** (pedido do Mateus, 06/10; histórias GGVP-35, GGVP-39 e GGVP-44, do épico Via administrativa, feitas aqui porque a tela da vigília já mudou na decisão 41). Registrada a exigência, a tela da vigília mostra "Tratar exigência do INSS" ali mesmo; registrado o deferido (igual ou diferente do pedido), mostra "Prestar contas". As duas telas ganharam a forma embutida (`Moldura`: um cartão com o título, sem a volta ao início). A tarefa nasce como antes e fica na Central para depois; feito ali, ela conclui como sempre, pela mesma rota. Só aparece para quem faz o passo (`exigencia_inss.tratar`, `prestacao.dar_ok`); o servidor não mudou. O indeferido já segue numa tela só (decisão 41).
+
+## Grupo 4 · GGVP-26 e GGVP-30 com as fontes reais (07/10)
+
+### Context
+
+A vigília roda com `fonteDeExemplo`. `fontesAtivas` lê `FONTES_PUBLICACAO` e, para `aasp` e `djen`, devolve uma fonte "não ligada": a rodada falha com "credencial ausente" e o alarme avisa (G13). A rodada pede a janela das 24 horas antes do horário previsto, com o tempo-limite de 60 s, e o casamento descarta a repetida pelo hash de data, CNJ e texto normalizado, sem a fonte (GGVP-26 CA4).
+
+A consulta de 07/10 ao DJEN com a OAB de uma advogada do escritório, de 01/09 a 07/10, voltou 1.911 comunicações: TRF3 157, TJSP 124 e perto de 1.430 da Justiça do Trabalho (TRT2 1.291, TST 103, TRT15 38). Outros achados da mesma consulta:
+- 45 de 50 textos vêm em HTML;
+- a OAB escrita com ponto (como 123.456) volta zero;
+- a data vem como AAAA-MM-DD e o processo como 20 dígitos.
+
+### Goals / Non-Goals
+
+**Goals:** as fontes DJEN e AASP atrás da mesma interface `Fonte`, configuradas só pelo ambiente; o texto chega limpo; só entram os tribunais da vigília; a falha diz a fonte e o tipo (credencial ou API), sem expor a chave.
+
+**Non-Goals:** o canal do suporte técnico (GGVP-30 CA8, a definir); o `diferencial` da AASP; tela nova, porque o painel da vigília já mostra fonte, contagem e erro.
+
+### Decisions
+
+44. **DJEN** (`apps/api/src/vigilia/djen.ts`): `GET https://comunicaapi.pje.jus.br/api/v1/comunicacao`, pública e sem chave.
+    - **Consulta:** para cada OAB de `DJEN_OABS` (`numero/UF`, número só com dígitos, como `123456/SP`) e cada tribunal da vigília, envia `numeroOab`, `ufOab`, `siglaTribunal`, `dataDisponibilizacaoInicio` e `dataDisponibilizacaoFim`, com os dias da janela no horário de Brasília. Usa `itensPorPagina=50`, página a página até cobrir o `count`.
+    - **Ritmo:** meio segundo entre as chamadas. Sem resposta em 25 s (rede fora ou tempo esgotado) ou HTTP 5xx tenta de novo uma vez, depois de 2 s; as duas tentativas cabem nos 60 s da rodada. A nova tentativa sem resposta é ajuste de 07/10: na rodada real, um soluço da rede tinha virado alarme.
+    - **Filtros:** a mesma comunicação achada por duas OABs conta uma vez, pelo `id`. Comunicação cancelada (`ativo` falso ou `data_cancelamento` preenchida) fica de fora.
+    - **Mapa:** `numero_processo` → `numeroCnj`; `data_disponibilizacao` → `disponibilizadaEm`; `texto` sem HTML → `texto`; os nomes de `destinatarios` → `partes`.
+45. **AASP** (`apps/api/src/vigilia/aasp.ts`): `GET https://intimacaoapi.aasp.org.br/api/Associado/intimacao/json?chave=...&data=...`, para cada dia da janela e cada chave de `AASP_CHAVES`.
+    - **Chave:** uma por associado, fornecida pela AASP; é segredo.
+    - **A chave vai na URL:** por isso nenhuma mensagem de erro, log ou registro leva a URL. HTTP 401 e 403 viram erro com "credencial" (alarme ao suporte, CA8); o resto, erro com "api".
+    - **Formato** (a documentação não traz esquema; sonda de 07/10 com a chave do `.env.aasp`, sobre 84 intimações de 06/10):
+      - resposta `{ intimacoes: [...], erro, status }`; `erro` verdadeiro vira falha com "api";
+      - cada intimação traz `jornal` (`nomeJornal`, `dataDisponibilizacao_Publicacao` em AAAA-MM-DDThh:mm:ss, `termoReferenciaData` sempre "Disponibilização" na amostra), `textoPublicacao` (texto simples, sem HTML), `titulo` (o órgão, não as partes), `cabecalho`, `rodape`, `numeroPublicacao`, `numeroArquivo`, `codigoRelacionamento` e `numeroUnicoProcesso` (CNJ com máscara);
+      - a `data` vai em AAAA-MM-DD.
+    - **Mapa:** `numeroUnicoProcesso` só com dígitos → `numeroCnj`; os 10 primeiros caracteres de `jornal.dataDisponibilizacao_Publicacao` → `disponibilizadaEm`; `textoPublicacao` → `texto`. `partes` fica nulo, porque a AASP não separa as partes.
+    - **Na amostra:**
+      - quase tudo é republicação do DJEN (`DJENTRT2`, `DJENTRF3`, `DJENTJSP`...);
+      - das 84 intimações, 10 eram do TRF3 ou do TJSP;
+      - 3 dessas 10 não vieram pela consulta do DJEN por OAB, então a AASP amplia a cobertura.
+    - **Sem `diferencial`:** a rodada não usa o filtro "só as não consultadas"; pede a janela inteira, para o reprocessamento (GGVP-30 CA6) funcionar igual nas duas fontes.
+46. **Texto limpo** (`textoDoHtml` em `fontes.ts`, usado pelas duas fontes): tira as tags, troca `<br>` e o fim de parágrafo por quebra de linha, decodifica as entidades (`&nbsp;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#39;` e as numéricas) e junta os espaços. Sem dependência nova: poucas linhas cobrem o que o DJEN manda.
+47. **Tribunais da vigília** (`VIGILIA_TRIBUNAIS`, siglas): TRF3 e TJSP, por decisão do Mateus em 07/10. O acidentário corre na Justiça Estadual, e a Justiça do Trabalho fica de fora. Valem estas regras:
+    - o DJEN consulta só esses tribunais;
+    - na AASP, publicação de processo de outro tribunal fica de fora antes do casamento, pelo `J.TR` do CNJ (TRF1 a TRF6 = 4.01 a 4.06; TJSP = 8.26);
+    - sem CNJ, a publicação segue para a fila de revisão, como hoje (GGVP-26 CA3).
+48. **Ambiente** (GGVP-30 CA10):
+    - `FONTES_PUBLICACAO=aasp,djen` liga as duas; as outras variáveis são `DJEN_OABS`, `AASP_CHAVES` e `VIGILIA_TRIBUNAIS`.
+    - Sem a variável da fonte, ela segue "não ligada" (falha com "credencial ausente" e alarme ao suporte).
+    - Nada no código nem no banco: `.env` local e Coolify. Na máquina, a chave da AASP fica no `.env.aasp` (fora do git), separada do `.env.supabase`.
+49. **Sem contrato novo e sem tela nova:** `Fonte` e `PublicacaoBruta` não mudam; o painel da vigília já mostra fonte, contagem e erro. Sem dependência nova: `fetch` do Node 22.
+50. **Testes** com respostas gravadas sem dado real (texto e nomes inventados) e `fetch` trocado no teste. Cobrem:
+    - paginação até o `count`;
+    - comunicação cancelada fora;
+    - mesma comunicação achada por duas OABs;
+    - 5xx com nova tentativa;
+    - tribunal fora da lista;
+    - HTML virando texto;
+    - 401 da AASP virando "credencial" sem a chave na mensagem;
+    - a mesma publicação das duas fontes descartada como repetida (GGVP-26 CA4).
+
+51. **Repetida entre as fontes** (GGVP-26 CA4; aprovada pelo Mateus em 07/10). O hash não basta.
+    - **O que a sonda mostrou:** dos 7 processos de 06/10 que vieram pelas duas fontes, nenhum ficou com o texto igual depois de normalizado. Em 6, o texto da AASP contém o do DJEN inteiro; o sétimo só fica contido sem a pontuação. O texto do DJEN ocupa de 51% a 98% do da AASP.
+    - **Regra:** antes de gravar, a publicação com CNJ procura outra de fonte diferente, com a mesma data e o mesmo CNJ. Os dois textos são normalizados (minúsculas, sem pontuação, espaços simples). Se um contém o outro, e o menor tem pelo menos metade do tamanho do maior, ela é repetida, e o descarte fica registrado com a original (CA2, CA6).
+    - **Sem CNJ:** vale só o hash exato, como hoje.
+
+### Risks / Trade-offs
+
+- **Repetida falsa** (decisão 51): esconderia uma publicação. Três exigências deixam a regra estreita: mesma data, mesmo CNJ e outra fonte. Além disso, o texto menor precisa ter pelo menos metade do maior. Todo descarte continua na lista de descartes (GGVP-26 CA6) para conferir. O teste cobre dois atos diferentes do mesmo processo no mesmo dia, que não podem virar repetida.
+- **DJEN sem limite publicado:** ele não publica limite de taxa (há relatos de HTTP 500 sob rajada) nem SLA. A nova tentativa e o alarme cobrem; uma falha repetida vira "vigília incompleta", nunca dia vazio (G13).
+- **IP de fora do Brasil:** o DJEN recusa (há relatos de 403). O servidor do Coolify fica em São Paulo.
+- **Volume:** perto de 6 publicações do TRF3 por dia útil para essa OAB, mais as da AASP. Com os casos do escritório cadastrados, só o CNJ desconhecido vai para a fila da Sênior.
+
+### Open Questions
+
+- **Tribunais da vigília:** respondida pelo Mateus em 07/10. São TRF3 e TJSP (decisão 47).
+- **Fontes reais em homologação** (Lucas): a homologação recebe só dado inventado (`docs/infra/homologacao.md`), e as fontes reais trazem publicação real de cliente, às vezes com dado de saúde. Até a decisão, a homologação segue com a fonte de exemplo, e o teste real é na máquina, com o banco na memória e mostrando só contagens.
+- **Canal do alarme ao suporte técnico** (GGVP-30 CA8): segue a definir.

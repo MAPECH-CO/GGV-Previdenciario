@@ -3,7 +3,7 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
-import { doJuridico, obterParecer, registrarParecer, type ParecerNaTela } from '../dados/parecer.ts'
+import { doJuridico, obterParecer, registraSaude, registrarParecer, type ParecerNaTela } from '../dados/parecer.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { enquadramentoDoCaso } from '../dados/deficiencia.ts'
 import { CartaoDaCrianca } from './CartaoDaCrianca.tsx'
@@ -43,6 +43,8 @@ const valorDaConferencia = (i: ItemAnalisado, escolhido?: SituacaoDoItem) => (!e
 export function DarParecer({ processoId }: { processoId: string }) {
   const perfil = usePerfil('Advogada')
   const juridico = doJuridico(perfil?.id)
+  // Ver é do Jurídico; conferir e registrar, só da advogada e da sênior (`parecer.registrar`): o Jurídico administrativo só lê.
+  const registra = registraSaude(perfil?.id)
   const [p, setP] = useState<ParecerNaTela | null | undefined>(undefined)
   const [conferidos, setConferidos] = useState<Conferidos>({})
   const [decisao, setDecisao] = useState<Decisao>()
@@ -120,22 +122,24 @@ export function DarParecer({ processoId }: { processoId: string }) {
         )}
       </span>
       <span className={proprio[i.situacao]}>{i.tipo === 'contradicao' ? (i.situacao === 'contraditorio' ? 'encontrada' : 'não encontrada') : SITUACOES_DO_ITEM[i.situacao]}</span>
-      <label className={proprio.conferir}>
-        Sua conferência
-        <select
-          aria-label={`Conferência: ${i.texto}`}
-          value={valorDaConferencia(i, conferidos[i.id])}
-          onChange={(e) => setConferidos((c) => ({ ...c, [i.id]: e.target.value === 'confere' ? i.situacao : (e.target.value as SituacaoDoItem) || undefined }))}
-        >
-          <option value="">Escolha…</option>
-          <option value="confere">Confere com a IA</option>
-          {OPCOES.filter((o) => o !== i.situacao && (i.tipo === 'obrigatorio' || o !== 'presente')).map((o) => (
-            <option key={o} value={o}>
-              Corrigir: {i.tipo === 'contradicao' ? (o === 'contraditorio' ? 'encontrada' : 'não encontrada') : SITUACOES_DO_ITEM[o]}
-            </option>
-          ))}
-        </select>
-      </label>
+      {registra && (
+        <label className={proprio.conferir}>
+          Sua conferência
+          <select
+            aria-label={`Conferência: ${i.texto}`}
+            value={valorDaConferencia(i, conferidos[i.id])}
+            onChange={(e) => setConferidos((c) => ({ ...c, [i.id]: e.target.value === 'confere' ? i.situacao : (e.target.value as SituacaoDoItem) || undefined }))}
+          >
+            <option value="">Escolha…</option>
+            <option value="confere">Confere com a IA</option>
+            {OPCOES.filter((o) => o !== i.situacao && (i.tipo === 'obrigatorio' || o !== 'presente')).map((o) => (
+              <option key={o} value={o}>
+                Corrigir: {i.tipo === 'contradicao' ? (o === 'contraditorio' ? 'encontrada' : 'não encontrada') : SITUACOES_DO_ITEM[o]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </li>
   )
 
@@ -233,10 +237,12 @@ export function DarParecer({ processoId }: { processoId: string }) {
                   <p className={styles.aviso}>
                     {beneficio} não tem roteiro de laudos cadastrado. A IA não tem régua para conferir: a conferência é manual (GGVP-93).
                   </p>
-                  <label className={proprio.campo}>
-                    O que você conferiu nos documentos *
-                    <textarea rows={3} maxLength={TEXTO_MAXIMO_DO_PARECER} value={manual} onChange={(e) => setManual(e.target.value)} />
-                  </label>
+                  {registra && (
+                    <label className={proprio.campo}>
+                      O que você conferiu nos documentos *
+                      <textarea rows={3} maxLength={TEXTO_MAXIMO_DO_PARECER} value={manual} onChange={(e) => setManual(e.target.value)} />
+                    </label>
+                  )}
                 </section>
               )}
 
@@ -337,35 +343,41 @@ export function DarParecer({ processoId }: { processoId: string }) {
                 </ul>
               </section>
 
-              <section className={styles.cartao} aria-labelledby="decisao">
-                <h2 id="decisao" className={styles.cartaoTitulo}>
-                  A documentação médica é suficiente para o benefício?
-                </h2>
-                <div className={styles.opcoes} role="radiogroup" aria-labelledby="decisao">
-                  {DECISOES.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={decisao === d.id}
-                      className={styles.opcao}
-                      disabled={d.id === 'suficiente' && comContradicao}
-                      onClick={() => setDecisao(d.id)}
-                    >
-                      {d.texto}
-                    </button>
-                  ))}
-                </div>
-                {comContradicao && <p className={proprio.erro}>Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).</p>}
-                {final && final !== 'suficiente' && (
-                  <label className={proprio.campo}>
-                    O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão, G20) *
-                    <textarea rows={6} maxLength={TEXTO_MAXIMO_DO_PARECER} value={textoAbordar} onChange={(e) => setAbordar(e.target.value)} />
-                    <span className={proprio.detalhe}>Sugerido pela IA com as perguntas do roteiro para o que falta. Confira e ajuste antes de registrar.</span>
-                    {g20 && <span className={proprio.erro}>{g20}</span>}
-                  </label>
-                )}
-              </section>
+              {registra ? (
+                <section className={styles.cartao} aria-labelledby="decisao">
+                  <h2 id="decisao" className={styles.cartaoTitulo}>
+                    A documentação médica é suficiente para o benefício?
+                  </h2>
+                  <div className={styles.opcoes} role="radiogroup" aria-labelledby="decisao">
+                    {DECISOES.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={decisao === d.id}
+                        className={styles.opcao}
+                        disabled={d.id === 'suficiente' && comContradicao}
+                        onClick={() => setDecisao(d.id)}
+                      >
+                        {d.texto}
+                      </button>
+                    ))}
+                  </div>
+                  {comContradicao && <p className={proprio.erro}>Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).</p>}
+                  {final && final !== 'suficiente' && (
+                    <label className={proprio.campo}>
+                      O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão, G20) *
+                      <textarea rows={6} maxLength={TEXTO_MAXIMO_DO_PARECER} value={textoAbordar} onChange={(e) => setAbordar(e.target.value)} />
+                      <span className={proprio.detalhe}>Sugerido pela IA com as perguntas do roteiro para o que falta. Confira e ajuste antes de registrar.</span>
+                      {g20 && <span className={proprio.erro}>{g20}</span>}
+                    </label>
+                  )}
+                </section>
+              ) : (
+                <p className={styles.aviso} role="status">
+                  Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior (G17).
+                </p>
+              )}
 
               <p className={styles.aviso}>
                 Só a sênior dispensa, com justificativa; documento que contradiz o requisito bloqueia (G17/G18).
@@ -379,16 +391,20 @@ export function DarParecer({ processoId }: { processoId: string }) {
                 )}
               </p>
 
-              <div className={styles.rodape}>
-                <button type="button" className={styles.principalBotao} disabled={motivo !== null || registrando} onClick={registrar}>
-                  {registrando ? 'registrando…' : 'Registrar parecer'}
-                </button>
-                {motivo && <p className={styles.motivo}>{motivo}</p>}
-              </div>
-              {erro && (
-                <p role="alert" className={styles.motivo}>
-                  {erro}
-                </p>
+              {registra && (
+                <>
+                  <div className={styles.rodape}>
+                    <button type="button" className={styles.principalBotao} disabled={motivo !== null || registrando} onClick={registrar}>
+                      {registrando ? 'registrando…' : 'Registrar parecer'}
+                    </button>
+                    {motivo && <p className={styles.motivo}>{motivo}</p>}
+                  </div>
+                  {erro && (
+                    <p role="alert" className={styles.motivo}>
+                      {erro}
+                    </p>
+                  )}
+                </>
               )}
 
               <section className={styles.cartao} aria-labelledby="historico">

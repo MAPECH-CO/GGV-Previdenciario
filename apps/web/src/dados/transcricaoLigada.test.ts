@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { anexarAudio, enviarParteDaConversa, pedirChaveAoVivoDaConversa } from './conversa.ts'
 import { enviarAudioGuardado, enviarParteDoAudio, pedirChaveAoVivo, subirAudio } from './entrevista.ts'
 import { configurarExemplo, zerarExemplo } from './servidor.ts'
+import { conferirInformacoes } from './transcricao.ts'
 import type { Gravacao } from './tipos.ts'
 
 const ID = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
@@ -78,6 +79,21 @@ describe('GGVP-133 · o áudio de verdade vai ao servidor', () => {
       { inicio: '600', arquivo: 'parte-600.webm (4 B)' },
       { inicio: '1200', ultima: 'sim', arquivo: 'parte-1200.ogg (5 B)' },
     ])
+  })
+
+  it('CA8, CA9 · sem microfone, o áudio gravado fora sobe nesta gravação com o nome dele (a extensão diz o formato)', async () => {
+    const recebidos = ligarServidor({ [`POST /api/gravacoes/${GRAVACAO}/audio`]: { corpo: { gravacao: gravacao({ origem: 'portal' }) } } })
+    await enviarParteDoAudio(GRAVACAO, { audio: new File(['ID3'], 'gravador.mp3', { type: 'audio/mpeg' }), inicio: 0 })
+    expect(campos(recebidos[0].corpo!)).toEqual({ inicio: '0', arquivo: 'gravador.mp3 (3 B)' })
+  })
+
+  it('GGVP-46 CA6 · a conferência vai ao servidor com o que a advogada corrigiu', async () => {
+    const rota = `POST /api/gravacoes/${GRAVACAO}/conferencias`
+    ligarServidor({ [rota]: { corpo: { gravacao: gravacao(), ficha: null } } })
+    const enviado = vi.mocked(fetch)
+    await conferirInformacoes(GRAVACAO, ['telefone-0'], [{ id: 'telefone-0', valor: '(11) 97777-6666' }])
+    const [, init] = enviado.mock.calls.find(([url]) => String(url).endsWith('/conferencias'))!
+    expect(JSON.parse(String(init!.body))).toEqual({ ids: ['telefone-0'], correcoes: [{ id: 'telefone-0', valor: '(11) 97777-6666' }] })
   })
 
   it('CA4 · a chave temporária vem do servidor; sem ela, a tela recebe o motivo', async () => {

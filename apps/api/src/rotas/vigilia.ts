@@ -7,6 +7,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, documento, etapa, exigencia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 export const MSG_FORA_DA_VIGILIA = 'O caso não está esperando a resposta do INSS.'
 export const MSG_COMUNICACAO = 'Anexe a comunicação do INSS (PDF ou imagem, até 25 MB).'
@@ -14,7 +15,7 @@ export const MSG_CARTA = 'Anexe a carta de indeferimento (PDF ou imagem, até 25
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
-const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
+const hoje = hojeEmBrasilia // CA7 (GGVP-118): o dia de Brasília, não o de UTC
 
 export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)

@@ -273,6 +273,23 @@ export const FINALIDADES = {
       'Telefone com DDD, só se foi dito inteiro. Não calcule datas nem complete o que não foi dito. Use só o que está no conteúdo; se nada mudou, "ditos" vazio.',
     ].join(' '),
   },
+  /**
+   * GGVP-133, GGVP-46 CA6, CA7: lê a entrevista já transcrita e diz o que foi dito: o resumo, os dados da ficha, os
+   * documentos citados e desde quando não trabalha. O código confere cada item e a advogada confere de novo, item a item,
+   * antes de ir para a ficha (G14). Leitura interna, do Jurídico: não vai ao cliente.
+   */
+  ler_entrevista: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a registrar a entrevista inicial com o cliente, já transcrita.',
+      'Leia as falas e responda só com um objeto JSON: {"resumo": "a entrevista em até 4 frases simples, sem concluir o benefício", "itens": [{"tipo": "telefone" | "estadoCivil" | "profissao" | "contatoApoio" | "documento" | "desde", "valor": "o que foi dito", "i": número da fala de onde saiu}]}.',
+      'Só entra o que o cliente (ou quem falou por ele) disse: o telefone dele, com DDD, só se foi dito inteiro; o estado civil; a profissão; o contato de apoio (quem é e o telefone); cada documento que ele citou, um item por documento, em linguagem simples; e desde quando não consegue trabalhar ("desde"), como foi dito (por exemplo, 06/2026).',
+      'Não calcule datas, não complete o que não foi dito e não defina o benefício: quem decide é a advogada. Use só o que está no conteúdo; se nada disso foi dito, "itens" vazio.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 
@@ -589,7 +606,6 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
-  /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
   /**
    * GGVP-141 CA4: o vetor do texto (embeddings da OpenAI), para a busca por significado no acervo (ADR-013), com registro
    * sem o conteúdo. O texto já chega anonimizado; saúde só com autorização. Sem chave, recusado ou falhou: nulo, e a busca
@@ -627,7 +643,11 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
-  /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
-  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saude: saudeAutorizada }
+  /**
+   * Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada").
+   * `saudeAutorizada` (GGVP-133): para a tela dizer o motivo certo quando o motor recusa dado de saúde; o acervo
+   * (GGVP-141) também lê, para só vetorizar trecho do Jurídico com a autorização.
+   */
+  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>

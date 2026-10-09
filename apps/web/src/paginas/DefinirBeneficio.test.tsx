@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { encerrarGravacao, iniciarGravacao, transcrever } from '../dados/entrevista.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { conferirInformacoes } from '../dados/transcricao.ts'
 import { DefinirBeneficio } from './DefinirBeneficio.tsx'
 
 beforeEach(() => {
@@ -13,6 +14,8 @@ async function entrevista(agendamentoId: string) {
   const g = await iniciarGravacao(agendamentoId, { avisei: true })
   await encerrarGravacao(g.id, { aos: 140, online: true })
   await transcrever(g.id)
+  // G19: o afastamento conta só com o "sem trabalhar desde" que a advogada conferiu (G14).
+  await conferirInformacoes(g.id, ['desde'])
 }
 
 async function abrir(agendamentoId = 'josefa-entrevista') {

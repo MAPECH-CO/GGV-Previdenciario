@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, contrato, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -52,20 +52,34 @@ beforeEach(async () => {
   casoId = c.id
   await banco.insert(documento).values({ casoId, tipo: 'rg', chaveArmazenamento: 'x/rg', nomeOriginal: 'RG.pdf', mime: 'application/pdf', tamanho: 1, hashSha256: 'h', origem: 'balcao' })
   await banco.insert(tarefa).values({ casoId, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
+  // G1 em ordem (CA11, CA12): o kit vigente antes de o caso abrir pede só o RG, que o caso tem, e o contrato está assinado.
+  await banco.insert(kitDocumento).values({ beneficio: 'bpc_loas_deficiente', tipoDocumento: 'rg', vigenteDesde: new Date('2026-01-01T00:00:00Z') })
+  await banco.insert(contrato).values({ casoId, situacao: 'assinado' })
 })
 afterEach(() => fechar())
 
 describe('GGVP-23 · abrir a conferência', () => {
   it('CA1 e CA6 · a Sênior vê resumo, benefício, checklist, documentos, ficha e kit; pode decidir', async () => {
     const r = (await ver('helena')).json()
-    expect([r.cliente, r.beneficio, r.documentos.length, r.temFicha, r.kitAssinado]).toEqual(['Maria Souza', 'bpc_loas_deficiente', 1, false, false])
-    expect(r.checklist).toEqual({ cadastrado: false, completo: true, faltam: [] })
+    expect([r.cliente, r.beneficio, r.documentos.length, r.temFicha, r.kitAssinado]).toEqual(['Maria Souza', 'bpc_loas_deficiente', 1, false, true])
+    expect(r.checklist).toEqual({ cadastrado: true, completo: true, faltam: [] })
     expect([r.podeDecidir, r.situacao, r.parecer]).toEqual([true, 'aguardando', null])
   })
 
   it('CA4 · outro perfil vê só para leitura; o Financeiro nem abre', async () => {
     expect((await ver('ana')).json().podeDecidir).toBe(false)
     expect((await ver('julia')).statusCode).toBe(403)
+  })
+
+  it('GGVP-96 · a peça jurídica (pacote da petição, versões da manifestação) só vai a quem vê a petição', async () => {
+    const peca = { mime: 'application/pdf', tamanho: 1, hashSha256: 'h', origem: 'portal' }
+    await banco.insert(documento).values([
+      { casoId, tipo: 'pacote_peticao', chaveArmazenamento: 'x/pacote', nomeOriginal: 'peticao-inicial-v1.pdf', ...peca },
+      { casoId, tipo: 'manifestacao_versao', chaveArmazenamento: 'x/manifestacao', nomeOriginal: 'manifestacao.pdf', ...peca },
+    ])
+    const nomes = async (apelido: string) => (await ver(apelido)).json().documentos.map((d: { nome: string }) => d.nome)
+    expect(await nomes('ana')).toEqual(['RG.pdf'])
+    expect(await nomes('helena')).toEqual(['RG.pdf', 'peticao-inicial-v1.pdf', 'manifestacao.pdf'])
   })
 
   it('CA5 · mostra o parecer item a item, sem CID nem texto do laudo', async () => {
@@ -91,14 +105,30 @@ describe('GGVP-23 · abrir a conferência', () => {
 describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
   it('G1 · com o kit do benefício cadastrado, falta de documento barra e diz qual', async () => {
     await parecer('suficiente')
-    // O kit vigente antes de o caso abrir (GGVP-104 CA1: o caso fica com o kit da época).
-    const desde = new Date('2026-01-01T00:00:00Z')
-    await banco.insert(kitDocumento).values([
-      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'rg', vigenteDesde: desde },
-      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia', vigenteDesde: desde },
-    ])
+    // O kit vigente antes de o caso abrir (GGVP-104 CA1: o caso fica com o kit da época); o RG vem do caso-base.
+    await banco.insert(kitDocumento).values({ beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia', vigenteDesde: new Date('2026-01-01T00:00:00Z') })
     const r = await decidir('helena', { decisao: 'aprovar' })
     expect([r.statusCode, r.json().erro]).toEqual([409, 'Checklist incompleto (G1): faltam comprovante_de_residencia.'])
+  })
+
+  const recusasDoG1 = async () =>
+    (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'conferencia_recusada').map((e) => (e.detalhe as { portao: string }).portao)
+
+  it('CA11 · benefício sem kit cadastrado: recusa, diz o G1 e registra (sem kit não é checklist completo)', async () => {
+    await parecer('suficiente')
+    await banco.delete(kitDocumento)
+    const r = await decidir('helena', { decisao: 'aprovar' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar (G1).'])
+    expect(await recusasDoG1()).toEqual(['G1'])
+    expect(await tarefasAbertas()).toEqual([['D2.01', 'senior']])
+  })
+
+  it('CA12 · contrato não assinado: recusa, diz o G1 e registra', async () => {
+    await parecer('suficiente')
+    await banco.update(contrato).set({ situacao: 'enviado' })
+    const r = await decidir('helena', { decisao: 'aprovar' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Contrato não assinado (G1): o caso não tem o contrato assinado.'])
+    expect(await recusasDoG1()).toEqual(['G1'])
   })
 
   it('CA5 e G17 · sem parecer, insuficiente, só sugerido pela IA ou com laudo novo esperando: recusa e registra', async () => {
@@ -121,6 +151,8 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
 
   it('G17 · benefício sem laudo (pensão por morte) não pede parecer', async () => {
     await banco.update(caso).set({ beneficio: 'pensao_morte' }).where(eq(caso.id, casoId))
+    // O G1 vale para todo benefício (CA11): a pensão também precisa do kit cadastrado.
+    await banco.insert(kitDocumento).values({ beneficio: 'pensao_morte', tipoDocumento: 'rg', vigenteDesde: new Date('2026-01-01T00:00:00Z') })
     expect((await ver('helena')).json().travaDoParecer).toBeNull()
     expect((await decidir('helena', { decisao: 'aprovar' })).statusCode).toBe(201)
   })
@@ -202,6 +234,8 @@ describe('GGVP-23 · decidir', () => {
     await banco.update(caso).set({ beneficio: 'pensao_morte' }).where(eq(caso.id, casoId))
     const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('helena') })).json()
     expect([linha.titulo, linha.urgente, linha.tela]).toEqual(['Conferir antes do INSS', true, `/casos/${casoId}/conferencia`])
+    // GGVP-120 CA11: pelo nome do catálogo, não pelo código.
+    expect(linha.detalhe).toBe('Pensão por Morte')
   })
 })
 

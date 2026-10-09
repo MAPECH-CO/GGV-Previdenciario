@@ -1,13 +1,13 @@
 // A entrevista gravada e a transcrição no servidor (GGVP-125, bloco 3a), sobre o fichário da Recepção. As regras são as
-// do servidor de exemplo do Pedro (entrevista.ts e transcricao.ts). A gravação e a transcrição seguem simuladas, como nas
-// telas: o áudio é um relógio e a transcrição é a conversa de exemplo, já sem senha (G9). Nada aqui apaga áudio nem texto.
+// do servidor de exemplo do Pedro (entrevista.ts e transcricao.ts). GGVP-133: o áudio é o de verdade (o microfone, em
+// partes, ou o arquivo de fora) e a transcrição vem da OpenAI, pelo motor de IA; sem áudio guardado, não há transcrição
+// nem conversa de exemplo: a advogada sobe o áudio gravado fora ou registra sem áudio. Nada aqui apaga áudio nem texto.
 // A entrevista tem dado de saúde: gravar e transcrever pedem `entrevista.gravar` (Jurídico).
 import { randomUUID } from 'node:crypto'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { dataParaIso, formatarTelefone, normalizarData } from '@ggv/campos'
 import {
   AcaoNaGravacaoPedida,
-  AudioGravadoFora,
   ConferenciaDaTranscricao,
   ConversaRegistrada,
   DocumentosDaEntrevista,
@@ -19,18 +19,19 @@ import {
   pode,
   type Erro,
 } from '@ggv/contratos'
+import { and, eq, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
-import { exigir } from '../sessao/rotas.ts'
+import { acessoDadoSensivel, documento } from '../banco/esquema.ts'
+import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
-import { guardarAudio, transcreverGravacao } from '../fluxo/transcricao.ts'
+import { MSG_SEM_AUDIO, guardarAudio, lerEntrevista, transcreverGravacao } from '../fluxo/transcricao.ts'
 import { lerFormulario } from './formulario.ts'
 import { TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
-import { conversaDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import type { AcaoNaGravacao, Agendamento, Ficha, Gravacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
-import { documentosDaEntrevista, ehAudio, juntarPartes, partesDoAudio, relogio, resumoDaEntrevista, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
+import { ehAudio, erroDaInformacao, relogio, valorDaInformacao } from '../../../web/src/regras/entrevista.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
 
 export const MSG_GRAVACAO_NAO_ENCONTRADA = 'Gravação não encontrada.'
@@ -38,8 +39,6 @@ export const MSG_ENTREVISTA_NAO_ENCONTRADA = 'Entrevista não encontrada.'
 export const MSG_SEM_AVISO = 'Avise o cliente que a conversa será gravada antes de gravar (G10).'
 const CANAIS_DA_CONVERSA = ['WhatsApp', 'Telefone', 'Presencial', 'Vídeo']
 
-/** Áudio de voz a 128 kbit/s: 16 kB por segundo. Só para o tamanho do arquivo simulado. */
-const BYTES_POR_SEGUNDO = 16_000
 const ESTADO_DEPOIS: Partial<Record<AcaoNaGravacao['acao'], Gravacao['estado']>> = {
   pausou: 'pausada',
   'abriu-cofre': 'pausada',
@@ -50,23 +49,22 @@ const ESTADO_DEPOIS: Partial<Record<AcaoNaGravacao['acao'], Gravacao['estado']>>
 
 const advogadaDa = (a: Agendamento) => a.com ?? 'Advogada'
 const canalDo = (a: Agendamento) => (TIPOS_DE_ENTREVISTA.find((t) => t.id === (a.tipo ?? 'presencial'))?.nome ?? 'presencial').split(' ')[0].toLowerCase()
-const audioDaGravacao = (ficha: Ficha, g: Gravacao): Gravacao['audio'] => {
-  const tamanho = g.duracao * BYTES_POR_SEGUNDO
-  return { nome: `entrevista-${ficha.id}-${g.data}.webm`, formato: 'webm', tamanho, partes: partesDoAudio(tamanho) }
-}
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-/** GGVP-133: o motor de IA, o armazenamento e o preparo ligam a transcrição de verdade; sem eles, segue o exemplo. */
+/** GGVP-133: o motor de IA, o armazenamento e o preparo ligam a transcrição de verdade; sem eles, ela não roda. */
 type Opcoes = { banco: Banco; agora?: () => Date; ia?: Ia; armazenamento?: Armazenamento; preparo?: Preparo }
 
 export const MSG_AUDIO_GRANDE = 'O áudio não chegou inteiro: cada arquivo vai até 25 MB.'
 const MSG_SEM_ARMAZENAMENTO = 'O armazenamento do áudio não está ligado.'
+export const MSG_MANDE_O_ARQUIVO = 'Mande o arquivo do áudio: só o nome não fica guardado no caso.'
+export const MSG_GRAVACAO_SO_DO_JURIDICO = 'Esta gravação tem dado de saúde: só o Jurídico ouve e lê.'
 const formatoDo = (nome: string) => nome.split('.').at(-1)?.toLowerCase() ?? ''
 
 export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, agora = () => new Date(), ia, armazenamento, preparo }: Opcoes) {
   const real = ia && armazenamento ? { banco, ia, armazenamento } : null
   const f = criarFichario(banco, agora)
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, garantirAberta, concluirTarefas, tarefas, acharAgendamento, guardarGravacao, acharGravacao } = f
+  const historico = registrarHistorico(banco, agora)
   const gravar = { preHandler: exigir(banco, 'entrevista.gravar', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
 
@@ -180,10 +178,10 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     if (g.estado === 'encerrada') return { gravacao: g }
     acao(g, 'encerrou', entrada.data.aos)
     g.estado = 'encerrada'
-    g.audio = g.audio?.documentos ? g.audio : audioDaGravacao(ficha, g)
     g.transcricao = entrada.data.online ? 'transcrevendo' : 'aguardando-internet'
     const tarefa = agendamento && (await fecharEntrevista(ficha, agendamento, g))
-    ficha.historico.push(evento(`Encerrou a entrevista gravada (${Math.max(1, Math.round(g.duracao / 60))} min); o áudio ficou no caso`, await nomeDe(pedido)))
+    const audio = g.audio || !entrada.data.online ? 'o áudio ficou no caso' : 'nenhum áudio chegou ao portal'
+    ficha.historico.push(evento(`Encerrou a entrevista gravada (${Math.max(1, Math.round(g.duracao / 60))} min); ${audio}`, await nomeDe(pedido)))
     return salvar(g, ficha, tarefa)
   })
 
@@ -236,7 +234,6 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     g.estado = 'encerrada'
     g.transcricao = 'sem-audio'
     g.registro = entrada.data.notas
-    if (g.duracao > 0 && !g.audio?.documentos) g.audio = audioDaGravacao(ficha, g)
     const tarefa = agendamento && (await fecharEntrevista(ficha, agendamento, g))
     ficha.historico.push(evento('Registrou a entrevista sem áudio: a gravação falhou', await nomeDe(pedido)))
     return salvar(g, ficha, tarefa)
@@ -264,69 +261,32 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
       ficha.historico.push(evento(`Subiu o áudio da entrevista gravado fora do portal (${arquivo.nome}); foi para a transcrição`, await nomeDe(pedido)))
       return salvar(g, ficha, tarefa)
     }
-    const entrada = AudioGravadoFora.safeParse(pedido.body)
-    if (!entrada.success || !ehAudio(entrada.data)) return negar(resposta, 400, 'Esse arquivo não é de áudio.')
-    const achado = await acharAgendamento(pedido.params.id)
-    if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
-    const { ficha, agendamento } = achado
-    const { nome, tamanho } = entrada.data
-    const g = novaGravacao(ficha, agendamento, 'arquivo')
-    g.estado = 'encerrada'
-    g.audio = { nome, formato: nome.split('.').at(-1)?.toLowerCase() ?? '', tamanho, partes: partesDoAudio(tamanho) }
-    acao(g, 'subiu-arquivo', 0)
-    const tarefa = await fecharEntrevista(ficha, agendamento, g)
-    ficha.historico.push(evento(`Subiu o áudio da entrevista gravado fora do portal (${nome}); foi para a transcrição`, await nomeDe(pedido)))
-    return salvar(g, ficha, tarefa)
+    // Só o nome do arquivo não é áudio guardado: sem o arquivo, nada fica no caso (nada de áudio de mentira).
+    return negar(resposta, 400, MSG_MANDE_O_ARQUIVO)
   })
 
-  // GGVP-46: a transcrição simulada (a conversa de exemplo até onde gravou, nas partes do áudio e juntada de novo, com
-  // quem fala e sem senha). `falhar` simula a falha do serviço (CA3); "tentar de novo" é pedir outra vez.
+  // GGVP-46, GGVP-133: a transcrição de verdade, pelo motor de IA, e a leitura da IA (o resumo e o que conferir). Falhou,
+  // "tentar de novo" é pedir outra vez. `falhar` é da transcrição simulada das telas de exemplo; aqui não simula nada.
   app.post<{ Params: { id: string } }>('/api/gravacoes/:id/transcricao', gravar, async (pedido, resposta) => {
     const entrada = PedidoDeTranscricao.safeParse(pedido.body ?? {})
     if (!entrada.success) return negar(resposta, 400, 'Pedido inválido.')
     const achado = await acharGravacao(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
-    const { gravacao: g, ficha, agendamento } = achado
+    const { gravacao: g, ficha } = achado
     if (g.estado !== 'encerrada' || (g.transcricao !== 'transcrevendo' && g.transcricao !== 'falhou')) return { gravacao: g }
     // GGVP-133 CA1, CA8: com o áudio de verdade guardado, o texto vem da OpenAI, pelo motor; falhou, o áudio fica e a
-    // pessoa tenta de novo. Sem áudio guardado (gravação sem microfone), segue a conversa de exemplo abaixo.
-    if (g.audio?.documentos?.length && real) {
-      await transcreverGravacao(real, g, ficha, pedido.usuario!.id)
-      await guardarGravacao(g)
-      return { gravacao: g }
-    }
-    if (entrada.data.falhar) {
-      g.transcricao = 'falhou'
-      g.motivoDaFalha = 'o serviço de transcrição não respondeu'
-      await guardarGravacao(g)
-      return { gravacao: g }
-    }
-    const falas = conversaDeExemplo(ficha, agendamento ? advogadaDa(agendamento) : 'Advogada')
-    if (g.origem === 'arquivo') g.duracao = falas.at(-1)!.aos + 10
-    const ditas = falas.filter((fala) => fala.aos <= g.duracao)
-    const partes = g.audio?.partes ?? 1
-    const tamanho = Math.ceil((g.duracao + 1) / partes)
-    const trechos = juntarPartes(
-      Array.from({ length: partes }, (_, i) => ({
-        inicio: i * tamanho,
-        trechos: ditas
-          .filter((fala) => fala.aos >= i * tamanho && fala.aos < (i + 1) * tamanho)
-          .map((fala) => ({ aos: fala.aos - i * tamanho, quem: fala.quem, papel: fala.papel, texto: fala.texto })),
-      })),
-    )
-    const extraidas = ditas.flatMap((fala) => fala.extrai ?? [])
-    if (g.acoes.some((x) => x.acao === 'guardou-senha')) {
-      extraidas.push({ id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre: não consta na transcrição (G9)', destino: 'cofre' })
-    }
-    g.trechos = tirarSenhas(trechos)
-    g.extraidas = extraidas
-    g.resumo = resumoDaEntrevista(ficha, extraidas)
-    g.documentos = documentosDaEntrevista(ficha, extraidas)
-    g.transcricao = 'pronta'
-    g.motivoDaFalha = undefined
+    // pessoa tenta de novo. Sem áudio guardado (sem microfone), não há o que transcrever: a tela diz e oferece as saídas.
+    if (g.audio?.documentos?.length && real) await transcreverELer(g, ficha, pedido.usuario!.id)
+    else Object.assign(g, { transcricao: 'falhou', motivoDaFalha: MSG_SEM_AUDIO })
     await guardarGravacao(g)
     return { gravacao: g }
   })
+
+  /** A transcrição de verdade e, pronta, a leitura da IA: o resumo e cada item para a advogada conferir (G14). */
+  async function transcreverELer(g: Gravacao, ficha: Ficha, quem: string | null) {
+    await transcreverGravacao(real!, g, ficha, quem)
+    if (g.transcricao === 'pronta') await lerEntrevista(real!, g, ficha, quem)
+  }
 
   // GGVP-46 CA6, G14: só o que a advogada conferiu sai da transcrição. O da ficha muda a ficha, com o valor antigo no
   // histórico; o da Documentação vira "Pedir documento"; cofre e processo ficam marcados.
@@ -336,16 +296,27 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     const achado = await acharGravacao(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
     const { gravacao: g, ficha } = achado
+    // GGVP-133: a advogada confirma ou corrige cada item; o corrigido passa pela mesma regra do que a IA ouviu.
+    const corrigidos = new Map((entrada.data.correcoes ?? []).map((c) => [c.id, c.valor]))
+    for (const [id, valor] of corrigidos) {
+      const info = g.extraidas.find((e) => e.id === id && !e.conferidaEm && e.destino !== 'cofre')
+      const erro = info ? erroDaInformacao(info, valor) : 'essa informação não está na transcrição'
+      if (erro) return negar(resposta, 400, `Corrija ${info?.rotulo.toLowerCase() ?? 'o item'}: ${erro}.`)
+    }
     const quem = await nomeDe(pedido)
     const quando = agora().toISOString()
     const deQuando = `da entrevista de ${dataCurta(g.data, hoje())}`
     for (const info of g.extraidas.filter((e) => entrada.data.ids.includes(e.id) && !e.conferidaEm)) {
       info.conferidaEm = quando
+      const falado = (v: string) => (info.campo === 'telefone' && v ? formatarTelefone(v) : v)
+      const ouvido = info.valor
+      const corrigido = corrigidos.get(info.id)
+      if (corrigido !== undefined) info.valor = valorDaInformacao(info, corrigido)
+      const correcao = info.valor !== ouvido ? ` (corrigido na conferência; a IA ouviu «${falado(ouvido)}»)` : ''
       if (info.destino === 'ficha' && info.campo) {
-        const falado = (v: string) => (info.campo === 'telefone' && v ? formatarTelefone(v) : v)
         const antes = ficha[info.campo] ?? ''
         ficha[info.campo] = info.valor
-        ficha.historico.push(evento(`Levou à ficha, ${deQuando}, ${info.rotulo.toLowerCase()}: «${falado(antes) || '—'}» → «${falado(info.valor)}»`, quem))
+        ficha.historico.push(evento(`Levou à ficha, ${deQuando}, ${info.rotulo.toLowerCase()}: «${falado(antes) || '—'}» → «${falado(info.valor)}»${correcao}`, quem))
         if (!g.marcas.includes('ficha atualizada')) g.marcas.push('ficha atualizada')
       }
       if (info.destino === 'documentacao') {
@@ -359,8 +330,9 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
           href: `/clientes/${ficha.id}`,
           setor: 'Documentação · ADM',
         })
-        ficha.historico.push(evento(`Pediu à Documentação, ${deQuando}: ${info.valor}`, quem))
+        ficha.historico.push(evento(`Pediu à Documentação, ${deQuando}: ${info.valor}${correcao}`, quem))
       }
+      if (info.destino === 'processo') ficha.historico.push(evento(`Conferiu, ${deQuando}, ${info.rotulo.toLowerCase()}: «${info.valor}»${correcao}`, quem))
     }
     const { tarefa: _, ...salvo } = await salvar(g, ficha)
     return salvo
@@ -442,6 +414,42 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     return salvo
   })
 
+  /**
+   * GGVP-133: o áudio guardado e o texto final de uma gravação, pela gravação (o áudio é da pessoa, não do caso), para
+   * ouvir e ler nas Transcrições. Vale a permissão da gravação: a entrevista, `entrevista.gravar`; a conversa,
+   * `conversa.registrar`; a do Jurídico, só com dado de saúde, e cada leitura fica registrada (LGPD).
+   */
+  app.get<{ Params: { id: string; doc: string } }>('/api/gravacoes/:id/arquivos/:doc', async (pedido, resposta) => {
+    const achado = await acharGravacao(pedido.params.id)
+    if (!achado || !real) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
+    const { gravacao: g } = achado
+    const perfil = pedido.perfilAtivo
+    const quem = pedido.usuario!.id
+    const acaoDaGravacao = g.conversaId ? 'conversa.registrar' : 'entrevista.gravar'
+    if (!pode(perfil, acaoDaGravacao) || (g.soJuridico && !pode(perfil, 'dado_saude.ver_detalhe'))) {
+      await historico(quem, 'acesso_negado', pedido, `pessoa:${g.fichaId}`, { acao: acaoDaGravacao, perfil, gravacao: g.id })
+      return negar(resposta, 403, g.soJuridico ? MSG_GRAVACAO_SO_DO_JURIDICO : 'Sem permissão para esta gravação.')
+    }
+    const daGravacao = [...(g.audio?.documentos ?? []).map((d) => d.id), g.transcricaoDocumentoId].includes(pedido.params.doc)
+    const [d] = daGravacao
+      ? await banco
+          .select()
+          .from(documento)
+          .where(and(eq(documento.id, pedido.params.doc), eq(documento.pessoaId, g.fichaId), isNull(documento.excluidoEm)))
+      : []
+    if (!d) return negar(resposta, 404, 'Arquivo não encontrado.')
+    if (g.soJuridico) await banco.insert(acessoDadoSensivel).values({ usuarioId: quem, perfil: perfil!, casoId: null, recurso: `gravacao:${g.id}`, quando: agora() })
+    const conteudo = await real.armazenamento.ler(d.chaveArmazenamento).catch(() => null)
+    if (!conteudo) return negar(resposta, 404, 'O arquivo desta gravação não está no armazenamento.')
+    // O áudio toca e o texto abre no navegador; o navegador não adivinha o tipo nem roda script do arquivo.
+    return resposta
+      .header('content-type', d.tipo === 'transcricao' ? 'text/plain; charset=utf-8' : d.mime.startsWith('audio/') ? d.mime : 'application/octet-stream')
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "sandbox; default-src 'none'")
+      .header('content-disposition', `inline; filename*=UTF-8''${encodeURIComponent(d.nomeOriginal)}`)
+      .send(conteudo)
+  })
+
   // GGVP-133: o preparo em segundo plano (a cada 5 minutos) transcreve as gravações com áudio de verdade que esperam.
   if (real && preparo)
     preparo.registrar(
@@ -452,7 +460,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
       async (id) => {
         const achado = await acharGravacao(id)
         if (!achado || achado.gravacao.transcricao !== 'transcrevendo') return
-        await transcreverGravacao(real, achado.gravacao, achado.ficha, null)
+        await transcreverELer(achado.gravacao, achado.ficha, null)
         await guardarGravacao(achado.gravacao)
       },
     )

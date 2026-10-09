@@ -44,6 +44,8 @@ function CartaoDoItem({
   const [motivo, setMotivo] = useState('')
   const [informacao, setInformacao] = useState('')
   const [arquivo, setArquivo] = useState<File | null>(null)
+  // GGVP-83 CA15: laudo, atestado ou exame sobe como sensível.
+  const [medico, setMedico] = useState(false)
   const [erro, setErro] = useState('')
   const base = `/casos/${casoId}/${DA_ORIGEM[origem].rota}/itens/${item.id}`
 
@@ -52,6 +54,7 @@ function CartaoDoItem({
     if (!arquivo && !escrita?.success) return setErro(escrever ? MSG_INFORMACAO : MSG_DOCUMENTO)
     const dados = new FormData()
     if (arquivo) dados.set('arquivo', arquivo)
+    if (arquivo && medico) dados.set('medico', 'true')
     if (escrita?.success) dados.set('informacao', escrita.data.informacao)
     const r = await chamarApi(`${base}/prova`, { method: 'POST', corpo: dados })
     if (!r.ok) return setErro(r.erro)
@@ -110,6 +113,10 @@ function CartaoDoItem({
               {escrever ? 'Documento (opcional)' : 'Documento'}
             </label>
             <input id={ids.arquivo} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+            <label className={styles.escolha}>
+              <input type="checkbox" checked={medico} onChange={(e) => setMedico(e.target.checked)} />
+              É laudo, atestado ou exame (dado de saúde: só o Jurídico vê)
+            </label>
             <div className={styles.acoes}>
               <button type="button" className={styles.botao} onClick={() => void enviarDocumento()}>
                 {escrever ? 'Consegui, subir no card' : 'Enviar documento e concluir'}

@@ -5,13 +5,14 @@ import { createHash } from 'node:crypto'
 import { formatarCnj } from '@ggv/campos'
 import { and, asc, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AprovarPeticao, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
+import { AprovarPeticao, faltaCompletar, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
 import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { fonteDoJuizo, juizoDoCaso, jurimetriaDoJuizo } from '../fluxo/juizo.ts'
+import { travaDoParecerDoCaso } from '../fluxo/parecer-do-caso.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
 import { FINALIDADES, type ComoSugerir, type Ia } from '../ia/ia.ts'
@@ -310,6 +311,12 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       await bloqueio(pedido, casoId, 'setores', 'D3.05', { faltam: faltam.length })
       return negar(resposta, 409, `Pedir a petição fica bloqueado até todos os setores subirem o card. Falta: ${faltam.join(', ')}.`)
     }
+    // GGVP-63 CA13 (G17): benefício com laudo só pede a petição com o parecer confirmado por pessoa.
+    const travaParecer = await travaDoParecerDoCaso(banco, casoId, 'pedir-peticao')
+    if (travaParecer) {
+      await bloqueio(pedido, casoId, 'G17', 'D3.05')
+      return negar(resposta, 409, travaParecer)
+    }
     const d = entrada.data
     // CA6: os citados são documentos deste caso, na ordem do pedido, ou o nome do que ainda falta.
     const ids = [...new Set(d.citados.flatMap((x) => (x.documentoId ? [x.documentoId] : [])))]
@@ -432,6 +439,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       if (String(ultima.numero) !== pedido.params.n) return negar(resposta, 409, MSG_SO_A_ULTIMA)
       const conferindo = await tarefaAberta(casoId, 'D3.06')
       if (ultima.aprovadaPor || !conferindo) return negar(resposta, 409, MSG_NADA_A_CONFERIR)
+      // CA12: a aprovada vira o PDF que vai ao juiz; com "[completar...]" no texto, não se aprova.
+      const falta = faltaCompletar(ultima.conteudo)
+      if (falta) return negar(resposta, 400, falta)
       const quem = pedido.usuario!.id
       const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }
       const feito = await banco.transaction(async (tx) => {

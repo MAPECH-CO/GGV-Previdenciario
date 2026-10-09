@@ -52,6 +52,16 @@ describe('Explicar o resultado (GGVP-22)', () => {
     expect(corpoDo(fetch, '/resultado/resumo')).toEqual({ texto: RESUMO.texto, quemFala: 'advogada' })
   })
 
+  it('CA6 · com "[completar]" no texto, mostra o motivo e não envia', async () => {
+    const fetch = servidor(base)
+    render(<ExplicarResultado casoId={CASO} />)
+    fireEvent.change(await screen.findByLabelText('O que dizer ao cliente'), { target: { value: `${RESUMO.texto} [completar: o motivo da decisão]` } })
+    fireEvent.click(screen.getByLabelText('O Atendimento, no padrão'))
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar o resumo' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('O texto ainda tem [completar]: preencha antes de aprovar.')
+    expect(fetch.mock.calls.filter(([url, init]) => init?.method === 'POST' && String(url).endsWith('/resultado/resumo'))).toEqual([])
+  })
+
   it('CA3, CA4 · quem fala vê o resumo com quem aprovou; "Expliquei" pede o que foi dito', async () => {
     const fetch = servidor({ ...base, resumo: RESUMO, podeAprovar: false, podeRegistrar: true })
     render(<ExplicarResultado casoId={CASO} />)

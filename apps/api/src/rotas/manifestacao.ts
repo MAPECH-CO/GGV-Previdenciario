@@ -137,8 +137,8 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
       )[0],
     )
 
-  // CA1, CA5, CA7, CA10: as versões, o que falta, a dilação e o protocolo.
-  app.get<{ Params: { id: string } }>('/api/casos/:id/manifestacao', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+  // CA1, CA5, CA7, CA10: as versões, o que falta, a dilação e o protocolo. É peça jurídica: só o Jurídico (GGVP-96, perfis.md).
+  app.get<{ Params: { id: string } }>('/api/casos/:id/manifestacao', { preHandler: exigir(banco, 'peticao.ver', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const [c] = await banco.select({ nome: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
     const [x] = c

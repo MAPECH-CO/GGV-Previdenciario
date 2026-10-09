@@ -58,6 +58,8 @@ import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
 import { registrarRotasProcesso } from './rotas/processo.ts'
+import { registrarRotasBases } from './rotas/bases.ts'
+import { registrarRotasFinanceiro } from './rotas/financeiro.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -165,6 +167,10 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasGlossario(app, { banco, agora })
     registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
     registrarRotasProcesso(app, { banco, agora })
+    // GGVP-78: Clientes e Processos, as bases do topo.
+    registrarRotasBases(app, { banco, agora })
+    // GGVP-78: o painel Financeiro, das prestações de contas.
+    registrarRotasFinanceiro(app, { banco, agora })
     alimentar = async () => {
       if (!motorIa.ligada) return
       await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error({ erro }, 'alimentar o acervo falhou'))

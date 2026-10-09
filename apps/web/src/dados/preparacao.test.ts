@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { registrarConfirmacao } from './confirmacao.ts'
-import { obterPreparacao, resumoDaIa, tarefasDaAdvogada } from './preparacao.ts'
+import { obterPreparacao, resumoDaFicha, tarefasDaAdvogada } from './preparacao.ts'
 import { configurarExemplo, gravar, ler, zerarExemplo } from './servidor.ts'
 
 beforeEach(() => {
@@ -56,7 +56,7 @@ describe('Preparação da conversa · servidor de exemplo', () => {
   it('CA3 · sem a ficha, o resumo diz que não há o que resumir; ficha de antes do portal manda ler o papel', async () => {
     const { fichas } = ler()
     const hoje = '2026-10-05'
-    expect(resumoDaIa(fichas.find((f) => f.id === 'josefa-exemplo')!, hoje)).toBe('A ficha de atendimento ainda não foi preenchida: não há o que resumir.')
-    expect(resumoDaIa(fichas.find((f) => f.id === 'antonio-exemplo')!, hoje)).toBe('Ficha preenchida antes do portal: leia a ficha em papel na pasta do cliente.')
+    expect(resumoDaFicha(fichas.find((f) => f.id === 'josefa-exemplo')!, hoje)).toBe('A ficha de atendimento ainda não foi preenchida: não há o que resumir.')
+    expect(resumoDaFicha(fichas.find((f) => f.id === 'antonio-exemplo')!, hoje)).toBe('Ficha preenchida antes do portal: leia a ficha em papel na pasta do cliente.')
   })
 })

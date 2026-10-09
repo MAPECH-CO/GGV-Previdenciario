@@ -129,6 +129,8 @@ describe('Responder no portal (GGVP-39, advogada)', () => {
     servidor({ ...comCard, podeCumprir: false, podeResponder: true, itens: [{ ...comCard.itens[0], situacao: 'cumprido', prova: 'cad.pdf' }] }, [201, { ok: true, aberto: 'vigilia' }])
     render(<TratarExigencia casoId={CASO} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Registrar a resposta' }))
+    // GGVP-103 CA12: a senha do gov.br do cliente, pelo cofre, para entrar no portal.
+    expect(screen.getByRole('button', { name: 'Ver a senha do gov.br' })).toBeTruthy()
     expect((await screen.findByRole('alert')).textContent).toBe('Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).')
     fireEvent.change(screen.getByLabelText('Comprovante da resposta'), { target: { files: [new File(['%PDF'], 'r.pdf', { type: 'application/pdf' })] } })
     fireEvent.click(screen.getByRole('button', { name: 'Registrar a resposta' }))
@@ -151,6 +153,17 @@ describe('Cumprir exigência do INSS (GGVP-39, Documentação)', () => {
     render(<CumprirExigencia casoId={CASO} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Registrar cobrança' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escolha o canal da cobrança')
+  })
+
+  it('CA15 · marcar "É laudo, atestado ou exame" manda a prova como dado de saúde', async () => {
+    const fetch = servidor(comCard)
+    render(<CumprirExigencia casoId={CASO} />)
+    fireEvent.change(await screen.findByLabelText('Documento de “CadÚnico”'), { target: { files: [new File(['%PDF'], 'laudo.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByLabelText(/É laudo, atestado ou exame/))
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }))
+    await vi.waitFor(() => expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true))
+    const corpo = fetch.mock.calls.find(([, init]) => init?.method === 'POST')![1]!.body as FormData
+    expect([corpo.get('acao'), corpo.get('medico')]).toEqual(['cumprido', 'true'])
   })
 
   it('CA13 · com tudo cumprido, entrega ao Jurídico', async () => {
