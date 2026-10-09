@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { feriado } from '../banco/esquema.ts'
-import { REGRA_PRAZO_JUDICIAL, feriadosDoProcesso, prazoDepoisDaIndisponibilidade, prazoJudicial, tribunalDoCnj } from './prazo-judicial.ts'
+import { REGRA_PRAZO_JUDICIAL, REGRA_PRAZO_RECURSAL, feriadosDoProcesso, prazoDepoisDaIndisponibilidade, prazoJudicial, prazoRecursal, tribunalDoCnj } from './prazo-judicial.ts'
 
 const NADA = new Set<string>()
 
@@ -66,6 +66,19 @@ describe('GGVP-34 CA9 · calendário do tribunal pelo número CNJ', () => {
   it('entram os nacionais e os do tribunal do processo, não os de outro tribunal', async () => {
     expect([...(await feriadosDoProcesso(banco, '00012349620264036301'))].sort()).toEqual(['2026-10-08', '2026-11-02'])
     expect([...(await feriadosDoProcesso(banco, null))]).toEqual(['2026-11-02'])
+  })
+})
+
+describe('GGVP-100 CA4 · prazo do recurso contra a sentença, pelo lado seguro (G12)', () => {
+  it('sem saber se é JEF ou vara comum, conta 10 dias úteis, não 15', () => {
+    // Disponibilizada na segunda 05/10: início na quarta 07/10; 10 dias úteis até a terça 20/10 (15 iriam a 27/10).
+    expect(prazoRecursal('2026-10-05', NADA)).toEqual({ fim: '2026-10-20', regra: REGRA_PRAZO_RECURSAL.texto, versao: REGRA_PRAZO_RECURSAL.versao })
+    expect(prazoRecursal('2026-10-05', new Set(['2026-10-12'])).fim).toBe('2026-10-21')
+  })
+
+  it('se a publicação foi classificada com um prazo menor, vale o menor; com um maior, os 10 dias', () => {
+    expect(prazoRecursal('2026-10-05', NADA, '2026-10-15').fim).toBe('2026-10-15')
+    expect(prazoRecursal('2026-10-05', NADA, '2026-10-27').fim).toBe('2026-10-20')
   })
 })
 

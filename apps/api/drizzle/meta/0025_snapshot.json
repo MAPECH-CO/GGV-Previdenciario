@@ -1,5 +1,5 @@
 {
-  "id": "6fdd31a6-e9d1-41e8-8ed8-f3784f512310",
+  "id": "7aad5918-4fc0-4772-82d2-0bdb51a83bce",
   "prevId": "a380d268-8f84-4ab0-a91a-064264f12f1d",
   "version": "7",
   "dialect": "postgresql",
@@ -910,12 +910,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "drive_pasta_id": {
-          "name": "drive_pasta_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "anonimizado_em": {
           "name": "anonimizado_em",
           "type": "timestamp with time zone",
@@ -1484,6 +1478,18 @@
         "encerrado_em": {
           "name": "encerrado_em",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vara": {
+          "name": "vara",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "juiz": {
+          "name": "juiz",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -2729,19 +2735,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "drive_arquivo_id": {
-          "name": "drive_arquivo_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drive_pendente": {
-          "name": "drive_pendente",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -3941,12 +3934,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "pacote_drive_id": {
-          "name": "pacote_drive_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -4980,6 +4967,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "entendimentos": {
+          "name": "entendimentos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entendimentos_em": {
+          "name": "entendimentos_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",

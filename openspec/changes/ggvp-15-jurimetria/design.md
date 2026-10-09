@@ -180,6 +180,38 @@ Nenhuma tela nova.
 - **Tempo até a sentença:** hoje, só os processos protocolados pelo portal com a data da decisão gravada têm as duas datas. Os importados ficam fora até o estudo trazer a data da distribuição.
 - **A inicial ainda não tem número:** a minuta da petição inicial é escrita antes do protocolo, quando o caso quase nunca tem número de processo. A fonte do juízo só vem quando o caso já tem um número (por exemplo, um novo processo depois de um perdido). Prever o juízo pela cidade do cliente fica para a parte 2, se o escritório quiser.
 
+## GGVP-64 · Juízo identificado: mostrar a jurimetria (parte 2, 09/10)
+
+### Context
+- A parte 1 está no PR #11, em revisão: o juízo pelo CNJ (`juizoDoCnj`), a jurimetria em código e `GET /api/casos/:id/juizo`.
+- A página do processo ainda roda com dados de exemplo no navegador; ligá-la ao servidor é da GGVP-146 (Pedro, em andamento).
+- A recomendação de recurso depende da GGVP-100, travada pela Q26.
+- O nome do órgão do DJEN só vem com o PR das fontes reais (AASP e DJEN), ainda aberto.
+- A tabela `juizo` (tribunal, nome) existe e ninguém escreve nela.
+
+### Decisions
+1. **Vara e juiz pela leitura da publicação** (CA1):
+   - a leitura da IA (`classificar_publicacao`, versão 4) devolve também `vara` e `juiz` quando estão escritos no texto, ou nulo;
+   - a tela de leitura ganha os campos "Vara" e "Juiz", preenchidos pela sugestão; a pessoa confere e manda junto com a classificação;
+   - o caso guarda os dois (`caso.vara` e `caso.juiz`, migração nova); campo vazio não apaga o que já estava; o histórico guarda o antes e o depois.
+2. **Entendimentos recorrentes** (CA2, CA5):
+   - a IA (finalidade `entendimentos_do_juizo`, versão 1, JSON, leva dado de saúde, barra CID) lê as decisões de mérito dos processos do mesmo juízo (as publicações de mérito dos casos com CNJ daquele juízo, as últimas 10), cada uma sem dado pessoal (`anonimizar`, com o nome do cliente);
+   - devolve até 5 entendimentos, cada um com os números dos processos de exemplo; o código só aceita processos que estavam no conteúdo, e não há porcentagem no texto;
+   - roda em segundo plano, pela sugestão pronta, e fica na tabela `juizo` (uma linha por juízo, `nome` com o rótulo do CNJ, como "TRF3 · 6301"; colunas novas `entendimentos` e `entendimentos_em`). Decisão nova no juízo, a rodada refaz.
+3. **Contrato:** `JurimetriaDoJuizo` ganha `vara` e `juiz` (do caso, ou nulos) e `entendimentos` (texto e processos); `LeituraDaPublicacaoPelaIa` e `ClassificarPublicacao` ganham `vara` e `juiz` opcionais, até 120 caracteres.
+4. **Na peça** (CA6): quando o caso já tem juízo, a minuta manda ao modelo os entendimentos e os processos de exemplo, sem número do juízo; as fontes da advogada mostram o que foi usado. Antes do protocolo, sem juízo, nada muda.
+5. **Sem dependência nova.**
+
+### Campos de formulário
+- **"Vara"** e **"Juiz"** (leitura da publicação): texto curto, até 120 caracteres, opcionais, validados pelo contrato na tela e no servidor. Não são dados da biblioteca `campos` (não é CPF, data, número nem nome de pessoa a validar).
+
+### Telas
+Nenhuma tela nova. A leitura da publicação ganha "Vara" e "Juiz". A sobreposição da página do processo continua com os números de exemplo até a página ler do servidor.
+
+### Risks / Trade-offs
+- **Entendimentos com poucas decisões:** com uma ou duas decisões, o "recorrente" é fraco; cada entendimento mostra os processos de exemplo, e a advogada julga.
+- **Vara digitada de dois jeitos:** fica como foi conferida; o juízo da jurimetria continua sendo o do CNJ.
+
 ## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
 
 ### Context
@@ -238,6 +270,52 @@ Nenhuma tela nova. As fontes aparecem onde já aparecem.
 - **Extensão no Supabase:** se o usuário do banco não puder criar a extensão, a migração falha e o container não sobe; o Coolify mantém a versão anterior. Ligar a extensão no painel do Supabase antes do deploy.
 - **Custo:** só o que é novo ganha vetor, porque o hash evita recalcular. A consulta também gasta uma chamada de embeddings.
 - **Leitura das fontes:** a cada rodada, alimentar lê as fontes inteiras e compara pelo hash. Com milhares de itens, guardar a última data lida por fonte.
+
+## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem (parte 2)
+
+### Context
+
+- **Documentação médica** (`documentacao_medica`, parte `parecer`, GGVP-132):
+  - as análises da IA, com os documentos lidos (tipo, data, resumo e os itens que cobrem);
+  - os registros do parecer, com os itens como a advogada conferiu. Cada registro aponta a análise que conferiu (`analise` = o `quando` da análise).
+- **Perícia** (`pericia.documento`, GGVP-137 e GGVP-139):
+  - `resultado.registrado` é o que a advogada registrou;
+  - `resultado.laudo.leitura` é a leitura do laudo que ela conferiu (assunto, resumo, conclusão, porquê, ponto de atenção).
+- **Entrevista** (`gravacao_recepcao.dados`, GGVP-46 e GGVP-133):
+  - os trechos da transcrição, com a marca de prova (CA6);
+  - as informações extraídas, com `conferidaEm`.
+  
+  A gravação é da pessoa, não do caso: o caso nasce no "fechou".
+
+### Decisions
+
+1. **Quatro fontes novas em `FONTES`**, a mesma consulta da busca por palavra e da rodada que alimenta o acervo. Sem migração e sem tabela nova; o hash de hoje evita duplicar (CA3).
+   - **Parecer médico:** cada registro, com a situação, os itens (texto e situação) e o que o documento deve abordar ou a conferência manual.
+   - **Laudo conferido:** cada documento de uma análise que algum registro conferiu, com o tipo, a data e o resumo. O mesmo documento repetido em outra análise dá o mesmo texto e não duplica.
+   - **Resultado da perícia:** a perícia com `resultado.registrado`, com favorável ou desfavorável, o tipo da perícia e a leitura conferida.
+   - **Transcrição conferida:** os trechos marcados como prova e as informações conferidas, sem destino `cofre` e sem os campos `telefone` e `contatoApoio`.
+     - A gravação entra no caso mais novo da pessoa; sem caso, entra quando o caso nascer.
+     - A gravação de conversa (`conversaId`) fica de fora, porque já entra como "Conversa conferida".
+2. **Saúde só para o Jurídico** (`so_juridico`):
+   - o parecer, o laudo e a perícia, sempre;
+   - a transcrição, pela marca da gravação.
+3. **Fora, porque ninguém confere** (Mateus, 09/10):
+   - o texto inteiro da transcrição;
+   - o resumo da IA da entrevista;
+   - a análise sem registro.
+
+### Campos de formulário
+
+Nenhum.
+
+### Telas
+
+Nenhuma tela nova. As fontes aparecem onde já aparecem.
+
+### Risks / Trade-offs
+
+- **Pessoa com dois casos:** a transcrição vai para o caso mais novo. Ligar a gravação ao caso quando a entrevista guardar o caso.
+- **Consulta maior:** as fontes abrem o JSON a cada busca por palavra. Com milhares de casos, buscar por palavra na tabela de trechos.
 
 ## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
 
