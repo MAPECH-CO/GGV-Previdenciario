@@ -6,7 +6,7 @@ import { caso, documentacaoMedica, eventoAuditoria, mensagem, pericia, pessoa, p
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import type { Complemento } from '../../../web/src/regras/complemento.ts'
-import { MSG_CHATWOOT_DESLIGADO, MSG_FORA_DA_LISTA, MSG_SEM_COMPLEMENTO_ABERTO, MSG_SEM_OK_DA_ADVOGADA, MSG_SEM_TEXTO_APROVADO } from './mensagens.ts'
+import { MSG_A_ADVOGADA_FALA, MSG_CHATWOOT_DESLIGADO, MSG_FAVORAVEL_PELO_FINANCEIRO, MSG_FORA_DA_LISTA, MSG_SEM_COMPLEMENTO_ABERTO, MSG_SEM_TEXTO_APROVADO } from './mensagens.ts'
 import { abrirExplicacaoDoResultado } from './resultado.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -50,8 +50,8 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
     expect(boasVindas.texto).toMatch(/^Olá, Maria! Boas-vindas ao escritório GGV\. Seu caso de .+\.$/)
     expect(boasVindas.texto.endsWith(NUNCA_A_SENHA)).toBe(true)
     expect(boasVindas.conversas).toHaveLength(1)
-    // G8: o aviso do resultado só sai com o texto aprovado.
-    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/resultado-favoravel`)).trava).toMatch(/OK da advogada/)
+    // G8: o aviso favorável sai pela tela do Financeiro, com o texto da prestação de contas.
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/resultado-favoravel`)).trava).toBe(MSG_FAVORAVEL_PELO_FINANCEIRO)
     expect((await json('igor', 'GET', `/api/fichas/${fichaId}/mensagens/pericia-orientacao`)).trava).toBe('Sem perícia marcada no processo.')
     await banco.insert(pericia).values({ casoId: processoId, tipo: 'medica', agendadaPara: new Date('2026-10-16T11:30:00Z') })
     expect((await json('igor', 'GET', `/api/fichas/${fichaId}/mensagens/pericia-orientacao?processo=${processoId}`)).texto).toMatch(/^Olá, Maria! Sua perícia no INSS é .*16/)
@@ -134,6 +134,12 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     const envio = (texto: string) => ({ modelo: 'complemento', texto, conversa: pronta.conversas[0].id, processoId })
     expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
     expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio(pronta.texto))).toMatchObject({ modelo: 'complemento', status: 'entregue', processoId })
+    // G15: o envio, de qualquer janela, conta como tentativa do laço, e a próxima espera os 3 dias.
+    const [parte] = await banco.select().from(documentacaoMedica)
+    expect((parte.documento as Complemento[])[0].tentativas).toEqual([{ dia: '2026-10-08', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' }])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'complemento_tentativa_registrada'))).toHaveLength(1)
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}`)).historico.at(-1).oQue).toBe('Complemento ao médico: 1ª tentativa por Chatwoot (sem resposta)')
+    expect((await json('ana', 'GET', url)).trava).toMatch(/^A próxima tentativa é em /)
     // Encerrado pelo parecer Suficiente, volta a travar.
     await banco.update(documentacaoMedica).set({ documento: [pedido(fichaId, processoId, { encerrado: { quando: '2026-10-08T12:00:00.000Z', porque: 'parecer-suficiente' } })] })
     expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_COMPLEMENTO_ABERTO)
@@ -160,19 +166,34 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     expect(await json('ana', 'POST', url, envio(pronta.texto))).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'entregue' })
   })
 
-  it('o resultado favorável: o G8 antes de tudo (o OK da advogada na prestação de contas), e depois o texto aprovado', async () => {
+  it('o desfavorável que a advogada decidiu falar ela mesma (caso complexo) só sai por ela', async () => {
     const { fichaId, processoId } = await cliente()
-    const url = `/api/fichas/${fichaId}/mensagens/resultado-favoravel`
-    const resumo = 'Olá, Maria! Boa notícia: o INSS aprovou o seu benefício. Vamos combinar com você a ida ao banco.'
+    const url = `/api/fichas/${fichaId}/mensagens`
+    const resumo = 'Olá, Maria. O INSS negou o benefício porque a renda da casa passou do limite. Vou te ligar para conversar.'
     await abrirExplicacaoDoResultado(banco, processoId)
-    await chamar('paula', 'POST', `/api/casos/${processoId}/resultado/resumo`, { texto: resumo, quemFala: 'atendimento' })
-    // Com o texto aprovado, mas sem o OK da advogada, não sai (G8), nem pelo envio direto.
-    expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_OK_DA_ADVOGADA)
-    const envio = { modelo: 'resultado-favoravel', texto: `${resumo} ${NUNCA_A_SENHA}`, conversa: 0 }
-    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio)).erro).toBe(MSG_SEM_OK_DA_ADVOGADA)
+    expect((await chamar('paula', 'POST', `/api/casos/${processoId}/resultado/resumo`, { texto: resumo, quemFala: 'advogada' })).statusCode).toBe(201)
+    expect((await json('ana', 'GET', `${url}/resultado-desfavoravel`)).trava).toBe(MSG_A_ADVOGADA_FALA)
+    const envio = { modelo: 'resultado-desfavoravel', texto: `${resumo} ${NUNCA_A_SENHA}`, conversa: 0 }
+    expect((await json('ana', 'POST', url, envio)).erro).toBe(MSG_A_ADVOGADA_FALA)
+    expect((await json('igor', 'GET', `${url}/resultado-desfavoravel`)).trava).toBe(MSG_A_ADVOGADA_FALA)
+    const pronta = await json('paula', 'GET', `${url}/resultado-desfavoravel`)
+    expect(pronta).toMatchObject({ trava: null, editavel: false, texto: envio.texto })
+    expect(await json('paula', 'POST', url, { ...envio, conversa: pronta.conversas[0].id })).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'entregue', quem: 'paula' })
+  })
+
+  it('o favorável não sai por esta janela: nem o resumo do caso perdido, nem depois do OK da advogada; vai pela tela do Financeiro (G8)', async () => {
+    const { fichaId, processoId } = await cliente()
+    const url = `/api/fichas/${fichaId}/mensagens`
+    // O caso perde na 1ª instância: o estudo abre o resumo e o Jurídico aprova a explicação da derrota.
+    await abrirExplicacaoDoResultado(banco, processoId)
+    const derrota = 'Olá, Maria. O juiz negou o benefício porque a renda da casa passou do limite. Vamos recorrer.'
+    await chamar('paula', 'POST', `/api/casos/${processoId}/resultado/resumo`, { texto: derrota, quemFala: 'atendimento' })
+    // O recurso reverte e a advogada dá o OK na prestação de contas.
     const [paula] = await banco.select().from(usuario).where(eq(usuario.email, 'paula@exemplo.ggv'))
     await banco.insert(prestacaoContas).values({ casoId: processoId, valorRecebido: '10000.00', honorarios: '3000.00', valorCliente: '7000.00', okAdvogadaPor: paula.id, okAdvogadaEm: relogio })
-    expect(await json('ana', 'GET', url)).toMatchObject({ trava: null, editavel: false, texto: envio.texto })
+    expect(await json('ana', 'GET', `${url}/resultado-favoravel`)).toMatchObject({ trava: MSG_FAVORAVEL_PELO_FINANCEIRO, texto: '' })
+    expect((await json('ana', 'POST', url, { modelo: 'resultado-favoravel', texto: `${derrota} ${NUNCA_A_SENHA}`, conversa: 0 })).erro).toBe(MSG_FAVORAVEL_PELO_FINANCEIRO)
+    expect(await banco.select().from(mensagem)).toHaveLength(0)
   })
 })
 

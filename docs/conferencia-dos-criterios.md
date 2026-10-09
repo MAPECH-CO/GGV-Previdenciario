@@ -1327,8 +1327,9 @@ GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 ### GGVP-102 · Mensagens ao cliente com modelo e registro
 
 No servidor (GGVP-138 e GGVP-146), o complemento sai com o pedido de complemento aberto no caso (parado no laço, G15, não
-sai), o aviso desfavorável com o resumo aprovado pelo Jurídico (GGVP-22) e o favorável com esse resumo e o OK da advogada
-na prestação de contas (G8). O resumo só nasce hoje no caso perdido: o favorável espera o resumo também no caso ganho.
+sai) e cada envio conta como tentativa do laço, de qualquer janela. O aviso desfavorável sai com o resumo aprovado pelo
+Jurídico (GGVP-22); se a advogada decidiu falar ela mesma, só ela manda. O favorável não sai por esta janela: vai pela tela
+"Avisar resultado e agendar a ida ao banco", do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
@@ -1337,9 +1338,9 @@ na prestação de contas (G8). O resumo só nasce hoje no caso perdido: o favor�
 | 3 | feito só no servidor de exemplo | `regras/mensagens.test.ts:24`; `MensagemAoCliente.test.tsx:39`; `e2e/mensagens.e2e.ts:28` |
 | 4 | feito só no servidor de exemplo | `dados/mensagens.test.ts:66` |
 | 5 | feito só no servidor de exemplo | `dados/mensagens.test.ts:78`; `MensagemAoCliente.test.tsx:70`; `ConviteChatwoot.test.tsx:63`; `e2e/mensagens.e2e.ts:42` |
-| 6 | feito | `regras/mensagens.test.ts:51`; `MensagemAoCliente.test.tsx:61`; no servidor, o Chatwoot de verdade com fetch falso e a trava da homologação: `apps/api/src/rotas/mensagens.test.ts:230`, `:381` e `:399`; `MensagemAoCliente.test.tsx:144` |
-| 7 | parcial: o G8 vale no servidor, mas o resumo aprovado ainda não nasce no caso ganho | `regras/mensagens.test.ts:5`; `MensagemAoCliente.test.tsx:50`; no servidor (G8): `apps/api/src/rotas/mensagens.test.ts:163` |
-| 8 | feito | no servidor: `apps/api/src/rotas/mensagens.test.ts:149` |
+| 6 | feito | `regras/mensagens.test.ts:51`; `MensagemAoCliente.test.tsx:61`; no servidor, o Chatwoot de verdade com fetch falso e a trava da homologação: `apps/api/src/rotas/mensagens.test.ts:251`, `:402` e `:420`; `MensagemAoCliente.test.tsx:144` |
+| 7 | feito: no servidor, o favorável sai só pela tela do Financeiro, com o texto da prestação de contas (G8) | `regras/mensagens.test.ts:5`; `MensagemAoCliente.test.tsx:50`; no servidor: `apps/api/src/rotas/mensagens.test.ts:184` (esta janela não o manda) e `prestacao.test.ts` (o aviso da ida ao banco) |
+| 8 | feito | no servidor: `apps/api/src/rotas/mensagens.test.ts:155` e `:169` (a advogada que fala ela mesma) |
 | 9 | feito só no servidor de exemplo | `regras/mensagens.test.ts:37`; `dados/mensagens.test.ts:90`; `MensagemAoCliente.test.tsx:39` |
 | 10 | feito só no servidor de exemplo | `ConviteChatwoot.test.tsx:52` (Chatwoot simulado) |
 
@@ -1351,7 +1352,7 @@ na prestação de contas (G8). O resumo só nasce hoje no caso perdido: o favor�
 | 2 | feito só no servidor de exemplo | `regras/seguranca.test.ts:44`; `dados/seguranca.test.ts:93`; `e2e/seguranca.e2e.ts:25` |
 | 3 | feito só no servidor de exemplo | `regras/seguranca.test.ts:29`; `Conversa.test.tsx:167`; `e2e/seguranca.e2e.ts:59` |
 | 4 | feito | `regras/mensagens.test.ts:62`; `e2e/seguranca.e2e.ts:73` |
-| 5 | feito só no servidor de exemplo | `regras/seguranca.test.ts:33`; `dados/seguranca.test.ts:62` e `:83`; `CartaoDadosBancarios.test.tsx:19` |
+| 5 | feito só no servidor de exemplo | `regras/seguranca.test.ts:33`; `dados/seguranca.test.ts:62` e `:83`; `CartaoDadosBancarios.test.tsx:19`; o aviso ao contato anterior que não saiu vira alerta, sem sucesso falso: `CartaoDadosBancarios.test.tsx:67` e `apps/api/src/rotas/seguranca.test.ts:104` |
 | 6 | parcial | só um lembrete na tela das mensagens da perícia (`componentes/MensagemAoCliente.tsx:149`), sem teste; a ligação de orientação da perícia não pede nem registra a verificação |
 | 7 | feito só no servidor de exemplo | `LaudoPeloChat.test.tsx:62`; `Conversa.test.tsx:167` |
 | 8 | feito só no servidor de exemplo | `regras/seguranca.test.ts:23`; `ConferirConversa.test.tsx:203`; `Conversa.test.tsx:175` |
