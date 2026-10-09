@@ -44,7 +44,7 @@ export const MSG_COFRE_SEM_TAREFA = 'A senha do gov.br só abre com uma tarefa a
 const TAMANHO_MAXIMO = 25 * 1024 * 1024
 
 /** Tela de cada passo, quando já existe. */
-const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
+export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.01': (id) => `/casos/${id}/conferencia`,
   'D2.02': (id) => `/casos/${id}/protocolo`,
   'D2.03': (id) => `/casos/${id}/pericia`,
