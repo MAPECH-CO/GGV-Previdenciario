@@ -9,15 +9,11 @@ import { defineConfig } from '@playwright/test'
 const api = process.env.PORTA_E2E_API ?? '3101'
 const web = process.env.PORTA_E2E_WEB ?? '5174'
 export const SESSAO = 'e2e/.sessao/atendimento.json'
-// GGVP-118 CA7: o navegador e o processo do teste no fuso do escritório, como a API logo abaixo. O CI roda em UTC, e
-// entre 21h e meia-noite o "hoje" do teste, o da tela e o do servidor davam dias diferentes.
-const FUSO = 'America/Sao_Paulo'
-process.env.TZ = FUSO
 
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
-  use: { baseURL: `http://localhost:${web}`, timezoneId: FUSO },
+  use: { baseURL: `http://localhost:${web}` },
   projects: [
     { name: 'entrar', testMatch: /sessao\.setup\.ts/ },
     { name: 'logado', dependencies: ['entrar'], use: { storageState: SESSAO }, testIgnore: /login\.e2e\.ts/ },
@@ -28,7 +24,7 @@ export default defineConfig({
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: `http://127.0.0.1:${api}/saude`,
       // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC.
-      env: { PORTA: api, TZ: FUSO },
+      env: { PORTA: api, TZ: 'America/Sao_Paulo' },
       reuseExistingServer: false,
     },
     {
