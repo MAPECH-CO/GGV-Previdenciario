@@ -61,10 +61,13 @@
 - [x] 4.5 CA2 · Busca híbrida em `buscarNoAcervo` (RRF, k = 60), sempre com a fonte. Sem vetor, só palavra; trecho de saúde só com `saude: true`, que os fluxos do Jurídico passam. Teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 4.6 Rodar typecheck, lint, testes e o Playwright das telas que usam a IA; colar a saída; perguntar "Agora ok?". Um teste do estudo de caso passou a buscar como o Jurídico busca (`saude: true`).
 
-## GGVP-141, parte 2 (depois dos PRs #39 e #42 e da GGVP-133)
+## GGVP-141, parte 2 (09/10, em PR próprio sobre o #11)
 
-- [ ] 4.7 CA1 · O parecer, o laudo e o resultado da perícia conferidos entram no acervo.
-- [ ] 4.8 CA1 · A transcrição conferida entra no acervo.
+- [x] 4.7 CA1 · Parecer e laudo conferidos nas fontes do acervo: cada registro do parecer e cada documento da análise que um registro conferiu, só para o Jurídico. Teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.8 CA1 · Transcrição conferida nas fontes: os trechos marcados como prova e as informações conferidas, sem senha, telefone e contato de apoio, no caso mais novo da pessoa; a gravação de conversa fica de fora. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.9 CA1 · Resultado da perícia registrado nas fontes: favorável ou não, o tipo e a leitura conferida, só para o Jurídico. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.10 CA1 · O que a IA sugeriu e ninguém conferiu fica fora: a análise sem registro, a informação sem conferência e o resumo da IA da entrevista. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.11 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
 

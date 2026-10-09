@@ -8,9 +8,10 @@ Acervo alimentado pelo que as telas conferem, com busca por significado: o que a
   - o acervo que se alimenta sozinho com as fontes que a busca já usa e com a conversa conferida do Relacionamento;
   - os vetores pela OpenAI, com registro;
   - a busca híbrida.
-- **Parte 2:**
-  - o parecer, o laudo e o resultado da perícia, quando as telas forem ao servidor (PRs #39 e #42);
-  - a transcrição (GGVP-133).
+- **Parte 2 (09/10):**
+  - o parecer e o laudo conferidos na documentação médica;
+  - o resultado da perícia registrado;
+  - a transcrição conferida: os trechos marcados como prova e as informações conferidas.
 
 ## ADDED Requirements
 
@@ -19,12 +20,22 @@ O que a pessoa confere nas telas SHALL entrar no acervo quando é salvo.
 - O texto MUST NOT levar CPF, endereço nem telefone para outros casos.
 - O dado de saúde MUST ficar só para o Jurídico.
 - **Parte 1:** as fontes que a busca já usa e a conversa conferida do Relacionamento.
-- **Parte 2:** o parecer, o laudo e o resultado da perícia, e a transcrição.
+- **Parte 2:**
+  - o parecer conferido: a situação, os itens como a advogada conferiu e o que o documento deve abordar;
+  - o laudo conferido: o tipo, a data e o resumo de cada documento da análise que um parecer conferiu;
+  - o resultado da perícia registrado: favorável ou não, o tipo da perícia e a leitura do laudo que a advogada conferiu;
+  - a transcrição conferida: os trechos marcados como prova e as informações conferidas, sem a senha, o telefone e o contato de apoio.
+- O que a IA sugeriu e ninguém conferiu MUST NOT entrar: a análise sem parecer registrado, a informação sem conferência e o resumo da IA da entrevista.
 
 #### Scenario: CA1 · Conferido e salvo
 - **Dado** o que a pessoa confere nas telas do Pedro (parecer, laudo e resultado da perícia, conversa conferida, transcrição)
 - **Quando** é salvo
 - **Então** entra no acervo, sem CPF, endereço nem telefone para outros casos, e com dado de saúde só para o Jurídico
+
+#### Scenario: CA1 · Sugestão da IA sem conferência
+- **Dado** a análise da IA sem parecer registrado, a informação da entrevista sem conferência e o resumo da IA da entrevista
+- **Quando** o acervo se alimenta
+- **Então** nada disso entra
 
 ### Requirement: CA2 · Busca híbrida, sempre com a fonte
 Quando a IA buscar contexto, a busca SHALL juntar o sentido (pgvector, no PostgreSQL do Supabase, índice HNSW) com a palavra (a busca que já existe), misturados por classificação recíproca (RRF). Cada resultado MUST vir com a fonte. Sem o vetor da consulta, a busca SHALL seguir só pela palavra.
