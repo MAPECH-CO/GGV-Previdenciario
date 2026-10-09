@@ -5,7 +5,12 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 20, digital: '4f803275' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 21, digital: '967e2be' })
+  })
+
+  it('GGVP-100 · só a Sênior decide se recorre; a advogada responsável e o Sócio só leem', () => {
+    expect(PERFIS.filter((p) => pode(p, 'recurso.decidir'))).toEqual(['senior'])
+    expect(PERFIS.filter((p) => pode(p, 'recurso.ver'))).toEqual(['advogada', 'senior', 'socio'])
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -138,11 +143,11 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento: 13,
       atendimento_lider: 16,
       documentacao: 9,
-      advogada: 35,
-      senior: 39,
+      advogada: 36,
+      senior: 41,
       juridico_adm: 18,
       financeiro: 6,
-      socio: 5,
+      socio: 6,
     })
   })
 })

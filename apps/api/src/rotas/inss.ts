@@ -58,6 +58,9 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  // GGVP-100: "Vale recorrer?" e, com "Recorrer", a tarefa do recurso abre a mesma tela (a decisão e o prazo).
+  'D3b.04': (id) => `/casos/${id}/recurso`,
+  'D3b.04r': (id) => `/casos/${id}/recurso`,
   'D3b.06r': (id) => `/casos/${id}/resultado`,
   'D3b.06': (id) => `/casos/${id}/resultado`,
   // GGVP-19 CA3: a revisão do estudo é na tela de estudos.

@@ -12,6 +12,7 @@ import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { situacaoDoDespacho } from './indeferimento.ts'
+import { semRecursoPendente } from './recurso.ts'
 import { abrirExplicacaoDoResultado } from './resultado.ts'
 
 export const TITULO_REVISAR = 'Revisar estudo de caso'
@@ -87,7 +88,7 @@ export function registrarRotasEstudo(app: FastifyInstance, { banco, agora = () =
     return s
   }
 
-  // CA1: uma vez por caso; com estudo, o caso sai da lista do preparo.
+  // CA1: uma vez por caso; com estudo, o caso sai da lista do preparo. GGVP-100 CA2: só depois do "Não recorrer".
   preparo.registrar(
     async () =>
       (
@@ -103,6 +104,7 @@ export function registrarRotasEstudo(app: FastifyInstance, { banco, agora = () =
                   .from(chamadaIa)
                   .where(and(eq(chamadaIa.casoId, caso.id), eq(chamadaIa.finalidade, 'estudo_de_caso'), eq(chamadaIa.situacao, 'ok'))),
               ),
+              semRecursoPendente(banco),
             ),
           )
       ).map((c) => c.id),

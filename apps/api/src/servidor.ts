@@ -32,6 +32,7 @@ import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
+import { registrarRotasRecurso } from './rotas/recurso.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
 import { registrarRotasGlossario } from './rotas/glossario.ts'
 import { registrarRotasTranscricao } from './rotas/transcricao.ts'
@@ -134,6 +135,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasRecurso(app, { banco, agora })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecepcao(app, { banco, agora, tarefasPorArea })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
