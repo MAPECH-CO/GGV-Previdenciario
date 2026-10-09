@@ -97,7 +97,7 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
   it('CA9 · as tarefas por setor, inclusive as paralelas, e a perícia aberta com responsável e prazo', async () => {
     const antonio = await obterCaso('antonio-exemplo-1', ADVOGADA)
     const setores = antonio!.tarefas.map((t) => t.setor)
-    expect(setores).toEqual(expect.arrayContaining(['Documentação', 'Jurídico', 'Jurídico administrativo']))
+    expect(setores).toEqual(expect.arrayContaining(['Atendimento', 'Jurídico', 'Jurídico administrativo']))
     expect(antonio!.tarefas.every((t) => t.responsavel)).toBe(true)
     expect(antonio!.tarefas.filter((t) => t.paralela).length).toBeGreaterThan(1)
     const pericia = antonio!.tarefas.find((t) => t.href === '/casos/antonio-exemplo-1/pericia')!

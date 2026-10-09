@@ -5,7 +5,9 @@ import { and, arrayOverlaps, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   AgendarIdaAoBanco,
+  ConcluirIdaAoBanco,
   IdaAoBancoDoCaso,
+  LevarAoBancoDoCaso,
   PrestacaoDoCaso,
   ReceberPrestacao,
   RegistrarEnvio,
@@ -28,10 +30,25 @@ export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebime
 export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
 export const MSG_ANTES_DO_RECEBIMENTO = 'Registre o recebimento da prestação atual antes de avisar o cliente.'
 export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
+export const MSG_DATA_PASSADA = 'A ida ao banco não pode ser marcada numa data ou hora que já passou.'
 export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
 export const TITULO_LEVAR = 'Levar ao banco'
+export const MSG_SEM_IDA = 'Não há ida ao banco marcada para levar neste caso.'
+export const TITULO_REMARCAR = 'Remarcar a ida ao banco'
+export const TITULO_CONFIRMAR = 'Confirmar o recebimento: cliente levado ao banco'
+/** O que o cliente leva ao banco (P3 do roteiro de 09/10). Lista fixa, a confirmar com o Lucas; nunca valor. */
+export const O_QUE_LEVAR = ['Documento oficial com foto do cliente (RG ou CNH)', 'CPF do cliente', 'Carta de concessão do benefício ou a decisão da Justiça']
 /** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
 const ATENDIMENTO = ['atendimento', 'atendimento_lider']
+
+/**
+ * GGVP-98 CA9: quando o Financeiro confirmou o recebimento de cada caso, depois da ida ao banco. É o dinheiro na mão, para o
+ * painel Financeiro (GGVP-78) e os Resultados (GGVP-75); o "Receber e lançar" vem antes e ainda não é.
+ */
+export async function recebimentosConfirmados(banco: Banco): Promise<Map<string, Date>> {
+  const eventos = await banco.select({ alvo: eventoAuditoria.alvo, quando: eventoAuditoria.quando }).from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'recebimento_confirmado'))
+  return new Map(eventos.map((e) => [e.alvo.replace(/^caso:/, ''), e.quando]))
+}
 
 type Opcoes = { banco: Banco; agora?: () => Date }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
@@ -292,6 +309,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.tarefaDoBanco) return negar(resposta, 409, MSG_ANTES_DA_PRESTACAO)
     const d = entrada.data
+    // CA6: hora de Brasília (sem horário de verão desde 2019). A tela limita a data a partir de hoje; o servidor recusa
+    // também a hora de hoje que já passou.
+    const quando = new Date(`${d.data}T${d.hora}:00-03:00`)
+    if (quando < agora()) return negar(resposta, 400, MSG_DATA_PASSADA)
     const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
     if (!u || !u.perfis.some((p) => ATENDIMENTO.includes(p))) return negar(resposta, 400, MSG_ACOMPANHANTE)
     const quem = pedido.usuario!.id
@@ -303,16 +324,15 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         pessoaId: s.c!.pessoaId,
         casoId,
         tipo: 'ida_ao_banco',
-        // Hora de Brasília (sem horário de verão desde 2019).
-        quando: new Date(`${d.data}T${d.hora}:00-03:00`),
+        quando,
         local: d.local,
         acompanhanteId: d.acompanhanteId,
         criadoPor: quem,
       })
       if (s.levar) await tx.update(tarefa).set({ prazo, responsavelId: d.acompanhanteId }).where(eq(tarefa.id, s.levar.id))
       else await tx.insert(tarefa).values({ casoId, passo: 'D2.06l', titulo: TITULO_LEVAR, perfilDono: 'atendimento', responsavelId: d.acompanhanteId, prazo })
-      // Remarcou: o convite precisa sair de novo (CA12).
-      if (s.ag) await tx.update(tarefa).set({ situacao: 'aberta', concluidaEm: null, concluidaPor: null }).where(eq(tarefa.id, s.tarefaDoBanco!.id))
+      // Remarcou: o convite precisa sair de novo (CA12), e o título volta ao aviso (o "Remarcar: motivo" já foi atendido).
+      if (s.ag) await tx.update(tarefa).set({ titulo: TITULO_AVISO, situacao: 'aberta', concluidaEm: null, concluidaPor: null }).where(eq(tarefa.id, s.tarefaDoBanco!.id))
       await noHistorico(tx, quem, s.ag ? 'ida_ao_banco_remarcada' : 'ida_ao_banco_agendada', pedido, casoId)
       return true
     })
@@ -366,6 +386,63 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     return resposta.code(201).send({ ok: true })
   })
 
+  // GGVP-98 (P3 do roteiro de 09/10): quem leva, do Atendimento (perfil da sessão), vê a visita da tarefa aberta "Levar ao
+  // banco": cliente, data, hora, local e o que levar. Nenhum valor: o Atendimento não vê valor.
+  const quemLeva = { preHandler: exigir(banco, 'banco.levar', agora) }
+  app.get<{ Params: { id: string } }>('/api/casos/:id/banco/levar', quemLeva, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const s = await situacaoDoBanco(casoId)
+    if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
+    if (!s.levar || !s.ag) return negar(resposta, 409, MSG_SEM_IDA)
+    return LevarAoBancoDoCaso.parse({
+      casoId,
+      cliente: s.c.nome,
+      data: dataBr(s.ag.quando),
+      hora: horaBr(s.ag.quando),
+      local: s.ag.local ?? '',
+      acompanhante: s.acompanhante,
+      oQueLevar: O_QUE_LEVAR,
+    })
+  })
+
+  // "Levei o cliente ao banco" conclui a tarefa com quem e quando, e a tarefa do Financeiro reabre para confirmar o
+  // recebimento (CA9). "Não deu" cancela a ida e volta ao Financeiro remarcar, com o motivo no título da tarefa dele, e o
+  // aviso antigo deixa de valer: sem o aviso da nova data ao cliente, não há recebimento a confirmar.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/banco/levar', quemLeva, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const entrada = ConcluirIdaAoBanco.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
+    const s = await situacaoDoBanco(casoId)
+    if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
+    if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
+    if (!s.levar || !s.ag) return negar(resposta, 409, MSG_SEM_IDA)
+    const d = entrada.data
+    const quem = pedido.usuario!.id
+    const recusa = await banco.transaction(async (tx) => {
+      if (!(await casoAberto(tx, casoId))) return MSG_ENCERRADO
+      // A condição vai no próprio update: dois cliques ao mesmo tempo, só o primeiro conta.
+      const [aberta] = await tx
+        .update(tarefa)
+        .set({ situacao: d.resultado === 'levado' ? 'concluida' : 'cancelada', concluidaEm: agora(), concluidaPor: quem })
+        .where(and(eq(tarefa.id, s.levar!.id), isNull(tarefa.concluidaEm)))
+        .returning({ id: tarefa.id })
+      if (!aberta) return MSG_SEM_IDA
+      if (d.resultado === 'nao_deu') {
+        await tx.update(agendamento).set({ situacao: 'cancelado' }).where(eq(agendamento.id, s.ag!.id))
+        if (s.atual) await tx.update(prestacaoContas).set({ clienteAvisadoEm: null }).where(eq(prestacaoContas.id, s.atual.id))
+      }
+      if (s.tarefaDoBanco)
+        await tx
+          .update(tarefa)
+          .set({ titulo: d.resultado === 'levado' ? TITULO_CONFIRMAR : `${TITULO_REMARCAR}: ${d.motivo}`, situacao: 'aberta', concluidaEm: null, concluidaPor: null })
+          .where(eq(tarefa.id, s.tarefaDoBanco.id))
+      await noHistorico(tx, quem, d.resultado === 'levado' ? 'cliente_levado_ao_banco' : 'ida_ao_banco_nao_feita', pedido, casoId, d.resultado === 'nao_deu' ? { motivo: d.motivo } : {})
+      return null
+    })
+    if (recusa) return negar(resposta, 409, recusa)
+    return resposta.code(201).send({ ok: true })
+  })
+
   // GGVP-98 CA9: feita a ida ao banco, o Financeiro confirma o recebimento e o caso fecha.
   app.post<{ Params: { id: string } }>('/api/casos/:id/banco/confirmacao', { preHandler: exigir(banco, 'banco.agendar', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
@@ -378,6 +455,12 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       if (!(await casoAberto(tx, casoId))) return false
       await tx.update(agendamento).set({ situacao: 'realizado' }).where(eq(agendamento.id, s.ag!.id))
       if (s.levar) await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, s.levar.id))
+      // A tarefa do Financeiro reaberta pelo "Levei" (confirmar o recebimento) fecha aqui.
+      if (s.tarefaDoBanco)
+        await tx
+          .update(tarefa)
+          .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+          .where(and(eq(tarefa.id, s.tarefaDoBanco.id), isNull(tarefa.concluidaEm)))
       await tx.update(caso).set({ fase: 'encerrado', encerradoEm: agora(), atualizadoEm: agora() }).where(eq(caso.id, casoId))
       await noHistorico(tx, quem, 'recebimento_confirmado', pedido, casoId)
       return true

@@ -21,9 +21,12 @@ export async function lerFormulario(pedido: FastifyRequest): Promise<{ campos: R
   return { campos, arquivo }
 }
 
-/** Guarda o arquivo fora do banco e devolve os dados da linha de `documento` (chave, tamanho e hash). */
-export async function guardarArquivo(armazenamento: Armazenamento, casoId: string, arquivo: Arquivo, rotulo: string) {
-  const chave = `casos/${casoId}/${randomUUID()}-${rotulo}`
+/**
+ * Guarda o arquivo fora do banco e devolve os dados da linha de `documento` (chave, tamanho e hash). `pasta`: `casos`, ou
+ * `pessoas` para o que é da pessoa antes de ter caso, como o áudio da entrevista do lead (GGVP-133).
+ */
+export async function guardarArquivo(armazenamento: Armazenamento, casoId: string, arquivo: Arquivo, rotulo: string, pasta: 'casos' | 'pessoas' = 'casos') {
+  const chave = `${pasta}/${casoId}/${randomUUID()}-${rotulo}`
   await armazenamento.salvar(chave, arquivo.conteudo, arquivo.mime)
   return {
     chaveArmazenamento: chave,

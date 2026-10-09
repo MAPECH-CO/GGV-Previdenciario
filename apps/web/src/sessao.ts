@@ -14,7 +14,11 @@ export function usePode(acao: Acao) {
   return pode(useSessao()?.perfilAtivo, acao)
 }
 
-/** "Entrar como…" (CA10): o servidor só aceita perfil atribuído; a tela volta ao início do novo perfil. */
+/**
+ * "Entrar como…" (CA10): o servidor só aceita perfil atribuído; a tela volta ao início do novo perfil. A cópia do navegador
+ * fica (09/10): o roteiro do teste segue o caso de um perfil a outro na mesma aba, e as telas que ainda são de exemplo
+ * guardam o que foi feito ali. Limpar a cópia aqui e no "Sair" volta quando o exemplo sair da homologação.
+ */
 export async function trocarPerfil(perfil: string) {
   const r = await chamarApi<UsuarioDaSessao>('/sessao/perfil', { method: 'POST', corpo: { perfil } })
   if (r.ok) window.location.assign('/')

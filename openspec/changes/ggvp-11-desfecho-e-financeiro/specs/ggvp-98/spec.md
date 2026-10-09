@@ -52,12 +52,17 @@ O aviso SHALL usar o modelo aprovado e o canal do cliente, e o envio SHALL ficar
 - **Então** o texto vem do modelo e o envio fica registrado
 
 ### Requirement: CA6 · Ida ao banco com quatro campos e quem acompanha do Atendimento
-Data, hora, agência ou local e quem acompanha MUST ser obrigatórios; quem acompanha MUST ter o perfil Atendimento. Agendar SHALL abrir para essa pessoa a tarefa "Levar ao banco", com a data, e o Financeiro vê o agendamento.
+Data, hora, agência ou local e quem acompanha MUST ser obrigatórios; quem acompanha MUST ter o perfil Atendimento. A data e a hora, de Brasília, MUST estar no futuro: a tela limita a data a partir de hoje, e o servidor recusa data ou hora que já passou. Agendar SHALL abrir para essa pessoa a tarefa "Levar ao banco", com a data, e o Financeiro vê o agendamento.
 
 #### Scenario: CA6 · Agendar
 - **Dado** a tarefa do aviso
 - **Quando** o Financeiro agenda sem um dos quatro campos ou com acompanhante fora do Atendimento
 - **Então** é recusado; com os quatro, quem acompanha recebe "Levar ao banco" com a data
+
+#### Scenario: CA6 · Data que já passou
+- **Dado** a tarefa do aviso
+- **Quando** o Financeiro agenda a ida ao banco para ontem, ou para hoje numa hora que já passou
+- **Então** é recusado e nada é agendado; para hoje numa hora que ainda vem, passa
 
 ### Requirement: CA7 · Remarcar atualiza o Financeiro e quem acompanha
 Remarcar SHALL cancelar o agendamento anterior, mostrar o novo ao Financeiro e mover a tarefa "Levar ao banco" para a nova data e a nova pessoa.

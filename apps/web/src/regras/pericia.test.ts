@@ -5,6 +5,7 @@ import {
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   cobrarHoje,
   confirmacaoDaPresenca,
+  dataDoJuizoNaPublicacao,
   ORIGENS,
   escolherOrientacao,
   esperaOInss,
@@ -235,5 +236,44 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(etapaEmPericia({ ...p, resultado: { registrado: { favoravel: false } } }, '2026-10-20')).toBe(
       'Resultado da perícia · pedido do juiz (D3a) · perícia médica desfavorável',
     )
+  })
+})
+
+describe('GGVP-53 · a data da perícia do juízo, lida da publicação (D3a)', () => {
+  it('lê data, hora e local da frase da perícia do tipo pedido; sem data e hora válidas, nada', () => {
+    const texto =
+      'Vistos. Defiro a prova pericial. Designo perícia médica para o dia 15/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro. Intimem-se em 05/10/2026.'
+    expect(dataDoJuizoNaPublicacao(texto, 'medica')).toEqual({ data: '2026-10-15', hora: '10:30', local: 'sala de perícias da Vara Federal de Santo Amaro' })
+    expect(dataDoJuizoNaPublicacao('Fica designada a perícia social para 20/10/2026 (terça-feira) às 9h, local: Rua das Flores, 100', 'social')).toEqual({
+      data: '2026-10-20',
+      hora: '09:00',
+      local: 'Rua das Flores, 100',
+    })
+    expect(dataDoJuizoNaPublicacao('Perícia médica em 21/10/2026 às 14:00.', 'medica')).toEqual({ data: '2026-10-21', hora: '14:00', local: 'local indicado na publicação' })
+    // A data de outra frase não é a da perícia; data ou hora que não existem também não.
+    expect(dataDoJuizoNaPublicacao('Junte laudo e submeta-se a perícia médica. Disponibilizado em 05/10/2026 às 10:00.', 'medica')).toBeNull()
+    expect(dataDoJuizoNaPublicacao('Perícia médica em 31/02/2026 às 10h.', 'medica')).toBeNull()
+    expect(dataDoJuizoNaPublicacao('Perícia médica em 21/10/2026 às 25h.', 'medica')).toBeNull()
+    // Fora do formato do diário ("10 horas"), nada: a pessoa registra a data na tela de marcar.
+    expect(dataDoJuizoNaPublicacao('Designo perícia médica para 15/10/2026, às 10 horas.', 'medica')).toBeNull()
+  })
+
+  it('médica e social na mesma publicação: cada uma fica com a sua data e o seu local', () => {
+    const texto = 'Designo perícia médica para 15/10/2026, às 10h, na sala 1. Designo perícia social com a assistente do juízo para 20/10/2026, às 14h, no domicílio.'
+    expect(dataDoJuizoNaPublicacao(texto, 'medica')).toEqual({ data: '2026-10-15', hora: '10:00', local: 'sala 1' })
+    expect(dataDoJuizoNaPublicacao(texto, 'social')).toEqual({ data: '2026-10-20', hora: '14:00', local: 'domicílio' })
+    // Na mesma frase, a data e o local de uma não vão para a outra.
+    const juntas = 'Designo perícia médica para 15/10/2026, às 10h, na sala 1, e estudo social para 20/10/2026, às 14h, no domicílio.'
+    expect(dataDoJuizoNaPublicacao(juntas, 'medica')).toEqual({ data: '2026-10-15', hora: '10:00', local: 'sala 1' })
+    expect(dataDoJuizoNaPublicacao(juntas, 'social')).toEqual({ data: '2026-10-20', hora: '14:00', local: 'domicílio' })
+    expect(dataDoJuizoNaPublicacao('Designo perícia médica, a ser agendada, e avaliação social para 20/10/2026, às 14h.', 'medica')).toBeNull()
+    // Só a médica foi designada: a social não pega a data dela.
+    expect(dataDoJuizoNaPublicacao('Designo perícia médica para 15/10/2026, às 10h, na sala 1.', 'social')).toBeNull()
+  })
+
+  it('"laudo pericial" não é a perícia: o prazo do laudo não vira a data dela', () => {
+    const texto = 'Intime-se o perito para entregar o laudo pericial até 30/11/2026 às 23h59. Designo perícia médica para 15/10/2026, às 10h, na sala 1.'
+    expect(dataDoJuizoNaPublicacao(texto, 'medica')).toEqual({ data: '2026-10-15', hora: '10:00', local: 'sala 1' })
+    expect(dataDoJuizoNaPublicacao('Laudo pericial até 30/11/2026 às 23h59. Quesitos periciais em 05/11/2026 às 10h.', 'medica')).toBeNull()
   })
 })

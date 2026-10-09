@@ -2,8 +2,9 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-137 · a Perícia no banco do portal, com login de verdade e uma pessoa por computador: a advogada decide a perícia
-// no INSS; o Jurídico administrativo marca com o comprovante e registra o comparecimento; a advogada confere o resultado
-// com o laudo; a Documentação abre a mesma perícia sem ver o laudo (dado de saúde, só o Jurídico).
+// no INSS; o Jurídico administrativo registra a liberação do INSS, marca com o comprovante e registra o comparecimento;
+// a Documentação anexa o laudo pedido; a advogada confere o resultado com o laudo; a Documentação abre a mesma perícia e
+// vê o resultado, sem a leitura do laudo (conteúdo médico, só o Jurídico).
 
 const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`%PDF-1.4 ${name}`) })
 const hojeIso = () => new Date().toLocaleDateString('sv-SE')
@@ -31,12 +32,22 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   const origem = new URL(page.url()).origin
   const cliente: string = (await (await page.request.get(`/api/processos/${casoId}/pericia`)).json()).ficha.nome
 
-  // O Jurídico administrativo: o INSS liberou o agendamento (a vigília, ainda pela API) e a tarefa entra na Central dele.
+  // O Jurídico administrativo: a tarefa que o sistema abriu leva à tela de marcar, que espera o INSS; quando o Meu INSS
+  // mostra o agendamento liberado (D2.E1), ele registra ali mesmo.
   const igor = await computadorDe(browser, origem, 'juridico@exemplo.ggv')
-  expect((await igor.request.post(`/api/processos/${casoId}/pericia/liberacao`)).ok()).toBe(true)
   await igor.goto('/juridico-administrativo')
+  await igor.getByRole('link', { name: `${cliente} · Marcar perícia médica`, exact: true }).click()
+  await expect(igor).toHaveURL(`/casos/${casoId}/pericia/marcar`)
+  await igor.getByRole('button', { name: 'O INSS liberou o agendamento' }).click()
+  await expect(igor.getByText('Liberação registrada: marque a perícia pelo Meu INSS.')).toBeVisible()
+  // Liberada, a mesma perícia aparece uma vez só na Central: a tarefa da perícia, para marcar.
+  await igor.goto('/juridico-administrativo')
+  await expect(igor.getByRole('link', { name: `${cliente} · Marcar perícia`, exact: true })).toHaveCount(1)
+  await expect(igor.getByRole('link', { name: `${cliente} · Marcar perícia médica`, exact: true })).toHaveCount(0)
   await igor.getByRole('link', { name: `${cliente} · Marcar perícia`, exact: true }).click()
   await expect(igor).toHaveURL(`/casos/${casoId}/pericia/marcar`)
+  // G9: a senha do gov.br pelo cofre, na própria tela de marcar.
+  await expect(igor.getByRole('region', { name: 'Meu INSS' }).getByRole('button', { name: 'Ver a senha do gov.br' })).toBeVisible()
   await igor.getByRole('radio', { name: 'Sim, marcado' }).click()
   await igor.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf(`comprovante-${hojeIso()}.pdf`)])
   const lido = igor.getByRole('group', { name: 'Lido do comprovante · confira' })
@@ -44,12 +55,22 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   // O Playwright roda sem chave de IA: a leitura volta vazia, com o motivo, e a pessoa preenche olhando o PDF. A perícia é
   // hoje cedo, e o comparecimento já abre.
   await expect(lido).toContainText('A IA não leu o comprovante agora')
-  await lido.getByLabel(/Data/).fill(new Date().toLocaleDateString('pt-BR'))
+  // O dia de Brasília, como o servidor conta: o teste roda em UTC no CI, e das 21h à meia-noite seria o dia seguinte.
+  await lido.getByLabel(/Data/).fill(new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }))
   await lido.getByLabel('Hora').fill('00:01')
   await lido.getByLabel('Local').fill('Agência INSS Santo Amaro')
-  await igor.getByRole('radio', { name: 'Não: seguir para ligar e orientar' }).click()
+  await igor.getByRole('radio', { name: 'Sim: atribuir à Documentação' }).click()
   await igor.getByRole('button', { name: 'Registrar a perícia' }).click()
   await expect(igor.getByRole('heading', { name: '✓ Perícia registrada' })).toBeVisible()
+
+  // A Documentação, no computador dela: "Anexar" sobe o laudo à pasta do caso, no servidor, e o item fica anexado.
+  const fabio = await computadorDe(browser, origem, 'documentacao@exemplo.ggv')
+  await fabio.goto(`/casos/${casoId}/pericia/documentos`)
+  await fabio.getByLabel('Anexar: Laudo médico recente (até 30 dias)').setInputFiles([pdf('laudo_recente.pdf')])
+  await expect(fabio.getByText('Anexado: Laudo médico recente (até 30 dias), na pasta do caso.')).toBeVisible()
+  await expect(fabio.getByRole('list', { name: 'O que a perícia pede' })).toContainText('anexado: laudo_recente.pdf')
+  const anexado = (await (await fabio.request.get(`/api/processos/${casoId}/pericia`)).json()).documentos.itens[0]
+  expect([anexado.item.id, anexado.arquivo.nome]).toEqual(['laudo-recente', 'laudo_recente.pdf'])
 
   await igor.goto(`/casos/${casoId}/pericia/comparecimento`)
   await igor.getByRole('radio', { name: 'Compareceu' }).click()
@@ -67,10 +88,13 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   for (const caixa of await gabi.getByRole('region', { name: 'Conferência (você decide; a IA só resume)' }).getByRole('checkbox').all()) await caixa.check()
   await gabi.getByRole('button', { name: 'Registrar resultado' }).click()
   await expect(gabi.getByRole('heading', { name: '✓ Resultado registrado: favorável' })).toBeVisible()
+  // /casos/:id/pericia é a página da perícia também no caso do servidor (a decisão do D2.03 fica em /pericia/decidir).
+  await gabi.goto(`/casos/${casoId}/pericia`)
+  await expect(gabi.getByRole('heading', { name: 'Perícias' })).toBeVisible()
+  await expect(gabi.getByRole('heading', { name: 'Precisa de perícia?' })).toHaveCount(0)
 
-  // A Documentação abre a mesma perícia, no banco, sem o laudo nem o resultado: dado de saúde, só o Jurídico.
-  const fabio = await computadorDe(browser, origem, 'documentacao@exemplo.ggv')
+  // A Documentação abre a mesma perícia, no banco: vê o resultado e o laudo na pasta; a leitura do laudo é só do Jurídico.
   const daDocumentacao = await (await fabio.request.get(`/api/processos/${casoId}/pericia`)).json()
-  expect([daDocumentacao.situacao, daDocumentacao.pericia.resultado?.laudo]).toEqual(['concluida', undefined])
-  expect(JSON.stringify(daDocumentacao)).not.toContain('laudo_pericia.pdf')
+  const { registrado, laudo } = daDocumentacao.pericia.resultado
+  expect([daDocumentacao.situacao, registrado.favoravel, laudo.nome, laudo.leitura]).toEqual(['concluida', true, 'laudo_pericia.pdf', undefined])
 })

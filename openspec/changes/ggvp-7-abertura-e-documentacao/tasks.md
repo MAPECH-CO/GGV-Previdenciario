@@ -139,3 +139,54 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.16 Telas: as funções da entrevista e da transcrição chamando a API para as fichas do servidor; a cópia recebe as gravações; testes.
 - [x] 125.17 Playwright: a advogada grava e encerra a entrevista de um lead do balcão; outra sessão do Jurídico vê "Cadastrar lead"; a Atendimento não recebe a gravação.
 - [x] 125.18 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 3b · Cadastro, benefício, cálculo, fechamento, nova demanda e cofre
+
+- [x] 125.19 Contratos: cadastro, análise da ficha, decisão do benefício, cálculo, fechamento, recontato, nova demanda, situação do cofre e renovação (sem a senha); matriz com `ficha.analisar` (Jurídico).
+- [x] 125.20 Servidor: `PUT /api/fichas/:id/cadastro`, `POST /api/entrevistas/:id/analise`, `POST /api/entrevistas/:id/beneficio`, `POST /api/entrevistas/:id/calculo`, `POST /api/fichas/:id/fechamento`, `POST /api/fichas/:id/recontato`, `POST /api/fichas/:id/demandas`, `POST /api/fichas/:id/cofre/gov`, `POST /api/entrevistas/:id/renovacao`; G16 na pessoa; o papel do fechamento pela sessão; a situação do cofre lida do cofre de verdade; testes.
+- [x] 125.21 Telas: as funções do bloco chamando a API para as fichas do servidor; a senha vai ao cofre de verdade; "fechou" segue para o contrato do modo exemplo até o bloco 4; testes.
+- [x] 125.22 Playwright: do lead do balcão gravado à definição do benefício pela advogada e ao fechamento com o motivo; a senha guardada não fica na ficha nem no navegador.
+- [x] 125.23 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 3c · Segunda ficha médica
+
+- [x] 125.24 Banco: `segunda_ficha_medica` (a seção médica por pessoa, à parte da ficha) e a migração.
+- [x] 125.25 Contratos: envio da segunda ficha (respostas e origem).
+- [x] 125.26 Servidor: `POST /api/fichas/:id/segunda-ficha/leitura`, `PUT /api/fichas/:id/segunda-ficha` e `GET /api/fichas/:id/segunda-ficha` (só com `dado_saude.ver_detalhe`, cada leitura em `acesso_dado_sensivel`); a ficha sem os campos médicos; o tablet em branco não apaga; testes.
+- [x] 125.27 Telas: ler e salvar a segunda ficha das fichas do servidor; a preparação da entrevista busca a seção médica ao abrir, sem guardar no navegador; testes.
+- [x] 125.28 Playwright: a Atendimento salva a segunda ficha de um lead do balcão; a advogada vê a seção médica na preparação; a cópia da Atendimento não traz os campos médicos.
+- [x] 125.29 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 4a · Fechar e preparar o contrato
+
+- [x] 125.30 Telas do Pedro: os tipos do contrato e as funções puras (campos do caso, textos dos modelos) vão para `regras/contratoDoCaso.ts`, reexportados por `dados/contrato.ts`, para o servidor não carregar o banco de exemplo.
+- [x] 125.31 Banco: `contrato_recepcao` (o contrato do caso, no formato das telas, com a etapa do processo) e a migração.
+- [x] 125.32 Contratos: fechar (benefício), condições do kit e geração do contrato.
+- [x] 125.33 Servidor: `POST /api/fichas/:id/processos` (cria o caso em `caso` e o contrato; o lead vira cliente), `PUT /api/processos/:id/contrato/condicoes`, `POST /api/processos/:id/contrato/gerar`; os processos das fichas com a etapa do contrato; os contratos na cópia das telas; testes.
+- [x] 125.34 Telas: fechar, condições e gerar chamando a API para as fichas do servidor; processos e contratos na cópia em três vias; testes.
+- [x] 125.35 Playwright: do lead do balcão com o benefício definido ao "fechou" e ao "Preparar contrato" em outra sessão (a geração tem os testes do servidor e das telas, e o 125.40 gera pelas rotas).
+- [x] 125.36 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 4b · Colher a assinatura (ZapSign e papel)
+
+- [x] 125.37 Contratos: a tentativa de assinatura (canal e mensagem).
+- [x] 125.38 Servidor: `POST /api/processos/:id/contrato/zapsign`, `/tentativas` (G15: a tarefa da sênior no banco), `/zapsign/retorno-simulado`, `/impressao`, `/digitalizacao` e `/assinatura-em-papel`; testes.
+- [x] 125.39 Telas: enviar, tentar de novo, simular o retorno, imprimir, digitalizar e concluir chamando a API para os contratos do servidor; o arquivo assinado na pasta da cópia daqui; testes.
+- [x] 125.40 Playwright: do contrato gerado ao assinado pelo ZapSign e ao assinado em papel, visto de outra sessão.
+- [x] 125.41 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 4c · Ler, conferir e entregar a cópia
+
+- [x] 125.42 Telas do Pedro: `visitaDaCopia` e a leitura de exemplo vão para `regras/contratoDoCaso.ts`, para o servidor usar as mesmas.
+- [x] 125.43 Contratos: verificação do contrato, visita e entrega da cópia (o aviso usa a mensagem do bloco 2).
+- [x] 125.44 Servidor: `POST /api/processos/:id/contrato/leitura-simulada`, `/verificacao`, `/conferencia/aviso`, `/copia/impressao`, `/copia/visita` e `/copia/entrega`; testes.
+- [x] 125.45 Telas: a leitura, a conferência, o aviso e a cópia chamando a API para os contratos do servidor; a página corrigida na pasta da cópia daqui; testes.
+- [x] 125.46 Playwright: do assinado em papel à leitura, à conferência e à cópia entregue, visto de outra sessão.
+- [x] 125.47 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Revisão do bloco 3b · telefone do lead e do cliente (revisor, 08/10)
+
+- [x] 125.48 Trazer a correção do revisor (decisão do Pedro, 08/10): a regra única do contato não pede verificação ao lead; os testes dele de servidor, tela e navegador.
+- [x] 125.49 Servidor: o cadastro (`PUT /api/fichas/:id/cadastro`) passa a ficha de cliente pela trava do contato, como a edição da ficha; teste do lead que troca e do cliente que não troca.
+- [x] 125.50 O teste do cadastro volta a trocar o telefone do lead sem a verificação (sai o ajuste da junção com a main).
+- [x] 125.51 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

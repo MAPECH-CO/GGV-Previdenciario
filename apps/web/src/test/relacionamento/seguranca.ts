@@ -65,8 +65,8 @@ export async function pedirMudancaBancaria(fichaId: string, pedido: { dados: Dad
 }
 
 /**
- * POST /api/fichas/:id/dados-bancarios/confirmacao. A segunda pessoa confirma (CA5): os dados mudam, com o antigo e o novo
- * no histórico (CA1); o contato anterior recebe o aviso pelo Chatwoot (CA5); perto da prestação de contas, a advogada e o
+ * POST /api/fichas/:id/dados-bancarios/confirmacao. A segunda pessoa confirma (CA5): os dados mudam, e a mudança fica no
+ * histórico, sem os números (CA1); o contato anterior recebe o aviso pelo Chatwoot (CA5); perto da prestação de contas, a advogada e o
  * Financeiro recebem o alerta antes do OK e do repasse (CA2).
  */
 export async function confirmarMudancaBancaria(fichaId: string, por: QuemAge): Promise<RegistroBancario> {
@@ -77,16 +77,12 @@ export async function confirmarMudancaBancaria(fichaId: string, por: QuemAge): P
   if (!ficha || !pedido) throw new Error('Não há pedido de mudança dos dados bancários.')
   const motivo = podeConfirmarSegunda(por.perfil, por.quem, pedido.pediu)
   if (motivo) throw new Error(motivo)
-  const antes = contasDo(banco).filter((c) => c.fichaId === fichaId).at(-1)
   const novo: RegistroBancario = { ...pedido.dados, fichaId, desde: agora().toISOString(), quem: pedido.pediu }
   contasDo(banco).push(novo)
   banco.pedidosBancarios = banco.pedidosBancarios!.filter((p) => p !== pedido)
+  // GGVP-96 (LGPD, minimização): como no servidor, o histórico guarda só o fato, sem banco, conta nem Pix.
   ficha.historico.push(
-    evento(
-      `Mudou os dados bancários (${COMO_VERIFICOU[pedido.verificacao.como].toLowerCase()}; em contrato novo; pedido de ${pedido.pediu}, segunda confirmação de ${por.quem}): ` +
-        `«${antes ? lido(antes) : '—'}» → «${lido(novo)}»`,
-      por.quem,
-    ),
+    evento(`Mudou os dados bancários (${COMO_VERIFICOU[pedido.verificacao.como].toLowerCase()}; em contrato novo; pedido de ${pedido.pediu}, segunda confirmação de ${por.quem})`, por.quem),
   )
   const perto = ficha.processos.find((p) => pertoDaPrestacao(p.etapa))
   if (perto) {

@@ -1,6 +1,6 @@
 // EXEMPLO. Servidor de exemplo da agenda (GGVP-123), sobre o mesmo banco de servidor.ts. Ligar no servidor: trocar o
-// corpo de cada função por fetch no endpoint indicado, sobre o contrato da design.md (change ggvp-6). O link do Meet e a
-// conversa do Chatwoot são simulados.
+// corpo de cada função por fetch no endpoint indicado, sobre o contrato da design.md (change ggvp-6). O link do Meet é
+// simulado; o convite do cliente do banco sai pelo Chatwoot do servidor (GGVP-146), o da semente pelo simulado.
 import { dataParaIso } from '../campos.ts'
 import { emAberto } from '../regras/busca.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
@@ -15,6 +15,7 @@ import {
 } from '../regras/agenda.ts'
 import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from './catalogos.ts'
+import { abrirPreenchimento, abrirPreparacao } from './confirmacao.ts'
 import { eventosDasPericias } from './pericia.ts'
 import { agendamentoDoServidor, agora, daSemente, doServidor, esperar, evento, gravar, ler, noBanco, receber, servidorLigado, type Banco } from './servidor.ts'
 import type {
@@ -215,9 +216,13 @@ export async function iniciarEntrevistaAgora(fichaId: string, m: Pick<Marcacao, 
     estado: 'marcado',
     remarcacoes: 0,
     gravar: m.gravar,
+    confirmacao: { tentativas: [], presente: true },
   }
   ficha.agendamentos.push(agendamento)
   ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`))
+  // Como na confirmação: com a ficha de atendimento, "Preparar entrevista" da advogada; sem ela, "Preencher ficha" do Atendimento.
+  if (ficha.fichaAtendimentoPreenchida) abrirPreparacao(banco, ficha, agendamento)
+  else abrirPreenchimento(banco, ficha, agendamento)
   gravar(banco)
   return agendamento
 }

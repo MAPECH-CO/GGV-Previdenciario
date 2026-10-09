@@ -50,6 +50,7 @@ async function rota(metodo: string, caminho: string, busca: URLSearchParams, cor
       await registrarAcao(g.id, corpo.acao as Parameters<typeof registrarAcao>[1], corpo.aos as number)
     } else if (resto === '/finalizar') await conversa.finalizarConversa(id, corpo as { aos: number })
     else if (resto === '/audio') await conversa.anexarAudio(id, corpo as conversa.AudioDaLigacao)
+    else if (resto === '/sem-audio') await conversa.registrarSemAudio(id, corpo.notas as string)
     else if (resto === '/transcricao') await conversa.transcreverConversa(id, corpo as { falhar?: boolean })
     else if (resto === '/conferencia') await conversa.conferirConversa(id, corpo as conversa.Conferencia, await daConversa(id))
     else if (resto === '/pendencia/cumprida') await conversa.cumprirPendencia(id, quemAge())
@@ -77,11 +78,19 @@ async function rota(metodo: string, caminho: string, busca: URLSearchParams, cor
   return undefined
 }
 
+/** GGVP-133: o arquivo da ligação chega como formulário; aqui vira o nome, o tipo e o tamanho, como antes. */
+function doFormulario(formulario: FormData): Corpo {
+  const arquivo = formulario.get('arquivo')
+  if (!(arquivo instanceof Blob)) return {}
+  const nome = arquivo instanceof File ? arquivo.name : 'audio'
+  return { nome, tipo: arquivo.type, tamanho: arquivo.size, avisoNaGravacao: formulario.get('avisoNaGravacao') === 'sim' } as Corpo
+}
+
 /** Responde a rota do Relacionamento; nulo quando o caminho é de outra parte da API. */
 export async function responderRelacionamento(entrada: RequestInfo | URL, init?: RequestInit): Promise<Response | null> {
   const url = new URL(String(entrada), 'http://localhost')
   const metodo = init?.method ?? 'GET'
-  const corpo = init?.body ? (JSON.parse(String(init.body)) as Corpo) : {}
+  const corpo = init?.body instanceof FormData ? doFormulario(init.body) : init?.body ? (JSON.parse(String(init.body)) as Corpo) : {}
   try {
     const dados = await rota(metodo, url.pathname, url.searchParams, corpo)
     return dados === undefined ? null : json(dados)

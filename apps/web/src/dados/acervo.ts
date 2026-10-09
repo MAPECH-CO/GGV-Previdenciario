@@ -1,9 +1,12 @@
 // EXEMPLO. O acervo de casos da casa e a "IA" que sugere o benefício por ele (GGVP-51). Casos falsos de propósito; a
 // "IA" só conta os sinais de cada caso que aparecem na entrevista e na ficha. Ligar no servidor: o RAG de verdade sobre o
 // acervo (carga do Raio-X de 979 processos, serviço de implantação da MAPECH).
+import { beneficioCitado, requisitosDoBeneficio } from '../regras/beneficio.ts'
 import { semAcento } from '../regras/busca.ts'
+import { ehDesde } from '../regras/entrevista.ts'
 import { nomeBeneficio } from './catalogos.ts'
-import type { CasoDoAcervo } from './tipos.ts'
+import { cnisDeExemplo } from './exemplo.ts'
+import type { CasoDoAcervo, Cnis, Ficha, Gravacao, SugestaoDoBeneficio, Vinculo } from './tipos.ts'
 
 type Sinal = { chave: string; rotulo: string }
 
@@ -80,5 +83,42 @@ export function sugerirPeloAcervo(texto: string): { sugerido: string; alternativ
     alternativa,
     base: pontuados.slice(0, 3).map((p) => semSinais(p.caso)),
     porque: `Parecido com ${n} ${n === 1 ? 'caso deferido' : 'casos deferidos'} de ${nomeBeneficio(sugerido)} na casa: ${rotulos.join(', ')}.`,
+  }
+}
+
+/** EXEMPLO. O CNIS anexado ao caso. Ligar no servidor: o arquivo da pasta do caso, lido na renovação da senha ou no balcão. */
+export function cnisDoCaso(fichaId: string): Cnis | undefined {
+  return cnisDeExemplo().find((c) => c.fichaId === fichaId)
+}
+
+/**
+ * Os dados dos requisitos numéricos (CA7): o CNIS, o "sem trabalhar desde" da entrevista e a data de nascimento. O "desde"
+ * é o que a advogada conferiu, nunca o palpite da IA (G14, G19).
+ */
+export type DadosDosRequisitos = { vinculos?: Vinculo[]; semTrabalharDesde?: string; nascimento?: string }
+
+/** A sugestão do acervo e os requisitos numéricos; o servidor usa a mesma (GGVP-125, bloco 3b). */
+export function analisar(ficha: Ficha, gravacao: Gravacao | undefined, hoje: string): { sugestao?: SugestaoDoBeneficio; dados: DadosDosRequisitos } {
+  const dados: DadosDosRequisitos = {
+    vinculos: cnisDoCaso(ficha.id)?.vinculos,
+    semTrabalharDesde: gravacao?.extraidas.find((e) => ehDesde(e) && e.conferidaEm)?.valor,
+    nascimento: ficha.nascimento,
+  }
+  if (!gravacao) return { dados }
+  const citado = beneficioCitado(gravacao.trechos)
+  const texto = [...gravacao.trechos.map((t) => t.texto), ...gravacao.extraidas.map((e) => e.valor), nomeBeneficio(ficha.beneficioInteresse)].join(' ')
+  const acervo = sugerirPeloAcervo(texto)
+  const sugerido = acervo?.sugerido ?? citado
+  if (!sugerido) return { dados }
+  return {
+    dados,
+    sugestao: {
+      citado,
+      sugerido,
+      alternativa: acervo?.alternativa,
+      base: acervo?.base ?? [],
+      porque: acervo?.porque ?? 'A IA não achou casos parecidos no acervo.',
+      requisitos: requisitosDoBeneficio(sugerido, dados, hoje),
+    },
   }
 }

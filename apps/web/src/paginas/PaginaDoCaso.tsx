@@ -4,6 +4,7 @@ import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { formatarCpf } from '../campos.ts'
 import { descreverDocumento, identificarPerito, NOMES_DE_FORA, nomeDoDocumento, obterCaso, type CasoNaTela, type DocumentoDoCaso, type TipoDeAutor } from '../dados/caso.ts'
+import { pendenciasDeDocumento } from '../dados/cobranca.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import type { IdEtapa } from '../regras/caso.ts'
@@ -74,6 +75,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
   // A linha agrupada pela etapa, na ordem (CA10).
   const grupos = c.etapas.map((e) => ({ etapa: e, eventos: c.linha.filter((ev) => ev.etapa === e.id) })).filter((g) => g.eventos.length > 0)
   const setores = [...new Set(c.tarefas.map((t) => t.setor))]
+  // As pendências de documento do caso (GGVP-130, Lucas 07/10), com o caminho para o checklist.
+  const pendentes = pendenciasDeDocumento(processoId)
 
   return (
     <>
@@ -260,8 +263,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                   {c.pendentes.motivo} · desde {curta(c.pendentes.desde)}
                 </p>
                 <ul className={styles.lista}>
-                  {c.pendentes.itens.map((l) => (
-                    <li key={l.setor} className={base.pericia}>
+                  {c.pendentes.itens.map((l, i) => (
+                    <li key={i} className={base.pericia}>
                       <span>
                         <strong>{l.setor}</strong>
                         <span className={base.nota}>{l.oQue}</span>
@@ -293,6 +296,23 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                     </li>
                   ))}
                 </ul>
+              </section>
+            )}
+
+            {pendentes.length > 0 && (
+              <section className={`${base.cartao} ${base.destaque}`} aria-labelledby="pendentes">
+                <h2 id="pendentes" className={base.cartaoTitulo}>
+                  Documentos pendentes
+                </h2>
+                <p className={base.nota}>O que a cobrança ainda espera do cliente; o checklist só fecha com tudo (G1).</p>
+                <ul className={styles.lista}>
+                  {pendentes.map((d) => (
+                    <li key={d} className={base.pericia}>
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+                <a href={`/casos/${processoId}/checklist`}>Ver o checklist</a>
               </section>
             )}
 
@@ -365,7 +385,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 <dt>Perito</dt>
                 <dd>
                   {c.perito ? (
-                    juridico ? (
+                    // O perito do caso do servidor ainda não tem a jurimetria aqui (sem id): só o nome.
+                    juridico && c.perito.id ? (
                       <button type="button" className={base.link} onClick={() => setJanela({ tipo: 'perito', id: c.perito!.id })}>
                         {c.perito.nome}
                       </button>
@@ -429,7 +450,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               ) : (
                 <ul className={base.documentos}>
                   {c.documentos.map((d) => (
-                    <li key={d.nome}>
+                    <li key={d.href ?? d.nome}>
                       <span className={base.pdf} aria-hidden="true">
                         PDF
                       </span>
@@ -545,7 +566,15 @@ function Documento({ doc, caso, hoje, aoFechar }: { doc: DocumentoDoCaso; caso: 
         ))}
       </ul>
       {d.aviso && <p className={passo.trava}>{d.aviso}</p>}
-      <p className={base.nota}>O arquivo abre no Drive do cliente (simulado).</p>
+      {!doc.href ? (
+        <p className={base.nota}>O arquivo abre no Drive do cliente (simulado).</p>
+      ) : (
+        !d.aviso && (
+          <a className={proprio.secundario} href={doc.href} target="_blank" rel="noreferrer">
+            Abrir o arquivo
+          </a>
+        )
+      )}
     </dialog>
   )
 }

@@ -1,7 +1,7 @@
 // A segurança do contato (GGVP-111), no servidor (GGVP-138): telefone, e-mail e dados bancários só mudam com o cliente
 // verificado e em contrato novo; a mudança bancária tem a segunda confirmação, o aviso ao contato anterior e o alerta da
 // prestação de contas. Tudo isso é conferido no servidor, com o perfil da sessão. O servidor de exemplo daqui saiu.
-import type { PedidoBancario as PedidoDoContrato, RegistroBancario as RegistroDoContrato } from '@ggv/contratos'
+import type { MudancaBancariaConfirmada, PedidoBancario as PedidoDoContrato, RegistroBancario as RegistroDoContrato } from '@ggv/contratos'
 import { camposProtegidosQueMudam, motivoParaNaoMudar, type DadosBancarios, type Verificacao } from '../regras/seguranca.ts'
 import { fichaComCpf } from '../regras/duplicidade.ts'
 import { daSemente, doServidor, espelhar, ler, noBanco, salvarFicha } from './servidor.ts'
@@ -23,8 +23,8 @@ export const obterDadosBancarios = (fichaId: string) => noBanco<{ atual: Registr
 export const pedirMudancaBancaria = (fichaId: string, pedido: { dados: DadosBancarios; verificacao: Partial<Verificacao> | null }) =>
   noBanco<PedidoBancario>(`/fichas/${fichaId}/dados-bancarios`, { method: 'POST', corpo: pedido })
 
-/** POST /api/fichas/:id/dados-bancarios/confirmacao. A segunda pessoa confirma; o contato anterior recebe o aviso (CA5). */
-export const confirmarMudancaBancaria = (fichaId: string) => noBanco<RegistroBancario>(`/fichas/${fichaId}/dados-bancarios/confirmacao`, { method: 'POST' })
+/** POST /api/fichas/:id/dados-bancarios/confirmacao. A segunda pessoa confirma; o contato anterior recebe o aviso, ou volta por que não saiu (CA5). */
+export const confirmarMudancaBancaria = (fichaId: string) => noBanco<MudancaBancariaConfirmada>(`/fichas/${fichaId}/dados-bancarios/confirmacao`, { method: 'POST' })
 
 /**
  * PATCH /api/fichas/:id com a verificação (CA1): mudar o telefone ou o e-mail só com o cliente verificado e em contrato
