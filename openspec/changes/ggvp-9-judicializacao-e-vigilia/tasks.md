@@ -6,6 +6,7 @@
 - [x] 1.2 Migração 0009 (fila e vínculo da publicação, versão da regra do prazo, reprocessamento da rodada, descartes e reclassificações); verifica com `pnpm --filter @ggv/api test`.
 - [x] 1.3 CA2, CA6, CA7, CA8, CA9 · Prazo judicial em `apps/api/src/fluxo/prazo-judicial.ts` (Lei 11.419, art. 4º; dias úteis; 5 dias sem prazo; feriados nacionais e do tribunal do CNJ; regra versionada); teste com véspera de feriado, fim de semana e suspensão; verifica com `pnpm --filter @ggv/api test`.
 - [x] 1.4 CA3, CA11 (revisão de 07/10) · CA3: a leitura da publicação devolve a data inicial, a final e a regra (`publicacoes.test.ts`; a tela já tinha teste). CA11: teste próprio de dias corridos, com o fim de semana no meio contando (`prazo-inss.test.ts`).
+- [x] 1.5 CA12 (P17, orquestrador 09/10) · `carregarFeriadosSeVazio` em `apps/api/src/fluxo/feriados-ao-subir.ts`, chamada em `principal.ts` só com `DATABASE_URL` (o banco de exemplo dos testes de tela segue vazio); histórico `feriados_carregados` com `quem: sistema`; teste em `feriados-ao-subir.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/fluxo/feriados-ao-subir.test.ts`.
 
 ## GGVP-26 · Receber e casar a publicação pelo número CNJ
 
