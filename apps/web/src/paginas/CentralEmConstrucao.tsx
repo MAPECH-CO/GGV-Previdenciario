@@ -12,18 +12,9 @@ import centralStyles from './CentralAtendimento.module.css'
 import styles from './NaoConstruida.module.css'
 
 /**
- * "Pergunte ou peça" de cada Central (GGVP-78 CA6): Sênior (Figma 59:609) e Financeiro (59:863); o Sócio, sem quadro
- * próprio, com o que o motor do chat responde a quem vê valores.
- */
-const CHAT_DO_PERFIL: Record<string, { exemplo: string; sugestoes: string[] }> = {
-  senior: { exemplo: 'Ex.: “o que estourou o limite de cobrança esta semana?”', sugestoes: ['O que estourou o limite?', 'Criar tarefa', 'Casos para conferir', 'Subir no acervo'] },
-  financeiro: { exemplo: 'Ex.: “o que chegou de prestação de contas hoje?”', sugestoes: ['Prestações recebidas', 'Documento novo', 'Resumo do cliente'] },
-  socio: { exemplo: 'Ex.: “o que chegou de prestação de contas hoje?”', sugestoes: ['Prestações recebidas', 'Criar tarefa'] },
-}
-
-/**
- * Início dos perfis que ainda não têm a Central desenhada em código (GGVP-78): a fila "O que você tem que fazer"
- * vem do servidor (GGVP-8), com a barra do topo, o "Entrar como…" e o "Sair".
+ * Início do perfil que não tem Central (GGVP-78): desde as Centrais da Sênior e do Financeiro e o início do Sócio, só um
+ * perfil novo, antes da tela dele, cai aqui. A fila "O que você tem que fazer" vem do servidor (GGVP-8), com a barra do
+ * topo, o "Entrar como…" e o "Sair".
  */
 export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string; /** Do servidor de exemplo, até a GGVP-125. */ deExemplo?: Tarefa[] }) {
   const doServidor = useTarefasDoServidor()
@@ -40,7 +31,6 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
   const perfil = usePerfil()
   const roteiros = editaRoteiro(perfil?.id)
   // GGVP-135 (P11): a busca e o chat, como nas outras Centrais; no estado vazio, o atalho para buscar um cliente (CA4).
-  const chat = CHAT_DO_PERFIL[perfil?.id ?? ''] ?? { exemplo: 'Ex.: “qual é a próxima tarefa da Maria Exemplo?”', sugestoes: [] }
   const veCaso = usePode('caso.ver')
 
   return (
@@ -71,7 +61,7 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
         <div className={centralStyles.coluna}>
           <h1 className={styles.titulo}>Central · {rotulo}</h1>
           <CampoBusca tarefas={tarefas ?? []} />
-          <ChatDoPortal exemplo={chat.exemplo} sugestoes={chat.sugestoes} funcao={rotulo} />
+          <ChatDoPortal exemplo="Ex.: “qual é a próxima tarefa da Maria Exemplo?”" sugestoes={[]} funcao={rotulo} />
           {tarefas && (
             <FilasDeTarefas
               tarefas={tarefas}

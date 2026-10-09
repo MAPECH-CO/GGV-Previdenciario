@@ -279,11 +279,11 @@ describe('App', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('GGVP-96 · cada perfil cai na sua Central; a da Sênior ainda não foi construída, mas traz a fila dela', async () => {
+  it('GGVP-96 e GGVP-78 · cada perfil cai na sua Central: a da Sênior, com a fila dela', async () => {
     zerarExemplo()
     servidorResponde(200, { ...usuario, perfis: ['senior'], perfilAtivo: 'senior' })
     render(<App caminho="/" />)
-    expect(await screen.findByRole('heading', { name: 'Central · Sênior' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Início da Sênior' })).toBeTruthy()
     expect((await screen.findByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
     expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
     expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
@@ -300,5 +300,32 @@ describe('App', () => {
     servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
+  })
+
+  it('GGVP-78 · o Financeiro cai na Central dele; o Sócio, no painel de resultado', async () => {
+    servidorResponde(200, { ...usuario, perfis: ['financeiro'], perfilAtivo: 'financeiro' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Início do Financeiro' })).toBeTruthy()
+    cleanup()
+    const socio = { ...usuario, perfis: ['socio'], perfilAtivo: 'socio' }
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/sessao' ? socio : { erro: 'fora do teste' }), { status: url === '/api/sessao' ? 200 : 500 })))
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Resultados do escritório' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
+  })
+
+  it('GGVP-78 · /financeiro abre o painel para o Financeiro e o Sócio; a Sênior fica no "Sem permissão"', async () => {
+    servidorResponde(200, senior)
+    render(<App caminho="/financeiro" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+    cleanup()
+    const vazio = { mes: '2026-10', recebidoNoMes: '0.00', variacao: null, aReceber: '0.00', processosAReceber: 0, emAtraso: '0.00', processosEmAtraso: 0, aLancar: 0, aguardandoOk: 0, porMes: [], porOrigem: [], lancamentos: null }
+    for (const perfil of ['financeiro', 'socio']) {
+      const quem = { ...usuario, perfis: [perfil], perfilAtivo: perfil }
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/sessao' ? quem : url.startsWith('/api/financeiro') ? vazio : []), { status: 200 })))
+      render(<App caminho="/financeiro" />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Financeiro' })).toBeTruthy()
+      cleanup()
+    }
   })
 })

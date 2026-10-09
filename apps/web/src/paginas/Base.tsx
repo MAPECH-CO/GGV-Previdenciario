@@ -16,7 +16,22 @@ const NAVEGACAO = [
 /** "+ Novo cliente" só no Atendimento (Figma). */
 const DO_ATENDIMENTO = ['atendimento', 'atendimento_lider']
 
-export function MolduraDaBase({ ativo, titulo, subtitulo, novoNaPagina = false, children }: { ativo: string; titulo: string; subtitulo: string; novoNaPagina?: boolean; children: ReactNode }) {
+export function MolduraDaBase({
+  ativo,
+  titulo,
+  subtitulo,
+  novoNaPagina = false,
+  acoes,
+  children,
+}: {
+  ativo: string
+  titulo: string
+  subtitulo: string
+  novoNaPagina?: boolean
+  /** O que fica à direita do título (o período do painel Financeiro). */
+  acoes?: ReactNode
+  children: ReactNode
+}) {
   const perfil = usePerfil()
   const atendimento = DO_ATENDIMENTO.includes(useSessao()?.perfilAtivo ?? '')
   return (
@@ -34,6 +49,7 @@ export function MolduraDaBase({ ativo, titulo, subtitulo, novoNaPagina = false, 
               + Novo cliente
             </a>
           )}
+          {acoes}
         </div>
         {children}
       </main>

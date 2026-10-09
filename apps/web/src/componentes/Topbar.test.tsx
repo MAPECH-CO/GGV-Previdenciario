@@ -51,10 +51,16 @@ describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 19
     ])
   })
 
-  it('o Atendimento só tem a Agenda; o Financeiro, sem ver o caso, fica com a Gestão; sem sessão, nada muda', () => {
+  it('o Atendimento só tem a Agenda; o Financeiro, sem ver o caso, fica com a Gestão e o painel Financeiro; sem sessão, nada muda', () => {
     expect(ids('atendimento')).toEqual(['inicio', 'agenda'])
-    expect(ids('financeiro')).toEqual(['inicio', 'agenda', 'tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'])
+    expect(ids('financeiro')).toEqual(['inicio', 'agenda', 'tentativas', 'prazos', 'cofre', 'resultados', 'configuracao', 'financeiro'])
     expect(ids(null)).toEqual(['inicio', 'agenda'])
+  })
+
+  it('o painel Financeiro no topo de quem vê os totais em dinheiro: o Financeiro e o Sócio; a Sênior, não', () => {
+    expect(ids('socio').at(-1)).toBe('financeiro')
+    expect(ids('senior')).not.toContain('financeiro')
+    expect(ids('advogada')).not.toContain('financeiro')
   })
 
   it('o que a tela já trouxe não se repete', () => {

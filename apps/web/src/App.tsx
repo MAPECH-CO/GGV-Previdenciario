@@ -96,6 +96,10 @@ import { ConferirConversa } from './paginas/ConferirConversa.tsx'
 import { PaginaDoCaso } from './paginas/PaginaDoCaso.tsx'
 import { Clientes } from './paginas/Clientes.tsx'
 import { Processos } from './paginas/Processos.tsx'
+import { CentralSenior } from './paginas/CentralSenior.tsx'
+import { CentralFinanceiro } from './paginas/CentralFinanceiro.tsx'
+import { InicioDoSocio } from './paginas/InicioDoSocio.tsx'
+import { Financeiro } from './paginas/Financeiro.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -174,6 +178,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
   // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
+  // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
+  { padrao: /^\/financeiro$/, tela: () => <Exige acao="valores.ver_totais"><Financeiro /></Exige> },
 ]
 
 function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; perfil: string }) {
@@ -191,11 +197,13 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     // Da documentação médica: a dispensa esperando a segunda sênior (GGVP-33) e o complemento a decidir (GGVP-29).
     if (perfil === 'senior')
       return (
-        <CentralEmConstrucao
-          rotulo={ROTULO_PERFIL.senior}
+        <CentralSenior
           deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer().filter(daSenior), ...tarefasDeDecidirComplemento()]}
         />
       )
+    // GGVP-78: a Central do Financeiro (Figma 59:863) e, para o Sócio, o painel de resultado com a busca e o chat (perfis.md).
+    if (perfil === 'financeiro') return <CentralFinanceiro />
+    if (perfil === 'socio') return <InicioDoSocio />
     // As Centrais dos outros perfis entram com as histórias de cada épico (GGVP-78).
     return <CentralEmConstrucao rotulo={ehPerfil(perfil) ? ROTULO_PERFIL[perfil] : perfil} />
   }
