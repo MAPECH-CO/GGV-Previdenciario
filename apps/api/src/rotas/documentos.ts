@@ -1,6 +1,6 @@
 // Baixar um documento do caso (GGVP-52 CA3, GGVP-71 CA11): o arquivo do armazenamento privado, com o nome original.
 // Dado de saúde só com `dado_saude.ver_detalhe`, e cada leitura fica em `acesso_dado_sensivel` (LGPD); nada do
-// conteúdo vai para o log.
+// conteúdo vai para o log. Peça jurídica só com `peticao.ver` (GGVP-96).
 import { and, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { pode, type Erro } from '@ggv/contratos'
@@ -10,6 +10,13 @@ import { acessoDadoSensivel, documento } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_DOCUMENTO_SENSIVEL = 'Este documento tem dado de saúde: só o Jurídico abre.'
+export const MSG_DOCUMENTO_DE_PECA = 'Este documento é peça jurídica: só o Jurídico abre.'
+
+/**
+ * Peça jurídica (perfis.md: o Atendimento e a Documentação nunca veem petição nem estratégia): o pacote da petição e as
+ * versões da manifestação, da dilação ou da petição. A prova, o comprovante e a carta não são peça.
+ */
+export const ehPeca = (tipo: string) => tipo === 'pacote_peticao' || tipo.endsWith('_versao')
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -28,6 +35,10 @@ export function registrarRotasDocumentos(app: FastifyInstance, { banco, armazena
       .where(and(eq(documento.id, doc), eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
     if (!d) return negar(resposta, 404, 'Documento não encontrado.')
     const quem = pedido.usuario!.id
+    if (ehPeca(d.tipo) && !pode(pedido.perfilAtivo, 'peticao.ver')) {
+      await historico(quem, 'acesso_negado', pedido, `caso:${casoId}`, { acao: 'peticao.ver', perfil: pedido.perfilAtivo })
+      return negar(resposta, 403, MSG_DOCUMENTO_DE_PECA)
+    }
     if (d.sensivel) {
       if (!pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')) {
         await historico(quem, 'acesso_negado', pedido, `caso:${casoId}`, { acao: 'dado_saude.ver_detalhe', perfil: pedido.perfilAtivo })

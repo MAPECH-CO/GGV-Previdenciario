@@ -92,15 +92,21 @@ export const ORIGEM_JUIZ = { diagrama: 'D3a', passo: 'D3a.03', rotulo: 'exigênc
 export const ORIGEM_DESPACHO = { diagrama: 'D3', passo: 'D3.03', rotulo: 'despacho da Sênior' } as const
 type Origem = typeof ORIGEM_INSS | typeof ORIGEM_JUIZ | typeof ORIGEM_DESPACHO
 
-/** CA2, CA3, CA6: abre as perícias pedidas pela exigência e a tarefa do Jurídico administrativo, como a GGVP-31. */
+/**
+ * CA2, CA3, CA6: abre as perícias pedidas pela exigência e a tarefa do Jurídico administrativo, como a GGVP-31. Devolve
+ * a tarefa de marcar que abriu.
+ */
 export async function abrirPericiasDaExigencia(tx: Tx, casoId: string, tipos: Tipo[], quem: string, agora: Date, origem: Origem = ORIGEM_INSS) {
   const [e] = await tx
     .insert(etapa)
     .values({ casoId, diagrama: origem.diagrama, passo: origem.passo, situacao: 'concluida', iniciadaEm: agora, concluidaEm: agora, concluidaPor: quem })
     .returning()
   for (const tipo of tipos) await tx.insert(pericia).values({ casoId, tipo, chamadaPorEtapaId: e.id })
-  await tx.insert(tarefa).values({ casoId, passo: 'DP.01', titulo: `Marcar ${tipos.map((t) => NOME_PERICIA[t]).join(' e ')} (${origem.rotulo})`, perfilDono: 'juridico_adm' })
-  return e.id
+  const [t] = await tx
+    .insert(tarefa)
+    .values({ casoId, passo: 'DP.01', titulo: `Marcar ${tipos.map((t) => NOME_PERICIA[t]).join(' e ')} (${origem.rotulo})`, perfilDono: 'juridico_adm' })
+    .returning({ id: tarefa.id })
+  return t.id
 }
 
 /**

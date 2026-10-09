@@ -17,6 +17,7 @@ import type {
   Entrevista,
   Ficha,
   Gravacao,
+  InformacaoExtraida,
   RespostaDoEncerramento,
   TarefaEncaminhada,
   Trecho,
@@ -307,7 +308,8 @@ export async function transcrever(gravacaoId: string, opcoes: { falhar?: boolean
     return g
   }
   const { trechos, ditas } = montarTranscricao(g, conversaDeExemplo(ficha, agendamento ? advogadaDa(agendamento) : 'Advogada'))
-  const extraidas = ditas.flatMap((f) => f.extrai ?? [])
+  // Cada informação vem com a hora e o trecho de onde saiu, já sem senha (G9), para a advogada conferir (GGVP-133).
+  const extraidas = ditas.flatMap((f) => (f.extrai ?? []).map((e): InformacaoExtraida => ({ ...e, aos: f.aos, trecho: trechos.find((t) => t.aos === f.aos)?.texto ?? '' })))
   if (g.acoes.some((x) => x.acao === 'guardou-senha')) {
     extraidas.push({ id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre: não consta na transcrição (G9)', destino: 'cofre' })
   }
@@ -326,7 +328,8 @@ export async function enviarParteDoAudio(gravacaoId: string, parte: ParteDoAudio
   const corpo = new FormData()
   corpo.append('inicio', String(Math.round(parte.inicio)))
   if (ultima) corpo.append('ultima', 'sim')
-  corpo.append('arquivo', parte.audio, `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
+  // O áudio gravado fora vai com o nome dele (a extensão diz o formato); a parte do microfone, pelo tipo.
+  corpo.append('arquivo', parte.audio, parte.audio instanceof File ? parte.audio.name : `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
   return (await pedirAoServidor(`/gravacoes/${gravacaoId}/audio`, corpo)).gravacao
 }
 

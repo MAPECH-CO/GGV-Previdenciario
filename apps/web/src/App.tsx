@@ -94,6 +94,12 @@ import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
 import { Conversa } from './paginas/Conversa.tsx'
 import { ConferirConversa } from './paginas/ConferirConversa.tsx'
 import { PaginaDoCaso } from './paginas/PaginaDoCaso.tsx'
+import { Clientes } from './paginas/Clientes.tsx'
+import { Processos } from './paginas/Processos.tsx'
+import { CentralSenior } from './paginas/CentralSenior.tsx'
+import { CentralFinanceiro } from './paginas/CentralFinanceiro.tsx'
+import { InicioDoSocio } from './paginas/InicioDoSocio.tsx'
+import { Financeiro } from './paginas/Financeiro.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -142,7 +148,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   // GGVP-127: o caso devolvido pela Sênior; quem libera de novo o servidor decide (o setor da tarefa de ajuste).
   { padrao: /^\/casos\/([0-9a-f-]{36})\/ajuste$/, tela: (id) => <Exige acao="caso.ver"><AjustarCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
+  // GGVP-137: a decisão (D2.03) tem endereço próprio; /casos/:id/pericia é a página da perícia, também no caso do servidor.
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia\/decidir$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Exige acao="caso.ver"><Vigilia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia$/, tela: (id) => <Exige acao="caso.ver"><TratarExigencia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia\/documentos$/, tela: (id) => <Exige acao="exigencia_inss.cumprir"><CumprirExigencia casoId={id} /></Exige> },
@@ -155,7 +162,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="caso.ver"><LerPublicacao publicacaoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz$/, tela: (id) => <Exige acao="caso.ver"><AnalisarExigenciaJuiz casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz\/setor$/, tela: (id) => <Exige acao="exigencia_juiz.cumprir"><CumprirExigenciaJuiz casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/manifestacao$/, tela: (id) => <Exige acao="caso.ver"><Manifestar casoId={id} /></Exige> },
+  // A manifestação é peça jurídica: só o Jurídico (GGVP-96; perfis.md, o Atendimento e a Documentação nunca veem petição).
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/manifestacao$/, tela: (id) => <Exige acao="peticao.ver"><Manifestar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pendencias$/, tela: (id) => <Exige acao="pendencia.cumprir"><CumprirExigenciaJuiz casoId={id} origem="despacho" /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/peticao$/, tela: (id) => <Exige acao="peticao.ver"><Peticao casoId={id} /></Exige> },
@@ -165,13 +173,16 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/gestao\/tentativas$/, tela: () => <Exige acao="gestao.ver"><Tentativas /></Exige> },
   { padrao: /^\/gestao\/prazos$/, tela: () => <Exige acao="gestao.ver"><Prazos /></Exige> },
   { padrao: /^\/gestao\/cofre$/, tela: () => <Exige acao="gestao.ver"><UsoDoCofreTela /></Exige> },
-  { padrao: /^\/gestao\/resultados$/, tela: () => <Exige acao="gestao.ver"><Resultados /></Exige> },
+  // GGVP-96: o Financeiro vê só os Resultados da Gestão (Figma).
+  { padrao: /^\/gestao\/resultados$/, tela: () => <Exige acao="resultados.ver"><Resultados /></Exige> },
   { padrao: /^\/acervo\/conferencia$/, tela: () => <Exige acao="acervo.conferir_desfecho"><ConferirAcervo /></Exige> },
   { padrao: /^\/configuracao$/, tela: () => <Exige acao="gestao.ver"><Configuracao /></Exige> },
   // GGVP-146, parte 2: a planilha do escritório, pela gestão que muda a configuração.
   { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
   // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
+  // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
+  { padrao: /^\/financeiro$/, tela: () => <Exige acao="valores.ver_totais"><Financeiro /></Exige> },
 ]
 
 function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; perfil: string }) {
@@ -189,11 +200,13 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     // Da documentação médica: a dispensa esperando a segunda sênior (GGVP-33) e o complemento a decidir (GGVP-29).
     if (perfil === 'senior')
       return (
-        <CentralEmConstrucao
-          rotulo={ROTULO_PERFIL.senior}
+        <CentralSenior
           deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer().filter(daSenior), ...tarefasDeDecidirComplemento()]}
         />
       )
+    // GGVP-78: a Central do Financeiro (Figma 59:863) e, para o Sócio, o painel de resultado com a busca e o chat (perfis.md).
+    if (perfil === 'financeiro') return <CentralFinanceiro />
+    if (perfil === 'socio') return <InicioDoSocio />
     // As Centrais dos outros perfis entram com as histórias de cada épico (GGVP-78).
     return <CentralEmConstrucao rotulo={ehPerfil(perfil) ? ROTULO_PERFIL[perfil] : perfil} />
   }
@@ -223,8 +236,18 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
   [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
   [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
+  // GGVP-78: Clientes e Processos, as bases do topo, para quem vê o caso (antes da regra geral de /clientes).
+  [/^\/clientes$/, 'caso.ver'],
+  [/^\/processos$/, 'caso.ver'],
   // D5: a conversa com o cliente, do Atendimento e do Jurídico.
   [/^\/conversas\//, 'conversa.registrar'],
+  // G15 (D1.17): passou do limite de tentativas, a tarefa da Sênior abre a assinatura; quem vê o caso lê, sem % de
+  // honorários, e conduzir segue com contrato.conduzir no servidor (GGVP-96).
+  [/^\/contrato\/[^/]+\/assinatura$/, 'caso.ver'],
+  // D1.16 a D1.20: o contrato é da raia do Atendimento, e o % de honorários aparece só nele (GGVP-96).
+  [/^\/contrato\//, 'contrato.conduzir'],
+  // A ficha do cliente, para ler: quem vê o caso, e o Sócio, que lê tudo (GGVP-96); mudar segue com ficha.editar no servidor.
+  [/^\/clientes\/(?!novo$)[^/]+$/, 'caso.ver'],
   // O resto da Recepção e da Abertura: quem trabalha com o caso (Atendimento, Documentação e Jurídico). O Financeiro e
   // o Sócio, não.
   [/^\/(balcao|clientes|contrato)(\/|$)/, 'ficha.editar'],
@@ -242,9 +265,14 @@ function Telas({ caminho, busca }: { caminho: string; busca: string }) {
 /** Telas da Recepção e da Abertura. Os dados ainda são os de exemplo (src/dados/), até ligar no servidor (GGVP-125). */
 function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const parametros = new URLSearchParams(busca)
+  // GGVP-96: os ganchos de teste (?simular=) só no desenvolvimento; na homologação e na produção, nunca.
+  const simular = import.meta.env.DEV ? (parametros.get('simular') ?? undefined) : undefined
   if (caminho === '/advogada') return <CentralAdvogada />
   if (caminho === '/balcao') return <Balcao />
   if (caminho === '/clientes/novo') return <NovoCliente />
+  // GGVP-78: as bases do topo; a contagem de processos em Clientes abre /processos?cliente=<id>.
+  if (caminho === '/clientes') return <Clientes />
+  if (caminho === '/processos') return <Processos cliente={parametros.get('cliente') ?? undefined} />
   if (caminho === '/agenda') return <Agenda vistaInicial={(parametros.get('ver') as Vista | null) ?? undefined} />
   const marcar = /^\/agenda\/marcar\/([^/]+)$/.exec(caminho)
   if (marcar) return <MarcarEntrevista fichaId={decodeURIComponent(marcar[1])} remarcar={parametros.get('remarcar') ?? undefined} />
@@ -257,7 +285,7 @@ function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const renovar = /^\/entrevista\/([^/]+)\/renovar-senha$/.exec(caminho)
   if (renovar) return <RenovarSenha agendamentoId={decodeURIComponent(renovar[1])} />
   const gravacao = /^\/entrevista\/([^/]+)\/gravacao$/.exec(caminho)
-  if (gravacao) return <EntrevistaAoVivo agendamentoId={decodeURIComponent(gravacao[1])} simular={parametros.get('simular') ?? undefined} />
+  if (gravacao) return <EntrevistaAoVivo agendamentoId={decodeURIComponent(gravacao[1])} simular={simular} />
   const entrevista = /^\/entrevista\/([^/]+)$/.exec(caminho)
   if (entrevista) return <Entrevista agendamentoId={decodeURIComponent(entrevista[1])} />
   const recebimento = /^\/balcao\/documento\/([^/]+)$/.exec(caminho)
@@ -330,7 +358,7 @@ function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const pericia = /^\/casos\/([^/]+)\/pericia$/.exec(caminho)
   if (pericia) return <ProcessoPericia processoId={decodeURIComponent(pericia[1])} abrirPerito={parametros.get('perito') === '1'} />
   const conversa = /^\/conversas\/([^/]+)$/.exec(caminho)
-  if (conversa) return <Conversa conversaId={decodeURIComponent(conversa[1])} simular={parametros.get('simular') ?? undefined} />
+  if (conversa) return <Conversa conversaId={decodeURIComponent(conversa[1])} simular={simular} />
   const conferirConversa = /^\/conversas\/([^/]+)\/conferir$/.exec(caminho)
   if (conferirConversa) return <ConferirConversa conversaId={decodeURIComponent(conferirConversa[1])} />
   // Experiência por perfil (épico GGVP-5): o caso numa linha só (GGVP-86).

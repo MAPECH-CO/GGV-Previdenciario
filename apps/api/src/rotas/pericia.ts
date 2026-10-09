@@ -6,9 +6,10 @@
 // (rotas/mensagens.ts, GGVP-146); aqui fica só o registro.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { createHash, randomUUID } from 'node:crypto'
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
+  AnexoNaPericia,
   AutorizacaoDeRemarcacao,
   ComprovantePelaIa,
   LaudoPelaIa,
@@ -17,6 +18,7 @@ import {
   OrientacaoPelaIa,
   ComparecimentoNaPericia,
   ConclusaoDosDocumentos,
+  DataDoJuizo,
   DecisaoDaFalta,
   EsperaDoComprovante,
   FaltaNaPericia,
@@ -35,7 +37,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
@@ -47,14 +49,16 @@ import type { Perito } from '../../../web/src/dados/peritos.ts'
 import type { Ficha, Processo, Tarefa } from '../../../web/src/dados/tipos.ts'
 import { hojeIso } from '../../../web/src/regras/datas.ts'
 import { problemaG20 } from '../../../web/src/regras/parecer.ts'
-import { problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
+import { dataDoJuizoNaPublicacao, problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
 import {
+  KIT_DA_PERICIA,
   criarPericia,
   mudancas,
   naTela,
   paraOrientar,
   periciaDo,
   periciaDoResultado,
+  podeMarcar,
   tarefasDaAdvogadaEm,
   tarefasDaDocumentacaoEm,
   tarefasDeDecidirDocumentoEm,
@@ -68,6 +72,7 @@ import {
 
 export const MSG_SEM_PERICIA = 'Este caso não tem perícia.'
 export const MSG_ARQUIVO_PDF = 'Anexe o PDF (até 25 MB).'
+export const MSG_ANEXO = 'Anexe o documento em PDF ou imagem (JPEG, PNG), até 25 MB.'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** De que passo a perícia nasceu (a etapa que a chamou): D2.03 (GGVP-31), D2.05 (exigência), D3.03 (despacho), D3a.03 (juiz). */
@@ -106,56 +111,23 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 type DoCaso = { mundo: MundoDaPericia; casoId: string; linhas: Map<string, typeof pericia.$inferSelect>; laudosAntes: Map<string, number> }
 
 /**
- * Dado de saúde só para o Jurídico (GGVP-96, `dado_saude.ver_detalhe`). Para os outros perfis, a perícia sai por lista do
- * que pode: do resultado, só quando saiu; o histórico sem os passos do resultado e do perfil do perito (DP.08 a DP.10); a
- * orientação sem os números do perito e, quando segue o perfil dele, sem o texto; sem o texto das orientações recusadas
- * nem a justificativa da falta. O perfil do perito e os laudos da pasta também saem. Os números do perito nunca vão ao cliente.
+ * Saúde simples (Pedro, 08/10): fora do Jurídico (`dado_saude.ver_detalhe`), sai só o conteúdo médico, que aqui é o que a
+ * IA leu dos laudos: o desta perícia e das anteriores, e os do acervo no perfil do perito (cada um com a referência do
+ * caso), com o assunto deles (os números por assunto). Os números do perito (G22) todos veem. O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
+ * abre pelo Jurídico, na rota dos documentos, que registra quem abriu (acesso_dado_sensivel).
  */
-const PASSOS_DO_JURIDICO = new Set(['DP.08', 'DP.09', 'DP.10'])
-/**
- * Os passos com texto livre de quem marca, confirma, remarca ou decide (o motivo pode dizer da saúde: "internado"): fora do
- * Jurídico, o histórico fica só com o que aconteceu, sem o porquê. Os textos da Documentação (DP.03) são dela e ficam.
- */
-const COM_TEXTO_LIVRE = /^(Tentativa sem sucesso em [^:]+|Remarcação \d+|Autorizou mais uma remarcação \(G15\)|Decidiu sobre o documento que falta \(G15\)|Não conseguiu confirmar a presença|Confirmou a presença do cliente na perícia|Registrou que \S+ (compareceu à [^(]+|não compareceu))/
-const semPorque = (oQue: string) => COM_TEXTO_LIVRE.exec(oQue)?.[0].trim() ?? oQue
-
-function semSaude(p: Pericia): Pericia {
-  const marcacao = (m: NonNullable<Pericia['marcacao']>) => ({
-    ...m,
-    ...(m.confirmacao && { confirmacao: { quando: m.confirmacao.quando, quem: m.confirmacao.quem, confirmou: m.confirmacao.confirmou } }),
-    ...(m.comparecimento && { comparecimento: { quando: m.comparecimento.quando, quem: m.comparecimento.quem, compareceu: m.comparecimento.compareceu } }),
-  })
-  const d = p.documentos
-  const o = p.orientacao
-  return {
-    ...p,
-    resultado: p.resultado?.disponivelEm ? { disponivelEm: p.resultado.disponivelEm } : undefined,
-    historico: p.historico.filter((e) => !PASSOS_DO_JURIDICO.has(e.passo)).map((e) => ({ ...e, oQue: semPorque(e.oQue) })),
-    tentativas: p.tentativas.map((t) => ({ ...t, oQueAconteceu: '' })),
-    documentos: d && { ...d, ...(d.decisaoDaAdvogada && { decisaoDaAdvogada: { ...d.decisaoDaAdvogada, texto: '' } }) },
-    orientacao: o && {
-      modo: o.modo,
-      ...(o.motivo && { motivo: o.motivo }),
-      geradaEm: o.geradaEm,
-      ...(o.bloqueio && { bloqueio: o.bloqueio }),
-      texto: o.modo === 'perfil' ? '' : o.texto,
-    },
-    enviosRecusados: p.enviosRecusados?.map(({ quando, quem, motivo }) => ({ quando, quem, motivo, texto: '' })),
-    marcacao: p.marcacao && marcacao(p.marcacao),
-    marcacoesAnteriores: p.marcacoesAnteriores?.map(marcacao),
-  }
+function semLeitura(p: Pericia): Pericia {
+  const laudo = p.resultado?.laudo
+  return laudo ? { ...p, resultado: { ...p.resultado, laudo: { ...laudo, leitura: undefined } } } : p
 }
 
-function visao(t: PericiaNaTela, juridico: boolean, sensiveis: Set<string>): PericiaNaTela {
+function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
   if (juridico) return t
   return {
     ...t,
-    pericia: semSaude(t.pericia),
-    // A etapa diz se a perícia acabou, nunca se foi favorável.
-    etapa: t.etapa.replace(/\s*(des)?favorável$/, ''),
-    ficha: { ...t.ficha, arquivos: t.ficha.arquivos.filter((a) => !sensiveis.has(a.nome)) },
-    perfil: undefined,
-    anteriores: t.anteriores.map(semSaude),
+    pericia: semLeitura(t.pericia),
+    anteriores: t.anteriores.map(semLeitura),
+    perfil: t.perfil && { ...t.perfil, porAssunto: [], perito: { ...t.perfil.perito, laudos: [] } },
   }
 }
 
@@ -180,26 +152,38 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       })
   }
 
-  /** Os documentos do cliente na pasta, no formato das telas; os sensíveis (laudos) ficam marcados para a visão. */
+  /** Os documentos do cliente na pasta, no formato das telas: o nome, o tipo e a data (o conteúdo só pela rota dos documentos). */
   async function arquivosDe(pessoaId: string, casos: string[]) {
     const docs = await banco
       .select()
       .from(documento)
       .where(and(isNull(documento.excluidoEm), or(eq(documento.pessoaId, pessoaId), casos.length ? inArray(documento.casoId, casos) : undefined)))
       .orderBy(asc(documento.criadoEm))
-    return {
-      arquivos: docs.map((d) => ({
-        nome: d.nomeOriginal,
-        tipo: d.tipo,
-        local: d.casoId ?? pessoaId,
-        data: hojeIso(d.criadoEm),
-        origem: 'card' as const,
-        repetido: false,
-        aguardaLeitura: false,
-        hash: d.hashSha256,
-      })),
-      sensiveis: new Set(docs.filter((d) => d.sensivel).map((d) => d.nomeOriginal)),
-    }
+    return docs.map((d) => ({
+      nome: d.nomeOriginal,
+      tipo: d.tipo,
+      local: d.casoId ?? pessoaId,
+      data: hojeIso(d.criadoEm),
+      origem: 'card' as const,
+      repetido: false,
+      aguardaLeitura: false,
+      hash: d.hashSha256,
+    }))
+  }
+
+  /**
+   * D3a (GGVP-53, resposta do Lucas de 02/10): a data que o juízo designou para a perícia deste tipo, lida da publicação da
+   * exigência do juiz que a pediu. Sem data na publicação, nada: o Jurídico administrativo registra na tela de marcar.
+   */
+  async function dataDoJuizo(casoId: string, chamadaEm: Date, tipo: TipoDePericia) {
+    const [x] = await banco
+      .select({ texto: publicacao.texto })
+      .from(exigencia)
+      .innerJoin(publicacao, eq(exigencia.publicacaoId, publicacao.id))
+      .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo'), lte(exigencia.criadoEm, chamadaEm)))
+      .orderBy(desc(exigencia.criadoEm))
+      .limit(1)
+    return (x && dataDoJuizoNaPublicacao(x.texto, tipo)) ?? undefined
   }
 
   /**
@@ -207,7 +191,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
    * que o INSS, a exigência, o despacho ou o juiz abriram e ainda não tem o formato das telas nasce aqui, pelo mesmo
    * `criarPericia` do servidor de exemplo (DP.01). ponytail: a ficha é a mínima; com o #29 na main, montar pelo fichário dele.
    */
-  async function doCaso(casoId: string): Promise<(DoCaso & { sensiveis: Set<string> }) | null> {
+  async function doCaso(casoId: string): Promise<DoCaso | null> {
     if (!UUID.test(casoId)) return null
     const [c] = await banco
       .select({ id: caso.id, pessoaId: caso.pessoaId, nome: pessoa.nome, telefone: pessoa.telefone, criadoEm: pessoa.criadoEm, situacao: pessoa.situacao })
@@ -217,7 +201,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     if (!c) return null
     const casos = await banco.select({ id: caso.id, beneficio: caso.beneficio, fase: caso.fase }).from(caso).where(eq(caso.pessoaId, c.pessoaId))
     const processos: Processo[] = casos.map((x) => ({ id: x.id, beneficio: (x.beneficio && NO_CATALOGO[x.beneficio]) ?? x.beneficio ?? '', etapa: x.fase }))
-    const { arquivos, sensiveis } = await arquivosDe(c.pessoaId, casos.map((x) => x.id))
+    const arquivos = await arquivosDe(c.pessoaId, casos.map((x) => x.id))
     const [ano, mes] = c.criadoEm.toISOString().slice(0, 7).split('-')
     const ficha: Ficha = {
       id: c.pessoaId,
@@ -246,16 +230,24 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       const [e] = l.chamadaPorEtapaId ? await banco.select().from(etapa).where(eq(etapa.id, l.chamadaPorEtapaId)) : []
       const origem = (e && ORIGEM_DO_PASSO[e.passo]) ?? 'd2-necessidade'
       const quando = e?.concluidaEm ?? l.criadoEm
+      // Pedida pelo juiz, a data da publicação vai à agenda e à ficha sozinha, como na semente.
+      const dataDoJuizoLida = origem === 'd3a-juiz' ? await dataDoJuizo(casoId, e?.iniciadaEm ?? l.criadoEm, l.tipo as TipoDePericia) : undefined
       criarPericia(
         mundo,
         casoId,
-        { origem, tipo: l.tipo as TipoDePericia, instancia: origem.startsWith('d2') ? 'inss' : 'juizo', pedidaPor: await nomeDe(e?.concluidaPor) },
+        {
+          origem,
+          tipo: l.tipo as TipoDePericia,
+          instancia: origem.startsWith('d2') ? 'inss' : 'juizo',
+          pedidaPor: await nomeDe(e?.concluidaPor),
+          dataDoJuizo: dataDoJuizoLida,
+        },
         quando,
         undefined,
         l.id,
       )
     }
-    return { mundo, casoId, linhas: new Map(linhas.map((l) => [l.id, l])), laudosAntes: new Map(ps.map((p) => [p.id, p.laudos.length])), sensiveis }
+    return { mundo, casoId, linhas: new Map(linhas.map((l) => [l.id, l])), laudosAntes: new Map(ps.map((p) => [p.id, p.laudos.length])) }
   }
 
   /** Grava as perícias do caso (as colunas que a junção lê e o documento das telas) e os perfis de perito que mudaram. */
@@ -299,8 +291,8 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
 
   const juridico = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
 
-  /** Um PDF do multipart (o comprovante ou o laudo) e o JSON do campo `dados`. */
-  async function lerMultipart(pedido: FastifyRequest) {
+  /** Um PDF do multipart (o comprovante ou o laudo; o documento da perícia também em imagem) e o JSON do campo `dados`. */
+  async function lerMultipart(pedido: FastifyRequest, tipos = ['application/pdf']) {
     const campos: Record<string, string> = {}
     let arquivo: { conteudo: Buffer; mime: string; nome: string } | null = null
     for await (const parte of pedido.parts()) {
@@ -313,7 +305,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     } catch {
       dados = null
     }
-    return { dados, arquivo: arquivo && arquivo.mime === 'application/pdf' && arquivo.conteudo.length > 0 ? arquivo : null }
+    return { dados, arquivo: arquivo && tipos.includes(arquivo.mime) && arquivo.conteudo.length > 0 ? arquivo : null }
   }
 
   type Mudanca = { acao: string; passo: string; detalhe?: Record<string, unknown> }
@@ -342,7 +334,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     await guardar(d)
     // Sem ação: quem chama registra (a recusa de um portão vai pelo registrarBloqueio).
     if (registro.acao) await historico(pedido.usuario!.id, registro.acao, pedido, `caso:${d.casoId}`, { pericia: alvo.id, passo: registro.passo, ...registro.detalhe })
-    return visao(naTela(d.mundo, alvo, agora()), juridico(pedido), d.sensiveis)
+    return visao(naTela(d.mundo, alvo, agora()), juridico(pedido))
   }
 
   /** Lê o corpo pelo contrato; fora da forma, 400. */
@@ -362,16 +354,22 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     const p = periciaDo(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, MSG_SEM_PERICIA)
     if ([...d.linhas.values()].some((l) => !l.documento)) await guardar(d)
-    return visao(naTela(d.mundo, p, agora()), juridico(pedido), d.sensiveis)
+    return visao(naTela(d.mundo, p, agora()), juridico(pedido))
   })
 
-  // GGVP-70: a perícia do resultado (a que espera o resultado ou a última conferida). Dado de saúde: só o Jurídico.
-  app.get<ComId>('/api/processos/:id/pericia/resultado', com('dado_saude.ver_detalhe'), async (pedido, resposta) => {
+  // GGVP-70: a perícia do resultado (a que espera o resultado ou a última conferida), na visão do perfil: o resultado todo
+  // mundo do caso vê; a leitura do laudo, só o Jurídico, e quem a recebe fica registrado (acesso_dado_sensivel), como no
+  // parecer e nos documentos.
+  app.get<ComId>('/api/processos/:id/pericia/resultado', com('caso.ver'), async (pedido, resposta) => {
     const d = await doCaso(pedido.params.id)
     if (!d) return negar(resposta, 404, 'Caso não encontrado.')
     const p = periciaDoResultado(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, 'Esta perícia não espera resultado.')
-    return naTela(d.mundo, p, agora())
+    const t = visao(naTela(d.mundo, p, agora()), juridico(pedido))
+    // Fora do Jurídico a visão já tirou a leitura: só registra quem a recebeu de fato.
+    if ([t.pericia, ...t.anteriores].some((x) => x.resultado?.laudo?.leitura))
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: d.casoId, recurso: `pericia:${p.id}`, quando: agora() })
+    return t
   })
 
   // As tarefas da perícia de quem está na sessão (GGVP-49 CA2, GGVP-53 CA9, GGVP-56, GGVP-66, GGVP-70): pelo perfil da
@@ -400,13 +398,13 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     for (const casoId of casos) {
       const d = await doCaso(casoId)
       const p = d && periciaDo(d.mundo, casoId)
-      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido), d.sensiveis))
+      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido)))
     }
     return lista
   })
 
-  // GGVP-61 CA6: os peritos que a pergunta de um clique oferece, do mesmo tipo. Só o Jurídico (a jurimetria é dele).
-  app.get<{ Querystring: { tipo?: string } }>('/api/peritos', com('dado_saude.ver_detalhe'), async (pedido) => {
+  // GGVP-61 CA6: os peritos que a pergunta de um clique oferece, do mesmo tipo: o nome e a especialidade, sem os laudos.
+  app.get<{ Querystring: { tipo?: string } }>('/api/peritos', com('caso.ver'), async (pedido) => {
     return (await peritos()).filter((p) => !pedido.query.tipo || p.tipo === pedido.query.tipo).map(({ id, nome, especialidade, tipo }) => ({ id, nome, especialidade, tipo }))
   })
 
@@ -481,6 +479,17 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     })
   }
 
+  // GGVP-137: a perícia do juízo sem data lida (a publicação fora do formato do diário, ou o despacho): o Jurídico
+  // administrativo registra a data, a hora e o local, que vão à agenda como a lida. Sem comprovante do INSS. A tarefa de
+  // marcar do sistema fecha quando nenhuma perícia do caso fica para marcar.
+  app.post<ComId>('/api/processos/:id/pericia/data-do-juizo', com('pericia.marcar'), (pedido, resposta) => {
+    const x = corpo(DataDoJuizo, pedido, resposta)
+    return x && mudar(pedido, resposta, { acao: 'pericia_data_do_juizo_registrada', passo: 'DP.04' }, async (n, quem, d) => {
+      mudancas.dataDoJuizo(n, x, quem)
+      if (!d.mundo.pericias!.some(podeMarcar)) await concluirTarefaDoInss(n.pericia.processoId, pedido.usuario!.id)
+    })
+  })
+
   // GGVP-53 CA6 (DP.E1): marcada no Meu INSS, sem o comprovante ainda.
   app.post<ComId>('/api/processos/:id/pericia/espera-do-comprovante', com('pericia.marcar'), (pedido, resposta) => {
     const e = corpo(EsperaDoComprovante, pedido, resposta)
@@ -512,6 +521,21 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   app.post<ComId>('/api/processos/:id/pericia/faltas', com('pericia.reunir_documentos'), (pedido, resposta) => {
     const f = corpo(FaltaNaPericia, pedido, resposta)
     return f && mudar(pedido, resposta, { acao: 'pericia_falta_registrada', passo: 'DP.03', detalhe: { item: f.itemId } }, (n, quem) => mudancas.falta(n, f.itemId, f.justificativa, quem))
+  })
+
+  // GGVP-56 CA2, CA4: "Anexar" sobe o documento do item à pasta do caso e o item fica anexado. O da perícia médica é dado de
+  // saúde: sensível na pasta, o arquivo só o Jurídico abre (rota dos documentos).
+  app.post<ComId>('/api/processos/:id/pericia/documentos', com('pericia.reunir_documentos'), async (pedido, resposta) => {
+    const { dados, arquivo } = await lerMultipart(pedido, ['application/pdf', 'image/jpeg', 'image/png'])
+    const entrada = AnexoNaPericia.safeParse(dados)
+    if (!entrada.success) return negar(resposta, 400, 'Dados inválidos.')
+    if (!arquivo) return negar(resposta, 400, MSG_ANEXO)
+    const hash = createHash('sha256').update(arquivo.conteudo).digest('hex')
+    return mudar(pedido, resposta, { acao: 'pericia_documento_anexado', passo: 'DP.03', detalhe: { item: entrada.data.itemId } }, async (n, quem) => {
+      mudancas.anexo(n, { itemId: entrada.data.itemId, arquivo: { nome: arquivo.nome, hash } }, quem)
+      const item = KIT_DA_PERICIA[n.pericia.tipo].find((i) => i.id === entrada.data.itemId)!
+      await guardarArquivo(pedido, n, arquivo, hash, item.tipos[0], n.pericia.tipo === 'medica')
+    })
   })
 
   app.post<ComId>('/api/processos/:id/pericia/documentos/conclusao', com('pericia.reunir_documentos'), (pedido, resposta) => {

@@ -75,7 +75,7 @@ export function requisitosDoBeneficio(
   }
   const afastamento = (): Requisito => {
     const dias = dados.semTrabalharDesde ? diasDesde(dados.semTrabalharDesde, hoje) : null
-    if (dias === null) return { texto: 'Afastamento: a entrevista não disse desde quando', atende: null }
+    if (dias === null) return { texto: 'Afastamento: falta o "sem trabalhar desde" conferido na entrevista', atende: null }
     return {
       texto: `Afastamento: ${dias} dias desde ${dados.semTrabalharDesde}; precisa de mais de ${AFASTAMENTO_MINIMO} (calculado por código, G19)`,
       atende: dias > AFASTAMENTO_MINIMO,

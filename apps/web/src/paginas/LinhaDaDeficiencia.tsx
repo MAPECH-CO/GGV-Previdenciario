@@ -4,7 +4,7 @@ import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { isoParaData, normalizarData } from '../campos.ts'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { obterLinhaDoTempo, salvarDeficiencia, textoDoEnquadramento, type LinhaDoTempo } from '../dados/deficiencia.ts'
-import { doJuridico } from '../dados/parecer.ts'
+import { doJuridico, registraSaude } from '../dados/parecer.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { tempoFalado } from '../regras/calculo.ts'
@@ -45,6 +45,8 @@ function porVinculo(ps: Periodo[]): Periodo[][] {
 export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
   const perfil = usePerfil('Advogada')
   const juridico = doJuridico(perfil?.id)
+  // Ver é do Jurídico; registrar, só da advogada e da sênior (`dado_saude.registrar`): o Jurídico administrativo só lê.
+  const registra = registraSaude(perfil?.id)
   const [l, setL] = useState<LinhaDoTempo | null | undefined>(undefined)
   const [valores, setValores] = useState<ValoresDaDeficiencia | null>(null)
   const [salvando, setSalvando] = useState(false)
@@ -162,6 +164,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                 <h2 id="dados" className={styles.cartaoTitulo}>
                   Dados da deficiência
                 </h2>
+                {!registra && <p className={parecer.detalhe}>Só leitura: quem registra os dados da deficiência é a advogada ou a sênior.</p>}
                 <div className={proprio.campos}>
                   <label className={proprio.campo}>
                     Início da deficiência *
@@ -169,6 +172,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                       inputMode="numeric"
                       maxLength={10}
                       placeholder="dd/mm/aaaa"
+                      disabled={!registra}
                       value={valores.inicio}
                       onChange={(x) => mudar({ inicio: x.target.value })}
                       onBlur={() => mudar({ inicio: normalizarData(valores.inicio) })}
@@ -176,7 +180,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                   </label>
                   <label className={proprio.campo}>
                     Grau no início *
-                    <select value={valores.grau} onChange={(x) => mudar({ grau: x.target.value as Grau | '' })}>
+                    <select disabled={!registra} value={valores.grau} onChange={(x) => mudar({ grau: x.target.value as Grau | '' })}>
                       <option value="">Escolha…</option>
                       {(Object.keys(GRAUS) as Grau[]).map((g) => (
                         <option key={g} value={g}>
@@ -187,7 +191,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                   </label>
                   <label className={proprio.campo}>
                     Sexo para a contagem (LC 142) *
-                    <select value={valores.sexo} onChange={(x) => mudar({ sexo: x.target.value as Sexo | '' })}>
+                    <select disabled={!registra} value={valores.sexo} onChange={(x) => mudar({ sexo: x.target.value as Sexo | '' })}>
                       <option value="">Escolha…</option>
                       {(Object.keys(SEXOS) as Sexo[]).map((s) => (
                         <option key={s} value={s}>
@@ -208,6 +212,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                           inputMode="numeric"
                           maxLength={10}
                           placeholder="dd/mm/aaaa"
+                          disabled={!registra}
                           value={g.data}
                           onChange={(x) => mudarAgravamento(i, { data: x.target.value })}
                           onBlur={() => mudarAgravamento(i, { data: normalizarData(g.data) })}
@@ -215,7 +220,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                       </label>
                       <label className={proprio.campo}>
                         Novo grau
-                        <select value={g.grau} onChange={(x) => mudarAgravamento(i, { grau: x.target.value as Grau | '' })}>
+                        <select disabled={!registra} value={g.grau} onChange={(x) => mudarAgravamento(i, { grau: x.target.value as Grau | '' })}>
                           <option value="">Escolha…</option>
                           {(Object.keys(GRAUS) as Grau[]).map((grau) => (
                             <option key={grau} value={grau}>
@@ -224,21 +229,27 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                           ))}
                         </select>
                       </label>
-                      <button type="button" className={proprio.tirar} onClick={() => mudar({ agravamentos: valores.agravamentos.filter((_, j) => j !== i) })}>
-                        Tirar
-                      </button>
+                      {registra && (
+                        <button type="button" className={proprio.tirar} onClick={() => mudar({ agravamentos: valores.agravamentos.filter((_, j) => j !== i) })}>
+                          Tirar
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ol>
-                <button type="button" className={styles.atalho} onClick={() => mudar({ agravamentos: [...valores.agravamentos, { data: '', grau: '' }] })}>
-                  + Agravamento
-                </button>
-                <div className={styles.rodape}>
-                  <button type="button" className={styles.principalBotao} disabled={motivo !== null || salvando} onClick={salvar}>
-                    {salvando ? 'salvando…' : 'Salvar os dados da deficiência'}
-                  </button>
-                  {motivo && <p className={styles.motivo}>{motivo}</p>}
-                </div>
+                {registra && (
+                  <>
+                    <button type="button" className={styles.atalho} onClick={() => mudar({ agravamentos: [...valores.agravamentos, { data: '', grau: '' }] })}>
+                      + Agravamento
+                    </button>
+                    <div className={styles.rodape}>
+                      <button type="button" className={styles.principalBotao} disabled={motivo !== null || salvando} onClick={salvar}>
+                        {salvando ? 'salvando…' : 'Salvar os dados da deficiência'}
+                      </button>
+                      {motivo && <p className={styles.motivo}>{motivo}</p>}
+                    </div>
+                  </>
+                )}
                 {dados && (
                   <p className={parecer.detalhe}>
                     Registrado por {dados.quem} em {dataHora(dados.quando)}.
