@@ -38,7 +38,9 @@ describe('migrações', () => {
       'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao',
       'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'glossario_termo', 'acervo_trecho']) expect(t).toContain(nome)
     expect(t).toContain('documentacao_medica')
-    expect(t).toHaveLength(57)
+    // GGVP-147: quem faz cada tarefa do setor.
+    expect(t).toContain('atribuicao_tarefa')
+    expect(t).toHaveLength(58)
   })
 
   it('GGVP-141 · a base de conhecimento do acervo: pgvector ligado e o índice HNSW pela distância de cosseno (ADR-013)', async () => {

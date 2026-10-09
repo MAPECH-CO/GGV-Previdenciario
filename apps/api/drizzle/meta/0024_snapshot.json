@@ -1,6 +1,6 @@
 {
-  "id": "de2fd010-a532-4597-aa4a-de894140eaa6",
-  "prevId": "7bbd13db-445b-42d8-97a3-633d27764c3e",
+  "id": "a380d268-8f84-4ab0-a91a-064264f12f1d",
+  "prevId": "de2fd010-a532-4597-aa4a-de894140eaa6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4358,7 +4358,7 @@
       "checkConstraints": {
         "publicacao_classe": {
           "name": "publicacao_classe",
-          "value": "\"publicacao\".\"classe\" in ('andamento', 'exigencia', 'merito')"
+          "value": "\"publicacao\".\"classe\" in ('andamento', 'exigencia', 'merito', 'nomeacao_perito')"
         },
         "publicacao_fila": {
           "name": "publicacao_fila",
