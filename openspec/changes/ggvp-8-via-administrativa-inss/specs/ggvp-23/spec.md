@@ -86,6 +86,27 @@ Quem não tem o perfil Sênior e tenta aprovar ou reprovar chamando o servidor d
 - **Quando** envia
 - **Então** a ação é recusada no servidor e registrada
 
+### Requirement: CA11 · Aprovar só com o checklist do kit do benefício (G1)
+Aprovar MUST valer só quando cada documento obrigatório do kit vigente do benefício está no caso. Benefício sem kit cadastrado MUST bloquear a aprovação com "Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar" (revisão de 08/10: antes, sem kit o checklist contava como completo). O servidor recusa, diz o portão G1 e registra a tentativa; a tela desliga Aprovar com o mesmo motivo.
+
+#### Scenario: CA11 · Falta documento do kit
+- **Dado** um caso cujo kit pede um documento que não está no caso
+- **Quando** a Sênior aprova
+- **Então** o servidor recusa dizendo o G1 e o que falta, e a tentativa fica no histórico
+
+#### Scenario: CA11 · Benefício sem kit cadastrado
+- **Dado** um caso de benefício sem kit cadastrado na Configuração
+- **Quando** a Sênior aprova
+- **Então** o servidor recusa com "Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar"
+
+### Requirement: CA12 · Aprovar só com o contrato assinado (G1)
+Aprovar MUST valer só com o contrato do caso assinado ("todas as assinaturas", G1). Sem ele, o servidor recusa com "Contrato não assinado (G1)" e registra; a tela desliga Aprovar com o mesmo motivo.
+
+#### Scenario: CA12 · Contrato não assinado
+- **Dado** um caso sem contrato assinado
+- **Quando** a Sênior aprova
+- **Então** o servidor recusa dizendo o G1, e a tentativa fica no histórico
+
 ### Requirement: GGVP-96 CA12 e CA13 · O parecer da conferência só para o Jurídico, com a leitura registrada
 O parecer médico da conferência MUST ir só para quem tem `dado_saude.ver_detalhe` (advogada, Sênior, Jurídico administrativo); os outros perfis recebem o parecer vazio e a marca de restrito, e a tela diz "Parecer médico restrito ao Jurídico.". Cada leitura do parecer por pessoa SHALL ficar em `acesso_dado_sensivel` (quem, quando, caso); o aprovar usa o parecer só para o portão G17 e não grava.
 
