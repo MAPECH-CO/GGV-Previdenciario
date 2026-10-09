@@ -78,6 +78,8 @@ describe('Clientes (GGVP-78)', () => {
     expect((filtros.getByRole('combobox', { name: 'Situação' }) as HTMLSelectElement).value).toBe('ativos')
 
     const tabela = await screen.findByRole('table', { name: 'Clientes' })
+    // A tabela aparece antes das linhas: espera o servidor responder.
+    await within(tabela).findByRole('link', { name: 'Sebastião Nunes' })
     expect(within(tabela).getAllByRole('columnheader').map((c) => c.textContent)).toEqual(['Cliente', 'CPF', 'Benefício', 'Cidade', 'Processos', 'Situação / êxito', 'Último contato'])
     const [, seb, fer] = within(tabela).getAllByRole('row')
     expect(within(seb).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Sebastião Nunes', '***.982.247-**', 'Auxílio Acidentário', 'São Paulo · SP', '2', 'Em andamento', 'ontem'])

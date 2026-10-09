@@ -24,7 +24,7 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
-// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a prestação para a Sênior 25, o kit de verdade 26. Quem
+// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, o kit de verdade 26. Quem
 // entrar depois renumera.
 export const VERSAO_MATRIZ = 26
 
@@ -43,7 +43,8 @@ export const MATRIZ = {
   'valores.ver': ['financeiro', 'socio'],
   /** Os totais em dinheiro do painel de resultados (GGVP-75 CA4): honorários recebidos e tempo até o dinheiro. */
   'valores.ver_totais': ['socio', 'financeiro'],
-  'prestacao.ver': ['financeiro', 'advogada', 'socio'],
+  // Versão 25 (Pedro, 09/10): a Sênior vê a prestação de contas, só ela; os outros valores do caso continuam fora.
+  'prestacao.ver': ['financeiro', 'advogada', 'senior', 'socio'],
   /** Prazos, tentativas bloqueadas, uso do cofre, configuração e a exportação da trilha. O Financeiro vê só os Resultados (Figma). */
   'gestao.ver': ['socio', 'senior', 'atendimento_lider'],
   /** Ver o caso só para leitura (GGVP-23 CA4). O Sócio lê tudo (Lucas, 07/10); o Financeiro vê a prestação e os Resultados, não o caso. */
