@@ -3,7 +3,7 @@ import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
 import { ROTULO_RESULTADO_DA_COBRANCA } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/campos'
-import { DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
+import { nomeDoBeneficio, DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { Moldura } from './Moldura.tsx'
 import styles from './Passo.module.css'
@@ -13,7 +13,6 @@ const ROTULO_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social
 const ROTULO_ITEM = { pendente: 'Pendente', cumprido: 'Cumprido', nao_cumprido: 'Não cumprido' } as const
 type Pede = keyof typeof ROTULO_PEDE
 type TipoPericia = (typeof TIPOS_DE_PERICIA)[number]
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const br = (iso: string | null) => (iso ? (isoParaData(iso) ?? iso) : '—')
 
 /** A exigência como o INSS mandou, com o prazo contado pelo sistema (CA7, G12). */
@@ -217,7 +216,7 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
           </a>
           <h1 className={styles.titulo}>Tratar exigência do INSS</h1>
           <p className={styles.subtitulo}>
-            {x.cliente} · {rotuloBeneficio(x.beneficio)}
+            {x.cliente} · {nomeDoBeneficio(x.beneficio)}
           </p>
         </>
       }

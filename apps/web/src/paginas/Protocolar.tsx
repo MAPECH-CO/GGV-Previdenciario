@@ -1,13 +1,12 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, somenteDigitos } from '@ggv/campos'
-import { RegistrarProtocolo, SEGUNDOS_SENHA, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
+import { nomeDoBeneficio, RegistrarProtocolo, SEGUNDOS_SENHA, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { CofreGovbr } from '../componentes/CofreGovbr.tsx'
 import { usePode } from '../sessao.ts'
 import styles from './Passo.module.css'
 
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 
 /** Senha do gov.br do cofre (G9): pede a senha do portal, mostra por tempo limitado e some sozinha. */
 function SenhaDoGov({ casoId }: { casoId: string }) {
@@ -131,7 +130,7 @@ export function Protocolar({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Protocolar no Meu INSS</h1>
       <p className={styles.subtitulo}>
-        {caso.cliente} · {rotuloBeneficio(caso.beneficio)}
+        {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
       </p>
 
       <section className={styles.cartao} aria-labelledby={`${ids.numero}-ok`}>

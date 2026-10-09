@@ -57,7 +57,7 @@
 
 ## 13. CA11 · Benefício pelo nome (revisão de 08/10)
 
-- [ ] 13.1 `nomeDoBeneficio` em `packages/contratos/src/governanca.ts` (código do catálogo → nome; desconhecido → sem "_"; nulo → "a definir"); teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 13.2 Servidor: o detalhe da linha da Central em `rotas/inss.ts` usa `nomeDoBeneficio`; teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 13.3 Telas: Conferência, Despachar, Petição, Protocolar, Tratar exigência e Vigília trocam o `rotuloBeneficio` local por `nomeDoBeneficio`; teste Vitest da Conferência; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída.
+- [x] 13.1 `nomeDoBeneficio` em `packages/contratos/src/governanca.ts` (código do catálogo → nome; desconhecido → sem "_"; nulo → "a definir"); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 13.2 Servidor: o detalhe da linha da Central em `rotas/inss.ts` usa `nomeDoBeneficio`; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 13.3 Telas: Conferência, Despachar, Petição, Protocolar, Tratar exigência e Vigília trocam o `rotuloBeneficio` local por `nomeDoBeneficio`; teste Vitest da Conferência; verifica com `pnpm --filter @ggv/web test`.
+- [x] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída.

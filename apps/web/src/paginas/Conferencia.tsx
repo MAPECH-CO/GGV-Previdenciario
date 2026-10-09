@@ -1,12 +1,11 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
+import { nomeDoBeneficio, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { taxaComCasos } from '../regras/caso.ts'
 import styles from './Passo.module.css'
 
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const ROTULO_PARECER = { suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado por duas Sêniores' }
 
 /** Por que Aprovar ainda não vale: G1 aqui; G17 vem do servidor, pela regra única do contrato (`travaDoParecer`). */
@@ -101,7 +100,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Conferência antes do INSS</h1>
       <p className={styles.subtitulo}>
-        {caso.cliente} · {rotuloBeneficio(caso.beneficio)}
+        {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
       </p>
       {!caso.podeDecidir && <span className={`${styles.selo} ${styles.seloAlerta}`}>Só leitura: aprovar e reprovar são da Sênior (G2)</span>}
 

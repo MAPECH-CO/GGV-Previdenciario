@@ -202,6 +202,8 @@ describe('GGVP-23 · decidir', () => {
     await banco.update(caso).set({ beneficio: 'pensao_morte' }).where(eq(caso.id, casoId))
     const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('helena') })).json()
     expect([linha.titulo, linha.urgente, linha.tela]).toEqual(['Conferir antes do INSS', true, `/casos/${casoId}/conferencia`])
+    // GGVP-120 CA11: pelo nome do catálogo, não pelo código.
+    expect(linha.detalhe).toBe('Pensão por Morte')
   })
 })
 
