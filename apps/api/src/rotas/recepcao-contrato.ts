@@ -1,13 +1,28 @@
 // O contrato do caso no servidor (GGVP-125, bloco 4), sobre o fichário da Recepção. O "fechou" cria o caso em `caso`
 // (o elo com o resto do portal) e o contrato com o kit; as condições do kit, a geração pelo modelo e a assinatura seguem as
 // regras do servidor de exemplo do Pedro (contrato.ts), com as regras puras importadas das telas; a leitura, a conferência e a
-// cópia também. ZapSign, impressora, scanner e a leitura da IA seguem simulados.
+// cópia também. O kit gerado é o Word do escritório, preenchido (GGVP-136). ZapSign, impressora, scanner e a leitura da IA
+// seguem simulados.
 import { eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { dataParaIso, normalizarData, normalizarNome } from '@ggv/campos'
-import { CondicoesDoKit, EntregaDaCopia, EnvioDoContrato, FechamentoDoCaso, MensagemEnviada, TentativaDoContrato, VerificacaoDoContrato, VisitaDaCopia, type Erro } from '@ggv/contratos'
+import {
+  CondicoesDoKit,
+  EntregaDaCopia,
+  EnvioDoContrato,
+  FechamentoDoCaso,
+  MensagemEnviada,
+  TIPO_DO_DOCX,
+  TentativaDoContrato,
+  VerificacaoDoContrato,
+  VisitaDaCopia,
+  type Erro,
+} from '@ggv/contratos'
+import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, pessoa } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, documento, pessoa } from '../banco/esquema.ts'
+import { lerModelo, preencherModelo } from '../kit/docx.ts'
+import { modeloEmVigor } from '../kit/modelos.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Agendamento, Arquivo, Processo } from '../../../web/src/dados/tipos.ts'
@@ -24,6 +39,7 @@ import {
   faltando,
   identificadorDoKit,
   identificadorDoModelo,
+  kitRepresentado,
   linhaDoBeneficio,
   mensagemDoLink,
   modeloDoKit,
@@ -34,37 +50,37 @@ import {
   papelNaHora,
   precisaConferir,
   resumoDaLeitura,
-  restosDoModelo,
   ROTULOS_DOS_CAMPOS,
   type CampoDoModelo,
   type DadosDoContrato,
 } from '../../../web/src/regras/contrato.ts'
 import {
-  CLIENTE_DO_EXEMPLO_DOS_MODELOS,
   ROTULOS_DAS_CONDICOES,
   camposDoCaso,
+  dadosDoCaso,
   daFicha,
   juntar,
   leituraDeExemploDoContrato,
   linkDoZapSign,
-  textosDoKit,
   visitaDaCopia,
   type Assinatura,
   type Contrato,
   type ContratoDoCaso,
 } from '../../../web/src/regras/contratoDoCaso.ts'
 import { problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
+import { faltamNoKit, valoresDoKit } from '../../../web/src/regras/kitDoModelo.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
+import { guardarArquivo } from './formulario.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_CONTRATO_NAO_ENCONTRADO = 'Contrato não encontrado.'
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 
-export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   // D1.16 a D1.20: o contrato é da raia do Atendimento; o % de honorários aparece só nele (GGVP-96).
@@ -165,7 +181,9 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-69: valida de novo a decisão, o que corrigir e as conferências (CA6). Com "Não, corrigir campos", grava a correção
   // (na ficha os dados pessoais; no contrato o RG, a parte contrária e o representante), registra no histórico (CA7) e
-  // gera de novo (CA3). Campo obrigatório vazio não segue (CA7); sobra do modelo também não (CA8). Gerado, vai assinar.
+  // gera de novo (CA3). Campo obrigatório vazio não segue (CA7). GGVP-136: o kit é o Word do escritório, na versão em vigor do
+  // modelo da linha do benefício, preenchido com a ficha e o caso (CA2, CA3). O que falta não gera e vai listado (CA4); o
+  // arquivo gerado fica na pasta do cliente, com o modelo e a versão usados (CA6). Gerado, vai assinar.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/gerar', conduzir, async (pedido, resposta) => {
     const entrada = EnvioDoContrato.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Envio inválido.')
@@ -182,6 +200,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     if (contrato.etapa !== 'preparar' || !contrato.kit) return negar(resposta, 400, 'Este contrato não está para preparar.')
     const modelo = modeloDoKit(contrato.kit)
     if (!modelo) return { resultado: 'sem-modelo' }
+    const vigor = await modeloEmVigor(banco, modelo.id)
+    if (!vigor) return { resultado: 'sem-modelo', modelo: modelo.nome }
 
     const mudou: CampoDoModelo[] = []
     const dados: DadosDoContrato = { ...contrato.dados }
@@ -205,17 +225,28 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     contrato.dados = dados
     contrato.corrigidos = [...new Set([...(contrato.corrigidos ?? []), ...mudou])]
 
-    const campos = camposDoCaso({ ficha, processo, contrato })
+    const campos = camposDoCaso({ ficha, processo, contrato }, true)
     const faltam = faltando(campos)
     if (faltam.length > 0) return { resultado: 'faltam', campos: faltam }
-    const textos = textosDoKit(contrato.kit, campos)
-    const restos = [...new Set(textos.flatMap((t) => restosDoModelo(t.texto, CLIENTE_DO_EXEMPLO_DOS_MODELOS)))]
-    if (restos.length > 0) return { resultado: 'sobrou-do-exemplo', restos }
+    const arquivoDoModelo = await armazenamento.ler(vigor.arquivo.chave)
+    const lido = lerModelo(arquivoDoModelo)
+    if (!lido.ok) return { resultado: 'sem-modelo', modelo: modelo.nome }
+    const dia = hoje()
+    const valores = valoresDoKit({ ficha, dados: dadosDoCaso(ficha, contrato), linha: contrato.kit.linha, representado: kitRepresentado(processo.beneficio, contrato.condicoes) }, dia)
+    const faltamNaFicha = faltamNoKit(lido.variaveis, valores)
+    if (faltamNaFicha.length > 0) return { resultado: 'faltam-na-ficha', faltam: faltamNaFicha }
 
     const geradoEm = agora().toISOString()
     const versao = (contrato.documento?.versao ?? 0) + 1
+    const nomeDoArquivo = `Kit do contrato - versão ${versao}.docx`
+    const guardado = await guardarArquivo(armazenamento, processo.id, { conteudo: preencherModelo(arquivoDoModelo, valores, dia), mime: TIPO_DO_DOCX, nome: nomeDoArquivo }, 'kit-do-contrato.docx')
+    const [kitGuardado] = await banco
+      .insert(documento)
+      .values({ casoId: processo.id, pessoaId: ficha.id, tipo: 'kit_contrato', origem: 'portal', recebidoPor: pedido.usuario!.id, ...guardado })
+      .returning({ id: documento.id })
+    const modeloUsado = { ...modelo, versao: vigor.versao }
     const motivo = envio.aprovados ? `gerado pelo ${modelo.nome}` : `corrigido: ${oQueCorrigir}`
-    contrato.documento = { versao, geradoEm, campos, textos }
+    contrato.documento = { versao, geradoEm, campos, textos: [], modelo: { id: modelo.id, versao: vigor.versao }, arquivo: { documentoId: kitGuardado.id, nome: nomeDoArquivo } }
     contrato.versoes = [...(contrato.versoes ?? []), { versao, geradoEm, motivo }]
     contrato.etapa = 'assinatura'
     const seguinte: Processo = { ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }
@@ -223,8 +254,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     if (mudou.length > 0) ficha.historico.push(evento(`Corrigiu no contrato: ${juntar(mudou.map((c) => ROTULOS_DOS_CAMPOS[c]))} (${oQueCorrigir})`, nome))
     ficha.historico.push(
       evento(
-        `Gerou o contrato de ${nomeBeneficio(processo.beneficio)} pelo modelo ${identificadorDoModelo(modelo)} (versão ${versao}): conferiu os campos, ` +
-          'as datas à mão, a ficha LOAS e a página do Código Penal',
+        `Gerou o contrato de ${nomeBeneficio(processo.beneficio)} pelo modelo ${identificadorDoModelo(modeloUsado)} (versão ${versao}), guardado na pasta do cliente: ` +
+          'conferiu os campos, as datas à mão, a ficha LOAS e a página do Código Penal',
         nome,
       ),
     )

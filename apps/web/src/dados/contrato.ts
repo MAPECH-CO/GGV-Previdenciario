@@ -163,6 +163,12 @@ function anexarAqui(fichaId: string, arquivo: Arquivo) {
   gravar(banco)
 }
 
+/**
+ * O contrato do servidor gera o Word do escritório (GGVP-136) e por isso pede mais campos (a nacionalidade, o que falta do
+ * representante, o curatelado) que o de exemplo, que só simula o texto.
+ */
+export const kitDeVerdade = (processoId: string) => doServidor(processoId)
+
 /** GET /api/processos/:id/contrato. Nulo quando o processo não tem contrato. */
 export async function obterContrato(processoId: string): Promise<ContratoDoCaso | null> {
   return achar(ler(), processoId)

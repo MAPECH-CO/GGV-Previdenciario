@@ -23,3 +23,20 @@ export function docxDeTeste(paragrafos: string[]): Buffer {
   zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="${W}"><w:body>${corpo}</w:body></w:document>`)
   return zip.generate({ type: 'nodebuffer' })
 }
+
+/** O texto do .docx, um parágrafo por linha: o que o teste confere do kit gerado. */
+export function textoDoDocx(docx: Buffer): string {
+  const xml = new PizZip(docx).file('word/document.xml')!.asText()
+  return [...xml.matchAll(/<w:p[ >](.*?)<\/w:p>/g)]
+    .map((p) => [...p[1].matchAll(/<w:t[^>]*>(.*?)<\/w:t>/g)].map((t) => t[1].replaceAll('&amp;', '&')).join(''))
+    .join('\n')
+}
+
+/** O envio do arquivo como o navegador faz: multipart, com o arquivo no campo `arquivo`. */
+export function formularioDoArquivo(arquivo: Buffer | null, nome = 'modelo.docx') {
+  const f = '----ggv'
+  const headers = { 'content-type': `multipart/form-data; boundary=${f}` }
+  if (!arquivo) return { payload: `--${f}\r\nContent-Disposition: form-data; name="observacao"\r\n\r\nsem arquivo\r\n--${f}--\r\n`, headers }
+  const abertura = `--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="${nome}"\r\nContent-Type: application/octet-stream\r\n\r\n`
+  return { payload: Buffer.concat([Buffer.from(abertura), arquivo, Buffer.from(`\r\n--${f}--\r\n`)]), headers }
+}

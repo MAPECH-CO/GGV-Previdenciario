@@ -200,9 +200,11 @@ Parte 1: os nove modelos do Word, com as {{VARIÁVEIS}} no lugar dos dados de cl
 - [x] 136.3 Variáveis: `apps/web/src/regras/kitDoModelo.ts`, a lista fechada no padrão do ZapSign, com teste em `kitDoModelo.test.ts` (CA1, CA3).
 - [x] 136.4 Servidor: abrir o .docx (`apps/api/src/kit/docx.ts`), `GET` e `PUT /api/configuracao/modelos` (`rotas/modelos.ts`), versão e armazenamento privado, histórico da configuração; testes em `rotas/modelos.test.ts` (CA1).
 - [x] 136.5 Tela: a seção "Modelos do kit" na Configuração, com o envio do arquivo só para a Sênior; teste em `Configuracao.test.tsx` (CA1).
-- [ ] 136.6 Preencher: os valores de cada variável a partir da ficha e do caso, o que falta e a data do papel em `regras/kitDoModelo.ts`; os campos novos do contrato (nacionalidade, genitor(a), curatelado) em `regras/contrato.ts` (CA3, CA4).
-- [ ] 136.7 Servidor: o kit preenchido na geração (`POST /api/processos/:id/contrato/gerar`), guardado na pasta do cliente com o modelo e a versão, e o registro no histórico; `GET /api/processos/:id/contrato/kit` com o conversor plugável (`GOTENBERG_URL`); testes (CA2 a CA6).
-- [ ] 136.8 Telas: o que falta com o atalho para a ficha, "Imprimir o kit" abrindo o PDF e a janela de impressão (ou baixando o Word), papel para qualquer entrevista e a opção do celular escondida; testes (CA4, CA5, CA7, CA8).
-- [ ] 136.9 Script de homologação que sobe os modelos da pasta local pela rota da Configuração (o login da Sênior por variável de ambiente), e `docs/` com as variáveis e a nota do Gotenberg.
-- [ ] 136.10 Playwright `e2e/kit-de-verdade.e2e.ts`: do modelo subido ao kit impresso, visto de outra sessão (CA1 a CA6).
-- [ ] 136.11 Rodar typecheck, lint, testes; colar a saída; perguntar "Agora ok?".
+- [x] 136.6 Preencher: os valores de cada variável a partir da ficha e do caso, o que falta e as datas do papel em `regras/kitDoModelo.ts`; os campos novos do contrato do servidor (nacionalidade, o que falta do representante, o curatelado) em `regras/contrato.ts`; testes em `kitDoModelo.test.ts` e `contrato.test.ts` (CA3, CA4).
+- [x] 136.7 Servidor: `POST /api/processos/:id/contrato/gerar` usa a versão em vigor do modelo da linha, preenche (`preencherModelo`), guarda o .docx na pasta do cliente com o modelo e a versão e registra no histórico; sem modelo ou com dado faltando, não gera e diz o quê; testes em `rotas/recepcao-contrato.test.ts` e `kit/docx.test.ts` (CA2, CA3, CA4, CA6).
+- [x] 136.8 Tela Preparar contrato: os campos novos só no contrato do servidor, o aviso do que falta na ficha com o atalho e o aviso do modelo que falta; teste em `PrepararContratoKit.test.tsx` (CA3, CA4).
+- [ ] 136.9 Imprimir: `GET /api/processos/:id/contrato/kit` com o conversor plugável (`GOTENBERG_URL`) e a tela "Imprimir o kit" que abre o PDF e a janela de impressão, ou baixa o Word; testes (CA5).
+- [ ] 136.10 Papel para qualquer entrevista enquanto o ZapSign não está contratado, e a opção do celular escondida na tela de colher a assinatura; o assinado segue o caminho que já existe; testes (CA7, CA8).
+- [ ] 136.11 Script de homologação que sobe os modelos da pasta local pela rota da Configuração (o login da Sênior por variável de ambiente), e `docs/` com as variáveis e a nota do Gotenberg.
+- [ ] 136.12 Playwright: ajustar os e2e que geram contrato pelo servidor (agora pedem modelo subido e ficha completa) e `e2e/kit-de-verdade.e2e.ts`, do modelo subido ao kit impresso, visto de outra sessão (CA1 a CA6).
+- [ ] 136.13 Rodar typecheck, lint, testes; colar a saída; perguntar "Agora ok?".

@@ -20,7 +20,7 @@ export const ModelosDoEscritorio = z.object({
 |---|---|---|
 | `GET /api/configuracao/modelos` (`gestao.ver`) | — | `ModelosDoEscritorio` |
 | `PUT /api/configuracao/modelos/:id` (`modelo.subir`, só a Sênior) | multipart, campo `arquivo` (.docx) | `{ ok, versao }` |
-| `POST /api/processos/:id/contrato/gerar` | o envio que já existe | `gerado`, ou o que falta (CA4), ou `sem-modelo` |
+| `POST /api/processos/:id/contrato/gerar` | o envio que já existe | `gerado`; ou `faltam` (campos do contrato) ou `faltam-na-ficha` (o que a ficha não tem), com a lista (CA4); ou `sem-modelo` |
 | `GET /api/processos/:id/contrato/kit` | — | o PDF (com `GOTENBERG_URL`) ou o .docx preenchido (CA5) |
 
 Decisões:

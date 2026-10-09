@@ -1,6 +1,6 @@
 // O contrato do caso, do kit à cópia (GGVP-65 em diante). Regra do escritório é código com teste, nunca resposta de modelo.
 // A tabela dos kits é a do cartão GGVP-65 (board do escritório); a manutenção pela gestão vem com a GGVP-104.
-import { formatarCpf, formatarTelefone, normalizarCpf, normalizarNome, normalizarTelefone } from '../campos.ts'
+import { formatarCpf, formatarTelefone, hojeIso, normalizarCpf, normalizarData, normalizarNome, normalizarTelefone } from '../campos.ts'
 import type { TipoDeEntrevista } from '../dados/tipos.ts'
 import { somarDias } from './agenda.ts'
 import { MENSAGEM, erroCpf, erroData, erroDataDoCompromisso, erroNome, erroTelefone } from './formularios.ts'
@@ -195,6 +195,9 @@ export type KitMontado = {
 
 export const linhaDoBeneficio = (beneficio: string): LinhaDoKit | undefined => KITS.find((k) => k.beneficios.includes(beneficio))
 
+/** LOAS representado por genitor(a): quem a ficha descreve é o representado, e o genitor(a) assina por ele (CA2). */
+export const kitRepresentado = (beneficio: string, condicoes: CondicoesDoKit) => linhaDoBeneficio(beneficio)?.loas === true && condicoes.representado
+
 /** O modelo do Word do kit, ou nada quando a linha ainda não tem (GGVP-136). */
 export const modeloDoKit = (kit: Pick<KitMontado, 'modelo'>): Modelo | undefined => (kit.modelo ? modeloPorId(kit.modelo) : undefined)
 
@@ -213,7 +216,7 @@ export function montarKit(beneficio: string, condicoes: CondicoesDoKit = SEM_CON
     ...(id === 'termo-inss' && linha.termoInss && { detalhe: linha.termoInss }),
     ...(id === 'hipossuficiencia' && linha.acaoContra && { detalhe: `ação contra ${linha.acaoContra}` }),
   }))
-  const representado = linha.loas === true && condicoes.representado
+  const representado = kitRepresentado(beneficio, condicoes)
   const modelo: IdDoModelo | undefined = representado ? 'contrato-completo-loas-representado' : linha.modelo
   if (linha.loas) {
     documentos.push({ id: 'grupo-familiar', nome: NOMES_DOS_DOCUMENTOS['grupo-familiar'], detalhe: 'obrigatória em todo LOAS' })
@@ -250,6 +253,16 @@ export type CampoDoModelo =
   | 'representanteCpf'
   | 'representanteRg'
   | 'representanteParentesco'
+  // O kit de verdade (GGVP-136): o que os modelos do Word pedem e a ficha não tem.
+  | 'nacionalidade'
+  | 'representanteEstadoCivil'
+  | 'representanteNacionalidade'
+  | 'representanteProfissao'
+  | 'curateladoNome'
+  | 'curateladoNascimento'
+  | 'curateladoNacionalidade'
+  | 'curateladoRg'
+  | 'curateladoCpf'
 
 export const ROTULOS_DOS_CAMPOS: Record<CampoDoModelo, string> = {
   nome: 'Nome completo',
@@ -265,6 +278,15 @@ export const ROTULOS_DOS_CAMPOS: Record<CampoDoModelo, string> = {
   representanteCpf: 'CPF do representante',
   representanteRg: 'RG do representante',
   representanteParentesco: 'Parentesco do representante',
+  nacionalidade: 'Nacionalidade',
+  representanteEstadoCivil: 'Estado civil do representante',
+  representanteNacionalidade: 'Nacionalidade do representante',
+  representanteProfissao: 'Profissão do representante',
+  curateladoNome: 'Nome completo do curatelado',
+  curateladoNascimento: 'Data de nascimento do curatelado',
+  curateladoNacionalidade: 'Nacionalidade do curatelado',
+  curateladoRg: 'RG do curatelado',
+  curateladoCpf: 'CPF do curatelado',
 }
 
 /** De onde veio cada campo (CA5). */
@@ -280,9 +302,30 @@ export const ROTULOS_DAS_ORIGENS: Record<Origem, string> = {
 
 export type CampoPreenchido = { campo: CampoDoModelo; rotulo: string; valor: string; origem: Origem; obrigatorio: boolean }
 
-/** O que o contrato guarda e a ficha não tem: o RG, a parte contrária escrita e o representante (CA1). */
+/**
+ * O que o contrato guarda e a ficha não tem: o RG, a parte contrária escrita e o representante (CA1). No kit de verdade
+ * (GGVP-136) entram também a nacionalidade, o que falta do representante (estado civil e profissão vêm da ficha; a
+ * nacionalidade, não) e os dados do curatelado, que não são da ficha: a ficha descreve quem contrata.
+ */
 export type DadosDoContrato = Partial<
-  Record<'rg' | 'parteContraria' | 'representanteNome' | 'representanteCpf' | 'representanteRg' | 'representanteParentesco', string>
+  Record<
+    | 'rg'
+    | 'parteContraria'
+    | 'representanteNome'
+    | 'representanteCpf'
+    | 'representanteRg'
+    | 'representanteParentesco'
+    | 'nacionalidade'
+    | 'representanteEstadoCivil'
+    | 'representanteNacionalidade'
+    | 'representanteProfissao'
+    | 'curateladoNome'
+    | 'curateladoNascimento'
+    | 'curateladoNacionalidade'
+    | 'curateladoRg'
+    | 'curateladoCpf',
+    string
+  >
 >
 
 export const PARENTESCOS = [
@@ -314,11 +357,16 @@ export type FichaParaOModelo = {
 }
 
 const formatar = (campo: CampoDoModelo, valor: string) =>
-  campo === 'cpf' || campo === 'representanteCpf' ? formatarCpf(valor) : campo === 'telefone' ? formatarTelefone(valor) : valor
+  campo === 'cpf' || campo === 'representanteCpf' || campo === 'curateladoCpf'
+    ? formatarCpf(valor)
+    : campo === 'telefone'
+      ? formatarTelefone(valor)
+      : valor
 
 /**
  * Os campos do modelo, com o valor e de onde veio (CA1, CA5). O representante só entra no LOAS representado (CA9); a parte
- * contrária, quando o kit tem uma.
+ * contrária, quando o kit tem uma. Com `kitDeVerdade` (o contrato do servidor, GGVP-136), entram também os campos que os
+ * modelos do Word pedem: a nacionalidade, o que falta do representante e, na curatela, o curatelado.
  */
 export function camposDoModelo(entrada: {
   ficha: FichaParaOModelo
@@ -327,8 +375,9 @@ export function camposDoModelo(entrada: {
   condicoes: CondicoesDoKit
   dados: DadosDoContrato
   corrigidos: CampoDoModelo[]
+  kitDeVerdade?: boolean
 }): CampoPreenchido[] {
-  const { ficha, beneficio, nomeDoBeneficio, condicoes, dados, corrigidos } = entrada
+  const { ficha, beneficio, nomeDoBeneficio, condicoes, dados, corrigidos, kitDeVerdade = false } = entrada
   const linha = linhaDoBeneficio(beneficio)
   const daTriagem = ficha.fichaAtendimento !== undefined
   const cpfNaPasta = ficha.documentos.some((d) => d.nome === 'CPF') || ficha.arquivos.some((a) => a.tipo === 'cpf')
@@ -336,6 +385,7 @@ export function camposDoModelo(entrada: {
   const campos: [CampoDoModelo, string | undefined, Origem][] = [
     ['nome', ficha.nome, daTriagem ? 'ficha' : 'cadastro'],
     ['estadoCivil', ficha.estadoCivil, 'cadastro'],
+    ...(kitDeVerdade ? [['nacionalidade', dados.nacionalidade, 'caso'] as [CampoDoModelo, string | undefined, Origem]] : []),
     ['profissao', ficha.profissao, 'cadastro'],
     ['cpf', ficha.cpf, cpfNaPasta ? 'documento' : daTriagem ? 'ficha' : 'cadastro'],
     ['rg', dados.rg, rgNaPasta ? 'documento' : 'cadastro'],
@@ -353,6 +403,21 @@ export function camposDoModelo(entrada: {
       ['representanteRg', dados.representanteRg, 'caso'],
       ['representanteParentesco', parentesco, 'caso'],
     )
+    if (kitDeVerdade)
+      campos.push(
+        ['representanteEstadoCivil', dados.representanteEstadoCivil, 'caso'],
+        ['representanteNacionalidade', dados.representanteNacionalidade, 'caso'],
+        ['representanteProfissao', dados.representanteProfissao, 'caso'],
+      )
+  }
+  if (kitDeVerdade && linha?.id === 'curatela') {
+    campos.push(
+      ['curateladoNome', dados.curateladoNome, 'caso'],
+      ['curateladoNascimento', dados.curateladoNascimento, 'caso'],
+      ['curateladoNacionalidade', dados.curateladoNacionalidade, 'caso'],
+      ['curateladoRg', dados.curateladoRg, 'caso'],
+      ['curateladoCpf', dados.curateladoCpf, 'caso'],
+    )
   }
   return campos.map(([campo, valor, origem]) => ({
     campo,
@@ -368,12 +433,23 @@ export const faltando = (campos: CampoPreenchido[]) => campos.filter((c) => c.ob
 /** O que a pessoa corrige na tela: o benefício não (ele muda o kit), nem a parte contrária dos kits do INSS. */
 export const corrigivel = (c: CampoPreenchido) => c.campo !== 'beneficio' && !(c.campo === 'parteContraria' && c.valor === INSS)
 
-const TAMANHOS: Partial<Record<CampoDoModelo, number>> = { estadoCivil: 40, profissao: 200, endereco: 200, parteContraria: 120 }
+const TAMANHOS: Partial<Record<CampoDoModelo, number>> = {
+  estadoCivil: 40,
+  profissao: 200,
+  endereco: 200,
+  parteContraria: 120,
+  nacionalidade: 40,
+  representanteEstadoCivil: 40,
+  representanteNacionalidade: 40,
+  representanteProfissao: 200,
+  curateladoNacionalidade: 40,
+}
 
 export const MENSAGENS_DO_CONTRATO = {
   rg: 'RG com 5 a 20 letras e números.',
   texto: 'Preencha este campo.',
   parentesco: 'Escolha genitora ou genitor.',
+  nascimento: 'Data de nascimento em dd/mm/aaaa, que exista e não seja futura.',
 } as const
 
 /** RG: letras, números e a pontuação, de 5 a 20. A biblioteca campos não tem RG. */
@@ -383,10 +459,11 @@ export function erroRg(valor: string): string | undefined {
 
 /** A mensagem embaixo de cada campo corrigido, pela biblioteca campos; o servidor valida de novo (CA3, CA7). */
 export function erroDoCampo(campo: CampoDoModelo, valor: string): string | undefined {
-  if (campo === 'nome' || campo === 'representanteNome') return erroNome(valor)
-  if (campo === 'cpf' || campo === 'representanteCpf') return erroCpf(valor, true)
+  if (campo === 'nome' || campo === 'representanteNome' || campo === 'curateladoNome') return erroNome(valor)
+  if (campo === 'cpf' || campo === 'representanteCpf' || campo === 'curateladoCpf') return erroCpf(valor, true)
   if (campo === 'telefone') return erroTelefone(valor)
-  if (campo === 'rg' || campo === 'representanteRg') return erroRg(valor)
+  if (campo === 'rg' || campo === 'representanteRg' || campo === 'curateladoRg') return erroRg(valor)
+  if (campo === 'curateladoNascimento') return valor.trim() !== '' && !erroData(valor, hojeIso()) ? undefined : MENSAGENS_DO_CONTRATO.nascimento
   if (campo === 'representanteParentesco') return PARENTESCOS.some((p) => p.id === valor) ? undefined : MENSAGENS_DO_CONTRATO.parentesco
   const tamanho = TAMANHOS[campo] ?? 200
   return valor.trim() !== '' && valor.trim().length <= tamanho ? undefined : MENSAGENS_DO_CONTRATO.texto
@@ -394,9 +471,10 @@ export function erroDoCampo(campo: CampoDoModelo, valor: string): string | undef
 
 /** O valor que fica guardado: CPF e telefone só com números, nome sem espaço sobrando. */
 export function normalizarCampo(campo: CampoDoModelo, valor: string): string {
-  if (campo === 'cpf' || campo === 'representanteCpf') return normalizarCpf(valor)
+  if (campo === 'cpf' || campo === 'representanteCpf' || campo === 'curateladoCpf') return normalizarCpf(valor)
   if (campo === 'telefone') return normalizarTelefone(valor)
-  if (campo === 'nome' || campo === 'representanteNome') return normalizarNome(valor)
+  if (campo === 'curateladoNascimento') return normalizarData(valor)
+  if (campo === 'nome' || campo === 'representanteNome' || campo === 'curateladoNome') return normalizarNome(valor)
   return valor.trim()
 }
 

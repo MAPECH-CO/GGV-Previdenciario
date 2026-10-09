@@ -6,7 +6,7 @@ import { CartaoKit } from '../componentes/CartaoKit.tsx'
 import campoCss from '../componentes/Campo.module.css'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { camposDoCaso, gerarContrato, obterContrato, type ContratoDoCaso } from '../dados/contrato.ts'
+import { camposDoCaso, gerarContrato, kitDeVerdade, obterContrato, type ContratoDoCaso } from '../dados/contrato.ts'
 import {
   CONFERENCIAS,
   O_QUE_CONFERIR,
@@ -28,7 +28,7 @@ import proprio from './PrepararContrato.module.css'
 // conferências e a decisão "Os documentos foram aprovados?" no painel, como no desenho. O cartão manda nas conferências:
 // são as quatro da trava do Figma, não as três caixas do cartão "Conferir" do desenho.
 
-const NUMERICOS: CampoDoModelo[] = ['cpf', 'representanteCpf', 'telefone']
+const NUMERICOS: CampoDoModelo[] = ['cpf', 'representanteCpf', 'telefone', 'curateladoCpf', 'curateladoNascimento']
 
 export function PrepararContrato({ processoId }: { processoId: string }) {
   const [caso, setCaso] = useState<ContratoDoCaso | null | undefined>(undefined)
@@ -39,6 +39,8 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
   const [erros, setErros] = useState<Partial<Record<CampoDoModelo, string>>>({})
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState('')
+  /** O que o modelo pede e a ficha não tem (CA4): o kit não é gerado e a lista vem com o atalho para a ficha. */
+  const [faltamNaFicha, setFaltamNaFicha] = useState<string[]>([])
   const travado = useRef(false)
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
   const modelo = (kit && modeloDoKit(kit)) || null
   const preparando = contrato.etapa === 'preparar'
   const corrigindo = preparando && aprovados === false
-  const campos = contrato.documento && !preparando ? contrato.documento.campos : camposDoCaso(caso)
+  const campos = contrato.documento && !preparando ? contrato.documento.campos : camposDoCaso(caso, kitDeVerdade(processoId))
   const valorInicial = (c: CampoPreenchido) => (c.campo === 'representanteParentesco' ? (contrato.dados?.representanteParentesco ?? '') : c.valor)
   const valorDe = (c: CampoPreenchido) => correcoes[c.campo] ?? valorInicial(c)
   const faltam = campos.filter((c) => (corrigindo && corrigivel(c) ? valorDe(c) : c.valor).trim() === '').map((c) => c.campo)
@@ -97,6 +99,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
     travado.current = true
     setGerando(true)
     setErro('')
+    setFaltamNaFicha([])
     try {
       const r = await gerarContrato(processoId, {
         aprovados,
@@ -107,6 +110,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
       if (r.resultado === 'gerado') setCaso(await obterContrato(processoId))
       else if (r.resultado === 'cpf-de-outra-ficha') setErros((e) => ({ ...e, cpf: `Este CPF já está na ficha de ${r.nome}.` }))
       else if (r.resultado === 'faltam') setErro('Ainda falta campo obrigatório: responda «Não, corrigir campos» e preencha.')
+      else if (r.resultado === 'faltam-na-ficha') setFaltamNaFicha(r.faltam)
       else if (r.resultado === 'sem-modelo')
         setErro(r.modelo ? `Falta o ${r.modelo}: peça à Sênior para subir o modelo na Configuração do escritório.` : 'Este kit ainda não tem modelo do Word. Avise a gestão.')
       else setErro(`O texto ainda traz ${r.restos.join(', ')} do modelo. Avise a gestão: o modelo precisa ser convertido de novo.`)
@@ -207,6 +211,14 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
                       <p role="alert" className={styles.motivo}>
                         {erro}
                       </p>
+                    )}
+                    {faltamNaFicha.length > 0 && (
+                      <div role="alert" className={styles.aviso}>
+                        <p>O kit não foi gerado. Falta na ficha: {faltamNaFicha.join(', ')}.</p>
+                        <a className={styles.avisoLink} href={`/clientes/${ficha.id}`}>
+                          Completar a ficha
+                        </a>
+                      </div>
                     )}
                   </div>
                 </>

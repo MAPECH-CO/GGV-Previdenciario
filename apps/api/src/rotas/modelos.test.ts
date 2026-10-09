@@ -8,7 +8,7 @@ import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eventoAuditoria, modelo, usuario } from '../banco/esquema.ts'
 import { MSG_CPF_ESCRITO, MSG_NAO_E_DOCX, MSG_SEM_VARIAVEL } from '../kit/docx.ts'
-import { docxDeTeste } from '../kit/docx-de-teste.ts'
+import { docxDeTeste, formularioDoArquivo } from '../kit/docx-de-teste.ts'
 import type { ArquivoDoModelo } from '../kit/modelos.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -27,15 +27,8 @@ async function cookieDe(apelido: string) {
   return { [COOKIE]: r.cookies.find((c) => c.name === COOKIE)!.value }
 }
 
-/** O multipart do upload: o arquivo do Word vai como bytes, com o nome que quem enviou quiser. */
-function formulario(arquivo: Buffer | null, nome = 'modelo.docx') {
-  const f = '----ggv'
-  if (!arquivo) return { payload: `--${f}\r\nContent-Disposition: form-data; name="observacao"\r\n\r\nsem arquivo\r\n--${f}--\r\n`, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }
-  const cabeca = `--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="${nome}"\r\nContent-Type: application/octet-stream\r\n\r\n`
-  return { payload: Buffer.concat([Buffer.from(cabeca), arquivo, Buffer.from(`\r\n--${f}--\r\n`)]), headers: { 'content-type': `multipart/form-data; boundary=${f}` } }
-}
 const subir = async (apelido: string, id: string, arquivo: Buffer | null, nome?: string) =>
-  app.inject({ method: 'PUT', url: `/api/configuracao/modelos/${id}`, cookies: await cookieDe(apelido), ...formulario(arquivo, nome) })
+  app.inject({ method: 'PUT', url: `/api/configuracao/modelos/${id}`, cookies: await cookieDe(apelido), ...formularioDoArquivo(arquivo, nome) })
 const lista = async (apelido = 'helena') => app.inject({ method: 'GET', url: '/api/configuracao/modelos', cookies: await cookieDe(apelido) })
 const MODELO_VALIDO = () => docxDeTeste(['Contrato de {{NOME COMPLETO}}, CPF {{NÚMERO DO CPF}}', 'São Paulo, {{DATA DE HOJE}}.'])
 const linhas = () => banco.select().from(modelo).where(and(eq(modelo.tipo, 'contrato'), eq(modelo.nome, APOSENTADORIAS))).orderBy(asc(modelo.versao))

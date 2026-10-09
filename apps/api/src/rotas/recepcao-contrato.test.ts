@@ -1,8 +1,13 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, documento, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { docxDeTeste, formularioDoArquivo, textoDoDocx } from '../kit/docx-de-teste.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
@@ -11,6 +16,7 @@ const SENHA = 'senha-do-portal-1'
 let banco: Banco
 let fechar: () => Promise<void>
 let app: ReturnType<typeof criarServidor>
+let arquivos: Armazenamento
 // Quinta, 08/10/2026, meio-dia em Brasília.
 const INICIO = new Date('2026-10-08T15:00:00Z')
 let relogio = INICIO
@@ -23,8 +29,16 @@ const chamar = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: stri
   app.inject({ method, url, cookies: await cookieDe(apelido), ...(payload ? { payload } : {}) })
 const json = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
 
-async function lead(nome = 'Joana Ribeiro', telefone = '11987654321', cpf?: string) {
-  return (await json('ana', 'POST', '/api/fichas', { nome, idade: 66, pretende: 'Quer o BPC.', telefone, cpf, beneficioInteresse: 'loas-idoso', outraPessoa: false })).id as string
+/** O que o cadastro do lead já traz e o balcão não: bairro, cidade, UF e CEP (e, no LOAS representado, o representante). */
+async function completarFicha(fichaId: string, extra: object = {}) {
+  const dados = { bairro: 'Vila Exemplo', cidadeUf: 'Osasco / SP', cep: '06010000', ...extra }
+  await banco.update(fichaRecepcao).set({ documento: sql`${fichaRecepcao.documento} || ${JSON.stringify(dados)}::jsonb` }).where(eq(fichaRecepcao.pessoaId, fichaId))
+}
+
+async function lead(nome = 'Joana Ribeiro', telefone = '11987654321', cpf?: string, completa: boolean | object = true) {
+  const id = (await json('ana', 'POST', '/api/fichas', { nome, idade: 66, pretende: 'Quer o BPC.', telefone, cpf, beneficioInteresse: 'loas-idoso', outraPessoa: false })).id as string
+  if (completa) await completarFicha(id, completa === true ? {} : completa)
+  return id
 }
 const fechou = (fichaId: string, beneficio = 'loas-idoso') => json('ana', 'POST', `/api/fichas/${fichaId}/processos`, { beneficio })
 const TODAS = Object.fromEntries(CONFERENCIAS.map((c) => [c.id, true]))
@@ -37,14 +51,37 @@ const VALIDOS: Record<string, string> = {
   endereco: 'Rua das Flores, 10, Centro, Osasco/SP',
   telefone: '11987654321',
   nome: 'Joana Ribeiro',
+  // O kit de verdade (GGVP-136) pede mais: a nacionalidade, o representante e o curatelado.
+  nacionalidade: 'brasileira',
+  representanteNacionalidade: 'brasileira',
+  curateladoNome: 'Pedro Exemplo Lima',
+  curateladoNascimento: '12/03/1950',
+  curateladoNacionalidade: 'brasileiro',
+  curateladoRg: '11.222.333-4',
+  curateladoCpf: '11144477735',
+}
+
+/** O modelo de teste: texto inventado, com as variáveis que os modelos do escritório usam. A 1ª data é a do contrato. */
+const MODELO_COMUM = [
+  'CONTRATO. {{NOME COMPLETO}}, {{ESTADO CIVIL}}, {{NACIONALIDADE}}, {{PROFISSÃO}}, CPF {{NÚMERO DO CPF}}, RG {{NÚMERO DO RG}}, {{ENDEREÇO COMPLETO}} nº {{Nº}}, {{BAIRRO}}, {{CIDADE}}/{{UF}}, CEP {{CEP}}, telefone {{TELEFONE}}, contato {{TELEFONE P/ CONTATO}}.',
+  'São Paulo, {{DATA DE HOJE}}.',
+  'PROCURAÇÃO de {{NOME COMPLETO}}.',
+  '{{CIDADE}}, {{DATA DE HOJE}}.',
+]
+async function subirModelo(id: string, paragrafos = MODELO_COMUM) {
+  const r = await app.inject({ method: 'PUT', url: `/api/configuracao/modelos/${id}`, cookies: await cookieDe('helena'), ...formularioDoArquivo(docxDeTeste(paragrafos)) })
+  expect(r.statusCode).toBe(201)
 }
 
 beforeEach(async () => {
   relogio = INICIO
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['julia', 'financeiro']] as const)
+  arquivos = armazenamentoLocal(mkdtempSync(join(tmpdir(), 'kit-')))
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos })
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+  // Os contratos dos testes são do LOAS: o modelo dele já está na Configuração (versão 1).
+  await subirModelo('contrato-completo-loas')
 })
 afterEach(async () => {
   await app.close()
@@ -88,7 +125,7 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
     expect(gerado.ficha.processos[0]).toMatchObject({ etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' })
     const oQue = gerado.ficha.historico.map((e: { oQue: string }) => e.oQue)
     expect(oQue).toContainEqual(expect.stringMatching(/^Corrigiu no contrato: .+ \(faltavam dados do cadastro\)$/))
-    expect(oQue.at(-1)).toMatch(/^Gerou o contrato de .+ \(versão 1\)/)
+    expect(oQue.at(-1)).toMatch(/^Gerou o contrato de .+ pelo modelo contrato-completo-loas-v1 \(versão 1\), guardado na pasta do cliente/)
     expect((await chamar('ana', 'PUT', `${base}/condicoes`, { representado: false, moradia: false, uniaoEstavel: false, separacaoDeFato: false })).statusCode).toBe(400)
   })
 
@@ -270,3 +307,133 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
     expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: true })).toEqual({ erro: 'Este contrato não está para conferir.' })
   })
 })
+
+describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guardado na pasta do cliente', () => {
+  /** Fecha, pede o que falta e gera: devolve a resposta da geração e o endereço do contrato. */
+  async function gerar(fichaId: string, beneficio = 'loas-idoso') {
+    const { processo } = await fechou(fichaId, beneficio)
+    const base = `/api/processos/${processo.id}/contrato`
+    const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+    expect(faltam.resultado).toBe('faltam')
+    const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, VALIDOS[c]]))
+    expect(Object.values(correcoes).every(Boolean)).toBe(true)
+    const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })
+    return { r, base, processoId: processo.id as string }
+  }
+  const kitsDoCaso = (processoId: string) => banco.select().from(documento).where(eq(documento.casoId, processoId))
+
+  it('CA2, CA3 e CA6 · gera o Word da versão em vigor do modelo da linha, preenchido com a ficha e o caso, e guarda na pasta do cliente', async () => {
+    await subirModelo('contrato-completo-loas') // a versão 2 passa a valer
+    const fichaId = await lead()
+    const { r, processoId } = await gerar(fichaId)
+    expect(r.resultado).toBe('gerado')
+    expect(r.contrato.documento).toMatchObject({
+      versao: 1,
+      modelo: { id: 'contrato-completo-loas', versao: 2 },
+      arquivo: { documentoId: expect.any(String), nome: 'Kit do contrato - versão 1.docx' },
+    })
+
+    const [kit] = await kitsDoCaso(processoId)
+    expect(kit).toMatchObject({ id: r.contrato.documento.arquivo.documentoId, tipo: 'kit_contrato', pessoaId: fichaId, origem: 'portal', sensivel: false, nomeOriginal: 'Kit do contrato - versão 1.docx' })
+    expect(kit.chaveArmazenamento.startsWith(`casos/${processoId}/`)).toBe(true)
+    const linhas = textoDoDocx(await arquivos.ler(kit.chaveArmazenamento)).split('\n')
+    expect(linhas).toEqual([
+      'CONTRATO. Joana Ribeiro, viúvo(a), brasileira, do lar, CPF 529.982.247-25, RG 12.345.678-9, Rua das Flores nº 10, Vila Exemplo, Osasco/SP, CEP 06010-000, telefone (11) 98765-4321, contato .',
+      'São Paulo, 8 de outubro de 2026.',
+      'PROCURAÇÃO de Joana Ribeiro.',
+      // No papel, só a data do contrato de honorários sai preenchida; as outras ficam em branco para a assinatura.
+      'Osasco, dia ____________ de ________________ de 2026.',
+    ])
+    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Gerou o contrato de .+ pelo modelo contrato-completo-loas-v2 \(versão 1\), guardado na pasta do cliente/)
+  })
+
+  it('CA1 · o kit usa sempre a versão em vigor: a que vale na hora de gerar, e o kit guarda qual foi', async () => {
+    const fichaId = await lead()
+    const { processo } = await fechou(fichaId)
+    await subirModelo('contrato-completo-loas', ['KIT NOVO de {{NOME COMPLETO}}'])
+    const base = `/api/processos/${processo.id}/contrato`
+    const { cpf, rg, estadoCivil, profissao, endereco, nacionalidade } = VALIDOS
+    const correcoes = { cpf, rg, estadoCivil, profissao, endereco, nacionalidade }
+    const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'dados do cadastro', conferencias: TODAS, correcoes })
+    expect(r.contrato.documento.modelo).toEqual({ id: 'contrato-completo-loas', versao: 2 })
+    const [kit] = await kitsDoCaso(processo.id)
+    expect(textoDoDocx(await arquivos.ler(kit.chaveArmazenamento))).toBe('KIT NOVO de Joana Ribeiro')
+  })
+
+  it('CA4 · falta dado na ficha: não gera, lista o que falta e nada é guardado; completa a ficha, gera', async () => {
+    const fichaId = await lead('Joana Ribeiro', '11987654321', undefined, false)
+    const { processo } = await fechou(fichaId)
+    const base = `/api/processos/${processo.id}/contrato`
+    const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+    const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, VALIDOS[c]]))
+    const envio = { aprovados: false, oQueCorrigir: 'dados do cadastro', conferencias: TODAS, correcoes }
+    expect(await json('ana', 'POST', `${base}/gerar`, envio)).toEqual({ resultado: 'faltam-na-ficha', faltam: ['Bairro', 'Cidade', 'Estado (UF)', 'CEP'] })
+    expect(await kitsDoCaso(processo.id)).toEqual([])
+    expect((await json('gabi', 'GET', '/api/recepcao')).contratos.find((c: { processoId: string }) => c.processoId === processo.id).etapa).toBe('preparar')
+
+    await completarFicha(fichaId)
+    expect((await json('ana', 'POST', `${base}/gerar`, envio)).resultado).toBe('gerado')
+    expect(await kitsDoCaso(processo.id)).toHaveLength(1)
+  })
+
+  it('CA4 · endereço sem o número também falta: o modelo pede o número em variável própria', async () => {
+    const fichaId = await lead()
+    const { processo } = await fechou(fichaId)
+    const base = `/api/processos/${processo.id}/contrato`
+    const correcoes = { ...VALIDOS, endereco: 'Rua das Flores' }
+    const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'dados do cadastro', conferencias: TODAS, correcoes })
+    expect(r).toEqual({ resultado: 'faltam-na-ficha', faltam: ['Número do endereço'] })
+  })
+
+  it('sem modelo: o kit da linha que ainda não tem arquivo subido, e o da linha que não tem modelo, avisam e não geram', async () => {
+    const comArquivoFaltando = await fechou(await lead(), 'emprestimo-indevido')
+    expect(await json('ana', 'POST', `/api/processos/${comArquivoFaltando.processo.id}/contrato/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })).toEqual({
+      resultado: 'sem-modelo',
+      modelo: 'Modelo 8 (kit consumidor)',
+    })
+    const semLinha = await fechou(await lead('Marta Lima', '11955554444', '11144477735'), 'isencao-ir')
+    expect(await json('ana', 'POST', `/api/processos/${semLinha.processo.id}/contrato/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })).toEqual({ resultado: 'sem-modelo' })
+    expect(await kitsDoCaso(comArquivoFaltando.processo.id)).toEqual([])
+  })
+
+  it('CA3 · LOAS representado: o modelo dele, com o beneficiário (a ficha) e o genitor(a) (o representante)', async () => {
+    await subirModelo('contrato-completo-loas-representado', [
+      'REPRESENTADO {{NOME COMPLETO DO BENEFICIÁRIO}}, CPF {{NÚMERO DO CPF DO BENEFICIÁRIO}}, por sua genitora(o) {{NOME COMPLETO GENITOR(A)}}, {{ESTADO CIVIL GENITOR(A)}}, {{NACIONALIDADE GENITOR(A)}}, {{PROFISSÃO GENITOR(A)}}, CPF {{NÚMERO DO CPF GENITOR(A)}}, RG {{NÚMERO DO RG GENITOR(A)}}.',
+    ])
+    const representante = { nome: 'Joana Exemplo Lima', cpf: '52998224725', rg: '98.765.432-1', parentesco: 'Mãe', estadoCivil: 'Casado(a)', profissao: 'Do lar' }
+    const fichaId = await lead('Joana Ribeiro', '11987654321', '11144477735', { representante })
+    const { r, processoId } = await gerar(fichaId)
+    expect(r.contrato.kit.modelo).toBe('contrato-completo-loas-representado')
+    expect(r.contrato.documento.modelo).toEqual({ id: 'contrato-completo-loas-representado', versao: 1 })
+    const [kit] = await kitsDoCaso(processoId)
+    expect(textoDoDocx(await arquivos.ler(kit.chaveArmazenamento))).toBe(
+      'REPRESENTADO Joana Ribeiro, CPF 111.444.777-35, por sua genitora(o) Joana Exemplo Lima, casado(a), brasileira, do lar, CPF 529.982.247-25, RG 98.765.432-1.',
+    )
+  })
+
+  it('CA3 · curatela: o modelo 6, com quem contrata (a ficha) e o curatelado (os campos do contrato)', async () => {
+    await subirModelo('modelo-6', ['CURATELA de {{NOME COMPLETO DO BENEFICIÁRIO}}, nascido em {{DATA DE NASCIMENTO DO BENEFICIÁRIO}}, {{NACIONALIDADE DO BENEFICIÁRIO}}, RG {{NÚMERO DO RG DO BENEFICIÁRIO}}, CPF {{NÚMERO DO CPF DO BENEFICIÁRIO}}, pedida por {{NOME COMPLETO}}.'])
+    const { r, processoId } = await gerar(await lead(), 'curatela')
+    expect(r.resultado).toBe('gerado')
+    const [kit] = await kitsDoCaso(processoId)
+    expect(textoDoDocx(await arquivos.ler(kit.chaveArmazenamento))).toBe('CURATELA de Pedro Exemplo Lima, nascido em 12/03/1950, brasileiro, RG 11.222.333-4, CPF 111.444.777-35, pedida por Joana Ribeiro.')
+  })
+
+  it('cada geração guarda um kit novo: a versão 2 do contrato não apaga o arquivo da 1', async () => {
+    const fichaId = await lead()
+    const { r, base, processoId } = await gerar(fichaId)
+    expect(r.resultado).toBe('gerado')
+    // O papel assinado voltou com problema: o contrato volta a preparar e gera de novo (GGVP-85).
+    await json('ana', 'POST', `${base}/impressao`)
+    await json('ana', 'POST', `${base}/digitalizacao`)
+    await json('ana', 'POST', `${base}/assinatura-em-papel`)
+    await json('ana', 'POST', `${base}/leitura-simulada`)
+    await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'falta a rubrica da página 4' })
+    const v2 = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+    expect(v2.contrato.documento).toMatchObject({ versao: 2, arquivo: { nome: 'Kit do contrato - versão 2.docx' } })
+    const kits = await kitsDoCaso(processoId)
+    expect(kits.map((k) => k.nomeOriginal).sort()).toEqual(['Kit do contrato - versão 1.docx', 'Kit do contrato - versão 2.docx'])
+    for (const k of kits) expect((await arquivos.ler(k.chaveArmazenamento)).length).toBeGreaterThan(0)
+  })
+})
+

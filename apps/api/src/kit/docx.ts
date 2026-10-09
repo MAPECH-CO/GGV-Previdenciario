@@ -3,7 +3,7 @@
 // o pizzip para abrir o zip). O modelo é do escritório: nada dele vai para o log.
 import Docxtemplater from 'docxtemplater'
 import PizZip from 'pizzip'
-import { nomeDaVariavel, variaveisDesconhecidas } from '../../../web/src/regras/kitDoModelo.ts'
+import { dataEmBranco, nomeDaVariavel, variaveisDesconhecidas } from '../../../web/src/regras/kitDoModelo.ts'
 
 /** Onde o Word guarda texto que o modelo pode usar: o corpo, os cabeçalhos e os rodapés. */
 const PARTES_COM_TEXTO = /^word\/(document|header\d*|footer\d*)\.xml$/
@@ -19,7 +19,7 @@ export const MSG_CPF_ESCRITO = 'O modelo tem um CPF escrito: troque o dado do cl
 export const OPCOES_DO_MODELO = {
   delimiters: { start: '{{', end: '}}' },
   errorLogging: false,
-  parser: (tag: string) => ({ get: (escopo: Record<string, string>) => escopo[nomeDaVariavel(tag)] }),
+  parser: (tag: string) => ({ get: (escopo: Record<string, string | undefined>) => escopo[nomeDaVariavel(tag)] }),
 }
 
 export type ModeloLido = { ok: true; variaveis: string[] } | { ok: false; erro: string }
@@ -57,4 +57,24 @@ export function lerModelo(conteudo: Buffer): ModeloLido {
   }
   if (textos.some((t) => CPF_ESCRITO.test(t))) return { ok: false, erro: MSG_CPF_ESCRITO }
   return { ok: true, variaveis }
+}
+
+/**
+ * O kit preenchido (CA3): cada {{VARIÁVEL}} sai com o dado do cliente, e o dado que falta sai em branco (`faltamNoKit` já
+ * barrou o que é obrigatório). No papel (CA5), só a primeira {{DATA DE HOJE}} leva a data de hoje: é a do contrato de
+ * honorários, o primeiro documento do modelo. As outras datas saem em branco, para o cliente preencher à mão na assinatura.
+ * ponytail: "a primeira é a do contrato" vale para os modelos do escritório; outro modelo com outra ordem pede outra regra.
+ */
+export function preencherModelo(conteudo: Buffer, valores: Record<string, string | undefined>, hoje: string): Buffer {
+  let datas = 0
+  const doc = new Docxtemplater(new PizZip(conteudo), {
+    ...OPCOES_DO_MODELO,
+    parser: (tag: string) => {
+      const nome = nomeDaVariavel(tag)
+      return { get: (escopo: Record<string, string | undefined>) => (nome === 'DATA DE HOJE' && datas++ > 0 ? dataEmBranco(hoje) : escopo[nome]) }
+    },
+    nullGetter: () => '',
+  })
+  doc.render(valores)
+  return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' })
 }
