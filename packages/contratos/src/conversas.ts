@@ -94,6 +94,8 @@ export const AnaliseDaConversa = z.object({
   atualizar: z.array(z.enum(['ficha', 'processo'])),
   observacao: z.string(),
   pendencia: z.string().optional(),
+  /** GGVP-140: quando a IA de verdade leu a conversa: o resumo sugerido, o registro da chamada e o alerta do motor. */
+  daIa: z.object({ resumo: z.string(), chamadaId: z.uuid(), modelo: z.string(), alerta: z.string().nullable() }).optional(),
 })
 export type AnaliseDaConversa = z.infer<typeof AnaliseDaConversa>
 
