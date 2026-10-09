@@ -419,6 +419,8 @@ export type Confirmacao = {
   proximaEm?: string
   /** Duas sem resposta: a advogada sênior resolve (CA6). */
   naSenior?: boolean
+  /** A entrevista começou na hora, com a pessoa no escritório: a presença já está confirmada (GGVP-40). */
+  presente?: boolean
 }
 
 export type RegistroDaConfirmacao =
@@ -577,7 +579,8 @@ export type RegistroDaRenovacao =
 
 // GGVP-40 em diante: a entrevista gravada e a transcrição. Espelho do Zod da design.md da change ggvp-6.
 
-export type Papel = 'advogada' | 'cliente' | 'atendimento'
+/** Quem fala na transcrição. `terceiro`: outra pessoa na conversa (GGVP-133 CA3). */
+export type Papel = 'advogada' | 'cliente' | 'atendimento' | 'terceiro'
 
 export type Trecho = {
   /** Segundos desde o início do áudio. */
@@ -587,6 +590,8 @@ export type Trecho = {
   texto: string
   /** Marcado como prova (GGVP-46, CA6). */
   prova?: boolean
+  /** O texto como a transcrição saiu, antes de o motor arrumar com o glossário (GGVP-133 CA5). */
+  original?: string
 }
 
 /** Campos da ficha que a entrevista pode atualizar, depois de conferidos (GGVP-46, CA6). */
@@ -600,6 +605,9 @@ export type InformacaoExtraida = {
   campo?: CampoDaEntrevista
   /** Data e hora ISO da conferência: antes dela, a ficha não muda. */
   conferidaEm?: string
+  /** GGVP-133: de onde saiu, para a advogada conferir: o segundo do áudio e o trecho da transcrição (sem senha, G9). */
+  aos?: number
+  trecho?: string
 }
 
 export type AcaoNaGravacao = {
@@ -617,6 +625,8 @@ export type Audio = {
   tamanho: number
   /** Partes de até 24 MB para a transcrição (CA10). */
   partes: number
+  /** GGVP-133: as partes do áudio de verdade, guardadas como documento na pasta do cliente, e onde cada uma começa (s). */
+  documentos?: { id: string; inicio: number }[]
 }
 
 export type EstadoDaTranscricao = 'aguardando-internet' | 'transcrevendo' | 'falhou' | 'pronta' | 'sem-audio'
@@ -657,6 +667,12 @@ export type Gravacao = {
   marcas: string[]
   /** A conversa do D5 desta gravação, quando ela é de uma conversa com o cliente (GGVP-138). */
   conversaId?: string
+  /** GGVP-133 CA10: o texto da transcrição, guardado como documento na pasta do cliente. */
+  transcricaoDocumentoId?: string
+  /** GGVP-133 CA7: o alerta do motor de IA (fala com instrução suspeita), para a pessoa ver antes de usar o texto. */
+  alertaDaIa?: string
+  /** GGVP-133: por que a IA não leu a entrevista transcrita (desligada, sem autorização ou sem resposta): a tela segue manual. */
+  semIa?: string
 }
 
 /** O que a tela da entrevista lê. */

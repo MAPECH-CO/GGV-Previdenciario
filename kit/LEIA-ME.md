@@ -8,7 +8,7 @@ Já tem o clone? Puxe a versão atual:
 ```
 git switch main && git pull
 ```
-Não tem? `git clone https://github.com/femezher/GGV-Previdenciario.git`.
+Não tem? `git clone https://github.com/MAPECH-CO/GGV-Previdenciario.git`.
 
 Depois, na raiz do repositório:
 ```

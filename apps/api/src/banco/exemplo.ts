@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, processoAcervo, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, documentoMedico, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, peticao, peticaoVersao, prestacaoContas, processoAcervo, protocoloJudicial, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { abrirExplicacaoDoResultado } from '../rotas/resultado.ts'
@@ -77,10 +77,19 @@ export async function semearExemplos(banco: Banco) {
   }
 
   // Casos esperando a conferência da Sênior (GGVP-23): um pronto para aprovar (pensão por morte, em destaque)
-  // e um sem parecer médico, que o servidor barra até a dispensa justificada (G17).
+  // e um sem parecer médico, sem kit e sem contrato assinado, que o servidor barra (G1 e G17).
+  // GGVP-23 CA11: o G1 pede kit cadastrado. Kit de exemplo da pensão, só para a Antônia seguir aprovável; a lista de
+  // verdade de cada benefício é do escritório (pedida ao Lucas em 08/10) e entra pela Configuração.
+  await banco.insert(kitDocumento).values(
+    ['rg_e_cpf', 'comprovante_de_residência', 'procuração_assinada'].map((tipoDocumento) => ({
+      beneficio: 'pensao_morte',
+      tipoDocumento,
+      vigenteDesde: new Date('2000-01-01T12:00:00Z'),
+    })),
+  )
   for (const ex of [
-    { nome: 'Antônia Lima (exemplo)', beneficio: 'pensao_morte', parecer: 'suficiente' as const },
-    { nome: 'Benedito Alves (exemplo)', beneficio: 'auxilio_acidente', parecer: null },
+    { nome: 'Antônia Lima (exemplo)', beneficio: 'pensao_morte', parecer: 'suficiente' as const, assinado: true },
+    { nome: 'Benedito Alves (exemplo)', beneficio: 'auxilio_acidente', parecer: null, assinado: false },
   ]) {
     const [p] = await banco.insert(pessoa).values({ nome: ex.nome, situacao: 'cliente', origem: 'exemplo' }).returning()
     const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: ex.beneficio, fase: 'atendimento' }).returning()
@@ -111,6 +120,8 @@ export async function semearExemplos(banco: Banco) {
           { item: 'Limitações funcionais', atendido: true },
         ],
       })
+    // GGVP-23 CA12: o contrato assinado é parte do G1.
+    if (ex.assinado) await banco.insert(contrato).values({ casoId: c.id, situacao: 'assinado' })
     await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
   }
 
@@ -141,14 +152,15 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'pericia.remarcacao.limite', valor: 1 },
   ])
   // GGVP-104 (Lucas, 02/10): no LOAS, a ficha de grupo familiar é obrigatória e as três declarações são condicionais.
-  // A versão 1 vale desde sempre, para os casos de exemplo já abertos.
+  // A versão 1 vale desde sempre, para os casos de exemplo já abertos; ao meio-dia, para a data não virar 31/12/1999 no
+  // fuso de São Paulo (GGVP-135, P16).
   const kitLoas = [
     ...['documento_de_identidade', 'cpf', 'comprovante_de_residencia', 'cadunico', 'ficha_de_grupo_familiar'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: true })),
     ...['declaracao_de_moradia', 'declaracao_de_uniao_estavel', 'declaracao_de_separacao_de_fato'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: false })),
   ]
   await banco
     .insert(kitDocumento)
-    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T00:00:00Z') }))))
+    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T12:00:00Z') }))))
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
   await banco.insert(etapa).values({ casoId: cu.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date() })
@@ -209,14 +221,17 @@ export async function semearExemplos(banco: Banco) {
     await banco.insert(identificadorCaso).values({ casoId: cj.id, tipo: 'cnj', valor: cnj })
   }
   const hojeBr = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10)
-  await banco.insert(rodadaVigilia).values({
-    fonte: 'exemplo',
-    previstaPara: momentoDoHorario(hojeBr, '08:00'),
+  const falhaDeExemplo = {
     inicio: momentoDoHorario(hojeBr, '08:00'),
     fim: momentoDoHorario(hojeBr, '08:01'),
     situacao: 'falhou',
     erro: 'tempo esgotado: a fonte não respondeu em 60 s (exemplo)',
-  })
+  } as const
+  // Na homologação o servidor já está no ar e o relógio já criou a rodada das 08:00: ela só passa a ter a falha.
+  await banco
+    .insert(rodadaVigilia)
+    .values({ fonte: 'exemplo', previstaPara: momentoDoHorario(hojeBr, '08:00'), ...falhaDeExemplo })
+    .onConflictDoUpdate({ target: [rodadaVigilia.fonte, rodadaVigilia.previstaPara], set: falhaDeExemplo })
 
   // Exigência do juiz (GGVP-79, 83, 87): uma intimação já lida e classificada, esperando a advogada distribuir.
   const [pp] = await banco.insert(pessoa).values({ nome: 'Paulo Reis (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
@@ -314,4 +329,32 @@ export async function semearExemplos(banco: Banco) {
     { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
   ])
+
+  // Juízo identificado (GGVP-64): mais três processos conferidos no JEF de São Paulo (TRF3 · 6301), a unidade dos processos
+  // judiciais de exemplo. O do portal tem o protocolo da inicial e a data da decisão, para o tempo até a sentença aparecer.
+  // Entram com a data da importação, para não mudar a base do acervo (GGVP-55).
+  const [pm] = await banco.insert(pessoa).values({ nome: 'Marta Lopes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cm] = await banco
+    .insert(caso)
+    .values({ pessoaId: pm.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho: 'procedente_total', encerradoEm: new Date(Date.UTC(2026, 3, 14, 15)) })
+    .returning()
+  await banco.insert(identificadorCaso).values({ casoId: cm.id, tipo: 'cnj', valor: '00034567120254036301' })
+  const [pi] = await banco.insert(peticao).values({ casoId: cm.id, tipo: 'inicial' }).returning()
+  const [vi] = await banco.insert(peticaoVersao).values({ peticaoId: pi.id, numero: 1, conteudo: 'Petição inicial (exemplo)', hash: 'exemplo', geradaPor: advogada.nome, aprovadaPor: advogada.id }).returning()
+  await banco.insert(protocoloJudicial).values({ peticaoVersaoId: vi.id, tribunal: 'TRF3', numero: '0003456-71.2025.4.03.6301', protocoladoEm: new Date(Date.UTC(2025, 3, 7, 15)), protocoladoPor: advogada.id })
+  await banco.insert(processoAcervo).values([
+    { casoId: cm.id, beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, dataDecisao: '2026-04-14', fonte: 'portal', criadoEm: base },
+    { numeroCnj: '50001048820234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001057320234036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_parcial', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+  ])
+
+  // Documentação médica no servidor (GGVP-132): o laudo de LOAS da Lúcia já foi lido e classificado e espera o parecer
+  // do Jurídico. A IA simulada lê pelo nome do arquivo: "incompleto" não cobre nenhum item do roteiro.
+  const [pl] = await banco.insert(pessoa).values({ nome: 'Lúcia Prado (exemplo)', situacao: 'cliente', origem: 'exemplo', telefone: '11955550101' }).returning()
+  const [cl] = await banco.insert(caso).values({ pessoaId: pl.id, beneficio: 'bpc_loas_deficiente', fase: 'atendimento' }).returning()
+  const [laudo] = await banco
+    .insert(documento)
+    .values({ casoId: cl.id, pessoaId: pl.id, tipo: 'laudo', sensivel: true, chaveArmazenamento: `exemplo/${cl.id}/laudo`, nomeOriginal: 'Laudo médico incompleto (exemplo).pdf', mime: 'application/pdf', tamanho: 0, hashSha256: 'exemplo', origem: 'exemplo' })
+    .returning()
+  await banco.insert(documentoMedico).values({ documentoId: laudo.id, tipo: 'laudo', dataEmissao: '2026-09-15', profissional: 'Dra. Clínica (exemplo)' })
 }

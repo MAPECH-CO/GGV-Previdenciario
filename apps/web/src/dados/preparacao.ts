@@ -1,15 +1,16 @@
-// EXEMPLO. Servidor de exemplo da preparação da conversa (GGVP-32), sobre o mesmo banco de servidor.ts. O resumo é uma
-// IA simulada, montada da ficha de atendimento. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint
-// indicado, sobre o contrato da design.md (change ggvp-6), e o resumo pela IA de verdade.
+// EXEMPLO. Servidor de exemplo da preparação da conversa (GGVP-32), sobre o mesmo banco de servidor.ts. O resumo é o que
+// a ficha de atendimento diz, juntado pelo portal (não é IA). Ligar no servidor: trocar o corpo de cada função por fetch no
+// endpoint indicado, sobre o contrato da design.md (change ggvp-6).
 import { dataCurta, hojeIso, idadeEm } from '../regras/datas.ts'
 import { atencaoCurta, pontosDeAtencao } from '../regras/preparacao.ts'
 import { tarefasAdvogada } from './advogada.ts'
 import { nomeBeneficio } from './catalogos.ts'
-import { agora, ler } from './servidor.ts'
-import type { Agendamento, Ficha, Preparacao, Tarefa } from './tipos.ts'
+import { chamarApi } from '../api.ts'
+import { agora, doServidor, ler } from './servidor.ts'
+import type { Agendamento, Ficha, Preparacao, RespostasDaSegundaFicha, Tarefa } from './tipos.ts'
 
-/** O resumo que a IA faria da ficha de atendimento (CA3). Simulado: junta o que a ficha diz, sem concluir nada. */
-export function resumoDaIa(ficha: Ficha, hoje: string): string {
+/** O resumo da ficha de atendimento (CA3): junta o que a ficha diz, sem concluir nada. É regra, não IA (GGVP-133). */
+export function resumoDaFicha(ficha: Ficha, hoje: string): string {
   const f = ficha.fichaAtendimento
   if (!ficha.fichaAtendimentoPreenchida) return 'A ficha de atendimento ainda não foi preenchida: não há o que resumir.'
   if (!f) return 'Ficha preenchida antes do portal: leia a ficha em papel na pasta do cliente.'
@@ -34,14 +35,26 @@ function acharAgendamento(fichas: Ficha[], id: string): { ficha: Ficha; agendame
   return null
 }
 
+/**
+ * GGVP-125, bloco 3c: nas fichas do servidor, a seção médica da segunda ficha vem do servidor ao abrir a tela, só para o
+ * Jurídico e com a leitura registrada; fica só na tela, nunca na cópia do navegador.
+ */
+async function comSecaoMedica(ficha: Ficha): Promise<Ficha> {
+  if (!ficha.segundaFicha || !doServidor(ficha.id)) return ficha
+  const r = await chamarApi<{ medicos: Partial<RespostasDaSegundaFicha>; lida: boolean }>(`/fichas/${ficha.id}/segunda-ficha`)
+  if (!r.ok || r.dados.lida) return ficha
+  return { ...ficha, segundaFicha: { ...ficha.segundaFicha, respostas: { ...ficha.segundaFicha.respostas, ...r.dados.medicos } } }
+}
+
 /** GET /api/entrevistas/:id/preparacao. Nulo quando o compromisso não existe. */
 export async function obterPreparacao(agendamentoId: string): Promise<Preparacao | null> {
   const achado = acharAgendamento(ler().fichas, agendamentoId)
   if (!achado) return null
   const hoje = hojeIso(agora())
-  const { ficha, agendamento } = achado
+  const { agendamento } = achado
+  const ficha = await comSecaoMedica(achado.ficha)
   const primeiroContato = [...ficha.contatos].sort((a, b) => a.data.localeCompare(b.data))[0]
-  return { ficha, agendamento, resumo: resumoDaIa(ficha, hoje), pontos: pontosDeAtencao(ficha, hoje), primeiroContato }
+  return { ficha, agendamento, resumo: resumoDaFicha(ficha, hoje), pontos: pontosDeAtencao(ficha, hoje), primeiroContato }
 }
 
 /**

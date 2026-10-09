@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { complementoAberto } from '../dados/complemento.ts'
 import { enviarArquivos } from '../dados/documentos.ts'
+import { obterParecer, type ParecerNaTela } from '../dados/parecer.ts'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { DarParecer } from './DarParecer.tsx'
@@ -118,6 +119,17 @@ describe('Dar parecer médico · tela da advogada', () => {
     expect(registrar().disabled).toBe(false)
   })
 
+  it('GGVP-137 · o Jurídico administrativo vê a matriz e os documentos, sem conferir nem registrar o parecer', async () => {
+    entrarComo('juridico-adm')
+    await abrir()
+    expect(within(screen.getByRole('list', { name: 'Itens obrigatórios' })).getAllByRole('listitem')).toHaveLength(5)
+    expect(screen.getByRole('list', { name: 'Documentos analisados' })).toBeTruthy()
+    expect(screen.queryAllByRole('combobox', { name: /^Conferência:/ })).toEqual([])
+    expect(screen.queryByRole('radio', { name: 'Suficiente — liberar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Registrar parecer' })).toBeNull()
+    expect(screen.getByText('Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior (G17).')).toBeTruthy()
+  })
+
   it('dado de saúde · o Atendimento não vê a matriz; vê o resultado na janela', async () => {
     entrarComo('atendimento')
     await abrir()
@@ -159,6 +171,16 @@ describe('BPC/LOAS de menor de 16 anos · o parecer da criança (GGVP-50)', () =
     expect((await obterFicha('davi-exemplo'))?.historico.at(-1)?.oQue).toBe('Marcou a condição e as terapias da criança (roteiro infantil)')
   })
 
+  it('GGVP-137 · o Jurídico administrativo vê o cartão da criança sem marcar nem salvar', async () => {
+    entrarComo('juridico-adm')
+    await abrir('davi-exemplo-1')
+    const cartao = (await screen.findByRole('heading', { name: 'Criança · condição e terapias' })).closest('section')!
+    // Desligada pelo grupo (fieldset disabled), não pelo próprio campo.
+    expect(within(cartao).getByRole('checkbox', { name: 'Fonoaudiologia' }).matches(':disabled')).toBe(true)
+    expect(within(cartao).queryByRole('button', { name: 'Salvar a condição' })).toBeNull()
+    expect(within(cartao).getByRole('link', { name: 'Abrir o checklist' })).toBeTruthy()
+  })
+
   it('a Rita, adulta, não tem o cartão da criança', async () => {
     await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [{ nome: 'laudo.pdf', formato: 'pdf', tamanho: 1000, tipo: 'laudo', hash: '4'.padStart(64, '0') }] })
     await abrir()
@@ -167,3 +189,35 @@ describe('BPC/LOAS de menor de 16 anos · o parecer da criança (GGVP-50)', () =
   })
 })
 
+
+describe('GGVP-134 · a sugestão da IA de verdade na tela do parecer (caso do servidor)', () => {
+  const CASO = '9b1c2d3e-4f50-4a6b-8c7d-0e1f2a3b4c5d'
+
+  /** O servidor falso responde o parecer da Rita, como o de verdade, com o que a IA deixou na análise. */
+  async function doServidor(daIa: Partial<NonNullable<NonNullable<ParecerNaTela['juridico']>['analise']>>) {
+    const rita = (await obterParecer('rita-exemplo-1', 'juridico'))!
+    const naTela: ParecerNaTela = { ...rita, processo: { ...rita.processo, id: CASO }, juridico: { ...rita.juridico!, analise: { ...rita.juridico!.analise!, ...daIa } } }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(naTela), { status: 200 })))
+    configurarExemplo({ servidor: true })
+  }
+  afterEach(() => {
+    configurarExemplo({ servidor: false })
+    vi.unstubAllGlobals()
+  })
+
+  it('CA4 · a sugestão vem marcada como da IA, com o alerta e as fontes', async () => {
+    await doServidor({ ia: { modelo: 'gpt-4.1-mini', chamadas: ['c1'], alertas: ['documento com instrução suspeita'], fontes: ['Laudo médico · 20/08/2026'] } })
+    await abrir(CASO)
+    expect(screen.getByText('Sugestão da IA · quem registra o parecer é você (G17)')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toBe('Atenção: documento com instrução suspeita.')
+    expect(screen.getByText('Fontes: Laudo médico · 20/08/2026 (gpt-4.1-mini)')).toBeTruthy()
+  })
+
+  it('CA5 · sem a IA, a tela diz o motivo e segue manual, sem o selo de sugestão', async () => {
+    await doServidor({ motivo: 'A IA está desligada: confira cada item pela sua leitura dos documentos.' })
+    await abrir(CASO)
+    expect(screen.getByText('A IA está desligada: confira cada item pela sua leitura dos documentos.')).toBeTruthy()
+    expect(screen.queryByText(/Sugestão da IA/)).toBeNull()
+    expect(screen.getAllByRole('combobox', { name: /^Conferência:/ }).length).toBeGreaterThan(0)
+  })
+})

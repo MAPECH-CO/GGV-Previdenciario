@@ -9,8 +9,12 @@ import { fontesAtivas } from './vigilia/fontes.ts'
 import { ligarRelogio } from './vigilia/rodadas.ts'
 import { sincronizarDrive } from './fluxo/arquivar.ts'
 import { apagarSenhasVencidas } from './fluxo/cofre.ts'
+import { carregarFeriadosSeVazio } from './fluxo/feriados-ao-subir.ts'
 
 const { banco } = await abrirBanco()
+// P17: com banco de verdade, os feriados da lei de 2026 e 2027 entram na primeira subida (tabela vazia). No banco de
+// exemplo (testes de tela), não: lá a lista vazia é o ponto de partida dos testes do prazo e do botão "carregar".
+if (process.env.DATABASE_URL) await carregarFeriadosSeVazio(banco, new Date())
 
 const app = criarServidor({
   logger: true,
@@ -46,6 +50,7 @@ if (comDrive) {
 }
 await app.listen({ port: Number(process.env.PORTA ?? 3000), host: process.env.HOST ?? '127.0.0.1' })
 // Sugestão pronta (Mateus, 07/10): a IA prepara em segundo plano a sugestão de cada tarefa aberta; ao subir e a cada 5 min.
-const prepararSugestoes = () => void app.prepararSugestoes()
+// Na mesma batida, depois das sugestões, o acervo se alimenta sozinho (GGVP-141, ADR-013).
+const prepararSugestoes = () => void app.prepararSugestoes().then(() => app.alimentarAcervo())
 prepararSugestoes()
 setInterval(prepararSugestoes, 5 * 60_000)

@@ -105,6 +105,15 @@ export const CasoParaConferencia = z.object({
 })
 export type CasoParaConferencia = z.infer<typeof CasoParaConferencia>
 
+/** G1 na conferência (GGVP-23 CA11, CA12), regra única da tela e do servidor: por que aprovar não segue; em ordem, nulo.
+ * Sem kit cadastrado também bloqueia (revisão de 08/10): o G1 não fica aberto por falta de configuração. */
+export function bloqueioDoG1(c: Pick<CasoParaConferencia, 'checklist' | 'kitAssinado'>): string | null {
+  if (!c.checklist.cadastrado) return 'Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar (G1).'
+  if (!c.checklist.completo) return `Checklist incompleto (G1): faltam ${c.checklist.faltam.join(', ')}.`
+  if (!c.kitAssinado) return 'Contrato não assinado (G1): o caso não tem o contrato assinado.'
+  return null
+}
+
 const DataOpcional = z
   .string()
   .refine(validarData, 'Informe a data do ajuste (dd/mm/aaaa)')
@@ -272,3 +281,29 @@ export const RecomendacaoAprovada = z.object({
   assistenteTecnico: z.boolean().nullable(),
 })
 export type RecomendacaoAprovada = z.infer<typeof RecomendacaoAprovada>
+
+/**
+ * GET /api/casos/:id/liberacao (GGVP-18, GGVP-127): o caso antes de ir à fila da Sênior. Com `ajuste`, a Sênior reprovou
+ * na conferência e o caso voltou ao Atendimento com o motivo e, se ela deu, o prazo.
+ */
+export const CasoParaLiberacao = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  beneficio: z.string().nullable(),
+  /** G1, igual à conferência da Sênior. */
+  checklist: z.object({ cadastrado: z.boolean(), completo: z.boolean(), faltam: z.array(z.string()) }),
+  /** G17: por que não libera, pela regra única do contrato; nulo, em ordem. */
+  travaDoParecer: z.string().nullable(),
+  esperandoConferencia: z.boolean(),
+  ajuste: z.object({ motivo: z.string(), prazo: z.string().nullable(), reprovadoPor: z.string(), reprovadoEm: z.string() }).nullable(),
+  /** Quem está na sessão libera: a Documentação (D1.24) ou, no caso devolvido, o setor da tarefa de ajuste. */
+  podeLiberar: z.boolean(),
+})
+export type CasoParaLiberacao = z.infer<typeof CasoParaLiberacao>
+
+/** POST /api/casos/:id/liberacao: as duas conferências da pessoa antes de liberar (GGVP-18 CA7). */
+export const LiberarAoJuridico = z.object({
+  conferiChecklist: z.literal(true, { error: 'Confirme que conferiu o checklist' }),
+  conferiAssinaturas: z.literal(true, { error: 'Confirme que conferiu as assinaturas e as datas' }),
+})
+export type LiberarAoJuridico = z.infer<typeof LiberarAoJuridico>

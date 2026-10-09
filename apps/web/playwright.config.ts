@@ -13,7 +13,9 @@ export const SESSAO = 'e2e/.sessao/atendimento.json'
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
-  use: { baseURL: `http://localhost:${web}` },
+  // GGVP-133: o Chromium tem um microfone de mentira. Sem a permissão, a tela fica "sem microfone" (o padrão dos testes);
+  // o teste que grava de verdade abre o contexto com `permissions: ['microphone']`.
+  use: { baseURL: `http://localhost:${web}`, launchOptions: { args: ['--use-fake-device-for-media-stream'] } },
   projects: [
     { name: 'entrar', testMatch: /sessao\.setup\.ts/ },
     { name: 'logado', dependencies: ['entrar'], use: { storageState: SESSAO }, testIgnore: /login\.e2e\.ts/ },
@@ -23,7 +25,8 @@ export default defineConfig({
     {
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: `http://127.0.0.1:${api}/saude`,
-      env: { PORTA: api },
+      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC.
+      env: { PORTA: api, TZ: 'America/Sao_Paulo' },
       reuseExistingServer: false,
     },
     {

@@ -12,6 +12,7 @@ import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { NOMES_DA_INSTANCIA, NOMES_DA_SITUACAO, NOMES_DO_TIPO, numerosDaJurimetria, prazoFalado, type SituacaoDaPericia } from '../regras/pericia.ts'
+import { SISTEMA } from '../regras/periciaNoCaso.ts'
 import passo from './Balcao.module.css'
 import proprio from './Pericia.module.css'
 import styles from './ProcessoPericia.module.css'
@@ -88,7 +89,14 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
   const linhaAntes = ficha.historico.slice(-4)
   const m = pericia.marcacao
   const dia = (iso: string) => `${diaCurto(iso)}/${iso.slice(5, 7)}`
-  const etiqueta = m?.origem === 'comprovante' ? 'comprovante lido pelo sistema' : m?.origem === 'juizo' ? 'data lida da publicação' : NOMES_DA_SITUACAO[t.situacao].toLowerCase()
+  const etiqueta =
+    m?.origem === 'comprovante'
+      ? 'comprovante lido pelo sistema'
+      : m?.origem === 'juizo'
+        ? m.registradaPor === SISTEMA
+          ? 'data lida da publicação'
+          : 'data do juízo, registrada'
+        : NOMES_DA_SITUACAO[t.situacao].toLowerCase()
   const advogada = (perfil?.id ?? 'advogada') === 'advogada'
   const resultado = pericia.resultado?.registrado
 
@@ -354,7 +362,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                   orientação padrão e a jurimetria não foi feita. Se algum documento disser quem é o perito, ligue aqui em um clique.
                 </p>
                 <div className={passo.atalhos} role="group" aria-label="Ligar o perito">
-                  {peritosParaLigar(pericia.tipo).map((p) => (
+                  {peritosParaLigar(pericia.tipo, pericia.processoId).map((p) => (
                     <button key={p.id} type="button" className={passo.atalho} onClick={() => void ligar(p.id, p.nome)}>
                       {p.nome} · {p.especialidade}
                     </button>

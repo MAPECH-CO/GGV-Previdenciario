@@ -27,6 +27,21 @@ export const tarefasAtendimento: Tarefa[] = [
     href: '/balcao',
   },
   {
+    id: 't13',
+    codigo: 'D3b.03',
+    cliente: cliente('lucia-exemplo', 'Lúcia Exemplo'),
+    acao: 'Avisar a cliente do resultado',
+    detalhe: 'Pensão por morte · procedente · o aviso só sai depois do OK da advogada (G8)',
+    prazo: 'hoje',
+    urgente: true,
+  },
+]
+
+// GGVP-130: as duas exigências que pedem documento são da Documentação, que trabalha nesta Central. No D2, ela cobra o
+// cliente e responde a exigência do INSS no portal (o servidor dá o D2.05d a ela); no D3a.03, o laço da Documentação
+// busca o documento que o juiz pede (aqui, CTPS e notas do produtor).
+export const tarefasDocumentacao: Tarefa[] = [
+  {
     id: 't9',
     codigo: 'D3a.03',
     cliente: cliente('antonio-exemplo', 'Antônio Exemplo'),
@@ -44,25 +59,6 @@ export const tarefasAtendimento: Tarefa[] = [
     prazo: 'vence em 2 dias',
     urgente: true,
   },
-  {
-    id: 't13',
-    codigo: 'D3b.03',
-    cliente: cliente('lucia-exemplo', 'Lúcia Exemplo'),
-    acao: 'Avisar a cliente do resultado',
-    detalhe: 'Pensão por morte · procedente · o aviso só sai depois do OK da advogada (G8)',
-    prazo: 'hoje',
-    urgente: true,
-  },
 ]
-
-/** Quantas tarefas a aba "Tarefas do setor" mostra no protótipo. */
-export const totalTarefasSetorAtendimento = 9
 
 export const exemploChatAtendimento = 'Ex.: “a Josefa me ligou, qual é a próxima tarefa dela?”'
-
-export const sugestoesChatAtendimento = [
-  'O cliente me ligou: qual a próxima tarefa?',
-  'Subir laudo novo',
-  'Documentos que faltam',
-  'Pedir uma peça',
-]

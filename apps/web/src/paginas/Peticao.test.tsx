@@ -183,6 +183,17 @@ describe('Conferir a petição (GGVP-67)', () => {
     ])
   })
 
+  it('CA12 · com "[completar]" no texto da versão, mostra o motivo e não envia', async () => {
+    const fetch = servidor({ ...pedida, atual: { ...pedida.atual, texto: 'Do valor da causa: [completar]' } })
+    render(<Peticao casoId={CASO} />)
+    const aprovar = await screen.findByRole('button', { name: 'Aprovar e enviar ao protocolo' })
+    for (const m of ['Li a petição na íntegra', 'Fundamentos, pedidos e valores conferem com o caso', 'Nada contradiz o requisito do benefício (G18)'])
+      fireEvent.click(screen.getByLabelText(m))
+    fireEvent.click(aprovar)
+    expect((await screen.findByRole('alert')).textContent).toBe('O texto ainda tem [completar]: preencha antes de aprovar.')
+    expect(fetch.mock.calls.filter(([url, init]) => init?.method === 'POST' && String(url).endsWith('/aprovacao'))).toEqual([])
+  })
+
   it('CA1, CA10 · "Editar eu mesma" pede o que mudou e salva a versão seguinte', async () => {
     const fetch = servidor(pedida, [201, { ok: true, numero: 3 }])
     render(<Peticao casoId={CASO} />)

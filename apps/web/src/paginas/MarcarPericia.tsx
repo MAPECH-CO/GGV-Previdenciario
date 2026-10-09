@@ -1,20 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
+import { SEGUNDOS_SENHA } from '@ggv/contratos'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { ConviteChatwoot } from '../componentes/ConviteChatwoot.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
+import { SugestaoDaPericia } from '../componentes/SugestaoDaPericia.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { dataParaIso, formatarTelefone, isoParaData, normalizarData } from '../campos.ts'
 import {
   esperarComprovante,
-  lerComprovante,
+  lerComprovanteComIa,
+  liberarAgendamento,
   obterPericia,
+  registrarDataDoJuizo,
   registrarMarcacao,
   registrarTentativa,
   remarcarPericia,
+  type LeituraPelaIa,
   type PericiaNaTela,
 } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
 import { diaFalado } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
@@ -23,14 +28,17 @@ import {
   DIAS_ANTES_PREPARO,
   LIMITE_DE_REMARCACOES_DA_PERICIA,
   NOMES_DO_TIPO,
+  motivoDaDataDaPericia,
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarTentativa,
   prazoFalado,
   type LidoDoComprovante,
 } from '../regras/pericia.ts'
+import { SISTEMA } from '../regras/periciaNoCaso.ts'
 import styles from './Balcao.module.css'
 import cobranca from './Cobranca.module.css'
 import proprio from './Pericia.module.css'
+import { SenhaDoGov } from './Protocolar.tsx'
 
 // Figma: step_DP.02 (10:374), passos DP.02 e DP.04 do Miro. Tela do Jurídico administrativo (Lucas, 29/09): marca no Meu
 // INSS (senha no cofre, G9), sobe o comprovante, confere o que o sistema leu e decide se a perícia pede documento novo.
@@ -51,8 +59,9 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
   const [deuCerto, setDeuCerto] = useState<Tentativa>()
   const [dia, setDia] = useState('')
   const [oQueAconteceu, setOQueAconteceu] = useState('')
-  const [comprovante, setComprovante] = useState<{ nome: string; tamanho: number; hash: string }>()
+  const [comprovante, setComprovante] = useState<{ nome: string; tamanho: number; hash: string; arquivo: Blob }>()
   const [lido, setLido] = useState<LidoDoComprovante>()
+  const [ia, setIa] = useState<LeituraPelaIa<LidoDoComprovante>>()
   const [data, setData] = useState('')
   const [pedeDocumento, setPedeDocumento] = useState<boolean>()
   const [motivoRemarcar, setMotivoRemarcar] = useState('')
@@ -60,6 +69,8 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
   const [lembrete, setLembrete] = useState(false)
   // A data mudou no INSS: sobe o comprovante novo e o lembrete é reprogramado (CA8).
   const [trocar, setTrocar] = useState(false)
+  // A perícia do juízo sem data lida da publicação (GGVP-137): a data, a hora e o local que o juízo designou.
+  const [doJuizo, setDoJuizo] = useState({ data: '', hora: '', local: '' })
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
   const travado = useRef(false)
@@ -93,7 +104,11 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
     hoje,
   )
   const motivoTentativa = motivoParaNaoRegistrarTentativa({ dia: dataParaIso(dia), oQueAconteceu }, hoje)
-  const marcando = t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante'
+  // Do juízo, não há Meu INSS nem comprovante: a data vem da publicação ou a pessoa registra a que o juízo designou.
+  const juizo = pericia.instancia === 'juizo'
+  const marcando = !juizo && (t.situacao === 'marcar' || t.situacao === 'aguardando-comprovante')
+  const motivoJuizo = motivoDaDataDaPericia({ ...doJuizo, data: dataParaIso(doJuizo.data) }, hoje)
+  const lidaPeloSistema = pericia.marcacao?.registradaPor === SISTEMA
   const comComprovante = (marcando && (deuCerto === 'sim' || (deuCerto === undefined && t.situacao === 'aguardando-comprovante'))) || (trocar && t.situacao === 'agendada')
 
   async function agir(acao: () => Promise<PericiaNaTela>, ok: string) {
@@ -106,6 +121,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
       setDeuCerto(undefined)
       setComprovante(undefined)
       setLido(undefined)
+      setIa(undefined)
       setPedeDocumento(undefined)
       setAbrirRemarcar(false)
       setTrocar(false)
@@ -122,10 +138,17 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
     const problema = problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size })
     if (problema || formatoDoArquivo(arquivo.name) !== 'pdf') return setErro(problema ?? 'O comprovante do INSS é um PDF.')
     const hash = await hashDoConteudo(await arquivo.arrayBuffer())
-    setComprovante({ nome: arquivo.name, tamanho: arquivo.size, hash })
-    const leitura = await lerComprovante(processoId, arquivo.name)
-    setLido(leitura)
-    setData(isoParaData(leitura.data) ?? '')
+    setComprovante({ nome: arquivo.name, tamanho: arquivo.size, hash, arquivo })
+    // A IA lê (GGVP-139 CA1); sem ela, os campos vêm vazios, com o motivo, e a pessoa preenche olhando o PDF.
+    const leitura = await lerComprovanteComIa(processoId, arquivo, arquivo.name).catch((e: unknown) => ({
+      lido: null,
+      sugestao: null,
+      motivo: e instanceof Error ? e.message : 'A IA não leu o comprovante agora: preencha.',
+    }))
+    const l = leitura.lido ?? { data: '', hora: '', local: '', modalidade: '', tipo: t!.pericia.tipo }
+    setIa(leitura)
+    setLido(l)
+    setData(isoParaData(l.data) ?? '')
   }
 
   const decisaoDocumento = (
@@ -167,8 +190,10 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
 
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             {pericia.instancia === 'inss'
-              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o portal já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação (DP.03), que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
-              : `A data da ${tipo} de ${primeiro} veio do juízo: o sistema leu na publicação e pôs na agenda. Confira abaixo e siga para orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes.`}
+              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o INSS já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação (DP.03), que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
+              : !pericia.marcacao
+                ? `A data da ${tipo} de ${primeiro} ainda não saiu na publicação (ou saiu num formato que o sistema não lê). Quando sair, registre abaixo a data, a hora e o local que o juízo designou: vão para a agenda e a ficha, com o lembrete da véspera. Depois, oriente ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes.`
+                : `A data da ${tipo} de ${primeiro} veio do juízo: ${lidaPeloSistema ? 'o sistema leu na publicação e pôs na agenda' : `${pericia.marcacao.registradaPor} registrou e ela está na agenda`}. Confira abaixo e siga para orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes.`}
           </InstrucoesPasso>
 
           {aviso && (
@@ -177,7 +202,81 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
             </p>
           )}
 
-          {t.situacao === 'aguardando-inss' && <p className={styles.trava}>O INSS ainda não liberou o agendamento (D2.E1): a tarefa aparece na sua Central quando liberar.</p>}
+          {t.situacao === 'aguardando-inss' && (
+            // D2.E1: quem acompanha o Meu INSS é o Jurídico administrativo; ele registra aqui quando o INSS libera.
+            <section className={styles.cartao} aria-labelledby="espera-inss">
+              <h2 id="espera-inss" className={styles.cartaoTitulo}>
+                Esperando o INSS liberar o agendamento (D2.E1)
+              </h2>
+              <p>Acompanhe pelo Meu INSS. Quando o agendamento da {tipo} aparecer liberado, registre aqui: a marcação abre nesta tela.</p>
+              {perfil?.id === 'juridico-adm' && (
+                <div className={styles.rodape}>
+                  <button
+                    type="button"
+                    className={styles.principalBotao}
+                    onClick={() =>
+                      agir(async () => {
+                        await liberarAgendamento(processoId)
+                        return (await obterPericia(processoId))!
+                      }, 'Liberação registrada: marque a perícia pelo Meu INSS.')
+                    }
+                  >
+                    O INSS liberou o agendamento
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+          {juizo && t.situacao === 'marcar' && (
+            <section className={styles.cartao} aria-labelledby="data-do-juizo">
+              <h2 id="data-do-juizo" className={styles.cartaoTitulo}>
+                A data ainda não saiu na publicação
+              </h2>
+              <p>A perícia judicial é designada pelo juízo: não há Meu INSS nem comprovante. Registre a data como está na publicação.</p>
+              {perfil?.id === 'juridico-adm' && (
+                <>
+                  <fieldset className={proprio.lido}>
+                    <legend>Data que o juízo designou</legend>
+                    <label>
+                      Data (dd/mm/aaaa) *
+                      <input
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="dd/mm/aaaa"
+                        value={doJuizo.data}
+                        onChange={(e) => setDoJuizo({ ...doJuizo, data: e.target.value })}
+                        onBlur={() => setDoJuizo({ ...doJuizo, data: normalizarData(doJuizo.data) })}
+                      />
+                    </label>
+                    <label>
+                      Hora *
+                      <input type="time" value={doJuizo.hora} onChange={(e) => setDoJuizo({ ...doJuizo, hora: e.target.value })} />
+                    </label>
+                    <label className={proprio.largo}>
+                      Local *
+                      <input maxLength={120} value={doJuizo.local} onChange={(e) => setDoJuizo({ ...doJuizo, local: e.target.value })} />
+                    </label>
+                  </fieldset>
+                  <div className={styles.rodape}>
+                    <button
+                      type="button"
+                      className={styles.principalBotao}
+                      disabled={motivoJuizo !== null}
+                      onClick={() =>
+                        agir(
+                          () => registrarDataDoJuizo(processoId, { ...doJuizo, data: dataParaIso(doJuizo.data)! }, quem),
+                          'Data do juízo registrada: na agenda e na ficha, com o lembrete da véspera agendado.',
+                        )
+                      }
+                    >
+                      Registrar a data do juízo
+                    </button>
+                    {motivoJuizo && <p className={styles.motivo}>{motivoJuizo}</p>}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
           {t.situacao === 'na-advogada' && (
             <p className={styles.trava}>
               Passou do limite de {LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma (G15). A perícia volta para você
@@ -190,6 +289,20 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
               Marcada no Meu INSS em {dataCurta(hojeIso(new Date(pericia.esperaComprovante!.desde)), hoje)}; o comprovante ainda não saiu (DP.E1). A tarefa
               espera, com lembrete diário: quando o comprovante sair, suba aqui.
             </p>
+          )}
+
+          {/* G9: a senha do gov.br só pelo cofre, pelos segundos de sempre, com a tarefa de marcar aberta; o uso fica no histórico. */}
+          {marcando && pericia.instancia === 'inss' && doServidor(processoId) && (
+            <section className={styles.cartao} aria-labelledby="meu-inss">
+              <h2 id="meu-inss" className={styles.cartaoTitulo}>
+                Meu INSS
+              </h2>
+              <p>
+                Entre no Meu INSS com a senha do gov.br de {primeiro}, guardada no cofre. Ela aparece por {SEGUNDOS_SENHA} segundos e o uso fica no histórico do
+                caso.
+              </p>
+              <SenhaDoGov casoId={processoId} />
+            </section>
           )}
 
           {marcando && deuCerto === 'nao' && (
@@ -228,6 +341,9 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
               {lido && (
                 <fieldset className={proprio.lido}>
                   <legend>Lido do comprovante · confira</legend>
+                  <div className={proprio.largo}>
+                    <SugestaoDaPericia ia={ia} selo="Leitura da IA · confira com o PDF antes de registrar" />
+                  </div>
                   <label>
                     Data (dd/mm/aaaa)
                     <input inputMode="numeric" maxLength={10} value={data} onChange={(e) => setData(e.target.value)} onBlur={() => setData(normalizarData(data))} />
@@ -270,7 +386,9 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
               </p>
               <p>
                 {pericia.marcacao.origem === 'juizo'
-                  ? 'A data veio do juízo: o sistema leu na publicação e pôs na agenda e na ficha.'
+                  ? lidaPeloSistema
+                    ? 'A data veio do juízo: o sistema leu na publicação e pôs na agenda e na ficha.'
+                    : `A data veio do juízo, registrada por ${pericia.marcacao.registradaPor}; a perícia está na agenda e na ficha.`
                   : `Comprovante ${pericia.marcacao.comprovante} lido pelo sistema e conferido por ${pericia.marcacao.registradaPor}; a perícia está na agenda e na ficha.`}
               </p>
               <p>
@@ -471,7 +589,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.trava}>Remarcação tem limite; passou, sobe para a advogada (G15).</p>
           <p className={styles.ladoSub}>«Registrar a perícia» só habilita com as decisões respondidas e o comprovante anexado.</p>
-          <p className={styles.ladoSub}>A marcação é pelo Meu INSS, com a senha do cofre (G9): nenhum campo de senha aqui. A IA não escolhe nem sugere o perito.</p>
+          <p className={styles.ladoSub}>A marcação é pelo Meu INSS, com a senha do cofre (G9): ela só aparece pelo «Ver a senha do gov.br», confirmada com a sua senha do portal, e some sozinha. A IA não escolhe nem sugere o perito.</p>
         </aside>
       </main>
       <AbaSuporte />

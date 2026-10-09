@@ -1,6 +1,7 @@
 // A linha do tempo da deficiência na Aposentadoria PCD (GGVP-42): cada vínculo do CNIS partido em "sem deficiência" e
 // "com deficiência" por grau, as provas da época e o enquadramento. Regra numérica é código com teste, nunca da IA (G19).
 import { dataParaIso, normalizarData } from '../campos.ts'
+import type { Cnis, Ficha, Processo } from '../dados/tipos.ts'
 import { erroData } from './formularios.ts'
 
 export type Grau = 'leve' | 'moderada' | 'grave'
@@ -243,5 +244,40 @@ export function paraDados(v: ValoresDaDeficiencia, hoje: string): DadosDaDeficie
     grau: v.grau as Grau,
     sexo: v.sexo as Sexo,
     agravamentos: v.agravamentos.map((g) => ({ data: dataParaIso(normalizarData(g.data))!, grau: g.grau as Grau })),
+  }
+}
+
+/** Os dados da deficiência do caso, com quem registrou e quando. */
+export type DeficienciaDoCaso = DadosDaDeficiencia & { processoId: string; quem: string; /** Data e hora ISO. */ quando: string }
+
+export type LinhaDoTempo = {
+  ficha: Pick<Ficha, 'id' | 'nome'>
+  processo: Processo
+  beneficio: string
+  cnis?: Cnis
+  dados?: DeficienciaDoCaso
+  periodos: Periodo[]
+  enquadramento?: Enquadramento
+  /** Os três cenários (leve, moderada e grave), para a entrevista: o grau efetivo sai na perícia. */
+  cenarios: Cenario[]
+  /** Todas as provas do caso, para a lista embaixo da linha. */
+  provas: Prova[]
+}
+
+/** A linha do tempo como a tela recebe: os períodos, o enquadramento e os cenários saem do CNIS e dos dados (CA1 a CA4). */
+export function linhaDoTempo(d: Pick<LinhaDoTempo, 'ficha' | 'processo' | 'beneficio' | 'cnis' | 'dados' | 'provas'>): LinhaDoTempo {
+  const { cnis, dados } = d
+  const ps = dados && cnis ? periodos(cnis.vinculos, dados, d.provas, cnis.extraidoEm) : []
+  const e = dados ? enquadramento(ps, dados.sexo) : undefined
+  return {
+    ficha: { id: d.ficha.id, nome: d.ficha.nome },
+    processo: d.processo,
+    beneficio: d.beneficio,
+    ...(cnis && { cnis }),
+    ...(dados && { dados }),
+    periodos: ps,
+    ...(e && { enquadramento: e }),
+    cenarios: dados ? cenarios(ps, dados.sexo) : [],
+    provas: d.provas,
   }
 }

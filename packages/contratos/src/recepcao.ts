@@ -147,8 +147,14 @@ export type AudioGravadoFora = z.infer<typeof AudioGravadoFora>
 export const PedidoDeTranscricao = z.object({ falhar: z.boolean().optional() })
 export type PedidoDeTranscricao = z.infer<typeof PedidoDeTranscricao>
 
-/** POST /api/gravacoes/:id/conferencias: só o que a advogada conferiu sai da transcrição (CA6, G14). */
-export const ConferenciaDaTranscricao = z.object({ ids: z.array(Texto(60)).min(1).max(50) })
+/**
+ * POST /api/gravacoes/:id/conferencias: só o que a advogada conferiu sai da transcrição (CA6, G14). GGVP-133: `correcoes`,
+ * o valor que ela corrigiu num item conferido, no lugar do que a IA ouviu.
+ */
+export const ConferenciaDaTranscricao = z.object({
+  ids: z.array(Texto(60)).min(1).max(50),
+  correcoes: z.array(z.object({ id: Texto(60), valor: Texto(200) })).max(50).optional(),
+})
 export type ConferenciaDaTranscricao = z.infer<typeof ConferenciaDaTranscricao>
 
 /** POST /api/gravacoes/:id/documentos: a lista conferida vai ao checklist do benefício (CA7). */
@@ -169,3 +175,125 @@ export const ConversaRegistrada = z.object({
   perfil: z.enum(['juridico', 'atendimento']),
 })
 export type ConversaRegistrada = z.infer<typeof ConversaRegistrada>
+
+// Bloco 3b (GGVP-125): as decisões depois da entrevista. As regras (campos do cadastro, requisitos, cálculo, motivos de
+// não fechar, G16) são as do Pedro, no servidor; aqui só a forma.
+const DoCadastro = z.object({
+  nome: Texto(200),
+  cpf: Texto(20),
+  rg: Texto(30),
+  nascimento: Texto(10),
+  estadoCivil: Texto(60),
+  profissao: Texto(120),
+  telefone: Texto(30),
+  cep: Texto(10),
+  rua: Texto(300),
+  bairro: Texto(120),
+  cidade: Texto(120),
+  uf: Texto(2),
+})
+const Representante = z.object({ nome: Texto(200), cpf: Texto(20), rg: Texto(30), parentesco: Texto(60), estadoCivil: Texto(60), profissao: Texto(120) })
+
+/** PUT /api/fichas/:id/cadastro: `base` é o que a tela abriu, para não apagar o que outra pessoa salvou (GGVP-43 CA11). */
+export const PedidoDeCadastro = z.object({ base: DoCadastro, valores: DoCadastro, representante: Representante.optional() })
+export type PedidoDeCadastro = z.infer<typeof PedidoDeCadastro>
+
+/** POST /api/entrevistas/:id/analise: "Pode ser auxílio acidentário?" (GGVP-28). */
+export const AnaliseDaFicha = z.object({ acidentario: z.boolean() })
+export type AnaliseDaFicha = z.infer<typeof AnaliseDaFicha>
+
+/** POST /api/entrevistas/:id/beneficio: a advogada decide, conferindo a sugestão com a entrevista (GGVP-51, G3). */
+export const DecisaoDoBeneficio = z.object({ beneficio: Texto(100), conferi: z.literal(true), motivoDaRecusa: Opcional(500) })
+export type DecisaoDoBeneficio = z.infer<typeof DecisaoDoBeneficio>
+
+const Tempo = z.object({ anos: z.number().int().min(0), meses: z.number().int().min(0), dias: z.number().int().min(0) })
+/** POST /api/entrevistas/:id/calculo: o advogado registra o que calculou sobre o CNIS; nenhum número vem da IA (G19). */
+export const RegistroDoCalculo = z.discriminatedUnion('podeAposentar', [
+  z.object({ podeAposentar: z.literal(true), tempo: Tempo, pontos: z.number().min(0), regra: Texto(200), conferi: z.literal(true) }),
+  z.object({ podeAposentar: z.literal(false), tempo: Tempo, pontos: z.number().min(0), regra: Texto(200), dataPrevista: Texto(10), conferi: z.literal(true) }),
+])
+export type RegistroDoCalculo = z.infer<typeof RegistroDoCalculo>
+
+const Espera = z.enum(['pensar', 'esperar'])
+/** POST /api/fichas/:id/fechamento: "Fechou com o escritório?" (GGVP-60, G16). O papel vem da sessão, não daqui. */
+export const EnvioDoFechamento = z.discriminatedUnion('fechou', [
+  z.object({ fechou: z.literal(true) }),
+  z.object({
+    fechou: z.literal(false),
+    motivo: Texto(60),
+    detalhe: Opcional(2000),
+    recontatar: z.object({ data: Texto(10), espera: Espera.optional() }).nullable(),
+  }),
+])
+export type EnvioDoFechamento = z.infer<typeof EnvioDoFechamento>
+
+/** POST /api/fichas/:id/recontato: o resultado do recontato (GGVP-60 CA10). O papel vem da sessão. */
+export const ResultadoDoRecontato = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('calculo') }),
+  z.object({ resultado: z.literal('nova-data'), data: Texto(10), espera: Espera.optional() }),
+  z.object({ resultado: z.literal('arquivar'), motivo: Texto(60), detalhe: Opcional(2000) }),
+])
+export type ResultadoDoRecontato = z.infer<typeof ResultadoDoRecontato>
+
+/** POST /api/fichas/:id/demandas: a nova demanda de quem já é cliente (GGVP-124). Quem abriu vem da sessão. */
+export const EnvioDaDemanda = z.object({ pretende: Texto(2000), beneficio: Texto(100), tipo: z.enum(['outro-pedido', 'tentar-de-novo', 'recurso-ou-defesa']) })
+export type EnvioDaDemanda = z.infer<typeof EnvioDaDemanda>
+
+/**
+ * POST /api/fichas/:id/cofre/gov: a situação da senha na ficha (G9). "guardou" só depois de a senha ir ao cofre do portal
+ * (`POST /api/pessoas/:id/cofre`); a senha nunca passa por aqui.
+ */
+export const SituacaoDaSenhaGov = z.object({ acao: z.enum(['guardou', 'nao-sabe', 'conferiu']) })
+export type SituacaoDaSenhaGov = z.infer<typeof SituacaoDaSenhaGov>
+
+/** POST /api/entrevistas/:id/renovacao (GGVP-36): "renovou" só depois de a senha nova ir ao cofre do portal. */
+export const RenovacaoDaSenha = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('renovou'), conferiMeuInss: z.literal(true) }),
+  z.object({ resultado: z.literal('nao-conseguiu'), motivo: Texto(300), aviseiOCliente: z.literal(true) }),
+])
+export type RenovacaoDaSenha = z.infer<typeof RenovacaoDaSenha>
+
+// Bloco 3c (GGVP-125): a segunda ficha (auxílio acidentário, GGVP-28). Os campos e as regras são os das telas; o servidor
+// fica só com os campos que conhece e guarda a seção médica à parte.
+/** PUT /api/fichas/:id/segunda-ficha: as respostas, campo a campo, e de onde vieram. */
+export const EnvioDaSegundaFicha = z.object({ respostas: z.record(z.string().max(40), Texto(4000)), origem: z.enum(['papel', 'tablet']) })
+export type EnvioDaSegundaFicha = z.infer<typeof EnvioDaSegundaFicha>
+
+// Bloco 4a (GGVP-125): fechar e preparar o contrato (GGVP-65, GGVP-69). O kit, os campos do modelo e as conferências são
+// os das telas, no servidor; aqui só a forma.
+/** POST /api/fichas/:id/processos: o cliente fechou o benefício; nasce o caso, com o contrato e o kit. */
+export const FechamentoDoCaso = z.object({ beneficio: Texto(100) })
+export type FechamentoDoCaso = z.infer<typeof FechamentoDoCaso>
+
+/** PUT /api/processos/:id/contrato/condicoes: o que o caso diz e muda o kit do LOAS (GGVP-65 CA2, CA8). */
+export const CondicoesDoKit = z.object({ representado: z.boolean(), moradia: z.boolean(), uniaoEstavel: z.boolean(), separacaoDeFato: z.boolean() })
+export type CondicoesDoKit = z.infer<typeof CondicoesDoKit>
+
+/** POST /api/processos/:id/contrato/gerar: a decisão, o que corrigir, as conferências e as correções (GGVP-69). */
+export const EnvioDoContrato = z.object({
+  aprovados: z.boolean(),
+  oQueCorrigir: Opcional(500),
+  conferencias: z.record(z.string().max(40), z.boolean()),
+  correcoes: z.record(z.string().max(40), Texto(300)),
+})
+export type EnvioDoContrato = z.infer<typeof EnvioDoContrato>
+
+/** POST /api/processos/:id/contrato/tentativas: o link ou o lembrete, pelo WhatsApp (com a mensagem) ou por ligação (GGVP-72). */
+export const TentativaDoContrato = z.object({ canal: z.enum(['whatsapp', 'ligacao']), mensagem: Opcional(2000) })
+export type TentativaDoContrato = z.infer<typeof TentativaDoContrato>
+
+/** POST /api/processos/:id/contrato/verificacao: "está certo" ou o que corrigir, com a página corrigida (GGVP-85). */
+export const VerificacaoDoContrato = z.object({
+  tudoCerto: z.boolean(),
+  oQueCorrigir: Opcional(500),
+  paginaCorrigida: z.object({ nome: Texto(200), tamanho: z.number().int().min(0) }).optional(),
+})
+export type VerificacaoDoContrato = z.infer<typeof VerificacaoDoContrato>
+
+/** POST /api/processos/:id/contrato/copia/visita: a data e a hora da visita para retirar a cópia (GGVP-89 CA4). */
+export const VisitaDaCopia = z.object({ data: Texto(10), hora: Texto(5) })
+export type VisitaDaCopia = z.infer<typeof VisitaDaCopia>
+
+/** POST /api/processos/:id/contrato/copia/entrega: a confirmação, a data, quem recebeu e a observação (GGVP-89 CA3). */
+export const EntregaDaCopia = z.object({ copiaDaVersaoAssinada: z.boolean(), entregueEm: Texto(10), quemRecebeu: Texto(120), observacao: Texto(500) })
+export type EntregaDaCopia = z.infer<typeof EntregaDaCopia>

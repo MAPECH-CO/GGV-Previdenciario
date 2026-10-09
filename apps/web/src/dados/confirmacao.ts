@@ -1,6 +1,6 @@
 // EXEMPLO. Servidor de exemplo da confirmação da entrevista do lead (GGVP-21), sobre o mesmo banco de servidor.ts. Ligar
 // no servidor: trocar o corpo de cada função por fetch no endpoint indicado, sobre o contrato da design.md (change ggvp-6).
-// O Chatwoot e a ligação são simulados.
+// A ligação é simulada; a mensagem do cliente do banco sai pelo Chatwoot do servidor (GGVP-146), a da semente pelo simulado.
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, mensagemDaConfirmacao, precisaConfirmar, tentativaAtual } from '../regras/confirmacao.ts'
 import { emAberto } from '../regras/busca.ts'
@@ -125,7 +125,7 @@ export function abrirPreparacao(banco: Banco, ficha: Ficha, a: Agendamento): Tar
 }
 
 /** A pendência do Atendimento: a ficha em papel preenchida e escaneada antes da entrevista (CA2, CA7). */
-function abrirPreenchimento(banco: Banco, ficha: Ficha, a: Agendamento): TarefaEncaminhada {
+export function abrirPreenchimento(banco: Banco, ficha: Ficha, a: Agendamento): TarefaEncaminhada {
   const hoje = hojeIso(agora())
   const tarefa: TarefaEncaminhada = {
     id: `preencher-ficha-${a.id}`,

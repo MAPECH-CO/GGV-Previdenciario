@@ -1,6 +1,7 @@
-// Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104).
+// Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104, 143).
+import { TIPOS_DE_TERMO } from '@ggv/contratos'
 import { sql } from 'drizzle-orm'
-import { boolean, check, date, integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { documento } from './documentos.ts'
@@ -50,6 +51,8 @@ export const perito = pgTable('perito', {
   nomeNormalizado: text('nome_normalizado').notNull().unique(),
   grafias: jsonb('grafias').notNull().default([]),
   especialidade: text('especialidade'),
+  /** O perfil do perito (GGVP-61, GGVP-73): o tipo, onde atua e um laudo por linha, sem dado pessoal do cliente. */
+  perfil: jsonb('perfil'),
   criadoEm: criadoEm(),
 }).enableRLS()
 
@@ -78,6 +81,27 @@ export const processoAcervo = pgTable('processo_acervo', {
   fonte: text('fonte').notNull(),
   criadoEm: criadoEm(),
 }).enableRLS()
+
+/**
+ * Base de conhecimento do acervo (GGVP-141, ADR-013): um trecho anonimizado por fonte, com o vetor para a busca por
+ * significado. O hash impede duplicar (CA3); `so_juridico` marca o dado de saúde (CA1). O vetor fica nulo até ser calculado.
+ */
+export const acervoTrecho = pgTable(
+  'acervo_trecho',
+  {
+    id: id(),
+    origem: text('origem').notNull(),
+    referencia: text('referencia').notNull(),
+    casoId: uuid('caso_id').references(() => caso.id),
+    beneficio: text('beneficio'),
+    texto: text('texto').notNull(),
+    soJuridico: boolean('so_juridico').notNull().default(false),
+    embedding: vector('embedding', { dimensions: 1536 }),
+    hash: text('hash').notNull().unique(),
+    criadoEm: criadoEm(),
+  },
+  (t) => [index('acervo_trecho_vetor').using('hnsw', t.embedding.op('vector_cosine_ops'))],
+).enableRLS()
 
 export const CANAIS_MENSAGEM = ['whatsapp', 'sms', 'email', 'telefone'] as const
 export const STATUS_MENSAGEM = ['enviada', 'entregue', 'lida', 'falhou'] as const
@@ -116,7 +140,11 @@ export const configuracao = pgTable('configuracao', {
   atualizadoEm: atualizadoEm(),
 }).enableRLS()
 
-/** Roteiro de conteúdo mínimo por benefício, versionado (GGVP-93). */
+/**
+ * Roteiro de conteúdo mínimo por benefício, versionado (GGVP-93). A versão 1 é a régua do escritório, no código
+ * (`regras/roteirosDoEscritorio.ts`); aqui ficam as versões que a sênior salva depois (GGVP-132). `beneficio` guarda o
+ * id do roteiro, que vale para um ou mais benefícios.
+ */
 export const roteiroLaudo = pgTable(
   'roteiro_laudo',
   {
@@ -125,6 +153,8 @@ export const roteiroLaudo = pgTable(
     versao: integer('versao').notNull(),
     itens: jsonb('itens').notNull(),
     vigenteDesde: date('vigente_desde').notNull(),
+    /** Quem salvou a versão (GGVP-93 CA2). */
+    autorId: uuid('autor_id').references(() => usuario.id),
     criadoEm: criadoEm(),
   },
   (t) => [unique('roteiro_versao_unica').on(t.beneficio, t.versao)],
@@ -172,4 +202,22 @@ export const feriado = pgTable(
     descricao: text('descricao').notNull(),
   },
   (t) => [unique('feriado_unico').on(t.data, t.tribunal)],
+).enableRLS()
+
+/**
+ * Glossário do escritório (GGVP-143): benefícios, siglas, peritos, juízos e varas, como o escritório escreve. A transcrição
+ * e o motor de IA leem daqui (`termosDoGlossario`). O mesmo termo não entra duas vezes, nem com outra maiúscula.
+ */
+export const glossarioTermo = pgTable(
+  'glossario_termo',
+  {
+    id: id(),
+    termo: text('termo').notNull(),
+    tipo: text('tipo').notNull(),
+    significado: text('significado'),
+    alteradoPor: uuid('alterado_por').references(() => usuario.id),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+  },
+  (t) => [uniqueIndex('glossario_termo_unico').on(sql`lower(${t.termo})`), emLista('glossario_termo_tipo', t.tipo, TIPOS_DE_TERMO)],
 ).enableRLS()

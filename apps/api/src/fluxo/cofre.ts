@@ -3,8 +3,8 @@ import { and, eq, gte, inArray } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, credencialGovbr, eventoAuditoria, tarefa, usuario } from '../banco/esquema.ts'
 
-/** Tarefas que usam o gov.br: protocolar no Meu INSS e marcar a perícia (GGVP-103 CA5). */
-export const PASSOS_COM_GOVBR = ['D2.02', 'DP.01', 'DP.02'] as const
+/** Tarefas que usam o gov.br: protocolar no Meu INSS, marcar a perícia (GGVP-103 CA5) e responder a exigência no portal (CA12). */
+export const PASSOS_COM_GOVBR = ['D2.02', 'DP.01', 'DP.02', 'D2.05r'] as const
 /** CA10 (Lucas, 02/10): a senha fica guardada até 1 ano depois do encerramento, porque o cliente às vezes liga pedindo ajuda. */
 export const MESES_DE_GUARDA = 12
 const FUSO_EM_HORAS = -3

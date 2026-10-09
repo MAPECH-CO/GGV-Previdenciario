@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CPF_DE_TESTE, telefoneDeExemplo } from '../dados/exemplo.ts'
 import { salvarFichaDeAtendimento } from '../dados/fichaAtendimento.ts'
 import { configurarExemplo, criarFicha, encaminhar, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { MENSAGEM } from '../regras/formularios.ts'
 import { FichaCliente } from './FichaCliente.tsx'
 
@@ -19,6 +20,20 @@ async function abrir(id: string) {
 const campo = (rotulo: string) => screen.getByLabelText(rotulo) as HTMLInputElement
 const digitar = (rotulo: string, valor: string) => fireEvent.change(campo(rotulo), { target: { value: valor } })
 const historico = () => within(screen.getByRole('list', { name: 'Histórico' }))
+
+afterEach(() => entrarComo())
+
+describe('GGVP-96 · os dados bancários do repasse (GGVP-111; LGPD, minimização)', () => {
+  it('quem pede ou confirma a mudança vê o cartão; a Documentação e o Jurídico administrativo, não', async () => {
+    for (const [perfil, ve] of [['atendimento', true], ['documentacao', false], ['juridico-adm', false]] as const) {
+      entrarComo(perfil)
+      render(comSessao(<FichaCliente id="antonio-exemplo" />))
+      await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+      expect(Boolean(screen.queryByRole('heading', { name: 'Dados bancários para o repasse' })), perfil).toBe(ve)
+      cleanup()
+    }
+  }, 30_000)
+})
 
 describe('Ficha do cliente · visão do Atendimento', () => {
   it('GGVP-46 · "Transcrições (2)" abre a janela das conversas do caso, na visão do Atendimento', async () => {
@@ -147,6 +162,22 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Confira os campos marcados em vermelho.')).toBeTruthy()
     expect((await obterFicha('antonio-exemplo'))?.historico).toEqual([])
+  })
+
+  it('GGVP-111 CA1 · mudar o telefone do cliente pede a verificação; o lead, ainda sem contrato, troca livre (Pedro, 08/10)', async () => {
+    const pergunta = 'Mudou o telefone: como você confirmou que é o cliente?'
+    const { unmount } = render(<FichaCliente id="maria-exemplo" />)
+    await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+    digitar('Telefone / WhatsApp *', '(11) 90000-0099')
+    expect(screen.getByRole('group', { name: pergunta })).toBeTruthy()
+    unmount()
+    const lead = await criarFicha({ nome: 'Rosa Exemplo', idade: 58, pretende: 'Aposentadoria.', telefone: telefoneDeExemplo(52), beneficioInteresse: 'nao-sei', outraPessoa: false })
+    if (lead.resultado !== 'criada') throw new Error(lead.resultado)
+    await abrir(lead.id)
+    digitar('Telefone / WhatsApp *', '(11) 90000-0098')
+    expect(screen.queryByRole('group', { name: pergunta })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Alterações salvas. Ficaram no histórico.')).toBeTruthy()
   })
 
   it('CA16 · dois cliques em "Salvar alterações" gravam uma vez só, e o que mudou vai para o histórico', async () => {

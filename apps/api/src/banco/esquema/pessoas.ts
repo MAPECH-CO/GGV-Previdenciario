@@ -153,3 +153,17 @@ export const gravacaoRecepcao = pgTable('gravacao_recepcao', {
   dados: jsonb('dados').notNull(),
   criadoEm: criadoEm(),
 }).enableRLS()
+
+/**
+ * A seção médica da segunda ficha (auxílio acidentário, GGVP-28; GGVP-125, bloco 3c), à parte da ficha: dado de saúde,
+ * só para quem tem `dado_saude.ver_detalhe`, com cada leitura em `acesso_dado_sensivel`. `lida`: veio da leitura do papel
+ * e a segunda ficha ainda não foi salva.
+ */
+export const segundaFichaMedica = pgTable('segunda_ficha_medica', {
+  pessoaId: uuid('pessoa_id')
+    .primaryKey()
+    .references(() => pessoa.id),
+  medicos: jsonb('medicos').notNull(),
+  lida: boolean('lida').notNull(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()

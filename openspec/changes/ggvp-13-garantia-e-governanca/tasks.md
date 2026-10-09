@@ -66,3 +66,9 @@
 - [x] 7.5 Tela "Configuração do escritório" (`/configuracao`) e o link no topo da Central; testes de tela.
 - [x] 7.6 Playwright: a Sênior muda o limite de cobrança e publica o kit de um benefício; a mudança aparece no histórico da configuração.
 - [x] 7.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-103 · revelar na exigência e a trava (orquestrador, 09/10)
+
+- [x] 6.9 CA12 · `POST /api/casos/:id/cofre` aceita quem pode `exigencia_inss.tratar`, além de `protocolo_inss.registrar`, sem mudar a matriz; "Responder exigência no portal do INSS" (D2.05r) entra em `PASSOS_COM_GOVBR`; a tela da exigência mostra o `SenhaDoGov` do protocolo antes da resposta; teste em `cofre.test.ts` e `Exigencia.test.tsx`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/cofre.test.ts`.
+- [x] 6.10 CA13 · a senha do portal errada no revelar usa `aposErro` e `estaTravado` do login (5 erros, 15 minutos); acertar zera; `cofre_travado` no histórico; teste em `cofre.test.ts`.
+- [x] 6.11 Rodar typecheck, lint e testes; colar a saída.

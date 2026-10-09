@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirConversa, anexarAudio, transcreverConversa } from '../dados/conversa.ts'
 import { encerrarGravacao, iniciarGravacao, transcrever } from '../dados/entrevista.ts'
 import { entrarComo } from '../dados/sessaoDeTeste.tsx'
-import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import type { Gravacao } from '../dados/tipos.ts'
 import { Transcricoes } from './Transcricoes.tsx'
 
 beforeEach(() => {
@@ -24,6 +25,13 @@ async function entrevistaDaJosefa(falhar = false) {
 }
 
 const itemDaLista = (nome: RegExp) => screen.getByRole('button', { name: nome })
+
+/** Muda uma gravação da semente (o servidor de verdade é testado na API). */
+function mudarGravacao(id: string, mudar: (g: Gravacao) => void) {
+  const banco = ler()
+  mudar(banco.gravacoes.find((g) => g.id === id)!)
+  gravar(banco)
+}
 
 describe('Transcrições do caso · janela', () => {
   it('CA4 · a lista com a data, a duração, quem participou e a situação; a contagem do topo', async () => {
@@ -65,10 +73,46 @@ describe('Transcrições do caso · janela', () => {
     await abrir('antonio-exemplo', 'juridico')
     fireEvent.click(itemDaLista(/Entrevista com a advogada/))
     fireEvent.click(screen.getByRole('button', { name: 'Abrir áudio' }))
-    expect(screen.getByRole('group', { name: 'Áudio: entrevista-antonio-exemplo-2026-07-10.webm' })).toBeTruthy()
+    const player = screen.getByRole('group', { name: 'Áudio: entrevista-antonio-exemplo-2026-07-10.webm' })
+    // A gravação da semente não tem arquivo: a tela diz isso, sem botão de tocar de mentira.
+    expect(player.textContent).toBe('entrevista-antonio-exemplo-2026-07-10.webm: gravação de exemplo, sem arquivo guardado no portal para tocar.')
+    expect(screen.queryByRole('button', { name: /Tocar o áudio/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Exportar PDF' }))
     expect(imprimir).toHaveBeenCalled()
     imprimir.mockRestore()
+  })
+
+  it('GGVP-133 · o áudio guardado toca de verdade, parte por parte, e o texto final abre pela gravação; o Atendimento não abre', async () => {
+    mudarGravacao('antonio-entrevista', (g) => {
+      g.audio = { ...g.audio!, documentos: [{ id: 'parte-1', inicio: 0 }, { id: 'parte-2', inicio: 600 }] }
+      g.transcricaoDocumentoId = 'texto-final'
+    })
+    await abrir('antonio-exemplo', 'juridico')
+    fireEvent.click(itemDaLista(/Entrevista com a advogada/))
+    expect(screen.getByRole('link', { name: 'Abrir o texto final' }).getAttribute('href')).toBe('/api/gravacoes/antonio-entrevista/arquivos/texto-final')
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir áudio' }))
+    const player = screen.getByRole('group', { name: 'Áudio: entrevista-antonio-exemplo-2026-07-10.webm' })
+    const partes = [...player.querySelectorAll('audio')]
+    expect(partes.map((a) => [a.getAttribute('src'), a.getAttribute('aria-label')])).toEqual([
+      ['/api/gravacoes/antonio-entrevista/arquivos/parte-1', 'Parte 1 do áudio, desde 00:00'],
+      ['/api/gravacoes/antonio-entrevista/arquivos/parte-2', 'Parte 2 do áudio, desde 10:00'],
+    ])
+    cleanup()
+    await abrir('antonio-exemplo', 'atendimento')
+    fireEvent.click(itemDaLista(/Entrevista com a advogada/))
+    expect(screen.queryByRole('link', { name: 'Abrir o texto final' })).toBeNull()
+  })
+
+  it('GGVP-133 · sem a IA, a tela diz o motivo e segue manual, sem resumo inventado', async () => {
+    mudarGravacao('antonio-entrevista', (g) => {
+      g.semIa = 'a IA não está autorizada a ler dado de saúde neste ambiente'
+      g.resumo = undefined
+    })
+    await abrir('antonio-exemplo', 'juridico')
+    fireEvent.click(itemDaLista(/Entrevista com a advogada/))
+    expect(screen.getByRole('status').textContent).toBe(
+      'A IA não leu esta gravação: a IA não está autorizada a ler dado de saúde neste ambiente. Leia a transcrição e preencha a ficha à mão.',
+    )
   })
 
   it('o Atendimento vê a entrevista com a advogada só pela data, quem participou e a duração', async () => {
@@ -95,12 +139,18 @@ describe('Transcrições do caso · janela', () => {
     await abrir('josefa-exemplo', 'juridico', aoMudar)
     const levar = screen.getByRole('button', { name: 'Conferir e levar' }) as HTMLButtonElement
     expect(levar.disabled).toBe(true)
+    // GGVP-133: cada item mostra de onde saiu, com a hora e o trecho, e a advogada pode corrigir antes de levar.
+    // O contato de apoio e o telefone saíram da mesma fala.
+    expect(screen.getAllByText('dito aos 01:44: «O da Renata é (11) 90000-0022. O meu mudou: agora é (11) 90000-0021.»')).toHaveLength(2)
+    fireEvent.change(screen.getByLabelText('Corrigir: telefone'), { target: { value: '(11) 90000-0099' } })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Conferi: telefone' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Conferi: laudos citados' }))
     fireEvent.click(levar)
     expect(await screen.findAllByText('✓ conferida')).toHaveLength(2)
     expect(aoMudar).toHaveBeenCalled()
-    expect((await obterFicha('josefa-exemplo'))!.telefone).toBe('11900000021')
+    const josefa = (await obterFicha('josefa-exemplo'))!
+    expect(josefa.telefone).toBe('11900000099')
+    expect(josefa.historico.map((e) => e.oQue)).toContain('Levou à ficha, da entrevista de 05/10, telefone: «(11) 90000-0002» → «(11) 90000-0099» (corrigido na conferência; a IA ouviu «(11) 90000-0021»)')
     const enviar = screen.getByRole('button', { name: 'Enviar ao checklist do benefício' }) as HTMLButtonElement
     expect(enviar.disabled).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Conferi a lista com a entrevista' }))
@@ -129,7 +179,8 @@ describe('Transcrições do caso · janela', () => {
     await anexarAudio(c.id, { nome: 'ligacao.ogg', tipo: 'audio/ogg', tamanho: 4096, avisoNaGravacao: true })
     await transcreverConversa(c.id)
     await abrir('maria-exemplo', 'juridico')
-    expect(screen.getByText('Telefone de contato')).toBeTruthy()
+    // A lista vem da API depois do título: espera por ela, em vez de conferir na hora.
+    expect(await screen.findByText('Telefone de contato')).toBeTruthy()
     expect(screen.getAllByText('a conferir na conversa')).toHaveLength(6)
     expect(screen.queryByRole('button', { name: 'Conferir e levar' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Conferir na conversa (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)

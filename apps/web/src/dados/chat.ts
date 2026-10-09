@@ -350,6 +350,9 @@ function ACOES_SUGERIDAS(grupo: ReturnType<typeof grupoDoPerfil>): string[] {
     advogada: ['Analisar laudo novo', 'Pedir petição', 'Ligar para o cliente', 'Responder exigência do INSS'],
     senior: ['Aprovar pedido', 'Despachar caso', 'Decidir cobrança'],
     financeiro: ['Lançar prestação de contas', 'Confirmar recebimento'],
+    documentacao: ['Receber documento', 'Cobrar documento', 'Cumprir pendência', 'Reunir documentos da perícia'],
+    'atendimento-lider': ['Cobrar documento', 'Cumprir pendência', 'Recontatar lead'],
+    socio: [],
   } as const)[grupo] as unknown as string[]
 }
 
@@ -696,7 +699,7 @@ export async function confirmarAcao(
       const a = o.arquivos?.find((x) => x.nome === nome)
       await registrarMarcacao(
         acao.processoId!,
-        { comprovante: { nome, hash: a ? await hashDoConteudo(a.conteudo) : undefined }, lido: p.dados.lido as Parameters<typeof registrarMarcacao>[1]['lido'], pedeDocumentoNovo: o.escolha!.startsWith('Sim') },
+        { comprovante: { nome, hash: a ? await hashDoConteudo(a.conteudo) : undefined, arquivo: a && new Blob([a.conteudo], { type: 'application/pdf' }) }, lido: p.dados.lido as Parameters<typeof registrarMarcacao>[1]['lido'], pedeDocumentoNovo: o.escolha!.startsWith('Sim') },
         quem.usuario,
       )
       registrarNoCaso(acao.processoId, quem.usuario, 'Marcou a perícia com o comprovante do INSS', 'DP.02')

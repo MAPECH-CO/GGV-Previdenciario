@@ -9,11 +9,13 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, peticao, peticaoVersao, prazo, protocoloJudicial, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, lacosDas, lembreteDescrito, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
+import { provaEhSensivel } from '../fluxo/prova-medica.ts'
+import { dataDoJuizoNaPublicacao } from '../../../web/src/regras/pericia.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
 export const MSG_IA_SEM_SUGESTAO = 'A IA não respondeu agora: analise pela sua leitura.'
@@ -177,7 +179,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       .from(documento)
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(asc(documento.criadoEm))
-    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto })
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto, saude: FINALIDADES.analisar_exigencia_juiz.saude, ia })
     const conteudo = [
       `Benefício: ${c?.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não definido'}`,
       `Prazo do processo contado pelo sistema: até ${e.prazo.fim}`,
@@ -266,7 +268,14 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
           .values({ exigenciaId: x.id, descricao: i.descricao, perfilResponsavel: i.setor, prazo: i.prazoInterno, provaEsperada: i.provaEsperada, tarefaId: t.id })
       }
       // CA8: a perícia pedida pelo juiz abre sozinha a tarefa do Jurídico administrativo, com a origem D3a.
-      if (d.tiposPericia.length) await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
+      if (d.tiposPericia.length) {
+        const marcar = await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
+        // GGVP-137: com a data de cada perícia pedida na publicação, o sistema já as pôs na agenda (DP.04): não há o que
+        // marcar, e a tarefa de marcar desta exigência fecha pelo sistema. Faltando a data de uma, fica aberta: o Jurídico
+        // administrativo registra a data do juízo na tela de marcar.
+        if (d.tiposPericia.every((t) => dataDoJuizoNaPublicacao(e.publicacao.texto, t)))
+          await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora() }).where(eq(tarefa.id, marcar))
+      }
       if (temItens) await tx.insert(etapa).values({ casoId, diagrama: 'D3a', passo: 'D3a.E2', situacao: 'aguardando_externo', aguardando: 'cliente responder ou entregar', iniciadaEm: agora() })
       // GGVP-87 (ajuste do Mateus, 06/10): a advogada acompanha desde já, com o prazo do processo; o protocolo só libera
       // com todos os itens provados, por documento ou pela justificativa dela (G21).
@@ -428,7 +437,9 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       const quem = pedido.usuario!.id
       const dados = arquivo ? await guardarArquivo(armazenamento, casoId, arquivo, HISTORICO[origem].prova.replaceAll('_', '-')) : null
       await banco.transaction(async (tx) => {
-        const [doc] = dados ? await tx.insert(documento).values({ casoId, tipo: HISTORICO[origem].prova, origem: 'portal', recebidoPor: quem, ...dados }).returning() : []
+        // GGVP-83 CA15: laudo, atestado ou exame sobe como sensível (dado de saúde).
+        const sensivel = provaEhSensivel(l.item.descricao, formulario?.campos.medico)
+        const [doc] = dados ? await tx.insert(documento).values({ casoId, tipo: HISTORICO[origem].prova, origem: 'portal', recebidoPor: quem, sensivel, ...dados }).returning() : []
         await tx
           .update(exigenciaItem)
           .set({ situacao: 'cumprido', provaDocumentoId: doc?.id ?? null, informacao: escrita?.success ? escrita.data.informacao : null, cumpridoEm: agora(), cumpridoPor: quem })

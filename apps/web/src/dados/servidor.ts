@@ -19,7 +19,6 @@ import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type { Cobranca } from './cobranca.ts'
 import type { Liberacao } from './liberacao.ts'
 import type {
-  Agendamento,
   CompromissoGuardado,
   EdicaoFicha,
   Encaminhamento,
@@ -35,7 +34,7 @@ import type {
   Setor,
   TarefaEncaminhada,
 } from './tipos.ts'
-import type { Contrato } from './contrato.ts'
+import { contratosDeExemplo, type Contrato } from '../regras/contratoDoCaso.ts'
 import type { Roteiro } from '../regras/roteiro.ts'
 import type { ParecerDoCaso } from './parecer.ts'
 import type { Complemento } from './complemento.ts'
@@ -50,15 +49,23 @@ import type { AvisoAprovado, MensagemAoCliente } from './mensagens.ts'
 import type { PedidoBancario, RegistroBancario } from './seguranca.ts'
 import type { ComplementoDoCaso, Juizo } from './caso.ts'
 import type { TarefaDoChat } from './chat.ts'
+import type { Parecer } from '../regras/liberacao.ts'
+import type { Tarefa as TarefaDaCentral } from './tipos.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
 
-/** Sem login ainda: quem faz é a pessoa do Atendimento. */
-export const QUEM = 'Você (Atendimento)'
+/** Sem sessão (testes de uma tela sozinha): quem faz é a pessoa do Atendimento. */
+export let QUEM = 'Você (Atendimento)'
 
-/** Nas telas do Jurídico, quem faz é a advogada (GGVP-28). */
-export const QUEM_ADVOGADA = 'Você (Advogada)'
+/** Sem sessão, nas telas do Jurídico, quem faz é a advogada (GGVP-28). */
+export let QUEM_ADVOGADA = 'Você (Advogada)'
+
+/** Com sessão, o que ainda grava só aqui guarda no histórico o nome de quem entrou, nunca uma pessoa fixa (GGVP-135). */
+export function definirQuemFaz(nome: string) {
+  QUEM = nome
+  QUEM_ADVOGADA = nome
+}
 
 /** O resumo da IA do laudo novo: só o Jurídico vê; nunca entra na ficha da visão do Atendimento (GGVP-17, CA9). */
 export type ResumoDeLaudo = { fichaId: string; processoId?: string; data: string; arquivo: string; resumo: string }
@@ -131,6 +138,8 @@ export type Banco = {
   espelhos?: Record<string, Ficha>
   /** Os ids das tarefas que vieram do servidor (GGVP-125, bloco 2). */
   tarefasDoBanco?: string[]
+  /** A documentação médica do servidor (GGVP-132): as tarefas do parecer e do complemento e o parecer de cada caso (G17). */
+  documentacaoMedica?: { tarefas: TarefaDaCentral[]; portoes: Record<string, Parecer> }
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
@@ -177,8 +186,8 @@ export const agendamentoDoServidor = (id: string) => doServidor(id.slice(0, 36))
 
 const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
-/** A agenda, por compromisso: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
-function mesclarAgenda(local: Agendamento[], doBanco: Agendamento[], antes: Agendamento[]): Agendamento[] {
+/** A agenda e os processos, item a item: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
+function mesclarPorId<T extends { id: string }>(local: T[], doBanco: T[], antes: T[]): T[] {
   const lista = [...local]
   for (const a of doBanco) {
     const i = lista.findIndex((x) => x.id === a.id)
@@ -203,14 +212,41 @@ function espelharEm(banco: Banco, doBanco: Ficha): Ficha {
       ...local,
       historico: [...local.historico, ...doBanco.historico.slice(antes.historico.length)].sort((a, b) => a.quando.localeCompare(b.quando)),
       contatos: [...local.contatos, ...doBanco.contatos.slice(antes.contatos.length)],
-      agendamentos: mesclarAgenda(local.agendamentos, doBanco.agendamentos, antes.agendamentos),
+      agendamentos: mesclarPorId(local.agendamentos, doBanco.agendamentos, antes.agendamentos),
+      // Bloco 4a: o processo é o caso do banco, com a etapa do contrato.
+      processos: mesclarPorId(local.processos, doBanco.processos, antes.processos),
     }
-    const campos = [...Object.keys(ROTULOS), 'indicadoPor', 'beneficioInteresse', 'fichaAtendimentoPreenchida', 'fichaAtendimento'] as (keyof Ficha)[]
+    const campos = [
+      ...Object.keys(ROTULOS),
+      'indicadoPor',
+      'beneficioInteresse',
+      'fichaAtendimentoPreenchida',
+      'fichaAtendimento',
+      // Blocos 3a e 3b.
+      'transcricoes',
+      'checklist',
+      'rg',
+      'bairro',
+      'representante',
+      'analise',
+      'beneficioDefinido',
+      'calculos',
+      'fechamento',
+      'demandas',
+      'senhaGov',
+      'renovacao',
+      // Bloco 3c: a segunda ficha vem sem os campos médicos, que só o Jurídico busca, ao abrir a tela.
+      'segundaFicha',
+      // Bloco 4a: o lead que fechou vira cliente no servidor.
+      'situacao',
+      'desde',
+    ] as (keyof Ficha)[]
     for (const c of campos) if (!igual(doBanco[c], antes[c])) Object.assign(ficha, { [c]: doBanco[c] })
   }
   if (i >= 0) banco.fichas[i] = ficha
   else banco.fichas.push(ficha)
-  banco.espelhos = { ...banco.espelhos, [doBanco.id]: doBanco }
+  // Uma cópia à parte: sem o sessionStorage, a memória guarda o mesmo objeto, e mexer na ficha mexeria na base das três vias.
+  banco.espelhos = { ...banco.espelhos, [doBanco.id]: structuredClone(doBanco) }
   return ficha
 }
 
@@ -235,13 +271,27 @@ function receberTarefasEm(banco: Banco, doBanco: TarefaEncaminhada[], todasAbert
   banco.tarefasDoBanco = [...new Set([...conhecidas, ...vieram])]
 }
 
-/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa e o compromisso interno, para a cópia daqui. */
-export function receber(r: { ficha?: Ficha; tarefas?: TarefaEncaminhada[]; interno?: CompromissoGuardado; gravacao?: Gravacao }): Ficha | undefined {
+/** Os contratos que vieram do servidor entram no lugar dos daqui, sem perder os da semente (bloco 4a). */
+function receberContratosEm(banco: Banco, doBanco: Contrato[]) {
+  banco.contratos ??= contratosDeExemplo(banco.fichas, hojeIso(agora()))
+  const vieram = new Set(doBanco.map((c) => c.processoId))
+  banco.contratos = [...banco.contratos.filter((c) => !vieram.has(c.processoId)), ...doBanco]
+}
+
+/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa, o compromisso interno, a gravação e o contrato. */
+export function receber(r: {
+  ficha?: Ficha
+  tarefas?: TarefaEncaminhada[]
+  interno?: CompromissoGuardado
+  gravacao?: Gravacao
+  contrato?: Contrato
+}): Ficha | undefined {
   const banco = ler()
   const ficha = r.ficha && espelharEm(banco, r.ficha)
   if (r.tarefas) receberTarefasEm(banco, r.tarefas, false)
   if (r.interno) banco.internos = [...banco.internos.filter((i) => i.id !== r.interno!.id), r.interno]
   if (r.gravacao) receberGravacaoEm(banco, r.gravacao)
+  if (r.contrato) receberContratosEm(banco, [r.contrato])
   gravar(banco)
   return ficha
 }
@@ -252,13 +302,16 @@ export function receber(r: { ficha?: Ficha; tarefas?: TarefaEncaminhada[]; inter
  */
 export async function sincronizarRecepcao() {
   if (!noServidor) return
-  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[]; gravacoes: Gravacao[] }>('/recepcao')
+  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[]; gravacoes: Gravacao[]; contratos: Contrato[] }>(
+    '/recepcao',
+  )
   const banco = ler()
   for (const f of r.fichas) espelharEm(banco, f)
   receberTarefasEm(banco, r.tarefas, true)
   banco.internos = [...banco.internos.filter((i) => !doServidor(i.id)), ...r.internos]
   // As do servidor vêm inteiras, e só as que este perfil pode ver: a entrevista com dado de saúde, só o Jurídico.
   banco.gravacoes = [...banco.gravacoes.filter((g) => !gravacaoDoServidor(g.id)), ...r.gravacoes]
+  receberContratosEm(banco, r.contratos)
   gravar(banco)
 }
 

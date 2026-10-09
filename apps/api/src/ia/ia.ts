@@ -21,6 +21,8 @@ export const REGRAS_DA_IA = [
  * GGVP-110: frases de quem tenta mandar na IA pelo conteúdo. Na entrada, o conteúdo segue como dado e a chamada ganha
  * alerta; na saída, a sugestão chega com alerta para a pessoa ver antes de usar.
  */
+/** A marca do bloco dentro do conteúdo fecharia o bloco antes da hora: vai neutralizada e conta como suspeita. */
+const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
 const SUSPEITAS = [
   /ignor(e|a|ar|em)\s+(as\s+|todas\s+as\s+|estas\s+|essas\s+)?(instru|regras|ordens|orienta)/i,
   /desconsider(e|a|ar)\s+(as\s+|todas\s+as\s+)?(instru|regras|ordens)/i,
@@ -29,6 +31,7 @@ const SUSPEITAS = [
   /voc[êe]\s+agora\s+[ée]/i,
   /confirm(e|ar)\s+e\s+envi(e|ar)/i,
   /classifique\s+como/i,
+  MARCA_DO_BLOCO,
 ]
 /** G20 (GGVP-110 CA7): código de doença da CID-10 (letra, dois dígitos e, se houver, a subcategoria). */
 const CID = /\b[A-TV-Z]\d{2}(\.\d{1,2})?\b/
@@ -50,13 +53,14 @@ export const FINALIDADES = {
     instrucao:
       'Escreva um rascunho curto (até 6 frases) do que a pessoa do escritório vai explicar ao cliente sobre o resultado do processo: o que foi decidido e por quê, em linguagem simples, com respeito. O porquê vem só do texto da decisão: se ele não estiver no conteúdo, não diga, não suponha e não comente a falta do motivo: no lugar dele, escreva exatamente [completar: o motivo da decisão], que a advogada preenche. Não prometa nada, não fale de estratégia interna do escritório, não culpe ninguém e não use termos técnicos sem explicar.',
   },
+  /** GGVP-59: a nomeação de perito virou classe (versão 3). */
   classificar_publicacao: {
-    versao: 2,
+    versao: 3,
     saude: false,
     json: true,
     barrarCid: true,
     instrucao:
-      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {
@@ -154,11 +158,137 @@ export const FINALIDADES = {
       'Use só o que está no conteúdo; não invente documento que o caso não tem como se tivesse. Se nadaFalta for true, itens e pericias vazios.',
     ].join(' '),
   },
+  // GGVP-134 (CA1, CA3): o que um documento médico cobre do roteiro do benefício. Leva o laudo (dado de saúde); a saída vai
+  // só ao Jurídico, mas o trecho não leva código de doença (G20). As datas são copiadas; a conta dos 24 meses é do código.
+  cobertura_do_roteiro: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a conferir se um documento médico do cliente cobre o roteiro de conteúdo mínimo do benefício.',
+      'Leia o roteiro (cada item com id, tipo e texto) e o texto do documento, e responda só com um objeto JSON:',
+      '{"cobre": [{"item": "id de um item obrigatório", "pagina": número da página ou 1, "trecho": "frase curta copiada do documento que mostra o item"}], "contradiz": [{"item": "id de uma contradição", "pagina": número, "trecho": "frase copiada"}], "datas": {"inicio": "aaaa-mm ou aaaa-mm-dd", "cessacao": "aaaa-mm ou aaaa-mm-dd"} ou null}.',
+      'Só marque o item que o documento aborda de fato; na dúvida, deixe de fora. O trecho é cópia do documento, sem código de doença (CID).',
+      'Em "datas", copie a data de início do quadro e a de cessação prevista que estiverem escritas; sem elas, null. Não calcule nada. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-139 CA1: o comprovante do agendamento do INSS, lido pela Mistral, vira data, hora, local e modalidade para o
+   * Jurídico administrativo conferir antes de registrar. Não leva dado de saúde. O perito nunca sai do comprovante.
+   */
+  ler_comprovante_pericia: {
+    versao: 1,
+    saude: false,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda o Jurídico administrativo de um escritório previdenciário a registrar uma perícia marcada no Meu INSS.',
+      'Leia o texto do comprovante de agendamento e responda só com um objeto JSON:',
+      '{"data": "aaaa-mm-dd", "hora": "hh:mm" (24 horas), "local": "a agência ou o endereço do atendimento, como está no comprovante", "modalidade": "presencial", "visita domiciliar" ou "telepericia"}.',
+      'Copie a data e a hora como estão no comprovante, só mudando o formato; não calcule nem ajuste datas. Não traga nome de perito nem de servidor do INSS, mesmo que o comprovante cite.',
+      'Use só o que está no conteúdo; se a data, a hora ou o local não estiverem no comprovante, responda com o texto vazio no campo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-139 CA2: a orientação ao cliente para a perícia, escrita a partir da orientação que o código montou (data, local,
+   * o que levar e, na Justiça, o que o perito costuma observar). Vai ao cliente: CID barrado (G20); a rota também barra
+   * instrução para esconder ou exagerar a situação (G11) e frase pronta (G20) antes de guardar. Sem dado de saúde.
+   */
+  orientacao_pericia: {
+    versao: 1,
+    saude: false,
+    json: false,
+    barrarCid: true,
+    instrucao: [
+      'Você escreve, para o Jurídico administrativo revisar e enviar, a orientação de um cliente de um escritório previdenciário para a perícia dele (perícia médica ou avaliação social).',
+      'Reescreva a orientação do conteúdo em português simples, curto e acolhedor, em tópicos, falando com o cliente por "você".',
+      'Mantenha exatamente a data, a hora, o local e a lista do que levar. Se houver o que o perito costuma observar, perguntar e pedir, conte isso ao cliente para ele chegar preparado.',
+      'Nunca diga para esconder, mudar, exagerar ou simular a situação, nem dê frase pronta para o cliente repetir ao perito, nem cite diagnóstico, CID, grau ou conclusão. Termine lembrando de falar sempre a verdade.',
+      'Responda só com o texto da orientação. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-139 CA3, CA4: o laudo da perícia, lido pela Mistral, resumido para a advogada conferir o resultado (DP.08), com o
+   * que muda no caso; e os padrões do perito (o que observou, perguntou e pediu) para o perfil dele (DP.09), sem dado do
+   * cliente. Fica no Jurídico: leva dado de saúde e não vai ao cliente. Os números do perfil são código (G19, G22).
+   */
+  resumo_laudo_pericia: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a conferir o resultado de uma perícia (médica ou avaliação social). Quem decide é ela.',
+      'Leia o benefício pedido, o tipo da perícia e o texto do laudo, e responda só com um objeto JSON:',
+      '{"favoravel": true ou false (o laudo reconhece o requisito do benefício?), "resumo": "o que o laudo concluiu, em duas frases", "conclusao": "Favorável · ..." ou "Desfavorável · ...", "coerencia": "o laudo atende ou não o benefício pedido e o que muda no caso", "pontoDeAtencao": "o que a advogada deve olhar", "porque": "no desfavorável, por que; senão null", "valeNovaPericia": true, false ou null (só no desfavorável), "assunto": "o assunto do laudo em até três palavras (por exemplo, coluna, renda familiar)", "observou": ["o que o perito observou"], "perguntou": ["o que o perito perguntou"], "pediu": ["o que o perito pediu"]}.',
+      'Em "observou", "perguntou" e "pediu" escreva o padrão do perito em termos gerais, sem nome, CPF, endereço nem dado do cliente. Não calcule prazos nem porcentagens. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-133 CA3, CA5: arruma a transcrição com o glossário do escritório e diz quem é cada falante. Não resume nem
+   * extrai: o texto original fica guardado ao lado, e o que vai para a ficha só vai com a pessoa conferindo (G14).
+   */
+  arrumar_transcricao: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você revisa a transcrição automática de uma conversa gravada num escritório previdenciário (entrevista, conversa no escritório ou ligação).',
+      'Corrija só a escrita: nomes de benefícios, siglas, nomes de peritos, juízos e varas como estão no glossário do escritório, e palavras que o reconhecimento de voz trocou, pelo contexto do caso.',
+      'Não mude o sentido, não resuma, não acrescente nem tire informação, não junte nem divida falas, não corrija o jeito de falar da pessoa.',
+      'Diga também quem é cada falante, pelo que fala e pelos participantes: "escritorio" para a pessoa do escritório (advogada ou Atendimento), "cliente" para o cliente e "terceiro" para outra pessoa.',
+      'Responda só com um objeto JSON: {"falantes": {"A": "escritorio" | "cliente" | "terceiro"}, "falas": [{"i": 0, "texto": "a fala corrigida"}]}, com todas as falas, na mesma ordem e com o mesmo i.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-140: lê a conversa do Relacionamento já transcrita e diz o que foi dito. O que mudou na ficha é o código que
+   * compara com o guardado; nada vai para a ficha sem quem conversou conferir (G14). Leitura interna: não vai ao cliente.
+   */
+  analisar_conversa: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a pessoa do escritório previdenciário (Atendimento ou advogada) a registrar uma conversa com o cliente, já transcrita.',
+      'Leia as falas e responda só com um objeto JSON: {"resumo": "a conversa em até 3 frases simples", "ditos": [{"campo": "telefone" | "endereco" | "contatoApoio" | "estadoCivil" | "email" | "pericia" | "fato" | "documento", "valor": "o que foi dito", "i": número da fala de onde saiu, "saude": true só se o fato é de saúde}], "combinado": "o que ficou combinado de fazer, ou null"}.',
+      'Só entra o que o cliente (ou quem falou por ele) disse de novo: telefone, endereço, contato de apoio, estado civil, e-mail, a data de uma perícia marcada (escreva dd/mm/aaaa só se a data foi dita), um fato novo do caso e um documento citado.',
+      'Telefone com DDD, só se foi dito inteiro. Não calcule datas nem complete o que não foi dito. Use só o que está no conteúdo; se nada mudou, "ditos" vazio.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-133, GGVP-46 CA6, CA7: lê a entrevista já transcrita e diz o que foi dito: o resumo, os dados da ficha, os
+   * documentos citados e desde quando não trabalha. O código confere cada item e a advogada confere de novo, item a item,
+   * antes de ir para a ficha (G14). Leitura interna, do Jurídico: não vai ao cliente.
+   */
+  ler_entrevista: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a registrar a entrevista inicial com o cliente, já transcrita.',
+      'Leia as falas e responda só com um objeto JSON: {"resumo": "a entrevista em até 4 frases simples, sem concluir o benefício", "itens": [{"tipo": "telefone" | "estadoCivil" | "profissao" | "contatoApoio" | "documento" | "desde", "valor": "o que foi dito", "i": número da fala de onde saiu}]}.',
+      'Só entra o que o cliente (ou quem falou por ele) disse: o telefone dele, com DDD, só se foi dito inteiro; o estado civil; a profissão; o contato de apoio (quem é e o telefone); cada documento que ele citou, um item por documento, em linguagem simples; e desde quando não consegue trabalhar ("desde"), como foi dito (por exemplo, 06/2026).',
+      'Não calcule datas, não complete o que não foi dito e não defina o benefício: quem decide é a advogada. Use só o que está no conteúdo; se nada disso foi dito, "itens" vazio.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 
 const OPENAI = 'https://api.openai.com/v1/chat/completions'
 const MISTRAL_OCR = 'https://api.mistral.ai/v1/ocr'
+const OPENAI_TRANSCRICAO = 'https://api.openai.com/v1/audio/transcriptions'
+const OPENAI_CHAVE_AO_VIVO = 'https://api.openai.com/v1/realtime/client_secrets'
+/** GGVP-133 CA9: dólar por minuto de áudio, para o custo estimado (referência do cartão: US$ 0,36 por hora). */
+export const DOLAR_POR_MINUTO: Record<string, number> = { 'gpt-4o-transcribe-diarize': 0.006, 'gpt-4o-transcribe': 0.006, 'gpt-4o-mini-transcribe': 0.003 }
+/** Uma fala da transcrição: o falante como a OpenAI marcou ("A", "B"), de onde a onde no áudio, em segundos. */
+export type FalaTranscrita = { falante: string; inicio: number; fim: number; texto: string }
+const OPENAI_VETOR = 'https://api.openai.com/v1/embeddings'
+/** O tamanho do vetor do acervo (ADR-013); a coluna `acervo_trecho.embedding` tem o mesmo. */
+export const DIMENSOES_DO_VETOR = 1536
 const hash = (texto: string | Uint8Array) => createHash('sha256').update(texto).digest('hex')
 
 type Opcoes = { banco: Banco; ambiente?: Ambiente; fetch?: typeof globalThis.fetch; agora?: () => Date }
@@ -182,6 +312,10 @@ export const lerJson = (texto: string): unknown => {
 export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetch, agora = () => new Date() }: Opcoes) {
   const modeloTexto = ambiente.OPENAI_MODELO || 'gpt-4.1-mini'
   const modeloOcr = ambiente.MISTRAL_MODELO_OCR || 'mistral-ocr-latest'
+  const modeloVetor = ambiente.OPENAI_MODELO_VETOR || 'text-embedding-3-small'
+  // GGVP-133 CA11: a transcrição final (com quem fala) e o texto ao vivo, cada um no seu modelo.
+  const modeloTranscricao = ambiente.OPENAI_MODELO_TRANSCRICAO || 'gpt-4o-transcribe-diarize'
+  const modeloAoVivo = ambiente.OPENAI_MODELO_AO_VIVO || 'gpt-4o-transcribe'
   const saudeAutorizada = ambiente.IA_PERMITE_DADO_DE_SAUDE === 'sim'
 
   async function registrar(dados: {
@@ -197,6 +331,8 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     erro?: string
     alerta?: string | null
     inicio: number
+    audioSegundos?: number
+    custoEstimado?: number
   }) {
     const [linha] = await banco
       .insert(chamadaIa)
@@ -215,6 +351,8 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
         erro: dados.erro ?? null,
         alerta: dados.alerta ?? null,
         duracaoMs: Date.now() - dados.inicio,
+        audioSegundos: dados.audioSegundos ?? null,
+        custoEstimado: dados.custoEstimado === undefined ? null : dados.custoEstimado.toFixed(4),
         quando: agora(),
       })
       .returning({ id: chamadaIa.id })
@@ -300,7 +438,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
           model: modeloTexto,
           messages: [
             { role: 'system', content: `${REGRAS_DA_IA}\n\n${f.instrucao}` },
-            { role: 'user', content: `<conteudo>\n${pedido.conteudo}\n</conteudo>` },
+            { role: 'user', content: `<conteudo>\n${pedido.conteudo.replace(new RegExp(MARCA_DO_BLOCO, 'gi'), '[marca removida]')}\n</conteudo>` },
           ],
           ...(f.json && { response_format: { type: 'json_object' } }),
         }),
@@ -366,7 +504,135 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
-  /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
-  return { sugerir, lerDocumento, ligada: Boolean(ambiente.OPENAI_API_KEY) }
+  /**
+   * GGVP-133: a terceira porta. Transcreve um áudio (até 25 MB) pela OpenAI, separando quem fala. Registra só o tamanho e
+   * o hash do áudio, com a duração e o custo estimado (CA9). Áudio com dado de saúde só com autorização. Falhou: nulo.
+   */
+  async function transcrever(pedido: Quem & { audio: Uint8Array; mime: string; nome: string; sensivel: boolean; referencia: string }) {
+    const inicio = Date.now()
+    const fontes: FonteDaIa[] = [{ tipo: 'documento', referencia: pedido.referencia }]
+    const base = { finalidade: 'transcrever_audio', fornecedor: 'openai' as const, modelo: modeloTranscricao, versaoInstrucao: 1, alvo: pedido, entrada: pedido.audio, fontes }
+    if (pedido.sensivel && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const formulario = new FormData()
+      formulario.append('file', new Blob([new Uint8Array(pedido.audio)], { type: pedido.mime }), pedido.nome)
+      formulario.append('model', modeloTranscricao)
+      formulario.append('language', 'pt')
+      formulario.append('response_format', 'diarized_json')
+      formulario.append('chunking_strategy', 'auto')
+      const resposta = await fetch(OPENAI_TRANSCRICAO, { method: 'POST', headers: { authorization: `Bearer ${chave}` }, body: formulario, signal: AbortSignal.timeout(600_000) })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { text?: string; duration?: number; usage?: { seconds?: number }; segments?: { speaker?: string; start?: number; end?: number; text?: string }[] }
+      const falas: FalaTranscrita[] = (corpo.segments ?? [])
+        .map((x) => ({ falante: x.speaker ?? '?', inicio: x.start ?? 0, fim: x.end ?? x.start ?? 0, texto: (x.text ?? '').trim() }))
+        .filter((x) => x.texto)
+      if (falas.length === 0 && corpo.text?.trim()) falas.push({ falante: '?', inicio: 0, fim: corpo.duration ?? 0, texto: corpo.text.trim() })
+      if (falas.length === 0) throw new Error('OpenAI respondeu sem texto')
+      const segundos = Math.round(corpo.usage?.seconds ?? corpo.duration ?? Math.max(...falas.map((x) => x.fim)))
+      const custoEstimado = Math.round((segundos / 60) * (DOLAR_POR_MINUTO[modeloTranscricao] ?? 0.006) * 10_000) / 10_000
+      const saida = falas.map((x) => `${x.falante}: ${x.texto}`).join('\n')
+      const chamadaId = await registrar({ ...base, saida, situacao: 'ok', inicio, audioSegundos: segundos, custoEstimado })
+      return { chamadaId, falas, segundos, custoEstimado, modelo: modeloTranscricao }
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
+  /**
+   * GGVP-133 CA4: a chave temporária do texto ao vivo, uma por sessão de gravação, pedida pelo servidor. A chave de
+   * verdade nunca vai ao navegador. Os termos do glossário entram como dica de escrita. O áudio ao vivo vai direto do
+   * navegador à OpenAI: a gravação com dado de saúde só abre com a autorização do escritório, e cada chave fica no
+   * registro (finalidade `transcrever_ao_vivo`). Sem chave, recusada ou falhou: nulo.
+   */
+  async function chaveAoVivo(pedido: Quem & { termos: string[]; sensivel: boolean; referencia: string }) {
+    const inicio = Date.now()
+    const prompt = pedido.termos.join(', ').slice(0, 1000)
+    const base = { finalidade: 'transcrever_ao_vivo', fornecedor: 'openai' as const, modelo: modeloAoVivo, versaoInstrucao: 1, alvo: pedido, entrada: prompt, fontes: [{ tipo: 'documento' as const, referencia: pedido.referencia }] }
+    if (pedido.sensivel && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const resposta = await fetch(OPENAI_CHAVE_AO_VIVO, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          expires_after: { anchor: 'created_at', seconds: 600 },
+          session: {
+            type: 'transcription',
+            audio: { input: { transcription: { model: modeloAoVivo, language: 'pt', prompt }, turn_detection: { type: 'server_vad' } } },
+          },
+        }),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { value?: string; expires_at?: number }
+      if (!corpo.value) throw new Error('OpenAI respondeu sem chave')
+      // A chave temporária não vai ao registro: só o fato de ter sido entregue.
+      await registrar({ ...base, saida: null, situacao: 'ok', inicio })
+      return { chave: corpo.value, expiraEm: new Date((corpo.expires_at ?? 0) * 1000).toISOString(), modelo: modeloAoVivo }
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
+  /**
+   * GGVP-141 CA4: o vetor do texto (embeddings da OpenAI), para a busca por significado no acervo (ADR-013), com registro
+   * sem o conteúdo. O texto já chega anonimizado; saúde só com autorização. Sem chave, recusado ou falhou: nulo, e a busca
+   * segue só por palavra.
+   */
+  async function vetor(pedido: Quem & { texto: string; saude: boolean; referencia: string }): Promise<number[] | null> {
+    const inicio = Date.now()
+    const fontes: FonteDaIa[] = [{ tipo: 'acervo', referencia: pedido.referencia }]
+    const base = { finalidade: 'vetor_acervo', fornecedor: 'openai' as const, modelo: modeloVetor, versaoInstrucao: 1, alvo: pedido, entrada: pedido.texto, fontes }
+    if (pedido.saude && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const resposta = await fetch(OPENAI_VETOR, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ model: modeloVetor, input: pedido.texto, dimensions: DIMENSOES_DO_VETOR }),
+        signal: AbortSignal.timeout(30_000),
+      })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { data?: { embedding?: number[] }[] }
+      const v = corpo.data?.[0]?.embedding
+      if (v?.length !== DIMENSOES_DO_VETOR) throw new Error('OpenAI respondeu sem o vetor')
+      await registrar({ ...base, saida: `${v.length} dimensões`, situacao: 'ok', inicio })
+      return v
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
+  /**
+   * Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada").
+   * `saudeAutorizada` (GGVP-133): para a tela dizer o motivo certo quando o motor recusa dado de saúde; o acervo
+   * (GGVP-141) também lê, para só vetorizar trecho do Jurídico com a autorização.
+   */
+  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>

@@ -48,3 +48,17 @@
 ## 11. Fechamento
 
 - [x] 11.1 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## 12. CA10 · Dia de Brasília nas datas (revisão de 08/10)
+
+- [x] 12.1 `diaLocal` em `packages/campos/src/data.ts` (momento → dia local; data pura como está); teste com 22h30 de Brasília e com data pura; verifica com `pnpm --filter @ggv/campos test`.
+- [x] 12.2 As telas trocam `slice(0, 10)` por `diaLocal` (Peticao, Despachar, Manifestar, PrestarContas, ReceberPrestacao, PaginaDoCaso, Transcricoes, DefinirBeneficio); teste Vitest da recepção da prestação às 22h30; verifica com `pnpm --filter @ggv/web test`.
+- [x] 12.3 Rodar typecheck, lint, testes e Playwright; colar a saída.
+
+## 13. CA11 · Benefício pelo nome (revisão de 08/10)
+
+- [x] 13.1 `nomeDoBeneficio` em `packages/contratos/src/governanca.ts` (código do catálogo → nome; desconhecido → sem "_"; nulo → "a definir"); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 13.2 Servidor: o detalhe da linha da Central em `rotas/inss.ts` usa `nomeDoBeneficio`; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 13.3 Telas: Conferência, Despachar, Petição, Protocolar, Tratar exigência e Vigília trocam o `rotuloBeneficio` local por `nomeDoBeneficio`; teste Vitest da Conferência; verifica com `pnpm --filter @ggv/web test`.
+- [x] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída.
+- [x] 13.5 A tela "Ajustar o caso" (GGVP-127, entrou na `main` em 09/10 com o mesmo `rotuloBeneficio`) passa a usar `nomeDoBeneficio`; teste Vitest; rodar typecheck, lint, testes e Playwright.

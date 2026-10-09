@@ -91,7 +91,10 @@ export const IdaAoBancoDoCaso = z.object({
 })
 export type IdaAoBancoDoCaso = z.infer<typeof IdaAoBancoDoCaso>
 
-/** POST /api/casos/:id/banco (CA10, CA12): data, hora e local obrigatórios; quem acompanha é opcional e vem da equipe. */
+/**
+ * POST /api/casos/:id/banco (CA10, CA12 e GGVP-98 CA6): data, hora, local e quem acompanha obrigatórios. Quem acompanha
+ * é do Atendimento. O servidor recusa data ou hora que já passou.
+ */
 export const AgendarIdaAoBanco = z.object({
   data: DataObrigatoria('Informe a data da ida ao banco (dd/mm/aaaa)'),
   hora: z.string({ error: 'Informe a hora (hh:mm)' }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe a hora (hh:mm)'),
@@ -99,6 +102,29 @@ export const AgendarIdaAoBanco = z.object({
   acompanhanteId: z.preprocess(vazioEhNada, z.uuid({ error: 'Escolha quem do Atendimento acompanha o cliente' })),
 })
 export type AgendarIdaAoBanco = z.input<typeof AgendarIdaAoBanco>
+
+/** GET /api/casos/:id/banco/levar: a visita de quem leva o cliente (GGVP-98, Atendimento). Sem valores: o Atendimento não vê valor. */
+export const LevarAoBancoDoCaso = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  data: z.string(),
+  hora: z.string(),
+  local: z.string(),
+  acompanhante: z.string().nullable(),
+  oQueLevar: z.array(z.string()),
+})
+export type LevarAoBancoDoCaso = z.infer<typeof LevarAoBancoDoCaso>
+
+/** POST /api/casos/:id/banco/levar: "Levei o cliente ao banco", ou "Não deu" com o motivo, que volta ao Financeiro remarcar. */
+export const ConcluirIdaAoBanco = z.discriminatedUnion(
+  'resultado',
+  [
+    z.object({ resultado: z.literal('levado') }),
+    z.object({ resultado: z.literal('nao_deu'), motivo: z.string({ error: 'Escreva por que não deu' }).trim().min(1, 'Escreva por que não deu') }),
+  ],
+  { error: 'Escolha "Levei o cliente ao banco" ou "Não deu"' },
+)
+export type ConcluirIdaAoBanco = z.infer<typeof ConcluirIdaAoBanco>
 
 export const CANAIS_DE_AVISO = ['whatsapp', 'telefone', 'email', 'sms'] as const
 

@@ -1,11 +1,13 @@
 // Judicialização e vigília (GGVP-26, 30, 34, 37, 52, 54, 63, 67, 71, 74, 79, 83, 87).
+import { CLASSES_DE_ATO } from '@ggv/contratos'
 import { boolean, date, integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
 import { documento } from './documentos.ts'
 
-export const CLASSES_ATO = ['andamento', 'exigencia', 'merito'] as const
+/** As classes do ato vêm do contrato, uma lista só para a tela, o servidor e o banco (GGVP-59: nomeação de perito). */
+export const CLASSES_ATO = CLASSES_DE_ATO
 export const FILAS_PUBLICACAO = ['revisao'] as const
 
 /** Publicação do diário, casada pelo CNJ normalizado; repetida é descartada pelo hash; sem CNJ vai para a fila de revisão. */
