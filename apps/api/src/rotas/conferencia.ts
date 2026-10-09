@@ -1,7 +1,23 @@
 // Conferência da Sênior antes do INSS (GGVP-23): G1 (checklist), G2 (só a Sênior) e G17 (parecer médico) no servidor.
-import { and, desc, eq, gt, isNotNull, isNull, lte, or } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { bloqueioDoG1, CasoParaConferencia, ChanceDeExito, DecidirConferencia, DispensarParecer, ROTULO_BENEFICIO, ResponderDispensa, pode, travaDoParecer, type Beneficio, type Erro, type SituacaoDoParecer } from '@ggv/contratos'
+import {
+  bloqueioDoG1,
+  CasoParaConferencia,
+  CasoParaLiberacao,
+  ChanceDeExito,
+  DecidirConferencia,
+  DispensarParecer,
+  LiberarAoJuridico,
+  ROTULO_BENEFICIO,
+  ResponderDispensa,
+  pode,
+  travaDoParecer,
+  type AcaoDoPortao,
+  type Beneficio,
+  type Erro,
+  type SituacaoDoParecer,
+} from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import {
   acessoDadoSensivel,
@@ -26,9 +42,17 @@ import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
+/** A liberação ao Jurídico (D1.24, GGVP-18) ainda usa esta mensagem; a conferência da Sênior usa `bloqueioDoG1`. */
+export const MSG_G1 = 'Checklist incompleto (G1): faltam'
 export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e espera outra Sênior.'
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
 export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
+export const MSG_JA_NA_FILA = 'O caso já está na fila da Sênior.'
+export const MSG_QUEM_LIBERA = 'Quem libera ao Jurídico é a Documentação; o caso devolvido pela Sênior, o Atendimento.'
+
+/** O caso devolvido pela Sênior é do setor dono da tarefa de ajuste; o líder do setor também (GGVP-127, GGVP-147). */
+export const doSetor = (perfilDono: string | null, perfil: string | null) =>
+  perfilDono !== null && (perfilDono === perfil || `${perfilDono}_lider` === perfil)
 
 type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -55,7 +79,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     return pedidos.length > linhas.length - pedidos.length ? pedidos[0] : null
   }
 
-  async function montar(casoId: string, perfilAtivo: string | null, quem?: string) {
+  /** `acao`: o mesmo G17 vale para aprovar para o INSS e para liberar ao Jurídico; muda só o texto da trava. */
+  async function montar(casoId: string, perfilAtivo: string | null, quem?: string, acao: AcaoDoPortao = 'aprovar-inss') {
     const [c] = await banco
       .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm })
       .from(caso)
@@ -116,7 +141,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
         ? { resultado: parecer.resultado, itens: (parecer.itens as ItemParecer[]) ?? [], justificativaDispensa: parecer.justificativaDispensa }
         : null,
       parecerRestrito: !veParecer,
-      travaDoParecer: travaDoParecer('aprovar-inss', c.beneficio, situacao && { situacao }, { laudoNovoEsperando: Boolean(laudoNovo), dispensaPedida: Boolean(pendente) }),
+      travaDoParecer: travaDoParecer(acao, c.beneficio, situacao && { situacao }, { laudoNovoEsperando: Boolean(laudoNovo), dispensaPedida: Boolean(pendente) }),
       dispensa:
         pendente && veParecer
           ? { pedidaPor: pendente.nome, justificativa: pendente.justificativa ?? '', podeResponder: pode(perfilAtivo, 'caso.aprovar_para_inss') && pendente.por !== quem }
@@ -189,6 +214,83 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     })
     await historico(quem, 'caso_reprovado_na_conferencia', pedido, `caso:${casoId}`, { temPrazo: Boolean(prazo) })
     return resposta.code(201).send({ ok: true, situacao: 'reprovado' })
+  })
+
+  /** A tarefa de ajuste aberta (D1.ajuste): a Sênior reprovou e o caso voltou com o motivo (GGVP-23 CA3, GGVP-127). */
+  async function ajusteAberto(casoId: string) {
+    const [t] = await banco
+      .select()
+      .from(tarefa)
+      .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D1.ajuste'), isNull(tarefa.concluidaEm)))
+      .orderBy(desc(tarefa.criadoEm))
+      .limit(1)
+    return t ?? null
+  }
+
+  /** O caso antes da fila da Sênior: G1 e G17 como na conferência, e o motivo e o prazo do ajuste, se ela devolveu. */
+  async function paraLiberar(casoId: string, perfilAtivo: string | null) {
+    const dados = await montar(casoId, perfilAtivo, undefined, 'liberar')
+    if (!dados) return null
+    const ajuste = await ajusteAberto(casoId)
+    const [reprovacao] = ajuste
+      ? await banco
+          .select({ motivo: decisao.justificativa, por: usuario.nome, em: decisao.decididoEm })
+          .from(decisao)
+          .innerJoin(usuario, eq(decisao.decididoPor, usuario.id))
+          .where(and(eq(decisao.casoId, casoId), eq(decisao.passo, 'D2.01'), eq(decisao.tipo, 'aprovacao_inss'), eq(decisao.resultado, 'reprovado')))
+          .orderBy(desc(decisao.decididoEm))
+          .limit(1)
+      : []
+    return CasoParaLiberacao.parse({
+      casoId: dados.casoId,
+      cliente: dados.cliente,
+      beneficio: dados.beneficio,
+      checklist: dados.checklist,
+      travaDoParecer: dados.travaDoParecer,
+      esperandoConferencia: await esperandoConferencia(banco, casoId),
+      ajuste: ajuste && reprovacao ? { motivo: reprovacao.motivo ?? '', prazo: ajuste.prazo, reprovadoPor: reprovacao.por, reprovadoEm: reprovacao.em.toISOString() } : null,
+      // Liberar a primeira vez é da Documentação (D1.24); o caso devolvido volta pelo setor da tarefa de ajuste (Pedro, 08/10).
+      podeLiberar: ajuste ? doSetor(ajuste.perfilDono, perfilAtivo) : pode(perfilAtivo, 'caso.liberar_ao_juridico'),
+    })
+  }
+
+  // GGVP-127 CA1: quem vê o caso abre; o motivo e o prazo da Sênior vêm junto.
+  app.get<{ Params: { id: string } }>('/api/casos/:id/liberacao', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+    const dados = await paraLiberar(pedido.params.id, pedido.perfilAtivo)
+    return dados ?? negar(resposta, 404, 'Caso não encontrado.')
+  })
+
+  // GGVP-18 e GGVP-127 CA2, CA4: liberar (de novo) entra na fila da Sênior com uma tarefa nova, sem herdar o OK anterior;
+  // o checklist (G1) e o parecer (G17) são conferidos de novo aqui, no servidor.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/liberacao', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const entrada = LiberarAoJuridico.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confirme as conferências.')
+    const dados = await paraLiberar(casoId, pedido.perfilAtivo)
+    if (!dados) return negar(resposta, 404, 'Caso não encontrado.')
+    const quem = pedido.usuario!.id
+    if (!dados.podeLiberar) {
+      await historico(quem, 'liberacao_recusada', pedido, `caso:${casoId}`)
+      return negar(resposta, 403, MSG_QUEM_LIBERA)
+    }
+    if (dados.esperandoConferencia) return negar(resposta, 409, MSG_JA_NA_FILA)
+    if (dados.checklist.cadastrado && !dados.checklist.completo) {
+      await bloqueio(pedido, casoId, 'G1', 'D1.24', {}, 'liberacao_recusada')
+      return negar(resposta, 409, `${MSG_G1} ${dados.checklist.faltam.join(', ')}.`)
+    }
+    if (dados.travaDoParecer) {
+      await bloqueio(pedido, casoId, 'G17', 'D1.24', {}, 'liberacao_recusada')
+      return negar(resposta, 409, dados.travaDoParecer)
+    }
+    await banco.transaction(async (tx) => {
+      await tx.insert(tarefa).values({ casoId, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
+      await tx
+        .update(tarefa)
+        .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+        .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D1.24', 'D1.ajuste']), isNull(tarefa.concluidaEm)))
+    })
+    await historico(quem, 'caso_liberado_ao_juridico', pedido, `caso:${casoId}`, { depoisDoAjuste: Boolean(dados.ajuste) })
+    return resposta.code(201).send({ ok: true })
   })
 
   // GGVP-131 (recorte de 07/10): a chance de êxito na conferência. O número vem do código, a partir dos desfechos

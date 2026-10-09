@@ -3,7 +3,7 @@ import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-137 · a Perícia no banco do portal, com login de verdade e uma pessoa por computador: a advogada decide a perícia
 // no INSS; o Jurídico administrativo marca com o comprovante e registra o comparecimento; a advogada confere o resultado
-// com o laudo; a Documentação abre a mesma perícia sem ver o laudo (dado de saúde, só o Jurídico).
+// com o laudo; a Documentação abre a mesma perícia e vê o resultado, sem a leitura do laudo (conteúdo médico, só o Jurídico).
 
 const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`%PDF-1.4 ${name}`) })
 const hojeIso = () => new Date().toLocaleDateString('sv-SE')
@@ -69,9 +69,9 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   await gabi.getByRole('button', { name: 'Registrar resultado' }).click()
   await expect(gabi.getByRole('heading', { name: '✓ Resultado registrado: favorável' })).toBeVisible()
 
-  // A Documentação abre a mesma perícia, no banco, sem o laudo nem o resultado: dado de saúde, só o Jurídico.
+  // A Documentação abre a mesma perícia, no banco: vê o resultado e o laudo na pasta; a leitura do laudo é só do Jurídico.
   const fabio = await computadorDe(browser, origem, 'documentacao@exemplo.ggv')
   const daDocumentacao = await (await fabio.request.get(`/api/processos/${casoId}/pericia`)).json()
-  expect([daDocumentacao.situacao, daDocumentacao.pericia.resultado?.laudo]).toEqual(['concluida', undefined])
-  expect(JSON.stringify(daDocumentacao)).not.toContain('laudo_pericia.pdf')
+  const { registrado, laudo } = daDocumentacao.pericia.resultado
+  expect([daDocumentacao.situacao, registrado.favoravel, laudo.nome, laudo.leitura]).toEqual(['concluida', true, 'laudo_pericia.pdf', undefined])
 })

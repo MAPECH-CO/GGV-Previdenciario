@@ -89,3 +89,77 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('Mensagem ao cliente · Chatwoot de verdade, pelo servidor (GGVP-146)', () => {
+  const PRONTA = { modelo: 'boas-vindas', texto: 'Olá, Maria! Boas-vindas ao escritório GGV.', editavel: true, trava: null, simulado: false }
+
+  /** A API devolve a mensagem pronta do Chatwoot de verdade; o envio responde "enviada". */
+  async function abrirDeVerdade(cliente: object) {
+    const ficha = (await obterFicha('maria-exemplo'))!
+    const pedidos: { metodo: string; corpo?: unknown }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit = {}) => {
+        pedidos.push({ metodo: init.method ?? 'GET', corpo: init.body ? JSON.parse(String(init.body)) : undefined })
+        return Response.json(
+          init.method === 'POST'
+            ? { id: 'm1', fichaId: ficha.id, modelo: 'boas-vindas', texto: PRONTA.texto, canal: 'Chatwoot', conversa: 600, quando: '2026-10-07T17:32:00.000Z', quem: 'Ana', status: 'enviada' }
+            : { ...PRONTA, ...cliente },
+        )
+      }),
+    )
+    render(comSessao(<MensagemAoCliente ficha={ficha} modeloInicial="boas-vindas" aoFechar={() => {}} />))
+    await screen.findByRole('region', { name: 'Na central do Chatwoot' })
+    return pedidos
+  }
+
+  it('sem "simulado"; sem conversa na caixa, o envio vai com a conversa 0 e o servidor abre uma', async () => {
+    const pedidos = await abrirDeVerdade({ contato: { id: 31, nome: 'Maria Exemplo', telefone: '11900000001' }, conversas: [] })
+    expect(screen.getByText('Sai pela central do Chatwoot, na conversa do cliente')).toBeTruthy()
+    expect(screen.getByText('Ainda sem conversa deste telefone na caixa do escritório: ao enviar, o portal abre uma.')).toBeTruthy()
+    fireEvent.click(enviar())
+    expect(await screen.findByText(/✓ Enviada no Chatwoot às/)).toBeTruthy()
+    expect(pedidos.at(-1)).toMatchObject({ metodo: 'POST', corpo: { modelo: 'boas-vindas', conversa: 0 } })
+    vi.unstubAllGlobals()
+  })
+
+  it('"Abrir a conversa" usa o endereço que o servidor manda', async () => {
+    const link = 'https://chatwoot.teste/app/accounts/7/conversations/502'
+    await abrirDeVerdade({ contato: { id: 31, nome: 'Maria Exemplo', telefone: '11900000001' }, conversas: [{ id: 502, caixa: 'GGV PREV', situacao: 'aberta', mensagens: 5, ultimaEm: '2026-10-07T17:00:00.000Z', link }] })
+    expect(screen.getByRole('link', { name: 'Abrir a conversa' }).getAttribute('href')).toBe(link)
+    expect(screen.queryByText(/Ainda sem conversa/)).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('o Chatwoot não respondeu à consulta: não diz "sem conversa" e não deixa enviar', async () => {
+    const pedidos = await abrirDeVerdade({ contato: null, conversas: [], consulta: 'falhou' })
+    expect(screen.getByText('Não deu para consultar o Chatwoot agora: feche a janela e tente de novo em alguns minutos.')).toBeTruthy()
+    expect(screen.queryByText(/Ainda sem conversa/)).toBeNull()
+    expect(enviar().disabled).toBe(true)
+    fireEvent.click(enviar())
+    expect(pedidos.every((p) => p.metodo === 'GET')).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
+  it('homologação, telefone fora da lista de teste: a janela avisa antes, e o envio mostra "não saiu", sem sucesso falso', async () => {
+    const ficha = (await obterFicha('maria-exemplo'))!
+    const erro = 'o telefone está fora da lista de teste da homologação'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit = {}) =>
+        Response.json(
+          init.method === 'POST'
+            ? { id: 'm2', fichaId: ficha.id, modelo: 'boas-vindas', texto: PRONTA.texto, canal: 'Chatwoot', conversa: 0, quando: '2026-10-07T17:32:00.000Z', quem: 'Ana', status: 'falhou', erro }
+            : { ...PRONTA, contato: null, conversas: [], foraDaLista: true },
+        ),
+      ),
+    )
+    render(comSessao(<MensagemAoCliente ficha={ficha} modeloInicial="boas-vindas" aoFechar={() => {}} />))
+    expect(await screen.findByText('Homologação: este telefone está fora da lista de teste. O portal não chama o Chatwoot, e o envio fica no histórico como não enviado.')).toBeTruthy()
+    expect(screen.queryByText(/ao enviar, o portal abre uma/)).toBeNull()
+    fireEvent.click(enviar())
+    expect(await screen.findByText(`A mensagem não saiu pelo Chatwoot: ${erro}. Ficou no histórico do cliente; nada foi reenviado sozinho.`)).toBeTruthy()
+    expect(screen.queryByText(/✓/)).toBeNull()
+    vi.unstubAllGlobals()
+  })
+})

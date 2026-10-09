@@ -211,7 +211,8 @@ export type LeituraDoLaudo = {
 export type ResultadoDaPericia = {
   /** O resultado apareceu no GERID ou no processo (DP.E4): a tarefa da advogada fica urgente (CA1). */
   disponivelEm?: string
-  laudo?: { nome: string; anexadoEm: string; leitura: LeituraDoLaudo }
+  /** A leitura é conteúdo médico: fora do Jurídico, o servidor manda o laudo sem ela (saúde simples, 08/10). */
+  laudo?: { nome: string; anexadoEm: string; leitura?: LeituraDoLaudo }
   /** O que a advogada registrou (CA2 a CA5); no judicial, até quando manifestar (G12). */
   registrado?: { quando: string; quem: string; favoravel: boolean; novaPericia?: boolean; conferidas: string[]; manifestarAte?: string }
   /** O laudo no perfil do perito (GGVP-73): entrou, ou espera a pergunta de um clique, fora das contas (CA6). */
@@ -597,7 +598,8 @@ export function laudoNoPerfil(mundo: MundoDaPericia, pericia: Pericia, quando: s
     return
   }
   const { processo } = fichaDoProcesso(mundo, pericia.processoId)!
-  const { leitura, anexadoEm } = r.laudo!
+  const { anexadoEm } = r.laudo!
+  const leitura = r.laudo!.leitura!
   const data = hojeIso(new Date(anexadoEm))
   const caso = processo.numero ?? `caso-${mundo.pericias!.indexOf(pericia) + 1}`
   const entrou = acrescentarLaudo(mundo, pericia.peritoId, {
@@ -921,10 +923,12 @@ export const mudancas = {
     }
     pericia.historico.push({ quando, quem, oQue: `Registrou o resultado: ${favoravel ? 'favorável' : 'desfavorável'} (laudo ${nome})`, passo: 'DP.08' })
     if (!favoravel) {
-      pericia.historico.push(
-        { quando, quem: SISTEMA, oQue: `A IA indicou: ${leitura.porque} Vale pedir nova perícia: ${leitura.valeNovaPericia ? 'sim' : 'não'}.`, passo: 'DP.10' },
-        { quando, quem, oQue: nova ? 'Decidiu pedir nova perícia' : 'Decidiu não pedir nova perícia: o caso volta à origem marcado como desfavorável', passo: 'DP.10' },
-      )
+      // O porquê é do laudo (conteúdo médico): fica no resumo, com o Jurídico; o histórico, todo mundo do caso vê. Sem a
+      // leitura da IA (a advogada registrou pela dela), não há indicação a contar.
+      if (leitura.valeNovaPericia !== undefined) {
+        pericia.historico.push({ quando, quem: SISTEMA, oQue: `A IA indicou se vale pedir nova perícia: ${leitura.valeNovaPericia ? 'sim' : 'não'} (o porquê está no resumo do laudo)`, passo: 'DP.10' })
+      }
+      pericia.historico.push({ quando, quem, oQue: nova ? 'Decidiu pedir nova perícia' : 'Decidiu não pedir nova perícia: o caso volta à origem marcado como desfavorável', passo: 'DP.10' })
     }
     let outra: Pericia | undefined
     if (nova) {

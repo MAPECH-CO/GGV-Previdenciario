@@ -155,6 +155,13 @@
       "when": 1791512535321,
       "tag": "0021_segunda_ficha_e_contrato",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791521070736,
+      "tag": "0022_tarefas_do_setor",
+      "breakpoints": true
     }
   ]
 }
