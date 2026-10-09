@@ -20,6 +20,7 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Juízo do processo** pelo número CNJ: tribunal e unidade de origem, a mesma regra do painel (CA1, a identificação).
    - **Números do juízo** calculados em código, só com desfecho conferido: procedência por benefício e tempo até a sentença, cada um com os processos e a data da base (CA2, CA4, CA5).
    - **Minuta da petição:** a jurimetria do juízo entra nas fontes, só para a advogada, e o número fica fora do texto que vai ao juiz (CA3, CA6).
+   - **Parte 2 (Mateus, 09/10, PR próprio sobre o #11):** a vara e o juiz conferidos na leitura da publicação; os entendimentos recorrentes do juízo pela IA, com os processos de exemplo; os entendimentos na minuta, sem número (CA1, CA2, CA5, CA6).
 4. **GGVP-141** · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado · IA e sistema. A parte 1 (Mateus, 08/10):
    - **ADR-013**, a base de conhecimento, antes do código.
    - **Trechos do acervo** com vetor (pgvector, índice HNSW), anonimizados e com a marca de dado de saúde (CA1, CA3).
@@ -45,11 +46,10 @@ Um ponto de "Agora ok?" no fim de cada história.
   - a unificação de grafias (CA2) segue a GGVP-59;
   - o acervo que se alimenta sozinho (CA6) depende da IA e do Drive.
 - **O arquivo do Raio-X:** tem nome de cliente e dado de saúde. Entram só os agregados já publicados no protótipo.
-- **GGVP-64, a parte 2:**
-  - o nome da vara e do juiz: nenhuma fonte de publicação traz hoje, nem o DJEN do PR #21. Entra com o órgão da fonte ou com a IA lendo a publicação, conferido por pessoa;
-  - os entendimentos recorrentes: pedem o texto das decisões no acervo (GGVP-141);
-  - a sobreposição na página do caso lendo do servidor: a página do caso ainda roda com dados de exemplo no navegador;
-  - a recomendação de recurso (CA3 e CA6, D3b.04): segue a GGVP-100, travada pela Q26.
+- **GGVP-64, o que fica depois da parte 2:**
+  - a sobreposição na página do processo lendo do servidor: a página ainda roda com dados de exemplo no navegador (ligar é da GGVP-146);
+  - a recomendação de recurso (CA3 e CA6, D3b.04): segue a GGVP-100, travada pela Q26;
+  - o órgão do DJEN como sugestão da vara, quando o PR das fontes reais entrar.
 - **GGVP-141, a parte 2:** o parecer, o laudo e o resultado da perícia entram quando os PRs #39 e #42 forem mesclados, e a transcrição entra com a GGVP-133.
 - **GGVP-59, a parte 2:**
   - ligar o perito direto na perícia judicial a partir da publicação, porque mexe no modelo da Perícia do Pedro;
