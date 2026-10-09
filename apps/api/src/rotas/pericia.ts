@@ -34,7 +34,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
@@ -106,7 +106,7 @@ type DoCaso = { mundo: MundoDaPericia; casoId: string; linhas: Map<string, typeo
 /**
  * Saúde simples (Pedro, 08/10): fora do Jurídico (`dado_saude.ver_detalhe`), sai só o conteúdo médico, que aqui é o que a
  * IA leu dos laudos: o desta perícia e das anteriores, e os do acervo no perfil do perito (cada um com a referência do
- * caso). O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
+ * caso), com o assunto deles (os números por assunto). Os números do perito (G22) todos veem. O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
  * abre pelo Jurídico, na rota dos documentos, que registra quem abriu (acesso_dado_sensivel).
  */
 function semLeitura(p: Pericia): Pericia {
@@ -120,7 +120,7 @@ function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
     ...t,
     pericia: semLeitura(t.pericia),
     anteriores: t.anteriores.map(semLeitura),
-    perfil: t.perfil && { ...t.perfil, perito: { ...t.perfil.perito, laudos: [] } },
+    perfil: t.perfil && { ...t.perfil, porAssunto: [], perito: { ...t.perfil.perito, laudos: [] } },
   }
 }
 
@@ -328,13 +328,18 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   })
 
   // GGVP-70: a perícia do resultado (a que espera o resultado ou a última conferida), na visão do perfil: o resultado todo
-  // mundo do caso vê; a leitura do laudo, só o Jurídico.
+  // mundo do caso vê; a leitura do laudo, só o Jurídico, e quem a recebe fica registrado (acesso_dado_sensivel), como no
+  // parecer e nos documentos.
   app.get<ComId>('/api/processos/:id/pericia/resultado', com('caso.ver'), async (pedido, resposta) => {
     const d = await doCaso(pedido.params.id)
     if (!d) return negar(resposta, 404, 'Caso não encontrado.')
     const p = periciaDoResultado(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, 'Esta perícia não espera resultado.')
-    return visao(naTela(d.mundo, p, agora()), juridico(pedido))
+    const t = visao(naTela(d.mundo, p, agora()), juridico(pedido))
+    // Fora do Jurídico a visão já tirou a leitura: só registra quem a recebeu de fato.
+    if ([t.pericia, ...t.anteriores].some((x) => x.resultado?.laudo?.leitura))
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: d.casoId, recurso: `pericia:${p.id}`, quando: agora() })
+    return t
   })
 
   // As tarefas da perícia de quem está na sessão (GGVP-49 CA2, GGVP-53 CA9, GGVP-56, GGVP-66, GGVP-70): pelo perfil da

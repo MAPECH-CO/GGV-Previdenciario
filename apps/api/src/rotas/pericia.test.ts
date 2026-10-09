@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, documento, eventoAuditoria, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, decisao, documento, eventoAuditoria, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -224,13 +224,20 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     // O PDF do laudo é sensível na pasta: só o Jurídico abre (rota dos documentos).
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
-    // A Documentação vê o resultado, o laudo na pasta e o perito; a leitura do laudo e os laudos do perfil, não.
+    // A Documentação vê o resultado, o laudo na pasta, o perito e os números dele; a leitura do laudo, os laudos do perfil
+    // e o assunto deles (conteúdo médico), não.
+    const acessos = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
     for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
       expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
       expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
-      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos]).toEqual(['Dr. R. Menezes', 1, []])
+      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto]).toEqual(['Dr. R. Menezes', 1, [], []])
+      expect(daDora.perfil.jurimetria.laudos).toBe(1)
     }
-    expect((await ver('gabi', '/resultado')).json().pericia.resultado.laudo.leitura.favoravel).toBe(true)
+    expect(await acessos()).toEqual([])
+    // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.
+    const doJuridico = (await ver('gabi', '/resultado')).json()
+    expect([doJuridico.pericia.resultado.laudo.leitura.favoravel, doJuridico.perfil.porAssunto.map((a: { assunto: string }) => a.assunto)]).toEqual([true, ['sem assunto']])
+    expect(await acessos()).toEqual([[ids.gabi, casoId, `pericia:${linha.id}`]])
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
   })
 
