@@ -27,6 +27,8 @@ Os perfis saem das raias do BPMN. Toda tela inicial tem o mesmo formato: **"O qu
 
 O resto da Central é do **Atendimento**, e a Documentação não vê: agenda e confirmação, fichas, contrato e assinatura, a cobrança dos documentos do caso (D1.23), boas-vindas, fechamento e recontato, nova demanda, "Pedir documento legível" (GGVP-95 CA3), "Completar telefone" da ficha do scanner (GGVP-17 CA15), o complemento ao médico e o "Ajustar o caso" devolvido pela Sênior (GGVP-127; Pedro, 08/10). O Atendimento, e o líder dele, também não veem as tarefas da Documentação. As tarefas que o servidor guarda já vêm pelo perfil ativo, e as que o chat criou ou que nasceram de uma conversa são da pessoa.
 
+Os documentos pendentes de cada cliente, o que a cobrança aberta ainda espera, aparecem em cada processo do "Caso em andamento" da ficha e na página do processo, com o caminho para o checklist (comentário do Lucas de 07/10 no GGVP-130), para todos que veem o caso. A cobrança dos documentos do caso (D1.23) é do Atendimento pelo BPMN, em todas as telas; o cartão GGVP-130 cita "cobrança" entre as tarefas da Documentação: **a confirmar com o Lucas**.
+
 **Sistema** e **IA** também são raias, mas não são perfis de pessoa. Tudo o que fazem aparece para as pessoas como sugestão, tarefa ou registro no histórico do card. Exemplo: o sistema abre sozinho a tarefa de perícia (DP.01) quando a perícia é pedida.
 
 Ajuste de 29/09/2026 (Lucas): a perícia saiu do Atendimento e ficou toda com o Jurídico administrativo (DP.02, DP.06, DP.07 e a remarcação); o DP.01 passou a ser do sistema; o Atendimento ficou com o laudo novo (buscar e subir, D1.02).

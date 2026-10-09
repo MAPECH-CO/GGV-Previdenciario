@@ -200,7 +200,7 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
         e(-10, BRUNA, 'pessoa', 'Atendimento confirmou com o cliente o período rural e subiu o card', 'D3a.03', 'vigilia'),
       ],
       esperas: [
-        { quem: 'cliente', oQue: 'trazer as notas do produtor rural (2018–2020) e a certidão do sindicato', desde: dia(-11), prazo: dia(2), lembrete: 'cobrança diária pela Documentação' },
+        { quem: 'cliente', oQue: 'trazer as notas do produtor rural (2018–2020) e a certidão do sindicato', desde: dia(-11), prazo: dia(2), lembrete: 'cobrança diária pelo Atendimento' },
         { quem: 'justica', oQue: 'a data da audiência de instrução', desde: dia(-11), lembrete: 'a vigília lê as publicações 3×/dia' },
       ],
       lacos: {
@@ -213,7 +213,7 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
         ],
       },
       tarefas: [
-        { setor: 'Documentação', titulo: 'Antônio Exemplo · Cobrar documento', responsavel: JESSICA, prazo: dia(2), paralela: true, href: '/casos/antonio-exemplo-1/cobranca' },
+        { setor: 'Atendimento', titulo: 'Antônio Exemplo · Cobrar documento', responsavel: BRUNA, prazo: dia(2), paralela: true, href: '/casos/antonio-exemplo-1/cobranca' },
         { setor: 'Jurídico', titulo: 'Antônio Exemplo · Analisar laudo novo', responsavel: DRA_PAULA, prazo: dia(1), href: '/casos/antonio-exemplo-1/laudo-novo' },
       ],
       prazos: [
