@@ -146,26 +146,23 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
     return { fichaId: f.id, entrevista: f.agendamentos[0].id }
   })
 
-  // GGVP-133: este navegador tem o microfone (de mentira, do Chromium): o áudio de verdade vai ao servidor.
-  const juridico = await browser.newContext({ baseURL: new URL(page.url()).origin, permissions: ['microphone'] })
+  // O Chromium do CI não abre o microfone de mentira ("o microfone não abriu", mesmo com a permissão): a entrevista vai
+  // pelo caminho sem microfone, com o áudio gravado fora, que também vai à transcrição de verdade.
+  const juridico = await browser.newContext({ baseURL: new URL(page.url()).origin })
   const advogada = await juridico.newPage()
-  await advogada.clock.install()
   await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
   await advogada.goto(`/entrevista/${entrevista}/gravacao`)
   await advogada.getByRole('button', { name: 'Gravar' }).click()
   await advogada.getByRole('checkbox', { name: 'Avisei o cliente que a conversa será gravada' }).check()
   await advogada.getByRole('button', { name: 'Começar a gravar' }).click()
-  await expect(advogada.getByText(/● Gravando/)).toBeVisible()
-  await advogada.clock.runFor(30_000)
-  await advogada.getByRole('button', { name: /Abrir o cofre/ }).click()
-  await advogada.getByLabel('Digite a senha (vai direto ao cofre)').fill(SENHA)
-  await advogada.getByRole('button', { name: 'Guardar no cofre' }).click()
-  await expect(advogada.getByText(/● Gravando/)).toBeVisible()
-  await advogada.clock.runFor(40_000)
-  await advogada.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
+  await expect(advogada.getByRole('heading', { name: /^Sem microfone: / })).toBeVisible()
+  await advogada.getByLabel('Subir o áudio gravado fora').setInputFiles({ name: 'entrevista-lia.ogg', mimeType: 'audio/ogg', buffer: Buffer.from('OggS entrevista gravada fora') })
   // Sem a chave do serviço, a transcrição diz o motivo e o áudio fica; nada de conversa inventada.
   await expect(advogada.getByText('A transcrição falhou: a transcrição está desligada (falta a chave do serviço).')).toBeVisible()
   await expect(advogada.getByText(/O áudio ficou guardado no caso, para sempre/)).toBeVisible()
+  // O cofre (G9) pelas mesmas rotas do campo do cofre da entrevista: a senha vai direto ao servidor.
+  expect((await advogada.request.post(`/api/pessoas/${fichaId}/cofre`, { data: { senha: SENHA } })).ok()).toBe(true)
+  expect((await advogada.request.post(`/api/fichas/${fichaId}/cofre/gov`, { data: { acao: 'guardou' } })).ok()).toBe(true)
 
   await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
   await expect(advogada.getByRole('heading', { level: 1 })).toHaveText('Lia Decisao Teste · Definir benefício')
@@ -388,6 +385,8 @@ test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o 
   expect(contratos.find((c: { processoId: string }) => c.processoId === caso)).toMatchObject({ etapa: 'entregue', copia: { entrega: { quemRecebeu: 'Lia Copia Teste' } } })
   const processo = (fichas as { processos: { id: string; etapa: string }[] }[]).flatMap((f) => f.processos).find((x) => x.id === caso)
   expect(processo?.etapa).toBe('Documentação · checklist do benefício')
+  // A tela do contrato é da raia do Atendimento (GGVP-96): a líder, neste outro computador, vê a entrega registrada.
+  await entrarPelaApi(advogada, 'lider@exemplo.ggv')
   await advogada.goto(`/contrato/${caso}/copia`)
   await expect(advogada.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
   await outro.close()

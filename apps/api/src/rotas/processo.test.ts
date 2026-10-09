@@ -138,10 +138,10 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(p.etapas).toEqual([{ diagrama: 'D2', passo: 'D2.E3', aguardando: 'cliente entregar o documento', desde: '2026-10-03T12:00:00.000Z' }])
     // As tarefas abertas, do prazo mais perto ao sem prazo, com o setor e a tela do passo; a concluída não entra.
     expect(p.tarefas.map((t: { setor: string; titulo: string; responsavel: string | null; prazo: string | null; tela: string | null }) => [t.setor, t.titulo, t.responsavel, t.prazo, t.tela])).toEqual([
-      ['Jurídico', 'Conferir resultado da perícia', 'gabi', '2026-10-08', `/casos/${casoId}/pericia`],
+      ['Jurídico', 'Conferir resultado da perícia', 'gabi', '2026-10-08', `/casos/${casoId}/pericia/decidir`],
       ['Documentação', 'Cumprir exigência do INSS', null, null, `/casos/${casoId}/exigencia/documentos`],
     ])
-    expect(p.proximoPasso).toEqual({ oQue: 'Conferir resultado da perícia', setor: 'Jurídico', prazo: '2026-10-08', tela: `/casos/${casoId}/pericia` })
+    expect(p.proximoPasso).toEqual({ oQue: 'Conferir resultado da perícia', setor: 'Jurídico', prazo: '2026-10-08', tela: `/casos/${casoId}/pericia/decidir` })
     expect(p.documentos.map((d: { nome: string | null; tipo: string; sensivel: boolean; data: string }) => [d.nome, d.tipo, d.sensivel, d.data])).toEqual([
       ['pacote-peticao.pdf', 'pacote_peticao', false, '2026-10-03'],
       ['laudo-ortopedista.pdf', 'laudo', true, '2026-10-02'],
