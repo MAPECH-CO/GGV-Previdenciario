@@ -10,6 +10,7 @@ import { EXIGENCIA_EM_CURSO, abrirPericiasDaExigencia, esperarAnaliseDoInss, lem
 import { REGRA_PRAZO_INSS, feriadosNacionais, prazoInss } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 export const MSG_SEM_EXIGENCIA = 'Este caso não tem exigência do INSS aberta.'
 export const MSG_JA_DECIDIDA = 'Esta exigência já foi decidida.'
@@ -23,7 +24,7 @@ const TITULO_ESCALADA = 'Cobrança sem retorno: exigência do INSS'
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
-const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
+const hoje = hojeEmBrasilia // CA7 (GGVP-118): o dia de Brasília, não o de UTC
 const br = (iso: string) => iso.split('-').reverse().join('/')
 const ABERTAS = ['aberta', 'em_andamento', 'aguardando'] as const
 

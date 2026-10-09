@@ -53,3 +53,16 @@ Formulário que usa CPF, CEP, data, número, telefone, NB ou CNJ MUST importar d
 - **Dado** a biblioteca `campos`
 - **Quando** um formulário usa CPF, CEP, data, número, telefone, NB ou CNJ
 - **Então** importa de `packages/campos`; validação solta na tela é reprovada na revisão
+
+### Requirement: CA7 · O "hoje" é o dia de Brasília no servidor e no teste de navegador
+Toda rota do servidor que conta o "hoje" (prazo, urgência, vencido) MUST usar o dia de Brasília (`hojeEmBrasilia`), nunca o dia em UTC; o teste de navegador SHALL rodar o navegador e o processo do teste no fuso `America/Sao_Paulo`, como a API do teste (#15), para que o mesmo instante dê o mesmo dia nos três (orquestrador, 09/10: entre 21h e meia-noite os testes quebravam no CI).
+
+#### Scenario: CA7 · Às 22h30 de Brasília
+- **Dado** o relógio do servidor às 22h30 de Brasília (01h30 do dia seguinte em UTC)
+- **Quando** uma rota calcula a urgência ou o vencimento de um prazo
+- **Então** conta o dia de Brasília, não o dia seguinte
+
+#### Scenario: CA7 · Teste de navegador no CI
+- **Dado** o CI rodando em UTC
+- **Quando** o Playwright sobe o navegador e os testes
+- **Então** os dois usam `America/Sao_Paulo`, como a API do teste

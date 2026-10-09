@@ -34,7 +34,7 @@ import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
-import { itensDaFila } from '../vigilia/fila.ts'
+import { hojeEmBrasilia, itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -81,7 +81,7 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date }
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
-const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
+const hoje = hojeEmBrasilia // CA7 (GGVP-118): o dia de Brasília, não o de UTC
 
 export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazenamento, agora = () => new Date() }: Opcoes) {
   app.register(fastifyMultipart, { limits: { fileSize: TAMANHO_MAXIMO, files: 1, fields: 10 } })
