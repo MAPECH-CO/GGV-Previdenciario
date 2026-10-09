@@ -1,7 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
-import { zerarExemplo } from './dados/servidor.ts'
+import { registrarTentativaDeAssinatura } from './dados/contrato.ts'
+import { ler, zerarExemplo } from './dados/servidor.ts'
 import { Conversa } from './paginas/Conversa.tsx'
 import { responderRelacionamento } from './test/relacionamento/rotas.ts'
 
@@ -241,6 +242,18 @@ describe('App', () => {
     servidorResponde(200, usuario)
     render(<App caminho="/contrato/cleide-exemplo-1/preparar" />)
     expect(await screen.findByRole('heading', { level: 1, name: /Preparar contrato/ })).toBeTruthy()
+  })
+
+  it('GGVP-96 · G15 do contrato: passou do limite de tentativas, a Sênior abre a tarefa dela e lê a assinatura', async () => {
+    zerarExemplo()
+    await registrarTentativaDeAssinatura('nair-exemplo-1', 'ligacao')
+    const tarefa = ler().tarefas.find((t) => t.id === 'senior-assinatura-nair-exemplo-1')
+    expect(tarefa?.setor).toBe('Jurídico')
+    servidorResponde(200, senior)
+    render(<App caminho={tarefa!.href} />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nair Exemplo · Colher assinatura' })).toBeTruthy()
+    expect(screen.getByText(/o caso subiu para a advogada sênior/)).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Sem permissão' })).toBeNull()
   })
 
   it('GGVP-96 · o Sócio lê o caso; o Financeiro vê os Resultados, não o resto da Gestão', async () => {

@@ -227,6 +227,9 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
   // D5: a conversa com o cliente, do Atendimento e do Jurídico.
   [/^\/conversas\//, 'conversa.registrar'],
+  // G15 (D1.17): passou do limite de tentativas, a tarefa da Sênior abre a assinatura; quem vê o caso lê, sem % de
+  // honorários, e conduzir segue com contrato.conduzir no servidor (GGVP-96).
+  [/^\/contrato\/[^/]+\/assinatura$/, 'caso.ver'],
   // D1.16 a D1.20: o contrato é da raia do Atendimento, e o % de honorários aparece só nele (GGVP-96).
   [/^\/contrato\//, 'contrato.conduzir'],
   // A ficha do cliente, para ler: quem vê o caso, e o Sócio, que lê tudo (GGVP-96); mudar segue com ficha.editar no servidor.

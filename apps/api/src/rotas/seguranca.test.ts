@@ -83,10 +83,16 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     const ficha = await json('ana', 'GET', `/api/fichas/${id}`)
     expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).toEqual(
       expect.arrayContaining([
-        'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de ana, segunda confirmação de eva): «—» → «Banco Exemplo · agência 0001 · conta 12345-6»',
+        'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de ana, segunda confirmação de eva)',
         'Enviou pelo Chatwoot a mensagem «Aviso de mudança dos dados» (entregue)',
       ]),
     )
+    // GGVP-96 (LGPD): o histórico da ficha vai a quem vê o caso; a Documentação e o Jurídico adm não leem banco, agência nem conta.
+    for (const apelido of ['dora', 'igor']) {
+      const vista = JSON.stringify(await json(apelido, 'GET', `/api/fichas/${id}`))
+      expect(vista, apelido).toContain('Mudou os dados bancários')
+      for (const dado of ['Banco Exemplo', '0001', '12345-6']) expect(vista, `${apelido}: ${dado}`).not.toContain(dado)
+    }
     const [aviso] = await banco.select().from(mensagem)
     expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'entregue' })
     // Sem caso perto da prestação de contas, nenhum alerta.
