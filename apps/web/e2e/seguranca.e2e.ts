@@ -51,7 +51,10 @@ test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva
   await expect(doCartao.getByRole('status')).toHaveText('Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')
   await expect(doCartao).toContainText('Banco Exemplo Dois · agência 0002 · conta 65432-1')
   await expect(eva.getByRole('list', { name: 'Últimos contatos' })).toContainText('Se não foi você, ligue para o escritório agora.')
-  await expect(eva.getByRole('list', { name: 'Histórico' })).toContainText('«—» → «Banco Exemplo Dois · agência 0002 · conta 65432-1»')
+  // GGVP-96 (LGPD): o histórico vai a todos que veem o caso; fica só o fato, sem a conta.
+  const historico = eva.getByRole('list', { name: 'Histórico' })
+  await expect(historico).toContainText('Mudou os dados bancários (cliente no escritório; em contrato novo;')
+  await expect(historico).not.toContainText('65432-1')
   await contexto.close()
 })
 

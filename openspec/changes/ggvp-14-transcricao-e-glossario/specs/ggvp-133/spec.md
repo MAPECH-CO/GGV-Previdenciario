@@ -86,6 +86,45 @@ O áudio e o texto SHALL ficar guardados na pasta do cliente, no armazenamento p
 - **Quando** o tempo passa
 - **Então** os dois ficam guardados na pasta do cliente, no armazenamento privado do portal
 
+### Requirement: A IA lê a entrevista e a advogada confere item a item (GGVP-46 CA6, CA7; G14)
+Com a transcrição pronta, a IA SHALL sugerir o resumo, os dados da ficha que o cliente disse (com a hora e o trecho de onde saiu), os documentos citados (para o checklist) e o "sem trabalhar desde". Cada item MUST passar pela conferência da advogada, que confirma ou corrige; o que ela confirma atualiza a ficha com o valor antigo no histórico.
+
+#### Scenario: Ler e conferir
+- **Dado** uma entrevista transcrita de verdade
+- **Quando** a IA lê o texto final
+- **Então** cada item aparece com "dito aos mm:ss" e o trecho, e só vai para a ficha depois de conferido ou corrigido pela advogada
+
+#### Scenario: Sem a IA
+- **Dado** a IA desligada, sem autorização de dado de saúde ou sem resposta
+- **Quando** a transcrição fica pronta
+- **Então** a tela diz o motivo certo e segue no modo manual, sem resumo nem item inventado
+
+#### Scenario: O afastamento conta com o "desde" conferido
+- **Dado** a IA leu "sem trabalhar desde 06/2026" (e não passa "desde março", que o cálculo não lê)
+- **Quando** a advogada confere o item
+- **Então** a definição do benefício calcula o afastamento por código (G19); antes da conferência, diz que falta o "desde" conferido
+
+### Requirement: Sem microfone, nada de exemplo (CA8 da GGVP-40)
+Na gravação de verdade sem microfone, a tela SHALL avisar com o motivo e MUST NOT mostrar nem transcrever falas de exemplo; as saídas são subir o áudio gravado fora ou registrar sem áudio.
+
+#### Scenario: Sem microfone
+- **Dado** a permissão do microfone negada ou nenhum aparelho
+- **Quando** a advogada (ou o Atendimento, na conversa) começa a gravar
+- **Então** vê "Sem microfone" com o motivo e as duas saídas, e nenhuma fala inventada
+
+#### Scenario: Sem áudio guardado ou sem a chave
+- **Dado** uma conversa ou entrevista sem nenhum áudio guardado, ou com o áudio de verdade e sem a chave do serviço
+- **Quando** pede a transcrição (ou finaliza a conversa sem áudio)
+- **Então** a transcrição falha com o motivo, o áudio que existe fica, e nada é transcrito da conversa de exemplo
+
+### Requirement: Ouvir o áudio e ler o texto final
+As Transcrições SHALL tocar o áudio guardado e abrir o texto final, com a permissão da gravação; a gravação com dado de saúde só abre para o Jurídico, com a leitura registrada.
+
+#### Scenario: Tocar
+- **Dado** uma gravação com o áudio guardado
+- **Quando** o Jurídico abre o áudio
+- **Então** o áudio toca, parte por parte, e o texto final abre; o Atendimento não abre a da advogada
+
 ### Requirement: CA11 · O modelo numa variável de ambiente
 O modelo de transcrição SHALL vir da variável `OPENAI_MODELO_TRANSCRICAO` (e o do texto ao vivo, de `OPENAI_MODELO_AO_VIVO`), sem mudar código.
 

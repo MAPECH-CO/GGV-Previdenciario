@@ -2,6 +2,9 @@
 // a conversa aberta quando não há e o envio da mensagem. Só com CHATWOOT_URL, CHATWOOT_CONTA, CHATWOOT_CAIXA e
 // CHATWOOT_TOKEN no ambiente; sem elas, nulo, e as mensagens seguem simuladas. O token vai só no cabeçalho
 // `api_access_token`: nunca na tela, em log ou na mensagem de erro.
+// A trava da homologação: fora de produção (AMBIENTE diferente de `producao`), só fala com os telefones de
+// CHATWOOT_PERMITIDOS (separados por vírgula); sem a lista, com nenhum. Em produção, sem lista.
+import { normalizarTelefone } from '@ggv/campos'
 import type { ContatoChatwoot, ConversaChatwoot, MensagemAoCliente } from '@ggv/contratos'
 
 type ContatoDaApi = { id: number; name?: string; phone_number?: string; contact_inboxes?: { source_id?: string; inbox?: { id?: number; name?: string } }[] }
@@ -19,6 +22,10 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
   const central = CHATWOOT_URL.replace(/\/+$/, '')
   const base = `${central}/api/v1/accounts/${encodeURIComponent(CHATWOOT_CONTA)}`
   const caixa = Number(CHATWOOT_CAIXA)
+  const producao = ambiente.AMBIENTE === 'producao'
+  // Em E.164: o +55 e o número com o DDD, como o Chatwoot grava.
+  const e164 = (telefone: unknown) => `+55${normalizarTelefone(telefone)}`
+  const permitidos = new Set((ambiente.CHATWOOT_PERMITIDOS ?? '').split(',').filter((t) => normalizarTelefone(t)).map(e164))
 
   async function chamar<T>(caminho: string, corpo?: object): Promise<T> {
     let resposta: Response
@@ -56,6 +63,9 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
   }
 
   return {
+    /** A trava da homologação: o telefone da ficha pode falar com o Chatwoot de verdade? */
+    permite: (telefone: string) => producao || permitidos.has(e164(telefone)),
+
     /** GET contacts/search e contacts/{id}/conversations: o cliente e as conversas dele na caixa do escritório (CA6). */
     async cliente(telefone: string, nome: string): Promise<{ contato: ContatoChatwoot | null; conversas: ConversaChatwoot[] }> {
       const contato = await contatoDe(telefone, nome)

@@ -19,16 +19,18 @@ import {
 } from '../dados/entrevista.ts'
 import type { Entrevista, Gravacao, InformacaoExtraida, RespostaDoEncerramento, SenhaGov, TarefaEncaminhada } from '../dados/tipos.ts'
 import { hora } from '../regras/datas.ts'
-import { minutos, pendenciasDaEntrevista, relogio, roteiroDaEntrevista, situacaoDaInformacao } from '../regras/entrevista.ts'
+import { ehAudio, minutos, pendenciasDaEntrevista, relogio, roteiroDaEntrevista, situacaoDaInformacao } from '../regras/entrevista.ts'
 import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
 import { agora, gravacaoDoServidor } from '../dados/servidor.ts'
 import { hojeIso } from '../regras/datas.ts'
 import base from './Balcao.module.css'
 import styles from './EntrevistaAoVivo.module.css'
 
-// Figma: "Atendimento · Reunião com transcrição" (73:560), com o roteiro do Overlay · Entrevista (1581:348). Gravação
-// simulada: o relógio corre e a IA "ouve" a conversa de exemplo. `simular` abre as falhas (CA8 e GGVP-46, CA3); `passo`
-// é quantos milissegundos dura um segundo de gravação (o teste acelera).
+// Figma: "Atendimento · Reunião com transcrição" (73:560), com o roteiro do Overlay · Entrevista (1581:348). Nas fichas
+// de exemplo, a gravação é simulada: o relógio corre e a IA "ouve" a conversa de exemplo. Nas fichas do servidor
+// (GGVP-133), é o microfone de verdade; sem microfone, a tela avisa e não inventa falas: a advogada sobe o áudio gravado
+// fora ou registra sem áudio (CA8). `simular` abre as falhas (CA8 e GGVP-46, CA3); `passo` é quantos milissegundos dura
+// um segundo de gravação (o teste acelera).
 
 type Props = { agendamentoId: string; simular?: string; passo?: number }
 
@@ -44,6 +46,7 @@ function valorFalado(info: InformacaoExtraida): string {
 export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props) {
   const idAvisei = useId()
   const idNotas = useId()
+  const idAudioDeFora = useId()
   const [dados, setDados] = useState<Entrevista | null | undefined>(undefined)
   const [g, setG] = useState<Gravacao | undefined>(undefined)
   const [segundos, setSegundos] = useState(0)
@@ -62,7 +65,8 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
   const pedindo = useRef(false)
   const falhouMicrofone = useRef(false)
   const falhouTranscricao = useRef(false)
-  // GGVP-133: na ficha do servidor, o microfone de verdade e o texto ao vivo. `aoVivo` nulo: sem microfone, segue o relógio.
+  const falhouSemMicrofone = useRef(false)
+  // GGVP-133: na ficha do servidor, o microfone de verdade e o texto ao vivo. Sem microfone, `semMicrofone` diz o motivo.
   const deVerdade = useGravacaoDeVerdade({
     ligar: Boolean(g && g.estado === 'gravando' && gravacaoDoServidor(g.id)),
     pausada: g?.estado === 'pausada',
@@ -70,7 +74,8 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     enviarParte: (parte) => enviarParteDoAudio(g!.id, parte),
     pedirChave: g ? () => pedirChaveAoVivo(g.id) : null,
   })
-  const { aoVivo, semAoVivo, tirarPendentes } = deVerdade
+  const { aoVivo, semAoVivo, semMicrofone, tirarPendentes } = deVerdade
+  const doServidor = Boolean(g && gravacaoDoServidor(g.id))
 
   useEffect(() => {
     let valendo = true
@@ -135,6 +140,20 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     fazer(() => registrarAcao(g.id, 'falhou', segundos))
   })
 
+  // GGVP-133, CA8: sem microfone, a gravação de verdade falha na hora, uma vez, com o motivo; nada de conversa de exemplo.
+  useEffect(() => {
+    if (!semMicrofone || !g || g.estado !== 'gravando' || travado.current || falhouSemMicrofone.current) return
+    falhouSemMicrofone.current = true
+    fazer(() => registrarAcao(g.id, 'falhou', segundos))
+  })
+
+  /** Sem microfone (CA8, CA9): o áudio gravado fora sobe nesta gravação e ela vai para a transcrição. */
+  async function subirDeFora(gravacao: Gravacao, arquivo: File) {
+    if (!ehAudio({ nome: arquivo.name, tipo: arquivo.type })) throw new Error('Esse arquivo não é de áudio.')
+    await enviarParteDoAudio(gravacao.id, { audio: arquivo, inicio: 0 })
+    return encerrarGravacao(gravacao.id, { aos: gravacao.duracao, online: true })
+  }
+
   /** Encerrar: o microfone fecha a última parte, as partes sobem e a gravação vai para a transcrição (CA1, CA10). */
   async function encerrar(gravacaoId: string) {
     const restantes = await deVerdade.fechar()
@@ -171,7 +190,8 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
 
   const { ficha, agendamento: a } = dados
   const encerrada = g?.estado === 'encerrada'
-  const ditas = g && aoVivo === null ? falasAoVivo(dados).filter((f) => f.aos <= segundos) : []
+  // A conversa de exemplo é só das fichas de exemplo: na gravação de verdade, nada de falas inventadas (GGVP-133).
+  const ditas = g && !doServidor ? falasAoVivo(dados).filter((f) => f.aos <= segundos) : []
   const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : ditas
   const extraidas = encerrada && g.transcricao === 'pronta' ? g.extraidas : ditas.flatMap((f) => f.extrai ?? [])
   const respondidos = new Set(ditas.flatMap((f) => f.roteiro ?? []))
@@ -311,9 +331,13 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
           {g?.estado === 'falhou' && (
             <section className={styles.falha} role="alert" aria-labelledby="falhou">
               <h2 id="falhou" className={styles.cartaoTitulo}>
-                A gravação falhou em {relogio(g.duracao)}
+                {semMicrofone ? `Sem microfone: ${semMicrofone}` : `A gravação falhou em ${relogio(g.duracao)}`}
               </h2>
-              <p>O que foi gravado até aqui está guardado no caso. Tente gravar de novo ou registre a entrevista sem áudio.</p>
+              <p>
+                {semMicrofone
+                  ? 'Nada foi gravado nem transcrito. Suba o áudio gravado fora do portal (como a ligação baixada do Chatwoot) ou registre a entrevista sem áudio.'
+                  : 'O que foi gravado até aqui está guardado no caso. Tente gravar de novo ou registre a entrevista sem áudio.'}
+              </p>
               {semAudio ? (
                 <div className={styles.campos}>
                   <label className={styles.rotulo} htmlFor={idNotas}>
@@ -322,6 +346,27 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                   <textarea id={idNotas} className={styles.texto} rows={4} maxLength={4000} value={notas} onChange={(e) => setNotas(e.target.value)} />
                   <button type="button" className={styles.primario} disabled={notas.trim().length < 3 || ocupado} onClick={() => fazer(() => registrarSemAudio(g.id, notas))}>
                     Registrar sem áudio
+                  </button>
+                </div>
+              ) : semMicrofone ? (
+                <div className={styles.acoes}>
+                  <label className={styles.primario} htmlFor={idAudioDeFora} data-desligado={ocupado}>
+                    {ocupado ? 'subindo…' : 'Subir o áudio gravado fora'}
+                  </label>
+                  <input
+                    id={idAudioDeFora}
+                    className="so-leitor"
+                    type="file"
+                    accept="audio/*"
+                    disabled={ocupado}
+                    onChange={(e) => {
+                      const arquivo = e.target.files?.[0]
+                      e.target.value = ''
+                      if (arquivo) fazer(() => subirDeFora(g, arquivo))
+                    }}
+                  />
+                  <button type="button" className={styles.secundario} onClick={() => setSemAudio(true)}>
+                    Registrar como sem áudio
                   </button>
                 </div>
               ) : (
@@ -347,7 +392,10 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                 {g.transcricao === 'transcrevendo' && 'Transcrevendo (D1.11)…'}
                 {g.transcricao === 'aguardando-internet' &&
                   (online ? 'A internet voltou: enviando o áudio para a transcrição…' : 'Sem internet: o áudio está guardado neste computador e vai para a transcrição quando a conexão voltar.')}
-                {g.transcricao === 'pronta' && 'Transcrição pronta (D1.11): o resumo e as informações estão no caso, para conferir.'}
+                {g.transcricao === 'pronta' &&
+                  (g.semIa
+                    ? `Transcrição pronta (D1.11). A IA não leu a entrevista: ${g.semIa}. Leia a transcrição e preencha a ficha à mão.`
+                    : 'Transcrição pronta (D1.11): o resumo e as informações estão no caso, para conferir.')}
                 {g.transcricao === 'falhou' && `A transcrição falhou: ${g.motivoDaFalha}.`}
                 {g.transcricao === 'sem-audio' && 'A anotação ficou no caso.'}
               </p>
@@ -395,6 +443,8 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                 )}
                 <p className={base.nota}>Texto ao vivo pela OpenAI. O que vale no caso é o texto final, com quem fala, que sai ao encerrar.</p>
               </>
+            ) : semMicrofone && !encerrada ? (
+              <p className={styles.vazio}>Sem microfone: nada está sendo gravado nem transcrito.</p>
             ) : trechos.length === 0 ? (
               <p className={styles.vazio}>A transcrição aparece aqui quando a gravação começar.</p>
             ) : (
@@ -424,7 +474,9 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
               Ficha preenchida pela IA · você confere
             </h2>
             {extraidas.length === 0 ? (
-              <p className={styles.vazio}>Nada ainda: a IA preenche enquanto vocês conversam.</p>
+              <p className={styles.vazio}>
+                {doServidor ? 'Nada ainda: ao encerrar, a IA lê a transcrição e sugere o que conferir.' : 'Nada ainda: a IA preenche enquanto vocês conversam.'}
+              </p>
             ) : (
               <dl className={styles.linhas}>
                 {extraidas.map((e) => {

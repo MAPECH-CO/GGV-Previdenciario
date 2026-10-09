@@ -39,6 +39,7 @@ import type { ComoSugerir, Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
+import { ehPeca } from './documentos.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
 export const MSG_G1 = 'Checklist incompleto (G1): faltam'
@@ -85,11 +86,15 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
       .where(eq(caso.id, casoId))
     if (!c) return null
-    const docs = await banco
-      .select({ id: documento.id, tipo: documento.tipo, nome: documento.nomeOriginal })
-      .from(documento)
-      .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
-      .orderBy(documento.criadoEm)
+    // GGVP-96: a peça jurídica (pacote da petição, versões) só vai a quem vê a petição.
+    const vePeca = pode(perfilAtivo, 'peticao.ver')
+    const docs = (
+      await banco
+        .select({ id: documento.id, tipo: documento.tipo, nome: documento.nomeOriginal })
+        .from(documento)
+        .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
+        .orderBy(documento.criadoEm)
+    ).filter((d) => vePeca || !ehPeca(d.tipo))
     const kit = c.beneficio
       ? await banco
           .select({ tipo: kitDocumento.tipoDocumento })
