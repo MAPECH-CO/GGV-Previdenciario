@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-36 · Renovar a senha do gov.br antes da entrevista. Cada teste abre um navegador novo, então começa da semente de
 // exemplo.ts: a Josefa está sem senha e a entrevista dela é hoje às 15:30, no relógio da máquina.
@@ -13,10 +14,13 @@ const SENHA_DE_TESTE = 'Teste#Renovada-4821'
 
 /** A advogada analisa a ficha da Josefa ("Não" ao acidentário); sem senha, o Atendimento recebe a renovação. */
 async function analisarSemSenha(page: Page) {
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/analisar')
   await page.getByRole('radio', { name: 'Não' }).click()
   await page.getByRole('button', { name: 'Confirmar' }).click()
   await expect(page.getByText(/O Atendimento recebeu: "Renovar senha do gov.br" até 15:30/)).toBeVisible()
+  // A renovação (D1.08) é do Atendimento: volta ao login dele.
+  await entrarPelaApi(page)
 }
 
 test('CA1, CA2, CA7 e CA9 · da análise sem senha à tarefa na Central; renovar com a senha só no cofre e a advogada vê', async ({ page }) => {
@@ -31,10 +35,11 @@ test('CA1, CA2, CA7 e CA9 · da análise sem senha à tarefa na Central; renovar
   await expect(page.getByRole('button', { name: 'Guardar no cofre' })).toBeDisabled()
   await page.getByRole('checkbox', { name: 'Conferi que o Meu INSS abre e que o CNIS aparece' }).check()
   await page.getByRole('button', { name: 'Guardar no cofre' }).click()
-  await expect(page.getByRole('heading', { name: /✓ senha no cofre · atualizada em .* por Você \(Atendimento\)/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /✓ senha no cofre · atualizada em .* por Ana \(exemplo\)/ })).toBeVisible()
   expect(await page.content()).not.toContain(SENHA_DE_TESTE)
   expect(await page.evaluate(() => JSON.stringify(sessionStorage))).not.toContain(SENHA_DE_TESTE)
 
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/preparar')
   await expect(page.getByRole('region', { name: 'Pontos de atenção' })).toContainText('Senha do gov.br no cofre · funcionou pela última vez em')
   await expect(page.getByRole('link', { name: 'Iniciar entrevista (Transcrição)' })).toBeVisible()
@@ -52,6 +57,7 @@ test('CA3 e CA6 · "Não conseguiu": motivo e aviso obrigatórios, o aviso nos c
 
   await page.goto('/clientes/josefa-exemplo')
   await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText('se preciso numa agência do INSS')
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/preparar')
   await expect(page.getByRole('region', { name: 'Pontos de atenção' })).toContainText('o Atendimento tentou renovar e não conseguiu: o celular cadastrado não é mais dela')
 })

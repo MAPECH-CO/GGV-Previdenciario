@@ -99,6 +99,12 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
           <p className={styles.trava}>A gravação começa com o aviso ao cliente (G10).</p>
 
           <div className={styles.rodape}>
+            {/* A entrevista iniciada na hora pula a preparação: o atalho da análise fica aqui também. */}
+            {!ficha.analise && !encerrada && (
+              <a className={styles.atalho} href={`/entrevista/${a.id}/analisar`}>
+                Analisar a ficha
+              </a>
+            )}
             {encerrada ? (
               <a className={styles.principalBotao} href={`/entrevista/${a.id}/gravacao`}>
                 Abrir a entrevista encerrada
