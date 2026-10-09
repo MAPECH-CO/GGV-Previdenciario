@@ -1,6 +1,6 @@
-// EXEMPLO. Servidor de exemplo da preparação da conversa (GGVP-32), sobre o mesmo banco de servidor.ts. O resumo é uma
-// IA simulada, montada da ficha de atendimento. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint
-// indicado, sobre o contrato da design.md (change ggvp-6), e o resumo pela IA de verdade.
+// EXEMPLO. Servidor de exemplo da preparação da conversa (GGVP-32), sobre o mesmo banco de servidor.ts. O resumo é o que
+// a ficha de atendimento diz, juntado pelo portal (não é IA). Ligar no servidor: trocar o corpo de cada função por fetch no
+// endpoint indicado, sobre o contrato da design.md (change ggvp-6).
 import { dataCurta, hojeIso, idadeEm } from '../regras/datas.ts'
 import { atencaoCurta, pontosDeAtencao } from '../regras/preparacao.ts'
 import { tarefasAdvogada } from './advogada.ts'
@@ -9,8 +9,8 @@ import { chamarApi } from '../api.ts'
 import { agora, doServidor, ler } from './servidor.ts'
 import type { Agendamento, Ficha, Preparacao, RespostasDaSegundaFicha, Tarefa } from './tipos.ts'
 
-/** O resumo que a IA faria da ficha de atendimento (CA3). Simulado: junta o que a ficha diz, sem concluir nada. */
-export function resumoDaIa(ficha: Ficha, hoje: string): string {
+/** O resumo da ficha de atendimento (CA3): junta o que a ficha diz, sem concluir nada. É regra, não IA (GGVP-133). */
+export function resumoDaFicha(ficha: Ficha, hoje: string): string {
   const f = ficha.fichaAtendimento
   if (!ficha.fichaAtendimentoPreenchida) return 'A ficha de atendimento ainda não foi preenchida: não há o que resumir.'
   if (!f) return 'Ficha preenchida antes do portal: leia a ficha em papel na pasta do cliente.'
@@ -54,7 +54,7 @@ export async function obterPreparacao(agendamentoId: string): Promise<Preparacao
   const { agendamento } = achado
   const ficha = await comSecaoMedica(achado.ficha)
   const primeiroContato = [...ficha.contatos].sort((a, b) => a.data.localeCompare(b.data))[0]
-  return { ficha, agendamento, resumo: resumoDaIa(ficha, hoje), pontos: pontosDeAtencao(ficha, hoje), primeiroContato }
+  return { ficha, agendamento, resumo: resumoDaFicha(ficha, hoje), pontos: pontosDeAtencao(ficha, hoje), primeiroContato }
 }
 
 /**
