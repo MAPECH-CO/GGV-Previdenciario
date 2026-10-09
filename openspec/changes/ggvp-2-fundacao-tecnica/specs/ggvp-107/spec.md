@@ -94,3 +94,16 @@ o mesmo padrão de nome. A tela do chat ligar no servidor é do épico Experiên
 - **Dado** um arquivo subido pelo chat (laudo novo, comprovante do INSS, comprovante de RPV)
 - **Quando** a pessoa confirma o card
 - **Então** o arquivo vai para a pasta do cliente com o mesmo padrão de nome
+
+### Requirement: CA9 · A homologação mostra que o Drive está ligado e lendo
+Ao subir com as variáveis do Drive, a API SHALL ler uma vez as pastas "#5. CLIENTES" e "A REVISAR" e registrar no log "Drive lido" com as contagens, ou o erro; MUST NOT criar, mover nem apagar nada nessa leitura, e MUST NOT registrar nome de cliente. O `/saude` SHALL dizer `drive: "ligado"` ou `"desligado"` (só pelas variáveis, sem chamar o Google a cada verificação). Pedido do Mateus em 09/10, para testar a homologação sem subir arquivo.
+
+#### Scenario: CA9 · Subida com as variáveis
+- **Dado** a API com as três variáveis do Drive
+- **Quando** sobe
+- **Então** o log mostra "Drive lido" com o número de pastas de clientes e de itens a revisar, e o `/saude` diz `drive: "ligado"`
+
+#### Scenario: CA9 · Sem as variáveis
+- **Dado** a API sem as variáveis do Drive
+- **Quando** abro o `/saude`
+- **Então** ele diz `drive: "desligado"`, e nada chama o Google
