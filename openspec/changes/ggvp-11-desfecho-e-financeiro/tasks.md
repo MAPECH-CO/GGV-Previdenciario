@@ -112,6 +112,6 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 
 ## Revisão de 08/10 · resumo com [completar] (GGVP-22 CA6)
 
-- [ ] 11.1 CA6 · `faltaCompletar` em `packages/contratos/src/ia.ts` (texto com "[completar...]" → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 11.2 CA6 · `POST /api/casos/:id/resultado/resumo` recusa com `faltaCompletar` (400, nada muda); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 11.3 CA6 · Tela "Explicar o resultado": "Aprovar o resumo" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 11.1 CA6 · `faltaCompletar` em `packages/contratos/src/ia.ts` (texto com "[completar...]" → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 11.2 CA6 · `POST /api/casos/:id/resultado/resumo` recusa com `faltaCompletar` (400, nada muda); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 11.3 CA6 · Tela "Explicar o resultado": "Aprovar o resumo" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
