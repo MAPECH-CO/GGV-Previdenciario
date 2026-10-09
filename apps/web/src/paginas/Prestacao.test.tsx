@@ -55,6 +55,13 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true, versa
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Prestar contas (GGVP-44)', () => {
+  it('GGVP-98 · a dica diz que o Financeiro avisa o cliente e marca a ida ao banco, não o Atendimento', async () => {
+    servidor(prestacao)
+    render(<PrestarContas casoId={CASO} />)
+    expect(await screen.findByText('Ao concluir, o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.')).toBeTruthy()
+    expect(screen.queryByText(/Atendimento agenda a ida ao banco/)).toBeNull()
+  })
+
   it('CA4, CA5 · mostra a carta, traz o percentual do contrato e a prévia calculada pelo sistema', async () => {
     servidor(prestacao)
     render(<PrestarContas casoId={CASO} />)

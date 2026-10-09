@@ -163,7 +163,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
               {atual ? 'Registrar nova versão' : 'Concluir a prestação'}
             </button>
           </div>
-          <p className={styles.dica}>Ao concluir, o Financeiro recebe e o Atendimento agenda a ida ao banco, ao mesmo tempo.</p>
+          <p className={styles.dica}>Ao concluir, o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.</p>
         </form>
       )}
     </Moldura>
