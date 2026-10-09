@@ -10,8 +10,9 @@ import { SECOES, valorFalado } from '../regras/segundaFicha.ts'
 import styles from './Balcao.module.css'
 import proprio from './PrepararEntrevista.module.css'
 
-// Figma: step_D1.06 "Preparar entrevista" (14:2). Tela do Jurídico: a advogada lê o resumo da IA e confere antes de o
-// cliente entrar. A tarefa vem da fila dela (/advogada) ou do compromisso da agenda.
+// Figma: step_D1.06 "Preparar entrevista" (14:2). Tela do Jurídico: a advogada lê o resumo da ficha e confere antes de o
+// cliente entrar. A tarefa vem da fila dela (/advogada) ou do compromisso da agenda. GGVP-133: o resumo é o que a ficha
+// diz, juntado pelo portal; a tela não chama de IA o que não é IA.
 
 export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string }) {
   const [dados, setDados] = useState<Preparacao | null | undefined>(undefined)
@@ -63,16 +64,16 @@ export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string })
 
           <section className={styles.cartao} aria-labelledby="ia-sugere">
             <h2 id="ia-sugere" className={styles.cartaoTitulo}>
-              A IA sugere · você confere
+              Resumo da ficha
             </h2>
-            <p className={styles.trava}>A IA leu a ficha e resumiu o caso. Confira antes de entrevistar.</p>
+            <p className={styles.trava}>O portal juntou o que a ficha diz. Confira antes de entrevistar.</p>
             <dl className={proprio.linhas}>
               <div className={proprio.linha}>
                 <dt>Ficha</dt>
                 <dd>{fichaLida}</dd>
               </div>
               <div className={proprio.linha}>
-                <dt>Resumo da IA</dt>
+                <dt>Resumo</dt>
                 <dd>{resumo}</dd>
               </div>
               {(ficha.segundaFicha || ficha.analise?.acidentario) && (

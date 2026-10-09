@@ -1,7 +1,7 @@
 // GGVP-133: o áudio de verdade no navegador. O microfone grava em partes de 10 minutos (cada parte é um arquivo inteiro,
 // que a OpenAI aceita sozinho, bem abaixo dos 25 MB), e o texto ao vivo vem da OpenAI, direto, pela chave temporária que
-// o servidor entregou: a chave de verdade nunca chega aqui. Sem microfone ou sem WebRTC, devolve nulo e a tela segue
-// como antes, com o relógio.
+// o servidor entregou: a chave de verdade nunca chega aqui. Sem microfone, devolve o motivo e a tela avisa, sem inventar
+// falas; sem WebRTC, só não há texto ao vivo.
 import type { ParteDoAudio } from './entrevista.ts'
 
 export const SEGUNDOS_POR_PARTE = 600
@@ -10,17 +10,26 @@ const OPENAI_AO_VIVO = 'https://api.openai.com/v1/realtime/calls'
 
 export type Microfone = { pausar(): void; retomar(): void; parar(): Promise<void>; stream: MediaStream }
 
+/** Por que o microfone não abriu, nas palavras da tela (permissão negada, sem aparelho, em uso). */
+export function motivoSemMicrofone(falha: unknown): string {
+  const nome = falha instanceof Error || falha instanceof DOMException ? falha.name : ''
+  if (nome === 'NotAllowedError' || nome === 'SecurityError') return 'o navegador não deu permissão ao microfone'
+  if (nome === 'NotFoundError' || nome === 'OverconstrainedError') return 'nenhum microfone foi encontrado neste computador'
+  if (nome === 'NotReadableError') return 'o microfone está em uso por outro programa'
+  return 'o microfone não abriu'
+}
+
 /**
  * Abre o microfone e grava. `segundos` é o relógio da gravação (para quando cada parte começa) e `aoTerParte` recebe cada
  * parte pronta. Pausar (cofre do gov.br, G9) para o gravador e desliga o som também do texto ao vivo.
  */
-export async function abrirMicrofone(segundos: () => number, aoTerParte: (parte: ParteDoAudio) => void): Promise<Microfone | null> {
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') return null
+export async function abrirMicrofone(segundos: () => number, aoTerParte: (parte: ParteDoAudio) => void): Promise<Microfone | { erro: string }> {
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') return { erro: 'este navegador não grava áudio' }
   let stream: MediaStream
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  } catch {
-    return null
+  } catch (falha) {
+    return { erro: motivoSemMicrofone(falha) }
   }
   const tipo = TIPOS.find((t) => MediaRecorder.isTypeSupported(t))
   let atual: MediaRecorder

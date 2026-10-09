@@ -93,13 +93,15 @@ describe('GGVP-103 · cofre de senhas do gov.br', () => {
     await tarefaDoProtocolo()
     await revelar()
     await chamar('igor', 'POST', `/api/casos/${casoId}/cofre`, { senhaDoPortal: 'errada' })
-    const r = await chamar('julia', 'GET', '/api/gestao/cofre')
+    const r = await chamar('lauro', 'GET', '/api/gestao/cofre')
     expect(r.json().pessoas.map((p: { quem: string; leituras: number; cadastros: number; recusas: number }) => [p.quem, p.leituras, p.cadastros, p.recusas]).sort()).toEqual([
       ['ana', 0, 1, 0],
       ['igor', 1, 0, 1],
     ])
     expect(r.body).not.toContain(SENHA_GOV)
     expect((await chamar('gabi', 'GET', '/api/gestao/cofre')).statusCode).toBe(403)
+    // GGVP-96: o Financeiro fica só com os Resultados da Gestão.
+    expect((await chamar('julia', 'GET', '/api/gestao/cofre')).statusCode).toBe(403)
   })
 
   it('CA9 · a senha de teste não aparece no histórico nem na exportação do histórico', async () => {

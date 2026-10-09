@@ -22,6 +22,7 @@ import {
   TITULO_AVISO,
   TITULO_CONFIRMAR,
   TITULO_REMARCAR,
+  recebimentosConfirmados,
 } from './prestacao.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -219,7 +220,10 @@ describe('GGVP-44 · ida ao banco', () => {
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(false)
     await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(true)
+    // GGVP-78: o "Receber e lançar" não é dinheiro na mão; o painel Financeiro e os Resultados contam a confirmação.
+    expect((await recebimentosConfirmados(banco)).size).toBe(0)
     expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(201)
+    expect([...(await recebimentosConfirmados(banco))]).toEqual([[casoId, AGORA]])
     const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
     const [ag] = await banco.select().from(agendamento)
     expect([c.fase, c.encerradoEm !== null, ag.situacao]).toEqual(['encerrado', true, 'realizado'])

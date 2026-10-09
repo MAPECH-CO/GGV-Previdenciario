@@ -9,7 +9,7 @@ import styles from './Passo.module.css'
 
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 
-/** Senha do gov.br do cofre (G9): pede a senha do portal, mostra por tempo limitado e some sozinha. */
+/** Senha do gov.br do cofre (G9): pede a senha do portal, mostra por tempo limitado e some sozinha. Serve também a marcar a perícia. */
 export function SenhaDoGov({ casoId }: { casoId: string }) {
   const idSenha = useId()
   const [pedindo, setPedindo] = useState(false)

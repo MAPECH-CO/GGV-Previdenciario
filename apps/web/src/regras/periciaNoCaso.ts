@@ -24,6 +24,7 @@ import {
   escolherOrientacao,
   esperaOInss,
   etapaEmPericia,
+  motivoDaDataDaPericia,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarResultado,
@@ -352,15 +353,7 @@ export function criarPericia(mundo: MundoDaPericia, processoId: string, pedido: 
     )
   }
   // Judicial (resposta do Lucas, 02/10, GGVP-53): a data do juízo é lida da publicação e posta na agenda sozinha.
-  if (pedido.dataDoJuizo) {
-    const { data, hora, local } = pedido.dataDoJuizo
-    pericia.marcacao = { data, hora, local, modalidade: 'presencial', tipo: pedido.tipo, origem: 'juizo', registradaEm: iso, registradaPor: SISTEMA }
-    pericia.lembrete = { para: prazosDaPericia(data).vespera }
-    pericia.historico.push(
-      { quando: iso, quem: SISTEMA, oQue: `Leu a data na publicação e pôs na agenda e na ficha: ${dataCurta(data, hojeIso(quando))}, ${hora}, ${local}`, passo: 'DP.04' },
-      { quando: iso, quem: SISTEMA, oQue: `Agendou o lembrete da véspera para ${dataCurta(pericia.lembrete.para, hojeIso(quando))}`, passo: 'DP.04' },
-    )
-  }
+  if (pedido.dataDoJuizo) naAgendaPeloJuizo(pericia, pedido.dataDoJuizo, SISTEMA, quando)
   if (pedido.peritoLido) {
     const perito = reconhecerPerito(mundo, pedido.peritoLido)
     if (perito) pericia.peritoId = perito.id
@@ -369,6 +362,25 @@ export function criarPericia(mundo: MundoDaPericia, processoId: string, pedido: 
   if (pericia.marcacao) montarOrientacao(mundo, pericia, quando)
   pericias.push(pericia)
   return pericia
+}
+
+/**
+ * A data do juízo na agenda e na ficha, com o lembrete da véspera (DP.04): lida da publicação pelo sistema ou, quando a
+ * publicação não a trouxe num formato que ele lê, registrada pelo Jurídico administrativo (GGVP-137).
+ */
+function naAgendaPeloJuizo(pericia: Pericia, d: { data: string; hora: string; local: string }, quem: string, quando: Date) {
+  const iso = quando.toISOString()
+  const hoje = hojeIso(quando)
+  const { data, hora, local } = d
+  pericia.marcacao = { data, hora, local, modalidade: 'presencial', tipo: pericia.tipo, origem: 'juizo', registradaEm: iso, registradaPor: quem }
+  pericia.lembrete = { para: prazosDaPericia(data).vespera }
+  const dataFalada = `${dataCurta(data, hoje)}, ${hora}, ${local}`
+  pericia.historico.push(
+    quem === SISTEMA
+      ? { quando: iso, quem, oQue: `Leu a data na publicação e pôs na agenda e na ficha: ${dataFalada}`, passo: 'DP.04' }
+      : { quando: iso, quem, oQue: `Registrou a data que o juízo designou e pôs na agenda e na ficha: ${dataFalada}`, passo: 'DP.04' },
+    { quando: iso, quem: SISTEMA, oQue: `Agendou o lembrete da véspera para ${dataCurta(pericia.lembrete.para, hoje)}`, passo: 'DP.04' },
+  )
 }
 
 /** O que a IA leu do comprovante da semente: o local de cada caso. Outro PDF cai numa agência de exemplo. */
@@ -682,6 +694,19 @@ export const mudancas = {
     marcar(mundo, pericia, m, quem, agora)
   },
 
+  /**
+   * A data do juízo registrada pelo Jurídico administrativo (GGVP-137): a publicação não a trouxe num formato que o sistema
+   * lê, ou a perícia veio do despacho. Sem comprovante do INSS: vai à agenda e à ficha como a lida, com o lembrete e a orientação.
+   */
+  dataDoJuizo({ mundo, pericia, agora }: NaPericia, d: { data: string; hora: string; local: string }, quem: string) {
+    if (pericia.instancia !== 'juizo') throw new Error('A data desta perícia vem do comprovante do INSS.')
+    if (!podeMarcar(pericia)) throw new Error('Esta perícia não está para marcar.')
+    const motivo = motivoDaDataDaPericia(d, hojeIso(agora))
+    if (motivo) throw new Error(motivo)
+    naAgendaPeloJuizo(pericia, { ...d, local: d.local.trim() }, quem, agora)
+    montarOrientacao(mundo, pericia, agora)
+  },
+
   /** Marcada no Meu INSS sem o comprovante ainda (DP.E1): a tarefa espera, com lembrete diário (GGVP-53, CA6). */
   esperarComprovante({ pericia, agora }: NaPericia, d: { pedeDocumentoNovo: boolean }, quem: string) {
     if (!podeMarcar(pericia)) throw new Error('Esta perícia não está para marcar.')
@@ -736,6 +761,20 @@ export const mudancas = {
     if (justificativa.trim().length < MINIMO_DA_FALTA) throw new Error('Diga por que o documento falta.')
     d.faltas[itemId] = justificativa.trim()
     pericia.historico.push({ quando: agora.toISOString(), quem, oQue: `Registrou a falta de ${item.nome.toLowerCase()}: ${justificativa.trim()}`, passo: 'DP.03' })
+  },
+
+  /**
+   * "Anexar" um item (GGVP-56, CA2, CA4): o documento entra na pasta do cliente com o tipo do item e o item fica anexado.
+   * O histórico diz o item, sem o nome do arquivo (pode trazer dado de saúde).
+   */
+  anexo({ mundo, pericia, agora }: NaPericia, a: { itemId: string; arquivo: ArquivoEnviado }, quem: string) {
+    comDocumentos(pericia)
+    const item = KIT_DA_PERICIA[pericia.tipo].find((i) => i.id === a.itemId)
+    if (!item) throw new Error('Item da perícia não encontrado.')
+    const { ficha } = fichaDoProcesso(mundo, pericia.processoId)!
+    const nome = nomeNaPasta(ficha, a.arquivo.nome)
+    ficha.arquivos.push({ nome, tipo: item.tipos[0], local: pericia.processoId, data: hojeIso(agora), origem: 'card', repetido: false, aguardaLeitura: false, hash: a.arquivo.hash })
+    pericia.historico.push({ quando: agora.toISOString(), quem, oQue: `Anexou ${item.nome.toLowerCase()} na pasta do cliente`, passo: 'DP.03' })
   },
 
   /** Concluir (GGVP-56, CA5, CA6): cada item anexado ou justificado e as conferências; volta ao Jurídico administrativo. */
@@ -1039,7 +1078,7 @@ export function tarefasDoJuridicoAdmEm(mundo: MundoDaPericia, agora: Date): Tare
         id: `pericia-orientar-${pericia.id}`,
         codigo: 'DP.06',
         acao: 'Orientar para a perícia',
-        detalhe: [t.beneficio, `${NOMES_DO_TIPO[pericia.tipo]} em ${dataCurta(m.data, hoje)}${m.origem === 'juizo' ? ' (data lida da publicação pelo sistema)' : ''}`, como, 'ligar para o cliente'].join(' · '),
+        detalhe: [t.beneficio, `${NOMES_DO_TIPO[pericia.tipo]} em ${dataCurta(m.data, hoje)}${m.origem !== 'juizo' ? '' : m.registradaPor === SISTEMA ? ' (data lida da publicação pelo sistema)' : ' (data do juízo)'}`, como, 'ligar para o cliente'].join(' · '),
         prazo: prazo.texto,
         urgente: prazo.urgente,
       })
