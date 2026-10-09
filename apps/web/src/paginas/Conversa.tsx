@@ -4,7 +4,19 @@ import { CampoCofre } from '../componentes/CampoCofre.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { anexarAudio, falasDaConversa, finalizarConversa, gravarConversa, obterConversa, registrarAcaoNaConversa, transcreverConversa, type ConversaAberta } from '../dados/conversa.ts'
+import {
+  anexarAudio,
+  enviarParteDaConversa,
+  falasDaConversa,
+  finalizarConversa,
+  gravarConversa,
+  obterConversa,
+  pedirChaveAoVivoDaConversa,
+  registrarAcaoNaConversa,
+  transcreverConversa,
+  type ConversaAberta,
+} from '../dados/conversa.ts'
+import { useGravacaoDeVerdade } from '../dados/gravacaoDeVerdade.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import type { SenhaGov } from '../dados/tipos.ts'
@@ -19,8 +31,9 @@ import proprio from './Conversa.module.css'
 import vivo from './EntrevistaAoVivo.module.css'
 
 // Figma step_D5.01 (2281:2), com a transcrição ao vivo de "Atendimento · Reunião com transcrição" (73:560). A gravação é a
-// da entrevista (GGVP-40), simulada: o relógio corre e a IA "ouve" a conversa de exemplo. `simular=falha-da-transcricao`
-// abre a falha; `passo` é quantos milissegundos dura um segundo de gravação (o teste acelera).
+// da entrevista (GGVP-40). Sem microfone, simulada: o relógio corre e a IA "ouve" a conversa de exemplo. GGVP-133: com o
+// microfone, o áudio de verdade vai ao servidor em partes e, na conversa no escritório, o texto ao vivo vem da OpenAI.
+// `simular=falha-da-transcricao` abre a falha; `passo` é quantos milissegundos dura um segundo de gravação (o teste acelera).
 
 type Props = { conversaId: string; simular?: string; passo?: number }
 
@@ -64,6 +77,21 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
 
   const g = dados?.gravacao
   const gravando = g?.estado === 'gravando'
+  // GGVP-133: o microfone de verdade; o texto ao vivo só na conversa no escritório (na ligação, não).
+  const deVerdade = useGravacaoDeVerdade({
+    ligar: Boolean(gravando && dados?.conversa.modo === 'tempo-real'),
+    pausada: g?.estado === 'pausada',
+    segundos,
+    enviarParte: (parte) => enviarParteDaConversa(conversaId, parte),
+    pedirChave: dados?.conversa.canal === 'presencial' ? () => pedirChaveAoVivoDaConversa(conversaId) : null,
+  })
+
+  /** Finalizar: o microfone fecha a última parte e as partes sobem antes; sem internet, o áudio espera aqui. */
+  async function finalizar(id: string) {
+    const restantes = await deVerdade.fechar()
+    if (restantes.length > 0) throw new Error('Sem internet: o áudio está guardado neste computador. Finalize quando a conexão voltar.')
+    return finalizarConversa(id, { aos: segundos })
+  }
   useEffect(() => {
     if (!gravando) return
     const relogioDaGravacao = setInterval(() => setSegundos((s) => s + 1), passo)
@@ -117,8 +145,8 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const ditoAs = (aos: number) =>
     g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
   const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)} (G10)` : ''
-  // A transcrição ao vivo já sai sem a senha dita em voz alta (G9).
-  const aoVivo = g && c.modo === 'tempo-real' ? tirarSenhas(falasDaConversa(ficha, c).filter((f) => f.aos <= segundos)) : []
+  // A transcrição ao vivo já sai sem a senha dita em voz alta (G9). Com o microfone de verdade, a de exemplo não aparece.
+  const aoVivo = g && c.modo === 'tempo-real' && deVerdade.aoVivo === null ? tirarSenhas(falasDaConversa(ficha, c).filter((f) => f.aos <= segundos)) : []
   const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : aoVivo
 
   const situacao = !g
@@ -247,7 +275,15 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   </button>
                 )}
                 {g?.estado === 'gravando' && (
-                  <button type="button" className={vivo.secundario} disabled={ocupado} onClick={() => fazer(() => registrarAcaoNaConversa(c.id, 'pausou', segundos))}>
+                  <button
+                    type="button"
+                    className={vivo.secundario}
+                    disabled={ocupado}
+                    onClick={() => {
+                      deVerdade.pausar()
+                      fazer(() => registrarAcaoNaConversa(c.id, 'pausou', segundos))
+                    }}
+                  >
                     Pausar
                   </button>
                 )}
@@ -271,6 +307,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                     disabled={ocupado}
                     onClick={() => {
                       setCofre(true)
+                      deVerdade.pausar()
                       fazer(() => registrarAcaoNaConversa(c.id, 'abriu-cofre', segundos))
                     }}
                   >
@@ -278,7 +315,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   </button>
                 )}
                 {(g?.estado === 'gravando' || (g?.estado === 'pausada' && !cofre)) && (
-                  <button type="button" className={vivo.primario} disabled={ocupado} onClick={() => fazer(() => finalizarConversa(c.id, { aos: segundos }))}>
+                  <button type="button" className={vivo.primario} disabled={ocupado} onClick={() => fazer(() => finalizar(c.id))}>
                     Finalizar conversa
                   </button>
                 )}
@@ -328,7 +365,22 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 </div>
               )}
 
-              {trechos.length === 0 ? (
+              {!encerrada && deVerdade.aoVivo !== null ? (
+                <>
+                  {deVerdade.aoVivo.length === 0 ? (
+                    <p className={vivo.vazio}>{deVerdade.semAoVivo || (c.canal === 'presencial' ? 'Ouvindo: o texto aparece aqui enquanto falam.' : 'Gravando: o texto sai quando a conversa terminar.')}</p>
+                  ) : (
+                    <ol className={vivo.falas} aria-label="Falas ao vivo">
+                      {deVerdade.aoVivo.map((f) => (
+                        <li key={f.id} className={vivo.fala}>
+                          <span>{f.texto}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <p className={base.nota}>O que vale no caso é o texto final, com quem fala, que sai ao finalizar.</p>
+                </>
+              ) : trechos.length === 0 ? (
                 <p className={vivo.vazio}>A transcrição aparece aqui quando a gravação começar.</p>
               ) : (
                 <ol className={vivo.falas} aria-label="Falas">
@@ -356,7 +408,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 Gravação da ligação
               </h2>
               <label className={proprio.campo} htmlFor={idArquivo}>
-                Áudio da ligação (qualquer formato, sem limite de tamanho)
+                Áudio da ligação (qualquer formato, até 25 MB)
                 <input id={idArquivo} type="file" accept="audio/*" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
               </label>
               <label className={vivo.conferencia} htmlFor={idAvisoNaLigacao}>
@@ -367,11 +419,15 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 type="button"
                 className={vivo.primario}
                 disabled={!arquivo || !avisoNaLigacao || ocupado}
-                onClick={() => fazer(() => anexarAudio(c.id, { nome: arquivo!.name, tipo: arquivo!.type, tamanho: arquivo!.size, avisoNaGravacao: true }))}
+                onClick={() => fazer(() => anexarAudio(c.id, { nome: arquivo!.name, tipo: arquivo!.type, tamanho: arquivo!.size, avisoNaGravacao: true }, arquivo!))}
               >
                 {ocupado ? 'anexando…' : 'Anexar e transcrever'}
               </button>
-              <p className={base.nota}>O áudio fica no card do cliente, guardado; a IA transcreve e marca o que muda (D5.02).</p>
+              <p className={base.nota}>
+                A gravação da ligação fica na conversa do cliente no Chatwoot, como mensagem privada: baixe o áudio e suba aqui. O
+                portal não busca nada no Chatwoot. O áudio fica no card do cliente, guardado; a IA transcreve e marca o que muda
+                (D5.02).
+              </p>
             </section>
           )}
 
@@ -397,6 +453,11 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 {g.transcricao === 'falhou' && `A transcrição falhou: ${g.motivoDaFalha}. O áudio está guardado; nada se perdeu.`}
                 {g.transcricao === 'sem-audio' && 'O registro ficou no card, como "só registro".'}
               </p>
+              {g.transcricao === 'pronta' && g.alertaDaIa && (
+                <p className={vivo.alerta} role="alert">
+                  Atenção: {g.alertaDaIa}. A fala entrou como dado; confira o texto antes de usar (G14).
+                </p>
+              )}
               <div className={base.atalhos}>
                 {g.transcricao === 'falhou' && (
                   <button type="button" className={base.atalho} disabled={ocupado} onClick={() => fazer(() => transcreverConversa(c.id))}>
@@ -415,6 +476,19 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               <h2 id="o-que-a-ia-achou" className={proprio.iaTitulo}>
                 <span aria-hidden="true">✦ </span>O que a IA encontrou na conversa
               </h2>
+              {analise.daIa && (
+                <div className={proprio.iaParte}>
+                  <span className={proprio.selo}>Sugestão da IA · quem confere é você (G14)</span>
+                  {analise.daIa.alerta && (
+                    <p className={vivo.alerta} role="alert">
+                      Atenção: {analise.daIa.alerta}. A fala entrou como dado; nada muda sem você conferir (G14).
+                    </p>
+                  )}
+                  <h3 className={proprio.iaSub}>Resumo da conversa</h3>
+                  <p>{analise.daIa.resumo}</p>
+                  <p className={base.nota}>Fonte: a transcrição desta conversa ({analise.daIa.modelo}).</p>
+                </div>
+              )}
               {(
                 [
                   ['O que mudou', analise.mudancas.filter((m) => m.antes)],

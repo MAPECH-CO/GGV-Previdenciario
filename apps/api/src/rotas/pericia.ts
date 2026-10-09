@@ -41,6 +41,7 @@ import { lerJson, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
+import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import type { Perito } from '../../../web/src/dados/peritos.ts'
 import type { Ficha, Processo, Tarefa } from '../../../web/src/dados/tipos.ts'
 import { hojeIso } from '../../../web/src/regras/datas.ts'
@@ -69,7 +70,7 @@ export const MSG_ARQUIVO_PDF = 'Anexe o PDF (até 25 MB).'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** De que passo a perícia nasceu (a etapa que a chamou): D2.03 (GGVP-31), D2.05 (exigência), D3.03 (despacho), D3a.03 (juiz). */
-const ORIGEM_DO_PASSO: Record<string, OrigemDaPericia> = {
+export const ORIGEM_DO_PASSO: Record<string, OrigemDaPericia> = {
   'D2.03': 'd2-necessidade',
   'D2.05': 'd2-exigencia',
   'D3.03': 'd3-despacho',
@@ -97,7 +98,7 @@ const NO_CATALOGO: Record<string, string> = {
 /** O perfil do perito na coluna `perfil` (GGVP-73): o tipo, onde atua e os laudos, sem dado pessoal do cliente. */
 type PerfilGuardado = Pick<Perito, 'tipo' | 'onde' | 'laudos'>
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; ia: Ia; preparo?: Preparo; agora?: () => Date }
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; ia: Ia; preparo?: Preparo; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /** A perícia do caso montada para as rotas: o mundo das regras e as linhas do banco, para gravar depois. */
@@ -124,7 +125,7 @@ function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
   }
 }
 
-export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamento, ia, preparo, agora = () => new Date() }: Opcoes) {
+export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamento, ia, preparo, agora = () => new Date(), tarefasPorArea }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
   const com = (acao: Acao) => ({ preHandler: exigir(banco, acao, agora) })
@@ -344,19 +345,21 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
 
   // As tarefas da perícia de quem está na sessão (GGVP-49 CA2, GGVP-53 CA9, GGVP-56, GGVP-66, GGVP-70): pelo perfil da
   // sessão, nunca por ?perfil=. ponytail: lê as perícias caso a caso; juntar numa consulta quando o escritório crescer.
-  app.get('/api/pericias/tarefas', com('caso.ver'), async (pedido): Promise<Tarefa[]> => {
+  async function tarefasDaPericia(perfil: string | null): Promise<Tarefa[]> {
     const casos = [...new Set((await banco.select({ casoId: pericia.casoId }).from(pericia)).map((l) => l.casoId))]
     const tarefas: Tarefa[] = []
     for (const casoId of casos) {
       const d = await doCaso(casoId)
       if (!d) continue
-      const perfil = pedido.perfilAtivo
       if (perfil === 'juridico_adm') tarefas.push(...tarefasDoJuridicoAdmEm(d.mundo, agora()))
       if (perfil === 'documentacao') tarefas.push(...tarefasDaDocumentacaoEm(d.mundo, agora()))
       if (perfil === 'advogada') tarefas.push(...tarefasDaAdvogadaEm(d.mundo, agora()), ...tarefasDeDecidirDocumentoEm(d.mundo, agora()))
     }
     return tarefas
-  })
+  }
+  app.get('/api/pericias/tarefas', com('caso.ver'), (pedido) => tarefasDaPericia(pedido.perfilAtivo))
+  // GGVP-147: as da perícia entram nas tarefas do setor.
+  tarefasPorArea?.registrar(tarefasDaPericia)
 
   // A cópia das telas (modo misto): as perícias em andamento de todos os casos, na visão do perfil, para a agenda, o chat
   // e as páginas que ainda leem a cópia do navegador. ponytail: lê caso a caso; juntar numa consulta quando crescer.

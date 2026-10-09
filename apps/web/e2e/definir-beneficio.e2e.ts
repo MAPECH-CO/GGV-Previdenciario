@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-51 · Definir o benefício com apoio do acervo. Cada teste abre um navegador novo, então começa da semente de
 // exemplo.ts: a advogada da Josefa não cita benefício na entrevista; a da Natália cita a aposentadoria por invalidez.
@@ -7,6 +8,9 @@ import { expect, test, type Page } from '@playwright/test'
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+// As telas do Jurídico pedem o perfil (GGVP-135): a advogada entra pela API.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, ADVOGADA))
 
 /** A entrevista gravada e transcrita, com o relógio do Playwright. */
 async function entrevistaTranscrita(page: Page, agendamentoId: string) {

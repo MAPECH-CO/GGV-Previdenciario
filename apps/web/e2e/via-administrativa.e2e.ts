@@ -103,7 +103,18 @@ test('GGVP-23 · sem parecer, Aprovar fica desligado; reprovar sem motivo não p
   await context.clearCookies()
   await entrarPelaApi(page, 'atendimento@exemplo.ggv')
   await page.goto('/')
-  await expect(page.getByRole('link', { name: 'Benedito Alves (exemplo) · Ajustar o caso: Falta o laudo do ortopedista' })).toBeVisible()
+  const ajuste = page.getByRole('link', { name: 'Benedito Alves (exemplo) · Ajustar o caso: Falta o laudo do ortopedista' })
+  await expect(ajuste).toBeVisible()
+
+  // GGVP-127: a tarefa abre o caso devolvido, com o motivo; sem parecer, o servidor trava a liberação nova (G17).
+  await ajuste.click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ajustar o caso')
+  await expect(page.getByRole('region', { name: 'O que a Sênior pediu' })).toContainText('Falta o laudo do ortopedista')
+  await expect(page.getByRole('region', { name: 'O que a Sênior pediu' })).toContainText('Sem prazo')
+  await page.getByRole('checkbox', { name: 'Conferi o checklist' }).check()
+  await page.getByRole('checkbox', { name: /Conferi as assinaturas/ }).check()
+  await expect(page.getByText(/Não dá para liberar ao Jurídico/).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Liberar de novo' })).toBeDisabled()
 })
 
 // Grupo 2: casos de exemplo em vigília (Rita, Sebastião e Teresa), esperando o INSS.
@@ -252,16 +263,23 @@ test('GGVP-44 e GGVP-98 · a advogada conclui; o Financeiro recebe, avisa, marca
   await expect(page.getByLabel('Mensagem')).toContainText('Ana (exemplo), do escritório, vai com você.')
   await page.getByRole('button', { name: 'Revisei e enviei' }).click()
   await expect(page.getByLabel('Avisos enviados')).toContainText('WhatsApp · Júlia (exemplo)')
-  const telaDoBanco = page.url()
 
+  // P3 do roteiro de 09/10: quem leva vê a visita marcada, sem nenhum valor, e registra que levou.
   await context.clearCookies()
   await entrarPelaApi(page, 'atendimento@exemplo.ggv')
   await page.goto('/')
-  await expect(page.getByText('Levar ao banco').first()).toBeVisible()
+  await page.getByRole('link', { name: 'Vera Lúcia (exemplo) · Levar ao banco' }).click()
+  await expect(page.getByLabel('Ida ao banco', { exact: true })).toContainText('Caixa, agência Centro')
+  await expect(page.getByLabel('Ida ao banco', { exact: true })).toContainText('Quem leva: Ana (exemplo)')
+  await expect(page.getByLabel('O que levar', { exact: true })).toContainText('CPF do cliente')
+  await expect(page.locator('main')).not.toContainText('R$')
+  await page.getByRole('button', { name: 'Levei o cliente ao banco' }).click()
+  await expect(page.getByRole('status')).toHaveText('Registrado. O Financeiro recebeu a tarefa de confirmar o recebimento.')
 
   await context.clearCookies()
   await entrarPelaApi(page, 'financeiro@exemplo.ggv')
-  await page.goto(telaDoBanco)
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Vera Lúcia (exemplo) · Confirmar o recebimento: cliente levado ao banco' }).click()
   await page.getByRole('button', { name: 'Confirmar recebimento' }).click()
   await expect(page.getByRole('status')).toHaveText('Recebimento confirmado. Caso encerrado.')
 })

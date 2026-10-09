@@ -1,5 +1,5 @@
 // Fluxo: onde o caso está no BPMN, as tarefas de cada raia e as decisões de pessoa (GGVP-105, 78, 94, 109).
-import { date, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, date, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
@@ -62,6 +62,24 @@ export const tarefa = pgTable(
   },
   (t) => [emLista('tarefa_situacao', t.situacao, SITUACOES_TAREFA)],
 ).enableRLS()
+
+/**
+ * Quem faz cada tarefa do setor, escolhido pelo líder (GGVP-147). Vale para toda tarefa da Central, de qualquer área: a
+ * chave é o id da tarefa (o do banco ou o que a área calcula). Sem linha, a tarefa está sem responsável.
+ */
+export const atribuicaoTarefa = pgTable('atribuicao_tarefa', {
+  tarefaId: text('tarefa_id').primaryKey(),
+  /** Nulo: o líder deixou sem responsável. */
+  responsavelId: uuid('responsavel_id').references(() => usuario.id),
+  prazo: date('prazo'),
+  prioridade: text('prioridade').notNull().default('normal'),
+  recado: text('recado'),
+  avisar: boolean('avisar').notNull().default(true),
+  atribuidaPor: uuid('atribuida_por')
+    .notNull()
+    .references(() => usuario.id),
+  atribuidaEm: momento('atribuida_em').notNull().defaultNow(),
+}).enableRLS()
 
 /** Cada tentativa de um laço de cobrança, contato ou remarcação (G15). */
 export const tentativa = pgTable('tentativa', {

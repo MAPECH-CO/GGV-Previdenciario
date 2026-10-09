@@ -3,8 +3,8 @@
 // Ligar no servidor: trocar o corpo por fetch no endpoint da design.md e guardar no cofre de verdade (GGVP-103).
 import { hojeIso } from '../regras/datas.ts'
 import { TAMANHO_DA_SENHA, registrarNoCofre } from './cofre.ts'
-import { QUEM, agora, esperar, evento, gravar, ler } from './servidor.ts'
-import type { RegistroDaRenovacao, Renovacao, SenhaGov } from './tipos.ts'
+import { QUEM, agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber } from './servidor.ts'
+import type { Ficha, RegistroDaRenovacao, Renovacao, SenhaGov, TarefaEncaminhada } from './tipos.ts'
 
 /**
  * POST /api/entrevistas/:id/renovacao. "Renovou": a senha vai ao cofre, com a data em que funcionou (CA2, CA5, CA9, CA11);
@@ -18,6 +18,17 @@ export async function registrarRenovacao(agendamentoId: string, r: RegistroDaRen
       ? r.senha.length >= TAMANHO_DA_SENHA.minimo && r.senha.length <= TAMANHO_DA_SENHA.maximo && r.conferiMeuInss === true
       : r.resultado === 'nao-conseguiu' && r.motivo.trim().length >= 3 && r.motivo.trim().length <= 300 && r.aviseiOCliente === true
   if (!valido) throw new Error('Renovação inválida')
+  if (agendamentoDoServidor(agendamentoId)) {
+    // GGVP-125, bloco 3b: a senha nova vai ao cofre do portal; a rota da entrevista recebe só o resultado (G9).
+    if (r.resultado === 'renovou') await noBanco(`/pessoas/${agendamentoId.slice(0, 36)}/cofre`, { method: 'POST', corpo: { senha: r.senha } })
+    const corpo = r.resultado === 'renovou' ? { resultado: 'renovou', conferiMeuInss: true } : { resultado: 'nao-conseguiu', motivo: r.motivo.trim(), aviseiOCliente: true }
+    const resposta = await noBanco<{ senhaGov: SenhaGov; renovacao: Renovacao; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/entrevistas/${agendamentoId}/renovacao`, {
+      method: 'POST',
+      corpo,
+    })
+    receber(resposta)
+    return { senhaGov: resposta.senhaGov, renovacao: resposta.renovacao }
+  }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.agendamentos.some((a) => a.id === agendamentoId))
   if (!ficha) throw new Error('Entrevista não encontrada')

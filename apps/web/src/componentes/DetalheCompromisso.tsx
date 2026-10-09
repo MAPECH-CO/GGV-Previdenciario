@@ -6,6 +6,7 @@ import { LIMITE_DE_REMARCACOES, dataLonga, detalheDoEvento, podeRemarcar } from 
 import cat from './Categorias.module.css'
 import { ConviteChatwoot } from './ConviteChatwoot.tsx'
 import styles from './DetalheCompromisso.module.css'
+import { usePode, useSessao } from '../sessao.ts'
 
 type Props = {
   evento: EventoDaAgenda
@@ -27,6 +28,9 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
   const janela = useRef<HTMLDialogElement>(null)
   const [convite, setConvite] = useState(false)
   const [registrando, setRegistrando] = useState(false)
+  // "Preparar entrevista" é do Jurídico (GGVP-135); sem sessão (teste de uma tela sozinha), como desenhado.
+  const semSessao = useSessao() === null
+  const prepara = usePode('entrevista.gravar') || semSessao
   const [erro, setErro] = useState('')
   const travado = useRef(false)
 
@@ -105,7 +109,7 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
           </a>
         )}
         {/* A advogada prepara a conversa também pela agenda (GGVP-32, CA5). */}
-        {evento.oQue === 'Fazer entrevista' && evento.estado === 'agendado' && evento.fichaId && (
+        {prepara && evento.oQue === 'Fazer entrevista' && evento.estado === 'agendado' && evento.fichaId && (
           <a className={styles.botao} href={`/entrevista/${evento.id}/preparar`}>
             Preparar entrevista
           </a>

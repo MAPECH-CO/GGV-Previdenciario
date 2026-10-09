@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-81 · Ler e arquivar os documentos: da Central à conferência da leitura da IA, com divergência, duplicado,
 // quarentena e "Arquivar"; e do balcão ao scanner até a conferência. Cada teste começa da semente de exemplo.ts.
@@ -9,6 +10,8 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 test('CA7 a CA11 · da Central à conferência da Rita: divergência, quarentena movida, duplicado e "Arquivar"', async ({ page }) => {
+  // A conferência da leitura é da Documentação, que trabalha na Central do Atendimento (GGVP-130).
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Rita Exemplo · Conferir documento' }).click()
   await expect(page).toHaveURL('/clientes/rita-exemplo/conferir-documentos')
@@ -59,6 +62,10 @@ test('CA1 · o papel que o scanner guardou no balcão chega à conferência, sem
   await page.getByRole('button', { name: 'Digitalizar (scanner simulado)' }).click()
   await expect(page.getByRole('list', { name: 'Documentos do lote' })).toContainText('CNIS - Antônio Exemplo -')
 
+  // A conferência chega à Central da Documentação, não à do Atendimento (GGVP-130).
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Antônio Exemplo · Conferir documento' })).toHaveCount(0)
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Antônio Exemplo · Conferir documento' }).click()
   const lidos = page.getByRole('list', { name: 'Documentos lidos pela IA' })
