@@ -184,7 +184,21 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
         { id: '2e3f4a5b-6c7d-4e8f-9a01-b2c3d4e5f6a7', setor: 'Documentação', titulo: 'Cumprir exigência do INSS', responsavel: null, prazo: null, passo: 'D2.05d', tela: null },
       ],
       pericia: { tipo: 'medica', origem: 'd2-necessidade', situacao: 'agendada', marcada: { data: '2026-10-20', hora: '10:30', local: 'Agência Santo Amaro' }, perito: 'Dr. Perito', resultado: null },
-      exigencias: [{ origem: 'inss', descricao: 'Ficha do grupo familiar', prazo: '2026-10-15', situacao: 'aberta' }],
+      exigencias: [
+        {
+          origem: 'inss',
+          descricao: 'Ficha do grupo familiar',
+          prazo: '2026-10-15',
+          situacao: 'aberta',
+          recebidaEm: '2026-10-01',
+          itens: [
+            { setor: 'Atendimento', descricao: 'Confirmar com o cliente quem mora na casa', situacao: 'cumprido', cumpridoEm: '2026-10-06T14:00:00.000Z', cumpridoPor: 'Ana' },
+            { setor: 'Documentação', descricao: 'Ficha do grupo familiar assinada', situacao: 'pendente', cumpridoEm: null, cumpridoPor: null },
+            { setor: 'Documentação', descricao: 'CadÚnico atualizado', situacao: 'pendente', cumpridoEm: null, cumpridoPor: null },
+            { setor: 'Jurídico administrativo', descricao: 'Juntar a declaração do sindicato', situacao: 'nao_cumprido', cumpridoEm: '2026-10-06T15:00:00.000Z', cumpridoPor: 'Gabi' },
+          ],
+        },
+      ],
       prazos: [],
       publicacoes: [],
       proximoPasso: { oQue: 'Decidir perícia', setor: 'Jurídico', prazo: '2026-10-07', tela: `/casos/${CASO}/pericia` },
@@ -226,7 +240,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(within(etapas()[1]).getByRole('link', { name: /Em perícia/ }).getAttribute('href')).toBe(`/casos/${CASO}/pericia`)
     expect(etapas()[2].textContent).toBe('Justiça (D3 · ainda não chegou)')
     const onde = secao('Onde o caso está').textContent
-    expect(onde).toContain('INSS · Decidir perícia. Esperando de fora: Cliente.')
+    expect(onde).toContain('INSS · Decidir perícia. Esperando Documentação subir o card. Esperando de fora: Cliente.')
     expect(onde).toContain('Em perícia · pedido ao INSS (D2) · perícia médica · 20/10, 10:30 · Agência Santo Amaro')
     const tarefas = secao('Tarefas em andamento')
     expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Jurídico', 'Documentação'])
@@ -234,7 +248,14 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(tarefas.textContent).toContain('responsável: Gabihoje')
     expect(tarefas.textContent).toContain('responsável: ainda sem responsável')
     expect(secao('Esperando alguém de fora').textContent).toContain('cliente entregar o documento')
-    expect(screen.queryByRole('heading', { name: 'Esperando os setores' })).toBeNull()
+    // Os itens por setor da exigência aberta (G21); o que a advogada encerrou sem a prova não espera mais ninguém.
+    const setores = secao('Esperando os setores')
+    expect(setores.textContent).toContain('exigência do INSS: Ficha do grupo familiar · desde 01/10')
+    expect(within(setores).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
+      'AtendimentoConfirmar com o cliente quem mora na casasubiu o card 06/10',
+      'DocumentaçãoFicha do grupo familiar assinadaainda não subiu o card',
+      'DocumentaçãoCadÚnico atualizadoainda não subiu o card',
+    ])
     expect(secao('Prazos').textContent).toContain('15/10Exigência do INSS: Ficha do grupo familiar (G12)')
     // O evento sem passo do BPMN fica na etapa do anterior.
     expect(screen.getByRole('list', { name: 'Linha · INSS' }).textContent).toContain('sistema Sistema: Vigília do Meu INSS rodou')
@@ -262,6 +283,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(secao('Tarefas em andamento').textContent).toContain('Nenhuma tarefa aberta no caso.')
     expect(secao('Prazos').textContent).toContain('Nenhum prazo nesta fase.')
     expect(screen.queryByRole('heading', { name: 'Esperando alguém de fora' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Esperando os setores' })).toBeNull()
     const dados = secao('Dados do processo').textContent
     expect(dados).not.toContain('Prestação de contas')
     expect(dados).not.toContain('Saúde (Jurídico)')

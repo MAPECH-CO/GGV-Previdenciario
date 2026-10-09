@@ -260,8 +260,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                   {c.pendentes.motivo} · desde {curta(c.pendentes.desde)}
                 </p>
                 <ul className={styles.lista}>
-                  {c.pendentes.itens.map((l) => (
-                    <li key={l.setor} className={base.pericia}>
+                  {c.pendentes.itens.map((l, i) => (
+                    <li key={i} className={base.pericia}>
                       <span>
                         <strong>{l.setor}</strong>
                         <span className={base.nota}>{l.oQue}</span>

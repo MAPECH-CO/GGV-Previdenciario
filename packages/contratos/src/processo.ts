@@ -37,9 +37,26 @@ export const ProcessoDoCaso = z.object({
       resultado: z.enum(['favoravel', 'desfavoravel']).nullable(),
     })
     .nullable(),
-  /** Exigências em aberto (INSS, juízo ou despacho), com o prazo contado em código. */
-  exigencias: z.array(z.object({ origem: z.enum(['inss', 'juizo', 'despacho']), descricao: z.string(), prazo: z.string().nullable(), situacao: z.string() })),
-  /** Os prazos processuais que ainda não venceram (G12). */
+  /** Exigências em aberto (INSS, juízo ou despacho), com o prazo contado em código e os itens por setor (G21). */
+  exigencias: z.array(
+    z.object({
+      origem: z.enum(['inss', 'juizo', 'despacho']),
+      descricao: z.string(),
+      prazo: z.string().nullable(),
+      situacao: z.string(),
+      recebidaEm: z.string(),
+      itens: z.array(
+        z.object({
+          setor: z.string(),
+          descricao: z.string(),
+          situacao: z.enum(['pendente', 'cumprido', 'nao_cumprido']),
+          cumpridoEm: z.string().nullable(),
+          cumpridoPor: z.string().nullable(),
+        }),
+      ),
+    }),
+  ),
+  /** Os prazos processuais que ainda não venceram e têm tarefa aberta, fora os que já aparecem como exigência (G12). */
   prazos: z.array(z.object({ fim: z.string(), regra: z.string() })),
   /** As publicações do processo judicial: a data, a fonte e a classe (o texto fica na tela das publicações). */
   publicacoes: z.array(z.object({ data: z.string(), fonte: z.string(), classe: z.string().nullable() })),

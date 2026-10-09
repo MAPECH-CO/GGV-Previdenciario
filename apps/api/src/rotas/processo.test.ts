@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import { and, eq, inArray } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import {
@@ -10,6 +11,7 @@ import {
   etapa,
   eventoAuditoria,
   exigencia,
+  exigenciaItem,
   identificadorCaso,
   parecerMedico,
   pericia,
@@ -153,8 +155,9 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       perito: 'Dr. Perito',
       resultado: 'favoravel',
     })
-    expect(p.exigencias).toEqual([{ origem: 'inss', descricao: 'Ficha do grupo familiar', prazo: '2026-10-15', situacao: 'aberta' }])
-    expect(p.prazos).toEqual([{ fim: '2026-10-20', regra: '15 dias úteis' }])
+    expect(p.exigencias).toEqual([{ origem: 'inss', descricao: 'Ficha do grupo familiar', prazo: '2026-10-15', situacao: 'aberta', recebidaEm: '2026-10-01', itens: [] }])
+    // G12: prazo sem tarefa aberta ligada não tem mais o que cumprir e não aparece.
+    expect(p.prazos).toEqual([])
     expect(p.publicacoes).toEqual([{ data: '2026-10-01', fonte: 'DJEN', classe: 'andamento' }])
     expect(p.linha.map((l: { quem: string; passo: string | null; descricao: string }) => [l.quem, l.passo, l.descricao])).toEqual([
       ['helena', 'D2.01', 'OK da Sênior para o INSS: aprovado'],
@@ -235,5 +238,58 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     const doJuiz = (await ver('ana', c.id)).json()
     expect(doJuiz.pericia).toEqual({ tipo: 'social', origem: 'd3a-juiz', situacao: 'marcar', marcada: null, perito: null, resultado: null })
     expect(doJuiz.proximoPasso).toBeNull()
+  })
+
+  it('G12, G21 · o prazo do juiz aparece uma vez só e só enquanto há o que cumprir; os itens por setor vêm com quem cumpriu', async () => {
+    const cookies = await cookieDe('gabi')
+    const publicar = async (texto: string, hash: string) => {
+      const [pub] = await banco.insert(publicacao).values({ fonte: 'aasp', casoId, disponibilizadaEm: '2026-10-05', texto, hash }).returning()
+      await app.inject({ method: 'POST', url: `/api/publicacoes/${pub.id}/classificacao`, cookies, payload: { classe: 'exigencia', dias: 15 } })
+    }
+    const decidir = (payload: object) => app.inject({ method: 'POST', url: `/api/casos/${casoId}/exigencia-juiz`, cookies, payload })
+    const doJuiz = (p: { exigencias: { origem: string }[] }) => p.exigencias.filter((x) => x.origem === 'juizo')
+
+    // Na análise da advogada: o prazo do processo, uma vez.
+    await publicar('Diga a parte autora sobre o laudo.', 'j1')
+    expect((await ver('ana')).json().prazos).toEqual([{ fim: '2026-10-27', regra: expect.any(String) }])
+    // Só ciência: nada a cumprir, o prazo sai.
+    expect((await decidir({ decisao: 'ciencia' })).statusCode).toBe(201)
+    expect((await ver('ana')).json().prazos).toEqual([])
+
+    // Precisa cumprir: o prazo aparece só como a exigência, com os itens por setor.
+    await publicar('Junte a parte autora o CNIS e a carteira de trabalho.', 'j2')
+    const itens = [
+      { setor: 'documentacao', descricao: 'Juntar o CNIS', prazoInterno: '20/10/2026' },
+      { setor: 'atendimento', descricao: 'Pedir a carteira de trabalho', prazoInterno: '15/10/2026' },
+    ]
+    expect((await decidir({ decisao: 'cumprir', itens })).statusCode).toBe(201)
+    await banco
+      .update(exigenciaItem)
+      .set({ situacao: 'cumprido', cumpridoEm: new Date('2026-10-06T14:00:00Z'), cumpridoPor: ids.ana })
+      .where(eq(exigenciaItem.descricao, 'Pedir a carteira de trabalho'))
+    let p = (await ver('ana')).json()
+    expect(p.prazos).toEqual([])
+    expect(doJuiz(p)).toEqual([
+      {
+        origem: 'juizo',
+        descricao: 'Junte a parte autora o CNIS e a carteira de trabalho.',
+        prazo: '2026-10-27',
+        situacao: 'aberta',
+        recebidaEm: '2026-10-05',
+        itens: [
+          { setor: 'Atendimento', descricao: 'Pedir a carteira de trabalho', situacao: 'cumprido', cumpridoEm: '2026-10-06T14:00:00.000Z', cumpridoPor: 'ana' },
+          { setor: 'Documentação', descricao: 'Juntar o CNIS', situacao: 'pendente', cumpridoEm: null, cumpridoPor: null },
+        ],
+      },
+    ])
+
+    // Cumprida (a manifestação protocolada fecha a exigência e as tarefas dela): nem a exigência nem o prazo ficam na página.
+    await banco.update(exigencia).set({ situacao: 'cumprida' }).where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo')))
+    await banco
+      .update(tarefa)
+      .set({ situacao: 'concluida', concluidaEm: new Date('2026-10-07T12:00:00Z') })
+      .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D3a.03', 'D3a.04'])))
+    p = (await ver('ana')).json()
+    expect([p.prazos, doJuiz(p)]).toEqual([[], []])
   })
 })

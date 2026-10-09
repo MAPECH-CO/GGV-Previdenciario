@@ -583,8 +583,8 @@ const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
 
 /**
  * O caso do servidor (GGVP-146, parte 5): a rota já vem na visão do perfil da sessão (valores, conteúdo médico e peça só
- * para quem pode); aqui só vira o formato da tela. O que o banco não tem fica de fora: juízo, laços dos setores,
- * estratégia, laudo novo e a pergunta do perito (que a tela da perícia faz).
+ * para quem pode); aqui só vira o formato da tela. O que o banco não tem fica de fora: juízo, estratégia, laudo novo e
+ * a pergunta do perito (que a tela da perícia faz).
  */
 async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined): Promise<CasoNaTela | null> {
   const r = await chamarApi<ProcessoDoCaso>(`/casos/${processoId}/processo`)
@@ -616,6 +616,17 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
     ),
     ...p.prazos.map((z) => ({ tipo: 'prazo' as const, quando: z.fim, oQue: `Prazo processual (${z.regra})`, urgente: prazoFalado(z.fim, hoje).urgente })),
   ].sort((a, b) => a.quando.localeCompare(b.quando))
+  // Os setores que as exigências abertas esperam (G21). O item que a advogada encerrou sem a prova não espera mais ninguém.
+  const comItens = p.exigencias.filter((x) => x.itens.length)
+  const lacos: Laco[] = comItens.flatMap((x) =>
+    x.itens
+      .filter((i) => !(i.situacao === 'nao_cumprido' && i.cumpridoEm))
+      .map((i) => ({
+        setor: i.setor,
+        oQue: i.descricao,
+        subiu: i.situacao === 'cumprido' && i.cumpridoEm ? { quem: i.cumpridoPor ?? 'o setor', quando: hojeIso(new Date(i.cumpridoEm)) } : undefined,
+      })),
+  )
   const pe = p.pericia
   const m = pe?.marcada
   const s = p.saude
@@ -647,7 +658,14 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
             data: m ? `${dataCurta(m.data, hoje)}, ${m.hora}${m.local ? ` · ${m.local}` : ''}` : undefined,
           }
         : undefined,
-    pendentes: null,
+    pendentes: lacos.length
+      ? {
+          motivo: comItens.map((x) => `exigência ${DA_EXIGENCIA[x.origem]}: ${x.descricao}`).join(' · '),
+          desde: comItens.map((x) => x.recebidaEm).sort()[0],
+          setores: setoresPendentes(lacos),
+          itens: lacos,
+        }
+      : null,
     esperas: p.etapas.flatMap((e) =>
       e.aguardando
         ? [{ quem: /^cliente/i.test(e.aguardando) ? ('cliente' as const) : e.diagrama.startsWith('D3') ? ('justica' as const) : ('inss' as const), oQue: e.aguardando, desde: hojeIso(new Date(e.desde)) }]

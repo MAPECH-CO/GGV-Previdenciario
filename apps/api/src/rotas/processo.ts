@@ -15,6 +15,7 @@ import {
   documentoMedico,
   etapa,
   exigencia,
+  exigenciaItem,
   fichaRecepcao,
   identificadorCaso,
   parecerMedico,
@@ -139,16 +140,60 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       }
     }
 
-    const exigencias = await banco
-      .select({ origem: exigencia.origem, descricao: exigencia.descricao, prazo: exigencia.prazo, situacao: exigencia.situacao })
+    const abertas = await banco
+      .select()
       .from(exigencia)
       .where(and(eq(exigencia.casoId, casoId), inArray(exigencia.situacao, EXIGENCIA_ABERTA)))
       .orderBy(asc(exigencia.prazo))
-    const prazos = await banco
-      .select({ fim: prazo.fim, regra: prazo.regra })
-      .from(prazo)
-      .where(and(eq(prazo.casoId, casoId), gte(prazo.fim, hoje)))
-      .orderBy(asc(prazo.fim))
+    // Os itens por setor das exigências abertas (G21): o que cada setor deve e quem cumpriu, quando.
+    const itens = abertas.length
+      ? await banco
+          .select({ item: exigenciaItem, cumpridoPor: usuario.nome })
+          .from(exigenciaItem)
+          .leftJoin(usuario, eq(exigenciaItem.cumpridoPor, usuario.id))
+          .where(inArray(exigenciaItem.exigenciaId, abertas.map((x) => x.id)))
+          .orderBy(asc(exigenciaItem.prazo), asc(exigenciaItem.descricao))
+      : []
+    const exigencias = abertas.map((x) => ({
+      origem: x.origem,
+      descricao: x.descricao,
+      prazo: x.prazo,
+      situacao: x.situacao,
+      recebidaEm: x.recebidaEm,
+      itens: itens
+        .filter((i) => i.item.exigenciaId === x.id)
+        .map(({ item: i, cumpridoPor }) => ({
+          setor: SETOR[i.perfilResponsavel] ?? i.perfilResponsavel,
+          descricao: i.descricao,
+          situacao: i.situacao,
+          cumpridoEm: i.cumpridoEm?.toISOString() ?? null,
+          cumpridoPor,
+        })),
+    }))
+    // G12: só o prazo do processo que ainda tem tarefa aberta ligada a ele. A exigência do juiz grava o mesmo prazo nas duas
+    // tabelas: enquanto ela está aberta, ele aparece uma vez só, como a exigência; cumprida ou só de ciência, sai da página.
+    const daExigencia = new Set(abertas.flatMap((x) => (x.publicacaoId ? [x.publicacaoId] : [])))
+    const prazos = (
+      await banco
+        .select({ fim: prazo.fim, regra: prazo.regra, publicacaoId: prazo.publicacaoId })
+        .from(prazo)
+        .where(
+          and(
+            eq(prazo.casoId, casoId),
+            gte(prazo.fim, hoje),
+            inArray(
+              prazo.id,
+              banco
+                .select({ id: tarefa.prazoProcessualId })
+                .from(tarefa)
+                .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.situacao, TAREFA_ABERTA))),
+            ),
+          ),
+        )
+        .orderBy(asc(prazo.fim))
+    )
+      .filter((z) => !z.publicacaoId || !daExigencia.has(z.publicacaoId))
+      .map(({ fim, regra }) => ({ fim, regra }))
     const publicacoes = await banco
       .select({ data: publicacao.disponibilizadaEm, fonte: publicacao.fonte, classe: publicacao.classe })
       .from(publicacao)
