@@ -38,10 +38,10 @@ const topo = () => within(screen.getByRole('navigation', { name: 'Principal' }))
 const sugestoes = () => within(screen.getByRole('region', { name: 'Chat com a IA' })).getAllByRole('button').map((b) => b.textContent)
 
 describe('GGVP-78 · a Central do Financeiro, como no Figma (59:863)', () => {
-  it('o topo com a Gestão e o painel Financeiro; sem Clientes nem Processos, que ele não vê; a busca, o chat e o Suporte', () => {
+  it('o topo com os Resultados (GGVP-96) e o painel Financeiro; sem o resto da Gestão, Clientes nem Processos; a busca, o chat e o Suporte', () => {
     render(comSessao(<CentralFinanceiro />))
     expect(screen.getByRole('heading', { level: 1, name: 'Início do Financeiro' })).toBeTruthy()
-    expect(topo()).toEqual(['Início', 'Agenda', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Financeiro'])
+    expect(topo()).toEqual(['Início', 'Agenda', 'Resultados', 'Financeiro'])
     expect(screen.getByRole('link', { name: 'Financeiro' }).getAttribute('href')).toBe('/financeiro')
     expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
     expect(sugestoes()).toEqual(expect.arrayContaining(['Prestações recebidas', 'Documento novo', 'Resumo do cliente']))

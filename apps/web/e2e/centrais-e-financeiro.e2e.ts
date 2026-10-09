@@ -41,7 +41,7 @@ test('o Financeiro cai na Central dele e abre o painel Financeiro pelo topo: os 
   await expect(tabela).toContainText('Vera Lúcia (exemplo)')
 })
 
-test('o Sócio cai no painel de resultado, com a busca e o chat, e vê só os totais no painel Financeiro', async ({ page }) => {
+test('o Sócio cai no painel de resultado, com a busca e o chat, e vê os totais e os lançamentos no painel Financeiro (GGVP-96)', async ({ page }) => {
   await entrarPelaApi(page, 'socio@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Resultados do escritório')
@@ -51,6 +51,6 @@ test('o Sócio cai no painel de resultado, com a busca e o chat, e vê só os to
 
   await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Financeiro' }).click()
   await expect(page.getByRole('list', { name: 'Indicadores do mês' })).toContainText('A receber')
-  await expect(page.getByRole('table', { name: 'Lançamentos' })).toHaveCount(0)
-  await expect(page.getByText('Os lançamentos de cada cliente ficam com o Financeiro; aqui, os totais do escritório.')).toBeVisible()
+  // GGVP-96: o Sócio vê tudo, inclusive os valores de cada cliente.
+  await expect(page.getByRole('table', { name: 'Lançamentos' })).toContainText('Vera Lúcia (exemplo)')
 })
