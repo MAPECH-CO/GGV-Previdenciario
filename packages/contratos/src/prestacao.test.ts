@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AgendarIdaAoBanco, ReceberPrestacao, RegistrarEnvio, SalvarPrestacao } from './prestacao.ts'
+import { AgendarIdaAoBanco, ConcluirIdaAoBanco, ReceberPrestacao, RegistrarEnvio, SalvarPrestacao } from './prestacao.ts'
 
 const erro = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues[0]?.message
 const OK = { valorRecebido: '12.345,67', percentual: '30', formaPagamento: 'pix', prazoPagamento: '30/10/2026', conferiCarta: true }
@@ -40,5 +40,12 @@ describe('GGVP-44 · ida ao banco', () => {
 
   it('CA11 · o envio registra o canal', () => {
     expect(erro(RegistrarEnvio.safeParse({}))).toBe('Escolha o canal')
+  })
+
+  it('GGVP-98 · quem leva: "Levei" ou "Não deu" com o motivo', () => {
+    expect(ConcluirIdaAoBanco.parse({ resultado: 'levado' })).toEqual({ resultado: 'levado' })
+    expect(erro(ConcluirIdaAoBanco.safeParse({ resultado: 'nao_deu', motivo: ' ' }))).toBe('Escreva por que não deu')
+    expect(erro(ConcluirIdaAoBanco.safeParse({ resultado: 'nao_deu' }))).toBe('Escreva por que não deu')
+    expect(erro(ConcluirIdaAoBanco.safeParse({}))).toBe('Escolha "Levei o cliente ao banco" ou "Não deu"')
   })
 })

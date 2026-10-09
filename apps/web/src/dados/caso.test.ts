@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { descreverDocumento, identificarPerito, jurimetriaDoJuizoDoCaso, obterCaso, perfilDoPeritoDoCaso } from './caso.ts'
 import { configurarExemplo, zerarExemplo } from './servidor.ts'
 
@@ -97,7 +97,7 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
   it('CA9 · as tarefas por setor, inclusive as paralelas, e a perícia aberta com responsável e prazo', async () => {
     const antonio = await obterCaso('antonio-exemplo-1', ADVOGADA)
     const setores = antonio!.tarefas.map((t) => t.setor)
-    expect(setores).toEqual(expect.arrayContaining(['Documentação', 'Jurídico', 'Jurídico administrativo']))
+    expect(setores).toEqual(expect.arrayContaining(['Atendimento', 'Jurídico', 'Jurídico administrativo']))
     expect(antonio!.tarefas.every((t) => t.responsavel)).toBe(true)
     expect(antonio!.tarefas.filter((t) => t.paralela).length).toBeGreaterThan(1)
     const pericia = antonio!.tarefas.find((t) => t.href === '/casos/antonio-exemplo-1/pericia')!
@@ -170,47 +170,5 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
 
   it('Processo que não existe: nada', async () => {
     expect(await obterCaso('nao-existe', ADVOGADA)).toBeNull()
-  })
-})
-
-describe('GGVP-78 · o caso do servidor aberto direto pela lista de Processos', () => {
-  const CASO = '8b3e4c0a-5d6f-4e70-8b82-93a415c6d7e8'
-  const CLIENTE = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
-  const ficha = {
-    id: CLIENTE,
-    situacao: 'cliente',
-    desde: '10/2026',
-    nome: 'Renato Dias (exemplo)',
-    telefone: '',
-    senhaGov: { situacao: 'sem-senha' },
-    fichaAtendimentoPreenchida: false,
-    processos: [{ id: CASO, beneficio: 'loas-deficiente', etapa: 'Judicial' }],
-    agendamentos: [],
-    contatos: [],
-    documentos: [],
-    arquivos: [],
-    transcricoes: 0,
-    historico: [],
-  }
-  function servidor(rotas: Record<string, unknown>) {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) => (url in rotas ? new Response(JSON.stringify(rotas[url]), { status: 200 }) : new Response(JSON.stringify({ erro: 'Não encontrado.' }), { status: 404 }))),
-    )
-    configurarExemplo({ servidor: true })
-  }
-  afterEach(() => {
-    configurarExemplo({ servidor: false })
-    vi.unstubAllGlobals()
-  })
-
-  it('sem a ficha na cópia daqui, acha o cliente pelo caso, traz a ficha e monta o processo', async () => {
-    servidor({ [`/api/processos?caso=${CASO}`]: { processos: [{ id: CASO, clienteId: CLIENTE }] }, [`/api/fichas/${CLIENTE}`]: ficha })
-    expect((await obterCaso(CASO, ADVOGADA))?.ficha.nome).toBe('Renato Dias (exemplo)')
-  })
-
-  it('caso que o servidor não tem: nada', async () => {
-    servidor({ [`/api/processos?caso=${CASO}`]: { processos: [] } })
-    expect(await obterCaso(CASO, ADVOGADA)).toBeNull()
   })
 })

@@ -1,10 +1,11 @@
 import { CampoBusca, ID_DA_BUSCA } from '../componentes/CampoBusca.tsx'
 import { ChatDoPortal } from '../componentes/ChatDoPortal.tsx'
-import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
+import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import { usePerfil } from '../dados/perfis.ts'
 import { editaRoteiro } from '../dados/roteiro.ts'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
+import { juntarMinhas, useMinhasDoSetor } from '../dados/setor.ts'
 import type { Tarefa } from '../dados/tipos.ts'
 import { usePode } from '../sessao.ts'
 import centralStyles from './CentralAtendimento.module.css'
@@ -26,7 +27,9 @@ const CHAT_DO_PERFIL: Record<string, { exemplo: string; sugestoes: string[] }> =
  */
 export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string; /** Do servidor de exemplo, até a GGVP-125. */ deExemplo?: Tarefa[] }) {
   const doServidor = useTarefasDoServidor()
-  const tarefas = doServidor && [...doServidor, ...deExemplo]
+  // GGVP-147: o que o líder deu a outra pessoa sai da fila; o que deu a esta pessoa entra no topo.
+  const minhasDoSetor = useMinhasDoSetor()
+  const tarefas = doServidor && juntarMinhas([...doServidor, ...deExemplo], minhasDoSetor)
   // GGVP-109 CA9 e GGVP-75: a gestão chega às tentativas bloqueadas e aos resultados pelo topo.
   const gestao = usePode('gestao.ver')
   // GGVP-146, parte 2: a importação da planilha do escritório.
@@ -69,17 +72,21 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
           <h1 className={styles.titulo}>Central · {rotulo}</h1>
           <CampoBusca tarefas={tarefas ?? []} />
           <ChatDoPortal exemplo={chat.exemplo} sugestoes={chat.sugestoes} funcao={rotulo} />
-          <div className={centralStyles.titulo}>
-            <h2 className={centralStyles.tituloTexto}>O que você tem que fazer</h2>
-            <span className={centralStyles.contagem}>{tarefas?.length ?? '…'}</span>
-          </div>
-          {tarefas && tarefas.length === 0 && <p className={styles.texto}>Nada na sua fila agora.</p>}
-          {tarefas && tarefas.length === 0 && veCaso && (
-            <button type="button" className={centralStyles.atalhoDaBusca} onClick={() => document.getElementById(ID_DA_BUSCA)?.focus()}>
-              Buscar um cliente
-            </button>
+          {tarefas && (
+            <FilasDeTarefas
+              tarefas={tarefas}
+              vazio={
+                <>
+                  <p className={styles.texto}>Nada na sua fila agora.</p>
+                  {veCaso && (
+                    <button type="button" className={centralStyles.atalhoDaBusca} onClick={() => document.getElementById(ID_DA_BUSCA)?.focus()}>
+                      Buscar um cliente
+                    </button>
+                  )}
+                </>
+              }
+            />
           )}
-          {tarefas && tarefas.length > 0 && <ListaTarefas tarefas={tarefas} />}
         </div>
       </main>
     </>

@@ -21,6 +21,9 @@ const DESCRICAO: Record<string, string> = {
   pacote_divergente: 'Protocolo na Justiça recusado: o pacote mudou depois da aprovação (G7)',
   caso_aprovado_para_inss: 'Caso aprovado para o INSS',
   caso_reprovado_na_conferencia: 'Caso devolvido na conferência da Sênior',
+  caso_liberado_ao_juridico: 'Caso liberado ao Jurídico, para a conferência da Sênior',
+  liberacao_recusada: 'Liberação ao Jurídico recusada',
+  tarefa_atribuida: 'Tarefa do setor atribuída pelo líder',
   protocolo_registrado: 'Protocolo no Meu INSS registrado',
   pericia_decidida: 'Decisão sobre a perícia',
   exigencia_inss_registrada: 'Exigência do INSS registrada',
@@ -126,6 +129,9 @@ const DESCRICAO: Record<string, string> = {
   pericia_perfil_atualizado: 'Perfil do perito atualizado com o laudo',
   pericia_perito_do_laudo: 'Laudo da perícia ligado ao perito',
   importacao_gravada: 'Planilha do escritório importada (clientes e processos)',
+  // A ida ao banco (GGVP-98): o Atendimento leva; "Não deu" volta ao Financeiro remarcar.
+  cliente_levado_ao_banco: 'Cliente levado ao banco pelo Atendimento',
+  ida_ao_banco_nao_feita: 'Ida ao banco não feita: voltou ao Financeiro remarcar',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',
@@ -318,4 +324,38 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
     })
     return PrazosDoEscritorio.parse({ cumpridos: itens.filter((i) => i.situacao === 'cumprido').length, perdidos: itens.filter((i) => i.situacao === 'perdido').length, itens })
   })
+}
+
+/**
+ * A linha do caso para a página do processo (GGVP-146, parte 5): os mesmos eventos e decisões do GET /historico, com as
+ * mesmas palavras, sem o detalhe interno nem dado de saúde. ponytail: cópia da montagem do GET (este arquivo só recebe
+ * acréscimo); o GET pode passar a usar esta função numa mudança só dele.
+ */
+export async function linhaDoCaso(banco: Banco, casoId: string) {
+  const eventos = await banco
+    .select()
+    .from(eventoAuditoria)
+    .where(or(eq(eventoAuditoria.alvo, `caso:${casoId}`), sql`${eventoAuditoria.detalhe}->>'casoId' = ${casoId}`))
+    .orderBy(asc(eventoAuditoria.quando))
+  const decisoes = await banco.select().from(decisao).where(eq(decisao.casoId, casoId)).orderBy(asc(decisao.decididoEm))
+  const ids = [...new Set([...eventos.map((e) => e.quem), ...decisoes.map((d) => d.decididoPor)].filter((q) => UUID.test(q)))]
+  const nomes = new Map((ids.length ? await banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, ids)) : []).map((u) => [u.id, u.nome]))
+  return [
+    ...eventos.map((e) => ({
+      quando: e.quando,
+      quem: UUID.test(e.quem) ? (nomes.get(e.quem) ?? 'Pessoa removida') : e.quem === 'sistema' ? 'Sistema' : 'Sem sessão',
+      origem: e.quem === 'sistema' ? ('sistema' as const) : ('pessoa' as const),
+      passo: ((e.detalhe as { passo?: string }).passo ?? null) as string | null,
+      descricao: DESCRICAO[e.acao] ?? legivel(e.acao),
+    })),
+    ...decisoes.map((d) => ({
+      quando: d.decididoEm,
+      quem: nomes.get(d.decididoPor) ?? 'Pessoa removida',
+      origem: 'pessoa' as const,
+      passo: d.passo as string | null,
+      descricao: `${DECISAO[d.tipo] ?? legivel(d.tipo)}: ${legivel(d.resultado).toLowerCase()}`,
+    })),
+  ]
+    .sort((a, b) => a.quando.getTime() - b.quando.getTime())
+    .map((l) => ({ ...l, quando: l.quando.toISOString() }))
 }
