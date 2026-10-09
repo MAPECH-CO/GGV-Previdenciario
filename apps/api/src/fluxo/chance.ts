@@ -11,3 +11,19 @@ export function calcularChance(desfechos: (string | null)[]) {
   const casos = favoraveis + desfechos.filter((d) => d !== null && DESFAVORAVEIS.has(d)).length
   return { casos, favoraveis, porcentagem: casos ? Math.round((favoraveis / casos) * 100) : null }
 }
+
+/** GGVP-150 CA2 (Lucas, 07/10): pela porcentagem mostrada; 15 e 50 ficam no amarelo. */
+export function corDaChance(porcentagem: number | null) {
+  if (porcentagem === null) return null
+  return porcentagem < 15 ? 'vermelho' : porcentagem <= 50 ? 'amarelo' : 'verde'
+}
+
+/** GGVP-150 CA4: o que o caso ainda não sabe e deixa a chance menos certa. */
+export function oQueFaltaSaber(c: { peritoConhecido: boolean; juizoConhecido: boolean; temParecer: boolean; faltamNoChecklist: string[] }) {
+  return [
+    !c.peritoConhecido && 'o perito',
+    !c.juizoConhecido && 'o juízo',
+    !c.temParecer && 'o parecer médico',
+    c.faltamNoChecklist.length > 0 && `os documentos que faltam no checklist: ${c.faltamNoChecklist.join(', ')}`,
+  ].filter((t): t is string => !!t)
+}

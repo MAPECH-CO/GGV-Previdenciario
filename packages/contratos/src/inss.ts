@@ -219,6 +219,12 @@ export const ChanceDeExito = z.object({
   porcentagem: z.number().int().nullable(),
   baseEm: z.string().nullable(),
   regra: z.string(),
+  /** GGVP-150 CA2: vermelho abaixo de 15%, amarelo de 15% a 50%, verde acima de 50%; sem número, sem cor. */
+  cor: z.enum(['vermelho', 'amarelo', 'verde']).nullable(),
+  /** GGVP-150 CA3: abaixo de 15%, a tela sugere não pegar o caso, sem bloquear. */
+  sugereNaoPegar: z.boolean(),
+  /** GGVP-150 CA4: os fatores do caso ainda desconhecidos, para a chance ficar mais certa. */
+  faltaSaber: z.array(z.string()),
   fatores: SugestaoDaIa.nullable(),
   motivoIa: z.string().nullable(),
 })

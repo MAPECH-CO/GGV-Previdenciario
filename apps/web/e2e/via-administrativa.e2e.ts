@@ -65,6 +65,8 @@ test('GGVP-23 CA4 · o Atendimento abre a conferência só para leitura', async 
   await page.goto(href!)
   await expect(page.getByText(/Só leitura/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Aprovar' })).toHaveCount(0)
+  // GGVP-150 CA6: o Atendimento não vê a chance de êxito.
+  await expect(page.getByRole('region', { name: 'Chance de êxito' })).toHaveCount(0)
 })
 
 test('GGVP-23 · a Sênior aprova um caso e as tarefas de protocolo e de perícia aparecem', async ({ page, context }) => {
@@ -74,6 +76,9 @@ test('GGVP-23 · a Sênior aprova um caso e as tarefas de protocolo e de períci
   await page.getByRole('link', { name: 'Antônia Lima (exemplo) · Conferir antes do INSS' }).click()
   await expect(page.getByRole('heading', { name: 'Conferência antes do INSS' })).toBeVisible()
   await expect(page.getByText('Suficiente')).toBeVisible()
+  // GGVP-150 CA4: antes do INSS, o perito e o juízo ainda não são conhecidos.
+  await expect(page.getByRole('list', { name: 'O que falta saber' })).toContainText('o perito')
+  await expect(page.getByRole('list', { name: 'O que falta saber' })).toContainText('o juízo')
   await page.getByRole('button', { name: 'Aprovar' }).click()
   await expect(page.getByRole('status')).toContainText('protocolo e a decisão de perícia foram abertos')
 
