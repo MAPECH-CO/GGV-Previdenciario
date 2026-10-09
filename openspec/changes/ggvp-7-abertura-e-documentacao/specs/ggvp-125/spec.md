@@ -86,3 +86,107 @@ A gravação da entrevista e a conversa registrada pelo Jurídico SHALL ir às t
 - **Dado** a advogada sem ter avisado o cliente
 - **Quando** pede para começar a gravar
 - **Então** o servidor recusa
+
+### Requirement: Bloco 3b · As decisões depois da entrevista ficam no banco do portal
+O cadastro do lead, a análise da ficha (auxílio acidentário), a definição do benefício, o cálculo de tempo e pontos, o fechamento ("Fechou com o escritório?"), o recontato e a nova demanda de quem já é cliente SHALL gravar no servidor, com as regras do Pedro e as tarefas que abrem e concluem. Definir o benefício, registrar o cálculo e analisar a ficha SHALL pedir a permissão nova `ficha.analisar` (Jurídico): a IA sugere e a advogada decide (G3). O papel de quem registra o fechamento SHALL vir do perfil da sessão, nunca do pedido.
+
+#### Scenario: Benefício definido pela advogada
+- **Dado** a entrevista de um lead do balcão gravada e transcrita
+- **Quando** a advogada define o benefício
+- **Então** a decisão fica na ficha do banco com quem decidiu, e "Definir benefício" sai da fila
+
+### Requirement: Bloco 3b · G16 no servidor
+O lead que não fecha SHALL ter o motivo da lista; "Recusado pelo escritório" MUST NOT ser registrado pelo perfil Atendimento; o lead arquivado SHALL ficar como `nao_virou_cliente` com o motivo na pessoa do portal, e as tarefas abertas dele se encerram.
+
+#### Scenario: Lead arquivado com o motivo
+- **Dado** um lead depois da entrevista
+- **Quando** o Atendimento registra que não fechou, sem recontato, com o motivo "Preço"
+- **Então** a pessoa fica `nao_virou_cliente` com o motivo, e as tarefas abertas dela se encerram
+
+#### Scenario: Recusa do escritório pelo Atendimento
+- **Dado** o perfil Atendimento
+- **Quando** registra o motivo "Recusado pelo escritório"
+- **Então** o servidor recusa
+
+### Requirement: Bloco 3b · A senha do gov.br vai ao cofre de verdade
+Nas fichas do servidor, guardar e renovar a senha do gov.br SHALL mandar a senha ao cofre do portal (`POST /api/pessoas/:id/cofre`), e a ficha SHALL guardar só a situação, quem e quando (G9); "não sei a senha" e a conferência da senha lida do papel SHALL ficar na ficha do banco.
+
+#### Scenario: Senha guardada na entrevista
+- **Dado** a advogada abrindo o cofre durante a entrevista de um lead do balcão
+- **Quando** digita a senha e guarda
+- **Então** a senha está cifrada no cofre do portal, e a ficha mostra só que está no cofre
+
+### Requirement: Bloco 3b · Telefone e e-mail: o lead troca livre; o cliente, só com a verificação
+Decisão do Pedro em 08/10, na revisão: o lead, ainda sem contrato, SHALL trocar telefone e e-mail livremente, no cadastro e na edição da ficha. Para cliente, a troca de telefone e e-mail SHALL pedir a verificação da GGVP-111 (cliente verificado por chamada de vídeo ou no escritório, em contrato novo) em toda tela que muda esses campos, inclusive o cadastro: nenhuma tela contorna a trava. A regra SHALL ser uma só para a tela e o servidor.
+
+#### Scenario: Lead troca o telefone no cadastro
+- **Dado** um lead do balcão, depois da entrevista
+- **Quando** a Atendimento cadastra o lead com outro telefone
+- **Então** o telefone muda e o valor anterior fica no histórico, sem pedir verificação
+
+#### Scenario: Cliente não troca o telefone pelo cadastro
+- **Dado** a ficha de quem já é cliente
+- **Quando** o cadastro chega com outro telefone, sem a verificação
+- **Então** nada muda, a recusa fica no histórico, e a tela avisa que o telefone só muda com o cliente verificado
+
+### Requirement: Bloco 3c · A segunda ficha fica no banco, com a seção médica só no Jurídico
+A leitura da segunda ficha em papel (simulada até o scanner e a IA entrarem) e o salvar da segunda ficha SHALL gravar no servidor, com as regras do Pedro: a ficha guarda a segunda ficha sem os campos médicos, e a seção médica SHALL ficar à parte, só para quem tem `dado_saude.ver_detalhe`. A tela do Jurídico que mostra a seção médica SHALL buscá-la ao abrir, e cada leitura SHALL ficar em `acesso_dado_sensivel`; a seção médica MUST NOT ficar guardada no navegador nem ir à cópia das telas. No tablet, campo médico que volta em branco MUST NOT apagar o que já estava salvo. A leitura simulada do papel MUST NOT dar a senha do gov.br como guardada no cofre do portal.
+
+#### Scenario: A seção médica não vai à Atendimento
+- **Dado** a segunda ficha de um lead do balcão salva, com a seção médica
+- **Quando** a Atendimento abre a ficha ou uma tela da Recepção
+- **Então** a ficha dela vem sem os campos médicos
+
+#### Scenario: A advogada lê a seção médica, e a leitura fica registrada
+- **Dado** a mesma segunda ficha
+- **Quando** a advogada abre a preparação da entrevista
+- **Então** vê a seção médica, e a leitura entra em `acesso_dado_sensivel`
+
+#### Scenario: Tablet sem a seção médica não apaga
+- **Dado** a segunda ficha salva com a seção médica
+- **Quando** é salva de novo no tablet com os campos médicos em branco
+- **Então** a seção médica que estava salva continua
+
+### Requirement: Bloco 4a · O "fechou" vira caso no banco do portal, com o contrato
+Quando o cliente fecha (o "Fechou com o escritório?" ou a nova demanda), o servidor SHALL criar o caso em `caso` (fase atendimento, com o benefício do catálogo do portal) e o contrato do caso com o kit do benefício, e o lead SHALL virar cliente na ficha e na pessoa do portal. As condições do kit e a geração do contrato pelo modelo SHALL gravar no servidor, com as regras do Pedro (conferências, correções no histórico, campo obrigatório vazio e sobra do modelo não seguem, CPF de outra ficha não grava). Os processos e os contratos da Recepção SHALL ir à cópia das telas.
+
+#### Scenario: O caso nasce no fechamento
+- **Dado** um lead do balcão com o benefício definido pela advogada
+- **Quando** a Atendimento registra que ele fechou
+- **Então** o caso existe no banco do portal, em atendimento, a pessoa é cliente, e a tarefa "Preparar contrato" aparece na Central de qualquer computador
+
+#### Scenario: Contrato gerado no servidor
+- **Dado** o contrato do caso para preparar
+- **Quando** a Atendimento confere e gera o contrato pelo modelo
+- **Então** a versão gerada fica no contrato do banco, e o caso segue para colher a assinatura
+
+### Requirement: Bloco 4b · A assinatura do contrato fica no banco do portal
+A assinatura do contrato do caso SHALL gravar no servidor, pelo ZapSign (simulado) ou em papel na hora, com as regras do Pedro: um documento no ZapSign por kit, e pedir de novo devolve o mesmo; o link e os lembretes SHALL ficar como tentativas com a data e o canal, a próxima 3 dias depois; com a segunda tentativa sem assinatura, o caso SHALL subir para a advogada sênior (G15), com a tarefa no banco, e sair da Central do Atendimento. O retorno do assinado SHALL anexar o arquivo uma vez só, levar o contrato à leitura e encerrar a tarefa da assinatura, inclusive a da sênior. O papel na hora SHALL valer só na entrevista presencial, antes do ZapSign, e só concluir com a digitalização do assinado. Enquanto o ZapSign não é contratado, o retorno é simulado pelo botão da tela, no servidor; o retorno de verdade (webhook com o segredo) entra com a ligação ao ZapSign, e o botão sai junto.
+
+#### Scenario: Assinatura pelo ZapSign
+- **Dado** o contrato gerado de um cliente do servidor
+- **Quando** a Atendimento envia para assinatura, manda o link pelo WhatsApp e o ZapSign devolve o assinado
+- **Então** o contrato do banco fica assinado, com o arquivo e a data, e segue para a leitura; outra sessão vê o mesmo
+
+#### Scenario: Limite de tentativas (G15)
+- **Dado** o link enviado e, 3 dias depois, ainda sem assinatura
+- **Quando** a Atendimento registra a segunda tentativa
+- **Então** a tarefa "Colher assinatura · limite de tentativas" abre no banco para a advogada sênior, e o retorno assinado a encerra
+
+#### Scenario: Papel na hora
+- **Dado** o contrato gerado de um cliente com entrevista presencial
+- **Quando** a Atendimento imprime o kit, digitaliza o assinado e conclui
+- **Então** o contrato do banco fica assinado em papel e segue para a leitura; sem a digitalização, não conclui; com entrevista por vídeo, o papel não é oferecido
+
+### Requirement: Bloco 4c · A leitura, a conferência e a cópia do contrato ficam no banco do portal
+Depois de assinado, o contrato SHALL seguir no servidor com as regras do Pedro: a leitura da IA (ainda a de exemplo) SHALL ser feita no servidor, nunca vir da tela, e decidir entre a conferência do Atendimento e a cópia; a conferência SHALL seguir para a cópia ou voltar a preparar com o que corrigir, guardando a versão assinada no histórico; a cópia SHALL registrar a impressão, a visita marcada na agenda da ficha (a anterior fica remarcada) e a entrega, só com a confirmação, a data e quem recebeu, levando o caso ao checklist do benefício.
+
+#### Scenario: Conferência e cópia
+- **Dado** o contrato assinado em papel de um cliente do servidor
+- **Quando** a IA aponta a página cortada, a Atendimento confere que está certo, imprime a cópia e registra a entrega
+- **Então** o contrato do banco fica entregue e o caso segue para o checklist do benefício; outra sessão vê o mesmo
+
+#### Scenario: Corrigir e reenviar
+- **Dado** o contrato assinado com pendência
+- **Quando** a Atendimento responde que não está certo, com o que corrigir
+- **Então** o contrato volta a preparar no banco, a versão assinada fica no histórico, e a nova versão é gerada pelo mesmo caminho

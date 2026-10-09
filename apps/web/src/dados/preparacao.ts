@@ -5,8 +5,9 @@ import { dataCurta, hojeIso, idadeEm } from '../regras/datas.ts'
 import { atencaoCurta, pontosDeAtencao } from '../regras/preparacao.ts'
 import { tarefasAdvogada } from './advogada.ts'
 import { nomeBeneficio } from './catalogos.ts'
-import { agora, ler } from './servidor.ts'
-import type { Agendamento, Ficha, Preparacao, Tarefa } from './tipos.ts'
+import { chamarApi } from '../api.ts'
+import { agora, doServidor, ler } from './servidor.ts'
+import type { Agendamento, Ficha, Preparacao, RespostasDaSegundaFicha, Tarefa } from './tipos.ts'
 
 /** O resumo que a IA faria da ficha de atendimento (CA3). Simulado: junta o que a ficha diz, sem concluir nada. */
 export function resumoDaIa(ficha: Ficha, hoje: string): string {
@@ -34,12 +35,24 @@ function acharAgendamento(fichas: Ficha[], id: string): { ficha: Ficha; agendame
   return null
 }
 
+/**
+ * GGVP-125, bloco 3c: nas fichas do servidor, a seção médica da segunda ficha vem do servidor ao abrir a tela, só para o
+ * Jurídico e com a leitura registrada; fica só na tela, nunca na cópia do navegador.
+ */
+async function comSecaoMedica(ficha: Ficha): Promise<Ficha> {
+  if (!ficha.segundaFicha || !doServidor(ficha.id)) return ficha
+  const r = await chamarApi<{ medicos: Partial<RespostasDaSegundaFicha>; lida: boolean }>(`/fichas/${ficha.id}/segunda-ficha`)
+  if (!r.ok || r.dados.lida) return ficha
+  return { ...ficha, segundaFicha: { ...ficha.segundaFicha, respostas: { ...ficha.segundaFicha.respostas, ...r.dados.medicos } } }
+}
+
 /** GET /api/entrevistas/:id/preparacao. Nulo quando o compromisso não existe. */
 export async function obterPreparacao(agendamentoId: string): Promise<Preparacao | null> {
   const achado = acharAgendamento(ler().fichas, agendamentoId)
   if (!achado) return null
   const hoje = hojeIso(agora())
-  const { ficha, agendamento } = achado
+  const { agendamento } = achado
+  const ficha = await comSecaoMedica(achado.ficha)
   const primeiroContato = [...ficha.contatos].sort((a, b) => a.data.localeCompare(b.data))[0]
   return { ficha, agendamento, resumo: resumoDaIa(ficha, hoje), pontos: pontosDeAtencao(ficha, hoje), primeiroContato }
 }
