@@ -1,6 +1,6 @@
 # Roteiro do teste de aceite de 09/10 (GGVP-144)
 
-<!-- AVISO DA COBRANÇA: apagar daqui até o fim do aviso quando a homologação receber o #28 e o #17. -->
+<!-- AVISO DA COBRANÇA: apagar daqui até o fim do aviso quando a homologação receber o #28, o #17 e o #43. -->
 > **Aviso de 09/10: o que está na homologação agora**
 >
 > Desde as 07:03 de hoje, o GitHub Actions da MAPECH-CO está parado por cobrança. Por isso, nada novo sobe para a
@@ -16,6 +16,10 @@
 > - **Cuidado com o Chatwoot até o #28 subir.** Sem a trava, se o Chatwoot de verdade estiver ligado na homologação, a
 >   mensagem sai no WhatsApp do telefone da ficha. Antes de enviar, olhe a janela: se ela **não** diz "simulado", pare e
 >   chame o Mateus.
+> - **O #43 está pronto e sobe quando a cobrança for acertada.** Ele junta quatro pedidos já revisados: o acesso por
+>   perfil (#25), a Perícia de verdade no servidor (#30), a IA que lê a entrevista (#37) e as telas do Figma (#42). Ainda
+>   não está na `main`: entra depois que a verificação do GitHub passar, e então sobe sozinho. Os passos que dependem dele
+>   dizem "(depois que o #43 subir)". Antes disso, siga o passo como está.
 <!-- FIM DO AVISO DA COBRANÇA -->
 
 Para o Lucas testar a homologação em 09/10/2026, de manhã até o fim do dia. Segue o caminho do escritório: do balcão ao
@@ -32,9 +36,13 @@ Relacionamento, a documentação médica e a Perícia no servidor, a navegação
 os pedidos #13, #14, #15, #5, #2, #19, #21, #20, #23, #28 e #17. Esta atualização foi conferida no código e nos testes da
 `main`, sem nova passada no navegador. As jornadas que mudaram dizem "Conferida em 09/10".
 
+**Atualizado de novo em 09/10, de manhã,** com o que entra com o pedido #43, ainda fora da `main`. Os passos novos ou
+ajustados dizem "(depois que o #43 subir)". Foram conferidos no código e nos testes da branch do #43, sem passada no
+navegador (seção 7).
+
 ## Sumário
 
-1. Antes de começar: usuários, como entrar, o que é simulado, cuidados e o que é dado de saúde
+1. Antes de começar: usuários, como entrar, o que é simulado, cuidados, o que é dado de saúde e o que muda com o #43
 2. Como registrar um problema no Jira
 3. Plano de volta: voltar à versão anterior e quem chamar
 4. Problemas já encontrados (os mais graves primeiro)
@@ -55,14 +63,14 @@ acesso, cada usuário pede para trocar a senha (GGVP-117); troque e guarde a nov
 | E-mail | Perfil | Para que serve no teste |
 |---|---|---|
 | atendimento@exemplo.ggv | Atendimento | balcão, agenda, contrato, cobrança, relacionamento |
-| lider@exemplo.ggv | Atendimento · líder e Atendimento | trocar de perfil, tarefas do setor (escolher quem faz), a Gestão no topo |
+| lider@exemplo.ggv | Atendimento · líder e Atendimento | trocar de perfil, tarefas do setor (escolher quem faz), a Gestão no topo; depois que o #43 subir, Clientes e Processos no topo |
 | documentacao@exemplo.ggv | Documentação | receber e conferir documentos, checklist, liberar, exigências; usa a Central do Atendimento, só com as tarefas dela |
 | advogada@exemplo.ggv | Advogada responsável | entrevista, parecer médico, INSS, petição, perícia |
 | senior@exemplo.ggv | Sênior | conferência antes do INSS, despacho, vigília, gestão, tarefas do setor do Jurídico, feriados |
 | senior2@exemplo.ggv | Sênior (a segunda) | aprovar a dispensa do parecer, que pede duas sêniores |
 | juridico@exemplo.ggv | Jurídico administrativo | protocolo no Meu INSS, perícia |
-| financeiro@exemplo.ggv | Financeiro | receber a prestação de contas, totais em dinheiro |
-| socio@exemplo.ggv | Sócio | resultados do escritório, configuração |
+| financeiro@exemplo.ggv | Financeiro | receber a prestação de contas, totais em dinheiro; depois que o #43 subir, o painel Financeiro |
+| socio@exemplo.ggv | Sócio | resultados do escritório, configuração; depois que o #43 subir, ler a ficha e o caso e ver o painel Financeiro |
 | provisoria@exemplo.ggv | Atendimento | testar a troca obrigatória da senha |
 | semperfil@exemplo.ggv | nenhum | testar o aviso "sem perfil" |
 | trava@exemplo.ggv | Atendimento | testar a trava depois de 5 senhas erradas |
@@ -72,7 +80,8 @@ acesso, cada usuário pede para trocar a senha (GGVP-117); troque e guarde a nov
 - Entre pelo endereço da homologação (o Mateus manda junto com as senhas). A tela pede e-mail e senha.
 - Para trocar de perfil: botão **Sair**, no topo, e entre com o próximo e-mail. **Faça isso na mesma aba do
   navegador.** Algumas telas ainda guardam o que você fez na própria aba (ver "O que ainda é simulado"); aba nova ou
-  janela nova começa do zero nessas telas.
+  janela nova começa do zero nessas telas. Depois que o #43 subir, continua igual: "Sair" e "Entrar como…" não apagam o
+  que a aba guardou, de propósito, para o roteiro seguir o caso de uma pessoa a outra.
 - O líder tem dois perfis: o nome do perfil no topo ("Atendimento · líder ⌄") abre "Entrar como…" e troca a Central
   sem sair.
 - **Cada tela confere o perfil.** Quem abre a tela de outro perfil (por um link copiado, por exemplo) vê "Sem
@@ -89,9 +98,13 @@ Em linguagem simples, antes de cada jornada o roteiro repete o que vale para ela
   petição e do resumo do resultado é de verdade **se a chave da IA estiver ligada na homologação** (confirme com o
   Mateus). Sem a chave, a tela avisa e a pessoa preenche. Nas pessoas de exemplo do navegador (lista abaixo), a IA é de
   mentira: textos prontos, sempre iguais. A sugestão de benefício e o resumo da entrevista também são de exemplo: a IA
-  na entrevista vem num pedido aberto.
+  na entrevista vem num pedido aberto. Depois que o #43 subir, no lead do servidor a IA lê a entrevista transcrita e
+  sugere o resumo e os dados da ficha, cada um com o trecho de onde saiu; a advogada confirma ou corrige (AD1).
 - **A transcrição.** É de verdade com a chave da IA (GGVP-133). Sem a chave, e nas pessoas do navegador, o texto é
-  sempre o mesmo diálogo de exemplo, mesmo quando não combina com o cliente.
+  sempre o mesmo diálogo de exemplo, mesmo quando não combina com o cliente. Depois que o #43 subir, nos clientes do
+  servidor não há mais diálogo de exemplo: sem a chave, a tela diz "A transcrição falhou: …" com o motivo, e o áudio
+  fica guardado. Sem microfone, a tela avisa "Sem microfone: …" e não inventa falas. As pessoas do navegador continuam
+  com o diálogo de exemplo.
 - **O Chatwoot.** Nos clientes do servidor, a mensagem passa pelo servidor: "Mensagem ao cliente", convite, confirmação,
   cobrança, complemento, perícia e o aviso de mudança dos dados bancários. Ela só sai de verdade se o Mateus ligou o
   Chatwoot na homologação; senão, a janela diz "simulado" e nada sai. Nas pessoas do navegador, sempre simulado. O link
@@ -140,16 +153,49 @@ Em linguagem simples, antes de cada jornada o roteiro repete o que vale para ela
   Isso não é problema; não registre como Bug.
 - O portal não filtra frases ou palavras de saúde em texto livre, de propósito. Também não é problema.
 - **Página do processo de um caso do servidor** (#21): fora do Jurídico, o documento médico aparece só como "existe",
-  sem o nome nem o arquivo. Financeiro e Sócio não abrem o caso.
+  sem o nome nem o arquivo. Financeiro e Sócio não abrem o caso. Depois que o #43 subir, o Sócio abre e lê o caso, com os
+  valores, sem o conteúdo médico e sem a petição; o Financeiro continua sem abrir.
 - **Perícia, depois que o #17 subir:** fora do Jurídico, todos do caso veem o resultado (favorável ou não), a etapa, o
   histórico, as tentativas e a orientação. Só a leitura do laudo e os laudos do perfil do perito ficam com o Jurídico.
   Vale para as perícias do servidor.
+
+### Depois que o #43 subir: o topo de cada perfil e o que ele não abre mais
+
+O topo muda pelo perfil de quem entrou. Depois do "Início" e da "Agenda":
+
+| Perfil | O que aparece no topo |
+|---|---|
+| Atendimento e Documentação | só a Agenda; sem Clientes nem Processos |
+| Líder do Atendimento | Clientes, Processos e a Gestão (Tentativas bloqueadas, Prazos, Uso do cofre, Resultados, Configuração) |
+| Advogada | Clientes e Processos, além do que já tinha |
+| Sênior | Clientes, Processos, Estudos de caso, Roteiros de laudos, a Gestão e "Importar planilha"; sem "Financeiro" |
+| Jurídico administrativo | igual a hoje |
+| Financeiro | "Resultados" (o único item da Gestão) e "Financeiro" (o painel) |
+| Sócio | a Gestão, "Importar planilha" e "Financeiro" (o painel) |
+
+O que cada perfil não abre mais. Pelo link copiado, a tela mostra "Sem permissão" e não abre. É o esperado; não
+registre como Bug. O passo a passo está em ENT, passos 8 a 11.
+
+- **Financeiro:** Prazos, Tentativas bloqueadas, Uso do cofre, Configuração, Clientes e Processos. Fica com os
+  Resultados e o painel Financeiro.
+- **Documentação:** as telas que conduzem o contrato, como "Preparar contrato" (a assinatura abre só para ler), e a
+  manifestação no processo. Na ficha, não vê mais o cartão "Dados bancários para o repasse".
+- **Jurídico administrativo:** a Central da advogada, a entrevista e o cadastro do lead. Também não vê o cartão dos
+  dados bancários. Continua vendo o dado de saúde da perícia.
+- **Atendimento:** a manifestação no processo, que é peça jurídica.
+- **Sênior:** o painel Financeiro.
+- **Sócio:** passa a abrir, só para ler, a ficha do cliente (pela busca) e a página do processo, com os valores. Não vê
+  o conteúdo médico, a petição nem os dados bancários, e não faz nenhum passo do caso.
+- **A Sênior faz os passos jurídicos da advogada** (o servidor deixa): conferir o laudo, decidir a perícia, pedir,
+  aprovar e protocolar a petição, tratar a exigência do INSS, distribuir e manifestar a exigência do juiz, entrevistar
+  e analisar a ficha. Ficam só com a advogada: a decisão no limite e o resultado da perícia, e a prestação de contas.
 
 ### Publicação durante o teste
 
 - **Nada entra na `main` durante o teste sem avisar.** Cada mescla na `main` publica sozinha na homologação em até 10
   minutos e pode trocar a tela no meio de uma jornada. Hoje a publicação está parada (aviso no topo); quando voltar, o #28
-  e o #17 sobem juntos.
+  e o #17 sobem juntos. O #43 entra na `main` só com a verificação do GitHub verde: combine a hora com o Lucas, porque
+  ele muda o topo e as Centrais de vários perfis.
 
 ---
 
@@ -221,16 +267,16 @@ abrir outro.
 
 Encontrados na passada de 08/10. Em 09/10, conferidos de novo no código e nos testes da `main`: os que os pedidos da noite
 resolveram saíram das tabelas e estão em "Resolvidos desde 08/10", no fim desta seção. P22 e P23 são novos. Perfil, passo
-e o que aconteceu.
+e o que aconteceu. O que o #43 resolve está marcado "(resolvido no #43)" e continua valendo até ele subir.
 
 ### Graves: a jornada não segue pela tela, ou não dá para testar amanhã
 
 | # | Perfil | Passo | O que aconteceu | História |
 |---|---|---|---|---|
-| P1 | Jurídico administrativo | JA3: abrir "Marcar perícia médica" que nasce quando a advogada decide a perícia (caso Antônia Lima, servidor) | Abre "Esta tela ainda não foi construída". A tarefa que o sistema abre não leva à tela de marcar, e o "O INSS liberou o agendamento" ainda não tem botão. Conferido em 09/10: continua. Vem no pedido #30. | GGVP-31, GGVP-49, GGVP-137 |
+| P1 | Jurídico administrativo | JA3: abrir "Marcar perícia médica" que nasce quando a advogada decide a perícia (caso Antônia Lima, servidor) | Abre "Esta tela ainda não foi construída". A tarefa que o sistema abre não leva à tela de marcar, e o "O INSS liberou o agendamento" ainda não tem botão. Conferido em 09/10: continua. Vem no pedido #30. **(resolvido no #43)**: a tarefa abre a tela de marcar, com o botão "O INSS liberou o agendamento" (JA3). | GGVP-31, GGVP-49, GGVP-137 |
 | P4 | Atendimento, líder e Documentação | Central: "Marta · Agendar ida ao banco" e "Lúcia · Avisar a cliente do resultado" (Atendimento); "Antônio · Cumprir exigência do juiz" e "Pedro · Responder a exigência do INSS" (Documentação) | As quatro abrem "Esta tela ainda não foi construída". São tarefas de exemplo fixas do navegador; desde 09/10 cada uma aparece só na Central de quem faz. Nos casos do servidor, a exigência do juiz (Paulo Reis) e a exigência do INSS (Ulisses) funcionam; a ida ao banco é marcada pelo Financeiro (FI1). | GGVP-78 (CA3), GGVP-44, GGVP-83, GGVP-39, GGVP-98 |
 | P5 | Advogada | Central: "Lúcia Exemplo · Prestação de contas: dar o OK" | Abre "Esta tela ainda não foi construída". Conferido em 09/10: continua. | GGVP-92 (ainda em "Refinada") |
-| P7 | Jurídico administrativo e Advogada | JA2: confirmar presença, registrar comparecimento e conferir o resultado da perícia | Não dá para testar em 09/10: as perícias de exemplo ficam 9 dias à frente, e "Registrar" só libera depois da data. "Conferir resultado da perícia" nunca chega à Central da advogada. Os testes automáticos cobrem com o relógio adiantado. A perícia do servidor que chegaria ao resultado depende do P1. | GGVP-66, GGVP-70 |
+| P7 | Jurídico administrativo e Advogada | JA2: confirmar presença, registrar comparecimento e conferir o resultado da perícia | Não dá para testar em 09/10: as perícias de exemplo ficam 9 dias à frente, e "Registrar" só libera depois da data. "Conferir resultado da perícia" nunca chega à Central da advogada. Os testes automáticos cobrem com o relógio adiantado. A perícia do servidor que chegaria ao resultado depende do P1. **(resolvido no #43 para a perícia do servidor)**: marcada para hoje, numa hora que já passou, ela chega ao comparecimento e ao resultado no mesmo dia (JA3, passos 5 a 8). As perícias do navegador continuam 9 dias à frente. | GGVP-66, GGVP-70 |
 | P22 | Atendimento e Documentação | AT11: o lead novo depois da cópia do contrato | O caso segue para o checklist do benefício, mas documentos, checklist, cobrança e a primeira liberação ao Jurídico ainda são do navegador. O caso do lead novo não chega à fila da Sênior pela tela. Vem no pedido #22 (documentos) e no seguinte (liberação). | GGVP-125 |
 | P23 | Todos que enviam mensagem | Qualquer envio pelo Chatwoot a um cliente do servidor (AT1, AT6, AT11, AD3) | Até o #28 subir, a homologação não tem a trava dos telefones de teste. Se o Chatwoot de verdade estiver ligado lá, a mensagem sai no WhatsApp do telefone da ficha. Confirme com o Mateus antes; a janela que diz "simulado" não envia nada. | GGVP-146 |
 
@@ -256,7 +302,7 @@ essas duas não foram percorridas neste roteiro.
 | # | Perfil | Passo | O que aconteceu | História |
 |---|---|---|---|---|
 | P20 | Todos | Telas do navegador | Nomes de exemplo misturados: "Dra. Paula" e "Jéssica" nas telas do navegador; "Gabi (exemplo)" e "Fábio (exemplo)" no servidor. Conferido em 09/10: continua. | GGVP-125 |
-| P21 | Advogada | AD2: transcrição e definir benefício da Josefa | A transcrição simulada é sempre a mesma (incapacidade, auxiliar de limpeza), e a IA sugere Auxílio por Incapacidade Temporária para uma lead de LOAS Idoso. A Josefa é do navegador: continua assim. No lead do servidor, a transcrição é de verdade com a chave da IA; a sugestão de benefício segue de exemplo. | GGVP-46, GGVP-51, GGVP-133 |
+| P21 | Advogada | AD2: transcrição e definir benefício da Josefa | A transcrição simulada é sempre a mesma (incapacidade, auxiliar de limpeza), e a IA sugere Auxílio por Incapacidade Temporária para uma lead de LOAS Idoso. A Josefa é do navegador: continua assim. No lead do servidor, a transcrição é de verdade com a chave da IA; a sugestão de benefício segue de exemplo. Depois que o #43 subir, no lead do servidor a IA também lê a entrevista e sugere os dados da ficha (AD1 passo 8); a Josefa continua igual. | GGVP-46, GGVP-51, GGVP-133 |
 
 ### Resolvidos desde 08/10
 
@@ -267,7 +313,7 @@ Conferidos em 09/10 no código e nos testes da `main`. Todos já estão na homol
 | P2 | "Benedito Alves (exemplo) · Ajustar o caso: (o motivo)" abre "Ajustar o caso", com o que a Sênior pediu, o checklist e o parecer (AT9 passo 4) | #20 (GGVP-127) | `apps/web/e2e/via-administrativa.e2e.ts:90`; `apps/api/src/rotas/conferencia.test.ts:274` |
 | P3 | "Vera Lúcia (exemplo) · Levar ao banco" abre a visita marcada, sem nenhum valor, com "Levei o cliente ao banco" e "Não deu" (AT7) | #23 (GGVP-98) | `e2e/via-administrativa.e2e.ts:231`; `apps/api/src/rotas/prestacao.test.ts:318` |
 | P6 | Aba "Tarefas do setor" só para o líder do Atendimento e a Sênior, com "Atribuir" (LI1); a advogada e o Jurídico administrativo não têm mais a aba vazia | #20 (GGVP-147) | `e2e/tarefas-do-setor.e2e.ts:6` e `:19`; `apps/api/src/rotas/setor.test.ts:61` |
-| P11 | Sênior, Financeiro e Sócio têm a busca e o chat "Pergunte ou peça" na tela inicial. A busca do Financeiro e do Sócio não acha cliente, porque eles não veem o caso (decisão do Lucas pendente) | navegação por perfil (GGVP-135) | `e2e/navegacao.e2e.ts:55`; `apps/web/src/paginas/CentralEmConstrucao.test.tsx:20` |
+| P11 | Sênior, Financeiro e Sócio têm a busca e o chat "Pergunte ou peça" na tela inicial. A busca do Financeiro e do Sócio não acha cliente, porque eles não veem o caso (decisão do Lucas pendente). **(resolvido no #43 para o Sócio)**: ele lê tudo (Lucas, 07/10), acha o cliente e abre a ficha (SO1 passo 7). O Financeiro continua sem ver o caso | navegação por perfil (GGVP-135); #43 (GGVP-96) | `e2e/navegacao.e2e.ts:55`; `apps/web/src/paginas/CentralEmConstrucao.test.tsx:20`; no #43, `e2e/perfis.e2e.ts:33` |
 | P12 | A Sênior busca a Rita, abre a ficha e clica "Dispensar o parecer" (SE2) | GGVP-135 | `e2e/navegacao.e2e.ts:15` |
 | P13 | "Linha do tempo da deficiência" pela ficha (Jurídico, caso PCD); "Roteiros de laudos" no topo da Sênior; "Histórico do processo" pela ficha, no caso do servidor | GGVP-135 | `e2e/navegacao.e2e.ts:25` e `:39` |
 | P14 | A Gestão (Tentativas bloqueadas, Prazos, Uso do cofre, Resultados, Configuração) no topo do líder | GGVP-135 | `e2e/navegacao.e2e.ts:48` |
@@ -290,19 +336,36 @@ As jornadas passam a vez de um perfil para outro. Esta ordem evita esperar por u
 | Tarde | JA2 (perícia) → DO6 (documentos da perícia) → AD6 (página da perícia) |
 | Fim | AD8 (resumo do resultado) → AT10 (explicar ao cliente), AT6 (relacionamento, com o lead de AT1), AT9 (chat, caso devolvido e limites), AD7 (chat e caso), SE6 (gestão) → SO1 (Sócio) |
 
+Depois que o #43 subir, encaixe assim:
+
+| Onde | O que entra |
+|---|---|
+| No começo | ENT passos 7 a 11 (as Centrais novas e o "Sem permissão"); SE7 (a Central da Sênior) |
+| Com AD1 | AD1 passos 7 a 9 (sem microfone; a IA lê a entrevista; o áudio toca) |
+| Com AT6 | AT6 passo 9 (a conversa presencial sem microfone) |
+| Logo depois de AD4 passo 1 e de JA1 passo 3 | JA3 passos 2 a 8 (a perícia do servidor até o resultado, no mesmo dia) |
+| Com AD5 passo 8 | JA3 passo 9, opcional (a perícia pedida pelo juiz) |
+| Com FI1 | FI1 passo 9 (o painel Financeiro), antes e depois de cada passo do Financeiro |
+| Com LI1 e AD7 | LI1 passo 7 (Clientes) e AD7 passo 8 (Processos) |
+| Fim | SO1 passos 6 e 7 (o painel Financeiro e a ficha, pelo Sócio) |
+
 ---
 
 ## 6. Jornadas por perfil
 
 Cada passo: o que fazer, o resultado esperado e a história que ele prova. "Percorrida em 08/10" diz como foi a passada.
 "Conferida em 09/10" quer dizer que a jornada mudou com as mesclas da noite e foi conferida no código e nos testes, sem
-passada no navegador.
+passada no navegador. "(depois que o #43 subir)" quer dizer que o passo, ou a parte dele, só vale com o #43 na
+homologação; antes disso, pule.
 
 ### Entrar (todos os perfis) · ENT
 
 Simulado nesta jornada: nada; o login é de verdade, no servidor.
 
-Percorrida em 08/10: passou. À mão: passos 4 e 5. Só nos testes automáticos (que passaram): 1 a 3.
+Percorrida em 08/10: passou. À mão: passos 4 e 5. Só nos testes automáticos (que passaram): 1 a 3. Os passos 7 a 11
+valem depois que o #43 subir. Seguem os testes automáticos do #43 (`e2e/centrais-e-financeiro.e2e.ts`,
+`e2e/perfis.e2e.ts:33` e `:53`, `e2e/clientes-e-processos.e2e.ts:42`; `App.test.tsx:229`; `FichaCliente.test.tsx:27`),
+que ainda não rodaram no GitHub por causa da cobrança. Não foram percorridos à mão.
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
@@ -312,6 +375,11 @@ Percorrida em 08/10: passou. À mão: passos 4 e 5. Só nos testes automáticos 
 | 4 | Entre com semperfil@exemplo.ggv | "Sem perfil, fale com a gestão." e nenhuma tela de caso | GGVP-117, GGVP-96 |
 | 5 | Entre com cada perfil e veja a tela inicial | Cada perfil cai na sua Central: Atendimento, Advogada, Jurídico administrativo, Sênior, Financeiro e Sócio têm Central própria; a Documentação usa a Central do Atendimento, só com as tarefas dela. Sênior, Financeiro e Sócio têm a busca e o "✦ Pergunte ou peça" | GGVP-78, GGVP-96, GGVP-130, GGVP-135 |
 | 6 | Como Atendimento, abra o endereço de uma tela do Jurídico (peça à advogada o link da tela "Preparar entrevista") | "Sem permissão"; a tela não abre. Conferida em 09/10 (#14), só nos testes automáticos | GGVP-96 (CA11), GGVP-135 |
+| 7 | (depois que o #43 subir) Entre com senior@, financeiro@ e socio@exemplo.ggv e veja a tela inicial de cada um | Sênior: a aba do navegador diz "Início da Sênior"; a busca, o chat com "O que estourou o limite?" e as abas "Minhas tarefas" e "Tarefas do setor" (SE7). Financeiro: a aba diz "Início do Financeiro"; a busca, o chat com "Prestações recebidas" e a fila dele (FI1). Sócio: a tela "Resultados do escritório", com a busca e o chat com "Êxito por benefício" em cima (SO1). Nenhum dos três cai mais na Central provisória | GGVP-78, GGVP-96 |
+| 8 | (depois que o #43 subir) Como financeiro@: olhe o topo. Depois, peça ao líder os links de "Prazos", "Configuração" e "Clientes" e abra cada um | No topo, da Gestão só "Resultados", e "Financeiro". Os três links mostram "Sem permissão" | GGVP-96, GGVP-78 |
+| 9 | (depois que o #43 subir) Como documentacao@, na mesma aba de AT4: peça ao Atendimento o link de "Cleide Exemplo · Preparar contrato" e abra. Depois, pela busca do topo, abra a ficha do lead de AT1 | O contrato mostra "Sem permissão". A ficha abre, mas sem o cartão "Dados bancários para o repasse" | GGVP-96 |
+| 10 | (depois que o #43 subir) Como juridico@: peça à advogada o link da gravação de uma entrevista (AD1 passo 3) e abra | "Sem permissão": a entrevista é da advogada e da Sênior | GGVP-96 |
+| 11 | (depois que o #43 subir) Como senior@, abra o link do painel Financeiro (peça ao Financeiro). Como atendimento@, abra o link de "Paulo Reis (exemplo) · Manifestar no processo" (peça à advogada, AD5 passo 9) | As duas mostram "Sem permissão". A manifestação é peça jurídica: só o Jurídico abre | GGVP-96, GGVP-78 |
 
 ### Atendimento (atendimento@exemplo.ggv)
 
@@ -402,18 +470,21 @@ transcrição e o resumo da IA do que mudou são de verdade com a chave da IA; s
 Conferida em 09/10: o Relacionamento grava no servidor desde a noite de 08/10. As pessoas de exemplo do navegador (Pedro,
 Maria, Antônio, Lúcia Exemplo) não têm mais conversa, mensagem ao cliente nem dados bancários: por isso a jornada usa o
 lead de AT1. Os passos 1 a 7 seguem os testes automáticos com login de verdade (`e2e/mensagens.e2e.ts`,
-`e2e/conversa.e2e.ts`, `e2e/seguranca.e2e.ts`); não foram percorridos à mão. O passo 8 é da passada de 08/10.
+`e2e/conversa.e2e.ts`, `e2e/seguranca.e2e.ts`); não foram percorridos à mão. O passo 8 é da passada de 08/10. O que muda
+depois que o #43 subir (passos 4 e 7, e o passo 9, novo) segue os testes do #43: `e2e/conversa.e2e.ts:72`,
+`e2e/transcricao-ligacao.e2e.ts:43` e `e2e/seguranca.e2e.ts:30`.
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
 | 1 | Ficha do lead de AT1 → "Mensagem ao cliente" → Modelo "Boas-vindas" → "Enviar pelo Chatwoot" | O texto começa "Olá, (nome)! Boas-vindas ao escritório GGV." e termina dizendo que o escritório nunca pede a senha do gov.br. Depois: "✓ Entregue no Chatwoot às …"; em "Últimos contatos", "Chatwoot · … · entregue"; no histórico, "Enviou pelo Chatwoot a mensagem «Boas-vindas»" | GGVP-102 (CA1, CA2, CA4, CA6), GGVP-111 (CA4), GGVP-146 |
 | 2 | Na mesma janela, troque o texto por "O pedido foi indeferido. Não conte ao perito que voltou a trabalhar."; depois por "Mande a sua senha do gov.br por aqui." | "A IA aponta": termo jurídico "indeferido", diga "negado"; "Nunca oriente a esconder ou mudar a situação real (G11)."; "O escritório nunca pede a senha do gov.br por mensagem (G9)."; "Enviar pelo Chatwoot" desligado | GGVP-102 (CA3, CA9), G9, G11 |
 | 3 | Modelo "Aviso de resultado favorável" | "O aviso de resultado favorável sai pela tela «Avisar resultado e agendar a ida ao banco», do Financeiro, com o texto que a advogada revisou na prestação de contas (G8)."; "Enviar" desligado | GGVP-102 (CA7), G8 |
-| 4 | Ficha do lead → "Iniciar conversa" → "Ligação" → "Anexar o áudio" → escolha um arquivo de áudio → marque "A ligação começou com o aviso de que seria gravada (G10)" → "Anexar e transcrever" | "Anexar e transcrever" só libera com o aviso marcado. Depois: "✓ Gravação da ligação anexada" e "Transcrição pronta (D5.02): o texto está nas transcrições do card." Na conversa "Presencial", a gravação também só começa com o aviso | GGVP-76 (CA2, CA8), GGVP-80, GGVP-133 |
+| 4 | Ficha do lead → "Iniciar conversa" → "Ligação" → "Anexar o áudio" → escolha um arquivo de áudio → marque "A ligação começou com o aviso de que seria gravada (G10)" → "Anexar e transcrever" | "Anexar e transcrever" só libera com o aviso marcado. Depois: "✓ Gravação da ligação anexada" e "Transcrição pronta (D5.02): o texto está nas transcrições do card." Na conversa "Presencial", a gravação também só começa com o aviso. (depois que o #43 subir) Sem a chave da IA, não há mais texto de exemplo: "A transcrição falhou: a transcrição está desligada (falta a chave do serviço). O áudio está guardado; nada se perdeu." e "Tentar de novo" | GGVP-76 (CA2, CA8), GGVP-80, GGVP-133 |
 | 5 | Central: "(lead) · Registrar conversa" → "Conferir e atualizar (D5.04)" → confirme ou desfaça cada mudança → "Confirmar" | "✓ Conversa conferida por (seu nome)"; a tarefa sai da Central; o valor antigo fica no histórico. A advogada, em outro computador, vê a ficha atualizada | GGVP-84, GGVP-80 (CA4), GGVP-138 |
 | 6 | Ficha do lead: mude o telefone → "Salvar alterações" | O lead, ainda sem contrato, muda sem pedir a verificação: "Alterações salvas. Ficaram no histórico." No cliente (depois de AT11), pede como confirmou que é ele (vídeo ou escritório) e o contrato novo | GGVP-111 (CA1), GGVP-125 |
-| 7 | Ficha do lead → "Dados bancários para o repasse" → "Mudar dados bancários" → banco, agência e conta → "Cliente no escritório" e "A alteração vai em contrato novo" → "Pedir a mudança". Saia e entre como lider@exemplo.ggv, abra a ficha → "Confirmar a mudança (segunda pessoa)" | "Mudança pedida: espera a segunda confirmação." Depois: "Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot."; o antigo e o novo ficam no histórico | GGVP-111 (CA2, CA5) |
+| 7 | Ficha do lead → "Dados bancários para o repasse" → "Mudar dados bancários" → banco, agência e conta → "Cliente no escritório" e "A alteração vai em contrato novo" → "Pedir a mudança". Saia e entre como lider@exemplo.ggv, abra a ficha → "Confirmar a mudança (segunda pessoa)" | "Mudança pedida: espera a segunda confirmação." Depois: "Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot."; o antigo e o novo ficam no histórico. (depois que o #43 subir) O histórico da ficha, que todos do caso veem, guarda só o fato ("Mudou os dados bancários (cliente no escritório; em contrato novo; …"), sem banco, agência nem conta. O cartão com a conta continua para quem pede, confirma ou repassa | GGVP-111 (CA2, CA5), GGVP-96 |
 | 8 | Ficha do Antônio (navegador) → "+ Nova demanda" → "Outro pedido" → benefício → "Abrir a nova demanda" | A demanda abre na mesma ficha e leva a marcar a entrevista | GGVP-124 |
+| 9 | (depois que o #43 subir) Num computador sem microfone, ou com o microfone bloqueado no navegador: ficha do lead → "Iniciar conversa" → "Presencial" → "Iniciar conversa" → "Gravar" → marque "Avisei que a conversa será gravada" → "Começar a gravar" | Aparece "Sem microfone: (o motivo)", sem nenhuma fala de exemplo, com "Subir o áudio gravado fora" e "Registrar como sem áudio". Em "Registrar como sem áudio", escreva em "O que foi conversado" → "Registrar sem áudio": "✓ Conversa registrada sem áudio" e "O registro ficou no card, como "só registro"." | GGVP-76, GGVP-133 |
 
 #### AT7 · Levar o cliente ao banco (servidor; depois de FI1 passo 5)
 
@@ -460,6 +531,7 @@ percorrido à mão.
 | 5 | Central: "Marta · Agendar ida ao banco" e "Lúcia · Avisar a cliente do resultado" (as outras duas de P4 estão na Central da Documentação) | Deveriam abrir o passo; hoje abrem "tela ainda não construída" (P4) | GGVP-78 (CA3) |
 | 6 | Abra a página do caso do Antônio (pela ficha → pasta do processo) | Vê o caso numa linha, com status, datas e etapas (documento recebido, laudo ok ou pendente, perícia marcada); sem petição, estratégia, valores nem conteúdo médico | GGVP-86, GGVP-96 |
 | 7 | Tente abrir o endereço de protocolo de um caso (peça o link à advogada) | "Sem permissão" | GGVP-96 (CA11) |
+| 8 | (depois que o #43 subir) Olhe o topo | Só "Início" e "Agenda": o Atendimento não tem Clientes nem Processos (só o líder tem). Teste: `e2e/clientes-e-processos.e2e.ts:42` | GGVP-78 |
 
 #### AT10 · Explicar o resultado ao cliente (servidor; depois de AD8)
 
@@ -511,6 +583,7 @@ não percorridos à mão.
 | 4 | Numa tarefa sem responsável: "Atribuir ▾" → "Atribuir tarefa" → em "Quem faz", escolha "Ana (exemplo)"; prazo, prioridade e um recado → "Atribuir" | "Quem faz" mostra a carga de cada pessoa ("n hoje"). Depois, a tarefa fica com a Ana e o botão vira "Reatribuir"; o histórico guarda quem atribuiu, para quem e quando. Há também "Deixar sem responsável" e "Abrir a tarefa" | GGVP-147 (CA2, CA4) |
 | 5 | Saia e entre como atendimento@exemplo.ggv | A tarefa atribuída está no topo de "Minhas tarefas", com o recado. A Ana não vê a aba "Tarefas do setor" | GGVP-147 (CA2, CA3) |
 | 6 | Volte como líder: no topo, "Prazos" | Abre "Prazos cumpridos e perdidos". O topo do líder tem a Gestão: Tentativas bloqueadas, Prazos, Uso do cofre, Resultados e Configuração | GGVP-96, GGVP-135 |
+| 7 | (depois que o #43 subir) No topo, "Clientes" → em "Buscar por nome, CPF ou telefone", digite "Renato Dias" → na linha dele, clique "1 processo de Renato Dias (exemplo)" → na lista de processos, clique no nome | "Clientes" mostra uma linha, com "Êxito" e o CPF mascarado. O link da contagem abre "Processos" só daquele cliente, com "LOAS Deficiente". O nome abre a ficha. "Exportar CSV" baixa a lista e fica no histórico. Teste: `e2e/clientes-e-processos.e2e.ts:7` | GGVP-78 |
 
 A Sênior também tem a aba "Tarefas do setor", com as do Jurídico ("Tarefas do setor · Jurídico"). A advogada e o
 Jurídico administrativo não têm a aba.
@@ -597,19 +670,26 @@ Percorrida em 08/10: passou. À mão: as duas telas abrem com a lista; o "Conclu
 #### AD1 · Entrevista do lead novo (servidor; depois de AT1)
 
 Simulado nesta jornada: o roteiro marcado pela IA. A transcrição é de verdade com a chave da IA (GGVP-133); sem ela,
-sempre o mesmo diálogo.
+sempre o mesmo diálogo. Depois que o #43 subir, sem a chave a transcrição falha com o motivo, sem diálogo de exemplo, e
+com a chave a IA também lê a entrevista (passo 8).
 
 Percorrida em 08/10: passou, todos os passos à mão, com a advogada em outro navegador. Depois do passo 5, o lead segue
-no servidor até a cópia do contrato: jornada AT11.
+no servidor até a cópia do contrato: jornada AT11. Os passos 7 a 9 valem depois que o #43 subir e seguem os testes do
+#43 (`e2e/recepcao-servidor.e2e.ts:78` e `:128`; `EntrevistaAoVivoTranscricao.test.tsx:116`;
+`Transcricoes.test.tsx:85` e `:136`; `apps/api/src/rotas/transcricao.test.ts:185`, `:225` e `:249`). Não foram
+percorridos à mão. Se o microfone faltar no passo 3, siga o passo 7.
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
-| 1 | Central: "(lead de AT1) · Preparar entrevista" | Resumo da ficha, pontos de atenção, a anotação do primeiro contato | GGVP-32 |
+| 1 | Central: "(lead de AT1) · Preparar entrevista" | Resumo da ficha, pontos de atenção, a anotação do primeiro contato. (depois que o #43 subir) O bloco se chama "Resumo da ficha": é regra, não IA | GGVP-32 |
 | 2 | "Analisar a ficha" → "Não" (não é acidentário) → "Confirmar" | "Análise registrada"; sem senha do gov.br, o Atendimento recebe "Renovar senha do gov.br" | GGVP-32, GGVP-36 |
 | 3 | "Voltar à preparação" → "Iniciar entrevista (Transcrição)" → "Gravar" | "Começar a gravar" só libera depois do aviso de gravação ao cliente (G10) | GGVP-40 |
 | 4 | Converse 2 minutos → "Encerrar e gerar resumo" | "Entrevista encerrada"; o áudio fica guardado; a transcrição fica pronta | GGVP-40, GGVP-46 |
 | 5 | Em outro navegador, entre de novo como advogada | "Definir benefício" e "Cadastrar lead" do lead estão na Central | GGVP-125 |
 | 6 | Como Atendimento, abra a ficha do lead | Vê o histórico, o status e as etapas; não abre a entrevista nem a transcrição, que são do Jurídico | GGVP-46 (CA4), GGVP-96 |
+| 7 | (depois que o #43 subir) Num computador sem microfone, ou com o microfone bloqueado no navegador (no passo 3, ou com o lead do AT1 passo 9): "Gravar" → marque "Avisei o cliente que a conversa será gravada" → "Começar a gravar" | "Sem microfone: (o motivo)" e "Nada foi gravado nem transcrito…", sem nenhuma fala de exemplo. As saídas: "Subir o áudio gravado fora" (o áudio entra nesta gravação e vai para a transcrição) ou "Registrar como sem áudio" → "O que foi conversado" → "Registrar sem áudio": "✓ Entrevista registrada sem áudio" e "A anotação ficou no caso." Depois, "Definir o benefício (D1.12)" segue pela lista do escritório | GGVP-40 (CA8), GGVP-133 |
+| 8 | (depois que o #43 subir) Com microfone, grave uns minutos e "Encerrar e gerar resumo" → "Ver a transcrição" | "O áudio ficou guardado no caso, para sempre: (o arquivo)." Com a chave da IA: "Transcrição pronta (D1.11): o resumo e as informações estão no caso, para conferir." Em "Informações extraídas · o que foi para a ficha", cada item vem com "dito aos mm:ss: «o trecho»", um campo "Corrigir: (o item)" e "Conferi: (o item)". Corrija um, marque dois → "Conferir e levar": os dois ficam "✓ conferida" e vão para a ficha, com o valor antigo no histórico; o corrigido leva também o que a IA ouviu (G14). Sem a chave: "A transcrição falhou: a transcrição está desligada (falta a chave do serviço)." e "Tentar de novo"; o áudio fica. Com a chave, mas sem a IA liberada para dado de saúde: "A IA não leu a entrevista: (o motivo). Leia a transcrição e preencha a ficha à mão." | GGVP-46 (CA6, CA7), GGVP-133 |
+| 9 | (depois que o #43 subir) Na mesma janela das transcrições: "Abrir áudio" e "Abrir o texto final" | O áudio guardado toca, parte por parte; o texto final abre numa aba. Só quem entrevista (a advogada e a Sênior) abre, e cada leitura fica registrada | GGVP-133 |
 
 #### AD2 · Josefa: segunda ficha, renovar senha, benefício, cálculo, cadastro e fechamento (navegador; antes das 15:30)
 
@@ -663,7 +743,7 @@ Percorrida em 08/10: passou. À mão: passos 1 e 3 a 8. Só nos testes automáti
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
-| 1 | Central: "Antônia Lima (exemplo) · Decidir perícia" → "Sim, o sistema abre a tarefa de perícia" → "Perícia médica" → "Definir" | "O sistema abriu a tarefa de perícia para o Jurídico administrativo" (ver JA3 e P1) | GGVP-31 |
+| 1 | Central: "Antônia Lima (exemplo) · Decidir perícia" → "Sim, o sistema abre a tarefa de perícia" → "Perícia médica" → "Definir" | "O sistema abriu a tarefa de perícia para o Jurídico administrativo" (ver JA3 e P1). (depois que o #43 subir) Essa tarefa abre a tela de marcar: siga em JA3 | GGVP-31 |
 | 2 | Central: "Rita Gomes (exemplo) · Trazer a resposta do INSS" → "Deferido" → texto → "Registrar" sem anexo | Recusa: "Anexe a comunicação do INSS" | GGVP-35 |
 | 3 | Anexe a comunicação → "Registrar" | "O sistema abriu Prestar contas"; o passo seguinte aparece na mesma tela | GGVP-35, GGVP-44 |
 | 4 | Central: "Ulisses Rocha (exemplo) · Tratar exigência do INSS" → "Documentos", prazo 30 dias, itens, prazo da Documentação → "Criar a tarefa" | Prazo do INSS contado pelo sistema (G12), pulando os feriados se a Sênior já os carregou (SE6 passo 9; senão, o aviso do P17); "A Documentação recebeu o card" (DO4) | GGVP-39 |
@@ -687,7 +767,7 @@ Percorrida em 08/10: passou, com a ressalva do P9. À mão: passos 1 a 9 (o avis
 | 5 | Confira as três travas pela evidência, número CNJ e comprovante → "Protocolar no tribunal" | "Petição protocolada. O processo entrou na vigília." | GGVP-71 |
 | 6 | Central: "Otávio Lima (exemplo) · Ler publicação" → "Intime-se…" → "Intimação ou exigência" → "Classificar" sem prazo | Pede o prazo (1 a 120 dias) ou "sem prazo na decisão" | GGVP-74, GGVP-37 |
 | 7 | Prazo 15 → "Classificar" | Prazo contado pelo lado seguro (G12), com os feriados do tribunal se já carregados (P17); abre "Analisar exigência do juiz" | GGVP-34, GGVP-37 |
-| 8 | Central: "Paulo Reis (exemplo) · Analisar exigência do juiz" → "Precisa cumprir" → item para a Documentação e para o Atendimento → "Confirmar" | Cada setor recebe "Cumprir exigência do juiz"; "Falta: Atendimento, Documentação." | GGVP-79, G5 |
+| 8 | Central: "Paulo Reis (exemplo) · Analisar exigência do juiz" → "Precisa cumprir" → item para a Documentação e para o Atendimento → "Confirmar" | Cada setor recebe "Cumprir exigência do juiz"; "Falta: Atendimento, Documentação." Em "O juiz pediu perícia?", deixe tudo desmarcado; a perícia pedida pelo juiz é o JA3 passo 9, opcional | GGVP-79, G5 |
 | 9 | Depois de AT8 e DO5: "Paulo Reis · Manifestar no processo" → anexe a versão → aprove (G6) → comprovante → "Manifestar e protocolar" | "Manifestação protocolada. O processo voltou para a vigília." | GGVP-87, G21 |
 
 #### AD6 · Página da perícia e o perito (navegador)
@@ -718,7 +798,8 @@ são novos (#21, a página do processo pelo banco) e seguem o teste automático 
 | 4 | Página do processo do Antônio | O caso numa linha: fases, quem espera quem, tarefas em andamento com responsável, dados do processo; histórico | GGVP-86 |
 | 5 | Página do processo do Pedro → "✦ Suporte" → "O que falta aqui?" | Responde sobre o caso; a jurimetria vem do sistema | GGVP-82 (CA6, CA10) |
 | 6 | Na busca do topo, "Maria Souza (exemplo)" (caso do servidor) → ficha → abra o processo | A página lê o caso do banco: etapas, "Tarefas em andamento" com o responsável, "Dados do processo" (com "Saúde (Jurídico)") e o laudo pelo nome ("Abrir Laudo médico (exemplo).pdf"). O que o banco não tem (juízo, laços dos setores, laudo novo) não aparece | GGVP-86, GGVP-146 |
-| 7 | Saia e entre como Atendimento, na mesma página | "Petição, estratégia e valores não aparecem para o Atendimento."; o laudo aparece só como "Documento de saúde", e abrir diz "O conteúdo do laudo é só do Jurídico", sem o arquivo. Financeiro e Sócio não abrem o caso | GGVP-96 (CA12), GGVP-146 |
+| 7 | Saia e entre como Atendimento, na mesma página | "Petição, estratégia e valores não aparecem para o Atendimento."; o laudo aparece só como "Documento de saúde", e abrir diz "O conteúdo do laudo é só do Jurídico", sem o arquivo. Financeiro e Sócio não abrem o caso. (depois que o #43 subir) O Sócio abre e lê, com os valores, sem o conteúdo médico e sem a petição; o Financeiro continua sem abrir | GGVP-96 (CA12), GGVP-146 |
+| 8 | (depois que o #43 subir) No topo, "Processos" → em "Autor, nº do processo ou CPF", digite "0005678-75.2026" → clique no número | Uma linha só. O número abre a página do processo da "Rosa Amaral (exemplo)"; o nome do autor abre a ficha. Teste: `e2e/clientes-e-processos.e2e.ts:28` | GGVP-78 |
 
 #### AD8 · Resumo do resultado para o cliente (servidor)
 
@@ -810,7 +891,21 @@ automático `e2e/feriados.e2e.ts:8`, não percorrido à mão.
 | 6 | Topo → "Resultados" | Indicadores com o número de casos e a data da base (G22); sem os totais em R$ | GGVP-75 |
 | 7 | Topo → "Roteiros de laudos" → LOAS Deficiente: editar um item e salvar | Salva a versão 2 | GGVP-93, GGVP-135 |
 | 8 | Na busca do topo, "Ulisses Rocha (exemplo)" → ficha → no caso, "Histórico do processo" → motivo → "Pedir a exportação" | Abre "Histórico do processo"; depois, "Pedido enviado. A direção recebeu a tarefa de autorizar a exportação." | GGVP-99 (CA12), GGVP-135 |
-| 9 | Topo → "Configuração" → "Feriados e suspensões dos tribunais" → "Carregar os feriados da lei de 2026 e 2027". Depois, acrescente um dia ("Dia", "Vale para", "O que é" → "Acrescentar") e tire-o | "Feriados da lei de 2026 e 2027: (n) dia(s) acrescentado(s)."; "Acrescentado: (dia)."; "Tirado: (dia)."; cada mudança fica em "Histórico dos feriados" com o seu nome. O Financeiro vê a lista, sem botões | GGVP-34, GGVP-146 |
+| 9 | Topo → "Configuração" → "Feriados e suspensões dos tribunais" → "Carregar os feriados da lei de 2026 e 2027". Depois, acrescente um dia ("Dia", "Vale para", "O que é" → "Acrescentar") e tire-o | "Feriados da lei de 2026 e 2027: (n) dia(s) acrescentado(s)."; "Acrescentado: (dia)."; "Tirado: (dia)."; cada mudança fica em "Histórico dos feriados" com o seu nome. O Financeiro vê a lista, sem botões. (depois que o #43 subir) Quem vê a lista sem botões é a líder do Atendimento; o Financeiro não tem mais a Configuração e vê "Sem permissão" (`e2e/feriados.e2e.ts:8`) | GGVP-34, GGVP-146, GGVP-96 |
+
+#### SE7 · A Central da Sênior (depois que o #43 subir)
+
+Simulado nesta jornada: as respostas do chat vêm de regras. Parte da fila são tarefas de exemplo do navegador.
+
+Conferida em 09/10 só no código e nos testes do #43 (`e2e/centrais-e-financeiro.e2e.ts:7`; `CentralSenior.test.tsx:41`,
+`:63` e `:75`), não percorrida à mão.
+
+| # | Passo | Resultado esperado | História |
+|---|---|---|---|
+| 1 | Entre como senior@exemplo.ggv | A aba do navegador diz "Início da Sênior". A busca e o chat "Pergunte ou peça", com "O que estourou o limite?", "Criar tarefa", "Casos para conferir" e "Subir no acervo". As abas "Minhas tarefas" e "Tarefas do setor", e a aba Suporte | GGVP-78 |
+| 2 | Olhe "Minhas tarefas" | As tarefas do servidor no topo (conferências antes do INSS, despachos, exigências vencidas, vigília, estudos, acervo) e as de exemplo (cobrança e remarcação no limite, dispensa do parecer, complemento a decidir). Cada linha abre o passo (SE1 a SE5) | GGVP-78 |
+| 3 | Olhe o topo | Início, Agenda, Clientes, Processos, Estudos de caso, Roteiros de laudos, a Gestão (Tentativas bloqueadas, Prazos, Uso do cofre, Resultados, Configuração) e "Importar planilha". Sem "Financeiro" | GGVP-78, GGVP-96 |
+| 4 | Se a fila ficar vazia | "Nada na sua fila agora." e o botão "Buscar um cliente", que leva à busca | GGVP-78 (CA4) |
 
 ### Jurídico administrativo (juridico@exemplo.ggv)
 
@@ -834,7 +929,8 @@ Simulado nesta jornada: a leitura do comprovante, a orientação da IA e o envio
 Percorrida em 08/10: passou até a orientação; comparecimento e resultado só depois da data (P7). À mão: passos 1 a 5. Só nos testes automáticos: 6.
 
 Conferida em 09/10: esta jornada usa as pessoas do navegador e não mudou. A Perícia grava no servidor desde a noite de
-08/10, mas a perícia que o servidor abre ainda não chega à tela de marcar (JA3, P1; vem no pedido #30). Saúde na
+08/10, mas a perícia que o servidor abre ainda não chega à tela de marcar (JA3, P1; vem no pedido #30, resolvido no
+#43). Saúde na
 Perícia, depois que o #17 subir: fora do Jurídico, todos do caso veem o resultado, a etapa, o histórico, as tentativas e
 a orientação; só a leitura do laudo e os laudos do perfil do perito ficam com o Jurídico
 (`apps/api/src/rotas/pericia.test.ts:389`; `e2e/pericia-servidor.e2e.ts:19`).
@@ -850,12 +946,25 @@ a orientação; só a leitura do laudo e os laudos do perfil do perito ficam com
 
 #### JA3 · Perícia aberta pelo servidor (depois de AD4 passo 1)
 
-Percorrida em 08/10, à mão: falhou no passo 2 (P1). Conferida em 09/10: continua; vem no pedido #30.
+Simulado nesta jornada: o Meu INSS é fora do portal; a leitura do comprovante e do laudo pela IA só com a chave. Tudo o
+mais grava no servidor: cada pessoa pode estar no seu computador.
+
+Percorrida em 08/10, à mão: falhou no passo 2 (P1). Conferida em 09/10: continua; vem no pedido #30. Os passos 2 a 9
+valem depois que o #43 subir. Seguem o teste automático do #43 `e2e/pericia-servidor.e2e.ts:20` (feito com outro caso
+de exemplo, o José Ramos) e os testes de tela e de servidor (`PericiaNoServidor.test.tsx`;
+`apps/api/src/rotas/pericia.test.ts:433` a `:548`). Não foram percorridos à mão.
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
 | 1 | Central | "Antônia Lima (exemplo) · Marcar perícia médica" aparece sozinha, sem ninguém criar | GGVP-31, GGVP-49 |
-| 2 | Clique na tarefa | Deveria abrir "Marcar perícia"; hoje abre "tela ainda não construída" (P1, vem no pedido #30) | GGVP-49, GGVP-137 |
+| 2 | Clique na tarefa | Deveria abrir "Marcar perícia"; hoje abre "tela ainda não construída" (P1, vem no pedido #30). (depois que o #43 subir) Abre a tela de marcar da Antônia, com "Esperando o INSS liberar o agendamento (D2.E1)" e o botão "O INSS liberou o agendamento" | GGVP-49, GGVP-137 |
+| 3 | (depois que o #43 subir) "O INSS liberou o agendamento" (quando o Meu INSS mostrar o agendamento liberado). Depois, volte à Central | "Liberação registrada: marque a perícia pelo Meu INSS." A marcação abre na mesma tela. Na Central, a Antônia aparece uma vez só: "Antônia Lima (exemplo) · Marcar perícia"; a "Marcar perícia médica" sai | GGVP-49, GGVP-137 |
+| 4 | (depois que o #43 subir; depois de JA1 passo 3) Abra "Antônia Lima (exemplo) · Marcar perícia" → em "Meu INSS", "Ver a senha do gov.br" → confirme com a sua senha do portal | A senha aparece pelos segundos do cofre, como no protocolo (JA1 passo 2), e some sozinha; a leitura fica em "Uso do cofre" | GGVP-103, GGVP-137 |
+| 5 | (depois que o #43 subir) "Sim, marcado" → suba um PDF em "Comprovante do INSS (PDF)" → em "Lido do comprovante · confira", preencha Data, Hora e Local → "Sim: atribuir à Documentação" → "Registrar a perícia" | Sem a chave da IA, o quadro diz "A IA não leu o comprovante agora" e a pessoa preenche olhando o PDF. Depois: "✓ Perícia registrada". Para chegar ao resultado hoje, use a data de hoje e uma hora que já passou, como o teste automático; com data futura, o comparecimento só abre depois (P7) | GGVP-53, GGVP-137 |
+| 6 | (depois que o #43 subir) Como documentacao@, em qualquer computador: Central → "Antônia Lima (exemplo) · Reunir documentos da perícia" → no item "Laudo médico recente (até 30 dias)", "Anexar" um PDF | "Anexado: Laudo médico recente (até 30 dias), na pasta do caso."; na lista, o item fica "anexado: (o nome do arquivo)". O arquivo vai para a pasta do caso; na perícia médica, só o Jurídico abre | GGVP-56, GGVP-137 |
+| 7 | (depois que o #43 subir) Como juridico@, depois da hora marcada: Central → "Antônia Lima (exemplo) · Registrar comparecimento" → "Compareceu" → "Registrar" | "✓ Comparecimento registrado" | GGVP-66, GGVP-137 |
+| 8 | (depois que o #43 subir) Como advogada@: Central → "Antônia Lima (exemplo) · Conferir resultado da perícia" → suba um PDF em "Laudo ou registro do GERID" → "Favorável — seguir" → marque as conferências → "Registrar resultado" | Sem a chave da IA, "A IA não leu o laudo agora". Depois: "✓ Resultado registrado: favorável". A página da perícia do caso abre em "Perícias". Fora do Jurídico, a perícia mostra o resultado, sem a leitura do laudo (#17) | GGVP-70, GGVP-137 |
+| 9 | (depois que o #43 subir; opcional) Perícia pedida pelo juiz: em AD5 passo 8, marque também "Perícia médica" em "O juiz pediu perícia?". Como juridico@, abra a tarefa de marcar a perícia do Paulo Reis (exemplo) → em "Data que o juízo designou", preencha a data, a hora e o local → "Registrar a data do juízo" | A tela diz "A data ainda não saiu na publicação": a perícia judicial não tem Meu INSS nem comprovante. Depois: "Data do juízo registrada: na agenda e na ficha, com o lembrete da véspera agendado." A leitura sozinha da data na publicação não dá para ver aqui: a intimação de exemplo do Paulo Reis não traz data (está em `apps/api/src/rotas/pericia.test.ts:505`). **Atenção:** a manifestação do AD5 passo 9 passa a esperar o resultado dessa perícia, ou que a advogada a encerre com o motivo. Faça este passo só se o AD5 passo 9 puder esperar | GGVP-53, GGVP-79 (CA8), GGVP-137 |
 
 ### Financeiro (financeiro@exemplo.ggv)
 
@@ -865,18 +974,21 @@ Simulado nesta jornada: o aviso ao cliente não sai de verdade (o Financeiro rev
 enviei"). Desde o #23, quem leva registra a ida (AT7), e a confirmação do recebimento chega ao Financeiro como tarefa.
 
 Percorrida em 08/10: passou, todos os passos à mão, depois da mescla do Desfecho e financeiro. A Central fica vazia até a
-advogada concluir uma prestação.
+advogada concluir uma prestação. Os passos 1, 7 e 8 mudam e o passo 9 entra depois que o #43 subir. Seguem os testes do
+#43 (`e2e/centrais-e-financeiro.e2e.ts:23`; `CentralFinanceiro.test.tsx:41` a `:62`; `Financeiro.test.tsx:63` e
+`:85`; `apps/api/src/rotas/financeiro.test.ts:77`; `e2e/perfis.e2e.ts:33`), não percorridos à mão.
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
-| 1 | Entre antes de AD4 passo 6 | "Nada na sua fila agora.", com a busca e o "✦ Pergunte ou peça". A busca do Financeiro acha só as tarefas dele, não cliente (ele não vê o caso) | GGVP-78, GGVP-135 |
+| 1 | Entre antes de AD4 passo 6 | "Nada na sua fila agora.", com a busca e o "✦ Pergunte ou peça". A busca do Financeiro acha só as tarefas dele, não cliente (ele não vê o caso). (depois que o #43 subir) A aba do navegador diz "Início do Financeiro"; o chat sugere "Prestações recebidas"; com a fila vazia, aparece também "Abrir o painel Financeiro" | GGVP-78, GGVP-135 |
 | 2 | Depois de AD4 passo 6: "Vera Lúcia (exemplo) · Receber a prestação de contas" | Repasse ao cliente R$ 8.641,97; "Receber e lançar" desligado até marcar "Valores conferem com o comprovante" | GGVP-44, GGVP-98 |
 | 3 | Marque a conferência → "Receber e lançar" | "Recebimento lançado. Agora avise o cliente e marque a ida ao banco." | GGVP-98 |
 | 4 | Central: "Vera Lúcia · Avisar resultado e agendar a ida ao banco" → data, hora, agência, quem do Atendimento leva → "Agendar" | Mensagem pronta: "Seu benefício foi concedido. A ida ao banco está marcada para … Ana (exemplo), do escritório, vai com você." | GGVP-98, GGVP-44 |
 | 5 | Revise e "Revisei e enviei" | O aviso fica registrado com o canal e quem enviou; o Atendimento recebe "Levar ao banco" (AT7) | GGVP-98, G8 |
 | 6 | Depois de AT7 ("Levei o cliente ao banco"): Central → "Vera Lúcia (exemplo) · Confirmar o recebimento: cliente levado ao banco" → "Confirmar recebimento" | "Recebimento confirmado. Caso encerrado." Conferido em 09/10 (#23), no teste automático `e2e/via-administrativa.e2e.ts:231` | GGVP-98 (CA9) |
-| 7 | Topo → "Resultados" | Os totais em dinheiro do escritório (honorários recebidos, tempo até o dinheiro) | GGVP-75 |
-| 8 | Topo → "Configuração" | Só leitura: sem botões de salvar ou publicar | GGVP-104 |
+| 7 | Topo → "Resultados" | Os totais em dinheiro do escritório (honorários recebidos, tempo até o dinheiro). (depois que o #43 subir) É o único item da Gestão no topo dele. "Honorários recebidos" e "Tempo até o dinheiro" contam pela confirmação do recebimento (passo 6), não pelo "Receber e lançar" | GGVP-75, GGVP-96 |
+| 8 | Topo → "Configuração" | Só leitura: sem botões de salvar ou publicar. (depois que o #43 subir) Não há mais "Configuração" no topo; pelo link, "Sem permissão" | GGVP-104, GGVP-96 |
+| 9 | (depois que o #43 subir) Topo → "Financeiro". Volte aqui antes e depois dos passos 2, 3 e 6 | O painel "Financeiro", com o período: os cartões "Recebido no mês", "A receber", "Prestações de contas a lançar" e "Em atraso"; "Receita por mês"; "Por origem · últimos 12 meses"; "Prestações de contas pendentes"; a tabela "Lançamentos", com a Vera Lúcia (exemplo), os filtros, "Limpar" e "Exportar CSV". A Vera Lúcia muda de etiqueta a cada passo: "Aguardando OK" enquanto a advogada não conclui a prestação; depois, "Lançar", que abre o recebimento (passo 2); depois de "Receber e lançar", "A receber"; depois do passo 6, "Recebido", e o valor entra em "Recebido no mês". O nome do cliente abre a prestação de contas | GGVP-78, GGVP-98 |
 
 ### Sócio (socio@exemplo.ggv)
 
@@ -884,21 +996,37 @@ advogada concluir uma prestação.
 
 Simulado nesta jornada: o Raio-X do acervo é uma referência fixa (979 processos, gerado em 21/09).
 
-Percorrida em 08/10: passou, todos os passos à mão, exceto o 5 (P15).
+Percorrida em 08/10: passou, todos os passos à mão, exceto o 5 (P15). Os passos 6 e 7, e o que muda no passo 1, valem
+depois que o #43 subir. Seguem os testes do #43 (`e2e/centrais-e-financeiro.e2e.ts:44`; `e2e/perfis.e2e.ts:33`;
+`InicioDoSocio.test.tsx:47` e `:62`; `apps/api/src/rotas/processo.test.ts:209`), não percorridos à mão.
 
 | # | Passo | Resultado esperado | História |
 |---|---|---|---|
-| 1 | Topo → "Resultados" | Deferimento, procedência, extinções por causa e exigências no prazo, cada porcentagem com o número de casos e a data da base (G22); só totais, nunca cliente | GGVP-75 |
+| 1 | Topo → "Resultados" | Deferimento, procedência, extinções por causa e exigências no prazo, cada porcentagem com o número de casos e a data da base (G22); só totais, nunca cliente. (depois que o #43 subir) A tela inicial do Sócio já é "Resultados do escritório", com a busca e o chat em cima ("Êxito por benefício"); a fila aparece acima do painel só quando há tarefa dele (passo 4). "Honorários recebidos" e "Tempo até o dinheiro" contam pela confirmação do recebimento (FI1 passo 6) | GGVP-75, GGVP-78 |
 | 2 | "Recorte" → Benefício → "Ver resultados" | O grupo pequeno também mostra a taxa, com os casos e a data | GGVP-75 |
 | 3 | Topo → "Configuração" | Pode mudar limites, kits e mensagens | GGVP-104 |
 | 4 | Depois de SE6 passo 8: Central → "(cliente) · Autorizar exportação do histórico" → "Autorizar a exportação" | "Exportação autorizada. Quem pediu já pode baixar o histórico."; quem pediu vê "Baixar o histórico (JSON)" | GGVP-99 (CA12) |
 | 5 | Atribuir perfis a uma pessoa | Não há tela (P15) | GGVP-96 |
+| 6 | (depois que o #43 subir) Topo → "Financeiro" | O mesmo painel do Financeiro (FI1 passo 9): os cartões, os gráficos e a tabela "Lançamentos", com a Vera Lúcia (exemplo) e os valores de cada cliente. Em "Prestações de contas pendentes", "Lançar" aparece só como etiqueta, sem abrir nada: quem lança é o Financeiro | GGVP-78, GGVP-96 |
+| 7 | (depois que o #43 subir) Na busca, "Rita" → Enter → "Rita Exemplo" | A ficha abre só para ler. Sem o cartão "Dados bancários para o repasse". O caso do servidor também abre para ler, com os valores, sem o conteúdo médico e sem a petição | GGVP-96 |
 
 ---
 
 ## 7. Como foi conferido em 08/10 e em 09/10
 
-### Em 09/10, de madrugada (esta atualização)
+### Em 09/10, de manhã: o que entra com o #43
+
+- Sobre a branch do #43 (`juncao/entrega-0910`, em `c30d40c`), lida numa cópia separada do repositório. Esta
+  atualização parte da `main`, não da junção; só documentação mudou.
+- Li o corpo do #43 e dos quatro pedidos que ele junta (#25, #30, #37 e #42) e conferi no código da branch o que cada
+  passo novo diz: as rotas e a tabela `ACESSO_DAS_TELAS` em `apps/web/src/App.tsx`, a matriz em
+  `packages/contratos/src/permissoes.ts` (versão 22), o topo por perfil em `apps/web/src/componentes/itensDaGestao.ts`,
+  os textos nos componentes de cada tela e o teste que prova o passo.
+- **Nada disso rodou no GitHub:** a verificação do #43 (tipos, lint, testes, Playwright e varredura de segredos) espera
+  a cobrança. O #43 diz o que rodou na máquina dele: typecheck, lint e testes focados. **Não houve passada no
+  navegador.**
+
+### Em 09/10, de madrugada
 
 - Sobre a `main` em `ca01a8c` (mescla do #17), numa cópia separada do repositório. Só documentação mudou; nenhum código.
 - Para cada pedido mesclado desde a versão anterior do roteiro (`git log 5905302..origin/main --merges`), li o corpo do
