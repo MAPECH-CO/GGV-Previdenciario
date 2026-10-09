@@ -133,7 +133,8 @@ describe('Glossário do escritório (GGVP-143)', () => {
     expect(puts(fetch)).toEqual([[`/api/configuracao/glossario/${LOAS}`, { termo: 'LOAS (Lei 8.742/1993)', tipo: 'sigla', significado: 'Lei Orgânica da Assistência Social' }]])
 
     fireEvent.click(await within(g).findByRole('button', { name: 'Tirar LOAS' }))
-    expect((await screen.findByRole('status')).textContent).toBe('Termo tirado do glossário.')
+    // O aviso de antes ("Termo corrigido.") ainda está na tela: espera o novo, não o primeiro que achar.
+    expect((await screen.findByText('Termo tirado do glossário.')).getAttribute('role')).toBe('status')
     expect(enviados(fetch, 'DELETE')).toEqual([[`/api/configuracao/glossario/${LOAS}`, undefined]])
   })
 
