@@ -33,6 +33,7 @@ import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { TAMANHO_DO_DETALHE, beneficioDoFechamento, motivoParadoDoFechamento, podeRegistrarOMotivo, recontatoEmAberto } from '../../../web/src/regras/fechamento.ts'
 import { demandaAberta, motivoParadoDaDemanda } from '../../../web/src/regras/novaDemanda.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario } from './recepcao.ts'
+import { portaoDoContato } from './seguranca.ts'
 import { MSG_ENTREVISTA_NAO_ENCONTRADA } from './recepcao-entrevista.ts'
 
 export const MSG_SENHA_FORA_DO_COFRE = 'A senha ainda não está no cofre do portal.'
@@ -109,6 +110,9 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     const meu = forma(p.valores)
     const { valores, conflitos } = mesclar(forma(p.base), meu, atual)
     if (conflitos.length > 0) return { resultado: 'conflito', campos: conflitos.map((campo) => ({ campo, deles: atual[campo], meu: meu[campo] })) }
+    // GGVP-111 CA1 (Pedro, 08/10): o telefone de cliente só muda com a verificação, como na edição da ficha; o lead troca livre.
+    const semVerificacao = await portaoDoContato(banco, agora, pedido, ficha, { telefone: fichaDoCadastro(valores).telefone, email: ficha.email })
+    if (semVerificacao) return negar(resposta, 400, semVerificacao)
 
     const quem = await nomeDe(pedido)
     const primeiraVez = !ficha.historico.some((e) => e.oQue.startsWith('Cadastrou o lead'))

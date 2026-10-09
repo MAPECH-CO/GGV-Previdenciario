@@ -102,10 +102,9 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
     expect(abertas(salvo.tarefas)).toEqual(['Definir benefício'])
     expect((await banco.select().from(pessoa).where(eq(pessoa.id, fichaId)))[0]).toMatchObject({ cpf: '52998224725', bairro: 'Sé', cidade: 'São Paulo', uf: 'SP' })
 
-    // Outra pessoa troca o telefone enquanto esta tela estava aberta com o antigo (com a cliente verificada: GGVP-111).
+    // Outra pessoa troca o telefone enquanto esta tela estava aberta com o antigo (lead troca livre: Pedro, 08/10).
     const depois = cadastroDaFicha(salvo.ficha)
-    const verificacao = { como: 'presencial', contratoNovo: true }
-    await json('ana', 'PATCH', `/api/fichas/${fichaId}`, { nome: 'Joana Ribeiro', telefone: '11911112222', cpf: '52998224725', verificacao })
+    await json('ana', 'PATCH', `/api/fichas/${fichaId}`, { nome: 'Joana Ribeiro', telefone: '11911112222', cpf: '52998224725' })
     const conflito = await json('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base: depois, valores: { ...depois, telefone: '11933334444' } })
     expect(conflito).toMatchObject({ resultado: 'conflito', campos: [{ campo: 'telefone', meu: '(11) 93333-4444' }] })
 
@@ -115,6 +114,22 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
       id: outra,
       nome: 'Marta Lima',
     })
+  })
+
+  it('GGVP-111: no cadastro, o lead troca o telefone livre; o de cliente só muda com a verificação, na edição da ficha', async () => {
+    const { fichaId } = await entrevistaFeita()
+    const ficha: Ficha = await json('gabi', 'GET', `/api/fichas/${fichaId}`)
+    const base = cadastroDaFicha(ficha)
+    const valores = { ...base, cpf: '52998224725', rg: '12.345.678-9', nascimento: '10/05/1958', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', cep: '01001000', rua: 'Praça da Sé, 1', bairro: 'Sé', cidade: 'São Paulo', uf: 'SP', telefone: '11922223333' }
+    expect(await json('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base, valores })).toMatchObject({ resultado: 'salvo', ficha: { telefone: '11922223333' } })
+
+    // Fechou: agora é cliente, e o telefone dele não muda pelo cadastro.
+    await json('ana', 'POST', `/api/fichas/${fichaId}/processos`, { beneficio: 'loas-idoso' })
+    const cliente = cadastroDaFicha(await json('gabi', 'GET', `/api/fichas/${fichaId}`))
+    const recusa = await chamar('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base: cliente, valores: { ...cliente, telefone: '11944445555' } })
+    expect(recusa.statusCode).toBe(400)
+    expect(recusa.json().erro).toBe('Telefone, e-mail e dados bancários só mudam com o cliente verificado por chamada de vídeo ou no escritório.')
+    expect((await json('gabi', 'GET', `/api/fichas/${fichaId}`)).telefone).toBe('11922223333')
   })
 
   it('G16: não fechou sem recontato arquiva com o motivo na pessoa e fecha as tarefas; a recusa do escritório não é do Atendimento', async () => {
