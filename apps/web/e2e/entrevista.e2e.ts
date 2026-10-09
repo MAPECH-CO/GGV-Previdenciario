@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-40 · Entrevistar com gravação. Cada teste abre um navegador novo, então começa da semente de exemplo.ts: a
 // entrevista da Josefa é hoje às 15:30. O relógio da página é do Playwright (`page.clock`), para a gravação correr rápido.
@@ -27,6 +28,9 @@ async function internet(page: Page, ligada: boolean) {
     ;(globalThis as unknown as EventTarget).dispatchEvent(new Event(on ? 'online' : 'offline'))
   }, ligada)
 }
+
+// As telas do Jurídico pedem o perfil (GGVP-135): a advogada entra pela API.
+test.beforeEach(async ({ page }) => entrarPelaApi(page, ADVOGADA))
 
 test('CA1, CA4, CA5 e CA6 · da preparação à gravação com o aviso, o cofre e o "Cadastrar lead" na Central da Advogada', async ({ page }) => {
   await page.clock.install()

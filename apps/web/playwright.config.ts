@@ -23,7 +23,8 @@ export default defineConfig({
     {
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: `http://127.0.0.1:${api}/saude`,
-      env: { PORTA: api },
+      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC.
+      env: { PORTA: api, TZ: 'America/Sao_Paulo' },
       reuseExistingServer: false,
     },
     {

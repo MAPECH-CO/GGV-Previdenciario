@@ -101,7 +101,8 @@ export async function definirBeneficio(agendamentoId: string, decisao: DecisaoDo
 }
 
 /**
- * Benefício da lista "com cálculo": o advogado do atendimento recebe "Calcular tempo e pontos" (D1.13, GGVP-57),
+ * Benefício da lista "com cálculo": o Jurídico recebe "Calcular tempo e pontos" (D1.13, GGVP-57; quem calcula é o
+ * advogado, Pedro em 08/10),
  * obrigatório antes do fechamento. Trocar para um sem cálculo tira a tarefa aberta da fila.
  */
 function tarefaDoCalculo(banco: Banco, ficha: Ficha, agendamentoId: string, beneficio: string): TarefaEncaminhada | undefined {
@@ -126,7 +127,7 @@ function tarefaDoCalculo(banco: Banco, ficha: Ficha, agendamentoId: string, bene
     ].join(' · '),
     prazo: 'antes do fechamento',
     href: `/entrevista/${agendamentoId}/calculo`,
-    setor: 'Atendimento',
+    setor: 'Jurídico',
   }
   banco.tarefas.push(tarefa)
   return tarefa

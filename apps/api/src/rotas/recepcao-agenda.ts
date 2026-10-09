@@ -281,11 +281,16 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       estado: 'marcado',
       remarcacoes: 0,
       gravar: m.gravar,
+      confirmacao: { tentativas: [], presente: true },
     }
     ficha.agendamentos.push(agendamento)
-    ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`, await nomeDe(pedido)))
+    const quem = await nomeDe(pedido)
+    ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`, quem))
+    // Como na confirmação (BPMN D1.05 antes do D1.06): com a ficha de atendimento, a advogada recebe "Preparar entrevista";
+    // sem ela, o Atendimento recebe "Preencher ficha", e a ficha salva abre o "Preparar entrevista".
+    const tarefa = ficha.fichaAtendimentoPreenchida ? await abrirPreparacao(ficha, agendamento, quem) : await abrirPreenchimento(ficha, agendamento, quem)
     await guardar(ficha)
-    return { agendamento, ficha }
+    return { agendamento, ficha, tarefas: [tarefa] }
   })
 
   // GGVP-123 CA6, CA8, CA9: realizado conclui o "Receber para a entrevista" e, na entrevista do lead, abre o "Cadastrar

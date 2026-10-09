@@ -37,7 +37,7 @@ test('CA4, CA6 e CA9 · salva com campos em branco, o cartão mostra o que ficou
   await expect(page.getByText('62 anos')).toBeVisible()
   await page.getByLabel(/Trocar a senha|Digite a senha/).fill(SENHA_DE_TESTE)
   await page.getByRole('button', { name: 'Guardar no cofre' }).click()
-  await expect(page.getByText(/gov.br: senha no cofre · atualizada em .* por Você \(Atendimento\)/)).toBeVisible()
+  await expect(page.getByText(/gov.br: senha no cofre · atualizada em .* por Ana \(exemplo\)/)).toBeVisible()
   await page.getByRole('button', { name: 'Salvar ficha' }).click()
   await expect(page.getByRole('heading', { name: /✓ Ficha salva/ })).toBeVisible()
 
