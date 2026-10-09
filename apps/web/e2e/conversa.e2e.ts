@@ -3,7 +3,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-12 · a conversa com o lead ou o cliente (fluxo D5), no servidor (GGVP-138): cada teste cadastra o seu lead no
-// banco e cada pessoa entra com o login dela, num navegador só dela. A gravação e a transcrição são simuladas no servidor.
+// banco e cada pessoa entra com o login dela, num navegador só dela. Sem a chave do serviço, a transcrição da ligação é a
+// de exemplo do servidor (RELACIONAMENTO_SIMULADO); o navegador do Playwright não tem microfone (GGVP-133).
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -114,9 +115,8 @@ test('GGVP-138 CA7 · a conversa registrada pela Ana chega à ficha: a advogada 
   await senior.fechar()
 })
 
-test('GGVP-76 CA1, CA5, CA6 e CA9 · presencial com o aviso: a transcrição ao vivo sem a senha, o cofre pausa, e finalizar guarda o áudio', async ({ page }) => {
+test('GGVP-76 CA1, CA5 e GGVP-133 · presencial com o aviso; sem microfone, a tela avisa, não inventa falas e a conversa fica registrada sem áudio', async ({ page }) => {
   test.slow()
-  await page.clock.install()
   await page.goto('/')
   const ficha = await novoLead(page, 'Rosa Presencial Teste', '11944442222')
   await page.goto(ficha)
@@ -132,23 +132,16 @@ test('GGVP-76 CA1, CA5, CA6 e CA9 · presencial com o aviso: a transcrição ao 
   await expect(page.getByRole('button', { name: 'Começar a gravar' })).toBeDisabled()
   await page.getByRole('checkbox', { name: 'Avisei que a conversa será gravada' }).check()
   await page.getByRole('button', { name: 'Começar a gravar' }).click()
-  await expect(page.getByText(/● Gravando · 00:00:\d\d · aviso de gravação feito às \d\d:\d\d \(G10\)/)).toBeVisible()
-  await page.clock.runFor(60_000)
-  await page.getByRole('button', { name: '🔒 Abrir o cofre (pausa a gravação)' }).click()
-  await expect(page.getByText(/Pausada para a senha do gov.br/)).toBeVisible()
-  await page.getByRole('button', { name: 'Fechar o cofre e retomar' }).click()
-  // O relógio só anda com a gravação de volta: a retomada passa pelo servidor.
-  await expect(page.getByText(/● Gravando/)).toBeVisible()
-  await page.clock.runFor(60_000)
-  const falas = page.getByRole('list', { name: 'Falas' })
-  await expect(falas).toContainText('Rua Exemplo das Acácias, 45')
-  await expect(falas).toContainText('[senha retirada: vai ao cofre]')
-  await expect(page.locator('body')).not.toContainText(SENHA_DITA)
-  await page.getByRole('button', { name: 'Finalizar conversa' }).click()
-  await expect(page.getByRole('heading', { name: /✓ Conversa finalizada/ })).toBeVisible()
-  await expect(page.getByText(/O áudio ficou guardado no card do cliente: conversa-[0-9a-f-]{36}-.*\.webm/)).toBeVisible()
-  await expect(page.getByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeVisible()
-  await expect(page.locator('body')).not.toContainText(SENHA_DITA)
+  // Sem microfone, nada de falas de exemplo: as saídas são subir o áudio gravado fora ou registrar sem áudio.
+  await expect(page.getByRole('heading', { name: /^Sem microfone: / })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Falas' })).toHaveCount(0)
+  await expect(page.locator('body')).not.toContainText('Rua Exemplo das Acácias')
+  await expect(page.getByText('Subir o áudio gravado fora')).toBeVisible()
+  await page.getByRole('button', { name: 'Registrar como sem áudio' }).click()
+  await page.getByLabel('O que foi conversado *').fill('Contou que mudou de casa; traz o comprovante na semana que vem.')
+  await page.getByRole('button', { name: 'Registrar sem áudio' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Conversa registrada sem áudio' })).toBeVisible()
+  await expect(page.getByText('O registro ficou no card, como "só registro".')).toBeVisible()
 })
 
 test('GGVP-76 CA7 · pelas Transcrições, o registro escrito aparece como "só registro", com quem registrou', async ({ page }) => {

@@ -65,6 +65,9 @@ export const registrarAcaoNaConversa = (conversaId: string, acao: Extract<AcaoNa
 /** POST /api/conversas/:id/finalizar. O áudio fica no card do lead ou cliente e vai para a transcrição (CA6, CA9). */
 export const finalizarConversa = (conversaId: string, fim: { aos: number }) => pedir(`/conversas/${conversaId}/finalizar`, fim)
 
+/** POST /api/conversas/:id/sem-audio (GGVP-133): sem microfone, quem conversou escreve o que foi conversado. */
+export const registrarConversaSemAudio = (conversaId: string, notas: string) => pedir(`/conversas/${conversaId}/sem-audio`, { notas: notas.trim() })
+
 /**
  * POST /api/conversas/:id/audio. A ligação já feita sobe gravada, com o aviso nela (CA2, G10). GGVP-133: com o arquivo, ele
  * vai de verdade para a pasta do cliente (a gravação baixada da conversa do Chatwoot).
@@ -81,7 +84,8 @@ export function anexarAudio(conversaId: string, arquivo: AudioDaLigacao, conteud
 export function enviarParteDaConversa(conversaId: string, parte: ParteDoAudio) {
   const corpo = new FormData()
   corpo.append('inicio', String(Math.round(parte.inicio)))
-  corpo.append('arquivo', parte.audio, `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
+  // O áudio gravado fora (sem microfone) vai com o nome dele; a parte do microfone, pelo tipo.
+  corpo.append('arquivo', parte.audio, parte.audio instanceof File ? parte.audio.name : `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
   return pedir(`/conversas/${conversaId}/audio`, corpo)
 }
 

@@ -97,6 +97,22 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect(fim.ficha.transcricoes).toBe(1)
   })
 
+  it('GGVP-133: sem microfone, a conversa gravada agora fica registrada sem áudio, sem áudio nem fala inventados', async () => {
+    const { fichaId } = await clienteComProcesso()
+    const { conversa } = await json('ana', 'POST', '/api/conversas', { fichaId, canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
+    const url = `/api/conversas/${conversa.id}`
+    await json('ana', 'POST', `${url}/gravacao`, { avisei: true })
+    expect((await json('ana', 'POST', `${url}/acoes`, { acao: 'falhou', aos: 3 })).gravacao.estado).toBe('falhou')
+    expect((await json('ana', 'POST', `${url}/sem-audio`, { notas: 'x' })).erro).toBe('Escreva o que foi conversado.')
+    const r = await json('ana', 'POST', `${url}/sem-audio`, { notas: 'Contou que mudou de casa; traz o comprovante.' })
+    expect(r.gravacao).toMatchObject({ estado: 'encerrada', transcricao: 'sem-audio', registro: 'Contou que mudou de casa; traz o comprovante.', trechos: [] })
+    expect(r.gravacao.audio).toBeUndefined()
+    expect(r.conversa).toMatchObject({ registro: 'Contou que mudou de casa; traz o comprovante.' })
+    expect(r.ficha.historico.at(-1).oQue).toBe('Registrou a conversa sem áudio (presencial, com cliente): o microfone não gravou')
+    // Falta só a conferência de quem conversou, como na conversa escrita.
+    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0].detalhe).toMatch(/conferir a conversa \(D5\.04\)$/)
+  })
+
   it('G10 na ligação já feita: só sobe o áudio com o aviso nela, e só arquivo de áudio', async () => {
     const { fichaId } = await clienteComProcesso()
     const { conversa } = await json('ana', 'POST', '/api/conversas', { fichaId, canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' })

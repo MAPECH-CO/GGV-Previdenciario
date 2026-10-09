@@ -26,6 +26,16 @@
 - [x] 3.3 Playwright: a Atendimento sobe a gravação da ligação na conversa (`e2e/transcricao-ligacao.e2e.ts`).
 - [x] 3.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+## GGVP-133 e GGVP-46 · A IA lê a entrevista e a advogada confere (parte 4)
+
+- [x] 5.1 Contrato `EntrevistaLidaPelaIa` e `ConferenciaDaTranscricao.correcoes`; a finalidade `ler_entrevista` e `saudeAutorizada` no motor (`apps/api/src/ia/ia.ts`).
+- [x] 5.2 `lerEntrevista` depois da transcrição (rota e preparo): resumo, itens com a hora e o trecho, documentos do checklist e "sem trabalhar desde"; modo manual com o motivo; testes com `fetch` falso em `rotas/transcricao.test.ts` e `rotas/recepcao-entrevista.test.ts`.
+- [x] 5.3 Conferir corrigindo, com o que a IA ouviu no histórico (servidor e servidor de exemplo); testes.
+- [x] 5.4 Sem microfone: o aviso com o motivo, sem falas de exemplo, e as saídas (subir o áudio de fora ou registrar sem áudio) na entrevista e na conversa; o servidor não transcreve exemplo nem cria áudio; testes de tela e da API.
+- [x] 5.5 O tocador das Transcrições toca o áudio guardado e abre o texto final pela gravação, com a permissão dela; testes.
+- [x] 5.6 O motivo certo quando falta a autorização de dado de saúde (transcrição e conversa); "Resumo da ficha" na preparação.
+- [ ] 5.7 Playwright ajustado (`recepcao-servidor`, `conversa`, `preparar-entrevista`): roda na verificação do pedido.
+
 ## GGVP-140 · IA de verdade no Relacionamento: resumo da conversa e o que mudou na ficha
 
 - [x] 4.1 CA1 · Contrato `AnaliseDaConversaPelaIa` e `AnaliseDaConversa.daIa`; a finalidade `analisar_conversa` no motor (`apps/api/src/ia/ia.ts`).

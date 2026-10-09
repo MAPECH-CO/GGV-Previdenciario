@@ -50,6 +50,7 @@ async function rota(metodo: string, caminho: string, busca: URLSearchParams, cor
       await registrarAcao(g.id, corpo.acao as Parameters<typeof registrarAcao>[1], corpo.aos as number)
     } else if (resto === '/finalizar') await conversa.finalizarConversa(id, corpo as { aos: number })
     else if (resto === '/audio') await conversa.anexarAudio(id, corpo as conversa.AudioDaLigacao)
+    else if (resto === '/sem-audio') await conversa.registrarSemAudio(id, corpo.notas as string)
     else if (resto === '/transcricao') await conversa.transcreverConversa(id, corpo as { falhar?: boolean })
     else if (resto === '/conferencia') await conversa.conferirConversa(id, corpo as conversa.Conferencia, await daConversa(id))
     else if (resto === '/pendencia/cumprida') await conversa.cumprirPendencia(id, quemAge())

@@ -2,7 +2,7 @@
 // parte; as falas voltam com quem fala, a senha sai no servidor (G9, CA6) e o motor arruma o texto com o glossário do
 // escritório, com o original guardado ao lado (CA5). O texto também vai para a pasta do cliente (CA10). A IA não decide
 // nada: o que vai para a ficha continua passando pela conferência da pessoa (G14).
-import { TranscricaoArrumadaPelaIa as Arrumada } from '@ggv/contratos'
+import { EntrevistaLidaPelaIa, TranscricaoArrumadaPelaIa as Arrumada, type ItemDaEntrevista } from '@ggv/contratos'
 import { eq } from 'drizzle-orm'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
@@ -11,8 +11,8 @@ import { lerJson, type FalaTranscrita, type Ia } from '../ia/ia.ts'
 import { guardarArquivo, type Arquivo } from '../rotas/formulario.ts'
 import { termosDoGlossario } from './glossario.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
-import type { Ficha, Gravacao, Papel, Trecho } from '../../../web/src/dados/tipos.ts'
-import { documentosDaEntrevista, relogio, resumoDaEntrevista, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
+import type { Ficha, Gravacao, InformacaoExtraida, Papel, Trecho } from '../../../web/src/dados/tipos.ts'
+import { documentosDaEntrevista, erroDaInformacao, relogio, temSenha, tirarSenhas, valorDaInformacao } from '../../../web/src/regras/entrevista.ts'
 
 export type Dependencias = { banco: Banco; ia: Ia; armazenamento: Armazenamento }
 
@@ -20,6 +20,12 @@ export const MSG_TRANSCRICAO_DESLIGADA = 'a transcrição está desligada (falta
 export const MSG_SERVICO_FORA = 'o serviço de transcrição não respondeu'
 export const MSG_AUDIO_SUMIU = 'o áudio não foi encontrado na pasta do cliente'
 export const MSG_TEXTO_NAO_GUARDADO = 'o texto não foi guardado na pasta do cliente'
+/** GGVP-133: o motor recusa áudio e texto com dado de saúde sem `IA_PERMITE_DADO_DE_SAUDE=sim`; a tela diz isso, não "falhou". */
+export const MSG_IA_SEM_SAUDE = 'a IA não está autorizada a ler dado de saúde neste ambiente'
+export const MSG_IA_DESLIGADA = 'a IA está desligada neste ambiente (falta a chave do serviço)'
+export const MSG_IA_SEM_RESPOSTA = 'a IA não respondeu agora'
+/** Gravação de verdade sem áudio guardado (sem microfone): não há o que transcrever, e nada é inventado (CA8). */
+export const MSG_SEM_AUDIO = 'nenhum áudio desta gravação chegou ao portal: suba o áudio gravado fora ou registre a entrevista sem áudio'
 
 type Quem = Arrumada['falantes'][string]
 
@@ -77,7 +83,7 @@ export async function transcreverGravacao(deps: Dependencias, g: Gravacao, ficha
     const audio = d && (await armazenamento.ler(d.chaveArmazenamento).catch(() => null))
     if (!d || !audio) return falhou(MSG_AUDIO_SUMIU)
     const r = await ia.transcrever({ casoId: null, quem, audio, mime: d.mime, nome: d.nomeOriginal, sensivel: d.sensivel, referencia: `documento:${d.id}` })
-    if (!r) return falhou(ia.ligada ? MSG_SERVICO_FORA : MSG_TRANSCRICAO_DESLIGADA)
+    if (!r) return falhou(!ia.ligada ? MSG_TRANSCRICAO_DESLIGADA : d.sensivel && !ia.saudeAutorizada ? MSG_IA_SEM_SAUDE : MSG_SERVICO_FORA)
     // Cada parte é transcrita sozinha: "A" de uma parte não é o "A" da outra.
     for (const f of r.falas) falas.push({ ...f, rotulo: `${n + 1}${f.falante}`, aos: Math.round(parte.inicio + f.inicio) })
     fim = Math.max(fim, Math.round(parte.inicio + r.segundos))
@@ -115,8 +121,7 @@ export async function transcreverGravacao(deps: Dependencias, g: Gravacao, ficha
   g.extraidas = g.acoes.some((x) => x.acao === 'guardou-senha')
     ? [{ id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre: não consta na transcrição (G9)', destino: 'cofre' }]
     : []
-  g.resumo = resumoDaEntrevista(ficha, g.extraidas)
-  g.documentos = documentosDaEntrevista(ficha, g.extraidas)
+  // O resumo, os itens e os documentos são da leitura da IA, depois (a entrevista e a conversa leem cada uma a sua).
   g.duracao = Math.max(g.duracao, fim)
   g.transcricao = 'pronta'
   g.motivoDaFalha = undefined
@@ -130,5 +135,58 @@ export async function transcreverGravacao(deps: Dependencias, g: Gravacao, ficha
     .values({ pessoaId: g.fichaId, tipo: 'transcricao', sensivel: g.soJuridico, origem: 'transcricao', recebidoPor: quem, ...dados })
     .returning({ id: documento.id })
   g.transcricaoDocumentoId = d.id
+  return g
+}
+
+/** Por que o motor não leu um texto com dado de saúde: a tela diz o motivo certo e segue no modo manual. */
+export const motivoSemIa = (ia: Ia) => (!ia.ligada ? MSG_IA_DESLIGADA : !ia.saudeAutorizada ? MSG_IA_SEM_SAUDE : MSG_IA_SEM_RESPOSTA)
+
+const ROTULO_DO_ITEM: Record<ItemDaEntrevista, string> = {
+  telefone: 'Telefone',
+  estadoCivil: 'Estado civil',
+  profissao: 'Profissão',
+  contatoApoio: 'Contato de apoio',
+  documento: 'Documento citado',
+  desde: 'Sem trabalhar desde',
+}
+
+/**
+ * GGVP-133, GGVP-46 CA6, CA7: a IA lê a entrevista transcrita (já sem a senha, G9, como dado no `<conteudo>`) e sugere o
+ * resumo, os dados da ficha, os documentos citados (para o checklist) e o "sem trabalhar desde". O código confere cada
+ * item: a hora e o trecho são os da transcrição, nunca os da IA; o valor passa pela biblioteca de campos; o que traz senha
+ * não passa. Nada vai para a ficha sem a advogada conferir item a item (G14). Sem a IA, `semIa` diz o motivo e a tela
+ * segue no modo manual: sem resumo nem item inventado.
+ */
+export async function lerEntrevista({ ia }: Pick<Dependencias, 'ia'>, g: Gravacao, ficha: Ficha, quem: string | null) {
+  const papel = (t: Trecho) => (t.papel === 'cliente' ? 'cliente' : t.papel === 'terceiro' ? 'outra pessoa' : 'escritório')
+  const conteudo = [
+    `Entrevista: ${g.titulo}, por ${g.canal}.`,
+    `Benefício de interesse: ${nomeBeneficio(ficha.beneficioInteresse) || 'a definir'}.`,
+    'Falas:',
+    JSON.stringify(g.trechos.map((t, i) => ({ i, quem: papel(t), texto: t.texto }))),
+  ].join('\n')
+  const valida = (texto: string) => EntrevistaLidaPelaIa.safeParse(lerJson(texto)).success
+  const s = await ia.sugerir('ler_entrevista', { casoId: null, quem, conteudo, fontes: [{ tipo: 'documento', referencia: `gravacao:${g.id}` }] }, { validar: valida })
+  const cofre = g.extraidas.filter((e) => e.destino === 'cofre')
+  if (!s) {
+    g.semIa = motivoSemIa(ia)
+    g.resumo = undefined
+    g.extraidas = cofre
+    g.documentos = documentosDaEntrevista(ficha, [])
+    return g
+  }
+  const lida = EntrevistaLidaPelaIa.parse(lerJson(s.texto))
+  const itens = lida.itens.flatMap(({ tipo, valor, i }, n): InformacaoExtraida[] => {
+    const t = g.trechos[i]
+    const campo = tipo === 'documento' || tipo === 'desde' ? undefined : tipo
+    if (!t || temSenha(valor) || erroDaInformacao({ campo }, valor)) return []
+    const destino = campo ? 'ficha' : tipo === 'documento' ? 'documentacao' : 'processo'
+    return [{ id: `${tipo}-${n}`, rotulo: ROTULO_DO_ITEM[tipo], valor: valorDaInformacao({ campo }, valor), destino, ...(campo && { campo }), aos: t.aos, trecho: t.texto }]
+  })
+  g.extraidas = [...itens, ...cofre]
+  g.resumo = temSenha(lida.resumo) ? 'O resumo da IA citava uma senha e foi retirado (G9): leia a transcrição.' : lida.resumo
+  g.documentos = documentosDaEntrevista(ficha, g.extraidas)
+  g.alertaDaIa ??= s.alerta ?? undefined
+  g.semIa = undefined
   return g
 }

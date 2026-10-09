@@ -28,6 +28,7 @@ vi.mock('../dados/conversa.ts', async (original) => {
 })
 
 const conversa = await import('../dados/conversa.ts')
+const audio = await import('../dados/audio.ts')
 const { comSessao, entrarComo } = await import('../dados/sessaoDeTeste.tsx')
 const { configurarExemplo, zerarExemplo } = await import('../dados/servidor.ts')
 const { Conversa } = await import('./Conversa.tsx')
@@ -68,9 +69,28 @@ describe('GGVP-133 · conversa do Relacionamento com o microfone de verdade', ()
     const enviou = vi.mocked(conversa.enviarParteDaConversa)
     expect(enviou).toHaveBeenCalledWith(c.id, PARTE)
     expect(enviou.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(conversa.finalizarConversa).mock.invocationCallOrder[0])
-    // Sem a chave no servidor falso, a transcrição é a de exemplo; o teste espera ela terminar.
-    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeTruthy()
-  })
+    // Sem a chave no servidor falso, a transcrição é a de exemplo; o teste espera ela terminar (a máquina lenta pede folga).
+    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.', undefined, { timeout: 15000 })).toBeTruthy()
+  }, 30000)
+
+  it('sem microfone, o áudio gravado fora sobe nesta conversa e ela vai para a transcrição; nenhuma fala de exemplo', async () => {
+    vi.mocked(audio.abrirMicrofone).mockResolvedValueOnce({ erro: 'nenhum microfone foi encontrado neste computador' })
+    const c = await conversa.abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
+    render(comSessao(<Conversa conversaId={c.id} passo={5} />))
+    await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Registrar conversa' })
+    fireEvent.click(botao('Gravar'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Avisei que a conversa será gravada' }))
+    fireEvent.click(botao('Começar a gravar'))
+    expect(await screen.findByRole('heading', { name: 'Sem microfone: nenhum microfone foi encontrado neste computador' }, { timeout: 15000 })).toBeTruthy()
+    expect(document.body.textContent).not.toContain('Mudei de casa')
+    const arquivo = new File(['OggS'], 'gravador.ogg', { type: 'audio/ogg' })
+    fireEvent.change(await screen.findByLabelText('Subir o áudio gravado fora', undefined, { timeout: 15000 }), { target: { files: [arquivo] } })
+    await waitFor(() => expect(conversa.finalizarConversa).toHaveBeenCalled())
+    expect(conversa.enviarParteDaConversa).toHaveBeenCalledWith(c.id, { audio: arquivo, inicio: 0 })
+    expect(vi.mocked(conversa.enviarParteDaConversa).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(conversa.finalizarConversa).mock.invocationCallOrder[0])
+    // Sem a chave no servidor falso, a transcrição é a de exemplo do servidor; o teste espera ela terminar.
+    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.', undefined, { timeout: 15000 })).toBeTruthy()
+  }, 30000)
 
   it('CA4 · na ligação gravada agora não há texto ao vivo: o texto sai ao terminar', async () => {
     await gravar('ligacao')

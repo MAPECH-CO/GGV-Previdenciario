@@ -7,12 +7,13 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { chamadaIa, documento, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
-import { MSG_AUDIO_SUMIU, MSG_SERVICO_FORA, MSG_TRANSCRICAO_DESLIGADA } from '../fluxo/transcricao.ts'
+import { acessoDadoSensivel, chamadaIa, documento, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
+import { MSG_AUDIO_SUMIU, MSG_IA_SEM_RESPOSTA, MSG_IA_SEM_SAUDE, MSG_SERVICO_FORA, MSG_TRANSCRICAO_DESLIGADA } from '../fluxo/transcricao.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
+import { MSG_GRAVACAO_SO_DO_JURIDICO } from './recepcao-entrevista.ts'
 import { MSG_SEM_AO_VIVO } from './transcricao.ts'
 
 // GGVP-133: a transcrição de verdade da entrevista, sempre com serviço falso (nenhuma chamada de verdade à OpenAI).
@@ -35,9 +36,28 @@ const DIARIZADO = {
   ],
 }
 
+/**
+ * GGVP-133: o que a IA lê na entrevista. Só o telefone, o documento e o "desde" passam: o item com senha (G9), o telefone
+ * sem DDD e o da fala que não existe ficam de fora no código.
+ */
+const LEITURA = {
+  resumo: 'Joana quer saber da LOAS para ela.',
+  itens: [
+    { tipo: 'telefone', valor: '(11) 98888-7777', i: 1 },
+    { tipo: 'documento', valor: 'carta de indeferimento do INSS', i: 1 },
+    { tipo: 'desde', valor: '06/2026', i: 1 },
+    { tipo: 'estadoCivil', valor: 'casada, senha Girassol2024', i: 2 },
+    { tipo: 'telefone', valor: '1234', i: 1 },
+    { tipo: 'profissao', valor: 'Diarista', i: 9 },
+  ],
+}
+
 type Pedido = { url: string; corpo: unknown }
-/** Um serviço falso que responde como a OpenAI: transcreve, arruma (troca "loas" por "LOAS") e entrega a chave temporária. */
-function servico({ falhasNaTranscricao = 0 } = {}) {
+/**
+ * Um serviço falso que responde como a OpenAI: transcreve, arruma (troca "loas" por "LOAS"), lê a entrevista e entrega a
+ * chave temporária. `leitura`: o texto da leitura da entrevista (fora do formato, para a falha).
+ */
+function servico({ falhasNaTranscricao = 0, leitura = JSON.stringify(LEITURA) } = {}) {
   const pedidos: Pedido[] = []
   let falhas = falhasNaTranscricao
   const fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
@@ -51,6 +71,7 @@ function servico({ falhasNaTranscricao = 0 } = {}) {
     if (u.endsWith('/chat/completions')) {
       const corpo = JSON.parse(String(init?.body)) as { messages: { content: string }[] }
       pedidos.push({ url: u, corpo })
+      if (corpo.messages[0].content.includes('entrevista inicial')) return resposta({ choices: [{ message: { content: leitura } }] })
       const falas = JSON.parse(corpo.messages[1].content.split('Falas:\n')[1].replace('\n</conteudo>', '')) as { i: number; falante: string; texto: string }[]
       const papel = (f: string) => (f.endsWith('A') ? 'escritorio' : f.endsWith('B') ? 'cliente' : 'terceiro')
       const arrumada = { falantes: Object.fromEntries(falas.map((f) => [f.falante, papel(f.falante)])), falas: falas.map((f) => ({ i: f.i, texto: f.texto.replace('loas', 'LOAS') })) }
@@ -134,7 +155,8 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     expect(arrumar.messages[1].content).not.toContain('Girassol2024')
     // CA7: a fala com instrução entra como dado, com o alerta do motor; nada vai para a ficha sem a pessoa conferir.
     expect(t.alertaDaIa).toMatch(/instrução suspeita/)
-    expect(t.extraidas).toEqual([])
+    expect(t.extraidas.length).toBeGreaterThan(0)
+    expect(t.extraidas.every((e: { conferidaEm?: string }) => !e.conferidaEm)).toBe(true)
 
     // CA10: o áudio e o texto ficam na pasta do cliente.
     const docs = await banco.select().from(documento).where(eq(documento.pessoaId, fichaId))
@@ -152,8 +174,84 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     const chamadas = await banco.select().from(chamadaIa)
     expect(chamadas.map((c) => [c.finalidade, c.modelo, c.audioSegundos, c.custoEstimado]).sort()).toEqual([
       ['arrumar_transcricao', 'gpt-4.1-mini', null, null],
+      ['ler_entrevista', 'gpt-4.1-mini', null, null],
       ['transcrever_audio', 'gpt-4o-transcribe-diarize', 90, '0.0090'],
     ])
+  })
+
+  it('GGVP-133, GGVP-46 · a IA lê a entrevista: o resumo, cada item com a hora e o trecho, os documentos para o checklist e o "sem trabalhar desde"', async () => {
+    const { pedidos } = montar()
+    const { agendamentoId } = await entrevistaConfirmada()
+    const g = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
+    const t = (await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})).gravacao
+    const trecho = 'Bom dia, doutora. Eu queria saber da LOAS para mim.'
+    expect(t.resumo).toBe(LEITURA.resumo)
+    expect(t.semIa).toBeUndefined()
+    expect(t.extraidas).toEqual([
+      { id: 'telefone-0', rotulo: 'Telefone', valor: '11988887777', destino: 'ficha', campo: 'telefone', aos: 3, trecho },
+      { id: 'documento-1', rotulo: 'Documento citado', valor: 'carta de indeferimento do INSS', destino: 'documentacao', aos: 3, trecho },
+      { id: 'desde-2', rotulo: 'Sem trabalhar desde', valor: '06/2026', destino: 'processo', aos: 3, trecho },
+    ])
+    expect(t.documentos).toContain('Carta de indeferimento do INSS')
+    // A IA lê o texto final, já sem a senha (G9), como dado, com quem fala.
+    const ler = pedidos.find((p) => p.url.endsWith('/chat/completions') && (p.corpo as { messages: { content: string }[] }).messages[0].content.includes('entrevista inicial'))!
+    const conteudo = (ler.corpo as { messages: { content: string }[] }).messages[1].content
+    expect(conteudo).toContain(`{"i":1,"quem":"cliente","texto":"${trecho}"}`)
+    expect(conteudo).not.toContain('Girassol2024')
+    expect(JSON.stringify(t)).not.toContain('Girassol2024')
+  })
+
+  it('GGVP-133 · a IA não leu (resposta fora do formato): a transcrição fica pronta, sem resumo nem item inventado, com o motivo', async () => {
+    montar(CHAVES, { leitura: 'não sei' })
+    const { agendamentoId } = await entrevistaConfirmada()
+    const g = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
+    const t = (await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})).gravacao
+    expect([t.transcricao, t.semIa, t.resumo, t.extraidas]).toEqual(['pronta', MSG_IA_SEM_RESPOSTA, undefined, []])
+    expect(t.documentos).toEqual(['RG', 'CPF', 'Comprovante de residência', 'CNIS'])
+  })
+
+  it('GGVP-133 · sem a autorização de dado de saúde, a tela diz o motivo certo, não "o serviço não respondeu"', async () => {
+    const { pedidos } = montar({ OPENAI_API_KEY: 'chave-de-teste-openai' })
+    const { agendamentoId } = await entrevistaConfirmada()
+    const g = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
+    const t = (await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})).gravacao
+    expect([t.transcricao, t.motivoDaFalha]).toEqual(['falhou', MSG_IA_SEM_SAUDE])
+    expect(pedidos).toEqual([])
+  })
+
+  it('GGVP-46 CA6, G14 · a advogada confirma ou corrige cada item; o corrigido leva o que a IA ouviu ao histórico', async () => {
+    montar()
+    const { agendamentoId } = await entrevistaConfirmada()
+    const g = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
+    await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})
+    const url = `/api/gravacoes/${g.id}/conferencias`
+    expect((await json('gabi', url, { ids: ['documento-1'], correcoes: [{ id: 'documento-1', valor: 'x' }] })).erro).toBe('Corrija documento citado: de 2 a 200 letras.')
+    expect((await json('gabi', url, { ids: ['telefone-0'], correcoes: [{ id: 'telefone-0', valor: '9999' }] })).erro).toBe('Corrija telefone: o telefone vai com DDD.')
+    const r = await json('gabi', url, { ids: ['telefone-0', 'desde-2'], correcoes: [{ id: 'telefone-0', valor: '(11) 97777-6666' }] })
+    expect(r.ficha.telefone).toBe('11977776666')
+    const historico = r.ficha.historico.map((e: { oQue: string }) => e.oQue)
+    expect(historico).toContain('Levou à ficha, da entrevista de 08/10, telefone: «(11) 98765-4321» → «(11) 97777-6666» (corrigido na conferência; a IA ouviu «(11) 98888-7777»)')
+    expect(historico).toContain('Conferiu, da entrevista de 08/10, sem trabalhar desde: «06/2026»')
+    expect(r.gravacao.extraidas.filter((e: { conferidaEm?: string }) => e.conferidaEm).map((e: { id: string }) => e.id)).toEqual(['telefone-0', 'desde-2'])
+  })
+
+  it('GGVP-133 · o áudio guardado toca e o texto final abre pela gravação, só para o Jurídico, com a leitura registrada', async () => {
+    montar()
+    const { agendamentoId } = await entrevistaConfirmada()
+    const g = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
+    const t = (await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})).gravacao
+    const ler = async (apelido: string, doc: string) => app.inject({ method: 'GET', url: `/api/gravacoes/${g.id}/arquivos/${doc}`, cookies: await cookieDe(apelido) })
+
+    const audio = await ler('gabi', t.audio.documentos[0].id)
+    expect([audio.statusCode, audio.headers['content-type'], audio.body]).toEqual([200, 'audio/ogg', 'OggS áudio da ligação'])
+    const texto = await ler('gabi', t.transcricaoDocumentoId)
+    expect([texto.statusCode, texto.headers['content-type']]).toEqual([200, 'text/plain; charset=utf-8'])
+    expect(texto.body).toContain('Dra. Paula: Bom dia, dona Joana.')
+    expect(await banco.select().from(acessoDadoSensivel).where(eq(acessoDadoSensivel.recurso, `gravacao:${g.id}`))).toHaveLength(2)
+
+    const atendimento = await ler('ana', t.audio.documentos[0].id)
+    expect([atendimento.statusCode, atendimento.json().erro]).toEqual([403, MSG_GRAVACAO_SO_DO_JURIDICO])
+    expect((await ler('gabi', '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b')).statusCode).toBe(404)
   })
 
   it('CA8 · o serviço falha: a gravação fica "falhou", com o motivo, e o áudio continua guardado; tentar de novo transcreve', async () => {

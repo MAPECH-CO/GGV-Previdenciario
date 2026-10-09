@@ -259,6 +259,22 @@ export async function finalizarConversa(conversaId: string, fim: { aos: number }
   return { conversa, ficha, gravacao: g }
 }
 
+/** POST /api/conversas/:id/sem-audio (GGVP-133). Sem microfone, quem conversou escreve o que foi conversado: "só registro". */
+export async function registrarSemAudio(conversaId: string, notas: string): Promise<ConversaAberta> {
+  await esperar()
+  if (notas.trim().length < 3) throw new Error('Escreva o que foi conversado.')
+  const banco = ler()
+  const { conversa, ficha, gravacao: g } = acharConversa(banco, conversaId)
+  if (!g) throw new Error('Grave a conversa antes.')
+  if (g.estado === 'encerrada') return { conversa, ficha, gravacao: g }
+  g.acoes.push({ acao: 'sem-audio', quando: agora().toISOString(), aos: g.duracao })
+  Object.assign(g, { estado: 'encerrada', transcricao: 'sem-audio', registro: notas.trim() })
+  Object.assign(conversa, { registro: notas.trim(), finalizadaEm: agora().toISOString() })
+  ficha.historico.push(evento(`Registrou a conversa sem áudio (${comQuemFalado(conversa)}): o microfone não gravou`, conversa.quem))
+  gravar(banco)
+  return { conversa, ficha, gravacao: g }
+}
+
 /** POST /api/conversas/:id/audio. A ligação já feita sobe gravada, de qualquer formato e tamanho, com o aviso nela (CA2, G10). */
 export async function anexarAudio(conversaId: string, arquivo: AudioDaLigacao): Promise<ConversaAberta> {
   await esperar()

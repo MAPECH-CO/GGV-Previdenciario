@@ -16,6 +16,7 @@ import {
   AudioDaLigacao,
   CampoDaConversa,
   Conferencia,
+  EntrevistaSemAudio,
   FimDaConversa,
   InicioDaGravacao,
   NovaConversa,
@@ -56,7 +57,7 @@ import {
   type Pessoa,
   type VersaoDoCampo,
 } from '../../../web/src/regras/conversa.ts'
-import { ehAudio, juntarPartes, minutos, partesDoAudio, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
+import { ehAudio, juntarPartes, minutos, partesDoAudio, temSenha, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
 import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type Verificacao } from '../../../web/src/regras/seguranca.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
 import { AnaliseDaConversaPelaIa, ChaveAoVivo } from '@ggv/contratos'
@@ -76,6 +77,8 @@ export const MSG_SEM_AVISO_NA_LIGACAO = 'Confirme que a ligação começou com o
 export const MSG_TRANSCRICAO_DESLIGADA = 'a transcrição de verdade ainda não está ligada: registre o que mudou à mão'
 /** GGVP-140 CA5: a IA não leu a conversa (fora do ar, recusada ou resposta fora do formato): a pessoa segue pela leitura. */
 export const MSG_IA_SEM_ANALISE = 'A IA não respondeu agora: leia a transcrição e confira o que mudou.'
+/** GGVP-133: sem `IA_PERMITE_DADO_DE_SAUDE=sim`, o motor recusa a leitura: a tela diz o motivo certo e segue manual. */
+export const MSG_IA_SEM_SAUDE_NA_CONVERSA = 'A IA não está autorizada a ler dado de saúde neste ambiente: leia a transcrição e confira o que mudou.'
 
 /** Áudio de voz a 128 kbit/s: 16 kB por segundo, como na entrevista. Só para o tamanho do arquivo simulado. */
 const BYTES_POR_SEGUNDO = 16_000
@@ -119,8 +122,6 @@ const dataHoraEmBrasilia = (iso: string) => {
 
 /** Uma coisa dita, com a hora e o trecho da transcrição de onde saiu (GGVP-80 CA5). */
 type DitoNaConversa = Dito & { aos: number; trecho: string }
-/** G9 também no que a IA devolve: o texto com senha não passa. */
-const temSenha = (texto: string) => tirarSenhas([{ aos: 0, quem: '', papel: 'cliente', texto }])[0].texto !== texto
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -436,6 +437,25 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     guardarNoCard(ficha, g, entrada.data.nome, entrada.data.tamanho)
     Object.assign(c, { gravacaoId: g.id, finalizadaEm: agora().toISOString() })
     ficha.historico.push(evento(`Subiu a gravação da ligação (${entrada.data.nome}); o áudio ficou no card e foi para a transcrição`, c.quem))
+    await guardarGravacao(g)
+    await guardarConversa(c, g)
+    await guardar(ficha)
+    return resposta(pedido, c, ficha, g)
+  })
+
+  // GGVP-133: sem microfone, a conversa gravada agora não inventa falas: quem conversou escreve o que foi conversado e ela
+  // fica como "só registro", como a conversa escrita. Nada muda na ficha sem a conferência (G14).
+  app.post<{ Params: { id: string } }>('/api/conversas/:id/sem-audio', registrar, async (pedido, resp) => {
+    const entrada = EntrevistaSemAudio.safeParse(pedido.body)
+    if (!entrada.success || entrada.data.notas.length < 3) return negar(resp, 400, 'Escreva o que foi conversado.')
+    const achada = await acharConversa(pedido.params.id)
+    if (!achada?.gravacao) return negar(resp, 404, MSG_CONVERSA_NAO_ENCONTRADA)
+    const { conversa: c, ficha, gravacao: g } = achada
+    if (g.estado === 'encerrada') return resposta(pedido, c, ficha, g)
+    g.acoes.push({ acao: 'sem-audio', quando: agora().toISOString(), aos: g.duracao })
+    Object.assign(g, { estado: 'encerrada', transcricao: 'sem-audio', registro: entrada.data.notas })
+    Object.assign(c, { registro: entrada.data.notas, finalizadaEm: agora().toISOString() })
+    ficha.historico.push(evento(`Registrou a conversa sem áudio (${comQuemFalado(c)}): o microfone não gravou`, c.quem))
     await guardarGravacao(g)
     await guardarConversa(c, g)
     await guardar(ficha)
@@ -847,7 +867,8 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
       senhaDita = g.trechos.some((t) => t.texto.includes(SENHA_RETIRADA))
       g.documentos = []
       const lida = await lerComIa(c, ficha, g, quemId)
-      const analise = await montarAnalise(c, ficha, g, { ditos: lida?.ditos ?? [], senhaDita, pendencia: lida?.combinado, aviso: lida ? undefined : MSG_IA_SEM_ANALISE })
+      const semIa = real!.ia.saudeAutorizada ? MSG_IA_SEM_ANALISE : MSG_IA_SEM_SAUDE_NA_CONVERSA
+      const analise = await montarAnalise(c, ficha, g, { ditos: lida?.ditos ?? [], senhaDita, pendencia: lida?.combinado, aviso: lida ? undefined : semIa })
       c.analise = lida ? { ...analise, daIa: lida.daIa } : analise
       ficha.historico.push(evento('A transcrição da conversa ficou pronta: está nas Transcrições do card', 'Sistema (IA)'))
     }
