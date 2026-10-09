@@ -102,9 +102,10 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
     expect((await chamar('gabi', 'GET', '/exigencia-juiz')).json().faltam).toEqual(['Perícia'])
   })
 
-  it('CA9 · só a advogada distribui; a Sênior vê e tem a ação recusada e registrada', async () => {
-    expect((await chamar('helena', 'POST', '/exigencia-juiz', { decisao: 'ciencia' })).statusCode).toBe(403)
-    expect((await chamar('helena', 'GET', '/exigencia-juiz')).json().podeDistribuir).toBe(false)
+  it('CA9 · só o Jurídico distribui (a advogada ou a Sênior, GGVP-96); o Atendimento vê e tem a ação recusada', async () => {
+    expect((await chamar('ana', 'POST', '/exigencia-juiz', { decisao: 'ciencia' })).statusCode).toBe(403)
+    expect((await chamar('ana', 'GET', '/exigencia-juiz')).json().podeDistribuir).toBe(false)
+    expect((await chamar('helena', 'GET', '/exigencia-juiz')).json().podeDistribuir).toBe(true)
     await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia' })
     expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia' })).json().erro).toBe(MSG_NADA_A_ANALISAR)
     expect(await banco.select().from(exigenciaItem)).toEqual([])

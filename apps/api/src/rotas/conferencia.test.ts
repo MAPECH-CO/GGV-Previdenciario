@@ -68,6 +68,17 @@ describe('GGVP-23 · abrir a conferência', () => {
     expect((await ver('julia')).statusCode).toBe(403)
   })
 
+  it('GGVP-96 · a peça jurídica (pacote da petição, versões da manifestação) só vai a quem vê a petição', async () => {
+    const peca = { mime: 'application/pdf', tamanho: 1, hashSha256: 'h', origem: 'portal' }
+    await banco.insert(documento).values([
+      { casoId, tipo: 'pacote_peticao', chaveArmazenamento: 'x/pacote', nomeOriginal: 'peticao-inicial-v1.pdf', ...peca },
+      { casoId, tipo: 'manifestacao_versao', chaveArmazenamento: 'x/manifestacao', nomeOriginal: 'manifestacao.pdf', ...peca },
+    ])
+    const nomes = async (apelido: string) => (await ver(apelido)).json().documentos.map((d: { nome: string }) => d.nome)
+    expect(await nomes('ana')).toEqual(['RG.pdf'])
+    expect(await nomes('helena')).toEqual(['RG.pdf', 'peticao-inicial-v1.pdf', 'manifestacao.pdf'])
+  })
+
   it('CA5 · mostra o parecer item a item, sem CID nem texto do laudo', async () => {
     await parecer('suficiente')
     const r = (await ver('helena')).json()

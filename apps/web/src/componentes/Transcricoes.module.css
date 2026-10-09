@@ -305,6 +305,38 @@
   font-size: var(--fonte-12);
 }
 
+/* GGVP-133: de onde a informação saiu e a correção da advogada, abaixo do valor. */
+.deOnde,
+.corrigir {
+  grid-column: 2 / -1;
+  font-size: var(--fonte-12);
+}
+
+.deOnde {
+  color: var(--cor-texto-suave);
+}
+
+.corrigir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.corrigir input {
+  flex: 1 1 200px;
+  padding: 4px 8px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+}
+
+.player audio {
+  flex: 1 1 260px;
+}
+
 .buscaLinha {
   display: flex;
   flex-wrap: wrap;
@@ -327,24 +359,12 @@
 
 .player {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
   border-radius: var(--raio-8);
   background: var(--cor-painel-neutro);
-}
-
-.tocar {
-  border: 0;
-  background: none;
-  color: var(--cor-acento);
-}
-
-.barra {
-  flex: 1;
-  height: 4px;
-  border-radius: var(--raio-6);
-  background: var(--cor-linha-2);
 }
 
 .trecho {

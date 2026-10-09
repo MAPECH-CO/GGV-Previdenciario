@@ -73,7 +73,8 @@ test('caso do servidor · a página do processo lê o banco: a advogada vê o la
   await expect(page.getByRole('heading', { level: 1 })).toContainText('sem NB nem protocolo ainda')
   await expect(page.getByRole('navigation', { name: 'Etapas do processo' }).locator('[aria-current="step"]')).toContainText('INSS')
   const tarefasDoCaso = page.getByRole('heading', { name: 'Tarefas em andamento' }).locator('..')
-  await expect(tarefasDoCaso.getByRole('link', { name: 'Decidir perícia' })).toHaveAttribute('href', `/casos/${casoId}/pericia`)
+  // A decisão da perícia (D2.03) tem tela própria; /casos/:id/pericia é a página da perícia.
+  await expect(tarefasDoCaso.getByRole('link', { name: 'Decidir perícia' })).toHaveAttribute('href', `/casos/${casoId}/pericia/decidir`)
   await expect(tarefasDoCaso).toContainText('Jurídico administrativo')
   const dados = page.getByRole('heading', { name: 'Dados do processo' }).locator('..')
   await expect(dados).toContainText('Maria Souza (exemplo)')

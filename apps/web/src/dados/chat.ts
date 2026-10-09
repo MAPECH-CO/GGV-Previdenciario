@@ -350,6 +350,9 @@ function ACOES_SUGERIDAS(grupo: ReturnType<typeof grupoDoPerfil>): string[] {
     advogada: ['Analisar laudo novo', 'Pedir petição', 'Ligar para o cliente', 'Responder exigência do INSS'],
     senior: ['Aprovar pedido', 'Despachar caso', 'Decidir cobrança'],
     financeiro: ['Lançar prestação de contas', 'Confirmar recebimento'],
+    documentacao: ['Receber documento', 'Cobrar documento', 'Cumprir pendência', 'Reunir documentos da perícia'],
+    'atendimento-lider': ['Cobrar documento', 'Cumprir pendência', 'Recontatar lead'],
+    socio: [],
   } as const)[grupo] as unknown as string[]
 }
 
