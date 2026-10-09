@@ -13,9 +13,7 @@ export const SESSAO = 'e2e/.sessao/atendimento.json'
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
-  // O navegador no fuso de Brasília, como o de quem usa o portal: o servidor conta o dia em Brasília (hojeEmBrasilia),
-  // e a tela, no fuso do navegador. No CI (UTC), das 21h à meia-noite os dois discordavam do dia.
-  use: { baseURL: `http://localhost:${web}`, timezoneId: 'America/Sao_Paulo' },
+  use: { baseURL: `http://localhost:${web}` },
   projects: [
     { name: 'entrar', testMatch: /sessao\.setup\.ts/ },
     { name: 'logado', dependencies: ['entrar'], use: { storageState: SESSAO }, testIgnore: /login\.e2e\.ts/ },
