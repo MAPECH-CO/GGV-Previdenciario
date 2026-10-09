@@ -213,4 +213,9 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 
 - [x] 125.64 Servidor: `POST /api/fichas/:id/arquivos/conteudo` (arquivo e hash): só arquivo já anunciado no envio e com o hash conferido; guarda no armazenamento do portal como `documento` da pessoa e do caso (sensível se for médico) e, para laudo, relatório médico e prontuário com caso, o `documento_medico` não conferido; o mesmo conteúdo duas vezes não duplica; testes.
 - [x] 125.65 Telas: `enviarArquivos` manda o conteúdo de cada arquivo depois do envio, para as fichas do servidor; `ConferirEnviar` passa os arquivos; testes.
-- [ ] 125.66 Rodar typecheck, lint, testes e Playwright; colar a saída.
+- [x] 125.66 Rodar typecheck, lint, testes e Playwright; colar a saída.
+
+### Bloco 6 · A primeira liberação ao Jurídico no servidor (pedido do Pedro, 09/10; números 125.90 em diante para não colidir com o 5c)
+
+- [x] 125.90 Telas: `liberarAoJuridico` (dados/liberacao.ts), para o caso do servidor, chama `POST /api/casos/:id/liberacao` depois das conferências da tela e só grava a liberação aqui se o servidor aceitar; `tarefasDaFilaDaSenior` não repete o caso do servidor (a Central da Sênior já traz o D2.01 do servidor); testes.
+- [x] 125.91 Rodar typecheck, lint e testes; colar a saída.

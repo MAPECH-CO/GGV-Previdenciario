@@ -235,3 +235,16 @@ O arquivo enviado pelo card SHALL ficar guardado no armazenamento de arquivos do
 - **Dado** um envio pelo card
 - **Quando** o conteúdo que chega não tem o hash do arquivo anunciado
 - **Então** é recusado, e nada é guardado
+
+### Requirement: Bloco 6 · A primeira liberação ao Jurídico vai ao servidor
+Para o caso do servidor, "Liberar ao Jurídico" (D1.24, Documentação) SHALL seguir pela rota `POST /api/casos/:id/liberacao` (GGVP-127, #20), que confere de novo no servidor o perfil, o checklist (G1) e o parecer (G17), fecha a tarefa D1.24 e abre "Conferir antes do INSS" para a Sênior; a recusa do servidor MUST aparecer na tela, e nada é gravado aqui. A fila da Sênior desse caso vem do servidor, sem a cópia local repetir a tarefa (pedido do Pedro, 09/10). A tarefa D1.24 nasce do checklist conferido, no bloco 5c.
+
+#### Scenario: Liberar o caso do servidor
+- **Dado** um caso do servidor com o checklist completo e o parecer em ordem
+- **Quando** a Documentação confere e libera
+- **Então** o servidor fecha a D1.24 e abre "Conferir antes do INSS" para a Sênior, que vê uma tarefa só
+
+#### Scenario: O servidor recusa
+- **Dado** um caso do servidor com o parecer pendente no servidor
+- **Quando** a Documentação libera
+- **Então** a tela mostra o motivo do G17, e o caso não fica liberado
