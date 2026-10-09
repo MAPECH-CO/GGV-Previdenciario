@@ -106,7 +106,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
   const escolhido = usePerfil()
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<Carregada | null>(null)
-  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'> | null>(null)
+  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta' | 'foraDaLista'> | null>(null)
   const [escolhida, setEscolhida] = useState<number | undefined>()
   const [mensagem, setMensagem] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -198,6 +198,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
           texto={mensagem}
           simulado={cliente.simulado !== false}
           consulta={cliente.consulta}
+          foraDaLista={cliente.foraDaLista}
         />
       )}
       {erro && (

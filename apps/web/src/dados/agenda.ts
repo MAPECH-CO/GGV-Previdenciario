@@ -1,6 +1,6 @@
 // EXEMPLO. Servidor de exemplo da agenda (GGVP-123), sobre o mesmo banco de servidor.ts. Ligar no servidor: trocar o
-// corpo de cada função por fetch no endpoint indicado, sobre o contrato da design.md (change ggvp-6). O link do Meet e a
-// conversa do Chatwoot são simulados.
+// corpo de cada função por fetch no endpoint indicado, sobre o contrato da design.md (change ggvp-6). O link do Meet é
+// simulado; o convite do cliente do banco sai pelo Chatwoot do servidor (GGVP-146), o da semente pelo simulado.
 import { dataParaIso } from '../campos.ts'
 import { emAberto } from '../regras/busca.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'

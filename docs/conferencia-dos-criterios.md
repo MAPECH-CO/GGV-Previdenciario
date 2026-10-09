@@ -131,7 +131,7 @@ e 110), os modelos de contrato no servidor (GGVP-104) e a v2 da petição (GGVP-
 | Chat do portal | motor do navegador | GGVP-142; acervo GGVP-141 e GGVP-131 |
 | Página do caso | servidor de exemplo | GGVP-146, parte 5 |
 | Senha do gov.br nas telas da Recepção | descartada no navegador (nunca guardada) | GGVP-146, parte 1 |
-| Chatwoot | de verdade no servidor quando o ambiente tem as variáveis `CHATWOOT_*` (senão simulado), só no que passa pelo correio do servidor: a janela "Mensagem ao cliente", a janela do Chatwoot (convite, confirmação, cobrança, complemento, perícia) quando o cliente é do banco, e o aviso de mudança dos dados bancários. As boas-vindas do checklist e o contrato por WhatsApp seguem simulados no servidor de exemplo | GGVP-146, parte 4 (PR #19); boas-vindas e contrato com a Abertura no servidor (GGVP-125, próximos blocos), pelo correio do cliente (`criarCorreio`) |
+| Chatwoot | de verdade no servidor quando o ambiente tem as variáveis `CHATWOOT_*` (senão simulado), só no que passa pelo correio do servidor: a janela "Mensagem ao cliente", a janela do Chatwoot (convite, confirmação, cobrança, complemento, perícia) quando o cliente é do banco, e o aviso de mudança dos dados bancários. Fora de produção (`AMBIENTE` diferente de `producao`), só para os telefones de `CHATWOOT_PERMITIDOS`; os outros ficam como não enviados, sem chamar o Chatwoot (`docs/infra/homologacao.md`). As boas-vindas do checklist e o contrato por WhatsApp seguem simulados no servidor de exemplo | GGVP-146, parte 4 (PR #19); boas-vindas e contrato com a Abertura no servidor (GGVP-125, próximos blocos), pelo correio do cliente (`criarCorreio`) |
 | Drive (pasta do cliente, original guardado) | simulado | GGVP-107 |
 | ZapSign | simulado | fora de 09/10, sem história |
 
@@ -192,11 +192,12 @@ GGVP-107 (Drive) e, no laudo novo, GGVP-132 e GGVP-134.
 
 ### GGVP-21 · Confirmar o agendamento do lead
 
-Para o lead do balcão, a confirmação grava no servidor (GGVP-125, bloco 2). O Chatwoot é simulado até a GGVP-146 (parte 4).
+Para o lead do balcão, a confirmação grava no servidor (GGVP-125, bloco 2), e a mensagem sai pelo correio do servidor
+(GGVP-146, parte 4): o Chatwoot de verdade com as variáveis `CHATWOOT_*`, senão simulado.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito (Chatwoot simulado) | `paginas/ConfirmarAgendamento.test.tsx:24` e `:40`; `e2e/confirmar-agendamento.e2e.ts:33`; mensagem no servidor: `POST /api/agendamentos/:id/confirmacao/mensagem` |
+| 1 | feito (o lead da semente, pelo Chatwoot simulado da tela) | `paginas/ConfirmarAgendamento.test.tsx:24` e `:40`; `e2e/confirmar-agendamento.e2e.ts:33`; mensagem no servidor: `POST /api/agendamentos/:id/confirmacao/mensagem` |
 | 2 | feito | `recepcao-agenda.test.ts:73`; `ConfirmarAgendamento.test.tsx:52`; `e2e/confirmar-agendamento.e2e.ts:44` |
 | 3 | feito | `recepcao-agenda.test.ts:73`; `ConfirmarAgendamento.test.tsx:67`; `e2e/recepcao-servidor.e2e.ts:34` |
 | 4 | feito | `ConfirmarAgendamento.test.tsx:24` |
@@ -383,14 +384,14 @@ Servidor de exemplo; liga no próximo bloco da GGVP-125.
 ### GGVP-123 · Marcar a entrevista e a agenda
 
 Marcar, remarcar, realizado ou faltou, convite e compromisso interno gravam no servidor (GGVP-125, bloco 2). O convite
-pelo Chatwoot é simulado até a GGVP-146 (parte 4).
+sai pelo correio do servidor (GGVP-146, parte 4): o Chatwoot de verdade com as variáveis `CHATWOOT_*`, senão simulado.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
 | 1 | feito | `POST /api/fichas/:id/agendamentos`; `recepcao-agenda.test.ts:43`; `paginas/MarcarEntrevista.test.tsx:37`; `e2e/agenda.e2e.ts:17` |
 | 2 | feito | `regras.test.ts:457`; `dados/agenda.test.ts:45` |
 | 3 | feito | servidor: `recepcao-agenda.test.ts:43` (ocupado avisa para todos); `MarcarEntrevista.test.tsx:64`; `e2e/agenda.e2e.ts:36` |
-| 4 | feito (Chatwoot simulado) | `regras.test.ts:472`; `dados/agenda.test.ts:58`; `e2e/agenda.e2e.ts:17` |
+| 4 | feito (o lead da semente, pelo Chatwoot simulado da tela) | `regras.test.ts:472`; `dados/agenda.test.ts:58`; `e2e/agenda.e2e.ts:17` |
 | 5 | feito | `recepcao-agenda.test.ts:113` (compromisso interno); `paginas/Agenda.test.tsx:16` e `:37`; `e2e/agenda.e2e.ts:50` |
 | 6 | feito | `recepcao-agenda.test.ts:113` ("realizado" abre "Cadastrar lead"); `dados/agenda.test.ts:85`; `e2e/agenda.e2e.ts:80` |
 | 7 | feito | servidor: `recepcao-agenda.test.ts:43` (limite G15); `MarcarEntrevista.test.tsx:76` e `:90`; `dados/agenda.test.ts:94` |
@@ -848,7 +849,8 @@ As telas da perícia gravam no servidor de exemplo do navegador; a ligação no 
 GGVP-139. Do lado do servidor, o INSS e a exigência já abrem a tarefa "Marcar perícia" para o Jurídico administrativo
 (`apps/api/src/rotas/inss.ts:360`, `apps/api/src/fluxo/exigencia.ts:102`), e a recomendação da IA sobre a perícia
 (GGVP-38) já tem tela (`/casos/:id/pericias`). Mas a tarefa "Marcar perícia" do servidor não tem tela: abre "tela não
-construída" (P1 do roteiro). O lembrete ao cliente sai pelo Chatwoot simulado (GGVP-146, parte 4).
+construída" (P1 do roteiro). O lembrete ao cliente do caso do banco sai pelo correio do servidor (GGVP-146, parte 4); o
+da semente, pelo Chatwoot simulado da tela.
 
 ### GGVP-49 · Iniciar a tarefa de perícia
 
@@ -1324,6 +1326,10 @@ GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 
 ### GGVP-102 · Mensagens ao cliente com modelo e registro
 
+No servidor (GGVP-138 e GGVP-146), o complemento sai com o pedido de complemento aberto no caso (parado no laço, G15, não
+sai), o aviso desfavorável com o resumo aprovado pelo Jurídico (GGVP-22) e o favorável com esse resumo e o OK da advogada
+na prestação de contas (G8). O resumo só nasce hoje no caso perdido: o favorável espera o resumo também no caso ganho.
+
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
 | 1 | feito só no servidor de exemplo | `regras/mensagens.test.ts:5`; `dados/mensagens.test.ts:15`; `MensagemAoCliente.test.tsx:24`; `e2e/mensagens.e2e.ts:11` |
@@ -1331,9 +1337,9 @@ GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 | 3 | feito só no servidor de exemplo | `regras/mensagens.test.ts:24`; `MensagemAoCliente.test.tsx:39`; `e2e/mensagens.e2e.ts:28` |
 | 4 | feito só no servidor de exemplo | `dados/mensagens.test.ts:66` |
 | 5 | feito só no servidor de exemplo | `dados/mensagens.test.ts:78`; `MensagemAoCliente.test.tsx:70`; `ConviteChatwoot.test.tsx:63`; `e2e/mensagens.e2e.ts:42` |
-| 6 | feito só no servidor de exemplo | `regras/mensagens.test.ts:51`; `dados/mensagens.test.ts:53`; `MensagemAoCliente.test.tsx:61` (Chatwoot simulado) |
-| 7 | feito só no servidor de exemplo | `regras/mensagens.test.ts:5`; `dados/mensagens.test.ts:33`; `MensagemAoCliente.test.tsx:50` |
-| 8 | feito só no servidor de exemplo | `dados/mensagens.test.ts:45` |
+| 6 | feito | `regras/mensagens.test.ts:51`; `MensagemAoCliente.test.tsx:61`; no servidor, o Chatwoot de verdade com fetch falso e a trava da homologação: `apps/api/src/rotas/mensagens.test.ts:230`, `:381` e `:399`; `MensagemAoCliente.test.tsx:144` |
+| 7 | parcial: o G8 vale no servidor, mas o resumo aprovado ainda não nasce no caso ganho | `regras/mensagens.test.ts:5`; `MensagemAoCliente.test.tsx:50`; no servidor (G8): `apps/api/src/rotas/mensagens.test.ts:163` |
+| 8 | feito | no servidor: `apps/api/src/rotas/mensagens.test.ts:149` |
 | 9 | feito só no servidor de exemplo | `regras/mensagens.test.ts:37`; `dados/mensagens.test.ts:90`; `MensagemAoCliente.test.tsx:39` |
 | 10 | feito só no servidor de exemplo | `ConviteChatwoot.test.tsx:52` (Chatwoot simulado) |
 

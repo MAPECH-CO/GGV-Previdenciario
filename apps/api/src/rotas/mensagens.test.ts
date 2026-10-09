@@ -2,10 +2,12 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, eventoAuditoria, mensagem, pericia, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, documentacaoMedica, eventoAuditoria, mensagem, pericia, pessoa, prestacaoContas, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_CHATWOOT_DESLIGADO } from './mensagens.ts'
+import type { Complemento } from '../../../web/src/regras/complemento.ts'
+import { MSG_CHATWOOT_DESLIGADO, MSG_FORA_DA_LISTA, MSG_SEM_COMPLEMENTO_ABERTO, MSG_SEM_OK_DA_ADVOGADA, MSG_SEM_TEXTO_APROVADO } from './mensagens.ts'
+import { abrirExplicacaoDoResultado } from './resultado.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -32,7 +34,7 @@ async function cliente() {
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['igor', 'juridico_adm'], ['marcos', 'financeiro']] as const)
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['igor', 'juridico_adm'], ['marcos', 'financeiro'], ['paula', 'advogada']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -105,14 +107,91 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
   })
 })
 
+describe('GGVP-102 · os modelos do complemento e do resultado destravam pela regra', () => {
+  /** O pedido de complemento ao médico aberto pelo parecer Insuficiente (GGVP-20), como a documentação médica guarda. */
+  const pedido = (fichaId: string, processoId: string, mais: Partial<Complemento> = {}): Complemento => ({
+    processoId,
+    fichaId,
+    abertaEm: '2026-10-07T13:00:00.000Z',
+    parecer: 'insuficiente',
+    abordar: 'Desde quando e por quanto tempo',
+    perguntas: ['Desde quando a paciente apresenta o quadro?', 'Qual a previsão de duração?'],
+    quem: 'paula',
+    tentativas: [],
+    decisoes: [],
+    ...mais,
+  })
+
+  it('o complemento: só com o pedido aberto no caso, com a orientação da tela; o G20 segue valendo no envio', async () => {
+    const { fichaId, processoId } = await cliente()
+    const url = `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`
+    expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_COMPLEMENTO_ABERTO)
+    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedido(fichaId, processoId)] })
+    const pronta = await json('ana', 'GET', url)
+    expect(pronta).toMatchObject({ trava: null, editavel: true })
+    expect(pronta.texto).toMatch(/^Olá, Maria! Aqui é do escritório GGV\. .*\n1\. Desde quando a paciente apresenta o quadro\?\n2\. Qual a previsão de duração\?\n/s)
+    expect(pronta.texto.endsWith(NUNCA_A_SENHA)).toBe(true)
+    const envio = (texto: string) => ({ modelo: 'complemento', texto, conversa: pronta.conversas[0].id, processoId })
+    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
+    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio(pronta.texto))).toMatchObject({ modelo: 'complemento', status: 'entregue', processoId })
+    // Encerrado pelo parecer Suficiente, volta a travar.
+    await banco.update(documentacaoMedica).set({ documento: [pedido(fichaId, processoId, { encerrado: { quando: '2026-10-08T12:00:00.000Z', porque: 'parecer-suficiente' } })] })
+    expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_COMPLEMENTO_ABERTO)
+  })
+
+  it('o complemento que passou do limite de tentativas sobe para a sênior e não sai (G15)', async () => {
+    const { fichaId, processoId } = await cliente()
+    const tentativas = ['2026-09-30', '2026-10-03'].map((dia) => ({ dia, canal: 'chatwoot' as const, resultado: 'sem-resposta' as const, quem: 'ana' }))
+    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedido(fichaId, processoId, { abertaEm: '2026-09-29T13:00:00.000Z', tentativas })] })
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide \(G15\)\.$/)
+  })
+
+  it('o resultado desfavorável: só com o resumo aprovado pelo Jurídico, e o texto aprovado não muda', async () => {
+    const { fichaId, processoId } = await cliente()
+    const url = `/api/fichas/${fichaId}/mensagens`
+    expect((await json('ana', 'GET', `${url}/resultado-desfavoravel`)).trava).toBe(MSG_SEM_TEXTO_APROVADO)
+    const resumo = 'Olá, Maria. O INSS negou o benefício porque a renda da casa passou do limite. Podemos conversar sobre o que fazer.'
+    await abrirExplicacaoDoResultado(banco, processoId)
+    expect((await chamar('paula', 'POST', `/api/casos/${processoId}/resultado/resumo`, { texto: resumo, quemFala: 'atendimento' })).statusCode).toBe(201)
+    const pronta = await json('ana', 'GET', `${url}/resultado-desfavoravel`)
+    expect(pronta).toMatchObject({ trava: null, editavel: false, texto: `${resumo} ${NUNCA_A_SENHA}` })
+    const envio = (texto: string) => ({ modelo: 'resultado-desfavoravel', texto, conversa: pronta.conversas[0].id })
+    expect((await json('ana', 'POST', url, envio(`${resumo} Ligue para nós.`))).erro).toBe('O texto aprovado não muda: o aviso sai como foi revisado.')
+    expect(await json('ana', 'POST', url, envio(pronta.texto))).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'entregue' })
+  })
+
+  it('o resultado favorável: o G8 antes de tudo (o OK da advogada na prestação de contas), e depois o texto aprovado', async () => {
+    const { fichaId, processoId } = await cliente()
+    const url = `/api/fichas/${fichaId}/mensagens/resultado-favoravel`
+    const resumo = 'Olá, Maria! Boa notícia: o INSS aprovou o seu benefício. Vamos combinar com você a ida ao banco.'
+    await abrirExplicacaoDoResultado(banco, processoId)
+    await chamar('paula', 'POST', `/api/casos/${processoId}/resultado/resumo`, { texto: resumo, quemFala: 'atendimento' })
+    // Com o texto aprovado, mas sem o OK da advogada, não sai (G8), nem pelo envio direto.
+    expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_OK_DA_ADVOGADA)
+    const envio = { modelo: 'resultado-favoravel', texto: `${resumo} ${NUNCA_A_SENHA}`, conversa: 0 }
+    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio)).erro).toBe(MSG_SEM_OK_DA_ADVOGADA)
+    const [paula] = await banco.select().from(usuario).where(eq(usuario.email, 'paula@exemplo.ggv'))
+    await banco.insert(prestacaoContas).values({ casoId: processoId, valorRecebido: '10000.00', honorarios: '3000.00', valorCliente: '7000.00', okAdvogadaPor: paula.id, okAdvogadaEm: relogio })
+    expect(await json('ana', 'GET', url)).toMatchObject({ trava: null, editavel: false, texto: envio.texto })
+  })
+})
+
 describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
-  // Endereço, conta e caixa inventados; o token é de teste. Nada aqui chama o Chatwoot de verdade.
-  const CHATWOOT = { CHATWOOT_URL: 'https://chatwoot.teste', CHATWOOT_CONTA: '7', CHATWOOT_CAIXA: '9', CHATWOOT_TOKEN: 'token-de-teste' }
+  // Endereço, conta e caixa inventados; o token é de teste. Nada aqui chama o Chatwoot de verdade. É a homologação, com a
+  // lista de teste: outro telefone e o da Maria, escrito de outro jeito.
+  const CHATWOOT = {
+    CHATWOOT_URL: 'https://chatwoot.teste',
+    CHATWOOT_CONTA: '7',
+    CHATWOOT_CAIXA: '9',
+    CHATWOOT_TOKEN: 'token-de-teste',
+    AMBIENTE: 'homologacao',
+    CHATWOOT_PERMITIDOS: '(21) 99876-0000, +55 11 98765-4321',
+  }
   const API = `${CHATWOOT.CHATWOOT_URL}/api/v1/accounts/${CHATWOOT.CHATWOOT_CONTA}`
   type Chamada = { metodo: string; caminho: string; corpo?: unknown; token?: string }
 
   /** O `fetch` falso: cada "MÉTODO /caminho" responde o JSON da tabela, ou a função (que pode lançar ou dar um Response). */
-  async function comChatwoot(rotas: Record<string, unknown>) {
+  async function comChatwoot(rotas: Record<string, unknown>, ambiente: Record<string, string> = {}) {
     const chamadas: Chamada[] = []
     vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
       const chamada = {
@@ -127,7 +206,7 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
       return resposta instanceof Response ? resposta : resposta === undefined ? new Response(null, { status: 404 }) : Response.json(resposta)
     })
     await app.close()
-    for (const [nome, valor] of Object.entries(CHATWOOT)) vi.stubEnv(nome, valor)
+    for (const [nome, valor] of Object.entries({ ...CHATWOOT, ...ambiente })) vi.stubEnv(nome, valor)
     app = criarServidor({ banco, agora: () => relogio })
     vi.unstubAllEnvs()
     return chamadas
@@ -296,6 +375,41 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     // O reenvio com a consulta caída acha o que já saiu na 502 e não manda de novo.
     fora = true
     expect((await json('ana', 'POST', url, envio)).id).toBe(enviada.id)
+    expect(posts(chamadas).map((c) => c.caminho)).toEqual(['/conversations/502/messages'])
+  })
+
+  it('a trava da homologação: fora da lista de teste (ou sem lista), nem a consulta nem o envio chamam o Chatwoot, e fica como não enviado', async () => {
+    const { fichaId } = await cliente()
+    const url = `/api/fichas/${fichaId}/mensagens`
+    for (const lista of ['(21) 99876-0000', '']) {
+      const chamadas = await comChatwoot({ 'POST /conversations/502/messages': { id: 9001, status: 'sent' } }, { CHATWOOT_PERMITIDOS: lista })
+      const pronta = await json('ana', 'GET', `${url}/boas-vindas`)
+      expect(pronta).toMatchObject({ simulado: false, contato: null, conversas: [], foraDaLista: true })
+      expect(await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })).toMatchObject({ status: 'falhou', conversa: 0, erro: MSG_FORA_DA_LISTA })
+      expect(chamadas).toEqual([])
+      expect((await json('ana', 'GET', `/api/fichas/${fichaId}`)).historico.at(-1).oQue).toBe(`A mensagem «Boas-vindas» não saiu pelo Chatwoot: ${MSG_FORA_DA_LISTA}. Nada foi reenviado sozinho.`)
+    }
+    const registros = await banco.select().from(mensagem).where(eq(mensagem.pessoaId, fichaId))
+    expect(registros.map((r) => [r.status, r.erro])).toEqual([
+      ['falhou', MSG_FORA_DA_LISTA],
+      ['falhou', MSG_FORA_DA_LISTA],
+    ])
+  })
+
+  it('em produção, sem lista: a mensagem sai para o telefone da ficha', async () => {
+    const chamadas = await comChatwoot(
+      {
+        'GET /contacts/search?q=87654321': { payload: [{ id: 31, name: 'Maria Ribeiro', phone_number: '+5511987654321', contact_inboxes: [{ source_id: 's', inbox: { id: 9, name: 'GGV PREV' } }] }] },
+        'GET /contacts/31/conversations': { payload: [{ id: 502, inbox_id: 9, status: 'open', last_activity_at: 1759910000 }] },
+        'GET /conversations/502/messages': { payload: [{}] },
+        'POST /conversations/502/messages': { id: 9001, status: 'sent' },
+      },
+      { AMBIENTE: 'producao', CHATWOOT_PERMITIDOS: '' },
+    )
+    const { fichaId } = await cliente()
+    const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
+    expect(pronta.foraDaLista).toBeUndefined()
+    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })).toMatchObject({ status: 'enviada', conversa: 502 })
     expect(posts(chamadas).map((c) => c.caminho)).toEqual(['/conversations/502/messages'])
   })
 })

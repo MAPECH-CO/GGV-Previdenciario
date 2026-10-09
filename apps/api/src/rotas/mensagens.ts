@@ -3,19 +3,23 @@
 // modelo de dados já tinha, com o status de entrega; o contato vai para "Últimos contatos" da ficha.
 // Com as variáveis do Chatwoot no ambiente, o envio sai pelo Chatwoot de verdade (GGVP-146, `../chatwoot.ts`). Sem elas, segue
 // simulado atrás de `RELACIONAMENTO_SIMULADO` (o contato pelo telefone da ficha, uma conversa aberta, a entrega
-// confirmada); com `nao`, o envio falha com o motivo.
+// confirmada); com `nao`, o envio falha com o motivo. Fora de produção, o Chatwoot de verdade só fala com os telefones da
+// lista de teste (`permite`, em `../chatwoot.ts`): fora dela, nem a consulta nem o envio vão a ele, e o envio fica como
+// não enviado.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { and, desc, eq, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { normalizarTelefone } from '@ggv/campos'
 import { IdDoModelo, PedidoDeMensagem, type Erro, type MensagemAoCliente, type MensagemPronta } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { mensagem, usuario } from '../banco/esquema.ts'
+import { decisao, mensagem, prestacaoContas, usuario } from '../banco/esquema.ts'
 import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
+import { criarCasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { COMO, diaFalado, horaFalada, mensagemDoConvite } from '../../../web/src/regras/agenda.ts'
+import { complementoNaTela, doProcesso, type Complemento } from '../../../web/src/regras/complemento.ts'
 import { mensagemDaConfirmacao } from '../../../web/src/regras/confirmacao.ts'
 import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, ordenarConversas, problemasDaMensagem } from '../../../web/src/regras/mensagens.ts'
 import { camposDoProcessoEmVigor } from './conversa.ts'
@@ -24,6 +28,10 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from '.
 export const MSG_CHATWOOT_DESLIGADO = 'o Chatwoot de verdade ainda não está ligado'
 export const MSG_SEM_CONTATO = 'o Chatwoot não achou o contato deste telefone'
 export const MSG_SEM_TELEFONE = 'a ficha não tem telefone'
+export const MSG_FORA_DA_LISTA = 'o telefone está fora da lista de teste da homologação'
+export const MSG_SEM_OK_DA_ADVOGADA = 'Falta o OK da advogada na prestação de contas: o aviso só sai depois dele (G8).'
+export const MSG_SEM_TEXTO_APROVADO = 'Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.'
+export const MSG_SEM_COMPLEMENTO_ABERTO = 'Sem pedido de complemento aberto no processo.'
 const STATUS_FALADO: Record<MensagemAoCliente['status'], string> = { enviada: 'enviada', entregue: 'entregue', lida: 'lida', falhou: 'não saiu' }
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -41,16 +49,18 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   const simulado = !chatwoot && ambiente.RELACIONAMENTO_SIMULADO !== 'nao'
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
+  const { lerParte } = criarCasoMedico(banco, agora)
 
   /**
    * O cliente no Chatwoot: o contato do telefone da ficha e as conversas dele (CA6). De verdade, a falha da consulta não
    * trava a mensagem pronta, mas não vale como "sem conversa": volta como `consulta: 'falhou'`, a tela não deixa enviar e o
    * envio não abre conversa nova no lugar da escolhida.
    */
-  async function noChatwoot(ficha: Ficha): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'>> {
+  async function noChatwoot(ficha: Ficha): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta' | 'foraDaLista'>> {
     const telefone = normalizarTelefone(ficha.telefone ?? '')
     if (chatwoot) {
       if (!telefone) return { contato: null, conversas: [], simulado: false }
+      if (!chatwoot.permite(telefone)) return { contato: null, conversas: [], simulado: false, foraDaLista: true }
       const achado = await chatwoot.cliente(telefone, ficha.nome).catch(() => null)
       if (!achado) return { contato: null, conversas: [], simulado: false, consulta: 'falhou' }
       return { ...achado, conversas: ordenarConversas(achado.conversas), simulado: false }
@@ -59,6 +69,23 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     const id = Number(telefone.slice(-8))
     const conversas = [{ id, caixa: 'GGV PREV', situacao: 'aberta' as const, mensagens: 2, ultimaEm: agora().toISOString() }]
     return { contato: { id, nome: ficha.nome, telefone }, conversas: ordenarConversas(conversas), simulado: true }
+  }
+
+  /** O último resumo do resultado aprovado pelo Jurídico no caso (GGVP-22, `resultado.aprovar_resumo`). */
+  async function resumoAprovado(casoId: string) {
+    const [r] = await banco
+      .select({ texto: decisao.justificativa })
+      .from(decisao)
+      .where(and(eq(decisao.casoId, casoId), eq(decisao.tipo, 'resumo_cliente')))
+      .orderBy(desc(decisao.decididoEm))
+      .limit(1)
+    return r?.texto || null
+  }
+
+  /** G8: a versão atual da prestação de contas tem o OK da advogada (GGVP-44). */
+  async function okDaAdvogada(casoId: string) {
+    const [v] = await banco.select({ ok: prestacaoContas.okAdvogadaEm }).from(prestacaoContas).where(eq(prestacaoContas.casoId, casoId)).orderBy(desc(prestacaoContas.versao)).limit(1)
+    return Boolean(v?.ok)
   }
 
   /** O texto de cada modelo, com os dados do cliente e do caso (CA1), em frases curtas e sem termo jurídico (CA3). */
@@ -86,18 +113,25 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
         return pronto(
           mensagemDaConfirmacao({ nome: ficha.nome, tipo: entrevista.tipo ?? 'presencial', data: entrevista.data, hora: entrevista.hora, beneficio: ficha.beneficioInteresse, fichaPreenchida: ficha.fichaAtendimentoPreenchida }),
         )
-      // O pedido de complemento ao médico ainda vive no servidor de exemplo da documentação médica.
-      case 'complemento':
-        return travado('Sem pedido de complemento aberto no processo.')
+      // GGVP-29: a orientação ao médico do pedido de complemento aberto no caso, a mesma da tela; parada no laço (G15), não sai.
+      case 'complemento': {
+        const atual = processo && doProcesso((await lerParte<Complemento[]>(processo.id, 'complemento')) ?? [], processo.id)
+        if (!processo || !atual || atual.encerrado) return travado(MSG_SEM_COMPLEMENTO_ABERTO)
+        const tela = complementoNaTela(atual, { ficha, processo, beneficio, hoje: hoje() })
+        return tela.motivoParado ? travado(tela.motivoParado) : pronto(tela.mensagem)
+      }
       case 'boas-vindas':
         return pronto(`Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso de ${beneficio} começou. Qualquer dúvida, fale com a gente por aqui.`)
       case 'cobranca':
         return pronto(`Olá, ${primeiro}! Para seguir com o seu caso de ${beneficio}, faltam documentos. Pode trazer aqui ou mandar foto por esta conversa?`)
-      // O texto aprovado do resultado vem da prestação de contas (GGVP-11), que ainda não está no servidor: sem ele, não sai.
+      // CA7, CA8: o aviso do resultado usa só o resumo que o Jurídico aprovou (GGVP-22), sem mudar uma letra; o favorável,
+      // ainda depois do OK da advogada na prestação de contas (G8).
       case 'resultado-favoravel':
-        return travado('Falta o OK da advogada na prestação de contas: o aviso só sai depois dele (G8).')
-      case 'resultado-desfavoravel':
-        return travado('Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.')
+      case 'resultado-desfavoravel': {
+        if (modelo === 'resultado-favoravel' && !(processo && (await okDaAdvogada(processo.id)))) return travado(MSG_SEM_OK_DA_ADVOGADA)
+        const aprovado = processo && (await resumoAprovado(processo.id))
+        return aprovado ? pronto(aprovado, false) : travado(MSG_SEM_TEXTO_APROVADO)
+      }
       case 'aviso-de-mudanca':
         return pronto(`Olá, ${primeiro}. Os dados para você receber os valores do seu caso mudaram hoje, a seu pedido. Se não foi você, ligue para o escritório agora.`)
       case 'pericia-orientacao':
@@ -180,6 +214,8 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       const telefone = normalizarTelefone(ficha.telefone ?? '')
       try {
         if (!telefone) throw new Error(MSG_SEM_TELEFONE)
+        // A trava da homologação: fora da lista de teste, o Chatwoot não é chamado.
+        if (!chatwoot.permite(telefone)) throw new Error(MSG_FORA_DA_LISTA)
         // Sem resposta da consulta, a conversa escolhida não se confere, e outra não entra no lugar dela.
         if (pronta.consulta) throw new Error(MSG_CHATWOOT_FORA)
         destino ||= await chatwoot.abrirConversa(telefone, ficha.nome)
