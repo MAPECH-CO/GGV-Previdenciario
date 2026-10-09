@@ -243,6 +243,16 @@ export function tarefasDeCobrar(): Tarefa[] {
   return tarefas
 }
 
+/**
+ * As pendências de documento do caso, no "Caso em andamento" da ficha e na página do processo (GGVP-130, Lucas 07/10):
+ * o que a cobrança aberta ainda espera, sempre o checklist de agora. Sem cobrança aberta, nada.
+ */
+export function pendenciasDeDocumento(processoId: string): string[] {
+  const banco = ler()
+  const aberta = cobrancasDo(banco).some((c) => c.processoId === processoId && !c.encerrada)
+  return aberta ? (checklistDoCaso(banco, processoId)?.checklist.faltam ?? []) : []
+}
+
 /** "Decidir cobrança" na Central da Advogada: a cobrança que passou do limite, com as tentativas (CA7). */
 export function tarefasDeDecidirCobranca(): Tarefa[] {
   const banco = ler()

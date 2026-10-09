@@ -1,0 +1,209 @@
+/* Figma 1600:1282 e 1600:1358: janela de 430. */
+.janela {
+  width: min(430px, calc(100vw - 32px));
+  margin: 64px auto auto;
+  padding: 16px 16px 14px;
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+.janela::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+
+.cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.titulo {
+  font-size: var(--fonte-16);
+  font-weight: 600;
+}
+
+.sobre {
+  margin-top: 4px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.fechar {
+  border: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-22);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.quem {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.rotulo {
+  margin-bottom: 6px;
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.pessoa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  cursor: pointer;
+}
+
+.escolhida {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento-suave);
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-10);
+  font-weight: 700;
+}
+
+.nome {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: var(--fonte-12);
+}
+
+.funcao {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-10);
+}
+
+.carga {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-10);
+}
+
+.barra {
+  width: 62px;
+  height: 4px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+}
+
+.preenchido {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.leve {
+  background: var(--cor-ok);
+}
+
+.media {
+  background: var(--cor-alerta);
+}
+
+.alta {
+  background: var(--cor-erro);
+}
+
+.linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.rotuloPequeno {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-10);
+}
+
+.entrada {
+  padding: 7px 8px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-6);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-12);
+}
+
+.avisar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  margin: 10px 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-10);
+}
+
+.erro {
+  margin-bottom: 10px;
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.primario,
+.botao {
+  padding: 7px 10px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primario {
+  border: 0;
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.primario:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.botao {
+  border: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}

@@ -50,9 +50,9 @@ describe('Central da Advogada', () => {
     render(<CentralAdvogada />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
     // GGVP-50: o parecer do Davi, de 7 anos, entra na fila. A cobrança, a fila da liberação e a dispensa são da Sênior.
-    expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(4)
-    expect(screen.getByRole('tab', { name: 'Minhas tarefas (4)' }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'Tarefas do setor (12)' })).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(4)
+    // GGVP-147 CA3: a advogada não é líder do setor, então não vê a aba "Tarefas do setor".
+    expect(screen.queryByRole('tab')).toBeNull()
     for (const nome of ['Resumo do caso', 'Criar tarefa', 'Perícias da semana', 'Como o perito avalia?', 'Gerar peça']) {
       expect(screen.getByRole('button', { name: nome })).toBeTruthy()
     }

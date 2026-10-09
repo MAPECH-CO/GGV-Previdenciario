@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ProcessoDoCaso } from '@ggv/contratos'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { CasoEmAndamento } from '../componentes/CasoEmAndamento.tsx'
@@ -52,8 +53,8 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     expect(fora).toContain('desde 26/09 · prazo 09/10')
     expect(fora).toContain('Justiça')
     const tarefas = screen.getByRole('heading', { name: 'Tarefas em andamento' }).closest('section')!
-    expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Documentação', 'Jurídico', 'Jurídico administrativo'])
-    expect(tarefas.textContent).toContain('responsável: Jéssica (exemplo) · em paralelo')
+    expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Atendimento', 'Jurídico', 'Jurídico administrativo'])
+    expect(tarefas.textContent).toContain('responsável: Ana (exemplo) · em paralelo')
     expect(tarefas.textContent).toContain('Antônio Exemplo · Orientar para a perícia')
   })
 
@@ -149,5 +150,170 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     const ficha = (await obterFicha('nair-exemplo'))!
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     expect(screen.getByRole('link', { name: /Processo ainda sem número/ }).getAttribute('href')).toBe('/casos/nair-exemplo-1')
+  })
+
+  it('GGVP-130 · as pendências de documento do processo, com o caminho para o checklist; sem cobrança aberta, nada', async () => {
+    entrarComo('documentacao')
+    const { unmount } = render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
+    const pendentes = await screen.findByRole('region', { name: 'Documentos pendentes' })
+    expect(within(pendentes).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Notas do produtor rural', 'Certidão'])
+    expect(within(pendentes).getByRole('link', { name: 'Ver o checklist' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/checklist')
+    unmount()
+    render(comSessao(<PaginaDoCaso processoId="maria-exemplo-1" />))
+    await screen.findByRole('heading', { name: 'Linha do processo · completa' })
+    expect(screen.queryByRole('region', { name: 'Documentos pendentes' })).toBeNull()
+  })
+})
+
+// GGVP-146 (parte 5): o caso do servidor (id uuid) vem de GET /api/casos/:id/processo, já na visão do perfil da sessão. O
+// servidor aqui é de mentira; as permissões da rota têm os testes dela, na API. A tela mostra o que veio, sem inventar.
+describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () => {
+  const CASO = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
+  const LAUDO = '8b3e4d5c-6f70-4b81-8c9d-2e3f4a5b6c7d'
+  const RG = '9c4f5e6d-7081-4c92-9dae-3f4a5b6c7d8e'
+  const laudo = { id: LAUDO, tipo: 'laudo', nome: 'laudo-ortopedista.pdf', origem: 'portal', data: '2026-10-02', sensivel: true }
+  const rg = { id: RG, tipo: 'rg_e_cpf', nome: 'rg-e-cpf.pdf', origem: 'portal', data: '2026-10-01', sensivel: false }
+
+  function doBanco(extra: Partial<ProcessoDoCaso> = {}): ProcessoDoCaso {
+    return {
+      casoId: CASO,
+      pessoa: { id: '7a2d3c4b-5e6f-4a70-9b8c-1d2e3f4a5b6c', nome: 'Vera Teste', cpf: '27183946509', nascimento: '1960-03-10' },
+      beneficio: 'loas-deficiente',
+      fase: 'administrativa',
+      desfecho: null,
+      etapaAtual: 'inss',
+      identificadores: { nb: '4561237895', protocolo: null, cnj: null },
+      senhaGovNoCofre: true,
+      transcricoes: 1,
+      etapas: [{ diagrama: 'D2', passo: 'D2.E3', aguardando: 'cliente entregar o documento', desde: '2026-10-03T12:00:00.000Z' }],
+      linha: [
+        { quando: '2026-10-01T12:00:00.000Z', quem: 'Helena', origem: 'pessoa', passo: 'D2.01', descricao: 'OK da Sênior para o INSS: aprovado' },
+        { quando: '2026-10-02T12:00:00.000Z', quem: 'Sistema', origem: 'sistema', passo: null, descricao: 'Vigília do Meu INSS rodou' },
+      ],
+      documentos: [laudo, rg],
+      tarefas: [
+        { id: '1d2e3f4a-5b6c-4d7e-8f90-a1b2c3d4e5f6', setor: 'Jurídico', titulo: 'Decidir perícia', responsavel: 'Gabi', prazo: '2026-10-07', passo: 'D2.03', tela: `/casos/${CASO}/pericia` },
+        { id: '2e3f4a5b-6c7d-4e8f-9a01-b2c3d4e5f6a7', setor: 'Documentação', titulo: 'Cumprir exigência do INSS', responsavel: null, prazo: null, passo: 'D2.05d', tela: null },
+      ],
+      pericia: { tipo: 'medica', origem: 'd2-necessidade', situacao: 'agendada', marcada: { data: '2026-10-20', hora: '10:30', local: 'Agência Santo Amaro' }, perito: 'Dr. Perito', resultado: null },
+      exigencias: [
+        {
+          origem: 'inss',
+          descricao: 'Ficha do grupo familiar',
+          prazo: '2026-10-15',
+          situacao: 'aberta',
+          recebidaEm: '2026-10-01',
+          itens: [
+            { setor: 'Atendimento', descricao: 'Confirmar com o cliente quem mora na casa', situacao: 'cumprido', cumpridoEm: '2026-10-06T14:00:00.000Z', cumpridoPor: 'Ana' },
+            { setor: 'Documentação', descricao: 'Ficha do grupo familiar assinada', situacao: 'pendente', cumpridoEm: null, cumpridoPor: null },
+            { setor: 'Documentação', descricao: 'CadÚnico atualizado', situacao: 'pendente', cumpridoEm: null, cumpridoPor: null },
+            { setor: 'Jurídico administrativo', descricao: 'Juntar a declaração do sindicato', situacao: 'nao_cumprido', cumpridoEm: '2026-10-06T15:00:00.000Z', cumpridoPor: 'Gabi' },
+          ],
+        },
+      ],
+      prazos: [],
+      publicacoes: [],
+      proximoPasso: { oQue: 'Decidir perícia', setor: 'Jurídico', prazo: '2026-10-07', tela: `/casos/${CASO}/pericia` },
+      valores: { versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' },
+      saude: {
+        documentos: [{ tipo: 'laudo', emitidoEm: '2026-09-20', profissional: 'Dr. Ortopedista', cid: 'M54.5' }],
+        parecer: { resultado: 'suficiente', confirmadoEm: '2026-10-02T12:00:00.000Z' },
+      },
+      ...extra,
+    }
+  }
+
+  /** O servidor de mentira: só a rota do processo responde; `status` diferente de 200 devolve o erro. */
+  function ligarServidor(dados: ProcessoDoCaso, status = 200) {
+    const fetch = vi.fn(async (url: string) =>
+      url === `/api/casos/${CASO}/processo` && status === 200
+        ? new Response(JSON.stringify(dados), { status })
+        : new Response(JSON.stringify({ erro: 'Sem permissão para esta ação.' }), { status: status === 200 ? 404 : status }),
+    )
+    vi.stubGlobal('fetch', fetch)
+    configurarExemplo({ servidor: true })
+    return fetch
+  }
+  const secao = (titulo: string) => screen.getByRole('heading', { name: titulo }).closest('section')!
+
+  afterEach(() => {
+    configurarExemplo({ servidor: false })
+    vi.unstubAllGlobals()
+  })
+
+  it('a advogada: etapas, perícia, tarefas por setor, prazos, linha, valores e o resumo de saúde, do banco', async () => {
+    const fetch = ligarServidor(doBanco())
+    entrarComo('advogada')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    expect(await screen.findByRole('heading', { level: 1, name: /^NB\s*456\.123\.789-5$/ })).toBeTruthy()
+    expect(fetch.mock.calls.map((c) => c[0])).toContain(`/api/casos/${CASO}/processo`)
+    expect(etapas()[0].textContent).toBe('✓ Entrevista (D1 · feita)')
+    expect(etapas()[1].textContent).toContain('▶ INSSDecidir perícia (D2 · agora)')
+    expect(within(etapas()[1]).getByRole('link', { name: /Em perícia/ }).getAttribute('href')).toBe(`/casos/${CASO}/pericia`)
+    expect(etapas()[2].textContent).toBe('Justiça (D3 · ainda não chegou)')
+    const onde = secao('Onde o caso está').textContent
+    expect(onde).toContain('INSS · Decidir perícia. Esperando Documentação subir o card. Esperando de fora: Cliente.')
+    expect(onde).toContain('Em perícia · pedido ao INSS (D2) · perícia médica · 20/10, 10:30 · Agência Santo Amaro')
+    const tarefas = secao('Tarefas em andamento')
+    expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Jurídico', 'Documentação'])
+    expect(within(tarefas).getByRole('link', { name: 'Decidir perícia' }).getAttribute('href')).toBe(`/casos/${CASO}/pericia`)
+    expect(tarefas.textContent).toContain('responsável: Gabihoje')
+    expect(tarefas.textContent).toContain('responsável: ainda sem responsável')
+    expect(secao('Esperando alguém de fora').textContent).toContain('cliente entregar o documento')
+    // Os itens por setor da exigência aberta (G21); o que a advogada encerrou sem a prova não espera mais ninguém.
+    const setores = secao('Esperando os setores')
+    expect(setores.textContent).toContain('exigência do INSS: Ficha do grupo familiar · desde 01/10')
+    expect(within(setores).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
+      'AtendimentoConfirmar com o cliente quem mora na casasubiu o card 06/10',
+      'DocumentaçãoFicha do grupo familiar assinadaainda não subiu o card',
+      'DocumentaçãoCadÚnico atualizadoainda não subiu o card',
+    ])
+    expect(secao('Prazos').textContent).toContain('15/10Exigência do INSS: Ficha do grupo familiar (G12)')
+    // O evento sem passo do BPMN fica na etapa do anterior.
+    expect(screen.getByRole('list', { name: 'Linha · INSS' }).textContent).toContain('sistema Sistema: Vigília do Meu INSS rodou')
+    const dados = secao('Dados do processo').textContent
+    expect(dados).toContain('CPF 271.839.465-09')
+    expect(dados).toContain('Juízo— (fase administrativa)')
+    expect(dados).toContain('PeritoDr. Perito')
+    expect(dados).toContain('Prestação de contasrecebido R$ 18.900,00 · honorários R$ 5.670,00 · cliente R$ 13.230,00 (versão 2)')
+    expect(dados).toContain('Saúde (Jurídico)1 documento médico · CID M54.5 · parecer suficiente')
+    expect(dados).toContain('senha no cofre (G9)')
+    // O perito do servidor ainda não tem a jurimetria aqui: só o nome, sem a janela.
+    expect(screen.queryByRole('button', { name: 'Dr. Perito' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Laudo médico' }))
+    const doc = screen.getByRole('dialog', { name: 'Laudo médico' })
+    expect(doc.textContent).toContain('Arquivo: laudo-ortopedista.pdf')
+    expect(within(doc).getByRole('link', { name: 'Abrir o arquivo' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${LAUDO}`)
+  })
+
+  it('o Atendimento: o que a rota não mandou não aparece; o laudo só existe, sem nome nem arquivo; sem próximo passo, diz que ainda não há', async () => {
+    ligarServidor(doBanco({ valores: null, saude: null, documentos: [{ ...laudo, nome: null }, rg], tarefas: [], proximoPasso: null, pericia: null, etapas: [], exigencias: [] }))
+    entrarComo('atendimento')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    await screen.findByRole('heading', { name: 'Linha do processo · completa' })
+    expect(secao('Onde o caso está').textContent).toContain('INSS · ainda não há próximo passo.')
+    expect(secao('Tarefas em andamento').textContent).toContain('Nenhuma tarefa aberta no caso.')
+    expect(secao('Prazos').textContent).toContain('Nenhum prazo nesta fase.')
+    expect(screen.queryByRole('heading', { name: 'Esperando alguém de fora' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Esperando os setores' })).toBeNull()
+    const dados = secao('Dados do processo').textContent
+    expect(dados).not.toContain('Prestação de contas')
+    expect(dados).not.toContain('Saúde (Jurídico)')
+    expect(dados).toContain('Perito—')
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Laudo médico' }))
+    const doc = screen.getByRole('dialog', { name: 'Laudo médico' })
+    expect(doc.textContent).toContain('Arquivo: Documento de saúde')
+    expect(doc.textContent).toContain('O conteúdo do laudo é só do Jurídico')
+    expect(within(doc).queryByRole('link', { name: 'Abrir o arquivo' })).toBeNull()
+    fireEvent.click(within(doc).getByRole('button', { name: 'Fechar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir rg-e-cpf.pdf' }))
+    expect(within(screen.getByRole('dialog', { name: 'rg-e-cpf.pdf' })).getByRole('link', { name: 'Abrir o arquivo' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${RG}`)
+  })
+
+  it('perfil que não abre o caso (o servidor recusa): processo não encontrado', async () => {
+    ligarServidor(doBanco(), 403)
+    entrarComo('financeiro')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    expect(await screen.findByRole('heading', { name: 'Processo não encontrado' })).toBeTruthy()
   })
 })
