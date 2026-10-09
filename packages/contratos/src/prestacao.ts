@@ -91,7 +91,10 @@ export const IdaAoBancoDoCaso = z.object({
 })
 export type IdaAoBancoDoCaso = z.infer<typeof IdaAoBancoDoCaso>
 
-/** POST /api/casos/:id/banco (CA10, CA12): data, hora e local obrigatórios; quem acompanha é opcional e vem da equipe. */
+/**
+ * POST /api/casos/:id/banco (CA10, CA12 e GGVP-98 CA6): data, hora, local e quem acompanha obrigatórios. Quem acompanha
+ * é do Atendimento. O servidor recusa data ou hora que já passou.
+ */
 export const AgendarIdaAoBanco = z.object({
   data: DataObrigatoria('Informe a data da ida ao banco (dd/mm/aaaa)'),
   hora: z.string({ error: 'Informe a hora (hh:mm)' }).regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe a hora (hh:mm)'),

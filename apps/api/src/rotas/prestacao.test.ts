@@ -10,6 +10,7 @@ import {
   MSG_ANTES_DA_PRESTACAO,
   MSG_ANTES_DO_AVISO,
   MSG_ANTES_DO_RECEBIMENTO,
+  MSG_DATA_PASSADA,
   MSG_ENCERRADO,
   MSG_G8,
   MSG_MESMA_PESSOA,
@@ -48,9 +49,12 @@ async function ateOAviso() {
   await receber()
 }
 
+/** Relógio fixo: as datas da ida ao banco (15/10 e 20/10) seguem no futuro, mesmo depois que o dia passar. */
+const AGORA = new Date('2026-10-08T15:00:00Z')
+
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco })
+  app = criarServidor({ banco, agora: () => AGORA })
   for (const [apelido, perfil] of [['gabi', 'advogada'], ['julia', 'financeiro'], ['ana', 'atendimento'], ['igor', 'juridico_adm']] as const) {
     const [u] = await banco
       .insert(usuario)
@@ -245,6 +249,19 @@ describe('GGVP-44 · ida ao banco', () => {
     const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
     expect([r.statusCode, r.json().erro]).toEqual([409, MSG_SEM_DESFECHO])
     expect([await banco.select().from(processoAcervo), await banco.select().from(mensagem)]).toEqual([[], []])
+  })
+})
+
+describe('GGVP-98 · nona revisão de 08/10', () => {
+  it('CA6 · a ida ao banco não é marcada no passado (ontem, ou hoje numa hora que já passou): 400, e nada é agendado', async () => {
+    await ateOAviso()
+    // Relógio fixo: agora são 12:00 de 08/10 em Brasília.
+    for (const passado of [{ data: '07/10/2026' }, { data: '08/10/2026', hora: '10:00' }]) {
+      const r = await chamar('julia', 'POST', '/banco', { ...AGENDA(), ...passado })
+      expect([r.statusCode, r.json().erro], JSON.stringify(passado)).toEqual([400, MSG_DATA_PASSADA])
+    }
+    expect(await banco.select().from(agendamento)).toEqual([])
+    expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '08/10/2026', hora: '14:00' })).statusCode).toBe(201)
   })
 })
 

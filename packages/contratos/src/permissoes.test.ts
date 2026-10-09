@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 20, digital: '774f99dc' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 21, digital: 'fae123bb' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -85,7 +85,7 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('atendimento', 'banco.agendar')).toBe(false)
   })
 
-  it('versão 20 · quem leva o cliente ao banco é o Atendimento (GGVP-98); o Financeiro marca, não leva', () => {
+  it('versão 21 · quem leva o cliente ao banco é o Atendimento (GGVP-98); o Financeiro marca, não leva', () => {
     expect(PERFIS.filter((p) => pode(p, 'banco.levar'))).toEqual(['atendimento', 'atendimento_lider'])
   })
 
@@ -126,6 +126,7 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(PERFIS.filter((p) => pode(p, 'ficha.editar'))).toEqual(PERFIS.filter((p) => !['financeiro', 'socio'].includes(p)))
     // Bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde, só o Jurídico.
     expect(PERFIS.filter((p) => pode(p, 'entrevista.gravar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
+    expect(PERFIS.filter((p) => pode(p, 'ficha.analisar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
   })
 
   it('GGVP-138 · o Relacionamento: conversa com o Atendimento e o Jurídico; versão e prazo só com a Sênior; a segunda confirmação bancária, não do Atendimento', () => {
@@ -141,9 +142,9 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento: 14,
       atendimento_lider: 17,
       documentacao: 9,
-      advogada: 34,
-      senior: 38,
-      juridico_adm: 17,
+      advogada: 35,
+      senior: 39,
+      juridico_adm: 18,
       financeiro: 6,
       socio: 5,
     })

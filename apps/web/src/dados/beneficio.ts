@@ -1,22 +1,15 @@
 // EXEMPLO. Servidor de exemplo da definição do benefício (GGVP-51), sobre o mesmo banco de servidor.ts. A sugestão vem
 // do acervo simulado (acervo.ts) e os requisitos numéricos do código (G19). Não cria processo, contrato nem kit: o caso
 // fica com um benefício só (CA8). Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da design.md.
-import { beneficioCitado, requisitosDoBeneficio } from '../regras/beneficio.ts'
 import { exigeCalculo } from '../regras/calculo.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
-import { sugerirPeloAcervo } from './acervo.ts'
+import { analisar, cnisDoCaso, type DadosDosRequisitos } from './acervo.ts'
 import { BENEFICIOS, nomeBeneficio } from './catalogos.ts'
-import { cnisDeExemplo } from './exemplo.ts'
-import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Agendamento, Cnis, DecisaoDoBeneficio, Ficha, Gravacao, SugestaoDoBeneficio, TarefaEncaminhada, Vinculo } from './tipos.ts'
+import { QUEM_ADVOGADA, agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Agendamento, DecisaoDoBeneficio, Ficha, Gravacao, SugestaoDoBeneficio, TarefaEncaminhada } from './tipos.ts'
 
-/** EXEMPLO. O CNIS anexado ao caso. Ligar no servidor: o arquivo da pasta do caso, lido na renovação da senha ou no balcão. */
-export function cnisDoCaso(fichaId: string): Cnis | undefined {
-  return cnisDeExemplo().find((c) => c.fichaId === fichaId)
-}
-
-/** Os dados dos requisitos numéricos (CA7): o CNIS, o "sem trabalhar desde" da entrevista e a data de nascimento. */
-export type DadosDosRequisitos = { vinculos?: Vinculo[]; semTrabalharDesde?: string; nascimento?: string }
+// A análise do acervo mora em acervo.ts, sem o banco de exemplo, para o servidor usar a mesma (GGVP-125, bloco 3b).
+export { analisar, cnisDoCaso, type DadosDosRequisitos }
 
 export type Definicao = {
   ficha: Ficha
@@ -38,31 +31,6 @@ function acharEntrevista(banco: Banco, agendamentoId: string): { ficha: Ficha; a
   return null
 }
 
-function analisar(ficha: Ficha, gravacao: Gravacao | undefined, hoje: string): { sugestao?: SugestaoDoBeneficio; dados: DadosDosRequisitos } {
-  const dados: DadosDosRequisitos = {
-    vinculos: cnisDoCaso(ficha.id)?.vinculos,
-    semTrabalharDesde: gravacao?.extraidas.find((e) => e.id === 'desde')?.valor,
-    nascimento: ficha.nascimento,
-  }
-  if (!gravacao) return { dados }
-  const citado = beneficioCitado(gravacao.trechos)
-  const texto = [...gravacao.trechos.map((t) => t.texto), ...gravacao.extraidas.map((e) => e.valor), nomeBeneficio(ficha.beneficioInteresse)].join(' ')
-  const acervo = sugerirPeloAcervo(texto)
-  const sugerido = acervo?.sugerido ?? citado
-  if (!sugerido) return { dados }
-  return {
-    dados,
-    sugestao: {
-      citado,
-      sugerido,
-      alternativa: acervo?.alternativa,
-      base: acervo?.base ?? [],
-      porque: acervo?.porque ?? 'A IA não achou casos parecidos no acervo.',
-      requisitos: requisitosDoBeneficio(sugerido, dados, hoje),
-    },
-  }
-}
-
 /** GET /api/entrevistas/:id/beneficio. Nulo quando o compromisso não existe. Só o Jurídico vê a sugestão e a base. */
 export async function obterDefinicao(agendamentoId: string): Promise<Definicao | null> {
   const achado = acharEntrevista(ler(), agendamentoId)
@@ -81,6 +49,14 @@ export async function definirBeneficio(agendamentoId: string, decisao: DecisaoDo
   const valida =
     decisao.conferi === true && decisao.beneficio !== 'nao-sei' && BENEFICIOS.some((b) => b.id === decisao.beneficio) && (motivo ?? '').length <= 500
   if (!valida) throw new Error('Escolha o benefício e confira a recomendação com a entrevista.')
+  if (agendamentoDoServidor(agendamentoId)) {
+    // GGVP-125, bloco 3b: a decisão da advogada fica no servidor, com a sugestão que ele mesmo calcula (G3).
+    const r = await noBanco<{ ficha: Ficha; tarefa?: TarefaEncaminhada; tarefas: TarefaEncaminhada[] }>(`/entrevistas/${agendamentoId}/beneficio`, {
+      method: 'POST',
+      corpo: decisao,
+    })
+    return { ficha: receber(r)!, tarefa: r.tarefa }
+  }
   const banco = ler()
   const achado = acharEntrevista(banco, agendamentoId)
   if (!achado) throw new Error('Entrevista não encontrada')
