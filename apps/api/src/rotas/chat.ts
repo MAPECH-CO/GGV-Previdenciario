@@ -407,7 +407,10 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     const entrada = PerguntaDoChat.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Pergunta inválida.')
     const { texto, processoId } = entrada.data
-    const doCaso = processoId && UUID.test(processoId) ? processoId : undefined
+    // Quem não abre caso (`caso.ver`, como na página do processo) conversa sem caso no contexto e sem ação em caso.
+    const abreCaso = pode(pedido.perfilAtivo, 'caso.ver')
+    const noProcesso = processoId && UUID.test(processoId) ? processoId : undefined
+    const doCaso = abreCaso ? noProcesso : undefined
     const antes = antesDoModelo(texto, pedido.perfilAtivo ?? undefined, doCaso ? await contextoDoCaso(banco, doCaso) : {}, agora())
     if (antes) {
       // A recusa da perícia fica no histórico sem o texto do pedido, que pode trazer dado de saúde.
@@ -415,10 +418,11 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
       return antes.resposta
     }
 
-    const alvo = doCaso ? await umCaso(banco, doCaso) : await casoCitado(banco, texto)
+    const alvo = doCaso ? await umCaso(banco, doCaso) : abreCaso ? await casoCitado(banco, texto) : null
     if (alvo && 'opcoes' in alvo) return { ...daRegra('pergunta', 'De qual cliente? Escolha um.', [], agora()), opcoes: alvo.opcoes }
     const casoId = alvo?.casoId ?? null
-    if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId, agora())
+    // O link só leva à tela, que confere a permissão dela (a prestação de contas é do Financeiro, que não abre o caso).
+    if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, agora())
     const x = ambiente(pedido, alvo)
     const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes }, texto)
     if (rodada.tipo === 'aprovacao' && alvo) {
@@ -444,6 +448,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
       return negar(resposta, 410, MSG_CARTAO_VENCIDO)
     }
     if (p.quem !== pedido.usuario!.id || p.perfil !== pedido.perfilAtivo) return negar(resposta, 403, 'Só quem pediu confirma o cartão, com o mesmo perfil.')
+    if (!pode(pedido.perfilAtivo, 'caso.ver')) return negar(resposta, 403, 'Seu perfil não abre o caso.')
     pendentes.delete(entrada.data.acaoId)
     const x = ambiente(pedido, p.alvo, { responsavel: entrada.data.responsavel })
     await conversar({ ia, quem: x.quem, casoId: p.alvo.casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes }, { estado: p.estado, aprovar: true })

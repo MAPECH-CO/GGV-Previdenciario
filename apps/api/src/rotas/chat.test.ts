@@ -325,3 +325,14 @@ describe('GGVP-142 · o que depende de enviar arquivo leva à tela (CA3)', () =>
     expect(semCaso.links).toEqual([])
   })
 })
+
+describe('GGVP-142 · quem não abre caso conversa sem caso (CA2, permissão)', () => {
+  it('16.5 · o Financeiro cita o cliente e pede uma tarefa: o chat fica sem caso, sem ação no caso e sem o link', async () => {
+    roteiro = [{ role: 'assistant', content: 'Não consigo abrir o caso pelo seu perfil.' }]
+    const r = await perguntar('julia', 'Cria uma tarefa para a Ana cobrar o laudo da Vera Lúcia')
+    expect(r.links).toEqual([])
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).not.toContain('criar_tarefa')
+    expect(await banco.select().from(tarefa)).toEqual([])
+    expect((await registros())[0]).toMatchObject({ casoId: null })
+  })
+})
