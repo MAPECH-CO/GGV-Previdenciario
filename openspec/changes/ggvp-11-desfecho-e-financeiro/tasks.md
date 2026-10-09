@@ -131,3 +131,10 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
   - Ficou fora deste PR para não abrir mais um choque de migração: o #26 e o #29 já disputam os números a partir da 0013.
   - Até lá, o vínculo vem do histórico, gravado na mesma transação do atendimento (5.2).
+
+## GGVP-90 · Confirmar o desfecho de mérito (CA3 e CA4; orquestrador, 09/10)
+
+- [x] 14.1 Contratos: `DesfechoParaConfirmar` e `ConfirmarDesfecho` em `packages/contratos/src/merito.ts` (as quatro opções, a causa obrigatória na extinção, a forma de pagamento opcional); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 14.2 Servidor: `GET /api/casos/:id/desfecho` (com `caso.ver`) e `POST /api/casos/:id/desfecho` (com `publicacao.classificar`, advogada e Sênior, sem mudar a matriz) em `apps/api/src/rotas/desfecho.ts`: grava o desfecho e a causa no caso, a decisão com quem e quando, fecha a tarefa e a etapa D4.02 numa transação que só a primeira confirmação vence, e abre "Acompanhar pagamento" (D3b.01) ou "Vale recorrer?" para a advogada responsável; a Central leva o D4.02, o D3b.01 e o "Vale recorrer?" à tela nova; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 14.3 Tela `/casos/:id/desfecho` (`ConfirmarDesfecho.tsx`): o trecho da decisão, a leitura da IA com a confiança, o prazo do recurso, as quatro opções, a causa, a forma de pagamento, "Confirmar desfecho" e o feito com quem e quando; outro perfil vê só a situação; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 14.4 Rodar typecheck, lint e testes; colar a saída. Sem teste de navegador novo: a semente não tem caso esperando "Confirmar desfecho" (no roteiro, nasce ao classificar como mérito uma publicação de exemplo); a tela tem teste Vitest.

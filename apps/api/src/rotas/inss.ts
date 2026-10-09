@@ -75,7 +75,10 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3a.03': (id) => `/casos/${id}/exigencia-juiz/setor`,
   'D3a.03s': (id) => `/casos/${id}/exigencia-juiz`,
   'D3a.04': (id) => `/casos/${id}/manifestacao`,
-  'D4.02': (id) => `/casos/${id}/publicacoes`,
+  // GGVP-90: confirmar o desfecho e os dois passos seguintes abrem a mesma tela.
+  'D4.02': (id) => `/casos/${id}/desfecho`,
+  'D3b.01': (id) => `/casos/${id}/desfecho`,
+  'D3b.recorrer': (id) => `/casos/${id}/desfecho`,
 }
 
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date }
