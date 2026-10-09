@@ -25,11 +25,15 @@ Duas sessões em paralelo, cada uma na sua árvore e na sua branch, decisão do 
 4. GGVP-101 · Cobrar os documentos pendentes (D1.23)
 5. GGVP-18 · Liberar o caso ao Jurídico (D1.24)
 
+**Ligar no servidor** (`feat/GGVP-7-ligar-no-servidor`, GGVP-125, Mateus, desde 08/10): as telas da Recepção e desta
+Abertura passam a gravar no banco do portal, em blocos (1 a 6), com as regras do Pedro e os portões no servidor; spec em
+`specs/ggvp-125/spec.md`.
+
 Cada história ganha uma spec em `specs/ggvp-n/spec.md` e uma seção no `tasks.md`, no bloco do seu grupo.
 
 ## Fora do escopo
 
-- Servidor, banco e implantação: Supabase e Coolify são do Mateus. Aqui só tela, sobre dados de exemplo em `apps/web/src/dados/`. Cada história deixa aberta a tarefa "ligar no servidor".
+- Servidor, banco e implantação: Supabase e Coolify são do Mateus. Aqui só tela, sobre dados de exemplo em `apps/web/src/dados/`, menos o que a GGVP-125 liga no servidor. Cada história deixa aberta a tarefa "ligar no servidor".
 - Serviço de fora (ZapSign, Google Drive, Chatwoot, OpenAI, n8n, scanner): simulado na tela, sem chamada de verdade.
 - O que o épico de Recepção e entrevista já fez: esta change usa, não refaz.
 

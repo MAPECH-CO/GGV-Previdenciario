@@ -18,7 +18,7 @@ import {
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { compromissoInterno, fichaRecepcao } from '../banco/esquema.ts'
+import { compromissoInterno, contratoRecepcao, fichaRecepcao } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type {
@@ -36,7 +36,7 @@ import { DURACOES, HORARIOS, equipeDaEntrevista, estadoDoEvento, horarioOcupado,
 import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
 import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
@@ -151,6 +151,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     tarefas: await tarefas(),
     internos: await internos(),
     gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
+    contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
   }))
 
   // GGVP-16 CA4 e GGVP-17 CA1, CA3: o balcão manda ao setor, com a ficha e o agendamento; quem veio entregar documento
@@ -280,11 +281,16 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       estado: 'marcado',
       remarcacoes: 0,
       gravar: m.gravar,
+      confirmacao: { tentativas: [], presente: true },
     }
     ficha.agendamentos.push(agendamento)
-    ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`, await nomeDe(pedido)))
+    const quem = await nomeDe(pedido)
+    ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`, quem))
+    // Como na confirmação (BPMN D1.05 antes do D1.06): com a ficha de atendimento, a advogada recebe "Preparar entrevista";
+    // sem ela, o Atendimento recebe "Preencher ficha", e a ficha salva abre o "Preparar entrevista".
+    const tarefa = ficha.fichaAtendimentoPreenchida ? await abrirPreparacao(ficha, agendamento, quem) : await abrirPreenchimento(ficha, agendamento, quem)
     await guardar(ficha)
-    return { agendamento, ficha }
+    return { agendamento, ficha, tarefas: [tarefa] }
   })
 
   // GGVP-123 CA6, CA8, CA9: realizado conclui o "Receber para a entrevista" e, na entrevista do lead, abre o "Cadastrar
