@@ -1,4 +1,4 @@
-GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat) e GGVP-75; GGVP-59 e GGVP-64 travadas (abaixo).
+GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75, GGVP-64 (parte 1), GGVP-141 (parte 1) e GGVP-59 (parte 1).
 
 ## Por quê
 
@@ -16,12 +16,25 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Pareceres dispensados** comparados aos suficientes.
    - **Totais em dinheiro** só para o Sócio e o Financeiro.
    - **Raio-X de 979 processos** como referência.
+3. **GGVP-64** · Juízo identificado: mostrar a jurimetria · advogada responsável. A parte 1 (Mateus, 08/10), sem migração e sem versão nova da matriz:
+   - **Juízo do processo** pelo número CNJ: tribunal e unidade de origem, a mesma regra do painel (CA1, a identificação).
+   - **Números do juízo** calculados em código, só com desfecho conferido: procedência por benefício e tempo até a sentença, cada um com os processos e a data da base (CA2, CA4, CA5).
+   - **Minuta da petição:** a jurimetria do juízo entra nas fontes, só para a advogada, e o número fica fora do texto que vai ao juiz (CA3, CA6).
+4. **GGVP-141** · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado · IA e sistema. A parte 1 (Mateus, 08/10):
+   - **ADR-013**, a base de conhecimento, antes do código.
+   - **Trechos do acervo** com vetor (pgvector, índice HNSW), anonimizados e com a marca de dado de saúde (CA1, CA3).
+   - **Vetores pela OpenAI**, pelo motor, com registro (CA4).
+   - **O acervo se alimenta sozinho**, em segundo plano: as fontes que a busca já usa e a conversa conferida do Relacionamento (CA1).
+   - **Busca híbrida:** sentido e palavra misturados por RRF, sempre com a fonte (CA2).
+5. **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria · advogada responsável. A parte 1 (Mateus, 08/10), depois que a Perícia do Pedro entrou no servidor:
+   - **Nomeação de perito** vira uma classe da leitura da publicação: a IA sugere, e a pessoa classifica (CA1).
+   - **Quesitos e assistente técnico:** a tarefa da advogada, com o prazo do despacho ou, sem ele, 15 dias (CPC, art. 465, §1º), contado pelo código do prazo judicial (CA1, G12). Na Central, a tarefa abre a tela de perícias do caso, onde ficam os quesitos.
+   - **O perito do texto:** reconhecido entre os peritos da base. Não reconhecido, a pergunta de um clique da Perícia resolve, sem travar (CA1, CA6).
+   - **Já cobertos pela Perícia** (GGVP-61, GGVP-73 e GGVP-139): CA4, CA5, CA6, CA8, CA9 e CA10, e os números do perito em código, com o G22 (CA2, CA3 e CA7, por assunto).
 
 Um ponto de "Agora ok?" no fim de cada história.
 
 ## Travadas
-
-- **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria, e **GGVP-64** · Juízo identificado: mostrar a jurimetria: em "Tarefas pendentes", sem revisão (revisor: Mateus).
 - **Q20 (Sócio como perfil):** com o Lucas desde 07/10; até a resposta, o Sócio vê a Gestão inteira, com os valores só em total.
 
 ## Fora do escopo
@@ -32,6 +45,17 @@ Um ponto de "Agora ok?" no fim de cada história.
   - a unificação de grafias (CA2) segue a GGVP-59;
   - o acervo que se alimenta sozinho (CA6) depende da IA e do Drive.
 - **O arquivo do Raio-X:** tem nome de cliente e dado de saúde. Entram só os agregados já publicados no protótipo.
+- **GGVP-64, a parte 2:**
+  - o nome da vara e do juiz: nenhuma fonte de publicação traz hoje, nem o DJEN do PR #21. Entra com o órgão da fonte ou com a IA lendo a publicação, conferido por pessoa;
+  - os entendimentos recorrentes: pedem o texto das decisões no acervo (GGVP-141);
+  - a sobreposição na página do caso lendo do servidor: a página do caso ainda roda com dados de exemplo no navegador;
+  - a recomendação de recurso (CA3 e CA6, D3b.04): segue a GGVP-100, travada pela Q26.
+- **GGVP-141, a parte 2:** o parecer, o laudo e o resultado da perícia entram quando os PRs #39 e #42 forem mesclados, e a transcrição entra com a GGVP-133.
+- **GGVP-59, a parte 2:**
+  - ligar o perito direto na perícia judicial a partir da publicação, porque mexe no modelo da Perícia do Pedro;
+  - a sobreposição da página do caso lendo do servidor;
+  - a taxa por benefício e por CID, que hoje é por assunto;
+  - a pergunta no chat ("Como o perito avalia?").
 
 ## Portões envolvidos
 

@@ -7,7 +7,7 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, parecerMedico, pessoa, peticao, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, parecerMedico, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -208,6 +208,27 @@ describe('Épico IA · a minuta da petição inicial', () => {
     expect(enviado).toContain('Trechos do acervo da casa')
     expect(enviado).toContain('a renda do filho maior que mora à parte')
     for (const dado of ['Rosa', 'Antunes', '111.222.333-44']) expect(enviado).not.toContain(dado)
+  })
+
+  it('GGVP-64 CA3, CA6 · com o número do processo, a jurimetria do juízo vai às fontes da advogada e fica fora do pedido ao modelo', async () => {
+    await laudoDaDocumentacao()
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: '0001234-96.2026.4.03.6301' })
+    const [helena] = await banco.select().from(usuario).where(eq(usuario.email, 'helena@exemplo.ggv'))
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000011220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+      { numeroCnj: '00000021220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+    ])
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', {})).json()
+    const doJuizo = r.sugestao.fontes.find((f: { referencia: string }) => f.referencia === 'juizo:TRF3 · 6301')
+    expect(doJuizo.tipo).toBe('acervo')
+    expect(doJuizo.trecho).toContain('procedência em BPC/LOAS Idoso: 50% em 2 processos · base de 07/10')
+    for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(pedidos.join('\n')).not.toContain(numero)
+  })
+
+  it('GGVP-64 CA3 · sem número do processo, a minuta sai sem a fonte do juízo', async () => {
+    await laudoDaDocumentacao()
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', {})).json()
+    expect(r.sugestao.fontes.some((f: { referencia: string }) => f.referencia.startsWith('juizo:'))).toBe(false)
   })
 
   it('Sugestão pronta (07/10) · com os setores fechados, a rodada escreve a minuta com o padrão do pedido; a tela, com o mesmo padrão, recebe sem nova chamada', async () => {

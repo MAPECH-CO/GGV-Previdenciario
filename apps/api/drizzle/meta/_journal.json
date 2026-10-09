@@ -162,6 +162,20 @@
       "when": 1791521070736,
       "tag": "0022_tarefas_do_setor",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791526729844,
+      "tag": "0023_base_de_conhecimento",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791526733262,
+      "tag": "0024_nomeacao_de_perito",
+      "breakpoints": true
     }
   ]
 }

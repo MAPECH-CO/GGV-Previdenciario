@@ -10,10 +10,11 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
 import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { fonteDoJuizo, juizoDoCaso, jurimetriaDoJuizo } from '../fluxo/juizo.ts'
 import { travaDoParecerDoCaso } from '../fluxo/parecer-do-caso.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { FINALIDADES, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -255,7 +256,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const itensDoParecer = ((parecer?.itens as { item: string; atendido: boolean }[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
     // GGVP-45 CA1, CA2: com "usar precedentes", o acervo é consultado antes de escrever, pelo motivo, provas e instruções.
     const acervo = d.opcoes.precedentes
-      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' ') })
+      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' '), saude: FINALIDADES.minuta_peticao.saude, ia })
       : []
     const conteudo = [
       `Cliente (autor): ${c.nome}`,
@@ -276,7 +277,12 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     ]
     const aviso = d.opcoes.precedentes && !acervo.length ? MSG_SEM_REFERENCIA : null
     const s = await ia.sugerir('minuta_peticao', { casoId, quem, conteudo, fontes }, como)
-    return MinutaDaIa.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
+    // GGVP-64 CA3, CA6: a jurimetria do juízo vai às fontes da advogada, depois do modelo. O modelo não recebe esses números,
+    // então eles não entram no texto que vai ao juiz. Antes do protocolo o caso costuma não ter número, e a fonte não vem.
+    const juizo = s ? await juizoDoCaso(banco, casoId) : null
+    const doJuizo = juizo ? fonteDoJuizo(await jurimetriaDoJuizo(banco, juizo, agora()), c.beneficio) : null
+    const sugestao = s && doJuizo ? { ...s, fontes: [...s.fontes, doJuizo] } : s
+    return MinutaDaIa.parse({ sugestao, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
   }
 
   // GGVP-63 CA1, CA2, CA6, CA9, CA10: só com os setores fechados; grava o pedido e a versão 1 escrita pela advogada, que
