@@ -37,7 +37,9 @@ describe('migrações', () => {
       'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao',
       'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'glossario_termo']) expect(t).toContain(nome)
     expect(t).toContain('documentacao_medica')
-    expect(t).toHaveLength(56)
+    // GGVP-147: quem faz cada tarefa do setor.
+    expect(t).toContain('atribuicao_tarefa')
+    expect(t).toHaveLength(57)
   })
 
   it('GGVP-41 CA6 · o registro do acervo guarda a ficha do desfecho: matéria, vara, tese, resumo e lição', async () => {

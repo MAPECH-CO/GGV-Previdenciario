@@ -1,6 +1,6 @@
 {
-  "id": "7bbd13db-445b-42d8-97a3-633d27764c3e",
-  "prevId": "b14875db-4016-4e40-bf59-3f474ff3bfbb",
+  "id": "be974ab9-1cb3-44fe-84d4-9f9e857706d6",
+  "prevId": "7bbd13db-445b-42d8-97a3-633d27764c3e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -5489,6 +5489,36 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "materia": {
+          "name": "materia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vara": {
+          "name": "vara",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tese": {
+          "name": "tese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resumo": {
+          "name": "resumo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "licao": {
+          "name": "licao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",
