@@ -92,9 +92,9 @@
 - [x] 13.3 CA6 e GGVP-71 CA1, CA8, CA11 · pacote em `apps/api/src/fluxo/pacote.ts` com `pdf-lib` (dependência nova): PDF da petição com a assinatura padrão e o hash, a carta e os citados na ordem, imagem vira PDF; gerado na aprovação; teste que abre o PDF gerado e confere as páginas e os metadados; verifica com `pnpm --filter @ggv/api test`.
 - [x] 13.4 CA11 · Tela "Petição inicial", parte da conferência (versão inteira, diferença destacada, as três marcações, "Editar eu mesma") e `D3.06` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
-- [ ] 13.5 CA12 · `POST .../peticao/versoes/:n/aprovacao` recusa com `faltaCompletar` (a regra da GGVP-22 CA6; 400, sem pacote); teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 13.6 CA12 · Tela da petição: "Aprovar" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 13.7 Rodar typecheck, lint, testes e Playwright das duas histórias (GGVP-22 e GGVP-67); colar a saída.
+- [x] 13.5 CA12 · `POST .../peticao/versoes/:n/aprovacao` recusa com `faltaCompletar` (a regra da GGVP-22 CA6; 400, sem pacote); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 13.6 CA12 · Tela da petição: "Aprovar" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 13.7 Rodar typecheck, lint, testes e Playwright das duas histórias (GGVP-22 e GGVP-67); colar a saída.
 
 ## GGVP-71 · Pacote, travas e protocolo no tribunal
 
