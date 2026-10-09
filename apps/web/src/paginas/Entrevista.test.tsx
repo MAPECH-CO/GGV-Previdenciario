@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { configurarExemplo, gravar, ler, zerarExemplo } from '../dados/servidor.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { Entrevista } from './Entrevista.tsx'
 
 beforeEach(() => {
@@ -27,6 +28,18 @@ describe('Fazer entrevista · tela do passo', () => {
     expect(screen.getByText('A gravação começa com o aviso ao cliente (G10).')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Analise a ficha antes: pode ser auxílio acidentário?')).toBeTruthy()
+    // A entrevista iniciada na hora pula a preparação: o atalho da análise fica aqui.
+    expect(screen.getByRole('link', { name: 'Analisar a ficha' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/analisar')
+  })
+
+  it('o topo é de quem entrou: "Você · Atendimento" e Início na Central dele, não a da advogada', async () => {
+    entrarComo('atendimento')
+    render(comSessao(<Entrevista agendamentoId="josefa-entrevista" />))
+    await screen.findByRole('heading', { level: 1, name: /Fazer entrevista/ })
+    expect(screen.getByText('Você · Atendimento')).toBeTruthy()
+    expect(screen.queryByText('Você · Advogada responsável')).toBeNull()
+    expect(screen.getByRole('link', { name: /Início/ }).getAttribute('href')).toBe('/')
+    entrarComo()
   })
 
   it('com a ficha analisada, "Iniciar entrevista" leva à gravação', async () => {
@@ -35,6 +48,7 @@ describe('Fazer entrevista · tela do passo', () => {
     gravar(banco)
     await abrir()
     expect(screen.getByRole('link', { name: 'Iniciar entrevista (Transcrição)' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/gravacao')
+    expect(screen.queryByRole('link', { name: 'Analisar a ficha' })).toBeNull()
   })
 
   it('CA9 e CA10 · áudio de fora, de qualquer formato e tamanho, vai para a transcrição em partes', async () => {

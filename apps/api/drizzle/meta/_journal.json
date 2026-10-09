@@ -145,8 +145,15 @@
     {
       "idx": 20,
       "version": "7",
-      "when": 1791510274916,
-      "tag": "0020_ficha_do_desfecho",
+      "when": 1791499769191,
+      "tag": "0020_glossario_e_transcricao",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791520932602,
+      "tag": "0021_ficha_do_desfecho",
       "breakpoints": true
     }
   ]

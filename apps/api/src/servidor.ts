@@ -31,6 +31,8 @@ import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
+import { registrarRotasGlossario } from './rotas/glossario.ts'
+import { registrarRotasTranscricao } from './rotas/transcricao.ts'
 import { registrarRotasRoteiros } from './rotas/roteiros.ts'
 import { registrarRotasParecer } from './rotas/parecer.ts'
 import { registrarRotasComplemento } from './rotas/complemento.ts'
@@ -127,7 +129,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
-    registrarRotasRecepcaoEntrevista(app, { banco, agora })
+    registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasRoteiros(app, { banco, agora })
     registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
@@ -135,12 +137,14 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasAcidente(app, { banco, agora })
     registrarRotasCrianca(app, { banco, agora })
     registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
-    registrarRotasConversa(app, { banco, agora })
+    registrarRotasConversa(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
     registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasImportacao(app, { banco, agora })
     registrarRotasFeriados(app, { banco, agora })
+    registrarRotasGlossario(app, { banco, agora })
+    registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
   }
 
   if (pastaTela && existsSync(pastaTela)) {
