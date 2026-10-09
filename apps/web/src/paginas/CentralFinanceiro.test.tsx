@@ -38,6 +38,14 @@ const topo = () => within(screen.getByRole('navigation', { name: 'Principal' }))
 const sugestoes = () => within(screen.getByRole('region', { name: 'Chat com a IA' })).getAllByRole('button').map((b) => b.textContent)
 
 describe('GGVP-78 · a Central do Financeiro, como no Figma (59:863)', () => {
+  it('GGVP-147 · o Financeiro, que não vê o caso, nem pede a fila do setor (o servidor diria 403)', async () => {
+    render(comSessao(<CentralFinanceiro />))
+    expect(await screen.findByText('Nada na sua fila agora.')).toBeTruthy()
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
+    expect(urls).toContain('/api/tarefas')
+    expect(urls).not.toContain('/api/setor/minhas')
+  })
+
   it('o topo com os Resultados (GGVP-96) e o painel Financeiro; sem o resto da Gestão, Clientes nem Processos; a busca, o chat e o Suporte', () => {
     render(comSessao(<CentralFinanceiro />))
     expect(screen.getByRole('heading', { level: 1, name: 'Início do Financeiro' })).toBeTruthy()
