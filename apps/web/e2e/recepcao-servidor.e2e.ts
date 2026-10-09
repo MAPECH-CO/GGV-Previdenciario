@@ -157,7 +157,10 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   await advogada.getByRole('button', { name: 'Começar a gravar' }).click()
   await expect(advogada.getByText(/● Gravando/)).toBeVisible()
   await advogada.clock.runFor(30_000)
-  await advogada.getByRole('button', { name: /Abrir o cofre/ }).click()
+  const cofre = advogada.getByRole('button', { name: /Abrir o cofre/ })
+  // Se o cofre não aparecer, o texto da tela da advogada vai para o log do CI (o relatório só guarda a outra página).
+  await expect(cofre, await advogada.locator('main').innerText().catch((e: unknown) => String(e))).toBeVisible({ timeout: 15_000 })
+  await cofre.click()
   await advogada.getByLabel('Digite a senha (vai direto ao cofre)').fill(SENHA)
   await advogada.getByRole('button', { name: 'Guardar no cofre' }).click()
   await expect(advogada.getByText(/● Gravando/)).toBeVisible()
@@ -384,6 +387,8 @@ test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o 
   expect(contratos.find((c: { processoId: string }) => c.processoId === caso)).toMatchObject({ etapa: 'entregue', copia: { entrega: { quemRecebeu: 'Lia Copia Teste' } } })
   const processo = (fichas as { processos: { id: string; etapa: string }[] }[]).flatMap((f) => f.processos).find((x) => x.id === caso)
   expect(processo?.etapa).toBe('Documentação · checklist do benefício')
+  // A tela do contrato é da raia do Atendimento (GGVP-96): a líder, neste outro computador, vê a entrega registrada.
+  await entrarPelaApi(advogada, 'lider@exemplo.ggv')
   await advogada.goto(`/contrato/${caso}/copia`)
   await expect(advogada.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
   await outro.close()
