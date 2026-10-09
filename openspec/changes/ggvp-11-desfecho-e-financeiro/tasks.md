@@ -131,3 +131,9 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
   - Ficou fora deste PR para não abrir mais um choque de migração: o #26 e o #29 já disputam os números a partir da 0013.
   - Até lá, o vínculo vem do histórico, gravado na mesma transação do atendimento (5.2).
+
+## Revisão de 08/10 · resumo com [completar] (GGVP-22 CA6)
+
+- [x] 11.1 CA6 · `faltaCompletar` em `packages/contratos/src/ia.ts` (texto com "[completar...]" → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 11.2 CA6 · `POST /api/casos/:id/resultado/resumo` recusa com `faltaCompletar` (400, nada muda); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 11.3 CA6 · Tela "Explicar o resultado": "Aprovar o resumo" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.

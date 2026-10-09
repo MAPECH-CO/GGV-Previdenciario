@@ -302,6 +302,14 @@ describe('GGVP-67 · conferir a petição', () => {
     expect((await aprovar(2)).json().erro).toBe(MSG_NADA_A_CONFERIR)
   })
 
+  it('CA12 · versão com "[completar]" não se aprova; o pacote não sai e a conferência continua', async () => {
+    await editar(V1 + '\nDo valor da causa: [completar]')
+    const r = await aprovar(2)
+    expect([r.statusCode, r.json().erro]).toEqual([400, 'O texto ainda tem [completar]: preencha antes de aprovar.'])
+    expect((await ler()).versoes[1].aprovadaPor).toBeNull()
+    expect(await abertas()).toEqual(['advogada · Conferir petição'])
+  })
+
   it('CA6 · aprovada, o pacote sai na ordem: a petição em PDF com o identificador da versão, a carta e os citados', async () => {
     await aprovar(1)
     const [v] = await banco.select().from(peticaoVersao).where(eq(peticaoVersao.numero, 1))
