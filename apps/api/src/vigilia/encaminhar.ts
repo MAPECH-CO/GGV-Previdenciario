@@ -1,17 +1,21 @@
 // Encaminhar pelo tipo de ato (GGVP-37): exigência vai para a análise da advogada (D3a), mérito para "Confirmar
-// desfecho" (antes do D3b, GGVP-90), e só andamento fica registrado. O prazo é contado em código (GGVP-34).
+// desfecho" (antes do D3b, GGVP-90), nomeação de perito para os quesitos (GGVP-59) e só andamento fica registrado. O
+// prazo é contado em código (GGVP-34).
+import type { CLASSES_DE_ATO } from '@ggv/contratos'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { etapa, prazo, publicacao, tarefa } from '../banco/esquema.ts'
 import { feriadosDoProcesso, prazoJudicial } from '../fluxo/prazo-judicial.ts'
 
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
-type Classe = 'andamento' | 'exigencia' | 'merito'
+type Classe = (typeof CLASSES_DE_ATO)[number]
 type Publicacao = typeof publicacao.$inferSelect
 
 const DESTINO = {
   exigencia: { diagrama: 'D3a', passo: 'D3a.02', titulo: 'Analisar exigência do juiz' },
   merito: { diagrama: 'D4', passo: 'D4.02', titulo: 'Confirmar desfecho' },
+  // GGVP-59 CA1: com o perito nomeado, quesitos, assistente técnico e impugnação (CPC, art. 465, §1º).
+  nomeacao_perito: { diagrama: 'DP', passo: 'DP.05', titulo: 'Quesitos e assistente técnico' },
 } as const
 
 /**

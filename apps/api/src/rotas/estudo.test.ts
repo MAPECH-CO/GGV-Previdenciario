@@ -121,7 +121,8 @@ describe('GGVP-19 · estudo de caso do processo perdido', () => {
     await app.prepararSugestoes()
     const [p] = await banco.insert(pessoa).values({ nome: 'Outra' }).returning()
     const [outro] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: BPC, fase: 'judicial' }).returning()
-    const fontes = await buscarNoAcervo(banco, { casoId: outro.id, beneficio: BPC, consulta: 'comprovante de residência do filho' })
+    // Como os fluxos do Jurídico buscam: o estudo é trecho só do Jurídico (GGVP-141 CA1).
+    const fontes = await buscarNoAcervo(banco, { casoId: outro.id, beneficio: BPC, consulta: 'comprovante de residência do filho', saude: true })
     const doEstudo = fontes.find((f) => f.trecho?.startsWith('Estudo de caso da IA'))
     expect(doEstudo).toMatchObject({ tipo: 'acervo', referencia: `caso:${casoId}` })
     expect(doEstudo?.trecho).toContain('Juntar o comprovante de residência do filho')

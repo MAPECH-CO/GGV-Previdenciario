@@ -72,6 +72,8 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3b.05': () => '/estudos',
   // GGVP-38: a recomendação da perícia, para a advogada conferir.
   'DP.00': (id) => `/casos/${id}/pericias`,
+  // GGVP-59: "Quesitos e assistente técnico", da nomeação de perito, abre onde ficam os quesitos.
+  'DP.05': (id) => `/casos/${id}/pericias`,
   'D3.03': (id) => `/casos/${id}/despacho`,
   'D3.04': (id) => `/casos/${id}/pendencias`,
   'D3.04s': (id) => `/casos/${id}/despacho`,

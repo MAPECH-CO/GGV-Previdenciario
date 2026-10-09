@@ -9,7 +9,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, peticao, peticaoVersao, prazo, protocoloJudicial, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, lacosDas, lembreteDescrito, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
@@ -179,7 +179,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       .from(documento)
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(asc(documento.criadoEm))
-    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto })
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto, saude: FINALIDADES.analisar_exigencia_juiz.saude, ia })
     const conteudo = [
       `Benefício: ${c?.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não definido'}`,
       `Prazo do processo contado pelo sistema: até ${e.prazo.fim}`,
