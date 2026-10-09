@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
 import { dataDe, ultimaDoLaco } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
-import { hojeIso, isoParaData } from '@ggv/campos'
+import { diaLocal, hojeIso, isoParaData } from '@ggv/campos'
 import { Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type AnaliseDoDespacho, type Despacho } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
@@ -15,7 +15,7 @@ const ROTULO_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social
 const ROTULO_ITEM = { pendente: 'aberto', cumprido: 'concluído', nao_cumprido: 'encerrado sem a prova' } as const
 const DO_SETOR: Record<Setor, string> = { atendimento: 'o Atendimento', documentacao: 'a Documentação' }
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 
 /** O pedido a um setor marcado (GGVP-54 CA6): o que obter e "Essa tarefa tem prazo?"; com "Sim", a data de entrega. */
 function PedidoDoSetor({ setor, pedido, mudar }: { setor: Setor; pedido: PedidoNaTela; mudar: (p: PedidoNaTela) => void }) {

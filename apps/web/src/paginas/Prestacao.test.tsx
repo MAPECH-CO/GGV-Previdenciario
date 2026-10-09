@@ -94,6 +94,19 @@ describe('Receber a prestação (GGVP-44, Financeiro)', () => {
     expect(screen.getByText(/Caixa · acompanha: Ana/)).toBeTruthy()
   })
 
+  it('GGVP-120 CA10 · concluída às 22h30 de Brasília mostra o dia de Brasília; o prazo, data pura, fica igual', async () => {
+    const antes = process.env.TZ
+    process.env.TZ = 'America/Sao_Paulo'
+    try {
+      servidor({ ...prestacao, versoes: [{ ...versao1, em: '2026-10-09T01:30:00.000Z', prazoPagamento: '2026-10-20' }], podeEditar: false, podeReceber: true })
+      render(<ReceberPrestacao casoId={CASO} />)
+      expect((await screen.findByText(/Versão 1, concluída por Gabi em/)).textContent).toContain('em 08/10/2026')
+      expect(screen.getByText(/prazo 20\/10\/2026/)).toBeTruthy()
+    } finally {
+      process.env.TZ = antes
+    }
+  })
+
   it('GGVP-98 CA3 · "Receber e lançar" só com "Valores conferem com o comprovante"', async () => {
     const fetch = servidor({ ...prestacao, versoes: [versao1], podeEditar: false, podeReceber: true })
     render(<ReceberPrestacao casoId={CASO} />)

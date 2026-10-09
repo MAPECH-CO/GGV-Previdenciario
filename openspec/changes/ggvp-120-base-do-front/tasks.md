@@ -51,6 +51,6 @@
 
 ## 12. CA10 · Dia de Brasília nas datas (revisão de 08/10)
 
-- [ ] 12.1 `diaLocal` em `packages/campos/src/data.ts` (momento → dia local; data pura como está); teste com 22h30 de Brasília e com data pura; verifica com `pnpm --filter @ggv/campos test`.
-- [ ] 12.2 As telas trocam `slice(0, 10)` por `diaLocal` (Peticao, Despachar, Manifestar, PrestarContas, ReceberPrestacao, PaginaDoCaso, Transcricoes, DefinirBeneficio); teste Vitest da recepção da prestação às 22h30; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 12.3 Rodar typecheck, lint, testes e Playwright; colar a saída.
+- [x] 12.1 `diaLocal` em `packages/campos/src/data.ts` (momento → dia local; data pura como está); teste com 22h30 de Brasília e com data pura; verifica com `pnpm --filter @ggv/campos test`.
+- [x] 12.2 As telas trocam `slice(0, 10)` por `diaLocal` (Peticao, Despachar, Manifestar, PrestarContas, ReceberPrestacao, PaginaDoCaso, Transcricoes, DefinirBeneficio); teste Vitest da recepção da prestação às 22h30; verifica com `pnpm --filter @ggv/web test`.
+- [x] 12.3 Rodar typecheck, lint, testes e Playwright; colar a saída.

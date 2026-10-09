@@ -1,3 +1,4 @@
+import { diaLocal } from '@ggv/campos'
 import { useEffect, useId, useRef, useState } from 'react'
 import { formatarTelefone, isoParaData } from '../campos.ts'
 import { transcrever } from '../dados/entrevista.ts'
@@ -299,7 +300,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                         ))}
                       </ul>
                       {g.documentosConferidosEm ? (
-                        <p className={styles.conferida}>✓ Conferida e enviada ao checklist do benefício em {dataCurta(g.documentosConferidosEm.slice(0, 10), hoje)}.</p>
+                        <p className={styles.conferida}>✓ Conferida e enviada ao checklist do benefício em {dataCurta(diaLocal(g.documentosConferidosEm), hoje)}.</p>
                       ) : (
                         <>
                           <label className={styles.conferir}>
