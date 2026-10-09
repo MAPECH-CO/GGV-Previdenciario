@@ -8,7 +8,8 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
   await page.goto('/clientes/novo')
   await page.getByLabel('Nome completo *').fill('Lia Ligacao Teste')
   await page.getByLabel('Idade *').fill('62')
-  await page.getByLabel('Telefone / WhatsApp *').fill('11944443322')
+  // Telefone só deste teste: o banco do teste é um só, e telefone repetido abre o «Já existe?».
+  await page.getByLabel('Telefone / WhatsApp *').fill('11944447788')
   await page.getByLabel('O que a pessoa pretende *').fill('Quer saber do BPC do idoso.')
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
