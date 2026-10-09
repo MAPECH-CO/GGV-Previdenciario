@@ -55,3 +55,11 @@ Ao aprovar o resumo, a advogada SHALL escolher se ela mesma fala com o cliente (
 - **Dado** a explicação com a advogada
 - **Quando** o Atendimento tenta registrar o contato
 - **Então** o portal recusa, e a tarefa continua com ela
+
+### Requirement: CA6 · Resumo com "[completar]" não se aprova
+Enquanto o texto tiver um marcador "[completar...]", deixado pela IA ou por alguém, aprovar o resumo MUST ser recusado com "O texto ainda tem [completar]: preencha antes de aprovar." (revisão de 08/10). A regra é a mesma na tela e no servidor.
+
+#### Scenario: CA6 · Rascunho da IA sem o motivo preenchido
+- **Dado** o rascunho da IA com "[completar: o motivo da decisão]"
+- **Quando** a advogada aprova sem preencher
+- **Então** o portal recusa, diz que falta completar, e nada vai para quem fala com o cliente

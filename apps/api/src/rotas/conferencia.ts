@@ -2,6 +2,7 @@
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
+  bloqueioDoG1,
   CasoParaConferencia,
   CasoParaLiberacao,
   ChanceDeExito,
@@ -42,6 +43,7 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 import { ehPeca } from './documentos.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
+/** A liberação ao Jurídico (D1.24, GGVP-18) ainda usa esta mensagem; a conferência da Sênior usa `bloqueioDoG1`. */
 export const MSG_G1 = 'Checklist incompleto (G1): faltam'
 export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e espera outra Sênior.'
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
@@ -184,7 +186,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.01'), isNull(tarefa.concluidaEm)))
 
     if (entrada.data.decisao === 'aprovar') {
-      if (dados.checklist.cadastrado && !dados.checklist.completo) return recusar(pedido, resposta, casoId, 'G1', `${MSG_G1} ${dados.checklist.faltam.join(', ')}.`)
+      const g1 = bloqueioDoG1(dados)
+      if (g1) return recusar(pedido, resposta, casoId, 'G1', g1)
       if (dados.travaDoParecer) return recusar(pedido, resposta, casoId, 'G17', dados.travaDoParecer)
       await banco.transaction(async (tx) => {
         await tx.insert(decisao).values({ ...base, resultado: 'aprovado' })

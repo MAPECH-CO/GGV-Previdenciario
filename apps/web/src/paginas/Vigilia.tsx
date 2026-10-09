@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
-import { EncerrarCaso, RespostaDoInss, type VigiliaDoCaso } from '@ggv/contratos'
+import { nomeDoBeneficio, EncerrarCaso, RespostaDoInss, type VigiliaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { usePode } from '../sessao.ts'
 import styles from './Passo.module.css'
@@ -9,7 +9,6 @@ import { PrestarContas } from './PrestarContas.tsx'
 import { TratarExigencia } from './TratarExigencia.tsx'
 
 type Tipo = 'deferido' | 'indeferido' | 'exigencia'
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
 
 /** GGVP-48: a Sênior pode encerrar o indeferido em vez de levar à Justiça, com o motivo. */
@@ -133,7 +132,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Vigília do Meu INSS</h1>
       <p className={styles.subtitulo}>
-        {caso.cliente} · {rotuloBeneficio(caso.beneficio)} · <a href={`/casos/${casoId}/historico`}>Histórico do processo</a>
+        {caso.cliente} · {nomeDoBeneficio(caso.beneficio)} · <a href={`/casos/${casoId}/historico`}>Histórico do processo</a>
       </p>
 
       <section className={styles.cartao} aria-label="Situação">

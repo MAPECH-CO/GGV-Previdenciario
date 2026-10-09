@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite'
+import { vector } from '@electric-sql/pglite/vector'
 import { validarCnj } from '@ggv/campos'
 import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
@@ -76,7 +77,7 @@ describe('GGVP-30 CA10 · credenciais das fontes fora do código e do banco', ()
   })
 
   it('o banco não tem coluna onde caiba credencial de fonte (o segredo no código, o gitleaks do CI barra)', async () => {
-    const db = drizzle(new PGlite())
+    const db = drizzle(new PGlite({ extensions: { vector } }))
     await migrate(db, { migrationsFolder: pastaMigracoes })
     const { rows } = await db.execute<{ coluna: string }>(
       sql`select table_name || '.' || column_name as coluna from information_schema.columns where table_schema = 'public'`,

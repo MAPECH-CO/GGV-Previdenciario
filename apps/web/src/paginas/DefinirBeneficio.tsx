@@ -1,3 +1,4 @@
+import { diaLocal } from '@ggv/campos'
 import { useEffect, useId, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { Campo } from '../componentes/Campo.tsx'
@@ -232,7 +233,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                 </h2>
                 {definido && (
                   <p className={proprio.texto}>
-                    Já definido em {dataCurta(definido.quando.slice(0, 10), hoje)}: {nomeBeneficio(definido.beneficio)}. Confirmar de novo
+                    Já definido em {dataCurta(diaLocal(definido.quando), hoje)}: {nomeBeneficio(definido.beneficio)}. Confirmar de novo
                     troca o benefício, e o anterior fica no histórico. Outro benefício para o mesmo cliente é processo novo (Nova demanda).
                   </p>
                 )}

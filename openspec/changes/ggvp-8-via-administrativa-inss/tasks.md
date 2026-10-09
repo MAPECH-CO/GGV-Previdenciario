@@ -27,6 +27,11 @@
 - [x] 3.5 CA1, CA3, CA4, CA5, CA8 · Tela "Conferência" em `apps/web/src/paginas/Conferencia.tsx` (só leitura para quem não é Sênior); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 3.6 Playwright: a Sênior aprova um caso e as tarefas aparecem para o Jurídico administrativo e para a advogada; reprova outro sem motivo e vê a recusa; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.8 CA11, CA12 · `bloqueioDoG1` em `packages/contratos` (sem kit, documento faltando, contrato não assinado → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 3.9 CA11, CA12 · `POST /api/casos/:id/conferencia` usa `bloqueioDoG1` (recusa 409, G1 no histórico); testes das três recusas; ajustar os testes que aprovavam sem kit; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.10 CA11, CA12 · Tela "Conferência" usa `bloqueioDoG1`: Aprovar desligado com o motivo; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 3.11 Dados de exemplo: kit da pensão por morte com os documentos da Antônia e o contrato dela assinado, para seguir aprovável no roteiro do Lucas; o Benedito continua barrado; verifica entrando como Sênior.
+- [x] 3.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-35 · Vigiar o Meu INSS todo dia
 
@@ -59,6 +64,7 @@
 - [x] 6.9 Telas "Tratar exigência" (advogada e Sênior) e "Cumprir exigência" (Documentação); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 6.10 Playwright: a advogada decide "Documentos", a Documentação cobra, junta a prova e responde, e o caso volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 6.11 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.12 CA15 (orquestrador, 09/10) · a prova do item (`POST /api/casos/:id/exigencia/itens/:item`) sobe com `sensivel` pela regra `provaEhSensivel` (`apps/api/src/fluxo/prova-medica.ts`, com teste); a tela da Documentação ganha "É laudo, atestado ou exame"; teste em `exigencia.test.ts` e `Exigencia.test.tsx`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/exigencia.test.ts`.
 
 ## GGVP-44 · Benefício deferido: prestação de contas e ida ao banco
 
@@ -71,3 +77,5 @@
 - [x] 7.7 Telas "Prestar contas", "Receber a prestação" e "Agendar ida ao banco"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 7.8 Playwright: a advogada conclui a prestação, o Financeiro recebe, o Atendimento agenda e registra a confirmação; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 7.10 CA13 (orquestrador, 09/10) · `GET` e `POST /api/casos/:id/prestacao`: com `caso.advogadaResponsavelId`, só a advogada responsável vê e dá o OK; outra advogada recebe 403 e a recusa vai ao histórico; o Financeiro e o caso sem responsável seguem como estão; teste em `prestacao.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/prestacao.test.ts`.
+- [x] 7.11 Rodar typecheck, lint e testes; colar a saída.

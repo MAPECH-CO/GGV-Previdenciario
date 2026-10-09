@@ -117,3 +117,16 @@ O setor que sabe que não vai conseguir SHALL poder subir para a Sênior antes d
 - **Dado** que o setor sabe que não vai conseguir
 - **Quando** registra o motivo
 - **Então** pode subir para a Sênior antes do limite de tentativas
+
+### Requirement: CA15 · A prova que é documento médico sobe como sensível
+A prova de item que pede laudo, atestado, exame, receita ou prontuário, ou que quem sobe marca como "É laudo, atestado ou exame", MUST ser guardada como documento sensível: só quem tem `dado_saude.ver_detalhe` abre, e cada leitura fica em `acesso_dado_sensivel`. A regra é código com teste (`apps/api/src/fluxo/prova-medica.ts`; orquestrador, 09/10).
+
+#### Scenario: CA15 · Laudo como prova
+- **Dado** um item da exigência que pede "Laudo atualizado"
+- **Quando** o setor sobe o documento
+- **Então** o documento fica sensível, e o Atendimento ou a Documentação não o abrem
+
+#### Scenario: CA15 · Marcado por quem sobe
+- **Dado** um item que não fala em laudo
+- **Quando** quem sobe marca "É laudo, atestado ou exame"
+- **Então** o documento também fica sensível

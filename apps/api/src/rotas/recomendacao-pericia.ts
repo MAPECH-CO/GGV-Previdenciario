@@ -18,7 +18,7 @@ import {
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, kitDocumento, parecerMedico, pericia, pessoa, publicacao, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { buscarNoAcervo } from '../ia/acervo.ts'
-import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -88,7 +88,7 @@ export function registrarRotasRecomendacaoPericia(app: FastifyInstance, { banco,
           .orderBy(desc(exigencia.criadoEm))
           .limit(1)
       : []
-    const acervo = await buscarNoAcervo(banco, { casoId: p.casoId, beneficio: c?.beneficio ?? null, consulta: [motivo, ...itensDoParecer, NOME[p.tipo]].join(' ') })
+    const acervo = await buscarNoAcervo(banco, { casoId: p.casoId, beneficio: c?.beneficio ?? null, consulta: [motivo, ...itensDoParecer, NOME[p.tipo]].join(' '), saude: FINALIDADES.recomendacao_pericia.saude, ia })
     const conteudo = [
       `Benefício: ${c?.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não definido'}`,
       `Perícia: ${NOME[p.tipo]}, ${p.origem}${p.judicial ? ' (perícia judicial)' : ' (não é judicial)'}`,

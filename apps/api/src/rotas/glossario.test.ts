@@ -130,7 +130,9 @@ describe('GGVP-143 CA3 · o glossário nasce com os peritos e juízos que o port
     const diario = JSON.parse(await readFile(join(pasta, 'meta/_journal.json'), 'utf8')) as { entries: { tag: string }[] }
     diario.entries = diario.entries.slice(0, diario.entries.findIndex((e) => e.tag.includes('glossario')))
     await writeFile(join(pasta, 'meta/_journal.json'), JSON.stringify(diario))
-    const db = drizzle(new PGlite(), { schema: esquema })
+    // As migrações depois do glossário usam pgvector (o acervo, GGVP-141): o banco precisa da extensão, como o embutido.
+    const { vector } = await import('@electric-sql/pglite/vector')
+    const db = drizzle(new PGlite({ extensions: { vector } }), { schema: esquema })
     try {
       await migrate(db, { migrationsFolder: pasta })
       await db.insert(perito).values({ nome: 'Dra. Ana Prado (exemplo)', nomeNormalizado: 'ana prado' })

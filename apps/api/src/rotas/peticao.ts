@@ -4,15 +4,17 @@
 import { createHash } from 'node:crypto'
 import { and, asc, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AprovarPeticao, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
+import { AprovarPeticao, faltaCompletar, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
 import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { fonteDoJuizo, juizoDoCaso, jurimetriaDoJuizo } from '../fluxo/juizo.ts'
+import { travaDoParecerDoCaso } from '../fluxo/parecer-do-caso.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { FINALIDADES, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -254,7 +256,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const itensDoParecer = ((parecer?.itens as { item: string; atendido: boolean }[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
     // GGVP-45 CA1, CA2: com "usar precedentes", o acervo é consultado antes de escrever, pelo motivo, provas e instruções.
     const acervo = d.opcoes.precedentes
-      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' ') })
+      ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' '), saude: FINALIDADES.minuta_peticao.saude, ia })
       : []
     const conteudo = [
       `Cliente (autor): ${c.nome}`,
@@ -275,7 +277,12 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     ]
     const aviso = d.opcoes.precedentes && !acervo.length ? MSG_SEM_REFERENCIA : null
     const s = await ia.sugerir('minuta_peticao', { casoId, quem, conteudo, fontes }, como)
-    return MinutaDaIa.parse({ sugestao: s, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
+    // GGVP-64 CA3, CA6: a jurimetria do juízo vai às fontes da advogada, depois do modelo. O modelo não recebe esses números,
+    // então eles não entram no texto que vai ao juiz. Antes do protocolo o caso costuma não ter número, e a fonte não vem.
+    const juizo = s ? await juizoDoCaso(banco, casoId) : null
+    const doJuizo = juizo ? fonteDoJuizo(await jurimetriaDoJuizo(banco, juizo, agora()), c.beneficio) : null
+    const sugestao = s && doJuizo ? { ...s, fontes: [...s.fontes, doJuizo] } : s
+    return MinutaDaIa.parse({ sugestao, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
   }
 
   // GGVP-63 CA1, CA2, CA6, CA9, CA10: só com os setores fechados; grava o pedido e a versão 1 escrita pela advogada, que
@@ -291,6 +298,12 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     if (faltam.length) {
       await bloqueio(pedido, casoId, 'setores', 'D3.05', { faltam: faltam.length })
       return negar(resposta, 409, `Pedir a petição fica bloqueado até todos os setores subirem o card. Falta: ${faltam.join(', ')}.`)
+    }
+    // GGVP-63 CA13 (G17): benefício com laudo só pede a petição com o parecer confirmado por pessoa.
+    const travaParecer = await travaDoParecerDoCaso(banco, casoId, 'pedir-peticao')
+    if (travaParecer) {
+      await bloqueio(pedido, casoId, 'G17', 'D3.05')
+      return negar(resposta, 409, travaParecer)
     }
     const d = entrada.data
     // CA6: os citados são documentos deste caso, na ordem do pedido, ou o nome do que ainda falta.
@@ -414,6 +427,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       if (String(ultima.numero) !== pedido.params.n) return negar(resposta, 409, MSG_SO_A_ULTIMA)
       const conferindo = await tarefaAberta(casoId, 'D3.06')
       if (ultima.aprovadaPor || !conferindo) return negar(resposta, 409, MSG_NADA_A_CONFERIR)
+      // CA12: a aprovada vira o PDF que vai ao juiz; com "[completar...]" no texto, não se aprova.
+      const falta = faltaCompletar(ultima.conteudo)
+      if (falta) return negar(resposta, 400, falta)
       const quem = pedido.usuario!.id
       const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }
       const feito = await banco.transaction(async (tx) => {

@@ -8,7 +8,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, parecerMedico, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -143,7 +143,7 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       .from(documento)
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(asc(documento.criadoEm))
-    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: l.beneficio, consulta: motivo })
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: l.beneficio, consulta: motivo, saude: FINALIDADES.analisar_indeferimento.saude, ia })
     const conteudo = [
       `Benefício pedido: ${l.beneficio ? (ROTULO_BENEFICIO[l.beneficio as Beneficio] ?? l.beneficio) : 'não definido'}`,
       `Indeferimento do INSS em ${r.dataDecisao}: ${r.motivoIndeferimento ?? 'motivo do INSS não registrado'}`,

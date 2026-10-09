@@ -33,6 +33,8 @@ describe('Ajustar o caso devolvido pela Sênior (GGVP-127)', () => {
     expect(pedido.textContent).toContain('Falta a procuração assinada')
     expect(pedido.textContent).toContain('Prazo do ajuste: 10/10/2026')
     expect(pedido.textContent).toContain('Devolvido por Helena (exemplo)')
+    // GGVP-120 CA11: o benefício pelo nome do catálogo, não pelo código.
+    expect(screen.getByText('Benedito Alves (exemplo) · BPC/LOAS Deficiente')).toBeTruthy()
   })
 
   it('CA2 · liberar de novo pede as duas conferências e manda ao servidor; a tela confirma a volta à fila da Sênior', async () => {

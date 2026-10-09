@@ -20,6 +20,8 @@ type Item = ExigenciaDoCaso['itens'][number]
 function LinhaDoItem({ casoId, item, aoMudar }: { casoId: string; item: Item; aoMudar: () => void }) {
   const ids = { arquivo: useId(), motivo: useId() }
   const [arquivo, setArquivo] = useState<File | null>(null)
+  // GGVP-39 CA15: laudo, atestado ou exame sobe como sensível.
+  const [medico, setMedico] = useState(false)
   const [naoCumprido, setNaoCumprido] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState('')
@@ -29,6 +31,7 @@ function LinhaDoItem({ casoId, item, aoMudar }: { casoId: string; item: Item; ao
     const dados = new FormData()
     for (const [k, v] of Object.entries(campos)) dados.set(k, v)
     if (comArquivo && arquivo) dados.set('arquivo', arquivo)
+    if (comArquivo && medico) dados.set('medico', 'true')
     const r = await chamarApi(`/casos/${casoId}/exigencia/itens/${item.id}`, { method: 'POST', corpo: dados })
     if (!r.ok) return setErro(r.erro)
     setErro('')
@@ -46,6 +49,10 @@ function LinhaDoItem({ casoId, item, aoMudar }: { casoId: string; item: Item; ao
             Documento de “{item.descricao}”
           </label>
           <input id={ids.arquivo} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+          <label className={styles.escolha}>
+            <input type="checkbox" checked={medico} onChange={(e) => setMedico(e.target.checked)} />
+            É laudo, atestado ou exame (dado de saúde: só o Jurídico vê)
+          </label>
           {naoCumprido && (
             <>
               <label className={styles.rotulo} htmlFor={ids.motivo}>

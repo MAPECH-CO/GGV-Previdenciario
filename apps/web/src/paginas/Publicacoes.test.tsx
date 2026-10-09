@@ -153,6 +153,19 @@ describe('Ler publicação (GGVP-74, GGVP-34)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Classificar' }))
     expect((await screen.findByRole('status')).textContent).toContain('Confirmar desfecho')
   })
+
+  it('GGVP-59 CA1 · nomeação de perito: sem prazo no despacho são 15 dias, e a tarefa dos quesitos vai à Central da advogada', async () => {
+    const fetch = servidor(publicacao)
+    render(<LerPublicacao publicacaoId={ID} />)
+    fireEvent.click(await screen.findByLabelText('Nomeação de perito'))
+    fireEvent.click(screen.getByLabelText('Sem prazo na decisão (15 dias)'))
+    fireEvent.click(screen.getByRole('button', { name: 'Classificar' }))
+    expect((await screen.findByRole('status')).textContent).toBe(
+      'Nomeação de perito. Aberta a tarefa "Quesitos e assistente técnico" na Central da advogada, com o prazo.',
+    )
+    const [, init] = fetch.mock.calls.find(([url]) => String(url).endsWith('/classificacao'))!
+    expect(JSON.parse(String(init?.body))).toMatchObject({ classe: 'nomeacao_perito', semPrazoNaDecisao: true })
+  })
 })
 
 describe('Publicações do processo (GGVP-74 CA5, CA7)', () => {
