@@ -125,7 +125,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora })
-    registrarRotasJuizo(app, { banco, agora })
+    registrarRotasJuizo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })

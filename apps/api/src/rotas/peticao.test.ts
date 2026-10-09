@@ -7,7 +7,7 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, juizo as juizoTabela, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -207,6 +207,29 @@ describe('Épico IA · a minuta da petição inicial', () => {
     expect(doJuizo.tipo).toBe('acervo')
     expect(doJuizo.trecho).toContain('procedência em BPC/LOAS Idoso: 50% em 2 processos · base de 07/10')
     for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(pedidos.join('\n')).not.toContain(numero)
+  })
+
+  it('GGVP-64 parte 2 CA6 · com o juízo, os entendimentos e os processos de exemplo vão ao modelo, sem número; as fontes mostram', async () => {
+    await laudoDaDocumentacao()
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: '0001234-96.2026.4.03.6301' })
+    const [helena] = await banco.select().from(usuario).where(eq(usuario.email, 'helena@exemplo.ggv'))
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000011220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+      { numeroCnj: '00000021220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+    ])
+    await banco.insert(juizoTabela).values({
+      tribunal: 'TRF3',
+      nome: 'TRF3 · 6301',
+      entendimentos: [{ texto: 'O juízo exige o estudo social atualizado para provar a renda.', processos: ['00000011220204036301'] }],
+      entendimentosEm: AGORA,
+    })
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', {})).json()
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    expect(enviado).toContain('O juízo exige o estudo social atualizado para provar a renda. (processos 0000001-12.2020.4.03.6301)')
+    for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(enviado).not.toContain(numero)
+    const usados = r.sugestao.fontes.find((f: { referencia: string }) => f.referencia === 'entendimentos:TRF3 · 6301')
+    expect(usados.trecho).toContain('O juízo exige o estudo social atualizado')
+    expect(r.sugestao.fontes.some((f: { referencia: string }) => f.referencia === 'juizo:TRF3 · 6301')).toBe(true)
   })
 
   it('GGVP-64 CA3 · sem número do processo, a minuta sai sem a fonte do juízo', async () => {

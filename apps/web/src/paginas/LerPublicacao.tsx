@@ -6,6 +6,7 @@ import {
   ClassificarPublicacao,
   PRAZO_DOS_QUESITOS,
   PRAZO_SEM_DIAS_NA_DECISAO,
+  TAMANHO_DA_VARA,
   ROTULO_CLASSE,
   type PublicacaoParaLer,
   type SugestaoDePublicacao,
@@ -28,12 +29,15 @@ const DESTINO: Record<Classe, string> = {
  * classifica é a pessoa.
  */
 export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
-  const ids = { dias: useId(), sem: useId() }
+  const ids = { dias: useId(), sem: useId(), vara: useId(), juiz: useId() }
   const [p, setP] = useState<PublicacaoParaLer | null>(null)
   const [versao, setVersao] = useState(0)
   const [classe, setClasse] = useState<Classe | null>(null)
   const [dias, setDias] = useState('')
   const [semPrazo, setSemPrazo] = useState(false)
+  // GGVP-64 parte 2 (CA1): a vara e o juiz, como estão escritos; a IA sugere, a pessoa confere.
+  const [vara, setVara] = useState('')
+  const [juiz, setJuiz] = useState('')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [ia, setIa] = useState<SugestaoDePublicacao | null>(null)
@@ -48,7 +52,7 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
 
   async function classificar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
-    const corpo = { classe: classe ?? undefined, dias, semPrazoNaDecisao: semPrazo }
+    const corpo = { classe: classe ?? undefined, dias, semPrazoNaDecisao: semPrazo, vara, juiz }
     const entrada = ClassificarPublicacao.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const r = await chamarApi(`/publicacoes/${publicacaoId}/classificacao`, { method: 'POST', corpo })
@@ -70,6 +74,8 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
       setClasse((c) => c ?? s.classe)
       setDias((d) => d || (s.dias === null ? '' : String(s.dias)))
       setSemPrazo((x) => x || (s.classe !== 'andamento' && s.dias === null))
+      setVara((v) => v || (s.vara ?? ''))
+      setJuiz((j) => j || (s.juiz ?? ''))
     })
   }, [publicacaoId, p?.podeClassificar, p?.classe])
 
@@ -176,6 +182,15 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
               </label>
             </>
           )}
+          <label className={styles.rotulo} htmlFor={ids.vara}>
+            Vara
+          </label>
+          <input id={ids.vara} className={styles.campo} value={vara} maxLength={TAMANHO_DA_VARA} onChange={(e) => setVara(e.target.value)} />
+          <label className={styles.rotulo} htmlFor={ids.juiz}>
+            Juiz
+          </label>
+          <input id={ids.juiz} className={styles.campo} value={juiz} maxLength={TAMANHO_DA_VARA} onChange={(e) => setJuiz(e.target.value)} />
+          <p className={styles.dica}>Vara e juiz como estão escritos na publicação. Em branco, o processo fica com o que já tinha.</p>
           {erro && (
             <p className={styles.erro} role="alert">
               {erro}

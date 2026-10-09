@@ -162,6 +162,13 @@
       "when": 1791520435327,
       "tag": "0022_nomeacao_de_perito",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791521203365,
+      "tag": "0023_vara_e_entendimentos",
+      "breakpoints": true
     }
   ]
 }

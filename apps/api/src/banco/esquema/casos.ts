@@ -32,6 +32,9 @@ export const caso = pgTable(
     /** Causa da extinção sem mérito (GGVP-37 CA5, GGVP-75 CA2). */
     causaDesfecho: text('causa_desfecho'),
     encerradoEm: momento('encerrado_em'),
+    /** A vara e o juiz do processo, conferidos na leitura da publicação (GGVP-64 parte 2, CA1). */
+    vara: text('vara'),
+    juiz: text('juiz'),
     criadoEm: criadoEm(),
     atualizadoEm: atualizadoEm(),
   },
