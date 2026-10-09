@@ -55,6 +55,7 @@ import { registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
+import { registrarRotasProcesso } from './rotas/processo.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -158,6 +159,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasFeriados(app, { banco, agora })
     registrarRotasGlossario(app, { banco, agora })
     registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
+    registrarRotasProcesso(app, { banco, agora })
     alimentar = async () => {
       if (!motorIa.ligada) return
       await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error({ erro }, 'alimentar o acervo falhou'))
