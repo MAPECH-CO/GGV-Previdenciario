@@ -20,6 +20,10 @@ export type VerificacaoDaEdicao = z.infer<typeof VerificacaoDaEdicao>
 export const RegistroBancario = DadosBancarios.extend({ fichaId: z.string(), desde: z.string(), quem: z.string() })
 export type RegistroBancario = z.infer<typeof RegistroBancario>
 
+/** POST /api/fichas/:id/dados-bancarios/confirmacao: os dados novos e, se o aviso ao contato anterior não saiu, o motivo (CA5). */
+export const MudancaBancariaConfirmada = RegistroBancario.extend({ avisoNaoSaiu: z.string().optional() })
+export type MudancaBancariaConfirmada = z.infer<typeof MudancaBancariaConfirmada>
+
 /** O pedido de mudança, esperando a segunda confirmação (CA5). */
 export const PedidoBancario = z.object({
   fichaId: z.string(),

@@ -140,4 +140,26 @@ describe('Mensagem ao cliente · Chatwoot de verdade, pelo servidor (GGVP-146)',
     expect(pedidos.every((p) => p.metodo === 'GET')).toBe(true)
     vi.unstubAllGlobals()
   })
+
+  it('homologação, telefone fora da lista de teste: a janela avisa antes, e o envio mostra "não saiu", sem sucesso falso', async () => {
+    const ficha = (await obterFicha('maria-exemplo'))!
+    const erro = 'o telefone está fora da lista de teste da homologação'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit = {}) =>
+        Response.json(
+          init.method === 'POST'
+            ? { id: 'm2', fichaId: ficha.id, modelo: 'boas-vindas', texto: PRONTA.texto, canal: 'Chatwoot', conversa: 0, quando: '2026-10-07T17:32:00.000Z', quem: 'Ana', status: 'falhou', erro }
+            : { ...PRONTA, contato: null, conversas: [], foraDaLista: true },
+        ),
+      ),
+    )
+    render(comSessao(<MensagemAoCliente ficha={ficha} modeloInicial="boas-vindas" aoFechar={() => {}} />))
+    expect(await screen.findByText('Homologação: este telefone está fora da lista de teste. O portal não chama o Chatwoot, e o envio fica no histórico como não enviado.')).toBeTruthy()
+    expect(screen.queryByText(/ao enviar, o portal abre uma/)).toBeNull()
+    fireEvent.click(enviar())
+    expect(await screen.findByText(`A mensagem não saiu pelo Chatwoot: ${erro}. Ficou no histórico do cliente; nada foi reenviado sozinho.`)).toBeTruthy()
+    expect(screen.queryByText(/✓/)).toBeNull()
+    vi.unstubAllGlobals()
+  })
 })
