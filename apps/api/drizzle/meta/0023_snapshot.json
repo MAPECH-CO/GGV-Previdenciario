@@ -1,5 +1,5 @@
 {
-  "id": "60a9a362-fde7-4bf6-9a51-0d38cf5d7815",
+  "id": "de2fd010-a532-4597-aa4a-de894140eaa6",
   "prevId": "7bbd13db-445b-42d8-97a3-633d27764c3e",
   "version": "7",
   "dialect": "postgresql",
@@ -785,58 +785,6 @@
         "gravacao_recepcao_pessoa_id_pessoa_id_fk": {
           "name": "gravacao_recepcao_pessoa_id_pessoa_id_fk",
           "tableFrom": "gravacao_recepcao",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "public.leitura_documento": {
-      "name": "leitura_documento",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "leitura_documento_pessoa_id_pessoa_id_fk": {
-          "name": "leitura_documento_pessoa_id_pessoa_id_fk",
-          "tableFrom": "leitura_documento",
           "tableTo": "pessoa",
           "columnsFrom": [
             "pessoa_id"
@@ -4676,6 +4624,121 @@
           "value": "\"rodada_vigilia\".\"situacao\" in ('prevista', 'rodando', 'ok', 'falhou', 'nao_rodou')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.acervo_trecho": {
+      "name": "acervo_trecho",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "origem": {
+          "name": "origem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referencia": {
+          "name": "referencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "beneficio": {
+          "name": "beneficio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "texto": {
+          "name": "texto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "so_juridico": {
+          "name": "so_juridico",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "acervo_trecho_vetor": {
+          "name": "acervo_trecho_vetor",
+          "columns": [
+            {
+              "expression": "embedding",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "acervo_trecho_caso_id_caso_id_fk": {
+          "name": "acervo_trecho_caso_id_caso_id_fk",
+          "tableFrom": "acervo_trecho",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "acervo_trecho_hash_unique": {
+          "name": "acervo_trecho_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.configuracao": {

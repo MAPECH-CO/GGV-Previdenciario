@@ -1,3 +1,4 @@
+import { diaLocal } from '@ggv/campos'
 import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
@@ -57,7 +58,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
 
   const hoje = hojeIso(agora())
   const juridico = c.visao === 'juridico'
-  const curta = (iso: string) => dataCurta(iso.slice(0, 10), hoje)
+  const curta = (iso: string) => dataCurta(diaLocal(iso), hoje)
   const aberta = c.etapas.find((e) => e.id === etapaAberta)
   const urgente = c.prazos.find((p) => p.urgente)
 
@@ -533,7 +534,7 @@ function Historico({ caso, hoje, aoFechar }: { caso: CasoNaTela; hoje: string; a
         {[...caso.linha].reverse().map((ev, i) => (
           <li key={i}>
             <span className={base.nota}>
-              {dataCurta(ev.quando.slice(0, 10), hoje)} · {ev.quem} ({AUTOR[ev.tipo]}) · {ev.passo}
+              {dataCurta(diaLocal(ev.quando), hoje)} · {ev.quem} ({AUTOR[ev.tipo]}) · {ev.passo}
               {ev.peloChat && ' · feito pelo chat'}
             </span>
             <span>{ev.oQue}</span>

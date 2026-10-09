@@ -9,11 +9,12 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, peticao, peticaoVersao, prazo, protocoloJudicial, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, lacosDas, lembreteDescrito, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
+import { provaEhSensivel } from '../fluxo/prova-medica.ts'
 import { dataDoJuizoNaPublicacao } from '../../../web/src/regras/pericia.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
@@ -178,7 +179,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       .from(documento)
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(asc(documento.criadoEm))
-    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto })
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c?.beneficio ?? null, consulta: e.publicacao.texto, saude: FINALIDADES.analisar_exigencia_juiz.saude, ia })
     const conteudo = [
       `Benefício: ${c?.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não definido'}`,
       `Prazo do processo contado pelo sistema: até ${e.prazo.fim}`,
@@ -436,7 +437,9 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       const quem = pedido.usuario!.id
       const dados = arquivo ? await guardarArquivo(armazenamento, casoId, arquivo, HISTORICO[origem].prova.replaceAll('_', '-')) : null
       await banco.transaction(async (tx) => {
-        const [doc] = dados ? await tx.insert(documento).values({ casoId, tipo: HISTORICO[origem].prova, origem: 'portal', recebidoPor: quem, ...dados }).returning() : []
+        // GGVP-83 CA15: laudo, atestado ou exame sobe como sensível (dado de saúde).
+        const sensivel = provaEhSensivel(l.item.descricao, formulario?.campos.medico)
+        const [doc] = dados ? await tx.insert(documento).values({ casoId, tipo: HISTORICO[origem].prova, origem: 'portal', recebidoPor: quem, sensivel, ...dados }).returning() : []
         await tx
           .update(exigenciaItem)
           .set({ situacao: 'cumprido', provaDocumentoId: doc?.id ?? null, informacao: escrita?.success ? escrita.data.informacao : null, cumpridoEm: agora(), cumpridoPor: quem })

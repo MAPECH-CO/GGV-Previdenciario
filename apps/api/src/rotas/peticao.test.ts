@@ -7,7 +7,7 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticao, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, parecerMedico, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -93,6 +93,22 @@ describe('GGVP-63 · pedir a petição', () => {
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(b.detalhe).toMatchObject({ portao: 'setores', passo: 'D3.05', faltam: 1 })
     expect(await abertas()).toEqual(['advogada · Pedir a petição', 'documentacao · Cumprir pendência'])
+  })
+
+  it('CA13 (G17) · benefício com laudo só pede a petição com o parecer confirmado por pessoa', async () => {
+    await laudoDaDocumentacao()
+    await banco.update(caso).set({ beneficio: 'bpc_loas_deficiente' }).where(eq(caso.id, casoId))
+    const semParecer = await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)
+    expect(semParecer.statusCode).toBe(409)
+    expect(semParecer.json().erro).toMatch(/^Não dá para pedir a petição/)
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G17', passo: 'D3.05' })
+    // Só a IA sugeriu: ainda trava.
+    await banco.insert(parecerMedico).values({ casoId, roteiroVersao: 1, resultado: 'suficiente' })
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)).statusCode).toBe(409)
+    const [u] = await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, 'gabi@exemplo.ggv'))
+    await banco.update(parecerMedico).set({ confirmadoPor: u.id, confirmadoEm: AGORA }).where(eq(parecerMedico.casoId, casoId))
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)).statusCode).toBe(201)
   })
 
   it('CA2, CA6, CA9, CA10 · com tudo fechado, grava as instruções, as opções e os citados na ordem; a versão 1 vai para a conferência', async () => {
@@ -192,6 +208,27 @@ describe('Épico IA · a minuta da petição inicial', () => {
     expect(enviado).toContain('Trechos do acervo da casa')
     expect(enviado).toContain('a renda do filho maior que mora à parte')
     for (const dado of ['Rosa', 'Antunes', '111.222.333-44']) expect(enviado).not.toContain(dado)
+  })
+
+  it('GGVP-64 CA3, CA6 · com o número do processo, a jurimetria do juízo vai às fontes da advogada e fica fora do pedido ao modelo', async () => {
+    await laudoDaDocumentacao()
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: '0001234-96.2026.4.03.6301' })
+    const [helena] = await banco.select().from(usuario).where(eq(usuario.email, 'helena@exemplo.ggv'))
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000011220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+      { numeroCnj: '00000021220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+    ])
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', {})).json()
+    const doJuizo = r.sugestao.fontes.find((f: { referencia: string }) => f.referencia === 'juizo:TRF3 · 6301')
+    expect(doJuizo.tipo).toBe('acervo')
+    expect(doJuizo.trecho).toContain('procedência em BPC/LOAS Idoso: 50% em 2 processos · base de 07/10')
+    for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(pedidos.join('\n')).not.toContain(numero)
+  })
+
+  it('GGVP-64 CA3 · sem número do processo, a minuta sai sem a fonte do juízo', async () => {
+    await laudoDaDocumentacao()
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', {})).json()
+    expect(r.sugestao.fontes.some((f: { referencia: string }) => f.referencia.startsWith('juizo:'))).toBe(false)
   })
 
   it('Sugestão pronta (07/10) · com os setores fechados, a rodada escreve a minuta com o padrão do pedido; a tela, com o mesmo padrão, recebe sem nova chamada', async () => {
@@ -300,6 +337,14 @@ describe('GGVP-67 · conferir a petição', () => {
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_aprovada'))
     expect((ev.detalhe as { hash: string }).hash).toBe(x.versoes[1].hash)
     expect((await aprovar(2)).json().erro).toBe(MSG_NADA_A_CONFERIR)
+  })
+
+  it('CA12 · versão com "[completar]" não se aprova; o pacote não sai e a conferência continua', async () => {
+    await editar(V1 + '\nDo valor da causa: [completar]')
+    const r = await aprovar(2)
+    expect([r.statusCode, r.json().erro]).toEqual([400, 'O texto ainda tem [completar]: preencha antes de aprovar.'])
+    expect((await ler()).versoes[1].aprovadaPor).toBeNull()
+    expect(await abertas()).toEqual(['advogada · Conferir petição'])
   })
 
   it('CA6 · aprovada, o pacote sai na ordem: a petição em PDF com o identificador da versão, a carta e os citados', async () => {

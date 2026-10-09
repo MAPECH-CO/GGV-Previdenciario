@@ -22,3 +22,63 @@
 - [x] 2.5 CA3, CA7 · Tela "Conferir desfechos do lote" (`apps/web/src/paginas/ConferirAcervo.tsx`), a rota e a linha "Base do acervo" na tela Resultados; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 2.6 Playwright: a Sênior abre pela Central, confere um desfecho e corrige outro; a Gestão mostra a base com os que aguardam; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-64 · Juízo identificado: mostrar a jurimetria (parte 1)
+
+- [x] 3.1 Contrato `JurimetriaDoJuizo` em `packages/contratos/src/juizo.ts`, exportado no índice; teste do formato; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 3.2 CA1 (a identificação) · `juizoDoCnj` em `apps/api/src/fluxo/juizo.ts`: tribunal e unidade de origem, a regra que o painel já usa. O painel (`resultados.ts`) passa a chamar a mesma função; verifica com o teste do painel e um teste da função.
+- [x] 3.3 CA2, CA4, CA5 · Cálculo da jurimetria do juízo em `apps/api/src/fluxo/juizo.ts`:
+  - o juízo vem do CNJ do acervo ou do caso ligado;
+  - a procedência por benefício conta só desfecho conferido;
+  - o tempo até a sentença conta só os processos com as duas datas;
+  - o texto sai com os processos e a data da base.
+
+  Teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.4 CA1, CA2 · `GET /api/casos/:id/juizo` com `estudo.ver`. Caso sem número do processo: 404. Teste por perfil: o Atendimento e o Financeiro não veem; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.5 CA3, CA6 · Minuta da petição: a jurimetria do juízo vai às fontes da resposta, fora do pedido ao modelo. Teste com `fetch` falso, que confere o pedido enviado ao modelo; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.6 Dados de exemplo: processos conferidos no acervo na unidade do caso judicial de exemplo, alguns com as duas datas; verifica pela rota com a advogada de exemplo.
+- [x] 3.7 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?". Como a semente mudou, também o Playwright da Jurimetria, da judicialização e da página do caso.
+
+## GGVP-64, parte 2 (depois do PR #21, da GGVP-141 e da página do caso no servidor)
+
+- [ ] 3.8 CA1 · Nome da vara e do juiz, pelo órgão da fonte de publicação ou pela IA lendo a publicação, conferido por pessoa; o card mostra vara e juiz.
+- [ ] 3.9 CA2 · Entendimentos recorrentes com os processos de exemplo, quando o acervo tiver o texto das decisões (GGVP-141).
+- [ ] 3.10 CA1, CA2 · A sobreposição da página do caso lendo `GET /api/casos/:id/juizo`, quando a página do caso for ao servidor; Playwright.
+- [ ] 3.11 CA3, CA6 · A recomendação de recurso com o indicador e o número de processos (D3b.04), com a GGVP-100.
+
+## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
+
+- [x] 4.1 ADR-013 em `docs/decisoes/ADR-013-base-de-conhecimento.md`; verifica lendo.
+- [x] 4.2 CA1, CA3 · Migração da tabela `acervo_trecho`, com a extensão `vector`, o índice HNSW e o RLS ligado; o banco embutido carrega a extensão; verifica com o teste das migrações.
+- [x] 4.3 CA4 · `ia.vetor` no motor: embeddings da OpenAI com registro em `chamada_ia`. Sem chave, devolve nulo; saúde só com autorização. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.4 CA1, CA3 · `alimentarAcervo`:
+  - as fontes de hoje e a conversa conferida, anonimizadas e com a saúde marcada;
+  - sem duplicar;
+  - o vetor do que falta;
+  - em segundo plano.
+
+  Teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.5 CA2 · Busca híbrida em `buscarNoAcervo` (RRF, k = 60), sempre com a fonte. Sem vetor, só palavra; trecho de saúde só com `saude: true`, que os fluxos do Jurídico passam. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.6 Rodar typecheck, lint, testes e o Playwright das telas que usam a IA; colar a saída; perguntar "Agora ok?". Um teste do estudo de caso passou a buscar como o Jurídico busca (`saude: true`).
+
+## GGVP-141, parte 2 (depois dos PRs #39 e #42 e da GGVP-133)
+
+- [ ] 4.7 CA1 · O parecer, o laudo e o resultado da perícia conferidos entram no acervo.
+- [ ] 4.8 CA1 · A transcrição conferida entra no acervo.
+
+## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
+
+- [x] 5.1 CA1 · Contrato: `nomeacao_perito` em `CLASSES_DE_ATO` ("Nomeação de perito"); sem prazo no despacho, 15 dias (CPC, art. 465, §1º). Teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 5.2 CA1 · Instrução de `classificar_publicacao` com a classe nova, em versão nova. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.3 CA1 · `encaminhar`: o destino DP.05 "Quesitos e assistente técnico" para a advogada, com o prazo contado. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.4 CA1, CA6 · `peritoDaPublicacao` e o histórico na classificação: `perito_nomeado` com o perito, ou não reconhecido. Teste da rota; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.5 Tela: a opção nova e a frase de destino na leitura da publicação. Teste Vitest e Playwright da judicialização; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 5.7 CA1 · Ajuste do "Agora ok?" (Mateus, 08/10): na Central, a tarefa "Quesitos e assistente técnico" abre a tela de perícias do caso, onde ficam os quesitos. Teste da rota e Playwright da judicialização; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.8 Rodar typecheck, lint, testes e Playwright de novo; colar a saída.
+
+## GGVP-59, parte 2 (depois, com o Pedro e a página do caso no servidor)
+
+- [ ] 5.9 CA1 · Ligar o perito direto na perícia judicial a partir da publicação.
+- [ ] 5.10 CA2 · A sobreposição da página do caso lendo do servidor, com a taxa por benefício e por CID.
+- [ ] 5.11 CA2, CA7 · A pergunta no chat ("Como o perito avalia?").
