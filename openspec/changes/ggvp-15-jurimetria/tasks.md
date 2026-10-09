@@ -127,3 +127,13 @@
 - [x] 11.6 Playwright: a advogada vê a chance na petição; o Atendimento não.
 - [x] 11.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [ ] 11.8 CA3 · A chance no "Vale recorrer?", depois da resposta do Lucas no cartão (09/10).
+
+## GGVP-152 · Perfil do perito laudo a laudo, por benefício, e o perito nomeado ligado à perícia
+
+- [x] 12.1 CA1 · `juntarLaudos` em `apps/api/src/rotas/pericia.ts`: ao salvar, relê os laudos guardados e junta os novos pelo id; teste em `pericia.test.ts`.
+- [x] 12.2 CA2 · O laudo guarda o benefício do processo (`apps/web/src/regras/periciaNoCaso.ts`, `LaudoDoPerfil`) e o perfil ganha `porBeneficio` (`apps/web/src/dados/peritos.ts`); teste em `dados/pericia.test.ts`.
+- [x] 12.3 CA2 · Overlay do perito (`apps/web/src/componentes/JurimetriaPerito.tsx`): os favoráveis por benefício; teste Vitest.
+- [x] 12.4 CA4 · Fora do Jurídico, o servidor zera também o `porBeneficio` (`visao` em `rotas/pericia.ts`); teste em `pericia.test.ts`.
+- [x] 12.5 CA3 · Na classificação da nomeação (`apps/api/src/rotas/publicacoes.ts`), o perito reconhecido liga a perícia aberta do mesmo tipo; teste em `publicacoes.test.ts`.
+- [x] 12.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 12.7 CA2 · O recorte por CID, depois da resposta do Lucas no cartão (09/10).
