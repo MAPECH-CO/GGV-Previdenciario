@@ -24,12 +24,20 @@ import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
+import { registrarRotasPericia } from './rotas/pericia.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
+import { registrarRotasRoteiros } from './rotas/roteiros.ts'
+import { registrarRotasParecer } from './rotas/parecer.ts'
+import { registrarRotasComplemento } from './rotas/complemento.ts'
+import { registrarRotasDeficiencia } from './rotas/deficiencia.ts'
+import { registrarRotasAcidente } from './rotas/acidente.ts'
+import { registrarRotasCrianca } from './rotas/crianca.ts'
+import { registrarRotasDocumentacaoMedica } from './rotas/documentacao-medica.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
@@ -126,9 +134,17 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
     registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
     registrarRotasRecepcaoContrato(app, { banco, agora })
+    registrarRotasRoteiros(app, { banco, agora })
+    registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
+    registrarRotasDeficiencia(app, { banco, agora })
+    registrarRotasAcidente(app, { banco, agora })
+    registrarRotasCrianca(app, { banco, agora })
+    registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
     registrarRotasConversa(app, { banco, agora })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
+    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasImportacao(app, { banco, agora })
     registrarRotasFeriados(app, { banco, agora })
   }

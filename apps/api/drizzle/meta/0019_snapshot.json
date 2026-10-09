@@ -1,6 +1,6 @@
 {
-  "id": "3f82fa49-0532-4ac4-bfe7-e2751bf206f1",
-  "prevId": "9ecf2292-4bdb-4032-bc69-a6ff0baae2cc",
+  "id": "dcbfdc04-ecdf-45c7-a413-cb6fc2bca994",
+  "prevId": "45ad65ca-8fdd-44a9-bd19-10b7cee00d8a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1017,58 +1017,6 @@
       },
       "isRLSEnabled": true
     },
-    "public.segunda_ficha_medica": {
-      "name": "segunda_ficha_medica",
-      "schema": "",
-      "columns": {
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "medicos": {
-          "name": "medicos",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lida": {
-          "name": "lida",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "segunda_ficha_medica_pessoa_id_pessoa_id_fk": {
-          "name": "segunda_ficha_medica_pessoa_id_pessoa_id_fk",
-          "tableFrom": "segunda_ficha_medica",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.tarefa_recepcao": {
       "name": "tarefa_recepcao",
       "schema": "",
@@ -1530,71 +1478,6 @@
           "value": "\"caso\".\"desfecho\" in ('deferido', 'procedente_total', 'procedente_parcial', 'improcedente', 'extinto_sem_merito', 'desistencia')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.contrato_recepcao": {
-      "name": "contrato_recepcao",
-      "schema": "",
-      "columns": {
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "contrato_recepcao_caso_id_caso_id_fk": {
-          "name": "contrato_recepcao_caso_id_caso_id_fk",
-          "tableFrom": "contrato_recepcao",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "contrato_recepcao_pessoa_id_pessoa_id_fk": {
-          "name": "contrato_recepcao_pessoa_id_pessoa_id_fk",
-          "tableFrom": "contrato_recepcao",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.ficha_atendimento": {
@@ -2452,6 +2335,71 @@
       },
       "isRLSEnabled": true
     },
+    "public.documentacao_medica": {
+      "name": "documentacao_medica",
+      "schema": "",
+      "columns": {
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parte": {
+          "name": "parte",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "documento": {
+          "name": "documento",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "documentacao_medica_caso_id_caso_id_fk": {
+          "name": "documentacao_medica_caso_id_caso_id_fk",
+          "tableFrom": "documentacao_medica",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "documentacao_medica_caso_id_parte_pk": {
+          "name": "documentacao_medica_caso_id_parte_pk",
+          "columns": [
+            "caso_id",
+            "parte"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "documentacao_medica_parte": {
+          "name": "documentacao_medica_parte",
+          "value": "\"documentacao_medica\".\"parte\" in ('parecer', 'complemento', 'deficiencia', 'acidente', 'crianca')"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "public.documento": {
       "name": "documento",
       "schema": "",
@@ -3233,6 +3181,12 @@
         "resultado_documento_id": {
           "name": "resultado_documento_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "documento": {
+          "name": "documento",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -4939,6 +4893,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "perfil": {
+          "name": "perfil",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -5329,6 +5289,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "autor_id": {
+          "name": "autor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -5338,7 +5304,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "roteiro_laudo_autor_id_usuario_id_fk": {
+          "name": "roteiro_laudo_autor_id_usuario_id_fk",
+          "tableFrom": "roteiro_laudo",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "autor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "roteiro_versao_unica": {

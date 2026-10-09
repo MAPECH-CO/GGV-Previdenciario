@@ -1,5 +1,5 @@
 {
-  "id": "9ecf2292-4bdb-4032-bc69-a6ff0baae2cc",
+  "id": "45ad65ca-8fdd-44a9-bd19-10b7cee00d8a",
   "prevId": "12b92faa-42c6-489c-9e16-6e52438f0f86",
   "version": "7",
   "dialect": "postgresql",
@@ -1015,58 +1015,6 @@
           "value": "\"pessoa_vinculo\".\"tipo\" in ('responsavel_legal', 'curador', 'familiar', 'procurador')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.segunda_ficha_medica": {
-      "name": "segunda_ficha_medica",
-      "schema": "",
-      "columns": {
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "medicos": {
-          "name": "medicos",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lida": {
-          "name": "lida",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "segunda_ficha_medica_pessoa_id_pessoa_id_fk": {
-          "name": "segunda_ficha_medica_pessoa_id_pessoa_id_fk",
-          "tableFrom": "segunda_ficha_medica",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.tarefa_recepcao": {
@@ -3171,6 +3119,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "documento": {
+          "name": "documento",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -4871,6 +4825,12 @@
         "especialidade": {
           "name": "especialidade",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "perfil": {
+          "name": "perfil",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

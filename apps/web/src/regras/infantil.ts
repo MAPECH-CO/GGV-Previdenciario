@@ -39,3 +39,9 @@ export function relatoriosDaCrianca(d: DadosDaCrianca): string[] {
     ...(['fono', 'to', 'psicologia'] as const).filter((t) => d.terapias.includes(t)).map((t) => RELATORIO_DA_TERAPIA[t]),
   ]
 }
+
+export type CriancaDoCaso = DadosDaCrianca & { processoId: string; quem: string; quando: string }
+
+/** O que a tela do parecer mostra: se é infantil, a condição (só ao Jurídico) e os relatórios que o caso pede. */
+export type CriancaNaTela = { infantil: boolean; idade?: number; dados?: CriancaDoCaso; relatorios: string[] }
+

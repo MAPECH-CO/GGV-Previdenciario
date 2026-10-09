@@ -31,3 +31,51 @@
 .entrada::placeholder {
   color: var(--cor-texto-suave-2);
 }
+
+.busca {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.grupo {
+  margin: 0;
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fonte-13);
+}
+
+.detalhe,
+.nota {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.nota {
+  margin: 0;
+}
+
+.erro {
+  margin: 0;
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+}

@@ -49,6 +49,8 @@ import type { AvisoAprovado, MensagemAoCliente } from './mensagens.ts'
 import type { PedidoBancario, RegistroBancario } from './seguranca.ts'
 import type { ComplementoDoCaso, Juizo } from './caso.ts'
 import type { TarefaDoChat } from './chat.ts'
+import type { Parecer } from '../regras/liberacao.ts'
+import type { Tarefa as TarefaDaCentral } from './tipos.ts'
 
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
@@ -130,6 +132,8 @@ export type Banco = {
   espelhos?: Record<string, Ficha>
   /** Os ids das tarefas que vieram do servidor (GGVP-125, bloco 2). */
   tarefasDoBanco?: string[]
+  /** A documentação médica do servidor (GGVP-132): as tarefas do parecer e do complemento e o parecer de cada caso (G17). */
+  documentacaoMedica?: { tarefas: TarefaDaCentral[]; portoes: Record<string, Parecer> }
 }
 
 export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; acao: 'guardou' | 'leu-do-papel' | 'conferiu' | 'nao-sabe' | 'renovou' }
