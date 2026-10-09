@@ -34,8 +34,12 @@
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  /* GGVP-78: com Clientes, Processos e a Gestão, o topo do líder passa da largura; os botões descem uma linha em vez de
+     empurrar a função e o "Sair" para fora da tela. */
+  min-width: 0;
 }
 
 .item {

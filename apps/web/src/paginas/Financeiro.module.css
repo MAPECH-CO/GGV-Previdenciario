@@ -1,0 +1,228 @@
+/* Painel Financeiro (GGVP-78, Figma 1930:4): os cartões do mês, a receita por mês e por origem, as pendentes e a tabela.
+   A página, os filtros e a tabela são os das bases (Bases.module.css). */
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.indicadorRotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.indicadorValor {
+  font-size: var(--fonte-26);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.nota {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+}
+
+.ok {
+  color: var(--cor-ok);
+}
+
+.erro {
+  color: var(--cor-erro);
+}
+
+.alerta {
+  color: var(--cor-alerta-2);
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  align-items: start;
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  .grade {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+}
+
+.cartaoTitulo {
+  font-size: var(--fonte-15);
+  font-weight: 700;
+}
+
+.cartaoSub,
+.vazio {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.legenda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.pontoRecebido,
+.pontoPrevisto {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento);
+}
+
+.pontoPrevisto {
+  margin-left: 8px;
+  background: var(--cor-borda-controle);
+}
+
+.grafico {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+
+/* As marcas do eixo ficam na altura das linhas da grade (a quarta parte do teto cada). */
+.eixo {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 160px;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-10);
+  text-align: right;
+}
+
+/* 160 px de barras (a grade a cada quarta parte) e 20 px do nome do mês embaixo. */
+.barras {
+  display: flex;
+  gap: 4px;
+  height: 180px;
+  background: repeating-linear-gradient(to top, var(--cor-linha) 0 1px, transparent 1px 40px) top / 100% 161px no-repeat;
+}
+
+.barras li {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+}
+
+.par {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+}
+
+.recebido,
+.previsto {
+  width: min(12px, 40%);
+  min-height: 1px;
+  border-radius: 2px 2px 0 0;
+  background: var(--cor-acento);
+}
+
+.previsto {
+  background: var(--cor-borda-controle);
+}
+
+.mesDoGrafico {
+  height: 20px;
+  padding-top: 4px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.origens,
+.pendentes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: var(--fonte-12);
+}
+
+.origens li {
+  display: grid;
+  grid-template-columns: 1fr 90px 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.origens strong {
+  text-align: right;
+}
+
+.trilho {
+  height: 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  overflow: hidden;
+}
+
+.fatia {
+  display: block;
+  height: 100%;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento);
+}
+
+.pendentes li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.seloEspera,
+.seloLancar {
+  padding: 3px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.seloEspera {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.seloLancar {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+a.seloLancar:hover {
+  text-decoration: underline;
+}
+
+.espaco {
+  flex: 1;
+}

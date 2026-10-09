@@ -605,6 +605,9 @@ export type InformacaoExtraida = {
   campo?: CampoDaEntrevista
   /** Data e hora ISO da conferência: antes dela, a ficha não muda. */
   conferidaEm?: string
+  /** GGVP-133: de onde saiu, para a advogada conferir: o segundo do áudio e o trecho da transcrição (sem senha, G9). */
+  aos?: number
+  trecho?: string
 }
 
 export type AcaoNaGravacao = {
@@ -668,6 +671,8 @@ export type Gravacao = {
   transcricaoDocumentoId?: string
   /** GGVP-133 CA7: o alerta do motor de IA (fala com instrução suspeita), para a pessoa ver antes de usar o texto. */
   alertaDaIa?: string
+  /** GGVP-133: por que a IA não leu a entrevista transcrita (desligada, sem autorização ou sem resposta): a tela segue manual. */
+  semIa?: string
 }
 
 /** O que a tela da entrevista lê. */

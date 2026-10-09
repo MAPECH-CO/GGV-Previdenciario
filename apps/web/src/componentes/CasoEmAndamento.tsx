@@ -63,7 +63,8 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
 
 /**
  * GGVP-135: o que cada perfil abre do caso a partir da ficha, por clique (P12 e P13 do roteiro de 09/10). O histórico do
- * processo é do servidor; a linha do tempo da deficiência e a dispensa do parecer, do servidor de exemplo.
+ * processo é do servidor; a linha do tempo da deficiência e a dispensa do parecer, pelo perfil, no caso da semente e no do
+ * servidor (GGVP-137: as rotas existem nos dois; o parecer do caso do servidor vem da sincronização da documentação médica).
  */
 function AtalhosDoCaso({ processo: p }: { processo: Processo }) {
   const perfil = usePerfil()?.id
@@ -71,10 +72,10 @@ function AtalhosDoCaso({ processo: p }: { processo: Processo }) {
   const semente = !doServidor(p.id)
   const senior = perfil?.startsWith('senior') === true
   // Só a sênior dispensa (GGVP-33); com o parecer suficiente ou já dispensado, não há o que dispensar.
-  const situacao = senior && semente && precisaDeParecer(p.beneficio) ? (parecerParaOPortao(ler(), p.id)?.situacao ?? 'sem-parecer') : undefined
+  const situacao = senior && precisaDeParecer(p.beneficio) ? (parecerParaOPortao(ler(), p.id)?.situacao ?? 'sem-parecer') : undefined
   const atalhos = [
     veCaso && !semente && { rotulo: 'Histórico do processo', href: `/casos/${p.id}/historico` },
-    semente && doJuridico(perfil) && p.beneficio.startsWith('aposentadoria-pcd') && { rotulo: 'Linha do tempo da deficiência', href: `/casos/${p.id}/deficiencia` },
+    doJuridico(perfil) && p.beneficio.startsWith('aposentadoria-pcd') && { rotulo: 'Linha do tempo da deficiência', href: `/casos/${p.id}/deficiencia` },
     situacao && situacao !== 'suficiente' && situacao !== 'dispensado' && { rotulo: 'Dispensar o parecer', href: `/casos/${p.id}/parecer/dispensa` },
   ].filter((a) => !!a)
   if (!atalhos.length) return null

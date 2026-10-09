@@ -152,17 +152,50 @@ export const ACOES_DO_PERFIL = {
   ],
   senior: ['Aprovar pedido', 'Despachar caso', 'Decidir cobrança', 'Revisar estudo de caso', 'Reprocessar vigília', 'Casar publicação', 'Alimentar acervo'],
   financeiro: ['Lançar prestação de contas', 'Confirmar recebimento'],
+  // GGVP-96: a Documentação, o líder e o Sócio caíam na lista do Atendimento. Cada um fica com o que faz pela matriz: a
+  // Documentação, a raia DOCUMENTAÇÃO · ADM; o líder, a do Atendimento sem o que a matriz dá a outro perfil (a ida ao banco
+  // é do Financeiro; liberar, a exigência do INSS e os documentos da perícia, da Documentação); o Sócio só lê.
+  documentacao: [
+    'Receber documento',
+    'Conferir documento',
+    'Conferir checklist',
+    'Cobrar documento',
+    'Liberar ao Jurídico',
+    'Cumprir pendência',
+    'Cumprir exigência do juiz',
+    'Responder exigência do INSS',
+    'Reunir documentos da perícia',
+  ],
+  'atendimento-lider': [
+    'Receber quem chegou',
+    'Receber documento',
+    'Conferir documento',
+    'Confirmar agendamento',
+    'Renovar senha do gov.br',
+    'Preencher ficha',
+    'Preencher segunda ficha',
+    'Preparar contrato',
+    'Colher assinatura',
+    'Conferir contrato',
+    'Entregar cópia do contrato',
+    'Conferir checklist',
+    'Cobrar documento',
+    'Recontatar lead',
+    'Registrar fechamento',
+    'Registrar conversa',
+    'Avisar resultado',
+    'Explicar resultado',
+    'Cumprir pendência',
+    'Cumprir exigência do juiz',
+  ],
+  socio: [],
 } as const
 
 export type GrupoDoPerfil = keyof typeof ACOES_DO_PERFIL
 
-/** O grupo da lista fixa de cada perfil. */
+/** O grupo da lista fixa de cada perfil; sem perfil conhecido, o Atendimento. */
 export function grupoDoPerfil(perfil: string | undefined): GrupoDoPerfil {
-  if (perfil === 'juridico-adm') return 'juridico-adm'
-  if (perfil === 'advogada') return 'advogada'
-  if (perfil === 'senior') return 'senior'
-  if (perfil === 'financeiro') return 'financeiro'
-  return 'atendimento'
+  return perfil && Object.keys(ACOES_DO_PERFIL).includes(perfil) ? (perfil as GrupoDoPerfil) : 'atendimento'
 }
 
 /** A ação da lista fixa de quem vai fazer que o pedido cita (CA9): o verbo pesa mais, o objeto desempata. Nenhuma: nulo. */
@@ -239,6 +272,9 @@ export const SUGESTOES_DO_PERFIL: Record<GrupoDoPerfil, string[]> = {
   senior: ['O que estourou o limite?', 'Criar tarefa', 'Casos para conferir', 'Subir no acervo'],
   financeiro: ['Prestações recebidas', 'Documento novo', 'Resumo do cliente'],
   'juridico-adm': ['Perícias para marcar', 'O cliente me ligou', 'Subir comprovante do INSS', 'Dica para a perícia'],
+  documentacao: ['Documentos que faltam', 'Criar tarefa'],
+  'atendimento-lider': ['O cliente me ligou: qual a próxima tarefa?', 'Subir laudo novo', 'Documentos que faltam', 'Criar tarefa'],
+  socio: ['Prestações recebidas', 'Criar tarefa'],
 }
 
 /** O que o arquivo anexado é, pelo nome e pelo pedido (CA12). IA simulada: as pistas do nome, como a leitura do D1. */

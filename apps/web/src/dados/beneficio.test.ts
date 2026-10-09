@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { definirBeneficio, obterDefinicao } from './beneficio.ts'
 import { encerrarGravacao, iniciarGravacao, transcrever } from './entrevista.ts'
 import { tarefasDaAdvogada } from './preparacao.ts'
+import { conferirInformacoes } from './transcricao.ts'
 import { configurarExemplo, obterFicha, zerarExemplo } from './servidor.ts'
 
 const AGORA = new Date(2026, 9, 5, 14, 32)
@@ -15,6 +16,8 @@ async function entrevista(agendamentoId: string) {
   const g = await iniciarGravacao(agendamentoId, { avisei: true })
   await encerrarGravacao(g.id, { aos: 140, online: true })
   await transcrever(g.id)
+  // G19: o afastamento conta só com o "sem trabalhar desde" que a advogada conferiu (G14).
+  await conferirInformacoes(g.id, ['desde'])
 }
 
 describe('Definir o benefício · servidor de exemplo', () => {
