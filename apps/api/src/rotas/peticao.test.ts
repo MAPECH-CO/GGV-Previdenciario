@@ -7,7 +7,7 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticao, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, parecerMedico, pessoa, peticao, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -93,6 +93,22 @@ describe('GGVP-63 · pedir a petição', () => {
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(b.detalhe).toMatchObject({ portao: 'setores', passo: 'D3.05', faltam: 1 })
     expect(await abertas()).toEqual(['advogada · Pedir a petição', 'documentacao · Cumprir pendência'])
+  })
+
+  it('CA13 (G17) · benefício com laudo só pede a petição com o parecer confirmado por pessoa', async () => {
+    await laudoDaDocumentacao()
+    await banco.update(caso).set({ beneficio: 'bpc_loas_deficiente' }).where(eq(caso.id, casoId))
+    const semParecer = await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)
+    expect(semParecer.statusCode).toBe(409)
+    expect(semParecer.json().erro).toMatch(/^Não dá para pedir a petição/)
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G17', passo: 'D3.05' })
+    // Só a IA sugeriu: ainda trava.
+    await banco.insert(parecerMedico).values({ casoId, roteiroVersao: 1, resultado: 'suficiente' })
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)).statusCode).toBe(409)
+    const [u] = await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, 'gabi@exemplo.ggv'))
+    await banco.update(parecerMedico).set({ confirmadoPor: u.id, confirmadoEm: AGORA }).where(eq(parecerMedico.casoId, casoId))
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)).statusCode).toBe(201)
   })
 
   it('CA2, CA6, CA9, CA10 · com tudo fechado, grava as instruções, as opções e os citados na ordem; a versão 1 vai para a conferência', async () => {
