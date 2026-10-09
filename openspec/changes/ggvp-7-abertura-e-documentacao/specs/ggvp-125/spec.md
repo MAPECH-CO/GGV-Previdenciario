@@ -221,3 +221,17 @@ Os documentos que chegam pelo card ("Conferir e enviar") e pelo lote do scanner 
 - **Dado** um documento lido com o CPF de outro cliente
 - **Quando** a Documentação abre a conferência
 - **Então** o documento está em quarentena e só volta à conferência com "É deste cliente", ou muda de pasta com o motivo
+
+
+### Requirement: Bloco 5b+ · O arquivo do card fica guardado e o laudo novo chega ao parecer
+O arquivo enviado pelo card SHALL ficar guardado no armazenamento de arquivos do portal (o mesmo da carta do INSS e dos comprovantes da perícia) até o Drive entrar, ligado à pessoa e ao caso, e só quando o hash do conteúdo confere com o do envio. O que é documento médico (laudo, relatório médico, prontuário, atestado, exame e os outros do catálogo médico) SHALL ficar sensível: o conteúdo só com `dado_saude.ver_detalhe`. O laudo, o relatório médico e o prontuário com caso em andamento SHALL entrar também como documento médico não conferido, que a tela do laudo novo e o parecer leem (pedido do Pedro, 09/10, com o ok do Mateus: substitui o "fica para o Drive" do bloco 5b).
+
+#### Scenario: Laudo pelo card chega ao parecer
+- **Dado** um cliente do servidor com caso em andamento
+- **Quando** a Atendimento envia um laudo pelo card
+- **Então** o PDF fica guardado como documento sensível do caso, nasce o documento médico não conferido e "Analisar laudo novo" abre a tela com ele
+
+#### Scenario: Conteúdo diferente do anunciado
+- **Dado** um envio pelo card
+- **Quando** o conteúdo que chega não tem o hash do arquivo anunciado
+- **Então** é recusado, e nada é guardado

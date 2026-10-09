@@ -1,14 +1,16 @@
 // Os documentos da Recepção no servidor (GGVP-125, bloco 5b), sobre o fichário: a chegada pelo card e pelo lote do scanner,
 // o registro do recebimento, a leitura da IA (simulada), uma por arquivo, e a conferência da Documentação. As regras são as do servidor de exemplo do Pedro
 // (documentos.ts e leitura.ts), com as regras puras importadas das telas. O arquivo de verdade segue simulado até o Drive.
-import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { createHash, randomUUID } from 'node:crypto'
+import { and, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '@ggv/campos'
 import { ArquivamentoDosLidos, CampoLidoNoCadastro, EnvioDeArquivos, MudancaDeCaso, RegistroDoRecebimento, type Erro } from '@ggv/contratos'
+import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { contratoRecepcao, leituraDocumento, tarefaRecepcao } from '../banco/esquema.ts'
+import { contratoRecepcao, documento, documentoMedico, leituraDocumento, tarefaRecepcao } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
+import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { TIPOS_DE_DOCUMENTO, nomeBeneficio, nomeTipo } from '../../../web/src/dados/catalogos.ts'
 import { loteDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import type { Arquivo, EventoHistorico, Ficha, Processo, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
@@ -24,6 +26,11 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, type ContratoGuardado } 
 /** Os tipos que trazem a avaliação do médico: chegando pelo card ou pelo chat, são "Laudo novo" (GGVP-17 CA6). */
 const LAUDOS = ['laudo', 'relatorio-medico', 'prontuario']
 
+/** O laudo novo que chega pelo card vira documento médico do caso (bloco 5b+), no tipo da tabela `documento_medico`. */
+const TIPO_DO_DOCUMENTO_MEDICO: Record<string, 'laudo' | 'relatorio' | 'prontuario'> = { laudo: 'laudo', 'relatorio-medico': 'relatorio', prontuario: 'prontuario' }
+export const MSG_CONTEUDO = 'Anexe o arquivo (PDF ou imagem, até 25 MB).'
+export const MSG_CONTEUDO_DIFERENTE = 'Este arquivo não é o que foi enviado pelo card.'
+
 /** Quem aparece no histórico quando o scanner guarda o papel. */
 const SCANNER = 'Automação do scanner'
 
@@ -37,9 +44,9 @@ const ilegivelEmAberto = (l: DocumentoLido, leituras: DocumentoLido[]) =>
   l.situacao === 'ilegivel' && !leituras.some((o) => o.fichaId === l.fichaId && o.tipo === l.tipo && o.situacao !== 'ilegivel' && o.lidoEm > l.lidoEm)
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento }
 
-export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const lerContrato = criarLeituraDoContrato(banco, agora)
@@ -123,6 +130,38 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     await guardar(ficha)
     const leituras = await lerArquivosNovos(ficha)
     return { resultado: 'enviado', arquivos: novos, laudoNovo: laudos.length > 0, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id), leituras }
+  })
+
+  // Bloco 5b+ (pedido do Pedro, 09/10): o conteúdo de cada arquivo do card, depois do envio, fica guardado no armazenamento do
+  // portal até o Drive entrar. Só o arquivo já anunciado e com o mesmo hash; o mesmo conteúdo duas vezes não duplica. O que
+  // é médico fica sensível; laudo, relatório médico e prontuário com caso viram documento médico não conferido (o parecer lê).
+  app.post<{ Params: { id: string } }>('/api/fichas/:id/arquivos/conteudo', editar, async (pedido, resposta) => {
+    const ficha = await fichaPeloId(pedido.params.id)
+    if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
+    const formulario = await lerFormulario(pedido)
+    const arquivo = formulario?.arquivo
+    if (!arquivo || !TIPOS_DE_ANEXO.includes(arquivo.mime)) return negar(resposta, 400, MSG_CONTEUDO)
+    const hash = createHash('sha256').update(arquivo.conteudo).digest('hex')
+    const anunciado = ficha.arquivos.find((a) => a.hash === hash)
+    if (!anunciado || formulario.campos.hash !== hash) return negar(resposta, 400, MSG_CONTEUDO_DIFERENTE)
+    const [jaGuardado] = await banco
+      .select({ id: documento.id })
+      .from(documento)
+      .where(and(eq(documento.pessoaId, ficha.id), eq(documento.hashSha256, hash), isNull(documento.excluidoEm)))
+    if (jaGuardado) return { documentoId: jaGuardado.id, repetido: true }
+    const casoId = ficha.processos.map((p) => p.id).find((id) => UUID.test(id)) ?? null
+    const dados = await guardarArquivo(armazenamento, casoId ?? ficha.id, arquivo, anunciado.tipo, casoId ? 'casos' : 'pessoas')
+    const quem = pedido.usuario!.id
+    const documentoId = await banco.transaction(async (tx) => {
+      const [d] = await tx
+        .insert(documento)
+        .values({ casoId, pessoaId: ficha.id, tipo: anunciado.tipo, origem: anunciado.origem, sensivel: ehMedico(anunciado.tipo), recebidoPor: quem, ...dados })
+        .returning({ id: documento.id })
+      const tipoMedico = TIPO_DO_DOCUMENTO_MEDICO[anunciado.tipo]
+      if (casoId && tipoMedico) await tx.insert(documentoMedico).values({ documentoId: d.id, tipo: tipoMedico })
+      return d.id
+    })
+    return resposta.code(201).send({ documentoId, repetido: false })
   })
 
   // GGVP-17 CA2, CA4, CA10: o lote do scanner (o aviso do n8n), simulado. Lote em revisão não mexe no portal. No servidor

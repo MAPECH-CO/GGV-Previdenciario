@@ -208,3 +208,9 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.61 Telas: envio pelo card, lote, recebimento, conferência, quarentena, mover e cadastro chamando a API para as fichas do servidor; as leituras do servidor na cópia; testes.
 - [x] 125.62 Playwright: o RG enviado pelo card numa sessão é conferido e arquivado em outra.
 - [x] 125.63 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 5b+ · O arquivo do card guardado e o laudo novo no parecer (pedido do Pedro, 09/10)
+
+- [x] 125.64 Servidor: `POST /api/fichas/:id/arquivos/conteudo` (arquivo e hash): só arquivo já anunciado no envio e com o hash conferido; guarda no armazenamento do portal como `documento` da pessoa e do caso (sensível se for médico) e, para laudo, relatório médico e prontuário com caso, o `documento_medico` não conferido; o mesmo conteúdo duas vezes não duplica; testes.
+- [x] 125.65 Telas: `enviarArquivos` manda o conteúdo de cada arquivo depois do envio, para as fichas do servidor; `ConferirEnviar` passa os arquivos; testes.
+- [ ] 125.66 Rodar typecheck, lint, testes e Playwright; colar a saída.

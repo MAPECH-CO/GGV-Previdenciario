@@ -83,7 +83,9 @@ function ligarServidor(rotas: Record<string, (corpo: unknown) => unknown>) {
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     const responder = rotas[`${init?.method ?? 'GET'} ${url}`]
     if (!responder) return new Response(JSON.stringify({ erro: 'Não encontrado.' }), { status: 404 })
-    return new Response(JSON.stringify(responder(init?.body ? JSON.parse(String(init.body)) : undefined)), { status: 200 })
+    // O envio com arquivo (FormData) chega como está; o resto, em JSON.
+    const corpo = init?.body instanceof FormData ? init.body : init?.body ? JSON.parse(String(init.body)) : undefined
+    return new Response(JSON.stringify(responder(corpo)), { status: 200 })
   })
   vi.stubGlobal('fetch', fetch)
   configurarExemplo({ servidor: true })
@@ -713,6 +715,24 @@ describe('GGVP-125 · bloco 5b: a chegada, a leitura e o arquivo dos documentos 
     expect(await enviarArquivos(ID, envio)).toEqual({ resultado: 'enviado', arquivos: [rg], laudoNovo: false })
     expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(envio)
     expect(ler().leiturasDoServidor).toEqual([lida('RG.pdf')])
+  })
+
+  it('bloco 5b+ · depois do envio, o conteúdo de cada arquivo vai ao servidor com o hash', async () => {
+    const envio = { origem: 'card' as const, arquivos: [{ nome: 'RG.pdf', formato: 'pdf' as const, tamanho: 4, tipo: 'rg', hash: 'a'.repeat(64) }] }
+    const fetch = sincronizar(
+      {
+        [`POST /api/fichas/${ID}/arquivos`]: () => ({ resultado: 'enviado', arquivos: [rg], laudoNovo: false, ficha: doBanco({ cpf: '52998224725', arquivos: [rg] }), tarefas: [], leituras: [] }),
+        [`POST /api/fichas/${ID}/arquivos/conteudo`]: () => ({ documentoId: '9b7a4c1e-0000-4000-8000-000000000001', repetido: false }),
+      },
+      doBanco({ cpf: '52998224725' }),
+      [],
+    )
+    await sincronizarRecepcao()
+    const arquivo = new File(['%PDF'], 'RG.pdf', { type: 'application/pdf' })
+    expect(await enviarArquivos(ID, envio, [{ hash: 'a'.repeat(64), arquivo }])).toMatchObject({ resultado: 'enviado' })
+    const [, init] = fetch.mock.calls.find(([url]) => String(url).endsWith('/arquivos/conteudo'))!
+    const corpo = init!.body as FormData
+    expect([corpo.get('hash'), (corpo.get('arquivo') as File).name]).toEqual(['a'.repeat(64), 'RG.pdf'])
   })
 
   it('arquivar vai ao servidor: a cópia recebe a ficha, as leituras e os contratos', async () => {

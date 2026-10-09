@@ -66,7 +66,8 @@ export function ConferirEnviar({ fichaId, origem, iniciais = [], aoEnviar, aoFec
     setAviso('')
     try {
       const arquivos = validas.map((l) => ({ nome: l.nome, formato: formatoDoArquivo(l.nome)!, tamanho: l.tamanho, tipo: l.tipo, hash: l.hash! }))
-      const resposta = await enviarArquivos(fichaId, { origem, arquivos })
+      const conteudos = validas.flatMap((l) => (l.arquivo && l.hash ? [{ hash: l.hash, arquivo: l.arquivo }] : []))
+      const resposta = await enviarArquivos(fichaId, { origem, arquivos }, conteudos)
       if (resposta.resultado === 'sem-pasta') {
         setAviso('Esta ficha ainda não tem pasta no Drive, e pasta nova só nasce com o CPF. Complete o CPF na ficha e envie de novo.')
         return

@@ -145,7 +145,7 @@ const valido = (a: EnvioDeArquivos['arquivos'][number]) =>
  * POST /api/fichas/:id/arquivos ("Conferir e enviar"). Nada é apagado nem sobrescrito; laudo marca "Laudo novo" na
  * ficha e no processo, guarda o resumo da IA para o Jurídico e avisa a advogada (CA6, CA7, CA11, CA13, CA14).
  */
-export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos): Promise<RespostaEnvio> {
+export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos, conteudos: { hash: string; arquivo: File }[] = []): Promise<RespostaEnvio> {
   if (!doServidor(fichaId)) await esperar()
   if (envio.arquivos.length === 0 || envio.arquivos.length > 20 || !envio.arquivos.every(valido)) throw new Error('Arquivos inválidos')
   const banco = ler()
@@ -160,6 +160,13 @@ export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos): P
       { method: 'POST', corpo: envio },
     )
     receber(r)
+    // Bloco 5b+ (pedido do Pedro, 09/10): o conteúdo de cada arquivo fica guardado no servidor até o Drive entrar.
+    for (const c of conteudos) {
+      const corpo = new FormData()
+      corpo.set('hash', c.hash)
+      corpo.set('arquivo', c.arquivo)
+      await noBanco(`/fichas/${fichaId}/arquivos/conteudo`, { method: 'POST', corpo })
+    }
     return { resultado: 'enviado', arquivos: r.arquivos, laudoNovo: r.laudoNovo }
   }
 

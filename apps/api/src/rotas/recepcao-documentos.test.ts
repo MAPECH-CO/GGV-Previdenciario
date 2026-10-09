@@ -1,11 +1,17 @@
+import { createHash } from 'node:crypto'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { armazenamentoLocal } from '../armazenamento.ts'
+import { caso, documento, documentoMedico, leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
+import { MSG_CONTEUDO_DIFERENTE } from './recepcao-documentos.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -200,5 +206,52 @@ describe('GGVP-125 · bloco 5b: a conferência dos documentos no servidor', () =
     expect(r.contratos).toMatchObject([{ processoId: processo.id, etapa: 'copia' }])
     expect(r.ficha.arquivos.find((a: { nome: string }) => a.nome === arquivo.nome)).toMatchObject({ local: processo.id, aguardaLeitura: false })
     expect((await json('ana', 'GET', '/api/recepcao')).leituras).toMatchObject([{ id: `${fichaId}/${arquivo.nome}`, situacao: 'arquivado' }])
+  })
+})
+
+describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no parecer (pedido do Pedro, 09/10)', () => {
+  const PDF_LAUDO = Buffer.from('%PDF-1.4 laudo de exemplo')
+  const PDF_RG = Buffer.from('%PDF-1.4 rg de exemplo')
+  const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex')
+  const conteudo = async (fichaId: string, b: Buffer, hash = sha(b), nome = 'arquivo.pdf') => {
+    const f = '----ggv'
+    const corpo = Buffer.concat([
+      Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="hash"\r\n\r\n${hash}\r\n`),
+      Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="${nome}"\r\nContent-Type: application/pdf\r\n\r\n`),
+      b,
+      Buffer.from(`\r\n--${f}--\r\n`),
+    ])
+    return app.inject({ method: 'POST', url: `/api/fichas/${fichaId}/arquivos/conteudo`, cookies: await cookieDe('ana'), payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${f}` } })
+  }
+
+  beforeEach(async () => {
+    await app.close()
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))) })
+  })
+
+  it('laudo com caso: guardado como documento sensível do caso e documento médico não conferido; o mesmo conteúdo não duplica', async () => {
+    const fichaId = await lead()
+    const [c] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
+    await enviar(fichaId, doc('Laudo.pdf', 'laudo', sha(PDF_LAUDO)))
+    const r = await conteudo(fichaId, PDF_LAUDO)
+    expect(r.statusCode).toBe(201)
+    const [d] = await banco.select().from(documento).where(eq(documento.id, r.json().documentoId))
+    expect([d.casoId, d.pessoaId, d.tipo, d.sensivel, d.origem, d.hashSha256]).toEqual([c.id, fichaId, 'laudo', true, 'card', sha(PDF_LAUDO)])
+    const [m] = await banco.select().from(documentoMedico).where(eq(documentoMedico.documentoId, d.id))
+    expect([m.tipo, m.confirmadoEm]).toEqual(['laudo', null])
+    expect((await conteudo(fichaId, PDF_LAUDO)).json()).toEqual({ documentoId: d.id, repetido: true })
+    expect(await banco.select().from(documento)).toHaveLength(1)
+  })
+
+  it('sem caso, o RG fica com a pessoa e não é sensível; conteúdo que não foi anunciado é recusado e nada é guardado', async () => {
+    const fichaId = await lead()
+    await enviar(fichaId, doc('RG.pdf', 'rg', sha(PDF_RG)))
+    const outro = await conteudo(fichaId, Buffer.from('%PDF outro conteúdo'))
+    expect([outro.statusCode, outro.json().erro]).toEqual([400, MSG_CONTEUDO_DIFERENTE])
+    const r = await conteudo(fichaId, PDF_RG)
+    expect(r.statusCode).toBe(201)
+    const [d] = await banco.select().from(documento).where(eq(documento.id, r.json().documentoId))
+    expect([d.casoId, d.pessoaId, d.sensivel]).toEqual([null, fichaId, false])
+    expect(await banco.select().from(documentoMedico)).toHaveLength(0)
   })
 })
