@@ -13,6 +13,7 @@ import {
   exemploChatAtendimento,
   sugestoesChatAtendimento,
   tarefasAtendimento,
+  tarefasDocumentacao,
 } from '../dados/atendimento.ts'
 import { tarefasDeConfirmar } from '../dados/agenda.ts'
 import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
@@ -32,7 +33,8 @@ import { tarefasDeComplemento } from '../dados/complemento.ts'
 import { tarefasDaDocumentacaoNaPericia } from '../dados/pericia.ts'
 import { useTarefasDaConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { usePode } from '../sessao.ts'
+import type { Tarefa } from '../dados/tipos.ts'
+import { usePode, useSessao } from '../sessao.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -40,34 +42,51 @@ const navegacao: ItemNavegacao[] = [
   { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
 ]
 
+type Funcao = 'Atendimento' | 'Documentação'
+
+/**
+ * GGVP-130: a Documentação é função e perfil próprios, mas não tem Central (Pedro, 30/09 e 07/10): trabalha nesta e vê
+ * só o que é dela, pelo BPMN. Dela: o documento que o balcão encaminha (D1.02), a conferência do que o scanner e a IA
+ * leram, com a quarentena (D1.18), o checklist (D1.21), "Liberar ao Jurídico" (D1.24, Lucas 28/09), as exigências que
+ * pedem documento (D2.05, D3a.03) e os documentos da perícia, com a cobrança deles (DP.03). O resto é do Atendimento:
+ * agenda e confirmação, fichas, contrato e assinatura, a cobrança dos documentos do caso (D1.23), boas-vindas,
+ * fechamento, nova demanda, pedir documento legível (GGVP-95 CA3) e o complemento ao médico. Sem sessão (a tela sozinha,
+ * nos testes), as duas, como foi desenhada.
+ */
+function tarefasDeExemplo(funcao: Funcao | null): Tarefa[] {
+  const fontes: [Funcao, Tarefa[]][] = [
+    ['Documentação', tarefasDoSetor('Documentação · ADM')],
+    // As pendências do próprio Atendimento (GGVP-21), as entrevistas que passaram sem registro (GGVP-123, CA8), as que
+    // falta confirmar com o lead (GGVP-21) e as fichas que o scanner criou sem telefone (GGVP-17, CA15).
+    ['Atendimento', tarefasDoSetor('Atendimento')],
+    ['Atendimento', tarefasDeConfirmar()],
+    ['Atendimento', tarefasDeConfirmarAgendamento()],
+    ['Atendimento', tarefasDeCompletarTelefone()],
+    ['Atendimento', tarefasAtendimento],
+    ['Documentação', tarefasDocumentacao],
+    ['Atendimento', tarefasDoContrato()],
+    ['Documentação', tarefasDeConferirDocumento()],
+    ['Documentação', tarefasDeConferirChecklist()],
+    ['Atendimento', tarefasDeReenviarBoasVindas()],
+    ['Atendimento', tarefasDeCobrar()],
+    ['Documentação', tarefasDeLiberar()],
+    ['Atendimento', tarefasDeFechamento()],
+    ['Atendimento', tarefasDeNovaDemanda()],
+    ['Atendimento', tarefasDePedirLegivel()],
+    ['Atendimento', tarefasDeComplemento()],
+    // A Documentação reúne e cobra o que a perícia pede (épico GGVP-10, GGVP-56).
+    ['Documentação', tarefasDaDocumentacaoNaPericia()],
+  ]
+  return fontes.filter(([dono]) => !funcao || dono === funcao).flatMap(([, tarefas]) => tarefas)
+}
+
 export function CentralAtendimento() {
-  // A Documentação não tem Central própria: o que o balcão encaminha a ela aparece aqui, no topo, com as pendências do
-  // Atendimento (GGVP-21), as fichas que o scanner criou sem telefone (GGVP-17, CA15), as entrevistas que passaram sem
-  // registro (GGVP-123, CA8) e as que falta confirmar com o lead (GGVP-21).
   // A conversa com o cliente é da pessoa que a abriu (GGVP-76): o nome vem da sessão.
   const perfil = usePerfil('Atendimento')
-  const [deExemplo] = useState(() => [
-    ...tarefasDoSetor('Documentação · ADM'),
-    ...tarefasDoSetor('Atendimento'),
-    ...tarefasDeConfirmar(),
-    ...tarefasDeConfirmarAgendamento(),
-    ...tarefasDeCompletarTelefone(),
-    ...tarefasAtendimento,
-    ...tarefasDoContrato(),
-    ...tarefasDeConferirDocumento(),
-    ...tarefasDeConferirChecklist(),
-    ...tarefasDeReenviarBoasVindas(),
-    ...tarefasDeCobrar(),
-    ...tarefasDeLiberar(),
-    ...tarefasDeFechamento(),
-    ...tarefasDeNovaDemanda(),
-    ...tarefasDePedirLegivel(),
-    ...tarefasDeComplemento(),
-    // A Documentação reúne e cobra o que a perícia pede (épico GGVP-10, GGVP-56).
-    ...tarefasDaDocumentacaoNaPericia(),
-    // GGVP-82: as tarefas que o chat criou para a pessoa.
-    ...tarefasCriadasPeloChat(perfil?.usuario),
-  ])
+  const sessao = useSessao()
+  const funcao: Funcao | null = !sessao ? null : sessao.perfilAtivo === 'documentacao' ? 'Documentação' : 'Atendimento'
+  // GGVP-82: e as tarefas que o chat criou para a pessoa.
+  const [deExemplo] = useState(() => [...tarefasDeExemplo(funcao), ...tarefasCriadasPeloChat(perfil?.usuario)])
   // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []
@@ -89,7 +108,7 @@ export function CentralAtendimento() {
       />
       <main className={styles.pagina}>
         <div className={styles.coluna}>
-          <h1 className="so-leitor">Início do Atendimento</h1>
+          <h1 className="so-leitor">{funcao === 'Documentação' ? 'Início da Documentação' : 'Início do Atendimento'}</h1>
           <CampoBusca tarefas={tarefas} />
           <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={sugestoesChatAtendimento} />
           <FilasDeTarefas tarefas={tarefas} />

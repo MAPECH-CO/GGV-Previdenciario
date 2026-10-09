@@ -86,6 +86,63 @@ describe('Central do Atendimento', () => {
     expect(liberar.closest('li')?.textContent).toContain('na fila há 2 dias')
   })
 
+  describe('GGVP-130 · a Documentação usa esta Central e vê só o que é dela', () => {
+    // O que é da Documentação pelo BPMN: D1.02, D1.18, D1.21, D1.24, as exigências que pedem documento e o DP.03.
+    const DA_DOCUMENTACAO = [
+      'Receber documento',
+      'Conferir documento',
+      'Conferir checklist',
+      'Liberar ao Jurídico',
+      'Cumprir exigência do juiz',
+      'Responder a exigência do INSS',
+      'Reunir documentos da perícia',
+      'Cobrar documento da perícia',
+    ]
+    // A ação de cada linha da fila: o link "cliente · ação".
+    const acoes = () => [...screen.getByRole('main').querySelectorAll('li a[aria-label]')].map((l) => l.getAttribute('aria-label')!.split(' · ').at(-1)!)
+
+    it('com a sessão da Documentação: o documento do balcão, a leitura, a liberação, as exigências e a perícia; nada do Atendimento', async () => {
+      await encaminhar({ fichaId: 'antonio-exemplo', motivo: 'documento', setor: 'Documentação · ADM' })
+      entrarComo('documentacao')
+      render(comSessao(<CentralAtendimento />))
+      expect(await screen.findByRole('heading', { level: 1, name: 'Início da Documentação' })).toBeTruthy()
+      for (const nome of [
+        'Antônio Exemplo · Receber documento',
+        'Rita Exemplo · Conferir documento',
+        'Sebastião Exemplo · Liberar ao Jurídico',
+        'Antônio Exemplo · Cumprir exigência do juiz',
+        'Pedro Exemplo · Responder a exigência do INSS',
+      ])
+        expect(screen.getByRole('link', { name: nome })).toBeTruthy()
+      expect(acoes()).toContain('Receber documento')
+      expect(acoes().filter((a) => !DA_DOCUMENTACAO.includes(a))).toEqual([])
+      for (const nome of ['Antônio Exemplo · Cobrar documento', 'Marta Exemplo · Completar telefone', 'Balcão · Receber quem chegou'])
+        expect(screen.queryByRole('link', { name: nome })).toBeNull()
+    })
+
+    it('com a sessão do Atendimento ou do líder: só as do Atendimento, sem as da Documentação', async () => {
+      await encaminhar({ fichaId: 'antonio-exemplo', motivo: 'documento', setor: 'Documentação · ADM' })
+      // O líder busca o quadro do setor (GGVP-147): o servidor de mentira devolve o quadro vazio.
+      const quadro = { setor: 'atendimento', pessoas: [], tarefas: [] }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) =>
+          (await responderRelacionamento(url, init)) ?? new Response(JSON.stringify(String(url).endsWith('/api/setor') ? quadro : [])),
+        ),
+      )
+      for (const perfil of ['atendimento', 'atendimento-lider']) {
+        entrarComo(perfil)
+        const { unmount } = render(comSessao(<CentralAtendimento />))
+        expect(await screen.findByRole('heading', { level: 1, name: 'Início do Atendimento' })).toBeTruthy()
+        for (const nome of ['Antônio Exemplo · Cobrar documento', 'Marta Exemplo · Completar telefone', 'Balcão · Receber quem chegou'])
+          expect(screen.getByRole('link', { name: nome })).toBeTruthy()
+        expect(acoes()).toContain('Cobrar documento')
+        expect(acoes().filter((a) => DA_DOCUMENTACAO.includes(a))).toEqual([])
+        unmount()
+      }
+    })
+  })
+
   it('GGVP-123 CA8 · lembra de confirmar a entrevista que passou sem registro', () => {
     render(<CentralAtendimento />)
     expect(screen.getByRole('link', { name: 'Natália Exemplo · Confirmar se a entrevista aconteceu' }).getAttribute('href')).toBe('/agenda?ver=lista')
@@ -182,7 +239,8 @@ describe('Central do Atendimento', () => {
     cleanup()
     entrarComo('documentacao')
     render(comSessao(<CentralAtendimento />))
-    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(16))
+    // As 6 da Documentação (GGVP-130), depois da resposta do servidor da conversa.
+    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(6))
     expect(screen.queryByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toBeNull()
   })
 
