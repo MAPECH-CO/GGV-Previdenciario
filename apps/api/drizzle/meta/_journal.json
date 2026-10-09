@@ -152,22 +152,29 @@
     {
       "idx": 21,
       "version": "7",
-      "when": 1791520401237,
-      "tag": "0021_base_de_conhecimento",
+      "when": 1791512535321,
+      "tag": "0021_segunda_ficha_e_contrato",
       "breakpoints": true
     },
     {
       "idx": 22,
       "version": "7",
-      "when": 1791520435327,
-      "tag": "0022_nomeacao_de_perito",
+      "when": 1791523539301,
+      "tag": "0022_base_de_conhecimento",
       "breakpoints": true
     },
     {
       "idx": 23,
       "version": "7",
-      "when": 1791521203365,
-      "tag": "0023_vara_e_entendimentos",
+      "when": 1791523542822,
+      "tag": "0023_nomeacao_de_perito",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791524719395,
+      "tag": "0024_vara_e_entendimentos",
       "breakpoints": true
     }
   ]

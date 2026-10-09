@@ -1,6 +1,6 @@
 {
-  "id": "50c1d9c8-5b71-4b26-816b-002963d365d6",
-  "prevId": "25d3a603-8585-40c1-a00b-569fd74b57d9",
+  "id": "a3aa0844-0bae-412b-980c-2858e7582f01",
+  "prevId": "79fee14d-94d7-4be0-83c2-82b42b7157bc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1029,6 +1029,58 @@
       },
       "isRLSEnabled": true
     },
+    "public.segunda_ficha_medica": {
+      "name": "segunda_ficha_medica",
+      "schema": "",
+      "columns": {
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "medicos": {
+          "name": "medicos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lida": {
+          "name": "lida",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "segunda_ficha_medica_pessoa_id_pessoa_id_fk": {
+          "name": "segunda_ficha_medica_pessoa_id_pessoa_id_fk",
+          "tableFrom": "segunda_ficha_medica",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.tarefa_recepcao": {
       "name": "tarefa_recepcao",
       "schema": "",
@@ -1429,18 +1481,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "vara": {
-          "name": "vara",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "juiz": {
-          "name": "juiz",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -1502,6 +1542,71 @@
           "value": "\"caso\".\"desfecho\" in ('deferido', 'procedente_total', 'procedente_parcial', 'improcedente', 'extinto_sem_merito', 'desistencia')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.contrato_recepcao": {
+      "name": "contrato_recepcao",
+      "schema": "",
+      "columns": {
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contrato_recepcao_caso_id_caso_id_fk": {
+          "name": "contrato_recepcao_caso_id_caso_id_fk",
+          "tableFrom": "contrato_recepcao",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contrato_recepcao_pessoa_id_pessoa_id_fk": {
+          "name": "contrato_recepcao_pessoa_id_pessoa_id_fk",
+          "tableFrom": "contrato_recepcao",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.ficha_atendimento": {
@@ -4759,18 +4864,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "entendimentos": {
-          "name": "entendimentos",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entendimentos_em": {
-          "name": "entendimentos_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",

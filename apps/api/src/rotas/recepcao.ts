@@ -20,12 +20,11 @@ import {
 } from '@ggv/campos'
 import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
-import { BENEFICIOS } from '../../../web/src/dados/catalogos.ts'
-import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
+import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type {
   Agendamento,
   EdicaoFicha,
@@ -43,6 +42,7 @@ import { confirmada } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf, fichasParecidas } from '../../../web/src/regras/duplicidade.ts'
 import { ROTULOS_DA_FICHA, camposEmBranco, envioValido, type CampoDaFicha } from '../../../web/src/regras/fichaAtendimento.ts'
+import type { Contrato } from '../../../web/src/regras/contratoDoCaso.ts'
 import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
 
 export const MSG_FICHA_NAO_ENCONTRADA = 'Ficha não encontrada.'
@@ -54,7 +54,7 @@ export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
 
 /** Os benefícios do servidor no catálogo das telas, para os casos que nasceram por outro caminho. */
-const NO_CATALOGO: Record<string, string> = {
+export const NO_CATALOGO: Record<string, string> = {
   bpc_loas_deficiente: 'loas-deficiente',
   bpc_loas_idoso: 'loas-idoso',
   aposentadoria_pcd: 'aposentadoria-pcd',
@@ -67,6 +67,12 @@ const NO_CATALOGO: Record<string, string> = {
   pensao_morte: 'pensao-morte',
   salario_maternidade: 'salario-maternidade',
 }
+/** O benefício do catálogo das telas no catálogo do portal, para o caso que nasce no fechamento (bloco 4a). */
+export const NO_SERVIDOR: Record<string, string> = Object.fromEntries(Object.entries(NO_CATALOGO).map(([servidor, telas]) => [telas, servidor]))
+
+/** O contrato do caso guardado, com a etapa do processo que as telas mostram (bloco 4a). */
+export type ContratoGuardado = { contrato: Contrato; processo: Processo }
+
 const ETAPA: Record<string, string> = { atendimento: 'Atendimento', administrativa: 'Administrativa · INSS', judicial: 'Judicial', encerrado: 'Encerrado' }
 
 /** Os campos que a ficha deixa editar, como o histórico os chama (os mesmos do servidor de exemplo). */
@@ -131,13 +137,22 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     const deQuem = pessoas.map((p) => p.id)
     const docs = new Map((await banco.select().from(fichaRecepcao).where(inArray(fichaRecepcao.pessoaId, deQuem))).map((f) => [f.pessoaId, f.documento as Ficha]))
     const casos = await banco.select({ id: caso.id, pessoaId: caso.pessoaId, beneficio: caso.beneficio, fase: caso.fase }).from(caso).where(inArray(caso.pessoaId, deQuem))
+    const contratos = new Map(
+      (await banco.select().from(contratoRecepcao).where(inArray(contratoRecepcao.pessoaId, deQuem))).map((c) => [c.casoId, c.dados as ContratoGuardado]),
+    )
     const noCofre = new Set((await banco.select({ pessoaId: credencialGovbr.pessoaId }).from(credencialGovbr).where(inArray(credencialGovbr.pessoaId, deQuem))).map((c) => c.pessoaId))
     return pessoas.map((p) => {
+      // O caso da Recepção mostra a etapa do contrato enquanto está em atendimento; depois, a fase do portal.
       const processos: Processo[] = casos
-        .filter((c) => c.pessoaId === p.id && c.beneficio)
-        .map((c) => ({ id: c.id, beneficio: NO_CATALOGO[c.beneficio!] ?? c.beneficio!, etapa: ETAPA[c.fase] ?? c.fase }))
+        .filter((c) => c.pessoaId === p.id && (c.beneficio || contratos.has(c.id)))
+        .map((c) => {
+          const doContrato = contratos.get(c.id)?.processo
+          const beneficio = doContrato?.beneficio ?? NO_CATALOGO[c.beneficio!] ?? c.beneficio!
+          return doContrato && c.fase === 'atendimento' ? { ...doContrato, id: c.id, beneficio } : { id: c.id, beneficio, etapa: ETAPA[c.fase] ?? c.fase }
+        })
       const doc = docs.get(p.id)
-      if (doc) return { ...doc, processos }
+      // A senha que está no cofre do portal vale mais que a situação guardada na ficha (G9).
+      if (doc) return { ...doc, processos, ...(noCofre.has(p.id) && doc.senhaGov.situacao !== 'no-cofre' && { senhaGov: { situacao: 'no-cofre' as const } }) }
       const [ano, mes] = p.criadoEm.toISOString().slice(0, 7).split('-')
       return {
         id: p.id,

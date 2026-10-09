@@ -17,19 +17,14 @@ async function fichaDoLead(page: Page, nome: string, telefone: string) {
   return ficha
 }
 
-test('CA1 · mudar o telefone na ficha pede como confirmou que é o cliente e o contrato novo; o antigo e o novo ficam no histórico', async ({ page }) => {
+// O cliente com contrato precisa da verificação (testes da tela e do servidor); o lead, ainda sem contrato, troca livre
+// (Pedro, 08/10). O banco de teste não tem cliente com telefone para o navegador.
+test('CA1 · o lead, ainda sem contrato, muda o telefone sem a verificação, e a mudança fica no histórico', async ({ page }) => {
   await fichaDoLead(page, 'Rosa Telefone Teste', '11922221111')
-  const telefone = page.getByLabel('Telefone / WhatsApp *')
-  await telefone.fill('(11) 90000-0044')
-  const verificacao = page.getByRole('group', { name: 'Mudou o telefone: como você confirmou que é o cliente?' })
-  await expect(verificacao).toContainText('Pedido por telefone ou mensagem, sem a verificação: não mude.')
-  await page.getByRole('button', { name: 'Salvar alterações' }).click()
-  await expect(page.getByText('Telefone, e-mail e dados bancários só mudam com o cliente verificado por chamada de vídeo ou no escritório.')).toBeVisible()
-  await verificacao.getByRole('radio', { name: 'Chamada de vídeo com o cliente' }).check()
-  await verificacao.getByRole('checkbox', { name: 'A alteração vai em contrato novo' }).check()
+  await page.getByLabel('Telefone / WhatsApp *').fill('(11) 90000-0044')
+  await expect(page.getByRole('group', { name: 'Mudou o telefone: como você confirmou que é o cliente?' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect(page.getByText('Alterações salvas. Ficaram no histórico.')).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Mudou o telefone (chamada de vídeo com o cliente; em contrato novo): «(11) 92222-1111» → «(11) 90000-0044»')
 })
 
 test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva, em outro computador; o contato anterior é avisado', async ({ page, browser }) => {

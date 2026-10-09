@@ -1,5 +1,5 @@
 {
-  "id": "f71831b9-41cd-47c3-bbec-40ede471e77c",
+  "id": "b14875db-4016-4e40-bf59-3f474ff3bfbb",
   "prevId": "2f3fb4a9-543e-4137-a40f-81f783193945",
   "version": "7",
   "dialect": "postgresql",
@@ -1029,6 +1029,58 @@
       },
       "isRLSEnabled": true
     },
+    "public.segunda_ficha_medica": {
+      "name": "segunda_ficha_medica",
+      "schema": "",
+      "columns": {
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "medicos": {
+          "name": "medicos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lida": {
+          "name": "lida",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "segunda_ficha_medica_pessoa_id_pessoa_id_fk": {
+          "name": "segunda_ficha_medica_pessoa_id_pessoa_id_fk",
+          "tableFrom": "segunda_ficha_medica",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.tarefa_recepcao": {
       "name": "tarefa_recepcao",
       "schema": "",
@@ -1490,6 +1542,71 @@
           "value": "\"caso\".\"desfecho\" in ('deferido', 'procedente_total', 'procedente_parcial', 'improcedente', 'extinto_sem_merito', 'desistencia')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.contrato_recepcao": {
+      "name": "contrato_recepcao",
+      "schema": "",
+      "columns": {
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "pessoa_id": {
+          "name": "pessoa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "contrato_recepcao_caso_id_caso_id_fk": {
+          "name": "contrato_recepcao_caso_id_caso_id_fk",
+          "tableFrom": "contrato_recepcao",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contrato_recepcao_pessoa_id_pessoa_id_fk": {
+          "name": "contrato_recepcao_pessoa_id_pessoa_id_fk",
+          "tableFrom": "contrato_recepcao",
+          "tableTo": "pessoa",
+          "columnsFrom": [
+            "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.ficha_atendimento": {
@@ -4416,121 +4533,6 @@
           "value": "\"rodada_vigilia\".\"situacao\" in ('prevista', 'rodando', 'ok', 'falhou', 'nao_rodou')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.acervo_trecho": {
-      "name": "acervo_trecho",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "origem": {
-          "name": "origem",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referencia": {
-          "name": "referencia",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "beneficio": {
-          "name": "beneficio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "texto": {
-          "name": "texto",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "so_juridico": {
-          "name": "so_juridico",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(1536)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hash": {
-          "name": "hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "acervo_trecho_vetor": {
-          "name": "acervo_trecho_vetor",
-          "columns": [
-            {
-              "expression": "embedding",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "vector_cosine_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "hnsw",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "acervo_trecho_caso_id_caso_id_fk": {
-          "name": "acervo_trecho_caso_id_caso_id_fk",
-          "tableFrom": "acervo_trecho",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "acervo_trecho_hash_unique": {
-          "name": "acervo_trecho_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "hash"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.configuracao": {
