@@ -38,6 +38,8 @@ test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situ
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Portao Teste' })
   await janela.getByLabel('Modelo').selectOption('boas-vindas')
+  // O modelo chega do servidor e troca o texto: escrever antes dele perde o que foi escrito (falhava com a CI lenta).
+  await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Boas-vindas ao escritório GGV\./)
   await janela.getByRole('textbox').fill('O pedido foi indeferido. Não conte ao perito que voltou a trabalhar.')
   await expect(janela.getByRole('list', { name: 'A IA aponta' })).toContainText('Termo jurídico "indeferido": diga "negado".')
   await expect(janela.getByText('Nunca oriente a esconder ou mudar a situação real (G11).')).toBeVisible()
