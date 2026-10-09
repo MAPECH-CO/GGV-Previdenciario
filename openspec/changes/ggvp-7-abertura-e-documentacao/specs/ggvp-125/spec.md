@@ -116,6 +116,19 @@ Nas fichas do servidor, guardar e renovar a senha do gov.br SHALL mandar a senha
 - **Quando** digita a senha e guarda
 - **Então** a senha está cifrada no cofre do portal, e a ficha mostra só que está no cofre
 
+### Requirement: Bloco 3b · Telefone e e-mail: o lead troca livre; o cliente, só com a verificação
+Decisão do Pedro em 08/10, na revisão: o lead, ainda sem contrato, SHALL trocar telefone e e-mail livremente, no cadastro e na edição da ficha. Para cliente, a troca de telefone e e-mail SHALL pedir a verificação da GGVP-111 (cliente verificado por chamada de vídeo ou no escritório, em contrato novo) em toda tela que muda esses campos, inclusive o cadastro: nenhuma tela contorna a trava. A regra SHALL ser uma só para a tela e o servidor.
+
+#### Scenario: Lead troca o telefone no cadastro
+- **Dado** um lead do balcão, depois da entrevista
+- **Quando** a Atendimento cadastra o lead com outro telefone
+- **Então** o telefone muda e o valor anterior fica no histórico, sem pedir verificação
+
+#### Scenario: Cliente não troca o telefone pelo cadastro
+- **Dado** a ficha de quem já é cliente
+- **Quando** o cadastro chega com outro telefone, sem a verificação
+- **Então** nada muda, a recusa fica no histórico, e a tela avisa que o telefone só muda com o cliente verificado
+
 ### Requirement: Bloco 3c · A segunda ficha fica no banco, com a seção médica só no Jurídico
 A leitura da segunda ficha em papel (simulada até o scanner e a IA entrarem) e o salvar da segunda ficha SHALL gravar no servidor, com as regras do Pedro: a ficha guarda a segunda ficha sem os campos médicos, e a seção médica SHALL ficar à parte, só para quem tem `dado_saude.ver_detalhe`. A tela do Jurídico que mostra a seção médica SHALL buscá-la ao abrir, e cada leitura SHALL ficar em `acesso_dado_sensivel`; a seção médica MUST NOT ficar guardada no navegador nem ir à cópia das telas. No tablet, campo médico que volta em branco MUST NOT apagar o que já estava salvo. A leitura simulada do papel MUST NOT dar a senha do gov.br como guardada no cofre do portal.
 
@@ -164,3 +177,16 @@ A assinatura do contrato do caso SHALL gravar no servidor, pelo ZapSign (simulad
 - **Dado** o contrato gerado de um cliente com entrevista presencial
 - **Quando** a Atendimento imprime o kit, digitaliza o assinado e conclui
 - **Então** o contrato do banco fica assinado em papel e segue para a leitura; sem a digitalização, não conclui; com entrevista por vídeo, o papel não é oferecido
+
+### Requirement: Bloco 4c · A leitura, a conferência e a cópia do contrato ficam no banco do portal
+Depois de assinado, o contrato SHALL seguir no servidor com as regras do Pedro: a leitura da IA (ainda a de exemplo) SHALL ser feita no servidor, nunca vir da tela, e decidir entre a conferência do Atendimento e a cópia; a conferência SHALL seguir para a cópia ou voltar a preparar com o que corrigir, guardando a versão assinada no histórico; a cópia SHALL registrar a impressão, a visita marcada na agenda da ficha (a anterior fica remarcada) e a entrega, só com a confirmação, a data e quem recebeu, levando o caso ao checklist do benefício.
+
+#### Scenario: Conferência e cópia
+- **Dado** o contrato assinado em papel de um cliente do servidor
+- **Quando** a IA aponta a página cortada, a Atendimento confere que está certo, imprime a cópia e registra a entrega
+- **Então** o contrato do banco fica entregue e o caso segue para o checklist do benefício; outra sessão vê o mesmo
+
+#### Scenario: Corrigir e reenviar
+- **Dado** o contrato assinado com pendência
+- **Quando** a Atendimento responde que não está certo, com o que corrigir
+- **Então** o contrato volta a preparar no banco, a versão assinada fica no histórico, e a nova versão é gerada pelo mesmo caminho

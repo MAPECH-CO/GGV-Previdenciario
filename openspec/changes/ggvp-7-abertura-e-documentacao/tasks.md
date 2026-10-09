@@ -173,4 +173,20 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.38 Servidor: `POST /api/processos/:id/contrato/zapsign`, `/tentativas` (G15: a tarefa da sênior no banco), `/zapsign/retorno-simulado`, `/impressao`, `/digitalizacao` e `/assinatura-em-papel`; testes.
 - [x] 125.39 Telas: enviar, tentar de novo, simular o retorno, imprimir, digitalizar e concluir chamando a API para os contratos do servidor; o arquivo assinado na pasta da cópia daqui; testes.
 - [x] 125.40 Playwright: do contrato gerado ao assinado pelo ZapSign e ao assinado em papel, visto de outra sessão.
-- [ ] 125.41 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 125.41 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 4c · Ler, conferir e entregar a cópia
+
+- [x] 125.42 Telas do Pedro: `visitaDaCopia` e a leitura de exemplo vão para `regras/contratoDoCaso.ts`, para o servidor usar as mesmas.
+- [x] 125.43 Contratos: verificação do contrato, visita e entrega da cópia (o aviso usa a mensagem do bloco 2).
+- [x] 125.44 Servidor: `POST /api/processos/:id/contrato/leitura-simulada`, `/verificacao`, `/conferencia/aviso`, `/copia/impressao`, `/copia/visita` e `/copia/entrega`; testes.
+- [x] 125.45 Telas: a leitura, a conferência, o aviso e a cópia chamando a API para os contratos do servidor; a página corrigida na pasta da cópia daqui; testes.
+- [x] 125.46 Playwright: do assinado em papel à leitura, à conferência e à cópia entregue, visto de outra sessão.
+- [x] 125.47 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Revisão do bloco 3b · telefone do lead e do cliente (revisor, 08/10)
+
+- [x] 125.48 Trazer a correção do revisor (decisão do Pedro, 08/10): a regra única do contato não pede verificação ao lead; os testes dele de servidor, tela e navegador.
+- [x] 125.49 Servidor: o cadastro (`PUT /api/fichas/:id/cadastro`) passa a ficha de cliente pela trava do contato, como a edição da ficha; teste do lead que troca e do cliente que não troca.
+- [x] 125.50 O teste do cadastro volta a trocar o telefone do lead sem a verificação (sai o ajuste da junção com a main).
+- [x] 125.51 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
