@@ -91,3 +91,42 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
 - **Aprovação sem tabela nova.** A aprovação é uma `decisao` (passo `DP.00`, tipo `recomendacao_pericia`) com o que a advogada aprovou em JSON na justificativa (com o id da perícia) e a chamada da IA em `sugestao_ia`. A tarefa fecha quando nenhuma perícia do caso espera aprovação.
 - **Permissões que já existem.** Ver: `dado_saude.ver_detalhe` (Jurídico), porque a recomendação sai do parecer e dos laudos; aprovar: `pericia.decidir` (advogada), a mesma de "Precisa de perícia?". Sem versão nova da matriz.
 - **Sem o perito.** O perito ainda não é identificado (GGVP-59); o conteúdo diz "perito não identificado" e a recomendação sai sem a jurimetria dele.
+
+## GGVP-41 · Medir ganho e perda e gravar no acervo (parte 1)
+
+### Context
+- O caso ganho já entra em `processo_acervo` (fonte `portal`) na ida ao banco (GGVP-98), sem conferência; o código deixa essa conferência para esta história.
+- "Conferir desfechos" (GGVP-55) lista todo desfecho sem conferência, também os do portal, e só o conferido conta.
+- O estudo de caso (GGVP-19) já tira do caso perdido a matéria, a vara, a tese, o resumo e o aprendizado.
+- O painel (GGVP-75) recorta por benefício, perito, juízo e advogada, com o G22.
+- Na `main`, o desfecho de mérito do caso só existe pela semente e pela desistência: a confirmação do resultado na Justiça é da GGVP-90 e da GGVP-100, com o Lucas.
+
+### Decisions
+1. **Contrato** (`packages/contratos/src/acervo.ts` e `resultados.ts`):
+   - `FichaDoDesfecho`: `materia`, `vara` (ou nula), `tese` (até 80 caracteres, ou nula quando não dá para saber), `resumo` e `licao`.
+   - `ConferenciaDoAcervo.pendentes[]` ganha `ficha`; nula quer dizer "a IA ainda não leu este desfecho".
+   - `ConferirDesfecho` ganha `tese` (opcional, até 80 caracteres): a Sênior confirma ou corrige.
+   - `RECORTES` ganha `tese`, com o rótulo "Tese".
+2. **Banco:** `processo_acervo` ganha `materia`, `vara`, `tese`, `resumo` e `licao` (migração nova; quem entrar depois renumera). Sem tabela nova: a ficha é do registro do acervo.
+3. **A ficha pela IA, em segundo plano** (finalidade `ficha_do_desfecho`, versão 1, JSON validado por `FichaDoDesfecho`, leva dado de saúde, barra CID), em `fluxo/ficha-do-desfecho.ts`, registrada no `preparo` por `rotas/acervo.ts`:
+   - entram os registros do portal (com `caso_id` e desfecho) sem ficha;
+   - o conteúdo leva o benefício, o desfecho, a última decisão de mérito ou o resultado do INSS e a petição aprovada, cortada como no estudo;
+   - a instrução pede a tese jurídica sem doença, diagnóstico nem CID, e a lição numa frase;
+   - antes de gravar, o resumo e a lição passam por `anonimizar`, com o nome do cliente (CA10);
+   - se falhar ou não houver chave, a ficha fica nula, a conferência mostra "a IA ainda não leu este desfecho" e a rodada seguinte tenta de novo (CA11). A falha fica em `chamada_ia`.
+4. **O caso perdido entra pelo estudo** (CA1, CA4, CA9): saindo o estudo `ok`, o caso entra em `processo_acervo` (fonte `portal`, com o desfecho do caso) e a ficha do estudo (o aprendizado vira a lição), anonimizada, sem outra chamada à IA. Um registro por caso: se ele já existe, só completa a ficha que falta.
+5. **Conferência** (CA7): a linha do portal mostra a ficha. "Conferir" leva o desfecho e a tese, a da IA ou a corrigida, e o histórico guarda o antes e o depois, com a tese. Só a ficha conferida entra nas contas.
+6. **Recorte por tese** (CA3, CA5, CA8): `gruposDoRecorte` lê a tese dos registros conferidos com `caso_id`. Sem tese, o caso fica fora do recorte (CA5). Os indicadores e o G22 são os do painel. A matéria é o recorte por benefício e a vara é o recorte por juízo, que já existem.
+7. **Sem dependência nova.**
+
+### Campos de formulário
+- **"Tese"** (Conferir desfechos): texto curto, até 80 caracteres, validado pelo contrato na tela e no servidor. Não é dado da biblioteca `campos` (não é CPF, data, número nem nome).
+- **"Desfecho"**: a mesma seleção de hoje (`DESFECHOS_DO_ACERVO`).
+- **"Recorte"** (Gestão): a mesma seleção, com a opção "Tese".
+
+### Telas
+Nenhuma tela nova. "Conferir desfechos" mostra a ficha na linha do portal e ganha o campo "Tese"; "Resultados" ganha a opção "Tese" no recorte.
+
+### Risks / Trade-offs
+- **Tese em texto livre:** a mesma tese escrita de dois jeitos vira dois grupos; a Sênior corrige na conferência. Um catálogo de teses fica para quando houver dado.
+- **Perdido na Justiça:** hoje só a semente tem desfecho de mérito; o caminho pelo portal vem com a GGVP-100.
