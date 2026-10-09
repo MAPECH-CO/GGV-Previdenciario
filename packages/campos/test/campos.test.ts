@@ -4,7 +4,7 @@ import {
   somenteDigitos, normalizarInteiro, validarInteiro, normalizarDecimal, formatarDecimal,
   normalizarCpf, validarCpf, formatarCpf,
   normalizarCep, validarCep, formatarCep, buscarCep,
-  analisarData, validarData, normalizarData, formatarData, dataParaIso, isoParaData, hojeIso,
+  analisarData, validarData, normalizarData, formatarData, dataParaIso, isoParaData, hojeIso, diaLocal,
   normalizarTelefone, validarTelefone, formatarTelefone,
   validarCnj, formatarCnj, gerarDvCnj,
   validarNb, formatarNb,
@@ -114,4 +114,18 @@ test('nome e e-mail: número não entra em campo de letra', () => {
   assert.equal(validarNome('A'), false);
   assert.equal(validarEmail('ana@ggv.adv.br'), true);
   assert.equal(validarEmail('ana@ggv'), false);
+});
+
+test('diaLocal (GGVP-120 CA10): o momento cai no dia de Brasília; a data pura fica como está', () => {
+  const antes = process.env.TZ;
+  process.env.TZ = 'America/Sao_Paulo';
+  try {
+    // 08/10 às 22h30 em Brasília é 09/10 às 01h30 em UTC.
+    assert.equal(diaLocal('2026-10-09T01:30:00.000Z'), '2026-10-08');
+    assert.equal(diaLocal('2026-10-09T12:00:00.000Z'), '2026-10-09');
+    // Prazo e data de pagamento não têm hora: meia-noite UTC voltaria um dia.
+    assert.equal(diaLocal('2026-10-20'), '2026-10-20');
+  } finally {
+    process.env.TZ = antes;
+  }
 });

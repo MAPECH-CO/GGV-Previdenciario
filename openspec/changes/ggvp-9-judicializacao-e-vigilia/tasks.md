@@ -6,6 +6,7 @@
 - [x] 1.2 Migração 0009 (fila e vínculo da publicação, versão da regra do prazo, reprocessamento da rodada, descartes e reclassificações); verifica com `pnpm --filter @ggv/api test`.
 - [x] 1.3 CA2, CA6, CA7, CA8, CA9 · Prazo judicial em `apps/api/src/fluxo/prazo-judicial.ts` (Lei 11.419, art. 4º; dias úteis; 5 dias sem prazo; feriados nacionais e do tribunal do CNJ; regra versionada); teste com véspera de feriado, fim de semana e suspensão; verifica com `pnpm --filter @ggv/api test`.
 - [x] 1.4 CA3, CA11 (revisão de 07/10) · CA3: a leitura da publicação devolve a data inicial, a final e a regra (`publicacoes.test.ts`; a tela já tinha teste). CA11: teste próprio de dias corridos, com o fim de semana no meio contando (`prazo-inss.test.ts`).
+- [x] 1.5 CA12 (P17, orquestrador 09/10) · `carregarFeriadosSeVazio` em `apps/api/src/fluxo/feriados-ao-subir.ts`, chamada em `principal.ts` só com `DATABASE_URL` (o banco de exemplo dos testes de tela segue vazio); histórico `feriados_carregados` com `quem: sistema`; teste em `feriados-ao-subir.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/fluxo/feriados-ao-subir.test.ts`.
 
 ## GGVP-26 · Receber e casar a publicação pelo número CNJ
 
@@ -84,6 +85,7 @@
 - [x] 12.1 Contratos `PeticaoInicial` e `PedirPeticao` (instruções, opções, citados na ordem com o nome do que falta, texto da versão 1); teste; verifica com `pnpm --filter @ggv/contratos test`.
 - [x] 12.2 CA1, CA2, CA3, CA6, CA9, CA10 · `GET /api/casos/:id/peticao` e `POST /api/casos/:id/peticao/pedido` em `apps/api/src/rotas/peticao.ts` (bloqueado com quem falta; grava o pedido e a versão 1 da advogada com o hash; conclui `D3.05`; nasce "Conferir petição"); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 12.3 Tela "Petição inicial" (`apps/web/src/paginas/Peticao.tsx`), parte do pedido (bloqueio com quem falta, instruções, opções, documentos citados, texto da versão 1), a rota e `D3.05` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 12.4 CA13 (G17, orquestrador 09/10) · `POST /api/casos/:id/peticao/pedido` confere o parecer pela `travaDoParecer` do contrato (ação `pedir-peticao`), lida do banco por `apps/api/src/fluxo/parecer-do-caso.ts`; a recusa vai ao histórico como G17; teste em `peticao.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/peticao.test.ts`.
 
 ## GGVP-67 · Conferir a petição
 
@@ -91,6 +93,10 @@
 - [x] 13.2 CA1 a CA5, CA7 a CA10 · `POST .../peticao/versoes` e `POST .../peticao/versoes/:n/aprovacao` (versões numeradas; as três marcações, G6 e G18; versão nova depois da aprovação volta à conferência e fica no histórico; só a advogada); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 13.3 CA6 e GGVP-71 CA1, CA8, CA11 · pacote em `apps/api/src/fluxo/pacote.ts` com `pdf-lib` (dependência nova): PDF da petição com a assinatura padrão e o hash, a carta e os citados na ordem, imagem vira PDF; gerado na aprovação; teste que abre o PDF gerado e confere as páginas e os metadados; verifica com `pnpm --filter @ggv/api test`.
 - [x] 13.4 CA11 · Tela "Petição inicial", parte da conferência (versão inteira, diferença destacada, as três marcações, "Editar eu mesma") e `D3.06` na Central; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+
+- [x] 13.5 CA12 · `POST .../peticao/versoes/:n/aprovacao` recusa com `faltaCompletar` (a regra da GGVP-22 CA6; 400, sem pacote); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 13.6 CA12 · Tela da petição: "Aprovar" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 13.7 Rodar typecheck, lint, testes e Playwright das duas histórias (GGVP-22 e GGVP-67); colar a saída.
 
 ## GGVP-71 · Pacote, travas e protocolo no tribunal
 

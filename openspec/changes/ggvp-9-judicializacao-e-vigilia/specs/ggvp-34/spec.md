@@ -93,3 +93,16 @@ O prazo do INSS SHALL ser contado em dias corridos e, se o fim cair em dia sem e
 - **Dado** um prazo do INSS
 - **Quando** o sistema conta
 - **Então** usa dias corridos e, se o fim cair em dia sem expediente, passa para o próximo dia útil
+
+### Requirement: CA12 · Os feriados da lei já vêm cadastrados
+Com banco de verdade (homologação e produção) e a tabela de feriados vazia, a API SHALL carregar ao subir os feriados e as suspensões da lei de 2026 e 2027 (os mesmos do "carregar" da Configuração, GGVP-146 parte 3), com o registro no histórico; com algum feriado já na tabela, MUST NOT mexer, para não refazer o que a Sênior tirou ou acrescentou (P17 do roteiro; orquestrador, 09/10).
+
+#### Scenario: CA12 · Primeira subida
+- **Dado** a homologação com a tabela de feriados vazia
+- **Quando** a API sobe
+- **Então** os feriados da lei de 2026 e 2027 entram, e o prazo passa a pular os feriados
+
+#### Scenario: CA12 · Lista já mexida
+- **Dado** a tabela com algum feriado
+- **Quando** a API sobe de novo
+- **Então** nada muda
