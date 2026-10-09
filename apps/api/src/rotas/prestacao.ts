@@ -28,6 +28,7 @@ export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebime
 export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
 export const MSG_ANTES_DO_RECEBIMENTO = 'Registre o recebimento da prestação atual antes de avisar o cliente.'
 export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
+export const MSG_DATA_PASSADA = 'A ida ao banco não pode ser marcada numa data ou hora que já passou.'
 export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
 export const TITULO_LEVAR = 'Levar ao banco'
 /** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
@@ -292,6 +293,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.tarefaDoBanco) return negar(resposta, 409, MSG_ANTES_DA_PRESTACAO)
     const d = entrada.data
+    // CA6: hora de Brasília (sem horário de verão desde 2019). A tela limita a data a partir de hoje; o servidor recusa
+    // também a hora de hoje que já passou.
+    const quando = new Date(`${d.data}T${d.hora}:00-03:00`)
+    if (quando < agora()) return negar(resposta, 400, MSG_DATA_PASSADA)
     const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
     if (!u || !u.perfis.some((p) => ATENDIMENTO.includes(p))) return negar(resposta, 400, MSG_ACOMPANHANTE)
     const quem = pedido.usuario!.id
@@ -303,8 +308,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         pessoaId: s.c!.pessoaId,
         casoId,
         tipo: 'ida_ao_banco',
-        // Hora de Brasília (sem horário de verão desde 2019).
-        quando: new Date(`${d.data}T${d.hora}:00-03:00`),
+        quando,
         local: d.local,
         acompanhanteId: d.acompanhanteId,
         criadoPor: quem,

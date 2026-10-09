@@ -12,7 +12,8 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
   await page.getByLabel('Telefone / WhatsApp *').fill('11944447788')
   await page.getByLabel('O que a pessoa pretende *').fill('Quer saber do BPC do idoso.')
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
-  await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
+  // O último dia às 16:00: os testes da Recepção ocupam os quatro horários do primeiro dia (o banco do teste é um só).
+  await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').last().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
   await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Ligacao Teste' }).getByRole('button', { name: 'Enviar' }).click()
