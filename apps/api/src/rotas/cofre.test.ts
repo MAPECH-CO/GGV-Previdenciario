@@ -5,7 +5,7 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, configuracao, credencialGovbr, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { apagarSenhasVencidas } from '../fluxo/cofre.ts'
 import { criarServidor } from '../servidor.ts'
-import { COOKIE } from '../sessao/rotas.ts'
+import { COOKIE, MSG_TRAVADO } from '../sessao/rotas.ts'
 import { MSG_COFRE_SEM_TAREFA } from './inss.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -131,5 +131,50 @@ describe('GGVP-103 · cofre de senhas do gov.br', () => {
     expect([restantes.includes(vencida), restantes.includes(recente), restantes.includes(aberta)]).toEqual([false, true, true])
     const [apagada] = (await eventos()).filter((e) => e.acao === 'cofre_senha_apagada')
     expect([apagada.quem, apagada.alvo]).toEqual(['sistema', `pessoa:${vencida}`])
+  })
+})
+
+describe('GGVP-103 · revelar para responder a exigência e a trava (orquestrador, 09/10)', () => {
+  const tarefaDaResposta = () => banco.insert(tarefa).values({ casoId, passo: 'D2.05r', titulo: 'Responder exigência no portal do INSS', perfilDono: 'advogada' })
+  const revelarComo = (apelido: string, senhaDoPortal = SENHA) => chamar(apelido, 'POST', `/api/casos/${casoId}/cofre`, { senhaDoPortal })
+  /** Uma sessão só: entrar de novo com a senha certa zera a contagem, como no login. */
+  const naMesmaSessao = async (apelido: string) => {
+    const cookies = await cookieDe(apelido)
+    return (senhaDoPortal = SENHA) => app.inject({ method: 'POST', url: `/api/casos/${casoId}/cofre`, cookies, payload: { senhaDoPortal } })
+  }
+
+  it('CA12 · a advogada revela para responder a exigência no portal; o motivo fica no histórico; sem a tarefa, não', async () => {
+    await cadastrar('ana')
+    expect((await revelarComo('gabi')).json().erro).toBe(MSG_COFRE_SEM_TAREFA)
+    await tarefaDaResposta()
+    const r = await revelarComo('gabi')
+    expect([r.statusCode, r.json().senha]).toEqual([200, SENHA_GOV])
+    const lida = (await eventos()).find((e) => e.acao === 'cofre_senha_lida')!
+    expect(lida.detalhe).toMatchObject({ passo: 'D2.05r', motivo: 'Responder exigência no portal do INSS' })
+    // Quem não trata a exigência nem protocola segue sem revelar.
+    expect((await revelarComo('ana')).statusCode).toBe(403)
+  })
+
+  it('CA13 · na 5ª senha do portal errada, trava por 15 minutos, mesmo com a certa; depois, volta', async () => {
+    await cadastrar('ana')
+    await tarefaDoProtocolo()
+    const igor = await naMesmaSessao('igor')
+    for (let i = 1; i <= 4; i++) expect((await igor('errada')).statusCode).toBe(403)
+    const quinta = await igor('errada')
+    expect([quinta.statusCode, quinta.json().erro]).toEqual([423, MSG_TRAVADO])
+    expect((await igor()).statusCode).toBe(423)
+    expect((await eventos()).some((e) => e.acao === 'cofre_travado')).toBe(true)
+    relogio = new Date(relogio.getTime() + 16 * 60_000)
+    expect((await igor()).statusCode).toBe(200)
+  })
+
+  it('CA13 · acertar zera a contagem: erros de antes não somam com os de depois', async () => {
+    await cadastrar('ana')
+    await tarefaDoProtocolo()
+    const igor = await naMesmaSessao('igor')
+    for (let i = 1; i <= 4; i++) await igor('errada')
+    expect((await igor()).statusCode).toBe(200)
+    const [u] = await banco.select({ tentativas: usuario.tentativasErradas }).from(usuario).where(eq(usuario.email, 'igor@exemplo.ggv'))
+    expect(u.tentativas).toBe(0)
   })
 })

@@ -6,6 +6,7 @@ import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/ca
 import { DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { Moldura } from './Moldura.tsx'
+import { SenhaDoGov } from './Protocolar.tsx'
 import styles from './Passo.module.css'
 
 const ROTULO_PEDE = { documentos: 'Documentos', pericia: 'Perícia', pericia_e_documentos: 'Perícia e documentos' } as const
@@ -317,6 +318,8 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
         )
       )}
 
+      {/* GGVP-103 CA12: a senha do gov.br do cliente, pelo cofre, para entrar no portal e responder. */}
+      {x.podeResponder && <SenhaDoGov casoId={casoId} />}
       {x.podeResponder && (
         <ResponderNoPortal
           casoId={casoId}

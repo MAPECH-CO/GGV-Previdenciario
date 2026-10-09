@@ -129,6 +129,8 @@ describe('Responder no portal (GGVP-39, advogada)', () => {
     servidor({ ...comCard, podeCumprir: false, podeResponder: true, itens: [{ ...comCard.itens[0], situacao: 'cumprido', prova: 'cad.pdf' }] }, [201, { ok: true, aberto: 'vigilia' }])
     render(<TratarExigencia casoId={CASO} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Registrar a resposta' }))
+    // GGVP-103 CA12: a senha do gov.br do cliente, pelo cofre, para entrar no portal.
+    expect(screen.getByRole('button', { name: 'Ver a senha do gov.br' })).toBeTruthy()
     expect((await screen.findByRole('alert')).textContent).toBe('Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).')
     fireEvent.change(screen.getByLabelText('Comprovante da resposta'), { target: { files: [new File(['%PDF'], 'r.pdf', { type: 'application/pdf' })] } })
     fireEvent.click(screen.getByRole('button', { name: 'Registrar a resposta' }))

@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import fastifyMultipart from '@fastify/multipart'
 import bcrypt from 'bcryptjs'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply } from 'fastify'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   CasoParaProtocolo,
   DecidirPericia,
@@ -11,6 +11,7 @@ import {
   SEGUNDOS_SENHA,
   TIPOS_COMPROVANTE,
   TarefaDaCentral,
+  pode,
   type Erro,
   type SenhaDoCofre,
 } from '@ggv/contratos'
@@ -27,6 +28,7 @@ import {
   pessoa,
   requerimentoInss,
   tarefa,
+  usuario,
 } from '../banco/esquema.ts'
 import type { Cofre } from '../cofre.ts'
 import { okDaSenior } from '../fluxo/conferencia.ts'
@@ -36,7 +38,8 @@ import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
-import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
+import { aposErro, estaTravado } from '../sessao/regras.ts'
+import { MSG_TRAVADO, exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
@@ -328,8 +331,20 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
   })
 
   // GGVP-27 CA6 (G9): a senha do gov.br só depois de a pessoa confirmar a própria senha do portal; tempo limitado; histórico.
-  app.post<{ Params: { id: string }; Body: { senhaDoPortal?: string } }>('/api/casos/:id/cofre', comCaso, async (pedido, resposta) => {
+  // GGVP-103 CA12 (orquestrador, 09/10): além do Jurídico administrativo, revela quem trata a exigência do INSS, porque
+  // responde no portal do INSS do cliente (D2.05r). A matriz não muda: vale a permissão de tratar a exigência.
+  const soProtocolo = exigir(banco, 'protocolo_inss.registrar', agora)
+  const podeRevelar = {
+    preHandler: async (pedido: FastifyRequest, resposta: FastifyReply) => (pode(pedido.perfilAtivo, 'exigencia_inss.tratar') ? undefined : soProtocolo.call(app, pedido, resposta)),
+  }
+  app.post<{ Params: { id: string }; Body: { senhaDoPortal?: string } }>('/api/casos/:id/cofre', podeRevelar, async (pedido, resposta) => {
     const quem = pedido.usuario!
+    // GGVP-103 CA13: a senha do portal errada conta para a mesma trava do login (5 erros, 15 minutos), mesmo com a certa depois.
+    const [conta] = await banco.select({ tentativas: usuario.tentativasErradas, travadoAte: usuario.travadoAte }).from(usuario).where(eq(usuario.id, quem.id))
+    if (estaTravado(conta?.travadoAte ?? null, agora())) {
+      await historico(quem.id, 'cofre_travado', pedido, `caso:${pedido.params.id}`)
+      return negar(resposta, 423, MSG_TRAVADO)
+    }
     // GGVP-103 CA5: só com tarefa aberta no caso que use o gov.br; a tarefa é o motivo que vai para o histórico (CA6).
     const [tarefaDoGov] = await banco
       .select({ passo: tarefa.passo, titulo: tarefa.titulo })
@@ -340,9 +355,12 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       return negar(resposta, 403, MSG_COFRE_SEM_TAREFA)
     }
     if (!pedido.body?.senhaDoPortal || !(await bcrypt.compare(pedido.body.senhaDoPortal, quem.senhaHash))) {
-      await historico(quem.id, 'cofre_negado', pedido, `caso:${pedido.params.id}`)
-      return negar(resposta, 403, 'A senha do portal não confere.')
+      const depois = aposErro(conta?.tentativas ?? 0, agora())
+      await banco.update(usuario).set(depois).where(eq(usuario.id, quem.id))
+      await historico(quem.id, depois.travadoAte ? 'cofre_travado' : 'cofre_negado', pedido, `caso:${pedido.params.id}`)
+      return depois.travadoAte ? negar(resposta, 423, MSG_TRAVADO) : negar(resposta, 403, 'A senha do portal não confere.')
     }
+    if (conta?.tentativas) await banco.update(usuario).set({ tentativasErradas: 0 }).where(eq(usuario.id, quem.id))
     const [credencial] = await banco
       .select({ senhaCifrada: credencialGovbr.senhaCifrada, iv: credencialGovbr.iv, pessoaId: credencialGovbr.pessoaId })
       .from(caso)
