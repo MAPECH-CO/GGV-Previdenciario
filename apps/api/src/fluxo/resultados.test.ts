@@ -165,6 +165,25 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     expect((await painelDeResultados(banco, { ...PERIODO, recorte: 'beneficio' })).recorte?.grupos).toHaveLength(1)
   })
 
+  it('GGVP-41 CA3, CA5, CA7 · o recorte por tese usa só a ficha conferida pela Sênior; sem tese ou sem conferência, fora', async () => {
+    const [helena] = await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'Helena (exemplo)', senhaHash: 'x' }).returning()
+    const TESE = 'Renda per capita acima de 1/4 com gastos'
+    const ganho = await novoCaso({ desfecho: 'procedente_total', encerradoEm: as('2026-08-01') })
+    const perdido = await novoCaso({ desfecho: 'improcedente', encerradoEm: as('2026-08-02') })
+    const semTese = await novoCaso({ desfecho: 'procedente_parcial', encerradoEm: as('2026-08-03') })
+    const naoConferido = await novoCaso({ desfecho: 'procedente_total', encerradoEm: as('2026-08-04') })
+    await banco.insert(processoAcervo).values([
+      { casoId: ganho, desfecho: 'procedente_total', fonte: 'portal', tese: TESE, desfechoConferidoPor: helena.id },
+      { casoId: perdido, desfecho: 'improcedente', fonte: 'portal', tese: TESE, desfechoConferidoPor: helena.id },
+      { casoId: semTese, desfecho: 'procedente_parcial', fonte: 'portal', tese: null, desfechoConferidoPor: helena.id },
+      { casoId: naoConferido, desfecho: 'procedente_total', fonte: 'portal', tese: 'Outra tese' },
+    ])
+    const porTese = (await painelDeResultados(banco, { ...PERIODO, recorte: 'tese' })).recorte
+    expect(porTese?.grupos.map((g) => [g.nome, g.indicadores.find((i) => i.chave === 'procedencia')])).toEqual([
+      [TESE, expect.objectContaining({ casos: 2, valor: 0.5, situacao: 'ok' })],
+    ])
+  })
+
   it('GGVP-55 CA3 · a base do acervo: processos, conferidos, os que aguardam conferência e a data da entrada mais recente', async () => {
     const [helena] = await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'Helena (exemplo)', senhaHash: 'x' }).returning()
     await banco.insert(processoAcervo).values([

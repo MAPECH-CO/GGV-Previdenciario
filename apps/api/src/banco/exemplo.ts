@@ -330,12 +330,17 @@ export async function semearExemplos(banco: Banco) {
         clienteAvisadoEm: diasAtras(1),
       })
   }
+  const encerrados: Record<string, string> = {}
   for (const [nome, desfecho, causaDesfecho] of [
     ['Sônia Teles (exemplo)', 'extinto_sem_merito', 'Não cumpriu determinação do juízo (exemplo)'],
     ['Renato Dias (exemplo)', 'procedente_parcial', null],
   ] as const) {
     const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
-    await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
+    const [cj] = await banco
+      .insert(caso)
+      .values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
+      .returning()
+    encerrados[nome] = cj.id
   }
 
   // Acervo (GGVP-55): três processos da base histórica já conferidos pela Sênior, quatro do lote de 02/10 com o desfecho
@@ -351,6 +356,20 @@ export async function semearExemplos(banco: Banco) {
     { numeroCnj: '00011234520184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
+    // Medir ganho e perda (GGVP-41): o processo do Renato entrou no acervo com a ficha da IA e espera a conferência da
+    // Sênior; a data é a do lote, para não mudar a base do acervo.
+    {
+      casoId: encerrados['Renato Dias (exemplo)'],
+      beneficio: 'bpc_loas_deficiente',
+      desfecho: 'procedente_parcial',
+      fonte: 'portal',
+      criadoEm: lote,
+      materia: 'BPC/LOAS da pessoa com deficiência',
+      vara: 'JEF de São Paulo (exemplo)',
+      tese: 'Impedimento de longo prazo com renda acima de 1/4',
+      resumo: 'O juiz concedeu o benefício pela perícia judicial e pelo estudo social, sem os atrasados do primeiro ano. (exemplo)',
+      licao: 'Juntar o estudo social com os gastos da casa já no requerimento. (exemplo)',
+    },
   ])
 
   // Juízo identificado (GGVP-64): mais três processos conferidos no JEF de São Paulo (TRF3 · 6301), a unidade dos processos
@@ -369,6 +388,34 @@ export async function semearExemplos(banco: Banco) {
     { casoId: cm.id, beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, dataDecisao: '2026-04-14', fonte: 'portal', criadoEm: base },
     { numeroCnj: '50001048820234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
     { numeroCnj: '50001057320234036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_parcial', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+  ])
+  // Juízo identificado, parte 2: a vara e o juiz conferidos no processo da Marta e duas decisões de mérito no mesmo JEF,
+  // para a IA tirar os entendimentos recorrentes (a rodada lê sozinha quando há a chave da IA).
+  await banco.update(caso).set({ vara: '1ª Vara-Gabinete do JEF de São Paulo (exemplo)', juiz: 'Dra. Helena Prates (exemplo)' }).where(eq(caso.id, cm.id))
+  const [pr] = await banco.insert(pessoa).values({ nome: 'Rui Campos (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cr] = await banco.insert(caso).values({ pessoaId: pr.id, beneficio: 'bpc_loas_deficiente', fase: 'judicial', advogadaResponsavelId: advogada.id }).returning()
+  await banco.insert(identificadorCaso).values({ casoId: cr.id, tipo: 'cnj', valor: '00045678220254036301' })
+  const sentenca = (resultado: string) =>
+    `JEF de São Paulo, 1ª Vara-Gabinete. Juíza Federal Dra. Helena Prates. Sentença: ${resultado} o pedido de BPC. (exemplo)`
+  await banco.insert(publicacao).values([
+    {
+      fonte: 'exemplo',
+      casoId: cm.id,
+      numeroCnj: '00034567120254036301',
+      disponibilizadaEm: '2026-04-14',
+      classe: 'merito',
+      hash: 'exemplo-merito-marta',
+      texto: sentenca('o estudo social atualizado comprovou que a renda da casa não cobre os gastos com o tratamento. JULGO PROCEDENTE'),
+    },
+    {
+      fonte: 'exemplo',
+      casoId: cr.id,
+      numeroCnj: '00045678220254036301',
+      disponibilizadaEm: '2026-06-02',
+      classe: 'merito',
+      hash: 'exemplo-merito-rui',
+      texto: sentenca('sem estudo social atualizado, não há prova da renda da casa. JULGO IMPROCEDENTE'),
+    },
   ])
 
   // Documentação médica no servidor (GGVP-132): o laudo de LOAS da Lúcia já foi lido e classificado e espera o parecer

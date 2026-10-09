@@ -2,11 +2,12 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, identificadorCaso, pessoa, processoAcervo, usuario } from '../banco/esquema.ts'
+import { caso, identificadorCaso, juizo as juizoTabela, pessoa, processoAcervo, usuario } from '../banco/esquema.ts'
 import { SENHA_DE_EXEMPLO } from '../banco/exemplo.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { juizosParaLer } from '../fluxo/juizo.ts'
 import { MSG_SEM_NUMERO } from './juizo.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -47,6 +48,14 @@ describe('GGVP-64 · GET /api/casos/:id/juizo', () => {
     }
   })
 
+  it('parte 2 · CA1, CA2 · a vara e o juiz conferidos no caso e os entendimentos do juízo, com os processos de exemplo', async () => {
+    expect((await juizo('gabi')).json()).toMatchObject({ vara: null, juiz: null, entendimentos: [] })
+    await banco.update(caso).set({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' }).where(eq(caso.id, casoId))
+    const entendimentos = [{ texto: 'Exige o estudo social atualizado.', processos: ['00000011220204036301'] }]
+    await banco.insert(juizoTabela).values({ tribunal: 'TRF3', nome: 'TRF3 · 6301', entendimentos, entendimentosEm: AGORA })
+    expect((await juizo('gabi')).json()).toMatchObject({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo', entendimentos })
+  })
+
   it('G22 · a jurimetria é interna: o Atendimento e o Financeiro não veem', async () => {
     for (const apelido of ['ana', 'julia']) expect((await juizo(apelido)).statusCode, apelido).toBe(403)
   })
@@ -62,6 +71,11 @@ describe('GGVP-64 · GET /api/casos/:id/juizo', () => {
       const j = r.json()
       expect(j.porBeneficio.find((b: { beneficio: string }) => b.beneficio === 'bpc_loas_deficiente').texto).toBe('67% em 3 processos · base de 08/10')
       expect(j.tempoAteASentenca).toEqual({ meses: 12, processos: 1 })
+      // Parte 2: o processo da Marta tem a vara e o juiz conferidos, e o JEF de exemplo tem decisões para a IA ler.
+      const [marta] = await semeado.banco.select({ casoId: identificadorCaso.casoId }).from(identificadorCaso).where(eq(identificadorCaso.valor, '00034567120254036301'))
+      const daMarta = (await servidor.inject({ method: 'GET', url: `/api/casos/${marta.casoId}/juizo`, cookies: { [COOKIE]: entrada.cookies.find((c) => c.name === COOKIE)!.value } })).json()
+      expect([daMarta.vara, daMarta.juiz]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo (exemplo)', 'Dra. Helena Prates (exemplo)'])
+      expect(await juizosParaLer(semeado.banco)).toContain('TRF3 · 6301')
     } finally {
       await semeado.fechar()
     }

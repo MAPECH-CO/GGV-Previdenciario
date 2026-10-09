@@ -56,12 +56,19 @@ export const perito = pgTable('perito', {
   criadoEm: criadoEm(),
 }).enableRLS()
 
+/**
+ * O juízo da jurimetria (GGVP-64): `nome` é o rótulo do número CNJ, como "TRF3 · 6301". Parte 2 (CA2, CA5): os
+ * entendimentos recorrentes que a IA tirou das decisões de mérito do juízo, com os processos de exemplo.
+ */
 export const juizo = pgTable(
   'juizo',
   {
     id: id(),
     tribunal: text('tribunal').notNull(),
     nome: text('nome').notNull(),
+    entendimentos: jsonb('entendimentos'),
+    /** Quando a IA leu; decisão de mérito mais nova que isso, a rodada lê de novo. */
+    entendimentosEm: momento('entendimentos_em'),
     criadoEm: criadoEm(),
   },
   (t) => [unique('juizo_unico').on(t.tribunal, t.nome)],
@@ -79,6 +86,12 @@ export const processoAcervo = pgTable('processo_acervo', {
   desfechoConferidoPor: uuid('desfecho_conferido_por').references(() => usuario.id),
   dataDecisao: date('data_decisao'),
   fonte: text('fonte').notNull(),
+  /** A ficha do desfecho (GGVP-41 CA6), escrita pela IA sem dado pessoal; nula enquanto a IA não leu (CA11). */
+  materia: text('materia'),
+  vara: text('vara'),
+  tese: text('tese'),
+  resumo: text('resumo'),
+  licao: text('licao'),
   criadoEm: criadoEm(),
 }).enableRLS()
 
