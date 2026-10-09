@@ -16,7 +16,7 @@ Cada caminho marcado "teste" tem teste de navegação no navegador, com o login 
 | Sênior | Central da Sênior (Figma 59:609), com as abas do setor | Início, Agenda, Clientes, Processos, Estudos de caso, Roteiros de laudos, a Gestão, Importar planilha | clientes, processos e a fila | sim |
 | Jurídico administrativo | Central do Jurídico administrativo | Início, Agenda | clientes e processos (a fila, quando a Perícia liberar a Central) | sim |
 | Financeiro | Central do Financeiro (Figma 59:863) | Início, Agenda, a Gestão, Financeiro (o painel) | só a fila (não vê o caso) | sim |
-| Sócio | Painel de resultado (GGVP-75), com a busca, o chat e a fila quando há tarefa; o Figma não tem Central do Sócio | Início, Agenda, a Gestão, Financeiro (o painel, só os totais) | só a fila (não vê o caso) | sim |
+| Sócio | Painel de resultado (GGVP-75), com a busca, o chat e a fila quando há tarefa; o Figma não tem Central do Sócio | Início, Agenda, a Gestão, Importar planilha, Financeiro (o painel, só os totais) | só a fila (não vê o caso) | sim |
 
 O topo vem do perfil da sessão em toda tela, não só na Central (GGVP-78): Clientes e Processos depois do Início e da
 Agenda para o líder do Atendimento, a Advogada e a Sênior (no Figma também para o Financeiro, que a matriz ainda não deixa
@@ -45,7 +45,7 @@ na própria busca.
 | Estudos de caso | Advogada e Jurídico administrativo | Nenhum: o link está só no topo da Sênior | anotado (abaixo) |
 | Clientes (GGVP-78): a base de clientes e leads, com busca e filtros | Líder do Atendimento, Advogada e Sênior | Topo → "Clientes" → nome abre a ficha; a contagem abre os processos do cliente | novo, teste |
 | Processos (GGVP-78): todos os processos, com fase, benefício, foro, perito e desfecho | Líder do Atendimento, Advogada e Sênior | Topo → "Processos" → o número abre a página do processo; o autor abre a ficha | novo, teste |
-| Painel Financeiro (GGVP-78, Figma 1930:4): recebido, a receber, a lançar e em atraso, receita por mês e por origem, as pendentes e os lançamentos | Financeiro (tudo) e Sócio (só os totais) | Topo → "Financeiro"; na Central do Financeiro com a fila vazia, "Abrir o painel Financeiro"; "Lançar" abre o recebimento da prestação | novo, teste |
+| Painel Financeiro (GGVP-78, Figma 1930:4): recebido (a confirmação depois da ida ao banco, GGVP-98 CA9), a receber (lançado e sem a confirmação), a lançar (OK sem lançamento e aguardando OK) e em atraso, receita por mês e por origem, as pendentes e os lançamentos | Financeiro (tudo) e Sócio (só os totais) | Topo → "Financeiro"; na Central do Financeiro com a fila vazia, "Abrir o painel Financeiro"; "Lançar" abre o recebimento da prestação | novo, teste |
 
 ## Os leves
 
@@ -68,6 +68,8 @@ na própria busca.
 | "Ajustar o caso" (P2), "Levar ao banco" (P3) e as outras telas do servidor que faltam | Telas novas | Mateus |
 | Marcar a perícia que o servidor abre (P1, P18) e as tarefas de exemplo sem tela (P4, P5) | Ligação da Perícia no servidor e telas novas | Pedro (GGVP-137), Mateus |
 | Atribuir perfis a uma pessoa (P15) | Tela nova | Mateus |
+| "Honorários recebidos" e "Tempo até o dinheiro" dos Resultados (GGVP-75) passaram a contar a confirmação do recebimento, depois da ida ao banco, como o painel Financeiro; antes contavam o "Receber e lançar" | O mesmo número nas duas telas do Sócio. Confirmar na review | Lucas |
+| A junção com a GGVP-96 (PR #25): ela tira `gestao.ver` do Financeiro e cria `resultados.ver`; dá `valores.ver` ao Sócio | Quem mesclar por último: em `itensDoPerfil`, o item Resultados para quem tem `resultados.ver` sem `gestao.ver` (o Financeiro), e os testes do topo do Financeiro e o e2e do Sócio (com `valores.ver`, ele vê as linhas) | quem mesclar |
 | A busca da Central do Jurídico administrativo procurar também na fila (passar a fila ao campo, uma linha) | A Central está com a Perícia | grupo da Perícia |
 | "Estudos de caso" no topo da Advogada e do Jurídico administrativo (os dois têm `estudo.ver`) | Achado na auditoria, fora da lista desta leva; a Central do Jurídico administrativo está com a Perícia | Pedro |
 | A página do processo de um caso do servidor mostra só o que a cópia das telas tem | A página do processo está com um grupo ativo | Pedro |

@@ -7,14 +7,16 @@ import { z } from 'zod'
 export const Mes = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês inválido.')
 
 /**
- * Aguardando OK: a advogada ainda não deu o OK na prestação (ou corrige a divergência), e o aviso ao cliente espera (G8).
- * A receber: o OK saiu e o Financeiro ainda não registrou o recebimento. Atrasado: a receber com o prazo de pagamento
- * vencido. Recebido: o Financeiro registrou o recebimento.
+ * Os dois passos do Financeiro (GGVP-98): "Receber e lançar" a prestação e, depois da ida ao banco, "Confirmar
+ * recebimento". Aguardando OK: a advogada ainda não deu o OK na prestação (ou corrige a divergência), e o aviso ao cliente
+ * espera (G8). Lançar: o OK saiu e o Financeiro ainda não lançou. A receber: lançada, esperando a ida ao banco e a
+ * confirmação. Atrasado: a receber com o prazo de pagamento vencido. Recebido: o Financeiro confirmou o recebimento.
  */
-export const STATUS_DO_LANCAMENTO = ['aguardando_ok', 'atrasado', 'a_receber', 'recebido'] as const
+export const STATUS_DO_LANCAMENTO = ['aguardando_ok', 'a_lancar', 'atrasado', 'a_receber', 'recebido'] as const
 export type StatusDoLancamento = (typeof STATUS_DO_LANCAMENTO)[number]
 export const ROTULO_STATUS_DO_LANCAMENTO: Record<StatusDoLancamento, string> = {
   aguardando_ok: 'Aguardando OK',
+  a_lancar: 'Lançar',
   atrasado: 'Atrasado',
   a_receber: 'A receber',
   recebido: 'Recebido',
@@ -44,7 +46,7 @@ export const LancamentoFinanceiro = z.object({
   valor: Dinheiro.nullable(),
   /** O prazo de pagamento da prestação. */
   vencimento: Data.nullable(),
-  /** O dia (Brasília) em que o Financeiro registrou o recebimento. */
+  /** O dia (Brasília) em que o Financeiro confirmou o recebimento, depois da ida ao banco (GGVP-98 CA9). */
   recebidoEm: Data.nullable(),
   status: z.enum(STATUS_DO_LANCAMENTO),
   responsavel: z.string(),
@@ -61,10 +63,10 @@ export const PainelFinanceiro = z.object({
   processosAReceber: z.number(),
   emAtraso: Dinheiro,
   processosEmAtraso: z.number(),
-  /** As prestações a lançar: as que esperam o recebimento do Financeiro e as que esperam o OK da advogada. */
+  /** As prestações a lançar: com o OK da advogada e sem o lançamento do Financeiro, mais as que esperam o OK. */
   aLancar: z.number(),
   aguardandoOk: z.number(),
-  /** De janeiro ao mês do período: o recebido (pelo dia do recebimento) e o previsto (pelo prazo de pagamento). */
+  /** De janeiro ao mês do período: o recebido (pelo dia da confirmação) e o previsto (pelo prazo de pagamento). */
   porMes: z.array(z.object({ mes: Mes, recebido: Dinheiro, previsto: Dinheiro })),
   /** O recebido nos 12 meses até o período, por origem; a fatia em pontos percentuais inteiros. */
   porOrigem: z.array(z.object({ origem: z.enum(ORIGENS_DA_RECEITA), valor: Dinheiro, fatia: z.number() })),
@@ -72,8 +74,8 @@ export const PainelFinanceiro = z.object({
 })
 export type PainelFinanceiro = z.infer<typeof PainelFinanceiro>
 
-/** O que o servidor lê do banco para cada caso; o status e as contas saem daqui. */
-export type LinhaDoFinanceiro = Omit<LancamentoFinanceiro, 'status'> & { aguardandoOk: boolean }
+/** O que o servidor lê do banco para cada caso; o status e as contas saem daqui. `lancado`: o "Receber e lançar" feito. */
+export type LinhaDoFinanceiro = Omit<LancamentoFinanceiro, 'status'> & { aguardandoOk: boolean; lancado: boolean }
 
 const centavos = (valor: string | null) => (valor === null ? 0 : Math.round(Number(valor) * 100))
 const reais = (c: number) => (c / 100).toFixed(2)
@@ -86,16 +88,17 @@ export function mesAntes(mes: string, n = 1): string {
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`
 }
 
-export function statusDoLancamento(l: Pick<LinhaDoFinanceiro, 'aguardandoOk' | 'recebidoEm' | 'vencimento'>, hoje: string): StatusDoLancamento {
+export function statusDoLancamento(l: Pick<LinhaDoFinanceiro, 'aguardandoOk' | 'lancado' | 'recebidoEm' | 'vencimento'>, hoje: string): StatusDoLancamento {
   if (l.aguardandoOk) return 'aguardando_ok'
   if (l.recebidoEm) return 'recebido'
+  if (!l.lancado) return 'a_lancar'
   return l.vencimento && l.vencimento < hoje ? 'atrasado' : 'a_receber'
 }
 
 /** As contas do painel (GGVP-78, G19: número é código). `hoje` e `mes` no horário de Brasília. */
 export function montarPainelFinanceiro(linhas: LinhaDoFinanceiro[], mes: string, hoje: string, comLancamentos: boolean): PainelFinanceiro {
   const todas = linhas
-    .map(({ aguardandoOk, ...l }) => ({ ...l, status: statusDoLancamento({ aguardandoOk, ...l }, hoje) }))
+    .map(({ aguardandoOk, lancado, ...l }) => ({ ...l, status: statusDoLancamento({ aguardandoOk, lancado, ...l }, hoje) }))
     .sort((a, b) => STATUS_DO_LANCAMENTO.indexOf(a.status) - STATUS_DO_LANCAMENTO.indexOf(b.status) || (a.vencimento ?? '9').localeCompare(b.vencimento ?? '9') || a.cliente.localeCompare(b.cliente, 'pt-BR'))
   const recebidas = todas.filter((l) => l.status === 'recebido')
   const recebidoEm = (m: string) => soma(recebidas.filter((l) => l.recebidoEm!.startsWith(m)))
@@ -104,6 +107,7 @@ export function montarPainelFinanceiro(linhas: LinhaDoFinanceiro[], mes: string,
   const aReceber = todas.filter((l) => l.status === 'a_receber' || l.status === 'atrasado')
   const atrasadas = todas.filter((l) => l.status === 'atrasado')
   const aguardandoOk = todas.filter((l) => l.status === 'aguardando_ok').length
+  const aLancar = todas.filter((l) => l.status === 'a_lancar').length
   const numeroDoMes = Number(mes.slice(5, 7))
   const meses = Array.from({ length: numeroDoMes }, (_, i) => mesAntes(mes, numeroDoMes - 1 - i))
   const comValor = todas.filter((l) => l.status !== 'aguardando_ok')
@@ -118,7 +122,7 @@ export function montarPainelFinanceiro(linhas: LinhaDoFinanceiro[], mes: string,
     processosAReceber: aReceber.length,
     emAtraso: reais(soma(atrasadas)),
     processosEmAtraso: atrasadas.length,
-    aLancar: aReceber.length + aguardandoOk,
+    aLancar: aLancar + aguardandoOk,
     aguardandoOk,
     porMes: meses.map((m) => ({ mes: m, recebido: reais(recebidoEm(m)), previsto: reais(soma(comValor.filter((l) => l.vencimento?.startsWith(m)))) })),
     porOrigem: total

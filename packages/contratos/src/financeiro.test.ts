@@ -12,6 +12,7 @@ const linha = (casoId: string, l: Partial<LinhaDoFinanceiro>): LinhaDoFinanceiro
   recebidoEm: null,
   responsavel: 'Financeiro',
   aguardandoOk: false,
+  lancado: true,
   ...l,
 })
 
@@ -24,6 +25,8 @@ const linhas = [
   linha('5', { valor: '500.00', vencimento: '2026-10-01' }),
   linha('6', { aguardandoOk: true }),
   linha('7', { valor: '250.00', vencimento: '2026-11-15', aguardandoOk: true }),
+  // O OK saiu e o Financeiro não lançou: fica "Lançar", mesmo com o prazo vencido.
+  linha('8', { valor: '300.00', vencimento: '2026-10-02', lancado: false }),
 ]
 
 describe('GGVP-78 · painel Financeiro calculado em código (G19)', () => {
@@ -31,11 +34,12 @@ describe('GGVP-78 · painel Financeiro calculado em código (G19)', () => {
     expect([mesAntes('2026-01'), mesAntes('2026-10', 9), mesAntes('2026-03', 14)]).toEqual(['2025-12', '2026-01', '2025-01'])
   })
 
-  it('o status: aguardando o OK da advogada vem antes de tudo; sem recebimento, o prazo vencido é atraso', () => {
+  it('o status: aguardando o OK da advogada vem antes de tudo; sem lançamento, "Lançar"; lançada e sem a confirmação, o prazo vencido é atraso', () => {
     const p = montarPainelFinanceiro(linhas, '2026-10', HOJE, true)
     expect(p.lancamentos!.map((l) => [l.casoId.at(-1), l.status])).toEqual([
       ['7', 'aguardando_ok'],
       ['6', 'aguardando_ok'],
+      ['8', 'a_lancar'],
       ['5', 'atrasado'],
       ['4', 'a_receber'],
       ['3', 'recebido'],
@@ -49,7 +53,8 @@ describe('GGVP-78 · painel Financeiro calculado em código (G19)', () => {
     expect(p.recebidoNoMes).toBe('3703.80')
     // 3703,80 sobre 0,20 em setembro.
     expect(p.variacao).toBe(1_851_800)
-    expect([p.aReceber, p.processosAReceber, p.emAtraso, p.processosEmAtraso, p.aLancar, p.aguardandoOk]).toEqual(['1500.00', 2, '500.00', 1, 4, 2])
+    // A receber só o que foi lançado e espera a confirmação; a lançar, a que tem o OK sem lançamento e as que esperam o OK.
+    expect([p.aReceber, p.processosAReceber, p.emAtraso, p.processosEmAtraso, p.aLancar, p.aguardandoOk]).toEqual(['1500.00', 2, '500.00', 1, 3, 2])
     expect(montarPainelFinanceiro(linhas, '2026-09', HOJE, true).recebidoNoMes).toBe('0.20')
   })
 
@@ -57,11 +62,11 @@ describe('GGVP-78 · painel Financeiro calculado em código (G19)', () => {
     expect(montarPainelFinanceiro(linhas, '2026-09', HOJE, true).variacao).toBeNull()
   })
 
-  it('por mês, de janeiro ao período: o recebido pelo dia do recebimento, o previsto pelo prazo; quem espera o OK fica fora', () => {
+  it('por mês, de janeiro ao período: o recebido pelo dia da confirmação, o previsto pelo prazo; quem espera o OK fica fora', () => {
     const { porMes } = montarPainelFinanceiro(linhas, '2026-10', HOJE, true)
     expect(porMes.map((m) => m.mes)).toEqual(['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'])
     expect(porMes.at(-2)).toEqual({ mes: '2026-09', recebido: '0.20', previsto: '3703.90' })
-    expect(porMes.at(-1)).toEqual({ mes: '2026-10', recebido: '3703.80', previsto: '1500.10' })
+    expect(porMes.at(-1)).toEqual({ mes: '2026-10', recebido: '3703.80', previsto: '1800.10' })
   })
 
   it('por origem, nos 12 meses até o período, com a fatia', () => {

@@ -1,7 +1,8 @@
 // Painel Financeiro (GGVP-78; Figma "Financeiro · painel" 1930:4): os números saem das prestações de contas gravadas
-// (GGVP-44, GGVP-98), calculados em código (`montarPainelFinanceiro`, nos contratos). Quem vê os totais em dinheiro
-// (`valores.ver_totais`: Financeiro e Sócio) abre o painel; as linhas de cada cliente vão só a quem vê valores
-// (`valores.ver`). O que o banco não guarda (mensalidades, RPV, precatório), o painel não mostra.
+// (GGVP-44, GGVP-98), calculados em código (`montarPainelFinanceiro`, nos contratos). Recebido é a confirmação depois da
+// ida ao banco; o "Receber e lançar" deixa a prestação a receber. Quem vê os totais em dinheiro (`valores.ver_totais`:
+// Financeiro e Sócio) abre o painel; as linhas de cada cliente vão só a quem vê valores (`valores.ver`). O que o banco
+// não guarda (mensalidades, RPV, precatório), o painel não mostra.
 // ponytail: lê todas as prestações e soma aqui; passar a soma para o SQL quando forem milhares.
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
@@ -10,6 +11,7 @@ import { Mes, PainelFinanceiro, ROTULO_BENEFICIO, montarPainelFinanceiro, pode, 
 import type { Banco } from '../banco/conexao.ts'
 import { caso, identificadorCaso, pessoa, prestacaoContas, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
+import { recebimentosConfirmados } from './prestacao.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 type Opcoes = { banco: Banco; agora?: () => Date }
@@ -32,6 +34,7 @@ export function registrarRotasFinanceiro(app: FastifyInstance, { banco, agora = 
           .where(and(eq(tarefa.passo, 'D2.06'), eq(tarefa.perfilDono, 'advogada'), isNull(tarefa.concluidaEm), inArray(tarefa.situacao, ['aberta', 'em_andamento', 'aguardando'])))
       ).map((t) => t.casoId),
     )
+    const confirmados = await recebimentosConfirmados(banco)
     const ids = [...new Set([...atual.keys(), ...esperandoOk])]
     const casos = ids.length
       ? await banco
@@ -53,6 +56,7 @@ export function registrarRotasFinanceiro(app: FastifyInstance, { banco, agora = 
       const aguardandoOk = esperandoOk.has(c.id) || Boolean(v?.divergencia)
       const advogada = nome(c.advogadaId) ?? nome(v?.okAdvogadaPor)
       const financeiro = nome(v?.recebidaPor)
+      const confirmado = confirmados.get(c.id)
       return {
         casoId: c.id,
         cliente: c.cliente,
@@ -61,9 +65,10 @@ export function registrarRotasFinanceiro(app: FastifyInstance, { banco, agora = 
         origem: c.fase === 'judicial' || c.desfecho?.startsWith('procedente') ? 'justica' : 'inss',
         valor: v?.honorarios ?? null,
         vencimento: v?.prazoPagamento ?? null,
-        recebidoEm: v?.recebidaEm ? hojeEmBrasilia(v.recebidaEm) : null,
+        recebidoEm: confirmado ? hojeEmBrasilia(confirmado) : null,
         responsavel: aguardandoOk ? (advogada ? `Advogada · ${advogada}` : 'Advogada') : financeiro ? `Financeiro · ${financeiro}` : 'Financeiro',
         aguardandoOk,
+        lancado: Boolean(v?.recebidaEm),
       }
     })
     return PainelFinanceiro.parse(montarPainelFinanceiro(linhas, mes.data, hoje, pode(pedido.perfilAtivo, 'valores.ver')))

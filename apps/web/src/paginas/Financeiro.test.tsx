@@ -20,14 +20,15 @@ const lancamento = (n: string, l: Partial<LancamentoFinanceiro>): LancamentoFina
 })
 const lancamentos = [
   lancamento('1', { cliente: 'Lúcia Prado', status: 'aguardando_ok', responsavel: 'Advogada · Renata' }),
-  lancamento('2', { cliente: 'Otávio Nery', valor: '2000.00', vencimento: '2026-10-30', origem: 'justica', processo: '0002991-55.2024.4.03.6301' }),
+  lancamento('2', { cliente: 'Otávio Nery', valor: '2000.00', vencimento: '2026-10-30', origem: 'justica', processo: '0002991-55.2024.4.03.6301', status: 'a_lancar' }),
+  lancamento('4', { cliente: 'Célia Moura', valor: '500.00', vencimento: '2026-10-20', responsavel: 'Financeiro · Ana' }),
   lancamento('3', { cliente: 'Vera Lúcia', valor: '3703.70', vencimento: '2026-09-30', recebidoEm: '2026-10-02', status: 'recebido', responsavel: 'Financeiro · Ana', processo: 'INSS · 187.223.441-0' }),
 ]
 const painel: PainelFinanceiro = {
   mes: '2026-10',
   recebidoNoMes: '3703.70',
   variacao: 12,
-  aReceber: '2000.00',
+  aReceber: '500.00',
   processosAReceber: 1,
   emAtraso: '0.00',
   processosEmAtraso: 0,
@@ -66,7 +67,7 @@ describe('GGVP-78 · o painel Financeiro, como no Figma (1930:4)', () => {
     expect(chamada.mock.calls[0][0]).toBe('/api/financeiro?mes=2026-10')
     expect(itens('Indicadores do mês').map((i) => i.textContent)).toEqual([
       'Recebido no mêsR$ 3.703,70▲ 12% sobre setembro',
-      'A receberR$ 2.000,001 processo esperando o recebimento',
+      'A receberR$ 500,001 processo esperando a ida ao banco',
       'Prestações de contas a lançar21 aguardando o OK da advogada (G8)',
       'Em atrasoR$ 0,000 processos com o prazo de pagamento vencido',
     ])
@@ -75,6 +76,7 @@ describe('GGVP-78 · o painel Financeiro, como no Figma (1930:4)', () => {
       'outubro: recebido R$ 3.703,70; previsto R$ 2.000,00',
     ])
     expect(itens('Receita por origem').map((i) => i.textContent)).toEqual(['Honorários administrativos (INSS)100%'])
+    // Pendentes: as que esperam o OK e as que esperam o lançamento; a lançada, que espera a ida ao banco, não.
     const pendentes = itens('Pendentes')
     expect(pendentes.map((i) => i.textContent)).toEqual(['Lúcia Prado · BPC/LOAS Idoso—Aguardando OK', 'Otávio Nery · BPC/LOAS IdosoR$ 2.000,00Lançar'])
     expect(within(pendentes[1]).getByRole('link', { name: 'Lançar a prestação de Otávio Nery' }).getAttribute('href')).toBe('/casos/00000000-0000-4000-8000-000000000002/prestacao/recebimento')
@@ -86,7 +88,8 @@ describe('GGVP-78 · o painel Financeiro, como no Figma (1930:4)', () => {
     await screen.findByRole('table', { name: 'Lançamentos' })
     expect(linhas().map((r) => within(r).getAllByRole('cell').map((c) => c.textContent))).toEqual([
       ['Lúcia Prado', '—', 'Honorários administrativos (INSS)', '—', '—', 'Aguardando OK', 'Advogada · Renata'],
-      ['Otávio Nery', '0002991-55.2024.4.03.6301', 'Honorários de êxito (Justiça)', 'R$ 2.000,00', '30/10/2026', 'A receber', 'Financeiro'],
+      ['Otávio Nery', '0002991-55.2024.4.03.6301', 'Honorários de êxito (Justiça)', 'R$ 2.000,00', '30/10/2026', 'Lançar', 'Financeiro'],
+      ['Célia Moura', '—', 'Honorários administrativos (INSS)', 'R$ 500,00', '20/10/2026', 'A receber', 'Financeiro · Ana'],
       ['Vera Lúcia', 'INSS · 187.223.441-0', 'Honorários administrativos (INSS)', 'R$ 3.703,70', 'recebido 02/10', 'Recebido', 'Financeiro · Ana'],
     ])
     expect(screen.getByRole('link', { name: 'Vera Lúcia' }).getAttribute('href')).toBe('/casos/00000000-0000-4000-8000-000000000003/prestacao')

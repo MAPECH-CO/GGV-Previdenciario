@@ -31,8 +31,8 @@ const rotuloDoMes = (mes: string) => `${nomeDoMes(mes).slice(0, 3)}/${mes.slice(
 const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
 const compacto = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })
 
-/** A cor da etiqueta, nas classes das bases: âmbar espera, vermelho atraso, azul a receber, verde recebido. */
-const ETIQUETA: Record<StatusDoLancamento, string> = { aguardando_ok: 'administrativo', atrasado: 'perdido', a_receber: 'em_andamento', recebido: 'exito' }
+/** A cor da etiqueta, nas classes das bases: âmbar espera, laranja lançar, vermelho atraso, azul a receber, verde recebido. */
+const ETIQUETA: Record<StatusDoLancamento, string> = { aguardando_ok: 'administrativo', a_lancar: 'lancar', atrasado: 'perdido', a_receber: 'em_andamento', recebido: 'exito' }
 const TIPOS: [string, string][] = [
   ['', 'Todos'],
   ['inss', 'INSS'],
@@ -103,7 +103,7 @@ export function Financeiro() {
               nota={variacao === null ? `sem recebimento em ${nomeDoMes(anterior)}` : `${variacao >= 0 ? '▲' : '▼'} ${Math.abs(variacao)}% sobre ${nomeDoMes(anterior)}`}
               tom={variacao === null ? undefined : variacao >= 0 ? 'ok' : 'erro'}
             />
-            <Indicador rotulo="A receber" valor={reais(painel.aReceber)} nota={`${plural(painel.processosAReceber, 'processo')} esperando o recebimento`} />
+            <Indicador rotulo="A receber" valor={reais(painel.aReceber)} nota={`${plural(painel.processosAReceber, 'processo')} esperando a ida ao banco`} />
             <Indicador
               rotulo="Prestações de contas a lançar"
               valor={String(painel.aLancar)}
@@ -121,7 +121,7 @@ export function Financeiro() {
           <div className={styles.grade}>
             <ReceitaPorMes porMes={painel.porMes} ano={mes.slice(0, 4)} />
             <PorOrigem porOrigem={painel.porOrigem} />
-            {painel.lancamentos && <Pendentes lancamentos={painel.lancamentos.filter((l) => l.status !== 'recebido')} />}
+            {painel.lancamentos && <Pendentes lancamentos={painel.lancamentos.filter((l) => l.status === 'aguardando_ok' || l.status === 'a_lancar')} />}
           </div>
 
           {painel.lancamentos ? (
@@ -341,8 +341,8 @@ function Lancamentos({ lancamentos }: { lancamentos: LancamentoFinanceiro[] }) {
       </div>
 
       <p className={bases.rodape}>
-        Aguardando OK = a advogada ainda não validou a prestação; o aviso ao cliente espera (G8). A receber = o OK saiu e o Financeiro ainda não lançou o
-        recebimento. Atrasado = a receber com o prazo de pagamento vencido.
+        Aguardando OK = a advogada ainda não validou a prestação; o aviso ao cliente espera (G8). Lançar = o OK saiu e o Financeiro ainda não lançou. A
+        receber = lançada, esperando a ida ao banco e a confirmação do recebimento. Atrasado = a receber com o prazo de pagamento vencido.
       </p>
     </>
   )

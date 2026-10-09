@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { pode } from '@ggv/contratos'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, identificadorCaso, pessoa, prestacaoContas, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, eventoAuditoria, identificadorCaso, pessoa, prestacaoContas, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -54,11 +55,15 @@ beforeEach(async () => {
       .returning()
     ids[apelido] = u.id
   }
-  // Recebida em 02/10, pelo Financeiro.
+  // Lançada em 02/10 e, depois da ida ao banco, o recebimento confirmado em 05/10 (GGVP-98 CA9).
   const vera = await novoCaso('Vera Lúcia')
   await versao(vera, 1, '3703.70', '2026-09-30', new Date('2026-10-02T15:00:00Z'))
   await banco.insert(identificadorCaso).values({ casoId: vera, tipo: 'nb', valor: '1872234410' })
-  // Duas versões: vale a segunda, ainda sem recebimento; o prazo de 30/10 não venceu.
+  await banco.insert(eventoAuditoria).values({ quem: ids.julia, acao: 'recebimento_confirmado', alvo: `caso:${vera}`, quando: new Date('2026-10-05T15:00:00Z') })
+  // Lançada em 06/10, sem a confirmação: a receber, e atrasada pelo prazo de 01/10. Ainda não é dinheiro na mão.
+  const celia = await novoCaso('Célia Moura')
+  await versao(celia, 1, '500.00', '2026-10-01', new Date('2026-10-06T15:00:00Z'))
+  // Duas versões: vale a segunda, com o OK e ainda sem o lançamento do Financeiro.
   const otavio = await novoCaso('Otávio Nery', 'judicial')
   await versao(otavio, 1, '1000.00', '2026-10-30')
   await versao(otavio, 2, '2000.00', '2026-10-30')
@@ -71,15 +76,18 @@ afterEach(() => fechar())
 describe('GGVP-78 · GET /api/financeiro', () => {
   it('o Financeiro vê os cartões, o mês do período e uma linha por caso, com a versão atual', async () => {
     const r = (await painel('julia', '2026-10')).json()
-    expect([r.mes, r.recebidoNoMes, r.aReceber, r.processosAReceber, r.aLancar, r.aguardandoOk]).toEqual(['2026-10', '3703.70', '2000.00', 1, 2, 1])
-    expect(r.porMes.at(-1)).toEqual({ mes: '2026-10', recebido: '3703.70', previsto: '2000.00' })
+    // Recebido só o confirmado; a receber e em atraso, o lançado sem a confirmação; a lançar, o OK sem lançamento e o que espera o OK.
+    expect([r.mes, r.recebidoNoMes, r.aReceber, r.processosAReceber, r.emAtraso, r.processosEmAtraso, r.aLancar, r.aguardandoOk]).toEqual(['2026-10', '3703.70', '500.00', 1, '500.00', 1, 2, 1])
+    expect(r.porMes.at(-1)).toEqual({ mes: '2026-10', recebido: '3703.70', previsto: '2500.00' })
     expect(r.porOrigem).toEqual([{ origem: 'inss', valor: '3703.70', fatia: 100 }])
     expect(r.lancamentos.map((l: { cliente: string; status: string; valor: string | null; responsavel: string; origem: string }) => [l.cliente, l.status, l.valor, l.responsavel, l.origem])).toEqual([
       ['Lúcia Prado', 'aguardando_ok', null, 'Advogada · gabi', 'inss'],
-      ['Otávio Nery', 'a_receber', '2000.00', 'Financeiro', 'justica'],
+      ['Otávio Nery', 'a_lancar', '2000.00', 'Financeiro', 'justica'],
+      ['Célia Moura', 'atrasado', '500.00', 'Financeiro · julia', 'inss'],
       ['Vera Lúcia', 'recebido', '3703.70', 'Financeiro · julia', 'inss'],
     ])
-    expect(r.lancamentos[2]).toMatchObject({ processo: 'INSS · 187.223.441-0', recebidoEm: '2026-10-02', vencimento: '2026-09-30', beneficio: 'BPC/LOAS Idoso' })
+    expect(r.lancamentos[2].recebidoEm).toBeNull()
+    expect(r.lancamentos[3]).toMatchObject({ processo: 'INSS · 187.223.441-0', recebidoEm: '2026-10-05', vencimento: '2026-09-30', beneficio: 'BPC/LOAS Idoso' })
   })
 
   it('sem o mês, vale o mês de hoje em Brasília; mês inválido é recusado', async () => {
@@ -87,10 +95,12 @@ describe('GGVP-78 · GET /api/financeiro', () => {
     expect((await painel('julia', '2026-13')).statusCode).toBe(400)
   })
 
-  it('o Sócio vê os totais, sem nenhuma linha de cliente (valores.ver_totais)', async () => {
+  // A matriz decide se o Sócio vê as linhas (`valores.ver`, GGVP-96): o teste segue a matriz, não a fixa.
+  it('o Sócio vê os totais (valores.ver_totais); as linhas de cada cliente, só se a matriz lhe der valores.ver', async () => {
     const r = (await painel('otavio', '2026-10')).json()
-    expect([r.recebidoNoMes, r.aReceber, r.lancamentos]).toEqual(['3703.70', '2000.00', null])
-    expect(JSON.stringify(r)).not.toContain('Vera')
+    expect([r.recebidoNoMes, r.aReceber]).toEqual(['3703.70', '500.00'])
+    expect(r.lancamentos?.length ?? null).toBe(pode('socio', 'valores.ver') ? 4 : null)
+    expect(JSON.stringify(r).includes('Vera')).toBe(pode('socio', 'valores.ver'))
   })
 
   it('a Sênior, a advogada e o Atendimento não abrem o painel', async () => {

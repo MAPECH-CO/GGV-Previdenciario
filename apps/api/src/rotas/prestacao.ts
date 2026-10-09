@@ -41,6 +41,15 @@ export const O_QUE_LEVAR = ['Documento oficial com foto do cliente (RG ou CNH)',
 /** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
 const ATENDIMENTO = ['atendimento', 'atendimento_lider']
 
+/**
+ * GGVP-98 CA9: quando o Financeiro confirmou o recebimento de cada caso, depois da ida ao banco. É o dinheiro na mão, para o
+ * painel Financeiro (GGVP-78) e os Resultados (GGVP-75); o "Receber e lançar" vem antes e ainda não é.
+ */
+export async function recebimentosConfirmados(banco: Banco): Promise<Map<string, Date>> {
+  const eventos = await banco.select({ alvo: eventoAuditoria.alvo, quando: eventoAuditoria.quando }).from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'recebimento_confirmado'))
+  return new Map(eventos.map((e) => [e.alvo.replace(/^caso:/, ''), e.quando]))
+}
+
 type Opcoes = { banco: Banco; agora?: () => Date }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)

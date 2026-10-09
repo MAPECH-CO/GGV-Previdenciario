@@ -44,14 +44,16 @@ afterEach(() => {
 const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^\S+ /, ''))
 
 describe('GGVP-78 · a tela inicial do Sócio é o painel de resultado (GGVP-75, perfis.md)', () => {
-  it('o painel com a busca e o chat da Gestão do Sócio (Figma 2456:10128), a Gestão e o Financeiro no topo, sem o "Voltar ao início"', async () => {
+  it('o painel com a busca e o chat da Gestão do Sócio (Figma 2456:10128), a Gestão, a importação e o Financeiro no topo, sem o "Voltar ao início"', async () => {
     render(comSessao(<InicioDoSocio />))
     expect(await screen.findByRole('heading', { level: 1, name: 'Resultados do escritório' })).toBeTruthy()
     expect(await screen.findByText('Sem dados ainda: nenhum caso decidido no período.')).toBeTruthy()
     expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
     const chat = screen.getByRole('region', { name: 'Chat com a IA' })
     expect(within(chat).getAllByRole('button').map((b) => b.textContent)).toEqual(expect.arrayContaining(['Por que perdemos em 2025?', 'Êxito por benefício', 'Faltas à perícia dobraram']))
-    expect(topo()).toEqual(['Início', 'Agenda', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Financeiro'])
+    // Os atalhos de hoje ficam: a Gestão e a importação da planilha (configuracao.editar, GGVP-146).
+    expect(topo()).toEqual(['Início', 'Agenda', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Importar planilha', 'Financeiro'])
+    expect(screen.getByRole('link', { name: /Importar planilha/ }).getAttribute('href')).toBe('/gestao/importar')
     expect(screen.queryByRole('link', { name: '← Voltar ao início' })).toBeNull()
     // Sem tarefa do Sócio, a fila não ocupa a tela.
     expect(screen.queryByRole('heading', { name: 'O que você tem que fazer' })).toBeNull()

@@ -283,6 +283,12 @@
   color: var(--cor-erro-2);
 }
 
+/* A prestação de contas a lançar, no painel Financeiro (Figma 1930:4). */
+.lancar {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
 .lead {
   background: var(--cor-painel-neutro);
   color: var(--cor-texto-suave);
