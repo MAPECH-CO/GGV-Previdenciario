@@ -1,6 +1,6 @@
 {
-  "id": "bf08c158-bec2-4a58-811f-235120a746ad",
-  "prevId": "baf2f531-c0db-4bba-b709-09da74f8a73b",
+  "id": "b14875db-4016-4e40-bf59-3f474ff3bfbb",
+  "prevId": "2f3fb4a9-543e-4137-a40f-81f783193945",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -162,6 +162,18 @@
         "duracao_ms": {
           "name": "duracao_ms",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "audio_segundos": {
+          "name": "audio_segundos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custo_estimado": {
+          "name": "custo_estimado",
+          "type": "numeric(10, 4)",
           "primaryKey": false,
           "notNull": false
         },
@@ -4620,6 +4632,99 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.glossario_termo": {
+      "name": "glossario_termo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "termo": {
+          "name": "termo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "significado": {
+          "name": "significado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alterado_por": {
+          "name": "alterado_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "glossario_termo_unico": {
+          "name": "glossario_termo_unico",
+          "columns": [
+            {
+              "expression": "lower(\"termo\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "glossario_termo_alterado_por_usuario_id_fk": {
+          "name": "glossario_termo_alterado_por_usuario_id_fk",
+          "tableFrom": "glossario_termo",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "alterado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "glossario_termo_tipo": {
+          "name": "glossario_termo_tipo",
+          "value": "\"glossario_termo\".\"tipo\" in ('beneficio', 'sigla', 'perito', 'juizo', 'outro')"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.juizo": {

@@ -18,8 +18,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
-// 16, Perícia no servidor 17, documentação médica no servidor 18, Recepção bloco 3b 19. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 19
+// 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20. Quem entrar depois
+// renumera.
+export const VERSAO_MATRIZ = 20
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -127,6 +128,8 @@ export const MATRIZ = {
   'dado_saude.registrar': ['advogada', 'senior'],
   // A circunstância do acidente (GGVP-47): a Documentação ou o Jurídico marcam.
   'acidente.registrar': ['documentacao', 'advogada', 'senior'],
+  // Versão 19 (GGVP-143, Pedro, 08/10): o glossário do escritório, que a transcrição e a IA usam, só a Sênior muda.
+  'glossario.editar': ['senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

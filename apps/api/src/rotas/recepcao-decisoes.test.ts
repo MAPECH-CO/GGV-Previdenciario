@@ -68,7 +68,7 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
     expect(abertas(loas.tarefas)).toEqual(['Cadastrar lead'])
 
     const aposentadoria = (await definir(agendamentoId, 'aposentadoria-idade')).json()
-    expect(aposentadoria.tarefa).toMatchObject({ acao: 'Calcular tempo e pontos', setor: 'Atendimento' })
+    expect(aposentadoria.tarefa).toMatchObject({ acao: 'Calcular tempo e pontos', setor: 'Jurídico' })
     expect(aposentadoria.tarefa.detalhe).toContain('sem CNIS no caso')
     expect(aposentadoria.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/^Trocou o benefício do caso: «.+» → «.+»$/))
     const calculo = { podeAposentar: true, tempo: { anos: 30, meses: 2, dias: 0 }, pontos: 95, regra: 'Transição por pontos (EC 103, art. 15)', conferi: true }

@@ -234,7 +234,8 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
         ].join(' · '),
         prazo: 'antes do fechamento',
         href: `/entrevista/${agendamento.id}/calculo`,
-        setor: 'Atendimento',
+        // Quem calcula é o advogado (Pedro, 08/10): a tarefa vai à Central do Jurídico, igual à tela.
+        setor: 'Jurídico',
       }
       await garantirAberta(tarefa)
     }
