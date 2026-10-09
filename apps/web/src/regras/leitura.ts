@@ -1,7 +1,7 @@
 // A leitura dos documentos pela IA (GGVP-81): confiança, dono do documento, divergência com o cadastro e a trava de
 // "Arquivar". Regra numérica é código com teste, nunca resposta de modelo.
 import { formatarCpf, normalizarCpf } from '../campos.ts'
-import type { Ficha } from '../dados/tipos.ts'
+import type { Arquivo, Ficha } from '../dados/tipos.ts'
 import { semAcento } from './busca.ts'
 import { umaLetraDeDiferenca } from './pasta.ts'
 
@@ -94,4 +94,94 @@ export const UM_DIA = 24 * 60 * 60 * 1000
 /** Em quarentena há mais de um dia (CA12). `lidoEm` é data e hora ISO. */
 export function quarentenaAntiga<T extends { situacao: string; lidoEm: string }>(documentos: T[], agora: Date): T[] {
   return documentos.filter((d) => d.situacao === 'quarentena' && agora.getTime() - new Date(d.lidoEm).getTime() > UM_DIA)
+}
+
+// A leitura de cada documento (GGVP-81), a mesma nas telas e no servidor (GGVP-125, bloco 5b).
+
+/** 'ilegivel': a leitura falhou; o original fica guardado e o Atendimento pede de novo (GGVP-95, CA3). */
+export type SituacaoDoLido = 'a-conferir' | 'quarentena' | 'arquivado' | 'descartado' | 'movido' | 'ilegivel'
+
+/** Um documento que a IA leu. O arquivo original fica guardado na pasta: o OCR não o substitui (CA13). */
+export type DocumentoLido = {
+  /** `${fichaId}/${arquivo}`: uma leitura por arquivo, então ler de novo não duplica (CA13). */
+  id: string
+  fichaId: string
+  /** O nome do arquivo na pasta do cliente. */
+  arquivo: string
+  origem: Arquivo['origem']
+  /** Tipo sugerido pela IA; depois de arquivar, o que a pessoa confirmou (CA7). */
+  tipo: string
+  /** aaaa-mm-dd: a data do documento. */
+  data: string
+  /** De 0 a 100 (CA7). */
+  confianca: number
+  lidos: DadosLidos
+  /** O id do documento que este parece repetir (CA9). */
+  duplicadoDe?: string
+  /** Por que não parece do cliente (CA10). */
+  quarentena?: string
+  situacao: SituacaoDoLido
+  /** Data e hora ISO em que a leitura terminou: conta a idade da quarentena (CA12). */
+  lidoEm: string
+  /** A IA não achou a assinatura do cliente, ou achou a data em branco: o item do checklist fica pendente (GGVP-91, G1). */
+  semAssinatura?: boolean
+  dataEmBranco?: boolean
+  /** Data e hora ISO do "Arquivar": o checklist é conferido de novo depois disso (GGVP-91). */
+  arquivadoEm?: string
+  /** Documento médico: quem emitiu e o registro profissional (CRM, CRP...), se constarem (GGVP-95, CA1). Nunca o conteúdo. */
+  emitente?: string
+  registro?: string
+  /** O tipo que a IA sugeriu, guardado quando a Documentação corrige (GGVP-95, CA2). */
+  sugerido?: string
+}
+
+/** Quem emite cada documento médico, na leitura simulada: nomes de exemplo, registro zerado (GGVP-95, CA1). */
+const EMITENTES: Record<string, { emitente: string; registro?: string }> = {
+  laudo: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  'relatorio-medico': { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  atestado: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  receita: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
+  prontuario: { emitente: 'Hospital Exemplo' },
+  exame: { emitente: 'Laboratório Exemplo' },
+  cat: { emitente: 'Empresa Exemplo Ltda' },
+  'boletim-ocorrencia': { emitente: 'Delegacia Exemplo' },
+  'relatorio-escolar': { emitente: 'Escola Exemplo' },
+  'relatorio-terapia': { emitente: 'Clínica Exemplo de Terapias', registro: 'CREFITO-3 000000' },
+}
+
+/**
+ * EXEMPLO. A leitura simulada da IA: o tipo e a data que vieram, o nome do cliente, o CPF do CNIS e o endereço do
+ * comprovante. As telas e o servidor usam a mesma (GGVP-125, bloco 5b).
+ */
+export function lerComIADeExemplo(ficha: Ficha, arquivo: Arquivo, leituras: DocumentoLido[], lidoEm: string): DocumentoLido {
+  const lidos: DadosLidos = {}
+  if (['rg', 'cpf', 'cnis', 'comprovante-residencia', 'ctps', 'certidao'].includes(arquivo.tipo)) lidos.nome = ficha.nome
+  if (['cpf', 'cnis'].includes(arquivo.tipo) && ficha.cpf) lidos.cpf = ficha.cpf
+  if (arquivo.tipo === 'comprovante-residencia') lidos.endereco = ficha.endereco ?? 'Rua Exemplo, 100 · São Paulo/SP'
+  // O mesmo conteúdo (SHA-256) já estava na pasta: a IA aponta o duplicado (CA9).
+  const original = arquivo.repetido
+    ? ficha.arquivos.find((a) => a !== arquivo && a.hash !== undefined && a.hash === arquivo.hash)
+    : undefined
+  const quarentena = motivoDaQuarentena(lidos, ficha)
+  // ponytail: a falta de assinatura e a data em branco vêm do nome do arquivo, como o tipo na GGVP-17; a IA de verdade lê o papel.
+  const nome = semAcento(arquivo.nome)
+  // A leitura que falhou (GGVP-95, CA3): pela mesma pista no nome do arquivo.
+  const ilegivel = nome.includes('ilegivel')
+  return {
+    id: `${ficha.id}/${arquivo.nome}`,
+    fichaId: ficha.id,
+    arquivo: arquivo.nome,
+    origem: arquivo.origem,
+    tipo: arquivo.tipo,
+    data: arquivo.data,
+    confianca: ilegivel ? 0 : 90,
+    lidos,
+    duplicadoDe: original && leituras.some((l) => l.id === `${ficha.id}/${original.nome}`) ? `${ficha.id}/${original.nome}` : undefined,
+    quarentena,
+    situacao: ilegivel ? 'ilegivel' : quarentena ? 'quarentena' : 'a-conferir',
+    lidoEm,
+    ...(nome.includes('sem assinatura') && { semAssinatura: true }),
+    ...(nome.includes('sem data') && { dataEmBranco: true }),
+    ...(ehMedico(arquivo.tipo) && !ilegivel && EMITENTES[arquivo.tipo]),
+  }
 }

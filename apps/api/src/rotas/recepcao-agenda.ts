@@ -102,7 +102,7 @@ const guardado = (l: typeof compromissoInterno.$inferSelect): CompromissoGuardad
 type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes } =
+  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes, leiturasDe } =
     criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
@@ -152,6 +152,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     internos: await internos(),
     gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
     contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
+    // Bloco 5b: as leituras dos documentos, para a conferência e as tarefas da Documentação.
+    leituras: await leiturasDe(),
   }))
 
   // GGVP-16 CA4 e GGVP-17 CA1, CA3: o balcão manda ao setor, com a ficha e o agendamento; quem veio entregar documento

@@ -26,6 +26,8 @@ import {
 import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { lerFichaEmPapel, salvarFichaDeAtendimento } from './fichaAtendimento.ts'
+import { enviarArquivos, receberLote, registrarRecebimento } from './documentos.ts'
+import { arquivarDocumentos, moverDocumento, tarefasDeConferirDocumento, type DocumentoLido } from './leitura.ts'
 import { registrarFechamento } from './fechamento.ts'
 import { obterPreparacao, tarefasDaAdvogada } from './preparacao.ts'
 import { lerSegundaFichaEmPapel } from './segundaFicha.ts'
@@ -668,5 +670,126 @@ describe('GGVP-125 · bloco 5a: a lista de arquivos da ficha no servidor', () =>
     const aqui = ler().fichas.find((f) => f.id === ID)
     expect(aqui?.arquivos).toEqual([arquivo])
     expect(aqui?.senhaGov.situacao).toBe('sem-senha')
+  })
+})
+
+describe('GGVP-125 · bloco 5b: a chegada, a leitura e o arquivo dos documentos no servidor', () => {
+  const lida = (arquivo: string, extra: Partial<DocumentoLido> = {}): DocumentoLido => ({
+    id: `${ID}/${arquivo}`,
+    fichaId: ID,
+    arquivo,
+    origem: 'card',
+    tipo: 'rg',
+    data: '2026-10-05',
+    confianca: 90,
+    lidos: { nome: 'Ivone Teste' },
+    situacao: 'a-conferir',
+    lidoEm: '2026-10-05T17:40:00.000Z',
+    ...extra,
+  })
+  const rg = { nome: 'RG.pdf', tipo: 'rg', local: 'pessoais', data: '2026-10-05', origem: 'card' as const, repetido: false, aguardaLeitura: true }
+  const sincronizar = (rotas: Record<string, (corpo: unknown) => unknown>, ficha: Ficha, leituras: DocumentoLido[], tarefas: TarefaEncaminhada[] = []) =>
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [ficha], tarefas, internos: [], gravacoes: [], contratos: [], leituras }), ...rotas })
+
+  it('as leituras vêm na cópia e dão "Conferir documento"; a ficha do servidor não é lida aqui', async () => {
+    sincronizar({}, doBanco({ arquivos: [rg] }), [lida('RG.pdf')])
+    await sincronizarRecepcao()
+    expect(tarefasDeConferirDocumento().find((t) => t.cliente?.id === ID)).toMatchObject({ acao: 'Conferir documento', href: `/clientes/${ID}/conferir-documentos` })
+    expect(ler().leituras?.some((l) => l.fichaId === ID)).toBe(false)
+  })
+
+  it('card: sem pasta e sem CPF, para aqui; com CPF, os arquivos vão ao servidor e a leitura vem de lá', async () => {
+    const envio = { origem: 'card' as const, arquivos: [{ nome: 'RG.pdf', formato: 'pdf' as const, tamanho: 1000, tipo: 'rg', hash: 'a'.repeat(64) }] }
+    const fetch = sincronizar(
+      { [`POST /api/fichas/${ID}/arquivos`]: () => ({ resultado: 'enviado', arquivos: [rg], laudoNovo: false, ficha: doBanco({ cpf: '52998224725', arquivos: [rg] }), tarefas: [], leituras: [lida('RG.pdf')] }) },
+      doBanco(),
+      [],
+    )
+    await sincronizarRecepcao()
+    expect(await enviarArquivos(ID, envio)).toEqual({ resultado: 'sem-pasta' })
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/arquivos'))).toBe(false)
+
+    mexerAqui((f) => (f.cpf = '52998224725'))
+    expect(await enviarArquivos(ID, envio)).toEqual({ resultado: 'enviado', arquivos: [rg], laudoNovo: false })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(envio)
+    expect(ler().leiturasDoServidor).toEqual([lida('RG.pdf')])
+  })
+
+  it('arquivar vai ao servidor: a cópia recebe a ficha, as leituras e os contratos', async () => {
+    const arquivado = lida('RG.pdf', { situacao: 'arquivado', arquivadoEm: '2026-10-05T18:00:00.000Z' })
+    const fetch = sincronizar(
+      {
+        [`POST /api/fichas/${ID}/documentos-lidos/arquivar`]: () => ({
+          arquivados: 1,
+          descartados: 0,
+          contrato: false,
+          evento: naHora('2026-10-05T18:00:00.000Z', 'Arquivou 1 documento lidos pela IA (RG); conferiu a leitura'),
+          ficha: doBanco({ arquivos: [{ ...rg, aguardaLeitura: false }] }),
+          leituras: [arquivado],
+          contratos: [],
+        }),
+      },
+      doBanco({ arquivos: [rg] }),
+      [lida('RG.pdf')],
+    )
+    await sincronizarRecepcao()
+    const pedido = { conferi: true as const, documentos: [{ id: `${ID}/RG.pdf`, tipo: 'rg', data: '2026-10-05' }] }
+    expect((await arquivarDocumentos(ID, pedido)).arquivados).toBe(1)
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(pedido)
+    expect(ler().leiturasDoServidor).toEqual([arquivado])
+    expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([{ ...rg, aguardaLeitura: false }])
+    expect(tarefasDeConferirDocumento().some((t) => t.cliente?.id === ID)).toBe(false)
+  })
+
+  it('mover para a ficha de outra pessoa: o arquivo sai da pasta daqui também, e a leitura fica "movido"', async () => {
+    const cnis = { ...rg, nome: 'CNIS.pdf', tipo: 'cnis' }
+    const movido = lida('CNIS.pdf', { tipo: 'cnis', situacao: 'movido' })
+    const fetch = sincronizar(
+      {
+        [`POST /api/documentos-lidos/${encodeURIComponent(`${ID}/CNIS.pdf`)}/mover`]: () => ({
+          evento: naHora('2026-10-05T18:00:00.000Z', 'Moveu o CNIS para o caso LOAS Idoso de Marta. Motivo: é da Marta'),
+          ficha: doBanco(),
+          destino: { ...doBanco(), id: OUTRO, nome: 'Marta Lima', arquivos: [cnis] },
+          saiu: cnis,
+          leituras: [movido],
+        }),
+      },
+      doBanco({ arquivos: [cnis] }),
+      [lida('CNIS.pdf', { tipo: 'cnis' })],
+    )
+    await sincronizarRecepcao()
+    await moverDocumento(`${ID}/CNIS.pdf`, { processoId: 'caso-da-marta', motivo: 'é da Marta' })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ processoId: 'caso-da-marta', motivo: 'é da Marta' })
+    expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([])
+    expect(ler().fichas.find((f) => f.id === OUTRO)?.arquivos).toEqual([cnis])
+    expect(ler().leiturasDoServidor).toEqual([movido])
+  })
+
+  it('o lote e o registro da tarefa "Receber documento" de uma ficha do servidor vão ao servidor', async () => {
+    const tarefa: TarefaEncaminhada = {
+      id: 'balcao-1',
+      codigo: 'D1.02',
+      cliente: { id: ID, nome: 'Ivone Teste' },
+      acao: 'Receber documento',
+      detalhe: 'sem caso em andamento',
+      prazo: 'agora',
+      href: '/balcao/documento/balcao-1',
+      setor: 'Documentação · ADM',
+    }
+    const lote = { loteId: 'lote-1', status: 'arquivado' as const, motivo: 'nome igual', fichaId: ID, conferirPapel: false, arquivos: [{ nome: 'CNIS.pdf', tipo: 'cnis', paginas: 3 }] }
+    const fetch = sincronizar(
+      {
+        'POST /api/tarefas/balcao-1/lote': () => ({ lote, ficha: doBanco(), tarefas: [{ ...tarefa, lote }], leituras: [] }),
+        'POST /api/tarefas/balcao-1/registro': () => ({ evento: naHora('2026-10-05T18:00:00.000Z', 'Registrou o recebimento'), ficha: doBanco(), tarefas: [{ ...tarefa, lote, concluida: true }] }),
+      },
+      doBanco(),
+      [],
+      [tarefa],
+    )
+    await sincronizarRecepcao()
+    expect(await receberLote('balcao-1')).toEqual(lote)
+    await registrarRecebimento('balcao-1', { forma: 'papel', conferiTipos: true, conferiPapel: false })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ forma: 'papel', conferiTipos: true, conferiPapel: false })
+    expect(ler().tarefas.find((t) => t.id === 'balcao-1')?.concluida).toBe(true)
   })
 })

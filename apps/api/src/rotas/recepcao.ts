@@ -20,13 +20,14 @@ import {
 } from '@ggv/campos'
 import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import { leituraDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import { nomeSemSobrescrever } from '../../../web/src/regras/arquivos.ts'
+import { lerComIADeExemplo, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
 import type {
   Agendamento,
   Arquivo,
@@ -283,6 +284,33 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     return linhas.map((t) => ({ ...(t.dados as TarefaEncaminhada), ...(t.concluidaEm && { concluida: true }) }))
   }
 
+  /** As leituras dos documentos (bloco 5b): de uma pessoa, ou de todas. */
+  async function leiturasDe(pessoaId?: string): Promise<DocumentoLido[]> {
+    const linhas = await banco.select().from(leituraDocumento).where(pessoaId ? eq(leituraDocumento.pessoaId, pessoaId) : undefined)
+    return linhas.map((l) => l.dados as DocumentoLido)
+  }
+
+  async function guardarLeitura(l: DocumentoLido) {
+    await banco
+      .insert(leituraDocumento)
+      .values({ id: l.id, pessoaId: l.fichaId, dados: l })
+      .onConflictDoUpdate({ target: leituraDocumento.id, set: { dados: l, atualizadoEm: agora() } })
+  }
+
+  /** A IA (simulada) lê o que chegou à pasta e ainda não foi lido: uma leitura por arquivo (GGVP-81 CA1, CA13). */
+  async function lerArquivosNovos(ficha: Ficha): Promise<DocumentoLido[]> {
+    const leituras = await leiturasDe(ficha.id)
+    const novas: DocumentoLido[] = []
+    for (const arquivo of ficha.arquivos) {
+      if (!arquivo.aguardaLeitura || leituras.some((l) => l.id === `${ficha.id}/${arquivo.nome}`)) continue
+      const lida = lerComIADeExemplo(ficha, arquivo, leituras, agora().toISOString())
+      leituras.push(lida)
+      novas.push(lida)
+      await guardarLeitura(lida)
+    }
+    return novas
+  }
+
   const quandoNaConfirmacao = (a: Agendamento) => `${a.data === hoje() ? 'hoje' : dataCurta(a.data, hoje())} às ${a.hora}`
 
   /** "Preparar entrevista" do Jurídico, uma só por entrevista (GGVP-21 CA3). A ficha de atendimento também chama. */
@@ -322,6 +350,9 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     gravacoes,
     guardarGravacao,
     acharGravacao,
+    leiturasDe,
+    guardarLeitura,
+    lerArquivosNovos,
   }
 }
 

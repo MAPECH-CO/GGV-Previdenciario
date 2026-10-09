@@ -89,6 +89,8 @@ export type Banco = {
   contratos?: Contrato[]
   /** O que a IA leu de cada documento que entrou, para a Documentação conferir e arquivar (GGVP-81). Nasce em leitura.ts. */
   leituras?: DocumentoLido[]
+  /** As leituras das fichas do servidor, que a IA (simulada) faz lá; vêm na cópia (GGVP-125, bloco 5b). */
+  leiturasDoServidor?: DocumentoLido[]
   /** Cada conferência do checklist de um caso (GGVP-91). */
   checklists?: ConferenciaDoChecklist[]
   /** Cada tentativa de envio das boas-vindas (GGVP-97). */
@@ -284,13 +286,15 @@ function receberContratosEm(banco: Banco, doBanco: Contrato[]) {
   banco.contratos = [...banco.contratos.filter((c) => !vieram.has(c.processoId)), ...doBanco]
 }
 
-/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa, o compromisso interno, a gravação e o contrato. */
+/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa, o compromisso interno, a gravação, os contratos e as leituras. */
 export function receber(r: {
   ficha?: Ficha
   tarefas?: TarefaEncaminhada[]
   interno?: CompromissoGuardado
   gravacao?: Gravacao
   contrato?: Contrato
+  contratos?: Contrato[]
+  leituras?: DocumentoLido[]
 }): Ficha | undefined {
   const banco = ler()
   const ficha = r.ficha && espelharEm(banco, r.ficha)
@@ -298,6 +302,12 @@ export function receber(r: {
   if (r.interno) banco.internos = [...banco.internos.filter((i) => i.id !== r.interno!.id), r.interno]
   if (r.gravacao) receberGravacaoEm(banco, r.gravacao)
   if (r.contrato) receberContratosEm(banco, [r.contrato])
+  if (r.contratos) receberContratosEm(banco, r.contratos)
+  if (r.leituras) {
+    // Bloco 5b: a leitura que veio do servidor entra no lugar da que já existe aqui.
+    const vieram = new Set(r.leituras.map((l) => l.id))
+    banco.leiturasDoServidor = [...(banco.leiturasDoServidor ?? []).filter((l) => !vieram.has(l.id)), ...r.leituras]
+  }
   gravar(banco)
   return ficha
 }
@@ -308,9 +318,14 @@ export function receber(r: {
  */
 export async function sincronizarRecepcao() {
   if (!noServidor) return
-  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[]; gravacoes: Gravacao[]; contratos: Contrato[] }>(
-    '/recepcao',
-  )
+  const r = await noBanco<{
+    fichas: Ficha[]
+    tarefas: TarefaEncaminhada[]
+    internos: CompromissoGuardado[]
+    gravacoes: Gravacao[]
+    contratos: Contrato[]
+    leituras?: DocumentoLido[]
+  }>('/recepcao')
   const banco = ler()
   for (const f of r.fichas) espelharEm(banco, f)
   receberTarefasEm(banco, r.tarefas, true)
@@ -318,6 +333,8 @@ export async function sincronizarRecepcao() {
   // As do servidor vêm inteiras, e só as que este perfil pode ver: a entrevista com dado de saúde, só o Jurídico.
   banco.gravacoes = [...banco.gravacoes.filter((g) => !gravacaoDoServidor(g.id)), ...r.gravacoes]
   receberContratosEm(banco, r.contratos)
+  // Bloco 5b: as leituras das fichas do servidor vêm inteiras.
+  banco.leiturasDoServidor = r.leituras ?? []
   gravar(banco)
 }
 

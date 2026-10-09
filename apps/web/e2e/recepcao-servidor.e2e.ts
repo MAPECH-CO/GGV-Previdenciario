@@ -383,3 +383,35 @@ test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o 
   await expect(advogada.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
   await outro.close()
 })
+
+// GGVP-125, bloco 5b · a chegada e a conferência no banco: o RG que a Atendimento envia pelo card, a IA (simulada) lê no
+// servidor, e a Documentação, em outro computador, confere e arquiva.
+test('a Atendimento envia o RG pelo card; a Documentação, em outra sessão, confere e arquiva no servidor', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const novo = { nome: 'Lia Documento Teste', idade: 66, pretende: 'Quer o BPC do idoso.', telefone: '11933331155', cpf: '73926418591', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
+
+  await page.goto(`/clientes/${id}`)
+  await page.getByRole('button', { name: /Solte os documentos do cliente aqui/ }).click()
+  const janela = page.getByRole('dialog', { name: 'Conferir e enviar' })
+  await janela.getByLabel(/Solte mais arquivos aqui/).setInputFiles([{ name: 'RG Lia.pdf', mimeType: 'application/pdf', buffer: Buffer.from('rg da lia, teste do bloco 5b') }])
+  await janela.getByRole('combobox', { name: /Tipo de RG Lia/ }).selectOption('rg')
+  await janela.getByRole('button', { name: 'Enviar para a pasta do cliente' }).click()
+  await expect(janela).toBeHidden()
+
+  // Outro computador: a Documentação confere o que a IA leu e arquiva.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const documentacao = await outro.newPage()
+  await entrarPelaApi(documentacao, 'documentacao@exemplo.ggv')
+  await documentacao.goto(`/clientes/${id}/conferir-documentos`)
+  await expect(documentacao.getByRole('list', { name: 'Documentos lidos pela IA' })).toContainText('Documento pessoal (RG)anexado ao card')
+  await documentacao.getByRole('checkbox', { name: 'Conferi os documentos lidos pela IA' }).check()
+  await documentacao.getByRole('button', { name: 'Arquivar' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Arquivado às/ })).toBeVisible()
+
+  const { leituras, fichas } = await (await documentacao.request.get('/api/recepcao')).json()
+  expect((leituras as { fichaId: string; situacao: string }[]).filter((l) => l.fichaId === id).map((l) => l.situacao)).toEqual(['arquivado'])
+  const ficha = (fichas as { id: string; arquivos: { nome: string; aguardaLeitura: boolean }[] }[]).find((f) => f.id === id)
+  expect(ficha?.arquivos).toEqual([expect.objectContaining({ nome: 'RG Lia.pdf', aguardaLeitura: false })])
+  await outro.close()
+})

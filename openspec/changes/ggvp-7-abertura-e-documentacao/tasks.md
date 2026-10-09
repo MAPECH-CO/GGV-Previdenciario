@@ -201,10 +201,10 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 
 ### Bloco 5b · A chegada, a leitura e o arquivo dos documentos no servidor
 
-- [ ] 125.57 Banco: `leitura_documento` (uma leitura por arquivo, à parte da ficha) e a migração.
-- [ ] 125.58 Contratos: envio pelo card, recebimento, arquivamento, mudança de caso e campo do cadastro.
-- [ ] 125.59 Servidor: `POST /api/fichas/:id/arquivos` (card; laudo novo para o Jurídico, sem resumo), `POST /api/tarefas/:id/lote` e `/registro`; a leitura simulada nasce quando o arquivo chega (também o contrato assinado); testes.
-- [ ] 125.60 Servidor: `GET /api/fichas/:id/documentos-lidos`, `POST /api/fichas/:id/documentos-lidos/arquivar` (com a junção do contrato), `POST /api/documentos-lidos/:id/liberar`, `/mover` e `/cadastro`; as leituras no `GET /api/recepcao`; testes.
-- [ ] 125.61 Telas: envio pelo card, lote, recebimento, conferência, quarentena, mover e cadastro chamando a API para as fichas do servidor; as leituras do servidor na cópia; testes.
-- [ ] 125.62 Playwright: o RG enviado pelo card numa sessão é conferido e arquivado em outra.
-- [ ] 125.63 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 125.57 Banco: `leitura_documento` (uma leitura por arquivo, à parte da ficha) e a migração.
+- [x] 125.58 Contratos: envio pelo card, recebimento, arquivamento, mudança de caso e campo do cadastro.
+- [x] 125.59 Servidor: `POST /api/fichas/:id/arquivos` (card; laudo novo para o Jurídico, sem resumo), `POST /api/tarefas/:id/lote` e `/registro`; a leitura simulada nasce quando o arquivo chega (também o contrato assinado); testes.
+- [x] 125.60 Servidor: `GET /api/fichas/:id/documentos-lidos`, `POST /api/fichas/:id/documentos-lidos/arquivar` (com a junção do contrato), `POST /api/documentos-lidos/:id/liberar`, `/mover` e `/cadastro`; as leituras no `GET /api/recepcao`; testes.
+- [x] 125.61 Telas: envio pelo card, lote, recebimento, conferência, quarentena, mover e cadastro chamando a API para as fichas do servidor; as leituras do servidor na cópia; testes.
+- [x] 125.62 Playwright: o RG enviado pelo card numa sessão é conferido e arquivado em outra.
+- [x] 125.63 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
