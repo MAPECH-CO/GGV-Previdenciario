@@ -49,6 +49,7 @@ A GGVP-44 já tem a prestação da advogada (G8), o recebimento do Financeiro co
    - A aprovação do resumo fecha a tarefa com a condição no próprio update, e o histórico vai na mesma transação.
    - O contato trava a tarefa (`for update`) e confere que ela segue aberta.
    - Dois pedidos ao mesmo tempo, só o primeiro passa (quarta revisão de 08/10).
+3a. **Texto com "[completar]" não se aprova** (CA6, revisão de 08/10): o rascunho da IA deixa "[completar: o motivo da decisão]" quando a decisão não está no sistema, e o resumo ia ao cliente assim. A regra única `faltaCompletar` (em `packages/contratos/src/ia.ts`) vale na tela e no servidor, para o resumo e para a petição (GGVP-67 CA12).
 4. **Cada contato** (CA4) é uma linha de `atendimento` (canal, início, quem, o que foi explicado; sem contato fica com o resumo vazio).
    - A tela lista só os contatos desta explicação: cada registro grava no histórico o atendimento e a tarefa, e a lista sai dali. Outro atendimento do caso não entra (revisão de 08/10).
    - ponytail: o vínculo vive no histórico; uma coluna `tarefa_id` em `atendimento` entra na próxima migração do épico (tarefa 7.1). A lista mostra os contatos da explicação mais recente, pela tarefa gravada no histórico (terceira revisão de 08/10).
