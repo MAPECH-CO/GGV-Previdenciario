@@ -133,7 +133,7 @@ describe('GGVP-73 · o laudo atualiza o perfil do perito', () => {
     const janela = within(screen.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' }))
     expect(janela.getByText('Histórico do perfil · 35 laudos')).toBeTruthy()
     const ultimos = within(janela.getByRole('list', { name: 'Últimos laudos do perfil' })).getAllByRole('listitem')
-    expect(ultimos[0].textContent).toBe('• 20/10 · 0000001-00.2025.4.03.0000 · coluna · favorável')
+    expect(ultimos[0].textContent).toBe('• 20/10 · 0000001-86.2025.4.03.0000 · coluna · favorável')
   })
 
   it('CA6 · perito não reconhecido: a pergunta de um clique liga o laudo e o perfil é atualizado', async () => {

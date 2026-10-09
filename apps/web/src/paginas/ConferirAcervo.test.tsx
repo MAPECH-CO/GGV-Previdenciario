@@ -7,8 +7,8 @@ const A = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
 const B = '7a2d3b9f-4c5e-4d6f-9a71-829304b5c6d7'
 const lote: ConferenciaDoAcervo = {
   pendentes: [
-    { id: A, numeroCnj: '00045123320194036301', beneficio: 'bpc_loas_deficiente', desfechoLido: 'improcedente', fonte: 'lote' },
-    { id: B, numeroCnj: '00077819020204036301', beneficio: null, desfechoLido: 'procedente_parcial', fonte: 'lote' },
+    { id: A, numeroCnj: '00045125220194036301', beneficio: 'bpc_loas_deficiente', desfechoLido: 'improcedente', fonte: 'lote' },
+    { id: B, numeroCnj: '00077816520204036301', beneficio: null, desfechoLido: 'procedente_parcial', fonte: 'lote' },
   ],
   conferidos: 3,
 }
@@ -40,7 +40,7 @@ describe('Conferir desfechos do lote (GGVP-55)', () => {
   it('CA7 · cada processo com o desfecho lido; "Confere" manda o mesmo desfecho, e a lista volta do servidor', async () => {
     const chamada = servidor(lote)
     render(<ConferirAcervo />)
-    const primeiro = await processo('0004512-33.2019.4.03.6301')
+    const primeiro = await processo('0004512-52.2019.4.03.6301')
     expect(primeiro.textContent).toContain('BPC/LOAS Deficiente')
     expect(primeiro.textContent).toContain('Desfecho lido: Improcedente')
     fireEvent.click(within(primeiro).getByRole('button', { name: 'Confere' }))
@@ -52,7 +52,7 @@ describe('Conferir desfechos do lote (GGVP-55)', () => {
   it('CA7 · "Corrigir" pede o desfecho correto pela lista; sem escolher, a mensagem do contrato e nada vai ao servidor', async () => {
     const chamada = servidor(lote)
     render(<ConferirAcervo />)
-    const segundo = await processo('0007781-90.2020.4.03.6301')
+    const segundo = await processo('0007781-65.2020.4.03.6301')
     fireEvent.click(within(segundo).getByRole('button', { name: 'Corrigir' }))
     fireEvent.click(within(segundo).getByRole('button', { name: 'Salvar a correção' }))
     expect(within(segundo).getByRole('alert').textContent).toBe('Escolha o desfecho')

@@ -70,3 +70,12 @@
   - os 9 testes do comando passaram, com o novo; Playwright da vigília (judicialização) com 6 de 6;
   - API inteira: dos 53 arquivos, só 43 iniciaram. Deles, 42 passaram; o que falhou (linha de comando do CA5, por tempo) passou rodando sozinho. A suíte inteira roda no CI do PR.
 
+## GGVP-108 · Identificadores do caso: CPF, NB, protocolo e número CNJ
+
+- [x] 8.1 CA3, CA5 · Contrato: `HistoricoDoCaso.numero` (`{ tipo, valor }` ou nada); regra `numeroDoCaso(fase, identificadores)` em `apps/api/src/fluxo/identificadores.ts`, com teste em `src/fluxo/identificadores.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 8.2 CA3 · `GET /api/casos/:id/historico` responde o número da fase, e cada número do caso entra na linha com a data; teste em `src/rotas/historico.test.ts`.
+- [x] 8.3 CA3 · A tela do histórico mostra o número do caso no topo (`apps/web/src/paginas/Historico.tsx`); teste em `Historico.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 8.4 CA6 · Dados de exemplo com dígito certo (`apps/api/src/banco/exemplo.ts`, `apps/web/src/dados/exemplo.ts`, e os testes que citam os números) e o teste que confere todo CPF e CNJ dos exemplos (`apps/web/src/dados/identificadores.test.ts`).
+- [x] 8.5 CA1, CA2, CA4, CA5 · Já cobertos e conferidos: CPF repetido e "É outra pessoa" (`rotas/recepcao.test.ts`), CNJ com dígito errado (`packages/contratos/src/justica.test.ts`) e o mesmo número em dois casos (`rotas/peticao.test.ts`), casar a publicação (`vigilia/casar.test.ts`); verifica rodando esses testes.
+- [x] 8.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado em 08/10: typecheck e lint sem erro; contratos 100, servidor 333 e tela 1.251 testes passando; Playwright da jurimetria 4 de 4.
+

@@ -739,7 +739,7 @@ describe('GGVP-73 · atualizar o perfil do perito', () => {
     expect(prado.laudos).toHaveLength(35)
     expect(prado.laudos.at(-1)).toEqual({
       id: 'laudo-pericia-antonio-exemplo-1-1',
-      caso: '0000001-00.2025.4.03.0000',
+      caso: '0000001-86.2025.4.03.0000',
       data: '2026-10-20',
       tipo: 'medica',
       assunto: 'coluna',
@@ -753,7 +753,7 @@ describe('GGVP-73 · atualizar o perfil do perito', () => {
     expect(t.pericia.resultado!.noPerfil).toBe('atualizado')
     expect(t.pericia.historico.at(-1)).toMatchObject({
       quem: 'Sistema',
-      oQue: 'A IA atualizou o perfil de Dr. A. Prado (exemplo): versão 35, com o que o perito observou, perguntou e pediu (referência do caso: 0000001-00.2025.4.03.0000, sem dado pessoal)',
+      oQue: 'A IA atualizou o perfil de Dr. A. Prado (exemplo): versão 35, com o que o perito observou, perguntou e pediu (referência do caso: 0000001-86.2025.4.03.0000, sem dado pessoal)',
       passo: 'DP.09',
     })
     expect(t.perfil!.versao).toBe(35)
