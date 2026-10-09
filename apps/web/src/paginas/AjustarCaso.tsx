@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { LiberarAoJuridico, type CasoParaLiberacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
+import { nomeDoBeneficio } from '@ggv/contratos'
 
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const dia = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -63,7 +63,7 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Ajustar o caso</h1>
       <p className={styles.subtitulo}>
-        {caso.cliente} · {rotuloBeneficio(caso.beneficio)}
+        {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
       </p>
 
       {ajuste ? (
