@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10). O chat das Centrais e a aba Suporte respondem pelo motor de IA do portal, com o caso que o perfil vê, o acervo da casa e as fontes. As travas do chat continuam no servidor, como código. A ação pedida no chat vira um cartão, que só executa depois do "Confirmar" de quem pediu. O Sócio vê o conteúdo médico no chat, com o acesso registrado (decisão do Mateus, 09/10). As ações que dependem de enviar arquivo (laudo, documento, comprovante de RPV e lote do acervo) levam à tela certa até as rotas de envio existirem no servidor.
+Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10). O chat das Centrais e a aba Suporte respondem pelo motor de IA do portal, com o caso que o perfil vê, o acervo da casa e as fontes. As travas do chat continuam no servidor, como código. A ação pedida no chat vira um cartão, que só executa depois do "Confirmar" de quem pediu. O Sócio vê o conteúdo médico no chat, com o acesso registrado (decisão do Mateus, 09/10). As ações que dependem de enviar arquivo (comprovante do INSS, laudo, documento, comprovante de RPV e lote do acervo) levam à tela certa até as rotas de envio existirem no servidor.
 
 ## ADDED Requirements
 
@@ -53,8 +53,8 @@ Uma ação pedida no chat SHALL virar um cartão (passos, o que conferir, travas
 - Ao executar, o servidor confere de novo as permissões e os portões.
 - O histórico do caso SHALL guardar a ação como "feito pelo chat".
 - Cancelar descarta o cartão.
-- **Executam no servidor:** criar tarefa, pedir a peça e marcar a perícia com o comprovante.
-- **Levam à tela:** anexar o laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo, até a rota de envio existir no servidor.
+- **Executam no servidor:** criar tarefa e pedir a peça.
+- **Levam à tela:** marcar a perícia com o comprovante (a pessoa confere a leitura na perícia do caso), anexar o laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo, até a rota de envio existir no servidor.
 
 #### Scenario: CA3 · Criar tarefa pelo chat
 - **Dado** a advogada pede no chat para criar uma tarefa para a Documentação

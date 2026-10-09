@@ -108,7 +108,7 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
 
 ### Decisions
 
-1. **Kit de agentes da OpenAI em TypeScript** (`@openai/agents` 0.18.0, a versão de setembro, com `zod` 4), decisão do Mateus em 09/10. O ADR-014 registra a escolha.
+1. **Kit de agentes da OpenAI em TypeScript** (`@openai/agents` 0.18.0, a versão de setembro, com `zod` 4), decisão do Mateus em 09/10. O ADR-016 registra a escolha (o 014 está reservado para a fonte da jurimetria).
    - **Modelo:** pelo mesmo endpoint de chat completions do motor, com o cliente da OpenAI criado com o `fetch` injetado; o teste passa um falso (CA4).
    - **Rastreamento do kit desligado:** nada vai para o painel da OpenAI (LGPD).
    - **Ferramentas de ação com aprovação da pessoa:** o kit para na aprovação, e o servidor guarda o estado da conversa até o clique.
@@ -131,8 +131,8 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
      - os links vêm do código (o caso e as telas das tarefas), nunca do texto do modelo.
 3. **Ferramentas do agente:**
    - **de leitura, sem aprovação:** ver o caso, buscar no acervo, as tarefas da pessoa e explicar um portão;
-   - **de ação, com aprovação, só as da lista do perfil:** criar tarefa, pedir a peça e marcar a perícia (com a leitura do comprovante);
-   - **as que dependem de enviar arquivo** (anexar laudo, enviar documento, lançar o comprovante de RPV e subir no acervo) respondem com o link da tela.
+   - **de ação, com aprovação, só as da lista do perfil:** criar tarefa e pedir a peça;
+   - **as que dependem de enviar arquivo** (marcar a perícia com o comprovante, anexar laudo, enviar documento, lançar o comprovante de RPV e subir no acervo) respondem com o link da tela. Na perícia, a IA lê o comprovante e a pessoa confere antes de marcar (Mateus, 09/10).
 4. **O cartão** (`CartaoDeAcao`) nasce da aprovação pedida pelo kit.
    - Traz os passos, o que conferir, as travas e o responsável (pela regra do responsável da tela).
    - Fica em memória até o clique, com quem pediu.
@@ -142,10 +142,10 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
    - A ação roda pela rota da tela, com a sessão de quem confirmou, então permissões e portões valem de novo.
    - O histórico do caso ganha a ação com "feito pelo chat".
    - `DELETE /api/chat/acoes/:id` descarta o cartão.
-6. **Na tela** (`dados/chat.ts`):
-   - com o servidor ligado, `perguntar`, `confirmarAcao` e `cancelarAcao` chamam o servidor;
-   - as tarefas criadas pelo chat aparecem na Central pela lista de tarefas do servidor;
-   - no modo de exemplo (testes e semente), segue o chat simulado.
+6. **Na tela** (`dados/chat.ts`), no modo misto (Mateus, 09/10):
+   - vai ao servidor a pergunta sobre um caso do servidor (pelo processo ou pelo cliente citado) e a consulta sem cliente; `confirmarAcao` e `cancelarAcao` seguem quem fez o cartão;
+   - seguem no chat simulado a pergunta sobre um caso ou um cliente da semente e, sem cliente, as listas, os números e as ações que ele calcula por código sobre a semente (perícias da semana, jurimetria e as outras);
+   - as tarefas que o chat cria no servidor aparecem na Central pela lista de tarefas do servidor.
 
 ### Campos de formulário
 

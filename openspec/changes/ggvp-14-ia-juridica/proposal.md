@@ -41,6 +41,6 @@ Em toda tarefa com IA, a sugestão já aparece quando a pessoa abre, preenchendo
 
 ## Fora do escopo
 
-- As ações do chat que dependem de enviar arquivo (anexar laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo): o cartão leva à tela certa até as rotas de envio existirem no servidor (Recepção, PR #22; GGVP-55).
+- As ações do chat que dependem de enviar arquivo (marcar a perícia com o comprovante, anexar laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo): o cartão leva à tela certa até as rotas de envio existirem no servidor (Recepção, PR #22; GGVP-55).
 - A IA nas telas do Pedro (leitura do laudo, sugestão do benefício, comprovante da perícia): entram quando ele ligar essas telas no servidor (GGVP-125, GGVP-132), sobre esta plataforma.
 - Google Drive (GGVP-107).
