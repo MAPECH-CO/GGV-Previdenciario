@@ -68,15 +68,17 @@
 
 ## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
 
-- [ ] 5.1 CA1 · Contrato: `nomeacao_perito` em `CLASSES_DE_ATO` ("Nomeação de perito"); sem prazo no despacho, 15 dias (CPC, art. 465, §1º). Teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 5.2 CA1 · Instrução de `classificar_publicacao` com a classe nova, em versão nova. Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.3 CA1 · `encaminhar`: o destino DP.05 "Quesitos e assistente técnico" para a advogada, com o prazo contado. Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.4 CA1, CA6 · `peritoDaPublicacao` e o histórico na classificação: `perito_nomeado` com o perito, ou não reconhecido. Teste da rota; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.5 Tela: a opção nova e a frase de destino na leitura da publicação. Teste Vitest e Playwright da judicialização; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 5.1 CA1 · Contrato: `nomeacao_perito` em `CLASSES_DE_ATO` ("Nomeação de perito"); sem prazo no despacho, 15 dias (CPC, art. 465, §1º). Teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 5.2 CA1 · Instrução de `classificar_publicacao` com a classe nova, em versão nova. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.3 CA1 · `encaminhar`: o destino DP.05 "Quesitos e assistente técnico" para a advogada, com o prazo contado. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.4 CA1, CA6 · `peritoDaPublicacao` e o histórico na classificação: `perito_nomeado` com o perito, ou não reconhecido. Teste da rota; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.5 Tela: a opção nova e a frase de destino na leitura da publicação. Teste Vitest e Playwright da judicialização; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 5.7 CA1 · Ajuste do "Agora ok?" (Mateus, 08/10): na Central, a tarefa "Quesitos e assistente técnico" abre a tela de perícias do caso, onde ficam os quesitos. Teste da rota e Playwright da judicialização; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 5.8 Rodar typecheck, lint, testes e Playwright de novo; colar a saída.
 
 ## GGVP-59, parte 2 (depois, com o Pedro e a página do caso no servidor)
 
-- [ ] 5.7 CA1 · Ligar o perito direto na perícia judicial a partir da publicação.
-- [ ] 5.8 CA2 · A sobreposição da página do caso lendo do servidor, com a taxa por benefício e por CID.
-- [ ] 5.9 CA2, CA7 · A pergunta no chat ("Como o perito avalia?").
+- [ ] 5.9 CA1 · Ligar o perito direto na perícia judicial a partir da publicação.
+- [ ] 5.10 CA2 · A sobreposição da página do caso lendo do servidor, com a taxa por benefício e por CID.
+- [ ] 5.11 CA2, CA7 · A pergunta no chat ("Como o perito avalia?").

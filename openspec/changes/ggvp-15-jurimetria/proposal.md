@@ -28,7 +28,7 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **Busca híbrida:** sentido e palavra misturados por RRF, sempre com a fonte (CA2).
 5. **GGVP-59** · Perito nomeado: identificar e mostrar a jurimetria · advogada responsável. A parte 1 (Mateus, 08/10), depois que a Perícia do Pedro entrou no servidor:
    - **Nomeação de perito** vira uma classe da leitura da publicação: a IA sugere, e a pessoa classifica (CA1).
-   - **Quesitos e assistente técnico:** a tarefa da advogada, com o prazo do despacho ou, sem ele, 15 dias (CPC, art. 465, §1º), contado pelo código do prazo judicial (CA1, G12).
+   - **Quesitos e assistente técnico:** a tarefa da advogada, com o prazo do despacho ou, sem ele, 15 dias (CPC, art. 465, §1º), contado pelo código do prazo judicial (CA1, G12). Na Central, a tarefa abre a tela de perícias do caso, onde ficam os quesitos.
    - **O perito do texto:** reconhecido entre os peritos da base. Não reconhecido, a pergunta de um clique da Perícia resolve, sem travar (CA1, CA6).
    - **Já cobertos pela Perícia** (GGVP-61, GGVP-73 e GGVP-139): CA4, CA5, CA6, CA8, CA9 e CA10, e os números do perito em código, com o G22 (CA2, CA3 e CA7, por assunto).
 

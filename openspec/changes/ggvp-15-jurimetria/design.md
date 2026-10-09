@@ -262,14 +262,17 @@ Nenhuma tela nova. As fontes aparecem onde já aparecem.
    - Com prazo no despacho, vale o do despacho.
    - A contagem é a do prazo judicial: dias úteis e feriados do tribunal; na dúvida, a data mais cedo (G12).
 3. **Destino:** `encaminhar` abre a etapa DP e a tarefa "Quesitos e assistente técnico" (DP.05) para a advogada, com o prazo. Reclassificar desfaz como hoje: a tarefa aberta da nomeação é cancelada (GGVP-37 CA7).
+   - Na Central, a tarefa abre a tela de perícias do caso (`/casos/:id/pericias`), onde a advogada escreve os quesitos (ajuste do "Agora ok?", Mateus, 08/10).
 4. **O perito do texto** (`peritoDaPublicacao`): procura, no texto normalizado (minúsculo e sem acento), o nome normalizado e as grafias de cada perito da base. Se mais de um bater, vale o nome mais longo.
    - Achou: o histórico grava `perito_nomeado`, com o perito e quantos laudos o perfil tem.
    - Não achou: o histórico grava que o perito não foi reconhecido, e nada trava. A pergunta de um clique da Perícia resolve (CA6).
+5. **Banco:** a migração `0021_nomeacao_de_perito` troca a restrição da classe da publicação para aceitar a classe nova. A lista de classes vem do contrato: uma só para a tela, o servidor e o banco.
+   - Nasceu como 0020 e passou a 0021 no merge da `main` de 08/10, quando a documentação médica (#6) entrou com a 0019 e o acervo (GGVP-141) foi para a 0020.
 
 ### Campos de formulário
 
 - **"Tipo de ato":** seleção fixa (`CLASSES_DE_ATO`), com a opção nova, validada pelo contrato na tela e no servidor.
-- **"Dias":** o mesmo campo de hoje (1 a 120), ou "sem prazo na decisão".
+- **"Dias":** o mesmo campo de hoje (1 a 120), ou "sem prazo na decisão", que mostra os dias que valem: 15 na nomeação de perito, 5 nos outros tipos.
 
 ### Telas
 

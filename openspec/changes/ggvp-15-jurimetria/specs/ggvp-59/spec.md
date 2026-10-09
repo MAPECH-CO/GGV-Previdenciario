@@ -26,7 +26,7 @@ Quem vê os números: só o Jurídico. A dica sem números pode ir ao cliente na
 ### Requirement: CA1 · A nomeação liga o perito e abre os quesitos com o prazo
 Quando a publicação de nomeação de perito for classificada, o perito SHALL ficar ligado ao processo, a advogada SHALL receber o aviso de perito nomeado e SHALL nascer para ela a tarefa "Quesitos e assistente técnico".
 - O prazo MUST ser o do despacho ou, sem ele, 15 dias (CPC, art. 465, §1º), contado em código; na dúvida, a data mais cedo (G12).
-- **Parte 1:** a classe "Nomeação de perito"; a tarefa com o prazo; o perito reconhecido no texto vai ao histórico do caso, e o não reconhecido segue para a pergunta de um clique (CA6).
+- **Parte 1:** a classe "Nomeação de perito"; a tarefa com o prazo, que abre a tela de perícias do caso; o perito reconhecido no texto vai ao histórico do caso, e o não reconhecido segue para a pergunta de um clique (CA6).
 - **Parte 2:** ligar o perito direto na perícia judicial.
 
 #### Scenario: CA1 · Nomeação de perito
