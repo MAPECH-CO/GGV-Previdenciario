@@ -21,6 +21,11 @@ test('GGVP-75 · o Sócio abre os resultados pelo topo: os indicadores com os ca
   // G22 de 07/10: sem amostra mínima, o grupo com poucos casos também mostra a taxa, com os casos e a data da base.
   await expect(page.getByRole('list', { name: 'BPC/LOAS Deficiente' })).toContainText(/Deferimento no INSS: \d+% em \d+ casos · base de/)
   await expect(page.getByRole('list', { name: 'Aposentadoria da Pessoa com Deficiência' })).toContainText(/Deferimento no INSS: \d+% em \d casos? · base de/)
+
+  // GGVP-149 CA1: o recorte por vara, pela vara conferida no caso.
+  await page.getByLabel('Recorte', { exact: true }).selectOption('vara')
+  await page.getByRole('button', { name: 'Ver resultados' }).click()
+  await expect(page.getByRole('heading', { name: 'Por vara' })).toBeVisible()
 })
 
 test('GGVP-75 · a Sênior vê o painel, sem os totais em dinheiro', async ({ page }) => {

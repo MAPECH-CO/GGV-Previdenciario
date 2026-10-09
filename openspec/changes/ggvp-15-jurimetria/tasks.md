@@ -105,4 +105,4 @@
 - [x] 9.5 CA2, CA3, CA4 · Tela "Resultados" (`apps/web/src/paginas/Resultados.tsx`): o cartão "Motivos mais comuns" e os tempos entre os indicadores; teste Vitest em `Resultados.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
 - [x] 9.6 Playwright: o Sócio vê os motivos mais comuns na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 9.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
-- [ ] 9.8 CA1 · Recorte "Vara" (contrato, cálculo, tela e teste), depois que os pedidos #27 e #18 entrarem na main.
+- [x] 9.8 CA1 · Recorte "Vara" pela vara conferida no caso (o #27 entrou na main durante a história): `RECORTES` no contrato, o grupo em `apps/api/src/fluxo/resultados.ts`, teste no cálculo e no Playwright; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/web e2e`.

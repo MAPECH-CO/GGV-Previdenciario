@@ -39,6 +39,10 @@ async function novoCaso(extra: Partial<typeof caso.$inferInsert> = {}) {
 const decisaoInss = (casoId: string, resultado: 'deferido' | 'indeferido', dataDecisao = '2026-05-10') =>
   banco.insert(resultadoInss).values({ casoId, resultado, dataDecisao })
 const indicador = (painel: Awaited<ReturnType<typeof painelDeResultados>>, chave: string) => painel.indicadores.find((i) => i.chave === chave)
+const indicadorDe = (g: { indicadores: { chave: string; casos: number; valor: number | null }[] }, chave: string) => {
+  const i = g.indicadores.find((x) => x.chave === chave)
+  return i && { casos: i.casos, valor: i.valor }
+}
 
 describe('GGVP-75 · painel de resultado para os sócios', () => {
   it('CA5 · sem nenhum caso decidido, a operação aparece "sem dados ainda", e a base do acervo também', async () => {
@@ -233,6 +237,18 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     ])
     const porAdvogada = (await painelDeResultados(banco, { ...PERIODO, recorte: 'advogada' })).recorte
     expect(porAdvogada?.grupos.map((g) => g.nome)).toEqual(['Ana (exemplo)'])
+  })
+
+  it('GGVP-149 CA1 · o recorte por vara usa a vara conferida no caso; caso sem vara fica fora dos grupos', async () => {
+    await decisaoInss(await novoCaso({ vara: '1ª Vara do JEF (exemplo)' }), 'deferido')
+    await decisaoInss(await novoCaso({ vara: '1ª Vara do JEF (exemplo)' }), 'indeferido')
+    await novoCaso({ vara: '2ª Vara do JEF (exemplo)', desfecho: 'procedente_total', encerradoEm: as('2026-08-01') })
+    await decisaoInss(await novoCaso(), 'deferido')
+    const porVara = (await painelDeResultados(banco, { ...PERIODO, recorte: 'vara' })).recorte
+    expect(porVara?.grupos.map((g) => [g.nome, indicadorDe(g, 'deferimento_inss'), indicadorDe(g, 'procedencia')])).toEqual([
+      ['1ª Vara do JEF (exemplo)', { casos: 2, valor: 0.5 }, { casos: 0, valor: null }],
+      ['2ª Vara do JEF (exemplo)', { casos: 0, valor: null }, { casos: 1, valor: 1 }],
+    ])
   })
 
   it('CA1 · o recorte por perito e por benefício usa o perito da perícia e o rótulo do catálogo', async () => {

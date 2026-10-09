@@ -46,7 +46,7 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   // período para o where de cada consulta (data do evento) e os grupos do recorte para um group by.
   const noPeriodo = (dia: string | null | undefined): dia is string => !!dia && dia >= de && dia <= ate
   const casos = await banco
-    .select({ id: caso.id, beneficio: caso.beneficio, advogadaId: caso.advogadaResponsavelId, desfecho: caso.desfecho, causa: caso.causaDesfecho, criadoEm: caso.criadoEm, encerradoEm: caso.encerradoEm })
+    .select({ id: caso.id, beneficio: caso.beneficio, advogadaId: caso.advogadaResponsavelId, vara: caso.vara, desfecho: caso.desfecho, causa: caso.causaDesfecho, criadoEm: caso.criadoEm, encerradoEm: caso.encerradoEm })
     .from(caso)
   const casoPorId = new Map(casos.map((c) => [c.id, c]))
 
@@ -202,7 +202,7 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   }
 }
 
-type CasoDoPainel = { id: string; beneficio: string | null; advogadaId: string | null }
+type CasoDoPainel = { id: string; beneficio: string | null; advogadaId: string | null; vara: string | null }
 
 /** O nome do grupo de cada caso no recorte; caso sem o dado do recorte fica fora dos grupos (CA7). */
 async function gruposDoRecorte(
@@ -215,6 +215,8 @@ async function gruposDoRecorte(
   const nomeDe = new Map<string, string>()
   if (recorte === 'beneficio') {
     for (const c of casoPorId.values()) if (c.beneficio) nomeDe.set(c.id, ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio)
+  } else if (recorte === 'vara') {
+    for (const c of casoPorId.values()) if (c.vara?.trim()) nomeDe.set(c.id, c.vara.trim())
   } else if (recorte === 'advogada') {
     const nomes = new Map((await banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario)).map((u) => [u.id, u.nome]))
     for (const c of casoPorId.values()) if (c.advogadaId && nomes.has(c.advogadaId)) nomeDe.set(c.id, nomes.get(c.advogadaId) as string)

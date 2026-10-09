@@ -2,10 +2,11 @@
 import { dataParaIso, validarData } from '@ggv/campos'
 import { z } from 'zod'
 
-export const RECORTES = ['beneficio', 'perito', 'juizo', 'advogada'] as const
+/** GGVP-149 CA1: a vara é a conferida no caso, na leitura da publicação (GGVP-64 parte 2). */
+export const RECORTES = ['beneficio', 'perito', 'juizo', 'vara', 'advogada'] as const
 export const Recorte = z.enum(RECORTES)
 export type Recorte = z.infer<typeof Recorte>
-export const ROTULO_RECORTE: Record<Recorte, string> = { beneficio: 'Benefício', perito: 'Perito', juizo: 'Juízo', advogada: 'Advogada' }
+export const ROTULO_RECORTE: Record<Recorte, string> = { beneficio: 'Benefício', perito: 'Perito', juizo: 'Juízo', vara: 'Vara', advogada: 'Advogada' }
 
 const data = (rotulo: string) =>
   z
