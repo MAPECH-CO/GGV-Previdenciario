@@ -106,3 +106,13 @@
 - [x] 9.6 Playwright: o Sócio vê os motivos mais comuns na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 9.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [x] 9.8 CA1 · Recorte "Vara" pela vara conferida no caso (o #27 entrou na main durante a história): `RECORTES` no contrato, o grupo em `apps/api/src/fluxo/resultados.ts`, teste no cálculo e no Playwright; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/web e2e`.
+
+## GGVP-150 · Chance de êxito pelos casos parecidos, com a cor, o que falta saber e o histórico
+
+- [x] 10.1 CA2, CA6 · Contrato: `ChanceDeExito` ganha `cor`, `sugereNaoPegar` e `faltaSaber` (`packages/contratos/src/inss.ts`); ação `chance.ver` (advogada, Sênior e Sócio) e matriz versão 26, com a impressão digital nova no teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 10.2 CA2, CA4 · Regras em `apps/api/src/fluxo/chance.ts`: `corDaChance` (limites 15 e 50 incluídos no amarelo) e `oQueFaltaSaber`; teste em `chance.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 10.3 CA4, CA5, CA6 · Rota `POST /api/casos/:id/chance` em `apps/api/src/rotas/conferencia.ts`: pede `chance.ver`, devolve a cor e o que falta saber, e o histórico guarda os casos usados; a decisão da conferência guarda a chance no histórico; teste em `conferencia.test.ts`.
+- [x] 10.4 CA2, CA3, CA4, CA6 · Tela da conferência (`apps/web/src/paginas/Conferencia.tsx`): a cor, a sugestão abaixo de 15% sem bloquear, o que falta saber, e a chance só para quem tem `chance.ver`; teste Vitest.
+- [x] 10.5 Playwright: a Sênior vê a chance com a cor e o que falta saber na conferência.
+- [x] 10.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 10.7 CA1 · Os outros fatores dos casos parecidos (provas, perito ou juízo, motivos), depois da resposta do Lucas no cartão (09/10).
