@@ -4,12 +4,15 @@ import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
+import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { formatarCpf } from '../campos.ts'
 import { descreverDocumento, identificarPerito, NOMES_DE_FORA, nomeDoDocumento, obterCaso, type CasoNaTela, type DocumentoDoCaso, type TipoDeAutor } from '../dados/caso.ts'
 import { pendenciasDeDocumento } from '../dados/cobranca.ts'
+import { obterContrato } from '../dados/contrato.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { agora, doServidor } from '../dados/servidor.ts'
+import { agora, doServidor, obterFicha } from '../dados/servidor.ts'
+import type { Ficha } from '../dados/tipos.ts'
 import { usePode } from '../sessao.ts'
 import type { IdEtapa } from '../regras/caso.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
@@ -52,6 +55,20 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
       valendo = false
     }
   }, [processoId, vePrestacao])
+  // O que as histórias prometem no processo: "Marcar entrevista" (GGVP-123, CA1), "Imprimir cópia para o cliente" com o
+  // contrato verificado (GGVP-89, CA1) e a janela das transcrições (GGVP-46). Cada um só para quem pode usar a tela.
+  const marcaEntrevista = usePode('ficha.editar')
+  const conduzContrato = usePode('contrato.conduzir')
+  const [contratoVerificado, setContratoVerificado] = useState(false)
+  useEffect(() => {
+    if (!conduzContrato) return
+    let valendo = true
+    void obterContrato(processoId).then((x) => valendo && setContratoVerificado(x?.contrato.etapa === 'copia' || x?.contrato.etapa === 'entregue'))
+    return () => {
+      valendo = false
+    }
+  }, [processoId, conduzContrato])
+  const [fichaDasTranscricoes, setFichaDasTranscricoes] = useState<Ficha | null>(null)
 
   useEffect(() => {
     let valendo = true
@@ -120,7 +137,17 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 Prestação de contas
               </a>
             )}
-            <button type="button" className={base.transcricoes} aria-disabled="true" title="As transcrições abrem pela ficha (GGVP-102)">
+            {marcaEntrevista && (
+              <a className={styles.prestacao} href={`/agenda/marcar/${c.ficha.id}`}>
+                Marcar entrevista
+              </a>
+            )}
+            {conduzContrato && contratoVerificado && (
+              <a className={styles.prestacao} href={`/contrato/${processoId}/copia`}>
+                Imprimir cópia para o cliente
+              </a>
+            )}
+            <button type="button" className={base.transcricoes} onClick={async () => setFichaDasTranscricoes(await obterFicha(c.ficha.id))}>
               ▶ Transcrições ({c.ficha.transcricoes})
             </button>
           </div>
@@ -515,6 +542,14 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
       <AbaSuporte />
       {janela && (janela.tipo === 'perito' || janela.tipo === 'juizo') && <JurimetriaDoCaso tipo={janela.tipo} id={janela.id} aoFechar={() => setJanela(null)} />}
       {janela?.tipo === 'historico' && <Historico caso={c} hoje={hoje} aoFechar={() => setJanela(null)} />}
+      {fichaDasTranscricoes && (
+        <Transcricoes
+          ficha={fichaDasTranscricoes}
+          perfil={juridico ? 'juridico' : 'atendimento'}
+          aoFechar={() => setFichaDasTranscricoes(null)}
+          aoMudar={async () => setFichaDasTranscricoes(await obterFicha(c.ficha.id))}
+        />
+      )}
       {janela?.tipo === 'documento' && <Documento doc={janela.doc} caso={c} hoje={hoje} aoFechar={() => setJanela(null)} />}
     </>
   )

@@ -6,6 +6,13 @@ import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.t
 import { CasoEmAndamento } from '../componentes/CasoEmAndamento.tsx'
 import { CabecalhoCliente } from '../componentes/CabecalhoCliente.tsx'
 import { PaginaDoCaso } from './PaginaDoCaso.tsx'
+import { obterContrato } from '../dados/contrato.ts'
+
+// O contrato do caso, para o "Imprimir cópia para o cliente" (GGVP-89): o real, menos onde o teste diz a etapa.
+vi.mock('../dados/contrato.ts', async (original) => {
+  const m = await original<typeof import('../dados/contrato.ts')>()
+  return { ...m, obterContrato: vi.fn(m.obterContrato) }
+})
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 7, 10, 0), latencia: 0 })
@@ -65,6 +72,22 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     expect(detalhe.textContent).toContain('Dra. Paula (exemplo) (pessoa)')
     expect(detalhe.textContent).toContain('D1.09')
     expect(detalhe.textContent).toContain('Documentos desta etapa: transcricao-entrevista.pdf, contrato-zapsign.pdf, cnis.pdf')
+  })
+
+  it('GGVP-123, GGVP-89, GGVP-46 · no processo: marcar entrevista, imprimir a cópia do contrato verificado e as transcrições', async () => {
+    entrarComo('atendimento')
+    vi.mocked(obterContrato).mockResolvedValueOnce({ contrato: { etapa: 'copia' } } as never)
+    render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
+    expect((await screen.findByRole('link', { name: 'Marcar entrevista' })).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
+    expect((await screen.findByRole('link', { name: 'Imprimir cópia para o cliente' })).getAttribute('href')).toBe('/contrato/antonio-exemplo-1/copia')
+    fireEvent.click(screen.getByRole('button', { name: /^▶ Transcrições/ }))
+    expect(await screen.findByRole('heading', { name: 'Transcrições do caso' }, { timeout: 5000 })).toBeTruthy()
+    cleanup()
+    // Contrato ainda não verificado: sem o botão da cópia. A Documentação não conduz o contrato: também não vê.
+    vi.mocked(obterContrato).mockResolvedValueOnce({ contrato: { etapa: 'assinatura' } } as never)
+    render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
+    await screen.findByRole('link', { name: 'Marcar entrevista' })
+    expect(screen.queryByRole('link', { name: 'Imprimir cópia para o cliente' })).toBeNull()
   })
 
   it('CA5 · laudo novo no cabeçalho do processo e na ficha, levando à análise do laudo', async () => {
