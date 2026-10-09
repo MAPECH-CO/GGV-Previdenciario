@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 24, digital: 'da71ae71' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 25, digital: '1313b4f1' })
   })
 
   it('GGVP-100 · só a Sênior decide se recorre; a advogada responsável e o Sócio só leem', () => {
@@ -57,7 +57,7 @@ describe('matriz de permissões (GGVP-96)', () => {
   it('CA12 · dado de saúde em detalhe para o Jurídico e o Sócio (Pedro, 09/10); valores, o Financeiro e o Sócio, e a prestação também a advogada', () => {
     expect(PERFIS.filter((p) => pode(p, 'dado_saude.ver_detalhe'))).toEqual(['advogada', 'senior', 'juridico_adm', 'socio'])
     expect(PERFIS.filter((p) => pode(p, 'valores.ver'))).toEqual(['financeiro', 'socio'])
-    expect(PERFIS.filter((p) => pode(p, 'prestacao.ver'))).toEqual(['advogada', 'financeiro', 'socio'])
+    expect(PERFIS.filter((p) => pode(p, 'prestacao.ver'))).toEqual(['advogada', 'senior', 'financeiro', 'socio'])
   })
 
   it('GGVP-23 · só a Sênior encerra; o Financeiro não abre o caso', () => {
@@ -73,11 +73,12 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('socio', 'prestacao.dar_ok')).toBe(false)
   })
 
-  it('GGVP-96 (Pedro, 07/10) · a Sênior faz os passos jurídicos da advogada; o limite e o resultado da perícia (G15) e os valores, não', () => {
+  it('GGVP-96 (Pedro, 07/10 e 09/10) · a Sênior faz os passos jurídicos da advogada e vê a prestação; o limite e o resultado da perícia (G15), o OK da prestação e os valores, não', () => {
     for (const a of ['laudo.conferir', 'pericia.decidir', 'peticao.pedir', 'peticao.aprovar', 'peticao.protocolar', 'exigencia_inss.tratar', 'exigencia_juiz.distribuir', 'exigencia_juiz.manifestar'] as const) {
       expect(PERFIS.filter((p) => pode(p, a)), a).toEqual(['advogada', 'senior'])
     }
-    for (const a of ['pericia.decidir_no_limite', 'pericia.conferir_resultado', 'prestacao.ver', 'prestacao.dar_ok', 'valores.ver'] as const) {
+    expect(pode('senior', 'prestacao.ver')).toBe(true)
+    for (const a of ['pericia.decidir_no_limite', 'pericia.conferir_resultado', 'prestacao.dar_ok', 'valores.ver'] as const) {
       expect(pode('senior', a), a).toBe(false)
     }
   })
@@ -179,7 +180,7 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento_lider: 20,
       documentacao: 9,
       advogada: 37,
-      senior: 51,
+      senior: 52,
       juridico_adm: 16,
       financeiro: 7,
       socio: 17,

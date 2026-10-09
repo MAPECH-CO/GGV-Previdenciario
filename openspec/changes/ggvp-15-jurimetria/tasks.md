@@ -39,12 +39,22 @@
 - [x] 3.6 Dados de exemplo: processos conferidos no acervo na unidade do caso judicial de exemplo, alguns com as duas datas; verifica pela rota com a advogada de exemplo.
 - [x] 3.7 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?". Como a semente mudou, também o Playwright da Jurimetria, da judicialização e da página do caso.
 
-## GGVP-64, parte 2 (depois do PR #21, da GGVP-141 e da página do caso no servidor)
+## GGVP-64, parte 2 (09/10, em PR próprio sobre o #11)
 
-- [ ] 3.8 CA1 · Nome da vara e do juiz, pelo órgão da fonte de publicação ou pela IA lendo a publicação, conferido por pessoa; o card mostra vara e juiz.
-- [ ] 3.9 CA2 · Entendimentos recorrentes com os processos de exemplo, quando o acervo tiver o texto das decisões (GGVP-141).
-- [ ] 3.10 CA1, CA2 · A sobreposição da página do caso lendo `GET /api/casos/:id/juizo`, quando a página do caso for ao servidor; Playwright.
-- [ ] 3.11 CA3, CA6 · A recomendação de recurso com o indicador e o número de processos (D3b.04), com a GGVP-100.
+- [x] 3.8 Contrato: `vara`, `juiz` e `entendimentos` em `JurimetriaDoJuizo` (`packages/contratos/src/juizo.ts`); `vara` e `juiz` opcionais em `LeituraDaPublicacaoPelaIa` e `ClassificarPublicacao` (`justica.ts`); `EntendimentosDoJuizo`, a saída da IA. Teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 3.9 CA1, CA2 · Migração: `vara` e `juiz` em `caso`; `entendimentos` e `entendimentos_em` em `juizo` (`apps/api/src/banco/esquema/` e `apps/api/drizzle/`); verifica com o teste das migrações.
+- [x] 3.10 CA1 · Leitura da IA em versão nova com `vara` e `juiz` (`apps/api/src/ia/ia.ts`); a classificação guarda vara e juiz no caso, sem apagar com campo vazio, e o histórico registra (`apps/api/src/rotas/publicacoes.ts`). Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.11 CA2, CA5 · Finalidade `entendimentos_do_juizo` e o preparo (`apps/api/src/fluxo/juizo.ts`): as decisões de mérito do juízo sem dado pessoal, até 5 entendimentos com os processos de exemplo, só os que estavam no conteúdo; refaz com decisão nova. Teste com IA falsa; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.12 CA1, CA2 · `GET /api/casos/:id/juizo` com vara, juiz e entendimentos (`apps/api/src/rotas/juizo.ts`). Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.13 CA6 · Minuta: com juízo, os entendimentos e os processos de exemplo vão ao modelo, sem número do juízo; as fontes mostram (`apps/api/src/rotas/peticao.ts`). Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.14 Dados de exemplo (`apps/api/src/banco/exemplo.ts`): a vara e o juiz no texto de uma publicação e decisões de mérito no JEF de exemplo (TRF3 · 6301); verifica pela rota com a advogada de exemplo.
+- [x] 3.15 Tela: "Vara" e "Juiz" na leitura da publicação (`apps/web/src/paginas/LerPublicacao.tsx`). Teste Vitest e Playwright da judicialização; verifica com `pnpm --filter @ggv/web test`.
+- [x] 3.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-64, parte 2, depois (com a página do processo no servidor e a GGVP-100)
+
+- [ ] 3.17 CA1, CA2 · A sobreposição da página do processo lendo `GET /api/casos/:id/juizo`, quando a página for ao servidor (GGVP-146); Playwright.
+- [ ] 3.18 CA3, CA6 · A recomendação de recurso com o indicador e o número de processos (D3b.04), com a GGVP-100.
 
 ## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
 
@@ -61,10 +71,13 @@
 - [x] 4.5 CA2 · Busca híbrida em `buscarNoAcervo` (RRF, k = 60), sempre com a fonte. Sem vetor, só palavra; trecho de saúde só com `saude: true`, que os fluxos do Jurídico passam. Teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 4.6 Rodar typecheck, lint, testes e o Playwright das telas que usam a IA; colar a saída; perguntar "Agora ok?". Um teste do estudo de caso passou a buscar como o Jurídico busca (`saude: true`).
 
-## GGVP-141, parte 2 (depois dos PRs #39 e #42 e da GGVP-133)
+## GGVP-141, parte 2 (09/10, em PR próprio sobre o #11)
 
-- [ ] 4.7 CA1 · O parecer, o laudo e o resultado da perícia conferidos entram no acervo.
-- [ ] 4.8 CA1 · A transcrição conferida entra no acervo.
+- [x] 4.7 CA1 · Parecer e laudo conferidos nas fontes do acervo: cada registro do parecer e cada documento da análise que um registro conferiu, só para o Jurídico. Teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.8 CA1 · Transcrição conferida nas fontes: os trechos marcados como prova e as informações conferidas, sem senha, telefone e contato de apoio, no caso mais novo da pessoa; a gravação de conversa fica de fora. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.9 CA1 · Resultado da perícia registrado nas fontes: favorável ou não, o tipo e a leitura conferida, só para o Jurídico. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.10 CA1 · O que a IA sugeriu e ninguém conferiu fica fora: a análise sem registro, a informação sem conferência e o resumo da IA da entrevista. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 4.11 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
 

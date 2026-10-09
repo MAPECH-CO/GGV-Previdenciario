@@ -208,9 +208,10 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
         ? { oQue: `Esperando: ${esperando.aguardando}`, setor: null, prazo: null, tela: null }
         : null
 
-    // Valores: o Financeiro e a advogada do caso (a que não foi definida ainda conta como a da prestação, como na rota dela).
+    // Valores: o Financeiro, o Sócio e a advogada que faz a prestação do caso (a que não foi definida ainda conta como a da
+    // prestação, como na rota dela). A Sênior vê a prestação na tela dela, não os valores aqui (Pedro, 09/10).
     const daAdvogada = (c.caso.advogadaResponsavelId ?? quem) === quem
-    const veValores = pode(perfil, 'valores.ver') || (pode(perfil, 'prestacao.ver') && daAdvogada)
+    const veValores = pode(perfil, 'valores.ver') || (pode(perfil, 'prestacao.dar_ok') && daAdvogada)
     const [pc] = veValores ? await banco.select().from(prestacaoContas).where(eq(prestacaoContas.casoId, casoId)).orderBy(desc(prestacaoContas.versao)).limit(1) : []
 
     let saude = null

@@ -212,7 +212,8 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     comIa(JSON.stringify({ classe: 'nomeacao_perito', dias: null, resumo: 'O juiz nomeia o perito e abre prazo para quesitos.' }))
     const r = (await chamar('gabi', 'POST', `/api/publicacoes/${p.id}/sugestao`)).json()
     const [chamada] = await banco.select().from(chamadaIa)
-    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 3])
+    // Versão 4 desde a GGVP-64 parte 2 (a vara e o juiz); a nomeação entrou na 3.
+    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 4])
     const [depois] = await banco.select().from(publicacao)
     expect([depois.classe, depois.classeSugeridaIa]).toEqual([null, 'nomeacao_perito'])
   })
@@ -242,6 +243,30 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     expect(await filaDa('gabi')).toEqual([['Quesitos e assistente técnico', '2026-10-20']])
     const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
     expect([detalhe.perito, detalhe.reconhecido]).toEqual([null, false])
+  })
+
+  const varaEJuiz = async () => (await banco.select({ vara: caso.vara, juiz: caso.juiz }).from(caso).where(eq(caso.id, casoId)))[0]
+
+  it('GGVP-64 parte 2 CA1 (IA) · a IA lê a vara e o juiz escritos na publicação; a pessoa confere', async () => {
+    const { exigencia } = await casar()
+    comIa(JSON.stringify({ classe: 'exigencia', dias: 15, resumo: 'O juiz pede o laudo.', vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' }))
+    const r = (await chamar('gabi', 'POST', `/api/publicacoes/${exigencia.id}/sugestao`)).json()
+    expect([r.sugestao.vara, r.sugestao.juiz]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo', 'Dra. Exemplo'])
+    // Só a sugestão: o caso só guarda o que a pessoa conferir.
+    expect(await varaEJuiz()).toEqual({ vara: null, juiz: null })
+  })
+
+  it('GGVP-64 parte 2 CA1 · a classificação guarda a vara e o juiz conferidos no caso; vazio não apaga, e o histórico registra', async () => {
+    const { exigencia, andamento } = await casar()
+    await classificar(exigencia.id, { classe: 'exigencia', dias: '15', vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' })
+    expect(await varaEJuiz()).toEqual({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' })
+    await classificar(andamento.id, { classe: 'andamento', vara: '', juiz: 'Dr. Outro Exemplo' })
+    expect(await varaEJuiz()).toEqual({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dr. Outro Exemplo' })
+    const eventos = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'vara_e_juiz_conferidos'))
+    expect(eventos.map((e) => [e.alvo, (e.detalhe as { antes: { juiz: string | null } }).antes.juiz])).toEqual([
+      [`caso:${casoId}`, null],
+      [`caso:${casoId}`, 'Dra. Exemplo'],
+    ])
   })
 
   it('só quem pode classifica; o Financeiro nem abre', async () => {
