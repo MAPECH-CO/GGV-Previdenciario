@@ -1,10 +1,12 @@
 import { nomeBeneficio } from '../dados/catalogos.ts'
+import { pendenciasDeDocumento } from '../dados/cobranca.ts'
 import { doJuridico, parecerParaOPortao } from '../dados/parecer.ts'
 import { etapaDaPericia } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { doServidor, ler } from '../dados/servidor.ts'
 import type { Ficha, Processo } from '../dados/tipos.ts'
 import { calculoPendente } from '../regras/calculo.ts'
+import { juntar } from '../regras/checklist.ts'
 import { precisaDeParecer } from '../regras/liberacao.ts'
 import { usePode } from '../sessao.ts'
 import { Cartao } from './Cartao.tsx'
@@ -35,6 +37,8 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
       {processos.map((p) => {
         // Em perícia (GGVP-49, CA1): a etapa diz o diagrama de origem e o caso abre a página do processo com a perícia.
         const pericia = etapaDaPericia(p.id)
+        // As pendências de documento do caso (GGVP-130): o que a cobrança ainda espera do cliente.
+        const pendentes = pendenciasDeDocumento(p.id)
         return [
           <a key={p.id} className={styles.caso} href={pericia ? `/casos/${p.id}/pericia` : `/casos/${p.id}`}>
             <span className={styles.numero}>{p.numero ?? 'Processo ainda sem número'}</span>
@@ -46,6 +50,7 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
             {p.proximaAcao && <span className={styles.acao}>O que o Atendimento faz agora: {p.proximaAcao}.</span>}
             {/* A perícia é toda do Jurídico administrativo desde 29/09 (Lucas): o Atendimento não age nela. */}
             {pericia && <span className={styles.acao}>A perícia está com o Jurídico administrativo.</span>}
+            {pendentes.length > 0 && <span className={styles.urgente}>Documentos pendentes: {juntar(pendentes)}.</span>}
             {p.prazo && <span className={p.urgente ? styles.urgente : styles.prazo}>{p.prazo}</span>}
           </a>,
           <AtalhosDoCaso key={`${p.id}-atalhos`} processo={p} />,

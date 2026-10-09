@@ -38,6 +38,8 @@ test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situ
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Portao Teste' })
   await janela.getByLabel('Modelo').selectOption('boas-vindas')
+  // O modelo chega do servidor e troca o texto: escrever antes dele perde o que foi escrito (falhava com a CI lenta).
+  await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Boas-vindas ao escritório GGV\./)
   await janela.getByRole('textbox').fill('O pedido foi indeferido. Não conte ao perito que voltou a trabalhar.')
   await expect(janela.getByRole('list', { name: 'A IA aponta' })).toContainText('Termo jurídico "indeferido": diga "negado".')
   await expect(janela.getByText('Nunca oriente a esconder ou mudar a situação real (G11).')).toBeVisible()
@@ -51,12 +53,14 @@ test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situ
   expect([r.status(), (await r.json()).erro]).toEqual([400, 'O escritório nunca pede a senha do gov.br por mensagem (G9).'])
 })
 
-test('CA7 · o aviso de resultado favorável fica travado sem o OK da advogada na prestação de contas (G8)', async ({ page }) => {
+test('CA7 · o aviso de resultado favorável não sai daqui: vai pela tela do Financeiro, com o texto da prestação de contas (G8)', async ({ page }) => {
   await fichaDoLead(page, 'Rosa Resultado Teste', '11933330000')
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Resultado Teste' })
   await janela.getByLabel('Modelo').selectOption('resultado-favoravel')
-  await expect(janela.getByText('Falta o OK da advogada na prestação de contas: o aviso só sai depois dele (G8).')).toBeVisible()
+  await expect(
+    janela.getByText('O aviso de resultado favorável sai pela tela «Avisar resultado e agendar a ida ao banco», do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).'),
+  ).toBeVisible()
   await expect(janela.getByRole('button', { name: 'Enviar pelo Chatwoot' })).toBeDisabled()
 })
 

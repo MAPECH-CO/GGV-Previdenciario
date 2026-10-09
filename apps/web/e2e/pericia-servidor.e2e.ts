@@ -55,7 +55,8 @@ test('da perícia marcada ao resultado, no servidor, trocando de pessoa a cada p
   // O Playwright roda sem chave de IA: a leitura volta vazia, com o motivo, e a pessoa preenche olhando o PDF. A perícia é
   // hoje cedo, e o comparecimento já abre.
   await expect(lido).toContainText('A IA não leu o comprovante agora')
-  await lido.getByLabel(/Data/).fill(new Date().toLocaleDateString('pt-BR'))
+  // O dia de Brasília, como o servidor conta: o teste roda em UTC no CI, e das 21h à meia-noite seria o dia seguinte.
+  await lido.getByLabel(/Data/).fill(new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }))
   await lido.getByLabel('Hora').fill('00:01')
   await lido.getByLabel('Local').fill('Agência INSS Santo Amaro')
   await igor.getByRole('radio', { name: 'Sim: atribuir à Documentação' }).click()

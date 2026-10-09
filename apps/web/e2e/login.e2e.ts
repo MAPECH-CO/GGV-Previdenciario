@@ -29,6 +29,8 @@ test('CA3 · sessão que caiu manda ao login avisando que expirou, e volta para 
   await page.goto('/entrar')
   await preencher(page, ATENDIMENTO, SENHA_DE_EXEMPLO)
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
+  // A Central termina de carregar antes: uma chamada que voltasse 401 depois levaria ao login e cortaria o goto abaixo.
+  await page.waitForLoadState('networkidle')
   await context.clearCookies() // a sessão some como se tivesse vencido
   await page.goto('/agenda')
   await expect(page.getByRole('status')).toContainText('Sua sessão expirou')

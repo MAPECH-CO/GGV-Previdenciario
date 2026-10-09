@@ -15,7 +15,7 @@ Depois de a fila de PRs entrar na `main` e do deploy.
 
 ## Como rodar
 
-1. No Coolify, no app "ggv-prev-homologacao", crie a variável `AMBIENTE` com o valor `homologacao`. Ela existe só nesse app: o app de produção nunca a tem, e sem ela o comando recusa sem gravar nada.
+1. No Coolify, no app "ggv-prev-homologacao", crie a variável `AMBIENTE` com o valor `homologacao`. Esse valor existe só nesse app: o app de produção nunca o tem (lá é `producao`, que libera o Chatwoot para os clientes; ver `homologacao.md`), e sem ele o comando recusa sem gravar nada.
 2. Faça o redeploy, para a variável valer.
 3. No terminal do app (Coolify › app › Terminal), rode:
 

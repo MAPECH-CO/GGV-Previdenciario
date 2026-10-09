@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { formatarTelefone } from '@ggv/campos'
-import { PedidoDeMudancaBancaria, VerificacaoDaEdicao, type Erro, type PedidoBancario, type RegistroBancario } from '@ggv/contratos'
+import { PedidoDeMudancaBancaria, VerificacaoDaEdicao, type Erro, type MudancaBancariaConfirmada, type PedidoBancario, type RegistroBancario } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, dadoBancario, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
@@ -172,7 +172,9 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
     await historico(pedido.usuario!.id, 'dados_bancarios_confirmados', pedido, `pessoa:${ficha.id}`, { alerta: Boolean(perto) })
     // O aviso ao contato cadastrado, pelo Chatwoot: se não foi o cliente, ele liga para o escritório (CA5).
     const pronta = await correio.preparar(ficha, 'aviso-de-mudanca')
-    await correio.enviar(pedido, ficha, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
-    return novo
+    const aviso = await correio.enviar(pedido, ficha, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
+    // Sem sucesso falso: o aviso que não saiu volta com o motivo, para a tela dizer (GGVP-102 CA5).
+    const avisoNaoSaiu = 'erro' in aviso ? aviso.erro : aviso.mensagem.status === 'falhou' ? aviso.mensagem.erro : undefined
+    return { ...novo, ...(avisoNaoSaiu && { avisoNaoSaiu }) } satisfies MudancaBancariaConfirmada
   })
 }
