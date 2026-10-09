@@ -20,6 +20,7 @@ import {
   MODELO_IDA_AO_BANCO,
   O_QUE_LEVAR,
   TITULO_AVISO,
+  TITULO_CONFIRMAR,
   TITULO_REMARCAR,
 } from './prestacao.ts'
 
@@ -328,17 +329,20 @@ describe('GGVP-98 · o Atendimento leva o cliente ao banco (P3 do roteiro de 09/
     expect(central.map((t: { titulo: string; tela: string }) => [t.titulo, t.tela])).toEqual([['Levar ao banco', `/casos/${casoId}/banco/levar`]])
   })
 
-  it('"Levei o cliente ao banco" conclui a tarefa com quem e quando e avisa o Financeiro no histórico; ele confirma depois', async () => {
+  it('"Levei o cliente ao banco" conclui a tarefa com quem e quando; o Financeiro recebe na Central a tarefa de confirmar, e ela fecha na confirmação', async () => {
     await ateLevar()
     expect((await chamar('ana', 'POST', '/banco/levar', { resultado: 'levado' })).statusCode).toBe(201)
     const [t] = await banco.select().from(tarefa).where(eq(tarefa.passo, 'D2.06l'))
     expect([t.situacao, t.concluidaPor, t.concluidaEm !== null]).toEqual(['concluida', ids.ana, true])
     const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'cliente_levado_ao_banco'))
     expect([h.quem, h.alvo]).toEqual([ids.ana, `caso:${casoId}`])
-    expect(await abertas()).toEqual([])
+    expect(await abertas()).toEqual([`financeiro · ${TITULO_CONFIRMAR}`])
+    const central = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('julia') })).json()
+    expect(central.map((t: { titulo: string; tela: string }) => [t.titulo, t.tela])).toEqual([[TITULO_CONFIRMAR, `/casos/${casoId}/banco`]])
     const outra = await chamar('ana', 'POST', '/banco/levar', { resultado: 'levado' })
     expect([outra.statusCode, outra.json().erro]).toEqual([409, MSG_SEM_IDA])
     expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(201)
+    expect(await abertas()).toEqual([])
   })
 
   it('"Não deu" pede o motivo, cancela a ida e volta ao Financeiro remarcar; remarcada, "Levar ao banco" nasce de novo', async () => {
@@ -354,8 +358,13 @@ describe('GGVP-98 · o Atendimento leva o cliente ao banco (P3 do roteiro de 09/
     expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '20/10/2026' })).statusCode).toBe(201)
     expect(await abertas()).toEqual(['atendimento · Levar ao banco', `financeiro · ${TITULO_REMARCAR}: Agência fechada`])
     expect((await chamar('ana', 'GET', '/banco/levar')).json().data).toBe('20/10/2026')
+    // Remarcada, a confirmação espera o aviso da nova data: o aviso da ida que não deu não vale (CA9).
+    const cedo = await chamar('julia', 'POST', '/banco/confirmacao')
+    expect([cedo.statusCode, cedo.json().erro]).toEqual([409, MSG_ANTES_DO_AVISO])
+    expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(false)
     await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
     expect(await abertas()).toEqual(['atendimento · Levar ao banco'])
+    expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(true)
     // Remarcar de novo devolve o título do aviso: o motivo antigo já foi atendido.
     await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '22/10/2026' })
     expect(await abertas()).toEqual(['atendimento · Levar ao banco', `financeiro · ${TITULO_AVISO}`])

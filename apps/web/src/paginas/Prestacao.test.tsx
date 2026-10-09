@@ -180,7 +180,7 @@ describe('Levar ao banco (GGVP-98, Atendimento)', () => {
     const fetch = servidor(visita, [201, { ok: true }])
     render(<LevarAoBanco casoId={CASO} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Levei o cliente ao banco' }))
-    expect((await screen.findByRole('status')).textContent).toBe('Registrado. O Financeiro foi avisado e confirma o recebimento.')
+    expect((await screen.findByRole('status')).textContent).toBe('Registrado. O Financeiro recebeu a tarefa de confirmar o recebimento.')
     const envio = fetch.mock.calls.find(([, init]) => init?.method === 'POST')
     expect([String(envio?.[0]).endsWith('/banco/levar'), JSON.parse(String(envio?.[1]?.body))]).toEqual([true, { resultado: 'levado' }])
   })

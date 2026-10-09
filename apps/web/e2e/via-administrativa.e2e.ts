@@ -252,7 +252,6 @@ test('GGVP-44 e GGVP-98 · a advogada conclui; o Financeiro recebe, avisa, marca
   await expect(page.getByLabel('Mensagem')).toContainText('Ana (exemplo), do escritório, vai com você.')
   await page.getByRole('button', { name: 'Revisei e enviei' }).click()
   await expect(page.getByLabel('Avisos enviados')).toContainText('WhatsApp · Júlia (exemplo)')
-  const telaDoBanco = page.url()
 
   // P3 do roteiro de 09/10: quem leva vê a visita marcada, sem nenhum valor, e registra que levou.
   await context.clearCookies()
@@ -264,11 +263,12 @@ test('GGVP-44 e GGVP-98 · a advogada conclui; o Financeiro recebe, avisa, marca
   await expect(page.getByLabel('O que levar', { exact: true })).toContainText('CPF do cliente')
   await expect(page.locator('main')).not.toContainText('R$')
   await page.getByRole('button', { name: 'Levei o cliente ao banco' }).click()
-  await expect(page.getByRole('status')).toHaveText('Registrado. O Financeiro foi avisado e confirma o recebimento.')
+  await expect(page.getByRole('status')).toHaveText('Registrado. O Financeiro recebeu a tarefa de confirmar o recebimento.')
 
   await context.clearCookies()
   await entrarPelaApi(page, 'financeiro@exemplo.ggv')
-  await page.goto(telaDoBanco)
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Vera Lúcia (exemplo) · Confirmar o recebimento: cliente levado ao banco' }).click()
   await page.getByRole('button', { name: 'Confirmar recebimento' }).click()
   await expect(page.getByRole('status')).toHaveText('Recebimento confirmado. Caso encerrado.')
 })

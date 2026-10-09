@@ -28,7 +28,7 @@ export function LevarAoBanco({ casoId }: { casoId: string }) {
     setErro('')
     setFeito(
       entrada.data.resultado === 'levado'
-        ? 'Registrado. O Financeiro foi avisado e confirma o recebimento.'
+        ? 'Registrado. O Financeiro recebeu a tarefa de confirmar o recebimento.'
         : 'Registrado. A ida ao banco voltou para o Financeiro remarcar.',
     )
   }
