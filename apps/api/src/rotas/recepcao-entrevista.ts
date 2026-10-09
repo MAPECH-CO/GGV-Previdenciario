@@ -26,7 +26,7 @@ import { conversaDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import type { AcaoNaGravacao, Agendamento, Ficha, Gravacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { documentosDaEntrevista, ehAudio, juntarPartes, partesDoAudio, relogio, resumoDaEntrevista, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, MSG_GANCHO_DE_TESTE, UUID, aceitaGanchoDeTeste, criarFichario, horaEmBrasilia } from './recepcao.ts'
 
 export const MSG_GRAVACAO_NAO_ENCONTRADA = 'Gravação não encontrada.'
 export const MSG_ENTREVISTA_NAO_ENCONTRADA = 'Entrevista não encontrada.'
@@ -51,9 +51,9 @@ const audioDaGravacao = (ficha: Ficha, g: Gravacao): Gravacao['audio'] => {
 }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ambiente?: Record<string, string | undefined> }
 
-export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, agora = () => new Date(), ambiente = process.env }: Opcoes) {
   const f = criarFichario(banco, agora)
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, garantirAberta, concluirTarefas, tarefas, acharAgendamento, guardarGravacao, acharGravacao } = f
   const gravar = { preHandler: exigir(banco, 'entrevista.gravar', agora) }
@@ -227,6 +227,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
   app.post<{ Params: { id: string } }>('/api/gravacoes/:id/transcricao', gravar, async (pedido, resposta) => {
     const entrada = PedidoDeTranscricao.safeParse(pedido.body ?? {})
     if (!entrada.success) return negar(resposta, 400, 'Pedido inválido.')
+    if (entrada.data.falhar && !aceitaGanchoDeTeste(ambiente)) return negar(resposta, 400, MSG_GANCHO_DE_TESTE)
     const achado = await acharGravacao(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
     const { gravacao: g, ficha, agendamento } = achado

@@ -50,8 +50,10 @@ describe('GGVP-104 · configuração do escritório', () => {
       min: 1,
       max: 20,
     })
-    expect([c.podeEditar, (await ver('lauro')).podeEditar, (await ver('julia')).podeEditar]).toEqual([true, true, false])
+    expect([c.podeEditar, (await ver('lauro')).podeEditar]).toEqual([true, true])
     expect((await chamar('gabi', 'GET', '/api/configuracao')).statusCode).toBe(403)
+    // GGVP-96: o Financeiro fica só com os Resultados da Gestão.
+    expect((await chamar('julia', 'GET', '/api/configuracao')).statusCode).toBe(403)
     expect((await parametro('cobranca.limite', '4', 'julia')).statusCode).toBe(403)
   })
 

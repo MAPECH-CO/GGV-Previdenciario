@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { UsuarioDaSessao } from '@ggv/contratos'
+import { CHAVE } from '../dados/servidor.ts'
 import { Exige } from '../paginas/SemPermissao.tsx'
 import { SessaoContexto } from '../sessao.ts'
 import { EntrarComo } from './EntrarComo.tsx'
@@ -29,16 +30,18 @@ describe('Entrar como… (GGVP-96 CA10)', () => {
     expect(screen.queryByRole('menuitemradio', { name: 'Sênior' })).toBeNull()
   })
 
-  it('escolher outro perfil pede ao servidor e volta ao início', async () => {
+  it('escolher outro perfil pede ao servidor, limpa a cópia do navegador (GGVP-117) e volta ao início', async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ ...eva, perfilAtivo: 'atendimento' })))
     const assign = vi.fn()
     vi.stubGlobal('fetch', fetch)
     vi.stubGlobal('location', { ...window.location, assign })
+    sessionStorage.setItem(CHAVE, '{"fichas":[]}')
     render(<EntrarComo usuario={eva} />)
     fireEvent.click(screen.getByRole('button', { name: 'Atendimento · líder' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Atendimento' }))
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao/perfil', expect.objectContaining({ method: 'POST', body: JSON.stringify({ perfil: 'atendimento' }) }))
+    expect(sessionStorage.getItem(CHAVE)).toBeNull()
   })
 
   it('Esc fecha o menu', () => {

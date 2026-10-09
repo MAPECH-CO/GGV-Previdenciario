@@ -1,6 +1,9 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CHAVE } from '../dados/servidor.ts'
 import { Topbar } from './Topbar.tsx'
+
+afterEach(() => vi.unstubAllGlobals())
 
 const itens = [
   { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
@@ -27,5 +30,18 @@ describe('Topbar', () => {
     const funcao = screen.getByRole('button', { name: 'Atendimento' })
     expect(funcao.getAttribute('aria-disabled')).toBe('true')
     expect(funcao.getAttribute('aria-haspopup')).toBeNull()
+  })
+
+  it('GGVP-117 · Sair encerra a sessão e limpa a cópia do navegador', async () => {
+    const fetch = vi.fn(async () => new Response(null, { status: 204 }))
+    const assign = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    vi.stubGlobal('location', { ...window.location, assign })
+    sessionStorage.setItem(CHAVE, '{"fichas":[]}')
+    render(<Topbar itens={itens} ativo="inicio" funcao="Atendimento" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    expect(sessionStorage.getItem(CHAVE)).toBeNull()
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/entrar'))
+    expect(fetch).toHaveBeenCalledWith('/api/sessao', expect.objectContaining({ method: 'DELETE' }))
   })
 })

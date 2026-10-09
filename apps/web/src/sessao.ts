@@ -2,6 +2,7 @@
 import { createContext, useContext } from 'react'
 import { pode, type Acao, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
+import { zerarExemplo } from './dados/servidor.ts'
 
 export const SessaoContexto = createContext<UsuarioDaSessao | null>(null)
 
@@ -14,9 +15,15 @@ export function usePode(acao: Acao) {
   return pode(useSessao()?.perfilAtivo, acao)
 }
 
-/** "Entrar como…" (CA10): o servidor só aceita perfil atribuído; a tela volta ao início do novo perfil. */
+/**
+ * "Entrar como…" (CA10): o servidor só aceita perfil atribuído; a tela volta ao início do novo perfil. A cópia do navegador
+ * sai junto (GGVP-117): o perfil novo não herda o que o outro sincronizou.
+ */
 export async function trocarPerfil(perfil: string) {
   const r = await chamarApi<UsuarioDaSessao>('/sessao/perfil', { method: 'POST', corpo: { perfil } })
-  if (r.ok) window.location.assign('/')
+  if (r.ok) {
+    zerarExemplo()
+    window.location.assign('/')
+  }
   return r
 }

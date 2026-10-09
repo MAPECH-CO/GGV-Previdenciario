@@ -65,7 +65,8 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
   const historico = registrarHistorico(banco, agora)
   const { evento, nomeDe, fichas, guardar, abrirTarefa } = criarFichario(banco, agora)
   const correio = criarCorreio(banco, agora, ambiente)
-  const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
+  // LGPD, minimização (GGVP-96): os dados bancários, só quem pede ou confirma a mudança e o Financeiro, que repassa.
+  const ver = { preHandler: exigir(banco, 'dados_bancarios.ver', agora) }
   const pedir = { preHandler: exigir(banco, 'dados_bancarios.pedir', agora) }
   const confirmar = { preHandler: exigir(banco, 'dados_bancarios.confirmar', agora) }
   const acharFicha = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)

@@ -1,10 +1,11 @@
 import bcrypt from 'bcryptjs'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_SEM_AVISO } from './recepcao-entrevista.ts'
+import { MSG_GANCHO_DE_TESTE } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -43,7 +44,7 @@ async function entrevistaTranscrita(agendamentoId: string) {
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['helena', 'senior']] as const)
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['helena', 'senior'], ['igor', 'juridico_adm']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -52,6 +53,23 @@ afterEach(async () => {
 })
 
 describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor', () => {
+  it('GGVP-96 · a entrevista é da advogada e da Sênior (o Jurídico adm, não); simular a falha da transcrição, só fora da homologação e da produção', async () => {
+    const { agendamentoId } = await entrevistaConfirmada()
+    expect((await chamar('igor', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })).statusCode).toBe(403)
+    const { gravacao } = await json('helena', 'POST', `/api/entrevistas/${agendamentoId}/gravacoes`, { avisei: true })
+    await json('helena', 'POST', `/api/gravacoes/${gravacao.id}/encerrar`, { aos: 300, online: true })
+    const url = `/api/gravacoes/${gravacao.id}/transcricao`
+    try {
+      for (const ambiente of ['homologacao', 'producao']) {
+        vi.stubEnv('AMBIENTE', ambiente)
+        expect((await json('helena', 'POST', url, { falhar: true })).erro, ambiente).toBe(MSG_GANCHO_DE_TESTE)
+      }
+    } finally {
+      vi.unstubAllEnvs()
+    }
+    expect((await json('helena', 'POST', url, { falhar: true })).gravacao.transcricao).toBe('falhou')
+  })
+
   it('G10: sem o aviso não grava; só o Jurídico grava; a gravação aberta continua a mesma', async () => {
     const { agendamentoId } = await entrevistaConfirmada()
     const url = `/api/entrevistas/${agendamentoId}/gravacoes`

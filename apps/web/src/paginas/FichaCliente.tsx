@@ -22,6 +22,7 @@ import { agora, obterFicha } from '../dados/servidor.ts'
 import { resumoParaAFicha } from '../dados/parecer.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
+import { usePode, useSessao } from '../sessao.ts'
 import styles from './FichaCliente.module.css'
 
 // Figma: "Cliente · dados (Atendimento)" (73:199). A visão do Atendimento não traz petição, estratégia, valores nem laudo.
@@ -43,6 +44,10 @@ export function FichaCliente({ id }: { id: string }) {
   // A janela "Mensagem ao cliente", com modelo e registro (GGVP-102).
   const [mensagem, setMensagem] = useState(false)
   const hoje = hojeIso(agora())
+  // GGVP-111 e GGVP-96 (LGPD, minimização): os dados bancários, só quem pede ou confirma a mudança e o Financeiro. Sem
+  // sessão (teste de uma tela sozinha), como foi desenhada.
+  const semSessao = useSessao() === null
+  const veDadosBancarios = usePode('dados_bancarios.ver') || semSessao
 
   useEffect(() => {
     let valendo = true
@@ -152,7 +157,7 @@ export function FichaCliente({ id }: { id: string }) {
             </p>
           </Cartao>
           <CartaoFichaAtendimento ficha={ficha} hoje={hoje} />
-          <CartaoDadosBancarios fichaId={ficha.id} aoMudar={async () => setFicha(await obterFicha(id))} />
+          {veDadosBancarios && <CartaoDadosBancarios fichaId={ficha.id} aoMudar={async () => setFicha(await obterFicha(id))} />}
           <Reunioes agendamentos={ficha.agendamentos} hoje={hoje} />
         </div>
       </main>

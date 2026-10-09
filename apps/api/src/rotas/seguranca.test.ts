@@ -28,7 +28,7 @@ const novaFicha = (telefone: string, email?: string) =>
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['gabi', 'advogada'], ['marcos', 'financeiro']] as const)
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['gabi', 'advogada'], ['marcos', 'financeiro'], ['dora', 'documentacao'], ['igor', 'juridico_adm']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -65,7 +65,9 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
 
     const pedido = await json('ana', 'POST', url, { dados, verificacao: { como: 'presencial', contratoNovo: true } })
     expect(pedido).toMatchObject({ fichaId: id, dados, verificacao: { como: 'presencial', contratoNovo: true }, pediu: 'ana' })
-    expect((await chamar('marcos', 'GET', url)).statusCode).toBe(403)
+    // GGVP-96 (LGPD, minimização): quem pede ou confirma e o Financeiro, que repassa; a Documentação e o Jurídico adm, não.
+    expect(await json('marcos', 'GET', url)).toMatchObject({ atual: null, pedido: { pediu: 'ana' } })
+    for (const apelido of ['dora', 'igor']) expect((await chamar(apelido, 'GET', url)).statusCode, apelido).toBe(403)
     expect(await json('ana', 'GET', url)).toMatchObject({ atual: null, pedido: { pediu: 'ana' } })
 
     const confirmacao = `${url}/confirmacao`

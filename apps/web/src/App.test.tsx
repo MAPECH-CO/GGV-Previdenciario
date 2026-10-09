@@ -2,7 +2,14 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
 import { zerarExemplo } from './dados/servidor.ts'
+import { Conversa } from './paginas/Conversa.tsx'
 import { responderRelacionamento } from './test/relacionamento/rotas.ts'
+
+// A conversa de verdade, espiada: o teste do gancho de teste (?simular=) confere o que a tela recebe (GGVP-96).
+vi.mock('./paginas/Conversa.tsx', async (original) => {
+  const { Conversa } = await original<typeof import('./paginas/Conversa.tsx')>()
+  return { Conversa: vi.fn(Conversa) }
+})
 
 const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
 
@@ -216,6 +223,71 @@ describe('App', () => {
     servidorResponde(200, { ...usuario, perfis: ['financeiro'], perfilAtivo: 'financeiro' })
     render(<App caminho="/balcao" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+  })
+
+  it('GGVP-96 · o contrato é do Atendimento; a manifestação, do Jurídico; a entrevista, não do Jurídico administrativo', async () => {
+    zerarExemplo()
+    const semPermissao = async (perfil: string, caminho: string) => {
+      servidorResponde(200, { ...usuario, perfis: [perfil], perfilAtivo: perfil })
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), `${perfil} em ${caminho}`).toBeTruthy()
+      cleanup()
+    }
+    for (const perfil of ['documentacao', 'advogada', 'senior', 'socio']) await semPermissao(perfil, '/contrato/antonio-exemplo-1/preparar')
+    const caso = '/casos/00000000-0000-4000-8000-000000000001/manifestacao'
+    for (const perfil of ['atendimento', 'documentacao']) await semPermissao(perfil, caso)
+    await semPermissao('juridico_adm', '/entrevista/josefa-entrevista')
+    await semPermissao('juridico_adm', '/advogada')
+    servidorResponde(200, usuario)
+    render(<App caminho="/contrato/cleide-exemplo-1/preparar" />)
+    expect(await screen.findByRole('heading', { level: 1, name: /Preparar contrato/ })).toBeTruthy()
+  })
+
+  it('GGVP-96 · o Sócio lê o caso; o Financeiro vê os Resultados, não o resto da Gestão', async () => {
+    zerarExemplo()
+    // Só a sessão responde; o resto do servidor, "não encontrado" (a tela abre com o aviso).
+    const soASessao = (perfil: string) =>
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(url === '/api/sessao' ? JSON.stringify({ ...usuario, perfis: [perfil], perfilAtivo: perfil }) : '{"erro":"Não encontrado."}', { status: url === '/api/sessao' ? 200 : 404 })))
+    soASessao('socio')
+    render(<App caminho="/casos/antonio-exemplo-1" />)
+    expect(await screen.findByRole('heading', { name: 'Linha do processo · completa' })).toBeTruthy()
+    cleanup()
+    // A busca leva à ficha do cliente: o Sócio abre para ler.
+    render(<App caminho="/clientes/antonio-exemplo" />)
+    expect(await screen.findByRole('heading', { level: 2, name: 'Antônio Exemplo' })).toBeTruthy()
+    cleanup()
+    // O resto da Recepção, não.
+    for (const caminho of ['/balcao', '/clientes/novo']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), caminho).toBeTruthy()
+      cleanup()
+    }
+    soASessao('financeiro')
+    for (const caminho of ['/gestao/prazos', '/gestao/tentativas', '/gestao/cofre', '/configuracao']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), caminho).toBeTruthy()
+      cleanup()
+    }
+    render(<App caminho="/gestao/resultados" />)
+    expect(await screen.findByRole('heading', { name: 'Resultados do escritório' })).toBeTruthy()
+  })
+
+  it('GGVP-96 · o ?simular= (gancho de teste) só vale no desenvolvimento; na homologação e na produção, a tela não o repassa', async () => {
+    zerarExemplo()
+    const simular = async () => {
+      render(<App caminho="/conversas/conversa-pedro-ligacao" busca="?simular=falha-da-transcricao" />)
+      await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })
+      const recebeu = vi.mocked(Conversa).mock.lastCall?.[0].simular
+      cleanup()
+      return recebeu
+    }
+    expect(await simular()).toBe('falha-da-transcricao')
+    vi.stubEnv('DEV', false)
+    try {
+      expect(await simular()).toBeUndefined()
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it('GGVP-57 · a tela de calcular tempo e pontos', async () => {

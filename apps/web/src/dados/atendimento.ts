@@ -59,10 +59,3 @@ export const tarefasAtendimento: Tarefa[] = [
 export const totalTarefasSetorAtendimento = 9
 
 export const exemploChatAtendimento = 'Ex.: “a Josefa me ligou, qual é a próxima tarefa dela?”'
-
-export const sugestoesChatAtendimento = [
-  'O cliente me ligou: qual a próxima tarefa?',
-  'Subir laudo novo',
-  'Documentos que faltam',
-  'Pedir uma peça',
-]

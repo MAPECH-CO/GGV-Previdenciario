@@ -50,6 +50,9 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /** A hora em Brasília, também no servidor em UTC: "14:32". */
 export const horaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
 export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
+export const MSG_GANCHO_DE_TESTE = 'Simular a falha é só do teste: na homologação e na produção, não.'
+/** Os ganchos de teste (`falhar: true`, que simula a falha do serviço) só fora da homologação e da produção (GGVP-96). */
+export const aceitaGanchoDeTeste = (ambiente: Record<string, string | undefined>) => ambiente.AMBIENTE !== 'homologacao' && ambiente.AMBIENTE !== 'producao'
 /** Quem preenche no tablet é o próprio cliente (GGVP-24). */
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
 
