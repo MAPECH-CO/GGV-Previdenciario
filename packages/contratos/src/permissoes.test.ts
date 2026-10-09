@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 19, digital: 'f1a04156' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 21, digital: 'fae123bb' })
   })
 
   it('GGVP-75 CA4 · os totais em dinheiro do painel de resultados só para o Sócio e o Financeiro', () => {
@@ -85,6 +85,10 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('atendimento', 'banco.agendar')).toBe(false)
   })
 
+  it('versão 21 · quem leva o cliente ao banco é o Atendimento (GGVP-98); o Financeiro marca, não leva', () => {
+    expect(PERFIS.filter((p) => pode(p, 'banco.levar'))).toEqual(['atendimento', 'atendimento_lider'])
+  })
+
   it('versão 5 · vigília: a Sênior reprocessa e casa a fila; a advogada vê e classifica', () => {
     expect(pode('senior', 'vigilia.reprocessar')).toBe(true)
     expect(pode('advogada', 'vigilia.reprocessar')).toBe(false)
@@ -122,6 +126,7 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(PERFIS.filter((p) => pode(p, 'ficha.editar'))).toEqual(PERFIS.filter((p) => !['financeiro', 'socio'].includes(p)))
     // Bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde, só o Jurídico.
     expect(PERFIS.filter((p) => pode(p, 'entrevista.gravar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
+    expect(PERFIS.filter((p) => pode(p, 'ficha.analisar'))).toEqual(['advogada', 'senior', 'juridico_adm'])
   })
 
   it('GGVP-138 · o Relacionamento: conversa com o Atendimento e o Jurídico; versão e prazo só com a Sênior; a segunda confirmação bancária, não do Atendimento', () => {
@@ -134,12 +139,12 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 13,
-      atendimento_lider: 16,
+      atendimento: 14,
+      atendimento_lider: 17,
       documentacao: 9,
-      advogada: 34,
-      senior: 38,
-      juridico_adm: 17,
+      advogada: 35,
+      senior: 39,
+      juridico_adm: 18,
       financeiro: 6,
       socio: 5,
     })

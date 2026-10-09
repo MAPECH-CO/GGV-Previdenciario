@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-17 · Receber documento entregue no balcão: tarefa da Documentação, scanner simulado, "Conferir e enviar",
 // laudo novo pela ficha e pelo chat. Cada teste abre um navegador novo, então começa da semente de exemplo.ts.
@@ -39,8 +40,25 @@ test('CA1, CA2, CA5 e CA10 · do balcão à tarefa, papel no scanner, as duas co
   await registrar.click()
   await expect(page.getByRole('heading', { name: /✓ Registrado às/ })).toBeVisible()
 
+  // Registrado, a tarefa sai da Central da Documentação, onde ela aparecia (GGVP-130).
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Receber documento' })).toHaveCount(0)
+})
+
+test('GGVP-130 · o documento do balcão vai à Central da Documentação; o Atendimento não vê, e ela não vê a cobrança do Atendimento', async ({ page }) => {
+  await entregarDocumento(page, 'antonio', /Antônio Exemplo/)
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Antônio Exemplo · Cobrar documento' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Antônio Exemplo · Receber documento' })).toHaveCount(0)
+
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Antônio Exemplo · Receber documento' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Antônio Exemplo · Receber documento')
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Rita Exemplo · Conferir documento' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Antônio Exemplo · Cobrar documento' })).toHaveCount(0)
 })
 
 test('CA4 · sem dono certo, o lote vai para "A REVISAR" com o motivo', async ({ page }) => {
