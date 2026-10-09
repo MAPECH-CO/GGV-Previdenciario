@@ -73,7 +73,7 @@ test('CA4, CA7 e CA8 · encaminhar à Documentação: pede o setor, entra na Cen
 
   await feito.getByRole('link', { name: 'Abrir a ficha do cliente' }).click()
   const historico = page.getByRole('list', { name: 'Histórico' })
-  await expect(historico).toContainText('Você (Atendimento)')
+  await expect(historico).toContainText('Ana (exemplo)')
   await expect(historico).toContainText('Encaminhou ao setor Documentação · ADM')
 
   await page.goto('/')

@@ -10,6 +10,7 @@ import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { eventosDaAgenda, iniciarEntrevistaAgora, marcarEntrevista } from '../dados/agenda.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from '../dados/catalogos.ts'
 import { agora, obterFicha } from '../dados/servidor.ts'
+import { usePode, useSessao } from '../sessao.ts'
 import type { Agendamento, EventoDaAgenda, Ficha, TipoDeEntrevista } from '../dados/tipos.ts'
 import {
   DURACOES,
@@ -47,6 +48,10 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
   const [ocupado, setOcupado] = useState<EventoDaAgenda[]>([])
   const [salvando, setSalvando] = useState(false)
   const [feito, setFeito] = useState<Agendamento | null>(null)
+  // Quem não grava (o Atendimento) inicia, e a advogada abre a entrevista pela Central. Sem sessão (teste), como desenhado.
+  const semSessao = useSessao() === null
+  const grava = usePode('entrevista.gravar') || semSessao
+  const [iniciada, setIniciada] = useState(false)
   const [convite, setConvite] = useState<'fechado' | 'aberto' | 'enviado'>('fechado')
   const [erro, setErro] = useState('')
   // Trava no mesmo clique, antes de o React redesenhar o botão.
@@ -132,7 +137,11 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
     setErro('')
     try {
       const agendamento = await iniciarEntrevistaAgora(ficha!.id, { tipo, com, duracao: Number(duracao), gravar: opcoes.gravar })
-      navegar(`/entrevista/${encodeURIComponent(agendamento.id)}`)
+      if (grava) return navegar(`/entrevista/${encodeURIComponent(agendamento.id)}`)
+      setIniciada(true)
+      setFeito(agendamento)
+      travado.current = false
+      setSalvando(false)
     } catch {
       setErro('Não deu para iniciar a entrevista. Confira o tipo e com quem.')
       travado.current = false
@@ -153,7 +162,31 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
       />
       <main className={styles.pagina}>
         <div className={styles.esquerda}>
-          {feito ? (
+          {feito && iniciada ? (
+            <section className={styles.feito} aria-labelledby="marcada">
+              <h2 id="marcada" className={styles.feitoTitulo}>
+                ✓ Entrevista iniciada agora · {nomeDoTipo(feito.tipo).toLowerCase()} · {feito.com}
+              </h2>
+              {ficha.fichaAtendimentoPreenchida ? (
+                <p>{feito.com} recebeu «Preparar entrevista» na Central: de lá abre a ficha, analisa e grava a entrevista.</p>
+              ) : (
+                <p>
+                  Antes, a ficha de atendimento: preencha com a pessoa e salve («Preencher ficha», na sua Central). Com a ficha salva,{' '}
+                  {feito.com} recebe «Preparar entrevista».
+                </p>
+              )}
+              <div className={styles.botoes}>
+                {!ficha.fichaAtendimentoPreenchida && (
+                  <a className={styles.secundario} href={`/clientes/${ficha.id}/ficha-de-atendimento`}>
+                    Preencher a ficha
+                  </a>
+                )}
+                <a className={styles.secundario} href={`/clientes/${ficha.id}`}>
+                  Abrir a ficha
+                </a>
+              </div>
+            </section>
+          ) : feito ? (
             <section className={styles.feito} aria-labelledby="marcada">
               <h2 id="marcada" className={styles.feitoTitulo}>
                 ✓ Entrevista {antes ? 'remarcada' : 'marcada'} para {diaCurto(feito.data)}/{feito.data.slice(5, 7)} às {feito.hora} ·{' '}

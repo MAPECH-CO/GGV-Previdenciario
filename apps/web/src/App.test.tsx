@@ -12,6 +12,10 @@ function servidorResponde(status: number, corpo: unknown) {
 }
 
 beforeEach(() => servidorResponde(200, usuario))
+
+/** As telas do Jurídico e a decisão da Sênior pedem o perfil (GGVP-135): o teste entra com ele. */
+const advogada = { ...usuario, nome: 'Gabi', perfis: ['advogada'], perfilAtivo: 'advogada' }
+const senior = { ...usuario, nome: 'Helena', perfis: ['senior'], perfilAtivo: 'senior' }
 afterEach(() => vi.unstubAllGlobals())
 
 describe('App', () => {
@@ -73,6 +77,7 @@ describe('App', () => {
     render(<App caminho="/casos/antonio-exemplo-1/cobranca" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Cobrar documento' })).toBeTruthy()
     cleanup()
+    servidorResponde(200, senior)
     render(<App caminho="/casos/antonio-exemplo-1/cobranca/decidir" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo · Decidir cobrança' })).toBeTruthy()
   })
@@ -150,6 +155,7 @@ describe('App', () => {
 
   it('GGVP-32 · em /advogada abre a Central da Advogada e em /entrevista/:id/preparar, a preparação', async () => {
     zerarExemplo()
+    servidorResponde(200, advogada)
     render(<App caminho="/advogada" />)
     expect((await screen.findByRole('heading', { name: 'Início da Advogada' }))).toBeTruthy()
     cleanup()
@@ -159,9 +165,11 @@ describe('App', () => {
 
   it('GGVP-28 e GGVP-36 · as telas de analisar a ficha, da segunda ficha e de renovar a senha', async () => {
     zerarExemplo()
+    servidorResponde(200, advogada)
     render(<App caminho="/entrevista/josefa-entrevista/analisar" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Analisar ficha' })).toBeTruthy()
     cleanup()
+    servidorResponde(200, usuario)
     render(<App caminho="/clientes/josefa-exemplo/segunda-ficha" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Preencher segunda ficha' })).toBeTruthy()
     cleanup()
@@ -171,6 +179,7 @@ describe('App', () => {
 
   it('GGVP-40 · a tela do passo da entrevista e a da gravação', async () => {
     zerarExemplo()
+    servidorResponde(200, advogada)
     render(<App caminho="/entrevista/josefa-entrevista" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Fazer entrevista' })).toBeTruthy()
     cleanup()
@@ -180,18 +189,38 @@ describe('App', () => {
 
   it('GGVP-43 · a tela de cadastrar o lead', async () => {
     zerarExemplo()
+    servidorResponde(200, advogada)
     render(<App caminho="/clientes/josefa-exemplo/cadastro" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Cadastrar lead' })).toBeTruthy()
   })
 
   it('GGVP-51 · a tela de definir o benefício', async () => {
     zerarExemplo()
+    servidorResponde(200, advogada)
     render(<App caminho="/entrevista/josefa-entrevista/beneficio" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Definir benefício' })).toBeTruthy()
   })
 
+  it('GGVP-135 · tela de outro perfil: o Atendimento não abre as do Jurídico, nem a Documentação a entrevista', async () => {
+    zerarExemplo()
+    for (const caminho of ['/advogada', '/entrevista/josefa-entrevista/preparar', '/entrevista/josefa-entrevista', '/clientes/josefa-exemplo/cadastro']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+      cleanup()
+    }
+    servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
+    render(<App caminho="/entrevista/josefa-entrevista/gravacao" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+    cleanup()
+    // O Financeiro não trabalha com o caso: nem o balcão.
+    servidorResponde(200, { ...usuario, perfis: ['financeiro'], perfilAtivo: 'financeiro' })
+    render(<App caminho="/balcao" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+  })
+
   it('GGVP-57 · a tela de calcular tempo e pontos', async () => {
     zerarExemplo()
+    servidorResponde(200, advogada)
     render(<App caminho="/entrevista/josefa-entrevista/calculo" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Calcular tempo e pontos' })).toBeTruthy()
   })

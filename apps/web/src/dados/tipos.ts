@@ -419,6 +419,8 @@ export type Confirmacao = {
   proximaEm?: string
   /** Duas sem resposta: a advogada sênior resolve (CA6). */
   naSenior?: boolean
+  /** A entrevista começou na hora, com a pessoa no escritório: a presença já está confirmada (GGVP-40). */
+  presente?: boolean
 }
 
 export type RegistroDaConfirmacao =
