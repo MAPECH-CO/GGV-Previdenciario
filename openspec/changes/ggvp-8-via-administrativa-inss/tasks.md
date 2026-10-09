@@ -76,3 +76,5 @@
 - [x] 7.7 Telas "Prestar contas", "Receber a prestação" e "Agendar ida ao banco"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 7.8 Playwright: a advogada conclui a prestação, o Financeiro recebe, o Atendimento agenda e registra a confirmação; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 7.10 CA13 (orquestrador, 09/10) · `GET` e `POST /api/casos/:id/prestacao`: com `caso.advogadaResponsavelId`, só a advogada responsável vê e dá o OK; outra advogada recebe 403 e a recusa vai ao histórico; o Financeiro e o caso sem responsável seguem como estão; teste em `prestacao.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/prestacao.test.ts`.
+- [x] 7.11 Rodar typecheck, lint e testes; colar a saída.
