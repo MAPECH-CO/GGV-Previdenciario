@@ -116,3 +116,14 @@
 - [x] 10.5 Playwright: a Sênior vê a chance com a cor e o que falta saber na conferência.
 - [x] 10.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [ ] 10.7 CA1 · Os outros fatores dos casos parecidos (provas, perito ou juízo, motivos), depois da resposta do Lucas no cartão (09/10).
+
+## GGVP-151 · Chance de êxito na entrevista, na recomendação da perícia, no "Vale recorrer?" e na petição
+
+- [x] 11.1 CA1, CA5 · `GET /api/chance?beneficio=` em `apps/api/src/rotas/conferencia.ts` (a mesma conta da conferência, sem caso, com `chance.ver`; o perito, o juízo e o parecer no que falta saber); teste em `conferencia.test.ts`.
+- [x] 11.2 Componente `apps/web/src/componentes/ChanceDoCaso.tsx`: o cartão da chance que hoje está na conferência (cor, sugestão abaixo de 15%, o que falta saber, fatores da IA), só para quem tem `chance.ver`; a conferência passa a usá-lo; teste Vitest.
+- [x] 11.3 CA1 · Definir o benefício (`apps/web/src/paginas/DefinirBeneficio.tsx`): a chance do benefício escolhido; teste Vitest.
+- [x] 11.4 CA2 · Recomendação da perícia (`apps/web/src/paginas/Pericias.tsx`): o cartão da chance do caso; teste Vitest.
+- [x] 11.5 CA4 · Petição (`apps/web/src/paginas/Peticao.tsx`): o cartão da chance fora da minuta; teste de que a chance não vai ao pedido da petição à IA (`apps/api/src/rotas/peticao.test.ts`).
+- [x] 11.6 Playwright: a advogada vê a chance na petição; o Atendimento não.
+- [x] 11.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 11.8 CA3 · A chance no "Vale recorrer?", depois da resposta do Lucas no cartão (09/10).
