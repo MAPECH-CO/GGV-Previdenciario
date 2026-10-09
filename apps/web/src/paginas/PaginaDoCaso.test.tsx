@@ -53,8 +53,8 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     expect(fora).toContain('desde 26/09 · prazo 09/10')
     expect(fora).toContain('Justiça')
     const tarefas = screen.getByRole('heading', { name: 'Tarefas em andamento' }).closest('section')!
-    expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Documentação', 'Jurídico', 'Jurídico administrativo'])
-    expect(tarefas.textContent).toContain('responsável: Jéssica (exemplo) · em paralelo')
+    expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Atendimento', 'Jurídico', 'Jurídico administrativo'])
+    expect(tarefas.textContent).toContain('responsável: Ana (exemplo) · em paralelo')
     expect(tarefas.textContent).toContain('Antônio Exemplo · Orientar para a perícia')
   })
 
@@ -150,6 +150,18 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     const ficha = (await obterFicha('nair-exemplo'))!
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     expect(screen.getByRole('link', { name: /Processo ainda sem número/ }).getAttribute('href')).toBe('/casos/nair-exemplo-1')
+  })
+
+  it('GGVP-130 · as pendências de documento do processo, com o caminho para o checklist; sem cobrança aberta, nada', async () => {
+    entrarComo('documentacao')
+    const { unmount } = render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
+    const pendentes = await screen.findByRole('region', { name: 'Documentos pendentes' })
+    expect(within(pendentes).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Notas do produtor rural', 'Certidão'])
+    expect(within(pendentes).getByRole('link', { name: 'Ver o checklist' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/checklist')
+    unmount()
+    render(comSessao(<PaginaDoCaso processoId="maria-exemplo-1" />))
+    await screen.findByRole('heading', { name: 'Linha do processo · completa' })
+    expect(screen.queryByRole('region', { name: 'Documentos pendentes' })).toBeNull()
   })
 })
 

@@ -5,7 +5,7 @@ Os perfis saem das raias do BPMN. Toda tela inicial tem o mesmo formato: **"O qu
 | Perfil | Raia no BPMN | Tela inicial mostra | Faz | Nunca vê |
 |---|---|---|---|---|
 | **Atendimento** | ATENDIMENTO | Agenda do dia, fila de tarefas (assinatura, verificação de contrato, cobrança, exigência, laudo novo a subir), leads para recontatar | Recebe quem chega, confirma agendamento, confere e corrige contrato, cobra cliente, busca e sobe o laudo novo no card do cliente (D1.02); a perícia saiu do Atendimento em 29/09 | Petição, estratégia jurídica, valores (o percentual de honorários aparece só no contrato que confere) |
-| **Documentação** | DOCUMENTAÇÃO · ADM | Cards de documentos pendentes por cliente, fila do scanner, checklist por benefício | Recebe, digitaliza e anexa documentos, busca o que exigência ou perícia pede | Petição, valores |
+| **Documentação** | DOCUMENTAÇÃO · ADM | A Central do Atendimento, só com as tarefas dela (ver abaixo): documentos a receber, fila do scanner e conferência da leitura, checklist por benefício, casos para liberar ao Jurídico, exigências e perícias que pedem documento | Recebe, digitaliza e anexa documentos, confere o checklist, libera o caso ao Jurídico (D1.24), busca o que exigência ou perícia pede | Petição, valores |
 | **Advogada responsável** | JURÍDICO | Entrevistas do dia com a ficha já lida, casos com decisão, exigências e perícias a conferir, laudos novos a conferir, remarcações de perícia que passaram do limite, petições a pedir e conferir | Entrevista, confirma o benefício, decide se o caso precisa de perícia (D2.03), confere o laudo novo (D1.21M), analisa exigência e define o setor, pede e confere a petição, protocola, dá o OK na prestação de contas | Valores fora da prestação de contas que ela faz, configurações do escritório |
 | **Sênior** | JURÍDICO (conferência e despacho) | Casos aguardando conferência, despachos pendentes, tarefas que estouraram o limite de cobrança, estudos de caso | Aprova o caso antes do INSS, despacha o que falta depois do indeferimento, decide o que escalou | Valores (vê o resto do Jurídico) |
 | **Jurídico administrativo** (estagiário ou assistente jurídico) | JURÍDICO (protocolo, no D2) e JURÍDICO (ADMINISTRATIVO), no DP | Casos liberados para protocolo no Meu INSS; perícias a marcar, orientar e conferir | Protocola no Meu INSS (D2.02). Na perícia: marca no portal do INSS e sobe o comprovante em PDF (DP.02), decide se ela pede documento novo e atribui à Documentação, liga e orienta o cliente (DP.06), registra o comparecimento e remarca se ele faltar (DP.07); passou do limite de remarcações, sobe para a advogada (G15) | Valores, configuração |
@@ -15,6 +15,19 @@ Os perfis saem das raias do BPMN. Toda tela inicial tem o mesmo formato: **"O qu
 | **Sócio** (proposto, não está no BPMN) | nenhuma | Painel de resultado (GGVP-75) | Acompanha deferimento, procedência, extinções sem mérito e rendimento, só em totais do escritório | Valor ou dado de saúde de cliente individual |
 
 **Valores e financeiro** (Pedro, 06/10): o financeiro do escritório é todo do Financeiro. Ninguém mais vê valores, com três exceções: a advogada responsável vê os valores só na prestação de contas que ela faz; o Sócio vê só totais do escritório; o percentual de honorários aparece no contrato que o Atendimento confere e o cliente assina. O valor da causa e a renda per capita do LOAS não são financeiro do escritório: são dado jurídico e continuam visíveis para a advogada (Pedro, 07/10).
+
+**Documentação na Central do Atendimento** (GGVP-130; Pedro, 30/09 e 07/10): a Documentação é uma função e um perfil próprios (`documentacao`), com raia própria no BPMN (D1, D2, D3a e DP), mas não tem Central: o Figma não desenhou uma. Ela trabalha na **Central do Atendimento**, que, aberta com o perfil Documentação, mostra só o que é dela:
+
+- o documento que o balcão encaminha a ela, "Receber documento" (D1.02);
+- a conferência do que o scanner e a IA leram, com a quarentena, "Conferir documento" (D1.18);
+- "Conferir checklist" (D1.21);
+- "Liberar ao Jurídico" (D1.24; é da Documentação pela resposta do Lucas de 28/09, apesar de o índice do D1 transcrever Atendimento);
+- as exigências que pedem documento: a do INSS (D2.05) e o laço da Documentação na do juiz (D3a.03);
+- os documentos da perícia e a cobrança deles, "Reunir documentos da perícia" e "Cobrar documento da perícia" (DP.03).
+
+O resto da Central é do **Atendimento**, e a Documentação não vê: agenda e confirmação, fichas, contrato e assinatura, a cobrança dos documentos do caso (D1.23), boas-vindas, fechamento e recontato, nova demanda, "Pedir documento legível" (GGVP-95 CA3), "Completar telefone" da ficha do scanner (GGVP-17 CA15), o complemento ao médico e o "Ajustar o caso" devolvido pela Sênior (GGVP-127; Pedro, 08/10). O Atendimento, e o líder dele, também não veem as tarefas da Documentação. As tarefas que o servidor guarda já vêm pelo perfil ativo, e as que o chat criou ou que nasceram de uma conversa são da pessoa.
+
+Os documentos pendentes de cada cliente, o que a cobrança aberta ainda espera, aparecem em cada processo do "Caso em andamento" da ficha e na página do processo, com o caminho para o checklist (comentário do Lucas de 07/10 no GGVP-130), para todos que veem o caso. A cobrança dos documentos do caso (D1.23) é do Atendimento pelo BPMN, em todas as telas; o cartão GGVP-130 cita "cobrança" entre as tarefas da Documentação: **a confirmar com o Lucas**.
 
 **Sistema** e **IA** também são raias, mas não são perfis de pessoa. Tudo o que fazem aparece para as pessoas como sugestão, tarefa ou registro no histórico do card. Exemplo: o sistema abre sozinho a tarefa de perícia (DP.01) quando a perícia é pedida.
 

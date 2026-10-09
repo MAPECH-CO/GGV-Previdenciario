@@ -101,3 +101,6 @@ export * from './transcricao.ts'
 
 // A página do processo lida do banco (GGVP-146, parte 5).
 export * from './processo.ts'
+
+// As tarefas do setor e quem faz cada uma (GGVP-147).
+export * from './setor.ts'

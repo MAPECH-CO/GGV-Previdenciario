@@ -16,6 +16,7 @@ import { tarefasDaFilaDaSenior } from './dados/liberacao.ts'
 import { daSenior, tarefasDoParecer } from './dados/parecer.ts'
 import { tarefasDeDecidirComplemento } from './dados/complemento.ts'
 import { Conferencia } from './paginas/Conferencia.tsx'
+import { AjustarCaso } from './paginas/AjustarCaso.tsx'
 import { DecidirPericia } from './paginas/DecidirPericia.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
 import { Protocolar } from './paginas/Protocolar.tsx'
@@ -26,6 +27,7 @@ import { PrestarContas } from './paginas/PrestarContas.tsx'
 import { ReceberPrestacao } from './paginas/ReceberPrestacao.tsx'
 import { IdaAoBanco } from './paginas/IdaAoBanco.tsx'
 import { ConfirmarDesfecho } from './paginas/ConfirmarDesfecho.tsx'
+import { LevarAoBanco } from './paginas/LevarAoBanco.tsx'
 import { ExplicarResultado } from './paginas/ExplicarResultado.tsx'
 import { Estudos } from './paginas/Estudos.tsx'
 import { Pericias } from './paginas/Pericias.tsx'
@@ -138,6 +140,8 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
 /** Telas de passo (GGVP-8). Cada uma dentro de <Exige>: sem a permissão, nem monta (GGVP-96 CA11). */
 const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/conferencia$/, tela: (id) => <Exige acao="caso.ver"><Conferencia casoId={id} /></Exige> },
+  // GGVP-127: o caso devolvido pela Sênior; quem libera de novo o servidor decide (o setor da tarefa de ajuste).
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/ajuste$/, tela: (id) => <Exige acao="caso.ver"><AjustarCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Exige acao="caso.ver"><Vigilia casoId={id} /></Exige> },
@@ -146,6 +150,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao$/, tela: (id) => <Exige acao="prestacao.ver"><PrestarContas casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao\/recebimento$/, tela: (id) => <Exige acao="prestacao.registrar_recebimento"><ReceberPrestacao casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/banco$/, tela: (id) => <Exige acao="banco.agendar"><IdaAoBanco casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/banco\/levar$/, tela: (id) => <Exige acao="banco.levar"><LevarAoBanco casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/resultado$/, tela: (id) => <Exige acao="caso.ver"><ExplicarResultado casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/desfecho$/, tela: (id) => <Exige acao="caso.ver"><ConfirmarDesfecho casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="caso.ver"><PublicacoesDoProcesso casoId={id} /></Exige> },

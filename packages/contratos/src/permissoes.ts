@@ -18,9 +18,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
-// 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20. Quem entrar depois
-// renumera.
-export const VERSAO_MATRIZ = 20
+// 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
+// 21. Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 21
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -67,6 +67,8 @@ export const MATRIZ = {
   'exigencia_inss.decidir_vencida': ['senior'],
   // Versão 14 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
   'banco.agendar': ['financeiro'],
+  // Versão 21 (GGVP-98, P3 do roteiro de 09/10): quem leva o cliente ao banco é do Atendimento (Lucas, Q24).
+  'banco.levar': ['atendimento', 'atendimento_lider'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],
