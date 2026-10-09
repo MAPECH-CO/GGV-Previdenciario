@@ -79,6 +79,7 @@ Cada desfecho gravado SHALL guardar o tipo, a matéria, a vara, a tese, o result
 
 ### Requirement: CA7 · Números de código; a Sênior confere; a IA só explica
 Os indicadores de ganho e perda MUST ser calculados por código a partir dos desfechos gravados; a Sênior SHALL conferir a classificação (o resultado e a tese), e só o conferido entra nas contas. A IA só escreve a ficha.
+- O caso ganho no INSS entra no acervo como "Deferido no INSS", que a Sênior também confere (Mateus, 08/10).
 
 #### Scenario: CA7 · Indicadores
 - **Dado** os indicadores de ganho e perda

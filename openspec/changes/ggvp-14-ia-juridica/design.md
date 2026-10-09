@@ -106,6 +106,7 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
    - `FichaDoDesfecho`: `materia`, `vara` (ou nula), `tese` (até 80 caracteres, ou nula quando não dá para saber), `resumo` e `licao`.
    - `ConferenciaDoAcervo.pendentes[]` ganha `ficha`; nula quer dizer "a IA ainda não leu este desfecho".
    - `ConferirDesfecho` ganha `tese` (opcional, até 80 caracteres): a Sênior confirma ou corrige.
+   - `DESFECHOS_DO_ACERVO` ganha `deferido` ("Deferido no INSS"): o caso ganho no INSS entra no acervo assim (GGVP-98), e a conferência não aceitava (ajuste do Mateus, 08/10).
    - `RECORTES` ganha `tese`, com o rótulo "Tese".
 2. **Banco:** `processo_acervo` ganha `materia`, `vara`, `tese`, `resumo` e `licao` (migração nova; quem entrar depois renumera). Sem tabela nova: a ficha é do registro do acervo.
 3. **A ficha pela IA, em segundo plano** (finalidade `ficha_do_desfecho`, versão 1, JSON validado por `FichaDoDesfecho`, leva dado de saúde, barra CID), em `fluxo/ficha-do-desfecho.ts`, registrada no `preparo` por `rotas/acervo.ts`:
