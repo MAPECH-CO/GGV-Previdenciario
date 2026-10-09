@@ -78,9 +78,10 @@ describe('GGVP-100 · improcedente: decidir se recorre', () => {
     expect(r.prazo.regra).toContain('lado seguro')
   })
 
-  it('perfis · a Sênior decide; a advogada responsável só lê; fora delas, ninguém vê (o Sócio também não: GGVP-96)', async () => {
+  it('perfis · a Sênior decide; a advogada responsável e o Sócio só leem; fora deles, ninguém vê', async () => {
     expect((await chamar('gabi', 'GET')).json().podeDecidir).toBe(false)
-    for (const apelido of ['lauro', 'julia', 'ana', 'igor']) expect((await chamar(apelido, 'GET')).statusCode, apelido).toBe(403)
+    expect((await chamar('lauro', 'GET')).json().podeDecidir).toBe(false)
+    for (const apelido of ['julia', 'ana', 'igor']) expect((await chamar(apelido, 'GET')).statusCode, apelido).toBe(403)
     for (const apelido of ['gabi', 'lauro']) expect((await chamar(apelido, 'POST', { decisao: 'recorrer', justificativa: JUSTIFICATIVA })).statusCode, apelido).toBe(403)
     expect(await abertas()).toEqual([`senior · ${TITULO_DECIDIR}`])
   })

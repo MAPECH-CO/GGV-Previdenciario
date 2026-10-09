@@ -1,6 +1,5 @@
 // Improcedente: decidir se recorre (GGVP-100, passo D3b.04). Depois da sentença improcedente confirmada ("Confirmar
-// desfecho", D4.02), a Sênior decide com justificativa (Lucas, 07/10); a advogada responsável só lê. O Sócio não
-// vê: a tela traz o texto da sentença, e o Sócio lê sem dado de saúde nem passo do caso (GGVP-96).
+// desfecho", D4.02), a Sênior decide com justificativa (Lucas, 07/10); a advogada responsável e o Sócio só leem.
 // Recorrer: o processo segue na vigília (D3a) e nasce a tarefa do recurso. Não recorrer: o caso vai ao estudo de caso
 // (GGVP-19) e à explicação ao cliente (GGVP-22).
 import { and, desc, eq, isNull, notExists, sql } from 'drizzle-orm'
