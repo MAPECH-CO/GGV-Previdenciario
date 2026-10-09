@@ -153,6 +153,17 @@ describe('Cumprir exigência do INSS (GGVP-39, Documentação)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Escolha o canal da cobrança')
   })
 
+  it('CA15 · marcar "É laudo, atestado ou exame" manda a prova como dado de saúde', async () => {
+    const fetch = servidor(comCard)
+    render(<CumprirExigencia casoId={CASO} />)
+    fireEvent.change(await screen.findByLabelText('Documento de “CadÚnico”'), { target: { files: [new File(['%PDF'], 'laudo.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByLabelText(/É laudo, atestado ou exame/))
+    fireEvent.click(screen.getByRole('button', { name: 'Anexar' }))
+    await vi.waitFor(() => expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true))
+    const corpo = fetch.mock.calls.find(([, init]) => init?.method === 'POST')![1]!.body as FormData
+    expect([corpo.get('acao'), corpo.get('medico')]).toEqual(['cumprido', 'true'])
+  })
+
   it('CA13 · com tudo cumprido, entrega ao Jurídico', async () => {
     servidor({ ...comCard, itens: [{ ...comCard.itens[0], situacao: 'cumprido', prova: 'cad.pdf' }] })
     render(<CumprirExigencia casoId={CASO} />)
