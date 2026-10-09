@@ -103,13 +103,13 @@
 
 ## GGVP-142 · Chat e Suporte pelo motor de IA de verdade (Mateus, 09/10)
 
-- [ ] 16.1 ADR-016 (o kit de agentes da OpenAI no chat) e a dependência `@openai/agents` 0.18.0 na API, com o rastreamento desligado; verifica com `pnpm --filter @ggv/api typecheck`.
-- [ ] 16.2 CA2 · `POST /api/chat`: as recusas (G17; G11 com histórico), "o que é o G8?", os portões do pedido e o pedido de outro perfil, como código, sem chamar o modelo. Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 16.3 CA1, CA4 · O agente: a instrução, o modelo com o `fetch` injetado, as finalidades `chat` e `chat_juridico` no registro, a saúde (Jurídico e Sócio, com o acesso registrado), a barra de CID e a resposta sem IA. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 16.4 CA1, CA2 · Ferramentas de leitura: o caso (pela página do processo, com a sessão), o acervo com a regra de saúde, as tarefas da pessoa e o portão; as fontes e os links pelo código. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 16.5 CA3 · Ação com aprovação: o cartão a partir da aprovação do kit, guardado com quem pediu; `POST` e `DELETE /api/chat/acoes/:id`; criar tarefa e pedir a peça, com "feito pelo chat" no histórico. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 16.6 CA3 · Marcar a perícia pelo chat leva à perícia do caso (decisão do Mateus, 09/10): lá a IA lê o comprovante e a pessoa confere a data, a hora e o local antes de marcar; o chat não marca sem a pessoa ver a leitura. Teste junto com a 16.7; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 16.7 CA3 · As ações que dependem de enviar arquivo (laudo, documento, comprovante de RPV, lote do acervo) respondem com o link da tela. Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 16.8 Tela: com o servidor ligado, `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor. Teste Vitest com `fetch` falso; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 16.9 Playwright do chat no servidor: a recusa do G17 sem modelo e a resposta sem a chave da IA, com o link do caso; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 16.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 16.1 ADR-016 (o kit de agentes da OpenAI no chat) e a dependência `@openai/agents` 0.18.0 na API, com o rastreamento desligado; verifica com `pnpm --filter @ggv/api typecheck`.
+- [x] 16.2 CA2 · `POST /api/chat`: as recusas (G17; G11 com histórico), "o que é o G8?", os portões do pedido e o pedido de outro perfil, como código, sem chamar o modelo. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 16.3 CA1, CA4 · O agente: a instrução, o modelo com o `fetch` injetado, as finalidades `chat` e `chat_juridico` no registro, a saúde (Jurídico e Sócio, com o acesso registrado), a barra de CID e a resposta sem IA. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 16.4 CA1, CA2 · Ferramentas de leitura: o caso (pela página do processo, com a sessão), o acervo com a regra de saúde, as tarefas da pessoa e o portão; as fontes e os links pelo código. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 16.5 CA3 · Ação com aprovação: o cartão a partir da aprovação do kit, guardado com quem pediu; `POST` e `DELETE /api/chat/acoes/:id`; criar tarefa e pedir a peça, com "feito pelo chat" no histórico. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 16.6 CA3 · Marcar a perícia pelo chat leva à perícia do caso (decisão do Mateus, 09/10): lá a IA lê o comprovante e a pessoa confere a data, a hora e o local antes de marcar; o chat não marca sem a pessoa ver a leitura. Teste junto com a 16.7; verifica com `pnpm --filter @ggv/api test`.
+- [x] 16.7 CA3 · As ações que dependem de enviar arquivo (laudo, documento, comprovante de RPV, lote do acervo) respondem com o link da tela. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 16.8 Tela: com o servidor ligado, `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor. Teste Vitest com `fetch` falso; verifica com `pnpm --filter @ggv/web test`.
+- [x] 16.9 Playwright do chat no servidor: a recusa do G17 sem modelo e a resposta sem a chave da IA, com o link do caso; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 16.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

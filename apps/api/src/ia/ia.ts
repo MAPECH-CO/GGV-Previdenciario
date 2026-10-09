@@ -22,7 +22,7 @@ export const REGRAS_DA_IA = [
  * alerta; na saída, a sugestão chega com alerta para a pessoa ver antes de usar.
  */
 /** A marca do bloco dentro do conteúdo fecharia o bloco antes da hora: vai neutralizada e conta como suspeita. */
-const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
+export const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
 const SUSPEITAS = [
   /ignor(e|a|ar|em)\s+(as\s+|todas\s+as\s+|estas\s+|essas\s+)?(instru|regras|ordens|orienta)/i,
   /desconsider(e|a|ar)\s+(as\s+|todas\s+as\s+)?(instru|regras|ordens)/i,
@@ -633,6 +633,12 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
    * `saudeAutorizada` (GGVP-133): para a tela dizer o motivo certo quando o motor recusa dado de saúde; o acervo
    * (GGVP-141) também lê, para só vetorizar trecho do Jurídico com a autorização.
    */
-  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
+  /**
+   * GGVP-142 (ADR-016): o que o agente do chat usa do motor. A chave e o modelo do motor, o `fetch` do motor (o teste
+   * passa um falso) e o mesmo registro em `chamada_ia`. Sem chave, não há cliente.
+   */
+  const paraOChat = { chave: ambiente.OPENAI_API_KEY || null, modelo: modeloTexto, fetch, registrar, motivo }
+
+  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, paraOChat, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>
