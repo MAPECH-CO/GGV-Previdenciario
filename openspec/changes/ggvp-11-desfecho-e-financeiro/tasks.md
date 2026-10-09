@@ -9,6 +9,7 @@
 - [x] 1.5 Telas: "Receber e lançar" com a caixa de conferência; ida ao banco do Financeiro com acompanhante obrigatório e "Confirmar recebimento"; testes de tela.
 - [x] 1.6 Playwright do caminho: advogada conclui, Financeiro recebe, agenda, avisa e confirma; Atendimento vê "Levar ao banco".
 - [x] 1.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 1.8 Revisão de 08/10 (M5): a dica de "Prestar contas" ainda dizia "o Atendimento agenda a ida ao banco"; passa a dizer que o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco (mudança do Lucas de 06/10); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-22 · Explicar o resultado ao cliente
 
