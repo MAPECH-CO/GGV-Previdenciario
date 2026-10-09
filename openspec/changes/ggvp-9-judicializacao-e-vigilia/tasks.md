@@ -27,6 +27,8 @@
 - [x] 3.6 (grupo 4) · Rodada real na máquina: a API com o banco na memória, `FONTES_PUBLICACAO=aasp,djen`, a OAB, os tribunais e a chave do `.env.aasp`; reprocessar a rodada do dia no painel da vigília; a conversa mostra só as contagens; verifica pela rodada `ok` e pelo número de capturadas.
 - [ ] 3.7 (grupo 4) · Homologação, depois do merge do #20 e da decisão do Lucas sobre fontes reais: as variáveis no passo a passo da homologação e no Coolify (o Mateus cola a chave); verifica com a primeira rodada no painel da vigília da homologação.
 - [x] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.9 CA13 (revisão do orquestrador, 09/10) · `fontesAtivas` não monta a fonte de exemplo em produção (`NODE_ENV=production` sem `AMBIENTE=homologacao`), mesmo pedida em `FONTES_PUBLICACAO`; sem a variável, ali, a lista sai vazia; a homologação segue com o exemplo (roteiro do teste); teste em `fontes.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/vigilia/fontes.test.ts`.
+- [x] 3.10 Rodar typecheck, lint e testes da API; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-37 · Encaminhar pelo tipo de ato
 

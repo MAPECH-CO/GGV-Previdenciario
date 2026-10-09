@@ -101,3 +101,26 @@ O item da fila SHALL mostrar o prazo que pode estar correndo, contado pelo lado 
 - **Dado** um item na fila de revisão
 - **Quando** entra
 - **Então** já mostra o prazo que está correndo, contado pelo lado seguro; item com prazo perto sobe para a Sênior
+
+### Requirement: CA13 · Publicação inventada nunca entra em produção
+Em produção (a imagem com `NODE_ENV=production` e sem `AMBIENTE=homologacao`), a vigília MUST NOT rodar a fonte de exemplo, mesmo que ela esteja em `FONTES_PUBLICACAO`; sem `FONTES_PUBLICACAO`, nenhuma fonte SHALL rodar. A AASP e o DJEN só ligam pelas variáveis do ambiente. A homologação (`AMBIENTE=homologacao`) segue com a fonte de exemplo, porque o roteiro do teste de 09/10 usa essas publicações (Otávio Lima); a máquina do dev e os testes também (orquestrador, 09/10).
+
+#### Scenario: CA13 · Produção sem configuração
+- **Dado** o servidor com `NODE_ENV=production`, sem `AMBIENTE` e sem `FONTES_PUBLICACAO`
+- **Quando** a vigília monta as fontes
+- **Então** nenhuma fonte roda e nenhuma publicação inventada entra
+
+#### Scenario: CA13 · Exemplo pedido em produção
+- **Dado** o servidor com `NODE_ENV=production` e `FONTES_PUBLICACAO=exemplo,djen`
+- **Quando** a vigília monta as fontes
+- **Então** só o DJEN entra; a fonte de exemplo fica de fora
+
+#### Scenario: CA13 · Homologação
+- **Dado** o servidor com `NODE_ENV=production`, `AMBIENTE=homologacao` e sem `FONTES_PUBLICACAO`
+- **Quando** a vigília monta as fontes
+- **Então** roda a fonte de exemplo, para o roteiro do teste
+
+#### Scenario: CA13 · Máquina do dev
+- **Dado** a API sem `AMBIENTE`, fora de produção e sem `FONTES_PUBLICACAO`
+- **Quando** a vigília monta as fontes
+- **Então** roda a fonte de exemplo, como antes

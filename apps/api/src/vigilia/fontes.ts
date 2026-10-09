@@ -111,11 +111,15 @@ function oabsDe(valor: string | undefined): Oab[] | null {
 /**
  * `FONTES_PUBLICACAO=exemplo` (padrão) ou uma lista, como `aasp,djen` (GGVP-30 CA10; grupo 4, decisão 48). O DJEN usa
  * `DJEN_OABS`, a AASP usa `AASP_CHAVES` (segredo), e as duas olham os tribunais de `VIGILIA_TRIBUNAIS` (padrão TRF3 e TJSP).
+ * Em produção (`NODE_ENV=production` sem `AMBIENTE=homologacao`) a fonte de exemplo nunca roda, nem pedida, e sem
+ * `FONTES_PUBLICACAO` não roda fonte nenhuma; a homologação segue com o exemplo, que o roteiro do teste usa (GGVP-26 CA13).
  */
 export function fontesAtivas(ambiente: Record<string, string | undefined> = process.env, rede: Rede = redeDeVerdade): Fonte[] {
   const tribunais = lista(ambiente.VIGILIA_TRIBUNAIS ?? 'TRF3,TJSP').map((t) => t.toUpperCase())
   const desconhecido = tribunais.find((t) => !JTR_DO_TRIBUNAL[t])
-  return lista(ambiente.FONTES_PUBLICACAO ?? 'exemplo').map((nome) => {
+  const producao = ambiente.NODE_ENV === 'production' && ambiente.AMBIENTE !== 'homologacao'
+  const nomes = lista(ambiente.FONTES_PUBLICACAO ?? (producao ? '' : 'exemplo')).filter((n) => !(producao && n === 'exemplo'))
+  return nomes.map((nome) => {
     if (nome === 'exemplo') return fonteDeExemplo
     if (nome !== 'djen' && nome !== 'aasp') return naoLigada(nome)
     if (desconhecido) return falha(nome, `api: tribunal que a vigília não conhece (${desconhecido}); use TRF1 a TRF6 ou TJSP`)

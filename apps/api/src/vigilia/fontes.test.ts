@@ -12,6 +12,13 @@ describe('fontes da vigília', () => {
     expect(fontesAtivas({}).map((f) => f.nome)).toEqual(['exemplo'])
   })
 
+  it('CA13 · em produção a fonte de exemplo nunca roda; a homologação segue com ela para o roteiro', () => {
+    expect(fontesAtivas({ NODE_ENV: 'production' })).toEqual([])
+    expect(fontesAtivas({ NODE_ENV: 'production', AMBIENTE: 'homologacao' }).map((f) => f.nome)).toEqual(['exemplo'])
+    const nomes = fontesAtivas({ NODE_ENV: 'production', FONTES_PUBLICACAO: 'exemplo,djen', DJEN_OABS: '123456/SP' }).map((f) => f.nome)
+    expect(nomes).toEqual(['djen'])
+  })
+
   it('AASP e DJEN sem integração falham com o motivo (nunca devolvem lista vazia)', async () => {
     const [aasp] = fontesAtivas({ FONTES_PUBLICACAO: 'aasp' })
     await expect(aasp.buscar(new Date(), new Date())).rejects.toThrow('credencial ausente')
