@@ -7,7 +7,7 @@ Confirmar o desfecho de mérito (a porta de entrada do D3b): a decisão de méri
 ## ADDED Requirements
 
 ### Requirement: CA3 · Confirmar o desfecho lendo a decisão e a leitura da IA
-A tarefa "Confirmar desfecho" SHALL abrir uma tela com o trecho da decisão de mérito, a leitura da IA com o grau de confiança (quando houver) e o prazo do recurso; a advogada (ou a Sênior) MUST escolher procedente total, procedente em parte, improcedente ou extinto sem mérito, e extinto sem mérito MUST trazer a causa. Sem a confirmação, o caso não avança no D3b.
+A tarefa "Confirmar desfecho" SHALL abrir uma tela com o trecho da decisão de mérito, a leitura da IA com o grau de confiança (quando houver) e o prazo do recurso; a advogada (ou a Sênior) MUST escolher procedente total, procedente em parte, improcedente ou extinto sem mérito, e extinto sem mérito MUST trazer a causa. Sem a confirmação, o caso não avança no D3b. A tela SHALL seguir o Figma "Confirmar o desfecho de mérito" (step_D4.02, 1815:166): o topo do passo, "O que você deve fazer" e "Antes de concluir".
 
 #### Scenario: CA3 · Abrir a tarefa
 - **Dado** uma decisão de mérito encaminhada pela vigília
@@ -25,7 +25,7 @@ A tarefa "Confirmar desfecho" SHALL abrir uma tela com o trecho da decisão de m
 - **Então** é recusado e vê só a situação
 
 ### Requirement: CA4 · A confirmação fica registrada e abre o passo seguinte
-A confirmação SHALL gravar o desfecho no caso, com quem confirmou e quando, e fechar "Confirmar desfecho"; procedente (total ou em parte) MUST abrir "Acompanhar pagamento" (D3b.01) para a advogada responsável, com a forma (RPV ou precatório) quando conhecida; improcedente ou extinto sem mérito MUST abrir "Vale recorrer?" para a advogada responsável, com o prazo do recurso. Duas confirmações ao mesmo tempo: só a primeira vale.
+A confirmação SHALL gravar o desfecho no caso, com quem confirmou e quando, e fechar "Confirmar desfecho"; procedente (total ou em parte) MUST abrir "Acompanhar pagamento" (D3b.01) para a advogada responsável, com a forma (RPV ou precatório) quando conhecida; improcedente ou extinto sem mérito MUST abrir "Decidir recurso" (D3b.04) para a Sênior, que escreve e protocola o recurso (Lucas, 09/10), com o prazo pelo lado seguro: 10 dias úteis da disponibilização da sentença, ou o da publicação, se for antes (G12), no formato do `abrirDecisaoDoRecurso` da GGVP-100. Enquanto "Decidir recurso" estiver aberta, o estudo de caso e o resumo ao cliente esperam. Duas confirmações ao mesmo tempo: só a primeira vale.
 
 #### Scenario: CA4 · Procedente
 - **Dado** "Confirmar desfecho" aberta
@@ -35,7 +35,7 @@ A confirmação SHALL gravar o desfecho no caso, com quem confirmou e quando, e 
 #### Scenario: CA4 · Improcedente
 - **Dado** "Confirmar desfecho" aberta, com o prazo do recurso
 - **Quando** a advogada confirma improcedente
-- **Então** nasce "Vale recorrer?" com o mesmo prazo, e o estudo de caso do perdido (GGVP-19) passa a valer para o caso
+- **Então** nasce "Decidir recurso" para a Sênior, com o prazo do recurso, e o estudo de caso do perdido (GGVP-19) e o resumo ao cliente esperam a decisão
 
 #### Scenario: CA4 · Já confirmado
 - **Dado** o desfecho já confirmado
