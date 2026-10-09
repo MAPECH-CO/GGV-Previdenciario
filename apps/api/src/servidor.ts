@@ -45,11 +45,15 @@ import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
 import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
+import { registrarRotasRecepcaoDecisoes } from './rotas/recepcao-decisoes.ts'
+import { registrarRotasRecepcaoSegundaFicha } from './rotas/recepcao-segunda-ficha.ts'
+import { registrarRotasRecepcaoContrato } from './rotas/recepcao-contrato.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
 import { registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
+import { registrarRotasProcesso } from './rotas/processo.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -130,6 +134,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    registrarRotasRecepcaoDecisoes(app, { banco, agora })
+    registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
+    registrarRotasRecepcaoContrato(app, { banco, agora })
     registrarRotasRoteiros(app, { banco, agora })
     registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
@@ -145,6 +152,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasFeriados(app, { banco, agora })
     registrarRotasGlossario(app, { banco, agora })
     registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
+    registrarRotasProcesso(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

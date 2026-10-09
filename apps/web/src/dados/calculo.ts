@@ -4,8 +4,8 @@
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { dataPrevistaIso, exigeCalculo, pontosFalados, registroValido, tempoFalado } from '../regras/calculo.ts'
 import { cnisDoCaso } from './beneficio.ts'
-import { agora, esperar, evento, gravar, ler } from './servidor.ts'
-import type { Agendamento, Calculo, Cnis, Ficha, RegistroDoCalculo } from './tipos.ts'
+import { agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber } from './servidor.ts'
+import type { Agendamento, Calculo, Cnis, Ficha, RegistroDoCalculo, TarefaEncaminhada } from './tipos.ts'
 
 /** Quem calcula: o advogado do setor de atendimento (Lucas, 01/10). */
 export const QUEM_ADVOGADO_DO_ATENDIMENTO = 'Você (Advogado do atendimento)'
@@ -38,6 +38,10 @@ export async function registrarCalculo(agendamentoId: string, registro: Registro
   await esperar()
   const hoje = hojeIso(agora())
   if (!registroValido(registro, hoje)) throw new Error('Cálculo incompleto ou inválido')
+  if (agendamentoDoServidor(agendamentoId)) {
+    const r = await noBanco<{ ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/entrevistas/${agendamentoId}/calculo`, { method: 'POST', corpo: registro })
+    return { ficha: receber(r)! }
+  }
   const banco = ler()
   const achado = achar(banco.fichas, agendamentoId)
   if (!achado) throw new Error('Entrevista não encontrada')

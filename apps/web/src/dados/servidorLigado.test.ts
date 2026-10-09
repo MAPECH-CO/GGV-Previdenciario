@@ -3,10 +3,34 @@
 // atendimento). As regras do servidor têm os testes dele, na API.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista } from './agenda.ts'
+import { definirBeneficio } from './beneficio.ts'
+import { guardarSenhaNoCofre } from './cofre.ts'
+import {
+  avisarClienteDaConferencia,
+  concluirAssinaturaEmPapel,
+  digitalizarContratoAssinado,
+  enviarParaAssinatura,
+  fecharContrato,
+  gerarContrato,
+  imprimirCopia,
+  imprimirKit,
+  marcarVisitaDaCopia,
+  registrarEntregaDaCopia,
+  registrarTentativaDeAssinatura,
+  simularLeituraDoContrato,
+  simularRetornoDoZapSign,
+  tarefasDoContrato,
+  verificarContrato,
+  type Contrato,
+} from './contrato.ts'
 import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
 import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
-import { tarefasDaAdvogada } from './preparacao.ts'
+import { registrarFechamento } from './fechamento.ts'
+import { obterPreparacao, tarefasDaAdvogada } from './preparacao.ts'
+import { lerSegundaFichaEmPapel } from './segundaFicha.ts'
+import { respostasVazias } from '../regras/segundaFicha.ts'
+import { CONFERENCIAS, type IdDaConferencia } from '../regras/contrato.ts'
 import { obterGravacoes } from './transcricao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { buscarNoBalcao, configurarExemplo, criarFicha, gravar, ler, ligarPasta, obterFicha, salvarFicha, sincronizarRecepcao, zerarExemplo } from './servidor.ts'
@@ -190,7 +214,7 @@ const MARCACAO: Marcacao = { tipo: 'presencial', data: '2026-10-06', hora: '14:0
 
 describe('GGVP-125 · bloco 2: agenda e confirmação no servidor, em modo misto', () => {
   it('ao abrir a tela, a cópia recebe fichas, tarefas e compromissos; a tarefa que sumiu lá foi concluída', async () => {
-    let doServidor = { fichas: [doBanco()], tarefas: [tarefa('preparar-x', 'Preparar entrevista', 'Jurídico')], internos: [{ id: OUTRO, titulo: 'Gravação', data: '2026-10-06', hora: '10:00', duracao: 60, responsavel: 'atendimento', estado: 'marcado' as const }], gravacoes: [] }
+    let doServidor = { fichas: [doBanco()], tarefas: [tarefa('preparar-x', 'Preparar entrevista', 'Jurídico')], internos: [{ id: OUTRO, titulo: 'Gravação', data: '2026-10-06', hora: '10:00', duracao: 60, responsavel: 'atendimento', estado: 'marcado' as const }], gravacoes: [], contratos: [] }
     ligarServidor({ 'GET /api/recepcao': () => doServidor })
     await sincronizarRecepcao()
     expect(ler().fichas.some((f) => f.id === ID)).toBe(true)
@@ -212,7 +236,7 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor, em modo misto
 
   it('três vias na agenda: o compromisso que só existe aqui fica; o que mudou lá vem de lá', async () => {
     let ficha = doBanco({ agendamentos: [entrevista(`${ID}-ag-1`)] })
-    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [ficha], tarefas: [], internos: [], gravacoes: [] }) })
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [ficha], tarefas: [], internos: [], gravacoes: [], contratos: [] }) })
     await sincronizarRecepcao()
     // Aqui, uma tela ainda não ligada marca a retirada da cópia do contrato.
     mexerAqui((f) => f.agendamentos.push(entrevista(`${ID}-ag-local`, { oQue: 'Retirada da cópia do contrato' })))
@@ -297,7 +321,7 @@ const gravacao = (id: string, extra: Partial<Gravacao> = {}): Gravacao => ({
 describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor, em modo misto', () => {
   it('a cópia recebe as gravações que o perfil pode ver; a que não veio mais sai daqui', async () => {
     let gravacoes = [gravacao(`gravacao-${OUTRO}`)]
-    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [doBanco()], tarefas: [], internos: [], gravacoes }) })
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [doBanco()], tarefas: [], internos: [], gravacoes, contratos: [] }) })
     await sincronizarRecepcao()
     expect((await obterGravacoes(ID)).map((g) => g.id)).toEqual([`gravacao-${OUTRO}`])
     // Outro perfil na mesma aba (sem dado de saúde): a entrevista do Jurídico não fica na cópia.
@@ -328,5 +352,277 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor, 
     expect((await obterEntrevista(a.id))?.gravacao).toEqual(encerrada)
     expect(ler().fichas.find((f) => f.id === ID)?.agendamentos[0].estado).toBe('realizado')
     expect(tarefasDaAdvogada().map((t) => t.acao)).toContain('Cadastrar lead')
+  })
+})
+
+describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor, em modo misto', () => {
+  it('o benefício da ficha do servidor é decidido lá; a cópia recebe a decisão e as tarefas', async () => {
+    const a = entrevista(`${ID}-ag-1`, { estado: 'realizado' })
+    const definida = { beneficio: 'loas-idoso', agendamentoId: a.id, quem: 'gabi', quando: '2026-10-05T18:00:00.000Z', fontes: [], recusouSugestao: false }
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco({ agendamentos: [a] }),
+      [`POST /api/entrevistas/${a.id}/beneficio`]: () => ({
+        ficha: doBanco({ agendamentos: [a], beneficioDefinido: definida, historico: [CRIOU, naHora('2026-10-05T18:00:00.000Z', 'Definiu o benefício do caso (D1.12): BPC')] }),
+        tarefas: [tarefa('definir-x', 'Definir benefício', 'Jurídico', true)],
+      }),
+    })
+    await criarFicha(ivone)
+    mexerAqui((_, banco) => banco.tarefas.push(tarefa('definir-x', 'Definir benefício', 'Jurídico')))
+    const r = await definirBeneficio(a.id, { beneficio: 'loas-idoso', conferi: true })
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ beneficio: 'loas-idoso', conferi: true })
+    expect(r.ficha.beneficioDefinido).toEqual(definida)
+    expect(ler().tarefas.find((t) => t.id === 'definir-x')?.concluida).toBe(true)
+  })
+
+  it('não fechou e arquivado: as tarefas do servidor encerram lá, e as que são só daqui encerram aqui', async () => {
+    ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/fechamento`]: () => ({
+        fechou: false,
+        ficha: doBanco({ fechamento: { situacao: 'arquivado', motivo: 'preco', papel: 'atendimento', quem: 'Ana', quando: '2026-10-05T18:00:00.000Z' } }),
+        tarefas: [],
+      }),
+    })
+    await criarFicha(ivone)
+    mexerAqui((_, banco) => banco.tarefas.push(tarefa('so-daqui', 'Conferir contrato', 'Atendimento')))
+    const r = await registrarFechamento(ID, { fechou: false, motivo: 'preco', papel: 'atendimento', recontatar: null })
+    expect(r.ficha.fechamento).toMatchObject({ situacao: 'arquivado', motivo: 'preco' })
+    expect(ler().tarefas.find((t) => t.id === 'so-daqui')?.concluida).toBe(true)
+  })
+
+  it('G9: a senha vai ao cofre do portal; a rota da ficha recebe só a situação, e nada fica no navegador', async () => {
+    const SENHA = 'segredo-do-gov-77'
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/pessoas/${ID}/cofre`]: () => ({ ok: true, trocada: false }),
+      [`POST /api/fichas/${ID}/cofre/gov`]: () => ({ senhaGov: { situacao: 'no-cofre', por: 'Ana' }, ficha: doBanco({ senhaGov: { situacao: 'no-cofre', por: 'Ana' } }) }),
+    })
+    await criarFicha(ivone)
+    expect(await guardarSenhaNoCofre(ID, SENHA)).toEqual({ senhaGov: { situacao: 'no-cofre', por: 'Ana' } })
+    const ultimas = fetch.mock.calls.slice(-2).map((c) => [c[0], JSON.parse(String(c[1]?.body))])
+    expect(ultimas).toEqual([
+      [`/api/pessoas/${ID}/cofre`, { senha: SENHA }],
+      [`/api/fichas/${ID}/cofre/gov`, { acao: 'guardou' }],
+    ])
+    expect(JSON.stringify(ler())).not.toContain(SENHA)
+    expect(ler().fichas.find((f) => f.id === ID)?.senhaGov.situacao).toBe('no-cofre')
+  })
+})
+
+describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médica só no Jurídico', () => {
+  const MEDICO = 'dor e perda de força na mão'
+
+  it('a leitura do papel de uma ficha do servidor vai lá; a imagem fica aqui; a seção médica não volta', async () => {
+    const arquivo = { nome: 'Ficha de atendimento AUXILIO ACIDENTE - Ivone Teste - 2026-10-05.pdf', tipo: 'ficha-acidente', local: 'pessoais', data: '2026-10-05', origem: 'scanner', repetido: false, aguardaLeitura: false }
+    ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/segunda-ficha/leitura`]: () => ({ arquivo, respostas: { empresa: 'Exemplo Indústria Ltda', doencas: '' }, senhaLida: false, ficha: doBanco() }),
+    })
+    await criarFicha(ivone)
+    const r = await lerSegundaFichaEmPapel(ID)
+    expect(r).toMatchObject({ senhaLida: false, respostas: { doencas: '' } })
+    expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([arquivo])
+  })
+
+  it('a preparação busca a seção médica ao abrir; ela fica só na tela, nunca na cópia do navegador', async () => {
+    const a = entrevista(`${ID}-ag-1`)
+    const segundaFicha = { data: '2026-10-05', origem: 'papel' as const, respostas: { ...respostasVazias(), empresa: 'Exemplo Indústria Ltda', historico: 'Prendeu a mão.' }, emBranco: [] }
+    const fetch = ligarServidor({
+      'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [a], segundaFicha })], tarefas: [], internos: [], gravacoes: [], contratos: [] }),
+      [`GET /api/fichas/${ID}/segunda-ficha`]: () => ({ medicos: { doencas: MEDICO }, lida: false }),
+    })
+    await sincronizarRecepcao()
+    const preparacao = await obterPreparacao(a.id)
+    expect(preparacao?.ficha.segundaFicha?.respostas).toMatchObject({ empresa: 'Exemplo Indústria Ltda', doencas: MEDICO })
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/fichas/${ID}/segunda-ficha`)
+    expect(JSON.stringify(ler())).not.toContain(MEDICO)
+  })
+})
+
+describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', () => {
+  const CASO = '9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b'
+  const condicoes = { representado: false, moradia: false, uniaoEstavel: false, separacaoDeFato: false }
+  const contrato = (extra: Partial<Contrato> = {}): Contrato => ({ processoId: CASO, fichaId: ID, etapa: 'preparar', condicoes, kit: null, abertoEm: '2026-10-05T17:40:00.000Z', ...extra })
+  const processo = { id: CASO, beneficio: 'loas-idoso', etapa: 'Contrato · preparar', proximaAcao: 'preparar o contrato', prazo: 'hoje' }
+  const cliente = (extra: Partial<Ficha> = {}) =>
+    doBanco({ situacao: 'cliente', desde: '10/2026', processos: [processo], historico: [CRIOU, naHora('2026-10-05T17:40:00.000Z', 'Fechou LOAS')], ...extra })
+
+  it('fechou numa ficha do servidor: o caso nasce lá; a cópia recebe o cliente, o processo e o contrato, sem perder os da semente', async () => {
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/processos`]: () => ({ ficha: cliente(), processo, contrato: contrato() }),
+    })
+    await criarFicha(ivone)
+    const r = await fecharContrato(ID, 'loas-idoso')
+    expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ beneficio: 'loas-idoso' })
+    expect(r.processo.id).toBe(CASO)
+    expect(ler().fichas.find((f) => f.id === ID)).toMatchObject({ situacao: 'cliente', processos: [{ id: CASO, etapa: 'Contrato · preparar' }] })
+    const processos = ler().contratos!.map((c) => c.processoId)
+    expect(processos).toContain(CASO)
+    expect(processos).toContain('cleide-exemplo-1')
+    expect(tarefasDoContrato().map((t) => [t.cliente?.nome, t.acao])).toContainEqual(['Ivone Teste', 'Preparar contrato'])
+  })
+
+  it('gerar o contrato de um caso do servidor: o servidor gera; a cópia recebe o contrato e a ficha', async () => {
+    const gerado = contrato({ etapa: 'assinatura', documento: { versao: 1, geradoEm: '2026-10-05T18:00:00.000Z', campos: [], textos: [] } })
+    ligarServidor({
+      'GET /api/recepcao': () => ({ fichas: [cliente()], tarefas: [], internos: [], gravacoes: [], contratos: [contrato()] }),
+      [`POST /api/processos/${CASO}/contrato/gerar`]: () => ({
+        resultado: 'gerado',
+        contrato: gerado,
+        ficha: cliente({ processos: [{ ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }] }),
+      }),
+    })
+    await sincronizarRecepcao()
+    const conferencias = Object.fromEntries(CONFERENCIAS.map((c) => [c.id, true])) as Record<IdDaConferencia, boolean>
+    expect(await gerarContrato(CASO, { aprovados: true, conferencias, correcoes: {} })).toEqual({ resultado: 'gerado', contrato: gerado })
+    expect(ler().contratos!.find((c) => c.processoId === CASO)?.etapa).toBe('assinatura')
+    expect(ler().fichas.find((f) => f.id === ID)?.processos[0].etapa).toBe('Contrato · assinatura')
+  })
+
+  const assinando = cliente({ processos: [{ ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }] })
+  const comContrato = (c: Contrato) => ({ 'GET /api/recepcao': () => ({ fichas: [assinando], tarefas: [], internos: [], gravacoes: [], contratos: [c] }) })
+
+  describe('bloco 4b: a assinatura', () => {
+    const paraAssinar = contrato({ etapa: 'assinatura' })
+    const noZapSign = (extra: Partial<NonNullable<Contrato['assinatura']>> = {}): Contrato => ({
+      ...paraAssinar,
+      assinatura: {
+        forma: 'digital',
+        tentativas: [],
+        zapsign: { documentoId: `zapsign-exemplo-${CASO}`, link: 'https://zapsign.exemplo/assinar/x', status: 'enviado', criadoEm: '2026-10-05T18:00:00.000Z', eventos: [] },
+        ...extra,
+      },
+    })
+    const assinadoEm = cliente({ processos: [{ ...processo, etapa: 'Contrato assinado em 05/10', proximaAcao: 'ler e arquivar o contrato assinado' }] })
+    const arquivo = { nome: 'Contrato assinado - Ivone Teste - 2026-10-05 (ZapSign, com evidências).pdf', tipo: 'contrato', local: CASO, data: '2026-10-05', origem: 'card' as const, repetido: false, aguardaLeitura: true }
+    const daSenior: TarefaEncaminhada = {
+      id: `senior-assinatura-${CASO}`,
+      codigo: 'D1.17',
+      cliente: { id: ID, nome: 'Ivone Teste' },
+      acao: 'Colher assinatura · limite de tentativas',
+      detalhe: 'LOAS',
+      prazo: 'hoje',
+      href: `/contrato/${CASO}/assinatura`,
+      processoId: CASO,
+      setor: 'Jurídico',
+    }
+
+    it('ZapSign: o documento nasce lá; a tentativa vai com o canal e a mensagem; no limite, a tarefa da sênior chega aqui', async () => {
+      const fetch = ligarServidor({
+        ...comContrato(paraAssinar),
+        [`POST /api/processos/${CASO}/contrato/zapsign`]: () => ({ resultado: 'gerado', contrato: noZapSign(), mensagem: 'Olá, Ivone! Aqui está o link', ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/tentativas`]: () => ({ contrato: noZapSign({ naSenior: true }), ficha: assinando, tarefas: [daSenior] }),
+      })
+      await sincronizarRecepcao()
+      expect(await enviarParaAssinatura(CASO)).toEqual({ resultado: 'gerado', contrato: noZapSign(), mensagem: 'Olá, Ivone! Aqui está o link' })
+      expect(ler().contratos!.find((c) => c.processoId === CASO)?.assinatura?.zapsign?.status).toBe('enviado')
+      await expect(registrarTentativaDeAssinatura(CASO, 'whatsapp', ' ')).rejects.toThrow('Escreva a mensagem')
+      await registrarTentativaDeAssinatura(CASO, 'whatsapp', 'Olá, Ivone! Aqui está o link')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ canal: 'whatsapp', mensagem: 'Olá, Ivone! Aqui está o link' })
+      expect(ler().tarefas.find((t) => t.id === daSenior.id)?.setor).toBe('Jurídico')
+      // Na sênior, a tarefa do contrato sai da Central do Atendimento.
+      expect(tarefasDoContrato().map((t) => t.processoId)).not.toContain(CASO)
+    })
+
+    it('o retorno simulado vai ao servidor: o contrato assinado e a tarefa da sênior concluída vêm de lá; o arquivo fica na pasta daqui', async () => {
+      ligarServidor({
+        ...comContrato(noZapSign({ naSenior: true })),
+        [`POST /api/processos/${CASO}/contrato/zapsign/retorno-simulado`]: () => ({
+          resultado: 'anexado',
+          arquivo,
+          contrato: { ...noZapSign({ naSenior: true, arquivo: arquivo.nome, assinadoEm: '2026-10-05T19:00:00.000Z' }), etapa: 'leitura' },
+          ficha: assinadoEm,
+          tarefas: [{ ...daSenior, concluida: true }],
+        }),
+      })
+      await sincronizarRecepcao()
+      expect(await simularRetornoDoZapSign(CASO)).toEqual({ resultado: 'anexado', arquivo })
+      const aqui = ler()
+      expect(aqui.contratos!.find((c) => c.processoId === CASO)?.etapa).toBe('leitura')
+      expect(aqui.fichas.find((f) => f.id === ID)).toMatchObject({ processos: [{ etapa: 'Contrato assinado em 05/10' }], arquivos: [arquivo] })
+      expect(aqui.tarefas.find((t) => t.id === daSenior.id)?.concluida).toBe(true)
+    })
+
+    it('papel: imprimir, digitalizar e concluir vão ao servidor; a digitalização fica na pasta daqui', async () => {
+      const papel = { ...paraAssinar, assinatura: { forma: 'papel' as const, tentativas: [], impressoEm: '2026-10-05T18:10:00.000Z' } }
+      const digitalizado = { ...papel, assinatura: { ...papel.assinatura, arquivo: 'assinado.pdf' } }
+      const scanner = { ...arquivo, nome: 'assinado.pdf', origem: 'scanner' as const }
+      const fetch = ligarServidor({
+        ...comContrato(paraAssinar),
+        [`POST /api/processos/${CASO}/contrato/impressao`]: () => ({ contrato: papel, datas: [{ documento: 'Contrato de honorários', data: '05/10/2026' }], ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/digitalizacao`]: () => ({ arquivo: scanner, contrato: digitalizado, ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/assinatura-em-papel`]: () => ({ contrato: { ...digitalizado, etapa: 'leitura' }, ficha: assinadoEm }),
+      })
+      await sincronizarRecepcao()
+      expect((await imprimirKit(CASO)).datas).toEqual([{ documento: 'Contrato de honorários', data: '05/10/2026' }])
+      expect(await digitalizarContratoAssinado(CASO)).toEqual(scanner)
+      expect((await concluirAssinaturaEmPapel(CASO)).etapa).toBe('leitura')
+      expect(fetch.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${url}`).slice(-3)).toEqual([
+        `POST /api/processos/${CASO}/contrato/impressao`,
+        `POST /api/processos/${CASO}/contrato/digitalizacao`,
+        `POST /api/processos/${CASO}/contrato/assinatura-em-papel`,
+      ])
+      expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([scanner])
+    })
+  })
+
+  describe('bloco 4c: a leitura, a conferência e a cópia', () => {
+    const lendo = contrato({ etapa: 'leitura', assinatura: { forma: 'papel', tentativas: [], arquivo: 'assinado.pdf', assinadoEm: '2026-10-05T19:00:00.000Z' } })
+    const leitura = {
+      reconhecido: true,
+      assinatura: { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' },
+      faltam: ['pág. 4 (rubrica)'],
+      pendencias: ['a página da assinatura veio cortada'],
+      lidoEm: '2026-10-05T19:10:00.000Z',
+    }
+    const conferindo: Contrato = { ...lendo, etapa: 'conferir', leitura }
+
+    it('a leitura vai ao servidor sem a daqui; a correção também, e a página corrigida fica na pasta daqui', async () => {
+      const pagina = { nome: 'pagina 4.pdf', tipo: 'contrato', local: CASO, data: '2026-10-05', origem: 'card' as const, repetido: false, aguardaLeitura: false }
+      const fetch = ligarServidor({
+        ...comContrato(lendo),
+        [`POST /api/processos/${CASO}/contrato/leitura-simulada`]: () => ({ contrato: conferindo, ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/verificacao`]: () => ({ contrato: { ...lendo, etapa: 'preparar', assinatura: undefined }, ficha: assinando, arquivo: pagina }),
+      })
+      await sincronizarRecepcao()
+      expect((await simularLeituraDoContrato(CASO)).etapa).toBe('conferir')
+      expect(fetch.mock.calls.at(-1)![1]?.body).toBeUndefined()
+      expect(tarefasDoContrato().find((t) => t.processoId === CASO)?.acao).toBe('Conferir contrato')
+      const correcao = { tudoCerto: false, oQueCorrigir: 'falta a rubrica', paginaCorrigida: { nome: 'pagina 4.pdf', tamanho: 2048 } }
+      expect((await verificarContrato(CASO, correcao)).etapa).toBe('preparar')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(correcao)
+      expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([pagina])
+    })
+
+    it('aviso, impressão, visita e entrega da cópia vão ao servidor; a visita volta na agenda da ficha', async () => {
+      const copia: Contrato = { ...conferindo, etapa: 'copia' }
+      const visita = { id: `copia-${CASO}-1`, data: '2026-10-13', hora: '10:00', oQue: 'Entregar cópia do contrato', tipo: 'presencial' as const, duracao: 30 }
+      const comVisita = cliente({ agendamentos: [visita] })
+      const entrega = { copiaDaVersaoAssinada: true, entregueEm: '05/10/2026', quemRecebeu: 'Ivone Teste', observacao: '' }
+      const fetch = ligarServidor({
+        ...comContrato(copia),
+        [`POST /api/processos/${CASO}/contrato/conferencia/aviso`]: () => ({ ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/copia/impressao`]: () => ({ contrato: { ...copia, copia: { impressaEm: '2026-10-05T19:20:00.000Z' } }, ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/copia/visita`]: () => ({ visita, contrato: { ...copia, copia: { visitaId: visita.id } }, ficha: comVisita }),
+        [`POST /api/processos/${CASO}/contrato/copia/entrega`]: () => ({ contrato: { ...copia, etapa: 'entregue' }, ficha: comVisita }),
+      })
+      await sincronizarRecepcao()
+      await avisarClienteDaConferencia(CASO, 'Ivone, falta a página 4.')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ mensagem: 'Ivone, falta a página 4.' })
+      expect((await imprimirCopia(CASO)).copia?.impressaEm).toBe('2026-10-05T19:20:00.000Z')
+      expect(await marcarVisitaDaCopia(CASO, '13/10/2026', '10:00')).toEqual(visita)
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ data: '13/10/2026', hora: '10:00' })
+      expect(ler().fichas.find((f) => f.id === ID)?.agendamentos).toContainEqual(visita)
+      expect((await registrarEntregaDaCopia(CASO, entrega)).etapa).toBe('entregue')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(entrega)
+      // Entregue, o contrato sai das tarefas do Atendimento: o checklist do benefício é da Documentação.
+      expect(tarefasDoContrato().map((t) => t.processoId)).not.toContain(CASO)
+    })
   })
 })

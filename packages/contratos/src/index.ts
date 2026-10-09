@@ -97,3 +97,6 @@ export * from './glossario.ts'
 
 // Transcrição de verdade (GGVP-133): o texto arrumado pela IA e a chave temporária do texto ao vivo.
 export * from './transcricao.ts'
+
+// A página do processo lida do banco (GGVP-146, parte 5).
+export * from './processo.ts'
