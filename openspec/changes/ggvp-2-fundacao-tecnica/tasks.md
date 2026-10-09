@@ -86,5 +86,5 @@
 - [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado em 08/10 sobre a `main` com o PR #29: typecheck e lint sem erro; Drive com fetch falso e Drive de verdade passando; sem tela, sem Playwright. Na máquina do Mateus, o primeiro teste de 4 arquivos pesados passa do tempo também na `main` pura (máquina carregada); o CI decide.
 - [x] 7.10 CA9 · `conferirDrive` em `apps/api/src/drive.ts` (lê as duas pastas, devolve as contagens ou o erro; só leitura); teste com fetch falso; `principal.ts` chama ao subir e registra "Drive lido" no log; verifica com `pnpm --filter @ggv/api test`.
 - [x] 7.11 CA9 · `/saude` com `drive: "ligado" | "desligado"` (contrato `Saude` e servidor); teste; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
-- [ ] 7.12 CA10 · `GOOGLE_DRIVE_SO_LEITURA=sim`: `abrirDrive` devolve `soLeitura`, `principal.ts` não liga a rodada de envio e o `/saude` diz `drive: "so-leitura"`; testes; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 7.13 Rodar typecheck, lint, testes e Playwright; a checagem de verdade, só de leitura, com a credencial; colar a saída.
+- [x] 7.12 CA10 · `GOOGLE_DRIVE_SO_LEITURA=sim`: `abrirDrive` devolve `soLeitura`, `principal.ts` não liga a rodada de envio e o `/saude` diz `drive: "so-leitura"`; testes; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.13 Rodar typecheck, lint, testes e Playwright; a checagem de verdade, só de leitura, com a credencial; colar a saída.

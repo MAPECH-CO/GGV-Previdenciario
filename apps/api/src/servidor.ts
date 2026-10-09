@@ -103,15 +103,19 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
   let alimentar = async () => {}
   app.decorate('alimentarAcervo', () => alimentar())
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
+  // CA10: só leitura não guarda o pacote no Drive, então a trava do pacote não o cobra.
+  const doAmbiente = abrirDrive()
+  const comDrive = driveLigado ?? (doAmbiente !== null && !doAmbiente.soLeitura)
+  const drive = doAmbiente?.soLeitura ? ('so-leitura' as const) : comDrive ? ('ligado' as const) : ('desligado' as const)
 
   app.get('/saude', async (_pedido, resposta): Promise<Saude> => {
-    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco' })
+    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco', drive })
     try {
       await consultar()
-      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado' })
+      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado', drive })
     } catch {
       resposta.code(503) // o deploy lê como falha e mantém a versão anterior no ar
-      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar' })
+      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar', drive })
     }
   })
 
@@ -135,7 +139,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: driveLigado ?? abrirDrive() !== null })
+    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora })
     registrarRotasJuizo(app, { banco, agora })

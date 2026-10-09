@@ -103,8 +103,21 @@ export function criarDrive(credenciais: Credenciais, buscar: typeof fetch = fetc
 }
 
 /** O Drive das variáveis de ambiente (`.env.drive` ou Coolify); faltando uma, desligado. */
-export function abrirDrive(ambiente: Record<string, string | undefined> = process.env): { drive: Drive; pastas: PastasDoDrive } | null {
+export function abrirDrive(ambiente: Record<string, string | undefined> = process.env): { drive: Drive; pastas: PastasDoDrive; soLeitura: boolean } | null {
   const { GOOGLE_DRIVE_CREDENCIAIS: credenciais, GOOGLE_DRIVE_PASTA_CLIENTES: clientes, GOOGLE_DRIVE_PASTA_REVISAR: revisar } = ambiente
   if (!credenciais || !clientes || !revisar) return null
-  return { drive: criarDrive(JSON.parse(Buffer.from(credenciais, 'base64').toString('utf8'))), pastas: { clientes, revisar } }
+  // CA10: na homologação, só lê; o envio não liga (GOOGLE_DRIVE_SO_LEITURA=sim).
+  const soLeitura = ambiente.GOOGLE_DRIVE_SO_LEITURA === 'sim'
+  return { drive: criarDrive(JSON.parse(Buffer.from(credenciais, 'base64').toString('utf8'))), pastas: { clientes, revisar }, soLeitura }
+}
+
+/** GGVP-107 CA9: lê as duas pastas do portal e devolve só as contagens (nunca nomes), ou o motivo do erro. Só leitura. */
+export async function conferirDrive(drive: Drive, pastas: PastasDoDrive): Promise<{ ok: true; clientes: number; revisar: number } | { ok: false; erro: string }> {
+  try {
+    const clientes = await drive.pastas(pastas.clientes)
+    const revisar = await drive.nomes(pastas.revisar)
+    return { ok: true, clientes: clientes.length, revisar: revisar.length }
+  } catch (e) {
+    return { ok: false, erro: (e as Error).message }
+  }
 }

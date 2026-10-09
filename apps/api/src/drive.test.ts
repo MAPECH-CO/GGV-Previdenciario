@@ -1,6 +1,6 @@
 import { generateKeyPairSync, verify } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { abrirDrive, criarDrive } from './drive.ts'
+import { abrirDrive, conferirDrive, criarDrive, type Drive } from './drive.ts'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
 const CONTA = { client_email: 'portal@teste.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() }
@@ -132,5 +132,20 @@ describe('cliente do Drive (GGVP-107)', () => {
     expect(abrirDrive({})).toBeNull()
     expect(abrirDrive({ ...base, GOOGLE_DRIVE_PASTA_REVISAR: '' })).toBeNull()
     expect(abrirDrive(base)?.pastas).toEqual({ clientes: 'c', revisar: 'r' })
+    // CA10: só leitura pela variável; sem ela, envia.
+    expect(abrirDrive(base)?.soLeitura).toBe(false)
+    expect(abrirDrive({ ...base, GOOGLE_DRIVE_SO_LEITURA: 'sim' })?.soLeitura).toBe(true)
+  })
+
+  it('CA9 · conferirDrive lê as duas pastas e devolve só as contagens; erro do Google vira o motivo, sem mexer em nada', async () => {
+    const chamadas: string[] = []
+    const lido = {
+      pastas: async (pai: string) => (chamadas.push(`pastas ${pai}`), [{ id: '1', nome: 'A' }, { id: '2', nome: 'B' }]),
+      nomes: async (pai: string) => (chamadas.push(`nomes ${pai}`), ['x.pdf']),
+    } as unknown as Drive
+    expect(await conferirDrive(lido, { clientes: 'c', revisar: 'r' })).toEqual({ ok: true, clientes: 2, revisar: 1 })
+    expect(chamadas).toEqual(['pastas c', 'nomes r'])
+    const recusado = { pastas: async () => Promise.reject(new Error('Drive: 404 pasta não encontrada')), nomes: async () => [] } as unknown as Drive
+    expect(await conferirDrive(recusado, { clientes: 'c', revisar: 'r' })).toEqual({ ok: false, erro: 'Drive: 404 pasta não encontrada' })
   })
 })
