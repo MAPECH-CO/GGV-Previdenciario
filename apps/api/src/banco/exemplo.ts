@@ -211,8 +211,9 @@ export async function semearExemplos(banco: Banco) {
     .returning()
   await abrirExplicacaoDoResultado(banco, cPerdido.id)
 
-  // Sentença improcedente esperando "Vale recorrer?" (GGVP-100): a decisão é da Sênior. Até a "Confirmar desfecho"
-  // (D4.02) chamar abrirDecisaoDoRecurso, a semente abre a tarefa. A sentença saiu há 2 dias, para o prazo ficar à frente.
+  // Sentença improcedente esperando "Vale recorrer?" (GGVP-100): a decisão é da Sênior. A semente abre a tarefa direto,
+  // para a tela do recurso ter um caso pronto (a "Confirmar desfecho" chama abrirDecisaoDoRecurso). A sentença saiu há 2
+  // dias, para o prazo ficar à frente.
   const [pRecurso] = await banco.insert(pessoa).values({ nome: 'Sérgio Nunes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cRecurso] = await banco
     .insert(caso)
@@ -276,6 +277,33 @@ export async function semearExemplos(banco: Banco) {
     })
     .returning()
   await banco.transaction((tx) => encaminhar(tx, intimacao, 'exigencia', 15, new Date()))
+
+  // Confirmar o desfecho de mérito (GGVP-90): duas sentenças já classificadas e encaminhadas pela vigília, esperando a
+  // advogada confirmar. A improcedente vai à Sênior ("Decidir recurso"); a procedente por RPV abre "Acompanhar pagamento".
+  for (const [nome, cnj, beneficio, texto] of [
+    ['Marina Souza (exemplo)', '00088881820264036301', 'bpc_loas_idoso', 'Ante o exposto, JULGO IMPROCEDENTE o pedido: a renda por pessoa da família supera o limite legal. (exemplo)'],
+    ['Caio Ferreira (exemplo)', '00099991820264036301', 'bpc_loas_deficiente', 'Ante o exposto, JULGO PROCEDENTE o pedido para condenar o INSS a conceder o benefício; expeça-se RPV. (exemplo)'],
+  ] as const) {
+    const [pm] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [cm] = await banco.insert(caso).values({ pessoaId: pm.id, beneficio, fase: 'judicial', advogadaResponsavelId: advogada.id }).returning()
+    const [sentenca] = await banco
+      .insert(publicacao)
+      .values({
+        fonte: 'exemplo',
+        numeroCnj: cnj,
+        casoId: cm.id,
+        disponibilizadaEm: hojeBr,
+        texto,
+        hash: `exemplo-merito-${cm.id}`,
+        classe: 'merito',
+        classeSugeridaIa: 'merito',
+        confiancaIa: '0.930',
+        revisadaPor: advogada.id,
+        revisadaEm: new Date(),
+      })
+      .returning()
+    await banco.transaction((tx) => encaminhar(tx, sentenca, 'merito', 15, new Date()))
+  }
 
   // Petição inicial (GGVP-63, 67, 71): o tribunal do protocolo, com o site e o tamanho por arquivo (Q8: o escritório
   // confirma na configuração), e a assinatura padrão da petição. Valores de exemplo.

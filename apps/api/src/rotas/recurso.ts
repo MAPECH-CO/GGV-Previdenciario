@@ -22,7 +22,7 @@ type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /** CA4 (G12): a última sentença do caso e o prazo do recurso contado pelo sistema. Sem sentença no sistema, nulos. */
-async function sentencaEPrazo(tx: Banco | Tx, casoId: string) {
+export async function sentencaEPrazo(tx: Banco | Tx, casoId: string) {
   const [sentenca] = await tx
     .select()
     .from(publicacao)

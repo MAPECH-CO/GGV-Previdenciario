@@ -31,6 +31,7 @@ import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
+import { registrarRotasDesfecho } from './rotas/desfecho.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
@@ -143,6 +144,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasConfiguracao(app, { banco, agora })
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasDesfecho(app, { banco, agora })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecurso(app, { banco, agora })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })

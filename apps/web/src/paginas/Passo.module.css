@@ -156,3 +156,20 @@
   font-size: var(--fonte-16);
   letter-spacing: 0.04em;
 }
+
+/* Chave e valor em duas colunas, como o cartão do processo do Figma (step_D4.02). */
+.linhas {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: var(--fonte-14);
+}
+
+.linhas dt {
+  color: var(--cor-texto-suave);
+}
+
+.linhas dd {
+  margin: 0;
+}

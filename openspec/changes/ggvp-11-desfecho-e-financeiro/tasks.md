@@ -136,7 +136,7 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [x] 14.5 Tela `/casos/:id/recurso` (Figma 1815:246) e Playwright do "Recorrer".
 - [ ] 14.6 CA6 · "Recurso e contrarrazões" na Minuta da IA: a Minuta ainda não tem lista de tipos de peça.
 - [ ] 14.7 CA8 · Ligar a jurimetria do juízo (pedidos #11 e #27) no `chance` de `GET /api/casos/:id/recurso`.
-- [ ] 14.8 A "Confirmar desfecho" (D4.02) chama `abrirDecisaoDoRecurso` quando a sentença for improcedente.
+- [x] 14.8 A "Confirmar desfecho" (D4.02) chama `abrirDecisaoDoRecurso` quando a sentença for improcedente.
 - [x] 14.9 CA5 · Q26 respondida (Lucas, 09/10): a tarefa "Elaborar e protocolar o recurso" nasce para a Sênior; testes da API, da tela e Playwright.
 
 ## Próximo PR do épico (adiado na revisão de 08/10)
@@ -150,3 +150,18 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [x] 11.1 CA6 · `faltaCompletar` em `packages/contratos/src/ia.ts` (texto com "[completar...]" → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
 - [x] 11.2 CA6 · `POST /api/casos/:id/resultado/resumo` recusa com `faltaCompletar` (400, nada muda); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 11.3 CA6 · Tela "Explicar o resultado": "Aprovar o resumo" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+
+## GGVP-90 · Confirmar o desfecho de mérito (CA3 e CA4; orquestrador, 09/10)
+
+- [x] 15.1 Contratos: `DesfechoParaConfirmar` e `ConfirmarDesfecho` em `packages/contratos/src/merito.ts` (as quatro opções, a causa obrigatória na extinção, a forma de pagamento opcional); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 15.2 Servidor: `GET /api/casos/:id/desfecho` (com `caso.ver`) e `POST /api/casos/:id/desfecho` (com `publicacao.classificar`, advogada e Sênior, sem mudar a matriz) em `apps/api/src/rotas/desfecho.ts`: grava o desfecho e a causa no caso, a decisão com quem e quando, fecha a tarefa e a etapa D4.02 numa transação que só a primeira confirmação vence, e abre "Acompanhar pagamento" (D3b.01) ou "Vale recorrer?" para a advogada responsável; a Central leva o D4.02, o D3b.01 e o "Vale recorrer?" à tela nova; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.3 Tela `/casos/:id/desfecho` (`ConfirmarDesfecho.tsx`): o trecho da decisão, a leitura da IA com a confiança, o prazo do recurso, as quatro opções, a causa, a forma de pagamento, "Confirmar desfecho" e o feito com quem e quando; outro perfil vê só a situação; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 15.4 Rodar typecheck, lint e testes; colar a saída. Sem teste de navegador novo: a semente não tem caso esperando "Confirmar desfecho" (no roteiro, nasce ao classificar como mérito uma publicação de exemplo); a tela tem teste Vitest.
+- [x] 15.5 Trazer a main: os conflitos no mapa de telas por passo (`inss.ts`), em `servidor.ts` e neste tasks.md resolvidos no 2c01d76; typecheck limpo.
+- [x] 15.6 Servidor: improcedente e extinto sem mérito abrem "Decidir recurso" (D3b.04) para a Sênior, com o prazo pelo lado seguro (10 dias úteis da disponibilização da sentença, ou o da publicação, se for antes), no formato do `abrirDecisaoDoRecurso` do #35; sai o passo provisório `D3b.recorrer`; o D3b.04 aponta, por enquanto, para a tela do desfecho; quando o #35 entrar, troca-se pela chamada dele; testes.
+- [x] 15.7 Tela fiel ao Figma 1815:166: o topo do passo (`TopoPasso`), "O que você deve fazer" e "Antes de concluir"; teste Vitest.
+- [x] 15.8 Semente com um caso esperando "Confirmar desfecho"; Playwright com os dois caminhos: improcedente, a Sênior vê "Decidir recurso"; procedente por RPV, nasce "Acompanhar pagamento".
+- [x] 15.9 PR: "Acompanhar pagamento" abre, por enquanto, a tela do desfecho; sai "GGVP-100 travada"; segue em rascunho até o Lucas aceitar entregar só a confirmação agora (CA3 e CA4).
+- [x] 15.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 15.11 Trazer a main com o #35 (GGVP-100, na main desde 09/10): "Decidir recurso" nasce pela chamada do `abrirDecisaoDoRecurso` de `rotas/recurso.ts`, e sai a função local; a tela do desfecho mostra o prazo recursal da mesma conta (`sentencaEPrazo` do #35); o D3b.04 abre a tela do recurso; o estudo de caso segue o `semRecursoPendente` do #35; a semente fica com os casos dos dois. Os números desta seção passaram de 14 para 15, porque o #35 usou a 14. Testes.
+- [x] 15.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
