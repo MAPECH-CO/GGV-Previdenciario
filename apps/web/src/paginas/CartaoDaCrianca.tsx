@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { obterCrianca, salvarCrianca, type CriancaNaTela } from '../dados/infantil.ts'
+import { registraSaude } from '../dados/parecer.ts'
 import { CONDICOES_DA_CRIANCA, TERAPIAS, type CondicaoDaCrianca, type DadosDaCrianca, type Terapia } from '../regras/infantil.ts'
 import styles from './Balcao.module.css'
 import proprio from './ConferirChecklist.module.css'
@@ -16,6 +17,8 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
   const travado = useRef(false)
+  // Quem marca é a advogada ou a sênior (`dado_saude.registrar`); o Jurídico administrativo só lê.
+  const registra = registraSaude(perfil)
 
   useEffect(() => {
     let valendo = true
@@ -64,7 +67,7 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
         Menor de 16 anos pela data de nascimento (calculado por código): a análise usa o roteiro infantil. Marque a condição e as
         terapias que a criança faz; os relatórios que provam o caso entram no checklist.
       </p>
-      <fieldset className={proprio.grupo}>
+      <fieldset className={proprio.grupo} disabled={!registra}>
         <legend>Condição</legend>
         {(Object.entries(CONDICOES_DA_CRIANCA) as [CondicaoDaCrianca, string][]).map(([id, texto]) => (
           <label key={id} className={proprio.marcar}>
@@ -73,7 +76,7 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
           </label>
         ))}
       </fieldset>
-      <fieldset className={proprio.grupo}>
+      <fieldset className={proprio.grupo} disabled={!registra}>
         <legend>Terapias que a criança faz</legend>
         {(Object.entries(TERAPIAS) as [Terapia, string][]).map(([id, texto]) => (
           <label key={id} className={proprio.marcar}>
@@ -82,7 +85,7 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
           </label>
         ))}
       </fieldset>
-      <fieldset className={proprio.grupo}>
+      <fieldset className={proprio.grupo} disabled={!registra}>
         <legend>Escola</legend>
         <label className={proprio.marcar}>
           <input type="checkbox" checked={d.escola} onChange={(e) => mudar({ escola: e.target.checked })} />
@@ -103,9 +106,11 @@ export function CartaoDaCrianca({ processoId, perfil, nome }: { processoId: stri
       </ul>
       {!tela.dados && <p className={styles.aviso}>Sem a condição marcada, o checklist fica travado: os relatórios dependem dela.</p>}
       <div className={styles.rodape}>
-        <button type="button" className={styles.principalBotao} disabled={salvando} onClick={salvar}>
-          {salvando ? 'salvando…' : 'Salvar a condição'}
-        </button>
+        {registra && (
+          <button type="button" className={styles.principalBotao} disabled={salvando} onClick={salvar}>
+            {salvando ? 'salvando…' : 'Salvar a condição'}
+          </button>
+        )}
         <a className={styles.atalho} href={`/casos/${processoId}/checklist`}>
           Abrir o checklist
         </a>

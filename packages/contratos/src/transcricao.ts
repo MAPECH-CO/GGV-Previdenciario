@@ -25,3 +25,17 @@ export const AnaliseDaConversaPelaIa = z.object({
   combinado: z.string().trim().min(1).nullable().default(null),
 })
 export type AnaliseDaConversaPelaIa = z.infer<typeof AnaliseDaConversaPelaIa>
+
+/** GGVP-133, GGVP-46 CA6, CA7: o que a entrevista traz para a ficha (os campos), para o checklist e para o processo. */
+export const ItemDaEntrevista = z.enum(['telefone', 'estadoCivil', 'profissao', 'contatoApoio', 'documento', 'desde'])
+export type ItemDaEntrevista = z.infer<typeof ItemDaEntrevista>
+
+/**
+ * GGVP-133, GGVP-46: o que a IA leu na entrevista transcrita: o resumo e cada item dito (o tipo, o valor como foi dito e a
+ * fala de onde saiu). A hora e o trecho são os da transcrição; nada vai para a ficha sem a advogada conferir (G14).
+ */
+export const EntrevistaLidaPelaIa = z.object({
+  resumo: z.string().trim().min(1),
+  itens: z.array(z.object({ tipo: ItemDaEntrevista, valor: z.string().trim().min(1), i: z.number().int().min(0) })).default([]),
+})
+export type EntrevistaLidaPelaIa = z.infer<typeof EntrevistaLidaPelaIa>

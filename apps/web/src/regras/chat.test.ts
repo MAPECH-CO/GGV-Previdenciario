@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { acaoDaLista, entenderPedido, foraDoPerfil, grupoDoPerfil, portaoDoPedido, responsavelDaTarefa, tipoDoAnexo, tituloDaTarefa } from './chat.ts'
+import {
+  ACOES_DO_PERFIL,
+  SUGESTOES_DO_PERFIL,
+  acaoDaLista,
+  entenderPedido,
+  foraDoPerfil,
+  grupoDoPerfil,
+  portaoDoPedido,
+  responsavelDaTarefa,
+  tipoDoAnexo,
+  tituloDaTarefa,
+} from './chat.ts'
 
 const PESSOAS = [
   { nome: 'Ana (exemplo)', setor: 'Atendimento' },
@@ -97,9 +108,28 @@ describe('GGVP-82 · CA9 · o título usa o cliente e uma ação da lista fixa d
     expect(tituloDaTarefa('Josefa Exemplo', 'Cobrar documento')).toBe('Josefa Exemplo · Cobrar documento')
   })
 
-  it('o grupo da lista de cada perfil', () => {
-    expect(grupoDoPerfil('documentacao')).toBe('atendimento')
+  it('o grupo da lista de cada perfil; sem perfil conhecido, o Atendimento', () => {
     expect(grupoDoPerfil('juridico-adm')).toBe('juridico-adm')
+    expect(grupoDoPerfil('atendimento')).toBe('atendimento')
+    expect(grupoDoPerfil(undefined)).toBe('atendimento')
+    expect(grupoDoPerfil('toString')).toBe('atendimento')
+  })
+
+  it('GGVP-96 · a Documentação, o líder e o Sócio não recebem as ações do Atendimento que não fazem', () => {
+    expect([grupoDoPerfil('documentacao'), grupoDoPerfil('atendimento-lider'), grupoDoPerfil('socio')]).toEqual(['documentacao', 'atendimento-lider', 'socio'])
+    // O Sócio só lê: nenhuma ação para ele; as sugestões, as da Central dele.
+    expect(ACOES_DO_PERFIL.socio).toEqual([])
+    expect(SUGESTOES_DO_PERFIL.socio).toEqual(['Prestações recebidas', 'Criar tarefa'])
+    // A Documentação não faz contrato, ficha nem conversa com o cliente, nem sobe o laudo novo.
+    for (const acao of ['Preparar contrato', 'Preencher ficha', 'Registrar conversa', 'Recontatar lead']) expect(ACOES_DO_PERFIL.documentacao, acao).not.toContain(acao)
+    expect(acaoDaLista('preparar o contrato da Josefa', 'documentacao')).toBeNull()
+    expect(acaoDaLista('cobrar o laudo do Antônio', 'documentacao')).toBe('Cobrar documento')
+    expect(SUGESTOES_DO_PERFIL.documentacao).not.toContain('Subir laudo novo')
+    // O líder faz o do Atendimento, menos o que a matriz dá ao Financeiro (ida ao banco) e à Documentação.
+    for (const acao of ['Agendar ida ao banco', 'Liberar ao Jurídico', 'Responder exigência do INSS', 'Reunir documentos da perícia']) {
+      expect(ACOES_DO_PERFIL['atendimento-lider'], acao).not.toContain(acao)
+    }
+    expect(ACOES_DO_PERFIL['atendimento-lider']).toContain('Preparar contrato')
   })
 })
 

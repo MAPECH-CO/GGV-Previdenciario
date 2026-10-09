@@ -1,4 +1,5 @@
 // A entrevista gravada (GGVP-40): relógio, áudio, partes e a senha que não pode ficar no texto (G9). Regra, não IA.
+import { normalizarTelefone, validarData, validarTelefone } from '../campos.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
 import type { Ficha, InformacaoExtraida, Trecho } from '../dados/tipos.ts'
 
@@ -83,6 +84,26 @@ export function tirarSenhas(trechos: Trecho[]): Trecho[] {
     return perto ? { ...t, texto: limpar(t.texto) } : t
   })
 }
+
+/** G9 também no que a IA devolve (GGVP-133, GGVP-140): o texto com senha não passa. */
+export const temSenha = (texto: string) => tirarSenhas([{ aos: 0, quem: '', papel: 'cliente', texto }])[0].texto !== texto
+
+/** O item "sem trabalhar desde": `desde` nas telas de exemplo, `desde-N` na leitura da IA. */
+export const ehDesde = (info: Pick<InformacaoExtraida, 'id'>) => info.id === 'desde' || info.id.startsWith('desde-')
+
+/**
+ * GGVP-133: o valor de uma informação da entrevista, como a IA ouviu ou como a advogada corrigiu. O "desde" é mês/ano, o
+ * único formato que o cálculo do afastamento entende (`diasDesde`, G19).
+ */
+export function erroDaInformacao(info: Pick<InformacaoExtraida, 'id' | 'campo'>, valor: string): string | undefined {
+  if (info.campo === 'telefone') return validarTelefone(valor) ? undefined : 'o telefone vai com DDD'
+  if (ehDesde(info)) return validarData(`01/${valor.trim()}`) ? undefined : 'mês e ano, como 06/2026'
+  const tamanho = valor.trim().length
+  return tamanho >= 2 && tamanho <= 200 ? undefined : 'de 2 a 200 letras'
+}
+
+/** Como a informação fica guardada: o telefone só com números, como na ficha. */
+export const valorDaInformacao = (info: Pick<InformacaoExtraida, 'campo'>, valor: string) => (info.campo === 'telefone' ? normalizarTelefone(valor) : valor.trim())
 
 /** Como a IA marca cada informação na tela da entrevista (Figma 73:560). */
 export function situacaoDaInformacao(info: InformacaoExtraida, ficha: Ficha): 'confirmado' | 'detectado' | 'pedir' | 'cofre' {
