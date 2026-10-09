@@ -288,26 +288,27 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
 })
 
 // GGVP-125, bloco 4b · a assinatura no banco: pelo ZapSign (simulado) e em papel na hora; outra sessão vê os dois assinados.
+/** Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. */
+async function contratoGerado(page: Page, nome: string, telefone: string, cpf: string): Promise<string> {
+  const api = page.request
+  const conferencias = { campos: true, datas: true, fichaLoas: true, codigoPenal: true }
+  const novo = { nome, idade: 66, pretende: 'Quer o BPC do idoso.', telefone, beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await api.post('/api/fichas', { data: novo })).json()
+  const { processo } = await (await api.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
+  const gerar = `/api/processos/${processo.id}/contrato/gerar`
+  const { campos } = await (await api.post(gerar, { data: { aprovados: true, conferencias, correcoes: {} } })).json()
+  const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
+  const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
+  const gerado = await (await api.post(gerar, { data: { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes } })).json()
+  expect(gerado.resultado).toBe('gerado')
+  return processo.id
+}
+
 test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assinado fica no banco', async ({ page, browser }) => {
   test.setTimeout(120_000)
-  const conferencias = { campos: true, datas: true, fichaLoas: true, codigoPenal: true }
-  /** Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. */
-  async function contratoGerado(nome: string, telefone: string, cpf: string): Promise<string> {
-    const api = page.request
-    const novo = { nome, idade: 66, pretende: 'Quer o BPC do idoso.', telefone, beneficioInteresse: 'loas-idoso', outraPessoa: false }
-    const { id } = await (await api.post('/api/fichas', { data: novo })).json()
-    const { processo } = await (await api.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
-    const gerar = `/api/processos/${processo.id}/contrato/gerar`
-    const { campos } = await (await api.post(gerar, { data: { aprovados: true, conferencias, correcoes: {} } })).json()
-    const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
-    const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
-    const gerado = await (await api.post(gerar, { data: { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes } })).json()
-    expect(gerado.resultado).toBe('gerado')
-    return processo.id
-  }
 
   // Pelo ZapSign: o documento, o link pelo WhatsApp e o retorno do assinado (simulado).
-  const digital = await contratoGerado('Lia Zapsign Teste', '11933331188', '48271365991')
+  const digital = await contratoGerado(page, 'Lia Zapsign Teste', '11933331188', '48271365991')
   await page.goto(`/contrato/${digital}/assinatura`)
   await page.getByRole('radio', { name: 'ZapSign (digital)' }).first().click()
   await page.getByRole('button', { name: 'Enviar para assinatura' }).click()
@@ -317,7 +318,7 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
   await expect(page.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
 
   // Em papel na hora (sem entrevista registrada, vale a presencial): imprimir, digitalizar e concluir.
-  const papel = await contratoGerado('Lia Papel Teste', '11933331199', '57382914682')
+  const papel = await contratoGerado(page, 'Lia Papel Teste', '11933331199', '57382914682')
   await page.goto(`/contrato/${papel}/assinatura`)
   await page.getByRole('radio', { name: 'Em papel na hora' }).click()
   await page.getByRole('button', { name: 'Imprimir o kit' }).click()
@@ -338,5 +339,43 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
   expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'leitura · papel' })
   await advogada.goto(`/contrato/${digital}/assinatura`)
   await expect(advogada.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
+  await outro.close()
+})
+
+// GGVP-125, bloco 4c · a leitura, a conferência e a cópia no banco: do assinado em papel à cópia entregue, visto de outra sessão.
+test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o caso segue para o checklist do benefício', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const caso = await contratoGerado(page, 'Lia Copia Teste', '11933331166', '61528394755')
+  for (const passo of ['impressao', 'digitalizacao', 'assinatura-em-papel']) expect((await page.request.post(`/api/processos/${caso}/contrato/${passo}`)).ok()).toBe(true)
+
+  // A leitura da IA (simulada) aponta a página cortada do papel: a Atendimento confere.
+  await page.goto(`/contrato/${caso}/assinatura`)
+  await page.getByRole('button', { name: 'Simular a leitura da IA (D1.18)' }).click()
+  await page.getByRole('link', { name: 'Conferir contrato' }).click()
+  await page.getByRole('radiogroup', { name: 'Está tudo certo?' }).getByRole('radio', { name: 'Sim' }).click()
+  await page.getByRole('button', { name: 'Está certo — seguir' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Contrato conferido: segue para a cópia' })).toBeVisible()
+
+  // A cópia: imprimir e registrar a entrega hoje, a quem recebeu.
+  await page.getByRole('link', { name: 'Entregar cópia do contrato' }).click()
+  await page.getByRole('button', { name: 'Imprimir cópia para o cliente' }).click()
+  await expect(page.getByText(/Impressa em .* \(impressora simulada\)/)).toBeVisible()
+  await page.getByRole('checkbox', { name: 'É a cópia impressa da versão assinada *' }).check()
+  const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  await page.getByLabel('Entregue em (data) *').fill(hoje)
+  await page.getByLabel('Quem recebeu *').fill('Lia Copia Teste')
+  await page.getByRole('button', { name: 'Registrar entrega' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
+
+  // Outro computador: o contrato entregue e o caso no checklist do benefício vêm do banco.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const advogada = await outro.newPage()
+  await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
+  const { contratos, fichas } = await (await advogada.request.get('/api/recepcao')).json()
+  expect(contratos.find((c: { processoId: string }) => c.processoId === caso)).toMatchObject({ etapa: 'entregue', copia: { entrega: { quemRecebeu: 'Lia Copia Teste' } } })
+  const processo = (fichas as { processos: { id: string; etapa: string }[] }[]).flatMap((f) => f.processos).find((x) => x.id === caso)
+  expect(processo?.etapa).toBe('Documentação · checklist do benefício')
+  await advogada.goto(`/contrato/${caso}/copia`)
+  await expect(advogada.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
   await outro.close()
 })

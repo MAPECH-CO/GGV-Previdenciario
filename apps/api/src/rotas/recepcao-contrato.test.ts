@@ -106,17 +106,17 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
   })
 })
 
-describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
-  /** O contrato gerado, pronto para assinar: fecha e gera com os campos que faltam (o CPF, um por ficha). */
-  async function gerado(fichaId: string, cpf = VALIDOS.cpf) {
-    const { processo } = await fechou(fichaId)
-    const base = `/api/processos/${processo.id}/contrato`
-    const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
-    const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, { ...VALIDOS, cpf }[c]]))
-    expect((await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })).resultado).toBe('gerado')
-    return base
-  }
+/** O contrato gerado, pronto para assinar: fecha e gera com os campos que faltam (o CPF, um por ficha). */
+async function gerado(fichaId: string, cpf = VALIDOS.cpf) {
+  const { processo } = await fechou(fichaId)
+  const base = `/api/processos/${processo.id}/contrato`
+  const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+  const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, { ...VALIDOS, cpf }[c]]))
+  expect((await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })).resultado).toBe('gerado')
+  return base
+}
 
+describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
   it('ZapSign: um documento por kit; a segunda tentativa sem assinatura sobe para a sênior (G15); o retorno anexa uma vez e encerra a tarefa', async () => {
     const base = await gerado(await lead())
     expect((await chamar('julia', 'POST', `${base}/zapsign`)).statusCode).toBe(403)
@@ -186,5 +186,85 @@ describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
     const presencial = await gerado(await lead('Marta Lima', '11955554444'), '11144477735')
     await json('ana', 'POST', `${presencial}/zapsign`)
     expect(await json('ana', 'POST', `${presencial}/impressao`)).toEqual({ erro: 'O documento já foi para o ZapSign.' })
+  })
+})
+
+describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato no servidor', () => {
+  /** O contrato assinado em papel, esperando a leitura. */
+  async function assinadoEmPapel(fichaId: string, cpf?: string) {
+    const base = await gerado(fichaId, cpf)
+    await json('ana', 'POST', `${base}/impressao`)
+    await json('ana', 'POST', `${base}/digitalizacao`)
+    expect((await json('ana', 'POST', `${base}/assinatura-em-papel`)).contrato.etapa).toBe('leitura')
+    return base
+  }
+  const ENTREGA = { copiaDaVersaoAssinada: true, entregueEm: '08/10/2026', quemRecebeu: '  Joana   Ribeiro ', observacao: '' }
+
+  it('a leitura simulada aponta a página cortada; a conferência manda corrigir, e a versão assinada fica no histórico', async () => {
+    const base = await assinadoEmPapel(await lead())
+    expect((await chamar('julia', 'POST', `${base}/leitura-simulada`)).statusCode).toBe(403)
+    const lido = await json('ana', 'POST', `${base}/leitura-simulada`)
+    expect(lido.contrato).toMatchObject({ etapa: 'conferir', leitura: { pendencias: ['a página da assinatura veio cortada'] } })
+    expect(lido.ficha.processos[0]).toMatchObject({ etapa: 'Contrato · conferência', proximaAcao: 'conferir o contrato assinado' })
+    expect(await json('ana', 'POST', `${base}/leitura-simulada`)).toEqual({ erro: 'Este contrato não está esperando a leitura.' })
+
+    expect(await json('ana', 'POST', `${base}/conferencia/aviso`, { mensagem: ' ' })).toEqual({ erro: 'Escreva a mensagem.' })
+    const avisado = await json('ana', 'POST', `${base}/conferencia/aviso`, { mensagem: 'Joana, falta a página 4 assinada.' })
+    expect(avisado.ficha.contatos.at(-1)).toMatchObject({ canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
+
+    expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'x' })).toEqual({ erro: 'Escreva o que corrigir.' })
+    expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'página 4', paginaCorrigida: { nome: 'pagina.exe', tamanho: 10 } })).toEqual({
+      erro: 'Página corrigida inválida.',
+    })
+    const pagina = { nome: 'pagina 4 corrigida.pdf', tamanho: 2048 }
+    const corrigir = await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'falta a rubrica da página 4', paginaCorrigida: pagina })
+    expect(corrigir.contrato).toMatchObject({
+      etapa: 'preparar',
+      verificacao: { tudoCerto: false, oQueCorrigir: 'falta a rubrica da página 4', paginaCorrigida: pagina.nome, quem: 'ana' },
+      anteriores: [{ versao: 1, motivo: 'falta a rubrica da página 4' }],
+    })
+    expect(corrigir.contrato.assinatura).toBeUndefined()
+    expect(corrigir.arquivo).toMatchObject({ nome: pagina.nome, tipo: 'contrato', aguardaLeitura: false })
+    expect(corrigir.ficha.processos[0]).toMatchObject({ etapa: 'Contrato · corrigir e reenviar' })
+    // Volta a preparar: a versão 2 sai pelo mesmo caminho.
+    expect((await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })).contrato.documento.versao).toBe(2)
+  })
+
+  it('está certo: vai à cópia; imprime, marca a visita e registra a entrega, que leva ao checklist do benefício', async () => {
+    const base = await assinadoEmPapel(await lead())
+    await json('ana', 'POST', `${base}/leitura-simulada`)
+    expect((await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: true })).contrato).toMatchObject({ etapa: 'copia', verificacao: { tudoCerto: true } })
+
+    expect((await json('ana', 'POST', `${base}/copia/impressao`)).contrato.copia.impressaEm).toEqual(expect.any(String))
+    expect(await json('ana', 'POST', `${base}/copia/visita`, { data: '07/10/2026', hora: '10:00' })).toEqual({ erro: 'Visita inválida.' })
+    const primeira = await json('ana', 'POST', `${base}/copia/visita`, { data: '13/10/2026', hora: '10:00' })
+    expect(primeira.visita).toMatchObject({ data: '2026-10-13', hora: '10:00', oQue: 'Entregar cópia do contrato', tipo: 'presencial' })
+    const segunda = await json('ana', 'POST', `${base}/copia/visita`, { data: '14/10/2026', hora: '15:30' })
+    const agenda = segunda.ficha.agendamentos.filter((a: { oQue: string }) => a.oQue === 'Entregar cópia do contrato')
+    expect(agenda.map((a: { data: string; estado?: string }) => [a.data, a.estado ?? 'marcado'])).toEqual([
+      ['2026-10-13', 'remarcado'],
+      ['2026-10-14', 'marcado'],
+    ])
+
+    expect(await json('ana', 'POST', `${base}/copia/entrega`, { ...ENTREGA, copiaDaVersaoAssinada: false })).toEqual({ erro: 'Entrega inválida.' })
+    const entregue = await json('ana', 'POST', `${base}/copia/entrega`, ENTREGA)
+    expect(entregue.contrato).toMatchObject({ etapa: 'entregue', copia: { entrega: { entregueEm: '2026-10-08', quemRecebeu: 'Joana Ribeiro', quem: 'ana' } } })
+    expect(entregue.ficha.processos[0]).toEqual(
+      expect.objectContaining({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício (D1.21)' }),
+    )
+    expect(entregue.ficha.processos[0].prazo).toBeUndefined()
+    expect(entregue.ficha.agendamentos.find((a: { data: string }) => a.data === '2026-10-14').estado).toBe('realizado')
+    expect(entregue.ficha.contatos.at(-1)).toMatchObject({ data: '2026-10-08', canal: 'Presencial', texto: 'Recebeu a cópia do contrato assinado.' })
+    expect(await json('ana', 'POST', `${base}/copia/entrega`, ENTREGA)).toEqual({ erro: 'Este contrato não está para entregar a cópia.' })
+  })
+
+  it('assinado pelo ZapSign, a leitura reconhece e segue direto para a cópia, sem conferência', async () => {
+    const base = await gerado(await lead())
+    await json('ana', 'POST', `${base}/zapsign`)
+    await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
+    const lido = await json('ana', 'POST', `${base}/leitura-simulada`)
+    expect(lido.contrato).toMatchObject({ etapa: 'copia', leitura: { faltam: [], pendencias: [] } })
+    expect(lido.ficha.historico.at(-1).oQue).toBe('A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato')
+    expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: true })).toEqual({ erro: 'Este contrato não está para conferir.' })
   })
 })

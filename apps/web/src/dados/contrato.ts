@@ -44,8 +44,10 @@ import {
   contratosDeExemplo,
   daFicha,
   juntar,
+  leituraDeExemploDoContrato,
   linkDoZapSign,
   textosDoKit,
+  visitaDaCopia,
   type Assinatura,
   type Contrato,
   type ContratoDoCaso,
@@ -57,7 +59,7 @@ import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber
 import type { Agendamento, Arquivo, Ficha, Processo, Tarefa, TarefaEncaminhada } from './tipos.ts'
 
 // Os tipos e as regras puras do contrato moram em regras/contratoDoCaso.ts (GGVP-125, bloco 4a).
-export { CLIENTE_DO_EXEMPLO_DOS_MODELOS, camposDoCaso, contratosDeExemplo }
+export { CLIENTE_DO_EXEMPLO_DOS_MODELOS, camposDoCaso, contratosDeExemplo, leituraDeExemploDoContrato, visitaDaCopia }
 export type { Assinatura, Contrato, ContratoDoCaso, DocumentoGerado, EnvioDoContrato, EtapaDoContrato, RespostaGerar, TentativaDeAssinatura } from '../regras/contratoDoCaso.ts'
 
 /** Os contratos do banco, começando da semente quando o banco ainda não tem. */
@@ -79,12 +81,6 @@ const TITULOS: Partial<Record<EtapaDoContrato, { codigo: string; acao: string; r
   assinatura: { codigo: 'D1.17', acao: 'Colher assinatura', rota: 'assinatura' },
   conferir: { codigo: 'D1.19', acao: 'Conferir contrato', rota: 'conferir' },
   copia: { codigo: 'D1.20', acao: 'Entregar cópia do contrato', rota: 'copia' },
-}
-
-/** A visita marcada para entregar a cópia, ainda em aberto (GGVP-89, CA4). */
-export function visitaDaCopia(ficha: Ficha, contrato: Contrato) {
-  const visita = ficha.agendamentos.find((a) => a.id === contrato.copia?.visitaId)
-  return visita && visita.estado !== 'realizado' && visita.estado !== 'remarcado' ? visita : undefined
 }
 
 /** O detalhe e o prazo da tarefa "Entregar cópia do contrato" (GGVP-89, CA2). */
@@ -599,6 +595,12 @@ export async function concluirAssinaturaEmPapel(processoId: string): Promise<Con
  * que a IA apontou (CA2, CA4).
  */
 export async function concluirLeituraDoContrato(processoId: string, leitura: LeituraDoContrato): Promise<Contrato> {
+  if (doServidor(processoId)) {
+    // GGVP-125, bloco 4c: no servidor, a leitura (ainda a de exemplo) é feita lá; a daqui não vai junto.
+    const r = await noBanco<{ contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/leitura-simulada`, { method: 'POST' })
+    receber(r)
+    return r.contrato
+  }
   await esperar()
   const banco = ler()
   const achado = achar(banco, processoId)
@@ -620,18 +622,6 @@ export async function concluirLeituraDoContrato(processoId: string, leitura: Lei
   return contrato
 }
 
-/**
- * EXEMPLO. A leitura da IA simulada: o papel da primeira versão vem com a página da assinatura cortada (Figma 10:202); o resto
- * a IA reconhece. A leitura de verdade é da GGVP-81.
- */
-export function leituraDeExemploDoContrato(contrato: Contrato): LeituraDoContrato {
-  const assinatura = { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' }
-  if (contrato.assinatura?.forma === 'papel' && (contrato.documento?.versao ?? 1) === 1) {
-    return { reconhecido: true, assinatura, faltam: ['pág. 4 (rubrica)'], pendencias: ['a página da assinatura veio cortada'] }
-  }
-  return { reconhecido: true, assinatura, faltam: [], pendencias: [] }
-}
-
 /** EXEMPLO. O botão "Simular a leitura da IA" faz o papel da leitura da GGVP-81. */
 export async function simularLeituraDoContrato(processoId: string): Promise<Contrato> {
   const caso = await obterContrato(processoId)
@@ -647,10 +637,16 @@ export type Verificacao = { tudoCerto: boolean; oQueCorrigir?: string; paginaCor
  * e o contrato volta a preparar, para corrigir os campos e reenviar para assinar (CA3).
  */
 export async function verificarContrato(processoId: string, v: Verificacao): Promise<Contrato> {
-  await esperar()
+  if (!doServidor(processoId)) await esperar()
   const oQueCorrigir = v.oQueCorrigir?.trim() ?? ''
   if (motivoParadoDaVerificacao(v.tudoCerto, oQueCorrigir)) throw new Error('Escreva o que corrigir')
   if (!v.tudoCerto && v.paginaCorrigida && problemaDoArquivo(v.paginaCorrigida)) throw new Error('Página corrigida inválida')
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ contrato: Contrato; ficha: Ficha; arquivo?: Arquivo }>(`/processos/${processoId}/contrato/verificacao`, { method: 'POST', corpo: v })
+    receber(r)
+    if (r.arquivo) anexarAqui(r.ficha.id, r.arquivo)
+    return r.contrato
+  }
   const banco = ler()
   const achado = achar(banco, processoId)
   if (!achado) throw new Error('Contrato não encontrado')
@@ -687,8 +683,12 @@ export async function verificarContrato(processoId: string, v: Verificacao): Pro
 
 /** O aviso ao cliente pelo WhatsApp, da tela de conferir: fica em "Últimos contatos". Chatwoot simulado. */
 export async function avisarClienteDaConferencia(processoId: string, mensagem: string): Promise<void> {
-  await esperar()
+  if (!doServidor(processoId)) await esperar()
   if (!mensagem.trim()) throw new Error('Escreva a mensagem')
+  if (doServidor(processoId)) {
+    receber(await noBanco<{ ficha: Ficha }>(`/processos/${processoId}/contrato/conferencia/aviso`, { method: 'POST', corpo: { mensagem } }))
+    return
+  }
   const banco = ler()
   const achado = achar(banco, processoId)
   if (!achado) throw new Error('Contrato não encontrado')
@@ -708,6 +708,11 @@ function paraACopia(banco: Banco, processoId: string): ContratoDoCaso {
 
 /** POST /api/processos/:id/contrato/copia/impressao. "Imprimir cópia para o cliente": a versão assinada (CA1). */
 export async function imprimirCopia(processoId: string): Promise<Contrato> {
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/copia/impressao`, { method: 'POST' })
+    receber(r)
+    return r.contrato
+  }
   await esperar()
   const banco = ler()
   const { ficha, contrato } = paraACopia(banco, processoId)
@@ -722,10 +727,18 @@ export async function imprimirCopia(processoId: string): Promise<Contrato> {
  * entra na agenda com a data da visita (CA4). A visita que já estava marcada fica remarcada.
  */
 export async function marcarVisitaDaCopia(processoId: string, data: string, hora: string): Promise<Agendamento> {
-  await esperar()
+  if (!doServidor(processoId)) await esperar()
   const hoje = hojeIso(agora())
   const erros = errosDaVisita(data, hora, hoje)
   if (erros.data || erros.hora) throw new Error('Visita inválida')
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ visita: Agendamento; contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/copia/visita`, {
+      method: 'POST',
+      corpo: { data, hora },
+    })
+    receber(r)
+    return r.visita
+  }
   const banco = ler()
   const { ficha, contrato } = paraACopia(banco, processoId)
   const anterior = visitaDaCopia(ficha, contrato)
@@ -752,9 +765,14 @@ export async function marcarVisitaDaCopia(processoId: string, data: string, hora
  * entrega e quem recebeu; a observação é opcional (CA3). Registrada, o caso segue para o checklist do benefício (D1.21, CA5).
  */
 export async function registrarEntregaDaCopia(processoId: string, v: ValoresDaEntrega): Promise<Contrato> {
-  await esperar()
+  if (!doServidor(processoId)) await esperar()
   const hoje = hojeIso(agora())
   if (motivoParadoDaEntrega(v, hoje)) throw new Error('Entrega inválida')
+  if (doServidor(processoId)) {
+    const r = await noBanco<{ contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/copia/entrega`, { method: 'POST', corpo: v })
+    receber(r)
+    return r.contrato
+  }
   const banco = ler()
   const { ficha, processo, contrato } = paraACopia(banco, processoId)
   const entregueEm = dataParaIso(normalizarData(v.entregueEm))!

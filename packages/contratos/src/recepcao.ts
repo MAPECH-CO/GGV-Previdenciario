@@ -275,3 +275,19 @@ export type EnvioDoContrato = z.infer<typeof EnvioDoContrato>
 /** POST /api/processos/:id/contrato/tentativas: o link ou o lembrete, pelo WhatsApp (com a mensagem) ou por ligação (GGVP-72). */
 export const TentativaDoContrato = z.object({ canal: z.enum(['whatsapp', 'ligacao']), mensagem: Opcional(2000) })
 export type TentativaDoContrato = z.infer<typeof TentativaDoContrato>
+
+/** POST /api/processos/:id/contrato/verificacao: "está certo" ou o que corrigir, com a página corrigida (GGVP-85). */
+export const VerificacaoDoContrato = z.object({
+  tudoCerto: z.boolean(),
+  oQueCorrigir: Opcional(500),
+  paginaCorrigida: z.object({ nome: Texto(200), tamanho: z.number().int().min(0) }).optional(),
+})
+export type VerificacaoDoContrato = z.infer<typeof VerificacaoDoContrato>
+
+/** POST /api/processos/:id/contrato/copia/visita: a data e a hora da visita para retirar a cópia (GGVP-89 CA4). */
+export const VisitaDaCopia = z.object({ data: Texto(10), hora: Texto(5) })
+export type VisitaDaCopia = z.infer<typeof VisitaDaCopia>
+
+/** POST /api/processos/:id/contrato/copia/entrega: a confirmação, a data, quem recebeu e a observação (GGVP-89 CA3). */
+export const EntregaDaCopia = z.object({ copiaDaVersaoAssinada: z.boolean(), entregueEm: Texto(10), quemRecebeu: Texto(120), observacao: Texto(500) })
+export type EntregaDaCopia = z.infer<typeof EntregaDaCopia>

@@ -6,15 +6,21 @@ import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista } from './ag
 import { definirBeneficio } from './beneficio.ts'
 import { guardarSenhaNoCofre } from './cofre.ts'
 import {
+  avisarClienteDaConferencia,
   concluirAssinaturaEmPapel,
   digitalizarContratoAssinado,
   enviarParaAssinatura,
   fecharContrato,
   gerarContrato,
+  imprimirCopia,
   imprimirKit,
+  marcarVisitaDaCopia,
+  registrarEntregaDaCopia,
   registrarTentativaDeAssinatura,
+  simularLeituraDoContrato,
   simularRetornoDoZapSign,
   tarefasDoContrato,
+  verificarContrato,
   type Contrato,
 } from './contrato.ts'
 import { registrarConfirmacao } from './confirmacao.ts'
@@ -479,6 +485,9 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
     expect(ler().fichas.find((f) => f.id === ID)?.processos[0].etapa).toBe('Contrato · assinatura')
   })
 
+  const assinando = cliente({ processos: [{ ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }] })
+  const comContrato = (c: Contrato) => ({ 'GET /api/recepcao': () => ({ fichas: [assinando], tarefas: [], internos: [], gravacoes: [], contratos: [c] }) })
+
   describe('bloco 4b: a assinatura', () => {
     const paraAssinar = contrato({ etapa: 'assinatura' })
     const noZapSign = (extra: Partial<NonNullable<Contrato['assinatura']>> = {}): Contrato => ({
@@ -490,7 +499,6 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
         ...extra,
       },
     })
-    const assinando = cliente({ processos: [{ ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }] })
     const assinadoEm = cliente({ processos: [{ ...processo, etapa: 'Contrato assinado em 05/10', proximaAcao: 'ler e arquivar o contrato assinado' }] })
     const arquivo = { nome: 'Contrato assinado - Ivone Teste - 2026-10-05 (ZapSign, com evidências).pdf', tipo: 'contrato', local: CASO, data: '2026-10-05', origem: 'card' as const, repetido: false, aguardaLeitura: true }
     const daSenior: TarefaEncaminhada = {
@@ -504,7 +512,6 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
       processoId: CASO,
       setor: 'Jurídico',
     }
-    const comContrato = (c: Contrato) => ({ 'GET /api/recepcao': () => ({ fichas: [assinando], tarefas: [], internos: [], gravacoes: [], contratos: [c] }) })
 
     it('ZapSign: o documento nasce lá; a tentativa vai com o canal e a mensagem; no limite, a tarefa da sênior chega aqui', async () => {
       const fetch = ligarServidor({
@@ -562,6 +569,60 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
         `POST /api/processos/${CASO}/contrato/assinatura-em-papel`,
       ])
       expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([scanner])
+    })
+  })
+
+  describe('bloco 4c: a leitura, a conferência e a cópia', () => {
+    const lendo = contrato({ etapa: 'leitura', assinatura: { forma: 'papel', tentativas: [], arquivo: 'assinado.pdf', assinadoEm: '2026-10-05T19:00:00.000Z' } })
+    const leitura = {
+      reconhecido: true,
+      assinatura: { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' },
+      faltam: ['pág. 4 (rubrica)'],
+      pendencias: ['a página da assinatura veio cortada'],
+      lidoEm: '2026-10-05T19:10:00.000Z',
+    }
+    const conferindo: Contrato = { ...lendo, etapa: 'conferir', leitura }
+
+    it('a leitura vai ao servidor sem a daqui; a correção também, e a página corrigida fica na pasta daqui', async () => {
+      const pagina = { nome: 'pagina 4.pdf', tipo: 'contrato', local: CASO, data: '2026-10-05', origem: 'card' as const, repetido: false, aguardaLeitura: false }
+      const fetch = ligarServidor({
+        ...comContrato(lendo),
+        [`POST /api/processos/${CASO}/contrato/leitura-simulada`]: () => ({ contrato: conferindo, ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/verificacao`]: () => ({ contrato: { ...lendo, etapa: 'preparar', assinatura: undefined }, ficha: assinando, arquivo: pagina }),
+      })
+      await sincronizarRecepcao()
+      expect((await simularLeituraDoContrato(CASO)).etapa).toBe('conferir')
+      expect(fetch.mock.calls.at(-1)![1]?.body).toBeUndefined()
+      expect(tarefasDoContrato().find((t) => t.processoId === CASO)?.acao).toBe('Conferir contrato')
+      const correcao = { tudoCerto: false, oQueCorrigir: 'falta a rubrica', paginaCorrigida: { nome: 'pagina 4.pdf', tamanho: 2048 } }
+      expect((await verificarContrato(CASO, correcao)).etapa).toBe('preparar')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(correcao)
+      expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([pagina])
+    })
+
+    it('aviso, impressão, visita e entrega da cópia vão ao servidor; a visita volta na agenda da ficha', async () => {
+      const copia: Contrato = { ...conferindo, etapa: 'copia' }
+      const visita = { id: `copia-${CASO}-1`, data: '2026-10-13', hora: '10:00', oQue: 'Entregar cópia do contrato', tipo: 'presencial' as const, duracao: 30 }
+      const comVisita = cliente({ agendamentos: [visita] })
+      const entrega = { copiaDaVersaoAssinada: true, entregueEm: '05/10/2026', quemRecebeu: 'Ivone Teste', observacao: '' }
+      const fetch = ligarServidor({
+        ...comContrato(copia),
+        [`POST /api/processos/${CASO}/contrato/conferencia/aviso`]: () => ({ ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/copia/impressao`]: () => ({ contrato: { ...copia, copia: { impressaEm: '2026-10-05T19:20:00.000Z' } }, ficha: assinando }),
+        [`POST /api/processos/${CASO}/contrato/copia/visita`]: () => ({ visita, contrato: { ...copia, copia: { visitaId: visita.id } }, ficha: comVisita }),
+        [`POST /api/processos/${CASO}/contrato/copia/entrega`]: () => ({ contrato: { ...copia, etapa: 'entregue' }, ficha: comVisita }),
+      })
+      await sincronizarRecepcao()
+      await avisarClienteDaConferencia(CASO, 'Ivone, falta a página 4.')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ mensagem: 'Ivone, falta a página 4.' })
+      expect((await imprimirCopia(CASO)).copia?.impressaEm).toBe('2026-10-05T19:20:00.000Z')
+      expect(await marcarVisitaDaCopia(CASO, '13/10/2026', '10:00')).toEqual(visita)
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ data: '13/10/2026', hora: '10:00' })
+      expect(ler().fichas.find((f) => f.id === ID)?.agendamentos).toContainEqual(visita)
+      expect((await registrarEntregaDaCopia(CASO, entrega)).etapa).toBe('entregue')
+      expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual(entrega)
+      // Entregue, o contrato sai das tarefas do Atendimento: o checklist do benefício é da Documentação.
+      expect(tarefasDoContrato().map((t) => t.processoId)).not.toContain(CASO)
     })
   })
 })

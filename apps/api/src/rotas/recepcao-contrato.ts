@@ -1,15 +1,16 @@
-// O contrato do caso no servidor (GGVP-125, blocos 4a e 4b), sobre o fichário da Recepção. O "fechou" cria o caso em `caso`
+// O contrato do caso no servidor (GGVP-125, bloco 4), sobre o fichário da Recepção. O "fechou" cria o caso em `caso`
 // (o elo com o resto do portal) e o contrato com o kit; as condições do kit, a geração pelo modelo e a assinatura seguem as
-// regras do servidor de exemplo do Pedro (contrato.ts), com as regras puras importadas das telas. ZapSign, impressora,
-// scanner e IA seguem simulados.
+// regras do servidor de exemplo do Pedro (contrato.ts), com as regras puras importadas das telas; a leitura, a conferência e a
+// cópia também. ZapSign, impressora, scanner e a leitura da IA seguem simulados.
 import { eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { CondicoesDoKit, EnvioDoContrato, FechamentoDoCaso, TentativaDoContrato, type Erro } from '@ggv/contratos'
+import { dataParaIso, normalizarData, normalizarNome } from '@ggv/campos'
+import { CondicoesDoKit, EntregaDaCopia, EnvioDoContrato, FechamentoDoCaso, MensagemEnviada, TentativaDoContrato, VerificacaoDoContrato, VisitaDaCopia, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, pessoa } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
-import type { Arquivo, Processo } from '../../../web/src/dados/tipos.ts'
+import type { Agendamento, Arquivo, Processo } from '../../../web/src/dados/tipos.ts'
 import {
   CONFERENCIAS,
   NOMES_DOS_CANAIS,
@@ -19,14 +20,19 @@ import {
   datasDoKit,
   entrevistaDoCaso,
   erroDoCampo,
+  errosDaVisita,
   faltando,
   identificadorDoModelo,
   linhaDoBeneficio,
   mensagemDoLink,
   modeloPorId,
   montarKit,
+  motivoParadoDaEntrega,
+  motivoParadoDaVerificacao,
   normalizarCampo,
   papelNaHora,
+  precisaConferir,
+  resumoDaLeitura,
   restosDoModelo,
   ROTULOS_DOS_CAMPOS,
   type CampoDoModelo,
@@ -38,13 +44,17 @@ import {
   camposDoCaso,
   daFicha,
   juntar,
+  leituraDeExemploDoContrato,
   linkDoZapSign,
   textosDoKit,
+  visitaDaCopia,
   type Assinatura,
   type Contrato,
   type ContratoDoCaso,
 } from '../../../web/src/regras/contratoDoCaso.ts'
+import { problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
 
@@ -88,6 +98,14 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     return null
   }
   const noPapel = (contrato: Contrato): Assinatura => (contrato.assinatura = { ...(contrato.assinatura ?? { tentativas: [] }), forma: 'papel' })
+
+  /** O contrato na etapa da cópia (GGVP-89), ou o motivo da recusa. */
+  async function paraACopia(id: string): Promise<ContratoDoCaso | { status: number; erro: string }> {
+    const achado = await acharContrato(id)
+    if (!achado) return { status: 404, erro: MSG_CONTRATO_NAO_ENCONTRADO }
+    if (achado.contrato.etapa !== 'copia') return { status: 400, erro: 'Este contrato não está para entregar a cópia.' }
+    return achado
+  }
 
   // GGVP-65 CA1, CA9: o cliente fechou. O caso nasce no banco do portal (fase atendimento), com o contrato e o kit do
   // benefício; o lead vira cliente na ficha e na pessoa; o Atendimento recebe "Preparar contrato". Quem já é cliente e
@@ -377,6 +395,169 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     contrato.etapa = 'leitura'
     ficha.historico.push(evento('Concluiu a assinatura em papel, com a digitalização anexada; segue para a leitura', await quem(pedido)))
     await guardarContrato(ficha.id, { contrato, processo: assinado(processo) })
+    await guardar(ficha)
+    return { contrato, ficha: await fichaPeloId(ficha.id) }
+  })
+
+  // GGVP-85 CA1, CA2, CA4, CA7, simulado: a leitura da IA do contrato assinado; a de verdade é da GGVP-81, aqui no servidor,
+  // e nunca vem da tela. Reconhecido e tudo certo, segue para a cópia, sem tarefa; sem entender ou com problema, o
+  // Atendimento recebe "Conferir contrato" com o que a IA apontou.
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', editar, async (pedido, resposta) => {
+    const achado = await acharContrato(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
+    const { ficha, processo, contrato } = achado
+    if (contrato.etapa !== 'leitura') return negar(resposta, 400, 'Este contrato não está esperando a leitura.')
+    const leitura = leituraDeExemploDoContrato(contrato)
+    contrato.leitura = { ...leitura, lidoEm: agora().toISOString() }
+    const conferir = precisaConferir(leitura)
+    contrato.etapa = conferir ? 'conferir' : 'copia'
+    const seguinte: Processo = conferir
+      ? { ...processo, etapa: 'Contrato · conferência', proximaAcao: 'conferir o contrato assinado' }
+      : { ...processo, proximaAcao: 'entregar a cópia do contrato' }
+    ficha.historico.push(
+      evento(
+        conferir
+          ? `A IA leu o contrato assinado: ${resumoDaLeitura(leitura)}; o Atendimento confere`
+          : 'A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato',
+        'IA (leitura)',
+      ),
+    )
+    await guardarContrato(ficha.id, { contrato, processo: seguinte })
+    await guardar(ficha)
+    return { contrato, ficha: await fichaPeloId(ficha.id) }
+  })
+
+  // GGVP-85 CA3, CA5, CA6, CA7: "Está certo, seguir" vai para a cópia. "Não, corrigir e reenviar": o que corrigir é
+  // obrigatório e a página corrigida pode ir anexa; a versão assinada fica no histórico e o contrato volta a preparar.
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/verificacao', editar, async (pedido, resposta) => {
+    const entrada = VerificacaoDoContrato.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, 'Verificação inválida.')
+    const v = entrada.data
+    const oQueCorrigir = v.oQueCorrigir ?? ''
+    if (motivoParadoDaVerificacao(v.tudoCerto, oQueCorrigir)) return negar(resposta, 400, 'Escreva o que corrigir.')
+    const pagina = v.tudoCerto ? undefined : v.paginaCorrigida
+    if (pagina && problemaDoArquivo(pagina)) return negar(resposta, 400, 'Página corrigida inválida.')
+    const achado = await acharContrato(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
+    const { ficha, processo, contrato } = achado
+    if (contrato.etapa !== 'conferir') return negar(resposta, 400, 'Este contrato não está para conferir.')
+    const nome = await quem(pedido)
+    const quando = agora().toISOString()
+    const dia = hoje()
+    let seguinte: Processo
+    let arquivo: Arquivo | undefined
+    if (v.tudoCerto) {
+      contrato.verificacao = { tudoCerto: true, quem: nome, quando }
+      contrato.etapa = 'copia'
+      const assinadoEm = hojeEmBrasilia(new Date(contrato.assinatura?.assinadoEm ?? quando))
+      seguinte = { ...processo, etapa: `Contrato assinado em ${dataCurta(assinadoEm, dia)}`, proximaAcao: 'entregar a cópia do contrato' }
+      ficha.historico.push(evento('Conferiu o contrato assinado: está certo; segue para a cópia do contrato', nome))
+    } else {
+      const versao = contrato.documento?.versao ?? 1
+      if (pagina) arquivo = { nome: pagina.nome, tipo: 'contrato', local: processo.id, data: dia, origem: 'card', repetido: false, aguardaLeitura: false }
+      contrato.verificacao = { tudoCerto: false, oQueCorrigir, ...(pagina && { paginaCorrigida: pagina.nome }), quem: nome, quando }
+      contrato.anteriores = [...(contrato.anteriores ?? []), { versao, arquivo: contrato.assinatura?.arquivo, motivo: oQueCorrigir, quando }]
+      delete contrato.assinatura
+      delete contrato.leitura
+      contrato.etapa = 'preparar'
+      seguinte = { ...processo, etapa: 'Contrato · corrigir e reenviar', proximaAcao: 'corrigir os campos e reenviar para assinar' }
+      ficha.historico.push(evento(`Conferiu o contrato assinado: corrigir e reenviar (${oQueCorrigir}). A versão ${versao} assinada fica guardada no histórico`, nome))
+    }
+    await guardarContrato(ficha.id, { contrato, processo: seguinte })
+    await guardar(ficha)
+    return { contrato, ficha: await fichaPeloId(ficha.id), ...(arquivo && { arquivo }) }
+  })
+
+  // GGVP-85: o aviso ao cliente pelo WhatsApp, da tela de conferir, fica em "Últimos contatos" (Chatwoot simulado).
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/conferencia/aviso', editar, async (pedido, resposta) => {
+    const entrada = MensagemEnviada.safeParse(pedido.body)
+    if (!entrada.success || !entrada.data.mensagem) return negar(resposta, 400, 'Escreva a mensagem.')
+    const achado = await acharContrato(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
+    const { ficha } = achado
+    ficha.contatos.push({ data: hoje(), canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
+    ficha.historico.push(evento('Avisou o cliente pelo WhatsApp da pendência no contrato assinado', await quem(pedido)))
+    await guardar(ficha)
+    return { ficha: await fichaPeloId(ficha.id) }
+  })
+
+  // GGVP-89 CA1: "Imprimir cópia para o cliente": a versão assinada. A impressora é simulada.
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/impressao', editar, async (pedido, resposta) => {
+    const achado = await paraACopia(pedido.params.id)
+    if ('erro' in achado) return negar(resposta, achado.status, achado.erro)
+    const { ficha, processo, contrato } = achado
+    contrato.copia = { ...contrato.copia, impressaEm: agora().toISOString() }
+    ficha.historico.push(evento(`Imprimiu a cópia do contrato assinado para o cliente levar: ${contrato.assinatura?.arquivo ?? 'versão assinada'}`, await quem(pedido)))
+    await guardarContrato(ficha.id, { contrato, processo })
+    await guardar(ficha)
+    return { contrato, ficha: await fichaPeloId(ficha.id) }
+  })
+
+  // GGVP-89 CA4: a entrega fica para uma visita: o compromisso "Entregar cópia do contrato" entra na agenda com a data da
+  // visita; a que já estava marcada fica remarcada.
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/visita', editar, async (pedido, resposta) => {
+    const entrada = VisitaDaCopia.safeParse(pedido.body)
+    const dia = hoje()
+    const erros = entrada.success ? errosDaVisita(entrada.data.data, entrada.data.hora, dia) : { data: 'inválida' }
+    if (!entrada.success || erros.data || erros.hora) return negar(resposta, 400, 'Visita inválida.')
+    const achado = await paraACopia(pedido.params.id)
+    if ('erro' in achado) return negar(resposta, achado.status, achado.erro)
+    const { ficha, processo, contrato } = achado
+    const anterior = visitaDaCopia(ficha, contrato)
+    if (anterior) anterior.estado = 'remarcado'
+    let n = 1
+    while (ficha.agendamentos.some((a) => a.id === `copia-${processo.id}-${n}`)) n += 1
+    const { hora } = entrada.data
+    const visita: Agendamento = {
+      id: `copia-${processo.id}-${n}`,
+      data: dataParaIso(normalizarData(entrada.data.data))!,
+      hora,
+      oQue: 'Entregar cópia do contrato',
+      tipo: 'presencial',
+      duracao: 30,
+    }
+    ficha.agendamentos.push(visita)
+    contrato.copia = { ...contrato.copia, visitaId: visita.id }
+    ficha.historico.push(evento(`Marcou a entrega da cópia do contrato numa visita: ${dataCurta(visita.data, dia)} às ${hora}`, await quem(pedido)))
+    await guardarContrato(ficha.id, { contrato, processo })
+    await guardar(ficha)
+    return { visita, contrato, ficha: await fichaPeloId(ficha.id) }
+  })
+
+  // GGVP-89 CA3, CA5: só com a confirmação de que é a cópia impressa da versão assinada, a data da entrega e quem recebeu; a
+  // observação é opcional. Registrada, o caso segue para o checklist do benefício (D1.21).
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/entrega', editar, async (pedido, resposta) => {
+    const entrada = EntregaDaCopia.safeParse(pedido.body)
+    const dia = hoje()
+    if (!entrada.success || motivoParadoDaEntrega(entrada.data, dia)) return negar(resposta, 400, 'Entrega inválida.')
+    const v = entrada.data
+    const achado = await paraACopia(pedido.params.id)
+    if ('erro' in achado) return negar(resposta, achado.status, achado.erro)
+    const { ficha, processo, contrato } = achado
+    const nome = await quem(pedido)
+    const entregueEm = dataParaIso(normalizarData(v.entregueEm))!
+    const quemRecebeu = normalizarNome(v.quemRecebeu)
+    const observacao = v.observacao || undefined
+    contrato.copia = { ...contrato.copia, entrega: { entregueEm, quemRecebeu, ...(observacao && { observacao }), quem: nome, quando: agora().toISOString() } }
+    const visita = visitaDaCopia(ficha, contrato)
+    if (visita) visita.estado = 'realizado'
+    contrato.etapa = 'entregue'
+    const seguinte: Processo = {
+      ...processo,
+      etapa: 'Documentação · checklist do benefício',
+      proximaAcao: 'conferir o checklist do benefício (D1.21)',
+      prazo: undefined,
+      urgente: undefined,
+    }
+    ficha.contatos.push({
+      data: entregueEm,
+      canal: 'Presencial',
+      texto: `Recebeu a cópia do contrato assinado${quemRecebeu === ficha.nome ? '' : ` (entregue a ${quemRecebeu})`}.${observacao ? ` ${observacao}` : ''}`,
+    })
+    ficha.historico.push(
+      evento(`Entregou a cópia impressa da versão assinada em ${dataCurta(entregueEm, dia)} a ${quemRecebeu}; o caso segue para o checklist do benefício (D1.21)`, nome),
+    )
+    await guardarContrato(ficha.id, { contrato, processo: seguinte })
     await guardar(ficha)
     return { contrato, ficha: await fichaPeloId(ficha.id) }
   })

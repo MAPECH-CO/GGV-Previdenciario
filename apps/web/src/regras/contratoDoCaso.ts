@@ -199,6 +199,24 @@ export const juntar = (itens: string[]) => (itens.length <= 1 ? itens.join('') :
 /** EXEMPLO. O ZapSign simulado: o link é obviamente falso e não abre nada. */
 export const linkDoZapSign = (documentoId: string) => `https://zapsign.exemplo/assinar/${documentoId}`
 
+/** A visita marcada para entregar a cópia, ainda em aberto (GGVP-89, CA4). */
+export function visitaDaCopia(ficha: Ficha, contrato: Contrato) {
+  const visita = ficha.agendamentos.find((a) => a.id === contrato.copia?.visitaId)
+  return visita && visita.estado !== 'realizado' && visita.estado !== 'remarcado' ? visita : undefined
+}
+
+/**
+ * EXEMPLO. A leitura da IA simulada: o papel da primeira versão vem com a página da assinatura cortada (Figma 10:202); o resto
+ * a IA reconhece. A leitura de verdade é da GGVP-81.
+ */
+export function leituraDeExemploDoContrato(contrato: Contrato): LeituraDoContrato {
+  const assinatura = { reconhecida: true, texto: 'reconhecida (nome e CPF conferem)' }
+  if (contrato.assinatura?.forma === 'papel' && (contrato.documento?.versao ?? 1) === 1) {
+    return { reconhecido: true, assinatura, faltam: ['pág. 4 (rubrica)'], pendencias: ['a página da assinatura veio cortada'] }
+  }
+  return { reconhecido: true, assinatura, faltam: [], pendencias: [] }
+}
+
 /**
  * Os contratos da semente, só com processos que já existem em exemplo.ts: a Cleide fechou a Aposentadoria PCD e o contrato
  * está para preparar (Figma step_D1.16 `10:143`); a Nair recebeu o link do ZapSign há 9 dias e ainda não assinou.
