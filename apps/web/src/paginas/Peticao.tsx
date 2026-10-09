@@ -1,12 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
-import { AprovarPeticao, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { AprovarPeticao, faltaCompletar, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
+import { diaLocal } from '@ggv/campos'
+import { nomeDoBeneficio } from '@ggv/contratos'
 
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 const ROTULO_OPCAO: Record<keyof OpcoesDoPedido, string> = {
   tutelaUrgencia: 'Pedir tutela de urgência',
   precedentes: 'Usar precedentes do acervo',
@@ -248,7 +249,7 @@ function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: str
 }
 
 /** Aprovar (GGVP-67 CA2, CA5, CA9; G6, G18): só com as três marcações; aprovada, o pacote vai para o protocolo. */
-function AprovarForm({ casoId, numero, aoAprovar }: { casoId: string; numero: number; aoAprovar: (t: string) => void }) {
+function AprovarForm({ casoId, numero, texto, aoAprovar }: { casoId: string; numero: number; texto: string; aoAprovar: (t: string) => void }) {
   const [marcas, setMarcas] = useState({ liNaIntegra: false, conferem: false, nadaContradiz: false })
   const [erro, setErro] = useState('')
   const rotulos: Record<keyof typeof marcas, string> = {
@@ -261,6 +262,9 @@ function AprovarForm({ casoId, numero, aoAprovar }: { casoId: string; numero: nu
     evento.preventDefault()
     const entrada = AprovarPeticao.safeParse(marcas)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira as marcações.')
+    // CA12: a mesma regra do servidor; com [completar] no texto, não envia.
+    const falta = faltaCompletar(texto)
+    if (falta) return setErro(falta)
     const r = await chamarApi(`/casos/${casoId}/peticao/versoes/${numero}/aprovacao`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
     aoAprovar(`Versão ${numero} aprovada. O pacote foi para o protocolo.`)
@@ -499,7 +503,7 @@ export function Peticao({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Petição inicial</h1>
       <p className={styles.subtitulo}>
-        {x.cliente} · {rotuloBeneficio(x.beneficio)}
+        {x.cliente} · {nomeDoBeneficio(x.beneficio)}
       </p>
 
       {feito && (
@@ -580,7 +584,7 @@ export function Peticao({ casoId }: { casoId: string }) {
         </section>
       )}
 
-      {x.podeAprovar && x.atual && <AprovarForm key={x.atual.numero} casoId={casoId} numero={x.atual.numero} aoAprovar={aoMudar} />}
+      {x.podeAprovar && x.atual && <AprovarForm key={x.atual.numero} casoId={casoId} numero={x.atual.numero} texto={x.atual.texto} aoAprovar={aoMudar} />}
 
       {x.protocolo && (
         <section className={styles.cartao} aria-label="Protocolo">
