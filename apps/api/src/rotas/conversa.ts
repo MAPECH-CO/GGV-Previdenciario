@@ -58,7 +58,7 @@ import {
 } from '../../../web/src/regras/conversa.ts'
 import { ehAudio, minutos, temSenha } from '../../../web/src/regras/entrevista.ts'
 import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type Verificacao } from '../../../web/src/regras/seguranca.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, MSG_GANCHO_DE_TESTE, UUID, aceitaGanchoDeTeste, criarFichario, horaEmBrasilia } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
 import { AnaliseDaConversaPelaIa, ChaveAoVivo } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
@@ -503,7 +503,6 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
   app.post<{ Params: { id: string } }>('/api/conversas/:id/transcricao', registrar, async (pedido, resp) => {
     const entrada = PedidoDeTranscricao.safeParse(pedido.body ?? {})
     if (!entrada.success) return negar(resp, 400, 'Pedido inválido.')
-    if (entrada.data.falhar && !aceitaGanchoDeTeste(ambiente)) return negar(resp, 400, MSG_GANCHO_DE_TESTE)
     const achada = await acharConversa(pedido.params.id)
     if (!achada) return negar(resp, 404, MSG_CONVERSA_NAO_ENCONTRADA)
     const { conversa: c, ficha, gravacao: g } = achada
