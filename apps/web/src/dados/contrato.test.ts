@@ -56,7 +56,7 @@ describe('GGVP-65 · kit de documentos por benefício · servidor de exemplo', (
       codigo: 'D1.16',
       cliente: { id: 'cleide-exemplo', nome: 'Cleide Exemplo' },
       acao: 'Preparar contrato',
-      detalhe: 'PCD Aposentadoria por Contribuição · kit Aposentadorias · Contrato Completo 2026',
+      detalhe: 'PCD Aposentadoria por Contribuição · kit Aposentadorias · Contrato Completo de aposentadorias',
       href: '/contrato/cleide-exemplo-1/preparar',
     })
     const caso = await obterContrato('cleide-exemplo-1')
@@ -77,7 +77,7 @@ describe('GGVP-65 · kit de documentos por benefício · servidor de exemplo', (
     expect(processo).toMatchObject({ id: 'josefa-exemplo-1', beneficio: 'loas-idoso', etapa: 'Contrato · preparar' })
     expect(contrato.kit?.documentos.map((d) => d.id)).toContain('grupo-familiar')
     expect((await obterFicha('josefa-exemplo'))?.historico.at(-1)?.oQue).toBe(
-      'Fechou LOAS Idoso: processo novo com o kit LOAS idoso ou deficiente (7 documentos, Contrato Completo 2026)',
+      'Fechou LOAS Idoso: processo novo com o kit LOAS idoso ou deficiente (7 documentos, Contrato Completo de LOAS idoso e deficiente)',
     )
     expect(tarefasDoContrato().map((t) => t.cliente?.nome)).toContain('Josefa Exemplo')
   })
@@ -136,7 +136,7 @@ describe('GGVP-69 · preencher o contrato pelo modelo e conferir · servidor de 
     expect(caso?.processo).toMatchObject({ etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' })
     expect(caso?.ficha.historico.slice(-2).map((e) => e.oQue)).toEqual([
       'Corrigiu no contrato: RG e Endereço (faltavam o RG e o endereço)',
-      'Gerou o contrato de Aposentadoria por Idade pelo modelo contrato-completo-2026-v1 (versão 1): conferiu os campos, as datas à mão, a ficha LOAS e a página do Código Penal',
+      'Gerou o contrato de Aposentadoria por Idade pelo modelo contrato-completo-aposentadorias-v1 (versão 1): conferiu os campos, as datas à mão, a ficha LOAS e a página do Código Penal',
     ])
     expect(tarefasDoContrato().find((t) => t.processoId === processo.id)).toMatchObject({
       codigo: 'D1.17',
@@ -151,7 +151,7 @@ describe('GGVP-69 · preencher o contrato pelo modelo e conferir · servidor de 
     const textos = (await obterContrato(processo.id))!.contrato.documento!.textos
     expect(textos).toHaveLength(6)
     expect(textos[0].texto).toContain('Antônio Exemplo, Casado, Trabalhador rural (2018–2020) · porteiro (2021–2025), CPF 000.000.001-91, RG 12.345.678-X')
-    expect(textos[0].texto).toContain('Honorários: 20% do êxito (ad exitum). Parte contrária: Instituto Nacional do Seguro Social (INSS).')
+    expect(textos[0].texto).toContain('Honorários: os do modelo: confira no kit antes de imprimir. Parte contrária: Instituto Nacional do Seguro Social (INSS).')
     for (const t of textos) {
       expect(t.texto, t.documento).not.toMatch(/\{\{|\}\}/)
       for (const d of CLIENTE_DO_EXEMPLO_DOS_MODELOS) expect(t.texto).not.toContain(d)

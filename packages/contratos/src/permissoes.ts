@@ -24,8 +24,9 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
-// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 24
+// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a prestação para a Sênior 25, o kit de verdade 26. Quem
+// entrar depois renumera.
+export const VERSAO_MATRIZ = 26
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -152,6 +153,8 @@ export const MATRIZ = {
   // responsável e o Sócio só leem.
   'recurso.ver': ['advogada', 'senior', 'socio'],
   'recurso.decidir': ['senior'],
+  // Versão 26 (GGVP-136, Orquestrador, 09/10): o kit de verdade. Só a Sênior sobe ou troca o modelo do Word do kit, com versão.
+  'modelo.subir': ['senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

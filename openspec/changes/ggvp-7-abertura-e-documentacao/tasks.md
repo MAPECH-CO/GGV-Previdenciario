@@ -190,3 +190,19 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.49 Servidor: o cadastro (`PUT /api/fichas/:id/cadastro`) passa a ficha de cliente pela trava do contato, como a edição da ficha; teste do lead que troca e do cliente que não troca.
 - [x] 125.50 O teste do cadastro volta a trocar o telefone do lead sem a verificação (sai o ajuste da junção com a main).
 - [x] 125.51 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-136 · Kit de verdade: os modelos do escritório preenchidos, para imprimir e assinar
+
+Parte 1: os nove modelos do Word, com as {{VARIÁVEIS}} no lugar dos dados de cliente, ficam em pasta local do Pedro, fora do repositório. Nada deles entra aqui.
+
+- [x] 136.1 Matriz: a ação `modelo.subir` (só a Sênior), a versão 26 e a impressão digital, com teste em `packages/contratos/src/permissoes.test.ts` (CA1). Verifica com `npx vitest run src/permissoes.test.ts`.
+- [x] 136.2 Catálogo: os nove modelos e as linhas do kit em `apps/web/src/regras/contrato.ts` (um Contrato Completo por benefício, o do LOAS representado, os modelos 6, 8 e 10; a isenção de IR sem modelo; honorários do modelo, sem o percentual fixo), com testes em `contrato.test.ts` (CA2).
+- [x] 136.3 Variáveis: `apps/web/src/regras/kitDoModelo.ts`, a lista fechada no padrão do ZapSign, com teste em `kitDoModelo.test.ts` (CA1, CA3).
+- [x] 136.4 Servidor: abrir o .docx (`apps/api/src/kit/docx.ts`), `GET` e `PUT /api/configuracao/modelos` (`rotas/modelos.ts`), versão e armazenamento privado, histórico da configuração; testes em `rotas/modelos.test.ts` (CA1).
+- [x] 136.5 Tela: a seção "Modelos do kit" na Configuração, com o envio do arquivo só para a Sênior; teste em `Configuracao.test.tsx` (CA1).
+- [ ] 136.6 Preencher: os valores de cada variável a partir da ficha e do caso, o que falta e a data do papel em `regras/kitDoModelo.ts`; os campos novos do contrato (nacionalidade, genitor(a), curatelado) em `regras/contrato.ts` (CA3, CA4).
+- [ ] 136.7 Servidor: o kit preenchido na geração (`POST /api/processos/:id/contrato/gerar`), guardado na pasta do cliente com o modelo e a versão, e o registro no histórico; `GET /api/processos/:id/contrato/kit` com o conversor plugável (`GOTENBERG_URL`); testes (CA2 a CA6).
+- [ ] 136.8 Telas: o que falta com o atalho para a ficha, "Imprimir o kit" abrindo o PDF e a janela de impressão (ou baixando o Word), papel para qualquer entrevista e a opção do celular escondida; testes (CA4, CA5, CA7, CA8).
+- [ ] 136.9 Script de homologação que sobe os modelos da pasta local pela rota da Configuração (o login da Sênior por variável de ambiente), e `docs/` com as variáveis e a nota do Gotenberg.
+- [ ] 136.10 Playwright `e2e/kit-de-verdade.e2e.ts`: do modelo subido ao kit impresso, visto de outra sessão (CA1 a CA6).
+- [ ] 136.11 Rodar typecheck, lint, testes; colar a saída; perguntar "Agora ok?".

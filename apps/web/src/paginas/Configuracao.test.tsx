@@ -31,12 +31,21 @@ const glossarioBase = {
   podeEditar: true,
 }
 
-function servidor(get: object, glossario: object = glossarioBase) {
-  const fetch = vi.fn(async (url: string, init?: RequestInit) =>
-    init?.method && init.method !== 'GET'
-      ? new Response(JSON.stringify({ ok: true }), { status: 201 })
-      : new Response(JSON.stringify(String(url) === '/api/configuracao/glossario' ? glossario : get), { status: 200 }),
-  )
+const APOSENTADORIAS = 'contrato-completo-aposentadorias'
+const modelosBase = {
+  modelos: [
+    { id: APOSENTADORIAS, nome: 'Contrato Completo de aposentadorias', versao: 2, vigenteDesde: '2026-10-09T15:00:00.000Z' },
+    { id: 'modelo-6', nome: 'Modelo 6 (curatela)', versao: null, vigenteDesde: null },
+  ],
+  podeSubir: true,
+}
+
+function servidor(get: object, glossario: object = glossarioBase, modelos: object = modelosBase) {
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method && init.method !== 'GET') return new Response(JSON.stringify({ ok: true }), { status: 201 })
+    const corpos: Record<string, object> = { '/api/configuracao/glossario': glossario, '/api/configuracao/modelos': modelos }
+    return new Response(JSON.stringify(corpos[String(url)] ?? get), { status: 200 })
+  })
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
@@ -145,5 +154,51 @@ describe('Glossário do escritório (GGVP-143)', () => {
     expect(g.textContent).toContain('Quem muda é a Sênior.')
     expect(within(g).queryByRole('button')).toBeNull()
     expect(within(g).queryByRole('group')).toBeNull()
+  })
+})
+
+describe('Modelos do kit (GGVP-136 CA1)', () => {
+  it('a lista mostra a versão em vigor de cada modelo e avisa o que ainda não tem arquivo; a Sênior sobe a versão seguinte', async () => {
+    const fetch = servidor(base)
+    render(<Configuracao />)
+    const secao = await screen.findByRole('region', { name: 'Modelos do kit' })
+    const modelos = within(secao).getByRole('list', { name: 'Modelos do Word' })
+    expect(within(modelos).getAllByRole('listitem').map((li) => li.textContent?.split('Arquivo do')[0])).toEqual([
+      'Contrato Completo de aposentadorias · versão 2, desde 09/10/2026',
+      'Modelo 6 (curatela) · sem arquivo: o kit avisa que falta o modelo',
+    ])
+    const subir = within(secao).getByRole('button', { name: 'Subir a versão 3 do Contrato Completo de aposentadorias' }) as HTMLButtonElement
+    expect(subir.disabled).toBe(true)
+    const arquivo = new File(['conteudo'], 'modelo-do-escritorio.docx')
+    fireEvent.change(within(secao).getByLabelText('Arquivo do Contrato Completo de aposentadorias (.docx)'), { target: { files: [arquivo] } })
+    expect(subir.disabled).toBe(false)
+    fireEvent.click(subir)
+    expect((await screen.findByRole('status')).textContent).toBe('Modelo publicado: a versão 3 vale para os kits novos.')
+    const [url, init] = fetch.mock.calls.find(([, i]) => i?.method === 'PUT')!
+    expect([String(url), init!.method]).toEqual([`/api/configuracao/modelos/${APOSENTADORIAS}`, 'PUT'])
+    expect((init!.body as FormData).get('arquivo')).toMatchObject({ name: 'modelo-do-escritorio.docx' })
+  })
+
+  it('quem não é da Sênior vê a lista, sem campo de arquivo', async () => {
+    servidor(base, glossarioBase, { ...modelosBase, podeSubir: false })
+    render(<Configuracao />)
+    const secao = await screen.findByRole('region', { name: 'Modelos do kit' })
+    expect(within(secao).getByText(/Quem sobe é a Sênior\./)).toBeTruthy()
+    expect(within(secao).queryByLabelText(/Arquivo do/)).toBeNull()
+    expect(within(secao).queryByRole('button')).toBeNull()
+  })
+
+  it('o aviso do servidor aparece quando o arquivo é recusado', async () => {
+    const fetch = servidor(base)
+    fetch.mockImplementation(async (url: string, init?: RequestInit) =>
+      init?.method === 'PUT'
+        ? new Response(JSON.stringify({ erro: 'O arquivo não é um documento do Word (.docx).' }), { status: 400 })
+        : new Response(JSON.stringify(String(url) === '/api/configuracao/modelos' ? modelosBase : String(url) === '/api/configuracao/glossario' ? glossarioBase : base), { status: 200 }),
+    )
+    render(<Configuracao />)
+    const secao = await screen.findByRole('region', { name: 'Modelos do kit' })
+    fireEvent.change(within(secao).getByLabelText('Arquivo do Modelo 6 (curatela) (.docx)'), { target: { files: [new File(['x'], 'a.txt')] } })
+    fireEvent.click(within(secao).getByRole('button', { name: 'Subir a versão 1 do Modelo 6 (curatela)' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('O arquivo não é um documento do Word (.docx).')
   })
 })

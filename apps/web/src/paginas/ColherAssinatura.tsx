@@ -23,9 +23,8 @@ import {
   TENTATIVAS_DE_ASSINATURA,
   cobrancaDaAssinatura,
   datasDoKit,
-  identificadorDoModelo,
+  identificadorDoKit,
   mensagemDoLink,
-  modeloPorId,
   papelNaHora,
   resumoDaLeitura,
   type FormaDeAssinar,
@@ -208,7 +207,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
               </div>
               {contrato.kit && (
                 <p className={styles.motivo}>
-                  {contrato.kit.documentos.length} documentos do kit {contrato.kit.nome} · modelo {identificadorDoModelo(modeloPorId(contrato.kit.modelo))}
+                  {contrato.kit.documentos.length} documentos do kit {contrato.kit.nome} · modelo {identificadorDoKit(contrato.kit)}
                   {contrato.documento ? ` · versão ${contrato.documento.versao}` : ''}
                 </p>
               )}

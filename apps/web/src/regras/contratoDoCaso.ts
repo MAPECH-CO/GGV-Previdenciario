@@ -4,10 +4,9 @@ import { nomeBeneficio } from '../dados/catalogos.ts'
 import { somarDias } from './agenda.ts'
 import type { Ficha, Processo } from '../dados/tipos.ts'
 import {
+  HONORARIOS_DO_MODELO,
   SEM_CONDICOES,
   camposDoModelo,
-  honorariosDoModelo,
-  modeloPorId,
   montarKit,
   preencherModelo,
   type CampoDoModelo,
@@ -161,7 +160,7 @@ export const CLIENTE_DO_EXEMPLO_DOS_MODELOS = ['Fulana Exemplo do Modelo']
 
 export function textosDoKit(kit: KitMontado, campos: CampoPreenchido[]): { documento: string; texto: string }[] {
   const valores: Record<string, string> = Object.fromEntries(campos.map((c) => [c.campo, c.valor]))
-  valores.honorarios = honorariosDoModelo(modeloPorId(kit.modelo))
+  valores.honorarios = HONORARIOS_DO_MODELO
   const temParte = campos.some((c) => c.campo === 'parteContraria')
   const representado = campos.some((c) => c.campo === 'representanteNome')
   return kit.documentos.map((d) => {
@@ -189,6 +188,8 @@ export type RespostaGerar =
   | { resultado: 'faltam'; campos: CampoDoModelo[] }
   | { resultado: 'cpf-de-outra-ficha'; nome: string }
   | { resultado: 'sobrou-do-exemplo'; restos: string[] }
+  /** O kit não tem modelo do Word: a linha não tem, ou a Sênior ainda não subiu o arquivo (GGVP-136). `modelo` é o nome do que falta. */
+  | { resultado: 'sem-modelo'; modelo?: string }
 
 export const DA_FICHA = ['nome', 'estadoCivil', 'profissao', 'cpf', 'endereco', 'telefone'] as const
 export type CampoDaFichaNoContrato = (typeof DA_FICHA)[number]

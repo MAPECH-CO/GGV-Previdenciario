@@ -25,6 +25,7 @@ import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
+import { registrarRotasModelos } from './rotas/modelos.ts'
 import { registrarRotasPericia } from './rotas/pericia.ts'
 import { registrarRotasSetor } from './rotas/setor.ts'
 import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
@@ -141,6 +142,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
     registrarRotasConfiguracao(app, { banco, agora })
+    registrarRotasModelos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })

@@ -22,10 +22,11 @@ import {
   erroDoCampo,
   errosDaVisita,
   faltando,
+  identificadorDoKit,
   identificadorDoModelo,
   linhaDoBeneficio,
   mensagemDoLink,
-  modeloPorId,
+  modeloDoKit,
   montarKit,
   motivoParadoDaEntrega,
   motivoParadoDaVerificacao,
@@ -134,7 +135,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     ficha.historico.push(
       evento(
         kit
-          ? `Fechou ${nomeBeneficio(beneficio)}: processo novo com o kit ${kit.nome} (${kit.documentos.length} documentos, ${modeloPorId(kit.modelo).nome})`
+          ? `Fechou ${nomeBeneficio(beneficio)}: processo novo com o kit ${kit.nome} (${kit.documentos.length} documentos, ${modeloDoKit(kit)?.nome ?? 'sem modelo'})`
           : `Fechou ${nomeBeneficio(beneficio)}: processo novo, sem kit cadastrado para o benefício`,
         await quem(pedido),
       ),
@@ -179,6 +180,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const { ficha, processo, contrato } = achado
     if (contrato.etapa !== 'preparar' || !contrato.kit) return negar(resposta, 400, 'Este contrato não está para preparar.')
+    const modelo = modeloDoKit(contrato.kit)
+    if (!modelo) return { resultado: 'sem-modelo' }
 
     const mudou: CampoDoModelo[] = []
     const dados: DadosDoContrato = { ...contrato.dados }
@@ -211,7 +214,6 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
     const geradoEm = agora().toISOString()
     const versao = (contrato.documento?.versao ?? 0) + 1
-    const modelo = modeloPorId(contrato.kit.modelo)
     const motivo = envio.aprovados ? `gerado pelo ${modelo.nome}` : `corrigido: ${oQueCorrigir}`
     contrato.documento = { versao, geradoEm, campos, textos }
     contrato.versoes = [...(contrato.versoes ?? []), { versao, geradoEm, motivo }]
@@ -246,7 +248,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
       const versao = contrato.documento?.versao ?? 1
       const documentoId = `zapsign-exemplo-${processo.id}${versao > 1 ? `-v${versao}` : ''}`
       assinatura.zapsign = { documentoId, link: linkDoZapSign(documentoId), status: 'enviado', criadoEm: agora().toISOString(), eventos: [] }
-      ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoModelo(modeloPorId(contrato.kit.modelo))}: ${documentoId}`, await quem(pedido)))
+      ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoKit(contrato.kit)}: ${documentoId}`, await quem(pedido)))
       await guardar(ficha)
     }
     await guardarContrato(ficha.id, { contrato, processo })

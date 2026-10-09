@@ -8,10 +8,10 @@ type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
-test('GGVP-65 CA1, CA4 e CA5 · da Central ao kit das aposentadorias, pelo Contrato Completo 2026', async ({ page }) => {
+test('GGVP-65 CA1, CA4 e CA5 · da Central ao kit das aposentadorias, pelo Contrato Completo de aposentadorias', async ({ page }) => {
   await page.goto('/')
   const tarefa = page.getByRole('link', { name: 'Cleide Exemplo · Preparar contrato' })
-  await expect(page.getByRole('listitem').filter({ has: tarefa })).toContainText('kit Aposentadorias · Contrato Completo 2026')
+  await expect(page.getByRole('listitem').filter({ has: tarefa })).toContainText('kit Aposentadorias · Contrato Completo de aposentadorias')
   await tarefa.click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cleide Exemplo · Preparar contrato')
   const kit = page.getByRole('list', { name: 'Documentos do kit' })
@@ -23,7 +23,7 @@ test('GGVP-65 CA1, CA4 e CA5 · da Central ao kit das aposentadorias, pelo Contr
     '✓Termo INSS · aposentadorias, CTC, recursos',
     '✓Código Penal',
   ])
-  await expect(page.getByText('Aposentadorias · modelo Contrato Completo 2026 · pasta MODELOS ZAPSIGN · PREV')).toBeVisible()
+  await expect(page.getByText('Aposentadorias · modelo Contrato Completo de aposentadorias · pasta MODELOS ZAPSIGN · PREV')).toBeVisible()
   await expect(page.getByText('Assinam: o cliente.')).toBeVisible()
 })
 
@@ -32,7 +32,7 @@ test('GGVP-69 CA1, CA5 e CA11 · cada campo do modelo com de onde veio, e os hon
   const documento = page.getByRole('region', { name: 'Documento preenchido' })
   await expect(documento.locator('div').filter({ hasText: /^Nome completo/ })).toHaveText('Nome completoCleide Exemplocadastro')
   await expect(documento.locator('div').filter({ hasText: /^CPF/ })).toHaveText('CPFfaltacadastro')
-  await expect(documento.locator('div').filter({ hasText: /^Honorários/ })).toHaveText('Honorários20% do êxito (ad exitum)do modelo, sem campo para digitar')
+  await expect(documento.locator('div').filter({ hasText: /^Honorários/ })).toHaveText('Honoráriosos do modelo: confira no kit antes de imprimirdo modelo, sem campo para digitar')
   await expect(page.getByRole('region', { name: 'O que conferir' }).getByRole('listitem')).toHaveCount(3)
 })
 

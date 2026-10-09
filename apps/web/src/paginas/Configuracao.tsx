@@ -9,6 +9,7 @@ import {
   type Beneficio,
   type ConfiguracaoDoEscritorio,
   type GlossarioDoEscritorio,
+  type ModelosDoEscritorio,
   type TipoDeTermo,
 } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
@@ -149,6 +150,70 @@ function Mensagem({ m, podeEditar, aoPublicar }: { m: Config['mensagens'][number
 
 type Termo = GlossarioDoEscritorio['termos'][number]
 type Salvar = (caminho: string, corpo: unknown, aviso: string, metodo?: string) => void
+
+/** Um modelo do Word do kit: a versão em vigor e, para a Sênior, o arquivo da versão seguinte (GGVP-136, CA1). */
+function LinhaDoModelo({ m, podeSubir, aoSubir }: { m: ModelosDoEscritorio['modelos'][number]; podeSubir: boolean; aoSubir: (id: string, arquivo: File, aviso: string) => void }) {
+  const id = useId()
+  const [arquivo, setArquivo] = useState<File | null>(null)
+  const proxima = (m.versao ?? 0) + 1
+  return (
+    <li>
+      <strong>{m.nome}</strong> · {m.versao ? `versão ${m.versao}, desde ${dia(m.vigenteDesde!)}` : 'sem arquivo: o kit avisa que falta o modelo'}
+      {podeSubir && (
+        <div className={styles.escolha}>
+          <label className={styles.rotulo} htmlFor={id}>
+            Arquivo do {m.nome} (.docx)
+          </label>
+          <input id={id} className={styles.campo} type="file" accept=".docx" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+          <button
+            type="button"
+            className={styles.botao}
+            aria-label={`Subir a versão ${proxima} do ${m.nome}`}
+            disabled={!arquivo}
+            onClick={() => arquivo && aoSubir(m.id, arquivo, `Modelo publicado: a versão ${proxima} vale para os kits novos.`)}
+          >
+            Subir a versão {proxima}
+          </button>
+        </div>
+      )}
+    </li>
+  )
+}
+
+/**
+ * Os modelos do kit (GGVP-136): o Word do escritório, um por kit, com as {{VARIÁVEIS}} no lugar dos dados do cliente. O kit usa
+ * a versão em vigor. A gestão vê; só a Sênior sobe ou troca (o servidor decide `podeSubir`).
+ */
+function ModelosDoKit({ versao, salvar, aoErro }: { versao: number; salvar: Salvar; aoErro: (erro: string) => void }) {
+  const [m, setM] = useState<ModelosDoEscritorio | null>(null)
+  useEffect(() => {
+    void chamarApi<ModelosDoEscritorio>('/configuracao/modelos').then((r) => (r.ok ? setM(r.dados) : aoErro(r.erro)))
+  }, [versao, aoErro])
+  if (!m) return null
+  return (
+    <section className={styles.cartao} aria-label="Modelos do kit">
+      <h2 className={styles.cartaoTitulo}>Modelos do kit</h2>
+      <p className={styles.dica}>
+        O Word do escritório, um por kit. O kit usa a versão em vigor: a versão nova vale para os kits novos, e o kit já gerado fica com o modelo da época.
+        {!m.podeSubir && ' Quem sobe é a Sênior.'}
+      </p>
+      <ul className={styles.lista} aria-label="Modelos do Word">
+        {m.modelos.map((x) => (
+          <LinhaDoModelo
+            key={`${x.id}-${x.versao}`}
+            m={x}
+            podeSubir={m.podeSubir}
+            aoSubir={(id, arquivo, aviso) => {
+              const corpo = new FormData()
+              corpo.append('arquivo', arquivo)
+              salvar(`/configuracao/modelos/${id}`, corpo, aviso)
+            }}
+          />
+        ))}
+      </ul>
+    </section>
+  )
+}
 const TERMO_VAZIO: SalvarTermo = { termo: '', tipo: 'sigla', significado: '' }
 
 /** O termo, o tipo e o significado (GGVP-143): o mesmo formulário acrescenta e corrige; o contrato confere antes de enviar. */
@@ -357,6 +422,8 @@ export function Configuracao() {
               />
             )}
           </section>
+
+          <ModelosDoKit versao={versao} salvar={(caminho, corpo, aviso, metodo) => void salvar(caminho, corpo, aviso, metodo)} aoErro={setErro} />
 
           {c.mensagens.length > 0 && (
             <section className={styles.cartao} aria-label="Mensagens padrão" key={`m-${versao}`}>

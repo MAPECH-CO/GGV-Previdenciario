@@ -12,7 +12,8 @@ import {
   O_QUE_CONFERIR,
   corrigivel,
   erroDoCampo,
-  modeloPorId,
+  HONORARIOS_DO_MODELO,
+  modeloDoKit,
   motivoParadoDoGerar,
   type CampoDoModelo,
   type CampoPreenchido,
@@ -62,7 +63,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
 
   const { ficha, processo, contrato } = caso
   const { kit } = contrato
-  const modelo = kit ? modeloPorId(kit.modelo) : null
+  const modelo = (kit && modeloDoKit(kit)) || null
   const preparando = contrato.etapa === 'preparar'
   const corrigindo = preparando && aprovados === false
   const campos = contrato.documento && !preparando ? contrato.documento.campos : camposDoCaso(caso)
@@ -75,9 +76,11 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
   const instrucoes =
     kit && modelo
       ? `Gere o contrato de ${primeiro} pelo ${modelo.nome}, com o kit de ${kit.nome}: ${kit.documentos.length} documentos. Confira nome, CPF, ` +
-        `endereço e honorários (${modelo.honorarios ?? `os do ${modelo.nome}`}): o contrato cita o benefício certo. Se algo do modelo não ` +
+        `endereço e honorários (${HONORARIOS_DO_MODELO}): o contrato cita o benefício certo. Se algo do modelo não ` +
         'bater com a ficha, corrija a ficha antes.'
-      : `${nomeBeneficio(processo.beneficio)} ainda não tem kit cadastrado. Avise a gestão: nada vai para o cliente assinar sem o kit certo.`
+      : kit
+        ? `O kit de ${kit.nome} ainda não tem modelo do Word. Avise a gestão: nada vai para o cliente assinar sem o modelo certo.`
+        : `${nomeBeneficio(processo.beneficio)} ainda não tem kit cadastrado. Avise a gestão: nada vai para o cliente assinar sem o kit certo.`
 
   function mudar(campo: CampoDoModelo, valor: string) {
     setCorrecoes((c) => ({ ...c, [campo]: NUMERICOS.includes(campo) ? soNumeroEMascara(valor) : valor }))
@@ -104,6 +107,8 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
       if (r.resultado === 'gerado') setCaso(await obterContrato(processoId))
       else if (r.resultado === 'cpf-de-outra-ficha') setErros((e) => ({ ...e, cpf: `Este CPF já está na ficha de ${r.nome}.` }))
       else if (r.resultado === 'faltam') setErro('Ainda falta campo obrigatório: responda «Não, corrigir campos» e preencha.')
+      else if (r.resultado === 'sem-modelo')
+        setErro(r.modelo ? `Falta o ${r.modelo}: peça à Sênior para subir o modelo na Configuração do escritório.` : 'Este kit ainda não tem modelo do Word. Avise a gestão.')
       else setErro(`O texto ainda traz ${r.restos.join(', ')} do modelo. Avise a gestão: o modelo precisa ser convertido de novo.`)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para gerar.')
@@ -123,7 +128,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
             passo="D1.16"
             nomeDoPasso="Preparar o contrato pelo modelo e conferir"
             tarefa="Preparar contrato"
-            subtitulo={`${nomeBeneficio(processo.beneficio)} · ${modelo ? `pelo ${modelo.nome}` : 'sem kit cadastrado'}`}
+            subtitulo={`${nomeBeneficio(processo.beneficio)} · ${modelo ? `pelo ${modelo.nome}` : kit ? 'falta o modelo' : 'sem kit cadastrado'}`}
             ficha={ficha}
             beneficio={processo.beneficio}
             instrucoes={instrucoes}

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import passo from '../paginas/Balcao.module.css'
 import { salvarCondicoes, type Contrato } from '../dados/contrato.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { PASTA_DOS_MODELOS, linhaDoBeneficio, modeloPorId, type CondicoesDoKit } from '../regras/contrato.ts'
+import { PASTA_DOS_MODELOS, linhaDoBeneficio, modeloDoKit, type CondicoesDoKit } from '../regras/contrato.ts'
 import styles from './CartaoKit.module.css'
 
 type Props = {
@@ -57,7 +57,7 @@ export function CartaoKit({ processoId, beneficio, contrato, editavel, aoMudar }
     )
   }
 
-  const modelo = modeloPorId(kit.modelo)
+  const modelo = modeloDoKit(kit)
   const loas = linhaDoBeneficio(beneficio)?.loas === true
   return (
     <section className={passo.cartao} aria-labelledby="kit-titulo">
@@ -65,8 +65,13 @@ export function CartaoKit({ processoId, beneficio, contrato, editavel, aoMudar }
         Kit do benefício
       </h2>
       <p className={styles.linha}>
-        <strong>{kit.nome}</strong> · modelo {modelo.nome} · pasta {PASTA_DOS_MODELOS}
+        <strong>{kit.nome}</strong> · {modelo ? `modelo ${modelo.nome}` : 'falta o modelo'} · pasta {PASTA_DOS_MODELOS}
       </p>
+      {!modelo && (
+        <p className={passo.aviso}>
+          Este kit ainda não tem modelo do Word. Avise a gestão: nada vai para o cliente assinar sem o modelo certo.
+        </p>
+      )}
       <ul className={styles.documentos} aria-label="Documentos do kit">
         {kit.documentos.map((d) => (
           <li key={d.id} className={styles.documento}>

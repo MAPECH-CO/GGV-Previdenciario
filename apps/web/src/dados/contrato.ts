@@ -23,10 +23,11 @@ import {
   mensagemDoLink,
   erroDoCampo,
   faltando,
+  identificadorDoKit,
   identificadorDoModelo,
   linhaDoBeneficio,
   montarKit,
-  modeloPorId,
+  modeloDoKit,
   normalizarCampo,
   restosDoModelo,
   ROTULOS_DOS_CAMPOS,
@@ -127,7 +128,7 @@ export function tarefasDoContrato(): Tarefa[] {
     const titulo = TITULOS[c.etapa]
     if (!achado || !titulo || c.assinatura?.naSenior) return []
     const { ficha, processo } = achado
-    const modelo = c.kit ? modeloPorId(c.kit.modelo).nome : ''
+    const modelo = c.kit ? (modeloDoKit(c.kit)?.nome ?? 'sem modelo') : ''
     const base = { detalhe: [c.kit ? `kit ${c.kit.nome} · ${modelo}` : 'benefício sem kit cadastrado'], prazo: processo.prazo ?? 'hoje', urgente: processo.urgente }
     const andamento =
       c.etapa === 'assinatura'
@@ -200,7 +201,7 @@ export async function fecharContrato(fichaId: string, beneficio: string): Promis
   ficha.historico.push(
     evento(
       kit
-        ? `Fechou ${nomeBeneficio(beneficio)}: processo novo com o kit ${kit.nome} (${kit.documentos.length} documentos, ${modeloPorId(kit.modelo).nome})`
+        ? `Fechou ${nomeBeneficio(beneficio)}: processo novo com o kit ${kit.nome} (${kit.documentos.length} documentos, ${modeloDoKit(kit)?.nome ?? 'sem modelo'})`
         : `Fechou ${nomeBeneficio(beneficio)}: processo novo, sem kit cadastrado para o benefício`,
     ),
   )
@@ -261,6 +262,8 @@ export async function gerarContrato(processoId: string, envio: EnvioDoContrato):
   if (!achado) throw new Error('Contrato não encontrado')
   const { ficha, processo, contrato } = achado
   if (contrato.etapa !== 'preparar' || !contrato.kit) throw new Error('Este contrato não está para preparar')
+  const modelo = modeloDoKit(contrato.kit)
+  if (!modelo) return { resultado: 'sem-modelo' }
 
   const mudou: CampoDoModelo[] = []
   const dados: DadosDoContrato = { ...contrato.dados }
@@ -293,7 +296,6 @@ export async function gerarContrato(processoId: string, envio: EnvioDoContrato):
 
   const geradoEm = agora().toISOString()
   const versao = (contrato.documento?.versao ?? 0) + 1
-  const modelo = modeloPorId(contrato.kit.modelo)
   const motivo = envio.aprovados ? `gerado pelo ${modelo.nome}` : `corrigido: ${oQueCorrigir}`
   contrato.documento = { versao, geradoEm, campos, textos }
   contrato.versoes = [...(contrato.versoes ?? []), { versao, geradoEm, motivo }]
@@ -359,7 +361,7 @@ export async function enviarParaAssinatura(processoId: string): Promise<Resposta
     const documentoId = versao > 1 ? `zapsign-exemplo-${processoId}-v${versao}` : `zapsign-exemplo-${processoId}`
     assinatura.zapsign = { documentoId, link: linkDoZapSign(documentoId), status: 'enviado', criadoEm: agora().toISOString(), eventos: [] }
     assinatura.erro = undefined
-    ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoModelo(modeloPorId(contrato.kit.modelo))}: ${documentoId}`))
+    ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoKit(contrato.kit)}: ${documentoId}`))
   }
   assinatura.forma = 'digital'
   gravar(banco)

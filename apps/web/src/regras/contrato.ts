@@ -30,7 +30,21 @@ export const NOMES_DOS_DOCUMENTOS: Record<DocumentoDoKit, string> = {
   'declaracao-separacao': 'Declaração de separação de fato',
 }
 
-export type IdDoModelo = 'contrato-completo-2026' | 'modelo-6' | 'modelo-7' | 'modelo-8' | 'modelo-10'
+/**
+ * Os modelos do escritório (GGVP-136): um arquivo do Word por linha do kit, que já traz o kit inteiro (contrato, procuração,
+ * declarações...). A Sênior sobe cada um na Configuração, com versão. O Contrato Completo 2026 deixou de ser um só: o Lucas
+ * mandou um por benefício. O modelo 7 é o de restituição de contribuições e ainda não tem linha no kit.
+ */
+export type IdDoModelo =
+  | 'contrato-completo-aposentadorias'
+  | 'contrato-completo-auxilio-acidentario'
+  | 'contrato-completo-auxilio-incapacidade'
+  | 'contrato-completo-loas'
+  | 'contrato-completo-loas-representado'
+  | 'modelo-6'
+  | 'modelo-7'
+  | 'modelo-8'
+  | 'modelo-10'
 
 /** Onde os modelos convertidos ficam, no Drive e no ZapSign, com o mesmo identificador (GGVP-69, CA10). */
 export const PASTA_DOS_MODELOS = 'MODELOS ZAPSIGN · PREV'
@@ -38,21 +52,26 @@ export const PASTA_DOS_MODELOS = 'MODELOS ZAPSIGN · PREV'
 export type Modelo = {
   id: IdDoModelo
   nome: string
-  /** Versão publicada do modelo convertido. */
+  /** A versão do exemplo; no servidor vale a versão em vigor da Configuração. */
   versao: number
-  /** O que o modelo traz de honorários, sem campo para digitar (GGVP-69, CA11). Só o Contrato Completo 2026 está no Figma. */
-  honorarios?: string
 }
 
 export const MODELOS: Modelo[] = [
-  { id: 'contrato-completo-2026', nome: 'Contrato Completo 2026', versao: 1, honorarios: '20% do êxito (ad exitum)' },
-  { id: 'modelo-6', nome: 'modelo 6', versao: 1 },
-  { id: 'modelo-7', nome: 'modelo 7', versao: 1 },
-  { id: 'modelo-8', nome: 'modelo 8', versao: 1 },
-  { id: 'modelo-10', nome: 'modelo 10', versao: 1 },
+  { id: 'contrato-completo-aposentadorias', nome: 'Contrato Completo de aposentadorias', versao: 1 },
+  { id: 'contrato-completo-auxilio-acidentario', nome: 'Contrato Completo de auxílio acidentário', versao: 1 },
+  { id: 'contrato-completo-auxilio-incapacidade', nome: 'Contrato Completo de auxílio incapacidade', versao: 1 },
+  { id: 'contrato-completo-loas', nome: 'Contrato Completo de LOAS idoso e deficiente', versao: 1 },
+  { id: 'contrato-completo-loas-representado', nome: 'Contrato Completo de LOAS representado por genitor(a)', versao: 1 },
+  { id: 'modelo-6', nome: 'Modelo 6 (curatela)', versao: 1 },
+  { id: 'modelo-7', nome: 'Modelo 7 (restituição de contribuições)', versao: 1 },
+  { id: 'modelo-8', nome: 'Modelo 8 (kit consumidor)', versao: 1 },
+  { id: 'modelo-10', nome: 'Modelo 10 (seguros)', versao: 1 },
 ]
 
 export const modeloPorId = (id: IdDoModelo): Modelo => MODELOS.find((m) => m.id === id)!
+
+/** Os honorários vêm do texto do modelo, sem campo para digitar (GGVP-69, CA11; GGVP-136, CA2). O percentual aparece no kit. */
+export const HONORARIOS_DO_MODELO = 'os do modelo: confira no kit antes de imprimir'
 
 /** Uma linha da tabela "Kits por benefício". */
 export type LinhaDoKit = {
@@ -63,7 +82,8 @@ export type LinhaDoKit = {
   documentos: DocumentoDoKit[]
   /** Para que serve o Termo INSS desta linha. */
   termoInss?: string
-  modelo: IdDoModelo
+  /** O modelo do Word da linha. Sem modelo (isenção de IR, até o Lucas dizer a que benefício o modelo 7 se liga): o kit avisa que falta. */
+  modelo?: IdDoModelo
   /** Contra quem é a ação, quando não é o INSS. */
   acaoContra?: string
   /** LOAS: ficha de grupo familiar, declarações condicionais e o representado (CA2, CA8). */
@@ -79,7 +99,7 @@ export const KITS: LinhaDoKit[] = [
     beneficios: ['aposentadoria-especial', 'aposentadoria-contribuicao', 'aposentadoria-idade', 'aposentadoria-rural', 'aposentadoria-pcd', 'aposentadoria-pcd-idade'],
     documentos: BASE,
     termoInss: 'aposentadorias, CTC, recursos',
-    modelo: 'contrato-completo-2026',
+    modelo: 'contrato-completo-aposentadorias',
   },
   {
     id: 'auxilio-acidentario',
@@ -87,7 +107,7 @@ export const KITS: LinhaDoKit[] = [
     beneficios: ['auxilio-acidente'],
     documentos: BASE,
     termoInss: 'auxílio-acidente, acréscimo de 25%',
-    modelo: 'contrato-completo-2026',
+    modelo: 'contrato-completo-auxilio-acidentario',
   },
   {
     id: 'auxilio-incapacidade',
@@ -96,7 +116,7 @@ export const KITS: LinhaDoKit[] = [
     beneficios: ['incapacidade-temporaria', 'incapacidade-permanente', 'incapacidade-permanente-acidentaria'],
     documentos: BASE,
     termoInss: 'incapacidade temporária e permanente, 25%',
-    modelo: 'contrato-completo-2026',
+    modelo: 'contrato-completo-auxilio-incapacidade',
   },
   {
     id: 'loas',
@@ -104,7 +124,7 @@ export const KITS: LinhaDoKit[] = [
     beneficios: ['loas-idoso', 'loas-deficiente'],
     documentos: BASE,
     termoInss: 'BPC idoso e PcD, recursos',
-    modelo: 'contrato-completo-2026',
+    modelo: 'contrato-completo-loas',
     loas: true,
   },
   {
@@ -120,7 +140,6 @@ export const KITS: LinhaDoKit[] = [
     beneficios: ['isencao-ir'],
     documentos: ['contrato', 'procuracao', 'termo-inss', 'codigo-penal', 'residencia'],
     termoInss: 'isenção de IR',
-    modelo: 'modelo-7',
   },
   {
     id: 'emprestimo-fraudulento',
@@ -166,7 +185,8 @@ export type ItemDoKit = {
 export type KitMontado = {
   linha: string
   nome: string
-  modelo: IdDoModelo
+  /** Sem modelo, o kit não gera: falta o modelo (GGVP-136). */
+  modelo?: IdDoModelo
   documentos: ItemDoKit[]
   /** Quem assina: o cliente, ou o representado e quem o representa (CA2). */
   assinam: string[]
@@ -175,10 +195,14 @@ export type KitMontado = {
 
 export const linhaDoBeneficio = (beneficio: string): LinhaDoKit | undefined => KITS.find((k) => k.beneficios.includes(beneficio))
 
+/** O modelo do Word do kit, ou nada quando a linha ainda não tem (GGVP-136). */
+export const modeloDoKit = (kit: Pick<KitMontado, 'modelo'>): Modelo | undefined => (kit.modelo ? modeloPorId(kit.modelo) : undefined)
+
 /**
  * O kit do benefício, com exatamente os documentos da tabela (CA1, CA3, CA4) e o modelo da coluna "Modelo" (CA5).
  * LOAS leva a ficha de grupo familiar sempre e as declarações quando a condição do caso pede (CA8); representado leva o
- * representado e o genitor ou a genitora (CA2). Benefício fora da tabela não tem kit: nada é gerado.
+ * representado e o genitor ou a genitora (CA2), e o modelo do LOAS representado. Benefício fora da tabela não tem kit:
+ * nada é gerado.
  */
 export function montarKit(beneficio: string, condicoes: CondicoesDoKit = SEM_CONDICOES): KitMontado | null {
   const linha = linhaDoBeneficio(beneficio)
@@ -190,6 +214,7 @@ export function montarKit(beneficio: string, condicoes: CondicoesDoKit = SEM_CON
     ...(id === 'hipossuficiencia' && linha.acaoContra && { detalhe: `ação contra ${linha.acaoContra}` }),
   }))
   const representado = linha.loas === true && condicoes.representado
+  const modelo: IdDoModelo | undefined = representado ? 'contrato-completo-loas-representado' : linha.modelo
   if (linha.loas) {
     documentos.push({ id: 'grupo-familiar', nome: NOMES_DOS_DOCUMENTOS['grupo-familiar'], detalhe: 'obrigatória em todo LOAS' })
     const condicionais: [boolean, DocumentoDoKit, string][] = [
@@ -202,7 +227,7 @@ export function montarKit(beneficio: string, condicoes: CondicoesDoKit = SEM_CON
   return {
     linha: linha.id,
     nome: representado ? 'LOAS representado (genitor)' : linha.nome,
-    modelo: linha.modelo,
+    ...(modelo && { modelo }),
     documentos,
     assinam: representado ? ['o representado (cliente)', 'o genitor ou a genitora (representante legal)'] : ['o cliente'],
     ...(linha.acaoContra && { acaoContra: linha.acaoContra }),
@@ -427,8 +452,11 @@ export const identificadorDoModelo = (m: Modelo) => `${m.id}-v${m.versao}`
 
 export const caminhoDoModelo = (m: Modelo) => `${PASTA_DOS_MODELOS}/${identificadorDoModelo(m)}`
 
-/** Os honorários vêm do modelo, sem campo para digitar (CA11). */
-export const honorariosDoModelo = (m: Modelo) => m.honorarios ?? `os do ${m.nome}`
+/** O identificador do modelo do kit para o histórico e as telas; "sem modelo" quando a linha ainda não tem (GGVP-136). */
+export const identificadorDoKit = (kit: Pick<KitMontado, 'modelo'>) => {
+  const modelo = modeloDoKit(kit)
+  return modelo ? identificadorDoModelo(modelo) : 'sem modelo'
+}
 
 /** Troca cada {{campo}} do modelo pelo valor; o que não tem valor fica como está, para a verificação achar. */
 export function preencherModelo(texto: string, valores: Record<string, string>): string {

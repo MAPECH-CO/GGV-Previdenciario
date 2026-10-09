@@ -3,6 +3,7 @@ import { BENEFICIOS } from '../dados/catalogos.ts'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
 import {
   DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA,
+  HONORARIOS_DO_MODELO,
   INSS,
   KITS,
   TENTATIVAS_DE_ASSINATURA,
@@ -25,9 +26,10 @@ import {
   datasDoKit,
   erroDoCampo,
   faltando,
-  honorariosDoModelo,
+  identificadorDoKit,
   identificadorDoModelo,
   linhaDoBeneficio,
+  modeloDoKit,
   modeloPorId,
   montarKit,
   motivoParadoDoGerar,
@@ -93,14 +95,29 @@ describe('GGVP-65 · kit de documentos por benefício', () => {
     })
   })
 
-  it('CA5 · o modelo é o da coluna "Modelo": Contrato Completo 2026 ou os modelos 6, 7, 8 e 10', () => {
-    expect(montarKit('aposentadoria-idade')?.modelo).toBe('contrato-completo-2026')
-    expect(montarKit('loas-idoso')?.modelo).toBe('contrato-completo-2026')
+  it('CA5 · o modelo é o da linha: um Contrato Completo por benefício, ou os modelos 6, 8 e 10 (GGVP-136 CA2)', () => {
+    expect(montarKit('aposentadoria-idade')?.modelo).toBe('contrato-completo-aposentadorias')
+    expect(montarKit('auxilio-acidente')?.modelo).toBe('contrato-completo-auxilio-acidentario')
+    expect(montarKit('incapacidade-temporaria')?.modelo).toBe('contrato-completo-auxilio-incapacidade')
+    expect(montarKit('loas-idoso')?.modelo).toBe('contrato-completo-loas')
     expect(montarKit('curatela')?.modelo).toBe('modelo-6')
-    expect(montarKit('isencao-ir')?.modelo).toBe('modelo-7')
     expect(montarKit('emprestimo-indevido')?.modelo).toBe('modelo-8')
     expect(montarKit('seguro-vida')?.modelo).toBe('modelo-10')
-    for (const k of KITS) expect(MODELOS.some((m) => m.id === k.modelo), k.id).toBe(true)
+    for (const k of KITS.filter((x) => x.modelo)) expect(MODELOS.some((m) => m.id === k.modelo), k.id).toBe(true)
+  })
+
+  it('GGVP-136 CA2 · o LOAS representado por genitor(a) tem o modelo dele', () => {
+    expect(montarKit('loas-deficiente', { ...SEM_CONDICOES, representado: true })?.modelo).toBe('contrato-completo-loas-representado')
+    expect(montarKit('loas-deficiente')?.modelo).toBe('contrato-completo-loas')
+  })
+
+  it('GGVP-136 · a isenção de IR fica sem modelo até o Lucas dizer a que benefício o modelo 7 (restituição) se liga: o kit avisa que falta', () => {
+    const kit = montarKit('isencao-ir')!
+    expect(kit.modelo).toBeUndefined()
+    expect(modeloDoKit(kit)).toBeUndefined()
+    expect(identificadorDoKit(kit)).toBe('sem modelo')
+    expect(KITS.some((k) => k.modelo === 'modelo-7')).toBe(false)
+    expect(modeloPorId('modelo-7').nome).toBe('Modelo 7 (restituição de contribuições)')
   })
 
   it('CA6 · todo benefício da tabela é do catálogo único, e nenhum está em duas linhas', () => {
@@ -237,15 +254,14 @@ describe('GGVP-69 · preencher o contrato pelo modelo e conferir', () => {
   })
 
   it('CA10 · o modelo tem o mesmo identificador na pasta e no ZapSign', () => {
-    const m = modeloPorId('contrato-completo-2026')
-    expect(identificadorDoModelo(m)).toBe('contrato-completo-2026-v1')
-    expect(caminhoDoModelo(m)).toBe('MODELOS ZAPSIGN · PREV/contrato-completo-2026-v1')
+    const m = modeloPorId('contrato-completo-aposentadorias')
+    expect(identificadorDoModelo(m)).toBe('contrato-completo-aposentadorias-v1')
+    expect(caminhoDoModelo(m)).toBe('MODELOS ZAPSIGN · PREV/contrato-completo-aposentadorias-v1')
     expect(new Set(MODELOS.map(identificadorDoModelo)).size).toBe(MODELOS.length)
   })
 
-  it('CA11 · os honorários vêm do modelo, sem campo para digitar', () => {
-    expect(honorariosDoModelo(modeloPorId('contrato-completo-2026'))).toBe('20% do êxito (ad exitum)')
-    expect(honorariosDoModelo(modeloPorId('modelo-8'))).toBe('os do modelo 8')
+  it('CA11 · os honorários vêm do texto do modelo, sem campo para digitar: a tela manda conferir no kit (GGVP-136)', () => {
+    expect(HONORARIOS_DO_MODELO).toBe('os do modelo: confira no kit antes de imprimir')
   })
 })
 
