@@ -111,7 +111,7 @@ O texto que vai para o acervo MUST NOT levar CPF, endereço nem telefone; dado d
 - **Então** não leva CPF, endereço nem telefone; dado de saúde só entra quando necessário e com acesso do Jurídico
 
 ### Requirement: CA11 · A falha ao gravar fica visível e é reprocessada
-A falha ao gravar a ficha SHALL ficar visível na conferência ("a IA ainda não leu este desfecho") e SHALL ser tentada de novo na rodada seguinte, sem pessoa.
+A falha ao gravar a ficha SHALL ficar visível na conferência ("a IA ainda não leu este desfecho") e SHALL ser tentada de novo em segundo plano no dia seguinte, sem pessoa (uma tentativa por conteúdo e por dia, como toda IA em segundo plano, GGVP-106; Mateus, 08/10).
 
 #### Scenario: CA11 · Falha
 - **Dado** uma falha ao gravar no acervo

@@ -113,7 +113,7 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
    - o conteúdo leva o benefício, o desfecho, a última decisão de mérito ou o resultado do INSS e a petição aprovada, cortada como no estudo;
    - a instrução pede a tese jurídica sem doença, diagnóstico nem CID, e a lição numa frase;
    - antes de gravar, o resumo e a lição passam por `anonimizar`, com o nome do cliente (CA10);
-   - se falhar ou não houver chave, a ficha fica nula, a conferência mostra "a IA ainda não leu este desfecho" e a rodada seguinte tenta de novo (CA11). A falha fica em `chamada_ia`.
+   - se falhar ou não houver chave, a ficha fica nula, a conferência mostra "a IA ainda não leu este desfecho" e o preparo tenta de novo no dia seguinte (CA11): uma tentativa por conteúdo e por dia, a regra de toda IA em segundo plano (GGVP-106), confirmada pelo Mateus em 08/10. A falha fica em `chamada_ia`.
 4. **O caso perdido entra pelo estudo** (CA1, CA4, CA9): saindo o estudo `ok`, o caso entra em `processo_acervo` (fonte `portal`, com o desfecho do caso) e a ficha do estudo (o aprendizado vira a lição), anonimizada, sem outra chamada à IA. Um registro por caso: se ele já existe, só completa a ficha que falta.
 5. **Conferência** (CA7): a linha do portal mostra a ficha. "Conferir" leva o desfecho e a tese, a da IA ou a corrigida, e o histórico guarda o antes e o depois, com a tese. Só a ficha conferida entra nas contas.
 6. **Recorte por tese** (CA3, CA5, CA8): `gruposDoRecorte` lê a tese dos registros conferidos com `caso_id`. Sem tese, o caso fica fora do recorte (CA5). Os indicadores e o G22 são os do painel. A matéria é o recorte por benefício e a vara é o recorte por juízo, que já existem.
