@@ -12,6 +12,8 @@ import { MSG_AUDIO_SUMIU, MSG_IA_SEM_RESPOSTA, MSG_IA_SEM_SAUDE, MSG_SERVICO_FOR
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { analisar } from '../../../web/src/dados/acervo.ts'
+import { requisitosDoBeneficio } from '../../../web/src/regras/beneficio.ts'
 import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
 import { MSG_GRAVACAO_SO_DO_JURIDICO } from './recepcao-entrevista.ts'
 import { MSG_SEM_AO_VIVO } from './transcricao.ts'
@@ -38,7 +40,7 @@ const DIARIZADO = {
 
 /**
  * GGVP-133: o que a IA lê na entrevista. Só o telefone, o documento e o "desde" passam: o item com senha (G9), o telefone
- * sem DDD e o da fala que não existe ficam de fora no código.
+ * sem DDD, o da fala que não existe e o "desde" sem mês/ano (o cálculo do afastamento não lê "março") ficam de fora no código.
  */
 const LEITURA = {
   resumo: 'Joana quer saber da LOAS para ela.',
@@ -49,6 +51,7 @@ const LEITURA = {
     { tipo: 'estadoCivil', valor: 'casada, senha Girassol2024', i: 2 },
     { tipo: 'telefone', valor: '1234', i: 1 },
     { tipo: 'profissao', valor: 'Diarista', i: 9 },
+    { tipo: 'desde', valor: 'março', i: 1 },
   ],
 }
 
@@ -223,16 +226,24 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     montar()
     const { agendamentoId } = await entrevistaConfirmada()
     const g = (await subir(`/api/entrevistas/${agendamentoId}/audio`, LIGACAO())).json().gravacao
-    await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})
+    const lida = (await json('gabi', `/api/gravacoes/${g.id}/transcricao`, {})).gravacao
     const url = `/api/gravacoes/${g.id}/conferencias`
     expect((await json('gabi', url, { ids: ['documento-1'], correcoes: [{ id: 'documento-1', valor: 'x' }] })).erro).toBe('Corrija documento citado: de 2 a 200 letras.')
     expect((await json('gabi', url, { ids: ['telefone-0'], correcoes: [{ id: 'telefone-0', valor: '9999' }] })).erro).toBe('Corrija telefone: o telefone vai com DDD.')
+    expect((await json('gabi', url, { ids: ['desde-2'], correcoes: [{ id: 'desde-2', valor: 'junho' }] })).erro).toBe('Corrija sem trabalhar desde: mês e ano, como 06/2026.')
     const r = await json('gabi', url, { ids: ['telefone-0', 'desde-2'], correcoes: [{ id: 'telefone-0', valor: '(11) 97777-6666' }] })
     expect(r.ficha.telefone).toBe('11977776666')
     const historico = r.ficha.historico.map((e: { oQue: string }) => e.oQue)
     expect(historico).toContain('Levou à ficha, da entrevista de 08/10, telefone: «(11) 98765-4321» → «(11) 97777-6666» (corrigido na conferência; a IA ouviu «(11) 98888-7777»)')
     expect(historico).toContain('Conferiu, da entrevista de 08/10, sem trabalhar desde: «06/2026»')
     expect(r.gravacao.extraidas.filter((e: { conferidaEm?: string }) => e.conferidaEm).map((e: { id: string }) => e.id)).toEqual(['telefone-0', 'desde-2'])
+    // G19: a definição do benefício calcula o afastamento só com o "desde" conferido, nunca com o palpite da IA.
+    expect(analisar(r.ficha, lida, '2026-10-08').dados.semTrabalharDesde).toBeUndefined()
+    const { dados } = analisar(r.ficha, r.gravacao, '2026-10-08')
+    expect(requisitosDoBeneficio('incapacidade-temporaria', dados, '2026-10-08')).toContainEqual({
+      texto: 'Afastamento: 129 dias desde 06/2026; precisa de mais de 15 (calculado por código, G19)',
+      atende: true,
+    })
   })
 
   it('GGVP-133 · o áudio guardado toca e o texto final abre pela gravação, só para o Jurídico, com a leitura registrada', async () => {

@@ -24,6 +24,7 @@ vi.mock('../dados/conversa.ts', async (original) => {
     enviarParteDaConversa: vi.fn(async () => ({})),
     pedirChaveAoVivoDaConversa: vi.fn(async () => ({ chave: 'ek_temporaria', expiraEm: '', modelo: 'gpt-4o-transcribe' })),
     finalizarConversa: vi.fn((id: string, fim: { aos: number }) => real.finalizarConversa(id, fim)),
+    transcreverConversa: vi.fn((id: string, opcoes?: { falhar?: boolean }) => real.transcreverConversa(id, opcoes)),
   }
 })
 
@@ -69,12 +70,18 @@ describe('GGVP-133 · conversa do Relacionamento com o microfone de verdade', ()
     const enviou = vi.mocked(conversa.enviarParteDaConversa)
     expect(enviou).toHaveBeenCalledWith(c.id, PARTE)
     expect(enviou.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(conversa.finalizarConversa).mock.invocationCallOrder[0])
-    // Sem a chave no servidor falso, a transcrição é a de exemplo; o teste espera ela terminar (a máquina lenta pede folga).
+    // O servidor falso das telas transcreve com a conversa de exemplo (o de verdade, com a chave, transcreve o áudio); o
+    // teste espera ela terminar (a máquina lenta pede folga).
     expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.', undefined, { timeout: 15000 })).toBeTruthy()
   }, 30000)
 
-  it('sem microfone, o áudio gravado fora sobe nesta conversa e ela vai para a transcrição; nenhuma fala de exemplo', async () => {
+  it('sem microfone, o áudio gravado fora sobe nesta conversa e vai para a transcrição; sem a chave do serviço, a tela diz o motivo, nenhuma fala de exemplo', async () => {
     vi.mocked(audio.abrirMicrofone).mockResolvedValueOnce({ erro: 'nenhum microfone foi encontrado neste computador' })
+    // O servidor de verdade, sem a chave, não transcreve o arquivo com a conversa de exemplo: falha com o motivo (GGVP-133).
+    vi.mocked(conversa.transcreverConversa).mockImplementationOnce(async (id) => {
+      const r = (await conversa.obterConversa(id))!
+      return { ...r, gravacao: { ...r.gravacao!, transcricao: 'falhou' as const, motivoDaFalha: 'a transcrição está desligada (falta a chave do serviço)', trechos: [] } }
+    })
     const c = await conversa.abrirConversa('maria-exemplo', { canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
     render(comSessao(<Conversa conversaId={c.id} passo={5} />))
     await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Registrar conversa' })
@@ -88,8 +95,12 @@ describe('GGVP-133 · conversa do Relacionamento com o microfone de verdade', ()
     await waitFor(() => expect(conversa.finalizarConversa).toHaveBeenCalled())
     expect(conversa.enviarParteDaConversa).toHaveBeenCalledWith(c.id, { audio: arquivo, inicio: 0 })
     expect(vi.mocked(conversa.enviarParteDaConversa).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(conversa.finalizarConversa).mock.invocationCallOrder[0])
-    // Sem a chave no servidor falso, a transcrição é a de exemplo do servidor; o teste espera ela terminar.
-    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.', undefined, { timeout: 15000 })).toBeTruthy()
+    expect(
+      await screen.findByText('A transcrição falhou: a transcrição está desligada (falta a chave do serviço). O áudio está guardado; nada se perdeu.', undefined, { timeout: 15000 }),
+    ).toBeTruthy()
+    expect(screen.queryByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeNull()
+    expect(screen.queryByRole('list', { name: 'Falas' })).toBeNull()
+    expect(document.body.textContent).not.toContain('Mudei de casa')
   }, 30000)
 
   it('CA4 · na ligação gravada agora não há texto ao vivo: o texto sai ao terminar', async () => {

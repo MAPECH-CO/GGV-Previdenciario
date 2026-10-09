@@ -99,6 +99,11 @@ Com a transcrição pronta, a IA SHALL sugerir o resumo, os dados da ficha que o
 - **Quando** a transcrição fica pronta
 - **Então** a tela diz o motivo certo e segue no modo manual, sem resumo nem item inventado
 
+#### Scenario: O afastamento conta com o "desde" conferido
+- **Dado** a IA leu "sem trabalhar desde 06/2026" (e não passa "desde março", que o cálculo não lê)
+- **Quando** a advogada confere o item
+- **Então** a definição do benefício calcula o afastamento por código (G19); antes da conferência, diz que falta o "desde" conferido
+
 ### Requirement: Sem microfone, nada de exemplo (CA8 da GGVP-40)
 Na gravação de verdade sem microfone, a tela SHALL avisar com o motivo e MUST NOT mostrar nem transcrever falas de exemplo; as saídas são subir o áudio gravado fora ou registrar sem áudio.
 
@@ -106,6 +111,11 @@ Na gravação de verdade sem microfone, a tela SHALL avisar com o motivo e MUST 
 - **Dado** a permissão do microfone negada ou nenhum aparelho
 - **Quando** a advogada (ou o Atendimento, na conversa) começa a gravar
 - **Então** vê "Sem microfone" com o motivo e as duas saídas, e nenhuma fala inventada
+
+#### Scenario: Sem áudio guardado ou sem a chave
+- **Dado** uma conversa ou entrevista sem nenhum áudio guardado, ou com o áudio de verdade e sem a chave do serviço
+- **Quando** pede a transcrição (ou finaliza a conversa sem áudio)
+- **Então** a transcrição falha com o motivo, o áudio que existe fica, e nada é transcrito da conversa de exemplo
 
 ### Requirement: Ouvir o áudio e ler o texto final
 As Transcrições SHALL tocar o áudio guardado e abrir o texto final, com a permissão da gravação; a gravação com dado de saúde só abre para o Jurídico, com a leitura registrada.

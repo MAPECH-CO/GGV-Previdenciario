@@ -34,7 +34,8 @@
 - [x] 5.4 Sem microfone: o aviso com o motivo, sem falas de exemplo, e as saídas (subir o áudio de fora ou registrar sem áudio) na entrevista e na conversa; o servidor não transcreve exemplo nem cria áudio; testes de tela e da API.
 - [x] 5.5 O tocador das Transcrições toca o áudio guardado e abre o texto final pela gravação, com a permissão dela; testes.
 - [x] 5.6 O motivo certo quando falta a autorização de dado de saúde (transcrição e conversa); "Resumo da ficha" na preparação.
-- [ ] 5.7 Playwright ajustado (`recepcao-servidor`, `conversa`, `preparar-entrevista`): roda na verificação do pedido.
+- [ ] 5.7 Playwright ajustado (`recepcao-servidor`, `conversa`, `preparar-entrevista`, `transcricao-ligacao`): roda na verificação do pedido.
+- [x] 5.8 Revisão: o afastamento lê o "desde" conferido (`desde-N` da IA) e o "desde" só passa como mês/ano; a conversa no servidor sem a conversa de exemplo (sem áudio guardado, `MSG_SEM_AUDIO`; sem a chave, `MSG_TRANSCRICAO_DESLIGADA`; finalizar sem áudio falha; `/audio` só com o nome volta 400); testes da API com serviço falso.
 
 ## GGVP-140 · IA de verdade no Relacionamento: resumo da conversa e o que mudou na ficha
 

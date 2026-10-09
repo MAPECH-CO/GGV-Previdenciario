@@ -24,8 +24,8 @@ export const MSG_TEXTO_NAO_GUARDADO = 'o texto não foi guardado na pasta do cli
 export const MSG_IA_SEM_SAUDE = 'a IA não está autorizada a ler dado de saúde neste ambiente'
 export const MSG_IA_DESLIGADA = 'a IA está desligada neste ambiente (falta a chave do serviço)'
 export const MSG_IA_SEM_RESPOSTA = 'a IA não respondeu agora'
-/** Gravação de verdade sem áudio guardado (sem microfone): não há o que transcrever, e nada é inventado (CA8). */
-export const MSG_SEM_AUDIO = 'nenhum áudio desta gravação chegou ao portal: suba o áudio gravado fora ou registre a entrevista sem áudio'
+/** Gravação de verdade sem áudio guardado (sem microfone): não há o que transcrever, e nada é inventado (CA8). Entrevista e conversa. */
+export const MSG_SEM_AUDIO = 'nenhum áudio desta gravação chegou ao portal: suba o áudio gravado fora ou registre sem áudio'
 
 type Quem = Arrumada['falantes'][string]
 
@@ -179,9 +179,10 @@ export async function lerEntrevista({ ia }: Pick<Dependencias, 'ia'>, g: Gravaca
   const itens = lida.itens.flatMap(({ tipo, valor, i }, n): InformacaoExtraida[] => {
     const t = g.trechos[i]
     const campo = tipo === 'documento' || tipo === 'desde' ? undefined : tipo
-    if (!t || temSenha(valor) || erroDaInformacao({ campo }, valor)) return []
+    const id = `${tipo}-${n}`
+    if (!t || temSenha(valor) || erroDaInformacao({ id, campo }, valor)) return []
     const destino = campo ? 'ficha' : tipo === 'documento' ? 'documentacao' : 'processo'
-    return [{ id: `${tipo}-${n}`, rotulo: ROTULO_DO_ITEM[tipo], valor: valorDaInformacao({ campo }, valor), destino, ...(campo && { campo }), aos: t.aos, trecho: t.texto }]
+    return [{ id, rotulo: ROTULO_DO_ITEM[tipo], valor: valorDaInformacao({ campo }, valor), destino, ...(campo && { campo }), aos: t.aos, trecho: t.texto }]
   })
   g.extraidas = [...itens, ...cofre]
   g.resumo = temSenha(lida.resumo) ? 'O resumo da IA citava uma senha e foi retirado (G9): leia a transcrição.' : lida.resumo
