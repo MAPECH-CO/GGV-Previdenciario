@@ -199,9 +199,11 @@ describe('Processos (GGVP-78)', () => {
 })
 
 describe('quem vê e o que fica registrado (GGVP-78)', () => {
-  it('o Financeiro e o Sócio, que não veem o caso, recebem 403 nas duas listas', async () => {
-    for (const apelido of ['julia', 'rui'])
-      for (const url of ['/api/clientes', '/api/processos']) expect((await listar(apelido, url)).statusCode, `${apelido} ${url}`).toBe(403)
+  it('o Financeiro, que não vê o caso, recebe 403 nas duas listas; o Sócio, que lê tudo (GGVP-96), abre as duas', async () => {
+    for (const url of ['/api/clientes', '/api/processos']) {
+      expect((await listar('julia', url)).statusCode, `julia ${url}`).toBe(403)
+      expect((await listar('rui', url)).statusCode, `rui ${url}`).toBe(200)
+    }
   })
 
   it('Exportar CSV traz o filtro inteiro e fica no histórico com quem e quantas linhas, sem o termo da busca', async () => {
