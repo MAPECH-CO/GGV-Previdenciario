@@ -203,3 +203,21 @@ A lista de arquivos da ficha (nome, tipo, pasta, data, origem e se espera leitur
 - **Dado** um lead do servidor
 - **Quando** a Atendimento passa a ficha de atendimento em papel no scanner
 - **Então** a imagem fica em Documentos pessoais no servidor, sem sobrescrever outra de mesmo nome, e nenhuma senha vai ao cofre
+
+### Requirement: Bloco 5b · A chegada, a leitura e o arquivo dos documentos ficam no banco do portal
+Os documentos que chegam pelo card ("Conferir e enviar") e pelo lote do scanner SHALL entrar na lista de arquivos da ficha do servidor, sem sobrescrever nem apagar nada, e o registro do recebimento SHALL concluir a tarefa no servidor. A leitura da IA (ainda simulada) SHALL ser feita no servidor quando o arquivo chega, uma por arquivo, guardada à parte da ficha e entregue à cópia das telas. A conferência da Documentação SHALL gravar no servidor: arquivar com o tipo e a data conferidos (o duplicado só sai com a decisão da pessoa; documento médico nunca sai), liberar da quarentena, mover para outro caso com o motivo e usar no cadastro o que a IA leu, campo a campo; o contrato assinado arquivado SHALL seguir para a verificação do contrato. O laudo que chega pelo card SHALL marcar o laudo novo e abrir "Analisar laudo novo" para o Jurídico, como na tela, sem guardar o resumo simulado (dado de saúde); a ligação com o parecer, que lê a tabela de documentos do portal, fica para quando o Drive trouxer o arquivo de verdade (decisão do Mateus, 09/10).
+
+#### Scenario: Documento pelo card, conferido em outro computador
+- **Dado** um cliente do servidor
+- **Quando** a Atendimento envia o RG pelo card e a Documentação, em outro computador, confere e arquiva
+- **Então** o RG fica arquivado em Documentos pessoais no servidor e a tarefa "Conferir documento" sai
+
+#### Scenario: Lote do scanner
+- **Dado** a tarefa de receber documentos em papel de um cliente do servidor
+- **Quando** o lote do scanner chega e a Atendimento registra o recebimento
+- **Então** os arquivos entram na pasta do servidor para a leitura, e a tarefa se conclui no servidor
+
+#### Scenario: Quarentena
+- **Dado** um documento lido com o CPF de outro cliente
+- **Quando** a Documentação abre a conferência
+- **Então** o documento está em quarentena e só volta à conferência com "É deste cliente", ou muda de pasta com o motivo
