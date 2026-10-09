@@ -97,3 +97,15 @@ export * from './glossario.ts'
 
 // Transcrição de verdade (GGVP-133): o texto arrumado pela IA e a chave temporária do texto ao vivo.
 export * from './transcricao.ts'
+
+// A página do processo lida do banco (GGVP-146, parte 5).
+export * from './processo.ts'
+
+// As tarefas do setor e quem faz cada uma (GGVP-147).
+export * from './setor.ts'
+
+// Clientes e Processos no topo (GGVP-78): as duas bases, com busca, filtros e página.
+export * from './bases.ts'
+
+// O painel Financeiro (GGVP-78): as contas das prestações de contas, por mês e por origem, e os lançamentos.
+export * from './financeiro.ts'

@@ -1,6 +1,7 @@
 // O parecer do caso (GGVP-20, GGVP-33): a análise dos documentos médicos com o roteiro em vigor, o registro da pessoa do
 // Jurídico, a comparação do laudo novo e o que cada perfil vê. Regra pura: o servidor de exemplo e o servidor de verdade
 // (GGVP-132) usam a mesma. A IA ainda é simulada (pistas no nome do arquivo); a de verdade é da GGVP-134.
+import { pode } from '@ggv/contratos'
 import { isoParaData } from '../campos.ts'
 import { nomeBeneficio, nomeTipo } from '../dados/catalogos.ts'
 import type { Ficha, Processo, Tarefa } from '../dados/tipos.ts'
@@ -154,8 +155,17 @@ export type PedidoDeParecer = {
 
 export type QuemRegistra = { perfil?: string; nome: string }
 
-/** Advogada e sênior: o Jurídico, que vê o conteúdo clínico e registra o parecer. */
-export const doJuridico = (perfil: string | undefined) => perfil === 'advogada' || perfil?.startsWith('senior') === true
+/** O perfil da tela no formato da sessão: `juridico-adm` → `juridico_adm`; a segunda sênior de exemplo é sênior. */
+const daSessao = (perfil: string | undefined) => (perfil?.startsWith('senior') ? 'senior' : perfil?.replace('-', '_'))
+
+/**
+ * O Jurídico (advogada, sênior e Jurídico administrativo), que vê o conteúdo clínico: a mesma permissão do servidor
+ * (`dado_saude.ver_detalhe`, saúde simples, Pedro 08/10).
+ */
+export const doJuridico = (perfil: string | undefined) => pode(daSessao(perfil), 'dado_saude.ver_detalhe')
+
+/** Quem registra o parecer e o dado de saúde: a advogada e a sênior (`parecer.registrar`, `dado_saude.registrar`). */
+export const registraSaude = (perfil: string | undefined) => pode(daSessao(perfil), 'dado_saude.registrar')
 
 // A IA simulada (até a GGVP-134).
 

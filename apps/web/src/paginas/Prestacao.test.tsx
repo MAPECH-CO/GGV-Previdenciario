@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IdaAoBanco } from './IdaAoBanco.tsx'
+import { LevarAoBanco } from './LevarAoBanco.tsx'
 import { PrestarContas } from './PrestarContas.tsx'
 import { ReceberPrestacao } from './ReceberPrestacao.tsx'
 
@@ -153,5 +154,53 @@ describe('Avisar e agendar a ida ao banco (GGVP-44 e GGVP-98, Financeiro)', () =
     expect((await screen.findByLabelText('Mensagem')).textContent).toBe('Olá, Vera!')
     expect((screen.getByRole('button', { name: 'Revisei e enviei' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/só sai depois do OK da advogada/)).toBeTruthy()
+  })
+})
+
+describe('Levar ao banco (GGVP-98, Atendimento)', () => {
+  const visita = {
+    casoId: CASO,
+    cliente: 'Vera Lúcia (exemplo)',
+    data: '15/10/2026',
+    hora: '10:00',
+    local: 'Caixa, agência Centro',
+    acompanhante: 'Ana (exemplo)',
+    oQueLevar: ['Documento oficial com foto do cliente (RG ou CNH)', 'CPF do cliente'],
+  }
+
+  it('mostra a visita marcada pelo Financeiro e o que levar, sem nenhum valor', async () => {
+    servidor(visita)
+    render(<LevarAoBanco casoId={CASO} />)
+    expect((await screen.findByLabelText('Ida ao banco')).textContent).toBe('Marcada pelo Financeiro15/10/2026 às 10:00Caixa, agência CentroQuem leva: Ana (exemplo)')
+    expect(screen.getByLabelText('O que levar').textContent).toContain('CPF do cliente')
+    expect(document.body.textContent).not.toContain('R$')
+  })
+
+  it('"Levei o cliente ao banco" registra e avisa que o Financeiro confirma', async () => {
+    const fetch = servidor(visita, [201, { ok: true }])
+    render(<LevarAoBanco casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Levei o cliente ao banco' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Registrado. O Financeiro recebeu a tarefa de confirmar o recebimento.')
+    const envio = fetch.mock.calls.find(([, init]) => init?.method === 'POST')
+    expect([String(envio?.[0]).endsWith('/banco/levar'), JSON.parse(String(envio?.[1]?.body))]).toEqual([true, { resultado: 'levado' }])
+  })
+
+  it('"Não deu" pede o motivo e volta ao Financeiro remarcar', async () => {
+    const fetch = servidor(visita, [201, { ok: true }])
+    render(<LevarAoBanco casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Não deu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: não deu' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Escreva por que não deu')
+    expect(fetch).toHaveBeenCalledTimes(1)
+    fireEvent.change(screen.getByLabelText('Por que não deu'), { target: { value: 'Agência fechada' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar: não deu' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Registrado. A ida ao banco voltou para o Financeiro remarcar.')
+    expect(JSON.parse(String(fetch.mock.calls[1][1]?.body))).toEqual({ resultado: 'nao_deu', motivo: 'Agência fechada' })
+  })
+
+  it('sem ida marcada, mostra o aviso do servidor', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ erro: 'Não há ida ao banco marcada para levar neste caso.' }), { status: 409 })))
+    render(<LevarAoBanco casoId={CASO} />)
+    expect((await screen.findByRole('alert')).textContent).toBe('Não há ida ao banco marcada para levar neste caso.')
   })
 })

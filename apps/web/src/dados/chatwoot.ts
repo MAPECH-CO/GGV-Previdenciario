@@ -1,7 +1,6 @@
 // EXEMPLO. O Chatwoot simulado (GGVP-102), com funções da mesma forma da API dele (developers.chatwoot.com), sobre os
-// contatos das fichas da semente. Nada aqui chama o Chatwoot de verdade. Ponta para ligar no Chatwoot: trocar o corpo de
-// cada função pela chamada indicada, com o endereço, a conta, a caixa de entrada e o token da configuração do ambiente
-// (nunca no código); ver a design.md da change ggvp-12, seção GGVP-102.
+// contatos das fichas da semente. Nada aqui chama o Chatwoot de verdade: o de verdade é do servidor
+// (apps/api/src/chatwoot.ts, GGVP-146), para o cliente do banco; o token nunca chega à tela.
 import { normalizarTelefone } from '../campos.ts'
 import { agora, ler } from './servidor.ts'
 

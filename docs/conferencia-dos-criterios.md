@@ -3,6 +3,22 @@
 Feita em 08/10/2026, à noite, sobre a `main` com a IA jurídica (PR #26) e o deploy da homologação (PR #20). O bloco 3b da
 Recepção no servidor (PR #32) estava aberto e não conta aqui.
 
+**Atualizada em 09/10/2026, de madrugada,** sobre a `main` em `ca01a8c`, com as mesclas da madrugada (MAPECH-CO #14, #15,
+#5, #2, #19, #21, #20, #23, #28 e #17). As linhas das histórias que esses pedidos tocam foram conferidas de novo no
+código e nos testes: GGVP-17, 23, 40, 44, 78, 86, 96, 98, 102, 117, 118 e 125. Entraram as histórias novas que eles
+entregam: GGVP-127, 130, 135, 137, 146 e 147 (os critérios do cartão no Jira). O que entrou na noite de 08/10
+(Relacionamento, documentação médica e Perícia no servidor, navegação por perfil, feriados e importador) e o #13
+(transcrição de verdade, glossário e IA no Relacionamento) mudam a base de outras histórias; as seções delas ganharam uma
+nota, mas as linhas não foram recontadas. As linhas citadas nas
+histórias atualizadas são da `main` de agora. O que está na `main` e ainda não subiu para a homologação (#28 e #17, por
+causa da cobrança do GitHub Actions) está dito em cada linha.
+
+**Acrescentado em 09/10, de manhã:** o que o pedido #43 entrega nas GGVP-96, 137, 133 e 78. O #43 junta quatro pedidos
+revisados (#25, #30, #37 e #42) e ainda está fora da `main`: espera a verificação do GitHub, parada pela cobrança. Cada
+acréscimo diz "(no #43, fora da main)", com o arquivo de teste que prova, conferido no código da branch
+`juncao/entrega-0910` (`c30d40c`). Esses testes não rodaram no GitHub. A situação das linhas e a contagem do resumo não
+mudam até a mescla.
+
 **O que foi conferido:** as 102 histórias do projeto GGVP em "Em homologação" no Jira na hora da conferência. Nenhuma estava
 em "Em análise". Os épicos (GGVP-1, 3, 5 a 9, 11, 13 a 15) ficaram de fora: eles só agrupam as histórias.
 
@@ -31,37 +47,46 @@ problemas do roteiro do teste (`docs/entrega/roteiro-do-teste-09-10.md`).
 
 ## Resumo
 
-930 critérios em 102 histórias:
+Contagem refeita em 09/10, com as seis histórias novas: 963 critérios em 108 histórias (em 08/10: 930 em 102).
 
-| Situação | Critérios |
-|---|---|
-| feito | 462 |
-| feito só no servidor de exemplo | 363 |
-| parcial | 49 |
-| faltando | 29 |
-| faltando (fora de 09/10 pela spec) | 25 |
-| removido | 2 |
+| Situação | Critérios | Em 08/10 |
+|---|---|---|
+| feito | 501 | 462 |
+| feito só no servidor de exemplo | 354 | 363 |
+| parcial | 54 | 49 |
+| faltando | 27 | 29 |
+| faltando (fora de 09/10 pela spec) | 25 | 25 |
+| removido | 2 | 2 |
 
 Por épico (feito · só no exemplo · parcial · faltando):
 
 | Épico | Dono | Histórias | feito | exemplo | parcial | faltando |
 |---|---|---|---|---|---|---|
 | Recepção e entrevista | Pedro | 16 | 76 | 87 | 3 | 0 |
-| Abertura e documentação | Pedro | 12 | 9 | 86 | 7 | 3 |
+| Abertura e documentação | Pedro | 14 | 16 | 86 | 9 | 2 |
 | Documentação médica | Pedro | 8 | 2 | 40 | 1 | 0 |
-| Via administrativa no INSS | Mateus | 7 | 58 | 0 | 3 | 0 |
-| Perícia | Pedro | 8 | 0 | 61 | 4 | 0 |
+| Via administrativa no INSS | Mateus | 7 | 60 | 0 | 1 | 0 |
+| Perícia | Pedro | 9 | 6 | 61 | 5 | 1 |
 | Judicialização e vigília | Mateus | 14 | 144 | 0 | 3 | 2 |
-| Desfecho e financeiro | Mateus | 4 | 18 | 0 | 1 | 8 |
-| Relacionamento com o cliente | Pedro | 6 | 2 | 47 | 1 | 0 |
-| Experiência por perfil e chat | Pedro | 3 | 4 | 24 | 7 | 2 |
-| Fundação técnica | Mateus | 7 | 47 | 0 | 4 | 0 |
+| Desfecho e financeiro | Mateus | 4 | 19 | 0 | 0 | 8 |
+| Relacionamento com o cliente | Pedro | 6 | 12 | 37 | 1 | 0 |
+| Experiência por perfil e chat | Pedro | 5 | 15 | 25 | 9 | 0 |
+| Fundação técnica | Mateus | 8 | 49 | 0 | 7 | 0 |
 | Garantia e governança | Mateus | 7 | 63 | 1 | 5 | 0 |
 | IA jurídica | Mateus | 5 | 24 | 5 | 6 | 5 |
 | Jurimetria | Mateus | 5 | 15 | 12 | 4 | 9 |
 
+Atenção: as histórias da Recepção, da documentação médica, da Perícia e do Relacionamento que não foram recontadas (ver
+o topo) seguem como em 08/10. Parte do "só no exemplo" delas já grava no servidor para os casos do servidor; a conta
+real de "feito" é maior do que a tabela mostra.
+
 O retrato em uma frase: o que é do Mateus está no servidor, com poucas pontas; o que é do Pedro funciona na tela, mas quase
 tudo ainda grava no navegador, e a ligação no servidor é a próxima leva (GGVP-125, 132, 137, 138).
+
+Em 09/10: as quatro ligações entraram na `main` para os casos do servidor (GGVP-125 até a cópia do contrato, 132, 137 e
+138). O que grava no navegador agora são as pessoas da semente, os documentos, o checklist, a cobrança e a primeira
+liberação (pedido #22 e o bloco seguinte). Falta também a tela da tarefa de marcar a perícia que o sistema abre (pedido
+#30, que entra pelo #43, fora da main).
 
 ## Lacunas, das mais graves para as mais leves
 
@@ -75,25 +100,25 @@ dias; grande, mais que isso.
 |---|---|---|---|---|
 | 1 | Quatro histórias estão em "Em homologação" sem ter sido entregues. "Decidir se recorre" não tem código nenhum (e tem a dúvida Q26 aberta). "Medir ganho e perda" a change da IA deixou para depois. "Perito nomeado" e "Juízo identificado" a change da Jurimetria marcou como travadas; só existe a versão do servidor de exemplo, nas telas do Pedro | GGVP-100 (CA1 a CA8), GGVP-41 (CA4, CA11 e parciais), GGVP-59 (CA1), GGVP-64 (CA3) | Mateus | grande |
 | 2 | A causa do item 1: a automação do Jira (`.github/workflows/jira.yml`) põe em "Em homologação" toda chave citada em qualquer commit de um PR mesclado, até em "a GGVP-41 fica para depois" | processo (sem história) | Mateus | pequeno |
-| 3 | A tarefa "Marcar perícia" que o servidor abre (pela decisão da advogada, pela exigência do INSS ou pelo despacho) abre "tela não construída", e o resultado registrado na tela da perícia não volta ao servidor | GGVP-49 (CA1, CA2), GGVP-31 (CA7), GGVP-70 (CA6), GGVP-83 (CA2); P1 e P18 | Pedro (ligação GGVP-137) | grande |
-| 4 | O caso que a Documentação libera não chega à fila da Sênior no servidor: Recepção e Abertura ainda gravam metade no navegador, e o teste de tela do servidor para na entrevista | GGVP-125 (CA1, CA2, CA3, CA5, CA6), GGVP-104 (CA7), GGVP-109 (CA2) | Pedro (épico Abertura; o cartão GGVP-125 está com o Mateus; o bloco 3b está no PR #32) | grande |
-| 5 | Duas tarefas do servidor abrem "tela não construída": "Ajustar o caso", depois que a Sênior reprova, e "Levar ao banco", do Atendimento | GGVP-23 (CA3), GGVP-44 (CA10), GGVP-98 (CA6); P2 e P3 | Mateus | médio |
-| 6 | A homologação: o deploy automático entrou nesta noite, mas a tarefa "ligar a homologação antes de 09/10" segue aberta na lista do épico. Confirmar hoje que o endereço abre, com os dados de teste (o teste de amanhã é lá) | GGVP-119 (CA1, CA2), GGVP-126 (CA3) | Mateus | pequeno |
-| 7 | "Tarefas do setor" não existe: o líder não vê nem distribui as tarefas, e a atribuição não chega ao histórico | GGVP-78 (CA12), GGVP-99 (CA5, fora pela spec); P6 | Pedro | médio |
+| 3 | A tarefa "Marcar perícia" que o servidor abre (pela decisão da advogada, pela exigência do INSS ou pelo despacho) abre "tela não construída". A Perícia grava no servidor desde a noite de 08/10, mas a tarefa do sistema ainda não leva à tela de marcar, e o "O INSS liberou o agendamento" não tem botão (09/10: continua; vem no pedido #30). (no #43, fora da main) A tarefa leva à tela de marcar, com o botão da liberação: `paginas/PericiaNoServidor.test.tsx:72` e `:231`; `rotas/pericia.test.ts:433`; `e2e/pericia-servidor.e2e.ts:20`. O chat das perícias (P18) não muda | GGVP-49 (CA1, CA2), GGVP-31 (CA7), GGVP-70 (CA6), GGVP-83 (CA2), GGVP-137 (CA1); P1 e P18 | Pedro (GGVP-137, pedido #30, no #43) | médio |
+| 4 | O caso que a Documentação libera não chega à fila da Sênior no servidor. Em 09/10 (#2), a Recepção e a Abertura gravam no servidor até a cópia do contrato; faltam os documentos, o checklist e a cobrança (bloco 5, pedido #22) e a primeira liberação pela tela (bloco 6). A rota de liberar no servidor já existe (GGVP-127), mas só o "Ajustar o caso" a usa | GGVP-125 (CA1, CA2, CA3, CA5, CA6), GGVP-104 (CA7), GGVP-109 (CA2) | Mateus (pedido #22) e Pedro (bloco 6) | grande |
+| 5 | ~~Duas tarefas do servidor abrem "tela não construída": "Ajustar o caso" e "Levar ao banco"~~ Resolvido em 09/10: "Ajustar o caso" pelo #20 (GGVP-127) e "Levar ao banco" pelo #23 | GGVP-23 (CA3), GGVP-44 (CA10), GGVP-98 (CA6); P2 e P3 | — | — |
+| 6 | A homologação: o deploy automático entrou nesta noite, mas a tarefa "ligar a homologação antes de 09/10" segue aberta na lista do épico. Confirmar hoje que o endereço abre, com os dados de teste (o teste de amanhã é lá). Em 09/10, o GitHub Actions parou por cobrança às 07:03: a homologação ficou com a imagem até o #23 | GGVP-119 (CA1, CA2), GGVP-126 (CA3) | Mateus | pequeno |
+| 7 | ~~"Tarefas do setor" não existe: o líder não vê nem distribui as tarefas~~ Resolvido em 09/10 pelo #20 (GGVP-147). A atribuição vai ao histórico do servidor (`rotas/setor.test.ts:77`); o CA5 da GGVP-99 segue fora pela spec | GGVP-78 (CA12), GGVP-99 (CA5, fora pela spec); P6 | — | — |
 
 ### Médias: segue, mas falta algo que o critério pede
 
 | # | Lacuna | Histórias (critérios) | Quem faz | Tamanho |
 |---|---|---|---|---|
 | 8 | A chave da IA na homologação: sem ela, a análise do indeferimento, a versão 1 da petição e o rascunho do resumo não aparecem (P8, P9, P10). Confirmar que está configurada | GGVP-54, GGVP-63, GGVP-22 | Mateus | pequeno |
-| 9 | Feriados e suspensões não cadastrados: o prazo só pula fim de semana | GGVP-34 (CA9); P17 | Mateus (com a GGVP-146, parte 3) | médio |
+| 9 | Feriados e suspensões não cadastrados: o prazo só pula fim de semana. Desde a noite de 08/10 (GGVP-146, parte 3), a Configuração tem a seção dos feriados e o botão que carrega os de 2026 e 2027 (`e2e/feriados.e2e.ts:8`); a homologação começa vazia até a Sênior carregar | GGVP-34 (CA9); P17 | Sênior, um clique na homologação | pequeno |
 | 10 | Pedir a petição não confere o parecer médico no servidor. Por caminho o caso já passou pela conferência da Sênior; a spec deixou o bloqueio no botão para a v2, mas um laudo novo ou uma contradição depois disso não trava | GGVP-33 (CA1), GGVP-63 (CA5) | Mateus | pequeno |
 | 11 | A jurimetria de perito e de juízo não existe no servidor: a recomendação da perícia, o pedido da petição e a orientação da perícia saem sem ela ou com a do servidor de exemplo | GGVP-38 (CA2, CA6, CA7), GGVP-63 (CA7, CA8), GGVP-61 (CA3), GGVP-70 (CA8), GGVP-131 (CA8) | Mateus (depende do item 1) | grande |
 | 12 | O acervo não se alimenta sozinho (vigília, documentos, Drive), não importa a base histórica e não guarda matéria, vara, tese e lição | GGVP-41 (CA1, CA3, CA4, CA6, CA11), GGVP-55 (CA1, CA2, CA6), GGVP-131 (CA1) | Mateus (com a GGVP-146, parte 2) | grande |
 | 13 | A chance de êxito só aparece na conferência da Sênior: falta na entrevista, com as cores e a sugestão abaixo de 15%, e na decisão de recorrer | GGVP-131 (CA3, CA4, CA6) | Mateus | médio |
-| 14 | A busca da tela inicial não consulta nada | GGVP-78 (CA9) | Pedro | médio |
-| 15 | Sênior, Financeiro e Sócio ficam na Central provisória: sem chat, sem busca e sem o atalho na fila vazia | GGVP-78 (CA4, CA6), GGVP-82 (CA6); P11 | Pedro | médio |
-| 16 | Tarefas de exemplo que abrem "tela não construída" (Marta, Antônio, Pedro, Lúcia) | GGVP-78 (CA3); P4 | Pedro | pequeno |
+| 14 | ~~A busca da tela inicial não consulta nada~~ Resolvido na noite de 08/10 pela navegação por perfil (GGVP-135): `componentes/CampoBusca.test.tsx:28` a `:52` | GGVP-78 (CA9) | — | — |
+| 15 | ~~Sênior, Financeiro e Sócio ficam na Central provisória: sem chat, sem busca e sem o atalho na fila vazia~~ Resolvido pela GGVP-135 (`paginas/CentralEmConstrucao.test.tsx:20` a `:45`; `e2e/navegacao.e2e.ts:55`). Falta decidir se o Financeiro e o Sócio acham cliente na busca (Lucas). (no #43, fora da main) O Sócio lê tudo (Lucas, 07/10) e acha o cliente: `e2e/perfis.e2e.ts:33`; o Financeiro segue sem ver o caso. Sênior, Financeiro e Sócio ganham as telas do Figma (GGVP-78, abaixo) | GGVP-78 (CA4, CA6), GGVP-82 (CA6); P11 | Lucas (decisão) | — |
+| 16 | Tarefas de exemplo que abrem "tela não construída" (Marta, Antônio, Pedro, Lúcia). Em 09/10 continua; cada uma aparece só na Central de quem faz (GGVP-130) | GGVP-78 (CA3); P4 | Pedro | pequeno |
 | 17 | As regras numéricas das telas médicas (24 meses, 15 dias, PCD) são calculadas no navegador, não pela rota do servidor | GGVP-25 (CA7) | Pedro (ligação GGVP-132) | médio |
 | 18 | Kit e checklist da Abertura não usam a Configuração do escritório do servidor, e o item "Parecer médico" não aparece no checklist | GGVP-65 (CA7), GGVP-91 (CA4, CA10) | Pedro | médio |
 | 19 | O pedido de complemento ao médico não nasce de uma exigência ou manifestação do juiz, como o Lucas respondeu (Q1) | GGVP-29 | Pedro (ligação GGVP-132) | médio |
@@ -113,7 +138,8 @@ dias; grande, mais que isso.
 | 28 | Na ligação da perícia, a verificação de identidade é só um lembrete na tela, sem registro nem teste | GGVP-111 (CA6) | Pedro | pequeno |
 | 29 | O telefone da ficha é conferido por regra local, não por ferramenta de validação | GGVP-24 (CA12) | Pedro | pequeno |
 | 30 | O `.env.example` sem senha que a doc da homologação promete não existe; e a doc diz que os usuários de exemplo não vão para o banco da homologação, o contrário do preparo dos dados de teste | GGVP-119 (CA3), GGVP-126 | Mateus | pequeno |
-| 31 | A Sênior só chega ao "Dispensar o parecer" da tela de exemplo pelo endereço | GGVP-33 (CA2); P12 | Pedro | pequeno |
+| 31 | ~~A Sênior só chega ao "Dispensar o parecer" da tela de exemplo pelo endereço~~ Resolvido pela GGVP-135: pela ficha (`componentes/CasoEmAndamento.test.tsx:21`; `e2e/navegacao.e2e.ts:15`) | GGVP-33 (CA2); P12 | — | — |
+| 32 | Novo em 09/10: a trava da homologação no Chatwoot (só os telefones de `CHATWOOT_PERMITIDOS`) está na `main` (#28), mas não subiu para a homologação por causa da cobrança do GitHub Actions. Se o Chatwoot de verdade estiver ligado lá, a mensagem sai para o telefone da ficha | GGVP-146 (parte 4); P23 do roteiro | Mateus (cobrança e variáveis) | pequeno |
 
 ZapSign real (o identificador do modelo e a consulta periódica do retorno, GGVP-69 CA10 e GGVP-72 CA8) ficou fora de 09/10,
 sem história. Os 25 critérios "fora de 09/10 pela spec" são, na maioria, o chat com ação (GGVP-45, 55, 63, 87, 99, 106, 109
@@ -123,15 +149,16 @@ e 110), os modelos de contrato no servidor (GGVP-104) e a v2 da petição (GGVP-
 
 | O quê | Onde está hoje | História que liga |
 |---|---|---|
-| Recepção depois da entrevista (benefício, cálculo, cadastro, fechamento, nova demanda, segunda ficha) | servidor de exemplo | GGVP-125, bloco 3b (PR #32, aberto) |
-| Abertura (contrato, assinatura, documentos, checklist, cobrança, boas-vindas, liberação) | servidor de exemplo | GGVP-125, próximos blocos |
-| Documentação médica (parecer, laudo novo, complemento, dispensa, roteiro, leitura dos documentos médicos) | servidor de exemplo; IA simulada | GGVP-132; IA GGVP-134 |
-| Perícia (marcar, reunir, orientar, comparecimento, resultado, perfil do perito) | servidor de exemplo; IA simulada | GGVP-137; IA GGVP-139 |
-| Relacionamento (conversa, transcrição, conferência, pendência, mensagens, segurança) | servidor de exemplo; IA e transcrição simuladas | GGVP-138; IA GGVP-140; transcrição GGVP-133 |
+| Recepção depois da entrevista (benefício, cálculo, cadastro, fechamento, nova demanda, segunda ficha) | no servidor para o lead do balcão desde 09/10 (#2, blocos 3b e 3c); as pessoas da semente seguem no servidor de exemplo | GGVP-125 (entregue para o lead do servidor) |
+| Abertura: contrato, assinatura, leitura e cópia | no servidor para o lead do balcão desde 09/10 (#2, bloco 4); ZapSign e leitura da IA simulados | GGVP-125 (entregue para o lead do servidor) |
+| Abertura: documentos, checklist, cobrança, boas-vindas e a primeira liberação | servidor de exemplo, também para o caso do servidor | GGVP-125, bloco 5 (pedido #22, aberto) e bloco 6 |
+| Documentação médica (parecer, laudo novo, complemento, dispensa, roteiro, leitura dos documentos médicos) | no servidor para os casos do servidor desde a noite de 08/10 (GGVP-132), com a IA de verdade quando a chave está ligada (GGVP-134); a semente segue no servidor de exemplo | GGVP-132 e GGVP-134 (entregues; linhas não recontadas) |
+| Perícia (marcar, reunir, orientar, comparecimento, resultado, perfil do perito) | no servidor para os casos do servidor desde a noite de 08/10 (GGVP-137 e 139); a tarefa do sistema ainda não abre a tela de marcar (no #43, fora da main: abre); a semente segue no servidor de exemplo | GGVP-137 (pedido #30, no #43) |
+| Relacionamento (conversa, transcrição, conferência, pendência, mensagens, segurança) | no servidor desde a noite de 08/10 (GGVP-138); a IA (GGVP-140) e a transcrição (GGVP-133) de verdade com a chave, desde 09/10 (#13); as pessoas da semente perderam a conversa, a mensagem e os dados bancários | GGVP-138 (entregue; linhas não recontadas, exceto a GGVP-102) |
 | Chat do portal | motor do navegador | GGVP-142; acervo GGVP-141 e GGVP-131 |
-| Página do caso | servidor de exemplo | GGVP-146, parte 5 |
-| Senha do gov.br nas telas da Recepção | descartada no navegador (nunca guardada) | GGVP-146, parte 1 |
-| Chatwoot | simulado | GGVP-146, parte 4 |
+| Página do caso | o caso do servidor lê o banco desde 09/10 (#21); juízo, laços dos setores e laudo novo ainda não vêm do banco; a semente segue no servidor de exemplo | GGVP-146, parte 5 |
+| Senha do gov.br nas telas da Recepção | no cofre de verdade para a ficha do servidor desde 09/10 (#2, bloco 3b: `rotas/recepcao-decisoes.test.ts:197`); descartada no navegador para a semente | GGVP-146, parte 1 |
+| Chatwoot | de verdade no servidor quando o ambiente tem as variáveis `CHATWOOT_*` (senão simulado), só no que passa pelo correio do servidor: a janela "Mensagem ao cliente", a janela do Chatwoot (convite, confirmação, cobrança, complemento, perícia) quando o cliente é do banco, e o aviso de mudança dos dados bancários. Fora de produção (`AMBIENTE` diferente de `producao`), só para os telefones de `CHATWOOT_PERMITIDOS`; os outros ficam como não enviados, sem chamar o Chatwoot (`docs/infra/homologacao.md`). As boas-vindas do checklist e o contrato por WhatsApp seguem simulados no servidor de exemplo. Em 09/10, a trava da lista (#28) está na `main`, mas não na homologação (cobrança do GitHub Actions) | GGVP-146, parte 4 (PR #19 e #28); boas-vindas e contrato com a Abertura no servidor (GGVP-125, próximos blocos), pelo correio do cliente (`criarCorreio`) |
 | Drive (pasta do cliente, original guardado) | simulado | GGVP-107 |
 | ZapSign | simulado | fora de 09/10, sem história |
 
@@ -145,45 +172,53 @@ cadastro do lead, fechamento, nova demanda, segunda ficha) ainda usam o servidor
 próximos blocos da GGVP-125. O bloco 3b (cadastro, benefício, cálculo, fechamento, nova demanda e o cofre de verdade para
 as fichas do servidor) está no PR #32, aberto e ainda fora da `main`: esta conferência não o conta.
 
+**09/10:** os blocos 3b, 3c e 4 entraram na `main` pelo MAPECH-CO #2: para o lead do balcão, benefício, cálculo, cadastro,
+fechamento (G16), recontato, nova demanda, segunda ficha e o cofre de verdade gravam no servidor
+(`apps/api/src/rotas/recepcao-decisoes.test.ts:60` a `:197`; `recepcao-segunda-ficha.test.ts`;
+`e2e/recepcao-servidor.e2e.ts:125`, `:187` e `:230`). As linhas das histórias GGVP-16 a GGVP-124 abaixo seguem a semente e
+não foram recontadas; a GGVP-125 resume o que foi para o servidor. Pelo #14, a entrevista iniciada na hora segue o BPMN
+e cada tela da Recepção confere o perfil da sessão (GGVP-40 e GGVP-135).
+
 ### GGVP-16 · Reconhecer quem chegou e para quê
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
 | 1 | feito | busca no servidor `apps/api/src/rotas/recepcao.ts` (`POST /api/balcao/busca`); `recepcao.test.ts:49` e `:92`; regra `apps/web/src/regras/regras.test.ts:150` (CA1) |
 | 2 | feito | agendamento e ficha na busca: `regras.test.ts:163` (CA2); cópia com a agenda: `servidorLigado.test.ts:101` |
-| 3 | feito | `POST /api/fichas`; `regras.test.ts:345` e `:353` (CA3); `e2e/recepcao.e2e.ts:30` |
-| 4 | feito | `POST /api/fichas/:id/encaminhamentos`; `recepcao-agenda.test.ts:113`; `e2e/recepcao.e2e.ts:62` |
+| 3 | feito | `POST /api/fichas`; `regras.test.ts:345` e `:353` (CA3); `e2e/recepcao.e2e.ts:31` |
+| 4 | feito | `POST /api/fichas/:id/encaminhamentos`; `recepcao-agenda.test.ts:131`; `e2e/recepcao.e2e.ts:63` |
 | 5 | feito | `regras.test.ts:157` (CA5); `recepcao.test.ts:49` (acha pelo telefone) |
-| 6 | feito | `recepcao.test.ts:72` (servidor); `e2e/recepcao.e2e.ts:52`; `regras.test.ts:184` |
-| 7 | feito | `e2e/recepcao.e2e.ts:62` ("Encaminhar" desligado sem setor) |
-| 8 | feito | `e2e/recepcao.e2e.ts:62` (histórico com quem, quando e o setor) |
+| 6 | feito | `recepcao.test.ts:72` (servidor); `e2e/recepcao.e2e.ts:53`; `regras.test.ts:184` |
+| 7 | feito | `e2e/recepcao.e2e.ts:63` ("Encaminhar" desligado sem setor) |
+| 8 | feito | `e2e/recepcao.e2e.ts:63` (histórico com quem, quando e o setor) |
 | 9 | feito | `recepcao.test.ts:78` (servidor: só com "É outra pessoa"); `regras.test.ts:190` |
 | 10 | feito | `regras.test.ts:134` e `:143` (CA10); `recepcao.test.ts:49` |
-| 11 | feito | tela `paginas/NovoCliente.tsx`; `e2e/recepcao.e2e.ts:30` ("Salvar apenas"); "Salvar e marcar a entrevista" conferido na passada de 08/10 (roteiro AT1) |
+| 11 | feito | tela `paginas/NovoCliente.tsx`; `e2e/recepcao.e2e.ts:31` ("Salvar apenas"); "Salvar e marcar a entrevista" conferido na passada de 08/10 (roteiro AT1) |
 | 12 | feito | `regras.test.ts:325` (CA12, indicação pede o nome) |
-| 13 | feito | `e2e/recepcao.e2e.ts:30` (CA13, "Últimos contatos"); a anotação aparece na preparação da advogada (`e2e/preparar-entrevista.e2e.ts`, CA5) |
+| 13 | feito | `e2e/recepcao.e2e.ts:31` (CA13, "Últimos contatos"); a anotação aparece na preparação da advogada (`e2e/preparar-entrevista.e2e.ts`, CA5) |
 | 14 | feito só no servidor de exemplo | a pasta do Drive é simulada: `regras.test.ts:204` e `:208`, `servidorLigado.test.ts:85` ("a pasta do Drive ainda é a de exemplo"); o Drive de verdade é a GGVP-107, fora de 09/10 |
-| 15 | feito | `regras.test.ts:288`, `:296`, `:303`, `:359` (CA15); servidor recusa data inválida: `recepcao.test.ts:109`; `e2e/recepcao.e2e.ts:83` |
-| 16 | feito | `e2e/recepcao.e2e.ts:30` (duplo clique grava uma ficha só) |
+| 15 | feito | `regras.test.ts:288`, `:296`, `:303`, `:359` (CA15); servidor recusa data inválida: `recepcao.test.ts:109`; `e2e/recepcao.e2e.ts:89` |
+| 16 | feito | `e2e/recepcao.e2e.ts:31` (duplo clique grava uma ficha só) |
 | 17 | feito só no servidor de exemplo | "Nova demanda" no balcão leva à GGVP-124 (`e2e/nova-demanda.e2e.ts:50`); a nova demanda ainda não grava no servidor (próximos blocos da GGVP-125) |
 
 ### GGVP-17 · Receber documento entregue no balcão
 
-Tudo no servidor de exemplo do navegador; o scanner e o Drive são simulados. Ligação: GGVP-125 (bloco de documentos),
-GGVP-107 (Drive) e, no laudo novo, GGVP-132 e GGVP-134.
+Tudo no servidor de exemplo do navegador; o scanner e o Drive são simulados. Ligação: GGVP-125 (bloco de documentos,
+pedido #22), GGVP-107 (Drive) e, no laudo novo, GGVP-132 e GGVP-134. Desde 09/10 (#20, GGVP-130), a tarefa "Receber
+documento" aparece só na Central da Documentação, não na do Atendimento.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito | `paginas/Balcao.test.tsx:132`; `e2e/receber-documento.e2e.ts:26`; para o lead do servidor, o encaminhamento grava lá (`recepcao-agenda.test.ts:113`) |
-| 2 | feito só no servidor de exemplo | scanner simulado (`e2e/receber-documento.e2e.ts:26`); o PDF na pasta do Drive é a GGVP-107 |
-| 3 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:26` (caso em fase judicial); GGVP-125 |
-| 4 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:46` ("A REVISAR"); GGVP-107 |
-| 5 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:26` ("Registrar" só depois das conferências); GGVP-125 |
-| 6 | feito só no servidor de exemplo | `paginas/FichaCliente.test.tsx:174`; `e2e/receber-documento.e2e.ts:54`; GGVP-132 |
+| 1 | feito | `paginas/Balcao.test.tsx:132`; `e2e/receber-documento.e2e.ts:27`; a tarefa vai à Central da Documentação: `e2e/receber-documento.e2e.ts:49`, `paginas/CentralAtendimento.test.tsx:104`; para o lead do servidor, o encaminhamento grava lá (`recepcao-agenda.test.ts:131`) |
+| 2 | feito só no servidor de exemplo | scanner simulado (`e2e/receber-documento.e2e.ts:27`); o PDF na pasta do Drive é a GGVP-107 |
+| 3 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:27` (caso em fase judicial); GGVP-125 |
+| 4 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:64` ("A REVISAR"); GGVP-107 |
+| 5 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:27` ("Registrar" só depois das conferências); GGVP-125 |
+| 6 | feito só no servidor de exemplo | `paginas/FichaCliente.test.tsx:174`; `e2e/receber-documento.e2e.ts:72`; GGVP-132 |
 | 7 | feito só no servidor de exemplo | a IA é simulada; `e2e/parecer.e2e.ts` (GGVP-20 CA6 e CA7, "Analisar laudo novo"); GGVP-132 e GGVP-134 |
-| 8 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:70`; `regras.test.ts:402` e `:407`; o chat ainda não fala com o servidor (GGVP-142) |
+| 8 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:88`; `regras.test.ts:402` e `:407`; o chat ainda não fala com o servidor (GGVP-142) |
 | 9 | feito só no servidor de exemplo | `paginas/FichaCliente.test.tsx:174`; GGVP-132 |
-| 10 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:26` (papel ou digital, "CONFERIR O PAPEL"); GGVP-125 |
+| 10 | feito só no servidor de exemplo | `e2e/receber-documento.e2e.ts:27` (papel ou digital, "CONFERIR O PAPEL"); GGVP-125 |
 | 11 | feito só no servidor de exemplo | `regras.test.ts:204`, `:208` e `:213`; GGVP-107 |
 | 12 | feito só no servidor de exemplo | `regras.test.ts:225` e `:236`; `paginas/FichaCliente.test.tsx:194`; GGVP-107 |
 | 13 | feito só no servidor de exemplo | `regras.test.ts:267` e `:273`; `e2e/receber-documento.e2e.ts:54`; GGVP-107 |
@@ -192,11 +227,12 @@ GGVP-107 (Drive) e, no laudo novo, GGVP-132 e GGVP-134.
 
 ### GGVP-21 · Confirmar o agendamento do lead
 
-Para o lead do balcão, a confirmação grava no servidor (GGVP-125, bloco 2). O Chatwoot é simulado até a GGVP-146 (parte 4).
+Para o lead do balcão, a confirmação grava no servidor (GGVP-125, bloco 2), e a mensagem sai pelo correio do servidor
+(GGVP-146, parte 4): o Chatwoot de verdade com as variáveis `CHATWOOT_*`, senão simulado.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito (Chatwoot simulado) | `paginas/ConfirmarAgendamento.test.tsx:24` e `:40`; `e2e/confirmar-agendamento.e2e.ts:33`; mensagem no servidor: `POST /api/agendamentos/:id/confirmacao/mensagem` |
+| 1 | feito (o lead da semente, pelo Chatwoot simulado da tela) | `paginas/ConfirmarAgendamento.test.tsx:24` e `:40`; `e2e/confirmar-agendamento.e2e.ts:33`; mensagem no servidor: `POST /api/agendamentos/:id/confirmacao/mensagem` |
 | 2 | feito | `recepcao-agenda.test.ts:73`; `ConfirmarAgendamento.test.tsx:52`; `e2e/confirmar-agendamento.e2e.ts:44` |
 | 3 | feito | `recepcao-agenda.test.ts:73`; `ConfirmarAgendamento.test.tsx:67`; `e2e/recepcao-servidor.e2e.ts:34` |
 | 4 | feito | `ConfirmarAgendamento.test.tsx:24` |
@@ -252,7 +288,7 @@ A tarefa "Preparar entrevista" grava no servidor para o lead do balcão (GGVP-12
 |---|---|---|
 | 1 | feito | `paginas/CentralAdvogada.test.tsx:63`; `e2e/preparar-entrevista.e2e.ts:21`; tarefa no servidor: `recepcao-agenda.test.ts:73`, `e2e/recepcao-servidor.e2e.ts:34` |
 | 2 | feito | `paginas/PrepararEntrevista.test.tsx:40`; `regras.test.ts:635` |
-| 3 | feito só no servidor de exemplo | `PrepararEntrevista.test.tsx:23` ("A IA sugere · você confere"); o resumo é texto de exemplo, sem IA de verdade |
+| 3 | feito só no servidor de exemplo | `PrepararEntrevista.test.tsx:23` ("A IA sugere · você confere"); o resumo é texto de exemplo, sem IA de verdade. (no #43, fora da main) Com a GGVP-133, o bloco passa a se chamar "Resumo da ficha", porque é regra, não IA: `e2e/preparar-entrevista.e2e.ts:30` |
 | 4 | feito só no servidor de exemplo | `PrepararEntrevista.test.tsx:50`; `regras.test.ts:647`; a situação vem do cofre simulado, que liga na GGVP-146 (parte 1) |
 | 5 | feito | `PrepararEntrevista.test.tsx:59`; `componentes/DetalheCompromisso.test.tsx:47`; `e2e/preparar-entrevista.e2e.ts:36` |
 
@@ -280,6 +316,16 @@ Liga na GGVP-146 (parte 1), junto com o cofre de verdade (GGVP-103).
 A gravação, as ações, o fim da entrevista e as tarefas gravam no servidor para o lead do balcão (GGVP-125, bloco 3a). A
 transcrição ao vivo e o texto são simulados até a GGVP-133; a senha dita vai ao cofre simulado (GGVP-146 parte 1).
 
+**09/10:** a entrevista iniciada na hora segue o BPMN (#14): a presença conta como confirmada; sem a ficha de atendimento,
+o Atendimento recebe "Preencher ficha", e a ficha salva abre "Preparar entrevista" (`rotas/recepcao-agenda.test.ts:94`).
+As telas da entrevista pedem o perfil do Jurídico (`App.test.tsx:204`). A transcrição de verdade entrou com o #13
+(GGVP-133) e o cofre de verdade da ficha do servidor com o #2: os CA3, CA6, CA10 e CA11 abaixo não foram recontados.
+
+(no #43, fora da main) GGVP-133, pelo #37: na gravação de verdade, sem microfone, a tela avisa o motivo e não mostra
+falas de exemplo; as saídas são subir o áudio gravado fora ou registrar sem áudio. O servidor não transcreve a conversa
+de exemplo nem fabrica áudio. Com o #25, a entrevista é da advogada e da Sênior; o Jurídico administrativo não abre
+(`App.test.tsx:229`; `e2e/perfis.e2e.ts:53`).
+
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
 | 1 | feito | `paginas/EntrevistaAoVivo.test.tsx:40`; `e2e/entrevista.e2e.ts:31` |
@@ -289,7 +335,7 @@ transcrição ao vivo e o texto são simulados até a GGVP-133; a senha dita vai
 | 5 | feito | `recepcao-entrevista.test.ts:69` (fim abre "Cadastrar lead"); `EntrevistaAoVivo.test.tsx:52`; `e2e/entrevista.e2e.ts:31` |
 | 6 | feito (cofre simulado) | `EntrevistaAoVivo.test.tsx:75`; `entrevista.test.ts:60` |
 | 7 | feito | `regras.test.ts:722` (senhas de teste faladas não ficam no texto); `entrevista.test.ts:60` |
-| 8 | feito | `EntrevistaAoVivo.test.tsx:86`; `e2e/entrevista.e2e.ts:83`; sem áudio no servidor: `recepcao-entrevista.test.ts:118` |
+| 8 | feito | `EntrevistaAoVivo.test.tsx:86`; `e2e/entrevista.e2e.ts:83`; sem áudio no servidor: `recepcao-entrevista.test.ts:118`. (no #43, fora da main) Sem microfone, nada de exemplo: `paginas/EntrevistaAoVivoTranscricao.test.tsx:116`; `rotas/recepcao-entrevista.test.ts:171` e `:186`; `e2e/recepcao-servidor.e2e.ts:78` |
 | 9 | feito | `paginas/Entrevista.test.tsx:40`; `regras.test.ts:743`; servidor: `recepcao-entrevista.test.ts:118` |
 | 10 | feito só no servidor de exemplo | a divisão em partes de 24 MB está pronta (`regras.test.ts:751`, `Entrevista.test.tsx:40`); a transcrição de verdade é a GGVP-133 |
 | 11 | feito (transcrição ao vivo simulada) | `EntrevistaAoVivo.test.tsx:52`; `regras.test.ts:767` |
@@ -301,15 +347,21 @@ transcrição ao vivo e o texto são simulados até a GGVP-133; a senha dita vai
 A transcrição e a conferência gravam no servidor para o lead do balcão (GGVP-125, bloco 3a), mas o texto é sempre o mesmo
 diálogo de exemplo: a transcrição de verdade (OpenAI, quem fala, texto ao vivo) é a GGVP-133.
 
+(no #43, fora da main) GGVP-133, pelo #37: depois da transcrição de verdade, a IA lê a entrevista e sugere o resumo, os
+dados da ficha que a cliente disse, os documentos citados e o "sem trabalhar desde". Cada item vem com a hora e o trecho
+("dito aos mm:ss: «…»") e um campo "Corrigir"; a advogada confirma ou corrige item a item (G14). Sem a IA, a tela diz o
+motivo certo e segue manual. O áudio guardado toca e o texto final abre, só para quem tem a permissão da gravação, com a
+leitura registrada. Sem migração e sem mudança na matriz.
+
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito (texto simulado) | `dados/transcricao.test.ts:31`; `e2e/transcricao.e2e.ts:22`; servidor `POST /api/gravacoes/:id/transcricao` |
+| 1 | feito (texto simulado) | `dados/transcricao.test.ts:31`; `e2e/transcricao.e2e.ts:22`; servidor `POST /api/gravacoes/:id/transcricao`. (no #43, fora da main) Sem a chave, a transcrição diz que está desligada e o áudio fica, sem diálogo de exemplo: `rotas/transcricao.test.ts:287`; `e2e/recepcao-servidor.e2e.ts:128` |
 | 2 | feito | `regras.test.ts:875`; `e2e/transcricao.e2e.ts:22` |
 | 3 | feito | `dados/entrevista.test.ts:117`; `e2e/transcricao.e2e.ts:53` |
 | 4 | feito | `transcricao.test.ts:21`; `regras.test.ts:888`; `e2e/transcricao.e2e.ts:60` |
 | 5 | feito | `transcricao.test.ts:21` (nada se apaga); nenhuma rota de apagar no servidor |
-| 6 | feito | conferência no servidor: `recepcao-entrevista.test.ts:96`; `transcricao.test.ts:41` e `:66`; "Abrir áudio" e "Exportar PDF": `componentes/Transcricoes.test.tsx:61` |
-| 7 | feito | `transcricao.test.ts:57`; `recepcao-entrevista.test.ts:96`; `e2e/transcricao.e2e.ts:22` |
+| 6 | feito | conferência no servidor: `recepcao-entrevista.test.ts:96`; `transcricao.test.ts:41` e `:66`; "Abrir áudio" e "Exportar PDF": `componentes/Transcricoes.test.tsx:61`. (no #43, fora da main) A IA lê a entrevista, cada item com a hora e o trecho (`rotas/transcricao.test.ts:185`); a advogada confirma ou corrige, e o corrigido leva ao histórico o que a IA ouviu (`:225`; `componentes/Transcricoes.test.tsx:136`); sem a IA, o motivo certo e nada inventado (`transcricao.test.ts:207` e `:216`; `Transcricoes.test.tsx:106`); o áudio toca e o texto final abre, só para quem entrevista, com a leitura registrada; o Atendimento não abre (`transcricao.test.ts:249`; `Transcricoes.test.tsx:85`) |
+| 7 | feito | `transcricao.test.ts:57`; `recepcao-entrevista.test.ts:96`; `e2e/transcricao.e2e.ts:22`. (no #43, fora da main) Os documentos citados na entrevista vão para a lista do checklist depois de conferidos: `rotas/transcricao.test.ts:185`; `componentes/Transcricoes.test.tsx:136` |
 | 8 | feito só no servidor de exemplo | `transcricao.test.ts:31`; a separação vem do texto de exemplo; de verdade na GGVP-133 |
 
 ### GGVP-43 · Cadastrar o lead depois da entrevista
@@ -383,18 +435,18 @@ Servidor de exemplo; liga no próximo bloco da GGVP-125.
 ### GGVP-123 · Marcar a entrevista e a agenda
 
 Marcar, remarcar, realizado ou faltou, convite e compromisso interno gravam no servidor (GGVP-125, bloco 2). O convite
-pelo Chatwoot é simulado até a GGVP-146 (parte 4).
+sai pelo correio do servidor (GGVP-146, parte 4): o Chatwoot de verdade com as variáveis `CHATWOOT_*`, senão simulado.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
 | 1 | feito | `POST /api/fichas/:id/agendamentos`; `recepcao-agenda.test.ts:43`; `paginas/MarcarEntrevista.test.tsx:37`; `e2e/agenda.e2e.ts:17` |
 | 2 | feito | `regras.test.ts:457`; `dados/agenda.test.ts:45` |
 | 3 | feito | servidor: `recepcao-agenda.test.ts:43` (ocupado avisa para todos); `MarcarEntrevista.test.tsx:64`; `e2e/agenda.e2e.ts:36` |
-| 4 | feito (Chatwoot simulado) | `regras.test.ts:472`; `dados/agenda.test.ts:58`; `e2e/agenda.e2e.ts:17` |
+| 4 | feito (o lead da semente, pelo Chatwoot simulado da tela) | `regras.test.ts:472`; `dados/agenda.test.ts:58`; `e2e/agenda.e2e.ts:17` |
 | 5 | feito | `recepcao-agenda.test.ts:113` (compromisso interno); `paginas/Agenda.test.tsx:16` e `:37`; `e2e/agenda.e2e.ts:50` |
 | 6 | feito | `recepcao-agenda.test.ts:113` ("realizado" abre "Cadastrar lead"); `dados/agenda.test.ts:85`; `e2e/agenda.e2e.ts:80` |
 | 7 | feito | servidor: `recepcao-agenda.test.ts:43` (limite G15); `MarcarEntrevista.test.tsx:76` e `:90`; `dados/agenda.test.ts:94` |
-| 8 | feito | `Agenda.test.tsx:30`, `:63` e `:72`; `regras.test.ts:442`; `paginas/CentralAtendimento.test.tsx:89` |
+| 8 | feito | `Agenda.test.tsx:30`, `:63` e `:72`; `regras.test.ts:442`; `paginas/CentralAtendimento.test.tsx:146` |
 | 9 | feito | `dados/agenda.test.ts:94`; `e2e/agenda.e2e.ts:64` |
 
 ### GGVP-124 · Nova demanda de quem já é cliente
@@ -484,7 +536,7 @@ integração real ficou fora de 09/10 e não tem história ainda.
 | 9 | feito só no servidor de exemplo | `dados/contrato.test.ts:272` |
 | 10 | feito só no servidor de exemplo | `dados/contrato.test.ts:242`; `e2e/colher-assinatura.e2e.ts:33` |
 | 11 | feito | regra em código: `regras/contrato.test.ts:253` e `:258`; `dados/contrato.test.ts:230` |
-| 12 | feito só no servidor de exemplo | `regras/contrato.test.ts:266`; WhatsApp pelo Chatwoot simulado (GGVP-146 parte 4) |
+| 12 | feito só no servidor de exemplo | `regras/contrato.test.ts:266`; o WhatsApp pelo Chatwoot segue simulado: a GGVP-146 (parte 4) não ligou este envio, que vai para o servidor com a Abertura (GGVP-125) e deve usar o correio do cliente (`criarCorreio`) |
 
 ### GGVP-77 · Assinatura em papel na entrevista
 
@@ -574,7 +626,10 @@ casos do banco, e a liberação grava no navegador (GGVP-125, CA3).
 
 ### GGVP-97 · Boas-vindas ao cliente
 
-Servidor de exemplo; o envio pelo Chatwoot é simulado (GGVP-146, parte 4).
+Servidor de exemplo; o envio pelo Chatwoot segue simulado. A GGVP-146 (parte 4) ligou o Chatwoot de verdade só no correio
+do servidor (o modelo "Boas-vindas" da janela "Mensagem ao cliente" sai por ele); o cartão do checklist ainda não chega à
+API. Liga quando o checklist for para o servidor (GGVP-125, próximos blocos), com a rota das boas-vindas usando o correio
+do cliente (`criarCorreio`).
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
@@ -606,19 +661,44 @@ Servidor de exemplo; o envio pelo Chatwoot é simulado (GGVP-146, parte 4).
 
 ### GGVP-125 · Ligar a Recepção e a Abertura no servidor, até a conferência da Sênior
 
-O cartão está com o Mateus. Três blocos de seis entregues em 08/10 (lead e ficha; agenda e confirmação; entrevista gravada e
-transcrição); o bloco 3b está no PR #32, aberto. Faltam
-entrevista e benefício (cadastro, benefício, cálculo, fechamento), contrato, documentos com checklist e cobrança, e a
-liberação à Sênior.
+O cartão está com o Mateus. Em 09/10, com o MAPECH-CO #2, entraram os blocos 3b (as decisões depois da entrevista), 3c
+(a segunda ficha médica) e 4 (o contrato: o "fechou" vira caso, a assinatura, a leitura, a conferência e a cópia). Faltam
+o bloco 5 (documentos, checklist e cobrança, pedido #22, aberto) e o bloco 6 (a primeira liberação à Sênior pela tela).
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | parcial | ficha, agenda, confirmação, tarefas da Recepção e entrevista gravam no banco (`apps/api/src/rotas/recepcao.ts`, `recepcao-agenda.ts`, `recepcao-entrevista.ts`; testes `recepcao*.test.ts`); benefício, cálculo, cadastro, fechamento, nova demanda, contrato, documentos, checklist, cobrança e liberação ainda gravam no navegador |
-| 2 | parcial | `packages/contratos/src/recepcao.ts` tem os contratos dos três blocos; o resto dos tipos continua em `apps/web/src/dados/tipos.ts` |
-| 3 | faltando | o OK da Documentação não cria a tarefa da Sênior no banco |
-| 4 | feito | nas rotas novas: `recepcao.test.ts:148`, `recepcao-agenda.test.ts:138`; matriz: `permissoes.test.ts:97` |
-| 5 | parcial | no servidor: G9 (`recepcao.test.ts:124`, a ficha nunca grava a senha), G15 (`recepcao-agenda.test.ts:43` e `:94`) e G10 (`recepcao-entrevista.test.ts:55`); G1, G16 e G17 ainda só no servidor de exemplo |
-| 6 | faltando | o teste de tela do servidor vai do balcão à entrevista gravada (`e2e/recepcao-servidor.e2e.ts:6`, `:34` e `:71`), não à fila da Sênior |
+| 1 | parcial | gravam no banco: ficha, agenda, confirmação, tarefas da Recepção, entrevista (`rotas/recepcao.ts`, `recepcao-agenda.ts`, `recepcao-entrevista.ts`), benefício, cálculo, cadastro, fechamento, recontato e nova demanda (`recepcao-decisoes.ts`; `recepcao-decisoes.test.ts:60` a `:197`), a segunda ficha (`recepcao-segunda-ficha.ts`) e o contrato até a cópia (`recepcao-contrato.ts`; `recepcao-contrato.test.ts:55` a `:261`). Documentos, checklist, cobrança, boas-vindas e a primeira liberação ainda gravam no navegador (pedido #22 e bloco 6) |
+| 2 | parcial | `packages/contratos/src/recepcao.ts` tem os contratos dos blocos 1 a 4; os tipos dos documentos e do checklist continuam em `apps/web/src/dados/tipos.ts` |
+| 3 | faltando | a tela "Liberar ao Jurídico" ainda grava no navegador: o OK da Documentação não cria a tarefa da Sênior no banco. A rota `POST /api/casos/:id/liberacao` já existe (GGVP-127, `rotas/conferencia.test.ts:284`), mas só o "Ajustar o caso" a usa |
+| 4 | feito | nas rotas novas: `recepcao.test.ts:148`, `recepcao-agenda.test.ts:156`; matriz: `permissoes.test.ts:125` |
+| 5 | parcial | no servidor: G9 (`recepcao.test.ts:124`; cofre de verdade, `recepcao-decisoes.test.ts:197`), G15 (`recepcao-agenda.test.ts:43` e `:112`; na assinatura, `recepcao-contrato.test.ts:120`), G10 (`recepcao-entrevista.test.ts:55`), G3 (`recepcao-decisoes.test.ts:60`) e G16 (`recepcao-decisoes.test.ts:135`); G1 e G17 só valem no servidor na liberação nova do caso devolvido (`conferencia.test.ts:304`) |
+| 6 | parcial | o teste de tela do servidor vai do balcão à cópia do contrato entregue (`e2e/recepcao-servidor.e2e.ts:14` a `:346`), ainda não à fila da Sênior |
+
+### GGVP-127 · Ajustar o caso devolvido pela Sênior
+
+Nova nesta conferência (09/10), entregue pelo #20, parte 1. No Jira, em "Em homologação". Está na homologação desde a
+imagem do #23.
+
+| CA | Situação | Onde está e o teste que prova |
+|---|---|---|
+| 1 | feito | `rotas/conferencia.test.ts:274`; `paginas/AjustarCaso.test.tsx:29`; `e2e/via-administrativa.e2e.ts:90` |
+| 2 | feito | `conferencia.test.ts:184` e `:284` (nova conferência, sem o OK anterior; o ajuste sai da fila); `AjustarCaso.test.tsx:38` |
+| 3 | feito | `conferencia.test.ts:317` (a cor de ação 2 dias antes do prazo; o número de dias falta o Lucas confirmar) |
+| 4 | feito | `conferencia.test.ts:304` (G1 e G17 de novo no servidor, recusa no histórico); `AjustarCaso.test.tsx:51`; sem parecer, "Liberar de novo" desligado: `e2e/via-administrativa.e2e.ts:90` |
+
+Quem libera de novo é o Atendimento (Pedro, 08/10); para os outros perfis, a tela é só leitura (`AjustarCaso.test.tsx:59`).
+
+### GGVP-130 · Documentação usa a Central do Atendimento
+
+Nova nesta conferência (09/10), entregue pelo #20, parte 3. No Jira, em "Em homologação". O cartão não tem critérios
+numerados: as linhas seguem os itens de "O que alinhar". O item 1 (o texto dos cartões no Jira) não foi conferido aqui.
+
+| CA | Situação | Onde está e o teste que prova |
+|---|---|---|
+| 2 | feito | com a sessão da Documentação, a Central mostra só as tarefas dela; com a do Atendimento e a do líder, só as do Atendimento: `paginas/CentralAtendimento.test.tsx:104` e `:123`; `e2e/receber-documento.e2e.ts:49`; `e2e/conferir-documentos.e2e.ts` e `e2e/recepcao.e2e.ts:63` entram pela Documentação |
+| 3 | feito | o "Ajustar o caso" é do Atendimento: a tarefa do servidor vem pelo perfil da sessão (`rotas/conferencia.test.ts:274`); para a Documentação, a tela é só leitura (`AjustarCaso.test.tsx:59`) |
+| 4 | feito | `docs/bpmn/D1.md`, D1.24: quem libera é a Documentação (Lucas, 28/09), sem apagar a transcrição do Miro (documento, sem teste) |
+| 5 | parcial | `docs/requisitos/perfis.md` registra que a Documentação usa a Central do Atendimento e o que ela vê; a wiki não foi conferida |
 
 
 ## Documentação médica · dono: Pedro
@@ -627,6 +707,11 @@ Tudo no servidor de exemplo do navegador: o parecer, o laudo novo, o complemento
 documentos médicos e as linhas da deficiência e do acidente. A ligação no servidor é a GGVP-132; a IA dessas telas é
 simulada até a GGVP-134. Do lado do servidor já valem a trava do parecer na conferência da Sênior (GGVP-23) e a dispensa
 por duas Sêniores (`apps/api/src/rotas/conferencia.ts`), pela mesma regra do contrato (`travaDoParecer`, GGVP-109).
+
+**Depois desta conferência (noite de 08/10):** a documentação médica dos casos do servidor passou a gravar no banco
+(GGVP-132), com a IA de verdade quando a chave está ligada (GGVP-134); a semente segue no servidor de exemplo. Prova de
+ponta a ponta: `e2e/documentacao-medica-servidor.e2e.ts:8` (o laudo da Lúcia Prado, o parecer, o pedido ao médico e o
+resultado que a Documentação vê). As linhas abaixo não foram recontadas.
 
 ### GGVP-20 · Parecer de suficiência da documentação médica
 
@@ -672,7 +757,7 @@ Resposta do Lucas (01/10, Q14): a dispensa precisa de duas Sêniores de acordo, 
 |---|---|---|
 | 1 | parcial | a regra é uma só, no contrato (`packages/contratos/src/governanca.test.ts:75` a `:94`). No servidor, "aprovar para o INSS" recusa (`conferencia.test.ts:104`). "Liberar ao Jurídico" trava só no servidor de exemplo (`LiberarCaso.test.tsx:94`; `e2e/portao.e2e.ts:26`). **Falta:** o pedido da petição no servidor (`apps/api/src/rotas/peticao.ts`) não confere o parecer. A spec da petição deixou esse bloqueio para a v2 (GGVP-63 CA5): por caminho, o caso que chega à Justiça já passou pela conferência da Sênior; um laudo novo ou uma contradição depois disso não trava a petição |
 | 2 | feito | dispensa por duas Sêniores no servidor: `conferencia.test.ts:128` e `:150`; no card: `ParecerMedico.test.tsx:68`, `DispensarParecer.test.tsx:23`; no painel dos sócios (GGVP-75), os dispensados contra os "Suficiente" (`fluxo/resultados.test.ts:89`). Na tela do servidor de exemplo, a Sênior só chega ao "Dispensar o parecer" pelo endereço (P12) |
-| 3 | feito só no servidor de exemplo | `regras/parecer.test.ts:169`; `CentralAtendimento.test.tsx:131`; `e2e/portao.e2e.ts:56` (o chat de verdade é a GGVP-142) |
+| 3 | feito só no servidor de exemplo | `regras/parecer.test.ts:169`; `CentralAtendimento.test.tsx:197`; `e2e/portao.e2e.ts:56` (o chat de verdade é a GGVP-142) |
 | 4 | feito só no servidor de exemplo | `LiberarCaso.test.tsx:94`; `e2e/portao.e2e.ts:26` |
 | 5 | feito só no servidor de exemplo | `dados/parecer.test.ts:304` |
 
@@ -741,7 +826,7 @@ semente). O caso que a Documentação libera na tela ainda grava no navegador e 
 |---|---|---|
 | 1 | feito | `apps/api/src/rotas/conferencia.test.ts:59`; `Conferencia.test.tsx:56` |
 | 2 | feito | `conferencia.test.ts:162`; `e2e/via-administrativa.e2e.ts:70` |
-| 3 | parcial | o servidor devolve ao Atendimento com o motivo (`conferencia.test.ts:174`; `CentralAtendimento.test.tsx:190`), mas a tarefa "Ajustar o caso" abre "tela não construída" (P2 do roteiro) |
+| 3 | feito | o servidor devolve ao Atendimento com o motivo (`conferencia.test.ts:174`; `CentralAtendimento.test.tsx:258`), e desde 09/10 (#20, GGVP-127) a tarefa "Ajustar o caso" abre a tela do caso devolvido (`conferencia.test.ts:274`; `AjustarCaso.test.tsx:29`; `e2e/via-administrativa.e2e.ts:90`) |
 | 4 | feito | `conferencia.test.ts:66`; `Conferencia.test.tsx:66`; `e2e/via-administrativa.e2e.ts:59` |
 | 5 | feito | `conferencia.test.ts:71`, `:104`, `:128` e `:150`; `Conferencia.test.tsx:83`; `e2e/via-administrativa.e2e.ts:90` |
 | 6 | feito | `conferencia.test.ts:59` |
@@ -818,18 +903,18 @@ Atendimento leva o cliente.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito | `rotas/vigilia.test.ts:73` (deferido abre "Prestar contas"); `rotas/prestacao.test.ts:88` (o banco só depois) |
-| 2 | feito | `prestacao.test.ts:88` e `:97` |
-| 3 | feito | `prestacao.test.ts:167`; `Prestacao.test.tsx:150` |
-| 4 | feito | `prestacao.test.ts:80`; `Prestacao.test.tsx:57` |
-| 5 | feito | `prestacao.test.ts:80`; `contratos/src/calculo-prestacao.test.ts:5` a `:20`; `Prestacao.test.tsx:57` e `:66` |
-| 6 | feito | `prestacao.test.ts:108`; `Prestacao.test.tsx:80` |
-| 7 | feito | `prestacao.test.ts:88` |
-| 8 | feito | `prestacao.test.ts:120`; `Prestacao.test.tsx:89` |
-| 9 | feito | `prestacao.test.ts:120`; `Prestacao.test.tsx:109` |
-| 10 | parcial | o agendamento está feito (`prestacao.test.ts:150`; `Prestacao.test.tsx:140`; `e2e/via-administrativa.e2e.ts:220`), mas a tarefa "Levar ao banco" do Atendimento abre "tela não construída" (P3 do roteiro) |
-| 11 | feito | `prestacao.test.ts:167`; `Prestacao.test.tsx:150`; `contratos/src/prestacao.test.ts:41` |
-| 12 | feito | `prestacao.test.ts:191` |
+| 1 | feito | `rotas/vigilia.test.ts:73` (deferido abre "Prestar contas"); `rotas/prestacao.test.ts:96` (o banco só depois) |
+| 2 | feito | `prestacao.test.ts:96` e `:105` |
+| 3 | feito | `prestacao.test.ts:175`; `Prestacao.test.tsx:151` |
+| 4 | feito | `prestacao.test.ts:88`; `Prestacao.test.tsx:58` |
+| 5 | feito | `prestacao.test.ts:88`; `contratos/src/calculo-prestacao.test.ts:5` a `:20`; `Prestacao.test.tsx:58` e `:67` |
+| 6 | feito | `prestacao.test.ts:116`; `Prestacao.test.tsx:81` |
+| 7 | feito | `prestacao.test.ts:96` |
+| 8 | feito | `prestacao.test.ts:128`; `Prestacao.test.tsx:90` |
+| 9 | feito | `prestacao.test.ts:128`; `Prestacao.test.tsx:110` |
+| 10 | feito | o agendamento (`prestacao.test.ts:158`; `Prestacao.test.tsx:141`) e, desde 09/10 (#23), a tela "Levar ao banco" de quem leva, sem nenhum valor, com "Levei o cliente ao banco" e "Não deu" (`prestacao.test.ts:318`, `:332` e `:348`; `Prestacao.test.tsx:171` a `:188`; `e2e/via-administrativa.e2e.ts:231`) |
+| 11 | feito | `prestacao.test.ts:175`; `Prestacao.test.tsx:151`; `contratos/src/prestacao.test.ts:41` |
+| 12 | feito | `prestacao.test.ts:199` |
 
 ### GGVP-48 · Indeferido segue para a Justiça
 
@@ -845,7 +930,13 @@ As telas da perícia gravam no servidor de exemplo do navegador; a ligação no 
 GGVP-139. Do lado do servidor, o INSS e a exigência já abrem a tarefa "Marcar perícia" para o Jurídico administrativo
 (`apps/api/src/rotas/inss.ts:360`, `apps/api/src/fluxo/exigencia.ts:102`), e a recomendação da IA sobre a perícia
 (GGVP-38) já tem tela (`/casos/:id/pericias`). Mas a tarefa "Marcar perícia" do servidor não tem tela: abre "tela não
-construída" (P1 do roteiro). O lembrete ao cliente sai pelo Chatwoot simulado (GGVP-146, parte 4).
+construída" (P1 do roteiro). O lembrete ao cliente do caso do banco sai pelo correio do servidor (GGVP-146, parte 4); o
+da semente, pelo Chatwoot simulado da tela.
+
+**Depois desta conferência:** a Perícia dos casos do servidor grava no banco desde a noite de 08/10 (GGVP-137 e GGVP-139),
+e a saúde simples entrou em 09/10 (#17, na `main`, ainda não na homologação). A tarefa "Marcar perícia" do sistema
+continua sem tela (P1, pedido #30). As linhas das histórias abaixo seguem a semente e não foram recontadas; a GGVP-137,
+no fim desta seção, diz o que foi para o servidor.
 
 ### GGVP-49 · Iniciar a tarefa de perícia
 
@@ -959,6 +1050,26 @@ No teste de amanhã, comparecimento e resultado só aparecem mexendo no relógio
 
 O perfil do perito do servidor de exemplo e a jurimetria do perito do servidor (GGVP-59) são duas bases separadas até a
 GGVP-137.
+
+### GGVP-137 · Ligar no servidor as telas da Perícia
+
+Nova nesta conferência (09/10). Entregue pelo MAPECH-CO #8 (noite de 08/10) e pelo #17 (saúde simples, 09/10, na `main`
+e ainda não na homologação). No Jira, em "Em análise". O pedido #30, aberto, traz a tarefa de marcar com tela, a
+liberação do INSS pela tela, o "Anexar" do caso do servidor e a senha do gov.br na tela de marcar. O #30 entra pelo #43
+(junção da entrega de 09/10), ainda fora da `main`. Com o #43, a decisão da advogada (D2.03) fica em
+`/casos/:id/pericia/decidir`, e `/casos/:id/pericia` é a página da perícia também no caso do servidor
+(`App.test.tsx:384`). Sem migração nova e sem mudança na matriz.
+
+| CA | Situação | Onde está e o teste que prova |
+|---|---|---|
+| 1 | parcial | as telas gravam no banco para o caso do servidor (`apps/api/src/rotas/pericia.ts`; `rotas/pericia.test.ts:142` e `:192`; `e2e/pericia-servidor.e2e.ts:19`), mas a tarefa "Marcar perícia" que o sistema abre não leva à tela e a liberação do INSS ainda não tem botão (P1; pedido #30). (no #43, fora da main) A tarefa do sistema leva à tela de marcar, e na Central fica uma só (`paginas/PericiaNoServidor.test.tsx:231` e `:240`; `rotas/pericia.test.ts:433`); o botão "O INSS liberou o agendamento" (`PericiaNoServidor.test.tsx:72` e `:93`); "Ver a senha do gov.br" na tela de marcar, também na remarcação (`pericia.test.ts:445`; `PericiaNoServidor.test.tsx:110` e `:129`); "Anexar" sobe o arquivo do item à pasta do caso (`pericia.test.ts:464`; `PericiaNoServidor.test.tsx:200`); sem data lida, o Jurídico administrativo registra a data do juízo (`pericia.test.ts:548`; `PericiaNoServidor.test.tsx:177`). Com o #43, passa a feito |
+| 2 | feito | `packages/contratos/src/pericia.ts`, usado pela tela e pelo servidor. (no #43, fora da main) O contrato `AnexoNaPericia` é acréscimo |
+| 3 | feito | `pericia.test.ts:116` (cada ação exige o perfil da sessão; a recusa fica no histórico). (no #43, fora da main) A liberação do INSS só pelo Jurídico administrativo: `pericia.test.ts:433`; "Anexar" recusa com 403 quem não reúne: `pericia.test.ts:464` |
+| 4 | feito | G20 e G11 no servidor: `pericia.test.ts:166` e `:179`; dado de saúde: fora do Jurídico, desde o #17, sai só a leitura do laudo e os laudos do perfil do perito (`pericia.test.ts:389`). (no #43, fora da main) Na perícia médica, o documento anexado fica sensível: o arquivo só o Jurídico abre, e o histórico leva o item sem o nome do arquivo (`pericia.test.ts:464`) |
+| 5 | feito | a tarefa nasce da decisão do D2.03, na mesma tabela `pericia` que o INSS usa (`pericia.test.ts:90`); o histórico é o da GGVP-99. (no #43, fora da main) A perícia pedida pelo juiz lê a data, a hora e o local da publicação, vai à agenda e a tarefa de marcar fecha sozinha (`pericia.test.ts:505`, `:521` e `:537`); a do INSS não recebe data do juízo (`:570`) |
+| 6 | feito | a IA de verdade (GGVP-139) só com as chaves, testada com fetch falso (`pericia.test.ts:276` a `:413`); sem chave, a tela mostra o motivo e segue manual |
+| 7 | feito | `e2e/pericia-servidor.e2e.ts:19` (da perícia marcada ao resultado, trocando de pessoa; a liberação do INSS ainda pela API). (no #43, fora da main) `e2e/pericia-servidor.e2e.ts:20`: a liberação pela tela, a Central com uma tarefa, o botão da senha, a Documentação anexa o laudo e a página da perícia em `/casos/:id/pericia`; `e2e/pericia-marcar.e2e.ts` com o texto novo do cofre |
+| 8 | faltando | o servidor de exemplo da Perícia segue no código, para a semente e os testes de tela antigos (o #8 deixou para depois) |
 
 ## Judicialização e vigília (GGVP-9) · dono: Mateus
 
@@ -1236,15 +1347,17 @@ O P10 do roteiro (resumo vazio) fica resolvido onde a chave da IA estiver config
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito | `rotas/prestacao.test.ts:88` |
-| 2 | feito | `prestacao.test.ts:167` e `:238` |
-| 3 | feito | `prestacao.test.ts:249`; `Prestacao.test.tsx:97` |
-| 4 | feito | `prestacao.test.ts:88`, `:257` e `:279` |
-| 5 | feito | `prestacao.test.ts:167` |
-| 6 | parcial | `prestacao.test.ts:150`; `Prestacao.test.tsx:119`. A tarefa "Levar ao banco" que o Atendimento recebe abre "tela não construída" (P3 do roteiro) |
-| 7 | feito | `prestacao.test.ts:191` |
-| 8 | feito | `prestacao.test.ts:135`; `banco/migracoes.test.ts:109` |
-| 9 | feito | `prestacao.test.ts:207`, `:224` e `:267`; `Prestacao.test.tsx:131`; `e2e/via-administrativa.e2e.ts:220` |
+| 1 | feito | `rotas/prestacao.test.ts:96` |
+| 2 | feito | `prestacao.test.ts:175` e `:246` |
+| 3 | feito | `prestacao.test.ts:270`; `Prestacao.test.tsx:98` |
+| 4 | feito | `prestacao.test.ts:96`, `:278` e `:300` |
+| 5 | feito | `prestacao.test.ts:175` |
+| 6 | feito | `prestacao.test.ts:158` e `:257` (nada no passado); `Prestacao.test.tsx:120`. Desde 09/10 (#23, matriz versão 21), "Levar ao banco" abre a tela de quem leva, só com a ação `banco.levar` do Atendimento (`prestacao.test.ts:318`; `contratos/src/permissoes.test.ts:88`) |
+| 7 | feito | `prestacao.test.ts:199` |
+| 8 | feito | `prestacao.test.ts:143`; `banco/migracoes.test.ts:109` |
+| 9 | feito | `prestacao.test.ts:215`, `:232` e `:288`; "Levei" abre ao Financeiro "Confirmar o recebimento: cliente levado ao banco", e "Não deu" volta a ida para ele remarcar (`prestacao.test.ts:332` e `:348`); `Prestacao.test.tsx:132`; `e2e/via-administrativa.e2e.ts:231` |
+
+Na homologação desde a imagem do #23. A lista do que levar ao banco está fixa no servidor e falta o Lucas confirmar.
 
 ### GGVP-100 · Improcedente: decidir se recorre
 
@@ -1267,6 +1380,18 @@ Tudo no servidor de exemplo do navegador: conversa, gravação, transcrição, o
 pendência, mensagens e segurança. A ligação no servidor é a GGVP-138; a IA, a GGVP-140; a transcrição de verdade, a
 GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 
+**Depois desta conferência:** o Relacionamento grava no servidor desde a noite de 08/10 (GGVP-138), e o servidor de
+exemplo da área saiu das telas (virou o servidor falso dos testes); a IA (GGVP-140) e a transcrição de verdade
+(GGVP-133) entraram em 09/10 (#13), valendo com a chave da IA. As pessoas da semente não têm mais conversa, mensagem nem
+dados bancários. Provas com login de verdade: `e2e/conversa.e2e.ts:46`, `e2e/mensagens.e2e.ts:19` e
+`e2e/seguranca.e2e.ts:30`. Só a GGVP-102 foi recontada; as linhas das outras histórias desta seção, não.
+
+(no #43, fora da main) GGVP-133, pelo #37: na conversa, sem microfone, a tela avisa e não inventa falas, e a conversa fica
+"só registro" pela rota nova `POST /api/conversas/:id/sem-audio` (`paginas/Conversa.test.tsx:73`;
+`e2e/conversa.e2e.ts:72`); o servidor não transcreve a conversa de exemplo: sem a chave, a ligação anexada diz o motivo e
+o áudio fica (`e2e/transcricao-ligacao.e2e.ts:43`). Com o #25, o histórico da mudança dos dados bancários guarda só o
+fato, sem a conta (`e2e/seguranca.e2e.ts:30`).
+
 ### GGVP-76 · Registrar a conversa por telefone ou presencial
 
 | CA | Situação | Onde está e o teste que prova |
@@ -1278,7 +1403,7 @@ GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 | 5 | feito só no servidor de exemplo | `dados/conversa.test.ts:53`; `Conversa.test.tsx:46` |
 | 6 | feito só no servidor de exemplo | `dados/conversa.test.ts:64`; `Transcricoes.test.tsx:109` (transcrição simulada até a GGVP-133) |
 | 7 | feito só no servidor de exemplo | `dados/conversa.test.ts:103`; `e2e/conversa.e2e.ts:187` |
-| 8 | feito só no servidor de exemplo | `dados/conversa.test.ts:114`; `CentralAtendimento.test.tsx:167`; `e2e/conversa.e2e.ts:63` |
+| 8 | feito só no servidor de exemplo | `dados/conversa.test.ts:114`; `CentralAtendimento.test.tsx:233`; `e2e/conversa.e2e.ts:63` |
 | 9 | feito só no servidor de exemplo | `dados/conversa.test.ts:64`; `FichaCliente.test.tsx:33`; `e2e/conversa.e2e.ts:14` |
 
 ### GGVP-80 · Transcrever e identificar o que mudou
@@ -1316,23 +1441,33 @@ GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 | 1 | feito só no servidor de exemplo | `regras/conversa.test.ts:171`; `dados/conversa.test.ts:326`; `ConferirConversa.test.tsx:137` |
 | 2 | feito só no servidor de exemplo | `dados/conversa.test.ts:352`; `ConferirConversa.test.tsx:177` |
 | 3 | feito só no servidor de exemplo | `regras/conversa.test.ts:160`; `ConferirConversa.test.tsx:162` |
-| 4 | feito só no servidor de exemplo | `dados/conversa.test.ts:326`; `CentralAtendimento.test.tsx:179`; `e2e/conversa.e2e.ts:149` |
+| 4 | feito só no servidor de exemplo | `dados/conversa.test.ts:326`; `CentralAtendimento.test.tsx:247`; `e2e/conversa.e2e.ts:149` |
 | 5 | feito só no servidor de exemplo | `regras/conversa.test.ts:181`; `dados/conversa.test.ts:358` |
 
 ### GGVP-102 · Mensagens ao cliente com modelo e registro
 
+No servidor (GGVP-138 e GGVP-146), o complemento sai com o pedido de complemento aberto no caso (parado no laço, G15, não
+sai) e cada envio conta como tentativa do laço, de qualquer janela. O aviso desfavorável sai com o resumo aprovado pelo
+Jurídico (GGVP-22); se a advogada decidiu falar ela mesma, só ela manda. O favorável não sai por esta janela: vai pela tela
+"Avisar resultado e agendar a ida ao banco", do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).
+
+**09/10:** recontada. As mensagens dos clientes do servidor passam pelo servidor desde a GGVP-138 (noite de 08/10) e pelo
+Chatwoot de verdade, quando ligado, desde o #19. Os modelos de complemento e de resultado (CA8) e a trava da lista de
+telefones (CA6) vieram no #28: estão na `main`, mas ainda não na homologação. Para as pessoas da semente, a janela do
+Chatwoot continua simulada na tela.
+
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito só no servidor de exemplo | `regras/mensagens.test.ts:5`; `dados/mensagens.test.ts:15`; `MensagemAoCliente.test.tsx:24`; `e2e/mensagens.e2e.ts:11` |
-| 2 | feito só no servidor de exemplo | `dados/mensagens.test.ts:66` |
-| 3 | feito só no servidor de exemplo | `regras/mensagens.test.ts:24`; `MensagemAoCliente.test.tsx:39`; `e2e/mensagens.e2e.ts:28` |
-| 4 | feito só no servidor de exemplo | `dados/mensagens.test.ts:66` |
-| 5 | feito só no servidor de exemplo | `dados/mensagens.test.ts:78`; `MensagemAoCliente.test.tsx:70`; `ConviteChatwoot.test.tsx:63`; `e2e/mensagens.e2e.ts:42` |
-| 6 | feito só no servidor de exemplo | `regras/mensagens.test.ts:51`; `dados/mensagens.test.ts:53`; `MensagemAoCliente.test.tsx:61` (Chatwoot simulado) |
-| 7 | feito só no servidor de exemplo | `regras/mensagens.test.ts:5`; `dados/mensagens.test.ts:33`; `MensagemAoCliente.test.tsx:50` |
-| 8 | feito só no servidor de exemplo | `dados/mensagens.test.ts:45` |
-| 9 | feito só no servidor de exemplo | `regras/mensagens.test.ts:37`; `dados/mensagens.test.ts:90`; `MensagemAoCliente.test.tsx:39` |
-| 10 | feito só no servidor de exemplo | `ConviteChatwoot.test.tsx:52` (Chatwoot simulado) |
+| 1 | feito | no servidor, a mensagem pronta do modelo: `apps/api/src/rotas/mensagens.test.ts:46`; `regras/mensagens.test.ts:5`; `MensagemAoCliente.test.tsx:24`; `e2e/mensagens.e2e.ts:19` |
+| 2 | feito | o envio vai a "Últimos contatos" e ao histórico, com data, canal e texto: `mensagens.test.ts:76`; `e2e/mensagens.e2e.ts:19` |
+| 3 | feito | regra em código: `regras/mensagens.test.ts:24`; `MensagemAoCliente.test.tsx:39`; `e2e/mensagens.e2e.ts:36` |
+| 4 | feito | o registro no servidor, com quem enviou e o status, sem repetir na mesma conversa: `mensagens.test.ts:76`; o fim da mensagem: `regras/mensagens.test.ts:62` |
+| 5 | feito | a falha fica na tela e no histórico como "não saiu", e nada é reenviado sozinho: `mensagens.test.ts:96` e `:329`; `MensagemAoCliente.test.tsx:70`; `ConviteChatwoot.test.tsx:63` |
+| 6 | feito | `regras/mensagens.test.ts:51`; `MensagemAoCliente.test.tsx:61`; no servidor, o Chatwoot de verdade com fetch falso e a trava da homologação: `apps/api/src/rotas/mensagens.test.ts:251`, `:402` e `:420`; `MensagemAoCliente.test.tsx:144` |
+| 7 | feito: no servidor, o favorável sai só pela tela do Financeiro, com o texto da prestação de contas (G8) | `regras/mensagens.test.ts:5`; `MensagemAoCliente.test.tsx:50`; no servidor: `apps/api/src/rotas/mensagens.test.ts:184` (esta janela não o manda) e `prestacao.test.ts:175` (o aviso da ida ao banco); `e2e/mensagens.e2e.ts:56` |
+| 8 | feito | no servidor: `apps/api/src/rotas/mensagens.test.ts:155` e `:169` (a advogada que fala ela mesma); o complemento pela regra: `:125` e `:148` |
+| 9 | feito | regra: `regras/mensagens.test.ts:37`; no servidor, G11 e G20 barram e a perícia vem do processo: `mensagens.test.ts:46` e `:61`; `MensagemAoCliente.test.tsx:39` |
+| 10 | feito | o convite do cliente do servidor sai pelo correio do servidor: `ConviteChatwoot.test.tsx:53`; `mensagens.test.ts:251`; `e2e/recepcao-servidor.e2e.ts:42`. Para a semente, simulado |
 
 ### GGVP-111 · Terceiro não se passa pelo cliente para obter informação ou mudar dados
 
@@ -1342,7 +1477,7 @@ GGVP-133; o Chatwoot de verdade, a GGVP-146 (parte 4).
 | 2 | feito só no servidor de exemplo | `regras/seguranca.test.ts:44`; `dados/seguranca.test.ts:93`; `e2e/seguranca.e2e.ts:25` |
 | 3 | feito só no servidor de exemplo | `regras/seguranca.test.ts:29`; `Conversa.test.tsx:167`; `e2e/seguranca.e2e.ts:59` |
 | 4 | feito | `regras/mensagens.test.ts:62`; `e2e/seguranca.e2e.ts:73` |
-| 5 | feito só no servidor de exemplo | `regras/seguranca.test.ts:33`; `dados/seguranca.test.ts:62` e `:83`; `CartaoDadosBancarios.test.tsx:19` |
+| 5 | feito só no servidor de exemplo | `regras/seguranca.test.ts:33`; `dados/seguranca.test.ts:62` e `:83`; `CartaoDadosBancarios.test.tsx:19`; o aviso ao contato anterior que não saiu vira alerta, sem sucesso falso: `CartaoDadosBancarios.test.tsx:67` e `apps/api/src/rotas/seguranca.test.ts:104` |
 | 6 | parcial | só um lembrete na tela das mensagens da perícia (`componentes/MensagemAoCliente.tsx:149`), sem teste; a ligação de orientação da perícia não pede nem registra a verificação |
 | 7 | feito só no servidor de exemplo | `LaudoPeloChat.test.tsx:62`; `Conversa.test.tsx:167` |
 | 8 | feito só no servidor de exemplo | `regras/seguranca.test.ts:23`; `ConferirConversa.test.tsx:203`; `Conversa.test.tsx:175` |
@@ -1353,24 +1488,35 @@ As Centrais juntam as tarefas do servidor e as do servidor de exemplo. O chat re
 pelo motor de IA de verdade é a GGVP-142. A página do caso lê o servidor de exemplo: a página do processo pelo banco é a
 GGVP-146 (parte 5).
 
+**09/10:** a GGVP-78 foi recontada (busca, chat e tarefas do setor); a página do processo dos casos do servidor lê o
+banco desde o #21 (nota na GGVP-86); entraram a GGVP-135 e a GGVP-147, no fim desta seção.
+
 ### GGVP-78 · Tela inicial "O que é meu hoje" por perfil
 
 Sem spec própria no repositório: os critérios são os do cartão no Jira.
 
+(no #43, fora da main) O #42, que entra pelo #43, traz as telas do Figma que faltavam: as Centrais da Sênior e do
+Financeiro, a tela inicial do Sócio (o painel de resultado, com a busca e o chat), Clientes e Processos no topo e o painel
+Financeiro. Provas: `e2e/centrais-e-financeiro.e2e.ts:7`, `:23` e `:44`; `e2e/clientes-e-processos.e2e.ts:7`, `:28` e
+`:42`; `App.test.tsx:306`, `:367`, `:402` e `:414`; `componentes/Topbar.test.tsx:53`, `:70` e `:76`. O painel Financeiro
+faz as contas por código, em centavos inteiros (`packages/contratos/src/financeiro.test.ts:37` e `:51`), e o servidor só
+o abre a quem vê os totais (`rotas/financeiro.test.ts:77`, `:99` e `:106`; `paginas/Financeiro.test.tsx:63` e `:85`).
+Junto com o #25, o Financeiro fica com os Resultados no topo e o Sócio vê os lançamentos de cada cliente no painel.
+
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito | a Central do Atendimento: `CentralAtendimento.test.tsx:20` e `:190`; cada perfil vê só a sua raia no servidor: `apps/api/src/rotas/inss.test.ts:98` |
+| 1 | feito | a Central do Atendimento: `CentralAtendimento.test.tsx:20` e `:258`; cada perfil vê só a sua raia no servidor: `apps/api/src/rotas/inss.test.ts:98`; desde 09/10, a Documentação vê na mesma Central só as tarefas dela (GGVP-130): `CentralAtendimento.test.tsx:104` e `:123`. (no #43, fora da main) Sênior e Financeiro com Central própria, com a fila do servidor: `paginas/CentralSenior.test.tsx:63`, `paginas/CentralFinanceiro.test.tsx:51`; o Sócio vê a fila acima do painel quando há tarefa dele: `paginas/InicioDoSocio.test.tsx:62` |
 | 2 | parcial | o servidor põe as urgentes no topo (`apps/api/src/rotas/inss.ts:191`) e a linha avisa a urgência (`TarefaLinha.test.tsx:43`); nenhum teste prova a ordem da fila |
-| 3 | parcial | a linha abre o passo (`TarefaLinha.test.tsx:33`), mas várias tarefas abrem "tela não construída": a perícia do servidor (P1), "Levar ao banco" (P3) e quatro tarefas de exemplo (P4) |
-| 4 | parcial | a Central provisória diz "Nada na sua fila agora" (P11), sem o atalho para buscar cliente; nas Centrais de Atendimento, Advogada e Jurídico administrativo não há estado vazio |
+| 3 | parcial | a linha abre o passo (`TarefaLinha.test.tsx:33`); "Ajustar o caso" e "Levar ao banco" abrem desde 09/10 (#20, #23), mas a perícia do servidor (P1, pedido #30) e quatro tarefas de exemplo (P4) ainda abrem "tela não construída". (no #43, fora da main) A perícia do servidor abre a tela de marcar (`paginas/PericiaNoServidor.test.tsx:231` e `:240`); as quatro do P4 continuam |
+| 4 | parcial | a Central provisória diz "Nada na sua fila agora."; desde a noite de 08/10, a da Sênior tem o atalho para a busca de cliente (`paginas/CentralEmConstrucao.test.tsx:29`); o Financeiro e o Sócio não, porque não veem o caso; o texto pedido ("Nada pendente para você hoje") não mudou. (no #43, fora da main) A Central da Sênior, vazia, leva à busca (`paginas/CentralSenior.test.tsx:75`); a do Financeiro, vazia, leva ao painel Financeiro (`paginas/CentralFinanceiro.test.tsx:62`); o Sócio cai no painel de resultado (`paginas/InicioDoSocio.test.tsx:47`). A Central provisória fica só para perfil sem Central. O texto pedido continua o mesmo |
 | 5 | feito | `TarefaLinha.test.tsx:24`, `:33` e `:51` |
-| 6 | parcial | Atendimento, Advogada e Jurídico administrativo têm o chat abaixo da busca (`CentralAtendimento.test.tsx:113` e `:156`); Sênior, Financeiro e Sócio ficam na Central provisória, sem chat nem busca (P11) |
+| 6 | feito | Atendimento, Advogada e Jurídico administrativo têm o chat abaixo da busca (`CentralAtendimento.test.tsx:179` e `:222`); Sênior, Financeiro e Sócio também, desde a noite de 08/10 (GGVP-135): `paginas/CentralEmConstrucao.test.tsx:20`, `:36` e `:45`; `e2e/navegacao.e2e.ts:55`. (no #43, fora da main) O chat passa para as telas próprias, com as sugestões do Figma: `paginas/CentralSenior.test.tsx:41`, `paginas/CentralFinanceiro.test.tsx:41`, `paginas/InicioDoSocio.test.tsx:47`; a Documentação, o líder e o Sócio recebem a lista deles, não a do Atendimento (`regras/chat.test.ts:118`) |
 | 7 | feito | `TarefaLinha.test.tsx:24` |
 | 8 | parcial | o servidor junta vencidas e de hoje como "urgentes" (`inss.ts:127`); as de hoje não vêm separadas logo depois das vencidas |
-| 9 | faltando | a busca não consulta nada (`componentes/CampoBusca.tsx:5`) |
-| 10 | feito | a tarefa concluída sai da fila: `inss.test.ts:136`; `CentralAtendimento.test.tsx:167` |
-| 11 | feito só no servidor de exemplo | o protocolo (D2.02) vem do servidor (`inss.test.ts:90`); as tarefas da perícia vêm do servidor de exemplo (`e2e/pericia-marcar.e2e.ts:25`), até a GGVP-137 |
-| 12 | faltando | "Tarefas do setor: tela ainda não construída" nas Centrais (P6); o líder não distribui |
+| 9 | feito | desde a noite de 08/10 (GGVP-135), a busca acha clientes por nome, CPF, telefone ou número do processo (para quem vê o caso) e as tarefas da própria fila: `componentes/CampoBusca.test.tsx:28` a `:52`; `e2e/navegacao.e2e.ts:15`. (no #43, fora da main) Clientes e Processos no topo, com filtros, página de 50, CPF mascarado e a busca no corpo do pedido, nunca no endereço: `rotas/bases.test.ts:85`, `:108` e `:185`; `paginas/Bases.test.tsx:100` e `:198`; "Exportar CSV" fica no histórico: `rotas/bases.test.ts:207`; `e2e/clientes-e-processos.e2e.ts:7` e `:28` |
+| 10 | feito | a tarefa concluída sai da fila: `inss.test.ts:136`; `CentralAtendimento.test.tsx:233` |
+| 11 | feito só no servidor de exemplo | o protocolo (D2.02) vem do servidor (`inss.test.ts:90`); as tarefas da perícia vêm do servidor de exemplo (`e2e/pericia-marcar.e2e.ts:25`), até a GGVP-137. (no #43, fora da main) Na Central do Jurídico administrativo, a perícia do servidor aparece com uma tarefa só, que abre a tela de marcar: `paginas/PericiaNoServidor.test.tsx:231`; `e2e/pericia-servidor.e2e.ts:20` |
+| 12 | feito | desde 09/10 (#20, GGVP-147): a aba "Tarefas do setor" do líder, com "Atribuir" no servidor (`rotas/setor.test.ts:61` a `:98`; `componentes/TarefasDoSetor.test.tsx:31` a `:70`; `e2e/tarefas-do-setor.e2e.ts:6` e `:19`) |
 
 ### GGVP-82 · Conversar com o portal em linguagem natural
 
@@ -1381,7 +1527,7 @@ Sem spec própria no repositório: os critérios são os do cartão no Jira.
 | 3 | feito só no servidor de exemplo | `dados/chat.test.ts:107`; `ChatDoPortal.test.tsx:54` e `:83` |
 | 4 | feito só no servidor de exemplo | `regras/chat.test.ts:44`, `:54` e `:61`; `dados/chat.test.ts:118`; `ChatDoPortal.test.tsx:96` |
 | 5 | feito só no servidor de exemplo | `dados/chat.test.ts:127`; `ChatDoPortal.test.tsx:54` |
-| 6 | parcial | o lugar do chat está certo onde há Central (`ChatDoPortal.test.tsx:154` e `:173`; `CentralAtendimento.test.tsx:156`); Sênior, Financeiro e Sócio ainda sem chat (P11) |
+| 6 | feito só no servidor de exemplo | o lugar do chat está certo onde há Central (`ChatDoPortal.test.tsx:154` e `:173`; `CentralAtendimento.test.tsx:222`); Sênior, Financeiro e Sócio ganharam o chat na noite de 08/10 (GGVP-135: `paginas/CentralEmConstrucao.test.tsx:20`); o motor do chat ainda é o do navegador (GGVP-142) |
 | 7 | feito só no servidor de exemplo | `regras/chat.test.ts:71`, `:76` e `:84`; `dados/chat.test.ts:141` |
 | 8 | feito só no servidor de exemplo | `regras/chat.test.ts:107`; `dados/chat.test.ts:158`; `ChatDoPortal.test.tsx:104` |
 | 9 | feito só no servidor de exemplo | `regras/chat.test.ts:91` e `:100`; `dados/chat.test.ts:167` |
@@ -1390,6 +1536,12 @@ Sem spec própria no repositório: os critérios são os do cartão no Jira.
 | 12 | feito só no servidor de exemplo | `dados/chat.test.ts:184` a `:227`; `ChatDoPortal.test.tsx:118` e `:134` |
 
 ### GGVP-86 · Navegar pelo caso numa linha só
+
+**09/10 (#21, GGVP-146 parte 5):** o caso que nasceu no servidor lê a página do processo do banco, na visão de quem está
+na sessão: status, etapas, tarefas e o resultado da perícia para todos do caso; o conteúdo médico só para o Jurídico, com
+o acesso registrado; a peça só com `peticao.ver`; os valores só para o Financeiro e a advogada do caso; Financeiro e Sócio
+não abrem (`apps/api/src/rotas/processo.test.ts:125` a `:243`; `e2e/caso.e2e.ts:68`). Juízo, laços dos setores e laudo
+novo ainda não vêm do banco, e a tela os esconde. As linhas abaixo seguem a semente e não foram recontadas.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
@@ -1407,6 +1559,34 @@ Sem spec própria no repositório: os critérios são os do cartão no Jira.
 | 12 | feito só no servidor de exemplo | `regras/caso.test.ts:71`; `dados/caso.test.ts:126`; `PaginaDoCaso.test.tsx:109` e `:117` |
 | 13 | feito só no servidor de exemplo | `regras/caso.test.ts:81`; `dados/caso.test.ts:135`; `e2e/caso.e2e.ts:46` |
 
+### GGVP-135 · Toda tela alcançável por clique, por perfil
+
+Nova nesta conferência (09/10). Entregue pelo MAPECH-CO #9 (noite de 08/10, a auditoria e os caminhos) e pelo #14
+(madrugada de 09/10, a trava por tela e o topo). No Jira, em "Em homologação".
+
+| CA | Situação | Onde está e o teste que prova |
+|---|---|---|
+| 1 | parcial | por clique, com o login de cada perfil: `e2e/navegacao.e2e.ts:15`, `:25`, `:39`, `:48` e `:55`; `componentes/CasoEmAndamento.test.tsx:21` a `:45`. Sem caminho: "Estudos de caso" para a advogada e o Jurídico administrativo (`docs/navegacao-por-perfil.md`) |
+| 2 | feito | a tela de outro perfil nem monta ("Sem permissão", `ACESSO_DAS_TELAS` no `App.tsx`): `App.test.tsx:204`; a API recusa pelo perfil da sessão |
+| 3 | parcial | ainda abrem "tela não construída": a "Marcar perícia" do sistema (P1, pedido #30) e as tarefas de exemplo P4 e P5 |
+| 4 | parcial | a auditoria lista o que espera outro dono (`docs/navegacao-por-perfil.md`); a lista tela a tela das que ainda usam o servidor de exemplo não foi conferida aqui |
+| 5 | feito | o que o Figma desenha e o portal não tem ficou anotado como decisão (`docs/navegacao-por-perfil.md`, "O que espera decisão ou outro dono") |
+| 6 | parcial | tema escuro e fonte grande têm teste em várias telas (por exemplo `e2e/mensagens.e2e.ts:67` e `e2e/receber-documento.e2e.ts:101`); teclado e contraste não foram auditados tela por tela |
+| 7 | feito | `docs/navegacao-por-perfil.md` |
+| 8 | feito | `e2e/navegacao.e2e.ts`; `componentes/CampoBusca.test.tsx:28`; `componentes/CasoEmAndamento.test.tsx:21`; `paginas/CentralEmConstrucao.test.tsx:20`; `paginas/Configuracao.test.tsx:60`; `apps/api/src/rotas/historico.test.ts:64`; `App.test.tsx:204` |
+
+### GGVP-147 · Líderes veem as tarefas do setor e distribuem quem faz
+
+Nova nesta conferência (09/10), entregue pelo #20, parte 2. No Jira, em "Em homologação". Está na homologação desde a
+imagem do #23. A fidelidade ao Figma não foi conferida aqui.
+
+| CA | Situação | Onde está e o teste que prova |
+|---|---|---|
+| 1 | feito | `apps/api/src/rotas/setor.test.ts:61` e `:71`; `componentes/TarefasDoSetor.test.tsx:31`; `e2e/tarefas-do-setor.e2e.ts:6` e `:19` |
+| 2 | feito | `setor.test.ts:77` (a fila da pessoa e o histórico com quem, para quem e quando) e `:92`; `TarefasDoSetor.test.tsx:47` e `:70` |
+| 3 | feito | `setor.test.ts:98` (403 pelo perfil da sessão); `CentralAtendimento.test.tsx:20`; `e2e/tarefas-do-setor.e2e.ts:6` |
+| 4 | feito | tabela `atribuicao_tarefa` (migração 0020) sobre as tarefas do banco: `setor.test.ts:77` |
+
 ## Fundação técnica (GGVP-2) e processo (GGVP-3) · dono: Mateus
 
 Tudo no servidor de verdade (`apps/api`), com testes no banco embutido.
@@ -1416,12 +1596,16 @@ Tudo no servidor de verdade (`apps/api`), com testes no banco embutido.
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
 | 1 | feito | `apps/api/src/sessao/rotas.test.ts:39` e `:51`; `sessao/regras.test.ts:28`; `Entrar.test.tsx:21`; `e2e/login.e2e.ts:12` |
-| 2 | feito | `sessao/rotas.test.ts:89` e `:99`; `sessao/regras.test.ts:7` a `:19`; `e2e/login.e2e.ts:39` |
-| 3 | feito | `App.test.tsx:224`; `Entrar.test.tsx:55`; `e2e/login.e2e.ts:28` |
-| 4 | feito | `sessao/rotas.test.ts:121`; `App.test.tsx:210`; `e2e/login.e2e.ts:54` |
+| 2 | feito | `sessao/rotas.test.ts:89` e `:99`; `sessao/regras.test.ts:7` a `:19`; `e2e/login.e2e.ts:41` |
+| 3 | feito | `App.test.tsx:255`; `Entrar.test.tsx:55`; `e2e/login.e2e.ts:28` |
+| 4 | feito | `sessao/rotas.test.ts:121`; `App.test.tsx:241`; `e2e/login.e2e.ts:56` |
 | 5 | feito | `sessao/rotas.test.ts:133` e `:143` |
 | 6 | feito | `sessao/rotas.test.ts:152`; `banco/usuarios.test.ts:14` |
 | 7 | feito | `sessao/rotas.test.ts:163` |
+
+09/10: conferida de novo; os critérios não mudaram, só as linhas de `App.test.tsx` e `e2e/login.e2e.ts`, que andaram
+com as mesclas. Desde o #14, cada tela de passo confere o perfil da sessão e o topo mostra "Você · (função da sessão)",
+com o Início na Central do perfil ativo (`App.test.tsx:204`).
 
 ### GGVP-118 · Base de código: stack (ADR-001), monorepo, banco de dados e CI
 
@@ -1433,6 +1617,12 @@ Tudo no servidor de verdade (`apps/api`), com testes no banco embutido.
 | 4 | feito | `banco/migracoes.test.ts:32` |
 | 5 | feito | `.github/workflows/ci.yml`: typecheck, lint, testes, Playwright e varredura de segredos |
 | 6 | feito | `packages/campos` (`packages/campos/test/campos.test.ts`); `packages/contratos/src/contratos.test.ts` |
+
+09/10 (#15): a imagem da homologação e o servidor do teste de navegador rodam no fuso de Brasília (`TZ=America/Sao_Paulo`
+no `Dockerfile` e em `apps/web/playwright.config.ts`; configuração, sem teste próprio). Antes, das 21h à meia-noite, as
+regras das telas viam o dia seguinte. Algumas rotas ainda contam o "hoje" pela data em UTC (por exemplo, a urgência das
+tarefas em `rotas/inss.ts`): o próprio pedido deixou para o Mateus trocar por `hojeEmBrasilia`. A CI (CA5) parou em 09/10
+às 07:03 por cobrança do GitHub Actions: a última verificação completa da `main` que passou é a da mescla do #23.
 
 ### GGVP-119 · Ambiente: homologação no Coolify com deploy a cada merge e Postgres de dev por pessoa
 
@@ -1484,22 +1674,39 @@ Sem spec própria no repositório: os critérios são os do cartão no Jira.
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|
-| 1 | feito | `packages/contratos/src/permissoes.test.ts:44` |
-| 2 | feito | `permissoes.test.ts:19`; `sessao/rotas.test.ts:202` |
+| 1 | feito | `packages/contratos/src/permissoes.test.ts:48`. (no #43, fora da main) A matriz das decisões de 07/10: o Sócio lê tudo, com os valores, sem saúde nem passo (`permissoes.test.ts:64`); a Sênior faz os passos jurídicos da advogada, menos o limite e o resultado da perícia e os valores (`:80`); o Jurídico administrativo não entrevista nem analisa a ficha (`:89`); o contrato é do Atendimento, e os dados bancários, de quem pede, confirma ou repassa (`:94`); a Gestão sem o Financeiro, que fica com os Resultados (`:100`) |
+| 2 | feito | `permissoes.test.ts:23`; `sessao/rotas.test.ts:202` |
 | 3 | feito | `banco/usuarios.test.ts:40` (pela linha de comando; não há tela para o Sócio atribuir perfis, P15 do roteiro) |
-| 4 | feito | `permissoes.test.ts:23` |
-| 5 | feito | `permissoes.test.ts:27` |
-| 6 | feito | `permissoes.test.ts:34`; `rotas/inss.test.ts:176` |
-| 7 | feito | `permissoes.test.ts:38` |
+| 4 | feito | `permissoes.test.ts:27` |
+| 5 | feito | `permissoes.test.ts:31` |
+| 6 | feito | `permissoes.test.ts:38`; `rotas/inss.test.ts:176` |
+| 7 | feito | `permissoes.test.ts:42` |
 | 8 | feito | `sessao/rotas.test.ts:202` |
-| 9 | feito | `EntrarComo.test.tsx:55` e `:67`; `sessao/rotas.test.ts:202` |
-| 10 | feito | `sessao/rotas.test.ts:180`; `permissoes.test.ts:61`; `EntrarComo.test.tsx:19`; `e2e/perfis.e2e.ts:6` |
-| 11 | feito | `EntrarComo.test.tsx:55`; `e2e/via-administrativa.e2e.ts:52` |
-| 12 | feito | `permissoes.test.ts:44` e `:48`; `rotas/conferencia.test.ts:77`; `Conferencia.test.tsx:74` |
-| 15 | feito | `permissoes.test.ts:7` e `:108` |
+| 9 | feito | `EntrarComo.test.tsx:55` e `:67`; `sessao/rotas.test.ts:202`; desde 09/10 (#14), uma tabela só no `App.tsx` (`ACESSO_DAS_TELAS`) dá a cada tela de passo a ação da matriz, e a tela do perfil errado nem monta: `App.test.tsx:204`. (no #43, fora da main) Linhas novas na tabela: o contrato é do Atendimento, a manifestação é do Jurídico e a entrevista não é do Jurídico administrativo (`App.test.tsx:229`); a Sênior lê a assinatura pela tarefa do limite (G15, `:247`); o Sócio lê o caso e o Financeiro só vê os Resultados da Gestão (`:259`); o `?simular=` só vale no desenvolvimento (`:288`) |
+| 10 | feito | `sessao/rotas.test.ts:180`; `permissoes.test.ts:65`; `EntrarComo.test.tsx:19`; `e2e/perfis.e2e.ts:6`. (no #43, fora da main) "Sair" e "Entrar como…" mantêm a cópia do navegador, para o roteiro trocar de pessoa na mesma aba (decisão de 09/10): `componentes/Topbar.test.tsx:36`; `e2e/perfis.e2e.ts:23` |
+| 11 | feito | `EntrarComo.test.tsx:55`; `e2e/via-administrativa.e2e.ts:52`; desde 09/10, em toda tela da Recepção, da Abertura, da Perícia e da conversa: `App.test.tsx:204`. (no #43, fora da main) Com login de verdade: o Financeiro vê "Sem permissão" em Prazos e o servidor recusa (`e2e/perfis.e2e.ts:33`), e também na Configuração (`e2e/feriados.e2e.ts:8`) e em Clientes (`e2e/clientes-e-processos.e2e.ts:42`); a Documentação no contrato e o Jurídico administrativo na entrevista (`e2e/perfis.e2e.ts:53`); a Sênior no painel Financeiro (`e2e/centrais-e-financeiro.e2e.ts:7`). No servidor, a Gestão recusa o Financeiro: `rotas/gestao.test.ts:66` |
+| 12 | feito | `permissoes.test.ts:48` e `:52`; `rotas/conferencia.test.ts:77`; `Conferencia.test.tsx:74`; desde 09/10: a página do processo do banco (`rotas/processo.test.ts:175` e `:203`, #21), "Levar ao banco" sem valores (`rotas/prestacao.test.ts:318`, #23) e a Perícia, que fora do Jurídico tira só a leitura do laudo (`rotas/pericia.test.ts:389`, #17, ainda não na homologação). (no #43, fora da main) O Sócio lê o caso com os valores, sem o conteúdo médico e sem a peça (`rotas/processo.test.ts:209`); a peça jurídica (pacote da petição e versões da manifestação) só vai a quem vê a petição (`rotas/conferencia.test.ts:71`, `rotas/documentos.test.ts:76`, `rotas/manifestacao.test.ts:72`); os dados bancários só para quem pede, confirma ou repassa (`paginas/FichaCliente.test.tsx:27`), e o histórico da ficha guarda só o fato, sem a conta (`e2e/seguranca.e2e.ts:30`) |
+| 15 | feito | `permissoes.test.ts:7` e `:140`. (no #43, fora da main) Matriz na versão 22, com a conta de cada perfil: `permissoes.test.ts:7` e `:180` |
 | 16 | feito | `banco/migracoes.test.ts:109` |
 
-A história não tem CA13 nem CA14 (a numeração pula na spec).
+A história não tem CA13 nem CA14 (a numeração pula na spec). Em 09/10, a matriz está na versão 21 (`banco.levar` para o
+Atendimento e o líder, GGVP-98: `permissoes.test.ts:88`). Os acessos por perfil do Sócio, da Sênior, do contrato, das
+peças, dos dados bancários e da Gestão vêm no pedido #25, aberto, que entra pelo #43 (fora da main), com a matriz na
+versão 22 e sem migração nova. Continua sem tela para o Sócio atribuir perfis (CA3, P15). Para o PO decidir, do #25: o
+Sócio lê tudo, mas não recebe as peças (`peticao.ver` é só do Jurídico).
+
+### GGVP-146 · Portal funcionando de verdade
+
+Nova nesta conferência (09/10). É uma tarefa técnica em cinco partes, sem critérios numerados: as linhas seguem as
+partes do cartão. No Jira, em "Em andamento".
+
+| CA | Situação | Onde está e o teste que prova |
+|---|---|---|
+| 1 | parcial | a senha do gov.br da ficha do servidor vai ao cofre de verdade (`rotas/recepcao-decisoes.test.ts:197`, #2); nas telas da semente, o cofre de exemplo descarta o valor (`apps/web/src/dados/cofre.ts`) |
+| 2 | feito | o importador de clientes e processos por planilha, com a simulação antes de gravar: `apps/api/src/fluxo/importacao.test.ts`, `rotas/importacao.test.ts`, `e2e/importar.e2e.ts:15`. A importação real fica para depois, com o arquivo que o Lucas indicar |
+| 3 | feito | a seção na Configuração e a carga de 2026 e 2027: `fluxo/feriados.test.ts`, `rotas/feriados.test.ts`, `e2e/feriados.e2e.ts:8`. A homologação começa vazia até a Sênior carregar |
+| 4 | parcial | o Chatwoot de verdade no servidor, atrás das variáveis, com a trava da homologação: `rotas/mensagens.test.ts:241` a `:420`; `MensagemAoCliente.test.tsx:116` a `:144`. Seguem simulados as boas-vindas do checklist e o contrato por WhatsApp; falta o webhook do status; a trava (#28) ainda não subiu para a homologação |
+| 5 | parcial | a página do processo do caso do servidor lê o banco: `rotas/processo.test.ts:125` a `:243`; `e2e/caso.e2e.ts:68`. Juízo, laços dos setores e laudo novo ainda não vêm do banco |
 
 ## Garantia e governança (GGVP-13) · dono: Mateus
 

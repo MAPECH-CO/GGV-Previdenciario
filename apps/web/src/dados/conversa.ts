@@ -1,11 +1,11 @@
 // A conversa com o lead ou o cliente (fluxo D5, GGVP-12), no servidor (GGVP-138): cada função chama a rota da API, com o
-// perfil da sessão. A gravação é a mesma da entrevista (GGVP-40), simulada no servidor até a de verdade; a transcrição
-// também. Quem conduz, quem confere e o que cada perfil pode são conferidos lá. O servidor de exemplo daqui saiu.
+// perfil da sessão. A gravação é a mesma da entrevista (GGVP-40), com o áudio de verdade, e a transcrição vem da OpenAI
+// pelo motor de IA (GGVP-133). Quem conduz, quem confere e o que cada perfil pode são conferidos lá. O servidor de
+// exemplo daqui saiu; a conversa de exemplo ficou só no servidor falso dos testes.
 import { useEffect, useState } from 'react'
 import type { ChaveAoVivo, Conferencia as ConferenciaDoContrato, Conversa as ConversaDoContrato, Pendencia as PendenciaDoContrato } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import type { CanalDoRegistro, ComQuem, DecisaoDaMudanca, Dito, ModoDoRegistro, Mudanca, Pessoa, VersaoDoCampo } from '../regras/conversa.ts'
-import { falasDaConversa, type FalaDaConversa } from './conversaSimulada.ts'
 import { extensaoDo, type ParteDoAudio } from './entrevista.ts'
 import { PESSOAS_DO_ESCRITORIO_DE_EXEMPLO } from './exemplo.ts'
 import { noBanco, receber } from './servidor.ts'
@@ -24,9 +24,6 @@ export type NovaConversa = { canal: CanalDoRegistro; comQuem: ComQuem; modo: Mod
 export type AudioDaLigacao = { nome: string; tipo: string; tamanho: number; avisoNaGravacao: true }
 
 export type ConversaAberta = { conversa: Conversa; ficha: Ficha; gravacao?: Gravacao }
-
-// A fala simulada da conversa: a tela mostra a transcrição ao vivo com ela; o servidor transcreve com a mesma.
-export { falasDaConversa, type FalaDaConversa }
 
 /** "Surgiu pendência?" (GGVP-88): o combinado, quem fica com a tarefa (nunca presumido) e o prazo (dd/mm/aaaa). */
 export type NovaPendencia = { surgiu: false } | { surgiu: true; texto: string; responsavel: string; prazo: string }
@@ -65,6 +62,9 @@ export const registrarAcaoNaConversa = (conversaId: string, acao: Extract<AcaoNa
 /** POST /api/conversas/:id/finalizar. O áudio fica no card do lead ou cliente e vai para a transcrição (CA6, CA9). */
 export const finalizarConversa = (conversaId: string, fim: { aos: number }) => pedir(`/conversas/${conversaId}/finalizar`, fim)
 
+/** POST /api/conversas/:id/sem-audio (GGVP-133): sem microfone, quem conversou escreve o que foi conversado. */
+export const registrarConversaSemAudio = (conversaId: string, notas: string) => pedir(`/conversas/${conversaId}/sem-audio`, { notas: notas.trim() })
+
 /**
  * POST /api/conversas/:id/audio. A ligação já feita sobe gravada, com o aviso nela (CA2, G10). GGVP-133: com o arquivo, ele
  * vai de verdade para a pasta do cliente (a gravação baixada da conversa do Chatwoot).
@@ -81,7 +81,8 @@ export function anexarAudio(conversaId: string, arquivo: AudioDaLigacao, conteud
 export function enviarParteDaConversa(conversaId: string, parte: ParteDoAudio) {
   const corpo = new FormData()
   corpo.append('inicio', String(Math.round(parte.inicio)))
-  corpo.append('arquivo', parte.audio, `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
+  // O áudio gravado fora (sem microfone) vai com o nome dele; a parte do microfone, pelo tipo.
+  corpo.append('arquivo', parte.audio, parte.audio instanceof File ? parte.audio.name : `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
   return pedir(`/conversas/${conversaId}/audio`, corpo)
 }
 
