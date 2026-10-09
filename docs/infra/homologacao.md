@@ -33,6 +33,10 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
 1. No projeto: **+ New → Docker Image**. Image Name: `ghcr.io/mapech-co/ggv-previdenciario:main`.
 2. **General → Ports Exposes:** `3000`. **Domains:** `https://prev-homolog.<dominio>` (com `https://`, o Coolify pede o certificado sozinho).
 3. **Environment Variables**, só de execução (não de build): `DATABASE_URL` com a URL do passo 1.2 e `COFRE_CHAVE` com a chave do passo 1.3.
+   Opcional, para as mensagens ao cliente saírem pelo Chatwoot de verdade (GGVP-146): `CHATWOOT_URL` (sem barra no fim),
+   `CHATWOOT_CONTA` (o número da conta), `CHATWOOT_CAIXA` (o número da caixa de entrada) e `CHATWOOT_TOKEN` (o token de
+   acesso de um agente da conta). Sem as quatro, as mensagens seguem simuladas. Em homologação, só uma conta e uma caixa de
+   teste: a conta do escritório tem contatos reais, e a mensagem sai no WhatsApp deles.
 4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
 5. **Webhooks:** copie a **Deploy webhook URL**.
 

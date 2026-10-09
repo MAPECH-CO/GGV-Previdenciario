@@ -89,3 +89,45 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('Mensagem ao cliente · Chatwoot de verdade, pelo servidor (GGVP-146)', () => {
+  const PRONTA = { modelo: 'boas-vindas', texto: 'Olá, Maria! Boas-vindas ao escritório GGV.', editavel: true, trava: null, simulado: false }
+
+  /** A API devolve a mensagem pronta do Chatwoot de verdade; o envio responde "enviada". */
+  async function abrirDeVerdade(cliente: object) {
+    const ficha = (await obterFicha('maria-exemplo'))!
+    const pedidos: { metodo: string; corpo?: unknown }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit = {}) => {
+        pedidos.push({ metodo: init.method ?? 'GET', corpo: init.body ? JSON.parse(String(init.body)) : undefined })
+        return Response.json(
+          init.method === 'POST'
+            ? { id: 'm1', fichaId: ficha.id, modelo: 'boas-vindas', texto: PRONTA.texto, canal: 'Chatwoot', conversa: 600, quando: '2026-10-07T17:32:00.000Z', quem: 'Ana', status: 'enviada' }
+            : { ...PRONTA, ...cliente },
+        )
+      }),
+    )
+    render(comSessao(<MensagemAoCliente ficha={ficha} modeloInicial="boas-vindas" aoFechar={() => {}} />))
+    await screen.findByRole('region', { name: 'Na central do Chatwoot' })
+    return pedidos
+  }
+
+  it('sem "simulado"; sem conversa na caixa, o envio vai com a conversa 0 e o servidor abre uma', async () => {
+    const pedidos = await abrirDeVerdade({ contato: { id: 31, nome: 'Maria Exemplo', telefone: '11900000001' }, conversas: [] })
+    expect(screen.getByText('Sai pela central do Chatwoot, na conversa do cliente')).toBeTruthy()
+    expect(screen.getByText('Ainda sem conversa deste telefone na caixa do escritório: ao enviar, o portal abre uma.')).toBeTruthy()
+    fireEvent.click(enviar())
+    expect(await screen.findByText(/✓ Enviada no Chatwoot às/)).toBeTruthy()
+    expect(pedidos.at(-1)).toMatchObject({ metodo: 'POST', corpo: { modelo: 'boas-vindas', conversa: 0 } })
+    vi.unstubAllGlobals()
+  })
+
+  it('"Abrir a conversa" usa o endereço que o servidor manda', async () => {
+    const link = 'https://chatwoot.teste/app/accounts/7/conversations/502'
+    await abrirDeVerdade({ contato: { id: 31, nome: 'Maria Exemplo', telefone: '11900000001' }, conversas: [{ id: 502, caixa: 'GGV PREV', situacao: 'aberta', mensagens: 5, ultimaEm: '2026-10-07T17:00:00.000Z', link }] })
+    expect(screen.getByRole('link', { name: 'Abrir a conversa' }).getAttribute('href')).toBe(link)
+    expect(screen.queryByText(/Ainda sem conversa/)).toBeNull()
+    vi.unstubAllGlobals()
+  })
+})

@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
+import type { ContatoChatwoot, ConversaChatwoot } from '@ggv/contratos'
 import { formatarTelefone } from '../campos.ts'
-import { linkDaConversa, type ContatoChatwoot, type ConversaChatwoot } from '../dados/chatwoot.ts'
+import { linkDaConversa } from '../dados/chatwoot.ts'
 import styles from './ConversaNoChatwoot.module.css'
 
 type Props = {
@@ -10,13 +11,15 @@ type Props = {
   aoEscolher: (id: number) => void
   /** O texto que "Copiar a mensagem" leva para colar na conversa. */
   texto: string
+  /** Falso quando o envio sai pelo Chatwoot de verdade (GGVP-146): sem conversa, o servidor abre uma. */
+  simulado?: boolean
 }
 
 /**
  * O cliente na central do Chatwoot (GGVP-102, CA6; Pedro 07/10): o contato do telefone da ficha, as conversas dele com a
  * de mais mensagens primeiro, "Copiar a mensagem" e "Abrir a conversa".
  */
-export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, texto }: Props) {
+export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, texto, simulado = true }: Props) {
   const idTitulo = useId()
   const [copiada, setCopiada] = useState(false)
 
@@ -34,15 +37,22 @@ export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, 
       <h3 id={idTitulo} className={styles.titulo}>
         Na central do Chatwoot
       </h3>
-      {!contato ? (
+      {!contato && simulado ? (
         <p className={styles.aviso} role="note">
           O Chatwoot não achou o contato deste telefone: confira o telefone na ficha.
         </p>
       ) : (
         <>
-          <p className={styles.contato}>
-            Contato: <strong>{contato.nome}</strong> · {formatarTelefone(contato.telefone)}
-          </p>
+          {contato && (
+            <p className={styles.contato}>
+              Contato: <strong>{contato.nome}</strong> · {formatarTelefone(contato.telefone)}
+            </p>
+          )}
+          {conversas.length === 0 && (
+            <p className={styles.nota} role="note">
+              Ainda sem conversa deste telefone na caixa do escritório: ao enviar, o portal abre uma.
+            </p>
+          )}
           {conversas.length > 1 && <p className={styles.nota}>{conversas.length} conversas: a de mais mensagens vem primeiro.</p>}
           <ul className={styles.conversas} role="radiogroup" aria-label="Conversas do cliente">
             {conversas.map((c) => (
@@ -58,7 +68,7 @@ export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, 
               {copiada ? '✓ Mensagem copiada' : 'Copiar a mensagem'}
             </button>
             {escolhida !== undefined && (
-              <a className={styles.botao} href={linkDaConversa(escolhida)} target="_blank" rel="noreferrer">
+              <a className={styles.botao} href={conversas.find((c) => c.id === escolhida)?.link ?? linkDaConversa(escolhida)} target="_blank" rel="noreferrer">
                 Abrir a conversa
               </a>
             )}

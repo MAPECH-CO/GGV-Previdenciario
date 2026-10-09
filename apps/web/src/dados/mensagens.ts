@@ -1,6 +1,6 @@
 // As mensagens ao cliente (GGVP-102), no servidor (GGVP-138): a mensagem pronta de cada modelo, o envio pelo Chatwoot e o
 // registro com o status de entrega. A trava do modelo e o que o texto não pode ter (G9, G11, G20) são conferidos lá; o
-// Chatwoot segue simulado no servidor até o de verdade. O servidor de exemplo daqui saiu.
+// servidor fala com o Chatwoot de verdade quando está configurado (GGVP-146), senão simula. O servidor de exemplo daqui saiu.
 import type { MensagemAoCliente as MensagemDoContrato, MensagemPronta as ProntaDoContrato } from '@ggv/contratos'
 import type { IdDoModelo } from '../regras/mensagens.ts'
 import { noBanco } from './servidor.ts'
@@ -27,9 +27,9 @@ export function prepararMensagem(fichaId: string, modelo: IdDoModelo, processoId
 }
 
 /** O cliente da ficha no Chatwoot, para as janelas que já têm a mensagem pronta (convite, confirmação, cobrança, complemento). */
-export async function clienteNoChatwoot(fichaId: string): Promise<Pick<MensagemPronta, 'contato' | 'conversas'>> {
-  const { contato, conversas } = await prepararMensagem(fichaId, 'boas-vindas')
-  return { contato, conversas }
+export async function clienteNoChatwoot(fichaId: string): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado'>> {
+  const { contato, conversas, simulado } = await prepararMensagem(fichaId, 'boas-vindas')
+  return { contato, conversas, simulado }
 }
 
 /**

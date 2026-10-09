@@ -67,7 +67,8 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
 
   const { bloqueia, avisa } = problemasDaMensagem(texto)
   const saiu = resultado !== null && resultado.status !== 'falhou'
-  const pode = pronta !== null && !pronta.trava && texto.trim() !== '' && bloqueia.length === 0 && (!pronta.contato || conversa !== undefined) && !saiu
+  // Sem conversa na caixa, o servidor abre uma (GGVP-146); com conversas, a pessoa escolhe.
+  const pode = pronta !== null && !pronta.trava && texto.trim() !== '' && bloqueia.length === 0 && (!pronta.conversas.length || conversa !== undefined) && !saiu
 
   async function enviar() {
     if (travado.current || !pode || !perfil) return
@@ -92,7 +93,7 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
           <h2 id="mensagem-ao-cliente-titulo" className={base.titulo}>
             Mensagem ao cliente · {ficha.nome}
           </h2>
-          <p className={base.sub}>Sai pela central do Chatwoot, na conversa do cliente · simulado</p>
+          <p className={base.sub}>Sai pela central do Chatwoot, na conversa do cliente{pronta?.simulado === false ? '' : ' · simulado'}</p>
         </div>
         <button type="button" className={base.fechar} aria-label="Fechar" onClick={aoFechar}>
           ×
@@ -164,7 +165,9 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
         </>
       )}
 
-      {pronta && !pronta.trava && <ConversaNoChatwoot contato={pronta.contato} conversas={pronta.conversas} escolhida={conversa} aoEscolher={setConversa} texto={texto} />}
+      {pronta && !pronta.trava && (
+        <ConversaNoChatwoot contato={pronta.contato} conversas={pronta.conversas} escolhida={conversa} aoEscolher={setConversa} texto={texto} simulado={pronta.simulado !== false} />
+      )}
 
       {resultado?.status === 'falhou' && (
         <p className={styles.bloqueio} role="alert">

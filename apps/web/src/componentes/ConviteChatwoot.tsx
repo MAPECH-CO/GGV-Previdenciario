@@ -97,7 +97,7 @@ const CONVERSA: Record<Assunto, { rotulo: string; modelo: IdDoModelo; carregar: 
 /**
  * A conversa do cliente no Chatwoot com a mensagem pronta, para conferir e enviar (GGVP-123, CA4; GGVP-21, CA1).
  * Sai pela conversa do cliente no Chatwoot (GGVP-102, CA6), com o registro do envio e a falha na tela (CA4, CA5).
- * O Chatwoot é simulado (dados/chatwoot.ts).
+ * O cliente de exemplo usa o Chatwoot simulado (dados/chatwoot.ts); o do banco, o do servidor (de verdade, quando ligado).
  */
 export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado, aoFechar }: Props) {
   const conversaDe = CONVERSA[assunto]
@@ -106,7 +106,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
   const escolhido = usePerfil()
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<Carregada | null>(null)
-  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas'> | null>(null)
+  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado'> | null>(null)
   const [escolhida, setEscolhida] = useState<number | undefined>()
   const [mensagem, setMensagem] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -174,7 +174,11 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
             Chatwoot · conversa com {conversa?.nome ?? '…'}
           </h2>
           <p className={styles.sub}>
-            {semTelefone ? 'Sem telefone: complete na ficha antes de enviar.' : conversa ? `WhatsApp ${formatarTelefone(conversa.telefone)} · simulado` : 'abrindo…'}
+            {semTelefone
+              ? 'Sem telefone: complete na ficha antes de enviar.'
+              : conversa
+                ? `WhatsApp ${formatarTelefone(conversa.telefone)}${cliente?.simulado === false ? '' : ' · simulado'}`
+                : 'abrindo…'}
           </p>
         </div>
         <button type="button" className={styles.fechar} aria-label="Fechar" onClick={aoFechar}>
@@ -185,7 +189,9 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
         <span className={styles.rotulo}>{conversaDe.rotulo}</span>
         <textarea className={styles.texto} rows={6} maxLength={1000} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
       </label>
-      {cliente && <ConversaNoChatwoot contato={cliente.contato} conversas={cliente.conversas} escolhida={escolhida} aoEscolher={setEscolhida} texto={mensagem} />}
+      {cliente && (
+        <ConversaNoChatwoot contato={cliente.contato} conversas={cliente.conversas} escolhida={escolhida} aoEscolher={setEscolhida} texto={mensagem} simulado={cliente.simulado !== false} />
+      )}
       {erro && (
         <p role="alert" className={styles.erro}>
           {erro}
