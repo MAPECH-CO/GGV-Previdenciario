@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { eventoAuditoria, processoAcervo, usuario } from '../banco/esquema.ts'
+import { caso, eventoAuditoria, pessoa, processoAcervo, usuario } from '../banco/esquema.ts'
 import { ID_CONFERIR_DESFECHOS } from '../fluxo/acervo.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -19,8 +19,8 @@ async function cookieDe(apelido: string) {
   return { [COOKIE]: r.cookies.find((c) => c.name === COOKIE)!.value }
 }
 const conferencia = async (apelido: string) => app.inject({ method: 'GET', url: '/api/acervo/conferencia', cookies: await cookieDe(apelido) })
-const conferir = async (apelido: string, id: string, desfecho: string) =>
-  app.inject({ method: 'POST', url: `/api/acervo/processos/${id}/conferencia`, cookies: await cookieDe(apelido), payload: { desfecho } })
+const conferir = async (apelido: string, id: string, desfecho: string, tese?: string) =>
+  app.inject({ method: 'POST', url: `/api/acervo/processos/${id}/conferencia`, cookies: await cookieDe(apelido), payload: { desfecho, ...(tese !== undefined && { tese }) } })
 const itemDaCentral = async (apelido: string) =>
   ((await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe(apelido) })).json() as { id: string; titulo: string; detalhe: string; tela: string | null }[]).find(
     (t) => t.titulo === 'Conferir desfechos do lote',
@@ -93,5 +93,49 @@ describe('conferir desfechos do lote (GGVP-55)', () => {
     expect(await itemDaCentral('gabi')).toBeUndefined()
     await conferir('helena', lidos[1], 'improcedente')
     expect(await itemDaCentral('helena')).toBeUndefined()
+  })
+})
+
+describe('GGVP-41 · a ficha e a tese na conferência', () => {
+  const FICHA = { materia: 'BPC/LOAS da pessoa com deficiência', vara: null, tese: 'Renda per capita acima de 1/4 com gastos', resumo: 'O juiz concedeu.', licao: 'O laudo social decidiu.' }
+  let doPortal: string
+  let semFicha: string
+
+  beforeEach(async () => {
+    const [p] = await banco.insert(pessoa).values({ nome: 'Joana' }).returning()
+    const [c1] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', desfecho: 'procedente_total' }).returning()
+    const [c2] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'aposentadoria_pcd', fase: 'encerrado' }).returning()
+    ;[{ id: doPortal }] = await banco
+      .insert(processoAcervo)
+      .values({ casoId: c1.id, beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', fonte: 'portal', ...FICHA, criadoEm: new Date('2026-10-03T15:00:00Z') })
+      .returning()
+    // O ganho no INSS entra como "deferido" (GGVP-98); a IA ainda não leu.
+    ;[{ id: semFicha }] = await banco
+      .insert(processoAcervo)
+      .values({ casoId: c2.id, beneficio: 'aposentadoria_pcd', desfecho: 'deferido', fonte: 'portal', criadoEm: new Date('2026-10-03T15:01:00Z') })
+      .returning()
+  })
+
+  it('CA7, CA11 · o desfecho do portal vem com a ficha; sem ela, a tela sabe que a IA ainda não leu; o do lote vem sem ficha', async () => {
+    const r = (await conferencia('helena')).json() as { pendentes: { id: string; ficha: unknown }[] }
+    const ficha = new Map(r.pendentes.map((p) => [p.id, p.ficha]))
+    expect([ficha.get(doPortal), ficha.get(semFicha), ficha.get(lidos[0])]).toEqual([FICHA, null, null])
+  })
+
+  it('CA7 · a Sênior confere com a tese corrigida, e o histórico guarda a de antes e a de depois; "Deferido no INSS" também se confere', async () => {
+    expect((await conferir('helena', doPortal, 'procedente_total', ' Renda per capita com gastos de saúde ')).statusCode).toBe(200)
+    const [a] = await banco.select().from(processoAcervo).where(eq(processoAcervo.id, doPortal))
+    expect([a.tese, a.desfechoConferidoPor, a.licao]).toEqual(['Renda per capita com gastos de saúde', ids.helena, FICHA.licao])
+    const [e] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.alvo, `acervo:${doPortal}`))
+    const detalhe = e.detalhe as { teseAntes: string; tese: string }
+    expect([detalhe.teseAntes, detalhe.tese]).toEqual([FICHA.tese, 'Renda per capita com gastos de saúde'])
+    expect((await conferir('helena', semFicha, 'deferido')).statusCode).toBe(200)
+    expect((await conferir('gabi', lidos[0], 'improcedente', 'Tese')).statusCode).toBe(403)
+  })
+
+  it('CA5 · tese apagada na conferência: o desfecho conta, mas o caso fica fora do recorte por tese', async () => {
+    await conferir('helena', doPortal, 'procedente_total', '')
+    const [a] = await banco.select().from(processoAcervo).where(eq(processoAcervo.id, doPortal))
+    expect([a.tese, a.desfechoConferidoPor]).toEqual([null, ids.helena])
   })
 })
