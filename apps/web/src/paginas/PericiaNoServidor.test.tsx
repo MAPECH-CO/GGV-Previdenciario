@@ -8,7 +8,7 @@ import { iniciarPericia, sincronizarPericias } from '../dados/pericia.ts'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import type { Ficha, Tarefa } from '../dados/tipos.ts'
-import { criarPericia, marcar, mudancas, naTela, type MundoDaPericia, type Pericia } from '../regras/periciaNoCaso.ts'
+import { criarPericia, marcar, mudancas, naTela, type MundoDaPericia, type Pericia, type PedidoDePericia } from '../regras/periciaNoCaso.ts'
 import { CentralJuridicoAdm } from './CentralJuridicoAdm.tsx'
 import { MarcarPericia } from './MarcarPericia.tsx'
 import { ReunirDocumentosPericia } from './ReunirDocumentosPericia.tsx'
@@ -19,8 +19,10 @@ const PESSOA = '7a2d3c4b-5e6f-4a70-9b8c-1d2e3f4a5b6c'
 const PERICIA = '8b3e4d5c-6f70-4b81-8c9d-2e3f4a5b6c7d'
 const url = (caminho = '') => `/api/processos/${CASO}/pericia${caminho}`
 
-/** O mundo do servidor: a ficha mínima do caso e a perícia médica pedida no D2.03; liberada ou esperando o INSS. */
-function mundoDoServidor(liberada: boolean): { mundo: MundoDaPericia; pericia: Pericia } {
+const DO_INSS: PedidoDePericia = { origem: 'd2-necessidade', tipo: 'medica', instancia: 'inss', pedidaPor: 'Gabi' }
+
+/** O mundo do servidor: a ficha mínima do caso e a perícia médica pedida no D2.03 (liberada ou esperando o INSS) ou pelo juiz. */
+function mundoDoServidor(liberada: boolean, pedido = DO_INSS): { mundo: MundoDaPericia; pericia: Pericia } {
   const ficha: Ficha = {
     id: PESSOA,
     situacao: 'cliente',
@@ -38,7 +40,7 @@ function mundoDoServidor(liberada: boolean): { mundo: MundoDaPericia; pericia: P
     arquivos: [],
   }
   const mundo: MundoDaPericia = { fichas: [ficha], pericias: [], peritos: [] }
-  const pericia = criarPericia(mundo, CASO, { origem: 'd2-necessidade', tipo: 'medica', instancia: 'inss', pedidaPor: 'Gabi' }, AGORA, liberada ? AGORA : undefined, PERICIA)
+  const pericia = criarPericia(mundo, CASO, pedido, AGORA, liberada ? AGORA : undefined, PERICIA)
   return { mundo, pericia }
 }
 
@@ -130,6 +132,67 @@ describe('G9 · a senha do gov.br na tela de marcar a perícia, pelo cofre', () 
     render(comSessao(<MarcarPericia processoId={CASO} />))
     await screen.findByRole('region', { name: 'Esperando o INSS liberar o agendamento (D2.E1)' })
     expect(screen.queryByRole('region', { name: 'Meu INSS' })).toBeNull()
+  })
+})
+
+describe('perícia do juízo sem data lida: o Jurídico administrativo registra a data que o juízo designou', () => {
+  const DO_JUIZ: PedidoDePericia = { origem: 'd3a-juiz', tipo: 'medica', instancia: 'juizo', pedidaPor: 'Juízo (exemplo)' }
+  /** Preenche a data, a hora e o local no cartão da data do juízo. */
+  function preencher(cartao: HTMLElement, data: string) {
+    fireEvent.change(within(cartao).getByLabelText(/^Data \(dd\/mm\/aaaa\)/), { target: { value: data } })
+    fireEvent.change(within(cartao).getByLabelText(/^Hora/), { target: { value: '10:00' } })
+    fireEvent.change(within(cartao).getByLabelText(/^Local/), { target: { value: 'Sala 1 da Vara Federal' } })
+  }
+
+  it('na semente: a tela diz que a data não saiu, sem Meu INSS nem comprovante; registrada, vai à agenda', async () => {
+    await iniciarPericia('rita-exemplo-1', DO_JUIZ)
+    render(comSessao(<MarcarPericia processoId="rita-exemplo-1" />))
+    const cartao = await screen.findByRole('region', { name: 'A data ainda não saiu na publicação' })
+    expect(screen.getByText(/ainda não saiu na publicação \(ou saiu num formato que o sistema não lê\)/)).toBeTruthy()
+    expect(screen.queryByText(/o sistema leu na publicação/)).toBeNull()
+    // Sem o fluxo do comprovante do INSS: a perícia judicial não tem comprovante.
+    expect((screen.getByRole('radio', { name: 'Sim, marcado' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Registrar a perícia' })).toBeNull()
+    const registrar = within(cartao).getByRole('button', { name: 'Registrar a data do juízo' }) as HTMLButtonElement
+    expect(registrar.disabled).toBe(true)
+    preencher(cartao, '01/10/2026')
+    expect(within(cartao).getByText('Confira a data da perícia: ela não pode ser passada.')).toBeTruthy()
+    preencher(cartao, '22/10/2026')
+    expect(registrar.disabled).toBe(false)
+    fireEvent.click(registrar)
+    expect(await screen.findByText('Data do juízo registrada: na agenda e na ficha, com o lembrete da véspera agendado.')).toBeTruthy()
+    const feita = screen.getByRole('region', { name: '✓ Perícia registrada' })
+    expect(feita.textContent).toContain('10:00 · Sala 1 da Vara Federal')
+    expect(feita.textContent).toContain('A data veio do juízo, registrada por')
+  })
+
+  it('outro perfil vê que a data não saiu, sem o formulário', async () => {
+    await iniciarPericia('rita-exemplo-1', DO_JUIZ)
+    entrarComo('advogada')
+    render(comSessao(<MarcarPericia processoId="rita-exemplo-1" />))
+    const cartao = await screen.findByRole('region', { name: 'A data ainda não saiu na publicação' })
+    expect(within(cartao).queryByRole('button')).toBeNull()
+  })
+
+  it('no servidor: o registro vai à rota da data do juízo, sem o cofre do gov.br, e a tela recebe a perícia agendada', async () => {
+    const { mundo, pericia } = mundoDoServidor(false, DO_JUIZ)
+    const pedidos: unknown[] = []
+    ligarServidor({
+      [`GET ${url()}`]: () => naTela(mundo, pericia, AGORA),
+      [`POST ${url('/data-do-juizo')}`]: (corpo) => {
+        pedidos.push(corpo)
+        mudancas.dataDoJuizo({ mundo, pericia, agora: AGORA }, corpo as { data: string; hora: string; local: string }, 'Igor')
+        return naTela(mundo, pericia, AGORA)
+      },
+    })
+    render(comSessao(<MarcarPericia processoId={CASO} />))
+    const cartao = await screen.findByRole('region', { name: 'A data ainda não saiu na publicação' })
+    expect(screen.queryByRole('region', { name: 'Meu INSS' })).toBeNull()
+    preencher(cartao, '22/10/2026')
+    fireEvent.click(within(cartao).getByRole('button', { name: 'Registrar a data do juízo' }))
+    expect(await screen.findByText('Data do juízo registrada: na agenda e na ficha, com o lembrete da véspera agendado.')).toBeTruthy()
+    expect(pedidos).toEqual([{ data: '2026-10-22', hora: '10:00', local: 'Sala 1 da Vara Federal' }])
+    expect(screen.getByRole('region', { name: '✓ Perícia registrada' }).textContent).toContain('registrada por Igor')
   })
 })
 

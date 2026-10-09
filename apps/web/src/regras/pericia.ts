@@ -133,10 +133,17 @@ export function motivoParaNaoRegistrarMarcacao(
 ): string | null {
   if (!m.comprovante) return 'Anexe o comprovante do INSS (PDF).'
   if (!m.lido) return 'Espere a leitura do comprovante.'
-  if (!m.lido.data || m.lido.data < hoje) return 'Confira a data da perícia: ela não pode ser passada.'
-  if (!HORA.test(m.lido.hora)) return 'Confira a hora da perícia.'
-  if (m.lido.local.trim().length < 3) return 'Confira o local da perícia.'
+  const motivo = motivoDaDataDaPericia(m.lido, hoje)
+  if (motivo) return motivo
   if (m.pedeDocumentoNovo === undefined) return 'Responda se a perícia pede documento novo.'
+  return null
+}
+
+/** A data, a hora e o local da perícia, do comprovante ou do juízo (GGVP-137): a data não pode ser passada. Sem problema, null. */
+export function motivoDaDataDaPericia(d: { data: string | null; hora: string; local: string }, hoje: string): string | null {
+  if (!d.data || d.data < hoje) return 'Confira a data da perícia: ela não pode ser passada.'
+  if (!HORA.test(d.hora)) return 'Confira a hora da perícia.'
+  if (d.local.trim().length < 3) return 'Confira o local da perícia.'
   return null
 }
 
@@ -307,21 +314,33 @@ export const DIAS_PARA_MANIFESTAR = 15
 export const prazoParaManifestar = (desde: string) => somarDias(desde, DIAS_PARA_MANIFESTAR)
 
 /**
+ * Como a publicação chama cada tipo: "perícia médica"; "perícia social", "avaliação social" ou "estudo social". Só a
+ * palavra "perícia" não basta: com as duas na mesma publicação, cada uma fica com a sua data; e "laudo pericial" não é a perícia.
+ */
+const NA_PUBLICACAO: Record<TipoDePericia, RegExp> = {
+  medica: /per[ií]cia\s+m[eé]dica/i,
+  social: /(?:per[ií]cia|avalia[cç][aã]o|estudo)\s+social/i,
+}
+const OUTRA_PERICIA = new RegExp(`${NA_PUBLICACAO.medica.source}|${NA_PUBLICACAO.social.source}`, 'i')
+
+/**
  * A perícia pedida pelo juiz (D3a, resposta do Lucas de 02/10, GGVP-53): a data, a hora e o local que o juízo designou,
- * lidos da frase da publicação que fala da perícia ("perícia médica designada para 15/10/2026, às 10h30, na sala de
- * perícias…"). Sem data e hora válidas na frase, nada: o Jurídico administrativo registra quando a data sair.
+ * lidos da frase da publicação que fala da perícia daquele tipo ("perícia médica designada para 15/10/2026, às 10h30, na
+ * sala de perícias…"). Sem data e hora válidas na frase, nada: o Jurídico administrativo registra a data na tela de marcar.
  * ponytail: lê o formato do diário; a leitura pela IA entra se aparecer publicação em outro formato.
  */
-export function dataDoJuizoNaPublicacao(texto: string): { data: string; hora: string; local: string } | null {
+export function dataDoJuizoNaPublicacao(texto: string, tipo: TipoDePericia): { data: string; hora: string; local: string } | null {
   for (const frase of texto.split(/\.(?=\s|$)/)) {
-    const i = frase.search(/per[ií]cia/i)
-    if (i < 0) continue
-    const m = /(\d{2}\/\d{2}\/\d{4})\D{0,30}?\b(\d{1,2})(?:[hH](\d{2})?|:(\d{2}))/.exec(frase.slice(i))
+    const achada = NA_PUBLICACAO[tipo].exec(frase)
+    if (!achada) continue
+    // Até a outra perícia da mesma frase, se houver: a data e o local dela não são os desta.
+    const trecho = frase.slice(achada.index + achada[0].length).split(OUTRA_PERICIA)[0]
+    const m = /(\d{2}\/\d{2}\/\d{4})\D{0,30}?\b(\d{1,2})(?:[hH](\d{2})?|:(\d{2}))/.exec(trecho)
     const data = m && dataParaIso(m[1])
     if (!m || !data) continue
     const hora = `${m[2].padStart(2, '0')}:${m[3] ?? m[4] ?? '00'}`
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) continue
-    const local = /(?:local:?|\b(?:na|no|em))\s+(.+)/i.exec(frase.slice(i + m.index + m[0].length))?.[1].trim()
+    const local = /(?:local:?|\b(?:na|no|em))\s+(.+)/i.exec(trecho.slice(m.index + m[0].length))?.[1].trim().replace(/[,;]?\s+e$/, '')
     return { data, hora, local: local || 'local indicado na publicação' }
   }
   return null

@@ -39,6 +39,7 @@ import {
   periciaDo,
   periciaDoResultado,
   podeMarcar,
+  SISTEMA,
   tarefasDaAdvogadaEm,
   tarefasDaDocumentacaoEm,
   tarefasDeDecidirDocumentoEm,
@@ -296,6 +297,15 @@ export function anexarDocumentoDaPericia(processoId: string, itemId: string, arq
   return naApi(processoId, '/documentos', comArquivo('documento', arquivo, nome, { itemId }))
 }
 
+/**
+ * POST /api/processos/:id/pericia/data-do-juizo (GGVP-137). A perícia do juízo sem data lida da publicação: o Jurídico
+ * administrativo registra a data, a hora e o local que o juízo designou; vão à agenda e à ficha como a lida.
+ */
+export function registrarDataDoJuizo(processoId: string, d: { data: string; hora: string; local: string }, quem: string): Promise<PericiaNaTela> {
+  if (doServidor(processoId)) return naApi(processoId, '/data-do-juizo', d)
+  return mudar(processoId, (n) => mudancas.dataDoJuizo(n, d, quem))
+}
+
 /** Marcada no Meu INSS sem o comprovante ainda (DP.E1): a tarefa espera, com lembrete diário (CA6). */
 export function esperarComprovante(processoId: string, d: { pedeDocumentoNovo: boolean }, quem: string): Promise<PericiaNaTela> {
   if (doServidor(processoId)) return naApi(processoId, '/espera-do-comprovante', d)
@@ -421,7 +431,9 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
     const quando = `${diaFalado(m.data)}, às ${m.hora}, em ${m.local}`
     const como =
       m.origem === 'juizo'
-        ? `O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: ${quando}.`
+        ? m.registradaPor === SISTEMA
+          ? `O sistema leu a data na publicação do juízo e pôs na agenda e na ficha: ${quando}.`
+          : `${m.registradaPor} registrou a data que o juízo designou e ela está na agenda e na ficha: ${quando}.`
         : `A ${tipo} de ${primeiro} está marcada para ${quando}; o sistema leu o comprovante e pôs na agenda e na ficha.`
     const documentos = pericia.pedeDocumentoNovo ? ` A Documentação reúne o que a perícia pede até ${dataCurta(t.prazos.documentosAte, hoje)}.` : ''
     const o = pericia.orientacao
@@ -501,7 +513,7 @@ export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[]
         oQue: tipo.charAt(0).toUpperCase() + tipo.slice(1),
         categoria: 'pericias',
         responsavel: 'Jurídico administrativo',
-        passo: PASSO_NA_AGENDA[m.origem],
+        passo: m.origem === 'juizo' && m.registradaPor !== SISTEMA ? 'DP.04 · Data do juízo, registrada pelo Jurídico administrativo' : PASSO_NA_AGENDA[m.origem],
         estado: m.comparecimento ? (m.comparecimento.compareceu ? 'realizado' : 'faltou') : m.data < hoje ? 'confirmar' : 'agendado',
         fichaId: achado.ficha.id,
         remarcacoes: p.remarcacoes,

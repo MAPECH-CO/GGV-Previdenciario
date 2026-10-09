@@ -268,11 +268,12 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       }
       // CA8: a perícia pedida pelo juiz abre sozinha a tarefa do Jurídico administrativo, com a origem D3a.
       if (d.tiposPericia.length) {
-        await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
-        // GGVP-137: com a data da perícia na publicação, o sistema já a pôs na agenda (DP.04): não há o que marcar, e a tarefa
-        // de marcar fecha; o Jurídico administrativo segue pela perícia (orientar o cliente).
-        if (dataDoJuizoNaPublicacao(e.publicacao.texto))
-          await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora() }).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'DP.01'), isNull(tarefa.concluidaEm)))
+        const marcar = await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
+        // GGVP-137: com a data de cada perícia pedida na publicação, o sistema já as pôs na agenda (DP.04): não há o que
+        // marcar, e a tarefa de marcar desta exigência fecha pelo sistema. Faltando a data de uma, fica aberta: o Jurídico
+        // administrativo registra a data do juízo na tela de marcar.
+        if (d.tiposPericia.every((t) => dataDoJuizoNaPublicacao(e.publicacao.texto, t)))
+          await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora() }).where(eq(tarefa.id, marcar))
       }
       if (temItens) await tx.insert(etapa).values({ casoId, diagrama: 'D3a', passo: 'D3a.E2', situacao: 'aguardando_externo', aguardando: 'cliente responder ou entregar', iniciadaEm: agora() })
       // GGVP-87 (ajuste do Mateus, 06/10): a advogada acompanha desde já, com o prazo do processo; o protocolo só libera

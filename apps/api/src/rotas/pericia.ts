@@ -17,6 +17,7 @@ import {
   OrientacaoPelaIa,
   ComparecimentoNaPericia,
   ConclusaoDosDocumentos,
+  DataDoJuizo,
   DecisaoDaFalta,
   EsperaDoComprovante,
   FaltaNaPericia,
@@ -55,6 +56,7 @@ import {
   paraOrientar,
   periciaDo,
   periciaDoResultado,
+  podeMarcar,
   tarefasDaAdvogadaEm,
   tarefasDaDocumentacaoEm,
   tarefasDeDecidirDocumentoEm,
@@ -168,10 +170,10 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   }
 
   /**
-   * D3a (GGVP-53, resposta do Lucas de 02/10): a data que o juízo designou, lida da publicação da exigência do juiz que
-   * pediu a perícia. Sem data na publicação, nada: o Jurídico administrativo registra quando ela sair.
+   * D3a (GGVP-53, resposta do Lucas de 02/10): a data que o juízo designou para a perícia deste tipo, lida da publicação da
+   * exigência do juiz que a pediu. Sem data na publicação, nada: o Jurídico administrativo registra na tela de marcar.
    */
-  async function dataDoJuizo(casoId: string, chamadaEm: Date) {
+  async function dataDoJuizo(casoId: string, chamadaEm: Date, tipo: TipoDePericia) {
     const [x] = await banco
       .select({ texto: publicacao.texto })
       .from(exigencia)
@@ -179,7 +181,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo'), lte(exigencia.criadoEm, chamadaEm)))
       .orderBy(desc(exigencia.criadoEm))
       .limit(1)
-    return (x && dataDoJuizoNaPublicacao(x.texto)) ?? undefined
+    return (x && dataDoJuizoNaPublicacao(x.texto, tipo)) ?? undefined
   }
 
   /**
@@ -227,7 +229,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       const origem = (e && ORIGEM_DO_PASSO[e.passo]) ?? 'd2-necessidade'
       const quando = e?.concluidaEm ?? l.criadoEm
       // Pedida pelo juiz, a data da publicação vai à agenda e à ficha sozinha, como na semente.
-      const dataDoJuizoLida = origem === 'd3a-juiz' ? await dataDoJuizo(casoId, e?.iniciadaEm ?? l.criadoEm) : undefined
+      const dataDoJuizoLida = origem === 'd3a-juiz' ? await dataDoJuizo(casoId, e?.iniciadaEm ?? l.criadoEm, l.tipo as TipoDePericia) : undefined
       criarPericia(
         mundo,
         casoId,
@@ -472,6 +474,17 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       recebidoPor: pedido.usuario!.id,
     })
   }
+
+  // GGVP-137: a perícia do juízo sem data lida (a publicação fora do formato do diário, ou o despacho): o Jurídico
+  // administrativo registra a data, a hora e o local, que vão à agenda como a lida. Sem comprovante do INSS. A tarefa de
+  // marcar do sistema fecha quando nenhuma perícia do caso fica para marcar.
+  app.post<ComId>('/api/processos/:id/pericia/data-do-juizo', com('pericia.marcar'), (pedido, resposta) => {
+    const x = corpo(DataDoJuizo, pedido, resposta)
+    return x && mudar(pedido, resposta, { acao: 'pericia_data_do_juizo_registrada', passo: 'DP.04' }, async (n, quem, d) => {
+      mudancas.dataDoJuizo(n, x, quem)
+      if (!d.mundo.pericias!.some(podeMarcar)) await concluirTarefaDoInss(n.pericia.processoId, pedido.usuario!.id)
+    })
+  })
 
   // GGVP-53 CA6 (DP.E1): marcada no Meu INSS, sem o comprovante ainda.
   app.post<ComId>('/api/processos/:id/pericia/espera-do-comprovante', com('pericia.marcar'), (pedido, resposta) => {

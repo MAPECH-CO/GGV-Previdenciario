@@ -486,21 +486,26 @@ describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, a
     expect(JSON.stringify(h.detalhe)).not.toContain('laudo_maria')
   })
 
-  it('GGVP-53 · pedida pelo juiz: a data lida da publicação vai à agenda sozinha, e a tarefa de marcar fecha', async () => {
+  /** O juiz pede a perícia numa publicação do caso (D3a): a advogada classifica como exigência e distribui com os tipos. */
+  async function pedirPeloJuiz(texto: string, tiposPericia: string[]) {
     await banco.insert(configuracao).values([
       { chave: 'cobranca.limite', valor: 2 },
       { chave: 'cobranca.intervalo_dias', valor: 2 },
     ])
     await banco.update(caso).set({ fase: 'judicial' }).where(eq(caso.id, casoId))
     await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: CNJ_EXEMPLO.exigencia })
-    const texto = 'Defiro a prova pericial. Designo perícia médica para o dia 22/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro. Intimem-se.'
     await casarPublicacoes(banco, [{ fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: '2026-10-08', texto, partes: null }], relogio)
     const [pub] = await banco.select().from(publicacao)
     await app.inject({ method: 'POST', url: `/api/publicacoes/${pub.id}/classificacao`, cookies: await de('gabi'), payload: { classe: 'exigencia', dias: 15 } })
-    const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/exigencia-juiz`, cookies: await de('gabi'), payload: { decisao: 'cumprir', tiposPericia: ['medica'] } })
+    const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/exigencia-juiz`, cookies: await de('gabi'), payload: { decisao: 'cumprir', tiposPericia } })
     expect(r.statusCode).toBe(201)
+  }
+  const marcarAbertas = () => banco.select().from(tarefa).where(and(eq(tarefa.passo, 'DP.01'), isNull(tarefa.concluidaEm)))
+
+  it('GGVP-53 · pedida pelo juiz: a data lida da publicação vai à agenda sozinha, e a tarefa de marcar fecha', async () => {
+    await pedirPeloJuiz('Defiro a prova pericial. Designo perícia médica para o dia 22/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro. Intimem-se.', ['medica'])
     // Não há o que marcar: a tarefa do sistema fecha e a Central segue pela perícia (orientar o cliente).
-    expect(await banco.select().from(tarefa).where(and(eq(tarefa.passo, 'DP.01'), isNull(tarefa.concluidaEm)))).toEqual([])
+    expect(await marcarAbertas()).toEqual([])
     const p = (await ver('igor')).json()
     expect([p.situacao, p.pericia.origem, p.pericia.marcacao]).toMatchObject([
       'agendada',
@@ -511,5 +516,60 @@ describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, a
     expect(linha.agendadaPara?.toISOString()).toBe('2026-10-22T13:30:00.000Z')
     const tarefas = (await app.inject({ method: 'GET', url: '/api/pericias/tarefas', cookies: await de('igor') })).json()
     expect(tarefas.map((t: { acao: string }) => t.acao)).toEqual(['Orientar para a perícia'])
+  })
+
+  it('GGVP-53 · médica e social na mesma publicação, com o prazo do laudo pericial antes: cada uma com a sua data', async () => {
+    // Uma tarefa de marcar de outra origem, aberta, não é desta exigência: fica aberta.
+    await banco.insert(tarefa).values({ casoId, passo: 'DP.01', titulo: 'Marcar perícia médica (exigência do INSS)', perfilDono: 'juridico_adm' })
+    await pedirPeloJuiz(
+      'Intime-se o perito para entregar o laudo pericial até 30/11/2026 às 23h59. Designo perícia médica para 15/10/2026, às 10h, na sala 1. Designo perícia social com a assistente do juízo para 20/10/2026, às 14h, no domicílio.',
+      ['medica', 'social'],
+    )
+    expect((await marcarAbertas()).map((t) => t.titulo)).toEqual(['Marcar perícia médica (exigência do INSS)'])
+    await ver('igor')
+    const linhas = await banco.select().from(pericia)
+    expect(linhas.map((l) => [l.tipo, l.agendadaPara?.toISOString(), l.local]).sort()).toEqual([
+      ['medica', '2026-10-15T13:00:00.000Z', 'sala 1'],
+      ['social', '2026-10-20T17:00:00.000Z', 'domicílio'],
+    ])
+  })
+
+  it('GGVP-53 · só a médica com data na publicação: a social fica para marcar, e a tarefa de marcar continua aberta', async () => {
+    await pedirPeloJuiz('Designo perícia médica para 15/10/2026, às 10h, na sala 1. Determino estudo social, em data a ser designada.', ['medica', 'social'])
+    expect(await marcarAbertas()).toHaveLength(1)
+    await ver('igor')
+    const linhas = await banco.select().from(pericia)
+    expect(linhas.map((l) => [l.tipo, l.agendadaPara?.toISOString() ?? null]).sort()).toEqual([
+      ['medica', '2026-10-15T13:00:00.000Z'],
+      ['social', null],
+    ])
+  })
+
+  it('GGVP-137 · sem data lida, o Jurídico administrativo registra a data do juízo: vai à agenda e a tarefa de marcar fecha', async () => {
+    await pedirPeloJuiz('Designo perícia médica para 22/10/2026, às 10 horas, na sala 1 da Vara.', ['medica'])
+    expect(await marcarAbertas()).toHaveLength(1)
+    const antes = (await ver('igor')).json()
+    expect([antes.situacao, antes.pericia.instancia, antes.pericia.marcacao]).toEqual(['marcar', 'juizo', undefined])
+    const data = { data: '2026-10-22', hora: '10:00', local: 'Sala 1 da Vara Federal de Santo Amaro' }
+    // Só o Jurídico administrativo registra; o servidor confere de novo a data e a forma.
+    expect((await post('ana', '/data-do-juizo', data)).statusCode).toBe(403)
+    expect((await post('igor', '/data-do-juizo', { ...data, data: '2026-10-01' })).json()).toEqual({ erro: 'Confira a data da perícia: ela não pode ser passada.' })
+    expect((await post('igor', '/data-do-juizo', { ...data, hora: '10h' })).statusCode).toBe(400)
+    const r = await post('igor', '/data-do-juizo', data)
+    expect(r.statusCode).toBe(200)
+    expect([r.json().situacao, r.json().pericia.marcacao]).toMatchObject(['agendada', { ...data, origem: 'juizo', registradaPor: 'igor' }])
+    expect(r.json().pericia.historico.map((h: { oQue: string }) => h.oQue)).toContain('Registrou a data que o juízo designou e pôs na agenda e na ficha: 22/10, 10:00, Sala 1 da Vara Federal de Santo Amaro')
+    expect(await marcarAbertas()).toEqual([])
+    const [linha] = await banco.select().from(pericia)
+    expect(linha.agendadaPara?.toISOString()).toBe('2026-10-22T13:00:00.000Z')
+    expect(await acoes()).toContain('pericia_data_do_juizo_registrada')
+    // Já agendada, não registra de novo por aqui.
+    expect((await post('igor', '/data-do-juizo', data)).json()).toEqual({ erro: 'Esta perícia não está para marcar.' })
+  })
+
+  it('GGVP-137 · a perícia do INSS não recebe data do juízo: a data dela vem do comprovante', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    expect((await post('igor', '/data-do-juizo', { data: '2026-10-22', hora: '10:00', local: 'Sala 1' })).json()).toEqual({ erro: 'A data desta perícia vem do comprovante do INSS.' })
   })
 })

@@ -23,6 +23,13 @@ export const ComprovanteLido = z.object({ data: Data, hora: Hora, local: Texto(1
 export const MarcacaoConferida = z.object({ lido: ComprovanteLido, pedeDocumentoNovo: z.boolean() })
 export type MarcacaoConferida = z.infer<typeof MarcacaoConferida>
 
+/**
+ * POST /api/processos/:id/pericia/data-do-juizo (GGVP-137): a data, a hora e o local que o juízo designou, registrados pelo
+ * Jurídico administrativo quando a publicação não os trouxe num formato que o sistema lê. A regra confere a data não passada.
+ */
+export const DataDoJuizo = z.object({ data: Data, hora: Hora, local: Texto(120) })
+export type DataDoJuizo = z.infer<typeof DataDoJuizo>
+
 /** POST /api/processos/:id/pericia/espera-do-comprovante: marcada no Meu INSS, sem comprovante ainda (DP.E1, CA6). */
 export const EsperaDoComprovante = z.object({ pedeDocumentoNovo: z.boolean() })
 export type EsperaDoComprovante = z.infer<typeof EsperaDoComprovante>
