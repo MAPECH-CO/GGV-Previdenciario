@@ -90,3 +90,11 @@ Toda data de um momento (aprovado em, concluído em, enviado em) SHALL aparecer 
 - **Dado** uma prestação concluída em 08/10 às 22h30 de Brasília (09/10 01h30 em UTC)
 - **Quando** abro a tela
 - **Então** aparece 08/10, e o prazo de pagamento 20/10 continua 20/10
+
+### Requirement: CA11 · Benefício aparece pelo nome, nunca pelo código
+Todo benefício mostrado na tela ou na linha da Central SHALL aparecer pelo nome do catálogo ("Pensão por Morte", "Auxílio-Acidente"), nunca pelo código ("pensao morte", "auxilio acidente"). Sem benefício, "a definir". Regra única `nomeDoBeneficio` em `@ggv/contratos`, ao lado de `ROTULO_BENEFICIO`, no servidor e na tela (revisão de 08/10, L1).
+
+#### Scenario: CA11 · Conferência da pensão
+- **Dado** um caso de pensão por morte esperando a Sênior
+- **Quando** ela abre a Central e a conferência
+- **Então** lê "Pensão por Morte" nas duas, e não "pensao morte"
