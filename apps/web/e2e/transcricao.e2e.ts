@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-46 · Transcrever a entrevista. Cada teste abre um navegador novo, então começa da semente de exemplo.ts: a
 // entrevista da Josefa é hoje e o Antônio já tem as conversas do Figma 1626:2.
@@ -9,6 +10,7 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 async function gravarEEncerrar(page: Page, caminho = '/entrevista/josefa-entrevista/gravacao') {
+  await entrarPelaApi(page, ADVOGADA)
   await page.clock.install()
   await page.goto(caminho)
   await page.getByRole('button', { name: 'Gravar' }).click()
