@@ -45,6 +45,8 @@ const TAMANHO_MAXIMO = 25 * 1024 * 1024
 
 /** Tela de cada passo, quando já existe. */
 const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
+  // GGVP-127: o caso devolvido pela Sênior, com o motivo e o prazo, para ajustar e liberar de novo.
+  'D1.ajuste': (id) => `/casos/${id}/ajuste`,
   'D2.01': (id) => `/casos/${id}/conferencia`,
   'D2.02': (id) => `/casos/${id}/protocolo`,
   'D2.03': (id) => `/casos/${id}/pericia`,
@@ -82,6 +84,13 @@ type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => agora.toISOString().slice(0, 10)
+
+/**
+ * GGVP-127 CA3: o ajuste com prazo fica com a cor de ação a partir destes dias antes de vencer. O cartão diz "perto de
+ * vencer" sem número: é parâmetro, a confirmar com o Lucas.
+ */
+export const DIAS_DE_AVISO_DO_AJUSTE = 2
+const pertoDeVencer = (prazo: string, agora: Date) => prazo <= hoje(new Date(agora.getTime() + DIAS_DE_AVISO_DO_AJUSTE * 86_400_000))
 
 export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazenamento, agora = () => new Date() }: Opcoes) {
   app.register(fastifyMultipart, { limits: { fileSize: TAMANHO_MAXIMO, files: 1, fields: 10 } })
@@ -124,7 +133,10 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
           tela: l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.tarefa.casoId) : null,
           prazo: l.tarefa.prazo,
           // Pensão por morte em destaque na fila da Sênior (regra dos 90 dias do óbito; resposta do revisor de 05/10).
-          urgente: (l.tarefa.prazo !== null && l.tarefa.prazo <= hoje(agora())) || (l.tarefa.passo === 'D2.01' && l.beneficio === 'pensao_morte'),
+          urgente:
+            (l.tarefa.prazo !== null && l.tarefa.prazo <= hoje(agora())) ||
+            (l.tarefa.passo === 'D2.01' && l.beneficio === 'pensao_morte') ||
+            (l.tarefa.passo === 'D1.ajuste' && l.tarefa.prazo !== null && pertoDeVencer(l.tarefa.prazo, agora())),
         }),
       )
     }

@@ -103,7 +103,18 @@ test('GGVP-23 · sem parecer, Aprovar fica desligado; reprovar sem motivo não p
   await context.clearCookies()
   await entrarPelaApi(page, 'atendimento@exemplo.ggv')
   await page.goto('/')
-  await expect(page.getByRole('link', { name: 'Benedito Alves (exemplo) · Ajustar o caso: Falta o laudo do ortopedista' })).toBeVisible()
+  const ajuste = page.getByRole('link', { name: 'Benedito Alves (exemplo) · Ajustar o caso: Falta o laudo do ortopedista' })
+  await expect(ajuste).toBeVisible()
+
+  // GGVP-127: a tarefa abre o caso devolvido, com o motivo; sem parecer, o servidor trava a liberação nova (G17).
+  await ajuste.click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ajustar o caso')
+  await expect(page.getByRole('region', { name: 'O que a Sênior pediu' })).toContainText('Falta o laudo do ortopedista')
+  await expect(page.getByRole('region', { name: 'O que a Sênior pediu' })).toContainText('Sem prazo')
+  await page.getByRole('checkbox', { name: 'Conferi o checklist' }).check()
+  await page.getByRole('checkbox', { name: /Conferi as assinaturas/ }).check()
+  await expect(page.getByText(/Não dá para liberar ao Jurídico/).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Liberar de novo' })).toBeDisabled()
 })
 
 // Grupo 2: casos de exemplo em vigília (Rita, Sebastião e Teresa), esperando o INSS.
