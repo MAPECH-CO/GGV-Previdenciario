@@ -119,3 +119,11 @@
 - [ ] 15.11 CA1 · O perdido na Justiça registrado pelo portal entra no acervo (GGVP-100).
 - [ ] 15.12 CA3 · A vara pelo nome (GGVP-64, parte 2).
 - [ ] 15.13 CA1, CA4 · A lição no acervo de trechos da busca por significado (GGVP-141).
+
+## GGVP-153 · Pergunta de um clique para juiz, vara e tese não identificados
+
+- [x] 16.1 Contrato em `packages/contratos/src/acervo.ts`: `ConferenciaDoAcervo` ganha `incompletos` (o que falta em cada processo) e `conhecidos` (varas, juízes e teses); `CompletarAcervo` com vara e juiz até 120 e tese até 80 caracteres; teste em `acervo.test.ts`.
+- [x] 16.2 CA1, CA2, CA3 · Servidor: a lista em `apps/api/src/fluxo/acervo.ts` e `POST /api/acervo/processos/:id/completar` em `apps/api/src/rotas/acervo.ts` (só completa o que falta; vara e juiz no caso, vara e tese no acervo; histórico com antes e depois); teste em `rotas/acervo.test.ts`.
+- [x] 16.3 CA1 · Tela "Conferir desfechos" (`apps/web/src/paginas/ConferirAcervo.tsx`): o cartão "Falta completar", com as opções em um clique e o campo para uma nova; teste Vitest.
+- [x] 16.4 Playwright: a Sênior completa a vara de um processo e ele sai da lista.
+- [x] 16.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
