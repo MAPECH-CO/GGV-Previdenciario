@@ -82,3 +82,11 @@ Cada tela SHALL mostrar o próprio título na aba do navegador: "Início · GGV 
 - **Dado** cada tela (`/`, `/tokens` e um caminho sem tela)
 - **Quando** abro
 - **Então** a aba do navegador mostra o título dela: "Início · GGV Previdenciário", "Tokens do Figma · GGV Previdenciário" e "Tela não construída · GGV Previdenciário"
+
+### Requirement: CA10 · Data mostrada é o dia de Brasília
+Toda data de um momento (aprovado em, concluído em, enviado em) SHALL aparecer no dia de Brasília, também das 21h à meia-noite, quando em UTC já é o dia seguinte. Data pura (prazo, data de pagamento) SHALL aparecer como está, sem conversão de fuso. Regra única  em  (revisão de 08/10, M1).
+
+#### Scenario: CA10 · Concluído às 22h30
+- **Dado** uma prestação concluída em 08/10 às 22h30 de Brasília (09/10 01h30 em UTC)
+- **Quando** abro a tela
+- **Então** aparece 08/10, e o prazo de pagamento 20/10 continua 20/10
