@@ -33,14 +33,20 @@ test('GGVP-74, GGVP-34 e GGVP-37 · a advogada lê a exigência, o prazo é cont
   await page.goto('/')
   await page.getByRole('link', { name: 'Otávio Lima (exemplo) · Ler publicação' }).click()
   await expect(page.getByRole('heading', { name: 'Publicações do processo' })).toBeVisible()
+  const casoId = new URL(page.url()).pathname.split('/')[2]
   await page.getByRole('listitem').filter({ hasText: 'Intime-se a parte autora' }).getByRole('link', { name: 'Ler' }).click()
 
   await page.getByLabel('Intimação ou exigência').check()
   await page.getByRole('button', { name: 'Classificar' }).click()
   await expect(page.getByRole('alert')).toHaveText('Informe o prazo da publicação, em dias (1 a 120), ou marque "sem prazo na decisão"')
   await page.getByLabel('Prazo da publicação (dias)').fill('15')
+  // GGVP-64 parte 2 (CA1): a advogada confere a vara e o juiz; vão para o caso e saem com a jurimetria do juízo.
+  await page.getByLabel('Vara', { exact: true }).fill('1ª Vara-Gabinete do JEF de São Paulo (exemplo)')
+  await page.getByLabel('Juiz', { exact: true }).fill('Dra. Helena Prates (exemplo)')
   await page.getByRole('button', { name: 'Classificar' }).click()
   await expect(page.getByRole('status')).toContainText('Analisar exigência do juiz')
+  const doJuizo = await (await page.request.get(`/api/casos/${casoId}/juizo`)).json()
+  expect([doJuizo.vara, doJuizo.juiz]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo (exemplo)', 'Dra. Helena Prates (exemplo)'])
   await expect(page.getByText(/Prazo: de \d\d\/\d\d\/\d{4} até/)).toBeVisible()
   await expect(page.getByText(/pelo lado seguro \(G12\)/)).toBeVisible()
 
