@@ -152,8 +152,15 @@
     {
       "idx": 21,
       "version": "7",
-      "when": 1791520932602,
-      "tag": "0021_ficha_do_desfecho",
+      "when": 1791512535321,
+      "tag": "0021_segunda_ficha_e_contrato",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791523816188,
+      "tag": "0022_ficha_do_desfecho",
       "breakpoints": true
     }
   ]

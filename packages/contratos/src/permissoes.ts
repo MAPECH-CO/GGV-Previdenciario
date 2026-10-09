@@ -18,8 +18,9 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
-// 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 19
+// 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20. Quem entrar depois
+// renumera.
+export const VERSAO_MATRIZ = 20
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -96,6 +97,8 @@ export const MATRIZ = {
   'ficha.editar': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
   // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde.
   'entrevista.gravar': JURIDICO,
+  // GGVP-125, bloco 3b: analisar a ficha, definir o benefício e registrar o cálculo; a IA sugere, o Jurídico decide (G3).
+  'ficha.analisar': JURIDICO,
   // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
   // indica novo processo, quem decide é a Sênior.
   'estudo.ver': JURIDICO,
