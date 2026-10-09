@@ -224,7 +224,7 @@ O passo DP.05 não tem tela própria: o sistema monta a orientação com a IA qu
 ### Decisões da história
 
 1. **O resultado sai** (CA1): depois do "Compareceu", a advogada já tem a tarefa, esperando o GERID; `resultadoNoGerid` (ponta para a vigília do GERID do Mateus) a deixa urgente. Anexar o laudo na tela também conta como resultado disponível.
-2. **IA simulada**: o resumo do laudo sai do nome do arquivo ("desfavoravel" faz o laudo desfavorável); no desfavorável, a IA diz por que e indica se vale nova perícia, e isso vai para o histórico (Lucas, 02/10). A advogada decide.
+2. **IA simulada**: o resumo do laudo sai do nome do arquivo ("desfavoravel" faz o laudo desfavorável); no desfavorável, a IA diz por que e indica se vale nova perícia (Lucas, 02/10): a indicação vai para o histórico; o porquê, que vem do laudo, fica no resumo do laudo, só com o Jurídico (saúde simples, Pedro, 08/10). A advogada decide.
 3. **Conferências** (CA5 e a resposta "segue dessa forma"): "Li o laudo na íntegra", o parecer médico "Suficiente" (G17), a DII calculada por código (G19) e sem contradição com o benefício (G18), todas marcadas.
 4. **Volta à origem** (CA2, CA4, CA6): a perícia fecha e o histórico diz como o diagrama de origem segue (pedido ao INSS: completa a junção antes da vigília; exigência do INSS: volta à vigília D2.04; despacho ou juiz: volta ao judicial, com 15 dias para manifestar, G12). **Ponta para ligar na junção com o INSS**: `avancarJuncaoD2` e `avancarExigencia` do Mateus.
 5. **Nova perícia** (CA3): a perícia recomeça para o Jurídico administrativo marcar, sem contar como remarcação.

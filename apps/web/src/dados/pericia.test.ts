@@ -660,7 +660,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(lido.porque).toBe('O perito não comentou os laudos e os exames do escritório, que mostram a limitação há mais de um ano.')
     const t = await registrarResultado(ANTONIO, { laudo: laudo('laudo_desfavoravel_antonio.pdf'), favoravel: false, novaPericia: true, conferidas: MEDICA }, DRA_PAULA)
     expect(t.pericia.historico.slice(-4, -1).map((e) => e.oQue)).toEqual([
-      'A IA indicou: O perito não comentou os laudos e os exames do escritório, que mostram a limitação há mais de um ano. Vale pedir nova perícia: sim.',
+      'A IA indicou se vale pedir nova perícia: sim (o porquê está no resumo do laudo)',
       'Decidiu pedir nova perícia',
       'Abriu a nova perícia para o Jurídico administrativo marcar (não conta como remarcação): pericia-antonio-exemplo-1-2',
     ])
