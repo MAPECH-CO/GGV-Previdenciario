@@ -1,11 +1,11 @@
 import { useEffect, useId, useState } from 'react'
-import { formatarDecimal, isoParaData } from '@ggv/campos'
+import { diaLocal, formatarDecimal, isoParaData } from '@ggv/campos'
 import { ROTULO_FORMA_DE_PAGAMENTO, ReceberPrestacao as Contrato, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
 const reais = (texto: string | null) => (texto === null ? '—' : `R$ ${formatarDecimal(Number(texto))}`)
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 
 /**
  * Receber a prestação de contas (GGVP-44 e GGVP-98, Financeiro): valores da versão concluída e o agendamento; "Receber e

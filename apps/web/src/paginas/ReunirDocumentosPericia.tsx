@@ -3,9 +3,10 @@ import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { ConferirEnviar } from '../componentes/ConferirEnviar.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
-import { CONFERENCIAS_DA_PERICIA, concluirDocumentos, justificarFalta, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
+import { CONFERENCIAS_DA_PERICIA, anexarDocumentoDaPericia, concluirDocumentos, justificarFalta, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
+import { problemaDoArquivo } from '../regras/arquivos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import { DIAS_ANTES_DOCUMENTOS, MINIMO_DA_FALTA, NOMES_DO_TIPO, motivoParaNaoConcluirDocumentos } from '../regras/pericia.ts'
 import styles from './Balcao.module.css'
@@ -138,9 +139,30 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
                   </span>
                   {!arquivo && !falta && !concluida && (
                     <span className={styles.atalhos}>
-                      <button type="button" className={styles.atalho} onClick={() => setAnexar(true)}>
-                        Anexar
-                      </button>
+                      {doServidor(processoId) ? (
+                        // No caso do servidor, o documento sobe direto à pasta do caso, com o tipo do item (GGVP-56, CA4).
+                        <label className={styles.atalho}>
+                          Anexar
+                          <input
+                            type="file"
+                            className="so-leitor"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            aria-label={`Anexar: ${item.nome}`}
+                            onChange={(e) => {
+                              const arquivo = e.target.files?.[0]
+                              e.target.value = ''
+                              if (!arquivo) return
+                              const problema = problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size })
+                              if (problema) return setErro(problema)
+                              void agir(() => anexarDocumentoDaPericia(processoId, item.id, arquivo, arquivo.name), `Anexado: ${item.nome}, na pasta do caso.`)
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <button type="button" className={styles.atalho} onClick={() => setAnexar(true)}>
+                          Anexar
+                        </button>
+                      )}
                       <button type="button" className={styles.atalho} aria-expanded={faltaDe === item.id} onClick={() => setFaltaDe(faltaDe === item.id ? undefined : item.id)}>
                         Registrar a falta
                       </button>

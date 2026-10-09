@@ -41,7 +41,8 @@ afterEach(async () => {
 describe('GGVP-146 parte 3 · feriados e suspensões dos tribunais na Configuração', () => {
   it('por perfil: a gestão vê; só a Sênior e o Sócio mudam', async () => {
     expect((await chamar('ana', 'GET', '/api/configuracao/feriados')).statusCode).toBe(403)
-    expect(await lista('julia')).toMatchObject({ feriados: [], podeEditar: false })
+    // GGVP-96: o Financeiro fica só com os Resultados da Gestão.
+    expect((await chamar('julia', 'GET', '/api/configuracao/feriados')).statusCode).toBe(403)
     expect((await lista('lauro')).podeEditar).toBe(true)
     const natal = { data: '24/12/2026', tribunal: null, descricao: 'Véspera de Natal' }
     expect((await acrescentar('julia', natal)).statusCode).toBe(403)
@@ -88,7 +89,7 @@ describe('GGVP-146 parte 3 · feriados e suspensões dos tribunais na Configura�
     const [f] = (await lista()).feriados
     await chamar('lauro', 'DELETE', `/api/configuracao/feriados/${f.id}`)
     await carregar()
-    expect((await lista('julia')).historico.map((h: { quem: string; descricao: string }) => `${h.quem} · ${h.descricao}`)).toEqual([
+    expect((await lista('lauro')).historico.map((h: { quem: string; descricao: string }) => `${h.quem} · ${h.descricao}`)).toEqual([
       'helena · Carregou os feriados da lei de 2026 e 2027: 382 dia(s) acrescentado(s)',
       'lauro · Tirou 20/03/2026 · TRF3 · Suspensão: sistema fora do ar',
       'helena · Acrescentou 20/03/2026 · TRF3 · Suspensão: sistema fora do ar',

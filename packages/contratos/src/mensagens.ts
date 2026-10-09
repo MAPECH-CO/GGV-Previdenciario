@@ -56,6 +56,8 @@ export const MensagemPronta = z.object({
   simulado: z.boolean().optional(),
   /** 'falhou': o Chatwoot não respondeu à consulta do cliente, o que não quer dizer "sem conversa"; a tela não deixa enviar (GGVP-146). */
   consulta: z.literal('falhou').optional(),
+  /** Fora de produção, o telefone não está na lista de teste: o Chatwoot não é chamado e o envio fica como não enviado (GGVP-146). */
+  foraDaLista: z.literal(true).optional(),
 })
 export type MensagemPronta = z.infer<typeof MensagemPronta>
 

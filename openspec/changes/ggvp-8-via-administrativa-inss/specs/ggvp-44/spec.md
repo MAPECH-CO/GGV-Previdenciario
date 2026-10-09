@@ -101,3 +101,16 @@ Remarcar a ida ao banco SHALL atualizar o que o Financeiro vê e preparar o novo
 - **Dado** a ida ao banco remarcada
 - **Quando** o Atendimento registra a nova data
 - **Então** o Financeiro é atualizado e o cliente recebe o novo convite
+
+### Requirement: CA13 · A prestação é da advogada responsável pelo caso
+Quando o caso tem advogada responsável, a prestação de contas (ver, salvar e dar o OK) MUST ficar só com ela; outra advogada SHALL ser recusada, e a recusa fica no histórico. O Financeiro segue vendo os valores (CA8). Caso sem advogada responsável definida segue aberto a quem tem o perfil de advogada (orquestrador, 09/10: a rota conferia só o perfil).
+
+#### Scenario: CA13 · Outra advogada
+- **Dado** um caso deferido com a advogada responsável Gabi
+- **Quando** outra advogada abre ou conclui a prestação
+- **Então** é recusada, e a recusa fica no histórico
+
+#### Scenario: CA13 · A advogada responsável
+- **Dado** o mesmo caso
+- **Quando** a Gabi abre e conclui a prestação
+- **Então** vê os valores e conclui, como antes

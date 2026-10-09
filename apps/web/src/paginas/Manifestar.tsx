@@ -1,10 +1,10 @@
 import { useEffect, useId, useState } from 'react'
-import { hojeIso, isoParaData } from '@ggv/campos'
+import { diaLocal, hojeIso, isoParaData } from '@ggv/campos'
 import { AprovarVersao, AutorizarDilacao, EncerrarSemProva, ProtocolarManifestacao, RegistrarIndisponibilidade, type Manifestacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 const ROTULO_TIPO = { manifestacao: 'Manifestação', dilacao: 'Pedido de dilação' } as const
 type Pendente = Manifestacao['pendentes'][number]
 

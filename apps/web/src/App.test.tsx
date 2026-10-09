@@ -1,8 +1,16 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
-import { zerarExemplo } from './dados/servidor.ts'
+import { registrarTentativaDeAssinatura } from './dados/contrato.ts'
+import { ler, zerarExemplo } from './dados/servidor.ts'
+import { Conversa } from './paginas/Conversa.tsx'
 import { responderRelacionamento } from './test/relacionamento/rotas.ts'
+
+// A conversa de verdade, espiada: o teste do gancho de teste (?simular=) confere o que a tela recebe (GGVP-96).
+vi.mock('./paginas/Conversa.tsx', async (original) => {
+  const { Conversa } = await original<typeof import('./paginas/Conversa.tsx')>()
+  return { Conversa: vi.fn(Conversa) }
+})
 
 const usuario = { nome: 'Ana', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
 
@@ -218,6 +226,100 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
   })
 
+  it('GGVP-96 · o contrato é do Atendimento; a manifestação, do Jurídico; a entrevista, não do Jurídico administrativo', async () => {
+    zerarExemplo()
+    const semPermissao = async (perfil: string, caminho: string) => {
+      servidorResponde(200, { ...usuario, perfis: [perfil], perfilAtivo: perfil })
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), `${perfil} em ${caminho}`).toBeTruthy()
+      cleanup()
+    }
+    for (const perfil of ['documentacao', 'advogada', 'senior', 'socio']) await semPermissao(perfil, '/contrato/antonio-exemplo-1/preparar')
+    const caso = '/casos/00000000-0000-4000-8000-000000000001/manifestacao'
+    for (const perfil of ['atendimento', 'documentacao']) await semPermissao(perfil, caso)
+    await semPermissao('juridico_adm', '/entrevista/josefa-entrevista')
+    await semPermissao('juridico_adm', '/advogada')
+    servidorResponde(200, usuario)
+    render(<App caminho="/contrato/cleide-exemplo-1/preparar" />)
+    expect(await screen.findByRole('heading', { level: 1, name: /Preparar contrato/ })).toBeTruthy()
+  })
+
+  it('GGVP-96 · G15 do contrato: passou do limite de tentativas, a Sênior abre a tarefa dela e lê a assinatura', async () => {
+    zerarExemplo()
+    await registrarTentativaDeAssinatura('nair-exemplo-1', 'ligacao')
+    const tarefa = ler().tarefas.find((t) => t.id === 'senior-assinatura-nair-exemplo-1')
+    expect(tarefa?.setor).toBe('Jurídico')
+    servidorResponde(200, senior)
+    render(<App caminho={tarefa!.href} />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nair Exemplo · Colher assinatura' })).toBeTruthy()
+    expect(screen.getByText(/o caso subiu para a advogada sênior/)).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Sem permissão' })).toBeNull()
+  })
+
+  it('GGVP-96 · o Sócio lê o caso; o Financeiro vê os Resultados, não o resto da Gestão', async () => {
+    zerarExemplo()
+    // Só a sessão responde; o resto do servidor, "não encontrado" (a tela abre com o aviso).
+    const soASessao = (perfil: string) =>
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(url === '/api/sessao' ? JSON.stringify({ ...usuario, perfis: [perfil], perfilAtivo: perfil }) : '{"erro":"Não encontrado."}', { status: url === '/api/sessao' ? 200 : 404 })))
+    soASessao('socio')
+    render(<App caminho="/casos/antonio-exemplo-1" />)
+    expect(await screen.findByRole('heading', { name: 'Linha do processo · completa' })).toBeTruthy()
+    cleanup()
+    // A busca leva à ficha do cliente: o Sócio abre para ler.
+    render(<App caminho="/clientes/antonio-exemplo" />)
+    expect(await screen.findByRole('heading', { level: 2, name: 'Antônio Exemplo' })).toBeTruthy()
+    cleanup()
+    // O resto da Recepção, não.
+    for (const caminho of ['/balcao', '/clientes/novo']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), caminho).toBeTruthy()
+      cleanup()
+    }
+    soASessao('financeiro')
+    for (const caminho of ['/gestao/prazos', '/gestao/tentativas', '/gestao/cofre', '/configuracao']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), caminho).toBeTruthy()
+      cleanup()
+    }
+    render(<App caminho="/gestao/resultados" />)
+    expect(await screen.findByRole('heading', { name: 'Resultados do escritório' })).toBeTruthy()
+  })
+
+  it('GGVP-96 · o ?simular= (gancho de teste) só vale no desenvolvimento; na homologação e na produção, a tela não o repassa', async () => {
+    zerarExemplo()
+    const simular = async () => {
+      render(<App caminho="/conversas/conversa-pedro-ligacao" busca="?simular=falha-da-transcricao" />)
+      await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })
+      const recebeu = vi.mocked(Conversa).mock.lastCall?.[0].simular
+      cleanup()
+      return recebeu
+    }
+    expect(await simular()).toBe('falha-da-transcricao')
+    vi.stubEnv('DEV', false)
+    try {
+      expect(await simular()).toBeUndefined()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it('GGVP-78 · /clientes e /processos abrem para quem vê o caso; o Financeiro, que não vê, fica no "Sem permissão"', async () => {
+    const vazia = { clientes: [], processos: [], total: 0, leads: 0, doAcervo: 0, pagina: 1, paginas: 1, opcoes: { beneficios: [], cidades: [], foros: [], juizes: [], peritos: [] } }
+    const responder = (quem: object) => vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/sessao' ? quem : vazia), { status: 200 })))
+    responder(advogada)
+    for (const [caminho, titulo] of [['/clientes', 'Clientes'], ['/processos', 'Processos']]) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeTruthy()
+      cleanup()
+    }
+    responder({ ...usuario, perfis: ['financeiro'], perfilAtivo: 'financeiro' })
+    for (const caminho of ['/clientes', '/processos']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+      cleanup()
+    }
+  })
+
   it('GGVP-57 · a tela de calcular tempo e pontos', async () => {
     zerarExemplo()
     servidorResponde(200, advogada)
@@ -262,11 +364,11 @@ describe('App', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('GGVP-96 · cada perfil cai na sua Central; a da Sênior ainda não foi construída, mas traz a fila dela', async () => {
+  it('GGVP-96 e GGVP-78 · cada perfil cai na sua Central: a da Sênior, com a fila dela', async () => {
     zerarExemplo()
     servidorResponde(200, { ...usuario, perfis: ['senior'], perfilAtivo: 'senior' })
     render(<App caminho="/" />)
-    expect(await screen.findByRole('heading', { name: 'Central · Sênior' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Início da Sênior' })).toBeTruthy()
     expect((await screen.findByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
     expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
     expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
@@ -279,9 +381,48 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
   })
 
+  it('GGVP-137 · a decisão da perícia (D2.03) fica em /pericia/decidir; /pericia é a página da perícia, também no caso do servidor', async () => {
+    zerarExemplo()
+    servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
+    const id = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
+    render(<App caminho={`/casos/${id}/pericia/decidir`} />)
+    expect(await screen.findByRole('heading', { name: 'Precisa de perícia?' })).toBeTruthy()
+    cleanup()
+    render(<App caminho={`/casos/${id}/pericia`} />)
+    expect(await screen.findByRole('heading', { name: 'Este caso não tem perícia' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Precisa de perícia?' })).toBeNull()
+  })
+
   it('GGVP-96 · a Documentação trabalha na Central do Atendimento', async () => {
     servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
+  })
+
+  it('GGVP-78 · o Financeiro cai na Central dele; o Sócio, no painel de resultado', async () => {
+    servidorResponde(200, { ...usuario, perfis: ['financeiro'], perfilAtivo: 'financeiro' })
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { name: 'Início do Financeiro' })).toBeTruthy()
+    cleanup()
+    const socio = { ...usuario, perfis: ['socio'], perfilAtivo: 'socio' }
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/sessao' ? socio : { erro: 'fora do teste' }), { status: url === '/api/sessao' ? 200 : 500 })))
+    render(<App caminho="/" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Resultados do escritório' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
+  })
+
+  it('GGVP-78 · /financeiro abre o painel para o Financeiro e o Sócio; a Sênior fica no "Sem permissão"', async () => {
+    servidorResponde(200, senior)
+    render(<App caminho="/financeiro" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+    cleanup()
+    const vazio = { mes: '2026-10', recebidoNoMes: '0.00', variacao: null, aReceber: '0.00', processosAReceber: 0, emAtraso: '0.00', processosEmAtraso: 0, aLancar: 0, aguardandoOk: 0, porMes: [], porOrigem: [], lancamentos: null }
+    for (const perfil of ['financeiro', 'socio']) {
+      const quem = { ...usuario, perfis: [perfil], perfilAtivo: perfil }
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/sessao' ? quem : url.startsWith('/api/financeiro') ? vazio : []), { status: 200 })))
+      render(<App caminho="/financeiro" />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Financeiro' })).toBeTruthy()
+      cleanup()
+    }
   })
 })

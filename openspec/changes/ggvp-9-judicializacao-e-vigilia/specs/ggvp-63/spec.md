@@ -101,3 +101,16 @@ O chat SHALL recusar o pedido de petição do Atendimento, por estar fora do per
 - **Dado** alguém do Atendimento que pede uma petição pelo chat
 - **Quando** envia
 - **Então** o chat recusa, porque o pedido está fora do perfil, e oferece criar a tarefa para a advogada
+
+### Requirement: CA13 · Pedir a petição passa pelo G17
+Em benefício com laudo (ou ainda sem benefício definido), pedir a petição MUST seguir só com o parecer médico confirmado por uma pessoa do Jurídico como suficiente, ou dispensado por duas Sêniores; parecer só da IA, insuficiente, contraditório, laudo novo esperando ou dispensa pedida SHALL travar o pedido com o motivo, e a recusa fica no histórico como G17 (orquestrador, 09/10: a rota não conferia o parecer).
+
+#### Scenario: CA13 · Sem parecer confirmado
+- **Dado** um caso de BPC à pessoa com deficiência com todos os setores fechados e o parecer só da IA
+- **Quando** a advogada pede a petição
+- **Então** o pedido é recusado com o motivo do G17, e a recusa fica no histórico
+
+#### Scenario: CA13 · Parecer confirmado
+- **Dado** o mesmo caso com o parecer suficiente confirmado pela advogada
+- **Quando** ela pede a petição
+- **Então** o pedido segue para a conferência

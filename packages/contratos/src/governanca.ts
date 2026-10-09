@@ -194,6 +194,10 @@ export const ROTULO_BENEFICIO: Record<Beneficio, string> = {
   outro: 'Outro',
 }
 
+/** GGVP-120 CA11: o benefício na tela e na Central, pelo nome do catálogo; fora dele, sem "_"; vazio, "a definir". */
+export const nomeDoBeneficio = (b: string | null): string =>
+  b ? (ROTULO_BENEFICIO[b as Beneficio] ?? b.replaceAll('_', ' ')) : 'a definir'
+
 /**
  * GGVP-104 CA4: os parâmetros que a gestão edita, cada um com o rótulo e a faixa. Valores do Lucas (02/10) nos dados
  * de exemplo. Os laços de contato e de remarcação são de outros épicos, que leem a mesma chave.

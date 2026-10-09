@@ -9,6 +9,7 @@
 - [x] 1.5 Telas: "Receber e lançar" com a caixa de conferência; ida ao banco do Financeiro com acompanhante obrigatório e "Confirmar recebimento"; testes de tela.
 - [x] 1.6 Playwright do caminho: advogada conclui, Financeiro recebe, agenda, avisa e confirma; Atendimento vê "Levar ao banco".
 - [x] 1.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 1.8 Revisão de 08/10 (M5): a dica de "Prestar contas" ainda dizia "o Atendimento agenda a ida ao banco"; passa a dizer que o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco (mudança do Lucas de 06/10); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-22 · Explicar o resultado ao cliente
 
@@ -131,3 +132,9 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
   - Ficou fora deste PR para não abrir mais um choque de migração: o #26 e o #29 já disputam os números a partir da 0013.
   - Até lá, o vínculo vem do histórico, gravado na mesma transação do atendimento (5.2).
+
+## Revisão de 08/10 · resumo com [completar] (GGVP-22 CA6)
+
+- [x] 11.1 CA6 · `faltaCompletar` em `packages/contratos/src/ia.ts` (texto com "[completar...]" → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 11.2 CA6 · `POST /api/casos/:id/resultado/resumo` recusa com `faltaCompletar` (400, nada muda); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 11.3 CA6 · Tela "Explicar o resultado": "Aprovar o resumo" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
