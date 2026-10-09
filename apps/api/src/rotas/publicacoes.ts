@@ -11,7 +11,7 @@ import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { casoDoCnj, pedirLeitura } from '../vigilia/casar.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
-import { peritoDaPublicacao } from '../vigilia/perito.ts'
+import { ligarPeritoNomeado, peritoDaPublicacao } from '../vigilia/perito.ts'
 
 export const MSG_CNJ_SEM_CASO = 'Nenhum processo do escritório tem esse número CNJ.'
 
@@ -142,7 +142,9 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
       // da Perícia identifica, e nada trava.
       if (classe === 'nomeacao_perito') {
         const nomeado = await peritoDaPublicacao(banco, p.texto)
-        await historico(quem, 'perito_nomeado', pedido, `caso:${p.casoId}`, { publicacao: p.id, perito: nomeado, reconhecido: nomeado !== null })
+        // GGVP-152 CA3: reconhecido, o perito fica ligado à perícia aberta do caso, quando ela existe.
+        const pericia = nomeado && p.casoId ? await ligarPeritoNomeado(banco, p.casoId, nomeado.id, agora()) : null
+        await historico(quem, 'perito_nomeado', pedido, `caso:${p.casoId}`, { publicacao: p.id, perito: nomeado, reconhecido: nomeado !== null, pericia })
       }
       // GGVP-64 parte 2 (CA1): a vara e o juiz conferidos vão para o caso; campo vazio não apaga o que já estava.
       if (vara || juiz) {

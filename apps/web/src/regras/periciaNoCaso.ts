@@ -620,6 +620,7 @@ export function laudoNoPerfil(mundo: MundoDaPericia, pericia: Pericia, quando: s
     data,
     tipo: pericia.tipo,
     assunto: leitura.assunto,
+    beneficio: processo.beneficio,
     resultado: r.registrado!.favoravel ? 'favoravel' : 'desfavoravel',
     dias: Math.max(0, Math.round((Date.parse(data) - Date.parse(pericia.marcacao!.data)) / DIA)),
     observou: leitura.observou,
