@@ -1,5 +1,5 @@
 {
-  "id": "be974ab9-1cb3-44fe-84d4-9f9e857706d6",
+  "id": "de2fd010-a532-4597-aa4a-de894140eaa6",
   "prevId": "7bbd13db-445b-42d8-97a3-633d27764c3e",
   "version": "7",
   "dialect": "postgresql",
@@ -4626,6 +4626,121 @@
       },
       "isRLSEnabled": true
     },
+    "public.acervo_trecho": {
+      "name": "acervo_trecho",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "origem": {
+          "name": "origem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "referencia": {
+          "name": "referencia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caso_id": {
+          "name": "caso_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "beneficio": {
+          "name": "beneficio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "texto": {
+          "name": "texto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "so_juridico": {
+          "name": "so_juridico",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "acervo_trecho_vetor": {
+          "name": "acervo_trecho_vetor",
+          "columns": [
+            {
+              "expression": "embedding",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "acervo_trecho_caso_id_caso_id_fk": {
+          "name": "acervo_trecho_caso_id_caso_id_fk",
+          "tableFrom": "acervo_trecho",
+          "tableTo": "caso",
+          "columnsFrom": [
+            "caso_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "acervo_trecho_hash_unique": {
+          "name": "acervo_trecho_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.configuracao": {
       "name": "configuracao",
       "schema": "",
@@ -5489,36 +5604,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "materia": {
-          "name": "materia",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "vara": {
-          "name": "vara",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tese": {
-          "name": "tese",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "resumo": {
-          "name": "resumo",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "licao": {
-          "name": "licao",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",

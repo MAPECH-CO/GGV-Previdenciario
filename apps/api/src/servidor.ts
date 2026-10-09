@@ -20,6 +20,7 @@ import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
 import { registrarRotasGestao } from './rotas/gestao.ts'
 import { registrarRotasAcervo } from './rotas/acervo.ts'
+import { registrarRotasJuizo } from './rotas/juizo.ts'
 import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
@@ -30,6 +31,7 @@ import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
+import { alimentarAcervo } from './ia/acervo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
@@ -85,6 +87,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** Sugestão pronta (07/10): uma rodada do preparo das sugestões da IA. Sem banco, não faz nada. */
     prepararSugestoes: () => Promise<void>
+    /** GGVP-141 (ADR-013): uma rodada do acervo que se alimenta sozinho. Sem banco ou sem a chave da IA, não faz nada. */
+    alimentarAcervo: () => Promise<void>
   }
 }
 
@@ -93,6 +97,8 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
   const app = Fastify({ logger })
   let preparar = async () => {}
   app.decorate('prepararSugestoes', () => preparar())
+  let alimentar = async () => {}
+  app.decorate('alimentarAcervo', () => alimentar())
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
 
   app.get('/saude', async (_pedido, resposta): Promise<Saude> => {
@@ -129,6 +135,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasJuizo(app, { banco, agora })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
@@ -164,6 +171,10 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasBases(app, { banco, agora })
     // GGVP-78: o painel Financeiro, das prestações de contas.
     registrarRotasFinanceiro(app, { banco, agora })
+    alimentar = async () => {
+      if (!motorIa.ligada) return
+      await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error({ erro }, 'alimentar o acervo falhou'))
+    }
   }
 
   if (pastaTela && existsSync(pastaTela)) {

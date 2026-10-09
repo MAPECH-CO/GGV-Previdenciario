@@ -10,6 +10,7 @@ import { EXIGENCIA_EM_CURSO, abrirPericiasDaExigencia, esperarAnaliseDoInss, lem
 import { REGRA_PRAZO_INSS, feriadosNacionais, prazoInss } from '../fluxo/prazo-inss.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
+import { provaEhSensivel } from '../fluxo/prova-medica.ts'
 
 export const MSG_SEM_EXIGENCIA = 'Este caso não tem exigência do INSS aberta.'
 export const MSG_JA_DECIDIDA = 'Esta exigência já foi decidida.'
@@ -279,7 +280,9 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
         if (!arquivo || !TIPOS_DE_ANEXO.includes(arquivo.mime)) return negar(resposta, 400, MSG_PROVA)
         const dados = await guardarArquivo(armazenamento, casoId, arquivo, 'exigencia-item')
         await banco.transaction(async (tx) => {
-          const [doc] = await tx.insert(documento).values({ casoId, tipo: 'prova_exigencia', origem: 'portal', recebidoPor: quem, ...dados }).returning()
+          // GGVP-39 CA15: laudo, atestado ou exame sobe como sensível (dado de saúde).
+          const sensivel = provaEhSensivel(item.descricao, formulario.campos.medico)
+          const [doc] = await tx.insert(documento).values({ casoId, tipo: 'prova_exigencia', origem: 'portal', recebidoPor: quem, sensivel, ...dados }).returning()
           await tx
             .update(exigenciaItem)
             .set({ situacao: 'cumprido', motivo: null, provaDocumentoId: doc.id, cumpridoEm: agora(), cumpridoPor: quem })

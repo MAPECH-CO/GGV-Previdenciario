@@ -66,6 +66,12 @@ describe('GGVP-22 · o Jurídico aprova o resumo', () => {
     expect((await chamar('ana', 'GET', '/resultado')).json().resumo.quemFala).toBe('advogada')
   })
 
+  it('CA6 · com "[completar]" no texto, o resumo não se aprova e nada vai a quem fala', async () => {
+    const r = await chamar('gabi', 'POST', '/resultado/resumo', { texto: `${RESUMO} [completar: o motivo da decisão]`, quemFala: 'atendimento' })
+    expect([r.statusCode, r.json().erro]).toEqual([400, 'O texto ainda tem [completar]: preencha antes de aprovar.'])
+    expect(await banco.select().from(tarefa).where(and(eq(tarefa.passo, 'D3b.06'), isNull(tarefa.concluidaEm)))).toEqual([])
+  })
+
   it('CA3 · sem resumo aprovado, não há o que explicar; o Financeiro nem abre', async () => {
     expect((await chamar('ana', 'GET', '/resultado')).json().resumo).toBeNull()
     expect((await chamar('ana', 'POST', '/resultado/contato', { resultado: 'sem_contato', canal: 'telefone' })).json().erro).toBe(MSG_SEM_EXPLICACAO)

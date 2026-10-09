@@ -25,9 +25,11 @@ export async function abrirBanco(url = process.env.DATABASE_URL): Promise<{ banc
 /** Postgres embutido. `pasta` indefinida: só na memória. `semear`: usuários de exemplo, se o banco estiver vazio. */
 export async function abrirBancoEmbutido(pasta?: string, semear = false): Promise<{ banco: Banco; fechar: () => Promise<void> }> {
   const { PGlite } = await import('@electric-sql/pglite')
+  // A base de conhecimento do acervo usa pgvector (GGVP-141, ADR-013); o PGlite traz a extensão.
+  const { vector } = await import('@electric-sql/pglite/vector')
   const { drizzle } = await import('drizzle-orm/pglite')
   const { migrate } = await import('drizzle-orm/pglite/migrator')
-  const banco = drizzle(new PGlite(pasta), { schema: esquema })
+  const banco = drizzle(new PGlite({ dataDir: pasta, extensions: { vector } }), { schema: esquema })
   await migrate(banco, { migrationsFolder: pastaMigracoes })
   if (semear) await semearExemplos(banco)
   return { banco, fechar: () => banco.$client.close() }

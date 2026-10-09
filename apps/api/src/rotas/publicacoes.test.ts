@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, eventoAuditoria, identificadorCaso, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, eventoAuditoria, identificadorCaso, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MOTIVO_SEM_CNJ, casarPublicacoes } from '../vigilia/casar.ts'
@@ -198,6 +198,50 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     await classificar(exigencia.id, { classe: 'andamento' })
     const depois = (await chamar('gabi', 'GET', `/api/publicacoes/${exigencia.id}`)).json()
     expect([depois.classe, depois.prazo]).toEqual(['andamento', null])
+  })
+
+  /** Uma publicação de nomeação de perito, casada com o processo do teste. */
+  const nomeacao = async (texto: string) => {
+    await casarPublicacoes(banco, [{ fonte: 'aasp', numeroCnj: CNJ_EXEMPLO.exigencia, disponibilizadaEm: '2026-10-05', texto, partes: null }], agora)
+    return (await banco.select().from(publicacao))[0]
+  }
+  const peritoNomeado = async () => (await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'perito_nomeado'))).map((e) => [e.alvo, e.detalhe])
+
+  it('GGVP-59 CA1 (IA) · a IA sugere "nomeação de perito", na instrução nova; a publicação segue sem classe até a advogada', async () => {
+    const p = await nomeacao('Nomeio perito o Dr. R. Menezes. Intimem-se as partes para quesitos.')
+    comIa(JSON.stringify({ classe: 'nomeacao_perito', dias: null, resumo: 'O juiz nomeia o perito e abre prazo para quesitos.' }))
+    const r = (await chamar('gabi', 'POST', `/api/publicacoes/${p.id}/sugestao`)).json()
+    const [chamada] = await banco.select().from(chamadaIa)
+    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 3])
+    const [depois] = await banco.select().from(publicacao)
+    expect([depois.classe, depois.classeSugeridaIa]).toEqual([null, 'nomeacao_perito'])
+  })
+
+  it('GGVP-59 CA1 · sem prazo no despacho, 15 dias úteis para os quesitos; a tarefa é da advogada e o perito reconhecido vai ao histórico do caso', async () => {
+    const perfil = { tipo: 'medica', onde: 'JEF', laudos: [{ id: 'l1' }, { id: 'l2' }] }
+    const [menezes] = await banco.insert(perito).values({ nome: 'Dr. Ricardo Menezes', nomeNormalizado: 'ricardo menezes', grafias: ['R. Menezes'], perfil }).returning()
+    // Outro perito que também bate ("menezes"): vale o nome mais longo.
+    await banco.insert(perito).values({ nome: 'Dra. Menezes', nomeNormalizado: 'menezes' })
+    const p = await nomeacao('Nomeio perito o Dr. R. Menezes. Intimem-se as partes para quesitos e assistente técnico.')
+    const r = (await classificar(p.id, { classe: 'nomeacao_perito', semPrazoNaDecisao: true })).json()
+    // Disponibilizada na segunda 05/10: início na quarta 07/10 e 15 dias úteis até 27/10 (CPC, art. 465, §1º).
+    expect([r.prazo.inicio, r.prazo.fim]).toEqual(['2026-10-07', '2026-10-27'])
+    expect(await filaDa('gabi')).toEqual([['Quesitos e assistente técnico', '2026-10-27']])
+    // Na Central, a tarefa abre a tela de perícias do caso, onde ficam os quesitos (ajuste do "Agora ok?").
+    const [quesitos] = (await chamar('gabi', 'GET', '/api/tarefas')).json()
+    expect(quesitos.tela).toBe(`/casos/${casoId}/pericias`)
+    const [[alvo, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
+    expect([alvo, detalhe.perito, detalhe.reconhecido]).toEqual([`caso:${casoId}`, { id: menezes.id, nome: 'Dr. Ricardo Menezes', laudos: 2 }, true])
+  })
+
+  it('GGVP-59 CA1, CA6 · com prazo no despacho, vale o do despacho; perito que a base não conhece fica "não reconhecido" e nada trava', async () => {
+    await banco.insert(perito).values({ nome: 'Dr. Ricardo Menezes', nomeNormalizado: 'ricardo menezes' })
+    const p = await nomeacao('Nomeio perita a Dra. Lúcia Prado. Quesitos em 10 dias.')
+    const r = (await classificar(p.id, { classe: 'nomeacao_perito', dias: '10' })).json()
+    expect(r.prazo.fim).toBe('2026-10-20')
+    expect(await filaDa('gabi')).toEqual([['Quesitos e assistente técnico', '2026-10-20']])
+    const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
+    expect([detalhe.perito, detalhe.reconhecido]).toEqual([null, false])
   })
 
   it('só quem pode classifica; o Financeiro nem abre', async () => {

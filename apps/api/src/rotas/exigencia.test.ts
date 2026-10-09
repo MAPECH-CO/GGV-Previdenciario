@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, etapa, eventoAuditoria, exigencia, exigenciaItem, pericia, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, documento, etapa, eventoAuditoria, exigencia, exigenciaItem, pericia, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -151,6 +151,16 @@ describe('GGVP-39 · a Documentação cumpre', () => {
       'Pedir ao filho que traga o CadÚnico',
     ])
     expect((await decidirLaco('helena', 'De novo')).statusCode).toBe(409)
+  })
+
+  it('CA15 · a prova marcada como laudo, atestado ou exame sobe como sensível; a comum, não', async () => {
+    await decidir(DOCS)
+    const [a, b] = await itens()
+    expect((await cumprir(a.id, { acao: 'cumprido', medico: 'true' })).statusCode).toBe(201)
+    expect((await cumprir(b.id)).statusCode).toBe(201)
+    const [ia, ib] = await itens()
+    const sensivelDe = async (id: string | null) => (await banco.select({ s: documento.sensivel }).from(documento).where(eq(documento.id, id!)))[0].s
+    expect([await sensivelDe(ia.provaDocumentoId), await sensivelDe(ib.provaDocumentoId)]).toEqual([true, false])
   })
 
   it('CA11 · item cumprido com prova; não cumprido com motivo', async () => {

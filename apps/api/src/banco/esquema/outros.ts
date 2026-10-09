@@ -1,7 +1,7 @@
 // Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104, 143).
 import { TIPOS_DE_TERMO } from '@ggv/contratos'
 import { sql } from 'drizzle-orm'
-import { boolean, check, date, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { documento } from './documentos.ts'
@@ -87,6 +87,27 @@ export const processoAcervo = pgTable('processo_acervo', {
   licao: text('licao'),
   criadoEm: criadoEm(),
 }).enableRLS()
+
+/**
+ * Base de conhecimento do acervo (GGVP-141, ADR-013): um trecho anonimizado por fonte, com o vetor para a busca por
+ * significado. O hash impede duplicar (CA3); `so_juridico` marca o dado de saúde (CA1). O vetor fica nulo até ser calculado.
+ */
+export const acervoTrecho = pgTable(
+  'acervo_trecho',
+  {
+    id: id(),
+    origem: text('origem').notNull(),
+    referencia: text('referencia').notNull(),
+    casoId: uuid('caso_id').references(() => caso.id),
+    beneficio: text('beneficio'),
+    texto: text('texto').notNull(),
+    soJuridico: boolean('so_juridico').notNull().default(false),
+    embedding: vector('embedding', { dimensions: 1536 }),
+    hash: text('hash').notNull().unique(),
+    criadoEm: criadoEm(),
+  },
+  (t) => [index('acervo_trecho_vetor').using('hnsw', t.embedding.op('vector_cosine_ops'))],
+).enableRLS()
 
 export const CANAIS_MENSAGEM = ['whatsapp', 'sms', 'email', 'telefone'] as const
 export const STATUS_MENSAGEM = ['enviada', 'entregue', 'lida', 'falhou'] as const

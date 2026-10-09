@@ -1,8 +1,9 @@
 // Tarefas do setor (GGVP-147): o quadro do líder, o "Atribuir" e o que o líder deu a quem está na sessão. Tudo no
 // servidor (GET /api/setor, POST /api/setor/atribuicoes, GET /api/setor/minhas).
 import { useCallback, useEffect, useState } from 'react'
-import { MinhasDoSetor, QuadroDoSetor, type AtribuirTarefa, type TarefaDoSetor } from '@ggv/contratos'
+import { MinhasDoSetor, QuadroDoSetor, pode, type AtribuirTarefa, type TarefaDoSetor } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { useSessao } from '../sessao.ts'
 import type { Tarefa } from './tipos.ts'
 
 /** O quadro do líder; `recarregar` depois de cada atribuição. `null` enquanto carrega ou sem permissão. */
@@ -30,14 +31,18 @@ export async function atribuir(corpo: AtribuirTarefa): Promise<string | null> {
 /** O que o líder deu a quem está na sessão e o que deu a outra pessoa. Sem resposta, nada muda na fila. */
 export function useMinhasDoSetor(): MinhasDoSetor | null {
   const [minhas, setMinhas] = useState<MinhasDoSetor | null>(null)
+  // Quem não vê o caso (o Financeiro) não tem fila de setor: o servidor responderia 403, só barulho no console.
+  const perfil = useSessao()?.perfilAtivo
+  const fora = perfil !== undefined && !pode(perfil, 'caso.ver')
   useEffect(() => {
+    if (fora) return
     void chamarApi<MinhasDoSetor>('/setor/minhas')
       .then((r) => {
         const lido = r.ok ? MinhasDoSetor.safeParse(r.dados) : null
         if (lido?.success) setMinhas(lido.data)
       })
       .catch(() => undefined)
-  }, [])
+  }, [fora])
   return minhas
 }
 

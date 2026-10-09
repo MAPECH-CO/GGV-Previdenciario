@@ -5,17 +5,20 @@ import { Lembrete, TentativaDoLaco } from './exigencia.ts'
 import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
 import { SugestaoDaIa } from './ia.ts'
 
-export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito'] as const
+export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito', 'nomeacao_perito'] as const
 export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
   andamento: 'Só andamento',
   exigencia: 'Intimação ou exigência',
   merito: 'Decisão de mérito',
+  nomeacao_perito: 'Nomeação de perito',
 }
 export const PRAZO_SEM_DIAS_NA_DECISAO = 5
+/** GGVP-59 CA1: CPC, art. 465, §1º: 15 dias para quesitos, assistente técnico e impugnação do perito. */
+export const PRAZO_DOS_QUESITOS = 15
 
 const Prazo = z.object({ inicio: z.string(), fim: z.string(), regra: z.string(), versao: z.number() })
 
-/** POST /api/publicacoes/:id/classificacao (GGVP-34, GGVP-37): a pessoa classifica; exigência e mérito pedem os dias. */
+/** POST /api/publicacoes/:id/classificacao (GGVP-34, GGVP-37, GGVP-59): a pessoa classifica; só o andamento não pede os dias. */
 export const ClassificarPublicacao = z
   .object({
     classe: z.enum(CLASSES_DE_ATO, { error: 'Escolha o tipo de ato' }),
@@ -31,8 +34,15 @@ export const ClassificarPublicacao = z
   })
   .transform((c) => ({
     classe: c.classe,
-    // CPC, art. 218, §3º: sem prazo na decisão, 5 dias.
-    dias: c.classe === 'andamento' ? null : c.semPrazoNaDecisao ? PRAZO_SEM_DIAS_NA_DECISAO : (c.dias as number),
+    // Sem prazo na decisão: 5 dias (CPC, art. 218, §3º); na nomeação de perito, os 15 dos quesitos (art. 465, §1º).
+    dias:
+      c.classe === 'andamento'
+        ? null
+        : c.semPrazoNaDecisao
+          ? c.classe === 'nomeacao_perito'
+            ? PRAZO_DOS_QUESITOS
+            : PRAZO_SEM_DIAS_NA_DECISAO
+          : (c.dias as number),
   }))
 export type ClassificarPublicacao = z.input<typeof ClassificarPublicacao>
 

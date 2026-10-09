@@ -12,6 +12,7 @@ import {
   PedirPeticao,
   ProtocolarManifestacao,
   ProtocolarPeticao,
+  ROTULO_CLASSE,
   RegistrarIndisponibilidade,
   RegistrarTentativa,
   SubirInformacao,
@@ -24,6 +25,12 @@ const CNJ_VALIDO = '0001234-96.2026.4.03.6301'
 describe('GGVP-34 · classificar a publicação', () => {
   it('andamento não pede prazo', () => {
     expect(ClassificarPublicacao.parse({ classe: 'andamento' })).toEqual({ classe: 'andamento', dias: null })
+  })
+
+  it('GGVP-59 CA1 · nomeação de perito: o prazo do despacho, ou 15 dias sem ele (CPC, art. 465, §1º)', () => {
+    expect(ClassificarPublicacao.parse({ classe: 'nomeacao_perito', semPrazoNaDecisao: true })).toEqual({ classe: 'nomeacao_perito', dias: 15 })
+    expect(ClassificarPublicacao.parse({ classe: 'nomeacao_perito', dias: '10' })).toEqual({ classe: 'nomeacao_perito', dias: 10 })
+    expect(ROTULO_CLASSE.nomeacao_perito).toBe('Nomeação de perito')
   })
 
   it('exigência e mérito pedem os dias; sem prazo na decisão vira 5 (CPC, art. 218, §3º)', () => {

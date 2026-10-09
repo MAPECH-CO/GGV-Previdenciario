@@ -7,12 +7,9 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { recebimentosConfirmados } from '../rotas/prestacao.ts'
 import { hojeEmBrasilia as diaEmBrasilia } from '../vigilia/fila.ts'
+import { DE_MERITO, PROCEDENTES, juizoDoCnj } from './juizo.ts'
 
-const PROCEDENTES = new Set(['procedente_total', 'procedente_parcial'])
-const DE_MERITO = new Set([...PROCEDENTES, 'improcedente'])
 const EXTINTO = 'extinto_sem_merito'
-/** O tribunal pelo J.TR do número CNJ, para o recorte por juízo; o que não está aqui aparece como "J.TR". */
-const TRIBUNAL_DO_JTR: Record<string, string> = { '401': 'TRF1', '402': 'TRF2', '403': 'TRF3', '404': 'TRF4', '405': 'TRF5', '406': 'TRF6', '826': 'TJSP' }
 const UM_DIA_MS = 86_400_000
 
 /** Toda taxa sai, com o número de casos (CA8, G22 de 07/10); sem nenhum caso, "sem dados ainda" (CA5). */
@@ -200,10 +197,8 @@ async function gruposDoRecorte(
     for (const a of conferidas) if (a.casoId && a.tese) nomeDe.set(a.casoId, a.tese)
   } else {
     for (const i of await banco.select({ casoId: identificadorCaso.casoId, tipo: identificadorCaso.tipo, valor: identificadorCaso.valor }).from(identificadorCaso)) {
-      const n = i.valor.replace(/\D/g, '')
-      if (i.tipo !== 'cnj' || n.length !== 20) continue
-      const jtr = n.slice(13, 16)
-      nomeDe.set(i.casoId, `${TRIBUNAL_DO_JTR[jtr] ?? `${jtr[0]}.${jtr.slice(1)}`} · ${n.slice(16)}`)
+      const juizo = i.tipo === 'cnj' ? juizoDoCnj(i.valor) : null
+      if (juizo) nomeDe.set(i.casoId, juizo)
     }
   }
   const nomes = [...new Set(idsComDado.map((id) => nomeDe.get(id)).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
