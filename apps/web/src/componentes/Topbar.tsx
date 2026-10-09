@@ -66,6 +66,8 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
           </span>
         </button>
       )}
+      {/* A cópia do navegador fica ao sair (09/10): o roteiro troca de pessoa na mesma aba e segue o caso de exemplo. Limpar
+          aqui volta quando o exemplo sair da homologação (ver trocarPerfil, em sessao.ts). */}
       <button type="button" className={styles.sair} onClick={() => void sair()}>
         Sair
       </button>

@@ -39,14 +39,17 @@ describe('GGVP-135 · a Central da Sênior, do Financeiro e do Sócio, como as o
     expect(sugestoes()).toEqual(expect.arrayContaining(['Prestações recebidas', 'Documento novo', 'Resumo do cliente']))
     expect(await screen.findByText('Nada na sua fila agora.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Buscar um cliente' })).toBeNull()
-    expect(topo()).not.toContain('Roteiros de laudos')
+    // GGVP-96: da Gestão, só o painel de resultados (Figma).
+    expect(topo()).toEqual(['Início', 'Resultados'])
   })
 
-  it('o Sócio: a busca e o chat', async () => {
+  it('o Sócio: a busca, o chat, a Gestão e, com a leitura total (GGVP-96), o atalho de buscar cliente', async () => {
     entrarComo('socio')
     render(comSessao(<CentralEmConstrucao rotulo="Sócio" />))
     expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
     expect(sugestoes()).toEqual(expect.arrayContaining(['Prestações recebidas', 'Criar tarefa']))
+    expect(topo()).toEqual(['Início', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Importar planilha'])
+    expect(await screen.findByRole('button', { name: 'Buscar um cliente' })).toBeTruthy()
   })
 })
 

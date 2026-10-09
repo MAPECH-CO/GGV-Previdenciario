@@ -1,8 +1,8 @@
 import type { ItemNavegacao } from './Topbar.tsx'
 
 /**
- * A Gestão no topo de quem tem `gestao.ver` (GGVP-96): as mesmas telas da Central provisória da Sênior, do Financeiro e do
- * Sócio, para o líder do Atendimento também (GGVP-135, P14).
+ * A Gestão no topo de quem tem `gestao.ver` (GGVP-96): as mesmas telas da Central provisória da Sênior e do Sócio, para
+ * o líder do Atendimento também (GGVP-135, P14). O Financeiro fica só com os Resultados (GGVP-96).
  */
 export const ITENS_DA_GESTAO: ItemNavegacao[] = [
   { id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },

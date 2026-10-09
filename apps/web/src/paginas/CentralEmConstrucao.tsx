@@ -1,6 +1,7 @@
 import { CampoBusca, ID_DA_BUSCA } from '../componentes/CampoBusca.tsx'
 import { ChatDoPortal } from '../componentes/ChatDoPortal.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
+import { ITENS_DA_GESTAO } from '../componentes/itensDaGestao.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import { usePerfil } from '../dados/perfis.ts'
 import { editaRoteiro } from '../dados/roteiro.ts'
@@ -30,8 +31,10 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
   // GGVP-147: o que o líder deu a outra pessoa sai da fila; o que deu a esta pessoa entra no topo.
   const minhasDoSetor = useMinhasDoSetor()
   const tarefas = doServidor && juntarMinhas([...doServidor, ...deExemplo], minhasDoSetor)
-  // GGVP-109 CA9 e GGVP-75: a gestão chega às tentativas bloqueadas e aos resultados pelo topo.
+  // GGVP-109 CA9 e GGVP-75: a gestão chega às tentativas bloqueadas e aos resultados pelo topo; o Financeiro, só aos
+  // Resultados, como no Figma (GGVP-96).
   const gestao = usePode('gestao.ver')
+  const resultados = usePode('resultados.ver')
   // GGVP-146, parte 2: a importação da planilha do escritório.
   const importar = usePode('configuracao.editar')
   // GGVP-19: o Jurídico chega aos estudos de caso feitos pela IA pelo topo.
@@ -51,15 +54,7 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
           { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
           ...(estudos ? [{ id: 'estudos', glifo: '📚', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
           ...(roteiros ? [{ id: 'roteiros', glifo: '☰', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
-          ...(gestao
-            ? [
-                { id: 'tentativas', glifo: '⛔', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },
-                { id: 'prazos', glifo: '⏱', rotulo: 'Prazos', href: '/gestao/prazos' },
-                { id: 'cofre', glifo: '🔒', rotulo: 'Uso do cofre', href: '/gestao/cofre' },
-                { id: 'resultados', glifo: '📊', rotulo: 'Resultados', href: '/gestao/resultados' },
-                { id: 'configuracao', glifo: '⚙', rotulo: 'Configuração', href: '/configuracao' },
-              ]
-            : []),
+          ...(gestao ? ITENS_DA_GESTAO : ITENS_DA_GESTAO.filter((i) => resultados && i.id === 'resultados')),
           ...(importar ? [{ id: 'importar', glifo: '⇪', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
         ]}
         ativo="inicio"

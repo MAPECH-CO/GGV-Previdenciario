@@ -6,6 +6,7 @@ import { acessoDadoSensivel, caso, eventoAuditoria, pericia, pessoa, usuario } f
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_SEM_AVISO_NA_CONVERSA, MSG_SEM_AVISO_NA_LIGACAO, MSG_TRANSCRICAO_DESLIGADA } from './conversa.ts'
+import { MSG_GANCHO_DE_TESTE } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -123,6 +124,22 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect(await banco.select().from(acessoDadoSensivel).where(eq(acessoDadoSensivel.recurso, `conversa:${id}`))).toHaveLength(1)
     // O histórico guarda o que aconteceu, sem o conteúdo.
     expect(await eventos('conversa_transcrita')).toEqual([expect.objectContaining({ conversa: id, mudancas: 5, saude: true, senhaDita: true })])
+  })
+
+  it('GGVP-96 · simular a falha da transcrição é só do teste: na homologação e na produção o servidor recusa', async () => {
+    const { fichaId } = await clienteComProcesso()
+    const { conversa } = await json('ana', 'POST', '/api/conversas', { fichaId, canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' })
+    await json('ana', 'POST', `/api/conversas/${conversa.id}/audio`, { nome: 'ligacao.mp3', tipo: 'audio/mpeg', tamanho: 9000, avisoNaGravacao: true })
+    const url = `/api/conversas/${conversa.id}/transcricao`
+    try {
+      for (const ambiente of ['homologacao', 'producao']) {
+        vi.stubEnv('AMBIENTE', ambiente)
+        expect((await json('ana', 'POST', url, { falhar: true })).erro, ambiente).toBe(MSG_GANCHO_DE_TESTE)
+      }
+    } finally {
+      vi.unstubAllEnvs()
+    }
+    expect((await json('ana', 'POST', url, { falhar: true })).gravacao.transcricao).toBe('falhou')
   })
 
   it('com a simulação desligada, a transcrição falha com o motivo e a tela segue manual', async () => {
