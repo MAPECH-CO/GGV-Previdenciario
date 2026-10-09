@@ -50,6 +50,7 @@ import { registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
+import { registrarRotasBases } from './rotas/bases.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -145,6 +146,8 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasFeriados(app, { banco, agora })
     registrarRotasGlossario(app, { banco, agora })
     registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
+    // GGVP-78: Clientes e Processos, as bases do topo.
+    registrarRotasBases(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

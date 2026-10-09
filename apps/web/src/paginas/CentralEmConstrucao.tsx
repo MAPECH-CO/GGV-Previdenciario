@@ -46,6 +46,8 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
       <Topbar
         itens={[
           { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
+          // GGVP-78: a Agenda depois do Início, como no Figma da Sênior (1927:14) e do Financeiro (1933:29).
+          { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
           ...(estudos ? [{ id: 'estudos', glifo: '📚', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
           ...(roteiros ? [{ id: 'roteiros', glifo: '☰', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
           ...(gestao

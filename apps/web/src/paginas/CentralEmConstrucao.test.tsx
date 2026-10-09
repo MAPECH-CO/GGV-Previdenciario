@@ -22,7 +22,21 @@ describe('GGVP-135 · a Central da Sênior, do Financeiro e do Sócio, como as o
     render(comSessao(<CentralEmConstrucao rotulo="Sênior" />))
     expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
     expect(sugestoes()).toEqual(expect.arrayContaining(['O que estourou o limite?', 'Criar tarefa', 'Casos para conferir', 'Subir no acervo']))
-    expect(topo()).toEqual(['Início', 'Estudos de caso', 'Roteiros de laudos', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Importar planilha'])
+    // GGVP-78: Agenda, Clientes e Processos depois do Início, como no Figma (1927:14).
+    expect(topo()).toEqual([
+      'Início',
+      'Agenda',
+      'Clientes',
+      'Processos',
+      'Estudos de caso',
+      'Roteiros de laudos',
+      'Tentativas bloqueadas',
+      'Prazos',
+      'Uso do cofre',
+      'Resultados',
+      'Configuração',
+      'Importar planilha',
+    ])
     expect(screen.getByRole('link', { name: /Roteiros de laudos/ }).getAttribute('href')).toBe('/roteiros')
   })
 
@@ -40,6 +54,9 @@ describe('GGVP-135 · a Central da Sênior, do Financeiro e do Sócio, como as o
     expect(await screen.findByText('Nada na sua fila agora.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Buscar um cliente' })).toBeNull()
     expect(topo()).not.toContain('Roteiros de laudos')
+    // GGVP-78: a Agenda, como no Figma; Clientes e Processos esperam a matriz deixar o Financeiro ver o caso.
+    expect(topo()).toContain('Agenda')
+    expect(topo()).not.toContain('Clientes')
   })
 
   it('o Sócio: a busca e o chat', async () => {
@@ -54,7 +71,7 @@ describe('GGVP-135 · a Gestão no topo do líder do Atendimento (P14)', () => {
   it('o líder vê Prazos, Tentativas bloqueadas e Resultados; o Atendimento, não', async () => {
     entrarComo('atendimento-lider')
     const { unmount } = render(comSessao(<CentralAtendimento />))
-    expect(topo()).toEqual(['Início', 'Agenda', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração'])
+    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes', 'Processos', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração'])
     unmount()
     entrarComo('atendimento')
     render(comSessao(<CentralAtendimento />))

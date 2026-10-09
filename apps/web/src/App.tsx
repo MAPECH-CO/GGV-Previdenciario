@@ -92,6 +92,8 @@ import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
 import { Conversa } from './paginas/Conversa.tsx'
 import { ConferirConversa } from './paginas/ConferirConversa.tsx'
 import { PaginaDoCaso } from './paginas/PaginaDoCaso.tsx'
+import { Clientes } from './paginas/Clientes.tsx'
+import { Processos } from './paginas/Processos.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -218,6 +220,9 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
   [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
   [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
+  // GGVP-78: Clientes e Processos, as bases do topo, para quem vê o caso (antes da regra geral de /clientes).
+  [/^\/clientes$/, 'caso.ver'],
+  [/^\/processos$/, 'caso.ver'],
   // D5: a conversa com o cliente, do Atendimento e do Jurídico.
   [/^\/conversas\//, 'conversa.registrar'],
   // O resto da Recepção e da Abertura: quem trabalha com o caso (Atendimento, Documentação e Jurídico). O Financeiro e
@@ -240,6 +245,9 @@ function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   if (caminho === '/advogada') return <CentralAdvogada />
   if (caminho === '/balcao') return <Balcao />
   if (caminho === '/clientes/novo') return <NovoCliente />
+  // GGVP-78: as bases do topo; a contagem de processos em Clientes abre /processos?cliente=<id>.
+  if (caminho === '/clientes') return <Clientes />
+  if (caminho === '/processos') return <Processos cliente={parametros.get('cliente') ?? undefined} />
   if (caminho === '/agenda') return <Agenda vistaInicial={(parametros.get('ver') as Vista | null) ?? undefined} />
   const marcar = /^\/agenda\/marcar\/([^/]+)$/.exec(caminho)
   if (marcar) return <MarcarEntrevista fichaId={decodeURIComponent(marcar[1])} remarcar={parametros.get('remarcar') ?? undefined} />

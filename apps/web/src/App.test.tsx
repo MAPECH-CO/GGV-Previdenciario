@@ -218,6 +218,23 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
   })
 
+  it('GGVP-78 · /clientes e /processos abrem para quem vê o caso; o Financeiro, que não vê, fica no "Sem permissão"', async () => {
+    const vazia = { clientes: [], processos: [], total: 0, leads: 0, doAcervo: 0, pagina: 1, paginas: 1, opcoes: { beneficios: [], cidades: [], foros: [], juizes: [], peritos: [] } }
+    const responder = (quem: object) => vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/sessao' ? quem : vazia), { status: 200 })))
+    responder(advogada)
+    for (const [caminho, titulo] of [['/clientes', 'Clientes'], ['/processos', 'Processos']]) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeTruthy()
+      cleanup()
+    }
+    responder({ ...usuario, perfis: ['financeiro'], perfilAtivo: 'financeiro' })
+    for (const caminho of ['/clientes', '/processos']) {
+      render(<App caminho={caminho} />)
+      expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+      cleanup()
+    }
+  })
+
   it('GGVP-57 · a tela de calcular tempo e pontos', async () => {
     zerarExemplo()
     servidorResponde(200, advogada)

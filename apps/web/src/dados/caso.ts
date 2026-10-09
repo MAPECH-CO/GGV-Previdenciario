@@ -4,7 +4,9 @@
 import { nomeBeneficio, nomeTipo } from './catalogos.ts'
 import { ligarPerito, obterPericia, peritosParaLigar, type PericiaNaTela } from './pericia.ts'
 import { perfilDoPerito, peritosDo, type PerfilDoPerito } from './peritos.ts'
-import { agora, esperar, gravar, ler, type Banco } from './servidor.ts'
+import { agora, doServidor, esperar, gravar, ler, obterFicha, type Banco } from './servidor.ts'
+import { consultarBase } from './bases.ts'
+import type { ListaDeProcessos } from '@ggv/contratos'
 import type { Ficha, Processo } from './tipos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import {
@@ -576,7 +578,13 @@ export async function obterCaso(processoId: string, quem: QuemPergunta | undefin
   // A perícia semeia o banco dela; o caso lê depois, para as duas sementes ficarem juntas.
   const pericia = await obterPericia(processoId)
   const banco = lerComCasos()
-  return montar(banco, processoId, quem, pericia)
+  const achado = montar(banco, processoId, quem, pericia)
+  if (achado || !doServidor(processoId)) return achado
+  // GGVP-78: o caso do servidor aberto direto (pela lista de Processos) traz antes a ficha do cliente para a cópia daqui.
+  const r = await consultarBase<ListaDeProcessos>('processos', { caso: processoId })
+  const clienteId = r.ok ? r.dados.processos[0]?.clienteId : undefined
+  if (!clienteId || !(await obterFicha(clienteId).catch(() => null))) return null
+  return montar(lerComCasos(), processoId, quem, pericia)
 }
 
 /** O perito ligado em um clique (CA7): usa o mesmo caminho da perícia e devolve o caso de novo. Nada trava enquanto isso. */

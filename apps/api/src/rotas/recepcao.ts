@@ -7,6 +7,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   dataParaIso,
+  formatarCnj,
   isoParaData,
   normalizarCep,
   normalizarCpf,
@@ -20,7 +21,7 @@ import {
 } from '@ggv/campos'
 import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, credencialGovbr, fichaRecepcao, gravacaoRecepcao, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, credencialGovbr, fichaRecepcao, gravacaoRecepcao, identificadorCaso, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -132,10 +133,20 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     const docs = new Map((await banco.select().from(fichaRecepcao).where(inArray(fichaRecepcao.pessoaId, deQuem))).map((f) => [f.pessoaId, f.documento as Ficha]))
     const casos = await banco.select({ id: caso.id, pessoaId: caso.pessoaId, beneficio: caso.beneficio, fase: caso.fase }).from(caso).where(inArray(caso.pessoaId, deQuem))
     const noCofre = new Set((await banco.select({ pessoaId: credencialGovbr.pessoaId }).from(credencialGovbr).where(inArray(credencialGovbr.pessoaId, deQuem))).map((c) => c.pessoaId))
+    // GGVP-78: o CNJ vai junto, para a página do processo aberta pela lista de Processos mostrar o mesmo número.
+    const cnjs = new Map(
+      (
+        await banco
+          .select({ casoId: identificadorCaso.casoId, valor: identificadorCaso.valor })
+          .from(identificadorCaso)
+          .innerJoin(caso, eq(identificadorCaso.casoId, caso.id))
+          .where(and(inArray(caso.pessoaId, deQuem), eq(identificadorCaso.tipo, 'cnj')))
+      ).map((n) => [n.casoId, formatarCnj(n.valor)]),
+    )
     return pessoas.map((p) => {
       const processos: Processo[] = casos
         .filter((c) => c.pessoaId === p.id && c.beneficio)
-        .map((c) => ({ id: c.id, beneficio: NO_CATALOGO[c.beneficio!] ?? c.beneficio!, etapa: ETAPA[c.fase] ?? c.fase }))
+        .map((c) => ({ id: c.id, beneficio: NO_CATALOGO[c.beneficio!] ?? c.beneficio!, etapa: ETAPA[c.fase] ?? c.fase, ...(cnjs.has(c.id) && { numero: cnjs.get(c.id) }) }))
       const doc = docs.get(p.id)
       if (doc) return { ...doc, processos }
       const [ano, mes] = p.criadoEm.toISOString().slice(0, 7).split('-')
