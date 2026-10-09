@@ -15,6 +15,7 @@ import {
 } from '../regras/agenda.ts'
 import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from './catalogos.ts'
+import { abrirPreenchimento, abrirPreparacao } from './confirmacao.ts'
 import { eventosDasPericias } from './pericia.ts'
 import { agendamentoDoServidor, agora, daSemente, doServidor, esperar, evento, gravar, ler, noBanco, receber, servidorLigado, type Banco } from './servidor.ts'
 import type {
@@ -215,9 +216,13 @@ export async function iniciarEntrevistaAgora(fichaId: string, m: Pick<Marcacao, 
     estado: 'marcado',
     remarcacoes: 0,
     gravar: m.gravar,
+    confirmacao: { tentativas: [], presente: true },
   }
   ficha.agendamentos.push(agendamento)
   ficha.historico.push(evento(`Iniciou a entrevista agora (${nomeDoTipo(m.tipo)}) com ${com.nome}, sem marcar antes`))
+  // Como na confirmação: com a ficha de atendimento, "Preparar entrevista" da advogada; sem ela, "Preencher ficha" do Atendimento.
+  if (ficha.fichaAtendimentoPreenchida) abrirPreparacao(banco, ficha, agendamento)
+  else abrirPreenchimento(banco, ficha, agendamento)
   gravar(banco)
   return agendamento
 }

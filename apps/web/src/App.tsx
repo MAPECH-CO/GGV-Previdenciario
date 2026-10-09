@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
+import { ROTULO_PERFIL, ehPerfil, pode, type Acao, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
-import { sincronizarRecepcao } from './dados/servidor.ts'
+import { definirQuemFaz, sincronizarRecepcao } from './dados/servidor.ts'
 import { sincronizarDocumentacaoMedica } from './dados/parecer.ts'
 import { sincronizarPericias } from './dados/pericia.ts'
 import { Agenda, type Vista } from './paginas/Agenda.tsx'
@@ -16,6 +16,7 @@ import { tarefasDaFilaDaSenior } from './dados/liberacao.ts'
 import { daSenior, tarefasDoParecer } from './dados/parecer.ts'
 import { tarefasDeDecidirComplemento } from './dados/complemento.ts'
 import { Conferencia } from './paginas/Conferencia.tsx'
+import { AjustarCaso } from './paginas/AjustarCaso.tsx'
 import { DecidirPericia } from './paginas/DecidirPericia.tsx'
 import { NaoConstruida } from './paginas/NaoConstruida.tsx'
 import { Protocolar } from './paginas/Protocolar.tsx'
@@ -25,6 +26,7 @@ import { CumprirExigencia } from './paginas/CumprirExigencia.tsx'
 import { PrestarContas } from './paginas/PrestarContas.tsx'
 import { ReceberPrestacao } from './paginas/ReceberPrestacao.tsx'
 import { IdaAoBanco } from './paginas/IdaAoBanco.tsx'
+import { LevarAoBanco } from './paginas/LevarAoBanco.tsx'
 import { ExplicarResultado } from './paginas/ExplicarResultado.tsx'
 import { Estudos } from './paginas/Estudos.tsx'
 import { Pericias } from './paginas/Pericias.tsx'
@@ -111,6 +113,8 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
     // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
     void chamarApi<UsuarioDaSessao>('/sessao').then(async (r) => {
       if (!r.ok) return
+      // GGVP-135: o que ainda grava só no navegador guarda no histórico o nome de quem entrou.
+      definirQuemFaz(r.dados.nome)
       // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
       // casos (o Financeiro e o Sócio não). Sem rede, a tela abre com a cópia que já tinha.
       if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarRecepcao().catch(() => undefined)
@@ -135,6 +139,8 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
 /** Telas de passo (GGVP-8). Cada uma dentro de <Exige>: sem a permissão, nem monta (GGVP-96 CA11). */
 const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/conferencia$/, tela: (id) => <Exige acao="caso.ver"><Conferencia casoId={id} /></Exige> },
+  // GGVP-127: o caso devolvido pela Sênior; quem libera de novo o servidor decide (o setor da tarefa de ajuste).
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/ajuste$/, tela: (id) => <Exige acao="caso.ver"><AjustarCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Exige acao="caso.ver"><Vigilia casoId={id} /></Exige> },
@@ -143,6 +149,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao$/, tela: (id) => <Exige acao="prestacao.ver"><PrestarContas casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao\/recebimento$/, tela: (id) => <Exige acao="prestacao.registrar_recebimento"><ReceberPrestacao casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/banco$/, tela: (id) => <Exige acao="banco.agendar"><IdaAoBanco casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/banco\/levar$/, tela: (id) => <Exige acao="banco.levar"><LevarAoBanco casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/resultado$/, tela: (id) => <Exige acao="caso.ver"><ExplicarResultado casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="caso.ver"><PublicacoesDoProcesso casoId={id} /></Exige> },
   { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="caso.ver"><LerPublicacao publicacaoId={id} /></Exige> },
@@ -193,8 +200,47 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
   return <Telas caminho={caminho} busca={busca} />
 }
 
-/** Telas da Recepção e da Abertura. Os dados ainda são os de exemplo (src/dados/), até ligar no servidor (GGVP-125). */
+/**
+ * Quem abre cada tela de passo da Recepção, da Abertura e da Perícia: a raia do BPMN, pela ação da matriz (GGVP-135).
+ * Vale a primeira que casa; sem a permissão, "Sem permissão", e a tela nem monta. Sem linha aqui, a tela confere
+ * sozinha (documentação médica, roteiros, a perícia do caso) ou é de todos (agenda). Quem protege é o servidor.
+ */
+const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
+  // Jurídico (D1.06, D1.07, D1.09, D1.10, D1.12, D1.13): a Central da advogada, preparar, analisar, entrevistar, gravar,
+  // cadastrar o lead, definir o benefício e calcular tempo e pontos (o cálculo é do advogado, Pedro em 08/10).
+  [/^\/advogada$/, 'entrevista.gravar'],
+  // D1.08: a senha do gov.br vai ao cofre; o Atendimento renova, com o Jurídico.
+  [/^\/entrevista\/[^/]+\/renovar-senha$/, 'cofre.cadastrar'],
+  [/^\/entrevista\//, 'entrevista.gravar'],
+  [/^\/clientes\/[^/]+\/cadastro$/, 'entrevista.gravar'],
+  // G15: a cobrança que passou do limite, a Sênior decide (a mesma decisão do complemento ao médico).
+  [/^\/casos\/[^/]+\/cobranca\/decidir$/, 'complemento.decidir'],
+  // Perícia (DP): as mesmas ações que o servidor exige em cada passo.
+  [/^\/juridico-administrativo$/, 'pericia.marcar'],
+  [/^\/casos\/[^/]+\/pericia\/aberta$/, 'pericia.decidir'],
+  [/^\/casos\/[^/]+\/pericia\/marcar$/, 'pericia.marcar'],
+  [/^\/casos\/[^/]+\/pericia\/(documentos|cobranca)$/, 'pericia.reunir_documentos'],
+  [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
+  [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
+  [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
+  // D5: a conversa com o cliente, do Atendimento e do Jurídico.
+  [/^\/conversas\//, 'conversa.registrar'],
+  // O resto da Recepção e da Abertura: quem trabalha com o caso (Atendimento, Documentação e Jurídico). O Financeiro e
+  // o Sócio, não.
+  [/^\/(balcao|clientes|contrato)(\/|$)/, 'ficha.editar'],
+  [/^\/agenda\/(marcar|confirmar)\//, 'ficha.editar'],
+  [/^\/casos\/[^/]+\/cobranca$/, 'ficha.editar'],
+  [/^\/casos\/[^/]+$/, 'caso.ver'],
+]
+
 function Telas({ caminho, busca }: { caminho: string; busca: string }) {
+  const acao = ACESSO_DAS_TELAS.find(([padrao]) => padrao.test(caminho))?.[1]
+  const tela = <TelaDoCaminho caminho={caminho} busca={busca} />
+  return acao ? <Exige acao={acao}>{tela}</Exige> : tela
+}
+
+/** Telas da Recepção e da Abertura. Os dados ainda são os de exemplo (src/dados/), até ligar no servidor (GGVP-125). */
+function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const parametros = new URLSearchParams(busca)
   if (caminho === '/advogada') return <CentralAdvogada />
   if (caminho === '/balcao') return <Balcao />

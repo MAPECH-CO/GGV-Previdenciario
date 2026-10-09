@@ -5,8 +5,8 @@ import { formatarTelefone } from '../campos.ts'
 import { hojeIso } from '../regras/datas.ts'
 import { demandaAberta, motivoParadoDaDemanda, precisaLigar } from '../regras/novaDemanda.ts'
 import { BENEFICIOS, nomeBeneficio } from './catalogos.ts'
-import { QUEM, QUEM_ADVOGADA, agora, esperar, evento, gravar, ler } from './servidor.ts'
-import type { Demanda, EnvioDaDemanda, Ficha, Tarefa } from './tipos.ts'
+import { QUEM, QUEM_ADVOGADA, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber } from './servidor.ts'
+import type { Demanda, EnvioDaDemanda, Ficha, Tarefa, TarefaEncaminhada } from './tipos.ts'
 
 export const NOMES_DOS_TIPOS: Record<Demanda['tipo'], string> = { 'outro-pedido': 'outro pedido', 'tentar-de-novo': 'tentar de novo depois de perder' }
 
@@ -15,6 +15,14 @@ export const NOMES_DOS_TIPOS: Record<Demanda['tipo'], string> = { 'outro-pedido'
  * (CA8). O benefício dela passa a ser o de interesse da ficha, o que o "Fechou com o escritório?" usa.
  */
 export async function abrirDemanda(fichaId: string, envio: EnvioDaDemanda): Promise<{ ficha: Ficha; demanda: Demanda }> {
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 3b: quem abriu (Atendimento ou advogada) vem da sessão, no servidor.
+    const r = await noBanco<{ demanda: Demanda; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/fichas/${fichaId}/demandas`, {
+      method: 'POST',
+      corpo: { pretende: envio.pretende, beneficio: envio.beneficio, tipo: envio.tipo },
+    })
+    return { ficha: receber(r)!, demanda: r.demanda }
+  }
   await esperar()
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)

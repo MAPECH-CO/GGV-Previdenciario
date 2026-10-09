@@ -125,7 +125,7 @@ export function abrirPreparacao(banco: Banco, ficha: Ficha, a: Agendamento): Tar
 }
 
 /** A pendência do Atendimento: a ficha em papel preenchida e escaneada antes da entrevista (CA2, CA7). */
-function abrirPreenchimento(banco: Banco, ficha: Ficha, a: Agendamento): TarefaEncaminhada {
+export function abrirPreenchimento(banco: Banco, ficha: Ficha, a: Agendamento): TarefaEncaminhada {
   const hoje = hojeIso(agora())
   const tarefa: TarefaEncaminhada = {
     id: `preencher-ficha-${a.id}`,

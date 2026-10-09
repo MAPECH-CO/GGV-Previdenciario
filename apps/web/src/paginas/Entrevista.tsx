@@ -61,7 +61,7 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
     setSubindo(true)
     setErro('')
     try {
-      const r = await subirAudio(agendamentoId, { nome: arquivo.name, tipo: arquivo.type, tamanho: arquivo.size })
+      const r = await subirAudio(agendamentoId, { nome: arquivo.name, tipo: arquivo.type, tamanho: arquivo.size }, arquivo)
       setSubido(r.gravacao)
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para subir o áudio.')
@@ -99,6 +99,12 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
           <p className={styles.trava}>A gravação começa com o aviso ao cliente (G10).</p>
 
           <div className={styles.rodape}>
+            {/* A entrevista iniciada na hora pula a preparação: o atalho da análise fica aqui também. */}
+            {!ficha.analise && !encerrada && (
+              <a className={styles.atalho} href={`/entrevista/${a.id}/analisar`}>
+                Analisar a ficha
+              </a>
+            )}
             {encerrada ? (
               <a className={styles.principalBotao} href={`/entrevista/${a.id}/gravacao`}>
                 Abrir a entrevista encerrada
@@ -120,8 +126,9 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
               Áudio gravado fora do portal
             </h2>
             <p className={proprio.texto}>
-              A entrevista foi por telefone e a ligação ficou gravada no Chatwoot? Baixe o áudio e suba aqui. Qualquer formato de
-              áudio, sem limite de tamanho: o portal divide em partes para transcrever e junta o texto no final.
+              A entrevista foi por telefone e a ligação ficou gravada no Chatwoot? A gravação fica na conversa do cliente, como
+              mensagem privada: baixe o áudio e suba aqui. O portal não busca nada no Chatwoot. Qualquer formato de áudio, até 25 MB
+              por arquivo.
             </p>
             {subido ? (
               <div className={styles.feito} role="status">

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-72 · Assinatura digital pelo ZapSign. Cada teste abre um navegador novo, então começa da semente: a Nair recebeu o link
 // do ZapSign há 9 dias e ainda não assinou. O ZapSign e o Chatwoot são simulados.
@@ -26,6 +27,7 @@ test('GGVP-72 CA2, CA4, CA5, CA11 e CA12 · da Central ao lembrete pelo WhatsApp
 
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Nair Exemplo · Colher assinatura' })).toHaveCount(0)
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/advogada')
   await expect(page.getByRole('link', { name: 'Nair Exemplo · Colher assinatura · limite de tentativas' })).toBeVisible()
 })
