@@ -1,7 +1,7 @@
 // Conferência da Sênior antes do INSS (GGVP-23): G1 (checklist), G2 (só a Sênior) e G17 (parecer médico) no servidor.
 import { and, desc, eq, gt, isNotNull, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { CasoParaConferencia, ChanceDeExito, DecidirConferencia, DispensarParecer, ROTULO_BENEFICIO, ResponderDispensa, pode, travaDoParecer, type Beneficio, type Erro, type SituacaoDoParecer } from '@ggv/contratos'
+import { bloqueioDoG1, CasoParaConferencia, ChanceDeExito, DecidirConferencia, DispensarParecer, ROTULO_BENEFICIO, ResponderDispensa, pode, travaDoParecer, type Beneficio, type Erro, type SituacaoDoParecer } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import {
   acessoDadoSensivel,
@@ -26,7 +26,6 @@ import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
-export const MSG_G1 = 'Checklist incompleto (G1): faltam'
 export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e espera outra Sênior.'
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
 export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
@@ -157,7 +156,8 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.01'), isNull(tarefa.concluidaEm)))
 
     if (entrada.data.decisao === 'aprovar') {
-      if (dados.checklist.cadastrado && !dados.checklist.completo) return recusar(pedido, resposta, casoId, 'G1', `${MSG_G1} ${dados.checklist.faltam.join(', ')}.`)
+      const g1 = bloqueioDoG1(dados)
+      if (g1) return recusar(pedido, resposta, casoId, 'G1', g1)
       if (dados.travaDoParecer) return recusar(pedido, resposta, casoId, 'G17', dados.travaDoParecer)
       await banco.transaction(async (tx) => {
         await tx.insert(decisao).values({ ...base, resultado: 'aprovado' })

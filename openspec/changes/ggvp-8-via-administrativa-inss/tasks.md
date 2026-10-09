@@ -27,11 +27,11 @@
 - [x] 3.5 CA1, CA3, CA4, CA5, CA8 · Tela "Conferência" em `apps/web/src/paginas/Conferencia.tsx` (só leitura para quem não é Sênior); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 3.6 Playwright: a Sênior aprova um caso e as tarefas aparecem para o Jurídico administrativo e para a advogada; reprova outro sem motivo e vê a recusa; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 3.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
-- [ ] 3.8 CA11, CA12 · `bloqueioDoG1` em `packages/contratos` (sem kit, documento faltando, contrato não assinado → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
-- [ ] 3.9 CA11, CA12 · `POST /api/casos/:id/conferencia` usa `bloqueioDoG1` (recusa 409, G1 no histórico); testes das três recusas; ajustar os testes que aprovavam sem kit; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 3.10 CA11, CA12 · Tela "Conferência" usa `bloqueioDoG1`: Aprovar desligado com o motivo; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 3.11 Dados de exemplo: kit da pensão por morte com os documentos da Antônia e o contrato dela assinado, para seguir aprovável no roteiro do Lucas; o Benedito continua barrado; verifica entrando como Sênior.
-- [ ] 3.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.8 CA11, CA12 · `bloqueioDoG1` em `packages/contratos` (sem kit, documento faltando, contrato não assinado → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 3.9 CA11, CA12 · `POST /api/casos/:id/conferencia` usa `bloqueioDoG1` (recusa 409, G1 no histórico); testes das três recusas; ajustar os testes que aprovavam sem kit; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.10 CA11, CA12 · Tela "Conferência" usa `bloqueioDoG1`: Aprovar desligado com o motivo; teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 3.11 Dados de exemplo: kit da pensão por morte com os documentos da Antônia e o contrato dela assinado, para seguir aprovável no roteiro do Lucas; o Benedito continua barrado; verifica entrando como Sênior.
+- [x] 3.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-35 · Vigiar o Meu INSS todo dia
 

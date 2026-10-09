@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
+import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { taxaComCasos } from '../regras/caso.ts'
 import styles from './Passo.module.css'
@@ -9,11 +9,8 @@ import styles from './Passo.module.css'
 const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
 const ROTULO_PARECER = { suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado por duas Sêniores' }
 
-/** Por que Aprovar ainda não vale: G1 aqui; G17 vem do servidor, pela regra única do contrato (`travaDoParecer`). */
-function bloqueioDeAprovar(c: CasoParaConferencia): string | null {
-  if (c.checklist.cadastrado && !c.checklist.completo) return `Checklist incompleto (G1): faltam ${c.checklist.faltam.join(', ')}.`
-  return c.travaDoParecer
-}
+/** Por que Aprovar ainda não vale: G1 e G17 pelas regras únicas do contrato (`bloqueioDoG1`, `travaDoParecer`), as mesmas do servidor. */
+const bloqueioDeAprovar = (c: CasoParaConferencia): string | null => bloqueioDoG1(c) ?? c.travaDoParecer
 
 /** Conferência da Sênior antes do INSS (GGVP-23). Quem não é Sênior vê só para leitura (CA4). */
 export function Conferencia({ casoId }: { casoId: string }) {
@@ -108,7 +105,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
       <section className={styles.cartao}>
         <h2 className={styles.cartaoTitulo}>Checklist (G1)</h2>
         {!caso.checklist.cadastrado ? (
-          <p className={styles.dica}>Kit do benefício não cadastrado: o checklist não foi conferido pelo portal.</p>
+          <p className={styles.erroCampo}>Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar.</p>
         ) : caso.checklist.completo ? (
           <span className={styles.selo}>Checklist completo</span>
         ) : (
