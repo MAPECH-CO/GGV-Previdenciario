@@ -12,8 +12,8 @@
 - [x] 1.8 CA2 · Rodar `pnpm dev` e conferir que a API responde em `/saude` e a tela abre em `localhost:5173`; verifica pela saída do `curl`.
 - [x] 1.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [x] 1.10 CA7 · `exigencia.ts`, `inss.ts` e `vigilia.ts` contam o "hoje" com `hojeEmBrasilia` (as que já fazem a conta de Brasília à mão ficam como estão); teste da urgência às 22h30 de Brasília; verifica com `pnpm --filter @ggv/api test`.
-- [x] 1.11 CA7 · `playwright.config.ts` com `timezoneId: 'America/Sao_Paulo'` no navegador e `TZ` no processo do teste; os testes que fixam a hora (`pericia-comparecimento`, `pericia-marcar`, `pericia-servidor`) passam a contar em Brasília só pela configuração, sem mudar os testes (eles montam a hora no fuso do processo); verifica com `pnpm --filter @ggv/web exec playwright test`.
-- [x] 1.12 Rodar typecheck, lint, testes e Playwright; colar a saída.
+- [ ] 1.11 CA7 · O fuso do teste de navegador fica como a main decidiu no #15, só na API do teste (Mateus, 09/10): sai do `playwright.config.ts` o `timezoneId` do navegador e o `TZ` do processo do teste; verifica com o Playwright da perícia (`pericia-comparecimento`, `pericia-marcar`, `pericia-servidor`).
+- [ ] 1.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-119 · Ambiente: homologação no Coolify com deploy a cada merge e Postgres de dev por pessoa
 
