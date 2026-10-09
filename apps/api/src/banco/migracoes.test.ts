@@ -40,6 +40,11 @@ describe('migrações', () => {
     expect(t).toHaveLength(53)
   })
 
+  it('GGVP-41 CA6 · o registro do acervo guarda a ficha do desfecho: matéria, vara, tese, resumo e lição', async () => {
+    const { rows } = await db.execute<{ column_name: string }>(sql`select column_name from information_schema.columns where table_name = 'processo_acervo'`)
+    expect(rows.map((r) => r.column_name)).toEqual(expect.arrayContaining(['materia', 'vara', 'tese', 'resumo', 'licao']))
+  })
+
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {
     const { rows } = await db.execute<{ relname: string }>(
       sql`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace

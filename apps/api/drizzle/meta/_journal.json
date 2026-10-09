@@ -141,6 +141,13 @@
       "when": 1791497335388,
       "tag": "0019_documentacao_medica",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791510274916,
+      "tag": "0020_ficha_do_desfecho",
+      "breakpoints": true
     }
   ]
 }

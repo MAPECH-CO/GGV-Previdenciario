@@ -105,14 +105,14 @@
 
 - [x] 15.1 Contrato: `FichaDoDesfecho`, a ficha nas pendências de `ConferenciaDoAcervo` e a `tese` em `ConferirDesfecho` (`packages/contratos/src/acervo.ts`); o recorte `tese` (`resultados.ts`). Teste do formato; verifica com `pnpm --filter @ggv/contratos test`.
 - [x] 15.2 CA6 · Migração: `materia`, `vara`, `tese`, `resumo` e `licao` em `processo_acervo` (`apps/api/src/banco/esquema/outros.ts` e `apps/api/drizzle/`); verifica com o teste das migrações.
-- [ ] 15.3 CA1, CA4, CA10, CA11 · Finalidade `ficha_do_desfecho` (`apps/api/src/ia/ia.ts`) e `fichaDoDesfecho` (`apps/api/src/fluxo/ficha-do-desfecho.ts`) no preparo, registrado em `rotas/acervo.ts`: a ficha anonimizada; sem ficha na falha, e nova tentativa. Teste com IA falsa; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 15.4 CA1, CA4, CA9 · O estudo de caso põe o perdido no acervo com a ficha do estudo, um registro por caso (`apps/api/src/rotas/estudo.ts`). Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 15.5 CA7 · Conferência com a ficha e a tese (`apps/api/src/fluxo/acervo.ts` e `rotas/acervo.ts`), com o antes e o depois no histórico; "Deferido no INSS" na lista de `DESFECHOS_DO_ACERVO` (ajuste de 08/10). Teste por perfil; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 15.6 CA3, CA5, CA8 · Recorte por tese no painel (`apps/api/src/fluxo/resultados.ts`), só com a ficha conferida. Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 15.7 Dados de exemplo (`apps/api/src/banco/exemplo.ts`): um desfecho do portal com a ficha, esperando a conferência; verifica entrando como Sênior.
-- [ ] 15.8 Telas: a ficha e o campo "Tese" em "Conferir desfechos" (`apps/web/src/paginas/ConferirAcervo.tsx`) e a opção "Tese" em "Resultados". Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 15.9 Playwright: a Sênior confere a ficha com a tese e vê o recorte por tese na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 15.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 15.3 CA1, CA4, CA10, CA11 · Finalidade `ficha_do_desfecho` (`apps/api/src/ia/ia.ts`) e `fichaDoDesfecho` (`apps/api/src/fluxo/ficha-do-desfecho.ts`) no preparo, registrado em `rotas/acervo.ts`: a ficha anonimizada; sem ficha na falha, e nova tentativa. Teste com IA falsa; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.4 CA1, CA4, CA9 · O estudo de caso põe o perdido no acervo com a ficha do estudo, um registro por caso (`apps/api/src/rotas/estudo.ts`). Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.5 CA7 · Conferência com a ficha e a tese (`apps/api/src/fluxo/acervo.ts` e `rotas/acervo.ts`), com o antes e o depois no histórico; "Deferido no INSS" na lista de `DESFECHOS_DO_ACERVO` (ajuste de 08/10). Teste por perfil; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.6 CA3, CA5, CA8 · Recorte por tese no painel (`apps/api/src/fluxo/resultados.ts`), só com a ficha conferida. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.7 Dados de exemplo (`apps/api/src/banco/exemplo.ts`): um desfecho do portal com a ficha, esperando a conferência; verifica entrando como Sênior.
+- [x] 15.8 Telas: a ficha e o campo "Tese" em "Conferir desfechos" (`apps/web/src/paginas/ConferirAcervo.tsx`) e a opção "Tese" em "Resultados". Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 15.9 Playwright: a Sênior confere a ficha com a tese e vê o recorte por tese na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 15.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-41, parte 2 (depois da GGVP-100, da parte 2 da GGVP-64 e do PR #11)
 

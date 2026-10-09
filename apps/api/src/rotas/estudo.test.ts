@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, pessoa, peticao, peticaoVersao, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, decisao, pessoa, peticao, peticaoVersao, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { buscarNoAcervo } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -125,5 +125,28 @@ describe('GGVP-19 · estudo de caso do processo perdido', () => {
     const doEstudo = fontes.find((f) => f.trecho?.startsWith('Estudo de caso da IA'))
     expect(doEstudo).toMatchObject({ tipo: 'acervo', referencia: `caso:${casoId}` })
     expect(doEstudo?.trecho).toContain('Juntar o comprovante de residência do filho')
+  })
+
+  it('GGVP-41 CA1, CA4, CA10 · o perdido entra no acervo com a ficha do estudo, sem o nome do cliente, sem outra chamada à IA', async () => {
+    comIa({ ...ESTUDO, aprendizado: 'No caso de Rosa Antunes, juntar o comprovante de residência do filho já na inicial.' })
+    await app.prepararSugestoes()
+    const [a] = await banco.select().from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
+    expect([a.fonte, a.desfecho, a.desfechoConferidoPor, a.materia, a.vara, a.tese]).toEqual(['portal', 'improcedente', null, ESTUDO.materia, ESTUDO.vara, ESTUDO.tese])
+    expect([a.resumo, a.licao]).toEqual([ESTUDO.resumo, 'No caso de [cliente], juntar o comprovante de residência do filho já na inicial.'])
+    expect((await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'ficha_do_desfecho'))).length).toBe(0)
+  })
+
+  it('GGVP-41 CA10 · a tese do estudo com CID não vai à Gestão: a ficha entra sem tese, e a Sênior escreve a dela', async () => {
+    comIa({ ...ESTUDO, tese: 'Incapacidade por depressão grave (F32.2) com idade avançada' })
+    await app.prepararSugestoes()
+    const [a] = await banco.select().from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
+    expect([a.materia, a.tese]).toEqual([ESTUDO.materia, null])
+  })
+
+  it('GGVP-41 CA9 · o caso que já estava no acervo não duplica: o estudo só completa a ficha', async () => {
+    await banco.insert(processoAcervo).values({ casoId, beneficio: BPC, desfecho: 'improcedente', fonte: 'lote', numeroCnj: '00000051220204036301' })
+    await app.prepararSugestoes()
+    const linhas = await banco.select().from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
+    expect(linhas.map((l) => [l.fonte, l.licao])).toEqual([['lote', ESTUDO.aprendizado]])
   })
 })

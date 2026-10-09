@@ -2,7 +2,7 @@
 // (CA7), pela data do seu evento no período; caso com dado incerto fica fora e nada trava. Não há amostra mínima: toda
 // taxa sai com o número de casos (CA8, G22 de 07/10).
 import { ROTULO_BENEFICIO, type Beneficio, type Indicador, type PainelDeResultados, type Recorte } from '@ggv/contratos'
-import { count, max, sql } from 'drizzle-orm'
+import { and, count, isNotNull, max, sql } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { hojeEmBrasilia as diaEmBrasilia } from '../vigilia/fila.ts'
@@ -187,6 +187,13 @@ async function gruposDoRecorte(
   } else if (recorte === 'perito') {
     const nomes = new Map((await banco.select({ id: perito.id, nome: perito.nome }).from(perito)).map((p) => [p.id, p.nome]))
     for (const p of await banco.select({ casoId: pericia.casoId, peritoId: pericia.peritoId }).from(pericia)) if (p.peritoId && nomes.has(p.peritoId)) nomeDe.set(p.casoId, nomes.get(p.peritoId) as string)
+  } else if (recorte === 'tese') {
+    // GGVP-41 (CA3, CA5, CA7): só a tese da ficha que a Sênior conferiu; sem tese, o caso fica fora do recorte.
+    const conferidas = await banco
+      .select({ casoId: processoAcervo.casoId, tese: processoAcervo.tese })
+      .from(processoAcervo)
+      .where(and(isNotNull(processoAcervo.desfechoConferidoPor), isNotNull(processoAcervo.tese)))
+    for (const a of conferidas) if (a.casoId && a.tese) nomeDe.set(a.casoId, a.tese)
   } else {
     for (const i of await banco.select({ casoId: identificadorCaso.casoId, tipo: identificadorCaso.tipo, valor: identificadorCaso.valor }).from(identificadorCaso)) {
       const n = i.valor.replace(/\D/g, '')

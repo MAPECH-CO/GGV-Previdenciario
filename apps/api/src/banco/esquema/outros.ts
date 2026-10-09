@@ -78,6 +78,12 @@ export const processoAcervo = pgTable('processo_acervo', {
   desfechoConferidoPor: uuid('desfecho_conferido_por').references(() => usuario.id),
   dataDecisao: date('data_decisao'),
   fonte: text('fonte').notNull(),
+  /** A ficha do desfecho (GGVP-41 CA6), escrita pela IA sem dado pessoal; nula enquanto a IA não leu (CA11). */
+  materia: text('materia'),
+  vara: text('vara'),
+  tese: text('tese'),
+  resumo: text('resumo'),
+  licao: text('licao'),
   criadoEm: criadoEm(),
 }).enableRLS()
 

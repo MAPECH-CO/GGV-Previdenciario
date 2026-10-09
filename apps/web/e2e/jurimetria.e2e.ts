@@ -44,8 +44,25 @@ test('GGVP-55 · a Sênior abre "Conferir desfechos do lote" pela Central, confe
   await outro.getByLabel('Desfecho correto').selectOption('extinto_sem_merito')
   await outro.getByRole('button', { name: 'Salvar a correção' }).click()
   await expect(page.getByRole('status')).toHaveText('Desfecho corrigido para Extinto sem mérito.')
-  await expect(lista.getByRole('listitem')).toHaveCount(2)
+  // Só os do lote (com número CNJ): o desfecho do portal (GGVP-41) também espera nesta lista.
+  await expect(lista.getByRole('listitem').filter({ hasText: /\d{7}-\d{2}\.\d{4}\./ })).toHaveCount(2)
 
   await page.goto('/gestao/resultados')
   await expect(page.getByText(/\d+ processos · \d+ conferidos, nas contas · \d+ aguardando conferência, fora das contas · base de 02\/10\/2026/)).toBeVisible()
+})
+
+test('GGVP-41 · a Sênior confere a ficha do desfecho do portal com a tese, e a Gestão recorta por tese', async ({ page }) => {
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await page.goto('/acervo/conferencia')
+  const doPortal = page.getByRole('list', { name: 'Desfechos para conferir' }).getByRole('listitem').filter({ hasText: 'Processo do portal' })
+  await expect(doPortal.getByLabel('Ficha do desfecho')).toContainText('Juntar o estudo social com os gastos da casa')
+  await expect(doPortal.getByLabel('Tese')).toHaveValue('Impedimento de longo prazo com renda acima de 1/4')
+  await doPortal.getByLabel('Tese').fill('Impedimento de longo prazo e renda acima de 1/4')
+  await doPortal.getByRole('button', { name: 'Confere' }).click()
+  await expect(page.getByRole('status')).toHaveText('Desfecho conferido.')
+
+  await page.goto('/gestao/resultados')
+  await page.getByLabel('Recorte', { exact: true }).selectOption('tese')
+  await page.getByRole('button', { name: 'Ver resultados' }).click()
+  await expect(page.getByRole('list', { name: 'Impedimento de longo prazo e renda acima de 1/4' })).toContainText(/Procedência na Justiça: \d+% em \d+ casos? · base de/)
 })
