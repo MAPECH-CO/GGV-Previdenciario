@@ -31,17 +31,17 @@ Toda rota SHALL usar `exigir` com o perfil da sessão (matriz v13), nunca `?perf
 - **Então** recebe 403 e a tentativa fica no histórico
 
 ### Requirement: CA4 · Os portões no servidor
-O servidor SHALL recusar o pedido ao médico e a orientação ao cliente que o G20 (e o G11) barram, com o portão registrado, e SHALL mostrar o laudo, a leitura e o perfil do perito só para o Jurídico.
+O servidor SHALL recusar o pedido ao médico e a orientação ao cliente que o G20 (e o G11) barram, com o portão registrado, e SHALL mostrar só para o Jurídico o conteúdo médico: a leitura do laudo e os laudos do acervo no perfil do perito. O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê (saúde simples, Pedro, 08/10).
 
 #### Scenario: CA4 · Pedido ao médico com CID
 - **Dado** o pedido ao médico com CID ou conclusão
 - **Quando** a Documentação envia
 - **Então** o servidor recusa com 400 e registra o portão G20
 
-#### Scenario: CA4 · O laudo é do Jurídico
+#### Scenario: CA4 · A leitura do laudo é do Jurídico
 - **Dado** o resultado registrado com o laudo
-- **Quando** a Documentação abre a perícia
-- **Então** não vê a leitura do laudo, o perfil do perito nem o laudo na pasta
+- **Quando** a Documentação ou o Atendimento abre a perícia
+- **Então** vê o resultado, o laudo na pasta (o PDF só o Jurídico abre), o histórico e o que a equipe escreveu, sem a leitura do laudo nem os laudos do perfil do perito
 
 ### Requirement: CA5 · As pontas com o que já está no servidor
 A perícia SHALL ser a linha da tabela `pericia` aberta pela decisão do D2.03 (GGVP-31), pela exigência, pelo despacho ou pelo juiz; o resultado SHALL fechar a perícia na junção do D2 e na exigência; o histórico SHALL ser o da GGVP-99.

@@ -208,11 +208,11 @@ function comArquivo(campo: string, arquivo: Blob | undefined, nome: string, dado
 export async function sincronizarPericias(juridico: boolean) {
   if (!servidorLigado()) return
   const [lista, tarefas] = await Promise.all([noBanco<PericiaNaTela[]>('/pericias'), noBanco<Tarefa[]>('/pericias/tarefas')])
-  // Os peritos (com a jurimetria) são só do Jurídico: os outros perfis nem pedem, para não virar tentativa bloqueada.
+  // Os peritos servem à pergunta de um clique, que é do Jurídico: os outros perfis nem pedem.
   peritosDoBanco = juridico ? await noBanco<typeof peritosDoBanco>('/peritos') : []
   tarefasDoBanco = tarefas
   // A cópia das perícias do servidor é trocada inteira: quem entra depois, na mesma aba, não fica com o que a pessoa de
-  // antes via (o laudo e a leitura são só do Jurídico).
+  // antes via (a leitura do laudo é só do Jurídico).
   const banco = lerComPericias()
   banco.pericias = (banco.pericias ?? []).filter((p) => !doServidor(p.processoId))
   for (const t of lista) receberEm(banco, t)
