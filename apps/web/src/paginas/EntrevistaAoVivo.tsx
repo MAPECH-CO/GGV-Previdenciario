@@ -4,12 +4,15 @@ import { CampoCofre } from '../componentes/CampoCofre.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { formatarTelefone } from '../campos.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
+import { useGravacaoDeVerdade } from '../dados/gravacaoDeVerdade.ts'
 import {
   encerrarGravacao,
   enviarAudioGuardado,
+  enviarParteDoAudio,
   falasAoVivo,
   iniciarGravacao,
   obterEntrevista,
+  pedirChaveAoVivo,
   registrarAcao,
   registrarSemAudio,
   transcrever,
@@ -18,7 +21,7 @@ import type { Entrevista, Gravacao, InformacaoExtraida, RespostaDoEncerramento, 
 import { hora } from '../regras/datas.ts'
 import { minutos, pendenciasDaEntrevista, relogio, roteiroDaEntrevista, situacaoDaInformacao } from '../regras/entrevista.ts'
 import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, gravacaoDoServidor } from '../dados/servidor.ts'
 import { hojeIso } from '../regras/datas.ts'
 import base from './Balcao.module.css'
 import styles from './EntrevistaAoVivo.module.css'
@@ -59,6 +62,15 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
   const pedindo = useRef(false)
   const falhouMicrofone = useRef(false)
   const falhouTranscricao = useRef(false)
+  // GGVP-133: na ficha do servidor, o microfone de verdade e o texto ao vivo. `aoVivo` nulo: sem microfone, segue o relógio.
+  const deVerdade = useGravacaoDeVerdade({
+    ligar: Boolean(g && g.estado === 'gravando' && gravacaoDoServidor(g.id)),
+    pausada: g?.estado === 'pausada',
+    segundos,
+    enviarParte: (parte) => enviarParteDoAudio(g!.id, parte),
+    pedirChave: g ? () => pedirChaveAoVivo(g.id) : null,
+  })
+  const { aoVivo, semAoVivo, tirarPendentes } = deVerdade
 
   useEffect(() => {
     let valendo = true
@@ -123,6 +135,12 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     fazer(() => registrarAcao(g.id, 'falhou', segundos))
   })
 
+  /** Encerrar: o microfone fecha a última parte, as partes sobem e a gravação vai para a transcrição (CA1, CA10). */
+  async function encerrar(gravacaoId: string) {
+    const restantes = await deVerdade.fechar()
+    return encerrarGravacao(gravacaoId, { aos: segundos, online: online && restantes.length === 0 })
+  }
+
   // Encerrada: o áudio vai para a transcrição; sem internet, espera a conexão voltar e sobe uma vez só (CA5, CA12).
   useEffect(() => {
     if (!g || g.estado !== 'encerrada' || pedindo.current) return
@@ -133,13 +151,13 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     falhouTranscricao.current ||= falhar
     ;(async () => {
       try {
-        const enviada = g.transcricao === 'aguardando-internet' ? await enviarAudioGuardado(g.id) : g
+        const enviada = g.transcricao === 'aguardando-internet' ? await enviarAudioGuardado(g.id, tirarPendentes()) : g
         setG(await transcrever(enviada.id, { falhar }))
       } finally {
         pedindo.current = false
       }
     })()
-  }, [g, online, simular])
+  }, [g, online, simular, tirarPendentes])
 
   if (!dados) {
     return (
@@ -153,7 +171,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
 
   const { ficha, agendamento: a } = dados
   const encerrada = g?.estado === 'encerrada'
-  const ditas = g ? falasAoVivo(dados).filter((f) => f.aos <= segundos) : []
+  const ditas = g && aoVivo === null ? falasAoVivo(dados).filter((f) => f.aos <= segundos) : []
   const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : ditas
   const extraidas = encerrada && g.transcricao === 'pronta' ? g.extraidas : ditas.flatMap((f) => f.extrai ?? [])
   const respondidos = new Set(ditas.flatMap((f) => f.roteiro ?? []))
@@ -216,7 +234,15 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
             </button>
           )}
           {g?.estado === 'gravando' && (
-            <button type="button" className={styles.secundario} disabled={ocupado} onClick={() => fazer(() => registrarAcao(g.id, 'pausou', segundos))}>
+            <button
+              type="button"
+              className={styles.secundario}
+              disabled={ocupado}
+              onClick={() => {
+                deVerdade.pausar()
+                fazer(() => registrarAcao(g.id, 'pausou', segundos))
+              }}
+            >
               Pausar
             </button>
           )}
@@ -234,7 +260,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
             </button>
           )}
           {(g?.estado === 'gravando' || (g?.estado === 'pausada' && !cofre)) && (
-            <button type="button" className={styles.primario} disabled={ocupado} onClick={() => fazer(() => encerrarGravacao(g.id, { aos: segundos, online }))}>
+            <button type="button" className={styles.primario} disabled={ocupado} onClick={() => fazer(() => encerrar(g.id))}>
               Encerrar e gerar resumo
             </button>
           )}
@@ -325,6 +351,11 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                 {g.transcricao === 'falhou' && `A transcrição falhou: ${g.motivoDaFalha}.`}
                 {g.transcricao === 'sem-audio' && 'A anotação ficou no caso.'}
               </p>
+              {g.transcricao === 'pronta' && g.alertaDaIa && (
+                <p className={styles.alerta} role="alert">
+                  Atenção: {g.alertaDaIa}. A fala entrou como dado; confira o texto antes de usar (G14).
+                </p>
+              )}
               <div className={base.atalhos}>
                 {g.transcricao === 'falhou' && (
                   <button type="button" className={base.atalho} onClick={() => fazer(() => transcrever(g.id))}>
@@ -349,7 +380,22 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
             <h2 id="ao-vivo" className={styles.cartaoTitulo}>
               {encerrada ? 'Transcrição' : 'Transcrição ao vivo'}
             </h2>
-            {trechos.length === 0 ? (
+            {!encerrada && aoVivo !== null ? (
+              <>
+                {aoVivo.length === 0 ? (
+                  <p className={styles.vazio}>{semAoVivo || 'Ouvindo: o texto aparece aqui enquanto falam.'}</p>
+                ) : (
+                  <ol className={styles.falas} aria-label="Falas ao vivo">
+                    {aoVivo.map((f) => (
+                      <li key={f.id} className={styles.fala}>
+                        <span>{f.texto}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <p className={base.nota}>Texto ao vivo pela OpenAI. O que vale no caso é o texto final, com quem fala, que sai ao encerrar.</p>
+              </>
+            ) : trechos.length === 0 ? (
               <p className={styles.vazio}>A transcrição aparece aqui quando a gravação começar.</p>
             ) : (
               <ol className={styles.falas} aria-label="Falas">
@@ -424,6 +470,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                   disabled={ocupado}
                   onClick={() => {
                     setCofre(true)
+                    deVerdade.pausar()
                     fazer(() => registrarAcao(g.id, 'abriu-cofre', segundos))
                   }}
                 >

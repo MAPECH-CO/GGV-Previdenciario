@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-57 · Calcular tempo e pontos sobre o CNIS. Cada teste abre um navegador novo, então começa da semente de
 // exemplo.ts: o CNIS da Josefa foi baixado do Meu INSS em 02/10.
@@ -10,6 +11,7 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 
 /** A advogada define o benefício da Josefa pela lista do escritório. */
 async function definir(page: Page, beneficio: string) {
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/beneficio')
   await page.getByRole('radio', { name: 'Outro benefício' }).click()
   await page.getByLabel('Benefício definido *').selectOption(beneficio)
@@ -32,7 +34,8 @@ test('CA1, CA2, CA4, CA5 e CA6 · da tarefa na Central ao cálculo concluído; r
   await page.goto('/clientes/josefa-exemplo')
   await expect(page.getByText('Calcular tempo e pontos (D1.13): obrigatório antes do fechamento')).toBeVisible()
 
-  await page.goto('/')
+  // O cálculo é do Jurídico (Pedro, 08/10): a tarefa está na Central da advogada.
+  await page.goto('/advogada')
   await page.getByRole('link', { name: 'Josefa Exemplo · Calcular tempo e pontos' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Calcular tempo e pontos')
   await expect(page.getByText('CNIS baixado do Meu INSS · extraído em 02/10')).toBeVisible()
@@ -61,13 +64,14 @@ test('CA1, CA2, CA4, CA5 e CA6 · da tarefa na Central ao cálculo concluído; r
 test('CA3 · benefício sem cálculo: o passo não aparece', async ({ page }) => {
   await definir(page, 'loas-idoso')
   await expect(page.getByText('Depois: «O cliente fechou com o escritório?» (D1.14).')).toBeVisible()
-  await page.goto('/')
+  await page.goto('/advogada')
   await expect(page.getByRole('link', { name: 'Josefa Exemplo · Calcular tempo e pontos' })).toHaveCount(0)
   await page.goto('/entrevista/josefa-entrevista/calculo')
   await expect(page.getByRole('heading', { name: 'Este passo não se aplica' })).toBeVisible()
 })
 
 test('tema escuro e fonte grande no cálculo', async ({ page }) => {
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/calculo?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Calcular tempo e pontos')
   const corpo = page.locator('body')

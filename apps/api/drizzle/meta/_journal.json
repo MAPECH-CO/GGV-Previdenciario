@@ -145,15 +145,22 @@
     {
       "idx": 20,
       "version": "7",
-      "when": 1791501281239,
-      "tag": "0020_base_de_conhecimento",
+      "when": 1791499769191,
+      "tag": "0020_glossario_e_transcricao",
       "breakpoints": true
     },
     {
       "idx": 21,
       "version": "7",
-      "when": 1791501677714,
-      "tag": "0021_nomeacao_de_perito",
+      "when": 1791520401237,
+      "tag": "0021_base_de_conhecimento",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791520435327,
+      "tag": "0022_nomeacao_de_perito",
       "breakpoints": true
     }
   ]
