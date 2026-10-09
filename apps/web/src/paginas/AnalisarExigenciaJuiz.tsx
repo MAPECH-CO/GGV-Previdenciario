@@ -5,19 +5,22 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
 import { AnalisarExigenciaJuiz as Contrato, ROTULO_SETOR, SETORES_DA_EXIGENCIA, TIPOS_DE_PERICIA, type ExigenciaDoJuiz, type SugestaoDaExigencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TIPOS_DE_DOCUMENTO } from '../dados/catalogos.ts'
 import styles from './Passo.module.css'
 import { DecidirVencidaForm } from './TratarExigencia.tsx'
 
 type Setor = (typeof SETORES_DA_EXIGENCIA)[number]
 type TipoPericia = (typeof TIPOS_DE_PERICIA)[number]
-type ItemNaTela = { chave: number; setor: Setor | ''; descricao: string; provaEsperada: string; prazoInterno: string }
+type ItemNaTela = { chave: number; setor: Setor | ''; descricao: string; provaEsperada: string; prazoInterno: string; tipoDocumento: string }
+/** O tipo sugerido pela IA só entra se for do catálogo das telas (bloco 5d, GGVP-125). */
+const doCatalogo = (tipo: string | null) => (tipo && TIPOS_DE_DOCUMENTO.some((t) => t.id === tipo) ? tipo : '')
 const ROTULO_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social' } as const
 const ROTULO_ITEM = { pendente: 'Pendente', cumprido: 'Cumprido', nao_cumprido: 'Encerrado sem a prova' } as const
 const dia = (iso: string | null) => (iso ? (isoParaData(iso) ?? iso) : '—')
 
 /** Uma linha de item (GGVP-79 CA7, CA13): setor, o que cumprir, prova esperada e prazo interno até o processual. */
 function LinhaDoItem({ item, prazoFim, mudar, remover }: { item: ItemNaTela; prazoFim: string; mudar: (i: ItemNaTela) => void; remover: () => void }) {
-  const ids = { setor: useId(), descricao: useId(), prova: useId(), prazo: useId() }
+  const ids = { setor: useId(), descricao: useId(), prova: useId(), tipo: useId(), prazo: useId() }
   return (
     <li className={styles.cartao}>
       <label className={styles.rotulo} htmlFor={ids.setor}>
@@ -39,6 +42,17 @@ function LinhaDoItem({ item, prazoFim, mudar, remover }: { item: ItemNaTela; pra
         Documento que comprova (opcional)
       </label>
       <input id={ids.prova} className={styles.campo} value={item.provaEsperada} onChange={(e) => mudar({ ...item, provaEsperada: e.target.value })} />
+      <label className={styles.rotulo} htmlFor={ids.tipo}>
+        Tipo do documento (opcional: o documento conferido desse tipo dá baixa sozinho)
+      </label>
+      <select id={ids.tipo} className={styles.campo} value={item.tipoDocumento} onChange={(e) => mudar({ ...item, tipoDocumento: e.target.value })}>
+        <option value="">Sem baixa sozinha</option>
+        {TIPOS_DE_DOCUMENTO.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.nome}
+          </option>
+        ))}
+      </select>
       <label className={styles.rotulo} htmlFor={ids.prazo}>
         Prazo interno
       </label>
@@ -72,7 +86,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
   }, [casoId, versao])
 
   const incluir = () => {
-    setItens((atual) => [...atual, { chave: proxima, setor: '', descricao: '', provaEsperada: '', prazoInterno: '' }])
+    setItens((atual) => [...atual, { chave: proxima, setor: '', descricao: '', provaEsperada: '', prazoInterno: '', tipoDocumento: '' }])
     setProxima((n) => n + 1)
   }
 
@@ -87,7 +101,11 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
       if (!l) return
       setDecisao((d) => d ?? (l.ciencia ? 'ciencia' : 'cumprir'))
       // Chaves negativas: não batem com as dos itens que a advogada inclui (a partir de 1).
-      setItens((atual) => (atual.length ? atual : l.itens.map((i, n) => ({ chave: -(n + 1), setor: i.setor, descricao: i.descricao, provaEsperada: i.provaEsperada ?? '', prazoInterno: '' }))))
+      setItens((atual) =>
+        atual.length
+          ? atual
+          : l.itens.map((i, n) => ({ chave: -(n + 1), setor: i.setor, descricao: i.descricao, provaEsperada: i.provaEsperada ?? '', prazoInterno: '', tipoDocumento: doCatalogo(i.tipoDocumento) })),
+      )
       setTipos((t) => (t.length ? t : l.pericias))
     })
   }, [casoId, x?.podeDistribuir])
@@ -99,7 +117,13 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
       decisao === 'cumprir'
         ? {
             decisao,
-            itens: itens.map((i) => ({ setor: i.setor || undefined, descricao: i.descricao, provaEsperada: i.provaEsperada, prazoInterno: isoParaData(i.prazoInterno) ?? '' })),
+            itens: itens.map((i) => ({
+              setor: i.setor || undefined,
+              descricao: i.descricao,
+              provaEsperada: i.provaEsperada,
+              prazoInterno: isoParaData(i.prazoInterno) ?? '',
+              tipoDocumento: i.tipoDocumento || undefined,
+            })),
             tiposPericia: tipos,
             ...(chamadaIaId && { chamadaIaId }),
           }

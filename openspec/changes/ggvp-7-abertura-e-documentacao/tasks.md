@@ -241,11 +241,11 @@ Parte 1 · A main e o fluxo da Recepção
 
 Parte 2 · A baixa nas pendências das outras áreas
 
-- [ ] 125.83 Banco e contratos: `exigencia_item.tipo_documento` (opcional, do catálogo das telas) e a migração; o tipo no item da exigência do INSS e do juiz e na sugestão da IA; testes.
-- [ ] 125.84 Telas: ao montar os itens da exigência do INSS e do juiz, o tipo de documento esperado (opcional), já com o sugerido pela IA; testes.
-- [ ] 125.85 Servidor: o documento arquivado do tipo do item, no caso com a exigência aberta, dá baixa no item (cumprido, com o documento como prova e quem conferiu); testes.
-- [ ] 125.86 Perícia: o documento do scanner, arquivado, entra no kit da perícia pelo tipo (teste). Complemento: o laudo ou o relatório que chega com o complemento aberto registra a chegada e para a cobrança até o parecer; testes.
-- [ ] 125.87 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 125.83 Banco e contratos: `exigencia_item.tipo_documento` (opcional, do catálogo das telas) e a migração; o tipo no item da exigência do INSS e do juiz e na sugestão da IA; testes.
+- [x] 125.84 Telas: ao montar os itens da exigência do INSS e do juiz, o tipo de documento esperado (opcional), já com o sugerido pela IA; testes.
+- [x] 125.85 Servidor: o documento arquivado do tipo do item, no caso com a exigência aberta, dá baixa no item (cumprido, com o documento como prova e quem conferiu); testes.
+- [x] 125.86 Perícia: o documento do scanner, arquivado, entra no kit da perícia pelo tipo (teste). Complemento: o laudo ou o relatório que chega com o complemento aberto registra a chegada e para a cobrança até o parecer; testes.
+- [x] 125.87 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ### Bloco 6 · A primeira liberação ao Jurídico no servidor (pedido do Pedro, 09/10; números 125.90 em diante para não colidir com o 5c)
 

@@ -2,14 +2,14 @@
 // o registro do recebimento, a leitura da IA (simulada), uma por arquivo, e a conferência da Documentação. As regras são as do servidor de exemplo do Pedro
 // (documentos.ts e leitura.ts), com as regras puras importadas das telas. O arquivo de verdade segue simulado até o Drive.
 import { createHash, randomUUID } from 'node:crypto'
-import { and, eq, isNull } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply } from 'fastify'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '@ggv/campos'
 import { ArquivamentoDosLidos, CampoLidoNoCadastro, EnvioDeArquivos, MudancaDeCaso, RegistroDoRecebimento, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { contratoRecepcao, documento, documentoMedico, leituraDocumento, tarefaRecepcao } from '../banco/esquema.ts'
-import { exigir } from '../sessao/rotas.ts'
+import { caso as tabelaCaso, contratoRecepcao, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao } from '../banco/esquema.ts'
+import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { TIPOS_DE_DOCUMENTO, nomeBeneficio, nomeTipo } from '../../../web/src/dados/catalogos.ts'
 import { loteDeExemplo } from '../../../web/src/dados/exemplo.ts'
@@ -49,6 +49,7 @@ type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento }
 export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
+  const historico = registrarHistorico(banco, agora)
   const lerContrato = criarLeituraDoContrato(banco, agora)
 
   const fichaPeloId = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
@@ -108,9 +109,9 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
    * (decisão do Mateus, 09/10). O médico fica sensível, nunca volta atrás, e, com caso, entra como documento médico não
    * conferido, para o parecer. Sem a linha do card (o conteúdo não chegou), nada a registrar.
    */
-  async function registrarConferido(leitura: DocumentoLido, arquivo: Arquivo, casoId: string | null, quem: string) {
+  async function registrarConferido(leitura: DocumentoLido, arquivo: Arquivo, casoId: string | null, quem: string): Promise<{ id: string; tipo: string } | null> {
     const conferido = { tipo: leitura.tipo, situacao: 'conferido', conferidoPor: quem, conferidoEm: agora() }
-    await banco.transaction(async (tx) => {
+    return banco.transaction(async (tx) => {
       const chave = `drive:${leitura.id}`
       const [achado] = await tx
         .select({ id: documento.id, sensivel: documento.sensivel, casoId: documento.casoId })
@@ -142,7 +143,31 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       }
       const tipoMedico = TIPO_DO_DOCUMENTO_MEDICO[leitura.tipo]
       if (d?.casoId && tipoMedico) await tx.insert(documentoMedico).values({ documentoId: d.id, tipo: tipoMedico }).onConflictDoNothing()
+      return d ? { id: d.id, tipo: leitura.tipo } : null
     })
+  }
+
+  /**
+   * A baixa por código (bloco 5d, decisão do Mateus): o documento conferido do tipo que o item da exigência espera, num caso
+   * da pessoa com a exigência aberta (do INSS ou do juiz), cumpre o item sozinho, com o documento como prova e quem
+   * conferiu o tipo. O que já foi cumprido, ou não tem tipo, fica como está.
+   */
+  async function darBaixaNasExigencias(pessoaId: string, conferidos: { id: string; tipo: string }[], pedido: FastifyRequest) {
+    const quem = pedido.usuario!.id
+    for (const d of conferidos) {
+      const itens = await banco
+        .select({ id: exigenciaItem.id, casoId: exigencia.casoId })
+        .from(exigenciaItem)
+        .innerJoin(exigencia, eq(exigenciaItem.exigenciaId, exigencia.id))
+        .innerJoin(tabelaCaso, eq(exigencia.casoId, tabelaCaso.id))
+        .where(and(eq(tabelaCaso.pessoaId, pessoaId), eq(exigencia.situacao, 'aberta'), eq(exigenciaItem.situacao, 'pendente'), eq(exigenciaItem.tipoDocumento, d.tipo)))
+      if (itens.length === 0) continue
+      await banco
+        .update(exigenciaItem)
+        .set({ situacao: 'cumprido', motivo: null, provaDocumentoId: d.id, cumpridoEm: agora(), cumpridoPor: quem })
+        .where(and(inArray(exigenciaItem.id, itens.map((i) => i.id)), eq(exigenciaItem.situacao, 'pendente')))
+      for (const i of itens) await historico(quem, 'item_exigencia_atualizado', pedido, `caso:${i.casoId}`, { item: i.id, acao: 'cumprido', documento: d.id, baixa: 'pelo tipo do documento' })
+    }
   }
 
   // GGVP-17 CA6, CA7, CA11, CA13, CA14: "Conferir e enviar". Nada é apagado nem sobrescrito; o mesmo conteúdo já na pasta
@@ -359,7 +384,12 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     if (virouLaudo) await avisarLaudoNovo(ficha, caso, hoje(), 'Conferiu como laudo um documento que chegou com outro tipo; enviado ao Jurídico para análise', quem)
     await guardar(ficha)
     const casoDoServidor = ficha.processos.map((x) => x.id).find((id) => UUID.test(id)) ?? null
-    for (const r of registrar) await registrarConferido(r.leitura, r.arquivo, casoDoServidor, pedido.usuario!.id)
+    const conferidos: { id: string; tipo: string }[] = []
+    for (const r of registrar) {
+      const d = await registrarConferido(r.leitura, r.arquivo, casoDoServidor, pedido.usuario!.id)
+      if (d) conferidos.push(d)
+    }
+    await darBaixaNasExigencias(ficha.id, conferidos, pedido)
     // O contrato do caso esperava esta leitura: ela decide entre a conferência e a cópia (GGVP-85).
     for (const processoId of new Set(contratosLidos.map((l) => ficha.arquivos.find((a) => a.nome === l.arquivo)?.local ?? ''))) await lerContrato(processoId)
     return {

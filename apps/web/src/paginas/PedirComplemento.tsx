@@ -55,7 +55,16 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
   const nomeDoParecer = complemento.parecer === 'contraditorio' ? 'Contraditório' : 'Insuficiente'
   const isoPrazo = dataParaIso(prazo)
   const motivoDecidir = motivoParaNaoDecidir({ opcao: 'nova-tentativa', justificativa, prazo: isoPrazo }, hoje)
-  const quando = situacao === 'na-senior' ? 'na sênior' : situacao === 'encerrado' ? 'encerrado' : c.proxima <= hoje ? 'hoje' : `lembrete ${dataCurta(c.proxima, hoje)}`
+  const quando =
+    situacao === 'na-senior'
+      ? 'na sênior'
+      : situacao === 'encerrado'
+        ? 'encerrado'
+        : situacao === 'aguardando-parecer'
+          ? 'espera o parecer'
+          : c.proxima <= hoje
+            ? 'hoje'
+            : `lembrete ${dataCurta(c.proxima, hoje)}`
 
   async function agir(acao: () => Promise<ComplementoNaTela>, ok: string) {
     if (travado.current) return

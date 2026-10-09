@@ -14,6 +14,7 @@ import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { MSG_IA_SEM_SUGESTAO, MSG_NADA_A_ANALISAR } from './exigencia-juiz.ts'
+import { MSG_TIPO_DE_DOCUMENTO } from './exigencia.ts'
 
 const SENHA = 'senha-do-portal-1'
 const AGORA = new Date('2026-10-05T15:00:00Z') // segunda-feira
@@ -116,7 +117,8 @@ describe('Épico IA · a IA sugere as tarefas da exigência do juiz (GGVP-79 CA3
   const LEITURA = {
     resumo: 'O juiz mandou juntar laudo em 15 dias úteis.',
     ciencia: false,
-    itens: [{ setor: 'atendimento', descricao: 'Pedir ao cliente o laudo atualizado do médico assistente', provaEsperada: 'Laudo com data recente' }],
+    // Bloco 5d (GGVP-125): a IA também sugere o tipo do documento, do catálogo das telas.
+    itens: [{ setor: 'atendimento', descricao: 'Pedir ao cliente o laudo atualizado do médico assistente', provaEsperada: 'Laudo com data recente', tipoDocumento: 'laudo' }],
     pericias: [],
   }
   let enviado = ''
@@ -293,5 +295,13 @@ describe('GGVP-83 · laço dos setores', () => {
     await banco.update(pericia).set({ resultado: 'favoravel' })
     r = (await chamar('gabi', 'GET', '/exigencia-juiz')).json()
     expect([r.faltam, r.pericias]).toEqual([[], [{ tipo: 'social', resultado: 'favoravel' }]])
+  })
+})
+
+describe('GGVP-125 · bloco 5d: o tipo de documento que cumpre o item da exigência do juiz', () => {
+  it('o item pode trazer o tipo; tipo fora da lista é recusado', async () => {
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [{ ...ITEM, tipoDocumento: 'inventado' }] })).json().erro).toBe(MSG_TIPO_DE_DOCUMENTO)
+    await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [{ ...ITEM, tipoDocumento: 'laudo' }] })
+    expect((await banco.select().from(exigenciaItem)).map((i) => i.tipoDocumento)).toEqual(['laudo'])
   })
 })

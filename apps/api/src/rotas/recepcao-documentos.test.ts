@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { armazenamentoLocal } from '../armazenamento.ts'
-import { caso, documento, documentoMedico, leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
@@ -284,3 +284,29 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
   })
 })
 
+describe('GGVP-125 · bloco 5d: a baixa pelo tipo do documento nas pendências', () => {
+  it('o documento conferido do tipo que o item da exigência aberta espera dá baixa sozinho, com o documento como prova e quem conferiu', async () => {
+    const fichaId = await lead('52998224725')
+    const [c] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+    const [aberta] = await banco.insert(exigencia).values({ casoId: c.id, origem: 'inss', descricao: 'Apresentar comprovantes.', recebidaEm: '2026-10-02' }).returning()
+    const [antiga] = await banco.insert(exigencia).values({ casoId: c.id, origem: 'inss', descricao: 'Antiga.', recebidaEm: '2026-09-01', situacao: 'cumprida' }).returning()
+    await banco.insert(exigenciaItem).values([
+      { exigenciaId: aberta.id, descricao: 'Comprovante de residência atualizado', perfilResponsavel: 'documentacao', tipoDocumento: 'comprovante-residencia' },
+      { exigenciaId: aberta.id, descricao: 'Declaração do sindicato', perfilResponsavel: 'documentacao' },
+      { exigenciaId: antiga.id, descricao: 'Comprovante da exigência antiga', perfilResponsavel: 'documentacao', tipoDocumento: 'comprovante-residencia' },
+    ])
+    const { tarefa } = await json('ana', 'POST', `/api/fichas/${fichaId}/encaminhamentos`, { motivo: 'documento', setor: 'Documentação · ADM' })
+    await json('dora', 'POST', `/api/tarefas/${tarefa.id}/lote`)
+    const lidos = (await json('dora', 'GET', `/api/fichas/${fichaId}/documentos-lidos`)).documentos.filter((d: { situacao: string }) => d.situacao === 'a-conferir')
+    const documentos = lidos.map((d: { id: string; tipo: string }) => ({ id: d.id, tipo: d.tipo, data: '2026-10-08' }))
+    expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })).toMatchObject({ arquivados: 2 })
+
+    const [comprovante] = await banco.select().from(documento).where(eq(documento.tipo, 'comprovante-residencia'))
+    const [dora] = await banco.select().from(usuario).where(eq(usuario.email, 'dora@exemplo.ggv'))
+    const itens = await banco.select().from(exigenciaItem)
+    const item = (descricao: string) => itens.find((i) => i.descricao === descricao)!
+    const cumprido = item('Comprovante de residência atualizado')
+    expect([cumprido.situacao, cumprido.provaDocumentoId, cumprido.cumpridoPor]).toEqual(['cumprido', comprovante.id, dora.id])
+    expect([item('Declaração do sindicato').situacao, item('Comprovante da exigência antiga').situacao]).toEqual(['pendente', 'pendente'])
+  })
+})

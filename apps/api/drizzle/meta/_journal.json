@@ -211,6 +211,13 @@
       "when": 1791577450864,
       "tag": "0029_checklist_boas_vindas_cobranca",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791582098224,
+      "tag": "0030_tipo_do_documento_no_item",
+      "breakpoints": true
     }
   ]
 }
