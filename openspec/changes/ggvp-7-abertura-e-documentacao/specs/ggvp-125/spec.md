@@ -236,6 +236,34 @@ O arquivo enviado pelo card SHALL ficar guardado no armazenamento de arquivos do
 - **Quando** o conteúdo que chega não tem o hash do arquivo anunciado
 - **Então** é recusado, e nada é guardado
 
+### Requirement: Bloco 5c · O checklist, as boas-vindas e a cobrança ficam no banco do portal
+O checklist do caso SHALL ser calculado no servidor, com as regras das telas, a partir do banco: os documentos da ficha já lidos e arquivados, do card e do scanner (a quarentena não conta), o contrato assinado, a circunstância do acidente e a condição da criança. A lista do benefício SHALL vir do kit que o escritório configura no servidor (GGVP-104), o vigente quando o caso abriu, o mesmo da liberação; uma tabela única SHALL traduzir os nomes de documento do kit para os das telas, sem mudar o nome que o card grava. As listas de exemplo ficam só no modo exemplo; a lista da entrevista (GGVP-46) e o prazo do juiz ou do INSS na cobrança ficam para as histórias deles. A conferência SHALL gravar no servidor a situação calculada, nunca a marcada à mão, e a incompleta SHALL abrir a cobrança. A liberação ao Jurídico (G1) do caso que veio da Recepção SHALL conferir esse mesmo checklist: a última conferência completa e o checklist de agora completo (decisão do Mateus, 09/10). Por enquanto o portal não manda as boas-vindas (decisão do Mateus, 09/10): conferido o checklist de cliente novo, a Atendimento SHALL receber na Central "Enviar boas-vindas", com a mensagem pronta para copiar; ela manda por fora e marca "Já enviei", que SHALL ficar no servidor, no histórico e nos contatos. Quem já era cliente MUST NOT receber, e o servidor MUST recusar a segunda vez. Cada tentativa da cobrança, o adiamento e a decisão SHALL gravar no servidor; a decisão MUST ser da Sênior (ação nova na matriz), no limite (G15) e com justificativa. A cobrança SHALL fechar sozinha quando nada mais falta. O checklist calculado, os registros das boas-vindas e as cobranças SHALL ir na cópia das telas, de onde saem as tarefas da Central.
+
+#### Scenario: Checklist incompleto, cobrança em outro computador
+- **Dado** um caso do servidor com documentos pendentes
+- **Quando** a Documentação confere o checklist
+- **Então** a conferência fica no servidor, incompleta, e a Atendimento, em outro computador, recebe "Cobrar documento" com o que falta
+
+#### Scenario: O kit do escritório com os nomes das telas
+- **Dado** o kit do LOAS com "documento_de_identidade" e um RG enviado pelo card e arquivado
+- **Quando** o checklist é calculado e a Documentação libera ao Jurídico
+- **Então** o RG conta como o documento de identidade, e a liberação só recusa pelo que falta de verdade
+
+#### Scenario: Boas-vindas pela Atendimento, uma vez
+- **Dado** um cliente novo com o checklist conferido
+- **Quando** a Atendimento manda a mensagem por fora e marca "Já enviei"
+- **Então** a tarefa "Enviar boas-vindas" sai, o envio fica no histórico e nos contatos, e o servidor recusa a segunda vez
+
+#### Scenario: A decisão no limite é da Sênior
+- **Dado** uma cobrança com duas tentativas sem resposta
+- **Quando** quem não é a Sênior tenta decidir
+- **Então** o servidor recusa; a Sênior decide com justificativa, e a decisão volta ao Atendimento
+
+#### Scenario: Chegou tudo
+- **Dado** uma cobrança aberta
+- **Quando** o último documento pendente é arquivado
+- **Então** a cobrança fecha sozinha no servidor
+
 ### Requirement: Bloco 6 · A primeira liberação ao Jurídico vai ao servidor
 Para o caso do servidor, "Liberar ao Jurídico" (D1.24, Documentação) SHALL seguir pela rota `POST /api/casos/:id/liberacao` (GGVP-127, #20), que confere de novo no servidor o perfil, o checklist (G1) e o parecer (G17), fecha a tarefa D1.24 e abre "Conferir antes do INSS" para a Sênior; a recusa do servidor MUST aparecer na tela, e nada é gravado aqui. A fila da Sênior desse caso vem do servidor, sem a cópia local repetir a tarefa (pedido do Pedro, 09/10). A tarefa D1.24 nasce do checklist conferido, no bloco 5c.
 
