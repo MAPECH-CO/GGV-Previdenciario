@@ -225,6 +225,21 @@ describe('Épico IA · a minuta da petição inicial', () => {
     for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(pedidos.join('\n')).not.toContain(numero)
   })
 
+  it('GGVP-151 CA4 · a chance que a advogada vê na tela da petição não vai ao pedido da minuta ao modelo', async () => {
+    await laudoDaDocumentacao()
+    const [helena] = await banco.select().from(usuario).where(eq(usuario.email, 'helena@exemplo.ggv'))
+    await banco.insert(processoAcervo).values([
+      { beneficio: 'bpc_loas_idoso', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'portal' },
+      { beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: helena.id, fonte: 'portal' },
+    ])
+    const chance = (await chamar('gabi', 'POST', '/chance', {})).json()
+    expect([chance.porcentagem, chance.casos]).toEqual([50, 2])
+    pedidos.length = 0
+    await chamar('gabi', 'POST', '/peticao/minuta', {})
+    const daMinuta = pedidos.join('\n')
+    for (const numero of ['50%', 'casos parecidos', 'Chance calculada pelo sistema']) expect(daMinuta).not.toContain(numero)
+  })
+
   it('GGVP-64 parte 2 CA6 · com o juízo, os entendimentos e os processos de exemplo vão ao modelo, sem número; as fontes mostram', async () => {
     await laudoDaDocumentacao()
     await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: '0001234-96.2026.4.03.6301' })

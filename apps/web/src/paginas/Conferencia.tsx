@@ -1,18 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
+import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
-import { taxaComCasos } from '../regras/caso.ts'
-import { usePode } from '../sessao.ts'
+import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
 import styles from './Passo.module.css'
 import { nomeDoBeneficio } from '@ggv/contratos'
 
-/** GGVP-150 CA2: a faixa vem do servidor; a tela só pinta. */
-const ROTULO_DA_COR = { vermelho: 'Vermelho · abaixo de 15%', amarelo: 'Amarelo · de 15% a 50%', verde: 'Verde · acima de 50%' }
-const SELO_DA_COR = { vermelho: styles.seloErro, amarelo: styles.seloAlerta, verde: '' }
-
-const ROTULO_PARECER ={ suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado por duas Sêniores' }
+const ROTULO_PARECER = { suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado por duas Sêniores' }
 
 /** Por que Aprovar ainda não vale: G1 e G17 pelas regras únicas do contrato (`bloqueioDoG1`, `travaDoParecer`), as mesmas do servidor. */
 const bloqueioDeAprovar = (c: CasoParaConferencia): string | null => bloqueioDoG1(c) ?? c.travaDoParecer
@@ -28,8 +23,6 @@ export function Conferencia({ casoId }: { casoId: string }) {
   const [justificativa, setJustificativa] = useState('')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
-  const [chance, setChance] = useState<ChanceDeExito | null>(null)
-  const [erroDaChance, setErroDaChance] = useState('')
 
   const carregar = () => chamarApi<CasoParaConferencia>(`/casos/${casoId}/conferencia`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
   useEffect(() => {
@@ -64,15 +57,6 @@ export function Conferencia({ casoId }: { casoId: string }) {
     setModo('nada')
     await carregar()
   }
-
-  // GGVP-131 e sugestão pronta (07/10): a chance aparece sozinha ao abrir. O número vem do sistema (acervo conferido); os
-  // fatores da IA ficam prontos em segundo plano. Veem a advogada, a Sênior e o Sócio (GGVP-150 CA6).
-  const veChance = usePode('chance.ver')
-  const abriu = caso !== null
-  useEffect(() => {
-    if (!abriu || !veChance) return
-    void chamarApi<ChanceDeExito>(`/casos/${casoId}/chance`, { method: 'POST', corpo: {} }).then((r) => (r.ok ? setChance(r.dados) : setErroDaChance(r.erro)))
-  }, [casoId, abriu, veChance])
 
   /** A segunda Sênior, outra pessoa, aprova ou recusa (Q14). O servidor recusa quem pediu. */
   async function responderDispensa(aprova: boolean) {
@@ -171,50 +155,8 @@ export function Conferencia({ casoId }: { casoId: string }) {
         )}
       </section>
 
-      {veChance && (
-        <section className={styles.cartao} aria-label="Chance de êxito">
-          <h2 className={styles.cartaoTitulo}>Chance de êxito</h2>
-          {!chance ? (
-            <p className={styles.dica}>{erroDaChance || 'Calculando…'}</p>
-          ) : (
-            <>
-              {chance.cor && <span className={`${styles.selo} ${SELO_DA_COR[chance.cor]}`}>{ROTULO_DA_COR[chance.cor]}</span>}
-              <p>
-                {chance.porcentagem === null || !chance.baseEm ? (
-                  'Sem casos parecidos na casa ainda: sem porcentagem.'
-                ) : (
-                  <strong>
-                    {taxaComCasos(chance.favoraveis, chance.casos, new Date(chance.baseEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}
-                  </strong>
-                )}
-              </p>
-              {chance.sugereNaoPegar && (
-                <p className={styles.dica} role="note">
-                  Abaixo de 15%: a sugestão é não pegar o caso. Não bloqueia nada: quem decide é o Jurídico.
-                </p>
-              )}
-              {chance.faltaSaber.length > 0 && (
-                <>
-                  <p className={styles.dica}>Para a chance ficar mais certa, falta saber:</p>
-                  <ul className={styles.lista} aria-label="O que falta saber">
-                    {chance.faltaSaber.map((f) => (
-                      <li key={f}>{f}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              <p className={styles.dica}>Calculado pelo sistema: {chance.regra}.</p>
-              {chance.fatores && (
-                <>
-                  <span className={`${styles.selo} ${styles.seloAlerta}`}>Fatores sugeridos pela IA · confira</span>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{chance.fatores.texto}</p>
-                </>
-              )}
-              {chance.motivoIa && <p className={styles.dica}>{chance.motivoIa}</p>}
-            </>
-          )}
-        </section>
-      )}
+      {/* GGVP-131, GGVP-150: a chance, só para quem tem chance.ver. */}
+      <ChanceDoCaso casoId={casoId} />
 
       {feito ? (
         <p className={styles.sucesso} role="status">

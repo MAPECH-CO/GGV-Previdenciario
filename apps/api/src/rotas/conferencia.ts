@@ -38,6 +38,7 @@ import {
 } from '../banco/esquema.ts'
 import { REGRA_DA_CHANCE, calcularChance, corDaChance, oQueFaltaSaber } from '../fluxo/chance.ts'
 import { juizoDoCaso } from '../fluxo/juizo.ts'
+import { NO_SERVIDOR } from './recepcao.ts'
 import type { ComoSugerir, Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
@@ -315,6 +316,27 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     const { casos, porcentagem, baseEm, fatores } = chance
     await historico(quem, 'chance_mostrada', pedido, `caso:${casoId}`, { casos, porcentagem, baseEm, casosUsados, chamada: fatores?.chamadaId ?? null })
     return chance
+  })
+
+  // GGVP-151 CA1: na entrevista ainda não há caso; a chance sai pelo benefício escolhido, sem a IA. O que falta saber é
+  // tudo o que só o caso diria: perito, juízo e parecer médico.
+  app.get<{ Querystring: { beneficio?: string } }>('/api/chance', { preHandler: exigir(banco, 'chance.ver', agora) }, async (pedido, resposta) => {
+    // A entrevista usa o catálogo das telas ("loas-deficiente"); o acervo, o do portal ("bpc_loas_deficiente"). O benefício
+    // sem par no portal (rural, revisões) não tem casos parecidos ainda.
+    const escolhido = pedido.query.beneficio?.trim()
+    if (!escolhido) return negar(resposta, 400, 'Escolha o benefício.')
+    const { conta, baseEm } = await contaDoCaso(NO_SERVIDOR[escolhido] ?? escolhido)
+    const cor = corDaChance(conta.porcentagem)
+    return ChanceDeExito.parse({
+      ...conta,
+      baseEm,
+      regra: REGRA_DA_CHANCE,
+      cor,
+      sugereNaoPegar: cor === 'vermelho',
+      faltaSaber: oQueFaltaSaber({ peritoConhecido: false, juizoConhecido: false, temParecer: false, faltamNoChecklist: [] }),
+      fatores: null,
+      motivoIa: null,
+    })
   })
 
   /** GGVP-150 CA1, CA5: o número da chance pelo acervo conferido do mesmo benefício, com os casos usados (ids do acervo). */

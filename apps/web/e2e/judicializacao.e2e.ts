@@ -188,6 +188,8 @@ test('GGVP-63, GGVP-67 e GGVP-71 · a advogada pede a petição, edita, compara,
   await page.goto('/')
   await page.getByRole('link', { name: 'Vicente Prado (exemplo) · Pedir a petição' }).click()
   await expect(page.getByRole('heading', { name: 'Petição inicial' })).toBeVisible()
+  // GGVP-151 CA4: a chance aparece só na tela, à parte da minuta.
+  await expect(page.getByRole('region', { name: 'Chance de êxito' })).toContainText('Uso interno: não vai ao cliente nem à peça')
   await page.getByLabel('laudo.pdf').check()
   await page.getByLabel('Texto da petição (versão 1)').fill(V1)
   await page.getByRole('button', { name: 'Pedir a petição' }).click()

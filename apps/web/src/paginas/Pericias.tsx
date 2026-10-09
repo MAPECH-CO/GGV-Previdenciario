@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AprovarRecomendacao, type PericiasDoCaso, type RecomendacaoDaPericia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
 import styles from './Passo.module.css'
 
 type Pericia = PericiasDoCaso['pericias'][number]
@@ -138,6 +139,8 @@ export function Pericias({ casoId }: { casoId: string }) {
         </p>
       )}
       {x && x.pericias.length === 0 && <p className={styles.dica}>Nenhuma perícia pedida neste caso.</p>}
+      {/* GGVP-151 CA2: com a recomendação aberta (perícia ainda sem resultado), a chance do caso, antes de marcar. */}
+      {x?.pericias.some((p) => !p.resultado) && <ChanceDoCaso casoId={casoId} />}
       {x?.pericias.map((p) => (
         <section key={p.id} className={styles.cartao} aria-label={`${NOME[p.tipo]} · ${p.origem}`}>
           <h2 className={styles.cartaoTitulo}>
