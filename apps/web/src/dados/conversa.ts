@@ -2,10 +2,11 @@
 // perfil da sessão. A gravação é a mesma da entrevista (GGVP-40), simulada no servidor até a de verdade; a transcrição
 // também. Quem conduz, quem confere e o que cada perfil pode são conferidos lá. O servidor de exemplo daqui saiu.
 import { useEffect, useState } from 'react'
-import type { Conferencia as ConferenciaDoContrato, Conversa as ConversaDoContrato, Pendencia as PendenciaDoContrato } from '@ggv/contratos'
+import type { ChaveAoVivo, Conferencia as ConferenciaDoContrato, Conversa as ConversaDoContrato, Pendencia as PendenciaDoContrato } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import type { CanalDoRegistro, ComQuem, DecisaoDaMudanca, Dito, ModoDoRegistro, Mudanca, Pessoa, VersaoDoCampo } from '../regras/conversa.ts'
 import { falasDaConversa, type FalaDaConversa } from './conversaSimulada.ts'
+import { extensaoDo, type ParteDoAudio } from './entrevista.ts'
 import { PESSOAS_DO_ESCRITORIO_DE_EXEMPLO } from './exemplo.ts'
 import { noBanco, receber } from './servidor.ts'
 import type { AcaoNaGravacao, Ficha, Gravacao, Tarefa } from './tipos.ts'
@@ -64,8 +65,31 @@ export const registrarAcaoNaConversa = (conversaId: string, acao: Extract<AcaoNa
 /** POST /api/conversas/:id/finalizar. O áudio fica no card do lead ou cliente e vai para a transcrição (CA6, CA9). */
 export const finalizarConversa = (conversaId: string, fim: { aos: number }) => pedir(`/conversas/${conversaId}/finalizar`, fim)
 
-/** POST /api/conversas/:id/audio. A ligação já feita sobe gravada, de qualquer formato e tamanho, com o aviso nela (CA2, G10). */
-export const anexarAudio = (conversaId: string, arquivo: AudioDaLigacao) => pedir(`/conversas/${conversaId}/audio`, arquivo)
+/**
+ * POST /api/conversas/:id/audio. A ligação já feita sobe gravada, com o aviso nela (CA2, G10). GGVP-133: com o arquivo, ele
+ * vai de verdade para a pasta do cliente (a gravação baixada da conversa do Chatwoot).
+ */
+export function anexarAudio(conversaId: string, arquivo: AudioDaLigacao, conteudo?: Blob) {
+  if (!conteudo) return pedir(`/conversas/${conversaId}/audio`, arquivo)
+  const corpo = new FormData()
+  corpo.append('avisoNaGravacao', 'sim')
+  corpo.append('arquivo', conteudo, arquivo.nome)
+  return pedir(`/conversas/${conversaId}/audio`, corpo)
+}
+
+/** POST /api/conversas/:id/audio (GGVP-133): uma parte do microfone da conversa no escritório, com onde ela começa. */
+export function enviarParteDaConversa(conversaId: string, parte: ParteDoAudio) {
+  const corpo = new FormData()
+  corpo.append('inicio', String(Math.round(parte.inicio)))
+  corpo.append('arquivo', parte.audio, `parte-${Math.round(parte.inicio)}.${extensaoDo(parte.audio.type)}`)
+  return pedir(`/conversas/${conversaId}/audio`, corpo)
+}
+
+/** POST /api/conversas/:id/chave-ao-vivo (GGVP-133 CA4): só a conversa no escritório tem texto ao vivo. */
+export async function pedirChaveAoVivoDaConversa(conversaId: string): Promise<ChaveAoVivo | { erro: string }> {
+  const r = await chamarApi<ChaveAoVivo>(`/conversas/${conversaId}/chave-ao-vivo`, { method: 'POST' })
+  return r.ok ? r.dados : { erro: r.erro }
+}
 
 /** POST /api/conversas/:id/transcricao. `falhar` simula a falha; chamar de novo tenta outra vez (GGVP-80). */
 export const transcreverConversa = (conversaId: string, opcoes: { falhar?: boolean } = {}) => pedir(`/conversas/${conversaId}/transcricao`, opcoes)

@@ -23,8 +23,9 @@ const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
-// 16, Perícia no servidor 17, documentação médica no servidor 18; acesso por perfil 19 (09/10). Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 19
+// 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
+// 21, acesso por perfil 22 (09/10). Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 22
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -73,6 +74,8 @@ export const MATRIZ = {
   'exigencia_inss.decidir_vencida': ['senior'],
   // Versão 14 (GGVP-98, Lucas 06/10): o Financeiro avisa o cliente e marca a ida ao banco; o Atendimento leva.
   'banco.agendar': ['financeiro'],
+  // Versão 21 (GGVP-98, P3 do roteiro de 09/10): quem leva o cliente ao banco é do Atendimento (Lucas, Q24).
+  'banco.levar': ['atendimento', 'atendimento_lider'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
   'vigilia.ver': ['senior', 'advogada'],
   'vigilia.reprocessar': ['senior'],
@@ -104,6 +107,9 @@ export const MATRIZ = {
   // GGVP-125, bloco 3a: gravar e transcrever a entrevista, que tem dado de saúde. Quem entrevista e analisa a ficha é "a
   // doutora" (Miro): a advogada e a Sênior; o Jurídico administrativo faz protocolo e perícia (perfis.md).
   'entrevista.gravar': ADVOGADAS,
+  // GGVP-125, bloco 3b: analisar a ficha, definir o benefício e registrar o cálculo; a IA sugere, a doutora decide (G3). O
+  // Jurídico administrativo não analisa a ficha (GGVP-96, 09/10).
+  'ficha.analisar': ADVOGADAS,
   // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
   // indica novo processo, quem decide é a Sênior.
   'estudo.ver': JURIDICO,
@@ -133,7 +139,9 @@ export const MATRIZ = {
   'dado_saude.registrar': ['advogada', 'senior'],
   // A circunstância do acidente (GGVP-47): a Documentação ou o Jurídico marcam.
   'acidente.registrar': ['documentacao', 'advogada', 'senior'],
-  // Versão 19 (GGVP-96, 09/10): o contrato (D1.16 a D1.20) é da raia do Atendimento; o % de honorários aparece só nele.
+  // Versão 19 (GGVP-143, Pedro, 08/10): o glossário do escritório, que a transcrição e a IA usam, só a Sênior muda.
+  'glossario.editar': ['senior'],
+  // Versão 22 (GGVP-96, 09/10): o contrato (D1.16 a D1.20) é da raia do Atendimento; o % de honorários aparece só nele.
   'contrato.conduzir': ['atendimento', 'atendimento_lider'],
   // Os dados bancários do repasse (GGVP-111; LGPD, minimização): quem pede ou confirma a mudança e o Financeiro, que repassa.
   'dados_bancarios.ver': ['atendimento', 'atendimento_lider', 'advogada', 'senior', 'financeiro'],

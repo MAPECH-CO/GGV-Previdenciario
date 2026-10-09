@@ -18,9 +18,6 @@ export const tarefasAdvogada: Tarefa[] = [
   },
 ]
 
-/** Quantas tarefas a aba "Tarefas do setor" mostra no protótipo. */
-export const totalTarefasSetorAdvogada = 12
-
 export const exemploChatAdvogada = 'Ex.: “quais documentos eu verifico antes da perícia da Maria Exemplo?”'
 
 export const sugestoesChatAdvogada = ['Resumo do caso', 'Criar tarefa', 'Perícias da semana', 'Como o perito avalia?', 'Gerar peça']

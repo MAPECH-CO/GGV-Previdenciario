@@ -50,6 +50,28 @@ export function estadosDasEtapas(atual: IdEtapa, o: { deferidoNoInss?: boolean; 
   return estados
 }
 
+const ETAPA_DO_DIAGRAMA: Record<string, IdEtapa> = { D1: 'entrevista', D2: 'inss', D3: 'justica', D3a: 'vigilia', D3b: 'desfecho', D4: 'desfecho' }
+
+/** A etapa de um passo do BPMN ("D2.05", "D3a.E2"); o D4 (acervo) vem depois do desfecho. Perícia (DP) e passo sem código: null. */
+export function etapaDoPasso(passo: string | null | undefined): IdEtapa | null {
+  const diagrama = /^(D\d[ab]?)\./.exec(passo ?? '')?.[1]
+  return (diagrama && ETAPA_DO_DIAGRAMA[diagrama]) || null
+}
+
+const ETAPA_DA_FASE: Record<string, IdEtapa> = { atendimento: 'entrevista', administrativa: 'inss', judicial: 'justica', encerrado: 'desfecho' }
+
+/**
+ * A etapa de um caso do servidor (GGVP-146, parte 5): a mais adiantada entre os passos abertos (etapas e tarefas); sem
+ * nenhum, a da fase. O caso deferido no INSS fica na etapa do INSS.
+ */
+export function etapaAtualDoCaso(fase: string, passosAbertos: (string | null)[], desfecho: string | null): IdEtapa {
+  const ordem = ETAPAS_DO_CASO.map((e) => e.id)
+  const abertas = passosAbertos.map(etapaDoPasso).filter((e): e is IdEtapa => e !== null)
+  if (abertas.length) return abertas.reduce((a, b) => (ordem.indexOf(b) > ordem.indexOf(a) ? b : a))
+  if (desfecho === 'deferido') return 'inss'
+  return ETAPA_DA_FASE[fase] ?? 'entrevista'
+}
+
 /** A perícia fica ligada à etapa que pediu (CA2): pedido ou exigência do INSS (D2), despacho (D3), juiz (D3a). */
 export function etapaDaOrigem(origem: string): IdEtapa {
   if (origem.startsWith('d2')) return 'inss'

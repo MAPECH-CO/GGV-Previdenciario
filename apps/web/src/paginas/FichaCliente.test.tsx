@@ -164,6 +164,22 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect((await obterFicha('antonio-exemplo'))?.historico).toEqual([])
   })
 
+  it('GGVP-111 CA1 · mudar o telefone do cliente pede a verificação; o lead, ainda sem contrato, troca livre (Pedro, 08/10)', async () => {
+    const pergunta = 'Mudou o telefone: como você confirmou que é o cliente?'
+    const { unmount } = render(<FichaCliente id="maria-exemplo" />)
+    await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+    digitar('Telefone / WhatsApp *', '(11) 90000-0099')
+    expect(screen.getByRole('group', { name: pergunta })).toBeTruthy()
+    unmount()
+    const lead = await criarFicha({ nome: 'Rosa Exemplo', idade: 58, pretende: 'Aposentadoria.', telefone: telefoneDeExemplo(52), beneficioInteresse: 'nao-sei', outraPessoa: false })
+    if (lead.resultado !== 'criada') throw new Error(lead.resultado)
+    await abrir(lead.id)
+    digitar('Telefone / WhatsApp *', '(11) 90000-0098')
+    expect(screen.queryByRole('group', { name: pergunta })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
+    expect(await screen.findByText('Alterações salvas. Ficaram no histórico.')).toBeTruthy()
+  })
+
   it('CA16 · dois cliques em "Salvar alterações" gravam uma vez só, e o que mudou vai para o histórico', async () => {
     await abrir('antonio-exemplo')
     digitar('Estado civil', 'Viúvo')

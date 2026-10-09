@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, eventoAuditoria, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, eventoAuditoria, fichaRecepcao, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -41,6 +41,11 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     const { id } = await novaFicha('11987654321')
     const url = `/api/fichas/${id}`
     const edicao = { nome: 'Lúcia Ribeiro', telefone: '(11) 90000-0077', email: 'lucia@exemplo.com' }
+    // Lead, ainda sem contrato, troca livre (Pedro, 08/10); a verificação vale para cliente.
+    expect((await json('ana', 'PATCH', url, { ...edicao, telefone: '11911110000', email: undefined })).ficha.telefone).toBe('11911110000')
+    // Vira cliente (o contrato assinado), com o telefone de antes.
+    const [doc] = await banco.select().from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, id))
+    await banco.update(fichaRecepcao).set({ documento: { ...(doc.documento as object), situacao: 'cliente', telefone: '11987654321' } }).where(eq(fichaRecepcao.pessoaId, id))
     expect((await json('ana', 'PATCH', url, edicao)).erro).toBe(SO_COM_VERIFICACAO)
     expect(await portoes()).toEqual([expect.objectContaining({ portao: 'verificacao', passo: 'ficha', campos: ['telefone'] })])
     expect((await json('ana', 'PATCH', url, { ...edicao, verificacao: { como: 'video' } })).erro).toBe('A alteração vai em contrato novo: marque que ela vai no contrato novo.')

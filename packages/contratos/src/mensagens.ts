@@ -33,8 +33,15 @@ export type PedidoDeMensagem = z.infer<typeof PedidoDeMensagem>
 export const ContatoChatwoot = z.object({ id: z.number(), nome: z.string(), telefone: z.string() })
 export type ContatoChatwoot = z.infer<typeof ContatoChatwoot>
 
-/** Uma conversa do contato no Chatwoot; a de mais mensagens vem primeiro (CA6). */
-export const ConversaChatwoot = z.object({ id: z.number(), caixa: z.string(), situacao: z.enum(['aberta', 'resolvida']), mensagens: z.number(), ultimaEm: z.string() })
+/** Uma conversa do contato no Chatwoot; a de mais mensagens vem primeiro (CA6). `link`: o endereço dela na central (GGVP-146). */
+export const ConversaChatwoot = z.object({
+  id: z.number(),
+  caixa: z.string(),
+  situacao: z.enum(['aberta', 'resolvida']),
+  mensagens: z.number(),
+  ultimaEm: z.string(),
+  link: z.string().optional(),
+})
 export type ConversaChatwoot = z.infer<typeof ConversaChatwoot>
 
 /** GET /api/fichas/:id/mensagens/:modelo: a mensagem pronta para revisar, com a trava do modelo e o cliente no Chatwoot. */
@@ -45,6 +52,10 @@ export const MensagemPronta = z.object({
   trava: z.string().nullable(),
   contato: ContatoChatwoot.nullable(),
   conversas: z.array(ConversaChatwoot),
+  /** Falso quando o envio sai pelo Chatwoot de verdade (GGVP-146); sem o campo, simulado. */
+  simulado: z.boolean().optional(),
+  /** 'falhou': o Chatwoot não respondeu à consulta do cliente, o que não quer dizer "sem conversa"; a tela não deixa enviar (GGVP-146). */
+  consulta: z.literal('falhou').optional(),
 })
 export type MensagemPronta = z.infer<typeof MensagemPronta>
 

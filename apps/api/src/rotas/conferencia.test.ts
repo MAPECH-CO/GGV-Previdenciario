@@ -267,3 +267,67 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     expect((await chance('ana')).statusCode).toBe(403)
   })
 })
+
+describe('GGVP-127 · o caso devolvido pela Sênior: ajustar e liberar de novo', () => {
+  beforeEach(async () => {
+    const [u] = await banco
+      .insert(usuario)
+      .values({ email: 'fabio@exemplo.ggv', nome: 'fabio', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['documentacao'], trocarSenha: false })
+      .returning()
+    ids.fabio = u.id
+  })
+  const liberacao = async (apelido: string) => app.inject({ method: 'GET', url: `/api/casos/${casoId}/liberacao`, cookies: await cookieDe(apelido) })
+  const liberar = async (apelido: string, corpo: object = { conferiChecklist: true, conferiAssinaturas: true }) =>
+    app.inject({ method: 'POST', url: `/api/casos/${casoId}/liberacao`, cookies: await cookieDe(apelido), payload: corpo })
+  const diaDaqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10)
+  const dataBr = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+
+  it('CA1 · o Atendimento abre a tarefa de ajuste na Central e vê o motivo, o prazo e quem reprovou', async () => {
+    const prazo = diaDaqui(10)
+    await decidir('helena', { decisao: 'reprovar', motivo: 'Falta a procuração assinada', temPrazo: true, prazo: dataBr(prazo) })
+    const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('ana') })).json()
+    expect([linha.titulo, linha.tela, linha.urgente]).toEqual(['Ajustar o caso: Falta a procuração assinada', `/casos/${casoId}/ajuste`, false])
+    const r = (await liberacao('ana')).json()
+    expect(r.ajuste).toMatchObject({ motivo: 'Falta a procuração assinada', prazo, reprovadoPor: 'helena' })
+    expect([r.podeLiberar, r.esperandoConferencia]).toEqual([true, false])
+  })
+
+  it('CA2 e CA4 · liberado de novo: nova conferência da Sênior, sem o OK anterior; o ajuste sai da fila', async () => {
+    await parecer('suficiente')
+    await decidir('helena', { decisao: 'aprovar' })
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
+    await decidir('helena', { decisao: 'reprovar', motivo: 'Laudo vencido', temPrazo: false })
+    // A Documentação libera a primeira vez; o caso devolvido é do Atendimento (Pedro, 08/10).
+    expect([(await liberar('fabio')).statusCode, (await liberacao('fabio')).json().podeLiberar]).toEqual([403, false])
+    expect((await liberar('ana', { conferiChecklist: true })).statusCode).toBe(400)
+    expect((await liberar('ana')).statusCode).toBe(201)
+    const abertas = await tarefasAbertas()
+    expect(abertas).toContainEqual(['D2.01', 'senior'])
+    expect(abertas).not.toContainEqual(['D1.ajuste', 'atendimento'])
+    expect((await ver('helena')).json().situacao).toBe('aguardando')
+    const protocolo = (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/protocolo`, cookies: await cookieDe('igor') })).json()
+    expect(protocolo.okSenior).toBeNull()
+    // Já na fila: ninguém libera duas vezes; sem ajuste aberto, o Atendimento nem libera.
+    expect([(await liberar('fabio')).statusCode, (await liberar('ana')).statusCode, (await liberacao('ana')).json().ajuste]).toEqual([409, 403, null])
+    expect((await banco.select().from(eventoAuditoria)).map((e) => e.acao)).toContain('caso_liberado_ao_juridico')
+  })
+
+  it('CA4 · na liberação nova, o servidor confere de novo o checklist (G1) e o parecer (G17)', async () => {
+    await decidir('helena', { decisao: 'reprovar', motivo: 'Falta o CNIS', temPrazo: false })
+    const r = await liberar('ana')
+    expect([r.statusCode, r.json().erro]).toEqual([409, travaDoParecer('liberar', 'bpc_loas_deficiente', null)])
+    await parecer('suficiente')
+    await banco.insert(kitDocumento).values({ beneficio: 'bpc_loas_deficiente', tipoDocumento: 'cnis', obrigatorio: true, vigenteDesde: new Date('2000-01-01') })
+    const g1 = await liberar('ana')
+    expect([g1.statusCode, g1.json().erro]).toEqual([409, 'Checklist incompleto (G1): faltam cnis.'])
+    const bloqueios = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'liberacao_recusada').map((e) => (e.detalhe as { portao: string }).portao)
+    expect(bloqueios).toEqual(['G17', 'G1'])
+    expect(await tarefasAbertas()).toEqual([['D1.ajuste', 'atendimento']])
+  })
+
+  it('CA3 · com o prazo perto de vencer, a tarefa de ajuste fica com a cor de ação', async () => {
+    await decidir('helena', { decisao: 'reprovar', motivo: 'Falta a procuração', temPrazo: true, prazo: dataBr(diaDaqui(1)) })
+    const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('ana') })).json()
+    expect(linha.urgente).toBe(true)
+  })
+})

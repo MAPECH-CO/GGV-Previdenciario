@@ -1,0 +1,196 @@
+/* Figma 1600:90 (Atendimento) e 1600:672 (Jurídico). */
+.titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tituloTexto {
+  font-size: var(--fonte-18);
+  font-weight: 600;
+}
+
+.contagem {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-13);
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ver {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.filtro {
+  padding: 4px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  cursor: pointer;
+}
+
+.filtroAlerta {
+  border-color: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.ativo {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+}
+
+.lista {
+  overflow: hidden;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  list-style: none;
+}
+
+.linha {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--cor-superficie);
+}
+
+.linha + .linha {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.ponto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cor-acento);
+}
+
+.urgente .ponto {
+  background: var(--cor-erro);
+}
+
+.corpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.codigo {
+  padding: 3px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.texto {
+  font-size: var(--fonte-14);
+}
+
+.detalhe {
+  overflow: hidden;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.responsavel,
+.semResponsavel {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 4px;
+  border-radius: var(--raio-pilula);
+  font-size: var(--fonte-12);
+}
+
+.responsavel {
+  background: var(--cor-painel-neutro);
+}
+
+.semResponsavel {
+  padding-left: 9px;
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-10);
+  font-weight: 700;
+}
+
+.prazo {
+  flex: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.prazoUrgente {
+  color: var(--cor-erro);
+}
+
+.atribuir {
+  flex: none;
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seta {
+  flex: none;
+  color: var(--cor-texto-suave);
+}
+
+.nota {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-13);
+}
+
+.vazio {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+/* Celular: a linha quebra, e o responsável e o botão descem. */
+@media (max-width: 640px) {
+  .linha {
+    flex-wrap: wrap;
+  }
+}
