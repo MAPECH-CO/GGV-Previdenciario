@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProcessoDoCaso } from '@ggv/contratos'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
@@ -239,6 +239,42 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
   afterEach(() => {
     configurarExemplo({ servidor: false })
     vi.unstubAllGlobals()
+  })
+
+  it('GGVP-44 · a prestação de contas tem atalho no cabeçalho para quem pode ver, quando ela já existe', async () => {
+    const comPrestacao = (versoes: object[]) =>
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) =>
+          url === `/api/casos/${CASO}/processo`
+            ? new Response(JSON.stringify(doBanco()), { status: 200 })
+            : url === `/api/casos/${CASO}/prestacao`
+              ? new Response(JSON.stringify({ casoId: CASO, cliente: 'Ana', beneficio: null, carta: null, percentualContrato: null, versoes, podeEditar: false }), { status: 200 })
+              : new Response('{}', { status: 404 }),
+        ),
+      )
+    const versao = { versao: 1, valorRecebido: '1000.00', honorarios: '300.00', repasse: '700.00', percentual: '30', formaPagamento: null, prazoPagamento: null, por: 'Dra.', em: '2026-10-06T12:00:00.000Z', recebidaPor: null, recebidaEm: null, divergencia: null }
+    configurarExemplo({ servidor: true })
+    for (const perfil of ['senior', 'socio']) {
+      comPrestacao([versao])
+      entrarComo(perfil)
+      render(comSessao(<PaginaDoCaso processoId={CASO} />))
+      expect((await screen.findByRole('link', { name: 'Prestação de contas' })).getAttribute('href'), perfil).toBe(`/casos/${CASO}/prestacao`)
+      cleanup()
+    }
+    // Sem prestação ainda, ou para quem não vê (o Atendimento nem pergunta ao servidor), o atalho não aparece.
+    comPrestacao([])
+    entrarComo('advogada')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    await screen.findByRole('heading', { level: 1, name: /^NB/ })
+    expect(screen.queryByRole('link', { name: 'Prestação de contas' })).toBeNull()
+    cleanup()
+    comPrestacao([versao])
+    entrarComo('atendimento')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    await screen.findByRole('heading', { level: 1, name: /^NB/ })
+    expect(screen.queryByRole('link', { name: 'Prestação de contas' })).toBeNull()
+    expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).not.toContain(`/api/casos/${CASO}/prestacao`)
   })
 
   it('a advogada: etapas, perícia, tarefas por setor, prazos, linha, valores e o resumo de saúde, do banco', async () => {
