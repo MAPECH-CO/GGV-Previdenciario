@@ -58,7 +58,7 @@ test('CA5 · compromisso interno, sem cliente, entra na agenda', async ({ page }
   await janela.getByLabel('Data * (dd/mm/aaaa)').fill(data)
   await janela.getByLabel('Hora *').fill('23:00')
   await janela.getByRole('button', { name: 'Pôr na agenda' }).click()
-  await expect(page.getByRole('button', { name: /Gravação do vídeo do escritório · Compromisso interno/ })).toContainText('Ana (exemplo) · interno')
+  await expect(page.getByRole('button', { name: /Gravação do vídeo do escritório · Compromisso interno/ })).toContainText('Você (Atendimento) · interno')
 })
 
 test('CA7, CA8 e CA9 · o que passou sem registro: "Faltou", remarcar com motivo, e o motivo em "Últimos contatos"', async ({ page }) => {
