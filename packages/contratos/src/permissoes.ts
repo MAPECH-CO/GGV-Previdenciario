@@ -24,24 +24,27 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
-// 21, acesso por perfil 22 (09/10), recurso 23. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 23
+// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25. Quem entrar depois
+// renumera.
+export const VERSAO_MATRIZ = 25
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
-  // Ver (o que a tela e a API devolvem para cada perfil; CA1, CA12)
-  'entrevista.ver': ['atendimento', 'atendimento_lider', ...JURIDICO],
-  'laudo.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO],
-  'dado_saude.ver_detalhe': JURIDICO,
-  'peticao.ver': JURIDICO,
+  // Ver (o que a tela e a API devolvem para cada perfil; CA1, CA12). O Sócio é dono e lê tudo, inclusive o conteúdo médico,
+  // as peças e os valores (Pedro, 09/10); fazer, só o que cada ação diz.
+  'entrevista.ver': ['atendimento', 'atendimento_lider', ...JURIDICO, 'socio'],
+  'laudo.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO, 'socio'],
+  'dado_saude.ver_detalhe': [...JURIDICO, 'socio'],
+  'peticao.ver': [...JURIDICO, 'socio'],
   // O financeiro do escritório é do Financeiro (Pedro, 06/10). A advogada vê os valores só na prestação de contas, que é
-  // ela quem faz. O Sócio tem acesso total de leitura, inclusive os valores de cada cliente (Lucas, 07/10), sem fazer passo
-  // e sem dado de saúde. Valor da causa e renda per capita do LOAS não são financeiro do escritório: são dado jurídico e
+  // ela quem faz. O Sócio tem acesso total de leitura, inclusive os valores de cada cliente (Lucas, 07/10) e o dado de
+  // saúde (Pedro, 09/10), sem fazer passo. Valor da causa e renda per capita do LOAS não são financeiro do escritório: são dado jurídico e
   // seguem para a advogada (Pedro, 07/10). A Sênior não vê valores.
   'valores.ver': ['financeiro', 'socio'],
   /** Os totais em dinheiro do painel de resultados (GGVP-75 CA4): honorários recebidos e tempo até o dinheiro. */
   'valores.ver_totais': ['socio', 'financeiro'],
-  'prestacao.ver': ['financeiro', 'advogada', 'socio'],
+  // Versão 25 (Pedro, 09/10): a Sênior vê a prestação de contas, só ela; os outros valores do caso continuam fora.
+  'prestacao.ver': ['financeiro', 'advogada', 'senior', 'socio'],
   /** Prazos, tentativas bloqueadas, uso do cofre, configuração e a exportação da trilha. O Financeiro vê só os Resultados (Figma). */
   'gestao.ver': ['socio', 'senior', 'atendimento_lider'],
   /** Ver o caso só para leitura (GGVP-23 CA4). O Sócio lê tudo (Lucas, 07/10); o Financeiro vê a prestação e os Resultados, não o caso. */
@@ -77,7 +80,7 @@ export const MATRIZ = {
   // Versão 21 (GGVP-98, P3 do roteiro de 09/10): quem leva o cliente ao banco é do Atendimento (Lucas, Q24).
   'banco.levar': ['atendimento', 'atendimento_lider'],
   // Versão 5 (GGVP-26, 30, 34, 74): vigília das publicações; a fila sem CNJ é da Sênior (resposta do revisor de 06/10)
-  'vigilia.ver': ['senior', 'advogada'],
+  'vigilia.ver': ['senior', 'advogada', 'socio'],
   'vigilia.reprocessar': ['senior'],
   'publicacao.casar': ['senior'],
   // Versão 12 (GGVP-55 CA7): só o desfecho conferido pela Sênior entra nas contas da jurimetria.
@@ -112,7 +115,7 @@ export const MATRIZ = {
   'ficha.analisar': ADVOGADAS,
   // Versão 15 (GGVP-19, Lucas 06/10): o estudo de caso do processo perdido é estratégia interna, do Jurídico; quando ele
   // indica novo processo, quem decide é a Sênior.
-  'estudo.ver': JURIDICO,
+  'estudo.ver': [...JURIDICO, 'socio'],
   'estudo.revisar': ['senior'],
   // Versão 16 (GGVP-138, Pedro, 08/10): o Relacionamento com o cliente no servidor. Quem conversa com o cliente e registra
   // a conversa é o Atendimento e o Jurídico (advogada e Sênior), como nas telas; só a Sênior volta uma versão e dá prazo
@@ -144,12 +147,12 @@ export const MATRIZ = {
   // Versão 22 (GGVP-96, 09/10): o contrato (D1.16 a D1.20) é da raia do Atendimento; o % de honorários aparece só nele.
   'contrato.conduzir': ['atendimento', 'atendimento_lider'],
   // Os dados bancários do repasse (GGVP-111; LGPD, minimização): quem pede ou confirma a mudança e o Financeiro, que repassa.
-  'dados_bancarios.ver': ['atendimento', 'atendimento_lider', 'advogada', 'senior', 'financeiro'],
+  'dados_bancarios.ver': ['atendimento', 'atendimento_lider', 'advogada', 'senior', 'financeiro', 'socio'],
   // O painel de resultados (GGVP-75): a gestão e o Financeiro, que no Figma vê só ele.
   'resultados.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
   // Versão 23 (GGVP-100, Lucas 07/10): depois da sentença improcedente, quem confirma se recorre é a Sênior. A advogada
-  // responsável só lê. O Sócio não: a tela traz o texto da sentença, e ele lê sem dado de saúde nem passo do caso (GGVP-96).
-  'recurso.ver': ['advogada', 'senior'],
+  // responsável e o Sócio só leem.
+  'recurso.ver': ['advogada', 'senior', 'socio'],
   'recurso.decidir': ['senior'],
 } as const satisfies Record<string, readonly Perfil[]>
 

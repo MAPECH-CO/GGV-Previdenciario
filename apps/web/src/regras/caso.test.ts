@@ -109,8 +109,9 @@ describe('GGVP-86 · o caso numa linha só', () => {
     ])
   })
 
-  it('Permissão · o Jurídico vê tudo; o Financeiro, valores; os outros, sem saúde nem valores', () => {
+  it('Permissão · o Jurídico e o Sócio veem tudo; o Financeiro, valores; os outros, sem saúde nem valores', () => {
     expect(visaoDoPerfil('advogada')).toBe('juridico')
+    expect(visaoDoPerfil('socio')).toBe('juridico')
     expect(visaoDoPerfil('juridico-adm')).toBe('juridico')
     expect(visaoDoPerfil('financeiro')).toBe('financeiro')
     expect(visaoDoPerfil('atendimento')).toBe('atendimento')

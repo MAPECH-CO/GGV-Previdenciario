@@ -119,7 +119,7 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
       const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, pedido.params.id))
       if (!p || !p.casoId) return negar(resposta, 404, 'Publicação não encontrada.')
       const quem = pedido.usuario!.id
-      const { classe, dias } = entrada.data
+      const { classe, dias, vara, juiz } = entrada.data
       const contado = await banco.transaction(async (tx) => {
         if (p.classe && p.classe !== classe) await tx.insert(publicacaoReclassificacao).values({ publicacaoId: p.id, de: p.classe, para: classe, por: quem })
         await tx.update(publicacao).set({ classe, revisadaPor: quem, revisadaEm: agora() }).where(eq(publicacao.id, p.id))
@@ -143,6 +143,13 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
       if (classe === 'nomeacao_perito') {
         const nomeado = await peritoDaPublicacao(banco, p.texto)
         await historico(quem, 'perito_nomeado', pedido, `caso:${p.casoId}`, { publicacao: p.id, perito: nomeado, reconhecido: nomeado !== null })
+      }
+      // GGVP-64 parte 2 (CA1): a vara e o juiz conferidos vão para o caso; campo vazio não apaga o que já estava.
+      if (vara || juiz) {
+        const [antes] = await banco.select({ vara: caso.vara, juiz: caso.juiz }).from(caso).where(eq(caso.id, p.casoId))
+        const depois = { vara: vara ?? antes.vara, juiz: juiz ?? antes.juiz }
+        await banco.update(caso).set(depois).where(eq(caso.id, p.casoId))
+        await historico(quem, 'vara_e_juiz_conferidos', pedido, `caso:${p.casoId}`, { publicacao: p.id, antes, depois })
       }
       return resposta.code(201).send({ ok: true, classe, prazo: contado ? { inicio: contado.inicio, fim: contado.fim, regra: contado.regra, versao: contado.versao } : null })
     },

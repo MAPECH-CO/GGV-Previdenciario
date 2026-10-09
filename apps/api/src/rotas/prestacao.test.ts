@@ -121,12 +121,15 @@ describe('GGVP-44 · prestação de contas', () => {
     expect(await abertas()).toEqual([`financeiro · ${TITULO_AVISO}`])
   })
 
-  it('CA2 · os valores só para o Financeiro e a advogada da prestação; Atendimento e Sênior recebem 403', async () => {
+  it('CA2 · os valores só para o Financeiro e a advogada da prestação; o Atendimento recebe 403; a Sênior lê, sem dar o OK (Pedro, 09/10)', async () => {
     await deferir()
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     expect((await chamar('ana', 'GET', '/prestacao')).statusCode).toBe(403)
     await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'helena', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['senior'], trocarSenha: false })
-    expect((await chamar('helena', 'GET', '/prestacao')).statusCode).toBe(403)
+    const daSenior = await chamar('helena', 'GET', '/prestacao')
+    expect(daSenior.statusCode).toBe(200)
+    expect(daSenior.json().podeEditar).toBe(false)
+    expect((await chamar('helena', 'POST', '/prestacao', PRESTACAO)).statusCode).toBe(403)
     expect((await chamar('julia', 'GET', '/prestacao')).json().versoes[0].honorarios).toBe('3703.70')
     // GGVP-98: a ida ao banco passou ao Financeiro; o Atendimento não abre a tela nem vê valores.
     expect((await chamar('ana', 'GET', '/banco')).statusCode).toBe(403)

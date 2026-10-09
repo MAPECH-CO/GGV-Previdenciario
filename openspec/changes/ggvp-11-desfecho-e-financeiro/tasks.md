@@ -129,7 +129,7 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 
 ## GGVP-100 · Improcedente: decidir se recorre (guardado em rascunho, a confirmar com o Lucas)
 
-- [x] 14.1 CA3 · Contratos: `DecidirRecurso`, `RecursoDoCaso`; matriz versão 23 (`recurso.ver` para advogada e Sênior, sem o Sócio (GGVP-96); `recurso.decidir` só para a Sênior); testes do contrato.
+- [x] 14.1 CA3 · Contratos: `DecidirRecurso`, `RecursoDoCaso`; matriz versão 23 (`recurso.ver` para advogada, Sênior e Sócio, que lê tudo (Pedro, 09/10); `recurso.decidir` só para a Sênior); testes do contrato.
 - [x] 14.2 CA4 · `prazoRecursal` em `fluxo/prazo-judicial.ts`: 10 dias úteis, ou o prazo menor da classificação (G12); testes.
 - [x] 14.3 CA1, CA2, CA3, CA5, CA7 · Servidor: `abrirDecisaoDoRecurso`, `GET` e `POST /api/casos/:id/recurso`; o estudo de caso espera a decisão (`semRecursoPendente`); testes da API.
 - [x] 14.4 Semente: Sérgio Nunes (exemplo), com a sentença improcedente e "Decidir recurso" aberta para a Sênior.

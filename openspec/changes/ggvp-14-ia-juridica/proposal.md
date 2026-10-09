@@ -10,7 +10,7 @@ Branch empilhada na Garantia (`feat/GGVP-13-garantia-e-governanca`, PR #18), que
 
 1. **GGVP-106** · Guardrails de IA e do chat: a IA sugere, a pessoa confirma, tudo registrado · sistema.
 2. **GGVP-110** · Conteúdo malicioso não manipula a IA · sistema.
-3. **GGVP-41** · Medir ganho e perda e gravar no acervo: depois, quando o acervo tiver dado. A **GGVP-38** e a **GGVP-45**, antes previstas para depois, entraram neste pedido (itens 8 e 13 abaixo).
+3. **GGVP-41** · Medir ganho e perda e gravar no acervo · Sênior. A parte 1 (Mateus, 08/10), item 14 abaixo. A **GGVP-38** e a **GGVP-45**, antes previstas para depois, entraram neste pedido (itens 8 e 13 abaixo).
 
 ## Autorização do escritório (07/10)
 
@@ -33,7 +33,8 @@ Cada integração completa a parte de IA que a história deixou para este épico
 11. **GGVP-79** (parte de IA) · Exigência do juiz: a IA lê a publicação com o caso e sugere "só ciência" ou os itens por setor; a advogada decide (G5).
 12. **GGVP-19** (épico Desfecho, aqui porque depende desta plataforma) · Estudo de caso do processo perdido: automático depois do resultado negativo, numa tela de estudos; tarefa da Sênior só quando indica novo processo (Lucas, 06/10).
 13. **GGVP-38** · Recomendação sobre a perícia: pronta para a advogada antes de marcar (o que levar, pontos fortes e fracos; na perícia do juiz, quesitos e assistente técnico); sem a jurimetria do perito, que espera a GGVP-59.
-14. **GGVP-142** · Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10): o chat das Centrais e a aba Suporte respondem pelo motor, com o caso que o perfil vê, o acervo e as fontes; as travas continuam como código; a ação vira cartão e só executa depois do "Confirmar" de quem pediu; o Sócio vê o conteúdo médico no chat; o kit de agentes da OpenAI dentro do motor.
+14. **GGVP-41** (parte 1) · Medir ganho e perda: cada desfecho do portal entra no acervo com a ficha da IA (matéria, vara, tese, resumo e lição, sem dado pessoal); o perdido entra pelo estudo de caso; a Sênior confere a ficha e a tese; a Gestão ganha o recorte por tese (CA1, CA3 a CA7, CA9 a CA11).
+15. **GGVP-142** · Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10): o chat das Centrais e a aba Suporte respondem pelo motor, com o caso que o perfil vê, o acervo e as fontes; as travas continuam como código; a ação vira cartão e só executa depois do "Confirmar" de quem pediu; o Sócio vê o conteúdo médico no chat; o kit de agentes da OpenAI dentro do motor.
 
 ## A sugestão chega pronta (Mateus, 07/10)
 
@@ -44,3 +45,4 @@ Em toda tarefa com IA, a sugestão já aparece quando a pessoa abre, preenchendo
 - As ações do chat que dependem de enviar arquivo (marcar a perícia com o comprovante, anexar laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo): o cartão leva à tela certa até as rotas de envio existirem no servidor (Recepção, PR #22; GGVP-55).
 - A IA nas telas do Pedro (leitura do laudo, sugestão do benefício, comprovante da perícia): entram quando ele ligar essas telas no servidor (GGVP-125, GGVP-132), sobre esta plataforma.
 - Google Drive (GGVP-107).
+- **GGVP-41, a parte 2:** o perdido na Justiça registrado pelo portal (GGVP-100, travada pela Q26); a vara pelo nome (GGVP-64, parte 2); a lição no acervo de trechos (GGVP-141, PR #11).
