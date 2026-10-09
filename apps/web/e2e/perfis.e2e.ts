@@ -27,8 +27,7 @@ test('cada perfil cai na sua Central: a da Sênior ainda não foi construída', 
   await expect(page.getByRole('button', { name: 'Sênior' })).toBeVisible()
   await page.getByRole('button', { name: 'Sair' }).click()
   await expect(page).toHaveURL('/entrar')
-  // GGVP-117: sair limpa a cópia do navegador.
-  expect(await page.evaluate(() => sessionStorage.getItem('ggv.exemplo.v5'))).toBeNull()
+  // A cópia do navegador fica ao sair (09/10): o roteiro troca de pessoa na mesma aba (ver sessao.ts).
 })
 
 test('GGVP-96 · o Financeiro vê só os Resultados da Gestão; o Sócio acha o cliente pela busca e lê a ficha', async ({ page }) => {

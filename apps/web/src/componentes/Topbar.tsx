@@ -1,5 +1,4 @@
 import { sair } from '../api.ts'
-import { zerarExemplo } from '../dados/servidor.ts'
 import { useSessao } from '../sessao.ts'
 import { EntrarComo } from './EntrarComo.tsx'
 import { BotoesPreferencias } from './BotoesPreferencias.tsx'
@@ -67,15 +66,9 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
           </span>
         </button>
       )}
-      {/* GGVP-117: sair limpa a cópia do navegador, para quem entrar depois não ver o que ficou. */}
-      <button
-        type="button"
-        className={styles.sair}
-        onClick={() => {
-          zerarExemplo()
-          void sair()
-        }}
-      >
+      {/* A cópia do navegador fica ao sair (09/10): o roteiro troca de pessoa na mesma aba e segue o caso de exemplo. Limpar
+          aqui volta quando o exemplo sair da homologação (ver trocarPerfil, em sessao.ts). */}
+      <button type="button" className={styles.sair} onClick={() => void sair()}>
         Sair
       </button>
     </header>

@@ -32,7 +32,7 @@ describe('Topbar', () => {
     expect(funcao.getAttribute('aria-haspopup')).toBeNull()
   })
 
-  it('GGVP-117 · Sair encerra a sessão e limpa a cópia do navegador', async () => {
+  it('GGVP-117 · Sair encerra a sessão; a cópia do navegador fica para o roteiro na mesma aba (09/10)', async () => {
     const fetch = vi.fn(async () => new Response(null, { status: 204 }))
     const assign = vi.fn()
     vi.stubGlobal('fetch', fetch)
@@ -40,7 +40,7 @@ describe('Topbar', () => {
     sessionStorage.setItem(CHAVE, '{"fichas":[]}')
     render(<Topbar itens={itens} ativo="inicio" funcao="Atendimento" />)
     fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
-    expect(sessionStorage.getItem(CHAVE)).toBeNull()
+    expect(sessionStorage.getItem(CHAVE)).toBe('{"fichas":[]}')
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/entrar'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao', expect.objectContaining({ method: 'DELETE' }))
   })

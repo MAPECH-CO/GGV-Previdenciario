@@ -30,7 +30,7 @@ describe('Entrar como… (GGVP-96 CA10)', () => {
     expect(screen.queryByRole('menuitemradio', { name: 'Sênior' })).toBeNull()
   })
 
-  it('escolher outro perfil pede ao servidor, limpa a cópia do navegador (GGVP-117) e volta ao início', async () => {
+  it('escolher outro perfil pede ao servidor, mantém a cópia do navegador (roteiro de 09/10) e volta ao início', async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ ...eva, perfilAtivo: 'atendimento' })))
     const assign = vi.fn()
     vi.stubGlobal('fetch', fetch)
@@ -41,7 +41,7 @@ describe('Entrar como… (GGVP-96 CA10)', () => {
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Atendimento' }))
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao/perfil', expect.objectContaining({ method: 'POST', body: JSON.stringify({ perfil: 'atendimento' }) }))
-    expect(sessionStorage.getItem(CHAVE)).toBeNull()
+    expect(sessionStorage.getItem(CHAVE)).toBe('{"fichas":[]}')
   })
 
   it('Esc fecha o menu', () => {
