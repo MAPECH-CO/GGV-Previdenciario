@@ -15,13 +15,15 @@ type Props = {
   simulado?: boolean
   /** 'falhou': o Chatwoot não respondeu à consulta; não é "sem conversa", e quem abre a janela não deixa enviar. */
   consulta?: 'falhou'
+  /** Fora de produção, o telefone não está na lista de teste: o Chatwoot não é chamado e o envio fica como não enviado. */
+  foraDaLista?: boolean
 }
 
 /**
  * O cliente na central do Chatwoot (GGVP-102, CA6; Pedro 07/10): o contato do telefone da ficha, as conversas dele com a
  * de mais mensagens primeiro, "Copiar a mensagem" e "Abrir a conversa".
  */
-export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, texto, simulado = true, consulta }: Props) {
+export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, texto, simulado = true, consulta, foraDaLista }: Props) {
   const idTitulo = useId()
   const [copiada, setCopiada] = useState(false)
 
@@ -42,6 +44,10 @@ export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, 
       {consulta === 'falhou' ? (
         <p className={styles.aviso} role="alert">
           Não deu para consultar o Chatwoot agora: feche a janela e tente de novo em alguns minutos.
+        </p>
+      ) : foraDaLista ? (
+        <p className={styles.aviso} role="note">
+          Homologação: este telefone está fora da lista de teste. O portal não chama o Chatwoot, e o envio fica no histórico como não enviado.
         </p>
       ) : !contato && simulado ? (
         <p className={styles.aviso} role="note">

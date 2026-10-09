@@ -1,10 +1,11 @@
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, eventoAuditoria, fichaRecepcao, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { MSG_FORA_DA_LISTA } from './mensagens.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -77,6 +78,7 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     expect((await chamar('ana', 'POST', confirmacao)).statusCode).toBe(403)
     const novo = await json('eva', 'POST', confirmacao)
     expect(novo).toMatchObject({ ...dados, fichaId: id, quem: 'ana' })
+    expect(novo.avisoNaoSaiu).toBeUndefined()
     expect(await json('ana', 'GET', url)).toMatchObject({ atual: dados, pedido: null })
     const ficha = await json('ana', 'GET', `/api/fichas/${id}`)
     expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).toEqual(
@@ -102,5 +104,25 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     const alertas = await banco.select().from(tarefaRecepcao)
     expect(alertas.map((t) => t.setor).sort()).toEqual(['Financeiro', 'Jurídico'])
     expect(alertas[0].dados).toMatchObject({ acao: 'Dados bancários mudaram', urgente: true })
+  })
+
+  it('sem sucesso falso: na homologação, o aviso ao telefone fora da lista de teste não sai e a confirmação devolve o motivo', async () => {
+    // Endereço e token inventados; o telefone da ficha está fora da lista, então o Chatwoot nem é chamado.
+    const espiao = vi.fn()
+    vi.stubGlobal('fetch', espiao)
+    await app.close()
+    const ambiente = { CHATWOOT_URL: 'https://chatwoot.teste', CHATWOOT_CONTA: '7', CHATWOOT_CAIXA: '9', CHATWOOT_TOKEN: 'token-de-teste', AMBIENTE: 'homologacao', CHATWOOT_PERMITIDOS: '21998760000' }
+    for (const [nome, valor] of Object.entries(ambiente)) vi.stubEnv(nome, valor)
+    app = criarServidor({ banco, agora: () => relogio })
+    vi.unstubAllEnvs()
+    const { id } = await novaFicha('11987654321')
+    const url = `/api/fichas/${id}/dados-bancarios`
+    const dados = { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }
+    await json('ana', 'POST', url, { dados, verificacao: { como: 'presencial', contratoNovo: true } })
+    expect(await json('eva', 'POST', `${url}/confirmacao`)).toMatchObject({ ...dados, avisoNaoSaiu: MSG_FORA_DA_LISTA })
+    expect(espiao).not.toHaveBeenCalled()
+    const [aviso] = await banco.select().from(mensagem)
+    expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'falhou', erro: MSG_FORA_DA_LISTA })
+    vi.unstubAllGlobals()
   })
 })
