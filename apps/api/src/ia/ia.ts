@@ -225,15 +225,54 @@ export const FINALIDADES = {
       'Em "observou", "perguntou" e "pediu" escreva o padrão do perito em termos gerais, sem nome, CPF, endereço nem dado do cliente. Não calcule prazos nem porcentagens. Use só o que está no conteúdo.',
     ].join(' '),
   },
+  /**
+   * GGVP-133 CA3, CA5: arruma a transcrição com o glossário do escritório e diz quem é cada falante. Não resume nem
+   * extrai: o texto original fica guardado ao lado, e o que vai para a ficha só vai com a pessoa conferindo (G14).
+   */
+  arrumar_transcricao: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você revisa a transcrição automática de uma conversa gravada num escritório previdenciário (entrevista, conversa no escritório ou ligação).',
+      'Corrija só a escrita: nomes de benefícios, siglas, nomes de peritos, juízos e varas como estão no glossário do escritório, e palavras que o reconhecimento de voz trocou, pelo contexto do caso.',
+      'Não mude o sentido, não resuma, não acrescente nem tire informação, não junte nem divida falas, não corrija o jeito de falar da pessoa.',
+      'Diga também quem é cada falante, pelo que fala e pelos participantes: "escritorio" para a pessoa do escritório (advogada ou Atendimento), "cliente" para o cliente e "terceiro" para outra pessoa.',
+      'Responda só com um objeto JSON: {"falantes": {"A": "escritorio" | "cliente" | "terceiro"}, "falas": [{"i": 0, "texto": "a fala corrigida"}]}, com todas as falas, na mesma ordem e com o mesmo i.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-140: lê a conversa do Relacionamento já transcrita e diz o que foi dito. O que mudou na ficha é o código que
+   * compara com o guardado; nada vai para a ficha sem quem conversou conferir (G14). Leitura interna: não vai ao cliente.
+   */
+  analisar_conversa: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a pessoa do escritório previdenciário (Atendimento ou advogada) a registrar uma conversa com o cliente, já transcrita.',
+      'Leia as falas e responda só com um objeto JSON: {"resumo": "a conversa em até 3 frases simples", "ditos": [{"campo": "telefone" | "endereco" | "contatoApoio" | "estadoCivil" | "email" | "pericia" | "fato" | "documento", "valor": "o que foi dito", "i": número da fala de onde saiu, "saude": true só se o fato é de saúde}], "combinado": "o que ficou combinado de fazer, ou null"}.',
+      'Só entra o que o cliente (ou quem falou por ele) disse de novo: telefone, endereço, contato de apoio, estado civil, e-mail, a data de uma perícia marcada (escreva dd/mm/aaaa só se a data foi dita), um fato novo do caso e um documento citado.',
+      'Telefone com DDD, só se foi dito inteiro. Não calcule datas nem complete o que não foi dito. Use só o que está no conteúdo; se nada mudou, "ditos" vazio.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 
 const OPENAI = 'https://api.openai.com/v1/chat/completions'
 const MISTRAL_OCR = 'https://api.mistral.ai/v1/ocr'
+const OPENAI_TRANSCRICAO = 'https://api.openai.com/v1/audio/transcriptions'
+const OPENAI_CHAVE_AO_VIVO = 'https://api.openai.com/v1/realtime/client_secrets'
+/** GGVP-133 CA9: dólar por minuto de áudio, para o custo estimado (referência do cartão: US$ 0,36 por hora). */
+export const DOLAR_POR_MINUTO: Record<string, number> = { 'gpt-4o-transcribe-diarize': 0.006, 'gpt-4o-transcribe': 0.006, 'gpt-4o-mini-transcribe': 0.003 }
+/** Uma fala da transcrição: o falante como a OpenAI marcou ("A", "B"), de onde a onde no áudio, em segundos. */
+export type FalaTranscrita = { falante: string; inicio: number; fim: number; texto: string }
 const OPENAI_VETOR = 'https://api.openai.com/v1/embeddings'
 /** O tamanho do vetor do acervo (ADR-013); a coluna `acervo_trecho.embedding` tem o mesmo. */
 export const DIMENSOES_DO_VETOR = 1536
-const hash =(texto: string | Uint8Array) => createHash('sha256').update(texto).digest('hex')
+const hash = (texto: string | Uint8Array) => createHash('sha256').update(texto).digest('hex')
 
 type Opcoes = { banco: Banco; ambiente?: Ambiente; fetch?: typeof globalThis.fetch; agora?: () => Date }
 type Quem = { casoId: string | null; quem: string | null }
@@ -257,6 +296,9 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
   const modeloTexto = ambiente.OPENAI_MODELO || 'gpt-4.1-mini'
   const modeloOcr = ambiente.MISTRAL_MODELO_OCR || 'mistral-ocr-latest'
   const modeloVetor = ambiente.OPENAI_MODELO_VETOR || 'text-embedding-3-small'
+  // GGVP-133 CA11: a transcrição final (com quem fala) e o texto ao vivo, cada um no seu modelo.
+  const modeloTranscricao = ambiente.OPENAI_MODELO_TRANSCRICAO || 'gpt-4o-transcribe-diarize'
+  const modeloAoVivo = ambiente.OPENAI_MODELO_AO_VIVO || 'gpt-4o-transcribe'
   const saudeAutorizada = ambiente.IA_PERMITE_DADO_DE_SAUDE === 'sim'
 
   async function registrar(dados: {
@@ -272,6 +314,8 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     erro?: string
     alerta?: string | null
     inicio: number
+    audioSegundos?: number
+    custoEstimado?: number
   }) {
     const [linha] = await banco
       .insert(chamadaIa)
@@ -290,6 +334,8 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
         erro: dados.erro ?? null,
         alerta: dados.alerta ?? null,
         duracaoMs: Date.now() - dados.inicio,
+        audioSegundos: dados.audioSegundos ?? null,
+        custoEstimado: dados.custoEstimado === undefined ? null : dados.custoEstimado.toFixed(4),
         quando: agora(),
       })
       .returning({ id: chamadaIa.id })
@@ -442,6 +488,94 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
   }
 
   /**
+   * GGVP-133: a terceira porta. Transcreve um áudio (até 25 MB) pela OpenAI, separando quem fala. Registra só o tamanho e
+   * o hash do áudio, com a duração e o custo estimado (CA9). Áudio com dado de saúde só com autorização. Falhou: nulo.
+   */
+  async function transcrever(pedido: Quem & { audio: Uint8Array; mime: string; nome: string; sensivel: boolean; referencia: string }) {
+    const inicio = Date.now()
+    const fontes: FonteDaIa[] = [{ tipo: 'documento', referencia: pedido.referencia }]
+    const base = { finalidade: 'transcrever_audio', fornecedor: 'openai' as const, modelo: modeloTranscricao, versaoInstrucao: 1, alvo: pedido, entrada: pedido.audio, fontes }
+    if (pedido.sensivel && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const formulario = new FormData()
+      formulario.append('file', new Blob([new Uint8Array(pedido.audio)], { type: pedido.mime }), pedido.nome)
+      formulario.append('model', modeloTranscricao)
+      formulario.append('language', 'pt')
+      formulario.append('response_format', 'diarized_json')
+      formulario.append('chunking_strategy', 'auto')
+      const resposta = await fetch(OPENAI_TRANSCRICAO, { method: 'POST', headers: { authorization: `Bearer ${chave}` }, body: formulario, signal: AbortSignal.timeout(600_000) })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { text?: string; duration?: number; usage?: { seconds?: number }; segments?: { speaker?: string; start?: number; end?: number; text?: string }[] }
+      const falas: FalaTranscrita[] = (corpo.segments ?? [])
+        .map((x) => ({ falante: x.speaker ?? '?', inicio: x.start ?? 0, fim: x.end ?? x.start ?? 0, texto: (x.text ?? '').trim() }))
+        .filter((x) => x.texto)
+      if (falas.length === 0 && corpo.text?.trim()) falas.push({ falante: '?', inicio: 0, fim: corpo.duration ?? 0, texto: corpo.text.trim() })
+      if (falas.length === 0) throw new Error('OpenAI respondeu sem texto')
+      const segundos = Math.round(corpo.usage?.seconds ?? corpo.duration ?? Math.max(...falas.map((x) => x.fim)))
+      const custoEstimado = Math.round((segundos / 60) * (DOLAR_POR_MINUTO[modeloTranscricao] ?? 0.006) * 10_000) / 10_000
+      const saida = falas.map((x) => `${x.falante}: ${x.texto}`).join('\n')
+      const chamadaId = await registrar({ ...base, saida, situacao: 'ok', inicio, audioSegundos: segundos, custoEstimado })
+      return { chamadaId, falas, segundos, custoEstimado, modelo: modeloTranscricao }
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
+  /**
+   * GGVP-133 CA4: a chave temporária do texto ao vivo, uma por sessão de gravação, pedida pelo servidor. A chave de
+   * verdade nunca vai ao navegador. Os termos do glossário entram como dica de escrita. O áudio ao vivo vai direto do
+   * navegador à OpenAI: a gravação com dado de saúde só abre com a autorização do escritório, e cada chave fica no
+   * registro (finalidade `transcrever_ao_vivo`). Sem chave, recusada ou falhou: nulo.
+   */
+  async function chaveAoVivo(pedido: Quem & { termos: string[]; sensivel: boolean; referencia: string }) {
+    const inicio = Date.now()
+    const prompt = pedido.termos.join(', ').slice(0, 1000)
+    const base = { finalidade: 'transcrever_ao_vivo', fornecedor: 'openai' as const, modelo: modeloAoVivo, versaoInstrucao: 1, alvo: pedido, entrada: prompt, fontes: [{ tipo: 'documento' as const, referencia: pedido.referencia }] }
+    if (pedido.sensivel && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const resposta = await fetch(OPENAI_CHAVE_AO_VIVO, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          expires_after: { anchor: 'created_at', seconds: 600 },
+          session: {
+            type: 'transcription',
+            audio: { input: { transcription: { model: modeloAoVivo, language: 'pt', prompt }, turn_detection: { type: 'server_vad' } } },
+          },
+        }),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { value?: string; expires_at?: number }
+      if (!corpo.value) throw new Error('OpenAI respondeu sem chave')
+      // A chave temporária não vai ao registro: só o fato de ter sido entregue.
+      await registrar({ ...base, saida: null, situacao: 'ok', inicio })
+      return { chave: corpo.value, expiraEm: new Date((corpo.expires_at ?? 0) * 1000).toISOString(), modelo: modeloAoVivo }
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
+  /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
+  /**
    * GGVP-141 CA4: o vetor do texto (embeddings da OpenAI), para a busca por significado no acervo (ADR-013), com registro
    * sem o conteúdo. O texto já chega anonimizado; saúde só com autorização. Sem chave, recusado ou falhou: nulo, e a busca
    * segue só por palavra.
@@ -479,6 +613,6 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
   }
 
   /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
-  return { sugerir, lerDocumento, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saude: saudeAutorizada }
+  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saude: saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>

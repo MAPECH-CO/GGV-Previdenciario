@@ -10,14 +10,10 @@ const api = process.env.PORTA_E2E_API ?? '3101'
 const web = process.env.PORTA_E2E_WEB ?? '5174'
 export const SESSAO = 'e2e/.sessao/atendimento.json'
 
-// Horário de Brasília em tudo (os testes, a API e o navegador herdam), como na homologação (TZ no Coolify). Com a CI
-// em UTC, depois das 21h o dia já virou: o pedido de complemento aberto agora parecia marcado para amanhã.
-process.env.TZ = 'America/Sao_Paulo'
-
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
-  use: { baseURL: `http://localhost:${web}`, timezoneId: 'America/Sao_Paulo' },
+  use: { baseURL: `http://localhost:${web}` },
   projects: [
     { name: 'entrar', testMatch: /sessao\.setup\.ts/ },
     { name: 'logado', dependencies: ['entrar'], use: { storageState: SESSAO }, testIgnore: /login\.e2e\.ts/ },
@@ -27,7 +23,8 @@ export default defineConfig({
     {
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: `http://127.0.0.1:${api}/saude`,
-      env: { PORTA: api },
+      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC.
+      env: { PORTA: api, TZ: 'America/Sao_Paulo' },
       reuseExistingServer: false,
     },
     {

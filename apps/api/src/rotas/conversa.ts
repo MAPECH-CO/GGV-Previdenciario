@@ -4,7 +4,8 @@
 // `atendimento`, com o documento das telas em `dados`; a gravação, em `gravacao_recepcao`, o mesmo motor da entrevista;
 // cada mudança conferida, em `versao_campo`, e na ficha do cliente.
 // A gravação e a transcrição seguem simuladas (a conversa de exemplo), atrás de `RELACIONAMENTO_SIMULADO`: com `nao`, a
-// transcrição falha com o motivo e a tela segue manual. A de verdade é outra história.
+// transcrição falha com o motivo e a tela segue manual. GGVP-133: com o áudio de verdade (o microfone da conversa no
+// escritório ou a ligação baixada do Chatwoot), o texto vem da OpenAI, pelo motor de IA, como na entrevista.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { randomUUID } from 'node:crypto'
 import { and, asc, eq, isNotNull } from 'drizzle-orm'
@@ -38,6 +39,7 @@ import {
   CAMPOS_DA_CONVERSA,
   CANAIS_DO_REGISTRO,
   COM_QUEM,
+  erroDoValor,
   motivoParaNaoAbrir,
   motivoParaNaoConferir,
   motivoParaNaoCriarPendencia,
@@ -48,6 +50,7 @@ import {
   valorLido,
   type CampoDaFicha,
   type CampoDoProcesso,
+  type Dito,
   type Mudanca,
   type PapelNaConversa,
   type Pessoa,
@@ -56,11 +59,23 @@ import {
 import { ehAudio, juntarPartes, minutos, partesDoAudio, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
 import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type Verificacao } from '../../../web/src/regras/seguranca.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
+import { AnaliseDaConversaPelaIa, ChaveAoVivo } from '@ggv/contratos'
+import type { Armazenamento } from '../armazenamento.ts'
+import { lerJson, type Ia } from '../ia/ia.ts'
+import type { Preparo } from '../ia/preparo.ts'
+import { guardarAudio, transcreverGravacao } from '../fluxo/transcricao.ts'
+import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
+import { lerFormulario } from './formulario.ts'
+import { MSG_AUDIO_GRANDE } from './recepcao-entrevista.ts'
+import { MSG_SEM_AO_VIVO, chaveDaGravacao } from './transcricao.ts'
+import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 
 export const MSG_CONVERSA_NAO_ENCONTRADA = 'Conversa não encontrada.'
 export const MSG_SEM_AVISO_NA_CONVERSA = 'Avise que a conversa será gravada antes de gravar (G10).'
 export const MSG_SEM_AVISO_NA_LIGACAO = 'Confirme que a ligação começou com o aviso de gravação (G10).'
 export const MSG_TRANSCRICAO_DESLIGADA = 'a transcrição de verdade ainda não está ligada: registre o que mudou à mão'
+/** GGVP-140 CA5: a IA não leu a conversa (fora do ar, recusada ou resposta fora do formato): a pessoa segue pela leitura. */
+export const MSG_IA_SEM_ANALISE = 'A IA não respondeu agora: leia a transcrição e confira o que mudou.'
 
 /** Áudio de voz a 128 kbit/s: 16 kB por segundo, como na entrevista. Só para o tamanho do arquivo simulado. */
 const BYTES_POR_SEGUNDO = 16_000
@@ -102,9 +117,16 @@ const dataHoraEmBrasilia = (iso: string) => {
   return `${d}/${m}/${a} ${horaEmBrasilia(new Date(iso))}`
 }
 
+/** Uma coisa dita, com a hora e o trecho da transcrição de onde saiu (GGVP-80 CA5). */
+type DitoNaConversa = Dito & { aos: number; trecho: string }
+/** G9 também no que a IA devolve: o texto com senha não passa. */
+const temSenha = (texto: string) => tirarSenhas([{ aos: 0, quem: '', papel: 'cliente', texto }])[0].texto !== texto
+
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date; ambiente?: Record<string, string | undefined> }
+/** GGVP-133: o motor de IA, o armazenamento e o preparo ligam a transcrição de verdade; sem eles, segue o exemplo. */
+type Opcoes = { banco: Banco; agora?: () => Date; ambiente?: Record<string, string | undefined>; ia?: Ia; armazenamento?: Armazenamento; preparo?: Preparo }
+const formatoDo = (nome: string) => nome.split('.').at(-1)?.toLowerCase() ?? ''
 
 /**
  * A transcrição simulada: as falas até onde gravou, nas partes do áudio e juntadas de novo, com quem fala e sem senha (G9).
@@ -157,10 +179,11 @@ export async function camposDoProcessoEmVigor(banco: Banco, pessoaId: string, ca
   return campos
 }
 
-export function registrarRotasConversa(app: FastifyInstance, { banco, agora = () => new Date(), ambiente = process.env }: Opcoes) {
+export function registrarRotasConversa(app: FastifyInstance, { banco, agora = () => new Date(), ambiente = process.env, ia, armazenamento, preparo }: Opcoes) {
   const simulado = ambiente.RELACIONAMENTO_SIMULADO !== 'nao'
   const historico = registrarHistorico(banco, agora)
-  const { hoje, evento, nomeDe, fichas, guardar, guardarGravacao, acharGravacao } = criarFichario(banco, agora)
+  const { hoje, evento, nomeDe, fichas, guardar, guardarGravacao, acharGravacao, gravacoes } = criarFichario(banco, agora)
+  const real = ia && armazenamento ? { banco, ia, armazenamento } : null
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const registrar = { preHandler: exigir(banco, 'conversa.registrar', agora) }
   const voltar = { preHandler: exigir(banco, 'ficha.voltar_versao', agora) }
@@ -198,6 +221,11 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     if (pode && (c.analise?.mudancas.some((m) => m.saude) || g?.soJuridico)) {
       await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: c.processoId ?? null, recurso: `conversa:${c.id}`, quando: agora() })
     }
+    // GGVP-140: a conversa da advogada, para quem não é do Jurídico, aparece sem o texto, o registro, o resumo e a análise.
+    if (!pode && g?.soJuridico) {
+      const semTexto = { trechos: [], extraidas: [], resumo: undefined, registro: undefined }
+      return { conversa: paraTela({ ...c, analise: undefined, registro: undefined }), ficha, gravacao: { ...g, ...semTexto } }
+    }
     return { conversa: paraTela(c), ficha, gravacao: g }
   }
 
@@ -231,8 +259,9 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
       trechos: [],
       extraidas: [],
       documentos: [],
-      // O que a conversa registrou não é dado de saúde: quem vê o caso vê a conversa (Pedro, 08/10).
-      soJuridico: false,
+      // O que a conversa registrou não é dado de saúde: quem vê o caso vê a conversa (Pedro, 08/10). A conversa da advogada
+      // fica só com o Jurídico, como a entrevista (desenho do Relacionamento; GGVP-140).
+      soJuridico: c.papel === 'juridico',
       marcas: [],
       conversaId: c.id,
     }
@@ -240,7 +269,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
 
   function guardarNoCard(ficha: Ficha, g: Gravacao, nome: string, tamanho: number) {
     g.estado = 'encerrada'
-    g.audio = { nome, formato: nome.split('.').at(-1)?.toLowerCase() ?? '', tamanho, partes: partesDoAudio(tamanho) }
+    g.audio = g.audio?.documentos ? g.audio : { nome, formato: nome.split('.').at(-1)?.toLowerCase() ?? '', tamanho, partes: partesDoAudio(tamanho) }
     g.transcricao = 'transcrevendo'
     ficha.transcricoes += 1
   }
@@ -357,6 +386,42 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
 
   // GGVP-76 CA2, G10: a ligação já feita sobe gravada, de qualquer formato e tamanho, com o aviso nela.
   app.post<{ Params: { id: string } }>('/api/conversas/:id/audio', registrar, async (pedido, resp) => {
+    // GGVP-133: o áudio de verdade vira documento na pasta do cliente. Na conversa por arquivo, é a gravação da ligação
+    // baixada do Chatwoot (CA2), com o aviso nela (G10); na conversa gravada agora, é uma parte do microfone.
+    if (pedido.isMultipart()) {
+      if (!real) return negar(resp, 503, 'O armazenamento do áudio não está ligado.')
+      const formulario = await lerFormulario(pedido)
+      if (!formulario) return negar(resp, 400, MSG_AUDIO_GRANDE)
+      const { arquivo, campos } = formulario
+      if (!arquivo || !ehAudio({ nome: arquivo.nome, tipo: arquivo.mime })) return negar(resp, 400, 'Esse arquivo não é de áudio.')
+      const achadaComAudio = await acharConversa(pedido.params.id)
+      if (!achadaComAudio) return negar(resp, 404, MSG_CONVERSA_NAO_ENCONTRADA)
+      const { conversa: c, ficha, gravacao } = achadaComAudio
+      if (c.modo === 'arquivo') {
+        if (campos.avisoNaGravacao !== 'sim') return negar(resp, 400, MSG_SEM_AVISO_NA_LIGACAO)
+        if (gravacao) return resposta(pedido, c, ficha, gravacao)
+        const g = novaGravacao(ficha, c, 'arquivo')
+        g.acoes.push({ acao: 'subiu-arquivo', quando: agora().toISOString(), aos: 0 })
+        const id = await guardarAudio(real, g, arquivo, pedido.usuario!.id)
+        g.audio = { nome: arquivo.nome, formato: formatoDo(arquivo.nome), tamanho: arquivo.conteudo.length, partes: 1, documentos: [{ id, inicio: 0 }] }
+        guardarNoCard(ficha, g, arquivo.nome, arquivo.conteudo.length)
+        Object.assign(c, { gravacaoId: g.id, finalizadaEm: agora().toISOString() })
+        ficha.historico.push(evento(`Subiu a gravação da ligação (${arquivo.nome}); o áudio ficou no card e foi para a transcrição`, c.quem))
+        await guardarGravacao(g)
+        await guardarConversa(c, g)
+        await guardar(ficha)
+        return resposta(pedido, c, ficha, g)
+      }
+      const inicio = Number(campos.inicio ?? 0)
+      if (c.modo !== 'tempo-real' || !gravacao || gravacao.estado === 'encerrada' || !Number.isFinite(inicio) || inicio < 0)
+        return negar(resp, 400, 'Esta conversa não recebe mais áudio.')
+      const id = await guardarAudio(real, gravacao, arquivo, pedido.usuario!.id)
+      const antes = gravacao.audio?.documentos ? gravacao.audio : undefined
+      const documentos = [...(antes?.documentos ?? []), { id, inicio }]
+      gravacao.audio = { nome: antes?.nome ?? arquivo.nome, formato: formatoDo(arquivo.nome), tamanho: (antes?.tamanho ?? 0) + arquivo.conteudo.length, partes: documentos.length, documentos }
+      await guardarGravacao(gravacao)
+      return resposta(pedido, c, ficha, gravacao)
+    }
     const corpo = pedido.body as { avisoNaGravacao?: unknown } | undefined
     if (corpo?.avisoNaGravacao !== true) return negar(resp, 400, MSG_SEM_AVISO_NA_LIGACAO)
     const entrada = AudioDaLigacao.safeParse(pedido.body)
@@ -378,16 +443,15 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
   })
 
   /**
-   * A IA simulada depois da transcrição (GGVP-80): extrai o que foi dito; a comparação com a ficha e o processo é código
-   * (`oQueMudou`). A senha dita sai do texto e fica só a trilha, nunca o valor (G9): para o cofre, quem tem a senha digita.
-   * Nada muda na ficha aqui: só depois de conferido por quem conversou (G14).
+   * A análise depois da transcrição, da IA simulada (GGVP-80) ou da de verdade (GGVP-140): a IA diz o que foi dito; a
+   * comparação com a ficha e o processo é código (`oQueMudou`). A senha dita sai do texto e fica só a trilha, nunca o valor
+   * (G9): para o cofre, quem tem a senha digita. Nada muda na ficha aqui: só depois de conferido por quem conversou (G14).
+   * `aviso`: por que a IA não leu, à frente da observação, e a linha do contato não diz o que mudou.
    */
-  async function analisar(c: Conversa, ficha: Ficha, g: Gravacao, ditas: FalaDaConversa[]): Promise<AnaliseDaConversa & { senhaDita: boolean }> {
-    const ditos = ditas.flatMap((f) => (f.diz ?? []).map((d) => ({ ...d, aos: f.aos, trecho: tirarSenhas([f])[0].texto })))
+  async function montarAnalise(c: Conversa, ficha: Ficha, g: Gravacao, lido: { ditos: DitoNaConversa[]; senhaDita: boolean; pendencia?: string; aviso?: string }): Promise<AnaliseDaConversa> {
+    const { ditos, senhaDita, pendencia, aviso } = lido
     const mudancas = oQueMudou(ditos, ficha, await camposDoProcesso(ficha.id, c.processoId))
     const saude = mudancas.some((m) => m.saude)
-    const senhaDita = ditas.some((f) => f.senha)
-    const pendencia = ditas.find((f) => f.combinado)?.combinado
     if (senhaDita) ficha.historico.push(evento('A senha do gov.br foi dita na conversa: saiu da transcrição e não ficou guardada; para o cofre, o cliente digita (G9)', 'Sistema (IA)'))
     const cofre = senhaDita || g.acoes.some((a) => a.acao === 'guardou-senha')
     g.extraidas = [
@@ -397,17 +461,59 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
         : []),
     ]
     const oQue = mudancas.map((m) => m.rotulo)
-    g.resumo = `${comMaiuscula(comQuemFalado(c))}: ${oQue.length ? oQue.join(', ') : 'nada muda na ficha nem no processo'}.${pendencia ? ` Combinado: ${pendencia}` : ''}`
+    const disse = aviso ? 'transcrição pronta, a conferir' : oQue.length ? oQue.join(', ') : 'nada muda na ficha nem no processo'
+    g.resumo = `${comMaiuscula(comQuemFalado(c))}: ${disse}.${pendencia ? ` Combinado: ${pendencia}` : ''}`
     // Tudo fica no histórico do contato (GGVP-76 CA9).
     ficha.contatos.push({ data: hoje(), canal: `${CANAIS_DO_REGISTRO[c.canal].rotulo} (gravada, G10)`, texto: g.resumo })
     const observacao = [
+      aviso,
       senhaDita && 'A senha do gov.br foi dita em voz alta: saiu da transcrição (G9). Para o cofre, o cliente digita.',
       saude && 'Tem fato novo de saúde: quem confirma é o Jurídico.',
       c.comQuem !== 'cliente' && 'Quem falou não foi o cliente: confira antes de mudar dado de contato.',
     ]
       .filter(Boolean)
       .join(' ')
-    return { mudancas, atualizar: oQuePrecisaAtualizar(mudancas), observacao: observacao || 'Nada fora do comum na conversa.', pendencia, senhaDita }
+    return { mudancas, atualizar: oQuePrecisaAtualizar(mudancas), observacao: observacao || 'Nada fora do comum na conversa.', pendencia }
+  }
+
+  /** A IA simulada (GGVP-80): as falas de exemplo já trazem o que foi dito. */
+  async function analisar(c: Conversa, ficha: Ficha, g: Gravacao, ditas: FalaDaConversa[]): Promise<AnaliseDaConversa & { senhaDita: boolean }> {
+    const ditos = ditas.flatMap((f) => (f.diz ?? []).map((d) => ({ ...d, aos: f.aos, trecho: tirarSenhas([f])[0].texto })))
+    const senhaDita = ditas.some((f) => f.senha)
+    const analise = await montarAnalise(c, ficha, g, { ditos, senhaDita, pendencia: ditas.find((f) => f.combinado)?.combinado })
+    return { ...analise, senhaDita }
+  }
+
+  /**
+   * GGVP-140 CA1, CA3, CA4: a IA de verdade lê a transcrição (já sem a senha, G9, como dado dentro do `<conteudo>`, com o
+   * alerta do motor) e diz o que foi dito. O que vale passa pelo código: o campo vai à ficha ou ao processo pelo nome, o
+   * valor é conferido pela biblioteca de campos, e a hora e o trecho são os da transcrição, nunca os da IA. O que traz
+   * senha não passa. Nula quando a IA não respondeu (CA5).
+   */
+  async function lerComIa(c: Conversa, ficha: Ficha, g: Gravacao, quemId: string | null) {
+    const quem = (t: Trecho) => (t.papel === 'cliente' ? 'cliente' : t.papel === 'terceiro' ? 'outra pessoa' : 'escritório')
+    const conteudo = [
+      `Conversa: ${comQuemFalado(c)}, conduzida por ${c.papel === 'juridico' ? 'advogada' : 'Atendimento'}.`,
+      `Benefício: ${nomeBeneficio(ficha.beneficioInteresse) || 'a definir'}.`,
+      'Falas:',
+      JSON.stringify(g.trechos.map((t, i) => ({ i, quem: quem(t), texto: t.texto }))),
+    ].join('\n')
+    const valida = (texto: string) => AnaliseDaConversaPelaIa.safeParse(lerJson(texto)).success
+    const fontes = [{ tipo: 'documento' as const, referencia: `gravacao:${g.id}` }]
+    const s = await real!.ia.sugerir('analisar_conversa', { casoId: c.processoId ?? null, quem: quemId, conteudo, fontes }, { validar: valida })
+    if (!s) return null
+    const lida = AnaliseDaConversaPelaIa.parse(lerJson(s.texto))
+    const ditos = lida.ditos.flatMap(({ campo, valor, i, saude }): DitoNaConversa[] => {
+      const t = g.trechos[i]
+      if (!t || temSenha(valor) || erroDoValor(campo, valor)) return []
+      const comum = { valor: valorGuardado(campo, valor), aos: t.aos, trecho: t.texto }
+      return campo === 'pericia' || campo === 'fato' || campo === 'documento'
+        ? [{ onde: 'processo', campo, ...comum, ...(saude && { saude: true as const }) }]
+        : [{ onde: 'ficha', campo, ...comum }]
+    })
+    const resumo = temSenha(lida.resumo) ? 'O resumo da IA citava uma senha e foi retirado (G9): leia a transcrição.' : lida.resumo
+    const combinado = lida.combinado && !temSenha(lida.combinado) ? lida.combinado : undefined
+    return { ditos, combinado, daIa: { resumo, chamadaId: s.chamadaId, modelo: s.modelo, alerta: s.alerta } }
   }
 
   // GGVP-80 CA1 a CA5: a transcrição simulada, com o mesmo motor da entrevista; `falhar` simula a falha (tentar de novo).
@@ -418,6 +524,15 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     if (!achada) return negar(resp, 404, MSG_CONVERSA_NAO_ENCONTRADA)
     const { conversa: c, ficha, gravacao: g } = achada
     if (!g || g.estado !== 'encerrada' || (g.transcricao !== 'transcrevendo' && g.transcricao !== 'falhou')) return resposta(pedido, c, ficha, g)
+    // GGVP-133 CA1, CA8: com o áudio de verdade guardado e o motor ligado, o texto vem da OpenAI; falhou, o áudio fica e a
+    // pessoa tenta de novo. Sem a chave do serviço, segue o exemplo (ou a falha, com RELACIONAMENTO_SIMULADO=nao).
+    if (g.audio?.documentos?.length && real?.ia.ligada) {
+      const { pronta, senhaDita } = await transcreverDeVerdade(c, ficha, g, pedido.usuario!.id)
+      const mudancas = c.analise?.mudancas ?? []
+      if (pronta)
+        await historico(pedido.usuario!.id, 'conversa_transcrita', pedido, `pessoa:${ficha.id}`, { conversa: c.id, mudancas: mudancas.length, saude: mudancas.some((m) => m.saude), senhaDita })
+      return resposta(pedido, c, ficha, g)
+    }
     if (entrada.data.falhar || !simulado) {
       g.transcricao = 'falhou'
       g.motivoDaFalha = simulado ? 'o serviço de transcrição não respondeu' : MSG_TRANSCRICAO_DESLIGADA
@@ -717,4 +832,55 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     }
     return tarefas
   })
+
+  /**
+   * GGVP-133: a transcrição de verdade da conversa, com quem conduziu no papel do escritório (Atendimento ou advogada). A
+   * senha dita sai do texto (G9) e fica só a trilha. GGVP-140: a IA de verdade sugere o resumo e o que mudou; sem ela, a
+   * conferência abre sem itens, com o motivo. Nada muda na ficha sem quem conversou conferir (G14). Diz se ficou pronta e
+   * se a senha foi dita.
+   */
+  async function transcreverDeVerdade(c: Guardada, ficha: Ficha, g: Gravacao, quemId: string | null) {
+    await transcreverGravacao(real!, g, ficha, quemId, c.papel === 'juridico' ? 'advogada' : 'atendimento')
+    const pronta = g.transcricao === 'pronta'
+    let senhaDita = false
+    if (pronta) {
+      senhaDita = g.trechos.some((t) => t.texto.includes(SENHA_RETIRADA))
+      g.documentos = []
+      const lida = await lerComIa(c, ficha, g, quemId)
+      const analise = await montarAnalise(c, ficha, g, { ditos: lida?.ditos ?? [], senhaDita, pendencia: lida?.combinado, aviso: lida ? undefined : MSG_IA_SEM_ANALISE })
+      c.analise = lida ? { ...analise, daIa: lida.daIa } : analise
+      ficha.historico.push(evento('A transcrição da conversa ficou pronta: está nas Transcrições do card', 'Sistema (IA)'))
+    }
+    await guardarGravacao(g)
+    await guardarConversa(c, g)
+    await guardar(ficha)
+    return { pronta, senhaDita }
+  }
+
+  // GGVP-133 CA4: o texto ao vivo é só da conversa no escritório, gravada agora; na ligação, não. A chave temporária vem
+  // daqui; a de verdade fica no servidor.
+  app.post<{ Params: { id: string } }>('/api/conversas/:id/chave-ao-vivo', registrar, async (pedido, resp) => {
+    const achada = await acharConversa(pedido.params.id)
+    if (!achada) return negar(resp, 404, MSG_CONVERSA_NAO_ENCONTRADA)
+    const { conversa: c, gravacao: g } = achada
+    if (c.modo !== 'tempo-real' || c.canal !== 'presencial' || !g || (g.estado !== 'gravando' && g.estado !== 'pausada'))
+      return negar(resp, 400, 'O texto ao vivo é só da conversa no escritório, gravada agora.')
+    const chave = ia && (await chaveDaGravacao(banco, ia, g, pedido.usuario!.id))
+    if (!chave) return negar(resp, 503, MSG_SEM_AO_VIVO)
+    return ChaveAoVivo.parse(chave)
+  })
+
+  // GGVP-133: o preparo em segundo plano (a cada 5 minutos) transcreve as conversas com áudio de verdade que esperam.
+  if (real && preparo)
+    preparo.registrar(
+      async () =>
+        (await gravacoes(true)).flatMap((g) =>
+          g.conversaId && g.estado === 'encerrada' && g.transcricao === 'transcrevendo' && g.audio?.documentos?.length ? [g.conversaId] : [],
+        ),
+      async (conversaId) => {
+        const achada = await acharConversa(conversaId)
+        if (!achada?.gravacao || achada.gravacao.transcricao !== 'transcrevendo') return
+        await transcreverDeVerdade(achada.conversa, achada.ficha, achada.gravacao, null)
+      },
+    )
 }

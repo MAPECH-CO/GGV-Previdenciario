@@ -54,7 +54,7 @@ test('GGVP-103 · o Jurídico administrativo guarda a senha do gov.br pelo cofre
 
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
-  // Nome exato: depois das 20h, a leitura acima gera o alerta "Uso do cofre fora do padrão" na Central, outro link.
+  // Exato: depois das 20h, a Central da Sênior também tem o alerta "Uso do cofre fora do padrão".
   await page.getByRole('link', { name: 'Uso do cofre', exact: true }).click()
   await expect(page.getByRole('list', { name: 'Uso do cofre por pessoa' })).toContainText('Igor (exemplo) · leituras 1 · cadastros e trocas 1 · recusas 0')
   await expect(page.locator('body')).not.toContainText('gov-lucia-e2e')

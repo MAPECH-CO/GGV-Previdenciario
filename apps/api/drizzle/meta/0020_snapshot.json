@@ -1,5 +1,5 @@
 {
-  "id": "f7892914-acf0-4b6e-975c-fb8693f72028",
+  "id": "2f3fb4a9-543e-4137-a40f-81f783193945",
   "prevId": "dcbfdc04-ecdf-45c7-a413-cb6fc2bca994",
   "version": "7",
   "dialect": "postgresql",
@@ -162,6 +162,18 @@
         "duracao_ms": {
           "name": "duracao_ms",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "audio_segundos": {
+          "name": "audio_segundos",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "custo_estimado": {
+          "name": "custo_estimado",
+          "type": "numeric(10, 4)",
           "primaryKey": false,
           "notNull": false
         },
@@ -4406,121 +4418,6 @@
       },
       "isRLSEnabled": true
     },
-    "public.acervo_trecho": {
-      "name": "acervo_trecho",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "origem": {
-          "name": "origem",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referencia": {
-          "name": "referencia",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "beneficio": {
-          "name": "beneficio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "texto": {
-          "name": "texto",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "so_juridico": {
-          "name": "so_juridico",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(1536)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hash": {
-          "name": "hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "acervo_trecho_vetor": {
-          "name": "acervo_trecho_vetor",
-          "columns": [
-            {
-              "expression": "embedding",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "vector_cosine_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "hnsw",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "acervo_trecho_caso_id_caso_id_fk": {
-          "name": "acervo_trecho_caso_id_caso_id_fk",
-          "tableFrom": "acervo_trecho",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "acervo_trecho_hash_unique": {
-          "name": "acervo_trecho_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "hash"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.configuracao": {
       "name": "configuracao",
       "schema": "",
@@ -4618,6 +4515,99 @@
       },
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.glossario_termo": {
+      "name": "glossario_termo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "termo": {
+          "name": "termo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "significado": {
+          "name": "significado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alterado_por": {
+          "name": "alterado_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "glossario_termo_unico": {
+          "name": "glossario_termo_unico",
+          "columns": [
+            {
+              "expression": "lower(\"termo\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "glossario_termo_alterado_por_usuario_id_fk": {
+          "name": "glossario_termo_alterado_por_usuario_id_fk",
+          "tableFrom": "glossario_termo",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "alterado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "glossario_termo_tipo": {
+          "name": "glossario_termo_tipo",
+          "value": "\"glossario_termo\".\"tipo\" in ('beneficio', 'sigla', 'perito', 'juizo', 'outro')"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.juizo": {

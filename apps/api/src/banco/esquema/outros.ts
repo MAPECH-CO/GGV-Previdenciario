@@ -1,6 +1,7 @@
-// Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104).
+// Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104, 143).
+import { TIPOS_DE_TERMO } from '@ggv/contratos'
 import { sql } from 'drizzle-orm'
-import { boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uuid, vector } from 'drizzle-orm/pg-core'
+import { boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { documento } from './documentos.ts'
@@ -201,4 +202,22 @@ export const feriado = pgTable(
     descricao: text('descricao').notNull(),
   },
   (t) => [unique('feriado_unico').on(t.data, t.tribunal)],
+).enableRLS()
+
+/**
+ * Glossário do escritório (GGVP-143): benefícios, siglas, peritos, juízos e varas, como o escritório escreve. A transcrição
+ * e o motor de IA leem daqui (`termosDoGlossario`). O mesmo termo não entra duas vezes, nem com outra maiúscula.
+ */
+export const glossarioTermo = pgTable(
+  'glossario_termo',
+  {
+    id: id(),
+    termo: text('termo').notNull(),
+    tipo: text('tipo').notNull(),
+    significado: text('significado'),
+    alteradoPor: uuid('alterado_por').references(() => usuario.id),
+    criadoEm: criadoEm(),
+    atualizadoEm: atualizadoEm(),
+  },
+  (t) => [uniqueIndex('glossario_termo_unico').on(sql`lower(${t.termo})`), emLista('glossario_termo_tipo', t.tipo, TIPOS_DE_TERMO)],
 ).enableRLS()
