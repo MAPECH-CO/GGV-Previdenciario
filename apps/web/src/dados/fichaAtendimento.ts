@@ -23,6 +23,12 @@ export const CLIENTE_NO_TABLET = 'Cliente (tablet)'
  * preenche os campos para o Atendimento conferir (CA14); a senha escrita no papel vai para o cofre, para conferir (CA15).
  */
 export async function lerFichaEmPapel(fichaId: string): Promise<LeituraDaFicha> {
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 5a: a leitura (simulada) é feita no servidor; a imagem vem na ficha, e nada vai ao cofre (G9).
+    const r = await noBanco<LeituraDaFicha & { ficha: Ficha }>(`/fichas/${fichaId}/ficha-de-atendimento/leitura`, { method: 'POST' })
+    receber(r)
+    return { modelo: r.modelo, arquivo: r.arquivo, campos: r.campos, naoLidos: r.naoLidos, senhaLida: r.senhaLida }
+  }
   await esperar()
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)

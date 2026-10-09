@@ -339,6 +339,10 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
   expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'leitura · papel' })
   await advogada.goto(`/contrato/${digital}/assinatura`)
   await expect(advogada.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
+  // Bloco 5a: o arquivo assinado está na pasta do processo, na ficha do servidor.
+  const fichaId = (contratos as { processoId: string; fichaId: string }[]).find((c) => c.processoId === digital)!.fichaId
+  await advogada.goto(`/clientes/${fichaId}`)
+  await expect(advogada.getByRole('list', { name: 'Subpasta LOAS Idoso' })).toContainText('Contrato assinado - Lia Zapsign Teste')
   await outro.close()
 })
 

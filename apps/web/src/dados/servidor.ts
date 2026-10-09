@@ -19,6 +19,7 @@ import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type { Cobranca } from './cobranca.ts'
 import type { Liberacao } from './liberacao.ts'
 import type {
+  Arquivo,
   CompromissoGuardado,
   EdicaoFicha,
   Encaminhamento,
@@ -180,16 +181,19 @@ export const agendamentoDoServidor = (id: string) => doServidor(id.slice(0, 36))
 
 const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
-/** A agenda e os processos, item a item: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
-function mesclarPorId<T extends { id: string }>(local: T[], doBanco: T[], antes: T[]): T[] {
+/** A agenda, os processos e os arquivos, item a item pela chave: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
+function mesclar<T>(chave: (x: T) => string, local: T[], doBanco: T[], antes: T[]): T[] {
   const lista = [...local]
   for (const a of doBanco) {
-    const i = lista.findIndex((x) => x.id === a.id)
+    const i = lista.findIndex((x) => chave(x) === chave(a))
     if (i < 0) lista.push(a)
-    else if (!igual(antes.find((x) => x.id === a.id), a)) lista[i] = a
+    else if (!igual(antes.find((x) => chave(x) === chave(a)), a)) lista[i] = a
   }
   return lista
 }
+const peloId = (x: { id: string }) => x.id
+/** O nome do arquivo é único na pasta (a pessoal ou a do processo). */
+const naPasta = (a: Arquivo) => `${a.local}/${a.nome}`
 
 /**
  * Copia a ficha do servidor para cá. Na primeira vez, inteira. Depois, em três vias, contra a última cópia: o campo
@@ -206,9 +210,11 @@ function espelharEm(banco: Banco, doBanco: Ficha): Ficha {
       ...local,
       historico: [...local.historico, ...doBanco.historico.slice(antes.historico.length)].sort((a, b) => a.quando.localeCompare(b.quando)),
       contatos: [...local.contatos, ...doBanco.contatos.slice(antes.contatos.length)],
-      agendamentos: mesclarPorId(local.agendamentos, doBanco.agendamentos, antes.agendamentos),
+      agendamentos: mesclar(peloId, local.agendamentos, doBanco.agendamentos, antes.agendamentos),
       // Bloco 4a: o processo é o caso do banco, com a etapa do contrato.
-      processos: mesclarPorId(local.processos, doBanco.processos, antes.processos),
+      processos: mesclar(peloId, local.processos, doBanco.processos, antes.processos),
+      // Bloco 5a: os arquivos que o servidor guarda vêm de lá; os que só existem aqui (fluxos ainda não ligados) ficam.
+      arquivos: mesclar(naPasta, local.arquivos ?? [], doBanco.arquivos ?? [], antes.arquivos ?? []),
     }
     const campos = [
       ...Object.keys(ROTULOS),

@@ -193,8 +193,8 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 
 ### Bloco 5a · A lista de arquivos da ficha no servidor
 
-- [ ] 125.52 Servidor: a imagem da segunda ficha, o contrato assinado (ZapSign e papel) e a página corrigida entram em `arquivos` da ficha do servidor, com `nomeSemSobrescrever`; testes.
-- [ ] 125.53 Servidor: `POST /api/fichas/:id/ficha-de-atendimento/leitura` (a leitura em papel, simulada), com a imagem em Documentos pessoais e sem senha no cofre (G9); testes.
-- [ ] 125.54 Telas: a cópia recebe `arquivos` em três vias, pelo nome; sai o arquivo que as telas punham só na cópia; a leitura da ficha de atendimento chama a API para as fichas do servidor; testes.
-- [ ] 125.55 Playwright: o contrato assinado numa sessão aparece na pasta do processo em outra.
-- [ ] 125.56 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 125.52 Servidor: a imagem da segunda ficha, o contrato assinado (ZapSign e papel) e a página corrigida entram em `arquivos` da ficha do servidor, com `nomeSemSobrescrever`; testes.
+- [x] 125.53 Servidor: `POST /api/fichas/:id/ficha-de-atendimento/leitura` (a leitura em papel, simulada), com a imagem em Documentos pessoais e sem senha no cofre (G9); testes.
+- [x] 125.54 Telas: a cópia recebe `arquivos` em três vias, pelo nome; sai o arquivo que as telas punham só na cópia; a leitura da ficha de atendimento chama a API para as fichas do servidor; testes.
+- [x] 125.55 Playwright: o contrato assinado numa sessão aparece na pasta do processo em outra.
+- [x] 125.56 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

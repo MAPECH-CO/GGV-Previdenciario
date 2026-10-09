@@ -148,6 +148,8 @@ describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
       contrato: { etapa: 'leitura', assinatura: { zapsign: { status: 'assinado', eventos: [`${documentoId}-assinado`] } } },
     })
     expect(retorno.contrato.assinatura.arquivo).toBe(retorno.arquivo.nome)
+    // Bloco 5a: o arquivo assinado fica na pasta do processo, na ficha do servidor.
+    expect(retorno.ficha.arquivos).toContainEqual(expect.objectContaining({ nome: retorno.arquivo.nome, local: retorno.contrato.processoId, aguardaLeitura: true }))
     expect(retorno.ficha.processos[0]).toMatchObject({ etapa: 'Contrato assinado em 11/10', proximaAcao: 'ler e arquivar o contrato assinado' })
     expect(retorno.tarefas).toContainEqual(expect.objectContaining({ ...daSenior, concluida: true }))
     expect((await json('gabi', 'GET', '/api/recepcao')).tarefas.map((t: { acao: string }) => t.acao)).not.toContain(daSenior.acao)
@@ -163,8 +165,10 @@ describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
     expect(impresso.datas.length).toBe(impresso.contrato.kit.documentos.length)
     expect(impresso.datas.filter((d: { data: string }) => d.data !== 'em branco, à mão na assinatura')).toHaveLength(1)
 
-    const { arquivo } = await json('ana', 'POST', `${base}/digitalizacao`)
+    const digitalizado = await json('ana', 'POST', `${base}/digitalizacao`)
+    const { arquivo } = digitalizado
     expect(arquivo).toMatchObject({ tipo: 'contrato', origem: 'scanner', aguardaLeitura: true })
+    expect(digitalizado.ficha.arquivos).toContainEqual(arquivo)
     expect(await json('ana', 'POST', `${base}/digitalizacao`)).toEqual({ erro: 'O contrato assinado já foi digitalizado.' })
     expect(await json('ana', 'POST', `${base}/zapsign`)).toEqual({ erro: 'O contrato assinado em papel já foi digitalizado.' })
 
@@ -225,6 +229,7 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
     })
     expect(corrigir.contrato.assinatura).toBeUndefined()
     expect(corrigir.arquivo).toMatchObject({ nome: pagina.nome, tipo: 'contrato', aguardaLeitura: false })
+    expect(corrigir.ficha.arquivos).toContainEqual(corrigir.arquivo)
     expect(corrigir.ficha.processos[0]).toMatchObject({ etapa: 'Contrato · corrigir e reenviar' })
     // Volta a preparar: a versão 2 sai pelo mesmo caminho.
     expect((await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })).contrato.documento.versao).toBe(2)

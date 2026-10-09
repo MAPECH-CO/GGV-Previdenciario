@@ -25,8 +25,11 @@ import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
+import { leituraDeExemplo } from '../../../web/src/dados/exemplo.ts'
+import { nomeSemSobrescrever } from '../../../web/src/regras/arquivos.ts'
 import type {
   Agendamento,
+  Arquivo,
   EdicaoFicha,
   EnvioDaFicha,
   EventoHistorico,
@@ -442,6 +445,29 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     await guardar(ficha)
     if (mudou.length > 0) await historico(pedido.usuario!.id, 'ficha_alterada', pedido, `pessoa:${ficha.id}`, { campos: mudou })
     return { ficha }
+  })
+
+  // GGVP-24 (GGVP-125, bloco 5a): a ficha de atendimento em papel passa no scanner e a IA lê (simulado); a imagem fica em
+  // Documentos pessoais, na ficha do servidor. A leitura simulada não traz senha de verdade: nada vai ao cofre (G9).
+  app.post<{ Params: { id: string } }>('/api/fichas/:id/ficha-de-atendimento/leitura', editar, async (pedido, resposta) => {
+    const ficha = UUID.test(pedido.params.id) ? (await fichas([pedido.params.id]))[0] : undefined
+    if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
+    const dia = hoje()
+    const modelo = 'GGV'
+    const arquivo: Arquivo = {
+      nome: nomeSemSobrescrever(`Ficha de atendimento ${modelo} - ${ficha.nome} - ${dia}.pdf`, ficha.arquivos.filter((a) => a.local === 'pessoais').map((a) => a.nome)),
+      tipo: 'ficha-atendimento',
+      local: 'pessoais',
+      data: dia,
+      origem: 'scanner',
+      repetido: false,
+      aguardaLeitura: false,
+    }
+    ficha.arquivos.push(arquivo)
+    const { campos, naoLidos } = leituraDeExemplo(ficha)
+    ficha.historico.push(evento(`A ficha de atendimento em papel (${modelo}) passou no scanner e a IA leu os campos; a imagem ficou em Documentos pessoais`, await nomeDe(pedido)))
+    await guardar(ficha)
+    return { modelo, arquivo, campos, naoLidos, senhaLida: false, ficha }
   })
 
   // GGVP-24: a ficha de atendimento. Os dados pessoais vão para a ficha única e a triagem, com o que ficou em branco

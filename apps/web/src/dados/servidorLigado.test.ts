@@ -25,7 +25,7 @@ import {
 } from './contrato.ts'
 import { registrarConfirmacao } from './confirmacao.ts'
 import { encerrarGravacao, iniciarGravacao, obterEntrevista } from './entrevista.ts'
-import { salvarFichaDeAtendimento } from './fichaAtendimento.ts'
+import { lerFichaEmPapel, salvarFichaDeAtendimento } from './fichaAtendimento.ts'
 import { registrarFechamento } from './fechamento.ts'
 import { obterPreparacao, tarefasDaAdvogada } from './preparacao.ts'
 import { lerSegundaFichaEmPapel } from './segundaFicha.ts'
@@ -34,7 +34,7 @@ import { CONFERENCIAS, type IdDaConferencia } from '../regras/contrato.ts'
 import { obterGravacoes } from './transcricao.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { buscarNoBalcao, configurarExemplo, criarFicha, gravar, ler, ligarPasta, obterFicha, salvarFicha, sincronizarRecepcao, zerarExemplo } from './servidor.ts'
-import type { Agendamento, EnvioDaFicha, EventoHistorico, Ficha, Gravacao, Marcacao, NovoCliente, TarefaEncaminhada } from './tipos.ts'
+import type { Agendamento, Arquivo, EnvioDaFicha, EventoHistorico, Ficha, Gravacao, Marcacao, NovoCliente, TarefaEncaminhada } from './tipos.ts'
 
 const AGORA = new Date(2026, 9, 5, 14, 32)
 const ID = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
@@ -415,12 +415,12 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor, e
 describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médica só no Jurídico', () => {
   const MEDICO = 'dor e perda de força na mão'
 
-  it('a leitura do papel de uma ficha do servidor vai lá; a imagem fica aqui; a seção médica não volta', async () => {
-    const arquivo = { nome: 'Ficha de atendimento AUXILIO ACIDENTE - Ivone Teste - 2026-10-05.pdf', tipo: 'ficha-acidente', local: 'pessoais', data: '2026-10-05', origem: 'scanner', repetido: false, aguardaLeitura: false }
+  it('a leitura do papel de uma ficha do servidor vai lá; a imagem vem na ficha do servidor; a seção médica não volta', async () => {
+    const arquivo = { nome: 'Ficha de atendimento AUXILIO ACIDENTE - Ivone Teste - 2026-10-05.pdf', tipo: 'ficha-acidente', local: 'pessoais', data: '2026-10-05', origem: 'scanner' as const, repetido: false, aguardaLeitura: false }
     ligarServidor({
       ...criada,
       [`GET /api/fichas/${ID}`]: () => doBanco(),
-      [`POST /api/fichas/${ID}/segunda-ficha/leitura`]: () => ({ arquivo, respostas: { empresa: 'Exemplo Indústria Ltda', doencas: '' }, senhaLida: false, ficha: doBanco() }),
+      [`POST /api/fichas/${ID}/segunda-ficha/leitura`]: () => ({ arquivo, respostas: { empresa: 'Exemplo Indústria Ltda', doencas: '' }, senhaLida: false, ficha: doBanco({ arquivos: [arquivo] }) }),
     })
     await criarFicha(ivone)
     const r = await lerSegundaFichaEmPapel(ID)
@@ -537,7 +537,7 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
           resultado: 'anexado',
           arquivo,
           contrato: { ...noZapSign({ naSenior: true, arquivo: arquivo.nome, assinadoEm: '2026-10-05T19:00:00.000Z' }), etapa: 'leitura' },
-          ficha: assinadoEm,
+          ficha: { ...assinadoEm, arquivos: [arquivo] },
           tarefas: [{ ...daSenior, concluida: true }],
         }),
       })
@@ -556,8 +556,8 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
       const fetch = ligarServidor({
         ...comContrato(paraAssinar),
         [`POST /api/processos/${CASO}/contrato/impressao`]: () => ({ contrato: papel, datas: [{ documento: 'Contrato de honorários', data: '05/10/2026' }], ficha: assinando }),
-        [`POST /api/processos/${CASO}/contrato/digitalizacao`]: () => ({ arquivo: scanner, contrato: digitalizado, ficha: assinando }),
-        [`POST /api/processos/${CASO}/contrato/assinatura-em-papel`]: () => ({ contrato: { ...digitalizado, etapa: 'leitura' }, ficha: assinadoEm }),
+        [`POST /api/processos/${CASO}/contrato/digitalizacao`]: () => ({ arquivo: scanner, contrato: digitalizado, ficha: { ...assinando, arquivos: [scanner] } }),
+        [`POST /api/processos/${CASO}/contrato/assinatura-em-papel`]: () => ({ contrato: { ...digitalizado, etapa: 'leitura' }, ficha: { ...assinadoEm, arquivos: [scanner] } }),
       })
       await sincronizarRecepcao()
       expect((await imprimirKit(CASO)).datas).toEqual([{ documento: 'Contrato de honorários', data: '05/10/2026' }])
@@ -588,7 +588,7 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
       const fetch = ligarServidor({
         ...comContrato(lendo),
         [`POST /api/processos/${CASO}/contrato/leitura-simulada`]: () => ({ contrato: conferindo, ficha: assinando }),
-        [`POST /api/processos/${CASO}/contrato/verificacao`]: () => ({ contrato: { ...lendo, etapa: 'preparar', assinatura: undefined }, ficha: assinando, arquivo: pagina }),
+        [`POST /api/processos/${CASO}/contrato/verificacao`]: () => ({ contrato: { ...lendo, etapa: 'preparar', assinatura: undefined }, ficha: { ...assinando, arquivos: [pagina] }, arquivo: pagina }),
       })
       await sincronizarRecepcao()
       expect((await simularLeituraDoContrato(CASO)).etapa).toBe('conferir')
@@ -624,5 +624,49 @@ describe('GGVP-125 · bloco 4a: o "fechou" vira caso no banco, com o contrato', 
       // Entregue, o contrato sai das tarefas do Atendimento: o checklist do benefício é da Documentação.
       expect(tarefasDoContrato().map((t) => t.processoId)).not.toContain(CASO)
     })
+  })
+})
+
+describe('GGVP-125 · bloco 5a: a lista de arquivos da ficha no servidor', () => {
+  const doc = (nome: string, extra: Partial<Arquivo> = {}): Arquivo => ({
+    nome,
+    tipo: 'rg',
+    local: 'pessoais',
+    data: '2026-10-05',
+    origem: 'card',
+    repetido: false,
+    aguardaLeitura: true,
+    ...extra,
+  })
+  async function sincronizarCom(ficha: Ficha) {
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [ficha], tarefas: [], internos: [], gravacoes: [], contratos: [] }) })
+    await sincronizarRecepcao()
+  }
+
+  it('três vias nos arquivos: o que o servidor acrescenta ou muda vem de lá; o que só existe aqui fica; o mesmo nome noutra pasta é outro arquivo', async () => {
+    await sincronizarCom(doBanco({ arquivos: [doc('rg.pdf')] }))
+    mexerAqui((f) => f.arquivos.push(doc('comprovante.pdf', { tipo: 'comprovante' })))
+    await sincronizarCom(doBanco({ arquivos: [doc('rg.pdf', { aguardaLeitura: false }), doc('rg.pdf', { local: 'processo-1' })] }))
+    expect(ler().fichas.find((f) => f.id === ID)?.arquivos).toEqual([
+      doc('rg.pdf', { aguardaLeitura: false }),
+      doc('comprovante.pdf', { tipo: 'comprovante' }),
+      doc('rg.pdf', { local: 'processo-1' }),
+    ])
+  })
+
+  it('a ficha de atendimento em papel de uma ficha do servidor é lida lá; a imagem vem na ficha; nada vai ao cofre daqui', async () => {
+    const arquivo = doc('Ficha de atendimento GGV - Ivone Teste - 2026-10-05.pdf', { tipo: 'ficha-atendimento', origem: 'scanner', aguardaLeitura: false })
+    const leitura = { modelo: 'GGV' as const, arquivo, campos: { nome: 'Ivone Teste' }, naoLidos: ['cpf' as const], senhaLida: false }
+    const fetch = ligarServidor({
+      ...criada,
+      [`GET /api/fichas/${ID}`]: () => doBanco(),
+      [`POST /api/fichas/${ID}/ficha-de-atendimento/leitura`]: () => ({ ...leitura, ficha: doBanco({ arquivos: [arquivo] }) }),
+    })
+    await criarFicha(ivone)
+    expect(await lerFichaEmPapel(ID)).toEqual(leitura)
+    expect(fetch.mock.calls.at(-1)![0]).toBe(`/api/fichas/${ID}/ficha-de-atendimento/leitura`)
+    const aqui = ler().fichas.find((f) => f.id === ID)
+    expect(aqui?.arquivos).toEqual([arquivo])
+    expect(aqui?.senhaGov.situacao).toBe('sem-senha')
   })
 })
