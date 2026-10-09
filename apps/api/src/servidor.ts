@@ -24,17 +24,30 @@ import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
+import { registrarRotasPericia } from './rotas/pericia.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
+import { registrarRotasRoteiros } from './rotas/roteiros.ts'
+import { registrarRotasParecer } from './rotas/parecer.ts'
+import { registrarRotasComplemento } from './rotas/complemento.ts'
+import { registrarRotasDeficiencia } from './rotas/deficiencia.ts'
+import { registrarRotasAcidente } from './rotas/acidente.ts'
+import { registrarRotasCrianca } from './rotas/crianca.ts'
+import { registrarRotasDocumentacaoMedica } from './rotas/documentacao-medica.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
 import { registrarRotasRecepcao } from './rotas/recepcao.ts'
 import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
+import { registrarRotasConversa } from './rotas/conversa.ts'
+import { registrarRotasMensagens } from './rotas/mensagens.ts'
+import { registrarRotasSeguranca } from './rotas/seguranca.ts'
+import { registrarRotasImportacao } from './rotas/importacao.ts'
+import { registrarRotasFeriados } from './rotas/feriados.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -115,6 +128,19 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcao(app, { banco, agora })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora })
+    registrarRotasRoteiros(app, { banco, agora })
+    registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
+    registrarRotasDeficiencia(app, { banco, agora })
+    registrarRotasAcidente(app, { banco, agora })
+    registrarRotasCrianca(app, { banco, agora })
+    registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
+    registrarRotasConversa(app, { banco, agora })
+    registrarRotasMensagens(app, { banco, agora })
+    registrarRotasSeguranca(app, { banco, agora })
+    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
+    registrarRotasImportacao(app, { banco, agora })
+    registrarRotasFeriados(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

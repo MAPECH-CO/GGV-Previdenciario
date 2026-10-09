@@ -5,6 +5,7 @@ import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { LaudoPeloChat } from '../componentes/LaudoPeloChat.tsx'
 import { ListaTarefas } from '../componentes/ListaTarefas.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
+import { ITENS_DA_GESTAO } from '../componentes/itensDaGestao.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
@@ -30,8 +31,9 @@ import { tarefasDeNovaDemanda } from '../dados/novaDemanda.ts'
 import { tarefasDePedirLegivel } from '../dados/leitura.ts'
 import { tarefasDeComplemento } from '../dados/complemento.ts'
 import { tarefasDaDocumentacaoNaPericia } from '../dados/pericia.ts'
-import { tarefasDePendencia, tarefasDeRegistrarConversa } from '../dados/conversa.ts'
+import { useTarefasDaConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
+import { usePode } from '../sessao.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
 const navegacao: ItemNavegacao[] = [
@@ -65,21 +67,23 @@ export function CentralAtendimento() {
     ...tarefasDeComplemento(),
     // A Documentação reúne e cobra o que a perícia pede (épico GGVP-10, GGVP-56).
     ...tarefasDaDocumentacaoNaPericia(),
-    ...tarefasDeRegistrarConversa(perfil?.usuario),
-    ...tarefasDePendencia(perfil && { usuario: perfil.usuario, id: perfil.id }),
     // GGVP-82: as tarefas que o chat criou para a pessoa.
     ...tarefasCriadasPeloChat(perfil?.usuario),
   ])
   // As tarefas reais do servidor vêm no topo (ex.: o ajuste pedido pela Sênior, GGVP-23 CA3); as de exemplo
   // continuam embaixo até a Recepção e a Abertura gravarem no servidor (GGVP-125).
   const doServidor = useTarefasDoServidor() ?? []
-  const tarefas = [...doServidor, ...deExemplo]
+  // A conversa com o cliente e a pendência dela, do servidor, para quem está no login (GGVP-138).
+  const daConversa = useTarefasDaConversa() ?? []
+  const tarefas = [...doServidor, ...daConversa, ...deExemplo]
+  // O líder do Atendimento vê a Gestão no topo, como a matriz dá a ele (GGVP-135, P14).
+  const gestao = usePode('gestao.ver')
 
   return (
     <>
       <title>Início · GGV Previdenciário</title>
       <Topbar
-        itens={navegacao}
+        itens={gestao ? [...navegacao, ...ITENS_DA_GESTAO] : navegacao}
         ativo="inicio"
         funcao="Atendimento"
         acao={{ rotulo: '+ Novo cliente', href: '/clientes/novo' }}
@@ -87,7 +91,7 @@ export function CentralAtendimento() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Atendimento</h1>
-          <CampoBusca />
+          <CampoBusca tarefas={tarefas} />
           <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={sugestoesChatAtendimento} />
           <Abas
             rotulo="Filas de tarefas"

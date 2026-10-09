@@ -2,11 +2,26 @@ import { useEffect, useId, useState } from 'react'
 import { somenteDigitos } from '@ggv/campos'
 import { BENEFICIOS, ROTULO_BENEFICIO, type Beneficio, type ConfiguracaoDoEscritorio } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { FeriadosDosTribunais } from '../componentes/FeriadosDosTribunais.tsx'
 import styles from './Passo.module.css'
 
 type Config = ConfiguracaoDoEscritorio
 type ItemDoKit = Config['kits'][number]['itens'][number]
 const momento = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
+const dia = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+
+/** O nome do documento como a equipe lê (GGVP-135, P16): o código fica só no banco; o que não está aqui sai legível. */
+const NOME_DO_DOCUMENTO: Record<string, string> = {
+  documento_de_identidade: 'Documento de identidade',
+  cpf: 'CPF',
+  comprovante_de_residencia: 'Comprovante de residência',
+  cadunico: 'Cadastro Único (CadÚnico)',
+  ficha_de_grupo_familiar: 'Ficha de grupo familiar',
+  declaracao_de_moradia: 'Declaração de moradia',
+  declaracao_de_uniao_estavel: 'Declaração de união estável',
+  declaracao_de_separacao_de_fato: 'Declaração de separação de fato',
+}
+const nomeDoDocumento = (tipo: string) => NOME_DO_DOCUMENTO[tipo] ?? tipo.replaceAll('_', ' ').replace(/^./, (l) => l.toUpperCase())
 
 /** Um parâmetro: número inteiro pelo `campos`, salvo um por vez (GGVP-104 CA4). */
 function LinhaDoParametro({ p, podeEditar, aoSalvar }: { p: Config['parametros'][number]; podeEditar: boolean; aoSalvar: (chave: string, valor: string) => void }) {
@@ -43,7 +58,7 @@ function KitDoBeneficio({ kit, tipos, podeEditar, aoPublicar }: { kit: Config['k
   return (
     <section className={styles.cartao} aria-label={`Kit de ${ROTULO_BENEFICIO[kit.beneficio]}`}>
       <p className={styles.dica}>
-        {kit.versao ? `Versão ${kit.versao}, desde ${momento(kit.vigenteDesde!)}.` : 'Sem kit cadastrado: a conferência avisa (G1).'} A versão nova vale para os casos
+        {kit.versao ? `Versão ${kit.versao}, desde ${dia(kit.vigenteDesde!)}.` : 'Sem kit cadastrado: a conferência avisa (G1).'} A versão nova vale para os casos
         novos; o caso aberto fica com o kit da época.
       </p>
       {itens.length > 0 && (
@@ -57,11 +72,11 @@ function KitDoBeneficio({ kit, tipos, podeEditar, aoPublicar }: { kit: Config['k
                   disabled={!podeEditar}
                   onChange={() => setItens((a) => a.map((x) => (x.tipoDocumento === i.tipoDocumento ? { ...x, obrigatorio: !x.obrigatorio } : x)))}
                 />
-                {i.tipoDocumento} · {i.obrigatorio ? 'obrigatório' : 'condicional'}
+                {nomeDoDocumento(i.tipoDocumento)} · {i.obrigatorio ? 'obrigatório' : 'condicional'}
               </label>
               {podeEditar && (
                 <button type="button" className={styles.botao} onClick={() => setItens((a) => a.filter((x) => x.tipoDocumento !== i.tipoDocumento))}>
-                  Tirar {i.tipoDocumento}
+                  Tirar {nomeDoDocumento(i.tipoDocumento)}
                 </button>
               )}
             </li>
@@ -76,7 +91,7 @@ function KitDoBeneficio({ kit, tipos, podeEditar, aoPublicar }: { kit: Config['k
           <input id={idNovo} className={styles.campo} list={idLista} value={novo} onChange={(e) => setNovo(e.target.value)} />
           <datalist id={idLista}>
             {tipos.map((t) => (
-              <option key={t} value={t} />
+              <option key={t} value={t} label={nomeDoDocumento(t)} />
             ))}
           </datalist>
           <div className={styles.acoes}>
@@ -223,6 +238,8 @@ export function Configuracao() {
           )}
         </>
       )}
+      {/* GGVP-146, parte 3: os feriados e as suspensões dos tribunais, com o histórico deles. */}
+      {c && <FeriadosDosTribunais />}
     </main>
   )
 }

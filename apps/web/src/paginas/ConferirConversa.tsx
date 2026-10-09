@@ -5,15 +5,7 @@ import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { nomeBeneficio } from '../dados/catalogos.ts'
 import { dataParaIso, normalizarData } from '../campos.ts'
-import {
-  conferirConversa,
-  cumprirPendencia,
-  novoPrazoDaPendencia,
-  obterConversa,
-  pessoasDoEscritorio,
-  type ConversaAberta,
-  type QuemAge,
-} from '../dados/conversa.ts'
+import { conferirConversa, cumprirPendencia, novoPrazoDaPendencia, obterConversa, responsaveisDaPendencia, type ConversaAberta } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import {
@@ -30,6 +22,7 @@ import {
   valorLido,
   type DecisaoDaMudanca,
   type Mudanca,
+  type Pessoa,
 } from '../regras/conversa.ts'
 import { dataCurta, dataHora, hojeIso, hora } from '../regras/datas.ts'
 import { COMO_VERIFICOU, ehProtegido, motivoParaNaoMudar, verificacaoDaConversa, type ComoVerificou } from '../regras/seguranca.ts'
@@ -63,6 +56,8 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   const [historico, setHistorico] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
+  // Quem pode ficar com a pendência: as pessoas do escritório, do servidor (GGVP-88, CA3).
+  const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const travado = useRef(false)
   const perfil = usePerfil(dados?.conversa.papel === 'juridico' ? 'Advogada' : 'Atendimento')
 
@@ -71,6 +66,9 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
     obterConversa(conversaId).then((d) => {
       if (valendo) setDados(d)
     })
+    responsaveisDaPendencia()
+      .then((lista) => valendo && setPessoas(lista))
+      .catch(() => undefined)
     return () => {
       valendo = false
     }
@@ -98,10 +96,8 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   const podeAgir = primeira ? souQuemConversou : juridico && mudancas.some((m) => !jaDecididas.has(m.id))
   const abertas = mudancas.filter((m) => !jaDecididas.has(m.id) && podeConfirmar(m.campo, papel))
   const lista = Object.values(decisoes).filter((d) => abertas.some((m) => m.id === d.id))
-  const falasDeSaude = new Set(mudancas.filter((m) => m.saude).map((m) => m.aos))
   const pronta = !g || g.transcricao === 'pronta' || g.transcricao === 'sem-audio'
   const hoje = hojeIso(agora())
-  const pessoas = pessoasDoEscritorio()
   const texto = combinado ?? c.analise?.pendencia ?? ''
   // A regra do chat (CA3): citou a pessoa, é ela; citou o setor, pergunta quem do setor; ninguém, pergunta quem é.
   const auto = responsavelDaPendencia(texto, pessoas)
@@ -140,7 +136,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
     setErro('')
     try {
       const nova = pendencia === 'sim' ? { surgiu: true as const, texto, responsavel: responsavel!, prazo } : { surgiu: false as const }
-      setDados(await conferirConversa(c.id, { decisoes: lista, verificacao, ...(primeira && { pendencia: nova }) }, { quem: perfil.usuario, perfil: perfil.id }))
+      setDados(await conferirConversa(c.id, { decisoes: lista, verificacao, ...(primeira && { pendencia: nova }) }))
       setDecisoes({})
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para conferir.')
@@ -151,13 +147,13 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
   }
 
   /** Dar por cumprida ou o prazo novo da Sênior (GGVP-88, CA5). */
-  async function naPendencia(acao: (por: QuemAge) => Promise<ConversaAberta>) {
+  async function naPendencia(acao: () => Promise<ConversaAberta>) {
     if (travado.current || !perfil) return
     travado.current = true
     setEnviando(true)
     setErro('')
     try {
-      setDados(await acao({ quem: perfil.usuario, perfil: perfil.id }))
+      setDados(await acao())
       setNovoPrazo('')
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para registrar.')
@@ -216,7 +212,6 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
             ) : (
               <ul className={proprio.conferencia} aria-label="O que a IA quer mudar">
                 {mudancas.map((m) => {
-                  const oculto = m.saude && !juridico
                   const situacao = situacaoDe(m)
                   const decidida = jaDecididas.has(m.id)
                   const pode = podeConfirmar(m.campo, papel)
@@ -226,15 +221,9 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
                     <li key={m.id} className={proprio.linhaConferencia}>
                       <span className={proprio.oQue}>
                         {m.onde === 'ficha' ? 'Ficha' : 'Processo'} ·{' '}
-                        {oculto ? (
-                          'fato novo de saúde · só o Jurídico vê'
-                        ) : (
-                          <>
-                            {m.rotulo}: {m.antes ? `${valorLido(m.campo, m.antes)} → ` : ''}
-                            {valorLido(m.campo, m.depois)} ({ditoAs(m.aos)})
-                          </>
-                        )}
-                        {!oculto && (juridico || !falasDeSaude.has(m.aos)) && <span className={proprio.trecho}>«{m.trecho}»</span>}
+                        {m.rotulo}: {m.antes ? `${valorLido(m.campo, m.antes)} → ` : ''}
+                        {valorLido(m.campo, m.depois)} ({ditoAs(m.aos)})
+                        <span className={proprio.trecho}>«{m.trecho}»</span>
                       </span>
                       {decidida ? (
                         <span className={proprio.situacao} data-situacao={situacao}>
@@ -418,7 +407,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
                   </p>
                   {situacaoDaTarefa !== 'cumprida' && (perfil?.usuario === p.responsavel || senior) && (
                     <div className={base.atalhos}>
-                      <button type="button" className={base.atalho} disabled={enviando} onClick={() => naPendencia((por) => cumprirPendencia(c.id, por))}>
+                      <button type="button" className={base.atalho} disabled={enviando} onClick={() => naPendencia(() => cumprirPendencia(c.id))}>
                         Marcar como cumprida
                       </button>
                     </div>
@@ -437,7 +426,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
                           onChange={(e) => setNovoPrazo(soNumeroEMascara(e.target.value))}
                         />
                       </label>
-                      <button type="button" className={base.atalho} disabled={enviando || novoPrazo.length < 10} onClick={() => naPendencia((por) => novoPrazoDaPendencia(c.id, novoPrazo, por))}>
+                      <button type="button" className={base.atalho} disabled={enviando || novoPrazo.length < 10} onClick={() => naPendencia(() => novoPrazoDaPendencia(c.id, novoPrazo))}>
                         Dar prazo novo
                       </button>
                     </div>

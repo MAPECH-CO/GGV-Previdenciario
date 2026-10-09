@@ -21,6 +21,8 @@ export const REGRAS_DA_IA = [
  * GGVP-110: frases de quem tenta mandar na IA pelo conteúdo. Na entrada, o conteúdo segue como dado e a chamada ganha
  * alerta; na saída, a sugestão chega com alerta para a pessoa ver antes de usar.
  */
+/** A marca do bloco dentro do conteúdo fecharia o bloco antes da hora: vai neutralizada e conta como suspeita. */
+const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
 const SUSPEITAS = [
   /ignor(e|a|ar|em)\s+(as\s+|todas\s+as\s+|estas\s+|essas\s+)?(instru|regras|ordens|orienta)/i,
   /desconsider(e|a|ar)\s+(as\s+|todas\s+as\s+)?(instru|regras|ordens)/i,
@@ -29,6 +31,7 @@ const SUSPEITAS = [
   /voc[êe]\s+agora\s+[ée]/i,
   /confirm(e|ar)\s+e\s+envi(e|ar)/i,
   /classifique\s+como/i,
+  MARCA_DO_BLOCO,
 ]
 /** G20 (GGVP-110 CA7): código de doença da CID-10 (letra, dois dígitos e, se houver, a subcategoria). */
 const CID = /\b[A-TV-Z]\d{2}(\.\d{1,2})?\b/
@@ -152,6 +155,73 @@ export const FINALIDADES = {
       '{"analise": "em até 5 frases: por que o INSS negou e o que rebate isso", "nadaFalta": true se o caso já tem o que precisa para a petição, "itens": [{"setor": "atendimento" | "documentacao", "descricao": "o que o setor deve obter, concreto"}], "pericias": ["medica" | "social"]}.',
       'Atendimento fala com o cliente (pedir documento que só ele tem, laudo do médico assistente); Documentação busca e organiza documento (CNIS, processo administrativo, carta). No máximo um item por setor. Peça perícia só se o motivo for médico ou social.',
       'Use só o que está no conteúdo; não invente documento que o caso não tem como se tivesse. Se nadaFalta for true, itens e pericias vazios.',
+    ].join(' '),
+  },
+  // GGVP-134 (CA1, CA3): o que um documento médico cobre do roteiro do benefício. Leva o laudo (dado de saúde); a saída vai
+  // só ao Jurídico, mas o trecho não leva código de doença (G20). As datas são copiadas; a conta dos 24 meses é do código.
+  cobertura_do_roteiro: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a conferir se um documento médico do cliente cobre o roteiro de conteúdo mínimo do benefício.',
+      'Leia o roteiro (cada item com id, tipo e texto) e o texto do documento, e responda só com um objeto JSON:',
+      '{"cobre": [{"item": "id de um item obrigatório", "pagina": número da página ou 1, "trecho": "frase curta copiada do documento que mostra o item"}], "contradiz": [{"item": "id de uma contradição", "pagina": número, "trecho": "frase copiada"}], "datas": {"inicio": "aaaa-mm ou aaaa-mm-dd", "cessacao": "aaaa-mm ou aaaa-mm-dd"} ou null}.',
+      'Só marque o item que o documento aborda de fato; na dúvida, deixe de fora. O trecho é cópia do documento, sem código de doença (CID).',
+      'Em "datas", copie a data de início do quadro e a de cessação prevista que estiverem escritas; sem elas, null. Não calcule nada. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-139 CA1: o comprovante do agendamento do INSS, lido pela Mistral, vira data, hora, local e modalidade para o
+   * Jurídico administrativo conferir antes de registrar. Não leva dado de saúde. O perito nunca sai do comprovante.
+   */
+  ler_comprovante_pericia: {
+    versao: 1,
+    saude: false,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda o Jurídico administrativo de um escritório previdenciário a registrar uma perícia marcada no Meu INSS.',
+      'Leia o texto do comprovante de agendamento e responda só com um objeto JSON:',
+      '{"data": "aaaa-mm-dd", "hora": "hh:mm" (24 horas), "local": "a agência ou o endereço do atendimento, como está no comprovante", "modalidade": "presencial", "visita domiciliar" ou "telepericia"}.',
+      'Copie a data e a hora como estão no comprovante, só mudando o formato; não calcule nem ajuste datas. Não traga nome de perito nem de servidor do INSS, mesmo que o comprovante cite.',
+      'Use só o que está no conteúdo; se a data, a hora ou o local não estiverem no comprovante, responda com o texto vazio no campo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-139 CA2: a orientação ao cliente para a perícia, escrita a partir da orientação que o código montou (data, local,
+   * o que levar e, na Justiça, o que o perito costuma observar). Vai ao cliente: CID barrado (G20); a rota também barra
+   * instrução para esconder ou exagerar a situação (G11) e frase pronta (G20) antes de guardar. Sem dado de saúde.
+   */
+  orientacao_pericia: {
+    versao: 1,
+    saude: false,
+    json: false,
+    barrarCid: true,
+    instrucao: [
+      'Você escreve, para o Jurídico administrativo revisar e enviar, a orientação de um cliente de um escritório previdenciário para a perícia dele (perícia médica ou avaliação social).',
+      'Reescreva a orientação do conteúdo em português simples, curto e acolhedor, em tópicos, falando com o cliente por "você".',
+      'Mantenha exatamente a data, a hora, o local e a lista do que levar. Se houver o que o perito costuma observar, perguntar e pedir, conte isso ao cliente para ele chegar preparado.',
+      'Nunca diga para esconder, mudar, exagerar ou simular a situação, nem dê frase pronta para o cliente repetir ao perito, nem cite diagnóstico, CID, grau ou conclusão. Termine lembrando de falar sempre a verdade.',
+      'Responda só com o texto da orientação. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-139 CA3, CA4: o laudo da perícia, lido pela Mistral, resumido para a advogada conferir o resultado (DP.08), com o
+   * que muda no caso; e os padrões do perito (o que observou, perguntou e pediu) para o perfil dele (DP.09), sem dado do
+   * cliente. Fica no Jurídico: leva dado de saúde e não vai ao cliente. Os números do perfil são código (G19, G22).
+   */
+  resumo_laudo_pericia: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a conferir o resultado de uma perícia (médica ou avaliação social). Quem decide é ela.',
+      'Leia o benefício pedido, o tipo da perícia e o texto do laudo, e responda só com um objeto JSON:',
+      '{"favoravel": true ou false (o laudo reconhece o requisito do benefício?), "resumo": "o que o laudo concluiu, em duas frases", "conclusao": "Favorável · ..." ou "Desfavorável · ...", "coerencia": "o laudo atende ou não o benefício pedido e o que muda no caso", "pontoDeAtencao": "o que a advogada deve olhar", "porque": "no desfavorável, por que; senão null", "valeNovaPericia": true, false ou null (só no desfavorável), "assunto": "o assunto do laudo em até três palavras (por exemplo, coluna, renda familiar)", "observou": ["o que o perito observou"], "perguntou": ["o que o perito perguntou"], "pediu": ["o que o perito pediu"]}.',
+      'Em "observou", "perguntou" e "pediu" escreva o padrão do perito em termos gerais, sem nome, CPF, endereço nem dado do cliente. Não calcule prazos nem porcentagens. Use só o que está no conteúdo.',
     ].join(' '),
   },
 } as const
@@ -300,7 +370,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
           model: modeloTexto,
           messages: [
             { role: 'system', content: `${REGRAS_DA_IA}\n\n${f.instrucao}` },
-            { role: 'user', content: `<conteudo>\n${pedido.conteudo}\n</conteudo>` },
+            { role: 'user', content: `<conteudo>\n${pedido.conteudo.replace(new RegExp(MARCA_DO_BLOCO, 'gi'), '[marca removida]')}\n</conteudo>` },
           ],
           ...(f.json && { response_format: { type: 'json_object' } }),
         }),

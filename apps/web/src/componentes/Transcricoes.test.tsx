@@ -2,12 +2,14 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirConversa, anexarAudio, transcreverConversa } from '../dados/conversa.ts'
 import { encerrarGravacao, iniciarGravacao, transcrever } from '../dados/entrevista.ts'
+import { entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import { Transcricoes } from './Transcricoes.tsx'
 
 beforeEach(() => {
   configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
   zerarExemplo()
+  entrarComo()
 })
 
 async function abrir(fichaId: string, perfil: 'juridico' | 'atendimento', aoMudar = () => {}) {
@@ -121,11 +123,14 @@ describe('Transcrições do caso · janela', () => {
   })
 
   it('GGVP-80 CA6 · a conversa com o cliente mostra o que a IA extraiu e leva à conferência dela, em vez de "Conferir e levar"', async () => {
-    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' }, { quem: 'Dra. Paula (exemplo)', perfil: 'advogada' })
+    // Quem conduz é a advogada: o servidor (de mentira, aqui) usa a pessoa da sessão.
+    entrarComo('advogada')
+    const c = await abrirConversa('maria-exemplo', { canal: 'ligacao', comQuem: 'cliente', modo: 'arquivo' })
     await anexarAudio(c.id, { nome: 'ligacao.ogg', tipo: 'audio/ogg', tamanho: 4096, avisoNaGravacao: true })
     await transcreverConversa(c.id)
     await abrir('maria-exemplo', 'juridico')
-    expect(screen.getByText('Telefone de contato')).toBeTruthy()
+    // A lista vem da API depois do título: espera por ela, em vez de conferir na hora.
+    expect(await screen.findByText('Telefone de contato')).toBeTruthy()
     expect(screen.getAllByText('a conferir na conversa')).toHaveLength(6)
     expect(screen.queryByRole('button', { name: 'Conferir e levar' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Conferir na conversa (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)

@@ -49,10 +49,12 @@ describe('Configuração do escritório (GGVP-104)', () => {
     const fetch = servidor(base)
     render(<Configuracao />)
     const kit = await screen.findByRole('region', { name: 'Kit de BPC/LOAS Idoso' })
-    expect(within(kit).getByText(/Versão 1, desde/).textContent).toContain('A versão nova vale para os casos novos')
+    expect(within(kit).getByText(/Versão 1, desde/).textContent).toContain('Versão 1, desde 01/09/2026. A versão nova vale para os casos novos')
+    // GGVP-135 (P16): o nome do documento, não o código do banco.
+    expect(within(kit).getByRole('list', { name: 'Documentos do kit' }).textContent).toBe('Cadastro Único (CadÚnico) · obrigatórioTirar Cadastro Único (CadÚnico)Declaração de moradia · condicionalTirar Declaração de moradia')
     fireEvent.change(within(kit).getByLabelText('Acrescentar documento'), { target: { value: 'ficha_de_grupo_familiar' } })
     fireEvent.click(within(kit).getByRole('button', { name: 'Acrescentar' }))
-    fireEvent.click(within(kit).getByRole('button', { name: 'Tirar declaracao_de_moradia' }))
+    fireEvent.click(within(kit).getByRole('button', { name: 'Tirar Declaração de moradia' }))
     fireEvent.click(within(kit).getByRole('button', { name: 'Publicar a versão 2' }))
     expect((await screen.findByRole('status')).textContent).toBe('Kit publicado: a versão 2 vale para os casos novos.')
     expect(puts(fetch)).toEqual([
