@@ -1,6 +1,6 @@
 {
-  "id": "00458f15-98cd-4e63-ab1d-e5013434c552",
-  "prevId": "a3aa0844-0bae-412b-980c-2858e7582f01",
+  "id": "a380d268-8f84-4ab0-a91a-064264f12f1d",
+  "prevId": "de2fd010-a532-4597-aa4a-de894140eaa6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1481,18 +1481,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "vara": {
-          "name": "vara",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "juiz": {
-          "name": "juiz",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -1765,6 +1753,97 @@
           "value": "\"identificador_caso\".\"tipo\" in ('nb', 'protocolo_inss', 'cnj')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.atribuicao_tarefa": {
+      "name": "atribuicao_tarefa",
+      "schema": "",
+      "columns": {
+        "tarefa_id": {
+          "name": "tarefa_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "responsavel_id": {
+          "name": "responsavel_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prazo": {
+          "name": "prazo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prioridade": {
+          "name": "prioridade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
+        "recado": {
+          "name": "recado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avisar": {
+          "name": "avisar",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "atribuida_por": {
+          "name": "atribuida_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atribuida_em": {
+          "name": "atribuida_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atribuicao_tarefa_responsavel_id_usuario_id_fk": {
+          "name": "atribuicao_tarefa_responsavel_id_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "responsavel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "atribuicao_tarefa_atribuida_por_usuario_id_fk": {
+          "name": "atribuicao_tarefa_atribuida_por_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "atribuida_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.decisao": {
@@ -4876,18 +4955,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "entendimentos": {
-          "name": "entendimentos",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entendimentos_em": {
-          "name": "entendimentos_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",

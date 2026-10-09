@@ -131,7 +131,7 @@ e 110), os modelos de contrato no servidor (GGVP-104) e a v2 da petição (GGVP-
 | Chat do portal | motor do navegador | GGVP-142; acervo GGVP-141 e GGVP-131 |
 | Página do caso | servidor de exemplo | GGVP-146, parte 5 |
 | Senha do gov.br nas telas da Recepção | descartada no navegador (nunca guardada) | GGVP-146, parte 1 |
-| Chatwoot | simulado | GGVP-146, parte 4 |
+| Chatwoot | de verdade no servidor quando o ambiente tem as variáveis `CHATWOOT_*` (senão simulado), só no que passa pelo correio do servidor: a janela "Mensagem ao cliente", a janela do Chatwoot (convite, confirmação, cobrança, complemento, perícia) quando o cliente é do banco, e o aviso de mudança dos dados bancários. As boas-vindas do checklist e o contrato por WhatsApp seguem simulados no servidor de exemplo | GGVP-146, parte 4 (PR #19); boas-vindas e contrato com a Abertura no servidor (GGVP-125, próximos blocos), pelo correio do cliente (`criarCorreio`) |
 | Drive (pasta do cliente, original guardado) | simulado | GGVP-107 |
 | ZapSign | simulado | fora de 09/10, sem história |
 
@@ -484,7 +484,7 @@ integração real ficou fora de 09/10 e não tem história ainda.
 | 9 | feito só no servidor de exemplo | `dados/contrato.test.ts:272` |
 | 10 | feito só no servidor de exemplo | `dados/contrato.test.ts:242`; `e2e/colher-assinatura.e2e.ts:33` |
 | 11 | feito | regra em código: `regras/contrato.test.ts:253` e `:258`; `dados/contrato.test.ts:230` |
-| 12 | feito só no servidor de exemplo | `regras/contrato.test.ts:266`; WhatsApp pelo Chatwoot simulado (GGVP-146 parte 4) |
+| 12 | feito só no servidor de exemplo | `regras/contrato.test.ts:266`; o WhatsApp pelo Chatwoot segue simulado: a GGVP-146 (parte 4) não ligou este envio, que vai para o servidor com a Abertura (GGVP-125) e deve usar o correio do cliente (`criarCorreio`) |
 
 ### GGVP-77 · Assinatura em papel na entrevista
 
@@ -574,7 +574,10 @@ casos do banco, e a liberação grava no navegador (GGVP-125, CA3).
 
 ### GGVP-97 · Boas-vindas ao cliente
 
-Servidor de exemplo; o envio pelo Chatwoot é simulado (GGVP-146, parte 4).
+Servidor de exemplo; o envio pelo Chatwoot segue simulado. A GGVP-146 (parte 4) ligou o Chatwoot de verdade só no correio
+do servidor (o modelo "Boas-vindas" da janela "Mensagem ao cliente" sai por ele); o cartão do checklist ainda não chega à
+API. Liga quando o checklist for para o servidor (GGVP-125, próximos blocos), com a rota das boas-vindas usando o correio
+do cliente (`criarCorreio`).
 
 | CA | Situação | Onde está e o teste que prova |
 |---|---|---|

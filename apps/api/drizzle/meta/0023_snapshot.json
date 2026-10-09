@@ -1,6 +1,6 @@
 {
-  "id": "a3aa0844-0bae-412b-980c-2858e7582f01",
-  "prevId": "79fee14d-94d7-4be0-83c2-82b42b7157bc",
+  "id": "de2fd010-a532-4597-aa4a-de894140eaa6",
+  "prevId": "7bbd13db-445b-42d8-97a3-633d27764c3e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1753,6 +1753,97 @@
           "value": "\"identificador_caso\".\"tipo\" in ('nb', 'protocolo_inss', 'cnj')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.atribuicao_tarefa": {
+      "name": "atribuicao_tarefa",
+      "schema": "",
+      "columns": {
+        "tarefa_id": {
+          "name": "tarefa_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "responsavel_id": {
+          "name": "responsavel_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prazo": {
+          "name": "prazo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prioridade": {
+          "name": "prioridade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
+        "recado": {
+          "name": "recado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avisar": {
+          "name": "avisar",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "atribuida_por": {
+          "name": "atribuida_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atribuida_em": {
+          "name": "atribuida_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atribuicao_tarefa_responsavel_id_usuario_id_fk": {
+          "name": "atribuicao_tarefa_responsavel_id_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "responsavel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "atribuicao_tarefa_atribuida_por_usuario_id_fk": {
+          "name": "atribuicao_tarefa_atribuida_por_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "atribuida_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.decisao": {
@@ -4267,7 +4358,7 @@
       "checkConstraints": {
         "publicacao_classe": {
           "name": "publicacao_classe",
-          "value": "\"publicacao\".\"classe\" in ('andamento', 'exigencia', 'merito', 'nomeacao_perito')"
+          "value": "\"publicacao\".\"classe\" in ('andamento', 'exigencia', 'merito')"
         },
         "publicacao_fila": {
           "name": "publicacao_fila",

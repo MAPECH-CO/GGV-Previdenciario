@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 import { CPF_DE_TESTE, telefoneDeExemplo } from '../src/dados/exemplo.ts'
+import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-16 · Reconhecer quem chegou e para quê: balcão, novo cliente e ficha, sobre o servidor de exemplo.
 // Cada teste abre um navegador novo, então começa da semente de exemplo.ts.
@@ -76,6 +77,11 @@ test('CA4, CA7 e CA8 · encaminhar à Documentação: pede o setor, entra na Cen
   await expect(historico).toContainText('Ana (exemplo)')
   await expect(historico).toContainText('Encaminhou ao setor Documentação · ADM')
 
+  // A tarefa vai à Central da Documentação, não à do Atendimento (GGVP-130).
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Início do Atendimento' })).toBeAttached()
+  await expect(page.getByRole('link', { name: /Rita Exemplo.*Atender quem chegou/ })).toHaveCount(0)
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('link', { name: /Rita Exemplo.*Atender quem chegou/ }).first()).toBeVisible()
 })

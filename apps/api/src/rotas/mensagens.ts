@@ -1,8 +1,9 @@
 // As mensagens ao cliente no servidor (GGVP-138; telas da GGVP-102), sobre o fichário da Recepção. O catálogo de modelos e
 // o que o texto não pode ter (G9, G11, G20) são as regras puras das telas, importadas. Cada envio fica em `mensagem`, que o
 // modelo de dados já tinha, com o status de entrega; o contato vai para "Últimos contatos" da ficha.
-// O Chatwoot segue simulado atrás de `RELACIONAMENTO_SIMULADO` (o contato pelo telefone da ficha, uma conversa aberta, a
-// entrega confirmada); com `nao`, o envio falha com o motivo. O Chatwoot de verdade é outra história.
+// Com as variáveis do Chatwoot no ambiente, o envio sai pelo Chatwoot de verdade (GGVP-146, `../chatwoot.ts`). Sem elas, segue
+// simulado atrás de `RELACIONAMENTO_SIMULADO` (o contato pelo telefone da ficha, uma conversa aberta, a entrega
+// confirmada); com `nao`, o envio falha com o motivo.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { and, desc, eq, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
@@ -10,6 +11,7 @@ import { normalizarTelefone } from '@ggv/campos'
 import { IdDoModelo, PedidoDeMensagem, type Erro, type MensagemAoCliente, type MensagemPronta } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { mensagem, usuario } from '../banco/esquema.ts'
+import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
@@ -21,6 +23,7 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from '.
 
 export const MSG_CHATWOOT_DESLIGADO = 'o Chatwoot de verdade ainda não está ligado'
 export const MSG_SEM_CONTATO = 'o Chatwoot não achou o contato deste telefone'
+export const MSG_SEM_TELEFONE = 'a ficha não tem telefone'
 const STATUS_FALADO: Record<MensagemAoCliente['status'], string> = { enviada: 'enviada', entregue: 'entregue', lida: 'lida', falhou: 'não saiu' }
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -34,17 +37,28 @@ export type PedidoDeEnvio = { modelo: IdDoModelo; texto: string; conversa: numbe
  * cada modelo e o envio pelo Chatwoot, com o registro e o histórico.
  */
 export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<string, string | undefined> = process.env) {
-  const simulado = ambiente.RELACIONAMENTO_SIMULADO !== 'nao'
+  const chatwoot = abrirChatwoot(ambiente)
+  const simulado = !chatwoot && ambiente.RELACIONAMENTO_SIMULADO !== 'nao'
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
 
-  /** O cliente no Chatwoot simulado: o contato do telefone da ficha e uma conversa aberta com ele (CA6). */
-  function noChatwoot(ficha: Ficha): Pick<MensagemPronta, 'contato' | 'conversas'> {
+  /**
+   * O cliente no Chatwoot: o contato do telefone da ficha e as conversas dele (CA6). De verdade, a falha da consulta não
+   * trava a mensagem pronta, mas não vale como "sem conversa": volta como `consulta: 'falhou'`, a tela não deixa enviar e o
+   * envio não abre conversa nova no lugar da escolhida.
+   */
+  async function noChatwoot(ficha: Ficha): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'>> {
     const telefone = normalizarTelefone(ficha.telefone ?? '')
-    if (!simulado || !telefone) return { contato: null, conversas: [] }
+    if (chatwoot) {
+      if (!telefone) return { contato: null, conversas: [], simulado: false }
+      const achado = await chatwoot.cliente(telefone, ficha.nome).catch(() => null)
+      if (!achado) return { contato: null, conversas: [], simulado: false, consulta: 'falhou' }
+      return { ...achado, conversas: ordenarConversas(achado.conversas), simulado: false }
+    }
+    if (!simulado || !telefone) return { contato: null, conversas: [], simulado: true }
     const id = Number(telefone.slice(-8))
     const conversas = [{ id, caixa: 'GGV PREV', situacao: 'aberta' as const, mensagens: 2, ultimaEm: agora().toISOString() }]
-    return { contato: { id, nome: ficha.nome, telefone }, conversas: ordenarConversas(conversas) }
+    return { contato: { id, nome: ficha.nome, telefone }, conversas: ordenarConversas(conversas), simulado: true }
   }
 
   /** O texto de cada modelo, com os dados do cliente e do caso (CA1), em frases curtas e sem termo jurídico (CA3). */
@@ -102,7 +116,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   /** A mensagem pronta para revisar: todo modelo diz que o escritório nunca pede a senha do gov.br (GGVP-111 CA4). */
   async function preparar(ficha: Ficha, modelo: IdDoModelo, processoId?: string): Promise<MensagemPronta> {
     const pronta = await textoDoModelo(ficha, modelo, processoId)
-    return { modelo, ...pronta, texto: comAvisoDaSenha(pronta.texto), ...noChatwoot(ficha) }
+    return { modelo, ...pronta, texto: comAvisoDaSenha(pronta.texto), ...(await noChatwoot(ficha)) }
   }
 
   const paraTela = (m: typeof mensagem.$inferSelect, quem: string): MensagemAoCliente => ({
@@ -148,16 +162,36 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       await historico(pedido.usuario!.id, 'portao_bloqueado', pedido, `pessoa:${ficha.id}`, { portao, passo: 'D5', perfil: pedido.perfilAtivo, modelo: p.modelo })
       return { erro: problema }
     }
-    if (pronta.contato && !pronta.conversas.some((c) => c.id === p.conversa)) return { erro: 'Escolha a conversa do cliente no Chatwoot.' }
-    const conversa = pronta.contato ? p.conversa : 0
+    // Sem conversa do cliente na caixa (a consulta respondeu vazia), a conversa 0 pede ao Chatwoot que abra uma. Com a
+    // consulta caída, a conversa pedida vale para achar o envio repetido, mas nada sai (abaixo).
+    if (pronta.conversas.length && !pronta.conversas.some((c) => c.id === p.conversa)) return { erro: 'Escolha a conversa do cliente no Chatwoot.' }
+    const conversa = pronta.conversas.length || pronta.consulta ? p.conversa : 0
     const [repetida] = await banco
       .select()
       .from(mensagem)
       .where(and(eq(mensagem.pessoaId, ficha.id), eq(mensagem.conversaChatwoot, conversa), eq(mensagem.conteudo, texto), ne(mensagem.status, 'falhou')))
     const quem = await nomeDe(pedido)
     if (repetida) return { mensagem: paraTela(repetida, quem) }
-    const erro = pronta.contato ? undefined : simulado ? MSG_SEM_CONTATO : MSG_CHATWOOT_DESLIGADO
-    const status: MensagemAoCliente['status'] = erro ? 'falhou' : 'entregue'
+    let destino = conversa
+    let status: MensagemAoCliente['status'] = 'entregue'
+    let erro: string | undefined
+    if (chatwoot) {
+      // O Chatwoot de verdade: a falha dele volta como aviso e o envio fica registrado, sem reenviar sozinho (CA5).
+      const telefone = normalizarTelefone(ficha.telefone ?? '')
+      try {
+        if (!telefone) throw new Error(MSG_SEM_TELEFONE)
+        // Sem resposta da consulta, a conversa escolhida não se confere, e outra não entra no lugar dela.
+        if (pronta.consulta) throw new Error(MSG_CHATWOOT_FORA)
+        destino ||= await chatwoot.abrirConversa(telefone, ficha.nome)
+        ;({ status, erro } = await chatwoot.enviar(destino, texto))
+      } catch (e) {
+        status = 'falhou'
+        erro = e instanceof Error ? e.message : 'o Chatwoot falhou'
+      }
+    } else if (!pronta.contato) {
+      status = 'falhou'
+      erro = simulado ? MSG_SEM_CONTATO : MSG_CHATWOOT_DESLIGADO
+    }
     const [linha] = await banco
       .insert(mensagem)
       .values({
@@ -166,7 +200,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
         canal: 'whatsapp',
         modelo: p.modelo,
         conteudo: texto,
-        conversaChatwoot: conversa,
+        conversaChatwoot: destino,
         status,
         erro: erro ?? null,
         enviadaPor: pedido.usuario!.id,

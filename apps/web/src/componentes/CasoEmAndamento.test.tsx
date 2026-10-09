@@ -55,3 +55,13 @@ describe('GGVP-135 · o que cada perfil abre do caso pela ficha, por clique', ()
     expect(atalhos()).toEqual([])
   })
 })
+
+describe('GGVP-130 · as pendências de documento aparecem em cada processo da ficha', () => {
+  it('o processo do Antônio, com a cobrança aberta, diz o que falta; a Rita, sem cobrança, não', async () => {
+    await abrir('antonio-exemplo', 'documentacao')
+    expect(screen.getByRole('link', { name: /Judicial · exigência/ }).textContent).toContain('Documentos pendentes: Notas do produtor rural e Certidão.')
+    cleanup()
+    await abrir('rita-exemplo', 'documentacao')
+    expect(screen.queryByText(/Documentos pendentes/)).toBeNull()
+  })
+})

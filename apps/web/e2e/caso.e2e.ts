@@ -63,6 +63,41 @@ test('Permissão · o Atendimento vê o caso sem petição, estratégia, valores
   await expect(page.getByRole('link', { name: 'Laudo novo · 29/09' })).toHaveAttribute('href', '/casos/antonio-exemplo-1/laudo-novo')
 })
 
+// GGVP-146 (parte 5): o caso que nasceu no servidor lê a página do banco, na visão de quem está na sessão. A Maria (de
+// exemplo) não é mexida por nenhum outro teste de tela: o banco do Playwright é um só para todos.
+test('caso do servidor · a página do processo lê o banco: a advogada vê o laudo pelo nome; o Atendimento, só que ele existe', async ({ page }) => {
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  const tarefas: { casoId: string; cliente: { nome: string } }[] = await (await page.request.get('/api/tarefas')).json()
+  const casoId = tarefas.find((t) => t.cliente.nome === 'Maria Souza (exemplo)')!.casoId
+  await page.goto(`/casos/${casoId}`)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('sem NB nem protocolo ainda')
+  await expect(page.getByRole('navigation', { name: 'Etapas do processo' }).locator('[aria-current="step"]')).toContainText('INSS')
+  const tarefasDoCaso = page.getByRole('heading', { name: 'Tarefas em andamento' }).locator('..')
+  await expect(tarefasDoCaso.getByRole('link', { name: 'Decidir perícia' })).toHaveAttribute('href', `/casos/${casoId}/pericia`)
+  await expect(tarefasDoCaso).toContainText('Jurídico administrativo')
+  const dados = page.getByRole('heading', { name: 'Dados do processo' }).locator('..')
+  await expect(dados).toContainText('Maria Souza (exemplo)')
+  await expect(dados).toContainText('senha no cofre (G9)')
+  await expect(dados).toContainText('Saúde (Jurídico)')
+  await page.getByRole('button', { name: 'Abrir Laudo médico (exemplo).pdf' }).click()
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Abrir o arquivo' })).toHaveAttribute('href', new RegExp(`^/api/casos/${casoId}/documentos/`))
+  await page.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click()
+
+  // O Atendimento: o laudo existe, sem o nome nem o arquivo; sem o resumo de saúde.
+  await entrarPelaApi(page)
+  await page.goto(`/casos/${casoId}`)
+  await expect(page.getByText('Petição, estratégia e valores não aparecem para o Atendimento.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dados do processo' }).locator('..')).not.toContainText('Saúde (Jurídico)')
+  await expect(page.getByRole('button', { name: 'Abrir Laudo médico (exemplo).pdf' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Abrir Documento de saúde' }).click()
+  await expect(page.getByRole('dialog')).toContainText('O conteúdo do laudo é só do Jurídico')
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Abrir o arquivo' })).toHaveCount(0)
+
+  // O Financeiro não abre o caso.
+  await entrarPelaApi(page, 'financeiro@exemplo.ggv')
+  expect((await page.request.get(`/api/casos/${casoId}/processo`)).status()).toBe(403)
+})
+
 test('tema escuro e fonte grande na página do processo', async ({ page }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/casos/antonio-exemplo-1?tema=escuro&fonte=grande')

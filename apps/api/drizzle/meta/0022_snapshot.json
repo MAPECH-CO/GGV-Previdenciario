@@ -1,5 +1,5 @@
 {
-  "id": "79fee14d-94d7-4be0-83c2-82b42b7157bc",
+  "id": "7bbd13db-445b-42d8-97a3-633d27764c3e",
   "prevId": "b14875db-4016-4e40-bf59-3f474ff3bfbb",
   "version": "7",
   "dialect": "postgresql",
@@ -1753,6 +1753,97 @@
           "value": "\"identificador_caso\".\"tipo\" in ('nb', 'protocolo_inss', 'cnj')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.atribuicao_tarefa": {
+      "name": "atribuicao_tarefa",
+      "schema": "",
+      "columns": {
+        "tarefa_id": {
+          "name": "tarefa_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "responsavel_id": {
+          "name": "responsavel_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prazo": {
+          "name": "prazo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prioridade": {
+          "name": "prioridade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
+        "recado": {
+          "name": "recado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avisar": {
+          "name": "avisar",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "atribuida_por": {
+          "name": "atribuida_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atribuida_em": {
+          "name": "atribuida_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atribuicao_tarefa_responsavel_id_usuario_id_fk": {
+          "name": "atribuicao_tarefa_responsavel_id_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "responsavel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "atribuicao_tarefa_atribuida_por_usuario_id_fk": {
+          "name": "atribuicao_tarefa_atribuida_por_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "atribuida_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.decisao": {
@@ -4533,121 +4624,6 @@
           "value": "\"rodada_vigilia\".\"situacao\" in ('prevista', 'rodando', 'ok', 'falhou', 'nao_rodou')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.acervo_trecho": {
-      "name": "acervo_trecho",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "origem": {
-          "name": "origem",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referencia": {
-          "name": "referencia",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "beneficio": {
-          "name": "beneficio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "texto": {
-          "name": "texto",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "so_juridico": {
-          "name": "so_juridico",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "embedding": {
-          "name": "embedding",
-          "type": "vector(1536)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "hash": {
-          "name": "hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "acervo_trecho_vetor": {
-          "name": "acervo_trecho_vetor",
-          "columns": [
-            {
-              "expression": "embedding",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last",
-              "opclass": "vector_cosine_ops"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "hnsw",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "acervo_trecho_caso_id_caso_id_fk": {
-          "name": "acervo_trecho_caso_id_caso_id_fk",
-          "tableFrom": "acervo_trecho",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "acervo_trecho_hash_unique": {
-          "name": "acervo_trecho_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "hash"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.configuracao": {
