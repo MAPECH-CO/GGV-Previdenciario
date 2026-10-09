@@ -13,13 +13,15 @@ type Props = {
   texto: string
   /** Falso quando o envio sai pelo Chatwoot de verdade (GGVP-146): sem conversa, o servidor abre uma. */
   simulado?: boolean
+  /** 'falhou': o Chatwoot não respondeu à consulta; não é "sem conversa", e quem abre a janela não deixa enviar. */
+  consulta?: 'falhou'
 }
 
 /**
  * O cliente na central do Chatwoot (GGVP-102, CA6; Pedro 07/10): o contato do telefone da ficha, as conversas dele com a
  * de mais mensagens primeiro, "Copiar a mensagem" e "Abrir a conversa".
  */
-export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, texto, simulado = true }: Props) {
+export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, texto, simulado = true, consulta }: Props) {
   const idTitulo = useId()
   const [copiada, setCopiada] = useState(false)
 
@@ -37,7 +39,11 @@ export function ConversaNoChatwoot({ contato, conversas, escolhida, aoEscolher, 
       <h3 id={idTitulo} className={styles.titulo}>
         Na central do Chatwoot
       </h3>
-      {!contato && simulado ? (
+      {consulta === 'falhou' ? (
+        <p className={styles.aviso} role="alert">
+          Não deu para consultar o Chatwoot agora: feche a janela e tente de novo em alguns minutos.
+        </p>
+      ) : !contato && simulado ? (
         <p className={styles.aviso} role="note">
           O Chatwoot não achou o contato deste telefone: confira o telefone na ficha.
         </p>

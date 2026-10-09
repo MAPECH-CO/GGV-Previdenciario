@@ -106,7 +106,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
   const escolhido = usePerfil()
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<Carregada | null>(null)
-  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado'> | null>(null)
+  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'> | null>(null)
   const [escolhida, setEscolhida] = useState<number | undefined>()
   const [mensagem, setMensagem] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -190,7 +190,15 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
         <textarea className={styles.texto} rows={6} maxLength={1000} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
       </label>
       {cliente && (
-        <ConversaNoChatwoot contato={cliente.contato} conversas={cliente.conversas} escolhida={escolhida} aoEscolher={setEscolhida} texto={mensagem} simulado={cliente.simulado !== false} />
+        <ConversaNoChatwoot
+          contato={cliente.contato}
+          conversas={cliente.conversas}
+          escolhida={escolhida}
+          aoEscolher={setEscolhida}
+          texto={mensagem}
+          simulado={cliente.simulado !== false}
+          consulta={cliente.consulta}
+        />
       )}
       {erro && (
         <p role="alert" className={styles.erro}>
@@ -201,7 +209,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
         <button type="button" className={styles.cancelar} onClick={aoFechar}>
           Cancelar
         </button>
-        <button type="button" className={styles.enviar} disabled={!conversa || semTelefone || mensagem.trim() === '' || enviando} onClick={enviar}>
+        <button type="button" className={styles.enviar} disabled={!conversa || semTelefone || cliente?.consulta === 'falhou' || mensagem.trim() === '' || enviando} onClick={enviar}>
           {enviando ? 'enviando…' : 'Enviar'}
         </button>
       </div>

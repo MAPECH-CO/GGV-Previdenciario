@@ -11,7 +11,7 @@ import { normalizarTelefone } from '@ggv/campos'
 import { IdDoModelo, PedidoDeMensagem, type Erro, type MensagemAoCliente, type MensagemPronta } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { mensagem, usuario } from '../banco/esquema.ts'
-import { abrirChatwoot } from '../chatwoot.ts'
+import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
@@ -44,13 +44,15 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
 
   /**
    * O cliente no Chatwoot: o contato do telefone da ficha e as conversas dele (CA6). De verdade, a falha da consulta não
-   * trava a mensagem pronta: o envio procura de novo e, se falhar, a falha fica registrada.
+   * trava a mensagem pronta, mas não vale como "sem conversa": volta como `consulta: 'falhou'`, a tela não deixa enviar e o
+   * envio não abre conversa nova no lugar da escolhida.
    */
-  async function noChatwoot(ficha: Ficha): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado'>> {
+  async function noChatwoot(ficha: Ficha): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'>> {
     const telefone = normalizarTelefone(ficha.telefone ?? '')
     if (chatwoot) {
-      const nada = { contato: null, conversas: [] }
-      const achado = telefone ? await chatwoot.cliente(telefone, ficha.nome).catch(() => nada) : nada
+      if (!telefone) return { contato: null, conversas: [], simulado: false }
+      const achado = await chatwoot.cliente(telefone, ficha.nome).catch(() => null)
+      if (!achado) return { contato: null, conversas: [], simulado: false, consulta: 'falhou' }
       return { ...achado, conversas: ordenarConversas(achado.conversas), simulado: false }
     }
     if (!simulado || !telefone) return { contato: null, conversas: [], simulado: true }
@@ -160,9 +162,10 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       await historico(pedido.usuario!.id, 'portao_bloqueado', pedido, `pessoa:${ficha.id}`, { portao, passo: 'D5', perfil: pedido.perfilAtivo, modelo: p.modelo })
       return { erro: problema }
     }
-    // Sem conversa do cliente na caixa (de verdade), a conversa 0 pede ao Chatwoot que abra uma.
+    // Sem conversa do cliente na caixa (a consulta respondeu vazia), a conversa 0 pede ao Chatwoot que abra uma. Com a
+    // consulta caída, a conversa pedida vale para achar o envio repetido, mas nada sai (abaixo).
     if (pronta.conversas.length && !pronta.conversas.some((c) => c.id === p.conversa)) return { erro: 'Escolha a conversa do cliente no Chatwoot.' }
-    const conversa = pronta.conversas.length ? p.conversa : 0
+    const conversa = pronta.conversas.length || pronta.consulta ? p.conversa : 0
     const [repetida] = await banco
       .select()
       .from(mensagem)
@@ -177,6 +180,8 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       const telefone = normalizarTelefone(ficha.telefone ?? '')
       try {
         if (!telefone) throw new Error(MSG_SEM_TELEFONE)
+        // Sem resposta da consulta, a conversa escolhida não se confere, e outra não entra no lugar dela.
+        if (pronta.consulta) throw new Error(MSG_CHATWOOT_FORA)
         destino ||= await chatwoot.abrirConversa(telefone, ficha.nome)
         ;({ status, erro } = await chatwoot.enviar(destino, texto))
       } catch (e) {

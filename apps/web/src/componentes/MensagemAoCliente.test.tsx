@@ -130,4 +130,14 @@ describe('Mensagem ao cliente · Chatwoot de verdade, pelo servidor (GGVP-146)',
     expect(screen.queryByText(/Ainda sem conversa/)).toBeNull()
     vi.unstubAllGlobals()
   })
+
+  it('o Chatwoot não respondeu à consulta: não diz "sem conversa" e não deixa enviar', async () => {
+    const pedidos = await abrirDeVerdade({ contato: null, conversas: [], consulta: 'falhou' })
+    expect(screen.getByText('Não deu para consultar o Chatwoot agora: feche a janela e tente de novo em alguns minutos.')).toBeTruthy()
+    expect(screen.queryByText(/Ainda sem conversa/)).toBeNull()
+    expect(enviar().disabled).toBe(true)
+    fireEvent.click(enviar())
+    expect(pedidos.every((p) => p.metodo === 'GET')).toBe(true)
+    vi.unstubAllGlobals()
+  })
 })

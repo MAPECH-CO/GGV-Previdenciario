@@ -241,7 +241,7 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     const url = `/api/fichas/${fichaId}/mensagens`
     // Fora do ar: a mensagem pronta abre mesmo assim, e o envio falha com o motivo.
     const pronta = await json('ana', 'GET', `${url}/boas-vindas`)
-    expect(pronta).toMatchObject({ simulado: false, contato: null, conversas: [] })
+    expect(pronta).toMatchObject({ simulado: false, contato: null, conversas: [], consulta: 'falhou' })
     expect(pronta.texto).toMatch(/^Olá, Maria!/)
     const semResposta = await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 0 })
     expect(semResposta).toMatchObject({ status: 'falhou', conversa: 0, erro: 'o Chatwoot não respondeu; tente de novo em alguns minutos' })
@@ -257,5 +257,45 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     expect((await json('ana', 'GET', url)).map((m: { status: string }) => m.status)).toEqual(['falhou', 'falhou'])
     const eventos = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'mensagem_enviada'))
     expect(eventos.map((e) => (e.detalhe as { status: string }).status)).toEqual(['falhou', 'falhou'])
+  })
+
+  it('a consulta que cai no envio não troca a conversa escolhida, não abre outra e não repete o que já saiu', async () => {
+    let fora = false
+    const chamadas = await comChatwoot({
+      'GET /contacts/search?q=87654321': () => {
+        if (fora) throw new TypeError('fetch failed')
+        return { payload: [{ id: 31, name: 'Maria Ribeiro', phone_number: '+5511987654321', contact_inboxes: [{ source_id: 's', inbox: { id: 9, name: 'GGV PREV' } }] }] }
+      },
+      'GET /contacts/31/conversations': {
+        payload: [
+          { id: 501, inbox_id: 9, status: 'resolved', last_activity_at: 1759900000 },
+          { id: 502, inbox_id: 9, status: 'open', last_activity_at: 1759910000 },
+        ],
+      },
+      // A leitura de uma conversa que falha não apaga a lista: conta 0.
+      'GET /conversations/501/messages': () => new Response(null, { status: 500 }),
+      'GET /conversations/502/messages': { payload: [{}] },
+      'POST /conversations/502/messages': { id: 9001, status: 'sent' },
+    })
+    const { fichaId } = await cliente()
+    const url = `/api/fichas/${fichaId}/mensagens`
+    const pronta = await json('ana', 'GET', `${url}/boas-vindas`)
+    expect(pronta.consulta).toBeUndefined()
+    expect(pronta.conversas.map((c: { id: number; mensagens: number }) => [c.id, c.mensagens])).toEqual([
+      [502, 1],
+      [501, 0],
+    ])
+    const envio = { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 }
+    // A pessoa escolheu a 502; no envio, a consulta cai: nada sai, e fica registrado como "não saiu".
+    fora = true
+    expect(await json('ana', 'POST', url, envio)).toMatchObject({ status: 'falhou', conversa: 502, erro: 'o Chatwoot não respondeu; tente de novo em alguns minutos' })
+    expect(posts(chamadas)).toEqual([])
+    fora = false
+    const enviada = await json('ana', 'POST', url, envio)
+    expect(enviada).toMatchObject({ status: 'enviada', conversa: 502 })
+    // O reenvio com a consulta caída acha o que já saiu na 502 e não manda de novo.
+    fora = true
+    expect((await json('ana', 'POST', url, envio)).id).toBe(enviada.id)
+    expect(posts(chamadas).map((c) => c.caminho)).toEqual(['/conversations/502/messages'])
   })
 })

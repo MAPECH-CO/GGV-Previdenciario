@@ -9,6 +9,7 @@ type ConversaDaApi = { id: number; inbox_id?: number; status?: string; last_acti
 type MensagemDaApi = { status?: string; content_attributes?: { external_error?: string } }
 
 const STATUS: Record<string, MensagemAoCliente['status']> = { sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'falhou' }
+export const MSG_CHATWOOT_FORA = 'o Chatwoot não respondeu; tente de novo em alguns minutos'
 
 export type Chatwoot = NonNullable<ReturnType<typeof abrirChatwoot>>
 
@@ -29,7 +30,7 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
         signal: AbortSignal.timeout(15_000),
       })
     } catch {
-      throw new Error('o Chatwoot não respondeu; tente de novo em alguns minutos')
+      throw new Error(MSG_CHATWOOT_FORA)
     }
     if (!resposta.ok) throw new Error(`o Chatwoot recusou o pedido (código ${resposta.status})`)
     return (await resposta.json().catch(() => {
@@ -66,7 +67,11 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
           caixa: nomeDaCaixa,
           situacao: c.status === 'resolved' ? ('resolvida' as const) : ('aberta' as const),
           // ponytail: conta só a última página do Chatwoot (20 mensagens); paginar com `before` se a ordem exata importar.
-          mensagens: ((await chamar<{ payload?: unknown[] }>(`/conversations/${c.id}/messages`)).payload ?? []).length,
+          // A leitura de uma conversa que falha conta 0: a lista das conversas não se perde por ela.
+          mensagens: await chamar<{ payload?: unknown[] }>(`/conversations/${c.id}/messages`).then(
+            (r) => (r.payload ?? []).length,
+            () => 0,
+          ),
           ultimaEm: new Date((c.last_activity_at ?? 0) * 1000).toISOString(),
           link: `${central}/app/accounts/${CHATWOOT_CONTA}/conversations/${c.id}`,
         })),

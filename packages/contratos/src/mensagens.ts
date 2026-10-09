@@ -54,6 +54,8 @@ export const MensagemPronta = z.object({
   conversas: z.array(ConversaChatwoot),
   /** Falso quando o envio sai pelo Chatwoot de verdade (GGVP-146); sem o campo, simulado. */
   simulado: z.boolean().optional(),
+  /** 'falhou': o Chatwoot não respondeu à consulta do cliente, o que não quer dizer "sem conversa"; a tela não deixa enviar (GGVP-146). */
+  consulta: z.literal('falhou').optional(),
 })
 export type MensagemPronta = z.infer<typeof MensagemPronta>
 

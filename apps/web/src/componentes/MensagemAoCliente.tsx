@@ -67,8 +67,9 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
 
   const { bloqueia, avisa } = problemasDaMensagem(texto)
   const saiu = resultado !== null && resultado.status !== 'falhou'
-  // Sem conversa na caixa, o servidor abre uma (GGVP-146); com conversas, a pessoa escolhe.
-  const pode = pronta !== null && !pronta.trava && texto.trim() !== '' && bloqueia.length === 0 && (!pronta.conversas.length || conversa !== undefined) && !saiu
+  // Sem conversa na caixa, o servidor abre uma (GGVP-146); com conversas, a pessoa escolhe. Sem resposta do Chatwoot, não sai.
+  const pode =
+    pronta !== null && !pronta.trava && !pronta.consulta && texto.trim() !== '' && bloqueia.length === 0 && (!pronta.conversas.length || conversa !== undefined) && !saiu
 
   async function enviar() {
     if (travado.current || !pode || !perfil) return
@@ -166,7 +167,15 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
       )}
 
       {pronta && !pronta.trava && (
-        <ConversaNoChatwoot contato={pronta.contato} conversas={pronta.conversas} escolhida={conversa} aoEscolher={setConversa} texto={texto} simulado={pronta.simulado !== false} />
+        <ConversaNoChatwoot
+          contato={pronta.contato}
+          conversas={pronta.conversas}
+          escolhida={conversa}
+          aoEscolher={setConversa}
+          texto={texto}
+          simulado={pronta.simulado !== false}
+          consulta={pronta.consulta}
+        />
       )}
 
       {resultado?.status === 'falhou' && (
