@@ -147,8 +147,14 @@ export type AudioGravadoFora = z.infer<typeof AudioGravadoFora>
 export const PedidoDeTranscricao = z.object({ falhar: z.boolean().optional() })
 export type PedidoDeTranscricao = z.infer<typeof PedidoDeTranscricao>
 
-/** POST /api/gravacoes/:id/conferencias: só o que a advogada conferiu sai da transcrição (CA6, G14). */
-export const ConferenciaDaTranscricao = z.object({ ids: z.array(Texto(60)).min(1).max(50) })
+/**
+ * POST /api/gravacoes/:id/conferencias: só o que a advogada conferiu sai da transcrição (CA6, G14). GGVP-133: `correcoes`,
+ * o valor que ela corrigiu num item conferido, no lugar do que a IA ouviu.
+ */
+export const ConferenciaDaTranscricao = z.object({
+  ids: z.array(Texto(60)).min(1).max(50),
+  correcoes: z.array(z.object({ id: Texto(60), valor: Texto(200) })).max(50).optional(),
+})
 export type ConferenciaDaTranscricao = z.infer<typeof ConferenciaDaTranscricao>
 
 /** POST /api/gravacoes/:id/documentos: a lista conferida vai ao checklist do benefício (CA7). */

@@ -3,6 +3,7 @@
 // acervo (carga do Raio-X de 979 processos, serviço de implantação da MAPECH).
 import { beneficioCitado, requisitosDoBeneficio } from '../regras/beneficio.ts'
 import { semAcento } from '../regras/busca.ts'
+import { ehDesde } from '../regras/entrevista.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { cnisDeExemplo } from './exemplo.ts'
 import type { CasoDoAcervo, Cnis, Ficha, Gravacao, SugestaoDoBeneficio, Vinculo } from './tipos.ts'
@@ -90,14 +91,17 @@ export function cnisDoCaso(fichaId: string): Cnis | undefined {
   return cnisDeExemplo().find((c) => c.fichaId === fichaId)
 }
 
-/** Os dados dos requisitos numéricos (CA7): o CNIS, o "sem trabalhar desde" da entrevista e a data de nascimento. */
+/**
+ * Os dados dos requisitos numéricos (CA7): o CNIS, o "sem trabalhar desde" da entrevista e a data de nascimento. O "desde"
+ * é o que a advogada conferiu, nunca o palpite da IA (G14, G19).
+ */
 export type DadosDosRequisitos = { vinculos?: Vinculo[]; semTrabalharDesde?: string; nascimento?: string }
 
 /** A sugestão do acervo e os requisitos numéricos; o servidor usa a mesma (GGVP-125, bloco 3b). */
 export function analisar(ficha: Ficha, gravacao: Gravacao | undefined, hoje: string): { sugestao?: SugestaoDoBeneficio; dados: DadosDosRequisitos } {
   const dados: DadosDosRequisitos = {
     vinculos: cnisDoCaso(ficha.id)?.vinculos,
-    semTrabalharDesde: gravacao?.extraidas.find((e) => e.id === 'desde')?.valor,
+    semTrabalharDesde: gravacao?.extraidas.find((e) => ehDesde(e) && e.conferidaEm)?.valor,
     nascimento: ficha.nascimento,
   }
   if (!gravacao) return { dados }
