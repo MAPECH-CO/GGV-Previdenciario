@@ -91,3 +91,73 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
 - **Aprovação sem tabela nova.** A aprovação é uma `decisao` (passo `DP.00`, tipo `recomendacao_pericia`) com o que a advogada aprovou em JSON na justificativa (com o id da perícia) e a chamada da IA em `sugestao_ia`. A tarefa fecha quando nenhuma perícia do caso espera aprovação.
 - **Permissões que já existem.** Ver: `dado_saude.ver_detalhe` (Jurídico), porque a recomendação sai do parecer e dos laudos; aprovar: `pericia.decidir` (advogada), a mesma de "Precisa de perícia?". Sem versão nova da matriz.
 - **Sem o perito.** O perito ainda não é identificado (GGVP-59); o conteúdo diz "perito não identificado" e a recomendação sai sem a jurimetria dele.
+
+## GGVP-142 · Chat e Suporte pelo motor de IA de verdade
+
+### Context
+
+- **O chat de hoje** (GGVP-82) roda inteiro na tela, no servidor de exemplo. As intenções, as travas, os números e as ações saem de regras puras (`apps/web/src/regras/chat.ts`, `parecer.ts` e `pericia.ts`) e do banco de exemplo (`apps/web/src/dados/chat.ts`). Com o servidor ligado (homologação), ele não vê os casos do banco.
+- **O contrato já existe:** `PerguntaDoChat`, `RespostaDoChat`, `CartaoDeAcao` e `ConfirmacaoDoCartao`, com a ponta para ligar descrita na change `ggvp-5-experiencia-e-chat`.
+- **O motor** (`ia.ts`) registra cada chamada em `chamada_ia`, protege a entrada (GGVP-110) e barra CID por finalidade. O acervo tem a busca híbrida (`buscarNoAcervo`).
+- **A página do processo** no servidor (`GET /api/casos/:id/processo`) já monta o caso na visão do perfil, com o acesso a dado de saúde registrado.
+- **Rotas que as ações reaproveitam:**
+  - o pedido da peça (`POST /api/casos/:id/peticao/pedido`, com o G17);
+  - a perícia (`/pericia/comprovante/leitura` e `/pericia/marcacao`).
+  
+  A `main` não tem rota de envio de arquivo do caso (fica com a Recepção, PR #22) nem do lote do acervo (GGVP-55).
+
+### Decisions
+
+1. **Kit de agentes da OpenAI em TypeScript** (`@openai/agents` 0.18.0, a versão de setembro, com `zod` 4), decisão do Mateus em 09/10. O ADR-014 registra a escolha.
+   - **Modelo:** pelo mesmo endpoint de chat completions do motor, com o cliente da OpenAI criado com o `fetch` injetado; o teste passa um falso (CA4).
+   - **Rastreamento do kit desligado:** nada vai para o painel da OpenAI (LGPD).
+   - **Ferramentas de ação com aprovação da pessoa:** o kit para na aprovação, e o servidor guarda o estado da conversa até o clique.
+2. **`POST /api/chat`**, só com a sessão: o chat é de todos os perfis, sem permissão nova na matriz.
+   - **Antes do modelo, como código, com as mesmas regras puras da tela:**
+     - as recusas do G17 e do G11 (a do G11 vai ao histórico);
+     - "o que é o G8?";
+     - os portões do pedido;
+     - o pedido de outro perfil.
+   - **O contexto:**
+     - o caso do contexto ou o do cliente citado pelo nome, lido pela rota da página do processo com a sessão de quem pergunta;
+     - o acervo, com a regra de saúde;
+     - a lista fixa de ações do perfil.
+   - **Saúde:** para o Jurídico (`dado_saude.ver_detalhe`) e para o Sócio, uma exceção do chat (decisão do Mateus). Para o Sócio, o resumo médico do caso vem da documentação médica, com o acesso registrado em `acesso_dado_sensivel`.
+   - **O registro:** cada conversa vira uma chamada em `chamada_ia`, com:
+     - a finalidade `chat` (sem saúde, barra CID) ou `chat_juridico` (com saúde);
+     - o modelo, a entrada, a saída e as fontes.
+   - **Depois do modelo:**
+     - a barra de CID para quem não vê saúde;
+     - os links vêm do código (o caso e as telas das tarefas), nunca do texto do modelo.
+3. **Ferramentas do agente:**
+   - **de leitura, sem aprovação:** ver o caso, buscar no acervo, as tarefas da pessoa e explicar um portão;
+   - **de ação, com aprovação, só as da lista do perfil:** criar tarefa, pedir a peça e marcar a perícia (com a leitura do comprovante);
+   - **as que dependem de enviar arquivo** (anexar laudo, enviar documento, lançar o comprovante de RPV e subir no acervo) respondem com o link da tela.
+4. **O cartão** (`CartaoDeAcao`) nasce da aprovação pedida pelo kit.
+   - Traz os passos, o que conferir, as travas e o responsável (pela regra do responsável da tela).
+   - Fica em memória até o clique, com quem pediu.
+   - Expira em 30 minutos ou quando o servidor reinicia ("Peça de novo").
+5. **`POST /api/chat/acoes/:id`:** só quem pediu, com o perfil da ação.
+   - O servidor aprova e o kit continua.
+   - A ação roda pela rota da tela, com a sessão de quem confirmou, então permissões e portões valem de novo.
+   - O histórico do caso ganha a ação com "feito pelo chat".
+   - `DELETE /api/chat/acoes/:id` descarta o cartão.
+6. **Na tela** (`dados/chat.ts`):
+   - com o servidor ligado, `perguntar`, `confirmarAcao` e `cancelarAcao` chamam o servidor;
+   - as tarefas criadas pelo chat aparecem na Central pela lista de tarefas do servidor;
+   - no modo de exemplo (testes e semente), segue o chat simulado.
+
+### Campos de formulário
+
+Nenhum campo novo. A pergunta é texto livre (até 2000 caracteres), validada pelo contrato na tela e no servidor.
+
+### Telas
+
+Nenhuma tela nova. O chat das Centrais e a aba Suporte (`ChatDoPortal`) passam a falar com o servidor.
+
+### Risks / Trade-offs
+
+- **Dependência nova:** o kit é recente (0.x) e muda rápido, então a versão fica fixa. Se atrapalhar, as ferramentas viram chamadas do motor de hoje.
+- **Cartão em memória:** reiniciar o servidor perde os cartões em aberto, e a pessoa pede de novo. Guardar no banco se virar problema.
+- **Cliente citado pelo nome:** compara o nome inteiro com as pessoas que têm caso. Nomes parecidos viram a pergunta "qual deles?".
+- **Sócio com saúde no chat:** é uma exceção à matriz, em que o Sócio não vê dado de saúde nas telas. Se a matriz mudar, a exceção sai.

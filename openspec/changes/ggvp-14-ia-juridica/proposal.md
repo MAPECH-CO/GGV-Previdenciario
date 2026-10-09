@@ -1,4 +1,4 @@
-GGVP-14 · IA jurídica e knowledge graph · histórias: GGVP-106, GGVP-110 e as da IA nas telas (abaixo), inclusive GGVP-38, GGVP-45 e GGVP-19; depois GGVP-41.
+GGVP-14 · IA jurídica e knowledge graph · histórias: GGVP-106, GGVP-110 e as da IA nas telas (abaixo), inclusive GGVP-38, GGVP-45 e GGVP-19; depois GGVP-41 e GGVP-142.
 
 ## Por quê
 
@@ -33,6 +33,7 @@ Cada integração completa a parte de IA que a história deixou para este épico
 11. **GGVP-79** (parte de IA) · Exigência do juiz: a IA lê a publicação com o caso e sugere "só ciência" ou os itens por setor; a advogada decide (G5).
 12. **GGVP-19** (épico Desfecho, aqui porque depende desta plataforma) · Estudo de caso do processo perdido: automático depois do resultado negativo, numa tela de estudos; tarefa da Sênior só quando indica novo processo (Lucas, 06/10).
 13. **GGVP-38** · Recomendação sobre a perícia: pronta para a advogada antes de marcar (o que levar, pontos fortes e fracos; na perícia do juiz, quesitos e assistente técnico); sem a jurimetria do perito, que espera a GGVP-59.
+14. **GGVP-142** · Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10): o chat das Centrais e a aba Suporte respondem pelo motor, com o caso que o perfil vê, o acervo e as fontes; as travas continuam como código; a ação vira cartão e só executa depois do "Confirmar" de quem pediu; o Sócio vê o conteúdo médico no chat; o kit de agentes da OpenAI dentro do motor.
 
 ## A sugestão chega pronta (Mateus, 07/10)
 
@@ -40,6 +41,6 @@ Em toda tarefa com IA, a sugestão já aparece quando a pessoa abre, preenchendo
 
 ## Fora do escopo
 
-- O chat que executa ações (cards de confirmação): fora até 09/10 pelo plano de entrega; o chat só consulta.
+- As ações do chat que dependem de enviar arquivo (anexar laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo): o cartão leva à tela certa até as rotas de envio existirem no servidor (Recepção, PR #22; GGVP-55).
 - A IA nas telas do Pedro (leitura do laudo, sugestão do benefício, comprovante da perícia): entram quando ele ligar essas telas no servidor (GGVP-125, GGVP-132), sobre esta plataforma.
 - Google Drive (GGVP-107).
