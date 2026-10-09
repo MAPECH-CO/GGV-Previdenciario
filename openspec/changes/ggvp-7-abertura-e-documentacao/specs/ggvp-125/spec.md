@@ -264,8 +264,36 @@ O checklist do caso SHALL ser calculado no servidor, com as regras das telas, a 
 - **Quando** o último documento pendente é arquivado
 - **Então** a cobrança fecha sozinha no servidor
 
+### Requirement: Bloco 5d · O documento de qualquer canal confere as pendências
+Ao arquivar, cada documento arquivado SHALL ficar no registro de documentos do portal com o tipo conferido pela pessoa, quem conferiu e quando: o do card e do chat no registro que já existe (pelo conteúdo); o do scanner, cujo arquivo fica no Drive (ainda simulado), num registro novo que aponta para o Drive, sem o conteúdo (decisão do Mateus, 09/10). O documento médico MUST ficar sensível e, com caso, entrar como documento médico não conferido, para o parecer; a sensibilidade nunca volta atrás sozinha. O laudo, o relatório médico e o prontuário de qualquer canal SHALL abrir "Analisar laudo novo" para o Jurídico, uma tarefa aberta por ficha: na chegada pelo card, pelo chat e pelo lote do scanner, e no arquivamento, quando a pessoa confere como laudo o que chegou com outro tipo. Conferido completo o checklist do caso da Recepção, "Liberar ao Jurídico" (D1.24) SHALL nascer no servidor para a Documentação, uma por caso, e fechar na liberação; a tela MUST NOT repetir a tarefa do caso do servidor. O item da exigência do INSS e do juiz SHALL ganhar o tipo de documento esperado (opcional, do catálogo das telas; a IA sugere), e o documento arquivado desse tipo, no caso com a exigência aberta, SHALL dar baixa no item sozinho: cumprido, com o documento como prova e quem conferiu o tipo (decisão do Mateus, 09/10). A perícia SHALL casar o kit pelo tipo do registro, de qualquer canal. O laudo ou o relatório que chega com o complemento do médico aberto SHALL registrar a chegada e parar a cobrança do médico até o parecer; o parecer Suficiente encerra, como hoje (GGVP-29, CA5). A cobrança e o checklist da Recepção casam pelo tipo do documento lido e arquivado, também o do scanner. A entrega é em duas partes, cada uma com o seu "Agora ok?": a main e o fluxo da Recepção; depois a baixa na exigência, na perícia e no complemento.
+
+#### Scenario: O scanner atende a cobrança
+- **Dado** um caso do servidor com a cobrança aberta pelo comprovante de residência
+- **Quando** o comprovante chega pelo lote do scanner e a Documentação arquiva
+- **Então** a cobrança fecha sozinha, e o comprovante fica no registro de documentos com o tipo conferido
+
+#### Scenario: O laudo de qualquer canal
+- **Dado** um documento que chegou pelo scanner com outro tipo
+- **Quando** a Documentação confere como laudo e arquiva
+- **Então** nasce "Analisar laudo novo" para o Jurídico, o registro fica sensível e o documento médico entra para o parecer
+
+#### Scenario: "Liberar ao Jurídico" nasce no servidor
+- **Dado** um caso da Recepção com o checklist completo
+- **Quando** a Documentação confere o checklist
+- **Então** nasce "Liberar ao Jurídico" para a Documentação, uma só, que fecha na liberação
+
+#### Scenario: Baixa na exigência
+- **Dado** uma exigência aberta com um item que espera o comprovante de residência
+- **Quando** o comprovante é arquivado no caso
+- **Então** o item fica cumprido, com o documento como prova e quem conferiu
+
+#### Scenario: Complemento do médico
+- **Dado** um complemento aberto
+- **Quando** chega um laudo novo
+- **Então** a cobrança do médico para até o parecer, e o parecer Suficiente encerra
+
 ### Requirement: Bloco 6 · A primeira liberação ao Jurídico vai ao servidor
-Para o caso do servidor, "Liberar ao Jurídico" (D1.24, Documentação) SHALL seguir pela rota `POST /api/casos/:id/liberacao` (GGVP-127, #20), que confere de novo no servidor o perfil, o checklist (G1) e o parecer (G17), fecha a tarefa D1.24 e abre "Conferir antes do INSS" para a Sênior; a recusa do servidor MUST aparecer na tela, e nada é gravado aqui. A fila da Sênior desse caso vem do servidor, sem a cópia local repetir a tarefa (pedido do Pedro, 09/10). A tarefa D1.24 nasce do checklist conferido, no bloco 5c.
+Para o caso do servidor, "Liberar ao Jurídico" (D1.24, Documentação) SHALL seguir pela rota `POST /api/casos/:id/liberacao` (GGVP-127, #20), que confere de novo no servidor o perfil, o checklist (G1) e o parecer (G17), fecha a tarefa D1.24 e abre "Conferir antes do INSS" para a Sênior; a recusa do servidor MUST aparecer na tela, e nada é gravado aqui. A fila da Sênior desse caso vem do servidor, sem a cópia local repetir a tarefa (pedido do Pedro, 09/10). A tarefa D1.24 nasce do checklist conferido completo, no bloco 5d.
 
 #### Scenario: Liberar o caso do servidor
 - **Dado** um caso do servidor com o checklist completo e o parecer em ordem

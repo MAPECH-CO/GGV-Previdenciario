@@ -228,6 +228,25 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.75 Playwright: a Documentação confere o checklist incompleto de um caso do servidor; em outra sessão, a Atendimento vê "Cobrar documento" e registra a tentativa.
 - [x] 125.76 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+### Bloco 5d · O documento de qualquer canal confere as pendências (pedido do orquestrador, 09/10; decisões do Mateus: tudo, em duas partes)
+
+Parte 1 · A main e o fluxo da Recepção
+
+- [ ] 125.77 Trazer a main: as migrações da leitura e do 5c geradas de novo pelo drizzle-kit, depois da 0025 e da 0026 da main; a matriz passa a 26, com `cobranca.decidir` sobre a 25; testes.
+- [ ] 125.78 Servidor: ao arquivar, o tipo conferido vai para o `documento` (o do card e do chat pela linha que já existe, pelo hash; o do scanner numa linha nova com a chave do Drive simulada, sem conteúdo), com `conferido`, quem e quando; o médico fica sensível e, com caso, ganha o `documento_medico` não conferido; testes.
+- [ ] 125.79 Servidor: uma regra só para o laudo novo: o card, o chat, o lote do scanner e o arquivamento que confere como laudo, relatório médico ou prontuário o que chegou com outro tipo abrem "Analisar laudo novo" (uma aberta por ficha); testes.
+- [ ] 125.80 Servidor: a conferência completa do checklist abre "Liberar ao Jurídico" (D1.24) para a Documentação, uma por caso, que fecha na liberação; a Central leva o D1.24 a `/casos/:id/liberar`; as telas não repetem a tarefa local do caso do servidor; testes.
+- [ ] 125.81 Teste: o comprovante pelo lote do scanner, arquivado, fecha a cobrança aberta. Playwright: o documento pelo scanner atende a cobrança, e o laudo conferido no arquivamento abre "Analisar laudo novo".
+- [ ] 125.82 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+Parte 2 · A baixa nas pendências das outras áreas
+
+- [ ] 125.83 Banco e contratos: `exigencia_item.tipo_documento` (opcional, do catálogo das telas) e a migração; o tipo no item da exigência do INSS e do juiz e na sugestão da IA; testes.
+- [ ] 125.84 Telas: ao montar os itens da exigência do INSS e do juiz, o tipo de documento esperado (opcional), já com o sugerido pela IA; testes.
+- [ ] 125.85 Servidor: o documento arquivado do tipo do item, no caso com a exigência aberta, dá baixa no item (cumprido, com o documento como prova e quem conferiu); testes.
+- [ ] 125.86 Perícia: o documento do scanner, arquivado, entra no kit da perícia pelo tipo (teste). Complemento: o laudo ou o relatório que chega com o complemento aberto registra a chegada e para a cobrança até o parecer; testes.
+- [ ] 125.87 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
 ### Bloco 6 · A primeira liberação ao Jurídico no servidor (pedido do Pedro, 09/10; números 125.90 em diante para não colidir com o 5c)
 
 - [x] 125.90 Telas: `liberarAoJuridico` (dados/liberacao.ts), para o caso do servidor, chama `POST /api/casos/:id/liberacao` depois das conferências da tela e só grava a liberação aqui se o servidor aceitar; `tarefasDaFilaDaSenior` não repete o caso do servidor (a Central da Sênior já traz o D2.01 do servidor); testes.

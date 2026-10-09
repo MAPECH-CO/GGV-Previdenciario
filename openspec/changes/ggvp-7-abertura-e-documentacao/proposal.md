@@ -29,6 +29,8 @@ Duas sessões em paralelo, cada uma na sua árvore e na sua branch, decisão do 
 Abertura passam a gravar no banco do portal, em blocos (1 a 5; o 6, a liberação, fica com o Pedro, junto com a GGVP-127),
 com as regras do Pedro e os portões no servidor; spec em `specs/ggvp-125/spec.md`. O bloco 5 (documentos, checklist,
 boas-vindas e cobrança) vai em `feat/GGVP-7-ligar-no-servidor-documentos`, com base na main desde 09/10, quando a do contrato entrou nela.
+O 5d (pedido do orquestrador, 09/10) leva o documento de qualquer canal às pendências: o tipo conferido no registro do
+documento, o laudo novo, "Liberar ao Jurídico" no servidor e a baixa na exigência, na perícia e no complemento do médico.
 
 Cada história ganha uma spec em `specs/ggvp-n/spec.md` e uma seção no `tasks.md`, no bloco do seu grupo.
 
