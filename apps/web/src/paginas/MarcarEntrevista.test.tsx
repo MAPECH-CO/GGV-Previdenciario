@@ -1,8 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { eventosDaAgenda, marcarEntrevista } from '../dados/agenda.ts'
-import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { tarefasDaAdvogada } from '../dados/preparacao.ts'
+import { configurarExemplo, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import type { Marcacao } from '../dados/tipos.ts'
+import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { MarcarEntrevista } from './MarcarEntrevista.tsx'
 
 beforeEach(() => {
@@ -31,7 +34,37 @@ describe('Marcar a entrevista', () => {
     await vi.waitFor(() => expect(aberta).toMatch(/^\/entrevista\/antonio-exemplo-ag-\d+$/))
     const entrevista = (await obterFicha('antonio-exemplo'))?.agendamentos.at(-1)
     expect(entrevista).toMatchObject({ oQue: 'Entrevista', data: '2026-10-05', hora: '14:32', estado: 'marcado', com: 'Dra. Paula' })
-    expect((await obterFicha('antonio-exemplo'))?.historico.at(-1)?.oQue).toBe('Iniciou a entrevista agora (vídeo (meet)) com Dra. Paula, sem marcar antes')
+    expect((await obterFicha('antonio-exemplo'))?.historico.slice(-2).map((e) => e.oQue)).toEqual([
+      'Iniciou a entrevista agora (vídeo (meet)) com Dra. Paula, sem marcar antes',
+      'Mandou ao Jurídico: preparar a entrevista de hoje às 14:32',
+    ])
+  })
+
+  it('o Atendimento inicia a entrevista na hora: fica na tela, e a advogada recebe "Preparar entrevista" (não grava pelo Atendimento)', async () => {
+    entrarComo('atendimento')
+    let aberta = ''
+    render(comSessao(<MarcarEntrevista fichaId="antonio-exemplo" navegar={(url) => (aberta = url)} />))
+    await screen.findByRole('heading', { level: 1, name: /a entrevista com/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }))
+    expect(await screen.findByRole('heading', { name: /Entrevista iniciada agora .* Dra\. Paula/ })).toBeTruthy()
+    expect(aberta).toBe('')
+    const id = (await obterFicha('antonio-exemplo'))!.agendamentos.at(-1)!.id
+    expect(tarefasDaAdvogada().find((t) => t.id === `preparar-${id}`)).toMatchObject({ acao: 'Preparar entrevista', href: `/entrevista/${id}/preparar` })
+    entrarComo()
+  })
+
+  it('lead sem a ficha de atendimento, iniciado na hora: o Atendimento preenche a ficha antes (BPMN), e ninguém pede para confirmar', async () => {
+    entrarComo('atendimento')
+    render(comSessao(<MarcarEntrevista fichaId="josefa-exemplo" />))
+    await screen.findByRole('heading', { level: 1, name: /a entrevista com/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }))
+    await screen.findByRole('heading', { name: /Entrevista iniciada agora/ })
+    const ficha = (await obterFicha('josefa-exemplo'))!
+    const a = ficha.agendamentos.at(-1)!
+    expect(ler().tarefas.find((t) => t.id === `preencher-ficha-${a.id}`)).toMatchObject({ acao: 'Preencher ficha', setor: 'Atendimento' })
+    expect(tarefasDaAdvogada().some((t) => t.id === `preparar-${a.id}`)).toBe(false)
+    expect(precisaConfirmar(ficha, a, '2026-10-05')).toBe(false)
+    entrarComo()
   })
 
   it('CA1 e CA2 · escolhe tipo, dia, horário e com quem (só a advogada), e a entrevista vai para a agenda', async () => {

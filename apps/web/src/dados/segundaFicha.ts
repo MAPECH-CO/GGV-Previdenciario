@@ -15,7 +15,7 @@ import {
 import { registrarNoCofre } from './cofre.ts'
 import { leituraDaSegundaFicha } from './exemplo.ts'
 import { CLIENTE_NO_TABLET } from './fichaAtendimento.ts'
-import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { QUEM_ADVOGADA, agendamentoDoServidor, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type { Agendamento, Arquivo, Ficha, RespostasDaSegundaFicha, TarefaEncaminhada } from './tipos.ts'
 
 function acharAgendamento(banco: Banco, id: string): { ficha: Ficha; agendamento: Agendamento } {
@@ -54,6 +54,14 @@ export function pendenciaDoAtendimento(
 export async function registrarAnalise(agendamentoId: string, d: { acidentario: boolean }): Promise<{ tarefas: TarefaEncaminhada[] }> {
   await esperar()
   if (typeof d.acidentario !== 'boolean') throw new Error('Análise inválida')
+  if (agendamentoDoServidor(agendamentoId)) {
+    const r = await noBanco<{ abertas: TarefaEncaminhada[]; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/entrevistas/${agendamentoId}/analise`, {
+      method: 'POST',
+      corpo: d,
+    })
+    receber(r)
+    return { tarefas: r.abertas }
+  }
   const banco = ler()
   const { ficha, agendamento: a } = acharAgendamento(banco, agendamentoId)
   const quando = agora().toISOString()
@@ -94,6 +102,19 @@ export async function registrarAnalise(agendamentoId: string, d: { acidentario: 
  * médica vai direto ao Jurídico e não volta para a tela do Atendimento (CA8); a senha do Meu INSS vai ao cofre (CA7).
  */
 export async function lerSegundaFichaEmPapel(fichaId: string): Promise<{ arquivo: Arquivo; respostas: RespostasDaSegundaFicha; senhaLida: boolean }> {
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 3c: o servidor guarda a seção médica lida à parte, só para o Jurídico; a imagem ainda fica na pasta
+    // de exemplo daqui, até o Drive entrar.
+    const r = await noBanco<{ arquivo: Arquivo; respostas: RespostasDaSegundaFicha; senhaLida: boolean; ficha: Ficha }>(`/fichas/${fichaId}/segunda-ficha/leitura`, {
+      method: 'POST',
+      corpo: {},
+    })
+    receber(r)
+    const banco = ler()
+    banco.fichas.find((f) => f.id === fichaId)!.arquivos.push(r.arquivo)
+    gravar(banco)
+    return { arquivo: r.arquivo, respostas: r.respostas, senhaLida: r.senhaLida }
+  }
   await esperar()
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
@@ -134,10 +155,14 @@ export async function lerSegundaFichaEmPapel(fichaId: string): Promise<{ arquivo
  * (CA8); no tablet, a que o cliente preencheu. Conclui a pendência "Preencher segunda ficha" e libera a entrevista (CA3).
  */
 export async function salvarSegundaFicha(fichaId: string, respostas: RespostasDaSegundaFicha, origem: 'papel' | 'tablet'): Promise<{ ficha: Ficha }> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   const hoje = hojeIso(agora())
   const r = normalizarDatas({ ...respostasVazias(), ...respostas })
   if (!segundaFichaValida(r, hoje) || (origem !== 'papel' && origem !== 'tablet')) throw new Error('Segunda ficha inválida')
+  if (doServidor(fichaId)) {
+    const salva = await noBanco<{ ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/fichas/${fichaId}/segunda-ficha`, { method: 'PUT', corpo: { respostas, origem } })
+    return { ficha: receber(salva)! }
+  }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')
