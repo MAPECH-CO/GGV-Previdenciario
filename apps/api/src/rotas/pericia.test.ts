@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, documento, eventoAuditoria, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, decisao, documento, eventoAuditoria, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -129,8 +129,8 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect((await acoes()).filter((a) => a === 'acesso_negado')).toHaveLength(7)
 
     const ok = await post('igor', '/tentativas', tentativa)
-    // Fora do Jurídico, a tentativa aparece sem o texto livre de quem marcou.
-    expect(JSON.stringify((await ver('dora')).json().pericia)).not.toContain('Sem vaga')
+    // O que a equipe escreveu, todo mundo do caso vê (saúde simples, 08/10).
+    expect((await ver('dora')).json().pericia.tentativas[0].oQueAconteceu).toBe(tentativa.oQueAconteceu)
     expect(ok.statusCode).toBe(200)
     expect(ok.json().pericia.tentativas).toHaveLength(1)
     const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_tentativa_registrada'))
@@ -221,20 +221,23 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     const laudos = (perfil.perfil as { laudos: object[] }).laudos
     expect(laudos).toHaveLength(1)
     expect(JSON.stringify(laudos)).not.toContain('Maria')
-    // O laudo é dado de saúde: sensível na pasta e fora da visão da Documentação.
+    // O PDF do laudo é sensível na pasta: só o Jurídico abre (rota dos documentos).
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
-    const daDora = (await ver('dora')).json()
-    expect([daDora.pericia.resultado.laudo, daDora.perfil, daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)]).toEqual([
-      undefined,
-      undefined,
-      ['comprovante-pericia'],
-    ])
-    // Nem pelo histórico: os passos do resultado e do perfil do perito ficam só com o Jurídico.
-    expect(Object.keys(daDora.pericia.resultado)).toEqual(['disponivelEm'])
-    expect(JSON.stringify(daDora)).not.toMatch(/Registrou o resultado|perfil de Dr|favorável/)
-    expect((await ver('dora', '/resultado')).statusCode).toBe(403)
-    expect((await ver('gabi', '/resultado')).json().pericia.resultado.laudo.leitura.favoravel).toBe(true)
+    // A Documentação vê o resultado, o laudo na pasta, o perito e os números dele; a leitura do laudo, os laudos do perfil
+    // e o assunto deles (conteúdo médico), não.
+    const acessos = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
+    for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
+      expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
+      expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
+      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto]).toEqual(['Dr. R. Menezes', 1, [], []])
+      expect(daDora.perfil.jurimetria.laudos).toBe(1)
+    }
+    expect(await acessos()).toEqual([])
+    // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.
+    const doJuridico = (await ver('gabi', '/resultado')).json()
+    expect([doJuridico.pericia.resultado.laudo.leitura.favoravel, doJuridico.perfil.porAssunto.map((a: { assunto: string }) => a.assunto)]).toEqual([true, ['sem assunto']])
+    expect(await acessos()).toEqual([[ids.gabi, casoId, `pericia:${linha.id}`]])
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
   })
 
@@ -381,6 +384,30 @@ describe('GGVP-139 · a IA de verdade na Perícia (fetch falso)', () => {
     expect(JSON.stringify(perfil)).not.toMatch(/Maria|123\.456/)
     const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_resultado_registrado'))
     expect(h.detalhe).toMatchObject({ chamadaIa: r.sugestao.chamadaId })
+  })
+
+  it('saúde simples · o Atendimento vê o resultado e o que a equipe escreveu; a leitura do laudo fica com o Jurídico', async () => {
+    const LAUDO = { ...LAUDO_DA_IA, favoravel: false, resumo: 'O perito não viu incapacidade atual.', porque: 'O perito não comentou os exames do escritório.', valeNovaPericia: false }
+    comIa({ ocr: 'Laudo pericial. Conclusão: sem incapacidade atual.', texto: LAUDO })
+    await post('igor', '/tentativas', { dia: '2026-10-08', oQueAconteceu: 'Sem vaga no Meu INSS hoje' })
+    await compareceu()
+    const r = await lerLaudo()
+    const conferidas = ['laudo', 'parecer', 'dii', 'beneficio']
+    const dados = { favoravel: false, novaPericia: false, conferidas, chamadaIaId: r.sugestao.chamadaId }
+    expect((await app.inject({ method: 'POST', url: url('/resultado'), cookies: await de('gabi'), ...multipart('laudo', dados, PDF('laudo.pdf')) })).statusCode).toBe(200)
+
+    const doJuridico = (await ver('gabi')).json()
+    const daAna = (await ver('ana')).json()
+    // O que a equipe escreveu e o resultado: iguais para os dois.
+    expect(daAna.pericia.tentativas).toEqual(doJuridico.pericia.tentativas)
+    expect(daAna.pericia.orientacao).toEqual(doJuridico.pericia.orientacao)
+    expect(daAna.pericia.historico).toEqual(doJuridico.pericia.historico)
+    expect([daAna.etapa, daAna.pericia.resultado.registrado]).toEqual([doJuridico.etapa, doJuridico.pericia.resultado.registrado])
+    expect(daAna.pericia.historico.map((e: { oQue: string }) => e.oQue)).toContain('A IA indicou se vale pedir nova perícia: não (o porquê está no resumo do laudo)')
+    // A leitura do laudo: só o Jurídico; o Atendimento fica com o nome do arquivo e a data.
+    expect(doJuridico.pericia.resultado.laudo.leitura).toMatchObject({ resumo: LAUDO.resumo, porque: LAUDO.porque })
+    expect(daAna.pericia.resultado.laudo).toEqual({ nome: 'laudo.pdf', anexadoEm: doJuridico.pericia.resultado.laudo.anexadoEm })
+    expect(JSON.stringify(daAna)).not.toContain(LAUDO.porque)
   })
 
   it('CA6 · sem a autorização de dado de saúde, o laudo nem vai à IA: a advogada recebe o motivo e registra pela leitura dela', async () => {
