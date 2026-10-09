@@ -20,10 +20,10 @@ test('CA10 · o servidor recusa trocar para um perfil que não é da pessoa', as
   expect(await r.json()).toEqual({ erro: 'Esse perfil não é seu.' })
 })
 
-test('cada perfil cai na sua Central: a da Sênior ainda não foi construída', async ({ page }) => {
+test('cada perfil cai na sua Central: a da Sênior', async ({ page }) => {
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Central · Sênior' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Início da Sênior' })).toBeAttached()
   await expect(page.getByRole('button', { name: 'Sênior' })).toBeVisible()
   await page.getByRole('button', { name: 'Sair' }).click()
   await expect(page).toHaveURL('/entrar')

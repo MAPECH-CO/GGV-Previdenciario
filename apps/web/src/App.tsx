@@ -94,6 +94,12 @@ import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
 import { Conversa } from './paginas/Conversa.tsx'
 import { ConferirConversa } from './paginas/ConferirConversa.tsx'
 import { PaginaDoCaso } from './paginas/PaginaDoCaso.tsx'
+import { Clientes } from './paginas/Clientes.tsx'
+import { Processos } from './paginas/Processos.tsx'
+import { CentralSenior } from './paginas/CentralSenior.tsx'
+import { CentralFinanceiro } from './paginas/CentralFinanceiro.tsx'
+import { InicioDoSocio } from './paginas/InicioDoSocio.tsx'
+import { Financeiro } from './paginas/Financeiro.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -175,6 +181,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
   // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
+  // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
+  { padrao: /^\/financeiro$/, tela: () => <Exige acao="valores.ver_totais"><Financeiro /></Exige> },
 ]
 
 function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; perfil: string }) {
@@ -192,11 +200,13 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     // Da documentação médica: a dispensa esperando a segunda sênior (GGVP-33) e o complemento a decidir (GGVP-29).
     if (perfil === 'senior')
       return (
-        <CentralEmConstrucao
-          rotulo={ROTULO_PERFIL.senior}
+        <CentralSenior
           deExemplo={[...tarefasDeDecidirCobranca(), ...tarefasDaFilaDaSenior(), ...tarefasDoParecer().filter(daSenior), ...tarefasDeDecidirComplemento()]}
         />
       )
+    // GGVP-78: a Central do Financeiro (Figma 59:863) e, para o Sócio, o painel de resultado com a busca e o chat (perfis.md).
+    if (perfil === 'financeiro') return <CentralFinanceiro />
+    if (perfil === 'socio') return <InicioDoSocio />
     // As Centrais dos outros perfis entram com as histórias de cada épico (GGVP-78).
     return <CentralEmConstrucao rotulo={ehPerfil(perfil) ? ROTULO_PERFIL[perfil] : perfil} />
   }
@@ -226,6 +236,9 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
   [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
   [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
+  // GGVP-78: Clientes e Processos, as bases do topo, para quem vê o caso (antes da regra geral de /clientes).
+  [/^\/clientes$/, 'caso.ver'],
+  [/^\/processos$/, 'caso.ver'],
   // D5: a conversa com o cliente, do Atendimento e do Jurídico.
   [/^\/conversas\//, 'conversa.registrar'],
   // G15 (D1.17): passou do limite de tentativas, a tarefa da Sênior abre a assinatura; quem vê o caso lê, sem % de
@@ -257,6 +270,9 @@ function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   if (caminho === '/advogada') return <CentralAdvogada />
   if (caminho === '/balcao') return <Balcao />
   if (caminho === '/clientes/novo') return <NovoCliente />
+  // GGVP-78: as bases do topo; a contagem de processos em Clientes abre /processos?cliente=<id>.
+  if (caminho === '/clientes') return <Clientes />
+  if (caminho === '/processos') return <Processos cliente={parametros.get('cliente') ?? undefined} />
   if (caminho === '/agenda') return <Agenda vistaInicial={(parametros.get('ver') as Vista | null) ?? undefined} />
   const marcar = /^\/agenda\/marcar\/([^/]+)$/.exec(caminho)
   if (marcar) return <MarcarEntrevista fichaId={decodeURIComponent(marcar[1])} remarcar={parametros.get('remarcar') ?? undefined} />

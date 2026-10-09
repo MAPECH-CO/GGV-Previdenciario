@@ -2,6 +2,7 @@ import { sair } from '../api.ts'
 import { useSessao } from '../sessao.ts'
 import { EntrarComo } from './EntrarComo.tsx'
 import { BotoesPreferencias } from './BotoesPreferencias.tsx'
+import { itensDoPerfil } from './itensDaGestao.ts'
 import styles from './Topbar.module.css'
 
 export type ItemNavegacao = {
@@ -34,7 +35,7 @@ export function Topbar({ itens, ativo, funcao, acao }: Props) {
       </a>
 
       <nav className={styles.nav} aria-label="Principal">
-        {itens.map((item) => (
+        {itensDoPerfil(itens, usuario?.perfilAtivo).map((item) => (
           <a
             key={item.id}
             className={styles.item}

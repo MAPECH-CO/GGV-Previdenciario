@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHAVE } from '../dados/servidor.ts'
-import { Topbar } from './Topbar.tsx'
+import { ITENS_DA_GESTAO, ITENS_DAS_BASES, itensDoPerfil } from './itensDaGestao.ts'
+import { Topbar, type ItemNavegacao } from './Topbar.tsx'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -43,5 +44,42 @@ describe('Topbar', () => {
     expect(sessionStorage.getItem(CHAVE)).toBe('{"fichas":[]}')
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/entrar'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao', expect.objectContaining({ method: 'DELETE' }))
+  })
+})
+
+describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 1927:14, 1931:130)', () => {
+  const ids = (perfil: string | null, lista: ItemNavegacao[] = itens) => itensDoPerfil(lista, perfil).map((i) => i.id)
+
+  it('Clientes e Processos depois do Início e da Agenda para o líder, a Advogada e a Sênior; a Gestão no fim, para quem tem', () => {
+    expect(ids('atendimento_lider')).toEqual(['inicio', 'agenda', 'clientes', 'processos', 'tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'])
+    expect(ids('advogada')).toEqual(['inicio', 'agenda', 'clientes', 'processos'])
+    expect(ids('senior', [...itens, { id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' }])).toEqual([
+      'inicio',
+      'agenda',
+      'clientes',
+      'processos',
+      'estudos',
+      'tentativas',
+      'prazos',
+      'cofre',
+      'resultados',
+      'configuracao',
+    ])
+  })
+
+  it('o Atendimento só tem a Agenda; o Financeiro, sem ver o caso, fica com os Resultados (GGVP-96) e o painel Financeiro; sem sessão, nada muda', () => {
+    expect(ids('atendimento')).toEqual(['inicio', 'agenda'])
+    expect(ids('financeiro')).toEqual(['inicio', 'agenda', 'resultados', 'financeiro'])
+    expect(ids(null)).toEqual(['inicio', 'agenda'])
+  })
+
+  it('o painel Financeiro no topo de quem vê os totais em dinheiro: o Financeiro e o Sócio; a Sênior, não', () => {
+    expect(ids('socio').at(-1)).toBe('financeiro')
+    expect(ids('senior')).not.toContain('financeiro')
+    expect(ids('advogada')).not.toContain('financeiro')
+  })
+
+  it('o que a tela já trouxe não se repete', () => {
+    expect(ids('senior', [...itens, ...ITENS_DAS_BASES, ...ITENS_DA_GESTAO])).toEqual(ids('senior'))
   })
 })
