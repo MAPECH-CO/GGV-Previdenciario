@@ -77,10 +77,19 @@ export async function semearExemplos(banco: Banco) {
   }
 
   // Casos esperando a conferência da Sênior (GGVP-23): um pronto para aprovar (pensão por morte, em destaque)
-  // e um sem parecer médico, que o servidor barra até a dispensa justificada (G17).
+  // e um sem parecer médico, sem kit e sem contrato assinado, que o servidor barra (G1 e G17).
+  // GGVP-23 CA11: o G1 pede kit cadastrado. Kit de exemplo da pensão, só para a Antônia seguir aprovável; a lista de
+  // verdade de cada benefício é do escritório (pedida ao Lucas em 08/10) e entra pela Configuração.
+  await banco.insert(kitDocumento).values(
+    ['rg_e_cpf', 'comprovante_de_residência', 'procuração_assinada'].map((tipoDocumento) => ({
+      beneficio: 'pensao_morte',
+      tipoDocumento,
+      vigenteDesde: new Date('2000-01-01T12:00:00Z'),
+    })),
+  )
   for (const ex of [
-    { nome: 'Antônia Lima (exemplo)', beneficio: 'pensao_morte', parecer: 'suficiente' as const },
-    { nome: 'Benedito Alves (exemplo)', beneficio: 'auxilio_acidente', parecer: null },
+    { nome: 'Antônia Lima (exemplo)', beneficio: 'pensao_morte', parecer: 'suficiente' as const, assinado: true },
+    { nome: 'Benedito Alves (exemplo)', beneficio: 'auxilio_acidente', parecer: null, assinado: false },
   ]) {
     const [p] = await banco.insert(pessoa).values({ nome: ex.nome, situacao: 'cliente', origem: 'exemplo' }).returning()
     const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: ex.beneficio, fase: 'atendimento' }).returning()
@@ -111,6 +120,8 @@ export async function semearExemplos(banco: Banco) {
           { item: 'Limitações funcionais', atendido: true },
         ],
       })
+    // GGVP-23 CA12: o contrato assinado é parte do G1.
+    if (ex.assinado) await banco.insert(contrato).values({ casoId: c.id, situacao: 'assinado' })
     await banco.insert(tarefa).values({ casoId: c.id, passo: 'D2.01', titulo: 'Conferir antes do INSS', perfilDono: 'senior' })
   }
 
