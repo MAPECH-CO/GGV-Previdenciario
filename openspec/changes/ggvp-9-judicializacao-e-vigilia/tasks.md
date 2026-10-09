@@ -45,6 +45,7 @@
 - [x] 7.2 CA1, CA4 a CA8, CA11, CA13, CA14 · `GET /api/casos/:id/exigencia-juiz/setor`, tentativas, "não vou conseguir" e "consegui" com a evidência; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 7.3 CA2, CA3, CA10 · status de cada setor e o resultado da perícia na análise; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 7.4 Tela "Cumprir a exigência do juiz" (um setor por vez); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 7.5 CA15 (orquestrador, 09/10) · a prova do setor (`POST /api/casos/:id/exigencia-juiz/itens/:item/prova` e a do despacho) sobe com `sensivel` pela regra `provaEhSensivel`; a tela do setor ganha "É laudo, atestado ou exame"; teste em `exigencia-juiz.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/exigencia-juiz.test.ts`.
 
 ## GGVP-87 · Manifestar e protocolar
 

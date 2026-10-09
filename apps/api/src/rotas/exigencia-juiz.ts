@@ -14,6 +14,7 @@ import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
+import { provaEhSensivel } from '../fluxo/prova-medica.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
 export const MSG_IA_SEM_SUGESTAO = 'A IA não respondeu agora: analise pela sua leitura.'
@@ -428,7 +429,9 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       const quem = pedido.usuario!.id
       const dados = arquivo ? await guardarArquivo(armazenamento, casoId, arquivo, HISTORICO[origem].prova.replaceAll('_', '-')) : null
       await banco.transaction(async (tx) => {
-        const [doc] = dados ? await tx.insert(documento).values({ casoId, tipo: HISTORICO[origem].prova, origem: 'portal', recebidoPor: quem, ...dados }).returning() : []
+        // GGVP-83 CA15: laudo, atestado ou exame sobe como sensível (dado de saúde).
+        const sensivel = provaEhSensivel(l.item.descricao, formulario?.campos.medico)
+        const [doc] = dados ? await tx.insert(documento).values({ casoId, tipo: HISTORICO[origem].prova, origem: 'portal', recebidoPor: quem, sensivel, ...dados }).returning() : []
         await tx
           .update(exigenciaItem)
           .set({ situacao: 'cumprido', provaDocumentoId: doc?.id ?? null, informacao: escrita?.success ? escrita.data.informacao : null, cumpridoEm: agora(), cumpridoPor: quem })

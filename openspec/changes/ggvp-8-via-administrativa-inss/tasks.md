@@ -59,6 +59,7 @@
 - [x] 6.9 Telas "Tratar exigência" (advogada e Sênior) e "Cumprir exigência" (Documentação); testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 6.10 Playwright: a advogada decide "Documentos", a Documentação cobra, junta a prova e responde, e o caso volta para a vigília; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 6.11 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.12 CA15 (orquestrador, 09/10) · a prova do item (`POST /api/casos/:id/exigencia/itens/:item`) sobe com `sensivel` pela regra `provaEhSensivel` (`apps/api/src/fluxo/prova-medica.ts`, com teste); a tela da Documentação ganha "É laudo, atestado ou exame"; teste em `exigencia.test.ts` e `Exigencia.test.tsx`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/exigencia.test.ts`.
 
 ## GGVP-44 · Benefício deferido: prestação de contas e ida ao banco
 

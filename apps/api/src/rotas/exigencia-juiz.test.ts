@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -213,6 +213,15 @@ describe('GGVP-83 · laço dos setores', () => {
     ])
     const r = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json()
     expect([r.itens[0].tentativas.length, r.itens[0].tentativas[0].canal, r.itens[0].escalada, r.itens[0].limite]).toEqual([2, 'telefone', true, 2])
+  })
+
+  it('CA15 · a prova que é laudo sobe como sensível; a que não é médica, não', async () => {
+    await distribuir()
+    expect((await provar('dora', (await itemDo('documentacao')).id)).statusCode).toBe(201)
+    expect((await provar('ana', (await itemDo('atendimento')).id)).statusCode).toBe(201)
+    const docs = await banco.select({ id: documento.id, sensivel: documento.sensivel }).from(documento).where(eq(documento.casoId, casoId))
+    const daDocumentacao = (await itemDo('documentacao')).provaDocumentoId
+    expect(docs.map((d) => [d.id === daDocumentacao, d.sensivel]).sort()).toEqual([[false, false], [true, true]])
   })
 
   it('CA14 · "não vou conseguir" sobe antes do limite, com o motivo', async () => {
