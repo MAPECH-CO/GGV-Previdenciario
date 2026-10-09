@@ -93,3 +93,19 @@ O Atendimento ou o Jurídico SHALL poder cadastrar ou trocar a senha pelo cofre,
 - **Dado** um cliente que passa uma senha nova do gov.br fora da renovação
 - **Quando** o Atendimento abre o cofre pela ficha do cliente
 - **Então** pode cadastrar ou trocar a senha, sempre pelo cofre e com registro de quem fez
+
+### Requirement: CA12 · Revelar para responder a exigência no portal do INSS
+Quem trata a exigência do INSS (a advogada, e a Sênior quando tiver os passos da advogada) SHALL revelar a senha do gov.br pelo cofre com a tarefa "Responder exigência no portal do INSS" aberta no caso, como o Jurídico administrativo no protocolo; a tarefa é o motivo que vai para o histórico (CA6). A tela da exigência SHALL oferecer o revelar na hora de responder (orquestrador, 09/10).
+
+#### Scenario: CA12 · A advogada responde a exigência
+- **Dado** a tarefa "Responder exigência no portal do INSS" aberta e a senha do cliente no cofre
+- **Quando** a advogada confirma a própria senha do portal
+- **Então** vê a senha por tempo limitado, e o histórico guarda o passo e o motivo
+
+### Requirement: CA13 · O revelar trava depois de senhas erradas
+A senha do portal errada no revelar MUST contar para a mesma trava do login: na 5ª errada, a conta trava por 15 minutos, mesmo com a senha certa; acertar zera a contagem; a trava fica no histórico.
+
+#### Scenario: CA13 · Cinco erros
+- **Dado** a pessoa com a tarefa que usa o gov.br
+- **Quando** erra a senha do portal pela 5ª vez
+- **Então** o revelar trava por 15 minutos, mesmo com a senha certa, e a trava fica no histórico
