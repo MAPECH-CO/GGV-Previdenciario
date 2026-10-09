@@ -1,25 +1,17 @@
 # Roteiro do teste de aceite de 09/10 (GGVP-144)
 
-<!-- AVISO DA COBRANÇA: apagar daqui até o fim do aviso quando a homologação receber o #28, o #17 e o #43. -->
-> **Aviso de 09/10: o que está na homologação agora**
+<!-- AVISO DA COBRANÇA: apagar daqui até o fim do aviso quando o GitHub Actions voltar a rodar. -->
+> **Aviso de 09/10, 08:35: a homologação está com tudo**
 >
-> Desde as 07:03 de hoje, o GitHub Actions da MAPECH-CO está parado por cobrança. Por isso, nada novo sobe para a
-> homologação (ggvprev.mapech.com.br).
+> A homologação (ggvprev.mapech.com.br) recebeu a `main` inteira às 08:33, publicada à mão: o GitHub Actions da
+> MAPECH-CO está parado por cobrança desde as 04:03. Entraram a trava do Chatwoot (#28), a saúde simples na Perícia (#17)
+> e o #43: acesso por perfil (#25), Perícia de verdade (#30), IA que lê a entrevista (#37) e telas do Figma (#42).
 >
-> - **Já está na homologação:** tudo até o pedido #23 (levar ao banco). Isso inclui a transcrição de verdade (#13), a
->   entrevista direta e o topo (#14), o fuso de Brasília (#15), o desfecho e o Financeiro (#5), a Recepção e a Abertura
->   no servidor (#2), o Chatwoot no servidor (#19), a página do processo pelo banco (#21) e o caso devolvido, as tarefas
->   do setor e a Documentação na Central do Atendimento (#20).
-> - **Está na `main`, mas ainda não subiu:** a trava do Chatwoot e os modelos de complemento e de resultado (#28), e a
->   saúde simples na Perícia (#17). Sobem sozinhos quando a cobrança for acertada. Os passos que dependem deles dizem
->   "depois que o #28 subir" ou "depois que o #17 subir".
-> - **Cuidado com o Chatwoot até o #28 subir.** Sem a trava, se o Chatwoot de verdade estiver ligado na homologação, a
->   mensagem sai no WhatsApp do telefone da ficha. Antes de enviar, olhe a janela: se ela **não** diz "simulado", pare e
->   chame o Mateus.
-> - **O #43 está pronto e sobe quando a cobrança for acertada.** Ele junta quatro pedidos já revisados: o acesso por
->   perfil (#25), a Perícia de verdade no servidor (#30), a IA que lê a entrevista (#37) e as telas do Figma (#42). Ainda
->   não está na `main`: entra depois que a verificação do GitHub passar, e então sobe sozinho. Os passos que dependem dele
->   dizem "(depois que o #43 subir)". Antes disso, siga o passo como está.
+> - **Os passos marcados "(depois que o #43 subir)", "(depois que o #28 subir)" ou "(depois que o #17 subir)" já
+>   valem.** Siga a versão nova.
+> - **O Chatwoot está com a trava:** fora da lista de telefones de teste, a mensagem não sai e a janela avisa antes.
+> - Os testes de tipos e de unidade rodaram na máquina do Pedro. Os testes de navegador do GitHub voltam quando a
+>   cobrança for acertada. Se algo quebrar, registre no Jira como de costume.
 <!-- FIM DO AVISO DA COBRANÇA -->
 
 Para o Lucas testar a homologação em 09/10/2026, de manhã até o fim do dia. Segue o caminho do escritório: do balcão ao
