@@ -13,6 +13,10 @@
 - [x] 2.1 Fontes atrás de uma interface e a fonte de exemplo em `apps/api/src/vigilia/fontes.ts`; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 2.2 CA1, CA2, CA3, CA4, CA5 · Casar em `apps/api/src/vigilia/casar.ts` (hash sem a fonte, descarte registrado, ligação pelo CNJ, fila de revisão) com "Ler publicação" para a advogada; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 2.3 CA7, CA8, CA10, CA11, CA12 · `GET /api/publicacoes/fila`, `POST /api/publicacoes/:id/vinculo` e o item no topo da Sênior com prazo perto; teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 2.4 CA1, CA3, CA4 (grupo 4, decisões 44, 46 e 47) · Fonte DJEN em `apps/api/src/vigilia/djen.ts` e `textoDoHtml` em `fontes.ts`: OAB só com dígitos, tribunais da vigília, janela em Brasília, 50 por página até o `count`, meio segundo entre chamadas, 5xx tenta de novo uma vez, cancelada fora, a mesma comunicação por duas OABs conta uma vez, HTML vira texto; teste com resposta gravada sem dado real em `djen.test.ts`; verifica com `pnpm --filter @ggv/api test`. Ajuste de 07/10: sem resposta também tenta de novo uma vez, com 25 s por chamada.
+- [x] 2.5 (grupo 4, decisão 45) · Primeira chamada real à AASP com a chave do `.env.aasp`, mostrando só os nomes e os tipos dos campos e o formato da `data`; o mapeamento entra na decisão 45 do `design.md`; verifica lendo o design.
+- [x] 2.6 CA1, CA3, CA4 (grupo 4, decisões 45 e 47) · Fonte AASP em `apps/api/src/vigilia/aasp.ts`: um pedido por dia da janela e por chave, o mapeamento da 2.5, tribunal fora da lista fica de fora, a chave nunca em erro, log ou registro; teste com resposta gravada sem dado real em `aasp.test.ts`, inclusive o 401 virando "credencial" sem a chave na mensagem; verifica com `pnpm --filter @ggv/api test`.
+- [x] 2.7 CA2, CA4, CA6 (grupo 4, decisão 51) · Repetida entre fontes em `casar.ts`: mesma data, mesmo CNJ, outra fonte, e um texto contém o outro (normalizado, sem pontuação), com o menor tendo pelo menos metade do maior; o descarte fica registrado com a original. Teste em `casar.test.ts` com as duas respostas gravadas do mesmo ato (a da AASP com material a mais, a do DJEN em HTML) e com dois atos diferentes do mesmo processo no mesmo dia, que não podem virar repetida; verifica com `pnpm --filter @ggv/api test`.
 
 ## GGVP-30 · Vigiar 3 vezes por dia com alarme de falha
 
@@ -20,6 +24,12 @@
 - [x] 3.2 CA1, CA3, CA5, CA6, CA11 · `TarefaDaCentral` com `contexto`; linha "Reprocessar vigília" no topo da fila da Sênior; `POST /api/vigilia/rodadas/:id/reprocessar`; registro ao suporte na falha de credencial; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 3.3 CA2, CA4, CA12 e GGVP-26 CA6 · `GET /api/vigilia` (rodadas do dia, contagem, situação do dia, fila e a consulta dos descartes); teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 3.4 CA10 (revisão de 07/10) · as fontes vêm só do ambiente e o banco não tem coluna onde caiba credencial de fonte (`fontes.test.ts`); segredo no código, o gitleaks do CI barra.
+- [x] 3.5 CA3, CA8, CA10 (grupo 4, decisão 48) · `fontesAtivas` monta a DJEN com `DJEN_OABS` e a AASP com `AASP_CHAVES`, as duas com `VIGILIA_TRIBUNAIS`; sem a variável, a fonte segue "não ligada"; o erro da rodada traz a fonte e "credencial" ou "api", nunca a chave; teste em `fontes.test.ts` e `rodadas.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 3.6 (grupo 4) · Rodada real na máquina: a API com o banco na memória, `FONTES_PUBLICACAO=aasp,djen`, a OAB, os tribunais e a chave do `.env.aasp`; reprocessar a rodada do dia no painel da vigília; a conversa mostra só as contagens; verifica pela rodada `ok` e pelo número de capturadas.
+- [ ] 3.7 (grupo 4) · Homologação, depois do merge do #20 e da decisão do Lucas sobre fontes reais: as variáveis no passo a passo da homologação e no Coolify (o Mateus cola a chave); verifica com a primeira rodada no painel da vigília da homologação.
+- [x] 3.8 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.9 CA13 (revisão do orquestrador, 09/10) · `fontesAtivas` não monta a fonte de exemplo em produção (`NODE_ENV=production` sem `AMBIENTE=homologacao`), mesmo pedida em `FONTES_PUBLICACAO`; sem a variável, ali, a lista sai vazia; a homologação segue com o exemplo (roteiro do teste); teste em `fontes.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/vigilia/fontes.test.ts`.
+- [x] 3.10 Rodar typecheck, lint e testes da API; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-37 · Encaminhar pelo tipo de ato
 
@@ -46,6 +56,7 @@
 - [x] 7.2 CA1, CA4 a CA8, CA11, CA13, CA14 · `GET /api/casos/:id/exigencia-juiz/setor`, tentativas, "não vou conseguir" e "consegui" com a evidência; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 7.3 CA2, CA3, CA10 · status de cada setor e o resultado da perícia na análise; teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 7.4 Tela "Cumprir a exigência do juiz" (um setor por vez); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 7.5 CA15 (orquestrador, 09/10) · a prova do setor (`POST /api/casos/:id/exigencia-juiz/itens/:item/prova` e a do despacho) sobe com `sensivel` pela regra `provaEhSensivel`; a tela do setor ganha "É laudo, atestado ou exame"; teste em `exigencia-juiz.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/exigencia-juiz.test.ts`.
 
 ## GGVP-87 · Manifestar e protocolar
 

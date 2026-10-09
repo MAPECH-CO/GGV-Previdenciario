@@ -16,7 +16,10 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').last().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Ligacao Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  const chatwoot = page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Ligacao Teste' })
+  // As conversas do cliente chegam depois de a janela abrir: sem esperar, o Enviar responde "Escolha a conversa".
+  await expect(chatwoot.getByRole('radiogroup', { name: 'Conversas do cliente' })).toBeVisible()
+  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
   await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Ligacao Teste')!.agendamentos[0].id,

@@ -26,6 +26,21 @@ export function prazoJudicial(disponibilizadaEm: string, dias: number, feriados:
   return { publicacao, inicio, fim, regra: REGRA_PRAZO_JUDICIAL.texto, versao: REGRA_PRAZO_JUDICIAL.versao }
 }
 
+/**
+ * GGVP-100 CA4 (G12): o prazo do recurso contra a sentença, pelo lado seguro. O sistema não sabe se o processo é do JEF
+ * (recurso inominado, 10 dias; Lei 9.099, art. 42) ou de vara comum (apelação, 15 dias; CPC, art. 1.003, §5º): conta o
+ * menor. Se quem classificou a publicação contou um prazo ainda menor, vale ele.
+ */
+export const DIAS_DO_RECURSO = 10
+export const REGRA_PRAZO_RECURSAL = {
+  versao: 1,
+  texto: `Recurso contra a sentença: ${DIAS_DO_RECURSO} dias úteis, o menor entre o recurso inominado do JEF e a apelação (lado seguro, G12)`,
+}
+export function prazoRecursal(disponibilizadaEm: string, feriados: ReadonlySet<string>, prazoDaPublicacao: string | null = null) {
+  const { fim } = prazoJudicial(disponibilizadaEm, DIAS_DO_RECURSO, feriados)
+  return { fim: prazoDaPublicacao && prazoDaPublicacao < fim ? prazoDaPublicacao : fim, regra: REGRA_PRAZO_RECURSAL.texto, versao: REGRA_PRAZO_RECURSAL.versao }
+}
+
 /** CA13 (GGVP-87; Lei 11.419, art. 10, §2º): sistema do tribunal fora do ar no último dia, o prazo vai para o primeiro dia útil depois da volta. */
 export const REGRA_INDISPONIBILIDADE = { versao: 1, texto: 'Sistema do tribunal fora do ar no último dia: primeiro dia útil depois da volta (Lei 11.419, art. 10, §2º)' }
 export const prazoDepoisDaIndisponibilidade = (voltouEm: string, feriados: ReadonlySet<string>) => proximoDiaUtil(voltouEm, feriados)

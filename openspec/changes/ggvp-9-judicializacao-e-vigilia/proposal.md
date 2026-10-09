@@ -1,30 +1,27 @@
-GGVP-9 · Judicialização e vigília · histórias: GGVP-26, GGVP-30, GGVP-34, GGVP-37, GGVP-74 (grupo 1); GGVP-79, GGVP-83, GGVP-87 (grupo 2); GGVP-52, GGVP-54, GGVP-58, GGVP-63, GGVP-67, GGVP-71 (grupo 3).
+GGVP-9 · Judicialização e vigília · histórias: GGVP-26, GGVP-30, GGVP-34, GGVP-37, GGVP-74 (grupo 1); GGVP-79, GGVP-83, GGVP-87 (grupo 2); GGVP-52, GGVP-54, GGVP-58, GGVP-63, GGVP-67, GGVP-71 (grupo 3); GGVP-26 e GGVP-30 com as fontes reais (grupo 4).
 
 ## Por quê
 
-Depois do indeferido (GGVP-48), o caso vai para a Justiça. Os grupos 1 e 2 fizeram o caminho da publicação (vigília, casamento pelo CNJ, leitura, prazo em código) e a exigência do juiz até a manifestação. Falta o começo: hoje "Registrar indeferimento" nasce na Central e não tem tela. O grupo 3 leva o caso do indeferido até a petição inicial protocolada, passando pela Sênior, pela conferência da advogada e pelas travas do protocolo.
+Depois do indeferido (GGVP-48), o caso vai para a Justiça. Os grupos 1 e 2 fizeram o caminho da publicação (vigília, casamento pelo CNJ, leitura, prazo em código) e a exigência do juiz até a manifestação; o grupo 3 levou o caso do indeferido até a petição inicial protocolada.
+
+O grupo 4 (07/10) troca a fonte de exemplo da vigília pelas reais: o DJEN, consulta pública do CNJ por OAB, e a AASP, API de Intimações com chave por associado.
 
 ## Histórias na ordem
 
-Grupos 1 e 2 (feitos, PR #16): GGVP-26, GGVP-30, GGVP-34, GGVP-37, GGVP-74; GGVP-79, GGVP-83, GGVP-87.
+Grupos 1, 2 e 3 (feitos, PR #16): as 14 histórias da primeira linha.
 
-Grupo 3 (agora), do indeferido ao protocolo:
-1. **GGVP-52** · Registrar o motivo do indeferimento · advogada (ou a equipe do Jurídico).
-2. **GGVP-54** · A IA analisa o motivo e a sênior despacha · Sênior: aciona os setores, "nada falta" ou encerra.
-3. **GGVP-58** · Laços dos setores até subir o card · Atendimento e Documentação, com limite (G15).
-4. **GGVP-63** · Pedir a petição e a IA escrever · advogada: com os setores fechados, pede e escreve a versão 1.
-5. **GGVP-67** · Conferir a petição · advogada: compara, edita e aprova (G6, G18).
-6. **GGVP-71** · Pacote, travas e protocolo no tribunal · advogada: pacote em PDF, três travas (G7), protocolo; o processo entra na vigília.
+Grupo 4 (agora), as fontes reais:
+1. **GGVP-26** · Receber e casar a publicação pelo número CNJ · sistema e advogada: as publicações do DJEN e da AASP chegam pelo mesmo casamento, e a mesma publicação das duas fontes é repetida (CA4).
+2. **GGVP-30** · Vigiar 3 vezes por dia com alarme de falha · Sênior: a rodada real registra a fonte e o erro (CA3, CA8), com a credencial só no ambiente (CA10).
 
-Dois pontos de "Agora ok?": depois da GGVP-58 e depois da GGVP-71.
+Um ponto de "Agora ok?", no fim do grupo 4.
 
 ## Travadas
 
-Nenhuma: as seis estão em "Refinada", com as respostas do revisor de 06/10 nos cartões.
+Nenhuma história. Uma pergunta aberta muda só a configuração (design, grupo 4): se a homologação recebe as fontes reais, com dado real de cliente. Responde o Lucas. Os tribunais da vigília (TRF3 e TJSP) o Mateus decidiu em 07/10.
 
 ## Fora do escopo
 
-- AASP e DJEN reais: entram com as credenciais; até lá, fonte de exemplo.
 - IA (GGVP-14): classificar, sugerir itens, analisar o motivo, minuta, pontos de atenção e chat. Sem IA, a pessoa decide e escreve.
 - Jurimetria, com a porcentagem e o número de casos (GGVP-15, GGVP-64, G22); parecer médico no pedido (GGVP-63 CA5, v2).
 - A decisão da Sênior quando o laço passa do limite (GGVP-94), a atribuição pelo líder e a remarcação da perícia (épico Perícia).
@@ -34,4 +31,4 @@ Nenhuma: as seis estão em "Refinada", com as respostas do revisor de 06/10 nos 
 
 ## Portões envolvidos
 
-G4 (a Sênior despacha), G5 (pessoa decide), G6 (a advogada aprova a versão), G7 (três travas antes de protocolar), G12, G13 e G19 (prazo e vigília), G15 (toda cobrança tem limite), G18 (nada contradiz o requisito), G21 (sem prova em todos os itens, não se manifesta).
+Grupos 1 a 3: G4, G5, G6, G7, G12, G15, G18, G19 e G21. Grupo 4: G13 (rodada que falhou dispara alarme e nunca parece dia sem publicação).

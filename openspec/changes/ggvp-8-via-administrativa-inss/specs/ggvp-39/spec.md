@@ -117,3 +117,16 @@ Com item pendente, faltando 5 dias úteis para o prazo da exigência a Sênior S
 - **Dado** o prazo da exigência perto do vencimento com item pendente
 - **Quando** faltam 5 dias úteis
 - **Então** a Sênior recebe o alerta; a 2 dias úteis, o caso sobe ao topo da fila dela
+
+### Requirement: CA15 · A prova que é documento médico sobe como sensível
+A prova de item que pede laudo, atestado, exame, receita ou prontuário, ou que quem sobe marca como "É laudo, atestado ou exame", MUST ser guardada como documento sensível: só quem tem `dado_saude.ver_detalhe` abre, e cada leitura fica em `acesso_dado_sensivel`. A regra é código com teste (`apps/api/src/fluxo/prova-medica.ts`; orquestrador, 09/10).
+
+#### Scenario: CA15 · Laudo como prova
+- **Dado** um item da exigência que pede "Laudo atualizado"
+- **Quando** a Documentação sobe o documento
+- **Então** o documento fica sensível, e o Atendimento ou a Documentação não o abrem
+
+#### Scenario: CA15 · Marcado por quem sobe
+- **Dado** um item que não fala em laudo
+- **Quando** quem sobe marca "É laudo, atestado ou exame"
+- **Então** o documento também fica sensível

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, identificadorCaso, pessoa, publicacao, publicacaoDescarte, tarefa } from '../banco/esquema.ts'
 import { MOTIVO_CNJ_DESCONHECIDO, MOTIVO_REPETIDA, MOTIVO_SEM_CNJ, casarPublicacoes } from './casar.ts'
-import { CNJ_EXEMPLO, fonteDeExemplo } from './fontes.ts'
+import { CNJ_EXEMPLO, fonteDeExemplo, textoDoHtml } from './fontes.ts'
 
 let banco: Banco
 let fechar: () => Promise<void>
@@ -55,5 +55,55 @@ describe('GGVP-26 · casar a publicação pelo CNJ', () => {
       { novas: 5, repetidas: 1, fila: 3 },
       { novas: 0, repetidas: 6, fila: 0 },
     ])
+  })
+})
+
+describe('GGVP-26 CA2, CA4, CA6 · a mesma publicação nas duas fontes reais (grupo 4, decisão 51)', () => {
+  // Respostas gravadas do mesmo ato, inventadas: o DJEN em HTML (como a fonte limpa) e a AASP com material a mais em volta.
+  const doDjen = textoDoHtml(
+    '<p>Intime-se a parte autora para, no prazo de 15 (quinze) dias, juntar laudo médico atualizado, sob pena de extinção.</p><p>São Paulo, 05/10/2026.</p>',
+  )
+  const daAasp =
+    'Juizado Especial Federal de São Paulo - 1ª Vara-Gabinete (exemplo) Processo 0001234-96.2026.4.03.6301 Intime-se a parte autora para, no prazo de 15 (quinze) dias, juntar laudo médico atualizado, sob pena de extinção. São Paulo, 05/10/2026'
+
+  async function casarNaOrdem(primeira: string, segunda: string) {
+    const textos: Record<string, string> = { djen: doDjen, aasp: daAasp }
+    const contagens = [
+      await casarPublicacoes(banco, [bruta(textos[primeira], CNJ_EXEMPLO.exigencia, primeira)]),
+      await casarPublicacoes(banco, [bruta(textos[segunda], CNJ_EXEMPLO.exigencia, segunda)]),
+    ]
+    const publicacoes = await banco.select().from(publicacao)
+    const descartes = await banco.select().from(publicacaoDescarte)
+    return { contagens, publicacoes, descartes }
+  }
+
+  it('o DJEN primeiro e a AASP depois: fica uma só, e o descarte aponta a original', async () => {
+    const { contagens, publicacoes, descartes } = await casarNaOrdem('djen', 'aasp')
+    expect(contagens).toEqual([
+      { novas: 1, repetidas: 0, fila: 0 },
+      { novas: 0, repetidas: 1, fila: 0 },
+    ])
+    expect(publicacoes.map((p) => p.fonte)).toEqual(['djen'])
+    expect(descartes.map((d) => [d.fonte, d.motivo, d.publicacaoId])).toEqual([['aasp', MOTIVO_REPETIDA, publicacoes[0].id]])
+  })
+
+  it('a AASP primeiro e o DJEN depois: também fica uma só', async () => {
+    const { contagens, publicacoes, descartes } = await casarNaOrdem('aasp', 'djen')
+    expect(contagens[1]).toEqual({ novas: 0, repetidas: 1, fila: 0 })
+    expect(publicacoes.map((p) => p.fonte)).toEqual(['aasp'])
+    expect(descartes.map((d) => [d.fonte, d.publicacaoId])).toEqual([['djen', publicacoes[0].id]])
+  })
+
+  it('atos diferentes do mesmo processo no mesmo dia, de fontes diferentes, não viram repetida', async () => {
+    const decisaoLonga =
+      'Vistos. Trata-se de pedido de benefício por incapacidade (exemplo). Defiro a produção de prova pericial e designo perícia médica para 20/11/2026, às 10h, na sede deste Juizado, devendo a parte comparecer com documento de identidade e todos os exames que tiver. Intime-se.'
+    const r = await casarPublicacoes(banco, [
+      bruta(doDjen, CNJ_EXEMPLO.exigencia, 'djen'),
+      bruta('Designo perícia médica para 20/11/2026, às 10h (exemplo).', CNJ_EXEMPLO.exigencia, 'aasp'),
+      bruta('Intime-se.', CNJ_EXEMPLO.exigencia, 'djen'),
+      bruta(decisaoLonga, CNJ_EXEMPLO.exigencia, 'aasp'),
+    ])
+    expect(r).toEqual({ novas: 4, repetidas: 0, fila: 0 })
+    expect(await banco.select().from(publicacaoDescarte)).toEqual([])
   })
 })
