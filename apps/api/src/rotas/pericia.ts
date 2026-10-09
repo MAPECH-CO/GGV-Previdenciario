@@ -5,9 +5,10 @@
 // do comprovante e do laudo continua simulada (a de verdade é da GGVP-139); o Chatwoot também.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { createHash, randomUUID } from 'node:crypto'
-import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
+  AnexoNaPericia,
   AutorizacaoDeRemarcacao,
   ComprovantePelaIa,
   LaudoPelaIa,
@@ -34,7 +35,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, pericia, perito, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
@@ -45,8 +46,9 @@ import type { Perito } from '../../../web/src/dados/peritos.ts'
 import type { Ficha, Processo, Tarefa } from '../../../web/src/dados/tipos.ts'
 import { hojeIso } from '../../../web/src/regras/datas.ts'
 import { problemaG20 } from '../../../web/src/regras/parecer.ts'
-import { problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
+import { dataDoJuizoNaPublicacao, problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
 import {
+  KIT_DA_PERICIA,
   criarPericia,
   mudancas,
   naTela,
@@ -66,6 +68,7 @@ import {
 
 export const MSG_SEM_PERICIA = 'Este caso não tem perícia.'
 export const MSG_ARQUIVO_PDF = 'Anexe o PDF (até 25 MB).'
+export const MSG_ANEXO = 'Anexe o documento em PDF ou imagem (JPEG, PNG), até 25 MB.'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** De que passo a perícia nasceu (a etapa que a chamou): D2.03 (GGVP-31), D2.05 (exigência), D3.03 (despacho), D3a.03 (juiz). */
@@ -165,6 +168,21 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   }
 
   /**
+   * D3a (GGVP-53, resposta do Lucas de 02/10): a data que o juízo designou, lida da publicação da exigência do juiz que
+   * pediu a perícia. Sem data na publicação, nada: o Jurídico administrativo registra quando ela sair.
+   */
+  async function dataDoJuizo(casoId: string, chamadaEm: Date) {
+    const [x] = await banco
+      .select({ texto: publicacao.texto })
+      .from(exigencia)
+      .innerJoin(publicacao, eq(exigencia.publicacaoId, publicacao.id))
+      .where(and(eq(exigencia.casoId, casoId), eq(exigencia.origem, 'juizo'), lte(exigencia.criadoEm, chamadaEm)))
+      .orderBy(desc(exigencia.criadoEm))
+      .limit(1)
+    return (x && dataDoJuizoNaPublicacao(x.texto)) ?? undefined
+  }
+
+  /**
    * O mundo da perícia de um caso: a ficha do cliente com os processos e a pasta, as perícias do caso e os peritos. A linha
    * que o INSS, a exigência, o despacho ou o juiz abriram e ainda não tem o formato das telas nasce aqui, pelo mesmo
    * `criarPericia` do servidor de exemplo (DP.01). ponytail: a ficha é a mínima; com o #29 na main, montar pelo fichário dele.
@@ -208,10 +226,18 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       const [e] = l.chamadaPorEtapaId ? await banco.select().from(etapa).where(eq(etapa.id, l.chamadaPorEtapaId)) : []
       const origem = (e && ORIGEM_DO_PASSO[e.passo]) ?? 'd2-necessidade'
       const quando = e?.concluidaEm ?? l.criadoEm
+      // Pedida pelo juiz, a data da publicação vai à agenda e à ficha sozinha, como na semente.
+      const dataDoJuizoLida = origem === 'd3a-juiz' ? await dataDoJuizo(casoId, e?.iniciadaEm ?? l.criadoEm) : undefined
       criarPericia(
         mundo,
         casoId,
-        { origem, tipo: l.tipo as TipoDePericia, instancia: origem.startsWith('d2') ? 'inss' : 'juizo', pedidaPor: await nomeDe(e?.concluidaPor) },
+        {
+          origem,
+          tipo: l.tipo as TipoDePericia,
+          instancia: origem.startsWith('d2') ? 'inss' : 'juizo',
+          pedidaPor: await nomeDe(e?.concluidaPor),
+          dataDoJuizo: dataDoJuizoLida,
+        },
         quando,
         undefined,
         l.id,
@@ -261,8 +287,8 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
 
   const juridico = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
 
-  /** Um PDF do multipart (o comprovante ou o laudo) e o JSON do campo `dados`. */
-  async function lerMultipart(pedido: FastifyRequest) {
+  /** Um PDF do multipart (o comprovante ou o laudo; o documento da perícia também em imagem) e o JSON do campo `dados`. */
+  async function lerMultipart(pedido: FastifyRequest, tipos = ['application/pdf']) {
     const campos: Record<string, string> = {}
     let arquivo: { conteudo: Buffer; mime: string; nome: string } | null = null
     for await (const parte of pedido.parts()) {
@@ -275,7 +301,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     } catch {
       dados = null
     }
-    return { dados, arquivo: arquivo && arquivo.mime === 'application/pdf' && arquivo.conteudo.length > 0 ? arquivo : null }
+    return { dados, arquivo: arquivo && tipos.includes(arquivo.mime) && arquivo.conteudo.length > 0 ? arquivo : null }
   }
 
   type Mudanca = { acao: string; passo: string; detalhe?: Record<string, unknown> }
@@ -478,6 +504,21 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   app.post<ComId>('/api/processos/:id/pericia/faltas', com('pericia.reunir_documentos'), (pedido, resposta) => {
     const f = corpo(FaltaNaPericia, pedido, resposta)
     return f && mudar(pedido, resposta, { acao: 'pericia_falta_registrada', passo: 'DP.03', detalhe: { item: f.itemId } }, (n, quem) => mudancas.falta(n, f.itemId, f.justificativa, quem))
+  })
+
+  // GGVP-56 CA2, CA4: "Anexar" sobe o documento do item à pasta do caso e o item fica anexado. O da perícia médica é dado de
+  // saúde: sensível na pasta, o arquivo só o Jurídico abre (rota dos documentos).
+  app.post<ComId>('/api/processos/:id/pericia/documentos', com('pericia.reunir_documentos'), async (pedido, resposta) => {
+    const { dados, arquivo } = await lerMultipart(pedido, ['application/pdf', 'image/jpeg', 'image/png'])
+    const entrada = AnexoNaPericia.safeParse(dados)
+    if (!entrada.success) return negar(resposta, 400, 'Dados inválidos.')
+    if (!arquivo) return negar(resposta, 400, MSG_ANEXO)
+    const hash = createHash('sha256').update(arquivo.conteudo).digest('hex')
+    return mudar(pedido, resposta, { acao: 'pericia_documento_anexado', passo: 'DP.03', detalhe: { item: entrada.data.itemId } }, async (n, quem) => {
+      mudancas.anexo(n, { itemId: entrada.data.itemId, arquivo: { nome: arquivo.nome, hash } }, quem)
+      const item = KIT_DA_PERICIA[n.pericia.tipo].find((i) => i.id === entrada.data.itemId)!
+      await guardarArquivo(pedido, n, arquivo, hash, item.tipos[0], n.pericia.tipo === 'medica')
+    })
   })
 
   app.post<ComId>('/api/processos/:id/pericia/documentos/conclusao', com('pericia.reunir_documentos'), (pedido, resposta) => {

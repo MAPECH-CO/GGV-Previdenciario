@@ -738,6 +738,20 @@ export const mudancas = {
     pericia.historico.push({ quando: agora.toISOString(), quem, oQue: `Registrou a falta de ${item.nome.toLowerCase()}: ${justificativa.trim()}`, passo: 'DP.03' })
   },
 
+  /**
+   * "Anexar" um item (GGVP-56, CA2, CA4): o documento entra na pasta do cliente com o tipo do item e o item fica anexado.
+   * O histórico diz o item, sem o nome do arquivo (pode trazer dado de saúde).
+   */
+  anexo({ mundo, pericia, agora }: NaPericia, a: { itemId: string; arquivo: ArquivoEnviado }, quem: string) {
+    comDocumentos(pericia)
+    const item = KIT_DA_PERICIA[pericia.tipo].find((i) => i.id === a.itemId)
+    if (!item) throw new Error('Item da perícia não encontrado.')
+    const { ficha } = fichaDoProcesso(mundo, pericia.processoId)!
+    const nome = nomeNaPasta(ficha, a.arquivo.nome)
+    ficha.arquivos.push({ nome, tipo: item.tipos[0], local: pericia.processoId, data: hojeIso(agora), origem: 'card', repetido: false, aguardaLeitura: false, hash: a.arquivo.hash })
+    pericia.historico.push({ quando: agora.toISOString(), quem, oQue: `Anexou ${item.nome.toLowerCase()} na pasta do cliente`, passo: 'DP.03' })
+  },
+
   /** Concluir (GGVP-56, CA5, CA6): cada item anexado ou justificado e as conferências; volta ao Jurídico administrativo. */
   conclusaoDosDocumentos({ mundo, pericia, agora }: NaPericia, c: { conferidas: string[] }, quem: string) {
     const d = comDocumentos(pericia)

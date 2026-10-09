@@ -14,6 +14,7 @@ import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
+import { dataDoJuizoNaPublicacao } from '../../../web/src/regras/pericia.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
 export const MSG_IA_SEM_SUGESTAO = 'A IA não respondeu agora: analise pela sua leitura.'
@@ -266,7 +267,13 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
           .values({ exigenciaId: x.id, descricao: i.descricao, perfilResponsavel: i.setor, prazo: i.prazoInterno, provaEsperada: i.provaEsperada, tarefaId: t.id })
       }
       // CA8: a perícia pedida pelo juiz abre sozinha a tarefa do Jurídico administrativo, com a origem D3a.
-      if (d.tiposPericia.length) await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
+      if (d.tiposPericia.length) {
+        await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
+        // GGVP-137: com a data da perícia na publicação, o sistema já a pôs na agenda (DP.04): não há o que marcar, e a tarefa
+        // de marcar fecha; o Jurídico administrativo segue pela perícia (orientar o cliente).
+        if (dataDoJuizoNaPublicacao(e.publicacao.texto))
+          await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora() }).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'DP.01'), isNull(tarefa.concluidaEm)))
+      }
       if (temItens) await tx.insert(etapa).values({ casoId, diagrama: 'D3a', passo: 'D3a.E2', situacao: 'aguardando_externo', aguardando: 'cliente responder ou entregar', iniciadaEm: agora() })
       // GGVP-87 (ajuste do Mateus, 06/10): a advogada acompanha desde já, com o prazo do processo; o protocolo só libera
       // com todos os itens provados, por documento ou pela justificativa dela (G21).

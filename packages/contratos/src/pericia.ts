@@ -43,6 +43,13 @@ export type MensagemConferida = z.infer<typeof MensagemConferida>
 export const FaltaNaPericia = z.object({ itemId: Texto(60), justificativa: Texto(500) })
 export type FaltaNaPericia = z.infer<typeof FaltaNaPericia>
 
+/**
+ * POST /api/processos/:id/pericia/documentos, em multipart: `dados` (este JSON) e o arquivo `documento` (PDF ou imagem).
+ * O item do kit que o documento cumpre (GGVP-56, CA2, CA4).
+ */
+export const AnexoNaPericia = z.object({ itemId: Texto(60).min(1) })
+export type AnexoNaPericia = z.infer<typeof AnexoNaPericia>
+
 /** POST /api/processos/:id/pericia/documentos/conclusao (GGVP-56, CA5, CA6). */
 export const ConclusaoDosDocumentos = z.object({ conferidas: z.array(Texto(60)).max(10) })
 export type ConclusaoDosDocumentos = z.infer<typeof ConclusaoDosDocumentos>

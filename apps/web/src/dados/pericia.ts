@@ -288,6 +288,14 @@ export async function registrarMarcacao(
   return mudar(processoId, (n) => mudancas.marcacao(n, m, quem))
 }
 
+/**
+ * POST /api/processos/:id/pericia/documentos (GGVP-56, CA2, CA4): no caso do servidor, "Anexar" sobe o documento do item
+ * à pasta do caso e o item fica anexado. Na semente, o envio é pela janela "Conferir e enviar".
+ */
+export function anexarDocumentoDaPericia(processoId: string, itemId: string, arquivo: Blob, nome: string): Promise<PericiaNaTela> {
+  return naApi(processoId, '/documentos', comArquivo('documento', arquivo, nome, { itemId }))
+}
+
 /** Marcada no Meu INSS sem o comprovante ainda (DP.E1): a tarefa espera, com lembrete diário (CA6). */
 export function esperarComprovante(processoId: string, d: { pedeDocumentoNovo: boolean }, quem: string): Promise<PericiaNaTela> {
   if (doServidor(processoId)) return naApi(processoId, '/espera-do-comprovante', d)

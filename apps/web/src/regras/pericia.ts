@@ -1,5 +1,6 @@
 // Perícia (épico GGVP-10): regras puras, sem React. Prazo e número são código com teste (G19); o servidor de exemplo e,
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
+import { dataParaIso } from '../campos.ts'
 import { somarDias } from './agenda.ts'
 import { taxaComCasos } from './caso.ts'
 import { dataCurta, hojeIso } from './datas.ts'
@@ -304,6 +305,27 @@ export function motivoParaNaoRegistrarResultado(
 /** O prazo para manifestar sobre o laudo no judicial (G12): 15 dias corridos, o lado seguro (em dias úteis daria mais). */
 export const DIAS_PARA_MANIFESTAR = 15
 export const prazoParaManifestar = (desde: string) => somarDias(desde, DIAS_PARA_MANIFESTAR)
+
+/**
+ * A perícia pedida pelo juiz (D3a, resposta do Lucas de 02/10, GGVP-53): a data, a hora e o local que o juízo designou,
+ * lidos da frase da publicação que fala da perícia ("perícia médica designada para 15/10/2026, às 10h30, na sala de
+ * perícias…"). Sem data e hora válidas na frase, nada: o Jurídico administrativo registra quando a data sair.
+ * ponytail: lê o formato do diário; a leitura pela IA entra se aparecer publicação em outro formato.
+ */
+export function dataDoJuizoNaPublicacao(texto: string): { data: string; hora: string; local: string } | null {
+  for (const frase of texto.split(/\.(?=\s|$)/)) {
+    const i = frase.search(/per[ií]cia/i)
+    if (i < 0) continue
+    const m = /(\d{2}\/\d{2}\/\d{4})\D{0,30}?\b(\d{1,2})(?:[hH](\d{2})?|:(\d{2}))/.exec(frase.slice(i))
+    const data = m && dataParaIso(m[1])
+    if (!m || !data) continue
+    const hora = `${m[2].padStart(2, '0')}:${m[3] ?? m[4] ?? '00'}`
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) continue
+    const local = /(?:local:?|\b(?:na|no|em))\s+(.+)/i.exec(frase.slice(i + m.index + m[0].length))?.[1].trim()
+    return { data, hora, local: local || 'local indicado na publicação' }
+  }
+  return null
+}
 
 /** Como o diagrama de origem segue com o resultado (CA2, CA4, CA6). */
 export const COMO_SEGUE: Record<OrigemDaPericia, string> = {

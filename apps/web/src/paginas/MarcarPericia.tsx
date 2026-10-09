@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SEGUNDOS_SENHA } from '@ggv/contratos'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { ConviteChatwoot } from '../componentes/ConviteChatwoot.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
@@ -8,6 +9,7 @@ import { dataParaIso, formatarTelefone, isoParaData, normalizarData } from '../c
 import {
   esperarComprovante,
   lerComprovanteComIa,
+  liberarAgendamento,
   obterPericia,
   registrarMarcacao,
   registrarTentativa,
@@ -16,7 +18,7 @@ import {
   type PericiaNaTela,
 } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
 import { diaFalado } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
@@ -33,6 +35,7 @@ import {
 import styles from './Balcao.module.css'
 import cobranca from './Cobranca.module.css'
 import proprio from './Pericia.module.css'
+import { SenhaDoGov } from './Protocolar.tsx'
 
 // Figma: step_DP.02 (10:374), passos DP.02 e DP.04 do Miro. Tela do Jurídico administrativo (Lucas, 29/09): marca no Meu
 // INSS (senha no cofre, G9), sobe o comprovante, confere o que o sistema leu e decide se a perícia pede documento novo.
@@ -178,7 +181,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
 
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             {pericia.instancia === 'inss'
-              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o portal já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação (DP.03), que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
+              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o INSS já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação (DP.03), que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
               : `A data da ${tipo} de ${primeiro} veio do juízo: o sistema leu na publicação e pôs na agenda. Confira abaixo e siga para orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes.`}
           </InstrucoesPasso>
 
@@ -188,7 +191,31 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
             </p>
           )}
 
-          {t.situacao === 'aguardando-inss' && <p className={styles.trava}>O INSS ainda não liberou o agendamento (D2.E1): a tarefa aparece na sua Central quando liberar.</p>}
+          {t.situacao === 'aguardando-inss' && (
+            // D2.E1: quem acompanha o Meu INSS é o Jurídico administrativo; ele registra aqui quando o INSS libera.
+            <section className={styles.cartao} aria-labelledby="espera-inss">
+              <h2 id="espera-inss" className={styles.cartaoTitulo}>
+                Esperando o INSS liberar o agendamento (D2.E1)
+              </h2>
+              <p>Acompanhe pelo Meu INSS. Quando o agendamento da {tipo} aparecer liberado, registre aqui: a marcação abre nesta tela.</p>
+              {perfil?.id === 'juridico-adm' && (
+                <div className={styles.rodape}>
+                  <button
+                    type="button"
+                    className={styles.principalBotao}
+                    onClick={() =>
+                      agir(async () => {
+                        await liberarAgendamento(processoId)
+                        return (await obterPericia(processoId))!
+                      }, 'Liberação registrada: marque a perícia pelo Meu INSS.')
+                    }
+                  >
+                    O INSS liberou o agendamento
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
           {t.situacao === 'na-advogada' && (
             <p className={styles.trava}>
               Passou do limite de {LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma (G15). A perícia volta para você
@@ -201,6 +228,20 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
               Marcada no Meu INSS em {dataCurta(hojeIso(new Date(pericia.esperaComprovante!.desde)), hoje)}; o comprovante ainda não saiu (DP.E1). A tarefa
               espera, com lembrete diário: quando o comprovante sair, suba aqui.
             </p>
+          )}
+
+          {/* G9: a senha do gov.br só pelo cofre, pelos segundos de sempre, com a tarefa de marcar aberta; o uso fica no histórico. */}
+          {marcando && pericia.instancia === 'inss' && doServidor(processoId) && (
+            <section className={styles.cartao} aria-labelledby="meu-inss">
+              <h2 id="meu-inss" className={styles.cartaoTitulo}>
+                Meu INSS
+              </h2>
+              <p>
+                Entre no Meu INSS com a senha do gov.br de {primeiro}, guardada no cofre. Ela aparece por {SEGUNDOS_SENHA} segundos e o uso fica no histórico do
+                caso.
+              </p>
+              <SenhaDoGov casoId={processoId} />
+            </section>
           )}
 
           {marcando && deuCerto === 'nao' && (
@@ -485,7 +526,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.trava}>Remarcação tem limite; passou, sobe para a advogada (G15).</p>
           <p className={styles.ladoSub}>«Registrar a perícia» só habilita com as decisões respondidas e o comprovante anexado.</p>
-          <p className={styles.ladoSub}>A marcação é pelo Meu INSS, com a senha do cofre (G9): nenhum campo de senha aqui. A IA não escolhe nem sugere o perito.</p>
+          <p className={styles.ladoSub}>A marcação é pelo Meu INSS, com a senha do cofre (G9): ela só aparece pelo «Ver a senha do gov.br», confirmada com a sua senha do portal, e some sozinha. A IA não escolhe nem sugere o perito.</p>
         </aside>
       </main>
       <AbaSuporte />
