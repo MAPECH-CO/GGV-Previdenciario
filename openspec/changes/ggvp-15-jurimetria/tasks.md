@@ -82,3 +82,14 @@
 - [ ] 5.9 CA1 · Ligar o perito direto na perícia judicial a partir da publicação.
 - [ ] 5.10 CA2 · A sobreposição da página do caso lendo do servidor, com a taxa por benefício e por CID.
 - [ ] 5.11 CA2, CA7 · A pergunta no chat ("Como o perito avalia?").
+
+## GGVP-149 · Gestão completa: vara, tempo até a sentença, motivos mais comuns e tempo médio até o dinheiro
+
+- [x] 9.1 Contrato em `packages/contratos/src/resultados.ts`: `PainelDeResultados` ganha `motivos` (indeferimento e derrota, cada um com o motivo e os casos) e os `totais` deixam o `diasAteReceber`, que vira indicador; verifica com `pnpm --filter @ggv/contratos test` e o typecheck.
+- [x] 9.2 CA2, CA3, CA4 · Testes em `apps/api/src/fluxo/resultados.test.ts`: o tempo até a sentença (média, sem protocolo fica fora, por recorte), os motivos (ordem, texto do INSS, sem o texto livre, "sem motivo registrado") e o tempo até o dinheiro pela média, entre os indicadores.
+- [x] 9.3 CA2, CA3, CA4 · Cálculo em `apps/api/src/fluxo/resultados.ts`; o primeiro protocolo da inicial sai de uma função de `apps/api/src/fluxo/juizo.ts`, a mesma que o juízo usa; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.4 CA5 · Teste da rota em `apps/api/src/rotas/gestao.test.ts`: a líder do Atendimento abre o painel, recebe os tempos e as taxas e `totais` nulo; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.5 CA2, CA3, CA4 · Tela "Resultados" (`apps/web/src/paginas/Resultados.tsx`): o cartão "Motivos mais comuns" e os tempos entre os indicadores; teste Vitest em `Resultados.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 9.6 Playwright: o Sócio vê os motivos mais comuns na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 9.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 9.8 CA1 · Recorte "Vara" (contrato, cálculo, tela e teste), depois que os pedidos #27 e #18 entrarem na main.

@@ -1,4 +1,4 @@
-GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75, GGVP-64 (parte 1), GGVP-141 (parte 1) e GGVP-59 (parte 1).
+GGVP-15 · Jurimetria e dashboards de análise · histórias: GGVP-55 (a parte sem chat), GGVP-75, GGVP-64 (parte 1), GGVP-141 (parte 1), GGVP-59 (parte 1) e GGVP-149.
 
 ## Por quê
 
@@ -32,9 +32,12 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
    - **O perito do texto:** reconhecido entre os peritos da base. Não reconhecido, a pergunta de um clique da Perícia resolve, sem travar (CA1, CA6).
    - **Já cobertos pela Perícia** (GGVP-61, GGVP-73 e GGVP-139): CA4, CA5, CA6, CA8, CA9 e CA10, e os números do perito em código, com o G22 (CA2, CA3 e CA7, por assunto).
 
+6. **GGVP-149** · Gestão completa (continua a GGVP-75, conferência da jurimetria de 09/10) · Sócio, Sênior e líderes, sem valores. Primeiro o tempo até a sentença, os motivos mais comuns, o tempo médio até o dinheiro e a líder sem valores; o recorte por vara depois dos pedidos #27 e #18 (Mateus, 09/10).
+
 Um ponto de "Agora ok?" no fim de cada história.
 
 ## Travadas
+- **GGVP-148 (importar o Raio-X pela tela):** falta o formato do arquivo, com os títulos das colunas; pergunta ao Pedro no cartão, 09/10.
 - **Q20 (Sócio como perfil):** com o Lucas desde 07/10; até a resposta, o Sócio vê a Gestão inteira, com os valores só em total.
 
 ## Fora do escopo
