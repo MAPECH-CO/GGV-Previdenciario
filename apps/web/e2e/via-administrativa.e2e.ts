@@ -254,10 +254,17 @@ test('GGVP-44 e GGVP-98 · a advogada conclui; o Financeiro recebe, avisa, marca
   await expect(page.getByLabel('Avisos enviados')).toContainText('WhatsApp · Júlia (exemplo)')
   const telaDoBanco = page.url()
 
+  // P3 do roteiro de 09/10: quem leva vê a visita marcada, sem nenhum valor, e registra que levou.
   await context.clearCookies()
   await entrarPelaApi(page, 'atendimento@exemplo.ggv')
   await page.goto('/')
-  await expect(page.getByText('Levar ao banco').first()).toBeVisible()
+  await page.getByRole('link', { name: 'Vera Lúcia (exemplo) · Levar ao banco' }).click()
+  await expect(page.getByLabel('Ida ao banco', { exact: true })).toContainText('Caixa, agência Centro')
+  await expect(page.getByLabel('Ida ao banco', { exact: true })).toContainText('Quem leva: Ana (exemplo)')
+  await expect(page.getByLabel('O que levar', { exact: true })).toContainText('CPF do cliente')
+  await expect(page.locator('main')).not.toContainText('R$')
+  await page.getByRole('button', { name: 'Levei o cliente ao banco' }).click()
+  await expect(page.getByRole('status')).toHaveText('Registrado. O Financeiro foi avisado e confirma o recebimento.')
 
   await context.clearCookies()
   await entrarPelaApi(page, 'financeiro@exemplo.ggv')

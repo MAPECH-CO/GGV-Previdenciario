@@ -55,6 +55,8 @@ const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  // GGVP-98 (P3 do roteiro de 09/10): quem do Atendimento leva o cliente ao banco.
+  'D2.06l': (id) => `/casos/${id}/banco/levar`,
   'D3b.06r': (id) => `/casos/${id}/resultado`,
   'D3b.06': (id) => `/casos/${id}/resultado`,
   // GGVP-19 CA3: a revisão do estudo é na tela de estudos.

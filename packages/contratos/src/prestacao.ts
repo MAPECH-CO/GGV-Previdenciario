@@ -100,6 +100,29 @@ export const AgendarIdaAoBanco = z.object({
 })
 export type AgendarIdaAoBanco = z.input<typeof AgendarIdaAoBanco>
 
+/** GET /api/casos/:id/banco/levar: a visita de quem leva o cliente (GGVP-98, Atendimento). Sem valores: o Atendimento não vê valor. */
+export const LevarAoBancoDoCaso = z.object({
+  casoId: z.uuid(),
+  cliente: z.string(),
+  data: z.string(),
+  hora: z.string(),
+  local: z.string(),
+  acompanhante: z.string().nullable(),
+  oQueLevar: z.array(z.string()),
+})
+export type LevarAoBancoDoCaso = z.infer<typeof LevarAoBancoDoCaso>
+
+/** POST /api/casos/:id/banco/levar: "Levei o cliente ao banco", ou "Não deu" com o motivo, que volta ao Financeiro remarcar. */
+export const ConcluirIdaAoBanco = z.discriminatedUnion(
+  'resultado',
+  [
+    z.object({ resultado: z.literal('levado') }),
+    z.object({ resultado: z.literal('nao_deu'), motivo: z.string({ error: 'Escreva por que não deu' }).trim().min(1, 'Escreva por que não deu') }),
+  ],
+  { error: 'Escolha "Levei o cliente ao banco" ou "Não deu"' },
+)
+export type ConcluirIdaAoBanco = z.infer<typeof ConcluirIdaAoBanco>
+
 export const CANAIS_DE_AVISO = ['whatsapp', 'telefone', 'email', 'sms'] as const
 
 /** POST /api/casos/:id/banco/envio (CA3, CA11): a pessoa revisou o texto do modelo e enviou; o servidor registra. */
