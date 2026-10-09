@@ -91,6 +91,24 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
     expect(salva.ficha.historico.at(-1).oQue).toBe('Mandou ao Jurídico: preparar a entrevista de 09/10 às 14:00')
   })
 
+  it('entrevista iniciada na hora segue o BPMN: sem ficha, "Preencher ficha"; a ficha salva abre o "Preparar entrevista"', async () => {
+    const joana = await lead('Joana Ribeiro', '11987654321')
+    const r = await json('ana', 'POST', `/api/fichas/${joana}/entrevistas/agora`, { tipo: 'presencial', com: 'paula', duracao: 45, gravar: true })
+    // A pessoa está no balcão: a presença já está confirmada.
+    expect(r.agendamento.confirmacao).toEqual({ tentativas: [], presente: true })
+    // Lead novo sem a ficha de atendimento (D1.05 antes do D1.06): o Atendimento preenche primeiro.
+    expect(r.tarefas).toMatchObject([{ acao: 'Preencher ficha', setor: 'Atendimento' }])
+    expect(await tarefasAbertas('gabi')).toEqual(['Preencher ficha · Atendimento'])
+
+    const ENVIO = { nome: 'Joana Ribeiro', cpf: '52998224725', nascimento: '10/05/1958', telefone: '11987654321', beneficioInteresse: 'loas-idoso', origem: 'papel', modelo: 'GGV' }
+    await json('ana', 'PUT', `/api/fichas/${joana}/ficha-de-atendimento`, ENVIO)
+    expect(await tarefasAbertas('gabi')).toEqual(['Preparar entrevista · Jurídico'])
+
+    // Com a ficha já preenchida, a advogada recebe direto o "Preparar entrevista".
+    const outra = await json('ana', 'POST', `/api/fichas/${joana}/entrevistas/agora`, { tipo: 'presencial', com: 'paula', duracao: 45, gravar: true })
+    expect(outra.tarefas).toMatchObject([{ acao: 'Preparar entrevista', setor: 'Jurídico', href: `/entrevista/${outra.agendamento.id}/preparar` }])
+  })
+
   it('G15 na confirmação: a segunda sem resposta passa à advogada sênior, e só no dia da nova tentativa', async () => {
     const joana = await lead('Joana Ribeiro', '11987654321')
     const { agendamento } = await marcar(joana, { data: '2026-10-20' })

@@ -55,11 +55,17 @@ import type { Tarefa as TarefaDaCentral } from './tipos.ts'
 /** Onde a semente fica guardada na aba. A versão sobe quando a forma do dado muda. */
 export const CHAVE = 'ggv.exemplo.v5'
 
-/** Sem login ainda: quem faz é a pessoa do Atendimento. */
-export const QUEM = 'Você (Atendimento)'
+/** Sem sessão (testes de uma tela sozinha): quem faz é a pessoa do Atendimento. */
+export let QUEM = 'Você (Atendimento)'
 
-/** Nas telas do Jurídico, quem faz é a advogada (GGVP-28). */
-export const QUEM_ADVOGADA = 'Você (Advogada)'
+/** Sem sessão, nas telas do Jurídico, quem faz é a advogada (GGVP-28). */
+export let QUEM_ADVOGADA = 'Você (Advogada)'
+
+/** Com sessão, o que ainda grava só aqui guarda no histórico o nome de quem entrou, nunca uma pessoa fixa (GGVP-135). */
+export function definirQuemFaz(nome: string) {
+  QUEM = nome
+  QUEM_ADVOGADA = nome
+}
 
 /** O resumo da IA do laudo novo: só o Jurídico vê; nunca entra na ficha da visão do Atendimento (GGVP-17, CA9). */
 export type ResumoDeLaudo = { fichaId: string; processoId?: string; data: string; arquivo: string; resumo: string }

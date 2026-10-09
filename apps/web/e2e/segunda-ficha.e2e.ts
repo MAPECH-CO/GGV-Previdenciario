@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 
 // GGVP-28 · Segunda ficha para auxílio acidentário. Cada teste abre um navegador novo, então começa da semente de
 // exemplo.ts: a entrevista da Josefa é hoje às 15:30, no relógio da máquina.
@@ -9,6 +10,7 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 test('CA1, CA2, CA3, CA6 e CA8 · da análise com "Sim" à segunda ficha em papel, as duas fichas juntas e a entrevista liberada', async ({ page }) => {
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/preparar')
   await page.getByRole('link', { name: 'Analisar a ficha' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Analisar ficha')
@@ -20,6 +22,7 @@ test('CA1, CA2, CA3, CA6 e CA8 · da análise com "Sim" à segunda ficha em pape
   await expect(page.getByText('A cliente ainda não preencheu a segunda ficha (auxílio acidentário).')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' })).toBeDisabled()
 
+  await entrarPelaApi(page)
   await page.goto('/')
   await page.getByRole('link', { name: 'Josefa Exemplo · Preencher segunda ficha' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Preencher segunda ficha')
@@ -30,6 +33,7 @@ test('CA1, CA2, CA3, CA6 e CA8 · da análise com "Sim" à segunda ficha em pape
   await page.getByRole('button', { name: 'Enviar segunda ficha' }).click()
   await expect(page.getByRole('heading', { name: /✓ Segunda ficha salva/ })).toBeVisible()
 
+  await entrarPelaApi(page, ADVOGADA)
   await page.goto('/entrevista/josefa-entrevista/preparar')
   await expect(page.getByRole('region', { name: 'Segunda ficha (auxílio acidentário)' })).toContainText('dor e perda de força na mão')
   await expect(page.getByRole('link', { name: 'Iniciar entrevista (Transcrição)' })).toBeVisible()
@@ -41,6 +45,7 @@ test('CA1, CA2, CA3, CA6 e CA8 · da análise com "Sim" à segunda ficha em pape
 
 for (const caminho of ['/entrevista/josefa-entrevista/analisar', '/clientes/josefa-exemplo/segunda-ficha', '/clientes/josefa-exemplo/segunda-ficha?modo=tablet']) {
   test(`tema escuro e fonte grande em ${caminho}`, async ({ page }) => {
+    if (caminho.startsWith('/entrevista/')) await entrarPelaApi(page, ADVOGADA)
     await page.goto(`${caminho}${caminho.includes('?') ? '&' : '?'}tema=escuro&fonte=grande`)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     const corpo = page.locator('body')
