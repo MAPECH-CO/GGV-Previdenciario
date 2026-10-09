@@ -94,7 +94,7 @@ describe('Balcão · Receber quem chegou', () => {
     render(<CentralAtendimento />)
     // A ligação do Pedro Exemplo para registrar vem do servidor (GGVP-138): a fila completa chega depois dele.
     await screen.findByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })
-    const fila = within(screen.getByRole('tabpanel'))
+    const fila = within(screen.getByRole('region', { name: 'O que você tem que fazer' }))
     // 16 da Central, mais a ligação do Pedro Exemplo para registrar (GGVP-76), mais a tarefa encaminhada agora.
     expect(fila.getAllByRole('listitem')).toHaveLength(18)
     expect(fila.getByRole('link', { name: 'Antônio Exemplo · Atender quem chegou' }).getAttribute('href')).toBe(
