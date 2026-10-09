@@ -132,6 +132,16 @@ describe('Resultados do escritório (GGVP-75)', () => {
     expect(chamada).toHaveBeenCalledTimes(2)
   })
 
+  it('GGVP-41 CA3 · o recorte por tese, ao lado de benefício (matéria) e juízo (vara), vai ao servidor', async () => {
+    const chamada = servidor(painel)
+    render(<Resultados />)
+    await screen.findByRole('list', { name: 'Indicadores do escritório' })
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(expect.arrayContaining(['Benefício', 'Juízo', 'Tese']))
+    fireEvent.change(screen.getByLabelText('Recorte'), { target: { value: 'tese' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Ver resultados' }))
+    await waitFor(() => expect(String(chamada.mock.calls.at(-1)?.[0])).toMatch(/recorte=tese$/))
+  })
+
   it('GGVP-55 CA3 · a base do acervo com os totais, os que aguardam conferência fora das contas e a data da base', async () => {
     servidor({ ...painel, baseDoAcervo: { situacao: 'com_dados', processos: 8, conferidos: 3, aguardandoConferencia: 4, dataDaBase: '2026-10-02' } })
     render(<Resultados />)

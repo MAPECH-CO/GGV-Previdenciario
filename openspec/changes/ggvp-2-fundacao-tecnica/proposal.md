@@ -1,4 +1,4 @@
-GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129, GGVP-126 (GGVP-108 e GGVP-105 ainda não refinadas).
+GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129, GGVP-126, GGVP-107 (GGVP-108 e GGVP-105 ainda não refinadas).
 
 ## Por quê
 
@@ -12,6 +12,7 @@ Nenhuma outra história vira código sem base: repositório com a stack decidida
 4. **GGVP-96** · Perfis e permissões · perfil: todos. (Refinada; no Jira, no épico GGVP-2 desde 07/10.)
 5. **GGVP-129** · Modelo de dados do portal: tabelas de todos os épicos, RLS, travas no banco e LGPD · perfil: time de desenvolvimento. (Criada na revisão de 07/10 para dar história ao modelo feito em 05/10; no Jira, em "Tarefas pendentes".)
 6. **GGVP-126** · Homologação com usuários e dados de teste · perfil: o Lucas testando, e todos. Do CA1 ao CA5; o CA6 espera a lista das pessoas do escritório (abaixo).
+7. **GGVP-107** · Integração com o Google Drive: pasta do cliente, banco de motivos e pacote de protocolo · perfil: Sistema (time de desenvolvimento); a Documentação recebe a tarefa da falha. (Entrou em 08/10: o Pedro decidiu em 05/10 que o Drive é essencial antes de 09/10. O motivo de indeferimento fica só no banco, decisão do Mateus em 08/10.)
 
 ## Travadas
 
@@ -21,9 +22,9 @@ Nenhuma outra história vira código sem base: repositório com a stack decidida
 
 ## Fora do escopo
 
-- **GGVP-107** · Integração com o Google Drive: fica fora até 09/10 (o Drive guarda só documento do cliente).
 - Produção, domínio final e backup automático.
+- O acesso ao Drive na produção (conta de serviço ou OAuth, como o n8n): decidir depois.
 
 ## Portões envolvidos
 
-Nenhum portão de G1 a G22 nasce aqui. A base prepara o lugar onde eles serão validados no servidor (`apps/api`, GGVP-109) e a tabela de evento de auditoria que registra quem fez o quê.
+Nenhum portão de G1 a G22 nasce aqui, mas a GGVP-107 entra no G7: com o Drive ligado, a trava "pacote completo" cobra o pacote salvo no Drive. A base prepara o lugar onde eles serão validados no servidor (`apps/api`, GGVP-109) e a tabela de evento de auditoria que registra quem fez o quê.

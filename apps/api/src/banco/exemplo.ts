@@ -330,12 +330,17 @@ export async function semearExemplos(banco: Banco) {
         clienteAvisadoEm: diasAtras(1),
       })
   }
+  const encerrados: Record<string, string> = {}
   for (const [nome, desfecho, causaDesfecho] of [
     ['Sônia Teles (exemplo)', 'extinto_sem_merito', 'Não cumpriu determinação do juízo (exemplo)'],
     ['Renato Dias (exemplo)', 'procedente_parcial', null],
   ] as const) {
     const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
-    await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
+    const [cj] = await banco
+      .insert(caso)
+      .values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
+      .returning()
+    encerrados[nome] = cj.id
   }
 
   // Acervo (GGVP-55): três processos da base histórica já conferidos pela Sênior, quatro do lote de 02/10 com o desfecho
@@ -351,6 +356,20 @@ export async function semearExemplos(banco: Banco) {
     { numeroCnj: '00011234520184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
     { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
+    // Medir ganho e perda (GGVP-41): o processo do Renato entrou no acervo com a ficha da IA e espera a conferência da
+    // Sênior; a data é a do lote, para não mudar a base do acervo.
+    {
+      casoId: encerrados['Renato Dias (exemplo)'],
+      beneficio: 'bpc_loas_deficiente',
+      desfecho: 'procedente_parcial',
+      fonte: 'portal',
+      criadoEm: lote,
+      materia: 'BPC/LOAS da pessoa com deficiência',
+      vara: 'JEF de São Paulo (exemplo)',
+      tese: 'Impedimento de longo prazo com renda acima de 1/4',
+      resumo: 'O juiz concedeu o benefício pela perícia judicial e pelo estudo social, sem os atrasados do primeiro ano. (exemplo)',
+      licao: 'Juntar o estudo social com os gastos da casa já no requerimento. (exemplo)',
+    },
   ])
 
   // Juízo identificado (GGVP-64): mais três processos conferidos no JEF de São Paulo (TRF3 · 6301), a unidade dos processos

@@ -6,6 +6,7 @@ import { Saude } from '@ggv/contratos'
 import { abrirArmazenamento, type Armazenamento } from './armazenamento.ts'
 import type { Banco } from './banco/conexao.ts'
 import { chaveDoCofre, criarCofre, type Cofre } from './cofre.ts'
+import { abrirDrive } from './drive.ts'
 import { registrarRotasConferencia } from './rotas/conferencia.ts'
 import { registrarRotasInss } from './rotas/inss.ts'
 import { registrarRotasVigilia } from './rotas/vigilia.ts'
@@ -82,6 +83,8 @@ type Opcoes = {
   fontes?: Fonte[]
   /** A IA (GGVP-106). Padrão: chaves do ambiente; sem chave, desligada. O teste passa uma IA com `fetch` falso. */
   ia?: Ia
+  /** Drive do escritório ligado (GGVP-107): a trava do pacote cobra o pacote salvo lá. Padrão: as variáveis do Drive. */
+  driveLigado?: boolean
 }
 
 declare module 'fastify' {
@@ -94,22 +97,26 @@ declare module 'fastify' {
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia, driveLigado }: Opcoes = {}) {
   const app = Fastify({ logger })
   let preparar = async () => {}
   app.decorate('prepararSugestoes', () => preparar())
   let alimentar = async () => {}
   app.decorate('alimentarAcervo', () => alimentar())
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
+  // CA10: só leitura não guarda o pacote no Drive, então a trava do pacote não o cobra.
+  const doAmbiente = abrirDrive()
+  const comDrive = driveLigado ?? (doAmbiente !== null && !doAmbiente.soLeitura)
+  const drive = doAmbiente?.soLeitura ? ('so-leitura' as const) : comDrive ? ('ligado' as const) : ('desligado' as const)
 
   app.get('/saude', async (_pedido, resposta): Promise<Saude> => {
-    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco' })
+    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco', drive })
     try {
       await consultar()
-      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado' })
+      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado', drive })
     } catch {
       resposta.code(503) // o deploy lê como falha e mantém a versão anterior no ar
-      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar' })
+      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar', drive })
     }
   })
 
@@ -133,9 +140,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
+    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
     registrarRotasGestao(app, { banco, agora })
-    registrarRotasAcervo(app, { banco, agora })
+    registrarRotasAcervo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasJuizo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })

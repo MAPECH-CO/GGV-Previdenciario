@@ -107,6 +107,22 @@ export const FINALIDADES = {
     ].join(' '),
   },
   /**
+   * GGVP-41: a ficha do desfecho no acervo, para medir ganho e perda; a Sênior confere. A tese vira grupo na Gestão, que
+   * outros perfis veem: por isso sai sem doença nem CID.
+   */
+  ficha_do_desfecho: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você grava no acervo do escritório o desfecho de um processo previdenciário, para a equipe saber onde ganha e onde perde.',
+      'Leia o resultado, o texto da decisão, o resultado do INSS e a petição, e responda só com um objeto JSON:',
+      '{"materia": "o benefício e o assunto em poucas palavras", "vara": "a vara ou o juízo, se estiver escrito no conteúdo; senão null", "tese": "a tese jurídica que o escritório defendeu, em até 8 palavras, sem doença, diagnóstico nem CID; null se não der para saber", "resumo": "o que aconteceu, em até 3 frases", "licao": "o que o escritório aprende com este desfecho, numa frase concreta"}.',
+      'Não escreva nome, CPF, endereço nem telefone de ninguém. Não calcule nem invente números, datas ou jurisprudência. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
    * GGVP-64 parte 2 (CA2, CA5): o que se repete nas decisões de mérito de um juízo, para a advogada; a IA só resume. As
    * decisões chegam sem dado pessoal; os números do juízo são do código e não entram aqui.
    */
