@@ -139,7 +139,8 @@ export type VisaoDoCaso = 'juridico' | 'financeiro' | 'atendimento'
 const JURIDICO = ['advogada', 'senior', 'juridico-adm']
 
 export function visaoDoPerfil(perfil: string | undefined): VisaoDoCaso {
-  if (perfil && JURIDICO.includes(perfil)) return 'juridico'
+  // O Sócio é dono e lê tudo, inclusive o conteúdo médico e as peças (Pedro, 09/10); fazer segue a matriz.
+  if (perfil && (JURIDICO.includes(perfil) || perfil === 'socio')) return 'juridico'
   if (perfil === 'financeiro') return 'financeiro'
   return 'atendimento'
 }

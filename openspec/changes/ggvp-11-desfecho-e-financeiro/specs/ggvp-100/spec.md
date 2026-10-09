@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Improcedente: decidir se recorre (passo D3b.04). Depois da sentença improcedente confirmada na "Confirmar desfecho" (D4.02), nasce "Decidir recurso" para a Sênior, que decide com justificativa (Lucas, 07/10); a advogada responsável só lê. Recorrer: o processo segue na vigília (D3a) e nasce "Elaborar e protocolar o recurso". Não recorrer: o caso vai ao estudo de caso (GGVP-19) e à explicação ao cliente (GGVP-22). Quem elabora e protocola o recurso são as Sêniores (dúvida Q26, Lucas, 09/10; `QUEM_FAZ_O_RECURSO`).
+Improcedente: decidir se recorre (passo D3b.04). Depois da sentença improcedente confirmada na "Confirmar desfecho" (D4.02), nasce "Decidir recurso" para a Sênior, que decide com justificativa (Lucas, 07/10); a advogada responsável e o Sócio só leem. Recorrer: o processo segue na vigília (D3a) e nasce "Elaborar e protocolar o recurso". Não recorrer: o caso vai ao estudo de caso (GGVP-19) e à explicação ao cliente (GGVP-22). Quem elabora e protocola o recurso são as Sêniores (dúvida Q26, Lucas, 09/10; `QUEM_FAZ_O_RECURSO`).
 
 ## ADDED Requirements
 
@@ -23,7 +23,7 @@ Com "Não recorrer" registrado, o caso SHALL entrar na rodada do estudo de caso 
 - **Então** o resumo ao cliente abre e o estudo de caso nasce na rodada da IA
 
 ### Requirement: CA3 · Justificativa obrigatória e quem decidiu
-A decisão SHALL exigir a escolha e a justificativa; "Registrar" SHALL habilitar só com as duas. Quem decidiu e quando SHALL ficar registrados. Só a Sênior decide; a advogada responsável só lê; os outros perfis, o Sócio inclusive (a tela traz o texto da sentença; GGVP-96), MUST NOT ver. Decisão repetida SHALL ser recusada.
+A decisão SHALL exigir a escolha e a justificativa; "Registrar" SHALL habilitar só com as duas. Quem decidiu e quando SHALL ficar registrados. Só a Sênior decide; a advogada responsável e o Sócio só leem; os outros perfis MUST NOT ver. Decisão repetida SHALL ser recusada.
 
 #### Scenario: CA3 · Sem justificativa
 - **Dado** a tarefa aberta

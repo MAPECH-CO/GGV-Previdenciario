@@ -8,7 +8,7 @@ import styles from './Balcao.module.css'
 import proprio from './Cobranca.module.css'
 
 // Figma: step_D3b.04 "Improcedente: vale recorrer?" (1815:246). Quem decide é a Sênior (Lucas, 07/10); a advogada
-// responsável só lê (GGVP-100); o Sócio não vê (GGVP-96).
+// responsável e o Sócio só leem (GGVP-100).
 
 type Escolha = (typeof DECISOES_DO_RECURSO)[number]
 const dataBr = (iso: string) => iso.slice(0, 10).split('-').reverse().join('/')
