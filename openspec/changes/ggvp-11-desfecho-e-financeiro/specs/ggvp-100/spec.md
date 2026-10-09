@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Improcedente: decidir se recorre (passo D3b.04). Depois da sentença improcedente confirmada na "Confirmar desfecho" (D4.02), nasce "Decidir recurso" para a Sênior, que decide com justificativa (Lucas, 07/10); a advogada responsável e o Sócio só leem. Recorrer: o processo segue na vigília (D3a) e nasce "Elaborar e protocolar o recurso". Não recorrer: o caso vai ao estudo de caso (GGVP-19) e à explicação ao cliente (GGVP-22). Quem elabora e protocola o recurso é a dúvida Q26, aberta; até a resposta, a advogada responsável (`QUEM_FAZ_O_RECURSO`). Guardado em rascunho, a confirmar com o Lucas.
+Improcedente: decidir se recorre (passo D3b.04). Depois da sentença improcedente confirmada na "Confirmar desfecho" (D4.02), nasce "Decidir recurso" para a Sênior, que decide com justificativa (Lucas, 07/10); a advogada responsável só lê. Recorrer: o processo segue na vigília (D3a) e nasce "Elaborar e protocolar o recurso". Não recorrer: o caso vai ao estudo de caso (GGVP-19) e à explicação ao cliente (GGVP-22). Quem elabora e protocola o recurso são as Sêniores (dúvida Q26, Lucas, 09/10; `QUEM_FAZ_O_RECURSO`).
 
 ## ADDED Requirements
 
@@ -23,7 +23,7 @@ Com "Não recorrer" registrado, o caso SHALL entrar na rodada do estudo de caso 
 - **Então** o resumo ao cliente abre e o estudo de caso nasce na rodada da IA
 
 ### Requirement: CA3 · Justificativa obrigatória e quem decidiu
-A decisão SHALL exigir a escolha e a justificativa; "Registrar" SHALL habilitar só com as duas. Quem decidiu e quando SHALL ficar registrados. Só a Sênior decide; a advogada responsável e o Sócio só leem; os outros perfis MUST NOT ver. Decisão repetida SHALL ser recusada.
+A decisão SHALL exigir a escolha e a justificativa; "Registrar" SHALL habilitar só com as duas. Quem decidiu e quando SHALL ficar registrados. Só a Sênior decide; a advogada responsável só lê; os outros perfis, o Sócio inclusive (a tela traz o texto da sentença; GGVP-96), MUST NOT ver. Decisão repetida SHALL ser recusada.
 
 #### Scenario: CA3 · Sem justificativa
 - **Dado** a tarefa aberta
@@ -38,12 +38,12 @@ A tela SHALL mostrar o prazo recursal contado em código a partir da sentença: 
 - **Quando** a Sênior abre a decisão
 - **Então** vê o prazo de 20/10/2026, contado pelo sistema
 
-### Requirement: CA5 · Quem elabora e protocola segue a Q26
-Com "Sim, recorrer", a tarefa do recurso SHALL ir para o perfil de `QUEM_FAZ_O_RECURSO` (hoje, a advogada responsável do caso), até o Lucas responder a Q26.
+### Requirement: CA5 · Quem elabora e protocola é a Sênior
+Com "Sim, recorrer", a tarefa do recurso SHALL ir para a Sênior (`QUEM_FAZ_O_RECURSO`; dúvida Q26, Lucas, 09/10).
 
 #### Scenario: CA5 · A tarefa do recurso
 - **Dado** "Sim, recorrer" registrado
-- **Quando** a advogada responsável abre a Central
+- **Quando** a Sênior abre a Central
 - **Então** vê "Elaborar e protocolar o recurso" com o prazo
 
 ### Requirement: CA6 · Recurso e contrarrazões na Minuta só depois da sentença

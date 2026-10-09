@@ -2,7 +2,7 @@
 // interna, e decide quem fala (Lucas, 06/10); quem fala registra cada contato. Sem IA até 09/10: o texto é do Jurídico.
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { AprovarResumo, ROTULO_BENEFICIO, RegistrarContato, ResultadoParaExplicar, SugestaoDoResumo, pode, type Beneficio, type Erro } from '@ggv/contratos'
+import { AprovarResumo, faltaCompletar, ROTULO_BENEFICIO, RegistrarContato, ResultadoParaExplicar, SugestaoDoResumo, pode, type Beneficio, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { atendimento, caso, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import type { ComoSugerir, Ia } from '../ia/ia.ts'
@@ -134,6 +134,9 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     const casoId = pedido.params.id
     const entrada = AprovarResumo.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira o resumo.')
+    // CA6: o rascunho da IA deixa "[completar...]" quando a decisão não está no sistema; assim não vai ao cliente.
+    const falta = faltaCompletar(entrada.data.texto)
+    if (falta) return negar(resposta, 400, falta)
     const pendente = await aberta(casoId, 'D3b.06r')
     if (!pendente) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
     const quem = pedido.usuario!.id

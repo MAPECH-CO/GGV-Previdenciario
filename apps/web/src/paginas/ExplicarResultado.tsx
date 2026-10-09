@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { AprovarResumo, CANAIS_DO_CONTATO, ROTULO_CANAL_DO_CONTATO, RegistrarContato, type ResultadoParaExplicar, type SugestaoDoResumo } from '@ggv/contratos'
+import { AprovarResumo, CANAIS_DO_CONTATO, faltaCompletar, ROTULO_CANAL_DO_CONTATO, RegistrarContato, type ResultadoParaExplicar, type SugestaoDoResumo } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -52,6 +52,8 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
     const chamadaIaId = ia?.sugestao?.chamadaId
     const entrada = AprovarResumo.safeParse({ texto, quemFala: quemFala || undefined, ...(chamadaIaId && { chamadaIaId }) })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o resumo.')
+    const falta = faltaCompletar(entrada.data.texto)
+    if (falta) return setErro(falta)
     void enviar('resumo', entrada.data, entrada.data.quemFala === 'advogada' ? 'Resumo aprovado. A explicação ficou com você.' : 'Resumo aprovado. O Atendimento vai explicar ao cliente.')
   }
 

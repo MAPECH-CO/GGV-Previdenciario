@@ -8,7 +8,7 @@ import { EstudoDaIa, EstudosDeCaso, ROTULO_BENEFICIO, RevisarEstudo, pode, type 
 import type { Banco } from '../banco/conexao.ts'
 import { caso, chamadaIa, decisao, documento, parecerMedico, pericia, pessoa, peticao, peticaoVersao, publicacao, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { buscarNoAcervo } from '../ia/acervo.ts'
-import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { situacaoDoDespacho } from './indeferimento.ts'
@@ -60,7 +60,7 @@ export function registrarRotasEstudo(app: FastifyInstance, { banco, agora = () =
       .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
       .orderBy(asc(documento.criadoEm))
     const motivoDoInss = indeferido ? [indeferido.motivoIndeferimento, indeferido.motivoEscrito].filter(Boolean).join(' ') : ''
-    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [merito?.texto, motivoDoInss].filter(Boolean).join(' ') })
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [merito?.texto, motivoDoInss].filter(Boolean).join(' '), saude: FINALIDADES.estudo_de_caso.saude, ia })
     const conteudo = [
       `Benefício: ${c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : 'não definido'}`,
       `Resultado: ${ROTULO_RESULTADO[c.desfecho]}`,

@@ -20,7 +20,7 @@ function mudarJosefa(mudar: (josefa: ReturnType<typeof ler>['fichas'][number]) =
 }
 
 describe('Preparar entrevista · tela do passo', () => {
-  it('CA3 · "A IA sugere · você confere", o resumo, a ficha completa e o painel do Figma', async () => {
+  it('CA3 · "Resumo da ficha" (não é IA), a ficha completa e o painel do Figma', async () => {
     mudarJosefa((j) => {
       j.fichaAtendimentoPreenchida = true
       j.fichaAtendimento = { data: '2026-10-05', origem: 'papel', modelo: 'GGV', ultimaAtividade: 'diarista', emBranco: [] }
@@ -28,8 +28,9 @@ describe('Preparar entrevista · tela do passo', () => {
     await abrir()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Josefa Exemplo · Preparar entrevista')
     expect(screen.getByText('entrevista hoje 15:30 · ler a ficha')).toBeTruthy()
-    const ia = within(screen.getByRole('region', { name: 'A IA sugere · você confere' }))
-    expect(ia.getByText('A IA leu a ficha e resumiu o caso. Confira antes de entrevistar.')).toBeTruthy()
+    const ia = within(screen.getByRole('region', { name: 'Resumo da ficha' }))
+    expect(ia.getByText('O portal juntou o que a ficha diz. Confira antes de entrevistar.')).toBeTruthy()
+    expect(screen.queryByText(/A IA sugere/)).toBeNull()
     expect(ia.getByText('lida')).toBeTruthy()
     expect(ia.getByText('última atividade: diarista · procura LOAS Idoso')).toBeTruthy()
     expect(ia.getByRole('link', { name: 'Abrir a ficha completa' }).getAttribute('href')).toBe('/clientes/josefa-exemplo/ficha-de-atendimento')

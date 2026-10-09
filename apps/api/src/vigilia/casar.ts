@@ -14,9 +14,39 @@ export const MOTIVO_REPETIDA = 'repetida: mesma data, mesmo processo e mesmo teo
 
 const textoNormalizado = (t: string) => t.toLowerCase().replace(/\s+/g, ' ').trim()
 
-/** Sem a fonte no hash: a mesma publicação da AASP e do DJEN é uma só (CA4). */
+/** Sem a fonte no hash: a mesma publicação repetida pela mesma fonte, ou igual nas duas, é uma só (CA4). */
 export const hashDaPublicacao = (data: string, cnj: string | null, texto: string) =>
   createHash('sha256').update(`${data}|${cnj ?? 'sem-cnj'}|${textoNormalizado(texto)}`).digest('hex')
+
+/** O teor para comparar fontes: minúsculas, pontuação trocada por espaço, espaços simples. */
+const teor = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+
+/**
+ * A mesma publicação vinda da outra fonte (CA4; grupo 4, decisão 51). A AASP repete o texto do DJEN com material a
+ * mais, e o hash não vê. Mesma data, mesmo CNJ, outra fonte e um teor contém o outro, com o menor tendo pelo menos
+ * metade do maior. A metade evita que um "Intime-se." curto suma dentro de outro ato do mesmo processo.
+ */
+async function originalDeOutraFonte(banco: Banco, b: PublicacaoBruta, cnj: string): Promise<string | null> {
+  const novo = teor(b.texto)
+  const candidatas = await banco
+    .select({ id: publicacao.id, fonte: publicacao.fonte, texto: publicacao.texto })
+    .from(publicacao)
+    .where(and(eq(publicacao.numeroCnj, cnj), eq(publicacao.disponibilizadaEm, b.disponibilizadaEm)))
+  for (const c of candidatas) {
+    if (c.fonte === b.fonte) continue
+    const outro = teor(c.texto)
+    const [menor, maior] = novo.length <= outro.length ? [novo, outro] : [outro, novo]
+    if (menor && menor.length * 2 >= maior.length && maior.includes(menor)) return c.id
+  }
+  return null
+}
+
+/** CA2, CA6: a repetida não entra, mas o descarte fica registrado com o motivo e a original. */
+async function descartar(banco: Banco, b: PublicacaoBruta, cnj: string | null, publicacaoId: string | null, agora: Date) {
+  await banco
+    .insert(publicacaoDescarte)
+    .values({ fonte: b.fonte, numeroCnj: cnj, disponibilizadaEm: b.disponibilizadaEm, trecho: b.texto.trim().slice(0, 200), motivo: MOTIVO_REPETIDA, publicacaoId, criadoEm: agora })
+}
 
 /** Caso ligado ao número CNJ (`identificador_caso`, tipo `cnj`, só os dígitos). */
 export async function casoDoCnj(banco: Banco, cnj: string): Promise<string | null> {
@@ -42,6 +72,12 @@ export async function casarPublicacoes(banco: Banco, brutas: PublicacaoBruta[], 
     const digitos = b.numeroCnj ? normalizarCnj(b.numeroCnj) : null
     const cnj = digitos && validarCnj(digitos) ? digitos : null
     const hash = hashDaPublicacao(b.disponibilizadaEm, cnj, b.texto)
+    const daOutraFonte = cnj ? await originalDeOutraFonte(banco, b, cnj) : null
+    if (daOutraFonte) {
+      await descartar(banco, b, cnj, daOutraFonte, agora)
+      contagem.repetidas++
+      continue
+    }
     const casoId = cnj ? await casoDoCnj(banco, cnj) : null
     const motivoFila = casoId ? null : cnj ? MOTIVO_CNJ_DESCONHECIDO : MOTIVO_SEM_CNJ
     const [nova] = await banco
@@ -50,11 +86,8 @@ export async function casarPublicacoes(banco: Banco, brutas: PublicacaoBruta[], 
       .onConflictDoNothing({ target: publicacao.hash })
       .returning({ id: publicacao.id })
     if (!nova) {
-      // CA2, CA6: a repetida não entra, mas o descarte fica registrado com o motivo e a original.
       const [original] = await banco.select({ id: publicacao.id }).from(publicacao).where(eq(publicacao.hash, hash))
-      await banco
-        .insert(publicacaoDescarte)
-        .values({ fonte: b.fonte, numeroCnj: cnj, disponibilizadaEm: b.disponibilizadaEm, trecho: b.texto.trim().slice(0, 200), motivo: MOTIVO_REPETIDA, publicacaoId: original?.id ?? null, criadoEm: agora })
+      await descartar(banco, b, cnj, original?.id ?? null, agora)
       contagem.repetidas++
       continue
     }

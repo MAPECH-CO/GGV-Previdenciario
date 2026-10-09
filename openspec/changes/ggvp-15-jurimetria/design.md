@@ -128,3 +128,157 @@ A tabela `processo_acervo` já existe e ninguém escreve nela ainda. Ela tem `de
 
 - **Desfecho lido sem a IA:** enquanto não há lote pelo chat, os processos do acervo vêm dos dados de exemplo; a conferência funciona igual quando o lote chegar.
 - **Matriz de permissões:** a versão 12 vem logo depois da 11 deste mesmo PR; conflito com outro PR se resolve no merge, com a impressão digital nova.
+
+## GGVP-64 · Juízo identificado: mostrar a jurimetria (parte 1)
+
+### Context
+
+- **Na tela:** a sobreposição do juízo na página do caso existe (GGVP-86, do Pedro), com números de exemplo no navegador. A página do caso ainda não lê do servidor: não há `GET /api/casos/:id`.
+- **No painel (GGVP-75):** o juízo já sai do número CNJ, como "TRF3 · 6301": o tribunal pelo J.TR (`TRIBUNAL_DO_JTR`) e a unidade de origem pelos 4 últimos dígitos.
+- **No acervo (`processo_acervo`):** há `numero_cnj`, `caso_id`, `beneficio`, `desfecho`, `desfecho_conferido_por` e `data_decisao`. A tabela `juizo` existe, mas ninguém escreve nela.
+- **Datas:** o protocolo da inicial fica em `protocolo_judicial.protocolado_em`. O acervo gravado pelo portal (o aviso do deferido, GGVP-98) ainda não tem a data da decisão.
+- **Minuta da petição (GGVP-63):** monta as fontes (`FonteDaIa`) e chama o motor.
+- **Vara e juiz:** nenhuma fonte de publicação traz o nome da vara nem o do juiz.
+
+### Decisions
+
+1. **Juízo = tribunal + unidade de origem do CNJ**, a mesma regra do painel, numa função só (`juizoDoCnj`), que o painel também passa a usar.
+   - O CNJ do processo do acervo vem do `numero_cnj` ou, quando vazio, do identificador `cnj` do caso ligado.
+   - Não há tabela nova. A tabela `juizo` fica para quando houver o nome da vara (parte 2).
+2. **Contrato** (`packages/contratos/src/juizo.ts`, novo): `JurimetriaDoJuizo`.
+   - `juizo`: o rótulo, como "TRF3 · 6301".
+   - `base`: a data, em AAAA-MM-DD.
+   - `porBeneficio`: benefício, procedentes, decididos e o texto do G22, como "58% em 12 processos · base de 08/10".
+   - `tempoAteASentenca`: meses e processos, ou nulo.
+   - `processos`: o CNJ e o desfecho de cada processo do juízo que entrou na conta.
+3. **Cálculo em código** (`apps/api/src/fluxo/juizo.ts`), só com desfecho conferido (GGVP-55 CA7):
+   - **Procedência por benefício** = procedentes (total ou parcial) ÷ decididos no mérito (procedentes e improcedentes), a mesma regra do painel. Acordo, extinção e desistência ficam fora da taxa.
+   - **Tempo até a sentença** = média em meses entre o protocolo da inicial e a data da decisão, só dos processos que têm as duas datas. Os outros ficam fora da conta e nada trava.
+   - **Base** = hoje, em Brasília. Toda taxa sai com o número de processos e a data da base, sem amostra mínima (G22, regra de 07/10).
+4. **Rota:** `GET /api/casos/:id/juizo`, com `exigir('estudo.ver')`, que é do Jurídico.
+   - A jurimetria é interna: nunca vai ao cliente nem ao Atendimento. Não há versão nova da matriz.
+   - Caso sem número do processo: 404 com "O caso ainda não tem número de processo".
+5. **Minuta da petição** (CA3, CA6): com o juízo identificado, a resposta ganha uma fonte do tipo `acervo` com as taxas do juízo, no texto do G22, que a advogada vê nas fontes.
+   - A fonte entra depois do modelo: o modelo não recebe os números do juízo, nem no conteúdo nem nas fontes que vão a ele, então o número não tem como entrar no texto que vai ao juiz.
+   - O teste confere o pedido enviado ao modelo.
+6. **Dados de exemplo:** processos conferidos no acervo na unidade do caso judicial de exemplo, com benefícios variados. Alguns têm a data da decisão e estão ligados a caso com protocolo, para a taxa e o tempo aparecerem.
+
+### Campos de formulário
+
+Nenhum nesta parte.
+
+### Telas
+
+Nenhuma tela nova.
+- A fonte nova aparece na lista de fontes da minuta, que já existe.
+- A sobreposição da página do caso continua com os números de exemplo até a página ler do servidor (parte 2).
+
+### Risks / Trade-offs
+
+- **Unidade de origem não é a vara:** onde a unidade tem várias varas (por exemplo, o JEF de São Paulo, 6301), a conta junta as varas. O nome da vara e o do juiz entram na parte 2.
+- **Poucos processos:** a taxa oscila. O número de processos ao lado é o que deixa a advogada julgar (G22).
+- **Tempo até a sentença:** hoje, só os processos protocolados pelo portal com a data da decisão gravada têm as duas datas. Os importados ficam fora até o estudo trazer a data da distribuição.
+- **A inicial ainda não tem número:** a minuta da petição inicial é escrita antes do protocolo, quando o caso quase nunca tem número de processo. A fonte do juízo só vem quando o caso já tem um número (por exemplo, um novo processo depois de um perdido). Prever o juízo pela cidade do cliente fica para a parte 2, se o escritório quiser.
+
+## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
+
+### Context
+
+- **A busca de hoje** (`buscarNoAcervo`, GGVP-45) é por palavra, com o full text do PostgreSQL calculado na hora. Ela olha cinco fontes: a petição aprovada, a decisão de mérito, o motivo de indeferimento, o modelo de petição e o estudo de caso da IA. O trecho sai anonimizado (`anonimizar`).
+- **O motor** (`ia.ts`) registra cada chamada em `chamada_ia`. Dado de saúde só passa com `IA_PERMITE_DADO_DE_SAUDE=sim`.
+- **A conversa do Relacionamento** fica em `atendimento.dados` (JSON), com `conferidaEm` quando a pessoa confere. A análise marca a mudança de saúde (`saude`), e a gravação pode ser só do Jurídico (`soJuridico`).
+- **No banco embutido:** o PGlite dos testes (0.3.16) traz a extensão `vector`, e o Drizzle 0.44 tem o tipo `vector`.
+- **A escolha técnica** foi registrada pelo Pedro na GGVP-134 (08/10) e vira o ADR-013.
+
+### Decisions
+
+1. **ADR-013** (`docs/decisoes/ADR-013-base-de-conhecimento.md`):
+   - pgvector no PostgreSQL do Supabase, com índice HNSW;
+   - busca híbrida, misturada por RRF;
+   - embeddings da OpenAI (`text-embedding-3-small`, 1536 dimensões);
+   - TypeScript dentro da API, sem banco nem serviço novo.
+2. **Tabela `acervo_trecho`** (migração nova), com RLS ligado:
+   - `origem`: o rótulo da fonte;
+   - `referencia`: `caso:<id>` ou `modelo:<id>`, a mesma da busca de hoje;
+   - `caso_id` e `beneficio`;
+   - `texto`: já anonimizado;
+   - `so_juridico`;
+   - `embedding vector(1536)`: nulo até ser calculado, com índice HNSW pela distância de cosseno;
+   - `hash`: único, para não duplicar (CA3);
+   - `criado_em`.
+
+   A migração liga a extensão (`create extension if not exists vector`), e o banco embutido passa a carregá-la.
+3. **Vetor pelo motor** (CA4): `ia.vetor(texto, { saude })` chama o endpoint de embeddings da OpenAI e registra em `chamada_ia`, com a finalidade `vetor_acervo`.
+   - Sem chave, ou com saúde sem autorização, devolve nulo, e a busca segue só por palavra.
+4. **Alimentar o acervo** (CA1, CA3): `alimentarAcervo` lê as fontes de hoje e as conversas conferidas, anonimiza com a mesma `anonimizar` e calcula o hash.
+   - Grava só o que ainda não está lá e depois calcula o vetor do que falta.
+   - Roda em segundo plano numa chamada própria do servidor, na mesma batida de 5 minutos da sugestão pronta, logo depois dela. Dentro da rodada das sugestões, ela mexeria nos testes das rotas que rodam essa rodada.
+   - Entram com `so_juridico`:
+     - os documentos do caso (petição aprovada, decisão de mérito, motivo de indeferimento e estudo de caso), que podem trazer dado de saúde;
+     - a conversa com mudança de saúde ou com gravação só do Jurídico.
+
+     O modelo da casa não tem dado de cliente.
+5. **Busca híbrida** (CA2): `buscarNoAcervo` faz a busca por palavra de hoje e, quando há vetor da consulta, a busca por significado nos trechos.
+   - As duas listas se misturam pelas posições (RRF, k = 60).
+   - A saída são as mesmas fontes de hoje: `tipo: acervo`, a referência e o trecho.
+   - O mesmo caso fica de fora, e o benefício filtra como hoje.
+   - Trecho `so_juridico` só entra com `saude: true`. Os 5 fluxos que buscam no acervo passam a saúde pela finalidade da IA, e todas essas finalidades já levam dado de saúde: a minuta da petição, o estudo de caso, a análise do indeferimento, a exigência do juiz e a recomendação da perícia.
+
+### Campos de formulário
+
+Nenhum.
+
+### Telas
+
+Nenhuma tela nova. As fontes aparecem onde já aparecem.
+
+### Risks / Trade-offs
+
+- **Número da migração:** a Perícia entrou antes na `main` com a 0018 (08/10), e a migração do acervo foi renumerada para 0019 (`0019_base_de_conhecimento`).
+- **Extensão no Supabase:** se o usuário do banco não puder criar a extensão, a migração falha e o container não sobe; o Coolify mantém a versão anterior. Ligar a extensão no painel do Supabase antes do deploy.
+- **Custo:** só o que é novo ganha vetor, porque o hash evita recalcular. A consulta também gasta uma chamada de embeddings.
+- **Leitura das fontes:** a cada rodada, alimentar lê as fontes inteiras e compara pelo hash. Com milhares de itens, guardar a última data lida por fonte.
+
+## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
+
+### Context
+
+- **A Perícia está no servidor** (GGVP-137 e GGVP-139, PR #8):
+  - o perfil do perito (`perito.perfil`), com um laudo por linha, atualizado quando a advogada confere o resultado (GGVP-73);
+  - a pergunta de um clique que liga o perito (`POST /api/processos/:id/pericia/perito`, GGVP-61 CA6);
+  - a orientação pelo perfil na Justiça e a padrão no INSS;
+  - os números do perito calculados em código, com o G22 (as regras `periciaNoCaso` das telas do Pedro, rodando no servidor).
+- **A leitura da publicação** (GGVP-34, 37 e 74) classifica em andamento, exigência e mérito. O prazo é contado em código (`prazoJudicial`), e `encaminhar` abre a tarefa da advogada pela classe. Sem prazo na decisão, valem 5 dias (CPC, art. 218, §3º).
+- **A tabela `perito`** tem o nome, o nome normalizado e as grafias conhecidas.
+- **Passos do BPMN:** o DP.05 (identificar o perito nomeado) e o D4.02N, ainda sem desenho no Miro.
+- **A tarefa** não tem campo de descrição: o perito vai ao histórico do caso.
+
+### Decisions
+
+1. **Classe nova** `nomeacao_perito` em `CLASSES_DE_ATO`, com o rótulo "Nomeação de perito".
+   - Entra na leitura da IA (`LeituraDaPublicacaoPelaIa`) e na instrução de `classificar_publicacao`, que ganha versão nova.
+   - A IA só sugere; quem classifica é a pessoa.
+2. **Prazo dos quesitos:** sem prazo no despacho, 15 dias (CPC, art. 465, §1º: quesitos, assistente técnico e impugnação do perito), no lugar dos 5 do art. 218.
+   - Com prazo no despacho, vale o do despacho.
+   - A contagem é a do prazo judicial: dias úteis e feriados do tribunal; na dúvida, a data mais cedo (G12).
+3. **Destino:** `encaminhar` abre a etapa DP e a tarefa "Quesitos e assistente técnico" (DP.05) para a advogada, com o prazo. Reclassificar desfaz como hoje: a tarefa aberta da nomeação é cancelada (GGVP-37 CA7).
+   - Na Central, a tarefa abre a tela de perícias do caso (`/casos/:id/pericias`), onde a advogada escreve os quesitos (ajuste do "Agora ok?", Mateus, 08/10).
+4. **O perito do texto** (`peritoDaPublicacao`): procura, no texto normalizado (minúsculo e sem acento), o nome normalizado e as grafias de cada perito da base. Se mais de um bater, vale o nome mais longo.
+   - Achou: o histórico grava `perito_nomeado`, com o perito e quantos laudos o perfil tem.
+   - Não achou: o histórico grava que o perito não foi reconhecido, e nada trava. A pergunta de um clique da Perícia resolve (CA6).
+5. **Banco:** a migração `0021_nomeacao_de_perito` troca a restrição da classe da publicação para aceitar a classe nova. A lista de classes vem do contrato: uma só para a tela, o servidor e o banco.
+   - Nasceu como 0020 e passou a 0021 no merge da `main` de 08/10, quando a documentação médica (#6) entrou com a 0019 e o acervo (GGVP-141) foi para a 0020.
+
+### Campos de formulário
+
+- **"Tipo de ato":** seleção fixa (`CLASSES_DE_ATO`), com a opção nova, validada pelo contrato na tela e no servidor.
+- **"Dias":** o mesmo campo de hoje (1 a 120), ou "sem prazo na decisão", que mostra os dias que valem: 15 na nomeação de perito, 5 nos outros tipos.
+
+### Telas
+
+Nenhuma tela nova. A tela de leitura da publicação ganha a opção "Nomeação de perito" e a frase de destino: "Quesitos e assistente técnico na Central da advogada".
+
+### Risks / Trade-offs
+
+- **Nome do perito no texto:** o reconhecimento é pelo nome e pelas grafias da base. Perito novo, ou grafia diferente, fica como não reconhecido, e a pessoa liga pela pergunta de um clique.
+- **Perícia judicial:** nesta parte, o perito não é ligado direto na perícia judicial a partir da publicação; isso mexe no modelo da Perícia do Pedro e fica para a parte 2.

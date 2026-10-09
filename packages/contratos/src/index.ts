@@ -67,6 +67,7 @@ export * from './desfecho.ts'
 export * from './recepcao.ts'
 export * from './acervo.ts'
 export * from './resultados.ts'
+export * from './juizo.ts'
 
 // O chat do portal (GGVP-82): a pergunta, a resposta com as fontes e o cartão de ação.
 export * from './chat.ts'
@@ -103,3 +104,9 @@ export * from './processo.ts'
 
 // As tarefas do setor e quem faz cada uma (GGVP-147).
 export * from './setor.ts'
+
+// Clientes e Processos no topo (GGVP-78): as duas bases, com busca, filtros e página.
+export * from './bases.ts'
+
+// O painel Financeiro (GGVP-78): as contas das prestações de contas, por mês e por origem, e os lançamentos.
+export * from './financeiro.ts'

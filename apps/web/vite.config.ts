@@ -1,6 +1,10 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
+// Os testes de tela rodam no fuso do escritório, como o servidor e o Playwright (GGVP-118, GGVP-120 CA10). Tem de ser
+// aqui, antes de o Vitest subir as threads: trocar o TZ dentro de uma thread não muda o relógio do processo.
+process.env.TZ = 'America/Sao_Paulo'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],

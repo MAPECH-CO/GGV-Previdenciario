@@ -78,10 +78,9 @@ describe('GGVP-100 · improcedente: decidir se recorre', () => {
     expect(r.prazo.regra).toContain('lado seguro')
   })
 
-  it('perfis · a Sênior decide; a advogada responsável e o Sócio só leem; fora deles, ninguém vê', async () => {
+  it('perfis · a Sênior decide; a advogada responsável só lê; fora delas, ninguém vê (o Sócio também não: GGVP-96)', async () => {
     expect((await chamar('gabi', 'GET')).json().podeDecidir).toBe(false)
-    expect((await chamar('lauro', 'GET')).json().podeDecidir).toBe(false)
-    for (const apelido of ['julia', 'ana', 'igor']) expect((await chamar(apelido, 'GET')).statusCode, apelido).toBe(403)
+    for (const apelido of ['lauro', 'julia', 'ana', 'igor']) expect((await chamar(apelido, 'GET')).statusCode, apelido).toBe(403)
     for (const apelido of ['gabi', 'lauro']) expect((await chamar(apelido, 'POST', { decisao: 'recorrer', justificativa: JUSTIFICATIVA })).statusCode, apelido).toBe(403)
     expect(await abertas()).toEqual([`senior · ${TITULO_DECIDIR}`])
   })
@@ -98,10 +97,10 @@ describe('GGVP-100 · improcedente: decidir se recorre', () => {
     expect(r.statusCode).toBe(201)
     const [d] = await banco.select().from(decisao)
     expect([d.passo, d.tipo, d.resultado, d.justificativa, d.decididoPor, d.perfil]).toEqual(['D3b.04', 'recurso', 'recorrer', JUSTIFICATIVA, ids.helena, 'senior'])
-    // Q26: até o Lucas responder, o recurso é da advogada responsável do caso, com o mesmo prazo.
-    expect(await abertas()).toEqual([`advogada · ${TITULO_RECORRER}`])
+    // Q26 (Lucas, 09/10): o recurso é das Sêniores, com o mesmo prazo.
+    expect(await abertas()).toEqual([`senior · ${TITULO_RECORRER}`])
     const [t] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))
-    expect([t.responsavelId, t.prazo]).toEqual([ids.gabi, '2026-10-20'])
+    expect([t.responsavelId, t.prazo]).toEqual([null, '2026-10-20'])
     const g = (await chamar('gabi', 'GET')).json()
     expect([g.decisao.decisao, g.decisao.justificativa, g.decisao.por, g.podeDecidir]).toEqual(['recorrer', JUSTIFICATIVA, 'helena', false])
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'recurso_decidido'))).length).toBe(1)

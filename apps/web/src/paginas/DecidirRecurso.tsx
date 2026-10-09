@@ -8,7 +8,7 @@ import styles from './Balcao.module.css'
 import proprio from './Cobranca.module.css'
 
 // Figma: step_D3b.04 "Improcedente: vale recorrer?" (1815:246). Quem decide é a Sênior (Lucas, 07/10); a advogada
-// responsável e o Sócio só leem (GGVP-100).
+// responsável só lê (GGVP-100); o Sócio não vê (GGVP-96).
 
 type Escolha = (typeof DECISOES_DO_RECURSO)[number]
 const dataBr = (iso: string) => iso.slice(0, 10).split('-').reverse().join('/')
@@ -101,7 +101,7 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
               </p>
               <p>
                 {r.decisao.decisao === 'recorrer'
-                  ? 'O processo segue na vigília. A advogada responsável elabora e protocola o recurso até o prazo.'
+                  ? 'O processo segue na vigília. A Sênior elabora e protocola o recurso até o prazo.'
                   : 'O caso vai ao estudo de caso, feito pela IA, e o resumo para o cliente espera a aprovação do Jurídico.'}
               </p>
               <div className={styles.atalhos}>
@@ -142,8 +142,6 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
                 />
               </section>
 
-              <p className={proprio.nota}>Em aberto: quem elabora e protocola o recurso. Até a resposta, a tarefa vai para a advogada responsável do caso.</p>
-
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={motivo !== null} onClick={registrar}>
                   Registrar
@@ -166,7 +164,7 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
           <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D3b.04.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <ul className={styles.ladoLista}>
-            <li>• Sim, recorrer: o processo segue na vigília e a advogada responsável elabora e protocola o recurso</li>
+            <li>• Sim, recorrer: o processo segue na vigília e a Sênior elabora e protocola o recurso</li>
             <li>• Não: a IA faz o estudo de caso e o Atendimento explica o resultado ao cliente</li>
           </ul>
           <h3 className={styles.ladoSecao}>Travas</h3>

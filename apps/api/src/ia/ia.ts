@@ -53,13 +53,14 @@ export const FINALIDADES = {
     instrucao:
       'Escreva um rascunho curto (até 6 frases) do que a pessoa do escritório vai explicar ao cliente sobre o resultado do processo: o que foi decidido e por quê, em linguagem simples, com respeito. O porquê vem só do texto da decisão: se ele não estiver no conteúdo, não diga, não suponha e não comente a falta do motivo: no lugar dele, escreva exatamente [completar: o motivo da decisão], que a advogada preenche. Não prometa nada, não fale de estratégia interna do escritório, não culpe ninguém e não use termos técnicos sem explicar.',
   },
+  /** GGVP-59: a nomeação de perito virou classe (versão 3). */
   classificar_publicacao: {
-    versao: 2,
+    versao: 3,
     saude: false,
     json: true,
     barrarCid: true,
     instrucao:
-      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {
@@ -257,6 +258,23 @@ export const FINALIDADES = {
       'Telefone com DDD, só se foi dito inteiro. Não calcule datas nem complete o que não foi dito. Use só o que está no conteúdo; se nada mudou, "ditos" vazio.',
     ].join(' '),
   },
+  /**
+   * GGVP-133, GGVP-46 CA6, CA7: lê a entrevista já transcrita e diz o que foi dito: o resumo, os dados da ficha, os
+   * documentos citados e desde quando não trabalha. O código confere cada item e a advogada confere de novo, item a item,
+   * antes de ir para a ficha (G14). Leitura interna, do Jurídico: não vai ao cliente.
+   */
+  ler_entrevista: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda a advogada de um escritório previdenciário a registrar a entrevista inicial com o cliente, já transcrita.',
+      'Leia as falas e responda só com um objeto JSON: {"resumo": "a entrevista em até 4 frases simples, sem concluir o benefício", "itens": [{"tipo": "telefone" | "estadoCivil" | "profissao" | "contatoApoio" | "documento" | "desde", "valor": "o que foi dito", "i": número da fala de onde saiu}]}.',
+      'Só entra o que o cliente (ou quem falou por ele) disse: o telefone dele, com DDD, só se foi dito inteiro; o estado civil; a profissão; o contato de apoio (quem é e o telefone); cada documento que ele citou, um item por documento, em linguagem simples; e desde quando não consegue trabalhar ("desde"), como foi dito (por exemplo, 06/2026).',
+      'Não calcule datas, não complete o que não foi dito e não defina o benefício: quem decide é a advogada. Use só o que está no conteúdo; se nada disso foi dito, "itens" vazio.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 
@@ -268,6 +286,9 @@ const OPENAI_CHAVE_AO_VIVO = 'https://api.openai.com/v1/realtime/client_secrets'
 export const DOLAR_POR_MINUTO: Record<string, number> = { 'gpt-4o-transcribe-diarize': 0.006, 'gpt-4o-transcribe': 0.006, 'gpt-4o-mini-transcribe': 0.003 }
 /** Uma fala da transcrição: o falante como a OpenAI marcou ("A", "B"), de onde a onde no áudio, em segundos. */
 export type FalaTranscrita = { falante: string; inicio: number; fim: number; texto: string }
+const OPENAI_VETOR = 'https://api.openai.com/v1/embeddings'
+/** O tamanho do vetor do acervo (ADR-013); a coluna `acervo_trecho.embedding` tem o mesmo. */
+export const DIMENSOES_DO_VETOR = 1536
 const hash = (texto: string | Uint8Array) => createHash('sha256').update(texto).digest('hex')
 
 type Opcoes = { banco: Banco; ambiente?: Ambiente; fetch?: typeof globalThis.fetch; agora?: () => Date }
@@ -291,6 +312,7 @@ export const lerJson = (texto: string): unknown => {
 export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetch, agora = () => new Date() }: Opcoes) {
   const modeloTexto = ambiente.OPENAI_MODELO || 'gpt-4.1-mini'
   const modeloOcr = ambiente.MISTRAL_MODELO_OCR || 'mistral-ocr-latest'
+  const modeloVetor = ambiente.OPENAI_MODELO_VETOR || 'text-embedding-3-small'
   // GGVP-133 CA11: a transcrição final (com quem fala) e o texto ao vivo, cada um no seu modelo.
   const modeloTranscricao = ambiente.OPENAI_MODELO_TRANSCRICAO || 'gpt-4o-transcribe-diarize'
   const modeloAoVivo = ambiente.OPENAI_MODELO_AO_VIVO || 'gpt-4o-transcribe'
@@ -569,7 +591,48 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
-  /** Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada"). */
-  return { sugerir, lerDocumento, transcrever, chaveAoVivo, ligada: Boolean(ambiente.OPENAI_API_KEY) }
+  /**
+   * GGVP-141 CA4: o vetor do texto (embeddings da OpenAI), para a busca por significado no acervo (ADR-013), com registro
+   * sem o conteúdo. O texto já chega anonimizado; saúde só com autorização. Sem chave, recusado ou falhou: nulo, e a busca
+   * segue só por palavra.
+   */
+  async function vetor(pedido: Quem & { texto: string; saude: boolean; referencia: string }): Promise<number[] | null> {
+    const inicio = Date.now()
+    const fontes: FonteDaIa[] = [{ tipo: 'acervo', referencia: pedido.referencia }]
+    const base = { finalidade: 'vetor_acervo', fornecedor: 'openai' as const, modelo: modeloVetor, versaoInstrucao: 1, alvo: pedido, entrada: pedido.texto, fontes }
+    if (pedido.saude && !saudeAutorizada) {
+      await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
+      return null
+    }
+    const chave = ambiente.OPENAI_API_KEY
+    if (!chave) {
+      await registrar({ ...base, saida: null, situacao: 'desligada', inicio })
+      return null
+    }
+    try {
+      const resposta = await fetch(OPENAI_VETOR, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ model: modeloVetor, input: pedido.texto, dimensions: DIMENSOES_DO_VETOR }),
+        signal: AbortSignal.timeout(30_000),
+      })
+      if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
+      const corpo = (await resposta.json()) as { data?: { embedding?: number[] }[] }
+      const v = corpo.data?.[0]?.embedding
+      if (v?.length !== DIMENSOES_DO_VETOR) throw new Error('OpenAI respondeu sem o vetor')
+      await registrar({ ...base, saida: `${v.length} dimensões`, situacao: 'ok', inicio })
+      return v
+    } catch (e) {
+      await registrar({ ...base, saida: null, situacao: 'falhou', erro: motivo(e), inicio })
+      return null
+    }
+  }
+
+  /**
+   * Sem chave da OpenAI, o preparo em segundo plano não roda (nada a preparar, e o registro não enche de "desligada").
+   * `saudeAutorizada` (GGVP-133): para a tela dizer o motivo certo quando o motor recusa dado de saúde; o acervo
+   * (GGVP-141) também lê, para só vetorizar trecho do Jurídico com a autorização.
+   */
+  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>

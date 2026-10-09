@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A advogada responsável confere o resultado no GERID ou no processo e decide: favorável sobe no card e volta para quem pediu; desfavorável, pede nova perícia ou devolve. Respostas do Lucas de 02/10: no desfavorável, a IA contextualiza por que foi desfavorável e indica se vale pedir nova perícia, sempre salvo no histórico, mas quem decide é a advogada; os quesitos e a impugnação seguem como opções; as conferências da tela seguem como estão. Passos DP.08 e DP.10 do Miro. Figma: step_DP.08 `14:556`, Resultado da perícia `1579:431` e `1579:117`, chats "perícias da semana" `2107:667` e "como o perito avalia" `2186:2`, Jurimetria do perito `2184:2`. Contrato na `design.md`, seção GGVP-70.
+A advogada responsável confere o resultado no GERID ou no processo e decide: favorável sobe no card e volta para quem pediu; desfavorável, pede nova perícia ou devolve. Respostas do Lucas de 02/10: no desfavorável, a IA contextualiza por que foi desfavorável e indica se vale pedir nova perícia, sempre salvo no histórico, mas quem decide é a advogada (pela regra de saúde simples do Pedro, 08/10, o histórico guarda a indicação e o porquê, que vem do laudo, fica no resumo do laudo, só com o Jurídico); os quesitos e a impugnação seguem como opções; as conferências da tela seguem como estão. Passos DP.08 e DP.10 do Miro. Figma: step_DP.08 `14:556`, Resultado da perícia `1579:431` e `1579:117`, chats "perícias da semana" `2107:667` e "como o perito avalia" `2186:2`, Jurimetria do perito `2184:2`. Contrato na `design.md`, seção GGVP-70.
 
 ## ADDED Requirements
 
@@ -79,9 +79,14 @@ Perguntado ao chat pelas perícias da semana, cada item SHALL abrir a página do
 - **Então** cada item abre a página do processo do cliente com a perícia em destaque
 
 ### Requirement: Resposta do PO · No desfavorável, a IA indica e a advogada decide
-No desfavorável, a IA SHALL dizer por que foi desfavorável e se vale pedir nova perícia, e essa indicação SHALL ficar no histórico; a decisão MUST ser da advogada.
+No desfavorável, a IA SHALL dizer por que foi desfavorável e se vale pedir nova perícia. A indicação (vale ou não) SHALL ficar no histórico; o porquê, que é conteúdo do laudo, SHALL ficar no resumo do laudo, que só o Jurídico recebe, e MUST NOT ir para o histórico, que todo mundo do caso vê (saúde simples, Pedro, 08/10). A decisão MUST ser da advogada.
 
 #### Scenario: Resposta do PO · A indicação da IA
 - **Dado** um laudo desfavorável
 - **Quando** a advogada confere
-- **Então** vê a indicação da IA, que fica no histórico, e decide ela mesma
+- **Então** vê o porquê no resumo do laudo e a indicação da IA, que fica no histórico, e decide ela mesma
+
+#### Scenario: Resposta do PO · O porquê fica no resumo do laudo
+- **Dado** o desfavorável registrado com a leitura da IA
+- **Quando** o Atendimento abre a perícia
+- **Então** o histórico diz se a IA indicou nova perícia, sem o porquê, e o laudo vem sem a leitura

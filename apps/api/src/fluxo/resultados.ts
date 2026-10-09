@@ -2,16 +2,14 @@
 // (CA7), pela data do seu evento no período; caso com dado incerto fica fora e nada trava. Não há amostra mínima: toda
 // taxa sai com o número de casos (CA8, G22 de 07/10).
 import { ROTULO_BENEFICIO, type Beneficio, type Indicador, type PainelDeResultados, type Recorte } from '@ggv/contratos'
-import { count, max, sql } from 'drizzle-orm'
+import { count, desc, max, sql } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
+import { recebimentosConfirmados } from '../rotas/prestacao.ts'
 import { hojeEmBrasilia as diaEmBrasilia } from '../vigilia/fila.ts'
+import { DE_MERITO, PROCEDENTES, juizoDoCnj } from './juizo.ts'
 
-const PROCEDENTES = new Set(['procedente_total', 'procedente_parcial'])
-const DE_MERITO = new Set([...PROCEDENTES, 'improcedente'])
 const EXTINTO = 'extinto_sem_merito'
-/** O tribunal pelo J.TR do número CNJ, para o recorte por juízo; o que não está aqui aparece como "J.TR". */
-const TRIBUNAL_DO_JTR: Record<string, string> = { '401': 'TRF1', '402': 'TRF2', '403': 'TRF3', '404': 'TRF4', '405': 'TRF5', '406': 'TRF6', '826': 'TJSP' }
 const UM_DIA_MS = 86_400_000
 
 /** Toda taxa sai, com o número de casos (CA8, G22 de 07/10); sem nenhum caso, "sem dados ainda" (CA5). */
@@ -106,13 +104,16 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   // CA4: os totais em dinheiro, só para quem pode ver.
   let totais: PainelDeResultados['totais'] = null
   if (verTotais) {
-    const recebidas = (await banco.select({ casoId: prestacaoContas.casoId, honorarios: prestacaoContas.honorarios, recebidaEm: prestacaoContas.recebidaEm }).from(prestacaoContas)).filter(
-      (p) => p.recebidaEm && noPeriodo(diaEmBrasilia(p.recebidaEm)),
-    )
-    const centavos = recebidas.reduce((soma, p) => soma + Math.round(Number(p.honorarios) * 100), 0)
-    const dias = recebidas.flatMap((p) => {
-      const c = casoPorId.get(p.casoId)
-      return c && p.recebidaEm ? [Math.round((p.recebidaEm.getTime() - c.criadoEm.getTime()) / UM_DIA_MS)] : []
+    // O dinheiro na mão: o recebimento confirmado depois da ida ao banco (GGVP-98 CA9), como no painel Financeiro (GGVP-78);
+    // o "Receber e lançar" vem antes e não conta. Os honorários são os da versão atual da prestação.
+    const honorarios = new Map<string, string>()
+    for (const p of await banco.select({ casoId: prestacaoContas.casoId, honorarios: prestacaoContas.honorarios }).from(prestacaoContas).orderBy(desc(prestacaoContas.versao)))
+      if (!honorarios.has(p.casoId)) honorarios.set(p.casoId, p.honorarios)
+    const recebidas = [...(await recebimentosConfirmados(banco))].filter(([casoId, quando]) => honorarios.has(casoId) && noPeriodo(diaEmBrasilia(quando)))
+    const centavos = recebidas.reduce((soma, [casoId]) => soma + Math.round(Number(honorarios.get(casoId)) * 100), 0)
+    const dias = recebidas.flatMap(([casoId, quando]) => {
+      const c = casoPorId.get(casoId)
+      return c ? [Math.round((quando.getTime() - c.criadoEm.getTime()) / UM_DIA_MS)] : []
     })
     totais = {
       honorariosRecebidos: (centavos / 100).toFixed(2),
@@ -189,10 +190,8 @@ async function gruposDoRecorte(
     for (const p of await banco.select({ casoId: pericia.casoId, peritoId: pericia.peritoId }).from(pericia)) if (p.peritoId && nomes.has(p.peritoId)) nomeDe.set(p.casoId, nomes.get(p.peritoId) as string)
   } else {
     for (const i of await banco.select({ casoId: identificadorCaso.casoId, tipo: identificadorCaso.tipo, valor: identificadorCaso.valor }).from(identificadorCaso)) {
-      const n = i.valor.replace(/\D/g, '')
-      if (i.tipo !== 'cnj' || n.length !== 20) continue
-      const jtr = n.slice(13, 16)
-      nomeDe.set(i.casoId, `${TRIBUNAL_DO_JTR[jtr] ?? `${jtr[0]}.${jtr.slice(1)}`} · ${n.slice(16)}`)
+      const juizo = i.tipo === 'cnj' ? juizoDoCnj(i.valor) : null
+      if (juizo) nomeDe.set(i.casoId, juizo)
     }
   }
   const nomes = [...new Set(idsComDado.map((id) => nomeDe.get(id)).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, 'pt-BR'))

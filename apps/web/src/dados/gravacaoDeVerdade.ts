@@ -1,7 +1,7 @@
 // GGVP-133: a gravação de verdade numa tela (a entrevista e a conversa do Relacionamento). Abre o microfone, manda cada
 // parte do áudio ao servidor assim que fica pronta, abre o texto ao vivo com a chave temporária e, ao fechar, devolve o
-// que não subiu: sem internet, as partes esperam neste computador. Sem microfone, `aoVivo` fica nulo e a tela segue com o
-// relógio, como antes.
+// que não subiu: sem internet, as partes esperam neste computador. Sem microfone, `semMicrofone` diz o motivo: a tela
+// avisa e oferece subir o áudio gravado fora ou registrar sem áudio, sem falas de exemplo.
 import { useEffect, useRef, useState } from 'react'
 import type { ChaveAoVivo } from '@ggv/contratos'
 import { abrirMicrofone, ouvirAoVivo, type FalaAoVivo, type Microfone } from './audio.ts'
@@ -28,6 +28,7 @@ export function useGravacaoDeVerdade({ ligar, pausada, segundos, enviarParte, pe
   const funcoes = useRef({ enviarParte, pedirChave })
   const [aoVivo, setAoVivo] = useState<FalaAoVivo[] | null>(null)
   const [semAoVivo, setSemAoVivo] = useState('')
+  const [semMicrofone, setSemMicrofone] = useState('')
 
   useEffect(() => {
     segundosAgora.current = segundos
@@ -64,7 +65,7 @@ export function useGravacaoDeVerdade({ ligar, pausada, segundos, enviarParte, pe
           void enviarPendentes()
         },
       )
-      if (!m) return
+      if ('erro' in m) return setSemMicrofone(m.erro)
       microfone.current = m
       setAoVivo([])
       const pedir = funcoes.current.pedirChave
@@ -114,6 +115,9 @@ export function useGravacaoDeVerdade({ ligar, pausada, segundos, enviarParte, pe
     },
   }))
 
-  /** `aoVivo`: o texto ao vivo, nulo sem microfone de verdade; `semAoVivo`: por que não há texto ao vivo. */
-  return { aoVivo, semAoVivo, ...acoes }
+  /**
+   * `aoVivo`: o texto ao vivo, nulo sem microfone de verdade; `semAoVivo`: por que não há texto ao vivo; `semMicrofone`:
+   * por que o microfone não abriu (vazio enquanto abre ou quando abriu).
+   */
+  return { aoVivo, semAoVivo, semMicrofone, ...acoes }
 }

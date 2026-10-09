@@ -2,8 +2,8 @@ import { useEffect, useId, useState } from 'react'
 import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
 import { dataDe, ultimaDoLaco } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
-import { hojeIso, isoParaData } from '@ggv/campos'
-import { Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type AnaliseDoDespacho, type Despacho } from '@ggv/contratos'
+import { diaLocal, hojeIso, isoParaData } from '@ggv/campos'
+import { nomeDoBeneficio, Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type AnaliseDoDespacho, type Despacho } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 import { EncerrarSemJudicializar } from './Vigilia.tsx'
@@ -14,8 +14,7 @@ type PedidoNaTela = { descricao: string; temPrazo: boolean | null; prazo: string
 const ROTULO_PERICIA = { medica: 'Perícia médica', social: 'Avaliação social' } as const
 const ROTULO_ITEM = { pendente: 'aberto', cumprido: 'concluído', nao_cumprido: 'encerrado sem a prova' } as const
 const DO_SETOR: Record<Setor, string> = { atendimento: 'o Atendimento', documentacao: 'a Documentação' }
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 
 /** O pedido a um setor marcado (GGVP-54 CA6): o que obter e "Essa tarefa tem prazo?"; com "Sim", a data de entrega. */
 function PedidoDoSetor({ setor, pedido, mudar }: { setor: Setor; pedido: PedidoNaTela; mudar: (p: PedidoNaTela) => void }) {
@@ -135,7 +134,7 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Despachar caso</h1>
       <p className={styles.subtitulo}>
-        {x.cliente} · {rotuloBeneficio(x.beneficio)}
+        {x.cliente} · {nomeDoBeneficio(x.beneficio)}
       </p>
 
       <section className={styles.cartao} aria-label="Histórico do caso">

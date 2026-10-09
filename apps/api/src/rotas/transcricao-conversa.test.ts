@@ -11,7 +11,7 @@ import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
-import { MSG_IA_SEM_ANALISE, MSG_SEM_AVISO_NA_LIGACAO } from './conversa.ts'
+import { MSG_IA_SEM_ANALISE, MSG_IA_SEM_SAUDE_NA_CONVERSA, MSG_SEM_AVISO_NA_LIGACAO } from './conversa.ts'
 
 // GGVP-133, parte 3: a transcrição de verdade na conversa do Relacionamento; GGVP-140: a IA de verdade lê a conversa.
 // Sempre com serviço falso.
@@ -230,11 +230,12 @@ describe('GGVP-140 · a IA de verdade lê a conversa do Relacionamento', () => {
     expect([chamada.situacao, chamada.erro]).toEqual(['falhou', 'saída fora do formato'])
   })
 
-  it('CA5 · sem a autorização de dado de saúde (IA_PERMITE_DADO_DE_SAUDE), a IA não lê a conversa e a tela segue manual', async () => {
+  it('CA5 · sem a autorização de dado de saúde (IA_PERMITE_DADO_DE_SAUDE), a IA não lê a conversa, a tela diz o motivo certo e segue manual', async () => {
     montar({ ambiente: { OPENAI_API_KEY: 'chave-de-teste-openai' } })
     const { r } = await ligacaoLida()
     expect(r.gravacao.transcricao).toBe('pronta')
-    expect(r.conversa.analise.observacao).toMatch(new RegExp(`^${MSG_IA_SEM_ANALISE}`))
+    // GGVP-133: o motivo é a autorização que falta, não "a IA não respondeu".
+    expect(r.conversa.analise.observacao).toMatch(new RegExp(`^${MSG_IA_SEM_SAUDE_NA_CONVERSA}`))
     const [chamada] = await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'analisar_conversa'))
     expect([chamada.situacao, chamada.erro]).toEqual(['recusada', 'dado de saúde sem autorização do escritório'])
   })

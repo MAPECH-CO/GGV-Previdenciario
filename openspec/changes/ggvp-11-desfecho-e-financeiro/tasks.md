@@ -9,6 +9,7 @@
 - [x] 1.5 Telas: "Receber e lançar" com a caixa de conferência; ida ao banco do Financeiro com acompanhante obrigatório e "Confirmar recebimento"; testes de tela.
 - [x] 1.6 Playwright do caminho: advogada conclui, Financeiro recebe, agenda, avisa e confirma; Atendimento vê "Levar ao banco".
 - [x] 1.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 1.8 Revisão de 08/10 (M5): a dica de "Prestar contas" ainda dizia "o Atendimento agenda a ida ao banco"; passa a dizer que o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco (mudança do Lucas de 06/10); teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 
 ## GGVP-22 · Explicar o resultado ao cliente
 
@@ -128,7 +129,7 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 
 ## GGVP-100 · Improcedente: decidir se recorre (guardado em rascunho, a confirmar com o Lucas)
 
-- [x] 14.1 CA3 · Contratos: `DecidirRecurso`, `RecursoDoCaso`; matriz versão 21 (`recurso.ver` para advogada, Sênior e Sócio; `recurso.decidir` só para a Sênior); testes do contrato.
+- [x] 14.1 CA3 · Contratos: `DecidirRecurso`, `RecursoDoCaso`; matriz versão 23 (`recurso.ver` para advogada e Sênior, sem o Sócio (GGVP-96); `recurso.decidir` só para a Sênior); testes do contrato.
 - [x] 14.2 CA4 · `prazoRecursal` em `fluxo/prazo-judicial.ts`: 10 dias úteis, ou o prazo menor da classificação (G12); testes.
 - [x] 14.3 CA1, CA2, CA3, CA5, CA7 · Servidor: `abrirDecisaoDoRecurso`, `GET` e `POST /api/casos/:id/recurso`; o estudo de caso espera a decisão (`semRecursoPendente`); testes da API.
 - [x] 14.4 Semente: Sérgio Nunes (exemplo), com a sentença improcedente e "Decidir recurso" aberta para a Sênior.
@@ -136,9 +137,16 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [ ] 14.6 CA6 · "Recurso e contrarrazões" na Minuta da IA: a Minuta ainda não tem lista de tipos de peça.
 - [ ] 14.7 CA8 · Ligar a jurimetria do juízo (pedidos #11 e #27) no `chance` de `GET /api/casos/:id/recurso`.
 - [ ] 14.8 A "Confirmar desfecho" (D4.02) chama `abrirDecisaoDoRecurso` quando a sentença for improcedente.
+- [x] 14.9 CA5 · Q26 respondida (Lucas, 09/10): a tarefa "Elaborar e protocolar o recurso" nasce para a Sênior; testes da API, da tela e Playwright.
 
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.
   - Ficou fora deste PR para não abrir mais um choque de migração: o #26 e o #29 já disputam os números a partir da 0013.
   - Até lá, o vínculo vem do histórico, gravado na mesma transação do atendimento (5.2).
+
+## Revisão de 08/10 · resumo com [completar] (GGVP-22 CA6)
+
+- [x] 11.1 CA6 · `faltaCompletar` em `packages/contratos/src/ia.ts` (texto com "[completar...]" → motivo; senão nulo); teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 11.2 CA6 · `POST /api/casos/:id/resultado/resumo` recusa com `faltaCompletar` (400, nada muda); teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 11.3 CA6 · Tela "Explicar o resultado": "Aprovar o resumo" mostra o motivo e não envia; teste Vitest; verifica com `pnpm --filter @ggv/web test`.

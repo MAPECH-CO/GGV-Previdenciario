@@ -27,7 +27,7 @@ test('GGVP-22 · a advogada aprova o resumo e passa ao Atendimento; o Atendiment
   await expect(page.getByLabel('Contatos')).toContainText('sem contato')
 })
 
-test('GGVP-100 · a Sênior decide recorrer, com justificativa; o recurso vai para a advogada responsável', async ({ page, context }) => {
+test('GGVP-100 · a Sênior decide recorrer, com justificativa; o recurso fica com a Sênior', async ({ page }) => {
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Sérgio Nunes (exemplo) · Decidir recurso' }).click()
@@ -40,8 +40,6 @@ test('GGVP-100 · a Sênior decide recorrer, com justificativa; o recurso vai pa
   await registrar.click()
   await expect(page.getByRole('heading', { name: '✓ Sim, recorrer' })).toBeVisible()
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Sérgio Nunes (exemplo) · Elaborar e protocolar o recurso' })).toBeVisible()
 })

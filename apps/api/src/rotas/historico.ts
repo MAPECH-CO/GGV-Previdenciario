@@ -130,6 +130,9 @@ const DESCRICAO: Record<string, string> = {
   pericia_perfil_atualizado: 'Perfil do perito atualizado com o laudo',
   pericia_perito_do_laudo: 'Laudo da perícia ligado ao perito',
   importacao_gravada: 'Planilha do escritório importada (clientes e processos)',
+  // A ida ao banco (GGVP-98): o Atendimento leva; "Não deu" volta ao Financeiro remarcar.
+  cliente_levado_ao_banco: 'Cliente levado ao banco pelo Atendimento',
+  ida_ao_banco_nao_feita: 'Ida ao banco não feita: voltou ao Financeiro remarcar',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',

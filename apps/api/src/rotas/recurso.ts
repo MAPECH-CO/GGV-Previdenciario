@@ -1,5 +1,6 @@
 // Improcedente: decidir se recorre (GGVP-100, passo D3b.04). Depois da sentença improcedente confirmada ("Confirmar
-// desfecho", D4.02), a Sênior decide com justificativa (Lucas, 07/10); a advogada responsável e o Sócio só leem.
+// desfecho", D4.02), a Sênior decide com justificativa (Lucas, 07/10); a advogada responsável só lê. O Sócio não
+// vê: a tela traz o texto da sentença, e o Sócio lê sem dado de saúde nem passo do caso (GGVP-96).
 // Recorrer: o processo segue na vigília (D3a) e nasce a tarefa do recurso. Não recorrer: o caso vai ao estudo de caso
 // (GGVP-19) e à explicação ao cliente (GGVP-22).
 import { and, desc, eq, isNull, notExists, sql } from 'drizzle-orm'
@@ -14,11 +15,8 @@ import { abrirExplicacaoDoResultado } from './resultado.ts'
 export const TITULO_DECIDIR = 'Decidir recurso'
 export const TITULO_RECORRER = 'Elaborar e protocolar o recurso'
 export const MSG_SEM_DECISAO = 'Este caso não tem decisão de recurso esperando.'
-/**
- * Dúvida Q26 (aberta): quem elabora e protocola o recurso. Até o Lucas responder, a advogada responsável do caso; trocar
- * aqui muda o dono da tarefa "Elaborar e protocolar o recurso".
- */
-export const QUEM_FAZ_O_RECURSO: Perfil = 'advogada'
+/** Dúvida Q26, respondida pelo Lucas (09/10): quem elabora e protocola o recurso são as Sêniores. */
+export const QUEM_FAZ_O_RECURSO: Perfil = 'senior'
 
 type Opcoes = { banco: Banco; agora?: () => Date }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
@@ -113,15 +111,7 @@ export function registrarRotasRecurso(app: FastifyInstance, { banco, agora = () 
       await tx.insert(decisao).values({ casoId, passo: 'D3b.04', tipo: 'recurso', resultado: escolha, justificativa, decididoPor: quem, perfil: pedido.perfilAtivo!, decididoEm: agora() })
       if (escolha === 'recorrer') {
         // CA1, CA5: o processo segue na vigília (D3a); o acórdão chega pela vigília, como as outras publicações.
-        const [c] = await tx.select({ advogada: caso.advogadaResponsavelId }).from(caso).where(eq(caso.id, casoId))
-        await tx.insert(tarefa).values({
-          casoId,
-          passo: 'D3b.04r',
-          titulo: TITULO_RECORRER,
-          perfilDono: QUEM_FAZ_O_RECURSO,
-          responsavelId: QUEM_FAZ_O_RECURSO === 'advogada' ? (c?.advogada ?? null) : null,
-          prazo: pendente.prazo,
-        })
+        await tx.insert(tarefa).values({ casoId, passo: 'D3b.04r', titulo: TITULO_RECORRER, perfilDono: QUEM_FAZ_O_RECURSO, prazo: pendente.prazo })
       } else {
         // CA2: o estudo de caso nasce na próxima rodada da IA (GGVP-19, ver semRecursoPendente); a explicação ao cliente
         // (GGVP-22) abre já, mesmo sem a IA.
