@@ -1,10 +1,11 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { nomeDoBeneficio, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
+import { DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { taxaComCasos } from '../regras/caso.ts'
 import styles from './Passo.module.css'
+import { nomeDoBeneficio } from '@ggv/contratos'
 
 const ROTULO_PARECER = { suficiente: 'Suficiente', insuficiente: 'Insuficiente', contraditorio: 'Contraditório', dispensado: 'Dispensado por duas Sêniores' }
 

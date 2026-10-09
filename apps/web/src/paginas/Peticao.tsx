@@ -1,9 +1,11 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { diaLocal, formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
-import { nomeDoBeneficio, AprovarPeticao, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
+import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
+import { AprovarPeticao, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
+import { diaLocal } from '@ggv/campos'
+import { nomeDoBeneficio } from '@ggv/contratos'
 
 const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 const ROTULO_OPCAO: Record<keyof OpcoesDoPedido, string> = {
