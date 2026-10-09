@@ -1,6 +1,6 @@
 {
-  "id": "8ebc295e-bcf1-4300-98ad-af90b6507fd5",
-  "prevId": "3045e591-9ce8-4015-98e1-e1b649dced80",
+  "id": "9b394587-a61d-4c90-8a06-8fba5f453b21",
+  "prevId": "7aad5918-4fc0-4772-82d2-0bdb51a83bce",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -802,58 +802,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.leitura_documento": {
-      "name": "leitura_documento",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "leitura_documento_pessoa_id_pessoa_id_fk": {
-          "name": "leitura_documento_pessoa_id_pessoa_id_fk",
-          "tableFrom": "leitura_documento",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.pessoa": {
       "name": "pessoa",
       "schema": "",
@@ -1479,86 +1427,6 @@
       },
       "isRLSEnabled": true
     },
-    "public.boas_vindas": {
-      "name": "boas_vindas",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "boas_vindas_caso_id_caso_id_fk": {
-          "name": "boas_vindas_caso_id_caso_id_fk",
-          "tableFrom": "boas_vindas",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "boas_vindas_pessoa_id_pessoa_id_fk": {
-          "name": "boas_vindas_pessoa_id_pessoa_id_fk",
-          "tableFrom": "boas_vindas",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "boas_vindas_pessoa_id_unique": {
-          "name": "boas_vindas_pessoa_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "pessoa_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.caso": {
       "name": "caso",
       "schema": "",
@@ -1610,6 +1478,18 @@
         "encerrado_em": {
           "name": "encerrado_em",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vara": {
+          "name": "vara",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "juiz": {
+          "name": "juiz",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1674,112 +1554,6 @@
           "value": "\"caso\".\"desfecho\" in ('deferido', 'procedente_total', 'procedente_parcial', 'improcedente', 'extinto_sem_merito', 'desistencia')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.cobranca_documento": {
-      "name": "cobranca_documento",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "cobranca_documento_caso_id_caso_id_fk": {
-          "name": "cobranca_documento_caso_id_caso_id_fk",
-          "tableFrom": "cobranca_documento",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "public.conferencia_checklist": {
-      "name": "conferencia_checklist",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "caso_id": {
-          "name": "caso_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criado_em": {
-          "name": "criado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "conferencia_checklist_caso_id_caso_id_fk": {
-          "name": "conferencia_checklist_caso_id_caso_id_fk",
-          "tableFrom": "conferencia_checklist",
-          "tableTo": "caso",
-          "columnsFrom": [
-            "caso_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.contrato_recepcao": {
@@ -5194,6 +4968,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "entendimentos": {
+          "name": "entendimentos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entendimentos_em": {
+          "name": "entendimentos_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -5842,6 +5628,36 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "materia": {
+          "name": "materia",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vara": {
+          "name": "vara",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tese": {
+          "name": "tese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resumo": {
+          "name": "resumo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "licao": {
+          "name": "licao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",

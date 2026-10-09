@@ -29,6 +29,8 @@ export const pessoa = pgTable(
     /** G16: todo lead que não vira cliente fica com o motivo. */
     motivoNaoVirou: text('motivo_nao_virou'),
     origem: text('origem'),
+    /** A pasta do cliente no Drive do escritório, achada ou criada no primeiro documento (GGVP-107 CA1). */
+    drivePastaId: text('drive_pasta_id'),
     /** LGPD: fim da guarda; os dados pessoais são apagados e fica só o que a lei exige. */
     anonimizadoEm: momento('anonimizado_em'),
     criadoEm: criadoEm(),

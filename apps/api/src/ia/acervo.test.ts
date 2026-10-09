@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acervoTrecho, atendimento, caso, chamadaIa, modelo, peticao, peticaoVersao, pessoa, publicacao, resultadoInss } from '../banco/esquema.ts'
+import { acervoTrecho, atendimento, caso, chamadaIa, documentacaoMedica, gravacaoRecepcao, modelo, pericia, peticao, peticaoVersao, pessoa, publicacao, resultadoInss } from '../banco/esquema.ts'
 import { alimentarAcervo, anonimizar, buscarNoAcervo } from './acervo.ts'
 import { DIMENSOES_DO_VETOR, criarIa } from './ia.ts'
 
@@ -111,6 +111,143 @@ describe('GGVP-141 · o acervo se alimenta sozinho', () => {
     expect(await alimentarAcervo(banco, comIa({ OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }))).toEqual({ novos: 0, vetores: 1 })
     expect((await banco.select().from(acervoTrecho)).map((t) => t.embedding?.length)).toEqual([DIMENSOES_DO_VETOR, DIMENSOES_DO_VETOR])
     expect((await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'vetor_acervo'))).map((c) => c.situacao)).toEqual(['ok', 'ok'])
+  })
+})
+
+describe('GGVP-141, parte 2 · o que as telas do Pedro conferem entra no acervo', () => {
+  const semChave = () => criarIa({ banco, ambiente: {} })
+  const trechos = async () =>
+    (await banco.select().from(acervoTrecho).orderBy(acervoTrecho.origem, acervoTrecho.texto)).map((t) => ({ origem: t.origem, texto: t.texto, soJuridico: t.soJuridico, referencia: t.referencia }))
+
+  /** A documentação médica do caso como a rota guarda (parte `parecer`): duas análises, só a primeira com parecer registrado. */
+  async function parecerRegistrado() {
+    await banco.insert(documentacaoMedica).values({
+      casoId: outro,
+      parte: 'parecer',
+      documento: {
+        analises: [
+          { quando: '2026-09-01T12:00:00Z', documentos: [{ id: 'd1', tipo: 'laudo', data: '2026-08-20', resumo: 'Joana Pereira Lima tem lombalgia crônica com limitação para esforço.' }] },
+          { quando: '2026-09-10T12:00:00Z', documentos: [{ id: 'd2', tipo: 'exame', data: '2026-09-05', resumo: 'Ressonância nova, ainda sem parecer.' }] },
+        ],
+        registros: [
+          {
+            situacao: 'insuficiente',
+            quem: 'Dra. Paula (exemplo)',
+            quando: '2026-09-02T12:00:00Z',
+            analise: '2026-09-01T12:00:00Z',
+            abordar: 'O tempo estimado de afastamento.',
+            itens: [
+              { id: 'i1', tipo: 'item', texto: 'Limitação funcional descrita', situacao: 'presente', corrigido: false },
+              { id: 'i2', tipo: 'item', texto: 'Tempo estimado de afastamento', situacao: 'ausente', corrigido: false },
+            ],
+          },
+        ],
+      },
+    })
+  }
+
+  it('CA1 · 4.7 · o parecer registrado e o laudo da análise que ele conferiu entram, só para o Jurídico e sem o nome', async () => {
+    await parecerRegistrado()
+    expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 2, vetores: 0 })
+    expect(await trechos()).toEqual([
+      { origem: 'Laudo conferido', texto: 'laudo de 2026-08-20: [cliente] tem lombalgia crônica com limitação para esforço.', soJuridico: true, referencia: `caso:${outro}` },
+      {
+        origem: 'Parecer médico',
+        texto: 'Parecer insuficiente. Itens: Limitação funcional descrita: presente; Tempo estimado de afastamento: ausente. Abordar: O tempo estimado de afastamento.',
+        soJuridico: true,
+        referencia: `caso:${outro}`,
+      },
+    ])
+    // A busca por palavra acha o parecer para o Jurídico; quem não vê saúde não acha nada.
+    expect((await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'tempo de afastamento', saude: true })).map((f) => f.trecho!.split(':')[0])).toEqual(['Parecer médico'])
+    expect(await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'tempo de afastamento' })).toEqual([])
+  })
+
+  /** A gravação da entrevista como a rota guarda (no `dados`), da pessoa do outro caso, ou de quem se pedir. */
+  async function entrevista(id: string, extra: Record<string, unknown> = {}, pessoaId?: string) {
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, outro))
+    await banco.insert(gravacaoRecepcao).values({
+      id,
+      pessoaId: pessoaId ?? c.pessoaId,
+      soJuridico: true,
+      dados: {
+        resumo: 'Resumo da IA: Joana Pereira Lima não trabalha desde março.',
+        trechos: [
+          { aos: 10, quem: 'Joana Pereira Lima', papel: 'cliente', texto: 'Parei de trabalhar em março por causa da coluna.', prova: true },
+          { aos: 20, quem: 'Joana Pereira Lima', papel: 'cliente', texto: 'Meu marido também ajuda em casa.' },
+        ],
+        extraidas: [
+          { id: 'e1', rotulo: 'Profissão', valor: 'Costureira', destino: 'ficha', campo: 'profissao', conferidaEm: '2026-10-08T15:00:00Z' },
+          { id: 'e2', rotulo: 'Telefone', valor: '11 98765-4321', destino: 'ficha', campo: 'telefone', conferidaEm: '2026-10-08T15:00:00Z' },
+          { id: 'e3', rotulo: 'Contato de apoio', valor: 'Carlos, 11 91234-5678', destino: 'ficha', campo: 'contatoApoio', conferidaEm: '2026-10-08T15:00:00Z' },
+          { id: 'e4', rotulo: 'Estado civil', valor: 'Casada', destino: 'ficha', campo: 'estadoCivil' },
+          { id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre', destino: 'cofre', conferidaEm: '2026-10-08T15:00:00Z' },
+        ],
+        ...extra,
+      },
+    })
+  }
+
+  it('CA1 · 4.8 · da entrevista entram os trechos de prova e as informações conferidas, sem telefone, contato e senha, no caso da pessoa', async () => {
+    await entrevista('gravacao-entrevista')
+    await entrevista('gravacao-conversa', { conversaId: 'conversa-1' }) // já entra como "Conversa conferida"
+    const [semCaso] = await banco.insert(pessoa).values({ nome: 'Rita Sem Caso', situacao: 'lead' }).returning()
+    await entrevista('gravacao-lead', {}, semCaso.id) // sem caso ainda: entra quando o caso nascer
+    expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 1, vetores: 0 })
+    expect(await trechos()).toEqual([
+      { origem: 'Transcrição conferida', texto: 'Parei de trabalhar em março por causa da coluna. Profissão: Costureira', soJuridico: true, referencia: 'gravacao:gravacao-entrevista' },
+    ])
+    const [{ casoId }] = await banco.select({ casoId: acervoTrecho.casoId }).from(acervoTrecho)
+    expect(casoId).toBe(outro)
+  })
+
+  it('CA1 · 4.9 · o resultado registrado da perícia entra com a leitura que a advogada conferiu, só para o Jurídico', async () => {
+    const leitura = {
+      favoravel: false,
+      resumo: 'Joana Pereira Lima: o perito não viu incapacidade para a costura.',
+      conclusao: 'Desfavorável',
+      coerencia: '',
+      pontoDeAtencao: 'Não considerou o laudo do ortopedista.',
+      porque: 'Disse que a dor não impede o trabalho.',
+      assunto: 'coluna',
+      observou: [],
+      perguntou: [],
+      pediu: [],
+    }
+    const registrado = { quando: '2026-10-01T12:00:00Z', quem: 'Dra. Paula (exemplo)', favoravel: false, conferidas: [] }
+    await banco.insert(pericia).values({ casoId: outro, tipo: 'medica', documento: { resultado: { laudo: { nome: 'laudo.pdf', anexadoEm: registrado.quando, leitura }, registrado } } })
+    await banco.insert(pericia).values({ casoId: outro, tipo: 'social', documento: { resultado: { disponivelEm: '2026-10-05T12:00:00Z' } } }) // sem registro: fora
+    expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 1, vetores: 0 })
+    expect(await trechos()).toEqual([
+      {
+        origem: 'Resultado da perícia',
+        texto:
+          'Perícia médica: desfavorável. Assunto: coluna. [cliente]: o perito não viu incapacidade para a costura. Conclusão: Desfavorável. Por quê: Disse que a dor não impede o trabalho. Ponto de atenção: Não considerou o laudo do ortopedista.',
+        soJuridico: true,
+        referencia: `caso:${outro}`,
+      },
+    ])
+  })
+
+  it('CA1 · 4.10 · o que a IA sugeriu e ninguém conferiu fica fora: a análise sem parecer, a informação sem conferência e o resumo da entrevista', async () => {
+    await banco.insert(documentacaoMedica).values({
+      casoId: outro,
+      parte: 'parecer',
+      documento: { analises: [{ quando: '2026-09-01T12:00:00Z', documentos: [{ id: 'd1', tipo: 'laudo', data: '2026-08-20', resumo: 'Resumo da IA ainda sem parecer.' }] }], registros: [] },
+    })
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, outro))
+    await banco.insert(gravacaoRecepcao).values({
+      id: 'gravacao-sem-conferir',
+      pessoaId: c.pessoaId,
+      soJuridico: true,
+      dados: {
+        resumo: 'Resumo da IA: não trabalha desde março.',
+        trechos: [{ aos: 10, quem: 'Joana', papel: 'cliente', texto: 'Parei de trabalhar em março.' }],
+        extraidas: [{ id: 'e1', rotulo: 'Profissão', valor: 'Costureira', destino: 'ficha', campo: 'profissao' }],
+      },
+    })
+    expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 0, vetores: 0 })
+    expect(await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'resumo da IA março costureira', saude: true })).toEqual([])
   })
 })
 

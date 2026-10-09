@@ -232,7 +232,7 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 
 Parte 1 · A main e o fluxo da Recepção
 
-- [ ] 125.77 Trazer a main: as migrações da leitura e do 5c geradas de novo pelo drizzle-kit, depois da 0025 e da 0026 da main; a matriz passa a 26, com `cobranca.decidir` sobre a 25; testes.
+- [x] 125.77 Trazer a main: as migrações da leitura e do 5c geradas de novo pelo drizzle-kit, depois da 0025 e da 0026 da main; a matriz passa a 26, com `cobranca.decidir` sobre a 25; testes.
 - [ ] 125.78 Servidor: ao arquivar, o tipo conferido vai para o `documento` (o do card e do chat pela linha que já existe, pelo hash; o do scanner numa linha nova com a chave do Drive simulada, sem conteúdo), com `conferido`, quem e quando; o médico fica sensível e, com caso, ganha o `documento_medico` não conferido; testes.
 - [ ] 125.79 Servidor: uma regra só para o laudo novo: o card, o chat, o lote do scanner e o arquivamento que confere como laudo, relatório médico ou prontuário o que chegou com outro tipo abrem "Analisar laudo novo" (uma aberta por ficha); testes.
 - [ ] 125.80 Servidor: a conferência completa do checklist abre "Liberar ao Jurídico" (D1.24) para a Documentação, uma por caso, que fecha na liberação; a Central leva o D1.24 a `/casos/:id/liberar`; as telas não repetem a tarefa local do caso do servidor; testes.

@@ -24,18 +24,18 @@ const CNJ_VALIDO = '0001234-96.2026.4.03.6301'
 
 describe('GGVP-34 · classificar a publicação', () => {
   it('andamento não pede prazo', () => {
-    expect(ClassificarPublicacao.parse({ classe: 'andamento' })).toEqual({ classe: 'andamento', dias: null })
+    expect(ClassificarPublicacao.parse({ classe: 'andamento' })).toEqual({ classe: 'andamento', dias: null, vara: null, juiz: null })
   })
 
   it('GGVP-59 CA1 · nomeação de perito: o prazo do despacho, ou 15 dias sem ele (CPC, art. 465, §1º)', () => {
-    expect(ClassificarPublicacao.parse({ classe: 'nomeacao_perito', semPrazoNaDecisao: true })).toEqual({ classe: 'nomeacao_perito', dias: 15 })
-    expect(ClassificarPublicacao.parse({ classe: 'nomeacao_perito', dias: '10' })).toEqual({ classe: 'nomeacao_perito', dias: 10 })
+    expect(ClassificarPublicacao.parse({ classe: 'nomeacao_perito', semPrazoNaDecisao: true })).toEqual({ classe: 'nomeacao_perito', dias: 15, vara: null, juiz: null })
+    expect(ClassificarPublicacao.parse({ classe: 'nomeacao_perito', dias: '10' })).toEqual({ classe: 'nomeacao_perito', dias: 10, vara: null, juiz: null })
     expect(ROTULO_CLASSE.nomeacao_perito).toBe('Nomeação de perito')
   })
 
   it('exigência e mérito pedem os dias; sem prazo na decisão vira 5 (CPC, art. 218, §3º)', () => {
-    expect(ClassificarPublicacao.parse({ classe: 'exigencia', dias: '15' })).toEqual({ classe: 'exigencia', dias: 15 })
-    expect(ClassificarPublicacao.parse({ classe: 'merito', semPrazoNaDecisao: true })).toEqual({ classe: 'merito', dias: 5 })
+    expect(ClassificarPublicacao.parse({ classe: 'exigencia', dias: '15' })).toEqual({ classe: 'exigencia', dias: 15, vara: null, juiz: null })
+    expect(ClassificarPublicacao.parse({ classe: 'merito', semPrazoNaDecisao: true })).toEqual({ classe: 'merito', dias: 5, vara: null, juiz: null })
     expect(erro(ClassificarPublicacao.safeParse({ classe: 'exigencia' }))).toBe(
       'Informe o prazo da publicação, em dias (1 a 120), ou marque "sem prazo na decisão"',
     )

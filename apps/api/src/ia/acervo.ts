@@ -50,7 +50,8 @@ function recortar(texto: string, termos: string[]) {
 /**
  * As fontes do acervo (GGVP-45, GGVP-19, GGVP-141): o que uma pessoa aprovou, registrou ou conferiu. Documento do caso pode
  * trazer dado de saúde e fica só para o Jurídico (`so_juridico`); o modelo da casa não tem dado de cliente. A conversa
- * conferida é só do Jurídico quando trouxe fato de saúde ou veio de gravação só do Jurídico.
+ * conferida é só do Jurídico quando trouxe fato de saúde ou veio de gravação só do Jurídico. O que a IA sugeriu e
+ * ninguém conferiu não entra (parte 2).
  */
 const FONTES = sql`
       select 'Petição aprovada' as de, p.caso_id, null::uuid as modelo_id, v.conteudo as texto, true as so_juridico, null::uuid as pessoa_id, 'caso:' || p.caso_id as referencia
@@ -72,7 +73,49 @@ const FONTES = sql`
              jsonb_path_exists(a.dados, '$.analise.mudancas[*] ? (@.saude == true)')
                or exists (select 1 from gravacao_recepcao g where g.id = a.dados ->> 'gravacaoId' and g.so_juridico),
              a.pessoa_id, 'conversa:' || a.id
-        from atendimento a where a.dados ->> 'conferidaEm' is not null`
+        from atendimento a where a.dados ->> 'conferidaEm' is not null
+      union all
+      -- GGVP-141 CA1, parte 2: cada parecer que a advogada registrou, com os itens como ela conferiu (GGVP-132).
+      select 'Parecer médico', dm.caso_id, null,
+             concat_ws(' ', 'Parecer ' || (r ->> 'situacao') || '.',
+               'Itens: ' || (select string_agg((i ->> 'texto') || ': ' || (i ->> 'situacao'), '; ' order by n)
+                               from jsonb_array_elements(coalesce(r -> 'itens', '[]')) with ordinality as x(i, n)) || '.',
+               'Abordar: ' || (r ->> 'abordar'), 'Conferência manual: ' || (r ->> 'conferenciaManual')),
+             true, null, 'caso:' || dm.caso_id
+        from documentacao_medica dm cross join lateral jsonb_array_elements(coalesce(dm.documento -> 'registros', '[]')) r
+       where dm.parte = 'parecer'
+      union all
+      -- O laudo conferido: o resumo de cada documento da análise que um parecer conferiu; a análise sem parecer fica fora.
+      select 'Laudo conferido', dm.caso_id, null, concat_ws(' ', d ->> 'tipo', 'de ' || (d ->> 'data') || ':', d ->> 'resumo'), true, null, 'caso:' || dm.caso_id
+        from documentacao_medica dm
+             cross join lateral jsonb_array_elements(coalesce(dm.documento -> 'analises', '[]')) a
+             cross join lateral jsonb_array_elements(coalesce(a -> 'documentos', '[]')) d
+       where dm.parte = 'parecer' and d ->> 'resumo' is not null
+         and exists (select 1 from jsonb_array_elements(coalesce(dm.documento -> 'registros', '[]')) r where r ->> 'analise' = a ->> 'quando')
+      union all
+      -- A transcrição conferida (GGVP-46 CA6, GGVP-133): os trechos marcados como prova e as informações conferidas, sem
+      -- senha, telefone e contato de apoio. A gravação é da pessoa: entra no caso mais novo dela, e sem caso espera o caso
+      -- nascer. A gravação de uma conversa já entra como "Conversa conferida".
+      select 'Transcrição conferida', c.id, null,
+             concat_ws(' ',
+               (select string_agg(t ->> 'texto', ' ' order by n) from jsonb_array_elements(coalesce(g.dados -> 'trechos', '[]')) with ordinality as x(t, n)
+                 where t ->> 'prova' = 'true'),
+               (select string_agg((e ->> 'rotulo') || ': ' || (e ->> 'valor'), '; ' order by n) from jsonb_array_elements(coalesce(g.dados -> 'extraidas', '[]')) with ordinality as x(e, n)
+                 where e ->> 'conferidaEm' is not null and e ->> 'destino' <> 'cofre' and coalesce(e ->> 'campo', '') not in ('telefone', 'contatoApoio'))),
+             g.so_juridico, g.pessoa_id, 'gravacao:' || g.id
+        from gravacao_recepcao g
+             cross join lateral (select id from caso where caso.pessoa_id = g.pessoa_id order by criado_em desc limit 1) c
+       where g.dados ->> 'conversaId' is null
+      union all
+      -- O resultado da perícia que a advogada registrou, com a leitura do laudo que ela conferiu (GGVP-70, GGVP-139).
+      select 'Resultado da perícia', p.caso_id, null,
+             concat_ws(' ', 'Perícia ' || case p.tipo when 'medica' then 'médica' else p.tipo end || ':',
+               case when p.documento -> 'resultado' -> 'registrado' ->> 'favoravel' = 'true' then 'favorável.' else 'desfavorável.' end,
+               'Assunto: ' || nullif(l ->> 'assunto', '') || '.', nullif(l ->> 'resumo', ''), 'Conclusão: ' || nullif(l ->> 'conclusao', '') || '.',
+               'Por quê: ' || nullif(l ->> 'porque', ''), 'Ponto de atenção: ' || nullif(l ->> 'pontoDeAtencao', '')),
+             true, null, 'caso:' || p.caso_id
+        from pericia p cross join lateral (select p.documento -> 'resultado' -> 'laudo' -> 'leitura' as l) x
+       where p.documento -> 'resultado' -> 'registrado' is not null`
 
 /** RRF: cada lista dá 1/(k + posição) a cada item; k = 60, o valor de referência do método. */
 const K_DO_RRF = 60

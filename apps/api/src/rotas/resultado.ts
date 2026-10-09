@@ -29,8 +29,7 @@ function ehDeQuemFala(t: { perfilDono: string | null; responsavelId: string | nu
 
 /**
  * Abre o caminho do resultado perdido: "Aprovar o resumo para o cliente" para a advogada, se não houver uma aberta.
- * Quem chama: o estudo de caso (GGVP-19, só na primeira vez do caso) e, quando existirem, o "Não recorrer"
- * (GGVP-100); hoje também a semente.
+ * Quem chama: o estudo de caso (GGVP-19, só na primeira vez do caso), o "Não recorrer" (GGVP-100) e a semente.
  */
 export async function abrirExplicacaoDoResultado(tx: Banco | Tx, casoId: string) {
   const [aberta] = await tx

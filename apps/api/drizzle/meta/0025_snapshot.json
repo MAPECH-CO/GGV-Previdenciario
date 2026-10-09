@@ -1,5 +1,5 @@
 {
-  "id": "3045e591-9ce8-4015-98e1-e1b649dced80",
+  "id": "7aad5918-4fc0-4772-82d2-0bdb51a83bce",
   "prevId": "a380d268-8f84-4ab0-a91a-064264f12f1d",
   "version": "7",
   "dialect": "postgresql",
@@ -802,58 +802,6 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
-    "public.leitura_documento": {
-      "name": "leitura_documento",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "leitura_documento_pessoa_id_pessoa_id_fk": {
-          "name": "leitura_documento_pessoa_id_pessoa_id_fk",
-          "tableFrom": "leitura_documento",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.pessoa": {
       "name": "pessoa",
       "schema": "",
@@ -1530,6 +1478,18 @@
         "encerrado_em": {
           "name": "encerrado_em",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vara": {
+          "name": "vara",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "juiz": {
+          "name": "juiz",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -5007,6 +4967,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "entendimentos": {
+          "name": "entendimentos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entendimentos_em": {
+          "name": "entendimentos_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "criado_em": {
           "name": "criado_em",

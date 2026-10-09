@@ -206,11 +206,11 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([[casoId, 'caso.ver']])
   })
 
-  it('GGVP-96 · o Sócio lê o caso, com os valores (Lucas, 07/10); sem o conteúdo médico e sem a peça', async () => {
+  it('GGVP-96 · o Sócio lê o caso inteiro: os valores (Lucas, 07/10), o conteúdo médico e a peça (Pedro, 09/10); a leitura fica no registro', async () => {
     const p = (await ver('lauro')).json()
-    expect([p.valores, p.saude]).toEqual([{ versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' }, null])
-    expect(p.documentos.map((d: { nome: string | null }) => d.nome)).toEqual([null, 'rg-e-cpf.pdf'])
-    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
+    expect([p.valores, p.saude.documentos[0].cid, p.saude.parecer.resultado]).toEqual([{ versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' }, 'M54.5', 'suficiente'])
+    expect(p.documentos.map((d: { nome: string | null }) => d.nome)).toEqual(['pacote-peticao.pdf', 'laudo-ortopedista.pdf', 'rg-e-cpf.pdf'])
+    expect((await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.perfil, a.casoId])).toEqual([[ids.lauro, 'socio', casoId]])
   })
 
   it('caso que não existe ou id torto: 404', async () => {

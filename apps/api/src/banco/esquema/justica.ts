@@ -141,6 +141,8 @@ export const peticaoVersao = pgTable(
     /** O pacote do protocolo da versão aprovada (GGVP-71 CA8): os arquivos na ordem, com o documento e o hash. */
     pacote: jsonb('pacote'),
     pacoteGeradoEm: momento('pacote_gerado_em'),
+    /** A pasta "Pacote de protocolo" no Drive (GGVP-107 CA6); gerar o pacote de novo zera. */
+    pacoteDriveId: text('pacote_drive_id'),
     criadoEm: criadoEm(),
   },
   (t) => [unique('peticao_versao_unica').on(t.peticaoId, t.numero)],

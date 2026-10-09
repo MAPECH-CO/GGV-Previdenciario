@@ -2,6 +2,7 @@
 // por ela ou a partir da minuta da IA, épico GGVP-14); depois confere e aprova (G6, G18), e o pacote vai para o protocolo
 // com as travas (G7).
 import { createHash } from 'node:crypto'
+import { formatarCnj } from '@ggv/campos'
 import { and, asc, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AprovarPeticao, faltaCompletar, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
@@ -34,7 +35,8 @@ export const MSG_DOCUMENTO_QUE_FALTA = 'Anexe o documento (PDF ou imagem, até 2
 export const MSG_NADA_A_PROTOCOLAR = 'Não há petição aprovada esperando o protocolo.'
 export const MSG_CNJ_DE_OUTRO_CASO = 'Este número de processo já está em outro caso.'
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia: Ia; preparo: Preparo }
+/** `driveLigado`: a trava "pacote completo" cobra o pacote salvo no Drive (GGVP-107 CA6). */
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia: Ia; preparo: Preparo; driveLigado?: boolean }
 /** Um citado no pedido; o que falta pode ter sido pedido à Documentação (`itemId`, GGVP-71 CA13). */
 type Citado = { documentoId: string | null; nome: string; itemId?: string }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -49,7 +51,7 @@ export async function tribunaisDa(banco: Banco): Promise<Tribunal[]> {
   return Array.isArray(c?.valor) ? c.valor.filter(ehTribunal) : []
 }
 
-export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia, preparo }: Opcoes) {
+export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia, preparo, driveLigado = false }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
 
@@ -139,7 +141,8 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
         // Imagem que não abre: fica de fora, e a trava "pacote completo" acusa.
       }
     }
-    await banco.update(peticaoVersao).set({ pacote: arquivos, pacoteGeradoEm: agora() }).where(eq(peticaoVersao.id, v.id))
+    // GGVP-107 CA6: pacote novo vai de novo para o Drive.
+    await banco.update(peticaoVersao).set({ pacote: arquivos, pacoteGeradoEm: agora(), pacoteDriveId: null }).where(eq(peticaoVersao.id, v.id))
   }
 
   // GGVP-63 CA1, CA6, CA9: quem falta, a carta, os documentos para citar, o pedido, as versões e a atual inteira.
@@ -258,6 +261,12 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const acervo = d.opcoes.precedentes
       ? await buscarNoAcervo(banco, { casoId, beneficio: c.beneficio, consulta: [motivo, ...itens.map((i) => i.item.descricao), d.instrucoes].filter(Boolean).join(' '), saude: FINALIDADES.minuta_peticao.saude, ia })
       : []
+    // GGVP-64 parte 2 (CA6): com o juízo, os entendimentos recorrentes e os processos de exemplo vão ao modelo, sem o
+    // rótulo nem número do juízo; a peça usa as decisões. Antes do protocolo o caso costuma não ter juízo.
+    const juizo = await juizoDoCaso(banco, casoId)
+    const doJuizo = juizo ? await jurimetriaDoJuizo(banco, juizo, agora()) : null
+    const entendimentos = doJuizo?.entendimentos ?? []
+    const comProcessos = (e: { texto: string; processos: string[] }) => `${e.texto} (processos ${e.processos.map(formatarCnj).join(', ')})`
     const conteudo = [
       `Cliente (autor): ${c.nome}`,
       `Benefício pedido: ${c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : '[completar]'}`,
@@ -268,20 +277,25 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       `Tutela de urgência: ${d.opcoes.tutelaUrgencia ? 'pedir' : 'não pedir'}`,
       `Instruções da advogada: ${d.instrucoes || 'nenhuma'}`,
       ...(acervo.length ? ['Trechos do acervo da casa (outros casos; só a tese serve, nunca os fatos de outro cliente):', ...acervo.map((a) => `- ${a.trecho}`)] : []),
+      ...(entendimentos.length
+        ? ['Entendimentos recorrentes do juízo deste processo, das decisões dele (use as decisões; nunca escreva porcentagem nem contagem):', ...entendimentos.map((e) => `- ${comProcessos(e)}`)]
+        : []),
     ].join('\n')
     const fontes: FonteDaIa[] = [
       ...docs.map((x) => ({ tipo: 'documento' as const, referencia: `documento:${x.id}`, trecho: x.nome })),
       ...(indeferido ? [{ tipo: 'caso' as const, referencia: `indeferimento:${indeferido.id}`, trecho: motivo ?? undefined }] : []),
       ...(parecer ? [{ tipo: 'caso' as const, referencia: `parecer:${parecer.id}`, trecho: parecer.resultado }] : []),
       ...acervo,
+      ...(juizo && entendimentos.length
+        ? [{ tipo: 'acervo' as const, referencia: `entendimentos:${juizo}`, trecho: `Entendimentos do juízo ${juizo} usados na minuta: ${entendimentos.map(comProcessos).join('; ')}` }]
+        : []),
     ]
     const aviso = d.opcoes.precedentes && !acervo.length ? MSG_SEM_REFERENCIA : null
     const s = await ia.sugerir('minuta_peticao', { casoId, quem, conteudo, fontes }, como)
     // GGVP-64 CA3, CA6: a jurimetria do juízo vai às fontes da advogada, depois do modelo. O modelo não recebe esses números,
     // então eles não entram no texto que vai ao juiz. Antes do protocolo o caso costuma não ter número, e a fonte não vem.
-    const juizo = s ? await juizoDoCaso(banco, casoId) : null
-    const doJuizo = juizo ? fonteDoJuizo(await jurimetriaDoJuizo(banco, juizo, agora()), c.beneficio) : null
-    const sugestao = s && doJuizo ? { ...s, fontes: [...s.fontes, doJuizo] } : s
+    const numeros = s && doJuizo ? fonteDoJuizo(doJuizo, c.beneficio) : null
+    const sugestao = s && numeros ? { ...s, fontes: [...s.fontes, numeros] } : s
     return MinutaDaIa.parse({ sugestao, motivo: s ? null : 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso })
   }
 
@@ -483,7 +497,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
         )
       : {}
     const [cliente] = await banco.select({ cpf: pessoa.cpf }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
-    return [travaTema350(pacote), travaCpf(aprovada.conteudo, cliente?.cpf ?? null), travaPacote(citados, pacote, tamanhos, tribunal)]
+    // GGVP-107 CA6: com o Drive ligado, o pacote também tem de estar salvo lá.
+    const noDrive = driveLigado ? Boolean(aprovada.pacoteDriveId) : null
+    return [travaTema350(pacote), travaCpf(aprovada.conteudo, cliente?.cpf ?? null), travaPacote(citados, pacote, tamanhos, tribunal, noDrive)]
   }
 
   /** O citado `i` do pedido, que ainda falta, e a petição; antes do protocolo. */
