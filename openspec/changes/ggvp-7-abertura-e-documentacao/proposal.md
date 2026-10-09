@@ -26,8 +26,9 @@ Duas sessões em paralelo, cada uma na sua árvore e na sua branch, decisão do 
 5. GGVP-18 · Liberar o caso ao Jurídico (D1.24)
 
 **Ligar no servidor** (`feat/GGVP-7-ligar-no-servidor`, GGVP-125, Mateus, desde 08/10): as telas da Recepção e desta
-Abertura passam a gravar no banco do portal, em blocos (1 a 6), com as regras do Pedro e os portões no servidor; spec em
-`specs/ggvp-125/spec.md`.
+Abertura passam a gravar no banco do portal, em blocos (1 a 5; o 6, a liberação, fica com o Pedro, junto com a GGVP-127),
+com as regras do Pedro e os portões no servidor; spec em `specs/ggvp-125/spec.md`. O bloco 5 (documentos, checklist,
+boas-vindas e cobrança) vai em `feat/GGVP-7-ligar-no-servidor-documentos`, empilhada sobre a do contrato.
 
 Cada história ganha uma spec em `specs/ggvp-n/spec.md` e uma seção no `tasks.md`, no bloco do seu grupo.
 

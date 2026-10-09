@@ -190,3 +190,16 @@ Depois de assinado, o contrato SHALL seguir no servidor com as regras do Pedro: 
 - **Dado** o contrato assinado com pendência
 - **Quando** a Atendimento responde que não está certo, com o que corrigir
 - **Então** o contrato volta a preparar no banco, a versão assinada fica no histórico, e a nova versão é gerada pelo mesmo caminho
+
+### Requirement: Bloco 5a · A lista de arquivos da ficha fica no banco do portal
+A lista de arquivos da ficha (nome, tipo, pasta, data, origem e se espera leitura) SHALL ficar na ficha do servidor, só com os dados do arquivo: o arquivo de verdade segue simulado até a ligação com o Drive. Os arquivos que o servidor cria (a imagem da ficha de atendimento e da segunda ficha lidas do papel, o contrato assinado pelo ZapSign ou em papel e a página corrigida) SHALL entrar nessa lista sem sobrescrever o nome de outro arquivo da mesma pasta, e a cópia das telas SHALL recebê-los em três vias, pelo nome: o que o servidor acrescentou ou mudou vem de lá; o que só existe aqui fica. A leitura da ficha de atendimento em papel SHALL ser feita no servidor, como a da segunda ficha; a leitura simulada não traz senha de verdade, e nada vai ao cofre (G9).
+
+#### Scenario: O contrato assinado aparece em outro computador
+- **Dado** o contrato de um cliente do servidor assinado pelo ZapSign
+- **Quando** outra pessoa abre a pasta do processo em outro computador
+- **Então** o arquivo assinado está lá, com a data e a origem
+
+#### Scenario: A ficha de atendimento em papel
+- **Dado** um lead do servidor
+- **Quando** a Atendimento passa a ficha de atendimento em papel no scanner
+- **Então** a imagem fica em Documentos pessoais no servidor, sem sobrescrever outra de mesmo nome, e nenhuma senha vai ao cofre
