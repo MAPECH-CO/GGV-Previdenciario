@@ -67,7 +67,8 @@ const CONVERSA: Record<Assunto, { rotulo: string; modelo: IdDoModelo; carregar: 
     },
     enviar: (id) => registrarTentativa(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
   },
-  // O id é o do processo; o envio da orientação conta como tentativa, ainda sem resposta (GGVP-29, CA3).
+  // O id é o do processo; o envio da orientação conta como tentativa, ainda sem resposta (GGVP-29, CA3). No caso do servidor,
+  // quem conta é o próprio envio (rotas/mensagens.ts), de qualquer janela; aqui, só o da semente.
   complemento: {
     rotulo: 'Mensagem com a orientação ao médico (confira antes de enviar)',
     modelo: 'complemento',
@@ -76,7 +77,7 @@ const CONVERSA: Record<Assunto, { rotulo: string; modelo: IdDoModelo; carregar: 
       if (!dados) throw new Error('Complemento não encontrado')
       return { nome: dados.ficha.nome, telefone: dados.ficha.telefone, mensagem: dados.mensagem, fichaId: dados.ficha.id }
     },
-    enviar: (id) => registrarTentativaDoComplemento(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
+    enviar: async (id) => doServidor(id) || registrarTentativaDoComplemento(id, { canal: 'chatwoot', resultado: 'sem-resposta' }),
   },
   // O id é o do processo; o lembrete da véspera da perícia, revisado pelo Jurídico antes de sair (GGVP-53, CA7; Q5).
   'pericia-lembrete': {
@@ -106,7 +107,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
   const escolhido = usePerfil()
   const janela = useRef<HTMLDialogElement>(null)
   const [conversa, setConversa] = useState<Carregada | null>(null)
-  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'> | null>(null)
+  const [cliente, setCliente] = useState<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta' | 'foraDaLista'> | null>(null)
   const [escolhida, setEscolhida] = useState<number | undefined>()
   const [mensagem, setMensagem] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -198,6 +199,7 @@ export function ConviteChatwoot({ agendamentoId, assunto = 'convite', aoEnviado,
           texto={mensagem}
           simulado={cliente.simulado !== false}
           consulta={cliente.consulta}
+          foraDaLista={cliente.foraDaLista}
         />
       )}
       {erro && (

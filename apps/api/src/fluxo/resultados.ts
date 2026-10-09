@@ -2,9 +2,10 @@
 // (CA7), pela data do seu evento no período; caso com dado incerto fica fora e nada trava. Não há amostra mínima: toda
 // taxa sai com o número de casos (CA8, G22 de 07/10).
 import { ROTULO_BENEFICIO, type Beneficio, type Indicador, type PainelDeResultados, type Recorte } from '@ggv/contratos'
-import { and, count, isNotNull, max, sql } from 'drizzle-orm'
+import { and, count, desc, isNotNull, max, sql } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
+import { recebimentosConfirmados } from '../rotas/prestacao.ts'
 import { hojeEmBrasilia as diaEmBrasilia } from '../vigilia/fila.ts'
 
 const PROCEDENTES = new Set(['procedente_total', 'procedente_parcial'])
@@ -106,13 +107,16 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
   // CA4: os totais em dinheiro, só para quem pode ver.
   let totais: PainelDeResultados['totais'] = null
   if (verTotais) {
-    const recebidas = (await banco.select({ casoId: prestacaoContas.casoId, honorarios: prestacaoContas.honorarios, recebidaEm: prestacaoContas.recebidaEm }).from(prestacaoContas)).filter(
-      (p) => p.recebidaEm && noPeriodo(diaEmBrasilia(p.recebidaEm)),
-    )
-    const centavos = recebidas.reduce((soma, p) => soma + Math.round(Number(p.honorarios) * 100), 0)
-    const dias = recebidas.flatMap((p) => {
-      const c = casoPorId.get(p.casoId)
-      return c && p.recebidaEm ? [Math.round((p.recebidaEm.getTime() - c.criadoEm.getTime()) / UM_DIA_MS)] : []
+    // O dinheiro na mão: o recebimento confirmado depois da ida ao banco (GGVP-98 CA9), como no painel Financeiro (GGVP-78);
+    // o "Receber e lançar" vem antes e não conta. Os honorários são os da versão atual da prestação.
+    const honorarios = new Map<string, string>()
+    for (const p of await banco.select({ casoId: prestacaoContas.casoId, honorarios: prestacaoContas.honorarios }).from(prestacaoContas).orderBy(desc(prestacaoContas.versao)))
+      if (!honorarios.has(p.casoId)) honorarios.set(p.casoId, p.honorarios)
+    const recebidas = [...(await recebimentosConfirmados(banco))].filter(([casoId, quando]) => honorarios.has(casoId) && noPeriodo(diaEmBrasilia(quando)))
+    const centavos = recebidas.reduce((soma, [casoId]) => soma + Math.round(Number(honorarios.get(casoId)) * 100), 0)
+    const dias = recebidas.flatMap(([casoId, quando]) => {
+      const c = casoPorId.get(casoId)
+      return c ? [Math.round((quando.getTime() - c.criadoEm.getTime()) / UM_DIA_MS)] : []
     })
     totais = {
       honorariosRecebidos: (centavos / 100).toFixed(2),

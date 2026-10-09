@@ -37,6 +37,7 @@ import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
+import { podeMarcar, type Pericia } from '../../../web/src/regras/periciaNoCaso.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 
 export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
@@ -50,7 +51,8 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D1.ajuste': (id) => `/casos/${id}/ajuste`,
   'D2.01': (id) => `/casos/${id}/conferencia`,
   'D2.02': (id) => `/casos/${id}/protocolo`,
-  'D2.03': (id) => `/casos/${id}/pericia`,
+  // A decisão da perícia tem tela própria; /casos/:id/pericia é a página da perícia, para todos os perfis do caso.
+  'D2.03': (id) => `/casos/${id}/pericia/decidir`,
   'D2.04': (id) => `/casos/${id}/vigilia`,
   'D2.05': (id) => `/casos/${id}/exigencia`,
   'D2.05d': (id) => `/casos/${id}/exigencia/documentos`,
@@ -58,6 +60,8 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D2.06': (id) => `/casos/${id}/prestacao`,
   'D2.06r': (id) => `/casos/${id}/prestacao/recebimento`,
   'D2.06b': (id) => `/casos/${id}/banco`,
+  // GGVP-98 (P3 do roteiro de 09/10): quem do Atendimento leva o cliente ao banco.
+  'D2.06l': (id) => `/casos/${id}/banco/levar`,
   'D3b.06r': (id) => `/casos/${id}/resultado`,
   'D3b.06': (id) => `/casos/${id}/resultado`,
   // GGVP-19 CA3: a revisão do estudo é na tela de estudos.
@@ -79,6 +83,9 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   'D3a.03s': (id) => `/casos/${id}/exigencia-juiz`,
   'D3a.04': (id) => `/casos/${id}/manifestacao`,
   'D4.02': (id) => `/casos/${id}/publicacoes`,
+  // A tarefa "Marcar perícia" que o sistema abre (DP.01): a tela de marcar do caso, onde o Jurídico administrativo também
+  // registra que o INSS liberou o agendamento.
+  'DP.01': (id) => `/casos/${id}/pericia/marcar`,
 }
 
 type Opcoes = { banco: Banco; cofre: Cofre; armazenamento: Armazenamento; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
@@ -329,10 +336,14 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
   app.post<{ Params: { id: string }; Body: { senhaDoPortal?: string } }>('/api/casos/:id/cofre', comCaso, async (pedido, resposta) => {
     const quem = pedido.usuario!
     // GGVP-103 CA5: só com tarefa aberta no caso que use o gov.br; a tarefa é o motivo que vai para o histórico (CA6).
-    const [tarefaDoGov] = await banco
+    const [daTabela] = await banco
       .select({ passo: tarefa.passo, titulo: tarefa.titulo })
       .from(tarefa)
       .where(and(eq(tarefa.casoId, pedido.params.id), inArray(tarefa.passo, [...PASSOS_COM_GOVBR]), isNull(tarefa.concluidaEm)))
+    // A perícia que voltou a marcar (remarcação, autorização da advogada) é tarefa calculada da perícia, sem linha em `tarefa`.
+    const paraMarcar =
+      !daTabela && (await banco.select({ documento: pericia.documento }).from(pericia).where(eq(pericia.casoId, pedido.params.id))).some((l) => l.documento && podeMarcar(l.documento as Pericia))
+    const tarefaDoGov = daTabela ?? (paraMarcar ? { passo: 'DP.02', titulo: 'Marcar perícia' } : undefined)
     if (!tarefaDoGov) {
       await historico(quem.id, 'cofre_uso_recusado', pedido, `caso:${pedido.params.id}`)
       return negar(resposta, 403, MSG_COFRE_SEM_TAREFA)

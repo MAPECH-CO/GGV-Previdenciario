@@ -27,9 +27,9 @@ export function prepararMensagem(fichaId: string, modelo: IdDoModelo, processoId
 }
 
 /** O cliente da ficha no Chatwoot, para as janelas que já têm a mensagem pronta (convite, confirmação, cobrança, complemento). */
-export async function clienteNoChatwoot(fichaId: string): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta'>> {
-  const { contato, conversas, simulado, consulta } = await prepararMensagem(fichaId, 'boas-vindas')
-  return { contato, conversas, simulado, consulta }
+export async function clienteNoChatwoot(fichaId: string): Promise<Pick<MensagemPronta, 'contato' | 'conversas' | 'simulado' | 'consulta' | 'foraDaLista'>> {
+  const { contato, conversas, simulado, consulta, foraDaLista } = await prepararMensagem(fichaId, 'boas-vindas')
+  return { contato, conversas, simulado, consulta, foraDaLista }
 }
 
 /**

@@ -1,7 +1,8 @@
 // EXEMPLO. Servidor de exemplo da pendência de complemento ao médico do cliente (GGVP-20 abre, GGVP-29 conduz), sobre o
 // mesmo banco de servidor.ts. A pendência nasce do parecer Insuficiente ou Contraditório e é uma só por caso: um parecer
 // novo atualiza o que pedir; o Suficiente encerra. O laço é o da cobrança (GGVP-101, G15). Ligar no servidor: trocar o
-// corpo de cada função por fetch no endpoint da design (seção GGVP-29) e mandar pelo Chatwoot de verdade (GGVP-102).
+// corpo de cada função por fetch no endpoint da design (seção GGVP-29). A orientação do caso do servidor já sai pelo
+// Chatwoot do servidor (GGVP-146); a da semente, pelo simulado.
 import { CANAIS, RESULTADOS, motivoParaNaoDecidir } from '../regras/cobranca.ts'
 import {
   abrirNaLista,

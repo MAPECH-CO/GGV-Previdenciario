@@ -50,17 +50,20 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
 
   const motivo = erroDosDadosBancarios(dados) ?? motivoParaNaoMudar('dadosBancarios', verificacao)
 
-  async function fazer(acao: () => Promise<unknown>, feito: string) {
+  async function fazer<T>(acao: () => Promise<T>, feito: string, naoSaiu?: (r: T) => string | undefined) {
     if (ocupado) return
     setOcupado(true)
     setErro('')
     try {
-      await acao()
+      const r = await acao()
       await recarregar()
       setMudando(false)
       setDados(VAZIO)
       setVerificacao({})
-      setAviso(feito)
+      // CA5: o aviso ao contato anterior que não saiu vira alerta, nunca sucesso.
+      const problema = naoSaiu?.(r)
+      setAviso(problema ? '' : feito)
+      if (problema) setErro(problema)
       aoMudar()
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para registrar.')
@@ -88,7 +91,18 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
             {COMO_VERIFICOU[pedido.verificacao.como].toLowerCase()}; em contrato novo.
           </p>
           <p className={styles.nota}>Espera a segunda confirmação, de outra pessoa (Atendimento líder, advogada ou Sênior).</p>
-          <button type="button" className={styles.botao} disabled={ocupado} onClick={() => fazer(() => confirmarMudancaBancaria(fichaId), 'Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')}>
+          <button
+            type="button"
+            className={styles.botao}
+            disabled={ocupado}
+            onClick={() =>
+              fazer(
+                () => confirmarMudancaBancaria(fichaId),
+                'Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.',
+                (r) => r.avisoNaoSaiu && `Dados bancários mudados. O aviso ao contato anterior não saiu: ${r.avisoNaoSaiu}; ficou no histórico.`,
+              )
+            }
+          >
             Confirmar a mudança (segunda pessoa)
           </button>
         </div>

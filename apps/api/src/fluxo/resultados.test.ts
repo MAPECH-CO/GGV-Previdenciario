@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ROTULO_BENEFICIO } from '@ggv/contratos'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, pessoa, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
+import { caso, eventoAuditoria, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, pessoa, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
 import { painelDeResultados } from './resultados.ts'
 
 let banco: Banco
@@ -119,15 +119,18 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     expect(indicador(painel, 'pareceres_dispensados')?.casos).toBe(2)
   })
 
-  it('CA4 · os totais em dinheiro só saem para quem pode ver, somados em centavos', async () => {
-    for (const [honorarios, cliente] of [
-      ['1500.50', '8499.50'],
-      ['499.50', '4500.50'],
-    ]) {
+  it('CA4 · os totais em dinheiro só saem para quem pode ver, somados em centavos, pela confirmação do recebimento', async () => {
+    for (const [honorarios, cliente, confirmado] of [
+      ['1500.50', '8499.50', true],
+      ['499.50', '4500.50', true],
+      // Lançada e ainda sem a ida ao banco: não é dinheiro na mão (GGVP-98 CA9).
+      ['900.00', '2100.00', false],
+    ] as const) {
       const id = await novoCaso({ criadoEm: as('2026-01-10') })
       await banco
         .insert(prestacaoContas)
-        .values({ casoId: id, valorRecebido: (Number(honorarios) + Number(cliente)).toFixed(2), honorarios, valorCliente: cliente, recebidaEm: as('2026-03-11') })
+        .values({ casoId: id, valorRecebido: (Number(honorarios) + Number(cliente)).toFixed(2), honorarios, valorCliente: cliente, recebidaEm: as('2026-03-01') })
+      if (confirmado) await banco.insert(eventoAuditoria).values({ quem: 'financeiro', acao: 'recebimento_confirmado', alvo: `caso:${id}`, quando: as('2026-03-11') })
     }
     expect((await painelDeResultados(banco, PERIODO)).totais).toBeNull()
     const totais = (await painelDeResultados(banco, { ...PERIODO, verTotais: true })).totais
