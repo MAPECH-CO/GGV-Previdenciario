@@ -53,13 +53,14 @@ export const FINALIDADES = {
     instrucao:
       'Escreva um rascunho curto (até 6 frases) do que a pessoa do escritório vai explicar ao cliente sobre o resultado do processo: o que foi decidido e por quê, em linguagem simples, com respeito. O porquê vem só do texto da decisão: se ele não estiver no conteúdo, não diga, não suponha e não comente a falta do motivo: no lugar dele, escreva exatamente [completar: o motivo da decisão], que a advogada preenche. Não prometa nada, não fale de estratégia interna do escritório, não culpe ninguém e não use termos técnicos sem explicar.',
   },
+  /** GGVP-59: a nomeação de perito virou classe (versão 3). */
   classificar_publicacao: {
-    versao: 2,
+    versao: 3,
     saude: false,
     json: true,
     barrarCid: true,
     instrucao:
-      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito.',
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {

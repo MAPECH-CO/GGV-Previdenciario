@@ -1,4 +1,4 @@
-// Publicações da vigília (GGVP-26, GGVP-34, GGVP-37, GGVP-74): fila de revisão da Sênior, leitura e classificação.
+// Publicações da vigília (GGVP-26, GGVP-34, GGVP-37, GGVP-59, GGVP-74): fila de revisão da Sênior, leitura e classificação.
 import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { ClassificarPublicacao, LeituraDaPublicacaoPelaIa, PublicacaoParaLer, PublicacoesDoCaso, SugestaoDePublicacao, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
@@ -11,6 +11,7 @@ import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { casoDoCnj, pedirLeitura } from '../vigilia/casar.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
+import { peritoDaPublicacao } from '../vigilia/perito.ts'
 
 export const MSG_CNJ_SEM_CASO = 'Nenhum processo do escritório tem esse número CNJ.'
 
@@ -137,6 +138,12 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
         return prazoContado
       })
       await historico(quem, p.classe ? 'publicacao_reclassificada' : 'publicacao_classificada', pedido, `publicacao:${p.id}`, { de: p.classe, para: classe })
+      // GGVP-59 CA1, CA6: o perito que a nomeação cita vai ao histórico do caso; sem reconhecer, a pergunta de um clique
+      // da Perícia identifica, e nada trava.
+      if (classe === 'nomeacao_perito') {
+        const nomeado = await peritoDaPublicacao(banco, p.texto)
+        await historico(quem, 'perito_nomeado', pedido, `caso:${p.casoId}`, { publicacao: p.id, perito: nomeado, reconhecido: nomeado !== null })
+      }
       return resposta.code(201).send({ ok: true, classe, prazo: contado ? { inicio: contado.inicio, fim: contado.fim, regra: contado.regra, versao: contado.versao } : null })
     },
   )

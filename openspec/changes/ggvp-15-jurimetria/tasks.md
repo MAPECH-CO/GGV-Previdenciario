@@ -74,8 +74,8 @@
 - [x] 5.4 CA1, CA6 · `peritoDaPublicacao` e o histórico na classificação: `perito_nomeado` com o perito, ou não reconhecido. Teste da rota; verifica com `pnpm --filter @ggv/api test`.
 - [x] 5.5 Tela: a opção nova e a frase de destino na leitura da publicação. Teste Vitest e Playwright da judicialização; verifica com `pnpm --filter @ggv/web test`.
 - [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
-- [ ] 5.7 CA1 · Ajuste do "Agora ok?" (Mateus, 08/10): na Central, a tarefa "Quesitos e assistente técnico" abre a tela de perícias do caso, onde ficam os quesitos. Teste da rota e Playwright da judicialização; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.8 Rodar typecheck, lint, testes e Playwright de novo; colar a saída.
+- [x] 5.7 CA1 · Ajuste do "Agora ok?" (Mateus, 08/10): na Central, a tarefa "Quesitos e assistente técnico" abre a tela de perícias do caso, onde ficam os quesitos. Teste da rota e Playwright da judicialização; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.8 Rodar typecheck, lint, testes e Playwright de novo; colar a saída.
 
 ## GGVP-59, parte 2 (depois, com o Pedro e a página do caso no servidor)
 
