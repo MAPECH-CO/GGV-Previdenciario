@@ -6,7 +6,7 @@ import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { obterAcidente, salvarAcidente, type AcidenteNaTela } from '../dados/acidente.ts'
 import { TABELA_DO_ACIDENTE, conferirChecklist, obterChecklist, type ChecklistDoCaso, type ConferenciaDoChecklist } from '../dados/checklist.ts'
-import { doJuridico } from '../dados/parecer.ts'
+import { registraSaude } from '../dados/parecer.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import {
@@ -67,7 +67,8 @@ function valoresDe(t: AcidenteNaTela): ValoresDoAcidente {
  */
 function CartaoDoAcidente({ processoId, aoSalvar }: { processoId: string; aoSalvar: () => void }) {
   const perfil = usePerfil('Documentação')
-  const pode = perfil?.id === 'documentacao' || doJuridico(perfil?.id)
+  // `acidente.registrar`: a Documentação, a advogada e a sênior.
+  const pode = perfil?.id === 'documentacao' || registraSaude(perfil?.id)
   const [tela, setTela] = useState<AcidenteNaTela | null | undefined>(undefined)
   const [v, setV] = useState<ValoresDoAcidente>(VAZIO)
   const [salvando, setSalvando] = useState(false)

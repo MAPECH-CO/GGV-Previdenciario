@@ -120,6 +120,8 @@ describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
   it('ZapSign: um documento por kit; a segunda tentativa sem assinatura sobe para a sênior (G15); o retorno anexa uma vez e encerra a tarefa', async () => {
     const base = await gerado(await lead())
     expect((await chamar('julia', 'POST', `${base}/zapsign`)).statusCode).toBe(403)
+    // GGVP-96: o contrato é da raia do Atendimento (contrato.conduzir); a advogada fecha o caso, mas não conduz o contrato.
+    expect((await chamar('gabi', 'POST', `${base}/zapsign`)).statusCode).toBe(403)
     const envio = await json('ana', 'POST', `${base}/zapsign`)
     expect(envio).toMatchObject({ resultado: 'gerado', contrato: { assinatura: { forma: 'digital', tentativas: [], zapsign: { status: 'enviado' } } } })
     const { documentoId, link } = envio.contrato.assinatura.zapsign

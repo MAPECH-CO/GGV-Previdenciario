@@ -1,5 +1,5 @@
 {
-  "id": "a62aa4bc-984d-4bd6-80f3-4514ee2ba23a",
+  "id": "7bbd13db-445b-42d8-97a3-633d27764c3e",
   "prevId": "b14875db-4016-4e40-bf59-3f474ff3bfbb",
   "version": "7",
   "dialect": "postgresql",
@@ -785,58 +785,6 @@
         "gravacao_recepcao_pessoa_id_pessoa_id_fk": {
           "name": "gravacao_recepcao_pessoa_id_pessoa_id_fk",
           "tableFrom": "gravacao_recepcao",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "public.leitura_documento": {
-      "name": "leitura_documento",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dados": {
-          "name": "dados",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "atualizado_em": {
-          "name": "atualizado_em",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "leitura_documento_pessoa_id_pessoa_id_fk": {
-          "name": "leitura_documento_pessoa_id_pessoa_id_fk",
-          "tableFrom": "leitura_documento",
           "tableTo": "pessoa",
           "columnsFrom": [
             "pessoa_id"
@@ -1805,6 +1753,97 @@
           "value": "\"identificador_caso\".\"tipo\" in ('nb', 'protocolo_inss', 'cnj')"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.atribuicao_tarefa": {
+      "name": "atribuicao_tarefa",
+      "schema": "",
+      "columns": {
+        "tarefa_id": {
+          "name": "tarefa_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "responsavel_id": {
+          "name": "responsavel_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prazo": {
+          "name": "prazo",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prioridade": {
+          "name": "prioridade",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
+        "recado": {
+          "name": "recado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avisar": {
+          "name": "avisar",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "atribuida_por": {
+          "name": "atribuida_por",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atribuida_em": {
+          "name": "atribuida_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "atribuicao_tarefa_responsavel_id_usuario_id_fk": {
+          "name": "atribuicao_tarefa_responsavel_id_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "responsavel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "atribuicao_tarefa_atribuida_por_usuario_id_fk": {
+          "name": "atribuicao_tarefa_atribuida_por_usuario_id_fk",
+          "tableFrom": "atribuicao_tarefa",
+          "tableTo": "usuario",
+          "columnsFrom": [
+            "atribuida_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.decisao": {

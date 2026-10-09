@@ -1,7 +1,7 @@
 // O complemento ao médico do cliente no servidor (GGVP-29, ligado pela GGVP-132). As rotas têm a forma da design.md da
 // change ggvp-13 e as regras são as das telas (regras/complemento.ts e o laço da cobrança, G15), com o perfil da sessão. O
-// parecer Insuficiente ou Contraditório abre a pendência (rotas/parecer.ts). O Chatwoot continua simulado (GGVP-102): a
-// tentativa fica registrada, nada sai para o cliente daqui.
+// parecer Insuficiente ou Contraditório abre a pendência (rotas/parecer.ts). Daqui nada sai para o cliente: a orientação
+// vai pela janela do Chatwoot, pelo correio do servidor (rotas/mensagens.ts, GGVP-146), e aqui fica só a tentativa.
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { DecisaoDoComplemento, TentativaDoComplemento, type Erro } from '@ggv/contratos'
 import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'

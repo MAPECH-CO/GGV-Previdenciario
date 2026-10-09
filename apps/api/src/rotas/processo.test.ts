@@ -200,13 +200,17 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     }
   })
 
-  it('o Financeiro e o Sócio não abrem o caso, e a tentativa fica no histórico do caso', async () => {
-    for (const apelido of ['julia', 'lauro']) expect((await ver(apelido)).statusCode).toBe(403)
+  it('o Financeiro não abre o caso, e a tentativa fica no histórico do caso', async () => {
+    expect((await ver('julia')).statusCode).toBe(403)
     const negados = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'acesso_negado')
-    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([
-      [casoId, 'caso.ver'],
-      [casoId, 'caso.ver'],
-    ])
+    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([[casoId, 'caso.ver']])
+  })
+
+  it('GGVP-96 · o Sócio lê o caso, com os valores (Lucas, 07/10); sem o conteúdo médico e sem a peça', async () => {
+    const p = (await ver('lauro')).json()
+    expect([p.valores, p.saude]).toEqual([{ versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' }, null])
+    expect(p.documentos.map((d: { nome: string | null }) => d.nome)).toEqual([null, 'rg-e-cpf.pdf'])
+    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
   })
 
   it('caso que não existe ou id torto: 404', async () => {

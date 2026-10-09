@@ -25,6 +25,8 @@ import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
 import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
 import { registrarRotasPericia } from './rotas/pericia.ts'
+import { registrarRotasSetor } from './rotas/setor.ts'
+import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
 import { criarPreparo } from './ia/preparo.ts'
@@ -55,6 +57,8 @@ import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
 import { registrarRotasProcesso } from './rotas/processo.ts'
+import { registrarRotasBases } from './rotas/bases.ts'
+import { registrarRotasFinanceiro } from './rotas/financeiro.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -111,7 +115,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasConferencia(app, { banco, agora, ia: motorIa, preparo })
     const arquivos = armazenamento ?? abrirArmazenamento()
     const cofreDoGov = cofre ?? criarCofre(chaveDoCofre())
-    registrarRotasInss(app, { banco, agora, cofre: cofreDoGov, armazenamento: arquivos })
+    // GGVP-147: cada área registra as tarefas abertas dela; as tarefas do setor juntam todas.
+    const tarefasPorArea = criarTarefasPorArea()
+    registrarRotasInss(app, { banco, agora, cofre: cofreDoGov, armazenamento: arquivos, tarefasPorArea })
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
@@ -132,7 +138,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecepcao(app, { banco, agora })
+    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
@@ -149,12 +155,17 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasConversa(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
-    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
+    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, tarefasPorArea })
+    registrarRotasSetor(app, { banco, agora, tarefasPorArea })
     registrarRotasImportacao(app, { banco, agora })
     registrarRotasFeriados(app, { banco, agora })
     registrarRotasGlossario(app, { banco, agora })
     registrarRotasTranscricao(app, { banco, agora, ia: motorIa })
     registrarRotasProcesso(app, { banco, agora })
+    // GGVP-78: Clientes e Processos, as bases do topo.
+    registrarRotasBases(app, { banco, agora })
+    // GGVP-78: o painel Financeiro, das prestações de contas.
+    registrarRotasFinanceiro(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

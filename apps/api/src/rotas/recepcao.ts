@@ -22,6 +22,7 @@ import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAten
 import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
@@ -54,6 +55,9 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /** A hora em Brasília, também no servidor em UTC: "14:32". */
 export const horaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
 export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
+export const MSG_GANCHO_DE_TESTE = 'Simular a falha é só do teste: na homologação e na produção, não.'
+/** Os ganchos de teste (`falhar: true`, que simula a falha do serviço) só fora da homologação e da produção (GGVP-96). */
+export const aceitaGanchoDeTeste = (ambiente: Record<string, string | undefined>) => ambiente.AMBIENTE !== 'homologacao' && ambiente.AMBIENTE !== 'producao'
 /** Quem preenche no tablet é o próprio cliente (GGVP-24). */
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
 
@@ -115,7 +119,16 @@ function valoresAtuais(f: Ficha): Record<CampoDaFicha, string> {
   }
 }
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
+
+/** O setor das pendências da Recepção (o campo `setor` de cada uma) por perfil. */
+const SETOR_DA_RECEPCAO: Partial<Record<string, string>> = {
+  atendimento: 'Atendimento',
+  atendimento_lider: 'Atendimento',
+  advogada: 'Jurídico',
+  senior: 'Jurídico',
+  juridico_adm: 'Jurídico',
+}
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /**
@@ -356,11 +369,22 @@ export function criarFichario(banco: Banco, agora: () => Date) {
   }
 }
 
-export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, fichas, resumo, guardar, concluirTarefas, tarefas, abrirPreparacao } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
+
+  // GGVP-147: as pendências abertas da Recepção entram nas tarefas do setor, pelo setor de cada uma.
+  tarefasPorArea?.registrar(async (perfil) => {
+    const setor = SETOR_DA_RECEPCAO[perfil]
+    if (!setor) return []
+    const linhas = await banco
+      .select()
+      .from(tarefaRecepcao)
+      .where(and(eq(tarefaRecepcao.setor, setor), isNull(tarefaRecepcao.concluidaEm)))
+    return linhas.map((l) => l.dados as TarefaEncaminhada)
+  })
 
   // GGVP-16 CA1, CA2, CA5, CA10: busca por nome, CPF ou telefone, com a regra do balcão. O termo vem no corpo.
   app.post('/api/balcao/busca', ver, async (pedido, resposta) => {

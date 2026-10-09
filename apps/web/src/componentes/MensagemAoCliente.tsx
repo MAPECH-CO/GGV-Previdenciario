@@ -175,6 +175,7 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
           texto={texto}
           simulado={pronta.simulado !== false}
           consulta={pronta.consulta}
+          foraDaLista={pronta.foraDaLista}
         />
       )}
 

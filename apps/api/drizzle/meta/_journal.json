@@ -159,8 +159,15 @@
     {
       "idx": 22,
       "version": "7",
-      "when": 1791518707602,
-      "tag": "0022_leitura_documento",
+      "when": 1791521070736,
+      "tag": "0022_tarefas_do_setor",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791553172974,
+      "tag": "0023_leitura_documento",
       "breakpoints": true
     }
   ]

@@ -119,6 +119,17 @@ describe('Dar parecer médico · tela da advogada', () => {
     expect(registrar().disabled).toBe(false)
   })
 
+  it('GGVP-137 · o Jurídico administrativo vê a matriz e os documentos, sem conferir nem registrar o parecer', async () => {
+    entrarComo('juridico-adm')
+    await abrir()
+    expect(within(screen.getByRole('list', { name: 'Itens obrigatórios' })).getAllByRole('listitem')).toHaveLength(5)
+    expect(screen.getByRole('list', { name: 'Documentos analisados' })).toBeTruthy()
+    expect(screen.queryAllByRole('combobox', { name: /^Conferência:/ })).toEqual([])
+    expect(screen.queryByRole('radio', { name: 'Suficiente — liberar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Registrar parecer' })).toBeNull()
+    expect(screen.getByText('Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior (G17).')).toBeTruthy()
+  })
+
   it('dado de saúde · o Atendimento não vê a matriz; vê o resultado na janela', async () => {
     entrarComo('atendimento')
     await abrir()
@@ -158,6 +169,16 @@ describe('BPC/LOAS de menor de 16 anos · o parecer da criança (GGVP-50)', () =
     expect(relatorios()).toEqual(['Relatório escolar', 'Relatório da neurologia', 'Relatório de fonoaudiologia', 'Relatório de terapia ocupacional'])
     expect(within(cartao).getByRole('link', { name: 'Abrir o checklist' }).getAttribute('href')).toBe('/casos/davi-exemplo-1/checklist')
     expect((await obterFicha('davi-exemplo'))?.historico.at(-1)?.oQue).toBe('Marcou a condição e as terapias da criança (roteiro infantil)')
+  })
+
+  it('GGVP-137 · o Jurídico administrativo vê o cartão da criança sem marcar nem salvar', async () => {
+    entrarComo('juridico-adm')
+    await abrir('davi-exemplo-1')
+    const cartao = (await screen.findByRole('heading', { name: 'Criança · condição e terapias' })).closest('section')!
+    // Desligada pelo grupo (fieldset disabled), não pelo próprio campo.
+    expect(within(cartao).getByRole('checkbox', { name: 'Fonoaudiologia' }).matches(':disabled')).toBe(true)
+    expect(within(cartao).queryByRole('button', { name: 'Salvar a condição' })).toBeNull()
+    expect(within(cartao).getByRole('link', { name: 'Abrir o checklist' })).toBeTruthy()
   })
 
   it('a Rita, adulta, não tem o cartão da criança', async () => {

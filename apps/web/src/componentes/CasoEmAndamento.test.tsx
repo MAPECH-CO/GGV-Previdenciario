@@ -1,7 +1,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
-import { configurarExemplo, obterFicha, zerarExemplo } from '../dados/servidor.ts'
+import { configurarExemplo, gravar, ler, obterFicha, zerarExemplo } from '../dados/servidor.ts'
 import type { Ficha } from '../dados/tipos.ts'
 import { CasoEmAndamento } from './CasoEmAndamento.tsx'
 
@@ -53,5 +53,40 @@ describe('GGVP-135 · o que cada perfil abre do caso pela ficha, por clique', ()
     entrarComo(undefined)
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     expect(atalhos()).toEqual([])
+  })
+
+  it('GGVP-137 · no caso do servidor, a linha do tempo da deficiência (Jurídico) e a dispensa do parecer (Sênior) também abrem pela ficha', async () => {
+    configurarExemplo({ servidor: true })
+    const id = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'
+    const ficha = { id: 'b1e2c3d4-0000-4000-8000-000000000002', nome: 'Cleide Teste', situacao: 'cliente', processos: [{ id, beneficio: 'aposentadoria-pcd', etapa: 'Documentação' }] } as unknown as Ficha
+    const historico = ['Histórico do processo', `/casos/${id}/historico`]
+    const deficiencia = ['Linha do tempo da deficiência', `/casos/${id}/deficiencia`]
+    for (const perfil of ['advogada', 'juridico-adm']) {
+      entrarComo(perfil)
+      render(comSessao(<CasoEmAndamento ficha={ficha} />))
+      expect([perfil, atalhos()]).toEqual([perfil, [historico, deficiencia]])
+      cleanup()
+    }
+    entrarComo('atendimento')
+    render(comSessao(<CasoEmAndamento ficha={ficha} />))
+    expect(atalhos()).toEqual([historico])
+    cleanup()
+    // O parecer do caso do servidor chega pela sincronização da documentação médica; insuficiente, a Sênior pode dispensar.
+    const banco = ler()
+    banco.documentacaoMedica = { tarefas: [], portoes: { [id]: { situacao: 'insuficiente' } } }
+    gravar(banco)
+    entrarComo('senior')
+    render(comSessao(<CasoEmAndamento ficha={ficha} />))
+    expect(atalhos()).toEqual([historico, deficiencia, ['Dispensar o parecer', `/casos/${id}/parecer/dispensa`]])
+  })
+})
+
+describe('GGVP-130 · as pendências de documento aparecem em cada processo da ficha', () => {
+  it('o processo do Antônio, com a cobrança aberta, diz o que falta; a Rita, sem cobrança, não', async () => {
+    await abrir('antonio-exemplo', 'documentacao')
+    expect(screen.getByRole('link', { name: /Judicial · exigência/ }).textContent).toContain('Documentos pendentes: Notas do produtor rural e Certidão.')
+    cleanup()
+    await abrir('rita-exemplo', 'documentacao')
+    expect(screen.queryByText(/Documentos pendentes/)).toBeNull()
   })
 })

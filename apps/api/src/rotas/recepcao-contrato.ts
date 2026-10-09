@@ -102,6 +102,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const lerContrato = criarLeituraDoContrato(banco, agora)
+  // D1.16 a D1.20: o contrato é da raia do Atendimento; o % de honorários aparece só nele (GGVP-96).
+  const conduzir = { preHandler: exigir(banco, 'contrato.conduzir', agora) }
 
   const fichaPeloId = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
 
@@ -186,7 +188,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   })
 
   // GGVP-65 CA2, CA8: as condições do LOAS montam o kit de novo, só antes de gerar o contrato.
-  app.put<{ Params: { id: string } }>('/api/processos/:id/contrato/condicoes', editar, async (pedido, resposta) => {
+  app.put<{ Params: { id: string } }>('/api/processos/:id/contrato/condicoes', conduzir, async (pedido, resposta) => {
     const entrada = CondicoesDoKit.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Condições inválidas.')
     const achado = await acharContrato(pedido.params.id)
@@ -206,7 +208,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   // GGVP-69: valida de novo a decisão, o que corrigir e as conferências (CA6). Com "Não, corrigir campos", grava a correção
   // (na ficha os dados pessoais; no contrato o RG, a parte contrária e o representante), registra no histórico (CA7) e
   // gera de novo (CA3). Campo obrigatório vazio não segue (CA7); sobra do modelo também não (CA8). Gerado, vai assinar.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/gerar', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/gerar', conduzir, async (pedido, resposta) => {
     const entrada = EnvioDoContrato.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Envio inválido.')
     const envio = entrada.data
@@ -274,7 +276,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-72 CA1, CA4, CA5, CA12: o ZapSign (simulado) monta o documento pelo modelo e devolve o link. Um documento por kit:
   // pedir de novo devolve o mesmo. A mensagem do WhatsApp com o link volta pronta para conferir.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const { ficha, processo, contrato } = achado
@@ -297,7 +299,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   // GGVP-72 CA2, CA5, CA11: cada tentativa fica com a data e o canal, e reenviar o link não cria outro documento. A primeira é
   // o link enviado; a próxima, 3 dias depois. Com a segunda sem assinatura, o caso sobe para a advogada sênior (G15), com a
   // tarefa no banco, e sai da Central do Atendimento.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/tentativas', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/tentativas', conduzir, async (pedido, resposta) => {
     const entrada = TentativaDoContrato.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Canal inválido.')
     const { canal, mensagem } = entrada.data
@@ -351,7 +353,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   // GGVP-72 CA6, CA7, CA10, simulado: o botão da tela faz o papel do retorno do ZapSign. O de verdade chega pelo webhook, com
   // o segredo, quando o ZapSign for contratado; este botão sai junto. O mesmo evento não anexa duas vezes. Assinado, o arquivo
   // final com as evidências vai ao card e segue para a leitura; a tarefa da assinatura se encerra, inclusive a da sênior.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign/retorno-simulado', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign/retorno-simulado', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const { ficha, processo, contrato } = achado
@@ -384,7 +386,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-77 CA1, CA4: "Papel, na hora": o kit sai com as datas em branco para preencher à mão, menos o contrato de
   // honorários. Só na entrevista presencial. A impressora é simulada.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/impressao', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/impressao', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const motivo = semPapel(achado)
@@ -401,7 +403,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-77 CA2, simulado: o contrato assinado passa no scanner do balcão; a automação guarda o PDF pesquisável na pasta do
   // cliente, e o arquivo aparece no card, para a leitura.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/digitalizacao', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/digitalizacao', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const motivo = semPapel(achado)
@@ -429,7 +431,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   })
 
   // GGVP-77 CA3: a assinatura em papel só conclui com a digitalização do contrato assinado anexada; segue para a leitura.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/assinatura-em-papel', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/assinatura-em-papel', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const motivo = semPapel(achado)
@@ -448,7 +450,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   // GGVP-85 CA1, CA2, CA4, CA7, simulado: a leitura da IA do contrato assinado; a de verdade é da GGVP-81, aqui no servidor,
   // e nunca vem da tela. Reconhecido e tudo certo, segue para a cópia, sem tarefa; sem entender ou com problema, o
   // Atendimento recebe "Conferir contrato" com o que a IA apontou.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     if (achado.contrato.etapa !== 'leitura') return negar(resposta, 400, 'Este contrato não está esperando a leitura.')
@@ -458,7 +460,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-85 CA3, CA5, CA6, CA7: "Está certo, seguir" vai para a cópia. "Não, corrigir e reenviar": o que corrigir é
   // obrigatório e a página corrigida pode ir anexa; a versão assinada fica no histórico e o contrato volta a preparar.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/verificacao', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/verificacao', conduzir, async (pedido, resposta) => {
     const entrada = VerificacaoDoContrato.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Verificação inválida.')
     const v = entrada.data
@@ -498,7 +500,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   })
 
   // GGVP-85: o aviso ao cliente pelo WhatsApp, da tela de conferir, fica em "Últimos contatos" (Chatwoot simulado).
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/conferencia/aviso', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/conferencia/aviso', conduzir, async (pedido, resposta) => {
     const entrada = MensagemEnviada.safeParse(pedido.body)
     if (!entrada.success || !entrada.data.mensagem) return negar(resposta, 400, 'Escreva a mensagem.')
     const achado = await acharContrato(pedido.params.id)
@@ -511,7 +513,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   })
 
   // GGVP-89 CA1: "Imprimir cópia para o cliente": a versão assinada. A impressora é simulada.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/impressao', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/impressao', conduzir, async (pedido, resposta) => {
     const achado = await paraACopia(pedido.params.id)
     if ('erro' in achado) return negar(resposta, achado.status, achado.erro)
     const { ficha, processo, contrato } = achado
@@ -524,7 +526,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-89 CA4: a entrega fica para uma visita: o compromisso "Entregar cópia do contrato" entra na agenda com a data da
   // visita; a que já estava marcada fica remarcada.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/visita', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/visita', conduzir, async (pedido, resposta) => {
     const entrada = VisitaDaCopia.safeParse(pedido.body)
     const dia = hoje()
     const erros = entrada.success ? errosDaVisita(entrada.data.data, entrada.data.hora, dia) : { data: 'inválida' }
@@ -555,7 +557,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
 
   // GGVP-89 CA3, CA5: só com a confirmação de que é a cópia impressa da versão assinada, a data da entrega e quem recebeu; a
   // observação é opcional. Registrada, o caso segue para o checklist do benefício (D1.21).
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/entrega', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/copia/entrega', conduzir, async (pedido, resposta) => {
     const entrada = EntregaDaCopia.safeParse(pedido.body)
     const dia = hoje()
     if (!entrada.success || motivoParadoDaEntrega(entrada.data, dia)) return negar(resposta, 400, 'Entrega inválida.')

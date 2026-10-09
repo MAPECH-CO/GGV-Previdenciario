@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { formatarTelefone } from '@ggv/campos'
-import { PedidoDeMudancaBancaria, VerificacaoDaEdicao, type Erro, type PedidoBancario, type RegistroBancario } from '@ggv/contratos'
+import { PedidoDeMudancaBancaria, VerificacaoDaEdicao, type Erro, type MudancaBancariaConfirmada, type PedidoBancario, type RegistroBancario } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, dadoBancario, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
@@ -30,7 +30,6 @@ export const MSG_SEM_PEDIDO_BANCARIO = 'Não há pedido de mudança dos dados ba
 const DESFECHOS_PERTO = ['deferido', 'procedente_total', 'procedente_parcial']
 
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
-const lido = (d: { banco: string; agencia: string; conta: string; pix?: string | null }) => `${d.banco} · agência ${d.agencia} · conta ${d.conta}${d.pix ? ` · Pix: ${d.pix}` : ''}`
 const comoFalado = (como: string) => COMO_VERIFICOU[como as Verificacao['como']].toLowerCase()
 
 /**
@@ -65,7 +64,8 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
   const historico = registrarHistorico(banco, agora)
   const { evento, nomeDe, fichas, guardar, abrirTarefa } = criarFichario(banco, agora)
   const correio = criarCorreio(banco, agora, ambiente)
-  const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
+  // LGPD, minimização (GGVP-96): os dados bancários, só quem pede ou confirma a mudança e o Financeiro, que repassa.
+  const ver = { preHandler: exigir(banco, 'dados_bancarios.ver', agora) }
   const pedir = { preHandler: exigir(banco, 'dados_bancarios.pedir', agora) }
   const confirmar = { preHandler: exigir(banco, 'dados_bancarios.confirmar', agora) }
   const acharFicha = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
@@ -127,13 +127,13 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
   })
 
   /**
-   * GGVP-111 CA5, CA2: a segunda pessoa confirma; os dados mudam, com o antigo e o novo no histórico; o contato anterior
+   * GGVP-111 CA5, CA2: a segunda pessoa confirma; os dados mudam, e o histórico guarda a mudança, sem os números; o contato anterior
    * recebe o aviso pelo Chatwoot; perto da prestação de contas, a advogada e o Financeiro recebem o alerta.
    */
   app.post<{ Params: { id: string } }>('/api/fichas/:id/dados-bancarios/confirmacao', confirmar, async (pedido, resposta) => {
     const ficha = await acharFicha(pedido.params.id)
     if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
-    const { atual: antes, pedido: aberto, linhaAberta } = await dadosDa(ficha.id)
+    const { pedido: aberto, linhaAberta } = await dadosDa(ficha.id)
     if (!aberto || !linhaAberta) return negar(resposta, 404, MSG_SEM_PEDIDO_BANCARIO)
     const perfil = pedido.perfilAtivo!.replace('_', '-') as IdPerfil
     const motivo = podeConfirmarSegunda(perfil, pedido.usuario!.id, linhaAberta.pedidoPor)
@@ -141,12 +141,9 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
     const quem = await nomeDe(pedido)
     await banco.update(dadoBancario).set({ confirmadoPor: pedido.usuario!.id, confirmadoEm: agora() }).where(eq(dadoBancario.id, linhaAberta.id))
     const novo = (await dadosDa(ficha.id)).atual!
+    // GGVP-96 (LGPD, minimização): o histórico da ficha vai a todos que veem o caso; fica só o fato, sem banco, conta nem Pix.
     ficha.historico.push(
-      evento(
-        `Mudou os dados bancários (${comoFalado(aberto.verificacao.como)}; em contrato novo; pedido de ${aberto.pediu}, segunda confirmação de ${quem}): ` +
-          `«${antes ? lido(antes) : '—'}» → «${lido(novo)}»`,
-        quem,
-      ),
+      evento(`Mudou os dados bancários (${comoFalado(aberto.verificacao.como)}; em contrato novo; pedido de ${aberto.pediu}, segunda confirmação de ${quem})`, quem),
     )
     const casos = ficha.processos.length
       ? await banco.select({ id: caso.id, desfecho: caso.desfecho }).from(caso).where(and(inArray(caso.id, ficha.processos.map((p) => p.id)), isNull(caso.encerradoEm)))
@@ -172,7 +169,9 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
     await historico(pedido.usuario!.id, 'dados_bancarios_confirmados', pedido, `pessoa:${ficha.id}`, { alerta: Boolean(perto) })
     // O aviso ao contato cadastrado, pelo Chatwoot: se não foi o cliente, ele liga para o escritório (CA5).
     const pronta = await correio.preparar(ficha, 'aviso-de-mudanca')
-    await correio.enviar(pedido, ficha, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
-    return novo
+    const aviso = await correio.enviar(pedido, ficha, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
+    // Sem sucesso falso: o aviso que não saiu volta com o motivo, para a tela dizer (GGVP-102 CA5).
+    const avisoNaoSaiu = 'erro' in aviso ? aviso.erro : aviso.mensagem.status === 'falhou' ? aviso.mensagem.erro : undefined
+    return { ...novo, ...(avisoNaoSaiu && { avisoNaoSaiu }) } satisfies MudancaBancariaConfirmada
   })
 }
