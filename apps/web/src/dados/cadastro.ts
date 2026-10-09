@@ -5,8 +5,8 @@ import { buscarCep, normalizarCpf, type Endereco } from '../campos.ts'
 import { cadastroDaFicha, errosDoCadastro, errosDoRepresentante, faltaParaOKit, fichaDoCadastro, mesclar, normalizarRg, ROTULOS_DO_CADASTRO } from '../regras/cadastro.ts'
 import { hojeIso } from '../regras/datas.ts'
 import { fichaComCpf } from '../regras/duplicidade.ts'
-import { QUEM_ADVOGADA, agora, esperar, evento, gravar, ler } from './servidor.ts'
-import type { Cadastro, Ficha, InformacaoExtraida, PedidoDeCadastro, RespostaDoCadastro } from './tipos.ts'
+import { QUEM_ADVOGADA, agora, daSemente, doServidor, esperar, evento, gravar, ler, noBanco, receber } from './servidor.ts'
+import type { Cadastro, Ficha, InformacaoExtraida, PedidoDeCadastro, RespostaDoCadastro, TarefaEncaminhada } from './tipos.ts'
 
 /** GET /api/fichas/:id/cadastro. A ficha e o que a IA tirou das entrevistas transcritas (CA1, CA8). */
 export async function obterCadastro(fichaId: string): Promise<{ ficha: Ficha; extraidas: InformacaoExtraida[] } | null> {
@@ -25,12 +25,19 @@ const minusculo = (rotulo: string) => (rotulo === rotulo.toUpperCase() ? rotulo 
  * (CA11); cada campo alterado vai ao histórico com o valor anterior (CA7).
  */
 export async function salvarCadastro(fichaId: string, pedido: PedidoDeCadastro): Promise<RespostaDoCadastro> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   const hoje = hojeIso(agora())
   const invalido =
     Object.keys(errosDoCadastro(pedido.valores, hoje)).length > 0 ||
     (pedido.representante !== undefined && Object.keys(errosDoRepresentante(pedido.representante)).length > 0)
   if (invalido) throw new Error('Cadastro incompleto ou inválido')
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 3b: a ficha do servidor completa lá; o CPF da semente daqui também não grava.
+    const daSementeComCpf = fichaComCpf(daSemente(ler().fichas), pedido.valores.cpf)
+    if (daSementeComCpf) return { resultado: 'cpf-de-outra-ficha', id: daSementeComCpf.id, nome: daSementeComCpf.nome }
+    const r = await noBanco<RespostaDoCadastro & { tarefas?: TarefaEncaminhada[] }>(`/fichas/${fichaId}/cadastro`, { method: 'PUT', corpo: pedido })
+    return r.resultado === 'salvo' ? { resultado: 'salvo', ficha: receber(r)! } : r
+  }
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')

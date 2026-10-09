@@ -68,8 +68,15 @@ export function pertoDaPrestacao(etapa: string): boolean {
   return /senten[cç]a procedente|\brpv\b|benef[ií]cio deferido|presta[cç][aã]o de contas/i.test(etapa)
 }
 
-/** O telefone e o e-mail que a edição muda (CA1). Completar o que estava em branco (a ficha do scanner) não é mudança. */
-export function camposProtegidosQueMudam(ficha: Pick<Ficha, 'telefone' | 'email'>, edicao: Pick<EdicaoFicha, 'telefone' | 'email'>): ('telefone' | 'email')[] {
+/**
+ * O telefone e o e-mail que a edição muda (CA1). Completar o que estava em branco (a ficha do scanner) não é mudança.
+ * Lead, ainda sem contrato, troca livre (Pedro, 08/10): a verificação vale para cliente.
+ */
+export function camposProtegidosQueMudam(
+  ficha: Pick<Ficha, 'telefone' | 'email'> & { situacao?: Ficha['situacao'] },
+  edicao: Pick<EdicaoFicha, 'telefone' | 'email'>,
+): ('telefone' | 'email')[] {
+  if (ficha.situacao === 'lead') return []
   const antes = { telefone: normalizarTelefone(ficha.telefone ?? ''), email: (ficha.email ?? '').trim().toLowerCase() }
   const mudaTelefone = antes.telefone !== '' && antes.telefone !== normalizarTelefone(edicao.telefone ?? '')
   const mudaEmail = antes.email !== '' && antes.email !== (edicao.email ?? '').trim().toLowerCase()
