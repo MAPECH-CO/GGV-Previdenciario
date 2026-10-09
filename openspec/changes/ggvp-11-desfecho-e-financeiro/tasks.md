@@ -127,6 +127,18 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
   - A mensagem passou a dizer "data ou hora que já passou".
 - [x] 13.2 Verificação: typecheck e lint sem erro; `openspec validate --all --strict` com 14 de 14; prestação 19 de 19; Playwright da via administrativa 11 de 11.
 
+## GGVP-100 · Improcedente: decidir se recorre (guardado em rascunho, a confirmar com o Lucas)
+
+- [x] 14.1 CA3 · Contratos: `DecidirRecurso`, `RecursoDoCaso`; matriz versão 23 (`recurso.ver` para advogada, Sênior e Sócio, que lê tudo (Pedro, 09/10); `recurso.decidir` só para a Sênior); testes do contrato.
+- [x] 14.2 CA4 · `prazoRecursal` em `fluxo/prazo-judicial.ts`: 10 dias úteis, ou o prazo menor da classificação (G12); testes.
+- [x] 14.3 CA1, CA2, CA3, CA5, CA7 · Servidor: `abrirDecisaoDoRecurso`, `GET` e `POST /api/casos/:id/recurso`; o estudo de caso espera a decisão (`semRecursoPendente`); testes da API.
+- [x] 14.4 Semente: Sérgio Nunes (exemplo), com a sentença improcedente e "Decidir recurso" aberta para a Sênior.
+- [x] 14.5 Tela `/casos/:id/recurso` (Figma 1815:246) e Playwright do "Recorrer".
+- [ ] 14.6 CA6 · "Recurso e contrarrazões" na Minuta da IA: a Minuta ainda não tem lista de tipos de peça.
+- [ ] 14.7 CA8 · Ligar a jurimetria do juízo (pedidos #11 e #27) no `chance` de `GET /api/casos/:id/recurso`.
+- [ ] 14.8 A "Confirmar desfecho" (D4.02) chama `abrirDecisaoDoRecurso` quando a sentença for improcedente.
+- [x] 14.9 CA5 · Q26 respondida (Lucas, 09/10): a tarefa "Elaborar e protocolar o recurso" nasce para a Sênior; testes da API, da tela e Playwright.
+
 ## Próximo PR do épico (adiado na revisão de 08/10)
 
 - [ ] 7.1 GGVP-22 · CA4: coluna `tarefa_id` em `atendimento`, numa migração, e a lista de contatos passa a ler a coluna; o histórico deixa de ser a fonte.

@@ -7,6 +7,7 @@ import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { caso, configuracao, contrato, credencialGovbr, decisao, documento, documentoMedico, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, peticao, peticaoVersao, prestacaoContas, processoAcervo, protocoloJudicial, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { abrirDecisaoDoRecurso } from '../rotas/recurso.ts'
 import { abrirExplicacaoDoResultado } from '../rotas/resultado.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
 
@@ -201,14 +202,36 @@ export async function semearExemplos(banco: Banco) {
   await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
   await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
 
-  // Caso perdido (GGVP-22): improcedente, sem recurso; a advogada escreve e aprova o resumo para o cliente. Até o
-  // "Não recorrer" (GGVP-100) existir, o caminho abre pela semente.
+  // Caso perdido (GGVP-22): improcedente, sem recurso; a advogada escreve e aprova o resumo para o cliente. A semente já
+  // abre o resumo, sem passar pelo "Não recorrer" (GGVP-100).
   const [pPerdido] = await banco.insert(pessoa).values({ nome: 'Paulo Mendes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cPerdido] = await banco
     .insert(caso)
     .values({ pessoaId: pPerdido.id, beneficio: 'auxilio_incapacidade_temporaria', fase: 'judicial', desfecho: 'improcedente' })
     .returning()
   await abrirExplicacaoDoResultado(banco, cPerdido.id)
+
+  // Sentença improcedente esperando "Vale recorrer?" (GGVP-100): a decisão é da Sênior. Até a "Confirmar desfecho"
+  // (D4.02) chamar abrirDecisaoDoRecurso, a semente abre a tarefa. A sentença saiu há 2 dias, para o prazo ficar à frente.
+  const [pRecurso] = await banco.insert(pessoa).values({ nome: 'Sérgio Nunes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cRecurso] = await banco
+    .insert(caso)
+    .values({ pessoaId: pRecurso.id, beneficio: 'auxilio_acidente', fase: 'judicial', desfecho: 'improcedente', advogadaResponsavelId: advogada.id })
+    .returning()
+  const cnjRecurso = '00088883720264036301'
+  await banco.insert(identificadorCaso).values({ casoId: cRecurso.id, tipo: 'cnj', valor: cnjRecurso })
+  await banco.insert(publicacao).values({
+    fonte: 'exemplo',
+    numeroCnj: cnjRecurso,
+    casoId: cRecurso.id,
+    disponibilizadaEm: new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10),
+    texto: 'Sentença: julgo improcedente o pedido. O laudo pericial não constatou redução da capacidade para o trabalho habitual. (exemplo)',
+    hash: `exemplo-${cRecurso.id}`,
+    classe: 'merito',
+    revisadaPor: advogada.id,
+    revisadaEm: new Date(),
+  })
+  await abrirDecisaoDoRecurso(banco, cRecurso.id)
 
   // Vigília do diário (GGVP-26, 30, 34, 37, 74): dois processos judiciais com número CNJ, que a fonte de exemplo
   // reconhece, e a rodada das 08:00 de hoje com falha: reprocessar traz as publicações de exemplo do dia.

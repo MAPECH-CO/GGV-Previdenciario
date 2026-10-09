@@ -271,6 +271,52 @@ Nenhuma tela nova. As fontes aparecem onde já aparecem.
 - **Custo:** só o que é novo ganha vetor, porque o hash evita recalcular. A consulta também gasta uma chamada de embeddings.
 - **Leitura das fontes:** a cada rodada, alimentar lê as fontes inteiras e compara pelo hash. Com milhares de itens, guardar a última data lida por fonte.
 
+## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem (parte 2)
+
+### Context
+
+- **Documentação médica** (`documentacao_medica`, parte `parecer`, GGVP-132):
+  - as análises da IA, com os documentos lidos (tipo, data, resumo e os itens que cobrem);
+  - os registros do parecer, com os itens como a advogada conferiu. Cada registro aponta a análise que conferiu (`analise` = o `quando` da análise).
+- **Perícia** (`pericia.documento`, GGVP-137 e GGVP-139):
+  - `resultado.registrado` é o que a advogada registrou;
+  - `resultado.laudo.leitura` é a leitura do laudo que ela conferiu (assunto, resumo, conclusão, porquê, ponto de atenção).
+- **Entrevista** (`gravacao_recepcao.dados`, GGVP-46 e GGVP-133):
+  - os trechos da transcrição, com a marca de prova (CA6);
+  - as informações extraídas, com `conferidaEm`.
+  
+  A gravação é da pessoa, não do caso: o caso nasce no "fechou".
+
+### Decisions
+
+1. **Quatro fontes novas em `FONTES`**, a mesma consulta da busca por palavra e da rodada que alimenta o acervo. Sem migração e sem tabela nova; o hash de hoje evita duplicar (CA3).
+   - **Parecer médico:** cada registro, com a situação, os itens (texto e situação) e o que o documento deve abordar ou a conferência manual.
+   - **Laudo conferido:** cada documento de uma análise que algum registro conferiu, com o tipo, a data e o resumo. O mesmo documento repetido em outra análise dá o mesmo texto e não duplica.
+   - **Resultado da perícia:** a perícia com `resultado.registrado`, com favorável ou desfavorável, o tipo da perícia e a leitura conferida.
+   - **Transcrição conferida:** os trechos marcados como prova e as informações conferidas, sem destino `cofre` e sem os campos `telefone` e `contatoApoio`.
+     - A gravação entra no caso mais novo da pessoa; sem caso, entra quando o caso nascer.
+     - A gravação de conversa (`conversaId`) fica de fora, porque já entra como "Conversa conferida".
+2. **Saúde só para o Jurídico** (`so_juridico`):
+   - o parecer, o laudo e a perícia, sempre;
+   - a transcrição, pela marca da gravação.
+3. **Fora, porque ninguém confere** (Mateus, 09/10):
+   - o texto inteiro da transcrição;
+   - o resumo da IA da entrevista;
+   - a análise sem registro.
+
+### Campos de formulário
+
+Nenhum.
+
+### Telas
+
+Nenhuma tela nova. As fontes aparecem onde já aparecem.
+
+### Risks / Trade-offs
+
+- **Pessoa com dois casos:** a transcrição vai para o caso mais novo. Ligar a gravação ao caso quando a entrevista guardar o caso.
+- **Consulta maior:** as fontes abrem o JSON a cada busca por palavra. Com milhares de casos, buscar por palavra na tabela de trechos.
+
 ## GGVP-59 · Perito nomeado: identificar e mostrar a jurimetria (parte 1)
 
 ### Context
