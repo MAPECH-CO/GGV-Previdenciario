@@ -5,8 +5,8 @@ import { z } from 'zod'
 export const DESFECHOS_DE_MERITO = ['procedente_total', 'procedente_parcial', 'improcedente', 'extinto_sem_merito'] as const
 export type DesfechoDeMerito = (typeof DESFECHOS_DE_MERITO)[number]
 export const ROTULO_DESFECHO_DE_MERITO: Record<DesfechoDeMerito, string> = {
-  procedente_total: 'Procedente',
-  procedente_parcial: 'Procedente em parte',
+  procedente_total: 'Procedente total',
+  procedente_parcial: 'Procedente parcial',
   improcedente: 'Improcedente',
   extinto_sem_merito: 'Extinto sem julgar o mérito',
 }
@@ -29,6 +29,8 @@ export type ConfirmarDesfecho = z.infer<typeof ConfirmarDesfecho>
 /** GET /api/casos/:id/desfecho: o que a tela mostra (CA3) e, depois, quem confirmou e quando (CA4). */
 export const DesfechoParaConfirmar = z.object({
   casoId: z.uuid(),
+  /** A ficha do cliente: o atalho de "O que você deve fazer". */
+  fichaId: z.uuid(),
   cliente: z.string(),
   beneficio: z.string().nullable(),
   /** A última decisão de mérito do caso, com a leitura da IA quando houver. */
@@ -36,6 +38,7 @@ export const DesfechoParaConfirmar = z.object({
     .object({
       disponibilizadaEm: z.string(),
       fonte: z.string(),
+      numeroCnj: z.string().nullable(),
       texto: z.string(),
       classeSugeridaIa: z.string().nullable(),
       confiancaIa: z.number().nullable(),

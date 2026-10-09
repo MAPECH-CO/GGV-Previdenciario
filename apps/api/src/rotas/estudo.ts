@@ -97,6 +97,13 @@ export function registrarRotasEstudo(app: FastifyInstance, { banco, agora = () =
           .where(
             and(
               inArray(caso.desfecho, PERDIDOS),
+              // GGVP-90 e GGVP-100: enquanto a Sênior decide o recurso, o caso espera.
+              notExists(
+                banco
+                  .select({ id: tarefa.id })
+                  .from(tarefa)
+                  .where(and(eq(tarefa.casoId, caso.id), eq(tarefa.passo, 'D3b.04'), isNull(tarefa.concluidaEm))),
+              ),
               notExists(
                 banco
                   .select({ id: chamadaIa.id })

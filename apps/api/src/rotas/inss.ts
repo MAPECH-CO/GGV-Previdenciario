@@ -91,7 +91,8 @@ export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   // GGVP-90: confirmar o desfecho e os dois passos seguintes abrem a mesma tela.
   'D4.02': (id) => `/casos/${id}/desfecho`,
   'D3b.01': (id) => `/casos/${id}/desfecho`,
-  'D3b.recorrer': (id) => `/casos/${id}/desfecho`,
+  // Até a tela "Vale recorrer?" do #35 (GGVP-100), "Decidir recurso" abre a tela do desfecho.
+  'D3b.04': (id) => `/casos/${id}/desfecho`,
   // A tarefa "Marcar perícia" que o sistema abre (DP.01): a tela de marcar do caso, onde o Jurídico administrativo também
   // registra que o INSS liberou o agendamento.
   'DP.01': (id) => `/casos/${id}/pericia/marcar`,
