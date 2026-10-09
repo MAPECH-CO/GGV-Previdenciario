@@ -50,6 +50,23 @@
 - [x] 5.4 CA9, CA10, CA11 · Tela: "Entrar como…" na barra do topo com os perfis da pessoa; Central pelo perfil ativo; "Sem permissão"; verifica com `pnpm --filter @ggv/web test`.
 - [x] 5.5 Playwright: trocar de perfil e ver a recusa; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 5.7 CA16 · Teste do caminho real: o OK já dado e o recebimento registrado depois pela mesma pessoa é recusado, por outra é aceito (`migracoes.test.ts`); verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.8 CA13 · Aberto aqui: esta branch não tem rota que devolva dado de saúde. A gravação em `acesso_dado_sensivel` entra com as rotas que devolvem dado de saúde, cada uma com teste: a conferência da Sênior na Via administrativa (PR #14, `GET /api/casos/:id/conferencia`, parecer médico) e os documentos na Judicialização (PR #16, `apps/api/src/rotas/documentos.ts`).
-- [ ] 5.9 CA14 · Aberto aqui: relatórios e exportações só existem na Garantia (PR #18: exportação do histórico e relatório de prazos); o teste vai lá.
 - [x] 5.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado na revisão geral de 07/10 (branch com a regra dos valores): typecheck e lint sem erro; campos 9, contratos 20, API 37, tela 51, Playwright 14, todos passando (com a máquina carregada, 3 testes de tela estouraram o tempo e passaram rodados um por vez). De novo em 07/10, com o teste do CA16 e do GGVP-129: contratos 20, API 39, tela 51, Playwright 14.
+
+> CA13 e CA14 da GGVP-96 saíram desta change (revisão geral de 07/10): o CA13 entra com as rotas que devolvem dado de saúde (conferência no PR #14, documentos no PR #18) e o CA14 com a exportação e o relatório de prazos (PR #18), cada um com teste lá.
+
+## GGVP-126 · Homologação com usuários e dados de teste
+
+- [x] 6.1 CA4 · A semente olha se os usuários de exemplo já estão no banco (antes, qualquer usuário), só no começo de `semearExemplos` (`apps/api/src/banco/exemplo.ts`); verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.2 CA1, CA2, CA3, CA4, CA5 · Comando `homologacao:preparar` (`apps/api/src/banco/homologacao.ts`): recusa sem `AMBIENTE=homologacao`; semente e senhas numa transação; senha provisória aleatória por usuário de exemplo, com troca no primeiro acesso; limites de cobrança se faltarem; teste no banco embutido; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.3 Como rodar no Coolify e entregar as senhas, em `docs/infra/homologacao-dados-de-teste.md`; verifica lendo.
+- [ ] 6.4 CA3, a parte que falta · Recepção, Abertura, documentação médica, Perícia e Relacionamento com caso de exemplo no banco, quando a GGVP-125 e a GGVP-132 ligarem essas telas no servidor; o teste do CA3 passa a afirmar esses passos; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.6 CA1 · Correção da homologação de 08/10. No terminal do app, o comando parava com a rodada repetida (`rodada_unica`) e não gravava nada. A semente grava a rodada de exemplo das 08:00 de hoje, e o relógio da vigília, com o servidor no ar, já a tinha criado.
+  - Correção: a semente só marca a falha de exemplo na rodada que já existe (`onConflictDoUpdate` pela chave fonte + horário).
+  - Teste novo: `planejarDia` antes do comando, como no servidor. Antes da correção, ele falhava com o mesmo erro da homologação.
+  - Revisão do PR #40: o teste confere só a rodada das 08:00 (uma, com a falha) e que as outras seguem previstas, sem depender dos horários padrão da vigília.
+- [x] 6.7 Verificação de 08/10, na máquina carregada:
+  - typecheck e lint sem erro; `openspec validate --all --strict` com 14 de 14;
+  - os 9 testes do comando passaram, com o novo; Playwright da vigília (judicialização) com 6 de 6;
+  - API inteira: dos 53 arquivos, só 43 iniciaram. Deles, 42 passaram; o que falhou (linha de comando do CA5, por tempo) passou rodando sozinho. A suíte inteira roda no CI do PR.
+

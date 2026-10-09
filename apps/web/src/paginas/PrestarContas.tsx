@@ -49,7 +49,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
     setConferi(false)
     setFeito(
       r.dados.versao === 1
-        ? 'Prestação concluída. O Financeiro recebeu e o Atendimento vai agendar a ida ao banco.'
+        ? 'Prestação concluída. O Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.'
         : `Versão ${r.dados.versao} registrada. O Financeiro confere de novo.`,
     )
     setVersao((v) => v + 1)
@@ -159,7 +159,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao}>
+            <button type="submit" className={styles.botao} disabled={!conferi}>
               {atual ? 'Registrar nova versão' : 'Concluir a prestação'}
             </button>
           </div>

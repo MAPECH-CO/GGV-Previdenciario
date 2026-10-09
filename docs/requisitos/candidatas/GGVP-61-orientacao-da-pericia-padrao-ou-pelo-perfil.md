@@ -2,12 +2,12 @@
 
 > Candidata a história, diagrama **DP · Perícia padrão (chamada por D2, D3 e D3a)**. Cartão no Jira: [GGVP-61](https://mapech.atlassian.net/browse/GGVP-61), rótulo `a-validar-bpmn`. Chave provisória original: GGVP-61. Fonte: BPMN do Miro (frames "revisão BPMN") e roteiro de laudos do escritório.
 
-**Como** Atendimento\
+**Como** Jurídico administrativo (estagiário ou assistente jurídico)\
 **quero** receber um documento de orientação para o cliente, montado pela IA: padrão na perícia médica, e pelo perfil do perito nomeado na avaliação social\
 **para** preparar o cliente sobre o que o perito costuma observar, perguntar e pedir.
 
 **Passo BPMN:** `DP.05` · **Épico:** Perícia · **Prioridade:** 2 · **Estimativa:** G\
-**Perfil:** Atendimento\
+**Perfil:** Jurídico administrativo (estagiário ou assistente jurídico)\
 **Portões:** G11
 
 ## Critérios de aceite
@@ -20,16 +20,16 @@
 - A definir no refinamento.
 
 ## Dados e permissões
-- Quem usa: Atendimento. Quem vê e quem edita: a definir no refinamento, conforme `docs/requisitos/perfis.md`.
+- Quem usa: Jurídico administrativo. Quem vê e quem edita: a definir no refinamento, conforme `docs/requisitos/perfis.md`.
 
 ## Portões de governança
 - **G11**: A orientação da perícia social nunca orienta a esconder ou mudar a situação real da casa
 
 ## Tela ou referência
-- Figma: a desenhar, no arquivo do perfil "Atendimento".
+- Figma: a desenhar, no arquivo do perfil "Jurídico administrativo".
 
 ## Dúvidas abertas (bloqueiam a DoR)
 - Nenhuma registrada. Conferir no refinamento.
 
 ## Dúvidas respondidas pelo PO
-- (vazio)
+- Ajuste de 29/09/2026 (Lucas): quem recebe a orientação e prepara o cliente passa a ser o Jurídico administrativo, não mais o Atendimento. A data que dispara a orientação vem do comprovante do INSS, lido pelo sistema (DP.04).

@@ -12,6 +12,8 @@ const base: CasoParaConferencia = {
   documentos: [{ id: '11111111-1111-4111-8111-111111111111', tipo: 'rg', nome: 'RG e CPF.pdf' }],
   parecer: { resultado: 'suficiente', itens: [{ item: 'Data de início', atendido: true }], justificativaDispensa: null },
   parecerRestrito: false,
+  travaDoParecer: null,
+  dispensa: null,
   laudoNovoEsperando: false,
   temFicha: true,
   kitAssinado: true,
@@ -19,9 +21,16 @@ const base: CasoParaConferencia = {
   situacao: 'aguardando',
 }
 
-function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, { ok: true }]) {
-  const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
-    init?.method === 'POST' ? new Response(JSON.stringify(decisao[1]), { status: decisao[0] }) : new Response(JSON.stringify(caso)),
+const SEM_CHANCE = { casos: 0, favoraveis: 0, porcentagem: null, baseEm: null, regra: 'mesmo benefício', fatores: null, motivoIa: 'A IA não respondeu agora: os fatores ficam com a sua leitura.' }
+
+/** A chance chega sozinha ao abrir (sugestão pronta, 07/10): o POST da chance responde à parte da decisão. */
+function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, { ok: true }], chance: object = SEM_CHANCE) {
+  const fetch = vi.fn(async (url: string, init?: RequestInit) =>
+    String(url).endsWith('/chance')
+      ? new Response(JSON.stringify(chance))
+      : init?.method === 'POST'
+        ? new Response(JSON.stringify(decisao[1]), { status: decisao[0] })
+        : new Response(JSON.stringify(caso)),
   )
   vi.stubGlobal('fetch', fetch)
   return fetch
@@ -30,6 +39,20 @@ function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Conferência da Sênior (GGVP-23)', () => {
+  it('GGVP-131 · a chance aparece sozinha ao abrir, com os casos e a base, e os fatores como sugestão; sem casos, sem número', async () => {
+    const chance = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', motivoIa: null, fatores: { chamadaId: '66666666-6666-4666-8666-666666666666', sugestao: true, texto: 'Para subir: trazer o relatório do médico assistente.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null } }
+    servidor(base, undefined, chance)
+    const { unmount } = render(<Conferencia casoId={CASO} />)
+    expect(await screen.findByText('75% · 3 de 4 casos · base de 07/10')).toBeTruthy()
+    expect(screen.getByText('Fatores sugeridos pela IA · confira')).toBeTruthy()
+    expect(screen.getByText('Para subir: trazer o relatório do médico assistente.')).toBeTruthy()
+    unmount()
+    servidor(base)
+    render(<Conferencia casoId={CASO} />)
+    expect(await screen.findByText('Sem casos parecidos na casa ainda: sem porcentagem.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /chance/i })).toBeNull()
+  })
+
   it('CA1 e CA5 · mostra benefício, documentos e o parecer item a item; aprovar envia e confirma', async () => {
     const fetch = servidor(base)
     render(<Conferencia casoId={CASO} />)
@@ -55,12 +78,30 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     expect(screen.queryByText('Sem parecer médico.')).toBeNull()
   })
 
-  it('CA5 · sem parecer, Aprovar fica desligado e a dispensa aparece', async () => {
-    servidor({ ...base, parecer: null })
+  const SEM_PARECER = 'Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa (G17).'
+
+  it('CA5 · sem parecer, Aprovar fica desligado com a trava do servidor, e a Sênior pode pedir a dispensa', async () => {
+    servidor({ ...base, parecer: null, travaDoParecer: SEM_PARECER })
     render(<Conferencia casoId={CASO} />)
     expect(((await screen.findByRole('button', { name: 'Aprovar' })) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText('Sem parecer médico "Suficiente" ou dispensa justificada (G17).')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Dispensar o parecer' })).toBeTruthy()
+    expect(screen.getByText(SEM_PARECER)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Pedir a dispensa do parecer' })).toBeTruthy()
+  })
+
+  it('G17 e Q14 · dispensa pedida: quem pediu espera outra Sênior; a outra aprova ou recusa', async () => {
+    const dispensa = { pedidaPor: 'Helena', justificativa: 'Laudo do INSS já reconhece', podeResponder: false }
+    servidor({ ...base, parecer: null, travaDoParecer: 'espera a aprovação de outra Sênior', dispensa })
+    const { unmount } = render(<Conferencia casoId={CASO} />)
+    expect(await screen.findByText(/Espera a aprovação de outra Sênior/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Aprovar a dispensa' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pedir a dispensa do parecer' })).toBeNull()
+    unmount()
+    const fetch = servidor({ ...base, parecer: null, travaDoParecer: 'espera', dispensa: { ...dispensa, podeResponder: true } })
+    render(<Conferencia casoId={CASO} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Aprovar a dispensa' }))
+    await screen.findByRole('button', { name: 'Recusar a dispensa' })
+    const envio = fetch.mock.calls.find(([url]) => String(url).endsWith('/parecer/dispensa/aprovacao'))
+    expect(JSON.parse(String(envio?.[1]?.body))).toEqual({ aprova: true })
   })
 
   it('CA3 e CA8 · reprovar pede motivo e a resposta do prazo antes de enviar', async () => {
@@ -72,7 +113,7 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     fireEvent.click(screen.getByLabelText('Não'))
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar reprovação' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que o Atendimento precisa ajustar')
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch.mock.calls.filter(([url, init]) => init?.method === 'POST' && String(url).endsWith('/conferencia'))).toEqual([])
     fireEvent.change(screen.getByLabelText('O que o Atendimento precisa ajustar'), { target: { value: 'Falta a procuração' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar reprovação' }))
     expect((await screen.findByRole('status')).textContent).toContain('voltou para o Atendimento')

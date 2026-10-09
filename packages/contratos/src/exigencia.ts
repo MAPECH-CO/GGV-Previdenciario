@@ -8,6 +8,20 @@ export const CANAIS_DE_COBRANCA = ['whatsapp', 'telefone', 'email', 'sms', 'pres
 export const RESULTADOS_DE_COBRANCA = ['entregou', 'sem_resposta', 'vai_entregar'] as const
 export const SITUACOES_DO_ITEM = ['pendente', 'cumprido', 'nao_cumprido'] as const
 
+/** Uma linha do laço de cobrança: tentativa do setor ou, com `canal` "decisao_senior", a decisão da Sênior (GGVP-94 CA3, CA10). */
+export const TentativaDoLaco = z.object({ quando: z.string(), canal: z.string(), resultado: z.string(), quem: z.string() })
+export type TentativaDoLaco = z.infer<typeof TentativaDoLaco>
+
+/** GGVP-94 CA11: o que o próximo lembrete diz. A data vem em `proximoLembrete`. */
+export const Lembrete = z.object({ gatilho: z.string(), destinatario: z.string(), canal: z.string(), modelo: z.string() })
+export type Lembrete = z.infer<typeof Lembrete>
+
+/** POST .../decisao (GGVP-94 CA9, CA10): a Sênior decide o laço que passou do limite. Opções em aberto (Q1): o texto é obrigatório. */
+export const DecidirLaco = z.object({
+  oQueFazer: z.string({ error: 'Escreva o que o setor deve fazer' }).trim().min(1, 'Escreva o que o setor deve fazer'),
+})
+export type DecidirLaco = z.infer<typeof DecidirLaco>
+
 /** GET /api/casos/:id/exigencia: a exigência aberta, com o prazo contado em código (CA7) e o card da Documentação (CA11, CA12). */
 export const ExigenciaDoCaso = z.object({
   casoId: z.uuid(),
@@ -33,10 +47,11 @@ export const ExigenciaDoCaso = z.object({
     .object({
       prazoEntrega: z.string().nullable(),
       proximoLembrete: z.string().nullable(),
+      lembrete: Lembrete.nullable(),
       tentativas: z.number(),
       limite: z.number().nullable(),
       escalada: z.boolean(),
-      cobrancas: z.array(z.object({ quando: z.string(), canal: z.string(), resultado: z.string(), quem: z.string() })),
+      cobrancas: z.array(TentativaDoLaco),
     })
     .nullable(),
   podeDecidir: z.boolean(),
@@ -44,6 +59,8 @@ export const ExigenciaDoCaso = z.object({
   /** A advogada responde no portal do INSS depois que a Documentação entrega as provas (ajuste do Mateus em 05/10). */
   podeResponder: z.boolean(),
   podeDecidirVencida: z.boolean(),
+  /** GGVP-94 CA9: a Sênior decide a cobrança que passou do limite. */
+  podeDecidirLaco: z.boolean(),
 })
 export type ExigenciaDoCaso = z.infer<typeof ExigenciaDoCaso>
 

@@ -1,12 +1,13 @@
 // DADOS DE EXEMPLO, só para o banco local da máquina do dev. Nenhuma pessoa é real, e os arquivos não existem.
-// Senha de todos: SENHA_DE_EXEMPLO. Nunca rodar contra homologação nem produção.
+// Senha de todos: SENHA_DE_EXEMPLO. Nunca em produção; na homologação, só pelo `homologacao:preparar` (GGVP-126), que troca as senhas.
 import bcrypt from 'bcryptjs'
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, etapa, exigencia, identificadorCaso, modelo, parecerMedico, pessoa, publicacao, resultadoInss, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { caso, configuracao, contrato, credencialGovbr, decisao, documento, documentoMedico, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, prestacaoContas, processoAcervo, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
+import { abrirExplicacaoDoResultado } from '../rotas/resultado.ts'
 import { momentoDoHorario } from '../vigilia/rodadas.ts'
 
 export const SENHA_DE_EXEMPLO = 'exemplo-ggv-2026'
@@ -20,6 +21,8 @@ export const usuariosDeExemplo = [
   { email: 'documentacao@exemplo.ggv', nome: 'Fábio (exemplo)', perfis: ['documentacao'], trocarSenha: false },
   { email: 'advogada@exemplo.ggv', nome: 'Gabi (exemplo)', perfis: ['advogada'], trocarSenha: false },
   { email: 'senior@exemplo.ggv', nome: 'Helena (exemplo)', perfis: ['senior'], trocarSenha: false },
+  // A dispensa do parecer pede duas Sêniores diferentes (G17, Q14); o nome bate com o exemplo da tela do Pedro.
+  { email: 'senior2@exemplo.ggv', nome: 'Otávio (exemplo, segunda Sênior)', perfis: ['senior'], trocarSenha: false },
   { email: 'juridico@exemplo.ggv', nome: 'Igor (exemplo)', perfis: ['juridico_adm'], trocarSenha: false },
   { email: 'financeiro@exemplo.ggv', nome: 'Júlia (exemplo)', perfis: ['financeiro'], trocarSenha: false },
   { email: 'socio@exemplo.ggv', nome: 'Lauro (exemplo)', perfis: ['socio'], trocarSenha: false },
@@ -36,7 +39,8 @@ const DOCUMENTOS_DE_EXEMPLO = ['RG e CPF', 'Comprovante de residência', 'Procur
 
 /** Só semeia banco vazio: não mexe em quem já existe. */
 export async function semearExemplos(banco: Banco) {
-  const [{ total }] = await banco.select({ total: count() }).from(usuario)
+  // GGVP-126 CA4: "vazio" é sem os usuários de exemplo; a homologação já tem o usuário de quem cuida dela.
+  const [{ total }] = await banco.select({ total: count() }).from(usuario).where(eq(usuario.email, usuariosDeExemplo[0].email))
   if (total > 0) return
   const senhaHash = await bcrypt.hash(SENHA_DE_EXEMPLO, 10)
   const usuarios = await banco
@@ -44,6 +48,7 @@ export async function semearExemplos(banco: Banco) {
     .values(usuariosDeExemplo.map((u) => ({ ...u, senhaHash })))
     .returning()
   const senior = usuarios.find((u) => u.perfis.includes('senior'))!
+  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const cofre = criarCofre(chaveDoCofre())
 
   for (const [i, ex] of casosDeExemplo.entries()) {
@@ -97,6 +102,9 @@ export async function semearExemplos(banco: Banco) {
         casoId: c.id,
         roteiroVersao: 1,
         resultado: ex.parecer,
+        // G17: confirmado por pessoa do Jurídico; sem isso, o portão vê só a sugestão da IA.
+        confirmadoPor: advogada.id,
+        confirmadoEm: new Date(),
         itens: [
           { item: 'Natureza do impedimento', atendido: true },
           { item: 'Data de início', atendido: true },
@@ -121,9 +129,27 @@ export async function semearExemplos(banco: Banco) {
 
   // Exigência do INSS (GGVP-39): limites de cobrança do escritório (Q1, exemplo) e um caso esperando a advogada decidir.
   await banco.insert(configuracao).values([
-    { chave: 'cobranca.limite', valor: 2 },
-    { chave: 'cobranca.intervalo_dias', valor: 3 },
+    { chave: 'cobranca.limite', valor: 2 }, // Lucas, 05/10 (GGVP-122, pergunta 6)
+    { chave: 'cobranca.intervalo_dias', valor: 3 }, // dias úteis entre as tentativas (Lucas, 02/10; GGVP-94)
+    // GGVP-103 CA7 (Q1): o uso do cofre fora do padrão avisa a Sênior. Valores de exemplo, a confirmar com o escritório.
+    { chave: 'cofre.alerta.leituras_por_dia', valor: 10 },
+    { chave: 'cofre.alerta.hora_inicio', valor: 7 },
+    { chave: 'cofre.alerta.hora_fim', valor: 20 },
+    // GGVP-104 CA4 (Lucas, 02/10): cliente sumido, 3 tentativas em 10 dias; remarcação de perícia, 1, e sobe para a advogada.
+    { chave: 'contato.limite', valor: 3 },
+    { chave: 'contato.janela_dias', valor: 10 },
+    { chave: 'pericia.remarcacao.limite', valor: 1 },
   ])
+  // GGVP-104 (Lucas, 02/10): no LOAS, a ficha de grupo familiar é obrigatória e as três declarações são condicionais.
+  // A versão 1 vale desde sempre, para os casos de exemplo já abertos; ao meio-dia, para a data não virar 31/12/1999 no
+  // fuso de São Paulo (GGVP-135, P16).
+  const kitLoas = [
+    ...['documento_de_identidade', 'cpf', 'comprovante_de_residencia', 'cadunico', 'ficha_de_grupo_familiar'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: true })),
+    ...['declaracao_de_moradia', 'declaracao_de_uniao_estavel', 'declaracao_de_separacao_de_fato'].map((tipoDocumento) => ({ tipoDocumento, obrigatorio: false })),
+  ]
+  await banco
+    .insert(kitDocumento)
+    .values((['bpc_loas_deficiente', 'bpc_loas_idoso'] as const).flatMap((beneficio) => kitLoas.map((k) => ({ ...k, beneficio, vigenteDesde: new Date('2000-01-01T12:00:00Z') }))))
   const [pu] = await banco.insert(pessoa).values({ nome: 'Ulisses Rocha (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cu] = await banco.insert(caso).values({ pessoaId: pu.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
   await banco.insert(etapa).values({ casoId: cu.id, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date() })
@@ -144,7 +170,6 @@ export async function semearExemplos(banco: Banco) {
     nome: 'Confirmação da ida ao banco',
     conteudo: 'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}. {acompanhamento} Qualquer dúvida, fale com o escritório. (modelo de exemplo)',
   })
-  const advogada = usuarios.find((u) => u.perfis.includes('advogada'))!
   const [pv] = await banco.insert(pessoa).values({ nome: 'Vera Lúcia (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
   const [cv] = await banco.insert(caso).values({ pessoaId: pv.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
   await banco.insert(contrato).values({ casoId: cv.id, situacao: 'assinado', percentualHonorarios: '30.00' })
@@ -165,6 +190,15 @@ export async function semearExemplos(banco: Banco) {
   await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
   await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
 
+  // Caso perdido (GGVP-22): improcedente, sem recurso; a advogada escreve e aprova o resumo para o cliente. Até o
+  // "Não recorrer" (GGVP-100) existir, o caminho abre pela semente.
+  const [pPerdido] = await banco.insert(pessoa).values({ nome: 'Paulo Mendes (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cPerdido] = await banco
+    .insert(caso)
+    .values({ pessoaId: pPerdido.id, beneficio: 'auxilio_incapacidade_temporaria', fase: 'judicial', desfecho: 'improcedente' })
+    .returning()
+  await abrirExplicacaoDoResultado(banco, cPerdido.id)
+
   // Vigília do diário (GGVP-26, 30, 34, 37, 74): dois processos judiciais com número CNJ, que a fonte de exemplo
   // reconhece, e a rodada das 08:00 de hoje com falha: reprocessar traz as publicações de exemplo do dia.
   for (const [nome, cnj] of [
@@ -176,14 +210,17 @@ export async function semearExemplos(banco: Banco) {
     await banco.insert(identificadorCaso).values({ casoId: cj.id, tipo: 'cnj', valor: cnj })
   }
   const hojeBr = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10)
-  await banco.insert(rodadaVigilia).values({
-    fonte: 'exemplo',
-    previstaPara: momentoDoHorario(hojeBr, '08:00'),
+  const falhaDeExemplo = {
     inicio: momentoDoHorario(hojeBr, '08:00'),
     fim: momentoDoHorario(hojeBr, '08:01'),
     situacao: 'falhou',
     erro: 'tempo esgotado: a fonte não respondeu em 60 s (exemplo)',
-  })
+  } as const
+  // Na homologação o servidor já está no ar e o relógio já criou a rodada das 08:00: ela só passa a ter a falha.
+  await banco
+    .insert(rodadaVigilia)
+    .values({ fonte: 'exemplo', previstaPara: momentoDoHorario(hojeBr, '08:00'), ...falhaDeExemplo })
+    .onConflictDoUpdate({ target: [rodadaVigilia.fonte, rodadaVigilia.previstaPara], set: falhaDeExemplo })
 
   // Exigência do juiz (GGVP-79, 83, 87): uma intimação já lida e classificada, esperando a advogada distribuir.
   const [pp] = await banco.insert(pessoa).values({ nome: 'Paulo Reis (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
@@ -212,4 +249,83 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'tribunais', valor: [{ nome: 'Justiça Federal da 3ª Região (exemplo)', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: 10 }] },
     { chave: 'peticao.assinatura', valor: 'Glauco (exemplo)\nAdvogado responsável · OAB/UF 000.000 (exemplo)' },
   ])
+
+  // Laço que passou do limite (GGVP-94): a Documentação cobrou 3 vezes sem retorno, e a cobrança subiu para a Sênior.
+  const documentacao = usuarios.find((u) => u.perfis.includes('documentacao'))!
+  const daqui = (dias: number) => new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10)
+  const [pw] = await banco.insert(pessoa).values({ nome: 'Wagner Costa (exemplo)', situacao: 'cliente', origem: 'exemplo' }).returning()
+  const [cw] = await banco.insert(caso).values({ pessoaId: pw.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
+  const [xw] = await banco
+    .insert(exigencia)
+    .values({ casoId: cw.id, origem: 'inss', descricao: 'Apresentar o CadÚnico atualizado. (exemplo)', recebidaEm: daqui(-10), pede: 'documentos', diasInss: 30, prazo: daqui(20), analisadaPor: advogada.id })
+    .returning()
+  const [cartao] = await banco
+    .insert(tarefa)
+    .values({ casoId: cw.id, passo: 'D2.05d', titulo: 'Cumprir exigência do INSS', perfilDono: 'documentacao', prazo: daqui(1), tentativas: 3, limiteTentativas: 3, escaladaEm: new Date(), escaladaPara: 'senior' })
+    .returning()
+  await banco.insert(exigenciaItem).values({ exigenciaId: xw.id, descricao: 'CadÚnico atualizado', perfilResponsavel: 'documentacao', prazo: daqui(15) })
+  await banco
+    .insert(tentativa)
+    .values([-6, -3, -1].map((d) => ({ tarefaId: cartao.id, quando: new Date(Date.now() + d * 86_400_000), canal: 'whatsapp', resultado: 'sem_resposta', registradaPor: documentacao.id })))
+  await banco.insert(tarefa).values({ casoId: cw.id, passo: 'D2.05', titulo: 'Cobrança sem retorno: exigência do INSS', perfilDono: 'senior' })
+  await banco.insert(etapa).values({ casoId: cw.id, diagrama: 'D2', passo: 'D2.E3', situacao: 'aguardando_externo', aguardando: 'cliente entregar o documento', iniciadaEm: new Date() })
+
+  // Painel de resultado para os sócios (GGVP-75): dez decisões do INSS dos últimos dias, oito do LOAS (dá a taxa) e duas da
+  // aposentadoria da pessoa com deficiência (poucos casos no recorte por benefício, com a taxa ao lado, G22); uma extinção sem mérito com
+  // a causa, uma procedência e um recebimento de honorários, para os totais do Sócio e do Financeiro. Sem tarefa: não
+  // entram em fila nenhuma.
+  const financeiro = usuarios.find((u) => u.perfis.includes('financeiro'))!
+  const diasAtras = (dias: number) => new Date(Date.now() - dias * 86_400_000)
+  for (let i = 0; i < 10; i++) {
+    const [pd] = await banco.insert(pessoa).values({ nome: `Cliente decidido ${i + 1} (exemplo)`, situacao: 'cliente', origem: 'exemplo' }).returning()
+    const [cd] = await banco
+      .insert(caso)
+      .values({ pessoaId: pd.id, beneficio: i < 8 ? 'bpc_loas_deficiente' : 'aposentadoria_pcd', fase: 'administrativa', advogadaResponsavelId: advogada.id, criadoEm: diasAtras(120 + i) })
+      .returning()
+    await banco.insert(resultadoInss).values({ casoId: cd.id, resultado: [2, 5, 9].includes(i) ? 'indeferido' : 'deferido', dataDecisao: daqui(-(2 + i)), registradoPor: advogada.id })
+    if (i === 0)
+      await banco.insert(prestacaoContas).values({
+        casoId: cd.id,
+        valorRecebido: '15000.00',
+        honorarios: '4500.00',
+        valorCliente: '10500.00',
+        okAdvogadaPor: advogada.id,
+        okAdvogadaEm: diasAtras(2),
+        recebidaPor: financeiro.id,
+        recebidaEm: diasAtras(1),
+        clienteAvisadoEm: diasAtras(1),
+      })
+  }
+  for (const [nome, desfecho, causaDesfecho] of [
+    ['Sônia Teles (exemplo)', 'extinto_sem_merito', 'Não cumpriu determinação do juízo (exemplo)'],
+    ['Renato Dias (exemplo)', 'procedente_parcial', null],
+  ] as const) {
+    const [pj] = await banco.insert(pessoa).values({ nome, situacao: 'cliente', origem: 'exemplo' }).returning()
+    await banco.insert(caso).values({ pessoaId: pj.id, beneficio: 'bpc_loas_deficiente', fase: 'encerrado', advogadaResponsavelId: advogada.id, desfecho, causaDesfecho, encerradoEm: diasAtras(1) })
+  }
+
+  // Acervo (GGVP-55): três processos da base histórica já conferidos pela Sênior, quatro do lote de 02/10 com o desfecho
+  // lido esperando a conferência e um que ainda não tem desfecho, para a "Base do acervo" e "Conferir desfechos do lote".
+  const base = new Date(Date.UTC(2026, 8, 21, 15))
+  const lote = new Date(Date.UTC(2026, 9, 2, 15))
+  await banco.insert(processoAcervo).values([
+    { numeroCnj: '50001014520234036301', beneficio: 'bpc_loas_deficiente', desfecho: 'procedente_total', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001024520234036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '50001034520234036301', beneficio: 'aposentadoria_pcd', desfecho: 'acordo', desfechoConferidoPor: senior.id, fonte: 'importacao', criadoEm: base },
+    { numeroCnj: '00045123320194036301', beneficio: 'bpc_loas_deficiente', desfecho: 'improcedente', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00077819020204036301', beneficio: 'auxilio_incapacidade_temporaria', desfecho: 'procedente_parcial', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00011234520184036301', beneficio: 'bpc_loas_idoso', desfecho: 'extinto_sem_merito', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00099341220214036301', beneficio: 'aposentadoria_pcd', desfecho: 'procedente_total', fonte: 'lote', criadoEm: lote },
+    { numeroCnj: '00055551220224036301', beneficio: 'bpc_loas_deficiente', fonte: 'lote', criadoEm: lote },
+  ])
+
+  // Documentação médica no servidor (GGVP-132): o laudo de LOAS da Lúcia já foi lido e classificado e espera o parecer
+  // do Jurídico. A IA simulada lê pelo nome do arquivo: "incompleto" não cobre nenhum item do roteiro.
+  const [pl] = await banco.insert(pessoa).values({ nome: 'Lúcia Prado (exemplo)', situacao: 'cliente', origem: 'exemplo', telefone: '11955550101' }).returning()
+  const [cl] = await banco.insert(caso).values({ pessoaId: pl.id, beneficio: 'bpc_loas_deficiente', fase: 'atendimento' }).returning()
+  const [laudo] = await banco
+    .insert(documento)
+    .values({ casoId: cl.id, pessoaId: pl.id, tipo: 'laudo', sensivel: true, chaveArmazenamento: `exemplo/${cl.id}/laudo`, nomeOriginal: 'Laudo médico incompleto (exemplo).pdf', mime: 'application/pdf', tamanho: 0, hashSha256: 'exemplo', origem: 'exemplo' })
+    .returning()
+  await banco.insert(documentoMedico).values({ documentoId: laudo.id, tipo: 'laudo', dataEmissao: '2026-09-15', profissional: 'Dra. Clínica (exemplo)' })
 }

@@ -7,7 +7,9 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, pessoa, peticao, peticaoVersao, tarefa, usuario } from '../banco/esquema.ts'
+import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
@@ -88,6 +90,8 @@ describe('GGVP-63 · pedir a petição', () => {
     expect((await chamar('gabi', 'POST', '/peticao/pedido', PEDIDO)).json().erro).toBe(
       'Pedir a petição fica bloqueado até todos os setores subirem o card. Falta: Documentação.',
     )
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'setores', passo: 'D3.05', faltam: 1 })
     expect(await abertas()).toEqual(['advogada · Pedir a petição', 'documentacao · Cumprir pendência'])
   })
 
@@ -131,6 +135,118 @@ describe('GGVP-63 · pedir a petição', () => {
       .returning()
     expect((await chamar('gabi', 'POST', '/peticao/pedido', { ...PEDIDO, citados: [{ documentoId: doc.id }] })).json().erro).toBe(MSG_CITADO_DE_OUTRO_CASO)
     expect(await abertas()).toEqual(['advogada · Pedir a petição'])
+  })
+})
+
+describe('Épico IA · a minuta da petição inicial', () => {
+  const MINUTA = 'EXCELENTÍSSIMO SENHOR JUIZ FEDERAL DO JUIZADO ESPECIAL FEDERAL... (laudo.pdf) ... [completar: valor da causa]'
+  let pedidos: string[] = []
+  beforeEach(() => {
+    pedidos = []
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      pedidos.push(String(init?.body))
+      return new Response(JSON.stringify({ choices: [{ message: { content: MINUTA } }] }))
+    }
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+  })
+
+  it('com setor pendente, a minuta espera; com tudo fechado, a IA escreve com o caso e as fontes, e nada é gravado', async () => {
+    expect((await chamar('gabi', 'POST', '/peticao/minuta', { instrucoes: '' })).json().erro).toBe('A minuta espera todos os setores subirem o card. Falta: Documentação.')
+    const laudo = await laudoDaDocumentacao()
+    const corpo = { instrucoes: 'Pedir desde a DER', opcoes: { tutelaUrgencia: true }, citados: [{ documentoId: laudo.id }, { nome: 'CNIS atualizado' }] }
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', corpo)).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.motivo, r.aviso]).toEqual([MINUTA, true, null, null])
+    expect(r.sugestao.fontes.map((f: { tipo: string; trecho?: string }) => [f.tipo, f.trecho])).toEqual([
+      ['documento', 'laudo.pdf'],
+      ['caso', 'O INSS somou a renda do filho'],
+    ])
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    for (const trecho of ['Vicente Prado', 'BPC/LOAS Idoso', 'O INSS somou a renda do filho', 'Laudo atualizado', 'laudo.pdf; CNIS atualizado (ainda falta)', 'Tutela de urgência: pedir', 'Pedir desde a DER'])
+      expect(enviado).toContain(trecho)
+    expect((await ler()).pedido).toBeNull()
+    expect(await abertas()).toEqual(['advogada · Pedir a petição'])
+  })
+
+  it('"usar precedentes" com o acervo vazio avisa "sem referência na casa"; a versão 1 pedida da minuta fica marcada', async () => {
+    await laudoDaDocumentacao()
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
+    expect(r.aviso).toBe(MSG_SEM_REFERENCIA)
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
+    const [v] = await banco.select().from(peticaoVersao)
+    expect([v.numero, v.geradaPor, v.conteudo]).toEqual([1, 'gabi · minuta da IA', MINUTA])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_pedida'))
+    expect((ev.detalhe as { chamadaIa: string }).chamadaIa).toBe(r.sugestao.chamadaId)
+  })
+
+  it('GGVP-45 CA1, CA4, CA6 · "usar precedentes" leva à IA a petição aprovada de outro caso parecido, sem os dados do outro cliente', async () => {
+    await laudoDaDocumentacao()
+    const [p] = await banco.insert(pessoa).values({ nome: 'Rosa Antunes' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', fase: 'judicial' }).returning()
+    const [pet] = await banco.insert(peticao).values({ casoId: c.id, tipo: 'inicial' }).returning()
+    const tese = 'Rosa Antunes, CPF 111.222.333-44: a renda do filho maior que mora à parte não entra no cálculo da renda per capita do grupo familiar.'
+    await banco.insert(peticaoVersao).values({ peticaoId: pet.id, numero: 1, conteudo: tese, hash: 'h', geradaPor: 'gabi', aprovadaEm: AGORA })
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
+    const doAcervo = r.sugestao.fontes.filter((f: { tipo: string }) => f.tipo === 'acervo')
+    expect([r.aviso, doAcervo.length, doAcervo[0].referencia]).toEqual([null, 1, `caso:${c.id}`])
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    expect(enviado).toContain('Trechos do acervo da casa')
+    expect(enviado).toContain('a renda do filho maior que mora à parte')
+    for (const dado of ['Rosa', 'Antunes', '111.222.333-44']) expect(enviado).not.toContain(dado)
+  })
+
+  it('Sugestão pronta (07/10) · com os setores fechados, a rodada escreve a minuta com o padrão do pedido; a tela, com o mesmo padrão, recebe sem nova chamada', async () => {
+    await app.prepararSugestoes()
+    expect(pedidos).toEqual([]) // setor pendente: a minuta espera
+    await laudoDaDocumentacao()
+    await app.prepararSugestoes()
+    expect(pedidos).toHaveLength(1)
+    const x = await ler()
+    const padrao = { instrucoes: '', opcoes: { tutelaUrgencia: false, precedentes: true, anexarCitados: true }, citados: x.documentos.map((d: { id: string }) => ({ documentoId: d.id })) }
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', padrao)).json()
+    expect([r.sugestao.texto, pedidos.length]).toEqual([MINUTA, 1])
+    expect(JSON.parse(pedidos[0]).messages[1].content).toContain('laudo.pdf')
+    const deNovo = (await chamar('gabi', 'POST', '/peticao/minuta', { ...padrao, refazer: true })).json()
+    expect([deNovo.sugestao.chamadaId === r.sugestao.chamadaId, pedidos.length]).toEqual([false, 2])
+  })
+
+  it('sem a IA, a tela recebe o motivo e a advogada escreve como antes', async () => {
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: {} }) })
+    await laudoDaDocumentacao()
+    expect((await chamar('gabi', 'POST', '/peticao/minuta', {})).json()).toEqual({ sugestao: null, motivo: 'A IA não escreveu agora: escreva ou cole a versão 1.', aviso: null })
+  })
+})
+
+describe('Épico IA · "Não está boa": a IA faz outra versão (GGVP-67 CA1, CA5)', () => {
+  const V1 = 'Dos fatos\nDo direito\nDo pedido'
+  const V2 = 'Dos fatos\nDa tutela de urgência\nDo direito\nDo pedido'
+  let pedidos: string[] = []
+  beforeEach(async () => {
+    pedidos = []
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      pedidos.push(String(init?.body))
+      return new Response(JSON.stringify({ choices: [{ message: { content: V2 } }] }))
+    }
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+    const laudo = await laudoDaDocumentacao()
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: V1, citados: [{ documentoId: laudo.id }] })).statusCode).toBe(201)
+  })
+
+  it('a IA reescreve a última versão com o que mudar, sem gravar; salva, sai a versão 2 marcada e a 1 fica', async () => {
+    expect((await chamar('gabi', 'POST', '/peticao/versoes/sugestao', { oQueMudar: ' ' })).json().erro).toBe('Escreva o que mudar')
+    expect((await chamar('helena', 'POST', '/peticao/versoes/sugestao', { oQueMudar: 'Incluir a tutela' })).statusCode).toBe(403)
+    const r = (await chamar('gabi', 'POST', '/peticao/versoes/sugestao', { oQueMudar: 'Incluir a tutela' })).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.motivo]).toEqual([V2, true, null])
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    for (const trecho of ['Pedido da advogada: Incluir a tutela', 'Última versão (1):', V1]) expect(enviado).toContain(trecho)
+    expect((await banco.select().from(peticaoVersao)).length).toBe(1)
+    expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: V2, oQueMudou: 'Incluir a tutela', chamadaIaId: r.sugestao.chamadaId })).json()).toEqual({ ok: true, numero: 2 })
+    const versoes = (await banco.select().from(peticaoVersao)).sort((a, b) => a.numero - b.numero)
+    expect(versoes.map((v) => [v.numero, v.geradaPor, v.pedidoDeMudanca])).toEqual([
+      [1, 'gabi', null],
+      [2, 'gabi · versão da IA', 'Incluir a tutela'],
+    ])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_versao_nova'))
+    expect((ev.detalhe as { chamadaIa: string }).chamadaIa).toBe(r.sugestao.chamadaId)
   })
 })
 
@@ -296,6 +412,8 @@ describe('GGVP-71 · protocolar no tribunal', () => {
   it('CA3 · com uma trava falhando, o protocolo fica bloqueado e diz qual', async () => {
     await banco.update(pessoa).set({ cpf: '52916384782' }).where(eq(pessoa.nome, 'Vicente Prado'))
     expect((await protocolar()).json().erro).toBe('Trava falhando: CPF conferido (Na petição: 613.748.259-64 · no cadastro: 529.163.847-82).')
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G7', passo: 'D3.07', travas: ['CPF conferido'] })
   })
 
   it('CA4, CA8, CA10 · registra o protocolo da versão aprovada; o CNJ entra no caso para a vigília, as travas e quem protocolou ficam', async () => {

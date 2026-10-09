@@ -1,7 +1,9 @@
 import { useEffect, useId, useState } from 'react'
+import { DecisaoDoLaco, HistoricoDoLaco } from '../componentes/Laco.tsx'
+import { dataDe, ultimaDoLaco } from '../componentes/rotulosDoLaco.ts'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
-import { AnalisarExigenciaJuiz as Contrato, ROTULO_SETOR, SETORES_DA_EXIGENCIA, TIPOS_DE_PERICIA, type ExigenciaDoJuiz } from '@ggv/contratos'
+import { AnalisarExigenciaJuiz as Contrato, ROTULO_SETOR, SETORES_DA_EXIGENCIA, TIPOS_DE_PERICIA, type ExigenciaDoJuiz, type SugestaoDaExigencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 import { DecidirVencidaForm } from './TratarExigencia.tsx'
@@ -63,6 +65,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
   const [tipos, setTipos] = useState<TipoPericia[]>([])
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [sugestao, setSugestao] = useState<SugestaoDaExigencia | null>(null)
 
   useEffect(() => {
     void chamarApi<ExigenciaDoJuiz>(`/casos/${casoId}/exigencia-juiz`).then((r) => (r.ok ? setX(r.dados) : setErro(r.erro)))
@@ -73,16 +76,34 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
     setProxima((n) => n + 1)
   }
 
+  // Épico IA (GGVP-79 CA3) e sugestão pronta (07/10): a sugestão chega sozinha ao abrir (preparada em segundo plano) e
+  // preenche o que a advogada ainda não escolheu (G5); o prazo interno fica com ela, até o prazo do processo.
+  useEffect(() => {
+    if (!x?.podeDistribuir) return
+    void chamarApi<SugestaoDaExigencia>(`/casos/${casoId}/exigencia-juiz/sugestao`, { method: 'POST' }).then((r) => {
+      if (!r.ok) return setSugestao({ sugestao: null, leitura: null, motivo: r.erro, aviso: null })
+      setSugestao(r.dados)
+      const l = r.dados.leitura
+      if (!l) return
+      setDecisao((d) => d ?? (l.ciencia ? 'ciencia' : 'cumprir'))
+      // Chaves negativas: não batem com as dos itens que a advogada inclui (a partir de 1).
+      setItens((atual) => (atual.length ? atual : l.itens.map((i, n) => ({ chave: -(n + 1), setor: i.setor, descricao: i.descricao, provaEsperada: i.provaEsperada ?? '', prazoInterno: '' }))))
+      setTipos((t) => (t.length ? t : l.pericias))
+    })
+  }, [casoId, x?.podeDistribuir])
+
   async function confirmar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
+    const chamadaIaId = sugestao?.sugestao?.chamadaId
     const corpo =
       decisao === 'cumprir'
         ? {
             decisao,
             itens: itens.map((i) => ({ setor: i.setor || undefined, descricao: i.descricao, provaEsperada: i.provaEsperada, prazoInterno: isoParaData(i.prazoInterno) ?? '' })),
             tiposPericia: tipos,
+            ...(chamadaIaId && { chamadaIaId }),
           }
-        : { decisao: decisao ?? undefined }
+        : { decisao: decisao ?? undefined, ...(chamadaIaId && { chamadaIaId }) }
     const entrada = Contrato.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const r = await chamarApi(`/casos/${casoId}/exigencia-juiz`, { method: 'POST', corpo })
@@ -145,8 +166,23 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
                 {ROTULO_SETOR[i.setor]} · {i.descricao} · até {dia(i.prazoInterno)} · {ROTULO_ITEM[i.situacao]}
                 {i.prova ? ` · ${i.prova}` : ''}
                 {i.situacao === 'nao_cumprido' && i.motivo ? ` (${i.motivo})` : ''}
+                {i.situacao === 'cumprido' && x.peca ? ` · na manifestação (versão ${x.peca.versao}) protocolada em ${dataDe(x.peca.protocoladaEm)}` : ''}
+                {i.acionadoEm ? ` · acionado em ${dataDe(i.acionadoEm)}` : ''}
+                {i.situacao === 'pendente' ? ` · ${ultimaDoLaco(i.historicoDoLaco)}` : ''}
                 {i.limite ? ` · tentativas ${i.tentativas} de ${i.limite}` : ''}
                 {i.escalada ? ' · com a Sênior' : ''}
+                {i.podeDecidir && (
+                  <div className={styles.cartao} aria-label={`Laço de ${ROTULO_SETOR[i.setor]}`}>
+                    <HistoricoDoLaco historico={i.historicoDoLaco} />
+                    <DecisaoDoLaco
+                      url={`/casos/${casoId}/exigencia-juiz/itens/${i.id}/decisao`}
+                      aoDecidir={(aviso) => {
+                        setFeito(aviso)
+                        setVersao((v) => v + 1)
+                      }}
+                    />
+                  </div>
+                )}
               </li>
             ))}
             {/* GGVP-79 CA8: a perícia pedida pelo juiz é marcada pelo Jurídico administrativo, numa tarefa separada. */}
@@ -168,6 +204,39 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
             setVersao((v) => v + 1)
           }}
         />
+      )}
+
+      {x.podeDistribuir && (
+        <section className={styles.cartao} aria-label="Sugestão da IA">
+          <h2 className={styles.cartaoTitulo}>Sugestão da IA</h2>
+          {!sugestao && <p className={styles.dica}>A IA está lendo a publicação…</p>}
+          {sugestao?.motivo && <p className={styles.dica}>{sugestao.motivo}</p>}
+          {sugestao?.aviso && <p className={styles.dica}>{sugestao.aviso}</p>}
+          {sugestao?.sugestao && sugestao.leitura && (
+            <>
+              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · quem decide é você (G5)</span>
+              {sugestao.sugestao.alerta && (
+                <p className={styles.erroCampo} role="alert">
+                  Atenção: {sugestao.sugestao.alerta}.
+                </p>
+              )}
+              <p>{sugestao.sugestao.texto}</p>
+              <p className={styles.dica}>
+                Sugere:{' '}
+                {sugestao.leitura.ciencia
+                  ? 'só ciência.'
+                  : [
+                      ...sugestao.leitura.itens.map((i) => `${ROTULO_SETOR[i.setor]}: ${i.descricao}${i.provaEsperada ? ` (prova: ${i.provaEsperada})` : ''}`),
+                      ...sugestao.leitura.pericias.map((t) => ROTULO_PERICIA[t]),
+                    ].join(' · ')}
+              </p>
+              <p className={styles.dica}>
+                Fontes: {sugestao.sugestao.fontes.map((f) => f.trecho ?? f.referencia).join(' · ')} ({sugestao.sugestao.modelo})
+              </p>
+              <p className={styles.dica}>O formulário abaixo já veio com a sugestão: confira, dê o prazo interno de cada item e mude o que quiser.</p>
+            </>
+          )}
+        </section>
       )}
 
       {x.podeDistribuir && (

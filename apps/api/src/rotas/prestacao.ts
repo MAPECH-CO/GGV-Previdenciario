@@ -1,7 +1,8 @@
-// Benefício deferido (GGVP-44): prestação de contas da advogada (G8), recebimento do Financeiro e ida ao banco
-// agendada pelo Atendimento, com a confirmação ao cliente pelo modelo, revisada por pessoa (Q5).
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply } from 'fastify'
+// Benefício deferido (GGVP-44) e caso ganho (GGVP-98): prestação de contas da advogada (G8), recebimento do Financeiro,
+// e o Financeiro avisa o cliente e marca a ida ao banco (Lucas, 06/10); o Atendimento leva. Um caminho para o INSS e
+// para a Justiça (Mateus, 07/10).
+import { and, arrayOverlaps, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   AgendarIdaAoBanco,
   IdaAoBancoDoCaso,
@@ -14,15 +15,26 @@ import {
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, documento, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
-import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { exigir, registrarBloqueio } from '../sessao/rotas.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
 export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da advogada na prestação de contas (G8).'
 export const MODELO_IDA_AO_BANCO = 'Confirmação da ida ao banco'
+export const MSG_MESMA_PESSOA = 'Quem deu o OK na prestação não registra o recebimento.'
+export const MSG_ACOMPANHANTE = 'Escolha quem do Atendimento acompanha o cliente'
+export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebimento.'
+export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
+export const MSG_ANTES_DO_RECEBIMENTO = 'Registre o recebimento da prestação atual antes de avisar o cliente.'
+export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
+export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
+export const TITULO_LEVAR = 'Levar ao banco'
+/** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
+const ATENDIMENTO = ['atendimento', 'atendimento_lider']
 
 type Opcoes = { banco: Banco; agora?: () => Date }
+type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const ABERTAS = ['aberta', 'em_andamento', 'aguardando'] as const
 const FUSO = 'America/Sao_Paulo'
@@ -30,12 +42,18 @@ const dataBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, d
 const horaBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }).format(d)
 
 export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const historico = registrarHistorico(banco, agora)
+  const bloqueio = registrarBloqueio(banco, agora)
+  /** O histórico na mesma transação da mudança: os dois ficam, ou nenhum. */
+  const noHistorico = (tx: Tx, quem: string, acao: string, pedido: FastifyRequest, casoId: string, detalhe: Record<string, unknown> = {}) =>
+    tx.insert(eventoAuditoria).values({ quem, acao, alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, ...detalhe } })
+  /** Trava o caso na transação e confere de novo a fase: pedidos ao mesmo tempo passam um de cada vez (CA9). */
+  const casoAberto = async (tx: Tx, casoId: string) =>
+    (await tx.select({ fase: caso.fase }).from(caso).where(eq(caso.id, casoId)).for('update'))[0]?.fase !== 'encerrado'
 
   const clienteDo = async (casoId: string) =>
     (
       await banco
-        .select({ pessoaId: pessoa.id, nome: pessoa.nome, beneficio: caso.beneficio })
+        .select({ pessoaId: pessoa.id, nome: pessoa.nome, beneficio: caso.beneficio, fase: caso.fase, desfecho: caso.desfecho })
         .from(caso)
         .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
         .where(eq(caso.id, casoId))
@@ -107,7 +125,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     })
   })
 
-  // CA1, CA2, CA5, CA6: concluir grava a versão com o OK da advogada e abre o Financeiro e o Atendimento juntos.
+  // CA1, CA5, CA6: concluir grava a versão com o OK da advogada e abre o recebimento do Financeiro (o aviso vem depois, GGVP-98 CA4).
   app.post<{ Params: { id: string } }>('/api/casos/:id/prestacao', { preHandler: exigir(banco, 'prestacao.dar_ok', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const entrada = SalvarPrestacao.safeParse(pedido.body)
@@ -116,10 +134,12 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (!def) return negar(resposta, 409, MSG_SEM_DEFERIDO)
     const d = entrada.data
     const valores = calcularPrestacao(d.valorRecebido, d.percentual)
-    const [anterior] = await versoesDo(casoId)
-    const versao = (anterior?.versao ?? 0) + 1
     const quem = pedido.usuario!.id
-    await banco.transaction(async (tx) => {
+    // CA9: caso encerrado não ganha versão nova. A versão é contada com o caso travado, para duas não saírem iguais.
+    const versao = await banco.transaction(async (tx) => {
+      if (!(await casoAberto(tx, casoId))) return null
+      const [anterior] = await tx.select({ versao: prestacaoContas.versao }).from(prestacaoContas).where(eq(prestacaoContas.casoId, casoId)).orderBy(desc(prestacaoContas.versao)).limit(1)
+      const versao = (anterior?.versao ?? 0) + 1
       await tx.insert(prestacaoContas).values({
         casoId,
         versao,
@@ -143,15 +163,15 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         .from(tarefa)
         .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06r'), inArray(tarefa.situacao, [...ABERTAS])))
       if (!doFinanceiro) await tx.insert(tarefa).values({ casoId, passo: 'D2.06r', titulo: 'Receber a prestação de contas', perfilDono: 'financeiro' })
-      // CA1, CA2: o Atendimento agenda a ida ao banco uma vez, junto com a primeira conclusão.
-      const [doAtendimento] = await tx.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06b')))
-      if (!doAtendimento) await tx.insert(tarefa).values({ casoId, passo: 'D2.06b', titulo: 'Agendar ida ao banco', perfilDono: 'atendimento' })
+      await noHistorico(tx, quem, versao === 1 ? 'prestacao_concluida' : 'prestacao_alterada', pedido, casoId, { versao })
+      return versao
     })
-    await historico(quem, versao === 1 ? 'prestacao_concluida' : 'prestacao_alterada', pedido, `caso:${casoId}`, { versao })
+    if (versao === null) return negar(resposta, 409, MSG_ENCERRADO)
     return resposta.code(201).send({ ok: true, versao, ...valores })
   })
 
-  // CA9: recebido (quem e quando) ou divergência (volta à advogada com o motivo). Quem deu o OK não recebe.
+  // CA9 e GGVP-98 CA3, CA4, CA8: recebido com os valores conferidos (quem e quando) abre o aviso do Financeiro; divergência
+  // volta à advogada com o motivo. Quem deu o OK não recebe: recusa e registro.
   app.post<{ Params: { id: string } }>(
     '/api/casos/:id/prestacao/recebimento',
     { preHandler: exigir(banco, 'prestacao.registrar_recebimento', agora) },
@@ -162,21 +182,35 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       const [atual] = await versoesDo(casoId)
       if (!atual || atual.recebidaEm || atual.divergencia) return negar(resposta, 409, 'Não há prestação esperando o recebimento.')
       const quem = pedido.usuario!.id
-      if (atual.okAdvogadaPor === quem) return negar(resposta, 409, 'Quem deu o OK na prestação não registra o recebimento.')
+      if (atual.okAdvogadaPor === quem) {
+        // Separação de funções, e não o G8 ("o aviso só sai depois do OK"): código neutro, sem número (Mateus, 08/10; Q21).
+        await bloqueio(pedido, casoId, 'funcoes', 'D2.06r', { motivo: 'ok_e_recebimento' })
+        return negar(resposta, 409, MSG_MESMA_PESSOA)
+      }
       const d = entrada.data
-      await banco.transaction(async (tx) => {
-        await tx
+      const feito = await banco.transaction(async (tx) => {
+        // A condição vai no próprio update: dois recebimentos ao mesmo tempo, só o primeiro conta.
+        const [esperando] = await tx
           .update(prestacaoContas)
           .set(d.resultado === 'recebido' ? { recebidaPor: quem, recebidaEm: agora() } : { divergencia: d.motivo })
-          .where(eq(prestacaoContas.id, atual.id))
+          .where(and(eq(prestacaoContas.id, atual.id), isNull(prestacaoContas.recebidaEm), isNull(prestacaoContas.divergencia)))
+          .returning({ id: prestacaoContas.id })
+        if (!esperando) return false
         await tx
           .update(tarefa)
           .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
           .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06r'), isNull(tarefa.concluidaEm)))
         if (d.resultado === 'divergencia')
           await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: `Corrigir a prestação: ${d.motivo}`, perfilDono: 'advogada' })
+        else {
+          // GGVP-98 CA1, CA4: só depois do recebimento nasce o aviso, uma vez por caso.
+          const [doAviso] = await tx.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06b')))
+          if (!doAviso) await tx.insert(tarefa).values({ casoId, passo: 'D2.06b', titulo: TITULO_AVISO, perfilDono: 'financeiro' })
+        }
+        await noHistorico(tx, quem, d.resultado === 'recebido' ? 'prestacao_recebida' : 'prestacao_divergente', pedido, casoId, { versao: atual.versao })
+        return true
       })
-      await historico(quem, d.resultado === 'recebido' ? 'prestacao_recebida' : 'prestacao_divergente', pedido, `caso:${casoId}`, { versao: atual.versao })
+      if (!feito) return negar(resposta, 409, 'Não há prestação esperando o recebimento.')
       return resposta.code(201).send({ ok: true })
     },
   )
@@ -199,6 +233,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const m = await modeloAtivo()
     const [atual] = await versoesDo(casoId)
     const [tarefaDoBanco] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06b'))).limit(1)
+    const [levar] = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06l'), isNull(tarefa.concluidaEm))).limit(1)
     const acompanhante = ag ? (await nomes([ag.acompanhanteId]))(ag.acompanhanteId) : null
     // {acompanhamento}: a frase só aparece quando alguém do escritório vai junto.
     const texto =
@@ -211,10 +246,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
             acompanhamento: acompanhante ? ` ${acompanhante}, do escritório, vai com você.` : '',
           })
         : null
-    return { c, ag, m, acompanhante, okAdvogada: Boolean(atual?.okAdvogadaEm), tarefaDoBanco: tarefaDoBanco ?? null, texto, atual }
+    return { c, ag, m, acompanhante, okAdvogada: Boolean(atual?.okAdvogadaEm), tarefaDoBanco: tarefaDoBanco ?? null, levar: levar ?? null, texto, atual }
   }
 
-  // CA2, CA3, CA10: o Atendimento vê o agendamento e a mensagem para revisar, sem valor nenhum.
+  // CA3, CA10 e GGVP-98: o Financeiro vê o agendamento e a mensagem para revisar; quem acompanha vem do Atendimento.
   app.get<{ Params: { id: string } }>('/api/casos/:id/banco', { preHandler: exigir(banco, 'banco.agendar', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const s = await situacaoDoBanco(casoId)
@@ -228,7 +263,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const equipe = await banco
       .select({ id: usuario.id, nome: usuario.nome })
       .from(usuario)
-      .where(sql`cardinality(${usuario.perfis}) > 0`)
+      .where(arrayOverlaps(usuario.perfis, ATENDIMENTO))
       .orderBy(asc(usuario.nome))
     return IdaAoBancoDoCaso.parse({
       casoId,
@@ -239,25 +274,30 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       modeloCadastrado: s.m !== null,
       okAdvogada: s.okAdvogada,
       avisos: avisos.map((a) => ({ quando: a.quando?.toISOString() ?? '', canal: a.canal, texto: a.texto, quem: a.quem })),
-      podeAgendar: s.tarefaDoBanco !== null,
+      podeAgendar: s.tarefaDoBanco !== null && s.c.fase !== 'encerrado',
+      podeConfirmar: s.ag !== null && Boolean(s.atual?.clienteAvisadoEm) && s.c.fase !== 'encerrado',
+      encerrado: s.c.fase === 'encerrado',
     })
   })
 
-  // CA10, CA12: agenda (ou remarca: o anterior é cancelado); o Financeiro passa a ver o novo na prestação.
+  // CA10, CA12 e GGVP-98 CA6, CA7: agenda (ou remarca: o anterior é cancelado); quem acompanha, do Atendimento, recebe
+  // "Levar ao banco" com a data, e a tarefa anda junto na remarcação.
   app.post<{ Params: { id: string } }>('/api/casos/:id/banco', { preHandler: exigir(banco, 'banco.agendar', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const entrada = AgendarIdaAoBanco.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const s = await situacaoDoBanco(casoId)
     if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
+    // CA9: o caso encerrado não reabre a ida ao banco nem cria outro "Levar ao banco".
+    if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.tarefaDoBanco) return negar(resposta, 409, MSG_ANTES_DA_PRESTACAO)
     const d = entrada.data
-    if (d.acompanhanteId) {
-      const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
-      if (!u || u.perfis.length === 0) return negar(resposta, 400, 'Escolha quem acompanha na lista')
-    }
+    const [u] = await banco.select({ perfis: usuario.perfis }).from(usuario).where(eq(usuario.id, d.acompanhanteId))
+    if (!u || !u.perfis.some((p) => ATENDIMENTO.includes(p))) return negar(resposta, 400, MSG_ACOMPANHANTE)
     const quem = pedido.usuario!.id
-    await banco.transaction(async (tx) => {
+    const prazo = d.data
+    const feito = await banco.transaction(async (tx) => {
+      if (!(await casoAberto(tx, casoId))) return false
       if (s.ag) await tx.update(agendamento).set({ situacao: 'cancelado' }).where(eq(agendamento.id, s.ag.id))
       await tx.insert(agendamento).values({
         pessoaId: s.c!.pessoaId,
@@ -266,27 +306,42 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         // Hora de Brasília (sem horário de verão desde 2019).
         quando: new Date(`${d.data}T${d.hora}:00-03:00`),
         local: d.local,
-        acompanhanteId: d.acompanhanteId ?? null,
+        acompanhanteId: d.acompanhanteId,
         criadoPor: quem,
       })
+      if (s.levar) await tx.update(tarefa).set({ prazo, responsavelId: d.acompanhanteId }).where(eq(tarefa.id, s.levar.id))
+      else await tx.insert(tarefa).values({ casoId, passo: 'D2.06l', titulo: TITULO_LEVAR, perfilDono: 'atendimento', responsavelId: d.acompanhanteId, prazo })
       // Remarcou: o convite precisa sair de novo (CA12).
       if (s.ag) await tx.update(tarefa).set({ situacao: 'aberta', concluidaEm: null, concluidaPor: null }).where(eq(tarefa.id, s.tarefaDoBanco!.id))
+      await noHistorico(tx, quem, s.ag ? 'ida_ao_banco_remarcada' : 'ida_ao_banco_agendada', pedido, casoId)
+      return true
     })
-    await historico(quem, s.ag ? 'ida_ao_banco_remarcada' : 'ida_ao_banco_agendada', pedido, `caso:${casoId}`)
+    if (!feito) return negar(resposta, 409, MSG_ENCERRADO)
     return resposta.code(201).send({ ok: true })
   })
 
-  // CA3, CA11 (G8, Q5): a pessoa revisou e enviou a mensagem do modelo; o portal registra data, canal e texto.
+  // CA3, CA11 (G8, Q5) e GGVP-98 CA2, CA5: a pessoa revisou e enviou a mensagem do modelo; o portal registra data, canal e
+  // texto, e o caso entra no acervo como processo bom (uma vez), com a baixa no histórico.
   app.post<{ Params: { id: string } }>('/api/casos/:id/banco/envio', { preHandler: exigir(banco, 'banco.agendar', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const entrada = RegistrarEnvio.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const s = await situacaoDoBanco(casoId)
+    if (s.c?.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
     if (!s.c || !s.ag) return negar(resposta, 409, 'Agende a ida ao banco antes de avisar o cliente.')
-    if (!s.okAdvogada || !s.atual) return negar(resposta, 409, MSG_G8)
+    if (!s.okAdvogada || !s.atual) {
+      await bloqueio(pedido, casoId, 'G8', 'D3b.03')
+      return negar(resposta, 409, MSG_G8)
+    }
+    // CA4: versão nova depois do recebimento volta para o Financeiro; o aviso espera o novo recebimento.
+    if (!s.atual.recebidaEm) return negar(resposta, 409, MSG_ANTES_DO_RECEBIMENTO)
     if (!s.m || !s.texto) return negar(resposta, 409, 'Modelo "Confirmação da ida ao banco" não cadastrado.')
+    // CA2: só entra no acervo como processo bom o caso com o resultado registrado; sem ele, o aviso espera.
+    const desfecho = s.c.desfecho ?? ((await deferimento(casoId)) ? 'deferido' : null)
+    if (!desfecho) return negar(resposta, 409, MSG_SEM_DESFECHO)
     const quem = pedido.usuario!.id
-    await banco.transaction(async (tx) => {
+    const feito = await banco.transaction(async (tx) => {
+      if (!(await casoAberto(tx, casoId))) return false
       await tx.insert(mensagem).values({
         pessoaId: s.c!.pessoaId,
         casoId,
@@ -299,8 +354,35 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       })
       await tx.update(prestacaoContas).set({ clienteAvisadoEm: agora() }).where(eq(prestacaoContas.id, s.atual!.id))
       if (s.tarefaDoBanco) await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, s.tarefaDoBanco.id))
+      // O desfecho fica sem conferência: a que põe o caso nas contas da jurimetria é da GGVP-41 (CA5).
+      const [noAcervo] = await tx.select({ id: processoAcervo.id }).from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
+      if (!noAcervo) await tx.insert(processoAcervo).values({ casoId, beneficio: s.c!.beneficio, desfecho, fonte: 'portal' })
+      // O histórico vai na mesma transação: o aviso, o acervo e a baixa ficam juntos, ou nenhum fica.
+      await noHistorico(tx, quem, 'cliente_avisado_ida_ao_banco', pedido, casoId, { canal: entrada.data.canal })
+      await noHistorico(tx, quem, 'baixa_registrada', pedido, casoId, { acervo: 'processo_bom' })
+      return true
     })
-    await historico(quem, 'cliente_avisado_ida_ao_banco', pedido, `caso:${casoId}`, { canal: entrada.data.canal })
+    if (!feito) return negar(resposta, 409, MSG_ENCERRADO)
+    return resposta.code(201).send({ ok: true })
+  })
+
+  // GGVP-98 CA9: feita a ida ao banco, o Financeiro confirma o recebimento e o caso fecha.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/banco/confirmacao', { preHandler: exigir(banco, 'banco.agendar', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const s = await situacaoDoBanco(casoId)
+    if (!s.c) return negar(resposta, 404, 'Caso não encontrado.')
+    if (s.c.fase === 'encerrado') return negar(resposta, 409, MSG_ENCERRADO)
+    if (!s.ag || !s.atual?.clienteAvisadoEm) return negar(resposta, 409, MSG_ANTES_DO_AVISO)
+    const quem = pedido.usuario!.id
+    const feito = await banco.transaction(async (tx) => {
+      if (!(await casoAberto(tx, casoId))) return false
+      await tx.update(agendamento).set({ situacao: 'realizado' }).where(eq(agendamento.id, s.ag!.id))
+      if (s.levar) await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, s.levar.id))
+      await tx.update(caso).set({ fase: 'encerrado', encerradoEm: agora(), atualizadoEm: agora() }).where(eq(caso.id, casoId))
+      await noHistorico(tx, quem, 'recebimento_confirmado', pedido, casoId)
+      return true
+    })
+    if (!feito) return negar(resposta, 409, MSG_ENCERRADO)
     return resposta.code(201).send({ ok: true })
   })
 }

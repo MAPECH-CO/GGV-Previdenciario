@@ -7,11 +7,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
-import { MSG_NADA_A_ANALISAR } from './exigencia-juiz.ts'
+import { MSG_IA_SEM_SUGESTAO, MSG_NADA_A_ANALISAR } from './exigencia-juiz.ts'
 
 const SENHA = 'senha-do-portal-1'
 const AGORA = new Date('2026-10-05T15:00:00Z') // segunda-feira
@@ -109,6 +111,68 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
   })
 })
 
+describe('Épico IA · a IA sugere as tarefas da exigência do juiz (GGVP-79 CA3, G5)', () => {
+  const LEITURA = {
+    resumo: 'O juiz mandou juntar laudo em 15 dias úteis.',
+    ciencia: false,
+    itens: [{ setor: 'atendimento', descricao: 'Pedir ao cliente o laudo atualizado do médico assistente', provaEsperada: 'Laudo com data recente' }],
+    pericias: [],
+  }
+  let enviado = ''
+  const comIa = (resposta: string) => {
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      enviado = JSON.parse(String(init?.body)).messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: resposta } }] }))
+    }
+    app = criarServidor({
+      banco,
+      agora: () => AGORA,
+      armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))),
+      ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }),
+    })
+  }
+
+  it('a advogada recebe o resumo e os itens sugeridos, com a publicação e o prazo; outro perfil não pede; nada é gravado', async () => {
+    comIa(JSON.stringify(LEITURA))
+    expect((await chamar('ana', 'POST', '/exigencia-juiz/sugestao')).statusCode).toBe(403)
+    const r = (await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()
+    expect([r.sugestao.texto, r.sugestao.sugestao, r.leitura.itens, r.motivo, r.aviso]).toEqual([LEITURA.resumo, true, LEITURA.itens, null, MSG_SEM_REFERENCIA])
+    for (const trecho of ['Intime-se a parte autora para juntar laudo.', 'até 2026-10-27', 'BPC/LOAS']) expect(enviado).toContain(trecho)
+    expect(await banco.select().from(decisao).where(eq(decisao.passo, 'D3a.02'))).toEqual([])
+    expect(await banco.select().from(exigenciaItem)).toEqual([])
+  })
+
+  it('Sugestão pronta (07/10) · a rodada deixa a sugestão pronta; ao abrir, aparece sem nova chamada', async () => {
+    let chamadas = 0
+    const fetch = async () => {
+      chamadas++
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(LEITURA) } }] }))
+    }
+    app = criarServidor({
+      banco,
+      agora: () => AGORA,
+      armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))),
+      ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }),
+    })
+    await app.prepararSugestoes()
+    const antes = chamadas
+    const r = (await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()
+    expect([r.leitura.itens, chamadas]).toEqual([LEITURA.itens, antes])
+    expect(antes).toBeGreaterThan(0)
+  })
+
+  it('a escolha da advogada vale e a decisão guarda a chamada à parte; fora do formato, sem sugestão', async () => {
+    comIa('Precisa do laudo.')
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()).toMatchObject({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_SUGESTAO })
+    comIa(JSON.stringify(LEITURA))
+    const r = (await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia', chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
+    const [d] = await banco.select().from(decisao).where(eq(decisao.passo, 'D3a.02'))
+    expect([d.resultado, d.sugestaoIa]).toEqual(['ciencia', { chamadaId: r.sugestao.chamadaId }])
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json().erro).toBe(MSG_NADA_A_ANALISAR)
+  })
+})
+
 describe('GGVP-83 · laço dos setores', () => {
   const PDF = { nome: 'prova.pdf', mime: 'application/pdf', conteudo: '%PDF-1.4' }
   function formulario(arquivo: typeof PDF | null) {
@@ -157,6 +221,40 @@ describe('GGVP-83 · laço dos setores', () => {
     expect((await chamar('ana', 'POST', `/exigencia-juiz/itens/${item.id}/nao-vou-conseguir`, { motivo: '' })).json().erro).toBe('Escreva por que não vai conseguir')
     expect((await chamar('ana', 'POST', `/exigencia-juiz/itens/${item.id}/nao-vou-conseguir`, { motivo: 'O cliente diz que a carteira não existe' })).statusCode).toBe(201)
     expect(await abertas()).toContain('senior · Exigência do juiz sem retorno: Pedir a carteira de trabalho: O cliente diz que a carteira não existe · null')
+  })
+
+  it('GGVP-94 CA6, CA11 · o card mostra o próximo lembrete e o que ele diz', async () => {
+    await distribuir()
+    const r = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json()
+    expect([r.itens[0].proximoLembrete, r.itens[0].lembrete]).toEqual([
+      '2026-10-07',
+      { gatilho: 'Sem retorno desde o acionamento', destinatario: 'Documentação', canal: 'Central de tarefas', modelo: 'Cumprir exigência do juiz' },
+    ])
+  })
+
+  it('GGVP-94 CA8, CA9, CA10 · a Sênior vê o laço do item que subiu e decide com o texto; volta ao setor, zerado, com o próximo lembrete', async () => {
+    await distribuir()
+    const item = await itemDo('documentacao')
+    for (let n = 0; n < 2; n++) await chamar('dora', 'POST', `/exigencia-juiz/itens/${item.id}/tentativas`, { canal: 'telefone', resultado: 'Cliente não atendeu' })
+    const doItem = async () => (await chamar('helena', 'GET', '/exigencia-juiz')).json().itens.find((i: { id: string }) => i.id === item.id)
+    const visto = await doItem()
+    expect([visto.podeDecidir, visto.historicoDoLaco.map((t: { resultado: string }) => t.resultado), visto.acionadoEm]).toEqual([
+      true,
+      ['Cliente não atendeu', 'Cliente não atendeu'],
+      AGORA.toISOString(),
+    ])
+    const decidir = (apelido: string, oQueFazer: string) => chamar(apelido, 'POST', `/exigencia-juiz/itens/${item.id}/decisao`, { oQueFazer })
+    expect((await decidir('helena', ' ')).json().erro).toBe('Escreva o que o setor deve fazer')
+    expect((await decidir('gabi', 'Ligar para a filha')).statusCode).toBe(403)
+    expect((await decidir('helena', 'Ligar para a filha e pedir o laudo por foto')).json()).toEqual({ ok: true, proximoLembrete: '2026-10-07' })
+    expect((await abertas()).some((t) => t.startsWith('senior · Exigência do juiz sem retorno'))).toBe(false)
+    const depois = await doItem()
+    expect([depois.tentativas, depois.escalada, depois.podeDecidir]).toEqual([0, false, false])
+    const card = (await chamar('dora', 'GET', '/exigencia-juiz/setor')).json().itens[0]
+    expect(card.tentativas.at(-1)).toMatchObject({ canal: 'decisao_senior', resultado: 'Ligar para a filha e pedir o laudo por foto', quem: 'helena' })
+    const [d] = await banco.select().from(decisao).where(eq(decisao.tipo, 'laco_escalado'))
+    expect([d.passo, d.justificativa, d.perfil]).toEqual(['D3a.03s', 'Ligar para a filha e pedir o laudo por foto', 'senior'])
+    expect((await decidir('helena', 'De novo')).statusCode).toBe(409)
   })
 
   it('CA1, CA6, CA11 · só sai cumprindo, com a evidência; concluída, sem lembrete; item de outro setor é recusado', async () => {

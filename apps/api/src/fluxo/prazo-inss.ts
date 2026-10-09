@@ -30,7 +30,7 @@ export function diasUteisAte(hoje: string, prazo: string, feriados: ReadonlySet<
 }
 
 /** Feriados nacionais (sem tribunal) cadastrados. Tabela vazia: só o fim de semana conta, e a tela avisa. */
-export async function feriadosNacionais(banco: Banco): Promise<Set<string>> {
+export async function feriadosNacionais(banco: Pick<Banco, 'select'>): Promise<Set<string>> {
   const linhas = await banco.select({ data: feriado.data }).from(feriado).where(isNull(feriado.tribunal))
   return new Set(linhas.map((l) => l.data))
 }

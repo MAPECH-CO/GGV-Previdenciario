@@ -1,0 +1,29 @@
+# Tasks
+
+## GGVP-86 · Navegar pelo caso numa linha só
+
+- [x] 1.1 Regra: `etapaAtual`, `estadosDasEtapas`, `etapaDaOrigem`, `faseDoCaso`, `identificacao`, `prazosDaFase`, `emOrdem`, `setoresPendentes`, `taxaComCasos`, `jurimetriaDoJuizo`, `visaoDoPerfil` e `podeVerValor` em `src/regras/caso.ts`, com teste em `src/regras/caso.test.ts` (CA1 a CA3, CA6, CA10, CA12, CA13, valores). Verifica com `pnpm vitest run src/regras/caso.test.ts`.
+- [x] 1.2 Servidor de exemplo: `casosDeExemplo`, `juizosDeExemplo`, `obterCaso` (visão do perfil), `identificarPerito`, `perfilDoPeritoDoCaso`, `jurimetriaDoJuizoDoCaso` e `descreverDocumento` em `src/dados/caso.ts`; `casos?` e `juizos?` no fim do `Banco`. Teste em `src/dados/caso.test.ts` (CA1 a CA13, permissão, valores). Verifica com `pnpm vitest run src/dados/caso.test.ts`.
+- [x] 1.3 Tela `/casos/:id` (`src/paginas/PaginaDoCaso.tsx`, Figma `72:2`, `72:287`, `72:572`, `59:11`) e a sobreposição da jurimetria (`src/componentes/JurimetriaDoCaso.tsx`, Figma `2184:2` a `2184:183`); a rota no fim de `Telas`; a ficha leva ao caso e ao laudo novo. Teste em `src/paginas/PaginaDoCaso.test.tsx`. Verifica com `pnpm vitest run src/paginas/PaginaDoCaso.test.tsx`.
+- [x] 1.4 Playwright `e2e/caso.e2e.ts`: o caso do Antônio de ponta a ponta, o perito do Pedro em um clique, a visão do Atendimento; tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5195 pnpm exec playwright test caso`.
+- [ ] 1.5 Ligar no servidor: `obterCaso` vira `GET /api/casos/:id` com o perfil da sessão; a linha, as esperas e os laços vêm das tabelas do Mateus; a jurimetria da GGVP-59, GGVP-64 e GGVP-131. **Fica aberta nesta história.**
+
+## GGVP-82 · Conversar com o portal em linguagem natural
+
+- [x] 2.1 Contrato: `PerguntaDoChat`, `RespostaDoChat`, `CartaoDeAcao`, `ConfirmacaoDoCartao`, e `FonteDaIa` e `SugestaoDaIa` com a forma do pedido #26, em `packages/contratos/src/chat.ts`, com teste em `chat.test.ts`. Verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 2.2 Regra: `entenderPedido`, `portaoDoPedido`, `ACOES_DO_PERFIL`, `acaoDaLista`, `responsavelDaTarefa`, `foraDoPerfil`, `tipoDoAnexo`, `SUGESTOES_DO_PERFIL` e `PORTOES` em `src/regras/chat.ts`, com teste em `src/regras/chat.test.ts` (CA3, CA4, CA7, CA8, CA9, CA12). Verifica com `pnpm vitest run src/regras/chat.test.ts`.
+- [x] 2.3 Motor de consulta: `perguntar` (o caso e o passo, o valor que o perfil não vê, a jurimetria, as perícias da semana, as recusas e os casos de antes) em `src/dados/chat.ts`, com teste em `src/dados/chat.test.ts` (CA1, CA2, CA10, CA11). Verifica com `pnpm vitest run src/dados/chat.test.ts`.
+- [x] 2.4 Motor de ação: os cartões, `confirmarAcao`, `cancelarAcao`, `tarefasCriadasPeloChat`, o histórico "feito pelo chat" no caso; `tarefasDoChat?` e `lotesDoAcervo?` no fim do `Banco`. Teste em `src/dados/chat.test.ts` (CA3, CA4, CA5, CA7, CA8, CA9, CA12). Verifica com `pnpm vitest run src/dados/chat.test.ts`.
+- [x] 2.5 Tela: `ChatDoPortal` (casca única), `ChatIA` (vários anexos, gravar áudio, a recusa do motor), `LaudoPeloChat` e `ChatDaPericia` como atalhos, a aba Suporte com o painel, as tarefas do chat nas três Centrais. Teste em `src/componentes/ChatDoPortal.test.tsx`, e os testes antigos dos chats. Verifica com `pnpm vitest run src/componentes src/paginas`.
+- [x] 2.6 Playwright `e2e/chat.e2e.ts`: a advogada consulta e cria a tarefa com o responsável trocado e o histórico; o Atendimento com o valor que não vê, o portão e a petição fora do perfil; o Suporte na página do processo; tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5195 pnpm exec playwright test chat`.
+- [ ] 2.7 Ligar no servidor e no motor de IA do pedido #26: `perguntar` vira `POST /api/chat`, a sugestão vem do motor, `FonteDaIa` e `SugestaoDaIa` vêm de `ia.ts`; as ações pendentes ficam no banco. **Fica aberta nesta história.**
+
+## GGVP-135 · Toda tela alcançável por clique, por perfil
+
+- [x] 3.1 Atalhos do caso na ficha, por perfil: "Dispensar o parecer" (Sênior), "Linha do tempo da deficiência" (Jurídico, caso PCD) e "Histórico do processo" (caso do servidor), em `src/componentes/CasoEmAndamento.tsx`; "Roteiros de laudos" no topo da Sênior. Teste em `src/componentes/CasoEmAndamento.test.tsx`. Verifica com `pnpm vitest run src/componentes/CasoEmAndamento.test.tsx`.
+- [x] 3.2 Busca da tela inicial (GGVP-78 CA9): clientes e processos para quem tem `caso.ver`, a fila para todos, em `src/componentes/CampoBusca.tsx`. Teste em `src/componentes/CampoBusca.test.tsx`.
+- [x] 3.3 Busca e chat na Central da Sênior, do Financeiro e do Sócio, com as sugestões do Figma, e o atalho da fila vazia; a Gestão no topo do líder do Atendimento. Teste em `src/paginas/CentralEmConstrucao.test.tsx`.
+- [x] 3.4 Os leves: rótulos com acento no histórico (`apps/api/src/rotas/historico.ts`, teste em `historico.test.ts`); nome do documento e data da versão no kit da Configuração (`src/paginas/Configuracao.tsx`).
+- [x] 3.5 Playwright `e2e/navegacao.e2e.ts`: cada perfil entra pelo login de exemplo e chega à tela por clique. Verifica com `pnpm exec playwright test navegacao`.
+- [x] 3.6 Relatório `docs/navegacao-por-perfil.md`.
+- [ ] 3.7 Nomes de exemplo misturados (P20) e "Estudos de caso" no topo da Advogada e do Jurídico administrativo: anotados no relatório. **Ficam abertos nesta história.**

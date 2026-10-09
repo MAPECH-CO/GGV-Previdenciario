@@ -1,0 +1,58 @@
+.mes {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(90px, 1fr));
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.diaDaSemana {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.dia {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 92px;
+  padding: 8px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+}
+
+.dia[data-fora='true'] {
+  background: var(--cor-painel-neutro-3);
+  color: var(--cor-texto-suave-2);
+}
+
+.dia[data-hoje='true'] {
+  border: 2px solid var(--cor-acento);
+}
+
+.numero {
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.dia[data-hoje='true'] .numero {
+  color: var(--cor-acento);
+}
+
+.evento {
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--cat-suave);
+  color: var(--cat);
+  font-size: var(--fonte-11);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mais {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}

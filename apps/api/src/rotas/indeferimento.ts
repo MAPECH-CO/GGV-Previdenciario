@@ -1,18 +1,22 @@
 // Do indeferido ao despacho (GGVP-52, 54): o motivo com as palavras de quem viu é escrito no próprio registro do
 // indeferido (rotas/vigilia.ts; ajuste do Mateus, 06/10) e fica no banco de motivos (`resultado_inss`); aqui a Sênior
-// vê o histórico e despacha (G4). Sem IA até o épico IA jurídica.
+// vê o histórico e despacha (G4). Épico IA: a Sênior pode pedir a análise da IA, que só sugere (G4).
 import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { Despachar, Despacho, ROTULO_SETOR, pode, type Erro } from '@ggv/contratos'
+import { AnaliseDoDespacho, AnaliseDoIndeferimentoPelaIa, Despachar, Despacho, ROTULO_BENEFICIO, ROTULO_SETOR, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
-import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { caso, decisao, documento, etapa, exigencia, exigenciaItem, parecerMedico, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, limitesDeCobranca } from '../fluxo/exigencia.ts'
+import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
+import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
 export const MSG_SEM_INDEFERIMENTO = 'Este caso não tem indeferimento registrado.'
 export const MSG_NADA_A_DESPACHAR = 'Este caso não está esperando o despacho da Sênior.'
+export const MSG_IA_SEM_ANALISE = 'A IA não respondeu agora: despache pela sua leitura.'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = (agora: Date) => new Date(agora.getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
 
@@ -29,7 +33,7 @@ export async function situacaoDoDespacho(banco: Banco, casoId: string) {
     .limit(1)
   const itens = x
     ? await banco
-        .select({ item: exigenciaItem, escaladaEm: tarefa.escaladaEm })
+        .select({ item: exigenciaItem, escaladaEm: tarefa.escaladaEm, tarefaId: tarefa.id, acionadoEm: tarefa.criadoEm, concluidaEm: tarefa.concluidaEm })
         .from(exigenciaItem)
         .leftJoin(tarefa, eq(exigenciaItem.tarefaId, tarefa.id))
         .where(eq(exigenciaItem.exigenciaId, x.id))
@@ -45,7 +49,7 @@ export async function situacaoDoDespacho(banco: Banco, casoId: string) {
   return { exigencia: x ?? null, itens, pericias, faltam }
 }
 
-export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
 
   /** O último indeferimento do caso, com o cliente. */
@@ -87,6 +91,7 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       .orderBy(desc(decisao.decididoEm))
       .limit(1)
     const s = await situacaoDoDespacho(banco, casoId)
+    const lacos = await lacosDas(banco, s.itens.flatMap((i) => (i.tarefaId ? [i.tarefaId] : [])))
     const aguardando = Boolean(await tarefaAberta(casoId, 'D3.03'))
     return Despacho.parse({
       casoId,
@@ -94,13 +99,71 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
       beneficio: l.beneficio,
       indeferimento: { dataDecisao: l.resultado.dataDecisao, motivoInss: l.resultado.motivoIndeferimento, ...(await cartaEMotivo(l.resultado)) },
       despacho: d ? { decisao: d.resultado, por: d.por, em: d.em.toISOString() } : null,
-      setores: s.itens.map((i) => ({ setor: i.item.perfilResponsavel, descricao: i.item.descricao, prazo: i.item.prazo, situacao: i.item.situacao, escalada: Boolean(i.escaladaEm) })),
+      // GGVP-68 CA14 e GGVP-94 CA8, CA9: o acionamento, o laço e, no item que passou do limite, a decisão da Sênior.
+      setores: s.itens.map((i) => ({
+        id: i.item.id,
+        setor: i.item.perfilResponsavel,
+        descricao: i.item.descricao,
+        prazo: i.item.prazo,
+        situacao: i.item.situacao,
+        escalada: Boolean(i.escaladaEm),
+        acionadoEm: i.acionadoEm?.toISOString() ?? null,
+        historicoDoLaco: (i.tarefaId && lacos.get(i.tarefaId)) || [],
+        podeDecidir: pode(pedido.perfilAtivo, 'caso.despachar_indeferimento') && Boolean(i.escaladaEm) && !i.concluidaEm,
+      })),
       pericias: s.pericias,
       faltam: s.faltam,
       podeDespachar: pode(pedido.perfilAtivo, 'caso.despachar_indeferimento') && aguardando,
       podeEncerrar: pode(pedido.perfilAtivo, 'caso.encerrar') && aguardando,
     })
   })
+
+  // Épico IA (GGVP-54 CA1, G4): a IA lê o indeferimento, o parecer, os documentos e o acervo (GGVP-45) e sugere o que
+  // falta. Não grava nada: a sugestão só preenche o formulário, e quem despacha é a Sênior. Sugestão pronta (07/10): a
+  // mesma função serve à rota e ao preparo em segundo plano, que deixa a análise pronta antes de a Sênior abrir.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/despacho/analise', { preHandler: exigir(banco, 'caso.despachar_indeferimento', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    if (!(await tarefaAberta(casoId, 'D3.03'))) return negar(resposta, 409, MSG_NADA_A_DESPACHAR)
+    return (await analisar(casoId, pedido.usuario!.id)) ?? negar(resposta, 404, MSG_SEM_INDEFERIMENTO)
+  })
+  preparo.registrar(
+    () => casosComTarefaAberta(banco, 'D3.03'),
+    (casoId) => analisar(casoId, null, { soPreparar: true }),
+  )
+
+  async function analisar(casoId: string, quem: string | null, como: ComoSugerir = {}) {
+    const l = await indeferimentoDo(casoId)
+    if (!l) return null
+    const r = l.resultado
+    const motivo = [r.motivoIndeferimento, r.motivoEscrito].filter(Boolean).join(' ')
+    const [parecer] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, casoId)).orderBy(desc(parecerMedico.criadoEm)).limit(1)
+    const itensDoParecer = ((parecer?.itens as { item: string; atendido: boolean }[] | null) ?? []).map((i) => `${i.item}: ${i.atendido ? 'atendido' : 'não atendido'}`)
+    const docs = await banco
+      .select({ nome: documento.nomeOriginal, tipo: documento.tipo })
+      .from(documento)
+      .where(and(eq(documento.casoId, casoId), isNull(documento.excluidoEm)))
+      .orderBy(asc(documento.criadoEm))
+    const acervo = await buscarNoAcervo(banco, { casoId, beneficio: l.beneficio, consulta: motivo })
+    const conteudo = [
+      `Benefício pedido: ${l.beneficio ? (ROTULO_BENEFICIO[l.beneficio as Beneficio] ?? l.beneficio) : 'não definido'}`,
+      `Indeferimento do INSS em ${r.dataDecisao}: ${r.motivoIndeferimento ?? 'motivo do INSS não registrado'}`,
+      `Motivo escrito por quem viu a carta: ${r.motivoEscrito ?? 'não há'}`,
+      `Parecer médico: ${parecer ? `${parecer.resultado}${itensDoParecer.length ? ` (${itensDoParecer.join('; ')})` : ''}` : 'não há'}`,
+      `Documentos do caso: ${docs.length ? docs.map((d) => `${d.nome} (${d.tipo})`).join('; ') : 'nenhum'}`,
+      ...(acervo.length ? ['Trechos do acervo da casa (outros casos):', ...acervo.map((a) => `- ${a.trecho}`)] : []),
+    ].join('\n')
+    const fontes: FonteDaIa[] = [
+      { tipo: 'caso', referencia: `indeferimento:${r.id}`, trecho: motivo || undefined },
+      ...(parecer ? [{ tipo: 'caso' as const, referencia: `parecer:${parecer.id}`, trecho: parecer.resultado }] : []),
+      ...acervo,
+    ]
+    const aviso = acervo.length ? null : MSG_SEM_REFERENCIA
+    const validar = (texto: string) => AnaliseDoIndeferimentoPelaIa.safeParse(lerJson(texto)).success
+    const s = await ia.sugerir('analisar_indeferimento', { casoId, quem, conteudo, fontes }, { ...como, validar })
+    if (!s) return AnaliseDoDespacho.parse({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_ANALISE, aviso })
+    const leitura = AnaliseDoIndeferimentoPelaIa.parse(lerJson(s.texto))
+    return AnaliseDoDespacho.parse({ sugestao: { ...s, texto: leitura.analise }, leitura, motivo: null, aviso })
+  }
 
   // GGVP-54 CA2 a CA9 (G4): só a Sênior despacha; "nada falta" segue para a petição; os setores recebem "Cumprir pendência".
   app.post<{ Params: { id: string } }>('/api/casos/:id/despacho', { preHandler: exigir(banco, 'caso.despachar_indeferimento', agora) }, async (pedido, resposta) => {
@@ -129,7 +192,18 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
         .update(etapa)
         .set(fechar)
         .where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D3.03'), isNull(etapa.concluidaEm)))
-      await tx.insert(decisao).values({ casoId, passo: 'D3.03', tipo: 'despacho', resultado: d.decisao, justificativa: setores || null, decididoPor: quem, perfil: pedido.perfilAtivo!, decididoEm: agora() })
+      await tx.insert(decisao).values({
+        casoId,
+        passo: 'D3.03',
+        tipo: 'despacho',
+        resultado: d.decisao,
+        justificativa: setores || null,
+        // Épico IA (CA4): o despacho que partiu da análise guarda a chamada; a saída da IA fica em `chamada_ia`.
+        sugestaoIa: d.chamadaIaId ? { chamadaId: d.chamadaIaId } : null,
+        decididoPor: quem,
+        perfil: pedido.perfilAtivo!,
+        decididoEm: agora(),
+      })
       if (d.decisao === 'acionar') {
         // CA2, CA6: um item e uma tarefa "Cumprir pendência" por pedido, na fila do setor, com o prazo só quando a Sênior deu um.
         const [x] = await tx

@@ -85,6 +85,62 @@
       "when": 1791313039049,
       "tag": "0011_indeferido_ao_protocolo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791333774623,
+      "tag": "0012_configuracao_do_escritorio",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791431868818,
+      "tag": "0013_ficha_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791445639547,
+      "tag": "0014_agenda_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791464765972,
+      "tag": "0015_gravacao_da_recepcao",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791477280851,
+      "tag": "0016_registro_da_ia",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791483509900,
+      "tag": "0017_relacionamento_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791486585815,
+      "tag": "0018_pericia_no_servidor",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791497335388,
+      "tag": "0019_documentacao_medica",
+      "breakpoints": true
     }
   ]
 }

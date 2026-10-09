@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CumprirExigencia } from './CumprirExigencia.tsx'
 import { TratarExigencia } from './TratarExigencia.tsx'
@@ -49,7 +49,12 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
-afterEach(() => vi.unstubAllGlobals())
+// Desmonta antes de devolver o fetch de verdade: a recarga depois de "Entregar ao Jurídico" não pode cair no
+// intervalo e chamar a API com endereço relativo (erro solto que derrubava o CI de vez em quando).
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('Tratar exigência do INSS (GGVP-39)', () => {
   it('CA7 · mostra o texto e, com os dias, o prazo contado pelo servidor', async () => {
@@ -93,6 +98,29 @@ describe('Tratar exigência do INSS (GGVP-39)', () => {
     fireEvent.click(await screen.findByLabelText('Registrar a perda'))
     fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva o que aconteceu')
+  })
+})
+
+describe('Cobrança da exigência do INSS que passou do limite (GGVP-94)', () => {
+  it('CA8, CA9, CA10 · a Sênior vê as cobranças e devolve à Documentação com o que fazer', async () => {
+    const cobrancas = [{ quando: '2026-10-06T13:00:00.000Z', canal: 'whatsapp', resultado: 'sem_resposta', quem: 'Dora' }]
+    const fetch = servidor(
+      {
+        ...base,
+        pede: 'documentos',
+        situacao: 'em_cumprimento',
+        card: { prazoEntrega: '2026-10-20', proximoLembrete: '2026-10-07', lembrete: null, tentativas: 3, limite: 3, escalada: true, cobrancas },
+        podeDecidirLaco: true,
+      },
+      [201, { ok: true, proximoLembrete: '2026-10-09' }],
+    )
+    render(<TratarExigencia casoId={CASO} />)
+    const secao = await screen.findByLabelText('Cobrança sem retorno')
+    expect(secao.querySelector('li')!.textContent).toBe('06/10/2026 · WhatsApp · Sem resposta · Dora')
+    fireEvent.change(screen.getByLabelText('O que o setor deve fazer'), { target: { value: 'Pedir ao filho que traga o CadÚnico' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Devolver ao setor' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Decisão registrada. A tarefa voltou ao setor, com o próximo lembrete em 09/10/2026.')
+    expect(fetch.mock.calls.some(([url, init]) => init?.method === 'POST' && String(url).endsWith('/exigencia/cobrancas/decisao'))).toBe(true)
   })
 })
 

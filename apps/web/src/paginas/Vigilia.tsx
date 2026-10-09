@@ -133,7 +133,7 @@ export function Vigilia({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Vigília do Meu INSS</h1>
       <p className={styles.subtitulo}>
-        {caso.cliente} · {rotuloBeneficio(caso.beneficio)}
+        {caso.cliente} · {rotuloBeneficio(caso.beneficio)} · <a href={`/casos/${casoId}/historico`}>Histórico do processo</a>
       </p>
 
       <section className={styles.cartao} aria-label="Situação">

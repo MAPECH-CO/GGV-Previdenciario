@@ -1,0 +1,56 @@
+# Homologação (GGVP-119): com a CI verde num push na main, monta a imagem do Dockerfile, publica no GHCR e pede o
+# deploy ao Coolify, que só baixa e roda. Segredos COOLIFY_WEBHOOK e COOLIFY_TOKEN só no GitHub; sem eles, só publica.
+name: Imagem
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+# Dois merges seguidos: vale o último, para a tag main nunca voltar para um commit antigo.
+concurrency:
+  group: imagem
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    name: Imagem no GHCR e deploy no Coolify
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    env:
+      IMAGEM: ghcr.io/mapech-co/ggv-previdenciario
+      COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+      COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGEM }}:main
+            ${{ env.IMAGEM }}:${{ env.COMMIT }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Deploy no Coolify
+        if: env.COOLIFY_WEBHOOK != ''
+        run: |
+          curl --fail --silent --show-error --request POST "$COOLIFY_WEBHOOK" --header "Authorization: Bearer $COOLIFY_TOKEN"

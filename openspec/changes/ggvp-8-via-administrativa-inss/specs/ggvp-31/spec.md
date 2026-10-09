@@ -4,6 +4,8 @@
 
 Mandar para perícia quando o benefício pede: a advogada decide se o caso precisa de perícia médica, avaliação social ou as duas; o sistema abre sozinho a tarefa de perícia para o Jurídico administrativo; a decisão corre junto com o protocolo.
 
+**Fora desta change (07/10):** o CA4 (a recomendação sobre a perícia gerada antes da marcação) espera o passo ser desenhado no Miro. Não tem código nem teste aqui e volta numa história própria quando o desenho existir.
+
 ## ADDED Requirements
 
 ### Requirement: CA1 · Com perícia, o sistema abre a tarefa
@@ -29,14 +31,6 @@ Com o protocolo feito e a perícia resolvida (ou sem perícia), o caso SHALL ent
 - **Dado** o protocolo feito e a perícia resolvida (ou sem perícia)
 - **Quando** os dois terminam
 - **Então** o caso entra na vigília
-
-### Requirement: CA4 · Recomendação sobre a perícia (v2, espera o desenho)
-A recomendação sobre a perícia SHALL ser gerada antes de o Jurídico administrativo marcar, quando o passo estiver desenhado no Miro. Fora deste grupo.
-
-#### Scenario: CA4 · Precisa de perícia
-- **Dado** "precisa de perícia"
-- **Quando** marco
-- **Então** a recomendação sobre a perícia é gerada antes da marcação (quando o passo existir)
 
 ### Requirement: CA5 · Sem resposta, não segue
 "Definir" MUST só habilitar com "Precisa de perícia?" respondida; o servidor MUST recusar decisão sem resposta ou "sim" sem tipo.

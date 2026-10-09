@@ -2,10 +2,12 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
-import { MSG_G17, MSG_LAUDO_NOVO, MSG_NAO_ESPERA } from './conferencia.ts'
+import { travaDoParecer } from '@ggv/contratos'
+import { MSG_DISPENSA_JA_PEDIDA, MSG_MESMA_SENIOR, MSG_NAO_ESPERA } from './conferencia.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -22,15 +24,23 @@ async function cookieDe(apelido: string) {
 const ver = async (apelido: string) => app.inject({ method: 'GET', url: `/api/casos/${casoId}/conferencia`, cookies: await cookieDe(apelido) })
 const decidir = async (apelido: string, corpo: object) =>
   app.inject({ method: 'POST', url: `/api/casos/${casoId}/conferencia`, cookies: await cookieDe(apelido), payload: corpo })
-const parecer = (resultado: 'suficiente' | 'insuficiente') =>
-  banco.insert(parecerMedico).values({ casoId, roteiroVersao: 1, resultado, itens: [{ item: 'data de início', atendido: resultado === 'suficiente' }] })
+/** Parecer confirmado por pessoa do Jurídico (G17); `confirmado: false` é só a sugestão da IA. */
+const parecer = (resultado: 'suficiente' | 'insuficiente', confirmado = true) =>
+  banco.insert(parecerMedico).values({
+    casoId,
+    roteiroVersao: 1,
+    resultado,
+    itens: [{ item: 'data de início', atendido: resultado === 'suficiente' }],
+    ...(confirmado && { confirmadoPor: ids.igor, confirmadoEm: new Date() }),
+  })
+const G17 = (situacao?: 'insuficiente' | 'pendente') => travaDoParecer('aprovar-inss', 'bpc_loas_deficiente', situacao ? { situacao } : null)
 const tarefasAbertas = async () =>
   (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))).map((t) => [t.passo, t.perfilDono])
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco })
-  for (const [apelido, perfil] of [['helena', 'senior'], ['ana', 'atendimento'], ['igor', 'juridico_adm'], ['julia', 'financeiro']] as const) {
+  for (const [apelido, perfil] of [['helena', 'senior'], ['otavio', 'senior'], ['ana', 'atendimento'], ['igor', 'juridico_adm'], ['julia', 'financeiro']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -81,35 +91,70 @@ describe('GGVP-23 · abrir a conferência', () => {
 describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
   it('G1 · com o kit do benefício cadastrado, falta de documento barra e diz qual', async () => {
     await parecer('suficiente')
+    // O kit vigente antes de o caso abrir (GGVP-104 CA1: o caso fica com o kit da época).
+    const desde = new Date('2026-01-01T00:00:00Z')
     await banco.insert(kitDocumento).values([
-      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'rg' },
-      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia' },
+      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'rg', vigenteDesde: desde },
+      { beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia', vigenteDesde: desde },
     ])
     const r = await decidir('helena', { decisao: 'aprovar' })
     expect([r.statusCode, r.json().erro]).toEqual([409, 'Checklist incompleto (G1): faltam comprovante_de_residencia.'])
   })
 
-  it('CA5 e G17 · sem parecer, parecer insuficiente ou laudo novo esperando: recusa e registra', async () => {
-    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(MSG_G17)
+  it('CA5 e G17 · sem parecer, insuficiente, só sugerido pela IA ou com laudo novo esperando: recusa e registra', async () => {
+    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(G17())
     await parecer('insuficiente')
-    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(MSG_G17)
+    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(G17('insuficiente'))
+    await parecer('suficiente', false)
+    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(G17('pendente'))
+    expect((await ver('helena')).json().travaDoParecer).toBe(G17('pendente'))
     await parecer('suficiente')
     const [d] = await banco
       .insert(documento)
       .values({ casoId, tipo: 'laudo', sensivel: true, chaveArmazenamento: 'x/laudo', nomeOriginal: 'Laudo.pdf', mime: 'application/pdf', tamanho: 1, hashSha256: 'h', origem: 'balcao' })
       .returning()
     await banco.insert(documentoMedico).values({ documentoId: d.id, tipo: 'laudo' })
-    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(MSG_LAUDO_NOVO)
+    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toMatch(/laudo novo esperando/)
     const recusas = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'conferencia_recusada')
-    expect(recusas).toHaveLength(3)
+    expect(recusas.map((e) => (e.detalhe as { portao: string }).portao)).toEqual(['G17', 'G17', 'G17', 'G17'])
   })
 
-  it('G17 · a dispensa da Sênior, com justificativa, libera a aprovação', async () => {
-    const helena = await cookieDe('helena')
-    const semJustificativa = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/parecer/dispensa`, cookies: helena, payload: { justificativa: '' } })
-    expect(semJustificativa.statusCode).toBe(400)
-    await app.inject({ method: 'POST', url: `/api/casos/${casoId}/parecer/dispensa`, cookies: helena, payload: { justificativa: 'Benefício por idade' } })
+  it('G17 · benefício sem laudo (pensão por morte) não pede parecer', async () => {
+    await banco.update(caso).set({ beneficio: 'pensao_morte' }).where(eq(caso.id, casoId))
+    expect((await ver('helena')).json().travaDoParecer).toBeNull()
     expect((await decidir('helena', { decisao: 'aprovar' })).statusCode).toBe(201)
+  })
+
+  it('G17 e Q14 · a dispensa é de duas Sêniores: uma pede com justificativa, outra aprova; a mesma pessoa é recusada', async () => {
+    const pedir = async (apelido: string, justificativa: string) =>
+      app.inject({ method: 'POST', url: `/api/casos/${casoId}/parecer/dispensa`, cookies: await cookieDe(apelido), payload: { justificativa } })
+    const responder = async (apelido: string, aprova: boolean) =>
+      app.inject({ method: 'POST', url: `/api/casos/${casoId}/parecer/dispensa/aprovacao`, cookies: await cookieDe(apelido), payload: { aprova } })
+    expect((await pedir('helena', 'curta')).statusCode).toBe(400)
+    expect((await pedir('helena', 'Laudo do INSS já reconhece a deficiência')).statusCode).toBe(201)
+    expect((await pedir('otavio', 'Outro pedido no mesmo caso')).json().erro).toBe(MSG_DISPENSA_JA_PEDIDA)
+    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toMatch(/espera a aprovação de outra Sênior/)
+    const vista = async (apelido: string) => (await ver(apelido)).json().dispensa
+    expect(await vista('helena')).toEqual({ pedidaPor: 'helena', justificativa: 'Laudo do INSS já reconhece a deficiência', podeResponder: false })
+    expect((await vista('otavio')).podeResponder).toBe(true)
+    expect(await vista('ana')).toBeNull()
+    // A mesma Sênior não aprova a própria dispensa: recusa e histórico.
+    expect((await responder('helena', true)).json().erro).toBe(MSG_MESMA_SENIOR)
+    expect((await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'dispensa_parecer_recusada')).toHaveLength(1)
+    expect((await responder('otavio', true)).statusCode).toBe(201)
+    const [p] = await banco.select().from(parecerMedico)
+    expect([p.resultado, p.confirmadoPor, p.justificativaDispensa]).toEqual(['dispensado', ids.otavio, 'Laudo do INSS já reconhece a deficiência'])
+    expect((await decidir('helena', { decisao: 'aprovar' })).statusCode).toBe(201)
+  })
+
+  it('G17 e Q14 · a segunda Sênior recusa: o portão continua fechado, e um novo pedido pode ser feito', async () => {
+    const helena = await cookieDe('helena')
+    await app.inject({ method: 'POST', url: `/api/casos/${casoId}/parecer/dispensa`, cookies: helena, payload: { justificativa: 'Benefício por idade, sem laudo' } })
+    const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/parecer/dispensa/aprovacao`, cookies: await cookieDe('otavio'), payload: { aprova: false } })
+    expect(r.statusCode).toBe(201)
+    expect(await banco.select().from(parecerMedico)).toEqual([])
+    expect((await decidir('helena', { decisao: 'aprovar' })).json().erro).toBe(G17())
+    expect((await ver('helena')).json().dispensa).toBeNull()
   })
 })
 
@@ -157,5 +202,57 @@ describe('GGVP-23 · decidir', () => {
     await banco.update(caso).set({ beneficio: 'pensao_morte' }).where(eq(caso.id, casoId))
     const [linha] = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('helena') })).json()
     expect([linha.titulo, linha.urgente, linha.tela]).toEqual(['Conferir antes do INSS', true, `/casos/${casoId}/conferencia`])
+  })
+})
+
+describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () => {
+  const FATORES = 'Puxa para cima: parecer suficiente. Puxa para baixo: nenhum. Para subir: manter o laudo atualizado.'
+  let enviado = ''
+  beforeEach(() => {
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      enviado = JSON.parse(String(init?.body)).messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: FATORES } }] }))
+    }
+    app = criarServidor({ banco, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+  })
+  const chance = async (apelido: string) => app.inject({ method: 'POST', url: `/api/casos/${casoId}/chance`, cookies: await cookieDe(apelido) })
+
+  it('CA2, CA4, CA10 · o número vem do acervo conferido do mesmo benefício, com os casos e a base; a IA explica; fica no histórico', async () => {
+    const conferido = { beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfechoConferidoPor: ids.helena }
+    await banco.insert(processoAcervo).values([
+      { ...conferido, desfecho: 'deferido' },
+      { ...conferido, desfecho: 'procedente_total' },
+      { ...conferido, desfecho: 'procedente_parcial' },
+      { ...conferido, desfecho: 'improcedente' },
+      { ...conferido, desfecho: 'desistencia' },
+      { beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfecho: 'improcedente' },
+      { ...conferido, beneficio: 'pensao_morte', desfecho: 'improcedente' },
+    ])
+    await parecer('suficiente')
+    const r = (await chance('helena')).json()
+    expect([r.casos, r.favoraveis, r.porcentagem, typeof r.baseEm, r.fatores.texto, r.fatores.sugestao]).toEqual([4, 3, 75, 'string', FATORES, true])
+    expect(enviado).toContain('Chance calculada pelo sistema: 75% em 4 casos parecidos')
+    expect(enviado).toContain('Parecer médico: suficiente')
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))
+    expect(ev.detalhe).toMatchObject({ casos: 4, porcentagem: 75, chamada: r.fatores.chamadaId })
+  })
+
+  it('Sugestão pronta (07/10) · a rodada prepara os fatores sem registrar "mostrada"; ao abrir, mostra e registra, sem nova chamada', async () => {
+    await app.prepararSugestoes()
+    expect(enviado).toContain('Chance calculada pelo sistema')
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))).toEqual([])
+    const [chamada] = await banco.select().from(chamadaIa)
+    enviado = ''
+    const r = (await chance('helena')).json()
+    expect([r.fatores.chamadaId, enviado]).toEqual([chamada.id, ''])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))).toHaveLength(1)
+  })
+
+  it('CA2 · sem casos parecidos, sem número; CA9 · o Atendimento não vê', async () => {
+    const r = (await chance('helena')).json()
+    expect([r.casos, r.porcentagem, r.baseEm]).toEqual([0, null, null])
+    expect(enviado).toContain('sem casos parecidos na casa ainda')
+    expect(enviado).toContain('Nenhum laudo médico novo esperando conferência')
+    expect((await chance('ana')).statusCode).toBe(403)
   })
 })

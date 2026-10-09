@@ -1,0 +1,40 @@
+/* O resto vem de Balcao.module.css (telas de passo) e Campo.module.css (os campos). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.tarefa {
+  font-size: var(--fonte-15);
+}
+
+.confirmacao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fonte-15);
+}
+
+.confirmacao input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cor-acento);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.linha > * {
+  min-width: 180px;
+}
+
+/* A caixa de hora do navegador é mais alta: as duas da linha ficam iguais. */
+.linha input {
+  min-height: 36px;
+}

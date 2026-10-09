@@ -2,10 +2,22 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, documento, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_ANTES_DA_PRESTACAO, MSG_G8, MSG_SEM_DEFERIDO, MODELO_IDA_AO_BANCO } from './prestacao.ts'
+import {
+  MSG_ACOMPANHANTE,
+  MSG_ANTES_DA_PRESTACAO,
+  MSG_ANTES_DO_AVISO,
+  MSG_ANTES_DO_RECEBIMENTO,
+  MSG_ENCERRADO,
+  MSG_G8,
+  MSG_MESMA_PESSOA,
+  MSG_SEM_DEFERIDO,
+  MSG_SEM_DESFECHO,
+  MODELO_IDA_AO_BANCO,
+  TITULO_AVISO,
+} from './prestacao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -24,6 +36,14 @@ const abertas = async () =>
   (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))).map((t) => `${t.perfilDono} · ${t.titulo}`).sort()
 const PRESTACAO = { valorRecebido: '12.345,67', percentual: '30', formaPagamento: 'pix', prazoPagamento: '30/10/2026', conferiCarta: true }
 const AGENDA = () => ({ data: '15/10/2026', hora: '10:00', local: 'Caixa, agência Centro', acompanhanteId: ids.ana })
+const RECEBIDO = { resultado: 'recebido', valoresConferem: true }
+const receber = () => chamar('julia', 'POST', '/prestacao/recebimento', RECEBIDO)
+/** O caminho até a tarefa do aviso: OK da advogada e recebimento do Financeiro (GGVP-98 CA4). */
+async function ateOAviso() {
+  await deferir()
+  await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+  await receber()
+}
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
@@ -65,11 +85,13 @@ describe('GGVP-44 · prestação de contas', () => {
     expect((await chamar('gabi', 'POST', '/prestacao', PRESTACAO)).json()).toEqual({ ok: true, versao: 1, valorRecebido: '12345.67', honorarios: '3703.70', repasse: '8641.97' })
   })
 
-  it('CA7, CA1, CA2 · antes de concluir, nada para o Financeiro; ao concluir, Financeiro e Atendimento juntos', async () => {
+  it('CA7 e GGVP-98 CA1, CA4 · antes de concluir, nada para o Financeiro; ao concluir, só o recebimento; recebido, nasce o aviso', async () => {
     await deferir()
     expect(await abertas()).toEqual(['advogada · Prestar contas'])
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    expect(await abertas()).toEqual(['atendimento · Agendar ida ao banco', 'financeiro · Receber a prestação de contas'])
+    expect(await abertas()).toEqual(['financeiro · Receber a prestação de contas'])
+    await receber()
+    expect(await abertas()).toEqual([`financeiro · ${TITULO_AVISO}`])
   })
 
   it('CA2 · os valores só para o Financeiro e a advogada da prestação; Atendimento e Sênior recebem 403', async () => {
@@ -79,7 +101,8 @@ describe('GGVP-44 · prestação de contas', () => {
     await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'helena', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['senior'], trocarSenha: false })
     expect((await chamar('helena', 'GET', '/prestacao')).statusCode).toBe(403)
     expect((await chamar('julia', 'GET', '/prestacao')).json().versoes[0].honorarios).toBe('3703.70')
-    expect(JSON.stringify((await chamar('ana', 'GET', '/banco')).json())).not.toMatch(/3703|12345|honorario/)
+    // GGVP-98: a ida ao banco passou ao Financeiro; o Atendimento não abre a tela nem vê valores.
+    expect((await chamar('ana', 'GET', '/banco')).statusCode).toBe(403)
   })
 
   it('CA6 · alterar depois de concluída grava a versão seguinte, com quem e quando, e guarda a anterior', async () => {
@@ -100,66 +123,165 @@ describe('GGVP-44 · prestação de contas', () => {
     const v = (await chamar('julia', 'GET', '/prestacao')).json()
     expect([v.versoes[0].formaPagamento, v.versoes[0].prazoPagamento, v.podeReceber]).toEqual(['pix', '2026-10-30', true])
     expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'divergencia', motivo: 'Honorários acima do contrato' })).statusCode).toBe(201)
-    expect(await abertas()).toEqual(['advogada · Corrigir a prestação: Honorários acima do contrato', 'atendimento · Agendar ida ao banco'])
+    expect(await abertas()).toEqual(['advogada · Corrigir a prestação: Honorários acima do contrato'])
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'recebido' })).statusCode).toBe(201)
+    expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'recebido' })).json().erro).toBe('Marque "Valores conferem com o comprovante"')
+    expect((await receber()).statusCode).toBe(201)
     const [ultima] = await banco.select().from(prestacaoContas).where(eq(prestacaoContas.versao, 2))
     expect([ultima.recebidaPor, ultima.recebidaEm !== null]).toEqual([ids.julia, true])
-    expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'recebido' })).statusCode).toBe(409)
+    expect((await receber()).statusCode).toBe(409)
+  })
+
+  it('GGVP-98 CA8 · quem deu o OK e tenta registrar o recebimento é recusado, e a tentativa fica registrada', async () => {
+    await banco.update(usuario).set({ perfis: ['advogada', 'financeiro'] }).where(eq(usuario.id, ids.gabi))
+    await deferir()
+    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    const cookies = await cookieDe('gabi')
+    await app.inject({ method: 'POST', url: '/api/sessao/perfil', cookies, payload: { perfil: 'financeiro' } })
+    const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/prestacao/recebimento`, cookies, payload: RECEBIDO })
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_MESMA_PESSOA])
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    // Separação de funções, e não o G8 (que é "o aviso só sai depois do OK"): código neutro, sem número (Q21, 08/10).
+    expect(b.detalhe).toMatchObject({ portao: 'funcoes', passo: 'D2.06r', perfil: 'financeiro', motivo: 'ok_e_recebimento' })
   })
 })
 
 describe('GGVP-44 · ida ao banco', () => {
-  it('CA10 · só depois da prestação concluída; os quatro campos são obrigatórios; o Financeiro vê o agendamento', async () => {
+  it('CA10 e GGVP-98 CA6 · só depois do recebimento; os quatro campos obrigatórios; quem acompanha é do Atendimento e recebe "Levar ao banco"', async () => {
     await deferir()
-    expect((await chamar('ana', 'POST', '/banco', AGENDA())).json().erro).toBe(MSG_ANTES_DA_PRESTACAO)
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    expect((await chamar('ana', 'POST', '/banco', { ...AGENDA(), local: '' })).json().erro).toBe('Informe a agência ou o local')
-    expect((await chamar('ana', 'POST', '/banco', { ...AGENDA(), acompanhanteId: '11111111-1111-4111-8111-111111111111' })).json().erro).toBe('Escolha quem acompanha na lista')
-    expect((await chamar('ana', 'GET', '/banco')).json().equipe.map((u: { nome: string }) => u.nome)).toEqual(['ana', 'gabi', 'igor', 'julia'])
-    expect((await chamar('ana', 'POST', '/banco', AGENDA())).statusCode).toBe(201)
+    expect((await chamar('julia', 'POST', '/banco', AGENDA())).json().erro).toBe(MSG_ANTES_DA_PRESTACAO)
+    await receber()
+    expect((await chamar('ana', 'POST', '/banco', AGENDA())).statusCode).toBe(403)
+    expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), local: '' })).json().erro).toBe('Informe a agência ou o local')
+    expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), acompanhanteId: '' })).json().erro).toBe(MSG_ACOMPANHANTE)
+    expect((await chamar('julia', 'POST', '/banco', { ...AGENDA(), acompanhanteId: ids.igor })).json().erro).toBe(MSG_ACOMPANHANTE)
+    expect((await chamar('julia', 'GET', '/banco')).json().equipe.map((u: { nome: string }) => u.nome)).toEqual(['ana'])
+    expect((await chamar('julia', 'POST', '/banco', AGENDA())).statusCode).toBe(201)
     const r = (await chamar('julia', 'GET', '/prestacao')).json()
     expect([r.agendamento.quando, r.agendamento.local, r.agendamento.acompanhante]).toEqual(['2026-10-15T13:00:00.000Z', 'Caixa, agência Centro', 'ana'])
+    const [levar] = await banco.select().from(tarefa).where(eq(tarefa.passo, 'D2.06l'))
+    expect([levar.titulo, levar.perfilDono, levar.responsavelId, levar.prazo]).toEqual(['Levar ao banco', 'atendimento', ids.ana, '2026-10-15'])
   })
 
-  it('CA3, CA11 · a mensagem sai do modelo; o envio registra data, canal e texto e fecha a tarefa', async () => {
-    await deferir()
-    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    await chamar('ana', 'POST', '/banco', AGENDA())
-    const r = (await chamar('ana', 'GET', '/banco')).json()
+  it('CA3, CA11 e GGVP-98 CA2, CA5 · a mensagem sai do modelo; o envio registra data, canal e texto, fecha a tarefa e grava o acervo', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    const r = (await chamar('julia', 'GET', '/banco')).json()
     expect(r.mensagem).toBe('Olá, Vera Lúcia! Ida ao banco em 15/10/2026 às 10:00, Caixa, agência Centro. ana, do escritório, vai com você.')
-    expect((await chamar('ana', 'POST', '/banco/envio', { canal: 'whatsapp' })).statusCode).toBe(201)
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).statusCode).toBe(201)
     const [m] = await banco.select().from(mensagem)
-    expect([m.canal, m.conteudo, m.enviadaPor, m.enviadaEm !== null]).toEqual(['whatsapp', r.mensagem, ids.ana, true])
-    expect(await abertas()).toEqual(['financeiro · Receber a prestação de contas'])
-  })
-
-  it('CA10 · sem acompanhante, a mensagem não fala de acompanhante', async () => {
-    await deferir()
-    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    await chamar('ana', 'POST', '/banco', { ...AGENDA(), acompanhanteId: '' })
-    expect((await chamar('ana', 'GET', '/banco')).json().mensagem).toBe('Olá, Vera Lúcia! Ida ao banco em 15/10/2026 às 10:00, Caixa, agência Centro.')
-    expect((await chamar('julia', 'GET', '/prestacao')).json().agendamento.acompanhante).toBeNull()
+    expect([m.canal, m.conteudo, m.enviadaPor, m.enviadaEm !== null]).toEqual(['whatsapp', r.mensagem, ids.julia, true])
+    expect(await abertas()).toEqual(['atendimento · Levar ao banco'])
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    const acervo = await banco.select().from(processoAcervo)
+    expect(acervo.map((a) => [a.casoId, a.desfecho, a.fonte, a.desfechoConferidoPor])).toEqual([[casoId, 'deferido', 'portal', null]])
+    expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'baixa_registrada'))).length).toBe(2)
   })
 
   it('G8 · sem o OK da advogada, o aviso não sai', async () => {
-    await deferir()
-    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    await chamar('ana', 'POST', '/banco', AGENDA())
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
     await banco.update(prestacaoContas).set({ okAdvogadaEm: null, okAdvogadaPor: null })
-    expect((await chamar('ana', 'POST', '/banco/envio', { canal: 'whatsapp' })).json().erro).toBe(MSG_G8)
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).json().erro).toBe(MSG_G8)
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G8', passo: 'D3b.03', perfil: 'financeiro' })
   })
 
-  it('CA12 · remarcar cancela o anterior, o Financeiro vê o novo e o convite precisa sair de novo', async () => {
-    await deferir()
-    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
-    await chamar('ana', 'POST', '/banco', AGENDA())
-    await chamar('ana', 'POST', '/banco/envio', { canal: 'whatsapp' })
-    await chamar('ana', 'POST', '/banco', { ...AGENDA(), data: '20/10/2026', hora: '14:30' })
+  it('CA12 e GGVP-98 CA7 · remarcar cancela o anterior, o Financeiro vê o novo, o convite sai de novo e "Levar ao banco" muda junto', async () => {
+    await banco.insert(usuario).values({ email: 'raí@exemplo.ggv', nome: 'raí', senhaHash: 'x', perfis: ['atendimento'], trocarSenha: false })
+    const [rai] = await banco.select().from(usuario).where(eq(usuario.nome, 'raí'))
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '20/10/2026', hora: '14:30', acompanhanteId: rai.id })
     const ags = await banco.select().from(agendamento)
     expect(ags.map((a) => a.situacao).sort()).toEqual(['cancelado', 'marcado'])
     expect((await chamar('julia', 'GET', '/prestacao')).json().agendamento.quando).toBe('2026-10-20T17:30:00.000Z')
-    expect(await abertas()).toContain('atendimento · Agendar ida ao banco')
-    expect((await chamar('ana', 'GET', '/banco')).json().mensagem).toContain('20/10/2026 às 14:30')
+    expect(await abertas()).toEqual(['atendimento · Levar ao banco', `financeiro · ${TITULO_AVISO}`])
+    const levar = await banco.select().from(tarefa).where(eq(tarefa.passo, 'D2.06l'))
+    expect(levar.map((t) => [t.responsavelId, t.prazo])).toEqual([[rai.id, '2026-10-20']])
+    expect((await chamar('julia', 'GET', '/banco')).json().mensagem).toContain('20/10/2026 às 14:30')
+  })
+
+  it('GGVP-98 CA9 · depois do aviso, o Financeiro confirma o recebimento: a ida ao banco fica feita e o caso fecha', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    expect((await chamar('julia', 'POST', '/banco/confirmacao')).json().erro).toBe(MSG_ANTES_DO_AVISO)
+    expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(false)
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(true)
+    expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(201)
+    const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
+    const [ag] = await banco.select().from(agendamento)
+    expect([c.fase, c.encerradoEm !== null, ag.situacao]).toEqual(['encerrado', true, 'realizado'])
+    expect(await abertas()).toEqual([])
+    const v = (await chamar('julia', 'GET', '/banco')).json()
+    expect([v.encerrado, v.podeConfirmar, v.podeAgendar]).toEqual([true, false, false])
+    expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(409)
+  })
+
+  it('GGVP-98 CA9 · caso encerrado não reabre: agendar e avisar de novo devolvem 409, e nenhuma tarefa nasce', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/confirmacao')
+    for (const [resto, corpo] of [['/banco', AGENDA()], ['/banco/envio', { canal: 'whatsapp' }]] as const) {
+      const r = await chamar('julia', 'POST', resto, corpo)
+      expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
+    }
+    expect(await abertas()).toEqual([])
+    expect((await banco.select().from(agendamento)).map((a) => a.situacao)).toEqual(['realizado'])
+    expect(await banco.select().from(mensagem)).toHaveLength(1)
+  })
+
+  it('GGVP-98 CA2 · sem desfecho registrado, o aviso não sai e o caso não entra no acervo como processo bom', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await banco.update(resultadoInss).set({ resultado: 'indeferido' })
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_SEM_DESFECHO])
+    expect([await banco.select().from(processoAcervo), await banco.select().from(mensagem)]).toEqual([[], []])
+  })
+})
+
+describe('GGVP-98 · quarta revisão de 08/10', () => {
+  it('CA3 · na rota, lançar sem conferir os valores é recusado (400), e nada é recebido', async () => {
+    await deferir()
+    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'recebido', valoresConferem: false })).statusCode).toBe(400)
+    const [p] = await banco.select().from(prestacaoContas)
+    expect([p.recebidaEm, p.recebidaPor]).toEqual([null, null])
+  })
+
+  it('CA4 · versão nova depois do recebimento: o aviso espera o novo recebimento do Financeiro', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    expect((await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, valorRecebido: '12.000,00' })).statusCode).toBe(201)
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ANTES_DO_RECEBIMENTO])
+    await receber()
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).statusCode).toBe(201)
+  })
+
+  it('CA9 · caso encerrado não aceita versão nova da prestação, e nenhuma tarefa nasce', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/confirmacao')
+    const r = await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
+    expect(await abertas()).toEqual([])
+  })
+
+  // O banco embutido atende uma consulta de cada vez, então aqui a disputa não acontece de verdade: o teste confere o
+  // resultado com dois pedidos juntos. No PostgreSQL, quem barra é a condição no próprio update do recebimento.
+  it('CA4 · dois recebimentos ao mesmo tempo: um passa, o outro recebe 409, e o recebimento conta uma vez', async () => {
+    await deferir()
+    await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    const rs = await Promise.all([receber(), receber()])
+    expect(rs.map((r) => r.statusCode).sort()).toEqual([201, 409])
+    expect(await banco.select().from(tarefa).where(eq(tarefa.passo, 'D2.06b'))).toHaveLength(1)
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'prestacao_recebida'))).toHaveLength(1)
   })
 })

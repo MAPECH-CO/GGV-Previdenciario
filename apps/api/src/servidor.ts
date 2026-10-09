@@ -18,8 +18,36 @@ import { registrarRotasManifestacao } from './rotas/manifestacao.ts'
 import { registrarRotasDocumentos } from './rotas/documentos.ts'
 import { registrarRotasIndeferimento } from './rotas/indeferimento.ts'
 import { registrarRotasPeticao } from './rotas/peticao.ts'
+import { registrarRotasGestao } from './rotas/gestao.ts'
+import { registrarRotasAcervo } from './rotas/acervo.ts'
+import { registrarRotasRegras } from './rotas/regras.ts'
+import { registrarRotasHistorico } from './rotas/historico.ts'
+import { registrarRotasCofre } from './rotas/cofre.ts'
+import { registrarRotasConfiguracao } from './rotas/configuracao.ts'
+import { registrarRotasPericia } from './rotas/pericia.ts'
+import { registrarRotasIa } from './rotas/ia.ts'
+import { criarIa, type Ia } from './ia/ia.ts'
+import { criarPreparo } from './ia/preparo.ts'
+import { registrarRotasResultado } from './rotas/resultado.ts'
+import { registrarRotasEstudo } from './rotas/estudo.ts'
+import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
+import { registrarRotasRoteiros } from './rotas/roteiros.ts'
+import { registrarRotasParecer } from './rotas/parecer.ts'
+import { registrarRotasComplemento } from './rotas/complemento.ts'
+import { registrarRotasDeficiencia } from './rotas/deficiencia.ts'
+import { registrarRotasAcidente } from './rotas/acidente.ts'
+import { registrarRotasCrianca } from './rotas/crianca.ts'
+import { registrarRotasDocumentacaoMedica } from './rotas/documentacao-medica.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
+import { registrarRotasRecepcao } from './rotas/recepcao.ts'
+import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
+import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
+import { registrarRotasConversa } from './rotas/conversa.ts'
+import { registrarRotasMensagens } from './rotas/mensagens.ts'
+import { registrarRotasSeguranca } from './rotas/seguranca.ts'
+import { registrarRotasImportacao } from './rotas/importacao.ts'
+import { registrarRotasFeriados } from './rotas/feriados.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -39,11 +67,22 @@ type Opcoes = {
   armazenamento?: Armazenamento
   /** Fontes da vigília; padrão: as do ambiente (`FONTES_PUBLICACAO`). */
   fontes?: Fonte[]
+  /** A IA (GGVP-106). Padrão: chaves do ambiente; sem chave, desligada. O teste passa uma IA com `fetch` falso. */
+  ia?: Ia
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Sugestão pronta (07/10): uma rodada do preparo das sugestões da IA. Sem banco, não faz nada. */
+    prepararSugestoes: () => Promise<void>
+  }
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia }: Opcoes = {}) {
   const app = Fastify({ logger })
+  let preparar = async () => {}
+  app.decorate('prepararSugestoes', () => preparar())
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
 
   app.get('/saude', async (_pedido, resposta): Promise<Saude> => {
@@ -59,19 +98,49 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
 
   if (banco) {
     registrarSessao(app, { banco, agora, cookieSeguro })
-    registrarRotasConferencia(app, { banco, agora })
+    const motorIa = ia ?? criarIa({ banco, agora })
+    const preparo = criarPreparo(motorIa, (erro) => app.log.error({ erro }, 'preparo da sugestão da IA falhou'))
+    preparar = preparo.rodar
+    registrarRotasConferencia(app, { banco, agora, ia: motorIa, preparo })
     const arquivos = armazenamento ?? abrirArmazenamento()
-    registrarRotasInss(app, { banco, agora, cofre: cofre ?? criarCofre(chaveDoCofre()), armazenamento: arquivos })
+    const cofreDoGov = cofre ?? criarCofre(chaveDoCofre())
+    registrarRotasInss(app, { banco, agora, cofre: cofreDoGov, armazenamento: arquivos })
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora })
-    registrarRotasPublicacoes(app, { banco, agora })
+    registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
-    registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
-    registrarRotasIndeferimento(app, { banco, agora })
-    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
+    registrarRotasGestao(app, { banco, agora })
+    registrarRotasAcervo(app, { banco, agora })
+    registrarRotasRegras(app, { banco, agora })
+    registrarRotasHistorico(app, { banco, agora })
+    registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })
+    registrarRotasConfiguracao(app, { banco, agora })
+    registrarRotasIa(app, { banco, agora })
+    registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasRecepcao(app, { banco, agora })
+    registrarRotasRecepcaoAgenda(app, { banco, agora })
+    registrarRotasRecepcaoEntrevista(app, { banco, agora })
+    registrarRotasRoteiros(app, { banco, agora })
+    registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
+    registrarRotasDeficiencia(app, { banco, agora })
+    registrarRotasAcidente(app, { banco, agora })
+    registrarRotasCrianca(app, { banco, agora })
+    registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
+    registrarRotasConversa(app, { banco, agora })
+    registrarRotasMensagens(app, { banco, agora })
+    registrarRotasSeguranca(app, { banco, agora })
+    registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
+    registrarRotasImportacao(app, { banco, agora })
+    registrarRotasFeriados(app, { banco, agora })
   }
 
   if (pastaTela && existsSync(pastaTela)) {

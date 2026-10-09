@@ -75,6 +75,8 @@ describe('GGVP-87 · manifestar', () => {
     await anexarEAprovar()
     const p = await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })
     expect([p.statusCode, p.json().erro]).toEqual([409, 'Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento, Documentação.'])
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
+    expect(b.detalhe).toMatchObject({ portao: 'G21', passo: 'D3a.04', faltam: 2, perfil: 'advogada' })
   })
 
   it('CA1 · "Manifestar no processo" nasce na distribuição, com o prazo; com tudo provado, a espera do cliente termina e o protocolo libera', async () => {
@@ -108,6 +110,8 @@ describe('GGVP-87 · manifestar', () => {
     expect([x.situacao, prot.tribunal, await abertas()]).toEqual(['cumprida', '4.03', []])
     const r = (await chamar('helena', 'GET', '/manifestacao')).json()
     expect([r.protocolo.versao, r.protocolo.por, r.versoes[0].aprovadaPor]).toEqual([n, 'gabi', 'gabi'])
+    // GGVP-68 CA5: cada item cumprido fica ligado à peça que o cumpriu.
+    expect((await chamar('gabi', 'GET', '/exigencia-juiz')).json().peca).toEqual({ versao: n, protocoladaEm: prot.protocoladoEm.toISOString() })
     const abertasD3a = await banco.select().from(etapa).where(and(eq(etapa.diagrama, 'D3a'), isNull(etapa.concluidaEm)))
     expect(abertasD3a).toEqual([])
   })

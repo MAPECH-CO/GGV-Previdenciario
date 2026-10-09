@@ -1,23 +1,12 @@
 // Caso: o pedido de benefício de uma pessoa, do atendimento ao desfecho (GGVP-108, 24, 40, 21).
+import { BENEFICIOS } from '@ggv/contratos'
 import { integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 import { pessoa } from './pessoas.ts'
 
-export const BENEFICIOS = [
-  'bpc_loas_deficiente',
-  'bpc_loas_idoso',
-  'aposentadoria_pcd',
-  'aposentadoria_idade',
-  'aposentadoria_tempo',
-  'aposentadoria_especial',
-  'aposentadoria_incapacidade_permanente',
-  'auxilio_incapacidade_temporaria',
-  'auxilio_acidente',
-  'pensao_morte',
-  'salario_maternidade',
-  'outro',
-] as const
+// GGVP-104 CA5: o catálogo de benefícios é um só, nos contratos; o banco recusa benefício fora dele.
+export { BENEFICIOS }
 export const FASES_CASO = ['atendimento', 'administrativa', 'judicial', 'encerrado'] as const
 export const DESFECHOS = [
   'deferido',
@@ -90,6 +79,11 @@ export const atendimento = pgTable(
     gravacaoDocumentoId: uuid('gravacao_documento_id'),
     transcricaoDocumentoId: uuid('transcricao_documento_id'),
     resumo: text('resumo'),
+    /**
+     * A conversa do D5 no formato das telas (GGVP-138): com quem, o modo, a análise da IA, as decisões da conferência e
+     * a pendência. A gravação fica em `gravacao_recepcao`, o mesmo motor da entrevista. ponytail: documento por enquanto.
+     */
+    dados: jsonb('dados'),
     criadoEm: criadoEm(),
   },
   (t) => [emLista('atendimento_canal', t.canal, CANAIS_ATENDIMENTO)],

@@ -1,0 +1,88 @@
+/* O resto vem de Balcao.module.css (telas de passo) e Campo.module.css (os campos). */
+.vazia {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 32px;
+}
+
+.advogada {
+  padding: 3px 8px;
+  border-radius: var(--raio-16);
+  background: var(--cor-advogada-suave);
+  color: var(--cor-advogada);
+  font-size: var(--fonte-11);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.linha > * {
+  flex: 1 1 180px;
+}
+
+.alerta {
+  padding: 10px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-alerta-2-suave);
+  color: var(--cor-alerta-2);
+  font-size: var(--fonte-13);
+}
+
+.divergencias {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-alerta);
+  border-radius: var(--raio-14);
+  background: var(--cor-alerta-suave);
+}
+
+.divergencia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fonte-13);
+}
+
+.beneficio {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.conferencia {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fonte-14);
+}
+
+.conferencia input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cor-acento);
+}
+
+.representante {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+}
+
+.kit {
+  color: var(--cor-alerta-2);
+}
+
+.kit[data-ok='true'] {
+  color: var(--cor-ok);
+}

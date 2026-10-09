@@ -4,7 +4,7 @@ import fastifyCookie from '@fastify/cookie'
 import bcrypt from 'bcryptjs'
 import { and, eq, gt } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest, preHandlerAsyncHookHandler } from 'fastify'
-import { Entrar, TrocarPerfil, TrocarSenha, UsuarioDaSessao, pode, type Acao, type Erro } from '@ggv/contratos'
+import { Entrar, TrocarPerfil, TrocarSenha, UsuarioDaSessao, pode, type Acao, type Erro, type PortaoDeBloqueio } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { eventoAuditoria, sessao, usuario } from '../banco/esquema.ts'
 import { TRAVA_MINUTOS, aposErro, estaTravado, expiraEm } from './regras.ts'
@@ -52,6 +52,16 @@ export function registrarHistorico(banco: Banco, agora: () => Date) {
     banco.insert(eventoAuditoria).values({ quem, acao, alvo, quando: agora(), detalhe: { ip: pedido.ip, ...detalhe } })
 }
 
+/**
+ * Recusa de portão (GGVP-109 CA9): todo portão grava no mesmo formato (quem, quando, caso, portão, passo e perfil), que
+ * a lista da gestão lê. `detalhe` leva contagens e códigos, nunca a descrição do item (pode ter dado de saúde).
+ */
+export function registrarBloqueio(banco: Banco, agora: () => Date) {
+  const historico = registrarHistorico(banco, agora)
+  return (pedido: FastifyRequest, casoId: string, portao: PortaoDeBloqueio, passo: string, detalhe: Record<string, unknown> = {}, acao = 'portao_bloqueado') =>
+    historico(pedido.usuario?.id ?? 'anonimo', acao, pedido, `caso:${casoId}`, { portao, passo, perfil: pedido.perfilAtivo, ...detalhe })
+}
+
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 /**
@@ -62,7 +72,10 @@ export function exigir(banco: Banco, acao: Acao, agora: () => Date = () => new D
   const historico = registrarHistorico(banco, agora)
   return async (pedido, resposta) => {
     if (pode(pedido.perfilAtivo, acao)) return
-    await historico(pedido.usuario?.id ?? 'anonimo', 'acesso_negado', pedido, rota(pedido), { acao, perfil: pedido.perfilAtivo })
+    // GGVP-109 CA9: a gestão vê em que caso foi a tentativa fora do perfil.
+    const id = (pedido.params as { id?: string }).id
+    const casoId = rota(pedido).startsWith('/api/casos/:id') && id && /^[0-9a-f-]{36}$/.test(id) ? id : undefined
+    await historico(pedido.usuario?.id ?? 'anonimo', 'acesso_negado', pedido, rota(pedido), { acao, perfil: pedido.perfilAtivo, ...(casoId && { casoId }) })
     return negar(resposta, 403, MSG_SEM_PERMISSAO)
   }
 }

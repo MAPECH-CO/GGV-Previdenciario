@@ -2,6 +2,12 @@
 
 > Candidata a história, diagrama **D3b · Desfecho do mérito**. Cartão no Jira: [GGVP-98](https://mapech.atlassian.net/browse/GGVP-98), rótulo `a-validar-bpmn`. Chave provisória original: GGVP-98. Fonte: BPMN do Miro (frames "revisão BPMN") e roteiro de laudos do escritório.
 
+> **Refinada no Jira (Lucas, 06/10), épico GGVP-11 Desfecho e financeiro.** O texto abaixo é o rascunho original e ficou para trás. Pela decisão do Lucas:
+> - quem avisa o cliente e marca a ida ao banco é o Financeiro, e o Atendimento leva o cliente ("Levar ao banco");
+> - o caminho é o mesmo para o deferido no INSS e para o procedente na Justiça.
+>
+> Valem o cartão no Jira e a spec `openspec/changes/ggvp-11-desfecho-e-financeiro/specs/ggvp-98/spec.md`.
+
 **Como** Atendimento\
 **quero** avisar o cliente que vencemos e agendar a ida ao banco depois que o Financeiro recebeu a prestação\
 **para** fechar o caso com o cliente bem informado.

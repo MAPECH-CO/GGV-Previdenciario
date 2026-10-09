@@ -39,11 +39,13 @@ describe('Manifestar e protocolar (GGVP-87)', () => {
     expect((screen.getByRole('button', { name: 'Manifestar e protocolar' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('G6 · aprovar a versão pede a marcação', async () => {
+  it('G6 · aprovar a versão pede a marcação (GGVP-109 CA3: o botão só habilita com ela)', async () => {
     servidor({ ...base, versoes: [versao()] })
     render(<Manifestar casoId={CASO} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Aprovar a versão 1' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Marque "Aprovei a versão da manifestação (G6)"')
+    const aprovar = (await screen.findByRole('button', { name: 'Aprovar a versão 1' })) as HTMLButtonElement
+    expect(aprovar.disabled).toBe(true)
+    fireEvent.click(screen.getByLabelText('Aprovei a versão da manifestação (G6)'))
+    expect(aprovar.disabled).toBe(false)
   })
 
   it('CA3 · protocolar pede o comprovante; com tudo, avisa a volta à vigília', async () => {

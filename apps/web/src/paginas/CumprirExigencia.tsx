@@ -3,6 +3,8 @@ import type { FormEvent } from 'react'
 import { isoParaData } from '@ggv/campos'
 import { CANAIS_DE_COBRANCA, RESULTADOS_DE_COBRANCA, RegistrarCobranca, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TextoDoLembrete } from '../componentes/Laco.tsx'
+import { ROTULO_DO_CANAL } from '../componentes/rotulosDoLaco.ts'
 import styles from './Passo.module.css'
 import { ResumoDaExigencia } from './TratarExigencia.tsx'
 
@@ -164,14 +166,19 @@ export function CumprirExigencia({ casoId }: { casoId: string }) {
             <h2 className={styles.cartaoTitulo}>Cobrar o cliente</h2>
             <p className={styles.dica}>
               {x.card.limite ? `Cobranças: ${x.card.tentativas} de ${x.card.limite}.` : `Cobranças: ${x.card.tentativas}. Limite de cobranças não configurado.`}
-              {x.card.proximoLembrete ? ` Próximo lembrete: ${br(x.card.proximoLembrete)}.` : ''}
+              {x.card.lembrete && (
+                <>
+                  {' '}
+                  <TextoDoLembrete data={x.card.proximoLembrete} lembrete={x.card.lembrete} />.
+                </>
+              )}
               {x.card.escalada ? ' Limite atingido: a Sênior já foi avisada.' : ''}
             </p>
             {x.card.cobrancas.length > 0 && (
               <ol className={styles.lista} aria-label="Cobranças">
                 {x.card.cobrancas.map((c) => (
                   <li key={c.quando}>
-                    {new Date(c.quando).toLocaleDateString('pt-BR')} · {ROTULO_CANAL[c.canal as keyof typeof ROTULO_CANAL] ?? c.canal} ·{' '}
+                    {new Date(c.quando).toLocaleDateString('pt-BR')} · {ROTULO_DO_CANAL[c.canal] ?? c.canal} ·{' '}
                     {ROTULO_RESULTADO[c.resultado as keyof typeof ROTULO_RESULTADO] ?? c.resultado} · {c.quem}
                   </li>
                 ))}

@@ -1,8 +1,9 @@
 // Exigência do INSS (GGVP-39): perícia aberta pela exigência, volta à vigília e limites de cobrança (Q1).
-import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
+import type { Lembrete, TentativaDoLaco } from '@ggv/contratos'
+import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa } from '../banco/esquema.ts'
-import { diasUteisAte, feriadosNacionais } from './prazo-inss.ts'
+import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa, tentativa, usuario } from '../banco/esquema.ts'
+import { diasUteisAte, ehDiaUtil, feriadosNacionais, somarDias } from './prazo-inss.ts'
 
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 type Tipo = 'medica' | 'social'
@@ -29,6 +30,49 @@ export async function limitesDeCobranca(banco: Banco | Tx): Promise<{ limite: nu
     limite: valor('cobranca.limite') ?? LIMITES_PADRAO.limite,
     intervaloDias: valor('cobranca.intervalo_dias') ?? LIMITES_PADRAO.intervaloDias,
   }
+}
+
+/**
+ * GGVP-94 CA1 (G15; Lucas, 02/10): o próximo lembrete do laço, em dias úteis. Sem prazo de fora, a cada `intervalo` dias
+ * úteis; com prazo, as tentativas que faltam (`restantes`) se comprimem para caber antes dele, com pelo menos 1 dia útil,
+ * e o lembrete nunca passa do prazo. Sem intervalo configurado, o lembrete é o próprio prazo.
+ */
+export function proximoLembrete(hoje: string, intervalo: number | null, prazo: string | null, restantes: number, feriados: ReadonlySet<string>) {
+  if (!intervalo) return prazo
+  const passo = prazo ? Math.max(1, Math.min(intervalo, Math.floor(diasUteisAte(hoje, prazo, feriados) / Math.max(1, restantes)))) : intervalo
+  let d = hoje
+  for (let n = 0; n < passo; ) {
+    d = somarDias(d, 1)
+    if (ehDiaUtil(d, feriados)) n++
+  }
+  return prazo && d > prazo ? prazo : d
+}
+
+/** O lembrete do laço com o intervalo da configuração e os feriados nacionais do banco. */
+export async function lembreteDoLaco(banco: Banco | Tx, hoje: string, prazo: string | null, restantes: number) {
+  const { intervaloDias } = await limitesDeCobranca(banco)
+  return proximoLembrete(hoje, intervaloDias, prazo, restantes, await feriadosNacionais(banco))
+}
+
+/** GGVP-94 CA3, CA10: o laço de cada tarefa (tentativas e decisões da Sênior), do mais antigo ao mais novo. */
+export async function lacosDas(banco: Banco, tarefaIds: string[]): Promise<Map<string, TentativaDoLaco[]>> {
+  const lacos = new Map<string, TentativaDoLaco[]>()
+  if (!tarefaIds.length) return lacos
+  const linhas = await banco
+    .select({ tarefaId: tentativa.tarefaId, quando: tentativa.quando, canal: tentativa.canal, resultado: tentativa.resultado, quem: usuario.nome })
+    .from(tentativa)
+    .innerJoin(usuario, eq(tentativa.registradaPor, usuario.id))
+    .where(inArray(tentativa.tarefaId, tarefaIds))
+    .orderBy(asc(tentativa.quando))
+  for (const l of linhas)
+    lacos.set(l.tarefaId, [...(lacos.get(l.tarefaId) ?? []), { quando: l.quando.toISOString(), canal: l.canal ?? '', resultado: l.resultado, quem: l.quem }])
+  return lacos
+}
+
+/** GGVP-94 CA11: o que o próximo lembrete diz. Tarefa concluída não tem lembrete (CA7). */
+export function lembreteDescrito(t: { titulo: string; prazo: string | null; concluidaEm: Date | null } | null, destinatario: string, tentativas: number): Lembrete | null {
+  if (!t || t.concluidaEm || !t.prazo) return null
+  return { gatilho: tentativas ? 'Sem retorno desde a última tentativa' : 'Sem retorno desde o acionamento', destinatario, canal: 'Central de tarefas', modelo: t.titulo }
 }
 
 /** Tipos de perícia que a advogada escolheu ao decidir a exigência (decisão D2.05, G5). */

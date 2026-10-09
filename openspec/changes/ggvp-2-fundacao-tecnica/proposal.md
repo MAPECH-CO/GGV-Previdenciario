@@ -1,4 +1,4 @@
-GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129 (GGVP-108 e GGVP-105 ainda não refinadas).
+GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129, GGVP-126 (GGVP-108 e GGVP-105 ainda não refinadas).
 
 ## Por quê
 
@@ -8,13 +8,15 @@ Nenhuma outra história vira código sem base: repositório com a stack decidida
 
 1. **GGVP-118** · Base de código: stack (ADR-001), monorepo, banco de dados e CI · perfil: time de desenvolvimento.
 2. **GGVP-119** · Ambiente: homologação no Coolify com deploy a cada merge e Postgres de dev por pessoa · perfil: time de desenvolvimento.
-3. **GGVP-117** · Entrar no portal com e-mail e senha · perfil: todos. (Refinada; no Jira está no épico GGVP-13 e ainda com o nome do Lucas.)
-4. **GGVP-96** · Perfis e permissões · perfil: todos. (Refinada; no Jira está no épico GGVP-13 e ainda com o nome do Lucas.)
+3. **GGVP-117** · Entrar no portal com e-mail e senha · perfil: todos. (Refinada; no Jira, no épico GGVP-2 desde 07/10.)
+4. **GGVP-96** · Perfis e permissões · perfil: todos. (Refinada; no Jira, no épico GGVP-2 desde 07/10.)
 5. **GGVP-129** · Modelo de dados do portal: tabelas de todos os épicos, RLS, travas no banco e LGPD · perfil: time de desenvolvimento. (Criada na revisão de 07/10 para dar história ao modelo feito em 05/10; no Jira, em "Tarefas pendentes".)
+6. **GGVP-126** · Homologação com usuários e dados de teste · perfil: o Lucas testando, e todos. Do CA1 ao CA5; o CA6 espera a lista das pessoas do escritório (abaixo).
 
 ## Travadas
 
 - **GGVP-108** · Identificadores do caso: CPF, NB, protocolo e CNJ: ainda em "Tarefas pendentes"; revisa o Fernando.
+- **GGVP-126 CA6** · O login de cada pessoa do escritório: espera a lista com nome, e-mail e perfis, pedida ao Lucas em 07/10.
 - **GGVP-105** · Motor de fluxo: ainda em "Tarefas pendentes"; Q1 (limites de cobrança) e as perguntas de 29/09 ao Lucas; revisa o Fernando.
 
 ## Fora do escopo

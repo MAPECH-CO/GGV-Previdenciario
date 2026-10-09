@@ -1,5 +1,5 @@
 # Barra o PR quebrado (GGVP-118, CA5): typecheck, lint, testes e varredura de segredos.
-# Qualquer passo falhando, o job falha. O Playwright entra aqui quando houver tela que dependa do servidor.
+# Qualquer passo falhando, o job falha. Os testes de tela (Playwright) rodam num job próprio (GGVP-128).
 name: CI
 
 on:
@@ -30,16 +30,51 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
 
+  telas:
+    name: Testes de tela (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # O Chromium que o próprio Playwright instala, como na máquina de cada dev (kit/entrega-09-10.md).
+      - run: pnpm --filter @ggv/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @ggv/web exec playwright test --reporter=list,html
+      - name: Relatório do Playwright, quando falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-playwright
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
   segredos:
     name: Varredura de segredos
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read # a ação lista os commits do PR
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      # A ação do gitleaks pede licença em repositório de organização (MAPECH-CO, 08/10); a ferramenta é livre e faz a
+      # mesma varredura: os commits do PR, ou os do push na main.
+      - name: gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSAO: 8.18.4
+          INTERVALO: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${VERSAO}"
+          curl -sSfLO "${base}/gitleaks_${VERSAO}_linux_x64.tar.gz"
+          curl -sSfLO "${base}/gitleaks_${VERSAO}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${VERSAO}_checksums.txt"
+          tar -xzf "gitleaks_${VERSAO}_linux_x64.tar.gz" gitleaks
+          # Push que cria o ramo não tem "antes": varre a história até o commit.
+          [[ "$INTERVALO" == 0000000* ]] && INTERVALO="$GITHUB_SHA"
+          ./gitleaks detect --source . --redact --verbose --log-opts="$INTERVALO"
