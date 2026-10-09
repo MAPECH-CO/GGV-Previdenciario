@@ -82,3 +82,19 @@ Cada tela SHALL mostrar o próprio título na aba do navegador: "Início · GGV 
 - **Dado** cada tela (`/`, `/tokens` e um caminho sem tela)
 - **Quando** abro
 - **Então** a aba do navegador mostra o título dela: "Início · GGV Previdenciário", "Tokens do Figma · GGV Previdenciário" e "Tela não construída · GGV Previdenciário"
+
+### Requirement: CA10 · Data mostrada é o dia de Brasília
+Toda data de um momento (aprovado em, concluído em, enviado em) SHALL aparecer no dia de Brasília, também das 21h à meia-noite, quando em UTC já é o dia seguinte. Data pura (prazo, data de pagamento) SHALL aparecer como está, sem conversão de fuso. Regra única `diaLocal` em `@ggv/campos` (revisão de 08/10, M1).
+
+#### Scenario: CA10 · Concluído às 22h30
+- **Dado** uma prestação concluída em 08/10 às 22h30 de Brasília (09/10 01h30 em UTC)
+- **Quando** abro a tela
+- **Então** aparece 08/10, e o prazo de pagamento 20/10 continua 20/10
+
+### Requirement: CA11 · Benefício aparece pelo nome, nunca pelo código
+Todo benefício mostrado na tela ou na linha da Central SHALL aparecer pelo nome do catálogo ("Pensão por Morte", "Auxílio-Acidente"), nunca pelo código ("pensao morte", "auxilio acidente"). Sem benefício, "a definir". Regra única `nomeDoBeneficio` em `@ggv/contratos`, ao lado de `ROTULO_BENEFICIO`, no servidor e na tela (revisão de 08/10, L1).
+
+#### Scenario: CA11 · Conferência da pensão
+- **Dado** um caso de pensão por morte esperando a Sênior
+- **Quando** ela abre a Central e a conferência
+- **Então** lê "Pensão por Morte" nas duas, e não "pensao morte"

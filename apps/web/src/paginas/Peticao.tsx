@@ -4,9 +4,10 @@ import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
 import { AprovarPeticao, faltaCompletar, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
+import { diaLocal } from '@ggv/campos'
+import { nomeDoBeneficio } from '@ggv/contratos'
 
-const rotuloBeneficio = (b: string | null) => (b ? b.replaceAll('_', ' ') : 'a definir')
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 const ROTULO_OPCAO: Record<keyof OpcoesDoPedido, string> = {
   tutelaUrgencia: 'Pedir tutela de urgência',
   precedentes: 'Usar precedentes do acervo',
@@ -502,7 +503,7 @@ export function Peticao({ casoId }: { casoId: string }) {
       </a>
       <h1 className={styles.titulo}>Petição inicial</h1>
       <p className={styles.subtitulo}>
-        {x.cliente} · {rotuloBeneficio(x.beneficio)}
+        {x.cliente} · {nomeDoBeneficio(x.beneficio)}
       </p>
 
       {feito && (

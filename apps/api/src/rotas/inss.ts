@@ -11,6 +11,7 @@ import {
   SEGUNDOS_SENHA,
   TIPOS_COMPROVANTE,
   TarefaDaCentral,
+  nomeDoBeneficio,
   type Erro,
   type SenhaDoCofre,
 } from '@ggv/contratos'
@@ -137,7 +138,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
           passo: l.tarefa.passo,
           cliente: l.cliente,
           titulo: l.tarefa.titulo,
-          detalhe: (l.beneficio ?? 'benefício a definir').replaceAll('_', ' '),
+          detalhe: l.beneficio ? nomeDoBeneficio(l.beneficio) : 'benefício a definir',
           tela: l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.tarefa.casoId) : null,
           prazo: l.tarefa.prazo,
           // Pensão por morte em destaque na fila da Sênior (regra dos 90 dias do óbito; resposta do revisor de 05/10).
@@ -181,7 +182,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
           a.diasUteis < 0
             ? `Exigência ${a.origem === 'juizo' ? 'do juiz' : 'do INSS'} vencida: pedir dilação ou registrar a perda`
             : `Exigência ${a.origem === 'juizo' ? 'do juiz' : 'do INSS'} perto do prazo: ${a.diasUteis === 0 ? 'vence hoje' : a.diasUteis === 1 ? '1 dia útil' : `${a.diasUteis} dias úteis`}`,
-        detalhe: (a.beneficio ?? 'benefício a definir').replaceAll('_', ' '),
+        detalhe: a.beneficio ? nomeDoBeneficio(a.beneficio) : 'benefício a definir',
         tela: TELA_DO_PASSO[a.origem === 'juizo' ? 'D3a.02' : 'D2.05'](a.casoId),
         prazo: a.prazo,
         urgente: true,

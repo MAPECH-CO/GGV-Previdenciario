@@ -53,3 +53,9 @@ export function isoParaData(iso: unknown): string | null {
 export function hojeIso(agora: Date = new Date()): string {
   return new Date(agora.getTime() - agora.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
+
+/** O dia de um momento no fuso local (o do escritório), em "aaaa-mm-dd" (GGVP-120 CA10). A data pura (sem hora) fica
+ * como está: `new Date('2026-10-20')` é meia-noite UTC e voltaria um dia. Nunca corte o momento com `slice(0, 10)`. */
+export function diaLocal(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : hojeIso(new Date(iso));
+}

@@ -58,6 +58,8 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     render(<Conferencia casoId={CASO} />)
     expect(await screen.findByText('Suficiente')).toBeTruthy()
     expect(screen.getByText('✓ Data de início')).toBeTruthy()
+    // GGVP-120 CA11: o benefício pelo nome do catálogo, não pelo código.
+    expect(screen.getByText('Antônia Lima (exemplo) · Pensão por Morte')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }))
     expect((await screen.findByRole('status')).textContent).toContain('protocolo e a decisão de perícia foram abertos')
     expect(fetch).toHaveBeenLastCalledWith(`/api/casos/${CASO}/conferencia`, expect.objectContaining({ body: JSON.stringify({ decisao: 'aprovar' }) }))

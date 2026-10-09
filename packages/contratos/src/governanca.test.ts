@@ -68,6 +68,14 @@ describe('configuração do escritório (GGVP-104)', () => {
     expect(PublicarKit.safeParse(repetido).error?.issues.map((i) => i.message)).toEqual(['Cada documento entra uma vez no kit'])
     expect(BENEFICIOS.every((b) => ROTULO_BENEFICIO[b])).toBe(true)
   })
+
+  it('GGVP-120 CA11 · o benefício aparece pelo nome do catálogo; fora dele, sem "_"; vazio, "a definir"', async () => {
+    const { nomeDoBeneficio } = await import('./governanca.ts')
+    expect(nomeDoBeneficio('pensao_morte')).toBe('Pensão por Morte')
+    expect(nomeDoBeneficio('auxilio_acidente')).toBe('Auxílio-Acidente')
+    expect(nomeDoBeneficio('curatela_civel')).toBe('curatela civel')
+    expect(nomeDoBeneficio(null)).toBe('a definir')
+  })
 })
 
 describe('travaDoParecer (G17, G18; GGVP-109 e GGVP-33)', () => {
