@@ -41,6 +41,15 @@ export const O_QUE_LEVAR = ['Documento oficial com foto do cliente (RG ou CNH)',
 /** GGVP-98 CA6 (Lucas, Q24): quem leva o cliente ao banco é do Atendimento. */
 const ATENDIMENTO = ['atendimento', 'atendimento_lider']
 
+/**
+ * GGVP-98 CA9: quando o Financeiro confirmou o recebimento de cada caso, depois da ida ao banco. É o dinheiro na mão, para o
+ * painel Financeiro (GGVP-78) e os Resultados (GGVP-75); o "Receber e lançar" vem antes e ainda não é.
+ */
+export async function recebimentosConfirmados(banco: Banco): Promise<Map<string, Date>> {
+  const eventos = await banco.select({ alvo: eventoAuditoria.alvo, quando: eventoAuditoria.quando }).from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'recebimento_confirmado'))
+  return new Map(eventos.map((e) => [e.alvo.replace(/^caso:/, ''), e.quando]))
+}
+
 type Opcoes = { banco: Banco; agora?: () => Date }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -49,8 +58,20 @@ const FUSO = 'America/Sao_Paulo'
 const dataBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
 const horaBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }).format(d)
 
+export const MSG_OUTRA_ADVOGADA = 'A prestação de contas é da advogada responsável pelo caso.'
+
 export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const bloqueio = registrarBloqueio(banco, agora)
+  /** GGVP-44 CA13: com advogada responsável, a prestação é só dela; o Financeiro e o caso sem responsável seguem como estão. */
+  async function deOutraAdvogada(pedido: FastifyRequest, casoId: string) {
+    if (pedido.perfilAtivo !== 'advogada') return false
+    const [c] = await banco.select({ responsavel: caso.advogadaResponsavelId }).from(caso).where(eq(caso.id, casoId))
+    if (!c?.responsavel || c.responsavel === pedido.usuario!.id) return false
+    await banco
+      .insert(eventoAuditoria)
+      .values({ quem: pedido.usuario!.id, acao: 'acesso_negado', alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, perfil: 'advogada', motivo: 'advogada_responsavel', casoId } })
+    return true
+  }
   /** O histórico na mesma transação da mudança: os dois ficam, ou nenhum. */
   const noHistorico = (tx: Tx, quem: string, acao: string, pedido: FastifyRequest, casoId: string, detalhe: Record<string, unknown> = {}) =>
     tx.insert(eventoAuditoria).values({ quem, acao, alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, ...detalhe } })
@@ -100,6 +121,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const casoId = pedido.params.id
     const c = await clienteDo(casoId)
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
+    if (await deOutraAdvogada(pedido, casoId)) return negar(resposta, 403, MSG_OUTRA_ADVOGADA)
     const def = await deferimento(casoId)
     const [carta] = def?.documentoId ? await banco.select({ id: documento.id, nome: documento.nomeOriginal }).from(documento).where(eq(documento.id, def.documentoId)) : []
     const [ct] = await banco.select({ percentual: contrato.percentualHonorarios }).from(contrato).where(eq(contrato.casoId, casoId)).orderBy(desc(contrato.criadoEm)).limit(1)
@@ -136,6 +158,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
   // CA1, CA5, CA6: concluir grava a versão com o OK da advogada e abre o recebimento do Financeiro (o aviso vem depois, GGVP-98 CA4).
   app.post<{ Params: { id: string } }>('/api/casos/:id/prestacao', { preHandler: exigir(banco, 'prestacao.dar_ok', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
+    if (await deOutraAdvogada(pedido, casoId)) return negar(resposta, 403, MSG_OUTRA_ADVOGADA)
     const entrada = SalvarPrestacao.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const def = await deferimento(casoId)

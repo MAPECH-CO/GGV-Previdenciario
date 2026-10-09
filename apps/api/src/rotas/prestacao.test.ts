@@ -14,6 +14,7 @@ import {
   MSG_ENCERRADO,
   MSG_G8,
   MSG_MESMA_PESSOA,
+  MSG_OUTRA_ADVOGADA,
   MSG_SEM_DEFERIDO,
   MSG_SEM_DESFECHO,
   MSG_SEM_IDA,
@@ -22,6 +23,7 @@ import {
   TITULO_AVISO,
   TITULO_CONFIRMAR,
   TITULO_REMARCAR,
+  recebimentosConfirmados,
 } from './prestacao.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -81,6 +83,23 @@ async function deferir() {
 }
 
 describe('GGVP-44 · prestação de contas', () => {
+  it('CA13 · com advogada responsável, só ela vê e conclui; outra advogada é recusada e fica no histórico; o Financeiro segue vendo', async () => {
+    const [outra] = await banco
+      .insert(usuario)
+      .values({ email: 'paula@exemplo.ggv', nome: 'paula', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['advogada'], trocarSenha: false })
+      .returning()
+    await banco.update(caso).set({ advogadaResponsavelId: ids.gabi }).where(eq(caso.id, casoId))
+    await deferir()
+    for (const [metodo, payload] of [['GET', undefined], ['POST', PRESTACAO]] as const) {
+      const r = await chamar('paula', metodo, '/prestacao', payload)
+      expect([r.statusCode, r.json().erro]).toEqual([403, MSG_OUTRA_ADVOGADA])
+    }
+    const negados = await banco.select().from(eventoAuditoria).where(and(eq(eventoAuditoria.quem, outra.id), eq(eventoAuditoria.acao, 'acesso_negado')))
+    expect(negados).toHaveLength(2)
+    expect((await chamar('julia', 'GET', '/prestacao')).statusCode).toBe(200)
+    expect((await chamar('gabi', 'POST', '/prestacao', PRESTACAO)).statusCode).toBe(201)
+  })
+
   it('sem deferimento, não há prestação', async () => {
     expect((await chamar('gabi', 'POST', '/prestacao', PRESTACAO)).json().erro).toBe(MSG_SEM_DEFERIDO)
   })
@@ -219,7 +238,10 @@ describe('GGVP-44 · ida ao banco', () => {
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(false)
     await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(true)
+    // GGVP-78: o "Receber e lançar" não é dinheiro na mão; o painel Financeiro e os Resultados contam a confirmação.
+    expect((await recebimentosConfirmados(banco)).size).toBe(0)
     expect((await chamar('julia', 'POST', '/banco/confirmacao')).statusCode).toBe(201)
+    expect([...(await recebimentosConfirmados(banco))]).toEqual([[casoId, AGORA]])
     const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
     const [ag] = await banco.select().from(agendamento)
     expect([c.fase, c.encerradoEm !== null, ag.situacao]).toEqual(['encerrado', true, 'realizado'])

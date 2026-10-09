@@ -1,13 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { formatarDecimal, isoParaData, normalizarDecimal } from '@ggv/campos'
+import { diaLocal, formatarDecimal, isoParaData, normalizarDecimal } from '@ggv/campos'
 import { FORMAS_DE_PAGAMENTO, ROTULO_FORMA_DE_PAGAMENTO, SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { Moldura } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const reais = (texto: string | null) => (texto === null ? '—' : `R$ ${formatarDecimal(Number(texto))}`)
-const dia = (iso: string | null) => (iso ? (isoParaData(iso.slice(0, 10)) ?? iso) : '—')
+const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
 
 /**
  * Prestação de contas do benefício deferido (GGVP-44, advogada). Os valores são calculados por código (CA5): a tela
@@ -163,7 +163,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
               {atual ? 'Registrar nova versão' : 'Concluir a prestação'}
             </button>
           </div>
-          <p className={styles.dica}>Ao concluir, o Financeiro recebe e o Atendimento agenda a ida ao banco, ao mesmo tempo.</p>
+          <p className={styles.dica}>Ao concluir, o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.</p>
         </form>
       )}
     </Moldura>

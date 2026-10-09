@@ -1,10 +1,11 @@
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, eventoAuditoria, fichaRecepcao, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { MSG_FORA_DA_LISTA } from './mensagens.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -28,7 +29,7 @@ const novaFicha = (telefone: string, email?: string) =>
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['gabi', 'advogada'], ['marcos', 'financeiro']] as const)
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['gabi', 'advogada'], ['marcos', 'financeiro'], ['dora', 'documentacao'], ['igor', 'juridico_adm']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -70,21 +71,30 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
 
     const pedido = await json('ana', 'POST', url, { dados, verificacao: { como: 'presencial', contratoNovo: true } })
     expect(pedido).toMatchObject({ fichaId: id, dados, verificacao: { como: 'presencial', contratoNovo: true }, pediu: 'ana' })
-    expect((await chamar('marcos', 'GET', url)).statusCode).toBe(403)
+    // GGVP-96 (LGPD, minimização): quem pede ou confirma e o Financeiro, que repassa; a Documentação e o Jurídico adm, não.
+    expect(await json('marcos', 'GET', url)).toMatchObject({ atual: null, pedido: { pediu: 'ana' } })
+    for (const apelido of ['dora', 'igor']) expect((await chamar(apelido, 'GET', url)).statusCode, apelido).toBe(403)
     expect(await json('ana', 'GET', url)).toMatchObject({ atual: null, pedido: { pediu: 'ana' } })
 
     const confirmacao = `${url}/confirmacao`
     expect((await chamar('ana', 'POST', confirmacao)).statusCode).toBe(403)
     const novo = await json('eva', 'POST', confirmacao)
     expect(novo).toMatchObject({ ...dados, fichaId: id, quem: 'ana' })
+    expect(novo.avisoNaoSaiu).toBeUndefined()
     expect(await json('ana', 'GET', url)).toMatchObject({ atual: dados, pedido: null })
     const ficha = await json('ana', 'GET', `/api/fichas/${id}`)
     expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).toEqual(
       expect.arrayContaining([
-        'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de ana, segunda confirmação de eva): «—» → «Banco Exemplo · agência 0001 · conta 12345-6»',
+        'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de ana, segunda confirmação de eva)',
         'Enviou pelo Chatwoot a mensagem «Aviso de mudança dos dados» (entregue)',
       ]),
     )
+    // GGVP-96 (LGPD): o histórico da ficha vai a quem vê o caso; a Documentação e o Jurídico adm não leem banco, agência nem conta.
+    for (const apelido of ['dora', 'igor']) {
+      const vista = JSON.stringify(await json(apelido, 'GET', `/api/fichas/${id}`))
+      expect(vista, apelido).toContain('Mudou os dados bancários')
+      for (const dado of ['Banco Exemplo', '0001', '12345-6']) expect(vista, `${apelido}: ${dado}`).not.toContain(dado)
+    }
     const [aviso] = await banco.select().from(mensagem)
     expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'entregue' })
     // Sem caso perto da prestação de contas, nenhum alerta.
@@ -102,5 +112,25 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     const alertas = await banco.select().from(tarefaRecepcao)
     expect(alertas.map((t) => t.setor).sort()).toEqual(['Financeiro', 'Jurídico'])
     expect(alertas[0].dados).toMatchObject({ acao: 'Dados bancários mudaram', urgente: true })
+  })
+
+  it('sem sucesso falso: na homologação, o aviso ao telefone fora da lista de teste não sai e a confirmação devolve o motivo', async () => {
+    // Endereço e token inventados; o telefone da ficha está fora da lista, então o Chatwoot nem é chamado.
+    const espiao = vi.fn()
+    vi.stubGlobal('fetch', espiao)
+    await app.close()
+    const ambiente = { CHATWOOT_URL: 'https://chatwoot.teste', CHATWOOT_CONTA: '7', CHATWOOT_CAIXA: '9', CHATWOOT_TOKEN: 'token-de-teste', AMBIENTE: 'homologacao', CHATWOOT_PERMITIDOS: '21998760000' }
+    for (const [nome, valor] of Object.entries(ambiente)) vi.stubEnv(nome, valor)
+    app = criarServidor({ banco, agora: () => relogio })
+    vi.unstubAllEnvs()
+    const { id } = await novaFicha('11987654321')
+    const url = `/api/fichas/${id}/dados-bancarios`
+    const dados = { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }
+    await json('ana', 'POST', url, { dados, verificacao: { como: 'presencial', contratoNovo: true } })
+    expect(await json('eva', 'POST', `${url}/confirmacao`)).toMatchObject({ ...dados, avisoNaoSaiu: MSG_FORA_DA_LISTA })
+    expect(espiao).not.toHaveBeenCalled()
+    const [aviso] = await banco.select().from(mensagem)
+    expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'falhou', erro: MSG_FORA_DA_LISTA })
+    vi.unstubAllGlobals()
   })
 })

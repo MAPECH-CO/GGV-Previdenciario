@@ -16,7 +16,10 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').last().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
   await page.getByRole('button', { name: /^Marcar/ }).click()
-  await page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Ligacao Teste' }).getByRole('button', { name: 'Enviar' }).click()
+  const chatwoot = page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Ligacao Teste' })
+  // As conversas do cliente chegam depois de a janela abrir: sem esperar, o Enviar responde "Escolha a conversa".
+  await expect(chatwoot.getByRole('radiogroup', { name: 'Conversas do cliente' })).toBeVisible()
+  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
   await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Ligacao Teste')!.agendamentos[0].id,
@@ -39,8 +42,8 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
 })
 
 // GGVP-133, parte 3 · na conversa do Relacionamento, a Atendimento sobe a gravação da ligação baixada do Chatwoot. Sem a
-// chave do serviço, a transcrição segue a de exemplo do Relacionamento; o áudio de verdade fica no card.
-test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento; o áudio fica no card do cliente', async ({ page }) => {
+// chave do serviço, o servidor não transcreve a conversa de exemplo: a tela diz o motivo e o áudio de verdade fica no card.
+test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento; o áudio fica no card e, sem a chave do serviço, a tela diz o motivo', async ({ page }) => {
   await page.goto('/')
   const r = await page.request.post('/api/fichas', { data: { nome: 'Rosa Ligacao Teste', idade: 66, pretende: 'Quer saber do BPC do idoso.', telefone: '11933337788', beneficioInteresse: 'loas-idoso', outraPessoa: false } })
   expect(r.ok()).toBe(true)
@@ -55,5 +58,8 @@ test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento
   await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
   await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
   await expect(page.getByText('O áudio ficou guardado no card do cliente: ligacao-chatwoot.ogg.')).toBeVisible()
-  await expect(page.getByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeVisible()
+  await expect(page.getByText('A transcrição falhou: a transcrição está desligada (falta a chave do serviço). O áudio está guardado; nada se perdeu.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'O que a IA encontrou na conversa' })).toHaveCount(0)
+  await expect(page.locator('body')).not.toContainText('Rua Exemplo das Acácias')
 })

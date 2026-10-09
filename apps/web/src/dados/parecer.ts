@@ -11,7 +11,7 @@ import { NOMES_DO_PARECER, motivoParaNaoAprovarDispensa, motivoParaNaoPedirDispe
 import {
   comLaudo,
   dispensaEmVigor,
-  doJuridico,
+  registraSaude,
   lerDocumentoSimulado,
   lido,
   montarAnalise as analisarDocumentos,
@@ -43,6 +43,7 @@ import type { Ficha, Processo, Tarefa } from './tipos.ts'
 
 export {
   doJuridico,
+  registraSaude,
   type AnaliseDaIA,
   type Comparacao,
   type DocumentoAnalisado,
@@ -289,7 +290,7 @@ export async function obterParecer(processoId: string, visao: Visao): Promise<Pa
 export async function registrarParecer(processoId: string, pedido: PedidoDeParecer, quem: QuemRegistra): Promise<ParecerNaTela> {
   if (doServidor(processoId)) return noBanco<ParecerNaTela>(`/processos/${processoId}/parecer`, { method: 'POST', corpo: pedido })
   await esperar()
-  if (!doJuridico(quem.perfil)) throw new Error('Só o Jurídico registra o parecer médico.')
+  if (!registraSaude(quem.perfil)) throw new Error('Só o Jurídico registra o parecer médico.')
   const banco = ler()
   const caso = acharCaso(banco, processoId)
   if (!caso) throw new Error('Caso não encontrado')

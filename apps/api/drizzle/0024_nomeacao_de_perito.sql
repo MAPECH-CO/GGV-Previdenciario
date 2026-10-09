@@ -1,0 +1,2 @@
+ALTER TABLE "publicacao" DROP CONSTRAINT "publicacao_classe";--> statement-breakpoint
+ALTER TABLE "publicacao" ADD CONSTRAINT "publicacao_classe" CHECK ("publicacao"."classe" in ('andamento', 'exigencia', 'merito', 'nomeacao_perito'));

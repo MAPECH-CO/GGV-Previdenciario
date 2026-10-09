@@ -138,10 +138,10 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(p.etapas).toEqual([{ diagrama: 'D2', passo: 'D2.E3', aguardando: 'cliente entregar o documento', desde: '2026-10-03T12:00:00.000Z' }])
     // As tarefas abertas, do prazo mais perto ao sem prazo, com o setor e a tela do passo; a concluída não entra.
     expect(p.tarefas.map((t: { setor: string; titulo: string; responsavel: string | null; prazo: string | null; tela: string | null }) => [t.setor, t.titulo, t.responsavel, t.prazo, t.tela])).toEqual([
-      ['Jurídico', 'Conferir resultado da perícia', 'gabi', '2026-10-08', `/casos/${casoId}/pericia`],
+      ['Jurídico', 'Conferir resultado da perícia', 'gabi', '2026-10-08', `/casos/${casoId}/pericia/decidir`],
       ['Documentação', 'Cumprir exigência do INSS', null, null, `/casos/${casoId}/exigencia/documentos`],
     ])
-    expect(p.proximoPasso).toEqual({ oQue: 'Conferir resultado da perícia', setor: 'Jurídico', prazo: '2026-10-08', tela: `/casos/${casoId}/pericia` })
+    expect(p.proximoPasso).toEqual({ oQue: 'Conferir resultado da perícia', setor: 'Jurídico', prazo: '2026-10-08', tela: `/casos/${casoId}/pericia/decidir` })
     expect(p.documentos.map((d: { nome: string | null; tipo: string; sensivel: boolean; data: string }) => [d.nome, d.tipo, d.sensivel, d.data])).toEqual([
       ['pacote-peticao.pdf', 'pacote_peticao', false, '2026-10-03'],
       ['laudo-ortopedista.pdf', 'laudo', true, '2026-10-02'],
@@ -200,13 +200,17 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     }
   })
 
-  it('o Financeiro e o Sócio não abrem o caso, e a tentativa fica no histórico do caso', async () => {
-    for (const apelido of ['julia', 'lauro']) expect((await ver(apelido)).statusCode).toBe(403)
+  it('o Financeiro não abre o caso, e a tentativa fica no histórico do caso', async () => {
+    expect((await ver('julia')).statusCode).toBe(403)
     const negados = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'acesso_negado')
-    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([
-      [casoId, 'caso.ver'],
-      [casoId, 'caso.ver'],
-    ])
+    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([[casoId, 'caso.ver']])
+  })
+
+  it('GGVP-96 · o Sócio lê o caso, com os valores (Lucas, 07/10); sem o conteúdo médico e sem a peça', async () => {
+    const p = (await ver('lauro')).json()
+    expect([p.valores, p.saude]).toEqual([{ versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' }, null])
+    expect(p.documentos.map((d: { nome: string | null }) => d.nome)).toEqual([null, 'rg-e-cpf.pdf'])
+    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
   })
 
   it('caso que não existe ou id torto: 404', async () => {

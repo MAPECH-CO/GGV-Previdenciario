@@ -50,9 +50,18 @@ test('GGVP-74, GGVP-34 e GGVP-37 · a advogada lê a exigência, o prazo é cont
   await page.getByRole('button', { name: 'Classificar' }).click()
   await expect(page.getByRole('status')).toContainText('sem tarefa')
 
+  // GGVP-59 CA1: a advogada corrige para nomeação de perito; sem prazo no despacho, 15 dias para os quesitos.
+  await page.getByLabel('Nomeação de perito').check()
+  await page.getByLabel('Sem prazo na decisão (15 dias)').check()
+  await page.getByRole('button', { name: 'Reclassificar' }).click()
+  await expect(page.getByRole('status')).toHaveText('Nomeação de perito. Aberta a tarefa "Quesitos e assistente técnico" na Central da advogada, com o prazo.')
+
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Otávio Lima (exemplo) · Analisar exigência do juiz' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Otávio Lima (exemplo) · Ler publicação' })).toHaveCount(0)
+  // A tarefa dos quesitos abre a tela de perícias do caso, onde ficam os quesitos.
+  await page.getByRole('link', { name: 'Otávio Lima (exemplo) · Quesitos e assistente técnico' }).click()
+  await expect(page.getByRole('heading', { name: 'Perícias do caso' })).toBeVisible()
 })
 
 // Grupo 2: exigência do juiz (Paulo Reis, de exemplo, já lida e classificada).

@@ -8,7 +8,7 @@ const base: CasoParaConferencia = {
   casoId: CASO,
   cliente: 'Antônia Lima (exemplo)',
   beneficio: 'pensao_morte',
-  checklist: { cadastrado: false, completo: true, faltam: [] },
+  checklist: { cadastrado: true, completo: true, faltam: [] },
   documentos: [{ id: '11111111-1111-4111-8111-111111111111', tipo: 'rg', nome: 'RG e CPF.pdf' }],
   parecer: { resultado: 'suficiente', itens: [{ item: 'Data de início', atendido: true }], justificativaDispensa: null },
   parecerRestrito: false,
@@ -58,6 +58,8 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     render(<Conferencia casoId={CASO} />)
     expect(await screen.findByText('Suficiente')).toBeTruthy()
     expect(screen.getByText('✓ Data de início')).toBeTruthy()
+    // GGVP-120 CA11: o benefício pelo nome do catálogo, não pelo código.
+    expect(screen.getByText('Antônia Lima (exemplo) · Pensão por Morte')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }))
     expect((await screen.findByRole('status')).textContent).toContain('protocolo e a decisão de perícia foram abertos')
     expect(fetch).toHaveBeenLastCalledWith(`/api/casos/${CASO}/conferencia`, expect.objectContaining({ body: JSON.stringify({ decisao: 'aprovar' }) }))
@@ -119,9 +121,19 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     expect((await screen.findByRole('status')).textContent).toContain('voltou para o Atendimento')
   })
 
-  it('G1 · avisa quando o kit do benefício não está cadastrado', async () => {
-    servidor(base)
+  const aprovarDesligado = async () => ((await screen.findByRole('button', { name: 'Aprovar' })) as HTMLButtonElement).disabled
+
+  it('CA11 · sem kit cadastrado, Aprovar fica desligado com o motivo do G1', async () => {
+    servidor({ ...base, checklist: { cadastrado: false, completo: true, faltam: [] } })
     render(<Conferencia casoId={CASO} />)
-    expect(await screen.findByText(/Kit do benefício não cadastrado/)).toBeTruthy()
+    expect(await aprovarDesligado()).toBe(true)
+    expect(screen.getByText('Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar (G1).')).toBeTruthy()
+  })
+
+  it('CA12 · sem o contrato assinado, Aprovar fica desligado com o motivo do G1', async () => {
+    servidor({ ...base, kitAssinado: false })
+    render(<Conferencia casoId={CASO} />)
+    expect(await aprovarDesligado()).toBe(true)
+    expect(screen.getByText('Contrato não assinado (G1): o caso não tem o contrato assinado.')).toBeTruthy()
   })
 })

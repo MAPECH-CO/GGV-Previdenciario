@@ -48,15 +48,17 @@ afterEach(async () => {
 
 describe('GGVP-143 · glossário do escritório', () => {
   it('CA1 · a gestão vê o glossário; só a Sênior muda; fora da gestão, nada', async () => {
-    expect([(await glossario()).podeEditar, (await glossario('lauro')).podeEditar, (await glossario('julia')).podeEditar]).toEqual([true, false, false])
+    expect([(await glossario()).podeEditar, (await glossario('lauro')).podeEditar]).toEqual([true, false])
     expect((await chamar('gabi', 'GET', '/api/configuracao/glossario')).statusCode).toBe(403)
+    // GGVP-96: o Financeiro vê só os Resultados da Gestão; a configuração e o glossário, não.
+    expect((await chamar('julia', 'GET', '/api/configuracao/glossario')).statusCode).toBe(403)
     expect((await acrescentar({ termo: 'DCB', tipo: 'sigla' }, 'lauro')).statusCode).toBe(403)
     const { id } = await termo('LOAS')
     expect((await chamar('julia', 'PUT', `/api/configuracao/glossario/${id}`, { termo: 'Loas', tipo: 'sigla' })).statusCode).toBe(403)
     expect((await chamar('lauro', 'DELETE', `/api/configuracao/glossario/${id}`)).statusCode).toBe(403)
     expect((await termo('LOAS')).termo).toBe('LOAS')
     const negados = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acesso_negado'))
-    expect(negados.map((e) => (e.detalhe as { acao: string }).acao).sort()).toEqual(['gestao.ver', 'glossario.editar', 'glossario.editar', 'glossario.editar'])
+    expect(negados.map((e) => (e.detalhe as { acao: string }).acao).sort()).toEqual(['gestao.ver', 'gestao.ver', 'glossario.editar', 'glossario.editar', 'glossario.editar'])
   })
 
   it('CA1 · a Sênior acrescenta, corrige e tira; cada mudança fica no histórico da configuração, com o antes e o depois', async () => {
@@ -128,7 +130,9 @@ describe('GGVP-143 CA3 · o glossário nasce com os peritos e juízos que o port
     const diario = JSON.parse(await readFile(join(pasta, 'meta/_journal.json'), 'utf8')) as { entries: { tag: string }[] }
     diario.entries = diario.entries.slice(0, diario.entries.findIndex((e) => e.tag.includes('glossario')))
     await writeFile(join(pasta, 'meta/_journal.json'), JSON.stringify(diario))
-    const db = drizzle(new PGlite(), { schema: esquema })
+    // As migrações depois do glossário usam pgvector (o acervo, GGVP-141): o banco precisa da extensão, como o embutido.
+    const { vector } = await import('@electric-sql/pglite/vector')
+    const db = drizzle(new PGlite({ extensions: { vector } }), { schema: esquema })
     try {
       await migrate(db, { migrationsFolder: pasta })
       await db.insert(perito).values({ nome: 'Dra. Ana Prado (exemplo)', nomeNormalizado: 'ana prado' })

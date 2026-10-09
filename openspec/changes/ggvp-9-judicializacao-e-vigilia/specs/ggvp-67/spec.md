@@ -93,3 +93,11 @@ A tarefa SHALL aparecer na Central com o nome do cliente e "Conferir petição".
 - **Dado** a tarefa
 - **Quando** aparece na Central
 - **Então** o título é o nome do cliente + "Conferir petição"
+
+### Requirement: CA12 · Petição com "[completar]" não se aprova
+Enquanto o texto da versão tiver um marcador "[completar...]", aprovar MUST ser recusado com "O texto ainda tem [completar]: preencha antes de aprovar." (revisão de 08/10): a versão aprovada vira o PDF que vai ao juiz. A regra é a mesma na tela e no servidor.
+
+#### Scenario: CA12 · Minuta com lacuna
+- **Dado** a última versão com "valor da causa [completar]"
+- **Quando** a advogada aprova com as três marcações
+- **Então** o portal recusa, diz que falta completar, e o pacote não é gerado

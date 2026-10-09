@@ -55,6 +55,13 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true, versa
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Prestar contas (GGVP-44)', () => {
+  it('GGVP-98 · a dica diz que o Financeiro avisa o cliente e marca a ida ao banco, não o Atendimento', async () => {
+    servidor(prestacao)
+    render(<PrestarContas casoId={CASO} />)
+    expect(await screen.findByText('Ao concluir, o Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.')).toBeTruthy()
+    expect(screen.queryByText(/Atendimento agenda a ida ao banco/)).toBeNull()
+  })
+
   it('CA4, CA5 · mostra a carta, traz o percentual do contrato e a prévia calculada pelo sistema', async () => {
     servidor(prestacao)
     render(<PrestarContas casoId={CASO} />)
@@ -93,6 +100,14 @@ describe('Receber a prestação (GGVP-44, Financeiro)', () => {
     expect(await screen.findByText('Repasse ao cliente: R$ 8.641,97')).toBeTruthy()
     expect(screen.getByText(/Forma de pagamento: Pix · prazo 30\/10\/2026/)).toBeTruthy()
     expect(screen.getByText(/Caixa · acompanha: Ana/)).toBeTruthy()
+  })
+
+  // Os testes de tela rodam no fuso de Brasília (vite.config.ts).
+  it('GGVP-120 CA10 · concluída às 22h30 de Brasília mostra o dia de Brasília; o prazo, data pura, fica igual', async () => {
+    servidor({ ...prestacao, versoes: [{ ...versao1, em: '2026-10-09T01:30:00.000Z', prazoPagamento: '2026-10-20' }], podeEditar: false, podeReceber: true })
+    render(<ReceberPrestacao casoId={CASO} />)
+    expect((await screen.findByText(/Versão 1, concluída por Gabi em/)).textContent).toContain('em 08/10/2026')
+    expect(screen.getByText(/prazo 20\/10\/2026/)).toBeTruthy()
   })
 
   it('GGVP-98 CA3 · "Receber e lançar" só com "Valores conferem com o comprovante"', async () => {

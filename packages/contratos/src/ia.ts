@@ -42,3 +42,9 @@ export const ChamadaDaIa = z.object({
 export type ChamadaDaIa = z.infer<typeof ChamadaDaIa>
 export const ChamadasDaIa = z.object({ chamadas: z.array(ChamadaDaIa) })
 export type ChamadasDaIa = z.infer<typeof ChamadasDaIa>
+
+/** GGVP-22 CA6, GGVP-67 CA12: texto com o marcador "[completar...]" (da IA ou de alguém) não se aprova; regra única da tela
+ * e do servidor. Nulo quando não falta nada. */
+export function faltaCompletar(texto: string): string | null {
+  return /\[completar[^\]]*\]/i.test(texto) ? 'O texto ainda tem [completar]: preencha antes de aprovar.' : null
+}

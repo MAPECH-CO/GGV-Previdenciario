@@ -1,5 +1,5 @@
-// EXEMPLO. A conversa do D5 simulada (GGVP-76, GGVP-80): o que a gravação "ouve" e o que a IA tira de cada fala. A
-// mesma nas telas e no servidor (GGVP-138), até a transcrição de verdade (outra história). Sem microfone e sem OpenAI.
+// EXEMPLO. A conversa do D5 simulada (GGVP-76, GGVP-80): o que a gravação "ouve" e o que a IA tira de cada fala. Desde a
+// transcrição de verdade (GGVP-133), só o servidor falso dos testes das telas usa: a tela e o servidor não inventam falas.
 import type { CanalDoRegistro, ComQuem, Dito, PapelNaConversa } from '../regras/conversa.ts'
 import type { Ficha, Trecho } from './tipos.ts'
 

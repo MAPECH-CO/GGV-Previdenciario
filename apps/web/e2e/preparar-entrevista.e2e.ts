@@ -27,7 +27,7 @@ test('CA1, CA2 e CA4 · da Central da Advogada à preparação, com os pontos de
   await expect(page.getByRole('listitem').filter({ has: tarefa })).toContainText('atenção: sem senha do gov.br')
   await tarefa.click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Preparar entrevista')
-  await expect(page.getByText('A IA sugere · você confere')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Resumo da ficha' })).toBeVisible()
   const pontos = page.getByRole('region', { name: 'Pontos de atenção' })
   await expect(pontos).toContainText('Sem senha do gov.br · o Atendimento ainda não tentou renovar')
   await expect(pontos).toContainText('Benefício que o cliente procura: LOAS Idoso')

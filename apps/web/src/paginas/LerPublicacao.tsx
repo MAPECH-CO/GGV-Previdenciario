@@ -1,7 +1,15 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { formatarCnj, isoParaData, somenteDigitos } from '@ggv/campos'
-import { CLASSES_DE_ATO, ClassificarPublicacao, ROTULO_CLASSE, type PublicacaoParaLer, type SugestaoDePublicacao } from '@ggv/contratos'
+import {
+  CLASSES_DE_ATO,
+  ClassificarPublicacao,
+  PRAZO_DOS_QUESITOS,
+  PRAZO_SEM_DIAS_NA_DECISAO,
+  ROTULO_CLASSE,
+  type PublicacaoParaLer,
+  type SugestaoDePublicacao,
+} from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from './Passo.module.css'
 
@@ -11,6 +19,7 @@ const DESTINO: Record<Classe, string> = {
   andamento: 'Registrada no processo, sem tarefa.',
   exigencia: 'Aberta a tarefa "Analisar exigência do juiz", com o prazo.',
   merito: 'Aberta a tarefa "Confirmar desfecho", com o prazo do recurso.',
+  nomeacao_perito: 'Aberta a tarefa "Quesitos e assistente técnico" na Central da advogada, com o prazo.',
 }
 
 /**
@@ -163,7 +172,7 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
               <input id={ids.dias} className={styles.campo} inputMode="numeric" value={dias} disabled={semPrazo} onChange={(e) => setDias(somenteDigitos(e.target.value))} />
               <label className={styles.escolha} htmlFor={ids.sem}>
                 <input id={ids.sem} type="checkbox" checked={semPrazo} onChange={(e) => setSemPrazo(e.target.checked)} />
-                Sem prazo na decisão (5 dias)
+                Sem prazo na decisão ({classe === 'nomeacao_perito' ? PRAZO_DOS_QUESITOS : PRAZO_SEM_DIAS_NA_DECISAO} dias)
               </label>
             </>
           )}
