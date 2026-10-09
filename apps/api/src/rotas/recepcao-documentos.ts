@@ -47,7 +47,7 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento }
 
 export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos } = criarFichario(banco, agora)
+  const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const lerContrato = criarLeituraDoContrato(banco, agora)
 
@@ -80,6 +80,71 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     await banco.update(contratoRecepcao).set({ dados, atualizadoEm: agora() }).where(eq(contratoRecepcao.casoId, processoId))
   }
 
+  /**
+   * O laudo novo de qualquer canal (bloco 5d): o card, o chat, o lote do scanner e o arquivamento que confere como laudo o
+   * que chegou com outro tipo. Marca a ficha e o processo e abre "Analisar laudo novo" para o Jurídico, uma aberta por
+   * ficha (a concluída volta a abrir). Quem chama guarda a ficha.
+   */
+  async function avisarLaudoNovo(ficha: Ficha, caso: Processo | undefined, dia: string, texto: string, quem: string) {
+    ficha.laudoNovoEm = dia
+    if (caso) await marcarLaudoNoProcesso(caso.id, dia)
+    await garantirAberta({
+      id: `laudo-${ficha.id}`,
+      codigo: 'D1.21M',
+      cliente: { id: ficha.id, nome: ficha.nome },
+      acao: 'Analisar laudo novo',
+      detalhe: [caso ? nomeBeneficio(caso.beneficio) : 'sem caso em andamento', `laudo novo de ${dataCurta(dia, dia)}`].join(' · '),
+      prazo: 'hoje',
+      href: caso ? `/casos/${caso.id}/laudo-novo` : `/clientes/${ficha.id}`,
+      processoId: caso?.id,
+      setor: 'Jurídico',
+    })
+    ficha.historico.push(evento(texto, quem))
+  }
+
+  /**
+   * O tipo conferido no registro do documento (bloco 5d). O do card e do chat pela linha que o conteúdo criou (pelo hash);
+   * o do scanner, cujo arquivo fica no Drive (ainda simulado), numa linha que aponta para lá, sem conteúdo e já no Drive
+   * (decisão do Mateus, 09/10). O médico fica sensível, nunca volta atrás, e, com caso, entra como documento médico não
+   * conferido, para o parecer. Sem a linha do card (o conteúdo não chegou), nada a registrar.
+   */
+  async function registrarConferido(leitura: DocumentoLido, arquivo: Arquivo, casoId: string | null, quem: string) {
+    const conferido = { tipo: leitura.tipo, situacao: 'conferido', conferidoPor: quem, conferidoEm: agora() }
+    await banco.transaction(async (tx) => {
+      const chave = `drive:${leitura.id}`
+      const [achado] = await tx
+        .select({ id: documento.id, sensivel: documento.sensivel, casoId: documento.casoId })
+        .from(documento)
+        .where(
+          and(
+            eq(documento.pessoaId, leitura.fichaId),
+            arquivo.hash ? eq(documento.hashSha256, arquivo.hash) : eq(documento.chaveArmazenamento, chave),
+            isNull(documento.excluidoEm),
+          ),
+        )
+      let d = achado && { ...achado, casoId: achado.casoId ?? casoId }
+      if (d) await tx.update(documento).set({ ...conferido, casoId: d.casoId, sensivel: d.sensivel || ehMedico(leitura.tipo) }).where(eq(documento.id, d.id))
+      else if (arquivo.origem === 'scanner') {
+        const valores = {
+          ...conferido,
+          pessoaId: leitura.fichaId,
+          casoId,
+          sensivel: ehMedico(leitura.tipo),
+          origem: 'scanner',
+          chaveArmazenamento: chave,
+          nomeOriginal: arquivo.nome,
+          mime: 'application/pdf',
+          tamanho: 0,
+          hashSha256: '',
+          drivePendente: false,
+        }
+        d = (await tx.insert(documento).values(valores).returning({ id: documento.id, sensivel: documento.sensivel, casoId: documento.casoId }))[0]
+      }
+      const tipoMedico = TIPO_DO_DOCUMENTO_MEDICO[leitura.tipo]
+      if (d?.casoId && tipoMedico) await tx.insert(documentoMedico).values({ documentoId: d.id, tipo: tipoMedico }).onConflictDoNothing()
+    })
+  }
+
   // GGVP-17 CA6, CA7, CA11, CA13, CA14: "Conferir e enviar". Nada é apagado nem sobrescrito; o mesmo conteúdo já na pasta
   // fica marcado como repetido. Laudo marca "Laudo novo" na ficha e no processo e avisa o Jurídico; o resumo simulado não
   // é guardado (dado de saúde). A pasta do Drive é conferida nas telas, antes de chamar. A IA lê o que chegou (GGVP-81).
@@ -105,22 +170,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     const pelo = origem === 'chat' ? 'pelo chat' : 'pelo card'
     // Laudo, relatório médico e prontuário contam como laudo novo: vão à comparação do Jurídico (GGVP-95, CA4; GGVP-29, CA5).
     const laudos = novos.filter((a) => LAUDOS.includes(a.tipo) && !a.repetido)
-    if (laudos.length > 0) {
-      ficha.laudoNovoEm = dia
-      if (caso) await marcarLaudoNoProcesso(caso.id, dia)
-      await abrirTarefa({
-        id: `laudo-${randomUUID()}`,
-        codigo: 'D1.21M',
-        cliente: { id: ficha.id, nome: ficha.nome },
-        acao: 'Analisar laudo novo',
-        detalhe: [caso ? nomeBeneficio(caso.beneficio) : 'sem caso em andamento', `laudo novo de ${dataCurta(dia, dia)}`].join(' · '),
-        prazo: 'hoje',
-        href: caso ? `/casos/${caso.id}/laudo-novo` : `/clientes/${ficha.id}`,
-        processoId: caso?.id,
-        setor: 'Jurídico',
-      })
-      ficha.historico.push(evento(`Subiu laudo novo ${pelo}; enviado ao Jurídico para análise`, quem))
-    }
+    if (laudos.length > 0) await avisarLaudoNovo(ficha, caso, dia, `Subiu laudo novo ${pelo}; enviado ao Jurídico para análise`, quem)
     const outros = novos.filter((a) => !laudos.includes(a))
     if (outros.length > 0) {
       const repetidos = outros.filter((a) => a.repetido).length
@@ -183,6 +233,8 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       }
       const aviso = lote.conferirPapel ? ', com o aviso CONFERIR O PAPEL' : ''
       ficha.historico.push(evento(`Guardou ${documentos(lote.arquivos.length)} na pasta do Drive, em PDF pesquisável${aviso}`, SCANNER))
+      if (lote.arquivos.some((a) => LAUDOS.includes(a.tipo)))
+        await avisarLaudoNovo(ficha, ficha.processos[0], dia, 'Chegou laudo novo pelo scanner; enviado ao Jurídico para análise', SCANNER)
       await guardar(ficha)
     }
     const leituras = await lerArquivosNovos(ficha)
@@ -271,6 +323,8 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       l.sugerido = l.tipo
       ficha.historico.push(evento(`Corrigiu a classificação de ${l.arquivo}: a IA sugeriu ${nomeTipo(l.tipo)}; ficou ${nomeTipo(escolhas.get(l.id)!.tipo)}`, quem))
     }
+    const registrar: { leitura: DocumentoLido; arquivo: Arquivo }[] = []
+    let virouLaudo = false
     for (const l of aConferir) {
       const escolha = escolhas.get(l.id)!
       l.tipo = escolha.tipo
@@ -278,6 +332,11 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       l.situacao = saem.has(l) ? 'descartado' : 'arquivado'
       l.arquivadoEm = agora().toISOString()
       const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
+      if (arquivo && l.situacao === 'arquivado') {
+        // O que chegou com outro tipo e a pessoa conferiu como laudo também é laudo novo (bloco 5d).
+        if (LAUDOS.includes(l.tipo) && !LAUDOS.includes(arquivo.tipo)) virouLaudo = true
+        registrar.push({ leitura: l, arquivo })
+      }
       if (arquivo) {
         // O contrato assinado já chega na subpasta do processo dele (GGVP-72, GGVP-77): fica lá, mesmo com outro caso aberto.
         const doProcesso = l.tipo === 'contrato' && ficha.processos.some((x) => x.id === arquivo.local)
@@ -297,7 +356,10 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     ficha.historico.push(registro)
     const contratosLidos = arquivados.filter((l) => l.tipo === 'contrato')
     if (contratosLidos.length > 0) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato (D1.19)', quem))
+    if (virouLaudo) await avisarLaudoNovo(ficha, caso, hoje(), 'Conferiu como laudo um documento que chegou com outro tipo; enviado ao Jurídico para análise', quem)
     await guardar(ficha)
+    const casoDoServidor = ficha.processos.map((x) => x.id).find((id) => UUID.test(id)) ?? null
+    for (const r of registrar) await registrarConferido(r.leitura, r.arquivo, casoDoServidor, pedido.usuario!.id)
     // O contrato do caso esperava esta leitura: ela decide entre a conferência e a cópia (GGVP-85).
     for (const processoId of new Set(contratosLidos.map((l) => ficha.arquivos.find((a) => a.nome === l.arquivo)?.local ?? ''))) await lerContrato(processoId)
     return {

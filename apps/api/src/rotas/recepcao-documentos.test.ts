@@ -254,4 +254,33 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     expect([d.casoId, d.pessoaId, d.sensivel]).toEqual([null, fichaId, false])
     expect(await banco.select().from(documentoMedico)).toHaveLength(0)
   })
+
+  it('bloco 5d · o tipo conferido vai ao registro; o que chegou pelo scanner e foi conferido como laudo abre "Analisar laudo novo" e entra no parecer', async () => {
+    const fichaId = await lead('52998224725')
+    const [c] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()
+    await enviar(fichaId, doc('RG.pdf', 'rg', sha(PDF_RG)))
+    await conteudo(fichaId, PDF_RG)
+    const { tarefa } = await json('ana', 'POST', `/api/fichas/${fichaId}/encaminhamentos`, { motivo: 'documento', setor: 'Documentação · ADM' })
+    await json('dora', 'POST', `/api/tarefas/${tarefa.id}/lote`)
+    expect(await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, `laudo-${fichaId}`))).toEqual([])
+
+    // A Documentação confere o RG do card como certidão e o CNIS do scanner como laudo.
+    const lidos = (await json('dora', 'GET', `/api/fichas/${fichaId}/documentos-lidos`)).documentos.filter((d: { situacao: string }) => d.situacao === 'a-conferir')
+    const tipo: Record<string, string> = { rg: 'certidao', cnis: 'laudo' }
+    const documentos = lidos.map((d: { id: string; tipo: string }) => ({ id: d.id, tipo: tipo[d.tipo] ?? d.tipo, data: '2026-10-08' }))
+    expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })).toMatchObject({ arquivados: 3 })
+
+    const registros = await banco.select().from(documento).where(eq(documento.pessoaId, fichaId))
+    const [dora] = await banco.select().from(usuario).where(eq(usuario.email, 'dora@exemplo.ggv'))
+    const doCard = registros.find((d) => d.origem === 'card')!
+    expect([doCard.tipo, doCard.situacao, doCard.conferidoPor, doCard.sensivel, doCard.hashSha256]).toEqual(['certidao', 'conferido', dora.id, false, sha(PDF_RG)])
+    const laudo = registros.find((d) => d.tipo === 'laudo')!
+    expect([laudo.origem, laudo.sensivel, laudo.drivePendente, laudo.casoId]).toEqual(['scanner', true, false, c.id])
+    const [m] = await banco.select().from(documentoMedico).where(eq(documentoMedico.documentoId, laudo.id))
+    expect([m.tipo, m.confirmadoEm]).toEqual(['laudo', null])
+    const [t] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, `laudo-${fichaId}`))
+    expect([(t.dados as { acao: string }).acao, (t.dados as { setor: string }).setor, t.concluidaEm]).toEqual(['Analisar laudo novo', 'Jurídico', null])
+    expect(registros).toHaveLength(3)
+  })
 })
+

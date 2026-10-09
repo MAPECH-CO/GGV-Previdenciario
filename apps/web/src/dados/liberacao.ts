@@ -95,6 +95,8 @@ export function tarefasDeLiberar(): Tarefa[] {
   const hoje = hojeIso(agora())
   const tarefas = banco.fichas.flatMap((ficha) =>
     ficha.processos.flatMap((p) => {
+      // O caso do servidor já vem na Central pela tarefa D1.24 do servidor (bloco 5d): não repete aqui.
+      if (doServidor(p.id)) return []
       const caso = montar(banco, p.id)
       if (!caso?.naFilaDesde || caso.liberacao) return []
       const dias = diasNaFila(caso.naFilaDesde, hoje)

@@ -458,3 +458,46 @@ test('a Documentação confere o checklist incompleto de um caso do servidor; a 
   const daLia = (cobrancas as { processoId: string; tentativas: { canal: string; resultado: string }[] }[]).find((c) => c.processoId === processo.id)
   expect(daLia?.tentativas).toEqual([expect.objectContaining({ canal: 'ligacao', resultado: 'sem-resposta' })])
 })
+
+// GGVP-125, bloco 5d · o documento de qualquer canal: o comprovante que chega pelo scanner atende a cobrança aberta, e o
+// documento que a Documentação confere como laudo abre "Analisar laudo novo" para o Jurídico.
+test('o comprovante pelo scanner atende a cobrança; o documento conferido como laudo abre "Analisar laudo novo"', async ({ page, browser }) => {
+  test.setTimeout(150_000)
+  const novo = { nome: 'Lia Scanner Teste', idade: 68, pretende: 'Quer o BPC do idoso.', telefone: '11933331122', cpf: '41728139414', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
+  const { processo } = await (await page.request.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
+  await page.goto('/')
+
+  // Outro computador: a Documentação confere o checklist incompleto, e a cobrança pede o comprovante de residência.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const documentacao = await outro.newPage()
+  await entrarPelaApi(documentacao, 'documentacao@exemplo.ggv')
+  await documentacao.goto(`/casos/${processo.id}/checklist`)
+  await documentacao.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Conferido às/ })).toBeVisible()
+  await page.goto(`/casos/${processo.id}/cobranca`)
+  const pendentes = page.getByRole('list', { name: 'Documentos pendentes' })
+  await expect(pendentes).toContainText('Comprovante de residência')
+
+  // O papel do balcão passa no scanner (simulado): o comprovante e o CNIS. A Documentação confere o CNIS como laudo e arquiva.
+  const { tarefa } = await (await page.request.post(`/api/fichas/${id}/encaminhamentos`, { data: { motivo: 'documento', setor: 'Documentação · ADM' } })).json()
+  expect((await documentacao.request.post(`/api/tarefas/${tarefa.id}/lote`)).ok()).toBe(true)
+  await documentacao.goto(`/clientes/${id}/conferir-documentos`)
+  await documentacao.getByRole('button', { name: 'Reclassificar' }).click()
+  await documentacao.getByRole('combobox', { name: /Tipo de CNIS - Lia Scanner Teste/ }).selectOption('laudo')
+  await documentacao.getByRole('checkbox', { name: 'Conferi os documentos lidos pela IA' }).check()
+  await documentacao.getByRole('button', { name: 'Arquivar' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Arquivado às/ })).toBeVisible()
+  await outro.close()
+
+  // A cobrança não pede mais o comprovante; o resto continua pendente.
+  await page.reload()
+  await expect(pendentes).toContainText('Documento pessoal (RG)')
+  await expect(pendentes).not.toContainText('Comprovante de residência')
+
+  // O Jurídico recebe "Analisar laudo novo".
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Lia Scanner Teste · Analisar laudo novo' })).toBeVisible()
+})
+

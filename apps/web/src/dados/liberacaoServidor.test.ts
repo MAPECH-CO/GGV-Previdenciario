@@ -16,7 +16,7 @@ vi.mock('./servidor.ts', async (original) => ({
 const { conferirChecklist } = await import('./checklist.ts')
 const { enviarArquivos } = await import('./documentos.ts')
 const { arquivarDocumentos, documentosLidos } = await import('./leitura.ts')
-const { liberarAoJuridico, obterLiberacao, tarefasDaFilaDaSenior } = await import('./liberacao.ts')
+const { liberarAoJuridico, obterLiberacao, tarefasDaFilaDaSenior, tarefasDeLiberar } = await import('./liberacao.ts')
 const { obterParecer, registrarParecer } = await import('./parecer.ts')
 const { configurarExemplo, zerarExemplo } = await import('./servidor.ts')
 
@@ -63,5 +63,15 @@ describe('GGVP-125 · bloco 6: a primeira liberação ao Jurídico no servidor',
     await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('o parecer médico ainda não foi confirmado (G17)')
     servidor.ligado = false
     expect((await obterLiberacao('rita-exemplo-1'))?.liberacao).toBeUndefined()
+  })
+})
+
+describe('GGVP-125 · bloco 5d: "Liberar ao Jurídico" do caso do servidor vem do servidor', () => {
+  it('a cópia das telas não repete a tarefa do caso do servidor', async () => {
+    await ritaProntaParaLiberar()
+    const daRita = () => tarefasDeLiberar().filter((t) => t.processoId === 'rita-exemplo-1')
+    expect(daRita()).toHaveLength(1)
+    servidor.ligado = true
+    expect(daRita()).toEqual([])
   })
 })

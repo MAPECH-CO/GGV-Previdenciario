@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { cobrancaDocumento, contratoRecepcao, documentacaoMedica, kitDocumento, usuario } from '../banco/esquema.ts'
+import { cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_G1 } from './conferencia.ts'
@@ -30,15 +30,14 @@ async function casoDe(beneficio: string) {
   return { fichaId: ficha.id as string, processoId: processo.id as string }
 }
 const doc = (nome: string, tipo: string, hash = 'a'.repeat(64)) => ({ nome, formato: 'pdf', tamanho: 1000, tipo, hash })
-/** O contrato assinado e os cinco documentos do kit do LOAS, lidos e arquivados. */
-async function completarOKit(fichaId: string, processoId: string) {
+/** O contrato assinado e os documentos do kit do LOAS (os cinco, se nada for dito), lidos e arquivados. */
+async function completarOKit(fichaId: string, processoId: string, tipos = ['rg', 'cpf', 'comprovante-residencia', 'cadunico', 'grupo-familiar']) {
   const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
   const dados = linha.dados as { contrato: object }
   await banco.update(contratoRecepcao).set({ dados: { ...dados, contrato: { ...dados.contrato, etapa: 'leitura' } } }).where(eq(contratoRecepcao.casoId, processoId))
-  const tipos = ['rg', 'cpf', 'comprovante-residencia', 'cadunico', 'grupo-familiar']
   await json('ana', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', arquivos: tipos.map((t, i) => doc(`${t}.pdf`, t, String(i).repeat(64))) })
   const documentos = tipos.map((t) => ({ id: `${fichaId}/${t}.pdf`, tipo: t, data: '2026-10-08' }))
-  expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })).toMatchObject({ arquivados: 5 })
+  expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })).toMatchObject({ arquivados: tipos.length })
 }
 const situacoes = (c: { checklist: { itens: { tipo: string; situacao: string }[] } }) => Object.fromEntries(c.checklist.itens.map((i) => [i.tipo, i.situacao]))
 
@@ -219,3 +218,48 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
     expect(await json('ana', 'POST', `${url}/tentativas`, { canal: 'ligacao', resultado: 'sem-resposta' })).toEqual({ erro: 'A cobrança está fechada.' })
   })
 })
+
+describe('GGVP-125 · bloco 5d: o documento de qualquer canal confere as pendências', () => {
+  it('o comprovante que chega pelo lote do scanner, lido e arquivado, fecha a cobrança aberta; o registro aponta para o Drive', async () => {
+    const { fichaId, processoId } = await casoDe('loas-idoso')
+    await completarOKit(fichaId, processoId, ['rg', 'cpf', 'cadunico', 'grupo-familiar'])
+    const { conferencia } = await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    expect(conferencia.faltam).toEqual([nomeTipo('comprovante-residencia')])
+    const aberta = async () => ((await banco.select().from(cobrancaDocumento).where(eq(cobrancaDocumento.casoId, processoId)))[0].dados as { encerrada?: object }).encerrada
+
+    expect(await aberta()).toBeUndefined()
+    const { tarefa: recebimento } = await json('ana', 'POST', `/api/fichas/${fichaId}/encaminhamentos`, { motivo: 'documento', setor: 'Documentação · ADM' })
+    await json('dora', 'POST', `/api/tarefas/${recebimento.id}/lote`)
+    const { documentos } = await json('dora', 'GET', `/api/fichas/${fichaId}/documentos-lidos`)
+    const lidos = documentos.filter((d: { situacao: string }) => d.situacao === 'a-conferir')
+    expect(lidos.map((d: { tipo: string }) => d.tipo)).toEqual(['comprovante-residencia', 'cnis'])
+    const arquivar = { conferi: true, documentos: lidos.map((d: { id: string; tipo: string }) => ({ id: d.id, tipo: d.tipo, data: '2026-10-08' })) }
+    expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, arquivar)).toMatchObject({ arquivados: 2 })
+
+    // A cobrança fecha sozinha quando nada mais falta (a leitura do servidor confere).
+    await json('ana', 'GET', `/api/processos/${processoId}/cobranca`)
+    expect(await aberta()).toBeTruthy()
+    // O papel está no Drive (simulado): o registro aponta para lá, conferido, e não vai ao Drive de novo.
+    const doScanner = (await banco.select().from(documento).where(eq(documento.pessoaId, fichaId))).filter((d) => d.origem === 'scanner')
+    expect(doScanner.map((d) => [d.tipo, d.situacao, d.drivePendente, d.sensivel, d.chaveArmazenamento.startsWith('drive:'), d.casoId])).toEqual([
+      ['comprovante-residencia', 'conferido', false, false, true, processoId],
+      ['cnis', 'conferido', false, false, true, processoId],
+    ])
+  })
+
+  it('o checklist conferido completo abre "Liberar ao Jurídico" para a Documentação, uma só; a liberação fecha', async () => {
+    const { fichaId, processoId } = await casoDe('loas-idoso')
+    const liberar = () => banco.select().from(tarefa).where(and(eq(tarefa.casoId, processoId), eq(tarefa.passo, 'D1.24')))
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    expect(await liberar()).toEqual([])
+
+    await completarOKit(fichaId, processoId)
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    expect((await liberar()).map((t) => [t.titulo, t.perfilDono, t.concluidaEm])).toEqual([['Liberar ao Jurídico', 'documentacao', null]])
+
+    expect(await json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })).toEqual({ ok: true })
+    expect((await liberar())[0].concluidaEm).not.toBeNull()
+  })
+})
+

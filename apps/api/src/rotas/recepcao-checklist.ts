@@ -5,7 +5,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { boasVindas, caso, cobrancaDocumento, conferenciaChecklist, contratoRecepcao, documentacaoMedica, kitDocumento } from '../banco/esquema.ts'
+import { boasVindas, caso, cobrancaDocumento, conferenciaChecklist, contratoRecepcao, documentacaoMedica, kitDocumento, tarefa } from '../banco/esquema.ts'
 import { MSG_CASO_NAO_ENCONTRADO } from '../fluxo/documentacao-medica.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
@@ -33,6 +33,8 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 const ehRepetido = (e: unknown) => [(e as { code?: string }).code, (e as { cause?: { code?: string } }).cause?.code].includes('23505')
 
 export const MSG_BOAS_VINDAS_JA_ENVIADAS = 'As boas-vindas já foram enviadas.'
+/** "Liberar ao Jurídico" (D1.24): nasce com o checklist conferido completo (bloco 5d) e fecha na liberação (GGVP-127). */
+export const PASSO_LIBERAR = 'D1.24'
 const RECUSA_DAS_BOAS_VINDAS: Partial<Record<BoasVindas['situacao'], string>> = {
   enviada: MSG_BOAS_VINDAS_JA_ENVIADAS,
   'ja-era-cliente': 'Já era cliente: as boas-vindas não vão.',
@@ -153,9 +155,14 @@ export function registrarRotasRecepcaoChecklist(app: FastifyInstance, { banco, a
     const conferencia: ConferenciaDoChecklist = { processoId: processo.id, quando: agora().toISOString(), completo: checklist.completo, faltam: checklist.faltam }
     const abriu = await banco.transaction(async (tx) => {
       await tx.insert(conferenciaChecklist).values({ casoId: processo.id, dados: conferencia })
-      if (conferencia.faltam.length === 0) return false
-      // Uma cobrança aberta por caso: a trava do caso segura outra conferência ao mesmo tempo.
+      // Uma cobrança aberta por caso e uma "Liberar ao Jurídico" por caso: a trava do caso segura outra conferência ao mesmo tempo.
       await tx.select({ id: caso.id }).from(caso).where(eq(caso.id, processo.id)).for('update')
+      if (conferencia.faltam.length === 0) {
+        // Bloco 5d: completo, "Liberar ao Jurídico" (D1.24) nasce no servidor para a Documentação; a liberação fecha.
+        const [ja] = await tx.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, processo.id), eq(tarefa.passo, PASSO_LIBERAR))).limit(1)
+        if (!ja) await tx.insert(tarefa).values({ casoId: processo.id, passo: PASSO_LIBERAR, titulo: 'Liberar ao Jurídico', perfilDono: 'documentacao' })
+        return false
+      }
       const doCasoAgora = await tx.select({ dados: cobrancaDocumento.dados }).from(cobrancaDocumento).where(eq(cobrancaDocumento.casoId, processo.id))
       if (doCasoAgora.some((c) => !(c.dados as Cobranca).encerrada)) return false
       const cobranca: Cobranca = { processoId: processo.id, fichaId: ficha.id, conferenciaEm: conferencia.quando, abertaEm: hoje(), tentativas: [], decisoes: [] }
