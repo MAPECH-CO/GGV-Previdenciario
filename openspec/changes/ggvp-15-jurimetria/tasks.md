@@ -95,3 +95,45 @@
 - [ ] 5.9 CA1 · Ligar o perito direto na perícia judicial a partir da publicação.
 - [ ] 5.10 CA2 · A sobreposição da página do caso lendo do servidor, com a taxa por benefício e por CID.
 - [ ] 5.11 CA2, CA7 · A pergunta no chat ("Como o perito avalia?").
+
+## GGVP-149 · Gestão completa: vara, tempo até a sentença, motivos mais comuns e tempo médio até o dinheiro
+
+- [x] 9.1 Contrato em `packages/contratos/src/resultados.ts`: `PainelDeResultados` ganha `motivos` (indeferimento e derrota, cada um com o motivo e os casos) e os `totais` deixam o `diasAteReceber`, que vira indicador; verifica com `pnpm --filter @ggv/contratos test` e o typecheck.
+- [x] 9.2 CA2, CA3, CA4 · Testes em `apps/api/src/fluxo/resultados.test.ts`: o tempo até a sentença (média, sem protocolo fica fora, por recorte), os motivos (ordem, texto do INSS, sem o texto livre, "sem motivo registrado") e o tempo até o dinheiro pela média, entre os indicadores.
+- [x] 9.3 CA2, CA3, CA4 · Cálculo em `apps/api/src/fluxo/resultados.ts`; o primeiro protocolo da inicial sai de uma função de `apps/api/src/fluxo/juizo.ts`, a mesma que o juízo usa; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.4 CA5 · Teste da rota em `apps/api/src/rotas/gestao.test.ts`: a líder do Atendimento abre o painel, recebe os tempos e as taxas e `totais` nulo; verifica com `pnpm --filter @ggv/api test`.
+- [x] 9.5 CA2, CA3, CA4 · Tela "Resultados" (`apps/web/src/paginas/Resultados.tsx`): o cartão "Motivos mais comuns" e os tempos entre os indicadores; teste Vitest em `Resultados.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 9.6 Playwright: o Sócio vê os motivos mais comuns na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 9.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 9.8 CA1 · Recorte "Vara" pela vara conferida no caso (o #27 entrou na main durante a história): `RECORTES` no contrato, o grupo em `apps/api/src/fluxo/resultados.ts`, teste no cálculo e no Playwright; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/web e2e`.
+
+## GGVP-150 · Chance de êxito pelos casos parecidos, com a cor, o que falta saber e o histórico
+
+- [x] 10.1 CA2, CA6 · Contrato: `ChanceDeExito` ganha `cor`, `sugereNaoPegar` e `faltaSaber` (`packages/contratos/src/inss.ts`); ação `chance.ver` (advogada, Sênior e Sócio) e matriz versão 27 (a 26 ficou com a decisão da cobrança, #22), com a impressão digital nova no teste; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 10.2 CA2, CA4 · Regras em `apps/api/src/fluxo/chance.ts`: `corDaChance` (limites 15 e 50 incluídos no amarelo) e `oQueFaltaSaber`; teste em `chance.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 10.3 CA4, CA5, CA6 · Rota `POST /api/casos/:id/chance` em `apps/api/src/rotas/conferencia.ts`: pede `chance.ver`, devolve a cor e o que falta saber, e o histórico guarda os casos usados; a decisão da conferência guarda a chance no histórico; teste em `conferencia.test.ts`.
+- [x] 10.4 CA2, CA3, CA4, CA6 · Tela da conferência (`apps/web/src/paginas/Conferencia.tsx`): a cor, a sugestão abaixo de 15% sem bloquear, o que falta saber, e a chance só para quem tem `chance.ver`; teste Vitest.
+- [x] 10.5 Playwright: a Sênior vê a chance com a cor e o que falta saber na conferência.
+- [x] 10.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 10.7 CA1 · Os outros fatores dos casos parecidos (provas, perito ou juízo, motivos), depois da resposta do Lucas no cartão (09/10).
+
+## GGVP-151 · Chance de êxito na entrevista, na recomendação da perícia, no "Vale recorrer?" e na petição
+
+- [x] 11.1 CA1, CA5 · `GET /api/chance?beneficio=` em `apps/api/src/rotas/conferencia.ts` (a mesma conta da conferência, sem caso, com `chance.ver`; o perito, o juízo e o parecer no que falta saber); teste em `conferencia.test.ts`.
+- [x] 11.2 Componente `apps/web/src/componentes/ChanceDoCaso.tsx`: o cartão da chance que hoje está na conferência (cor, sugestão abaixo de 15%, o que falta saber, fatores da IA), só para quem tem `chance.ver`; a conferência passa a usá-lo; teste Vitest.
+- [x] 11.3 CA1 · Definir o benefício (`apps/web/src/paginas/DefinirBeneficio.tsx`): a chance do benefício escolhido; teste Vitest.
+- [x] 11.4 CA2 · Recomendação da perícia (`apps/web/src/paginas/Pericias.tsx`): o cartão da chance do caso; teste Vitest.
+- [x] 11.5 CA4 · Petição (`apps/web/src/paginas/Peticao.tsx`): o cartão da chance fora da minuta; teste de que a chance não vai ao pedido da petição à IA (`apps/api/src/rotas/peticao.test.ts`).
+- [x] 11.6 Playwright: a advogada vê a chance na petição; o Atendimento não.
+- [x] 11.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 11.8 CA3 · A chance no "Vale recorrer?", depois da resposta do Lucas no cartão (09/10).
+
+## GGVP-152 · Perfil do perito laudo a laudo, por benefício, e o perito nomeado ligado à perícia
+
+- [x] 12.1 CA1 · `juntarLaudos` em `apps/api/src/rotas/pericia.ts`: ao salvar, relê os laudos guardados e junta os novos pelo id; teste em `pericia.test.ts`.
+- [x] 12.2 CA2 · O laudo guarda o benefício do processo (`apps/web/src/regras/periciaNoCaso.ts`, `LaudoDoPerfil`) e o perfil ganha `porBeneficio` (`apps/web/src/dados/peritos.ts`); teste em `dados/pericia.test.ts`.
+- [x] 12.3 CA2 · Overlay do perito (`apps/web/src/componentes/JurimetriaPerito.tsx`): os favoráveis por benefício; teste Vitest.
+- [x] 12.4 CA4 · Fora do Jurídico, o servidor zera também o `porBeneficio` (`visao` em `rotas/pericia.ts`); teste em `pericia.test.ts`.
+- [x] 12.5 CA3 · Na classificação da nomeação (`apps/api/src/rotas/publicacoes.ts`), o perito reconhecido liga a perícia aberta do mesmo tipo; teste em `publicacoes.test.ts`.
+- [x] 12.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 12.7 CA2 · O recorte por CID, depois da resposta do Lucas no cartão (09/10).

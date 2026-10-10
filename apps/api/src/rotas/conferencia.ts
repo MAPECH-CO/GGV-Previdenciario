@@ -30,13 +30,16 @@ import {
   fichaAtendimento,
   kitDocumento,
   parecerMedico,
+  pericia,
   pessoa,
   processoAcervo,
   resultadoInss,
   tarefa,
   usuario,
 } from '../banco/esquema.ts'
-import { REGRA_DA_CHANCE, calcularChance } from '../fluxo/chance.ts'
+import { REGRA_DA_CHANCE, calcularChance, corDaChance, oQueFaltaSaber } from '../fluxo/chance.ts'
+import { juizoDoCaso } from '../fluxo/juizo.ts'
+import { NO_SERVIDOR } from './recepcao.ts'
 import type { ComoSugerir, Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
@@ -204,6 +207,9 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     if (!(await esperandoConferencia(banco, casoId))) return negar(resposta, 409, MSG_NAO_ESPERA)
     const quem = pedido.usuario!.id
     const base = { casoId, passo: 'D2.01', tipo: 'aprovacao_inss', decididoPor: quem, perfil: pedido.perfilAtivo!, decididoEm: agora() }
+    // GGVP-150 CA5: a decisão fica no histórico com a chance daquele momento e os casos usados.
+    const { conta, baseEm, casosUsados } = await contaDoCaso(dados.beneficio)
+    const chance = { porcentagem: conta.porcentagem, casos: conta.casos, cor: corDaChance(conta.porcentagem), baseEm, casosUsados }
     const concluirD201 = (tx: Banco) =>
       tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.01'), isNull(tarefa.concluidaEm)))
 
@@ -221,7 +227,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
         await tx.update(caso).set({ fase: 'administrativa', atualizadoEm: agora() }).where(eq(caso.id, casoId))
         await concluirD201(tx as unknown as Banco)
       })
-      await historico(quem, 'caso_aprovado_para_inss', pedido, `caso:${casoId}`)
+      await historico(quem, 'caso_aprovado_para_inss', pedido, `caso:${casoId}`, { chance })
       return resposta.code(201).send({ ok: true, situacao: 'aprovado' })
     }
 
@@ -239,7 +245,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       await tx.update(caso).set({ fase: 'atendimento', atualizadoEm: agora() }).where(eq(caso.id, casoId))
       await concluirD201(tx as unknown as Banco)
     })
-    await historico(quem, 'caso_reprovado_na_conferencia', pedido, `caso:${casoId}`, { temPrazo: Boolean(prazo) })
+    await historico(quem, 'caso_reprovado_na_conferencia', pedido, `caso:${casoId}`, { temPrazo: Boolean(prazo), chance })
     return resposta.code(201).send({ ok: true, situacao: 'reprovado' })
   })
 
@@ -321,16 +327,52 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
   })
 
   // GGVP-131 (recorte de 07/10): a chance de êxito na conferência. O número vem do código, a partir dos desfechos
-  // conferidos do acervo com o mesmo benefício; a IA lê o caso e explica os fatores. Fica no histórico (CA10).
-  app.post<{ Params: { id: string } }>('/api/casos/:id/chance', daSenior, async (pedido, resposta) => {
+  // conferidos do acervo com o mesmo benefício; a IA lê o caso e explica os fatores. Fica no histórico (CA10), com os
+  // casos usados (GGVP-150 CA5). Veem a advogada, a Sênior e o Sócio (GGVP-150 CA6).
+  app.post<{ Params: { id: string } }>('/api/casos/:id/chance', { preHandler: exigir(banco, 'chance.ver', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const quem = pedido.usuario!.id
-    const chance = await chanceDoCaso(casoId, pedido.perfilAtivo, quem)
-    if (!chance) return negar(resposta, 404, 'Caso não encontrado.')
+    const resultado = await chanceDoCaso(casoId, pedido.perfilAtivo, quem)
+    if (!resultado) return negar(resposta, 404, 'Caso não encontrado.')
+    const { chance, casosUsados } = resultado
     const { casos, porcentagem, baseEm, fatores } = chance
-    await historico(quem, 'chance_mostrada', pedido, `caso:${casoId}`, { casos, porcentagem, baseEm, chamada: fatores?.chamadaId ?? null })
+    await historico(quem, 'chance_mostrada', pedido, `caso:${casoId}`, { casos, porcentagem, baseEm, casosUsados, chamada: fatores?.chamadaId ?? null })
     return chance
   })
+
+  // GGVP-151 CA1: na entrevista ainda não há caso; a chance sai pelo benefício escolhido, sem a IA. O que falta saber é
+  // tudo o que só o caso diria: perito, juízo e parecer médico.
+  app.get<{ Querystring: { beneficio?: string } }>('/api/chance', { preHandler: exigir(banco, 'chance.ver', agora) }, async (pedido, resposta) => {
+    // A entrevista usa o catálogo das telas ("loas-deficiente"); o acervo, o do portal ("bpc_loas_deficiente"). O benefício
+    // sem par no portal (rural, revisões) não tem casos parecidos ainda.
+    const escolhido = pedido.query.beneficio?.trim()
+    if (!escolhido) return negar(resposta, 400, 'Escolha o benefício.')
+    const { conta, baseEm } = await contaDoCaso(NO_SERVIDOR[escolhido] ?? escolhido)
+    const cor = corDaChance(conta.porcentagem)
+    return ChanceDeExito.parse({
+      ...conta,
+      baseEm,
+      regra: REGRA_DA_CHANCE,
+      cor,
+      sugereNaoPegar: cor === 'vermelho',
+      faltaSaber: oQueFaltaSaber({ peritoConhecido: false, juizoConhecido: false, temParecer: false, faltamNoChecklist: [] }),
+      fatores: null,
+      motivoIa: null,
+    })
+  })
+
+  /** GGVP-150 CA1, CA5: o número da chance pelo acervo conferido do mesmo benefício, com os casos usados (ids do acervo). */
+  async function contaDoCaso(beneficio: string | null) {
+    const acervo = beneficio
+      ? await banco
+          .select({ id: processoAcervo.id, desfecho: processoAcervo.desfecho, criadoEm: processoAcervo.criadoEm })
+          .from(processoAcervo)
+          .where(and(eq(processoAcervo.beneficio, beneficio), isNotNull(processoAcervo.desfechoConferidoPor)))
+      : []
+    const conta = calcularChance(acervo.map((a) => a.desfecho))
+    const baseEm = conta.casos ? new Date(Math.max(...acervo.map((a) => a.criadoEm.getTime()))).toISOString() : null
+    return { conta, baseEm, casosUsados: acervo.map((a) => a.id) }
+  }
   // Sugestão pronta (07/10): os fatores ficam prontos em segundo plano para a Sênior; a rodada não registra "mostrada".
   preparo.registrar(
     () => casosComTarefaAberta(banco, 'D2.01'),
@@ -340,14 +382,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
   async function chanceDoCaso(casoId: string, perfil: string | null, quem: string | null, como: ComoSugerir = {}) {
     const dados = await montar(casoId, perfil)
     if (!dados) return null
-    const acervo = dados.beneficio
-      ? await banco
-          .select({ desfecho: processoAcervo.desfecho, criadoEm: processoAcervo.criadoEm })
-          .from(processoAcervo)
-          .where(and(eq(processoAcervo.beneficio, dados.beneficio), isNotNull(processoAcervo.desfechoConferidoPor)))
-      : []
-    const conta = calcularChance(acervo.map((a) => a.desfecho))
-    const baseEm = conta.casos ? new Date(Math.max(...acervo.map((a) => a.criadoEm.getTime()))).toISOString() : null
+    const { conta, baseEm, casosUsados } = await contaDoCaso(dados.beneficio)
     const [indeferido] = await banco
       .select({ motivo: resultadoInss.motivoEscrito, motivoInss: resultadoInss.motivoIndeferimento })
       .from(resultadoInss)
@@ -366,7 +401,29 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       `Chance calculada pelo sistema: ${conta.porcentagem === null ? 'sem casos parecidos na casa ainda' : `${conta.porcentagem}% em ${conta.casos} casos parecidos`}`,
     ].join('\n')
     const fatores = await ia.sugerir('fatores_da_chance', { casoId, quem, conteudo, fontes: [{ tipo: 'regra', referencia: REGRA_DA_CHANCE }] }, como)
-    return ChanceDeExito.parse({ ...conta, baseEm, regra: REGRA_DA_CHANCE, fatores, motivoIa: fatores ? null : 'A IA não respondeu agora: os fatores ficam com a sua leitura.' })
+    const [comPerito] = await banco
+      .select({ id: pericia.id })
+      .from(pericia)
+      .where(and(eq(pericia.casoId, casoId), isNotNull(pericia.peritoId)))
+      .limit(1)
+    const faltaSaber = oQueFaltaSaber({
+      peritoConhecido: !!comPerito,
+      juizoConhecido: (await juizoDoCaso(banco, casoId)) !== null,
+      temParecer: !!parecer,
+      faltamNoChecklist: dados.checklist.cadastrado ? dados.checklist.faltam : [],
+    })
+    const cor = corDaChance(conta.porcentagem)
+    const chance = ChanceDeExito.parse({
+      ...conta,
+      baseEm,
+      regra: REGRA_DA_CHANCE,
+      cor,
+      sugereNaoPegar: cor === 'vermelho',
+      faltaSaber,
+      fatores,
+      motivoIa: fatores ? null : 'A IA não respondeu agora: os fatores ficam com a sua leitura.',
+    })
+    return { chance, casosUsados }
   }
 
   // G17 e GGVP-33 (Lucas, 01/10, Q14): a dispensa é de duas Sêniores diferentes. A primeira pede, com justificativa.

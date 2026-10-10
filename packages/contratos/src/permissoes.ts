@@ -25,8 +25,8 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
 // 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
-// Recepção 26. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 26
+// Recepção 26, a chance 27. Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 27
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -156,6 +156,8 @@ export const MATRIZ = {
   // responsável e o Sócio só leem.
   'recurso.ver': ['advogada', 'senior', 'socio'],
   'recurso.decidir': ['senior'],
+  // Versão 27 (GGVP-150, GGVP-131 CA10): a chance de êxito é estratégia jurídica; a advogada, a Sênior e o Sócio veem.
+  'chance.ver': ['advogada', 'senior', 'socio'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

@@ -2,11 +2,11 @@
 import { dataParaIso, validarData } from '@ggv/campos'
 import { z } from 'zod'
 
-/** GGVP-41 (CA3): a tese vem da ficha do desfecho conferida pela Sênior. */
-export const RECORTES = ['beneficio', 'perito', 'juizo', 'advogada', 'tese'] as const
+/** GGVP-149 CA1: a vara é a conferida no caso (GGVP-64 parte 2). GGVP-41 (CA3): a tese vem da ficha do desfecho conferida pela Sênior. */
+export const RECORTES = ['beneficio', 'perito', 'juizo', 'vara', 'advogada', 'tese'] as const
 export const Recorte = z.enum(RECORTES)
 export type Recorte = z.infer<typeof Recorte>
-export const ROTULO_RECORTE: Record<Recorte, string> = { beneficio: 'Benefício', perito: 'Perito', juizo: 'Juízo', advogada: 'Advogada', tese: 'Tese' }
+export const ROTULO_RECORTE: Record<Recorte, string> = { beneficio: 'Benefício', perito: 'Perito', juizo: 'Juízo', vara: 'Vara', advogada: 'Advogada', tese: 'Tese' }
 
 const data = (rotulo: string) =>
   z
@@ -67,6 +67,8 @@ export const RAIO_X = {
   ],
 } as const
 
+const MotivoComum = z.object({ motivo: z.string(), casos: z.number().int() })
+
 export const PainelDeResultados = z.object({
   periodo: z.object({ de: z.string(), ate: z.string() }),
   indicadores: z.array(Indicador),
@@ -75,8 +77,16 @@ export const PainelDeResultados = z.object({
   extincoes: z.object({ casos: z.number().int(), decididos: z.number().int(), porCausa: z.array(z.object({ causa: z.string(), casos: z.number().int() })) }),
   /** CA3: os dispensados pela Sênior contra os "Suficiente". */
   pareceres: z.object({ dispensados: z.number().int(), exitoComDispensa: Indicador, exitoComSuficiente: Indicador }),
-  /** CA4: só para quem tem `valores.ver_totais` (Sócio e Financeiro); nulo para os outros. */
-  totais: z.object({ honorariosRecebidos: z.string(), recebimentos: z.number().int(), diasAteReceber: Indicador }).nullable(),
+  /**
+   * GGVP-149 CA3: os motivos mais comuns no período, até 10 de cada. Indeferimento: o motivo que consta no sistema do
+   * INSS (nunca o texto livre da equipe). Derrota: a causa registrada no caso improcedente ou extinto sem mérito.
+   */
+  motivos: z.object({ indeferimento: z.array(MotivoComum), derrota: z.array(MotivoComum) }),
+  /**
+   * CA4: só para quem tem `valores.ver_totais` (Sócio e Financeiro); nulo para os outros. O tempo até o dinheiro é tempo,
+   * não valor: está entre os indicadores (GGVP-149 CA4, CA5).
+   */
+  totais: z.object({ honorariosRecebidos: z.string(), recebimentos: z.number().int() }).nullable(),
   /** CA5: "sem dados ainda" enquanto o escritório não tiver caso decidido no portal. */
   operacao: z.enum(['com_dados', 'sem_dados']),
   /** CA6 e GGVP-55 CA3: a base do acervo, com os que aguardam conferência fora das contas; sem acervo, "sem dados ainda". */

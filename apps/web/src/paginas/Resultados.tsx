@@ -154,6 +154,31 @@ export function Resultados({ topo }: { topo?: ReactNode }) {
           </section>
 
           <section className={styles.cartao}>
+            <h2 className={styles.cartaoTitulo}>Motivos mais comuns</h2>
+            <p className={styles.dica}>Indeferimento: o motivo que consta no sistema do INSS. Derrota: a causa registrada no caso improcedente ou extinto.</p>
+            {(
+              [
+                ['Motivos de indeferimento', painel.motivos.indeferimento, 'Nenhum indeferimento no período.'],
+                ['Motivos de derrota', painel.motivos.derrota, 'Nenhuma derrota no período.'],
+              ] as const
+            ).map(([nome, lista, vazio]) =>
+              lista.length === 0 ? (
+                <p key={nome} className={styles.dica}>
+                  {vazio}
+                </p>
+              ) : (
+                <ul key={nome} className={styles.lista} aria-label={nome}>
+                  {lista.map((m) => (
+                    <li key={m.motivo}>
+                      {m.motivo} · {casos(m.casos)}
+                    </li>
+                  ))}
+                </ul>
+              ),
+            )}
+          </section>
+
+          <section className={styles.cartao}>
             <h2 className={styles.cartaoTitulo}>Pareceres médicos dispensados</h2>
             <ul className={styles.lista} aria-label="Pareceres dispensados">
               <li>Dispensados pela Sênior no período: {painel.pareceres.dispensados}</li>
@@ -171,7 +196,6 @@ export function Resultados({ topo }: { topo?: ReactNode }) {
                   Honorários recebidos: {reais(painel.totais.honorariosRecebidos)} · {painel.totais.recebimentos}{' '}
                   {painel.totais.recebimentos === 1 ? 'recebimento' : 'recebimentos'}
                 </li>
-                <li>{texto(painel.totais.diasAteReceber, base)}</li>
               </ul>
             </section>
           )}

@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 26, digital: 'a223830e' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 27, digital: 'f46f81f1' })
   })
 
   it('GGVP-100 · só a Sênior decide se recorre; a advogada responsável e o Sócio só leem', () => {
@@ -19,6 +19,10 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('GGVP-143 · só a Sênior muda o glossário do escritório', () => {
     expect(PERFIS.filter((p) => pode(p, 'glossario.editar'))).toEqual(['senior'])
+  })
+
+  it('GGVP-150 CA6 · a chance de êxito: a advogada, a Sênior e o Sócio; o Atendimento não', () => {
+    expect(PERFIS.filter((p) => pode(p, 'chance.ver'))).toEqual(['advogada', 'senior', 'socio'])
   })
 
   it('GGVP-55 CA7 · só a Sênior confere os desfechos do acervo', () => {
@@ -180,11 +184,11 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento: 16,
       atendimento_lider: 20,
       documentacao: 9,
-      advogada: 37,
-      senior: 53,
+      advogada: 38,
+      senior: 54,
       juridico_adm: 16,
       financeiro: 7,
-      socio: 17,
+      socio: 18,
     })
   })
 })

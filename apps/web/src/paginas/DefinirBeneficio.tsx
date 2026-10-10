@@ -2,6 +2,7 @@ import { diaLocal } from '@ggv/campos'
 import { useEffect, useId, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { Campo } from '../componentes/Campo.tsx'
+import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { definirBeneficio, obterDefinicao, type Definicao } from '../dados/beneficio.ts'
@@ -262,6 +263,8 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                 </label>
                 <p className={styles.nota}>O benefício definido por você segue para o contrato (D1.16), depois do fechamento.</p>
               </section>
+              {/* GGVP-151 CA1: a chance do benefício escolhido, do servidor; ainda sem caso, pelo benefício. */}
+              {escolhido && <ChanceDoCaso key={escolhido} beneficio={escolhido} />}
 
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={parado !== null || salvando} onClick={confirmar}>
