@@ -14,7 +14,8 @@
     "usuario:criar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts criar",
     "usuario:perfis": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts perfis",
     "usuario:destravar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts destravar",
-    "homologacao:preparar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/homologacao.ts preparar"
+    "homologacao:preparar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/homologacao.ts preparar",
+    "modelos:subir": "node --experimental-strip-types src/kit/subir-modelos.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",

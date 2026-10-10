@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
+import { completarCadastro, garantirModelo } from './kit.ts'
 
 /** O convite sai pela conversa do cliente no Chatwoot: espera a conversa aparecer antes de enviar. */
 async function enviarConvite(page: Page, nome: string) {
@@ -294,27 +295,33 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
 })
 
 // GGVP-125, bloco 4b · a assinatura no banco: pelo ZapSign (simulado) e em papel na hora; outra sessão vê os dois assinados.
-/** Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. */
-async function contratoGerado(page: Page, nome: string, telefone: string, cpf: string): Promise<string> {
+/**
+ * Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. O kit é o Word do escritório (GGVP-136): pede o modelo
+ * subido pela Sênior e o endereço completo no cadastro, que a advogada completa. O ZapSign aparece porque o servidor do teste o tem
+ * ligado (`ZAPSIGN_API_TOKEN` de mentira, em playwright.config.ts).
+ */
+async function contratoGerado(page: Page, baseURL: string, nome: string, telefone: string, cpf: string): Promise<string> {
+  await garantirModelo(baseURL, 'contrato-completo-loas')
   const api = page.request
   const conferencias = { campos: true, datas: true, fichaLoas: true, codigoPenal: true }
   const novo = { nome, idade: 66, pretende: 'Quer o BPC do idoso.', telefone, beneficioInteresse: 'loas-idoso', outraPessoa: false }
   const { id } = await (await api.post('/api/fichas', { data: novo })).json()
+  await completarCadastro(baseURL, id, cpf)
   const { processo } = await (await api.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
   const gerar = `/api/processos/${processo.id}/contrato/gerar`
   const { campos } = await (await api.post(gerar, { data: { aprovados: true, conferencias, correcoes: {} } })).json()
-  const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
+  const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
   const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
   const gerado = await (await api.post(gerar, { data: { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes } })).json()
   expect(gerado.resultado).toBe('gerado')
   return processo.id
 }
 
-test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assinado fica no banco', async ({ page, browser }) => {
+test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assinado fica no banco', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000)
 
   // Pelo ZapSign: o documento, o link pelo WhatsApp e o retorno do assinado (simulado).
-  const digital = await contratoGerado(page, 'Lia Zapsign Teste', '11933331188', '48271365991')
+  const digital = await contratoGerado(page, baseURL!, 'Lia Zapsign Teste', '11933331188', '48271365991')
   await page.goto(`/contrato/${digital}/assinatura`)
   await page.getByRole('radio', { name: 'ZapSign (digital)' }).first().click()
   await page.getByRole('button', { name: 'Enviar para assinatura' }).click()
@@ -324,7 +331,7 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
   await expect(page.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
 
   // Em papel na hora (sem entrevista registrada, vale a presencial): imprimir, digitalizar e concluir.
-  const papel = await contratoGerado(page, 'Lia Papel Teste', '11933331199', '57382914682')
+  const papel = await contratoGerado(page, baseURL!, 'Lia Papel Teste', '11933331199', '57382914682')
   await page.goto(`/contrato/${papel}/assinatura`)
   await page.getByRole('radio', { name: 'Em papel na hora' }).click()
   await page.getByRole('button', { name: 'Imprimir o kit' }).click()
@@ -349,9 +356,9 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
 })
 
 // GGVP-125, bloco 4c · a leitura, a conferência e a cópia no banco: do assinado em papel à cópia entregue, visto de outra sessão.
-test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o caso segue para o checklist do benefício', async ({ page, browser }) => {
+test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o caso segue para o checklist do benefício', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000)
-  const caso = await contratoGerado(page, 'Lia Copia Teste', '11933331166', '61528394755')
+  const caso = await contratoGerado(page, baseURL!, 'Lia Copia Teste', '11933331166', '61528394755')
   for (const passo of ['impressao', 'digitalizacao', 'assinatura-em-papel']) expect((await page.request.post(`/api/processos/${caso}/contrato/${passo}`)).ok()).toBe(true)
 
   // A leitura da IA (simulada) aponta a página cortada do papel: a Atendimento confere.
