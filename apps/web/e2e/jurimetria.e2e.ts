@@ -61,6 +61,13 @@ test('GGVP-41 · a Sênior confere a ficha do desfecho do portal com a tese, e a
   await doPortal.getByRole('button', { name: 'Confere' }).click()
   await expect(page.getByRole('status')).toHaveText('Desfecho conferido.')
 
+  // GGVP-153: conferido e sem vara, o processo pede a vara em um clique, com a que o portal já conhece.
+  const falta = page.getByRole('region', { name: 'Falta completar' })
+  await expect(falta).toContainText('Vara: não identificada')
+  await falta.getByRole('group', { name: 'Vara que o portal conhece' }).getByRole('button').first().click()
+  await expect(page.getByRole('status')).toHaveText('Vara completada: o processo volta a contar nesse recorte.')
+  await expect(falta.getByText('Vara: não identificada')).toHaveCount(0)
+
   await page.goto('/gestao/resultados')
   await page.getByLabel('Recorte', { exact: true }).selectOption('tese')
   await page.getByRole('button', { name: 'Ver resultados' }).click()

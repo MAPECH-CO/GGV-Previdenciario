@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ConferirDesfecho, DESFECHOS_DO_ACERVO, FichaDoDesfecho, ROTULO_DESFECHO_DO_ACERVO } from './acervo.ts'
+import { CompletarAcervo, ConferirDesfecho, DESFECHOS_DO_ACERVO, FichaDoDesfecho, ROTULO_DESFECHO_DO_ACERVO } from './acervo.ts'
 import { PedidoDoPainel, ROTULO_RECORTE } from './resultados.ts'
 
 describe('conferência dos desfechos do acervo (GGVP-55)', () => {
@@ -31,5 +31,14 @@ describe('ficha do desfecho no acervo (GGVP-41)', () => {
 
   it('CA3 · a Gestão recorta por tese', () => {
     expect([PedidoDoPainel.parse({ recorte: 'tese' }).recorte, ROTULO_RECORTE.tese]).toEqual(['tese', 'Tese'])
+  })
+})
+
+describe('pergunta de um clique (GGVP-153)', () => {
+  it('CA1 · completa vara, juiz e tese, cada um no tamanho dele; vazio é o mesmo que não mandar', () => {
+    expect(CompletarAcervo.parse({ vara: ' 1ª Vara do JEF (exemplo) ', tese: '' })).toEqual({ vara: '1ª Vara do JEF (exemplo)', juiz: undefined, tese: undefined })
+    expect(CompletarAcervo.safeParse({ tese: 'x'.repeat(81) }).error?.issues[0].message).toBe('A tese tem até 80 caracteres')
+    expect(CompletarAcervo.safeParse({ juiz: 'x'.repeat(121) }).error?.issues[0].message).toBe('O nome do juiz tem até 120 caracteres')
+    expect(CompletarAcervo.safeParse({ vara: '  ' }).error?.issues[0].message).toBe('Escolha ou escreva o que falta.')
   })
 })

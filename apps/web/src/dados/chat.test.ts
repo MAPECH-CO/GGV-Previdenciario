@@ -1,5 +1,5 @@
 import { RespostaDoChat } from '@ggv/contratos'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { obterCaso } from './caso.ts'
 import { cancelarAcao, confirmarAcao, perguntar, tarefasCriadasPeloChat } from './chat.ts'
 import { obterPericia, recusasDoChat } from './pericia.ts'
@@ -227,5 +227,52 @@ describe('GGVP-82 · CA12 · o arquivo anexado', () => {
   it('só quem pediu confirma o cartão', async () => {
     const r = await pergunta('Cria uma tarefa para a Jéssica cobrar o laudo que falta do Antônio Exemplo', ADVOGADA)
     await expect(confirmarAcao(r.acao!.id, ATENDIMENTO)).rejects.toThrow('Só quem pediu')
+  })
+})
+
+describe('GGVP-142 · com o servidor ligado, o chat fala com o servidor', () => {
+  const pedidos: { url: string; method: string; corpo: unknown }[] = []
+  const RESPOSTA = {
+    tipo: 'resposta',
+    sugestao: { chamadaId: '0b9b7c5e-7d4c-4b5f-9a3e-2f1d6c8e9a10', sugestao: true, texto: 'Do servidor.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-09T15:00:00.000Z', alerta: null },
+    links: [],
+  }
+  beforeEach(() => {
+    pedidos.length = 0
+    configurarExemplo({ servidor: true })
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      pedidos.push({ url, method: init.method ?? 'GET', corpo: init.body ? JSON.parse(String(init.body)) : undefined })
+      if (init.method === 'DELETE') return new Response(null, { status: 204 })
+      const corpo = url.startsWith('/api/chat/acoes/') ? { estado: 'feito', texto: '✓ Feito.', links: [] } : RESPOSTA
+      return new Response(JSON.stringify(corpo), { status: 200, headers: { 'content-type': 'application/json' } })
+    })
+  })
+  afterEach(() => {
+    configurarExemplo({ servidor: false })
+    vi.unstubAllGlobals()
+  })
+
+  it('16.8 · a pergunta sobre um caso do servidor, a confirmação e o cancelamento do cartão dele vão ao servidor', async () => {
+    const r = await pergunta('O que falta no caso?', ADVOGADA, { processoId: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b' })
+    expect(r.sugestao.texto).toBe('Do servidor.')
+    expect(await confirmarAcao('acao-1', ADVOGADA, { responsavel: 'ana' })).toEqual({ estado: 'feito', texto: '✓ Feito.', links: [] })
+    cancelarAcao('acao-2')
+    await vi.waitFor(() => expect(pedidos).toHaveLength(3))
+    expect(pedidos).toEqual([
+      { url: '/api/chat', method: 'POST', corpo: { texto: 'O que falta no caso?', anexos: [], processoId: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b' } },
+      { url: '/api/chat/acoes/acao-1', method: 'POST', corpo: { acaoId: 'acao-1', responsavel: 'ana' } },
+      { url: '/api/chat/acoes/acao-2', method: 'DELETE', corpo: undefined },
+    ])
+  })
+
+  it('16.8 · o modo misto: a pergunta sobre a semente e, sem cliente, as listas e os números feitos por código seguem no chat de exemplo', async () => {
+    const r = await pergunta('O que falta no caso do Antônio Exemplo?', ADVOGADA)
+    expect(r.sugestao.modelo).toBe('simulado · servidor de exemplo')
+    expect((await pergunta('O que falta aqui?', ADVOGADA, { processoId: 'pedro-exemplo-1' })).sugestao.modelo).toBe('simulado · servidor de exemplo')
+    expect((await pergunta('Quais perícias temos esta semana?', ADVOGADA)).sugestao.modelo).toBe('simulado · servidor de exemplo')
+    expect((await pergunta('Como o Dr. A. Prado costuma avaliar problemas de coluna?', ADVOGADA)).sugestao.modelo).toBe('simulado · servidor de exemplo')
+    expect(pedidos).toEqual([])
+    await pergunta('Qual o próximo passo de um BPC negado?', ADVOGADA)
+    expect(pedidos.map((p) => p.url), 'a consulta sem cliente vai ao servidor').toEqual(['/api/chat'])
   })
 })
