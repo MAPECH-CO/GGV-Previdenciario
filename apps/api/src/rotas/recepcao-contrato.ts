@@ -10,7 +10,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, pessoa } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
-import type { Agendamento, Arquivo, Processo } from '../../../web/src/dados/tipos.ts'
+import type { Agendamento, Arquivo, Ficha, Processo } from '../../../web/src/dados/tipos.ts'
 import {
   CONFERENCIAS,
   NOMES_DOS_CANAIS,
@@ -52,7 +52,7 @@ import {
   type Contrato,
   type ContratoDoCaso,
 } from '../../../web/src/regras/contratoDoCaso.ts'
-import { problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
+import { nomeSemSobrescrever, problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
@@ -63,9 +63,45 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 
 type Opcoes = { banco: Banco; agora?: () => Date }
 
+/**
+ * A leitura (simulada) do contrato assinado: decide entre a conferência do Atendimento e a cópia (GGVP-85 CA1, CA2). Chamam
+ * o botão "Simular a leitura da IA" e a Documentação, ao arquivar o assinado (GGVP-81 CA4). Nulo se não esperava a leitura.
+ */
+export function criarLeituraDoContrato(banco: Banco, agora: () => Date) {
+  const { evento, fichas, guardar } = criarFichario(banco, agora)
+  return async function lerContrato(processoId: string): Promise<{ ficha: Ficha; contrato: Contrato } | null> {
+    if (!UUID.test(processoId)) return null
+    const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
+    if (!linha) return null
+    const { contrato, processo } = linha.dados as ContratoGuardado
+    const [ficha] = await fichas([linha.pessoaId])
+    if (!ficha || contrato.etapa !== 'leitura') return null
+    const leitura = leituraDeExemploDoContrato(contrato)
+    contrato.leitura = { ...leitura, lidoEm: agora().toISOString() }
+    const conferir = precisaConferir(leitura)
+    contrato.etapa = conferir ? 'conferir' : 'copia'
+    const seguinte: Processo = conferir
+      ? { ...processo, etapa: 'Contrato · conferência', proximaAcao: 'conferir o contrato assinado' }
+      : { ...processo, proximaAcao: 'entregar a cópia do contrato' }
+    ficha.historico.push(
+      evento(
+        conferir
+          ? `A IA leu o contrato assinado: ${resumoDaLeitura(leitura)}; o Atendimento confere`
+          : 'A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato',
+        'IA (leitura)',
+      ),
+    )
+    const dados: ContratoGuardado = { contrato, processo: seguinte }
+    await banco.update(contratoRecepcao).set({ dados, atualizadoEm: agora() }).where(eq(contratoRecepcao.casoId, processoId))
+    await guardar(ficha)
+    return { ficha, contrato }
+  }
+}
+
 export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas } = criarFichario(banco, agora)
+  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
+  const lerContrato = criarLeituraDoContrato(banco, agora)
   // D1.16 a D1.20: o contrato é da raia do Atendimento; o % de honorários aparece só nele (GGVP-96).
   const conduzir = { preHandler: exigir(banco, 'contrato.conduzir', agora) }
 
@@ -100,6 +136,13 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     return null
   }
   const noPapel = (contrato: Contrato): Assinatura => (contrato.assinatura = { ...(contrato.assinatura ?? { tentativas: [] }), forma: 'papel' })
+
+  /** O arquivo entra na lista da ficha do servidor, sem sobrescrever o nome de outro da mesma pasta (bloco 5a). */
+  function naPasta(ficha: Ficha, arquivo: Arquivo): Arquivo {
+    const novo = { ...arquivo, nome: nomeSemSobrescrever(arquivo.nome, ficha.arquivos.filter((x) => x.local === arquivo.local).map((x) => x.nome)) }
+    ficha.arquivos.push(novo)
+    return novo
+  }
 
   /** O contrato na etapa da cópia (GGVP-89), ou o motivo da recusa. */
   async function paraACopia(id: string): Promise<ContratoDoCaso | { status: number; erro: string }> {
@@ -319,7 +362,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     const eventoId = `${z.documentoId}-assinado`
     if (z.eventos.includes(eventoId) || z.status === 'assinado') return { resultado: 'repetido', contrato, ficha }
     const dia = hoje()
-    const arquivo: Arquivo = {
+    const arquivo = naPasta(ficha, {
       nome: `Contrato assinado - ${ficha.nome} - ${dia} (ZapSign, com evidências).pdf`,
       tipo: 'contrato',
       local: processo.id,
@@ -327,7 +370,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
       origem: 'card',
       repetido: false,
       aguardaLeitura: true,
-    }
+    })
     z.status = 'assinado'
     z.eventos.push(eventoId)
     contrato.assinatura = { ...contrato.assinatura!, assinadoEm: agora().toISOString(), arquivo: arquivo.nome }
@@ -336,6 +379,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     ficha.historico.push(evento('O ZapSign devolveu o contrato assinado: anexado no card com as evidências da assinatura; segue para a leitura', 'ZapSign'))
     await guardarContrato(ficha.id, { contrato, processo: assinado(processo) })
     await guardar(ficha)
+    // Bloco 5b: a IA (simulada) lê o assinado, para a conferência da Documentação.
+    await lerArquivosNovos(ficha)
     return { resultado: 'anexado', arquivo, contrato, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id) }
   })
 
@@ -368,7 +413,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
     if (!assinatura.impressoEm) return negar(resposta, 400, 'Imprima o kit antes.')
     if (assinatura.arquivo) return negar(resposta, 400, 'O contrato assinado já foi digitalizado.')
     const dia = hoje()
-    const arquivo: Arquivo = {
+    const arquivo = naPasta(ficha, {
       nome: `Contrato assinado - ${ficha.nome} - ${dia} (papel, PDF pesquisável).pdf`,
       tipo: 'contrato',
       local: processo.id,
@@ -376,11 +421,12 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
       origem: 'scanner',
       repetido: false,
       aguardaLeitura: true,
-    }
+    })
     assinatura.arquivo = arquivo.nome
     ficha.historico.push(evento('Digitalizou o contrato assinado em papel: PDF pesquisável na pasta do cliente', 'Automação do balcão'))
     await guardarContrato(ficha.id, { contrato, processo })
     await guardar(ficha)
+    await lerArquivosNovos(ficha)
     return { arquivo, contrato, ficha: await fichaPeloId(ficha.id) }
   })
 
@@ -407,26 +453,9 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
-    const { ficha, processo, contrato } = achado
-    if (contrato.etapa !== 'leitura') return negar(resposta, 400, 'Este contrato não está esperando a leitura.')
-    const leitura = leituraDeExemploDoContrato(contrato)
-    contrato.leitura = { ...leitura, lidoEm: agora().toISOString() }
-    const conferir = precisaConferir(leitura)
-    contrato.etapa = conferir ? 'conferir' : 'copia'
-    const seguinte: Processo = conferir
-      ? { ...processo, etapa: 'Contrato · conferência', proximaAcao: 'conferir o contrato assinado' }
-      : { ...processo, proximaAcao: 'entregar a cópia do contrato' }
-    ficha.historico.push(
-      evento(
-        conferir
-          ? `A IA leu o contrato assinado: ${resumoDaLeitura(leitura)}; o Atendimento confere`
-          : 'A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato',
-        'IA (leitura)',
-      ),
-    )
-    await guardarContrato(ficha.id, { contrato, processo: seguinte })
-    await guardar(ficha)
-    return { contrato, ficha: await fichaPeloId(ficha.id) }
+    if (achado.contrato.etapa !== 'leitura') return negar(resposta, 400, 'Este contrato não está esperando a leitura.')
+    const lido = await lerContrato(achado.contrato.processoId)
+    return { contrato: lido!.contrato, ficha: await fichaPeloId(achado.ficha.id) }
   })
 
   // GGVP-85 CA3, CA5, CA6, CA7: "Está certo, seguir" vai para a cópia. "Não, corrigir e reenviar": o que corrigir é
@@ -456,7 +485,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ag
       ficha.historico.push(evento('Conferiu o contrato assinado: está certo; segue para a cópia do contrato', nome))
     } else {
       const versao = contrato.documento?.versao ?? 1
-      if (pagina) arquivo = { nome: pagina.nome, tipo: 'contrato', local: processo.id, data: dia, origem: 'card', repetido: false, aguardaLeitura: false }
+      if (pagina) arquivo = naPasta(ficha, { nome: pagina.nome, tipo: 'contrato', local: processo.id, data: dia, origem: 'card', repetido: false, aguardaLeitura: false })
       contrato.verificacao = { tudoCerto: false, oQueCorrigir, ...(pagina && { paginaCorrigida: pagina.nome }), quem: nome, quando }
       contrato.anteriores = [...(contrato.anteriores ?? []), { versao, arquivo: contrato.assinatura?.arquivo, motivo: oQueCorrigir, quando }]
       delete contrato.assinatura

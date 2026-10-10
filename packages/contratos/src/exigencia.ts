@@ -71,7 +71,11 @@ const temPericia = (pede: string) => pede !== 'documentos'
 export const DecidirExigencia = z
   .object({
     pede: z.enum(PEDIDOS_DA_EXIGENCIA, { error: 'Escolha o que a exigência pede' }),
-    itens: z.array(z.string().trim()).default([]).transform((l) => l.filter(Boolean)),
+    // Bloco 5d (GGVP-125): cada item pode trazer o tipo de documento que o cumpre; o texto sozinho continua valendo.
+    itens: z
+      .array(z.union([z.string().trim(), z.object({ descricao: z.string().trim(), tipoDocumento: z.string().trim().nullish() })]))
+      .default([])
+      .transform((l) => l.map((i) => (typeof i === 'string' ? { descricao: i, tipoDocumento: null } : { descricao: i.descricao, tipoDocumento: i.tipoDocumento || null })).filter((i) => i.descricao)),
     tiposPericia: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
     diasInss: z
       .union([z.string(), z.number()])

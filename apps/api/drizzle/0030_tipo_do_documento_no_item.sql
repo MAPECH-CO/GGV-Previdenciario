@@ -1,0 +1,1 @@
+ALTER TABLE "exigencia_item" ADD COLUMN "tipo_documento" text;

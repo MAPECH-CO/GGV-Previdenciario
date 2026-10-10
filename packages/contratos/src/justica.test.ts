@@ -71,7 +71,7 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
   it('cada item tem setor, o que cumprir e prazo interno; a prova esperada é opcional', () => {
     expect(AnalisarExigenciaJuiz.parse({ decisao: 'cumprir', itens: [item] })).toEqual({
       decisao: 'cumprir',
-      itens: [{ setor: 'documentacao', descricao: 'Trazer laudo atualizado', provaEsperada: null, prazoInterno: '2026-10-20' }],
+      itens: [{ setor: 'documentacao', descricao: 'Trazer laudo atualizado', provaEsperada: null, prazoInterno: '2026-10-20', tipoDocumento: null }],
       tiposPericia: [],
     })
     expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir', itens: [{ ...item, descricao: ' ' }] }))).toBe('Descreva o que o setor deve cumprir')
@@ -79,6 +79,12 @@ describe('GGVP-79 · analisar a exigência do juiz', () => {
       'Informe o prazo interno de cada item (dd/mm/aaaa)',
     )
     expect(erro(AnalisarExigenciaJuiz.safeParse({ decisao: 'cumprir', itens: [{ ...item, setor: 'financeiro' }] }))).toBe('Escolha o setor de cada item')
+  })
+
+  it('GGVP-125, bloco 5d · o item pode trazer o tipo de documento que o cumpre; vazio vira nulo', () => {
+    const tipos = (t?: string) => AnalisarExigenciaJuiz.parse({ decisao: 'cumprir', itens: [{ ...item, tipoDocumento: t }] })
+    expect(tipos('laudo')).toMatchObject({ itens: [{ tipoDocumento: 'laudo' }] })
+    expect(tipos('')).toMatchObject({ itens: [{ tipoDocumento: null }] })
   })
 })
 

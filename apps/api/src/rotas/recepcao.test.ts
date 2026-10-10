@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, eventoAuditoria, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, credencialGovbr, eventoAuditoria, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -143,6 +143,24 @@ describe('GGVP-125 · bloco 1: o lead e a ficha no servidor', () => {
     expect(depois.fichaAtendimento.data).toBe('2026-10-08')
     expect(depois.historico.at(-1)).toMatchObject({ quem: 'Cliente (tablet)', oQue: 'Alterou na ficha de atendimento: Quantas pessoas moram na casa' })
     expect((await chamar('ana', 'PUT', `/api/fichas/${id}/ficha-de-atendimento`, { ...ENVIO, nascimento: '10/05/2099' })).statusCode).toBe(400)
+  })
+
+  it('bloco 5a · a ficha de atendimento em papel: a imagem fica em Documentos pessoais, sem sobrescrever; nada vai ao cofre (G9)', async () => {
+    const { id } = await cadastrar()
+    expect((await chamar('julia', 'POST', `/api/fichas/${id}/ficha-de-atendimento/leitura`)).statusCode).toBe(403)
+    const leitura = (await chamar('ana', 'POST', `/api/fichas/${id}/ficha-de-atendimento/leitura`)).json()
+    expect(leitura).toMatchObject({
+      modelo: 'GGV',
+      senhaLida: false,
+      arquivo: { nome: 'Ficha de atendimento GGV - Joana Ribeiro - 2026-10-08.pdf', tipo: 'ficha-atendimento', local: 'pessoais', origem: 'scanner' },
+      campos: { nome: 'Joana Ribeiro', cpf: '52998224725' },
+    })
+    expect(leitura.ficha.arquivos).toEqual([leitura.arquivo])
+    expect(leitura.ficha.historico.at(-1).oQue).toBe('A ficha de atendimento em papel (GGV) passou no scanner e a IA leu os campos; a imagem ficou em Documentos pessoais')
+    const deNovo = (await chamar('ana', 'POST', `/api/fichas/${id}/ficha-de-atendimento/leitura`)).json()
+    expect(deNovo.arquivo.nome).toBe('Ficha de atendimento GGV - Joana Ribeiro - 2026-10-08 (2).pdf')
+    expect(await banco.select().from(credencialGovbr)).toEqual([])
+    expect(deNovo.ficha.senhaGov.situacao).not.toBe('no-cofre')
   })
 
   it('perfil da sessão: o Financeiro não cadastra, e a tentativa fica registrada', async () => {

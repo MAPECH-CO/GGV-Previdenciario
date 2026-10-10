@@ -72,6 +72,8 @@ export const exigenciaItem = pgTable(
     prazo: date('prazo'),
     /** O que o setor deve trazer como prova (GGVP-79 CA13) e a tarefa do setor que cumpre o item (GGVP-83). */
     provaEsperada: text('prova_esperada'),
+    /** O tipo do catálogo das telas que cumpre o item: o documento conferido desse tipo dá baixa sozinho (GGVP-125, bloco 5d). */
+    tipoDocumento: text('tipo_documento'),
     tarefaId: uuid('tarefa_id'),
     situacao: text('situacao').notNull().default('pendente'),
     /** Por que não foi cumprido (GGVP-39 CA11). */

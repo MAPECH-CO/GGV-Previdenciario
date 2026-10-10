@@ -7,7 +7,7 @@ import { dataCurta, hojeIso, hora } from '../regras/datas.ts'
 import { PERFIS, diasNaFila, idade, parecerEmOrdem, precisaDeParecer, travaDaLiberacao, type Parecer, type Perfil } from '../regras/liberacao.ts'
 import { checklistDoCaso, type ChecklistDoCaso } from './checklist.ts'
 import { parecerParaOPortao } from './parecer.ts'
-import { QUEM, QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { QUEM, QUEM_ADVOGADA, agora, doServidor, esperar, evento, gravar, ler, noBanco, type Banco } from './servidor.ts'
 import type { Tarefa } from './tipos.ts'
 
 /** Quem libera, sem login ainda. */
@@ -74,7 +74,9 @@ export async function liberarAoJuridico(processoId: string, pedido: PedidoDeLibe
     conferiAssinaturas: pedido.conferiAssinaturas === true,
   })
   if (trava) throw new Error(trava)
-  const liberacao: Liberacao = { processoId, fichaId: ficha.id, quem: QUEM_DOCUMENTACAO, quando: agora().toISOString() }
+  // GGVP-125, bloco 6: o caso do servidor libera lá (o perfil, o G1 e o G17 de novo); aqui só se o servidor aceitar.
+  if (doServidor(processoId)) await noBanco(`/casos/${processoId}/liberacao`, { method: 'POST', corpo: { conferiChecklist: true, conferiAssinaturas: true } })
+  const liberacao: Liberacao ={ processoId, fichaId: ficha.id, quem: QUEM_DOCUMENTACAO, quando: agora().toISOString() }
   banco.liberacoes = [...(banco.liberacoes ?? []), liberacao]
   const processo = ficha.processos.find((p) => p.id === processoId)!
   processo.etapa = 'Jurídico · conferência antes do INSS'
@@ -93,6 +95,8 @@ export function tarefasDeLiberar(): Tarefa[] {
   const hoje = hojeIso(agora())
   const tarefas = banco.fichas.flatMap((ficha) =>
     ficha.processos.flatMap((p) => {
+      // O caso do servidor já vem na Central pela tarefa D1.24 do servidor (bloco 5d): não repete aqui.
+      if (doServidor(p.id)) return []
       const caso = montar(banco, p.id)
       if (!caso?.naFilaDesde || caso.liberacao) return []
       const dias = diasNaFila(caso.naFilaDesde, hoje)
@@ -120,6 +124,8 @@ export function tarefasDaFilaDaSenior(): Tarefa[] {
   const banco = ler()
   const hoje = hojeIso(agora())
   return (banco.liberacoes ?? []).flatMap((l) => {
+    // O caso do servidor já vem na Central pela tarefa D2.01 do servidor (bloco 6): não repete aqui.
+    if (doServidor(l.processoId)) return []
     const caso = checklistDoCaso(banco, l.processoId)
     if (!caso) return []
     const dia = hojeIso(new Date(l.quando))

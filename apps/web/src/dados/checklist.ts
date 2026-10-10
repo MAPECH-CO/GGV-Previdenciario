@@ -1,17 +1,27 @@
 // EXEMPLO. Servidor de exemplo do checklist do benefício (GGVP-91), sobre o mesmo banco de servidor.ts. Os documentos
 // são os que a leitura arquivou (GGVP-81). A lista de cada benefício é configuração do escritório (GGVP-104): aqui só a do
 // LOAS, com que o portal nasce. Ligar no servidor: trocar o corpo de cada função por fetch no endpoint da spec da ggvp-91.
-import { bloqueioDoAcidente, complementares, type Complementar, type TabelaDoAcidente } from '../regras/acidente.ts'
-import { relatoriosDaCrianca } from '../regras/infantil.ts'
-import { juntar, montarChecklist, type Checklist, type Condicao, type DocumentoDoCaso, type ListaDoBeneficio } from '../regras/checklist.ts'
+import {
+  complementaresDoCaso,
+  contratoAssinadoDo,
+  documentosDoCaso,
+  juntar,
+  montarChecklist,
+  type ChecklistDoCaso,
+  type ChecklistNaCopia,
+  type Condicao,
+  type ConferenciaDoChecklist,
+  type ListaDoBeneficio,
+} from '../regras/checklist.ts'
 import { acidenteDoCaso } from './acidente.ts'
 import { criancaDoCaso, ehInfantil } from './infantil.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { contratos } from './contrato.ts'
 import { leiturasDo } from './leitura.ts'
-import { tiposDaSemente } from './parecer.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { doBancoOuNulo, tiposDaSemente } from './parecer.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
 import type { Ficha, Processo, Tarefa } from './tipos.ts'
+import type { Cobranca } from '../regras/cobranca.ts'
 
 /**
  * A lista do LOAS: o critério 7 do cartão GGVP-91 (ficha de grupo familiar e as três declarações condicionais), o que
@@ -33,63 +43,7 @@ const AUXILIO_ACIDENTE: ListaDoBeneficio = { obrigatorios: ['rg', 'cpf', 'cnis',
 /** A configuração do escritório de exemplo: o LOAS e o Auxílio-Acidente têm lista aprovada (CA6, CA10). */
 export const LISTAS_DE_DOCUMENTOS: Record<string, ListaDoBeneficio> = { 'loas-idoso': LOAS, 'loas-deficiente': LOAS, 'auxilio-acidente': AUXILIO_ACIDENTE }
 
-/**
- * Os complementares do Auxílio-Acidente por circunstância (GGVP-47): respostas do Lucas de 01/10 (Q19) e de 07/10, no grupo.
- * O prontuário vale para todos os casos, mesmo sem internação ou cirurgia, porque mostra a evolução e as sequelas. No
- * trânsito e no doméstico o boletim de ocorrência é obrigatório e entram as fotos do acidente. A cópia do processo do auxílio
- * por incapacidade temporária entra se houve um antes (o condicional).
- */
-const obrigatorio = (tipo: string) => ({ tipo, exigencia: 'obrigatorio' as const })
-const BOLETIM_DESEJAVEL = { tipo: 'boletim-ocorrencia', exigencia: 'desejavel' as const }
-const PROCESSO_ANTERIOR = { tipo: 'processo-auxilio-anterior', exigencia: 'condicional' as const }
-const DE_TRABALHO = [
-  obrigatorio('cat'),
-  BOLETIM_DESEJAVEL,
-  obrigatorio('ficha-pronto-socorro'),
-  obrigatorio('prontuario'),
-  obrigatorio('exame-imagem-epoca'),
-  obrigatorio('exame-pos-alta'),
-  PROCESSO_ANTERIOR,
-]
-const PREVIDENCIARIO = [
-  obrigatorio('boletim-ocorrencia'),
-  obrigatorio('fotos-acidente'),
-  obrigatorio('ficha-pronto-socorro'),
-  obrigatorio('prontuario'),
-  obrigatorio('exame-imagem-epoca'),
-  obrigatorio('exame-pos-alta'),
-]
-
-export const TABELA_DO_ACIDENTE: TabelaDoAcidente = {
-  trabalho: DE_TRABALHO,
-  trajeto: DE_TRABALHO,
-  // Na doença ocupacional o nexo pode vir pelo NTEP: o PPP é obrigatório, não há pronto-socorro, e os exames mostram o quadro e a evolução.
-  ocupacional: [obrigatorio('cat'), obrigatorio('ppp'), BOLETIM_DESEJAVEL, obrigatorio('prontuario'), obrigatorio('exame-evolucao'), PROCESSO_ANTERIOR],
-  transito: PREVIDENCIARIO,
-  domestico: PREVIDENCIARIO,
-}
-
-const SEM_CIRCUNSTANCIA = 'Marque a circunstância do acidente: o que é obrigatório depende dela.'
-
-const SEM_CONDICAO = 'A advogada marca a condição da criança no parecer: os relatórios que o caso pede dependem dela.'
-
-/** Os complementares e o bloqueio do caso: a circunstância do acidente (GGVP-47) ou a condição da criança (GGVP-50). */
-function complementaresDoCaso(banco: Banco, ficha: Ficha, processo: Processo): { complementares?: Complementar[]; bloqueio?: string } {
-  if (processo.beneficio === 'auxilio-acidente') {
-    const acidente = acidenteDoCaso(banco, processo.id)
-    if (!acidente) return { bloqueio: SEM_CIRCUNSTANCIA }
-    const bloqueio = bloqueioDoAcidente(acidente)
-    return { complementares: complementares(TABELA_DO_ACIDENTE, acidente), ...(bloqueio && { bloqueio }) }
-  }
-  if (ehInfantil(ficha, processo)) {
-    const crianca = criancaDoCaso(banco, processo.id)
-    // Sem a condição, nenhum relatório entra ainda, e o checklist espera a advogada.
-    const relatorios = relatoriosDaCrianca(crianca ?? { condicoes: [], terapias: [], escola: false })
-    const pedidos = relatorios.map((tipo) => ({ tipo, exigencia: 'obrigatorio' as const, aplica: true, recusado: false }))
-    return { complementares: pedidos, ...(!crianca && { bloqueio: SEM_CONDICAO }) }
-  }
-  return {}
-}
+export { TABELA_DO_ACIDENTE } from '../regras/checklist.ts'
 
 let listas = LISTAS_DE_DOCUMENTOS
 
@@ -111,56 +65,36 @@ export const DA_ENTREVISTA: Record<string, { condicoes: Condicao[]; documentos: 
  * vale a etapa do processo: assinado quando já saiu das etapas "Contrato · …".
  */
 export function contratoAssinado(banco: Banco, processo: Processo): boolean {
-  const contrato = contratos(banco).find((c) => c.processoId === processo.id)
-  if (!contrato) return !processo.etapa.startsWith('Contrato ·')
-  return ['leitura', 'conferir', 'copia', 'entregue'].includes(contrato.etapa)
+  return contratoAssinadoDo(contratos(banco).find((c) => c.processoId === processo.id), processo.etapa)
 }
 
-/** As miniaturas da semente ("RG", "CNIS"...), com o tipo da lista única. */
-const LEGADO: Record<string, string> = { RG: 'rg', CPF: 'cpf', 'Comp. residência': 'comprovante-residencia', CNIS: 'cnis', CTPS: 'ctps', Procuração: 'procuracao' }
-
-/** Os documentos classificados do caso: Documentos pessoais, que valem para todo processo do cliente (CA9), a subpasta deste processo e a quarentena. */
-function documentosDoCaso(banco: Banco, ficha: Ficha, processoId: string): DocumentoDoCaso[] {
-  const leituras = leiturasDo(banco).filter((l) => l.fichaId === ficha.id)
-  const legado = ficha.documentos.flatMap((d) => (LEGADO[d.nome] ? [{ tipo: LEGADO[d.nome] }] : []))
-  const daPasta = ficha.arquivos
-    .filter((a) => !a.aguardaLeitura && (a.local === 'pessoais' || a.local === processoId))
-    .map((a) => {
-      const lido = leituras.find((l) => l.arquivo === a.nome)
-      return { tipo: a.tipo, semAssinatura: lido?.semAssinatura, dataEmBranco: lido?.dataEmBranco }
-    })
-  const quarentena = leituras.filter((l) => l.situacao === 'quarentena').map((l) => ({ tipo: l.tipo, quarentena: true }))
-  // Os documentos médicos da semente do parecer (GGVP-20) também estão na pasta do caso (GGVP-47).
-  const daSemente = tiposDaSemente(processoId).map((tipo) => ({ tipo }))
-  return [...legado, ...daPasta, ...daSemente, ...quarentena]
-}
-
-/** Uma conferência do checklist: quem conferiu fica no histórico da ficha. */
-export type ConferenciaDoChecklist = { processoId: string; quando: string; completo: boolean; faltam: string[] }
-
-export type ChecklistDoCaso = {
-  ficha: Ficha
-  processo: Processo
-  beneficio: string
-  checklist: Checklist
-  /** As condições do caso que puxaram declarações (CA7). */
-  condicoes: Condicao[]
-  /** A última conferência, se já houve. */
-  conferencia?: ConferenciaDoChecklist
-}
+export type { ChecklistDoCaso, ConferenciaDoChecklist } from '../regras/checklist.ts'
 
 function montar(banco: Banco, processoId: string): ChecklistDoCaso | null {
   const ficha = banco.fichas.find((f) => f.processos.some((p) => p.id === processoId))
   const processo = ficha?.processos.find((p) => p.id === processoId)
   if (!ficha || !processo) return null
+  // Bloco 5c: o caso do servidor tem o checklist calculado lá, com o kit do escritório, o acidente e a criança do banco.
+  if (doServidor(processoId)) {
+    const calculado = banco.checklistsDoServidor?.find((c) => c.processoId === processoId)
+    if (!calculado) return null
+    const { processoId: _, ...resto } = calculado
+    return { ficha, processo, ...resto }
+  }
   const entrevista = DA_ENTREVISTA[processoId] ?? { condicoes: [], documentos: [] }
   const checklist = montarChecklist({
     lista: listas[processo.beneficio],
     condicoes: entrevista.condicoes,
     daEntrevista: entrevista.documentos,
-    documentos: documentosDoCaso(banco, ficha, processoId),
+    // Os documentos médicos da semente do parecer (GGVP-20) também estão na pasta do caso (GGVP-47).
+    documentos: documentosDoCaso(ficha, leiturasDo(banco).filter((l) => l.fichaId === ficha.id), processoId, tiposDaSemente(processoId)),
     contratoAssinado: contratoAssinado(banco, processo),
-    ...complementaresDoCaso(banco, ficha, processo),
+    ...complementaresDoCaso({
+      beneficio: processo.beneficio,
+      infantil: ehInfantil(ficha, processo),
+      acidente: acidenteDoCaso(banco, processo.id),
+      crianca: criancaDoCaso(banco, processo.id),
+    }),
   })
   const conferencia = banco.checklists?.filter((c) => c.processoId === processoId).at(-1)
   return { ficha, processo, beneficio: nomeBeneficio(processo.beneficio), checklist, condicoes: entrevista.condicoes, conferencia }
@@ -173,6 +107,7 @@ export function checklistDoCaso(banco: Banco, processoId: string): ChecklistDoCa
 
 /** GET /api/processos/:id/checklist */
 export async function obterChecklist(processoId: string): Promise<ChecklistDoCaso | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<ChecklistDoCaso>(`/processos/${processoId}/checklist`)
   const banco = ler()
   const resultado = montar(banco, processoId)
   gravar(banco)
@@ -181,6 +116,15 @@ export async function obterChecklist(processoId: string): Promise<ChecklistDoCas
 
 /** POST /api/processos/:id/checklist/conferencia. A situação é a calculada, nunca a marcada à mão (CA5). */
 export async function conferirChecklist(processoId: string): Promise<ConferenciaDoChecklist> {
+  if (doServidor(processoId)) {
+    // A situação é calculada no servidor; a cópia recebe a ficha, o checklist e a cobrança que a conferência abriu.
+    const r = await noBanco<{ conferencia: ConferenciaDoChecklist; ficha: Ficha; checklists: ChecklistNaCopia[]; cobrancas: Cobranca[] }>(
+      `/processos/${processoId}/checklist/conferencia`,
+      { method: 'POST' },
+    )
+    receber(r)
+    return r.conferencia
+  }
   await esperar()
   const banco = ler()
   const caso = montar(banco, processoId)
