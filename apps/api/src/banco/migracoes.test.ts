@@ -35,12 +35,14 @@ describe('migrações', () => {
     for (const nome of ['caso', 'evento_auditoria', 'pessoa', 'sessao', 'tarefa', 'usuario']) expect(t).toContain(nome)
     for (const nome of ['identificador_caso', 'etapa', 'decisao', 'documento', 'documento_medico', 'parecer_medico',
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
-      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao',
+      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao', 'leitura_documento',
       'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'glossario_termo', 'acervo_trecho']) expect(t).toContain(nome)
     expect(t).toContain('documentacao_medica')
     // GGVP-147: quem faz cada tarefa do setor.
     expect(t).toContain('atribuicao_tarefa')
-    expect(t).toHaveLength(58)
+    // GGVP-125, bloco 5c: a conferência do checklist, as boas-vindas e a cobrança dos documentos.
+    for (const nome of ['conferencia_checklist', 'boas_vindas', 'cobranca_documento']) expect(t).toContain(nome)
+    expect(t).toHaveLength(62)
   })
 
   it('GGVP-141 · a base de conhecimento do acervo: pgvector ligado e o índice HNSW pela distância de cosseno (ADR-013)', async () => {

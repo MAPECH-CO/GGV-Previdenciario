@@ -53,6 +53,8 @@ const TAMANHO_MAXIMO = 25 * 1024 * 1024
 export const TELA_DO_PASSO: Record<string, (casoId: string) => string> = {
   // GGVP-127: o caso devolvido pela Sênior, com o motivo e o prazo, para ajustar e liberar de novo.
   'D1.ajuste': (id) => `/casos/${id}/ajuste`,
+  // Bloco 5d (GGVP-125): "Liberar ao Jurídico" do caso da Recepção, que nasce com o checklist conferido completo.
+  'D1.24': (id) => `/casos/${id}/liberar`,
   'D2.01': (id) => `/casos/${id}/conferencia`,
   'D2.02': (id) => `/casos/${id}/protocolo`,
   // A decisão da perícia tem tela própria; /casos/:id/pericia é a página da perícia, para todos os perfis do caso.

@@ -197,6 +197,27 @@
       "when": 1791573835116,
       "tag": "0027_drive_do_escritorio",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791577442761,
+      "tag": "0028_leitura_documento",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791577450864,
+      "tag": "0029_checklist_boas_vindas_cobranca",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791582098224,
+      "tag": "0030_tipo_do_documento_no_item",
+      "breakpoints": true
     }
   ]
 }

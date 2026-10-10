@@ -191,6 +191,67 @@ Em ordem, elo por elo, sobre as telas do Pedro (spec `ggvp-125`). Modo misto at�
 - [x] 125.50 O teste do cadastro volta a trocar o telefone do lead sem a verificação (sai o ajuste da junção com a main).
 - [x] 125.51 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+### Bloco 5a · A lista de arquivos da ficha no servidor
+
+- [x] 125.52 Servidor: a imagem da segunda ficha, o contrato assinado (ZapSign e papel) e a página corrigida entram em `arquivos` da ficha do servidor, com `nomeSemSobrescrever`; testes.
+- [x] 125.53 Servidor: `POST /api/fichas/:id/ficha-de-atendimento/leitura` (a leitura em papel, simulada), com a imagem em Documentos pessoais e sem senha no cofre (G9); testes.
+- [x] 125.54 Telas: a cópia recebe `arquivos` em três vias, pelo nome; sai o arquivo que as telas punham só na cópia; a leitura da ficha de atendimento chama a API para as fichas do servidor; testes.
+- [x] 125.55 Playwright: o contrato assinado numa sessão aparece na pasta do processo em outra.
+- [x] 125.56 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 5b · A chegada, a leitura e o arquivo dos documentos no servidor
+
+- [x] 125.57 Banco: `leitura_documento` (uma leitura por arquivo, à parte da ficha) e a migração.
+- [x] 125.58 Contratos: envio pelo card, recebimento, arquivamento, mudança de caso e campo do cadastro.
+- [x] 125.59 Servidor: `POST /api/fichas/:id/arquivos` (card; laudo novo para o Jurídico, sem resumo), `POST /api/tarefas/:id/lote` e `/registro`; a leitura simulada nasce quando o arquivo chega (também o contrato assinado); testes.
+- [x] 125.60 Servidor: `GET /api/fichas/:id/documentos-lidos`, `POST /api/fichas/:id/documentos-lidos/arquivar` (com a junção do contrato), `POST /api/documentos-lidos/:id/liberar`, `/mover` e `/cadastro`; as leituras no `GET /api/recepcao`; testes.
+- [x] 125.61 Telas: envio pelo card, lote, recebimento, conferência, quarentena, mover e cadastro chamando a API para as fichas do servidor; as leituras do servidor na cópia; testes.
+- [x] 125.62 Playwright: o RG enviado pelo card numa sessão é conferido e arquivado em outra.
+- [x] 125.63 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 5b+ · O arquivo do card guardado e o laudo novo no parecer (pedido do Pedro, 09/10)
+
+- [x] 125.64 Servidor: `POST /api/fichas/:id/arquivos/conteudo` (arquivo e hash): só arquivo já anunciado no envio e com o hash conferido; guarda no armazenamento do portal como `documento` da pessoa e do caso (sensível se for médico) e, para laudo, relatório médico e prontuário com caso, o `documento_medico` não conferido; o mesmo conteúdo duas vezes não duplica; testes.
+- [x] 125.65 Telas: `enviarArquivos` manda o conteúdo de cada arquivo depois do envio, para as fichas do servidor; `ConferirEnviar` passa os arquivos; testes.
+- [x] 125.66 Rodar typecheck, lint, testes e Playwright; colar a saída.
+
+### Bloco 5c · Checklist, boas-vindas e cobrança no servidor
+
+- [x] 125.67 Telas do Pedro: a tabela de nomes do kit, o kit como lista do benefício, os documentos e os complementares do caso e o contrato assinado vão para `regras/checklist.ts`, para o servidor usar os mesmos; testes.
+- [x] 125.68 Banco: `conferencia_checklist`, `boas_vindas` e `cobranca_documento` e a migração 0024; matriz 23 com `cobranca.decidir` (só a Sênior).
+- [x] 125.69 Contratos: a tentativa, o adiamento e a decisão da cobrança.
+- [x] 125.70 Servidor: `GET /api/processos/:id/checklist` e `POST .../checklist/conferencia` (o kit vigente do escritório; os documentos lidos e arquivados, o contrato, o acidente e a criança do banco; a incompleta abre a cobrança); o checklist de cada caso no `GET /api/recepcao`; testes.
+- [x] 125.71 Servidor: a liberação (G1) do caso da Recepção confere esse checklist (a última conferência completa e o de agora completo); testes.
+- [x] 125.72 Servidor: `GET` e `POST /api/processos/:id/boas-vindas` ("Já enviei": uma vez por cliente novo, depois do checklist conferido; histórico e contatos); os registros no `GET /api/recepcao`; testes.
+- [x] 125.73 Servidor: `GET /api/processos/:id/cobranca`, `POST .../tentativas`, `/adiamento` e `/decisao` (só a Sênior, no limite, com justificativa); a cobrança fecha sozinha quando chega tudo; as cobranças no `GET /api/recepcao`; testes.
+- [x] 125.74 Telas: checklist, boas-vindas ("Enviar boas-vindas" na Central da Atendimento, a mensagem para copiar e "Já enviei") e cobrança chamando a API para os casos do servidor; o checklist, os registros e as cobranças do servidor na cópia; testes.
+- [x] 125.75 Playwright: a Documentação confere o checklist incompleto de um caso do servidor; em outra sessão, a Atendimento vê "Cobrar documento" e registra a tentativa.
+- [x] 125.76 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 5d · O documento de qualquer canal confere as pendências (pedido do orquestrador, 09/10; decisões do Mateus: tudo, em duas partes)
+
+Parte 1 · A main e o fluxo da Recepção
+
+- [x] 125.77 Trazer a main: as migrações da leitura e do 5c geradas de novo pelo drizzle-kit, depois da 0025 e da 0026 da main; a matriz passa a 26, com `cobranca.decidir` sobre a 25; testes.
+- [x] 125.78 Servidor: ao arquivar, o tipo conferido vai para o `documento` (o do card e do chat pela linha que já existe, pelo hash; o do scanner numa linha nova com a chave do Drive simulada, sem conteúdo), com `conferido`, quem e quando; o médico fica sensível e, com caso, ganha o `documento_medico` não conferido; testes.
+- [x] 125.79 Servidor: uma regra só para o laudo novo: o card, o chat, o lote do scanner e o arquivamento que confere como laudo, relatório médico ou prontuário o que chegou com outro tipo abrem "Analisar laudo novo" (uma aberta por ficha); testes.
+- [x] 125.80 Servidor: a conferência completa do checklist abre "Liberar ao Jurídico" (D1.24) para a Documentação, uma por caso, que fecha na liberação; a Central leva o D1.24 a `/casos/:id/liberar`; as telas não repetem a tarefa local do caso do servidor; testes.
+- [x] 125.81 Teste: o comprovante pelo lote do scanner, arquivado, fecha a cobrança aberta. Playwright: o documento pelo scanner atende a cobrança, e o laudo conferido no arquivamento abre "Analisar laudo novo".
+- [x] 125.82 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+Parte 2 · A baixa nas pendências das outras áreas
+
+- [x] 125.83 Banco e contratos: `exigencia_item.tipo_documento` (opcional, do catálogo das telas) e a migração; o tipo no item da exigência do INSS e do juiz e na sugestão da IA; testes.
+- [x] 125.84 Telas: ao montar os itens da exigência do INSS e do juiz, o tipo de documento esperado (opcional), já com o sugerido pela IA; testes.
+- [x] 125.85 Servidor: o documento arquivado do tipo do item, no caso com a exigência aberta, dá baixa no item (cumprido, com o documento como prova e quem conferiu); testes.
+- [x] 125.86 Perícia: o documento do scanner, arquivado, entra no kit da perícia pelo tipo (teste). Complemento: o laudo ou o relatório que chega com o complemento aberto registra a chegada e para a cobrança até o parecer; testes.
+- [x] 125.87 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+### Bloco 6 · A primeira liberação ao Jurídico no servidor (pedido do Pedro, 09/10; números 125.90 em diante para não colidir com o 5c)
+
+- [x] 125.90 Telas: `liberarAoJuridico` (dados/liberacao.ts), para o caso do servidor, chama `POST /api/casos/:id/liberacao` depois das conferências da tela e só grava a liberação aqui se o servidor aceitar; `tarefasDaFilaDaSenior` não repete o caso do servidor (a Central da Sênior já traz o D2.01 do servidor); testes.
+- [x] 125.91 Rodar typecheck, lint e testes; colar a saída.
+
 ## GGVP-136 · Kit de verdade: os modelos do escritório preenchidos, para imprimir e assinar
 
 Parte 1: os nove modelos do Word, com as {{VARIÁVEIS}} no lugar dos dados de cliente, ficam em pasta local do Pedro, fora do repositório. Nada deles entra aqui.

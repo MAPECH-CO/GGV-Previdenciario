@@ -60,6 +60,43 @@ export const contratoRecepcao = pgTable('contrato_recepcao', {
   atualizadoEm: atualizadoEm(),
 }).enableRLS()
 
+/** Cada conferência do checklist do caso (GGVP-91; GGVP-125, bloco 5c), com a situação calculada no servidor. */
+export const conferenciaChecklist = pgTable('conferencia_checklist', {
+  id: id(),
+  casoId: uuid('caso_id')
+    .notNull()
+    .references(() => caso.id),
+  dados: jsonb('dados').notNull(),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/**
+ * As boas-vindas do cliente novo (GGVP-97; GGVP-125, bloco 5c). Por enquanto a Atendimento manda por fora e marca "Já
+ * enviei" (decisão do Mateus, 09/10). Uma por pessoa: o banco recusa a segunda.
+ */
+export const boasVindas = pgTable('boas_vindas', {
+  id: id(),
+  casoId: uuid('caso_id')
+    .notNull()
+    .references(() => caso.id),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .unique()
+    .references(() => pessoa.id),
+  dados: jsonb('dados').notNull(),
+  criadoEm: criadoEm(),
+}).enableRLS()
+
+/** A cobrança dos documentos pendentes do caso (GGVP-101; GGVP-125, bloco 5c): tentativas, adiamento, decisões e o fechamento. */
+export const cobrancaDocumento = pgTable('cobranca_documento', {
+  id: id(),
+  casoId: uuid('caso_id')
+    .notNull()
+    .references(() => caso.id),
+  dados: jsonb('dados').notNull(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
 export const TIPOS_IDENTIFICADOR = ['nb', 'protocolo_inss', 'cnj'] as const
 
 /** Números do caso, só dígitos, com histórico: o caso aparece pelo NB ou protocolo no INSS e pelo CNJ na Justiça (GGVP-108 CA3). */

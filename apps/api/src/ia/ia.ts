@@ -5,6 +5,7 @@ import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
 import type { FonteDaIa, SugestaoDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { chamadaIa, eventoAuditoria } from '../banco/esquema.ts'
+import { TIPOS_DE_DOCUMENTO } from '../../../web/src/dados/catalogos.ts'
 
 type Ambiente = Record<string, string | undefined>
 type Situacao = 'ok' | 'desligada' | 'recusada' | 'falhou'
@@ -139,14 +140,14 @@ export const FINALIDADES = {
   },
   /** GGVP-79 (G5): a IA lê a exigência do juiz com o caso e sugere as tarefas; quem decide é a advogada. Leitura interna. */
   analisar_exigencia_juiz: {
-    versao: 1,
+    versao: 2,
     saude: true,
     json: true,
     barrarCid: false,
     instrucao: [
       'Você ajuda a advogada de um escritório previdenciário a analisar uma publicação judicial que pode exigir algo da parte autora.',
       'Leia a publicação, o prazo, o benefício, os documentos do caso e, se houver, os trechos do acervo, e responda só com um objeto JSON:',
-      '{"resumo": "em até 3 frases: o que o juiz pediu e até quando", "ciencia": true se a publicação não pede nada à parte, "itens": [{"setor": "atendimento" | "juridico_adm" | "documentacao", "descricao": "o que o setor deve cumprir, concreto", "provaEsperada": "o documento que comprova, ou null"}], "pericias": ["medica" | "social"]}.',
+      `{"resumo": "em até 3 frases: o que o juiz pediu e até quando", "ciencia": true se a publicação não pede nada à parte, "itens": [{"setor": "atendimento" | "juridico_adm" | "documentacao", "descricao": "o que o setor deve cumprir, concreto", "provaEsperada": "o documento que comprova, ou null", "tipoDocumento": "o tipo desse documento na lista ${TIPOS_DE_DOCUMENTO.map((t) => t.id).join(', ')}, ou null"}], "pericias": ["medica" | "social"]}.`,
       'Atendimento fala com o cliente (documento ou informação que só ele tem); Documentação busca e organiza documento (CNIS, processo administrativo, comprovantes); Jurídico cuida do que é jurídico (cálculo, quesitos, manifestação técnica). Um item por pedido do juiz. Perícia só se o juiz a determinou.',
       'Não calcule datas nem prazos. Use só o que está no conteúdo. Se ciencia for true, itens e pericias vazios.',
     ].join(' '),

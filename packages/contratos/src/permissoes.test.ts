@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 26, digital: 'bd6a725a' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 27, digital: 'a40f6e75' })
   })
 
   it('GGVP-136 CA1 · só a Sênior sobe ou troca o modelo do Word do kit', () => {
@@ -144,6 +144,7 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(PERFIS.filter((p) => pode(p, 'dado_saude.registrar'))).toEqual(['advogada', 'senior'])
     expect(PERFIS.filter((p) => pode(p, 'complemento.cobrar'))).toEqual(['atendimento', 'atendimento_lider'])
     expect(PERFIS.filter((p) => pode(p, 'complemento.decidir'))).toEqual(['senior'])
+    expect(PERFIS.filter((p) => pode(p, 'cobranca.decidir'))).toEqual(['senior'])
     expect(PERFIS.filter((p) => pode(p, 'acidente.registrar'))).toEqual(['documentacao', 'advogada', 'senior'])
   })
 
@@ -184,7 +185,7 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento_lider: 20,
       documentacao: 9,
       advogada: 37,
-      senior: 53,
+      senior: 54,
       juridico_adm: 16,
       financeiro: 7,
       socio: 17,

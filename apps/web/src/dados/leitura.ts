@@ -6,62 +6,30 @@ import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '../campos.t
 import { somarDias } from '../regras/agenda.ts'
 import { normalizarRg } from '../regras/cadastro.ts'
 import { localDoTipo, nomeSemSobrescrever } from '../regras/arquivos.ts'
-import { fichasCitadas, semAcento } from '../regras/busca.ts'
+import { fichasCitadas } from '../regras/busca.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { fichaComCpf } from '../regras/duplicidade.ts'
 import {
   ROTULOS_DOS_CAMPOS,
   ehMedico,
+  lerComIADeExemplo,
   menosLegivel,
   motivoDaQuarentena,
   quarentenaAntiga,
   type CampoLido,
-  type DadosLidos,
+  type DocumentoLido,
 } from '../regras/leitura.ts'
+
+// Os tipos da leitura e a leitura simulada moram em regras/leitura.ts (GGVP-125, bloco 5b), para o servidor usar os mesmos.
+export type { DocumentoLido, SituacaoDoLido } from '../regras/leitura.ts'
 import { TIPOS_DE_DOCUMENTO, nomeBeneficio, nomeTipo } from './catalogos.ts'
 import { concluirLeituraDoContrato, leituraDeExemploDoContrato, obterContrato } from './contrato.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Contrato } from '../regras/contratoDoCaso.ts'
 import type { Arquivo, EventoHistorico, Ficha, Processo, Tarefa } from './tipos.ts'
 
 // Contrato (vai para packages/contratos/documentos.ts quando o GGVP-118 existir).
-
-/** 'ilegivel': a leitura falhou; o original fica guardado e o Atendimento pede de novo (GGVP-95, CA3). */
-export type SituacaoDoLido = 'a-conferir' | 'quarentena' | 'arquivado' | 'descartado' | 'movido' | 'ilegivel'
-
-/** Um documento que a IA leu. O arquivo original fica guardado na pasta: o OCR não o substitui (CA13). */
-export type DocumentoLido = {
-  /** `${fichaId}/${arquivo}`: uma leitura por arquivo, então ler de novo não duplica (CA13). */
-  id: string
-  fichaId: string
-  /** O nome do arquivo na pasta do cliente. */
-  arquivo: string
-  origem: Arquivo['origem']
-  /** Tipo sugerido pela IA; depois de arquivar, o que a pessoa confirmou (CA7). */
-  tipo: string
-  /** aaaa-mm-dd: a data do documento. */
-  data: string
-  /** De 0 a 100 (CA7). */
-  confianca: number
-  lidos: DadosLidos
-  /** O id do documento que este parece repetir (CA9). */
-  duplicadoDe?: string
-  /** Por que não parece do cliente (CA10). */
-  quarentena?: string
-  situacao: SituacaoDoLido
-  /** Data e hora ISO em que a leitura terminou: conta a idade da quarentena (CA12). */
-  lidoEm: string
-  /** A IA não achou a assinatura do cliente, ou achou a data em branco: o item do checklist fica pendente (GGVP-91, G1). */
-  semAssinatura?: boolean
-  dataEmBranco?: boolean
-  /** Data e hora ISO do "Arquivar": o checklist é conferido de novo depois disso (GGVP-91). */
-  arquivadoEm?: string
-  /** Documento médico: quem emitiu e o registro profissional (CRM, CRP...), se constarem (GGVP-95, CA1). Nunca o conteúdo. */
-  emitente?: string
-  registro?: string
-  /** O tipo que a IA sugeriu, guardado quando a Documentação corrige (GGVP-95, CA2). */
-  sugerido?: string
-}
 
 /** "Arquivar" (CA7, CA9). Só depois de "Conferi os documentos lidos pela IA". */
 export type Arquivamento = {
@@ -125,54 +93,6 @@ function semearPilhaDaRita(banco: Banco, leituras: DocumentoLido[]) {
   leituras.find((l) => l.arquivo === nome('Comprovante de residencia', ' (2)'))!.duplicadoDe = `${rita.id}/${nome('Comprovante de residencia')}`
 }
 
-/** Quem emite cada documento médico, na leitura simulada: nomes de exemplo, registro zerado (GGVP-95, CA1). */
-const EMITENTES: Record<string, { emitente: string; registro?: string }> = {
-  laudo: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
-  'relatorio-medico': { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
-  atestado: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
-  receita: { emitente: 'Dr. Exemplo Silva', registro: 'CRM-SP 000000' },
-  prontuario: { emitente: 'Hospital Exemplo' },
-  exame: { emitente: 'Laboratório Exemplo' },
-  cat: { emitente: 'Empresa Exemplo Ltda' },
-  'boletim-ocorrencia': { emitente: 'Delegacia Exemplo' },
-  'relatorio-escolar': { emitente: 'Escola Exemplo' },
-  'relatorio-terapia': { emitente: 'Clínica Exemplo de Terapias', registro: 'CREFITO-3 000000' },
-}
-
-/** A leitura simulada da IA: o tipo e a data que vieram, o nome do cliente, o CPF do CNIS e o endereço do comprovante. */
-function lerComIA(ficha: Ficha, arquivo: Arquivo, leituras: DocumentoLido[]): DocumentoLido {
-  const lidos: DadosLidos = {}
-  if (['rg', 'cpf', 'cnis', 'comprovante-residencia', 'ctps', 'certidao'].includes(arquivo.tipo)) lidos.nome = ficha.nome
-  if (['cpf', 'cnis'].includes(arquivo.tipo) && ficha.cpf) lidos.cpf = ficha.cpf
-  if (arquivo.tipo === 'comprovante-residencia') lidos.endereco = ficha.endereco ?? 'Rua Exemplo, 100 · São Paulo/SP'
-  // O mesmo conteúdo (SHA-256) já estava na pasta: a IA aponta o duplicado (CA9).
-  const original = arquivo.repetido
-    ? ficha.arquivos.find((a) => a !== arquivo && a.hash !== undefined && a.hash === arquivo.hash)
-    : undefined
-  const quarentena = motivoDaQuarentena(lidos, ficha)
-  // ponytail: a falta de assinatura e a data em branco vêm do nome do arquivo, como o tipo na GGVP-17; a IA de verdade lê o papel.
-  const nome = semAcento(arquivo.nome)
-  // A leitura que falhou (GGVP-95, CA3): pela mesma pista no nome do arquivo.
-  const ilegivel = nome.includes('ilegivel')
-  return {
-    id: `${ficha.id}/${arquivo.nome}`,
-    fichaId: ficha.id,
-    arquivo: arquivo.nome,
-    origem: arquivo.origem,
-    tipo: arquivo.tipo,
-    data: arquivo.data,
-    confianca: ilegivel ? 0 : 90,
-    lidos,
-    duplicadoDe: original && leituras.some((l) => l.id === `${ficha.id}/${original.nome}`) ? `${ficha.id}/${original.nome}` : undefined,
-    quarentena,
-    situacao: ilegivel ? 'ilegivel' : quarentena ? 'quarentena' : 'a-conferir',
-    lidoEm: agora().toISOString(),
-    ...(nome.includes('sem assinatura') && { semAssinatura: true }),
-    ...(nome.includes('sem data') && { dataEmBranco: true }),
-    ...(ehMedico(arquivo.tipo) && !ilegivel && EMITENTES[arquivo.tipo]),
-  }
-}
-
 /** As leituras do banco: nascem com a pilha da Rita, e a IA lê o que chegou e ainda não foi lido (CA1, CA2, CA13). */
 export function leiturasDo(banco: Banco): DocumentoLido[] {
   if (!banco.leituras) {
@@ -181,12 +101,18 @@ export function leiturasDo(banco: Banco): DocumentoLido[] {
   }
   const leituras = banco.leituras
   for (const ficha of banco.fichas) {
+    // As fichas do servidor são lidas lá (GGVP-125, bloco 5b): a leitura vem na cópia.
+    if (doServidor(ficha.id)) continue
     for (const arquivo of ficha.arquivos) {
-      if (arquivo.aguardaLeitura && !leituras.some((l) => l.id === `${ficha.id}/${arquivo.nome}`)) leituras.push(lerComIA(ficha, arquivo, leituras))
+      if (arquivo.aguardaLeitura && !leituras.some((l) => l.id === `${ficha.id}/${arquivo.nome}`)) leituras.push(lerComIADeExemplo(ficha, arquivo, leituras, agora().toISOString()))
     }
   }
-  return leituras
+  return [...leituras, ...(banco.leiturasDoServidor ?? [])]
 }
+
+/** A leitura de uma ficha do servidor: o id é "<ficha>/<arquivo>" (GGVP-125, bloco 5b). */
+const doServidorPelaLeitura = (documentoId: string) => doServidor(documentoId.slice(0, 36))
+const rotaDaLeitura = (documentoId: string, acao: string) => `/documentos-lidos/${encodeURIComponent(documentoId)}/${acao}`
 
 /** O banco com as leituras em dia, já gravado. */
 function lerComLeituras(): { banco: Banco; leituras: DocumentoLido[] } {
@@ -202,6 +128,10 @@ const rotuloDoCaso = (ficha: Ficha, p: Processo) => `${ficha.nome} · ${nomeBene
 
 /** GET /api/fichas/:id/documentos-lidos */
 export async function documentosLidos(fichaId: string): Promise<Conferencia | null> {
+  if (doServidor(fichaId)) {
+    const r = await noBanco<Conferencia>(`/fichas/${fichaId}/documentos-lidos`)
+    return { ...r, ficha: receber({ ficha: r.ficha, leituras: [...r.documentos, ...r.ilegiveis] }) ?? r.ficha }
+  }
   const { banco, leituras } = lerComLeituras()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) return null
@@ -225,8 +155,17 @@ const dataValida = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && dataParaI
 
 /** POST /api/fichas/:id/documentos-lidos/arquivar (CA4, CA7, CA9, CA16). */
 export async function arquivarDocumentos(fichaId: string, pedido: Arquivamento): Promise<RespostaArquivamento> {
-  await esperar()
+  if (!doServidor(fichaId)) await esperar()
   if (pedido.conferi !== true) throw new Error('Confira os documentos lidos pela IA')
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 5b: o servidor arquiva e leva o contrato assinado à verificação; a cópia recebe a ficha, as leituras e os contratos.
+    const r = await noBanco<RespostaArquivamento & { ficha: Ficha; leituras: DocumentoLido[]; contratos: Contrato[] }>(`/fichas/${fichaId}/documentos-lidos/arquivar`, {
+      method: 'POST',
+      corpo: pedido,
+    })
+    receber({ ficha: r.ficha, leituras: r.leituras, contratos: r.contratos })
+    return { arquivados: r.arquivados, descartados: r.descartados, contrato: r.contrato, processoId: r.processoId, evento: r.evento }
+  }
   const { banco, leituras } = lerComLeituras()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')
@@ -302,6 +241,10 @@ function documentoDe(banco: Banco, leituras: DocumentoLido[], documentoId: strin
 
 /** POST /api/documentos-lidos/:id/cadastro. O cadastro só muda com a confirmação, campo a campo (CA8). */
 export async function usarNoCadastro(documentoId: string, campo: CampoLido): Promise<Ficha> {
+  if (doServidorPelaLeitura(documentoId)) {
+    const r = await noBanco<{ ficha: Ficha }>(rotaDaLeitura(documentoId, 'cadastro'), { method: 'POST', corpo: { campo } })
+    return receber(r) ?? r.ficha
+  }
   await esperar()
   const { banco, leituras } = lerComLeituras()
   const { doc, ficha } = documentoDe(banco, leituras, documentoId)
@@ -323,6 +266,11 @@ export async function usarNoCadastro(documentoId: string, campo: CampoLido): Pro
 
 /** POST /api/documentos-lidos/:id/liberar. "É deste cliente": a pessoa conferiu e o documento volta à conferência (CA10). */
 export async function liberarDaQuarentena(documentoId: string): Promise<DocumentoLido> {
+  if (doServidorPelaLeitura(documentoId)) {
+    const r = await noBanco<{ documento: DocumentoLido; ficha: Ficha }>(rotaDaLeitura(documentoId, 'liberar'), { method: 'POST' })
+    receber({ ficha: r.ficha, leituras: [r.documento] })
+    return r.documento
+  }
   await esperar()
   const { banco, leituras } = lerComLeituras()
   const { doc, ficha } = documentoDe(banco, leituras, documentoId)
@@ -335,9 +283,25 @@ export async function liberarDaQuarentena(documentoId: string): Promise<Document
 
 /** POST /api/documentos-lidos/:id/mover. Sem motivo, o servidor recusa; com motivo, muda e registra nas duas fichas (CA11). */
 export async function moverDocumento(documentoId: string, mudanca: Mudanca): Promise<{ evento: EventoHistorico }> {
-  await esperar()
+  if (!doServidorPelaLeitura(documentoId)) await esperar()
   const motivo = mudanca.motivo?.trim() ?? ''
   if (motivo.length < 3) throw new Error('Informe o motivo para mover o documento')
+  if (doServidorPelaLeitura(documentoId)) {
+    const r = await noBanco<{ evento: EventoHistorico; ficha: Ficha; destino?: Ficha; saiu?: Arquivo; leituras: DocumentoLido[] }>(rotaDaLeitura(documentoId, 'mover'), {
+      method: 'POST',
+      corpo: { processoId: mudanca.processoId, motivo },
+    })
+    receber({ ficha: r.ficha, leituras: r.leituras })
+    if (r.destino) receber({ ficha: r.destino })
+    if (r.saiu) {
+      // A cópia daqui guarda o que só ela tem: o arquivo que saiu da pasta de origem sai daqui também.
+      const banco = ler()
+      const origem = banco.fichas.find((f) => f.id === r.ficha.id)
+      if (origem) origem.arquivos = origem.arquivos.filter((a) => !(a.nome === r.saiu!.nome && a.local === r.saiu!.local))
+      gravar(banco)
+    }
+    return { evento: r.evento }
+  }
   const { banco, leituras } = lerComLeituras()
   const { doc, ficha } = documentoDe(banco, leituras, documentoId)
   if (!emConferencia(doc)) throw new Error('Só se move documento que ainda está na conferência')

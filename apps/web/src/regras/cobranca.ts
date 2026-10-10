@@ -1,4 +1,5 @@
 // A cobrança dos documentos pendentes (GGVP-101, G15). Regra numérica é código com teste, nunca resposta de modelo.
+import type { Ficha, Processo } from '../dados/tipos.ts'
 import { somarDias } from './agenda.ts'
 import { juntar } from './checklist.ts'
 import { dataCurta } from './datas.ts'
@@ -53,6 +54,16 @@ export type EstadoDaCobranca = {
   adiadaPara?: string
   prazo?: PrazoExterno
   decisoes: DecisaoDaSenior[]
+}
+
+/** A cobrança de um caso: a conferência incompleta do checklist abre (CA1); chegou tudo ou a sênior suspendeu, fecha. */
+export type Cobranca = EstadoDaCobranca & {
+  processoId: string
+  fichaId: string
+  /** Data e hora ISO da conferência do checklist que abriu a cobrança (CA1). */
+  conferenciaEm?: string
+  /** Fechada: chegou tudo (CA9) ou a sênior suspendeu o caso (CA8). */
+  encerrada?: { quando: string; porque: 'recebeu-tudo' | 'suspensa' }
 }
 
 const menor = (a: string, b: string) => (a < b ? a : b)
@@ -121,4 +132,44 @@ export function mensagemDeCobranca(d: { nome: string; beneficio: string; faltam:
     `Olá, ${d.nome.split(' ')[0]}! Aqui é do escritório GGV. Para o seu caso de ${d.beneficio} andar, ainda faltam: ${juntar(d.faltam)}. ` +
     `Pode mandar foto por aqui ou trazer ao escritório até ${dataCurta(d.ate, d.hoje)}. Qualquer dúvida, é só responder esta mensagem.`
   )
+}
+
+export type SituacaoDaCobranca = 'aberta' | 'na-senior' | 'encerrada'
+
+export type CobrancaDoCaso = {
+  cobranca: Cobranca
+  situacao: SituacaoDaCobranca
+  ficha: Ficha
+  processo: Processo
+  beneficio: string
+  /** O que falta no checklist de agora (CA4, CA9). */
+  faltam: string[]
+  /** aaaa-mm-dd: o próximo lembrete (CA4). */
+  proxima: string
+  /** O número da próxima tentativa (CA6). */
+  tentativa: number
+  urgente: boolean
+  /** A mensagem pronta para o Chatwoot (CA11). */
+  mensagem: string
+  /** Por que o Atendimento não pode cobrar agora; pode, null. */
+  motivoParado: string | null
+}
+
+/** A cobrança como a tela mostra (CA4, CA6, CA11): o que falta é sempre o checklist de agora (CA9). */
+export function cobrancaDoCaso(cobranca: Cobranca, caso: { ficha: Ficha; processo: Processo; beneficio: string; faltam: string[] }, hoje: string): CobrancaDoCaso {
+  const situacao: SituacaoDaCobranca = cobranca.encerrada ? 'encerrada' : naSenior(cobranca, hoje) ? 'na-senior' : 'aberta'
+  const { ficha, processo, beneficio, faltam } = caso
+  return {
+    cobranca,
+    situacao,
+    ficha,
+    processo,
+    beneficio,
+    faltam,
+    proxima: proximaTentativa(cobranca),
+    tentativa: cobranca.tentativas.length + 1,
+    urgente: situacao === 'aberta' && urgente(cobranca, hoje),
+    mensagem: mensagemDeCobranca({ nome: ficha.nome, beneficio, faltam, ate: ateQuando(hoje, cobranca.prazo), hoje }),
+    motivoParado: cobranca.encerrada ? 'A cobrança está fechada.' : motivoParaNaoCobrar(cobranca, hoje),
+  }
 }

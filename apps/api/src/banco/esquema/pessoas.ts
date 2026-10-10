@@ -167,3 +167,17 @@ export const segundaFichaMedica = pgTable('segunda_ficha_medica', {
   lida: boolean('lida').notNull(),
   atualizadoEm: atualizadoEm(),
 }).enableRLS()
+
+/**
+ * A leitura de cada documento que chegou à pasta da ficha (GGVP-81; GGVP-125, bloco 5b), no formato das telas: o tipo e a
+ * data sugeridos, o que a IA leu (nome, CPF, RG, endereço; do documento médico, só quem emitiu, nunca o conteúdo), a
+ * quarentena e a situação. Uma por arquivo: o id é "<ficha>/<nome do arquivo>".
+ */
+export const leituraDocumento = pgTable('leitura_documento', {
+  id: text('id').primaryKey(),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  dados: jsonb('dados').notNull(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()

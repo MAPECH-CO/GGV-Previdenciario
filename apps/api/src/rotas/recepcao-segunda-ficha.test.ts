@@ -45,6 +45,11 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     expect(leitura).toMatchObject({ senhaLida: false, arquivo: { nome: 'Ficha de atendimento AUXILIO ACIDENTE - Joana Ribeiro - 2026-10-08.pdf', local: 'pessoais' } })
     expect(leitura.respostas).toMatchObject({ empresa: 'Exemplo Indústria Ltda', doencas: '', laudos: '' })
     expect(JSON.stringify(await banco.select().from(fichaRecepcao))).not.toContain(MEDICO)
+    // Bloco 5a: a imagem fica na lista de arquivos da ficha do servidor; ler de novo não sobrescreve.
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}`)).arquivos).toEqual([leitura.arquivo])
+    const deNovo = await json('ana', 'POST', `/api/fichas/${fichaId}/segunda-ficha/leitura`)
+    expect(deNovo.arquivo.nome).toBe('Ficha de atendimento AUXILIO ACIDENTE - Joana Ribeiro - 2026-10-08 (2).pdf')
+    expect(deNovo.ficha.arquivos.map((a: { nome: string }) => a.nome)).toEqual([leitura.arquivo.nome, deNovo.arquivo.nome])
 
     expect((await chamar('ana', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).statusCode).toBe(403)
     expect(await json('gabi', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).toMatchObject({ lida: true, medicos: { doencas: MEDICO, cirurgia: 'nao' } })

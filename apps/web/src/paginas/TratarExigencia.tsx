@@ -5,6 +5,7 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, normalizarInteiro, somenteDigitos } from '@ggv/campos'
 import { nomeDoBeneficio, DecidirExigencia, DecidirVencida, ResponderExigencia, TIPOS_DE_PERICIA, type ExigenciaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TIPOS_DE_DOCUMENTO } from '../dados/catalogos.ts'
 import { Moldura } from './Moldura.tsx'
 import { SenhaDoGov } from './Protocolar.tsx'
 import styles from './Passo.module.css'
@@ -158,6 +159,9 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
   const [pede, setPede] = useState<Pede | null>(null)
   const [dias, setDias] = useState('')
   const [itens, setItens] = useState('')
+  /** Bloco 5d (GGVP-125): o tipo de documento que cumpre cada linha; o documento conferido desse tipo dá baixa sozinho. */
+  const [tiposDosItens, setTiposDosItens] = useState<Record<string, string>>({})
+  const linhas = [...new Set(itens.split('\n').map((l) => l.trim()).filter(Boolean))]
   const [entrega, setEntrega] = useState('')
   const [tipos, setTipos] = useState<TipoPericia[]>([])
   const [erro, setErro] = useState('')
@@ -177,7 +181,7 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
     evento.preventDefault()
     const corpo = {
       pede: pede ?? undefined,
-      itens: comDocumentos ? itens.split('\n') : [],
+      itens: comDocumentos ? itens.split('\n').map((l) => (tiposDosItens[l.trim()] ? { descricao: l.trim(), tipoDocumento: tiposDosItens[l.trim()] } : l)) : [],
       tiposPericia: comPericia ? tipos : [],
       diasInss: dias,
       prazoEntrega: comDocumentos ? (isoParaData(entrega) ?? undefined) : undefined,
@@ -253,6 +257,30 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
                 Documentos pedidos (um por linha)
               </label>
               <textarea id={ids.itens} className={styles.campo} rows={4} value={itens} onChange={(e) => setItens(e.target.value)} />
+              {linhas.length > 0 && (
+                <>
+                  <p className={styles.rotulo}>Documento que cumpre cada item (opcional)</p>
+                  <p className={styles.dica}>O documento conferido desse tipo, quando chegar, dá baixa sozinho no item.</p>
+                  {linhas.map((l) => (
+                    <label key={l} className={styles.dica}>
+                      {l}{' '}
+                      <select
+                        aria-label={`Documento que cumpre: ${l}`}
+                        className={styles.campo}
+                        value={tiposDosItens[l] ?? ''}
+                        onChange={(e) => setTiposDosItens((t) => ({ ...t, [l]: e.target.value }))}
+                      >
+                        <option value="">Sem baixa sozinha</option>
+                        {TIPOS_DE_DOCUMENTO.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </>
+              )}
               <label className={styles.rotulo} htmlFor={ids.entrega}>
                 Prazo de entrega da Documentação
               </label>

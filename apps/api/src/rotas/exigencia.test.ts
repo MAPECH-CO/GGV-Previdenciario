@@ -10,7 +10,7 @@ import { caso, configuracao, documento, etapa, eventoAuditoria, exigencia, exige
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_G21, MSG_JA_DECIDIDA, MSG_SEM_ENTREGA } from './exigencia.ts'
+import { MSG_G21, MSG_JA_DECIDIDA, MSG_SEM_ENTREGA, MSG_TIPO_DE_DOCUMENTO } from './exigencia.ts'
 
 const SENHA = 'senha-do-portal-1'
 const AGORA = new Date('2026-10-05T15:00:00Z') // segunda-feira
@@ -264,5 +264,16 @@ describe('GGVP-39 CA14 · perto do vencimento, a Sênior', () => {
     expect((await vencida('helena', { decisao: 'perda', motivo: 'Cliente não trouxe' })).statusCode).toBe(201)
     ;[x] = await banco.select().from(exigencia)
     expect([x.situacao, await abertas()]).toEqual(['vencida', ['advogada · Trazer a resposta do INSS']])
+  })
+})
+
+describe('GGVP-125 · bloco 5d: o tipo de documento que cumpre o item da exigência do INSS', () => {
+  it('o item pode trazer o tipo; o texto sozinho continua valendo; tipo fora da lista é recusado', async () => {
+    expect((await decidir({ ...DOCS, itens: [{ descricao: 'Comprovante de renda', tipoDocumento: 'holerite-inventado' }] })).json()).toEqual({ erro: MSG_TIPO_DE_DOCUMENTO })
+    await decidir({ ...DOCS, itens: ['CadÚnico atualizado', { descricao: 'Comprovante de residência', tipoDocumento: 'comprovante-residencia' }] })
+    expect((await banco.select().from(exigenciaItem)).map((i) => [i.descricao, i.tipoDocumento])).toEqual([
+      ['CadÚnico atualizado', null],
+      ['Comprovante de residência', 'comprovante-residencia'],
+    ])
   })
 })

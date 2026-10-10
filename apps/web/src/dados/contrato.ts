@@ -157,13 +157,6 @@ export function tarefasDoContrato(): Tarefa[] {
   })
 }
 
-/** O arquivo que o servidor anexou entra na pasta da cópia daqui; a pasta de verdade é a do Drive (GGVP-125, bloco 4b). */
-function anexarAqui(fichaId: string, arquivo: Arquivo) {
-  const banco = ler()
-  banco.fichas.find((f) => f.id === fichaId)?.arquivos.push(arquivo)
-  gravar(banco)
-}
-
 /**
  * O contrato do servidor gera o Word do escritório (GGVP-136) e por isso pede mais campos (a nacionalidade, o que falta do
  * representante, o curatelado) que o de exemplo, que só simula o texto.
@@ -522,7 +515,6 @@ export async function simularRetornoDoZapSign(processoId: string): Promise<{ res
     )
     receber(r)
     if (r.resultado === 'repetido' || !r.arquivo) return { resultado: 'repetido' }
-    anexarAqui(r.ficha.id, r.arquivo)
     return { resultado: 'anexado', arquivo: r.arquivo }
   }
   const documentoId = (await obterContrato(processoId))?.contrato.assinatura?.zapsign?.documentoId
@@ -577,7 +569,6 @@ export async function digitalizarContratoAssinado(processoId: string): Promise<A
   if (doServidor(processoId)) {
     const r = await noBanco<{ arquivo: Arquivo; contrato: Contrato; ficha: Ficha }>(`/processos/${processoId}/contrato/digitalizacao`, { method: 'POST' })
     receber(r)
-    anexarAqui(r.ficha.id, r.arquivo)
     return r.arquivo
   }
   await esperar()
@@ -681,7 +672,6 @@ export async function verificarContrato(processoId: string, v: Verificacao): Pro
   if (doServidor(processoId)) {
     const r = await noBanco<{ contrato: Contrato; ficha: Ficha; arquivo?: Arquivo }>(`/processos/${processoId}/contrato/verificacao`, { method: 'POST', corpo: v })
     receber(r)
-    if (r.arquivo) anexarAqui(r.ficha.id, r.arquivo)
     return r.contrato
   }
   const banco = ler()
