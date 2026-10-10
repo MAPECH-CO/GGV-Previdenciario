@@ -11,6 +11,8 @@ export const Saude = z.object({
   ok: z.boolean(),
   servico: z.literal('api'),
   banco: z.enum(['ligado', 'sem-banco', 'fora-do-ar']),
+  /** GGVP-107 CA9: pelas variáveis do Drive, sem chamar o Google a cada verificação. */
+  drive: z.enum(['ligado', 'so-leitura', 'desligado']),
 })
 export type Saude = z.infer<typeof Saude>
 

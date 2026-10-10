@@ -59,6 +59,11 @@ const FONTES = sql`
       union all
       select 'Decisão de mérito', pu.caso_id, null, pu.texto, true, null, 'caso:' || pu.caso_id from publicacao pu where pu.classe = 'merito' and pu.caso_id is not null
       union all
+      -- GGVP-154 CA1, CA3: toda outra publicação que uma pessoa classificou; a só sugerida pela IA (sem revisada_por) fica fora.
+      select 'Publicação: ' || case pu.classe when 'exigencia' then 'Intimação ou exigência' when 'nomeacao_perito' then 'Nomeação de perito' else 'Só andamento' end,
+             pu.caso_id, null, pu.texto, true, null, 'caso:' || pu.caso_id
+        from publicacao pu where pu.classe is not null and pu.classe <> 'merito' and pu.revisada_por is not null and pu.caso_id is not null
+      union all
       select 'Motivo de indeferimento', r.caso_id, null, coalesce(r.motivo_escrito, r.motivo_indeferimento), true, null, 'caso:' || r.caso_id
         from resultado_inss r where r.resultado = 'indeferido' and coalesce(r.motivo_escrito, r.motivo_indeferimento) is not null
       union all
