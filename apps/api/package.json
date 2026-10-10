@@ -23,13 +23,16 @@
     "@fastify/static": "^10.1.5",
     "@ggv/campos": "workspace:*",
     "@ggv/contratos": "workspace:*",
+    "@openai/agents": "0.18.0",
     "bcryptjs": "^3.0.3",
     "docxtemplater": "^3.71.0",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.6.1",
+    "openai": "7.31.0",
     "pdf-lib": "1.17.1",
     "pg": "^8.16.3",
-    "pizzip": "^3.3.0"
+    "pizzip": "^3.3.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.16",

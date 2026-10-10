@@ -8,6 +8,7 @@ Decisão registrada não se reverte por commit. Reverte por outro ADR que cite o
 |---|---|
 | [001](ADR-001-base-de-codigo-e-stack.md) | Base de código e stack: TypeScript de ponta a ponta em monorepo pnpm (Fastify + Zod, Drizzle + PostgreSQL, pg-boss, React + Vite, Vitest, Playwright) |
 | [013](ADR-013-base-de-conhecimento.md) | Base de conhecimento do acervo: pgvector no mesmo PostgreSQL (HNSW), busca híbrida com a palavra por RRF, embeddings da OpenAI pelo motor (GGVP-141) |
+| [016](ADR-016-kit-de-agentes-no-chat.md) | Kit de agentes da OpenAI em TypeScript no chat (GGVP-142): leitura sozinha, ação com aprovação da pessoa (o cartão), rastreamento desligado, registro em `chamada_ia`; as travas seguem como código |
 
 ## Pendentes para a Sprint 0
 | ADR | Decisão | Proposta de partida |

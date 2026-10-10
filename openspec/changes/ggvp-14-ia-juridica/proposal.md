@@ -1,4 +1,4 @@
-GGVP-14 · IA jurídica e knowledge graph · histórias: GGVP-106, GGVP-110 e as da IA nas telas (abaixo), inclusive GGVP-38, GGVP-45 e GGVP-19; depois GGVP-41.
+GGVP-14 · IA jurídica e knowledge graph · histórias: GGVP-106, GGVP-110 e as da IA nas telas (abaixo), inclusive GGVP-38, GGVP-45 e GGVP-19; depois GGVP-41 e GGVP-142.
 
 ## Por quê
 
@@ -36,6 +36,7 @@ Cada integração completa a parte de IA que a história deixou para este épico
 14. **GGVP-41** (parte 1) · Medir ganho e perda: cada desfecho do portal entra no acervo com a ficha da IA (matéria, vara, tese, resumo e lição, sem dado pessoal); o perdido entra pelo estudo de caso; a Sênior confere a ficha e a tese; a Gestão ganha o recorte por tese (CA1, CA3 a CA7, CA9 a CA11).
 15. **GGVP-153** (conferência da jurimetria, 09/10) · Pergunta de um clique para juiz, vara e tese: na conferência do acervo, a Sênior completa o que falta, com as opções que o portal já conhece; o caso volta ao recorte, e nada trava.
 16. **GGVP-154** (conferência da jurimetria, 09/10) · O acervo aprende com toda publicação classificada por pessoa; o documento do Drive entra quando a leitura de documentos existir (GGVP-95, GGVP-81).
+17. **GGVP-142** · Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10): o chat das Centrais e a aba Suporte respondem pelo motor, com o caso que o perfil vê, o acervo e as fontes; as travas continuam como código; a ação vira cartão e só executa depois do "Confirmar" de quem pediu; o Sócio vê o conteúdo médico no chat; o kit de agentes da OpenAI dentro do motor.
 
 ## A sugestão chega pronta (Mateus, 07/10)
 
@@ -43,7 +44,7 @@ Em toda tarefa com IA, a sugestão já aparece quando a pessoa abre, preenchendo
 
 ## Fora do escopo
 
-- O chat que executa ações (cards de confirmação): fora até 09/10 pelo plano de entrega; o chat só consulta.
+- As ações do chat que dependem de enviar arquivo (marcar a perícia com o comprovante, anexar laudo, enviar documento, lançar o comprovante de RPV e subir processos no acervo): o cartão leva à tela certa até as rotas de envio existirem no servidor (Recepção, PR #22; GGVP-55).
 - A IA nas telas do Pedro (leitura do laudo, sugestão do benefício, comprovante da perícia): entram quando ele ligar essas telas no servidor (GGVP-125, GGVP-132), sobre esta plataforma.
 - Google Drive (GGVP-107).
 - **GGVP-41, a parte 2:** o perdido na Justiça registrado pelo portal (GGVP-100, travada pela Q26); a vara pelo nome (GGVP-64, parte 2); a lição no acervo de trechos (GGVP-141, PR #11).
