@@ -743,6 +743,8 @@ describe('GGVP-73 · atualizar o perfil do perito', () => {
       data: '2026-10-20',
       tipo: 'medica',
       assunto: 'coluna',
+      // GGVP-152 CA2: o benefício do processo, para os números por benefício.
+      beneficio: 'incapacidade-permanente',
       resultado: 'favoravel',
       dias: 4,
       observou: ['como a pessoa senta, levanta e anda'],

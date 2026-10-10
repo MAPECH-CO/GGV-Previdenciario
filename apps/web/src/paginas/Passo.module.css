@@ -53,6 +53,11 @@
   color: var(--cor-texto);
 }
 
+.seloErro {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
 .lista {
   display: flex;
   flex-direction: column;

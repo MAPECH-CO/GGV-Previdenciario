@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { Pericias } from './Pericias.tsx'
 
 const CASO = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
@@ -27,8 +28,11 @@ const recomendacao = (judicial: boolean) => ({
   motivo: null,
 })
 
+const CHANCE = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', cor: 'verde', sugereNaoPegar: false, faltaSaber: ['o perito'], fatores: null, motivoIa: null }
+
 function servidor(get: object) {
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).endsWith(`/casos/${CASO}/chance`)) return new Response(JSON.stringify(CHANCE))
     if (String(url).endsWith(`/pericias/${DO_JUIZ}/recomendacao/sugestao`)) return new Response(JSON.stringify(recomendacao(true)))
     if (String(url).endsWith(`/pericias/${DO_INSS}/recomendacao/sugestao`)) return new Response(JSON.stringify(recomendacao(false)))
     return init?.method === 'POST' ? new Response(JSON.stringify({ ok: true }), { status: 201 }) : new Response(JSON.stringify(get))
@@ -36,9 +40,26 @@ function servidor(get: object) {
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  entrarComo()
+})
 
 describe('Perícias do caso (GGVP-38)', () => {
+  it('GGVP-151 CA2 · com a recomendação aberta, a advogada vê a chance do caso, com os casos e a data da base; com tudo decidido, não', async () => {
+    entrarComo('advogada')
+    servidor(base)
+    const { unmount } = render(comSessao(<Pericias casoId={CASO} />))
+    expect(await screen.findByText('75% · 3 de 4 casos · base de 07/10')).toBeTruthy()
+    unmount()
+    const decididas = { ...base, pericias: base.pericias.map((p) => ({ ...p, resultado: 'favoravel' })) }
+    const fetch = servidor(decididas)
+    render(comSessao(<Pericias casoId={CASO} />))
+    await screen.findAllByText('Resultado: favorável.')
+    expect(screen.queryByRole('region', { name: 'Chance de êxito' })).toBeNull()
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/chance'))).toBe(false)
+  })
+
   it('ao abrir, a recomendação de cada perícia já está no formulário; a do juiz traz quesitos e assistente técnico; a advogada edita e aprova', async () => {
     const fetch = servidor(base)
     render(<Pericias casoId={CASO} />)

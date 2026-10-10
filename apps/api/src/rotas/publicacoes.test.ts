@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, eventoAuditoria, identificadorCaso, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MOTIVO_SEM_CNJ, casarPublicacoes } from '../vigilia/casar.ts'
@@ -233,6 +233,31 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     expect(quesitos.tela).toBe(`/casos/${casoId}/pericias`)
     const [[alvo, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
     expect([alvo, detalhe.perito, detalhe.reconhecido]).toEqual([`caso:${casoId}`, { id: menezes.id, nome: 'Dr. Ricardo Menezes', laudos: 2 }, true])
+  })
+
+  it('GGVP-152 CA3 · o perito reconhecido fica ligado à perícia aberta do mesmo tipo, na coluna e no documento da perícia', async () => {
+    const [menezes] = await banco
+      .insert(perito)
+      .values({ nome: 'Dr. Ricardo Menezes', nomeNormalizado: 'ricardo menezes', perfil: { tipo: 'medica', onde: 'JEF', laudos: [] } })
+      .returning()
+    const [medica] = await banco
+      .insert(pericia)
+      .values({ casoId, tipo: 'medica', documento: { id: 'p-1', tipo: 'medica', peritoLido: 'R. Menezes', historico: [] } })
+      .returning()
+    const [social] = await banco.insert(pericia).values({ casoId, tipo: 'social' }).returning()
+    const p = await nomeacao('Nomeio perito o Dr. Ricardo Menezes. Intimem-se as partes para quesitos.')
+    await classificar(p.id, { classe: 'nomeacao_perito', semPrazoNaDecisao: true })
+    const linhas = new Map((await banco.select().from(pericia)).map((l) => [l.id, l]))
+    const doc = linhas.get(medica.id)!.documento as { peritoId: string; peritoLido?: string; historico: { oQue: string }[] }
+    expect([linhas.get(medica.id)!.peritoId, doc.peritoId, doc.peritoLido, doc.historico.at(-1)?.oQue]).toEqual([
+      menezes.id,
+      menezes.id,
+      undefined,
+      'Perito nomeado na publicação: Dr. Ricardo Menezes',
+    ])
+    expect(linhas.get(social.id)!.peritoId).toBeNull()
+    const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
+    expect(detalhe.pericia).toBe(medica.id)
   })
 
   it('GGVP-59 CA1, CA6 · com prazo no despacho, vale o do despacho; perito que a base não conhece fica "não reconhecido" e nada trava', async () => {

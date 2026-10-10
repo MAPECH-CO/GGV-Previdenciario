@@ -11,6 +11,7 @@ const painel: PainelDeResultados = {
   recorte: null,
   extincoes: { casos: 0, decididos: 0, porCausa: [] },
   pareceres: { dispensados: 0, exitoComDispensa: semDados('exito_com_dispensa', 'Êxito com parecer dispensado'), exitoComSuficiente: semDados('exito_com_suficiente', 'Êxito com parecer suficiente') },
+  motivos: { indeferimento: [], derrota: [] },
   totais: null,
   operacao: 'sem_dados',
   baseDoAcervo: { situacao: 'sem_dados' },

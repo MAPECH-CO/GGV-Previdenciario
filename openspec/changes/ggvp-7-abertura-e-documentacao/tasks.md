@@ -256,7 +256,7 @@ Parte 2 · A baixa nas pendências das outras áreas
 
 Parte 1: os nove modelos do Word, com as {{VARIÁVEIS}} no lugar dos dados de cliente, ficam em pasta local do Pedro, fora do repositório. Nada deles entra aqui.
 
-- [x] 136.1 Matriz: a ação `modelo.subir` (só a Sênior), a versão 27 (a 26 é a decisão da cobrança, do GGVP-125) e a impressão digital, com teste em `packages/contratos/src/permissoes.test.ts` (CA1). Verifica com `npx vitest run src/permissoes.test.ts`.
+- [x] 136.1 Matriz: a ação `modelo.subir` (só a Sênior), a versão 28 (a 26 é a decisão da cobrança, do GGVP-125; a 27, a chance, do GGVP-150) e a impressão digital, com teste em `packages/contratos/src/permissoes.test.ts` (CA1). Verifica com `npx vitest run src/permissoes.test.ts`.
 - [x] 136.2 Catálogo: os nove modelos e as linhas do kit em `apps/web/src/regras/contrato.ts` (um Contrato Completo por benefício, o do LOAS representado, os modelos 6, 8 e 10; a isenção de IR sem modelo; honorários do modelo, sem o percentual fixo), com testes em `contrato.test.ts` (CA2).
 - [x] 136.3 Variáveis: `apps/web/src/regras/kitDoModelo.ts`, a lista fechada no padrão do ZapSign, com teste em `kitDoModelo.test.ts` (CA1, CA3).
 - [x] 136.4 Servidor: abrir o .docx (`apps/api/src/kit/docx.ts`), `GET` e `PUT /api/configuracao/modelos` (`rotas/modelos.ts`), versão e armazenamento privado, histórico da configuração; testes em `rotas/modelos.test.ts` (CA1).

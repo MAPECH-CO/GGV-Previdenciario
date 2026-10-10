@@ -1,7 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ROTULO_BENEFICIO } from '@ggv/contratos'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, eventoAuditoria, exigencia, exigenciaItem, identificadorCaso, parecerMedico, pericia, perito, pessoa, prestacaoContas, processoAcervo, resultadoInss, usuario } from '../banco/esquema.ts'
+import {
+  caso,
+  eventoAuditoria,
+  exigencia,
+  exigenciaItem,
+  identificadorCaso,
+  parecerMedico,
+  pericia,
+  perito,
+  pessoa,
+  peticao,
+  peticaoVersao,
+  prestacaoContas,
+  processoAcervo,
+  protocoloJudicial,
+  resultadoInss,
+  usuario,
+} from '../banco/esquema.ts'
 import { painelDeResultados } from './resultados.ts'
 
 let banco: Banco
@@ -22,6 +39,10 @@ async function novoCaso(extra: Partial<typeof caso.$inferInsert> = {}) {
 const decisaoInss = (casoId: string, resultado: 'deferido' | 'indeferido', dataDecisao = '2026-05-10') =>
   banco.insert(resultadoInss).values({ casoId, resultado, dataDecisao })
 const indicador = (painel: Awaited<ReturnType<typeof painelDeResultados>>, chave: string) => painel.indicadores.find((i) => i.chave === chave)
+const indicadorDe = (g: { indicadores: { chave: string; casos: number; valor: number | null }[] }, chave: string) => {
+  const i = g.indicadores.find((x) => x.chave === chave)
+  return i && { casos: i.casos, valor: i.valor }
+}
 
 describe('GGVP-75 · painel de resultado para os sócios', () => {
   it('CA5 · sem nenhum caso decidido, a operação aparece "sem dados ainda", e a base do acervo também', async () => {
@@ -132,10 +153,72 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
         .values({ casoId: id, valorRecebido: (Number(honorarios) + Number(cliente)).toFixed(2), honorarios, valorCliente: cliente, recebidaEm: as('2026-03-01') })
       if (confirmado) await banco.insert(eventoAuditoria).values({ quem: 'financeiro', acao: 'recebimento_confirmado', alvo: `caso:${id}`, quando: as('2026-03-11') })
     }
-    expect((await painelDeResultados(banco, PERIODO)).totais).toBeNull()
-    const totais = (await painelDeResultados(banco, { ...PERIODO, verTotais: true })).totais
-    expect(totais).toMatchObject({ honorariosRecebidos: '2000.00', recebimentos: 2 })
-    expect(totais?.diasAteReceber).toMatchObject({ casos: 2, unidade: 'dias', valor: 60, situacao: 'ok' })
+    const semValores = await painelDeResultados(banco, PERIODO)
+    expect(semValores.totais).toBeNull()
+    // GGVP-149 CA4, CA5: o tempo até o dinheiro é tempo, não valor; sai entre os indicadores também para quem não vê valores.
+    expect(indicador(semValores, 'dias_ate_receber')).toMatchObject({ casos: 2, unidade: 'dias', valor: 60, situacao: 'ok' })
+    expect((await painelDeResultados(banco, { ...PERIODO, verTotais: true })).totais).toEqual({ honorariosRecebidos: '2000.00', recebimentos: 2 })
+  })
+
+  it('GGVP-149 CA4 · o tempo até o dinheiro é a média em dias, e não a mediana', async () => {
+    for (const dias of [10, 20, 90]) {
+      const id = await novoCaso({ criadoEm: as('2026-03-01') })
+      await banco.insert(prestacaoContas).values({ casoId: id, valorRecebido: '100.00', honorarios: '30.00', valorCliente: '70.00', recebidaEm: as('2026-03-01') })
+      await banco.insert(eventoAuditoria).values({ quem: 'financeiro', acao: 'recebimento_confirmado', alvo: `caso:${id}`, quando: new Date(as('2026-03-01').getTime() + dias * 86_400_000) })
+    }
+    // Média de 10, 20 e 90 = 40 (a mediana daria 20).
+    expect(indicador(await painelDeResultados(banco, PERIODO), 'dias_ate_receber')).toMatchObject({ casos: 3, valor: 40 })
+  })
+
+  it('GGVP-149 CA2 · o tempo até a sentença é a média do protocolo da inicial à decisão de mérito; sem o protocolo, o caso fica fora', async () => {
+    const [senior] = await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'Helena (exemplo)', senhaHash: 'x' }).returning()
+    const comInicial = async (protocolo: string, encerrado: string, desfecho: 'procedente_total' | 'improcedente' | 'extinto_sem_merito', beneficio = 'bpc_loas_deficiente') => {
+      const id = await novoCaso({ beneficio, desfecho, encerradoEm: as(encerrado) })
+      const [inicial] = await banco.insert(peticao).values({ casoId: id, tipo: 'inicial' }).returning()
+      const [v] = await banco.insert(peticaoVersao).values({ peticaoId: inicial.id, numero: 1, conteudo: 'Petição (exemplo)', hash: `h${id}`, geradaPor: 'pessoa' }).returning()
+      await banco.insert(protocoloJudicial).values({ peticaoVersaoId: v.id, tribunal: 'TRF3', protocoladoEm: as(protocolo), protocoladoPor: senior.id })
+    }
+    await comInicial('2026-01-01', '2026-03-02', 'procedente_total') // 60 dias
+    await comInicial('2026-01-01', '2026-05-01', 'improcedente', 'bpc_loas_idoso') // 120 dias
+    // Extinto sem mérito não é sentença de mérito; decidido sem o protocolo da inicial é dado incerto: os dois ficam fora.
+    await comInicial('2026-01-01', '2026-02-01', 'extinto_sem_merito')
+    await novoCaso({ desfecho: 'procedente_total', encerradoEm: as('2026-04-01') })
+    const painel = await painelDeResultados(banco, { ...PERIODO, recorte: 'beneficio' })
+    expect(indicador(painel, 'dias_ate_sentenca')).toMatchObject({ rotulo: 'Tempo até a sentença', casos: 2, valor: 90, unidade: 'dias', situacao: 'ok' })
+    expect(painel.recorte?.grupos.map((g) => [g.nome, g.indicadores.find((i) => i.chave === 'dias_ate_sentenca')?.valor])).toEqual([
+      [ROTULO_BENEFICIO.bpc_loas_deficiente, 60],
+      [ROTULO_BENEFICIO.bpc_loas_idoso, 120],
+    ])
+  })
+
+  it('GGVP-149 CA3 · os motivos mais comuns: o do INSS na última decisão e a causa da derrota, do mais comum ao menos; o texto livre da equipe não entra', async () => {
+    const indeferido = async (motivoIndeferimento: string | null, motivoEscrito: string | null = null) =>
+      banco.insert(resultadoInss).values({ casoId: await novoCaso(), resultado: 'indeferido', dataDecisao: '2026-05-10', motivoIndeferimento, motivoEscrito })
+    await indeferido('Falta de qualidade de segurado')
+    await indeferido('  falta de qualidade  de segurado ', 'A cliente (exemplo) contou que parou em 2019')
+    await indeferido('Não constatação de incapacidade')
+    await indeferido(null)
+    // A última decisão do caso vale: indeferido e depois deferido não conta como indeferimento.
+    const virou = await novoCaso()
+    await decisaoInss(virou, 'indeferido', '2026-03-01')
+    await decisaoInss(virou, 'deferido', '2026-06-01')
+    await novoCaso({ desfecho: 'improcedente', causaDesfecho: 'laudo pericial desfavorável', encerradoEm: as('2026-07-01') })
+    await novoCaso({ desfecho: 'improcedente', causaDesfecho: 'laudo pericial desfavorável', encerradoEm: as('2026-07-02') })
+    await novoCaso({ desfecho: 'extinto_sem_merito', causaDesfecho: 'não cumpriu determinação', encerradoEm: as('2026-07-03') })
+    await novoCaso({ desfecho: 'improcedente', encerradoEm: as('2026-07-04') })
+    await novoCaso({ desfecho: 'procedente_total', causaDesfecho: 'não é derrota', encerradoEm: as('2026-07-05') })
+    const { motivos } = await painelDeResultados(banco, PERIODO)
+    expect(motivos.indeferimento).toEqual([
+      { motivo: 'Falta de qualidade de segurado', casos: 2 },
+      { motivo: 'Não constatação de incapacidade', casos: 1 },
+      { motivo: 'sem motivo registrado', casos: 1 },
+    ])
+    expect(motivos.derrota).toEqual([
+      { motivo: 'laudo pericial desfavorável', casos: 2 },
+      { motivo: 'não cumpriu determinação', casos: 1 },
+      { motivo: 'sem causa registrada', casos: 1 },
+    ])
+    expect(JSON.stringify(motivos)).not.toContain('contou')
   })
 
   it('CA1 · o recorte por juízo (pelo número CNJ) e por advogada; caso sem o dado fica fora dos grupos', async () => {
@@ -154,6 +237,18 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
     ])
     const porAdvogada = (await painelDeResultados(banco, { ...PERIODO, recorte: 'advogada' })).recorte
     expect(porAdvogada?.grupos.map((g) => g.nome)).toEqual(['Ana (exemplo)'])
+  })
+
+  it('GGVP-149 CA1 · o recorte por vara usa a vara conferida no caso; caso sem vara fica fora dos grupos', async () => {
+    await decisaoInss(await novoCaso({ vara: '1ª Vara do JEF (exemplo)' }), 'deferido')
+    await decisaoInss(await novoCaso({ vara: '1ª Vara do JEF (exemplo)' }), 'indeferido')
+    await novoCaso({ vara: '2ª Vara do JEF (exemplo)', desfecho: 'procedente_total', encerradoEm: as('2026-08-01') })
+    await decisaoInss(await novoCaso(), 'deferido')
+    const porVara = (await painelDeResultados(banco, { ...PERIODO, recorte: 'vara' })).recorte
+    expect(porVara?.grupos.map((g) => [g.nome, indicadorDe(g, 'deferimento_inss'), indicadorDe(g, 'procedencia')])).toEqual([
+      ['1ª Vara do JEF (exemplo)', { casos: 2, valor: 0.5 }, { casos: 0, valor: null }],
+      ['2ª Vara do JEF (exemplo)', { casos: 0, valor: null }, { casos: 1, valor: 1 }],
+    ])
   })
 
   it('CA1 · o recorte por perito e por benefício usa o perito da perícia e o rótulo do catálogo', async () => {

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CasoParaConferencia } from '@ggv/contratos'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { Conferencia } from './Conferencia.tsx'
 
 const CASO = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
@@ -21,7 +22,18 @@ const base: CasoParaConferencia = {
   situacao: 'aguardando',
 }
 
-const SEM_CHANCE = { casos: 0, favoraveis: 0, porcentagem: null, baseEm: null, regra: 'mesmo benefício', fatores: null, motivoIa: 'A IA não respondeu agora: os fatores ficam com a sua leitura.' }
+const SEM_CHANCE = {
+  casos: 0,
+  favoraveis: 0,
+  porcentagem: null,
+  baseEm: null,
+  regra: 'mesmo benefício',
+  cor: null,
+  sugereNaoPegar: false,
+  faltaSaber: [],
+  fatores: null,
+  motivoIa: 'A IA não respondeu agora: os fatores ficam com a sua leitura.',
+}
 
 /** A chance chega sozinha ao abrir (sugestão pronta, 07/10): o POST da chance responde à parte da decisão. */
 function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, { ok: true }], chance: object = SEM_CHANCE) {
@@ -36,19 +48,47 @@ function servidor(caso: CasoParaConferencia, decisao: [number, unknown] = [201, 
   return fetch
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  entrarComo()
+})
 
 describe('Conferência da Sênior (GGVP-23)', () => {
+  it('GGVP-150 CA2, CA3, CA4 · a cor da faixa, a sugestão abaixo de 15% sem bloquear e o que falta saber', async () => {
+    entrarComo('senior')
+    servidor(base, undefined, { ...SEM_CHANCE, casos: 10, favoraveis: 1, porcentagem: 10, baseEm: '2026-10-07T15:00:00.000Z', cor: 'vermelho', sugereNaoPegar: true, faltaSaber: ['o perito', 'o juízo'] })
+    render(comSessao(<Conferencia casoId={CASO} />))
+    expect(await screen.findByText('Vermelho · abaixo de 15%')).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toBe('Abaixo de 15%: a sugestão é não pegar o caso. Não bloqueia nada: quem decide é o Jurídico.')
+    expect(screen.getAllByRole('listitem').map((i) => i.textContent)).toEqual(expect.arrayContaining(['o perito', 'o juízo']))
+    expect((screen.getByRole('button', { name: 'Aprovar' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('GGVP-150 CA6 · a advogada também vê a chance; o Atendimento não pede nem vê', async () => {
+    entrarComo('advogada')
+    servidor(base, undefined, { ...SEM_CHANCE, casos: 2, favoraveis: 1, porcentagem: 50, baseEm: '2026-10-07T15:00:00.000Z', cor: 'amarelo' })
+    const { unmount } = render(comSessao(<Conferencia casoId={CASO} />))
+    expect(await screen.findByText('Amarelo · de 15% a 50%')).toBeTruthy()
+    unmount()
+    entrarComo('atendimento')
+    const fetch = servidor({ ...base, podeDecidir: false })
+    render(comSessao(<Conferencia casoId={CASO} />))
+    await screen.findByText('Suficiente')
+    expect(screen.queryByRole('region', { name: 'Chance de êxito' })).toBeNull()
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/chance'))).toBe(false)
+  })
+
   it('GGVP-131 · a chance aparece sozinha ao abrir, com os casos e a base, e os fatores como sugestão; sem casos, sem número', async () => {
-    const chance = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', motivoIa: null, fatores: { chamadaId: '66666666-6666-4666-8666-666666666666', sugestao: true, texto: 'Para subir: trazer o relatório do médico assistente.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null } }
+    entrarComo('senior')
+    const chance = { ...SEM_CHANCE, casos: 4, favoraveis: 3, porcentagem: 75, cor: 'verde', baseEm: '2026-10-07T15:00:00.000Z', motivoIa: null, fatores: { chamadaId: '66666666-6666-4666-8666-666666666666', sugestao: true, texto: 'Para subir: trazer o relatório do médico assistente.', fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null } }
     servidor(base, undefined, chance)
-    const { unmount } = render(<Conferencia casoId={CASO} />)
+    const { unmount } = render(comSessao(<Conferencia casoId={CASO} />))
     expect(await screen.findByText('75% · 3 de 4 casos · base de 07/10')).toBeTruthy()
     expect(screen.getByText('Fatores sugeridos pela IA · confira')).toBeTruthy()
     expect(screen.getByText('Para subir: trazer o relatório do médico assistente.')).toBeTruthy()
     unmount()
     servidor(base)
-    render(<Conferencia casoId={CASO} />)
+    render(comSessao(<Conferencia casoId={CASO} />))
     expect(await screen.findByText('Sem casos parecidos na casa ainda: sem porcentagem.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /chance/i })).toBeNull()
   })

@@ -12,12 +12,20 @@ test('GGVP-75 · o Sócio abre os resultados pelo topo: os indicadores com os ca
   await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText(/Deferimento no INSS: \d+% em \d+ casos · base de \d{2}\/\d{2}\/\d{4}/)
   await expect(page.getByRole('list', { name: 'Extinções por causa' })).toContainText('Não cumpriu determinação do juízo (exemplo)')
   await expect(page.getByRole('list', { name: 'Valores do escritório' })).toContainText(/Honorários recebidos: R\$ [\d.]+,\d{2}/)
+  // GGVP-149 CA3: os motivos mais comuns, cada um com o número de casos.
+  await expect(page.getByRole('list', { name: 'Motivos de indeferimento' })).toContainText(/sem motivo registrado · \d+ casos?/)
+  await expect(page.getByRole('list', { name: 'Motivos de derrota' })).toContainText(/Não cumpriu determinação do juízo \(exemplo\) · \d+ casos?/)
 
   await page.getByLabel('Recorte', { exact: true }).selectOption('beneficio')
   await page.getByRole('button', { name: 'Ver resultados' }).click()
   // G22 de 07/10: sem amostra mínima, o grupo com poucos casos também mostra a taxa, com os casos e a data da base.
   await expect(page.getByRole('list', { name: 'BPC/LOAS Deficiente' })).toContainText(/Deferimento no INSS: \d+% em \d+ casos · base de/)
   await expect(page.getByRole('list', { name: 'Aposentadoria da Pessoa com Deficiência' })).toContainText(/Deferimento no INSS: \d+% em \d casos? · base de/)
+
+  // GGVP-149 CA1: o recorte por vara, pela vara conferida no caso.
+  await page.getByLabel('Recorte', { exact: true }).selectOption('vara')
+  await page.getByRole('button', { name: 'Ver resultados' }).click()
+  await expect(page.getByRole('heading', { name: 'Por vara' })).toBeVisible()
 })
 
 test('GGVP-75 · a Sênior vê o painel, sem os totais em dinheiro', async ({ page }) => {
@@ -26,6 +34,14 @@ test('GGVP-75 · a Sênior vê o painel, sem os totais em dinheiro', async ({ pa
   await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText('Deferimento no INSS')
   await expect(page.getByRole('list', { name: 'Raio-X Previdenciário' }).getByRole('listitem')).toHaveCount(6)
   await expect(page.getByRole('list', { name: 'Valores do escritório' })).toHaveCount(0)
+  await expect(page.getByText(/R\$/)).toHaveCount(0)
+})
+
+test('GGVP-149 · a líder do Atendimento vê os tempos e as taxas, sem nenhum valor em dinheiro', async ({ page }) => {
+  await entrarPelaApi(page, 'lider@exemplo.ggv')
+  await page.goto('/gestao/resultados')
+  await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText('Tempo até a sentença')
+  await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText('Tempo até o dinheiro')
   await expect(page.getByText(/R\$/)).toHaveCount(0)
 })
 
