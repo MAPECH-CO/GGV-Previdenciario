@@ -9,53 +9,25 @@ import {
   OPCOES_DA_SENIOR,
   RESULTADOS,
   TENTATIVAS_DE_COBRANCA,
-  ateQuando,
-  mensagemDeCobranca,
+  cobrancaDoCaso,
   motivoParaNaoAdiar,
-  motivoParaNaoCobrar,
   motivoParaNaoDecidir,
   naSenior,
-  proximaTentativa,
-  urgente,
   type CanalDaCobranca,
-  type EstadoDaCobranca,
+  type Cobranca,
+  type CobrancaDoCaso,
   type OpcaoDaSenior,
   type TentativaDeCobranca,
 } from '../regras/cobranca.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { checklistDoCaso } from './checklist.ts'
-import { QUEM, QUEM_ADVOGADA, agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Ficha, Processo, Tarefa } from './tipos.ts'
+import { doBancoOuNulo } from './parecer.ts'
+import { QUEM, QUEM_ADVOGADA, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Tarefa } from './tipos.ts'
 
-export type Cobranca = EstadoDaCobranca & {
-  processoId: string
-  fichaId: string
-  /** Data e hora ISO da conferência do checklist que abriu a cobrança (CA1). */
-  conferenciaEm?: string
-  /** Fechada: chegou tudo (CA9) ou a sênior suspendeu o caso (CA8). */
-  encerrada?: { quando: string; porque: 'recebeu-tudo' | 'suspensa' }
-}
+export type { Cobranca } from '../regras/cobranca.ts'
 
-export type SituacaoDaCobranca = 'aberta' | 'na-senior' | 'encerrada'
-
-export type CobrancaDoCaso = {
-  cobranca: Cobranca
-  situacao: SituacaoDaCobranca
-  ficha: Ficha
-  processo: Processo
-  beneficio: string
-  /** O que falta no checklist de agora (CA4, CA9). */
-  faltam: string[]
-  /** aaaa-mm-dd: o próximo lembrete (CA4). */
-  proxima: string
-  /** O número da próxima tentativa (CA6). */
-  tentativa: number
-  urgente: boolean
-  /** A mensagem pronta para o Chatwoot (CA11). */
-  mensagem: string
-  /** Por que o Atendimento não pode cobrar agora; pode, null. */
-  motivoParado: string | null
-}
+export type { CobrancaDoCaso, SituacaoDaCobranca } from '../regras/cobranca.ts'
 
 /** "Ligar" ou o envio pelo Chatwoot (CA6, CA11). */
 export type RegistroDaTentativa = { canal: CanalDaCobranca; resultado: TentativaDeCobranca['resultado'] }
@@ -101,29 +73,20 @@ export function cobrancasDo(banco: Banco): Cobranca[] {
     c.encerrada = { quando: agora().toISOString(), porque: 'recebeu-tudo' }
     caso.ficha.historico.push(evento('Chegou tudo o que faltava: a cobrança fechou e os lembretes foram cancelados'))
   }
-  return cobrancas
+  // Bloco 5c: as dos casos do servidor abrem e fecham lá e vêm na cópia.
+  return [...cobrancas, ...(banco.cobrancasDoServidor ?? [])]
+}
+
+/** A ação da cobrança de um caso do servidor: a cópia recebe a ficha e as cobranças do caso. */
+async function noServidor(processoId: string, acao: 'tentativas' | 'adiamento' | 'decisao', corpo: object): Promise<CobrancaDoCaso> {
+  const r = await noBanco<CobrancaDoCaso & { cobrancas: Cobranca[] }>(`/processos/${processoId}/cobranca/${acao}`, { method: 'POST', corpo })
+  receber({ ficha: r.ficha, cobrancas: r.cobrancas })
+  return r
 }
 
 function montar(banco: Banco, c: Cobranca): CobrancaDoCaso | null {
   const caso = checklistDoCaso(banco, c.processoId)
-  if (!caso) return null
-  const hoje = hojeIso(agora())
-  const proxima = proximaTentativa(c)
-  const situacao: SituacaoDaCobranca = c.encerrada ? 'encerrada' : naSenior(c, hoje) ? 'na-senior' : 'aberta'
-  const { ficha, processo, beneficio, checklist } = caso
-  return {
-    cobranca: c,
-    situacao,
-    ficha,
-    processo,
-    beneficio,
-    faltam: checklist.faltam,
-    proxima,
-    tentativa: c.tentativas.length + 1,
-    urgente: situacao === 'aberta' && urgente(c, hoje),
-    mensagem: mensagemDeCobranca({ nome: ficha.nome, beneficio, faltam: checklist.faltam, ate: ateQuando(hoje, c.prazo), hoje }),
-    motivoParado: c.encerrada ? 'A cobrança está fechada.' : motivoParaNaoCobrar(c, hoje),
-  }
+  return caso && cobrancaDoCaso(c, { ...caso, faltam: caso.checklist.faltam }, hojeIso(agora()))
 }
 
 /** A cobrança aberta do caso; sem aberta, a última. */
@@ -142,6 +105,7 @@ function abertaOuErro(banco: Banco, processoId: string): CobrancaDoCaso {
 
 /** GET /api/processos/:id/cobranca */
 export async function obterCobranca(processoId: string): Promise<CobrancaDoCaso | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<CobrancaDoCaso>(`/processos/${processoId}/cobranca`)
   const banco = ler()
   const atual = daCobranca(banco, processoId)
   gravar(banco)
@@ -150,6 +114,7 @@ export async function obterCobranca(processoId: string): Promise<CobrancaDoCaso 
 
 /** POST /api/processos/:id/cobranca/tentativas. Data, canal e resultado; a segunda sem resposta sobe para a sênior (CA3, CA6). */
 export async function registrarTentativa(processoId: string, registro: RegistroDaTentativa): Promise<CobrancaDoCaso> {
+  if (doServidor(processoId)) return noServidor(processoId, 'tentativas', registro)
   await esperar()
   if (!(registro.canal in CANAIS) || !(registro.resultado in RESULTADOS)) throw new Error('Canal ou resultado inválido')
   const banco = ler()
@@ -169,6 +134,7 @@ export async function registrarTentativa(processoId: string, registro: RegistroD
 
 /** POST /api/processos/:id/cobranca/adiamento. A nova data é obrigatória; o contador não volta a zero (CA10). */
 export async function adiarCobranca(processoId: string, para: string | null): Promise<CobrancaDoCaso> {
+  if (doServidor(processoId)) return noServidor(processoId, 'adiamento', { para })
   await esperar()
   const banco = ler()
   const atual = abertaOuErro(banco, processoId)
@@ -185,6 +151,7 @@ export async function adiarCobranca(processoId: string, para: string | null): Pr
 
 /** POST /api/processos/:id/cobranca/decisao. Só a sênior, só no limite, sempre com justificativa; volta ao Atendimento (CA8). */
 export async function decidirCobranca(processoId: string, decisao: Decisao): Promise<CobrancaDoCaso> {
+  if (doServidor(processoId)) return noServidor(processoId, 'decisao', decisao)
   await esperar()
   const banco = ler()
   const atual = abertaOuErro(banco, processoId)

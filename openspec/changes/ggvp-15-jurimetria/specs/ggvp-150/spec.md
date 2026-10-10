@@ -64,7 +64,7 @@ decidiu e o que decidiu.
 - **Então** o histórico guarda a chance, os casos usados, a data da base, quem decidiu e o que decidiu
 
 ### Requirement: CA6 · A advogada e o Sócio também veem
-A chance SHALL sair para a advogada, a Sênior e o Sócio (ação nova `chance.ver`, matriz versão 26). O Atendimento MUST NOT
+A chance SHALL sair para a advogada, a Sênior e o Sócio (ação nova `chance.ver`, matriz versão 27). O Atendimento MUST NOT
 receber a chance, nem pela tela nem pela API.
 
 #### Scenario: CA6 · Abrir a conferência

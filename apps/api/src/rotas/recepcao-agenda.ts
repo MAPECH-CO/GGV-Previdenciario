@@ -18,7 +18,7 @@ import {
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { compromissoInterno, contratoRecepcao, fichaRecepcao } from '../banco/esquema.ts'
+import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type {
@@ -37,6 +37,9 @@ import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
 import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, type ContratoGuardado } from './recepcao.ts'
+import type { RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
+import { criarChecklist } from './recepcao-checklist.ts'
+import { criarCobranca } from './recepcao-cobranca.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
@@ -102,8 +105,10 @@ const guardado = (l: typeof compromissoInterno.$inferSelect): CompromissoGuardad
 type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes } =
+  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes, leiturasDe } =
     criarFichario(banco, agora)
+  const { dasFichas: checklistsDas } = criarChecklist(banco, agora)
+  const { daCopia: cobrancasDa } = criarCobranca(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const quandoNaAgenda = (a: { data: string; hora: string }) => `${dataCurta(a.data, hoje())} às ${a.hora}`
@@ -146,13 +151,24 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
 
   // A cópia das telas: as fichas da Recepção, as tarefas abertas, os compromissos internos e as gravações, ao abrir cada
   // tela. A gravação com dado de saúde só vai a quem tem `dado_saude.ver_detalhe` (bloco 3a).
-  app.get('/api/recepcao', ver, async (pedido) => ({
-    fichas: await fichasDaRecepcao(),
-    tarefas: await tarefas(),
-    internos: await internos(),
-    gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
-    contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
-  }))
+  app.get('/api/recepcao', ver, async (pedido) => {
+    const todas = await fichasDaRecepcao()
+    const checklists = await checklistsDas(todas)
+    return {
+      fichas: todas,
+      tarefas: await tarefas(),
+      internos: await internos(),
+      gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
+      contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
+      // Bloco 5b: as leituras dos documentos, para a conferência e as tarefas da Documentação.
+      leituras: await leiturasDe(),
+      // Bloco 5c: o checklist de cada caso, calculado no servidor (o kit do escritório, o acidente e a criança do banco), as
+      // boas-vindas marcadas como enviadas e as cobranças, já fechadas quando chegou tudo.
+      checklists,
+      cobrancas: await cobrancasDa(todas, checklists),
+      boasVindas: (await banco.select({ dados: boasVindas.dados }).from(boasVindas)).map((b) => b.dados as RegistroDasBoasVindas),
+    }
+  })
 
   // GGVP-16 CA4 e GGVP-17 CA1, CA3: o balcão manda ao setor, com a ficha e o agendamento; quem veio entregar documento
   // vai sempre à Documentação, ligado ao caso em andamento.

@@ -1,6 +1,7 @@
 // Acervo do escritório (GGVP-55, GGVP-41, D4.05): a conferência dos desfechos lidos, com a ficha do desfecho do portal.
 // Só o conferido entra nas contas (CA7).
 import { z } from 'zod'
+import { TAMANHO_DA_VARA } from './justica.ts'
 
 /**
  * Os desfechos de um processo do acervo, como o Raio-X classifica (êxito = procedente, em parte ou acordo). GGVP-41: o
@@ -20,6 +21,8 @@ export const ROTULO_DESFECHO_DO_ACERVO: Record<DesfechoDoAcervo, string> = {
 
 /** GGVP-41: a tese vira grupo na Gestão; curta, para a mesma tese não se espalhar em vários grupos. */
 export const TAMANHO_DA_TESE = 80
+/** GGVP-153: o que a pergunta de um clique completa. */
+export const CAMPOS_A_COMPLETAR = ['vara', 'juiz', 'tese'] as const
 /** Texto vazio é o mesmo que não saber (CA5). */
 const textoOuNulo = z.string().trim().nullable().default(null).transform((t) => t || null)
 
@@ -50,8 +53,36 @@ export const ConferenciaDoAcervo = z.object({
     }),
   ),
   conferidos: z.number().int(),
+  /** GGVP-153 CA1: os conferidos ligados a um caso que ainda não têm vara, juiz ou tese, com o que falta em cada um. */
+  incompletos: z.array(
+    z.object({
+      id: z.uuid(),
+      numeroCnj: z.string().nullable(),
+      beneficio: z.string().nullable(),
+      desfecho: z.string(),
+      falta: z.array(z.enum(CAMPOS_A_COMPLETAR)),
+    }),
+  ),
+  /** GGVP-153 CA1: as opções de um clique, o que o portal já conhece. */
+  conhecidos: z.object({ vara: z.array(z.string()), juiz: z.array(z.string()), tese: z.array(z.string()) }),
 })
 export type ConferenciaDoAcervo = z.infer<typeof ConferenciaDoAcervo>
+
+/**
+ * POST /api/acervo/processos/:id/completar (GGVP-153 CA2): o que faltava, escolhido em um clique ou escrito. Só o campo
+ * mandado conta; vazio é o mesmo que não mandar.
+ */
+const completar = (rotulo: string, tamanho: number) =>
+  z
+    .string()
+    .trim()
+    .max(tamanho, `${rotulo} tem até ${tamanho} caracteres`)
+    .optional()
+    .transform((t) => t || undefined)
+export const CompletarAcervo = z
+  .object({ vara: completar('A vara', TAMANHO_DA_VARA), juiz: completar('O nome do juiz', TAMANHO_DA_VARA), tese: completar('A tese', TAMANHO_DA_TESE) })
+  .refine((c) => c.vara || c.juiz || c.tese, 'Escolha ou escreva o que falta.')
+export type CompletarAcervo = z.infer<typeof CompletarAcervo>
 
 /**
  * POST /api/acervo/processos/:id/conferencia: o desfecho conferido, o mesmo lido ou o corrigido. GGVP-41 (CA7): no

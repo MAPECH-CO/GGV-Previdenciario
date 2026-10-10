@@ -17,8 +17,10 @@ import type { DocumentoLido } from './leitura.ts'
 import type { ConferenciaDoChecklist } from './checklist.ts'
 import type { RegistroDasBoasVindas } from './boasVindas.ts'
 import type { Cobranca } from './cobranca.ts'
+import type { ChecklistNaCopia } from '../regras/checklist.ts'
 import type { Liberacao } from './liberacao.ts'
 import type {
+  Arquivo,
   CompromissoGuardado,
   EdicaoFicha,
   Encaminhamento,
@@ -88,6 +90,14 @@ export type Banco = {
   contratos?: Contrato[]
   /** O que a IA leu de cada documento que entrou, para a Documentação conferir e arquivar (GGVP-81). Nasce em leitura.ts. */
   leituras?: DocumentoLido[]
+  /** As leituras das fichas do servidor, que a IA (simulada) faz lá; vêm na cópia (GGVP-125, bloco 5b). */
+  leiturasDoServidor?: DocumentoLido[]
+  /** O checklist de cada caso do servidor, calculado lá (o kit do escritório, o acidente e a criança); vem na cópia (bloco 5c). */
+  checklistsDoServidor?: ChecklistNaCopia[]
+  /** As boas-vindas que a Atendimento marcou como enviadas, nos casos do servidor (bloco 5c). */
+  boasVindasDoServidor?: RegistroDasBoasVindas[]
+  /** As cobranças dos casos do servidor (bloco 5c). */
+  cobrancasDoServidor?: Cobranca[]
   /** Cada conferência do checklist de um caso (GGVP-91). */
   checklists?: ConferenciaDoChecklist[]
   /** Cada tentativa de envio das boas-vindas (GGVP-97). */
@@ -186,16 +196,19 @@ export const agendamentoDoServidor = (id: string) => doServidor(id.slice(0, 36))
 
 const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
-/** A agenda e os processos, item a item: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
-function mesclarPorId<T extends { id: string }>(local: T[], doBanco: T[], antes: T[]): T[] {
+/** A agenda, os processos e os arquivos, item a item pela chave: o que mudou no servidor desde a cópia vem de lá; o que só existe aqui fica. */
+function mesclar<T>(chave: (x: T) => string, local: T[], doBanco: T[], antes: T[]): T[] {
   const lista = [...local]
   for (const a of doBanco) {
-    const i = lista.findIndex((x) => x.id === a.id)
+    const i = lista.findIndex((x) => chave(x) === chave(a))
     if (i < 0) lista.push(a)
-    else if (!igual(antes.find((x) => x.id === a.id), a)) lista[i] = a
+    else if (!igual(antes.find((x) => chave(x) === chave(a)), a)) lista[i] = a
   }
   return lista
 }
+const peloId = (x: { id: string }) => x.id
+/** O nome do arquivo é único na pasta (a pessoal ou a do processo). */
+const naPasta = (a: Arquivo) => `${a.local}/${a.nome}`
 
 /**
  * Copia a ficha do servidor para cá. Na primeira vez, inteira. Depois, em três vias, contra a última cópia: o campo
@@ -212,9 +225,11 @@ function espelharEm(banco: Banco, doBanco: Ficha): Ficha {
       ...local,
       historico: [...local.historico, ...doBanco.historico.slice(antes.historico.length)].sort((a, b) => a.quando.localeCompare(b.quando)),
       contatos: [...local.contatos, ...doBanco.contatos.slice(antes.contatos.length)],
-      agendamentos: mesclarPorId(local.agendamentos, doBanco.agendamentos, antes.agendamentos),
+      agendamentos: mesclar(peloId, local.agendamentos, doBanco.agendamentos, antes.agendamentos),
       // Bloco 4a: o processo é o caso do banco, com a etapa do contrato.
-      processos: mesclarPorId(local.processos, doBanco.processos, antes.processos),
+      processos: mesclar(peloId, local.processos, doBanco.processos, antes.processos),
+      // Bloco 5a: os arquivos que o servidor guarda vêm de lá; os que só existem aqui (fluxos ainda não ligados) ficam.
+      arquivos: mesclar(naPasta, local.arquivos ?? [], doBanco.arquivos ?? [], antes.arquivos ?? []),
     }
     const campos = [
       ...Object.keys(ROTULOS),
@@ -278,13 +293,18 @@ function receberContratosEm(banco: Banco, doBanco: Contrato[]) {
   banco.contratos = [...banco.contratos.filter((c) => !vieram.has(c.processoId)), ...doBanco]
 }
 
-/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa, o compromisso interno, a gravação e o contrato. */
+/** O que a rota do servidor devolve junto: a ficha, as tarefas da pessoa, o compromisso interno, a gravação, os contratos e as leituras. */
 export function receber(r: {
   ficha?: Ficha
   tarefas?: TarefaEncaminhada[]
   interno?: CompromissoGuardado
   gravacao?: Gravacao
   contrato?: Contrato
+  contratos?: Contrato[]
+  leituras?: DocumentoLido[]
+  checklists?: ChecklistNaCopia[]
+  boasVindas?: RegistroDasBoasVindas[]
+  cobrancas?: Cobranca[]
 }): Ficha | undefined {
   const banco = ler()
   const ficha = r.ficha && espelharEm(banco, r.ficha)
@@ -292,8 +312,24 @@ export function receber(r: {
   if (r.interno) banco.internos = [...banco.internos.filter((i) => i.id !== r.interno!.id), r.interno]
   if (r.gravacao) receberGravacaoEm(banco, r.gravacao)
   if (r.contrato) receberContratosEm(banco, [r.contrato])
+  if (r.contratos) receberContratosEm(banco, r.contratos)
+  if (r.leituras) {
+    // Bloco 5b: a leitura que veio do servidor entra no lugar da que já existe aqui.
+    const vieram = new Set(r.leituras.map((l) => l.id))
+    banco.leiturasDoServidor = [...(banco.leiturasDoServidor ?? []).filter((l) => !vieram.has(l.id)), ...r.leituras]
+  }
+  // Bloco 5c: o checklist, as boas-vindas e as cobranças que vieram do servidor entram no lugar das do mesmo caso.
+  if (r.checklists) banco.checklistsDoServidor = porCaso(banco.checklistsDoServidor, r.checklists)
+  if (r.boasVindas) banco.boasVindasDoServidor = porCaso(banco.boasVindasDoServidor, r.boasVindas)
+  if (r.cobrancas) banco.cobrancasDoServidor = porCaso(banco.cobrancasDoServidor, r.cobrancas)
   gravar(banco)
   return ficha
+}
+
+/** Os itens que vieram do servidor entram no lugar dos do mesmo processo. */
+function porCaso<T extends { processoId: string }>(antes: T[] | undefined, vieram: T[]): T[] {
+  const casos = new Set(vieram.map((v) => v.processoId))
+  return [...(antes ?? []).filter((a) => !casos.has(a.processoId)), ...vieram]
 }
 
 /**
@@ -302,9 +338,17 @@ export function receber(r: {
  */
 export async function sincronizarRecepcao() {
   if (!noServidor) return
-  const r = await noBanco<{ fichas: Ficha[]; tarefas: TarefaEncaminhada[]; internos: CompromissoGuardado[]; gravacoes: Gravacao[]; contratos: Contrato[] }>(
-    '/recepcao',
-  )
+  const r = await noBanco<{
+    fichas: Ficha[]
+    tarefas: TarefaEncaminhada[]
+    internos: CompromissoGuardado[]
+    gravacoes: Gravacao[]
+    contratos: Contrato[]
+    leituras?: DocumentoLido[]
+    checklists?: ChecklistNaCopia[]
+    boasVindas?: RegistroDasBoasVindas[]
+    cobrancas?: Cobranca[]
+  }>('/recepcao')
   const banco = ler()
   for (const f of r.fichas) espelharEm(banco, f)
   receberTarefasEm(banco, r.tarefas, true)
@@ -312,6 +356,12 @@ export async function sincronizarRecepcao() {
   // As do servidor vêm inteiras, e só as que este perfil pode ver: a entrevista com dado de saúde, só o Jurídico.
   banco.gravacoes = [...banco.gravacoes.filter((g) => !gravacaoDoServidor(g.id)), ...r.gravacoes]
   receberContratosEm(banco, r.contratos)
+  // Bloco 5b: as leituras das fichas do servidor vêm inteiras.
+  banco.leiturasDoServidor = r.leituras ?? []
+  // Bloco 5c: o checklist de cada caso, as boas-vindas e as cobranças do servidor vêm inteiros.
+  banco.checklistsDoServidor = r.checklists ?? []
+  banco.boasVindasDoServidor = r.boasVindas ?? []
+  banco.cobrancasDoServidor = r.cobrancas ?? []
   gravar(banco)
 }
 

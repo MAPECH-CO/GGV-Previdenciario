@@ -3,9 +3,9 @@
 // O chat herda exatamente as permissões do perfil de quem pergunta. Para executar algo, devolve um cartão; nada acontece
 // sem "Confirmar" (confirmarAcao).
 //
-// Ponta para ligar no motor de IA (pedido #26, feat/GGVP-14-ia-juridica, do Mateus): `perguntar` vira POST /api/chat e a
-// `sugestao` passa a vir do motor (SugestaoDaIa, com as fontes e o modelo de verdade); as recusas, os portões, a regra do
-// responsável e os números continuam no servidor, como código, antes e depois do modelo.
+// Com o servidor ligado (homologação), `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor (GGVP-142): o
+// motor de IA de verdade, com as recusas, os portões, a regra do responsável e os números no servidor, como código, antes
+// e depois do modelo. O que está aqui fica para os testes e para a semente.
 import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa } from '@ggv/contratos'
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
@@ -49,7 +49,7 @@ import {
 } from './pericia.ts'
 import type { IdPerfil } from './perfis.ts'
 import { perfilDoPerito, peritosDo } from './peritos.ts'
-import { agora, esperar, gravar, ler } from './servidor.ts'
+import { agora, doServidor, esperar, gravar, ler, noBanco, servidorLigado } from './servidor.ts'
 import type { Tarefa } from './tipos.ts'
 
 export type { QuemPergunta }
@@ -521,10 +521,25 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
 }
 
 /**
+ * O modo misto (GGVP-125): vai ao servidor (GGVP-142) a pergunta sobre um caso do servidor, pelo processo ou pelo cliente
+ * citado, e a consulta sem cliente. Seguem aqui a pergunta sobre um caso ou um cliente da semente e, sem cliente, as
+ * listas, os números e as ações que este chat calcula por código sobre a semente (perícias da semana, jurimetria...).
+ */
+async function vaiAoServidor(p: { texto: string; processoId?: string }) {
+  if (p.processoId) return doServidor(p.processoId)
+  const citados = await identificarCliente(p.texto)
+  if (citados.length) return citados.some((f) => doServidor(f.id))
+  return entenderPedido(p.texto) === 'consulta'
+}
+
+/**
  * POST /api/chat: o caminho único do chat (CA1 a CA12). Na ordem: as recusas, os portões, os anexos, o que é de outro
  * perfil, as ações (com cartão) e as consultas. Nada executa aqui.
  */
 export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; processoId?: string }, quem: QuemPergunta): Promise<RespostaDoChat> {
+  if (servidorLigado() && (await vaiAoServidor(p))) {
+    return noBanco<RespostaDoChat>('/chat', { method: 'POST', corpo: { texto: p.texto, anexos: p.anexos ?? [], ...(p.processoId ? { processoId: p.processoId } : {}) } })
+  }
   await esperar()
   const texto = p.texto.trim()
   const imediata = recusaImediata(texto, quem.usuario)
@@ -655,6 +670,9 @@ export async function confirmarAcao(
   quem: QuemPergunta,
   o: { responsavel?: string; escolha?: string; arquivos?: { nome: string; tamanho: number; conteudo: ArrayBuffer }[] } = {},
 ): Promise<ResultadoDaAcao> {
+  if (servidorLigado() && !pendentes.has(acaoId)) {
+    return noBanco<ResultadoDaAcao>(`/chat/acoes/${acaoId}`, { method: 'POST', corpo: { acaoId, ...(o.responsavel ? { responsavel: o.responsavel } : {}), ...(o.escolha ? { escolha: o.escolha } : {}) } })
+  }
   const p = pendentes.get(acaoId)
   if (!p) throw new Error('Esse cartão já foi usado ou expirou. Peça de novo.')
   if (p.quem.usuario !== quem.usuario) throw new Error('Só quem pediu confirma o cartão.')
@@ -750,11 +768,13 @@ export async function confirmarAcao(
 
 /** O cartão cancelado: nada acontece e ele some. */
 export function cancelarAcao(acaoId: string) {
+  if (servidorLigado() && !pendentes.has(acaoId)) void noBanco(`/chat/acoes/${acaoId}`, { method: 'DELETE' }).catch(() => undefined)
   pendentes.delete(acaoId)
 }
 
 /** As tarefas que o chat criou para a pessoa, na Central dela (Figma 2086:2). */
 export function tarefasCriadasPeloChat(usuario: string | undefined): Tarefa[] {
+  // A tarefa que o chat cria no servidor é uma tarefa do banco: chega à Central pela lista do servidor, não por aqui.
   if (!usuario) return []
   const hoje = hojeIso(agora())
   return (ler().tarefasDoChat ?? [])

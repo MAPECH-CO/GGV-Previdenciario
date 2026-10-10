@@ -48,7 +48,7 @@ export function registrarRotasDocumentacaoMedica(app: FastifyInstance, opcoes: O
       const portao = parecerDoPortao(p)
       if (portao) portoes[id] = portao
       const complemento = await montar(c)
-      if (complemento && complemento.tela.situacao !== 'encerrado') {
+      if (complemento && complemento.tela.situacao !== 'encerrado' && complemento.tela.situacao !== 'aguardando-parecer') {
         const { pedir, decidir } = tarefasDoComplemento(complemento.tela, hoje)
         tarefas.push(pedir, ...(decidir ? [decidir] : []))
       }

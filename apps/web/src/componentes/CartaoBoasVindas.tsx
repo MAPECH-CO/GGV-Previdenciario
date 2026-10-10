@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { enviarBoasVindas, obterBoasVindas, type BoasVindas } from '../dados/boasVindas.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
 import styles from '../paginas/Balcao.module.css'
 import { juntar } from '../regras/checklist.ts'
 import { dataCurta, hojeIso, hora } from '../regras/datas.ts'
@@ -31,6 +31,9 @@ export function CartaoBoasVindas({ processoId, nome, versao }: Props) {
   }, [processoId, versao])
 
   if (!bv) return null
+  // Bloco 5c (decisão do Mateus, 09/10): no caso do servidor, o portal ainda não manda; a Atendimento manda por fora e marca.
+  const porFora = doServidor(processoId)
+  const canal = porFora ? 'A Atendimento manda por fora: o portal ainda não envia' : 'Chatwoot · conversa do cliente'
   const hoje = hojeIso(agora())
   const conteudo = [
     'mensagem padrão',
@@ -41,7 +44,7 @@ export function CartaoBoasVindas({ processoId, nome, versao }: Props) {
     .join(' + ')
 
   async function enviar() {
-    if (travado.current || !conferi) return
+    if (travado.current || (!conferi && !porFora)) return
     travado.current = true
     setEnviando(true)
     setErro('')
@@ -74,15 +77,15 @@ export function CartaoBoasVindas({ processoId, nome, versao }: Props) {
           <dd>Depois de concluir a conferência do checklist, com as pendências dele.</dd>
           <dd />
           <dt>Vai por</dt>
-          <dd>Chatwoot · conversa do cliente</dd>
+          <dd>{canal}</dd>
           <dd />
         </dl>
       ) : bv.situacao === 'enviada' && bv.registro ? (
         <dl className={proprio.linhas}>
           <dt>Enviada</dt>
           <dd>
-            {hojeIso(new Date(bv.registro.quando)) === hoje ? 'hoje' : dataCurta(hojeIso(new Date(bv.registro.quando)), hoje)} às {hora(bv.registro.quando)} ·
-            Chatwoot
+            {hojeIso(new Date(bv.registro.quando)) === hoje ? 'hoje' : dataCurta(hojeIso(new Date(bv.registro.quando)), hoje)} às {hora(bv.registro.quando)} ·{' '}
+            {porFora ? 'mandada por fora do portal' : 'Chatwoot'}
           </dd>
           <dd className={proprio.ok}>ok</dd>
           <dt>Conteúdo</dt>
@@ -100,25 +103,34 @@ export function CartaoBoasVindas({ processoId, nome, versao }: Props) {
               </>
             )}
             <dt>Vai por</dt>
-            <dd>Chatwoot · conversa do cliente</dd>
+            <dd>{canal}</dd>
             <dd />
             <dt>Conteúdo</dt>
             <dd>{conteudo}</dd>
             <dd />
           </dl>
           <label className={proprio.campo}>
-            Mensagem (confira antes de enviar)
-            <textarea rows={6} maxLength={2000} value={mensagem} onChange={(e) => setMensagem(e.target.value)} />
+            {porFora ? 'Mensagem para copiar' : 'Mensagem (confira antes de enviar)'}
+            <textarea rows={6} maxLength={2000} value={mensagem} readOnly={porFora} onChange={(e) => setMensagem(e.target.value)} />
           </label>
-          <label className={proprio.conferi}>
-            <input type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
-            Conferi a mensagem
-          </label>
+          {!porFora && (
+            <label className={proprio.conferi}>
+              <input type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
+              Conferi a mensagem
+            </label>
+          )}
           <div className={proprio.acoes}>
-            <button type="button" className={proprio.enviar} disabled={!conferi || mensagem.trim() === '' || enviando} onClick={enviar}>
-              {enviando ? 'enviando…' : bv.situacao === 'falhou' ? 'Tentar de novo pelo Chatwoot' : 'Enviar pelo Chatwoot'}
+            <button
+              type="button"
+              className={proprio.enviar}
+              disabled={(!conferi && !porFora) || mensagem.trim() === '' || enviando}
+              onClick={enviar}
+            >
+              {enviando ? 'enviando…' : porFora ? 'Já enviei' : bv.situacao === 'falhou' ? 'Tentar de novo pelo Chatwoot' : 'Enviar pelo Chatwoot'}
             </button>
-            <span className={styles.motivo}>Vai uma única vez, na conversa do cliente.</span>
+            <span className={styles.motivo}>
+              {porFora ? 'Marque depois de mandar a mensagem ao cliente: vale uma única vez.' : 'Vai uma única vez, na conversa do cliente.'}
+            </span>
           </div>
           {erro && (
             <p role="alert" className={proprio.erro}>

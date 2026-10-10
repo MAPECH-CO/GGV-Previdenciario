@@ -92,6 +92,20 @@ describe('Tratar exigência do INSS (GGVP-39)', () => {
     expect(JSON.parse(post[1]!.body as string)).toMatchObject({ pede: 'documentos', itens: ['CadÚnico', 'Renda'], prazoEntrega: '20/10/2026' })
   })
 
+  it('GGVP-125, bloco 5d · o tipo do documento por linha é opcional: a linha com tipo vai com ele, a sem tipo vai como texto', async () => {
+    const fetch = servidor(base)
+    render(<TratarExigencia casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Documentos'))
+    fireEvent.change(screen.getByLabelText('Prazo que o INSS deu (dias)'), { target: { value: '30' } })
+    fireEvent.change(screen.getByLabelText('Documentos pedidos (um por linha)'), { target: { value: 'CadÚnico\nComprovante de residência' } })
+    fireEvent.change(screen.getByLabelText('Documento que cumpre: Comprovante de residência'), { target: { value: 'comprovante-residencia' } })
+    fireEvent.change(screen.getByLabelText('Prazo de entrega da Documentação'), { target: { value: '2026-10-20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Criar a tarefa' }))
+    await screen.findByRole('status')
+    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
+    expect(JSON.parse(post[1]!.body as string).itens).toEqual(['CadÚnico', { descricao: 'Comprovante de residência', tipoDocumento: 'comprovante-residencia' }])
+  })
+
   it('CA14 · a Sênior vê dilação ou perda na exigência vencida', async () => {
     servidor({ ...comCard, vencida: true, podeCumprir: false, podeDecidirVencida: true })
     render(<TratarExigencia casoId={CASO} />)

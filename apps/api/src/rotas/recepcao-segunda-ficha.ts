@@ -53,6 +53,8 @@ export function registrarRotasRecepcaoSegundaFicha(app: FastifyInstance, { banco
       repetido: false,
       aguardaLeitura: false,
     }
+    // GGVP-125, bloco 5a: a imagem entra na lista de arquivos da ficha do servidor.
+    ficha.arquivos.push(arquivo)
     const respostas = { ...respostasVazias(), ...leituraDaSegundaFicha().respostas }
     await guardarMedica(ficha.id, soMedicos(respostas), true)
     ficha.historico.push(

@@ -584,3 +584,29 @@ describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, a
     expect((await post('igor', '/data-do-juizo', { data: '2026-10-22', hora: '10:00', local: 'Sala 1' })).json()).toEqual({ erro: 'A data desta perícia vem do comprovante do INSS.' })
   })
 })
+
+describe('GGVP-125 · bloco 5d: o documento de qualquer canal entra no kit da perícia', () => {
+  it('o papel do scanner, como o arquivamento da Recepção o grava, entra no kit pelo tipo conferido', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    await marcar(true)
+    const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
+    await banco.insert(documento).values({
+      pessoaId: c.pessoaId,
+      casoId,
+      tipo: 'laudo',
+      sensivel: true,
+      situacao: 'conferido',
+      origem: 'scanner',
+      chaveArmazenamento: `drive:${c.pessoaId}/Laudo - Maria Souza.pdf`,
+      nomeOriginal: 'Laudo - Maria Souza.pdf',
+      mime: 'application/pdf',
+      tamanho: 0,
+      hashSha256: '',
+      drivePendente: false,
+    })
+    const itens = (await ver('dora')).json().documentos.itens.map((i: { item: { id: string }; arquivo?: { nome: string } }) => [i.item.id, i.arquivo?.nome ?? null])
+    expect(itens).toEqual([['laudo-recente', 'Laudo - Maria Souza.pdf'], ['exames', null], ['receitas', null], ['atestados', null]])
+  })
+})
+

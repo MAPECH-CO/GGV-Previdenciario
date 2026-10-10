@@ -23,6 +23,7 @@ import {
   acessoDadoSensivel,
   caso,
   contrato,
+  contratoRecepcao,
   decisao,
   documento,
   documentoMedico,
@@ -44,10 +45,24 @@ import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { ehPeca } from './documentos.ts'
+import { criarChecklist } from './recepcao-checklist.ts'
+import type { ChecklistDoCaso } from '../../../web/src/regras/checklist.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
 /** A liberação ao Jurídico (D1.24, GGVP-18) ainda usa esta mensagem; a conferência da Sênior usa `bloqueioDoG1`. */
 export const MSG_G1 = 'Checklist incompleto (G1): faltam'
+
+/**
+ * O G1 do caso que nasceu no "fechou" da Recepção (GGVP-125, bloco 5c; decisão do Mateus, 09/10): o checklist dela,
+ * calculado no servidor com o kit do escritório nos nomes das telas, completo agora e na última conferência (D1.21).
+ */
+function faltamNaRecepcao({ checklist: c, conferencia }: ChecklistDoCaso): string[] {
+  if (!c.temLista) return ['a lista de documentos do benefício, na configuração do escritório']
+  if (c.bloqueio) return [c.bloqueio.replace(/\.$/, '')]
+  if (c.faltam.length) return c.faltam
+  return conferencia?.completo ? [] : ['a conferência do checklist completo (D1.21)']
+}
+
 export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e espera outra Sênior.'
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
 export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
@@ -70,6 +85,7 @@ const situacaoDo = (p: LinhaParecer | undefined): SituacaoDoParecer | null =>
 export function registrarRotasConferencia(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
+  const { doCaso: checklistDaRecepcao } = criarChecklist(banco, agora)
 
   /** O pedido de dispensa esperando resposta (Q14): há mais pedidos que respostas. */
   async function dispensaPendente(casoId: string) {
@@ -116,6 +132,10 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       : []
     const tem = new Set(docs.map((d) => d.tipo))
     const faltam = kit.map((k) => k.tipo).filter((t) => !tem.has(t))
+    // O caso que nasceu no "fechou" da Recepção tem o contrato dela: o G1 é o checklist da Recepção (bloco 5c).
+    const [daRecepcao] = await banco.select({ id: contratoRecepcao.casoId }).from(contratoRecepcao).where(eq(contratoRecepcao.casoId, casoId))
+    const recepcao = daRecepcao ? await checklistDaRecepcao(casoId) : null
+    const faltamDaRecepcao = recepcao ? faltamNaRecepcao(recepcao) : null
     const [parecer] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, casoId)).orderBy(desc(parecerMedico.criadoEm)).limit(1)
     const [laudoNovo] = await banco
       .select({ id: documentoMedico.id })
@@ -143,7 +163,9 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       casoId: c.id,
       cliente: c.cliente,
       beneficio: c.beneficio,
-      checklist: { cadastrado: kit.length > 0, completo: faltam.length === 0, faltam },
+      checklist: faltamDaRecepcao
+        ? { cadastrado: true, completo: faltamDaRecepcao.length === 0, faltam: faltamDaRecepcao }
+        : { cadastrado: kit.length > 0, completo: faltam.length === 0, faltam },
       documentos: docs,
       parecer: parecer && veParecer
         ? { resultado: parecer.resultado, itens: (parecer.itens as ItemParecer[]) ?? [], justificativaDispensa: parecer.justificativaDispensa }

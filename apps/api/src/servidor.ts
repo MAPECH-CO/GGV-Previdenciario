@@ -54,6 +54,9 @@ import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts
 import { registrarRotasRecepcaoDecisoes } from './rotas/recepcao-decisoes.ts'
 import { registrarRotasRecepcaoSegundaFicha } from './rotas/recepcao-segunda-ficha.ts'
 import { registrarRotasRecepcaoContrato } from './rotas/recepcao-contrato.ts'
+import { registrarRotasRecepcaoDocumentos } from './rotas/recepcao-documentos.ts'
+import { registrarRotasRecepcaoChecklist } from './rotas/recepcao-checklist.ts'
+import { registrarRotasRecepcaoCobranca } from './rotas/recepcao-cobranca.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
 import { registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
@@ -62,6 +65,7 @@ import { registrarRotasFeriados } from './rotas/feriados.ts'
 import { registrarRotasProcesso } from './rotas/processo.ts'
 import { registrarRotasBases } from './rotas/bases.ts'
 import { registrarRotasFinanceiro } from './rotas/financeiro.ts'
+import { registrarRotasChat } from './rotas/chat.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -159,6 +163,9 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
     registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
     registrarRotasRecepcaoContrato(app, { banco, agora })
+    registrarRotasRecepcaoDocumentos(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasRecepcaoChecklist(app, { banco, agora })
+    registrarRotasRecepcaoCobranca(app, { banco, agora })
     registrarRotasRoteiros(app, { banco, agora })
     registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
@@ -180,6 +187,8 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasBases(app, { banco, agora })
     // GGVP-78: o painel Financeiro, das prestações de contas.
     registrarRotasFinanceiro(app, { banco, agora })
+    // GGVP-142: o chat das Centrais e a aba Suporte pelo servidor.
+    registrarRotasChat(app, { banco, agora, ia: motorIa })
     alimentar = async () => {
       if (!motorIa.ligada) return
       await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error({ erro }, 'alimentar o acervo falhou'))

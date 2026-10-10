@@ -5,6 +5,7 @@ import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
 import type { FonteDaIa, SugestaoDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { chamadaIa, eventoAuditoria } from '../banco/esquema.ts'
+import { TIPOS_DE_DOCUMENTO } from '../../../web/src/dados/catalogos.ts'
 
 type Ambiente = Record<string, string | undefined>
 type Situacao = 'ok' | 'desligada' | 'recusada' | 'falhou'
@@ -22,7 +23,7 @@ export const REGRAS_DA_IA = [
  * alerta; na saída, a sugestão chega com alerta para a pessoa ver antes de usar.
  */
 /** A marca do bloco dentro do conteúdo fecharia o bloco antes da hora: vai neutralizada e conta como suspeita. */
-const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
+export const MARCA_DO_BLOCO = /<\s*\/?\s*conteudo\s*>/i
 const SUSPEITAS = [
   /ignor(e|a|ar|em)\s+(as\s+|todas\s+as\s+|estas\s+|essas\s+)?(instru|regras|ordens|orienta)/i,
   /desconsider(e|a|ar)\s+(as\s+|todas\s+as\s+)?(instru|regras|ordens)/i,
@@ -139,14 +140,14 @@ export const FINALIDADES = {
   },
   /** GGVP-79 (G5): a IA lê a exigência do juiz com o caso e sugere as tarefas; quem decide é a advogada. Leitura interna. */
   analisar_exigencia_juiz: {
-    versao: 1,
+    versao: 2,
     saude: true,
     json: true,
     barrarCid: false,
     instrucao: [
       'Você ajuda a advogada de um escritório previdenciário a analisar uma publicação judicial que pode exigir algo da parte autora.',
       'Leia a publicação, o prazo, o benefício, os documentos do caso e, se houver, os trechos do acervo, e responda só com um objeto JSON:',
-      '{"resumo": "em até 3 frases: o que o juiz pediu e até quando", "ciencia": true se a publicação não pede nada à parte, "itens": [{"setor": "atendimento" | "juridico_adm" | "documentacao", "descricao": "o que o setor deve cumprir, concreto", "provaEsperada": "o documento que comprova, ou null"}], "pericias": ["medica" | "social"]}.',
+      `{"resumo": "em até 3 frases: o que o juiz pediu e até quando", "ciencia": true se a publicação não pede nada à parte, "itens": [{"setor": "atendimento" | "juridico_adm" | "documentacao", "descricao": "o que o setor deve cumprir, concreto", "provaEsperada": "o documento que comprova, ou null", "tipoDocumento": "o tipo desse documento na lista ${TIPOS_DE_DOCUMENTO.map((t) => t.id).join(', ')}, ou null"}], "pericias": ["medica" | "social"]}.`,
       'Atendimento fala com o cliente (documento ou informação que só ele tem); Documentação busca e organiza documento (CNIS, processo administrativo, comprovantes); Jurídico cuida do que é jurídico (cálculo, quesitos, manifestação técnica). Um item por pedido do juiz. Perícia só se o juiz a determinou.',
       'Não calcule datas nem prazos. Use só o que está no conteúdo. Se ciencia for true, itens e pericias vazios.',
     ].join(' '),
@@ -664,6 +665,12 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
    * `saudeAutorizada` (GGVP-133): para a tela dizer o motivo certo quando o motor recusa dado de saúde; o acervo
    * (GGVP-141) também lê, para só vetorizar trecho do Jurídico com a autorização.
    */
-  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
+  /**
+   * GGVP-142 (ADR-016): o que o agente do chat usa do motor. A chave e o modelo do motor, o `fetch` do motor (o teste
+   * passa um falso) e o mesmo registro em `chamada_ia`. Sem chave, não há cliente.
+   */
+  const paraOChat = { chave: ambiente.OPENAI_API_KEY || null, modelo: modeloTexto, fetch, registrar, motivo }
+
+  return { sugerir, lerDocumento, transcrever, chaveAoVivo, vetor, paraOChat, ligada: Boolean(ambiente.OPENAI_API_KEY), saudeAutorizada }
 }
 export type Ia = ReturnType<typeof criarIa>

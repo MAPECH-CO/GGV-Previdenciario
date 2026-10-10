@@ -191,6 +191,12 @@ const ItemDaExigenciaJuiz = z.object({
     .optional()
     .transform((v) => v || null),
   prazoInterno: DataObrigatoria('Informe o prazo interno de cada item (dd/mm/aaaa)'),
+  /** O tipo de documento que cumpre o item, se houver: o documento conferido desse tipo dá baixa sozinho (GGVP-125, bloco 5d). */
+  tipoDocumento: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || null),
 })
 
 /** POST /api/casos/:id/exigencia-juiz (GGVP-79 CA1, CA2, CA6, CA7, CA8, CA13): "o prazo interno até o processual" o servidor confere. */
@@ -217,7 +223,14 @@ export const AnaliseDaExigenciaPelaIa = z.object({
   resumo: z.string().trim().min(1),
   ciencia: z.boolean(),
   itens: z
-    .array(z.object({ setor: z.enum(SETORES_DA_EXIGENCIA), descricao: z.string().trim().min(1), provaEsperada: z.string().trim().nullable().default(null) }))
+    .array(
+      z.object({
+        setor: z.enum(SETORES_DA_EXIGENCIA),
+        descricao: z.string().trim().min(1),
+        provaEsperada: z.string().trim().nullable().default(null),
+        tipoDocumento: z.string().trim().nullable().default(null),
+      }),
+    )
     .default([]),
   pericias: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
 })

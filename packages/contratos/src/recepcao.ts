@@ -297,3 +297,47 @@ export type VisitaDaCopia = z.infer<typeof VisitaDaCopia>
 /** POST /api/processos/:id/contrato/copia/entrega: a confirmação, a data, quem recebeu e a observação (GGVP-89 CA3). */
 export const EntregaDaCopia = z.object({ copiaDaVersaoAssinada: z.boolean(), entregueEm: Texto(10), quemRecebeu: Texto(120), observacao: Texto(500) })
 export type EntregaDaCopia = z.infer<typeof EntregaDaCopia>
+
+// GGVP-125, bloco 5b: a chegada, a leitura e o arquivo dos documentos (GGVP-17 e GGVP-81). As regras são as das telas.
+
+/** POST /api/fichas/:id/arquivos ("Conferir e enviar"): só os dados de cada arquivo; o conteúdo segue simulado até o Drive. */
+export const EnvioDeArquivos = z.object({
+  origem: z.enum(['card', 'chat']),
+  arquivos: z
+    .array(z.object({ nome: Texto(200), formato: z.enum(['pdf', 'jpg', 'png']), tamanho: z.number().int().min(0), tipo: Texto(60), hash: z.string().regex(/^[0-9a-f]{64}$/) }))
+    .min(1)
+    .max(20),
+})
+export type EnvioDeArquivos = z.infer<typeof EnvioDeArquivos>
+
+/** POST /api/tarefas/:id/registro: o recebimento, em papel (com o lote do scanner) ou digital (pelo card). */
+export const RegistroDoRecebimento = z.object({ forma: z.enum(['papel', 'digital']), conferiTipos: z.literal(true), conferiPapel: z.boolean() })
+export type RegistroDoRecebimento = z.infer<typeof RegistroDoRecebimento>
+
+/** POST /api/fichas/:id/documentos-lidos/arquivar: cada documento a conferir com o tipo e a data confirmados. */
+export const ArquivamentoDosLidos = z.object({
+  conferi: z.literal(true),
+  documentos: z.array(z.object({ id: Texto(400), tipo: Texto(60), data: Texto(10) })).max(200),
+  duplicados: z.enum(['manter', 'descartar']).optional(),
+})
+export type ArquivamentoDosLidos = z.infer<typeof ArquivamentoDosLidos>
+
+/** POST /api/documentos-lidos/:id/mover: o caso de destino e o motivo, obrigatório. */
+export const MudancaDeCaso = z.object({ processoId: Texto(80), motivo: Texto(500) })
+export type MudancaDeCaso = z.infer<typeof MudancaDeCaso>
+
+/** POST /api/documentos-lidos/:id/cadastro: o campo que a IA leu e vai para o cadastro, um por vez. */
+export const CampoLidoNoCadastro = z.object({ campo: z.enum(['nome', 'cpf', 'rg', 'endereco']) })
+export type CampoLidoNoCadastro = z.infer<typeof CampoLidoNoCadastro>
+
+/** POST /api/processos/:id/cobranca/tentativas: a ligação ou o envio pelo Chatwoot, com o resultado (GGVP-101, CA6 e CA11). */
+export const TentativaDaCobranca = z.object({ canal: z.enum(['chatwoot', 'ligacao']), resultado: z.enum(['sem-resposta', 'respondeu']) })
+export type TentativaDaCobranca = z.infer<typeof TentativaDaCobranca>
+
+/** POST /api/processos/:id/cobranca/adiamento: a nova data; sem ela, o servidor responde o mesmo que a tela (CA10). */
+export const AdiamentoDaCobranca = z.object({ para: Data.nullable() })
+export type AdiamentoDaCobranca = z.infer<typeof AdiamentoDaCobranca>
+
+/** POST /api/processos/:id/cobranca/decisao: a decisão da Sênior no limite, com a justificativa (CA8). */
+export const DecisaoDaCobranca = z.object({ opcao: z.enum(['nova-tentativa', 'visita', 'suspender']), justificativa: Texto(1000), prazo: Data.optional() })
+export type DecisaoDaCobranca = z.infer<typeof DecisaoDaCobranca>
