@@ -1,6 +1,7 @@
 // EXEMPLO. Servidor de exemplo do contrato do caso (GGVP-65 em diante), sobre o mesmo banco de servidor.ts. Um contrato por
 // processo: o kit, o preenchimento, a assinatura, a conferência e a cópia. Ligar no servidor: trocar o corpo de cada função
 // por fetch no endpoint indicado na spec da história, sobre o mesmo contrato. ZapSign, Drive, Chatwoot e IA são simulados.
+import { baixarApi } from '../api.ts'
 import { dataParaIso, normalizarData, normalizarNome } from '../campos.ts'
 import { problemaDoArquivo } from '../regras/arquivos.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
@@ -23,10 +24,11 @@ import {
   mensagemDoLink,
   erroDoCampo,
   faltando,
+  identificadorDoKit,
   identificadorDoModelo,
   linhaDoBeneficio,
   montarKit,
-  modeloPorId,
+  modeloDoKit,
   normalizarCampo,
   restosDoModelo,
   ROTULOS_DOS_CAMPOS,
@@ -127,7 +129,7 @@ export function tarefasDoContrato(): Tarefa[] {
     const titulo = TITULOS[c.etapa]
     if (!achado || !titulo || c.assinatura?.naSenior) return []
     const { ficha, processo } = achado
-    const modelo = c.kit ? modeloPorId(c.kit.modelo).nome : ''
+    const modelo = c.kit ? (modeloDoKit(c.kit)?.nome ?? 'sem modelo') : ''
     const base = { detalhe: [c.kit ? `kit ${c.kit.nome} · ${modelo}` : 'benefício sem kit cadastrado'], prazo: processo.prazo ?? 'hoje', urgente: processo.urgente }
     const andamento =
       c.etapa === 'assinatura'
@@ -153,6 +155,39 @@ export function tarefasDoContrato(): Tarefa[] {
       },
     ]
   })
+}
+
+/**
+ * O contrato do servidor gera o Word do escritório (GGVP-136) e por isso pede mais campos (a nacionalidade, o que falta do
+ * representante, o curatelado) que o de exemplo, que só simula o texto.
+ */
+export const kitDeVerdade = (processoId: string) => doServidor(processoId)
+
+/** O que o servidor oferece ao contrato: o PDF do kit (há conversor) e a assinatura pelo celular (o ZapSign está contratado). */
+export type ServicosDoContrato = { zapsign: boolean; pdf: boolean }
+
+/**
+ * GET /api/contrato/servicos (GGVP-136, CA5, CA8). O contrato de exemplo tem o ZapSign simulado e nenhum PDF; o do servidor
+ * diz o que há. Sem o ZapSign contratado, a opção do celular não aparece e o papel vale para qualquer entrevista.
+ */
+export async function servicosDoContrato(processoId: string): Promise<ServicosDoContrato> {
+  if (!doServidor(processoId)) return { zapsign: true, pdf: false }
+  // Sem resposta, a tela segue em papel e em Word, que não dependem de nada: melhor que não abrir.
+  return noBanco<ServicosDoContrato>('/contrato/servicos').catch(() => ({ zapsign: false, pdf: false }))
+}
+
+export type KitParaImprimir = { blob: Blob; nome: string; pdf: boolean }
+
+/**
+ * GET /api/processos/:id/contrato/kit (CA5): o kit gerado, para imprimir. O PDF, se o servidor converte; senão, o Word
+ * preenchido. Se o conversor não responde (502), pede o Word: imprimir não fica parado por causa do conversor.
+ */
+export async function baixarKit(processoId: string): Promise<KitParaImprimir> {
+  const caminho = `/processos/${processoId}/contrato/kit`
+  let r = await baixarApi(caminho)
+  if (!r.ok && r.status === 502) r = await baixarApi(`${caminho}?formato=docx`)
+  if (!r.ok) throw new Error(r.erro)
+  return { blob: r.blob, nome: r.nome, pdf: r.blob.type === 'application/pdf' }
 }
 
 /** GET /api/processos/:id/contrato. Nulo quando o processo não tem contrato. */
@@ -193,7 +228,7 @@ export async function fecharContrato(fichaId: string, beneficio: string): Promis
   ficha.historico.push(
     evento(
       kit
-        ? `Fechou ${nomeBeneficio(beneficio)}: processo novo com o kit ${kit.nome} (${kit.documentos.length} documentos, ${modeloPorId(kit.modelo).nome})`
+        ? `Fechou ${nomeBeneficio(beneficio)}: processo novo com o kit ${kit.nome} (${kit.documentos.length} documentos, ${modeloDoKit(kit)?.nome ?? 'sem modelo'})`
         : `Fechou ${nomeBeneficio(beneficio)}: processo novo, sem kit cadastrado para o benefício`,
     ),
   )
@@ -254,6 +289,8 @@ export async function gerarContrato(processoId: string, envio: EnvioDoContrato):
   if (!achado) throw new Error('Contrato não encontrado')
   const { ficha, processo, contrato } = achado
   if (contrato.etapa !== 'preparar' || !contrato.kit) throw new Error('Este contrato não está para preparar')
+  const modelo = modeloDoKit(contrato.kit)
+  if (!modelo) return { resultado: 'sem-modelo' }
 
   const mudou: CampoDoModelo[] = []
   const dados: DadosDoContrato = { ...contrato.dados }
@@ -286,7 +323,6 @@ export async function gerarContrato(processoId: string, envio: EnvioDoContrato):
 
   const geradoEm = agora().toISOString()
   const versao = (contrato.documento?.versao ?? 0) + 1
-  const modelo = modeloPorId(contrato.kit.modelo)
   const motivo = envio.aprovados ? `gerado pelo ${modelo.nome}` : `corrigido: ${oQueCorrigir}`
   contrato.documento = { versao, geradoEm, campos, textos }
   contrato.versoes = [...(contrato.versoes ?? []), { versao, geradoEm, motivo }]
@@ -352,7 +388,7 @@ export async function enviarParaAssinatura(processoId: string): Promise<Resposta
     const documentoId = versao > 1 ? `zapsign-exemplo-${processoId}-v${versao}` : `zapsign-exemplo-${processoId}`
     assinatura.zapsign = { documentoId, link: linkDoZapSign(documentoId), status: 'enviado', criadoEm: agora().toISOString(), eventos: [] }
     assinatura.erro = undefined
-    ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoModelo(modeloPorId(contrato.kit.modelo))}: ${documentoId}`))
+    ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoKit(contrato.kit)}: ${documentoId}`))
   }
   assinatura.forma = 'digital'
   gravar(banco)
@@ -505,7 +541,8 @@ function paraOPapel(banco: Banco, processoId: string): ContratoDoCaso & { assina
 
 /**
  * POST /api/processos/:id/contrato/impressao. "Papel, na hora": o kit sai com as datas em branco para preencher à mão, menos o
- * contrato de honorários (CA1). Só na entrevista presencial (CA4).
+ * contrato de honorários (CA1). Só na entrevista presencial (CA4), enquanto o ZapSign estiver contratado (GGVP-136). No
+ * contrato do servidor, o arquivo vem de `baixarKit`; isto só registra que o kit foi impresso.
  */
 export async function imprimirKit(processoId: string): Promise<{ contrato: Contrato; datas: { documento: string; data: string }[] }> {
   if (doServidor(processoId)) {

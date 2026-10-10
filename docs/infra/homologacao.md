@@ -42,6 +42,9 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
    (`+55 11 91234-5678, 21987654321`). Para os outros, não consulta nem envia: a mensagem fica no histórico do cliente como
    não enviada ("o telefone está fora da lista de teste da homologação") e a tela diz isso. Sem a lista, nenhum telefone
    recebe. Só o app de produção leva `AMBIENTE=producao`, e lá não há lista.
+   Opcional, para o kit do contrato (GGVP-136): `GOTENBERG_URL` (o endereço interno do serviço Gotenberg, que converte o Word do
+   kit em PDF; sem ela o kit sai em Word) e `ZAPSIGN_API_TOKEN` (diz que o ZapSign está contratado; sem ela só há papel). O
+   Gotenberg é outro serviço no mesmo projeto, sem domínio público. Os passos estão em `docs/guias/kit-de-verdade.md`.
 4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
 5. **Webhooks:** copie a **Deploy webhook URL**.
 

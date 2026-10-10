@@ -31,6 +31,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      docxtemplater:
+        specifier: ^3.71.0
+        version: 3.71.0
       drizzle-orm:
         specifier: ^0.44.7
         version: 0.44.7(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(pg@8.23.1)
@@ -46,6 +49,9 @@ importers:
       pg:
         specifier: ^8.16.3
         version: 8.23.1
+      pizzip:
+        specifier: ^3.3.0
+        version: 3.3.0
       zod:
         specifier: ^4.1.12
         version: 4.6.5
@@ -1072,6 +1078,10 @@ packages:
   '@vitest/spy@5.0.3':
     resolution: {integrity: sha512-XhFysQTB8AZ+P4gMi+Lpo99vg2AZi0qKpaB9yXQl37+CaMEAPO3iH/wGVnSyL5MPERiLezpqTVtrR6UZH5GCXg==}
 
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
+
   abstract-logging@2.0.1:
     resolution: {integrity: sha512-2BjRTZxTPvheOvGbBslFSYOUkr+SjPtOnrLP33f+VIWLzezQpZcqVg7ja3L4dBXmzzgwT+a029jRx5PCi3JuiA==}
 
@@ -1180,6 +1190,10 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  docxtemplater@3.71.0:
+    resolution: {integrity: sha512-4SyQzPVDrhsPb9vHNstxJpJWMLJvrbKEcXDRNBlb5Bnbjqm1T51PVt5r+iLVe1yAkmIvakk8M3KywO5m5LsUSA==}
+    engines: {node: '>=0.10'}
 
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
@@ -1570,6 +1584,9 @@ packages:
   pako@1.0.11:
     resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==}
 
+  pako@2.2.0:
+    resolution: {integrity: sha512-zJq6RP/5q+TO2OpFV3FHzlPnFjmkb7Nc99a5SNjJE+uu/PkpChs+NIZSSzbBoD+6kjiISXjfYdwj1ZRQ81dz/w==}
+
   parse5@8.0.1:
     resolution: {integrity: sha512-z1e/HMG90obSGeidlli3hj7cbocou0/wa5HacvI3ASx34PecNjNQeaHNo5WIZpWofN9kgkqV1q5YvXe3F0FoPw==}
 
@@ -1634,6 +1651,9 @@ packages:
   pino@10.4.0:
     resolution: {integrity: sha512-bk1ZMTwG/Vymx+zPoa28MhNzucFvXJWp3csrSuxuHPSMeUettaCoQ5Jvg07mtC4JGNpcfTwz41oVCnNgBK9+vA==}
     hasBin: true
+
+  pizzip@3.3.0:
+    resolution: {integrity: sha512-seR2ALUYS4Z0GCs0sVwXWImhBsoCImXpHr+ExNfIZ9G0czvHqpUxlJgwHCl1BBHFyU3nUFmZJPFEEWbpY8cKRg==}
 
   pkce-challenge@5.0.1:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
@@ -2619,6 +2639,8 @@ snapshots:
 
   '@vitest/spy@5.0.3': {}
 
+  '@xmldom/xmldom@0.9.12': {}
+
   abstract-logging@2.0.1: {}
 
   ajv-formats@3.0.1(ajv@8.20.0):
@@ -2703,6 +2725,10 @@ snapshots:
   dequal@2.0.3: {}
 
   detect-libc@2.1.2: {}
+
+  docxtemplater@3.71.0:
+    dependencies:
+      '@xmldom/xmldom': 0.9.12
 
   dom-accessibility-api@0.5.16: {}
 
@@ -3060,6 +3086,8 @@ snapshots:
 
   pako@1.0.11: {}
 
+  pako@2.2.0: {}
+
   parse5@8.0.1:
     dependencies:
       entities: 8.1.0
@@ -3137,6 +3165,10 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.1
       thread-stream: 4.2.0
+
+  pizzip@3.3.0:
+    dependencies:
+      pako: 2.2.0
 
   pkce-challenge@5.0.1:
     optional: true

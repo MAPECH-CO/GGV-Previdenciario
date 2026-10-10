@@ -17,12 +17,12 @@ async function abrir(processoId: string) {
 const documentos = () => within(screen.getByRole('list', { name: 'Documentos do kit' })).getAllByRole('listitem').map((li) => li.textContent)
 
 describe('Preparar contrato · o kit do benefício (GGVP-65)', () => {
-  it('CA1 e CA5 · a Cleide fechou a Aposentadoria PCD: o kit das aposentadorias pelo Contrato Completo 2026', async () => {
+  it('CA1 e CA5 · a Cleide fechou a Aposentadoria PCD: o kit das aposentadorias pelo Contrato Completo de aposentadorias', async () => {
     await abrir('cleide-exemplo-1')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cleide Exemplo · Preparar contrato')
-    expect(screen.getByText('PCD Aposentadoria por Contribuição · pelo Contrato Completo 2026')).toBeTruthy()
-    expect(screen.getByText(/Gere o contrato de Cleide pelo Contrato Completo 2026, com o kit de Aposentadorias: 6 documentos/)).toBeTruthy()
-    expect(screen.getByText(/honorários \(20% do êxito \(ad exitum\)\)/)).toBeTruthy()
+    expect(screen.getByText('PCD Aposentadoria por Contribuição · pelo Contrato Completo de aposentadorias')).toBeTruthy()
+    expect(screen.getByText(/Gere o contrato de Cleide pelo Contrato Completo de aposentadorias, com o kit de Aposentadorias: 6 documentos/)).toBeTruthy()
+    expect(screen.getByText(/honorários \(os do modelo: confira no kit antes de imprimir\)/)).toBeTruthy()
     expect(documentos()).toEqual([
       '✓Contrato de honorários',
       '✓Procuração',
@@ -48,10 +48,13 @@ describe('Preparar contrato · o kit do benefício (GGVP-65)', () => {
     expect(documentos().at(-1)).toBe('✓Declaração de união estável · vive em união estávelcondição do caso')
   })
 
-  it('CA3 · Isenção de IR: sem a declaração de hipossuficiência, pelo modelo 7', async () => {
+  it('CA3 · Isenção de IR: sem a declaração de hipossuficiência; sem modelo até o Lucas dizer a que benefício o modelo 7 se liga, e o kit avisa', async () => {
     const { processo } = await fecharContrato('antonio-exemplo', 'isencao-ir')
     await abrir(processo.id)
-    expect(screen.getByText('Isenção e Restituição de Imposto de Renda · pelo modelo 7')).toBeTruthy()
+    expect(screen.getByText('Isenção e Restituição de Imposto de Renda · falta o modelo')).toBeTruthy()
+    expect(screen.getByText(/Este kit ainda não tem modelo do Word\. Avise a gestão/)).toBeTruthy()
+    expect(screen.getByText(/O kit de Isenção de IR ainda não tem modelo do Word/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Gerar contrato' })).toBeNull()
     expect(documentos()).toEqual(['✓Contrato de honorários', '✓Procuração', '✓Termo INSS · isenção de IR', '✓Código Penal', '✓Declaração de residência'])
   })
 
@@ -90,13 +93,13 @@ describe('Preparar contrato · preencher pelo modelo e conferir (GGVP-69)', () =
   it('CA1, CA5, CA9, CA10 e CA11 · cada campo com de onde veio, o modelo e os honorários, sem representante', async () => {
     await abrir('cleide-exemplo-1')
     const documento = screen.getByRole('region', { name: 'Documento preenchido' })
-    expect(within(documento).getByText(/modelo MODELOS ZAPSIGN · PREV\/contrato-completo-2026-v1, o mesmo no ZapSign/)).toBeTruthy()
+    expect(within(documento).getByText(/modelo MODELOS ZAPSIGN · PREV\/contrato-completo-aposentadorias-v1, o mesmo no ZapSign/)).toBeTruthy()
     expect(linha('Nome completo')).toBe('Nome completoCleide Exemplocadastro')
     expect(linha('CPF')).toBe('CPFfaltacadastro')
     expect(linha('Telefone')).toBe('Telefone(11) 90000-0005cadastro')
     expect(linha('Benefício')).toBe('BenefícioPCD Aposentadoria por Contribuiçãocaso')
     expect(linha('Parte contrária')).toBe('Parte contráriaInstituto Nacional do Seguro Social (INSS)caso')
-    expect(linha('Honorários')).toBe('Honorários20% do êxito (ad exitum)do modelo, sem campo para digitar')
+    expect(linha('Honorários')).toBe('Honoráriosos do modelo: confira no kit antes de imprimirdo modelo, sem campo para digitar')
     expect(within(documento).queryByText(/representante/)).toBeNull()
   })
 

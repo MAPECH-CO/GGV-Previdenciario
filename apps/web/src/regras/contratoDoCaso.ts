@@ -4,10 +4,9 @@ import { nomeBeneficio } from '../dados/catalogos.ts'
 import { somarDias } from './agenda.ts'
 import type { Ficha, Processo } from '../dados/tipos.ts'
 import {
+  HONORARIOS_DO_MODELO,
   SEM_CONDICOES,
   camposDoModelo,
-  honorariosDoModelo,
-  modeloPorId,
   montarKit,
   preencherModelo,
   type CampoDoModelo,
@@ -36,7 +35,11 @@ export type DocumentoGerado = {
   /** Data e hora ISO. */
   geradoEm: string
   campos: CampoPreenchido[]
+  /** O texto de exemplo de cada documento. O kit de verdade não traz: o texto é o do arquivo do Word. */
   textos: { documento: string; texto: string }[]
+  /** O kit de verdade (GGVP-136, CA6): o modelo e a versão usados, e o arquivo guardado na pasta do cliente. */
+  modelo?: { id: string; versao: number }
+  arquivo?: { documentoId: string; nome: string }
 }
 
 export type Contrato = {
@@ -121,19 +124,35 @@ export const ROTULOS_DAS_CONDICOES: Record<keyof CondicoesDoKit, string> = {
 export function dadosDaFicha(ficha: Ficha): DadosDoContrato {
   const r = ficha.representante
   const parentesco = r?.parentesco === 'Mãe' ? 'genitora' : r?.parentesco === 'Pai' ? 'genitor' : undefined
-  const dados = { rg: ficha.rg, representanteNome: r?.nome, representanteCpf: r?.cpf, representanteRg: r?.rg, representanteParentesco: parentesco }
+  const dados = {
+    rg: ficha.rg,
+    representanteNome: r?.nome,
+    representanteCpf: r?.cpf,
+    representanteRg: r?.rg,
+    representanteParentesco: parentesco,
+    // O kit de verdade (GGVP-136) usa também o estado civil e a profissão do representante; o cadastro já pede os dois.
+    representanteEstadoCivil: r?.estadoCivil,
+    representanteProfissao: r?.profissao,
+  }
   return Object.fromEntries(Object.entries(dados).filter(([, v]) => v)) as DadosDoContrato
 }
 
-/** Os campos do modelo para o caso, com o valor e de onde veio (CA1, CA5). O que o contrato guardou vale mais que a ficha. */
-export function camposDoCaso({ ficha, processo, contrato }: ContratoDoCaso): CampoPreenchido[] {
+/** Os dados do contrato: o que a ficha já tem desde o cadastro e o que o contrato guardou, que vale mais (GGVP-69, GGVP-136). */
+export const dadosDoCaso = (ficha: Ficha, contrato: Contrato): DadosDoContrato => ({ ...dadosDaFicha(ficha), ...contrato.dados })
+
+/**
+ * Os campos do modelo para o caso, com o valor e de onde veio (CA1, CA5). O que o contrato guardou vale mais que a ficha.
+ * `kitDeVerdade`: o contrato do servidor, que gera o Word do escritório (GGVP-136) e por isso pede mais campos.
+ */
+export function camposDoCaso({ ficha, processo, contrato }: ContratoDoCaso, kitDeVerdade = false): CampoPreenchido[] {
   return camposDoModelo({
     ficha,
     beneficio: processo.beneficio,
     nomeDoBeneficio: nomeBeneficio(processo.beneficio),
     condicoes: contrato.condicoes,
-    dados: { ...dadosDaFicha(ficha), ...contrato.dados },
+    dados: dadosDoCaso(ficha, contrato),
     corrigidos: contrato.corrigidos ?? [],
+    kitDeVerdade,
   })
 }
 
@@ -161,7 +180,7 @@ export const CLIENTE_DO_EXEMPLO_DOS_MODELOS = ['Fulana Exemplo do Modelo']
 
 export function textosDoKit(kit: KitMontado, campos: CampoPreenchido[]): { documento: string; texto: string }[] {
   const valores: Record<string, string> = Object.fromEntries(campos.map((c) => [c.campo, c.valor]))
-  valores.honorarios = honorariosDoModelo(modeloPorId(kit.modelo))
+  valores.honorarios = HONORARIOS_DO_MODELO
   const temParte = campos.some((c) => c.campo === 'parteContraria')
   const representado = campos.some((c) => c.campo === 'representanteNome')
   return kit.documentos.map((d) => {
@@ -189,6 +208,10 @@ export type RespostaGerar =
   | { resultado: 'faltam'; campos: CampoDoModelo[] }
   | { resultado: 'cpf-de-outra-ficha'; nome: string }
   | { resultado: 'sobrou-do-exemplo'; restos: string[] }
+  /** O kit não tem modelo do Word: a linha não tem, ou a Sênior ainda não subiu o arquivo (GGVP-136). `modelo` é o nome do que falta. */
+  | { resultado: 'sem-modelo'; modelo?: string }
+  /** O modelo pede um dado que a ficha não tem (bairro, CEP, o número do endereço...): o kit não é gerado (GGVP-136, CA4). */
+  | { resultado: 'faltam-na-ficha'; faltam: string[] }
 
 export const DA_FICHA = ['nome', 'estadoCivil', 'profissao', 'cpf', 'endereco', 'telefone'] as const
 export type CampoDaFichaNoContrato = (typeof DA_FICHA)[number]

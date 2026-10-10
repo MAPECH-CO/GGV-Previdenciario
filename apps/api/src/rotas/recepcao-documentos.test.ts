@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { caso, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { docxDeTeste, formularioDoArquivo } from '../kit/docx-de-teste.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
@@ -37,9 +38,18 @@ const leiturasDe = async (fichaId: string) => (await banco.select().from(leitura
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro']] as const)
+  // O kit é o Word do escritório (GGVP-136): o ZapSign é o simulado e o kit sai em Word, sem conversor de PDF.
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), zapsign: true, conversor: null })
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+  // Os contratos dos testes são do LOAS: o modelo dele, de teste, já está na Configuração. Só pede o nome e o CPF.
+  const modelo = await app.inject({
+    method: 'PUT',
+    url: '/api/configuracao/modelos/contrato-completo-loas',
+    cookies: await cookieDe('helena'),
+    ...formularioDoArquivo(docxDeTeste(['CONTRATO de {{NOME COMPLETO}}, CPF {{NÚMERO DO CPF}}.'])),
+  })
+  expect(modelo.statusCode).toBe(201)
 })
 afterEach(async () => {
   await app.close()
@@ -109,7 +119,7 @@ describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
     const base = `/api/processos/${processo.id}/contrato`
     const conferencias = Object.fromEntries(CONFERENCIAS.map((c) => [c.id, true]))
     const { campos } = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias, correcoes: {} })
-    const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
+    const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
     const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
     await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes })
     await json('ana', 'POST', `${base}/zapsign`)
@@ -195,7 +205,7 @@ describe('GGVP-125 · bloco 5b: a conferência dos documentos no servidor', () =
     const base = `/api/processos/${processo.id}/contrato`
     const conferencias = Object.fromEntries(CONFERENCIAS.map((c) => [c.id, true]))
     const { campos } = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias, correcoes: {} })
-    const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
+    const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
     const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
     await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes })
     await json('ana', 'POST', `${base}/zapsign`)

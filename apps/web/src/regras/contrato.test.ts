@@ -3,6 +3,7 @@ import { BENEFICIOS } from '../dados/catalogos.ts'
 import { CPF_DE_TESTE } from '../dados/exemplo.ts'
 import {
   DIAS_ENTRE_TENTATIVAS_DE_ASSINATURA,
+  HONORARIOS_DO_MODELO,
   INSS,
   KITS,
   TENTATIVAS_DE_ASSINATURA,
@@ -25,9 +26,11 @@ import {
   datasDoKit,
   erroDoCampo,
   faltando,
-  honorariosDoModelo,
+  identificadorDoKit,
   identificadorDoModelo,
+  kitRepresentado,
   linhaDoBeneficio,
+  modeloDoKit,
   modeloPorId,
   montarKit,
   motivoParadoDoGerar,
@@ -93,14 +96,29 @@ describe('GGVP-65 · kit de documentos por benefício', () => {
     })
   })
 
-  it('CA5 · o modelo é o da coluna "Modelo": Contrato Completo 2026 ou os modelos 6, 7, 8 e 10', () => {
-    expect(montarKit('aposentadoria-idade')?.modelo).toBe('contrato-completo-2026')
-    expect(montarKit('loas-idoso')?.modelo).toBe('contrato-completo-2026')
+  it('CA5 · o modelo é o da linha: um Contrato Completo por benefício, ou os modelos 6, 8 e 10 (GGVP-136 CA2)', () => {
+    expect(montarKit('aposentadoria-idade')?.modelo).toBe('contrato-completo-aposentadorias')
+    expect(montarKit('auxilio-acidente')?.modelo).toBe('contrato-completo-auxilio-acidentario')
+    expect(montarKit('incapacidade-temporaria')?.modelo).toBe('contrato-completo-auxilio-incapacidade')
+    expect(montarKit('loas-idoso')?.modelo).toBe('contrato-completo-loas')
     expect(montarKit('curatela')?.modelo).toBe('modelo-6')
-    expect(montarKit('isencao-ir')?.modelo).toBe('modelo-7')
     expect(montarKit('emprestimo-indevido')?.modelo).toBe('modelo-8')
     expect(montarKit('seguro-vida')?.modelo).toBe('modelo-10')
-    for (const k of KITS) expect(MODELOS.some((m) => m.id === k.modelo), k.id).toBe(true)
+    for (const k of KITS.filter((x) => x.modelo)) expect(MODELOS.some((m) => m.id === k.modelo), k.id).toBe(true)
+  })
+
+  it('GGVP-136 CA2 · o LOAS representado por genitor(a) tem o modelo dele', () => {
+    expect(montarKit('loas-deficiente', { ...SEM_CONDICOES, representado: true })?.modelo).toBe('contrato-completo-loas-representado')
+    expect(montarKit('loas-deficiente')?.modelo).toBe('contrato-completo-loas')
+  })
+
+  it('GGVP-136 · a isenção de IR fica sem modelo até o Lucas dizer a que benefício o modelo 7 (restituição) se liga: o kit avisa que falta', () => {
+    const kit = montarKit('isencao-ir')!
+    expect(kit.modelo).toBeUndefined()
+    expect(modeloDoKit(kit)).toBeUndefined()
+    expect(identificadorDoKit(kit)).toBe('sem modelo')
+    expect(KITS.some((k) => k.modelo === 'modelo-7')).toBe(false)
+    expect(modeloPorId('modelo-7').nome).toBe('Modelo 7 (restituição de contribuições)')
   })
 
   it('CA6 · todo benefício da tabela é do catálogo único, e nenhum está em duas linhas', () => {
@@ -237,15 +255,14 @@ describe('GGVP-69 · preencher o contrato pelo modelo e conferir', () => {
   })
 
   it('CA10 · o modelo tem o mesmo identificador na pasta e no ZapSign', () => {
-    const m = modeloPorId('contrato-completo-2026')
-    expect(identificadorDoModelo(m)).toBe('contrato-completo-2026-v1')
-    expect(caminhoDoModelo(m)).toBe('MODELOS ZAPSIGN · PREV/contrato-completo-2026-v1')
+    const m = modeloPorId('contrato-completo-aposentadorias')
+    expect(identificadorDoModelo(m)).toBe('contrato-completo-aposentadorias-v1')
+    expect(caminhoDoModelo(m)).toBe('MODELOS ZAPSIGN · PREV/contrato-completo-aposentadorias-v1')
     expect(new Set(MODELOS.map(identificadorDoModelo)).size).toBe(MODELOS.length)
   })
 
-  it('CA11 · os honorários vêm do modelo, sem campo para digitar', () => {
-    expect(honorariosDoModelo(modeloPorId('contrato-completo-2026'))).toBe('20% do êxito (ad exitum)')
-    expect(honorariosDoModelo(modeloPorId('modelo-8'))).toBe('os do modelo 8')
+  it('CA11 · os honorários vêm do texto do modelo, sem campo para digitar: a tela manda conferir no kit (GGVP-136)', () => {
+    expect(HONORARIOS_DO_MODELO).toBe('os do modelo: confira no kit antes de imprimir')
   })
 })
 
@@ -343,3 +360,69 @@ describe('GGVP-89 · cópia do contrato para o cliente levar', () => {
     expect(errosDaVisita('08/10/2026', '', '2026-10-05').hora).toBe('Escolha a hora.')
   })
 })
+
+describe('GGVP-136 · os campos do kit de verdade (o contrato do servidor)', () => {
+  const rotulos = (lista: ReturnType<typeof campos>) => lista.map((c) => c.rotulo)
+
+  it('sem o kit de verdade, a lista de campos é a de sempre: o contrato de exemplo não pede mais nada', () => {
+    expect(rotulos(campos(antonio, 'aposentadoria-idade'))).not.toContain('Nacionalidade')
+  })
+
+  it('CA3 · com o kit de verdade entra a nacionalidade, logo depois do estado civil', () => {
+    const lista = campos(antonio, 'aposentadoria-idade', { kitDeVerdade: true, dados: { rg: '12.345.678-X', nacionalidade: 'brasileiro' } })
+    expect(rotulos(lista).slice(0, 4)).toEqual(['Nome completo', 'Estado civil', 'Nacionalidade', 'Profissão'])
+    expect(lista.find((c) => c.campo === 'nacionalidade')).toMatchObject({ valor: 'brasileiro', origem: 'caso', obrigatorio: true })
+    expect(faltando(campos(antonio, 'aposentadoria-idade', { kitDeVerdade: true }))).toContain('nacionalidade')
+  })
+
+  it('CA3 · no LOAS representado entram o estado civil, a nacionalidade e a profissão do representante', () => {
+    const lista = campos(antonio, 'loas-deficiente', {
+      kitDeVerdade: true,
+      condicoes: { ...SEM_CONDICOES, representado: true },
+      dados: { representanteEstadoCivil: 'Casado(a)', representanteProfissao: 'Do lar' },
+    })
+    expect(lista.filter((c) => c.campo.startsWith('representante')).map((c) => [c.rotulo, c.valor])).toEqual([
+      ['Nome do representante', ''],
+      ['CPF do representante', ''],
+      ['RG do representante', ''],
+      ['Parentesco do representante', ''],
+      ['Estado civil do representante', 'Casado(a)'],
+      ['Nacionalidade do representante', ''],
+      ['Profissão do representante', 'Do lar'],
+    ])
+  })
+
+  it('CA3 · na curatela entram os dados do curatelado, com o CPF formatado; nos outros kits, não', () => {
+    const lista = campos(antonio, 'curatela', { kitDeVerdade: true, dados: { curateladoNome: 'Pedro Exemplo', curateladoCpf: '52998224725' } })
+    expect(lista.filter((c) => c.campo.startsWith('curatelado')).map((c) => [c.rotulo, c.valor])).toEqual([
+      ['Nome completo do curatelado', 'Pedro Exemplo'],
+      ['Data de nascimento do curatelado', ''],
+      ['Nacionalidade do curatelado', ''],
+      ['RG do curatelado', ''],
+      ['CPF do curatelado', '529.982.247-25'],
+    ])
+    expect(campos(antonio, 'aposentadoria-idade', { kitDeVerdade: true }).some((c) => c.campo.startsWith('curatelado'))).toBe(false)
+  })
+
+  it('o LOAS só é representado quando a condição está marcada', () => {
+    expect(kitRepresentado('loas-idoso', { ...SEM_CONDICOES, representado: true })).toBe(true)
+    expect(kitRepresentado('loas-idoso', SEM_CONDICOES)).toBe(false)
+    expect(kitRepresentado('aposentadoria-idade', { ...SEM_CONDICOES, representado: true })).toBe(false)
+  })
+
+  it('cada campo novo é validado e normalizado pela biblioteca campos, como o resto', () => {
+    expect(erroDoCampo('curateladoCpf', '111.111.111-11')).toBe('CPF inválido: confira os 11 números.')
+    expect(erroDoCampo('curateladoCpf', '529.982.247-25')).toBeUndefined()
+    expect(normalizarCampo('curateladoCpf', '529.982.247-25')).toBe('52998224725')
+    expect(erroDoCampo('curateladoNome', 'Pedro1')).toBeTruthy()
+    expect(erroDoCampo('curateladoRg', 'ab')).toBe('RG com 5 a 20 letras e números.')
+    expect(erroDoCampo('curateladoNascimento', '12/03/1950')).toBeUndefined()
+    expect(erroDoCampo('curateladoNascimento', '31/02/1950')).toBe('Data de nascimento em dd/mm/aaaa, que exista e não seja futura.')
+    expect(erroDoCampo('curateladoNascimento', '')).toBe('Data de nascimento em dd/mm/aaaa, que exista e não seja futura.')
+    expect(normalizarCampo('curateladoNascimento', '12031950')).toBe('12/03/1950')
+    expect(erroDoCampo('nacionalidade', 'brasileira')).toBeUndefined()
+    expect(erroDoCampo('nacionalidade', '')).toBe('Preencha este campo.')
+    expect(erroDoCampo('representanteNacionalidade', 'x'.repeat(41))).toBe('Preencha este campo.')
+  })
+})
+

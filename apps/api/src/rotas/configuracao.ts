@@ -31,6 +31,8 @@ function descrever(acao: string, d: Detalhe) {
   if (acao === 'configuracao_alterada' && d.chave) return `${PARAMETROS_DO_ESCRITORIO[d.chave].rotulo}: ${d.antes ?? 'sem valor'} → ${d.depois}`
   if (acao === 'kit_publicado' && d.beneficio) return `Kit de ${ROTULO_BENEFICIO[d.beneficio]}: versão ${d.versao} publicada, com ${d.itens} documento(s)`
   if (acao === 'mensagem_alterada') return `Mensagem "${d.nome}": versão ${d.versao} publicada`
+  // GGVP-136: o modelo do Word do kit, na mesma linha do histórico.
+  if (acao === 'modelo_publicado') return `Modelo "${d.nome}": versão ${d.versao} publicada`
   // GGVP-143: o glossário do escritório, na mesma linha do histórico.
   if (acao === 'glossario_termo_acrescentado') return `Glossário: "${d.termo}" acrescentado`
   if (acao === 'glossario_termo_tirado') return `Glossário: "${d.termo}" tirado`
@@ -42,8 +44,8 @@ function descrever(acao: string, d: Detalhe) {
 }
 
 /** Duas publicações ao mesmo tempo: a segunda bate na unicidade da versão (`kit_unico`, `modelo_versao_unica`). */
-const ehVersaoRepetida = (e: unknown) => [(e as { code?: string }).code, (e as { cause?: { code?: string } }).cause?.code].includes('23505')
-const MSG_PUBLICADO_AGORA = 'Outra pessoa publicou uma versão agora. Recarregue a página e confira.'
+export const ehVersaoRepetida = (e: unknown) => [(e as { code?: string }).code, (e as { cause?: { code?: string } }).cause?.code].includes('23505')
+export const MSG_PUBLICADO_AGORA = 'Outra pessoa publicou uma versão agora. Recarregue a página e confira.'
 
 export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const editar = { preHandler: exigir(banco, 'configuracao.editar', agora) }

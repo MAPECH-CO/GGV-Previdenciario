@@ -112,3 +112,6 @@ export * from './bases.ts'
 
 // O painel Financeiro (GGVP-78): as contas das prestações de contas, por mês e por origem, e os lançamentos.
 export * from './financeiro.ts'
+
+// Os modelos do kit, com versão, subidos pela Sênior na Configuração (GGVP-136).
+export * from './modelos.ts'
