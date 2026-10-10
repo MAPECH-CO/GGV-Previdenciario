@@ -8,6 +8,7 @@ import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, documento, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
 import { docxDeTeste, formularioDoArquivo, textoDoDocx } from '../kit/docx-de-teste.ts'
+import type { ConversorDePdf } from '../kit/pdf.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
@@ -77,7 +78,8 @@ beforeEach(async () => {
   relogio = INICIO
   ;({ banco, fechar } = await abrirBancoEmbutido())
   arquivos = armazenamentoLocal(mkdtempSync(join(tmpdir(), 'kit-')))
-  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos })
+  // Os testes de antes são do ZapSign contratado (simulado); o kit sai em Word, sem conversor de PDF.
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: true, conversor: null })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // Os contratos dos testes são do LOAS: o modelo dele já está na Configuração (versão 1).
@@ -308,20 +310,20 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
   })
 })
 
-describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guardado na pasta do cliente', () => {
-  /** Fecha, pede o que falta e gera: devolve a resposta da geração e o endereço do contrato. */
-  async function gerar(fichaId: string, beneficio = 'loas-idoso') {
-    const { processo } = await fechou(fichaId, beneficio)
-    const base = `/api/processos/${processo.id}/contrato`
-    const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
-    expect(faltam.resultado).toBe('faltam')
-    const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, VALIDOS[c]]))
-    expect(Object.values(correcoes).every(Boolean)).toBe(true)
-    const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })
-    return { r, base, processoId: processo.id as string }
-  }
-  const kitsDoCaso = (processoId: string) => banco.select().from(documento).where(eq(documento.casoId, processoId))
+/** Fecha, pede o que falta e gera: devolve a resposta da geração e o endereço do contrato. */
+async function gerar(fichaId: string, beneficio = 'loas-idoso') {
+  const { processo } = await fechou(fichaId, beneficio)
+  const base = `/api/processos/${processo.id}/contrato`
+  const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+  expect(faltam.resultado).toBe('faltam')
+  const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, VALIDOS[c]]))
+  expect(Object.values(correcoes).every(Boolean)).toBe(true)
+  const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })
+  return { r, base, processoId: processo.id as string }
+}
+const kitsDoCaso = (processoId: string) => banco.select().from(documento).where(eq(documento.casoId, processoId))
 
+describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guardado na pasta do cliente', () => {
   it('CA2, CA3 e CA6 · gera o Word da versão em vigor do modelo da linha, preenchido com a ficha e o caso, e guarda na pasta do cliente', async () => {
     await subirModelo('contrato-completo-loas') // a versão 2 passa a valer
     const fichaId = await lead()
@@ -434,6 +436,88 @@ describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guar
     const kits = await kitsDoCaso(processoId)
     expect(kits.map((k) => k.nomeOriginal).sort()).toEqual(['Kit do contrato - versão 1.docx', 'Kit do contrato - versão 2.docx'])
     for (const k of kits) expect((await arquivos.ler(k.chaveArmazenamento)).length).toBeGreaterThan(0)
+  })
+})
+
+describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
+  /** Sobe o servidor de novo com outro conversor de PDF ou outro estado do ZapSign; o banco e os arquivos são os mesmos. */
+  async function reiniciar(opcoes: { conversor?: ConversorDePdf | null; zapsign?: boolean }) {
+    await app.close()
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: false, conversor: null, ...opcoes })
+  }
+  const PDF = Buffer.from('%PDF-1.7 do kit')
+
+  it('CA5 · com o conversor, o kit sai em PDF para abrir no navegador, convertido do Word guardado na pasta do cliente', async () => {
+    const recebidos: Buffer[] = []
+    await reiniciar({ conversor: async (docx) => (recebidos.push(docx), PDF) })
+    const { base } = await gerar(await lead())
+    const r = await chamar('ana', 'GET', `${base}/kit`)
+    expect([r.statusCode, r.headers['content-type'], r.rawPayload]).toEqual([200, 'application/pdf', PDF])
+    expect(r.headers['content-disposition']).toBe("inline; filename*=UTF-8''Kit%20do%20contrato%20-%20vers%C3%A3o%201.pdf")
+    expect([r.headers['x-content-type-options'], r.headers['content-security-policy']]).toEqual(['nosniff', "sandbox; default-src 'none'"])
+    expect(textoDoDocx(recebidos[0])).toContain('Joana Ribeiro')
+  })
+
+  it('CA5 · sem o conversor, o portal entrega o Word preenchido para baixar e imprimir', async () => {
+    await reiniciar({ conversor: null })
+    const { base } = await gerar(await lead())
+    const r = await chamar('ana', 'GET', `${base}/kit`)
+    expect([r.statusCode, r.headers['content-type']]).toEqual([200, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])
+    expect(r.headers['content-disposition']).toBe("attachment; filename*=UTF-8''Kit%20do%20contrato%20-%20vers%C3%A3o%201.docx")
+    expect(textoDoDocx(r.rawPayload).split('\n')[1]).toBe('São Paulo, 8 de outubro de 2026.')
+  })
+
+  it('CA5 · o Word também sai a pedido, mesmo com o conversor; o conversor que falha dá 502 e o Word segue disponível', async () => {
+    await reiniciar({ conversor: async () => Promise.reject(new Error('o Gotenberg caiu')) })
+    const { base } = await gerar(await lead())
+    const falhou = await chamar('ana', 'GET', `${base}/kit`)
+    expect([falhou.statusCode, falhou.json()]).toEqual([502, { erro: 'O conversor de PDF não respondeu. Baixe o Word e imprima por ele.' }])
+    const word = await chamar('ana', 'GET', `${base}/kit?formato=docx`)
+    expect([word.statusCode, textoDoDocx(word.rawPayload)]).toEqual([200, expect.stringContaining('Joana Ribeiro')])
+  })
+
+  it('só o Atendimento baixa o kit; sem kit gerado ou sem contrato, 404', async () => {
+    await reiniciar({ conversor: null })
+    const { base } = await gerar(await lead())
+    expect((await chamar('julia', 'GET', `${base}/kit`)).statusCode).toBe(403)
+    expect((await chamar('gabi', 'GET', `${base}/kit`)).statusCode).toBe(403)
+    const { processo } = await fechou(await lead('Marta Lima', '11955554444', '11144477735'))
+    expect(await json('ana', 'GET', `/api/processos/${processo.id}/contrato/kit`)).toEqual({ erro: 'Este contrato ainda não tem o kit gerado.' })
+    expect(await json('ana', 'GET', '/api/processos/00000000-0000-4000-8000-000000000000/contrato/kit')).toEqual({ erro: 'Contrato não encontrado.' })
+  })
+
+  it('CA5 e CA8 · o servidor diz o que oferece: o PDF, se há conversor; a assinatura pelo celular, se o ZapSign está contratado', async () => {
+    await reiniciar({ conversor: async () => PDF, zapsign: false })
+    expect(await json('ana', 'GET', '/api/contrato/servicos')).toEqual({ zapsign: false, pdf: true })
+    expect((await app.inject({ method: 'GET', url: '/api/contrato/servicos' })).statusCode).toBe(401)
+    await reiniciar({ conversor: null, zapsign: true })
+    expect(await json('ana', 'GET', '/api/contrato/servicos')).toEqual({ zapsign: true, pdf: false })
+  })
+
+  it('CA7 e CA8 · sem o ZapSign, o papel vale para qualquer entrevista, e o assinado digitalizado segue o caminho de sempre', async () => {
+    const fichaId = await lead()
+    const marcada = await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, {
+      tipo: 'video', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false,
+    })
+    expect(marcada.resultado).toBe('marcado')
+    await reiniciar({ zapsign: false })
+    const { base } = await gerar(fichaId)
+    expect(await json('ana', 'POST', `${base}/zapsign`)).toEqual({ erro: 'O ZapSign não está contratado: a assinatura é em papel.' })
+    const impresso = await json('ana', 'POST', `${base}/impressao`)
+    expect(impresso.contrato.assinatura).toMatchObject({ forma: 'papel', impressoEm: expect.any(String) })
+    expect((await json('ana', 'POST', `${base}/digitalizacao`)).arquivo).toMatchObject({ tipo: 'contrato', origem: 'scanner', aguardaLeitura: true })
+    expect((await json('ana', 'POST', `${base}/assinatura-em-papel`)).contrato.etapa).toBe('leitura')
+    expect((await json('ana', 'POST', `${base}/leitura-simulada`)).contrato.etapa).toBe('conferir')
+  })
+
+  it('com o ZapSign contratado, a regra de antes continua: papel só na entrevista presencial', async () => {
+    const fichaId = await lead()
+    await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, {
+      tipo: 'video', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false,
+    })
+    await reiniciar({ zapsign: true })
+    const { base } = await gerar(fichaId)
+    expect(await json('ana', 'POST', `${base}/impressao`)).toEqual({ erro: 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.' })
   })
 })
 

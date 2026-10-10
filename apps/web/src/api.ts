@@ -20,6 +20,20 @@ export async function chamarApi<T>(caminho: string, init: { method?: string; cor
   return resposta.ok ? { ok: true, dados: corpo as T } : { ok: false, status: resposta.status, erro: corpo.erro ?? 'Algo deu errado.' }
 }
 
+export type Baixado = { ok: true; blob: Blob; nome: string } | { ok: false; status: number; erro: string }
+
+/** Baixa um arquivo da API (o kit para imprimir). Sessão expirada (401) leva ao login, como em `chamarApi`. */
+export async function baixarApi(caminho: string): Promise<Baixado> {
+  const resposta = await fetch(`/api${caminho}`, { credentials: 'same-origin' })
+  if (resposta.status === 401) irParaEntrar()
+  if (!resposta.ok) {
+    const corpo = await resposta.json().catch(() => ({}))
+    return { ok: false, status: resposta.status, erro: corpo.erro ?? 'Algo deu errado.' }
+  }
+  const nome = /filename\*=UTF-8''([^;]+)/i.exec(resposta.headers.get('content-disposition') ?? '')?.[1]
+  return { ok: true, blob: await resposta.blob(), nome: nome ? decodeURIComponent(nome) : 'Kit do contrato' }
+}
+
 /** Depois do "Sair", um 401 de busca que ainda estava no caminho não deve mandar ao login com "volta". */
 let saindo = false
 

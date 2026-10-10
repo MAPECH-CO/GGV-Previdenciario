@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { TIPO_DO_DOCX } from '@ggv/contratos'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CLIENTE_DO_EXEMPLO_DOS_MODELOS,
   SEGREDO_DO_RETORNO_EXEMPLO,
+  baixarKit,
   camposDoCaso,
   concluirAssinaturaEmPapel,
   concluirLeituraDoContrato,
@@ -18,6 +20,7 @@ import {
   receberRetornoDoZapSign,
   registrarTentativaDeAssinatura,
   salvarCondicoes,
+  servicosDoContrato,
   simularLeituraDoContrato,
   simularRetornoDoZapSign,
   tarefasDoContrato,
@@ -442,3 +445,59 @@ describe('GGVP-89 · cópia do contrato para o cliente levar · servidor de exem
     })
   })
 })
+
+describe('GGVP-136 · o kit para imprimir e o que o servidor oferece', () => {
+  const CASO = '0b8f3d9e-8c1a-4f6e-9d5b-2a7c4e1f6a30'
+  const chamadas: string[] = []
+  const json = { 'content-type': 'application/json' }
+  /** O servidor responde uma resposta por chamada, na ordem; as chamadas ficam em `chamadas`. */
+  const servidor = (...respostas: Response[]) => {
+    chamadas.length = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (chamadas.push(url), respostas.shift()!)))
+  }
+  const nomeDoKit = (extensao: string) => `inline; filename*=UTF-8''Kit%20do%20contrato%20-%20vers%C3%A3o%201.${extensao}`
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    configurarExemplo({ servidor: false })
+  })
+
+  it('CA8 · o contrato de exemplo tem o ZapSign simulado e nenhum PDF; o do servidor diz o que há', async () => {
+    servidor(new Response(JSON.stringify({ zapsign: false, pdf: true }), { status: 200, headers: json }))
+    expect(await servicosDoContrato('cleide-exemplo-1')).toEqual({ zapsign: true, pdf: false })
+    expect(chamadas).toEqual([])
+    configurarExemplo({ servidor: true })
+    expect(await servicosDoContrato(CASO)).toEqual({ zapsign: false, pdf: true })
+    expect(chamadas).toEqual(['/api/contrato/servicos'])
+  })
+
+  it('o servidor que não responde não derruba a tela: sem celular e sem PDF', async () => {
+    configurarExemplo({ servidor: true })
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('sem rede'))))
+    expect(await servicosDoContrato(CASO)).toEqual({ zapsign: false, pdf: false })
+  })
+
+  it('CA5 · baixarKit entrega o PDF do servidor, com o nome que ele deu', async () => {
+    servidor(new Response('%PDF-1.7', { status: 200, headers: { 'content-type': 'application/pdf', 'content-disposition': nomeDoKit('pdf') } }))
+    const kit = await baixarKit(CASO)
+    expect([kit.pdf, kit.nome, kit.blob.size]).toEqual([true, 'Kit do contrato - versão 1.pdf', 8])
+    expect(chamadas).toEqual([`/api/processos/${CASO}/contrato/kit`])
+  })
+
+  it('CA5 · o conversor que não responde (502): pede o Word, e a impressão não fica parada', async () => {
+    servidor(
+      new Response(JSON.stringify({ erro: 'O conversor de PDF não respondeu. Baixe o Word e imprima por ele.' }), { status: 502, headers: json }),
+      new Response('docx', { status: 200, headers: { 'content-type': TIPO_DO_DOCX, 'content-disposition': nomeDoKit('docx') } }),
+    )
+    const kit = await baixarKit(CASO)
+    expect([kit.pdf, kit.nome]).toEqual([false, 'Kit do contrato - versão 1.docx'])
+    expect(chamadas).toEqual([`/api/processos/${CASO}/contrato/kit`, `/api/processos/${CASO}/contrato/kit?formato=docx`])
+  })
+
+  it('sem kit gerado, a mensagem do servidor chega à tela e não pede o Word', async () => {
+    servidor(new Response(JSON.stringify({ erro: 'Este contrato ainda não tem o kit gerado.' }), { status: 404, headers: json }))
+    await expect(baixarKit(CASO)).rejects.toThrow('Este contrato ainda não tem o kit gerado.')
+    expect(chamadas).toHaveLength(1)
+  })
+})
+

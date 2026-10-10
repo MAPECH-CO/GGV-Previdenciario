@@ -31,6 +31,7 @@ import { registrarRotasSetor } from './rotas/setor.ts'
 import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
+import { abrirConversor, type ConversorDePdf } from './kit/pdf.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
@@ -83,6 +84,13 @@ type Opcoes = {
   fontes?: Fonte[]
   /** A IA (GGVP-106). Padrão: chaves do ambiente; sem chave, desligada. O teste passa uma IA com `fetch` falso. */
   ia?: Ia
+  /**
+   * Converte o .docx do kit em PDF (GGVP-136, CA5). Padrão: o Gotenberg de `GOTENBERG_URL`; sem a variável, o portal entrega o
+   * Word. `null`: sem conversor, mesmo com a variável (o teste que confere o Word).
+   */
+  conversor?: ConversorDePdf | null
+  /** O ZapSign está contratado. Padrão: há `ZAPSIGN_API_TOKEN`. Sem ele, só papel, e a opção do celular não aparece (GGVP-136, CA8). */
+  zapsign?: boolean
 }
 
 declare module 'fastify' {
@@ -95,7 +103,7 @@ declare module 'fastify' {
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia }: Opcoes = {}) {
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia, conversor, zapsign }: Opcoes = {}) {
   const app = Fastify({ logger })
   let preparar = async () => {}
   app.decorate('prepararSugestoes', () => preparar())
@@ -153,7 +161,13 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
     registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
-    registrarRotasRecepcaoContrato(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasRecepcaoContrato(app, {
+      banco,
+      agora,
+      armazenamento: arquivos,
+      conversor: conversor === undefined ? abrirConversor() : (conversor ?? undefined),
+      zapsign: zapsign ?? Boolean(process.env.ZAPSIGN_API_TOKEN),
+    })
     registrarRotasRoteiros(app, { banco, agora })
     registrarRotasParecer(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasComplemento(app, { banco, agora, ia: motorIa, armazenamento: arquivos })

@@ -3,7 +3,7 @@
 // regras do servidor de exemplo do Pedro (contrato.ts), com as regras puras importadas das telas; a leitura, a conferência e a
 // cópia também. O kit gerado é o Word do escritório, preenchido (GGVP-136). ZapSign, impressora, scanner e a leitura da IA
 // seguem simulados.
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { dataParaIso, normalizarData, normalizarNome } from '@ggv/campos'
 import {
@@ -22,6 +22,7 @@ import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, documento, pessoa } from '../banco/esquema.ts'
 import { lerModelo, preencherModelo } from '../kit/docx.ts'
+import type { ConversorDePdf } from '../kit/pdf.ts'
 import { modeloEmVigor } from '../kit/modelos.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
@@ -76,15 +77,28 @@ import { guardarArquivo } from './formulario.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_CONTRATO_NAO_ENCONTRADO = 'Contrato não encontrado.'
+export const MSG_SEM_KIT = 'Este contrato ainda não tem o kit gerado.'
+export const MSG_SEM_PDF = 'O conversor de PDF não respondeu. Baixe o Word e imprima por ele.'
+export const MSG_SEM_ZAPSIGN = 'O ZapSign não está contratado: a assinatura é em papel.'
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
+type Opcoes = {
+  banco: Banco
+  armazenamento: Armazenamento
+  agora?: () => Date
+  /** Sem ele, o kit sai em Word (GGVP-136, CA5). */
+  conversor?: ConversorDePdf
+  /** O ZapSign está contratado (GGVP-136, CA8). Sem ele, só papel, para qualquer entrevista. */
+  zapsign?: boolean
+}
 
-export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), conversor, zapsign = false }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   // D1.16 a D1.20: o contrato é da raia do Atendimento; o % de honorários aparece só nele (GGVP-96).
   const conduzir = { preHandler: exigir(banco, 'contrato.conduzir', agora) }
+  // Quem abre a tela de colher a assinatura, inclusive a Sênior quando o caso sobe (G15), lê o que o servidor oferece.
+  const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
 
   const fichaPeloId = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
 
@@ -109,10 +123,13 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
   /** Assinado, o contrato segue para a leitura da Documentação (GGVP-81). */
   const assinado = (processo: Processo): Processo => ({ ...processo, etapa: `Contrato assinado em ${dataCurta(hoje(), hoje())}`, proximaAcao: 'ler e arquivar o contrato assinado' })
 
-  /** Por que o contrato não vai ao papel na hora: só na entrevista presencial e sem documento no ZapSign (GGVP-77 CA4). */
+  /**
+   * Por que o contrato não vai ao papel na hora: com o ZapSign contratado, só na entrevista presencial e sem documento lá (GGVP-77
+   * CA4). Sem o ZapSign, o papel é o único caminho e vale para qualquer entrevista: imprime e entrega, ou envia (GGVP-136).
+   */
   function semPapel({ ficha, contrato }: ContratoDoCaso): string | null {
     if (contrato.etapa !== 'assinatura' || !contrato.kit) return 'Este contrato não está para assinar.'
-    if (!papelNaHora(entrevistaDoCaso(ficha.agendamentos))) return 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.'
+    if (zapsign && !papelNaHora(entrevistaDoCaso(ficha.agendamentos))) return 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.'
     if (contrato.assinatura?.zapsign) return 'O documento já foi para o ZapSign.'
     return null
   }
@@ -264,9 +281,44 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     return { resultado: 'gerado', contrato, ficha: (await fichas([ficha.id]))[0] }
   })
 
+  // GGVP-136 CA5: o kit gerado, para imprimir. Com o conversor, o PDF (abre no navegador e imprime); sem ele, ou a pedido
+  // (?formato=docx), o Word preenchido. O arquivo é o que ficou na pasta do cliente; nada do conteúdo vai para o log.
+  app.get<{ Params: { id: string }; Querystring: { formato?: string } }>('/api/processos/:id/contrato/kit', conduzir, async (pedido, resposta) => {
+    const achado = await acharContrato(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
+    const guardado = achado.contrato.documento?.arquivo
+    if (!guardado) return negar(resposta, 404, MSG_SEM_KIT)
+    const [d] = await banco
+      .select()
+      .from(documento)
+      .where(and(eq(documento.id, guardado.documentoId), eq(documento.casoId, achado.processo.id), isNull(documento.excluidoEm)))
+    const docx = d && (await armazenamento.ler(d.chaveArmazenamento).catch(() => null))
+    if (!d || !docx) return negar(resposta, 404, MSG_SEM_KIT)
+    // O navegador não adivinha o tipo nem roda script do arquivo.
+    const enviar = (conteudo: Buffer, tipo: string, como: 'inline' | 'attachment', nome: string) =>
+      resposta
+        .header('content-type', tipo)
+        .header('x-content-type-options', 'nosniff')
+        .header('content-security-policy', "sandbox; default-src 'none'")
+        .header('content-disposition', `${como}; filename*=UTF-8''${encodeURIComponent(nome)}`)
+        .send(conteudo)
+    if (conversor && pedido.query.formato !== 'docx') {
+      try {
+        return enviar(await conversor(docx), 'application/pdf', 'inline', d.nomeOriginal.replace(/\.docx$/, '.pdf'))
+      } catch {
+        return negar(resposta, 502, MSG_SEM_PDF)
+      }
+    }
+    return enviar(docx, TIPO_DO_DOCX, 'attachment', d.nomeOriginal)
+  })
+
+  // GGVP-136 CA5, CA8: o que o servidor oferece: o PDF (há conversor) e a assinatura pelo celular (o ZapSign está contratado).
+  app.get('/api/contrato/servicos', ver, async () => ({ zapsign, pdf: conversor !== undefined }))
+
   // GGVP-72 CA1, CA4, CA5, CA12: o ZapSign (simulado) monta o documento pelo modelo e devolve o link. Um documento por kit:
   // pedir de novo devolve o mesmo. A mensagem do WhatsApp com o link volta pronta para conferir.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign', conduzir, async (pedido, resposta) => {
+    if (!zapsign) return negar(resposta, 400, MSG_SEM_ZAPSIGN)
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const { ficha, processo, contrato } = achado
@@ -373,7 +425,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
   })
 
   // GGVP-77 CA1, CA4: "Papel, na hora": o kit sai com as datas em branco para preencher à mão, menos o contrato de
-  // honorários. Só na entrevista presencial. A impressora é simulada.
+  // honorários. Com o ZapSign contratado, só na entrevista presencial. Aqui só fica registrado que o kit foi impresso: o arquivo
+  // sai por GET .../contrato/kit (GGVP-136).
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/impressao', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)

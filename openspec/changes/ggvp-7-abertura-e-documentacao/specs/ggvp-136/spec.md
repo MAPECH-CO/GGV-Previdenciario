@@ -21,7 +21,8 @@ export const ModelosDoEscritorio = z.object({
 | `GET /api/configuracao/modelos` (`gestao.ver`) | — | `ModelosDoEscritorio` |
 | `PUT /api/configuracao/modelos/:id` (`modelo.subir`, só a Sênior) | multipart, campo `arquivo` (.docx) | `{ ok, versao }` |
 | `POST /api/processos/:id/contrato/gerar` | o envio que já existe | `gerado`; ou `faltam` (campos do contrato) ou `faltam-na-ficha` (o que a ficha não tem), com a lista (CA4); ou `sem-modelo` |
-| `GET /api/processos/:id/contrato/kit` | — | o PDF (com `GOTENBERG_URL`) ou o .docx preenchido (CA5) |
+| `GET /api/processos/:id/contrato/kit` | `?formato=docx` (opcional) | o PDF (com `GOTENBERG_URL`) ou o .docx preenchido; 502 se o conversor não responde (CA5) |
+| `GET /api/contrato/servicos` | — | `{ zapsign, pdf }`: o ZapSign está contratado (`ZAPSIGN_API_TOKEN`) e há conversor de PDF (CA5, CA8) |
 
 Decisões:
 
@@ -31,8 +32,8 @@ Decisões:
 4. **Honorários.** Vêm do texto do modelo, sem campo para digitar; a tela diz que são os do modelo e pede para conferir no kit antes de imprimir.
 5. **Datas no papel.** O contrato de honorários, o primeiro documento do modelo, sai com a data de hoje (`{{DATA DE HOJE}}`); as outras datas saem em branco, para preencher à mão.
 6. **O que a ficha não tem.** Nacionalidade do cliente e, no LOAS representado, estado civil, nacionalidade e profissão do genitor(a), e na curatela os dados do curatelado, entram como campos do contrato na tela Preparar contrato, como o RG já é. Endereço e telefone do genitor são os do cliente. O telefone para contato é opcional.
-7. **Papel sem ZapSign.** Enquanto o ZapSign não estiver contratado, papel vale para qualquer entrevista, e a opção do celular não aparece (Orquestrador, 09/10: 99% assinam no papel).
-8. **PDF plugável.** Com `GOTENBERG_URL`, o servidor converte o .docx preenchido em PDF; sem ela, o portal entrega o .docx preenchido. O serviço de conversão (Gotenberg no Coolify) é do Mateus.
+7. **Papel sem ZapSign.** Enquanto o ZapSign não estiver contratado (o servidor sem `ZAPSIGN_API_TOKEN`), papel vale para qualquer entrevista, a opção do celular não aparece e o servidor recusa montar documento no ZapSign (Orquestrador, 09/10: 99% assinam no papel). O contrato que já foi pelo ZapSign continua mostrando o que foi enviado.
+8. **PDF plugável.** Com `GOTENBERG_URL`, o servidor converte o .docx preenchido em PDF; sem ela, o portal entrega o .docx preenchido. Se o conversor não responde, a tela pede o Word e imprime por ele: a impressão não fica parada. O serviço de conversão (Gotenberg no Coolify) é do Mateus.
 9. **Modelos fora do repositório.** O texto é do escritório e o repositório é público: nenhum modelo entra aqui, nem limpo. Os testes criam um .docx inventado. Para a homologação, um script sobe os modelos da pasta local pela rota da Configuração.
 
 ## ADDED Requirements
