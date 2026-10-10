@@ -62,6 +62,7 @@ import { registrarRotasFeriados } from './rotas/feriados.ts'
 import { registrarRotasProcesso } from './rotas/processo.ts'
 import { registrarRotasBases } from './rotas/bases.ts'
 import { registrarRotasFinanceiro } from './rotas/financeiro.ts'
+import { registrarRotasChat } from './rotas/chat.ts'
 
 type Opcoes = {
   logger?: boolean
@@ -180,6 +181,8 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasBases(app, { banco, agora })
     // GGVP-78: o painel Financeiro, das prestações de contas.
     registrarRotasFinanceiro(app, { banco, agora })
+    // GGVP-142: o chat das Centrais e a aba Suporte pelo servidor.
+    registrarRotasChat(app, { banco, agora, ia: motorIa })
     alimentar = async () => {
       if (!motorIa.ligada) return
       await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error({ erro }, 'alimentar o acervo falhou'))
