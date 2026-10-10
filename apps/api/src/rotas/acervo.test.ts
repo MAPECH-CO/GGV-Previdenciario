@@ -139,3 +139,51 @@ describe('GGVP-41 · a ficha e a tese na conferência', () => {
     expect([a.tese, a.desfechoConferidoPor]).toEqual([null, ids.helena])
   })
 })
+
+describe('pergunta de um clique para juiz, vara e tese (GGVP-153)', () => {
+  const completar = async (apelido: string, id: string, corpo: object) =>
+    app.inject({ method: 'POST', url: `/api/acervo/processos/${id}/completar`, cookies: await cookieDe(apelido), payload: corpo })
+
+  async function casoNoAcervo(extra: Partial<typeof caso.$inferInsert> = {}, tese: string | null = null) {
+    const [p] = await banco.insert(pessoa).values({ nome: 'Pessoa (exemplo)' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_idoso', ...extra }).returning()
+    const [a] = await banco
+      .insert(processoAcervo)
+      .values({ casoId: c.id, beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: ids.helena, fonte: 'portal', tese })
+      .returning()
+    return { casoId: c.id, acervoId: a.id }
+  }
+
+  it('CA1 · o conferido sem vara, juiz ou tese aparece com o que falta e as opções que o portal já conhece', async () => {
+    await casoNoAcervo({ vara: '2ª Vara do JEF (exemplo)', juiz: 'Dra. Exemplo' }, 'Renda per capita (exemplo)')
+    const { acervoId } = await casoNoAcervo()
+    const r = (await conferencia('helena')).json()
+    expect(r.incompletos).toEqual([{ id: acervoId, numeroCnj: null, beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', falta: ['vara', 'juiz', 'tese'] }])
+    expect(r.conhecidos).toEqual({ vara: ['2ª Vara do JEF (exemplo)'], juiz: ['Dra. Exemplo'], tese: ['Renda per capita (exemplo)'] })
+  })
+
+  it('CA2 · a resposta vai ao caso e ao acervo, só no que faltava, com quem e o antes e o depois no histórico', async () => {
+    const { casoId, acervoId } = await casoNoAcervo({ juiz: 'Dr. Já Tinha (exemplo)' })
+    const r = await completar('helena', acervoId, { vara: '2ª Vara do JEF (exemplo)', juiz: 'Outro (exemplo)', tese: 'Miserabilidade (exemplo)' })
+    expect(r.statusCode).toBe(200)
+    expect(r.json().incompletos).toEqual([])
+    const [c] = await banco.select({ vara: caso.vara, juiz: caso.juiz }).from(caso).where(eq(caso.id, casoId))
+    const [a] = await banco.select({ vara: processoAcervo.vara, tese: processoAcervo.tese }).from(processoAcervo).where(eq(processoAcervo.id, acervoId))
+    // O juiz que já existia não muda.
+    expect([c, a]).toEqual([
+      { vara: '2ª Vara do JEF (exemplo)', juiz: 'Dr. Já Tinha (exemplo)' },
+      { vara: '2ª Vara do JEF (exemplo)', tese: 'Miserabilidade (exemplo)' },
+    ])
+    const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acervo_completado'))
+    expect([h.quem, h.alvo]).toEqual([ids.helena, `acervo:${acervoId}`])
+    expect(h.detalhe).toMatchObject({ antes: { vara: null, juiz: 'Dr. Já Tinha (exemplo)', tese: null }, depois: { vara: '2ª Vara do JEF (exemplo)', tese: 'Miserabilidade (exemplo)' } })
+    expect((await completar('helena', acervoId, { vara: 'Outra (exemplo)' })).statusCode).toBe(409)
+  })
+
+  it('só a Sênior completa; processo sem caso ou não conferido não tem a pergunta', async () => {
+    const { acervoId } = await casoNoAcervo()
+    expect((await completar('gabi', acervoId, { vara: 'X' })).statusCode).toBe(403)
+    expect((await completar('helena', lidos[0], { vara: 'X' })).statusCode).toBe(404)
+    expect((await completar('helena', acervoId, {})).json().erro).toBe('Escolha ou escreva o que falta.')
+  })
+})

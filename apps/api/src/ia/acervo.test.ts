@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acervoTrecho, atendimento, caso, chamadaIa, documentacaoMedica, gravacaoRecepcao, modelo, pericia, peticao, peticaoVersao, pessoa, publicacao, resultadoInss } from '../banco/esquema.ts'
+import { acervoTrecho, atendimento, caso, chamadaIa, documentacaoMedica, gravacaoRecepcao, modelo, pericia, peticao, peticaoVersao, pessoa, publicacao, resultadoInss, usuario } from '../banco/esquema.ts'
 import { alimentarAcervo, anonimizar, buscarNoAcervo } from './acervo.ts'
 import { DIMENSOES_DO_VETOR, criarIa } from './ia.ts'
 
@@ -248,6 +248,23 @@ describe('GGVP-141, parte 2 · o que as telas do Pedro conferem entra no acervo'
     })
     expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 0, vetores: 0 })
     expect(await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'resumo da IA março costureira', saude: true })).toEqual([])
+  })
+
+  it('GGVP-154 CA1, CA3, CA4 · toda publicação classificada por pessoa entra, sem o nome; a só sugerida pela IA fica fora; de novo, não duplica', async () => {
+    const [helena] = await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'Helena (exemplo)', senhaHash: 'x' }).returning()
+    const publicada = { casoId: outro, fonte: 'djen', disponibilizadaEm: '2026-10-05' }
+    await banco.insert(publicacao).values([
+      { ...publicada, hash: 'p1', texto: 'Intime-se Joana Pereira Lima para juntar o estudo social em 15 dias.', classe: 'exigencia', revisadaPor: helena.id },
+      { ...publicada, hash: 'p2', texto: 'Nomeio perito o Dr. Exemplo. Quesitos em 15 dias.', classe: 'nomeacao_perito', revisadaPor: helena.id },
+      // Só a IA sugeriu a classe; ninguém conferiu (CA3).
+      { ...publicada, hash: 'p3', texto: 'Vista às partes do laudo pericial.', classe: null, classeSugeridaIa: 'andamento' },
+    ])
+    expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 2, vetores: 0 })
+    expect(await trechos()).toEqual([
+      { origem: 'Publicação: Intimação ou exigência', texto: 'Intime-se [cliente] para juntar o estudo social em 15 dias.', soJuridico: true, referencia: `caso:${outro}` },
+      { origem: 'Publicação: Nomeação de perito', texto: 'Nomeio perito o Dr. Exemplo. Quesitos em 15 dias.', soJuridico: true, referencia: `caso:${outro}` },
+    ])
+    expect(await alimentarAcervo(banco, semChave())).toEqual({ novos: 0, vetores: 0 })
   })
 })
 
