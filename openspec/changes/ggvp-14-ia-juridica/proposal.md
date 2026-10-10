@@ -34,7 +34,9 @@ Cada integração completa a parte de IA que a história deixou para este épico
 12. **GGVP-19** (épico Desfecho, aqui porque depende desta plataforma) · Estudo de caso do processo perdido: automático depois do resultado negativo, numa tela de estudos; tarefa da Sênior só quando indica novo processo (Lucas, 06/10).
 13. **GGVP-38** · Recomendação sobre a perícia: pronta para a advogada antes de marcar (o que levar, pontos fortes e fracos; na perícia do juiz, quesitos e assistente técnico); sem a jurimetria do perito, que espera a GGVP-59.
 14. **GGVP-41** (parte 1) · Medir ganho e perda: cada desfecho do portal entra no acervo com a ficha da IA (matéria, vara, tese, resumo e lição, sem dado pessoal); o perdido entra pelo estudo de caso; a Sênior confere a ficha e a tese; a Gestão ganha o recorte por tese (CA1, CA3 a CA7, CA9 a CA11).
-15. **GGVP-142** · Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10): o chat das Centrais e a aba Suporte respondem pelo motor, com o caso que o perfil vê, o acervo e as fontes; as travas continuam como código; a ação vira cartão e só executa depois do "Confirmar" de quem pediu; o Sócio vê o conteúdo médico no chat; o kit de agentes da OpenAI dentro do motor.
+15. **GGVP-153** (conferência da jurimetria, 09/10) · Pergunta de um clique para juiz, vara e tese: na conferência do acervo, a Sênior completa o que falta, com as opções que o portal já conhece; o caso volta ao recorte, e nada trava.
+16. **GGVP-154** (conferência da jurimetria, 09/10) · O acervo aprende com toda publicação classificada por pessoa; o documento do Drive entra quando a leitura de documentos existir (GGVP-95, GGVP-81).
+17. **GGVP-142** · Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10): o chat das Centrais e a aba Suporte respondem pelo motor, com o caso que o perfil vê, o acervo e as fontes; as travas continuam como código; a ação vira cartão e só executa depois do "Confirmar" de quem pediu; o Sócio vê o conteúdo médico no chat; o kit de agentes da OpenAI dentro do motor.
 
 ## A sugestão chega pronta (Mateus, 07/10)
 
