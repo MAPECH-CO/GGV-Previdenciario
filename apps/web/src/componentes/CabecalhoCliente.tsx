@@ -2,10 +2,10 @@ import type { Ficha } from '../dados/tipos.ts'
 import { dataCurta, idadeEm } from '../regras/datas.ts'
 import styles from './CabecalhoCliente.module.css'
 
-/** "Antônio Exemplo" → "AE". */
+/** "Antônio Exemplo" → "AE". Só palavras que começam com letra: "Antônia Lima (exemplo)" → "AL", não "A(". */
 function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/)
-  return (partes[0][0] + (partes.length > 1 ? partes.at(-1)![0] : '')).toUpperCase()
+  const partes = nome.trim().split(/\s+/).filter((p) => /^\p{L}/u.test(p))
+  return ((partes[0]?.[0] ?? '') + (partes.length > 1 ? partes.at(-1)![0] : '')).toUpperCase()
 }
 
 /** Topo do bloco de dados (Figma 73:215): iniciais, nome, idade e resumo, contato preferido e laudo novo. */

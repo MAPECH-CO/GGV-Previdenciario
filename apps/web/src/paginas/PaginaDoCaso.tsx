@@ -115,7 +115,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
     <>
       <title>{`${c.ficha.nome} · Processo · GGV Previdenciário`}</title>
       <Topbar itens={navegacao} ativo="" funcao={perfil?.rotulo ?? 'Advogada'} />
-      <main className={base.pagina}>
+      <main className={`${base.pagina} ${styles.caso}`}>
         <header className={base.cabecalho}>
           <div className={base.linha}>
             <h1 className={base.numero}>
@@ -147,7 +147,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 Imprimir cópia para o cliente
               </a>
             )}
-            <button type="button" className={base.transcricoes} onClick={async () => setFichaDasTranscricoes(await obterFicha(c.ficha.id))}>
+            <button type="button" className={`${base.transcricoes} ${styles.transcricoes}`} onClick={async () => setFichaDasTranscricoes(await obterFicha(c.ficha.id))}>
               ▶ Transcrições ({c.ficha.transcricoes})
             </button>
           </div>
@@ -209,7 +209,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
 
         {/* Um passo concluído: quem fez, quando e os documentos (CA4). */}
         {aberta && (
-          <section className={`${base.cartao} ${styles.detalhe}`} aria-labelledby="etapa-aberta">
+          <section className={`${base.cartao} ${styles.detalhe} ${styles.realce}`} aria-labelledby="etapa-aberta">
             <div className={styles.detalheCabeca}>
               <h2 id="etapa-aberta" className={base.cartaoTitulo}>
                 {aberta.rotulo} · feita · {aberta.descricao}
@@ -239,7 +239,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
           </section>
         )}
 
-        <section className={base.resumo} aria-labelledby="onde-esta">
+        <section className={`${base.resumo} ${styles.resumo}`} aria-labelledby="onde-esta">
           <div>
             <h2 id="onde-esta" className={proprio.iaTitulo}>
               Onde o caso está
@@ -272,7 +272,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
         )}
 
         <div className={base.grade}>
-          <section className={base.cartao} aria-labelledby="linha">
+          <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="linha">
             <h2 id="linha" className={base.cartaoTitulo}>
               Linha do processo · completa
             </h2>
@@ -301,7 +301,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
 
           <div className={base.coluna}>
             {c.pendentes && (
-              <section className={`${base.cartao} ${c.pendentes.setores.length ? base.destaque : ''}`} aria-labelledby="setores">
+              <section className={`${base.cartao} ${c.pendentes.setores.length ? `${base.destaque} ${styles.realce}` : styles.cartao}`} aria-labelledby="setores">
                 <h2 id="setores" className={base.cartaoTitulo}>
                   Esperando os setores
                 </h2>
@@ -323,7 +323,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             )}
 
             {c.esperas.length > 0 && (
-              <section className={base.cartao} aria-labelledby="de-fora">
+              <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="de-fora">
                 <h2 id="de-fora" className={base.cartaoTitulo}>
                   Esperando alguém de fora
                 </h2>
@@ -346,7 +346,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             )}
 
             {pendentes.length > 0 && (
-              <section className={`${base.cartao} ${base.destaque}`} aria-labelledby="pendentes">
+              <section className={`${base.cartao} ${base.destaque} ${styles.realce}`} aria-labelledby="pendentes">
                 <h2 id="pendentes" className={base.cartaoTitulo}>
                   Documentos pendentes
                 </h2>
@@ -362,7 +362,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               </section>
             )}
 
-            <section className={base.cartao} aria-labelledby="tarefas">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="tarefas">
               <h2 id="tarefas" className={base.cartaoTitulo}>
                 Tarefas em andamento
               </h2>
@@ -394,7 +394,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             </section>
 
             {c.peritoParaIdentificar && juridico && (
-              <section className={base.cartao} aria-labelledby="quem-e-o-perito">
+              <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="quem-e-o-perito">
                 <h2 id="quem-e-o-perito" className={base.cartaoTitulo}>
                   Quem é o perito?
                 </h2>
@@ -412,7 +412,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               </section>
             )}
 
-            <section className={base.cartao} aria-labelledby="dados">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="dados">
               <h2 id="dados" className={base.cartaoTitulo}>
                 Dados do processo
               </h2>
@@ -468,7 +468,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
           </div>
 
           <div className={base.coluna}>
-            <section className={base.cartao} aria-labelledby="prazos">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="prazos">
               <h2 id="prazos" className={base.cartaoTitulo}>
                 Prazos
               </h2>
@@ -487,7 +487,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               <p className={base.nota}>{c.fase === 'judicial' ? 'Com processo judicial, a vigília lê as publicações.' : 'Na fase administrativa, a vigília confere o Meu INSS.'}</p>
             </section>
 
-            <section className={base.cartao} aria-labelledby="documentos">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="documentos">
               <h2 id="documentos" className={base.cartaoTitulo}>
                 Documentos (abrir cada um)
               </h2>
@@ -506,7 +506,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                           {d.origem} · {curta(d.data)}
                         </span>
                       </span>
-                      <button type="button" className={base.link} aria-label={`Abrir ${nomeDoDocumento(d)}`} onClick={() => setJanela({ tipo: 'documento', doc: d })}>
+                      <button type="button" className={`${base.link} ${styles.abrir}`} aria-label={`Abrir ${nomeDoDocumento(d)}`} onClick={() => setJanela({ tipo: 'documento', doc: d })}>
                         Abrir
                       </button>
                     </li>
@@ -515,7 +515,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               )}
             </section>
 
-            <section className={base.cartao} aria-labelledby="acoes">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="acoes">
               <h2 id="acoes" className={base.cartaoTitulo}>
                 Ações
               </h2>
