@@ -32,7 +32,7 @@ test('CA1, CA2 e CA4 · da Central da Advogada à preparação, com os pontos de
   await expect(pontos).toContainText('Sem senha do gov.br · o Atendimento ainda não tentou renovar')
   await expect(pontos).toContainText('Benefício que o cliente procura: LOAS Idoso')
   await expect(page.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' })).toBeDisabled()
-  await expect(page.getByRole('link', { name: 'Início' })).toHaveAttribute('href', '/')
+  await expect(page.getByRole('link', { name: 'Início', exact: true })).toHaveAttribute('href', '/')
 })
 
 test('CA5 · pela agenda, a preparação mostra a anotação do primeiro contato', async ({ page }) => {
@@ -51,6 +51,6 @@ for (const caminho of ['/advogada', '/entrevista/josefa-entrevista/preparar']) {
     await expect(page.getByRole('heading', { level: 1 })).toBeAttached()
     const corpo = page.locator('body')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   })
 }

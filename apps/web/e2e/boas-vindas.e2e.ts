@@ -50,5 +50,5 @@ test('tema escuro e fonte grande nas boas-vindas', async ({ page }) => {
   await page.goto('/casos/rita-exemplo-1/checklist?tema=escuro&fonte=grande')
   const bloco = page.getByRole('region', { name: 'Boas-vindas' })
   await expect(bloco).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

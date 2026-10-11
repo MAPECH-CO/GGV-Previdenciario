@@ -79,5 +79,5 @@ test('tema escuro e fonte grande com a janela aberta', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'Transcrições do caso' })).toBeVisible()
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

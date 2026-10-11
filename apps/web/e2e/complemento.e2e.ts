@@ -70,5 +70,5 @@ test('tema escuro e fonte grande no pedido de complemento', async ({ page }) => 
   await page.goto('/casos/rita-exemplo-1/complemento?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Rita Exemplo · Pedir complemento ao médico')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

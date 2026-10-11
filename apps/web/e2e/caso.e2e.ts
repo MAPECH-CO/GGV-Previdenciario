@@ -104,5 +104,5 @@ test('tema escuro e fonte grande na página do processo', async ({ page }) => {
   await page.goto('/casos/antonio-exemplo-1?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { name: 'Linha do processo · completa' })).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

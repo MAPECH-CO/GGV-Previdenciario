@@ -67,6 +67,6 @@ test('tema escuro e fonte grande no preparar contrato', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cleide Exemplo · Preparar contrato')
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   await expect(page.getByRole('region', { name: 'Kit do benefício' })).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
 })

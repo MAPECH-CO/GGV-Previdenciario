@@ -102,6 +102,6 @@ for (const caminho of ['/entrevista/josefa-entrevista', '/entrevista/josefa-entr
     await expect(page.getByRole('heading', { level: 1 })).toBeAttached()
     const corpo = page.locator('body')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   })
 }

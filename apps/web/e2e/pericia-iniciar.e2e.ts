@@ -39,7 +39,7 @@ test('CA1 a CA4 · a tarefa aberta pelo sistema, a Central do Jurídico administ
 
   // A ficha mostra o caso "Em perícia" com o diagrama de origem (CA1).
   await page.goto('/clientes/maria-exemplo')
-  await expect(page.getByRole('link', { name: /Em perícia · pedido ao INSS \(D2\)/ })).toHaveAttribute('href', '/casos/maria-exemplo-1/pericia')
+  await expect(page.getByRole('link', { name: /Em perícia · pedido ao INSS · / })).toHaveAttribute('href', '/casos/maria-exemplo-1/pericia')
 })
 
 test('tema escuro e fonte grande na tarefa aberta pelo sistema', async ({ page }) => {
@@ -47,5 +47,5 @@ test('tema escuro e fonte grande na tarefa aberta pelo sistema', async ({ page }
   await page.goto('/casos/maria-exemplo-1/pericia/aberta?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tarefa de perícia aberta pelo sistema')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

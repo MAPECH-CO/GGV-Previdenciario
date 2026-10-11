@@ -48,5 +48,5 @@ test('tema escuro e fonte grande na conferência do documento médico', async ({
   await page.goto('/clientes/rita-exemplo/conferir-documentos?tema=escuro&fonte=grande')
   await expect(page.getByText('Dra. Exemplo Neurologista', { exact: false })).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

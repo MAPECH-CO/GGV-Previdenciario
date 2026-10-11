@@ -53,7 +53,7 @@ test('CA1 a CA4 · a tentativa, o comprovante lido e conferido, a Documentação
 
   // A ficha mostra a data; a página do processo, o comprovante lido pelo sistema.
   await page.goto('/clientes/maria-exemplo')
-  await expect(page.getByRole('link', { name: /Em perícia · pedido ao INSS \(D2\) · perícia médica em/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Em perícia · pedido ao INSS · perícia médica em/ })).toBeVisible()
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/casos/maria-exemplo-1/pericia')
   await expect(page.getByText('comprovante lido pelo sistema')).toBeVisible()
@@ -127,5 +127,5 @@ test('tema escuro e fonte grande na tela de marcar a perícia', async ({ page })
   await page.goto('/casos/maria-exemplo-1/pericia/marcar?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Maria Exemplo · Marcar perícia')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })
