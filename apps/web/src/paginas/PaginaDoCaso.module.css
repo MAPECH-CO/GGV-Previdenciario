@@ -219,3 +219,62 @@
 .emPericia:not(:disabled):active {
   background-image: var(--estado-apertar);
 }
+
+/* Acabamento da página do processo (make-interfaces-feel-better). Só aparência: nenhuma regra daqui muda tamanho nem
+   posição de nada. As classes ficam aqui, e não em ProcessoPericia.module.css, porque aquela folha é dividida com a
+   tela da perícia. */
+
+/* O sublinhado dos links (vara, perito, Abrir) desce um pouco e não encosta nas letras. */
+.caso {
+  text-underline-offset: 3px;
+}
+
+/* Cartões: a borda cinza vira um contorno preto translúcido, que acompanha qualquer fundo, e a sombra ganha duas
+   camadas. A borda segue com 1 px. O raio sobe para 14, maior que o dos blocos de dentro (6 a 10). */
+.caso .cartao,
+.caso .realce {
+  border-radius: var(--raio-14);
+  box-shadow:
+    0 1px 2px -1px oklch(0 0 0 / 0.08),
+    0 2px 6px -2px oklch(0 0 0 / 0.06);
+}
+
+.caso .cartao {
+  border-color: oklch(0 0 0 / 0.08);
+  background-clip: padding-box;
+}
+
+:root[data-tema='escuro'] .caso :is(.cartao, .realce) {
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.4);
+}
+
+:root[data-tema='escuro'] .caso .cartao {
+  border-color: oklch(1 0 0 / 0.08);
+}
+
+/* "Onde o caso está" acompanha o raio dos cartões. */
+.caso .resumo {
+  border-radius: var(--raio-14);
+}
+
+/* Aqui "Transcrições" funciona (abre as transcrições da ficha); a folha dividida o desenha apagado, como na perícia. */
+.caso .transcricoes {
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* Datas da linha do tempo com algarismos de mesma largura: a coluna fica alinhada de cima a baixo. */
+.linhaLista > li > span:first-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Abrir" tem 16 px de altura: a área de clique cresce por fora, até 47 × 36, sem encostar na da linha de baixo (37 px). */
+.caso .abrir {
+  position: relative;
+}
+
+.caso .abrir::after {
+  content: '';
+  position: absolute;
+  inset: -10px -8px;
+}

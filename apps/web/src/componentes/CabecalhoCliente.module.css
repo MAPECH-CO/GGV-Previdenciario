@@ -16,6 +16,8 @@
   color: var(--cor-acento);
   font-size: var(--fonte-18);
   font-weight: 600;
+  /* Contorno de 1 px por dentro, na cor do próprio avatar: a borda do círculo fica nítida sobre o branco. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor-acento) 16%, transparent);
 }
 
 .textos {
@@ -73,4 +75,18 @@
   background: var(--cor-superficie);
   font-size: var(--fonte-13);
   font-weight: 600;
+}
+
+/* A foto é de outra história: o botão aparece apagado e não reage ao passar nem ao apertar, para não prometer o que
+   ainda não faz. */
+.foto[aria-disabled='true'] {
+  box-shadow: none;
+  color: var(--cor-texto-suave-2);
+  cursor: not-allowed;
+}
+
+.foto[aria-disabled='true']:hover,
+.foto[aria-disabled='true']:active {
+  background-image: none;
+  scale: none;
 }
