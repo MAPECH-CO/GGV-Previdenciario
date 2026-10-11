@@ -3,4 +3,5 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-12);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }

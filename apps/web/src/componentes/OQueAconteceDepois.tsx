@@ -4,7 +4,7 @@ import styles from './OQueAconteceDepois.module.css'
 const PASSOS = [
   'Marcar a entrevista com a advogada: presencial, vídeo ou telefone. Convite pelo Chatwoot com modelo (GGVP-102).',
   'Iniciar com gravação e transcrição. O aviso de gravação é a primeira coisa (G10).',
-  'A cliente preenche a ficha pelo link (D1.05). Na entrevista, a IA aponta o que faltou.',
+  'A cliente preenche a ficha pelo link. Na entrevista, a IA aponta o que faltou.',
   'Se não virar cliente, o motivo fica registrado (G16).',
 ]
 

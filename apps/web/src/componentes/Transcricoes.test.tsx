@@ -183,6 +183,6 @@ describe('Transcrições do caso · janela', () => {
     expect(await screen.findByText('Telefone de contato')).toBeTruthy()
     expect(screen.getAllByText('a conferir na conversa')).toHaveLength(6)
     expect(screen.queryByRole('button', { name: 'Conferir e levar' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Conferir na conversa (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
+    expect(screen.getByRole('link', { name: 'Conferir na conversa' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
   })
 })

@@ -1,0 +1,456 @@
+/* Resultados do escritório (refeito em 11/10, no desenho da Gestão do Figma 1928:392): o período numa faixa, os números
+   grandes com a régua da taxa, os cartões lado a lado e o Raio-X como referência no pé. */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+
+.sep {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* O período e o recorte. */
+.periodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.filtro {
+  display: flex;
+  flex: 0 1 160px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filtroLargo {
+  flex: 1 1 220px;
+}
+
+/* Um bloco com título e linha de apoio (a operação, o Raio-X). */
+.bloco,
+.referencia {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.referencia {
+  margin-top: 12px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--cor-borda-controle);
+}
+
+.blocoCabeca {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.blocoTitulo {
+  font-size: var(--fonte-17);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.blocoSub {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.vazio {
+  padding: 26px 16px;
+  border: 1px dashed var(--cor-borda-controle);
+  border-radius: var(--raio-12);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  text-align: center;
+}
+
+/* Os números da operação. */
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+
+.numero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 118px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.numeroNome {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.numeroValor {
+  font-size: var(--fonte-28);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.numero[data-vazio] .numeroValor {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-15);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.numeroNota {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  line-height: 1.35;
+}
+
+.regua {
+  height: 4px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+}
+
+.regua > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cor-acento);
+}
+
+/* Os cartões. */
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.cartao,
+.base {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.cartaoLargo {
+  grid-column: 1 / -1;
+}
+
+/* O Raio-X: o cartório e os foros, meio a meio. */
+.dupla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.cartaoAlerta {
+  border-color: color-mix(in srgb, var(--cor-erro) 30%, var(--cor-linha));
+}
+
+.cartaoTitulo {
+  font-size: var(--fonte-15);
+  font-weight: 700;
+}
+
+.destaque {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.destaque > strong,
+.destaqueOk {
+  color: var(--cor-erro);
+  font-size: var(--fonte-36);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.destaqueOk {
+  color: var(--cor-ok);
+}
+
+.destaqueDe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+/* Barras (motivos, extinções, cartório, foros). */
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.barra {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: var(--fonte-13);
+}
+
+.barraNome {
+  min-width: 0;
+}
+
+.barraQuanto {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.trilho {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+}
+
+.trilho > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cor-acento);
+}
+
+.barras[data-tom='advogada'] .trilho > span {
+  background: var(--cor-advogada);
+}
+
+.barras[data-tom='erro'] .trilho > span {
+  background: var(--cor-erro);
+}
+
+.exito {
+  grid-column: 2;
+  justify-self: end;
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.barra:has(.exito) {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.barra:has(.exito) .exito {
+  grid-column: 3;
+}
+
+/* Os pareceres: dispensado contra suficiente. */
+.comparacao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: var(--fonte-13);
+}
+
+.comparacaoTopo strong {
+  font-size: var(--fonte-15);
+  font-variant-numeric: tabular-nums;
+}
+
+.comparacaoLinha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comparacaoLinha[data-lado='dispensa'] .trilho > span {
+  background: var(--cor-alerta);
+}
+
+.comparacaoLinha[data-lado='suficiente'] .trilho > span {
+  background: var(--cor-ok);
+}
+
+.diferenca {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+  font-size: var(--fonte-12);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.diferenca[data-sinal='menos'] {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.diferenca[data-sinal='mais'] {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+/* Valores (Sócio e Financeiro). */
+.valores li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.valoresNome {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.valoresValor {
+  font-size: var(--fonte-28);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.valoresNota {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+/* Motivos: indeferimento e derrota lado a lado. */
+.motivos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 18px 28px;
+}
+
+.motivo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.motivoTitulo {
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+/* O recorte: um cartãozinho por grupo. */
+.grupos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+}
+
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+  font-size: var(--fonte-12);
+}
+
+.grupoNome {
+  margin-bottom: 4px;
+  font-size: var(--fonte-13);
+}
+
+.grupoLinha {
+  color: var(--cor-texto-suave);
+}
+
+/* O Raio-X: a série de cada indicador em degraus. */
+.raio {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 12px;
+}
+
+.raioItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.raioNome {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+}
+
+.raioValor,
+.serieUltimo {
+  font-size: var(--fonte-24);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.serie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.serieAntes {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.seta {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-12);
+}
+
+.base {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 12px 16px;
+  box-shadow: none;
+  background: var(--cor-painel-neutro-2);
+}

@@ -10,35 +10,49 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const html = () => document.documentElement
+
 describe('preferências de aparência', () => {
-  it('começa no tema claro e na fonte padrão', () => {
-    expect(lerPreferencias('')).toEqual({ tema: 'claro', fonte: 'padrao' })
-    expect(document.documentElement.dataset.tema).toBe('claro')
-    expect(document.documentElement.dataset.fonte).toBe('padrao')
+  it('começa no tema claro e em 100%, sem zoom', () => {
+    expect(lerPreferencias('')).toEqual({ tema: 'claro', escala: 100 })
+    expect(html().dataset.tema).toBe('claro')
+    expect(html().style.zoom).toBe('')
   })
 
-  it('lê tema e fonte do endereço', () => {
-    expect(lerPreferencias('?tema=escuro&fonte=grande')).toEqual({ tema: 'escuro', fonte: 'grande' })
+  it('lê tema e tamanho do endereço; o "fonte=grande" de antes vira 125%', () => {
+    expect(lerPreferencias('?tema=escuro&escala=130')).toEqual({ tema: 'escuro', escala: 130 })
+    expect(lerPreferencias('?fonte=grande')).toEqual({ tema: 'claro', escala: 125 })
   })
 
-  it('ignora valor inválido no endereço', () => {
-    expect(lerPreferencias('?tema=roxo&fonte=enorme')).toEqual({ tema: 'claro', fonte: 'padrao' })
+  it('ignora valor inválido ou fora da faixa de 70% a 200%', () => {
+    expect(lerPreferencias('?tema=roxo&escala=enorme')).toEqual({ tema: 'claro', escala: 100 })
+    expect(lerPreferencias('?escala=40')).toEqual({ tema: 'claro', escala: 100 })
+    expect(lerPreferencias('?escala=250')).toEqual({ tema: 'claro', escala: 100 })
   })
 
-  it('usa o que a pessoa salvou, e o endereço vence o salvo', () => {
-    window.localStorage.setItem('ggv.preferencias', JSON.stringify({ tema: 'escuro', fonte: 'grande' }))
-    expect(lerPreferencias('')).toEqual({ tema: 'escuro', fonte: 'grande' })
-    expect(lerPreferencias('?tema=claro')).toEqual({ tema: 'claro', fonte: 'grande' })
+  it('usa o que a pessoa salvou (também o "grande" de antes), e o endereço vence o salvo', () => {
+    window.localStorage.setItem('ggv.preferencias', JSON.stringify({ tema: 'escuro', escala: 120 }))
+    expect(lerPreferencias('')).toEqual({ tema: 'escuro', escala: 120 })
+    expect(lerPreferencias('?tema=claro')).toEqual({ tema: 'claro', escala: 120 })
+    window.localStorage.setItem('ggv.preferencias', JSON.stringify({ tema: 'claro', fonte: 'grande' }))
+    expect(lerPreferencias('')).toEqual({ tema: 'claro', escala: 125 })
   })
 
-  it('mudar aplica no html e salva', () => {
-    mudarPreferencias({ tema: 'escuro' })
-    expect(document.documentElement.dataset.tema).toBe('escuro')
-    expect(document.documentElement.dataset.fonte).toBe('padrao')
-    expect(JSON.parse(window.localStorage.getItem('ggv.preferencias') ?? '{}')).toEqual({
-      tema: 'escuro',
-      fonte: 'padrao',
-    })
+  it('mudar aplica no html (o tema e o zoom de tudo) e salva', () => {
+    mudarPreferencias({ tema: 'escuro', escala: 150 })
+    expect(html().dataset.tema).toBe('escuro')
+    expect(html().style.zoom).toBe('1.5')
+    expect(html().style.getPropertyValue('--zoom')).toBe('1.5')
+    expect(JSON.parse(window.localStorage.getItem('ggv.preferencias') ?? '{}')).toEqual({ tema: 'escuro', escala: 150 })
+    mudarPreferencias({ escala: 100 })
+    expect(html().style.zoom).toBe('')
+  })
+
+  it('mudar não passa da faixa', () => {
+    mudarPreferencias({ escala: 500 })
+    expect(html().style.zoom).toBe('2')
+    mudarPreferencias({ escala: 10 })
+    expect(html().style.zoom).toBe('0.7')
   })
 
   it('segue com o padrão quando o navegador bloqueia o armazenamento', () => {
@@ -48,8 +62,8 @@ describe('preferências de aparência', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('bloqueado')
     })
-    expect(lerPreferencias('')).toEqual({ tema: 'claro', fonte: 'padrao' })
-    expect(() => mudarPreferencias({ fonte: 'grande' })).not.toThrow()
-    expect(document.documentElement.dataset.fonte).toBe('grande')
+    expect(lerPreferencias('')).toEqual({ tema: 'claro', escala: 100 })
+    expect(() => mudarPreferencias({ escala: 120 })).not.toThrow()
+    expect(html().style.zoom).toBe('1.2')
   })
 })

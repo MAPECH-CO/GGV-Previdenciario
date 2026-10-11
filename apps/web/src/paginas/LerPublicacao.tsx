@@ -12,6 +12,7 @@ import {
   type SugestaoDePublicacao,
 } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 type Classe = (typeof CLASSES_DE_ATO)[number]
@@ -81,18 +82,18 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
 
   if (!p)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Ler publicação · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Ler publicação · GGV Previdenciário</title>
       <a className={styles.voltar} href={p.casoId ? `/casos/${p.casoId}/publicacoes` : '/'}>
         ← Publicações do processo
@@ -204,6 +205,6 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
           <p className={styles.dica}>Quem classifica é você; o sistema só conta o prazo e abre a tarefa.</p>
         </form>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

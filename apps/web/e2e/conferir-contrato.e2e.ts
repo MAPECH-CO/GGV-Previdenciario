@@ -31,7 +31,7 @@ async function antonioParaConferir(page: Page): Promise<string> {
 test('GGVP-85 CA1 e CA7 · a IA reconhece o contrato da Nair: nenhuma tarefa de conferir, segue para a cópia', async ({ page }) => {
   await page.goto('/contrato/nair-exemplo-1/assinatura')
   await page.getByRole('button', { name: 'Simular o retorno do ZapSign (assinado)' }).click()
-  await page.getByRole('button', { name: 'Simular a leitura da IA (D1.18)' }).click()
+  await page.getByRole('button', { name: 'Simular a leitura da IA' }).click()
   await expect(page.getByText('A IA leu o contrato assinado e reconheceu: tudo certo. Segue para a cópia do contrato.')).toBeVisible()
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Nair Exemplo · Conferir contrato' })).toHaveCount(0)

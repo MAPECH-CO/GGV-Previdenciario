@@ -315,9 +315,6 @@ export function FichaAtendimento({ fichaId, tablet = false }: { fichaId: string;
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.05 · Preencher a ficha de atendimento (passo do BPMN)">
-                D1.05
-              </span>
               <span className={styles.codigo}>Cliente</span>
               <span className={styles.codigo}>{ficha.beneficioInteresse && ficha.beneficioInteresse !== 'nao-sei' ? beneficio : 'a definir'}</span>
             </div>
@@ -420,7 +417,7 @@ export function FichaAtendimento({ fichaId, tablet = false }: { fichaId: string;
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.05.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             {PERGUNTAS.filter((p) => p.campo !== 'beneficioInteresse').map((p) => (

@@ -9,7 +9,7 @@ type Props = { tarefa: Tarefa }
  * As rotas são provisórias até as telas de passo e de cliente existirem.
  */
 export function TarefaLinha({ tarefa }: Props) {
-  const { codigo, cliente, contexto, acao, detalhe, prazo, urgente } = tarefa
+  const { cliente, contexto, acao, detalhe, prazo, urgente } = tarefa
   const quem = cliente?.nome ?? contexto ?? ''
 
   return (
@@ -17,7 +17,6 @@ export function TarefaLinha({ tarefa }: Props) {
       <span className={styles.ponto} aria-hidden="true" />
       <div className={styles.corpo}>
         <div className={styles.titulo}>
-          <span className={styles.codigo}>{codigo}</span>
           <span className={styles.texto}>
             {cliente ? (
               <a className={`${styles.quem} ${styles.cliente}`} href={`/clientes/${cliente.id}`}>

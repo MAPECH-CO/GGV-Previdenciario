@@ -36,7 +36,7 @@ async function abrirPresencial() {
 describe('Registrar conversa · tela do passo (GGVP-76)', () => {
   it('o topo do passo D5.01: o canal escolhido, o aviso G10 e G9 e "Antes de concluir"', async () => {
     await abrirPresencial()
-    expect(screen.getByText('D5.01')).toBeTruthy()
+    expect(screen.queryByText('D5.01')).toBeNull()
     expect(screen.getByText('Auxílio por Incapacidade Temporária · veio ao escritório · presencial, com cliente')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Aviso de gravação (G10) · senha no cofre (G9)' })).toBeTruthy()
     const canal = screen.getByRole('radiogroup', { name: 'Canal da conversa' })
@@ -99,7 +99,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }))
     fireEvent.click(botao('Anexar e transcrever'))
     await screen.findByRole('heading', { name: '✓ Gravação da ligação anexada' })
-    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeTruthy()
+    expect(await screen.findByText('Transcrição pronta: o texto está nas transcrições do card.')).toBeTruthy()
     expect((await obterFicha('pedro-exemplo'))!.historico.map((e) => e.oQue)).toContain('Subiu a gravação da ligação (ligacao-pedro.ogg); o áudio ficou no card e foi para a transcrição')
   })
 
@@ -112,7 +112,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
     fireEvent.click(botao('Anexar e transcrever'))
     expect(await screen.findByText('A transcrição falhou: o serviço de transcrição não respondeu. O áudio está guardado; nada se perdeu.')).toBeTruthy()
     fireEvent.click(botao('Tentar de novo'))
-    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeTruthy()
+    expect(await screen.findByText('Transcrição pronta: o texto está nas transcrições do card.')).toBeTruthy()
   })
 
   it('o registro escrito aparece como "só registro"', async () => {
@@ -157,7 +157,7 @@ describe('Transcrever e identificar o que mudou · tela (GGVP-80)', () => {
     expect(within(quadro).getByText('✓ Campos do processo')).toBeTruthy()
     expect(within(quadro).getByText(/A senha do gov.br foi dita em voz alta/)).toBeTruthy()
     expect(within(quadro).getByText('Documentação: receber e digitalizar o relatório da alta hospitalar.')).toBeTruthy()
-    expect(within(quadro).getByRole('link', { name: 'Conferir e atualizar (D5.04)' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
+    expect(within(quadro).getByRole('link', { name: 'Conferir e atualizar' }).getAttribute('href')).toBe(`/conversas/${c.id}/conferir`)
     expect(within(screen.getByRole('list', { name: 'Falas' })).getAllByRole('listitem').length).toBeGreaterThan(5)
     // A senha dita em voz alta não aparece no texto final (G9).
     expect(document.body.textContent).not.toContain(SENHA_DITA)

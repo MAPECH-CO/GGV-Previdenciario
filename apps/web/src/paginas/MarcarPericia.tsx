@@ -173,9 +173,6 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="DP.02 · Marcar a perícia (passo do BPMN)">
-                DP.02
-              </span>
               <span className={styles.codigo}>Jurídico administrativo</span>
               <span className={styles.beneficio}>◆ {t.beneficio}</span>
             </div>
@@ -190,10 +187,10 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
 
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             {pericia.instancia === 'inss'
-              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o INSS já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação (DP.03), que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
+              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o INSS já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação, que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
               : !pericia.marcacao
-                ? `A data da ${tipo} de ${primeiro} ainda não saiu na publicação (ou saiu num formato que o sistema não lê). Quando sair, registre abaixo a data, a hora e o local que o juízo designou: vão para a agenda e a ficha, com o lembrete da véspera. Depois, oriente ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes.`
-                : `A data da ${tipo} de ${primeiro} veio do juízo: ${lidaPeloSistema ? 'o sistema leu na publicação e pôs na agenda' : `${pericia.marcacao.registradaPor} registrou e ela está na agenda`}. Confira abaixo e siga para orientar ${primeiro} (DP.06) até ${DIAS_ANTES_PREPARO} dias antes.`}
+                ? `A data da ${tipo} de ${primeiro} ainda não saiu na publicação (ou saiu num formato que o sistema não lê). Quando sair, registre abaixo a data, a hora e o local que o juízo designou: vão para a agenda e a ficha, com o lembrete da véspera. Depois, oriente ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes.`
+                : `A data da ${tipo} de ${primeiro} veio do juízo: ${lidaPeloSistema ? 'o sistema leu na publicação e pôs na agenda' : `${pericia.marcacao.registradaPor} registrou e ela está na agenda`}. Confira abaixo e siga para orientar ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes.`}
           </InstrucoesPasso>
 
           {aviso && (
@@ -568,7 +565,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo DP.02.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <span>A tentativa deu certo?</span>

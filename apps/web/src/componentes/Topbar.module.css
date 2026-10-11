@@ -1,62 +1,44 @@
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 20px;
+/* O topo de toda tela (refeito em 11/10). Computador: marca, ação, tema, tamanho e a pessoa numa linha; os botões da
+   função como abas com ícone na linha de baixo. Celular: marca e pessoa em cima e a barra fixa embaixo. */
+.topo {
   background: var(--cor-superficie);
   border-bottom: 1px solid var(--cor-linha);
+}
+
+.linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px 24px;
 }
 
 .marca {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--raio-7);
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--raio-8);
   background: var(--cor-acento);
   color: var(--cor-superficie);
-  font-size: var(--fonte-13);
+  font-size: var(--fonte-15);
   font-weight: 700;
+  box-shadow: var(--sombra-acento);
 }
 
 .nome {
   font-size: var(--fonte-16);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   white-space: nowrap;
-}
-
-.nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  /* GGVP-78: com Clientes, Processos e a Gestão, o topo do líder passa da largura; os botões descem uma linha em vez de
-     empurrar a função e o "Sair" para fora da tela. */
-  min-width: 0;
-}
-
-.item {
-  padding: 7px 14px;
-  border: 1px solid var(--cor-linha);
-  border-radius: var(--raio-16);
-  background: var(--cor-superficie);
-  color: var(--cor-texto);
-  font-size: var(--fonte-13);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.item[aria-current='page'] {
-  border-color: transparent;
-  background: var(--cor-acento-suave);
-  color: var(--cor-acento);
 }
 
 .espaco {
@@ -64,113 +46,547 @@
 }
 
 .acao {
-  padding: 7px 12px;
-  border-radius: var(--raio-8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--raio-10);
   background: var(--cor-acento);
   color: var(--cor-superficie);
-  font-size: var(--fonte-12);
+  font-size: var(--fonte-13);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-acento);
 }
 
-.funcao {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+.acao:hover {
+  background-image: var(--estado-passar);
+}
+
+.acao:active {
+  background-image: var(--estado-apertar);
+}
+
+.semSessao {
+  height: 34px;
+  padding: 0 14px;
   border: 0;
   border-radius: var(--raio-pilula);
   background: var(--cor-painel-neutro-3);
-}
-
-.avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--raio-pilula);
-  background: var(--cor-acento);
-}
-
-.funcaoNome {
   font-size: var(--fonte-13);
   font-weight: 500;
+  cursor: default;
 }
 
-.seta {
+/* Os botões da função: sem moldura, com ícone; o atual fica aceso na cor do acento. Quebram linha quando não cabem
+   (perfil com muita coisa, ou o tamanho do portal lá em cima), em vez de esconder algum. */
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 16px 8px;
+}
+
+.item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-radius: var(--raio-10);
   color: var(--cor-texto-suave);
   font-size: var(--fonte-13);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.sair {
-  padding: 7px 12px;
-  border: 1px solid var(--cor-linha);
-  border-radius: var(--raio-16);
-  background: var(--cor-superficie);
-  color: var(--cor-texto-suave);
-  font-size: var(--fonte-13);
-  font-weight: 600;
-  cursor: pointer;
+.item:hover {
+  background: var(--cor-painel-neutro-3);
+  color: var(--cor-texto);
 }
 
-.entrarComo {
+.item[aria-current='page'] {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 1px;
+}
+
+.icone {
+  flex: none;
+  font-size: 1.15em;
+}
+
+.divisor {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 8px;
+  background: var(--cor-linha);
+}
+
+/* A pessoa: as iniciais, o nome e o perfil. */
+.pessoa {
   position: relative;
 }
 
-.funcao[aria-haspopup] {
-  cursor: pointer;
+.pessoaBotao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--raio-pilula);
+  background: transparent;
+  text-align: left;
 }
 
-.funcao:focus-visible,
+.pessoaBotao:hover,
+.pessoaBotao[aria-expanded='true'] {
+  border-color: var(--cor-linha);
+}
+
+.pessoaBotao[aria-expanded='true'] {
+  background: var(--cor-painel-neutro-3);
+}
+
+.pessoaBotao:focus-visible,
+.pessoaCelular:focus-visible,
 .menuItem:focus-visible {
   outline: 2px solid var(--cor-acento);
   outline-offset: 2px;
 }
 
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento-suave);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor-acento) 22%, transparent);
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.avatarGrande {
+  width: 42px;
+  height: 42px;
+  font-size: var(--fonte-15);
+}
+
+.pessoaTexto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 190px;
+  line-height: 1.2;
+}
+
+.pessoaNome {
+  overflow: hidden;
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pessoaPerfil {
+  overflow: hidden;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seta {
+  flex: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
 .menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   right: 0;
-  z-index: 10;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 220px;
+  min-width: 270px;
   padding: 8px;
   border: 1px solid var(--cor-linha);
-  border-radius: var(--raio-12);
+  border-radius: var(--raio-14);
   background: var(--cor-superficie);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  box-shadow: var(--sombra-3);
+  transform-origin: top right;
+  animation: surgir 160ms var(--curva);
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+.menuCabeca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  padding: 8px 8px 12px;
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.menuNome {
+  overflow: hidden;
+  font-size: var(--fonte-14);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.menuEmail {
+  overflow: hidden;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  text-overflow: ellipsis;
 }
 
 .menuTitulo {
-  padding: 4px 8px 6px;
+  padding: 8px 10px 4px;
   color: var(--cor-texto-suave);
-  font-size: var(--fonte-12);
+  font-size: var(--fonte-11);
   font-weight: 600;
 }
 
 .menuItem {
-  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
   border: 0;
   border-radius: var(--raio-8);
   background: transparent;
   color: var(--cor-texto);
   font-size: var(--fonte-13);
   text-align: left;
-  cursor: pointer;
-}
-
-.menuItem:hover {
-  background: var(--cor-painel-neutro-3);
 }
 
 .menuItem[aria-checked='true'] {
-  background: var(--cor-acento-suave);
   color: var(--cor-acento);
   font-weight: 600;
 }
 
+.menuMarca {
+  margin-left: auto;
+  font-size: var(--fonte-15);
+}
+
+.menuItem > svg:first-child {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-16);
+}
+
+.menuLinha {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px solid var(--cor-linha);
+}
+
 .menuErro {
-  padding: 6px 8px;
+  padding: 6px 10px;
   color: var(--cor-erro);
   font-size: var(--fonte-12);
+}
+
+/* Celular. */
+.pessoaCelular {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-pilula);
+  background: transparent;
+}
+
+@media (max-width: 760px) {
+  .linha {
+    min-height: 56px;
+    padding: 8px 12px 8px 16px;
+  }
+
+  .nome {
+    font-size: var(--fonte-15);
+  }
+
+  .acao {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: var(--raio-pilula);
+    font-size: var(--fonte-18);
+  }
+}
+
+.barra {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 25;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--cor-linha);
+  background: color-mix(in srgb, var(--cor-superficie) 92%, transparent);
+  box-shadow: 0 -6px 18px rgb(0 0 0 / 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.aba {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: var(--raio-12);
+  background: transparent;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 500;
+}
+
+.aba .icone {
+  font-size: 22px;
+}
+
+.aba[aria-current='page'] {
+  color: var(--cor-acento);
+}
+
+.aba[aria-current='page'] .icone {
+  stroke-width: 2.4;
+}
+
+.aba:focus-visible,
+.folhaItem:focus-visible,
+.folhaFechar:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: -2px;
+}
+
+.abaNome {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O menu do celular: uma folha que sobe de baixo. */
+.folha {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(92vh / var(--zoom));
+  margin: auto auto 0;
+  padding: 0 0 calc(12px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border: 0;
+  border-radius: 22px 22px 0 0;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  box-shadow: var(--sombra-3);
+}
+
+.folha[open] {
+  animation: subir 240ms var(--curva);
+}
+
+.folha::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+@keyframes subir {
+  from {
+    translate: 0 40px;
+    opacity: 0;
+  }
+}
+
+.folhaCabeca {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--cor-linha);
+  background: var(--cor-superficie);
+}
+
+.folhaQuem {
+  flex: 1;
+  min-width: 0;
+}
+
+.folhaFechar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro-3);
+  color: var(--cor-texto);
+  font-size: var(--fonte-18);
+}
+
+.folhaLista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.folhaItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+  font-weight: 500;
+  box-shadow: var(--sombra-1);
+}
+
+.folhaItem .icone {
+  color: var(--cor-texto-suave);
+  font-size: 20px;
+}
+
+.folhaItem[aria-current='page'] {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.folhaItem[aria-current='page'] .icone {
+  color: var(--cor-acento);
+}
+
+.folhaSecao {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 16px 12px;
+  padding: 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+}
+
+.folhaSecao .menuItem {
+  min-height: 44px;
+  font-size: var(--fonte-15);
+}
+
+.sair {
+  margin-top: 4px;
+  border-top: 1px solid var(--cor-linha);
+  border-radius: 0 0 var(--raio-8) var(--raio-8);
+  color: var(--cor-erro);
+}
+
+.sair > svg:first-child {
+  color: var(--cor-erro);
+}
+
+/* "Voltar" e o contexto das telas de passo. */
+.voltar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px 7px 8px;
+  border: 0;
+  border-radius: var(--raio-10);
+  background: transparent;
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+.voltar svg {
+  font-size: 1.15em;
+}
+
+.voltarCelular {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-left: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-pilula);
+  background: transparent;
+  color: var(--cor-texto);
+  font-size: var(--fonte-20);
+}
+
+.voltar:focus-visible,
+.voltarCelular:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 1px;
+}
+
+.contexto {
+  min-width: 0;
+  margin-left: auto;
+  padding: 4px 10px;
+  overflow: hidden;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro-3);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextoCelular {
+  margin-top: -4px;
+  padding: 0 16px 10px;
+  overflow: hidden;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

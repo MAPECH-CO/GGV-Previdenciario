@@ -39,6 +39,7 @@
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .salvar:disabled {
@@ -50,6 +51,7 @@
   border: 1px solid var(--cor-linha);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }
 
 .aviso {

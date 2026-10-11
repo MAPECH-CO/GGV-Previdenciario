@@ -13,7 +13,7 @@ beforeEach(() => {
 async function abrir(processoId: string) {
   render(<ConferirChecklist processoId={processoId} />)
   await screen.findByRole('heading', { level: 1, name: /Conferir checklist/ })
-  return within(await screen.findByRole('region', { name: 'Boas-vindas (D1.22)' }))
+  return within(await screen.findByRole('region', { name: 'Boas-vindas' }))
 }
 
 const enviar = (bloco: ReturnType<typeof within>) => bloco.getByRole('button', { name: /pelo Chatwoot/ }) as HTMLButtonElement
@@ -25,7 +25,7 @@ describe('Boas-vindas · na tela do checklist', () => {
     expect(bloco.getByText('Depois de concluir a conferência do checklist, com as pendências dele.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Gerar cobrança das pendências' }))
     await screen.findByRole('heading', { name: '✓ Conferido às 14:32' })
-    bloco = within(screen.getByRole('region', { name: 'Boas-vindas (D1.22)' }))
+    bloco = within(screen.getByRole('region', { name: 'Boas-vindas' }))
     expect(await bloco.findByText(/mensagem padrão \+ cópias do kit \+ pendências: Documento pessoal \(RG\)/)).toBeTruthy()
     expect((bloco.getByRole('textbox', { name: 'Mensagem (confira antes de enviar)' }) as HTMLTextAreaElement).value).toContain('Olá, Rita!')
   })
@@ -101,7 +101,7 @@ describe('Boas-vindas · caso do servidor (GGVP-125, bloco 5c)', () => {
     configurarExemplo({ servidor: true })
 
     render(<CartaoBoasVindas processoId={PROC} nome="Ivone Teste" versao={0} />)
-    const bloco = within(await screen.findByRole('region', { name: 'Boas-vindas (D1.22)' }))
+    const bloco = within(await screen.findByRole('region', { name: 'Boas-vindas' }))
     expect(bloco.getByText('A Atendimento manda por fora: o portal ainda não envia')).toBeTruthy()
     expect((bloco.getByRole('textbox', { name: 'Mensagem para copiar' }) as HTMLTextAreaElement).readOnly).toBe(true)
     expect(bloco.queryByRole('checkbox', { name: 'Conferi a mensagem' })).toBeNull()

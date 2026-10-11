@@ -222,7 +222,7 @@ export async function arquivarDocumentos(fichaId: string, pedido: Arquivamento):
   ficha.historico.push(registro)
   const contratosLidos = arquivados.filter((l) => l.tipo === 'contrato')
   const contrato = contratosLidos.length > 0
-  if (contrato) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato (D1.19)'))
+  if (contrato) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato'))
   gravar(banco)
   // O contrato do caso esperava esta leitura: ela decide entre a conferência e a cópia (GGVP-85).
   for (const processoId of new Set(contratosLidos.map((l) => ficha.arquivos.find((a) => a.nome === l.arquivo)?.local ?? ''))) {

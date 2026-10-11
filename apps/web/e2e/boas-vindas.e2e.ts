@@ -10,7 +10,7 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 
 test('CA1, CA2, CA4 e CA5 · conferido o checklist, a mensagem com as pendências sai uma vez pelo Chatwoot e fica no histórico', async ({ page }) => {
   await page.goto('/casos/rita-exemplo-1/checklist')
-  const bloco = page.getByRole('region', { name: 'Boas-vindas (D1.22)' })
+  const bloco = page.getByRole('region', { name: 'Boas-vindas' })
   await expect(bloco).toContainText('Depois de concluir a conferência do checklist')
   await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
 
@@ -32,13 +32,13 @@ test('CA1, CA2, CA4 e CA5 · conferido o checklist, a mensagem com as pendência
 test('CA3 · quem já era cliente não recebe as boas-vindas', async ({ page }) => {
   await page.goto('/casos/cleide-exemplo-2/checklist')
   await expect(page.getByText('já era cliente · sem boas-vindas')).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Boas-vindas (D1.22)' })).toContainText('as boas-vindas só vão ao cliente novo')
+  await expect(page.getByRole('region', { name: 'Boas-vindas' })).toContainText('as boas-vindas só vão ao cliente novo')
 })
 
 test('CA6 · sem telefone, a falha fica no histórico e vira "Reenviar boas-vindas" na Central', async ({ page }) => {
   await page.goto('/casos/marta-exemplo-1/checklist')
   await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
-  const bloco = page.getByRole('region', { name: 'Boas-vindas (D1.22)' })
+  const bloco = page.getByRole('region', { name: 'Boas-vindas' })
   await bloco.getByRole('checkbox', { name: 'Conferi a mensagem' }).check()
   await bloco.getByRole('button', { name: 'Enviar pelo Chatwoot' }).click()
   await expect(bloco).toContainText('a ficha não tem telefone')
@@ -48,7 +48,7 @@ test('CA6 · sem telefone, a falha fica no histórico e vira "Reenviar boas-vind
 
 test('tema escuro e fonte grande nas boas-vindas', async ({ page }) => {
   await page.goto('/casos/rita-exemplo-1/checklist?tema=escuro&fonte=grande')
-  const bloco = page.getByRole('region', { name: 'Boas-vindas (D1.22)' })
+  const bloco = page.getByRole('region', { name: 'Boas-vindas' })
   await expect(bloco).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
   await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
 })

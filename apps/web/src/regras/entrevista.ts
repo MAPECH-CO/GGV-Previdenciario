@@ -21,7 +21,7 @@ export function roteiroDaEntrevista(ficha: Ficha): string[] {
   const senha = ficha.senhaGov.situacao === 'no-cofre' ? 'senha no cofre' : 'sem senha no cofre'
   const roteiro = [
     'Desde quando não consegue trabalhar (DII) e qual foi o último dia trabalhado?',
-    `Acidentário já decidido antes da entrevista (D1.07): ${acidentario} · ${senha} (G9)`,
+    `Acidentário já decidido antes da entrevista: ${acidentario} · ${senha} (G9)`,
     'Tratamento em curso, previsão de melhora e limitações no dia a dia',
     'O que o INSS disse no último pedido?',
     'Laudos e exames: datas, o que dizem (sem sugerir ao médico o que escrever, G20)',
@@ -142,5 +142,5 @@ export function resumoDaEntrevista(ficha: Ficha, extraidas: InformacaoExtraida[]
   ].filter(Boolean)
   const beneficio = ficha.beneficioInteresse && ficha.beneficioInteresse !== 'nao-sei' ? ` Procura ${nomeBeneficio(ficha.beneficioInteresse)}.` : ''
   const dito = partes.length ? `${partes.join('; ')}.` : 'a gravação foi curta: pouco a resumir.'
-  return `${ficha.nome}: ${dito}${beneficio} O benefício é a advogada que define (D1.12, G3).`
+  return `${ficha.nome}: ${dito}${beneficio} O benefício é a advogada que define (G3).`
 }

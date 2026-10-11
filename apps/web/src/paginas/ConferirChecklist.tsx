@@ -273,9 +273,6 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.21 · Conferir o checklist (passo do BPMN)">
-                D1.21
-              </span>
               <span className={styles.codigo}>Documentação</span>
             </div>
             <h1 className={styles.titulo}>
@@ -343,11 +340,11 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
               </h2>
               <p>
                 {feito.completo
-                  ? 'Checklist completo: o caso segue para liberar ao Jurídico (D1.24).'
+                  ? 'Checklist completo: o caso segue para liberar ao Jurídico.'
                   : checklist.bloqueio && feito.faltam.length === 0
                     ? `Checklist travado: ${checklist.bloqueio} O caso fica na Documentação.`
                     : checklist.temLista
-                    ? `Checklist incompleto. Falta: ${juntar(feito.faltam)}. A cobrança das pendências foi para o Atendimento (D1.23).`
+                    ? `Checklist incompleto. Falta: ${juntar(feito.faltam)}. A cobrança das pendências foi para o Atendimento.`
                     : `Checklist sem lista aprovada para ${beneficio}: o caso fica na Documentação.`}{' '}
                 A conferência ficou no histórico da ficha.
               </p>

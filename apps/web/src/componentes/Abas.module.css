@@ -12,10 +12,12 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-1);
 }
 
 .aba[aria-selected='true'] {
   border-color: var(--cor-acento);
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }

@@ -12,4 +12,5 @@
   color: var(--cor-superficie);
   font-size: var(--fonte-13);
   font-weight: 600;
+  box-shadow: var(--sombra-acento);
 }

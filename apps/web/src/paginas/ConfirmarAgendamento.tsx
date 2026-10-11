@@ -121,9 +121,6 @@ export function ConfirmarAgendamento({ agendamentoId }: { agendamentoId: string 
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.04 · Confirmar agendamento (passo do BPMN)">
-                D1.04
-              </span>
               <span className={styles.codigo}>Atendimento</span>
               <span className={styles.beneficio}>◆ {beneficio}</span>
             </div>

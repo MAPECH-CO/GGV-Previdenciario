@@ -77,8 +77,8 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar', () => {
 
   it('CA5 · "Sim, fechou" segue para o kit só com o benefício definido', () => {
     expect(motivoParadoDoFechamento(estado({ fechou: true, motivo: '' }), HOJE)).toBeNull()
-    expect(motivoParadoDoFechamento(estado({ fechou: true, beneficio: 'nao-sei' }), HOJE)).toBe('Falta o benefício definido pela advogada (D1.12).')
-    expect(motivoParadoDoFechamento(estado({ fechou: true, beneficio: undefined }), HOJE)).toBe('Falta o benefício definido pela advogada (D1.12).')
+    expect(motivoParadoDoFechamento(estado({ fechou: true, beneficio: 'nao-sei' }), HOJE)).toBe('Falta o benefício definido pela advogada.')
+    expect(motivoParadoDoFechamento(estado({ fechou: true, beneficio: undefined }), HOJE)).toBe('Falta o benefício definido pela advogada.')
   })
 
   it('CA2 e CA12 · com recontato, a data é de hoje em diante', () => {

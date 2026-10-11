@@ -46,8 +46,8 @@ export const beneficioDoFechamento = (ficha: Pick<Ficha, 'demandas' | 'beneficio
 export function motivoParadoDoFechamento(e: EstadoDoFechamento, hoje: string): string | null {
   if (e.fechou === null) return 'Responda se fechou com o escritório.'
   if (e.fechou) {
-    if (!e.beneficio || e.beneficio === 'nao-sei') return 'Falta o benefício definido pela advogada (D1.12).'
-    return e.calculoPendente ? 'Falta calcular o tempo e os pontos (D1.13): obrigatório antes de fechar.' : null
+    if (!e.beneficio || e.beneficio === 'nao-sei') return 'Falta o benefício definido pela advogada.'
+    return e.calculoPendente ? 'Falta calcular o tempo e os pontos: obrigatório antes de fechar.' : null
   }
   if (!e.motivo) return 'Escolha o motivo: sem ele o lead não pode ser encerrado (G16).'
   if (!podeRegistrarOMotivo(e.motivo, e.papel)) return 'A recusa do escritório é registrada pelo Atendimento sênior ou pela advogada do atendimento.'

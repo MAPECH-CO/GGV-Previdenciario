@@ -22,7 +22,7 @@ async function entrevistaEncerrada(page: Page) {
   await expect(page.getByText(/● Gravando/)).toBeVisible()
   await page.clock.runFor(140_000)
   await page.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
-  await expect(page.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+  await expect(page.getByText(/Transcrição pronta/)).toBeVisible()
 }
 
 test('CA1, CA8 e CA10 · da tarefa ao cadastro preenchido pela ficha e pela entrevista, com a diferença do telefone, a idade e o CEP', async ({ page }) => {

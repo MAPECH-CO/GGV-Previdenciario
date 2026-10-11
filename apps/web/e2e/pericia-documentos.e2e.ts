@@ -50,7 +50,7 @@ test('CA2, CA4, CA5, CA6 · a lista da avaliação social, o anexo, a falta just
 
   // CA6: quem concluiu e quando; o fluxo volta ao Jurídico administrativo.
   await expect(page.getByRole('heading', { name: '✓ Documentos da perícia reunidos' })).toBeVisible()
-  await expect(page.getByText(/O fluxo voltou ao Jurídico administrativo: ligar e orientar Pedro \(DP\.06\)/)).toBeVisible()
+  await expect(page.getByText(/O fluxo voltou ao Jurídico administrativo: ligar e orientar Pedro/)).toBeVisible()
   await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Pedro Exemplo · Reunir documentos da perícia' })).toHaveCount(0)

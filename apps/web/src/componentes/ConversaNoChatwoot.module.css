@@ -48,6 +48,7 @@
   color: var(--cor-texto);
   font-size: var(--fonte-12);
   text-align: left;
+  box-shadow: var(--sombra-1);
 }
 
 .conversa[aria-checked='true'] {
@@ -71,9 +72,19 @@
   color: var(--cor-texto);
   font-size: var(--fonte-12);
   font-weight: 600;
+  box-shadow: var(--sombra-1);
 }
 
 .botao:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.botao:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.botao:not(:disabled):active {
+  background-image: var(--estado-apertar);
 }

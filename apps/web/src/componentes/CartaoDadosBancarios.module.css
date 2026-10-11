@@ -44,6 +44,7 @@
   color: var(--cor-texto);
   font: inherit;
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 .legenda {
@@ -85,6 +86,7 @@
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .principal:disabled,
@@ -97,4 +99,5 @@
   border: 1px solid var(--cor-borda-controle);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }

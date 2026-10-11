@@ -85,9 +85,6 @@ export function CobrarDocumentoPericia({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="DP.03 · Reunir o que a perícia pede (passo do BPMN)">
-                DP.03
-              </span>
               <span className={styles.codigo}>Documentação</span>
               <span className={styles.beneficio}>◆ {t.beneficio}</span>
             </div>
@@ -234,7 +231,7 @@ export function CobrarDocumentoPericia({ processoId }: { processoId: string }) {
           aoEnviar={async (r) => {
             setAberto(null)
             setT(await obterPericia(processoId))
-            setAviso(`${r.arquivos.length === 1 ? '1 arquivo enviado' : `${r.arquivos.length} arquivos enviados`} para a pasta do cliente: seguem a leitura da IA (D1).`)
+            setAviso(`${r.arquivos.length === 1 ? '1 arquivo enviado' : `${r.arquivos.length} arquivos enviados`} para a pasta do cliente: seguem a leitura da IA.`)
           }}
           aoFechar={() => setAberto(null)}
         />

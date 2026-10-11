@@ -49,7 +49,7 @@ test('CA1, CA4, CA5 e CA6 · da preparação à gravação com o aviso, o cofre 
 
   await page.clock.runFor(70_000)
   await expect(page.getByText(/Parei em junho de 2026/)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Definir o benefício (D1.12) · libera ao encerrar a entrevista' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Definir o benefício · libera ao encerrar a entrevista' })).toBeDisabled()
 
   await page.getByRole('button', { name: /Abrir o cofre/ }).click()
   await expect(page.getByText(/❚❚ Pausada para a senha do gov.br/)).toBeVisible()
@@ -62,8 +62,8 @@ test('CA1, CA4, CA5 e CA6 · da preparação à gravação com o aviso, o cofre 
   await page.clock.runFor(70_000)
   await page.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
   await expect(page.getByRole('heading', { name: /✓ Entrevista encerrada/ })).toBeVisible()
-  await expect(page.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Definir o benefício (D1.12)' })).toBeVisible()
+  await expect(page.getByText(/Transcrição pronta/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Definir o benefício' })).toBeVisible()
   expect(await page.evaluate(() => JSON.stringify(sessionStorage))).not.toContain(SENHA_DE_TESTE)
 
   await page.goto('/advogada')
@@ -81,7 +81,7 @@ test('CA12 · a internet cai: a gravação segue e a transcrição espera a cone
   await page.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
   await expect(page.getByText(/Sem internet: o áudio está guardado neste computador/)).toBeVisible()
   await internet(page, true)
-  await expect(page.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+  await expect(page.getByText(/Transcrição pronta/)).toBeVisible()
 })
 
 test('CA8 · a gravação falha: aviso na hora e a entrevista registrada sem áudio', async ({ page }) => {

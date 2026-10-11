@@ -44,8 +44,8 @@ describe('Registrar fechamento (GGVP-60)', () => {
     gravar(banco)
     await abrir()
     fireEvent.click(screen.getByRole('radio', { name: 'Sim, fechou' }))
-    expect(screen.getByText('Falta o benefício definido pela advogada (D1.12).')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Definir o benefício (D1.12)' }).getAttribute('href')).toBe('/entrevista/natalia-entrevista/beneficio')
+    expect(screen.getAllByText('Falta o benefício definido pela advogada.').length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Definir o benefício' }).getAttribute('href')).toBe('/entrevista/natalia-entrevista/beneficio')
   })
 
   it('CA1, CA2, CA6 e CA12 · "Não fechou": o motivo da lista, e o recontato sugerido em 15 dias para quem ficou de pensar', async () => {

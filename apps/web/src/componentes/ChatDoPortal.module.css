@@ -70,10 +70,17 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 /* Os passos já trazem o número no texto ("1 Subir…"), como no Figma 2085:2. */
 .passos {
   padding-left: 0;
   list-style: none;
+}
+
+/* Botão que lê como link: sublinha ao passar, sem a camada dos outros botões (base.css). */
+.trocar:is(:hover, :active):not(:disabled) {
+  background-image: none;
+  text-decoration: underline;
 }

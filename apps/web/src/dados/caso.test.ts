@@ -37,7 +37,7 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
   it('CA2 · perícia em andamento: o bloco "Em perícia" fica na etapa que pediu e leva à página da perícia', async () => {
     const antonio = await obterCaso('antonio-exemplo-1', ADVOGADA)
     expect(antonio!.emPericia).toMatchObject({ etapa: 'vigilia', href: '/casos/antonio-exemplo-1/pericia' })
-    expect(antonio!.emPericia!.rotulo).toContain('pedido do juiz (D3a)')
+    expect(antonio!.emPericia!.rotulo).toContain('pedido do juiz')
     const maria = await obterCaso('maria-exemplo-1', ADVOGADA)
     expect(maria!.emPericia).toMatchObject({ etapa: 'inss', responsavel: 'Igor (exemplo)' })
     expect((await obterCaso('nair-exemplo-1', ADVOGADA))!.emPericia).toBeUndefined()

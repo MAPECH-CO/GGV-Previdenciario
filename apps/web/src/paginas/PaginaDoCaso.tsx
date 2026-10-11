@@ -27,8 +27,8 @@ import styles from './PaginaDoCaso.module.css'
 // (59:11); jurimetria (2184:2 a 2184:183). O caso numa linha só (GGVP-86), para o Jurídico e o Atendimento.
 
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 const AUTOR: Record<TipoDeAutor, string> = { pessoa: 'pessoa', sistema: 'sistema', ia: 'IA' }
@@ -195,7 +195,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                     {e.estado === 'nao-se-aplica' && <small className={styles.subEtapa}>não se aplica</small>}
                   </span>
                 )}
-                <span className="so-leitor">{` (${e.diagrama} · ${ESTADO[e.estado]})`}</span>
+                <span className="so-leitor">{` (${ESTADO[e.estado]})`}</span>
                 {c.emPericia?.etapa === e.id && (
                   <a className={styles.emPericia} href={c.emPericia.href}>
                     <strong>Em perícia</strong>
@@ -228,7 +228,6 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                     <span>
                       <strong>{ev.quem}</strong> ({AUTOR[ev.tipo]}): {ev.oQue}
                     </span>
-                    <span className={proprio.passo}>{ev.passo}</span>
                   </li>
                 ))}
               </ol>
@@ -277,7 +276,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             <h2 id="linha" className={base.cartaoTitulo}>
               Linha do processo · completa
             </h2>
-            <p className={base.nota}>Do lead ao momento atual. Quando, quem fez (pessoa, sistema ou IA), o que foi feito e o passo do BPMN.</p>
+            <p className={base.nota}>Do lead ao momento atual. Quando, quem fez (pessoa, sistema ou IA), e o que foi feito.</p>
             {grupos.map((g) => (
               <div key={g.etapa.id}>
                 <h3 className={base.grupo}>
@@ -291,7 +290,6 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                         <span className={styles[`autor-${ev.tipo}`]}>{AUTOR[ev.tipo]}</span> <strong>{ev.quem}</strong>: {ev.oQue}
                         {ev.peloChat && <em className={styles.peloChat}> · feito pelo chat</em>}
                       </span>
-                      <span className={proprio.passo}>{ev.passo}</span>
                     </li>
                   ))}
                 </ol>
@@ -589,7 +587,7 @@ function Historico({ caso, hoje, aoFechar }: { caso: CasoNaTela; hoje: string; a
         {[...caso.linha].reverse().map((ev, i) => (
           <li key={i}>
             <span className={base.nota}>
-              {dataCurta(diaLocal(ev.quando), hoje)} · {ev.quem} ({AUTOR[ev.tipo]}) · {ev.passo}
+              {dataCurta(diaLocal(ev.quando), hoje)} · {ev.quem} ({AUTOR[ev.tipo]})
               {ev.peloChat && ' · feito pelo chat'}
             </span>
             <span>{ev.oQue}</span>

@@ -1,29 +1,43 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { UsuarioDaSessao } from '@ggv/contratos'
 import { CHAVE } from '../dados/servidor.ts'
+import { SessaoContexto } from '../sessao.ts'
 import { ITENS_DA_GESTAO, ITENS_DAS_BASES, itensDoPerfil } from './itensDaGestao.ts'
 import { Topbar, type ItemNavegacao } from './Topbar.tsx'
 
 afterEach(() => vi.unstubAllGlobals())
 
 const itens = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
+const ana: UsuarioDaSessao = { nome: 'Ana Lima', email: 'ana@exemplo.ggv', perfis: ['atendimento'], perfilAtivo: 'atendimento', trocarSenha: false }
+
 describe('Topbar', () => {
-  it('mostra a marca, os botões da função com o atual aceso, a ação, tema e fonte e a função', () => {
+  it('mostra a marca, os botões da função com ícone e o atual aceso, a ação, o tema, o tamanho e a função', () => {
     render(
       <Topbar itens={itens} ativo="inicio" funcao="Atendimento" acao={{ rotulo: '+ Novo cliente', href: '/clientes/novo' }} />,
     )
     expect(screen.getByText('GGV Previdenciário')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'GGV Previdenciário, início' }).getAttribute('href')).toBe('/')
     expect(screen.getByRole('link', { name: 'Início' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Início' }).querySelector('svg')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Agenda' }).getAttribute('aria-current')).toBeNull()
     expect(screen.getByRole('link', { name: '+ Novo cliente' }).getAttribute('href')).toBe('/clientes/novo')
     expect(screen.getByRole('button', { name: /^Mudar para o tema (escuro|claro)$/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^(Aumentar|Diminuir) a fonte$/ })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Tamanho do portal' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Atendimento' })).toBeTruthy()
+  })
+
+  it('com sessão, mostra a pessoa pelo nome, e não a função', () => {
+    render(
+      <SessaoContexto value={ana}>
+        <Topbar itens={itens} ativo="inicio" funcao="Atendimento" />
+      </SessaoContexto>,
+    )
+    expect(screen.getByRole('button', { name: 'Ana Lima, Atendimento' }).getAttribute('aria-haspopup')).toBe('menu')
   })
 
   it('a troca de função, ainda não ligada, avisa que está indisponível e não promete menu', () => {
@@ -39,8 +53,13 @@ describe('Topbar', () => {
     vi.stubGlobal('fetch', fetch)
     vi.stubGlobal('location', { ...window.location, assign })
     sessionStorage.setItem(CHAVE, '{"fichas":[]}')
-    render(<Topbar itens={itens} ativo="inicio" funcao="Atendimento" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Sair' }))
+    render(
+      <SessaoContexto value={ana}>
+        <Topbar itens={itens} ativo="inicio" funcao="Atendimento" />
+      </SessaoContexto>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Ana Lima, Atendimento' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
     expect(sessionStorage.getItem(CHAVE)).toBe('{"fichas":[]}')
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/entrar'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao', expect.objectContaining({ method: 'DELETE' }))

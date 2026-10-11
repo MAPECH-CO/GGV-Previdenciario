@@ -1,6 +1,6 @@
 /* Mensagem ao cliente (GGVP-102): o que a janela do convite (ConviteChatwoot) não tem. */
 .janela {
-  width: min(600px, calc(100vw - 32px));
+  width: min(600px, calc(100vw / var(--zoom) - 32px));
 }
 
 .linha {
@@ -22,6 +22,7 @@
   color: var(--cor-texto);
   font: inherit;
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 .ia {

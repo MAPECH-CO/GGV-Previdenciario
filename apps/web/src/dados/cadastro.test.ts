@@ -56,7 +56,7 @@ describe('Cadastrar o lead · servidor de exemplo', () => {
     const ficha = (await obterFicha('antonio-exemplo'))!
     expect(ficha).toMatchObject({ id: 'antonio-exemplo', rg: '123456789', estadoCivil: 'União estável', cep: '01001000', bairro: 'Sé' })
     expect(ficha.historico.slice(-7).map((e) => [e.quem, e.oQue])).toEqual([
-      ['Você (Advogada)', 'Cadastrou o lead (D1.10): completou a mesma ficha do primeiro contato'],
+      ['Você (Advogada)', 'Cadastrou o lead: completou a mesma ficha do primeiro contato'],
       ['Você (Advogada)', 'Alterou RG: «—» → «123456789»'],
       ['Você (Advogada)', 'Alterou estado civil: «Casado» → «União estável»'],
       ['Você (Advogada)', 'Alterou profissão: «Trabalhador rural (2018–2020) · porteiro (2021–2025)» → «Porteiro(a)»'],

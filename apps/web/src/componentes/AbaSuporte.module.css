@@ -13,6 +13,7 @@
   color: var(--cor-superficie);
   font-size: var(--fonte-13);
   font-weight: 600;
+  box-shadow: var(--sombra-acento);
 }
 
 /* O texto lê de baixo para cima, como no Figma. */
@@ -30,8 +31,8 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  width: min(420px, 100vw);
-  height: 100vh;
+  width: min(420px, 100vw / var(--zoom));
+  height: calc(100vh / var(--zoom));
   border-left: 1px solid var(--cor-linha);
   background: var(--cor-fundo);
   box-shadow: -8px 0 24px rgb(0 0 0 / 12%);
@@ -78,4 +79,32 @@
   padding: 8px 16px 12px;
   color: var(--cor-texto-suave-2);
   font-size: var(--fonte-11);
+}
+
+/* No celular, o Suporte vira um botão redondo acima da barra de baixo, para não cobrir a tela (11/10). */
+@media (max-width: 760px) {
+  .aba {
+    top: auto;
+    right: 14px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    z-index: 24;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--raio-pilula);
+    box-shadow: var(--sombra-acento), 0 8px 20px -6px color-mix(in srgb, var(--cor-acento) 60%, transparent);
+  }
+
+  .texto {
+    writing-mode: horizontal-tb;
+    transform: none;
+    font-size: 0;
+  }
+
+  .texto::first-letter {
+    font-size: var(--fonte-20);
+  }
+
+  .painel {
+    width: 100%;
+  }
 }

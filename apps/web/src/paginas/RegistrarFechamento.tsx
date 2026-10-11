@@ -113,8 +113,6 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoPasso
-            passo="D1.14"
-            nomeDoPasso="Registrar o fechamento e o motivo"
             setor="Atendimento"
             tarefa="Registrar fechamento"
             subtitulo={subtitulo}
@@ -138,7 +136,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                 </h2>
                 <p>
                   {demanda.situacao === 'fechou'
-                    ? `Segue para o kit do benefício (D1.15), com a subpasta «${nomeDaSubpasta(beneficio!, hoje)}» na pasta do cliente.`
+                    ? `Segue para o kit do benefício, com a subpasta «${nomeDaSubpasta(beneficio!, hoje)}» na pasta do cliente.`
                     : `${nomeMotivo(demanda.motivo)}${demanda.detalhe ? ` (${demanda.detalhe})` : ''}. ${primeiro} segue cliente nos outros processos.`}
                 </p>
                 <div className={styles.atalhos}>
@@ -169,7 +167,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
               </h2>
               <p>
                 {f.situacao === 'fechou'
-                  ? `${nomeBeneficio(beneficio)}: segue para o kit do benefício (D1.15).`
+                  ? `${nomeBeneficio(beneficio)}: segue para o kit do benefício.`
                   : f.situacao === 'recontatar'
                     ? 'O recontato está na agenda, e a tarefa "Recontatar lead" aparece na Central nesse dia.'
                     : 'Saiu das filas ativas e continua pesquisável no balcão, com o motivo e o histórico.'}
@@ -206,14 +204,14 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                   ) : beneficio && beneficio !== 'nao-sei' ? (
                     <p className={proprio.texto}>
                       {primeiro} vira cliente com {nomeBeneficio(beneficio)}, o benefício que a advogada definiu, e o caso segue para o kit do
-                      benefício (D1.15).
+                      benefício.
                     </p>
                   ) : (
                     <p className={styles.aviso}>
                       Falta o benefício definido pela advogada.{' '}
                       {entrevista && (
                         <a className={styles.avisoLink} href={`/entrevista/${entrevista.id}/beneficio`}>
-                          Definir o benefício (D1.12)
+                          Definir o benefício
                         </a>
                       )}
                     </p>
@@ -267,7 +265,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.14.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="fechou-pergunta">Fechou com o escritório?</p>

@@ -65,8 +65,8 @@ export async function registrarCalculo(agendamentoId: string, registro: Registro
   ficha.historico.push(
     evento(
       anterior
-        ? `Refez o cálculo de tempo e pontos (D1.13). Antes: ${resumo(anterior, hoje)}. Agora: ${resumo(calculo, hoje)}`
-        : `Calculou tempo e pontos sobre o CNIS (D1.13): ${resumo(calculo, hoje)}`,
+        ? `Refez o cálculo de tempo e pontos. Antes: ${resumo(anterior, hoje)}. Agora: ${resumo(calculo, hoje)}`
+        : `Calculou tempo e pontos sobre o CNIS: ${resumo(calculo, hoje)}`,
       QUEM_ADVOGADO_DO_ATENDIMENTO,
     ),
   )

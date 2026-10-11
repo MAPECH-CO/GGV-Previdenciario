@@ -54,7 +54,7 @@ test('CA6 e CA7 · o laudo novo do Antônio: a comparação, o parecer mantido e
   const tabela = page.getByRole('table', { name: 'Comparação com o último laudo (18/09)' })
   await expect(tabela.locator('[data-mudou]')).toHaveText(['Raio-X de coluna lombar e ressonância magnética (22/09)', 'Carregar peso, ficar em pé e dirigir'])
   await expect(page.getByText('A IA só compara: não sugere CID, grau nem conclusão (G20).', { exact: false })).toBeVisible()
-  await page.getByRole('link', { name: 'Ir para o parecer (D1.21M)' }).click()
+  await page.getByRole('link', { name: 'Ir para o parecer' }).click()
 
   await conferirTudo(page)
   await page.getByRole('radio', { name: 'Suficiente — liberar' }).click()

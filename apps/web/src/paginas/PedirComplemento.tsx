@@ -89,12 +89,6 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.21M · Complemento da documentação médica (passo do BPMN)">
-                D1.21M
-              </span>
-              <span className={styles.codigo} title="D1.23 · Cobrança de pendentes (passo do BPMN)">
-                D1.23
-              </span>
               <span className={styles.codigo}>Atendimento</span>
               <span className={styles.beneficio}>◆ {beneficio}</span>
             </div>
@@ -318,7 +312,7 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede nos passos D1.21M e D1.23.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <ul className={styles.ladoLista}>
             <li>• A orientação não sugere diagnóstico, CID, grau nem conclusão (G20)</li>

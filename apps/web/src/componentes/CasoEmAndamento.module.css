@@ -74,3 +74,12 @@
   list-style: none;
   font-size: var(--fonte-12);
 }
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.caso:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.caso:not(:disabled):active {
+  background-image: var(--estado-apertar);
+}

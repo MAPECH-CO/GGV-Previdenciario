@@ -216,9 +216,6 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
       embutida={embutida}
       cabecalho={
         <>
-          <a className={styles.voltar} href="/">
-            ← Voltar ao início
-          </a>
           <h1 className={styles.titulo}>Tratar exigência do INSS</h1>
           <p className={styles.subtitulo}>
             {x.cliente} · {nomeDoBeneficio(x.beneficio)}

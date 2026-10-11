@@ -101,7 +101,7 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
   }
 
   const opcoes: { id: Escolha; rotulo: string }[] = [
-    { id: 'calculo', rotulo: 'Quer seguir: voltar ao cálculo (D1.13)' },
+    { id: 'calculo', rotulo: 'Quer seguir: voltar ao cálculo' },
     { id: 'nova-data', rotulo: 'Ainda não: nova data' },
     { id: 'arquivar', rotulo: 'Não vai seguir: arquivar' },
   ]
@@ -113,8 +113,6 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoPasso
-            passo="D1.14"
-            nomeDoPasso="Recontatar o lead na data prevista"
             setor="Atendimento"
             tarefa="Recontatar lead"
             subtitulo={
@@ -127,10 +125,10 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
             instrucoes={
               semDireito
                 ? `Ligue para ${primeiro}: na entrevista, ainda não podia se aposentar. Se quiser seguir, o caso volta para o cálculo de ` +
-                  'tempo e pontos (D1.13) com o tempo de agora. Se ainda não, combine uma nova data; se não vai seguir, arquive com o ' +
+                  'tempo e pontos com o tempo de agora. Se ainda não, combine uma nova data; se não vai seguir, arquive com o ' +
                   'motivo (G16).'
                 : `Ligue para ${primeiro} e pergunte se quer seguir com o escritório. Se quiser, o caso volta para o cálculo de tempo e ` +
-                  'pontos (D1.13). Se ainda não, combine uma nova data; se não vai seguir, arquive com o motivo (G16).'
+                  'pontos. Se ainda não, combine uma nova data; se não vai seguir, arquive com o motivo (G16).'
             }
           />
 
@@ -147,10 +145,10 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
             <h2 id="calculo" className={styles.cartaoTitulo}>
               Cálculo de tempo e pontos
             </h2>
-            {semDireito && <p className={styles.aviso}>Ainda não podia se aposentar: o caso volta para o cálculo de tempo e pontos (D1.13).</p>}
+            {semDireito && <p className={styles.aviso}>Ainda não podia se aposentar: o caso volta para o cálculo de tempo e pontos.</p>}
             <p className={proprio.texto}>Último cálculo: {calculo ?? 'nenhum registrado'}.</p>
             <a className={styles.atalho} href={rotaDoCalculo(ficha)}>
-              Abrir o cálculo (D1.13)
+              Abrir o cálculo
             </a>
           </section>
 
@@ -189,7 +187,7 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
               <div className={styles.atalhos}>
                 {feito === 'calculo' && (
                   <a className={styles.atalho} href={rotaDoCalculo(ficha)}>
-                    Abrir o cálculo (D1.13)
+                    Abrir o cálculo
                   </a>
                 )}
                 <a className={styles.atalho} href="/">
@@ -259,9 +257,9 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no recontato do passo D1.14.</p>
+          <p className={styles.ladoSub}>O que o recontato pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
-          <p>Resultado do recontato: voltar ao cálculo (D1.13), nova data ou arquivar.</p>
+          <p>Resultado do recontato: voltar ao cálculo, nova data ou arquivar.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             <li>• Se «Ainda não»: Recontatar em*</li>

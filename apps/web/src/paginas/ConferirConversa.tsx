@@ -173,9 +173,6 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
         <div className={base.principal}>
           <div className={base.cabecalho}>
             <div className={base.chips}>
-              <span className={base.codigo} title="D5.04 · Conferir o que a IA atualizou (passo do BPMN)">
-                D5.04
-              </span>
               <span className={proprio.setor}>{c.papel === 'juridico' ? 'Jurídico' : 'Atendimento'}</span>
             </div>
             <h1 className={base.titulo}>
@@ -308,7 +305,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
                     Não — confirmar e voltar ao D1
                   </button>
                   <button type="button" role="radio" className={base.opcao} aria-checked={pendencia === 'sim'} disabled={!podeAgir} onClick={() => setPendencia('sim')}>
-                    Sim — criar a tarefa no card (D5.05)
+                    Sim — criar a tarefa no card
                   </button>
                 </div>
                 {pendencia === 'sim' && (
@@ -478,7 +475,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
           <h2 id="antes-de-concluir" className={base.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={base.ladoSub}>O que o BPMN (Miro) pede no passo D5.04.</p>
+          <p className={base.ladoSub}>O que este passo pede.</p>
           <h3 className={base.ladoSecao}>Campos</h3>
           <ul className={base.ladoLista}>
             <li>• Cada mudança da IA confirmada, corrigida ou desfeita*</li>

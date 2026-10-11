@@ -23,7 +23,7 @@ async function gravarEEncerrar(page: Page, caminho = '/entrevista/josefa-entrevi
 
 test('CA1, CA2, CA6, CA7 e CA8 · da entrevista encerrada à transcrição: buscar, prova, conferir e levar à ficha, documentos ao checklist', async ({ page }) => {
   await gravarEEncerrar(page)
-  await expect(page.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+  await expect(page.getByText(/Transcrição pronta/)).toBeVisible()
   await page.getByRole('button', { name: 'Ver a transcrição' }).click()
   const janela = page.getByRole('dialog', { name: 'Transcrições do caso' })
   await expect(janela.getByRole('heading', { name: /^Entrevista com a advogada · \d\d\/\d\d\/\d{4} · 2 min$/ })).toBeVisible()
@@ -56,7 +56,7 @@ test('CA3 · a transcrição falha: o aviso e "Tentar de novo"', async ({ page }
   await gravarEEncerrar(page, '/entrevista/josefa-entrevista/gravacao?simular=falha-da-transcricao')
   await expect(page.getByText('A transcrição falhou: o serviço de transcrição não respondeu.')).toBeVisible()
   await page.getByRole('button', { name: 'Tentar de novo' }).click()
-  await expect(page.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+  await expect(page.getByText(/Transcrição pronta/)).toBeVisible()
 })
 
 test('CA4 · pela ficha do cliente, a lista do caso com a data, quem participou e a duração; o Atendimento não abre a entrevista', async ({ page }) => {

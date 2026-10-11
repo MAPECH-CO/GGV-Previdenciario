@@ -130,6 +130,7 @@
   border-color: var(--cor-acento);
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .situacao,

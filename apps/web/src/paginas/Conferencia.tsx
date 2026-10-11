@@ -4,6 +4,7 @@ import { normalizarData, validarData } from '@ggv/campos'
 import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { nomeDoBeneficio } from '@ggv/contratos'
 
@@ -69,24 +70,21 @@ export function Conferencia({ casoId }: { casoId: string }) {
 
   if (!caso)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Conferência · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const bloqueio = bloqueioDeAprovar(caso)
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Conferência · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Conferência antes do INSS</h1>
       <p className={styles.subtitulo}>
         {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
@@ -248,6 +246,6 @@ export function Conferencia({ casoId }: { casoId: string }) {
           </section>
         )
       )}
-    </main>
+    </TelaDePasso>
   )
 }

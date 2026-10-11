@@ -5,6 +5,7 @@ import type { FormEvent } from 'react'
 import { diaLocal, hojeIso, isoParaData } from '@ggv/campos'
 import { nomeDoBeneficio, Despachar as Contrato, ROTULO_SETOR, SETORES_DO_DESPACHO, TIPOS_DE_PERICIA, type AnaliseDoDespacho, type Despacho } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { EncerrarSemJudicializar } from './Vigilia.tsx'
 
@@ -115,23 +116,20 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
 
   if (!x)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Despachar caso · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const ind = x.indeferimento
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Despachar caso · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Despachar caso</h1>
       <p className={styles.subtitulo}>
         {x.cliente} · {nomeDoBeneficio(x.beneficio)}
@@ -288,6 +286,6 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
           }}
         />
       )}
-    </main>
+    </TelaDePasso>
   )
 }

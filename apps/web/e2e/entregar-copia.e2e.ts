@@ -30,7 +30,7 @@ test('GGVP-89 CA1, CA2, CA3 e CA5 · da Central à entrega registrada; a tarefa 
   await page.getByLabel('Observação').fill('Levou numa pastinha.')
   await registrar.click()
   await expect(page.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
-  await expect(page.getByText(/O caso segue para a conferência do checklist do benefício \(D1\.21\)/)).toBeVisible()
+  await expect(page.getByText(/O caso segue para a conferência do checklist do benefício/)).toBeVisible()
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Cleide Exemplo · Entregar cópia do contrato' })).toHaveCount(0)
 })

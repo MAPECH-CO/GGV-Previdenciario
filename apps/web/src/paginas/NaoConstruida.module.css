@@ -25,4 +25,14 @@
   background: var(--cor-superficie);
   font-size: var(--fonte-13);
   font-weight: 600;
+  box-shadow: var(--sombra-1);
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.voltar:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.voltar:not(:disabled):active {
+  background-image: var(--estado-apertar);
 }

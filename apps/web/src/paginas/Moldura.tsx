@@ -1,8 +1,29 @@
 import type { ReactNode } from 'react'
+import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { Topbar } from '../componentes/Topbar.tsx'
 import styles from './Passo.module.css'
 
+const ITENS = [
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
+]
+
 /**
- * A moldura de uma tela de passo: a tela inteira (título da aba, volta ao início e cabeçalho) ou, quando o passo segue
+ * Uma tela de passo inteira (11/10): o topo de toda tela, com o "Voltar", a coluna do passo e o Suporte. Antes era só a
+ * coluna, com o "← Voltar ao início" escrito em cima.
+ */
+export function TelaDePasso({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <Topbar itens={ITENS} ativo="" funcao="" voltar />
+      <main className={styles.pagina}>{children}</main>
+      <AbaSuporte />
+    </>
+  )
+}
+
+/**
+ * A moldura de uma tela de passo: a tela inteira (título da aba, o topo e o cabeçalho) ou, quando o passo segue
  * dentro de outra tela, um cartão com o título (ajuste do Mateus, 06/10: a resposta do INSS e o passo seguinte numa
  * tela só, se quem registrou quiser).
  */
@@ -15,10 +36,10 @@ export function Moldura({ titulo, cabecalho, embutida = false, children }: { tit
       </section>
     )
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>{`${titulo} · GGV Previdenciário`}</title>
       {cabecalho}
       {children}
-    </main>
+    </TelaDePasso>
   )
 }

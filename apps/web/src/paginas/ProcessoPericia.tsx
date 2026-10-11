@@ -22,8 +22,8 @@ import styles from './ProcessoPericia.module.css'
 // e ficam indisponíveis até as histórias delas. Dado de saúde só para o Jurídico.
 
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/advogada' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/advogada' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 /** As etapas do processo, na ordem do Figma ("Ações do processo"). Só a etapa atual abre; as outras são de outras histórias. */
@@ -186,7 +186,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
             </h2>
             <p>{oQueAconteceAgora(t)}</p>
             <p>
-              <strong>Em perícia desde {dataCurta(hojeIso(new Date(pericia.abertaEm)), hoje)}: a tarefa foi aberta pelo sistema (DP.01).</strong>
+              <strong>Em perícia desde {dataCurta(hojeIso(new Date(pericia.abertaEm)), hoje)}: a tarefa foi aberta pelo sistema.</strong>
             </p>
           </div>
           <a className={passo.principalBotao} href={verAPericia}>
@@ -205,7 +205,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
             <h2 id="linha" className={styles.cartaoTitulo}>
               Linha do processo
             </h2>
-            <p className={styles.nota}>Do mais antigo ao momento atual. Quem fez, quando e o passo do BPMN.</p>
+            <p className={styles.nota}>Do mais antigo ao momento atual. Quem fez e quando.</p>
             {linhaAntes.length > 0 && (
               <>
                 <h3 className={styles.grupo}>Antes da perícia</h3>
@@ -229,7 +229,6 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                   <span>
                     {e.quem === 'Sistema' ? 'O sistema' : e.quem}: {e.oQue.charAt(0).toLowerCase() + e.oQue.slice(1)}
                   </span>
-                  <span className={proprio.passo}>{e.passo}</span>
                 </li>
               ))}
             </ol>

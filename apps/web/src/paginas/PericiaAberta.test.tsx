@@ -24,7 +24,7 @@ describe('GGVP-49 · Tarefa de perícia aberta pelo sistema (Figma 14:534)', () 
     expect(screen.getByText(/O sistema abriu sozinho a tarefa «Marcar a perícia» para o Jurídico administrativo/)).toBeTruthy()
     const preenchido = within(screen.getByRole('list', { name: 'Preenchido pelo sistema' })).getAllByRole('listitem').map((l) => l.textContent)
     expect(preenchido).toEqual([
-      '• Quem pediu: D2 · necessidade inicial · Dra. Paula (exemplo)',
+      '• Quem pediu: necessidade inicial · Dra. Paula (exemplo)',
       '• Tipo: Perícia médica',
       '• Instância: INSS',
       '• O que a perícia pede: ainda não se sabe; vem com a marcação',
@@ -50,7 +50,7 @@ describe('GGVP-49 · Tarefa de perícia aberta pelo sistema (Figma 14:534)', () 
     const historico = await screen.findByRole('list', { name: 'Histórico da perícia' })
     const linhas = within(historico).getAllByRole('listitem').map((l) => l.textContent)
     expect(linhas[1]).toBe(
-      '06/10/2026 16:10Sistema · Abriu a tarefa de perícia para o Jurídico administrativo, a partir da decisão de Dra. Paula (exemplo) (D2 · necessidade inicial)DP.01',
+      '06/10/2026 16:10Sistema · Abriu a tarefa de perícia para o Jurídico administrativo, a partir da decisão de Dra. Paula (exemplo) (necessidade inicial)',
     )
   })
 
@@ -83,7 +83,7 @@ describe('GGVP-49 · o caso "Em perícia" (Figma 2179:2 e a ficha)', () => {
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     const caso = screen.getByRole('link', { name: /Em perícia/ })
     expect(caso.getAttribute('href')).toBe('/casos/maria-exemplo-1/pericia')
-    expect(caso.textContent).toContain('Em perícia · pedido ao INSS (D2) · perícia médica')
+    expect(caso.textContent).toContain('Em perícia · pedido ao INSS · perícia médica')
     expect(caso.textContent).toContain('A perícia está com o Jurídico administrativo.')
   })
 
@@ -94,7 +94,7 @@ describe('GGVP-49 · o caso "Em perícia" (Figma 2179:2 e a ficha)', () => {
     expect(screen.getByRole('link', { name: '▶ Perícia INSS' }).getAttribute('aria-current')).toBe('step')
     const linha = within(screen.getByRole('list', { name: 'Linha da perícia' })).getAllByRole('listitem').map((l) => l.textContent)
     expect(linha).toContain(
-      '06/10O sistema: abriu a tarefa de perícia para o Jurídico administrativo, a partir da decisão de Dra. Paula (exemplo) (D2 · necessidade inicial)DP.01',
+      '06/10O sistema: abriu a tarefa de perícia para o Jurídico administrativo, a partir da decisão de Dra. Paula (exemplo) (necessidade inicial)',
     )
     expect(screen.getByRole('link', { name: 'Ver a perícia' }).getAttribute('href')).toBe('/casos/maria-exemplo-1/pericia/marcar')
     // Dado de saúde só para o Jurídico: a advogada vê o atalho do parecer médico.

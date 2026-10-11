@@ -13,6 +13,8 @@ import {
   type DesfechoDoAcervo,
 } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { MolduraDaBase } from './Base.tsx'
+import g from './Gestao.module.css'
 import styles from './Passo.module.css'
 
 type Pendente = ConferenciaDoAcervo['pendentes'][number]
@@ -190,47 +192,43 @@ export function ConferirAcervo() {
   }
 
   return (
-    <main className={styles.pagina}>
-      <title>Conferir desfechos do lote · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Conferir desfechos do lote</h1>
-      {c && (
-        <p className={styles.subtitulo}>
-          Esperando conferência: {c.pendentes.length} · Já conferidos: {c.conferidos}. Só os conferidos entram nas contas da jurimetria.
-        </p>
-      )}
-      {feito && (
-        <p className={styles.sucesso} role="status">
-          {feito}
-        </p>
-      )}
-      {erro && (
-        <p className={styles.erro} role="alert">
-          {erro}
-        </p>
-      )}
-      {c && c.pendentes.length === 0 && <p className={styles.dica}>Nenhum desfecho esperando conferência.</p>}
-      {c && c.pendentes.length > 0 && (
-        <ul className={styles.lista} aria-label="Desfechos para conferir">
-          {c.pendentes.map((p) => (
-            <ProcessoDoLote key={p.id} p={p} aoConferir={aoConferir} />
-          ))}
-        </ul>
-      )}
-      {c && c.incompletos.length > 0 && (
-        <section aria-label="Falta completar">
-          <h2 className={styles.cartaoTitulo}>Falta completar</h2>
-          <p className={styles.dica}>Processos conferidos sem vara, juiz ou tese ficam fora desse recorte da Gestão até alguém completar.</p>
-          <ul className={styles.lista}>
-            {c.incompletos.map((p) => (
-              <FaltaCompletar key={p.id} p={p} conhecidos={c.conhecidos} aoCompletar={aoConferir} />
+    <MolduraDaBase
+      ativo="acervo"
+      titulo="Conferir desfechos do lote"
+      subtitulo={c ? `Esperando conferência: ${c.pendentes.length} · Já conferidos: ${c.conferidos}. Só os conferidos entram nas contas da jurimetria.` : ''}
+    >
+      <div className={g.estreito}>
+        {feito && (
+          <p className={styles.sucesso} role="status">
+            {feito}
+          </p>
+        )}
+        {erro && (
+          <p className={styles.erro} role="alert">
+            {erro}
+          </p>
+        )}
+        {c && c.pendentes.length === 0 && <p className={styles.dica}>Nenhum desfecho esperando conferência.</p>}
+        {c && c.pendentes.length > 0 && (
+          <ul className={styles.lista} aria-label="Desfechos para conferir">
+            {c.pendentes.map((p) => (
+              <ProcessoDoLote key={p.id} p={p} aoConferir={aoConferir} />
             ))}
           </ul>
-        </section>
-      )}
-      <p className={styles.dica}>Os não conferidos ficam no acervo para consulta, fora das contas. Nada trava.</p>
-    </main>
+        )}
+        {c && c.incompletos.length > 0 && (
+          <section aria-label="Falta completar">
+            <h2 className={styles.cartaoTitulo}>Falta completar</h2>
+            <p className={styles.dica}>Processos conferidos sem vara, juiz ou tese ficam fora desse recorte da Gestão até alguém completar.</p>
+            <ul className={styles.lista}>
+              {c.incompletos.map((p) => (
+                <FaltaCompletar key={p.id} p={p} conhecidos={c.conhecidos} aoCompletar={aoConferir} />
+              ))}
+            </ul>
+          </section>
+        )}
+        <p className={styles.dica}>Os não conferidos ficam no acervo para consulta, fora das contas. Nada trava.</p>
+      </div>
+    </MolduraDaBase>
   )
 }

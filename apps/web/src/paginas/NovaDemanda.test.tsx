@@ -112,7 +112,7 @@ describe('Registrar fechamento da nova demanda (GGVP-124)', () => {
     expect(screen.getByText(/Processo novo de Auxílio Acidentário, o benefício que a advogada definiu, na mesma ficha/)).toBeTruthy()
     fireEvent.click(botao('Registrar fechamento'))
     expect(await screen.findByRole('heading', { name: '✓ Fechou: Auxílio Acidentário é processo novo na mesma ficha' })).toBeTruthy()
-    expect(screen.getByText('Segue para o kit do benefício (D1.15), com a subpasta «AUXÍLIO ACIDENTÁRIO 2026» na pasta do cliente.')).toBeTruthy()
+    expect(screen.getByText('Segue para o kit do benefício, com a subpasta «AUXÍLIO ACIDENTÁRIO 2026» na pasta do cliente.')).toBeTruthy()
   })
 
   it('"Não fechou": sem recontato, a demanda se encerra com o motivo (G16)', async () => {

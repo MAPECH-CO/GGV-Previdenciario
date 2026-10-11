@@ -138,7 +138,7 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     const [evento] = (await eventosDaAgenda('2026-10-16', '2026-10-16')).filter((e) => e.categoria === 'pericias')
     render(comSessao(<DetalhePericia evento={evento} aoFechar={() => {}} />))
     expect(screen.getByRole('heading', { name: 'Antônio Exemplo · Perícia médica' })).toBeTruthy()
-    expect(screen.getByText('DP.04')).toBeTruthy()
+    expect(screen.queryByText('DP.04')).toBeNull()
     expect(screen.getByRole('link', { name: 'Abrir o processo' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
     expect(screen.getByRole('link', { name: 'Remarcar' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia/marcar?remarcar=1')
     expect(screen.getByText(/Remarcar a perícia é com o Jurídico administrativo/)).toBeTruthy()

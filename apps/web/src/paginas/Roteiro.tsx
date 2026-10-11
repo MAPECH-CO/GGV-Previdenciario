@@ -66,9 +66,6 @@ function Lista() {
       <div className={styles.principal}>
         <div className={styles.cabecalho}>
           <div className={styles.chips}>
-            <span className={styles.codigo} title="D1.21M · Analisar a documentação médica (passo do BPMN)">
-              D1.21M
-            </span>
             <span className={proprio.juridico}>Jurídico</span>
           </div>
           <h1 className={styles.titulo}>Roteiros de laudos</h1>
@@ -158,9 +155,6 @@ function Detalhe({ id, edita, perfil, nome }: { id: string; edita: boolean; perf
       <div className={styles.principal}>
         <div className={styles.cabecalho}>
           <div className={styles.chips}>
-            <span className={styles.codigo} title="D1.21M · Analisar a documentação médica (passo do BPMN)">
-              D1.21M
-            </span>
             <span className={proprio.juridico}>Jurídico</span>
             {!roteiro.laudo && <span className={proprio.semLaudo}>sem laudo · régua documental</span>}
           </div>
@@ -308,7 +302,7 @@ function Lado() {
       <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
         Antes de concluir
       </h2>
-      <p className={styles.ladoSub}>O roteiro é a régua do passo D1.21M: a IA aplica no laudo, e uma pessoa do Jurídico confere (G17).</p>
+      <p className={styles.ladoSub}>O roteiro é a régua da análise da documentação médica: a IA aplica no laudo, e uma pessoa do Jurídico confere (G17).</p>
       <h3 className={styles.ladoSecao}>Quem mexe</h3>
       <p className={styles.ladoSub}>A sênior edita; o Jurídico vê. Atendimento e Documentação veem só o que falta pedir, no parecer.</p>
       <h3 className={styles.ladoSecao}>Travas</h3>

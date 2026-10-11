@@ -135,7 +135,7 @@ export function Financeiro() {
   )
 }
 
-function Indicador({ rotulo, valor, nota, tom }: { rotulo: string; valor: string; nota: string; tom?: 'ok' | 'erro' | 'alerta' }) {
+export function Indicador({ rotulo, valor, nota, tom }: { rotulo: string; valor: string; nota: string; tom?: 'ok' | 'erro' | 'alerta' }) {
   return (
     <li className={styles.indicador}>
       <span className={styles.indicadorRotulo}>{rotulo}</span>

@@ -57,7 +57,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar resultado' }))
     const feito = within(await screen.findByRole('region', { name: '✓ Resultado registrado: favorável' }))
     expect(
-      feito.getByText(/O resultado subiu no card e voltou para quem pediu \(D3a · pedido do juiz\): volta ao judicial \(D3a\): manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/),
+      feito.getByText(/O resultado subiu no card e voltou para quem pediu \(pedido do juiz\): volta ao judicial: manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/),
     ).toBeTruthy()
   })
 
@@ -82,7 +82,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     conferirTudo()
     fireEvent.click(screen.getByRole('button', { name: 'Registrar resultado' }))
     expect(await screen.findByRole('heading', { name: '✓ Resultado registrado: desfavorável' })).toBeTruthy()
-    expect(screen.getByText(/voltou para quem pediu \(D3a · pedido do juiz\)/)).toBeTruthy()
+    expect(screen.getByText(/voltou para quem pediu \(pedido do juiz\)/)).toBeTruthy()
   })
 
   it('a página do processo: o resultado no card e o prazo para manifestar (Figma 1579:117)', async () => {

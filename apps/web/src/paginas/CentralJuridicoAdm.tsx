@@ -16,8 +16,8 @@ import styles from './CentralAtendimento.module.css'
 // Jurídico administrativo (Lucas, 29/09). As tarefas nascem da perícia (dados/pericia.ts); as do protocolo no INSS (D2.02)
 // vêm do servidor e ficam no topo (junção de 08/10). É a tela inicial de quem entra como Jurídico administrativo.
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/juridico-administrativo' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/juridico-administrativo' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 const exemploChatJuridicoAdm = 'Ex.: “qual é a próxima tarefa da Maria Exemplo?”'

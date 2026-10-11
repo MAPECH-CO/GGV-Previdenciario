@@ -57,7 +57,7 @@ test('CA1 a CA4 · a tentativa, o comprovante lido e conferido, a Documentação
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/casos/maria-exemplo-1/pericia')
   await expect(page.getByText('comprovante lido pelo sistema')).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Linha da perícia' })).toContainText('a perícia pede documento novo: atribuiu à Documentação (DP.03)')
+  await expect(page.getByRole('list', { name: 'Linha da perícia' })).toContainText('a perícia pede documento novo: atribuiu à Documentação')
 })
 
 test('CA5 · o comprovante pelo chat: a IA lê e identifica; nada acontece antes de confirmar', async ({ page }) => {

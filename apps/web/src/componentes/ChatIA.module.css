@@ -6,6 +6,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-14);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .cabecalho {
@@ -52,6 +53,7 @@
 
 .acoes {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -72,6 +74,7 @@
   font-size: var(--fonte-12);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-1);
 }
 
 .gravar {
@@ -87,6 +90,7 @@
   color: var(--cor-superficie);
   font-size: var(--fonte-13);
   font-weight: 600;
+  box-shadow: var(--sombra-acento);
 }
 
 .sugestoes {
@@ -103,6 +107,7 @@
   color: var(--cor-texto);
   font-size: var(--fonte-12);
   font-weight: 500;
+  box-shadow: var(--sombra-1);
 }
 
 .aviso {
@@ -136,4 +141,13 @@ label.chip {
 label.chip:focus-within {
   outline: 2px solid var(--cor-acento);
   outline-offset: 2px;
+}
+
+/* "Anexar arquivo" é um rótulo com cara de botão: a mesma camada de passar e apertar dos botões ao lado (base.css). */
+label.chip:hover {
+  background-image: var(--estado-passar);
+}
+
+label.chip:active {
+  background-image: var(--estado-apertar);
 }

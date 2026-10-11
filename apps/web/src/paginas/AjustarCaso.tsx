@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LiberarAoJuridico, type CasoParaLiberacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { nomeDoBeneficio } from '@ggv/contratos'
 
@@ -42,25 +43,22 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
 
   if (!caso)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Ajustar o caso · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const bloqueio = bloqueioDeLiberar(caso)
   const { ajuste } = caso
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>{`${caso.cliente} · Ajustar o caso · GGV Previdenciário`}</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Ajustar o caso</h1>
       <p className={styles.subtitulo}>
         {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
@@ -146,6 +144,6 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
           <span className={`${styles.selo} ${styles.seloAlerta}`}>Só leitura: quem ajusta e libera de novo é o Atendimento</span>
         ))
       )}
-    </main>
+    </TelaDePasso>
   )
 }

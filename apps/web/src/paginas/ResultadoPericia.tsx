@@ -138,9 +138,6 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="DP.08 · Conferir o resultado da perícia (passo do BPMN)">
-                DP.08
-              </span>
               <span className={styles.codigo}>Advogada</span>
               <span className={styles.beneficio}>◆ {t.beneficio}</span>
             </div>
@@ -341,7 +338,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo DP.08.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <span>Se desfavorável: vale pedir nova perícia?</span>
@@ -374,7 +371,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
               ? `Prazo para manifestar: ${DIAS_PARA_MANIFESTAR} dias, contado pelo lado seguro (G12)${manifestar ? `, até ${dataCurta(manifestar, hoje)} se registrar hoje` : ''}. Se impugnar ou pedir quesitos, a IA prepara a peça e você assina (G6). `
               : ''}
             O resultado sobe no card e volta para quem pediu ({ORIGENS[pericia.origem].rotulo}): {COMO_SEGUE[pericia.origem]}. Desfavorável: avaliar se vale pedir nova
-            perícia (DP.10).
+            perícia.
           </p>
         </aside>
       </main>

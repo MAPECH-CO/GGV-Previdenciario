@@ -1,6 +1,6 @@
 /* Janela "Jurimetria · Perito" (Figma 2184:2). */
 .janela {
-  width: min(680px, calc(100vw - 32px));
+  width: min(680px, calc(100vw / var(--zoom) - 32px));
   padding: 0;
 }
 
@@ -131,10 +131,20 @@
   color: var(--cor-texto);
   font-size: var(--fonte-13);
   font-weight: 600;
+  box-shadow: var(--sombra-1);
 }
 
 @media (max-width: 640px) {
   .numeros {
     grid-template-columns: 1fr;
   }
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.processo:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.processo:not(:disabled):active {
+  background-image: var(--estado-apertar);
 }

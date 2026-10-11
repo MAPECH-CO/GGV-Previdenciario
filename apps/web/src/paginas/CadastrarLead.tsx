@@ -194,9 +194,6 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.10 · Cadastrar o lead (passo do BPMN)">
-                D1.10
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>
@@ -262,7 +259,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
               </div>
             ))}
             <p className={proprio.beneficio}>
-              Benefício: {nomeBeneficio(ficha.beneficioInteresse) || 'a definir'} · a advogada define no D1.12
+              Benefício: {nomeBeneficio(ficha.beneficioInteresse) || 'a definir'} · a advogada define o benefício
             </p>
 
             <label className={proprio.conferencia}>
@@ -356,7 +353,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
                 </a>
                 {entrevista && (
                   <a className={styles.atalho} href={`/entrevista/${entrevista.id}/beneficio`}>
-                    Definir o benefício (D1.12)
+                    Definir o benefício
                   </a>
                 )}
               </div>
@@ -380,7 +377,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.10.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             <li>• Nome completo*</li>
@@ -400,7 +397,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
           <button type="button" className={styles.atalho} onClick={() => setTranscricoes(true)}>
             ▶ Abrir a transcrição
           </button>
-          <h3 className={styles.ladoSecao}>Kit do benefício (D1.15)</h3>
+          <h3 className={styles.ladoSecao}>Kit do benefício</h3>
           <p className={proprio.kit} data-ok={kit.length === 0}>
             {kit.length === 0 ? 'Pode ser gerado: o cadastro tem os campos do modelo.' : `Ainda não pode ser gerado. Falta: ${juntar(kit)}.`}
           </p>

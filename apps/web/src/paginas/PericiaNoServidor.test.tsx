@@ -228,7 +228,7 @@ describe('Central do Jurídico administrativo · a mesma perícia uma vez só', 
   const linhaDp01 = { id: '1b2c3d4e-0000-4000-8000-000000000001', casoId: CASO, passo: 'DP.01', cliente: { id: PESSOA, nome: 'Ivone Teste' }, titulo: 'Marcar perícia médica', detalhe: 'bpc loas deficiente', tela: `/casos/${CASO}/pericia/marcar`, prazo: null, urgente: false }
   const MARCAR: Tarefa = { id: `pericia-marcar-${PERICIA}`, codigo: 'DP.02', cliente: { id: PESSOA, nome: 'Ivone Teste' }, acao: 'Marcar perícia', detalhe: '', href: `/casos/${CASO}/pericia/marcar` }
 
-  it('liberada: a tarefa que o sistema abriu (DP.01) e a da perícia levam à mesma tela, e fica uma', async () => {
+  it('liberada: a tarefa que o sistema abriu e a da perícia levam à mesma tela, e fica uma', async () => {
     const { mundo, pericia } = mundoDoServidor(true)
     ligarServidor({ 'GET /api/tarefas': () => [linhaDp01], 'GET /api/pericias': () => [naTela(mundo, pericia, AGORA)], 'GET /api/pericias/tarefas': () => [MARCAR], 'GET /api/peritos': () => [] })
     await sincronizarPericias(true)

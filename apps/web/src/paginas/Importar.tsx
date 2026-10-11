@@ -1,6 +1,8 @@
 import { useId, useRef, useState } from 'react'
 import { COLUNAS_DA_PLANILHA, ROTULO_BENEFICIO, type Beneficio, type LinhaDaImportacao, type RelatorioDaImportacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { MolduraDaBase } from './Base.tsx'
+import g from './Gestao.module.css'
 import styles from './Passo.module.css'
 
 // GGVP-146, parte 2: a gestão importa os clientes e os processos em andamento que o escritório já tem, de uma planilha
@@ -76,100 +78,96 @@ export function Importar() {
   const aGravar = relatorio ? relatorio.clientes.novos + relatorio.processos.novos : 0
 
   return (
-    <main className={styles.pagina}>
-      <title>Importar a planilha do escritório · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Importar a planilha do escritório</h1>
-      <p className={styles.subtitulo}>Clientes e processos em andamento que o escritório já tem. Nada é gravado antes de você conferir o relatório.</p>
+    <MolduraDaBase ativo="importar" titulo="Importar a planilha do escritório" subtitulo="Clientes e processos em andamento que o escritório já tem. Nada é gravado antes de você conferir o relatório.">
+      <div className={g.estreito}>
 
-      <section className={styles.cartao} aria-labelledby="planilha">
-        <h2 id="planilha" className={styles.cartaoTitulo}>
-          A planilha
-        </h2>
-        <p className={styles.dica}>
-          Um arquivo CSV. A primeira linha tem os nomes das colunas: {COLUNAS_DA_PLANILHA.join(', ')}. Só nome e CPF são obrigatórios. Uma linha por processo: o
-          mesmo CPF em várias linhas é o mesmo cliente. Datas em dd/mm/aaaa.
-        </p>
-        <label className={styles.rotulo} htmlFor={idArquivo}>
-          Planilha (CSV)
-        </label>
-        <input id={idArquivo} className={styles.campo} type="file" accept=".csv,text/csv" onChange={(e) => void escolher(e.target.files?.[0])} />
-        <div className={styles.acoes}>
-          <button type="button" className={styles.botao} disabled={!arquivo || enviando} onClick={() => void simular()}>
-            {enviando && !relatorio ? 'simulando…' : 'Simular a importação'}
-          </button>
-        </div>
-      </section>
-
-      {erro && (
-        <p className={styles.erro} role="alert">
-          {erro}
-        </p>
-      )}
-
-      {relatorio && (
-        <section className={styles.cartao} aria-labelledby="relatorio">
-          <h2 id="relatorio" className={styles.cartaoTitulo}>
-            Relatório da simulação · {arquivo?.nome}
+        <section className={styles.cartao} aria-labelledby="planilha">
+          <h2 id="planilha" className={styles.cartaoTitulo}>
+            A planilha
           </h2>
-          <p>
-            Clientes: {plural(relatorio.clientes.novos, 'novo', 'novos')} · {plural(relatorio.clientes.jaCadastrados, 'já cadastrado', 'já cadastrados')} (pelo CPF,
-            não duplicam)
+          <p className={styles.dica}>
+            Um arquivo CSV. A primeira linha tem os nomes das colunas: {COLUNAS_DA_PLANILHA.join(', ')}. Só nome e CPF são obrigatórios. Uma linha por processo: o
+            mesmo CPF em várias linhas é o mesmo cliente. Datas em dd/mm/aaaa.
           </p>
-          <p>
-            Processos: {plural(relatorio.processos.novos, 'novo', 'novos')} · {plural(relatorio.processos.jaCadastrados, 'já cadastrado', 'já cadastrados')}
-          </p>
-          {relatorio.colunasIgnoradas.length > 0 && <p className={styles.dica}>Colunas que o importador não lê: {relatorio.colunasIgnoradas.join(', ')}.</p>}
-          {relatorio.erros.length > 0 && (
-            <>
-              <h3 className={styles.rotulo}>Linhas com erro: ficam de fora</h3>
-              <ul className={styles.lista} aria-label="Linhas com erro">
-                {relatorio.erros.map((e) => (
-                  <li key={e.linha}>
-                    Linha {e.linha}: {e.motivo}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {relatorio.linhas.length > 0 && (
-            <>
-              <h3 className={styles.rotulo}>O que cada linha vira</h3>
-              <ul className={styles.lista} aria-label="O que cada linha vira">
-                {relatorio.linhas.map((l) => (
-                  <li key={l.linha}>{oQueEntra(l)}</li>
-                ))}
-              </ul>
-            </>
-          )}
-          {aGravar === 0 ? (
-            <p className={styles.dica}>Nada a gravar: nenhum cliente ou processo novo.</p>
-          ) : (
-            <>
-              <label className={styles.escolha}>
-                <input type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
-                Conferi o relatório: gravar {plural(relatorio.clientes.novos, 'cliente novo', 'clientes novos')} e{' '}
-                {plural(relatorio.processos.novos, 'processo novo', 'processos novos')}
-                {relatorio.erros.length > 0 ? `; ${deFora(relatorio.erros.length)}` : ''}
-              </label>
-              <div className={styles.acoes}>
-                <button type="button" className={styles.botao} disabled={!conferi || enviando} onClick={() => void gravar()}>
-                  {enviando ? 'gravando…' : 'Gravar no portal'}
-                </button>
-              </div>
-            </>
-          )}
+          <label className={styles.rotulo} htmlFor={idArquivo}>
+            Planilha (CSV)
+          </label>
+          <input id={idArquivo} className={styles.campo} type="file" accept=".csv,text/csv" onChange={(e) => void escolher(e.target.files?.[0])} />
+          <div className={styles.acoes}>
+            <button type="button" className={styles.botao} disabled={!arquivo || enviando} onClick={() => void simular()}>
+              {enviando && !relatorio ? 'simulando…' : 'Simular a importação'}
+            </button>
+          </div>
         </section>
-      )}
 
-      {gravado && (
-        <p className={styles.sucesso} role="status">
-          ✓ Gravados: {plural(gravado.clientes.novos, 'cliente novo', 'clientes novos')} e {plural(gravado.processos.novos, 'processo novo', 'processos novos')}.
-          {gravado.linhasComErro > 0 ? ` ${deFora(gravado.linhasComErro, true).replace(/^a/, 'A')}.` : ''}
-        </p>
-      )}
-    </main>
+        {erro && (
+          <p className={styles.erro} role="alert">
+            {erro}
+          </p>
+        )}
+
+        {relatorio && (
+          <section className={styles.cartao} aria-labelledby="relatorio">
+            <h2 id="relatorio" className={styles.cartaoTitulo}>
+              Relatório da simulação · {arquivo?.nome}
+            </h2>
+            <p>
+              Clientes: {plural(relatorio.clientes.novos, 'novo', 'novos')} · {plural(relatorio.clientes.jaCadastrados, 'já cadastrado', 'já cadastrados')} (pelo CPF,
+              não duplicam)
+            </p>
+            <p>
+              Processos: {plural(relatorio.processos.novos, 'novo', 'novos')} · {plural(relatorio.processos.jaCadastrados, 'já cadastrado', 'já cadastrados')}
+            </p>
+            {relatorio.colunasIgnoradas.length > 0 && <p className={styles.dica}>Colunas que o importador não lê: {relatorio.colunasIgnoradas.join(', ')}.</p>}
+            {relatorio.erros.length > 0 && (
+              <>
+                <h3 className={styles.rotulo}>Linhas com erro: ficam de fora</h3>
+                <ul className={styles.lista} aria-label="Linhas com erro">
+                  {relatorio.erros.map((e) => (
+                    <li key={e.linha}>
+                      Linha {e.linha}: {e.motivo}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {relatorio.linhas.length > 0 && (
+              <>
+                <h3 className={styles.rotulo}>O que cada linha vira</h3>
+                <ul className={styles.lista} aria-label="O que cada linha vira">
+                  {relatorio.linhas.map((l) => (
+                    <li key={l.linha}>{oQueEntra(l)}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {aGravar === 0 ? (
+              <p className={styles.dica}>Nada a gravar: nenhum cliente ou processo novo.</p>
+            ) : (
+              <>
+                <label className={styles.escolha}>
+                  <input type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
+                  Conferi o relatório: gravar {plural(relatorio.clientes.novos, 'cliente novo', 'clientes novos')} e{' '}
+                  {plural(relatorio.processos.novos, 'processo novo', 'processos novos')}
+                  {relatorio.erros.length > 0 ? `; ${deFora(relatorio.erros.length)}` : ''}
+                </label>
+                <div className={styles.acoes}>
+                  <button type="button" className={styles.botao} disabled={!conferi || enviando} onClick={() => void gravar()}>
+                    {enviando ? 'gravando…' : 'Gravar no portal'}
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {gravado && (
+          <p className={styles.sucesso} role="status">
+            ✓ Gravados: {plural(gravado.clientes.novos, 'cliente novo', 'clientes novos')} e {plural(gravado.processos.novos, 'processo novo', 'processos novos')}.
+            {gravado.linhasComErro > 0 ? ` ${deFora(gravado.linhasComErro, true).replace(/^a/, 'A')}.` : ''}
+          </p>
+        )}
+      </div>
+    </MolduraDaBase>
   )
 }

@@ -35,7 +35,7 @@ test('CA1 a CA6, CA8 a CA12 · a advogada percorre o caso do Antônio numa linha
 
   // O histórico e um documento aberto pelo caso (CA10, CA11); só os prazos do judicial (CA12).
   await page.getByRole('button', { name: /Histórico/ }).click()
-  await expect(page.getByRole('dialog')).toContainText('Vigília (IA) (IA) · D3a.01')
+  await expect(page.getByRole('dialog')).toContainText('Vigília (IA) (IA)')
   await page.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click()
   await page.getByRole('button', { name: 'Abrir Publicação no diário' }).click()
   await expect(page.getByRole('dialog')).toContainText('Origem: Diário (vigília)')

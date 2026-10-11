@@ -29,7 +29,7 @@ describe('Analisar laudo novo · tela da advogada', () => {
     const mudaram = [...tabela.querySelectorAll('[data-mudou]')].map((c) => c.textContent)
     expect(mudaram).toEqual(['Raio-X de coluna lombar e ressonância magnética (22/09)', 'Carregar peso, ficar em pé e dirigir'])
     expect(screen.getByText('A IA só compara: não sugere CID, grau nem conclusão (G20). Quem confirma o laudo e o parecer de suficiência (G17) é a advogada.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Ir para o parecer (D1.21M)' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/parecer')
+    expect(screen.getByRole('link', { name: 'Ir para o parecer' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/parecer')
   })
 
   it('CA6 · diante do roteiro: o relatório da Rita passa a cobrir o prognóstico e as barreiras, e nada mais falta', async () => {

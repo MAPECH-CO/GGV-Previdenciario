@@ -47,3 +47,15 @@
 .vazio {
   color: var(--cor-texto-suave-2);
 }
+
+/* Celular (11/10): os dias um embaixo do outro, cada um do tamanho do que tem. */
+@media (max-width: 760px) {
+  .semana {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+  }
+
+  .dia {
+    min-height: 0;
+  }
+}

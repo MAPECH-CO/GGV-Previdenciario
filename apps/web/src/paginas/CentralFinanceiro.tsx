@@ -14,8 +14,8 @@ import naoConstruida from './NaoConstruida.module.css'
 // Figma: "Central de trabalho · Financeiro" (59:863; v2 da GGVP-44, 2456:1350). É a tela inicial de quem entra como
 // Financeiro (App.tsx). A Gestão e o painel Financeiro entram no topo pelo perfil (itensDaGestao.ts).
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 const CHAT = { exemplo: 'Ex.: “o que chegou de prestação de contas hoje?”', sugestoes: ['Prestações recebidas', 'Documento novo', 'Resumo do cliente'] }

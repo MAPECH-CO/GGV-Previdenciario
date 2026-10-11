@@ -16,9 +16,9 @@ export function InstrucoesRecebimento({ fichaId, beneficio }: { fichaId: string;
       </div>
       <p className={styles.instrucoesTexto}>
         Receba o documento e identifique de quem é (nome ou CPF). Em papel: digitalize no scanner, que lê e classifica;
-        confira o resultado (D1.18). Digital: anexe ao card do cliente. Devolva o original se o cliente quiser levar.
+        confira o resultado. Digital: anexe ao card do cliente. Devolva o original se o cliente quiser levar.
         Documento sem dono identificado não entra no sistema. Vale em qualquer fase do processo. Laudo novo: o Atendimento
-        sobe, a IA lê e resume para o Jurídico e a documentação médica é reanalisada (D1.21M).
+        sobe, a IA lê e resume para o Jurídico e a documentação médica é reanalisada.
       </p>
       <div className={styles.atalhos}>
         <a className={styles.atalho} href={`/clientes/${fichaId}`}>

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App.tsx'
 import { registrarTentativaDeAssinatura } from './dados/contrato.ts'
@@ -327,7 +327,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Josefa Exemplo · Calcular tempo e pontos' })).toBeTruthy()
   })
 
-  it('GGVP-76 · a conversa com o cliente (D5.01)', async () => {
+  it('GGVP-76 · a conversa com o cliente', async () => {
     zerarExemplo()
     render(<App caminho="/conversas/conversa-pedro-ligacao" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })).toBeTruthy()
@@ -370,8 +370,11 @@ describe('App', () => {
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Início da Sênior' })).toBeTruthy()
     expect((await screen.findByRole('link', { name: 'Antônio Exemplo · Decidir cobrança' })).getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca/decidir')
-    expect(screen.getByRole('button', { name: 'Sênior' }).getAttribute('aria-haspopup')).toBe('menu')
-    expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy()
+    // Desde 11/10 o topo mostra a pessoa (nome e perfil); o Sair fica no menu dela.
+    const pessoa = screen.getByRole('button', { name: /, Sênior$/ })
+    expect(pessoa.getAttribute('aria-haspopup')).toBe('menu')
+    fireEvent.click(pessoa)
+    expect(screen.getByRole('menuitem', { name: 'Sair' })).toBeTruthy()
   })
 
   it('GGVP-78 · a Advogada cai na Central dela, pelo perfil da sessão', async () => {
@@ -381,7 +384,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
   })
 
-  it('GGVP-137 · a decisão da perícia (D2.03) fica em /pericia/decidir; /pericia é a página da perícia, também no caso do servidor', async () => {
+  it('GGVP-137 · a decisão da perícia fica em /pericia/decidir; /pericia é a página da perícia, também no caso do servidor', async () => {
     zerarExemplo()
     servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
     const id = '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b'

@@ -25,7 +25,7 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
             <span className={styles.beneficio}>◆ {nomeBeneficio(ficha.beneficioDefinido.beneficio)}</span>
             <span className={styles.etapa}>benefício definido pela advogada</span>
           </span>
-          {calculoPendente(ficha) && <span className={styles.urgente}>Calcular tempo e pontos (D1.13): obrigatório antes do fechamento</span>}
+          {calculoPendente(ficha) && <span className={styles.urgente}>Calcular tempo e pontos: obrigatório antes do fechamento</span>}
         </div>
       )}
       {processos.length === 0 && !ficha.beneficioDefinido && (

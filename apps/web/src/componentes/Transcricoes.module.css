@@ -1,7 +1,7 @@
 /* Figma 1626:2: janela larga, a lista das conversas à esquerda e a selecionada à direita. */
 .janela {
-  width: min(1080px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  width: min(1080px, calc(100vw / var(--zoom) - 32px));
+  max-height: calc(100vh / var(--zoom) - 32px);
   margin: auto;
   padding: 0;
   overflow: auto;
@@ -75,12 +75,14 @@
   border: 1px solid var(--cor-linha);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }
 
 .primario {
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .botao:disabled,
@@ -138,6 +140,7 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   text-align: left;
+  box-shadow: var(--sombra-1);
 }
 
 .item[aria-pressed='true'] {
@@ -331,6 +334,7 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font: inherit;
+  box-shadow: var(--sombra-1);
 }
 
 .player audio {
@@ -351,6 +355,7 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font: inherit;
+  box-shadow: var(--sombra-1);
 }
 
 .busca {

@@ -241,7 +241,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
             <span className={styles.estado} data-estado={g?.estado ?? 'antes'} role="status">
               {situacao}
             </span>
-            <span className={styles.chipAcento}>D1.09 · entrevista gravada</span>
+            <span className={styles.chipAcento}>entrevista gravada</span>
             <span className={styles.chipNeutro}>
               {g?.canal ?? 'presencial'} · {a.com ?? 'Advogada'} + você
             </span>
@@ -389,13 +389,13 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
               </h2>
               {g.audio && <p>O áudio ficou guardado no caso, para sempre: {g.audio.nome}.</p>}
               <p role="status">
-                {g.transcricao === 'transcrevendo' && 'Transcrevendo (D1.11)…'}
+                {g.transcricao === 'transcrevendo' && 'Transcrevendo…'}
                 {g.transcricao === 'aguardando-internet' &&
                   (online ? 'A internet voltou: enviando o áudio para a transcrição…' : 'Sem internet: o áudio está guardado neste computador e vai para a transcrição quando a conexão voltar.')}
                 {g.transcricao === 'pronta' &&
                   (g.semIa
-                    ? `Transcrição pronta (D1.11). A IA não leu a entrevista: ${g.semIa}. Leia a transcrição e preencha a ficha à mão.`
-                    : 'Transcrição pronta (D1.11): o resumo e as informações estão no caso, para conferir.')}
+                    ? `Transcrição pronta. A IA não leu a entrevista: ${g.semIa}. Leia a transcrição e preencha a ficha à mão.`
+                    : 'Transcrição pronta: o resumo e as informações estão no caso, para conferir.')}
                 {g.transcricao === 'falhou' && `A transcrição falhou: ${g.motivoDaFalha}.`}
                 {g.transcricao === 'sem-audio' && 'A anotação ficou no caso.'}
               </p>
@@ -417,7 +417,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                 )}
                 {(tarefa || ficha.situacao === 'lead') && (
                   <a className={base.atalho} href={`/clientes/${ficha.id}/cadastro`}>
-                    Cadastrar lead (D1.10)
+                    Cadastrar lead
                   </a>
                 )}
               </div>
@@ -564,16 +564,16 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
               Ao encerrar
             </h2>
             <p className={styles.vazio}>
-              A transcrição fica no caso (D1.11). A advogada cadastra o lead (D1.10) e define o benefício com a recomendação da IA,
-              conferindo antes de finalizar (D1.12).
+              A transcrição fica no caso. A advogada cadastra o lead e define o benefício com a recomendação da IA,
+              conferindo antes de finalizar.
             </p>
             {encerrada ? (
               <a className={styles.primario} href={`/entrevista/${a.id}/beneficio`}>
-                Definir o benefício (D1.12)
+                Definir o benefício
               </a>
             ) : (
               <button type="button" className={styles.secundario} disabled>
-                Definir o benefício (D1.12) · libera ao encerrar a entrevista
+                Definir o benefício · libera ao encerrar a entrevista
               </button>
             )}
           </section>

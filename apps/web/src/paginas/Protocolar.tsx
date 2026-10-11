@@ -5,6 +5,7 @@ import { nomeDoBeneficio, RegistrarProtocolo, SEGUNDOS_SENHA, type CasoParaProto
 import { chamarApi } from '../api.ts'
 import { CofreGovbr } from '../componentes/CofreGovbr.tsx'
 import { usePode } from '../sessao.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 
@@ -112,22 +113,19 @@ export function Protocolar({ casoId }: { casoId: string }) {
 
   if (!caso)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Protocolar no Meu INSS · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Protocolar no Meu INSS · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Protocolar no Meu INSS</h1>
       <p className={styles.subtitulo}>
         {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
@@ -195,6 +193,6 @@ export function Protocolar({ casoId }: { casoId: string }) {
           </div>
         </form>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

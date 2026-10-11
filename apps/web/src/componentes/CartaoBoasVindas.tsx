@@ -63,7 +63,7 @@ export function CartaoBoasVindas({ processoId, nome, versao }: Props) {
   return (
     <section className={styles.cartao} aria-labelledby="boas-vindas">
       <h2 id="boas-vindas" className={styles.cartaoTitulo}>
-        Boas-vindas (D1.22)
+        Boas-vindas
       </h2>
       {bv.situacao === 'ja-era-cliente' ? (
         <dl className={proprio.linhas}>

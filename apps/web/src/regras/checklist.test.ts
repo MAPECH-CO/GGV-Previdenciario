@@ -44,7 +44,7 @@ describe('Checklist do benefício (GGVP-91)', () => {
   it('CA2 · sem assinatura ou com data em branco, o item fica pendente (G1); contrato sem assinar também', () => {
     const e = entrada({ contratoAssinado: false, documentos: [{ tipo: 'rg', dataEmBranco: true }, { tipo: 'grupo-familiar', semAssinatura: true }] })
     expect(situacoes(e)).toEqual([
-      ['contrato', 'pendente', 'falta a assinatura do cliente (D1.17)'],
+      ['contrato', 'pendente', 'falta a assinatura do cliente'],
       ['rg', 'pendente', 'chegou com a data em branco (G1)'],
       ['grupo-familiar', 'pendente', 'chegou sem assinatura (G1)'],
     ])

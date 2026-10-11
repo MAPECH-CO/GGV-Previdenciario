@@ -3,10 +3,6 @@ import { nomeBeneficio } from '../dados/catalogos.ts'
 import type { Ficha } from '../dados/tipos.ts'
 
 type Props = {
-  /** Código do passo do BPMN: D1.16, D1.17, D1.19, D1.20. */
-  passo: string
-  /** O nome do passo, para quem passa o mouse no chip. */
-  nomeDoPasso: string
   /** A ação da lista fixa: "Preparar contrato", "Colher assinatura"... */
   tarefa: string
   subtitulo: string
@@ -19,15 +15,12 @@ type Props = {
 }
 
 /** Topo das telas do contrato (Figma step_D1.16 a step_D1.20): chips, "nome · tarefa", a linha de apoio e "O que você deve fazer". */
-export function CabecalhoDoContrato({ passo, nomeDoPasso, tarefa, subtitulo, ficha, beneficio, instrucoes, beneficioNosChips }: Props) {
+export function CabecalhoDoContrato({ tarefa, subtitulo, ficha, beneficio, instrucoes, beneficioNosChips }: Props) {
   const nome = nomeBeneficio(beneficio) || 'a definir'
   return (
     <>
       <div className={styles.cabecalho}>
         <div className={styles.chips}>
-          <span className={styles.codigo} title={`${passo} · ${nomeDoPasso} (passo do BPMN)`}>
-            {passo}
-          </span>
           <span className={styles.codigo}>Atendimento</span>
           {beneficioNosChips && <span className={styles.beneficio}>◆ {nome}</span>}
         </div>

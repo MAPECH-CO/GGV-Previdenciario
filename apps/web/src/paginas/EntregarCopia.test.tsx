@@ -47,7 +47,7 @@ describe('Entregar cópia do contrato (GGVP-89)', () => {
     expect(botao('Registrar entrega').disabled).toBe(false)
     fireEvent.click(botao('Registrar entrega'))
     expect(await screen.findByRole('heading', { name: '✓ Entrega registrada' })).toBeTruthy()
-    expect(screen.getByText(/Entregue em 05\/10 a Cleide Exemplo\. O caso segue para a conferência do checklist do benefício \(D1\.21\)\./)).toBeTruthy()
+    expect(screen.getByText(/Entregue em 05\/10 a Cleide Exemplo\. O caso segue para a conferência do checklist do benefício\./)).toBeTruthy()
     expect((await obterContrato('cleide-exemplo-2'))?.contrato.etapa).toBe('entregue')
   })
 

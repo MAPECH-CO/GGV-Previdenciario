@@ -23,6 +23,7 @@
   color: var(--cor-texto);
   font: inherit;
   font-size: var(--fonte-14);
+  box-shadow: var(--sombra-1);
 }
 
 .agravamentos {

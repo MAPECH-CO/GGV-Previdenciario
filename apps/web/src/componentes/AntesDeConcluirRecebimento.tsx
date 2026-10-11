@@ -11,7 +11,7 @@ export function AntesDeConcluirRecebimento({ forma, conferirPapel }: Props) {
       <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
         Antes de concluir
       </h2>
-      <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.02.</p>
+      <p className={styles.ladoSub}>O que este passo pede.</p>
       <h3 className={styles.ladoSecao}>Decisões</h3>
       <div className={styles.decisao}>
         <p>Chegou em papel ou digital?</p>
