@@ -137,7 +137,7 @@ export function tarefasDaFilaDaSenior(): Tarefa[] {
         acao: 'Conferir antes do INSS',
         detalhe: `${caso.beneficio} · liberado pela Documentação ${dia === hoje ? 'hoje' : dataCurta(dia, hoje)} às ${hora(l.quando)}`,
         prazo: 'hoje',
-        href: `/processos/${l.processoId}`,
+        href: `/casos/${l.processoId}`,
         processoId: l.processoId,
       },
     ]

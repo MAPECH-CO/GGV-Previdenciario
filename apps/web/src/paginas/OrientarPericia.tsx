@@ -70,7 +70,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
   const social = pericia.tipo === 'social'
   const feita = pericia.preparacao
   const problema = problemaDaOrientacao(texto)
-  const motivo = !revisei ? 'Marque «Revisei a orientação» antes de enviar.' : texto.trim() ? null : 'Escreva a orientação.'
+  const motivo = !revisei ? 'Marque «Revisei a orientação» antes de registrar.' : texto.trim() ? null : 'Escreva a orientação.'
   const documentosAbertos = pericia.pedeDocumentoNovo && !pericia.documentos?.concluida
   const recusas = pericia.enviosRecusados ?? []
 
@@ -80,7 +80,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
     setErro('')
     try {
       setT(await enviarOrientacao(processoId, { texto, canal, revisei }, quem))
-      setAviso(canal === 'chatwoot' ? 'Orientação enviada pelo Chatwoot e guardada no caso.' : 'Ligação registrada: a orientação ficou guardada no caso.')
+      setAviso(canal === 'chatwoot' ? 'Orientação registrada, não enviada pelo Chatwoot. O texto ficou guardado no caso.' : 'Ligação registrada: a orientação ficou guardada no caso.')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para enviar.')
       // A recusa do servidor fica registrada na perícia (CA6): a tela mostra.
@@ -112,8 +112,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             Ligue para {primeiro} e explique a {tipo} de {dataCurta(m.data, hoje)}: chegar 30 min antes; levar {O_QUE_LEVAR[pericia.tipo]};{' '}
             {social ? 'mostrar a casa como ela é no dia a dia e responder com calma' : 'contar ao perito o que sente no dia a dia e o que não consegue mais fazer no trabalho'}.
-            Oriente a responder com a verdade: nunca sugira esconder nem mudar a situação real (G11), nem diagnóstico ou frase pronta (G20). Ou envie o documento
-            pelo Chatwoot. Confirme presença um dia antes; se {primeiro} não puder ir, remarque na hora e registre o motivo.
+            Oriente a responder com a verdade: nunca sugira esconder nem mudar a situação real (G11), nem diagnóstico ou frase pronta (G20). O envio pelo Chatwoot ainda não está disponível nesta tela. Confirme presença um dia antes; se {primeiro} não puder ir, remarque na hora e registre o motivo.
           </InstrucoesPasso>
 
           {aviso && (
@@ -155,10 +154,10 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
           {feita ? (
             <section className={styles.feito} aria-labelledby="orientado">
               <h2 id="orientado" className={styles.feitoTitulo}>
-                ✓ Orientação passada
+                {feita.canal === 'chatwoot' ? 'Orientação registrada, não enviada' : '✓ Orientação passada'}
               </h2>
               <p>
-                {feita.canal === 'chatwoot' ? 'Enviada pelo Chatwoot, como documento e instrução' : 'Na ligação'}, em {dataHora(feita.quando)}, por {feita.quem}. O
+                {feita.canal === 'chatwoot' ? 'Registrada, não enviada pelo Chatwoot' : 'Na ligação'}, em {dataHora(feita.quando)}, por {feita.quem}. O
                 texto ficou guardado no caso:
               </p>
               <p className={proprio.documento}>{feita.texto}</p>
@@ -229,7 +228,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
                   type="button"
                   className={cobranca.botao}
                   disabled={!!feita || motivo !== null || !ficha.telefone}
-                  title="Envia o documento de orientação pelo Chatwoot"
+                  title="Registra o texto no caso, sem enviar pelo Chatwoot"
                   onClick={() => void enviar('chatwoot')}
                 >
                   WhatsApp
@@ -259,7 +258,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
                 Registrar a ligação e a orientação
               </button>
               <button type="button" className={proprio.secundario} disabled={motivo !== null || !ficha.telefone} onClick={() => void enviar('chatwoot')}>
-                Enviar orientação
+                Registrar orientação (sem enviar)
               </button>
               {motivo && <p className={styles.motivo}>{motivo}</p>}
             </div>
@@ -278,7 +277,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
           <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>Conferir: Revisei a orientação</p>
-          <p className={styles.ladoSub}>«Enviar orientação» só habilita com as conferências marcadas.</p>
+          <p className={styles.ladoSub}>«Registrar orientação (sem enviar)» só habilita com as conferências marcadas.</p>
           <p className={styles.trava}>Nunca instruir a esconder ou mudar a real situação (G11).</p>
           <p className={styles.ladoSub}>
             Até {DIAS_ANTES_PREPARO} dias antes da perícia. O envio recusado pela verificação fica registrado no caso.
