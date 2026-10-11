@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(520px, calc(100vw - 32px));
+  width: min(520px, calc(100vw / var(--zoom) - 32px));
   margin: auto;
   padding: 18px 22px 16px;
   border: 0;
@@ -60,6 +60,7 @@
   font: inherit;
   font-size: var(--fonte-13);
   resize: vertical;
+  box-shadow: var(--sombra-1);
 }
 
 .erro {
@@ -85,12 +86,14 @@
   border: 1px solid var(--cor-borda-controle);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }
 
 .enviar {
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .enviar:disabled {

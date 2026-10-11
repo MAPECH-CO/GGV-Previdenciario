@@ -17,18 +17,31 @@ describe('BotoesPreferencias', () => {
     expect(document.documentElement.dataset.tema).toBe('claro')
   })
 
-  it('alterna a fonte padrão e grande', () => {
+  it('aumenta e diminui o tamanho de 10 em 10; o número volta a 100%', () => {
     render(<BotoesPreferencias />)
-    fireEvent.click(screen.getByRole('button', { name: 'Aumentar a fonte' }))
-    expect(document.documentElement.dataset.fonte).toBe('grande')
-    expect(screen.getByRole('button', { name: 'Diminuir a fonte' }).textContent).toBe('A−')
+    const aumentar = screen.getByRole('button', { name: 'Aumentar o tamanho' })
+    fireEvent.click(aumentar)
+    fireEvent.click(aumentar)
+    expect(document.documentElement.style.zoom).toBe('1.2')
+    expect(screen.getByRole('button', { name: 'Tamanho em 120%. Voltar a 100%' }).textContent).toBe('120%')
+    fireEvent.click(screen.getByRole('button', { name: 'Diminuir o tamanho' }))
+    expect(document.documentElement.style.zoom).toBe('1.1')
+    fireEvent.click(screen.getByRole('button', { name: /^Tamanho em 110%/ }))
+    expect(document.documentElement.style.zoom).toBe('')
+  })
+
+  it('nos limites, o botão daquele lado fica desligado', () => {
+    iniciarPreferencias('?escala=70')
+    render(<BotoesPreferencias />)
+    expect((screen.getByRole('button', { name: 'Diminuir o tamanho' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Aumentar o tamanho' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('dois conjuntos de botões na tela ficam em sincronia', () => {
     render(
       <>
         <BotoesPreferencias />
-        <BotoesPreferencias />
+        <BotoesPreferencias empilhado />
       </>,
     )
     fireEvent.click(screen.getAllByRole('button', { name: 'Mudar para o tema escuro' })[0])

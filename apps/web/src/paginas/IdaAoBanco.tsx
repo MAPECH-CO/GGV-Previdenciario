@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
 import { AgendarIdaAoBanco, CANAIS_DE_AVISO, RegistrarEnvio, type IdaAoBancoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const ROTULO_CANAL = { whatsapp: 'WhatsApp', telefone: 'Telefone', email: 'E-mail', sms: 'SMS' } as const
@@ -60,22 +61,19 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
 
   if (!b)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Avisar e agendar a ida ao banco · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Avisar e agendar a ida ao banco · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Avisar resultado e agendar a ida ao banco</h1>
       <p className={styles.subtitulo}>{b.cliente}</p>
 
@@ -187,6 +185,6 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
         </section>
       )}
       {b.encerrado && <span className={styles.selo}>Recebimento confirmado · caso encerrado</span>}
-    </main>
+    </TelaDePasso>
   )
 }

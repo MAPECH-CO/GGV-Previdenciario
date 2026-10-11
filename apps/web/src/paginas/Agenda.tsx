@@ -22,8 +22,8 @@ import styles from './Agenda.module.css'
 export type Vista = 'semana' | 'mes' | 'lista'
 
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 const mesCurto = (iso: string) => MESES[Number(iso.slice(5, 7)) - 1].slice(0, 3)
@@ -88,7 +88,7 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
             <p className={styles.subtitulo}>
               {vista === 'lista'
                 ? 'Tudo o que vem pela frente, em ordem de data. Os prazos aparecem no dia final (G12).'
-                : 'Visitas, perícias, audiências, protocolos, prazos, idas ao banco e retornos. Cada evento nasce de uma etapa do BPMN.'}
+                : 'Visitas, perícias, audiências, protocolos, prazos, idas ao banco e retornos. Cada evento nasce de uma etapa do processo.'}
             </p>
           </div>
           <button type="button" className={styles.novo} onClick={() => setNovo(true)}>
@@ -139,7 +139,7 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
 
         {vista === 'semana' && (
           <p className={styles.nota}>
-            Clique num evento para ver o detalhe. O evento nasce da etapa (ex.: D1.09 entrevista, DP.02 perícia, D2.02 e D3.07 protocolo) e
+            Clique num evento para ver o detalhe. O evento nasce da etapa (a entrevista, a perícia, o protocolo) e
             volta para a tarefa quando é realizado. A advogada vê todos os tipos; o Atendimento vê visitas, perícias, bancos, retornos e prazos.
           </p>
         )}

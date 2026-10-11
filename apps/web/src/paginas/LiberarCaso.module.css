@@ -64,3 +64,9 @@
   background: var(--cor-painel-neutro);
   font-size: var(--fonte-14);
 }
+
+/* Botão que lê como link: sublinha ao passar, sem a camada dos outros botões (base.css). */
+.abrir:is(:hover, :active):not(:disabled) {
+  background-image: none;
+  text-decoration: underline;
+}

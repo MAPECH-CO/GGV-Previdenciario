@@ -1,7 +1,7 @@
 /* Figma 2224:2: janela de 600 com fundo escuro atrás. */
 .janela {
-  width: min(600px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  width: min(600px, calc(100vw / var(--zoom) - 32px));
+  max-height: calc(100vh / var(--zoom) - 32px);
   margin: auto;
   padding: 0;
   overflow: auto;
@@ -202,12 +202,14 @@
   border: 1px solid var(--cor-borda-controle);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }
 
 .enviar {
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .enviar:disabled {

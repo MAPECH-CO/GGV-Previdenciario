@@ -106,9 +106,6 @@ export function ReceberDocumento({ tarefaId }: { tarefaId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.02 · Receber documento (passo do BPMN)">
-                D1.02
-              </span>
               <span className={styles.codigo}>Documentação</span>
               <span className={styles.codigo}>{tarefa.prazo ?? '—'}</span>
             </div>

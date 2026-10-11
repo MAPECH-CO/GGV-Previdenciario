@@ -19,7 +19,9 @@ test('CA1 e CA3 · sem sessão vai ao login; depois de entrar, volta para a tela
 
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
-  await page.getByRole('button', { name: 'Sair' }).click()
+  // Desde 11/10 o Sair fica no menu da pessoa, no topo.
+  await page.getByRole('button', { name: /, Atendimento$/ }).click()
+  await page.getByRole('menuitem', { name: 'Sair' }).click()
   await expect(page).toHaveURL('/entrar')
   await page.goto('/')
   await expect(page).toHaveURL(/\/entrar/)

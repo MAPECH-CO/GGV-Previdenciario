@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { diaLocal, hojeIso, isoParaData } from '@ggv/campos'
 import { AprovarVersao, AutorizarDilacao, EncerrarSemProva, ProtocolarManifestacao, RegistrarIndisponibilidade, type Manifestacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
@@ -134,24 +135,21 @@ export function Manifestar({ casoId }: { casoId: string }) {
 
   if (!m)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Manifestar no processo · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const ultima = m.versoes.at(-1)
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Manifestar no processo · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Manifestar no processo</h1>
       <p className={styles.subtitulo}>
         {m.cliente} · prazo até {dia(m.prazo.fim)}
@@ -299,6 +297,6 @@ export function Manifestar({ casoId }: { casoId: string }) {
           </div>
         </section>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

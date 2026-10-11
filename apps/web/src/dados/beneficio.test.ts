@@ -49,7 +49,7 @@ describe('Definir o benefício · servidor de exemplo', () => {
     await definirBeneficio('natalia-entrevista', { beneficio: 'incapacidade-permanente', conferi: true })
     const ficha = (await obterFicha('natalia-exemplo'))!
     expect(ficha.historico.slice(-2).map((e) => e.oQue)).toEqual([
-      'Definiu o benefício do caso (D1.12): Aposentadoria por Incapacidade Permanente · o que citou na entrevista (G3)',
+      'Definiu o benefício do caso: Aposentadoria por Incapacidade Permanente · o que citou na entrevista (G3)',
       'Manteve o que citou na entrevista; a IA sugeria Auxílio por Incapacidade Temporária (G3)',
     ])
   })

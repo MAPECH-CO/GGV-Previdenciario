@@ -41,13 +41,13 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
       <title>Início · GGV Previdenciário</title>
       <Topbar
         itens={[
-          { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
+          { id: 'inicio', rotulo: 'Início', href: '/' },
           // GGVP-78: a Agenda depois do Início, como no Figma da Sênior (1927:14) e do Financeiro (1933:29).
-          { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
-          ...(estudos ? [{ id: 'estudos', glifo: '📚', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
-          ...(roteiros ? [{ id: 'roteiros', glifo: '☰', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
+          { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
+          ...(estudos ? [{ id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
+          ...(roteiros ? [{ id: 'roteiros', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
           ...(gestao ? ITENS_DA_GESTAO : ITENS_DA_GESTAO.filter((i) => resultados && i.id === 'resultados')),
-          ...(importar ? [{ id: 'importar', glifo: '⇪', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
+          ...(importar ? [{ id: 'importar', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
         ]}
         ativo="inicio"
         funcao={rotulo}

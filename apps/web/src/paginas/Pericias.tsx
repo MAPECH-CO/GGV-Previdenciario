@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { AprovarRecomendacao, type PericiasDoCaso, type RecomendacaoDaPericia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 type Pericia = PericiasDoCaso['pericias'][number]
@@ -121,11 +122,8 @@ export function Pericias({ casoId }: { casoId: string }) {
   }, [casoId, versao])
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Perícias do caso · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Perícias do caso</h1>
       {x && <p className={styles.subtitulo}>{x.cliente}</p>}
       {erro && (
@@ -183,6 +181,6 @@ export function Pericias({ casoId }: { casoId: string }) {
           )}
         </section>
       ))}
-    </main>
+    </TelaDePasso>
   )
 }

@@ -37,6 +37,7 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-acento);
 }
 
 .vazia {
@@ -88,4 +89,14 @@
   color: var(--cor-texto);
   font-size: var(--fonte-12);
   font-weight: 600;
+  box-shadow: var(--sombra-1);
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.novaDemanda:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.novaDemanda:not(:disabled):active {
+  background-image: var(--estado-apertar);
 }

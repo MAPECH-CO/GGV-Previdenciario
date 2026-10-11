@@ -66,7 +66,7 @@ describe('Calcular tempo e pontos · servidor de exemplo', () => {
       },
     ])
     expect(ficha.historico.at(-1)?.oQue).toBe(
-      'Calculou tempo e pontos sobre o CNIS (D1.13): 18 anos e 4 meses, 79,5 pontos, Transição por pontos (EC 103, art. 15); já pode se aposentar',
+      'Calculou tempo e pontos sobre o CNIS: 18 anos e 4 meses, 79,5 pontos, Transição por pontos (EC 103, art. 15); já pode se aposentar',
     )
     expect(calculoPendente(ficha)).toBe(false)
     expect(tarefasDoSetor('Jurídico').map((t) => t.acao)).not.toContain('Calcular tempo e pontos')
@@ -80,7 +80,7 @@ describe('Calcular tempo e pontos · servidor de exemplo', () => {
     expect(ficha.calculos![0].tempo).toEqual({ anos: 18, meses: 4, dias: 0 })
     expect(ficha.calculos![1]).toMatchObject({ podeAposentar: false, dataPrevista: '2028-03-15' })
     expect(ficha.historico.at(-1)?.oQue).toBe(
-      'Refez o cálculo de tempo e pontos (D1.13). Antes: 18 anos e 4 meses, 79,5 pontos, Transição por pontos (EC 103, art. 15); já pode se aposentar. Agora: 14 anos, 2 meses e 10 dias, 74,0 pontos, Transição por pontos (EC 103, art. 15); ainda não pode se aposentar: previsto para 15/03/2028',
+      'Refez o cálculo de tempo e pontos. Antes: 18 anos e 4 meses, 79,5 pontos, Transição por pontos (EC 103, art. 15); já pode se aposentar. Agora: 14 anos, 2 meses e 10 dias, 74,0 pontos, Transição por pontos (EC 103, art. 15); ainda não pode se aposentar: previsto para 15/03/2028',
     )
   })
 })

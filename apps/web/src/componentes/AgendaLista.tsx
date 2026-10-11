@@ -48,7 +48,6 @@ export function AgendaLista({ desde, eventos, hoje, aoAbrir }: Props) {
                     </span>
                     <span className={styles.detalhe}>{detalheDoEvento(e)}</span>
                   </span>
-                  {e.passo && <span className={styles.passo}>{e.passo.split(' ')[0]}</span>}
                   <span className={styles.estado}>{ESTADO[e.estado]}</span>
                 </button>
               </li>

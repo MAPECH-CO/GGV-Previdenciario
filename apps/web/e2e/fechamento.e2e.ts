@@ -45,7 +45,7 @@ test('GGVP-60 CA1, CA2, CA5, CA6, CA8 e CA12 · não fechou com recontato: a dat
   await expect(page.getByRole('listitem').filter({ has: tarefa })).toContainText('motivo: preço · último cálculo: nenhum registrado · (11) 90000-0003')
   await tarefa.click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Natália Exemplo · Recontatar lead')
-  await page.getByRole('radio', { name: 'Quer seguir: voltar ao cálculo (D1.13)' }).click()
+  await page.getByRole('radio', { name: 'Quer seguir: voltar ao cálculo' }).click()
   await page.getByRole('button', { name: 'Registrar o recontato' }).click()
   await expect(page.getByRole('heading', { name: '✓ O caso volta ao cálculo de tempo e pontos' })).toBeVisible()
 })
@@ -72,7 +72,7 @@ test('GGVP-60 CA5 · "Sim, fechou": vira cliente e segue para o kit', async ({ p
   await page.getByRole('radio', { name: 'Sim, fechou' }).click()
   await page.getByRole('button', { name: 'Registrar fechamento' }).click()
   await expect(page.getByRole('heading', { name: '✓ Fechou com o escritório: Natália é cliente' })).toBeVisible()
-  await expect(page.getByText('Auxílio por Incapacidade Temporária: segue para o kit do benefício (D1.15).')).toBeVisible()
+  await expect(page.getByText('Auxílio por Incapacidade Temporária: segue para o kit do benefício.')).toBeVisible()
 })
 
 test('tema escuro e fonte grande no registrar fechamento', async ({ page }) => {
@@ -80,6 +80,6 @@ test('tema escuro e fonte grande no registrar fechamento', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Natália Exemplo · Registrar fechamento')
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   await expect(page.getByRole('region', { name: 'Preencher' })).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
 })

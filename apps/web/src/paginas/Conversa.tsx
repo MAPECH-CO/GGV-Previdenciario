@@ -197,9 +197,6 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
         <div className={base.principal}>
           <div className={base.cabecalho}>
             <div className={base.chips}>
-              <span className={base.codigo} title="D5.01 · Registrar a conversa (passo do BPMN)">
-                D5.01
-              </span>
               <span className={proprio.setor}>{papel}</span>
             </div>
             <h1 className={base.titulo}>
@@ -236,8 +233,8 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               </button>
             </div>
             <p className={base.nota}>
-              Depois de finalizar, a IA transcreve e marca o que muda na ficha e no processo (D5.02); nada vai para a ficha sem você
-              conferir (D5.04).
+              Depois de finalizar, a IA transcreve e marca o que muda na ficha e no processo; nada vai para a ficha sem você
+              conferir.
             </p>
           </section>
 
@@ -259,7 +256,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
 
           <p className={base.aviso}>
             Quando usar: lead que ainda não foi aceito ou cliente com o caso em análise; dúvida sobre o processo ou informação nova que
-            muda a ficha (D5 no Miro).
+            muda a ficha.
           </p>
 
           {(c.canal === 'ligacao' || c.comQuem !== 'cliente') && (
@@ -495,8 +492,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               </button>
               <p className={base.nota}>
                 A gravação da ligação fica na conversa do cliente no Chatwoot, como mensagem privada: baixe o áudio e suba aqui. O
-                portal não busca nada no Chatwoot. O áudio fica no card do cliente, guardado; a IA transcreve e marca o que muda
-                (D5.02).
+                portal não busca nada no Chatwoot. O áudio fica no card do cliente, guardado; a IA transcreve e marca o que muda.
               </p>
             </section>
           )}
@@ -518,8 +514,8 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               </h2>
               {g.audio && <p>O áudio ficou guardado no card do cliente: {g.audio.nome}.</p>}
               <p role="status">
-                {g.transcricao === 'transcrevendo' && 'Transcrevendo (D5.02)…'}
-                {g.transcricao === 'pronta' && 'Transcrição pronta (D5.02): o texto está nas transcrições do card.'}
+                {g.transcricao === 'transcrevendo' && 'Transcrevendo…'}
+                {g.transcricao === 'pronta' && 'Transcrição pronta: o texto está nas transcrições do card.'}
                 {g.transcricao === 'falhou' && `A transcrição falhou: ${g.motivoDaFalha}. O áudio está guardado; nada se perdeu.`}
                 {g.transcricao === 'sem-audio' && 'O registro ficou no card, como "só registro".'}
               </p>
@@ -605,7 +601,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               )}
               <div className={base.atalhos}>
                 <a className={vivo.primario} href={`/conversas/${c.id}/conferir`}>
-                  Conferir e atualizar (D5.04)
+                  Conferir e atualizar
                 </a>
               </div>
               <p className={base.nota}>A IA só muda o que foi dito; nada vai para a ficha nem para o processo sem você conferir (G14).</p>
@@ -617,7 +613,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
           <h2 id="antes-de-concluir" className={base.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={base.ladoSub}>O que o BPMN (Miro) pede no passo D5.01.</p>
+          <p className={base.ladoSub}>O que este passo pede.</p>
           <h3 className={base.ladoSecao}>Campos</h3>
           <ul className={base.ladoLista}>
             <li>• Canal da conversa (telefone ou presencial)*</li>

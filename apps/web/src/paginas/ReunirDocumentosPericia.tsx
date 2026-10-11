@@ -80,9 +80,6 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="DP.03 · Reunir o que a perícia pede (passo do BPMN)">
-                DP.03
-              </span>
               <span className={styles.codigo}>Documentação</span>
             </div>
             <h1 className={styles.titulo}>
@@ -112,7 +109,7 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
               </h2>
               <p>
                 Concluído por {concluida.quem} em {dataHora(concluida.quando)}. O fluxo voltou ao Jurídico administrativo:{' '}
-                {pericia.marcacao ? `ligar e orientar ${primeiro} (DP.06).` : 'subir o comprovante do INSS (DP.02).'}
+                {pericia.marcacao ? `ligar e orientar ${primeiro}.` : 'subir o comprovante do INSS.'}
               </p>
             </section>
           ) : (
@@ -238,7 +235,7 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo DP.03.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>«Concluir» só habilita com as conferências marcadas e o pendente resolvido: anexado, ou a falta registrada com justificativa.</p>
           <p className={styles.ladoSub}>
@@ -256,7 +253,7 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
           aoEnviar={async (r) => {
             setAnexar(false)
             setT(await obterPericia(processoId))
-            setAviso(`${r.arquivos.length === 1 ? '1 arquivo enviado' : `${r.arquivos.length} arquivos enviados`} para a pasta do cliente: seguem a leitura da IA (D1).`)
+            setAviso(`${r.arquivos.length === 1 ? '1 arquivo enviado' : `${r.arquivos.length} arquivos enviados`} para a pasta do cliente: seguem a leitura da IA.`)
           }}
           aoFechar={() => setAnexar(false)}
         />

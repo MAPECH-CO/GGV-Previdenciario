@@ -71,9 +71,6 @@ export function DecidirCobranca({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.23 · Cobrança de pendentes (passo do BPMN)">
-                D1.23
-              </span>
               <span className={proprio.senior}>Sênior</span>
             </div>
             <h1 className={styles.titulo}>
@@ -91,7 +88,7 @@ export function DecidirCobranca({ processoId }: { processoId: string }) {
           <section className={styles.cartao} aria-label="Laço e pendências">
             <dl className={proprio.linhas}>
               <dt>Laço</dt>
-              <dd>Cobrar documentos pendentes (D1.23) · Atendimento</dd>
+              <dd>Cobrar documentos pendentes · Atendimento</dd>
               <dt>Pendências</dt>
               <dd>{faltam.length > 0 ? juntar(faltam) : 'nada falta'}</dd>
               {cobranca.prazo && (

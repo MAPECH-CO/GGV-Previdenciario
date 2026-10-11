@@ -1,36 +1,52 @@
-/* Telas de passo (GGVP-8): coluna única, blocos em cartão, sobre a base de tokens do Pedro. */
+/* Telas de passo (GGVP-8): coluna única, blocos em cartão, sobre a base de tokens do Pedro.
+   Refinamento de 11/10: o mesmo acabamento das telas do Figma (cartão de 14 com sombra curta, campo de 10, botões com
+   estado, selos com o tom de cada situação), sem mudar o que cada tela mostra. */
 .pagina {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: min(760px, 100%);
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 24px 16px 56px;
 }
 
 .voltar {
+  align-self: flex-start;
+  margin-bottom: -4px;
   color: var(--cor-texto-suave);
   font-size: var(--fonte-13);
+  font-weight: 500;
+  text-underline-offset: 3px;
+}
+
+.voltar:hover {
+  color: var(--cor-texto);
+  text-decoration: underline;
 }
 
 .titulo {
-  font-size: var(--fonte-22);
-  font-weight: 600;
+  font-size: var(--fonte-24);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .subtitulo {
+  margin-top: -8px;
   color: var(--cor-texto-suave);
   font-size: var(--fonte-14);
+  line-height: 1.45;
 }
 
 .cartao {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  gap: 12px;
+  padding: 18px 20px;
   border: 1px solid var(--cor-linha);
-  border-radius: var(--raio-12);
+  border-radius: var(--raio-14);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .cartaoTitulo {
@@ -48,9 +64,19 @@
   font-weight: 600;
 }
 
+/* O selo de alerta e o de erro também valem sozinhos (sem o .selo), como em Resultados. */
+.seloAlerta,
+.seloErro {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--raio-pilula);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
 .seloAlerta {
   background: var(--cor-alerta-suave);
-  color: var(--cor-texto);
+  color: var(--cor-alerta-2);
 }
 
 .seloErro {
@@ -61,9 +87,16 @@
 .lista {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   padding-left: 20px;
   font-size: var(--fonte-14);
+  line-height: 1.45;
+}
+
+.lista > li::marker {
+  color: var(--cor-acento);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .rotulo {
@@ -78,6 +111,11 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font-size: var(--fonte-15);
+  box-shadow: var(--sombra-1);
+}
+
+.campo::placeholder {
+  color: var(--cor-texto-suave-2);
 }
 
 .campo:focus-visible,
@@ -93,17 +131,21 @@
 
 .escolha {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: var(--fonte-14);
+  cursor: pointer;
 }
 
 .erro {
-  padding: 10px 12px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--cor-erro) 22%, transparent);
   border-radius: var(--raio-10);
   background: var(--cor-erro-suave);
   color: var(--cor-erro);
   font-size: var(--fonte-13);
+  line-height: 1.4;
 }
 
 .erroCampo {
@@ -112,20 +154,24 @@
 }
 
 .sucesso {
-  padding: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--cor-ok) 25%, transparent);
   border-radius: var(--raio-10);
   background: var(--cor-ok-suave);
+  color: var(--cor-texto);
   font-size: var(--fonte-14);
+  line-height: 1.4;
 }
 
 .dica {
-  color: var(--cor-texto-suave-2);
+  color: var(--cor-texto-suave);
   font-size: var(--fonte-12);
 }
 
 .acoes {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
 }
 
@@ -138,6 +184,7 @@
   font-size: var(--fonte-14);
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--sombra-acento);
 }
 
 .botao:disabled {
@@ -154,10 +201,67 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--sombra-1);
+}
+
+.botaoSecundario:disabled {
+  opacity: 0.5;
 }
 
 .senha {
   font-family: ui-monospace, monospace;
   font-size: var(--fonte-16);
   letter-spacing: 0.04em;
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.botao:not(:disabled):hover,
+.botaoSecundario:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.botao:not(:disabled):active,
+.botaoSecundario:not(:disabled):active {
+  background-image: var(--estado-apertar);
+}
+
+/* Grupo de opções (rádio e caixa): a moldura fina do cartão no lugar do sulco cinza do navegador. */
+.cartao fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+}
+
+.cartao legend {
+  padding: 0 6px;
+  font-size: var(--fonte-13);
+  font-weight: 600;
+}
+
+/* O botão do campo de arquivo no mesmo desenho do botão secundário. */
+.cartao input[type='file']::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--sombra-1);
+}
+
+.cartao input[type='file']::file-selector-button:hover {
+  background-image: var(--estado-passar);
+}
+
+/* Campo dentro de uma linha de escolha: nunca mais largo que a linha (celular). */
+.escolha > .campo {
+  min-width: 0;
+  max-width: 100%;
 }

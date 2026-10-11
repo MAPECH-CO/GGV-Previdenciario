@@ -104,9 +104,6 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="DP.07 · Registrar o comparecimento à perícia (passo do BPMN)">
-                DP.07
-              </span>
               <span className={styles.codigo}>Jurídico administrativo</span>
             </div>
             <h1 className={styles.titulo}>
@@ -297,7 +294,7 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo DP.07.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <ul className={styles.ladoLista}>
             <li>• Na véspera: confirmou, não confirmou ou não vai poder ir</li>

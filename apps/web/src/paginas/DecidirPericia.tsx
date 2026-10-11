@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { DecidirPericia as Contrato, TIPOS_DE_PERICIA } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const ROTULO = { medica: 'Perícia médica', social: 'Avaliação social' } as const
@@ -27,11 +28,8 @@ export function DecidirPericia({ casoId }: { casoId: string }) {
   const alternar = (t: Tipo) => setTipos((atual) => (atual.includes(t) ? atual.filter((x) => x !== t) : [...atual, t]))
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Decidir perícia · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Precisa de perícia?</h1>
       <p className={styles.subtitulo}>A decisão corre junto com o protocolo. A marcação é do Jurídico administrativo.</p>
       {feito ? (
@@ -82,6 +80,6 @@ export function DecidirPericia({ casoId }: { casoId: string }) {
           </div>
         </form>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

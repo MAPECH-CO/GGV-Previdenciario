@@ -197,7 +197,7 @@ export async function registrarRecontato(fichaId: string, r: ResultadoDoRecontat
     if (r.resultado === 'calculo') {
       ficha.fechamento = { ...f, situacao: 'recalcular', quem: QUEM, quando }
       ficha.contatos.push({ data: hoje, canal: 'Recontato', texto: 'Quer seguir: o caso volta ao cálculo de tempo e pontos.' })
-      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos (D1.13)'))
+      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos'))
     } else {
       const detalhe = r.detalhe?.trim() || undefined
       const valido = MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === r.motivo) && podeRegistrarOMotivo(r.motivo, r.papel) && (detalhe?.length ?? 0) <= TAMANHO_DO_DETALHE

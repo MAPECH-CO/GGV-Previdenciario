@@ -51,9 +51,6 @@ export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string })
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.06 · Preparar a entrevista (passo do BPMN)">
-                D1.06
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>
@@ -177,12 +174,12 @@ export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string })
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.06.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas e estados</h3>
-          <p>Chega aqui quando a cliente já preencheu a ficha (D1.04: «Já preencheu a ficha? Sim»).</p>
+          <p>Chega aqui quando a cliente já preencheu a ficha (na confirmação: «Já preencheu a ficha? Sim»).</p>
           <p>Senha do gov.br no cofre antes da entrevista (G9).</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
-          <p>Depois: D1.07 · Analisar a ficha. Se pode ser auxílio acidentário, a cliente preenche a segunda ficha.</p>
+          <p>Depois: analisar a ficha. Se pode ser auxílio acidentário, a cliente preenche a segunda ficha.</p>
         </aside>
       </main>
       <AbaSuporte />

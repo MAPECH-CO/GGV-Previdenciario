@@ -34,7 +34,7 @@ describe('Conferir conversa · tela do passo (GGVP-84)', () => {
   it('CA4, CA5 e CA8 · campo por campo, com Confirmar, Corrigir e Desfazer; o fato novo fica para o Jurídico confirmar', async () => {
     const c = await conversaTranscrita()
     await abrir(c.id)
-    expect(screen.getByText('D5.04')).toBeTruthy()
+    expect(screen.queryByText('D5.04')).toBeNull()
     expect(screen.getByText('Auxílio por Incapacidade Temporária · conversa de hoje por presencial (14:32) · o que a IA quer mudar')).toBeTruthy()
     const lista = screen.getByRole('list', { name: 'O que a IA quer mudar' })
     expect(within(lista).getAllByRole('listitem')).toHaveLength(5)
@@ -129,7 +129,7 @@ describe('Pendência da conversa vira tarefa · tela (GGVP-88)', () => {
   async function comPendencia(id: string) {
     await abrir(id)
     fireEvent.click(botao('Desfazer'))
-    fireEvent.click(screen.getByRole('radio', { name: 'Sim — criar a tarefa no card (D5.05)' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Sim — criar a tarefa no card' }))
   }
 
   it('CA1, CA3 e CA4 · citou o setor: pergunta quem do setor; escolhida a pessoa, a tarefa nasce no card com o combinado e o prazo', async () => {

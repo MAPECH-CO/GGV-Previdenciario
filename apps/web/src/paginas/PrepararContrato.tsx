@@ -129,8 +129,6 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoContrato
-            passo="D1.16"
-            nomeDoPasso="Preparar o contrato pelo modelo e conferir"
             tarefa="Preparar contrato"
             subtitulo={`${nomeBeneficio(processo.beneficio)} · ${modelo ? `pelo ${modelo.nome}` : kit ? 'falta o modelo' : 'sem kit cadastrado'}`}
             ficha={ficha}
@@ -246,7 +244,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.16.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="aprovados">Os documentos foram aprovados?</p>

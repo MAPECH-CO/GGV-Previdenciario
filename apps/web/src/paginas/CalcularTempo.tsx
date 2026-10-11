@@ -99,9 +99,6 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.13 · Calcular tempo e pontos (passo do BPMN)">
-                D1.13
-              </span>
               <span className={proprio.perfil}>Advogado do atendimento</span>
             </div>
             <h1 className={styles.titulo}>
@@ -117,12 +114,12 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
               </h2>
               <p className={proprio.texto}>
                 {beneficio
-                  ? `${nomeBeneficio(beneficio)} não exige cálculo: o caso segue para «O cliente fechou com o escritório?» (D1.14).`
-                  : 'O benefício do caso ainda não foi definido pela advogada (D1.12).'}
+                  ? `${nomeBeneficio(beneficio)} não exige cálculo: o caso segue para «O cliente fechou com o escritório?».`
+                  : 'O benefício do caso ainda não foi definido pela advogada.'}
               </p>
               {!beneficio && (
                 <a className={styles.atalho} href={`/entrevista/${agendamentoId}/beneficio`}>
-                  Definir o benefício (D1.12)
+                  Definir o benefício
                 </a>
               )}
             </section>
@@ -159,8 +156,8 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
                   </h2>
                   <p>
                     {feito.podeAposentar
-                      ? 'Já pode se aposentar. O caso segue para «O cliente fechou com o escritório?» (D1.14).'
-                      : `Ainda não pode se aposentar: previsto para ${dataCurta(feito.dataPrevista!, hoje)}. O caso segue para «Registrar o motivo» (D1.14), com a data prevista.`}
+                      ? 'Já pode se aposentar. O caso segue para «O cliente fechou com o escritório?».'
+                      : `Ainda não pode se aposentar: previsto para ${dataCurta(feito.dataPrevista!, hoje)}. O caso segue para «Registrar o motivo», com a data prevista.`}
                   </p>
                   <p>Ficou registrado o tempo, os pontos, a regra e quem conferiu, com o CNIS usado.</p>
                   <div className={styles.atalhos}>
@@ -284,7 +281,7 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.13.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="ja-pode">Já pode se aposentar?</p>
@@ -315,7 +312,7 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
           <p>Conferir: Conferi o cálculo com o CNIS</p>
           <p className={styles.ladoSub}>«Concluir» só habilita com as decisões respondidas e as conferências marcadas.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
-          <p>«Ainda não»: o caso vai para «Registrar o motivo» (D1.14) com a data prevista. «Sim»: segue para o fechamento.</p>
+          <p>«Ainda não»: o caso vai para «Registrar o motivo» com a data prevista. «Sim»: segue para o fechamento.</p>
         </aside>
       </main>
       <AbaSuporte />

@@ -102,9 +102,6 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.24 · Liberar ao Jurídico (passo do BPMN)">
-                D1.24
-              </span>
               <span className={styles.codigo}>Documentação</span>
               <span className={styles.beneficio}>◆ {beneficio}</span>
             </div>
@@ -125,7 +122,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
                 ✓ Liberado ao Jurídico às {hora(liberacao.quando)}
               </h2>
               <p>
-                {liberacao.quem} liberou em {dataHora(liberacao.quando)}. O caso entrou na fila da sênior, que confere antes do INSS (D2.01). Ficou no
+                {liberacao.quem} liberou em {dataHora(liberacao.quando)}. O caso entrou na fila da sênior, que confere antes do INSS. Ficou no
                 histórico: «Caso liberado ao Jurídico pela Documentação».
               </p>
               <div className={styles.atalhos}>
@@ -263,12 +260,12 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.24.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>«Liberar ao Jurídico» só habilita com os três itens de «Conferir» marcados.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>
-            Quem libera o caso é a Documentação (resposta do Lucas, 28/09). Depois, a sênior confere antes do INSS (D2.01): nada é protocolado sem o OK dela
+            Quem libera o caso é a Documentação (resposta do Lucas, 28/09). Depois, a sênior confere antes do INSS: nada é protocolado sem o OK dela
             (G2).
           </p>
         </aside>

@@ -46,9 +46,6 @@ export function AnalisarLaudoNovo({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.21M · Conferir o laudo novo (passo do BPMN)">
-                D1.21M
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>
@@ -138,7 +135,7 @@ export function AnalisarLaudoNovo({ processoId }: { processoId: string }) {
 
               <div className={styles.rodape}>
                 <a className={styles.principalBotao} href={`/casos/${processo.id}/parecer`}>
-                  Ir para o parecer (D1.21M)
+                  Ir para o parecer
                 </a>
               </div>
             </>
@@ -149,7 +146,7 @@ export function AnalisarLaudoNovo({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>Laudo novo (D1.21M): o Atendimento sobe, a IA resume e compara, e o Jurídico confere.</p>
+          <p className={styles.ladoSub}>Laudo novo: o Atendimento sobe, a IA resume e compara, e o Jurídico confere.</p>
           <h3 className={styles.ladoSecao}>O que a IA fez</h3>
           <ul className={styles.ladoLista}>
             <li>• Leu o laudo novo e o último laudo</li>

@@ -41,14 +41,14 @@ test('GGVP-138 CA7 · a conversa registrada pela Ana: ela confere, a pendência 
   // GGVP-76 CA8: registrada, falta a conferência de quem conversou; a tarefa está na Central da Ana.
   await page.goto('/')
   const registrar = page.getByRole('link', { name: 'Rosa Conversa Teste · Registrar conversa' })
-  await expect(registrar.locator('xpath=ancestor::li')).toContainText('conferir a conversa (D5.04)')
+  await expect(registrar.locator('xpath=ancestor::li')).toContainText('conferir a conversa')
 
   // GGVP-84: a Ana confere; só registro, nada muda na ficha.
   await page.goto(`${conversa}/conferir`)
   await expect(page.getByRole('heading', { level: 1, name: 'Rosa Conversa Teste · Conferir conversa' })).toBeVisible()
   await expect(page.getByText('Conversa sem áudio: só registro, nada muda na ficha.')).toBeVisible()
   // GGVP-88: surgiu pendência; o combinado cita o setor, e o servidor diz quem é do setor.
-  await page.getByRole('radio', { name: 'Sim — criar a tarefa no card (D5.05)' }).click()
+  await page.getByRole('radio', { name: 'Sim — criar a tarefa no card' }).click()
   await page.getByLabel('O que ficou combinado *').fill('Atendimento: pedir o comprovante do endereço novo.')
   await page.getByRole('group', { name: 'Escolha o responsável' }).getByRole('radio', { name: 'Eva (exemplo, líder e atendimento)' }).click()
   await page.getByLabel('Prazo *').fill('31/12/2026')
@@ -124,5 +124,5 @@ test('tema escuro e fonte grande na conversa', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Rosa Tema Teste · Registrar conversa' })).toBeVisible()
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

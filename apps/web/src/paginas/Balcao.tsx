@@ -99,9 +99,6 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.01 · Verificar o agendamento (passo do BPMN)">
-                D1.01
-              </span>
               <span className={styles.codigo}>Atendimento</span>
             </div>
             <h1 className={styles.titulo}>
@@ -125,7 +122,7 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
             </div>
             <p className={styles.instrucoesTexto}>
               Pergunte o nome e o motivo da visita. Se veio entregar documento, encaminhe à Documentação e ao scanner
-              (D1.02). Se é lead novo, crie o cliente com o mínimo (nome, CPF, telefone) e marque a entrevista. Se já é
+             . Se é lead novo, crie o cliente com o mínimo (nome, CPF, telefone) e marque a entrevista. Se já é
               cliente, abra a ficha pelo nome e veja a tarefa aberta. Não dê opinião sobre benefício: quem define é a
               advogada (G3).
             </p>
@@ -353,7 +350,7 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.01.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <Decisao
             pergunta="Já é cliente do escritório?"

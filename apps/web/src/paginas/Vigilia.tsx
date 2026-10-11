@@ -4,6 +4,7 @@ import { hojeIso, isoParaData } from '@ggv/campos'
 import { nomeDoBeneficio, EncerrarCaso, RespostaDoInss, type VigiliaDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { usePode } from '../sessao.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { PrestarContas } from './PrestarContas.tsx'
 import { TratarExigencia } from './TratarExigencia.tsx'
@@ -114,22 +115,19 @@ export function Vigilia({ casoId }: { casoId: string }) {
 
   if (!caso)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Vigília do INSS · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Vigília do INSS · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Vigília do Meu INSS</h1>
       <p className={styles.subtitulo}>
         {caso.cliente} · {nomeDoBeneficio(caso.beneficio)} · <a href={`/casos/${casoId}/historico`}>Histórico do processo</a>
@@ -245,6 +243,6 @@ export function Vigilia({ casoId }: { casoId: string }) {
             setFeito('Caso encerrado sem judicializar.')
             setVersao((v) => v + 1)
           }} />}
-    </main>
+    </TelaDePasso>
   )
 }

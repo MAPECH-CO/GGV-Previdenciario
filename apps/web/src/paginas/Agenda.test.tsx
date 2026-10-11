@@ -74,7 +74,7 @@ describe('Agenda', () => {
     expect(periodo()).toBe('A partir de hoje · 05/10/2026')
     const confirmar = within(await screen.findByRole('region', { name: 'Para confirmar se aconteceu' }))
     const natalia = confirmar.getByRole('button', { name: /Natália Exemplo/ })
-    expect(natalia.textContent).toContain('D1.09')
+    expect(natalia.textContent).not.toContain('D1.09')
     expect(natalia.textContent).toContain('confirmar se aconteceu')
     const hoje = within(screen.getByRole('region', { name: 'seg 05/10 · hoje' }))
     expect(hoje.getByRole('button', { name: /Josefa Exemplo/ }).textContent).toContain('presencial · Dra. Paula')

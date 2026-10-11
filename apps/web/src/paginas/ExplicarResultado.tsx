@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { AprovarResumo, CANAIS_DO_CONTATO, faltaCompletar, ROTULO_CANAL_DO_CONTATO, RegistrarContato, type ResultadoParaExplicar, type SugestaoDoResumo } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
@@ -65,22 +66,19 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
 
   if (!r)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Explicar o resultado · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Explicar o resultado · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Explicar o resultado ao cliente</h1>
       <p className={styles.subtitulo}>{r.cliente}</p>
       {r.encerrado && <span className={styles.selo}>Perdemos: estudo registrado</span>}
@@ -176,6 +174,6 @@ export function ExplicarResultado({ casoId }: { casoId: string }) {
           ))}
         </ol>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

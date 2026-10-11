@@ -89,6 +89,6 @@ for (const caminho of ['/agenda', '/agenda/marcar/josefa-exemplo']) {
     await page.goto(`${caminho}?tema=escuro&fonte=grande`)
     const corpo = page.locator('body')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   })
 }

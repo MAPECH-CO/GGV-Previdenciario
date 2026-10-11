@@ -71,6 +71,143 @@ button {
   outline-offset: 2px;
 }
 
+/* Acabamento (refinamento visual de 11/10/2026). As cores seguem as do Figma (tokens.css); aqui só a profundidade, as
+   camadas de estado e o movimento, que o Figma não tem como variável. Nada daqui muda tamanho nem posição de nada:
+   sombra, fundo por cima e escala ao apertar não ocupam espaço.
+   - Sombra curta e com deslocamento, quase sem cor: coss.com/ui (botão e campo, shadow-xs).
+   - Botão principal com o brilho de 1 px no alto e a sombra na cor do próprio botão: coss.com/ui e o "Tactile Button"
+     de dqnamo.com/kitchen; a curva de saída cubic-bezier(0.23, 1, 0.32, 1) e os 150 ms também vêm de lá.
+   - Escala de 0,98 ao apertar, desligada com o movimento reduzido: smoothui.dev (Smooth Button).
+   - Janela abrindo com um leve zoom e o fundo com desfoque: animate-ui.com (Dialog). */
+:root {
+  --sombra-1: 0 1px 2px rgb(21 23 28 / 0.05);
+  --sombra-2: 0 1px 2px rgb(21 23 28 / 0.04), 0 8px 20px -6px rgb(21 23 28 / 0.12);
+  --sombra-3: 0 2px 6px rgb(21 23 28 / 0.06), 0 24px 48px -12px rgb(21 23 28 / 0.28);
+  --sombra-acento: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 1px 2px color-mix(in srgb, var(--cor-acento) 40%, transparent);
+  --camada-passar: rgb(21 23 28 / 0.05);
+  --camada-apertar: rgb(21 23 28 / 0.1);
+  --estado-passar: linear-gradient(var(--camada-passar), var(--camada-passar));
+  --estado-apertar: linear-gradient(var(--camada-apertar), var(--camada-apertar));
+  --curva: cubic-bezier(0.23, 1, 0.32, 1);
+  --tempo: 150ms;
+  /* O tamanho do portal (preferencias.ts): o zoom no <html>. As janelas dividem 100vw e 100vh por ele. */
+  --zoom: 1;
+}
+
+:root[data-tema='escuro'] {
+  --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --sombra-2: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 20px -6px rgb(0 0 0 / 0.55);
+  --sombra-3: 0 2px 8px rgb(0 0 0 / 0.45), 0 24px 48px -12px rgb(0 0 0 / 0.7);
+  --sombra-acento: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.45);
+  --camada-passar: rgb(255 255 255 / 0.06);
+  --camada-apertar: rgb(255 255 255 / 0.1);
+}
+
+::selection {
+  background: var(--cor-acento-claro);
+  color: var(--cor-texto);
+}
+
+:root[data-tema='escuro'] ::selection {
+  background: var(--cor-acento-suave);
+}
+
+html {
+  scrollbar-color: var(--cor-borda-controle) transparent;
+}
+
+input,
+textarea {
+  caret-color: var(--cor-acento);
+}
+
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'],
+progress {
+  accent-color: var(--cor-acento);
+}
+
+:where(a, button, input, select, textarea, summary, label, [role='button'], [role='tab'], [role='menuitemradio']) {
+  transition-property: background-color, border-color, color, box-shadow, opacity, scale;
+  transition-duration: var(--tempo);
+  transition-timing-function: var(--curva);
+}
+
+/* Passar e apertar: uma camada por cima do fundo que o botão já tem, clara ou escura conforme o tema, sem trocar a cor
+   de ninguém. Os links com cara de botão ganham a mesma camada no próprio CSS de cada tela. */
+button:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+summary {
+  cursor: pointer;
+}
+
+summary:hover {
+  color: var(--cor-acento);
+}
+
+button:not(:disabled):active {
+  background-image: var(--estado-apertar);
+}
+
+button:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled):active {
+    scale: 0.98;
+  }
+
+  dialog[open] {
+    animation: abrir-janela 180ms var(--curva);
+  }
+
+  dialog[open]::backdrop {
+    animation: abrir-fundo 180ms var(--curva);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+dialog {
+  box-shadow: var(--sombra-3);
+}
+
+dialog::backdrop {
+  backdrop-filter: blur(2px);
+}
+
+@keyframes abrir-janela {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@keyframes abrir-fundo {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Campos: a borda escurece um pouco ao passar o mouse; o foco segue o contorno laranja de sempre. */
+input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [aria-invalid='true'], :disabled, :focus):hover,
+select:not([aria-invalid='true'], :disabled, :focus):hover,
+textarea:not([aria-invalid='true'], :disabled, :focus):hover {
+  border-color: var(--cor-texto-suave-2);
+}
+
 /* Texto só para leitor de tela. */
 .so-leitor {
   position: absolute;

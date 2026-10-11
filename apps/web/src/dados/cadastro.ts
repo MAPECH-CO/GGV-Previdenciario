@@ -66,7 +66,7 @@ export async function salvarCadastro(fichaId: string, pedido: PedidoDeCadastro):
     registros.push(evento(`Alterou o representante legal: «${antes}» → «${agoraE}»`, QUEM_ADVOGADA))
     ficha.representante = representante
   }
-  if (primeiraVez) registros.unshift(evento('Cadastrou o lead (D1.10): completou a mesma ficha do primeiro contato', QUEM_ADVOGADA))
+  if (primeiraVez) registros.unshift(evento('Cadastrou o lead: completou a mesma ficha do primeiro contato', QUEM_ADVOGADA))
   ficha.historico.push(...registros)
   const tarefa = banco.tarefas.find((t) => t.id === `cadastrar-${ficha.id}`)
   if (tarefa) tarefa.concluida = true

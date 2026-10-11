@@ -73,7 +73,6 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
             </h2>
             {p && (
               <p className={styles.selos}>
-                <span className={passo.codigo}>D1.21M</span>
                 <span className={passo.codigo}>G17</span>
                 <span className={passo.beneficio}>◆ {p.beneficio}</span>
                 <span className={styles.detalhe}>

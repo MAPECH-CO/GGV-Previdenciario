@@ -71,9 +71,6 @@ export function AnalisarFicha({ agendamentoId }: { agendamentoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.07 · Analisar a ficha (passo do BPMN)">
-                D1.07
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>

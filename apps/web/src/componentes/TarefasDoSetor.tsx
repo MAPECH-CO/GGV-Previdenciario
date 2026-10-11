@@ -54,7 +54,6 @@ export function TarefasDoSetor({ quadro, erro, recarregar }: { quadro: QuadroDoS
               <span className={styles.ponto} aria-hidden="true" />
               <div className={styles.corpo}>
                 <div className={styles.cabeca}>
-                  {t.codigo && <span className={styles.codigo}>{t.codigo}</span>}
                   <span className={styles.texto}>
                     <strong>{t.cliente?.nome ?? t.contexto}</strong> · {t.acao}
                   </span>

@@ -810,7 +810,7 @@ export async function registrarEntregaDaCopia(processoId: string, v: ValoresDaEn
   if (visita) visita.estado = 'realizado'
   contrato.etapa = 'entregue'
   processo.etapa = 'Documentação · checklist do benefício'
-  processo.proximaAcao = 'conferir o checklist do benefício (D1.21)'
+  processo.proximaAcao = 'conferir o checklist do benefício'
   processo.prazo = undefined
   processo.urgente = undefined
   ficha.contatos.push({
@@ -819,7 +819,7 @@ export async function registrarEntregaDaCopia(processoId: string, v: ValoresDaEn
     texto: `Recebeu a cópia do contrato assinado${quemRecebeu === ficha.nome ? '' : ` (entregue a ${quemRecebeu})`}.${observacao ? ` ${observacao}` : ''}`,
   })
   ficha.historico.push(
-    evento(`Entregou a cópia impressa da versão assinada em ${dataCurta(entregueEm, hoje)} a ${quemRecebeu}; o caso segue para o checklist do benefício (D1.21)`),
+    evento(`Entregou a cópia impressa da versão assinada em ${dataCurta(entregueEm, hoje)} a ${quemRecebeu}; o caso segue para o checklist do benefício`),
   )
   gravar(banco)
   return contrato

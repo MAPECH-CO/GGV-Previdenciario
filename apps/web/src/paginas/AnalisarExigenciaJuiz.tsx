@@ -6,6 +6,7 @@ import { hojeIso, isoParaData } from '@ggv/campos'
 import { AnalisarExigenciaJuiz as Contrato, ROTULO_SETOR, SETORES_DA_EXIGENCIA, TIPOS_DE_PERICIA, type ExigenciaDoJuiz, type SugestaoDaExigencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { TIPOS_DE_DOCUMENTO } from '../dados/catalogos.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { DecidirVencidaForm } from './TratarExigencia.tsx'
 
@@ -139,7 +140,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
 
   if (!x)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Exigência do juiz · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
@@ -151,15 +152,12 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
             {feito}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Exigência do juiz · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Exigência do juiz</h1>
       <p className={styles.subtitulo}>{x.cliente}</p>
 
@@ -328,6 +326,6 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
           <p className={styles.dica}>Quem decide é você; nenhuma tarefa nasce sem a sua confirmação (G5).</p>
         </form>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

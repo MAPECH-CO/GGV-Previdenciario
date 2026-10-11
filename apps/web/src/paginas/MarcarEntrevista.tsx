@@ -156,7 +156,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
         voltar
         titulo={`${antes ? 'Remarcar' : 'Marcar'} a entrevista com ${ficha.nome}`}
         chips={[
-          { texto: 'D1.03 · encaminhar / agendar', tom: 'acento' },
+          { texto: 'encaminhar / agendar', tom: 'acento' },
           { texto: ficha.situacao === 'lead' ? 'cliente novo' : 'cliente', tom: 'neutro' },
         ]}
       />

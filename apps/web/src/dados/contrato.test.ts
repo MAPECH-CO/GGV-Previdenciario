@@ -425,7 +425,7 @@ describe('GGVP-89 · cópia do contrato para o cliente levar · servidor de exem
     expect(contrato.etapa).toBe('entregue')
     expect(contrato.copia?.entrega).toMatchObject({ entregueEm: '2026-10-05', quemRecebeu: 'Rosa Exemplo', observacao: 'Levou numa pastinha.' })
     const caso = await obterContrato('cleide-exemplo-2')
-    expect(caso?.processo).toMatchObject({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício (D1.21)' })
+    expect(caso?.processo).toMatchObject({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício' })
     expect(caso?.ficha.agendamentos.find((a) => a.id === 'cleide-retirada')?.estado).toBe('realizado')
     expect(caso?.ficha.contatos.at(-1)).toEqual({ data: '2026-10-05', canal: 'Presencial', texto: 'Recebeu a cópia do contrato assinado (entregue a Rosa Exemplo). Levou numa pastinha.' })
     expect(tarefasDoContrato().some((t) => t.processoId === 'cleide-exemplo-2')).toBe(false)

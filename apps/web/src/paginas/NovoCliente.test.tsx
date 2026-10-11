@@ -33,7 +33,7 @@ describe('Novo cliente', () => {
   it('CA11 · mostra os blocos do Figma 73:371, o catálogo de benefícios e as duas saídas', () => {
     abrir()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Novo cliente')
-    expect(screen.getByText('D1.01 · reconhecer quem chegou')).toBeTruthy()
+    expect(screen.getByText('reconhecer quem chegou')).toBeTruthy()
     for (const rotulo of ['CPF (opcional)', 'E-mail (opcional)', 'Cidade / UF', 'Como chegou (lista do escritório)', 'Observação']) {
       expect(campo(rotulo), rotulo).toBeTruthy()
     }

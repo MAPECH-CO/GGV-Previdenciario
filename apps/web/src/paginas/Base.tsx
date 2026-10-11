@@ -9,8 +9,8 @@ import styles from './Bases.module.css'
 // pílula, a busca com espera, as etiquetas e a página.
 
 const NAVEGACAO = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 /** "+ Novo cliente" só no Atendimento (Figma). */
@@ -42,7 +42,7 @@ export function MolduraDaBase({
         <div className={styles.cabeca}>
           <div>
             <h1 className={styles.titulo}>{titulo}</h1>
-            <p className={styles.subtitulo}>{subtitulo}</p>
+            {subtitulo && <p className={styles.subtitulo}>{subtitulo}</p>}
           </div>
           {atendimento && novoNaPagina && (
             <a className={styles.novo} href="/clientes/novo">

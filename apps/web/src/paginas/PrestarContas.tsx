@@ -74,9 +74,6 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
       embutida={embutida}
       cabecalho={
         <>
-          <a className={styles.voltar} href="/">
-            ← Voltar ao início
-          </a>
           <h1 className={styles.titulo}>Prestação de contas do benefício deferido</h1>
           <p className={styles.subtitulo}>{p.cliente}</p>
         </>

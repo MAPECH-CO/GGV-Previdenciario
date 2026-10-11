@@ -21,9 +21,9 @@ const desenhar = (t: Tarefa) =>
   )
 
 describe('TarefaLinha', () => {
-  it('mostra código, cliente, ação, detalhe e prazo', () => {
+  it('mostra cliente, ação, detalhe e prazo; o código do passo do BPMN não aparece (11/10)', () => {
     desenhar(tarefa)
-    expect(screen.getByText('DP.03')).toBeTruthy()
+    expect(screen.queryByText('DP.03')).toBeNull()
     expect(screen.getByText('Maria das Graças Oliveira')).toBeTruthy()
     expect(screen.getByText(/Cobrar documento/)).toBeTruthy()
     expect(screen.getByText('Auxílio por incapacidade temporária · perícia 02/10')).toBeTruthy()

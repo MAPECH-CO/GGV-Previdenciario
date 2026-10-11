@@ -63,6 +63,6 @@ test('tema escuro e fonte grande no cartão da criança', async ({ page }) => {
   const cartao = page.locator('section', { has: page.getByRole('heading', { name: 'Criança · condição e terapias' }) })
   await expect(cartao).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   await expect(cartao).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
 })

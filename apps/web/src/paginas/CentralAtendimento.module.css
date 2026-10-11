@@ -50,3 +50,12 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.atalhoDaBusca:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.atalhoDaBusca:not(:disabled):active {
+  background-image: var(--estado-apertar);
+}

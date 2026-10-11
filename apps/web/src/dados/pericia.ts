@@ -407,7 +407,7 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
     const m = pericia.marcacao!
     return (
       `${primeiro} compareceu à ${tipo} de ${dataCurta(m.data, hojeIso(agora()))}. Agora o caso espera o perito e o resultado (DP.E3, DP.E4): ` +
-      `a advogada responsável acompanha ${pericia.instancia === 'inss' ? 'no GERID' : 'no processo'} e confere o resultado (DP.08).`
+      `a advogada responsável acompanha ${pericia.instancia === 'inss' ? 'no GERID' : 'no processo'} e confere o resultado.`
     )
   }
   if (t.jaPassou) {
@@ -442,8 +442,8 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
       : o.bloqueio
         ? ' A orientação montada pela IA foi bloqueada pela verificação e pede revisão.'
         : o.modo === 'perfil' && t.perfil
-          ? ` O perfil de ${t.perfil.perito.nome} está na base e a orientação já segue esse perfil (DP.05).`
-          : ' A orientação padrão já está montada (DP.05).'
+          ? ` O perfil de ${t.perfil.perito.nome} está na base e a orientação já segue esse perfil.`
+          : ' A orientação padrão já está montada.'
     const p = pericia.preparacao
     const preparo = p
       ? ` ${primeiro} já recebeu a orientação ${p.canal === 'chatwoot' ? 'pelo Chatwoot' : 'na ligação'}, em ${dataCurta(hojeIso(new Date(p.quando)), hoje)};`
@@ -862,7 +862,7 @@ export function periciasDaSemana(): { texto: string; itens: ItemDoChat[] } {
   return {
     texto:
       `${itens.length === 1 ? 'Uma perícia' : `${itens.length} perícias`} até ${dataCurta(ate, hoje)}. Cada uma abre o processo do cliente, com a perícia em destaque. ` +
-      'A orientação ao cliente é do Jurídico administrativo; a conferência do resultado é sua (DP.08).',
+      'A orientação ao cliente é do Jurídico administrativo; a conferência do resultado é sua.',
     itens,
   }
 }

@@ -77,7 +77,7 @@ describe('Entrevistar com gravação · servidor de exemplo', () => {
     expect(pronta.trechos.map((t) => t.aos)).toEqual([0, 6, 14, 24])
     expect(pronta.extraidas.map((e) => e.id)).toEqual(['desde', 'vinculo', 'profissao'])
     expect(pronta.resumo).toBe(
-      'Josefa Exemplo: sem trabalhar desde 06/2026; último vínculo: auxiliar de limpeza · CLT · até 05/2026. Procura LOAS Idoso. O benefício é a advogada que define (D1.12, G3).',
+      'Josefa Exemplo: sem trabalhar desde 06/2026; último vínculo: auxiliar de limpeza · CLT · até 05/2026. Procura LOAS Idoso. O benefício é a advogada que define (G3).',
     )
     expect(pronta.documentos).toEqual(['RG', 'CPF', 'Comprovante de residência', 'CNIS'])
   })

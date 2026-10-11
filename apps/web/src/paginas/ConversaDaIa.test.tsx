@@ -50,7 +50,7 @@ describe('GGVP-140 · a leitura da IA de verdade na conversa', () => {
     expect(quadro.textContent).toContain('A cliente contou que mudou de endereço.')
     expect(screen.getByRole('alert').textContent).toBe('Atenção: entrada com instrução suspeita. A fala entrou como dado; nada muda sem você conferir (G14).')
     expect(quadro.textContent).toContain('Fonte: a transcrição desta conversa (gpt-4.1-mini).')
-    expect(screen.getByRole('link', { name: 'Conferir e atualizar (D5.04)' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Conferir e atualizar' })).toBeTruthy()
   })
 
   it('sem a leitura da IA de verdade, o quadro segue como antes, sem o selo', async () => {

@@ -1,0 +1,733 @@
+/* Telas da Gestão e a Vigília das publicações (refinamento de 11/10). Do Figma vêm o topo e o título das bases
+   (Bases.module.css) e os indicadores do painel Financeiro (Financeiro.module.css); aqui, o que só elas têm: a lista
+   de registros com cara de tabela, o aviso do dia e as rodadas da vigília. */
+
+/* Registros (tentativas, prazos, descartes): uma linha por item e as colunas alinhadas. O " · " entre as partes fica
+   no texto para quem lê a linha inteira; na tela, quem separa é a coluna. */
+.registros {
+  overflow: hidden;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.colunas,
+.registro {
+  display: grid;
+  grid-template-columns: var(--colunas);
+  gap: 16px;
+  align-items: baseline;
+  padding: 12px 16px;
+}
+
+.colunas {
+  padding-block: 10px;
+  background: var(--cor-painel-neutro-2);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+}
+
+.registro {
+  border-top: 1px solid var(--cor-linha);
+  font-size: var(--fonte-13);
+  line-height: 1.4;
+}
+
+.registro:hover {
+  background: var(--cor-painel-neutro-3);
+}
+
+.registros ul .registro:first-child {
+  border-top: 0;
+}
+
+.colunas + ul .registro:first-child {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.sep {
+  display: none;
+}
+
+.quando {
+  color: var(--cor-texto-suave);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.forte {
+  font-weight: 600;
+}
+
+.suave {
+  color: var(--cor-texto-suave);
+}
+
+.tentativas {
+  --colunas: 132px minmax(160px, 1fr) minmax(160px, 1fr) minmax(240px, 2fr);
+}
+
+.prazos {
+  --colunas: 132px 96px minmax(160px, 1fr) minmax(240px, 2.4fr);
+}
+
+.descartes {
+  --colunas: 84px minmax(170px, auto) minmax(140px, 1fr) minmax(220px, 2fr);
+}
+
+@media (max-width: 760px) {
+  .colunas {
+    display: none;
+  }
+
+  .registro {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* Etiqueta da situação, no mesmo desenho das bases (Bases.module.css, .tag). */
+.etiqueta {
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cumprido {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.perdido {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro-2);
+}
+
+/* Vazio: o que a tela mostraria, dito numa frase, no lugar da lista. */
+.vazio {
+  padding: 28px 16px;
+  border: 1px dashed var(--cor-borda-controle);
+  border-radius: var(--raio-12);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  text-align: center;
+}
+
+.numero {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Vigília: o aviso do dia, as rodadas e as publicações sem processo. */
+/* A faixa do dia: o ícone, o aviso, a conta das rodadas e a régua das 24 horas. */
+.situacaoDoDia {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 14px;
+  border: 1px solid var(--tom-borda);
+  border-radius: var(--raio-14);
+  background: var(--tom-fundo);
+}
+
+.situacaoTopo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.situacaoIcone {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  color: var(--tom-texto);
+  font-size: 22px;
+  box-shadow: var(--sombra-1);
+}
+
+.situacaoTexto {
+  flex: 1 1 240px;
+  color: var(--tom-texto);
+  font-size: var(--fonte-15);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.situacaoConta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.situacaoConta strong {
+  color: var(--cor-texto);
+  font-size: var(--fonte-22);
+  font-variant-numeric: tabular-nums;
+}
+
+.situacaoFalhas {
+  margin-left: 6px;
+  padding: 3px 9px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  color: var(--cor-erro);
+  font-size: var(--fonte-12);
+  font-weight: 700;
+}
+
+.reguaDoDia {
+  padding: 0 4px;
+}
+
+.reguaTrilho {
+  position: relative;
+  height: 8px;
+  margin: 26px 8px 8px;
+  border-radius: var(--raio-pilula);
+  background: color-mix(in srgb, var(--cor-superficie) 75%, transparent);
+  box-shadow: inset 0 0 0 1px var(--tom-borda);
+}
+
+.reguaPassado {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--tom-texto) 16%, transparent);
+}
+
+.reguaMarca {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  translate: -50% -50%;
+  border: 3px solid var(--cor-superficie);
+  border-radius: var(--raio-pilula);
+  background: var(--cor-borda-controle);
+  box-shadow: var(--sombra-1);
+}
+
+.reguaMarca[data-situacao='ok'] {
+  background: var(--cor-ok);
+}
+
+.reguaMarca[data-situacao='falhou'] {
+  background: var(--cor-erro);
+}
+
+.reguaMarca[data-situacao='nao_rodou'] {
+  background: var(--cor-alerta);
+}
+
+.reguaMarca[data-situacao='rodando'] {
+  background: var(--cor-acento);
+}
+
+.reguaHora {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  translate: -50% 0;
+  color: var(--cor-texto);
+  font-size: var(--fonte-11);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reguaAgora {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  width: 2px;
+  translate: -1px 0;
+  border-radius: 2px;
+  background: var(--cor-texto);
+}
+
+.reguaEixo {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 8px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-variant-numeric: tabular-nums;
+}
+
+.tomErro {
+  --tom-fundo: var(--cor-erro-suave);
+  --tom-texto: var(--cor-erro);
+  --tom-borda: color-mix(in srgb, var(--cor-erro) 22%, transparent);
+}
+
+.tomOk {
+  --tom-fundo: var(--cor-ok-suave);
+  --tom-texto: var(--cor-ok);
+  --tom-borda: color-mix(in srgb, var(--cor-ok) 25%, transparent);
+}
+
+.tomNeutro {
+  --tom-fundo: var(--cor-superficie);
+  --tom-texto: var(--cor-texto-suave);
+  --tom-borda: var(--cor-linha);
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.grade > :only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1000px) {
+  .grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rodadas {
+  display: flex;
+  flex-direction: column;
+}
+
+.rodada {
+  display: grid;
+  grid-template-columns: 52px auto minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 0;
+  font-size: var(--fonte-13);
+}
+
+.rodada + .rodada {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.hora {
+  font-size: var(--fonte-14);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fonte {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.situacao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.situacao::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-borda-controle);
+}
+
+.rodada[data-situacao='ok'] .situacao::before {
+  background: var(--cor-ok);
+}
+
+.rodada[data-situacao='falhou'] .situacao {
+  color: var(--cor-erro);
+}
+
+.rodada[data-situacao='falhou'] .situacao::before {
+  background: var(--cor-erro);
+}
+
+.rodada[data-situacao='nao_rodou'] .situacao {
+  color: var(--cor-alerta-2);
+}
+
+.rodada[data-situacao='nao_rodou'] .situacao::before {
+  background: var(--cor-alerta);
+}
+
+.rodada[data-situacao='rodando'] .situacao::before {
+  background: var(--cor-acento);
+}
+
+.reprocessada {
+  grid-column: 3 / -1;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.publicacoes {
+  display: flex;
+  flex-direction: column;
+}
+
+.publicacao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 0;
+}
+
+.publicacao + .publicacao {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.publicacao:first-child {
+  padding-top: 4px;
+}
+
+.trecho {
+  padding: 12px 14px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro-2);
+  font-size: var(--fonte-13);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.vincular {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.campoCnj {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .rodada {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .situacao,
+  .rodada > button {
+    grid-column: 2;
+  }
+
+  .rodada > button {
+    justify-self: start;
+  }
+}
+
+
+/* Telas de formulário dentro do topo das bases (Configuração, Importar, Estudos, Conferir desfechos): a coluna não
+   passa de 880, para o campo não esticar até a borda. */
+.estreito {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 880px;
+}
+
+/* Uso do cofre: uma linha por pessoa, com os números alinhados em colunas. */
+.cofre {
+  --colunas: minmax(160px, 1.4fr) repeat(3, minmax(96px, 1fr)) minmax(150px, 1.2fr);
+}
+
+.cofre .registro {
+  align-items: center;
+}
+
+.metrica {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  font-size: var(--fonte-12);
+}
+
+.metricaNumero strong {
+  font-size: var(--fonte-18);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.alerta {
+  color: var(--cor-alerta-2);
+}
+
+/* Configuração: cada parâmetro numa linha, com o campo e o "Salvar" sempre na mesma coluna. */
+.parametro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.parametro + .parametro {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.parametro > label {
+  font-weight: 500;
+}
+
+@media (max-width: 560px) {
+  .parametro {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .parametro > label {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Histórico do processo: a linha do tempo, um ponto por evento, do mais antigo ao mais novo. */
+ol.linhaDoTempo {
+  gap: 0;
+  padding: 8px 20px;
+}
+
+.evento {
+  position: relative;
+  display: grid;
+  grid-template-columns: 132px minmax(110px, auto) minmax(0, 1fr);
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 12px 0 12px 22px;
+  font-size: var(--fonte-13);
+  line-height: 1.45;
+}
+
+.evento + .evento {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.evento::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento);
+  box-shadow: 0 0 0 3px var(--cor-acento-suave);
+}
+
+@media (max-width: 640px) {
+  .evento {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parametro input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Prazos: o placar. */
+.placar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 18px 20px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.placarNumero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.placarNumero strong {
+  font-size: var(--fonte-32);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.placarNumero[data-tom='ok'] strong {
+  color: var(--cor-ok);
+}
+
+.placarNumero[data-tom='erro'] strong {
+  color: var(--cor-erro);
+}
+
+.placarBarra {
+  display: flex;
+  gap: 3px;
+  height: 12px;
+}
+
+.placarBarra span {
+  flex-basis: 0;
+  border-radius: var(--raio-pilula);
+}
+
+.placarBarra [data-tom='ok'] {
+  background: var(--cor-ok);
+}
+
+.placarBarra [data-tom='erro'] {
+  background: var(--cor-erro);
+}
+
+.placarTaxa {
+  grid-column: 1 / -1;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  text-align: center;
+}
+
+/* Tentativas: a lista e, ao lado, quem mais tentou e onde barrou. */
+.comLado {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 16px;
+}
+
+@media (max-width: 1000px) {
+  .comLado {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.lado {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contagem {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.contagem li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  font-size: var(--fonte-13);
+}
+
+.contagemNome {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contagemNumero {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.contagemTrilho {
+  grid-column: 1 / -1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+}
+
+.contagemTrilho span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cor-acento);
+}
+
+/* Cofre: as iniciais de quem usou, desenhadas pelo CSS. */
+.pessoa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.iniciais {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-size: var(--fonte-11);
+  font-weight: 700;
+}
+
+.iniciais::before {
+  content: attr(data-iniciais);
+}
+
+/* Histórico: a linha que liga os pontos. */
+.evento::after {
+  content: '';
+  position: absolute;
+  top: 30px;
+  bottom: -18px;
+  left: 5px;
+  width: 2px;
+  background: var(--cor-linha);
+}
+
+.evento:last-child::after {
+  display: none;
+}
+
+.evento + .evento {
+  border-top: 0;
+}

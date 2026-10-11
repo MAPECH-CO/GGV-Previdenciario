@@ -48,7 +48,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
           numero: '0000001-00.2025.4.03.0000',
           beneficio: 'incapacidade-permanente',
           etapa: 'Judicial · exigência',
-          proximaAcao: 'cobrar as notas do produtor e a certidão do sindicato (D1.23)',
+          proximaAcao: 'cobrar as notas do produtor e a certidão do sindicato',
           prazo: 'vence em 2 dias',
           urgente: true,
         },

@@ -127,6 +127,7 @@
   color: var(--cor-texto);
   font: inherit;
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 .campo {
@@ -219,8 +220,8 @@
 
 /* Janela "Parecer médico de suficiência" (Figma 1654:2). */
 .janela {
-  width: min(680px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
+  width: min(680px, calc(100vw / var(--zoom) - 32px));
+  max-height: calc(100vh / var(--zoom) - 48px);
   padding: 0;
   border: 0;
   border-radius: var(--raio-14);

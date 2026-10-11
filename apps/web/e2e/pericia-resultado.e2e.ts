@@ -51,7 +51,7 @@ test('CA1, CA2, CA5, CA8 e o perfil do perito · favorável: o resumo da IA, a j
   await conferirTudo(page)
   await page.getByRole('button', { name: 'Registrar resultado' }).click()
   await expect(page.getByRole('heading', { name: '✓ Resultado registrado: favorável' })).toBeVisible()
-  await expect(page.getByText(/volta ao judicial \(D3a\): manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/)).toBeVisible()
+  await expect(page.getByText(/volta ao judicial: manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/)).toBeVisible()
   // GGVP-73: o laudo entrou no perfil do perito, um registro a mais (CA1, CA3).
   await expect(page.getByRole('region', { name: 'Perfil do perito' })).toContainText('versão 35, formada por 35 laudos')
   await page.getByRole('button', { name: 'Ver o perfil do perito' }).click()
@@ -110,5 +110,5 @@ test('tema escuro e fonte grande no resultado', async ({ page }) => {
   await page.goto('/casos/antonio-exemplo-1/pericia/resultado?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { name: 'Antônio Exemplo · Conferir resultado da perícia' })).toBeVisible()
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

@@ -51,7 +51,7 @@ describe('Entrevista com gravação · tela', () => {
 
   it('CA5 e CA11 · transcrição ao vivo, roteiro, Pausar e Retomar; ao encerrar, a transcrição, "Cadastrar lead" e "Definir o benefício"', async () => {
     await comecar()
-    expect(botao('Definir o benefício (D1.12) · libera ao encerrar a entrevista').disabled).toBe(true)
+    expect(botao('Definir o benefício · libera ao encerrar a entrevista').disabled).toBe(true)
     await screen.findByText(/Parei em junho de 2026/, undefined, ESPERA)
     expect(screen.getByText(/Desde quando não consegue trabalhar/).textContent).toContain('(respondido)')
     expect(screen.getByRole('region', { name: 'Ficha preenchida pela IA · você confere' }).textContent).toContain('Auxiliar de limpeza')
@@ -61,9 +61,9 @@ describe('Entrevista com gravação · tela', () => {
     await screen.findByText(/● Gravando/)
     fireEvent.click(botao('Encerrar e gerar resumo'))
     await screen.findByRole('heading', { name: /✓ Entrevista encerrada/ })
-    await screen.findByText(/Transcrição pronta \(D1.11\)/)
-    expect(screen.getByRole('link', { name: 'Definir o benefício (D1.12)' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/beneficio')
-    expect(screen.getByRole('link', { name: 'Cadastrar lead (D1.10)' }).getAttribute('href')).toBe('/clientes/josefa-exemplo/cadastro')
+    await screen.findByText(/Transcrição pronta/)
+    expect(screen.getByRole('link', { name: 'Definir o benefício' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/beneficio')
+    expect(screen.getByRole('link', { name: 'Cadastrar lead' }).getAttribute('href')).toBe('/clientes/josefa-exemplo/cadastro')
     const acoes = ler().gravacoes.at(-1)!.acoes.map((a) => a.acao)
     expect(acoes).toEqual(['avisou', 'gravou', 'pausou', 'retomou', 'encerrou'])
     // GGVP-46: a transcrição abre na janela do Jurídico.
@@ -102,7 +102,7 @@ describe('Entrevista com gravação · tela', () => {
     await screen.findByText(/Sem internet: o áudio está guardado neste computador/)
     online = true
     fireEvent(window, new Event('online'))
-    await screen.findByText(/Transcrição pronta \(D1.11\)/)
+    await screen.findByText(/Transcrição pronta/)
     expect(ler().gravacoes.at(-1)!.acoes.filter((a) => a.acao === 'enviou-audio')).toHaveLength(1)
     expect(estado()).toMatch(/^Encerrada/)
   })

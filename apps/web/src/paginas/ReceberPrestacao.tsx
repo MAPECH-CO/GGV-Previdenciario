@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { diaLocal, formatarDecimal, isoParaData } from '@ggv/campos'
 import { ROTULO_FORMA_DE_PAGAMENTO, ReceberPrestacao as Contrato, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const reais = (texto: string | null) => (texto === null ? '—' : `R$ ${formatarDecimal(Number(texto))}`)
@@ -41,24 +42,21 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
 
   if (!p)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Receber a prestação · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const v = p.versoes[0]
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Receber a prestação · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Receber a prestação de contas</h1>
       <p className={styles.subtitulo}>{p.cliente}</p>
 
@@ -140,6 +138,6 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
           </div>
         </section>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

@@ -144,8 +144,6 @@ export function NovaDemanda({ fichaId }: { fichaId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoPasso
-            passo="D1.01"
-            nomeDoPasso="O que o cliente veio fazer? · nova demanda"
             setor="Atendimento"
             tarefa="Nova demanda"
             subtitulo={`${ficha.situacao} desde ${ficha.desde} · ${n === 1 ? '1 processo' : `${n} processos`} na ficha · caso novo, sem cadastro novo`}
@@ -297,7 +295,7 @@ export function NovaDemanda({ fichaId }: { fichaId: string }) {
             Antes de concluir
           </h2>
           <p className={styles.ladoSub}>
-            A terceira saída de «O que o cliente veio fazer?» (D1); o passo ainda não está desenhado no Miro.
+            A terceira saída de «O que o cliente veio fazer?»; esse caminho ainda não foi desenhado.
           </p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>

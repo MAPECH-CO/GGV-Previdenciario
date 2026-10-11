@@ -50,9 +50,6 @@ export function PericiaAberta({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="DP.01 · Iniciar a tarefa de perícia (passo do BPMN)">
-                DP.01
-              </span>
               <span className={proprio.selo}>Sistema</span>
             </div>
             <h1 className={styles.titulo}>Tarefa de perícia aberta pelo sistema</h1>
@@ -63,7 +60,7 @@ export function PericiaAberta({ processoId }: { processoId: string }) {
 
           <p className={proprio.quadro}>
             O sistema abriu sozinho a tarefa «Marcar a perícia» para o Jurídico administrativo (estagiário). A advogada só decide: tipo e instância vêm da
-            decisão do D2.03, do despacho ou do pedido do juiz.
+            decisão sobre a perícia, do despacho ou do pedido do juiz.
           </p>
 
           <section className={proprio.ia} aria-labelledby="agora">
@@ -127,7 +124,6 @@ export function PericiaAberta({ processoId }: { processoId: string }) {
                   <span>
                     <strong>{e.quem}</strong> · {e.oQue}
                   </span>
-                  <span className={proprio.passo}>{e.passo}</span>
                 </li>
               ))}
             </ol>
@@ -138,7 +134,7 @@ export function PericiaAberta({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>No BPMN, o DP.01 agora é do sistema (ajuste de 29/09).</p>
+          <p className={styles.ladoSub}>Esta etapa agora é aberta pelo sistema (ajuste de 29/09).</p>
           <h3 className={styles.ladoSecao}>Preenchido pelo sistema</h3>
           <ul className={styles.ladoLista} aria-label="Preenchido pelo sistema">
             <li>
@@ -149,7 +145,7 @@ export function PericiaAberta({ processoId }: { processoId: string }) {
             <li>• O que a perícia pede: {pericia.oQuePede ?? 'ainda não se sabe; vem com a marcação'}</li>
           </ul>
           <h3 className={styles.ladoSecao}>Travas</h3>
-          <p className={styles.ladoSub}>Sem trava: o sistema abre a tarefa sozinho quando o pedido é protocolado (D2), despachado (D3) ou pedido pelo juiz (D3a).</p>
+          <p className={styles.ladoSub}>Sem trava: o sistema abre a tarefa sozinho quando o pedido é protocolado, despachado ou pedido pelo juiz.</p>
         </aside>
       </main>
       <AbaSuporte />

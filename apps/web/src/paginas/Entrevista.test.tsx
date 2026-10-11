@@ -32,11 +32,12 @@ describe('Fazer entrevista · tela do passo', () => {
     expect(screen.getByRole('link', { name: 'Analisar a ficha' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/analisar')
   })
 
-  it('o topo é de quem entrou: "Você · Atendimento" e Início na Central dele, não a da advogada', async () => {
+  it('o topo é de quem entrou: a pessoa com o perfil Atendimento e Início na Central dele, não a da advogada', async () => {
     entrarComo('atendimento')
     render(comSessao(<Entrevista agendamentoId="josefa-entrevista" />))
     await screen.findByRole('heading', { level: 1, name: /Fazer entrevista/ })
-    expect(screen.getByText('Você · Atendimento')).toBeTruthy()
+    // Desde 11/10 o topo mostra a pessoa (nome e perfil), e não repete o "Você · ..." desenhado para outra função.
+    expect(screen.getByRole('button', { name: /, Atendimento$/ })).toBeTruthy()
     expect(screen.queryByText('Você · Advogada responsável')).toBeNull()
     expect(screen.getByRole('link', { name: /Início/ }).getAttribute('href')).toBe('/')
     entrarComo()
@@ -59,7 +60,7 @@ describe('Fazer entrevista · tela do passo', () => {
     fireEvent.change(entrada, { target: { files: [audio('ligacao-chatwoot.opus', '', 300)] } })
     const recebido = await screen.findByRole('status')
     expect(recebido.textContent).toContain('✓ Áudio recebido: ligacao-chatwoot.opus (300 MB, em 13 partes)')
-    expect(recebido.textContent).toContain('Foi para a transcrição (D1.11)')
+    expect(recebido.textContent).toContain('Foi para a transcrição')
     expect(screen.getByRole('link', { name: 'Abrir a entrevista' }).getAttribute('href')).toBe('/entrevista/josefa-entrevista/gravacao')
   })
 })

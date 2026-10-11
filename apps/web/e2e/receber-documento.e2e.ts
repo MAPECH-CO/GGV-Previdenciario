@@ -103,7 +103,7 @@ test('tema escuro e fonte grande na tela do passo e na janela "Conferir e enviar
   await page.goto(`${new URL(page.url()).pathname}?tema=escuro&fonte=grande`)
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   await page.getByRole('radio', { name: 'Digital — anexar ao card' }).click()
   await page.getByRole('button', { name: 'Anexar ao card' }).click()
   await expect(page.getByRole('dialog', { name: 'Conferir e enviar' })).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))

@@ -187,11 +187,11 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
       : 'enviado ao cliente; aguardando a assinatura'
 
   const instrucoes = !servicos.zapsign
-    ? `Imprima o kit, colha a assinatura de ${primeiro} em papel e digitalize o contrato assinado (D1.18). Diga que a cópia assinada ` +
+    ? `Imprima o kit, colha a assinatura de ${primeiro} em papel e digitalize o contrato assinado. Diga que a cópia assinada ` +
       'chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
     : podePapel
       ? `Pergunte como ${primeiro} prefere assinar. Pelo celular: envie pelo ZapSign e acompanhe; o link vai pelo WhatsApp. ` +
-        'Se preferir papel, imprima, colha a assinatura e digitalize (D1.18). Diga que a cópia assinada chega pelo WhatsApp. ' +
+        'Se preferir papel, imprima, colha a assinatura e digitalize. Diga que a cópia assinada chega pelo WhatsApp. ' +
         'Sem assinatura, nada vai para o INSS (G1).'
       : `A entrevista de ${primeiro} foi por ${comoFoi}: a assinatura vai pelo ZapSign, com o link pelo WhatsApp (papel só na ` +
         'entrevista presencial). Diga que a cópia assinada chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
@@ -203,8 +203,6 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoContrato
-            passo="D1.17"
-            nomeDoPasso="Pedir a assinatura ao cliente"
             tarefa="Colher assinatura"
             subtitulo={servicos.zapsign ? 'assinar · ZapSign ou papel' : 'assinar · em papel'}
             ficha={ficha}
@@ -423,7 +421,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
               <div className={styles.atalhos}>
                 {contrato.etapa === 'leitura' && (
                   <button type="button" className={styles.atalho} disabled={ocupado} onClick={simularLeitura}>
-                    Simular a leitura da IA (D1.18)
+                    Simular a leitura da IA
                   </button>
                 )}
                 {contrato.etapa === 'conferir' && (
@@ -469,7 +467,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.17.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="como-assinar-lado">Como a cliente vai assinar?</p>

@@ -80,7 +80,7 @@ export async function liberarAoJuridico(processoId: string, pedido: PedidoDeLibe
   banco.liberacoes = [...(banco.liberacoes ?? []), liberacao]
   const processo = ficha.processos.find((p) => p.id === processoId)!
   processo.etapa = 'Jurídico · conferência antes do INSS'
-  processo.proximaAcao = 'aguardar a conferência da sênior (D2.01)'
+  processo.proximaAcao = 'aguardar a conferência da sênior'
   ficha.historico.push(evento('Caso liberado ao Jurídico pela Documentação', QUEM_DOCUMENTACAO))
   gravar(banco)
   return liberacao

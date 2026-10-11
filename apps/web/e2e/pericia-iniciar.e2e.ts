@@ -14,11 +14,11 @@ test('CA1 a CA4 · a tarefa aberta pelo sistema, a Central do Jurídico administ
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/casos/maria-exemplo-1/pericia/aberta')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tarefa de perícia aberta pelo sistema')
-  await expect(page.getByRole('list', { name: 'Preenchido pelo sistema' })).toContainText('Quem pediu: D2 · necessidade inicial · Dra. Paula (exemplo)')
+  await expect(page.getByRole('list', { name: 'Preenchido pelo sistema' })).toContainText('Quem pediu: necessidade inicial · Dra. Paula (exemplo)')
   await expect(page.getByRole('list', { name: 'Preenchido pelo sistema' })).toContainText('Instância: INSS')
   await expect(page.getByText(/tentativa diária; a próxima é hoje/)).toBeVisible()
   await expect(page.getByRole('list', { name: 'Histórico da perícia' })).toContainText(
-    'Sistema · Abriu a tarefa de perícia para o Jurídico administrativo, a partir da decisão de Dra. Paula (exemplo) (D2 · necessidade inicial)',
+    'Sistema · Abriu a tarefa de perícia para o Jurídico administrativo, a partir da decisão de Dra. Paula (exemplo) (necessidade inicial)',
   )
   await expect(page.getByRole('link', { name: 'Ver a tarefa aberta' })).toHaveAttribute('href', '/casos/maria-exemplo-1/pericia/marcar')
 
@@ -39,7 +39,7 @@ test('CA1 a CA4 · a tarefa aberta pelo sistema, a Central do Jurídico administ
 
   // A ficha mostra o caso "Em perícia" com o diagrama de origem (CA1).
   await page.goto('/clientes/maria-exemplo')
-  await expect(page.getByRole('link', { name: /Em perícia · pedido ao INSS \(D2\)/ })).toHaveAttribute('href', '/casos/maria-exemplo-1/pericia')
+  await expect(page.getByRole('link', { name: /Em perícia · pedido ao INSS · / })).toHaveAttribute('href', '/casos/maria-exemplo-1/pericia')
 })
 
 test('tema escuro e fonte grande na tarefa aberta pelo sistema', async ({ page }) => {
@@ -47,5 +47,5 @@ test('tema escuro e fonte grande na tarefa aberta pelo sistema', async ({ page }
   await page.goto('/casos/maria-exemplo-1/pericia/aberta?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tarefa de perícia aberta pelo sistema')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

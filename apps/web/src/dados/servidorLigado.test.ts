@@ -372,7 +372,7 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor, e
       ...criada,
       [`GET /api/fichas/${ID}`]: () => doBanco({ agendamentos: [a] }),
       [`POST /api/entrevistas/${a.id}/beneficio`]: () => ({
-        ficha: doBanco({ agendamentos: [a], beneficioDefinido: definida, historico: [CRIOU, naHora('2026-10-05T18:00:00.000Z', 'Definiu o benefício do caso (D1.12): BPC')] }),
+        ficha: doBanco({ agendamentos: [a], beneficioDefinido: definida, historico: [CRIOU, naHora('2026-10-05T18:00:00.000Z', 'Definiu o benefício do caso: BPC')] }),
         tarefas: [tarefa('definir-x', 'Definir benefício', 'Jurídico', true)],
       }),
     })

@@ -102,7 +102,7 @@ export function NovoCliente({ navegar = (url: string) => window.location.assign(
       <TopoFicha
         titulo="Novo cliente"
         chips={[
-          { texto: 'D1.01 · reconhecer quem chegou', tom: 'acento' },
+          { texto: 'reconhecer quem chegou', tom: 'acento' },
           { texto: 'o mínimo para começar', tom: 'neutro' },
         ]}
       />
@@ -131,7 +131,7 @@ export function NovoCliente({ navegar = (url: string) => window.location.assign(
               {progresso}
             </p>
             <p className={styles.nota}>
-              O resto da ficha (D1.05) é preenchido pela própria cliente pelo link; a IA completa com a entrevista e você
+              O resto da ficha é preenchido pela própria cliente pelo link; a IA completa com a entrevista e você
               confere.
             </p>
           </Cartao>

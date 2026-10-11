@@ -5,6 +5,7 @@ import { CANAIS_DE_COBRANCA, RESULTADOS_DE_COBRANCA, RegistrarCobranca, type Exi
 import { chamarApi } from '../api.ts'
 import { TextoDoLembrete } from '../componentes/Laco.tsx'
 import { ROTULO_DO_CANAL } from '../componentes/rotulosDoLaco.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { ResumoDaExigencia } from './TratarExigencia.tsx'
 
@@ -123,24 +124,21 @@ export function CumprirExigencia({ casoId }: { casoId: string }) {
 
   if (!x)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Cumprir exigência do INSS · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const tudoComProva = x.itens.length > 0 && x.itens.every((i) => i.situacao === 'cumprido')
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Cumprir exigência do INSS · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Cumprir exigência do INSS</h1>
       <p className={styles.subtitulo}>{x.cliente}</p>
       <ResumoDaExigencia x={x} />
@@ -233,6 +231,6 @@ export function CumprirExigencia({ casoId }: { casoId: string }) {
           </section>
         </>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

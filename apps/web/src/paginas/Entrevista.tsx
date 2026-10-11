@@ -79,9 +79,6 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.09 · Atender e entrevistar (passo do BPMN)">
-                D1.09
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>
@@ -136,7 +133,7 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
                   ✓ Áudio recebido: {subido.audio!.nome} ({megas(subido.audio!.tamanho)}
                   {subido.audio!.partes > 1 ? `, em ${subido.audio!.partes} partes` : ''})
                 </p>
-                <p>Foi para a transcrição (D1.11) e fica guardado no caso. Você recebeu «Cadastrar lead» (D1.10).</p>
+                <p>Foi para a transcrição e fica guardado no caso. Você recebeu «Cadastrar lead».</p>
                 <a className={styles.atalho} href={`/entrevista/${a.id}/gravacao`}>
                   Abrir a entrevista
                 </a>
@@ -161,11 +158,11 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.09.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>
             A entrevista começa com o aviso de gravação (G10); a senha do gov.br vai ao cofre (G9). Ao encerrar, a IA transcreve
-            (D1.11), você cadastra o lead (D1.10) e define o benefício (D1.12).
+           , você cadastra o lead e define o benefício.
           </p>
         </aside>
       </main>

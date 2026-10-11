@@ -106,6 +106,7 @@
   background: var(--cor-fundo);
   color: var(--cor-texto);
   font: inherit;
+  box-shadow: var(--sombra-1);
 }
 
 .conferencia {

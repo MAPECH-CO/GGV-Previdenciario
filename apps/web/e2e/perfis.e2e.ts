@@ -6,10 +6,11 @@ import { entrarPelaApi } from './entrar.ts'
 test('CA10 · "Entrar como…" mostra só os perfis da pessoa e troca de Central', async ({ page }) => {
   await entrarPelaApi(page, 'lider@exemplo.ggv')
   await page.goto('/')
-  await page.getByRole('button', { name: 'Atendimento · líder' }).click()
+  // Desde 11/10 o botão é a pessoa: o nome e, menor, o perfil ativo.
+  await page.getByRole('button', { name: /, Atendimento · líder$/ }).click()
   await expect(page.getByRole('menuitemradio')).toHaveText(['Atendimento · líder', 'Atendimento'])
   await page.getByRole('menuitemradio', { name: 'Atendimento', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Atendimento', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /, Atendimento$/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
 })
 
@@ -24,8 +25,8 @@ test('cada perfil cai na sua Central: a da Sênior', async ({ page }) => {
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Início da Sênior' })).toBeAttached()
-  await expect(page.getByRole('button', { name: 'Sênior' })).toBeVisible()
-  await page.getByRole('button', { name: 'Sair' }).click()
+  await page.getByRole('button', { name: 'Helena (exemplo), Sênior' }).click()
+  await page.getByRole('menuitem', { name: 'Sair' }).click()
   await expect(page).toHaveURL('/entrar')
   // A cópia do navegador fica ao sair (09/10): o roteiro troca de pessoa na mesma aba (ver sessao.ts).
 })

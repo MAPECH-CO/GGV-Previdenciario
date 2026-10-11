@@ -165,7 +165,7 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   expect((await advogada.request.post(`/api/pessoas/${fichaId}/cofre`, { data: { senha: SENHA } })).ok()).toBe(true)
   expect((await advogada.request.post(`/api/fichas/${fichaId}/cofre/gov`, { data: { acao: 'guardou' } })).ok()).toBe(true)
 
-  await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await advogada.getByRole('link', { name: 'Definir o benefício' }).click()
   await expect(advogada.getByRole('heading', { level: 1 })).toHaveText('Lia Decisao Teste · Definir benefício')
   // Sem transcrição, a IA não tem o que comparar: a advogada define pela lista do escritório (G3).
   await advogada.getByRole('radio', { name: 'Outro benefício' }).click()
@@ -267,7 +267,7 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
   await advogada.getByLabel('O que foi conversado *').fill('Afastada do trabalho, sem receber; quer o auxílio por incapacidade.')
   await advogada.getByRole('button', { name: 'Registrar sem áudio' }).click()
   await expect(advogada.getByRole('heading', { name: '✓ Entrevista registrada sem áudio' })).toBeVisible()
-  await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await advogada.getByRole('link', { name: 'Definir o benefício' }).click()
   await advogada.getByRole('radio', { name: 'Outro benefício' }).click()
   await advogada.getByLabel('Benefício definido *').selectOption('incapacidade-temporaria')
   await advogada.getByRole('checkbox', { name: 'Conferi a recomendação com a entrevista' }).check()
@@ -367,7 +367,7 @@ test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o 
 
   // A leitura da IA (simulada) aponta a página cortada do papel: a Atendimento confere.
   await page.goto(`/contrato/${caso}/assinatura`)
-  await page.getByRole('button', { name: 'Simular a leitura da IA (D1.18)' }).click()
+  await page.getByRole('button', { name: 'Simular a leitura da IA' }).click()
   await page.getByRole('link', { name: 'Conferir contrato' }).click()
   await page.getByRole('radiogroup', { name: 'Está tudo certo?' }).getByRole('radio', { name: 'Sim' }).click()
   await page.getByRole('button', { name: 'Está certo — seguir' }).click()

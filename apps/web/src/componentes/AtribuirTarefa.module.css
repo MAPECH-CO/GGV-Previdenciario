@@ -1,6 +1,6 @@
 /* Figma 1600:1282 e 1600:1358: janela de 430. */
 .janela {
-  width: min(430px, calc(100vw - 32px));
+  width: min(430px, calc(100vw / var(--zoom) - 32px));
   margin: 64px auto auto;
   padding: 16px 16px 14px;
   border: 0;
@@ -155,6 +155,7 @@
   color: var(--cor-texto);
   font: inherit;
   font-size: var(--fonte-12);
+  box-shadow: var(--sombra-1);
 }
 
 .avisar {
@@ -195,6 +196,7 @@
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .primario:disabled {
@@ -206,4 +208,5 @@
   border: 1px solid var(--cor-linha);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }

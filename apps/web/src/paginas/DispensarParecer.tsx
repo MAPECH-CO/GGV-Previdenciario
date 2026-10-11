@@ -71,9 +71,6 @@ export function DispensarParecer({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.24 · Liberar ao Jurídico (passo do BPMN)">
-                D1.24
-              </span>
               <span className={styles.codigo}>G17</span>
               <span className={proprio.senior}>Sênior</span>
               <span className={styles.beneficio}>◆ {beneficio}</span>
@@ -191,7 +188,7 @@ export function DispensarParecer({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O portão do parecer médico (G17) nos passos D1.24, D2.01 e D3.05.</p>
+          <p className={styles.ladoSub}>O portão do parecer médico (G17): ao liberar ao Jurídico, antes do INSS e ao pedir a petição.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <p>• Justificativa: por que seguir sem a prova médica*</p>
           <h3 className={styles.ladoSecao}>Travas</h3>

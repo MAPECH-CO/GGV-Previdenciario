@@ -101,7 +101,7 @@ export function montarChecklist(e: EntradaDoChecklist): Checklist {
 
   const contrato: ItemDoChecklist = e.contratoAssinado
     ? { tipo: 'contrato', nome: 'Contrato assinado (kit)', situacao: 'recebido', de: 'contrato' }
-    : { tipo: 'contrato', nome: 'Contrato assinado (kit)', situacao: 'pendente', motivo: 'falta a assinatura do cliente (D1.17)', de: 'contrato' }
+    : { tipo: 'contrato', nome: 'Contrato assinado (kit)', situacao: 'pendente', motivo: 'falta a assinatura do cliente', de: 'contrato' }
   const itens = [
     contrato,
     ...pedidos.map((p) => {

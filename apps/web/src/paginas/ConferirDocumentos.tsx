@@ -230,9 +230,6 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.18 · Scanner e leitura dos documentos (passo do BPMN)">
-                D1.18
-              </span>
               <span className={styles.codigo}>Documentação</span>
               <span className={styles.codigo}>hoje</span>
             </div>
@@ -245,7 +242,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
           <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processo?.id}>
             A IA leu os documentos {digital ? 'que chegaram pelo card' : 'digitalizados'} de {ficha.nome.split(' ')[0]} e sugeriu tipo e
             data de cada um. Abra cada um, confira a leitura e se a imagem está legível.
-            {loas && ` Para ${beneficio} o kit precisa de RG e CPF de todos da casa, comprovante de renda e de residência e CadÚnico: o que faltar vai para a cobrança (D1.23).`}{' '}
+            {loas && ` Para ${beneficio} o kit precisa de RG e CPF de todos da casa, comprovante de renda e de residência e CadÚnico: o que faltar vai para a cobrança.`}{' '}
             Documento médico: confirme que está ok; o conteúdo fica com o Jurídico.
           </InstrucoesPasso>
 
@@ -498,7 +495,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.18.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="duplicado">Se a IA apontar documento duplicado: o que fazer?</p>

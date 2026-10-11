@@ -1,6 +1,8 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { PedirExportacao, type HistoricoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import g from './Gestao.module.css'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const momento = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
@@ -44,11 +46,8 @@ export function Historico({ casoId }: { casoId: string }) {
   }
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Histórico do processo · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Histórico do processo</h1>
       {h && <p className={styles.subtitulo}>{h.cliente} · ninguém edita nem apaga o histórico; uma correção entra como evento novo</p>}
       {erro && (
@@ -62,11 +61,16 @@ export function Historico({ casoId }: { casoId: string }) {
         </p>
       )}
       {h && h.eventos.length > 0 && (
-        <ol className={styles.lista} aria-label="Linha do processo">
+        <ol className={`${styles.cartao} ${g.linhaDoTempo}`} aria-label="Linha do processo">
           {h.eventos.map((e, i) => (
-            <li key={`${e.quando}-${i}`}>
-              {momento(e.quando)} · {e.quem} · {e.descricao}
-              {e.passo ? ` (${e.passo})` : ''}
+            <li key={`${e.quando}-${i}`} className={g.evento}>
+              <span className={g.quando}>{momento(e.quando)}</span>
+              <span className={g.sep}> · </span>
+              <span className={g.forte}>{e.quem}</span>
+              <span className={g.sep}> · </span>
+              <span>
+                {e.descricao}
+              </span>
             </li>
           ))}
         </ol>
@@ -94,7 +98,7 @@ export function Historico({ casoId }: { casoId: string }) {
             </a>
           )}
           {h.podePedirExportacao && (
-            <form onSubmit={pedir} noValidate>
+            <form className={g.formulario} onSubmit={pedir} noValidate>
               <label className={styles.rotulo} htmlFor={idMotivo}>
                 Motivo do pedido (auditoria, titular dos dados)
               </label>
@@ -109,6 +113,6 @@ export function Historico({ casoId }: { casoId: string }) {
           )}
         </section>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

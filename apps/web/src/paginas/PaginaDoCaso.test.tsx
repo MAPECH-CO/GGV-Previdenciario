@@ -28,11 +28,11 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Linha do processo · completa' })
     expect(etapas().map((e) => e.textContent?.replace(/\s+/g, ' '))).toEqual([
-      '✓ Entrevista (D1 · feita)',
-      '✓ INSS (D2 · feita)',
-      '✓ Justiça (D3 · feita)',
-      '▶ Vigíliaexigência do juiz (D3a · agora)Em períciaAgendada'.replace('Agendada', etapas()[3].textContent!.split('Em perícia')[1]),
-      'Desfecho (D3b · ainda não chegou)',
+      '✓ Entrevista (feita)',
+      '✓ INSS (feita)',
+      '✓ Justiça (feita)',
+      '▶ Vigíliaexigência do juiz (agora)Em períciaAgendada'.replace('Agendada', etapas()[3].textContent!.split('Em perícia')[1]),
+      'Desfecho (ainda não chegou)',
     ])
     const vigilia = etapas()[3]
     expect(within(vigilia).getByText('Vigília', { exact: false }).closest('[aria-current]')?.getAttribute('aria-current')).toBe('step')
@@ -44,9 +44,9 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     render(comSessao(<PaginaDoCaso processoId="marta-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Linha do processo · completa' })
     expect(etapas().slice(2).map((e) => e.textContent)).toEqual([
-      'Justiçanão se aplica (D3 · não se aplica)',
-      'Vigílianão se aplica (D3a · não se aplica)',
-      'Desfechonão se aplica (D3b · não se aplica)',
+      'Justiçanão se aplica (não se aplica)',
+      'Vigílianão se aplica (não se aplica)',
+      'Desfechonão se aplica (não se aplica)',
     ])
   })
 
@@ -70,7 +70,7 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     fireEvent.click(await screen.findByRole('button', { name: '✓ Entrevista' }))
     const detalhe = screen.getByRole('heading', { name: /Entrevista · feita/ }).closest('section')!
     expect(detalhe.textContent).toContain('Dra. Paula (exemplo) (pessoa)')
-    expect(detalhe.textContent).toContain('D1.09')
+    expect(detalhe.textContent).not.toContain('D1.09')
     expect(detalhe.textContent).toContain('Documentos desta etapa: transcricao-entrevista.pdf, contrato-zapsign.pdf, cnis.pdf')
   })
 
@@ -123,7 +123,7 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
     const vigilia = await screen.findByRole('list', { name: 'Linha · Vigília' })
     expect(vigilia.textContent).toContain('IA Vigília (IA): Publicação lida')
-    expect(vigilia.textContent).toContain('D3a.01')
+    expect(vigilia.textContent).not.toContain('D3a.01')
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Publicação no diário' }))
     const doc = screen.getByRole('dialog', { name: 'Publicação no diário' })
     expect(doc.textContent).toContain('Origem: Diário (vigília)')
@@ -306,13 +306,13 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     render(comSessao(<PaginaDoCaso processoId={CASO} />))
     expect(await screen.findByRole('heading', { level: 1, name: /^NB\s*456\.123\.789-5$/ })).toBeTruthy()
     expect(fetch.mock.calls.map((c) => c[0])).toContain(`/api/casos/${CASO}/processo`)
-    expect(etapas()[0].textContent).toBe('✓ Entrevista (D1 · feita)')
-    expect(etapas()[1].textContent).toContain('▶ INSSDecidir perícia (D2 · agora)')
+    expect(etapas()[0].textContent).toBe('✓ Entrevista (feita)')
+    expect(etapas()[1].textContent).toContain('▶ INSSDecidir perícia (agora)')
     expect(within(etapas()[1]).getByRole('link', { name: /Em perícia/ }).getAttribute('href')).toBe(`/casos/${CASO}/pericia`)
-    expect(etapas()[2].textContent).toBe('Justiça (D3 · ainda não chegou)')
+    expect(etapas()[2].textContent).toBe('Justiça (ainda não chegou)')
     const onde = secao('Onde o caso está').textContent
     expect(onde).toContain('INSS · Decidir perícia. Esperando Documentação subir o card. Esperando de fora: Cliente.')
-    expect(onde).toContain('Em perícia · pedido ao INSS (D2) · perícia médica · 20/10, 10:30 · Agência Santo Amaro')
+    expect(onde).toContain('Em perícia · pedido ao INSS · perícia médica · 20/10, 10:30 · Agência Santo Amaro')
     const tarefas = secao('Tarefas em andamento')
     expect(within(tarefas).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Jurídico', 'Documentação'])
     expect(within(tarefas).getByRole('link', { name: 'Decidir perícia' }).getAttribute('href')).toBe(`/casos/${CASO}/pericia`)

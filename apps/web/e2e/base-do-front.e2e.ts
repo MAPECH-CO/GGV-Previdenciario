@@ -15,28 +15,34 @@ test.beforeEach(({ page }) => entrarPelaApi(page))
 /** "#121417" → "rgb(18, 20, 23)", que é como o navegador devolve a cor calculada. */
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
-test.describe('CA2 · tema e fonte', () => {
-  test('"☾ Escuro" e "A+" mudam a tela inteira, e recarregar mantém a escolha', async ({ page }) => {
+// Desde 11/10 o tamanho é livre (70% a 200%) e aumenta o portal inteiro, pelo zoom no <html>.
+test.describe('CA2 · tema e tamanho', () => {
+  test('o tema escuro e o "aumentar" mudam a tela inteira, e recarregar mantém a escolha', async ({ page }) => {
     const corpo = page.locator('body')
+    const html = page.locator('html')
     await page.goto('/')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.claro))
     await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].padrao}px`)
 
     await page.getByRole('button', { name: 'Mudar para o tema escuro' }).click()
-    await page.getByRole('button', { name: 'Aumentar a fonte' }).click()
+    await page.getByRole('button', { name: 'Aumentar o tamanho' }).click()
+    await page.getByRole('button', { name: 'Aumentar o tamanho' }).click()
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(html).toHaveCSS('zoom', '1.2')
+    await expect(page.getByRole('button', { name: /^Tamanho em 120%/ })).toBeVisible()
 
     await page.reload()
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(html).toHaveCSS('zoom', '1.2')
   })
 
-  test('?tema=escuro&fonte=grande já abre escuro e grande', async ({ page }) => {
+  test('?tema=escuro&escala=130 já abre escuro e em 130%; o "fonte=grande" de antes abre em 125%', async ({ page }) => {
     const corpo = page.locator('body')
-    await page.goto('/?tema=escuro&fonte=grande')
+    await page.goto('/?tema=escuro&escala=130')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.3')
+    await page.goto('/?fonte=grande')
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   })
 })
 
@@ -56,9 +62,10 @@ test('CA6 · /tokens reage à troca de tema e de fonte', async ({ page }) => {
   await expect(exemplo).toHaveCSS('font-size', `${tokens.fontes['13'].padrao}px`)
 
   await page.getByRole('button', { name: 'Mudar para o tema escuro' }).click()
-  await page.getByRole('button', { name: 'Aumentar a fonte' }).click()
+  await page.getByRole('button', { name: 'Aumentar o tamanho' }).click()
   await expect(amostra).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(exemplo).toHaveCSS('font-size', `${tokens.fontes['13'].grande}px`)
+  // Desde 11/10 o tamanho aumenta tudo pelo zoom; a fonte calculada segue a do token.
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.1')
 })
 
 test('CA7 · caminho sem tela avisa, e "Voltar ao início" leva à Central', async ({ page }) => {
