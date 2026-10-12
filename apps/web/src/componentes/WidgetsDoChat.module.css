@@ -312,7 +312,8 @@ a.linha:active {
   text-align: right;
 }
 
-/* Estreito (a aba Suporte): números em 2 colunas e a faixa da semana some (fica a lista). */
+/* Estreito (a aba Suporte e o celular): números em 2 colunas, a faixa da semana some (fica a lista), as etapas quebram
+   em duas linhas para o nome caber e o nome da barra ganha mais espaço. */
 @container (max-width: 420px) {
   .numeros {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -320,5 +321,17 @@ a.linha:active {
 
   .semana {
     display: none;
+  }
+
+  .etapas {
+    flex-wrap: wrap;
+  }
+
+  .etapas li {
+    flex: 1 1 calc(33% - 4px);
+  }
+
+  .barras li {
+    grid-template-columns: minmax(0, 42%) 1fr auto;
   }
 }
