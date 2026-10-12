@@ -1,7 +1,7 @@
 # Tasks
 
-<!-- Uma parte por vez, na ordem do cartão. As partes 3 a 9 ganham seção quando chegar a vez (/opsx:update). O que é
-     Coolify, GitHub, Supabase e CodeQL fica fora destas tarefas: está no "Fora do escopo" da proposta. -->
+<!-- Uma parte por vez, na ordem do cartão. As partes 3 a 9 ganham seção quando chegar a vez (/opsx:update). Desde 12/10,
+     o que é Coolify, GitHub, Supabase e CodeQL entra aqui também, nas seções "fora do código", feito com o Mateus. -->
 
 ## GGVP-158 · Parte 1 · Ligar o que está desligado na homologação (o código)
 
@@ -51,6 +51,32 @@
 
   Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm --filter @ggv/web exec playwright test mensagens seguranca --workers=1`.
 - [x] 1.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-158 · Parte 1 · Fora do código e os nomes do ZapSign (12/10)
+
+- [x] 1.10 Chatwoot na homologação (P1.7).
+  - O Mateus pôs no Coolify `CHATWOOT_URL`, `CHATWOOT_CONTA` (2), `CHATWOOT_CAIXA` (a do escritório, GGV PREV, a única), `CHATWOOT_TOKEN` (direto no Coolify) e `CHATWOOT_PERMITIDOS` (os telefones do time).
+  - Conferiu `AMBIENTE=homologacao` e fez o redeploy.
+
+  Verificado em 12/10 no portal da homologação:
+  - o lead de teste com o telefone da lista recebeu as boas-vindas no WhatsApp ("✓ Enviada no Chatwoot às 10:40");
+  - com o telefone de fora, a janela disse "fora da lista de teste".
+
+  O #63 saiu do rascunho.
+- [ ] 1.11 Os modelos que passam (P1.8). Dos anexos da GGVP-136, conferidos com `lerModelo`, passam o `modelo-8` (kit consumidor de 23/07) e o `modelo-10` (seguro de vida).
+  - A Sênior sobe os dois pelo `modelos:subir`, com a senha digitada só no terminal do Mateus.
+  - Verifica: a Configuração mostra a versão dos dois, e o cartão registra o que falta e por quê.
+- [ ] 1.12 Os nomes do ZapSign no kit (P1.9), num PR à parte sobre o #62, com revisão do Pedro. Na ordem contrato → teste → código:
+  - em `apps/web/src/regras/kitDoModelo.ts`, os sinônimos com o mesmo valor do nome do portal e as variáveis que a ficha não tem como opcionais;
+  - a regra da primeira data vale para `{{DIA}}`, `{{MÊS}}` e `{{ANO}}`, em `apps/api/src/kit/docx.ts`;
+  - teste em `apps/web/src/regras/kitDoModelo.test.ts` e em `apps/api/src/kit/docx.test.ts`, com um .docx de teste montado na hora, sem modelo do escritório no repositório.
+
+  Verifica com os testes e com a conferência dos 3 Contratos Completos baixados, fora do repositório: os três passam.
+- [ ] 1.13 Depois do merge da 1.12, a Sênior sobe os 3 Contratos Completos (auxílio incapacidade, auxílio acidentário e LOAS). Verifica: o "Preparar contrato" gera o kit com os dados da ficha.
+- [ ] 1.14 Gotenberg (P1.10): o serviço `gotenberg/gotenberg:8` no mesmo projeto do Coolify, na porta 3000, sem domínio público, e o `GOTENBERG_URL` no app. Verifica: `GET /api/contrato/servicos` responde `pdf: true`, e o kit sai em PDF.
+- [ ] 1.15 Drive na homologação (P1.11): a decisão do Mateus, entre só leitura e pastas de teste, aplicada no Coolify. O Mateus apaga do Drive real a pasta de teste "Leads/2026/Teste Chatwoot Mateus". Verifica: o /saude mostra o Drive como o Mateus decidiu, e um lead novo não cria pasta nas pastas reais.
+- [ ] 1.16 Depois do merge do #62, o Mateus roda `homologacao:preparar` no terminal da homologação. Verifica: o /saude mostra o commit novo, e os peritos de exemplo aparecem ao registrar o perito de uma perícia.
+- [ ] 1.17 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-158 · Parte 2 · Segurança e processo do repositório (o código)
 
@@ -114,3 +140,10 @@
 
   Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts src/rotas/conversa.test.ts src/rotas/transcricao.test.ts src/rotas/chat.test.ts src/rotas/inss.test.ts src/rotas/recepcao-entrevista.test.ts src/rotas/historico.test.ts`.
 - [x] 2.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-158 · Parte 2 · Fora do código (12/10)
+
+- [ ] 2.10 Banco da homologação (P2.8): com a autorização do Mateus, o conector do Supabase lista só nomes e contagens do esquema `juridico`, das cópias `zz_backup_*` e da `_snap_pgss`. A proposta vai ao cartão; apagar, só o Mateus. Verifica: o comentário no cartão traz a lista e a proposta.
+- [ ] 2.11 Main protegida (P2.9): combinada com o Pedro e aplicada pelo `gh`. Verifica: um pedido sem aprovação não mescla.
+- [ ] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
+- [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

@@ -1,4 +1,4 @@
-GGVP-158 · Fechamento do desenvolvimento: servidor, infra e integrações (Mateus) · história transversal, sem épico próprio. Atravessa a base, a Recepção, o INSS, a Justiça, o Desfecho e a IA, por isso tem uma change só dela (decisão do Mateus, 11/10).
+GGVP-158 · Fechamento do desenvolvimento: servidor, infra e integrações (Mateus) · história transversal, sem épico próprio. Atravessa a base, a Recepção, o INSS, a Justiça, o Desfecho e a IA, e tem change própria (decisão do Mateus, 11/10).
 
 ## Por quê
 
@@ -8,20 +8,12 @@ A auditoria de 11/10 (main `5a89f2f`, homologação, Jira e GitHub) listou o que
 
 Uma parte por vez, na ordem. Cada parte ganha spec e tarefas quando chegar a vez (`/opsx:update`), e cada pedido cita GGVP-158.
 
-1. **Ligar o que está desligado na homologação**, agora só o código:
-   - o "simulado, não saiu" sem Chatwoot;
-   - o commit no /saude;
-   - os cabeçalhos de segurança;
-   - a produção que não sobe sem banco;
-   - as variáveis documentadas;
-   - os dados de teste dos recursos novos.
-2. **Segurança e processo do repositório**, agora só o código:
-   - o drizzle-orm atualizado e a regex lenta;
-   - `@ggv/campos` no CI;
-   - o erro sem SQL no log;
-   - a trava nas rotas sem trava;
-   - o `chamadaIaId` conferido contra o caso;
-   - o registro do que segue desligado.
+1. **Ligar o que está desligado na homologação:**
+   - no código: o "simulado, não saiu" sem Chatwoot, o commit no /saude, os cabeçalhos de segurança, a produção que não sobe sem banco, as variáveis documentadas, os dados de teste dos recursos novos e os nomes de variável do ZapSign no kit;
+   - fora do código, com o Mateus: o Chatwoot, o Gotenberg e o Drive no Coolify, os modelos do Word no portal e o preparo da homologação depois do merge.
+2. **Segurança e processo do repositório:**
+   - no código: o drizzle-orm atualizado, a regex lenta, `@ggv/campos` no CI, o erro sem SQL no log, a trava nas rotas sem trava, o `chamadaIaId` conferido contra o caso e o registro do que segue desligado;
+   - fora do código, com o Mateus: o banco da homologação conferido, a main protegida (com o Pedro) e os falsos positivos do CodeQL.
 3. Caminho da Maria no servidor real.
 4. Recepção sem simulação.
 5. Perícia, INSS e Justiça.
@@ -32,14 +24,9 @@ Uma parte por vez, na ordem. Cada parte ganha spec e tarefas quando chegar a vez
 
 ## Fora do escopo
 
-- **Com o Mateus, depois:**
-  - no Coolify: o Chatwoot, o Gotenberg e o Drive só leitura;
-  - o `modelos:subir`;
-  - a conferência do banco da homologação;
-  - a proteção da main, com o Pedro;
-  - os falsos positivos do CodeQL.
 - **Esperando o Lucas:** o "Fica de fora" do cartão.
-- **Telas do Pedro:** aqui, só o servidor.
+- **Com o Pedro:** as telas (aqui, só o servidor) e a conversão dos modelos que vieram preenchidos (GGVP-159).
+- **Apagar dado no banco da homologação:** a proposta sai daqui, e quem roda é o Mateus.
 
 ## Portões envolvidos
 

@@ -14,12 +14,15 @@
 
 ## Goals / Non-Goals
 
-**Goals:** a parte de código das partes 1 e 2 da GGVP-158, uma tarefa por vez, com teste.
+**Goals:**
+- o código das partes 1 e 2 da GGVP-158, uma tarefa por vez, com teste;
+- desde 12/10, também o que é fora do código nessas partes (Coolify, GitHub, Supabase e CodeQL), feito com o Mateus.
+  - O que precisa de segredo, senha ou token é dele: o token do Chatwoot, a senha da Sênior e a saída do `homologacao:preparar`.
 
 **Non-Goals:**
-- o que é fora do código: o Coolify, o GitHub, o Supabase e o CodeQL, que ficam com o Mateus;
 - as partes 3 a 9;
-- telas.
+- telas;
+- apagar dado no banco da homologação: a proposta sai daqui, e quem roda é o Mateus.
 
 ## Decisions
 
@@ -66,6 +69,27 @@
     - Cada exemplo entra só se falta (`onConflictDoNothing`, ou o título da reunião), então rodar o preparo de novo acrescenta sem duplicar.
     - O contrato da Recepção, a leitura, o checklist, as boas-vindas, a cobrança e a perícia ficam fora. Nascem no roteiro (lead novo e perícia decidida pela advogada). O kit do contrato precisa dos modelos do Word, que ainda não subiram.
 
+**Fora do código (12/10, com o Mateus)**
+
+13. **Chatwoot na homologação pela caixa do escritório**, a única que existe (GGV PREV, conta 2), por decisão do Mateus.
+    - A trava é o `CHATWOOT_PERMITIDOS`, só com os telefones do time, e o `AMBIENTE=homologacao`.
+    - As conversas de teste aparecem no Chatwoot dos atendentes, e a mensagem sai como enviada pela pessoa dona do token.
+    - Feito e testado às 10:40: o telefone da lista recebeu, e o de fora ficou "fora da lista de teste".
+14. **Os modelos do Word vêm dos anexos da GGVP-136**, baixados do ZapSign do escritório pelo Pedro, sem dado de cliente.
+    - Ficam numa pasta fora do repositório (`D:\SSD\Downloads\modelos-kit-ggv`). Antes de subir, cada arquivo passa pela mesma conferência do portal (`lerModelo`).
+    - Passaram o kit consumidor de 23/07 (`modelo-8`) e o seguro de vida (`modelo-10`).
+    - Os 3 Contratos Completos (auxílio incapacidade, auxílio acidentário e LOAS) foram recusados pelos nomes de variável do ZapSign.
+15. **O portal aceita os nomes do ZapSign** (decisão do Mateus, 12/10), em vez de editar cada modelo no Word.
+    - Assim valem também os 9 modelos que ainda vão chegar do ZapSign.
+    - Os sinônimos entram em `regras/kitDoModelo.ts` com o mesmo valor do nome do portal. `{{DIA}}`, `{{MÊS}}` e `{{ANO}}` saem da data do contrato, com a regra da primeira data.
+    - O que a ficha não tem é opcional e sai em branco.
+    - Vai num PR à parte, com teste num .docx montado na hora, sem modelo do escritório no repositório. O Pedro revisa, porque o kit é dele.
+16. **Gotenberg:** a imagem `gotenberg/gotenberg:8` no mesmo projeto do Coolify, na porta 3000. Fica sem domínio público, porque não tem login e por ele passa contrato de cliente.
+17. **Drive na homologação:** o Mateus decide entre só leitura e pastas de teste.
+    - O lead de teste de 12/10 criou "Leads/2026/Teste Chatwoot Mateus" no Drive real. Quem apaga é o Mateus, e só o que o teste criou.
+18. **Banco da homologação:** só leitura pelo conector do Supabase, com a autorização do Mateus. Só nomes e contagens; nenhum dado é lido.
+19. **GitHub:** a proteção da main e a dispensa dos alertas do CodeQL vão pelo `gh`, com o Mateus de acordo. A proteção, também com o Pedro.
+
 ## Campos de formulário
 
 Nenhum.
@@ -78,3 +102,5 @@ Nenhum.
 - **Matriz 29:** outro pedido com matriz nova conflita na impressão digital, e quem entrar depois renumera.
 - **drizzle-orm:** a versão nova pode mudar tipos. A suíte inteira roda antes do "Agora ok?".
 - **"Falhou" sem Chatwoot:** a homologação passa a mostrar as mensagens como não enviadas até o Chatwoot ser ligado, o que é o comportamento pedido.
+- **Caixa do escritório na homologação:** as conversas de teste aparecem para os atendentes. A trava dos telefones impede que um cliente receba.
+- **Sinônimos do ZapSign:** um nome novo no ZapSign volta a ser recusado. Por isso, a conferência fica antes de cada subida, e o recusado vai para o cartão.
