@@ -86,10 +86,51 @@ describe('12/10 · gravar áudio de verdade', () => {
     vi.mocked(transcreverFala).mockResolvedValue('')
     abrir()
     await gravar()
+    await act(async () => vi.advanceTimersByTime(2000))
     fireEvent.click(screen.getByRole('button', { name: 'Pronto' }))
     await act(async () => {})
     expect(screen.getByRole('status').textContent).toBe('Não deu para entender a fala: grave de novo, mais perto do microfone, ou digite a pergunta.')
     expect(caixa().value).toBe('')
+  })
+
+  it('Pronto antes de 1 segundo não manda nada à IA e avisa', async () => {
+    abrir()
+    await gravar()
+    fireEvent.click(screen.getByRole('button', { name: 'Pronto' }))
+    await act(async () => {})
+    expect(transcreverFala).not.toHaveBeenCalled()
+    expect(screen.getByRole('status').textContent).toBe('Não deu para entender a fala: grave de novo, mais perto do microfone, ou digite a pergunta.')
+  })
+
+  it('fechar o chat gravando não manda o áudio, mesmo quando o navegador para o gravador ao soltar o microfone', async () => {
+    // Pela especificação, parar todas as faixas faz o MediaRecorder parar sozinho e chamar o onstop.
+    let gravadorAtual: GravadorFalso | null = null
+    vi.stubGlobal(
+      'MediaRecorder',
+      class extends GravadorFalso {
+        constructor() {
+          super()
+          gravadorAtual = this
+        }
+      },
+    )
+    microfone(async () => ({ getTracks: () => [{ stop: () => gravadorAtual?.state === 'recording' && gravadorAtual.stop() }] }))
+    const { unmount } = abrir()
+    await gravar()
+    await act(async () => vi.advanceTimersByTime(3000))
+    unmount()
+    await act(async () => {})
+    expect(transcreverFala).not.toHaveBeenCalled()
+  })
+
+  it('dois cliques em "Gravar áudio" enquanto o navegador pede o microfone abrem um microfone só', async () => {
+    let liberar: (v: unknown) => void = () => {}
+    microfone(() => new Promise((r) => (liberar = r)))
+    abrir()
+    fireEvent.click(screen.getByRole('button', { name: 'Gravar áudio' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gravar áudio' }))
+    await act(async () => liberar({ getTracks: () => [{ stop: parada }] }))
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
   })
 
   it('sem microfone (negado ou ausente) avisa', async () => {
