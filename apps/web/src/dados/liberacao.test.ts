@@ -77,7 +77,7 @@ describe('Liberar o caso ao Jurídico · servidor de exemplo', () => {
     expect(ficha?.processos[0].etapa).toBe('Jurídico · conferência antes do INSS')
     expect(tarefasDeLiberar().map((t) => t.cliente?.nome)).toEqual(['Sebastião Exemplo'])
     expect(tarefasDaFilaDaSenior()).toEqual([
-      expect.objectContaining({ codigo: 'D2.01', acao: 'Conferir antes do INSS', detalhe: 'LOAS Deficiente · liberado pela Documentação hoje às 14:32' }),
+      expect.objectContaining({ codigo: 'D2.01', acao: 'Conferir antes do INSS', href: '/casos/rita-exemplo-1', detalhe: 'LOAS Deficiente · liberado pela Documentação hoje às 14:32' }),
     ])
     expect((await obterLiberacao('rita-exemplo-1'))?.liberacao).toEqual(liberacao)
     await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('O caso já foi liberado')

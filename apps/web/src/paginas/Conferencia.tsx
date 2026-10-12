@@ -108,7 +108,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
         </ol>
         <p className={styles.dica}>
           Ficha do cliente: {caso.temFicha ? 'preenchida' : 'não preenchida'} · Kit assinado: {caso.kitAssinado ? 'sim' : 'não'} · Cálculo de tempo e pontos:
-          não há para este caso
+          cálculo ainda não mostrado aqui
         </p>
       </section>
 

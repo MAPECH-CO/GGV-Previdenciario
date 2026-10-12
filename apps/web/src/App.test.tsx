@@ -333,6 +333,14 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Pedro Exemplo · Registrar conversa' })).toBeTruthy()
   })
 
+  it('o destino da tarefa de conferência da Sênior abre a página do caso', async () => {
+    zerarExemplo()
+    servidorResponde(200, senior)
+    render(<App caminho="/casos/rita-exemplo-1" />)
+    expect(await screen.findByRole('heading', { name: 'Linha do processo · completa' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Esta tela ainda não foi construída' })).toBeNull()
+  })
+
   it('em rota sem tela avisa que não foi construída e mostra o caminho', async () => {
     render(<App caminho="/relatorios" />)
     expect((await screen.findByRole('heading', { name: 'Esta tela ainda não foi construída' }))).toBeTruthy()
