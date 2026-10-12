@@ -45,3 +45,8 @@ Trabalho fora do /epico autorizado pelo Pedro. Sem conectores de serviços, suba
 - Rodada final: `pnpm --filter @ggv/web exec vitest run src/paginas/FechamentoFinanceiro.test.tsx src/paginas/Prestacao.test.tsx src/componentes/CampoDeValorPendente.test.tsx src/componentes/ExplicacaoDoDesfecho.test.tsx src/paginas/PendenciasDaConversaNasCentrais.test.tsx src/componentes/RegistrarConversa.test.tsx src/paginas/Conversa.test.tsx src/paginas/PaginaDoCaso.test.tsx src/paginas/Peticao.test.tsx src/paginas/FichaCliente.test.tsx src/paginas/EntrevistaAoVivo.test.tsx src/paginas/ExplicarResultado.test.tsx --maxWorkers=1 --pool=forks`: **114 passed (12 arquivos), saída 0, 85.78s**. Não somar as repetições.
 - `git -c core.safecrlf=false diff --check`: saída 0.
 - Cenário Playwright novo de prestação, edição antes do OK e campos indisponíveis. Cenário existente da via administrativa atualizado para registrar ligação por telefone. Nenhum Playwright local; a execução do GitHub ocorre depois do OK/PR.
+
+## Verificação do GitHub no pedido 66
+
+- Primeira execução, 38264758811: Playwright **1 failed | 252 passed (10.2m)**. O cenário presencial de conversa esperava zero opções WhatsApp; a parte 5 passou a mostrar a opção explicitamente indisponível. Saída: `Expected: 0 / Received: 1`.
+- O cenário agora verifica que WhatsApp está desabilitado e que Vídeo continua ausente. Nenhuma espera ou regra de produção foi afrouxada. Nova execução do GitHub necessária; sem Playwright local.
