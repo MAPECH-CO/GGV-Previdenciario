@@ -385,3 +385,44 @@ describe('12/10 · a fala do microfone vira texto (POST /api/chat/fala)', () => 
     expect(semSaude.json().erro).toBe('A transcrição não funcionou: a IA não está autorizada a ler dado de saúde neste ambiente.')
   })
 })
+
+describe('12/10 · os widgets do chat', () => {
+  async function tarefasDaAna() {
+    await banco.insert(tarefa).values([
+      { casoId, titulo: 'Cobrar documento', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-09' },
+      { casoId, titulo: 'Conferir antes do INSS', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-13' },
+    ])
+  }
+
+  it('a ferramenta oferece os widgets; o marcador vira bloco e o texto do registro vem sem marcador', async () => {
+    await tarefasDaAna()
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Você tem **2 tarefas**.\n{{w1}}\nA mais urgente:\n{{w2}}\n{{w9}}' }]
+    const r = await perguntar('ana', 'O que tem hoje pra mim?')
+    expect(saidaDaFerramenta(1)).toMatch(/\{\{w1\}\} números das suas tarefas/)
+    expect(r.sugestao.texto).not.toContain('{{')
+    expect(r.blocos?.map((b) => (b.tipo === 'widget' ? b.widget.tipo : 'texto'))).toEqual(['texto', 'numeros', 'texto', 'lista'])
+    const numeros = r.blocos![1]
+    expect(numeros.tipo === 'widget' && numeros.widget.tipo === 'numeros' && numeros.widget.itens[0]).toEqual({ rotulo: 'Abertas', valor: 2 })
+  })
+
+  it('sem marcador, a resposta vem sem blocos', async () => {
+    await tarefasDaAna()
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Você tem duas tarefas.' }]
+    expect((await perguntar('ana', 'O que tem hoje?')).blocos).toBeUndefined()
+  })
+
+  it('o caso oferece etapas, linha do tempo e prazos', async () => {
+    roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'Assim está:\n{{w1}}' }]
+    const r = await perguntar('ana', 'Como está o caso?', casoId)
+    expect(saidaDaFerramenta(1)).toMatch(/\{\{w1\}\} etapas do processo/)
+    expect(r.blocos?.[1]).toMatchObject({ tipo: 'widget', widget: { tipo: 'etapas' } })
+  })
+
+  it('G20: widget com código de doença não é oferecido a quem não vê saúde', async () => {
+    await banco.insert(tarefa).values({ casoId, titulo: 'Conferir laudo M54.5', perfilDono: 'atendimento', responsavelId: ids.ana })
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: '{{w1}}{{w2}}' }]
+    const r = await perguntar('ana', 'O que tem hoje?')
+    expect(JSON.stringify(r)).not.toContain('M54.5')
+    expect(saidaDaFerramenta(1)).not.toMatch(/\{\{w2\}\}/)
+  })
+})

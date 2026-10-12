@@ -3,7 +3,20 @@
 // pedido de outro perfil. Nesses casos o modelo não é chamado (CA2). Depois, o agente do motor (ADR-016), com o caso que
 // o perfil vê. O chat é de todos os perfis: só a sessão, e cada dado segue a permissão de quem pergunta.
 import { randomUUID } from 'node:crypto'
-import { ConfirmacaoDoCartao, PerguntaDoChat, pode, type CartaoDeAcao, type Erro, type FonteDaIa, type LinkDoChat, type RespostaDoChat, type TextoDaFala } from '@ggv/contratos'
+import {
+  ConfirmacaoDoCartao,
+  PerguntaDoChat,
+  pode,
+  type CartaoDeAcao,
+  type Erro,
+  type FonteDaIa,
+  type LinkDoChat,
+  type ProcessoDoCaso,
+  type RespostaDoChat,
+  type TarefaDaCentral,
+  type TextoDaFala,
+  type WidgetDoChat,
+} from '@ggv/contratos'
 import { tool, type Tool } from '@openai/agents'
 import { and, desc, eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
@@ -13,7 +26,9 @@ import { acessoDadoSensivel, caso, documentacaoMedica, etapa, pessoa, tarefa, us
 import { MSG_IA_DESLIGADA, MSG_IA_SEM_RESPOSTA, MSG_IA_SEM_SAUDE } from '../fluxo/transcricao.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { comoDado, conversar, type Rodada } from '../ia/chat.ts'
-import type { Ia } from '../ia/ia.ts'
+import { temCid, type Ia } from '../ia/ia.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
+import { montarBlocos, widgetDoAcervo, widgetsDasTarefas, widgetsDoCaso, type Oferta } from './widgetsDoChat.ts'
 import { registrarHistorico } from '../sessao/rotas.ts'
 import {
   ACOES_DO_PERFIL,
@@ -136,11 +151,13 @@ const SEM_IA: Record<Extract<Rodada, { tipo: 'sem-ia' }>['motivo'], string> = {
 }
 
 /** A resposta da rodada do agente, com os links do código (o caso), nunca do texto do modelo (CA2). */
-function daRodada(rodada: Rodada, casoId: string | null, fontes: FonteDaIa[], agora: Date): RespostaDoChat {
+function daRodada(rodada: Rodada, casoId: string | null, fontes: FonteDaIa[], agora: Date, widgets: Map<string, WidgetDoChat>): RespostaDoChat {
   const links: LinkDoChat[] = casoId ? [{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }] : []
   if (rodada.tipo === 'resposta') {
-    const sugestao = { chamadaId: rodada.chamadaId, sugestao: true as const, texto: rodada.texto, fontes, modelo: rodada.modelo, geradaEm: agora.toISOString(), alerta: rodada.alerta }
-    return { tipo: 'resposta', sugestao, links }
+    // 12/10: os marcadores {{wN}} viram os widgets que as ferramentas montaram; o texto do registro fica sem eles.
+    const { texto, blocos } = montarBlocos(rodada.texto, widgets)
+    const sugestao = { chamadaId: rodada.chamadaId, sugestao: true as const, texto, fontes, modelo: rodada.modelo, geradaEm: agora.toISOString(), alerta: rodada.alerta }
+    return { tipo: 'resposta', sugestao, links, ...(blocos ? { blocos } : {}) }
   }
   if (rodada.tipo === 'sem-ia') return { ...daRegra('resposta', SEM_IA[rodada.motivo], [], agora), links }
   return { ...daRegra('resposta', SEM_IA.falhou, [], agora), links }
@@ -188,6 +205,10 @@ type Ambiente = {
   alvo: Alvo | null
   saude: boolean
   fontes: FonteDaIa[]
+  /** Os widgets que as ferramentas ofereceram nesta rodada (12/10), por id: w1, w2… */
+  widgets: Map<string, WidgetDoChat>
+  /** O dia de hoje em Brasília, para os prazos dos widgets. */
+  hoje: string
   evento: (acao: string, alvo: string, detalhe: Record<string, unknown>) => Promise<unknown>
   confirmacao?: { responsavel?: string }
   resultado?: { texto: string; links: LinkDoChat[] }
@@ -217,6 +238,20 @@ async function resumoMedicoParaOSocio(x: Ambiente, casoId: string) {
  * CA1, CA2: as ferramentas de leitura do agente. O caso e as tarefas vêm das rotas da tela, com a sessão de quem pergunta:
  * o modelo só vê o que o perfil vê, e o acesso a dado de saúde fica registrado pela própria rota.
  */
+/**
+ * Guarda os widgets da ferramenta e devolve a linha que o modelo lê para escolher (12/10). Para quem não vê saúde, o
+ * widget com código de doença não é oferecido (G20).
+ */
+function oferecer(x: Ambiente, ofertas: Oferta[]): string {
+  const linhas = ofertas.flatMap(({ widget, descricao }) => {
+    if (!x.saude && temCid(JSON.stringify(widget))) return []
+    const id = `w${x.widgets.size + 1}`
+    x.widgets.set(id, widget)
+    return [`{{${id}}} ${descricao}`]
+  })
+  return linhas.length ? `\n\nWidgets prontos (escreva o marcador sozinho numa linha para mostrar):\n${linhas.join('\n')}` : ''
+}
+
 function ferramentasDeLeitura(x: Ambiente): Tool[] {
   return [
     tool({
@@ -231,7 +266,8 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
         // O modelo não precisa do CPF nem da data de nascimento para responder (LGPD: o mínimo).
         const { pessoa: quem, ...resto } = r.json() as { pessoa?: { nome: string } }
         const visto = JSON.stringify({ ...resto, ...(quem ? { pessoa: { nome: quem.nome } } : {}) })
-        return comoDado(`${visto}${x.perfil === 'socio' ? await resumoMedicoParaOSocio(x, x.alvo.casoId) : ''}`)
+        const dado = comoDado(`${visto}${x.perfil === 'socio' ? await resumoMedicoParaOSocio(x, x.alvo.casoId) : ''}`)
+        return dado + oferecer(x, widgetsDoCaso(r.json() as ProcessoDoCaso, x.hoje))
       },
     }),
     tool({
@@ -241,7 +277,7 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
       execute: async ({ consulta }) => {
         const achados = await buscarNoAcervo(x.banco, { casoId: x.alvo?.casoId ?? SEM_CASO, beneficio: x.alvo?.beneficio ?? null, consulta, saude: x.saude, ia: x.ia })
         x.fontes.push(...achados)
-        return achados.length ? comoDado(achados.map((f) => f.trecho).join('\n')) : MSG_SEM_REFERENCIA
+        return achados.length ? comoDado(achados.map((f) => f.trecho).join('\n')) + oferecer(x, widgetDoAcervo(achados)) : MSG_SEM_REFERENCIA
       },
     }),
     tool({
@@ -252,7 +288,7 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
         const r = await x.app.inject({ method: 'GET', url: '/api/tarefas', headers: { cookie: x.cookie } })
         if (r.statusCode !== 200) return 'Não deu para ler as tarefas agora.'
         x.fontes.push({ tipo: 'regra', referencia: 'tarefas da Central' })
-        return comoDado(r.body)
+        return comoDado(r.body) + oferecer(x, widgetsDasTarefas(r.json() as TarefaDaCentral[], x.hoje))
       },
     }),
     tool({
@@ -405,6 +441,8 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     alvo,
     saude: veSaudeNoChat(pedido.perfilAtivo),
     fontes: [],
+    widgets: new Map(),
+    hoje: hojeEmBrasilia(agora()),
     evento: (acao, alvoDoEvento, detalhe) => historico(pedido.usuario!.id, acao, pedido, alvoDoEvento, detalhe),
     confirmacao,
   })
@@ -442,7 +480,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
         return { tipo: 'acao', sugestao, links: [], acao: cartao } satisfies RespostaDoChat
       }
     }
-    return daRodada(rodada, casoId, x.fontes, agora())
+    return daRodada(rodada, casoId, x.fontes, agora(), x.widgets)
   })
 
   // CA3: o clique em "Confirmar". Só quem pediu, com o mesmo perfil; o kit continua e a ação roda pelo código, com as travas.
