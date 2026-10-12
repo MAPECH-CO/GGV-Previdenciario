@@ -135,10 +135,9 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
     entrarComo('senior')
     chat('Sênior')
     enviar('Sobe esses processos antigos no acervo', ['proc-1.pdf', 'proc-2.pdf'])
-    const cartao = await screen.findByRole('group', { name: 'Ação para confirmar · Acervo · 2 processos' })
-    expect(cartao.textContent).toContain('O acervo não guarda dado pessoal do cliente')
-    fireEvent.click(within(cartao).getByRole('button', { name: 'Confirmar e guardar no acervo' }))
-    expect(await screen.findByText('✓ Pronto: 2 processos entraram no acervo e já contam na jurimetria.')).toBeTruthy()
+    expect(await screen.findByText('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Confirmar e guardar no acervo' })).toBeNull()
+    expect(screen.queryByText(/processos entraram no acervo/)).toBeNull()
   })
 
   it('a advogada pede a peça: o cartão da minuta, com a conferência dela (G6)', async () => {

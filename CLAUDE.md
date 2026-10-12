@@ -15,7 +15,7 @@ BPMN do Miro (board `uXjVHjbveV4=`, frames "revisão BPMN"). Segue a metodologia
 
 ## Como o trabalho flui
 1. Todo trabalho nasce como história no Jira (projeto `GGVP`), ligada a um passo do BPMN (`docs/bpmn/`).
-2. Candidatas vivem em `docs/requisitos/candidatas/` com o rótulo `a-validar-bpmn` até o passo ser confirmado.
+2. Candidatas vivem em `docs/requisitos/candidatas/`; o refinamento confirma o passo, os critérios e as dúvidas antes do código.
 3. A história só vira código quando está em "Refinada" no Jira: revisada, sem dúvida aberta, cumprindo `docs/scrum/definition-of-ready.md`. Não há sprints: um épico por dev, as histórias dele uma a uma, entrega em 09/10/2026 (`kit/entrega-09-10.md`).
 4. Uma branch e um PR por épico: `feat/GGVP-6-recepcao-e-entrevista`. Cada commit cita a história (`GGVP-24`). O outro dev revisa o PR.
 5. "Feita" só quando cumpre `docs/scrum/definition-of-done.md`.
@@ -59,9 +59,11 @@ BPMN do Miro (board `uXjVHjbveV4=`, frames "revisão BPMN"). Segue a metodologia
    `/ponytail`. Os `/opsx:*` só por dentro do `/epico`.
 
 ## Stack
-A decidir no ADR-001, no primeiro dia de código. Proposta: herdar o ADR-001 do Trabalhista (TypeScript de ponta a ponta:
-Node 22, Fastify + Zod, Drizzle + PostgreSQL, pg-boss, React 19 + Vite, Vitest e Playwright) e o
-ADR-013 (base de conhecimento em markdown curado, busca híbrida no PostgreSQL). Ver `docs/decisoes/`.
+Aceita no ADR-001: TypeScript de ponta a ponta, Node 22+, Fastify + Zod, Drizzle + PostgreSQL no Supabase,
+React 19 + Vite, Vitest e Playwright, em monorepo pnpm. O agendamento atual usa `setInterval` no processo da API;
+pg-boss não está instalado. O ADR-013 aceito define pgvector (HNSW) e busca híbrida com texto por RRF no mesmo
+PostgreSQL. Decisões de saúde e guarda estão no ADR-008; região e contratos com fornecedores seguem abertos.
+Ver `docs/decisoes/`.
 
 ## Onde está cada coisa
 - `docs/bpmn/`: processos, links para o Miro e códigos dos passos.

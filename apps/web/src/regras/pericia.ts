@@ -1,6 +1,6 @@
 // Perícia (épico GGVP-10): regras puras, sem React. Prazo e número são código com teste (G19); o servidor de exemplo e,
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
-import { dataParaIso } from '../campos.ts'
+import { dataParaIso, isoParaData } from '../campos.ts'
 import { somarDias } from './agenda.ts'
 import { taxaComCasos } from './caso.ts'
 import { dataCurta, hojeIso } from './datas.ts'
@@ -112,7 +112,7 @@ export const MINIMO_DO_QUE_ACONTECEU = 5
 
 /** A tentativa sem sucesso pede o dia e o que aconteceu (CA1). O dia não é futuro. Sem problema, null. */
 export function motivoParaNaoRegistrarTentativa(t: { dia: string | null; oQueAconteceu: string }, hoje: string): string | null {
-  if (!t.dia) return 'Informe o dia da tentativa (dd/mm/aaaa).'
+  if (!t.dia || !isoParaData(t.dia)) return 'Informe o dia da tentativa (dd/mm/aaaa).'
   if (t.dia > hoje) return 'O dia da tentativa não pode ser no futuro.'
   if (t.oQueAconteceu.trim().length < MINIMO_DO_QUE_ACONTECEU) return 'Diga o que aconteceu na tentativa.'
   return null
@@ -141,7 +141,7 @@ export function motivoParaNaoRegistrarMarcacao(
 
 /** A data, a hora e o local da perícia, do comprovante ou do juízo (GGVP-137): a data não pode ser passada. Sem problema, null. */
 export function motivoDaDataDaPericia(d: { data: string | null; hora: string; local: string }, hoje: string): string | null {
-  if (!d.data || d.data < hoje) return 'Confira a data da perícia: ela não pode ser passada.'
+  if (!d.data || !isoParaData(d.data) || d.data < hoje) return 'Confira a data da perícia: ela não pode ser passada.'
   if (!HORA.test(d.hora)) return 'Confira a hora da perícia.'
   if (d.local.trim().length < 3) return 'Confira o local da perícia.'
   return null

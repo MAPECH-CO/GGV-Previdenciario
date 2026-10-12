@@ -212,14 +212,14 @@ describe('GGVP-82 · CA12 · o arquivo anexado', () => {
     expect((await pergunta('comprovante do RPV da Lúcia Exemplo', ATENDIMENTO, { anexos: [{ nome: 'rpv_lucia.pdf', tamanho: 10 }] })).tipo).toBe('recusa')
   })
 
-  it('lote de PDFs para o acervo: só a sênior; o que não dá para ler fica de fora, e nada trava', async () => {
+  it('lote de PDFs: avisa que ainda não sobe arquivos, sem importação nem alteração da jurimetria', async () => {
     const nomes = ['proc-1.pdf', 'proc-2.pdf', 'proc-3-ilegivel.pdf']
     const r = await pergunta('Sobe esses processos antigos no acervo', SENIOR, { anexos: nomes.map((nome) => ({ nome, tamanho: 10 })) })
-    expect(r.acao!.tipo).toBe('subir-acervo')
-    expect(r.acao!.travas).toContain('O acervo não guarda dado pessoal do cliente')
-    const feito = await confirmarAcao(r.acao!.id, SENIOR)
-    expect(feito.texto).toBe('✓ Pronto: 2 processos entraram no acervo e já contam na jurimetria. 1 PDFs não deu para ler: ficaram de fora das contas e nada trava.')
-    expect(ler().lotesDoAcervo).toHaveLength(1)
+    expect(r.sugestao?.texto).toBe('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
+    expect(r.acao).toBeUndefined()
+    expect(ler().lotesDoAcervo ?? []).toHaveLength(0)
+    const semAnexo = await pergunta('Sobe esses processos antigos no acervo', SENIOR)
+    expect(semAnexo.sugestao?.texto).toBe('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
     const fora = await pergunta('Sobe esses processos antigos no acervo', ADVOGADA, { anexos: nomes.map((nome) => ({ nome, tamanho: 10 })) })
     expect(fora).toMatchObject({ tipo: 'recusa', acao: { foraDoPerfil: true, titulo: 'Acervo · Alimentar acervo' } })
   })

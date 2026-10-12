@@ -405,20 +405,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
   if (tipo === 'acervo') {
     const fora = await foraDoMeuPerfil(texto, 'subir-acervo', quem, processoId)
     if (fora) return fora
-    return comCartao(
-      `Recebi ${arquivos.length} PDFs para o acervo. Confira antes de eu guardar.`,
-      {
-        tipo: 'subir-acervo',
-        titulo: `Acervo · ${arquivos.length} processos`,
-        passos: [`Guardar os ${arquivos.length} PDFs no acervo`, 'A IA lê cada um e tira o nome e o CPF: o acervo guarda só a referência do caso', 'O que não der para ler fica de fora das contas, e nada trava', 'O sistema recalcula a jurimetria'],
-        conferir: ['Os arquivos são de processos do escritório'],
-        travas: ['O acervo não guarda dado pessoal do cliente', 'Toda jurimetria do acervo conta, sem amostra mínima (Lucas, 06/10)'],
-        rotuloConfirmar: 'Confirmar e guardar no acervo',
-      },
-      quem,
-      texto,
-      { arquivos: nomes },
-    )
+    return resposta('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
   }
 
   const achados = await identificarCliente(`${texto} ${nomes.join(' ')}`)
@@ -632,7 +619,7 @@ export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; 
       )
     }
     case 'subir-acervo':
-      return resposta('Anexe os PDFs dos processos encerrados: eu mostro o cartão com o que vou fazer antes de guardar no acervo.')
+      return resposta('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
     case 'valor':
       return consultarValor(texto, quem, p.processoId)
     default:
@@ -747,20 +734,8 @@ export async function confirmarAcao(
       r = { estado: 'feito', texto: `✓ Feito: ${nomes.length === 1 ? 'o arquivo está' : 'os arquivos estão'} na pasta de ${acao.cliente!.nome}; a Documentação confere a leitura.`, links: [{ rotulo: 'Abrir a ficha', href: `/clientes/${acao.cliente!.id}` }] }
       break
     }
-    case 'subir-acervo': {
-      // Ponta da GGVP-131 (acervo que aprende): IA simulada; o PDF com "ilegivel" no nome não dá para ler.
-      const nomes = p.dados.arquivos as string[]
-      const fora = nomes.filter((n) => /ilegivel/i.test(n)).length
-      const banco = ler()
-      ;(banco.lotesDoAcervo ??= []).push({ quando: agora().toISOString(), quem: quem.usuario, entraram: nomes.length - fora, ficaramDeFora: fora })
-      gravar(banco)
-      r = {
-        estado: 'feito',
-        texto: `✓ Pronto: ${nomes.length - fora} processos entraram no acervo e já contam na jurimetria.${fora ? ` ${fora} PDFs não deu para ler: ficaram de fora das contas e nada trava.` : ''}`,
-        links: [],
-      }
-      break
-    }
+    case 'subir-acervo':
+      throw new Error('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
   }
   pendentes.delete(acaoId)
   return r

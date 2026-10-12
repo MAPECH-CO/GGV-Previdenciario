@@ -59,6 +59,13 @@ function servidor(corpo: object) {
 }
 const ultimo = () => pedidos.at(-1)!
 
+async function tabelaCarregada(nome: 'Clientes' | 'Processos') {
+  const tabela = screen.getByRole('table', { name: nome })
+  // O cabeçalho existe antes da resposta; a linha comprova que os dados chegaram.
+  await within(tabela).findByRole('link', { name: 'Sebastião Nunes' })
+  return tabela
+}
+
 beforeEach(() => configurarExemplo({ agora: () => new Date(2026, 9, 9, 12), latencia: 0 }))
 afterEach(() => vi.unstubAllGlobals())
 
@@ -77,9 +84,7 @@ describe('Clientes (GGVP-78)', () => {
     expect(filtros.getAllByRole('combobox').map((s) => s.getAttribute('aria-label'))).toEqual(['Benefício', 'Localização', 'Êxito', 'Situação'])
     expect((filtros.getByRole('combobox', { name: 'Situação' }) as HTMLSelectElement).value).toBe('ativos')
 
-    const tabela = await screen.findByRole('table', { name: 'Clientes' })
-    // A tabela aparece antes das linhas: espera o servidor responder.
-    await within(tabela).findByRole('link', { name: 'Sebastião Nunes' })
+    const tabela = await tabelaCarregada('Clientes')
     expect(within(tabela).getAllByRole('columnheader').map((c) => c.textContent)).toEqual(['Cliente', 'CPF', 'Benefício', 'Cidade', 'Processos', 'Situação / êxito', 'Último contato'])
     const [, seb, fer] = within(tabela).getAllByRole('row')
     expect(within(seb).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Sebastião Nunes', '***.982.247-**', 'Auxílio Acidentário', 'São Paulo · SP', '2', 'Em andamento', 'ontem'])
@@ -95,7 +100,7 @@ describe('Clientes (GGVP-78)', () => {
     servidor(clientes)
     entrarComo('senior')
     render(comSessao(<Clientes />))
-    await screen.findByRole('table', { name: 'Clientes' })
+    await tabelaCarregada('Clientes')
     expect(screen.queryByRole('link', { name: '+ Novo cliente' })).toBeNull()
   })
 
@@ -103,7 +108,7 @@ describe('Clientes (GGVP-78)', () => {
     servidor(clientes)
     entrarComo('advogada')
     render(comSessao(<Clientes />))
-    await screen.findByRole('table', { name: 'Clientes' })
+    await tabelaCarregada('Clientes')
     expect(ultimo()).toMatchObject({ url: '/api/clientes?situacao=ativos&ordem=contato&pagina=1', metodo: 'GET' })
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nome, CPF ou telefone' }), { target: { value: '529.982' } })
@@ -123,7 +128,7 @@ describe('Clientes (GGVP-78)', () => {
     servidor(clientes)
     entrarComo('atendimento-lider')
     render(comSessao(<Clientes />))
-    await screen.findByRole('table', { name: 'Clientes' })
+    await tabelaCarregada('Clientes')
     fireEvent.click(screen.getByRole('button', { name: 'Próxima ›' }))
     await waitFor(() => expect(ultimo().url).toBe('/api/clientes?situacao=ativos&ordem=contato&pagina=2'))
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por nome, CPF ou telefone' }), { target: { value: 'Renato' } })
@@ -137,7 +142,7 @@ describe('Clientes (GGVP-78)', () => {
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: criar, revokeObjectURL: vi.fn() }))
     entrarComo('atendimento-lider')
     render(comSessao(<Clientes />))
-    await screen.findByRole('table', { name: 'Clientes' })
+    await tabelaCarregada('Clientes')
     fireEvent.click(screen.getByRole('button', { name: 'Exportar CSV' }))
     await waitFor(() => expect(criar).toHaveBeenCalled())
     expect(ultimo().url).toBe('/api/clientes?situacao=ativos&ordem=contato&tudo=1')
@@ -154,7 +159,7 @@ describe('Processos (GGVP-78)', () => {
     const filtros = within(screen.getByRole('group', { name: 'Filtros' }))
     expect(filtros.getAllByRole('combobox').map((s) => s.getAttribute('aria-label'))).toEqual(['Tribunal', 'Juiz', 'Perito', 'Benefício', 'Êxito', 'Fase'])
 
-    const tabela = await screen.findByRole('table', { name: 'Processos' })
+    const tabela = await tabelaCarregada('Processos')
     expect(within(tabela).getAllByRole('columnheader').map((c) => c.textContent)).toEqual(['Processo', 'Autor (cliente)', 'Benefício', 'Tribunal / foro', 'Juiz', 'Perito', 'Desfecho', 'Ajuizado'])
     const [, linha] = within(tabela).getAllByRole('row')
     expect(within(linha).getAllByRole('cell').map((c) => c.textContent)).toEqual([
@@ -177,7 +182,7 @@ describe('Processos (GGVP-78)', () => {
     servidor(processos)
     entrarComo('senior')
     render(comSessao(<Processos cliente={SEB} />))
-    await screen.findByRole('table', { name: 'Processos' })
+    await tabelaCarregada('Processos')
     expect(ultimo().url).toBe(`/api/processos?ordem=ajuizamento&cliente=${SEB}&pagina=1`)
     expect(screen.getByRole('status').textContent).toContain('só de Sebastião Nunes')
     fireEvent.change(screen.getByRole('combobox', { name: 'Fase' }), { target: { value: 'judicial' } })
@@ -190,7 +195,7 @@ describe('Processos (GGVP-78)', () => {
     servidor({ ...processos, paginas: 3 })
     entrarComo('advogada')
     render(comSessao(<Processos />))
-    await screen.findByRole('table', { name: 'Processos' })
+    await tabelaCarregada('Processos')
     fireEvent.click(screen.getByRole('button', { name: 'Próxima ›' }))
     await waitFor(() => expect(ultimo().url).toBe('/api/processos?ordem=ajuizamento&pagina=2'))
     fireEvent.change(screen.getByRole('searchbox', { name: 'Autor, nº do processo ou CPF' }), { target: { value: 'Renato' } })
@@ -201,7 +206,7 @@ describe('Processos (GGVP-78)', () => {
     servidor(processos)
     entrarComo('advogada')
     render(comSessao(<Processos />))
-    await screen.findByRole('table', { name: 'Processos' })
+    await tabelaCarregada('Processos')
     fireEvent.change(screen.getByRole('searchbox', { name: 'Autor, nº do processo ou CPF' }), { target: { value: '5005290' } })
     await waitFor(() => expect(ultimo()).toMatchObject({ url: '/api/processos/busca', metodo: 'POST', corpo: { busca: '5005290' } }))
   })

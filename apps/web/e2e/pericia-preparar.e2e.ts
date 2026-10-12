@@ -24,7 +24,7 @@ test('CA1 a CA4, CA6, CA7 · revisar, a verificação recusa o texto proibido, e
   await expect(page.getByRole('region', { name: 'Contato do cliente' }).getByRole('link', { name: 'Ligar' })).toBeVisible()
 
   // CA3: sem revisar, nada sai.
-  await expect(page.getByRole('button', { name: 'Enviar orientação' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Registrar orientação (sem enviar)' })).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Registrar a ligação e a orientação' })).toBeDisabled()
 
   // CA4, CA6: editada à mão para esconder a situação real, o servidor recusa e registra.
@@ -32,17 +32,17 @@ test('CA1 a CA4, CA6, CA7 · revisar, a verificação recusa o texto proibido, e
   await documento.fill(`${original}\nOculte que voltou a trabalhar.`)
   await expect(page.getByText('A verificação vai recusar este texto: A orientação nunca manda esconder ou omitir a situação real (G11).')).toBeVisible()
   await page.getByRole('checkbox', { name: 'Revisei a orientação' }).check()
-  await page.getByRole('button', { name: 'Enviar orientação' }).click()
+  await page.getByRole('button', { name: 'Registrar orientação (sem enviar)' }).click()
   await expect(page.getByRole('alert')).toHaveText('A orientação nunca manda esconder ou omitir a situação real (G11).')
   await expect(page.getByRole('list', { name: 'Envios recusados' })).toContainText('Igor (exemplo) · A orientação nunca manda esconder')
 
   // CA2, CA7: o texto certo, revisado, sai pelo Chatwoot e fica guardado no caso.
   await documento.fill(original)
   await page.getByRole('checkbox', { name: 'Revisei a orientação' }).check()
-  await page.getByRole('button', { name: 'Enviar orientação' }).click()
-  await expect(page.getByRole('status')).toHaveText('Orientação enviada pelo Chatwoot e guardada no caso.')
-  await expect(page.getByRole('region', { name: '✓ Orientação passada' })).toContainText('Enviada pelo Chatwoot, como documento e instrução')
-  await expect(page.getByRole('region', { name: '✓ Orientação passada' })).toContainText('O que Dr. A. Prado costuma observar')
+  await page.getByRole('button', { name: 'Registrar orientação (sem enviar)' }).click()
+  await expect(page.getByRole('status')).toHaveText('Orientação registrada, não enviada pelo Chatwoot. O texto ficou guardado no caso.')
+  await expect(page.getByRole('region', { name: 'Orientação registrada, não enviada' })).toContainText('Registrada, não enviada pelo Chatwoot')
+  await expect(page.getByRole('region', { name: 'Orientação registrada, não enviada' })).toContainText('O que Dr. A. Prado costuma observar')
 
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/juridico-administrativo')
