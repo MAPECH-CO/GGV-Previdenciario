@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { validarEmail } from '@ggv/campos'
 import type { UsuarioDaSessao } from '@ggv/contratos'
-import { chamarApi, marcarEntrou, voltaSegura } from '../api.ts'
+import { chamarApi, marcarEntrou, sair, voltaSegura } from '../api.ts'
 import styles from './Entrar.module.css'
 
 /** Tela "Entrar" (GGVP-117). Erro de senha nunca diz qual campo errou. */
@@ -45,6 +45,10 @@ export function Entrar({ busca = window.location.search }: { busca?: string }) {
           <span>GGV Previdenciário</span>
         </div>
         <h1 className={styles.titulo}>Entrar</h1>
+        {params.get('saida') === 'pendente' && <div className={styles.aviso} role="alert">
+          <p>A cópia deste navegador foi apagada, mas o servidor não confirmou a saída.</p>
+          <button type="button" className={styles.botao} onClick={() => void sair()}>Tentar sair novamente</button>
+        </div>}
         {expirou && (
           <p className={styles.aviso} role="status">
             Sua sessão expirou. Entre de novo para continuar de onde parou.

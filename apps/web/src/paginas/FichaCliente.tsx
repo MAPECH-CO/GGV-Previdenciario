@@ -1,3 +1,4 @@
+import { CampoDeValorPendente } from '../componentes/CampoDeValorPendente.tsx'
 import { useEffect, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CabecalhoCliente } from '../componentes/CabecalhoCliente.tsx'
@@ -18,11 +19,12 @@ import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { CartaoFechamento } from '../componentes/CartaoFechamento.tsx'
 import { nomeTipo } from '../dados/catalogos.ts'
-import { agora, obterFicha } from '../dados/servidor.ts'
+import { agora, doServidor, obterFicha } from '../dados/servidor.ts'
 import { resumoParaAFicha } from '../dados/parecer.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import { usePode, useSessao } from '../sessao.ts'
+import { canalDoContato, eventoDaMensagem } from '../regras/registroDeMensagem.ts'
 import styles from './FichaCliente.module.css'
 
 // Figma: "Cliente · dados (Atendimento)" (73:199). A visão do Atendimento não traz petição, estratégia, valores nem laudo.
@@ -108,6 +110,9 @@ export function FichaCliente({ id }: { id: string }) {
                 + Nova demanda
               </a>
             )}
+            {ficha.situacao === 'lead' && !ficha.agendamentos.some(a => a.oQue === 'Entrevista' && a.estado === 'realizado') && (
+              <a className={styles.novaDemanda} href={`/clientes/${ficha.id}/fechamento?antes-da-entrevista=1`}>Registrar desistência antes da entrevista</a>
+            )}
             <button type="button" className={styles.novaDemanda} onClick={() => setMensagem(true)}>
               Mensagem ao cliente
             </button>
@@ -127,20 +132,21 @@ export function FichaCliente({ id }: { id: string }) {
             />
             <EdicaoCliente key={recarga} ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
           </Cartao>
+          {[ficha.beneficioInteresse, ...ficha.processos.map(p => p.beneficio)].some(b => b?.startsWith('loas-') || b?.startsWith('bpc_loas_')) && <CampoDeValorPendente tipo="loas" />}
           <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />
           <PastasDosProcessos ficha={ficha} hoje={hoje} />
           <Cartao titulo="Últimos contatos">
             <ListaDatada
               nome="Últimos contatos"
               vazio="Nenhum contato registrado."
-              itens={contatos.map((c, i) => ({ chave: `${c.data}-${i}`, quando: dataCurta(c.data, hoje), rotulo: c.canal, texto: c.texto }))}
+              itens={contatos.map((c, i) => ({ chave: `${c.data}-${i}`, quando: dataCurta(c.data, hoje), rotulo: canalDoContato(c.canal, !doServidor(ficha.id)), texto: c.texto }))}
             />
           </Cartao>
           <Cartao titulo="Histórico">
             <ListaDatada
               nome="Histórico"
               vazio="Nada registrado ainda."
-              itens={historico.map((e, i) => ({ chave: `${e.quando}-${i}`, quando: dataHora(e.quando), rotulo: e.quem, texto: e.oQue }))}
+              itens={historico.map((e, i) => ({ chave: `${e.quando}-${i}`, quando: dataHora(e.quando), rotulo: e.quem, texto: eventoDaMensagem(e.oQue, !doServidor(ficha.id)) }))}
             />
             <button type="button" className={styles.versoes} onClick={() => setVersoes(true)}>
               Ver versões

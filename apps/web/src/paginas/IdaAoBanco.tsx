@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { hojeIso, isoParaData } from '@ggv/campos'
-import { AgendarIdaAoBanco, CANAIS_DE_AVISO, RegistrarEnvio, type IdaAoBancoDoCaso } from '@ggv/contratos'
+import { AgendarIdaAoBanco, RegistrarEnvio, type IdaAoBancoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
@@ -10,8 +10,8 @@ const ROTULO_CANAL = { whatsapp: 'WhatsApp', telefone: 'Telefone', email: 'E-mai
 
 /**
  * Avisar resultado e agendar a ida ao banco (GGVP-44 e GGVP-98, Financeiro; Lucas, 06/10): data, hora, local e quem do
- * Atendimento leva o cliente, todos obrigatórios (CA6). Depois, a mensagem do modelo para revisar e enviar; o portal registra
- * o envio (CA5). Feita a ida, "Confirmar recebimento" fecha o caso (CA9).
+ * Atendimento leva o cliente, todos obrigatórios (CA6). O Financeiro liga com o texto aprovado e registra o contato.
+ * Chatwoot complementar ainda indisponível na main (GGVP-159). Feita a ida, "Confirmar recebimento" fecha o caso (CA9).
  */
 export function IdaAoBanco({ casoId }: { casoId: string }) {
   const ids = { data: useId(), hora: useId(), local: useId(), acompanhante: useId(), canal: useId() }
@@ -21,7 +21,8 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
   const [hora, setHora] = useState('')
   const [local, setLocal] = useState('')
   const [acompanhanteId, setAcompanhanteId] = useState('')
-  const [canal, setCanal] = useState('whatsapp')
+  const [liguei, setLiguei] = useState(false)
+  const [registrando, setRegistrando] = useState(false)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
 
@@ -37,18 +38,29 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
     const r = await chamarApi(`/casos/${casoId}/banco`, { method: 'POST', corpo })
     if (!r.ok) return setErro(r.erro)
     setErro('')
-    setFeito(b?.agendamento ? 'Remarcado. O Financeiro já vê a nova data; avise o cliente de novo.' : 'Agendado. Agora revise a mensagem e avise o cliente.')
+    setFeito(b?.agendamento ? 'Remarcado. O Financeiro já vê a nova data; avise o cliente de novo.' : 'Agendado. Agora o Financeiro liga para o cliente e registra o aviso.')
     setVersao((v) => v + 1)
   }
 
   async function registrarEnvio() {
-    const entrada = RegistrarEnvio.safeParse({ canal })
-    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escolha o canal')
-    const r = await chamarApi(`/casos/${casoId}/banco/envio`, { method: 'POST', corpo: entrada.data })
-    if (!r.ok) return setErro(r.erro)
+    if (!liguei || registrando || !b?.okAdvogada) return
+    const entrada = RegistrarEnvio.safeParse({ canal: 'telefone' })
+    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira o canal')
+    setRegistrando(true)
+    setFeito('')
     setErro('')
-    setFeito('Envio registrado. O caso entrou no acervo como processo bom.')
-    setVersao((v) => v + 1)
+    try {
+      const r = await chamarApi(`/casos/${casoId}/banco/envio`, { method: 'POST', corpo: entrada.data })
+      if (!r.ok) return setErro(r.erro)
+      setErro('')
+      setLiguei(false)
+      setFeito('Ligação registrada. O aviso por telefone ficou no histórico do caso.')
+      setVersao((v) => v + 1)
+    } catch {
+      setErro('Não foi possível confirmar o registro da ligação. Consulte o histórico antes de repetir.')
+    } finally {
+      setRegistrando(false)
+    }
   }
 
   async function confirmar() {
@@ -134,27 +146,23 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
 
       {b.agendamento && (
         <section className={styles.cartao} aria-label="Aviso ao cliente">
-          <h2 className={styles.cartaoTitulo}>Aviso ao cliente</h2>
+          <h2 className={styles.cartaoTitulo}>Ligação do Financeiro ao cliente</h2>
+          <p>A mensagem pelo Chatwoot complementa a ligação. Ela não saiu pelo portal: o envio para a ida ao banco ainda está indisponível.</p>
+          <button type="button" className={styles.botaoSecundario} disabled>Enviar complemento pelo Chatwoot</button>
           {!b.okAdvogada && <p className={styles.dica}>O aviso só sai depois do OK da advogada na prestação de contas (G8).</p>}
           {b.mensagem ? (
             <>
-              <p className={styles.dica}>Revise o texto, envie pelo celular e registre aqui.</p>
+              <p className={styles.dica}>Use o texto aprovado na ligação. Registre somente depois de falar com o cliente.</p>
               <blockquote className={styles.cartao} aria-label="Mensagem">
                 {b.mensagem}
               </blockquote>
-              <label className={styles.rotulo} htmlFor={ids.canal}>
-                Canal
+              <label className={styles.escolha} htmlFor={ids.canal}>
+                <input id={ids.canal} type="checkbox" checked={liguei} disabled={registrando || !b.okAdvogada} onChange={e => setLiguei(e.target.checked)} />
+                Liguei para o cliente e expliquei a ida ao banco com este texto
               </label>
-              <select id={ids.canal} className={styles.campo} value={canal} onChange={(e) => setCanal(e.target.value)}>
-                {CANAIS_DE_AVISO.map((c) => (
-                  <option key={c} value={c}>
-                    {ROTULO_CANAL[c]}
-                  </option>
-                ))}
-              </select>
               <div className={styles.acoes}>
-                <button type="button" className={styles.botao} disabled={!b.okAdvogada} onClick={() => void registrarEnvio()}>
-                  Revisei e enviei
+                <button type="button" className={styles.botao} disabled={!b.okAdvogada || !liguei || registrando} onClick={() => void registrarEnvio()}>
+                  {registrando ? 'Registrando…' : 'Registrar ligação feita'}
                 </button>
               </div>
             </>
@@ -162,7 +170,7 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
             !b.modeloCadastrado && <p className={styles.dica}>Modelo "Confirmação da ida ao banco" não cadastrado.</p>
           )}
           {b.avisos.length > 0 && (
-            <ol className={styles.lista} aria-label="Avisos enviados">
+            <ol className={styles.lista} aria-label="Contatos registrados no caso">
               {b.avisos.map((a) => (
                 <li key={a.quando}>
                   {new Date(a.quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })} ·{' '}

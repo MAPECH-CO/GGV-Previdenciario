@@ -94,7 +94,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
       <section className={styles.cartao}>
         <h2 className={styles.cartaoTitulo}>Checklist (G1)</h2>
         {!caso.checklist.cadastrado ? (
-          <p className={styles.erroCampo}>Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar.</p>
+          <p className={styles.erroCampo}>Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar. <a href="/configuracao">Abrir Configuração</a></p>
         ) : caso.checklist.completo ? (
           <span className={styles.selo}>Checklist completo</span>
         ) : (
@@ -108,7 +108,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
         </ol>
         <p className={styles.dica}>
           Ficha do cliente: {caso.temFicha ? 'preenchida' : 'não preenchida'} · Kit assinado: {caso.kitAssinado ? 'sim' : 'não'} · Cálculo de tempo e pontos:
-          não há para este caso
+          cálculo ainda não mostrado aqui. A consulta do cálculo por caso ainda não está disponível; o rascunho do Atendimento não fica salvo.
         </p>
       </section>
 

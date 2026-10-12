@@ -6,7 +6,7 @@
 // Com o servidor ligado (homologação), `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor (GGVP-142): o
 // motor de IA de verdade, com as recusas, os portões, a regra do responsável e os números no servidor, como código, antes
 // e depois do modelo. O que está aqui fica para os testes e para a semente.
-import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa } from '@ggv/contratos'
+import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa, TextoDaFala } from '@ggv/contratos'
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -405,20 +405,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
   if (tipo === 'acervo') {
     const fora = await foraDoMeuPerfil(texto, 'subir-acervo', quem, processoId)
     if (fora) return fora
-    return comCartao(
-      `Recebi ${arquivos.length} PDFs para o acervo. Confira antes de eu guardar.`,
-      {
-        tipo: 'subir-acervo',
-        titulo: `Acervo · ${arquivos.length} processos`,
-        passos: [`Guardar os ${arquivos.length} PDFs no acervo`, 'A IA lê cada um e tira o nome e o CPF: o acervo guarda só a referência do caso', 'O que não der para ler fica de fora das contas, e nada trava', 'O sistema recalcula a jurimetria'],
-        conferir: ['Os arquivos são de processos do escritório'],
-        travas: ['O acervo não guarda dado pessoal do cliente', 'Toda jurimetria do acervo conta, sem amostra mínima (Lucas, 06/10)'],
-        rotuloConfirmar: 'Confirmar e guardar no acervo',
-      },
-      quem,
-      texto,
-      { arquivos: nomes },
-    )
+    return resposta('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
   }
 
   const achados = await identificarCliente(`${texto} ${nomes.join(' ')}`)
@@ -632,7 +619,7 @@ export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; 
       )
     }
     case 'subir-acervo':
-      return resposta('Anexe os PDFs dos processos encerrados: eu mostro o cartão com o que vou fazer antes de guardar no acervo.')
+      return resposta('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
     case 'valor':
       return consultarValor(texto, quem, p.processoId)
     default:
@@ -747,26 +734,28 @@ export async function confirmarAcao(
       r = { estado: 'feito', texto: `✓ Feito: ${nomes.length === 1 ? 'o arquivo está' : 'os arquivos estão'} na pasta de ${acao.cliente!.nome}; a Documentação confere a leitura.`, links: [{ rotulo: 'Abrir a ficha', href: `/clientes/${acao.cliente!.id}` }] }
       break
     }
-    case 'subir-acervo': {
-      // Ponta da GGVP-131 (acervo que aprende): IA simulada; o PDF com "ilegivel" no nome não dá para ler.
-      const nomes = p.dados.arquivos as string[]
-      const fora = nomes.filter((n) => /ilegivel/i.test(n)).length
-      const banco = ler()
-      ;(banco.lotesDoAcervo ??= []).push({ quando: agora().toISOString(), quem: quem.usuario, entraram: nomes.length - fora, ficaramDeFora: fora })
-      gravar(banco)
-      r = {
-        estado: 'feito',
-        texto: `✓ Pronto: ${nomes.length - fora} processos entraram no acervo e já contam na jurimetria.${fora ? ` ${fora} PDFs não deu para ler: ficaram de fora das contas e nada trava.` : ''}`,
-        links: [],
-      }
-      break
-    }
+    case 'subir-acervo':
+      throw new Error('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
   }
   pendentes.delete(acaoId)
   return r
 }
 
 /** O cartão cancelado: nada acontece e ele some. */
+export const MSG_FALA_VAZIA = 'Não deu para entender a fala: grave de novo, mais perto do microfone, ou digite a pergunta.'
+
+/** O nome do arquivo pelo tipo que o navegador gravou (o Safari grava mp4). */
+const nomeDaFala = (tipo: string) => (tipo.includes('mp4') ? 'fala.m4a' : tipo.includes('ogg') ? 'fala.ogg' : 'fala.webm')
+
+/** POST /api/chat/fala (12/10): a fala do microfone em texto, para a pessoa conferir na caixa. */
+export async function transcreverFala(audio: Blob): Promise<string> {
+  if (!servidorLigado()) throw new Error('A transcrição precisa do servidor ligado.')
+  const corpo = new FormData()
+  corpo.append('audio', audio, nomeDaFala(audio.type))
+  const { texto } = await noBanco<TextoDaFala>('/chat/fala', { method: 'POST', corpo })
+  return texto.trim()
+}
+
 export function cancelarAcao(acaoId: string) {
   if (servidorLigado() && !pendentes.has(acaoId)) void noBanco(`/chat/acoes/${acaoId}`, { method: 'DELETE' }).catch(() => undefined)
   pendentes.delete(acaoId)

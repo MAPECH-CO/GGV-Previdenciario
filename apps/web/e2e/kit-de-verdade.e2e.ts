@@ -11,7 +11,7 @@ const NOME_DO_MODELO = 'Contrato Completo de auxílio incapacidade'
 const ID_DO_MODELO = 'contrato-completo-auxilio-incapacidade'
 const CPF = '39053344705'
 
-test('a Sênior sobe e troca o modelo; a Atendimento vê o que falta na ficha, gera o kit pela versão em vigor, imprime e assina em papel; outra sessão vê o registro', async ({
+test('a Sênior sobe e troca o modelo; a Atendimento vê o que falta na ficha, gera o kit pela versão em vigor, imprime e anexa o papel assinado; outra sessão vê o registro', async ({
   page,
   browser,
   baseURL,
@@ -60,7 +60,7 @@ test('a Sênior sobe e troca o modelo; a Atendimento vê o que falta na ficha, g
   await page.getByRole('button', { name: 'Gerar contrato' }).click()
   const aviso = page.getByRole('alert').filter({ hasText: 'O kit não foi gerado.' })
   await expect(aviso).toContainText('Falta na ficha: Bairro, Cidade, Estado (UF), CEP.')
-  await expect(aviso.getByRole('link', { name: 'Completar a ficha' })).toHaveAttribute('href', `/clientes/${fichaId}`)
+  await expect(aviso.getByRole('link', { name: 'Completar a ficha' })).toHaveAttribute('href', `/clientes/${fichaId}/cadastro`)
 
   // CA3 e CA6 · O Jurídico completa o cadastro, e o kit sai pela versão 2 do modelo, que ficou em vigor.
   await completarCadastro(baseURL!, fichaId, CPF)
@@ -91,10 +91,11 @@ test('a Sênior sobe e troca o modelo; a Atendimento vê o que falta na ficha, g
   await expect(page.getByText('O kit saiu em Word: abra o arquivo e imprima por ele.')).toBeVisible()
   await expect(page.getByText(/^Impresso em .*\.$/)).toBeVisible()
 
-  // CA7 · O assinado volta digitalizado e segue o caminho de sempre.
-  await page.getByRole('button', { name: 'Digitalizar o contrato assinado (scanner simulado)' }).click()
-  await page.getByRole('button', { name: 'Concluir a assinatura' }).click()
-  await expect(page.getByRole('heading', { name: '✓ Contrato assinado em papel' })).toBeVisible()
+  // O arquivo é real. A confirmação da assinatura espera a vinculação no servidor.
+  await page.getByLabel('PDF ou foto do contrato assinado').setInputFiles({ name: 'kit-assinado-teste.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 kit inventado no teste') })
+  await page.getByRole('button', { name: 'Guardar arquivo', exact: true }).click()
+  await expect(page.getByText('Arquivo guardado no servidor.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeDisabled()
 
   // CA6 · Outro computador: o histórico da ficha diz o modelo e a versão usados e que o kit foi para a pasta do cliente.
   const outro = await browser.newContext({ baseURL })

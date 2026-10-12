@@ -224,7 +224,7 @@ const MARCACAO: Marcacao = { tipo: 'presencial', data: '2026-10-06', hora: '14:0
 describe('GGVP-125 · bloco 2: agenda e confirmação no servidor, em modo misto', () => {
   it('ao abrir a tela, a cópia recebe fichas, tarefas e compromissos; a tarefa que sumiu lá foi concluída', async () => {
     let doServidor = { fichas: [doBanco()], tarefas: [tarefa('preparar-x', 'Preparar entrevista', 'Jurídico')], internos: [{ id: OUTRO, titulo: 'Gravação', data: '2026-10-06', hora: '10:00', duracao: 60, responsavel: 'atendimento', estado: 'marcado' as const }], gravacoes: [], contratos: [] }
-    ligarServidor({ 'GET /api/recepcao': () => doServidor })
+    ligarServidor({ 'GET /api/recepcao': () => doServidor, 'GET /api/pericias': () => [] })
     await sincronizarRecepcao()
     expect(ler().fichas.some((f) => f.id === ID)).toBe(true)
     expect(tarefasDaAdvogada().some((t) => t.acao === 'Preparar entrevista')).toBe(true)
@@ -346,6 +346,7 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor, 
     const fetch = ligarServidor({
       ...criada,
       [`GET /api/fichas/${ID}`]: () => doBanco({ agendamentos: [a] }),
+      'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [{ ...a, estado: 'realizado' }] })], gravacoes: [encerrada] }),
       [`POST /api/entrevistas/${a.id}/gravacoes`]: () => ({ gravacao: gravacao(id), ficha: doBanco({ agendamentos: [a] }) }),
       [`POST /api/gravacoes/${id}/encerrar`]: () => ({
         gravacao: encerrada,
@@ -442,6 +443,7 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     const segundaFicha = { data: '2026-10-05', origem: 'papel' as const, respostas: { ...respostasVazias(), empresa: 'Exemplo Indústria Ltda', historico: 'Prendeu a mão.' }, emBranco: [] }
     const fetch = ligarServidor({
       'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [a], segundaFicha })], tarefas: [], internos: [], gravacoes: [], contratos: [] }),
+      [`GET /api/fichas/${ID}`]: () => doBanco({ agendamentos: [a], segundaFicha }),
       [`GET /api/fichas/${ID}/segunda-ficha`]: () => ({ medicos: { doencas: MEDICO }, lida: false }),
     })
     await sincronizarRecepcao()

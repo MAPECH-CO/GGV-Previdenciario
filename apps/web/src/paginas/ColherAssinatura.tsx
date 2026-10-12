@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AnexarPapel } from '../componentes/AnexarPapel.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CabecalhoDoContrato } from '../componentes/CabecalhoDoContrato.tsx'
 import { MensagemWhatsApp } from '../componentes/MensagemWhatsApp.tsx'
@@ -21,7 +22,7 @@ import {
   type ServicosDoContrato,
 } from '../dados/contrato.ts'
 import { TIPOS_DE_ENTREVISTA } from '../dados/catalogos.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
 import { baixarArquivo, imprimirPdf } from '../impressao.ts'
 import {
   NOMES_DOS_CANAIS,
@@ -169,6 +170,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
 
   const concluirPapel = () =>
     agir(async () => {
+      if (doServidor(processoId)) throw new Error('Confirmação da assinatura indisponível: aguarda a vinculação do arquivo pelo servidor.')
       await concluirAssinaturaEmPapel(processoId)
       await recarregar()
     })
@@ -390,17 +392,20 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                     </button>
                   )}
                   <p>Colha a assinatura do cliente e passe o contrato assinado no scanner do balcão.</p>
-                  {!assinatura.arquivo && (
+                  {doServidor(processoId) ? <AnexarPapel fichaId={ficha.id} processoId={processoId} tipo="contrato" /> : !assinatura.arquivo && (
                     <button type="button" className={styles.atalho} disabled={ocupado} onClick={digitalizar}>
                       Digitalizar o contrato assinado (scanner simulado)
                     </button>
                   )}
                 </>
               )}
-              <p className={proprio.anexo} data-ok={assinatura?.arquivo !== undefined}>
+              {doServidor(processoId) ? <p className={styles.motivo}>
+                Confira os arquivos guardados na <a href={`/clientes/${ficha.id}`}>pasta do cliente</a>.
+                A vinculação do arquivo à assinatura ainda não está disponível.
+              </p> : <p className={proprio.anexo} data-ok={assinatura?.arquivo !== undefined}>
                 Anexo: digitalização do contrato assinado *{' '}
                 {assinatura?.arquivo ? `· ✓ ${assinatura.arquivo}, PDF pesquisável na pasta do cliente` : '· falta'}
-              </p>
+              </p>}
             </section>
           )}
 
@@ -439,7 +444,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
             </section>
           ) : papel ? (
             <div className={styles.rodape}>
-              <button type="button" className={styles.principalBotao} disabled={!assinatura?.arquivo || ocupado} onClick={concluirPapel}>
+              <button type="button" className={styles.principalBotao} disabled={!assinatura?.arquivo || ocupado || doServidor(processoId)} onClick={concluirPapel}>
                 {ocupado ? 'salvando…' : 'Concluir a assinatura'}
               </button>
               {!assinatura?.arquivo && <p className={styles.motivo}>Anexe a digitalização do contrato assinado.</p>}

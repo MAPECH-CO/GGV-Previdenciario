@@ -21,12 +21,13 @@ const radio = (grupo: string, nome: string) => within(screen.getByRole('radiogro
 const botao = (nome: string) => screen.getByRole('button', { name: nome }) as HTMLButtonElement
 
 describe('Registrar conversa · janela (GGVP-76)', () => {
-  it('CA3 · canal ligação ou presencial, sem WhatsApp e vídeo; com quem falou; o registro fica no processo', async () => {
+  it('CA3 · ligação e presencial disponíveis; WhatsApp aguarda a rota e o registro fica no processo', async () => {
     await abrir('maria-exemplo')
     expect(screen.getByRole('heading', { name: /Registrar conversa com o cliente/ })).toBeTruthy()
     expect(screen.getByText('Maria Exemplo · Auxílio por Incapacidade Temporária · o registro fica no processo')).toBeTruthy()
-    expect(within(screen.getByRole('radiogroup', { name: 'Canal' })).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Ligação', 'Presencial'])
-    expect(document.body.textContent).not.toMatch(/whatsapp|vídeo/i)
+    expect(within(screen.getByRole('radiogroup', { name: 'Canal' })).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Ligação', 'Presencial', 'WhatsApp · indisponível'])
+    expect((radio('Canal', 'WhatsApp · indisponível') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('As mensagens recebidas pelo WhatsApp ainda não estão disponíveis nesta conversa.')).toBeTruthy()
     expect(within(screen.getByRole('radiogroup', { name: 'Com quem falou' })).getAllByRole('radio').map((r) => r.textContent)).toEqual([
       'Cliente',
       'Familiar ou contato de apoio',

@@ -167,6 +167,22 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect(tarefas.map((t: { acao: string }) => t.acao)).toContain('Reunir documentos da perícia')
   })
 
+  it('revalida datas impossíveis de tentativa e marcação pela API', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    const tentativa = await post('igor', '/tentativas', { dia: '2026-02-31', oQueAconteceu: 'Sem vaga no dia' })
+    expect(tentativa.statusCode).toBe(400)
+    const marcacao = await app.inject({
+      method: 'POST', url: url('/marcacao'), cookies: await de('igor'),
+      ...multipart('comprovante', { lido: { ...lido, data: '2027-02-31' }, pedeDocumentoNovo: false }, PDF('teste.pdf')),
+    })
+    expect(marcacao.statusCode).toBe(400)
+    const atual = (await ver('igor')).json()
+    expect(atual.pericia.tentativas).toEqual([])
+    expect(atual.pericia.marcacao).toBeUndefined()
+    expect(atual.situacao).toBe('marcar')
+  })
+
   it('CA4 · G20: o pedido ao médico com CID ou conclusão é recusado no servidor e o portão fica registrado', async () => {
     await decidirPericia()
     await post('igor', '/liberacao')
