@@ -55,8 +55,9 @@ das urgentes com link e os prazos da semana; o botão de gravar transcreve a fal
 
 ### Servidor
 
-- `POST /api/chat/fala`, só com sessão. Corpo: o áudio cru (`audio/webm`, `audio/ogg`, `audio/mp4`, `audio/mpeg` ou
-  `audio/wav`), até 10 MB. Outro tipo: 415; maior: 413.
+- `POST /api/chat/fala`, só com sessão. Corpo: formulário com um arquivo (o mesmo envio de arquivo das outras rotas,
+  `lerFormulario`), de áudio pela regra `ehAudio` (tipo `audio/...` ou extensão de áudio), até 10 MB. Sem formulário ou
+  sem áudio: 415; maior: 413.
 - Chama `ia.transcrever({ quem, audio, mime, nome: 'fala-do-chat', sensivel, referencia: 'chat:fala' })`, com
   `sensivel = veSaudeNoChat(perfil)`, a mesma regra do chat. O motor registra só tamanho e hash do áudio; o áudio não é
   guardado e o texto não vai para log.
@@ -163,8 +164,8 @@ Depois da resposta final, `montarBlocos(texto, x.widgets)` corta o texto nos mar
 - **Números e datas:** saem do código das ferramentas. O modelo não escreve widget, só escolhe pelo marcador.
 - **Permissão:** cada widget vem das rotas da tela com o cookie de quem pergunta, então segue a matriz e o acesso a
   saúde já registrado por elas.
-- **G20:** para quem não vê saúde, a checagem de código de doença (`temCid`) roda no texto e no JSON dos widgets. Se
-  achar, a resposta é recusada como hoje.
+- **G20:** para quem não vê saúde, a checagem de código de doença (`temCid`) roda no texto, como hoje, e no JSON de cada
+  widget antes de oferecê-lo: o widget com código de doença não é oferecido à IA nem chega à tela.
 - **G6 e cartões:** nada muda. Widget não executa nada: só mostra e leva a uma tela.
 - **LGPD:** o widget não leva CPF, nascimento nem conteúdo de documento (as rotas já tiram; os montadores não
   acrescentam nada).
@@ -201,7 +202,7 @@ Depois da resposta final, `montarBlocos(texto, x.widgets)` corta o texto nos mar
   - `montarBlocos`: marcador válido, inventado, repetido, além do quarto, sem marcador;
   - montadores a partir de JSON de exemplo de `/api/tarefas` e de `/api/casos/:id/processo`, com "hoje" fixo;
   - rota com o `fetch` falso do motor: a ferramenta é chamada, a resposta final usa `{{w1}}` e volta com `blocos`;
-  - código de doença num widget para o Atendimento: recusa;
+  - código de doença num widget para o Atendimento: o widget não é oferecido;
   - `POST /api/chat/fala`: sem sessão 401, tipo errado 415, grande 413, sem chave 503, com o `fetch` falso devolve
     `{ texto }`.
 - **Tela:**
