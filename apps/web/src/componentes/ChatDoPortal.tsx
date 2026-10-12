@@ -8,6 +8,7 @@ import { ChatIA } from './ChatIA.tsx'
 import cartao from './CartaoConfirmacao.module.css'
 import itens from './ChatDaPericia.module.css'
 import { TextoFormatado } from './TextoFormatado.tsx'
+import { WidgetNoChat } from './WidgetsDoChat.tsx'
 import styles from './ChatDoPortal.module.css'
 
 type EstadoDoCartao = { estado: EstadoAcao; escolha?: string; responsavel?: string; trocando?: boolean; resultado?: ResultadoDaAcao; erro?: string }
@@ -138,7 +139,11 @@ function Resposta({
   const fontes = r.sugestao.fontes.filter((f) => f.tipo !== 'caso')
   return (
     <>
-      <TextoFormatado texto={r.sugestao.texto} />
+      {r.blocos ? (
+        r.blocos.map((b, i) => (b.tipo === 'texto' ? <TextoFormatado key={i} texto={b.texto} /> : <WidgetNoChat key={i} widget={b.widget} />))
+      ) : (
+        <TextoFormatado texto={r.sugestao.texto} />
+      )}
       {r.sugestao.alerta && (
         <p className={styles.alerta} role="alert">
           {r.sugestao.alerta}
