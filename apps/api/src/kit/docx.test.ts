@@ -30,6 +30,12 @@ describe('GGVP-136 CA3 · preencher o modelo do Word', () => {
     ])
   })
 
+  it('GGVP-158 P1.9 · no padrão do ZapSign, só o primeiro {{DIA}} e {{MÊS}} levam a data; os outros ficam em branco, com o ano', () => {
+    const modelo = docxDeTeste(['CONTRATO.', '{{CIDADE}}, {{DIA}} de {{MÊS}} de {{ANO}}.', 'PROCURAÇÃO.', 'Data: {{DIA}} de {{MÊS}} de {{ANO}}.'])
+    const kit = preencherModelo(modelo, { CIDADE: 'Osasco', DIA: '9', MÊS: 'outubro', ANO: '2026' }, '2026-10-09')
+    expect(textoDoDocx(kit).split('\n')).toEqual(['CONTRATO.', 'Osasco, 9 de outubro de 2026.', 'PROCURAÇÃO.', 'Data: ____________ de ________________ de 2026.'])
+  })
+
   it('o nome da variável com o acento solto, como o Word guarda, também é preenchido', () => {
     const kit = preencherModelo(docxDeTeste(['RG {{NÚMERO DO RG}}']), { 'NÚMERO DO RG': '12.345.678-9' }, '2026-10-09')
     expect(textoDoDocx(kit)).toBe('RG 12.345.678-9')
@@ -45,5 +51,17 @@ describe('GGVP-136 CA1 · ler o modelo', () => {
   it('devolve as variáveis na ordem em que aparecem, sem repetir', () => {
     const modelo = docxDeTeste(['{{NOME COMPLETO}}, {{NÚMERO DO CPF}}', 'de novo {{NOME COMPLETO}} e {{DATA DE HOJE}}'])
     expect(lerModelo(modelo)).toEqual({ ok: true, variaveis: ['NOME COMPLETO', 'NÚMERO DO CPF', 'DATA DE HOJE'] })
+  })
+
+  it('GGVP-158 P1.9 · aceita o modelo com os nomes de variável do ZapSign', () => {
+    const modelo = docxDeTeste([
+      '{{NOME BENEFICIARIO COMPLETO}}, CPF {{CPF BENEFICIARIO}}, na {{ENDEREÇO}} {{COMPLEMENTO}}',
+      'Recado: {{TELEFONE PARA RECADO}}; e-mail: {{E-MAIL GENITOR(A)}}',
+      '{{DIA}} de {{MÊS}} de {{ANO}}',
+    ])
+    expect(lerModelo(modelo)).toEqual({
+      ok: true,
+      variaveis: ['NOME BENEFICIARIO COMPLETO', 'CPF BENEFICIARIO', 'ENDEREÇO', 'COMPLEMENTO', 'TELEFONE PARA RECADO', 'E-MAIL GENITOR(A)', 'DIA', 'MÊS', 'ANO'],
+    })
   })
 })
