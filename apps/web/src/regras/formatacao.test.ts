@@ -18,6 +18,10 @@ describe('o texto formatado da IA (12/10)', () => {
     expect(lerTrechos('veja [aqui](https://fora.com) e [lá](//fora.com)')).toEqual([t('veja aqui e lá')])
   })
 
+  it('link com barra invertida não passa por interno (o navegador lê /\\x.com como outro site)', () => {
+    expect(lerTrechos('[a](/\\evil.com) [b](/casos\\x) [c](javascript:void)')).toEqual([t('a b c')])
+  })
+
   it('asterisco solto e marcação sem fechar ficam como texto', () => {
     expect(lerTrechos('art. 20 * 3 e **sem fechar')).toEqual([t('art. 20 * 3 e **sem fechar')])
     expect(lerTrechos('nome_do_arquivo.pdf')).toEqual([t('nome_do_arquivo.pdf')])

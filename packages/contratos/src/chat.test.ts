@@ -56,6 +56,8 @@ describe('chat com widgets (12/10)', () => {
     expect(WidgetDoChat.safeParse({ tipo: 'numeros', itens: [{ rotulo: 'x', valor: 1.5 }] }).success).toBe(false)
     expect(WidgetDoChat.safeParse({ tipo: 'numeros', itens: Array(5).fill({ rotulo: 'x', valor: 1 }) }).success).toBe(false)
     expect(WidgetDoChat.safeParse({ tipo: 'lista', titulo: 't', itens: [{ titulo: 'a', href: 'https://fora.com' }] }).success).toBe(false)
+    for (const href of ['//fora.com', '/\\fora.com', '/casos\\x'])
+      expect(WidgetDoChat.safeParse({ tipo: 'lista', titulo: 't', itens: [{ titulo: 'a', href }] }).success, href).toBe(false)
     expect(WidgetDoChat.safeParse({ tipo: 'prazos', titulo: 't', inicio: '12/10/2026', itens: [] }).success).toBe(false)
     expect(WidgetDoChat.safeParse({ tipo: 'grafico', itens: [] }).success).toBe(false)
   })

@@ -44,7 +44,8 @@ export type CartaoDeAcao = z.infer<typeof CartaoDeAcao>
 
 /** O tom de um selo ou de um número do widget, nas cores do portal. */
 const Tom = z.enum(['neutro', 'acento', 'alerta', 'erro', 'ok'])
-const Href = z.string().startsWith('/')
+/** Só tela do portal: uma barra no começo, sem "//" e sem barra invertida (o navegador lê "/\x.com" como outro site). */
+const Href = z.string().regex(/^\/(?![/\\])[^\\]*$/)
 const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
 /**

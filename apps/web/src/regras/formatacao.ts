@@ -14,12 +14,15 @@ export type BlocoDeTexto =
   | { tipo: 'lista'; ordenada: boolean; itens: { trechos: Trecho[]; filhos: Trecho[][] }[] }
   | { tipo: 'tabela'; cabeca: Trecho[][]; linhas: Trecho[][][] }
 
+/** Só tela do portal: começa com uma barra, sem "//" e sem barra invertida (o navegador lê "/\x.com" como outro site). */
+const linkInterno = (href: string) => href.startsWith('/') && !href.startsWith('//') && !href.includes('\\')
+
 /** Na ordem de prioridade: código, link, negrito, itálico com * e itálico com _ (só fora de palavra). */
 const MARCAS: { re: RegExp; montar: (m: RegExpExecArray) => Trecho[] }[] = [
   { re: /`([^`]+)`/, montar: (m) => [{ tipo: 'codigo', texto: m[1] }] },
   {
     re: /\[([^\]]+)\]\(([^)\s]+)\)/,
-    montar: (m) => (m[2].startsWith('/') && !m[2].startsWith('//') ? [{ tipo: 'link', href: m[2], filhos: lerTrechos(m[1]) }] : lerTrechos(m[1])),
+    montar: (m) => (linkInterno(m[2]) ? [{ tipo: 'link', href: m[2], filhos: lerTrechos(m[1]) }] : lerTrechos(m[1])),
   },
   { re: /\*\*(?=\S)(.+?)(?<=\S)\*\*/, montar: (m) => [{ tipo: 'negrito', filhos: lerTrechos(m[1]) }] },
   { re: /\*(?=[^\s*])(.+?)(?<=[^\s*])\*/, montar: (m) => [{ tipo: 'italico', filhos: lerTrechos(m[1]) }] },
