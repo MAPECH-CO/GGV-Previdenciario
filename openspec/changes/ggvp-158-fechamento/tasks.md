@@ -65,6 +65,8 @@
   O #63 saiu do rascunho.
 - [ ] 1.11 Os modelos que passam (P1.8). Dos anexos da GGVP-136, conferidos com `lerModelo`, passam o `modelo-8` (kit consumidor de 23/07) e o `modelo-10` (seguro de vida).
   - A Sênior sobe os dois pelo `modelos:subir`, com a senha digitada só no terminal do Mateus.
+  - Na primeira tentativa (12/10), o portal respondeu 500: o depósito `documentos` do Supabase não aceitava Word. Com a autorização do Mateus, o tipo do Word entrou na lista do depósito, pelo conector.
+  - O depósito agora está descrito em `docs/infra/homologacao.md`, para a produção nascer igual.
   - Verifica: a Configuração mostra a versão dos dois, e o cartão registra o que falta e por quê.
 - [ ] 1.12 Os nomes do ZapSign no kit (P1.9), num PR à parte sobre o #62, com revisão do Pedro. Na ordem contrato → teste → código:
   - em `apps/web/src/regras/kitDoModelo.ts`, os sinônimos com o mesmo valor do nome do portal e as variáveis que a ficha não tem como opcionais;
