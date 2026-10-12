@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
+import { prepararEntrevistaExistente } from './entrevista-existente.ts'
 
 // GGVP-133 · a gravação da ligação do Chatwoot sobe numa caixa de enviar arquivo, vai para a pasta do cliente e para a
 // transcrição. O Playwright sobe a API sem a chave da OpenAI: a transcrição fica desligada, diz o motivo e o áudio fica.
@@ -15,12 +16,7 @@ test('a advogada sobe a gravação da ligação na entrevista; sem a chave do se
   // O último dia às 16:00: os testes da Recepção ocupam os quatro horários do primeiro dia (o banco do teste é um só).
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').last().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  const chatwoot = page.getByRole('dialog', { name: 'Chatwoot · conversa com Lia Ligacao Teste' })
-  // As conversas do cliente chegam depois de a janela abrir: sem esperar, o Enviar responde "Escolha a conversa".
-  await expect(chatwoot.getByRole('radiogroup', { name: 'Conversas do cliente' })).toBeVisible()
-  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
+  await prepararEntrevistaExistente(page, '16:00', 4)
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Ligacao Teste')!.agendamentos[0].id,
   )

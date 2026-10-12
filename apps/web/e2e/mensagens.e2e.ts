@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
 // GGVP-102 · Mensagens ao cliente com modelo e registro, no servidor (GGVP-138): cada teste cadastra o seu lead no banco.
-// O Chatwoot é simulado no servidor: o contato é o do telefone da ficha, com uma conversa aberta, e a entrega é confirmada.
+// O Chatwoot é simulado no servidor: o contato é o do telefone da ficha, com uma conversa aberta, e a tela deve identificar a simulação.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -26,11 +26,11 @@ test('CA1, CA2, CA4 e CA6 · as boas-vindas saem pelo Chatwoot e ficam no card c
   await expect(chatwoot).toContainText('Contato: Rosa Mensagem Teste · (11) 93333-2222')
   await expect(chatwoot.getByRole('link', { name: 'Abrir a conversa' })).toHaveAttribute('href', /chatwoot\.mapech\.com\.br\/app\/accounts\/.+\/conversations\/33332222$/)
   await janela.getByRole('button', { name: 'Enviar pelo Chatwoot' }).click()
-  await expect(janela.getByText(/✓ Entregue no Chatwoot às \d\d:\d\d/)).toBeVisible()
+  await expect(janela.getByText(/✓ Simulado no Chatwoot às \d\d:\d\d/)).toBeVisible()
   await janela.getByRole('button', { name: 'Fechar', exact: true }).last().click()
-  await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText(/Chatwoot · \d\d:\d\d · entregue/)
+  await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText(/Chatwoot · \d\d:\d\d · envio não confirmado/)
   await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText('Boas-vindas ao escritório GGV.')
-  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Enviou pelo Chatwoot a mensagem «Boas-vindas» (entregue)')
+  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Registro de mensagem no Chatwoot «Boas-vindas» (envio não confirmado)')
 })
 
 test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situação ou pede a senha não sai', async ({ page }) => {

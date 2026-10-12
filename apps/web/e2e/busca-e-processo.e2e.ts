@@ -27,7 +27,8 @@ test('a página do processo mostra juízo e laudo da API sem inventar estratégi
   await page.route('**/api/processos/' + casoId + '/parecer', r => r.fulfill({ json: { processo: { id: casoId }, laudoNovoEm: '2030-10-02' } }))
   await page.route('**/api/processos/' + casoId + '/pericia', r => r.fulfill({ status: 404, json: { erro: 'Sem perícia no teste' } }))
   await page.goto('/casos/' + casoId)
-  await expect(page.getByRole('region', { name: 'Juízo do processo' })).toContainText('Vara Inventada')
+  // O juízo aparece no cartão "Juízo e perícia" da parte 4 (um cartão só para o juízo na página).
+  await expect(page.getByRole('region', { name: 'Juízo e perícia do servidor' })).toContainText('Vara Inventada')
   await expect(page.getByRole('region', { name: 'Laudo novo do processo' })).toContainText('02/10/2030')
   await expect(page.getByRole('link', { name: 'Analisar o laudo novo' })).toHaveAttribute('href', '/casos/' + casoId + '/laudo-novo')
   await expect(page.getByRole('region', { name: 'Estratégia do processo' })).toContainText('ainda não estão disponíveis')

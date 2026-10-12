@@ -31,7 +31,7 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     expect(within(chatwoot).getByRole('link', { name: 'Abrir a conversa' }).getAttribute('href')).toMatch(/\/conversations\/5004$/)
     expect(within(chatwoot).getByRole('button', { name: 'Copiar a mensagem' })).toBeTruthy()
     fireEvent.click(enviar())
-    expect(await screen.findByText(/✓ Entregue no Chatwoot às 14:32/)).toBeTruthy()
+    expect(await screen.findByText(/✓ Simulado no Chatwoot às 14:32/)).toBeTruthy()
     expect(aoEnviar).toHaveBeenCalled()
     expect((await obterFicha('maria-exemplo'))!.contatos.at(-1)?.canal).toBe('Chatwoot · 14:32 · entregue')
   })

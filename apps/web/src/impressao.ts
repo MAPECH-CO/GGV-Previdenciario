@@ -32,3 +32,30 @@ export function baixarArquivo(url: string, nome: string) {
   a.click()
   a.remove()
 }
+
+/** Imprime só os campos da ficha conferida. O cofre e os controles da tela não entram no papel. */
+export function imprimirFicha(campos: { rotulo: string; valor: string }[]) {
+  quadroAtual?.remove()
+  const quadro = document.createElement('iframe')
+  quadro.title = 'Impressão da ficha de atendimento'
+  quadro.style.cssText = 'position:fixed;width:1px;height:100px;opacity:0;border:0;pointer-events:none'
+  quadro.setAttribute('aria-hidden', 'true')
+  quadro.tabIndex = -1
+  document.body.appendChild(quadro)
+  quadroAtual = quadro
+  const doc = quadro.contentDocument
+  if (!doc || !quadro.contentWindow) { quadro.remove(); throw new Error('A janela de impressão não abriu.') }
+  doc.title = 'Ficha de atendimento'
+  const titulo = doc.createElement('h1')
+  titulo.textContent = 'Ficha de atendimento'
+  doc.body.append(titulo)
+  for (const campo of campos) {
+    const linha = doc.createElement('p')
+    const rotulo = doc.createElement('strong')
+    rotulo.textContent = campo.rotulo + ': '
+    linha.append(rotulo, doc.createTextNode(campo.valor || '________________________'))
+    doc.body.append(linha)
+  }
+  quadro.contentWindow.focus()
+  quadro.contentWindow.print()
+}

@@ -301,7 +301,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
             {!checklist.temLista && (
               <p className={styles.aviso}>
                 {beneficio} ainda não tem lista de documentos obrigatórios aprovada. O escritório monta a lista na configuração
-                (GGVP-104); até lá, o caso não pode ser liberado ao Jurídico.
+                (GGVP-104); até lá, o caso não pode ser liberado ao Jurídico. <a href="/configuracao">Abrir Configuração</a>
               </p>
             )}
             {checklist.bloqueio && <p className={styles.aviso}>{checklist.bloqueio}</p>}

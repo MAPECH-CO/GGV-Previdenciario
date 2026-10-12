@@ -11,7 +11,7 @@ const hojeIso = () => new Date().toLocaleDateString('sv-SE')
 
 /** Outra pessoa, em outro computador: outra sessão e nada guardado no navegador. */
 async function computadorDe(browser: Browser, origem: string, email: string): Promise<Page> {
-  const contexto = await browser.newContext({ baseURL: origem })
+  const contexto = await browser.newContext({ baseURL: origem, timezoneId: 'America/Sao_Paulo' })
   const page = await contexto.newPage()
   await entrarPelaApi(page, email)
   return page

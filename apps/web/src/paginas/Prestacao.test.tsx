@@ -75,7 +75,7 @@ describe('Prestar contas (GGVP-44)', () => {
     const fetch = servidor(prestacao)
     render(<PrestarContas casoId={CASO} />)
     fireEvent.change(await screen.findByLabelText('Valor recebido (atrasados)'), { target: { value: '1.000,00' } })
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Escolha', 'Pix', 'Transferência bancária', 'Boleto', 'Dinheiro'])
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Escolha', 'Pix', 'Transferência bancária', 'Boleto do escritório', 'Dinheiro', 'Parte na Caixa · ainda indisponível'])
     fireEvent.change(screen.getByLabelText('Prazo de pagamento'), { target: { value: '2026-10-30' } })
     // GGVP-109 CA3: sem a conferência marcada, o botão fica desabilitado.
     expect((screen.getByRole('button', { name: 'Concluir a prestação' }) as HTMLButtonElement).disabled).toBe(true)
@@ -167,7 +167,7 @@ describe('Avisar e agendar a ida ao banco (GGVP-44 e GGVP-98, Financeiro)', () =
     servidor({ ...banco, okAdvogada: false, agendamento: { id: '11111111-1111-4111-8111-111111111111', data: '15/10/2026', hora: '10:00', local: 'Caixa', acompanhante: 'Ana' }, mensagem: 'Olá, Vera!' })
     render(<IdaAoBanco casoId={CASO} />)
     expect((await screen.findByLabelText('Mensagem')).textContent).toBe('Olá, Vera!')
-    expect((screen.getByRole('button', { name: 'Revisei e enviei' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Registrar ligação feita' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/só sai depois do OK da advogada/)).toBeTruthy()
   })
 })

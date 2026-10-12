@@ -186,7 +186,7 @@ export function MensagemAoCliente({ ficha, funcao = 'Atendimento', modeloInicial
       )}
       {saiu && (
         <p className={styles.ok} role="status">
-          ✓ {STATUS_DA_MENSAGEM[resultado.status].replace(/^./, (l) => l.toUpperCase())} no Chatwoot às {hora(resultado.quando)}: está em "Últimos contatos" do card.
+          ✓ {pronta?.simulado === false ? STATUS_DA_MENSAGEM[resultado.status].replace(/^./, (l) => l.toUpperCase()) : 'Simulado'} no Chatwoot às {hora(resultado.quando)}: está em "Últimos contatos" do card.
         </p>
       )}
       {erro && (

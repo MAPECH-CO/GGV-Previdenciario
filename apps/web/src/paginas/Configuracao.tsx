@@ -1,17 +1,18 @@
 import { useEffect, useId, useState } from 'react'
-import { somenteDigitos } from '@ggv/campos'
+import { somenteDigitos, normalizarInteiro } from '@ggv/campos'
 import {
-  BENEFICIOS,
+  CATALOGO_BENEFICIOS,
+  BENEFICIO_NA_CONFIGURACAO,
   ROTULO_BENEFICIO,
   ROTULO_TIPO_DE_TERMO,
   SalvarTermo,
   TIPOS_DE_TERMO,
-  type Beneficio,
   type ConfiguracaoDoEscritorio,
   type GlossarioDoEscritorio,
   type ModelosDoEscritorio,
   type TipoDeTermo,
 } from '@ggv/contratos'
+import { linhaDoBeneficio, modeloPorId } from '../regras/contrato.ts'
 import { chamarApi } from '../api.ts'
 import { FeriadosDosTribunais } from '../componentes/FeriadosDosTribunais.tsx'
 import { MolduraDaBase } from './Base.tsx'
@@ -40,18 +41,24 @@ const nomeDoDocumento = (tipo: string) => NOME_DO_DOCUMENTO[tipo] ?? tipo.replac
 function LinhaDoParametro({ p, podeEditar, aoSalvar }: { p: Config['parametros'][number]; podeEditar: boolean; aoSalvar: (chave: string, valor: string) => void }) {
   const id = useId()
   const [valor, setValor] = useState(p.valor === null ? '' : String(p.valor))
+  const numero = normalizarInteiro(valor)
+  const valido = numero !== null && numero >= p.min && numero <= p.max
+  const pendente = p.chave === 'pericia.remarcacao.limite' || p.chave.startsWith('contato.')
+  const edita = podeEditar && !pendente
   return (
     <div className={g.parametro}>
       <label className={styles.rotulo} htmlFor={id}>
         {p.rotulo} (de {p.min} a {p.max})
       </label>
-      <input id={id} className={styles.campo} inputMode="numeric" value={valor} disabled={!podeEditar} onChange={(e) => setValor(somenteDigitos(e.target.value))} />
-      {podeEditar && (
+      <input id={id} className={styles.campo} inputMode="numeric" value={valor} disabled={!edita} onChange={(e) => setValor(somenteDigitos(e.target.value))} />
+      {pendente && <p className={styles.dica}>Este valor cadastrado ainda não é aplicado pelo servidor. Edição indisponível até a ligação desta regra.</p>}
+      {valor && !valido && <p role="alert" className={styles.erroCampo}>Informe um inteiro de {p.min} a {p.max}.</p>}
+      {edita && (
         <button
           type="button"
           className={styles.botao}
           aria-label={`Salvar: ${p.rotulo}`}
-          disabled={!valor || valor === String(p.valor)}
+          disabled={!valido || valor === String(p.valor)}
           onClick={() => aoSalvar(p.chave, valor)}
         >
           Salvar
@@ -355,7 +362,7 @@ export function Configuracao() {
   const idBeneficio = useId()
   const [c, setC] = useState<Config | null>(null)
   const [versao, setVersao] = useState(0)
-  const [beneficio, setBeneficio] = useState<Beneficio>('bpc_loas_idoso')
+  const [beneficio, setBeneficio] = useState('bpc_loas_idoso')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
 
@@ -374,6 +381,9 @@ export function Configuracao() {
     setVersao((v) => v + 1)
   }
 
+  const escolhido = CATALOGO_BENEFICIOS.find(b => (BENEFICIO_NA_CONFIGURACAO[b.id] ?? b.id) === beneficio)
+  const linha = escolhido && linhaDoBeneficio(escolhido.id)
+  const modelo = linha?.modelo ? modeloPorId(linha.modelo) : undefined
   const kit = c?.kits.find((k) => k.beneficio === beneficio)
   return (
     <MolduraDaBase ativo="configuracao" titulo="Configuração do escritório" subtitulo="Mudar a regra do escritório sem mexer no código. Toda mudança fica no histórico, com quem mudou.">
@@ -392,6 +402,8 @@ export function Configuracao() {
           <>
             <section className={styles.cartao} aria-label="Limites e parâmetros" key={`p-${versao}`}>
               <h2 className={styles.cartaoTitulo}>Limites e parâmetros</h2>
+              <p className={styles.dica}>Regra definida: cobrança e confirmação do lead com 2 tentativas, separadas por 3 dias; depois, Sênior. Perícia: 1 remarcação; depois, advogada responsável. Espera por resposta: lembrete diário.</p>
+              <p className={styles.dica}>A cobrança configurada abaixo já vale nos laços das exigências e do despacho. A aplicação na cobrança do contrato e na confirmação do lead ainda aguarda integração.</p>
               {c.parametros.map((p) => (
                 <LinhaDoParametro key={p.chave} p={p} podeEditar={c.podeEditar} aoSalvar={(chave, valor) => void salvar(`/configuracao/parametros/${chave}`, { valor }, 'Parâmetro salvo.')} />
               ))}
@@ -402,13 +414,17 @@ export function Configuracao() {
               <label className={styles.rotulo} htmlFor={idBeneficio}>
                 Benefício
               </label>
-              <select id={idBeneficio} className={styles.campo} value={beneficio} onChange={(e) => setBeneficio(e.target.value as Beneficio)}>
-                {BENEFICIOS.map((b) => (
-                  <option key={b} value={b}>
-                    {ROTULO_BENEFICIO[b]}
+              <select id={idBeneficio} className={styles.campo} value={beneficio} onChange={(e) => setBeneficio(e.target.value)}>
+                {CATALOGO_BENEFICIOS.map((b) => (
+                  <option key={b.id} value={BENEFICIO_NA_CONFIGURACAO[b.id] ?? b.id}>
+                    {b.nome}
                   </option>
                 ))}
               </select>
+              <p className={styles.dica}>34 benefícios · catálogo do escritório.</p>
+              <p className={styles.dica}>Modelo do kit: {modelo?.nome ?? 'ainda não definido para este benefício'}.</p>
+              {!kit && <p className={styles.erroCampo} role="status">Checklist indisponível no servidor para este benefício.
+                O caso permanece bloqueado até haver checklist aprovado.</p>}
               {kit && (
                 <KitDoBeneficio
                   key={`${beneficio}-${kit.versao}-${versao}`}
@@ -431,6 +447,12 @@ export function Configuracao() {
               </section>
             )}
 
+            <section className={styles.cartao} aria-label="Tribunais e assinatura da petição">
+              <h2 className={styles.cartaoTitulo}>Tribunais e assinatura da petição</h2>
+              <p>Editar os tribunais de peticionamento e a assinatura padrão ainda não está disponível. Os feriados e suspensões continuam na seção abaixo.</p>
+              <button type="button" className={styles.botaoSecundario} disabled>Editar tribunais</button>{' '}
+              <button type="button" className={styles.botaoSecundario} disabled>Editar assinatura padrão</button>
+            </section>
             <Glossario versao={versao} salvar={(caminho, corpo, aviso, metodo) => void salvar(caminho, corpo, aviso, metodo)} aoErro={setErro} />
 
             {c.historico.length > 0 && (

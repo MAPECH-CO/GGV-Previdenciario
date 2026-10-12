@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { JurimetriaDoJuizo, PeritoEscolhido } from '@ggv/contratos'
+import { PeritoEscolhido } from '@ggv/contratos'
 import { isoParaData } from '@ggv/campos'
 import { chamarApi } from '../api.ts'
 import { usePode, useSessao } from '../sessao.ts'
@@ -13,12 +13,9 @@ type Perito = { id: string; nome: string; especialidade: string; tipo: 'medica' 
 /** Complementos por rotas já existentes, sem buscar exemplos quando a API não responde. */
 export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
   const sessao = useSessao()
-  const veJuizo = usePode('estudo.ver')
   const veSaude = usePode('dado_saude.ver_detalhe')
   const orienta = usePode('pericia.orientar_cliente')
   const confereResultado = usePode('pericia.conferir_resultado')
-  const [juizo, setJuizo] = useState<JurimetriaDoJuizo | null>(null)
-  const [avisoJuizo, setAvisoJuizo] = useState('Consultando o juízo…')
   const [laudo, setLaudo] = useState<string | null | undefined>(undefined)
   const [avisoLaudo, setAvisoLaudo] = useState('')
   const [pericia, setPericia] = useState<PericiaNaTela | null>(null)
@@ -29,12 +26,6 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
   useEffect(() => {
     let atual = true
     if (!sessao) return
-    if (veJuizo) void chamarApi<unknown>(`/casos/${casoId}/juizo`).then(r => {
-      if (!atual) return
-      const j = r.ok ? JurimetriaDoJuizo.safeParse(r.dados) : null
-      if (j?.success) setJuizo(j.data)
-      else setAvisoJuizo('Juízo ainda não disponível para este processo.')
-    }).catch(() => { if (atual) setAvisoJuizo('Não foi possível consultar o juízo.') })
     void chamarApi<ParecerNaTela>(`/processos/${casoId}/parecer`).then(r => {
       if (!atual) return
       if (!r.ok || !r.dados.processo) { setAvisoLaudo('A consulta de laudo novo está indisponível.'); return }
@@ -53,7 +44,7 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
       }
     }).catch(() => { if (atual) setAvisoPerito('Não foi possível consultar a identificação do perito.') })
     return () => { atual = false }
-  }, [casoId, sessao, veJuizo, veSaude])
+  }, [casoId, sessao, veSaude])
 
   const laudoSemPerito = pericia?.pericia.resultado?.noPerfil === 'aguardando-perito'
   const podeLigar = laudoSemPerito ? confereResultado : orienta
@@ -75,12 +66,6 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
 
   if (!sessao) return null
   return <>
-    <section className={styles.cartao} aria-label="Juízo do processo">
-      <h2 className={styles.cartaoTitulo}>Juízo</h2>
-      {!veJuizo ? <p>A consulta do juízo para este perfil ainda não está disponível.</p> : juizo ? <dl className={styles.dados}>
-        <dt>Juízo</dt><dd>{juizo.juizo}</dd><dt>Vara</dt><dd>{juizo.vara ?? 'Ainda não conferida'}</dd><dt>Juiz</dt><dd>{juizo.juiz ?? 'Ainda não conferido'}</dd>
-      </dl> : <p>{avisoJuizo}</p>}
-    </section>
     {veSaude && <section className={styles.cartao} aria-label="Estratégia do processo">
       <h2 className={styles.cartaoTitulo}>Estratégia</h2>
       <p>A consulta e a edição da estratégia ainda não estão disponíveis para este processo.</p>

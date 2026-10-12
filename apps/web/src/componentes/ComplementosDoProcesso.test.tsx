@@ -21,10 +21,9 @@ function servidor(recusar = false, doLaudo = false) {
   return fetch
 }
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
-it('mostra juízo, status do laudo e estratégia indisponível sem criar conteúdo', async () => {
+it('mostra o status do laudo e a estratégia indisponível sem criar conteúdo (o juízo fica no cartão "Juízo e perícia")', async () => {
   servidor()
   tela()
-  expect(await screen.findByText('Vara Inventada')).toBeTruthy()
   expect(await screen.findByText(/Há laudo novo desde 02\/10\/2030/)).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Analisar o laudo novo' }).getAttribute('href')).toBe('/casos/' + casoId + '/laudo-novo')
   expect(screen.getByLabelText('Estratégia do processo').textContent).toContain('ainda não estão disponíveis')
@@ -41,8 +40,7 @@ it.each(['atendimento', 'documentacao', 'financeiro'])('%s vê a existência do 
 it.each(['advogada', 'senior', 'socio'])('%s pode consultar os complementos jurídicos', async perfil => {
   servidor()
   tela(perfil)
-  expect(await screen.findByText('Vara Inventada')).toBeTruthy()
-  expect(screen.getByLabelText('Estratégia do processo')).toBeTruthy()
+  expect(await screen.findByLabelText('Estratégia do processo')).toBeTruthy()
 })
 it('confirma o perito pela API e só informa sucesso após a resposta', async () => {
   const fetch = servidor()
@@ -72,5 +70,4 @@ it('API indisponível não vira nenhum laudo novo nem dados de exemplo', async (
   tela()
   expect(await screen.findByText('A consulta de laudo novo está indisponível.')).toBeTruthy()
   expect(within(screen.getByLabelText('Laudo novo do processo')).queryByText('Nenhum laudo novo aguardando análise.')).toBeNull()
-  expect(await screen.findByText('Juízo ainda não disponível para este processo.')).toBeTruthy()
 })

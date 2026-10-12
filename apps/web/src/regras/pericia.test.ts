@@ -13,6 +13,7 @@ import {
   jurimetria,
   numerosDaJurimetria,
   mensagemDoLembrete,
+  motivoDaDataDaPericia,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarResultado,
@@ -95,6 +96,17 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
     expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido: { ...lido, hora: '25:00' }, pedeDocumentoNovo: true }, hoje)).toBe('Confira a hora da perícia.')
     expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido }, hoje)).toBe('Responda se a perícia pede documento novo.')
     expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido, pedeDocumentoNovo: false }, hoje)).toBeNull()
+  })
+
+  it('datas impossíveis não passam na tentativa nem na marcação da perícia', () => {
+    expect(motivoParaNaoRegistrarTentativa({ dia: '2026-02-31', oQueAconteceu: 'Sem vaga no dia' }, '2026-10-07'))
+      .toBe('Informe o dia da tentativa (dd/mm/aaaa).')
+    for (const data of ['2027-02-31', '2027-13-01', 'amanhã']) {
+      const lido = { data, hora: '08:30', local: 'Local de Teste' }
+      expect(motivoDaDataDaPericia(lido, '2026-10-07')).toBe('Confira a data da perícia: ela não pode ser passada.')
+      expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'teste.pdf', lido, pedeDocumentoNovo: false }, '2026-10-07'))
+        .toBe('Confira a data da perícia: ela não pode ser passada.')
+    }
   })
 
   it('CA9 · G15: passou de 2 remarcações, sobe para a advogada; cada autorização dela vale uma a mais', () => {
