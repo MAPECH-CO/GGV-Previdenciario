@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -174,6 +175,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             <span className={base.nota}>linha do tempo completa abaixo · clique para ver em detalhe</span>
           </button>
         </header>
+        {doServidor(processoId) && <ExplicacaoDoDesfecho key={`${processoId}-${c.desfecho}`} casoId={processoId} desfecho={c.desfecho ?? null} />}
 
         {/* As cinco etapas em sequência (CA1), com a perícia ligada à etapa que pediu (CA2). */}
         <nav className={base.acoes} aria-label="Etapas do processo">

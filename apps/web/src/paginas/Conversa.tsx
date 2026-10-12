@@ -248,7 +248,9 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   {CANAIS_DO_REGISTRO[canal].passo}
                 </button>
               ))}
+              <button type="button" role="radio" className={base.opcao} aria-checked={false} disabled>WhatsApp · indisponível</button>
             </div>
+            <p className={base.nota}>As mensagens recebidas pelo WhatsApp ainda não estão disponíveis nesta conversa.</p>
             <p className={base.motivo}>
               Com quem: {COM_QUEM[c.comQuem]} · Gravação: {MODOS_DO_REGISTRO[c.modo].rotulo}
             </p>
@@ -264,6 +266,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               <h2 id="roteiro-de-seguranca" className={base.cartaoTitulo}>
                 Roteiro de segurança · quem está falando?
               </h2>
+              <p className={base.aviso}>A comprovação da identidade ainda não está disponível nesta tela. Uma ligação, sozinha, não confirma que é o cliente.</p>
               <p className={proprio.texto}>{LEMBRETE_DA_IDENTIDADE}</p>
               <p className={base.aviso}>{retornoPeloContato(ficha.telefone ? formatarTelefone(ficha.telefone) : 'o contato cadastrado')}</p>
               <p className={base.nota}>Telefone, e-mail e dados bancários só mudam com o cliente verificado, por chamada de vídeo ou no escritório, em contrato novo.</p>

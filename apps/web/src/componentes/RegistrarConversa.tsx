@@ -112,8 +112,11 @@ export function RegistrarConversa({ ficha, processoId: doProcesso, funcao = 'Ate
                 {CANAIS_DO_REGISTRO[c].rotulo}
               </button>
             ))}
+            <button type="button" role="radio" className={styles.chip} aria-checked={false} disabled>WhatsApp · indisponível</button>
           </div>
         </div>
+
+        <p className={styles.nota}>As mensagens recebidas pelo WhatsApp ainda não estão disponíveis nesta conversa.</p>
 
         <div className={styles.grupo}>
           <p id={idComQuem} className={styles.rotulo}>
