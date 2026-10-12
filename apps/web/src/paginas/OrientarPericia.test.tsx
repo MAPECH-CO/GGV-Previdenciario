@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { obterPericia, tarefasDoJuridicoAdm } from '../dados/pericia.ts'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
@@ -37,9 +37,9 @@ describe('GGVP-62 · preparar o cliente (Figma 10:405)', () => {
   it('CA3 · enviar e registrar a ligação só depois de "Revisei a orientação"; editar pede revisar de novo', async () => {
     await abrirAntonio()
     const registrar = screen.getByRole('button', { name: 'Registrar a ligação e a orientação' }) as HTMLButtonElement
-    const enviar = screen.getByRole('button', { name: 'Registrar orientação (sem enviar)' }) as HTMLButtonElement
+    const enviar = screen.getByRole('button', { name: 'Enviar orientação' }) as HTMLButtonElement
     expect(registrar.disabled && enviar.disabled).toBe(true)
-    expect(screen.getByText('Marque «Revisei a orientação» antes de registrar.')).toBeTruthy()
+    expect(screen.getByText('Marque «Revisei a orientação» antes de enviar.')).toBeTruthy()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Revisei a orientação' }))
     expect(registrar.disabled || enviar.disabled).toBe(false)
     fireEvent.change(documento(), { target: { value: `${documento().value}\nChegue cedo.` } })
@@ -47,22 +47,18 @@ describe('GGVP-62 · preparar o cliente (Figma 10:405)', () => {
     expect(registrar.disabled).toBe(true)
   })
 
-  it('registra a orientação sem afirmar envio, inclusive depois de reabrir a tela', async () => {
+  it('CA2, CA7 · enviada pelo Chatwoot: o feito com o texto guardado, o histórico com o canal e a tarefa sai da Central', async () => {
     await abrirAntonio()
     const texto = documento().value
     fireEvent.click(screen.getByRole('checkbox', { name: 'Revisei a orientação' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Registrar orientação (sem enviar)' }))
-    expect(await screen.findByText('Orientação registrada, não enviada pelo Chatwoot. O texto ficou guardado no caso.')).toBeTruthy()
-    const feito = within(screen.getByRole('region', { name: 'Orientação registrada, não enviada' }))
-    expect(feito.getByText(/Registrada, não enviada pelo Chatwoot, em 07\/10\/2026 10:00, por Igor \(exemplo\)/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar orientação' }))
+    expect(await screen.findByText('Orientação registrada, não enviada pelo Chatwoot.')).toBeTruthy()
+    const feito = within(screen.getByRole('region', { name: '✓ Orientação registrada' }))
+    expect(feito.getByText(/Registrada para o Chatwoot; este registro sozinho não comprova envio, em 07\/10\/2026 10:00, por Igor \(exemplo\)/)).toBeTruthy()
     expect(feito.getByText((_, el) => el?.tagName === 'P' && el.textContent === texto)).toBeTruthy()
     const p = (await obterPericia('antonio-exemplo-1'))!.pericia
     expect(p.historico.at(-1)).toMatchObject({ quem: 'Igor (exemplo)', oQue: 'Enviou a orientação pelo Chatwoot, como documento e instrução', passo: 'DP.06' })
     expect(tarefasDoJuridicoAdm().some((t) => t.id === `pericia-orientar-${p.id}`)).toBe(false)
-    cleanup()
-    await abrirAntonio()
-    expect(screen.getByRole('region', { name: 'Orientação registrada, não enviada' })).toBeTruthy()
-    expect(screen.queryByText(/Enviada pelo Chatwoot/)).toBeNull()
   })
 
   it('CA4, CA6 · editada à mão para esconder a situação real: a tela avisa, o servidor recusa e a tentativa fica registrada', async () => {

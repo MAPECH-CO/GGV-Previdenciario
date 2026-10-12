@@ -89,6 +89,7 @@ import { ProcessoPericia } from './paginas/ProcessoPericia.tsx'
 import { MarcarPericia } from './paginas/MarcarPericia.tsx'
 import { ReunirDocumentosPericia } from './paginas/ReunirDocumentosPericia.tsx'
 import { CobrarDocumentoPericia } from './paginas/CobrarDocumentoPericia.tsx'
+import { Peritos } from './paginas/Peritos.tsx'
 import { OrientarPericia } from './paginas/OrientarPericia.tsx'
 import { ComparecimentoPericia } from './paginas/ComparecimentoPericia.tsx'
 import { ResultadoPericia } from './paginas/ResultadoPericia.tsx'
@@ -171,6 +172,7 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/peticao$/, tela: (id) => <Exige acao="peticao.ver"><Peticao casoId={id} /></Exige> },
   { padrao: /^\/vigilia$/, tela: () => <Exige acao="vigilia.ver"><PainelVigilia /></Exige> },
+  { padrao: /^\/peritos$/, tela: () => <Exige acao="estudo.ver"><Peritos /></Exige> },
   { padrao: /^\/estudos$/, tela: () => <Exige acao="estudo.ver"><Estudos /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pericias$/, tela: (id) => <Exige acao="dado_saude.ver_detalhe"><Pericias casoId={id} /></Exige> },
   { padrao: /^\/gestao\/tentativas$/, tela: () => <Exige acao="gestao.ver"><Tentativas /></Exige> },

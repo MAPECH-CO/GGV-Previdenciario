@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { JusticaDoCaso } from '../componentes/JusticaDoCaso.tsx'
 import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
@@ -46,6 +47,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
   const travado = useRef(false)
   // A prestação de contas do caso (GGVP-44): o atalho aparece para quem pode ver e quando ela já existe; a tarefa fecha e o
   // caminho até ela continua aqui.
+  const veJurimetria = usePode('estudo.ver')
   const vePrestacao = usePode('prestacao.ver')
   const [temPrestacao, setTemPrestacao] = useState(false)
   useEffect(() => {
@@ -175,6 +177,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             <span className={base.nota}>linha do tempo completa abaixo · clique para ver em detalhe</span>
           </button>
         </header>
+        {doServidor(processoId) && <JusticaDoCaso key={processoId + c.fase + String(veJurimetria)} processoId={processoId} veJurimetria={veJurimetria} judicial={c.fase === 'judicial'} />}
         {doServidor(processoId) && <ExplicacaoDoDesfecho key={`${processoId}-${c.desfecho}`} casoId={processoId} desfecho={c.desfecho ?? null} />}
 
         {/* As cinco etapas em sequência (CA1), com a perícia ligada à etapa que pediu (CA2). */}
@@ -429,17 +432,17 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 <dt>{c.identificacao.rotulo}</dt>
                 <dd>{c.identificacao.valor}</dd>
                 <dt>Juízo</dt>
-                <dd>{c.juizo ? `${c.juizo.nome} · ${c.juizo.juiz}` : c.fase === 'administrativa' ? '— (fase administrativa)' : 'ainda não identificado'}</dd>
+                <dd>{c.juizo ? `${c.juizo.nome} · ${c.juizo.juiz}` : c.fase === 'administrativa' ? '— (fase administrativa)' : doServidor(processoId) && veJurimetria ? <a href="#juizo-do-processo">Consultar dados do juízo</a> : 'ainda não identificado'}</dd>
                 <dt>Perito</dt>
                 <dd>
                   {c.perito ? (
-                    // O perito do caso do servidor ainda não tem a jurimetria aqui (sem id): só o nome.
+                    // No servidor, o perfil é consultado pelo caso; a semente mantém a janela existente.
                     juridico && c.perito.id ? (
                       <button type="button" className={base.link} onClick={() => setJanela({ tipo: 'perito', id: c.perito!.id })}>
                         {c.perito.nome}
                       </button>
                     ) : (
-                      c.perito.nome
+                      doServidor(processoId) && veJurimetria ? <a href="#juizo-do-processo">{c.perito.nome}</a> : c.perito.nome
                     )
                   ) : (
                     '—'
