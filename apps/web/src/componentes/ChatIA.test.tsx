@@ -8,6 +8,11 @@ const { transcreverFala } = await import('../dados/chat.ts')
 
 const parada = vi.fn()
 class GravadorFalso {
+  /** O último gravador criado, para o teste que simula o navegador parando o gravador. */
+  static ultimo: GravadorFalso | null = null
+  constructor() {
+    GravadorFalso.ultimo = this
+  }
   state: 'inactive' | 'recording' = 'inactive'
   mimeType = 'audio/webm'
   ondataavailable: ((e: { data: Blob }) => void) | null = null
@@ -104,17 +109,7 @@ describe('12/10 · gravar áudio de verdade', () => {
 
   it('fechar o chat gravando não manda o áudio, mesmo quando o navegador para o gravador ao soltar o microfone', async () => {
     // Pela especificação, parar todas as faixas faz o MediaRecorder parar sozinho e chamar o onstop.
-    let gravadorAtual: GravadorFalso | null = null
-    vi.stubGlobal(
-      'MediaRecorder',
-      class extends GravadorFalso {
-        constructor() {
-          super()
-          gravadorAtual = this
-        }
-      },
-    )
-    microfone(async () => ({ getTracks: () => [{ stop: () => gravadorAtual?.state === 'recording' && gravadorAtual.stop() }] }))
+    microfone(async () => ({ getTracks: () => [{ stop: () => GravadorFalso.ultimo?.state === 'recording' && GravadorFalso.ultimo.stop() }] }))
     const { unmount } = abrir()
     await gravar()
     await act(async () => vi.advanceTimersByTime(3000))
