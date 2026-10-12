@@ -58,3 +58,7 @@ A primeira verificação (38275348130) encontrou um teste antigo do menu que esp
 - Teste isolado do menu: **6 passed**, saída 0 (`pnpm --filter @ggv/web exec vitest run src/componentes/MenuDaPessoa.test.tsx --maxWorkers=1 --pool=forks`).
 - Typecheck: saída 0; oxlint: saída 0, somente os três avisos anteriores; `git diff --check`: saída 0.
 - Nenhum comportamento de produção foi alterado neste ajuste. Playwright continua reservado ao GitHub.
+
+A segunda verificação (38276465153) encontrou uma espera de abertura excedida no teste da página do processo: `Tests 1 failed | 1535 passed (1536)`, ainda em `Abrindo o processo…`. O arquivo passou sozinho antes do ajuste (**19 passed**, saída 0). A primeira espera passou a aceitar até 5 s, mantendo a mesma asserção; nova execução **19 passed**, typecheck e lint com saída 0.
+
+No Playwright dessa rodada: **1 failed | 253 passed**. O cenário de troca de perfil inseria o marcador na cópia principal antes de a Central terminar a abertura, podendo criar um banco incompleto. Agora espera o menu e usa uma chave de exemplo separada; após trocar, exige a remoção dessa chave. Não foi executado Playwright localmente.

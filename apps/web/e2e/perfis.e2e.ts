@@ -6,19 +6,16 @@ import { entrarPelaApi } from './entrar.ts'
 test('CA10 · "Entrar como…" mostra só os perfis da pessoa e troca de Central', async ({ page }) => {
   await entrarPelaApi(page, 'lider@exemplo.ggv')
   await page.goto('/')
-  await page.evaluate(() => {
-    const chave = 'ggv.exemplo.v5'
-    const banco = JSON.parse(sessionStorage.getItem(chave) ?? '{}')
-    banco.marcadorDeTeste = 'cópia fictícia do perfil anterior'
-    sessionStorage.setItem(chave, JSON.stringify(banco))
-  })
+  await expect(page.getByRole('button', { name: /, Atendimento · líder$/ })).toBeVisible()
+  // Um marcador separado não altera a semente enquanto a Central termina de carregar.
+  await page.evaluate(() => sessionStorage.setItem('ggv.exemplo.perfil-anterior', 'cópia fictícia do perfil anterior'))
   // Desde 11/10 o botão é a pessoa: o nome e, menor, o perfil ativo.
   await page.getByRole('button', { name: /, Atendimento · líder$/ }).click()
   await expect(page.getByRole('menuitemradio')).toHaveText(['Atendimento · líder', 'Atendimento'])
   await page.getByRole('menuitemradio', { name: 'Atendimento', exact: true }).click()
   await expect(page.getByRole('button', { name: /, Atendimento$/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
-  expect(await page.evaluate(() => sessionStorage.getItem('ggv.exemplo.v5'))).not.toContain('cópia fictícia do perfil anterior')
+  expect(await page.evaluate(() => sessionStorage.getItem('ggv.exemplo.perfil-anterior'))).toBeNull()
 })
 
 test('CA10 · o servidor recusa trocar para um perfil que não é da pessoa', async ({ page }) => {
