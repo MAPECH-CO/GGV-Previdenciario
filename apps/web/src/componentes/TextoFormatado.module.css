@@ -1,0 +1,98 @@
+/* O texto formatado da IA (12/10): o ritmo de leitura do chat, sem margens do navegador. */
+.texto {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fonte-14);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.texto :is(p, h3, h4, ul, ol) {
+  margin: 0;
+}
+
+.texto h3 {
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.texto h4 {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.texto :is(ul, ol) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 20px;
+}
+
+.texto ul {
+  list-style: disc;
+}
+
+.texto ol {
+  list-style: decimal;
+}
+
+.texto li ul {
+  margin-top: 4px;
+  list-style: circle;
+}
+
+.texto strong {
+  font-weight: 600;
+}
+
+.texto code {
+  padding: 1px 5px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro);
+  font-size: 0.92em;
+}
+
+.texto a {
+  color: var(--cor-acento);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Tabela larga rola dentro do quadro, sem empurrar o chat. */
+.tabela {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-10);
+}
+
+.tabela table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fonte-13);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabela :is(th, td) {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--cor-linha);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tabela th {
+  background: var(--cor-painel-neutro-2);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.tabela tr:last-child td {
+  border-bottom: 0;
+}

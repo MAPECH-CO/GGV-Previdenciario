@@ -7,7 +7,7 @@ import { CartaoConfirmacao, type EstadoAcao } from './CartaoConfirmacao.tsx'
 import { ChatIA } from './ChatIA.tsx'
 import cartao from './CartaoConfirmacao.module.css'
 import itens from './ChatDaPericia.module.css'
-import conversa from './LaudoPeloChat.module.css'
+import { TextoFormatado } from './TextoFormatado.tsx'
 import styles from './ChatDoPortal.module.css'
 
 type EstadoDoCartao = { estado: EstadoAcao; escolha?: string; responsavel?: string; trocando?: boolean; resultado?: ResultadoDaAcao; erro?: string }
@@ -82,19 +82,39 @@ export function ChatDoPortal({ exemplo, sugestoes, funcao, processoId }: Props) 
   return (
     <ChatIA exemplo={exemplo} sugestoes={sugestoes} onEnviar={(texto) => void enviar(texto)} onAnexo={(texto, arquivos) => void enviar(texto, arquivos)}>
       {mensagens.length > 0 && (
-        <ol className={conversa.conversa} aria-label="Conversa">
-          {mensagens.map((m) => (
-            <li key={m.id} className={m.de === 'voce' ? conversa.voce : conversa.ia}>
-              {m.anexos?.map((a) => (
-                <span key={a} className={conversa.anexo}>
-                  ▤ {a}
+        <ol className={styles.conversa} aria-label="Conversa">
+          {mensagens.map((m) =>
+            m.de === 'voce' ? (
+              <li key={m.id} className={styles.voce} aria-label="Você">
+                {m.anexos?.map((a) => (
+                  <span key={a} className={styles.anexo}>
+                    ▤ {a}
+                  </span>
+                ))}
+                {m.texto && <p>{m.texto}</p>}
+              </li>
+            ) : (
+              <li key={m.id} className={styles.ia} aria-label="IA">
+                <span className={styles.avatar} aria-hidden="true">
+                  ✦
                 </span>
-              ))}
-              {m.texto && <p>{m.texto}</p>}
-              {m.pensando && <p className={itens.nota}>Lendo…</p>}
-              {m.resposta && <Resposta m={m} aoConfirmar={() => confirmar(m)} aoCancelar={() => cancelar(m)} aoMudar={(c) => mudarCartao(m.id, c)} aoEscolher={(o) => escolher(m, o)} />}
-            </li>
-          ))}
+                <div className={styles.corpo}>
+                  {m.texto && <p>{m.texto}</p>}
+                  {m.pensando && (
+                    <p className={styles.pensando} role="status">
+                      <span className={styles.pontos} aria-hidden="true">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="so-leitor">Lendo…</span>
+                    </p>
+                  )}
+                  {m.resposta && <Resposta m={m} aoConfirmar={() => confirmar(m)} aoCancelar={() => cancelar(m)} aoMudar={(c) => mudarCartao(m.id, c)} aoEscolher={(o) => escolher(m, o)} />}
+                </div>
+              </li>
+            ),
+          )}
         </ol>
       )}
     </ChatIA>
@@ -118,8 +138,13 @@ function Resposta({
   const fontes = r.sugestao.fontes.filter((f) => f.tipo !== 'caso')
   return (
     <>
-      <p>{r.sugestao.texto}</p>
-      {r.portao && <span className={styles.portao}>Portão {r.portao}</span>}
+      <TextoFormatado texto={r.sugestao.texto} />
+      {r.sugestao.alerta && (
+        <p className={styles.alerta} role="alert">
+          {r.sugestao.alerta}
+        </p>
+      )}
+      {r.portao &&<span className={styles.portao}>Portão {r.portao}</span>}
       {r.links.length > 0 && (
         <ul className={itens.itens} aria-label="Tarefas sugeridas">
           {r.links.map((l) => {
@@ -148,12 +173,17 @@ function Resposta({
         </div>
       )}
       {r.acao && m.cartao && <Cartao acao={r.acao} c={m.cartao} aoConfirmar={aoConfirmar} aoCancelar={aoCancelar} aoMudar={aoMudar} />}
-      {fontes.length > 0 && (
-        <p className={itens.nota}>
-          Fontes: {fontes.map((f) => `${FONTE[f.tipo]} ${f.referencia}${f.trecho ? ` (${f.trecho})` : ''}`).join('; ')}
-        </p>
-      )}
-      <p className={itens.nota}>Só respondo e oriento. Para executar algo, peça e eu mostro um card para você confirmar.</p>
+      <div className={styles.rodape}>
+        <span className={styles.selo}>{r.sugestao.modelo.startsWith('regra') ? 'Regra do portal' : 'Sugestão da IA'}</span>
+        {fontes.map((f, i) => {
+          const fonte = `${FONTE[f.tipo]} ${f.referencia}${f.trecho ? ` · ${f.trecho}` : ''}`
+          return (
+            <span key={i} className={styles.fonte} title={fonte}>
+              {fonte}
+            </span>
+          )
+        })}
+      </div>
     </>
   )
 }

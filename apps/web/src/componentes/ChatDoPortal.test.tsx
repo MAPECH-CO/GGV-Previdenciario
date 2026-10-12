@@ -24,6 +24,18 @@ function enviar(texto: string, arquivos: string[] = []) {
 }
 
 describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186:2)', () => {
+  it('12/10 · a resposta da IA vem à esquerda com o ✦ e o rodapé "Sugestão da IA"; a pergunta à direita', async () => {
+    chat()
+    enviar('O que falta no caso do Antônio Exemplo?')
+    const conversa = screen.getByRole('list', { name: 'Conversa' })
+    await screen.findByText(/está em Vigília/)
+    const [pergunta, resposta] = within(conversa).getAllByRole('listitem', { name: /./ })
+    expect(pergunta.getAttribute('aria-label')).toBe('Você')
+    expect(resposta.getAttribute('aria-label')).toBe('IA')
+    expect(within(resposta).getByText('Sugestão da IA')).toBeTruthy()
+    expect(screen.queryByText(/^Só respondo e oriento/)).toBeNull()
+  })
+
   it('CA1 · a resposta cita o caso e o passo, com o link para abrir', async () => {
     chat()
     enviar('O que falta no caso do Antônio Exemplo?')
@@ -45,7 +57,7 @@ describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186
     chat()
     enviar('Como o Dr. A. Prado avalia?')
     expect(await screen.findByText(/laudos favoráveis 71% · 24 de 34 laudos/)).toBeTruthy()
-    expect(screen.getByText(/^Fontes: regra do sistema jurimetria calculada pelo sistema, sem amostra mínima/)).toBeTruthy()
+    expect(screen.getByText(/^regra do sistema jurimetria.*calculada pelo sistema, sem amostra mínima/)).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/amostra insuficiente/i)
   })
 })

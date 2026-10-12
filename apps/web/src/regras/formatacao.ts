@@ -3,7 +3,8 @@
 
 export type Trecho =
   | { tipo: 'texto'; texto: string }
-  | { tipo: 'negrito' | 'italico'; filhos: Trecho[] }
+  | { tipo: 'negrito'; filhos: Trecho[] }
+  | { tipo: 'italico'; filhos: Trecho[] }
   | { tipo: 'codigo'; texto: string }
   | { tipo: 'link'; href: string; filhos: Trecho[] }
 
