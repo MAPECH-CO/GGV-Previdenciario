@@ -70,3 +70,9 @@ Sem conectores, serviços reais do projeto, segredos, novas dependências, alter
 ## Próximo passo
 
 Com o ok recebido, criar o commit e o pedido da parte 3, levando os limites acima item por item, e acompanhar gh pr checks. Sem merge automático. A parte 4 começa em outra branch da main atualizada depois desse fluxo.
+
+## Primeira verificação do pedido 64 no GitHub
+
+Commit c10098c: tipos/lint/testes e análises de segurança passaram. Playwright: **8 failed; 246 passed (8.6m)**. Seis falhas eram o mesmo seletor parcial, que encontrava tanto a dica como o motivo de bloqueio da equipe; corrigido para correspondência exata. O teste do CNIS usava Atendimento e foi ajustado para a sessão da advogada, exigida pela tela. A perícia ultrapassou 180000ms com o botão desabilitado: o dado usava o dia de Brasília, mas os contextos do navegador usavam UTC; os contextos desse teste agora usam America/Sao_Paulo.
+
+A perícia será executada isoladamente no CI, conforme a instrução de repetir isoladamente o teste que excedeu o prazo. O restante da suíte a exclui pelo título exato, sem remover cobertura ou relaxar as asserções. Nenhum Playwright foi executado localmente. As correções de verificação permanecem no mesmo pedido aprovado.

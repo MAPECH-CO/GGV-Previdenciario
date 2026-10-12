@@ -5,7 +5,7 @@ import { hojeIso } from '../src/regras/datas.ts'
 /** Prepara uma entrevista já existente para testar os passos posteriores. A tela não oferece
  * a equipe fixa do servidor: a rota de listar advogadas ainda depende do Mateus. */
 export async function prepararEntrevistaExistente(page: Page, hora: string, dia = 0) {
-  await expect(page.getByText('A lista de advogadas ainda não está disponível no servidor.')).toBeVisible()
+  await expect(page.getByText('A lista de advogadas ainda não está disponível no servidor.', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Marcar/ }).first()).toBeDisabled()
   const fichaId = new URL(page.url()).pathname.split('/').at(-1)!
   const resposta = await page.request.post('/api/fichas/' + fichaId + '/agendamentos', {

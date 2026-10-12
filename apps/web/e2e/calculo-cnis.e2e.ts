@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { ADVOGADA, entrarPelaApi } from './entrar.ts'
 // Dados criados por este teste; sem importar código de navegador no projeto Node.
 const ID_FICTICIO = '11111111-1111-4111-8111-111111111111'
 const ENTREVISTA_FICTICIA = ID_FICTICIO + '-ag-teste'
 const fichaInventada = () => ({ id: ID_FICTICIO, nome: 'Pessoa CNIS Inventada Teste', agendamentos: [{ id: ENTREVISTA_FICTICIA }] })
 
 test('CNIS: digita vínculos, elimina sobreposição e avisa que não grava o rascunho', async ({ page }) => {
+  await entrarPelaApi(page, ADVOGADA)
   let gravacoes = 0
   await page.route('**/api/fichas/' + ID_FICTICIO, r => r.fulfill({ json: { ...fichaInventada(), nascimento: '1970-01-01' } }))
   await page.route('**/api/entrevistas/' + ENTREVISTA_FICTICIA + '/calculo', r => { gravacoes++; return r.fulfill({ status: 500, json: { erro: 'Esta rota não deve receber o rascunho.' } }) })
