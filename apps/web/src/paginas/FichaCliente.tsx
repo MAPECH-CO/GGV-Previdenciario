@@ -1,3 +1,4 @@
+import { CampoDeValorPendente } from '../componentes/CampoDeValorPendente.tsx'
 import { useEffect, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CabecalhoCliente } from '../componentes/CabecalhoCliente.tsx'
@@ -128,6 +129,7 @@ export function FichaCliente({ id }: { id: string }) {
             />
             <EdicaoCliente key={recarga} ficha={ficha} hoje={hoje} aoSalvar={setFicha} aoIniciarConversa={() => setConversa(true)} />
           </Cartao>
+          {[ficha.beneficioInteresse, ...ficha.processos.map(p => p.beneficio)].some(b => b?.startsWith('loas-') || b?.startsWith('bpc_loas_')) && <CampoDeValorPendente tipo="loas" />}
           <DocumentosPessoais documentos={pessoais} aoSoltar={setEnvio} aviso={enviados} />
           <PastasDosProcessos ficha={ficha} hoje={hoje} />
           <Cartao titulo="Últimos contatos">

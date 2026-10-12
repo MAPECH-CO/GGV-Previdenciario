@@ -1,3 +1,4 @@
+import { CampoDeValorPendente } from '../componentes/CampoDeValorPendente.tsx'
 import { useEffect, useId, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CampoCofre } from '../componentes/CampoCofre.tsx'
@@ -469,6 +470,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
         </div>
 
         <div className={styles.lado}>
+          {(ficha.beneficioInteresse?.startsWith('loas-') || ficha.beneficioInteresse?.startsWith('bpc_loas_')) && <CampoDeValorPendente tipo="loas" />}
           <section className={styles.cartao} aria-labelledby="ficha-pela-ia">
             <h2 id="ficha-pela-ia" className={styles.cartaoTitulo}>
               Ficha preenchida pela IA · você confere

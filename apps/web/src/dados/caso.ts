@@ -443,6 +443,8 @@ function esperasDaPericia(t: PericiaNaTela): Espera[] {
 }
 
 export type CasoNaTela = {
+  /** Desfecho retornado pela API; ausente na semente antiga. */
+  desfecho?: string | null
   ficha: Pick<Ficha, 'id' | 'nome' | 'cpf' | 'idade' | 'transcricoes' | 'senhaGov'>
   processo: Processo
   beneficio: string
@@ -643,6 +645,7 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
     },
     processo: { id: processoId, numero: p.identificadores.cnj ?? undefined, beneficio: p.beneficio ?? '', etapa: `${fase === 'judicial' ? 'Judicial' : 'Administrativo'} · ${passoAtual}` },
     beneficio: nomeBeneficio(p.beneficio ?? undefined) || 'benefício a definir',
+    desfecho: p.desfecho,
     fase,
     identificacao: identificacao(fase, { numero: p.identificadores.cnj ?? undefined, nb: p.identificadores.nb ?? undefined, protocolo: p.identificadores.protocolo ?? undefined }),
     passoAtual,
