@@ -219,5 +219,11 @@ Depois da resposta final, `montarBlocos(texto, x.widgets)` corta o texto nos mar
 
 - Ramo `feat/chat-ia-widgets`, um pedido contra a main, sem chave do Jira.
 - Commits na ordem das partes (gravar, bolhas e formatação, widgets), cada um com seus testes.
-- O agente do chat (`apps/api/src/ia/chat.ts`, GGVP-142) é do Mateus: aviso a ele e ao orquestrador antes de mexer.
+- O agente do chat (`apps/api/src/ia/chat.ts`, GGVP-142) é do Mateus: aviso a ele e ao orquestrador antes de mexer
+  (feito em 12/10; o orquestrador avisou o Mateus).
+- Encontro com o #62 do Mateus (GGVP-158): ele cria a permissão `chat.usar` e põe
+  `preHandler: exigir(banco, 'chat.usar', agora)` nas rotas do chat. `POST /api/chat/fala` usa a mesma trava: se o #62
+  entrar antes, este pedido junta a main e põe a trava na rota nova; se este entrar antes, o #62 junta e acrescenta a rota
+  nova à lista. A matriz de permissões não é mexida aqui.
+- Antes de abrir o pedido, aviso o orquestrador.
 - A mescla publica na homologação; é lá que a IA de verdade aparece.
