@@ -19,14 +19,14 @@ import proprio from './RegistrarFechamento.module.css'
 // prevista?" ficam no painel, como no desenho; o cartão pede, além dele, quem registra a recusa do escritório (CA11) e a
 // sugestão da data pelo "ficou de pensar" ou "pediu para esperar" (CA12).
 
-export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
+export function RegistrarFechamento({ fichaId, antesDaEntrevista = false }: { fichaId: string; antesDaEntrevista?: boolean }) {
   const hoje = hojeIso(agora())
   const [dados, setDados] = useState<DadosDoFechamento | null | undefined>(undefined)
-  const [fechou, setFechou] = useState<boolean | null>(null)
-  const [motivo, setMotivo] = useState('')
+  const [fechou, setFechou] = useState<boolean | null>(antesDaEntrevista ? false : null)
+  const [motivo, setMotivo] = useState(antesDaEntrevista ? 'desistiu' : '')
   const [detalhe, setDetalhe] = useState('')
   const [papel, setPapel] = useState<PapelNoFechamento>('atendimento')
-  const [recontatar, setRecontatar] = useState<boolean | null>(null)
+  const [recontatar, setRecontatar] = useState<boolean | null>(antesDaEntrevista ? true : null)
   const [data, setData] = useState('')
   const [espera, setEspera] = useState<EsperaDoRecontato | null>(null)
   const [erroData, setErroData] = useState<string | undefined>()
@@ -39,6 +39,8 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
     let valendo = true
     obterFechamento(fichaId).then((d) => {
       if (valendo) setDados(d)
+    }).catch(() => {
+      if (valendo) setErro('Não foi possível buscar a ficha no servidor.')
     })
     return () => {
       valendo = false
@@ -49,7 +51,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
     return (
       <main className={proprio.vazia}>
         <title>Registrar fechamento · GGV Previdenciário</title>
-        <h1 className={styles.titulo}>{dados === null ? 'Ficha não encontrada' : 'Abrindo a tarefa…'}</h1>
+        <h1 className={styles.titulo}>{erro || (dados === null ? 'Ficha não encontrada' : 'Abrindo a tarefa…')}</h1>
         {dados === null && <a href="/">Voltar ao início</a>}
       </main>
     )
@@ -64,7 +66,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
   const pendente = porDemanda ? demanda?.situacao === 'aberta' : !ficha.fechamento || ficha.fechamento.situacao === 'recalcular'
   const motivoParado = motivoParadoDoFechamento({ fechou, motivo, detalhe, papel, recontatar: porDemanda ? false : recontatar, data, beneficio, calculoPendente: !porDemanda && calculoPendente(ficha) }, hoje)
   const primeiro = ficha.nome.split(' ')[0]
-  const subtitulo =
+  const subtitulo = antesDaEntrevista ? 'registre o motivo e a data de recontato' :
     fechou === true
       ? 'fechou · segue para o kit do benefício'
       : fechou === false
@@ -114,7 +116,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
         <div className={styles.principal}>
           <CabecalhoDoPasso
             setor="Atendimento"
-            tarefa="Registrar fechamento"
+            tarefa={antesDaEntrevista ? "Desistência antes da entrevista" : "Registrar fechamento"}
             subtitulo={subtitulo}
             ficha={ficha}
             beneficio={beneficio}
@@ -126,6 +128,8 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
             }
           />
 
+          {antesDaEntrevista && <p className={styles.nota}>Registre a desistência e escolha se vale recontatar.
+            O cancelamento automático do compromisso ainda não está disponível.</p>}
           {!pendente && porDemanda ? (
             demanda ? (
               <section className={registrado ? styles.feito : styles.cartao} aria-labelledby="registrado">
@@ -270,7 +274,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
           <div className={styles.decisao}>
             <p id="fechou-pergunta">Fechou com o escritório?</p>
             <div className={styles.ladoOpcoes} role="radiogroup" aria-labelledby="fechou-pergunta">
-              <button type="button" role="radio" className={styles.chip} aria-checked={fechou === true} disabled={!pendente} onClick={() => setFechou(true)}>
+              <button type="button" role="radio" className={styles.chip} aria-checked={fechou === true} disabled={!pendente || antesDaEntrevista} onClick={() => setFechou(true)}>
                 Sim, fechou
               </button>
               <button type="button" role="radio" className={styles.chip} aria-checked={fechou === false} disabled={!pendente} onClick={() => setFechou(false)}>

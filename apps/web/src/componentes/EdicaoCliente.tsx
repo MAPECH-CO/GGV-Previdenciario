@@ -148,6 +148,7 @@ export function EdicaoCliente({
           ))}
         </div>
       ))}
+      <p>Bairro: {ficha.bairro || 'não preenchido'}. <a href={`/clientes/${ficha.id}/cadastro`}>Editar o cadastro completo, incluindo Bairro</a></p>
       {mudaContato.length > 0 && (
         <fieldset className={styles.verificacao}>
           <legend className={styles.legenda}>Mudou o {mudaContato.map((c) => (c === 'telefone' ? 'telefone' : 'e-mail')).join(' e o ')}: como você confirmou que é o cliente?</legend>

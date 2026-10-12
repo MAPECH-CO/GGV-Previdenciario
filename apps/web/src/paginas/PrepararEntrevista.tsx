@@ -15,13 +15,20 @@ import proprio from './PrepararEntrevista.module.css'
 // diz, juntado pelo portal; a tela não chama de IA o que não é IA.
 
 export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string }) {
+  return <PreparacaoDaEntrevista key={agendamentoId} agendamentoId={agendamentoId} />
+}
+
+function PreparacaoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
   const [dados, setDados] = useState<Preparacao | null | undefined>(undefined)
+  const [erro, setErro] = useState('')
   const hoje = hojeIso(agora())
 
   useEffect(() => {
     let valendo = true
     obterPreparacao(agendamentoId).then((d) => {
       if (valendo) setDados(d)
+    }).catch(() => {
+      if (valendo) setErro('Não foi possível buscar a ficha no servidor. Reabra a preparação para tentar novamente.')
     })
     return () => {
       valendo = false
@@ -32,8 +39,9 @@ export function PrepararEntrevista({ agendamentoId }: { agendamentoId: string })
     return (
       <main className={proprio.vazia}>
         <title>Preparar entrevista · GGV Previdenciário</title>
-        <h1 className={styles.titulo}>{dados === null ? 'Entrevista não encontrada' : 'Abrindo a preparação…'}</h1>
-        {dados === null && <a href="/advogada">Voltar ao início</a>}
+        <h1 className={styles.titulo}>{erro ? 'Preparação indisponível' : dados === null ? 'Entrevista não encontrada' : 'Abrindo a preparação…'}</h1>
+        {erro && <p role="alert">{erro}</p>}
+        {(dados === null || erro) && <a href="/advogada">Voltar ao início</a>}
       </main>
     )
   }

@@ -324,7 +324,7 @@ function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const calculo = /^\/entrevista\/([^/]+)\/calculo$/.exec(caminho)
   if (calculo) return <CalcularTempo agendamentoId={decodeURIComponent(calculo[1])} />
   const fechamento = /^\/clientes\/([^/]+)\/fechamento$/.exec(caminho)
-  if (fechamento) return <RegistrarFechamento fichaId={decodeURIComponent(fechamento[1])} />
+  if (fechamento) return <RegistrarFechamento fichaId={decodeURIComponent(fechamento[1])} antesDaEntrevista={parametros.get("antes-da-entrevista") === "1"} />
   const recontato = /^\/clientes\/([^/]+)\/recontato$/.exec(caminho)
   if (recontato) return <Recontatar fichaId={decodeURIComponent(recontato[1])} />
   const novaDemanda = /^\/clientes\/([^/]+)\/nova-demanda$/.exec(caminho)

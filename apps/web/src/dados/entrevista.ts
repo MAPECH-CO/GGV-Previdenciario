@@ -29,7 +29,7 @@ export const BYTES_POR_SEGUNDO = 16_000
 const advogadaDa = (a: Agendamento) => a.com ?? 'Advogada'
 const canalDo = (a: Agendamento) => (TIPOS_DE_ENTREVISTA.find((t) => t.id === (a.tipo ?? 'presencial'))?.nome ?? 'presencial').split(' ')[0].toLowerCase()
 
-function acharEntrevista(banco: Banco, agendamentoId: string): { ficha: Ficha; agendamento: Agendamento } | null {
+function acharEntrevista(banco: Pick<Banco, 'fichas'>, agendamentoId: string): { ficha: Ficha; agendamento: Agendamento } | null {
   for (const ficha of banco.fichas) {
     const agendamento = ficha.agendamentos.find((a) => a.id === agendamentoId)
     if (agendamento) return { ficha, agendamento }
@@ -136,9 +136,11 @@ export function falasAoVivo({ ficha, agendamento }: Entrevista) {
   return conversaDeExemplo(ficha, advogadaDa(agendamento))
 }
 
-/** GET /api/entrevistas/:id. Nulo quando o compromisso não existe. A gravação é a última desta entrevista. */
+/** Consulta a recepção no servidor; a gravação é a última desta entrevista. Nulo se o compromisso não existe. */
 export async function obterEntrevista(agendamentoId: string): Promise<Entrevista | null> {
-  const banco = ler()
+  const banco = agendamentoDoServidor(agendamentoId)
+    ? await noBanco<Pick<Banco, 'fichas' | 'gravacoes'>>('/recepcao')
+    : ler()
   const achado = acharEntrevista(banco, agendamentoId)
   if (!achado) return null
   return { ...achado, gravacao: banco.gravacoes.filter((g) => g.agendamentoId === agendamentoId).at(-1) }

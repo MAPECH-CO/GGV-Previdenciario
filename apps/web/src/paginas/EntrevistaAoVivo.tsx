@@ -24,6 +24,7 @@ import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
 import { agora, gravacaoDoServidor } from '../dados/servidor.ts'
 import { hojeIso } from '../regras/datas.ts'
 import base from './Balcao.module.css'
+import { falasAoVivoSeguras } from '../regras/entrevista.ts'
 import styles from './EntrevistaAoVivo.module.css'
 
 // Figma: "Atendimento · Reunião com transcrição" (73:560), com o roteiro do Overlay · Entrevista (1581:348). Nas fichas
@@ -43,7 +44,11 @@ function valorFalado(info: InformacaoExtraida): string {
   return info.campo === 'telefone' ? formatarTelefone(info.valor) : info.valor
 }
 
-export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props) {
+export function EntrevistaAoVivo(props: Props) {
+  return <GravacaoDaEntrevista key={props.agendamentoId} {...props} />
+}
+
+function GravacaoDaEntrevista({ agendamentoId, simular, passo = 1000 }: Props) {
   const idAvisei = useId()
   const idNotas = useId()
   const idAudioDeFora = useId()
@@ -91,6 +96,11 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
       setDados(d)
       setG(gravacao)
       setSegundos(gravacao?.duracao ?? 0)
+    }).catch(() => {
+      if (valendo) {
+        setErro('Entrevista indisponível: não foi possível consultar o servidor.')
+        setDados(null)
+      }
     })
     return () => {
       valendo = false
@@ -182,7 +192,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
     return (
       <main className={styles.vazia}>
         <title>Entrevista · GGV Previdenciário</title>
-        <h1 className={base.titulo}>{dados === null ? 'Entrevista não encontrada' : 'Abrindo a entrevista…'}</h1>
+        <h1 className={base.titulo}>{dados === null ? (erro || 'Entrevista não encontrada') : 'Abrindo a entrevista…'}</h1>
         {dados === null && <a href="/advogada">Voltar ao início</a>}
       </main>
     )
@@ -424,6 +434,12 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
             </section>
           )}
 
+          {(a.tipo === 'video' || a.tipo === 'telefone') && (
+            <p className={styles.alerta} role="note">
+              A gravação capta só o microfone deste computador. O áudio da outra pessoa na chamada não é captado diretamente.
+              Confira o registro da conversa antes de usar a transcrição.
+            </p>
+          )}
           <section className={styles.cartao} aria-labelledby="ao-vivo">
             <h2 id="ao-vivo" className={styles.cartaoTitulo}>
               {encerrada ? 'Transcrição' : 'Transcrição ao vivo'}
@@ -434,7 +450,7 @@ export function EntrevistaAoVivo({ agendamentoId, simular, passo = 1000 }: Props
                   <p className={styles.vazio}>{semAoVivo || 'Ouvindo: o texto aparece aqui enquanto falam.'}</p>
                 ) : (
                   <ol className={styles.falas} aria-label="Falas ao vivo">
-                    {aoVivo.map((f) => (
+                    {falasAoVivoSeguras(aoVivo).map((f) => (
                       <li key={f.id} className={styles.fala}>
                         <span>{f.texto}</span>
                       </li>
