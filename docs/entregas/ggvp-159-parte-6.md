@@ -50,3 +50,11 @@ Resultado final e comandos registrados abaixo.
 - `git -c core.safecrlf=false diff --check`: saída 0.
 - Playwright não executado nesta máquina.
 - Pedro aprovou commit, push e pedido da parte 6 em 12/10/2026. A revisão humana ficará para o final das partes, conforme sua orientação.
+
+## Ajuste da verificação do GitHub
+
+A primeira verificação (38275348130) encontrou um teste antigo do menu que esperava preservar a cópia após trocar de perfil: `Tests 1 failed | 1535 passed (1536)`, `AssertionError: expected null to be '{"fichas":[]}'`. A expectativa foi atualizada para a limpeza exigida nesta parte.
+
+- Teste isolado do menu: **6 passed**, saída 0 (`pnpm --filter @ggv/web exec vitest run src/componentes/MenuDaPessoa.test.tsx --maxWorkers=1 --pool=forks`).
+- Typecheck: saída 0; oxlint: saída 0, somente os três avisos anteriores; `git diff --check`: saída 0.
+- Nenhum comportamento de produção foi alterado neste ajuste. Playwright continua reservado ao GitHub.
