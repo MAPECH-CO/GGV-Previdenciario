@@ -81,6 +81,9 @@
   - com uma ficha inventada, os 3 Contratos Completos saem sem nada faltando e sem `{{ }}` sobrando, e só a primeira data vem preenchida.
 
   Achado para a 1.13: no modelo do auxílio incapacidade (22/01), a procuração vem antes do contrato de honorários, e a data sai na procuração.
+  - Decisão do Mateus (12/10): o contrato vai para o começo do Word.
+  - Feito numa cópia, fora do repositório: o bloco do contrato foi para o começo, com uma quebra de página antes da procuração.
+  - Conferido no Word: as mesmas 6 páginas, cada documento começando no alto de uma página, e a data preenchida no contrato.
 - [ ] 1.13 Depois do merge da 1.12, a Sênior sobe os 3 Contratos Completos (auxílio incapacidade, auxílio acidentário e LOAS). Verifica: o "Preparar contrato" gera o kit com os dados da ficha.
 - [ ] 1.14 Gotenberg (P1.10): o serviço `gotenberg/gotenberg:8` no mesmo projeto do Coolify, na porta 3000, sem domínio público, e o `GOTENBERG_URL` no app. Verifica: `GET /api/contrato/servicos` responde `pdf: true`, e o kit sai em PDF.
 - [ ] 1.15 Drive na homologação (P1.11): a decisão do Mateus, entre só leitura e pastas de teste, aplicada no Coolify. O Mateus apaga do Drive real a pasta de teste "Leads/2026/Teste Chatwoot Mateus". Verifica: o /saude mostra o Drive como o Mateus decidiu, e um lead novo não cria pasta nas pastas reais.
