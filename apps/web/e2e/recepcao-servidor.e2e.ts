@@ -1,14 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
 import { completarCadastro, garantirModelo } from './kit.ts'
+import { prepararEntrevistaExistente } from './entrevista-existente.ts'
 
-/** O convite sai pela conversa do cliente no Chatwoot: espera a conversa aparecer antes de enviar. */
-async function enviarConvite(page: Page, nome: string) {
-  const chatwoot = page.getByRole('dialog', { name: `Chatwoot · conversa com ${nome}` })
-  await expect(chatwoot.getByRole('radiogroup', { name: 'Conversas do cliente' })).toBeVisible()
-  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
-}
 
 // GGVP-125, bloco 1 · o lead do balcão fica no banco do portal: outra pessoa, em outro computador, acha e abre a ficha.
 
@@ -40,7 +34,7 @@ test('o lead que a Atendimento cadastra no balcão, a advogada acha e abre no co
 })
 
 // GGVP-125, bloco 2 · a agenda e a confirmação no banco: a tarefa que a confirmação abre chega à advogada em outro computador.
-test('a Atendimento marca e confirma a entrevista; a advogada vê "Preparar entrevista" e a entrevista na agenda dela', async ({ page, browser }) => {
+test('sem a lista de advogadas, a marcação fica bloqueada; uma entrevista existente é confirmada; a advogada vê "Preparar entrevista" e a entrevista na agenda dela', async ({ page, browser }) => {
   await page.goto('/clientes/novo')
   await page.getByLabel('Nome completo *').fill('Lia Agenda Teste')
   await page.getByLabel('Idade *').fill('64')
@@ -51,8 +45,7 @@ test('a Atendimento marca e confirma a entrevista; a advogada vê "Preparar entr
 
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '14:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Agenda Teste')
+  await prepararEntrevistaExistente(page, '14:00')
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Lia Agenda Teste · Confirmar agendamento' }).click()
@@ -85,8 +78,7 @@ test('a advogada grava a entrevista de um lead do balcão; sem microfone, regist
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Entrevista Teste')
+  await prepararEntrevistaExistente(page, '09:00')
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Entrevista Teste')!.agendamentos[0].id,
   )
@@ -138,8 +130,7 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '10:30' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Decisao Teste')
+  await prepararEntrevistaExistente(page, '10:30')
   const { fichaId, entrevista } = await page.evaluate(() => {
     const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
       (x) => x.nome === 'Lia Decisao Teste',
@@ -201,8 +192,7 @@ test('a advogada pede a segunda ficha; a Atendimento salva do papel; a seção m
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Acidente Teste')
+  await prepararEntrevistaExistente(page, '16:00')
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Acidente Teste')!.agendamentos[0].id,
   )
@@ -244,8 +234,7 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
   // O primeiro dia já tem os quatro horários com entrevistas dos outros testes: o segundo dia oferecido.
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').nth(1).click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Fechou Teste')
+  await prepararEntrevistaExistente(page, '09:00', 1)
   const { fichaId, entrevista } = await page.evaluate(() => {
     const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
       (x) => x.nome === 'Lia Fechou Teste',
@@ -317,7 +306,7 @@ async function contratoGerado(page: Page, baseURL: string, nome: string, telefon
   return processo.id
 }
 
-test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assinado fica no banco', async ({ page, browser, baseURL }) => {
+test('a assinatura digital existente fica no banco; o papel é anexado sem simular a confirmação', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000)
 
   // Pelo ZapSign: o documento, o link pelo WhatsApp e o retorno do assinado (simulado).
@@ -330,16 +319,17 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
   await page.getByRole('button', { name: 'Simular o retorno do ZapSign (assinado)' }).click()
   await expect(page.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
 
-  // Em papel na hora (sem entrevista registrada, vale a presencial): imprimir, digitalizar e concluir.
+  // Em papel: guarda os bytes, mas não afirma que a assinatura foi confirmada.
   const papel = await contratoGerado(page, baseURL!, 'Lia Papel Teste', '11933331199', '57382914682')
   await page.goto(`/contrato/${papel}/assinatura`)
   await page.getByRole('radio', { name: 'Em papel na hora' }).click()
   await page.getByRole('button', { name: 'Imprimir o kit' }).click()
-  await page.getByRole('button', { name: 'Digitalizar o contrato assinado (scanner simulado)' }).click()
-  await page.getByRole('button', { name: 'Concluir a assinatura' }).click()
-  await expect(page.getByRole('heading', { name: '✓ Contrato assinado em papel' })).toBeVisible()
+  await page.getByLabel('PDF ou foto do contrato assinado').setInputFiles({ name: 'assinado-teste.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 contrato inventado no teste') })
+  await page.getByRole('button', { name: 'Guardar arquivo', exact: true }).click()
+  await expect(page.getByText('Arquivo guardado no servidor.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeDisabled()
 
-  // Outro computador: os dois contratos assinados vêm do banco.
+  // Outra sessão lê a assinatura digital e o papel ainda pendente.
   const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
   const advogada = await outro.newPage()
   await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
@@ -349,7 +339,7 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
       .filter((c) => c.processoId === digital || c.processoId === papel)
       .map((c) => [c.processoId, `${c.etapa} · ${c.assinatura?.forma}`]),
   )
-  expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'leitura · papel' })
+  expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'assinatura · papel' })
   await advogada.goto(`/contrato/${digital}/assinatura`)
   await expect(advogada.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
   // Bloco 5a: o arquivo assinado está na pasta do processo, na ficha do servidor.

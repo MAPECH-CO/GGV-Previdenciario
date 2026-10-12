@@ -110,6 +110,9 @@ export function FichaCliente({ id }: { id: string }) {
                 + Nova demanda
               </a>
             )}
+            {ficha.situacao === 'lead' && !ficha.agendamentos.some(a => a.oQue === 'Entrevista' && a.estado === 'realizado') && (
+              <a className={styles.novaDemanda} href={`/clientes/${ficha.id}/fechamento?antes-da-entrevista=1`}>Registrar desistência antes da entrevista</a>
+            )}
             <button type="button" className={styles.novaDemanda} onClick={() => setMensagem(true)}>
               Mensagem ao cliente
             </button>

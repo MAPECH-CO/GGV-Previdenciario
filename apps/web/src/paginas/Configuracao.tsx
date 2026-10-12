@@ -1,17 +1,18 @@
 import { useEffect, useId, useState } from 'react'
 import { somenteDigitos } from '@ggv/campos'
 import {
-  BENEFICIOS,
+  CATALOGO_BENEFICIOS,
+  BENEFICIO_NA_CONFIGURACAO,
   ROTULO_BENEFICIO,
   ROTULO_TIPO_DE_TERMO,
   SalvarTermo,
   TIPOS_DE_TERMO,
-  type Beneficio,
   type ConfiguracaoDoEscritorio,
   type GlossarioDoEscritorio,
   type ModelosDoEscritorio,
   type TipoDeTermo,
 } from '@ggv/contratos'
+import { linhaDoBeneficio, modeloPorId } from '../regras/contrato.ts'
 import { chamarApi } from '../api.ts'
 import { FeriadosDosTribunais } from '../componentes/FeriadosDosTribunais.tsx'
 import { MolduraDaBase } from './Base.tsx'
@@ -355,7 +356,7 @@ export function Configuracao() {
   const idBeneficio = useId()
   const [c, setC] = useState<Config | null>(null)
   const [versao, setVersao] = useState(0)
-  const [beneficio, setBeneficio] = useState<Beneficio>('bpc_loas_idoso')
+  const [beneficio, setBeneficio] = useState('bpc_loas_idoso')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
 
@@ -374,6 +375,9 @@ export function Configuracao() {
     setVersao((v) => v + 1)
   }
 
+  const escolhido = CATALOGO_BENEFICIOS.find(b => (BENEFICIO_NA_CONFIGURACAO[b.id] ?? b.id) === beneficio)
+  const linha = escolhido && linhaDoBeneficio(escolhido.id)
+  const modelo = linha?.modelo ? modeloPorId(linha.modelo) : undefined
   const kit = c?.kits.find((k) => k.beneficio === beneficio)
   return (
     <MolduraDaBase ativo="configuracao" titulo="Configuração do escritório" subtitulo="Mudar a regra do escritório sem mexer no código. Toda mudança fica no histórico, com quem mudou.">
@@ -402,13 +406,17 @@ export function Configuracao() {
               <label className={styles.rotulo} htmlFor={idBeneficio}>
                 Benefício
               </label>
-              <select id={idBeneficio} className={styles.campo} value={beneficio} onChange={(e) => setBeneficio(e.target.value as Beneficio)}>
-                {BENEFICIOS.map((b) => (
-                  <option key={b} value={b}>
-                    {ROTULO_BENEFICIO[b]}
+              <select id={idBeneficio} className={styles.campo} value={beneficio} onChange={(e) => setBeneficio(e.target.value)}>
+                {CATALOGO_BENEFICIOS.map((b) => (
+                  <option key={b.id} value={BENEFICIO_NA_CONFIGURACAO[b.id] ?? b.id}>
+                    {b.nome}
                   </option>
                 ))}
               </select>
+              <p className={styles.dica}>34 benefícios · catálogo do escritório.</p>
+              <p className={styles.dica}>Modelo do kit: {modelo?.nome ?? 'ainda não definido para este benefício'}.</p>
+              {!kit && <p className={styles.erroCampo} role="status">Checklist indisponível no servidor para este benefício.
+                O caso permanece bloqueado até haver checklist aprovado.</p>}
               {kit && (
                 <KitDoBeneficio
                   key={`${beneficio}-${kit.versao}-${versao}`}

@@ -15,6 +15,7 @@ import { agora } from '../dados/servidor.ts'
 import type { CategoriaDaAgenda, EventoDaAgenda } from '../dados/tipos.ts'
 import { gradeDoMes, semanaDe, somarDias } from '../regras/agenda.ts'
 import { hojeIso } from '../regras/datas.ts'
+import { useSessao } from '../sessao.ts'
 import styles from './Agenda.module.css'
 
 // Figma: Agenda · Semana (1941:2), Mês (1941:198) e Lista (1941:401) do Atendimento; detalhe do compromisso (2164:280).
@@ -38,10 +39,12 @@ function outroMes(iso: string, passo: number): string {
 type Props = { vistaInicial?: Vista; navegar?: (url: string) => void }
 
 export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.location.assign(url) }: Props) {
+  const sessao = useSessao()
+  const [soMinhas, setSoMinhas] = useState(false)
   const hoje = hojeIso(agora())
   const [vista, setVista] = useState<Vista>(vistaInicial)
   const [ref, setRef] = useState(hoje)
-  const [eventos, setEventos] = useState<EventoDaAgenda[]>([])
+  const [consulta, setConsulta] = useState<{ faixa: string; eventos: EventoDaAgenda[]; erro: string }>({ faixa: '', eventos: [], erro: '' })
   const [ativas, setAtivas] = useState(new Set<CategoriaDaAgenda>(CATEGORIAS_DA_AGENDA.map((c) => c.id)))
   const [aberto, setAberto] = useState<EventoDaAgenda | null>(null)
   const [novo, setNovo] = useState(false)
@@ -52,18 +55,25 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
   const [de, ate] =
     vista === 'semana' ? [dias[0], dias[6]] : vista === 'mes' ? [semanas[0][0], semanas.at(-1)![6]] : [somarDias(hoje, -60), somarDias(ref, 90)]
 
+  const faixa = `${de}|${ate}|${versao}`
+  const eventos = consulta.faixa === faixa ? consulta.eventos : []
+  const erro = consulta.faixa === faixa ? consulta.erro : ''
+
   useEffect(() => {
     let valendo = true
     eventosDaAgenda(de, ate).then((lista) => {
-      if (valendo) setEventos(lista)
+      if (valendo) setConsulta({ faixa, eventos: lista, erro: '' })
+    }).catch(() => {
+      if (valendo) setConsulta({ faixa, eventos: [], erro: 'Agenda indisponível: não foi possível consultar o servidor. Reabra a agenda para tentar novamente.' })
     })
     return () => {
       valendo = false
     }
-  }, [de, ate, versao])
+  }, [de, ate, faixa])
 
   const naTela = vista === 'lista' ? eventos.filter((e) => e.estado === 'confirmar' || e.data >= ref) : eventos
-  const visiveis = naTela.filter((e) => ativas.has(e.categoria))
+  const doResponsavel = naTela.filter((e) => !soMinhas || e.responsavel === sessao?.nome)
+  const visiveis = doResponsavel.filter((e) => ativas.has(e.categoria))
   const rotulo =
     vista === 'semana'
       ? `${Number(dias[0].slice(8))}${mesCurto(dias[0]) === mesCurto(dias[6]) ? '' : ` ${mesCurto(dias[0])}`} – ${Number(dias[6].slice(8))} ${mesCurto(dias[6])} de ${dias[6].slice(0, 4)}`
@@ -129,7 +139,11 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
           </div>
         </div>
 
-        <FiltrosDaAgenda eventos={naTela} ativas={ativas} aoMudar={setAtivas} />
+        <label className={styles.nota}>
+          <input type="checkbox" checked={soMinhas} disabled={!sessao} onChange={e => setSoMinhas(e.target.checked)} /> Só as minhas
+        </label>
+        {erro && <p role="alert">{erro}</p>}
+        <FiltrosDaAgenda eventos={doResponsavel} ativas={ativas} aoMudar={setAtivas} />
 
         <section role="tabpanel" id={`painel-${vista}`} aria-labelledby={`aba-${vista}`} className={styles.painel}>
           {vista === 'semana' && <AgendaSemana dias={dias} eventos={visiveis} hoje={hoje} aoAbrir={setAberto} />}

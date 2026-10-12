@@ -43,7 +43,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # O Chromium que o próprio Playwright instala, como na máquina de cada dev (kit/entrega-09-10.md).
       - run: pnpm --filter @ggv/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @ggv/web exec playwright test --reporter=list,html
+      # O fluxo de perícia é repetido isoladamente: a data precisa usar o mesmo fuso do servidor.
+      # A segunda execução exclui esse teste, preservando toda a cobertura sem duplicá-lo.
+      - name: Perícia no servidor, isoladamente
+        run: pnpm --filter @ggv/web exec playwright test e2e/pericia-servidor.e2e.ts --reporter=list,html
+      - name: Demais testes de tela
+        run: pnpm --filter @ggv/web exec playwright test --grep-invert 'da perícia marcada ao resultado, no servidor, trocando de pessoa a cada passo' --reporter=list,html
       - name: Relatório do Playwright, quando falha
         if: failure()
         uses: actions/upload-artifact@v4

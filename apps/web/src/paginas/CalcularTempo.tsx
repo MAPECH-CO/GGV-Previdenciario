@@ -4,7 +4,8 @@ import { Campo } from '../componentes/Campo.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { obterCalculo, registrarCalculo, type DadosDoCalculo } from '../dados/calculo.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, agendamentoDoServidor } from '../dados/servidor.ts'
+import { CalculoCnis } from '../componentes/CalculoCnis.tsx'
 import type { Calculo, Cnis } from '../dados/tipos.ts'
 import { REGRAS_DE_APOSENTADORIA, errosDoCalculo, motivoParaConcluir, paraRegistro, pontosFalados, tempoFalado, type ValoresDoCalculo } from '../regras/calculo.ts'
 import { dataCurta, dataHora, hojeIso, idadeEm } from '../regras/datas.ts'
@@ -27,6 +28,10 @@ function resultado(c: Calculo, hoje: string): string {
 }
 
 export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
+  return <CalculoDaEntrevista key={agendamentoId} agendamentoId={agendamentoId} />
+}
+
+function CalculoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
   const [dados, setDados] = useState<DadosDoCalculo | null | undefined>(undefined)
   const [v, setV] = useState<ValoresDoCalculo>(VAZIO)
   const [tocados, setTocados] = useState<Set<string>>(new Set())
@@ -40,7 +45,7 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
     let valendo = true
     obterCalculo(agendamentoId).then((d) => {
       if (valendo) setDados(d)
-    })
+    }).catch(() => { if (valendo) setErro('Não foi possível carregar a ficha para o cálculo.') })
     return () => {
       valendo = false
     }
@@ -51,12 +56,22 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
       <main className={proprio.vazia}>
         <title>Calcular tempo e pontos · GGV Previdenciário</title>
         <h1 className={styles.titulo}>{dados === null ? 'Entrevista não encontrada' : 'Abrindo o cálculo…'}</h1>
-        {dados === null && <a href="/">Voltar ao início</a>}
+        {erro && <p role="alert">{erro}</p>}
+        {(dados === null || erro) && <a href="/">Voltar ao início</a>}
       </main>
     )
   }
 
   const { ficha, cnis, exige } = dados
+  if (agendamentoDoServidor(agendamentoId)) return <>
+    <title>Calcular tempo e pontos · GGV Previdenciário</title>
+    <TopoPasso contexto="Você · Advogado do atendimento" />
+    <main className={styles.pagina}><div className={styles.principal}>
+      <h1 className={styles.titulo}>{ficha.nome} · Calcular tempo e pontos</h1>
+      <CalculoCnis nascimento={ficha.nascimento} hoje={hoje} />
+      <a className={styles.atalho} href={'/clientes/' + ficha.id}>Voltar à ficha do cliente</a>
+    </div></main>
+  </>
   const beneficio = ficha.beneficioDefinido?.beneficio
   const erros = errosDoCalculo(v, hoje)
   const parado = !cnis ? 'Sem CNIS no caso.' : motivoParaConcluir(v, hoje)
