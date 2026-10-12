@@ -14,8 +14,10 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
   // GGVP-133: o Chromium tem um microfone de mentira. Sem a permissão, a tela fica "sem microfone" (o padrão dos testes);
-  // o teste que grava de verdade abre o contexto com `permissions: ['microphone']`.
-  use: { baseURL: `http://localhost:${web}`, launchOptions: { args: ['--use-fake-device-for-media-stream'] } },
+  // o teste que grava de verdade abre o contexto com `permissions: ['microphone']`. GGVP-158: o navegador no fuso do
+  // escritório, como a API abaixo. No CI (UTC), das 21h à meia-noite de Brasília o "hoje" da tela era o dia seguinte, e a
+  // perícia de hoje parecia passada.
+  use: { baseURL: `http://localhost:${web}`, timezoneId: 'America/Sao_Paulo', launchOptions: { args: ['--use-fake-device-for-media-stream'] } },
   projects: [
     { name: 'entrar', testMatch: /sessao\.setup\.ts/ },
     { name: 'logado', dependencies: ['entrar'], use: { storageState: SESSAO }, testIgnore: /login\.e2e\.ts/ },
