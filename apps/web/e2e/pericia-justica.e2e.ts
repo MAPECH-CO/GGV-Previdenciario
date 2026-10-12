@@ -10,7 +10,7 @@ test('cadastro de peritos lê a API e avisa que a gravação ainda não está di
   await expect(page.getByRole('button', { name: 'Cadastrar perito' })).toBeDisabled()
   await page.getByText('Perito Fictício Teste', { exact: true }).click()
   await expect(page.getByText('Área Inventada · Perícia médica')).toBeVisible()
-  await page.getByRole('searchbox').fill('não consta')
+  await page.getByRole('searchbox', { name: 'Buscar perito por nome ou especialidade' }).fill('não consta')
   await expect(page.getByText('Nenhum perito encontrado.')).toBeVisible()
 })
 
