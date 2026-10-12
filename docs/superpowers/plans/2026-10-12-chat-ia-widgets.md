@@ -1473,7 +1473,9 @@ function oferecer(x: Ambiente, ofertas: Oferta[]): string {
 
 Run: `cd apps/api && npx vitest run src/rotas/chat.test.ts src/rotas/widgetsDoChat.test.ts src/ia`
 Expected: PASS. Se o teste "16.4 · o caso vem da página do processo" conferir a saída exata da ferramenta, ele continua
-passando: só se acrescenta a lista de widgets depois do `</conteudo>`.
+passando: só se acrescenta a lista de widgets depois do `</conteudo>`. Se `/api/tarefas` mostrar à Ana outras linhas além
+das duas tarefas (alertas de exigência, por exemplo), ajuste o número esperado em "Abertas" ao que a rota devolve,
+conferindo com `GET /api/tarefas` no próprio teste.
 
 - [ ] **Step 5: Commit**
 
