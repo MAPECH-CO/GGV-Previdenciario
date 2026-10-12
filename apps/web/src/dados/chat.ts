@@ -6,7 +6,7 @@
 // Com o servidor ligado (homologação), `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor (GGVP-142): o
 // motor de IA de verdade, com as recusas, os portões, a regra do responsável e os números no servidor, como código, antes
 // e depois do modelo. O que está aqui fica para os testes e para a semente.
-import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa } from '@ggv/contratos'
+import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa, TextoDaFala } from '@ggv/contratos'
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -742,6 +742,20 @@ export async function confirmarAcao(
 }
 
 /** O cartão cancelado: nada acontece e ele some. */
+export const MSG_FALA_VAZIA = 'Não deu para entender a fala: grave de novo, mais perto do microfone, ou digite a pergunta.'
+
+/** O nome do arquivo pelo tipo que o navegador gravou (o Safari grava mp4). */
+const nomeDaFala = (tipo: string) => (tipo.includes('mp4') ? 'fala.m4a' : tipo.includes('ogg') ? 'fala.ogg' : 'fala.webm')
+
+/** POST /api/chat/fala (12/10): a fala do microfone em texto, para a pessoa conferir na caixa. */
+export async function transcreverFala(audio: Blob): Promise<string> {
+  if (!servidorLigado()) throw new Error('A transcrição precisa do servidor ligado.')
+  const corpo = new FormData()
+  corpo.append('audio', audio, nomeDaFala(audio.type))
+  const { texto } = await noBanco<TextoDaFala>('/chat/fala', { method: 'POST', corpo })
+  return texto.trim()
+}
+
 export function cancelarAcao(acaoId: string) {
   if (servidorLigado() && !pendentes.has(acaoId)) void noBanco(`/chat/acoes/${acaoId}`, { method: 'DELETE' }).catch(() => undefined)
   pendentes.delete(acaoId)

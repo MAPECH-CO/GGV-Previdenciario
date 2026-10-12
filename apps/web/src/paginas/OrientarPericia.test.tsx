@@ -88,7 +88,7 @@ describe('GGVP-62 · o chat da Central (Figma 2107:1091)', () => {
     const item = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getByRole('link')
     expect(item.getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia/orientar')
     expect(item.textContent).toContain('perícia 16/10 · orientação da IA pronta')
-    expect(screen.getByText('Só respondo e oriento. Para executar algo, peça e eu mostro um card para você confirmar.')).toBeTruthy()
+    expect(screen.getByText('Sugestão da IA')).toBeTruthy()
     expect((await obterPericia('antonio-exemplo-1'))!.pericia.preparacao).toBeUndefined()
   })
 })

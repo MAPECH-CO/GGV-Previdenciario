@@ -23,7 +23,9 @@ const ids: Record<string, string> = {}
  */
 let roteiro: Record<string, unknown>[] = []
 let chamadas: { url: string; corpo: { messages: { role: string; content: unknown }[]; tools?: { function: { name: string } }[] } }[] = []
+let falaTranscrita: Record<string, unknown> = { text: 'o que tem hoje pra mim', segments: [{ speaker: 'A', start: 0, end: 2, text: 'o que tem hoje pra mim' }] }
 const falso: typeof fetch = async (url, init) => {
+  if (String(url).includes('/audio/transcriptions')) return new Response(JSON.stringify(falaTranscrita), { status: 200, headers: { 'content-type': 'application/json' } })
   chamadas.push({ url: String(url), corpo: JSON.parse(String(init?.body ?? '{}')) })
   const message = roteiro.shift() ?? { role: 'assistant', content: 'Resposta de teste.' }
   const corpo = { id: `chatcmpl-${chamadas.length}`, object: 'chat.completion', created: 0, model: 'gpt-4.1-mini', choices: [{ index: 0, message, finish_reason: 'tool_calls' in message ? 'tool_calls' : 'stop' }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }
@@ -334,5 +336,93 @@ describe('GGVP-142 · quem não abre caso conversa sem caso (CA2, permissão)', 
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).not.toContain('criar_tarefa')
     expect(await banco.select().from(tarefa)).toEqual([])
     expect((await registros())[0]).toMatchObject({ casoId: null })
+  })
+})
+
+describe('12/10 · a fala do microfone vira texto (POST /api/chat/fala)', () => {
+  /** Um formulário com um arquivo, como o navegador manda. */
+  function formulario(conteudo: Buffer, nome = 'fala.webm', tipo = 'audio/webm') {
+    const fronteira = '----fala'
+    const corpo = Buffer.concat([
+      Buffer.from(`--${fronteira}\r\nContent-Disposition: form-data; name="audio"; filename="${nome}"\r\nContent-Type: ${tipo}\r\n\r\n`),
+      conteudo,
+      Buffer.from(`\r\n--${fronteira}--\r\n`),
+    ])
+    return { payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${fronteira}` } }
+  }
+  async function falar(apelido: string | null, envio: { payload: Buffer | string; headers: Record<string, string> }) {
+    return app.inject({ method: 'POST', url: '/api/chat/fala', ...(apelido ? { cookies: await cookieDe(apelido) } : {}), ...envio })
+  }
+
+  beforeEach(() => {
+    falaTranscrita = { text: 'o que tem hoje pra mim', segments: [{ speaker: 'A', start: 0, end: 2, text: 'o que tem hoje pra mim' }] }
+  })
+
+  it('com a chave, devolve o texto da fala e registra a chamada sem o áudio', async () => {
+    const r = await falar('ana', formulario(Buffer.from([1, 2, 3, 4])))
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json()).toEqual({ texto: 'o que tem hoje pra mim' })
+    const [registro] = await registros()
+    expect(registro).toMatchObject({ finalidade: 'transcrever_audio', situacao: 'ok' })
+    expect(JSON.stringify(registro)).not.toContain('AQIDBA')
+  })
+
+  it('sem sessão: 401; sem formulário ou sem áudio: 415; grande: 413', async () => {
+    expect((await falar(null, formulario(Buffer.from([1])))).statusCode).toBe(401)
+    expect((await falar('ana', { payload: '{}', headers: { 'content-type': 'application/json' } })).statusCode).toBe(415)
+    expect((await falar('ana', formulario(Buffer.from('%PDF'), 'laudo.pdf', 'application/pdf'))).statusCode).toBe(415)
+    expect((await falar('ana', formulario(Buffer.alloc(10 * 1024 * 1024 + 1)))).statusCode).toBe(413)
+  })
+
+  it('sem a chave: 503 com o motivo; o Jurídico sem a autorização de saúde: 503 com o motivo', async () => {
+    montar({})
+    const desligada = await falar('ana', formulario(Buffer.from([1])))
+    expect(desligada.statusCode).toBe(503)
+    expect(desligada.json().erro).toBe('A transcrição não funcionou: a IA está desligada neste ambiente (falta a chave do serviço).')
+    montar(CHAVE)
+    const semSaude = await falar('gabi', formulario(Buffer.from([1])))
+    expect(semSaude.statusCode).toBe(503)
+    expect(semSaude.json().erro).toBe('A transcrição não funcionou: a IA não está autorizada a ler dado de saúde neste ambiente.')
+  })
+})
+
+describe('12/10 · os widgets do chat', () => {
+  async function tarefasDaAna() {
+    await banco.insert(tarefa).values([
+      { casoId, titulo: 'Cobrar documento', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-09' },
+      { casoId, titulo: 'Conferir antes do INSS', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-13' },
+    ])
+  }
+
+  it('a ferramenta oferece os widgets; o marcador vira bloco e o texto do registro vem sem marcador', async () => {
+    await tarefasDaAna()
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Você tem **2 tarefas**.\n{{w1}}\nA mais urgente:\n{{w2}}\n{{w9}}' }]
+    const r = await perguntar('ana', 'O que tem hoje pra mim?')
+    expect(saidaDaFerramenta(1)).toMatch(/\{\{w1\}\} números das suas tarefas/)
+    expect(r.sugestao.texto).not.toContain('{{')
+    expect(r.blocos?.map((b) => (b.tipo === 'widget' ? b.widget.tipo : 'texto'))).toEqual(['texto', 'numeros', 'texto', 'lista'])
+    const numeros = r.blocos![1]
+    expect(numeros.tipo === 'widget' && numeros.widget.tipo === 'numeros' && numeros.widget.itens[0]).toEqual({ rotulo: 'Abertas', valor: 2 })
+  })
+
+  it('sem marcador, a resposta vem sem blocos', async () => {
+    await tarefasDaAna()
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Você tem duas tarefas.' }]
+    expect((await perguntar('ana', 'O que tem hoje?')).blocos).toBeUndefined()
+  })
+
+  it('o caso oferece etapas, linha do tempo e prazos', async () => {
+    roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'Assim está:\n{{w1}}' }]
+    const r = await perguntar('ana', 'Como está o caso?', casoId)
+    expect(saidaDaFerramenta(1)).toMatch(/\{\{w1\}\} etapas do processo/)
+    expect(r.blocos?.[1]).toMatchObject({ tipo: 'widget', widget: { tipo: 'etapas' } })
+  })
+
+  it('G20: widget com código de doença não é oferecido a quem não vê saúde', async () => {
+    await banco.insert(tarefa).values({ casoId, titulo: 'Conferir laudo M54.5', perfilDono: 'atendimento', responsavelId: ids.ana })
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: '{{w1}}{{w2}}' }]
+    const r = await perguntar('ana', 'O que tem hoje?')
+    expect(JSON.stringify(r)).not.toContain('M54.5')
+    expect(saidaDaFerramenta(1)).not.toMatch(/\{\{w2\}\}/)
   })
 })
