@@ -1,4 +1,5 @@
 // A cobrança dos documentos pendentes (GGVP-101, G15). Regra numérica é código com teste, nunca resposta de modelo.
+import { isoParaData } from '../campos.ts'
 import type { Ficha, Processo } from '../dados/tipos.ts'
 import { somarDias } from './agenda.ts'
 import { juntar } from './checklist.ts'
@@ -106,7 +107,7 @@ export function motivoParaNaoCobrar(c: EstadoDaCobranca, hoje: string): string |
 
 /** "Adiar" (CA10): a nova data é obrigatória, depois de hoje e sem passar do prazo externo. */
 export function motivoParaNaoAdiar(novaData: string | null, hoje: string, prazo?: PrazoExterno): string | null {
-  if (!novaData) return 'Informe a nova data (dd/mm/aaaa).'
+  if (!novaData || !isoParaData(novaData)) return 'Informe a nova data (dd/mm/aaaa).'
   if (novaData <= hoje) return 'A nova data tem de ser depois de hoje.'
   if (prazo && novaData >= prazo.data) return `O prazo do ${prazo.de} é ${dataCurta(prazo.data, hoje)}: a nova data tem de ser antes dele.`
   return null
@@ -115,7 +116,7 @@ export function motivoParaNaoAdiar(novaData: string | null, hoje: string, prazo?
 /** "Registrar decisão" (CA8): opção, justificativa e, na nova tentativa, o novo prazo depois de hoje. */
 export function motivoParaNaoDecidir(d: { opcao?: OpcaoDaSenior; justificativa: string; prazo: string | null }, hoje: string): string | null {
   if (!d.opcao) return 'Escolha a decisão.'
-  if (d.opcao === 'nova-tentativa' && (!d.prazo || d.prazo <= hoje)) return 'Informe o novo prazo, depois de hoje (dd/mm/aaaa).'
+  if (d.opcao === 'nova-tentativa' && (!d.prazo || !isoParaData(d.prazo) || d.prazo <= hoje)) return 'Informe o novo prazo, depois de hoje (dd/mm/aaaa).'
   if (d.justificativa.trim().length < 5) return 'A justificativa é obrigatória.'
   return null
 }

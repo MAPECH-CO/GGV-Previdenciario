@@ -78,6 +78,14 @@ describe('Cobrança dos documentos pendentes (GGVP-101)', () => {
     expect(proximaTentativa({ ...adiada, tentativas: [...adiada.tentativas, tentativa('2026-10-09')] })).toBe('2026-10-12')
   })
 
+  it('datas impossíveis não passam no adiamento nem na decisão da Sênior', () => {
+    for (const data of ['2027-02-31', '2027-13-01', 'amanhã']) {
+      expect(motivoParaNaoAdiar(data, HOJE)).toBe('Informe a nova data (dd/mm/aaaa).')
+      expect(motivoParaNaoDecidir({ opcao: 'nova-tentativa', justificativa: 'Novo contato combinado', prazo: data }, HOJE))
+        .toBe('Informe o novo prazo, depois de hoje (dd/mm/aaaa).')
+    }
+  })
+
   it('CA8 · decidir pede a opção, a justificativa e, na nova tentativa, o novo prazo', () => {
     expect(motivoParaNaoDecidir({ justificativa: 'x', prazo: null }, HOJE)).toBe('Escolha a decisão.')
     expect(motivoParaNaoDecidir({ opcao: 'nova-tentativa', justificativa: 'cliente viajando', prazo: null }, HOJE)).toBe('Informe o novo prazo, depois de hoje (dd/mm/aaaa).')

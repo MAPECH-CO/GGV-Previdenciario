@@ -37,22 +37,21 @@ type FuncaoFetch = typeof globalThis.fetch;
 export async function buscarCep(valor: unknown, fetchFn: FuncaoFetch = globalThis.fetch): Promise<Endereco | null> {
   if (!validarCep(valor)) return null;
   const d = normalizarCep(valor);
-  let resposta: Response;
   try {
-    resposta = await fetchFn(`https://viacep.com.br/ws/${d}/json/`);
+    const resposta = await fetchFn(`https://viacep.com.br/ws/${d}/json/`, { signal: AbortSignal.timeout(10_000) });
+    if (!resposta.ok) return null;
+    const j = (await resposta.json()) as Record<string, unknown> | null;
+    if (!j || j.erro || typeof j.localidade !== 'string' || typeof j.uf !== 'string') return null;
+    return {
+      cep: d,
+      logradouro: String(j.logradouro ?? ''),
+      complemento: String(j.complemento ?? ''),
+      bairro: String(j.bairro ?? ''),
+      cidade: j.localidade,
+      uf: j.uf,
+      ibge: String(j.ibge ?? ''),
+    };
   } catch {
     return null;
   }
-  if (!resposta.ok) return null;
-  const j = (await resposta.json()) as Record<string, unknown>;
-  if (j.erro) return null;
-  return {
-    cep: d,
-    logradouro: String(j.logradouro ?? ''),
-    complemento: String(j.complemento ?? ''),
-    bairro: String(j.bairro ?? ''),
-    cidade: String(j.localidade ?? ''),
-    uf: String(j.uf ?? ''),
-    ibge: String(j.ibge ?? ''),
-  };
 }
