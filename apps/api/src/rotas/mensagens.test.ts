@@ -6,7 +6,15 @@ import { caso, documentacaoMedica, eventoAuditoria, mensagem, pericia, pessoa, p
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import type { Complemento } from '../../../web/src/regras/complemento.ts'
-import { MSG_A_ADVOGADA_FALA, MSG_CHATWOOT_DESLIGADO, MSG_FAVORAVEL_PELO_FINANCEIRO, MSG_FORA_DA_LISTA, MSG_SEM_COMPLEMENTO_ABERTO, MSG_SEM_TEXTO_APROVADO } from './mensagens.ts'
+import {
+  MSG_A_ADVOGADA_FALA,
+  MSG_CHATWOOT_DESLIGADO,
+  MSG_FAVORAVEL_PELO_FINANCEIRO,
+  MSG_FORA_DA_LISTA,
+  MSG_SEM_COMPLEMENTO_ABERTO,
+  MSG_SEM_TEXTO_APROVADO,
+  MSG_SIMULADO,
+} from './mensagens.ts'
 import { abrirExplicacaoDoResultado } from './resultado.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -30,6 +38,20 @@ async function cliente() {
   const [c] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
   return { fichaId, processoId: c.id }
 }
+
+/** O pedido de complemento ao médico aberto pelo parecer Insuficiente (GGVP-20), como a documentação médica guarda. */
+const pedidoDeComplemento = (fichaId: string, processoId: string, mais: Partial<Complemento> = {}): Complemento => ({
+  processoId,
+  fichaId,
+  abertaEm: '2026-10-07T13:00:00.000Z',
+  parecer: 'insuficiente',
+  abordar: 'Desde quando e por quanto tempo',
+  perguntas: ['Desde quando a paciente apresenta o quadro?', 'Qual a previsão de duração?'],
+  quem: 'paula',
+  tentativas: [],
+  decisoes: [],
+  ...mais,
+})
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
@@ -73,7 +95,7 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
     expect(await banco.select().from(mensagem)).toHaveLength(0)
   })
 
-  it('o envio fica registrado com o status, vai para "Últimos contatos" e não se repete na mesma conversa', async () => {
+  it('GGVP-158 · sem o Chatwoot, o envio fica registrado como "não saiu" (simulado), vai para "Últimos contatos" e para o histórico', async () => {
     const { fichaId } = await cliente()
     const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
     const url = `/api/fichas/${fichaId}/mensagens`
@@ -82,15 +104,14 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
     const [outra] = await banco.insert(pessoa).values({ nome: 'Outra Pessoa' }).returning()
     const [doOutro] = await banco.insert(caso).values({ pessoaId: outra.id, beneficio: 'bpc_loas_idoso', fase: 'administrativa' }).returning()
     expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id, processoId: doOutro.id })).erro).toBe('Processo não encontrado.')
-    const enviada = await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })
-    expect(enviada).toMatchObject({ modelo: 'boas-vindas', canal: 'Chatwoot', status: 'entregue', quem: 'ana', fichaId })
-    expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })).id).toBe(enviada.id)
-    expect(await json('ana', 'GET', url)).toEqual([enviada])
+    const naoSaiu = await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })
+    expect(naoSaiu).toMatchObject({ modelo: 'boas-vindas', canal: 'Chatwoot', status: 'falhou', erro: MSG_SIMULADO, quem: 'ana', fichaId })
+    expect(await json('ana', 'GET', url)).toEqual([naoSaiu])
     const ficha = await json('ana', 'GET', `/api/fichas/${fichaId}`)
-    expect(ficha.contatos.at(-1)).toMatchObject({ canal: 'Chatwoot · 12:00 · entregue', texto: pronta.texto })
-    expect(ficha.historico.at(-1).oQue).toBe('Enviou pelo Chatwoot a mensagem «Boas-vindas» (entregue)')
+    expect(ficha.contatos.at(-1)).toMatchObject({ canal: 'Chatwoot · 12:00 · não saiu', texto: pronta.texto })
+    expect(ficha.historico.at(-1).oQue).toBe(`A mensagem «Boas-vindas» não saiu pelo Chatwoot: ${MSG_SIMULADO}. Nada foi reenviado sozinho.`)
     const [evento] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'mensagem_enviada'))
-    expect(evento.detalhe).toMatchObject({ modelo: 'boas-vindas', status: 'entregue' })
+    expect(evento.detalhe).toMatchObject({ modelo: 'boas-vindas', status: 'falhou' })
   })
 
   it('com o Chatwoot desligado, a mensagem não sai, a falha fica na tela e no histórico, e nada é reenviado sozinho', async () => {
@@ -108,47 +129,33 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
 })
 
 describe('GGVP-102 · os modelos do complemento e do resultado destravam pela regra', () => {
-  /** O pedido de complemento ao médico aberto pelo parecer Insuficiente (GGVP-20), como a documentação médica guarda. */
-  const pedido = (fichaId: string, processoId: string, mais: Partial<Complemento> = {}): Complemento => ({
-    processoId,
-    fichaId,
-    abertaEm: '2026-10-07T13:00:00.000Z',
-    parecer: 'insuficiente',
-    abordar: 'Desde quando e por quanto tempo',
-    perguntas: ['Desde quando a paciente apresenta o quadro?', 'Qual a previsão de duração?'],
-    quem: 'paula',
-    tentativas: [],
-    decisoes: [],
-    ...mais,
-  })
-
   it('o complemento: só com o pedido aberto no caso, com a orientação da tela; o G20 segue valendo no envio', async () => {
     const { fichaId, processoId } = await cliente()
     const url = `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`
     expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_COMPLEMENTO_ABERTO)
-    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedido(fichaId, processoId)] })
+    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedidoDeComplemento(fichaId, processoId)] })
     const pronta = await json('ana', 'GET', url)
     expect(pronta).toMatchObject({ trava: null, editavel: true })
     expect(pronta.texto).toMatch(/^Olá, Maria! Aqui é do escritório GGV\. .*\n1\. Desde quando a paciente apresenta o quadro\?\n2\. Qual a previsão de duração\?\n/s)
     expect(pronta.texto.endsWith(NUNCA_A_SENHA)).toBe(true)
     const envio = (texto: string) => ({ modelo: 'complemento', texto, conversa: pronta.conversas[0].id, processoId })
     expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
-    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio(pronta.texto))).toMatchObject({ modelo: 'complemento', status: 'entregue', processoId })
-    // G15: o envio, de qualquer janela, conta como tentativa do laço, e a próxima espera os 3 dias.
+    // GGVP-158: sem o Chatwoot, nada sai, e o que não saiu não conta como tentativa do laço (G15). A que sai pelo Chatwoot
+    // conta: ver "GGVP-146 · ... o complemento que sai".
+    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio(pronta.texto))).toMatchObject({ modelo: 'complemento', status: 'falhou', erro: MSG_SIMULADO, processoId })
     const [parte] = await banco.select().from(documentacaoMedica)
-    expect((parte.documento as Complemento[])[0].tentativas).toEqual([{ dia: '2026-10-08', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' }])
-    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'complemento_tentativa_registrada'))).toHaveLength(1)
-    expect((await json('ana', 'GET', `/api/fichas/${fichaId}`)).historico.at(-1).oQue).toBe('Complemento ao médico: 1ª tentativa por Chatwoot (sem resposta)')
-    expect((await json('ana', 'GET', url)).trava).toMatch(/^A próxima tentativa é em /)
+    expect((parte.documento as Complemento[])[0].tentativas).toEqual([])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'complemento_tentativa_registrada'))).toHaveLength(0)
+    expect((await json('ana', 'GET', url)).trava).toBeNull()
     // Encerrado pelo parecer Suficiente, volta a travar.
-    await banco.update(documentacaoMedica).set({ documento: [pedido(fichaId, processoId, { encerrado: { quando: '2026-10-08T12:00:00.000Z', porque: 'parecer-suficiente' } })] })
+    await banco.update(documentacaoMedica).set({ documento: [pedidoDeComplemento(fichaId, processoId, { encerrado: { quando: '2026-10-08T12:00:00.000Z', porque: 'parecer-suficiente' } })] })
     expect((await json('ana', 'GET', url)).trava).toBe(MSG_SEM_COMPLEMENTO_ABERTO)
   })
 
   it('o complemento que passou do limite de tentativas sobe para a sênior e não sai (G15)', async () => {
     const { fichaId, processoId } = await cliente()
     const tentativas = ['2026-09-30', '2026-10-03'].map((dia) => ({ dia, canal: 'chatwoot' as const, resultado: 'sem-resposta' as const, quem: 'ana' }))
-    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedido(fichaId, processoId, { abertaEm: '2026-09-29T13:00:00.000Z', tentativas })] })
+    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedidoDeComplemento(fichaId, processoId, { abertaEm: '2026-09-29T13:00:00.000Z', tentativas })] })
     expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide \(G15\)\.$/)
   })
 
@@ -163,7 +170,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     expect(pronta).toMatchObject({ trava: null, editavel: false, texto: `${resumo} ${NUNCA_A_SENHA}` })
     const envio = (texto: string) => ({ modelo: 'resultado-desfavoravel', texto, conversa: pronta.conversas[0].id })
     expect((await json('ana', 'POST', url, envio(`${resumo} Ligue para nós.`))).erro).toBe('O texto aprovado não muda: o aviso sai como foi revisado.')
-    expect(await json('ana', 'POST', url, envio(pronta.texto))).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'entregue' })
+    expect(await json('ana', 'POST', url, envio(pronta.texto))).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'falhou', erro: MSG_SIMULADO })
   })
 
   it('o desfavorável que a advogada decidiu falar ela mesma (caso complexo) só sai por ela', async () => {
@@ -178,7 +185,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     expect((await json('igor', 'GET', `${url}/resultado-desfavoravel`)).trava).toBe(MSG_A_ADVOGADA_FALA)
     const pronta = await json('paula', 'GET', `${url}/resultado-desfavoravel`)
     expect(pronta).toMatchObject({ trava: null, editavel: false, texto: envio.texto })
-    expect(await json('paula', 'POST', url, { ...envio, conversa: pronta.conversas[0].id })).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'entregue', quem: 'paula' })
+    expect(await json('paula', 'POST', url, { ...envio, conversa: pronta.conversas[0].id })).toMatchObject({ modelo: 'resultado-desfavoravel', status: 'falhou', erro: MSG_SIMULADO, quem: 'paula' })
   })
 
   it('o favorável não sai por esta janela: nem o resumo do caso perdido, nem depois do OK da advogada; vai pela tela do Financeiro (G8)', async () => {
@@ -238,12 +245,25 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     vi.unstubAllGlobals()
   })
 
-  it('sem as variáveis, segue simulado e não chama o Chatwoot', async () => {
+  it('sem as variáveis, segue simulado, não chama o Chatwoot e não finge a entrega (GGVP-158)', async () => {
     const espiao = vi.fn()
     vi.stubGlobal('fetch', espiao)
     const { fichaId } = await cliente()
     const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
     expect(pronta.simulado).toBe(true)
+    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })).toMatchObject({ status: 'falhou', erro: MSG_SIMULADO })
+    expect(espiao).not.toHaveBeenCalled()
+  })
+
+  it('só nos testes de tela: com RELACIONAMENTO_SIMULADO=entrega, o Chatwoot de mentira entrega, sem chamar o de verdade', async () => {
+    const espiao = vi.fn()
+    vi.stubGlobal('fetch', espiao)
+    await app.close()
+    vi.stubEnv('RELACIONAMENTO_SIMULADO', 'entrega')
+    app = criarServidor({ banco, agora: () => relogio })
+    vi.unstubAllEnvs()
+    const { fichaId } = await cliente()
+    const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
     expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })).toMatchObject({ status: 'entregue' })
     expect(espiao).not.toHaveBeenCalled()
   })
@@ -281,6 +301,8 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     expect(posts(chamadas)).toEqual([])
     const enviada = await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })
     expect(enviada).toMatchObject({ status: 'enviada', conversa: 502, quem: 'ana' })
+    // O que já saiu não se repete na mesma conversa.
+    expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })).id).toBe(enviada.id)
     expect(posts(chamadas)).toEqual([{ metodo: 'POST', caminho: '/conversations/502/messages', corpo: saida(pronta.texto), token: 'token-de-teste' }])
     expect(chamadas.every((c) => c.token === 'token-de-teste' && !c.caminho.includes('token'))).toBe(true)
     expect(JSON.stringify([pronta, enviada])).not.toContain('token-de-teste')
@@ -415,6 +437,29 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
       ['falhou', MSG_FORA_DA_LISTA],
       ['falhou', MSG_FORA_DA_LISTA],
     ])
+  })
+
+  it('o complemento que sai pelo Chatwoot conta como tentativa do laço, e a próxima espera os 3 dias (G15)', async () => {
+    await comChatwoot({
+      'GET /contacts/search?q=87654321': { payload: [{ id: 31, name: 'Maria Ribeiro', phone_number: '+5511987654321', contact_inboxes: [{ source_id: 's', inbox: { id: 9, name: 'GGV PREV' } }] }] },
+      'GET /contacts/31/conversations': { payload: [{ id: 502, inbox_id: 9, status: 'open', last_activity_at: 1759910000 }] },
+      'GET /conversations/502/messages': { payload: [{}] },
+      'POST /conversations/502/messages': { id: 9001, status: 'sent' },
+    })
+    const { fichaId, processoId } = await cliente()
+    await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedidoDeComplemento(fichaId, processoId)] })
+    const url = `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`
+    const pronta = await json('ana', 'GET', url)
+    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'complemento', texto: pronta.texto, conversa: 502, processoId })).toMatchObject({
+      modelo: 'complemento',
+      status: 'enviada',
+      processoId,
+    })
+    const [parte] = await banco.select().from(documentacaoMedica)
+    expect((parte.documento as Complemento[])[0].tentativas).toEqual([{ dia: '2026-10-08', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' }])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'complemento_tentativa_registrada'))).toHaveLength(1)
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}`)).historico.at(-1).oQue).toBe('Complemento ao médico: 1ª tentativa por Chatwoot (sem resposta)')
+    expect((await json('ana', 'GET', url)).trava).toMatch(/^A próxima tentativa é em /)
   })
 
   it('em produção, sem lista: a mensagem sai para o telefone da ficha', async () => {

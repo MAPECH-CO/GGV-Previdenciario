@@ -35,8 +35,9 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
 3. **Environment Variables**, só de execução (não de build): `DATABASE_URL` com a URL do passo 1.2 e `COFRE_CHAVE` com a chave do passo 1.3.
    Opcional, para as mensagens ao cliente saírem pelo Chatwoot de verdade (GGVP-146): `CHATWOOT_URL` (sem barra no fim),
    `CHATWOOT_CONTA` (o número da conta), `CHATWOOT_CAIXA` (o número da caixa de entrada) e `CHATWOOT_TOKEN` (o token de
-   acesso de um agente da conta). Sem as quatro, as mensagens seguem simuladas. Em homologação, só uma conta e uma caixa de
-   teste: a conta do escritório tem contatos reais, e a mensagem sai no WhatsApp deles.
+   acesso de um agente da conta). Sem as quatro, nada sai: a mensagem fica no histórico do cliente como não enviada, com o
+   motivo "simulado, não saiu" (GGVP-158), e o convite, a confirmação e a cobrança param nela. Em homologação, só uma conta e
+   uma caixa de teste: a conta do escritório tem contatos reais, e a mensagem sai no WhatsApp deles.
    **Trava da homologação:** fora de produção (`AMBIENTE` diferente de `producao`, inclusive sem a variável), o portal só
    fala com o Chatwoot para os telefones de `CHATWOOT_PERMITIDOS`, separados por vírgula, em qualquer formato
    (`+55 11 91234-5678, 21987654321`). Para os outros, não consulta nem envia: a mensagem fica no histórico do cliente como
@@ -120,7 +121,7 @@ Nenhum valor vai para o repositório, o Jira ou o chat.
 | `CHATWOOT_CAIXA` | O número da caixa de entrada. |
 | `CHATWOOT_TOKEN` | O token de acesso de um agente da conta. |
 | `CHATWOOT_PERMITIDOS` | Fora de produção, os únicos telefones com que o Chatwoot fala, separados por vírgula. |
-| `RELACIONAMENTO_SIMULADO` | Sem o Chatwoot, `nao` tira até o contato simulado da tela. |
+| `RELACIONAMENTO_SIMULADO` | Sem o Chatwoot, `nao` tira até o contato simulado da tela. `entrega` finge a entrega e é só dos testes de tela (`playwright.config.ts`): na homologação e na produção, nunca. |
 | `GOTENBERG_URL` | O conversor do kit do contrato para PDF. Sem ela, o kit sai em Word. |
 | `ZAPSIGN_API_TOKEN` | Diz que o ZapSign está contratado. Sem ela, só papel. |
 | `FONTES_PUBLICACAO` | As fontes da vigília do diário (`aasp`, `djen`). Fora de produção, o padrão é o exemplo. |

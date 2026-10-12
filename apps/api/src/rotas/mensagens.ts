@@ -2,10 +2,11 @@
 // o que o texto não pode ter (G9, G11, G20) são as regras puras das telas, importadas. Cada envio fica em `mensagem`, que o
 // modelo de dados já tinha, com o status de entrega; o contato vai para "Últimos contatos" da ficha.
 // Com as variáveis do Chatwoot no ambiente, o envio sai pelo Chatwoot de verdade (GGVP-146, `../chatwoot.ts`). Sem elas, segue
-// simulado atrás de `RELACIONAMENTO_SIMULADO` (o contato pelo telefone da ficha, uma conversa aberta, a entrega
-// confirmada); com `nao`, o envio falha com o motivo. Fora de produção, o Chatwoot de verdade só fala com os telefones da
-// lista de teste (`permite`, em `../chatwoot.ts`): fora dela, nem a consulta nem o envio vão a ele, e o envio fica como
-// não enviado.
+// simulado atrás de `RELACIONAMENTO_SIMULADO` (o contato pelo telefone da ficha e uma conversa aberta, para a tela andar),
+// mas nada sai: o envio fica como não enviado, com o motivo "simulado, não saiu" (GGVP-158); com `nao`, nem o contato
+// aparece; com `entrega`, só nos testes de tela (playwright.config.ts), o Chatwoot de mentira também entrega, para o fluxo
+// do convite, da confirmação e da cobrança seguir. Fora de produção, o Chatwoot de verdade só fala com os telefones da lista de teste (`permite`, em
+// `../chatwoot.ts`): fora dela, nem a consulta nem o envio vão a ele, e o envio fica como não enviado.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { and, desc, eq, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
@@ -31,6 +32,7 @@ export const MSG_CHATWOOT_DESLIGADO = 'o Chatwoot de verdade ainda não está li
 export const MSG_SEM_CONTATO = 'o Chatwoot não achou o contato deste telefone'
 export const MSG_SEM_TELEFONE = 'a ficha não tem telefone'
 export const MSG_FORA_DA_LISTA = 'o telefone está fora da lista de teste da homologação'
+export const MSG_SIMULADO = 'simulado, não saiu: o Chatwoot não está ligado neste ambiente'
 export const MSG_FAVORAVEL_PELO_FINANCEIRO = `O aviso de resultado favorável sai pela tela «${TITULO_AVISO}», do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).`
 export const MSG_SEM_TEXTO_APROVADO = 'Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.'
 export const MSG_SEM_COMPLEMENTO_ABERTO = 'Sem pedido de complemento aberto no processo.'
@@ -50,6 +52,7 @@ export type PedidoDeEnvio = { modelo: IdDoModelo; texto: string; conversa: numbe
 export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<string, string | undefined> = process.env) {
   const chatwoot = abrirChatwoot(ambiente)
   const simulado = !chatwoot && ambiente.RELACIONAMENTO_SIMULADO !== 'nao'
+  const entregaDeMentira = simulado && ambiente.RELACIONAMENTO_SIMULADO === 'entrega'
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
   const { lerParte, gravarParte } = criarCasoMedico(banco, agora)
@@ -218,7 +221,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     const quem = await nomeDe(pedido)
     if (repetida) return { mensagem: paraTela(repetida, quem) }
     let destino = conversa
-    let status: MensagemAoCliente['status'] = 'entregue'
+    let status: MensagemAoCliente['status'] = 'falhou'
     let erro: string | undefined
     if (chatwoot) {
       // O Chatwoot de verdade: a falha dele volta como aviso e o envio fica registrado, sem reenviar sozinho (CA5).
@@ -235,9 +238,11 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
         status = 'falhou'
         erro = e instanceof Error ? e.message : 'o Chatwoot falhou'
       }
-    } else if (!pronta.contato) {
-      status = 'falhou'
-      erro = simulado ? MSG_SEM_CONTATO : MSG_CHATWOOT_DESLIGADO
+    } else if (pronta.contato && entregaDeMentira) {
+      status = 'entregue'
+    } else {
+      // GGVP-158: sem o Chatwoot, nada sai. O simulado dá o contato e a conversa à tela, mas não finge a entrega.
+      erro = pronta.contato ? MSG_SIMULADO : simulado ? MSG_SEM_CONTATO : MSG_CHATWOOT_DESLIGADO
     }
     const [linha] = await banco
       .insert(mensagem)
