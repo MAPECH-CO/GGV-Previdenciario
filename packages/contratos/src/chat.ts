@@ -42,6 +42,64 @@ export const CartaoDeAcao = z.object({
 })
 export type CartaoDeAcao = z.infer<typeof CartaoDeAcao>
 
+/** O tom de um selo ou de um número do widget, nas cores do portal. */
+const Tom = z.enum(['neutro', 'acento', 'alerta', 'erro', 'ok'])
+const Href = z.string().startsWith('/')
+const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+/**
+ * Um widget do chat (12/10): montado pelo servidor com os dados das rotas da tela, nunca escrito pelo modelo. O modelo
+ * só escolhe, pelo marcador {{wN}}, quais mostrar e onde.
+ */
+export const WidgetDoChat = z.discriminatedUnion('tipo', [
+  z.object({
+    tipo: z.literal('numeros'),
+    titulo: z.string().optional(),
+    itens: z.array(z.object({ rotulo: z.string(), valor: z.number().int().min(0), nota: z.string().optional(), tom: Tom.optional() })).min(1).max(4),
+  }),
+  z.object({
+    tipo: z.literal('lista'),
+    titulo: z.string(),
+    itens: z
+      .array(z.object({ titulo: z.string(), sub: z.string().optional(), href: Href.optional(), selo: z.object({ texto: z.string(), tom: Tom }).optional() }))
+      .min(1)
+      .max(8),
+  }),
+  z.object({
+    tipo: z.literal('prazos'),
+    titulo: z.string(),
+    inicio: Data,
+    itens: z.array(z.object({ data: Data, oQue: z.string(), href: Href.optional(), urgente: z.boolean() })).max(20),
+  }),
+  z.object({
+    tipo: z.literal('etapas'),
+    titulo: z.string().optional(),
+    itens: z.array(z.object({ rotulo: z.string(), estado: z.enum(['feita', 'atual', 'futura']) })).min(2).max(8),
+  }),
+  z.object({
+    tipo: z.literal('linha-do-tempo'),
+    titulo: z.string(),
+    itens: z.array(z.object({ quando: Data, quem: z.string().optional(), texto: z.string() })).min(1).max(6),
+  }),
+  z.object({
+    tipo: z.literal('barras'),
+    titulo: z.string(),
+    itens: z.array(z.object({ rotulo: z.string(), valor: z.number().int().min(0) })).min(1).max(8),
+  }),
+])
+export type WidgetDoChat = z.infer<typeof WidgetDoChat>
+
+/** A resposta em ordem: pedaços de texto formatado e widgets, como a IA arrumou com os marcadores. */
+export const BlocoDaResposta = z.discriminatedUnion('tipo', [
+  z.object({ tipo: z.literal('texto'), texto: z.string() }),
+  z.object({ tipo: z.literal('widget'), widget: WidgetDoChat }),
+])
+export type BlocoDaResposta = z.infer<typeof BlocoDaResposta>
+
+/** POST /api/chat/fala: a fala do microfone em texto, para a pessoa conferir na caixa antes de enviar. */
+export const TextoDaFala = z.object({ texto: z.string() })
+export type TextoDaFala = z.infer<typeof TextoDaFala>
+
 /** A resposta: o texto da IA com as fontes, os links, e no máximo um cartão de ação ou uma pergunta de volta. */
 export const RespostaDoChat = z.object({
   tipo: z.enum(['resposta', 'recusa', 'pergunta', 'acao']),
@@ -52,6 +110,8 @@ export const RespostaDoChat = z.object({
   /** A pergunta de volta (quem do setor, quem é o responsável): as opções para um clique. */
   opcoes: z.array(z.string()).optional(),
   acao: CartaoDeAcao.optional(),
+  /** Texto e widgets em ordem (12/10). Sem isto, a tela mostra `sugestao.texto`. */
+  blocos: z.array(BlocoDaResposta).max(12).optional(),
 })
 export type RespostaDoChat = z.infer<typeof RespostaDoChat>
 
