@@ -2,11 +2,18 @@
 // da tela, com a sessão de quem pergunta. Número e data saem daqui; o modelo só escolhe, pelo marcador {{wN}}, quais
 // mostrar e onde. `montarBlocos` troca os marcadores pelos widgets e descarta o que o modelo inventou.
 import type { BlocoDaResposta, FonteDaIa, ProcessoDoCaso, TarefaDaCentral, WidgetDoChat } from '@ggv/contratos'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 export type Oferta = { widget: WidgetDoChat; descricao: string }
 export const MAX_WIDGETS = 4
 
-const dataDe = (s: string | null | undefined) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null)
+/** A data do dia: a data pura como veio; o instante com hora (UTC) vira o dia em Brasília. */
+const dataDe = (s: string | null | undefined) => {
+  if (!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return null
+  if (s.length <= 10) return s
+  const instante = new Date(s)
+  return Number.isNaN(instante.getTime()) ? s.slice(0, 10) : hojeEmBrasilia(instante)
+}
 const ddmm = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
 const maisDias = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10)
 

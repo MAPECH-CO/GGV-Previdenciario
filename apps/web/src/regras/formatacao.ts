@@ -11,7 +11,7 @@ export type Trecho =
 export type BlocoDeTexto =
   | { tipo: 'paragrafo'; linhas: Trecho[][] }
   | { tipo: 'titulo'; nivel: 3 | 4; trechos: Trecho[] }
-  | { tipo: 'lista'; ordenada: boolean; itens: { trechos: Trecho[]; filhos: Trecho[][] }[] }
+  | { tipo: 'lista'; ordenada: boolean; inicio?: number; itens: { trechos: Trecho[]; filhos: Trecho[][] }[] }
   | { tipo: 'tabela'; cabeca: Trecho[][]; linhas: Trecho[][][] }
 
 /** Só tela do portal: começa com uma barra, sem "//" e sem barra invertida (o navegador lê "/\x.com" como outro site). */
@@ -109,9 +109,11 @@ export function lerFormatacao(texto: string): BlocoDeTexto[] {
       fecharParagrafo()
       const ordenada = /\d/.test(item[2])
       const anterior = blocos.at(-1)
+      // Item seguido de linha em branco continua a mesma lista (o modelo escreve passos assim); a numerada guarda o
+      // número do primeiro item, para a lista cortada por um widget seguir do 2 e não voltar ao 1.
       if (item[1].length >= 2 && anterior?.tipo === 'lista') anterior.itens.at(-1)!.filhos.push(lerTrechos(item[3]))
-      else if (anterior?.tipo === 'lista' && anterior.ordenada === ordenada && linhas[i - 1]?.trim()) anterior.itens.push({ trechos: lerTrechos(item[3]), filhos: [] })
-      else blocos.push({ tipo: 'lista', ordenada, itens: [{ trechos: lerTrechos(item[3]), filhos: [] }] })
+      else if (anterior?.tipo === 'lista' && anterior.ordenada === ordenada) anterior.itens.push({ trechos: lerTrechos(item[3]), filhos: [] })
+      else blocos.push({ tipo: 'lista', ordenada, ...(ordenada ? { inicio: parseInt(item[2], 10) } : {}), itens: [{ trechos: lerTrechos(item[3]), filhos: [] }] })
       continue
     }
     paragrafo ??= []

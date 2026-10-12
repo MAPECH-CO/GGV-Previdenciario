@@ -14,6 +14,11 @@ describe('TextoFormatado (12/10)', () => {
     expect(screen.getByText('Antônio Exemplo está em Vigília.').tagName).toBe('P')
   })
 
+  it('lista numerada que começa no 3 mostra 3', () => {
+    const { container } = render(<TextoFormatado texto={'3. c\n4. d'} />)
+    expect(container.querySelector('ol')?.getAttribute('start')).toBe('3')
+  })
+
   it('HTML vindo da IA aparece como texto', () => {
     const { container } = render(<TextoFormatado texto="<img src=x onerror=alert(1)>" />)
     expect(container.querySelector('img')).toBeNull()

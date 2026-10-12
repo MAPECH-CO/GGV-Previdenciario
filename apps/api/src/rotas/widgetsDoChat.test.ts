@@ -81,6 +81,14 @@ describe('os widgets do caso', () => {
   })
 })
 
+describe('a data da linha do tempo é a de Brasília', () => {
+  it('evento às 22h30 de Brasília (01h30 UTC do dia seguinte) fica no dia de Brasília', () => {
+    const processo = { casoId: '00000000-0000-4000-8000-000000000001', etapaAtual: 'inss', linha: [{ quando: '2026-10-10T01:30:00Z', quem: 'Ana', origem: 'pessoa', passo: null, descricao: 'à noite' }], prazos: [], exigencias: [] } as unknown as ProcessoDoCaso
+    const linha = widgetsDoCaso(processo, HOJE)[1].widget
+    expect(linha.tipo === 'linha-do-tempo' && linha.itens[0].quando).toBe('2026-10-09')
+  })
+})
+
 describe('o widget do acervo', () => {
   it('título antes dos dois-pontos, o resto curto embaixo; sem trecho, nada', () => {
     const [o] = widgetDoAcervo([

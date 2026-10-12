@@ -36,7 +36,7 @@ export function TextoFormatado({ texto }: { texto: string }) {
         if (b.tipo === 'lista') {
           const Lista = b.ordenada ? 'ol' : 'ul'
           return (
-            <Lista key={i}>
+            <Lista key={i} start={b.inicio}>
               {b.itens.map((item, j) => (
                 <li key={j}>
                   {trechos(item.trechos)}

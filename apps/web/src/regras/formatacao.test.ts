@@ -39,8 +39,16 @@ describe('o texto formatado da IA (12/10)', () => {
   it('listas com e sem número, com um nível de recuo', () => {
     expect(lerFormatacao('- um\n  - um.a\n- dois\n\n1. primeiro\n2) segundo')).toEqual([
       { tipo: 'lista', ordenada: false, itens: [{ trechos: [t('um')], filhos: [[t('um.a')]] }, { trechos: [t('dois')], filhos: [] }] },
-      { tipo: 'lista', ordenada: true, itens: [{ trechos: [t('primeiro')], filhos: [] }, { trechos: [t('segundo')], filhos: [] }] },
+      { tipo: 'lista', ordenada: true, inicio: 1, itens: [{ trechos: [t('primeiro')], filhos: [] }, { trechos: [t('segundo')], filhos: [] }] },
     ])
+  })
+
+  it('lista numerada com linha em branco entre os itens continua uma lista só; cortada, segue o número', () => {
+    const lista = lerFormatacao('1. a\n\n2. b\n\n3. c')
+    expect(lista).toHaveLength(1)
+    expect(lista[0]).toMatchObject({ tipo: 'lista', ordenada: true, inicio: 1 })
+    expect((lista[0] as { itens: unknown[] }).itens).toHaveLength(3)
+    expect(lerFormatacao('3. c\n4. d')[0]).toMatchObject({ tipo: 'lista', ordenada: true, inicio: 3 })
   })
 
   it('tabela do GitHub, com linhas tortas completadas e no máximo 6 colunas', () => {
