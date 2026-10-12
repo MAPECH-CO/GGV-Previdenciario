@@ -47,7 +47,7 @@ describe('Topbar', () => {
     expect(funcao.getAttribute('aria-haspopup')).toBeNull()
   })
 
-  it('GGVP-117 · Sair encerra a sessão; a cópia do navegador fica para o roteiro na mesma aba (09/10)', async () => {
+  it('GGVP-159 · Sair encerra a sessão e apaga a cópia do navegador', async () => {
     const fetch = vi.fn(async () => new Response(null, { status: 204 }))
     const assign = vi.fn()
     vi.stubGlobal('fetch', fetch)
@@ -60,7 +60,7 @@ describe('Topbar', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Ana Lima, Atendimento' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Sair' }))
-    expect(sessionStorage.getItem(CHAVE)).toBe('{"fichas":[]}')
+    expect(sessionStorage.getItem(CHAVE)).toBeNull()
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/entrar'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao', expect.objectContaining({ method: 'DELETE' }))
   })

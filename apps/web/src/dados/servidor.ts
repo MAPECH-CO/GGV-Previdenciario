@@ -5,6 +5,7 @@
 // Modo misto (GGVP-125), ligado no main.tsx: o lead e a ficha (bloco 1) já vão ao servidor de verdade; as pessoas da
 // semente continuam aqui. A ficha do servidor é copiada para cá, para as telas ainda não ligadas a acharem.
 import { chamarApi } from '../api.ts'
+import { copiaDaSessao } from './copiaDaSessao.ts'
 import { normalizarCpf, validarCpf, validarNome, validarTelefone } from '../campos.ts'
 import { agendamentoDoDia, buscar, etapaDaFicha, resultadoDaFicha } from '../regras/busca.ts'
 import { hojeIso, hora } from '../regras/datas.ts'
@@ -156,7 +157,7 @@ export type RegistroDoCofre = { fichaId: string; quando: string; quem: string; a
 
 let relogio = () => new Date()
 let latencia = 400
-let memoria: Banco | null = null
+
 let noServidor = false
 
 /** Para o teste: hora fixa e sem espera. `servidor`: o lead e a ficha vão ao servidor de verdade (GGVP-125). */
@@ -367,7 +368,8 @@ export async function sincronizarRecepcao() {
 
 /** Volta à semente. */
 export function zerarExemplo() {
-  memoria = null
+  copiaDaSessao.banco = null
+  copiaDaSessao.encerrada = false
   try {
     sessionStorage.removeItem(CHAVE)
   } catch {
@@ -386,18 +388,21 @@ function semente(): Banco {
 
 /** Para os outros arquivos do servidor de exemplo (documentos.ts). */
 export function ler(): Banco {
+  if (copiaDaSessao.encerrada) return { fichas: [], pastas: [], tarefas: [], resumosDeLaudo: [], internos: [], cofre: [], leiturasMedicas: [], gravacoes: [], seq: 0 }
   try {
     const guardado = sessionStorage.getItem(CHAVE)
     if (guardado) return JSON.parse(guardado) as Banco
   } catch {
     // Armazenamento bloqueado ou estragado: segue na memória.
   }
-  memoria ??= semente()
-  return structuredClone(memoria)
+  copiaDaSessao.banco ??= semente()
+  return structuredClone(copiaDaSessao.banco)
 }
 
 export function gravar(banco: Banco) {
-  memoria = banco
+  // Uma resposta antiga não pode repor dados entre o encerramento da sessão e a navegação.
+  if (copiaDaSessao.encerrada) return
+  copiaDaSessao.banco = banco
   try {
     sessionStorage.setItem(CHAVE, JSON.stringify(banco))
   } catch {
