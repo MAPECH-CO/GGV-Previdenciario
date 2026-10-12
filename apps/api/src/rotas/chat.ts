@@ -3,7 +3,7 @@
 // pedido de outro perfil. Nesses casos o modelo não é chamado (CA2). Depois, o agente do motor (ADR-016), com o caso que
 // o perfil vê. O chat é de todos os perfis: só a sessão, e cada dado segue a permissão de quem pergunta.
 import { randomUUID } from 'node:crypto'
-import { ConfirmacaoDoCartao, PerguntaDoChat, pode, type CartaoDeAcao, type Erro, type FonteDaIa, type LinkDoChat, type RespostaDoChat } from '@ggv/contratos'
+import { ConfirmacaoDoCartao, PerguntaDoChat, pode, type CartaoDeAcao, type Erro, type FonteDaIa, type LinkDoChat, type RespostaDoChat, type TextoDaFala } from '@ggv/contratos'
 import { tool, type Tool } from '@openai/agents'
 import { and, desc, eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
@@ -30,6 +30,8 @@ import {
 } from '../../../web/src/regras/chat.ts'
 import { recusaDoChat } from '../../../web/src/regras/parecer.ts'
 import { recusaDoChatNaPericia } from '../../../web/src/regras/pericia.ts'
+import { ehAudio } from '../../../web/src/regras/entrevista.ts'
+import { lerFormulario } from './formulario.ts'
 import { SETOR } from './processo.ts'
 import { UUID } from './recepcao.ts'
 
@@ -385,6 +387,11 @@ type Pendente = { quem: string; perfil: string | null; alvo: Alvo; estado: strin
 const VALIDADE_DO_CARTAO_MS = 30 * 60_000
 export const MSG_CARTAO_VENCIDO = 'Esse cartão já foi usado ou expirou. Peça de novo.'
 
+/** A fala do chat (12/10): até 10 MB, que passam com folga dos 2 minutos de gravação. */
+export const TAMANHO_MAXIMO_DA_FALA = 10 * 1024 * 1024
+export const MSG_FALA_SEM_AUDIO = 'Mande a fala como arquivo de áudio.'
+export const MSG_FALA_GRANDE = 'A fala passou de 10 MB: grave de novo, mais curta.'
+
 export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const pendentes = new Map<string, Pendente>()
@@ -462,5 +469,22 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     if (p && p.quem !== pedido.usuario!.id) return negar(resposta, 403, 'Só quem pediu cancela o cartão.')
     pendentes.delete(pedido.params.id)
     return resposta.code(204).send()
+  })
+
+  // 12/10: a fala do microfone vira texto para a pessoa conferir na caixa. O áudio não é guardado; o motor registra só
+  // o tamanho e o hash. Saúde: a mesma regra do chat (o Jurídico e o Sócio pedem a autorização do escritório).
+  app.post('/api/chat/fala', async (pedido, resposta) => {
+    if (!pedido.isMultipart()) return negar(resposta, 415, MSG_FALA_SEM_AUDIO)
+    const formulario = await lerFormulario(pedido)
+    const arquivo = formulario?.arquivo
+    if (!arquivo || !ehAudio({ nome: arquivo.nome, tipo: arquivo.mime })) return negar(resposta, 415, MSG_FALA_SEM_AUDIO)
+    if (arquivo.conteudo.length > TAMANHO_MAXIMO_DA_FALA) return negar(resposta, 413, MSG_FALA_GRANDE)
+    const sensivel = veSaudeNoChat(pedido.perfilAtivo)
+    const feita = await ia.transcrever({ quem: pedido.usuario!.id, casoId: null, audio: new Uint8Array(arquivo.conteudo), mime: arquivo.mime, nome: arquivo.nome, sensivel, referencia: 'chat:fala' })
+    if (!feita) {
+      const motivo = !ia.ligada ? MSG_IA_DESLIGADA : sensivel && !ia.saudeAutorizada ? MSG_IA_SEM_SAUDE : MSG_IA_SEM_RESPOSTA
+      return negar(resposta, 503, `A transcrição não funcionou: ${motivo}.`)
+    }
+    return { texto: feita.falas.map((f) => f.texto.trim()).join(' ').trim() } satisfies TextoDaFala
   })
 }

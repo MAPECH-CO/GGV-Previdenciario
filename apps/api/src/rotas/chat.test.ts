@@ -23,7 +23,9 @@ const ids: Record<string, string> = {}
  */
 let roteiro: Record<string, unknown>[] = []
 let chamadas: { url: string; corpo: { messages: { role: string; content: unknown }[]; tools?: { function: { name: string } }[] } }[] = []
+let falaTranscrita: Record<string, unknown> = { text: 'o que tem hoje pra mim', segments: [{ speaker: 'A', start: 0, end: 2, text: 'o que tem hoje pra mim' }] }
 const falso: typeof fetch = async (url, init) => {
+  if (String(url).includes('/audio/transcriptions')) return new Response(JSON.stringify(falaTranscrita), { status: 200, headers: { 'content-type': 'application/json' } })
   chamadas.push({ url: String(url), corpo: JSON.parse(String(init?.body ?? '{}')) })
   const message = roteiro.shift() ?? { role: 'assistant', content: 'Resposta de teste.' }
   const corpo = { id: `chatcmpl-${chamadas.length}`, object: 'chat.completion', created: 0, model: 'gpt-4.1-mini', choices: [{ index: 0, message, finish_reason: 'tool_calls' in message ? 'tool_calls' : 'stop' }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }
@@ -334,5 +336,52 @@ describe('GGVP-142 · quem não abre caso conversa sem caso (CA2, permissão)', 
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).not.toContain('criar_tarefa')
     expect(await banco.select().from(tarefa)).toEqual([])
     expect((await registros())[0]).toMatchObject({ casoId: null })
+  })
+})
+
+describe('12/10 · a fala do microfone vira texto (POST /api/chat/fala)', () => {
+  /** Um formulário com um arquivo, como o navegador manda. */
+  function formulario(conteudo: Buffer, nome = 'fala.webm', tipo = 'audio/webm') {
+    const fronteira = '----fala'
+    const corpo = Buffer.concat([
+      Buffer.from(`--${fronteira}\r\nContent-Disposition: form-data; name="audio"; filename="${nome}"\r\nContent-Type: ${tipo}\r\n\r\n`),
+      conteudo,
+      Buffer.from(`\r\n--${fronteira}--\r\n`),
+    ])
+    return { payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${fronteira}` } }
+  }
+  async function falar(apelido: string | null, envio: { payload: Buffer | string; headers: Record<string, string> }) {
+    return app.inject({ method: 'POST', url: '/api/chat/fala', ...(apelido ? { cookies: await cookieDe(apelido) } : {}), ...envio })
+  }
+
+  beforeEach(() => {
+    falaTranscrita = { text: 'o que tem hoje pra mim', segments: [{ speaker: 'A', start: 0, end: 2, text: 'o que tem hoje pra mim' }] }
+  })
+
+  it('com a chave, devolve o texto da fala e registra a chamada sem o áudio', async () => {
+    const r = await falar('ana', formulario(Buffer.from([1, 2, 3, 4])))
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json()).toEqual({ texto: 'o que tem hoje pra mim' })
+    const [registro] = await registros()
+    expect(registro).toMatchObject({ finalidade: 'transcrever_audio', situacao: 'ok' })
+    expect(JSON.stringify(registro)).not.toContain('AQIDBA')
+  })
+
+  it('sem sessão: 401; sem formulário ou sem áudio: 415; grande: 413', async () => {
+    expect((await falar(null, formulario(Buffer.from([1])))).statusCode).toBe(401)
+    expect((await falar('ana', { payload: '{}', headers: { 'content-type': 'application/json' } })).statusCode).toBe(415)
+    expect((await falar('ana', formulario(Buffer.from('%PDF'), 'laudo.pdf', 'application/pdf'))).statusCode).toBe(415)
+    expect((await falar('ana', formulario(Buffer.alloc(10 * 1024 * 1024 + 1)))).statusCode).toBe(413)
+  })
+
+  it('sem a chave: 503 com o motivo; o Jurídico sem a autorização de saúde: 503 com o motivo', async () => {
+    montar({})
+    const desligada = await falar('ana', formulario(Buffer.from([1])))
+    expect(desligada.statusCode).toBe(503)
+    expect(desligada.json().erro).toBe('A transcrição não funcionou: a IA está desligada neste ambiente (falta a chave do serviço).')
+    montar(CHAVE)
+    const semSaude = await falar('gabi', formulario(Buffer.from([1])))
+    expect(semSaude.statusCode).toBe(503)
+    expect(semSaude.json().erro).toBe('A transcrição não funcionou: a IA não está autorizada a ler dado de saúde neste ambiente.')
   })
 })
