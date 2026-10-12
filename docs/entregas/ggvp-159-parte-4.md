@@ -41,3 +41,13 @@ A função visao de rotas/pericia.ts ainda devolve números gerais e resumos do 
 - git -c core.safecrlf=false diff --check: saída 0.
 - Dois novos cenários Playwright escritos (peritos e exigência); cenário existente de orientação atualizado; fuso do cenário da perícia corrigido. Nenhum Playwright executado localmente.
 - Pedro aprovou a parte 4 com “ok” em 12/10/2026; commit, push e pedido autorizados. Os checks do GitHub desta parte ainda não rodaram. Nenhum merge.
+
+
+## Ajuste após o primeiro CI
+
+- Execução 38199817388: typecheck/lint/testes, CodeQL e varredura de segredos aprovados. Playwright: **1 failed, 253 passed**.
+- O cenário antigo da configuração tentou preencher o parâmetro de contato desativado nesta parte. A saída foi `locator.fill: Test timeout of 30000ms exceeded`, com `element is not enabled`.
+- O cenário agora exige o bloqueio do contato, edita uma cobrança aplicada pelo servidor, confere seu histórico e restaura o valor no banco fictício do teste.
+- O CI repete esse cenário sozinho, com um trabalhador, antes dos demais. O segundo comando exclui apenas esse mesmo cenário, preservando a cobertura total. Nenhum Playwright executado nesta máquina.
+
+- Revalidação local do ajuste: typecheck saída 0; oxlint saída 0, com os mesmos três avisos anteriores; Configuracao.test.tsx: 12 passed (14.91s), saída 0; diff --check saída 0.

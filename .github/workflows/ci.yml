@@ -43,7 +43,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # O Chromium que o próprio Playwright instala, como na máquina de cada dev (kit/entrega-09-10.md).
       - run: pnpm --filter @ggv/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @ggv/web exec playwright test --reporter=list,html
+      # Repete sozinho o cenário que excedeu o tempo na parte 4; os demais continuam cobertos abaixo.
+      - name: Configuração isolada (repetição do timeout)
+        run: pnpm --filter @ggv/web exec playwright test e2e/governanca.e2e.ts --grep 'GGVP-104' --workers=1 --reporter=list,html
+      - name: Demais testes de tela
+        run: pnpm --filter @ggv/web exec playwright test --grep-invert 'GGVP-104' --reporter=list,html
       - name: Relatório do Playwright, quando falha
         if: failure()
         uses: actions/upload-artifact@v4
