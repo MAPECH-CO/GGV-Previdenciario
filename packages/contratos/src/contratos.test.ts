@@ -4,14 +4,15 @@ import { Entrar, Pessoa, Saude, TrocarSenha, UsuarioDaSessao } from './index.ts'
 const id = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
 
 describe('Saude', () => {
-  it('aceita a resposta da API com o estado do banco', () => {
-    const resposta = { ok: true, servico: 'api', banco: 'ligado', drive: 'ligado' }
+  it('aceita a resposta da API com o estado do banco e a versão no ar', () => {
+    const resposta = { ok: true, servico: 'api', banco: 'ligado', drive: 'ligado', versao: '7d37d825' }
     expect(Saude.parse(resposta)).toEqual(resposta)
   })
 
-  it('recusa estado de banco desconhecido', () => {
-    expect(Saude.safeParse({ ok: true, servico: 'api', banco: 'talvez', drive: 'ligado' }).success).toBe(false)
-    expect(Saude.safeParse({ ok: true, servico: 'api', banco: 'ligado', drive: 'talvez' }).success).toBe(false)
+  it('recusa estado de banco desconhecido e resposta sem a versão (GGVP-158)', () => {
+    expect(Saude.safeParse({ ok: true, servico: 'api', banco: 'talvez', drive: 'ligado', versao: 'local' }).success).toBe(false)
+    expect(Saude.safeParse({ ok: true, servico: 'api', banco: 'ligado', drive: 'talvez', versao: 'local' }).success).toBe(false)
+    expect(Saude.safeParse({ ok: true, servico: 'api', banco: 'ligado', drive: 'ligado' }).success).toBe(false)
   })
 })
 

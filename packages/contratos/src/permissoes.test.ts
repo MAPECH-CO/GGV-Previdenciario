@@ -5,7 +5,12 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 28, digital: '8835ef5a' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 29, digital: 'b2025851' })
+  })
+
+  it('GGVP-158 · todo perfil usa o chat e vê as próprias tarefas; o Sócio não é responsável de pendência', () => {
+    expect([PERFIS.filter((p) => pode(p, 'chat.usar')), PERFIS.filter((p) => pode(p, 'tarefa.ver'))]).toEqual([[...PERFIS], [...PERFIS]])
+    expect(PERFIS.filter((p) => !pode(p, 'tarefa.cumprir'))).toEqual(['socio'])
   })
 
   it('GGVP-136 CA1 · só a Sênior sobe ou troca o modelo do Word do kit', () => {
@@ -58,8 +63,19 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(pode('atendimento', 'laudo.conferir')).toBe(false)
   })
 
-  it('CA1 e CA12 · Financeiro vê prestação, valores, os dados bancários do repasse e os Resultados; nunca entrevista, laudos, saúde, petição nem a Gestão', () => {
-    expect(acoesDe('financeiro')).toEqual(['banco.agendar', 'dados_bancarios.ver', 'prestacao.registrar_recebimento', 'prestacao.ver', 'resultados.ver', 'valores.ver', 'valores.ver_totais'])
+  it('CA1 e CA12 · Financeiro vê prestação, valores, os dados bancários do repasse e os Resultados, o chat e as tarefas dele; nunca entrevista, laudos, saúde, petição nem a Gestão', () => {
+    expect(acoesDe('financeiro')).toEqual([
+      'banco.agendar',
+      'chat.usar',
+      'dados_bancarios.ver',
+      'prestacao.registrar_recebimento',
+      'prestacao.ver',
+      'resultados.ver',
+      'tarefa.cumprir',
+      'tarefa.ver',
+      'valores.ver',
+      'valores.ver_totais',
+    ])
   })
 
   it('CA12 · dado de saúde em detalhe para o Jurídico e o Sócio (Pedro, 09/10); valores, o Financeiro e o Sócio, e a prestação também a advogada', () => {
@@ -77,7 +93,7 @@ describe('matriz de permissões (GGVP-96)', () => {
   it('GGVP-96 · o Sócio é dono e lê tudo, com os valores (Lucas, 07/10) e o dado de saúde (Pedro, 09/10); não faz passo do caso', () => {
     const leituras = (Object.keys(MATRIZ) as Acao[]).filter((a) => /\.ver(_|$)/.test(a))
     expect(leituras.filter((a) => !pode('socio', a))).toEqual([])
-    expect(acoesDe('socio').filter((a) => !leituras.includes(a))).toEqual(['configuracao.editar', 'historico.autorizar_exportacao', 'perfis.atribuir'])
+    expect(acoesDe('socio').filter((a) => !leituras.includes(a))).toEqual(['chat.usar', 'configuracao.editar', 'historico.autorizar_exportacao', 'perfis.atribuir'])
     expect(pode('socio', 'prestacao.dar_ok')).toBe(false)
   })
 
@@ -185,14 +201,14 @@ describe('matriz de permissões (GGVP-96)', () => {
 
   it('o que cada perfil pode, um por um (muda junto com a versão)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
-      atendimento: 16,
-      atendimento_lider: 20,
-      documentacao: 9,
-      advogada: 38,
-      senior: 55,
-      juridico_adm: 16,
-      financeiro: 7,
-      socio: 18,
+      atendimento: 19,
+      atendimento_lider: 23,
+      documentacao: 12,
+      advogada: 41,
+      senior: 58,
+      juridico_adm: 19,
+      financeiro: 10,
+      socio: 20,
     })
   })
 })

@@ -332,6 +332,21 @@ type Pedido = Quem & { conteudo: string; fontes: FonteDaIa[] }
  */
 export type ComoSugerir = { refazer?: boolean; soPreparar?: boolean; validar?: (texto: string) => boolean }
 
+export const MSG_CHAMADA_DE_OUTRO_CASO = 'A sugestão da IA não é deste caso.'
+
+/**
+ * GGVP-158: a chamada da IA que a decisão ou a petição cita existe e é deste caso. O id vem da tela; sem conferir, uma
+ * decisão podia citar a sugestão de outro cliente. Sem chamada citada, nada a conferir.
+ */
+export async function chamadaDoCaso(banco: Banco, chamadaId: string | undefined, casoId: string): Promise<boolean> {
+  if (!chamadaId) return true
+  const [c] = await banco
+    .select({ id: chamadaIa.id })
+    .from(chamadaIa)
+    .where(and(eq(chamadaIa.id, chamadaId), eq(chamadaIa.casoId, casoId)))
+  return Boolean(c)
+}
+
 /** JSON da IA, ou nulo se ela respondeu outra coisa (a rota valida com o contrato dela). */
 export const lerJson = (texto: string): unknown => {
   try {

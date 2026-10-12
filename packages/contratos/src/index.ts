@@ -1,5 +1,6 @@
 // Contratos entre a tela e o servidor. Um schema por endpoint e por formulário (ADR-001).
 // Campo de formulário valida com a função de @ggv/campos, nunca com regra solta.
+import './sem-eval.ts'
 import { normalizarCpf, normalizarNome, validarCpf, validarEmail, validarNome } from '@ggv/campos'
 import { z } from 'zod'
 
@@ -13,6 +14,8 @@ export const Saude = z.object({
   banco: z.enum(['ligado', 'sem-banco', 'fora-do-ar']),
   /** GGVP-107 CA9: pelas variáveis do Drive, sem chamar o Google a cada verificação. */
   drive: z.enum(['ligado', 'so-leitura', 'desligado']),
+  /** GGVP-158: o commit do build, gravado na imagem; fora dela, "local". */
+  versao: z.string(),
 })
 export type Saude = z.infer<typeof Saude>
 

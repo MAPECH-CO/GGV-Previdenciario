@@ -10,7 +10,9 @@ RUN pnpm install --frozen-lockfile && pnpm --filter @ggv/web build
 
 # O "hoje" das regras compartilhadas (apps/web/src/regras) usa o fuso do processo: em UTC, das 21h à meia-noite de
 # Brasília elas viam o dia seguinte, e o servidor (hojeEmBrasilia) o de hoje.
-ENV NODE_ENV=production HOST=0.0.0.0 PORTA=3000 TZ=America/Sao_Paulo
+# VERSAO: o commit do build, que o /saude mostra (GGVP-158). O imagem.yml passa o SHA; sem ele, "local".
+ARG VERSAO=local
+ENV NODE_ENV=production HOST=0.0.0.0 PORTA=3000 TZ=America/Sao_Paulo VERSAO=$VERSAO
 EXPOSE 3000
 
 # 503 do /saude (banco fora do ar) também conta como falha.

@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AprovarResumo, faltaCompletar, ROTULO_BENEFICIO, RegistrarContato, ResultadoParaExplicar, SugestaoDoResumo, pode, type Beneficio, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { atendimento, caso, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import type { ComoSugerir, Ia } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, chamadaDoCaso, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir } from '../sessao/rotas.ts'
 
@@ -139,6 +139,7 @@ export function registrarRotasResultado(app: FastifyInstance, { banco, agora = (
     if (falta) return negar(resposta, 400, falta)
     const pendente = await aberta(casoId, 'D3b.06r')
     if (!pendente) return negar(resposta, 409, MSG_SEM_RESUMO_ESPERANDO)
+    if (!(await chamadaDoCaso(banco, entrada.data.chamadaIaId, casoId))) return negar(resposta, 400, MSG_CHAMADA_DE_OUTRO_CASO)
     const quem = pedido.usuario!.id
     const { texto, quemFala, chamadaIaId } = entrada.data
     const feito = await banco.transaction(async (tx) => {

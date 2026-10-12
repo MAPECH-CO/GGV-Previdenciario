@@ -8,7 +8,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, parecerMedico, pericia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_DESPACHO, abrirPericiasDaExigencia, lacosDas, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, MSG_CHAMADA_DE_OUTRO_CASO, chamadaDoCaso, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 
@@ -173,6 +173,7 @@ export function registrarRotasIndeferimento(app: FastifyInstance, { banco, agora
     const aguardando = await tarefaAberta(casoId, 'D3.03')
     if (!aguardando) return negar(resposta, 409, MSG_NADA_A_DESPACHAR)
     const d = entrada.data
+    if (!(await chamadaDoCaso(banco, d.chamadaIaId, casoId))) return negar(resposta, 400, MSG_CHAMADA_DE_OUTRO_CASO)
     const quem = pedido.usuario!.id
     const l = await indeferimentoDo(casoId)
     const fechar = { situacao: 'concluida' as const, concluidaEm: agora(), concluidaPor: quem }

@@ -6,7 +6,14 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
+    "typecheck": "tsc",
+    "lint": "oxlint",
     "test": "node --experimental-strip-types --test test/campos.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2"
   },
   "engines": {
     "node": ">=22.6"

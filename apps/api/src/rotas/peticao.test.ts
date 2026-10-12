@@ -9,7 +9,7 @@ import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, juizo as juizoTabela, parecerMedico, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
@@ -187,6 +187,9 @@ describe('Épico IA · a minuta da petição inicial', () => {
     await laudoDaDocumentacao()
     const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
     expect(r.aviso).toBe(MSG_SEM_REFERENCIA)
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
+    expect(await banco.select().from(peticaoVersao)).toHaveLength(0)
     expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
     const [v] = await banco.select().from(peticaoVersao)
     expect([v.numero, v.geradaPor, v.conteudo]).toEqual([1, 'gabi · minuta da IA', MINUTA])
@@ -313,6 +316,9 @@ describe('Épico IA · "Não está boa": a IA faz outra versão (GGVP-67 CA1, CA
     expect([r.sugestao.texto, r.sugestao.sugestao, r.motivo]).toEqual([V2, true, null])
     const enviado = JSON.parse(pedidos[0]).messages[1].content as string
     for (const trecho of ['Pedido da advogada: Incluir a tutela', 'Última versão (1):', V1]) expect(enviado).toContain(trecho)
+    expect((await banco.select().from(peticaoVersao)).length).toBe(1)
+    // GGVP-158: a chamada que não é deste caso é recusada, e nenhuma versão nova nasce.
+    expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: V2, oQueMudou: 'Incluir a tutela', chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
     expect((await banco.select().from(peticaoVersao)).length).toBe(1)
     expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: V2, oQueMudou: 'Incluir a tutela', chamadaIaId: r.sugestao.chamadaId })).json()).toEqual({ ok: true, numero: 2 })
     const versoes = (await banco.select().from(peticaoVersao)).sort((a, b) => a.numero - b.numero)

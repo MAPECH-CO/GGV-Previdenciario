@@ -25,8 +25,8 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
 // 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
-// Recepção 26, a chance 27, o kit de verdade 28. Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 28
+// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10). Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 29
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -160,6 +160,12 @@ export const MATRIZ = {
   'chance.ver': ['advogada', 'senior', 'socio'],
   // Versão 28 (GGVP-136, Orquestrador, 09/10): o kit de verdade. Só a Sênior sobe ou troca o modelo do Word do kit, com versão.
   'modelo.subir': ['senior'],
+  // Versão 29 (GGVP-158, 11/10): toda rota /api com trava. Todo perfil usa o chat e vê as próprias tarefas. Quem pode ser
+  // responsável de pendência da conversa (todos menos o Sócio) dá a dela por cumprida; a rota ainda confere que é o
+  // responsável ou a Sênior.
+  'chat.usar': [...PERFIS],
+  'tarefa.ver': [...PERFIS],
+  'tarefa.cumprir': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO, 'financeiro'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

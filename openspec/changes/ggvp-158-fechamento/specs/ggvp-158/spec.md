@@ -47,12 +47,12 @@ O repositório SHALL ter um `.env.example` sem valores e a mesma lista em `docs/
 - **Então** o teste da lista falha e diz qual variável falta
 
 ### Requirement: P1.6 · Dados de teste dos recursos novos
-A semente do servidor SHALL trazer um exemplo de cada recurso novo, só com dado inventado e ligado aos clientes de exemplo. Os recursos são: o contrato da Recepção, a leitura de documento, o checklist com boas-vindas e cobrança, o perito, o juízo com decisões, o compromisso na agenda e a perícia. Assim o roteiro roda sem preparar nada à mão.
+O preparo da homologação SHALL trazer um exemplo de cada recurso novo que só o servidor cria e o roteiro abre, só com dado inventado. São os peritos com perfil, os entendimentos do juízo dos processos de exemplo (as decisões do juízo já vêm na semente) e um compromisso na agenda. Numa homologação já preparada, rodar o preparo de novo SHALL acrescentar o que faltar, sem duplicar e sem trocar senha. O contrato da Recepção, a leitura, o checklist, as boas-vindas, a cobrança e a perícia nascem no próprio roteiro e não entram como exemplo. O kit do contrato depende dos modelos do Word na homologação.
 
-#### Scenario: P1.6 · Banco novo com a semente
-- **Dado** um banco novo com a semente de exemplo
-- **Quando** o roteiro do teste começa
-- **Então** cada recurso novo já tem um exemplo para abrir
+#### Scenario: P1.6 · Homologação já preparada
+- **Dado** uma homologação preparada antes dos recursos novos
+- **Quando** o preparo roda de novo
+- **Então** os peritos com perfil, os entendimentos do juízo e a reunião na agenda passam a existir, uma vez só, e nenhuma senha muda
 
 ### Requirement: P2.1 · drizzle-orm sem a falha de injeção de SQL
 O servidor SHALL usar o drizzle-orm na versão 0.45.2 ou mais nova, com o drizzle-kit compatível. As migrações de hoje MUST seguir aplicando iguais.

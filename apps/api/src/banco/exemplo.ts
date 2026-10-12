@@ -4,7 +4,10 @@ import bcrypt from 'bcryptjs'
 import { count, eq } from 'drizzle-orm'
 import type { Banco } from './conexao.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
-import { caso, configuracao, contrato, credencialGovbr, decisao, documento, documentoMedico, etapa, exigencia, exigenciaItem, identificadorCaso, kitDocumento, modelo, parecerMedico, pessoa, peticao, peticaoVersao, prestacaoContas, processoAcervo, protocoloJudicial, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { caso, compromissoInterno, configuracao, contrato, credencialGovbr, decisao, documento, documentoMedico, etapa, exigencia, exigenciaItem, identificadorCaso, juizo, kitDocumento, modelo, parecerMedico, perito, pessoa, peticao, peticaoVersao, prestacaoContas, processoAcervo, protocoloJudicial, publicacao, resultadoInss, rodadaVigilia, tarefa, tentativa, usuario } from './esquema.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
+import { peritosDeExemplo } from '../../../web/src/dados/peritos.ts'
+import { somarDias } from '../../../web/src/regras/agenda.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { abrirDecisaoDoRecurso } from '../rotas/recurso.ts'
@@ -427,4 +430,39 @@ export async function semearExemplos(banco: Banco) {
     .values({ casoId: cl.id, pessoaId: pl.id, tipo: 'laudo', sensivel: true, chaveArmazenamento: `exemplo/${cl.id}/laudo`, nomeOriginal: 'Laudo médico incompleto (exemplo).pdf', mime: 'application/pdf', tamanho: 0, hashSha256: 'exemplo', origem: 'exemplo' })
     .returning()
   await banco.insert(documentoMedico).values({ documentoId: laudo.id, tipo: 'laudo', dataEmissao: '2026-09-15', profissional: 'Dra. Clínica (exemplo)' })
+}
+
+export const TITULO_DA_REUNIAO_DE_EXEMPLO = 'Reunião da equipe: os casos da semana (exemplo)'
+
+/**
+ * GGVP-158: os exemplos do que só o servidor cria e o roteiro do teste abre. São os peritos com o perfil (os mesmos da tela),
+ * os entendimentos do JEF de São Paulo, o juízo dos processos de exemplo, e uma reunião na agenda. Só o preparo da
+ * homologação chama, também numa homologação já preparada: cada exemplo entra só se ainda não existe, e nada que alguém
+ * gravou muda. Fora da semente da máquina e dos testes de tela, para não mudar o que eles contam.
+ */
+export async function semearRecursosNovos(banco: Banco, agora = new Date()) {
+  const normal = (nome: string) =>
+    nome
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+  for (const p of peritosDeExemplo())
+    await banco
+      .insert(perito)
+      .values({ nome: p.nome, nomeNormalizado: normal(p.nome), especialidade: p.especialidade, perfil: { tipo: p.tipo, onde: p.onde, laudos: p.laudos } })
+      .onConflictDoNothing()
+  await banco
+    .insert(juizo)
+    .values({
+      tribunal: 'TRF3',
+      nome: 'TRF3 · 6301',
+      entendimentos: [{ texto: 'Pede o estudo social atualizado para provar a renda da casa. (exemplo)', processos: ['00034567120254036301', '00045678220254036301'] }],
+      entendimentosEm: agora,
+    })
+    .onConflictDoNothing()
+  const [reuniao] = await banco.select({ id: compromissoInterno.id }).from(compromissoInterno).where(eq(compromissoInterno.titulo, TITULO_DA_REUNIAO_DE_EXEMPLO))
+  if (!reuniao)
+    await banco.insert(compromissoInterno).values({ titulo: TITULO_DA_REUNIAO_DE_EXEMPLO, data: somarDias(hojeEmBrasilia(agora), 1), hora: '09:00', duracao: 60, responsavel: 'atendimento' })
 }

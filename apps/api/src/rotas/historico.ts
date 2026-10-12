@@ -239,6 +239,7 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
     app.route<{ Params: { id: string } }>({
       method: ['PUT', 'PATCH', 'DELETE'],
       url,
+      config: { semTrava: 'o histórico não muda: a rota recusa sempre, para todo perfil, e registra a tentativa' },
       handler: async (pedido, resposta) => {
         await historico(pedido.usuario?.id ?? 'anonimo', 'historico_alteracao_recusada', pedido, `caso:${pedido.params.id}`, { metodo: pedido.method })
         return negar(resposta, 403, MSG_HISTORICO_IMUTAVEL)

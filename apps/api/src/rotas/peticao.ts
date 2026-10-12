@@ -15,7 +15,7 @@ import { fonteDoJuizo, juizoDoCaso, jurimetriaDoJuizo } from '../fluxo/juizo.ts'
 import { travaDoParecerDoCaso } from '../fluxo/parecer-do-caso.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
 import { pdfDaImagem, pdfDaPeticao, type ArquivoDoPacote } from '../fluxo/pacote.ts'
-import { FINALIDADES, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, MSG_CHAMADA_DE_OUTRO_CASO, chamadaDoCaso, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { travaCpf, travaPacote, travaTema350, type Tribunal } from '../fluxo/travas.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
@@ -320,6 +320,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       return negar(resposta, 409, travaParecer)
     }
     const d = entrada.data
+    if (!(await chamadaDoCaso(banco, d.chamadaIaId, casoId))) return negar(resposta, 400, MSG_CHAMADA_DE_OUTRO_CASO)
     // CA6: os citados são documentos deste caso, na ordem do pedido, ou o nome do que ainda falta.
     const ids = [...new Set(d.citados.flatMap((x) => (x.documentoId ? [x.documentoId] : [])))]
     const docs = ids.length
@@ -383,6 +384,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const casoId = pedido.params.id
     const entrada = NovaVersao.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira a versão.')
+    if (!(await chamadaDoCaso(banco, entrada.data.chamadaIaId, casoId))) return negar(resposta, 400, MSG_CHAMADA_DE_OUTRO_CASO)
     const p = await peticaoDo(casoId)
     if (!p) return negar(resposta, 409, MSG_SEM_PEDIDO)
     if (await protocolada(p.id)) return negar(resposta, 409, MSG_PROTOCOLADA)
