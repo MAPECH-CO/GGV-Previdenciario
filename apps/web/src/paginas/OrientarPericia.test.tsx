@@ -52,9 +52,9 @@ describe('GGVP-62 · preparar o cliente (Figma 10:405)', () => {
     const texto = documento().value
     fireEvent.click(screen.getByRole('checkbox', { name: 'Revisei a orientação' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enviar orientação' }))
-    expect(await screen.findByText('Orientação enviada pelo Chatwoot e guardada no caso.')).toBeTruthy()
-    const feito = within(screen.getByRole('region', { name: '✓ Orientação passada' }))
-    expect(feito.getByText(/Enviada pelo Chatwoot, como documento e instrução, em 07\/10\/2026 10:00, por Igor \(exemplo\)/)).toBeTruthy()
+    expect(await screen.findByText('Orientação registrada, não enviada pelo Chatwoot.')).toBeTruthy()
+    const feito = within(screen.getByRole('region', { name: '✓ Orientação registrada' }))
+    expect(feito.getByText(/Registrada para o Chatwoot; este registro sozinho não comprova envio, em 07\/10\/2026 10:00, por Igor \(exemplo\)/)).toBeTruthy()
     expect(feito.getByText((_, el) => el?.tagName === 'P' && el.textContent === texto)).toBeTruthy()
     const p = (await obterPericia('antonio-exemplo-1'))!.pericia
     expect(p.historico.at(-1)).toMatchObject({ quem: 'Igor (exemplo)', oQue: 'Enviou a orientação pelo Chatwoot, como documento e instrução', passo: 'DP.06' })

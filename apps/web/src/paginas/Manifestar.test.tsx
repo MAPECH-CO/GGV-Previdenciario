@@ -71,22 +71,20 @@ describe('Manifestar e protocolar (GGVP-87)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('Escreva o motivo da dilação')
   })
 
-  it('ajuste de 06/10 · o documento não existe: encerrar sem a prova pede o motivo e avisa para explicar na manifestação', async () => {
+  it('antes de encerrar, leva à dilação ou ao reagendamento e não envia a justificativa sem o portão no servidor', async () => {
     const fetch = servidor({
-      ...base,
-      faltam: ['Perícia'],
+      ...base, faltam: ['Perícia'],
       pendentes: [{ alvo: 'pericia', id: ITEM, setor: 'Jurídico administrativo', descricao: 'Perícia médica', prazoInterno: null }],
       podeEncerrarSemProva: true,
     })
     render(<Manifestar casoId={CASO} />)
-    expect(await screen.findByText(/A perícia não tem como ser feita\?/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Encerrar sem a prova' }))
-    expect((await screen.findByRole('alert')).textContent).toBe('Escreva por que vai manifestar sem essa prova')
-    fireEvent.change(screen.getByLabelText('Por que vai manifestar sem essa prova'), { target: { value: 'O juiz cancelou a perícia' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Encerrar sem a prova' }))
-    expect((await screen.findByRole('status')).textContent).toContain('Explique isso na manifestação')
-    const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')!
-    expect(JSON.parse(post[1]!.body as string)).toEqual({ alvo: 'pericia', id: ITEM, motivo: 'O juiz cancelou a perícia' })
+    await screen.findByText(/Antes de encerrar sem documento/)
+    expect((screen.getByRole('button', { name: 'Encerrar sem a prova' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByLabelText('Por que vai manifestar sem essa prova')).toBeNull()
+    fireEvent.click(screen.getByRole('link', { name: 'Preparar pedido de dilação' }))
+    expect((screen.getByLabelText('Peça') as HTMLSelectElement).value).toBe('dilacao')
+    expect(screen.getByRole('link', { name: 'Pedir reagendamento da perícia' }).getAttribute('href')).toBe(`/casos/${CASO}/pericia`)
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
   })
 
   it('ajuste de 06/10 · mostra o que foi encerrado sem a prova, com o motivo e quem', async () => {

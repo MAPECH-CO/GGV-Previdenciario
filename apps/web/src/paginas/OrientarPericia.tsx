@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { EnvioDaOrientacao } from '../componentes/EnvioDaOrientacao.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
@@ -6,7 +7,7 @@ import { formatarTelefone } from '../campos.ts'
 import { SugestaoDaPericia } from '../componentes/SugestaoDaPericia.tsx'
 import { enviarOrientacao, obterPericia, sugerirOrientacao, type CanalDaOrientacao, type PericiaNaTela } from '../dados/pericia.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import { DIAS_ANTES_PREPARO, NOMES_DO_TIPO, O_QUE_LEVAR, problemaDaOrientacao } from '../regras/pericia.ts'
 import styles from './Balcao.module.css'
@@ -18,6 +19,10 @@ import proprio from './Pericia.module.css'
 // verifica o texto de novo antes de enviar e registra a recusa (G11, G20).
 
 export function OrientarPericia({ processoId }: { processoId: string }) {
+  return <OrientacaoDoProcesso key={processoId} processoId={processoId} />
+}
+
+function OrientacaoDoProcesso({ processoId }: { processoId: string }) {
   const perfil = usePerfil('Jurídico administrativo')
   const quem = perfil?.usuario ?? 'Jurídico administrativo'
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
@@ -26,6 +31,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
   const [revisei, setRevisei] = useState(false)
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
+  const [abrirEnvio, setAbrirEnvio] = useState(false)
   const travado = useRef(false)
 
   useEffect(() => {
@@ -33,7 +39,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
     obterPericia(processoId).then((x) => {
       if (!valendo) return
       setT(x)
-      const montada = x?.pericia.orientacao?.texto ?? ''
+      const montada = x?.pericia.preparacao?.texto ?? x?.pericia.orientacao?.texto ?? ''
       setTexto(montada)
       // GGVP-139 CA2: a sugestão da IA chega pronta e entra no lugar da montada, se a pessoa ainda não mexeu.
       if (!x?.pericia.orientacao || x.pericia.preparacao) return
@@ -44,7 +50,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
           setIa(s)
           if (s.texto) setTexto((atual) => (atual === montada ? s.texto! : atual))
         })
-    })
+    }).catch(() => { if (valendo) { setT(null); setErro('Não foi possível consultar a orientação agora.') } })
     return () => {
       valendo = false
     }
@@ -56,8 +62,9 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
     return (
       <main className={styles.pagina}>
         <title>Orientar para a perícia · GGV Previdenciário</title>
-        <h1 className={styles.titulo}>{t === undefined ? 'Abrindo a orientação…' : 'A orientação ainda não está pronta'}</h1>
-        {t !== undefined && <p>A orientação sai quando a perícia tem data: marque a perícia primeiro.</p>}
+        <h1 className={styles.titulo}>{erro ? 'Não foi possível consultar a orientação' : t === undefined ? 'Abrindo a orientação…' : 'A orientação ainda não está pronta'}</h1>
+        {erro && <p role="alert">{erro}</p>}
+        {t !== undefined && !erro && <p>A orientação sai quando a perícia tem data: marque a perícia primeiro.</p>}
         {t !== undefined && <a href={perfil?.inicio ?? '/'}>Voltar ao início</a>}
       </main>
     )
@@ -75,16 +82,17 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
   const recusas = pericia.enviosRecusados ?? []
 
   async function enviar(canal: CanalDaOrientacao) {
+    if (canal === 'chatwoot' && doServidor(processoId)) { setAbrirEnvio(true); return }
     if (travado.current) return
     travado.current = true
     setErro('')
     try {
       setT(await enviarOrientacao(processoId, { texto, canal, revisei }, quem))
-      setAviso(canal === 'chatwoot' ? 'Orientação enviada pelo Chatwoot e guardada no caso.' : 'Ligação registrada: a orientação ficou guardada no caso.')
+      setAviso(canal === 'chatwoot' ? 'Orientação registrada, não enviada pelo Chatwoot.' : 'Ligação registrada: a orientação ficou guardada no caso.')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não deu para enviar.')
       // A recusa do servidor fica registrada na perícia (CA6): a tela mostra.
-      setT(await obterPericia(processoId))
+      try { setT(await obterPericia(processoId)) } catch { /* Mantém a falha visível, sem inventar sucesso. */ }
     } finally {
       travado.current = false
     }
@@ -155,14 +163,19 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
           {feita ? (
             <section className={styles.feito} aria-labelledby="orientado">
               <h2 id="orientado" className={styles.feitoTitulo}>
-                ✓ Orientação passada
+                {feita.canal === 'chatwoot' ? '✓ Orientação registrada' : '✓ Orientação passada'}
               </h2>
               <p>
-                {feita.canal === 'chatwoot' ? 'Enviada pelo Chatwoot, como documento e instrução' : 'Na ligação'}, em {dataHora(feita.quando)}, por {feita.quem}. O
+                {feita.canal === 'chatwoot' ? 'Registrada para o Chatwoot; este registro sozinho não comprova envio' : 'Na ligação'}, em {dataHora(feita.quando)}, por {feita.quem}. O
                 texto ficou guardado no caso:
               </p>
               <p className={proprio.documento}>{feita.texto}</p>
               <p>Se a data ou o local mudar, a orientação sai de novo e a tarefa volta para você.</p>
+              {feita.canal === 'chatwoot' && doServidor(processoId) && <>
+                <p>Se este registro foi feito antes do envio real, consulte o histórico do cliente e envie o texto revisado abaixo.</p>
+                <label className={proprio.marcar}><input type="checkbox" checked={revisei} onChange={e => setRevisei(e.target.checked)} />Revisei a orientação registrada</label>
+                <button type="button" className={proprio.secundario} disabled={!revisei || !ficha.telefone} onClick={() => setAbrirEnvio(true)}>Enviar orientação registrada</button>
+              </>}
               <div className={styles.rodape}>
                 <button type="button" className={proprio.secundario} onClick={() => window.print()}>
                   Imprimir
@@ -229,7 +242,7 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
                   type="button"
                   className={cobranca.botao}
                   disabled={!!feita || motivo !== null || !ficha.telefone}
-                  title="Envia o documento de orientação pelo Chatwoot"
+                  title="Abre o envio do texto revisado pelo Chatwoot"
                   onClick={() => void enviar('chatwoot')}
                 >
                   WhatsApp
@@ -286,6 +299,10 @@ export function OrientarPericia({ processoId }: { processoId: string }) {
         </aside>
       </main>
       <div className={proprio.impressao}>{feita?.texto ?? texto}</div>
+      {abrirEnvio && <EnvioDaOrientacao fichaId={ficha.id} processoId={processoId} texto={texto}
+        aoFechar={() => setAbrirEnvio(false)}
+        aoRegistrar={async () => { setT(await enviarOrientacao(processoId, { texto, canal: 'chatwoot', revisei }, quem)) }}
+      />}
       <AbaSuporte />
     </>
   )

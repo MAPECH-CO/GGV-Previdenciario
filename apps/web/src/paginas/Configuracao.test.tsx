@@ -202,3 +202,23 @@ describe('Modelos do kit (GGVP-136 CA1)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe('O arquivo não é um documento do Word (.docx).')
   })
 })
+
+describe('Fechamento: parâmetros válidos e dependências explícitas', () => {
+  it('não envia valor fora da faixa validada no servidor', async () => {
+    const fetch = servidor(base)
+    render(<Configuracao />)
+    const campo = await screen.findByLabelText('Cobrança de documento: tentativas até subir para a Sênior (de 1 a 20)')
+    fireEvent.change(campo, { target: { value: '21' } })
+    expect((screen.getByRole('button', { name: 'Salvar: Cobrança de documento: tentativas até subir para a Sênior' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(puts(fetch)).toHaveLength(0)
+  })
+  it('não promete que um parâmetro sem aplicação alterou a perícia', async () => {
+    const fetch = servidor({ ...base, parametros: [{ chave: 'pericia.remarcacao.limite', rotulo: 'Remarcações', valor: 1, min: 0, max: 10 }] })
+    render(<Configuracao />)
+    expect((await screen.findByLabelText('Remarcações (de 0 a 10)') as HTMLInputElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Salvar: Remarcações' })).toBeNull()
+    expect((screen.getByRole('button', { name: 'Editar tribunais' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Editar assinatura padrão' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(puts(fetch)).toHaveLength(0)
+  })
+})
