@@ -1,6 +1,7 @@
 # ADR-015 · Chatwoot como motor das conversas com o cliente
 
-**Data:** 2026-09-26 · **Estado:** proposta · **Decide:** equipe com o PO, na Sprint 0
+**Data da proposta:** 2026-09-26 · **Estado:** aceita
+**Registro da aceitação:** 2026-10-12, conforme orientação de Pedro na GGVP-159.
 
 ## Contexto
 O escritório já usa o Chatwoot em produção, com um chatbot que a equipe usa bastante. O portal novo quer
@@ -14,10 +15,16 @@ tocado fora do portal. Estudo completo em `docs/arquitetura/chatwoot-no-portal.m
    Chatwoot de dentro do portal; conversa na linha do tempo do caso.
 4. **Nível 3 — reconstruir a mensageria no portal.** Joga fora o chatbot e a operação omnichannel. Descartada.
 
-## Proposta
+## Decisão
 Manter o Chatwoot como **motor das conversas** (canais + chatbot) e incorporar em duas fases: **Fase 1**
 Nível 1 (iframe + SSO), rápido; **Fase 2** Nível 2 (API + webhook ligada ao caso), que é o que de fato
 prende o funcionário no portal e alimenta o D5 e a GGVP-102 sem trabalho manual.
+
+A aceitação define o Chatwoot como motor; não comprova que as duas fases estão completas. Na main de 12/10,
+`apps/api/src/chatwoot.ts` e `apps/api/src/rotas/mensagens.ts` já integram a API para contato, conversa e envio.
+O recebimento contínuo de mensagens na tela e a ligação de todos os fluxos ainda dependem de entrega específica.
+Sem serviço configurado ou sem envio confirmado, a tela deve informar simulação ou falha, nunca entrega real.
+Não foi acessado o Chatwoot para atualizar este ADR.
 
 ## Consequências
 - O Chatwoot vira dependência de serviço externo do portal; entra na configuração da implantação, não no código.

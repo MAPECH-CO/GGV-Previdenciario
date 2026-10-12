@@ -65,7 +65,7 @@ Ordem do fluxo do BPMN. História fora da lista: ordem do Jira.
 ## Rodar local, sem Docker
 
 - Só Node. `pnpm dev` sobe `apps/api` e `apps/web`.
-- Banco de dev no Coolify, na VPS: um banco por pessoa (`prev_pedro`, `prev_mateus`), URL no `.env` local. Nada de Postgres nem Docker na máquina.
+- Banco de dev no Supabase, isolado por pessoa (`prev_pedro`, `prev_mateus`), URL no `.env` local. Nada de Postgres nem Docker na máquina.
 - Homologação é outro banco, no mesmo Postgres. Migrações rodam no deploy.
 - Playwright usa o Chromium que ele mesmo instala (`pnpm exec playwright install chromium`).
 
@@ -75,7 +75,7 @@ Ordem do fluxo do BPMN. História fora da lista: ordem do Jira.
 |---|---|
 | Todos | Revisar os cartões dos seus épicos até 02/10. |
 | Fernando | Reunião de 02/10. Colunas do Jira já estão certas (feito em 30/09). |
-| Mateus | Coolify: aplicação de homologação ligada ao GitHub e Postgres de dev com um banco por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret". |
+| Mateus | Coolify: aplicação de homologação ligada ao GitHub. Banco no Supabase, com ambiente de dev isolado por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret". |
 | Lucas | Validar o BPMN com o escritório em 03/10. Dúvidas novas: comentar no cartão. |
 
 ## Regras de fila
