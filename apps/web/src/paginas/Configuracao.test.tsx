@@ -222,3 +222,16 @@ describe('Fechamento: parâmetros válidos e dependências explícitas', () => {
     expect(puts(fetch)).toHaveLength(0)
   })
 })
+
+describe('catálogo completo de benefícios', () => {
+  it('mostra os 34 benefícios e não permite publicar checklist sem suporte no servidor', async () => {
+    const fetch = servidor(base)
+    render(<Configuracao />)
+    const select = await screen.findByLabelText('Benefício')
+    expect(within(select).getAllByRole('option')).toHaveLength(34)
+    fireEvent.change(select, { target: { value: 'seguro-carro' } })
+    expect(screen.getByText(/Checklist indisponível no servidor/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Publicar a versão/ })).toBeNull()
+    expect(puts(fetch)).toEqual([])
+  })
+})

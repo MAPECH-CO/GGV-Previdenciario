@@ -213,7 +213,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
                     {faltamNaFicha.length > 0 && (
                       <div role="alert" className={styles.aviso}>
                         <p>O kit não foi gerado. Falta na ficha: {faltamNaFicha.join(', ')}.</p>
-                        <a className={styles.avisoLink} href={`/clientes/${ficha.id}`}>
+                        <a className={styles.avisoLink} href={`/clientes/${ficha.id}/cadastro`}>
                           Completar a ficha
                         </a>
                       </div>

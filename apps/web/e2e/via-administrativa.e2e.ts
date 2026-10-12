@@ -266,8 +266,9 @@ test('GGVP-44 e GGVP-98 · a advogada conclui; o Financeiro recebe, avisa, marca
   await page.getByRole('button', { name: 'Agendar' }).click()
   await expect(page.getByLabel('Mensagem')).toContainText('Olá, Vera Lúcia (exemplo)! Seu benefício foi concedido.')
   await expect(page.getByLabel('Mensagem')).toContainText('Ana (exemplo), do escritório, vai com você.')
-  await page.getByRole('button', { name: 'Revisei e enviei' }).click()
-  await expect(page.getByLabel('Avisos enviados')).toContainText('WhatsApp · Júlia (exemplo)')
+  await page.getByLabel('Liguei para o cliente e expliquei a ida ao banco com este texto').check()
+  await page.getByRole('button', { name: 'Registrar ligação feita' }).click()
+  await expect(page.getByLabel('Contatos registrados no caso')).toContainText('Telefone · Júlia (exemplo)')
 
   // P3 do roteiro de 09/10: quem leva vê a visita marcada, sem nenhum valor, e registra que levou.
   await context.clearCookies()

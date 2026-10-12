@@ -10,7 +10,13 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 // As telas do Jurídico pedem o perfil (GGVP-135): a advogada entra pela API.
-test.beforeEach(async ({ page }) => entrarPelaApi(page, ADVOGADA))
+test.beforeEach(async ({ page }) => {
+  // Endereço inventado pelo teste: a verificação não depende da internet nem consulta o ViaCEP real.
+  await page.route('https://viacep.com.br/ws/**', (route) => route.fulfill({
+    json: { logradouro: 'Rua de Teste', bairro: 'Bairro de Teste', localidade: 'Cidade de Teste', uf: 'SP' },
+  }))
+  await entrarPelaApi(page, ADVOGADA)
+})
 
 /** A entrevista da Josefa gravada e encerrada, com o relógio do Playwright. */
 async function entrevistaEncerrada(page: Page) {
@@ -41,10 +47,22 @@ test('CA1, CA8 e CA10 · da tarefa ao cadastro preenchido pela ficha e pela entr
   await expect(page.getByText(/^\d+ anos$/)).toBeVisible()
   await page.getByLabel('CEP *').fill('01001000')
   await page.getByLabel('CEP *').blur()
-  await expect(page.getByLabel('Bairro *')).toHaveValue('Sé')
+  await expect(page.getByLabel('Bairro *')).toHaveValue('Bairro de Teste')
   await expect(page.getByLabel('UF *')).toHaveValue('SP')
   await expect(page.getByRole('button', { name: 'Salvar cadastro' })).toBeDisabled()
   await expect(page.getByText('Falta: CPF e RG.')).toBeVisible()
+})
+
+test('ViaCEP indisponível: o endereço pode ser digitado à mão', async ({ page }) => {
+  await page.route('https://viacep.com.br/ws/**', (route) => route.fulfill({ status: 503, body: '' }))
+  await page.goto('/clientes/josefa-exemplo/cadastro')
+  await page.getByLabel('CEP *').fill('01001000')
+  await page.getByLabel('CEP *').blur()
+  await expect(page.getByText('Não foi possível consultar este CEP. Confira o CEP ou digite o endereço.')).toBeVisible()
+  await page.getByLabel('Rua e número *').fill('Rua Manual, 20')
+  await page.getByLabel('Bairro *').fill('Bairro Manual')
+  await expect(page.getByLabel('Rua e número *')).toHaveValue('Rua Manual, 20')
+  await expect(page.getByLabel('Bairro *')).toHaveValue('Bairro Manual')
 })
 
 test('CA2 · CPF de outra ficha mostra o cadastro existente', async ({ page }) => {

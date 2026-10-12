@@ -54,7 +54,7 @@ describe('GGVP-136 · o kit de verdade na tela de preparar o contrato', () => {
     vi.mocked(contrato.gerarContrato).mockResolvedValueOnce({ resultado: 'faltam-na-ficha', faltam: ['Bairro', 'CEP'] })
     fireEvent.click(screen.getByRole('button', { name: 'Gerar contrato' }))
     const aviso = await screen.findByText('O kit não foi gerado. Falta na ficha: Bairro, CEP.')
-    expect(aviso.closest('[role="alert"]')?.querySelector('a')?.getAttribute('href')).toBe('/clientes/antonio-exemplo')
+    expect(aviso.closest('[role="alert"]')?.querySelector('a')?.getAttribute('href')).toBe('/clientes/antonio-exemplo/cadastro')
     expect(screen.getByRole('link', { name: 'Completar a ficha' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: /Contrato gerado/ })).toBeNull()
   })

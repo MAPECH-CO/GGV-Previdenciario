@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { criarCompromissoInterno } from '../dados/agenda.ts'
 import { EQUIPE } from '../dados/catalogos.ts'
-import { buscarNoBalcao } from '../dados/servidor.ts'
+import { buscarNoBalcao, servidorLigado } from '../dados/servidor.ts'
 import type { ResultadoBusca } from '../dados/tipos.ts'
 import { DURACOES } from '../regras/agenda.ts'
 import { erroDataDoCompromisso, soNumeroEMascara } from '../regras/formularios.ts'
@@ -15,6 +15,7 @@ const RESPONSAVEIS = EQUIPE.filter((m) => m.papel !== 'captador').map((m) => ({ 
 
 /** "+ Novo evento" (Figma 1941:2): a entrevista de um cliente vai para a tela de marcar (CA1); o interno nasce aqui (CA5). */
 export function NovoEvento({ hoje, aoCriado, aoFechar, navegar }: Props) {
+  const equipeDisponivel = !servidorLigado()
   const janela = useRef<HTMLDialogElement>(null)
   const [modo, setModo] = useState<'entrevista' | 'interno'>('entrevista')
   const [termo, setTermo] = useState('')
@@ -48,7 +49,7 @@ export function NovoEvento({ hoje, aoCriado, aoFechar, navegar }: Props) {
   }, [termo])
 
   async function salvar() {
-    if (travado.current) return
+    if (travado.current || !equipeDisponivel) return
     const novos = {
       titulo: titulo.trim().length >= 3 ? undefined : 'Escreva o título, com 3 letras ou mais.',
       data: erroDataDoCompromisso(data, hoje),
@@ -124,12 +125,13 @@ export function NovoEvento({ hoje, aoCriado, aoFechar, navegar }: Props) {
             <Campo id="evento-hora" rotulo="Hora *" valor={hora} aoMudar={setHora} erro={erros.hora} tipo="time" />
             <Campo id="evento-duracao" rotulo="Duração" valor={duracao} aoMudar={setDuracao} opcoes={DURACOES.map((d) => ({ id: String(d), nome: `${d} min` }))} />
           </div>
-          <Campo id="evento-responsavel" rotulo="Responsável" valor={responsavel} aoMudar={setResponsavel} opcoes={RESPONSAVEIS} />
+          <Campo id="evento-responsavel" rotulo="Responsável" valor={equipeDisponivel ? responsavel : ""} aoMudar={setResponsavel} opcoes={equipeDisponivel ? RESPONSAVEIS : []} />
+          {!equipeDisponivel && <p role="status">A lista da equipe ainda não está disponível no servidor. O compromisso interno ainda não pode ser marcado.</p>}
           <div className={styles.pe}>
             <button type="button" className={styles.cancelar} onClick={aoFechar}>
               Cancelar
             </button>
-            <button type="button" className={styles.salvar} disabled={salvando} onClick={salvar}>
+            <button type="button" className={styles.salvar} disabled={salvando || !equipeDisponivel} onClick={salvar}>
               {salvando ? 'salvando…' : 'Pôr na agenda'}
             </button>
           </div>

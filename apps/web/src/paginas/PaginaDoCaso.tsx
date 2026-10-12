@@ -4,6 +4,7 @@ import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { JusticaDoCaso } from '../componentes/JusticaDoCaso.tsx'
+import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -177,6 +178,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
           </button>
         </header>
         {doServidor(processoId) && <JusticaDoCaso key={processoId + c.fase + String(veJurimetria)} processoId={processoId} veJurimetria={veJurimetria} judicial={c.fase === 'judicial'} />}
+        {doServidor(processoId) && <ExplicacaoDoDesfecho key={`${processoId}-${c.desfecho}`} casoId={processoId} desfecho={c.desfecho ?? null} />}
 
         {/* As cinco etapas em sequência (CA1), com a perícia ligada à etapa que pediu (CA2). */}
         <nav className={base.acoes} aria-label="Etapas do processo">

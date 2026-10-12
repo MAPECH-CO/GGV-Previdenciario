@@ -1,3 +1,4 @@
+import { CATALOGO_BENEFICIOS } from '@ggv/contratos'
 // EXEMPLO. Catálogos únicos do portal: a ficha, a agenda, o cadastro e a sugestão de benefício usam estes.
 // Os nomes vêm do Figma e do Miro (D1). Ao ligar no servidor, trocar pelas listas que o escritório usa no Airtable.
 import type { CategoriaDaAgenda, Setor, TipoDeEntrevista } from './tipos.ts'
@@ -8,43 +9,7 @@ export type ItemCatalogo = { id: string; nome: string }
  * O catálogo de benefícios do cartão "Checklist de documentos obrigatórios do benefício" (GGVP-91): a coluna "Beneficio"
  * do Airtable do escritório, normalizada em 05/10, na mesma ordem. Primeiro os previdenciários, depois os cíveis.
  */
-export const BENEFICIOS: ItemCatalogo[] = [
-  { id: 'nao-sei', nome: 'Não sei ainda' },
-  { id: 'aposentadoria-especial', nome: 'Aposentadoria Especial' },
-  { id: 'aposentadoria-contribuicao', nome: 'Aposentadoria por Contribuição' },
-  { id: 'aposentadoria-idade', nome: 'Aposentadoria por Idade' },
-  { id: 'incapacidade-permanente', nome: 'Aposentadoria por Incapacidade Permanente' },
-  { id: 'incapacidade-permanente-acidentaria', nome: 'Aposentadoria por Incapacidade Permanente Acidentária' },
-  { id: 'aposentadoria-rural', nome: 'Aposentadoria Rural' },
-  { id: 'aposentadoria-pcd', nome: 'PCD Aposentadoria por Contribuição' },
-  { id: 'aposentadoria-pcd-idade', nome: 'PCD Aposentadoria por Idade' },
-  { id: 'auxilio-acidente', nome: 'Auxílio Acidentário' },
-  { id: 'incapacidade-temporaria', nome: 'Auxílio por Incapacidade Temporária' },
-  { id: 'salario-maternidade', nome: 'Salário-Maternidade' },
-  { id: 'loas-deficiente', nome: 'LOAS Deficiente' },
-  { id: 'loas-idoso', nome: 'LOAS Idoso' },
-  { id: 'pensao-morte', nome: 'Pensão por Morte' },
-  { id: 'restabelecimento', nome: 'Restabelecimento de Benefício' },
-  { id: 'revisao-aposentadoria', nome: 'Revisão de Aposentadoria' },
-  { id: 'revisao-vida-toda', nome: 'Revisão da Vida Toda' },
-  { id: 'ctc', nome: 'Emissão de Certidão de Tempo de Contribuição (CTC)' },
-  { id: 'atualizacao-vinculos', nome: 'Atualização de Vínculos e Contribuições' },
-  { id: 'planejamento', nome: 'Planejamento Previdenciário' },
-  { id: 'restituicao-contribuicoes', nome: 'Restituição de Contribuições' },
-  { id: 'isencao-ir', nome: 'Isenção e Restituição de Imposto de Renda' },
-  { id: 'curatela', nome: 'Curatela' },
-  { id: 'alvara', nome: 'Alvará Judicial' },
-  { id: 'divorcio', nome: 'Divórcio' },
-  { id: 'inventario', nome: 'Inventário' },
-  { id: 'guarda', nome: 'Processo de Guarda' },
-  { id: 'consignado', nome: 'Empréstimo Consignado' },
-  { id: 'revisao-consignado', nome: 'Revisão de Empréstimo Consignado' },
-  { id: 'emprestimo-indevido', nome: 'Empréstimo Indevido' },
-  { id: 'cartao-rmc', nome: 'Cartão RMC' },
-  { id: 'negativacao-indevida', nome: 'Negativação Indevida' },
-  { id: 'seguro-vida', nome: 'Seguro de Vida' },
-  { id: 'seguro-carro', nome: 'Seguro de Carro' },
-]
+export const BENEFICIOS: ItemCatalogo[] = [{ id: 'nao-sei', nome: 'Não sei ainda' }, ...CATALOGO_BENEFICIOS]
 
 /** Fontes de captação ("Como chegou"). */
 export const FONTES: ItemCatalogo[] = [
