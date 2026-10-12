@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { ComplementosDoProcesso } from '../componentes/ComplementosDoProcesso.tsx'
 import { JusticaDoCaso } from '../componentes/JusticaDoCaso.tsx'
 import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
@@ -417,6 +418,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               </section>
             )}
 
+            {doServidor(processoId) && <ComplementosDoProcesso key={`${processoId}-${perfil?.id}`} casoId={processoId} />}
+
             <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="dados">
               <h2 id="dados" className={base.cartaoTitulo}>
                 Dados do processo
@@ -445,7 +448,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                       doServidor(processoId) && veJurimetria ? <a href="#juizo-do-processo">{c.perito.nome}</a> : c.perito.nome
                     )
                   ) : (
-                    '—'
+                    doServidor(processoId) && juridico ? 'Consulte a identificação do perito acima.' : '—'
                   )}
                 </dd>
                 {c.valores.map((v) => (

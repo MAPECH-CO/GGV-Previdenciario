@@ -26,7 +26,8 @@ const etapas = () => within(screen.getByRole('navigation', { name: 'Etapas do pr
 describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
   it('CA1, CA2 · as cinco etapas, a atual em destaque e o "Em perícia" na etapa que pediu', async () => {
     render(comSessao(<PaginaDoCaso processoId="antonio-exemplo-1" />))
-    await screen.findByRole('heading', { name: 'Linha do processo · completa' })
+    // A primeira abertura também prepara a semente da perícia; no CI ela disputa CPU com a API.
+    await screen.findByRole('heading', { name: 'Linha do processo · completa' }, { timeout: 5000 })
     expect(etapas().map((e) => e.textContent?.replace(/\s+/g, ' '))).toEqual([
       '✓ Entrevista (feita)',
       '✓ INSS (feita)',

@@ -590,3 +590,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.busca { padding: 0 24px 12px; }
+@media (max-width: 640px) { .busca { padding: 0 12px 10px; } }
