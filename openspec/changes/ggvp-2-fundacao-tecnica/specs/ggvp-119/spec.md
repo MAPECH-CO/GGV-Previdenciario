@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Ambiente de homologação no Coolify, publicado a cada merge na `main`, e um banco de desenvolvimento por pessoa na VPS, para que o Lucas teste no mesmo dia e ninguém precise de Docker na máquina.
+Ambiente de homologação no Coolify, publicado a cada merge na `main`, e um ambiente de banco de desenvolvimento isolado por pessoa no Supabase, para que o Lucas teste no mesmo dia e ninguém precise de Docker na máquina.
 
 ## ADDED Requirements
 
@@ -23,12 +23,12 @@ A URL de homologação SHALL abrir o portal.
 - **Então** vê o portal no ar
 
 ### Requirement: CA3 · Um banco por pessoa, sem senha no repositório
-O Postgres do Coolify SHALL ter os bancos `prev_homolog`, `prev_pedro` e `prev_mateus`, cada um com usuário e senha próprios, e o `.env.example` MUST ter a URL de cada um sem a senha.
+O PostgreSQL no Supabase SHALL separar a homologação e o desenvolvimento de Pedro e Mateus, com acessos próprios. A documentação MUST indicar a configuração de conexão sem senha, token ou URL privada versionados. `prev_homolog`, `prev_pedro` e `prev_mateus` são identificadores dos ambientes; esta spec não afirma que o provisionamento foi conferido.
 
 #### Scenario: CA3 · Listar os bancos
-- **Dado** o Postgres do Coolify
-- **Quando** listo os bancos
-- **Então** existem `prev_homolog`, `prev_pedro` e `prev_mateus`, com usuário e senha próprios, e a URL de cada um está no `.env.example` sem a senha
+- **Dado** o PostgreSQL no Supabase
+- **Quando** a infraestrutura confere o isolamento dos ambientes
+- **Então** homologação, Pedro e Mateus têm acessos separados, sem credenciais ou endereços privados no repositório
 
 ### Requirement: CA4 · O portal local usa o banco do dev
 Com o `.env` apontando para o banco do dev, `pnpm dev` SHALL usar esse banco, sem Docker; `GET /saude` MUST dizer se o banco está ligado, ausente ou fora do ar.
