@@ -142,6 +142,11 @@ Nenhum valor vai para o repositório, o Jira ou o chat.
 | `DJEN_OABS` | As OABs que o DJEN procura, como `123456/SP`. |
 | `AASP_CHAVES` | As chaves da AASP. |
 | `VIGILIA_TRIBUNAIS` | Os tribunais da vigília. Padrão: TRF3 e TJSP. |
+| `ALARME_CANAL_URL` | O webhook do canal da equipe (Google Chat ou Slack) que recebe o alarme da vigília (ADR-018). Só `https`. Sem ela, o alarme fica no portal e no log. |
+| `ALARME_JIRA_URL` | O site do Jira onde o alarme abre chamado, como `https://<conta>.atlassian.net`. Só `https`. |
+| `ALARME_JIRA_EMAIL` | O e-mail do usuário de serviço que abre o chamado no Jira. |
+| `ALARME_JIRA_TOKEN` | O token de API desse usuário. Segredo: só no Coolify. |
+| `ALARME_JIRA_PROJETO` | A chave do projeto do chamado, como `GGVP`. Sem uma das quatro do Jira, não abre chamado. |
 | `PORTAL_URL` | Só para o comando `modelos:subir`: o endereço do portal. |
 | `SENIOR_EMAIL` | Só para o `modelos:subir`: o login da Sênior que sobe os modelos. |
 | `SENIOR_SENHA` | Só para o `modelos:subir`: a senha dela, digitada no terminal de quem roda. |

@@ -379,13 +379,17 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - Verifica com `fluxo/travas.test.ts` e `rotas/peticao.test.ts`.
 
   Verificado em 13/10: `rotas/peticao.test.ts` 32/32 (2 novos; os de antes cadastram a assinatura de teste) e `fluxo/travas.test.ts`.
-- [ ] 5.13 O alarme da vigília (P5.10, decisão 48): a rodada presa vira falha; sem fonte na produção, a linha da Sênior e o alarme do dia; `avisarSuporte`, com o canal e o Jira.
+- [x] 5.13 O alarme da vigília (P5.10, decisão 48): a rodada presa vira falha; sem fonte na produção, a linha da Sênior e o alarme do dia; `avisarSuporte`, com o canal e o Jira.
   - Verifica com teste, com o fetch de mentira:
     - a presa;
     - o sem fonte, uma vez por dia;
     - a falha de qualquer tipo chama o canal e o Jira uma vez, sem texto de publicação;
     - a falha do Jira não derruba a rodada.
-- [ ] 5.14 ADR-018 (P5.10): o alarme ao suporte pelo canal e pelo Jira, e o que cada variável liga. Verifica: o arquivo em `docs/decisoes/`.
+
+  Verificado em 13/10: `suporte.test.ts` 4/4, `vigilia/rodadas.test.ts` 10/10 (4 novos) e `rotas/vigilia-diario.test.ts`, 19/19. O teste antigo do "não rodou" passou a manter a fonte na segunda batida: sem fonte, agora é outro alarme.
+- [x] 5.14 ADR-018 (P5.10): o alarme ao suporte pelo canal e pelo Jira, e o que cada variável liga. Verifica: o arquivo em `docs/decisoes/`.
+
+  Feito em 13/10: `docs/decisoes/ADR-018-alarme-ao-suporte.md`, na lista do README.
 - [ ] 5.15 As variáveis (P5.10): as cinco `ALARME_*` na lista das variáveis do servidor e no documento da homologação.
   - Verifica com `variaveis.test.ts`.
   - O `.env.example` é do Mateus: a regra do repositório não deixa o agente ler nem editar `.env*`.
