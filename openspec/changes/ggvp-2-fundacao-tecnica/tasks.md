@@ -22,6 +22,15 @@
 - [x] 2.3 CA1, CA5 · `Dockerfile` e `.dockerignore` na raiz: monta a tela, roda as migrações antes de subir e tem verificação de saúde em `/saude`; verifica localmente com `pnpm --filter @ggv/web build` e a API servindo a tela em `localhost:3000`.
 - [ ] 2.4 CA3, CA6 · Documentar a conexão ao PostgreSQL no Supabase e o isolamento de homologação e dev por pessoa; exemplos sem credenciais ou URLs privadas. Verifica pela documentação e pelo gitleaks no CI; provisionamento é da infraestrutura.
 - [x] 2.5 CA1, CA3, CA5, CA6 · `docs/infra/homologacao.md`: banco no Supabase, app no Coolify (deploy a cada merge, segredos só lá), conexão de dev isolada no Supabase e só dados de exemplo em homologação; verifica lendo o arquivo.
+- [ ] 2.8 CA7 · Desligar o back-end, o front e as automações do portal antigo que gravam no "PrevGGVLucas" e trocar a senha do banco dele (Mateus, no Coolify, no n8n e no painel da Supabase); verifica pelo conector: nenhuma conexão de fora em `pg_stat_activity` e nenhuma escrita nova em 10 minutos.
+- [ ] 2.9 CA7 · Backup completo do "PrevGGVLucas" com `pg_dump -Fc` pelo Docker (`postgres:17`), num arquivo fora do repositório; verifica com `pg_restore --list` e o tamanho do arquivo.
+- [ ] 2.10 CA7 · Limpar o "PrevGGVLucas", só com o ok do Mateus na hora: apagar os schemas do portal antigo (`public`, `juridico`, `prev_2026_09`, `drizzle`, `technical`, `operational`) e recriar o `public` com as permissões padrão da Supabase; verifica listando os schemas e as tabelas.
+- [ ] 2.11 CA7 · Parar o app no Coolify e copiar `public` e `drizzle` do "Portal Operacional" para o "PrevGGVLucas" (`pg_dump`/`pg_restore`, `--no-owner --no-privileges`); verifica comparando a contagem de linhas tabela a tabela nos dois.
+- [ ] 2.12 CA7 · Criar o depósito `documentos` (privado, mesmos tipos aceitos) no "PrevGGVLucas" e copiar os 5 arquivos nos mesmos caminhos; verifica pela contagem e pelo tamanho dos objetos.
+- [ ] 2.13 CA7 · O Mateus troca `DATABASE_URL`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no Coolify e sobe o app; verifica `GET /saude` com `ligado`, o login de teste e a abertura de um documento.
+- [ ] 2.14 CA7 · Atualizar `docs/infra/homologacao.md`: projeto, região, a troca de 13/10 e como voltar; verifica lendo o arquivo.
+- [ ] 2.15 CA8 · Medir o tempo de resposta das rotas das telas principais na homologação e registrar em `docs/infra/homologacao.md`; a rota acima de 1 segundo vira tarefa nova por `/opsx:update`; verifica pela tabela registrada.
+- [ ] 2.16 CA7 · Depois de 2 dias sem problema e com o ok do Mateus: backup do "Portal Operacional" fora da Supabase e exclusão do projeto de Oregon; verifica pelo conector, sem o projeto na lista.
 - [ ] 2.6 CA1, CA2, CA3 · Conferir a implantação da homologação pela infraestrutura: banco no Supabase, projeto "Portal Operacional", e app no Coolify; segredos fora do repositório. Manter `docs/infra/homologacao.md` coerente e registrar a validação no ambiente autorizado. A atualização documental da GGVP-159 não executa esta tarefa nem autoriza apagar dados.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
