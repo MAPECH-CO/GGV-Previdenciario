@@ -22,7 +22,7 @@
 - [x] 1.3 Produção não sobe sem banco (P1.4): `abrirBanco` em `apps/api/src/banco/conexao.ts` recusa o banco embutido com `NODE_ENV=production` e diz que falta o `DATABASE_URL`.
 
   Teste novo em `apps/api/src/banco/conexao.test.ts`: em produção, sem URL, recusa sem abrir o PGlite; fora de produção, segue o embutido. Verifica com `pnpm --filter @ggv/api exec vitest run src/banco/conexao.test.ts`.
-- [ ] 1.4 Sem Chatwoot, "simulado, não saiu" (P1.1): em `apps/api/src/rotas/mensagens.ts`, sem as variáveis do Chatwoot, o envio grava `falhou` com o motivo "simulado, não saiu: o Chatwoot não está ligado neste ambiente". O comentário do topo diz isso. **Vai num PR à parte, para mesclar junto com o Chatwoot ligado na homologação (Mateus, 11/10).** A janela do Chatwoot para quando a mensagem não sai, e sem o Chatwoot o convite, a confirmação e a cobrança do roteiro travariam.
+- [x] 1.4 Sem Chatwoot, "simulado, não saiu" (P1.1): em `apps/api/src/rotas/mensagens.ts`, sem as variáveis do Chatwoot, o envio grava `falhou` com o motivo "simulado, não saiu: o Chatwoot não está ligado neste ambiente". O comentário do topo diz isso. **No PR à parte (branch `feat/GGVP-158-nao-saiu`), para mesclar junto com o Chatwoot ligado na homologação (Mateus, 11/10).** A janela do Chatwoot para quando a mensagem não sai, e sem o Chatwoot o convite, a confirmação e a cobrança do roteiro travariam.
 
   Testes:
   - `rotas/mensagens.test.ts`: o envio registrado, o complemento, o desfavorável e o "sem as variáveis" esperam "não saiu" com o motivo. O que precisa de entrega (não repetir na mesma conversa, a tentativa do complemento) passa para o Chatwoot de mentira da GGVP-146.
@@ -45,11 +45,12 @@
 
   Teste em `apps/api/src/banco/homologacao.test.ts`: a homologação preparada antes ganha os três, uma vez só, sem trocar senha. Verifica com `pnpm --filter @ggv/api exec vitest run src/banco/homologacao.test.ts`.
 - [x] 1.7 Doc dos dados de teste (P1.6): `docs/infra/homologacao-dados-de-teste.md` lista os exemplos novos e onde abrir cada um. Diz que rodar de novo acrescenta o que faltar e por que o contrato da Recepção, a leitura, o checklist, as boas-vindas, a cobrança e a perícia nascem no roteiro. Verifica lendo a seção "O que entra".
-- [ ] 1.8 Playwright da mensagem (P1.1), no mesmo PR à parte da 1.4:
-  - `apps/web/e2e/mensagens.e2e.ts` espera "não saiu" em "Últimos contatos" e o motivo "simulado, não saiu" no histórico;
-  - `apps/web/e2e/seguranca.e2e.ts` espera, na confirmação dos dados bancários, o aviso ao contato anterior que não saiu, com o motivo.
+- [x] 1.8 Os testes de tela com o "não saiu" (P1.1), no mesmo PR à parte da 1.4:
+  - O convite, a confirmação e a cobrança dos testes de tela precisam da entrega para seguir. Por isso o Playwright sobe a API com `RELACIONAMENTO_SIMULADO=entrega`, o Chatwoot de mentira que entrega, só lá (`apps/web/playwright.config.ts`). Os testes de tela seguem como estão.
+  - O "não saiu" fica provado nos testes da API (`mensagens.test.ts`, com o teste do modo `entrega`, e `seguranca.test.ts`). Na tela, `ConviteChatwoot.test.tsx` e `MensagemAoCliente.test.tsx` já provam que a janela mostra o motivo da mensagem que não saiu.
+  - `docs/infra/homologacao.md` diz o que acontece sem o Chatwoot e que o `entrega` é só dos testes.
 
-  Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm --filter @ggv/web exec playwright test mensagens seguranca --workers=1`.
+  Verifica com `PORTA_E2E_API=3141 PORTA_E2E_WEB=5186 pnpm --filter @ggv/web exec playwright test recepcao-servidor transcricao-ligacao mensagens seguranca --workers=1`.
 - [x] 1.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-158 · Parte 1 · Fora do código e os nomes do ZapSign (12/10)

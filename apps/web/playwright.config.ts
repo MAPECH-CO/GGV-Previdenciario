@@ -29,8 +29,10 @@ export default defineConfig({
       url: `http://127.0.0.1:${api}/saude`,
       // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC. GGVP-136: sem `ZAPSIGN_API_TOKEN` o
       // servidor trata o ZapSign como não contratado (só papel, sem a opção do celular); o ZapSign é simulado, e os testes dele
-      // precisam da opção. O valor é de mentira. Sem `GOTENBERG_URL`, o kit sai em Word.
-      env: { PORTA: api, TZ: 'America/Sao_Paulo', ZAPSIGN_API_TOKEN: 'valor-de-mentira-dos-testes' },
+      // precisam da opção. O valor é de mentira. Sem `GOTENBERG_URL`, o kit sai em Word. GGVP-158: sem o Chatwoot, a mensagem
+      // fica "simulado, não saiu"; aqui o Chatwoot de mentira entrega (`RELACIONAMENTO_SIMULADO=entrega`), para o convite, a
+      // confirmação e a cobrança seguirem nos testes. Só aqui: na homologação e na produção, nunca.
+      env: { PORTA: api, TZ: 'America/Sao_Paulo', ZAPSIGN_API_TOKEN: 'valor-de-mentira-dos-testes', RELACIONAMENTO_SIMULADO: 'entrega' },
       reuseExistingServer: false,
     },
     {

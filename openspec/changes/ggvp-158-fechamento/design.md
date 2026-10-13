@@ -29,6 +29,7 @@
 1. **"Simulado, não saiu" sem migração, num PR à parte** (Mateus, 11/10). Ele mescla junto com o Chatwoot ligado na homologação. A janela do Chatwoot (`ConviteChatwoot`) para quando a mensagem não sai, e sem o Chatwoot o convite, a confirmação e a cobrança do roteiro travariam.
    - Sem Chatwoot, o correio grava `falhou` com o motivo "simulado, não saiu: o Chatwoot não está ligado neste ambiente". O status `falhou` já existe na CHECK, então não precisa de migração.
    - O `RELACIONAMENTO_SIMULADO` continua dando o contato e a conversa à tela, para o fluxo andar; só a entrega deixa de ser fingida.
+   - Com `RELACIONAMENTO_SIMULADO=entrega`, o Chatwoot de mentira entrega. Só o Playwright usa (`playwright.config.ts`), porque o convite, a confirmação e a cobrança dos testes de tela precisam da entrega para seguir. Na homologação e na produção, nunca.
    - O aviso de mudança dos dados (`seguranca.ts`) usa o mesmo correio e já devolve o motivo quando a mensagem não sai.
    - Os testes que esperavam "entregue" no simulado passam a esperar "não saiu". O que depende de entrega de verdade (não repetir na mesma conversa, a tentativa do complemento) passa a ser provado com o Chatwoot de mentira dos testes da GGVP-146.
 2. **Versão no /saude** (contrato primeiro).
