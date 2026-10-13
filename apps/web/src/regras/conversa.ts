@@ -7,7 +7,7 @@ import { semAcento } from './busca.ts'
 import { DIAS_ENTRE_COBRANCAS } from './cobranca.ts'
 
 /** O canal da decisão "Canal da conversa" do Miro. WhatsApp e vídeo saem (Lucas, 06/10). */
-export type CanalDoRegistro = 'ligacao' | 'presencial'
+export type CanalDoRegistro = 'ligacao' | 'presencial' | 'whatsapp'
 /** "Com quem falou" (Figma 2144:2). */
 export type ComQuem = 'cliente' | 'familiar' | 'medico'
 /** Gravar agora, anexar a ligação já feita ou só escrever (GGVP-76, CA4 e CA9). */
@@ -23,10 +23,13 @@ export type Dito =
   | { onde: 'ficha'; campo: CampoDaFicha; valor: string; saude?: undefined }
   | { onde: 'processo'; campo: CampoDoProcesso; valor: string; saude?: true }
 
-export const CANAIS_DO_REGISTRO: Record<CanalDoRegistro, { rotulo: string; passo: string }> = {
+export const CANAIS_DO_REGISTRO = {
   ligacao: { rotulo: 'Ligação', passo: 'Telefone — subir a gravação da ligação' },
   presencial: { rotulo: 'Presencial', passo: 'Presencial — conversar e gravar' },
-}
+} as Record<CanalDoRegistro, { rotulo: string; passo: string }>
+// GGVP-158 P6.5: a conversa do WhatsApp volta, mas só pelo servidor, com a mensagem que chega pelo Chatwoot; ninguém a
+// escolhe ao registrar. Ela tem rótulo nas telas e fica fora da lista do formulário (não enumerável).
+Object.defineProperty(CANAIS_DO_REGISTRO, 'whatsapp', { value: { rotulo: 'WhatsApp', passo: 'WhatsApp — a mensagem que chegou pelo Chatwoot' }, enumerable: false })
 
 export const COM_QUEM: Record<ComQuem, string> = { cliente: 'Cliente', familiar: 'Familiar ou contato de apoio', medico: 'Médico ou clínica' }
 

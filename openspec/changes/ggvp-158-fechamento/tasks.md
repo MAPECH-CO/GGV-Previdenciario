@@ -527,21 +527,27 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - o fato novo segue.
 
   Verificado em 13/10: `regras/conversa-fala.test.ts` 6/6 (novo, com o texto grande em tempo linear) e `rotas/transcricao-conversa.test.ts` 8/8: o contato de apoio que não aparece na fala sai; o telefone que não foi dito também, e o id dos itens segue a lista que ficou.
-- [ ] 6.16 A Sênior confere (P6.6, decisão 63): a primeira conferência só com a pendência; as decisões só com `ficha.voltar_versao`; a tarefa `D5.04` da Sênior.
+- [x] 6.16 A Sênior confere (P6.6, decisão 63): a primeira conferência só com a pendência; as decisões só com `ficha.voltar_versao`; a tarefa `D5.04` da Sênior.
   - Verifica com `rotas/conversa.test.ts`:
     - a atendente que decide recebe 403;
     - a Sênior decide, e a tarefa fecha;
     - a conversa do WhatsApp, pelo Atendimento.
+
+  Verificado em 13/10: `rotas/conversa.test.ts` 12/12 e `rotas/transcricao-conversa.test.ts` 8/8. A atendente que decide recebe 403 (e a recusa fica no histórico, portão `conferencia_da_senior`); a Sênior decide os cinco itens, e a tarefa dela fecha. A conversa do WhatsApp, pelo Atendimento, fica no teste da tarefa 6.13.
 - [ ] 6.17 O Playwright da conversa com a Sênior conferindo (decisão 63). Verifica com o Playwright da conversa.
-- [ ] 6.18 A pendência vira tarefa (P6.7, decisão 64): a linha na conferência, fechada na cumprida, com o prazo novo; a Central da conversa lê as linhas.
+- [x] 6.18 A pendência vira tarefa (P6.7, decisão 64): a linha na conferência, fechada na cumprida, com o prazo novo; a Central da conversa lê as linhas.
   - Verifica com `rotas/conversa.test.ts`:
     - o lead sem caso;
     - cumprida e prazo novo;
     - a Central sem ler todas as conversas.
-- [ ] 6.19 A verificação na conversa (P6.8, decisão 65): a rota, a regra do canal e o uso na conferência.
+
+  Verificado em 13/10: `rotas/conversa.test.ts` (1 novo): a pendência do lead sem caso é tarefa da pessoa e aparece na Central da responsável, não na geral; o prazo novo e o "cumprida" mudam a linha. A Central da conversa lê as linhas da tarefa e, para o "Registrar conversa", só as conversas de quem está no login.
+- [x] 6.19 A verificação na conversa (P6.8, decisão 65): a rota, a regra do canal e o uso na conferência.
   - Verifica com `rotas/conversa.test.ts`:
     - a ligação com vídeo muda o telefone;
     - "no escritório" na ligação recusa;
     - sem verificação, recusa e fica no histórico.
+
+  Verificado em 13/10, no teste da conferência de `rotas/conversa.test.ts`: "no escritório" na ligação recusa, na rota e na conferência, e fica no histórico; com a chamada de vídeo registrada pela Ana, a Sênior muda o telefone em contrato novo, e a verificação fica na conversa.
 - [ ] 6.20 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
 - [ ] 6.21 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.

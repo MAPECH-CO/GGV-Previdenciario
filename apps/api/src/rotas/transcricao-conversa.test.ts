@@ -87,7 +87,7 @@ async function conversaAberta(apelido: string, canal: 'ligacao' | 'presencial', 
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['marcos', 'financeiro']] as const)
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['helena', 'senior'], ['marcos', 'financeiro']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -201,10 +201,11 @@ describe('GGVP-140 · a IA de verdade lê a conversa do Relacionamento', () => {
     const [chamada] = await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'analisar_conversa'))
     expect(chamada).toMatchObject({ situacao: 'ok', casoId: r.conversa.processoId, id: r.conversa.analise.daIa.chamadaId })
 
-    // G14: a ficha só muda na conferência de quem conversou, item por item.
+    // G14: a ficha só muda na conferência, item por item: quem conversou responde a pendência, e a Sênior decide (GGVP-158 P6.6).
     expect(r.ficha.endereco ?? '').toBe('')
     const decisoes = r.conversa.analise.mudancas.map((m: { id: string }) => ({ id: m.id, decisao: 'confirmada' }))
-    const conferida = await json('ana', `/api/conversas/${id}/conferencia`, { decisoes, pendencia: { surgiu: false } })
+    await json('ana', `/api/conversas/${id}/conferencia`, { decisoes: [], pendencia: { surgiu: false } })
+    const conferida = await json('helena', `/api/conversas/${id}/conferencia`, { decisoes })
     expect(conferida.ficha.endereco).toBe('Rua das Flores, 10')
     expect((await json('ana', `/api/conversas/${id}/transcricao`, {})).conversa.analise).toEqual(r.conversa.analise)
     expect(pedidos.conteudos).toHaveLength(1)
