@@ -131,6 +131,9 @@ A homologação demorava para carregar. Medição de 13/10:
 1. **Destino: "PrevGGVLucas"** (sa-east-1), decisão do Mateus em 13/10, para não abrir projeto novo.
    - Hoje ele guarda o portal antigo (1,5 GB; back-end e automações ainda gravam). Segundo o Mateus, ninguém usa.
    - Antes de limpar: o back-end, o front e as automações antigas são desligados, a senha do banco é trocada (o que sobrar ligado perde o acesso) e um backup completo vai para fora da Supabase.
+   - Levantamento de 13/10 (outra conversa, só leitura): o scanner do balcão chama o portal antigo uma vez, no fim, para cadastrar o cliente, e segue em frente se der erro; nenhum outro fluxo ligado do n8n usa o portal antigo; em 3 dias, uma visita à tela de login. O back-end antigo ainda lê a AASP a cada hora e o DJEN três vezes ao dia.
+   - Três coisas não têm volta e vêm antes: a `FIELD_ENCRYPTION_KEY` do app antigo no cofre (919 senhas gov.br cifradas em `cofre_segredos`, chave fora do banco), os 21 GB de `acervo` copiados (fora do banco, servidor sem backup) e o ok do Lucas sobre as publicações. O app antigo é parado, não apagado.
+   - Os 4 passos do portal saem do fluxo do scanner a partir da versão no ar, não do rascunho de 08/10, que troca o Mistral pelo Claude sem teste.
 2. **Só `public` e `drizzle`.** O portal não usa outro schema; o `juridico` e os `zz_backup_*` de Oregon são sobras do portal antigo e ficam fora da cópia.
 3. **Cópia com `pg_dump` e `pg_restore`** pelo Docker (`postgres:17`), sem dono e sem permissões antigas (`--no-owner --no-privileges`). As extensões `vector` e `pg_trgm` já existem no destino.
 4. **Senha só no terminal do Mateus:** as URLs de origem e destino entram em variáveis da sessão do terminal, nunca em arquivo, no repositório ou no chat. O backup fica fora do repositório.
