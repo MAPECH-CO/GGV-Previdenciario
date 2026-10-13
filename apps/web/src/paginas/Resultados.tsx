@@ -101,6 +101,8 @@ export function Resultados({ topo }: { topo?: ReactNode }) {
   const ids = { de: useId(), ate: useId(), recorte: useId() }
   // GGVP-156 CA3: os recortes por perito, juízo, vara e tese são jurimetria: só o Jurídico e o Sócio. O servidor recusa também.
   const veJurimetria = usePode('estudo.ver')
+  // Mateus (13/10): a taxa de êxito de cada advogada, só os sócios.
+  const vePorAdvogada = usePode('resultados.ver_por_advogada')
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
   const [recorte, setRecorte] = useState('')
@@ -166,7 +168,7 @@ export function Resultados({ topo }: { topo?: ReactNode }) {
           </label>
           <select id={ids.recorte} className={styles.campo} value={recorte} onChange={(e) => setRecorte(e.target.value)}>
             <option value="">Escritório inteiro</option>
-            {RECORTES.filter((x) => veJurimetria || !RECORTES_DA_JURIMETRIA.includes(x)).map((x) => (
+            {RECORTES.filter((x) => (veJurimetria || !RECORTES_DA_JURIMETRIA.includes(x)) && (vePorAdvogada || x !== 'advogada')).map((x) => (
               <option key={x} value={x}>
                 {ROTULO_RECORTE[x]}
               </option>

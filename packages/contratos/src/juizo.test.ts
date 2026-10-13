@@ -15,7 +15,8 @@ describe('jurimetria do juízo (GGVP-64)', () => {
   }
 
   it('CA4 · cada taxa vem com os processos e a data da base; o tempo até a sentença pode faltar', () => {
-    expect(JurimetriaDoJuizo.parse(exemplo)).toEqual(exemplo)
+    // GGVP-158 P5.14: o juiz e o perito com os casos, nulos quando não vêm.
+    expect(JurimetriaDoJuizo.parse(exemplo)).toEqual({ ...exemplo, casosDoJuiz: null, perito: null })
     expect(JurimetriaDoJuizo.parse({ ...exemplo, tempoAteASentenca: { meses: 14, processos: 3 } }).tempoAteASentenca).toEqual({ meses: 14, processos: 3 })
   })
 
@@ -37,7 +38,7 @@ describe('jurimetria do juízo (GGVP-64)', () => {
     const lida = LeituraDaPublicacaoPelaIa.parse({ classe: 'merito', dias: null, resumo: 'Sentença.', vara: '  ', juiz: 'x'.repeat(130) })
     expect([lida.vara, lida.juiz?.length]).toEqual([null, 120])
     expect(LeituraDaPublicacaoPelaIa.parse({ classe: 'andamento', dias: null, resumo: 'Conclusos.' })).toMatchObject({ vara: null, juiz: null })
-    expect(ClassificarPublicacao.parse({ classe: 'andamento', vara: ' 1ª Vara ', juiz: '' })).toEqual({ classe: 'andamento', dias: null, vara: '1ª Vara', juiz: null })
+    expect(ClassificarPublicacao.parse({ classe: 'andamento', vara: ' 1ª Vara ', juiz: '' })).toEqual({ classe: 'andamento', dias: null, vara: '1ª Vara', juiz: null, perito: null })
     const longa = ClassificarPublicacao.safeParse({ classe: 'andamento', vara: 'x'.repeat(121) })
     expect(longa.success ? '' : longa.error.issues[0].message).toBe('A vara tem até 120 caracteres')
   })

@@ -226,7 +226,7 @@ export function criarServidor({
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
-    registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos, ia: motorIa })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
@@ -241,7 +241,7 @@ export function criarServidor({
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecurso(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
     const leitor = criarLeitor({ ia: motorIa, simulada: leituraSimulada, agora })

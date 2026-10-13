@@ -25,8 +25,9 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
 // 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
-// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10). Quem entrar depois renumera.
-export const VERSAO_MATRIZ = 30
+// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10). Quem entrar depois
+// renumera.
+export const VERSAO_MATRIZ = 31
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -152,6 +153,8 @@ export const MATRIZ = {
   'dados_bancarios.ver': ['atendimento', 'atendimento_lider', 'advogada', 'senior', 'financeiro', 'socio'],
   // O painel de resultados (GGVP-75): a gestão e o Financeiro, que no Figma vê só ele.
   'resultados.ver': ['socio', 'senior', 'atendimento_lider', 'financeiro'],
+  // Versão 31 (Mateus, 13/10): a taxa de êxito de cada advogada (o recorte por advogada do painel) só os sócios veem.
+  'resultados.ver_por_advogada': ['socio'],
   // Versão 23 (GGVP-100, Lucas 07/10): depois da sentença improcedente, quem confirma se recorre é a Sênior. A advogada
   // responsável e o Sócio só leem.
   'recurso.ver': ['advogada', 'senior', 'socio'],

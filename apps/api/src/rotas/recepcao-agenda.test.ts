@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { usuario } from '../banco/esquema.ts'
+import { configuracao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -127,6 +127,20 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
     // A sênior consegue falar com o lead: a tarefa dela sai.
     await json('helena', 'POST', url, { resultado: 'confirmou', canal: 'ligacao', jaPreencheuFicha: true })
     expect(await tarefasAbertas()).toEqual(['Preparar entrevista · Jurídico'])
+  })
+
+  it('GGVP-158 P5.3 · a confirmação usa os limites da Configuração: com 3 tentativas a cada 2 dias, a segunda não sobe', async () => {
+    await banco.insert(configuracao).values([
+      { chave: 'confirmacao.limite', valor: 3 },
+      { chave: 'confirmacao.intervalo_dias', valor: 2 },
+    ])
+    const joana = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(joana, { data: '2026-10-20' })
+    const url = `/api/agendamentos/${agendamento.id}/confirmacao`
+    expect(await json('ana', 'POST', url, { resultado: 'sem-resposta', canal: 'mensagem' })).toMatchObject({ tentativa: 1, proximaEm: '2026-10-10', naSenior: false })
+    relogio = new Date('2026-10-10T15:00:00Z')
+    expect(await json('ana', 'POST', url, { resultado: 'sem-resposta', canal: 'ligacao' })).toMatchObject({ tentativa: 2, proximaEm: '2026-10-12', naSenior: false })
+    expect(await tarefasAbertas()).not.toContain('Confirmar agendamento · Jurídico')
   })
 
   it('no dia: o balcão encaminha, "realizado" abre o "Cadastrar lead"; compromisso interno ocupa a agenda', async () => {

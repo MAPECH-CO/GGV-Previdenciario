@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, configuracao, credencialGovbr, decisao, documento, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, configuracao, credencialGovbr, decisao, documento, eventoAuditoria, identificadorCaso, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { criarIa } from '../ia/ia.ts'
@@ -254,13 +254,14 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
     // A Documentação vê o resultado, o laudo na pasta e o perito; a leitura do laudo, os laudos do perfil e o assunto deles
-    // (conteúdo médico), não. GGVP-156 CA2: os números do perito (a jurimetria) também não, só o Jurídico e o Sócio.
+    // (conteúdo médico), não. GGVP-156 CA2 e GGVP-158 P5.13: os números do perito e o resumo do perfil também não.
     const acessos = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
     for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
       expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
       expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
       expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto, daDora.perfil.porBeneficio]).toEqual(['Dr. R. Menezes', 0, [], [], []])
       expect(daDora.perfil.jurimetria).toEqual({ laudos: 0, favoraveis: 0, taxa: 0, diasAteOLaudo: 0 })
+      expect([daDora.perfil.observou, daDora.perfil.perguntou, daDora.perfil.pediu]).toEqual([[], [], []])
     }
     expect(await acessos()).toEqual([])
     // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.
@@ -271,6 +272,29 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect([doJuridico.perfil.versao, doJuridico.perfil.jurimetria.laudos]).toEqual([1, 1])
     expect(await acessos()).toEqual([[ids.gabi, casoId, `pericia:${linha.id}`]])
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
+  })
+
+  it('GGVP-158 P5.2 · a pergunta de um clique com o nome novo cria o perito social, e o laudo entra no perfil dele', async () => {
+    await banco.insert(decisao).values({ casoId, passo: 'D2.01', tipo: 'aprovacao_inss', resultado: 'aprovado', decididoPor: ids.helena, perfil: 'senior' })
+    const decidir = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/pericia`, cookies: await de('gabi'), payload: { precisa: true, tipos: ['social'] } })
+    expect(decidir.statusCode).toBe(201)
+    await post('igor', '/liberacao')
+    const marcada = await app.inject({ method: 'POST', url: url('/marcacao'), cookies: await de('igor'), ...multipart('comprovante', { lido: { ...lido, tipo: 'social' }, pedeDocumentoNovo: false }, PDF('comprovante.pdf')) })
+    expect(marcada.statusCode).toBe(200)
+    expect((await post('igor', '/perito', {})).statusCode).toBe(400)
+    const r = await post('igor', '/perito', { nome: 'Dra. Marta Assis' })
+    const [marta] = await banco.select().from(perito)
+    expect([r.statusCode, marta.nome, (marta.perfil as { tipo: string }).tipo, r.json().pericia.peritoId]).toEqual([200, 'Marta Assis', 'social', marta.id])
+    relogio = new Date('2026-10-22T15:00:00Z')
+    for (const k of Object.keys(cookies)) delete cookies[k]
+    await post('igor', '/comparecimento', { compareceu: true })
+    await post('gabi', '/resultado/disponivel')
+    const conferidas = ['laudo', 'parecer', 'dii', 'beneficio']
+    const resultado = await app.inject({ method: 'POST', url: url('/resultado'), cookies: await de('gabi'), ...multipart('laudo', { favoravel: true, conferidas }, PDF('laudo.pdf')) })
+    expect([resultado.statusCode, resultado.json().pericia.resultado.noPerfil]).toEqual([200, 'atualizado'])
+    const [depois] = await banco.select({ perfil: perito.perfil }).from(perito).where(eq(perito.id, marta.id))
+    expect((depois.perfil as { tipo: string; laudos: unknown[] }).laudos).toHaveLength(1)
+    expect((await banco.select().from(perito)).length).toBe(1)
   })
 
   it('GGVP-53 CA9 · G15: passou do limite de remarcações, só a advogada responsável autoriza mais uma', async () => {
@@ -286,6 +310,76 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect((await post('gabi', '/autorizacao', { justificativa: 'curta' })).statusCode).toBe(400)
     const r = await post('gabi', '/autorizacao', { justificativa: 'O cliente estava internado nas duas datas.' })
     expect(r.json().situacao).toBe('marcar')
+  })
+
+  it('GGVP-158 P5.3 · a remarcação segue o limite da Configuração: 1 por padrão (Lucas); com 2 salvo, a segunda não sobe', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    const remarcar = async () => {
+      await marcar(false)
+      return (await post('igor', '/remarcacao', { motivo: 'O cliente pediu outra data' })).json()
+    }
+    expect((await remarcar()).situacao).toBe('marcar')
+    const segunda = await remarcar()
+    expect([segunda.situacao, segunda.pericia.historico.at(-1).oQue]).toEqual([
+      'na-advogada',
+      'Passou do limite de 1 remarcação: a perícia subiu para a advogada responsável (G15)',
+    ])
+    // Com 2 na Configuração, a mesma perícia volta a marcar (são 2 remarcações, dentro do limite).
+    await banco.insert(configuracao).values({ chave: 'pericia.remarcacao.limite', valor: 2 })
+    expect((await ver('igor')).json().situacao).toBe('marcar')
+  })
+})
+
+describe('GGVP-158 P5.1 · o que vai pelo Chatwoot só registra com a mensagem que saiu', () => {
+  /** A mensagem como o correio do cliente grava (rotas/mensagens.ts), da pessoa do caso. */
+  async function enviada(modelo: string, conteudo: string, status = 'entregue') {
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    const [m] = await banco.insert(mensagem).values({ pessoaId: c.pessoaId, casoId, canal: 'whatsapp', modelo, conteudo, status, enviadaPor: ids.igor, enviadaEm: relogio }).returning()
+    return m.id
+  }
+  async function pronta() {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    await marcar(false)
+    return (await ver('igor')).json().pericia.orientacao.texto as string
+  }
+
+  it('a orientação: sem envio, ou com o que não saiu, recusa e nada registra; com a entregue, registra com ela', async () => {
+    const texto = await pronta()
+    const orientar = (mensagemId?: string) => post('igor', '/orientacao', { texto, canal: 'chatwoot', revisei: true, ...(mensagemId && { mensagemId }) })
+    const sem = await orientar()
+    expect([sem.statusCode, sem.json().erro]).toEqual([409, 'Envie a orientação pelo Chatwoot antes de registrar.'])
+    await enviada('pericia-orientacao', texto, 'falhou')
+    const naoSaiu = await orientar()
+    expect([naoSaiu.statusCode, naoSaiu.json().erro]).toEqual([409, 'A orientação não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.'])
+    // Outro texto, ou o id de outra mensagem, não vale como a orientação.
+    const outra = await enviada('pericia-orientacao', 'Outro texto.')
+    expect([(await orientar(outra)).statusCode, (await ver('igor')).json().pericia.preparacao]).toEqual([409, undefined])
+    expect(await acoes()).not.toContain('pericia_orientacao_enviada')
+    const id = await enviada('pericia-orientacao', texto)
+    const ok = await orientar()
+    expect([ok.statusCode, ok.json().pericia.preparacao.canal, ok.json().pericia.preparacao.mensagemId]).toEqual([200, 'chatwoot', id])
+    const [e] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_orientacao_enviada'))
+    expect(e.detalhe).toMatchObject({ canal: 'chatwoot', mensagem: id })
+  })
+
+  it('a orientação por ligação segue sem mensagem', async () => {
+    const texto = await pronta()
+    const r = await post('igor', '/orientacao', { texto, canal: 'ligacao', revisei: true })
+    expect([r.statusCode, r.json().pericia.preparacao.canal, r.json().pericia.preparacao.mensagemId]).toEqual([200, 'ligacao', undefined])
+  })
+
+  it('o lembrete da véspera e a cobrança da perícia: só com a mensagem que saiu', async () => {
+    await pronta()
+    const texto = 'Olá, Maria! Sua perícia é amanhã, 22/10, às 08:30. Leve RG e os laudos originais.'
+    const sem = await post('igor', '/lembrete', { mensagem: texto })
+    expect([sem.statusCode, sem.json().erro]).toEqual([409, 'Envie o lembrete pelo Chatwoot antes de registrar.'])
+    await enviada('pericia-presenca', texto)
+    const ok = await post('igor', '/lembrete', { mensagem: texto })
+    expect([ok.statusCode, ok.json().pericia.lembrete.mensagem]).toEqual([200, texto])
+    const cobranca = await post('dora', '/cobranca', { mensagem: 'Faltam os exames.' })
+    expect([cobranca.statusCode, cobranca.json().erro]).toEqual([409, 'Envie a cobrança pelo Chatwoot antes de registrar.'])
   })
 })
 
@@ -571,6 +665,27 @@ describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, a
       ['medica', '2026-10-15T13:00:00.000Z'],
       ['social', null],
     ])
+  })
+
+  it('GGVP-158 P5.5 · a data do juiz entra na hora em que a exigência abre a perícia; o resumo do processo diz que o sistema marcou', async () => {
+    await pedirPeloJuiz('Designo perícia médica para o dia 22/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro.', ['medica'])
+    // Sem ninguém abrir a tela da perícia: a linha já está na agenda.
+    const [linha] = await banco.select().from(pericia)
+    expect([linha.agendadaPara?.toISOString(), linha.local]).toEqual(['2026-10-22T13:30:00.000Z', 'sala de perícias da Vara Federal de Santo Amaro'])
+    const resumo = async () => (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/processo`, cookies: await de('ana') })).json().pericia
+    expect(await resumo()).toMatchObject({ situacao: 'agendada', marcada: { data: '2026-10-22', hora: '10:30' }, marcadaPeloSistema: true })
+    // Aberta a perícia, a orientação diz que a data veio da publicação, pelo sistema, e o resumo segue igual.
+    const tarefas = (await app.inject({ method: 'GET', url: '/api/pericias/tarefas', cookies: await de('igor') })).json()
+    expect(tarefas.map((t: { acao: string; detalhe: string }) => [t.acao, t.detalhe.includes('(data lida da publicação pelo sistema)')])).toEqual([['Orientar para a perícia', true]])
+    expect((await resumo()).marcadaPeloSistema).toBe(true)
+  })
+
+  it('GGVP-158 P5.5 · sem data na publicação, nada é marcado e o resumo não diz que o sistema marcou', async () => {
+    await pedirPeloJuiz('Defiro a prova pericial. Determino perícia médica, em data a ser designada pelo perito.', ['medica'])
+    const [linha] = await banco.select().from(pericia)
+    expect(linha.agendadaPara).toBeNull()
+    const resumo = (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/processo`, cookies: await de('ana') })).json().pericia
+    expect([resumo.marcada, resumo.marcadaPeloSistema]).toEqual([null, false])
   })
 
   it('GGVP-137 · sem data lida, o Jurídico administrativo registra a data do juízo: vai à agenda e a tarefa de marcar fecha', async () => {

@@ -280,7 +280,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
       }
       // CA8: a perícia pedida pelo juiz abre sozinha a tarefa do Jurídico administrativo, com a origem D3a.
       if (d.tiposPericia.length) {
-        const marcar = await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ)
+        const marcar = await abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora(), ORIGEM_JUIZ, e.publicacao.texto)
         // GGVP-137: com a data de cada perícia pedida na publicação, o sistema já as pôs na agenda (DP.04): não há o que
         // marcar, e a tarefa de marcar desta exigência fecha pelo sistema. Faltando a data de uma, fica aberta: o Jurídico
         // administrativo registra a data do juízo na tela de marcar.

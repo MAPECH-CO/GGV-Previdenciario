@@ -66,6 +66,19 @@ describe('Cobrança dos documentos pendentes (GGVP-101)', () => {
     expect(ateQuando(HOJE)).toBe('2026-10-08')
   })
 
+  it('GGVP-158 P5.3 · os limites da Configuração: 3 tentativas a cada 5 dias; o prazo de fora continua mandando', () => {
+    const l = { tentativas: 3, diasEntre: 5 }
+    const duas = cobranca({ tentativas: [tentativa('2026-09-28'), tentativa(HOJE)] })
+    expect([naSenior(duas, HOJE, l), naSenior(duas, HOJE)]).toEqual([false, true])
+    expect(proximaTentativa(duas, l)).toBe('2026-10-10')
+    expect(motivoParaNaoCobrar(duas, HOJE, l)).toBe('A próxima tentativa é em 10/10, 5 dias depois da última.')
+    expect(motivoParaNaoCobrar(cobranca({ tentativas: [tentativa('2026-09-20'), tentativa('2026-09-28'), tentativa(HOJE)] }), HOJE, l)).toBe(
+      'Passou do limite de 3 tentativas: a sênior decide (G15).',
+    )
+    expect(proximaTentativa(cobranca({ tentativas: [tentativa(HOJE)], prazo: { de: 'juiz', data: '2026-10-07' } }), l)).toBe('2026-10-06')
+    expect([ateQuando(HOJE, undefined, l), ateQuando(HOJE, { de: 'INSS', data: '2026-10-07' }, l)]).toEqual(['2026-10-10', '2026-10-06'])
+  })
+
   it('CA10 · adiar pede a nova data, depois de hoje e antes do prazo; o contador não volta', () => {
     expect(motivoParaNaoAdiar(null, HOJE)).toBe('Informe a nova data (dd/mm/aaaa).')
     expect(motivoParaNaoAdiar(HOJE, HOJE)).toBe('A nova data tem de ser depois de hoje.')

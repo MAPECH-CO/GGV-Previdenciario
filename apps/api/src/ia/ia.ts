@@ -56,12 +56,12 @@ export const FINALIDADES = {
   },
   /** GGVP-59: a nomeação de perito virou classe (versão 3). GGVP-64 parte 2: a vara e o juiz escritos (versão 4). */
   classificar_publicacao: {
-    versao: 4,
+    versao: 5,
     saude: false,
     json: true,
     barrarCid: true,
     instrucao:
-      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples", "vara": "a vara ou o juizado, como está escrito na publicação, ou null", "juiz": "o nome do juiz ou da juíza que assina, como está escrito, ou null"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito. Não invente vara nem juiz: sem estar escrito, null.',
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples", "vara": "a vara ou o juizado, como está escrito na publicação, ou null", "juiz": "o nome do juiz ou da juíza que assina, como está escrito, ou null", "perito": "na nomeação de perito, o nome do perito ou da perita nomeado, sem o título (Dr., Dra.), como está escrito; fora dela, null"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito. Não invente vara, juiz nem perito: sem estar escrito, null.',
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {

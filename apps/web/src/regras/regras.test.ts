@@ -520,6 +520,12 @@ describe('confirmação da entrevista do lead (GGVP-21)', () => {
     expect(depoisDaTentativa(2, HOJE)).toEqual({ naSenior: true })
   })
 
+  it('GGVP-158 P5.3 · com os limites da Configuração (3 tentativas, 2 dias), a segunda sem resposta ainda não sobe', () => {
+    const l = { tentativas: 3, diasEntre: 2 }
+    expect(depoisDaTentativa(2, HOJE, l)).toEqual({ naSenior: false, proximaEm: '2026-10-07' })
+    expect(depoisDaTentativa(3, HOJE, l)).toEqual({ naSenior: true })
+  })
+
   it('CA8 · no LOAS, a mensagem traz o que levar e os quatro documentos que mais travam', () => {
     expect(
       mensagemDaConfirmacao({ nome: 'Josefa Exemplo', tipo: 'presencial', data: HOJE, hora: '15:30', beneficio: 'loas-idoso', fichaPreenchida: false }),

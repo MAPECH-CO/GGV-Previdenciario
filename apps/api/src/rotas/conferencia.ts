@@ -343,6 +343,12 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
         .update(tarefa)
         .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
         .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D1.24', 'D1.ajuste']), isNull(tarefa.concluidaEm)))
+      // GGVP-158 P5.7: liberar de novo zera o OK anterior; o que ele abriu e ainda não andou (protocolar e decidir a
+      // perícia) sai da fila e volta com o OK novo.
+      await tx
+        .update(tarefa)
+        .set({ situacao: 'cancelada', concluidaEm: agora(), concluidaPor: quem })
+        .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D2.02', 'D2.03']), isNull(tarefa.concluidaEm)))
     })
     await historico(quem, 'caso_liberado_ao_juridico', pedido, `caso:${casoId}`, { depoisDoAjuste: Boolean(dados.ajuste) })
     return resposta.code(201).send({ ok: true })

@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 30, digital: '6ce3a1f' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 31, digital: 'bee5f34f' })
   })
 
   it('GGVP-158 · todo perfil usa o chat e vê as próprias tarefas; o Sócio não é responsável de pendência', () => {
@@ -208,7 +208,7 @@ describe('matriz de permissões (GGVP-96)', () => {
       senior: 58,
       juridico_adm: 20,
       financeiro: 10,
-      socio: 20,
+      socio: 21,
     })
   })
 })

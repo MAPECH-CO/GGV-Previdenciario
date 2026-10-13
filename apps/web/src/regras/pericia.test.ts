@@ -117,6 +117,12 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
     expect(situacaoDaPericia({ liberadaEm: 'x', remarcacoes: 3 })).toBe('na-advogada')
   })
 
+  it('GGVP-158 P5.3 · o limite da Configuração, posto na perícia, vale no lugar do padrão', () => {
+    expect(passouDoLimite({ remarcacoes: 2, limiteDeRemarcacoes: 3 })).toBe(false)
+    expect(passouDoLimite({ remarcacoes: 1, limiteDeRemarcacoes: 0 })).toBe(true)
+    expect(situacaoDaPericia({ liberadaEm: 'x', remarcacoes: 2, limiteDeRemarcacoes: 3 })).toBe('marcar')
+  })
+
   it('CA7 · o lembrete da véspera traz data, hora, local e o que levar; na social, a visita em casa', () => {
     const medica = mensagemDoLembrete({ nome: 'Maria Exemplo', tipo: 'medica', data: '2026-10-21', hora: '08:30', local: 'Agência INSS (exemplo)' }, 'quarta, 21/10')
     expect(medica).toBe(

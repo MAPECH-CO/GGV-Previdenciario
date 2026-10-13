@@ -212,8 +212,8 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     comIa(JSON.stringify({ classe: 'nomeacao_perito', dias: null, resumo: 'O juiz nomeia o perito e abre prazo para quesitos.' }))
     const r = (await chamar('gabi', 'POST', `/api/publicacoes/${p.id}/sugestao`)).json()
     const [chamada] = await banco.select().from(chamadaIa)
-    // Versão 4 desde a GGVP-64 parte 2 (a vara e o juiz); a nomeação entrou na 3.
-    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 4])
+    // Versão 5 desde a GGVP-158 parte 5 (o perito); a vara e o juiz entraram na 4, a nomeação na 3.
+    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 5])
     const [depois] = await banco.select().from(publicacao)
     expect([depois.classe, depois.classeSugeridaIa]).toEqual([null, 'nomeacao_perito'])
   })
@@ -268,6 +268,46 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     expect(await filaDa('gabi')).toEqual([['Quesitos e assistente técnico', '2026-10-20']])
     const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
     expect([detalhe.perito, detalhe.reconhecido]).toEqual([null, false])
+  })
+
+  it('GGVP-158 P5.2 (IA) · a IA lê o perito escrito na nomeação; a pessoa confere', async () => {
+    const p = await nomeacao('Nomeio perita a Dra. Lúcia Prado. Quesitos em 10 dias.')
+    comIa(JSON.stringify({ classe: 'nomeacao_perito', dias: 10, resumo: 'O juiz nomeia a perita.', perito: 'Lúcia Prado' }))
+    const r = (await chamar('gabi', 'POST', `/api/publicacoes/${p.id}/sugestao`)).json()
+    expect(r.sugestao.perito).toBe('Lúcia Prado')
+    expect(await banco.select().from(perito)).toEqual([])
+  })
+
+  it('GGVP-158 P5.2 · o perito conferido que a base não tem nasce, do tipo da perícia aberta, e fica ligado a ela', async () => {
+    await banco.update(caso).set({ vara: '1ª Vara-Gabinete do JEF de São Paulo' }).where(eq(caso.id, casoId))
+    const [social] = await banco.insert(pericia).values({ casoId, tipo: 'social' }).returning()
+    const p = await nomeacao('Nomeio perita a Dra. Lúcia Prado. Quesitos em 10 dias.')
+    expect((await classificar(p.id, { classe: 'nomeacao_perito', dias: '10', perito: 'Dra. Lúcia Prado' })).statusCode).toBe(201)
+    const [nova] = await banco.select().from(perito)
+    expect([nova.nome, nova.nomeNormalizado, nova.perfil]).toEqual(['Lúcia Prado', 'lucia prado', { tipo: 'social', onde: '1ª Vara-Gabinete do JEF de São Paulo', laudos: [] }])
+    expect((await banco.select().from(pericia).where(eq(pericia.id, social.id)))[0].peritoId).toBe(nova.id)
+    const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
+    expect([detalhe.perito, detalhe.reconhecido, detalhe.pericia]).toEqual([{ id: nova.id, nome: 'Lúcia Prado', novo: true }, true, social.id])
+    // A lista de peritos já traz a nova (sem lista inicial: a base cresce pela nomeação, Lucas 07/10).
+    const lista = (await chamar('gabi', 'GET', '/api/peritos')).json()
+    expect(lista.map((x: { nome: string }) => x.nome)).toEqual(['Lúcia Prado'])
+  })
+
+  it('GGVP-158 P5.2 · a grafia conhecida não cria outro perito; sem perícia aberta, o novo nasce médico', async () => {
+    const [menezes] = await banco.insert(perito).values({ nome: 'Dr. José da Silva', nomeNormalizado: 'jose da silva', grafias: ['Jose Silva'] }).returning()
+    const p = await nomeacao('Nomeio perito o Dr. Jose Silva.')
+    await classificar(p.id, { classe: 'nomeacao_perito', semPrazoNaDecisao: true, perito: 'Jose Silva' })
+    expect((await banco.select().from(perito)).map((x) => x.id)).toEqual([menezes.id])
+    const outra = await nomeacao('Nomeio perito o Dr. Caio Lima.')
+    await classificar(outra.id, { classe: 'nomeacao_perito', semPrazoNaDecisao: true, perito: 'Caio Lima' })
+    const caio = (await banco.select().from(perito)).find((x) => x.nome === 'Caio Lima')!
+    expect((caio.perfil as { tipo: string }).tipo).toBe('medica')
+  })
+
+  it('GGVP-158 P5.2 · o nome do perito com número ou sinal é recusado pela campos', async () => {
+    const p = await nomeacao('Nomeio perito o Dr. R. Menezes.')
+    const r = await classificar(p.id, { classe: 'nomeacao_perito', semPrazoNaDecisao: true, perito: 'Perito 123' })
+    expect([r.statusCode, r.json().erro]).toEqual([400, 'Escreva o nome do perito só com letras'])
   })
 
   const varaEJuiz = async () => (await banco.select({ vara: caso.vara, juiz: caso.juiz }).from(caso).where(eq(caso.id, casoId)))[0]

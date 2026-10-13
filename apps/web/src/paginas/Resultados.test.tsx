@@ -148,12 +148,26 @@ describe('Resultados do escritório (GGVP-75)', () => {
     await waitFor(() => expect(String(chamada.mock.calls.at(-1)?.[0])).toMatch(/recorte=tese$/))
   })
 
-  it('GGVP-156 CA3 · a líder do Atendimento não vê os recortes da jurimetria; benefício e advogada continuam', async () => {
+  it('GGVP-156 CA3 · a líder do Atendimento não vê os recortes da jurimetria nem a taxa por advogada; benefício continua', async () => {
     entrarComo('atendimento-lider')
     servidor(painel)
     render(comSessao(<Resultados />))
     await screen.findByRole('list', { name: 'Indicadores do escritório' })
-    expect(within(screen.getByLabelText('Recorte')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Escritório inteiro', 'Benefício', 'Advogada'])
+    expect(within(screen.getByLabelText('Recorte')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Escritório inteiro', 'Benefício'])
+  })
+
+  it('Mateus 13/10 · a taxa por advogada é só dos sócios: a Sênior vê a jurimetria sem ela; o Sócio vê tudo', async () => {
+    const opcoes = async (perfil: string) => {
+      entrarComo(perfil)
+      servidor(painel)
+      const { unmount } = render(comSessao(<Resultados />))
+      await screen.findByRole('list', { name: 'Indicadores do escritório' })
+      const lista = within(screen.getByLabelText('Recorte')).getAllByRole('option').map((o) => o.textContent)
+      unmount()
+      return lista
+    }
+    expect(await opcoes('senior')).toEqual(['Escritório inteiro', 'Benefício', 'Perito', 'Juízo', 'Vara', 'Tese'])
+    expect(await opcoes('socio')).toEqual(['Escritório inteiro', 'Benefício', 'Perito', 'Juízo', 'Vara', 'Advogada', 'Tese'])
   })
 
   it('GGVP-55 CA3 · a base do acervo com os totais, os que aguardam conferência fora das contas e a data da base', async () => {

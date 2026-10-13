@@ -2,12 +2,20 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, eventoAuditoria, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, decisao, documento, eventoAuditoria, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { REGRA_DA_CHANCE_DO_RECURSO } from '../fluxo/chance.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_AVALIACAO_SEM_IA, MSG_SEM_DECISAO, TITULO_DECIDIR, TITULO_RECORRER, abrirDecisaoDoRecurso } from './recurso.ts'
+import {
+  MSG_AVALIACAO_SEM_IA,
+  MSG_COMPROVANTE_DO_RECURSO,
+  MSG_SEM_DECISAO,
+  MSG_SEM_RECURSO_A_PROTOCOLAR,
+  TITULO_DECIDIR,
+  TITULO_RECORRER,
+  abrirDecisaoDoRecurso,
+} from './recurso.ts'
 import { TITULO_RESUMO } from './resultado.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -115,6 +123,32 @@ describe('GGVP-100 · improcedente: decidir se recorre', () => {
     expect([repetida.statusCode, repetida.json().erro]).toEqual([409, MSG_SEM_DECISAO])
     await app.prepararSugestoes()
     expect(await estudosFeitos()).toBe(0)
+  })
+
+  it('GGVP-158 P5.15 · o protocolo do recurso, com o comprovante e a data, fecha a tarefa da Sênior; sem a tarefa, recusa', async () => {
+    const protocolar = async (data: string, comArquivo = true, apelido = 'helena') => {
+      const f = '----ggv'
+      const partes = [`--${f}\r\nContent-Disposition: form-data; name="protocoladoEm"\r\n\r\n${data}\r\n`]
+      if (comArquivo) partes.push(`--${f}\r\nContent-Disposition: form-data; name="comprovante"; filename="recurso.pdf"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4 recurso\r\n`)
+      return app.inject({
+        method: 'POST',
+        url: `/api/casos/${casoId}/recurso/protocolo`,
+        cookies: await cookieDe(apelido),
+        payload: partes.join('') + `--${f}--\r\n`,
+        headers: { 'content-type': `multipart/form-data; boundary=${f}` },
+      })
+    }
+    const antes = await protocolar('01/10/2026')
+    expect([antes.statusCode, antes.json().erro]).toEqual([409, MSG_SEM_RECURSO_A_PROTOCOLAR])
+    await chamar('helena', 'POST', { decisao: 'recorrer', justificativa: JUSTIFICATIVA })
+    expect((await protocolar('01/10/2026', true, 'gabi')).statusCode).toBe(403)
+    expect((await protocolar('01/10/2026', false)).json().erro).toBe(MSG_COMPROVANTE_DO_RECURSO)
+    expect((await protocolar('31/12/2099')).json().erro).toBe('A data do protocolo não pode ser depois de hoje')
+    expect((await protocolar('01/10/2026')).statusCode).toBe(201)
+    expect(await abertas()).toEqual([])
+    const [doc] = await banco.select().from(documento).where(eq(documento.tipo, 'comprovante_recurso'))
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'recurso_protocolado'))
+    expect(ev.detalhe).toMatchObject({ protocoladoEm: '2026-10-01', documento: doc.id })
   })
 
   it('CA2 · enquanto a decisão espera, o estudo não nasce; "Não recorrer" abre o resumo ao cliente e o estudo nasce na rodada da IA', async () => {

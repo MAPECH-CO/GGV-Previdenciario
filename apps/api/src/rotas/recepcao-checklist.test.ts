@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, cobrancaDocumento, configuracao, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_G1 } from './conferencia.ts'
@@ -257,6 +257,21 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
 
     const noPrazo = await cobrancaAberta([{ dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
     expect(await mensagem(noPrazo)).toMatchObject({ trava: null, texto: expect.stringContaining('faltam documentos') })
+  })
+
+  it('GGVP-158 P5.3 · os limites salvos na Configuração valem: com 3 tentativas a cada 5 dias, a segunda sem resposta não sobe', async () => {
+    await banco.insert(configuracao).values([
+      { chave: 'cobranca.limite', valor: 3 },
+      { chave: 'cobranca.intervalo_dias', valor: 5 },
+    ])
+    const c = await cobrancaAberta([
+      { dia: '2026-10-02', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' },
+      { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
+    ])
+    const aberta = await json('ana', 'GET', c.url)
+    expect([aberta.situacao, aberta.proxima, aberta.motivoParado]).toEqual(['aberta', '2026-10-10', 'A próxima tentativa é em 10/10, 5 dias depois da última.'])
+    const mensagem = await json('ana', 'GET', `/api/fichas/${c.fichaId}/mensagens/cobranca?processo=${c.processoId}`)
+    expect(mensagem.trava).toBe('A próxima tentativa é em 10/10, 5 dias depois da última.')
   })
 
   it('chegou tudo: a cobrança fecha sozinha na sincronização, uma vez só', async () => {

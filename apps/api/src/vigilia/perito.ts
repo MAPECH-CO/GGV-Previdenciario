@@ -31,6 +31,36 @@ export async function peritoDaPublicacao(banco: Banco, texto: string) {
   return achado
 }
 
+/** Sem o título na frente ("Dra. Ana Souza" é a mesma "Ana Souza"), como no `nome_normalizado`. */
+const semTitulo = (s: string) => normal(s).replace(/^ (?:dra?|doutora?|sra?) /, ' ').trim()
+
+/** O tipo da perícia aberta do caso (a mais nova sem resultado e sem perito); sem nenhuma, médica. */
+export async function tipoDaPericiaAberta(banco: Banco, casoId: string) {
+  const [p] = await banco
+    .select({ tipo: pericia.tipo })
+    .from(pericia)
+    .where(and(eq(pericia.casoId, casoId), isNull(pericia.resultado), isNull(pericia.peritoId)))
+    .orderBy(desc(pericia.criadoEm))
+    .limit(1)
+  return p?.tipo ?? 'medica'
+}
+
+/**
+ * GGVP-158 P5.2: o perito pelo nome que a pessoa conferiu. Acha pelo nome, pelo nome normalizado ou por uma grafia, sem o
+ * título; sem achar, cria com o perfil vazio do tipo da perícia (médica ou social) e de onde atua. Sem lista inicial
+ * (Lucas, 07/10, GGVP-131): a base cresce pela nomeação, pela pergunta de um clique e, na parte 7, pelo Raio-X.
+ */
+export async function peritoPeloNome(banco: Banco, nome: string, tipo: string, onde = '') {
+  const chave = semTitulo(nome)
+  for (const p of await banco.select().from(perito))
+    if ([p.nome, p.nomeNormalizado, ...((p.grafias as string[] | null) ?? [])].some((g) => semTitulo(g) === chave)) return { id: p.id, nome: p.nome, novo: false }
+  const [novo] = await banco.insert(perito).values({ nome: nome.trim(), nomeNormalizado: chave, perfil: { tipo, onde, laudos: [] } }).onConflictDoNothing().returning()
+  if (novo) return { id: novo.id, nome: novo.nome, novo: true }
+  // Outro pedido criou o mesmo nome no meio: vale o dele.
+  const [ja] = await banco.select({ id: perito.id, nome: perito.nome }).from(perito).where(eq(perito.nomeNormalizado, chave))
+  return { ...ja, novo: false }
+}
+
 /**
  * GGVP-152 CA3: o perito nomeado fica ligado à perícia aberta do caso (sem resultado e sem perito), do mesmo tipo dele, a
  * mais recente. A perícia é lida do documento guardado junto (GGVP-137), então o perito vai aos dois, com uma linha no

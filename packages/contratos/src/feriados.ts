@@ -1,6 +1,6 @@
 // Feriados e suspensões dos tribunais (GGVP-146, parte 3), na Configuração do escritório: a Sênior mantém a lista que a
 // contagem de prazo usa (tabela `feriado`, GGVP-34), com histórico.
-import { validarData } from '@ggv/campos'
+import { normalizarInteiro, validarData, validarInteiro } from '@ggv/campos'
 import { z } from 'zod'
 
 /** Os tribunais que o portal conhece, pelo "J.TR" do número CNJ (o mesmo da jurimetria). Sem tribunal: nacional. */
@@ -10,6 +10,19 @@ const TRIBUNAIS = Object.keys(TRIBUNAIS_CONHECIDOS) as [TribunalConhecido, ...Tr
 
 /** Os anos que o portal carrega da lei. */
 export const ANOS_DE_FERIADOS = [2026, 2027] as const
+
+/**
+ * POST /api/configuracao/feriados/carga (GGVP-158 P5.11): sem ano, os de `ANOS_DE_FERIADOS`; com ele, os da lei daquele
+ * ano. A Páscoa sai da conta, então qualquer ano serve.
+ */
+export const CargaDeFeriados = z.object({
+  ano: z
+    .unknown()
+    .optional()
+    .refine((v) => v === undefined || validarInteiro(v), 'Informe o ano com quatro dígitos')
+    .transform((v) => (v === undefined ? null : (normalizarInteiro(v) as number)))
+    .refine((v) => v === null || (v >= 2020 && v <= 2100), 'O ano vai de 2020 a 2100'),
+})
 
 export const FeriadoDoTribunal = z.object({ id: z.uuid(), data: z.string(), tribunal: z.enum(TRIBUNAIS).nullable(), descricao: z.string() })
 export type FeriadoDoTribunal = z.infer<typeof FeriadoDoTribunal>

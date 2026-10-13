@@ -34,7 +34,8 @@ por assunto e por benefício) nem os laudos do perfil. O perito, o resultado, as
 ### Requirement: CA3 · Gestão sem os recortes da jurimetria fora do Jurídico
 Os recortes por perito, juízo, vara e tese da Gestão SHALL sair só para o Jurídico e o Sócio. Para os outros perfis que
 abrem a Gestão (a líder do Atendimento e o Financeiro), a tela MUST NOT oferecer esses recortes e o servidor SHALL recusar
-o pedido (403). A operação do escritório, os tempos e o recorte por benefício e por advogada continuam.
+o pedido (403). A operação do escritório, os tempos e o recorte por benefício continuam. O recorte por advogada (a taxa de
+êxito de cada advogada) é só dos sócios (Mateus, 13/10, na revisão do #75; requisito P5.13 da change ggvp-158-fechamento).
 
 #### Scenario: CA3 · A líder do Atendimento na Gestão
 - **Dado** a líder do Atendimento

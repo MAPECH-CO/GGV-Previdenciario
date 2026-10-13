@@ -1,6 +1,7 @@
 // Contratos do desfecho (GGVP-11): explicar o resultado ao cliente no caso perdido (GGVP-22).
 import { z } from 'zod'
 import { SugestaoDaIa } from './ia.ts'
+import { DataObrigatoria, naoFutura } from './inss.ts'
 
 /** Quem fala com o cliente (GGVP-22 CA5, Lucas 06/10): a advogada, em caso complexo, ou o Atendimento, no padrão. */
 export const QUEM_FALA = ['advogada', 'atendimento'] as const
@@ -103,6 +104,12 @@ export const ROTULO_DECISAO_DO_RECURSO: Record<(typeof DECISOES_DO_RECURSO)[numb
   recorrer: 'Sim, recorrer',
   nao_recorrer: 'Não, encerrar com estudo de caso',
 }
+
+/** POST /api/casos/:id/recurso/protocolo (GGVP-158 P5.15): a data do protocolo; o comprovante vai no mesmo envio. */
+export const ProtocoloDoRecurso = z.object({
+  protocoladoEm: DataObrigatoria('Informe a data do protocolo do recurso (dd/mm/aaaa)').refine(naoFutura, 'A data do protocolo não pode ser depois de hoje'),
+})
+export type ProtocoloDoRecurso = z.input<typeof ProtocoloDoRecurso>
 
 /** POST /api/casos/:id/recurso (CA3): a escolha e a justificativa, sempre. */
 export const DecidirRecurso = z.object({

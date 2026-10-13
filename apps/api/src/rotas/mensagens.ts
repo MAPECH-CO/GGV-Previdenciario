@@ -16,6 +16,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { cobrancaDocumento, decisao, mensagem, usuario } from '../banco/esquema.ts'
 import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
 import { criarCasoMedico } from '../fluxo/documentacao-medica.ts'
+import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
@@ -70,7 +71,9 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     const aberta = (await banco.select({ dados: cobrancaDocumento.dados }).from(cobrancaDocumento).where(eq(cobrancaDocumento.casoId, casoId)))
       .map((l) => l.dados as Cobranca)
       .find((c) => !c.encerrada)
-    return aberta ? cobrancaDoCaso(aberta, { ...achado, faltam: achado.checklist.faltam }, hoje()).motivoParado : null
+    if (!aberta) return null
+    const l = await limitesDeCobranca(banco)
+    return cobrancaDoCaso(aberta, { ...achado, faltam: achado.checklist.faltam }, hoje(), { tentativas: l.limite, diasEntre: l.intervaloDias }).motivoParado
   }
 
   /**

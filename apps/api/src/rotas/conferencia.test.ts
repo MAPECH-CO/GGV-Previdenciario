@@ -428,6 +428,21 @@ describe('GGVP-127 · o caso devolvido pela Sênior: ajustar e liberar de novo',
     expect((await banco.select().from(eventoAuditoria)).map((e) => e.acao)).toContain('caso_liberado_ao_juridico')
   })
 
+  it('GGVP-158 P5.7 · liberar de novo um caso já aprovado zera o OK: protocolar e decidir a perícia saem da fila até o OK novo', async () => {
+    await parecer('suficiente')
+    await decidir('helena', { decisao: 'aprovar' })
+    expect(await tarefasAbertas()).toEqual(expect.arrayContaining([['D2.02', 'juridico_adm'], ['D2.03', 'advogada']]))
+    expect((await liberar('fabio')).statusCode).toBe(201)
+    const abertas = await tarefasAbertas()
+    expect(abertas).toContainEqual(['D2.01', 'senior'])
+    expect(abertas.filter(([passo]) => passo === 'D2.02' || passo === 'D2.03')).toEqual([])
+    const protocolo = (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/protocolo`, cookies: await cookieDe('igor') })).json()
+    expect(protocolo.okSenior).toBeNull()
+    // O OK novo devolve as duas tarefas.
+    await decidir('helena', { decisao: 'aprovar' })
+    expect(await tarefasAbertas()).toEqual(expect.arrayContaining([['D2.02', 'juridico_adm'], ['D2.03', 'advogada']]))
+  })
+
   it('CA4 · na liberação nova, o servidor confere de novo o checklist (G1) e o parecer (G17)', async () => {
     await decidir('helena', { decisao: 'reprovar', motivo: 'Falta o CNIS', temPrazo: false })
     const r = await liberar('ana')

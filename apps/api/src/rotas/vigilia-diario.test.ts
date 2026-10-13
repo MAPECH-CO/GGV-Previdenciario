@@ -55,7 +55,7 @@ describe('GGVP-30 · alarme e reprocessamento', () => {
     agora = new Date('2026-10-05T10:00:00Z') // 07:00: planeja o dia, nada roda ainda
     await batida(banco, [fonte], relogio)
     agora = new Date('2026-10-05T12:00:00Z') // 09:00: a das 08:00 passou da tolerância sem rodar
-    await batida(banco, [], relogio)
+    await batida(banco, [fonte], relogio)
     const [l] = (await chamar('helena', 'GET', '/api/tarefas')).json()
     expect(l.detalhe).toContain('a rodada não rodou · 08:00')
   })

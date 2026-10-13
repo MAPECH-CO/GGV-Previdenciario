@@ -67,6 +67,21 @@ describe('GGVP-146 parte 3 · feriados e suspensões dos tribunais na Configura�
     expect([nacionais.has('2026-11-20'), nacionais.has('2026-08-11')]).toEqual([true, false])
   })
 
+  it('GGVP-158 P5.11 · em dezembro sem o ano seguinte, a Sênior vê "Carregar os feriados de 2028"; a carga do ano tira a linha', async () => {
+    expect((await carregar()).json()).toEqual({ acrescentados: 382 })
+    const app2 = criarServidor({ banco, agora: () => new Date('2027-12-02T15:00:00Z') })
+    const r = await app2.inject({ method: 'POST', url: '/api/sessao', payload: { email: 'helena@exemplo.ggv', senha: SENHA } })
+    const cookies = { [COOKIE]: r.cookies.find((c) => c.name === COOKIE)!.value }
+    const tarefas = async () => (await app2.inject({ method: 'GET', url: '/api/tarefas', cookies })).json().map((t: { titulo: string; urgente: boolean }) => [t.titulo, t.urgente])
+    expect(await tarefas()).toEqual([['Carregar os feriados de 2028', false]])
+    const pedido = (ano: unknown) => app2.inject({ method: 'POST', url: '/api/configuracao/feriados/carga', cookies, payload: { ano } })
+    expect((await pedido('28')).json().erro).toBe('O ano vai de 2020 a 2100')
+    expect((await pedido(2028)).json().acrescentados).toBeGreaterThan(0)
+    expect(await tarefas()).toEqual([])
+    expect((await feriadosNacionais(banco)).has('2028-04-14')).toBe(true)
+    await app2.close()
+  })
+
   it('a Sênior acrescenta e tira; data pela biblioteca campos; o mesmo dia no mesmo tribunal não repete, nem o nacional', async () => {
     expect((await acrescentar('helena', { data: '31/02/2026', tribunal: '4.03', descricao: 'Suspensão' })).json()).toEqual({ erro: 'Data inválida: use dd/mm/aaaa.' })
     expect((await acrescentar('helena', { data: '20/03/2026', tribunal: '9.99', descricao: 'Suspensão' })).statusCode).toBe(400)

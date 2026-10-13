@@ -7,6 +7,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AdiamentoDaCobranca, DecisaoDaCobranca, TentativaDaCobranca, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { cobrancaDocumento } from '../banco/esquema.ts'
+import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { criarFichario } from './recepcao.ts'
@@ -17,13 +18,13 @@ import {
   CANAIS,
   OPCOES_DA_SENIOR,
   RESULTADOS,
-  TENTATIVAS_DE_COBRANCA,
   cobrancaDoCaso,
   motivoParaNaoAdiar,
   motivoParaNaoDecidir,
   naSenior,
   type Cobranca,
   type CobrancaDoCaso,
+  type LimitesDoLaco,
 } from '../../../web/src/regras/cobranca.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 
@@ -78,7 +79,13 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const daSenior = { preHandler: exigir(banco, 'cobranca.decidir', agora) }
 
-  const naTela = (c: Cobranca, achado: ChecklistDoCaso) => cobrancaDoCaso(c, { ...achado, faltam: achado.checklist.faltam }, hoje())
+  const naTela = (c: Cobranca, achado: ChecklistDoCaso, lim: LimitesDoLaco) => cobrancaDoCaso(c, { ...achado, faltam: achado.checklist.faltam }, hoje(), lim)
+
+  /** GGVP-158 P5.3: as tentativas e os dias entre elas vêm da Configuração; o que faltar, os do Lucas. */
+  async function limitesDaCobranca(): Promise<LimitesDoLaco> {
+    const l = await limitesDeCobranca(banco)
+    return { tentativas: l.limite, diasEntre: l.intervaloDias }
+  }
 
   /** A cobrança do caso: a aberta; sem aberta, a última, como na tela. Antes, fecha se chegou tudo. */
   async function acharCobranca(casoId: string) {
@@ -88,14 +95,15 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     const linha = linhas.find((l) => !(l.dados as Cobranca).encerrada) ?? linhas.at(-1)
     if (!linha) return null
     const c = await fecharSeChegouTudo(linha.id, linha.dados as Cobranca, achado.checklist.faltam, achado.ficha)
-    return { achado, id: linha.id, atual: naTela(c, achado) }
+    const lim = await limitesDaCobranca()
+    return { achado, id: linha.id, atual: naTela(c, achado, lim), lim }
   }
 
   /** Muda a cobrança com a linha travada: duas sessões não registram a mesma tentativa duas vezes. */
-  async function mudar(id: string, achado: ChecklistDoCaso, mudanca: (atual: CobrancaDoCaso) => Cobranca | Recusa): Promise<Cobranca | Recusa> {
+  async function mudar(id: string, achado: ChecklistDoCaso, lim: LimitesDoLaco, mudanca: (atual: CobrancaDoCaso) => Cobranca | Recusa): Promise<Cobranca | Recusa> {
     return banco.transaction(async (tx) => {
       const [l] = await tx.select().from(cobrancaDocumento).where(eq(cobrancaDocumento.id, id)).for('update')
-      const atual = naTela(l.dados as Cobranca, achado)
+      const atual = naTela(l.dados as Cobranca, achado, lim)
       if (atual.situacao === 'encerrada') return { status: 409, erro: 'A cobrança está fechada.' }
       const nova = mudanca(atual)
       if ('erro' in nova) return nova
@@ -105,11 +113,11 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
   }
 
   /** A resposta das rotas que mudam: a cobrança como a tela mostra, com a ficha e as cobranças do caso para a cópia. */
-  async function responder(c: Cobranca, achado: ChecklistDoCaso) {
+  async function responder(c: Cobranca, achado: ChecklistDoCaso, lim: LimitesDoLaco) {
     await guardar(achado.ficha)
     const [ficha] = await fichas([achado.ficha.id])
     const doCasoAgora = await banco.select({ dados: cobrancaDocumento.dados }).from(cobrancaDocumento).where(eq(cobrancaDocumento.casoId, c.processoId))
-    return { ...naTela(c, { ...achado, ficha }), cobrancas: doCasoAgora.map((x) => x.dados as Cobranca) }
+    return { ...naTela(c, { ...achado, ficha }, lim), cobrancas: doCasoAgora.map((x) => x.dados as Cobranca) }
   }
 
   app.get<{ Params: { id: string } }>('/api/processos/:id/cobranca', ver, async (pedido, resposta) => {
@@ -127,14 +135,14 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     const quem = await nomeDe(pedido)
     const dia = hoje()
     const { canal, resultado } = entrada.data
-    const r = await mudar(achou.id, achou.achado, (atual) =>
+    const r = await mudar(achou.id, achou.achado, achou.lim, (atual) =>
       atual.motivoParado ? { status: 409, erro: atual.motivoParado } : { ...atual.cobranca, tentativas: [...atual.cobranca.tentativas, { dia, canal, resultado, quem }] },
     )
     if ('erro' in r) return negar(resposta, r.status, r.erro)
     const { ficha } = achou.achado
     ficha.historico.push(evento(`Cobrança: ${r.tentativas.length}ª tentativa por ${CANAIS[canal]} (${RESULTADOS[resultado]}); falta: ${juntar(achou.atual.faltam)}`, quem))
-    if (naSenior(r, dia)) ficha.historico.push(evento(`A cobrança passou do limite de ${TENTATIVAS_DE_COBRANCA} tentativas: foi para a advogada sênior decidir (G15)`, quem))
-    return responder(r, achou.achado)
+    if (naSenior(r, dia, achou.lim)) ficha.historico.push(evento(`A cobrança passou do limite de ${achou.lim.tentativas} tentativas: foi para a advogada sênior decidir (G15)`, quem))
+    return responder(r, achou.achado, achou.lim)
   })
 
   // CA10: a nova data é obrigatória, depois de hoje e antes do prazo externo; o contador não volta a zero.
@@ -145,7 +153,7 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     if (!achou) return negar(resposta, 404, MSG_COBRANCA_NAO_ENCONTRADA)
     const dia = hoje()
     const { para } = entrada.data
-    const r = await mudar(achou.id, achou.achado, (atual) => {
+    const r = await mudar(achou.id, achou.achado, achou.lim, (atual) => {
       if (atual.situacao === 'na-senior') return { status: 409, erro: 'Passou do limite: a sênior decide.' }
       const motivo = motivoParaNaoAdiar(para, dia, atual.cobranca.prazo)
       return motivo ? { status: 400, erro: motivo } : { ...atual.cobranca, adiadaPara: para! }
@@ -154,7 +162,7 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     const feitas = r.tentativas.length
     const contagem = feitas === 1 ? '1 tentativa' : `${feitas} tentativas`
     achou.achado.ficha.historico.push(evento(`Adiou a cobrança para ${dataCurta(para!, dia)}; a contagem continua em ${contagem}`, await nomeDe(pedido)))
-    return responder(r, achou.achado)
+    return responder(r, achou.achado, achou.lim)
   })
 
   // CA8, G15: só a Sênior, só no limite, sempre com justificativa; a decisão volta para o Atendimento.
@@ -167,7 +175,7 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     const dia = hoje()
     const { opcao, prazo } = entrada.data
     const justificativa = entrada.data.justificativa.trim()
-    const r = await mudar(achou.id, achou.achado, (atual) => {
+    const r = await mudar(achou.id, achou.achado, achou.lim, (atual) => {
       if (atual.situacao !== 'na-senior') return { status: 409, erro: 'A cobrança ainda não chegou ao limite.' }
       const motivo = motivoParaNaoDecidir({ opcao, justificativa, prazo: prazo ?? null }, dia)
       if (motivo) return { status: 400, erro: motivo }
@@ -183,6 +191,6 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     achou.achado.ficha.historico.push(
       evento(`Decidiu a cobrança: ${OPCOES_DA_SENIOR[opcao].toLowerCase()}${ate}. Justificativa: ${justificativa}. A decisão voltou para o Atendimento`, quem),
     )
-    return responder(r, achou.achado)
+    return responder(r, achou.achado, achou.lim)
   })
 }

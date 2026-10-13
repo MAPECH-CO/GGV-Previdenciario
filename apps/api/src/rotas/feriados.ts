@@ -1,7 +1,7 @@
 // Feriados e suspensões dos tribunais na Configuração do escritório (GGVP-146, parte 3). A gestão vê; quem muda a
 // configuração (Sênior e Sócio) acrescenta, tira e carrega os da lei de 2026 e 2027. Cada mudança entra no histórico
 // na mesma transação, com o dia, o tribunal e o que era: nada se perde quando um feriado sai da lista.
-import { ANOS_DE_FERIADOS, FeriadosDoEscritorio, NovoFeriado, TRIBUNAIS_CONHECIDOS, pode, type Erro, type TribunalConhecido } from '@ggv/contratos'
+import { ANOS_DE_FERIADOS, CargaDeFeriados, FeriadosDoEscritorio, NovoFeriado, TRIBUNAIS_CONHECIDOS, pode, type Erro, type TribunalConhecido } from '@ggv/contratos'
 import { dataParaIso, isoParaData, normalizarData } from '@ggv/campos'
 import { asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
@@ -73,15 +73,19 @@ export function registrarRotasFeriados(app: FastifyInstance, { banco, agora = ()
     return tirado ? { ok: true } : negar(resposta, 404, 'Feriado não encontrado.')
   })
 
-  // Os da lei de 2026 e 2027: acrescenta só o dia que falta; o que a Sênior acrescentou fica como está.
-  app.post('/api/configuracao/feriados/carga', editar, async (pedido) => {
+  // Os da lei de 2026 e 2027, ou do ano pedido (GGVP-158 P5.11): acrescenta só o dia que falta; o que a Sênior
+  // acrescentou fica como está.
+  app.post('/api/configuracao/feriados/carga', editar, async (pedido, resposta) => {
+    const entrada = CargaDeFeriados.safeParse(pedido.body ?? {})
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Informe o ano.')
+    const anos = entrada.data.ano ? [entrada.data.ano] : [...ANOS_DE_FERIADOS]
     const quem = pedido.usuario!.id
     const acrescentados = await banco.transaction(async (tx) => {
       await umaPorVez(tx)
       const existentes = new Set((await tx.select().from(feriado)).map((f) => chave(f.data, f.tribunal)))
-      const novos = ANOS_DE_FERIADOS.flatMap((ano) => feriadosDaLei(ano)).filter((f) => !existentes.has(chave(f.data, f.tribunal)))
+      const novos = anos.flatMap((ano) => feriadosDaLei(ano)).filter((f) => !existentes.has(chave(f.data, f.tribunal)))
       if (novos.length > 0) await tx.insert(feriado).values(novos)
-      await registrarHistorico(tx, agora)(quem, 'feriados_carregados', pedido, ALVO, { anos: [...ANOS_DE_FERIADOS], acrescentados: novos.length })
+      await registrarHistorico(tx, agora)(quem, 'feriados_carregados', pedido, ALVO, { anos, acrescentados: novos.length })
       return novos.length
     })
     return { acrescentados }
