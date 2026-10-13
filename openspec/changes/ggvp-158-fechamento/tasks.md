@@ -572,7 +572,9 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - sem verificação, recusa e fica no histórico.
 
   Verificado em 13/10, no teste da conferência de `rotas/conversa.test.ts`: "no escritório" na ligação recusa, na rota e na conferência, e fica no histórico; com a chamada de vídeo registrada pela Ana, a Sênior muda o telefone em contrato novo, e a verificação fica na conversa.
-- [ ] 6.20 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+- [x] 6.20 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+
+  Feito no pedido da parte 6 (#78), na seção "Para o Pedro ligar nas telas", rota por rota.
 - [x] 6.21 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
 
   Verificado em 13/10, com a main juntada (o #71 ao #74):
