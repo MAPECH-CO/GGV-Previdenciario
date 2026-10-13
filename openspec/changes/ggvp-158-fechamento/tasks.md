@@ -285,7 +285,7 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - a lista publicada vale no checklist;
     - sem lista, a liberação recusa.
 - [x] 4.17 Só o conferido vai ao Drive (P4.7): o filtro na rodada. Verifica com `fluxo/arquivar.test.ts`.
-- [ ] 4.18 A pasta do cliente (P4.7): as pastas parecidas na criação da ficha, e `POST /api/fichas/:id/pasta`. Verifica com teste, com o Drive de mentira: liga; cria com CPF; recusa sem CPF e com o Drive só leitura.
+- [x] 4.18 A pasta do cliente (P4.7): as pastas parecidas na criação da ficha, e `POST /api/fichas/:id/pasta`. Verifica com teste, com o Drive de mentira: liga; cria com CPF; recusa sem CPF e com o Drive só leitura.
 - [x] 4.19 A cobrança na mensagem (P4.8). Verifica com o teste das mensagens: na Sênior, recusa; dentro do limite, sai.
 - [x] 4.20 O caso escolhido no envio (P4.9). Verifica com `rotas/recepcao-documentos.test.ts`: com dois casos, sem escolher, recusa; com o caso escolhido, o documento vai a ele.
 - [x] 4.21 O documento de antes do caso (P4.9). Verifica com `rotas/recepcao-contrato.test.ts`: o laudo de antes entra no caso que nasce e vira documento médico.

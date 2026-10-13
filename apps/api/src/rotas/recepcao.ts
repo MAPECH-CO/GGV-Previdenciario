@@ -19,8 +19,11 @@ import {
   validarNome,
   validarTelefone,
 } from '@ggv/campos'
-import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, pode, type Erro, type Perfil } from '@ggv/contratos'
+import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, LigacaoDaPasta, NovoClienteDoBalcao, pode, type Erro, type Perfil } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
+import type { Drive, PastasDoDrive } from '../drive.ts'
+import { pastaDoTitulo } from '../fluxo/arquivar.ts'
+import { pastasDoCliente } from '../../../web/src/regras/pasta.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, credencialGovbr, documento, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import type { Cofre } from '../cofre.ts'
@@ -44,6 +47,7 @@ import type {
   FichaResumo,
   Gravacao,
   PapelNoFechamento,
+  PastaDrive,
   Processo,
   RespostaNovoCliente,
   TarefaEncaminhada,
@@ -141,9 +145,14 @@ type Opcoes = {
   armazenamento: Armazenamento
   cofre: Cofre
   leitor: Leitor
+  /** GGVP-158 P4.7: o Drive do escritório, para a pasta do cliente. Sem ele (null), nenhuma pasta. */
+  drive?: { drive: Drive; pastas: PastasDoDrive; soLeitura: boolean } | null
 }
 
 export const MSG_FICHA_DIGITALIZADA = 'Anexe a ficha digitalizada (PDF ou imagem).'
+export const MSG_SEM_DRIVE = 'O Drive do escritório não está ligado.'
+export const MSG_PASTA_SEM_CPF = 'A pasta nova só nasce com o CPF.'
+export const MSG_DRIVE_SO_LEITURA = 'O Drive está só leitura: a pasta não pode ser criada.'
 
 /**
  * GGVP-158 P4.2: a senha do gov.br escrita na ficha em papel vai ao cofre, só se quem lê cadastra no cofre (G9). A ficha
@@ -467,9 +476,15 @@ export function criarFichario(banco: Banco, agora: () => Date) {
   }
 }
 
-export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea, armazenamento, cofre, leitor }: Opcoes) {
+export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea, armazenamento, cofre, leitor, drive = null }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const senhaDoPapelAoCofre = criarSenhaDoPapel(banco, cofre, agora)
+
+  /** GGVP-158 P4.7: as pastas de "#5. CLIENTES" que parecem da ficha (CPF, depois nome: a regra do balcão). Sem Drive, nenhuma. */
+  async function pastasParecidas(ficha: { nome: string; cpf?: string }): Promise<PastaDrive[]> {
+    const todas = drive && (await drive.drive.pastas(drive.pastas.clientes).catch(() => null))
+    return todas ? pastasDoCliente(todas.map(pastaDoTitulo), ficha) : []
+  }
   const { hoje, evento, nomeDe, fichas, resumo, guardar, concluirTarefas, tarefas, abrirPreparacao } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
@@ -561,8 +576,39 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     }
     await guardar(ficha)
     await historico(pedido.usuario!.id, 'ficha_criada', pedido, `pessoa:${p.id}`, { outraPessoa: parecidas.length > 0 })
-    // O Drive fica de fora (GGVP-107): sem pastas para ligar.
-    return { resultado: 'criada', id: p.id, pastas: [] }
+    // GGVP-158 P4.7: com o Drive, as pastas que parecem do lead, para quem atende ligar uma ou pedir a nova.
+    return { resultado: 'criada', id: p.id, pastas: await pastasParecidas(ficha) }
+  })
+
+  // GGVP-158 P4.7 (GGVP-16 CA11, CA14): a pasta do cliente no Drive. Liga a que já existe em "#5. CLIENTES" ou cria a nova,
+  // "<Nome> X A CLASSIFICAR", com a marca do portal; a nova só nasce com o CPF e com o Drive ligado para gravar (na
+  // homologação, só leitura, não cria). Ligar só grava no portal.
+  app.post<{ Params: { id: string } }>('/api/fichas/:id/pasta', editar, async (pedido, resposta) => {
+    const entrada = LigacaoDaPasta.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, MSG_DADOS_INVALIDOS)
+    const ficha = UUID.test(pedido.params.id) ? (await fichas([pedido.params.id]))[0] : undefined
+    if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
+    if (!drive) return negar(resposta, 400, MSG_SEM_DRIVE)
+    const nova = entrada.data.pasta === 'nova'
+    let escolhida: PastaDrive
+    if (nova) {
+      if (!ficha.cpf) return negar(resposta, 400, MSG_PASTA_SEM_CPF)
+      if (drive.soLeitura) return negar(resposta, 400, MSG_DRIVE_SO_LEITURA)
+      const marca = `pessoa:${ficha.id}`
+      const titulo = `${ficha.nome} X A CLASSIFICAR`
+      const id = (await drive.drive.achar(marca)) ?? (await drive.drive.criarPasta(titulo, drive.pastas.clientes, marca))
+      escolhida = { id, nome: ficha.nome, caminho: titulo, cpf: ficha.cpf }
+    } else {
+      const onde = await drive.drive.onde(entrada.data.pasta).catch(() => null)
+      if (!onde?.pais.includes(drive.pastas.clientes)) return negar(resposta, 404, 'Pasta não encontrada em "#5. CLIENTES".')
+      escolhida = pastaDoTitulo({ id: entrada.data.pasta, nome: onde.nome })
+    }
+    await banco.update(pessoa).set({ drivePastaId: escolhida.id, atualizadoEm: agora() }).where(eq(pessoa.id, ficha.id))
+    ficha.pastaId = escolhida.id
+    ficha.historico.push(evento(nova ? `Criou a pasta no Drive: ${escolhida.caminho}` : `Ligou à pasta que já existia no Drive: ${escolhida.caminho}`, await nomeDe(pedido)))
+    await guardar(ficha)
+    await historico(pedido.usuario!.id, 'pasta_ligada', pedido, `pessoa:${ficha.id}`, { nova })
+    return { ...escolhida, nova }
   })
 
   app.get<{ Params: { id: string } }>('/api/fichas/:id', ver, async (pedido, resposta) => {

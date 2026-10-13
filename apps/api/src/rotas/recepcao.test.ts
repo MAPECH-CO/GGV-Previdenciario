@@ -8,10 +8,11 @@ import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, chamadaIa, credencialGovbr, documento, eventoAuditoria, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
+import type { Drive } from '../drive.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_FICHA_DIGITALIZADA } from './recepcao.ts'
+import { MSG_DRIVE_SO_LEITURA, MSG_FICHA_DIGITALIZADA, MSG_PASTA_SEM_CPF, MSG_SEM_DRIVE } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -267,5 +268,70 @@ describe('GGVP-158 P4.2 · a ficha em papel lida pela IA, e a senha escrita só 
     expect([lida.campos, lida.senhaLida, fetch.mock.calls.length]).toEqual([{ beneficioInteresse: 'loas-idoso' }, false, 0])
     expect(lida.naoLidos).toEqual(['nome', 'cpf', 'nascimento', 'telefone', 'endereco', 'pessoasNaCasa', 'ultimaAtividade', 'semTrabalharDesde', 'pedidosAoInss'])
     expect(await banco.select().from(documento)).toHaveLength(1)
+  })
+})
+
+describe('GGVP-158 P4.7 · a pasta do cliente no Drive', () => {
+  /** O Drive de mentira: as pastas, com quem é a pasta-mãe de cada uma, e o que o portal criou. */
+  function driveFalso(soLeitura = false) {
+    const pastas = [
+      { id: 'pasta-joana', nome: '529.982.247-25 X Joana Ribeiro', pai: 'clientes' },
+      { id: 'pasta-outra', nome: 'Outra Pessoa X LOAS', pai: 'clientes' },
+      { id: 'fora', nome: 'Joana Ribeiro', pai: 'arquivo-morto' },
+    ]
+    const criadas: { nome: string; pai: string; marca: string }[] = []
+    const drive = {
+      pastas: async (pai: string) => pastas.filter((p) => p.pai === pai).map(({ id, nome }) => ({ id, nome })),
+      onde: async (id: string) => {
+        const p = pastas.find((x) => x.id === id)
+        if (!p) throw new Error('Drive: 404 File not found')
+        return { nome: p.nome, pais: [p.pai] }
+      },
+      achar: async () => null,
+      criarPasta: async (nome: string, pai: string, marca: string) => {
+        criadas.push({ nome, pai, marca })
+        pastas.push({ id: `nova-${criadas.length}`, nome, pai })
+        return `nova-${criadas.length}`
+      },
+    } as unknown as Drive
+    return { criadas, drive: { drive, pastas: { clientes: 'clientes', revisar: 'revisar' }, soLeitura } }
+  }
+  const reabrir = async (drive: ReturnType<typeof driveFalso>['drive']) => {
+    await app.close()
+    app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true, drive })
+  }
+  const pasta = async (fichaId: string, valor: string) => (await chamar('ana', 'POST', `/api/fichas/${fichaId}/pasta`, { pasta: valor })).json()
+
+  it('a ficha nova traz a pasta parecida (pelo CPF do título); ligar grava na ficha e no histórico; pasta de fora recusa', async () => {
+    await reabrir(driveFalso().drive)
+    const criada = await cadastrar()
+    expect(criada.pastas).toEqual([{ id: 'pasta-joana', nome: 'Joana Ribeiro', caminho: '529.982.247-25 X Joana Ribeiro', cpf: '52998224725' }])
+    expect(await pasta(criada.id, 'pasta-joana')).toMatchObject({ id: 'pasta-joana', nova: false })
+    expect((await banco.select().from(pessoa).where(eq(pessoa.id, criada.id)))[0].drivePastaId).toBe('pasta-joana')
+    const ficha = (await chamar('ana', 'GET', `/api/fichas/${criada.id}`)).json()
+    expect([ficha.pastaId, ficha.historico.at(-1).oQue]).toEqual(['pasta-joana', 'Ligou à pasta que já existia no Drive: 529.982.247-25 X Joana Ribeiro'])
+    expect(await pasta(criada.id, 'fora')).toEqual({ erro: 'Pasta não encontrada em "#5. CLIENTES".' })
+  })
+
+  it('a pasta nova só nasce com o CPF, como "<Nome> X A CLASSIFICAR", com a marca do portal; com o Drive só leitura, não cria', async () => {
+    const { drive, criadas } = driveFalso()
+    await reabrir(drive)
+    const semCpf = await cadastrar({ ...LEAD, nome: 'Rosa Exemplo', cpf: undefined, telefone: '11955554444', outraPessoa: true })
+    expect(await pasta(semCpf.id, 'nova')).toEqual({ erro: MSG_PASTA_SEM_CPF })
+    const comCpf = await cadastrar({ ...LEAD, nome: 'Marta Exemplo', cpf: '11144477735', telefone: '11955553333', outraPessoa: true })
+    expect(await pasta(comCpf.id, 'nova')).toMatchObject({ id: 'nova-1', nova: true, caminho: 'Marta Exemplo X A CLASSIFICAR' })
+    expect(criadas).toEqual([{ nome: 'Marta Exemplo X A CLASSIFICAR', pai: 'clientes', marca: `pessoa:${comCpf.id}` }])
+
+    const soLeitura = driveFalso(true)
+    await reabrir(soLeitura.drive)
+    const outra = await cadastrar({ ...LEAD, nome: 'Lia Exemplo', cpf: '61374825964', telefone: '11955552222', outraPessoa: true })
+    expect(await pasta(outra.id, 'nova')).toEqual({ erro: MSG_DRIVE_SO_LEITURA })
+    expect(soLeitura.criadas).toEqual([])
+  })
+
+  it('sem o Drive, a ficha nova não traz pasta, e ligar recusa', async () => {
+    const criada = await cadastrar()
+    expect(criada.pastas).toEqual([])
+    expect(await pasta(criada.id, 'nova')).toEqual({ erro: MSG_SEM_DRIVE })
   })
 })

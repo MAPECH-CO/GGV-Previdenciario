@@ -104,6 +104,8 @@ type Opcoes = {
    * `LEITURA_SIMULADA=sim`, que só o Playwright liga.
    */
   leituraSimulada?: boolean
+  /** O Drive do escritório (GGVP-107; GGVP-158 P4.7, a pasta do cliente). Padrão: as variáveis do Drive; `null`, desligado. */
+  drive?: ReturnType<typeof abrirDrive>
 }
 
 declare module 'fastify' {
@@ -159,6 +161,7 @@ export function criarServidor({
   driveLigado,
   versao = 'local',
   leituraSimulada = process.env.LEITURA_SIMULADA === 'sim',
+  drive: driveDado,
 }: Opcoes = {}) {
   // GGVP-158 P4.10: a homologação e a produção nunca leem pelo nome do arquivo.
   if (leituraSimulada && !aceitaGanchoDeTeste(process.env)) throw new Error(MSG_LEITURA_SO_NO_TESTE)
@@ -190,7 +193,7 @@ export function criarServidor({
   app.decorate('alimentarAcervo', () => alimentar())
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
   // CA10: só leitura não guarda o pacote no Drive, então a trava do pacote não o cobra.
-  const doAmbiente = abrirDrive()
+  const doAmbiente = driveDado === undefined ? abrirDrive() : driveDado
   const comDrive = driveLigado ?? (doAmbiente !== null && !doAmbiente.soLeitura)
   const drive = doAmbiente?.soLeitura ? ('so-leitura' as const) : comDrive ? ('ligado' as const) : ('desligado' as const)
 
@@ -241,7 +244,7 @@ export function criarServidor({
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
     const leitor = criarLeitor({ ia: motorIa, simulada: leituraSimulada, agora })
-    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea, armazenamento: arquivos, cofre: cofreDoGov, leitor })
+    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea, armazenamento: arquivos, cofre: cofreDoGov, leitor, drive: doAmbiente })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasRecepcaoDecisoes(app, { banco, agora })

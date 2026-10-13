@@ -366,6 +366,10 @@ export type AdiamentoDaCobranca = z.infer<typeof AdiamentoDaCobranca>
 export const DecisaoDaCobranca = z.object({ opcao: z.enum(['nova-tentativa', 'visita', 'suspender']), justificativa: Texto(1000), prazo: Data.optional() })
 export type DecisaoDaCobranca = z.infer<typeof DecisaoDaCobranca>
 
+/** POST /api/fichas/:id/pasta (GGVP-158 P4.7): a pasta do Drive escolhida, pelo id, ou "nova", que só nasce com o CPF. */
+export const LigacaoDaPasta = z.object({ pasta: Texto(200).min(1) })
+export type LigacaoDaPasta = z.infer<typeof LigacaoDaPasta>
+
 /** O que a IA leu num campo: o que faltar ou vier fora do formato fica vazio, e a pessoa confere. */
 const LidoNoPapel = z.string().trim().max(300).catch('')
 
