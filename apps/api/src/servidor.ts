@@ -62,6 +62,7 @@ import { registrarRotasRecepcaoChecklist } from './rotas/recepcao-checklist.ts'
 import { registrarRotasRecepcaoCobranca } from './rotas/recepcao-cobranca.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
 import { criarCorreio, registrarRotasMensagens } from './rotas/mensagens.ts'
+import { registrarRotasChatwootEntrada } from './rotas/chatwoot-entrada.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
@@ -266,7 +267,9 @@ export function criarServidor({
     registrarRotasAcidente(app, { banco, agora })
     registrarRotasCrianca(app, { banco, agora })
     registrarRotasDocumentacaoMedica(app, { banco, agora, ia: motorIa, armazenamento: arquivos })
-    registrarRotasConversa(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    const conversas = registrarRotasConversa(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
+    // GGVP-158 P6.5: a entrada do Chatwoot (o webhook com o segredo), que leva a mensagem do WhatsApp à conversa.
+    registrarRotasChatwootEntrada(app, { banco, agora, receber: conversas.receberDoWhatsapp })
     registrarRotasMensagens(app, { banco, agora })
     registrarRotasSeguranca(app, { banco, agora })
     registrarRotasPericia(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, tarefasPorArea })

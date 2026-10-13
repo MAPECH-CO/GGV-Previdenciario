@@ -39,7 +39,12 @@ const HASH_FALSO = bcrypt.hashSync('nenhuma-senha', 10)
 // que `/api/...` e não pode escapar da trava. Sem rota casada, vale o endereço (só chega a 404 ou à tela, nunca a dado).
 const rota = (r: FastifyRequest) => r.routeOptions.url ?? r.url
 const protegida = (r: FastifyRequest) => rota(r).startsWith('/api/') || rota(r) === '/api'
-const livre = (r: FastifyRequest) => r.method === 'POST' && r.routeOptions.url === '/api/sessao'
+/**
+ * Sem sessão, só: entrar, e a entrada do Chatwoot (GGVP-158 P6.5, ADR-019), que o Chatwoot chama sem login e cuja trava é
+ * o segredo no endereço, conferido na própria rota.
+ */
+const LIVRES = ['/api/sessao', '/api/chatwoot/entrada/:segredo']
+const livre = (r: FastifyRequest) => r.method === 'POST' && LIVRES.includes(r.routeOptions.url ?? '')
 /** Rotas da própria sessão: quem tem senha provisória ou está sem perfil ainda pode usar. */
 const DA_PROPRIA_SESSAO = ['/api/sessao', '/api/sessao/senha', '/api/sessao/perfil']
 const daPropriaSessao = (r: FastifyRequest) => DA_PROPRIA_SESSAO.includes(r.routeOptions.url ?? '')

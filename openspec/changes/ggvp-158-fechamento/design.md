@@ -354,6 +354,7 @@ O OK segue com a advogada, por decisão do Pedro.
 58. **O id do Chatwoot** (P6.5).
     - `chatwoot.enviar` devolve o id da mensagem, e o correio grava em `mensagem.chatwoot_mensagem_id` (migração 0032, com índice).
     - O status só anda para a frente: enviada, entregue, lida. "Falhou" vale a qualquer hora.
+    - O aviso de mudança do Chatwoot (`message_updated`) não traz o status: o corpo é o `webhook_data` da mensagem, conferido no código do Chatwoot em 13/10. O portal pergunta o status (`statusDaMensagem`, na última página da conversa), só das mensagens que ele mandou.
 59. **A rota de entrada do Chatwoot** (P6.5; ADR-019).
     - `POST /api/chatwoot/entrada/:segredo`, com `config.semTrava` (a trava é o segredo) e `logLevel: 'silent'`, para o endereço não ir ao log.
     - O segredo é conferido em tempo constante (`timingSafeEqual` sobre o SHA-256). Sem `CHATWOOT_WEBHOOK_SEGREDO`, ou com outro segredo: 404.
@@ -363,6 +364,8 @@ O OK segue com a advogada, por decisão do Pedro.
       - a nota privada e a mensagem de atividade;
       - fora da produção, o telefone fora de `CHATWOOT_PERMITIDOS`, a mesma trava do envio.
     - O ignorado responde 200, para o Chatwoot não repetir.
+    - A trava de sessão de toda rota `/api` libera só esta, além de entrar (`LIVRES`, em `sessao/rotas.ts`).
+    - O telefone vem da conversa (`conversation.meta.sender.phone_number`), na mensagem que chega e na resposta do escritório. O celular sem o nono dígito volta com ele, para a lista de teste e a ficha.
     - ponytail: o anexo sem texto entra como "[anexo: veja no Chatwoot]". O áudio transcrito, pelo mesmo motor da conversa, fica para depois.
 60. **A conversa do WhatsApp** (P6.5).
     - Uma por pessoa: canal `whatsapp` (o `atendimento` já aceita), modo `escrito`, papel `atendimento`, conduzida por "WhatsApp (Chatwoot)", sem `quemId`.
@@ -371,7 +374,10 @@ O OK segue com a advogada, por decisão do Pedro.
     - Sem ninguém, nasce o lead: `pessoa` e ficha com o nome do contato, quando passa no `validarNome`, ou "Contato do WhatsApp". O histórico diz "Criou a ficha pelo WhatsApp (lead)".
     - O caso é o mais recente da ficha, como na conversa aberta no card.
     - A conversa junta as mensagens até 30 minutos sem mensagem nova. Depois, a seguinte abre outra.
-    - `CanalDoRegistro` ganha `whatsapp`, com o rótulo. `NovaConversa` segue só com ligação e presencial: quem abre a do WhatsApp é o servidor.
+    - No contrato, `Conversa.canal` passa a `CanalDaConversa` (com o WhatsApp); `NovaConversa` segue com ligação e presencial: quem abre a do WhatsApp é o servidor.
+    - Nas regras das telas, `CanalDoRegistro` ganha `whatsapp`, com o rótulo em `CANAIS_DO_REGISTRO`, mas não enumerável: o formulário de registro do Pedro lista as chaves e segue só com ligação e presencial.
+    - A resposta do escritório a um número sem ficha não cria lead. A senha mandada por mensagem sai do texto (G9).
+    - ponytail: uma mensagem de cada vez no servidor inteiro, para duas que chegam juntas não abrirem duas conversas; por pessoa, se o volume pedir.
 61. **A conversa do WhatsApp fecha e a IA lê** (P6.5, P6.6).
     - Com a IA, a rodada do preparo (a cada 5 minutos) fecha a conversa parada há 30 minutos, e a IA analisa, como na transcrição.
     - Sem a IA, a mensagem seguinte fecha a anterior, com o aviso de que a IA não leu.

@@ -107,6 +107,16 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
     },
 
     /**
+     * GGVP-158 P6.5: o status de uma mensagem do escritório. O aviso de mudança do Chatwoot não traz o status, então o
+     * portal pergunta. Nulo quando a mensagem não está na última página da conversa.
+     */
+    async statusDaMensagem(conversa: number, id: number): Promise<MensagemAoCliente['status'] | null> {
+      const { payload = [] } = await chamar<{ payload?: MensagemDaApi[] }>(`/conversations/${conversa}/messages`)
+      const m = payload.find((x) => x.id === id)
+      return m ? (STATUS_DO_CHATWOOT[m.status ?? 'sent'] ?? null) : null
+    },
+
+    /**
      * POST conversations/{id}/messages: sai como mensagem do escritório, que o cliente vê. O id volta para a entrega e a
      * leitura que o Chatwoot avisa depois (GGVP-158 P6.5).
      */

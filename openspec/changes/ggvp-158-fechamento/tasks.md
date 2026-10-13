@@ -499,24 +499,32 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 6.9 O id do Chatwoot (P6.5, decisão 58): `enviar` devolve o id, e o correio grava. Verifica com `chatwoot.test.ts` e `rotas/mensagens.test.ts`.
 
   Verificado em 13/10: `rotas/mensagens.test.ts` (o envio guarda o id 9001 do Chatwoot) e o complemento da ida ao banco (o id 77). O cliente do Chatwoot não tem teste próprio: o fetch de mentira das rotas cobre o `enviar`.
-- [ ] 6.10 A rota de entrada (P6.5, decisão 59): o segredo, o log, a conta, a caixa e a trava da homologação.
+- [x] 6.10 A rota de entrada (P6.5, decisão 59): o segredo, o log, a conta, a caixa e a trava da homologação.
   - Verifica com `rotas/chatwoot-entrada.test.ts`:
     - sem a variável e com outro segredo, 404;
     - outra conta ou caixa, ignorada;
     - fora da lista de teste, ignorada;
     - o endereço não vai ao log.
-- [ ] 6.11 A mensagem vira conversa (P6.5, decisão 60): a pessoa pelo telefone, o lead novo, a conversa que junta as mensagens e a resposta do escritório.
+
+  Verificado em 13/10: `rotas/chatwoot-entrada.test.ts` (3 testes da rota): sem a variável e com outro segredo, 404; outra conta, outra caixa, nota privada, atividade, texto vazio e telefone fora da lista, 200 sem gravar nada; num servidor com o log ligado, o segredo não aparece. A trava de sessão de `/api` libera só esta rota, além de entrar: `sessao/rotas.test.ts` e `servidor.test.ts`, 36/36.
+- [x] 6.11 A mensagem vira conversa (P6.5, decisão 60): a pessoa pelo telefone, o lead novo, a conversa que junta as mensagens e a resposta do escritório.
   - Verifica com `rotas/chatwoot-entrada.test.ts`:
     - a cliente conhecida;
     - o telefone novo vira lead;
     - 30 minutos depois, outra conversa;
     - mãe e filha no mesmo número.
-- [ ] 6.12 A entrega e a leitura (P6.5): `message_updated` muda o status pelo id do Chatwoot, só para a frente. Verifica com `rotas/chatwoot-entrada.test.ts`.
-- [ ] 6.13 A conversa do WhatsApp fecha e a IA lê (decisão 61).
+
+  Verificado em 13/10: `rotas/chatwoot-entrada.test.ts` (6 testes): a cliente conhecida, com o celular sem o nono dígito, e a resposta do escritório na mesma conversa; o aviso repetido não entra; a senha sai do texto; o lead novo com o nome do contato (e "Contato do WhatsApp" com emoji); a resposta a um número sem ficha não cria lead; mãe e filha no mesmo número.
+- [x] 6.12 A entrega e a leitura (P6.5): `message_updated` muda o status pelo id do Chatwoot, só para a frente. Verifica com `rotas/chatwoot-entrada.test.ts`.
+
+  Verificado em 13/10, em `rotas/chatwoot-entrada.test.ts`: o aviso de mudança não traz o status (conferido no código do Chatwoot), e o portal pergunta; entregue, depois lida, e não volta; a mensagem que o portal não mandou não pergunta nada.
+- [x] 6.13 A conversa do WhatsApp fecha e a IA lê (decisão 61).
   - Verifica com teste, com a IA de mentira:
     - a rodada fecha a conversa parada e analisa;
     - sem IA, a mensagem seguinte fecha a anterior, com o aviso;
     - nasce a tarefa do Atendimento.
+
+  Verificado em 13/10, em `rotas/chatwoot-entrada.test.ts`: com a IA de mentira, a rodada fecha a conversa parada e a IA aponta o endereço dito; o Atendimento responde a pendência, e a Sênior confirma, e a ficha muda; sem a IA, a mensagem 30 minutos depois fecha a anterior, com o motivo, e nasce a conferência do Atendimento.
 - [ ] 6.14 ADR-019 e a variável (decisão 66): o documento, e `CHATWOOT_WEBHOOK_SEGREDO` na lista das variáveis e na doc da homologação.
   - Verifica com `variaveis.test.ts`.
   - O `.env.example` é do Mateus.
