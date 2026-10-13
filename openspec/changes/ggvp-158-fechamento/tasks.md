@@ -390,9 +390,11 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 5.14 ADR-018 (P5.10): o alarme ao suporte pelo canal e pelo Jira, e o que cada variável liga. Verifica: o arquivo em `docs/decisoes/`.
 
   Feito em 13/10: `docs/decisoes/ADR-018-alarme-ao-suporte.md`, na lista do README.
-- [ ] 5.15 As variáveis (P5.10): as cinco `ALARME_*` na lista das variáveis do servidor e no documento da homologação.
+- [x] 5.15 As variáveis (P5.10): as cinco `ALARME_*` na lista das variáveis do servidor e no documento da homologação.
   - Verifica com `variaveis.test.ts`.
   - O `.env.example` é do Mateus: a regra do repositório não deixa o agente ler nem editar `.env*`.
+
+  Verificado em 13/10: `variaveis.test.ts` 4/4, com os cinco nomes que o Mateus pôs no arquivo de exemplo e a tabela da homologação.
 - [x] 5.16 Feriados (P5.11, decisão 49): a carga aceita o ano; a linha "Carregar os feriados de <ano>" na Central da Sênior.
   - Verifica com `rotas/feriados.test.ts` e o teste da Central:
     - dezembro sem o ano seguinte mostra a linha;
