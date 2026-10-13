@@ -239,6 +239,13 @@
       "when": 1791931918364,
       "tag": "0033_pendencia_prestacao_e_chatwoot",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791935000735,
+      "tag": "0034_valores_e_raio_x",
+      "breakpoints": true
     }
   ]
 }

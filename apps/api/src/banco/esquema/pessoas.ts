@@ -1,5 +1,5 @@
 // Pessoas: lead e cliente, vínculos, consentimento e o cofre do gov.br (GGVP-16, 43, 60, 103, 108).
-import { boolean, customType, date, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core'
+import { boolean, customType, date, integer, jsonb, numeric, pgTable, text, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 
@@ -29,6 +29,11 @@ export const pessoa = pgTable(
     /** G16: todo lead que não vira cliente fica com o motivo. */
     motivoNaoVirou: text('motivo_nao_virou'),
     origem: text('origem'),
+    /**
+     * GGVP-158 P7.6: a renda por pessoa do grupo familiar, para o LOAS, da ficha e da entrevista. Fora do documento da
+     * ficha, que o Atendimento lê: só a advogada grava, e a advogada, o Sócio e o Financeiro leem.
+     */
+    rendaPorPessoa: numeric('renda_por_pessoa', { precision: 14, scale: 2 }),
     /** A pasta do cliente no Drive do escritório, achada ou criada no primeiro documento (GGVP-107 CA1). */
     drivePastaId: text('drive_pasta_id'),
     /** LGPD: fim da guarda; os dados pessoais são apagados e fica só o que a lei exige. */

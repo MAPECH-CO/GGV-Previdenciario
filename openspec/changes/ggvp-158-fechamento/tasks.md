@@ -589,7 +589,9 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
 Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-7`, em cima do #78. Migração 0034. Na ordem contrato → teste → servidor.
 
-- [ ] 7.1 A migração 0034 (decisões 72 e 73): `caso.valor_causa`, `pessoa.renda_por_pessoa` e as colunas do Raio-X no `processo_acervo`. Verifica com `banco/migracoes.test.ts`.
+- [x] 7.1 A migração 0034 (decisões 72 e 73): `caso.valor_causa`, `pessoa.renda_por_pessoa` e as colunas do Raio-X no `processo_acervo`. Verifica com `banco/migracoes.test.ts`.
+
+  Verificado em 13/10: `banco/migracoes.test.ts` 15/15, com a 0034 (o valor da causa, a renda por pessoa e as colunas do Raio-X no acervo).
 - [ ] 7.2 A estratégia, a IA (P7.1, decisão 67): a finalidade `estrategia_do_caso`, o conteúdo montado no código e a saída conferida.
   - Verifica com teste, com a IA de mentira:
     - a proposta com as fontes;
