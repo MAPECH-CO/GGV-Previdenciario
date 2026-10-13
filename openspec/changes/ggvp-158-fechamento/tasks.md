@@ -393,10 +393,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [ ] 5.15 As variáveis (P5.10): as cinco `ALARME_*` na lista das variáveis do servidor e no documento da homologação.
   - Verifica com `variaveis.test.ts`.
   - O `.env.example` é do Mateus: a regra do repositório não deixa o agente ler nem editar `.env*`.
-- [ ] 5.16 Feriados (P5.11, decisão 49): a carga aceita o ano; a linha "Carregar os feriados de <ano>" na Central da Sênior.
+- [x] 5.16 Feriados (P5.11, decisão 49): a carga aceita o ano; a linha "Carregar os feriados de <ano>" na Central da Sênior.
   - Verifica com `rotas/feriados.test.ts` e o teste da Central:
     - dezembro sem o ano seguinte mostra a linha;
     - a carga de 2028 entra, e a linha some.
+
+  Verificado em 13/10: `rotas/feriados.test.ts` 5/5 (1 novo). A linha só aparece com a lista já em uso: a tabela vazia é a carga ao subir.
 - [ ] 5.17 Jurimetria no texto, regra (P5.12, decisão 50): `numeroDeJurimetriaNoTexto` em `packages/contratos`.
   - Verifica com o teste do contrato:
     - os formatos do G22 acusam;

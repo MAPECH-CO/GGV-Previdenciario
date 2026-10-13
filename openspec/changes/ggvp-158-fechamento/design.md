@@ -267,7 +267,7 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
     - O monitor do /saude da parte 9 usa o mesmo `avisarSuporte`.
 49. **Feriados** (P5.11).
     - `POST /api/configuracao/feriados/carga` aceita `{ ano }` (inteiro de 2020 a 2100). Sem ano, carrega os de `ANOS_DE_FERIADOS`, como hoje.
-    - A Central da Sênior ganha "Carregar os feriados de <ano>" quando o ano corrente (ou o seguinte, em dezembro) não tem feriado nenhum na tabela.
+    - A Central da Sênior ganha "Carregar os feriados de <ano>" quando o ano corrente (ou o seguinte, em dezembro) não tem feriado nenhum na tabela, que já tem os de outro ano. A tabela vazia é a carga ao subir.
     - O prazo sem os feriados do ano adianta, que é o lado seguro, por isso o aviso basta.
 50. **Jurimetria no texto** (P5.12).
     - Uma regra pura em `packages/contratos`, `numeroDeJurimetriaNoTexto(texto)`, acha o formato do G22:

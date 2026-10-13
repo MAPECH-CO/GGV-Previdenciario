@@ -36,6 +36,7 @@ import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
 import { esperasDeFora, esperasQueChamamHoje } from '../fluxo/esperas.ts'
+import { anosSemFeriados } from '../fluxo/feriados-ao-subir.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { hojeEmBrasilia, itensDaFila } from '../vigilia/fila.ts'
@@ -276,15 +277,19 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
           }),
         ]
       : []
+    // GGVP-158 P5.11: o ano sem feriados; o corrente vai ao topo, o seguinte (em dezembro), ao fim.
+    const feriados = await anosSemFeriados(banco, hoje(agora()))
     return [
       // GGVP-30 CA1, CA11: rodada com falha vem antes de tudo.
       ...(await alarmesDaVigilia(banco, agora())),
+      ...feriados.filter((f) => f.urgente),
       ...alertas.filter((a) => a.diasUteis <= 2).map(linha),
       ...fila.filter((f) => f.urgente).map((f) => f.linha),
       ...visiveis,
       ...conferir,
       ...alertas.filter((a) => a.diasUteis > 2).map(linha),
       ...fila.filter((f) => !f.urgente).map((f) => f.linha),
+      ...feriados.filter((f) => !f.urgente),
     ]
   })
 
