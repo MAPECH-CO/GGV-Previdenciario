@@ -520,11 +520,13 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [ ] 6.14 ADR-019 e a variável (decisão 66): o documento, e `CHATWOOT_WEBHOOK_SEGREDO` na lista das variáveis e na doc da homologação.
   - Verifica com `variaveis.test.ts`.
   - O `.env.example` é do Mateus.
-- [ ] 6.15 Só o que foi dito (P6.6, decisão 62): `apareceNaFala` e o filtro em `lerComIa`.
+- [x] 6.15 Só o que foi dito (P6.6, decisão 62): `apareceNaFala` e o filtro em `lerComIa`.
   - Verifica com o teste da regra e com `rotas/transcricao-conversa.test.ts`:
     - o endereço que não foi dito sai;
     - o telefone e a data ditos de outro jeito passam;
     - o fato novo segue.
+
+  Verificado em 13/10: `regras/conversa-fala.test.ts` 6/6 (novo, com o texto grande em tempo linear) e `rotas/transcricao-conversa.test.ts` 8/8: o contato de apoio que não aparece na fala sai; o telefone que não foi dito também, e o id dos itens segue a lista que ficou.
 - [ ] 6.16 A Sênior confere (P6.6, decisão 63): a primeira conferência só com a pendência; as decisões só com `ficha.voltar_versao`; a tarefa `D5.04` da Sênior.
   - Verifica com `rotas/conversa.test.ts`:
     - a atendente que decide recebe 403;

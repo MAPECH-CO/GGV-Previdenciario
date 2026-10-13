@@ -167,13 +167,15 @@ describe('GGVP-140 · a IA de verdade lê a conversa do Relacionamento', () => {
         resumo: 'A cliente mudou de endereço e confirmou o telefone.',
         ditos: [
           { campo: 'endereco', valor: 'Rua das Flores, 10', i: 1 },
-          // Igual ao da ficha: o código tira.
+          // Não aparece na fala de onde veio (e é igual ao da ficha): o código tira.
           { campo: 'telefone', valor: '(11) 98765-4321', i: 1 },
           // Fora do formato dd/mm/aaaa, de uma fala que não existe, ou com senha: não passa.
           { campo: 'pericia', valor: 'dia 16', i: 1 },
           { campo: 'documento', valor: 'carteira de trabalho', i: 99 },
           { campo: 'fato', valor: 'a senha do gov.br é Girassol2024', i: 2 },
           { campo: 'documento', valor: 'comprovante de endereço', i: 1 },
+          // GGVP-158 P6.6: o contato de apoio não aparece na fala de onde veio: o código tira.
+          { campo: 'contatoApoio', valor: 'Joana, filha, (11) 97777-1111', i: 1 },
         ],
         combinado: 'Atendimento: pedir o comprovante do endereço novo.',
       },
@@ -182,7 +184,7 @@ describe('GGVP-140 · a IA de verdade lê a conversa do Relacionamento', () => {
     const fala = 'Bom dia. Mudei de endereço, agora moro na Rua das Flores, 10.'
     expect(r.conversa.analise.mudancas).toEqual([
       { id: 'ficha-endereco-0', onde: 'ficha', campo: 'endereco', rotulo: 'endereço', antes: '', depois: 'Rua das Flores, 10', aos: 3, trecho: fala },
-      { id: 'processo-documento-2', onde: 'processo', campo: 'documento', rotulo: 'documento citado', antes: '', depois: 'comprovante de endereço', aos: 3, trecho: fala },
+      { id: 'processo-documento-1', onde: 'processo', campo: 'documento', rotulo: 'documento citado', antes: '', depois: 'comprovante de endereço', aos: 3, trecho: fala },
     ])
     expect(r.conversa.analise).toMatchObject({
       atualizar: ['ficha', 'processo'],

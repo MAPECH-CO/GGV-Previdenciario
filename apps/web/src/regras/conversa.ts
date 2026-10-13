@@ -155,6 +155,35 @@ export function erroDoValor(campo: Mudanca['campo'], valor: string): string | un
   return t >= TAMANHO_DO_VALOR.minimo && t <= TAMANHO_DO_VALOR.maximo ? undefined : `De ${TAMANHO_DO_VALOR.minimo} a ${TAMANHO_DO_VALOR.maximo} letras.`
 }
 
+const MESES = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+const palavrasDe = (texto: string) => semAcento(texto).split(/[^a-z0-9]+/).filter(Boolean)
+
+/**
+ * GGVP-158 P6.6: a IA só aponta o valor que aparece na fala de onde veio, conferido aqui, no código. O texto, palavra por
+ * palavra, sem acento nem caixa; o telefone pelos números, com ou sem o DDD; o e-mail também dito com "arroba" e "ponto";
+ * a data em números ou com o mês escrito. O fato novo e o documento citado são o resumo da fala, que vai junto: ficam fora.
+ */
+export function apareceNaFala(campo: Mudanca['campo'], valor: string, fala: string): boolean {
+  if (campo === 'fato' || campo === 'documento') return true
+  const dita = semAcento(fala)
+  if (campo === 'telefone') {
+    const numeros = dita.replace(/\D/g, '')
+    const numero = valor.replace(/\D/g, '')
+    return numero.length >= 8 && (numeros.includes(numero) || numeros.includes(numero.slice(-8)))
+  }
+  if (campo === 'email') {
+    const soletrado = dita.replace(/ ?\barroba\b ?/g, '@').replace(/ ?\bponto\b ?/g, '.').replace(/ /g, '')
+    return soletrado.includes(valor.trim().toLowerCase())
+  }
+  if (campo === 'pericia') {
+    const [dia, mes] = (normalizarData(valor) ?? '').split('/').map(Number)
+    if (!dia || !mes) return false
+    return new RegExp(`(^|\\D)0?${dia} ?/ ?0?${mes}(\\D|$)`).test(dita) || new RegExp(`(^|\\D)0?${dia} de ${MESES[mes - 1]}\\b`).test(dita)
+  }
+  const ditas = new Set(palavrasDe(fala))
+  return palavrasDe(valor).every((p) => ditas.has(p))
+}
+
 /** O valor corrigido como fica guardado: telefone só com números, data aaaa-mm-dd. */
 export function valorGuardado(campo: Mudanca['campo'], valor: string): string {
   if (campo === 'telefone') return normalizarTelefone(valor)

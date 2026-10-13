@@ -39,6 +39,7 @@ import {
   CAMPOS_DA_CONVERSA,
   CANAIS_DO_REGISTRO,
   COM_QUEM,
+  apareceNaFala,
   erroDoValor,
   motivoParaNaoAbrir,
   motivoParaNaoConferir,
@@ -487,7 +488,8 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     const lida = AnaliseDaConversaPelaIa.parse(lerJson(s.texto))
     const ditos = lida.ditos.flatMap(({ campo, valor, i, saude }): DitoNaConversa[] => {
       const t = g.trechos[i]
-      if (!t || temSenha(valor) || erroDoValor(campo, valor)) return []
+      // GGVP-158 P6.6: só o valor que aparece na fala de onde veio; o resto fica de fora, sem chegar à conferência.
+      if (!t || temSenha(valor) || erroDoValor(campo, valor) || !apareceNaFala(campo, valor, t.texto)) return []
       const comum = { valor: valorGuardado(campo, valor), aos: t.aos, trecho: t.texto }
       return campo === 'pericia' || campo === 'fato' || campo === 'documento'
         ? [{ onde: 'processo', campo, ...comum, ...(saude && { saude: true as const }) }]
