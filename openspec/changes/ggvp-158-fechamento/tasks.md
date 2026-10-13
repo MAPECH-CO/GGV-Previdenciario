@@ -290,5 +290,14 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 4.20 O caso escolhido no envio (P4.9). Verifica com `rotas/recepcao-documentos.test.ts`: com dois casos, sem escolher, recusa; com o caso escolhido, o documento vai a ele.
 - [x] 4.21 O documento de antes do caso (P4.9). Verifica com `rotas/recepcao-contrato.test.ts`: o laudo de antes entra no caso que nasce e vira documento médico.
 - [x] 4.22 As variáveis (P4.5, P4.10): a lista das variáveis do servidor sem `ZAPSIGN_API_TOKEN` e com `LEITURA_SIMULADA`. Verifica com `variaveis.test.ts`.
-- [ ] 4.23 Avisar o Pedro: o pedido lista o que muda para as telas.
-- [ ] 4.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+- [x] 4.23 Avisar o Pedro: o pedido lista o que muda para as telas.
+
+  Feito no pedido da parte 4, na seção "Para o Pedro ligar nas telas".
+- [x] 4.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10:
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 177/177;
+  - tela 1653/1653, em 197 arquivos;
+  - API 887/887 (3 pulados), em 100 arquivos. Na suíte inteira, 25 testes estouraram o tempo pela carga da máquina; repetidos sem carga, passaram. A única falha de verdade foi o glossário, que agora recebe os 23 benefícios novos na 0031;
+  - Playwright 260/260.
