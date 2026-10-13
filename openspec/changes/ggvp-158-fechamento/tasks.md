@@ -433,5 +433,15 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 5.22 O padrão ao subir (P5.8): o tribunal e a assinatura do banco novo, só o que faltar, em `principal.ts`, como os feriados (sem migração). Verifica com teste: o banco novo tem os dois; o banco com a chave guarda o que tinha.
 
   Verificado em 13/10, no teste de `rotas/configuracao.test.ts`.
-- [ ] 5.23 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
-- [ ] 5.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+- [x] 5.23 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+
+  Feito no pedido da parte 5, na seção "Para o Pedro ligar nas telas".
+- [x] 5.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10:
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 181/181 e `campos` 11/11;
+  - tela 1656/1656, em 197 arquivos;
+  - API 927 de 928 na suíte inteira (3 pulados), em 101 arquivos. A única falha foi a das variáveis, que rodou antes de o Mateus pôr os cinco nomes; depois, sozinha, 4/4;
+  - Playwright 260/260;
+  - `openspec validate --all --strict`, 16/16.
