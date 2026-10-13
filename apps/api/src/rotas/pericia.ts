@@ -44,6 +44,7 @@ import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
+import { peritoPeloNome } from '../vigilia/perito.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import type { Perito } from '../../../web/src/dados/peritos.ts'
@@ -341,6 +342,23 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   type ComId = { Params: { id: string } }
 
   /**
+   * GGVP-158 P5.2: o perito escolhido: o id da base ou, com o nome, o que `peritoPeloNome` acha ou cria, do tipo da perícia.
+   * Ele entra no mundo da perícia como está no banco, para a regra das telas achá-lo sem regravar o perfil.
+   */
+  async function peritoEscolhido(n: NaPericia, d: DoCaso, p: PeritoEscolhido): Promise<string> {
+    if (p.peritoId) return p.peritoId
+    const achado = await peritoPeloNome(banco, p.nome!, n.pericia.tipo)
+    if (!n.mundo.peritos?.some((x) => x.id === achado.id)) {
+      const [linha] = await banco.select({ especialidade: perito.especialidade, perfil: perito.perfil }).from(perito).where(eq(perito.id, achado.id))
+      const perfil = linha?.perfil as PerfilGuardado | null
+      const laudos = perfil?.laudos ?? []
+      ;(n.mundo.peritos ??= []).push({ id: achado.id, nome: achado.nome, especialidade: linha?.especialidade ?? '', tipo: perfil?.tipo ?? n.pericia.tipo, onde: perfil?.onde ?? '', laudos })
+      d.laudosAntes.set(achado.id, laudos.length)
+    }
+    return achado.id
+  }
+
+  /**
    * GGVP-158 P5.1: o registro do que foi pelo Chatwoot pede a mensagem que o correio do cliente mandou de verdade
    * (rotas/mensagens.ts): da pessoa do caso, do modelo e com o mesmo texto. Com o id, vale aquela; sem ele, a mais nova que
    * saiu (a tela envia antes e registra depois). A que ficou como "não saiu" não serve.
@@ -593,7 +611,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   // GGVP-61 CA6: a pergunta de um clique liga o perito; a orientação sai de novo pelo perfil.
   app.post<ComId>('/api/processos/:id/pericia/perito', com('pericia.orientar_cliente'), (pedido, resposta) => {
     const p = corpo(PeritoEscolhido, pedido, resposta)
-    return p && mudar(pedido, resposta, { acao: 'pericia_perito_ligado', passo: 'DP.05' }, (n, quem) => mudancas.perito(n, p.peritoId, quem))
+    return p && mudar(pedido, resposta, { acao: 'pericia_perito_ligado', passo: 'DP.05' }, async (n, quem, d) => mudancas.perito(n, await peritoEscolhido(n, d, p), quem))
   })
 
   /**
@@ -755,6 +773,6 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   // GGVP-73 CA6: ligado o perito, o laudo sai da espera e entra no perfil dele.
   app.post<ComId>('/api/processos/:id/pericia/laudo/perito', com('pericia.conferir_resultado'), (pedido, resposta) => {
     const p = corpo(PeritoEscolhido, pedido, resposta)
-    return p && mudar(pedido, resposta, { acao: 'pericia_perito_do_laudo', passo: 'DP.09' }, (n, quem) => mudancas.peritoDoLaudo(n, p.peritoId, quem), true)
+    return p && mudar(pedido, resposta, { acao: 'pericia_perito_do_laudo', passo: 'DP.09' }, async (n, quem, d) => mudancas.peritoDoLaudo(n, await peritoEscolhido(n, d, p), quem), true)
   })
 }

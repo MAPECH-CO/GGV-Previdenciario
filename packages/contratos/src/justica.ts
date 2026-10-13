@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { Lembrete, TentativaDoLaco } from './exigencia.ts'
 import { DataObrigatoria, TIPOS_DE_PERICIA, naoFutura } from './inss.ts'
 import { SugestaoDaIa } from './ia.ts'
+import { NomeDoPerito } from './pericia.ts'
 
 export const CLASSES_DE_ATO = ['andamento', 'exigencia', 'merito', 'nomeacao_perito'] as const
 export const ROTULO_CLASSE: Record<(typeof CLASSES_DE_ATO)[number], string> = {
@@ -36,6 +37,8 @@ export const ClassificarPublicacao = z
       .transform((v) => (v === undefined || v === '' ? null : normalizarInteiro(v))),
     vara: daVara('A vara'),
     juiz: daVara('O nome do juiz'),
+    /** GGVP-158 P5.2: na nomeação, o perito conferido; vazio, a nomeação procura pelo texto, como antes. */
+    perito: NomeDoPerito.optional(),
   })
   .refine((c) => c.classe === 'andamento' || c.semPrazoNaDecisao || (c.dias !== null && c.dias >= 1 && c.dias <= 120), {
     message: 'Informe o prazo da publicação, em dias (1 a 120), ou marque "sem prazo na decisão"',
@@ -54,6 +57,7 @@ export const ClassificarPublicacao = z
           : (c.dias as number),
     vara: c.vara || null,
     juiz: c.juiz || null,
+    perito: c.classe === 'nomeacao_perito' ? (c.perito ?? null) : null,
   }))
 export type ClassificarPublicacao = z.input<typeof ClassificarPublicacao>
 
@@ -88,6 +92,8 @@ export const LeituraDaPublicacaoPelaIa = z.object({
   resumo: z.string().trim().min(1),
   vara: lidoNoTexto,
   juiz: lidoNoTexto,
+  /** GGVP-158 P5.2: na nomeação, o perito como está escrito; a pessoa confere. */
+  perito: lidoNoTexto,
 })
 /** POST /api/publicacoes/:id/sugestao. Sem sugestão (sem chave, falha ou fora do formato): `sugestao` nulo e o motivo. */
 export const SugestaoDePublicacao = z.object({

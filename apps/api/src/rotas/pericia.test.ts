@@ -272,6 +272,29 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
   })
 
+  it('GGVP-158 P5.2 · a pergunta de um clique com o nome novo cria o perito social, e o laudo entra no perfil dele', async () => {
+    await banco.insert(decisao).values({ casoId, passo: 'D2.01', tipo: 'aprovacao_inss', resultado: 'aprovado', decididoPor: ids.helena, perfil: 'senior' })
+    const decidir = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/pericia`, cookies: await de('gabi'), payload: { precisa: true, tipos: ['social'] } })
+    expect(decidir.statusCode).toBe(201)
+    await post('igor', '/liberacao')
+    const marcada = await app.inject({ method: 'POST', url: url('/marcacao'), cookies: await de('igor'), ...multipart('comprovante', { lido: { ...lido, tipo: 'social' }, pedeDocumentoNovo: false }, PDF('comprovante.pdf')) })
+    expect(marcada.statusCode).toBe(200)
+    expect((await post('igor', '/perito', {})).statusCode).toBe(400)
+    const r = await post('igor', '/perito', { nome: 'Dra. Marta Assis' })
+    const [marta] = await banco.select().from(perito)
+    expect([r.statusCode, marta.nome, (marta.perfil as { tipo: string }).tipo, r.json().pericia.peritoId]).toEqual([200, 'Marta Assis', 'social', marta.id])
+    relogio = new Date('2026-10-22T15:00:00Z')
+    for (const k of Object.keys(cookies)) delete cookies[k]
+    await post('igor', '/comparecimento', { compareceu: true })
+    await post('gabi', '/resultado/disponivel')
+    const conferidas = ['laudo', 'parecer', 'dii', 'beneficio']
+    const resultado = await app.inject({ method: 'POST', url: url('/resultado'), cookies: await de('gabi'), ...multipart('laudo', { favoravel: true, conferidas }, PDF('laudo.pdf')) })
+    expect([resultado.statusCode, resultado.json().pericia.resultado.noPerfil]).toEqual([200, 'atualizado'])
+    const [depois] = await banco.select({ perfil: perito.perfil }).from(perito).where(eq(perito.id, marta.id))
+    expect((depois.perfil as { tipo: string; laudos: unknown[] }).laudos).toHaveLength(1)
+    expect((await banco.select().from(perito)).length).toBe(1)
+  })
+
   it('GGVP-53 CA9 · G15: passou do limite de remarcações, só a advogada responsável autoriza mais uma', async () => {
     await decidirPericia()
     await post('igor', '/liberacao')

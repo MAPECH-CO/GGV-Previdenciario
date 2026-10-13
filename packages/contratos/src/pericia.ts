@@ -1,6 +1,7 @@
 // Contratos da Perícia ligada no servidor (GGVP-137). Espelham o que as telas do Pedro mandam (apps/web/src/dados/
 // pericia.ts); a forma é conferida aqui, e as regras (tentativa, marcação, documentos, orientação, comparecimento e
 // resultado) são as de apps/web/src/regras/periciaNoCaso.ts, rodando no servidor. A resposta é a perícia na tela.
+import { normalizarNome, validarNome } from '@ggv/campos'
 import { z } from 'zod'
 import { SugestaoDaIa } from './ia.ts'
 
@@ -73,7 +74,21 @@ export const DecisaoDaFalta = z.object({ texto: Texto(1000) })
 export type DecisaoDaFalta = z.infer<typeof DecisaoDaFalta>
 
 /** POST /api/processos/:id/pericia/perito e /laudo/perito: a pergunta de um clique (GGVP-61 e GGVP-73, CA6). */
-export const PeritoEscolhido = z.object({ peritoId: Texto(60).min(1) })
+/** "Dra. Ana Souza" → "Ana Souza": o título não é nome, e o `validarNome` da `campos` só aceita letras (GGVP-158 P5.2). */
+export const semTitulo = (nome: string) => normalizarNome(nome).replace(/^(?:dra?|doutora?|sra?)\.?\s+/i, '')
+
+/** O nome do perito que a pessoa conferiu (GGVP-158 P5.2): vazio é nulo; o resto passa pelo `validarNome`, sem o título. */
+export const NomeDoPerito = z
+  .string()
+  .trim()
+  .max(120, 'O nome do perito tem até 120 caracteres')
+  .refine((n) => !n || validarNome(semTitulo(n)), 'Escreva o nome do perito só com letras')
+  .transform((n) => (n ? semTitulo(n) : null))
+
+/** POST /api/processos/:id/pericia/perito: o perito da base ou, sem ele na base, o nome do novo (GGVP-158 P5.2). */
+export const PeritoEscolhido = z
+  .object({ peritoId: Texto(60).optional(), nome: NomeDoPerito.optional() })
+  .refine((p) => Boolean(p.peritoId) || Boolean(p.nome), { message: 'Escolha o perito ou escreva o nome dele', path: ['nome'] })
 export type PeritoEscolhido = z.infer<typeof PeritoEscolhido>
 
 /**

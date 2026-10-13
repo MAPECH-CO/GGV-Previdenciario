@@ -314,13 +314,19 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - a ligação segue sem mensagem.
 
   Verificado em 13/10: `rotas/pericia.test.ts` 29/29, com os 3 novos de P5.1.
-- [ ] 5.2 O perito pelo nome (P5.2, decisão 41): `perito` na leitura da IA e na classificação; `peritoPeloNome` acha ou cria; a nomeação liga à perícia aberta.
-  - Verifica com `rotas/publicacoes.test.ts` e `vigilia/perito.test.ts`:
+- [x] 5.2 O perito pelo nome (P5.2, decisão 41): `perito` na leitura da IA e na classificação; `peritoPeloNome` acha ou cria; a nomeação liga à perícia aberta.
+  - Verifica com `rotas/publicacoes.test.ts` e `justica.test.ts` (contratos):
     - o perito novo nasce e liga;
     - a grafia conhecida não cria outro;
     - sem perícia aberta, nasce médico e fica no histórico.
-- [ ] 5.3 A pergunta de um clique com o nome novo (P5.2): `PeritoEscolhido` aceita `nome`. Verifica com `rotas/pericia.test.ts`: o perito nasce, e a orientação sai pelo perfil dele.
-- [ ] 5.4 O perfil laudo a laudo (P5.2): o laudo da perícia social entra no perfil do perito. Verifica com `rotas/pericia.test.ts`.
+
+  Verificado em 13/10: `rotas/publicacoes.test.ts` 23/23 (4 novos) e contratos `justica.test.ts` 24/24 (1 novo). A instrução da IA foi à versão 5.
+- [x] 5.3 A pergunta de um clique com o nome novo (P5.2): `PeritoEscolhido` aceita `nome`, também no perito do laudo. Verifica com `rotas/pericia.test.ts`: o perito nasce e fica ligado à perícia.
+
+  Verificado em 13/10, no teste de P5.2 de `rotas/pericia.test.ts` (sem nome nem id, 400).
+- [x] 5.4 O perfil laudo a laudo (P5.2): o laudo da perícia social entra no perfil do perito. Verifica com `rotas/pericia.test.ts`.
+
+  Verificado em 13/10: o mesmo teste leva a perícia social até o resultado, e o perfil da perita nova ganha o laudo.
 - [ ] 5.5 Os limites por parâmetro, nas regras (P5.3, decisão 42): cobrança, confirmação e remarcação recebem os limites, com os números do Lucas como padrão; o da remarcação passa a 1.
   - Verifica com os testes das regras:
     - com 3 tentativas, a segunda sem resposta não sobe;
