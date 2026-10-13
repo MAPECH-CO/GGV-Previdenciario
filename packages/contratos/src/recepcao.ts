@@ -1,7 +1,9 @@
 // Contratos da Recepção ligada no servidor (GGVP-125, bloco 1: o lead e a ficha). Espelham os tipos das telas do Pedro
 // (apps/web/src/dados/tipos.ts); a forma é conferida aqui, e as regras (nome, CPF, telefone, idade, duplicidade) são as
 // mesmas do servidor de exemplo, rodando no servidor de verdade.
+import { validarData } from '@ggv/campos'
 import { z } from 'zod'
+import { EntradaCalculoCnis } from './calculo-cnis.ts'
 
 const Texto = (max: number) => z.string().trim().max(max)
 const Opcional = (max: number) => Texto(max).optional()
@@ -213,6 +215,17 @@ export const RegistroDoCalculo = z.discriminatedUnion('podeAposentar', [
   z.object({ podeAposentar: z.literal(false), tempo: Tempo, pontos: z.number().min(0), regra: Texto(200), dataPrevista: Texto(10), conferi: z.literal(true) }),
 ])
 export type RegistroDoCalculo = z.infer<typeof RegistroDoCalculo>
+
+/**
+ * PUT /api/entrevistas/:id/cnis (GGVP-158, P3.4): o CNIS que o advogado do atendimento digita do papel ou do Meu INSS, com
+ * a origem e a data da extração (GGVP-57, CA4). O cálculo é o `calcularCnis`, rodado no servidor com esta entrada.
+ */
+export const CnisDigitado = z.object({
+  origem: z.enum(['meu-inss', 'impresso'], { error: 'Diga de onde veio o CNIS: impresso ou Meu INSS.' }),
+  extraidoEm: z.string().refine(validarData, 'Data da extração inválida: use dd/mm/aaaa.'),
+  calculo: EntradaCalculoCnis,
+})
+export type CnisDigitado = z.infer<typeof CnisDigitado>
 
 const Espera = z.enum(['pensar', 'esperar'])
 /** POST /api/fichas/:id/fechamento: "Fechou com o escritório?" (GGVP-60, G16). O papel vem da sessão, não daqui. */

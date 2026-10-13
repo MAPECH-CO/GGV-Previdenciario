@@ -8,6 +8,8 @@ import { COOKIE } from '../sessao/rotas.ts'
 import { cadastroDaFicha } from '../../../web/src/regras/cadastro.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { MSG_SENHA_FORA_DO_COFRE } from './recepcao-decisoes.ts'
+import { calcularCnis } from '@ggv/contratos'
+import { pontosDoCnis, pontosFalados, tempoDosDias, tempoFalado } from '../../../web/src/regras/calculo.ts'
 
 const SENHA = 'senha-do-portal-1'
 /** Senha de teste do gov.br: não pode aparecer na ficha (G9). */
@@ -216,5 +218,64 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
     expect(renovou.senhaGov).toMatchObject({ situacao: 'no-cofre', funcionouEm: '2026-10-08' })
 
     expect((await json('ana', 'POST', url, { acao: 'nao-sabe' })).senhaGov).toEqual({ situacao: 'sem-senha', naoSabe: true })
+  })
+})
+
+describe('GGVP-158 P3.4 · o cálculo de tempo e pontos sai do CNIS digitado, no servidor', () => {
+  // Inventado: o vínculo atravessa a reforma (dias até 13/11/2019, competências depois).
+  const CNIS = {
+    origem: 'impresso',
+    extraidoEm: '05/10/2026',
+    calculo: { nascimento: '10/03/1962', referencia: '01/10/2026', vinculos: [{ inicio: '01/01/1990', fim: '30/09/2026', tempo: 'conferido', carencia: 'conferido' }], excecoes: [] },
+  }
+  // O que a tela manda hoje: os números digitados não valem; a regra e o "pode aposentar" valem.
+  const REGISTRO = { podeAposentar: true, tempo: { anos: 1, meses: 0, dias: 0 }, pontos: 1, regra: 'Transição por pontos (EC 103, art. 15)', conferi: true }
+  async function comCalculo() {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    await definir(agendamentoId, 'aposentadoria-idade')
+    return { fichaId, url: `/api/entrevistas/${agendamentoId}` }
+  }
+
+  it('o advogado digita o CNIS; o servidor roda o mesmo cálculo da tela, guarda e registra com os números dele', async () => {
+    const { fichaId, url } = await comCalculo()
+    const fechar = () => json('ana', 'POST', `/api/fichas/${fichaId}/fechamento`, { fechou: true })
+    expect((await fechar()).erro).toBe('Falta calcular o tempo e os pontos: obrigatório antes de fechar.')
+    expect((await chamar('ana', 'PUT', `${url}/cnis`, CNIS)).statusCode).toBe(403)
+    const esperado = calcularCnis(CNIS.calculo, '08/10/2026')
+    if (!esperado.ok) throw new Error('o CNIS do teste devia passar')
+    const guardado = await json('gabi', 'PUT', `${url}/cnis`, CNIS)
+    expect(guardado.cnis).toMatchObject({ origem: 'impresso', extraidoEm: '2026-10-05', entrada: CNIS.calculo, resultado: esperado, quem: 'gabi' })
+    expect(guardado.ficha.historico.at(-1).oQue).toBe('Digitou o CNIS (impresso, extraído em 05/10/2026), com 1 vínculo; o cálculo do servidor deu ' +
+      `${tempoFalado(tempoDosDias(esperado.diasTotais))}, ${pontosFalados(pontosDoCnis(esperado.pontos))} pontos e ${esperado.carencia} competências de carência`)
+    expect(await json('gabi', 'GET', `${url}/calculo`)).toMatchObject({ exige: true, cnis: { resultado: esperado } })
+
+    const r = await json('gabi', 'POST', `${url}/calculo`, REGISTRO)
+    expect(r.ficha.calculos).toEqual([
+      expect.objectContaining({
+        tempo: tempoDosDias(esperado.diasTotais),
+        pontos: pontosDoCnis(esperado.pontos),
+        carencia: esperado.carencia,
+        regra: REGISTRO.regra,
+        podeAposentar: true,
+        cnisOrigem: 'impresso',
+        cnisExtraidoEm: '2026-10-05',
+        versao: 'rgps-comum-1',
+      }),
+    ])
+    // O cálculo registrado libera o "Sim, fechou".
+    expect(await fechar()).toMatchObject({ fechou: true })
+  })
+
+  it('CNIS com erro é recusado com os erros do cálculo; com competência pendente, o cálculo não é registrado', async () => {
+    const { url } = await comCalculo()
+    const semVinculo = await chamar('gabi', 'PUT', `${url}/cnis`, { ...CNIS, calculo: { ...CNIS.calculo, vinculos: [] } })
+    expect([semVinculo.statusCode, semVinculo.json().erro]).toEqual([400, 'Digite ao menos um vínculo.'])
+    const futuro = await chamar('gabi', 'PUT', `${url}/cnis`, { ...CNIS, calculo: { ...CNIS.calculo, referencia: '01/12/2026' } })
+    expect([futuro.statusCode, futuro.json().erro]).toEqual([400, 'A data de referência não pode ser futura.'])
+
+    const pendente = { ...CNIS, calculo: { ...CNIS.calculo, vinculos: [{ ...CNIS.calculo.vinculos[0], tempo: 'pendente' }] } }
+    expect((await chamar('gabi', 'PUT', `${url}/cnis`, pendente)).statusCode).toBe(200)
+    const r = await chamar('gabi', 'POST', `${url}/calculo`, REGISTRO)
+    expect([r.statusCode, r.json().erro]).toEqual([400, 'O CNIS tem competências pendentes: confira antes de registrar o cálculo.'])
   })
 })

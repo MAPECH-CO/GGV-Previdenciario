@@ -190,15 +190,15 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
 - [x] 3.4 O percentual do modelo, servidor (P3.3): `PUT /api/configuracao/modelos/:id/honorarios`, só da Sênior (`modelo.subir`), guardado na `configuracao` com o histórico; o `GET` dos modelos devolve o percentual. Verifica com `rotas/modelos.test.ts`.
 - [x] 3.5 O contrato guarda o percentual (P3.3): ao gerar o kit, o contrato da Recepção guarda o percentual do modelo usado; sem percentual cadastrado, o kit sai, e o contrato fica sem. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [x] 3.6 A prestação lê e compara (P3.3): o `GET` devolve o percentual do contrato da Recepção (ou da tabela `contrato`, na semente), e o `POST` recusa um percentual diferente do contrato. Verifica com `rotas/prestacao.test.ts`.
-- [ ] 3.7 O CNIS digitado, contrato (P3.4).
+- [x] 3.7 O CNIS digitado, contrato (P3.4).
   - Em `packages/contratos`, o `CnisDigitado`: a origem, a data da extração e a entrada do `calcularCnis` (`EntradaCalculoCnis`), que o Pedro já fez.
   - Sem regra nova: o cálculo é o `calcularCnis` (decisão 23).
   - Verifica com o teste do contrato.
-- [ ] 3.8 Guardar o CNIS (P3.4).
+- [x] 3.8 Guardar o CNIS (P3.4).
   - `PUT /api/entrevistas/:id/cnis`, do advogado do atendimento (`ficha.analisar`), roda o `calcularCnis`. Com erro, recusa com os erros dele; sem erro, grava na ficha a entrada, o resultado, quem e quando, e o histórico.
   - `GET /api/entrevistas/:id/calculo` devolve o CNIS guardado e o resultado.
   - Verifica com `rotas/recepcao-decisoes.test.ts`.
-- [ ] 3.9 O cálculo do servidor (P3.4).
+- [x] 3.9 O cálculo do servidor (P3.4).
   - O `POST /api/entrevistas/:id/calculo` usa o tempo, os pontos e a carência do resultado guardado (o número da tela não vale). A regra e o "já pode se aposentar" vêm do advogado.
   - Com competência pendente, recusa. O cálculo registrado libera o "Sim, fechou". A semente segue com o CNIS de exemplo.
   - Verifica com `rotas/recepcao-decisoes.test.ts`.

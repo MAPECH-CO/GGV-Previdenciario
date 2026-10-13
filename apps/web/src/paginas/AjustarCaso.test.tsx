@@ -9,6 +9,7 @@ const devolvido: CasoParaLiberacao = {
   cliente: 'Benedito Alves (exemplo)',
   beneficio: 'bpc_loas_deficiente',
   checklist: { cadastrado: true, completo: true, faltam: [] },
+  kitAssinado: true,
   travaDoParecer: null,
   esperandoConferencia: false,
   ajuste: { motivo: 'Falta a procuração assinada', prazo: '2026-10-10', reprovadoPor: 'Helena (exemplo)', reprovadoEm: '2026-10-08T15:00:00.000Z' },

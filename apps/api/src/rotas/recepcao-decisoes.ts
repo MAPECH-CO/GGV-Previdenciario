@@ -6,9 +6,11 @@
 import { randomUUID } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { dataParaIso, normalizarCpf, normalizarData } from '@ggv/campos'
+import { dataParaIso, isoParaData, normalizarCpf, normalizarData } from '@ggv/campos'
 import {
   AnaliseDaFicha,
+  CnisDigitado,
+  calcularCnis,
   DecisaoDoBeneficio,
   EnvioDaDemanda,
   EnvioDoFechamento,
@@ -27,7 +29,7 @@ import { analisar, cnisDoCaso } from '../../../web/src/dados/acervo.ts'
 import { BENEFICIOS, MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import type { Agendamento, Calculo, Cadastro, Demanda, Ficha, PapelNoFechamento, Renovacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
 import { cadastroDaFicha, errosDoCadastro, errosDoRepresentante, fichaDoCadastro, mesclar, normalizarRg, ROTULOS_DO_CADASTRO } from '../../../web/src/regras/cadastro.ts'
-import { calculoPendente, dataPrevistaIso, exigeCalculo, pontosFalados, registroValido, tempoFalado } from '../../../web/src/regras/calculo.ts'
+import { calculoPendente, dataPrevistaIso, exigeCalculo, pontosDoCnis, pontosFalados, registroValido, tempoDosDias, tempoFalado } from '../../../web/src/regras/calculo.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { TAMANHO_DO_DETALHE, beneficioDoFechamento, motivoParadoDoFechamento, podeRegistrarOMotivo, recontatoEmAberto } from '../../../web/src/regras/fechamento.ts'
@@ -245,6 +247,41 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
 
   // GGVP-57: o advogado do atendimento registra o tempo, os pontos, a regra e quem conferiu (CA5); refazer guarda o
   // anterior (CA6). O portal não calcula sozinho e nenhum número vem da IA (G19).
+  // GGVP-158 P3.4: o advogado do atendimento digita o CNIS impresso ou do Meu INSS; o servidor roda o `calcularCnis` (o
+  // mesmo da tela, GGVP-159) e guarda a entrada e o resultado na ficha. Nenhum número vem da IA nem de fora do servidor (G19).
+  app.put<{ Params: { id: string } }>('/api/entrevistas/:id/cnis', analisarFicha, async (pedido, resposta) => {
+    const entrada = CnisDigitado.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira o CNIS digitado.')
+    const achado = await acharAgendamento(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
+    const { ficha } = achado
+    if (!exigeCalculo(ficha.beneficioDefinido?.beneficio)) return negar(resposta, 400, 'O benefício deste caso não exige cálculo.')
+    const { origem, extraidoEm, calculo } = entrada.data
+    const resultado = calcularCnis(calculo, isoParaData(hoje())!)
+    if (!resultado.ok) return negar(resposta, 400, resultado.erros.join(' '))
+    const quem = await nomeDe(pedido)
+    ficha.cnisDigitado = { origem, extraidoEm: dataParaIso(extraidoEm)!, entrada: calculo, resultado, quem, quando: agora().toISOString() }
+    const vinculos = calculo.vinculos.length
+    ficha.historico.push(
+      evento(
+        `Digitou o CNIS (${origem === 'impresso' ? 'impresso' : 'Meu INSS'}, extraído em ${extraidoEm}), com ${vinculos} ${vinculos === 1 ? 'vínculo' : 'vínculos'}; ` +
+          `o cálculo do servidor deu ${tempoFalado(tempoDosDias(resultado.diasTotais))}, ${pontosFalados(pontosDoCnis(resultado.pontos))} pontos e ` +
+          `${resultado.carencia} competências de carência${resultado.parcial ? ', com competências pendentes' : ''}`,
+        quem,
+      ),
+    )
+    await guardar(ficha)
+    return { cnis: ficha.cnisDigitado, ...(await devolver(ficha)) }
+  })
+
+  // GGVP-158 P3.4: o que a tela do cálculo mostra: o CNIS guardado, com o resultado do servidor, e se o benefício exige cálculo.
+  app.get<{ Params: { id: string } }>('/api/entrevistas/:id/calculo', analisarFicha, async (pedido, resposta) => {
+    const achado = await acharAgendamento(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
+    const { ficha } = achado
+    return { cnis: ficha.cnisDigitado ?? null, exige: exigeCalculo(ficha.beneficioDefinido?.beneficio) }
+  })
+
   app.post<{ Params: { id: string } }>('/api/entrevistas/:id/calculo', analisarFicha, async (pedido, resposta) => {
     const entrada = RegistroDoCalculo.safeParse(pedido.body)
     if (!entrada.success || !registroValido(entrada.data, hoje())) return negar(resposta, 400, 'Cálculo incompleto ou inválido.')
@@ -253,14 +290,17 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
     const { ficha } = achado
     if (!exigeCalculo(ficha.beneficioDefinido?.beneficio)) return negar(resposta, 400, 'O benefício deste caso não exige cálculo.')
-    // ponytail: o CNIS ainda é o de exemplo; o anexado ao caso entra com os documentos (bloco 5).
-    const cnis = cnisDoCaso(ficha.id)
+    // GGVP-158 P3.4: com o CNIS digitado, o tempo, os pontos e a carência são os do servidor; o que a tela mandou não vale.
+    // Sem ele, a semente segue com o CNIS de exemplo.
+    const digitado = ficha.cnisDigitado
+    if (digitado?.resultado.parcial) return negar(resposta, 400, 'O CNIS tem competências pendentes: confira antes de registrar o cálculo.')
+    const cnis = digitado ? { origem: digitado.origem, extraidoEm: digitado.extraidoEm } : cnisDoCaso(ficha.id)
     if (!cnis) return negar(resposta, 400, 'Sem CNIS no caso.')
     const quem = await nomeDe(pedido)
     const anterior = ficha.calculos?.at(-1)
     const calculo: Calculo = {
-      tempo: registro.tempo,
-      pontos: registro.pontos,
+      tempo: digitado ? tempoDosDias(digitado.resultado.diasTotais) : registro.tempo,
+      pontos: digitado ? pontosDoCnis(digitado.resultado.pontos) : registro.pontos,
       regra: registro.regra,
       podeAposentar: registro.podeAposentar,
       ...(!registro.podeAposentar && { dataPrevista: dataPrevistaIso(registro.dataPrevista)! }),
@@ -268,6 +308,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
       quando: agora().toISOString(),
       cnisOrigem: cnis.origem,
       cnisExtraidoEm: cnis.extraidoEm,
+      ...(digitado && { carencia: digitado.resultado.carencia, versao: digitado.resultado.versao }),
     }
     const resumo = (c: Calculo) =>
       `${tempoFalado(c.tempo)}, ${pontosFalados(c.pontos)} pontos, ${c.regra}; ${c.podeAposentar ? 'já pode se aposentar' : `ainda não pode se aposentar: previsto para ${dataCurta(c.dataPrevista!, hoje())}`}`
