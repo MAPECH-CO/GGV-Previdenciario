@@ -536,9 +536,11 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - nasce a tarefa do Atendimento.
 
   Verificado em 13/10, em `rotas/chatwoot-entrada.test.ts`: com a IA de mentira, a rodada fecha a conversa parada e a IA aponta o endereço dito; o Atendimento responde a pendência, e a Sênior confirma, e a ficha muda; sem a IA, a mensagem 30 minutos depois fecha a anterior, com o motivo, e nasce a conferência do Atendimento.
-- [ ] 6.14 ADR-019 e a variável (decisão 66): o documento, e `CHATWOOT_WEBHOOK_SEGREDO` na lista das variáveis e na doc da homologação.
+- [x] 6.14 ADR-019 e a variável (decisão 66): o documento, e `CHATWOOT_WEBHOOK_SEGREDO` na lista das variáveis e na doc da homologação.
   - Verifica com `variaveis.test.ts`.
   - O `.env.example` é do Mateus.
+
+  Verificado em 13/10: `variaveis.test.ts` 4/4, com o nome que o Mateus pôs no arquivo de exemplo e a linha da doc da homologação. O ADR-019 está em `docs/decisoes/`, na lista do README.
 - [x] 6.15 Só o que foi dito (P6.6, decisão 62): `apareceNaFala` e o filtro em `lerComIa`.
   - Verifica com o teste da regra e com `rotas/transcricao-conversa.test.ts`:
     - o endereço que não foi dito sai;
