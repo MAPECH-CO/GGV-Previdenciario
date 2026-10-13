@@ -241,30 +241,30 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
 
 Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-4`, em cima do #71. A migração 0031 sai no fim, sobre a main mais nova. Na ordem contrato → teste → servidor.
 
-- [ ] 4.1 A IA com o arquivo (P4.1, decisão 27).
+- [x] 4.1 A IA com o arquivo (P4.1, decisão 27).
   - O `Pedido` de `ia.ts` ganha o anexo (imagem ou PDF), que vai na mensagem ao modelo.
   - A sugestão pronta conta o hash do arquivo; o registro fica sem o conteúdo.
   - O `limpar` roda antes do registro.
   - Verifica com `ia/ia.test.ts`: o corpo do pedido leva o arquivo, o registro não, e o `limpar` roda antes de guardar.
-- [ ] 4.2 A leitura do balcão, contrato (P4.1): em `packages/contratos`, o JSON que a IA devolve (`LidoPelaIa`); em `ia.ts`, a finalidade `ler_documento_balcao`. Verifica com o teste do contrato.
-- [ ] 4.3 A leitura do balcão, servidor (P4.1): `lerDoBalcao` monta a `DocumentoLido` com as regras do código (decisão 29); sem IA, o documento fica a conferir com confiança zero.
+- [x] 4.2 A leitura do balcão, contrato (P4.1): em `packages/contratos`, o JSON que a IA devolve (`LidoPelaIa`); em `ia.ts`, a finalidade `ler_documento_balcao`. Verifica com o teste do contrato.
+- [x] 4.3 A leitura do balcão, servidor (P4.1): `lerDoBalcao` monta a `DocumentoLido` com as regras do código (decisão 29); sem IA, o documento fica a conferir com confiança zero.
   - Verifica com teste:
     - o CNIS lido pelo conteúdo;
     - o nome do arquivo que não conta;
     - o CPF inválido de fora;
     - sem IA.
-- [ ] 4.4 A leitura na chegada do conteúdo (P4.1): `POST /api/fichas/:id/arquivos/conteudo` lê o arquivo, e o anúncio não lê. Verifica com `rotas/recepcao-documentos.test.ts`.
-- [ ] 4.5 A leitura de exemplo só no teste (P4.10).
+- [x] 4.4 A leitura na chegada do conteúdo (P4.1): `POST /api/fichas/:id/arquivos/conteudo` lê o arquivo, e o anúncio não lê. Verifica com `rotas/recepcao-documentos.test.ts`.
+- [x] 4.5 A leitura de exemplo só no teste (P4.10).
   - `LEITURA_SIMULADA=sim` liga o leitor de exemplo e as rotas simuladas.
   - O servidor recusa subir com ela na homologação e na produção.
   - O Playwright passa a ligá-la.
   - Verifica com `servidor.test.ts` e com o Playwright.
-- [ ] 4.6 A ficha em papel (P4.2): a rota recebe o arquivo e o guarda em Documentos pessoais; a IA lê (`ler_ficha_atendimento`), e a senha vai ao cofre.
+- [x] 4.6 A ficha em papel (P4.2): a rota recebe o arquivo e o guarda em Documentos pessoais; a IA lê (`ler_ficha_atendimento`), e a senha vai ao cofre.
   - Verifica com `rotas/recepcao.test.ts`:
     - a senha fica no cofre e fora da resposta, da ficha, do histórico e do registro da IA;
     - sem o arquivo, recusa;
     - sem IA, tudo volta como não lido.
-- [ ] 4.7 A segunda ficha em papel (P4.2): o mesmo, com `ler_segunda_ficha`, e a seção médica só em `segunda_ficha_medica`. Verifica com `rotas/recepcao-segunda-ficha.test.ts`.
+- [x] 4.7 A segunda ficha em papel (P4.2): o mesmo, com `ler_segunda_ficha`, e a seção médica só em `segunda_ficha_medica`. Verifica com `rotas/recepcao-segunda-ficha.test.ts`.
 - [ ] 4.8 O Drive lê as mudanças e baixa o arquivo (P4.3): `drive.mudancas(marca)` e `drive.baixar(id)`. Verifica com `drive.test.ts`, com o fetch de mentira.
 - [ ] 4.9 A rodada do scanner (P4.3, decisão 32): `olharOScanner`.
   - Verifica com teste:

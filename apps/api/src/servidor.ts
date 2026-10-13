@@ -32,6 +32,7 @@ import { registrarRotasSetor } from './rotas/setor.ts'
 import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
+import { criarLeitor } from './fluxo/leitura.ts'
 import { abrirConversor, type ConversorDePdf } from './kit/pdf.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
@@ -50,7 +51,7 @@ import { registrarRotasCrianca } from './rotas/crianca.ts'
 import { registrarRotasDocumentacaoMedica } from './rotas/documentacao-medica.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
-import { registrarRotasRecepcao } from './rotas/recepcao.ts'
+import { aceitaGanchoDeTeste, registrarRotasRecepcao } from './rotas/recepcao.ts'
 import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
 import { registrarRotasRecepcaoDecisoes } from './rotas/recepcao-decisoes.ts'
@@ -100,6 +101,11 @@ type Opcoes = {
   driveLigado?: boolean
   /** O commit do build (GGVP-158), que o /saude mostra. Padrão: "local". */
   versao?: string
+  /**
+   * GGVP-158 P4.10: a leitura de exemplo, pelo nome do arquivo, no lugar da IA de verdade, só para os testes. Padrão:
+   * `LEITURA_SIMULADA=sim`, que só o Playwright liga.
+   */
+  leituraSimulada?: boolean
 }
 
 declare module 'fastify' {
@@ -128,6 +134,7 @@ const CABECALHOS_DE_SEGURANCA = {
 }
 
 export const MSG_ERRO_INESPERADO = 'Algo deu errado.'
+export const MSG_LEITURA_SO_NO_TESTE = 'A leitura de exemplo (LEITURA_SIMULADA) é só dos testes de tela: na homologação e na produção, o portal não sobe com ela.'
 
 /**
  * GGVP-158: o que o log guarda de um erro: o código e o tipo, nunca a mensagem. O erro do banco traz o SQL e os parâmetros
@@ -139,7 +146,25 @@ export function resumoDoErro(e: unknown) {
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia, conversor, zapsign, driveLigado, versao = 'local' }: Opcoes = {}) {
+export function criarServidor({
+  logger = false,
+  banco,
+  consultarBanco,
+  pastaTela,
+  agora,
+  cookieSeguro,
+  cofre,
+  armazenamento,
+  fontes,
+  ia,
+  conversor,
+  zapsign,
+  driveLigado,
+  versao = 'local',
+  leituraSimulada = process.env.LEITURA_SIMULADA === 'sim',
+}: Opcoes = {}) {
+  // GGVP-158 P4.10: a homologação e a produção nunca leem pelo nome do arquivo.
+  if (leituraSimulada && !aceitaGanchoDeTeste(process.env)) throw new Error(MSG_LEITURA_SO_NO_TESTE)
   // GGVP-158: o log nunca leva o cookie da sessão nem a autorização, mesmo num registro que traga os cabeçalhos.
   const app = Fastify({ logger: logger && { redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'] } })
   // GGVP-158: o erro inesperado responde a mensagem genérica e registra só a rota, o código e o tipo. O 4xx (validação,
@@ -217,19 +242,22 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecurso(app, { banco, agora })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea })
+    // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
+    const leitor = criarLeitor({ ia: motorIa, simulada: leituraSimulada, agora })
+    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea, armazenamento: arquivos, cofre: cofreDoGov, leitor })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
-    registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
+    registrarRotasRecepcaoSegundaFicha(app, { banco, agora, armazenamento: arquivos, cofre: cofreDoGov, leitor })
     registrarRotasRecepcaoContrato(app, {
       banco,
       agora,
       armazenamento: arquivos,
       conversor: conversor === undefined ? abrirConversor() : (conversor ?? undefined),
       zapsign: zapsign ?? Boolean(process.env.ZAPSIGN_API_TOKEN),
+      leitor,
     })
-    registrarRotasRecepcaoDocumentos(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasRecepcaoDocumentos(app, { banco, agora, armazenamento: arquivos, leitor })
     registrarRotasRecepcaoChecklist(app, { banco, agora })
     registrarRotasRecepcaoCobranca(app, { banco, agora })
     registrarRotasRoteiros(app, { banco, agora })

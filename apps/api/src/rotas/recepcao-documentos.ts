@@ -20,6 +20,7 @@ import { normalizarRg } from '../../../web/src/regras/cadastro.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { ROTULOS_DOS_CAMPOS, ehMedico, menosLegivel, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
+import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
 import { criarLeituraDoContrato } from './recepcao-contrato.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
 
@@ -44,9 +45,9 @@ const ilegivelEmAberto = (l: DocumentoLido, leituras: DocumentoLido[]) =>
   l.situacao === 'ilegivel' && !leituras.some((o) => o.fichaId === l.fichaId && o.tipo === l.tipo && o.situacao !== 'ilegivel' && o.lidoEm > l.lidoEm)
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento }
+type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento; leitor: Leitor }
 
-export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento }: Opcoes) {
+export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento, leitor }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const historico = registrarHistorico(banco, agora)
@@ -66,6 +67,16 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     const [linha] = await banco.select().from(leituraDocumento).where(eq(leituraDocumento.id, id))
     const ficha = linha && (await fichaPeloId(linha.pessoaId))
     return linha && ficha ? { doc: linha.dados as DocumentoLido, ficha } : null
+  }
+
+  /** O conteúdo do arquivo do card guardado no portal, pelo hash: a leitura de verdade precisa dele (P4.1). */
+  async function conteudoGuardado(pessoaId: string, hash: string | undefined): Promise<Conteudo | undefined> {
+    if (!hash) return undefined
+    const [d] = await banco
+      .select({ chave: documento.chaveArmazenamento, mime: documento.mime })
+      .from(documento)
+      .where(and(eq(documento.pessoaId, pessoaId), eq(documento.hashSha256, hash), isNull(documento.excluidoEm)))
+    return d ? { bytes: await armazenamento.ler(d.chave), mime: d.mime } : undefined
   }
 
   /** Os contratos da Recepção de uma pessoa, para a cópia das telas depois da leitura do assinado. */
@@ -203,7 +214,8 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       ficha.historico.push(evento(`Anexou ${documentos(outros.length)} ${pelo} (${tipos})${repetidos > 0 ? `; ${repetidos} já estava na pasta` : ''}`, quem))
     }
     await guardar(ficha)
-    const leituras = await lerArquivosNovos(ficha)
+    // A IA de verdade lê quando o conteúdo chega (a rota abaixo); a de exemplo, dos testes de tela, já lê aqui.
+    const leituras = await lerArquivosNovos(ficha, leitor, pedido.usuario!.id)
     return { resultado: 'enviado', arquivos: novos, laudoNovo: laudos.length > 0, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id), leituras }
   })
 
@@ -219,11 +231,14 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     const hash = createHash('sha256').update(arquivo.conteudo).digest('hex')
     const anunciado = ficha.arquivos.find((a) => a.hash === hash)
     if (!anunciado || formulario.campos.hash !== hash) return negar(resposta, 400, MSG_CONTEUDO_DIFERENTE)
+    // GGVP-158 P4.1: com o conteúdo aqui, a IA lê de verdade cada arquivo anunciado com ele (o repetido também, para o CA9).
+    const conteudo: Conteudo = { bytes: arquivo.conteudo, mime: arquivo.mime }
+    const ler = () => lerArquivosNovos(ficha, leitor, pedido.usuario!.id, new Map(ficha.arquivos.filter((a) => a.hash === hash).map((a) => [a.nome, conteudo])))
     const [jaGuardado] = await banco
       .select({ id: documento.id })
       .from(documento)
       .where(and(eq(documento.pessoaId, ficha.id), eq(documento.hashSha256, hash), isNull(documento.excluidoEm)))
-    if (jaGuardado) return { documentoId: jaGuardado.id, repetido: true }
+    if (jaGuardado) return { documentoId: jaGuardado.id, repetido: true, leituras: await ler() }
     const casoId = ficha.processos.map((p) => p.id).find((id) => UUID.test(id)) ?? null
     const dados = await guardarArquivo(armazenamento, casoId ?? ficha.id, arquivo, anunciado.tipo, casoId ? 'casos' : 'pessoas')
     const quem = pedido.usuario!.id
@@ -236,13 +251,13 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       if (casoId && tipoMedico) await tx.insert(documentoMedico).values({ documentoId: d.id, tipo: tipoMedico })
       return d.id
     })
-    return resposta.code(201).send({ documentoId, repetido: false })
+    return resposta.code(201).send({ documentoId, repetido: false, leituras: await ler() })
   })
 
   // GGVP-17 CA2, CA4, CA10: o lote do scanner (o aviso do n8n), simulado. Lote em revisão não mexe no portal. No servidor
   // ainda não há a lista de pastas do Drive: a ficha tem pasta se já tiver uma ligada ou se tiver CPF (pasta nova só nasce
-  // com o CPF, CA11).
-  app.post<{ Params: { id: string } }>('/api/tarefas/:id/lote', editar, async (pedido, resposta) => {
+  // com o CPF, CA11). GGVP-158 P4.10: só nos testes de tela; o lote de verdade chega pela rodada do scanner no Drive.
+  if (leitor.simulada) app.post<{ Params: { id: string } }>('/api/tarefas/:id/lote', editar, async (pedido, resposta) => {
     const achada = await tarefaEFicha(pedido.params.id)
     if (!achada) return negar(resposta, 404, 'Tarefa não encontrada.')
     const { tarefa, ficha } = achada
@@ -262,7 +277,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
         await avisarLaudoNovo(ficha, ficha.processos[0], dia, 'Chegou laudo novo pelo scanner; enviado ao Jurídico para análise', SCANNER)
       await guardar(ficha)
     }
-    const leituras = await lerArquivosNovos(ficha)
+    const leituras = await lerArquivosNovos(ficha, leitor, pedido.usuario!.id)
     return { lote, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id), leituras }
   })
 
@@ -454,7 +469,10 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     await guardarLeitura(doc)
     await guardar(ficha)
     await guardar(destino)
-    await lerArquivosNovos(destino)
+    // A leitura de verdade na pasta de destino usa o conteúdo guardado do card (P4.1). ponytail: o do scanner fica no
+    // Drive e espera a pessoa; baixar do Drive aqui quando mover documento do scanner virar rotina.
+    const conteudo = await conteudoGuardado(ficha.id, arquivo.hash)
+    await lerArquivosNovos(destino, leitor, pedido.usuario!.id, conteudo && new Map([[nome, conteudo]]))
     const leituras = [...(await leiturasDe(ficha.id)), ...(await leiturasDe(destino.id))]
     return { evento: registro, ficha: await fichaPeloId(ficha.id), destino: await fichaPeloId(destino.id), saiu: arquivo, leituras }
   })

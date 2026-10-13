@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
+import { criarIa } from '../ia/ia.ts'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { caso, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { docxDeTeste, formularioDoArquivo } from '../kit/docx-de-teste.ts'
@@ -38,8 +39,9 @@ const leiturasDe = async (fichaId: string) => (await banco.select().from(leitura
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  // O kit é o Word do escritório (GGVP-136): o ZapSign é o simulado e o kit sai em Word, sem conversor de PDF.
-  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), zapsign: true, conversor: null })
+  // O kit é o Word do escritório (GGVP-136): o ZapSign é o simulado e o kit sai em Word, sem conversor de PDF. A leitura é
+  // a de exemplo, pelo nome do arquivo (GGVP-158 P4.10); a de verdade, pela IA, tem o bloco dela no fim.
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), zapsign: true, conversor: null, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // Os contratos dos testes são do LOAS: o modelo dele, de teste, já está na Configuração. Só pede o nome e o CPF.
@@ -236,7 +238,7 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
 
   beforeEach(async () => {
     await app.close()
-    app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))) })
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), leituraSimulada: true })
   })
 
   it('laudo com caso: guardado como documento sensível do caso e documento médico não conferido; o mesmo conteúdo não duplica', async () => {
@@ -249,7 +251,7 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     expect([d.casoId, d.pessoaId, d.tipo, d.sensivel, d.origem, d.hashSha256]).toEqual([c.id, fichaId, 'laudo', true, 'card', sha(PDF_LAUDO)])
     const [m] = await banco.select().from(documentoMedico).where(eq(documentoMedico.documentoId, d.id))
     expect([m.tipo, m.confirmadoEm]).toEqual(['laudo', null])
-    expect((await conteudo(fichaId, PDF_LAUDO)).json()).toEqual({ documentoId: d.id, repetido: true })
+    expect((await conteudo(fichaId, PDF_LAUDO)).json()).toEqual({ documentoId: d.id, repetido: true, leituras: [] })
     expect(await banco.select().from(documento)).toHaveLength(1)
   })
 
@@ -291,6 +293,36 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     const [t] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, `laudo-${fichaId}`))
     expect([(t.dados as { acao: string }).acao, (t.dados as { setor: string }).setor, t.concluidaEm]).toEqual(['Analisar laudo novo', 'Jurídico', null])
     expect(registros).toHaveLength(3)
+  })
+
+  describe('GGVP-158 P4.1 · a IA de verdade lê quando o conteúdo chega', () => {
+    const LIDO = { tipo: 'rg', data: '2010-05-04', nome: 'Joana Ribeiro', cpf: '', rg: '12.345.678-9', endereco: '', assinado: null, dataEmBranco: false, legivel: true, confianca: 88, emitente: '', registro: '' }
+    const resposta = () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(LIDO) } }] }))
+    let fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => resposta())
+
+    beforeEach(async () => {
+      await app.close()
+      fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => resposta())
+      const ia = criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste-openai' }, fetch, agora: () => relogio })
+      app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), ia })
+    })
+
+    it('o anúncio não lê; com o conteúdo, a IA lê pela imagem: o tipo e os dados vêm do documento, não do nome do arquivo', async () => {
+      const fichaId = await lead()
+      const anuncio = await enviar(fichaId, doc('Documento sem assinatura.pdf', 'outro', sha(PDF_RG)))
+      expect([anuncio.leituras, fetch.mock.calls.length]).toEqual([[], 0])
+      const r = await conteudo(fichaId, PDF_RG)
+      expect(r.statusCode).toBe(201)
+      expect(r.json().leituras).toMatchObject([
+        { id: `${fichaId}/Documento sem assinatura.pdf`, tipo: 'rg', data: '2010-05-04', confianca: 88, lidos: { nome: 'Joana Ribeiro', rg: '12.345.678-9' }, situacao: 'a-conferir' },
+      ])
+      expect(r.json().leituras[0].semAssinatura).toBeUndefined()
+      expect(String(fetch.mock.calls[0][1]?.body)).toContain(PDF_RG.toString('base64'))
+      expect((await leiturasDe(fichaId)).map((l) => l.tipo)).toEqual(['rg'])
+      // O mesmo conteúdo de novo não chama a IA outra vez: o arquivo já foi lido.
+      expect((await conteudo(fichaId, PDF_RG)).json()).toMatchObject({ repetido: true, leituras: [] })
+      expect(fetch.mock.calls.length).toBe(1)
+    })
   })
 })
 

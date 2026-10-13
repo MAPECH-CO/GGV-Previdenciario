@@ -79,7 +79,7 @@ beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   arquivos = armazenamentoLocal(mkdtempSync(join(tmpdir(), 'kit-')))
   // Os testes de antes são do ZapSign contratado (simulado); o kit sai em Word, sem conversor de PDF.
-  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: true, conversor: null })
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: true, conversor: null, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // Os contratos dos testes são do LOAS: o modelo dele já está na Configuração (versão 1).
@@ -461,7 +461,7 @@ describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
   /** Sobe o servidor de novo com outro conversor de PDF ou outro estado do ZapSign; o banco e os arquivos são os mesmos. */
   async function reiniciar(opcoes: { conversor?: ConversorDePdf | null; zapsign?: boolean }) {
     await app.close()
-    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: false, conversor: null, ...opcoes })
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: false, conversor: null, leituraSimulada: true, ...opcoes })
   }
   const PDF = Buffer.from('%PDF-1.7 do kit')
 

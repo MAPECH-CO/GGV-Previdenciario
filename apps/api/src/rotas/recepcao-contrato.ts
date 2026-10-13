@@ -74,6 +74,7 @@ import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { guardarArquivo } from './formulario.ts'
+import type { Leitor } from '../fluxo/leitura.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_CONTRATO_NAO_ENCONTRADO = 'Contrato não encontrado.'
@@ -90,6 +91,8 @@ type Opcoes = {
   conversor?: ConversorDePdf
   /** O ZapSign está contratado (GGVP-136, CA8). Sem ele, só papel, para qualquer entrevista. */
   zapsign?: boolean
+  /** Quem lê o que chega à pasta: a IA de verdade, ou a de exemplo dos testes de tela (GGVP-158 parte 4). */
+  leitor: Leitor
 }
 
 /**
@@ -127,7 +130,7 @@ export function criarLeituraDoContrato(banco: Banco, agora: () => Date) {
   }
 }
 
-export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), conversor, zapsign = false }: Opcoes) {
+export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), conversor, zapsign = false, leitor }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const lerContrato = criarLeituraDoContrato(banco, agora)
@@ -469,7 +472,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     await guardarContrato(ficha.id, { contrato, processo: assinado(processo) })
     await guardar(ficha)
     // Bloco 5b: a IA (simulada) lê o assinado, para a conferência da Documentação.
-    await lerArquivosNovos(ficha)
+    await lerArquivosNovos(ficha, leitor, pedido.usuario!.id)
     return { resultado: 'anexado', arquivo, contrato, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id) }
   })
 
@@ -516,7 +519,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     ficha.historico.push(evento('Digitalizou o contrato assinado em papel: PDF pesquisável na pasta do cliente', 'Automação do balcão'))
     await guardarContrato(ficha.id, { contrato, processo })
     await guardar(ficha)
-    await lerArquivosNovos(ficha)
+    await lerArquivosNovos(ficha, leitor, pedido.usuario!.id)
     return { arquivo, contrato, ficha: await fichaPeloId(ficha.id) }
   })
 
@@ -539,8 +542,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
 
   // GGVP-85 CA1, CA2, CA4, CA7, simulado: a leitura da IA do contrato assinado; a de verdade é da GGVP-81, aqui no servidor,
   // e nunca vem da tela. Reconhecido e tudo certo, segue para a cópia, sem tarefa; sem entender ou com problema, o
-  // Atendimento recebe "Conferir contrato" com o que a IA apontou.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', conduzir, async (pedido, resposta) => {
+  // Atendimento recebe "Conferir contrato" com o que a IA apontou. GGVP-158 P4.10: só nos testes de tela.
+  if (leitor.simulada) app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     if (achado.contrato.etapa !== 'leitura') return negar(resposta, 400, 'Este contrato não está esperando a leitura.')

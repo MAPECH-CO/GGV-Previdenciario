@@ -50,7 +50,7 @@ const CONTRATO_NAO_ASSINADO = 'Contrato não assinado (G1): o caso não tem o co
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
+  app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['sara', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // O kit do LOAS como a semente do servidor o publica: com os nomes do banco.

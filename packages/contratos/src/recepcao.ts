@@ -363,3 +363,49 @@ export type AdiamentoDaCobranca = z.infer<typeof AdiamentoDaCobranca>
 /** POST /api/processos/:id/cobranca/decisao: a decisão da Sênior no limite, com a justificativa (CA8). */
 export const DecisaoDaCobranca = z.object({ opcao: z.enum(['nova-tentativa', 'visita', 'suspender']), justificativa: Texto(1000), prazo: Data.optional() })
 export type DecisaoDaCobranca = z.infer<typeof DecisaoDaCobranca>
+
+/** O que a IA leu num campo: o que faltar ou vier fora do formato fica vazio, e a pessoa confere. */
+const LidoNoPapel = z.string().trim().max(300).catch('')
+
+/**
+ * GGVP-158 parte 4 (P4.1): o que a IA devolve de um documento do balcão, lido pela imagem. É sugestão: o servidor
+ * confere o CPF, a data e o tipo antes de guardar, e a pessoa confere antes de arquivar. `assinado` nulo: o documento
+ * não pede a assinatura do cliente.
+ */
+export const LidoPelaIa = z.object({
+  tipo: LidoNoPapel,
+  data: LidoNoPapel,
+  nome: LidoNoPapel,
+  cpf: LidoNoPapel,
+  rg: LidoNoPapel,
+  endereco: LidoNoPapel,
+  assinado: z.boolean().nullable().catch(null),
+  dataEmBranco: z.boolean().catch(false),
+  legivel: z.boolean().catch(true),
+  confianca: z.number().min(0).max(100).catch(0),
+  emitente: LidoNoPapel,
+  registro: LidoNoPapel,
+})
+export type LidoPelaIa = z.infer<typeof LidoPelaIa>
+
+/**
+ * GGVP-158 P4.2: a ficha de atendimento em papel, lida pela IA. A senha do gov.br escrita no papel vem em `senha`, que o
+ * servidor tira antes de guardar qualquer coisa e leva só ao cofre (GGVP-24 CA15, G9).
+ */
+export const FichaLidaPelaIa = z.object({
+  nome: LidoNoPapel,
+  cpf: LidoNoPapel,
+  nascimento: LidoNoPapel,
+  telefone: LidoNoPapel,
+  endereco: LidoNoPapel,
+  pessoasNaCasa: z.union([z.number(), z.string()]).catch(''),
+  ultimaAtividade: LidoNoPapel,
+  semTrabalharDesde: LidoNoPapel,
+  pedidosAoInss: LidoNoPapel,
+  senha: LidoNoPapel,
+})
+export type FichaLidaPelaIa = z.infer<typeof FichaLidaPelaIa>
+
+/** GGVP-158 P4.2: a segunda ficha em papel (auxílio acidente), campo a campo; a senha do Meu INSS, à parte, só para o cofre. */
+export const SegundaFichaLidaPelaIa = z.object({ respostas: z.record(z.string(), LidoNoPapel).catch({}), senha: LidoNoPapel })
+export type SegundaFichaLidaPelaIa = z.infer<typeof SegundaFichaLidaPelaIa>

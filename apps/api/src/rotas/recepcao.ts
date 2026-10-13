@@ -19,17 +19,21 @@ import {
   validarNome,
   validarTelefone,
 } from '@ggv/campos'
-import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro, type Perfil } from '@ggv/contratos'
+import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, pode, type Erro, type Perfil } from '@ggv/contratos'
+import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, credencialGovbr, documento, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import type { Cofre } from '../cofre.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { guardarNoCofre } from './cofre.ts'
+import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
-import { leituraDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import { nomeSemSobrescrever } from '../../../web/src/regras/arquivos.ts'
-import { lerComIADeExemplo, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
+import type { DocumentoLido } from '../../../web/src/regras/leitura.ts'
+import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
 import type {
   Agendamento,
   Arquivo,
@@ -127,7 +131,41 @@ function valoresAtuais(f: Ficha): Record<CampoDaFicha, string> {
   }
 }
 
-type Opcoes = { banco: Banco; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
+type Opcoes = {
+  banco: Banco
+  agora?: () => Date
+  tarefasPorArea?: TarefasPorArea
+  /** GGVP-158 P4.2: onde a ficha em papel digitalizada fica guardada, o cofre da senha escrita nela e quem a lê. */
+  armazenamento: Armazenamento
+  cofre: Cofre
+  leitor: Leitor
+}
+
+export const MSG_FICHA_DIGITALIZADA = 'Anexe a ficha digitalizada (PDF ou imagem).'
+
+/**
+ * GGVP-158 P4.2: a senha do gov.br escrita na ficha em papel vai ao cofre, só se quem lê cadastra no cofre (G9). A ficha
+ * registra o fato, nunca o valor, e a pessoa confere com o papel. Devolve se a senha foi ao cofre (`senhaLida`).
+ */
+export function criarSenhaDoPapel(banco: Banco, cofre: Cofre, agora: () => Date) {
+  const { evento } = criarFichario(banco, agora)
+  const historico = registrarHistorico(banco, agora)
+  return async function senhaDoPapelAoCofre(pedido: FastifyRequest, ficha: Ficha, senha: string | null, nome: string): Promise<boolean> {
+    if (senha === null) return false
+    if (!pode(pedido.perfilAtivo, 'cofre.cadastrar')) {
+      ficha.historico.push(evento('A ficha em papel tem a senha do gov.br escrita: quem cadastra no cofre é o Atendimento', nome))
+      return false
+    }
+    const quem = pedido.usuario!.id
+    const trocada = await guardarNoCofre(banco, cofre, ficha.id, senha, quem, agora)
+    await historico(quem, trocada ? 'cofre_senha_trocada' : 'cofre_senha_cadastrada', pedido, `pessoa:${ficha.id}`, { perfil: pedido.perfilAtivo, origem: 'ficha em papel' })
+    ficha.historico.push(evento('A IA leu a senha do gov.br escrita no papel, e ela foi para o cofre: confira com o papel', nome))
+    return true
+  }
+}
+
+/** A extensão do arquivo digitalizado, pelo tipo: o nome segue o padrão do escritório (G18). */
+export const extensaoDoAnexo = (mime: string | undefined) => (mime === 'image/png' ? 'png' : mime === 'image/jpeg' ? 'jpg' : 'pdf')
 
 /** O setor das pendências da Recepção (o campo `setor` de cada uma) por perfil. */
 const SETOR_DA_RECEPCAO: Partial<Record<string, string>> = {
@@ -318,13 +356,17 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       .onConflictDoUpdate({ target: leituraDocumento.id, set: { dados: l, atualizadoEm: agora() } })
   }
 
-  /** A IA (simulada) lê o que chegou à pasta e ainda não foi lido: uma leitura por arquivo (GGVP-81 CA1, CA13). */
-  async function lerArquivosNovos(ficha: Ficha): Promise<DocumentoLido[]> {
+  /**
+   * A IA lê o que chegou à pasta e ainda não foi lido: uma leitura por arquivo (GGVP-81 CA1, CA13). A de verdade só lê o
+   * arquivo cujo conteúdo veio junto (GGVP-158 P4.1); o resto espera o conteúdo. A de exemplo, dos testes de tela, lê tudo.
+   */
+  async function lerArquivosNovos(ficha: Ficha, leitor: Leitor, quem: string | null = null, conteudos = new Map<string, Conteudo>()): Promise<DocumentoLido[]> {
     const leituras = await leiturasDe(ficha.id)
     const novas: DocumentoLido[] = []
     for (const arquivo of ficha.arquivos) {
       if (!arquivo.aguardaLeitura || leituras.some((l) => l.id === `${ficha.id}/${arquivo.nome}`)) continue
-      const lida = lerComIADeExemplo(ficha, arquivo, leituras, agora().toISOString())
+      const lida = await leitor.documento({ ficha, arquivo, leituras, conteudo: conteudos.get(arquivo.nome), quem })
+      if (!lida) continue
       leituras.push(lida)
       novas.push(lida)
       await guardarLeitura(lida)
@@ -395,8 +437,9 @@ export function criarFichario(banco: Banco, agora: () => Date) {
   }
 }
 
-export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea }: Opcoes) {
+export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea, armazenamento, cofre, leitor }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const senhaDoPapelAoCofre = criarSenhaDoPapel(banco, cofre, agora)
   const { hoje, evento, nomeDe, fichas, resumo, guardar, concluirTarefas, tarefas, abrirPreparacao } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
@@ -528,15 +571,23 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     return { ficha }
   })
 
-  // GGVP-24 (GGVP-125, bloco 5a): a ficha de atendimento em papel passa no scanner e a IA lê (simulado); a imagem fica em
-  // Documentos pessoais, na ficha do servidor. A leitura simulada não traz senha de verdade: nada vai ao cofre (G9).
+  // GGVP-24 (GGVP-125, bloco 5a): a ficha de atendimento em papel passa no scanner e a IA lê; a imagem fica em Documentos
+  // pessoais, na ficha do servidor. GGVP-158 P4.2: a rota recebe o arquivo digitalizado, e a IA lê de verdade. A senha do
+  // gov.br escrita no papel vai só ao cofre, se quem lê cadastra no cofre (GGVP-24 CA15, G9); a pessoa confere com o papel.
+  // Sem o arquivo, só a leitura de exemplo dos testes de tela.
   app.post<{ Params: { id: string } }>('/api/fichas/:id/ficha-de-atendimento/leitura', editar, async (pedido, resposta) => {
     const ficha = UUID.test(pedido.params.id) ? (await fichas([pedido.params.id]))[0] : undefined
     if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
+    const enviado = pedido.isMultipart() ? (await lerFormulario(pedido))?.arquivo : null
+    if (enviado ? !TIPOS_DE_ANEXO.includes(enviado.mime) : !leitor.simulada) return negar(resposta, 400, MSG_FICHA_DIGITALIZADA)
     const dia = hoje()
     const modelo = 'GGV'
+    const quem = pedido.usuario!.id
     const arquivo: Arquivo = {
-      nome: nomeSemSobrescrever(`Ficha de atendimento ${modelo} - ${ficha.nome} - ${dia}.pdf`, ficha.arquivos.filter((a) => a.local === 'pessoais').map((a) => a.nome)),
+      nome: nomeSemSobrescrever(
+        `Ficha de atendimento ${modelo} - ${ficha.nome} - ${dia}.${extensaoDoAnexo(enviado?.mime)}`,
+        ficha.arquivos.filter((a) => a.local === 'pessoais').map((a) => a.nome),
+      ),
       tipo: 'ficha-atendimento',
       local: 'pessoais',
       data: dia,
@@ -544,11 +595,18 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
       repetido: false,
       aguardaLeitura: false,
     }
+    if (enviado) {
+      const dados = await guardarArquivo(armazenamento, ficha.id, enviado, 'ficha-atendimento', 'pessoas')
+      await banco.insert(documento).values({ pessoaId: ficha.id, tipo: 'ficha-atendimento', origem: 'scanner', sensivel: false, recebidoPor: quem, ...dados })
+      arquivo.hash = dados.hashSha256
+    }
     ficha.arquivos.push(arquivo)
-    const { campos, naoLidos } = leituraDeExemplo(ficha)
-    ficha.historico.push(evento(`A ficha de atendimento em papel (${modelo}) passou no scanner e a IA leu os campos; a imagem ficou em Documentos pessoais`, await nomeDe(pedido)))
+    const { campos, naoLidos, senha } = await leitor.fichaDeAtendimento({ ficha, conteudo: enviado ? { bytes: enviado.conteudo, mime: enviado.mime } : undefined, quem })
+    const nome = await nomeDe(pedido)
+    ficha.historico.push(evento(`A ficha de atendimento em papel (${modelo}) passou no scanner e a IA leu os campos; a imagem ficou em Documentos pessoais`, nome))
+    const senhaLida = await senhaDoPapelAoCofre(pedido, ficha, senha, nome)
     await guardar(ficha)
-    return { modelo, arquivo, campos, naoLidos, senhaLida: false, ficha }
+    return { modelo, arquivo, campos: { beneficioInteresse: ficha.beneficioInteresse ?? 'nao-sei', ...campos }, naoLidos, senhaLida, ficha }
   })
 
   // GGVP-24: a ficha de atendimento. Os dados pessoais vão para a ficha única e a triagem, com o que ficou em branco
