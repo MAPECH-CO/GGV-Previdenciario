@@ -55,12 +55,12 @@ Os segredos de homologação MUST ficar só no Coolify, nunca no repositório.
 - **Então** ficam só no Coolify; nunca no repositório
 
 ### Requirement: CA7 · Banco de homologação na mesma região do servidor
-O banco de homologação SHALL ficar no Supabase em São Paulo (sa-east-1), projeto "PrevGGVLucas", na mesma região da VPS do Coolify. A troca MUST preservar todos os dados e arquivos da homologação e MUST guardar antes um backup completo do que existia no projeto de destino.
+O banco de homologação SHALL ficar no Supabase em São Paulo (sa-east-1), projeto "PrevGGVLucas", na mesma região da VPS do Coolify. A troca MUST preservar todos os dados e arquivos da homologação. O que existia no projeto de destino é apagado sem backup, por decisão do Mateus em 13/10 (os dados do portal antigo estão guardados em outro lugar).
 
 #### Scenario: CA7 · Antes de limpar o destino
 - **Dado** o PrevGGVLucas com o portal antigo
 - **Quando** a limpeza vai começar
-- **Então** já existe um backup completo dele fora da Supabase, a senha do banco foi trocada e não há conexão nem escrita do portal antigo
+- **Então** a senha do banco foi trocada e não há conexão nem escrita do portal antigo
 
 #### Scenario: CA7 · Depois da troca
 - **Dado** a homologação apontando para o PrevGGVLucas

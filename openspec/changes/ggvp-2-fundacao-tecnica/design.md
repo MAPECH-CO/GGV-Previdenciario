@@ -147,7 +147,8 @@ A homologação demorava para carregar. Medição de 13/10:
 
 - **Algo antigo ainda ligado:** sem a troca de senha, o back-end antigo gravaria no schema que o portal novo usa. A senha nova corta isso.
 - **Voltar:** com Oregon intacto, devolver o `DATABASE_URL` (e o `SUPABASE_URL` e a chave) no Coolify restaura a homologação como estava, menos o que foi gravado em São Paulo depois da troca.
-- **Limpar o PrevGGVLucas não tem volta** além do backup: a tarefa 2.10 só roda com o ok do Mateus na hora.
+- **Limpar o PrevGGVLucas não tem volta:** a tarefa 2.10 só roda com o ok do Mateus na hora. Em 13/10, o Mateus decidiu apagar sem backup ("confirmo apagar sem backup"): os dados do portal antigo e as senhas gov.br estão guardados em outro lugar. Os 21 GB de `acervo` ficam fora do banco e não são afetados.
+- **Extensões:** no PrevGGVLucas, `vector` está no schema `juridico` e `pg_trgm` no `prev_2026_09`; somem com eles. Antes da cópia, as duas são recriadas no `public`, como em Oregon, porque o dump de `public` não traz `CREATE EXTENSION` e a migração 0023 já consta como aplicada no `drizzle` copiado.
 
 ## GGVP-107 · Integração com o Google Drive
 
