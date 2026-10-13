@@ -42,6 +42,8 @@ export const EdicaoDaFicha = z.object({
   email: Opcional(200),
   estadoCivil: Opcional(50),
   endereco: Opcional(300),
+  /** O kit pede o bairro, e "Completar a ficha" leva até aqui (GGVP-158, P3.8). */
+  bairro: Opcional(200),
   cidadeUf: Opcional(200),
   cep: Opcional(20),
   profissao: Opcional(200),

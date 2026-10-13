@@ -273,6 +273,7 @@ export type EdicaoFicha = Pick<
   | 'email'
   | 'estadoCivil'
   | 'endereco'
+  | 'bairro'
   | 'cidadeUf'
   | 'cep'
   | 'profissao'

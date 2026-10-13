@@ -212,6 +212,6 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
   - `ResultadoDoCompromisso` aceita "desistiu", com o motivo da lista (G16) e o recontato opcional; sem motivo, recusa.
   - Com recontato, "Recontatar lead" vai à agenda na data; sem recontato, o lead é arquivado com o motivo.
   - Verifica com `rotas/recepcao-agenda.test.ts`.
-- [ ] 3.14 O bairro na ficha (P3.8): `EdicaoDaFicha` aceita o `bairro`, e o PATCH grava. Verifica com `rotas/recepcao.test.ts`.
+- [x] 3.14 O bairro na ficha (P3.8): `EdicaoDaFicha` aceita o `bairro`, e o PATCH grava. Verifica com `rotas/recepcao.test.ts`.
 - [ ] 3.15 Avisar o Pedro: o pedido lista os contratos novos que as telas usam (cálculo, percentual na Configuração, equipe da agenda, desistência e liberação).
 - [ ] 3.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

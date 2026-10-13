@@ -170,3 +170,13 @@ describe('GGVP-125 · bloco 1: o lead e a ficha no servidor', () => {
     expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acesso_negado'))).toHaveLength(1)
   })
 })
+
+describe('GGVP-158 P3.8 · "Completar a ficha" grava o bairro', () => {
+  it('o bairro que o kit pede entra pela edição da ficha e vai ao histórico', async () => {
+    const lead = await cadastrar()
+    const r = await chamar('ana', 'PATCH', `/api/fichas/${lead.id}`, { nome: LEAD.nome, telefone: LEAD.telefone, cpf: LEAD.cpf, cidadeUf: LEAD.cidadeUf, comoChegou: LEAD.comoChegou, bairro: 'Vila Exemplo' })
+    expect(r.json().ficha).toMatchObject({ bairro: 'Vila Exemplo' })
+    expect(r.json().ficha.historico.at(-1)).toMatchObject({ quem: 'ana', oQue: 'Alterou bairro' })
+    expect((await chamar('ana', 'GET', `/api/fichas/${lead.id}`)).json().bairro).toBe('Vila Exemplo')
+  })
+})

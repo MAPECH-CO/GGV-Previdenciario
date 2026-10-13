@@ -575,6 +575,7 @@ const ROTULOS: Record<keyof EdicaoFicha, string> = {
   email: 'e-mail',
   estadoCivil: 'estado civil',
   endereco: 'endereço',
+  bairro: 'bairro',
   cidadeUf: 'cidade',
   cep: 'CEP',
   profissao: 'profissão',
