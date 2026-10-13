@@ -629,10 +629,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - pronta, com as fontes;
     - a recusa no histórico;
     - sem a IA, o aviso.
-- [ ] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco e no caso perdido.
+- [x] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco e no caso perdido.
   - Verifica com `rotas/vigilia.test.ts` e `rotas/prestacao.test.ts`:
     - o deferimento entra no acervo;
     - a ida ao banco não duplica.
+
+  Verificado em 13/10: `rotas/vigilia.test.ts`, `rotas/prestacao.test.ts` (1 novo), `rotas/estudo.test.ts`, `rotas/acervo.test.ts` e `fluxo/ficha-do-desfecho.test.ts`, 67/67. O deferimento entra no acervo na hora, com a data; a ida ao banco não duplica; o caso perdido segue pela mesma função.
 - [ ] 7.10 Os valores (P7.6, decisão 72): as rotas, a regra de valores e o resumo do processo.
   - Verifica com `rotas/valores.test.ts`:
     - a advogada grava;

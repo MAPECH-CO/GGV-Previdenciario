@@ -19,10 +19,11 @@ import {
   type FontesDaPrestacao,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarBloqueio } from '../sessao/rotas.ts'
 import type { Correio } from './mensagens.ts'
 import { criarFichario } from './recepcao.ts'
+import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
@@ -475,8 +476,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       await tx.update(prestacaoContas).set({ clienteAvisadoEm: agora() }).where(eq(prestacaoContas.id, s.atual!.id))
       if (s.tarefaDoBanco) await tx.update(tarefa).set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem }).where(eq(tarefa.id, s.tarefaDoBanco.id))
       // O desfecho fica sem conferência: a que põe o caso nas contas da jurimetria é da GGVP-41 (CA5).
-      const [noAcervo] = await tx.select({ id: processoAcervo.id }).from(processoAcervo).where(eq(processoAcervo.casoId, casoId))
-      if (!noAcervo) await tx.insert(processoAcervo).values({ casoId, beneficio: s.c!.beneficio, desfecho, fonte: 'portal' })
+      // GGVP-158 P7.5: um registro por caso; o deferimento já pode ter entrado na vigília.
+      await desfechoNoAcervo(tx, casoId, { desfecho })
       // O histórico vai na mesma transação: o aviso, o acervo e a baixa ficam juntos, ou nenhum fica.
       await noHistorico(tx, quem, 'cliente_avisado_ida_ao_banco', pedido, casoId, { canal: entrada.data.canal })
       await noHistorico(tx, quem, 'baixa_registrada', pedido, casoId, { acervo: 'processo_bom' })
