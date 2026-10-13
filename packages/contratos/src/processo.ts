@@ -14,6 +14,9 @@ export const ProcessoDoCaso = z.object({
   /** A etapa do caso (as cinco da página), pelo passo do BPMN aberto mais adiantado; sem nenhum aberto, pela fase. */
   etapaAtual: z.enum(ETAPAS),
   identificadores: z.object({ nb: z.string().nullable(), protocolo: z.string().nullable(), cnj: z.string().nullable() }),
+  /** GGVP-158 P5.14: a vara e o juiz conferidos no caso, sem número nenhum, para todos que veem o caso. */
+  vara: z.string().nullable().optional(),
+  juiz: z.string().nullable().optional(),
   senhaGovNoCofre: z.boolean(),
   transcricoes: z.number().int(),
   /** Os passos do BPMN abertos agora; `aguardando` diz quem de fora o caso espera. */

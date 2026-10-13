@@ -245,6 +245,8 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       desfecho: c.caso.desfecho,
       etapaAtual: etapaAtualDoCaso(c.caso.fase, [...etapas.map((e) => e.passo), ...tarefas.map((t) => t.passo)], c.caso.desfecho),
       identificadores: { nb: numero('nb'), protocolo: numero('protocolo_inss'), cnj: numero('cnj') },
+      vara: c.caso.vara,
+      juiz: c.caso.juiz,
       senhaGovNoCofre: !!cofre,
       transcricoes: (ficha?.documento as { transcricoes?: number } | undefined)?.transcricoes ?? 0,
       etapas: etapas.map((e) => ({ diagrama: e.diagrama, passo: e.passo, aguardando: e.aguardando, desde: e.iniciadaEm.toISOString() })),

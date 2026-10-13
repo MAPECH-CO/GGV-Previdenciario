@@ -5,7 +5,7 @@
 import { EntendimentosDoJuizo, ROTULO_BENEFICIO, type Beneficio, type EntendimentoDoJuizo, type FonteDaIa, type JurimetriaDoJuizo } from '@ggv/contratos'
 import { and, asc, desc, eq, isNotNull, min } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, identificadorCaso, juizo as tabelaDoJuizo, pessoa, peticao, peticaoVersao, processoAcervo, protocoloJudicial, publicacao } from '../banco/esquema.ts'
+import { caso, identificadorCaso, juizo as tabelaDoJuizo, pericia, perito, pessoa, peticao, peticaoVersao, processoAcervo, protocoloJudicial, publicacao } from '../banco/esquema.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -81,7 +81,7 @@ export async function jurimetriaDoJuizo(
   banco: Banco,
   juizo: string,
   agora: Date,
-  doCaso: { vara: string | null; juiz: string | null } = { vara: null, juiz: null },
+  doCaso: { vara: string | null; juiz: string | null; casoId?: string } = { vara: null, juiz: null },
 ): Promise<JurimetriaDoJuizo> {
   const base = hojeEmBrasilia(agora)
   const [lido] = await banco.select({ entendimentos: tabelaDoJuizo.entendimentos }).from(tabelaDoJuizo).where(eq(tabelaDoJuizo.nome, juizo)).limit(1)
@@ -120,12 +120,44 @@ export async function jurimetriaDoJuizo(
     juizo,
     vara: doCaso.vara,
     juiz: doCaso.juiz,
+    casosDoJuiz: doCaso.juiz ? await casosDoJuiz(banco, doCaso.juiz) : null,
+    perito: doCaso.casoId ? await peritoDoCaso(banco, doCaso.casoId) : null,
     entendimentos: (lido?.entendimentos as EntendimentoDoJuizo[] | null) ?? [],
     base,
     porBeneficio: [...porBeneficio].map(([beneficio, x]) => ({ beneficio, nome: ROTULO_BENEFICIO[beneficio as Beneficio] ?? beneficio, ...x, texto: textoDaTaxa(x.procedentes, x.decididos, base) })),
     tempoAteASentenca: dias.length ? { meses: Math.round(dias.reduce((s, d) => s + d, 0) / dias.length / DIAS_POR_MES), processos: dias.length } : null,
     processos: doJuizo.map((p) => ({ numeroCnj: p.numeroCnj, desfecho: p.desfecho })).sort((a, b) => a.numeroCnj.localeCompare(b.numeroCnj)),
   }
+}
+
+/** "Dra. Maria Souza" e "maria souza" são o mesmo juiz: sem acento, sem caixa, sem pontuação e sem o título. */
+const nomeComparavel = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/^dra? /, '')
+
+/** GGVP-158 P5.14: os casos do escritório com o mesmo juiz, contados no código. */
+async function casosDoJuiz(banco: Banco, juiz: string) {
+  const alvo = nomeComparavel(juiz)
+  return (await banco.select({ juiz: caso.juiz }).from(caso).where(isNotNull(caso.juiz))).filter((c) => nomeComparavel(c.juiz!) === alvo).length
+}
+
+/** GGVP-158 P5.14: o perito da perícia mais nova do caso que tem perito, e os casos distintos em que ele está. */
+async function peritoDoCaso(banco: Banco, casoId: string) {
+  const [l] = await banco
+    .select({ id: perito.id, nome: perito.nome })
+    .from(pericia)
+    .innerJoin(perito, eq(pericia.peritoId, perito.id))
+    .where(eq(pericia.casoId, casoId))
+    .orderBy(desc(pericia.criadoEm))
+    .limit(1)
+  if (!l) return null
+  const casos = new Set((await banco.select({ casoId: pericia.casoId }).from(pericia).where(eq(pericia.peritoId, l.id))).map((x) => x.casoId))
+  return { id: l.id, nome: l.nome, casos: casos.size }
 }
 
 // ponytail: as 10 decisões mais novas do juízo; mais que isso, o pedido à IA cresce sem ganho para o resumo.

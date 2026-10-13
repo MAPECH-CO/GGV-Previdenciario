@@ -188,6 +188,13 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
   })
 
+  it('GGVP-158 P5.14 · o Atendimento vê a vara, o juiz e o nome do perito, sem número nenhum', async () => {
+    await banco.update(caso).set({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Maria Souza' }).where(eq(caso.id, casoId))
+    const p = (await ver('ana')).json()
+    expect([p.vara, p.juiz, p.pericia.perito]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo', 'Dra. Maria Souza', 'Dr. Perito'])
+    expect(JSON.stringify(p)).not.toMatch(/casosDoJuiz|jurimetria|"casos"/)
+  })
+
   it('a outra advogada não recebe os valores do caso; a Sênior e o Jurídico administrativo recebem o médico, sem valores', async () => {
     const rosa = (await ver('rosa')).json()
     expect([rosa.valores, rosa.saude?.documentos[0].cid]).toEqual([null, 'M54.5'])

@@ -415,10 +415,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - a Documentação recebe a perícia sem os números.
 
   Verificado em 13/10: `rotas/gestao.test.ts` e `rotas/pericia.test.ts`, 42/42. Fora de `estudo.ver`, a perícia vem sem o perfil do perito (os números e o resumo); o teste antigo, que dizia que a Documentação via os números, mudou com a regra.
-- [ ] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.
+- [x] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.
   - Verifica com `rotas/juizo.test.ts` e `rotas/processo.test.ts`:
     - dois casos com o mesmo juiz e perito contam 2;
     - o resumo do Atendimento sem números.
+
+  Verificado em 13/10: `rotas/juizo.test.ts` 6/6 e `rotas/processo.test.ts` 9/9 (um novo em cada). O juízo ganhou `casosDoJuiz` e `perito`, sem mudar o `juiz` que a tela já usa; a vara e o juiz entram no resumo como opcionais, porque um teste de tela do Pedro monta o resumo à mão.
 - [ ] 5.21 O protocolo do recurso (P5.15, decisão 53): `POST /api/casos/:id/recurso/protocolo`.
   - Verifica com `rotas/recurso.test.ts`:
     - fecha a tarefa e guarda o comprovante;

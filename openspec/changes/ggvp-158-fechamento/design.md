@@ -287,8 +287,8 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
     - Sem matriz nova.
 52. **O juízo com o juiz e o perito** (P5.14).
     - `JurimetriaDoJuizo` ganha:
-      - `juiz: { nome, casos }`, a contagem dos casos com o mesmo `caso.juiz` normalizado;
-      - `perito: { id, nome, casos }`, os casos distintos com perícia desse perito.
+      - `casosDoJuiz`, a contagem dos casos com o mesmo `caso.juiz`, sem acento, caixa, pontuação nem título (o `juiz` segue o nome, como a tela já usa);
+      - `perito: { id, nome, casos }`, o da perícia mais nova do caso, com os casos distintos com perícia dele.
 
       As contas ficam no código, com teste.
     - O resumo do processo ganha `vara`, `juiz` e o nome do perito, que já vem, sem número.

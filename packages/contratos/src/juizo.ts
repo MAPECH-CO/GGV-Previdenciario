@@ -16,6 +16,10 @@ export const JurimetriaDoJuizo = z.object({
   /** Parte 2 (CA1): a vara e o juiz do caso, conferidos na leitura da publicação; nulos enquanto ninguém conferiu. */
   vara: z.string().nullable(),
   juiz: z.string().nullable(),
+  /** GGVP-158 P5.14: quantos casos do escritório estão com este juiz (o nome comparado sem acento nem título); sem juiz, nulo. */
+  casosDoJuiz: z.number().int().nullable(),
+  /** GGVP-158 P5.14: o perito da perícia do caso e quantos casos do escritório ele tem; sem perito ligado, nulo. */
+  perito: z.object({ id: z.uuid(), nome: z.string(), casos: z.number().int() }).nullable(),
   /** Parte 2 (CA2, CA5): o que se repete nas decisões do juízo; lista vazia enquanto a IA não leu. */
   entendimentos: z.array(EntendimentoDoJuizo),
   /** Data da base, AAAA-MM-DD: hoje, em Brasília. */
