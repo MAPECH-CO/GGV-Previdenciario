@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { MSG_VALOR_DA_PARCELA } from '@ggv/contratos'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -259,14 +260,14 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
 })
 
 /** Fecha, pede o que falta e gera: devolve a resposta da geração e o endereço do contrato. */
-async function gerar(fichaId: string, beneficio = 'loas-idoso') {
+async function gerar(fichaId: string, beneficio = 'loas-idoso', acordo?: object) {
   const { processo } = await fechou(fichaId, beneficio)
   const base = `/api/processos/${processo.id}/contrato`
   const faltam = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
   expect(faltam.resultado).toBe('faltam')
   const correcoes = Object.fromEntries((faltam.campos as string[]).map((c) => [c, VALIDOS[c]]))
   expect(Object.values(correcoes).every(Boolean)).toBe(true)
-  const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes })
+  const r = await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias: TODAS, correcoes, acordo })
   return { r, base, processoId: processo.id as string }
 }
 const kitsDoCaso = (processoId: string) => banco.select().from(documento).where(eq(documento.casoId, processoId))
@@ -397,6 +398,29 @@ describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guar
     const kits = await kitsDoCaso(processoId)
     expect(kits.map((k) => k.nomeOriginal).sort()).toEqual(['Kit do contrato - versão 1.docx', 'Kit do contrato - versão 2.docx'])
     for (const k of kits) expect((await arquivos.ler(k.chaveArmazenamento)).length).toBeGreaterThan(0)
+  })
+
+  it('GGVP-158 P6.2 · o combinado com o cliente fica no contrato e no histórico; gerar de novo sem ele mantém; o valor errado não gera', async () => {
+    const { r, base, processoId } = await gerar(await lead(), 'loas-idoso', { entrada: '500,00', parcelas: { quantidade: '4', valor: '300,00' } })
+    expect(r.contrato.acordo).toEqual({ entrada: 500, parcelas: { quantidade: 4, valor: 300 } })
+    expect(r.ficha.historico.at(-1).oQue).toBe('Registrou no contrato o combinado: entrada de R$ 500,00 e 4 parcela(s) de R$ 300,00')
+    await json('ana', 'POST', `${base}/impressao`)
+    await json('ana', 'POST', `${base}/digitalizacao`)
+    await json('ana', 'POST', `${base}/assinatura-em-papel`)
+    await json('ana', 'POST', `${base}/leitura-simulada`)
+    await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'falta a rubrica da página 4' })
+    const v2 = await json('ana', 'POST', `${base}/gerar`, { aprovados: true, conferencias: TODAS, correcoes: {} })
+    expect([v2.contrato.documento.versao, v2.contrato.acordo]).toEqual([2, { entrada: 500, parcelas: { quantidade: 4, valor: 300 } }])
+
+    // O combinado errado recusa antes de tudo, com o que corrigir, e nenhum kit novo nasce.
+    const errado = await app.inject({
+      method: 'POST',
+      url: `${base}/gerar`,
+      cookies: await cookieDe('ana'),
+      payload: { aprovados: true, conferencias: TODAS, correcoes: {}, acordo: { entrada: '500,00', parcelas: { quantidade: '4', valor: 'abc' } } },
+    })
+    expect([errado.statusCode, errado.json().erro]).toEqual([400, MSG_VALOR_DA_PARCELA])
+    expect((await kitsDoCaso(processoId)).length).toBe(2)
   })
 })
 

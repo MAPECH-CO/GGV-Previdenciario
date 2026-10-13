@@ -463,22 +463,28 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 6.3 A tarefa com `casoId` nulo (decisão 64): os usos conferidos pelo typecheck, e a Central geral sem a linha sem caso. Verifica com o typecheck e as suítes que leem a Central.
 
   Verificado em 13/10: o typecheck da API pegou 4 usos (Central e Financeiro), corrigidos; `rotas/inss.test.ts` e `rotas/financeiro.test.ts`, 17/17. A Central geral lê o caso pela junção e deixa de fora as linhas `D5`.
-- [ ] 6.4 O combinado no contrato (P6.2, decisão 55): `AcordoDoContrato` e `EnvioDoContrato.acordo`; a geração guarda e escreve no histórico.
+- [x] 6.4 O combinado no contrato (P6.2, decisão 55): `AcordoDoContrato` e `EnvioDoContrato.acordo`; a geração guarda e escreve no histórico.
   - Verifica com o teste do contrato e com `rotas/recepcao-contrato.test.ts`:
     - o combinado fica no contrato;
     - o valor errado recusa sem gerar;
     - gerar de novo sem ele mantém.
-- [ ] 6.5 A regra da prestação (P6.3, decisão 56): `calcularPrestacao` com os honorários ajustados; `SalvarPrestacao` com a entrada, as parcelas e a parte na Caixa; Pix e boleto.
+
+  Verificado em 13/10: contratos `prestacao.test.ts` (o combinado) e `rotas/recepcao-contrato.test.ts` 28/28 (1 novo): o combinado fica no contrato e no histórico, a versão 2 mantém, e o valor errado recusa sem kit novo.
+- [x] 6.5 A regra da prestação (P6.3, decisão 56): `calcularPrestacao` com os honorários ajustados; `SalvarPrestacao` com a entrada, as parcelas e a parte na Caixa; Pix e boleto.
   - Verifica com o teste do contrato:
     - fecha em centavos, com e sem ajuste;
     - honorários acima do recebido recusam;
     - a parte na Caixa acima dos honorários recusa;
     - "dinheiro" recusa.
-- [ ] 6.6 A prestação no servidor (P6.3): o `GET` com o combinado e as fontes; o `POST` grava os valores novos e as fontes.
+
+  Verificado em 13/10: contratos `prestacao.test.ts` e `calculo-prestacao.test.ts`, 15/15 (4 novos). A lista `FORMAS_DE_PAGAMENTO` fica com as quatro para ler as versões antigas e para não quebrar o teste de tela do Pedro, que conta as opções; a prestação nova aceita só `FORMAS_ACEITAS` (Pix e boleto).
+- [x] 6.6 A prestação no servidor (P6.3): o `GET` com o combinado e as fontes; o `POST` grava os valores novos e as fontes.
   - Verifica com `rotas/prestacao.test.ts`:
     - abre com o contrato;
     - o ajuste fica com a fonte de quem conferiu, e o histórico com os dois valores;
     - o contrato sem o combinado vem nulo.
+
+  Verificado em 13/10: `rotas/prestacao.test.ts` 29/29 (4 novos): abre com o combinado; as fontes do contrato, da carta e do sistema; o ajuste com a fonte de quem conferiu e o histórico com os dois valores; a forma antiga e a Caixa acima dos honorários recusam.
 - [ ] 6.7 A ida ao banco (P6.4, decisão 57): telefone e WhatsApp; o WhatsApp só depois da ligação, pelo correio, com o modelo `ida-ao-banco`.
   - Verifica com `rotas/prestacao.test.ts` e `rotas/mensagens.test.ts`:
     - a ligação registra como hoje;

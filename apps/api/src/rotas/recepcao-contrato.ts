@@ -5,7 +5,7 @@
 // é o arquivo digitalizado, e a IA o confere contra o kit; o ZapSign está fora do escopo.
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { dataParaIso, normalizarData, normalizarNome } from '@ggv/campos'
+import { dataParaIso, formatarDecimal, normalizarData, normalizarNome } from '@ggv/campos'
 import {
   CondicoesDoKit,
   EntregaDaCopia,
@@ -254,7 +254,8 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
   // arquivo gerado fica na pasta do cliente, com o modelo e a versão usados (CA6). Gerado, vai assinar.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/gerar', conduzir, async (pedido, resposta) => {
     const entrada = EnvioDoContrato.safeParse(pedido.body)
-    if (!entrada.success) return negar(resposta, 400, 'Envio inválido.')
+    // GGVP-158 P6.2: o combinado errado diz o que corrigir; o resto do envio é da tela e continua genérico.
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues.find((i) => i.path[0] === 'acordo')?.message ?? 'Envio inválido.')
     const envio = entrada.data
     const oQueCorrigir = envio.oQueCorrigir ?? ''
     if (CONFERENCIAS.some((c) => envio.conferencias[c.id] !== true)) return negar(resposta, 400, 'Faltam conferências.')
@@ -331,6 +332,16 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
         nome,
       ),
     )
+    // GGVP-158 P6.2: o combinado com o cliente fica no contrato, e a prestação de contas abre com ele; sem ele no envio,
+    // fica o que já estava.
+    if (envio.acordo) {
+      contrato.acordo = envio.acordo
+      const { entrada: valorDaEntrada, parcelas } = envio.acordo
+      const reais = (n: number) => `R$ ${formatarDecimal(n)}`
+      ficha.historico.push(
+        evento(`Registrou no contrato o combinado: entrada de ${reais(valorDaEntrada)} e ${parcelas ? `${parcelas.quantidade} parcela(s) de ${reais(parcelas.valor)}` : 'sem parcelas'}`, nome),
+      )
+    }
     await guardarContrato(ficha.id, { contrato, processo: seguinte })
     await guardar(ficha)
     return { resultado: 'gerado', contrato, ficha: (await fichas([ficha.id]))[0] }

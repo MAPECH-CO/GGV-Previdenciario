@@ -200,6 +200,57 @@ describe('GGVP-158 P3.3 · o percentual vem do contrato e não muda na prestaç�
   })
 })
 
+describe('GGVP-158 P6.3 · a prestação segue o combinado do contrato, editável antes do OK, com a fonte de cada valor', () => {
+  const ACORDO = { entrada: 500, parcelas: { quantidade: 4, valor: 300 } }
+  async function comAcordo() {
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco.insert(contratoRecepcao).values({ casoId, pessoaId: c.pessoaId, dados: { contrato: { processoId: casoId, etapa: 'copia', acordo: ACORDO }, processo: { id: casoId } } })
+    await deferir()
+  }
+
+  it('abre com a entrada e as parcelas do contrato; sem o combinado, nulo, sem zero inventado', async () => {
+    await deferir()
+    expect((await chamar('gabi', 'GET', '/prestacao')).json().acordo).toBeNull()
+    await banco.delete(prestacaoContas)
+    await banco.delete(tarefa)
+    await banco.delete(resultadoInss)
+    await banco.delete(documento)
+    await comAcordo()
+    expect((await chamar('gabi', 'GET', '/prestacao')).json().acordo).toEqual({ entrada: '500.00', parcelas: { quantidade: 4, valor: '300.00' } })
+  })
+
+  it('o OK com o combinado do contrato: as fontes são o contrato, a carta e o sistema; o repasse fecha em centavos', async () => {
+    await comAcordo()
+    const r = await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, formaPagamento: 'boleto', entrada: '500,00', parcelas: { quantidade: '4', valor: '300,00' }, parteNaCaixa: '1.000,00' })
+    expect(r.json()).toMatchObject({ ok: true, versao: 1, honorarios: '3703.70', repasse: '8641.97' })
+    const [v] = (await chamar('julia', 'GET', '/prestacao')).json().versoes
+    expect([v.entrada, v.parcelas, v.parteNaCaixa, v.formaPagamento]).toEqual(['500.00', { quantidade: 4, valor: '300.00' }, '1000.00', 'boleto'])
+    expect(v.fontes).toEqual({ valorRecebido: 'carta', percentual: 'contrato', honorarios: 'sistema', repasse: 'sistema', entrada: 'contrato', parcelas: 'contrato', parteNaCaixa: 'conferencia' })
+  })
+
+  it('o ajuste antes do OK fica com a fonte de quem conferiu, e o histórico guarda o calculado e o que valeu', async () => {
+    await comAcordo()
+    const r = await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, honorarios: '3.000,00', entrada: '500,00', parcelas: { quantidade: '3', valor: '300,00' } })
+    expect(r.json()).toMatchObject({ ok: true, honorarios: '3000.00', repasse: '9345.67' })
+    const [v] = (await chamar('gabi', 'GET', '/prestacao')).json().versoes
+    expect([v.honorarios, v.repasse, v.fontes.honorarios, v.fontes.entrada, v.fontes.parcelas, v.fontes.parteNaCaixa]).toEqual(['3000.00', '9345.67', 'conferencia', 'contrato', 'conferencia', null])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'prestacao_concluida'))
+    expect(ev.detalhe).toMatchObject({ versao: 1, honorariosCalculados: '3703.70', honorarios: '3000.00' })
+  })
+
+  it('a forma antiga e a Caixa acima dos honorários são recusadas, e nada é gravado', async () => {
+    await comAcordo()
+    for (const [corpo, erro] of [
+      [{ ...PRESTACAO, formaPagamento: 'dinheiro' }, 'Escolha a forma de pagamento da lista'],
+      [{ ...PRESTACAO, parteNaCaixa: '5.000,00' }, 'A parte paga na Caixa vai até o valor dos honorários.'],
+    ] as const) {
+      const r = await chamar('gabi', 'POST', '/prestacao', corpo)
+      expect([r.statusCode, r.json().erro]).toEqual([400, erro])
+    }
+    expect(await banco.select().from(prestacaoContas)).toEqual([])
+  })
+})
+
 describe('GGVP-44 · ida ao banco', () => {
   it('CA10 e GGVP-98 CA6 · só depois do recebimento; os quatro campos obrigatórios; quem acompanha é do Atendimento e recebe "Levar ao banco"', async () => {
     await deferir()

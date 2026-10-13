@@ -1,7 +1,32 @@
 // Contratos do benefício deferido (GGVP-44): prestação de contas, recebimento e ida ao banco. Tela e servidor usam o mesmo.
-import { normalizarDecimal } from '@ggv/campos'
+import { normalizarDecimal, normalizarInteiro } from '@ggv/campos'
 import { z } from 'zod'
 import { DataObrigatoria } from './inss.ts'
+
+/** GGVP-158 P6.3: de onde veio cada valor da prestação (GGVP-92 CA3). Quem decide a fonte é o servidor, nunca a tela. */
+export const FONTES_DA_PRESTACAO = ['contrato', 'sistema', 'conferencia', 'carta'] as const
+export type FonteDaPrestacao = (typeof FONTES_DA_PRESTACAO)[number]
+export const ROTULO_FONTE_DA_PRESTACAO: Record<FonteDaPrestacao, string> = {
+  contrato: 'Do contrato',
+  sistema: 'Calculado pelo sistema',
+  conferencia: 'Informado por quem conferiu',
+  carta: 'Conferido com a carta de concessão',
+}
+const Fonte = z.enum(FONTES_DA_PRESTACAO).nullable()
+/** A fonte de cada valor; nula quando o valor não existe (sem entrada, sem parcelas, nada na Caixa). */
+export const FontesDaPrestacao = z.object({
+  valorRecebido: Fonte,
+  percentual: Fonte,
+  honorarios: Fonte,
+  repasse: Fonte,
+  entrada: Fonte,
+  parcelas: Fonte,
+  parteNaCaixa: Fonte,
+})
+export type FontesDaPrestacao = z.infer<typeof FontesDaPrestacao>
+
+/** As parcelas combinadas, como o servidor devolve: quantas e o valor de cada uma, em texto decimal com ponto. */
+const ParcelasNaPrestacao = z.object({ quantidade: z.number(), valor: z.string() })
 
 /** Uma versão da prestação (CA6). Valores em texto decimal com ponto ("1234.56"), calculados no servidor. */
 export const VersaoDaPrestacao = z.object({
@@ -17,6 +42,12 @@ export const VersaoDaPrestacao = z.object({
   recebidaPor: z.string().nullable(),
   recebidaEm: z.string().nullable(),
   divergencia: z.string().nullable(),
+  // GGVP-158 P6.3: o combinado, a parte paga na Caixa e a fonte de cada valor. Nulos nas versões de antes (e no teste de
+  // tela que monta a prestação à mão).
+  entrada: z.string().nullable().default(null),
+  parcelas: ParcelasNaPrestacao.nullable().default(null),
+  parteNaCaixa: z.string().nullable().default(null),
+  fontes: FontesDaPrestacao.nullable().default(null),
 })
 export type VersaoDaPrestacao = z.infer<typeof VersaoDaPrestacao>
 
@@ -27,6 +58,8 @@ export const PrestacaoDoCaso = z.object({
   beneficio: z.string().nullable(),
   carta: z.object({ id: z.uuid(), nome: z.string() }).nullable(),
   percentualContrato: z.string().nullable(),
+  /** GGVP-158 P6.3: a entrada e as parcelas do contrato da Recepção, para a prestação abrir com elas. Nulo sem o combinado. */
+  acordo: z.object({ entrada: z.string(), parcelas: ParcelasNaPrestacao.nullable() }).nullable().default(null),
   versoes: z.array(VersaoDaPrestacao),
   agendamento: z.object({ quando: z.string(), local: z.string(), acompanhante: z.string().nullable() }).nullable(),
   podeEditar: z.boolean(),
@@ -41,8 +74,40 @@ const Decimal = (mensagem: string, maximo = Number.MAX_SAFE_INTEGER / 100) =>
     .refine((n) => n !== null && n >= 0 && n <= maximo, mensagem)
     .transform((n) => n as number)
 
-/** Opções fechadas, para o painel não ter "débito" e "Debito" (ajuste do Mateus em 05/10; lista a confirmar com o Lucas). */
+const Inteiro = (mensagem: string, minimo: number, maximo: number) =>
+  z
+    .union([z.string(), z.number()], { error: mensagem })
+    .transform((v) => (typeof v === 'number' ? (Number.isInteger(v) ? v : null) : normalizarInteiro(v)))
+    .refine((n) => n !== null && n >= minimo && n <= maximo, mensagem)
+    .transform((n) => n as number)
+
+export const MSG_VALOR_DA_PARCELA = 'Informe o valor de cada parcela, como 1.234,56'
+/** As parcelas combinadas no contrato: quantas e o valor de cada uma. ponytail: parcelas iguais; lista, se o escritório pedir. */
+const ParcelasDoAcordo = z.object(
+  {
+    quantidade: Inteiro('Informe quantas parcelas (de 1 a 60)', 1, 60),
+    valor: Decimal(MSG_VALOR_DA_PARCELA).refine((n) => n > 0, MSG_VALOR_DA_PARCELA),
+  },
+  { error: 'Informe quantas parcelas e o valor de cada uma' },
+)
+
+/**
+ * GGVP-158 P6.2: o que foi combinado com o cliente no contrato (Lucas, GGVP-92, 06/10): a entrada e as parcelas. Fica no
+ * contrato da Recepção, e a prestação de contas abre com ele. Sem parcelas: `null`.
+ */
+export const AcordoDoContrato = z.object({
+  entrada: Decimal('Informe o valor da entrada, como 1.234,56'),
+  parcelas: ParcelasDoAcordo.nullable(),
+})
+export type AcordoDoContrato = z.output<typeof AcordoDoContrato>
+
+/**
+ * Opções fechadas, para o painel não ter "débito" e "Debito" (ajuste do Mateus em 05/10). A lista fica com as quatro para
+ * ler as versões antigas; a prestação nova só aceita `FORMAS_ACEITAS` (GGVP-158 P6.3), e a tela passa a ela com o Pedro.
+ */
 export const FORMAS_DE_PAGAMENTO = ['pix', 'transferencia', 'boleto', 'dinheiro'] as const
+/** Lucas, 07/10: Pix ou boleto emitido pelo escritório no nome do cliente; uma parte pode ser paga na Caixa. */
+export const FORMAS_ACEITAS = ['pix', 'boleto'] as const
 export const ROTULO_FORMA_DE_PAGAMENTO: Record<(typeof FORMAS_DE_PAGAMENTO)[number], string> = {
   pix: 'Pix',
   transferencia: 'Transferência bancária',
@@ -55,11 +120,25 @@ const vazioEhNada = (v: unknown) => (v === '' || v === null ? undefined : v)
 export const SalvarPrestacao = z.object({
   valorRecebido: Decimal('Informe o valor recebido (atrasados), como 1.234,56').refine((n) => n > 0, 'Informe o valor recebido (atrasados), como 1.234,56'),
   percentual: Decimal('Informe o percentual de honorários do contrato (0 a 100)', 100),
-  formaPagamento: z.preprocess(vazioEhNada, z.enum(FORMAS_DE_PAGAMENTO, { error: 'Escolha a forma de pagamento da lista' }).optional()),
+  formaPagamento: z.preprocess(vazioEhNada, z.enum(FORMAS_ACEITAS, { error: 'Escolha a forma de pagamento da lista' }).optional()),
   prazoPagamento: DataObrigatoria('Informe o prazo de pagamento (dd/mm/aaaa)'),
   conferiCarta: z.literal(true, { error: 'Marque "Conferi os valores com a carta de concessão"' }),
+  // GGVP-158 P6.3: o resultado abre editável (Lucas, 06/10): os honorários ajustados por quem confere, o combinado do
+  // contrato e a parte paga na Caixa, quando o escritório vai junto (07/10). Sem custas por enquanto.
+  honorarios: z.preprocess(vazioEhNada, Decimal('Informe os honorários, como 1.234,56').optional()),
+  entrada: z.preprocess(vazioEhNada, Decimal('Informe o valor da entrada, como 1.234,56').optional()),
+  parcelas: z.preprocess(vazioEhNada, ParcelasDoAcordo.optional()),
+  parteNaCaixa: z.preprocess(vazioEhNada, Decimal('Informe a parte paga na Caixa, como 1.234,56').optional()),
+}).superRefine((d, ctx) => {
+  if (d.honorarios !== undefined && d.honorarios > d.valorRecebido) {
+    ctx.addIssue({ code: 'custom', path: ['honorarios'], message: MSG_HONORARIOS_ACIMA })
+  } else if (d.parteNaCaixa !== undefined && d.parteNaCaixa > Number(calcularPrestacao(d.valorRecebido, d.percentual, d.honorarios).honorarios)) {
+    ctx.addIssue({ code: 'custom', path: ['parteNaCaixa'], message: MSG_CAIXA_ACIMA })
+  }
 })
 export type SalvarPrestacao = z.input<typeof SalvarPrestacao>
+export const MSG_HONORARIOS_ACIMA = 'Os honorários vão até o valor recebido.'
+export const MSG_CAIXA_ACIMA = 'A parte paga na Caixa vai até o valor dos honorários.'
 
 /** POST /api/casos/:id/prestacao/recebimento (GGVP-44 CA9; GGVP-98 CA3: lançar só com os valores conferidos). */
 export const ReceberPrestacao = z.discriminatedUnion(
@@ -137,9 +216,14 @@ export type RegistrarEnvio = z.infer<typeof RegistrarEnvio>
 const paraCentavos = (valor: number) => Math.round(valor * 100)
 const paraTexto = (centavos: number) => (centavos / 100).toFixed(2)
 
-export function calcularPrestacao(valorRecebido: number, percentual: number) {
+/**
+ * GGVP-158 P6.3: com os honorários ajustados por quem confere, vale o ajuste (até o recebido: o contrato `SalvarPrestacao`
+ * recusa acima); sem eles, o percentual. O repasse é sempre o recebido menos os honorários, e a conta fecha em centavos.
+ */
+export function calcularPrestacao(valorRecebido: number, percentual: number, honorariosAjustados?: number) {
   const recebido = paraCentavos(valorRecebido)
   // Percentual com até duas casas, em centésimos de ponto (30,5% → 3050), para a conta ficar inteira.
-  const honorarios = Math.floor((recebido * Math.round(percentual * 100)) / 10_000)
+  const pelaPercentagem = Math.floor((recebido * Math.round(percentual * 100)) / 10_000)
+  const honorarios = honorariosAjustados === undefined ? pelaPercentagem : Math.min(paraCentavos(honorariosAjustados), recebido)
   return { valorRecebido: paraTexto(recebido), honorarios: paraTexto(honorarios), repasse: paraTexto(recebido - honorarios) }
 }

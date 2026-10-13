@@ -1,5 +1,6 @@
 // O contrato do caso (GGVP-65 em diante): os tipos e as regras puras que as telas e o servidor usam iguais (GGVP-125,
 // bloco 4a). Sem o banco de exemplo: o servidor importa daqui sem carregar as telas.
+import type { AcordoDoContrato } from '@ggv/contratos'
 import { nomeBeneficio } from '../dados/catalogos.ts'
 import { somarDias } from './agenda.ts'
 import type { Ficha, Processo } from '../dados/tipos.ts'
@@ -59,6 +60,8 @@ export type Contrato = {
   documento?: DocumentoGerado
   /** O percentual de honorários do modelo quando o kit foi gerado (GGVP-158, P3.3); sem ele, a Sênior não tinha informado. */
   percentualHonorarios?: number
+  /** O combinado com o cliente: a entrada e as parcelas (GGVP-158, P6.2). A prestação de contas abre com ele. */
+  acordo?: AcordoDoContrato
   /** Toda versão gerada fica, com o motivo (GGVP-69, CA3). */
   versoes?: { versao: number; geradoEm: string; motivo: string }[]
   /** Como o cliente assina e o que já aconteceu (GGVP-72). */

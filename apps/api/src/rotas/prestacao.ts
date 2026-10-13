@@ -14,7 +14,9 @@ import {
   SalvarPrestacao,
   calcularPrestacao,
   pode,
+  type AcordoDoContrato,
   type Erro,
+  type FontesDaPrestacao,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
@@ -122,6 +124,12 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     return ct?.percentual ?? null
   }
 
+  /** GGVP-158 P6.3: o combinado com o cliente que a Recepção guardou no contrato (P6.2); nulo sem ele. */
+  async function acordoDoContrato(casoId: string): Promise<AcordoDoContrato | null> {
+    const [recepcao] = await banco.select({ dados: contratoRecepcao.dados }).from(contratoRecepcao).where(eq(contratoRecepcao.casoId, casoId))
+    return (recepcao?.dados as { contrato?: { acordo?: AcordoDoContrato } } | undefined)?.contrato?.acordo ?? null
+  }
+
   async function nomes(ids: (string | null)[]) {
     const validos = [...new Set(ids.filter((i): i is string => i !== null))]
     const linhas = validos.length ? await banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, validos)) : []
@@ -137,6 +145,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const def = await deferimento(casoId)
     const [carta] = def?.documentoId ? await banco.select({ id: documento.id, nome: documento.nomeOriginal }).from(documento).where(eq(documento.id, def.documentoId)) : []
     const percentualContrato = await percentualDoContrato(casoId)
+    const acordo = await acordoDoContrato(casoId)
     const versoes = await versoesDo(casoId)
     const ag = await agendamentoAtual(casoId)
     const nome = await nomes([...versoes.flatMap((v) => [v.okAdvogadaPor, v.recebidaPor]), ag?.acompanhanteId ?? null])
@@ -147,6 +156,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       beneficio: c.beneficio,
       carta: carta ?? null,
       percentualContrato,
+      acordo: acordo && {
+        entrada: acordo.entrada.toFixed(2),
+        parcelas: acordo.parcelas && { quantidade: acordo.parcelas.quantidade, valor: acordo.parcelas.valor.toFixed(2) },
+      },
       versoes: versoes.map((v) => ({
         versao: v.versao,
         valorRecebido: v.valorRecebido,
@@ -160,6 +173,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         recebidaPor: nome(v.recebidaPor),
         recebidaEm: v.recebidaEm?.toISOString() ?? null,
         divergencia: v.divergencia,
+        entrada: v.entrada,
+        parcelas: v.parcelasQuantidade !== null && v.parcelaValor !== null ? { quantidade: v.parcelasQuantidade, valor: v.parcelaValor } : null,
+        parteNaCaixa: v.parteNaCaixa,
+        fontes: (v.fontes as FontesDaPrestacao | null) ?? null,
       })),
       agendamento: ag ? { quando: ag.quando.toISOString(), local: ag.local ?? '', acompanhante: nome(ag.acompanhanteId) } : null,
       podeEditar: pode(pedido.perfilAtivo, 'prestacao.dar_ok') && def !== null,
@@ -180,7 +197,22 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const doContrato = await percentualDoContrato(casoId)
     if (doContrato !== null && Math.abs(Number(doContrato) - d.percentual) >= 0.005)
       return negar(resposta, 400, `O percentual de honorários é o do contrato: ${Number(doContrato).toString().replace('.', ',')}%.`)
-    const valores = calcularPrestacao(d.valorRecebido, d.percentual)
+    // GGVP-158 P6.3: o resultado abre editável (Lucas, 06/10). Os honorários de quem conferiu valem no lugar do cálculo, e
+    // a fonte de cada valor é do servidor: o que bate com o contrato é dele; o que bate com o cálculo, do sistema.
+    const calculado = calcularPrestacao(d.valorRecebido, d.percentual)
+    const valores = calcularPrestacao(d.valorRecebido, d.percentual, d.honorarios)
+    const acordo = await acordoDoContrato(casoId)
+    const centavos = (n: number) => Math.round(n * 100)
+    const parcelasIguais = d.parcelas && acordo?.parcelas && d.parcelas.quantidade === acordo.parcelas.quantidade && centavos(d.parcelas.valor) === centavos(acordo.parcelas.valor)
+    const fontes: FontesDaPrestacao = {
+      valorRecebido: 'carta',
+      percentual: doContrato !== null ? 'contrato' : 'conferencia',
+      honorarios: valores.honorarios === calculado.honorarios ? 'sistema' : 'conferencia',
+      repasse: 'sistema',
+      entrada: d.entrada === undefined ? null : acordo && centavos(acordo.entrada) === centavos(d.entrada) ? 'contrato' : 'conferencia',
+      parcelas: d.parcelas === undefined ? null : parcelasIguais ? 'contrato' : 'conferencia',
+      parteNaCaixa: d.parteNaCaixa === undefined ? null : 'conferencia',
+    }
     const quem = pedido.usuario!.id
     // CA9: caso encerrado não ganha versão nova. A versão é contada com o caso travado, para duas não saírem iguais.
     const versao = await banco.transaction(async (tx) => {
@@ -196,6 +228,11 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         percentualHonorarios: d.percentual.toFixed(2),
         formaPagamento: d.formaPagamento ?? null,
         prazoPagamento: d.prazoPagamento,
+        entrada: d.entrada?.toFixed(2) ?? null,
+        parcelasQuantidade: d.parcelas?.quantidade ?? null,
+        parcelaValor: d.parcelas?.valor.toFixed(2) ?? null,
+        parteNaCaixa: d.parteNaCaixa?.toFixed(2) ?? null,
+        fontes,
         cartaDocumentoId: def.documentoId,
         okAdvogadaPor: quem,
         okAdvogadaEm: agora(),
@@ -210,7 +247,9 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         .from(tarefa)
         .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06r'), inArray(tarefa.situacao, [...ABERTAS])))
       if (!doFinanceiro) await tx.insert(tarefa).values({ casoId, passo: 'D2.06r', titulo: 'Receber a prestação de contas', perfilDono: 'financeiro' })
-      await noHistorico(tx, quem, versao === 1 ? 'prestacao_concluida' : 'prestacao_alterada', pedido, casoId, { versao })
+      // CA11: o ajuste fica na trilha com o calculado e o que valeu.
+      const ajuste = fontes.honorarios === 'conferencia' ? { honorariosCalculados: calculado.honorarios, honorarios: valores.honorarios } : {}
+      await noHistorico(tx, quem, versao === 1 ? 'prestacao_concluida' : 'prestacao_alterada', pedido, casoId, { versao, ...ajuste })
       return versao
     })
     if (versao === null) return negar(resposta, 409, MSG_ENCERRADO)
