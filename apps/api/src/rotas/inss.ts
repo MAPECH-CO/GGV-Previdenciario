@@ -2,7 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import fastifyMultipart from '@fastify/multipart'
 import bcrypt from 'bcryptjs'
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   CasoParaProtocolo,
@@ -135,24 +135,25 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
   /** As tarefas do banco abertas na raia do perfil, como a Central mostra. */
   async function tarefasDoPerfil(perfil: string): Promise<TarefaDaCentral[]> {
     const linhas = await banco
-      .select({ tarefa, cliente: { id: pessoa.id, nome: pessoa.nome }, beneficio: caso.beneficio })
+      .select({ tarefa, casoId: caso.id, cliente: { id: pessoa.id, nome: pessoa.nome }, beneficio: caso.beneficio })
       .from(tarefa)
       .innerJoin(caso, eq(tarefa.casoId, caso.id))
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
-      .where(and(eq(tarefa.perfilDono, perfil), inArray(tarefa.situacao, ['aberta', 'em_andamento'])))
+      // GGVP-158 P6.7: as tarefas da conversa (D5) chegam à Central pela rota da conversa, como antes; aqui não repetem.
+      .where(and(eq(tarefa.perfilDono, perfil), inArray(tarefa.situacao, ['aberta', 'em_andamento']), sql`coalesce(${tarefa.passo}, '') not like 'D5.%'`))
       .orderBy(asc(tarefa.prazo), asc(tarefa.criadoEm))
     const visiveis: TarefaDaCentral[] = []
     for (const l of linhas) {
-      if (l.tarefa.passo === 'D2.02' && !(await okDaSeniorAprovado(l.tarefa.casoId))) continue
+      if (l.tarefa.passo === 'D2.02' && !(await okDaSeniorAprovado(l.casoId))) continue
       visiveis.push(
         TarefaDaCentral.parse({
           id: l.tarefa.id,
-          casoId: l.tarefa.casoId,
+          casoId: l.casoId,
           passo: l.tarefa.passo,
           cliente: l.cliente,
           titulo: l.tarefa.titulo,
           detalhe: l.beneficio ? nomeDoBeneficio(l.beneficio) : 'benefício a definir',
-          tela: l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.tarefa.casoId) : null,
+          tela: l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.casoId) : null,
           prazo: l.tarefa.prazo,
           // Pensão por morte em destaque na fila da Sênior (regra dos 90 dias do óbito; resposta do revisor de 05/10).
           urgente:

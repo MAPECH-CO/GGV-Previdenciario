@@ -32,7 +32,7 @@ export function registrarRotasFinanceiro(app: FastifyInstance, { banco, agora = 
           .select({ casoId: tarefa.casoId })
           .from(tarefa)
           .where(and(eq(tarefa.passo, 'D2.06'), eq(tarefa.perfilDono, 'advogada'), isNull(tarefa.concluidaEm), inArray(tarefa.situacao, ['aberta', 'em_andamento', 'aguardando'])))
-      ).map((t) => t.casoId),
+      ).flatMap((t) => (t.casoId ? [t.casoId] : [])),
     )
     const confirmados = await recebimentosConfirmados(banco)
     const ids = [...new Set([...atual.keys(), ...esperandoOk])]

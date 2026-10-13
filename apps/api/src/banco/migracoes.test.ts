@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { vector } from '@electric-sql/pglite/vector'
 import { sql } from 'drizzle-orm'
@@ -145,5 +147,37 @@ describe('confiança dos dados', () => {
     ).rows
     await recusa(sql`update prestacao_contas set recebida_por = ${adv}, recebida_em = now() where id = ${id}`, /prestacao_pessoas_diferentes/)
     await db.execute(sql`update prestacao_contas set recebida_por = ${fin}, recebida_em = now() where id = ${id}`)
+  })
+
+  it('GGVP-158 P6.7 · a tarefa é do caso ou da pessoa: sem nenhum dos dois, o banco recusa', async () => {
+    const [{ id: pessoaId }] = (await db.execute<{ id: string }>(sql`insert into pessoa (nome) values ('Lia') returning id`)).rows
+    await recusa(sql`insert into tarefa (titulo) values ('Sem dono')`, /tarefa_caso_ou_pessoa/)
+    await db.execute(sql`insert into tarefa (pessoa_id, passo, titulo) values (${pessoaId}, 'D5.05', 'Cumprir pendência da conversa')`)
+  })
+
+  it('GGVP-158 P6.7 · a pendência aberta da conversa ganha a linha da tarefa e o id na conversa; a cumprida, não; rodar de novo não repete', async () => {
+    const [{ id: pessoaId }] = (await db.execute<{ id: string }>(sql`insert into pessoa (nome) values ('Rita') returning id`)).rows
+    const [{ id: doc }] = (
+      await db.execute<{ id: string }>(
+        sql`insert into usuario (email, nome, senha_hash, perfis) values ('doc@exemplo.ggv', 'Doc', 'x', array['documentacao']) returning id`,
+      )
+    ).rows
+    const pendencia = (cumpridaEm?: string) => ({ texto: 'Trazer o laudo novo', responsavel: 'Doc', responsavelId: doc, setor: 'Documentação · ADM', prazo: '2026-10-20', ...(cumpridaEm && { cumpridaEm }) })
+    for (const p of [pendencia(), pendencia('2026-10-14T12:00:00.000Z')]) {
+      await db.execute(sql`insert into atendimento (pessoa_id, canal, inicio, dados) values (${pessoaId}, 'telefone', now(), ${JSON.stringify({ pendencia: p })}::jsonb)`)
+    }
+    // A última instrução da migração 0032 é a que leva as pendências para a tabela; aqui ela roda de novo, sobre o banco com dados.
+    const migracao = readFileSync(join(pastaMigracoes, '0032_pendencia_prestacao_e_chatwoot.sql'), 'utf8').split('--> statement-breakpoint')
+    const levar = () => db.execute(sql.raw(migracao.at(-1)!))
+    await levar()
+    await levar()
+    const linhas = (
+      await db.execute<{ id: string; caso_id: string | null; pessoa_id: string; passo: string; perfil_dono: string; responsavel_id: string; prazo: string }>(
+        sql`select id, caso_id, pessoa_id, passo, perfil_dono, responsavel_id, prazo::text from tarefa where responsavel_id = ${doc}`,
+      )
+    ).rows
+    expect(linhas.map((l) => [l.caso_id, l.pessoa_id, l.passo, l.perfil_dono, l.prazo])).toEqual([[null, pessoaId, 'D5.05', 'documentacao', '2026-10-20']])
+    const ids = (await db.execute<{ id: string | null }>(sql`select dados->'pendencia'->>'tarefaId' as id from atendimento where pessoa_id = ${pessoaId}`)).rows.map((r) => r.id)
+    expect(ids.sort()).toEqual([linhas[0].id, null].sort())
   })
 })

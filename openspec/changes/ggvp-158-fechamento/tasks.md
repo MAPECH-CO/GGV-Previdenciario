@@ -454,11 +454,15 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - Verifica com `rotas/desfecho.test.ts`:
     - a advogada lê o texto;
     - o Atendimento e a Documentação recebem o desfecho sem o texto.
-- [ ] 6.2 A migração 0032 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, e as pendências abertas viram linha.
+- [x] 6.2 A migração 0032 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, e as pendências abertas viram linha.
   - Verifica com `banco/migracoes.test.ts` e com teste da migração:
     - a tarefa sem caso e sem pessoa é recusada;
     - a pendência aberta ganha a linha e o id na conversa.
-- [ ] 6.3 A tarefa com `casoId` nulo (decisão 64): os usos conferidos pelo typecheck, e a Central geral sem a linha sem caso. Verifica com o typecheck e as suítes que leem a Central.
+
+  Verificado em 13/10: `banco/migracoes.test.ts` 15/15 (2 novos). A última instrução da 0032 leva as pendências abertas para a tabela e roda de novo sem repetir.
+- [x] 6.3 A tarefa com `casoId` nulo (decisão 64): os usos conferidos pelo typecheck, e a Central geral sem a linha sem caso. Verifica com o typecheck e as suítes que leem a Central.
+
+  Verificado em 13/10: o typecheck da API pegou 4 usos (Central e Financeiro), corrigidos; `rotas/inss.test.ts` e `rotas/financeiro.test.ts`, 17/17. A Central geral lê o caso pela junção e deixa de fora as linhas `D5`.
 - [ ] 6.4 O combinado no contrato (P6.2, decisão 55): `AcordoDoContrato` e `EnvioDoContrato.acordo`; a geração guarda e escreve no histórico.
   - Verifica com o teste do contrato e com `rotas/recepcao-contrato.test.ts`:
     - o combinado fica no contrato;

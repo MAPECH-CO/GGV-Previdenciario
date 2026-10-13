@@ -1,7 +1,7 @@
 // Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104, 143).
 import { TIPOS_DE_TERMO } from '@ggv/contratos'
 import { sql } from 'drizzle-orm'
-import { boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
+import { bigint, boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { caso } from './casos.ts'
 import { documento } from './documentos.ts'
@@ -27,6 +27,12 @@ export const prestacaoContas = pgTable(
     percentualHonorarios: numeric('percentual_honorarios', { precision: 5, scale: 2 }),
     formaPagamento: text('forma_pagamento'),
     prazoPagamento: date('prazo_pagamento'),
+    /** GGVP-158 P6.3: o combinado do contrato (a entrada e as parcelas), a parte paga na Caixa e a fonte de cada valor. */
+    entrada: numeric('entrada', { precision: 14, scale: 2 }),
+    parcelasQuantidade: integer('parcelas_quantidade'),
+    parcelaValor: numeric('parcela_valor', { precision: 14, scale: 2 }),
+    parteNaCaixa: numeric('parte_na_caixa', { precision: 14, scale: 2 }),
+    fontes: jsonb('fontes'),
     cartaDocumentoId: uuid('carta_documento_id').references(() => documento.id),
     /** Motivo da divergência registrada pelo Financeiro (GGVP-44 CA9). */
     divergencia: text('divergencia'),
@@ -140,9 +146,15 @@ export const mensagem = pgTable(
     status: text('status'),
     /** O motivo do Chatwoot quando não saiu (GGVP-102 CA5). */
     erro: text('erro'),
+    /** GGVP-158 P6.5: o id da mensagem no Chatwoot, para a entrega e a leitura que ele avisa. */
+    chatwootMensagemId: bigint('chatwoot_mensagem_id', { mode: 'number' }),
     criadoEm: criadoEm(),
   },
-  (t) => [emLista('mensagem_canal', t.canal, CANAIS_MENSAGEM), emLista('mensagem_status', t.status, STATUS_MENSAGEM)],
+  (t) => [
+    emLista('mensagem_canal', t.canal, CANAIS_MENSAGEM),
+    emLista('mensagem_status', t.status, STATUS_MENSAGEM),
+    index('mensagem_chatwoot').on(t.chatwootMensagemId),
+  ],
 ).enableRLS()
 
 /** Configuração do escritório (GGVP-104): limites de cobrança (Q1), prazo de guarda (LGPD) e afins, com quem mudou. */
