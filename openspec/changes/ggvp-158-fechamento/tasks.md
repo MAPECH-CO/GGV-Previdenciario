@@ -208,7 +208,7 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
   - A marcação aceita o id de um usuário da equipe real e guarda o `comId` e o nome. O id do catálogo fixo segue aceito até a tela mudar.
   - O filtro "só as minhas" é da tela, pelo `comId`.
   - Verifica com `rotas/recepcao-agenda.test.ts`.
-- [ ] 3.13 A desistência antes da entrevista (P3.7).
+- [x] 3.13 A desistência antes da entrevista (P3.7).
   - `ResultadoDoCompromisso` aceita "desistiu", com o motivo da lista (G16) e o recontato opcional; sem motivo, recusa.
   - Com recontato, "Recontatar lead" vai à agenda na data; sem recontato, o lead é arquivado com o motivo.
   - Verifica com `rotas/recepcao-agenda.test.ts`.

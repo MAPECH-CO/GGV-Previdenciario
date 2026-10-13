@@ -185,3 +185,30 @@ describe('GGVP-158 P3.6 · a agenda marca com as advogadas e as Sêniores reais'
     expect(antigo.agendamento.comId).toBeUndefined()
   })
 })
+
+describe('GGVP-158 P3.7 · a desistência antes da entrevista fica no servidor (G16)', () => {
+  const resultado = (id: string, corpo: object) => chamar('ana', 'POST', `/api/agendamentos/${id}/resultado`, corpo)
+
+  it('desistiu e pediu recontato: o motivo vai ao histórico, a entrevista sai da agenda e o recontato entra na data', async () => {
+    const fichaId = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(fichaId)
+    for (const errado of [{ resultado: 'desistiu', recontatar: null }, { resultado: 'desistiu', motivo: 'inventado', recontatar: null }])
+      expect((await resultado(agendamento.id, errado)).statusCode, JSON.stringify(errado)).toBe(400)
+    const r = (await resultado(agendamento.id, { resultado: 'desistiu', motivo: 'preco', detalhe: 'vai juntar o dinheiro', recontatar: { data: '09/11/2026' } })).json()
+    expect(r.ficha.fechamento).toMatchObject({ situacao: 'recontatar', motivo: 'preco', detalhe: 'vai juntar o dinheiro', recontatarEm: '2026-11-09' })
+    expect(r.ficha.agendamentos.find((a: { id: string }) => a.id === agendamento.id).estado).toBe('desistiu')
+    expect(r.ficha.agendamentos).toContainEqual(expect.objectContaining({ oQue: 'Recontatar lead', data: '2026-11-09' }))
+    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Preço \(vai juntar o dinheiro\)\. Recontatar em .+$/)
+    // O horário da entrevista fica livre: outra marcação no mesmo horário não avisa ocupado.
+    expect((await marcar(await lead('Maria Souza', '11912345678'))).resultado).toBe('marcado')
+  })
+
+  it('desistiu sem recontato: o lead é arquivado com o motivo; compromisso interno não desiste', async () => {
+    const fichaId = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(fichaId)
+    const r = (await resultado(agendamento.id, { resultado: 'desistiu', motivo: 'outro-escritorio', recontatar: null })).json()
+    expect(r.ficha.fechamento).toMatchObject({ situacao: 'arquivado', motivo: 'outro-escritorio' })
+    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Foi a outro escritório\. Lead arquivado com o motivo \(G16\)$/)
+    expect((await resultado(agendamento.id, { resultado: 'realizado' })).statusCode).toBe(400)
+  })
+})

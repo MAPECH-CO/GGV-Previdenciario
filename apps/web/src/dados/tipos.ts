@@ -347,7 +347,7 @@ export type RegistroRecebimento = {
 
 export type TipoDeEntrevista = 'video' | 'presencial' | 'telefone'
 
-export type EstadoDoCompromisso = 'marcado' | 'realizado' | 'faltou' | 'remarcado'
+export type EstadoDoCompromisso = 'marcado' | 'realizado' | 'faltou' | 'remarcado' | 'desistiu'
 
 export type CategoriaDaAgenda = 'visitas' | 'pericias' | 'audiencias' | 'protocolos' | 'prazos' | 'bancos' | 'retornos'
 

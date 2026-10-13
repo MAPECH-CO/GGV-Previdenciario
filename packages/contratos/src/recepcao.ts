@@ -98,8 +98,15 @@ export type MarcacaoDaEntrevista = z.infer<typeof MarcacaoDaEntrevista>
 export const EntrevistaAgora = z.object({ tipo: TipoDeEntrevista, com: Texto(60), duracao: z.number().int(), gravar: z.boolean() })
 export type EntrevistaAgora = z.infer<typeof EntrevistaAgora>
 
-/** POST /api/agendamentos/:id/resultado (CA6, CA8). */
-export const ResultadoDoCompromisso = z.object({ resultado: z.enum(['realizado', 'faltou']) })
+/**
+ * POST /api/agendamentos/:id/resultado (CA6, CA8). "Desistiu" é do lead antes da entrevista (GGVP-158, P3.7): o motivo da
+ * lista do "não fechou" (G16) e o recontato opcional, como no fechamento.
+ */
+export const ResultadoDoCompromisso = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('realizado') }),
+  z.object({ resultado: z.literal('faltou') }),
+  z.object({ resultado: z.literal('desistiu'), motivo: Texto(60), detalhe: Opcional(2000), recontatar: z.object({ data: Texto(10) }).nullable() }),
+])
 export type ResultadoDoCompromisso = z.infer<typeof ResultadoDoCompromisso>
 
 /** POST /api/agendamentos/:id/convite e /confirmacao/mensagem: a mensagem conferida e enviada no Chatwoot. */

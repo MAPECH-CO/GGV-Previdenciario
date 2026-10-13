@@ -23,27 +23,22 @@ import {
   type Perfil,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { credencialGovbr, pessoa } from '../banco/esquema.ts'
+import { credencialGovbr } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { analisar, cnisDoCaso } from '../../../web/src/dados/acervo.ts'
 import { BENEFICIOS, MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
-import type { Agendamento, Calculo, Cadastro, Demanda, Ficha, PapelNoFechamento, Renovacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
+import type { Agendamento, Calculo, Cadastro, Demanda, Ficha, Renovacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
 import { cadastroDaFicha, errosDoCadastro, errosDoRepresentante, fichaDoCadastro, mesclar, normalizarRg, ROTULOS_DO_CADASTRO } from '../../../web/src/regras/cadastro.ts'
 import { calculoPendente, dataPrevistaIso, exigeCalculo, pontosDoCnis, pontosFalados, registroValido, tempoDosDias, tempoFalado } from '../../../web/src/regras/calculo.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { TAMANHO_DO_DETALHE, beneficioDoFechamento, motivoParadoDoFechamento, podeRegistrarOMotivo, recontatoEmAberto } from '../../../web/src/regras/fechamento.ts'
 import { demandaAberta, motivoParadoDaDemanda } from '../../../web/src/regras/novaDemanda.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario } from './recepcao.ts'
+import { JURIDICO, MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, papelDa } from './recepcao.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { MSG_ENTREVISTA_NAO_ENCONTRADA } from './recepcao-entrevista.ts'
 
 export const MSG_SENHA_FORA_DO_COFRE = 'A senha ainda não está no cofre do portal.'
-const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
-
-/** Quem registra o fechamento, pelo perfil da sessão (GGVP-60 CA11): a recusa do escritório não é do Atendimento. */
-const papelDa = (perfil: string | null | undefined): PapelNoFechamento =>
-  perfil === 'atendimento_lider' ? 'atendimento-senior' : JURIDICO.includes(perfil as Perfil) ? 'advogada-atendimento' : 'atendimento'
 
 /** "Estado civil" → "estado civil"; sigla fica: "RG", "CEP". */
 const minusculo = (rotulo: string) => (rotulo === rotulo.toUpperCase() ? rotulo : rotulo.charAt(0).toLowerCase() + rotulo.slice(1))
@@ -54,7 +49,7 @@ type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const f = criarFichario(banco, agora)
-  const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, acharAgendamento } = f
+  const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, acharAgendamento, arquivar, marcarRecontato } = f
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const analisarFicha = { preHandler: exigir(banco, 'ficha.analisar', agora) }
   const cofre = { preHandler: exigir(banco, 'cofre.cadastrar', agora) }
@@ -75,22 +70,6 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     }
     await garantirAberta(tarefa)
     return tarefa
-  }
-
-  /** G16 na pessoa do portal: o lead arquivado fica `nao_virou_cliente` com o motivo, e as tarefas abertas dele se encerram. */
-  async function arquivar(ficha: Ficha, motivo: string, detalhe: string | undefined) {
-    await banco
-      .update(pessoa)
-      .set({ situacao: 'nao_virou_cliente', motivoNaoVirou: `${nomeMotivo(motivo)}${detalhe ? `: ${detalhe}` : ''}`, atualizadoEm: agora() })
-      .where(eq(pessoa.id, ficha.id))
-    for (const t of await tarefas(ficha.id)) if (!t.concluida) await concluirTarefas(ficha.id, t.acao, t.id)
-  }
-
-  /** O compromisso "Recontatar lead" na agenda, no formato dos compromissos do servidor. */
-  function marcarRecontato(ficha: Ficha, data: string, quem: string): string {
-    const id = `${ficha.id}-ag-${randomUUID().slice(0, 8)}`
-    ficha.agendamentos.push({ id, data, hora: '09:00', oQue: 'Recontatar lead', com: quem, tipo: 'telefone', duracao: 15 })
-    return id
   }
 
   // GGVP-43: o cadastro completa a mesma ficha do primeiro contato (CA9); CPF de outra ficha não grava (CA2); mescla com

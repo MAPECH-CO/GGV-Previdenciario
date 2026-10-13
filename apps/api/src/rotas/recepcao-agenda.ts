@@ -22,7 +22,7 @@ import {
 import type { Banco } from '../banco/conexao.ts'
 import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
-import { EQUIPE, TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
+import { EQUIPE, MOTIVOS_DE_NAO_FECHAR, TIPOS_DE_ENTREVISTA, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import type {
   Agendamento,
   CompromissoGuardado,
@@ -38,13 +38,15 @@ import { DURACOES, HORARIOS, equipeDaEntrevista, estadoDoEvento, horarioOcupado,
 import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
 import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, type ContratoGuardado } from './recepcao.ts'
+import { TAMANHO_DO_DETALHE, podeRegistrarOMotivo } from '../../../web/src/regras/fechamento.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, papelDa, type ContratoGuardado } from './recepcao.ts'
 import type { RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { criarCobranca } from './recepcao-cobranca.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
+export const MSG_DESISTENCIA = 'A desistência é do lead, na entrevista marcada.'
 
 const PASSOS: Record<string, string> = {
   Entrevista: 'D1.09 · Atender e entrevistar',
@@ -107,8 +109,23 @@ const guardado = (l: typeof compromissoInterno.$inferSelect): CompromissoGuardad
 type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes, leiturasDe } =
-    criarFichario(banco, agora)
+  const {
+    hoje,
+    evento,
+    nomeDe,
+    fichas,
+    guardar,
+    abrirTarefa,
+    concluirTarefas,
+    tarefas,
+    abrirPreparacao,
+    quandoNaConfirmacao,
+    acharAgendamento,
+    gravacoes,
+    leiturasDe,
+    arquivar,
+    marcarRecontato,
+  } = criarFichario(banco, agora)
   const { dasFichas: checklistsDas } = criarChecklist(banco, agora)
   const { daCopia: cobrancasDa } = criarCobranca(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
@@ -125,7 +142,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
 
   /** A agenda do escritório: entrevistas e retiradas das fichas e os compromissos internos; o remarcado sai (CA5). */
   async function eventosDoEscritorio(): Promise<EventoDaAgenda[]> {
-    const dasFichas = (await fichasDaRecepcao()).flatMap((f) => f.agendamentos.filter((a) => a.estado !== 'remarcado').map((a) => doAgendamento(f, a, hoje())))
+    // O remarcado e o desistido (GGVP-158, P3.7) saem: o horário fica livre.
+    const dasFichas = (await fichasDaRecepcao()).flatMap((f) => f.agendamentos.filter((a) => a.estado !== 'remarcado' && a.estado !== 'desistiu').map((a) => doAgendamento(f, a, hoje())))
     return [...dasFichas, ...(await internos()).map((i) => doInterno(i, hoje()))]
   }
 
@@ -340,10 +358,12 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   // lead" do Jurídico; faltou grava a falta. Vale também para o compromisso interno.
   app.post<{ Params: { id: string } }>('/api/agendamentos/:id/resultado', editar, async (pedido, resposta) => {
     const entrada = ResultadoDoCompromisso.safeParse(pedido.body)
-    if (!entrada.success) return negar(resposta, 400, 'Escolha realizado ou faltou.')
-    const { resultado } = entrada.data
+    if (!entrada.success) return negar(resposta, 400, 'Escolha realizado, faltou ou desistiu; na desistência, o motivo.')
+    const envio = entrada.data
+    const { resultado } = envio
     const quem = await nomeDe(pedido)
     if (UUID.test(pedido.params.id)) {
+      if (resultado === 'desistiu') return negar(resposta, 400, MSG_DESISTENCIA)
       const [linha] = await banco.select().from(compromissoInterno).where(eq(compromissoInterno.id, pedido.params.id))
       if (!linha) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
       if (linha.estado !== 'marcado') return negar(resposta, 400, MSG_JA_REGISTRADO)
@@ -355,9 +375,38 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     if (!achado) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
     const { ficha, agendamento: a } = achado
     if (!emAberto(a)) return negar(resposta, 400, MSG_JA_REGISTRADO)
-    a.estado = resultado
     const entrevista = a.oQue === 'Entrevista'
     let registro: EventoHistorico
+    // GGVP-158 P3.7: o lead desiste antes da entrevista. É o "não fechou" do G16, com o motivo da lista e o recontato
+    // opcional: com data, "Recontatar lead" na agenda; sem data, o lead é arquivado com o motivo. O horário fica livre.
+    if (envio.resultado === 'desistiu') {
+      if (!entrevista || ficha.situacao !== 'lead') return negar(resposta, 400, MSG_DESISTENCIA)
+      const papel = papelDa(pedido.perfilAtivo)
+      if (!MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === envio.motivo) || !podeRegistrarOMotivo(envio.motivo, papel))
+        return negar(resposta, 400, 'Escolha o motivo da lista (G16).')
+      if ((envio.detalhe ?? '').length > TAMANHO_DO_DETALHE) return negar(resposta, 400, `O detalhe vai até ${TAMANHO_DO_DETALHE} caracteres.`)
+      const em = envio.recontatar ? dataParaIso(envio.recontatar.data) : null
+      if (envio.recontatar && (!em || em < hoje())) return negar(resposta, 400, 'Data do recontato inválida.')
+      const detalhe = envio.detalhe || undefined
+      const quando = agora().toISOString()
+      const desistiu = `Desistiu antes da entrevista de ${dataCurta(a.data, hoje())}: ${nomeMotivo(envio.motivo)}${detalhe ? ` (${detalhe})` : ''}.`
+      a.estado = 'desistiu'
+      if (em) {
+        await concluirTarefas(ficha.id, 'Receber para a entrevista')
+        await concluirTarefas(ficha.id, 'Confirmar agendamento')
+        const recontatoId = marcarRecontato(ficha, em, quem)
+        ficha.fechamento = { situacao: 'recontatar', motivo: envio.motivo, ...(detalhe && { detalhe }), recontatarEm: em, recontatoId, papel, quem, quando }
+        registro = evento(`${desistiu} Recontatar em ${dataCurta(em, hoje())}`, quem)
+      } else {
+        ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel, quem, quando }
+        await arquivar(ficha, envio.motivo, detalhe)
+        registro = evento(`${desistiu} Lead arquivado com o motivo (G16)`, quem)
+      }
+      ficha.historico.push(registro)
+      await guardar(ficha)
+      return { evento: registro, ficha, tarefas: await tarefas(ficha.id) }
+    }
+    a.estado = resultado
     if (resultado === 'realizado') {
       await concluirTarefas(ficha.id, 'Receber para a entrevista')
       if (entrevista && ficha.situacao === 'lead')
