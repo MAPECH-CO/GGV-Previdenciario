@@ -228,6 +228,21 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
     expect(await json('sara', 'POST', `${url}/decisao`, decisao)).toEqual({ erro: 'A cobrança ainda não chegou ao limite.' })
   })
 
+  it('GGVP-158 P4.8 · a mensagem de cobrança obedece ao mesmo limite: na Sênior ou antes dos 3 dias, não sai; no prazo, sai', async () => {
+    const naSenior = await cobrancaAberta([
+      { dia: '2026-10-02', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' },
+      { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
+    ])
+    const mensagem = (c: { fichaId: string; processoId: string }) => json('ana', 'GET', `/api/fichas/${c.fichaId}/mensagens/cobranca?processo=${c.processoId}`)
+    expect(await mensagem(naSenior)).toMatchObject({ trava: 'Passou do limite de 2 tentativas: a sênior decide (G15).', texto: '' })
+
+    const hoje = await cobrancaAberta([{ dia: '2026-10-08', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
+    expect((await mensagem(hoje)).trava).toMatch(/^A próxima tentativa é em .+, 3 dias depois da última\.$/)
+
+    const noPrazo = await cobrancaAberta([{ dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
+    expect(await mensagem(noPrazo)).toMatchObject({ trava: null, texto: expect.stringContaining('faltam documentos') })
+  })
+
   it('chegou tudo: a cobrança fecha sozinha na sincronização, uma vez só', async () => {
     const { fichaId, processoId, url } = await cobrancaAberta()
     await completarOKit(fichaId, processoId)
