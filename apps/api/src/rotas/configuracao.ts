@@ -6,6 +6,7 @@ import {
   ConfiguracaoDoEscritorio,
   PARAMETROS,
   PARAMETROS_DO_ESCRITORIO,
+  PARAMETROS_SEM_USO,
   PublicarKit,
   ROTULO_BENEFICIO,
   SalvarMensagem,
@@ -70,7 +71,7 @@ export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora 
     return ConfiguracaoDoEscritorio.parse({
       parametros: PARAMETROS.map((chave) => {
         const v = linhas.find((l) => l.chave === chave)?.valor
-        return { chave, ...PARAMETROS_DO_ESCRITORIO[chave], valor: typeof v === 'number' ? v : null }
+        return { chave, ...PARAMETROS_DO_ESCRITORIO[chave], valor: typeof v === 'number' ? v : null, emUso: !PARAMETROS_SEM_USO.includes(chave) }
       }),
       kits: BENEFICIOS.map((beneficio) => {
         const itens = vigentes.filter((k) => k.beneficio === beneficio)

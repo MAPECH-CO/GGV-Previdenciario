@@ -216,7 +216,7 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
 42. **Os limites por parâmetro** (P5.3).
     - As regras puras (`regras/cobranca.ts`, `regras/confirmacao.ts`, `regras/pericia.ts`) recebem os limites, com os números do Lucas como padrão. A tela segue igual até o Pedro passar os valores.
     - O servidor lê a `configuracao`: `cobranca.*`, os novos `confirmacao.limite` e `confirmacao.intervalo_dias`, e `pericia.remarcacao.limite`.
-    - O padrão da remarcação passa de 2 a 1, como o Lucas disse (GGVP-104).
+    - No servidor, sem nada salvo, a remarcação é 1, como o Lucas disse (GGVP-104), e o servidor põe o limite em cada perícia lida (`limiteDeRemarcacoes`). A regra comum segue com 2 para a tela de exemplo: os testes de tela que contam 2 são do Pedro, e o cartão pede para não mexer nos arquivos de tela dele.
     - `ConfiguracaoDoEscritorio.parametros[]` ganha `emUso`. Os de `contato.*` ficam `false`, para a tela não precisar adivinhar.
     - O prazo externo comprime: a regra da cobrança já faz (CA12); o teste cobre os laços que têm prazo.
 43. **A espera de fora** (P5.4).

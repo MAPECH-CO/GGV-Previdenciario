@@ -327,16 +327,20 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 5.4 O perfil laudo a laudo (P5.2): o laudo da perícia social entra no perfil do perito. Verifica com `rotas/pericia.test.ts`.
 
   Verificado em 13/10: o mesmo teste leva a perícia social até o resultado, e o perfil da perita nova ganha o laudo.
-- [ ] 5.5 Os limites por parâmetro, nas regras (P5.3, decisão 42): cobrança, confirmação e remarcação recebem os limites, com os números do Lucas como padrão; o da remarcação passa a 1.
+- [x] 5.5 Os limites por parâmetro, nas regras (P5.3, decisão 42): cobrança, confirmação e remarcação recebem os limites, com os números do Lucas como padrão; no servidor, a remarcação é 1 sem nada salvo.
   - Verifica com os testes das regras:
     - com 3 tentativas, a segunda sem resposta não sobe;
     - com prazo externo, a próxima fica no dia antes.
-- [ ] 5.6 Os limites lidos da Configuração (P5.3): os parâmetros novos da confirmação; o servidor lê os quatro laços; `emUso` na Configuração.
+
+  Verificado em 13/10: regras da tela 363/363 (3 testes novos). A remarcação lê `limiteDeRemarcacoes` da própria perícia, que o servidor põe a cada leitura. A regra comum segue com 2 na tela de exemplo: passar a 1 quebrava 8 testes de tela do Pedro.
+- [x] 5.6 Os limites lidos da Configuração (P5.3): os parâmetros novos da confirmação; o servidor lê os quatro laços; `emUso` na Configuração.
   - Verifica com teste:
     - a cobrança da Recepção usa o limite salvo;
     - a confirmação também;
     - a remarcação sobe na segunda;
     - os de `contato.*` voltam `emUso: false`.
+
+  Verificado em 13/10: `configuracao`, `recepcao-agenda` e `recepcao-checklist` 30/30, e `pericia` 31/31 (um novo em cada).
 - [ ] 5.7 A espera de fora (P5.4, decisão 43): as linhas da espera na Central da advogada, urgentes no dia útil; `POST /api/casos/:id/esperas/olhada`.
   - Verifica com teste:
     - INSS decidindo, no topo na terça;

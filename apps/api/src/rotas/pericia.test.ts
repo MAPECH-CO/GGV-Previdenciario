@@ -309,6 +309,24 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     const r = await post('gabi', '/autorizacao', { justificativa: 'O cliente estava internado nas duas datas.' })
     expect(r.json().situacao).toBe('marcar')
   })
+
+  it('GGVP-158 P5.3 · a remarcação segue o limite da Configuração: 1 por padrão (Lucas); com 2 salvo, a segunda não sobe', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    const remarcar = async () => {
+      await marcar(false)
+      return (await post('igor', '/remarcacao', { motivo: 'O cliente pediu outra data' })).json()
+    }
+    expect((await remarcar()).situacao).toBe('marcar')
+    const segunda = await remarcar()
+    expect([segunda.situacao, segunda.pericia.historico.at(-1).oQue]).toEqual([
+      'na-advogada',
+      'Passou do limite de 1 remarcação: a perícia subiu para a advogada responsável (G15)',
+    ])
+    // Com 2 na Configuração, a mesma perícia volta a marcar (são 2 remarcações, dentro do limite).
+    await banco.insert(configuracao).values({ chave: 'pericia.remarcacao.limite', valor: 2 })
+    expect((await ver('igor')).json().situacao).toBe('marcar')
+  })
 })
 
 describe('GGVP-158 P5.1 · o que vai pelo Chatwoot só registra com a mensagem que saiu', () => {

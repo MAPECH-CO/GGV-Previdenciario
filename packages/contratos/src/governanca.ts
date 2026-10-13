@@ -218,6 +218,9 @@ export const nomeDoBeneficio = (b: string | null): string =>
 export const PARAMETROS_DO_ESCRITORIO = {
   'cobranca.limite': { rotulo: 'Cobrança de documento: tentativas até subir para a Sênior', min: 1, max: 20 },
   'cobranca.intervalo_dias': { rotulo: 'Cobrança de documento: dias úteis entre as tentativas', min: 1, max: 30 },
+  // GGVP-158 P5.3: a confirmação da entrevista do lead (Lucas, GGVP-122: 2 tentativas, 3 dias).
+  'confirmacao.limite': { rotulo: 'Confirmação da entrevista do lead: tentativas até subir para a Sênior', min: 1, max: 20 },
+  'confirmacao.intervalo_dias': { rotulo: 'Confirmação da entrevista do lead: dias entre as tentativas', min: 1, max: 30 },
   'contato.limite': { rotulo: 'Cliente sumido: tentativas de contato até subir para a Sênior', min: 1, max: 20 },
   'contato.janela_dias': { rotulo: 'Cliente sumido: dias para as tentativas de contato', min: 1, max: 60 },
   'pericia.remarcacao.limite': { rotulo: 'Remarcação de perícia: remarcações até subir para a advogada responsável', min: 0, max: 10 },
@@ -227,6 +230,9 @@ export const PARAMETROS_DO_ESCRITORIO = {
 } as const
 export type Parametro = keyof typeof PARAMETROS_DO_ESCRITORIO
 export const PARAMETROS = Object.keys(PARAMETROS_DO_ESCRITORIO) as Parametro[]
+
+/** GGVP-158 P5.3: o laço do cliente sumido ainda não existe; os limites dele ficam guardados, sem uso, e a tela avisa. */
+export const PARAMETROS_SEM_USO: readonly Parametro[] = ['contato.limite', 'contato.janela_dias']
 
 /** PUT /api/configuracao/parametros/:chave: número inteiro pelo `campos`; a faixa de cada um, o servidor confere. */
 export const SalvarParametro = z.object({
@@ -258,7 +264,7 @@ export type SalvarMensagem = z.infer<typeof SalvarMensagem>
 
 /** GET /api/configuracao (GGVP-104, `gestao.ver`; editar com `configuracao.editar`). */
 export const ConfiguracaoDoEscritorio = z.object({
-  parametros: z.array(z.object({ chave: z.string(), rotulo: z.string(), valor: z.number().nullable(), min: z.number(), max: z.number() })),
+  parametros: z.array(z.object({ chave: z.string(), rotulo: z.string(), valor: z.number().nullable(), min: z.number(), max: z.number(), emUso: z.boolean() })),
   kits: z.array(
     z.object({
       beneficio: z.enum(BENEFICIOS),

@@ -69,14 +69,15 @@ export function etapaEmPericia(
 }
 
 /**
- * Limite de remarcações da perícia (G15). O cartão diz "a definir" (GGVP-53 CA9, GGVP-66 CA3): fica 2, como o da agenda
- * (Pedro, 05/10) e o padrão do servidor do Mateus. Parâmetro; levar ao Lucas.
+ * Limite de remarcações da perícia (G15) na tela de exemplo: 2, como o da agenda (Pedro, 05/10). GGVP-158 P5.3: no
+ * servidor, vale o da Configuração, que ele põe na perícia (`limiteDeRemarcacoes`); sem nada salvo, 1, o do Lucas
+ * (GGVP-104 CA4). A tela passa a 1 quando o Pedro mudar os testes dela.
  */
 export const LIMITE_DE_REMARCACOES_DA_PERICIA = 2
 
 /** Passou do limite: a perícia sai do Jurídico administrativo e sobe para a advogada responsável, nunca para a sênior (CA9). */
-export const passouDoLimite = (p: { remarcacoes: number; autorizadas?: number }) =>
-  p.remarcacoes > LIMITE_DE_REMARCACOES_DA_PERICIA + (p.autorizadas ?? 0)
+export const passouDoLimite = (p: { remarcacoes: number; autorizadas?: number; limiteDeRemarcacoes?: number }) =>
+  p.remarcacoes > (p.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA) + (p.autorizadas ?? 0)
 
 export type SituacaoDaPericia = 'aguardando-inss' | 'marcar' | 'aguardando-comprovante' | 'agendada' | 'na-advogada' | 'aguardando-resultado' | 'concluida'
 
@@ -87,6 +88,7 @@ export function situacaoDaPericia(p: {
   marcacao?: { comparecimento?: { compareceu: boolean } }
   remarcacoes?: number
   autorizadas?: number
+  limiteDeRemarcacoes?: number
   resultado?: { registrado?: unknown }
 }): SituacaoDaPericia {
   // O resultado registrado pela advogada fecha a perícia (GGVP-70): volta para quem pediu.
@@ -94,7 +96,7 @@ export function situacaoDaPericia(p: {
   // Compareceu (GGVP-66, CA5): espera o perito e o resultado (DP.E3, DP.E4).
   if (p.marcacao) return p.marcacao.comparecimento?.compareceu ? 'aguardando-resultado' : 'agendada'
   if (!p.liberadaEm) return 'aguardando-inss'
-  if (passouDoLimite({ remarcacoes: p.remarcacoes ?? 0, autorizadas: p.autorizadas })) return 'na-advogada'
+  if (passouDoLimite({ remarcacoes: p.remarcacoes ?? 0, autorizadas: p.autorizadas, limiteDeRemarcacoes: p.limiteDeRemarcacoes })) return 'na-advogada'
   return p.esperaComprovante ? 'aguardando-comprovante' : 'marcar'
 }
 

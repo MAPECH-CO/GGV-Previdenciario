@@ -49,7 +49,11 @@ describe('GGVP-104 · configuração do escritório', () => {
       valor: 3,
       min: 1,
       max: 20,
+      emUso: true,
     })
+    // GGVP-158 P5.3: a confirmação do lead ganhou os dela; o cliente sumido não tem laço ainda, e a tela avisa.
+    const emUso = Object.fromEntries(c.parametros.map((p: { chave: string; emUso: boolean }) => [p.chave, p.emUso]))
+    expect(emUso).toMatchObject({ 'confirmacao.limite': true, 'confirmacao.intervalo_dias': true, 'pericia.remarcacao.limite': true, 'contato.limite': false, 'contato.janela_dias': false })
     expect([c.podeEditar, (await ver('lauro')).podeEditar]).toEqual([true, true])
     expect((await chamar('gabi', 'GET', '/api/configuracao')).statusCode).toBe(403)
     // GGVP-96: o Financeiro fica só com os Resultados da Gestão.

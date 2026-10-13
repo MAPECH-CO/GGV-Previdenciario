@@ -165,6 +165,8 @@ export type Pericia = {
   remarcadaEm?: string
   /** Remarcações a mais que a advogada responsável autorizou depois do limite (G15). */
   autorizadas?: number
+  /** O limite de remarcações da Configuração, que o servidor põe a cada leitura (GGVP-158 P5.3); sem ele, o do Lucas. */
+  limiteDeRemarcacoes?: number
   /** Marcada no Meu INSS, mas o comprovante ainda não saiu (espera DP.E1, GGVP-53 CA6). */
   esperaComprovante?: { desde: string }
   marcacao?: MarcacaoDaPericia
@@ -654,7 +656,7 @@ function remarcar(pericia: Pericia, motivo: string, quem: string, agora: Date) {
     pericia.historico.push({
       quando,
       quem: SISTEMA,
-      oQue: `Passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a perícia subiu para a advogada responsável (G15)`,
+      oQue: `Passou do limite de ${pericia.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA} ${(pericia.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA) === 1 ? 'remarcação' : 'remarcações'}: a perícia subiu para a advogada responsável (G15)`,
       passo: 'DP.02',
     })
   }

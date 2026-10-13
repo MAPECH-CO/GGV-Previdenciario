@@ -154,6 +154,9 @@ export async function semearExemplos(banco: Banco) {
     { chave: 'contato.limite', valor: 3 },
     { chave: 'contato.janela_dias', valor: 10 },
     { chave: 'pericia.remarcacao.limite', valor: 1 },
+    // GGVP-158 P5.3: a confirmação da entrevista do lead (Lucas, GGVP-122): 2 tentativas, 3 dias entre elas.
+    { chave: 'confirmacao.limite', valor: 2 },
+    { chave: 'confirmacao.intervalo_dias', valor: 3 },
   ])
   // GGVP-104 (Lucas, 02/10): no LOAS, a ficha de grupo familiar é obrigatória e as três declarações são condicionais.
   // A versão 1 vale desde sempre, para os casos de exemplo já abertos; ao meio-dia, para a data não virar 31/12/1999 no

@@ -1,5 +1,5 @@
 // Exigência do INSS (GGVP-39): perícia aberta pela exigência, volta à vigília e limites de cobrança (Q1).
-import type { Lembrete, TentativaDoLaco } from '@ggv/contratos'
+import { PARAMETROS_DO_ESCRITORIO, type Lembrete, type Parametro, type TentativaDoLaco } from '@ggv/contratos'
 import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa, tentativa, usuario } from '../banco/esquema.ts'
@@ -30,6 +30,13 @@ export async function limitesDeCobranca(banco: Banco | Tx): Promise<{ limite: nu
     limite: valor('cobranca.limite') ?? LIMITES_PADRAO.limite,
     intervaloDias: valor('cobranca.intervalo_dias') ?? LIMITES_PADRAO.intervaloDias,
   }
+}
+
+/** GGVP-158 P5.3: um parâmetro do escritório: o salvo, dentro da faixa dele, ou o padrão do Lucas. */
+export async function parametroDoEscritorio(banco: Banco | Tx, chave: Parametro, padrao: number): Promise<number> {
+  const [l] = await banco.select({ valor: configuracao.valor }).from(configuracao).where(eq(configuracao.chave, chave))
+  const { min, max } = PARAMETROS_DO_ESCRITORIO[chave]
+  return typeof l?.valor === 'number' && Number.isInteger(l.valor) && l.valor >= min && l.valor <= max ? l.valor : padrao
 }
 
 /**

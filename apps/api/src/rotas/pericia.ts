@@ -39,7 +39,7 @@ import {
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { avancarExigencia } from '../fluxo/exigencia.ts'
+import { avancarExigencia, parametroDoEscritorio } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
@@ -74,6 +74,8 @@ import {
 } from '../../../web/src/regras/periciaNoCaso.ts'
 
 export const MSG_SEM_PERICIA = 'Este caso não tem perícia.'
+/** GGVP-104 CA4 (Lucas, 02/10): 1 remarcação, e sobe para a advogada responsável. Vale sem nada salvo na Configuração. */
+export const REMARCACOES_DO_LUCAS = 1
 export const MSG_ARQUIVO_PDF = 'Anexe o PDF (até 25 MB).'
 export const MSG_ANEXO = 'Anexe o documento em PDF ou imagem (JPEG, PNG), até 25 MB.'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -212,6 +214,8 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     }
     const ps = await peritos()
     const mundo: MundoDaPericia = { fichas: [ficha], pericias: [], peritos: ps }
+    // GGVP-158 P5.3: o limite de remarcações da Configuração vale em cada perícia lida; sem ele, o do Lucas.
+    const limiteDeRemarcacoes = await parametroDoEscritorio(banco, 'pericia.remarcacao.limite', REMARCACOES_DO_LUCAS)
     const linhas = await banco.select().from(pericia).where(eq(pericia.casoId, casoId)).orderBy(asc(pericia.criadoEm), asc(pericia.id))
     for (const l of linhas) {
       if (l.documento) {
@@ -238,6 +242,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
         l.id,
       )
     }
+    for (const p of mundo.pericias!) p.limiteDeRemarcacoes = limiteDeRemarcacoes
     return { mundo, casoId, linhas: new Map(linhas.map((l) => [l.id, l])), laudosAntes: new Map(ps.map((p) => [p.id, p.laudos.length])) }
   }
 

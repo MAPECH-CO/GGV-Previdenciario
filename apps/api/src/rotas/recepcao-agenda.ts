@@ -36,7 +36,8 @@ import type {
 } from '../../../web/src/dados/tipos.ts'
 import { DURACOES, HORARIOS, equipeDaEntrevista, estadoDoEvento, horarioOcupado, podeRemarcar } from '../../../web/src/regras/agenda.ts'
 import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
-import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
+import { parametroDoEscritorio } from '../fluxo/exigencia.ts'
+import { LIMITES_DA_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { TAMANHO_DO_DETALHE, podeRegistrarOMotivo } from '../../../web/src/regras/fechamento.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, papelDa, type ContratoGuardado } from './recepcao.ts'
@@ -507,12 +508,17 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       const tarefa = r.jaPreencheuFicha ? await abrirPreparacao(ficha, a, quem) : await abrirPreenchimento(ficha, a, quem)
       saida = { tentativa, naSenior: confirmacao.naSenior ?? false, tarefa }
     } else {
-      const depois = depoisDaTentativa(confirmacao.tentativas.filter((t) => t.resultado === 'sem-resposta').length, hoje())
-      ficha.contatos.push({ data: hoje(), canal: CANAL[r.canal], texto: `Sem resposta à confirmação de ${sobre} (tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO}).` })
+      // GGVP-158 P5.3: as tentativas e os dias entre elas vêm da Configuração; sem ela, os do Lucas.
+      const l = {
+        tentativas: await parametroDoEscritorio(banco, 'confirmacao.limite', LIMITES_DA_CONFIRMACAO.tentativas),
+        diasEntre: await parametroDoEscritorio(banco, 'confirmacao.intervalo_dias', LIMITES_DA_CONFIRMACAO.diasEntre),
+      }
+      const depois = depoisDaTentativa(confirmacao.tentativas.filter((t) => t.resultado === 'sem-resposta').length, hoje(), l)
+      ficha.contatos.push({ data: hoje(), canal: CANAL[r.canal], texto: `Sem resposta à confirmação de ${sobre} (tentativa ${tentativa} de ${l.tentativas}).` })
       if (!depois.naSenior) {
         confirmacao.proximaEm = depois.proximaEm
         ficha.historico.push(
-          evento(`Tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO} sem resposta (${CANAL_FALADO[r.canal]}); nova tentativa em ${dataCurta(depois.proximaEm, hoje())}`, quem),
+          evento(`Tentativa ${tentativa} de ${l.tentativas} sem resposta (${CANAL_FALADO[r.canal]}); nova tentativa em ${dataCurta(depois.proximaEm, hoje())}`, quem),
         )
         saida = { tentativa, proximaEm: depois.proximaEm, naSenior: false }
       } else {
@@ -527,7 +533,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
             codigo: 'D1.04',
             cliente: { id: ficha.id, nome: ficha.nome },
             acao: 'Confirmar agendamento',
-            detalhe: `${TENTATIVAS_DE_CONFIRMACAO} tentativas sem resposta · a advogada sênior resolve e entra em contato com o lead`,
+            detalhe: `${l.tentativas} tentativas sem resposta · a advogada sênior resolve e entra em contato com o lead`,
             prazo: a.data === hoje() ? a.hora : dataCurta(a.data, hoje()),
             urgente: true,
             href: `/agenda/confirmar/${a.id}`,
