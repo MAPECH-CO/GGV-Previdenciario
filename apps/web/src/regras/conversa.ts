@@ -59,7 +59,8 @@ export type PedidoDeConversa = { canal?: CanalDoRegistro; comQuem?: ComQuem; mod
 /** O que falta para abrir a conversa (CA3, CA4). A tela mostra; o servidor de exemplo confere de novo. */
 export function motivoParaNaoAbrir(p: PedidoDeConversa, papel: PapelNaConversa | null, processos: string[]): string | null {
   if (!papel) return 'A conversa com o cliente é do Atendimento e do Jurídico.'
-  if (!p.canal || !(p.canal in CANAIS_DO_REGISTRO)) return 'Escolha o canal: ligação ou presencial.'
+  // GGVP-158 P6.5: só os canais da lista (as chaves enumeráveis); o WhatsApp tem rótulo, mas só o servidor abre.
+  if (!p.canal || !Object.keys(CANAIS_DO_REGISTRO).includes(p.canal)) return 'Escolha o canal: ligação ou presencial.'
   if (!p.comQuem || !(p.comQuem in COM_QUEM)) return 'Marque com quem você falou.'
   if (!p.modo || !(p.modo in MODOS_DO_REGISTRO)) return 'Escolha a gravação.'
   if (p.processoId !== undefined && !processos.includes(p.processoId)) return 'Processo não encontrado.'
