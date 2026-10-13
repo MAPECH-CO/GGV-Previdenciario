@@ -1,5 +1,6 @@
 // Contratos entre a tela e o servidor. Um schema por endpoint e por formulário (ADR-001).
 // Campo de formulário valida com a função de @ggv/campos, nunca com regra solta.
+import './sem-eval.ts'
 import { normalizarCpf, normalizarNome, validarCpf, validarEmail, validarNome } from '@ggv/campos'
 import { z } from 'zod'
 
@@ -11,6 +12,10 @@ export const Saude = z.object({
   ok: z.boolean(),
   servico: z.literal('api'),
   banco: z.enum(['ligado', 'sem-banco', 'fora-do-ar']),
+  /** GGVP-107 CA9: pelas variáveis do Drive, sem chamar o Google a cada verificação. */
+  drive: z.enum(['ligado', 'so-leitura', 'desligado']),
+  /** GGVP-158: o commit do build, gravado na imagem; fora dela, "local". */
+  versao: z.string(),
 })
 export type Saude = z.infer<typeof Saude>
 
@@ -111,3 +116,10 @@ export * from './bases.ts'
 
 // O painel Financeiro (GGVP-78): as contas das prestações de contas, por mês e por origem, e os lançamentos.
 export * from './financeiro.ts'
+
+// Os modelos do kit, com versão, subidos pela Sênior na Configuração (GGVP-136).
+export * from './modelos.ts'
+
+export { CATALOGO_BENEFICIOS, BENEFICIO_NA_CONFIGURACAO } from './catalogo-beneficios.ts'
+
+export * from './calculo-cnis.ts'

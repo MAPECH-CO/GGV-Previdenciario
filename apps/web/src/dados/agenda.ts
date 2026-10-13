@@ -16,7 +16,7 @@ import {
 import { precisaConfirmar } from '../regras/confirmacao.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from './catalogos.ts'
 import { abrirPreenchimento, abrirPreparacao } from './confirmacao.ts'
-import { eventosDasPericias } from './pericia.ts'
+import { eventosDasPericias, type PericiaNaTela } from './pericia.ts'
 import { agendamentoDoServidor, agora, daSemente, doServidor, esperar, evento, gravar, ler, noBanco, receber, servidorLigado, type Banco } from './servidor.ts'
 import type {
   Agendamento,
@@ -85,9 +85,25 @@ function eventosDoBanco(banco: Banco, hoje: string): EventoDaAgenda[] {
   return [...dasFichas, ...internos, ...eventosDasPericias(banco, hoje)].sort((a, b) => `${a.data} ${a.hora}`.localeCompare(`${b.data} ${b.hora}`))
 }
 
-/** GET /api/agenda?de=&ate= */
+/** Atualiza as entrevistas e perícias pelas rotas existentes antes de montar a agenda. */
 export async function eventosDaAgenda(de: string, ate: string): Promise<EventoDaAgenda[]> {
-  return eventosDoBanco(ler(), hojeIso(agora())).filter((e) => e.data >= de && e.data <= ate)
+  const banco = ler()
+  if (servidorLigado()) {
+    const [recepcao, pericias] = await Promise.all([
+      noBanco<Pick<Banco, 'fichas' | 'internos'>>('/recepcao'),
+      noBanco<PericiaNaTela[]>('/pericias'),
+    ])
+    banco.fichas = [...daSemente(banco.fichas), ...recepcao.fichas]
+    banco.internos = [...banco.internos.filter(i => !doServidor(i.id)), ...recepcao.internos]
+    banco.pericias = (banco.pericias ?? []).filter(p => !doServidor(p.processoId))
+    for (const p of pericias) {
+      banco.pericias.push(p.pericia)
+      const ficha = banco.fichas.find(f => f.id === p.ficha.id)
+      if (!ficha) banco.fichas.push({ ...p.ficha, processos: [p.processo] })
+      else if (!ficha.processos.some(c => c.id === p.processo.id)) ficha.processos.push(p.processo)
+    }
+  }
+  return eventosDoBanco(banco, hojeIso(agora())).filter((e) => e.data >= de && e.data <= ate)
 }
 
 /** Entrevista que passou sem registro: a Central do Atendimento lembra de confirmar se aconteceu (CA8). */

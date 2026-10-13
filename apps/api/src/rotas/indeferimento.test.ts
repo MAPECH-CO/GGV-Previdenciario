@@ -8,7 +8,7 @@ import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, decisao, etapa, eventoAuditoria, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_IA_SEM_ANALISE, MSG_NADA_A_DESPACHAR } from './indeferimento.ts'
@@ -213,6 +213,10 @@ describe('Épico IA · a IA analisa o indeferimento e a Sênior despacha (GGVP-5
   it('CA4 · a Sênior despacha diferente da sugestão: o despacho vale e a chamada da IA fica à parte; sem despacho esperando, não há análise', async () => {
     comIa(JSON.stringify(LEITURA))
     const r = (await analisar()).json()
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    const alheia = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/despacho`, cookies: await cookieDe('helena'), payload: { decisao: 'nada_falta', chamadaIaId: crypto.randomUUID() } })
+    expect([alheia.statusCode, alheia.json().erro]).toEqual([400, MSG_CHAMADA_DE_OUTRO_CASO])
+    expect(await banco.select().from(decisao).where(eq(decisao.tipo, 'despacho'))).toHaveLength(0)
     const feito = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/despacho`, cookies: await cookieDe('helena'), payload: { decisao: 'nada_falta', chamadaIaId: r.sugestao.chamadaId } })
     expect(feito.statusCode).toBe(201)
     const [d] = await banco.select().from(decisao).where(eq(decisao.tipo, 'despacho'))

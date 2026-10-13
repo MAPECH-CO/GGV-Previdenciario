@@ -1,5 +1,5 @@
 .janela {
-  width: min(560px, calc(100vw - 32px));
+  width: min(560px, calc(100vw / var(--zoom) - 32px));
   margin: 48px auto auto;
   padding: 18px 22px;
   border: 0;
@@ -47,12 +47,14 @@
   color: var(--cor-texto);
   font-size: var(--fonte-12);
   font-weight: 500;
+  box-shadow: var(--sombra-1);
 }
 
 .modo[aria-checked='true'] {
   border-color: var(--cor-acento);
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }
 
 .corpo {
@@ -78,6 +80,7 @@
   border-radius: var(--raio-8);
   background: var(--cor-superficie);
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 .achados {
@@ -97,6 +100,7 @@
   color: var(--cor-texto);
   font-size: var(--fonte-13);
   text-align: left;
+  box-shadow: var(--sombra-1);
 }
 
 .nada {
@@ -122,10 +126,12 @@
   border: 1px solid var(--cor-borda-controle);
   background: var(--cor-superficie);
   color: var(--cor-texto);
+  box-shadow: var(--sombra-1);
 }
 
 .salvar {
   border: 0;
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }

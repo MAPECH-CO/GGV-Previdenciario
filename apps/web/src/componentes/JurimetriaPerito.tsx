@@ -61,6 +61,13 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
                 <dd>{numeros(a.jurimetria)}</dd>
               </div>
             ))}
+          {/* GGVP-152 CA2: os favoráveis por benefício, do servidor, cada um com o número de laudos e a data da base. */}
+          {perfil.porBeneficio.map((b) => (
+            <div key={b.beneficio} className={styles.par}>
+              <dt>{b.beneficio}</dt>
+              <dd>{numeros(b.jurimetria)}</dd>
+            </div>
+          ))}
           <dt>Tempo até o laudo</dt>
           <dd>{jurimetria.laudos ? `${jurimetria.diasAteOLaudo} dias em média` : '—'}</dd>
         </dl>

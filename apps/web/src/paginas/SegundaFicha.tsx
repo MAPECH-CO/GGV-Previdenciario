@@ -289,9 +289,6 @@ export function SegundaFicha({ fichaId, tablet = false }: Props) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.07 · Preencher a segunda ficha (passo do BPMN)">
-                D1.07
-              </span>
               <span className={styles.codigo}>Cliente</span>
             </div>
             <h1 className={styles.titulo}>

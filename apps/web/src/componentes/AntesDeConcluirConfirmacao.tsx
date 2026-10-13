@@ -22,7 +22,7 @@ export function AntesDeConcluirConfirmacao({ resultado, aoResultado, ficha, aoFi
       <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
         Antes de concluir
       </h2>
-      <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.04.</p>
+      <p className={styles.ladoSub}>O que este passo pede.</p>
       <h3 className={styles.ladoSecao}>Decisões</h3>
       <div className={styles.decisao}>
         <p id="resultado-de-hoje">Resultado do contato de hoje</p>

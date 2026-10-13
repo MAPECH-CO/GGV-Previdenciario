@@ -1,7 +1,8 @@
 import { useEffect, useId, useState } from 'react'
 import { diaLocal, hojeIso, isoParaData } from '@ggv/campos'
-import { AprovarVersao, AutorizarDilacao, EncerrarSemProva, ProtocolarManifestacao, RegistrarIndisponibilidade, type Manifestacao } from '@ggv/contratos'
+import { AprovarVersao, AutorizarDilacao, ProtocolarManifestacao, RegistrarIndisponibilidade, type Manifestacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
@@ -9,48 +10,20 @@ const ROTULO_TIPO = { manifestacao: 'Manifestação', dilacao: 'Pedido de dilaç
 type Pendente = Manifestacao['pendentes'][number]
 
 /**
- * Um item ou perícia que falta (G21). Se o documento não existe ou a perícia não tem como ser feita, a advogada encerra
- * com o motivo, que fica como a prova em texto do item (GGVP-68 CA2; ajuste do Mateus, 06/10).
+ * Um item ou perícia que falta (G21): primeiro a dilação ou o reagendamento. A rota antiga ainda não confere
+ * essa condição; a tela bloqueia o encerramento até a integração do servidor (GGVP-159).
  */
-function LinhaPendente({ casoId, p, podeEncerrar, aoEncerrar }: { casoId: string; p: Pendente; podeEncerrar: boolean; aoEncerrar: (texto: string) => void }) {
-  const idMotivo = useId()
-  const [motivo, setMotivo] = useState('')
-  const [erro, setErro] = useState('')
-
-  async function encerrar() {
-    const entrada = EncerrarSemProva.safeParse({ alvo: p.alvo, id: p.id, motivo })
-    if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escreva o motivo.')
-    const r = await chamarApi(`/casos/${casoId}/manifestacao/sem-prova`, { method: 'POST', corpo: entrada.data })
-    if (!r.ok) return setErro(r.erro)
-    aoEncerrar(`${p.descricao}: encerrado sem a prova, com o motivo. Explique isso na manifestação.`)
-  }
-
-  return (
-    <li>
-      {p.setor} · {p.descricao}
-      {p.prazoInterno ? ` · até ${dia(p.prazoInterno)}` : ''}
-      {podeEncerrar && (
-        <details>
-          <summary>{p.alvo === 'pericia' ? 'A perícia não tem como ser feita?' : 'O documento não existe?'} Manifestar sem essa prova</summary>
-          <label className={styles.rotulo} htmlFor={idMotivo}>
-            Por que vai manifestar sem essa prova
-          </label>
-          <input id={idMotivo} className={styles.campo} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-          {erro && (
-            <p className={styles.erro} role="alert">
-              {erro}
-            </p>
-          )}
-          <div className={styles.acoes}>
-            <button type="button" className={styles.botaoSecundario} onClick={() => void encerrar()}>
-              Encerrar sem a prova
-            </button>
-          </div>
-          <p className={styles.dica}>O motivo fica registrado com o seu nome e a data, e vai junto no histórico do protocolo.</p>
-        </details>
-      )}
-    </li>
-  )
+function LinhaPendente({ casoId, p, podeEncerrar, aoPedirDilacao }: { casoId: string; p: Pendente; podeEncerrar: boolean; aoPedirDilacao: () => void }) {
+  return <li>
+    {p.setor} · {p.descricao}{p.prazoInterno ? ` · até ${dia(p.prazoInterno)}` : ''}
+    {podeEncerrar && <section aria-label={`Antes de encerrar: ${p.descricao}`}>
+      <p>Antes de encerrar sem documento, peça a dilação do prazo ou o reagendamento da perícia.</p>
+      <a href="#pedido-dilacao" onClick={aoPedirDilacao}>Preparar pedido de dilação</a>{' · '}
+      <a href={`/casos/${casoId}/pericia`}>Pedir reagendamento da perícia</a>
+      <p className={styles.dica}>A confirmação dessa etapa antes da justificativa ainda não está disponível no servidor. O item continua pendente.</p>
+      <button type="button" className={styles.botaoSecundario} disabled>Encerrar sem a prova</button>
+    </section>}
+  </li>
 }
 
 /**
@@ -134,24 +107,21 @@ export function Manifestar({ casoId }: { casoId: string }) {
 
   if (!m)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Manifestar no processo · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const ultima = m.versoes.at(-1)
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Manifestar no processo · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Manifestar no processo</h1>
       <p className={styles.subtitulo}>
         {m.cliente} · prazo até {dia(m.prazo.fim)}
@@ -167,7 +137,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
           <p className={styles.erro}>Manifestar bloqueado: falta {m.faltam.join(', ')} (G21).</p>
           <ul className={styles.lista} aria-label="Pendentes">
             {m.pendentes.map((p) => (
-              <LinhaPendente key={p.id} casoId={casoId} p={p} podeEncerrar={m.podeEncerrarSemProva} aoEncerrar={pronto} />
+              <LinhaPendente key={p.id} casoId={casoId} p={p} podeEncerrar={m.podeEncerrarSemProva} aoPedirDilacao={() => setTipo('dilacao')} />
             ))}
           </ul>
         </section>
@@ -228,7 +198,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
       )}
 
       {m.podeAnexar && (
-        <section className={styles.cartao} aria-label="Anexar versão">
+        <section id="pedido-dilacao" className={styles.cartao} aria-label="Anexar versão">
           <h2 className={styles.cartaoTitulo}>Anexar versão</h2>
           <label className={styles.rotulo} htmlFor={ids.tipo}>
             Peça
@@ -299,6 +269,6 @@ export function Manifestar({ casoId }: { casoId: string }) {
           </div>
         </section>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

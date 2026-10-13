@@ -2,6 +2,7 @@ import { diaLocal } from '@ggv/campos'
 import { useEffect, useId, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { Campo } from '../componentes/Campo.tsx'
+import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { definirBeneficio, obterDefinicao, type Definicao } from '../dados/beneficio.ts'
@@ -97,9 +98,6 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.12 · Definir o benefício (passo do BPMN)">
-                D1.12
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>
@@ -115,7 +113,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
             <p className={styles.trava}>A IA sugere pelo acervo (RAG). Se você citar um benefício, o seu prevalece.</p>
             {!transcrita ? (
               <p className={proprio.texto}>
-                A entrevista ainda não foi transcrita: a IA compara com o acervo depois da transcrição (D1.11). Você já pode definir o
+                A entrevista ainda não foi transcrita: a IA compara com o acervo depois da transcrição. Você já pode definir o
                 benefício pela lista do escritório.
               </p>
             ) : !sugestao ? (
@@ -208,13 +206,13 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
               <p>Ficou registrado quem decidiu, a sugestão exibida e os casos do acervo consultados.</p>
               <p>
                 {exigeCalculo(feito.beneficioDefinido!.beneficio)
-                  ? 'Depois: «Calcular tempo e pontos» (D1.13), obrigatório antes do fechamento. A tarefa foi para o advogado do atendimento.'
-                  : 'Depois: «O cliente fechou com o escritório?» (D1.14).'}
+                  ? 'Depois: «Calcular tempo e pontos», obrigatório antes do fechamento. A tarefa foi para o advogado do atendimento.'
+                  : 'Depois: «O cliente fechou com o escritório?».'}
               </p>
               <div className={styles.atalhos}>
                 {exigeCalculo(feito.beneficioDefinido!.beneficio) && (
                   <a className={styles.atalho} href={`/entrevista/${agendamentoId}/calculo`}>
-                    Abrir o cálculo (D1.13)
+                    Abrir o cálculo
                   </a>
                 )}
                 <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
@@ -260,8 +258,10 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                   <input type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
                   Conferi a recomendação com a entrevista
                 </label>
-                <p className={styles.nota}>O benefício definido por você segue para o contrato (D1.16), depois do fechamento.</p>
+                <p className={styles.nota}>O benefício definido por você segue para o contrato, depois do fechamento.</p>
               </section>
+              {/* GGVP-151 CA1: a chance do benefício escolhido, do servidor; ainda sem caso, pelo benefício. */}
+              {escolhido && <ChanceDoCaso key={escolhido} beneficio={escolhido} />}
 
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={parado !== null || salvando} onClick={confirmar}>
@@ -282,7 +282,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.12.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             <li>• Benefício definido* (a lista do escritório, a mesma de todo o portal, com LOAS Idoso e LOAS Deficiente separados)</li>
@@ -292,8 +292,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
           <p className={styles.ladoSub}>«Confirmar benefício» só habilita com os campos com * preenchidos e as conferências marcadas.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>
-            Um caso, um benefício. Com cálculo: «Calcular tempo e pontos» (D1.13). Sem cálculo: «O cliente fechou com o escritório?»
-            (D1.14).
+            Um caso, um benefício. Com cálculo: «Calcular tempo e pontos». Sem cálculo: «O cliente fechou com o escritório?».
           </p>
         </aside>
       </main>

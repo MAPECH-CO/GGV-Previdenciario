@@ -78,9 +78,6 @@ export function CobrarDocumento({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.23 · Cobrança de pendentes (passo do BPMN)">
-                D1.23
-              </span>
               <span className={styles.codigo}>Atendimento</span>
               <span className={styles.beneficio}>◆ {beneficio}</span>
             </div>

@@ -7,10 +7,12 @@ Juízo identificado: a advogada vê a jurimetria do juízo do processo, com a pr
   - o juízo pelo número do processo (tribunal e unidade de origem);
   - os números do juízo no servidor;
   - a jurimetria nas fontes da minuta da petição.
-- **Parte 2:**
-  - o nome da vara e do juiz;
-  - os entendimentos recorrentes;
-  - a sobreposição da página do caso lendo do servidor;
+- **Parte 2 (09/10):**
+  - o nome da vara e do juiz, sugerido pela IA na leitura da publicação e conferido pela pessoa;
+  - os entendimentos recorrentes, pela IA a partir das decisões de mérito do juízo, com os processos de exemplo;
+  - os entendimentos na minuta, quando o caso já tem juízo, sem número do juízo.
+- **Depois:**
+  - a sobreposição da página do processo lendo do servidor (GGVP-146);
   - a recomendação de recurso (GGVP-100).
 
 Quem vê: o Jurídico. Os números nunca vão ao cliente nem ao Atendimento (G22).
@@ -20,7 +22,8 @@ Quem vê: o Jurídico. Os números nunca vão ao cliente nem ao Atendimento (G22
 ### Requirement: CA1 · O juízo do processo identificado, com a jurimetria a um clique
 O sistema SHALL identificar o juízo do processo distribuído. A página do processo SHALL mostrar a vara e o juiz, e o nome do juízo SHALL abrir a sobreposição de jurimetria.
 - **Parte 1:** o juízo MUST ser identificado pelo número do processo (tribunal e unidade de origem), a mesma regra do painel da Gestão.
-- **Parte 2:** o nome da vara e do juiz, e a sobreposição lendo do servidor.
+- **Parte 2 (09/10):** a vara e o juiz, sugeridos pela IA na leitura da publicação e conferidos pela pessoa, guardados no caso e devolvidos com a jurimetria do juízo.
+- **Depois:** o card e a sobreposição na página do processo lendo do servidor (GGVP-146).
 
 #### Scenario: CA1 · Processo distribuído
 - **Dado** o processo distribuído
@@ -31,7 +34,7 @@ O sistema SHALL identificar o juízo do processo distribuído. A página do proc
 A jurimetria do juízo SHALL mostrar a procedência por benefício, o tempo médio até a sentença e os entendimentos recorrentes, com os processos de exemplo.
 - A procedência MUST contar só desfecho conferido: procedentes (total ou parcial) sobre os decididos no mérito (procedentes e improcedentes).
 - O tempo até a sentença MUST contar em meses, do protocolo da inicial à data da decisão, só com os processos que têm as duas datas. Os outros ficam fora da conta.
-- **Parte 2:** os entendimentos recorrentes.
+- **Parte 2 (09/10):** os entendimentos recorrentes, até 5, que a IA tira das decisões de mérito do juízo sem dado pessoal; cada um MUST trazer os processos de exemplo, só entre os que estavam nas decisões lidas, e nenhuma porcentagem.
 
 #### Scenario: CA2 · Sobreposição do juízo
 - **Dado** a sobreposição do juízo
@@ -41,7 +44,8 @@ A jurimetria do juízo SHALL mostrar a procedência por benefício, o tempo méd
 ### Requirement: CA3 · A IA mostra nas fontes o que usou da jurimetria do juízo
 Quando a IA gerar a minuta da petição ou a recomendação de recurso, a advogada SHALL ver nas fontes o que foi usado da jurimetria do juízo.
 - **Parte 1:** a minuta da petição.
-- **Parte 2:** a recomendação de recurso (D3b.04), com a GGVP-100.
+- **Parte 2 (09/10):** a minuta, quando o caso já tem juízo, também mostra nas fontes os entendimentos usados.
+- **Depois:** a recomendação de recurso (D3b.04), com a GGVP-100.
 
 #### Scenario: CA3 · Fontes da minuta e da recomendação
 - **Dado** o pedido da petição (GGVP-63) ou a decisão de recorrer (GGVP-100)
@@ -67,7 +71,8 @@ Os números do juízo MUST vir de código, a partir do acervo, com a data da bas
 ### Requirement: CA6 · O número do juízo fica fora do texto que vai ao juiz
 Quando a IA escrever a petição, a taxa de procedência e o tempo médio do juízo MUST NOT entrar no texto que vai ao juiz: a peça usa as decisões do juízo. Na recomendação de recurso, que é só para a advogada, o indicador SHALL entrar com o número de processos ao lado.
 - **Parte 1:** o modelo não recebe os números do juízo; eles vão só às fontes da advogada.
-- **Parte 2:** as decisões e os entendimentos na peça, e o indicador na recomendação de recurso.
+- **Parte 2 (09/10):** os entendimentos e os processos de exemplo vão ao modelo, sem número do juízo, quando o caso já tem juízo.
+- **Depois:** o indicador na recomendação de recurso (GGVP-100).
 
 #### Scenario: CA6 · Petição e recomendação de recurso
 - **Dado** um indicador do juízo (taxa de procedência ou tempo médio)

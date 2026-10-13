@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { Peticao } from './Peticao.tsx'
 
 const CASO = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
@@ -31,9 +32,31 @@ function servidor(get: object, post: [number, unknown] = [201, { ok: true }]) {
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  entrarComo()
+})
 
 describe('Pedir a petição (GGVP-63)', () => {
+  it('GGVP-151 CA4, CA5 · a advogada vê a chance na tela, à parte do pedido; o Atendimento não vê', async () => {
+    const CHANCE = { casos: 4, favoraveis: 3, porcentagem: 75, baseEm: '2026-10-07T15:00:00.000Z', regra: 'mesmo benefício', cor: 'verde', sugereNaoPegar: false, faltaSaber: [], fatores: null, motivoIa: null }
+    const fetch = vi.fn(async (url: string, init?: RequestInit) =>
+      String(url).endsWith('/chance') ? new Response(JSON.stringify(CHANCE)) : init?.method === 'POST' ? new Response(JSON.stringify({ ok: true }), { status: 201 }) : new Response(JSON.stringify(base)),
+    )
+    vi.stubGlobal('fetch', fetch)
+    entrarComo('advogada')
+    const { unmount } = render(comSessao(<Peticao casoId={CASO} />))
+    expect(await screen.findByText('75% · 3 de 4 casos · base de 07/10')).toBeTruthy()
+    expect(screen.getByText(/Uso interno: não vai ao cliente nem à peça/)).toBeTruthy()
+    unmount()
+    fetch.mockClear()
+    entrarComo('atendimento')
+    render(comSessao(<Peticao casoId={CASO} />))
+    await screen.findByRole('heading', { level: 1, name: 'Petição inicial' })
+    expect(screen.queryByRole('region', { name: 'Chance de êxito' })).toBeNull()
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/chance'))).toBe(false)
+  })
+
   it('épico IA · ao abrir, a minuta já está na caixa, escrita com o padrão do pedido, com as fontes e o aviso; o pedido leva a chamada', async () => {
     const CHAMADA = '44444444-4444-4444-8444-444444444444'
     const sugestao = { chamadaId: CHAMADA, sugestao: true, texto: 'EXCELENTÍSSIMO SENHOR JUIZ... [completar: valor da causa]', fontes: [{ tipo: 'documento', referencia: `documento:${LAUDO}`, trecho: 'laudo.pdf' }], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T20:00:00.000Z', alerta: null }

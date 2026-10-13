@@ -45,6 +45,8 @@ jobs:
         with:
           context: .
           push: true
+          # O /saude mostra o commit no ar (GGVP-158).
+          build-args: VERSAO=${{ env.COMMIT }}
           tags: |
             ${{ env.IMAGEM }}:main
             ${{ env.IMAGEM }}:${{ env.COMMIT }}

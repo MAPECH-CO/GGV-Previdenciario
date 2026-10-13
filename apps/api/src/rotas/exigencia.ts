@@ -12,6 +12,11 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { provaEhSensivel } from '../fluxo/prova-medica.ts'
+import { TIPOS_DE_DOCUMENTO } from '../../../web/src/dados/catalogos.ts'
+
+export const MSG_TIPO_DE_DOCUMENTO = 'Escolha um tipo de documento da lista.'
+/** O tipo do item é opcional; quando vem, é do catálogo das telas (bloco 5d). */
+export const tipoDeDocumentoValido = (tipo: string | null) => tipo === null || TIPOS_DE_DOCUMENTO.some((t) => t.id === tipo)
 
 export const MSG_SEM_EXIGENCIA = 'Este caso não tem exigência do INSS aberta.'
 export const MSG_JA_DECIDIDA = 'Esta exigência já foi decidida.'
@@ -156,6 +161,7 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
     if (!x || x.situacao !== 'aberta') return negar(resposta, 404, MSG_SEM_EXIGENCIA)
     if (x.pede !== null) return negar(resposta, 409, MSG_JA_DECIDIDA)
     const d = entrada.data
+    if (!d.itens.every((i) => tipoDeDocumentoValido(i.tipoDocumento))) return negar(resposta, 400, MSG_TIPO_DE_DOCUMENTO)
     const prazo = prazoInss(x.recebidaEm, d.diasInss, await feriadosNacionais(banco))
     if (d.prazoEntrega && d.prazoEntrega > prazo) return negar(resposta, 400, `O prazo de entrega não pode passar do prazo do INSS (${br(prazo)}).`)
     const quem = pedido.usuario!.id
@@ -179,7 +185,8 @@ export function registrarRotasExigencia(app: FastifyInstance, { banco, armazenam
         .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.05'), eq(tarefa.perfilDono, 'advogada'), isNull(tarefa.concluidaEm)))
       if (d.pede === 'pericia') return abrirPericiasDaExigencia(tx, casoId, d.tiposPericia, quem, agora())
       // CA1, CA6, CA9: card da Documentação com os itens, o prazo de entrega e o próximo lembrete (Q1).
-      for (const descricao of d.itens) await tx.insert(exigenciaItem).values({ exigenciaId: x.id, descricao, perfilResponsavel: 'documentacao', prazo: d.prazoEntrega })
+      for (const i of d.itens)
+        await tx.insert(exigenciaItem).values({ exigenciaId: x.id, descricao: i.descricao, tipoDocumento: i.tipoDocumento, perfilResponsavel: 'documentacao', prazo: d.prazoEntrega })
       const lembrete = await lembreteDoLaco(tx, hoje(agora()), d.prazoEntrega ?? null, limite ?? 1)
       await tx.insert(tarefa).values({
         casoId,

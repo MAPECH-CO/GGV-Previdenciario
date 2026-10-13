@@ -104,9 +104,6 @@ export function RenovarSenha({ agendamentoId }: { agendamentoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.08 · Renovar a senha do gov.br (passo do BPMN)">
-                D1.08
-              </span>
               <span className={styles.codigo}>Atendimento</span>
             </div>
             <h1 className={styles.titulo}>
@@ -237,7 +234,7 @@ export function RenovarSenha({ agendamentoId }: { agendamentoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.08.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="conseguiu">Conseguiu renovar?</p>

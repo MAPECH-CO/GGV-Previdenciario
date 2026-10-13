@@ -7,9 +7,9 @@ import { PDFDocument } from 'pdf-lib'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, parecerMedico, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, configuracao, decisao, documento, etapa, eventoAuditoria, exigenciaItem, identificadorCaso, juizo as juizoTabela, parecerMedico, pessoa, peticao, peticaoVersao, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
@@ -187,6 +187,9 @@ describe('Épico IA · a minuta da petição inicial', () => {
     await laudoDaDocumentacao()
     const r = (await chamar('gabi', 'POST', '/peticao/minuta', { opcoes: { precedentes: true } })).json()
     expect(r.aviso).toBe(MSG_SEM_REFERENCIA)
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
+    expect(await banco.select().from(peticaoVersao)).toHaveLength(0)
     expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: MINUTA, chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
     const [v] = await banco.select().from(peticaoVersao)
     expect([v.numero, v.geradaPor, v.conteudo]).toEqual([1, 'gabi · minuta da IA', MINUTA])
@@ -223,6 +226,44 @@ describe('Épico IA · a minuta da petição inicial', () => {
     expect(doJuizo.tipo).toBe('acervo')
     expect(doJuizo.trecho).toContain('procedência em BPC/LOAS Idoso: 50% em 2 processos · base de 07/10')
     for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(pedidos.join('\n')).not.toContain(numero)
+  })
+
+  it('GGVP-151 CA4 · a chance que a advogada vê na tela da petição não vai ao pedido da minuta ao modelo', async () => {
+    await laudoDaDocumentacao()
+    const [helena] = await banco.select().from(usuario).where(eq(usuario.email, 'helena@exemplo.ggv'))
+    await banco.insert(processoAcervo).values([
+      { beneficio: 'bpc_loas_idoso', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'portal' },
+      { beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: helena.id, fonte: 'portal' },
+    ])
+    const chance = (await chamar('gabi', 'POST', '/chance', {})).json()
+    expect([chance.porcentagem, chance.casos]).toEqual([50, 2])
+    pedidos.length = 0
+    await chamar('gabi', 'POST', '/peticao/minuta', {})
+    const daMinuta = pedidos.join('\n')
+    for (const numero of ['50%', 'casos parecidos', 'Chance calculada pelo sistema']) expect(daMinuta).not.toContain(numero)
+  })
+
+  it('GGVP-64 parte 2 CA6 · com o juízo, os entendimentos e os processos de exemplo vão ao modelo, sem número; as fontes mostram', async () => {
+    await laudoDaDocumentacao()
+    await banco.insert(identificadorCaso).values({ casoId, tipo: 'cnj', valor: '0001234-96.2026.4.03.6301' })
+    const [helena] = await banco.select().from(usuario).where(eq(usuario.email, 'helena@exemplo.ggv'))
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000011220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'procedente_total', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+      { numeroCnj: '00000021220204036301', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: helena.id, fonte: 'importacao' },
+    ])
+    await banco.insert(juizoTabela).values({
+      tribunal: 'TRF3',
+      nome: 'TRF3 · 6301',
+      entendimentos: [{ texto: 'O juízo exige o estudo social atualizado para provar a renda.', processos: ['00000011220204036301'] }],
+      entendimentosEm: AGORA,
+    })
+    const r = (await chamar('gabi', 'POST', '/peticao/minuta', {})).json()
+    const enviado = JSON.parse(pedidos[0]).messages[1].content as string
+    expect(enviado).toContain('O juízo exige o estudo social atualizado para provar a renda. (processos 0000001-12.2020.4.03.6301)')
+    for (const numero of ['50%', 'processos · base de', 'TRF3 · 6301']) expect(enviado).not.toContain(numero)
+    const usados = r.sugestao.fontes.find((f: { referencia: string }) => f.referencia === 'entendimentos:TRF3 · 6301')
+    expect(usados.trecho).toContain('O juízo exige o estudo social atualizado')
+    expect(r.sugestao.fontes.some((f: { referencia: string }) => f.referencia === 'juizo:TRF3 · 6301')).toBe(true)
   })
 
   it('GGVP-64 CA3 · sem número do processo, a minuta sai sem a fonte do juízo', async () => {
@@ -275,6 +316,9 @@ describe('Épico IA · "Não está boa": a IA faz outra versão (GGVP-67 CA1, CA
     expect([r.sugestao.texto, r.sugestao.sugestao, r.motivo]).toEqual([V2, true, null])
     const enviado = JSON.parse(pedidos[0]).messages[1].content as string
     for (const trecho of ['Pedido da advogada: Incluir a tutela', 'Última versão (1):', V1]) expect(enviado).toContain(trecho)
+    expect((await banco.select().from(peticaoVersao)).length).toBe(1)
+    // GGVP-158: a chamada que não é deste caso é recusada, e nenhuma versão nova nasce.
+    expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: V2, oQueMudou: 'Incluir a tutela', chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
     expect((await banco.select().from(peticaoVersao)).length).toBe(1)
     expect((await chamar('gabi', 'POST', '/peticao/versoes', { texto: V2, oQueMudou: 'Incluir a tutela', chamadaIaId: r.sugestao.chamadaId })).json()).toEqual({ ok: true, numero: 2 })
     const versoes = (await banco.select().from(peticaoVersao)).sort((a, b) => a.numero - b.numero)
@@ -461,6 +505,14 @@ describe('GGVP-71 · protocolar no tribunal', () => {
     expect((await protocolar()).json().erro).toBe('Trava falhando: CPF conferido (Na petição: 613.748.259-64 · no cadastro: 529.163.847-82).')
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(b.detalhe).toMatchObject({ portao: 'G7', passo: 'D3.07', travas: ['CPF conferido'] })
+  })
+
+  it('GGVP-107 CA6 (G7) · com o Drive ligado, o protocolo espera o pacote salvo no Drive', async () => {
+    await app.close()
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, driveLigado: true })
+    expect((await protocolar()).json().erro).toBe('Trava falhando: Pacote completo (O pacote ainda não está no Drive; o portal salva sozinho em até um minuto).')
+    await banco.update(peticaoVersao).set({ pacoteDriveId: 'pasta-do-pacote' })
+    expect((await protocolar()).statusCode).toBe(201)
   })
 
   it('CA4, CA8, CA10 · registra o protocolo da versão aprovada; o CNJ entra no caso para a vigília, as travas e quem protocolou ficam', async () => {

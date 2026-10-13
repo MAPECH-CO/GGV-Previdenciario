@@ -22,10 +22,12 @@
   background: var(--cor-superficie);
   font-size: var(--fonte-12);
   font-weight: 500;
+  box-shadow: var(--sombra-1);
 }
 
 .opcao[aria-checked='true'] {
   border-color: var(--cor-acento);
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }

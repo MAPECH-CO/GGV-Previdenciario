@@ -36,7 +36,7 @@ describe('Histórico do processo (GGVP-99)', () => {
     render(<Historico casoId={CASO} />)
     const linha = await screen.findByRole('list', { name: 'Linha do processo' })
     expect(within(linha).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
-      '05/10/2026, 09:00 · Helena · OK da Sênior para o INSS: aprovado (D2.01)',
+      '05/10/2026, 09:00 · Helena · OK da Sênior para o INSS: aprovado',
       '06/10/2026, 09:00 · Sistema · Vigília rodou',
     ])
     expect(screen.queryByRole('region', { name: 'Exportação do histórico' })).toBeNull()
@@ -73,7 +73,7 @@ describe('Gestão: prazos e uso do cofre (GGVP-99 CA14, GGVP-103 CA6)', () => {
     servidor({ cumpridos: 1, perdidos: 1, itens: [{ quando: '2026-10-02T12:00:00.000Z', casoId: CASO, cliente: 'Vera Lúcia (exemplo)', situacao: 'perdido', descricao: 'Exigência do juiz perdida' }] })
     render(<Prazos />)
     expect((await screen.findByText(/Cumpridos:/)).textContent).toBe('Cumpridos: 1 · Perdidos: 1')
-    expect(screen.getByRole('list', { name: 'Prazos' }).textContent).toBe('02/10/2026, 09:00 · Vera Lúcia (exemplo) · Exigência do juiz perdida')
+    expect(screen.getByRole('list', { name: 'Prazos' }).textContent).toBe('02/10/2026, 09:00 · Perdido · Vera Lúcia (exemplo) · Exigência do juiz perdida')
   })
 
   it('o uso do cofre por pessoa, sem a senha', async () => {

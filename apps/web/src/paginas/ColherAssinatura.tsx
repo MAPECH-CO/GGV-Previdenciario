@@ -1,31 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
+import { AnexarPapel } from '../componentes/AnexarPapel.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { CabecalhoDoContrato } from '../componentes/CabecalhoDoContrato.tsx'
 import { MensagemWhatsApp } from '../componentes/MensagemWhatsApp.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { formatarTelefone } from '../campos.ts'
 import {
+  baixarKit,
   concluirAssinaturaEmPapel,
   digitalizarContratoAssinado,
   entrevistaDoContrato,
   enviarParaAssinatura,
   imprimirKit,
+  kitDeVerdade,
   obterContrato,
   registrarTentativaDeAssinatura,
+  servicosDoContrato,
   simularLeituraDoContrato,
   simularRetornoDoZapSign,
   type ContratoDoCaso,
+  type ServicosDoContrato,
 } from '../dados/contrato.ts'
 import { TIPOS_DE_ENTREVISTA } from '../dados/catalogos.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, doServidor } from '../dados/servidor.ts'
+import { baixarArquivo, imprimirPdf } from '../impressao.ts'
 import {
   NOMES_DOS_CANAIS,
   TENTATIVAS_DE_ASSINATURA,
   cobrancaDaAssinatura,
   datasDoKit,
-  identificadorDoModelo,
+  identificadorDoKit,
   mensagemDoLink,
-  modeloPorId,
   papelNaHora,
   resumoDaLeitura,
   type FormaDeAssinar,
@@ -35,13 +40,19 @@ import styles from './Balcao.module.css'
 import proprio from './ColherAssinatura.module.css'
 
 // Figma: step_D1.17 "Colher assinatura" (10:176). A decisão "Como a cliente vai assinar?" fica no cartão e no painel, como no
-// desenho. O ZapSign e o Chatwoot são simulados (GGVP-72); a impressora e o scanner do papel na hora também (GGVP-77). Papel
-// só aparece quando a entrevista foi presencial.
+// desenho. O ZapSign e o Chatwoot são simulados (GGVP-72), e o scanner do papel também (GGVP-77). Com o ZapSign contratado, papel
+// só aparece quando a entrevista foi presencial; sem ele, a opção do celular não aparece e o papel vale para qualquer entrevista
+// (GGVP-136, CA8). No contrato do servidor, "Imprimir o kit" abre o PDF do kit do escritório na impressão do navegador, ou baixa
+// o Word preenchido quando o servidor não converte (CA5); no contrato de exemplo, a impressora segue simulada.
 
 type Janela = { mensagem: string; lembrete: boolean }
+/** O kit que acabou de sair: o endereço do arquivo na memória do navegador, para abrir ou baixar de novo sem chamar o servidor. */
+type KitImpresso = { url: string; nome: string; pdf: boolean }
 
 export function ColherAssinatura({ processoId }: { processoId: string }) {
   const [caso, setCaso] = useState<ContratoDoCaso | null | undefined>(undefined)
+  const [servicos, setServicos] = useState<ServicosDoContrato | null>(null)
+  const [impresso, setImpresso] = useState<KitImpresso | null>(null)
   const [forma, setForma] = useState<FormaDeAssinar | null>(null)
   const [janela, setJanela] = useState<Janela | null>(null)
   const [ligando, setLigando] = useState(false)
@@ -52,17 +63,18 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
 
   useEffect(() => {
     let valendo = true
-    obterContrato(processoId).then((c) => {
+    Promise.all([obterContrato(processoId), servicosDoContrato(processoId)]).then(([c, s]) => {
       if (!valendo) return
       setCaso(c)
-      setForma(c?.contrato.assinatura?.forma ?? null)
+      setServicos(s)
+      setForma(c?.contrato.assinatura?.forma ?? (s.zapsign ? null : 'papel')) // sem ZapSign, só há o papel
     })
     return () => {
       valendo = false
     }
   }, [processoId])
 
-  if (!caso) {
+  if (!caso || !servicos) {
     return (
       <main className={proprio.vazia}>
         <title>Colher assinatura · GGV Previdenciário</title>
@@ -82,7 +94,10 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
   const papel = forma === 'papel' && !zapsign && contrato.etapa === 'assinatura'
   const escolhido = zapsign !== undefined || assinatura?.impressoEm !== undefined || concluido
   const entrevista = entrevistaDoContrato(caso)
-  const podePapel = papelNaHora(entrevista)
+  // O celular só aparece com o ZapSign contratado (ou se este contrato já foi por ele); sem o ZapSign, o papel vale para qualquer entrevista.
+  const celular = servicos.zapsign || zapsign !== undefined
+  const podePapel = !servicos.zapsign || papelNaHora(entrevista)
+  const kitReal = kitDeVerdade(processoId)
   const datasImpressas = contrato.kit && assinatura?.impressoEm ? datasDoKit(contrato.kit, 'papel', hojeIso(new Date(assinatura.impressoEm))) : []
   const primeiro = ficha.nome.split(' ')[0]
   const comoFoi = TIPOS_DE_ENTREVISTA.find((t) => t.id === entrevista)?.nome.toLowerCase() ?? entrevista
@@ -130,9 +145,20 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
       await recarregar()
     })
 
+  // No contrato do servidor o arquivo vem primeiro: se ele não sai, nada é registrado como impresso. Com o PDF, abre a impressão do
+  // navegador; com o Word (sem conversor), baixa para imprimir por ele.
   const imprimir = () =>
     agir(async () => {
-      await imprimirKit(processoId)
+      if (!kitReal) await imprimirKit(processoId)
+      else {
+        const kit = await baixarKit(processoId)
+        await imprimirKit(processoId)
+        if (impresso) URL.revokeObjectURL(impresso.url)
+        const url = URL.createObjectURL(kit.blob)
+        setImpresso({ url, nome: kit.nome, pdf: kit.pdf })
+        if (kit.pdf) imprimirPdf(url)
+        else baixarArquivo(url, kit.nome)
+      }
       await recarregar()
     })
 
@@ -144,6 +170,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
 
   const concluirPapel = () =>
     agir(async () => {
+      if (doServidor(processoId)) throw new Error('Confirmação da assinatura indisponível: aguarda a vinculação do arquivo pelo servidor.')
       await concluirAssinaturaEmPapel(processoId)
       await recarregar()
     })
@@ -161,6 +188,16 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
       ? 'gerado; o link ainda não foi enviado ao cliente'
       : 'enviado ao cliente; aguardando a assinatura'
 
+  const instrucoes = !servicos.zapsign
+    ? `Imprima o kit, colha a assinatura de ${primeiro} em papel e digitalize o contrato assinado. Diga que a cópia assinada ` +
+      'chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
+    : podePapel
+      ? `Pergunte como ${primeiro} prefere assinar. Pelo celular: envie pelo ZapSign e acompanhe; o link vai pelo WhatsApp. ` +
+        'Se preferir papel, imprima, colha a assinatura e digitalize. Diga que a cópia assinada chega pelo WhatsApp. ' +
+        'Sem assinatura, nada vai para o INSS (G1).'
+      : `A entrevista de ${primeiro} foi por ${comoFoi}: a assinatura vai pelo ZapSign, com o link pelo WhatsApp (papel só na ` +
+        'entrevista presencial). Diga que a cópia assinada chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
+
   return (
     <>
       <title>{`${ficha.nome} · Colher assinatura · GGV Previdenciário`}</title>
@@ -168,20 +205,11 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoContrato
-            passo="D1.17"
-            nomeDoPasso="Pedir a assinatura ao cliente"
             tarefa="Colher assinatura"
-            subtitulo="assinar · ZapSign ou papel"
+            subtitulo={servicos.zapsign ? 'assinar · ZapSign ou papel' : 'assinar · em papel'}
             ficha={ficha}
             beneficio={processo.beneficio}
-            instrucoes={
-              podePapel
-                ? `Pergunte como ${primeiro} prefere assinar. Pelo celular: envie pelo ZapSign e acompanhe; o link vai pelo WhatsApp. ` +
-                  'Se preferir papel, imprima, colha a assinatura e digitalize (D1.18). Diga que a cópia assinada chega pelo WhatsApp. ' +
-                  'Sem assinatura, nada vai para o INSS (G1).'
-                : `A entrevista de ${primeiro} foi por ${comoFoi}: a assinatura vai pelo ZapSign, com o link pelo WhatsApp (papel só na ` +
-                  'entrevista presencial). Diga que a cópia assinada chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
-            }
+            instrucoes={instrucoes}
           />
 
           {contrato.etapa === 'preparar' ? (
@@ -197,18 +225,20 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                 Como o cliente vai assinar?
               </h2>
               <div className={styles.opcoes} role="radiogroup" aria-labelledby="como-assinar">
-                <button type="button" role="radio" className={`${styles.opcao} ${proprio.escolhida}`} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
-                  ZapSign (digital)
-                </button>
+                {celular && (
+                  <button type="button" role="radio" className={`${styles.opcao} ${proprio.escolhida}`} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
+                    ZapSign (digital)
+                  </button>
+                )}
                 {podePapel && (
                   <button type="button" role="radio" className={`${styles.opcao} ${proprio.escolhida}`} aria-checked={forma === 'papel'} disabled={escolhido} onClick={() => setForma('papel')}>
-                    Em papel na hora
+                    {servicos.zapsign ? 'Em papel na hora' : 'Em papel'}
                   </button>
                 )}
               </div>
               {contrato.kit && (
                 <p className={styles.motivo}>
-                  {contrato.kit.documentos.length} documentos do kit {contrato.kit.nome} · modelo {identificadorDoModelo(modeloPorId(contrato.kit.modelo))}
+                  {contrato.kit.documentos.length} documentos do kit {contrato.kit.nome} · modelo {identificadorDoKit(contrato.kit)}
                   {contrato.documento ? ` · versão ${contrato.documento.versao}` : ''}
                 </p>
               )}
@@ -325,7 +355,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                 </>
               ) : (
                 <>
-                  <p className={styles.motivo}>Impresso em {dataHora(assinatura.impressoEm)} (impressora simulada).</p>
+                  <p className={styles.motivo}>Impresso em {dataHora(assinatura.impressoEm)}{kitReal ? '.' : ' (impressora simulada).'}</p>
                   <ul className={proprio.tentativas} aria-label="Datas do kit impresso">
                     {datasImpressas.map((d) => (
                       <li key={d.documento}>
@@ -333,18 +363,49 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                       </li>
                     ))}
                   </ul>
-                  <p>Colha a assinatura do cliente na hora e passe o contrato assinado no scanner do balcão.</p>
-                  {!assinatura.arquivo && (
+                  {impresso && (
+                    <p className={styles.motivo}>
+                      {impresso.pdf ? (
+                        <>
+                          O PDF abriu na impressão do navegador.{' '}
+                          <a href={impresso.url} target="_blank" rel="noreferrer">
+                            Abrir o PDF
+                          </a>{' '}
+                          ·{' '}
+                          <a href={impresso.url} download={impresso.nome}>
+                            Baixar o PDF
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          O kit saiu em Word{servicos.pdf ? ' (o conversor de PDF não respondeu)' : ''}: abra o arquivo e imprima por ele.{' '}
+                          <a href={impresso.url} download={impresso.nome}>
+                            Baixar o Word
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
+                  {kitReal && (
+                    <button type="button" className={styles.atalho} disabled={ocupado} onClick={imprimir}>
+                      Imprimir de novo
+                    </button>
+                  )}
+                  <p>Colha a assinatura do cliente e passe o contrato assinado no scanner do balcão.</p>
+                  {doServidor(processoId) ? <AnexarPapel fichaId={ficha.id} processoId={processoId} tipo="contrato" /> : !assinatura.arquivo && (
                     <button type="button" className={styles.atalho} disabled={ocupado} onClick={digitalizar}>
                       Digitalizar o contrato assinado (scanner simulado)
                     </button>
                   )}
                 </>
               )}
-              <p className={proprio.anexo} data-ok={assinatura?.arquivo !== undefined}>
+              {doServidor(processoId) ? <p className={styles.motivo}>
+                Confira os arquivos guardados na <a href={`/clientes/${ficha.id}`}>pasta do cliente</a>.
+                A vinculação do arquivo à assinatura ainda não está disponível.
+              </p> : <p className={proprio.anexo} data-ok={assinatura?.arquivo !== undefined}>
                 Anexo: digitalização do contrato assinado *{' '}
                 {assinatura?.arquivo ? `· ✓ ${assinatura.arquivo}, PDF pesquisável na pasta do cliente` : '· falta'}
-              </p>
+              </p>}
             </section>
           )}
 
@@ -365,7 +426,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
               <div className={styles.atalhos}>
                 {contrato.etapa === 'leitura' && (
                   <button type="button" className={styles.atalho} disabled={ocupado} onClick={simularLeitura}>
-                    Simular a leitura da IA (D1.18)
+                    Simular a leitura da IA
                   </button>
                 )}
                 {contrato.etapa === 'conferir' && (
@@ -383,14 +444,15 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
             </section>
           ) : papel ? (
             <div className={styles.rodape}>
-              <button type="button" className={styles.principalBotao} disabled={!assinatura?.arquivo || ocupado} onClick={concluirPapel}>
+              <button type="button" className={styles.principalBotao} disabled={!assinatura?.arquivo || ocupado || doServidor(processoId)} onClick={concluirPapel}>
                 {ocupado ? 'salvando…' : 'Concluir a assinatura'}
               </button>
               {!assinatura?.arquivo && <p className={styles.motivo}>Anexe a digitalização do contrato assinado.</p>}
             </div>
           ) : (
             contrato.etapa === 'assinatura' &&
-            !zapsign && (
+            !zapsign &&
+            celular && (
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={forma !== 'digital' || ocupado} onClick={enviar}>
                   {ocupado ? 'enviando…' : 'Enviar para assinatura'}
@@ -410,34 +472,42 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.17.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="como-assinar-lado">Como a cliente vai assinar?</p>
             <div className={styles.ladoOpcoes} role="radiogroup" aria-labelledby="como-assinar-lado">
-              <button type="button" role="radio" className={`${styles.chip} ${proprio.escolhida}`} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
-                ZapSign (digital)
-              </button>
+              {celular && (
+                <button type="button" role="radio" className={`${styles.chip} ${proprio.escolhida}`} aria-checked={forma === 'digital'} disabled={escolhido} onClick={() => setForma('digital')}>
+                  ZapSign (digital)
+                </button>
+              )}
               {podePapel && (
                 <button type="button" role="radio" className={`${styles.chip} ${proprio.escolhida}`} aria-checked={forma === 'papel'} disabled={escolhido} onClick={() => setForma('papel')}>
-                  Papel, na hora
+                  {servicos.zapsign ? 'Papel, na hora' : 'Em papel'}
                 </button>
               )}
             </div>
           </div>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
-            <li>• Se «Papel, na hora»: Anexo: Anexar a digitalização do contrato assinado*</li>
+            <li>{servicos.zapsign ? '• Se «Papel, na hora»: Anexo: Anexar a digitalização do contrato assinado*' : '• Anexo: Anexar a digitalização do contrato assinado*'}</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas e estados</h3>
-          <ul className={styles.ladoLista}>
-            <li>
-              Tentativa {Math.max(cobranca.feitas, 1)} de {TENTATIVAS_DE_ASSINATURA} · limite (G15)
-            </li>
-            <li>Pendente: Documento assinado devolvido pelo ZapSign</li>
-          </ul>
+          {celular && (
+            <>
+              <h3 className={styles.ladoSecao}>Travas e estados</h3>
+              <ul className={styles.ladoLista}>
+                <li>
+                  Tentativa {Math.max(cobranca.feitas, 1)} de {TENTATIVAS_DE_ASSINATURA} · limite (G15)
+                </li>
+                <li>Pendente: Documento assinado devolvido pelo ZapSign</li>
+              </ul>
+            </>
+          )}
           <p className={styles.ladoSub}>
-            «Enviar para assinatura» só habilita com as decisões respondidas, o anexo obrigatório e o pendente resolvido.
+            {celular
+              ? '«Enviar para assinatura» só habilita com as decisões respondidas, o anexo obrigatório e o pendente resolvido.'
+              : '«Concluir a assinatura» só habilita com o anexo obrigatório.'}
           </p>
         </aside>
       </main>

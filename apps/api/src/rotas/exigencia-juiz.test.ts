@@ -8,12 +8,13 @@ import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { MSG_IA_SEM_SUGESTAO, MSG_NADA_A_ANALISAR } from './exigencia-juiz.ts'
+import { MSG_TIPO_DE_DOCUMENTO } from './exigencia.ts'
 
 const SENHA = 'senha-do-portal-1'
 const AGORA = new Date('2026-10-05T15:00:00Z') // segunda-feira
@@ -116,7 +117,8 @@ describe('Épico IA · a IA sugere as tarefas da exigência do juiz (GGVP-79 CA3
   const LEITURA = {
     resumo: 'O juiz mandou juntar laudo em 15 dias úteis.',
     ciencia: false,
-    itens: [{ setor: 'atendimento', descricao: 'Pedir ao cliente o laudo atualizado do médico assistente', provaEsperada: 'Laudo com data recente' }],
+    // Bloco 5d (GGVP-125): a IA também sugere o tipo do documento, do catálogo das telas.
+    itens: [{ setor: 'atendimento', descricao: 'Pedir ao cliente o laudo atualizado do médico assistente', provaEsperada: 'Laudo com data recente', tipoDocumento: 'laudo' }],
     pericias: [],
   }
   let enviado = ''
@@ -167,6 +169,9 @@ describe('Épico IA · a IA sugere as tarefas da exigência do juiz (GGVP-79 CA3
     expect((await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()).toMatchObject({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_SUGESTAO })
     comIa(JSON.stringify(LEITURA))
     const r = (await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia', chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
+    expect(await banco.select().from(decisao).where(eq(decisao.passo, 'D3a.02'))).toHaveLength(0)
     expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia', chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
     const [d] = await banco.select().from(decisao).where(eq(decisao.passo, 'D3a.02'))
     expect([d.resultado, d.sugestaoIa]).toEqual(['ciencia', { chamadaId: r.sugestao.chamadaId }])
@@ -293,5 +298,13 @@ describe('GGVP-83 · laço dos setores', () => {
     await banco.update(pericia).set({ resultado: 'favoravel' })
     r = (await chamar('gabi', 'GET', '/exigencia-juiz')).json()
     expect([r.faltam, r.pericias]).toEqual([[], [{ tipo: 'social', resultado: 'favoravel' }]])
+  })
+})
+
+describe('GGVP-125 · bloco 5d: o tipo de documento que cumpre o item da exigência do juiz', () => {
+  it('o item pode trazer o tipo; tipo fora da lista é recusado', async () => {
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [{ ...ITEM, tipoDocumento: 'inventado' }] })).json().erro).toBe(MSG_TIPO_DE_DOCUMENTO)
+    await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'cumprir', itens: [{ ...ITEM, tipoDocumento: 'laudo' }] })
+    expect((await banco.select().from(exigenciaItem)).map((i) => i.tipoDocumento)).toEqual(['laudo'])
   })
 })

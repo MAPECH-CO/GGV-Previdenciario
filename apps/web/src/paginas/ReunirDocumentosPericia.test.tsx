@@ -59,7 +59,7 @@ describe('GGVP-56 · Reunir documentos da perícia (Figma 10:522)', () => {
     for (const c of ['CadÚnico (se BPC/social)', 'Composição do grupo familiar', /Conferi a leitura da IA/]) fireEvent.click(screen.getByLabelText(c))
     fireEvent.click(screen.getByRole('button', { name: 'Concluir' }))
     expect(await screen.findByRole('heading', { name: '✓ Documentos da perícia reunidos' })).toBeTruthy()
-    expect(screen.getByText(/Concluído por Jéssica \(exemplo\) em 07\/10\/2026 10:00\. O fluxo voltou ao Jurídico administrativo: ligar e orientar Pedro \(DP\.06\)\./)).toBeTruthy()
+    expect(screen.getByText(/Concluído por Jéssica \(exemplo\) em 07\/10\/2026 10:00\. O fluxo voltou ao Jurídico administrativo: ligar e orientar Pedro\./)).toBeTruthy()
   })
 
   it('a Central do Atendimento, onde a Documentação trabalha, mostra "Reunir" e "Cobrar" da perícia do Pedro', () => {

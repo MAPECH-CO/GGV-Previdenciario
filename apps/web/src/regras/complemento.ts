@@ -42,7 +42,9 @@ export type Complemento = {
   encerrado?: { quando: string; porque: 'parecer-suficiente' }
 }
 
-export type SituacaoDoComplemento = 'aberto' | 'na-senior' | 'encerrado'
+/** "aguardando-parecer": chegou documento novo do médico depois do pedido; a cobrança para até o parecer (GGVP-125, bloco 5d). */
+export type SituacaoDoComplemento = 'aberto' | 'na-senior' | 'aguardando-parecer' | 'encerrado'
+export const MSG_CHEGOU_DOCUMENTO = 'Chegou documento novo do médico: a cobrança para até o parecer da advogada.'
 
 /** O complemento como a tela do Atendimento recebe: o resultado e o que falta pedir, nunca o conteúdo clínico (CA6). */
 export type ComplementoNaTela = {
@@ -103,10 +105,12 @@ export const estadoDoLaco = (c: Complemento): EstadoDaCobranca => ({
 /** O complemento como a tela recebe, com a orientação, a mensagem, a próxima tentativa e o que pode agora. */
 export function complementoNaTela(
   c: Complemento,
-  d: { ficha: Pick<Ficha, 'id' | 'nome' | 'telefone'>; processo: Processo; beneficio: string; hoje: string; previa?: PreviaDoComplemento },
+  d: { ficha: Pick<Ficha, 'id' | 'nome' | 'telefone'>; processo: Processo; beneficio: string; hoje: string; previa?: PreviaDoComplemento; laudoNovoEm?: string },
 ): ComplementoNaTela {
   const laco = estadoDoLaco(c)
-  const situacao: SituacaoDoComplemento = c.encerrado ? 'encerrado' : naSenior(laco, d.hoje) ? 'na-senior' : 'aberto'
+  // O laudo novo que o parecer ainda não conferiu, chegado depois do pedido, para a cobrança do médico (bloco 5d).
+  const chegou = !c.encerrado && d.laudoNovoEm !== undefined && d.laudoNovoEm >= hojeIso(new Date(c.abertaEm))
+  const situacao: SituacaoDoComplemento = c.encerrado ? 'encerrado' : chegou ? 'aguardando-parecer' : naSenior(laco, d.hoje) ? 'na-senior' : 'aberto'
   const { ficha, beneficio, hoje } = d
   return {
     complemento: c,
@@ -119,7 +123,7 @@ export function complementoNaTela(
     proxima: proximaTentativa(laco),
     tentativa: laco.tentativas.length + 1,
     urgente: situacao === 'aberto' && urgente(laco, hoje),
-    motivoParado: c.encerrado ? 'O complemento já foi encerrado.' : motivoParaNaoCobrar(laco, hoje),
+    motivoParado: c.encerrado ? 'O complemento já foi encerrado.' : chegou ? MSG_CHEGOU_DOCUMENTO : motivoParaNaoCobrar(laco, hoje),
     ...(d.previa && { previa: d.previa }),
   }
 }

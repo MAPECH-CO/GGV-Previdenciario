@@ -9,7 +9,7 @@ import { ProximasReunioes } from '../componentes/ProximasReunioes.tsx'
 import { TopoFicha } from '../componentes/TopoFicha.tsx'
 import { eventosDaAgenda, iniciarEntrevistaAgora, marcarEntrevista } from '../dados/agenda.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA } from '../dados/catalogos.ts'
-import { agora, obterFicha } from '../dados/servidor.ts'
+import { agora, doServidor, obterFicha } from '../dados/servidor.ts'
 import { usePode, useSessao } from '../sessao.ts'
 import type { Agendamento, EventoDaAgenda, Ficha, TipoDeEntrevista } from '../dados/tipos.ts'
 import {
@@ -66,6 +66,8 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
       const antes = f?.agendamentos.find((a) => a.id === remarcar)
       if (antes?.tipo) setTipo(antes.tipo)
       if (antes?.duracao) setDuracao(String(antes.duracao))
+    }).catch(() => {
+      if (valendo) setErro('Não foi possível consultar a ficha e a agenda no servidor.')
     })
     return () => {
       valendo = false
@@ -76,15 +78,16 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
     return (
       <main className={styles.vazia}>
         <title>Marcar a entrevista · GGV Previdenciário</title>
-        <h1 className={styles.titulo}>{ficha === null ? 'Ficha não encontrada' : 'Abrindo…'}</h1>
+        <h1 className={styles.titulo}>{erro || (ficha === null ? 'Ficha não encontrada' : 'Abrindo…')}</h1>
         {ficha === null && <a href="/balcao">Voltar ao balcão</a>}
       </main>
     )
   }
 
+  const equipeDisponivel = !doServidor(ficha.id)
   const antes = ficha.agendamentos.find((a) => a.id === remarcar)
   const noLimite = antes !== undefined && !podeRemarcar(antes.remarcacoes ?? 0)
-  const motivoParado = noLimite
+  const motivoParado = !equipeDisponivel ? 'Agendamento indisponível: a lista de advogadas ainda não está disponível no servidor.' : noLimite
     ? `Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior (G15).`
     : !data
       ? 'Escolha o dia.'
@@ -131,7 +134,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
 
   /** A pessoa já está aqui: a entrevista começa agora, sem convite, e a tela da entrevista abre (GGVP-40). */
   async function iniciarAgora() {
-    if (travado.current) return
+    if (travado.current || !equipeDisponivel) return
     travado.current = true
     setSalvando(true)
     setErro('')
@@ -156,7 +159,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
         voltar
         titulo={`${antes ? 'Remarcar' : 'Marcar'} a entrevista com ${ficha.nome}`}
         chips={[
-          { texto: 'D1.03 · encaminhar / agendar', tom: 'acento' },
+          { texto: 'encaminhar / agendar', tom: 'acento' },
           { texto: ficha.situacao === 'lead' ? 'cliente novo' : 'cliente', tom: 'neutro' },
         ]}
       />
@@ -246,7 +249,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
                 }}
               />
               <div className={styles.linha}>
-                <Campo id="marcar-com" rotulo="Com quem" valor={com} aoMudar={setCom} opcoes={COM_QUEM} />
+                <Campo id="marcar-com" rotulo="Com quem" valor={equipeDisponivel ? com : ""} aoMudar={setCom} opcoes={equipeDisponivel ? COM_QUEM : []} dica={!equipeDisponivel ? "A lista de advogadas ainda não está disponível no servidor." : undefined} />
                 <Campo
                   id="marcar-duracao"
                   rotulo="Duração"
@@ -268,7 +271,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
                     {ocupado.map((e) => `${e.titulo} · ${e.oQue.toLowerCase()} às ${e.hora}${e.responsavel ? ` com ${e.responsavel}` : ''}`).join('; ')}. O
                     escritório tem duas salas: dá para marcar mesmo assim.
                   </p>
-                  <button type="button" className={styles.secundario} disabled={salvando} onClick={() => marcar(true)}>
+                  <button type="button" className={styles.secundario} disabled={salvando || !equipeDisponivel} onClick={() => marcar(true)}>
                     Marcar mesmo assim
                   </button>
                 </div>
@@ -278,7 +281,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
                   {salvando ? 'marcando…' : opcoes.convite ? 'Marcar e enviar convite' : 'Marcar'}
                 </button>
                 {!antes && (
-                  <button type="button" className={styles.secundario} disabled={salvando} onClick={iniciarAgora}>
+                  <button type="button" className={styles.secundario} disabled={salvando || !equipeDisponivel} onClick={iniciarAgora}>
                     Iniciar entrevista (Transcrição)
                   </button>
                 )}

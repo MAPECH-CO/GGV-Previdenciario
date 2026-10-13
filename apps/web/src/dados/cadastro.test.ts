@@ -1,10 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cadastroDaFicha } from '../regras/cadastro.ts'
 import { buscarEndereco, obterCadastro, podeGerarKit, salvarCadastro } from './cadastro.ts'
 import { encerrarGravacao, iniciarGravacao, transcrever } from './entrevista.ts'
 import { CPF_DE_TESTE } from './exemplo.ts'
 import { configurarExemplo, ler, obterFicha, zerarExemplo } from './servidor.ts'
 import type { Cadastro } from './tipos.ts'
+
+afterEach(() => vi.unstubAllGlobals())
 
 const AGORA = new Date(2026, 9, 5, 14, 32)
 
@@ -56,7 +58,7 @@ describe('Cadastrar o lead · servidor de exemplo', () => {
     const ficha = (await obterFicha('antonio-exemplo'))!
     expect(ficha).toMatchObject({ id: 'antonio-exemplo', rg: '123456789', estadoCivil: 'União estável', cep: '01001000', bairro: 'Sé' })
     expect(ficha.historico.slice(-7).map((e) => [e.quem, e.oQue])).toEqual([
-      ['Você (Advogada)', 'Cadastrou o lead (D1.10): completou a mesma ficha do primeiro contato'],
+      ['Você (Advogada)', 'Cadastrou o lead: completou a mesma ficha do primeiro contato'],
       ['Você (Advogada)', 'Alterou RG: «—» → «123456789»'],
       ['Você (Advogada)', 'Alterou estado civil: «Casado» → «União estável»'],
       ['Você (Advogada)', 'Alterou profissão: «Trabalhador rural (2018–2020) · porteiro (2021–2025)» → «Porteiro(a)»'],
@@ -88,8 +90,14 @@ describe('Cadastrar o lead · servidor de exemplo', () => {
     expect(conflito).toEqual({ resultado: 'conflito', campos: [{ campo: 'telefone', deles: '(11) 90000-0031', meu: '(11) 90000-0032' }] })
   })
 
-  it('CA10 · o CEP preenche rua, bairro, cidade e UF (ViaCEP simulado)', async () => {
-    expect(await buscarEndereco('01001-000')).toMatchObject({ logradouro: 'Praça da Sé', bairro: 'Sé', cidade: 'São Paulo', uf: 'SP' })
+  it('CA10 · consulta o ViaCEP só com o CEP, sem enviar dados do cliente', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ logradouro: 'Rua de Teste', bairro: 'Bairro de Teste', localidade: 'Cidade de Teste', uf: 'SP' })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ erro: true })))
+    vi.stubGlobal('fetch', fetch)
+    expect(await buscarEndereco('01001-000')).toMatchObject({ logradouro: 'Rua de Teste', bairro: 'Bairro de Teste', cidade: 'Cidade de Teste', uf: 'SP' })
+    expect(fetch).toHaveBeenNthCalledWith(1, 'https://viacep.com.br/ws/01001000/json/', { signal: expect.any(AbortSignal) })
     expect(await buscarEndereco('99999-999')).toBeNull()
+    expect(await buscarEndereco('inválido')).toBeNull()
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 })

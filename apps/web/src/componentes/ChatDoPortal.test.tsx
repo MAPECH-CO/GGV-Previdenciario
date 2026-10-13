@@ -24,6 +24,18 @@ function enviar(texto: string, arquivos: string[] = []) {
 }
 
 describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186:2)', () => {
+  it('12/10 · a resposta da IA vem à esquerda com o ✦ e o rodapé "Sugestão da IA"; a pergunta à direita', async () => {
+    chat()
+    enviar('O que falta no caso do Antônio Exemplo?')
+    const conversa = screen.getByRole('list', { name: 'Conversa' })
+    await screen.findByText(/está em Vigília/)
+    const [pergunta, resposta] = within(conversa).getAllByRole('listitem', { name: /./ })
+    expect(pergunta.getAttribute('aria-label')).toBe('Você')
+    expect(resposta.getAttribute('aria-label')).toBe('IA')
+    expect(within(resposta).getByText('Sugestão da IA')).toBeTruthy()
+    expect(screen.queryByText(/^Só respondo e oriento/)).toBeNull()
+  })
+
   it('CA1 · a resposta cita o caso e o passo, com o link para abrir', async () => {
     chat()
     enviar('O que falta no caso do Antônio Exemplo?')
@@ -45,7 +57,7 @@ describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186
     chat()
     enviar('Como o Dr. A. Prado avalia?')
     expect(await screen.findByText(/laudos favoráveis 71% · 24 de 34 laudos/)).toBeTruthy()
-    expect(screen.getByText(/^Fontes: regra do sistema jurimetria calculada pelo sistema, sem amostra mínima/)).toBeTruthy()
+    expect(screen.getByText(/^regra do sistema jurimetria.*calculada pelo sistema, sem amostra mínima/)).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/amostra insuficiente/i)
   })
 })
@@ -135,10 +147,9 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
     entrarComo('senior')
     chat('Sênior')
     enviar('Sobe esses processos antigos no acervo', ['proc-1.pdf', 'proc-2.pdf'])
-    const cartao = await screen.findByRole('group', { name: 'Ação para confirmar · Acervo · 2 processos' })
-    expect(cartao.textContent).toContain('O acervo não guarda dado pessoal do cliente')
-    fireEvent.click(within(cartao).getByRole('button', { name: 'Confirmar e guardar no acervo' }))
-    expect(await screen.findByText('✓ Pronto: 2 processos entraram no acervo e já contam na jurimetria.')).toBeTruthy()
+    expect(await screen.findByText('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Confirmar e guardar no acervo' })).toBeNull()
+    expect(screen.queryByText(/processos entraram no acervo/)).toBeNull()
   })
 
   it('a advogada pede a peça: o cartão da minuta, com a conferência dela (G6)', async () => {
@@ -166,31 +177,5 @@ describe('GGVP-82 CA6 · o Suporte nas outras telas', () => {
     fireEvent.click(within(suporte).getByRole('button', { name: 'Enviar' }))
     expect(await within(suporte).findByText(/^G8: O aviso ao cliente só nasce depois do OK da advogada/)).toBeTruthy()
     window.history.pushState({}, '', '/')
-  })
-})
-
-describe('GGVP-82 CA6 · gravar áudio', () => {
-  it('a fala vira texto no campo, para conferir antes de enviar', () => {
-    class Fala {
-      lang = ''
-      interimResults = true
-      onresult: ((e: { results: { transcript: string }[][] }) => void) | null = null
-      onend: (() => void) | null = null
-      onerror: (() => void) | null = null
-      start() {
-        this.onresult?.({ results: [[{ transcript: 'o que falta no caso da Maria Exemplo' }]] })
-        this.onend?.()
-      }
-      stop() {}
-    }
-    ;(window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition = Fala
-    try {
-      chat()
-      fireEvent.click(screen.getByRole('button', { name: 'Gravar áudio' }))
-      expect((screen.getByLabelText('✦ Pergunte ou peça') as HTMLTextAreaElement).value).toBe('o que falta no caso da Maria Exemplo')
-      expect(screen.getByRole('button', { name: 'Gravar áudio' }).getAttribute('aria-pressed')).toBe('false')
-    } finally {
-      delete (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition
-    }
   })
 })

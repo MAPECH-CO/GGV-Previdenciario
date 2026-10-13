@@ -770,7 +770,7 @@ describe('GGVP-40 · Entrevistar com gravação', () => {
     expect(minutos(2292)).toBe('38 min')
     expect(minutos(20)).toBe('1 min')
     const roteiro = roteiroDaEntrevista({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })
-    expect(roteiro[1]).toBe('Acidentário já decidido antes da entrevista (D1.07): não · sem senha no cofre (G9)')
+    expect(roteiro[1]).toBe('Acidentário já decidido antes da entrevista: não · sem senha no cofre (G9)')
     expect(roteiro.at(-1)).toBe('Quem mora na casa e a renda de cada um')
     expect(roteiroDaEntrevista({ ...lead, beneficioInteresse: 'incapacidade-temporaria' })).toHaveLength(5)
   })

@@ -33,6 +33,10 @@ jobs:
   telas:
     name: Testes de tela (Playwright)
     runs-on: ubuntu-latest
+    # GGVP-158: os testes, a tela e a API no fuso do escritório, como na máquina de cada dev. Em UTC, das 21h à meia-noite
+    # de Brasília o "hoje" do teste e o da tela viravam o dia seguinte.
+    env:
+      TZ: America/Sao_Paulo
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -43,7 +47,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # O Chromium que o próprio Playwright instala, como na máquina de cada dev (kit/entrega-09-10.md).
       - run: pnpm --filter @ggv/web exec playwright install --with-deps chromium
-      - run: pnpm --filter @ggv/web exec playwright test --reporter=list,html
+      # Dois cenários rodam isolados (o fuso da perícia no servidor e o tempo da Configuração); os demais, depois, sem eles.
+      - name: Perícia no servidor, isoladamente
+        run: pnpm --filter @ggv/web exec playwright test e2e/pericia-servidor.e2e.ts --reporter=list,html
+      - name: Configuração isolada (repetição do timeout)
+        run: pnpm --filter @ggv/web exec playwright test e2e/governanca.e2e.ts --grep 'GGVP-104' --workers=1 --reporter=list,html
+      - name: Demais testes de tela
+        run: pnpm --filter @ggv/web exec playwright test --grep-invert 'GGVP-104|da perícia marcada ao resultado, no servidor, trocando de pessoa a cada passo' --reporter=list,html
       - name: Relatório do Playwright, quando falha
         if: failure()
         uses: actions/upload-artifact@v4

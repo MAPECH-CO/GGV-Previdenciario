@@ -73,7 +73,6 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
           </h2>
           <p className={styles.chips}>
             <span className={`${styles.categoria} ${cat[evento.categoria]}`}>● {categoria}</span>
-            {evento.passo && <span className={styles.passo}>{evento.passo.split(' ')[0]}</span>}
             <span className={styles.estado} data-estado={evento.estado}>
               {ESTADO[evento.estado]}
             </span>
@@ -98,8 +97,8 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
         )}
         <dt>Detalhe</dt>
         <dd>{detalheDoEvento(evento) || '—'}</dd>
-        <dt>Passo do BPMN</dt>
-        <dd>{evento.passo ?? '—'}</dd>
+        <dt>Etapa</dt>
+        <dd>{evento.passo?.replace(/^\S+ · /, '') ?? '—'}</dd>
       </dl>
       {evento.estado === 'confirmar' && <p className={styles.alerta}>Passou sem registro: confirme se aconteceu.</p>}
       <div className={styles.botoes}>

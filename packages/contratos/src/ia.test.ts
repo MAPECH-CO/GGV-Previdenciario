@@ -28,4 +28,13 @@ describe('faltaCompletar (GGVP-22 CA6, GGVP-67 CA12)', () => {
   it('preenchido, segue; a palavra solta não conta', () => {
     expect(faltaCompletar('Seu pedido foi negado porque faltou o laudo. Vamos completar a documentação.')).toBeNull()
   })
+  it('GGVP-158 · sem regex lenta: milhares de "[completar" sem o fecho respondem na hora e passam, como antes', () => {
+    const montado = '[completar '.repeat(50_000)
+    const inicio = performance.now()
+    expect(faltaCompletar(montado)).toBeNull()
+    expect(performance.now() - inicio).toBeLessThan(100)
+    expect(faltaCompletar(`${montado}]`)).toBe(MOTIVO)
+    expect(faltaCompletar('[COMPLETAR]')).toBe(MOTIVO)
+    expect(faltaCompletar('] antes não fecha: [completar o nome')).toBeNull()
+  })
 })

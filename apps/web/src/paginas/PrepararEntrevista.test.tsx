@@ -34,7 +34,7 @@ describe('Preparar entrevista · tela do passo', () => {
     expect(ia.getByText('lida')).toBeTruthy()
     expect(ia.getByText('última atividade: diarista · procura LOAS Idoso')).toBeTruthy()
     expect(ia.getByRole('link', { name: 'Abrir a ficha completa' }).getAttribute('href')).toBe('/clientes/josefa-exemplo/ficha-de-atendimento')
-    expect(screen.getByText('O que o BPMN (Miro) pede no passo D1.06.')).toBeTruthy()
+    expect(screen.getByText('O que este passo pede.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Início' }).getAttribute('href')).toBe('/advogada')
   })
 

@@ -82,6 +82,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
   const [erro, setErro] = useState('')
   const [transcricoes, setTranscricoes] = useState(false)
   const travado = useRef(false)
+  const consultaCep = useRef(0)
   const hoje = hojeIso(agora())
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
     })
     return () => {
       valendo = false
+      consultaCep.current += 1
     }
   }, [fichaId])
 
@@ -123,6 +125,10 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
   const entrevista = ficha.agendamentos.filter((a) => a.estado === 'realizado').at(-1)
 
   function mudar(campo: keyof Cadastro, valor: string, mascara?: boolean) {
+    if (campo === 'cep') {
+      consultaCep.current += 1
+      setCep('')
+    }
     setEstado((e) => e && { ...e, valores: { ...e.valores, [campo]: mascara ? soNumeroEMascara(valor) : valor } })
     setDono(null)
   }
@@ -135,16 +141,28 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
 
   async function preencherPeloCep(valor: string) {
     if (!validarCep(valor)) return
+    const consulta = ++consultaCep.current
+    const antes = valores
+    setCep('Consultando CEP… Você também pode digitar o endereço.')
     const endereco = await buscarEndereco(valor)
-    if (!endereco) return setCep('CEP não encontrado: digite o endereço.')
-    setCep('Endereço pelo CEP (ViaCEP simulado): confira e complete o número.')
-    setEstado(
-      (e) =>
-        e && {
-          ...e,
-          valores: { ...e.valores, rua: e.valores.rua || `${endereco.logradouro}, `, bairro: endereco.bairro, cidade: endereco.cidade, uf: endereco.uf },
+    if (consulta !== consultaCep.current) return
+    if (!endereco) return setCep('Não foi possível consultar este CEP. Confira o CEP ou digite o endereço.')
+    setCep('Endereço pelo CEP (ViaCEP): confira e complete o número.')
+    setEstado((e) => {
+      if (!e) return e
+      // Uma resposta atrasada não apaga o endereço que a pessoa está preenchendo.
+      const atual = e.valores
+      return {
+        ...e,
+        valores: {
+          ...atual,
+          rua: atual.rua || (endereco.logradouro ? `${endereco.logradouro}, ` : ''),
+          bairro: atual.bairro === antes.bairro ? endereco.bairro : atual.bairro,
+          cidade: atual.cidade === antes.cidade ? endereco.cidade : atual.cidade,
+          uf: atual.uf === antes.uf ? endereco.uf : atual.uf,
         },
-    )
+      }
+    })
   }
 
   function escolher(campo: keyof Cadastro, fonte: Fonte, valor: string) {
@@ -194,9 +212,6 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.10 · Cadastrar o lead (passo do BPMN)">
-                D1.10
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={styles.titulo}>
@@ -262,7 +277,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
               </div>
             ))}
             <p className={proprio.beneficio}>
-              Benefício: {nomeBeneficio(ficha.beneficioInteresse) || 'a definir'} · a advogada define no D1.12
+              Benefício: {nomeBeneficio(ficha.beneficioInteresse) || 'a definir'} · a advogada define o benefício
             </p>
 
             <label className={proprio.conferencia}>
@@ -356,7 +371,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
                 </a>
                 {entrevista && (
                   <a className={styles.atalho} href={`/entrevista/${entrevista.id}/beneficio`}>
-                    Definir o benefício (D1.12)
+                    Definir o benefício
                   </a>
                 )}
               </div>
@@ -380,7 +395,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.10.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             <li>• Nome completo*</li>
@@ -400,7 +415,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
           <button type="button" className={styles.atalho} onClick={() => setTranscricoes(true)}>
             ▶ Abrir a transcrição
           </button>
-          <h3 className={styles.ladoSecao}>Kit do benefício (D1.15)</h3>
+          <h3 className={styles.ladoSecao}>Kit do benefício</h3>
           <p className={proprio.kit} data-ok={kit.length === 0}>
             {kit.length === 0 ? 'Pode ser gerado: o cadastro tem os campos do modelo.' : `Ainda não pode ser gerado. Falta: ${juntar(kit)}.`}
           </p>

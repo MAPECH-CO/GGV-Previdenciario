@@ -47,7 +47,7 @@ test('CA3 · horário ocupado avisa e deixa marcar mesmo assim', async ({ page }
   await expect(page.getByRole('heading', { name: /✓ Entrevista marcada/ })).toBeVisible()
 })
 
-test('CA5 · compromisso interno, sem cliente, entra na agenda', async ({ page }) => {
+test('sem a lista real da equipe, o compromisso interno avisa que está indisponível', async ({ page }) => {
   const hoje = new Date()
   const data = [hoje.getDate(), hoje.getMonth() + 1].map((n) => String(n).padStart(2, '0')).join('/') + `/${hoje.getFullYear()}`
   await page.goto('/agenda?ver=lista')
@@ -57,8 +57,9 @@ test('CA5 · compromisso interno, sem cliente, entra na agenda', async ({ page }
   await janela.getByLabel('Título *').fill('Gravação do vídeo do escritório')
   await janela.getByLabel('Data * (dd/mm/aaaa)').fill(data)
   await janela.getByLabel('Hora *').fill('23:00')
-  await janela.getByRole('button', { name: 'Pôr na agenda' }).click()
-  await expect(page.getByRole('button', { name: /Gravação do vídeo do escritório · Compromisso interno/ })).toContainText('Você (Atendimento) · interno')
+  await expect(janela.getByRole('button', { name: 'Pôr na agenda' })).toBeDisabled()
+  await expect(janela.getByRole('status')).toContainText('A lista da equipe ainda não está disponível no servidor.')
+  await expect(janela.getByRole('option', { name: 'Dra. Paula' })).toHaveCount(0)
 })
 
 test('CA7, CA8 e CA9 · o que passou sem registro: "Faltou", remarcar com motivo, e o motivo em "Últimos contatos"', async ({ page }) => {
@@ -89,6 +90,6 @@ for (const caminho of ['/agenda', '/agenda/marcar/josefa-exemplo']) {
     await page.goto(`${caminho}?tema=escuro&fonte=grande`)
     const corpo = page.locator('body')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   })
 }

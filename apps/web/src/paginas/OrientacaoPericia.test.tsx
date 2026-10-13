@@ -19,7 +19,7 @@ describe('GGVP-61 · a orientação na página do processo (Figma 2179:664) e a 
     render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
     await screen.findByRole('heading', { name: 'Perícias' })
     expect(screen.getByText('pelo perfil de Dr. A. Prado (exemplo), versão 34 (IA e acervo)')).toBeTruthy()
-    expect(screen.getByText(/O perfil de Dr\. A\. Prado \(exemplo\) está na base e a orientação já segue esse perfil \(DP\.05\)/)).toBeTruthy()
+    expect(screen.getByText(/O perfil de Dr\. A\. Prado \(exemplo\) está na base e a orientação já segue esse perfil/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ver a orientação' }))
     expect(screen.getByLabelText('Texto da orientação').textContent).toContain('O que Dr. A. Prado costuma observar')
     expect(screen.getByText(/Verificada antes de chegar ao Jurídico administrativo/)).toBeTruthy()

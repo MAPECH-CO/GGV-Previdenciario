@@ -36,6 +36,7 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-acento);
 }
 
 .filtros {
@@ -55,6 +56,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-8);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .busca:focus-within {
@@ -90,6 +92,7 @@
   background: var(--cor-superficie);
   color: var(--cor-texto-suave);
   font-size: var(--fonte-12);
+  box-shadow: var(--sombra-1);
 }
 
 .filtro select,
@@ -160,6 +163,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-12);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .tabela {
@@ -244,6 +248,7 @@
   border-radius: var(--raio-8);
   background: var(--cor-superficie);
   font-size: var(--fonte-12);
+  box-shadow: var(--sombra-1);
 }
 
 .paginas button:disabled {
@@ -292,4 +297,82 @@
 .lead {
   background: var(--cor-painel-neutro);
   color: var(--cor-texto-suave);
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.novo:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.novo:not(:disabled):active {
+  background-image: var(--estado-apertar);
+}
+
+/* Botão que lê como link: sublinha ao passar, sem a camada dos outros botões (base.css). */
+.limpar:is(:hover, :active):not(:disabled),
+.exportar:is(:hover, :active):not(:disabled) {
+  background-image: none;
+  text-decoration: underline;
+}
+
+/* Celular (11/10): o título e a ação um embaixo do outro, e a tabela vira uma lista de cartões, uma linha por cartão. */
+@media (max-width: 760px) {
+  .pagina {
+    padding: 20px 16px 32px;
+  }
+
+  .cabeca {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .busca {
+    flex-basis: 100%;
+  }
+
+  .moldura {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tabela,
+  .tabela tbody,
+  .tabela tr,
+  .tabela td {
+    display: block;
+    width: 100%;
+  }
+
+  .tabela thead {
+    display: none;
+  }
+
+  .tabela tr {
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--cor-linha);
+    border-radius: var(--raio-12);
+    background: var(--cor-superficie);
+    box-shadow: var(--sombra-1);
+  }
+
+  .tabela td {
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .tabela td:first-child {
+    padding-bottom: 6px;
+    font-size: var(--fonte-15);
+  }
+
+  .tabela td:empty {
+    display: none;
+  }
+
+  .tabela tbody tr:hover {
+    background: var(--cor-superficie);
+  }
 }

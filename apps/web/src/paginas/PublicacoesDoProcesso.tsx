@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { isoParaData } from '@ggv/campos'
 import { ROTULO_CLASSE, type PublicacoesDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const dia = (iso: string) => isoParaData(iso) ?? iso
@@ -19,14 +20,14 @@ export function PublicacoesDoProcesso({ casoId }: { casoId: string }) {
 
   if (!d)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Publicações do processo · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const lista = [...d.publicacoes]
@@ -34,11 +35,8 @@ export function PublicacoesDoProcesso({ casoId }: { casoId: string }) {
     .sort((a, b) => Number(a.classe !== null) - Number(b.classe !== null))
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Publicações do processo · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Publicações do processo</h1>
       <p className={styles.subtitulo}>{d.cliente}</p>
       <label className={styles.escolha} htmlFor={idFiltro}>
@@ -61,6 +59,6 @@ export function PublicacoesDoProcesso({ casoId }: { casoId: string }) {
         ))}
       </ul>
       {lista.length === 0 && <p className={styles.dica}>Nenhuma publicação.</p>}
-    </main>
+    </TelaDePasso>
   )
 }

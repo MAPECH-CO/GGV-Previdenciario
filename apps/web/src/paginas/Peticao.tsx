@@ -1,8 +1,11 @@
 import { useEffect, useId, useState } from 'react'
+import { CampoDeValorPendente } from '../componentes/CampoDeValorPendente.tsx'
 import type { FormEvent } from 'react'
 import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
 import { AprovarPeticao, faltaCompletar, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { diaLocal } from '@ggv/campos'
 import { nomeDoBeneficio } from '@ggv/contratos'
@@ -480,14 +483,14 @@ export function Peticao({ casoId }: { casoId: string }) {
 
   if (!x)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Petição inicial · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const aoMudar = (texto: string) => {
@@ -496,11 +499,8 @@ export function Peticao({ casoId }: { casoId: string }) {
   }
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Petição inicial · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Petição inicial</h1>
       <p className={styles.subtitulo}>
         {x.cliente} · {nomeDoBeneficio(x.beneficio)}
@@ -511,6 +511,10 @@ export function Peticao({ casoId }: { casoId: string }) {
           {feito}
         </p>
       )}
+
+      {/* GGVP-151 CA4: a chance só na tela, à parte da minuta; nenhum número vai ao texto que vai ao juiz. */}
+      <ChanceDoCaso casoId={casoId} />
+      <CampoDeValorPendente tipo="causa" />
 
       {!x.pedido &&
         (x.faltam.length > 0 ? (
@@ -642,6 +646,6 @@ export function Peticao({ casoId }: { casoId: string }) {
 
       {x.podeProtocolar && <ProtocolarForm casoId={casoId} x={x} aoProtocolar={aoMudar} />}
       {x.podeEditar && x.atual && <EditarEuMesma key={`e${x.atual.numero}`} casoId={casoId} texto={x.atual.texto} aoSalvar={aoMudar} />}
-    </main>
+    </TelaDePasso>
   )
 }

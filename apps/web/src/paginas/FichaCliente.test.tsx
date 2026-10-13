@@ -36,6 +36,19 @@ describe('GGVP-96 · os dados bancários do repasse (GGVP-111; LGPD, minimizaç�
 })
 
 describe('Ficha do cliente · visão do Atendimento', () => {
+  it('mensagem simulada nunca aparece como entregue nos contatos e no histórico, mesmo ao reabrir', async () => {
+    await abrir('maria-exemplo')
+    fireEvent.click(screen.getByRole('button', { name: 'Mensagem ao cliente' }))
+    await screen.findByRole('region', { name: 'Na central do Chatwoot' })
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar pelo Chatwoot' }))
+    expect(await screen.findByText(/✓ Simulado no Chatwoot/)).toBeTruthy()
+    cleanup()
+    await abrir('maria-exemplo')
+    expect(within(screen.getByRole('list', { name: 'Últimos contatos' })).getByText('Chatwoot · 14:32 · simulado')).toBeTruthy()
+    expect(historico().getByText('Registro de mensagem no Chatwoot «Boas-vindas» (simulado)')).toBeTruthy()
+    expect(historico().queryByText(/entregue/)).toBeNull()
+  })
+
   it('GGVP-46 · "Transcrições (2)" abre a janela das conversas do caso, na visão do Atendimento', async () => {
     await abrir('antonio-exemplo')
     fireEvent.click(screen.getByRole('button', { name: 'Transcrições (2)' }))
@@ -67,7 +80,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     const caso = screen.getByRole('link', { name: /Aposentadoria por Incapacidade Permanente/ })
     expect(caso.textContent).toContain('Judicial · exigência')
     // Épico GGVP-10: a perícia judicial entra como linha a mais, sem esconder a exigência do juiz.
-    expect(caso.textContent).toContain('Em perícia · pedido do juiz (D3a) · perícia médica em')
+    expect(caso.textContent).toContain('Em perícia · pedido do juiz · perícia médica em')
     expect(caso.getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
     expect(caso.textContent).toContain('vence em 2 dias')
     expect(within(screen.getByRole('list', { name: 'Documentos pessoais' })).getAllByRole('listitem')).toHaveLength(6)

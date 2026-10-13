@@ -2,7 +2,7 @@
 .pagina {
   display: grid;
   place-items: center;
-  min-height: 100vh;
+  min-height: calc(100vh / var(--zoom));
   padding: 24px 16px;
 }
 
@@ -15,6 +15,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-14);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .marca {
@@ -63,6 +64,7 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font-size: var(--fonte-15);
+  box-shadow: var(--sombra-1);
 }
 
 .campo:focus-visible {
@@ -104,6 +106,7 @@
   font-size: var(--fonte-14);
   font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--sombra-acento);
 }
 
 .botao:disabled {

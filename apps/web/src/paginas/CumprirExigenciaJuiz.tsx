@@ -4,6 +4,7 @@ import { NaoVouConseguir, ROTULO_SETOR, RegistrarTentativa, SubirInformacao, typ
 import { chamarApi } from '../api.ts'
 import { TextoDoLembrete } from '../componentes/Laco.tsx'
 import { ROTULO_DO_CANAL } from '../componentes/rotulosDoLaco.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 type Item = ItensDoSetor['itens'][number]
@@ -211,14 +212,14 @@ export function CumprirExigenciaJuiz({ casoId, origem = 'juizo' }: { casoId: str
 
   if (!d)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>{`${titulo} · GGV Previdenciário`}</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const pendentes = d.itens.filter((i) => i.situacao === 'pendente').length
@@ -233,11 +234,8 @@ export function CumprirExigenciaJuiz({ casoId, origem = 'juizo' }: { casoId: str
         : `A Sênior pediu ${pendentes === 1 ? 'um item' : `${pendentes} itens`} ao seu setor. Suba cada um no card quando conseguir.`
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>{`${titulo} · GGV Previdenciário`}</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>{titulo}</h1>
       <p className={styles.subtitulo}>
         {d.cliente} · {ROTULO_SETOR[d.setor]}
@@ -266,6 +264,6 @@ export function CumprirExigenciaJuiz({ casoId, origem = 'juizo' }: { casoId: str
         ))}
       </ul>
       {d.itens.length === 0 && <p className={styles.dica}>{origem === 'juizo' ? 'Nada para o seu setor nesta exigência.' : 'Nada para o seu setor neste despacho.'}</p>}
-    </main>
+    </TelaDePasso>
   )
 }

@@ -4,13 +4,13 @@ import { join } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import bcrypt from 'bcryptjs'
 import { ROTULO_BENEFICIO } from '@ggv/contratos'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import * as esquema from '../banco/esquema.ts'
-import { eventoAuditoria, glossarioTermo, juizo, perito, usuario } from '../banco/esquema.ts'
+import { eventoAuditoria, glossarioTermo, perito, usuario } from '../banco/esquema.ts'
 import { pastaMigracoes } from '../banco/migrar.ts'
 import { termosDoGlossario } from '../fluxo/glossario.ts'
 import { criarServidor } from '../servidor.ts'
@@ -136,10 +136,8 @@ describe('GGVP-143 CA3 · o glossário nasce com os peritos e juízos que o port
     try {
       await migrate(db, { migrationsFolder: pasta })
       await db.insert(perito).values({ nome: 'Dra. Ana Prado (exemplo)', nomeNormalizado: 'ana prado' })
-      await db.insert(juizo).values([
-        { tribunal: 'TRF3', nome: '2ª Vara Federal de Santo Amaro (exemplo)' },
-        { tribunal: 'TJSP', nome: '2ª Vara Federal de Santo Amaro (exemplo)' },
-      ])
+      // SQL direto: o esquema de hoje tem colunas do juízo que só chegam depois (os entendimentos, GGVP-64 parte 2).
+      await db.execute(sql`insert into juizo (tribunal, nome) values ('TRF3', '2ª Vara Federal de Santo Amaro (exemplo)'), ('TJSP', '2ª Vara Federal de Santo Amaro (exemplo)')`)
       await migrate(db, { migrationsFolder: pastaMigracoes })
       const linhas = await db.select({ termo: glossarioTermo.termo, tipo: glossarioTermo.tipo }).from(glossarioTermo)
       expect(linhas.filter((l) => l.tipo === 'perito' || l.tipo === 'juizo')).toEqual([

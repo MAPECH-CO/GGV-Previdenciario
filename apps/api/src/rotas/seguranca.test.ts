@@ -5,7 +5,7 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, eventoAuditoria, fichaRecepcao, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_FORA_DA_LISTA } from './mensagens.ts'
+import { MSG_FORA_DA_LISTA, MSG_SIMULADO } from './mensagens.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -60,7 +60,7 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     expect(p.telefone).toBe('11900000077')
   })
 
-  it('dados bancários: pedido só com a verificação; a segunda confirmação é de outra pessoa, não do Atendimento; o contato anterior recebe o aviso', async () => {
+  it('dados bancários: pedido só com a verificação; a segunda confirmação é de outra pessoa, não do Atendimento; o aviso ao contato anterior, sem o Chatwoot, não sai e a confirmação diz o motivo', async () => {
     const { id } = await novaFicha('11987654321')
     const url = `/api/fichas/${id}/dados-bancarios`
     const dados = { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }
@@ -80,13 +80,14 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     expect((await chamar('ana', 'POST', confirmacao)).statusCode).toBe(403)
     const novo = await json('eva', 'POST', confirmacao)
     expect(novo).toMatchObject({ ...dados, fichaId: id, quem: 'ana' })
-    expect(novo.avisoNaoSaiu).toBeUndefined()
+    // GGVP-158: sem o Chatwoot, o aviso não sai, e a confirmação devolve o motivo em vez de fingir a entrega.
+    expect(novo.avisoNaoSaiu).toBe(MSG_SIMULADO)
     expect(await json('ana', 'GET', url)).toMatchObject({ atual: dados, pedido: null })
     const ficha = await json('ana', 'GET', `/api/fichas/${id}`)
     expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).toEqual(
       expect.arrayContaining([
         'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de ana, segunda confirmação de eva)',
-        'Enviou pelo Chatwoot a mensagem «Aviso de mudança dos dados» (entregue)',
+        `A mensagem «Aviso de mudança dos dados» não saiu pelo Chatwoot: ${MSG_SIMULADO}. Nada foi reenviado sozinho.`,
       ]),
     )
     // GGVP-96 (LGPD): o histórico da ficha vai a quem vê o caso; a Documentação e o Jurídico adm não leem banco, agência nem conta.
@@ -96,7 +97,7 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
       for (const dado of ['Banco Exemplo', '0001', '12345-6']) expect(vista, `${apelido}: ${dado}`).not.toContain(dado)
     }
     const [aviso] = await banco.select().from(mensagem)
-    expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'entregue' })
+    expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'falhou', erro: MSG_SIMULADO })
     // Sem caso perto da prestação de contas, nenhum alerta.
     expect(await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.setor, 'Financeiro'))).toHaveLength(0)
     expect((await chamar('eva', 'POST', confirmacao)).statusCode).toBe(404)

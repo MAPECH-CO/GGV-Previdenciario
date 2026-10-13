@@ -41,7 +41,7 @@ import type { Pericia } from '../../../web/src/regras/periciaNoCaso.ts'
 export const MSG_CASO_NAO_ENCONTRADO = 'Caso não encontrado.'
 
 /** O setor dono de cada raia, como a página agrupa as tarefas. */
-const SETOR: Record<string, string> = {
+export const SETOR: Record<string, string> = {
   atendimento: 'Atendimento',
   atendimento_lider: 'Atendimento',
   documentacao: 'Documentação',

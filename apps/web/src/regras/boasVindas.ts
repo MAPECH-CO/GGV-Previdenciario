@@ -23,3 +23,47 @@ export function mensagemDeBoasVindas(d: { nome: string; beneficio: string; copia
       : ' Todos os documentos de que precisamos já chegaram.'
   return `Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso de ${d.beneficio} está aberto e a nossa equipe cuida dele daqui em diante.${copias}${faltam} Qualquer dúvida, é só responder esta mensagem.`
 }
+
+/** Cada registro das boas-vindas: a que saiu e, no exemplo, a que falhou (CA6). */
+export type RegistroDasBoasVindas = {
+  fichaId: string
+  processoId: string
+  /** Data e hora ISO. */
+  quando: string
+  situacao: 'enviada' | 'falhou'
+  mensagem: string
+  motivo?: string
+}
+
+export type BoasVindas = {
+  /** 'ja-era-cliente': não vai (CA3); 'aguardando-checklist': sai depois da conferência do checklist (CA1). */
+  situacao: 'ja-era-cliente' | 'aguardando-checklist' | 'a-enviar' | 'enviada' | 'falhou'
+  /** A mensagem pelo modelo, para conferir (CA4, CA5); enviada, a que saiu. */
+  mensagem: string
+  copias: string[]
+  faltam: string[]
+  /** A última tentativa deste caso. */
+  registro?: RegistroDasBoasVindas
+}
+
+/** As boas-vindas do caso: uma única vez por cliente novo, depois do checklist conferido (CA1, CA3, CA4, CA6). */
+export function boasVindasDoCaso(e: {
+  ficha: Pick<Ficha, 'nome' | 'processos'>
+  processoId: string
+  beneficio: string
+  copias: string[]
+  faltam: string[]
+  conferido: boolean
+  /** Os registros da pessoa, de todos os processos dela. */
+  registros: RegistroDasBoasVindas[]
+}): BoasVindas {
+  const registro = e.registros.filter((r) => r.processoId === e.processoId).at(-1)
+  const enviada = e.registros.find((r) => r.situacao === 'enviada')
+  const base = { copias: e.copias, faltam: e.faltam, registro }
+  if (enviada?.processoId === e.processoId) return { ...base, situacao: 'enviada', mensagem: enviada.mensagem, registro: enviada }
+  // Uma única vez por cliente: quem já recebeu, ou já tinha outro processo, já era cliente (CA3, CA4).
+  if (enviada || jaEraCliente(e.ficha, e.processoId)) return { ...base, situacao: 'ja-era-cliente', mensagem: '' }
+  const mensagem = mensagemDeBoasVindas({ nome: e.ficha.nome, beneficio: e.beneficio, copias: e.copias, faltam: e.faltam })
+  if (registro?.situacao === 'falhou') return { ...base, situacao: 'falhou', mensagem }
+  return { ...base, situacao: e.conferido ? 'a-enviar' : 'aguardando-checklist', mensagem }
+}

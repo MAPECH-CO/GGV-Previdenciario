@@ -5,6 +5,8 @@
   align-items: flex-start;
   gap: 14px;
   padding: 16px 32px;
+  /* O sublinhado dos links (Preencher a ficha e afins) desce um pouco e não encosta nas letras. */
+  text-underline-offset: 3px;
 }
 
 .esquerda,
@@ -13,6 +15,24 @@
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+}
+
+/* Cartões da ficha (make-interfaces-feel-better: sombra para a profundidade, raio maior que o de dentro). A borda cinza
+   vira um contorno preto translúcido, que acompanha qualquer fundo, e a sombra ganha duas camadas. A borda continua com
+   1 px, então nada muda de tamanho nem de lugar. */
+.esquerda > section,
+.direita > section {
+  border-color: oklch(0 0 0 / 0.08);
+  border-radius: var(--raio-14);
+  background-clip: padding-box;
+  box-shadow:
+    0 1px 2px -1px oklch(0 0 0 / 0.08),
+    0 2px 6px -2px oklch(0 0 0 / 0.06);
+}
+
+:root[data-tema='escuro'] :is(.esquerda, .direita) > section {
+  border-color: oklch(1 0 0 / 0.08);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.4);
 }
 
 .esquerda {
@@ -37,6 +57,7 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-acento);
 }
 
 .vazia {
@@ -72,6 +93,9 @@
   padding: 5px 12px;
   border: 1px solid var(--cor-acento);
   border-radius: var(--raio-8);
+  /* Sem isto, "Mensagem ao cliente" (um botão) herdava o cinza do navegador e ficava diferente de "+ Nova demanda" (um
+     link); no tema escuro, laranja sobre cinza 107, quase ilegível. */
+  background-color: transparent;
   color: var(--cor-acento);
   font-size: var(--fonte-13);
   font-weight: 600;
@@ -88,4 +112,14 @@
   color: var(--cor-texto);
   font-size: var(--fonte-12);
   font-weight: 600;
+  box-shadow: var(--sombra-1);
+}
+
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
+.novaDemanda:not(:disabled):hover {
+  background-image: var(--estado-passar);
+}
+
+.novaDemanda:not(:disabled):active {
+  background-image: var(--estado-apertar);
 }

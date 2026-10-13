@@ -112,6 +112,7 @@
   color: var(--cor-texto);
   font: inherit;
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 .troca input {
@@ -164,6 +165,7 @@
   font-size: var(--fonte-12);
   font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--sombra-1);
 }
 
 .ok {
@@ -229,6 +231,7 @@
   color: var(--cor-texto);
   font-size: var(--fonte-14);
   font-weight: 600;
+  box-shadow: var(--sombra-1);
 }
 
 .secundario[aria-pressed='true'] {
@@ -242,4 +245,12 @@
   align-items: flex-start;
   gap: 12px;
   padding: 32px;
+}
+
+/* Celular (11/10): a tabela do que a IA leu rola de lado, dentro do cartão, em vez de alargar a tela. */
+@media (max-width: 760px) {
+  .tabela {
+    display: block;
+    overflow-x: auto;
+  }
 }

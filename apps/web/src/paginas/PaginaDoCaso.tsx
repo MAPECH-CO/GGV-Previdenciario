@@ -3,13 +3,19 @@ import { useEffect, useRef, useState } from 'react'
 import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { ComplementosDoProcesso } from '../componentes/ComplementosDoProcesso.tsx'
+import { JusticaDoCaso } from '../componentes/JusticaDoCaso.tsx'
+import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
+import { Transcricoes } from '../componentes/Transcricoes.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { formatarCpf } from '../campos.ts'
 import { descreverDocumento, identificarPerito, NOMES_DE_FORA, nomeDoDocumento, obterCaso, type CasoNaTela, type DocumentoDoCaso, type TipoDeAutor } from '../dados/caso.ts'
 import { pendenciasDeDocumento } from '../dados/cobranca.ts'
+import { obterContrato } from '../dados/contrato.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { agora, doServidor } from '../dados/servidor.ts'
+import { agora, doServidor, obterFicha } from '../dados/servidor.ts'
+import type { Ficha } from '../dados/tipos.ts'
 import { usePode } from '../sessao.ts'
 import type { IdEtapa } from '../regras/caso.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
@@ -24,8 +30,8 @@ import styles from './PaginaDoCaso.module.css'
 // (59:11); jurimetria (2184:2 a 2184:183). O caso numa linha só (GGVP-86), para o Jurídico e o Atendimento.
 
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 const AUTOR: Record<TipoDeAutor, string> = { pessoa: 'pessoa', sistema: 'sistema', ia: 'IA' }
@@ -42,6 +48,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
   const travado = useRef(false)
   // A prestação de contas do caso (GGVP-44): o atalho aparece para quem pode ver e quando ela já existe; a tarefa fecha e o
   // caminho até ela continua aqui.
+  const veJurimetria = usePode('estudo.ver')
   const vePrestacao = usePode('prestacao.ver')
   const [temPrestacao, setTemPrestacao] = useState(false)
   useEffect(() => {
@@ -52,6 +59,20 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
       valendo = false
     }
   }, [processoId, vePrestacao])
+  // O que as histórias prometem no processo: "Marcar entrevista" (GGVP-123, CA1), "Imprimir cópia para o cliente" com o
+  // contrato verificado (GGVP-89, CA1) e a janela das transcrições (GGVP-46). Cada um só para quem pode usar a tela.
+  const marcaEntrevista = usePode('ficha.editar')
+  const conduzContrato = usePode('contrato.conduzir')
+  const [contratoVerificado, setContratoVerificado] = useState(false)
+  useEffect(() => {
+    if (!conduzContrato) return
+    let valendo = true
+    void obterContrato(processoId).then((x) => valendo && setContratoVerificado(x?.contrato.etapa === 'copia' || x?.contrato.etapa === 'entregue'))
+    return () => {
+      valendo = false
+    }
+  }, [processoId, conduzContrato])
+  const [fichaDasTranscricoes, setFichaDasTranscricoes] = useState<Ficha | null>(null)
 
   useEffect(() => {
     let valendo = true
@@ -98,7 +119,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
     <>
       <title>{`${c.ficha.nome} · Processo · GGV Previdenciário`}</title>
       <Topbar itens={navegacao} ativo="" funcao={perfil?.rotulo ?? 'Advogada'} />
-      <main className={base.pagina}>
+      <main className={`${base.pagina} ${styles.caso}`}>
         <header className={base.cabecalho}>
           <div className={base.linha}>
             <h1 className={base.numero}>
@@ -120,7 +141,17 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 Prestação de contas
               </a>
             )}
-            <button type="button" className={base.transcricoes} aria-disabled="true" title="As transcrições abrem pela ficha (GGVP-102)">
+            {marcaEntrevista && (
+              <a className={styles.prestacao} href={`/agenda/marcar/${c.ficha.id}`}>
+                Marcar entrevista
+              </a>
+            )}
+            {conduzContrato && contratoVerificado && (
+              <a className={styles.prestacao} href={`/contrato/${processoId}/copia`}>
+                Imprimir cópia para o cliente
+              </a>
+            )}
+            <button type="button" className={`${base.transcricoes} ${styles.transcricoes}`} onClick={async () => setFichaDasTranscricoes(await obterFicha(c.ficha.id))}>
               ▶ Transcrições ({c.ficha.transcricoes})
             </button>
           </div>
@@ -147,6 +178,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             <span className={base.nota}>linha do tempo completa abaixo · clique para ver em detalhe</span>
           </button>
         </header>
+        {doServidor(processoId) && <JusticaDoCaso key={processoId + c.fase + String(veJurimetria)} processoId={processoId} veJurimetria={veJurimetria} judicial={c.fase === 'judicial'} />}
+        {doServidor(processoId) && <ExplicacaoDoDesfecho key={`${processoId}-${c.desfecho}`} casoId={processoId} desfecho={c.desfecho ?? null} />}
 
         {/* As cinco etapas em sequência (CA1), com a perícia ligada à etapa que pediu (CA2). */}
         <nav className={base.acoes} aria-label="Etapas do processo">
@@ -168,7 +201,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                     {e.estado === 'nao-se-aplica' && <small className={styles.subEtapa}>não se aplica</small>}
                   </span>
                 )}
-                <span className="so-leitor">{` (${e.diagrama} · ${ESTADO[e.estado]})`}</span>
+                <span className="so-leitor">{` (${ESTADO[e.estado]})`}</span>
                 {c.emPericia?.etapa === e.id && (
                   <a className={styles.emPericia} href={c.emPericia.href}>
                     <strong>Em perícia</strong>
@@ -182,7 +215,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
 
         {/* Um passo concluído: quem fez, quando e os documentos (CA4). */}
         {aberta && (
-          <section className={`${base.cartao} ${styles.detalhe}`} aria-labelledby="etapa-aberta">
+          <section className={`${base.cartao} ${styles.detalhe} ${styles.realce}`} aria-labelledby="etapa-aberta">
             <div className={styles.detalheCabeca}>
               <h2 id="etapa-aberta" className={base.cartaoTitulo}>
                 {aberta.rotulo} · feita · {aberta.descricao}
@@ -201,7 +234,6 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                     <span>
                       <strong>{ev.quem}</strong> ({AUTOR[ev.tipo]}): {ev.oQue}
                     </span>
-                    <span className={proprio.passo}>{ev.passo}</span>
                   </li>
                 ))}
               </ol>
@@ -213,7 +245,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
           </section>
         )}
 
-        <section className={base.resumo} aria-labelledby="onde-esta">
+        <section className={`${base.resumo} ${styles.resumo}`} aria-labelledby="onde-esta">
           <div>
             <h2 id="onde-esta" className={proprio.iaTitulo}>
               Onde o caso está
@@ -246,11 +278,11 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
         )}
 
         <div className={base.grade}>
-          <section className={base.cartao} aria-labelledby="linha">
+          <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="linha">
             <h2 id="linha" className={base.cartaoTitulo}>
               Linha do processo · completa
             </h2>
-            <p className={base.nota}>Do lead ao momento atual. Quando, quem fez (pessoa, sistema ou IA), o que foi feito e o passo do BPMN.</p>
+            <p className={base.nota}>Do lead ao momento atual. Quando, quem fez (pessoa, sistema ou IA), e o que foi feito.</p>
             {grupos.map((g) => (
               <div key={g.etapa.id}>
                 <h3 className={base.grupo}>
@@ -264,7 +296,6 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                         <span className={styles[`autor-${ev.tipo}`]}>{AUTOR[ev.tipo]}</span> <strong>{ev.quem}</strong>: {ev.oQue}
                         {ev.peloChat && <em className={styles.peloChat}> · feito pelo chat</em>}
                       </span>
-                      <span className={proprio.passo}>{ev.passo}</span>
                     </li>
                   ))}
                 </ol>
@@ -276,7 +307,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
 
           <div className={base.coluna}>
             {c.pendentes && (
-              <section className={`${base.cartao} ${c.pendentes.setores.length ? base.destaque : ''}`} aria-labelledby="setores">
+              <section className={`${base.cartao} ${c.pendentes.setores.length ? `${base.destaque} ${styles.realce}` : styles.cartao}`} aria-labelledby="setores">
                 <h2 id="setores" className={base.cartaoTitulo}>
                   Esperando os setores
                 </h2>
@@ -298,7 +329,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             )}
 
             {c.esperas.length > 0 && (
-              <section className={base.cartao} aria-labelledby="de-fora">
+              <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="de-fora">
                 <h2 id="de-fora" className={base.cartaoTitulo}>
                   Esperando alguém de fora
                 </h2>
@@ -321,7 +352,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             )}
 
             {pendentes.length > 0 && (
-              <section className={`${base.cartao} ${base.destaque}`} aria-labelledby="pendentes">
+              <section className={`${base.cartao} ${base.destaque} ${styles.realce}`} aria-labelledby="pendentes">
                 <h2 id="pendentes" className={base.cartaoTitulo}>
                   Documentos pendentes
                 </h2>
@@ -337,7 +368,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               </section>
             )}
 
-            <section className={base.cartao} aria-labelledby="tarefas">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="tarefas">
               <h2 id="tarefas" className={base.cartaoTitulo}>
                 Tarefas em andamento
               </h2>
@@ -369,7 +400,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             </section>
 
             {c.peritoParaIdentificar && juridico && (
-              <section className={base.cartao} aria-labelledby="quem-e-o-perito">
+              <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="quem-e-o-perito">
                 <h2 id="quem-e-o-perito" className={base.cartaoTitulo}>
                   Quem é o perito?
                 </h2>
@@ -387,7 +418,9 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               </section>
             )}
 
-            <section className={base.cartao} aria-labelledby="dados">
+            {doServidor(processoId) && <ComplementosDoProcesso key={`${processoId}-${perfil?.id}`} casoId={processoId} />}
+
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="dados">
               <h2 id="dados" className={base.cartaoTitulo}>
                 Dados do processo
               </h2>
@@ -402,20 +435,20 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                 <dt>{c.identificacao.rotulo}</dt>
                 <dd>{c.identificacao.valor}</dd>
                 <dt>Juízo</dt>
-                <dd>{c.juizo ? `${c.juizo.nome} · ${c.juizo.juiz}` : c.fase === 'administrativa' ? '— (fase administrativa)' : 'ainda não identificado'}</dd>
+                <dd>{c.juizo ? `${c.juizo.nome} · ${c.juizo.juiz}` : c.fase === 'administrativa' ? '— (fase administrativa)' : doServidor(processoId) && veJurimetria ? <a href="#juizo-do-processo">Consultar dados do juízo</a> : 'ainda não identificado'}</dd>
                 <dt>Perito</dt>
                 <dd>
                   {c.perito ? (
-                    // O perito do caso do servidor ainda não tem a jurimetria aqui (sem id): só o nome.
+                    // No servidor, o perfil é consultado pelo caso; a semente mantém a janela existente.
                     juridico && c.perito.id ? (
                       <button type="button" className={base.link} onClick={() => setJanela({ tipo: 'perito', id: c.perito!.id })}>
                         {c.perito.nome}
                       </button>
                     ) : (
-                      c.perito.nome
+                      doServidor(processoId) && veJurimetria ? <a href="#juizo-do-processo">{c.perito.nome}</a> : c.perito.nome
                     )
                   ) : (
-                    '—'
+                    doServidor(processoId) && juridico ? 'Consulte a identificação do perito acima.' : '—'
                   )}
                 </dd>
                 {c.valores.map((v) => (
@@ -443,7 +476,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
           </div>
 
           <div className={base.coluna}>
-            <section className={base.cartao} aria-labelledby="prazos">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="prazos">
               <h2 id="prazos" className={base.cartaoTitulo}>
                 Prazos
               </h2>
@@ -462,7 +495,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               <p className={base.nota}>{c.fase === 'judicial' ? 'Com processo judicial, a vigília lê as publicações.' : 'Na fase administrativa, a vigília confere o Meu INSS.'}</p>
             </section>
 
-            <section className={base.cartao} aria-labelledby="documentos">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="documentos">
               <h2 id="documentos" className={base.cartaoTitulo}>
                 Documentos (abrir cada um)
               </h2>
@@ -481,7 +514,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
                           {d.origem} · {curta(d.data)}
                         </span>
                       </span>
-                      <button type="button" className={base.link} aria-label={`Abrir ${nomeDoDocumento(d)}`} onClick={() => setJanela({ tipo: 'documento', doc: d })}>
+                      <button type="button" className={`${base.link} ${styles.abrir}`} aria-label={`Abrir ${nomeDoDocumento(d)}`} onClick={() => setJanela({ tipo: 'documento', doc: d })}>
                         Abrir
                       </button>
                     </li>
@@ -490,7 +523,7 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               )}
             </section>
 
-            <section className={base.cartao} aria-labelledby="acoes">
+            <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="acoes">
               <h2 id="acoes" className={base.cartaoTitulo}>
                 Ações
               </h2>
@@ -515,6 +548,14 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
       <AbaSuporte />
       {janela && (janela.tipo === 'perito' || janela.tipo === 'juizo') && <JurimetriaDoCaso tipo={janela.tipo} id={janela.id} aoFechar={() => setJanela(null)} />}
       {janela?.tipo === 'historico' && <Historico caso={c} hoje={hoje} aoFechar={() => setJanela(null)} />}
+      {fichaDasTranscricoes && (
+        <Transcricoes
+          ficha={fichaDasTranscricoes}
+          perfil={juridico ? 'juridico' : 'atendimento'}
+          aoFechar={() => setFichaDasTranscricoes(null)}
+          aoMudar={async () => setFichaDasTranscricoes(await obterFicha(c.ficha.id))}
+        />
+      )}
       {janela?.tipo === 'documento' && <Documento doc={janela.doc} caso={c} hoje={hoje} aoFechar={() => setJanela(null)} />}
     </>
   )
@@ -554,7 +595,7 @@ function Historico({ caso, hoje, aoFechar }: { caso: CasoNaTela; hoje: string; a
         {[...caso.linha].reverse().map((ev, i) => (
           <li key={i}>
             <span className={base.nota}>
-              {dataCurta(diaLocal(ev.quando), hoje)} · {ev.quem} ({AUTOR[ev.tipo]}) · {ev.passo}
+              {dataCurta(diaLocal(ev.quando), hoje)} · {ev.quem} ({AUTOR[ev.tipo]})
               {ev.peloChat && ' · feito pelo chat'}
             </span>
             <span>{ev.oQue}</span>

@@ -94,7 +94,7 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar · servid
     const { ficha } = await registrarRecontato('natalia-exemplo', { resultado: 'calculo' })
     expect(ficha.fechamento?.situacao).toBe('recalcular')
     expect(ficha.agendamentos.find((a) => a.oQue === 'Recontatar lead')?.estado).toBe('realizado')
-    expect(ficha.historico.at(-1)?.oQue).toBe('Recontatou: o caso volta ao cálculo de tempo e pontos (D1.13)')
+    expect(ficha.historico.at(-1)?.oQue).toBe('Recontatou: o caso volta ao cálculo de tempo e pontos')
     expect(tarefasDeFechamento()).toMatchObject([{ acao: 'Registrar fechamento', detalhe: 'Auxílio por Incapacidade Temporária · entrevista em 04/10 · voltou do recontato ao cálculo' }])
   })
 

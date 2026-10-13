@@ -222,7 +222,7 @@ describe('Exigência do juiz · sugestão da IA (épico IA, GGVP-79 CA3)', () =>
   const CHAMADA = '66666666-6666-4666-8666-666666666666'
   const resposta = {
     sugestao: { chamadaId: CHAMADA, sugestao: true, texto: 'O juiz mandou juntar laudo em 15 dias úteis.', fontes: [{ tipo: 'publicacao', referencia: 'publicacao:x' }], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-07T13:00:00.000Z', alerta: null },
-    leitura: { resumo: 'O juiz mandou juntar laudo em 15 dias úteis.', ciencia: false, itens: [{ setor: 'atendimento', descricao: 'Pedir o laudo ao cliente', provaEsperada: 'Laudo recente' }], pericias: [] },
+    leitura: { resumo: 'O juiz mandou juntar laudo em 15 dias úteis.', ciencia: false, itens: [{ setor: 'atendimento', descricao: 'Pedir o laudo ao cliente', provaEsperada: 'Laudo recente', tipoDocumento: 'laudo' }], pericias: [] },
     motivo: null,
     aviso: 'Sem referência na casa: nada parecido no acervo; a IA usou só o caso.',
   }
@@ -238,11 +238,20 @@ describe('Exigência do juiz · sugestão da IA (épico IA, GGVP-79 CA3)', () =>
     expect((screen.getByLabelText('O que cumprir') as HTMLInputElement).value).toBe('Pedir o laudo ao cliente')
     expect((screen.getByLabelText('Setor') as HTMLSelectElement).value).toBe('atendimento')
     expect((screen.getByLabelText('Prazo interno') as HTMLInputElement).value).toBe('')
+    // Bloco 5d (GGVP-125): o tipo do documento que a IA sugeriu já vem escolhido.
+    expect((screen.getByLabelText(/^Tipo do documento/) as HTMLSelectElement).value).toBe('laudo')
     fireEvent.change(screen.getByLabelText('Prazo interno'), { target: { value: '2026-10-20' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }))
     await screen.findByText('Tarefas criadas. Cada setor recebeu "Cumprir exigência do juiz".')
     const post = fetch.mock.calls.find(([url, init]) => init?.method === 'POST' && String(url).endsWith('/exigencia-juiz'))!
     const corpo = JSON.parse(post[1]!.body as string)
-    expect([corpo.decisao, corpo.chamadaIaId, corpo.itens[0].prazoInterno]).toEqual(['cumprir', CHAMADA, '20/10/2026'])
+    expect([corpo.decisao, corpo.chamadaIaId, corpo.itens[0].prazoInterno, corpo.itens[0].tipoDocumento]).toEqual(['cumprir', CHAMADA, '20/10/2026', 'laudo'])
+  })
+
+  it('GGVP-125, bloco 5d · o tipo que a IA sugere fora do catálogo das telas não entra', async () => {
+    const fora = { ...resposta, leitura: { ...resposta.leitura, itens: [{ ...resposta.leitura.itens[0], tipoDocumento: 'inventado' }] } }
+    servidor(exigenciaDoJuiz, undefined, fora)
+    render(<AnalisarExigenciaJuiz casoId={CASO} />)
+    expect((await screen.findByLabelText(/^Tipo do documento/) as HTMLSelectElement).value).toBe('')
   })
 })

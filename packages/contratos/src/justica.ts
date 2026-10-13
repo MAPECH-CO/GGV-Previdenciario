@@ -18,7 +18,14 @@ export const PRAZO_DOS_QUESITOS = 15
 
 const Prazo = z.object({ inicio: z.string(), fim: z.string(), regra: z.string(), versao: z.number() })
 
-/** POST /api/publicacoes/:id/classificacao (GGVP-34, GGVP-37, GGVP-59): a pessoa classifica; só o andamento não pede os dias. */
+/** GGVP-64 parte 2 (CA1): a vara e o juiz, como estão escritos na publicação. */
+export const TAMANHO_DA_VARA = 120
+const daVara = (rotulo: string) => z.string().trim().max(TAMANHO_DA_VARA, `${rotulo} tem até ${TAMANHO_DA_VARA} caracteres`).optional()
+
+/**
+ * POST /api/publicacoes/:id/classificacao (GGVP-34, GGVP-37, GGVP-59): a pessoa classifica; só o andamento não pede os
+ * dias. GGVP-64 parte 2: a vara e o juiz conferidos vão junto; vazios, o caso fica com o que já tinha.
+ */
 export const ClassificarPublicacao = z
   .object({
     classe: z.enum(CLASSES_DE_ATO, { error: 'Escolha o tipo de ato' }),
@@ -27,6 +34,8 @@ export const ClassificarPublicacao = z
       .union([z.string(), z.number()])
       .optional()
       .transform((v) => (v === undefined || v === '' ? null : normalizarInteiro(v))),
+    vara: daVara('A vara'),
+    juiz: daVara('O nome do juiz'),
   })
   .refine((c) => c.classe === 'andamento' || c.semPrazoNaDecisao || (c.dias !== null && c.dias >= 1 && c.dias <= 120), {
     message: 'Informe o prazo da publicação, em dias (1 a 120), ou marque "sem prazo na decisão"',
@@ -43,6 +52,8 @@ export const ClassificarPublicacao = z
             ? PRAZO_DOS_QUESITOS
             : PRAZO_SEM_DIAS_NA_DECISAO
           : (c.dias as number),
+    vara: c.vara || null,
+    juiz: c.juiz || null,
   }))
 export type ClassificarPublicacao = z.input<typeof ClassificarPublicacao>
 
@@ -64,11 +75,19 @@ export const PublicacaoParaLer = z.object({
 })
 export type PublicacaoParaLer = z.infer<typeof PublicacaoParaLer>
 
-/** O que a IA devolve na leitura da publicação (GGVP-34, GGVP-74): só lê os dias escritos; a data final é do código. */
+/** A vara ou o juiz que a IA leu: vazio é o mesmo que não estar escrito; o longo é cortado no tamanho do campo. */
+const lidoNoTexto = z.string().trim().nullable().default(null).transform((t) => (t ? t.slice(0, TAMANHO_DA_VARA) : null))
+
+/**
+ * O que a IA devolve na leitura da publicação (GGVP-34, GGVP-74): só lê os dias escritos; a data final é do código.
+ * GGVP-64 parte 2 (CA1): a vara e o juiz, quando estão escritos; a pessoa confere.
+ */
 export const LeituraDaPublicacaoPelaIa = z.object({
   classe: z.enum(CLASSES_DE_ATO),
   dias: z.number().int().min(1).max(120).nullable(),
   resumo: z.string().trim().min(1),
+  vara: lidoNoTexto,
+  juiz: lidoNoTexto,
 })
 /** POST /api/publicacoes/:id/sugestao. Sem sugestão (sem chave, falha ou fora do formato): `sugestao` nulo e o motivo. */
 export const SugestaoDePublicacao = z.object({
@@ -172,6 +191,12 @@ const ItemDaExigenciaJuiz = z.object({
     .optional()
     .transform((v) => v || null),
   prazoInterno: DataObrigatoria('Informe o prazo interno de cada item (dd/mm/aaaa)'),
+  /** O tipo de documento que cumpre o item, se houver: o documento conferido desse tipo dá baixa sozinho (GGVP-125, bloco 5d). */
+  tipoDocumento: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || null),
 })
 
 /** POST /api/casos/:id/exigencia-juiz (GGVP-79 CA1, CA2, CA6, CA7, CA8, CA13): "o prazo interno até o processual" o servidor confere. */
@@ -198,7 +223,14 @@ export const AnaliseDaExigenciaPelaIa = z.object({
   resumo: z.string().trim().min(1),
   ciencia: z.boolean(),
   itens: z
-    .array(z.object({ setor: z.enum(SETORES_DA_EXIGENCIA), descricao: z.string().trim().min(1), provaEsperada: z.string().trim().nullable().default(null) }))
+    .array(
+      z.object({
+        setor: z.enum(SETORES_DA_EXIGENCIA),
+        descricao: z.string().trim().min(1),
+        provaEsperada: z.string().trim().nullable().default(null),
+        tipoDocumento: z.string().trim().nullable().default(null),
+      }),
+    )
     .default([]),
   pericias: z.array(z.enum(TIPOS_DE_PERICIA)).default([]),
 })

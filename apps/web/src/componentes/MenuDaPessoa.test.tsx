@@ -4,7 +4,7 @@ import type { UsuarioDaSessao } from '@ggv/contratos'
 import { CHAVE } from '../dados/servidor.ts'
 import { Exige } from '../paginas/SemPermissao.tsx'
 import { SessaoContexto } from '../sessao.ts'
-import { EntrarComo } from './EntrarComo.tsx'
+import { MenuDaPessoa } from './MenuDaPessoa.tsx'
 
 const eva: UsuarioDaSessao = {
   nome: 'Eva',
@@ -16,10 +16,10 @@ const eva: UsuarioDaSessao = {
 
 afterEach(() => vi.unstubAllGlobals())
 
-describe('Entrar como… (GGVP-96 CA10)', () => {
-  it('mostra o perfil ativo e, aberto, só os perfis atribuídos à pessoa', () => {
-    render(<EntrarComo usuario={eva} />)
-    const botao = screen.getByRole('button', { name: 'Atendimento · líder' })
+describe('A pessoa no topo e o Entrar como… (GGVP-96 CA10; refeito em 11/10)', () => {
+  it('mostra o nome e o perfil ativo e, aberto, só os perfis atribuídos à pessoa', () => {
+    render(<MenuDaPessoa usuario={eva} />)
+    const botao = screen.getByRole('button', { name: 'Eva, Atendimento · líder' })
     expect(botao.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(botao)
     const itens = screen.getAllByRole('menuitemradio').map((i) => [i.textContent, i.getAttribute('aria-checked')])
@@ -30,23 +30,32 @@ describe('Entrar como… (GGVP-96 CA10)', () => {
     expect(screen.queryByRole('menuitemradio', { name: 'Sênior' })).toBeNull()
   })
 
-  it('escolher outro perfil pede ao servidor, mantém a cópia do navegador (roteiro de 09/10) e volta ao início', async () => {
+  it('aberto, mostra o nome e o e-mail e o Sair; as iniciais não contam o que vem entre parênteses', () => {
+    render(<MenuDaPessoa usuario={{ ...eva, nome: 'Eva Maria Souza (exemplo)' }} />)
+    fireEvent.click(screen.getByRole('button', { name: /Eva Maria Souza/ }))
+    const menu = screen.getByRole('menu', { name: 'Entrar como' })
+    expect(menu.textContent).toContain('eva@exemplo.ggv')
+    expect(screen.getByRole('menuitem', { name: 'Sair' })).toBeTruthy()
+    expect(document.querySelector('[aria-hidden="true"]')?.textContent).toBe('ES')
+  })
+
+  it('escolher outro perfil pede ao servidor, limpa a cópia do navegador (fechamento, parte 6) e volta ao início', async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ ...eva, perfilAtivo: 'atendimento' })))
     const assign = vi.fn()
     vi.stubGlobal('fetch', fetch)
     vi.stubGlobal('location', { ...window.location, assign })
     sessionStorage.setItem(CHAVE, '{"fichas":[]}')
-    render(<EntrarComo usuario={eva} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Atendimento · líder' }))
+    render(<MenuDaPessoa usuario={eva} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Eva, Atendimento · líder' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Atendimento' }))
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
     expect(fetch).toHaveBeenCalledWith('/api/sessao/perfil', expect.objectContaining({ method: 'POST', body: JSON.stringify({ perfil: 'atendimento' }) }))
-    expect(sessionStorage.getItem(CHAVE)).toBe('{"fichas":[]}')
+    expect(sessionStorage.getItem(CHAVE)).toBeNull()
   })
 
   it('Esc fecha o menu', () => {
-    render(<EntrarComo usuario={eva} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Atendimento · líder' }))
+    render(<MenuDaPessoa usuario={eva} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Eva, Atendimento · líder' }))
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('menu')).toBeNull()
   })

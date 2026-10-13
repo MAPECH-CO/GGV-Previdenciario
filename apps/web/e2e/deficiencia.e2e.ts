@@ -38,6 +38,6 @@ test('tema escuro e fonte grande na linha do tempo', async ({ page }) => {
   await page.goto('/casos/cleide-exemplo-1/deficiencia?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cleide Exemplo · Linha do tempo da deficiência')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   await expect(page.locator('section', { has: page.getByRole('heading', { name: 'Dados da deficiência' }) })).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
 })

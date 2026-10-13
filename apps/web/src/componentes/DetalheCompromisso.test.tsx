@@ -28,7 +28,7 @@ describe('Detalhe do compromisso', () => {
     const { navegar, janela } = abrir(await evento('natalia-entrevista'))
     expect(janela.getByRole('heading').textContent).toBe('Natália Exemplo · Fazer entrevista')
     expect(janela.getByText('confirmar se aconteceu')).toBeTruthy()
-    expect(janela.getByText('D1.09 · Atender e entrevistar')).toBeTruthy()
+    expect(janela.getByText('Atender e entrevistar')).toBeTruthy()
     expect(janela.getByText('dom 04/10/2026 · 10:30')).toBeTruthy()
     expect(janela.getByText('Passou sem registro: confirme se aconteceu.')).toBeTruthy()
     fireEvent.click(janela.getByRole('button', { name: 'Faltou' }))

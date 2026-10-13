@@ -13,7 +13,7 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^\S+ /, ''))
+const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^[^\p{L}+]+ /u, ''))
 
 describe('GGVP-78 · o início de perfil sem Central', () => {
   it('desde as Centrais da Sênior e do Financeiro e o início do Sócio, só perfil novo cai aqui: o título, a busca, o chat e a fila', async () => {

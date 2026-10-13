@@ -1,0 +1,337 @@
+/* Os widgets do chat (12/10): quadros do tamanho da resposta, nas cores e sombras do portal. */
+.quadro {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid oklch(0 0 0 / 0.08);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  background-clip: padding-box;
+  box-shadow: var(--sombra-1);
+  overflow: hidden;
+}
+
+.titulo {
+  padding: 10px 14px 6px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.numero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid oklch(0 0 0 / 0.08);
+  border-radius: var(--raio-10);
+  background: var(--cor-superficie);
+  background-clip: padding-box;
+  box-shadow: var(--sombra-1);
+}
+
+:root[data-tema='escuro'] :is(.quadro, .numero) {
+  border-color: oklch(1 0 0 / 0.08);
+}
+
+.rotulo {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.valor {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.nota {
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-11);
+}
+
+.tom-erro {
+  color: var(--cor-erro);
+}
+
+.tom-alerta {
+  color: var(--cor-alerta-2);
+}
+
+.tom-ok {
+  color: var(--cor-ok);
+}
+
+.tom-acento {
+  color: var(--cor-acento);
+}
+
+.linhas {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  list-style: none;
+}
+
+.linhas > li + li {
+  border-top: 1px solid var(--cor-linha);
+}
+
+.linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}
+
+a.linha:hover {
+  background-image: var(--estado-passar);
+}
+
+a.linha:active {
+  background-image: var(--estado-apertar);
+}
+
+.textos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.textos strong {
+  font-weight: 600;
+}
+
+.sub {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.selo {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selo-neutro {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.selo-acento {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.selo-alerta {
+  background: var(--cor-alerta-suave);
+  color: var(--cor-alerta-2);
+}
+
+.selo-erro {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.selo-ok {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.seta {
+  flex: none;
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-18);
+  line-height: 1;
+}
+
+.semana {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 14px 10px;
+  text-align: center;
+}
+
+.dia {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diaNome {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.diaConta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  border-radius: var(--raio-6);
+  background: var(--cor-painel-neutro-2);
+  color: var(--cor-texto-suave-2);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fundo-erro {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.fundo-acento {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.data {
+  flex: none;
+  min-width: 42px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.etapas {
+  display: flex;
+  gap: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.etapas li {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 4px;
+  overflow: hidden;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-12);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.etapa-feita {
+  background: var(--cor-painel-neutro);
+  color: var(--cor-texto-suave);
+}
+
+.etapa-atual {
+  border-color: var(--cor-acento);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-weight: 600;
+  box-shadow: var(--sombra-acento);
+}
+
+.etapa-futura {
+  border-style: dashed;
+  color: var(--cor-texto-suave-2);
+}
+
+.tempo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 14px 12px;
+  list-style: none;
+}
+
+.tempo li {
+  display: flex;
+  gap: 10px;
+  font-size: var(--fonte-13);
+}
+
+.tempo li .textos {
+  padding-left: 10px;
+  border-left: 2px solid var(--cor-linha);
+}
+
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 14px 12px;
+  list-style: none;
+}
+
+.barras li {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fonte-13);
+}
+
+.barraRotulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trilho {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-painel-neutro);
+}
+
+.trilho > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cor-acento);
+}
+
+.barraValor {
+  min-width: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Estreito (a aba Suporte e o celular): números em 2 colunas, a faixa da semana some (fica a lista), as etapas quebram
+   em duas linhas para o nome caber e o nome da barra ganha mais espaço. */
+@container (max-width: 420px) {
+  .numeros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .semana {
+    display: none;
+  }
+
+  .etapas {
+    flex-wrap: wrap;
+  }
+
+  .etapas li {
+    flex: 1 1 calc(33% - 4px);
+  }
+
+  .barras li {
+    grid-template-columns: minmax(0, 42%) 1fr auto;
+  }
+}

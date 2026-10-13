@@ -180,6 +180,38 @@ Nenhuma tela nova.
 - **Tempo até a sentença:** hoje, só os processos protocolados pelo portal com a data da decisão gravada têm as duas datas. Os importados ficam fora até o estudo trazer a data da distribuição.
 - **A inicial ainda não tem número:** a minuta da petição inicial é escrita antes do protocolo, quando o caso quase nunca tem número de processo. A fonte do juízo só vem quando o caso já tem um número (por exemplo, um novo processo depois de um perdido). Prever o juízo pela cidade do cliente fica para a parte 2, se o escritório quiser.
 
+## GGVP-64 · Juízo identificado: mostrar a jurimetria (parte 2, 09/10)
+
+### Context
+- A parte 1 está no PR #11, em revisão: o juízo pelo CNJ (`juizoDoCnj`), a jurimetria em código e `GET /api/casos/:id/juizo`.
+- A página do processo ainda roda com dados de exemplo no navegador; ligá-la ao servidor é da GGVP-146 (Pedro, em andamento).
+- A recomendação de recurso depende da GGVP-100, travada pela Q26.
+- O nome do órgão do DJEN só vem com o PR das fontes reais (AASP e DJEN), ainda aberto.
+- A tabela `juizo` (tribunal, nome) existe e ninguém escreve nela.
+
+### Decisions
+1. **Vara e juiz pela leitura da publicação** (CA1):
+   - a leitura da IA (`classificar_publicacao`, versão 4) devolve também `vara` e `juiz` quando estão escritos no texto, ou nulo;
+   - a tela de leitura ganha os campos "Vara" e "Juiz", preenchidos pela sugestão; a pessoa confere e manda junto com a classificação;
+   - o caso guarda os dois (`caso.vara` e `caso.juiz`, migração nova); campo vazio não apaga o que já estava; o histórico guarda o antes e o depois.
+2. **Entendimentos recorrentes** (CA2, CA5):
+   - a IA (finalidade `entendimentos_do_juizo`, versão 1, JSON, leva dado de saúde, barra CID) lê as decisões de mérito dos processos do mesmo juízo (as publicações de mérito dos casos com CNJ daquele juízo, as últimas 10), cada uma sem dado pessoal (`anonimizar`, com o nome do cliente);
+   - devolve até 5 entendimentos, cada um com os números dos processos de exemplo; o código só aceita processos que estavam no conteúdo, e não há porcentagem no texto;
+   - roda em segundo plano, pela sugestão pronta, e fica na tabela `juizo` (uma linha por juízo, `nome` com o rótulo do CNJ, como "TRF3 · 6301"; colunas novas `entendimentos` e `entendimentos_em`). Decisão nova no juízo, a rodada refaz.
+3. **Contrato:** `JurimetriaDoJuizo` ganha `vara` e `juiz` (do caso, ou nulos) e `entendimentos` (texto e processos); `LeituraDaPublicacaoPelaIa` e `ClassificarPublicacao` ganham `vara` e `juiz` opcionais, até 120 caracteres.
+4. **Na peça** (CA6): quando o caso já tem juízo, a minuta manda ao modelo os entendimentos e os processos de exemplo, sem número do juízo; as fontes da advogada mostram o que foi usado. Antes do protocolo, sem juízo, nada muda.
+5. **Sem dependência nova.**
+
+### Campos de formulário
+- **"Vara"** e **"Juiz"** (leitura da publicação): texto curto, até 120 caracteres, opcionais, validados pelo contrato na tela e no servidor. Não são dados da biblioteca `campos` (não é CPF, data, número nem nome de pessoa a validar).
+
+### Telas
+Nenhuma tela nova. A leitura da publicação ganha "Vara" e "Juiz". A sobreposição da página do processo continua com os números de exemplo até a página ler do servidor.
+
+### Risks / Trade-offs
+- **Entendimentos com poucas decisões:** com uma ou duas decisões, o "recorrente" é fraco; cada entendimento mostra os processos de exemplo, e a advogada julga.
+- **Vara digitada de dois jeitos:** fica como foi conferida; o juízo da jurimetria continua sendo o do CNJ.
+
 ## GGVP-141 · Acervo alimentado pelo que as telas do Pedro conferem, com busca por significado (parte 1)
 
 ### Context

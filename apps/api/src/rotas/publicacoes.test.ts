@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, eventoAuditoria, identificadorCaso, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MOTIVO_SEM_CNJ, casarPublicacoes } from '../vigilia/casar.ts'
@@ -212,7 +212,8 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     comIa(JSON.stringify({ classe: 'nomeacao_perito', dias: null, resumo: 'O juiz nomeia o perito e abre prazo para quesitos.' }))
     const r = (await chamar('gabi', 'POST', `/api/publicacoes/${p.id}/sugestao`)).json()
     const [chamada] = await banco.select().from(chamadaIa)
-    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 3])
+    // Versão 4 desde a GGVP-64 parte 2 (a vara e o juiz); a nomeação entrou na 3.
+    expect([r.sugestao.classe, r.sugestao.dias, chamada.versaoInstrucao]).toEqual(['nomeacao_perito', null, 4])
     const [depois] = await banco.select().from(publicacao)
     expect([depois.classe, depois.classeSugeridaIa]).toEqual([null, 'nomeacao_perito'])
   })
@@ -234,6 +235,31 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     expect([alvo, detalhe.perito, detalhe.reconhecido]).toEqual([`caso:${casoId}`, { id: menezes.id, nome: 'Dr. Ricardo Menezes', laudos: 2 }, true])
   })
 
+  it('GGVP-152 CA3 · o perito reconhecido fica ligado à perícia aberta do mesmo tipo, na coluna e no documento da perícia', async () => {
+    const [menezes] = await banco
+      .insert(perito)
+      .values({ nome: 'Dr. Ricardo Menezes', nomeNormalizado: 'ricardo menezes', perfil: { tipo: 'medica', onde: 'JEF', laudos: [] } })
+      .returning()
+    const [medica] = await banco
+      .insert(pericia)
+      .values({ casoId, tipo: 'medica', documento: { id: 'p-1', tipo: 'medica', peritoLido: 'R. Menezes', historico: [] } })
+      .returning()
+    const [social] = await banco.insert(pericia).values({ casoId, tipo: 'social' }).returning()
+    const p = await nomeacao('Nomeio perito o Dr. Ricardo Menezes. Intimem-se as partes para quesitos.')
+    await classificar(p.id, { classe: 'nomeacao_perito', semPrazoNaDecisao: true })
+    const linhas = new Map((await banco.select().from(pericia)).map((l) => [l.id, l]))
+    const doc = linhas.get(medica.id)!.documento as { peritoId: string; peritoLido?: string; historico: { oQue: string }[] }
+    expect([linhas.get(medica.id)!.peritoId, doc.peritoId, doc.peritoLido, doc.historico.at(-1)?.oQue]).toEqual([
+      menezes.id,
+      menezes.id,
+      undefined,
+      'Perito nomeado na publicação: Dr. Ricardo Menezes',
+    ])
+    expect(linhas.get(social.id)!.peritoId).toBeNull()
+    const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
+    expect(detalhe.pericia).toBe(medica.id)
+  })
+
   it('GGVP-59 CA1, CA6 · com prazo no despacho, vale o do despacho; perito que a base não conhece fica "não reconhecido" e nada trava', async () => {
     await banco.insert(perito).values({ nome: 'Dr. Ricardo Menezes', nomeNormalizado: 'ricardo menezes' })
     const p = await nomeacao('Nomeio perita a Dra. Lúcia Prado. Quesitos em 10 dias.')
@@ -242,6 +268,30 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
     expect(await filaDa('gabi')).toEqual([['Quesitos e assistente técnico', '2026-10-20']])
     const [[, detalhe]] = (await peritoNomeado()) as [[string, Record<string, unknown>]]
     expect([detalhe.perito, detalhe.reconhecido]).toEqual([null, false])
+  })
+
+  const varaEJuiz = async () => (await banco.select({ vara: caso.vara, juiz: caso.juiz }).from(caso).where(eq(caso.id, casoId)))[0]
+
+  it('GGVP-64 parte 2 CA1 (IA) · a IA lê a vara e o juiz escritos na publicação; a pessoa confere', async () => {
+    const { exigencia } = await casar()
+    comIa(JSON.stringify({ classe: 'exigencia', dias: 15, resumo: 'O juiz pede o laudo.', vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' }))
+    const r = (await chamar('gabi', 'POST', `/api/publicacoes/${exigencia.id}/sugestao`)).json()
+    expect([r.sugestao.vara, r.sugestao.juiz]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo', 'Dra. Exemplo'])
+    // Só a sugestão: o caso só guarda o que a pessoa conferir.
+    expect(await varaEJuiz()).toEqual({ vara: null, juiz: null })
+  })
+
+  it('GGVP-64 parte 2 CA1 · a classificação guarda a vara e o juiz conferidos no caso; vazio não apaga, e o histórico registra', async () => {
+    const { exigencia, andamento } = await casar()
+    await classificar(exigencia.id, { classe: 'exigencia', dias: '15', vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' })
+    expect(await varaEJuiz()).toEqual({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo' })
+    await classificar(andamento.id, { classe: 'andamento', vara: '', juiz: 'Dr. Outro Exemplo' })
+    expect(await varaEJuiz()).toEqual({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dr. Outro Exemplo' })
+    const eventos = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'vara_e_juiz_conferidos'))
+    expect(eventos.map((e) => [e.alvo, (e.detalhe as { antes: { juiz: string | null } }).antes.juiz])).toEqual([
+      [`caso:${casoId}`, null],
+      [`caso:${casoId}`, 'Dra. Exemplo'],
+    ])
   })
 
   it('só quem pode classifica; o Financeiro nem abre', async () => {

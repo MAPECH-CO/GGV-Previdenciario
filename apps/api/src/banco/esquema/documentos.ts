@@ -30,6 +30,10 @@ export const documento = pgTable(
     conferidoPor: uuid('conferido_por').references(() => usuario.id),
     conferidoEm: momento('conferido_em'),
     excluidoEm: momento('excluido_em'),
+    /** O arquivo na pasta do cliente no Drive (GGVP-107 CA2): o id não muda quando alguém move o arquivo lá. */
+    driveArquivoId: text('drive_arquivo_id'),
+    /** Ainda vai para o Drive. O que existia antes da integração ficou fora (migração 0027). */
+    drivePendente: boolean('drive_pendente').notNull().default(true),
     criadoEm: criadoEm(),
   },
   (t) => [emLista('documento_situacao', t.situacao, SITUACOES_DOCUMENTO)],

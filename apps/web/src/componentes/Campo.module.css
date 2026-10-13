@@ -22,6 +22,7 @@
   border-radius: var(--raio-6);
   background: var(--cor-superficie);
   font-size: var(--fonte-13);
+  box-shadow: var(--sombra-1);
 }
 
 .entrada[aria-invalid='true'] {

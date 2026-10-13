@@ -156,7 +156,7 @@ describe('Ler e arquivar os documentos · servidor de exemplo', () => {
     const c = await documentosLidos('sebastiao-exemplo')
     const resposta = await arquivarDocumentos('sebastiao-exemplo', { conferi: true, documentos: comoAIASugeriu(c!) })
     expect(resposta.contrato).toBe(true)
-    expect((await obterFicha('sebastiao-exemplo'))?.historico.at(-1)?.oQue).toBe('O contrato assinado segue para a verificação do contrato (D1.19)')
+    expect((await obterFicha('sebastiao-exemplo'))?.historico.at(-1)?.oQue).toBe('O contrato assinado segue para a verificação do contrato')
   })
 
   it('CA4 · o contrato que esperava a leitura sai dela quando a Documentação arquiva o assinado (junção com a GGVP-85)', async () => {

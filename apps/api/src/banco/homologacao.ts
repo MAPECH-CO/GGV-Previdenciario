@@ -3,6 +3,7 @@
 // Roda a mesma semente dos testes no banco do DATABASE_URL, uma vez só, e dá a cada usuário de exemplo uma senha
 // provisória aleatória, com troca no primeiro acesso. A lista aparece uma vez, para quem rodou, e é entregue ao Lucas
 // fora do repositório, do Jira e do chat. Só roda com AMBIENTE=homologacao; fora dela, recusa sem gravar nada (CA5).
+// Rodar de novo só acrescenta os exemplos dos recursos novos que faltarem (GGVP-158), sem trocar senha.
 import { randomBytes } from 'node:crypto'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,7 +11,7 @@ import bcrypt from 'bcryptjs'
 import { eq, inArray } from 'drizzle-orm'
 import { abrirBanco, type Banco } from './conexao.ts'
 import { configuracao, usuario } from './esquema.ts'
-import { semearExemplos, usuariosDeExemplo } from './exemplo.ts'
+import { semearExemplos, semearRecursosNovos, usuariosDeExemplo } from './exemplo.ts'
 import { LIMITES_PADRAO } from '../fluxo/exigencia.ts'
 
 /** CA2: os limites de cobrança do Lucas (05/10 e 07/10), os mesmos que o servidor usa sem configuração (G15). */
@@ -44,6 +45,8 @@ export async function prepararHomologacao(
         await tx.insert(configuracao).values(c).onConflictDoUpdate({ target: configuracao.chave, set: { valor: c.valor, alteradoPor: c.alteradoPor, atualizadoEm: c.atualizadoEm } })
     }
     await tx.insert(configuracao).values(LIMITES_DO_LUCAS).onConflictDoNothing()
+    // GGVP-158: os exemplos dos recursos novos entram também na homologação já preparada, só o que faltar.
+    await semearRecursosNovos(tx)
     if (jaPreparada) return []
     const credenciais: Credencial[] = []
     for (const u of usuariosDeExemplo) {

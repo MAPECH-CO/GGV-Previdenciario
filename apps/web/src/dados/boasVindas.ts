@@ -1,33 +1,14 @@
 // EXEMPLO. Servidor de exemplo das boas-vindas (GGVP-97), sobre o mesmo banco de servidor.ts. O Chatwoot é simulado: a
 // mensagem "sai" quando a ficha tem telefone; sem telefone, o Chatwoot não acha a conversa e o envio falha (CA6). Ligar
 // no servidor: trocar o corpo de cada função por fetch no endpoint da spec da ggvp-97 e mandar pelo Chatwoot (GGVP-102).
-import { jaEraCliente, mensagemDeBoasVindas } from '../regras/boasVindas.ts'
+import { boasVindasDoCaso, type BoasVindas, type RegistroDasBoasVindas } from '../regras/boasVindas.ts'
 import { hojeIso } from '../regras/datas.ts'
 import { checklistDoCaso, contratoAssinado } from './checklist.ts'
-import { agora, esperar, evento, gravar, ler, type Banco } from './servidor.ts'
-import type { Processo, Tarefa } from './tipos.ts'
+import { doBancoOuNulo } from './parecer.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import type { Ficha, Processo, Tarefa } from './tipos.ts'
 
-/** Cada tentativa de envio: a que saiu e a que falhou. */
-export type RegistroDasBoasVindas = {
-  fichaId: string
-  processoId: string
-  /** Data e hora ISO. */
-  quando: string
-  situacao: 'enviada' | 'falhou'
-  mensagem: string
-  motivo?: string
-}
-
-export type BoasVindas = {
-  /** 'ja-era-cliente': não vai (CA3); 'aguardando-checklist': sai depois da conferência do checklist (CA1). */
-  situacao: 'ja-era-cliente' | 'aguardando-checklist' | 'a-enviar' | 'enviada' | 'falhou'
-  /** A mensagem pelo modelo, para conferir (CA4, CA5); enviada, a que saiu. */
-  mensagem: string
-  copias: string[]
-  faltam: string[]
-  /** A última tentativa deste caso. */
-  registro?: RegistroDasBoasVindas
-}
+export type { BoasVindas, RegistroDasBoasVindas } from '../regras/boasVindas.ts'
 
 /** "Enviar pelo Chatwoot": só depois de alguém conferir a mensagem (CA4). */
 export type EnvioDasBoasVindas = { conferi: true; mensagem: string }
@@ -41,21 +22,18 @@ function montar(banco: Banco, processoId: string): (BoasVindas & { fichaId: stri
   const caso = checklistDoCaso(banco, processoId)
   if (!caso) return null
   const { ficha, processo, beneficio, checklist, conferencia } = caso
+  const registros = [...(banco.boasVindas ?? []), ...(banco.boasVindasDoServidor ?? [])].filter((r) => r.fichaId === ficha.id)
   const copias = copiasDoKit(banco, processo)
-  const registros = (banco.boasVindas ?? []).filter((r) => r.fichaId === ficha.id)
-  const registro = registros.filter((r) => r.processoId === processoId).at(-1)
-  const enviada = registros.find((r) => r.situacao === 'enviada')
-  const base = { fichaId: ficha.id, nome: ficha.nome, copias, faltam: checklist.faltam, registro }
-  if (enviada?.processoId === processoId) return { ...base, situacao: 'enviada', mensagem: enviada.mensagem, registro: enviada }
-  // Uma única vez por cliente: quem já recebeu, ou já tinha outro processo, já era cliente (CA3, CA4).
-  if (enviada || jaEraCliente(ficha, processoId)) return { ...base, situacao: 'ja-era-cliente', mensagem: '' }
-  const mensagem = mensagemDeBoasVindas({ nome: ficha.nome, beneficio, copias, faltam: checklist.faltam })
-  if (registro?.situacao === 'falhou') return { ...base, situacao: 'falhou', mensagem }
-  return { ...base, situacao: conferencia ? 'a-enviar' : 'aguardando-checklist', mensagem }
+  return {
+    fichaId: ficha.id,
+    nome: ficha.nome,
+    ...boasVindasDoCaso({ ficha, processoId, beneficio, copias, faltam: checklist.faltam, conferido: Boolean(conferencia), registros }),
+  }
 }
 
 /** GET /api/processos/:id/boas-vindas */
 export async function obterBoasVindas(processoId: string): Promise<BoasVindas | null> {
+  if (doServidor(processoId)) return doBancoOuNulo<BoasVindas>(`/processos/${processoId}/boas-vindas`)
   const banco = ler()
   const boasVindas = montar(banco, processoId)
   gravar(banco)
@@ -64,6 +42,12 @@ export async function obterBoasVindas(processoId: string): Promise<BoasVindas | 
 
 /** POST /api/processos/:id/boas-vindas. Uma vez, conferida, pelo Chatwoot; a falha fica no histórico e vira tarefa (CA4, CA6). */
 export async function enviarBoasVindas(processoId: string, envio: EnvioDasBoasVindas): Promise<RegistroDasBoasVindas> {
+  if (doServidor(processoId)) {
+    // Bloco 5c (decisão do Mateus, 09/10): o portal ainda não manda; "Já enviei" marca as que a Atendimento mandou por fora.
+    const r = await noBanco<{ boasVindas: BoasVindas; ficha: Ficha }>(`/processos/${processoId}/boas-vindas`, { method: 'POST' })
+    receber({ ficha: r.ficha, boasVindas: [r.boasVindas.registro!] })
+    return r.boasVindas.registro!
+  }
   await esperar()
   if (envio.conferi !== true) throw new Error('Confira a mensagem antes de enviar')
   const mensagem = envio.mensagem?.trim() ?? ''
@@ -113,6 +97,24 @@ export function tarefasDeReenviarBoasVindas(): Tarefa[] {
       },
     ]
   })
+  // Bloco 5c: no caso do servidor, conferido o checklist do cliente novo, a Atendimento manda por fora e marca "Já enviei".
+  const aEnviar = (banco.checklistsDoServidor ?? []).flatMap((c) => {
+    const atual = c.conferencia ? montar(banco, c.processoId) : null
+    if (atual?.situacao !== 'a-enviar') return []
+    const n = atual.faltam.length
+    return [
+      {
+        id: `boas-vindas-${c.processoId}`,
+        codigo: 'D1.22',
+        cliente: { id: atual.fichaId, nome: atual.nome },
+        acao: 'Enviar boas-vindas',
+        detalhe: `${c.beneficio} · checklist conferido · ${n === 0 ? 'sem pendências' : n === 1 ? '1 pendência' : `${n} pendências`}`,
+        prazo: 'hoje',
+        href: `/casos/${c.processoId}/checklist`,
+        processoId: c.processoId,
+      },
+    ]
+  })
   gravar(banco)
-  return tarefas
+  return [...tarefas, ...aEnviar]
 }

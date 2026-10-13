@@ -16,6 +16,7 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   text-decoration: none;
+  box-shadow: var(--sombra-1);
 }
 
 .item:hover {
@@ -47,10 +48,12 @@
   background: var(--cor-superficie);
   color: var(--cor-texto);
   font-size: var(--fonte-12);
+  box-shadow: var(--sombra-1);
 }
 
 .opcao[aria-checked='true'] {
   border-color: var(--cor-acento);
   background: var(--cor-acento);
   color: var(--cor-superficie);
+  box-shadow: var(--sombra-acento);
 }

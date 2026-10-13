@@ -14,8 +14,10 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
   // GGVP-133: o Chromium tem um microfone de mentira. Sem a permissão, a tela fica "sem microfone" (o padrão dos testes);
-  // o teste que grava de verdade abre o contexto com `permissions: ['microphone']`.
-  use: { baseURL: `http://localhost:${web}`, launchOptions: { args: ['--use-fake-device-for-media-stream'] } },
+  // o teste que grava de verdade abre o contexto com `permissions: ['microphone']`. GGVP-158: o navegador no fuso do
+  // escritório, como a API abaixo. No CI (UTC), das 21h à meia-noite de Brasília o "hoje" da tela era o dia seguinte, e a
+  // perícia de hoje parecia passada.
+  use: { baseURL: `http://localhost:${web}`, timezoneId: 'America/Sao_Paulo', launchOptions: { args: ['--use-fake-device-for-media-stream'] } },
   projects: [
     { name: 'entrar', testMatch: /sessao\.setup\.ts/ },
     { name: 'logado', dependencies: ['entrar'], use: { storageState: SESSAO }, testIgnore: /login\.e2e\.ts/ },
@@ -25,8 +27,12 @@ export default defineConfig({
     {
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: `http://127.0.0.1:${api}/saude`,
-      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC.
-      env: { PORTA: api, TZ: 'America/Sao_Paulo' },
+      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC. GGVP-136: sem `ZAPSIGN_API_TOKEN` o
+      // servidor trata o ZapSign como não contratado (só papel, sem a opção do celular); o ZapSign é simulado, e os testes dele
+      // precisam da opção. O valor é de mentira. Sem `GOTENBERG_URL`, o kit sai em Word. GGVP-158: sem o Chatwoot, a mensagem
+      // fica "simulado, não saiu"; aqui o Chatwoot de mentira entrega (`RELACIONAMENTO_SIMULADO=entrega`), para o convite, a
+      // confirmação e a cobrança seguirem nos testes. Só aqui: na homologação e na produção, nunca.
+      env: { PORTA: api, TZ: 'America/Sao_Paulo', ZAPSIGN_API_TOKEN: 'valor-de-mentira-dos-testes', RELACIONAMENTO_SIMULADO: 'entrega' },
       reuseExistingServer: false,
     },
     {

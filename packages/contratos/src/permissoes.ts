@@ -24,9 +24,9 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
-// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25. Quem entrar depois
-// renumera.
-export const VERSAO_MATRIZ = 25
+// 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
+// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10). Quem entrar depois renumera.
+export const VERSAO_MATRIZ = 29
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -138,6 +138,8 @@ export const MATRIZ = {
   // O complemento ao médico (GGVP-29): o Atendimento tenta, e no limite a Sênior decide (G15).
   'complemento.cobrar': ['atendimento', 'atendimento_lider'],
   'complemento.decidir': ['senior'],
+  // Versão 23 (GGVP-125, bloco 5c, 09/10): a cobrança dos documentos no limite (G15) só a Sênior decide (GGVP-101, CA8).
+  'cobranca.decidir': ['senior'],
   // A deficiência (GGVP-42) e a condição da criança (GGVP-50) são dado de saúde: só a advogada e a Sênior registram.
   'dado_saude.registrar': ['advogada', 'senior'],
   // A circunstância do acidente (GGVP-47): a Documentação ou o Jurídico marcam.
@@ -154,6 +156,16 @@ export const MATRIZ = {
   // responsável e o Sócio só leem.
   'recurso.ver': ['advogada', 'senior', 'socio'],
   'recurso.decidir': ['senior'],
+  // Versão 27 (GGVP-150, GGVP-131 CA10): a chance de êxito é estratégia jurídica; a advogada, a Sênior e o Sócio veem.
+  'chance.ver': ['advogada', 'senior', 'socio'],
+  // Versão 28 (GGVP-136, Orquestrador, 09/10): o kit de verdade. Só a Sênior sobe ou troca o modelo do Word do kit, com versão.
+  'modelo.subir': ['senior'],
+  // Versão 29 (GGVP-158, 11/10): toda rota /api com trava. Todo perfil usa o chat e vê as próprias tarefas. Quem pode ser
+  // responsável de pendência da conversa (todos menos o Sócio) dá a dela por cumprida; a rota ainda confere que é o
+  // responsável ou a Sênior.
+  'chat.usar': [...PERFIS],
+  'tarefa.ver': [...PERFIS],
+  'tarefa.cumprir': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO, 'financeiro'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

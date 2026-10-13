@@ -1,11 +1,10 @@
-// EXEMPLO. Servidor de exemplo do cálculo de tempo e pontos (GGVP-57), sobre o mesmo banco de servidor.ts. O advogado do
-// atendimento calcula sobre o CNIS e registra; o portal não calcula sozinho e nenhum número vem da IA (G19). Ligar no
-// servidor: trocar o corpo de cada função por fetch no endpoint da design.md e o CNIS de exemplo pelo anexado ao caso.
+// A ficha real vem da API; nunca recebe o CNIS da demonstração. O registro antigo segue apenas no exemplo.
+// A memória por vínculos/carência ainda não tem persistência por caso no servidor.
 import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { dataPrevistaIso, exigeCalculo, pontosFalados, registroValido, tempoFalado } from '../regras/calculo.ts'
 import { cnisDoCaso } from './beneficio.ts'
-import { agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco, receber } from './servidor.ts'
-import type { Agendamento, Calculo, Cnis, Ficha, RegistroDoCalculo, TarefaEncaminhada } from './tipos.ts'
+import { agendamentoDoServidor, agora, esperar, evento, gravar, ler, noBanco } from './servidor.ts'
+import type { Agendamento, Calculo, Cnis, Ficha, RegistroDoCalculo } from './tipos.ts'
 
 /** Quem calcula: o advogado do setor de atendimento (Lucas, 01/10). */
 export const QUEM_ADVOGADO_DO_ATENDIMENTO = 'Você (Advogado do atendimento)'
@@ -22,9 +21,11 @@ function achar(fichas: Ficha[], agendamentoId: string): { ficha: Ficha; agendame
 
 /** GET /api/entrevistas/:id/calculo. O CNIS do caso, com a origem e a data de extração (CA4). */
 export async function obterCalculo(agendamentoId: string): Promise<DadosDoCalculo | null> {
-  const achado = achar(ler().fichas, agendamentoId)
+  const real = agendamentoDoServidor(agendamentoId)
+  const fichas = real ? [await noBanco<Ficha>(`/fichas/${agendamentoId.slice(0, 36)}`)] : ler().fichas
+  const achado = achar(fichas, agendamentoId)
   if (!achado) return null
-  return { ...achado, cnis: cnisDoCaso(achado.ficha.id), exige: exigeCalculo(achado.ficha.beneficioDefinido?.beneficio) }
+  return { ...achado, cnis: real ? undefined : cnisDoCaso(achado.ficha.id), exige: exigeCalculo(achado.ficha.beneficioDefinido?.beneficio) }
 }
 
 const resumo = (c: Calculo, hoje: string) =>
@@ -39,8 +40,7 @@ export async function registrarCalculo(agendamentoId: string, registro: Registro
   const hoje = hojeIso(agora())
   if (!registroValido(registro, hoje)) throw new Error('Cálculo incompleto ou inválido')
   if (agendamentoDoServidor(agendamentoId)) {
-    const r = await noBanco<{ ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/entrevistas/${agendamentoId}/calculo`, { method: 'POST', corpo: registro })
-    return { ficha: receber(r)! }
+    throw new Error('Salvar vínculos e carência no caso ainda não está disponível.')
   }
   const banco = ler()
   const achado = achar(banco.fichas, agendamentoId)
@@ -65,8 +65,8 @@ export async function registrarCalculo(agendamentoId: string, registro: Registro
   ficha.historico.push(
     evento(
       anterior
-        ? `Refez o cálculo de tempo e pontos (D1.13). Antes: ${resumo(anterior, hoje)}. Agora: ${resumo(calculo, hoje)}`
-        : `Calculou tempo e pontos sobre o CNIS (D1.13): ${resumo(calculo, hoje)}`,
+        ? `Refez o cálculo de tempo e pontos. Antes: ${resumo(anterior, hoje)}. Agora: ${resumo(calculo, hoje)}`
+        : `Calculou tempo e pontos sobre o CNIS: ${resumo(calculo, hoje)}`,
       QUEM_ADVOGADO_DO_ATENDIMENTO,
     ),
   )

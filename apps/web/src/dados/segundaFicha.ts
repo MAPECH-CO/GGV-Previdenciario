@@ -103,16 +103,13 @@ export async function registrarAnalise(agendamentoId: string, d: { acidentario: 
  */
 export async function lerSegundaFichaEmPapel(fichaId: string): Promise<{ arquivo: Arquivo; respostas: RespostasDaSegundaFicha; senhaLida: boolean }> {
   if (doServidor(fichaId)) {
-    // GGVP-125, bloco 3c: o servidor guarda a seção médica lida à parte, só para o Jurídico; a imagem ainda fica na pasta
-    // de exemplo daqui, até o Drive entrar.
+    // GGVP-125, bloco 3c: o servidor guarda a seção médica lida à parte, só para o Jurídico; a imagem vem na ficha do
+    // servidor (bloco 5a).
     const r = await noBanco<{ arquivo: Arquivo; respostas: RespostasDaSegundaFicha; senhaLida: boolean; ficha: Ficha }>(`/fichas/${fichaId}/segunda-ficha/leitura`, {
       method: 'POST',
       corpo: {},
     })
     receber(r)
-    const banco = ler()
-    banco.fichas.find((f) => f.id === fichaId)!.arquivos.push(r.arquivo)
-    gravar(banco)
     return { arquivo: r.arquivo, respostas: r.respostas, senhaLida: r.senhaLida }
   }
   await esperar()

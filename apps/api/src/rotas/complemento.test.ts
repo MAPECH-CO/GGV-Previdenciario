@@ -5,6 +5,7 @@ import { caso, documento, documentoMedico, eventoAuditoria, pessoa, usuario } fr
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import { MSG_AINDA_NO_LIMITE, MSG_SEM_COMPLEMENTO } from './complemento.ts'
+import { MSG_CHEGOU_DOCUMENTO } from '../../../web/src/regras/complemento.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -84,5 +85,24 @@ describe('GGVP-132 · o complemento ao médico no servidor (GGVP-29)', () => {
     expect([decidida.statusCode, decidida.json().situacao, decidida.json().proxima, decidida.json().complemento.decisoes[0].quem]).toEqual([201, 'aberto', '2026-10-20', 'Helena'])
     const acoes = (await banco.select().from(eventoAuditoria)).map((e) => e.acao)
     expect(acoes.filter((a) => a.startsWith('complemento_'))).toEqual(['complemento_tentativa_registrada', 'complemento_tentativa_registrada', 'complemento_decidido'])
+  })
+})
+
+describe('GGVP-125 · bloco 5d: o laudo novo para a cobrança do complemento', () => {
+  it('chegou laudo novo do médico depois do pedido: a cobrança para até o parecer e sai da Central', async () => {
+    expect((await ver('ana')).json().situacao).toBe('aberto')
+    const [{ pessoaId }] = await banco.select({ pessoaId: caso.pessoaId }).from(caso)
+    // Como o arquivamento da Recepção grava o laudo do scanner: conferido, apontando para o Drive, médico não conferido.
+    const [novo] = await banco
+      .insert(documento)
+      .values({ casoId, pessoaId, tipo: 'laudo', sensivel: true, situacao: 'conferido', origem: 'scanner', chaveArmazenamento: 'drive:x/novo', nomeOriginal: 'Laudo novo.pdf', mime: 'application/pdf', tamanho: 0, hashSha256: '', drivePendente: false })
+      .returning()
+    await banco.insert(documentoMedico).values({ documentoId: novo.id, tipo: 'laudo' })
+
+    const r = (await ver('ana')).json()
+    expect([r.situacao, r.motivoParado]).toEqual(['aguardando-parecer', MSG_CHEGOU_DOCUMENTO])
+    expect((await tentar('ana')).json()).toEqual({ erro: MSG_CHEGOU_DOCUMENTO })
+    const { tarefas } = (await app.inject({ method: 'GET', url: '/api/documentacao-medica', cookies: await cookieDe('ana') })).json()
+    expect(tarefas.map((t: { acao: string }) => t.acao)).not.toContain('Pedir complemento ao médico')
   })
 })

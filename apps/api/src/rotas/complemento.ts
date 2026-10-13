@@ -32,8 +32,16 @@ export function criarComplementoDoCaso(opcoes: ComIa) {
     const lista = (await lerParte<Complemento[]>(c.id, 'complemento')) ?? []
     const atual = doProcesso(lista, c.id)
     if (!atual) return null
-    const previa = previaDoComplemento((await emDia(c, { semChamar: true })).p)
-    const tela = complementoNaTela(atual, { ficha: { id: c.ficha.id, nome: c.ficha.nome, telefone: c.ficha.telefone }, processo: c.processo, beneficio: nomeBeneficio(c.processo.beneficio), hoje: hojeEmBrasilia(agora()), ...(previa && { previa }) })
+    const { p, laudoNovoEm } = await emDia(c, { semChamar: true })
+    const previa = previaDoComplemento(p)
+    const tela = complementoNaTela(atual, {
+      ficha: { id: c.ficha.id, nome: c.ficha.nome, telefone: c.ficha.telefone },
+      processo: c.processo,
+      beneficio: nomeBeneficio(c.processo.beneficio),
+      hoje: hojeEmBrasilia(agora()),
+      ...(previa && { previa }),
+      ...(laudoNovoEm && { laudoNovoEm }),
+    })
     return { lista, tela }
   }
 

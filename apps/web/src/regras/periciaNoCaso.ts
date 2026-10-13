@@ -453,8 +453,8 @@ export function marcar(
   )
   pericia.historico.push(
     m.pedeDocumentoNovo
-      ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação (DP.03)', passo: 'DP.02' }
-      : { quando, quem, oQue: 'A perícia não pede documento novo: segue para ligar e orientar (DP.06)', passo: 'DP.02' },
+      ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação', passo: 'DP.02' }
+      : { quando, quem, oQue: 'A perícia não pede documento novo: segue para ligar e orientar', passo: 'DP.02' },
   )
   montarOrientacao(mundo, pericia, agora)
   // Data ou local mudados (GGVP-62, CA5): a orientação saiu de novo e a preparação de antes deixa de valer.
@@ -620,6 +620,7 @@ export function laudoNoPerfil(mundo: MundoDaPericia, pericia: Pericia, quando: s
     data,
     tipo: pericia.tipo,
     assunto: leitura.assunto,
+    beneficio: processo.beneficio,
     resultado: r.registrado!.favoravel ? 'favoravel' : 'desfavoravel',
     dias: Math.max(0, Math.round((Date.parse(data) - Date.parse(pericia.marcacao!.data)) / DIA)),
     observou: leitura.observou,
@@ -717,7 +718,7 @@ export const mudancas = {
     pericia.historico.push(
       { quando, quem, oQue: 'Marcou no Meu INSS; o comprovante ainda não saiu: a tarefa espera, com lembrete diário', passo: 'DP.E1' },
       d.pedeDocumentoNovo
-        ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação (DP.03)', passo: 'DP.02' }
+        ? { quando, quem, oQue: 'A perícia pede documento novo: atribuiu à Documentação', passo: 'DP.02' }
         : { quando, quem, oQue: 'A perícia não pede documento novo', passo: 'DP.02' },
     )
   },
@@ -790,7 +791,7 @@ export const mudancas = {
     d.concluida = { quando, quem, conferidas: c.conferidas }
     const anexados = na.itens.filter((i) => i.arquivo).length
     const faltas = na.itens.length - anexados
-    const volta = pericia.marcacao ? 'ligar e orientar o cliente (DP.06)' : 'subir o comprovante do INSS (DP.02)'
+    const volta = pericia.marcacao ? 'ligar e orientar o cliente' : 'subir o comprovante do INSS'
     pericia.historico.push(
       { quando, quem, oQue: `Concluiu os documentos da perícia: ${anexados} anexado${anexados === 1 ? '' : 's'}${faltas ? `, ${faltas} com a falta justificada` : ''}`, passo: 'DP.03' },
       { quando, quem: SISTEMA, oQue: `O fluxo voltou ao Jurídico administrativo: ${volta}`, passo: 'DP.03' },

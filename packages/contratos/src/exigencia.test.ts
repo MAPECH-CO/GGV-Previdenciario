@@ -7,7 +7,7 @@ describe('GGVP-39 · decidir a exigência', () => {
   it('CA1 e CA8 · documentos: itens, dias do INSS e prazo de entrega; linhas vazias somem', () => {
     expect(DecidirExigencia.parse({ pede: 'documentos', itens: ['CadÚnico', ' '], diasInss: '30', prazoEntrega: '20/10/2026' })).toEqual({
       pede: 'documentos',
-      itens: ['CadÚnico'],
+      itens: [{ descricao: 'CadÚnico', tipoDocumento: null }],
       tiposPericia: [],
       diasInss: 30,
       prazoEntrega: '2026-10-20',
@@ -48,5 +48,16 @@ describe('GGVP-39 · Documentação e Sênior', () => {
   it('CA14 · vencida: dilação com novo prazo ou perda com motivo', () => {
     expect(DecidirVencida.parse({ decisao: 'dilacao', novoPrazo: '30/10/2026' })).toEqual({ decisao: 'dilacao', novoPrazo: '2026-10-30' })
     expect(erro(DecidirVencida.safeParse({ decisao: 'perda', motivo: '' }))).toBe('Escreva o que aconteceu')
+  })
+})
+
+describe('GGVP-125 · bloco 5d: o tipo de documento que cumpre o item', () => {
+  it('o item vem como texto ou com o tipo; o tipo vazio vira nulo e o item sem texto some', () => {
+    const itens = [{ descricao: 'Comprovante de residência', tipoDocumento: 'comprovante-residencia' }, 'CadÚnico', { descricao: 'Declaração', tipoDocumento: '' }, { descricao: ' ', tipoDocumento: 'rg' }]
+    expect(DecidirExigencia.parse({ pede: 'documentos', itens, diasInss: '30', prazoEntrega: '20/10/2026' }).itens).toEqual([
+      { descricao: 'Comprovante de residência', tipoDocumento: 'comprovante-residencia' },
+      { descricao: 'CadÚnico', tipoDocumento: null },
+      { descricao: 'Declaração', tipoDocumento: null },
+    ])
   })
 })

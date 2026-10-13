@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { EstudosDeCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { agrupar, dia, textoDosEstudos } from '../componentes/estudos.ts'
+import { MolduraDaBase } from './Base.tsx'
+import g from './Gestao.module.css'
 import styles from './Passo.module.css'
 
 /**
@@ -36,84 +38,80 @@ export function Estudos() {
   }
 
   return (
-    <main className={styles.pagina}>
-      <title>Estudos de caso · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Estudos de caso</h1>
-      <p className={styles.subtitulo}>Feitos pela IA depois de cada processo perdido. Estratégia interna: não vão ao cliente.</p>
-      {erro && (
-        <p className={styles.erro} role="alert">
-          {erro}
-        </p>
-      )}
-      {feito && (
-        <p className={styles.sucesso} role="status">
-          {feito}
-        </p>
-      )}
-      {x && x.estudos.length === 0 && <p className={styles.dica}>Nenhum estudo ainda: a IA faz um estudo para cada processo perdido.</p>}
-      {x && x.estudos.length > 0 && (
-        <div className={styles.acoes}>
-          <button type="button" className={styles.botaoSecundario} onClick={baixar}>
-            Baixar os estudos
-          </button>
-        </div>
-      )}
-      {x &&
-        agrupar(x.estudos).map(({ beneficio, grupos }) => (
-          <section key={beneficio} className={styles.cartao} aria-label={beneficio}>
-            <h2 className={styles.cartaoTitulo}>{beneficio}</h2>
-            {grupos
-              .filter((g) => g.lista.length)
-              .map((g) => (
-                <section key={g.chance} aria-label={`${beneficio} · ${g.rotulo}`}>
-                  <h3 className={styles.rotulo}>{g.rotulo}</h3>
-                  {g.lista.map((item) => (
-                    <article key={item.casoId} className={styles.cartao} aria-label={`Estudo de ${item.cliente}`}>
-                      <h4 className={styles.cartaoTitulo}>
-                        {item.cliente} · {item.resultado}
-                      </h4>
-                      <span className={styles.selo}>Estudo da IA · estratégia interna</span>
-                      {item.aRevisar && <span className={`${styles.selo} ${styles.seloAlerta}`}>A IA indica novo processo · espera a revisão da Sênior</span>}
-                      <p>
-                        Matéria: {item.estudo.materia}
-                        {item.estudo.vara ? ` · ${item.estudo.vara}` : ''}
-                      </p>
-                      {item.estudo.tese && <p>Tese: {item.estudo.tese}</p>}
-                      <p>Resumo: {item.estudo.resumo}</p>
-                      <p>
-                        <strong>Motivo:</strong> {item.estudo.motivo}
-                      </p>
-                      <p>
-                        <strong>Aprendizado:</strong> {item.estudo.aprendizado}
-                      </p>
-                      {item.estudo.novoProcesso && <p>O que refazer para um novo processo: {item.estudo.oQueRefazer ?? '—'}</p>}
-                      {item.revisao && (
-                        <p className={styles.dica}>
-                          Revisado por {item.revisao.por} em {dia(item.revisao.em)}: {item.revisao.novoProcesso ? 'vamos entrar com novo processo' : 'sem novo processo'}.
+    <MolduraDaBase ativo="estudos" titulo="Estudos de caso" subtitulo="Feitos pela IA depois de cada processo perdido. Estratégia interna: não vão ao cliente.">
+      <div className={g.estreito}>
+        {erro && (
+          <p className={styles.erro} role="alert">
+            {erro}
+          </p>
+        )}
+        {feito && (
+          <p className={styles.sucesso} role="status">
+            {feito}
+          </p>
+        )}
+        {x && x.estudos.length === 0 && <p className={g.vazio}>Nenhum estudo ainda: a IA faz um estudo para cada processo perdido.</p>}
+        {x && x.estudos.length > 0 && (
+          <div className={styles.acoes}>
+            <button type="button" className={styles.botaoSecundario} onClick={baixar}>
+              Baixar os estudos
+            </button>
+          </div>
+        )}
+        {x &&
+          agrupar(x.estudos).map(({ beneficio, grupos }) => (
+            <section key={beneficio} className={styles.cartao} aria-label={beneficio}>
+              <h2 className={styles.cartaoTitulo}>{beneficio}</h2>
+              {grupos
+                .filter((g) => g.lista.length)
+                .map((g) => (
+                  <section key={g.chance} aria-label={`${beneficio} · ${g.rotulo}`}>
+                    <h3 className={styles.rotulo}>{g.rotulo}</h3>
+                    {g.lista.map((item) => (
+                      <article key={item.casoId} className={styles.cartao} aria-label={`Estudo de ${item.cliente}`}>
+                        <h4 className={styles.cartaoTitulo}>
+                          {item.cliente} · {item.resultado}
+                        </h4>
+                        <span className={styles.selo}>Estudo da IA · estratégia interna</span>
+                        {item.aRevisar && <span className={`${styles.selo} ${styles.seloAlerta}`}>A IA indica novo processo · espera a revisão da Sênior</span>}
+                        <p>
+                          Matéria: {item.estudo.materia}
+                          {item.estudo.vara ? ` · ${item.estudo.vara}` : ''}
                         </p>
-                      )}
-                      {item.aRevisar && x.podeRevisar && (
-                        <div className={styles.acoes}>
-                          <button type="button" className={styles.botao} onClick={() => void revisar(item.casoId, true)}>
-                            Vamos entrar com novo processo
-                          </button>
-                          <button type="button" className={styles.botaoSecundario} onClick={() => void revisar(item.casoId, false)}>
-                            Não vamos
-                          </button>
-                        </div>
-                      )}
-                      <p className={styles.dica}>
-                        Feito pela IA em {dia(item.geradoEm)} ({item.modelo}).
-                      </p>
-                    </article>
-                  ))}
-                </section>
-              ))}
-          </section>
-        ))}
-    </main>
+                        {item.estudo.tese && <p>Tese: {item.estudo.tese}</p>}
+                        <p>Resumo: {item.estudo.resumo}</p>
+                        <p>
+                          <strong>Motivo:</strong> {item.estudo.motivo}
+                        </p>
+                        <p>
+                          <strong>Aprendizado:</strong> {item.estudo.aprendizado}
+                        </p>
+                        {item.estudo.novoProcesso && <p>O que refazer para um novo processo: {item.estudo.oQueRefazer ?? '—'}</p>}
+                        {item.revisao && (
+                          <p className={styles.dica}>
+                            Revisado por {item.revisao.por} em {dia(item.revisao.em)}: {item.revisao.novoProcesso ? 'vamos entrar com novo processo' : 'sem novo processo'}.
+                          </p>
+                        )}
+                        {item.aRevisar && x.podeRevisar && (
+                          <div className={styles.acoes}>
+                            <button type="button" className={styles.botao} onClick={() => void revisar(item.casoId, true)}>
+                              Vamos entrar com novo processo
+                            </button>
+                            <button type="button" className={styles.botaoSecundario} onClick={() => void revisar(item.casoId, false)}>
+                              Não vamos
+                            </button>
+                          </div>
+                        )}
+                        <p className={styles.dica}>
+                          Feito pela IA em {dia(item.geradoEm)} ({item.modelo}).
+                        </p>
+                      </article>
+                    ))}
+                  </section>
+                ))}
+            </section>
+          ))}
+      </div>
+    </MolduraDaBase>
   )
 }

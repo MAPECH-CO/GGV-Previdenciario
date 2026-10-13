@@ -9,12 +9,13 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, peticao, peticaoVersao, prazo, protocoloJudicial, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, lacosDas, lembreteDescrito, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, MSG_CHAMADA_DE_OUTRO_CASO, chamadaDoCaso, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirManifestacaoSePronta, situacaoDaExigenciaJuiz } from './manifestacao.ts'
 import { provaEhSensivel } from '../fluxo/prova-medica.ts'
+import { MSG_TIPO_DE_DOCUMENTO, tipoDeDocumentoValido } from './exigencia.ts'
 import { dataDoJuizoNaPublicacao } from '../../../web/src/regras/pericia.ts'
 
 export const MSG_NADA_A_ANALISAR = 'Não há exigência do juiz esperando a análise neste caso.'
@@ -205,6 +206,8 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
     const e = await exigenciaDoCaso(casoId)
     if (!e?.tarefaAnalise) return negar(resposta, 409, MSG_NADA_A_ANALISAR)
     const d = entrada.data
+    if (!(await chamadaDoCaso(banco, d.chamadaIaId, casoId))) return negar(resposta, 400, MSG_CHAMADA_DE_OUTRO_CASO)
+    if (d.decisao === 'cumprir' && !d.itens.every((i) => tipoDeDocumentoValido(i.tipoDocumento))) return negar(resposta, 400, MSG_TIPO_DE_DOCUMENTO)
     const fim = e.prazo.fim
     // CA7: o prazo interno não passa do prazo do processo.
     if (d.decisao === 'cumprir' && d.itens.some((i) => i.prazoInterno > fim)) return negar(resposta, 400, `O prazo interno não pode passar do prazo do processo (${br(fim)}).`)
@@ -265,7 +268,15 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
           .returning()
         await tx
           .insert(exigenciaItem)
-          .values({ exigenciaId: x.id, descricao: i.descricao, perfilResponsavel: i.setor, prazo: i.prazoInterno, provaEsperada: i.provaEsperada, tarefaId: t.id })
+          .values({
+            exigenciaId: x.id,
+            descricao: i.descricao,
+            perfilResponsavel: i.setor,
+            prazo: i.prazoInterno,
+            provaEsperada: i.provaEsperada,
+            tipoDocumento: i.tipoDocumento,
+            tarefaId: t.id,
+          })
       }
       // CA8: a perícia pedida pelo juiz abre sozinha a tarefa do Jurídico administrativo, com a origem D3a.
       if (d.tiposPericia.length) {

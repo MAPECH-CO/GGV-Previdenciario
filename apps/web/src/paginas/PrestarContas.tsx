@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { diaLocal, formatarDecimal, isoParaData, normalizarDecimal } from '@ggv/campos'
 import { FORMAS_DE_PAGAMENTO, ROTULO_FORMA_DE_PAGAMENTO, SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
@@ -24,13 +24,19 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
   const [conferi, setConferi] = useState(false)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const ocupado = useRef(false)
 
   useEffect(() => {
     void chamarApi<PrestacaoDoCaso>(`/casos/${casoId}/prestacao`).then((r) => {
       if (!r.ok) return setErro(r.erro)
       setP(r.dados)
-      const pct = r.dados.versoes[0]?.percentual ?? r.dados.percentualContrato
-      if (pct) setPercentual((atual) => atual || formatarDecimal(Number(pct)))
+      const atual = r.dados.versoes[0]
+      const pct = atual?.percentual ?? r.dados.percentualContrato
+      setPercentual(pct === null || pct === undefined ? '' : formatarDecimal(Number(pct)))
+      setValor(atual ? formatarDecimal(Number(atual.valorRecebido)) : '')
+      setForma(atual?.formaPagamento ?? '')
+      setPrazo(atual?.prazoPagamento ?? '')
     })
   }, [casoId, versao])
 
@@ -40,19 +46,30 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
 
   async function concluir(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
+    if (ocupado.current || !p?.podeEditar) return
     const corpo = { valorRecebido: valor, percentual, formaPagamento: forma, prazoPagamento: isoParaData(prazo) ?? '', conferiCarta: conferi }
     const entrada = SalvarPrestacao.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
-    const r = await chamarApi<{ versao: number }>(`/casos/${casoId}/prestacao`, { method: 'POST', corpo })
-    if (!r.ok) return setErro(r.erro)
-    setErro('')
-    setConferi(false)
-    setFeito(
-      r.dados.versao === 1
-        ? 'Prestação concluída. O Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.'
-        : `Versão ${r.dados.versao} registrada. O Financeiro confere de novo.`,
-    )
-    setVersao((v) => v + 1)
+    ocupado.current = true
+    setSalvando(true)
+    setFeito('')
+    try {
+      const r = await chamarApi<{ versao: number }>(`/casos/${casoId}/prestacao`, { method: 'POST', corpo })
+      if (!r.ok) return setErro(r.erro)
+      setErro('')
+      setConferi(false)
+      setFeito(
+        r.dados.versao === 1
+          ? 'Prestação concluída. O Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.'
+          : `Versão ${r.dados.versao} registrada. O Financeiro confere de novo.`,
+      )
+      setVersao((v) => v + 1)
+    } catch {
+      setErro('Não foi possível confirmar o registro da prestação. Consulte as versões antes de repetir.')
+    } finally {
+      ocupado.current = false
+      setSalvando(false)
+    }
   }
 
   if (!p)
@@ -74,9 +91,6 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
       embutida={embutida}
       cabecalho={
         <>
-          <a className={styles.voltar} href="/">
-            ← Voltar ao início
-          </a>
           <h1 className={styles.titulo}>Prestação de contas do benefício deferido</h1>
           <p className={styles.subtitulo}>{p.cliente}</p>
         </>
@@ -86,6 +100,18 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
       <section className={styles.cartao} aria-label="Carta de concessão">
         <h2 className={styles.cartaoTitulo}>Carta de concessão</h2>
         {p.carta ? <span className={styles.selo}>{p.carta.nome}</span> : <span className={`${styles.selo} ${styles.seloAlerta}`}>Sem a carta</span>}
+      </section>
+
+      <section className={styles.cartao} aria-label="Contrato e fonte dos valores">
+        <h2 className={styles.cartaoTitulo}>Contrato e fonte dos valores</h2>
+        <p>Valor recebido: a advogada informa e confere com a carta de concessão. Honorários e repasse: calculados pelo sistema a partir desse valor e do percentual informado.</p>
+        <p>Percentual do contrato: {p.percentualContrato === null ? 'não informado pelo servidor' : formatarDecimal(Number(p.percentualContrato)) + '%'}.</p>
+        {atual && <p>Os campos começam com a versão {atual.versao}, registrada por {atual.por ?? 'pessoa não identificada'} em {dia(atual.em)}. Confira antes de dar um novo OK.</p>}
+        <p>A entrada, as parcelas do contrato e a divisão de uma parte na Caixa ainda não estão disponíveis. Esses valores não entram nesta conta.</p>
+        {['Entrada do contrato', 'Parcelas do contrato', 'Parte na Caixa'].map(rotulo => <label key={rotulo} className={styles.rotulo}>
+          {rotulo}<input className={styles.campo} disabled value="" placeholder="Ainda indisponível" />
+        </label>)}
+        <p className={styles.dica}>Quem dá o OK é a advogada da prestação. A Sênior consulta. A edição direta dos honorários ainda não está disponível.</p>
       </section>
 
       {atual && (
@@ -121,13 +147,13 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
             inputMode="decimal"
             placeholder="0,00"
             value={valor}
-            onChange={(e) => setValor(e.target.value)}
+            onChange={(e) => { setValor(e.target.value); setConferi(false) }}
             onBlur={() => valorNum !== null && setValor(formatarDecimal(valorNum))}
           />
           <label className={styles.rotulo} htmlFor={ids.percentual}>
             Honorários do contrato (%)
           </label>
-          <input id={ids.percentual} className={styles.campo} inputMode="decimal" value={percentual} onChange={(e) => setPercentual(e.target.value)} />
+          <input id={ids.percentual} className={styles.campo} inputMode="decimal" value={percentual} onChange={(e) => { setPercentual(e.target.value); setConferi(false) }} />
           {!p.percentualContrato && <p className={styles.dica}>O contrato não tem o percentual: informe o combinado com o cliente.</p>}
           {previa && (
             <p className={styles.selo} aria-label="Valores calculados">
@@ -137,18 +163,19 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
           <label className={styles.rotulo} htmlFor={ids.forma}>
             Forma de pagamento (opcional)
           </label>
-          <select id={ids.forma} className={styles.campo} value={forma} onChange={(e) => setForma(e.target.value)}>
+          <select id={ids.forma} className={styles.campo} value={forma} onChange={(e) => { setForma(e.target.value); setConferi(false) }}>
             <option value="">Escolha</option>
             {FORMAS_DE_PAGAMENTO.map((f) => (
               <option key={f} value={f}>
-                {ROTULO_FORMA_DE_PAGAMENTO[f]}
+                {f === 'boleto' ? 'Boleto do escritório' : ROTULO_FORMA_DE_PAGAMENTO[f]}
               </option>
             ))}
+            <option value="caixa-indisponivel" disabled>Parte na Caixa · ainda indisponível</option>
           </select>
           <label className={styles.rotulo} htmlFor={ids.prazo}>
             Prazo de pagamento
           </label>
-          <input id={ids.prazo} className={styles.campo} type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
+          <input id={ids.prazo} className={styles.campo} type="date" value={prazo} onChange={(e) => { setPrazo(e.target.value); setConferi(false) }} />
           <label className={styles.escolha} htmlFor={ids.conferi}>
             <input id={ids.conferi} type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
             Conferi os valores com a carta de concessão
@@ -159,7 +186,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao} disabled={!conferi}>
+            <button type="submit" className={styles.botao} disabled={!conferi || salvando}>
               {atual ? 'Registrar nova versão' : 'Concluir a prestação'}
             </button>
           </div>

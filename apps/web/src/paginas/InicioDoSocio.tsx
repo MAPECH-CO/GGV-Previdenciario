@@ -12,8 +12,8 @@ import { Resultados } from './Resultados.tsx'
 // O Figma não desenhou uma Central do Sócio: a tela inicial dele é o painel de resultado (GGVP-75; perfis.md), com a busca
 // e o chat da "Gestão · Sócio" (2456:10128). O painel Financeiro entra no topo pelo perfil (itensDaGestao.ts).
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 const CHAT = { exemplo: 'Ex.: “por que perdemos os processos de BPC deficiente?”', sugestoes: ['Por que perdemos em 2025?', 'Êxito por benefício', 'Faltas à perícia dobraram'] }
@@ -29,7 +29,7 @@ export function InicioDoSocio() {
   const itens: ItemNavegacao[] = [
     ...navegacao,
     ...(gestao ? ITENS_DA_GESTAO : []),
-    ...(importar ? [{ id: 'importar', glifo: '⇪', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
+    ...(importar ? [{ id: 'importar', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
   ]
   return (
     <>

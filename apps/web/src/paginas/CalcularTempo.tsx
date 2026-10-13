@@ -4,7 +4,8 @@ import { Campo } from '../componentes/Campo.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { obterCalculo, registrarCalculo, type DadosDoCalculo } from '../dados/calculo.ts'
 import { nomeBeneficio } from '../dados/catalogos.ts'
-import { agora } from '../dados/servidor.ts'
+import { agora, agendamentoDoServidor } from '../dados/servidor.ts'
+import { CalculoCnis } from '../componentes/CalculoCnis.tsx'
 import type { Calculo, Cnis } from '../dados/tipos.ts'
 import { REGRAS_DE_APOSENTADORIA, errosDoCalculo, motivoParaConcluir, paraRegistro, pontosFalados, tempoFalado, type ValoresDoCalculo } from '../regras/calculo.ts'
 import { dataCurta, dataHora, hojeIso, idadeEm } from '../regras/datas.ts'
@@ -27,6 +28,10 @@ function resultado(c: Calculo, hoje: string): string {
 }
 
 export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
+  return <CalculoDaEntrevista key={agendamentoId} agendamentoId={agendamentoId} />
+}
+
+function CalculoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
   const [dados, setDados] = useState<DadosDoCalculo | null | undefined>(undefined)
   const [v, setV] = useState<ValoresDoCalculo>(VAZIO)
   const [tocados, setTocados] = useState<Set<string>>(new Set())
@@ -40,7 +45,7 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
     let valendo = true
     obterCalculo(agendamentoId).then((d) => {
       if (valendo) setDados(d)
-    })
+    }).catch(() => { if (valendo) setErro('Não foi possível carregar a ficha para o cálculo.') })
     return () => {
       valendo = false
     }
@@ -51,12 +56,22 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
       <main className={proprio.vazia}>
         <title>Calcular tempo e pontos · GGV Previdenciário</title>
         <h1 className={styles.titulo}>{dados === null ? 'Entrevista não encontrada' : 'Abrindo o cálculo…'}</h1>
-        {dados === null && <a href="/">Voltar ao início</a>}
+        {erro && <p role="alert">{erro}</p>}
+        {(dados === null || erro) && <a href="/">Voltar ao início</a>}
       </main>
     )
   }
 
   const { ficha, cnis, exige } = dados
+  if (agendamentoDoServidor(agendamentoId)) return <>
+    <title>Calcular tempo e pontos · GGV Previdenciário</title>
+    <TopoPasso contexto="Você · Advogado do atendimento" />
+    <main className={styles.pagina}><div className={styles.principal}>
+      <h1 className={styles.titulo}>{ficha.nome} · Calcular tempo e pontos</h1>
+      <CalculoCnis nascimento={ficha.nascimento} hoje={hoje} />
+      <a className={styles.atalho} href={'/clientes/' + ficha.id}>Voltar à ficha do cliente</a>
+    </div></main>
+  </>
   const beneficio = ficha.beneficioDefinido?.beneficio
   const erros = errosDoCalculo(v, hoje)
   const parado = !cnis ? 'Sem CNIS no caso.' : motivoParaConcluir(v, hoje)
@@ -99,9 +114,6 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.13 · Calcular tempo e pontos (passo do BPMN)">
-                D1.13
-              </span>
               <span className={proprio.perfil}>Advogado do atendimento</span>
             </div>
             <h1 className={styles.titulo}>
@@ -117,12 +129,12 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
               </h2>
               <p className={proprio.texto}>
                 {beneficio
-                  ? `${nomeBeneficio(beneficio)} não exige cálculo: o caso segue para «O cliente fechou com o escritório?» (D1.14).`
-                  : 'O benefício do caso ainda não foi definido pela advogada (D1.12).'}
+                  ? `${nomeBeneficio(beneficio)} não exige cálculo: o caso segue para «O cliente fechou com o escritório?».`
+                  : 'O benefício do caso ainda não foi definido pela advogada.'}
               </p>
               {!beneficio && (
                 <a className={styles.atalho} href={`/entrevista/${agendamentoId}/beneficio`}>
-                  Definir o benefício (D1.12)
+                  Definir o benefício
                 </a>
               )}
             </section>
@@ -159,8 +171,8 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
                   </h2>
                   <p>
                     {feito.podeAposentar
-                      ? 'Já pode se aposentar. O caso segue para «O cliente fechou com o escritório?» (D1.14).'
-                      : `Ainda não pode se aposentar: previsto para ${dataCurta(feito.dataPrevista!, hoje)}. O caso segue para «Registrar o motivo» (D1.14), com a data prevista.`}
+                      ? 'Já pode se aposentar. O caso segue para «O cliente fechou com o escritório?».'
+                      : `Ainda não pode se aposentar: previsto para ${dataCurta(feito.dataPrevista!, hoje)}. O caso segue para «Registrar o motivo», com a data prevista.`}
                   </p>
                   <p>Ficou registrado o tempo, os pontos, a regra e quem conferiu, com o CNIS usado.</p>
                   <div className={styles.atalhos}>
@@ -284,7 +296,7 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.13.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="ja-pode">Já pode se aposentar?</p>
@@ -315,7 +327,7 @@ export function CalcularTempo({ agendamentoId }: { agendamentoId: string }) {
           <p>Conferir: Conferi o cálculo com o CNIS</p>
           <p className={styles.ladoSub}>«Concluir» só habilita com as decisões respondidas e as conferências marcadas.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
-          <p>«Ainda não»: o caso vai para «Registrar o motivo» (D1.14) com a data prevista. «Sim»: segue para o fechamento.</p>
+          <p>«Ainda não»: o caso vai para «Registrar o motivo» com a data prevista. «Sim»: segue para o fechamento.</p>
         </aside>
       </main>
       <AbaSuporte />

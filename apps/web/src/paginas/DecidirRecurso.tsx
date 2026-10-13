@@ -56,9 +56,6 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D3b.04 · Vale recorrer? (passo do BPMN)">
-                D3b.04
-              </span>
               <span className={proprio.senior}>Sênior</span>
             </div>
             <h1 className={styles.titulo}>
@@ -161,7 +158,7 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D3b.04.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <ul className={styles.ladoLista}>
             <li>• Sim, recorrer: o processo segue na vigília e a Sênior elabora e protocola o recurso</li>

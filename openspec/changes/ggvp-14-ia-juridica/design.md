@@ -91,3 +91,113 @@ Com o botão "Sugerir com a IA", a pessoa às vezes nem clica e a sugestão fica
 - **Aprovação sem tabela nova.** A aprovação é uma `decisao` (passo `DP.00`, tipo `recomendacao_pericia`) com o que a advogada aprovou em JSON na justificativa (com o id da perícia) e a chamada da IA em `sugestao_ia`. A tarefa fecha quando nenhuma perícia do caso espera aprovação.
 - **Permissões que já existem.** Ver: `dado_saude.ver_detalhe` (Jurídico), porque a recomendação sai do parecer e dos laudos; aprovar: `pericia.decidir` (advogada), a mesma de "Precisa de perícia?". Sem versão nova da matriz.
 - **Sem o perito.** O perito ainda não é identificado (GGVP-59); o conteúdo diz "perito não identificado" e a recomendação sai sem a jurimetria dele.
+
+## GGVP-41 · Medir ganho e perda e gravar no acervo (parte 1)
+
+### Context
+- O caso ganho já entra em `processo_acervo` (fonte `portal`) na ida ao banco (GGVP-98), sem conferência; o código deixa essa conferência para esta história.
+- "Conferir desfechos" (GGVP-55) lista todo desfecho sem conferência, também os do portal, e só o conferido conta.
+- O estudo de caso (GGVP-19) já tira do caso perdido a matéria, a vara, a tese, o resumo e o aprendizado.
+- O painel (GGVP-75) recorta por benefício, perito, juízo e advogada, com o G22.
+- Na `main`, o desfecho de mérito do caso só existe pela semente e pela desistência: a confirmação do resultado na Justiça é da GGVP-90 e da GGVP-100, com o Lucas.
+
+### Decisions
+1. **Contrato** (`packages/contratos/src/acervo.ts` e `resultados.ts`):
+   - `FichaDoDesfecho`: `materia`, `vara` (ou nula), `tese` (até 80 caracteres, ou nula quando não dá para saber), `resumo` e `licao`.
+   - `ConferenciaDoAcervo.pendentes[]` ganha `ficha`; nula quer dizer "a IA ainda não leu este desfecho".
+   - `ConferirDesfecho` ganha `tese` (opcional, até 80 caracteres): a Sênior confirma ou corrige.
+   - `DESFECHOS_DO_ACERVO` ganha `deferido` ("Deferido no INSS"): o caso ganho no INSS entra no acervo assim (GGVP-98), e a conferência não aceitava (ajuste do Mateus, 08/10).
+   - `RECORTES` ganha `tese`, com o rótulo "Tese".
+2. **Banco:** `processo_acervo` ganha `materia`, `vara`, `tese`, `resumo` e `licao` (migração nova; quem entrar depois renumera). Sem tabela nova: a ficha é do registro do acervo.
+3. **A ficha pela IA, em segundo plano** (finalidade `ficha_do_desfecho`, versão 1, JSON validado por `FichaDoDesfecho`, leva dado de saúde, barra CID), em `fluxo/ficha-do-desfecho.ts`, registrada no `preparo` por `rotas/acervo.ts`:
+   - entram os registros do portal (com `caso_id` e desfecho) sem ficha;
+   - o conteúdo leva o benefício, o desfecho, a última decisão de mérito ou o resultado do INSS e a petição aprovada, cortada como no estudo;
+   - a instrução pede a tese jurídica sem doença, diagnóstico nem CID, e a lição numa frase;
+   - antes de gravar, o resumo e a lição passam por `anonimizar`, com o nome do cliente (CA10);
+   - se falhar ou não houver chave, a ficha fica nula, a conferência mostra "a IA ainda não leu este desfecho" e o preparo tenta de novo no dia seguinte (CA11): uma tentativa por conteúdo e por dia, a regra de toda IA em segundo plano (GGVP-106), confirmada pelo Mateus em 08/10. A falha fica em `chamada_ia`.
+4. **O caso perdido entra pelo estudo** (CA1, CA4, CA9): saindo o estudo `ok`, o caso entra em `processo_acervo` (fonte `portal`, com o desfecho do caso) e a ficha do estudo (o aprendizado vira a lição), anonimizada, sem outra chamada à IA. Um registro por caso: se ele já existe, só completa a ficha que falta.
+5. **Conferência** (CA7): a linha do portal mostra a ficha. "Conferir" leva o desfecho e a tese, a da IA ou a corrigida, e o histórico guarda o antes e o depois, com a tese. Só a ficha conferida entra nas contas.
+6. **Recorte por tese** (CA3, CA5, CA8): `gruposDoRecorte` lê a tese dos registros conferidos com `caso_id`. Sem tese, o caso fica fora do recorte (CA5). Os indicadores e o G22 são os do painel. A matéria é o recorte por benefício e a vara é o recorte por juízo, que já existem.
+7. **Sem dependência nova.**
+
+### Campos de formulário
+- **"Tese"** (Conferir desfechos): texto curto, até 80 caracteres, validado pelo contrato na tela e no servidor. Não é dado da biblioteca `campos` (não é CPF, data, número nem nome).
+- **"Desfecho"**: a mesma seleção de hoje (`DESFECHOS_DO_ACERVO`).
+- **"Recorte"** (Gestão): a mesma seleção, com a opção "Tese".
+
+### Telas
+Nenhuma tela nova. "Conferir desfechos" mostra a ficha na linha do portal e ganha o campo "Tese"; "Resultados" ganha a opção "Tese" no recorte.
+
+### Risks / Trade-offs
+- **Tese em texto livre:** a mesma tese escrita de dois jeitos vira dois grupos; a Sênior corrige na conferência. Um catálogo de teses fica para quando houver dado.
+- **Perdido na Justiça:** hoje só a semente tem desfecho de mérito; o caminho pelo portal vem com a GGVP-100.
+
+## GGVP-142 · Chat e Suporte pelo motor de IA de verdade
+
+### Context
+
+- **O chat de hoje** (GGVP-82) roda inteiro na tela, no servidor de exemplo. As intenções, as travas, os números e as ações saem de regras puras (`apps/web/src/regras/chat.ts`, `parecer.ts` e `pericia.ts`) e do banco de exemplo (`apps/web/src/dados/chat.ts`). Com o servidor ligado (homologação), ele não vê os casos do banco.
+- **O contrato já existe:** `PerguntaDoChat`, `RespostaDoChat`, `CartaoDeAcao` e `ConfirmacaoDoCartao`, com a ponta para ligar descrita na change `ggvp-5-experiencia-e-chat`.
+- **O motor** (`ia.ts`) registra cada chamada em `chamada_ia`, protege a entrada (GGVP-110) e barra CID por finalidade. O acervo tem a busca híbrida (`buscarNoAcervo`).
+- **A página do processo** no servidor (`GET /api/casos/:id/processo`) já monta o caso na visão do perfil, com o acesso a dado de saúde registrado.
+- **Rotas que as ações reaproveitam:**
+  - o pedido da peça (`POST /api/casos/:id/peticao/pedido`, com o G17);
+  - a perícia (`/pericia/comprovante/leitura` e `/pericia/marcacao`).
+  
+  A `main` não tem rota de envio de arquivo do caso (fica com a Recepção, PR #22) nem do lote do acervo (GGVP-55).
+
+### Decisions
+
+1. **Kit de agentes da OpenAI em TypeScript** (`@openai/agents` 0.18.0, a versão de setembro, com `zod` 4), decisão do Mateus em 09/10. O ADR-016 registra a escolha (o 014 está reservado para a fonte da jurimetria).
+   - **Modelo:** pelo mesmo endpoint de chat completions do motor, com o cliente da OpenAI criado com o `fetch` injetado; o teste passa um falso (CA4).
+   - **Rastreamento do kit desligado:** nada vai para o painel da OpenAI (LGPD).
+   - **Ferramentas de ação com aprovação da pessoa:** o kit para na aprovação, e o servidor guarda o estado da conversa até o clique.
+2. **`POST /api/chat`**, só com a sessão: o chat é de todos os perfis, sem permissão nova na matriz.
+   - **Antes do modelo, como código, com as mesmas regras puras da tela:**
+     - as recusas do G17 e do G11 (a do G11 vai ao histórico);
+     - "o que é o G8?";
+     - os portões do pedido;
+     - o pedido de outro perfil.
+   - **O contexto:**
+     - o caso do contexto ou o do cliente citado pelo nome, lido pela rota da página do processo com a sessão de quem pergunta;
+     - o acervo, com a regra de saúde;
+     - a lista fixa de ações do perfil.
+   - **Saúde:** para o Jurídico (`dado_saude.ver_detalhe`) e para o Sócio, uma exceção do chat (decisão do Mateus). Para o Sócio, o resumo médico do caso vem da documentação médica, com o acesso registrado em `acesso_dado_sensivel`.
+   - **O registro:** cada conversa vira uma chamada em `chamada_ia`, com:
+     - a finalidade `chat` (sem saúde, barra CID) ou `chat_juridico` (com saúde);
+     - o modelo, a entrada, a saída e as fontes.
+   - **Depois do modelo:**
+     - a barra de CID para quem não vê saúde;
+     - os links vêm do código (o caso e as telas das tarefas), nunca do texto do modelo.
+3. **Ferramentas do agente:**
+   - **de leitura, sem aprovação:** ver o caso, buscar no acervo, as tarefas da pessoa e explicar um portão;
+   - **de ação, com aprovação, só as da lista do perfil:** criar tarefa e pedir a peça;
+   - **as que dependem de enviar arquivo** (marcar a perícia com o comprovante, anexar laudo, enviar documento, lançar o comprovante de RPV e subir no acervo) respondem com o link da tela. Na perícia, a IA lê o comprovante e a pessoa confere antes de marcar (Mateus, 09/10).
+4. **O cartão** (`CartaoDeAcao`) nasce da aprovação pedida pelo kit.
+   - Traz os passos, o que conferir, as travas e o responsável (pela regra do responsável da tela).
+   - Fica em memória até o clique, com quem pediu.
+   - Expira em 30 minutos ou quando o servidor reinicia ("Peça de novo").
+5. **`POST /api/chat/acoes/:id`:** só quem pediu, com o perfil da ação.
+   - O servidor aprova e o kit continua.
+   - A ação roda pela rota da tela, com a sessão de quem confirmou, então permissões e portões valem de novo.
+   - O histórico do caso ganha a ação com "feito pelo chat".
+   - `DELETE /api/chat/acoes/:id` descarta o cartão.
+6. **Na tela** (`dados/chat.ts`), no modo misto (Mateus, 09/10):
+   - vai ao servidor a pergunta sobre um caso do servidor (pelo processo ou pelo cliente citado) e a consulta sem cliente; `confirmarAcao` e `cancelarAcao` seguem quem fez o cartão;
+   - seguem no chat simulado a pergunta sobre um caso ou um cliente da semente e, sem cliente, as listas, os números e as ações que ele calcula por código sobre a semente (perícias da semana, jurimetria e as outras);
+   - as tarefas que o chat cria no servidor aparecem na Central pela lista de tarefas do servidor.
+
+### Campos de formulário
+
+Nenhum campo novo. A pergunta é texto livre (até 2000 caracteres), validada pelo contrato na tela e no servidor.
+
+### Telas
+
+Nenhuma tela nova. O chat das Centrais e a aba Suporte (`ChatDoPortal`) passam a falar com o servidor.
+
+### Risks / Trade-offs
+
+- **Dependência nova:** o kit é recente (0.x) e muda rápido, então a versão fica fixa. Se atrapalhar, as ferramentas viram chamadas do motor de hoje.
+- **Cartão em memória:** reiniciar o servidor perde os cartões em aberto, e a pessoa pede de novo. Guardar no banco se virar problema.
+- **Cliente citado pelo nome:** compara o nome inteiro com as pessoas que têm caso. Nomes parecidos viram a pergunta "qual deles?".
+- **Sócio com saúde no chat:** é uma exceção à matriz, em que o Sócio não vê dado de saúde nas telas. Se a matriz mudar, a exceção sai.

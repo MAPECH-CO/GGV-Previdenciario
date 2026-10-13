@@ -6,6 +6,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-12);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .campo:focus-within {
@@ -46,6 +47,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-12);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .grupo {
@@ -79,3 +81,13 @@
   color: var(--cor-erro);
   font-size: var(--fonte-12);
 }
+
+.botao {
+  padding: 6px 10px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--fonte-13);
+}
+.botao:disabled { opacity: 0.5; cursor: not-allowed; }

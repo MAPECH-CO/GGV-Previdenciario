@@ -116,3 +116,64 @@ Com `DATABASE_URL`, o servidor não cria usuário nem caso: a semente (`semearEx
 - **Rodar antes da fila:** o comando não duplica, então também não completa. Os casos dos épicos que entrarem depois ficam de fora. Rode depois dos merges; antes disso, só recriando o banco da homologação.
 - **Senha no terminal:** a lista aparece uma vez, para quem rodou. Não vai para log, repositório, Jira nem chat.
 
+## GGVP-107 · Integração com o Google Drive
+
+### Acesso
+
+Conta de serviço do Google Cloud, como Gerente de conteúdo do Drive compartilhado "PREVIDENCIÁRIO - GGV" (decisão do
+Mateus em 08/10: o mesmo Drive da automação do balcão). Variáveis, só no `.env.drive` local ou no Coolify, nunca no
+repositório:
+
+| Variável | O que é |
+|---|---|
+| `GOOGLE_DRIVE_CREDENCIAIS` | A chave JSON da conta de serviço, em base64, numa linha |
+| `GOOGLE_DRIVE_PASTA_CLIENTES` | Id de "#5. CLIENTES" |
+| `GOOGLE_DRIVE_PASTA_REVISAR` | Id de "A REVISAR" |
+
+Faltando uma, o Drive fica desligado: nada é enviado e a trava do pacote não cobra o Drive. O `pnpm dev` não
+lê o `.env.drive`, para os documentos de exemplo não irem para o Drive do escritório. Homologação aponta para pastas de
+teste.
+
+### Cliente (`apps/api/src/drive.ts`)
+
+A API REST do Drive pelo `fetch` do Node. A conta de serviço assina um JWT com `node:crypto` e troca por um token de uma
+hora. Sem a biblioteca `googleapis`: seis chamadas não pagam uma dependência. O cliente só sabe listar, achar pela marca,
+criar pasta, enviar arquivo novo (envio retomável, porque o simples para em 5 MB) e dizer onde o arquivo está. Não há
+função que mude, mova, apague ou compartilhe. É assim que o portal não toca no que o escritório já tem, nem deixa nada
+público (CA4). Cada item criado leva a marca do portal (`appProperties.portal`, por exemplo `documento:<id>`).
+
+### Envio (`apps/api/src/fluxo/arquivar.ts`)
+
+`sincronizarDrive` roda a cada minuto (`principal.ts`), uma rodada por vez, e pega o que falta:
+
+1. **Documento** com `drive_pendente` (CA1, CA2, CA7, CA8): a pasta do cliente sai de `pessoa.drive_pasta_id`; sem ela,
+   pela regra do balcão (`pastasDoCliente` das telas, sobre o nome antes do primeiro " X " ou o CPF do título). Nenhuma:
+   cria "<Nome> X A CLASSIFICAR" e guarda o id no cliente. Mais de uma: "A REVISAR", sem guardar. Nome "Tipo - Nome do
+   Cliente - AAAA-MM-DD.ext" (data de Brasília) com `nomeSemSobrescrever` das telas. O pacote da petição não entra aqui.
+2. **Pacote** da versão aprovada sem `pacote_drive_id` (CA6): pasta "Pacote de protocolo - AAAA-MM-DD" na do cliente,
+   com cada arquivo do pacote. A marca leva o momento do pacote, então gerar de novo salva outra pasta.
+
+O motivo de indeferimento (CA5) não vai para o Drive. É dado, não arquivo: fica no `resultado_inss` (o banco de
+motivos da GGVP-52), ligado ao caso, e o acervo lê dali (GGVP-45). No escritório ninguém trabalha no Drive; ele guarda
+imagem, PDF e a digitalização do balcão (decisão do Mateus em 08/10; o Lucas confirma na review).
+
+Antes de criar, o envio procura a marca: o que já foi não vai de novo (CA3). Falhou: tarefa "Arquivo não foi para o Drive
+(o portal tenta de novo sozinho)" da Documentação no caso, uma por caso, passo D1.18; fecha sozinha quando a rodada
+envia tudo do caso.
+
+Colunas novas: `pessoa.drive_pasta_id`, `documento.drive_arquivo_id`, `documento.drive_pendente` (padrão verdadeiro; a
+migração põe falso no que já existia, para não mandar dado de exemplo nem documento antigo de uma vez) e
+`peticao_versao.pacote_drive_id`. Documento de exemplo (`origem = 'exemplo'`) nunca vai.
+
+### Trava "pacote completo" (G7)
+
+`travaPacote` recebe se o pacote está no Drive. Com o Drive ligado e o pacote fora dele, a trava acusa "O pacote ainda
+não está no Drive". Gerar o pacote de novo zera `pacote_drive_id`.
+
+### Limites conhecidos
+
+- O acesso dentro do Drive é o dos membros do Drive compartilhado. O Drive não tem os perfis do portal; dentro do
+  portal, o arquivo só sai pela rota com perfil.
+- Homônimo sem CPF no título cai na pasta de mesmo nome, como no balcão. A conferência pelo CPF dentro dos documentos
+  da pasta fica para quando o escritório pedir.
+- Cliente com mais de uma pasta (uma por benefício) manda para "A REVISAR".

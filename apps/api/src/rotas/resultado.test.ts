@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { atendimento, caso, decisao, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_OUTRA_PESSOA, MSG_SEM_EXPLICACAO, MSG_SEM_RESUMO_ESPERANDO, TITULO_EXPLICAR, TITULO_RESUMO, abrirExplicacaoDoResultado } from './resultado.ts'
@@ -185,6 +185,9 @@ describe('Épico IA · a IA sugere o resumo do resultado', () => {
     expect(enviado).toContain('Auxílio por Incapacidade Temporária')
     expect(await banco.select().from(decisao)).toEqual([])
     const aprovado = `${RASCUNHO} O escritório não vai recorrer.`
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    expect((await chamar('gabi', 'POST', '/resultado/resumo', { texto: aprovado, quemFala: 'atendimento', chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
+    expect(await banco.select().from(decisao)).toEqual([])
     expect((await chamar('gabi', 'POST', '/resultado/resumo', { texto: aprovado, quemFala: 'atendimento', chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
     const [d] = await banco.select().from(decisao)
     expect([d.justificativa, d.sugestaoIa, d.decididoPor]).toEqual([aprovado, { chamadaId: r.sugestao.chamadaId }, ids.gabi])

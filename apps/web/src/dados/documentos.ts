@@ -6,7 +6,8 @@ import { fichasCitadas } from '../regras/busca.ts'
 import { pastasDoCliente } from '../regras/pasta.ts'
 import { TIPOS_DE_DOCUMENTO, nomeBeneficio, nomeTipo } from './catalogos.ts'
 import { loteDeExemplo } from './exemplo.ts'
-import { agora, esperar, evento, gravar, ler, type Banco, type ResumoDeLaudo } from './servidor.ts'
+import { agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco, type ResumoDeLaudo } from './servidor.ts'
+import type { DocumentoLido } from '../regras/leitura.ts'
 import type {
   Arquivo,
   EnvioDeArquivos,
@@ -48,9 +49,17 @@ export async function obterTarefa(id: string): Promise<{ tarefa: TarefaEncaminha
  * automação, não o portal. Aqui a tela faz o papel do n8n com o lote da semente (CA2, CA4, CA10).
  */
 export async function receberLote(tarefaId: string): Promise<LoteDigitalizado> {
-  await esperar()
   const banco = ler()
   const { tarefa, ficha } = tarefaEFicha(banco, tarefaId)
+  if (doServidor(ficha.id)) {
+    // GGVP-125, bloco 5b: o lote vai à tarefa e à pasta do servidor, e a IA (simulada) lê lá.
+    const r = await noBanco<{ lote: LoteDigitalizado; ficha: Ficha; tarefas: TarefaEncaminhada[]; leituras: DocumentoLido[] }>(`/tarefas/${encodeURIComponent(tarefaId)}/lote`, {
+      method: 'POST',
+    })
+    receber(r)
+    return r.lote
+  }
+  await esperar()
   const hoje = hojeIso(agora())
   banco.seq += 1
   const lote = loteDeExemplo(ficha, hoje, `lote-${banco.seq}`)
@@ -71,11 +80,19 @@ export async function receberLote(tarefaId: string): Promise<LoteDigitalizado> {
 
 /** POST /api/tarefas/:id/registro. Só depois de conferir o tipo de cada documento, e o papel quando o lote avisou (CA5, CA10). */
 export async function registrarRecebimento(tarefaId: string, registro: RegistroRecebimento): Promise<{ evento: EventoHistorico }> {
-  await esperar()
   const banco = ler()
   const { tarefa, ficha } = tarefaEFicha(banco, tarefaId)
   if (tarefa.concluida) throw new Error('Esta tarefa já foi registrada')
   if (registro.conferiTipos !== true) throw new Error('Confira o tipo de cada documento')
+  if (doServidor(ficha.id)) {
+    const r = await noBanco<{ evento: EventoHistorico; ficha: Ficha; tarefas: TarefaEncaminhada[] }>(`/tarefas/${encodeURIComponent(tarefaId)}/registro`, {
+      method: 'POST',
+      corpo: registro,
+    })
+    receber(r)
+    return { evento: r.evento }
+  }
+  await esperar()
   const hoje = hojeIso(agora())
   let texto: string
   if (registro.forma === 'papel') {
@@ -128,13 +145,30 @@ const valido = (a: EnvioDeArquivos['arquivos'][number]) =>
  * POST /api/fichas/:id/arquivos ("Conferir e enviar"). Nada é apagado nem sobrescrito; laudo marca "Laudo novo" na
  * ficha e no processo, guarda o resumo da IA para o Jurídico e avisa a advogada (CA6, CA7, CA11, CA13, CA14).
  */
-export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos): Promise<RespostaEnvio> {
-  await esperar()
+export async function enviarArquivos(fichaId: string, envio: EnvioDeArquivos, conteudos: { hash: string; arquivo: File }[] = []): Promise<RespostaEnvio> {
+  if (!doServidor(fichaId)) await esperar()
   if (envio.arquivos.length === 0 || envio.arquivos.length > 20 || !envio.arquivos.every(valido)) throw new Error('Arquivos inválidos')
   const banco = ler()
   const ficha = banco.fichas.find((f) => f.id === fichaId)
   if (!ficha) throw new Error('Ficha não encontrada')
   if (!pastaDaFicha(banco, ficha)) return { resultado: 'sem-pasta' }
+  if (doServidor(fichaId)) {
+    // GGVP-125, bloco 5b: a pasta do Drive ainda é a de exemplo daqui; os arquivos, a leitura e o laudo novo vão ao servidor.
+    gravar(banco)
+    const r = await noBanco<Extract<RespostaEnvio, { resultado: 'enviado' }> & { ficha: Ficha; tarefas: TarefaEncaminhada[]; leituras: DocumentoLido[] }>(
+      `/fichas/${fichaId}/arquivos`,
+      { method: 'POST', corpo: envio },
+    )
+    receber(r)
+    // Bloco 5b+ (pedido do Pedro, 09/10): o conteúdo de cada arquivo fica guardado no servidor até o Drive entrar.
+    for (const c of conteudos) {
+      const corpo = new FormData()
+      corpo.set('hash', c.hash)
+      corpo.set('arquivo', c.arquivo)
+      await noBanco(`/fichas/${fichaId}/arquivos/conteudo`, { method: 'POST', corpo })
+    }
+    return { resultado: 'enviado', arquivos: r.arquivos, laudoNovo: r.laudoNovo }
+  }
 
   const hoje = hojeIso(agora())
   const caso = ficha.processos[0]

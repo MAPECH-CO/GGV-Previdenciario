@@ -30,9 +30,9 @@ async function calcular(page: Page, tempo: [string, string, string], pontos: str
 
 test('CA1, CA2, CA4, CA5 e CA6 · da tarefa na Central ao cálculo concluído; refazer com "Ainda não" guarda o anterior', async ({ page }) => {
   await definir(page, 'aposentadoria-idade')
-  await expect(page.getByText(/Depois: «Calcular tempo e pontos» \(D1\.13\), obrigatório antes do fechamento/)).toBeVisible()
+  await expect(page.getByText(/Depois: «Calcular tempo e pontos», obrigatório antes do fechamento/)).toBeVisible()
   await page.goto('/clientes/josefa-exemplo')
-  await expect(page.getByText('Calcular tempo e pontos (D1.13): obrigatório antes do fechamento')).toBeVisible()
+  await expect(page.getByText('Calcular tempo e pontos: obrigatório antes do fechamento')).toBeVisible()
 
   // O cálculo é do Jurídico (Pedro, 08/10): a tarefa está na Central da advogada.
   await page.goto('/advogada')
@@ -53,17 +53,17 @@ test('CA1, CA2, CA4, CA5 e CA6 · da tarefa na Central ao cálculo concluído; r
   await page.getByLabel('Data prevista em que poderá se aposentar *').fill('15/03/2028')
   await page.getByRole('checkbox', { name: 'Conferi o cálculo com o CNIS' }).check()
   await page.getByRole('button', { name: 'Concluir' }).click()
-  await expect(page.getByText(/previsto para 15\/03\/2028\. O caso segue para «Registrar o motivo» \(D1\.14\)/)).toBeVisible()
+  await expect(page.getByText(/previsto para 15\/03\/2028\. O caso segue para «Registrar o motivo»/)).toBeVisible()
   await expect(page.getByRole('region', { name: 'Cálculos anteriores' })).toContainText('18 anos e 4 meses, 79,5 pontos')
 
   await page.getByRole('link', { name: 'Abrir a ficha do cliente' }).click()
-  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Refez o cálculo de tempo e pontos (D1.13)')
-  await expect(page.getByText('Calcular tempo e pontos (D1.13): obrigatório antes do fechamento')).toHaveCount(0)
+  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Refez o cálculo de tempo e pontos')
+  await expect(page.getByText('Calcular tempo e pontos: obrigatório antes do fechamento')).toHaveCount(0)
 })
 
 test('CA3 · benefício sem cálculo: o passo não aparece', async ({ page }) => {
   await definir(page, 'loas-idoso')
-  await expect(page.getByText('Depois: «O cliente fechou com o escritório?» (D1.14).')).toBeVisible()
+  await expect(page.getByText('Depois: «O cliente fechou com o escritório?».')).toBeVisible()
   await page.goto('/advogada')
   await expect(page.getByRole('link', { name: 'Josefa Exemplo · Calcular tempo e pontos' })).toHaveCount(0)
   await page.goto('/entrevista/josefa-entrevista/calculo')
@@ -76,5 +76,5 @@ test('tema escuro e fonte grande no cálculo', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Calcular tempo e pontos')
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

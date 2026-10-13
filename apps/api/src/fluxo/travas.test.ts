@@ -43,4 +43,11 @@ describe('travas antes de protocolar (G7, GGVP-71)', () => {
     const convertido = [...PACOTE.slice(0, 2), arquivo('citado', 'foto.pdf', 'novo', 'foto')]
     expect(travaPacote([{ documentoId: 'foto', nome: 'foto.jpg' }], convertido, {}, TRF3).ok).toBe(true)
   })
+
+  it('pacote completo (GGVP-107 CA6): com o Drive ligado, o pacote também tem de estar salvo lá', () => {
+    const citados = [{ documentoId: 'l', nome: 'laudo.pdf' }]
+    expect(travaPacote(citados, PACOTE, {}, TRF3, false)).toMatchObject({ ok: false, evidencia: 'O pacote ainda não está no Drive; o portal salva sozinho em até um minuto' })
+    expect(travaPacote(citados, PACOTE, {}, TRF3, true).ok).toBe(true)
+    expect(travaPacote(citados, PACOTE, {}, TRF3, null).ok).toBe(true) // Drive desligado: não cobra
+  })
 })

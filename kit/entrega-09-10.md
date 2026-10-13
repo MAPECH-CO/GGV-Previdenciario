@@ -35,7 +35,7 @@ Um épico por pessoa por vez. O dono faz as histórias inteiras, tela e servidor
 | 5 | **Desfecho e financeiro** (GGVP-11) | **Relacionamento com o cliente** (GGVP-12) |
 | 6 | **IA jurídica** (GGVP-14) · **Jurimetria** (GGVP-15) | ajuda onde faltar |
 
-Não entra até 09/10: Google Drive (GGVP-107), assinatura ZapSign real, 2FA, chat com ação (só consulta).
+Não entra até 09/10: assinatura ZapSign real, 2FA, chat com ação (só consulta). O Google Drive (GGVP-107) entra: o Pedro decidiu em 05/10 que ele é essencial antes de 09/10.
 
 Dependência que não se negocia: a fundação sobe primeiro. Tela que precisa de servidor nasce com dados de exemplo e liga depois. O contrato (schema Zod em `packages/contratos`) é o que os dois compartilham: nasce na `design.md` da change, e cada um constrói o seu lado sobre ele.
 
@@ -43,7 +43,7 @@ Dependência que não se negocia: a fundação sobe primeiro. Tela que precisa d
 
 Ordem do fluxo do BPMN. História fora da lista: ordem do Jira.
 
-- **Fundação técnica (GGVP-2):** 118 → 119 → 108 → 117 → 96 → 105. (107 fica de fora.)
+- **Fundação técnica (GGVP-2):** 118 → 119 → 108 → 117 → 96 → 107 → 105.
 - **Recepção e entrevista (GGVP-6):** 120 → 16 → 24 → 21 → 32 → 28 → 36 → 40 → 46 → 43 → 51 → 57 → 17 → 60.
 - **Experiência por perfil e chat (GGVP-5):** 78 → 86 → 82.
 - **Abertura e documentação (GGVP-7):** 65 → 69 → 72 → 77 → 85 → 89 → 81 → 91 → 18 → 97 → 101.
@@ -65,7 +65,7 @@ Ordem do fluxo do BPMN. História fora da lista: ordem do Jira.
 ## Rodar local, sem Docker
 
 - Só Node. `pnpm dev` sobe `apps/api` e `apps/web`.
-- Banco de dev no Coolify, na VPS: um banco por pessoa (`prev_pedro`, `prev_mateus`), URL no `.env` local. Nada de Postgres nem Docker na máquina.
+- Banco de dev no Supabase, isolado por pessoa (`prev_pedro`, `prev_mateus`), URL no `.env` local. Nada de Postgres nem Docker na máquina.
 - Homologação é outro banco, no mesmo Postgres. Migrações rodam no deploy.
 - Playwright usa o Chromium que ele mesmo instala (`pnpm exec playwright install chromium`).
 
@@ -75,7 +75,7 @@ Ordem do fluxo do BPMN. História fora da lista: ordem do Jira.
 |---|---|
 | Todos | Revisar os cartões dos seus épicos até 02/10. |
 | Fernando | Reunião de 02/10. Colunas do Jira já estão certas (feito em 30/09). |
-| Mateus | Coolify: aplicação de homologação ligada ao GitHub e Postgres de dev com um banco por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret". |
+| Mateus | Coolify: aplicação de homologação ligada ao GitHub. Banco no Supabase, com ambiente de dev isolado por pessoa. Os segredos do repositório (`JIRA_EMAIL`, `JIRA_API_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) existem e funcionam. Para trocar um: no PowerShell, `$t = (Read-Host "valor").Trim() -replace '\s',''` e `gh secret set NOME --repo femezher/GGV-Previdenciario --body $t`. Nunca pelo prompt "Paste your secret". |
 | Lucas | Validar o BPMN com o escritório em 03/10. Dúvidas novas: comentar no cartão. |
 
 ## Regras de fila

@@ -3,10 +3,10 @@
 // O chat herda exatamente as permissões do perfil de quem pergunta. Para executar algo, devolve um cartão; nada acontece
 // sem "Confirmar" (confirmarAcao).
 //
-// Ponta para ligar no motor de IA (pedido #26, feat/GGVP-14-ia-juridica, do Mateus): `perguntar` vira POST /api/chat e a
-// `sugestao` passa a vir do motor (SugestaoDaIa, com as fontes e o modelo de verdade); as recusas, os portões, a regra do
-// responsável e os números continuam no servidor, como código, antes e depois do modelo.
-import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa } from '@ggv/contratos'
+// Com o servidor ligado (homologação), `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor (GGVP-142): o
+// motor de IA de verdade, com as recusas, os portões, a regra do responsável e os números no servidor, como código, antes
+// e depois do modelo. O que está aqui fica para os testes e para a semente.
+import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa, TextoDaFala } from '@ggv/contratos'
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -49,7 +49,7 @@ import {
 } from './pericia.ts'
 import type { IdPerfil } from './perfis.ts'
 import { perfilDoPerito, peritosDo } from './peritos.ts'
-import { agora, esperar, gravar, ler } from './servidor.ts'
+import { agora, doServidor, esperar, gravar, ler, noBanco, servidorLigado } from './servidor.ts'
 import type { Tarefa } from './tipos.ts'
 
 export type { QuemPergunta }
@@ -405,20 +405,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
   if (tipo === 'acervo') {
     const fora = await foraDoMeuPerfil(texto, 'subir-acervo', quem, processoId)
     if (fora) return fora
-    return comCartao(
-      `Recebi ${arquivos.length} PDFs para o acervo. Confira antes de eu guardar.`,
-      {
-        tipo: 'subir-acervo',
-        titulo: `Acervo · ${arquivos.length} processos`,
-        passos: [`Guardar os ${arquivos.length} PDFs no acervo`, 'A IA lê cada um e tira o nome e o CPF: o acervo guarda só a referência do caso', 'O que não der para ler fica de fora das contas, e nada trava', 'O sistema recalcula a jurimetria'],
-        conferir: ['Os arquivos são de processos do escritório'],
-        travas: ['O acervo não guarda dado pessoal do cliente', 'Toda jurimetria do acervo conta, sem amostra mínima (Lucas, 06/10)'],
-        rotuloConfirmar: 'Confirmar e guardar no acervo',
-      },
-      quem,
-      texto,
-      { arquivos: nomes },
-    )
+    return resposta('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
   }
 
   const achados = await identificarCliente(`${texto} ${nomes.join(' ')}`)
@@ -449,7 +436,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
         titulo: `Marcar a perícia · ${cliente.nome}`,
         cliente: { id: cliente.id, nome: cliente.nome },
         processoId: pericia.processoId,
-        passos: [`Subir ${arquivo.nome} na pasta do cliente`, `Agendar: ${NOMES_DO_TIPO[lido.tipo]} em ${dataCurta(lido.data, hoje)}, ${lido.hora}, ${lido.local}`, 'Dar baixa no DP.02; o próximo passo é ligar e orientar (DP.06)'],
+        passos: [`Subir ${arquivo.nome} na pasta do cliente`, `Agendar: ${NOMES_DO_TIPO[lido.tipo]} em ${dataCurta(lido.data, hoje)}, ${lido.hora}, ${lido.local}`, 'Dar baixa na marcação; o próximo passo é ligar e orientar'],
         conferir: ['Data, hora e local, no comprovante'],
         travas: ['Você confere data, hora e local antes de confirmar. A IA não escolhe nem sugere o perito.'],
         escolha: { pergunta: 'A perícia pede documento novo?', opcoes: ['Sim: atribuir à Documentação', 'Não'] },
@@ -491,9 +478,9 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
         titulo: `Atualizar o laudo · ${cliente.nome}`,
         cliente: { id: cliente.id, nome: cliente.nome },
         processoId: caso?.id,
-        passos: [`Subir ${arquivo.nome} na pasta do cliente`, 'Marcar «Laudo novo» na ficha e no processo', 'Avisar a advogada responsável (D1.21M), com o resumo e a comparação da IA'],
+        passos: [`Subir ${arquivo.nome} na pasta do cliente`, 'Marcar «Laudo novo» na ficha e no processo', 'Avisar a advogada responsável, com o resumo e a comparação da IA'],
         conferir: ['O cliente do laudo'],
-        travas: [visaoDoPerfil(quem.id) === 'juridico' ? 'Você confere o resumo e a comparação da IA na análise do laudo (D1.21M).' : 'Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.'],
+        travas: [visaoDoPerfil(quem.id) === 'juridico' ? 'Você confere o resumo e a comparação da IA na análise do laudo.' : 'Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.'],
         rotuloConfirmar: 'Confirmar e enviar ao Jurídico',
       },
       quem,
@@ -509,7 +496,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
       titulo: `Subir documento · ${cliente.nome}`,
       cliente: { id: cliente.id, nome: cliente.nome },
       processoId: caso?.id,
-      passos: [`Subir ${arquivos.length === 1 ? arquivo.nome : `${arquivos.length} arquivos`} na pasta do cliente`, 'A IA lê e classifica; a Documentação confere (D1.18)'],
+      passos: [`Subir ${arquivos.length === 1 ? arquivo.nome : `${arquivos.length} arquivos`} na pasta do cliente`, 'A IA lê e classifica; a Documentação confere'],
       conferir: ['O cliente certo'],
       travas: visaoDoPerfil(quem.id) === 'juridico' ? [] : ['Se for documento médico, o conteúdo é só do Jurídico'],
       rotuloConfirmar: 'Confirmar e subir',
@@ -521,10 +508,25 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
 }
 
 /**
+ * O modo misto (GGVP-125): vai ao servidor (GGVP-142) a pergunta sobre um caso do servidor, pelo processo ou pelo cliente
+ * citado, e a consulta sem cliente. Seguem aqui a pergunta sobre um caso ou um cliente da semente e, sem cliente, as
+ * listas, os números e as ações que este chat calcula por código sobre a semente (perícias da semana, jurimetria...).
+ */
+async function vaiAoServidor(p: { texto: string; processoId?: string }) {
+  if (p.processoId) return doServidor(p.processoId)
+  const citados = await identificarCliente(p.texto)
+  if (citados.length) return citados.some((f) => doServidor(f.id))
+  return entenderPedido(p.texto) === 'consulta'
+}
+
+/**
  * POST /api/chat: o caminho único do chat (CA1 a CA12). Na ordem: as recusas, os portões, os anexos, o que é de outro
  * perfil, as ações (com cartão) e as consultas. Nada executa aqui.
  */
 export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; processoId?: string }, quem: QuemPergunta): Promise<RespostaDoChat> {
+  if (servidorLigado() && (await vaiAoServidor(p))) {
+    return noBanco<RespostaDoChat>('/chat', { method: 'POST', corpo: { texto: p.texto, anexos: p.anexos ?? [], ...(p.processoId ? { processoId: p.processoId } : {}) } })
+  }
   await esperar()
   const texto = p.texto.trim()
   const imediata = recusaImediata(texto, quem.usuario)
@@ -617,7 +619,7 @@ export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; 
       )
     }
     case 'subir-acervo':
-      return resposta('Anexe os PDFs dos processos encerrados: eu mostro o cartão com o que vou fazer antes de guardar no acervo.')
+      return resposta('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
     case 'valor':
       return consultarValor(texto, quem, p.processoId)
     default:
@@ -655,6 +657,9 @@ export async function confirmarAcao(
   quem: QuemPergunta,
   o: { responsavel?: string; escolha?: string; arquivos?: { nome: string; tamanho: number; conteudo: ArrayBuffer }[] } = {},
 ): Promise<ResultadoDaAcao> {
+  if (servidorLigado() && !pendentes.has(acaoId)) {
+    return noBanco<ResultadoDaAcao>(`/chat/acoes/${acaoId}`, { method: 'POST', corpo: { acaoId, ...(o.responsavel ? { responsavel: o.responsavel } : {}), ...(o.escolha ? { escolha: o.escolha } : {}) } })
+  }
   const p = pendentes.get(acaoId)
   if (!p) throw new Error('Esse cartão já foi usado ou expirou. Peça de novo.')
   if (p.quem.usuario !== quem.usuario) throw new Error('Só quem pediu confirma o cartão.')
@@ -729,32 +734,36 @@ export async function confirmarAcao(
       r = { estado: 'feito', texto: `✓ Feito: ${nomes.length === 1 ? 'o arquivo está' : 'os arquivos estão'} na pasta de ${acao.cliente!.nome}; a Documentação confere a leitura.`, links: [{ rotulo: 'Abrir a ficha', href: `/clientes/${acao.cliente!.id}` }] }
       break
     }
-    case 'subir-acervo': {
-      // Ponta da GGVP-131 (acervo que aprende): IA simulada; o PDF com "ilegivel" no nome não dá para ler.
-      const nomes = p.dados.arquivos as string[]
-      const fora = nomes.filter((n) => /ilegivel/i.test(n)).length
-      const banco = ler()
-      ;(banco.lotesDoAcervo ??= []).push({ quando: agora().toISOString(), quem: quem.usuario, entraram: nomes.length - fora, ficaramDeFora: fora })
-      gravar(banco)
-      r = {
-        estado: 'feito',
-        texto: `✓ Pronto: ${nomes.length - fora} processos entraram no acervo e já contam na jurimetria.${fora ? ` ${fora} PDFs não deu para ler: ficaram de fora das contas e nada trava.` : ''}`,
-        links: [],
-      }
-      break
-    }
+    case 'subir-acervo':
+      throw new Error('O chat ainda não sobe arquivos para o acervo. Nenhum PDF foi guardado e a jurimetria não mudou.')
   }
   pendentes.delete(acaoId)
   return r
 }
 
 /** O cartão cancelado: nada acontece e ele some. */
+export const MSG_FALA_VAZIA = 'Não deu para entender a fala: grave de novo, mais perto do microfone, ou digite a pergunta.'
+
+/** O nome do arquivo pelo tipo que o navegador gravou (o Safari grava mp4). */
+const nomeDaFala = (tipo: string) => (tipo.includes('mp4') ? 'fala.m4a' : tipo.includes('ogg') ? 'fala.ogg' : 'fala.webm')
+
+/** POST /api/chat/fala (12/10): a fala do microfone em texto, para a pessoa conferir na caixa. */
+export async function transcreverFala(audio: Blob): Promise<string> {
+  if (!servidorLigado()) throw new Error('A transcrição precisa do servidor ligado.')
+  const corpo = new FormData()
+  corpo.append('audio', audio, nomeDaFala(audio.type))
+  const { texto } = await noBanco<TextoDaFala>('/chat/fala', { method: 'POST', corpo })
+  return texto.trim()
+}
+
 export function cancelarAcao(acaoId: string) {
+  if (servidorLigado() && !pendentes.has(acaoId)) void noBanco(`/chat/acoes/${acaoId}`, { method: 'DELETE' }).catch(() => undefined)
   pendentes.delete(acaoId)
 }
 
 /** As tarefas que o chat criou para a pessoa, na Central dela (Figma 2086:2). */
 export function tarefasCriadasPeloChat(usuario: string | undefined): Tarefa[] {
+  // A tarefa que o chat cria no servidor é uma tarefa do banco: chega à Central pela lista do servidor, não por aqui.
   if (!usuario) return []
   const hoje = hojeIso(agora())
   return (ler().tarefasDoChat ?? [])

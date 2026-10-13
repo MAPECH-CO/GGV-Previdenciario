@@ -104,6 +104,6 @@ test('tema escuro e fonte grande na liberação', async ({ page }) => {
   await page.goto('/casos/sebastiao-exemplo-1/liberar?tema=escuro&fonte=grande')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sebastião Exemplo · Liberar ao Jurídico')
   await expect(page.locator('body')).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(page.locator('body')).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
   await expect(page.locator('section', { has: page.getByRole('heading', { name: 'Conferir' }) })).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
 })

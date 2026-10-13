@@ -1,18 +1,22 @@
 import { useEffect, useId, useState } from 'react'
-import { somenteDigitos } from '@ggv/campos'
+import { somenteDigitos, normalizarInteiro } from '@ggv/campos'
 import {
-  BENEFICIOS,
+  CATALOGO_BENEFICIOS,
+  BENEFICIO_NA_CONFIGURACAO,
   ROTULO_BENEFICIO,
   ROTULO_TIPO_DE_TERMO,
   SalvarTermo,
   TIPOS_DE_TERMO,
-  type Beneficio,
   type ConfiguracaoDoEscritorio,
   type GlossarioDoEscritorio,
+  type ModelosDoEscritorio,
   type TipoDeTermo,
 } from '@ggv/contratos'
+import { linhaDoBeneficio, modeloPorId } from '../regras/contrato.ts'
 import { chamarApi } from '../api.ts'
 import { FeriadosDosTribunais } from '../componentes/FeriadosDosTribunais.tsx'
+import { MolduraDaBase } from './Base.tsx'
+import g from './Gestao.module.css'
 import styles from './Passo.module.css'
 
 type Config = ConfiguracaoDoEscritorio
@@ -37,18 +41,24 @@ const nomeDoDocumento = (tipo: string) => NOME_DO_DOCUMENTO[tipo] ?? tipo.replac
 function LinhaDoParametro({ p, podeEditar, aoSalvar }: { p: Config['parametros'][number]; podeEditar: boolean; aoSalvar: (chave: string, valor: string) => void }) {
   const id = useId()
   const [valor, setValor] = useState(p.valor === null ? '' : String(p.valor))
+  const numero = normalizarInteiro(valor)
+  const valido = numero !== null && numero >= p.min && numero <= p.max
+  const pendente = p.chave === 'pericia.remarcacao.limite' || p.chave.startsWith('contato.')
+  const edita = podeEditar && !pendente
   return (
-    <div className={styles.escolha}>
+    <div className={g.parametro}>
       <label className={styles.rotulo} htmlFor={id}>
         {p.rotulo} (de {p.min} a {p.max})
       </label>
-      <input id={id} className={styles.campo} inputMode="numeric" value={valor} disabled={!podeEditar} onChange={(e) => setValor(somenteDigitos(e.target.value))} />
-      {podeEditar && (
+      <input id={id} className={styles.campo} inputMode="numeric" value={valor} disabled={!edita} onChange={(e) => setValor(somenteDigitos(e.target.value))} />
+      {pendente && <p className={styles.dica}>Este valor cadastrado ainda não é aplicado pelo servidor. Edição indisponível até a ligação desta regra.</p>}
+      {valor && !valido && <p role="alert" className={styles.erroCampo}>Informe um inteiro de {p.min} a {p.max}.</p>}
+      {edita && (
         <button
           type="button"
           className={styles.botao}
           aria-label={`Salvar: ${p.rotulo}`}
-          disabled={!valor || valor === String(p.valor)}
+          disabled={!valido || valor === String(p.valor)}
           onClick={() => aoSalvar(p.chave, valor)}
         >
           Salvar
@@ -85,7 +95,7 @@ function KitDoBeneficio({ kit, tipos, podeEditar, aoPublicar }: { kit: Config['k
                 {nomeDoDocumento(i.tipoDocumento)} · {i.obrigatorio ? 'obrigatório' : 'condicional'}
               </label>
               {podeEditar && (
-                <button type="button" className={styles.botao} onClick={() => setItens((a) => a.filter((x) => x.tipoDocumento !== i.tipoDocumento))}>
+                <button type="button" className={styles.botaoSecundario} onClick={() => setItens((a) => a.filter((x) => x.tipoDocumento !== i.tipoDocumento))}>
                   Tirar {nomeDoDocumento(i.tipoDocumento)}
                 </button>
               )}
@@ -149,6 +159,70 @@ function Mensagem({ m, podeEditar, aoPublicar }: { m: Config['mensagens'][number
 
 type Termo = GlossarioDoEscritorio['termos'][number]
 type Salvar = (caminho: string, corpo: unknown, aviso: string, metodo?: string) => void
+
+/** Um modelo do Word do kit: a versão em vigor e, para a Sênior, o arquivo da versão seguinte (GGVP-136, CA1). */
+function LinhaDoModelo({ m, podeSubir, aoSubir }: { m: ModelosDoEscritorio['modelos'][number]; podeSubir: boolean; aoSubir: (id: string, arquivo: File, aviso: string) => void }) {
+  const id = useId()
+  const [arquivo, setArquivo] = useState<File | null>(null)
+  const proxima = (m.versao ?? 0) + 1
+  return (
+    <li>
+      <strong>{m.nome}</strong> · {m.versao ? `versão ${m.versao}, desde ${dia(m.vigenteDesde!)}` : 'sem arquivo: o kit avisa que falta o modelo'}
+      {podeSubir && (
+        <div className={styles.escolha}>
+          <label className={styles.rotulo} htmlFor={id}>
+            Arquivo do {m.nome} (.docx)
+          </label>
+          <input id={id} className={styles.campo} type="file" accept=".docx" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+          <button
+            type="button"
+            className={styles.botao}
+            aria-label={`Subir a versão ${proxima} do ${m.nome}`}
+            disabled={!arquivo}
+            onClick={() => arquivo && aoSubir(m.id, arquivo, `Modelo publicado: a versão ${proxima} vale para os kits novos.`)}
+          >
+            Subir a versão {proxima}
+          </button>
+        </div>
+      )}
+    </li>
+  )
+}
+
+/**
+ * Os modelos do kit (GGVP-136): o Word do escritório, um por kit, com as {{VARIÁVEIS}} no lugar dos dados do cliente. O kit usa
+ * a versão em vigor. A gestão vê; só a Sênior sobe ou troca (o servidor decide `podeSubir`).
+ */
+function ModelosDoKit({ versao, salvar, aoErro }: { versao: number; salvar: Salvar; aoErro: (erro: string) => void }) {
+  const [m, setM] = useState<ModelosDoEscritorio | null>(null)
+  useEffect(() => {
+    void chamarApi<ModelosDoEscritorio>('/configuracao/modelos').then((r) => (r.ok ? setM(r.dados) : aoErro(r.erro)))
+  }, [versao, aoErro])
+  if (!m) return null
+  return (
+    <section className={styles.cartao} aria-label="Modelos do kit">
+      <h2 className={styles.cartaoTitulo}>Modelos do kit</h2>
+      <p className={styles.dica}>
+        O Word do escritório, um por kit. O kit usa a versão em vigor: a versão nova vale para os kits novos, e o kit já gerado fica com o modelo da época.
+        {!m.podeSubir && ' Quem sobe é a Sênior.'}
+      </p>
+      <ul className={styles.lista} aria-label="Modelos do Word">
+        {m.modelos.map((x) => (
+          <LinhaDoModelo
+            key={`${x.id}-${x.versao}`}
+            m={x}
+            podeSubir={m.podeSubir}
+            aoSubir={(id, arquivo, aviso) => {
+              const corpo = new FormData()
+              corpo.append('arquivo', arquivo)
+              salvar(`/configuracao/modelos/${id}`, corpo, aviso)
+            }}
+          />
+        ))}
+      </ul>
+    </section>
+  )
+}
 const TERMO_VAZIO: SalvarTermo = { termo: '', tipo: 'sigla', significado: '' }
 
 /** O termo, o tipo e o significado (GGVP-143): o mesmo formulário acrescenta e corrige; o contrato confere antes de enviar. */
@@ -288,7 +362,7 @@ export function Configuracao() {
   const idBeneficio = useId()
   const [c, setC] = useState<Config | null>(null)
   const [versao, setVersao] = useState(0)
-  const [beneficio, setBeneficio] = useState<Beneficio>('bpc_loas_idoso')
+  const [beneficio, setBeneficio] = useState('bpc_loas_idoso')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
 
@@ -307,84 +381,97 @@ export function Configuracao() {
     setVersao((v) => v + 1)
   }
 
+  const escolhido = CATALOGO_BENEFICIOS.find(b => (BENEFICIO_NA_CONFIGURACAO[b.id] ?? b.id) === beneficio)
+  const linha = escolhido && linhaDoBeneficio(escolhido.id)
+  const modelo = linha?.modelo ? modeloPorId(linha.modelo) : undefined
   const kit = c?.kits.find((k) => k.beneficio === beneficio)
   return (
-    <main className={styles.pagina}>
-      <title>Configuração do escritório · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
-      <h1 className={styles.titulo}>Configuração do escritório</h1>
-      <p className={styles.subtitulo}>Mudar a regra do escritório sem mexer no código. Toda mudança fica no histórico, com quem mudou.</p>
-      {erro && (
-        <p className={styles.erro} role="alert">
-          {erro}
-        </p>
-      )}
-      {feito && (
-        <p className={styles.sucesso} role="status">
-          {feito}
-        </p>
-      )}
-      {c && (
-        <>
-          <section className={styles.cartao} aria-label="Limites e parâmetros" key={`p-${versao}`}>
-            <h2 className={styles.cartaoTitulo}>Limites e parâmetros</h2>
-            {c.parametros.map((p) => (
-              <LinhaDoParametro key={p.chave} p={p} podeEditar={c.podeEditar} aoSalvar={(chave, valor) => void salvar(`/configuracao/parametros/${chave}`, { valor }, 'Parâmetro salvo.')} />
-            ))}
-          </section>
-
-          <section className={styles.cartao} aria-label="Kits por benefício">
-            <h2 className={styles.cartaoTitulo}>Kits de documentos por benefício</h2>
-            <label className={styles.rotulo} htmlFor={idBeneficio}>
-              Benefício
-            </label>
-            <select id={idBeneficio} className={styles.campo} value={beneficio} onChange={(e) => setBeneficio(e.target.value as Beneficio)}>
-              {BENEFICIOS.map((b) => (
-                <option key={b} value={b}>
-                  {ROTULO_BENEFICIO[b]}
-                </option>
-              ))}
-            </select>
-            {kit && (
-              <KitDoBeneficio
-                key={`${beneficio}-${kit.versao}-${versao}`}
-                kit={kit}
-                tipos={c.tiposDeDocumento}
-                podeEditar={c.podeEditar}
-                aoPublicar={(itens) => void salvar(`/configuracao/kits/${beneficio}`, { itens }, `Kit publicado: a versão ${(kit.versao ?? 0) + 1} vale para os casos novos.`)}
-              />
-            )}
-          </section>
-
-          {c.mensagens.length > 0 && (
-            <section className={styles.cartao} aria-label="Mensagens padrão" key={`m-${versao}`}>
-              <h2 className={styles.cartaoTitulo}>Mensagens padrão</h2>
-              {c.mensagens.map((m) => (
-                <Mensagem key={m.id} m={m} podeEditar={c.podeEditar} aoPublicar={(id, conteudo) => void salvar(`/configuracao/mensagens/${id}`, { conteudo }, 'Mensagem publicada.')} />
+    <MolduraDaBase ativo="configuracao" titulo="Configuração do escritório" subtitulo="Mudar a regra do escritório sem mexer no código. Toda mudança fica no histórico, com quem mudou.">
+      <div className={g.estreito}>
+        {erro && (
+          <p className={styles.erro} role="alert">
+            {erro}
+          </p>
+        )}
+        {feito && (
+          <p className={styles.sucesso} role="status">
+            {feito}
+          </p>
+        )}
+        {c && (
+          <>
+            <section className={styles.cartao} aria-label="Limites e parâmetros" key={`p-${versao}`}>
+              <h2 className={styles.cartaoTitulo}>Limites e parâmetros</h2>
+              <p className={styles.dica}>Regra definida: cobrança e confirmação do lead com 2 tentativas, separadas por 3 dias; depois, Sênior. Perícia: 1 remarcação; depois, advogada responsável. Espera por resposta: lembrete diário.</p>
+              <p className={styles.dica}>A cobrança configurada abaixo já vale nos laços das exigências e do despacho. A aplicação na cobrança do contrato e na confirmação do lead ainda aguarda integração.</p>
+              {c.parametros.map((p) => (
+                <LinhaDoParametro key={p.chave} p={p} podeEditar={c.podeEditar} aoSalvar={(chave, valor) => void salvar(`/configuracao/parametros/${chave}`, { valor }, 'Parâmetro salvo.')} />
               ))}
             </section>
-          )}
 
-          <Glossario versao={versao} salvar={(caminho, corpo, aviso, metodo) => void salvar(caminho, corpo, aviso, metodo)} aoErro={setErro} />
-
-          {c.historico.length > 0 && (
-            <section className={styles.cartao} aria-label="Histórico da configuração">
-              <h2 className={styles.cartaoTitulo}>Histórico da configuração</h2>
-              <ol className={styles.lista}>
-                {c.historico.map((h, i) => (
-                  <li key={`${h.quando}-${i}`}>
-                    {momento(h.quando)} · {h.quem} · {h.descricao}
-                  </li>
+            <section className={styles.cartao} aria-label="Kits por benefício">
+              <h2 className={styles.cartaoTitulo}>Kits de documentos por benefício</h2>
+              <label className={styles.rotulo} htmlFor={idBeneficio}>
+                Benefício
+              </label>
+              <select id={idBeneficio} className={styles.campo} value={beneficio} onChange={(e) => setBeneficio(e.target.value)}>
+                {CATALOGO_BENEFICIOS.map((b) => (
+                  <option key={b.id} value={BENEFICIO_NA_CONFIGURACAO[b.id] ?? b.id}>
+                    {b.nome}
+                  </option>
                 ))}
-              </ol>
+              </select>
+              <p className={styles.dica}>34 benefícios · catálogo do escritório.</p>
+              <p className={styles.dica}>Modelo do kit: {modelo?.nome ?? 'ainda não definido para este benefício'}.</p>
+              {!kit && <p className={styles.erroCampo} role="status">Checklist indisponível no servidor para este benefício.
+                O caso permanece bloqueado até haver checklist aprovado.</p>}
+              {kit && (
+                <KitDoBeneficio
+                  key={`${beneficio}-${kit.versao}-${versao}`}
+                  kit={kit}
+                  tipos={c.tiposDeDocumento}
+                  podeEditar={c.podeEditar}
+                  aoPublicar={(itens) => void salvar(`/configuracao/kits/${beneficio}`, { itens }, `Kit publicado: a versão ${(kit.versao ?? 0) + 1} vale para os casos novos.`)}
+                />
+              )}
             </section>
-          )}
-        </>
-      )}
-      {/* GGVP-146, parte 3: os feriados e as suspensões dos tribunais, com o histórico deles. */}
-      {c && <FeriadosDosTribunais />}
-    </main>
+
+            <ModelosDoKit versao={versao} salvar={(caminho, corpo, aviso, metodo) => void salvar(caminho, corpo, aviso, metodo)} aoErro={setErro} />
+
+            {c.mensagens.length > 0 && (
+              <section className={styles.cartao} aria-label="Mensagens padrão" key={`m-${versao}`}>
+                <h2 className={styles.cartaoTitulo}>Mensagens padrão</h2>
+                {c.mensagens.map((m) => (
+                  <Mensagem key={m.id} m={m} podeEditar={c.podeEditar} aoPublicar={(id, conteudo) => void salvar(`/configuracao/mensagens/${id}`, { conteudo }, 'Mensagem publicada.')} />
+                ))}
+              </section>
+            )}
+
+            <section className={styles.cartao} aria-label="Tribunais e assinatura da petição">
+              <h2 className={styles.cartaoTitulo}>Tribunais e assinatura da petição</h2>
+              <p>Editar os tribunais de peticionamento e a assinatura padrão ainda não está disponível. Os feriados e suspensões continuam na seção abaixo.</p>
+              <button type="button" className={styles.botaoSecundario} disabled>Editar tribunais</button>{' '}
+              <button type="button" className={styles.botaoSecundario} disabled>Editar assinatura padrão</button>
+            </section>
+            <Glossario versao={versao} salvar={(caminho, corpo, aviso, metodo) => void salvar(caminho, corpo, aviso, metodo)} aoErro={setErro} />
+
+            {c.historico.length > 0 && (
+              <section className={styles.cartao} aria-label="Histórico da configuração">
+                <h2 className={styles.cartaoTitulo}>Histórico da configuração</h2>
+                <ol className={styles.lista}>
+                  {c.historico.map((h, i) => (
+                    <li key={`${h.quando}-${i}`}>
+                      {momento(h.quando)} · {h.quem} · {h.descricao}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </>
+        )}
+        {/* GGVP-146, parte 3: os feriados e as suspensões dos tribunais, com o histórico deles. */}
+        {c && <FeriadosDosTribunais />}
+      </div>
+    </MolduraDaBase>
   )
 }

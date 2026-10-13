@@ -24,7 +24,7 @@ describe('Chat · Subir laudo novo', () => {
     const card = screen.getByRole('region', { name: 'Atualizar o laudo · Antônio Exemplo' })
     expect(card.textContent).toContain('Subir laudo_antonio_ortopedia.pdf na pasta do cliente')
     expect(card.textContent).toContain('Marcar «Laudo novo» na ficha e no processo')
-    expect(card.textContent).toContain('Avisar a advogada responsável (D1.21M)')
+    expect(card.textContent).toContain('Avisar a advogada responsável')
     expect((await obterFicha('antonio-exemplo'))?.arquivos).toEqual([])
     expect(tarefasDoSetor('Jurídico')).toEqual([])
 

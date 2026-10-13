@@ -41,12 +41,12 @@ export function CentralSenior({ deExemplo = [] }: { deExemplo?: Tarefa[] }) {
   const gestao = usePode('gestao.ver')
   const importar = usePode('configuracao.editar')
   const itens: ItemNavegacao[] = [
-    { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/' },
-    { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
-    ...(estudos ? [{ id: 'estudos', glifo: '📚', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
-    ...(editaRoteiro(perfil?.id) ? [{ id: 'roteiros', glifo: '☰', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
+    { id: 'inicio', rotulo: 'Início', href: '/' },
+    { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
+    ...(estudos ? [{ id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
+    ...(editaRoteiro(perfil?.id) ? [{ id: 'roteiros', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
     ...(gestao ? ITENS_DA_GESTAO : []),
-    ...(importar ? [{ id: 'importar', glifo: '⇪', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
+    ...(importar ? [{ id: 'importar', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
   ]
 
   return (

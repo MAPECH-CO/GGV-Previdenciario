@@ -302,7 +302,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                     {/* A conversa com o cliente se confere na tela dela, por quem conversou (GGVP-84): um caminho só. */}
                     {daConversa && g.extraidas.some((e) => !e.conferidaEm) && (
                       <a className={styles.primario} href={`/conversas/${daConversa}/conferir`}>
-                        Conferir na conversa (D5.04)
+                        Conferir na conversa
                       </a>
                     )}
                     {!daConversa && g.extraidas.some((e) => !e.conferidaEm) && (

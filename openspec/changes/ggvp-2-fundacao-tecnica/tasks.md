@@ -20,9 +20,9 @@
 - [x] 2.1 CA4 · Contrato `Saude` ganha `banco` (`ligado`, `sem-banco`, `fora-do-ar`); `GET /saude` consulta o banco do `DATABASE_URL` e responde 503 com o banco fora do ar; verifica com `pnpm --filter @ggv/contratos test` e `pnpm --filter @ggv/api test`.
 - [x] 2.2 CA1, CA2 · A API serve a tela montada (`apps/web/dist`) quando a pasta existe, com qualquer caminho caindo no `index.html`; teste em `src/servidor.test.ts`; verifica com `pnpm --filter @ggv/api test`.
 - [x] 2.3 CA1, CA5 · `Dockerfile` e `.dockerignore` na raiz: monta a tela, roda as migrações antes de subir e tem verificação de saúde em `/saude`; verifica localmente com `pnpm --filter @ggv/web build` e a API servindo a tela em `localhost:3000`.
-- [ ] 2.4 CA3, CA6 · `.env.example` na raiz com a URL dos bancos `prev_homolog`, `prev_pedro` e `prev_mateus`, sem senha; verifica com o gitleaks no CI.
-- [x] 2.5 CA1, CA3, CA5, CA6 · `docs/infra/homologacao.md`: criar os bancos e usuários, o app no Coolify (deploy a cada merge, segredos só lá), acesso ao banco de dev por túnel SSH e só dados de exemplo em homologação; verifica lendo o arquivo.
-- [ ] 2.6 CA1, CA2, CA3 · Ligar a homologação ANTES de 09/10 (o Lucas testa no dia 09 de manhã), logo depois do login e dos perfis: banco no Supabase, projeto "Portal Operacional" (os dados atuais podem ser apagados), app no Coolify; segredo só no Coolify ou no .env local; ajustar `docs/infra/homologacao.md`; verifica abrindo a URL de homologação.
+- [ ] 2.4 CA3, CA6 · Documentar a conexão ao PostgreSQL no Supabase e o isolamento de homologação e dev por pessoa; exemplos sem credenciais ou URLs privadas. Verifica pela documentação e pelo gitleaks no CI; provisionamento é da infraestrutura.
+- [x] 2.5 CA1, CA3, CA5, CA6 · `docs/infra/homologacao.md`: banco no Supabase, app no Coolify (deploy a cada merge, segredos só lá), conexão de dev isolada no Supabase e só dados de exemplo em homologação; verifica lendo o arquivo.
+- [ ] 2.6 CA1, CA2, CA3 · Conferir a implantação da homologação pela infraestrutura: banco no Supabase, projeto "Portal Operacional", e app no Coolify; segredos fora do repositório. Manter `docs/infra/homologacao.md` coerente e registrar a validação no ambiente autorizado. A atualização documental da GGVP-159 não executa esta tarefa nem autoriza apagar dados.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-117 · Entrar no portal com e-mail e senha
@@ -73,3 +73,18 @@
   - os 9 testes do comando passaram, com o novo; Playwright da vigília (judicialização) com 6 de 6;
   - API inteira: dos 53 arquivos, só 43 iniciaram. Deles, 42 passaram; o que falhou (linha de comando do CA5, por tempo) passou rodando sozinho. A suíte inteira roda no CI do PR.
 
+## GGVP-107 · Integração com o Google Drive: pasta do cliente, banco de motivos e pacote de protocolo
+
+- [x] 7.1 CA4 · Cliente do Drive em `apps/api/src/drive.ts`: token da conta de serviço (JWT assinado com `node:crypto`), listar pastas e nomes, achar pela marca do portal, criar pasta, enviar arquivo (envio retomável) e ver onde o arquivo está; nada de mudar, mover, apagar ou compartilhar. Teste com fetch falso em `src/drive.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.2 CA1, CA2 · Colunas `pessoa.drive_pasta_id`, `documento.drive_arquivo_id` e `documento.drive_pendente` (o que já existia fica fora) e `peticao_versao.pacote_drive_id`, e a migração; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.3 CA1, CA2, CA3, CA7, CA8 · `apps/api/src/fluxo/arquivar.ts`: achar ou criar a pasta pela regra do balcão (`pastasDoCliente` das telas), nome "Tipo - Nome - AAAA-MM-DD" sem sobrescrever, guardar o id, tarefa da Documentação na falha e reprocessar pela marca, sem duplicar. Teste em `src/fluxo/arquivar.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.4 CA5 · O motivo de indeferimento fica só no banco (`resultado_inss`, de onde o acervo lê); nada vai para o Drive (decisão do Mateus em 08/10; o Lucas confirma na review). Teste em `src/fluxo/arquivar.test.ts`.
+- [x] 7.5 CA6 · O pacote do protocolo vai para "Pacote de protocolo - AAAA-MM-DD" na pasta do cliente; gerar de novo salva de novo; com o Drive ligado, a trava "pacote completo" acusa o pacote que não está no Drive (`fluxo/travas.ts`, `rotas/peticao.ts`). Testes em `src/fluxo/arquivar.test.ts` e `src/fluxo/travas.test.ts`.
+- [x] 7.6 CA3 · `src/principal.ts` roda o envio a cada minuto quando as variáveis do Drive existem; verifica subindo a API com o Drive.
+- [x] 7.7 CA1 a CA4 · Teste de verdade no Drive do escritório, com dado inventado, numa pasta de teste que o próprio teste cria e manda para a lixeira no fim (só o que ele criou): `src/drive.real.test.ts`, que só roda com as variáveis do Drive.
+- [x] 7.8 Tirar o "Google Drive não entra até 09/10" de `kit/entrega-09-10.md` e da proposta; verifica lendo.
+- [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?". Rodado em 08/10 sobre a `main` com o PR #29: typecheck e lint sem erro; Drive com fetch falso e Drive de verdade passando; sem tela, sem Playwright. Na máquina do Mateus, o primeiro teste de 4 arquivos pesados passa do tempo também na `main` pura (máquina carregada); o CI decide.
+- [x] 7.10 CA9 · `conferirDrive` em `apps/api/src/drive.ts` (lê as duas pastas, devolve as contagens ou o erro; só leitura); teste com fetch falso; `principal.ts` chama ao subir e registra "Drive lido" no log; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.11 CA9 · `/saude` com `drive: "ligado" | "desligado"` (contrato `Saude` e servidor); teste; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/contratos test`.
+- [x] 7.12 CA10 · `GOOGLE_DRIVE_SO_LEITURA=sim`: `abrirDrive` devolve `soLeitura`, `principal.ts` não liga a rodada de envio e o `/saude` diz `drive: "so-leitura"`; testes; verifica com `pnpm --filter @ggv/api test`.
+- [x] 7.13 Rodar typecheck, lint, testes e Playwright; a checagem de verdade, só de leitura, com a credencial; colar a saída.

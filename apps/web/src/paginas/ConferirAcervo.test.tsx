@@ -7,10 +7,12 @@ const A = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
 const B = '7a2d3b9f-4c5e-4d6f-9a71-829304b5c6d7'
 const lote: ConferenciaDoAcervo = {
   pendentes: [
-    { id: A, numeroCnj: '00045123320194036301', beneficio: 'bpc_loas_deficiente', desfechoLido: 'improcedente', fonte: 'lote' },
-    { id: B, numeroCnj: '00077819020204036301', beneficio: null, desfechoLido: 'procedente_parcial', fonte: 'lote' },
+    { id: A, numeroCnj: '00045123320194036301', beneficio: 'bpc_loas_deficiente', desfechoLido: 'improcedente', fonte: 'lote', ficha: null },
+    { id: B, numeroCnj: '00077819020204036301', beneficio: null, desfechoLido: 'procedente_parcial', fonte: 'lote', ficha: null },
   ],
   conferidos: 3,
+  incompletos: [],
+  conhecidos: { vara: [], juiz: [], tese: [] },
 }
 
 /** GET devolve o lote; cada POST devolve o lote sem o processo conferido. */
@@ -19,7 +21,7 @@ function servidor(inicial: ConferenciaDoAcervo) {
   const chamada = vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'POST') {
       const id = url.split('/')[4]
-      atual = { pendentes: atual.pendentes.filter((p) => p.id !== id), conferidos: atual.conferidos + 1 }
+      atual = { ...atual, pendentes: atual.pendentes.filter((p) => p.id !== id), conferidos: atual.conferidos + 1 }
     }
     return new Response(JSON.stringify(atual), { status: 200 })
   })
@@ -64,8 +66,92 @@ describe('Conferir desfechos do lote (GGVP-55)', () => {
   })
 
   it('sem processo esperando, diz que não há nenhum', async () => {
-    servidor({ pendentes: [], conferidos: 3 })
+    servidor({ ...lote, pendentes: [] })
     render(<ConferirAcervo />)
     expect(await screen.findByText('Nenhum desfecho esperando conferência.')).toBeTruthy()
+  })
+})
+
+describe('GGVP-41 · a ficha e a tese do desfecho do portal', () => {
+  const C = '8b3e4c0a-5d6f-4e70-8b82-930415c6d7e8'
+  const D = '9c4f5d1b-6e70-4f81-9c93-a41526d7e8f9'
+  const FICHA = { materia: 'BPC/LOAS da pessoa com deficiência', vara: null, tese: 'Impedimento de longo prazo com renda acima de 1/4', resumo: 'O juiz concedeu pela perícia.', licao: 'Juntar o estudo social.' }
+  const comPortal: ConferenciaDoAcervo = {
+    pendentes: [
+      { id: C, numeroCnj: null, beneficio: 'bpc_loas_deficiente', desfechoLido: 'procedente_parcial', fonte: 'portal', ficha: FICHA },
+      { id: D, numeroCnj: null, beneficio: 'aposentadoria_pcd', desfechoLido: 'deferido', fonte: 'portal', ficha: null },
+    ],
+    conferidos: 3,
+    incompletos: [],
+    conhecidos: { vara: [], juiz: [], tese: [] },
+  }
+
+  it('CA7 · a ficha da IA aparece; a Sênior corrige a tese e confere, e a tese vai junto', async () => {
+    const chamada = servidor(comPortal)
+    render(<ConferirAcervo />)
+    const portal = await processo('Procedente em parte')
+    expect(portal.textContent).toContain('Processo do portal')
+    const ficha = within(portal).getByLabelText('Ficha do desfecho').textContent
+    for (const t of [FICHA.materia, 'não identificada', FICHA.resumo, FICHA.licao]) expect(ficha).toContain(t)
+    const tese = within(portal).getByLabelText('Tese') as HTMLInputElement
+    expect(tese.value).toBe(FICHA.tese)
+    fireEvent.change(tese, { target: { value: 'Renda per capita com gastos' } })
+    fireEvent.click(within(portal).getByRole('button', { name: 'Confere' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Desfecho conferido.')
+    expect(corpoDoPost(chamada)).toEqual([`/api/acervo/processos/${C}/conferencia`, { desfecho: 'procedente_parcial', tese: 'Renda per capita com gastos' }])
+  })
+
+  it('CA11 · sem a ficha, diz que a IA ainda não leu e deixa conferir; o ganho no INSS aparece como "Deferido no INSS"', async () => {
+    const chamada = servidor(comPortal)
+    render(<ConferirAcervo />)
+    const semFicha = await processo('Deferido no INSS')
+    expect(semFicha.textContent).toContain('A IA ainda não leu este desfecho')
+    expect(within(semFicha).queryByLabelText('Ficha do desfecho')).toBeNull()
+    fireEvent.click(within(semFicha).getByRole('button', { name: 'Confere' }))
+    await screen.findByRole('status')
+    expect(corpoDoPost(chamada)).toEqual([`/api/acervo/processos/${D}/conferencia`, { desfecho: 'deferido', tese: '' }])
+  })
+})
+
+describe('GGVP-153 · a pergunta de um clique para juiz, vara e tese', () => {
+  const E = 'a5f6e2c3-7f81-4092-ad04-b52637e8f9a0'
+  const comFalta: ConferenciaDoAcervo = {
+    pendentes: [],
+    conferidos: 3,
+    incompletos: [{ id: E, numeroCnj: null, beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', falta: ['vara', 'tese'] }],
+    conhecidos: { vara: ['2ª Vara do JEF (exemplo)'], juiz: ['Dra. Exemplo'], tese: [] },
+  }
+  function completando() {
+    const chamada = vi.fn(async (_url: string, init?: RequestInit) =>
+      new Response(JSON.stringify(init?.method === 'POST' ? { ...comFalta, incompletos: [] } : comFalta), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', chamada)
+    return chamada
+  }
+
+  it('CA1, CA2 · cada campo que falta com as opções que o portal conhece; um clique responde, e o processo sai da lista', async () => {
+    const chamada = completando()
+    render(<ConferirAcervo />)
+    const falta = await screen.findByRole('region', { name: 'Falta completar' })
+    expect(within(falta).getByText('Vara: não identificada')).toBeTruthy()
+    expect(within(falta).getByText('Tese: não identificada')).toBeTruthy()
+    expect(within(falta).queryByText('Juiz: não identificada')).toBeNull()
+    fireEvent.click(within(falta).getByRole('button', { name: '2ª Vara do JEF (exemplo)' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Vara completada: o processo volta a contar nesse recorte.')
+    expect(corpoDoPost(chamada)).toEqual([`/api/acervo/processos/${E}/completar`, { vara: '2ª Vara do JEF (exemplo)' }])
+    expect(screen.queryByRole('region', { name: 'Falta completar' })).toBeNull()
+  })
+
+  it('CA1 · sem opção conhecida, a Sênior escreve uma nova; vazio não vai ao servidor', async () => {
+    const chamada = completando()
+    render(<ConferirAcervo />)
+    const falta = await screen.findByRole('region', { name: 'Falta completar' })
+    fireEvent.click(within(falta).getByRole('button', { name: 'Usar esta tese' }))
+    expect(within(falta).getByRole('alert').textContent).toBe('Escolha ou escreva o que falta.')
+    expect(corpoDoPost(chamada)).toBeNull()
+    fireEvent.change(within(falta).getByLabelText('Outra (tese)'), { target: { value: 'Miserabilidade (exemplo)' } })
+    fireEvent.click(within(falta).getByRole('button', { name: 'Usar esta tese' }))
+    await screen.findByRole('status')
+    expect(corpoDoPost(chamada)).toEqual([`/api/acervo/processos/${E}/completar`, { tese: 'Miserabilidade (exemplo)' }])
   })
 })

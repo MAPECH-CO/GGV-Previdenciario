@@ -3,8 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  width: min(560px, calc(100vw - 32px));
-  max-height: calc(100vh - 64px);
+  width: min(560px, calc(100vw / var(--zoom) - 32px));
+  max-height: calc(100vh / var(--zoom) - 64px);
   margin: auto;
   padding: 20px 22px;
   overflow-y: auto;

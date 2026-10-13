@@ -75,7 +75,7 @@ describe('Conferir checklist · tela do passo', () => {
     await abrir()
     fireEvent.click(screen.getByRole('button', { name: 'Gerar cobrança das pendências' }))
     expect(await screen.findByRole('heading', { name: '✓ Conferido às 14:32' })).toBeTruthy()
-    expect(screen.getByText(/Checklist incompleto\. Falta: Documento pessoal \(RG\).*A cobrança das pendências foi para o Atendimento \(D1\.23\)\./)).toBeTruthy()
+    expect(screen.getByText(/Checklist incompleto\. Falta: Documento pessoal \(RG\).*A cobrança das pendências foi para o Atendimento\./)).toBeTruthy()
     expect((await obterFicha('rita-exemplo'))?.historico.at(-1)?.oQue).toContain('Conferiu o checklist do LOAS Deficiente: incompleto')
   })
 })

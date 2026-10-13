@@ -226,10 +226,10 @@ describe('Central do Atendimento', () => {
     expect(screen.getByRole('button', { name: '✦ Suporte' })).toBeTruthy()
   })
 
-  it('GGVP-82 CA6 · "Gravar áudio" sem a fala do navegador avisa; o Suporte abre o mesmo chat à direita', () => {
+  it('GGVP-82 CA6 · "Gravar áudio" sem microfone avisa; o Suporte abre o mesmo chat à direita', async () => {
     render(<CentralAtendimento />)
     fireEvent.click(screen.getByRole('button', { name: 'Gravar áudio' }))
-    expect(screen.getByRole('status').textContent).toContain('Este navegador não transforma a fala em texto')
+    expect((await screen.findByRole('status')).textContent).toContain('Não deu para usar o microfone')
     fireEvent.click(screen.getByRole('button', { name: '✦ Suporte' }))
     const suporte = screen.getByRole('dialog', { name: 'Suporte interno' })
     expect(within(suporte).getByRole('textbox', { name: /Pergunte ou peça/ })).toBeTruthy()

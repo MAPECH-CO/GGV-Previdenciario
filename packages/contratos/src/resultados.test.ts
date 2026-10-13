@@ -29,6 +29,7 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
       recorte: null,
       extincoes: { casos: 0, decididos: 0, porCausa: [] },
       pareceres: { dispensados: 0, exitoComDispensa: indicador, exitoComSuficiente: indicador },
+      motivos: { indeferimento: [], derrota: [] },
       totais: null,
       operacao: 'sem_dados' as const,
       baseDoAcervo: { situacao: 'sem_dados' as const },

@@ -20,8 +20,8 @@ import styles from './CentralAtendimento.module.css'
 // Figma: "Central de trabalho · Advogada" (59:449). Sem cartão próprio: entra com a GGVP-32, porque a preparação da
 // conversa pede "minha fila". É a tela inicial de quem entra como Advogada (App.tsx); também abre por /advogada.
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/advogada' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/advogada' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 export function CentralAdvogada() {

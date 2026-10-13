@@ -1,13 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
+import { completarCadastro, garantirModelo } from './kit.ts'
+import { prepararEntrevistaExistente } from './entrevista-existente.ts'
 
-/** O convite sai pela conversa do cliente no Chatwoot: espera a conversa aparecer antes de enviar. */
-async function enviarConvite(page: Page, nome: string) {
-  const chatwoot = page.getByRole('dialog', { name: `Chatwoot · conversa com ${nome}` })
-  await expect(chatwoot.getByRole('radiogroup', { name: 'Conversas do cliente' })).toBeVisible()
-  await chatwoot.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/O convite foi enviado pelo Chatwoot/)).toBeVisible()
-}
 
 // GGVP-125, bloco 1 · o lead do balcão fica no banco do portal: outra pessoa, em outro computador, acha e abre a ficha.
 
@@ -39,7 +34,7 @@ test('o lead que a Atendimento cadastra no balcão, a advogada acha e abre no co
 })
 
 // GGVP-125, bloco 2 · a agenda e a confirmação no banco: a tarefa que a confirmação abre chega à advogada em outro computador.
-test('a Atendimento marca e confirma a entrevista; a advogada vê "Preparar entrevista" e a entrevista na agenda dela', async ({ page, browser }) => {
+test('sem a lista de advogadas, a marcação fica bloqueada; uma entrevista existente é confirmada; a advogada vê "Preparar entrevista" e a entrevista na agenda dela', async ({ page, browser }) => {
   await page.goto('/clientes/novo')
   await page.getByLabel('Nome completo *').fill('Lia Agenda Teste')
   await page.getByLabel('Idade *').fill('64')
@@ -50,8 +45,7 @@ test('a Atendimento marca e confirma a entrevista; a advogada vê "Preparar entr
 
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '14:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Agenda Teste')
+  await prepararEntrevistaExistente(page, '14:00')
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Lia Agenda Teste · Confirmar agendamento' }).click()
@@ -84,8 +78,7 @@ test('a advogada grava a entrevista de um lead do balcão; sem microfone, regist
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Entrevista Teste')
+  await prepararEntrevistaExistente(page, '09:00')
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Entrevista Teste')!.agendamentos[0].id,
   )
@@ -137,8 +130,7 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '10:30' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Decisao Teste')
+  await prepararEntrevistaExistente(page, '10:30')
   const { fichaId, entrevista } = await page.evaluate(() => {
     const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
       (x) => x.nome === 'Lia Decisao Teste',
@@ -164,7 +156,7 @@ test('a advogada guarda a senha no cofre e define o benefício; a Atendimento ar
   expect((await advogada.request.post(`/api/pessoas/${fichaId}/cofre`, { data: { senha: SENHA } })).ok()).toBe(true)
   expect((await advogada.request.post(`/api/fichas/${fichaId}/cofre/gov`, { data: { acao: 'guardou' } })).ok()).toBe(true)
 
-  await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await advogada.getByRole('link', { name: 'Definir o benefício' }).click()
   await expect(advogada.getByRole('heading', { level: 1 })).toHaveText('Lia Decisao Teste · Definir benefício')
   // Sem transcrição, a IA não tem o que comparar: a advogada define pela lista do escritório (G3).
   await advogada.getByRole('radio', { name: 'Outro benefício' }).click()
@@ -200,8 +192,7 @@ test('a advogada pede a segunda ficha; a Atendimento salva do papel; a seção m
   await page.getByRole('button', { name: 'Salvar e marcar a entrevista' }).click()
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').first().click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '16:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Acidente Teste')
+  await prepararEntrevistaExistente(page, '16:00')
   const entrevista = await page.evaluate(
     () => (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { nome: string; agendamentos: { id: string }[] }[] }).fichas.find((f) => f.nome === 'Lia Acidente Teste')!.agendamentos[0].id,
   )
@@ -243,8 +234,7 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
   // O primeiro dia já tem os quatro horários com entrevistas dos outros testes: o segundo dia oferecido.
   await page.getByRole('radiogroup', { name: 'Data' }).getByRole('radio').nth(1).click()
   await page.getByRole('radiogroup', { name: 'Horário' }).getByRole('radio', { name: '09:00' }).click()
-  await page.getByRole('button', { name: /^Marcar/ }).click()
-  await enviarConvite(page, 'Lia Fechou Teste')
+  await prepararEntrevistaExistente(page, '09:00', 1)
   const { fichaId, entrevista } = await page.evaluate(() => {
     const f = (JSON.parse(sessionStorage.getItem('ggv.exemplo.v5')!) as { fichas: { id: string; nome: string; agendamentos: { id: string }[] }[] }).fichas.find(
       (x) => x.nome === 'Lia Fechou Teste',
@@ -266,7 +256,7 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
   await advogada.getByLabel('O que foi conversado *').fill('Afastada do trabalho, sem receber; quer o auxílio por incapacidade.')
   await advogada.getByRole('button', { name: 'Registrar sem áudio' }).click()
   await expect(advogada.getByRole('heading', { name: '✓ Entrevista registrada sem áudio' })).toBeVisible()
-  await advogada.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await advogada.getByRole('link', { name: 'Definir o benefício' }).click()
   await advogada.getByRole('radio', { name: 'Outro benefício' }).click()
   await advogada.getByLabel('Benefício definido *').selectOption('incapacidade-temporaria')
   await advogada.getByRole('checkbox', { name: 'Conferi a recomendação com a entrevista' }).check()
@@ -294,27 +284,33 @@ test('a Atendimento registra que o lead fechou; o caso nasce no banco e outra se
 })
 
 // GGVP-125, bloco 4b · a assinatura no banco: pelo ZapSign (simulado) e em papel na hora; outra sessão vê os dois assinados.
-/** Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. */
-async function contratoGerado(page: Page, nome: string, telefone: string, cpf: string): Promise<string> {
+/**
+ * Um cliente do balcão com o contrato gerado, pelas rotas do bloco 4a. O kit é o Word do escritório (GGVP-136): pede o modelo
+ * subido pela Sênior e o endereço completo no cadastro, que a advogada completa. O ZapSign aparece porque o servidor do teste o tem
+ * ligado (`ZAPSIGN_API_TOKEN` de mentira, em playwright.config.ts).
+ */
+async function contratoGerado(page: Page, baseURL: string, nome: string, telefone: string, cpf: string): Promise<string> {
+  await garantirModelo(baseURL, 'contrato-completo-loas')
   const api = page.request
   const conferencias = { campos: true, datas: true, fichaLoas: true, codigoPenal: true }
   const novo = { nome, idade: 66, pretende: 'Quer o BPC do idoso.', telefone, beneficioInteresse: 'loas-idoso', outraPessoa: false }
   const { id } = await (await api.post('/api/fichas', { data: novo })).json()
+  await completarCadastro(baseURL, id, cpf)
   const { processo } = await (await api.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
   const gerar = `/api/processos/${processo.id}/contrato/gerar`
   const { campos } = await (await api.post(gerar, { data: { aprovados: true, conferencias, correcoes: {} } })).json()
-  const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP' }
+  const validos: Record<string, string> = { cpf, rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
   const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
   const gerado = await (await api.post(gerar, { data: { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes } })).json()
   expect(gerado.resultado).toBe('gerado')
   return processo.id
 }
 
-test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assinado fica no banco', async ({ page, browser }) => {
+test('a assinatura digital existente fica no banco; o papel é anexado sem simular a confirmação', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000)
 
   // Pelo ZapSign: o documento, o link pelo WhatsApp e o retorno do assinado (simulado).
-  const digital = await contratoGerado(page, 'Lia Zapsign Teste', '11933331188', '48271365991')
+  const digital = await contratoGerado(page, baseURL!, 'Lia Zapsign Teste', '11933331188', '48271365991')
   await page.goto(`/contrato/${digital}/assinatura`)
   await page.getByRole('radio', { name: 'ZapSign (digital)' }).first().click()
   await page.getByRole('button', { name: 'Enviar para assinatura' }).click()
@@ -323,16 +319,17 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
   await page.getByRole('button', { name: 'Simular o retorno do ZapSign (assinado)' }).click()
   await expect(page.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
 
-  // Em papel na hora (sem entrevista registrada, vale a presencial): imprimir, digitalizar e concluir.
-  const papel = await contratoGerado(page, 'Lia Papel Teste', '11933331199', '57382914682')
+  // Em papel: guarda os bytes, mas não afirma que a assinatura foi confirmada.
+  const papel = await contratoGerado(page, baseURL!, 'Lia Papel Teste', '11933331199', '57382914682')
   await page.goto(`/contrato/${papel}/assinatura`)
   await page.getByRole('radio', { name: 'Em papel na hora' }).click()
   await page.getByRole('button', { name: 'Imprimir o kit' }).click()
-  await page.getByRole('button', { name: 'Digitalizar o contrato assinado (scanner simulado)' }).click()
-  await page.getByRole('button', { name: 'Concluir a assinatura' }).click()
-  await expect(page.getByRole('heading', { name: '✓ Contrato assinado em papel' })).toBeVisible()
+  await page.getByLabel('PDF ou foto do contrato assinado').setInputFiles({ name: 'assinado-teste.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 contrato inventado no teste') })
+  await page.getByRole('button', { name: 'Guardar arquivo', exact: true }).click()
+  await expect(page.getByText('Arquivo guardado no servidor.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeDisabled()
 
-  // Outro computador: os dois contratos assinados vêm do banco.
+  // Outra sessão lê a assinatura digital e o papel ainda pendente.
   const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
   const advogada = await outro.newPage()
   await entrarPelaApi(advogada, 'advogada@exemplo.ggv')
@@ -342,21 +339,25 @@ test('a Atendimento colhe a assinatura pelo ZapSign e em papel; o contrato assin
       .filter((c) => c.processoId === digital || c.processoId === papel)
       .map((c) => [c.processoId, `${c.etapa} · ${c.assinatura?.forma}`]),
   )
-  expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'leitura · papel' })
+  expect(assinados).toEqual({ [digital]: 'leitura · digital', [papel]: 'assinatura · papel' })
   await advogada.goto(`/contrato/${digital}/assinatura`)
   await expect(advogada.getByRole('heading', { name: '✓ Contrato assinado pelo ZapSign' })).toBeVisible()
+  // Bloco 5a: o arquivo assinado está na pasta do processo, na ficha do servidor.
+  const fichaId = (contratos as { processoId: string; fichaId: string }[]).find((c) => c.processoId === digital)!.fichaId
+  await advogada.goto(`/clientes/${fichaId}`)
+  await expect(advogada.getByRole('list', { name: 'Subpasta LOAS Idoso' })).toContainText('Contrato assinado - Lia Zapsign Teste')
   await outro.close()
 })
 
 // GGVP-125, bloco 4c · a leitura, a conferência e a cópia no banco: do assinado em papel à cópia entregue, visto de outra sessão.
-test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o caso segue para o checklist do benefício', async ({ page, browser }) => {
+test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o caso segue para o checklist do benefício', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000)
-  const caso = await contratoGerado(page, 'Lia Copia Teste', '11933331166', '61528394755')
+  const caso = await contratoGerado(page, baseURL!, 'Lia Copia Teste', '11933331166', '61528394755')
   for (const passo of ['impressao', 'digitalizacao', 'assinatura-em-papel']) expect((await page.request.post(`/api/processos/${caso}/contrato/${passo}`)).ok()).toBe(true)
 
   // A leitura da IA (simulada) aponta a página cortada do papel: a Atendimento confere.
   await page.goto(`/contrato/${caso}/assinatura`)
-  await page.getByRole('button', { name: 'Simular a leitura da IA (D1.18)' }).click()
+  await page.getByRole('button', { name: 'Simular a leitura da IA' }).click()
   await page.getByRole('link', { name: 'Conferir contrato' }).click()
   await page.getByRole('radiogroup', { name: 'Está tudo certo?' }).getByRole('radio', { name: 'Sim' }).click()
   await page.getByRole('button', { name: 'Está certo — seguir' }).click()
@@ -387,3 +388,113 @@ test('a IA lê o contrato assinado, a Atendimento confere e entrega a cópia; o 
   await expect(advogada.getByRole('heading', { name: '✓ Entrega registrada' })).toBeVisible()
   await outro.close()
 })
+
+// GGVP-125, bloco 5b · a chegada e a conferência no banco: o RG que a Atendimento envia pelo card, a IA (simulada) lê no
+// servidor, e a Documentação, em outro computador, confere e arquiva.
+test('a Atendimento envia o RG pelo card; a Documentação, em outra sessão, confere e arquiva no servidor', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const novo = { nome: 'Lia Documento Teste', idade: 66, pretende: 'Quer o BPC do idoso.', telefone: '11933331155', cpf: '73926418591', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
+
+  await page.goto(`/clientes/${id}`)
+  await page.getByRole('button', { name: /Solte os documentos do cliente aqui/ }).click()
+  const janela = page.getByRole('dialog', { name: 'Conferir e enviar' })
+  await janela.getByLabel(/Solte mais arquivos aqui/).setInputFiles([{ name: 'RG Lia.pdf', mimeType: 'application/pdf', buffer: Buffer.from('rg da lia, teste do bloco 5b') }])
+  await janela.getByRole('combobox', { name: /Tipo de RG Lia/ }).selectOption('rg')
+  await janela.getByRole('button', { name: 'Enviar para a pasta do cliente' }).click()
+  await expect(janela).toBeHidden()
+
+  // Outro computador: a Documentação confere o que a IA leu e arquiva.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const documentacao = await outro.newPage()
+  await entrarPelaApi(documentacao, 'documentacao@exemplo.ggv')
+  await documentacao.goto(`/clientes/${id}/conferir-documentos`)
+  await expect(documentacao.getByRole('list', { name: 'Documentos lidos pela IA' })).toContainText('Documento pessoal (RG)anexado ao card')
+  await documentacao.getByRole('checkbox', { name: 'Conferi os documentos lidos pela IA' }).check()
+  await documentacao.getByRole('button', { name: 'Arquivar' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Arquivado às/ })).toBeVisible()
+
+  const { leituras, fichas } = await (await documentacao.request.get('/api/recepcao')).json()
+  expect((leituras as { fichaId: string; situacao: string }[]).filter((l) => l.fichaId === id).map((l) => l.situacao)).toEqual(['arquivado'])
+  const ficha = (fichas as { id: string; arquivos: { nome: string; aguardaLeitura: boolean }[] }[]).find((f) => f.id === id)
+  expect(ficha?.arquivos).toEqual([expect.objectContaining({ nome: 'RG Lia.pdf', aguardaLeitura: false })])
+  await outro.close()
+})
+
+// GGVP-125, bloco 5c · o checklist e a cobrança no banco: a Documentação confere o checklist incompleto de um caso do
+// servidor (o kit do escritório, com os nomes das telas), e a Atendimento, em outro computador, cobra e registra a ligação.
+test('a Documentação confere o checklist incompleto de um caso do servidor; a Atendimento, em outra sessão, cobra', async ({ page, browser }) => {
+  test.setTimeout(120_000)
+  const novo = { nome: 'Lia Cobranca Teste', idade: 67, pretende: 'Quer o BPC do idoso.', telefone: '11933331144', cpf: '81537294628', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
+  const { processo } = await (await page.request.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
+  await page.goto('/')
+
+  // Outro computador: a Documentação confere o checklist, que o servidor calcula.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const documentacao = await outro.newPage()
+  await entrarPelaApi(documentacao, 'documentacao@exemplo.ggv')
+  await documentacao.goto(`/casos/${processo.id}/checklist`)
+  await documentacao.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Conferido às/ })).toBeVisible()
+  await outro.close()
+
+  // A Atendimento recebe a cobrança na Central e registra a ligação.
+  await page.goto('/')
+  const tarefa = page.getByRole('link', { name: 'Lia Cobranca Teste · Cobrar documento' })
+  await expect(page.getByRole('listitem').filter({ has: tarefa })).toContainText('1ª tentativa')
+  await tarefa.click()
+  await expect(page).toHaveURL(`/casos/${processo.id}/cobranca`)
+  await expect(page.getByRole('list', { name: 'Documentos pendentes' })).toContainText('Documento pessoal (RG)')
+  await page.getByRole('button', { name: 'Ligar' }).click()
+  await page.getByRole('radio', { name: 'Não atendeu (caixa postal ou sem resposta)' }).click()
+  await page.getByRole('button', { name: 'Registrar ligação' }).click()
+  await expect(page.getByRole('list', { name: 'Tentativas de cobrança' })).toContainText('1ª · ')
+
+  const { cobrancas } = await (await page.request.get('/api/recepcao')).json()
+  const daLia = (cobrancas as { processoId: string; tentativas: { canal: string; resultado: string }[] }[]).find((c) => c.processoId === processo.id)
+  expect(daLia?.tentativas).toEqual([expect.objectContaining({ canal: 'ligacao', resultado: 'sem-resposta' })])
+})
+
+// GGVP-125, bloco 5d · o documento de qualquer canal: o comprovante que chega pelo scanner atende a cobrança aberta, e o
+// documento que a Documentação confere como laudo abre "Analisar laudo novo" para o Jurídico.
+test('o comprovante pelo scanner atende a cobrança; o documento conferido como laudo abre "Analisar laudo novo"', async ({ page, browser }) => {
+  test.setTimeout(150_000)
+  const novo = { nome: 'Lia Scanner Teste', idade: 68, pretende: 'Quer o BPC do idoso.', telefone: '11933331122', cpf: '41728139414', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
+  const { processo } = await (await page.request.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
+  await page.goto('/')
+
+  // Outro computador: a Documentação confere o checklist incompleto, e a cobrança pede o comprovante de residência.
+  const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
+  const documentacao = await outro.newPage()
+  await entrarPelaApi(documentacao, 'documentacao@exemplo.ggv')
+  await documentacao.goto(`/casos/${processo.id}/checklist`)
+  await documentacao.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Conferido às/ })).toBeVisible()
+  await page.goto(`/casos/${processo.id}/cobranca`)
+  const pendentes = page.getByRole('list', { name: 'Documentos pendentes' })
+  await expect(pendentes).toContainText('Comprovante de residência')
+
+  // O papel do balcão passa no scanner (simulado): o comprovante e o CNIS. A Documentação confere o CNIS como laudo e arquiva.
+  const { tarefa } = await (await page.request.post(`/api/fichas/${id}/encaminhamentos`, { data: { motivo: 'documento', setor: 'Documentação · ADM' } })).json()
+  expect((await documentacao.request.post(`/api/tarefas/${tarefa.id}/lote`)).ok()).toBe(true)
+  await documentacao.goto(`/clientes/${id}/conferir-documentos`)
+  await documentacao.getByRole('button', { name: 'Reclassificar' }).click()
+  await documentacao.getByRole('combobox', { name: /Tipo de CNIS - Lia Scanner Teste/ }).selectOption('laudo')
+  await documentacao.getByRole('checkbox', { name: 'Conferi os documentos lidos pela IA' }).check()
+  await documentacao.getByRole('button', { name: 'Arquivar' }).click()
+  await expect(documentacao.getByRole('heading', { name: /✓ Arquivado às/ })).toBeVisible()
+  await outro.close()
+
+  // A cobrança não pede mais o comprovante; o resto continua pendente.
+  await page.reload()
+  await expect(pendentes).toContainText('Documento pessoal (RG)')
+  await expect(pendentes).not.toContainText('Comprovante de residência')
+
+  // O Jurídico recebe "Analisar laudo novo".
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Lia Scanner Teste · Analisar laudo novo' })).toBeVisible()
+})
+

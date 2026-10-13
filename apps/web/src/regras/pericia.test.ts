@@ -13,6 +13,7 @@ import {
   jurimetria,
   numerosDaJurimetria,
   mensagemDoLembrete,
+  motivoDaDataDaPericia,
   motivoParaNaoConcluirDocumentos,
   motivoParaNaoRegistrarMarcacao,
   motivoParaNaoRegistrarResultado,
@@ -31,18 +32,18 @@ import {
 
 describe('GGVP-49 · iniciar a tarefa de perícia', () => {
   it('CA1 · o caso mostra "Em perícia" com o diagrama de origem, e a data quando já existe', () => {
-    expect(etapaEmPericia({ origem: 'd2-necessidade', tipo: 'medica' }, '2026-10-07')).toBe('Em perícia · pedido ao INSS (D2) · perícia médica')
+    expect(etapaEmPericia({ origem: 'd2-necessidade', tipo: 'medica' }, '2026-10-07')).toBe('Em perícia · pedido ao INSS · perícia médica')
     expect(etapaEmPericia({ origem: 'd3a-juiz', tipo: 'medica', marcacao: { data: '2026-10-16', hora: '10:30' } }, '2026-10-07')).toBe(
-      'Em perícia · pedido do juiz (D3a) · perícia médica em 16/10, 10:30',
+      'Em perícia · pedido do juiz · perícia médica em 16/10, 10:30',
     )
-    expect(etapaEmPericia({ origem: 'd2-exigencia', tipo: 'social' }, '2026-10-07')).toContain('exigência do INSS (D2) · avaliação social')
+    expect(etapaEmPericia({ origem: 'd2-exigencia', tipo: 'social' }, '2026-10-07')).toContain('exigência do INSS · avaliação social')
   })
 
   it('CA3 · cada origem diz quem pediu e o passo da decisão', () => {
-    expect(ORIGENS['d2-necessidade']).toMatchObject({ rotulo: 'D2 · necessidade inicial', passo: 'D2.03' })
-    expect(ORIGENS['d2-exigencia'].rotulo).toBe('D2 · exigência do INSS')
-    expect(ORIGENS['d3-despacho'].rotulo).toBe('D3 · despacho da sênior')
-    expect(ORIGENS['d3a-juiz'].rotulo).toBe('D3a · pedido do juiz')
+    expect(ORIGENS['d2-necessidade']).toMatchObject({ rotulo: 'necessidade inicial', passo: 'D2.03' })
+    expect(ORIGENS['d2-exigencia'].rotulo).toBe('exigência do INSS')
+    expect(ORIGENS['d3-despacho'].rotulo).toBe('despacho da sênior')
+    expect(ORIGENS['d3a-juiz'].rotulo).toBe('pedido do juiz')
   })
 
   it('CA2 · só o D2 espera o INSS liberar o agendamento; D3 e D3a nascem liberados', () => {
@@ -95,6 +96,17 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
     expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido: { ...lido, hora: '25:00' }, pedeDocumentoNovo: true }, hoje)).toBe('Confira a hora da perícia.')
     expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido }, hoje)).toBe('Responda se a perícia pede documento novo.')
     expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'c.pdf', lido, pedeDocumentoNovo: false }, hoje)).toBeNull()
+  })
+
+  it('datas impossíveis não passam na tentativa nem na marcação da perícia', () => {
+    expect(motivoParaNaoRegistrarTentativa({ dia: '2026-02-31', oQueAconteceu: 'Sem vaga no dia' }, '2026-10-07'))
+      .toBe('Informe o dia da tentativa (dd/mm/aaaa).')
+    for (const data of ['2027-02-31', '2027-13-01', 'amanhã']) {
+      const lido = { data, hora: '08:30', local: 'Local de Teste' }
+      expect(motivoDaDataDaPericia(lido, '2026-10-07')).toBe('Confira a data da perícia: ela não pode ser passada.')
+      expect(motivoParaNaoRegistrarMarcacao({ comprovante: 'teste.pdf', lido, pedeDocumentoNovo: false }, '2026-10-07'))
+        .toBe('Confira a data da perícia: ela não pode ser passada.')
+    }
   })
 
   it('CA9 · G15: passou de 2 remarcações, sobe para a advogada; cada autorização dela vale uma a mais', () => {
@@ -234,12 +246,12 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     const p = { origem: 'd3a-juiz' as const, tipo: 'medica' as const, liberadaEm: 'x', marcacao: { data: '2026-10-16', hora: '10:30' } }
     expect(situacaoDaPericia({ liberadaEm: 'x', marcacao: {}, resultado: { registrado: {} } })).toBe('concluida')
     expect(etapaEmPericia({ ...p, resultado: { registrado: { favoravel: false } } }, '2026-10-20')).toBe(
-      'Resultado da perícia · pedido do juiz (D3a) · perícia médica desfavorável',
+      'Resultado da perícia · pedido do juiz · perícia médica desfavorável',
     )
   })
 })
 
-describe('GGVP-53 · a data da perícia do juízo, lida da publicação (D3a)', () => {
+describe('GGVP-53 · a data da perícia do juízo, lida da publicação', () => {
   it('lê data, hora e local da frase da perícia do tipo pedido; sem data e hora válidas, nada', () => {
     const texto =
       'Vistos. Defiro a prova pericial. Designo perícia médica para o dia 15/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro. Intimem-se em 05/10/2026.'

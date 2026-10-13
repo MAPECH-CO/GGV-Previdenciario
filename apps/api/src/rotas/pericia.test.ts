@@ -15,7 +15,7 @@ import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
 import { CNJ_EXEMPLO } from '../vigilia/fontes.ts'
 import { MSG_COFRE_SEM_TAREFA } from './inss.ts'
-import { MSG_ANEXO, MSG_ARQUIVO_PDF } from './pericia.ts'
+import { MSG_ANEXO, MSG_ARQUIVO_PDF, juntarLaudos } from './pericia.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -167,6 +167,22 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect(tarefas.map((t: { acao: string }) => t.acao)).toContain('Reunir documentos da perícia')
   })
 
+  it('revalida datas impossíveis de tentativa e marcação pela API', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    const tentativa = await post('igor', '/tentativas', { dia: '2026-02-31', oQueAconteceu: 'Sem vaga no dia' })
+    expect(tentativa.statusCode).toBe(400)
+    const marcacao = await app.inject({
+      method: 'POST', url: url('/marcacao'), cookies: await de('igor'),
+      ...multipart('comprovante', { lido: { ...lido, data: '2027-02-31' }, pedeDocumentoNovo: false }, PDF('teste.pdf')),
+    })
+    expect(marcacao.statusCode).toBe(400)
+    const atual = (await ver('igor')).json()
+    expect(atual.pericia.tentativas).toEqual([])
+    expect(atual.pericia.marcacao).toBeUndefined()
+    expect(atual.situacao).toBe('marcar')
+  })
+
   it('CA4 · G20: o pedido ao médico com CID ou conclusão é recusado no servidor e o portão fica registrado', async () => {
     await decidirPericia()
     await post('igor', '/liberacao')
@@ -191,6 +207,13 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect([p.enviosRecusados.length, p.preparacao]).toEqual([1, undefined])
     const ok = await post('igor', '/orientacao', { texto: p.orientacao.texto, canal: 'ligacao', revisei: true })
     expect([ok.statusCode, ok.json().pericia.preparacao.canal]).toEqual([200, 'ligacao'])
+  })
+
+  it('GGVP-152 CA1 · juntar os laudos: os guardados ficam, entra só o novo, e o mesmo laudo não duplica', () => {
+    const laudo = (id: string) => ({ id, caso: 'caso-1', data: '2026-10-01', tipo: 'medica' as const, assunto: 'coluna', resultado: 'favoravel' as const, dias: 10, observou: [], perguntou: [], pediu: [] })
+    // Outra gravação guardou o B depois que esta leu o perfil (que só tinha o A); esta acrescenta o C.
+    expect(juntarLaudos([laudo('A'), laudo('B')], [laudo('A'), laudo('C')]).map((l) => l.id)).toEqual(['A', 'B', 'C'])
+    expect(juntarLaudos([laudo('A')], [laudo('A')]).map((l) => l.id)).toEqual(['A'])
   })
 
   it('GGVP-66 e GGVP-70 · do comparecimento ao resultado: o laudo é do Jurídico, entra no perfil do perito e fecha a junção', async () => {
@@ -222,9 +245,11 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect((await estadoDaJuncaoD2(banco, casoId)).pericia).toBe('resolvida')
     // O perfil do perito ganhou o laudo, sem o nome do cliente.
     const [perfil] = await banco.select({ perfil: perito.perfil }).from(perito)
-    const laudos = (perfil.perfil as { laudos: object[] }).laudos
+    const laudos = (perfil.perfil as { laudos: { beneficio?: string }[] }).laudos
     expect(laudos).toHaveLength(1)
     expect(JSON.stringify(laudos)).not.toContain('Maria')
+    // GGVP-152 CA2: o laudo guarda o benefício do processo, para os números por benefício.
+    expect(laudos[0].beneficio).toBe('loas-deficiente')
     // O PDF do laudo é sensível na pasta: só o Jurídico abre (rota dos documentos).
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
@@ -234,13 +259,15 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
       expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
       expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
-      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto]).toEqual(['Dr. R. Menezes', 1, [], []])
+      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto, daDora.perfil.porBeneficio]).toEqual(['Dr. R. Menezes', 1, [], [], []])
       expect(daDora.perfil.jurimetria.laudos).toBe(1)
     }
     expect(await acessos()).toEqual([])
     // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.
     const doJuridico = (await ver('gabi', '/resultado')).json()
     expect([doJuridico.pericia.resultado.laudo.leitura.favoravel, doJuridico.perfil.porAssunto.map((a: { assunto: string }) => a.assunto)]).toEqual([true, ['sem assunto']])
+    // GGVP-152 CA2: os favoráveis por benefício, calculados no servidor, com o número de laudos.
+    expect(doJuridico.perfil.porBeneficio).toEqual([{ beneficio: 'LOAS Deficiente', jurimetria: expect.objectContaining({ laudos: 1, favoraveis: 1 }) }])
     expect(await acessos()).toEqual([[ids.gabi, casoId, `pericia:${linha.id}`]])
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
   })
@@ -573,3 +600,29 @@ describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, a
     expect((await post('igor', '/data-do-juizo', { data: '2026-10-22', hora: '10:00', local: 'Sala 1' })).json()).toEqual({ erro: 'A data desta perícia vem do comprovante do INSS.' })
   })
 })
+
+describe('GGVP-125 · bloco 5d: o documento de qualquer canal entra no kit da perícia', () => {
+  it('o papel do scanner, como o arquivamento da Recepção o grava, entra no kit pelo tipo conferido', async () => {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    await marcar(true)
+    const [c] = await banco.select().from(caso).where(eq(caso.id, casoId))
+    await banco.insert(documento).values({
+      pessoaId: c.pessoaId,
+      casoId,
+      tipo: 'laudo',
+      sensivel: true,
+      situacao: 'conferido',
+      origem: 'scanner',
+      chaveArmazenamento: `drive:${c.pessoaId}/Laudo - Maria Souza.pdf`,
+      nomeOriginal: 'Laudo - Maria Souza.pdf',
+      mime: 'application/pdf',
+      tamanho: 0,
+      hashSha256: '',
+      drivePendente: false,
+    })
+    const itens = (await ver('dora')).json().documentos.itens.map((i: { item: { id: string }; arquivo?: { nome: string } }) => [i.item.id, i.arquivo?.nome ?? null])
+    expect(itens).toEqual([['laudo-recente', 'Laudo - Maria Souza.pdf'], ['exames', null], ['receitas', null], ['atestados', null]])
+  })
+})
+

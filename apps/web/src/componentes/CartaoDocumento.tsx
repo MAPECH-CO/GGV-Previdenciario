@@ -4,7 +4,7 @@ import {
   ROTULOS_DAS_ORIGENS,
   caminhoDoModelo,
   corrigivel,
-  honorariosDoModelo,
+  HONORARIOS_DO_MODELO,
   type CampoDoModelo,
   type CampoPreenchido,
   type Modelo,
@@ -70,7 +70,7 @@ export function CartaoDocumento({ campos, modelo, corrigindo, valorDe, erros, ao
         })}
         <div className={styles.linha}>
           <dt className={styles.rotulo}>Honorários</dt>
-          <dd className={styles.valor}>{honorariosDoModelo(modelo)}</dd>
+          <dd className={styles.valor}>{HONORARIOS_DO_MODELO}</dd>
           <dd className={styles.origem}>do modelo, sem campo para digitar</dd>
         </div>
       </dl>

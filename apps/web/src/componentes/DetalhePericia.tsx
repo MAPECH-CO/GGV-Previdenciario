@@ -41,7 +41,6 @@ export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; a
           </h2>
           <p className={styles.chips}>
             <span className={`${styles.categoria} ${cat[evento.categoria]}`}>● {categoria}</span>
-            {evento.passo && <span className={styles.passo}>{evento.passo.split(' ')[0]}</span>}
             <span className={styles.estado} data-estado={evento.estado}>
               {ESTADO[evento.estado]}
             </span>
@@ -64,8 +63,8 @@ export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; a
         <dd>
           {instancia} · {evento.local} · cliente · o Jurídico administrativo acompanha a preparação
         </dd>
-        <dt>Passo do BPMN</dt>
-        <dd>{evento.passo}</dd>
+        <dt>Etapa</dt>
+        <dd>{evento.passo?.replace(/^\S+ · /, '')}</dd>
       </dl>
       <div className={styles.botoes}>
         <a className={styles.primario} href={processo}>

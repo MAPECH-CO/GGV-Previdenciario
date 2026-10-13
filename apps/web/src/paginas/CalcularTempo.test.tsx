@@ -77,7 +77,7 @@ describe('Calcular tempo e pontos · tela do passo', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Conferi o cálculo com o CNIS' }))
     fireEvent.click(botao('Concluir'))
     await screen.findByRole('heading', { name: '✓ Cálculo registrado: 14 anos, 2 meses e 10 dias, 74,0 pontos' })
-    expect(screen.getByText(/Ainda não pode se aposentar: previsto para 15\/03\/2028\. O caso segue para «Registrar o motivo» \(D1\.14\)/)).toBeTruthy()
+    expect(screen.getByText(/Ainda não pode se aposentar: previsto para 15\/03\/2028\. O caso segue para «Registrar o motivo»/)).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Cálculos anteriores' }).textContent).toContain('18 anos e 4 meses, 79,5 pontos')
   })
 
@@ -98,13 +98,13 @@ describe('Calcular tempo e pontos · tela do passo', () => {
 
   it('sem benefício definido, leva à definição', async () => {
     await abrir()
-    expect(screen.getByRole('link', { name: 'Definir o benefício (D1.12)' }).getAttribute('href')).toBe(`/entrevista/${JOSEFA}/beneficio`)
+    expect(screen.getByRole('link', { name: 'Definir o benefício' }).getAttribute('href')).toBe(`/entrevista/${JOSEFA}/beneficio`)
   })
 
   it('CA1 · a ficha do cliente mostra o passo obrigatório antes do fechamento', async () => {
     await comBeneficio('aposentadoria-idade')
     render(<FichaCliente id="josefa-exemplo" />)
-    expect(await screen.findByText('Calcular tempo e pontos (D1.13): obrigatório antes do fechamento')).toBeTruthy()
+    expect(await screen.findByText('Calcular tempo e pontos: obrigatório antes do fechamento')).toBeTruthy()
     expect(screen.getByText('Caso novo · sem processo ainda')).toBeTruthy()
   })
 })

@@ -45,6 +45,11 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     expect(leitura).toMatchObject({ senhaLida: false, arquivo: { nome: 'Ficha de atendimento AUXILIO ACIDENTE - Joana Ribeiro - 2026-10-08.pdf', local: 'pessoais' } })
     expect(leitura.respostas).toMatchObject({ empresa: 'Exemplo Indústria Ltda', doencas: '', laudos: '' })
     expect(JSON.stringify(await banco.select().from(fichaRecepcao))).not.toContain(MEDICO)
+    // Bloco 5a: a imagem fica na lista de arquivos da ficha do servidor; ler de novo não sobrescreve.
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}`)).arquivos).toEqual([leitura.arquivo])
+    const deNovo = await json('ana', 'POST', `/api/fichas/${fichaId}/segunda-ficha/leitura`)
+    expect(deNovo.arquivo.nome).toBe('Ficha de atendimento AUXILIO ACIDENTE - Joana Ribeiro - 2026-10-08 (2).pdf')
+    expect(deNovo.ficha.arquivos.map((a: { nome: string }) => a.nome)).toEqual([leitura.arquivo.nome, deNovo.arquivo.nome])
 
     expect((await chamar('ana', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).statusCode).toBe(403)
     expect(await json('gabi', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).toMatchObject({ lida: true, medicos: { doencas: MEDICO, cirurgia: 'nao' } })
@@ -70,6 +75,22 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     expect(JSON.stringify(await json('ana', 'GET', `/api/fichas/${fichaId}`))).not.toContain(MEDICO)
     expect(JSON.stringify(await json('ana', 'GET', '/api/recepcao'))).not.toContain(MEDICO)
     expect(await json('gabi', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).toMatchObject({ lida: false, medicos: { doencas: MEDICO } })
+  })
+
+  it('revalida o NB no servidor: inválido não altera a segunda ficha nem o histórico', async () => {
+    const fichaId = await lead()
+    const url = `/api/fichas/${fichaId}/segunda-ficha`
+    const valida = await chamar('ana', 'PUT', url, { respostas: { ...PAPEL, nb: '123.456.789-0' }, origem: 'papel' })
+    expect(valida.statusCode).toBe(200)
+    const antes = valida.json().ficha
+    for (const nb of ['123456789', '12345678901', '0000000000']) {
+      const recusada = await chamar('ana', 'PUT', url, { respostas: { ...PAPEL, nb }, origem: 'papel' })
+      expect(recusada.statusCode).toBe(400)
+      expect(recusada.json()).toEqual({ erro: 'Segunda ficha inválida.' })
+    }
+    const depois = await json('ana', 'GET', `/api/fichas/${fichaId}`)
+    expect(depois.segundaFicha).toEqual(antes.segundaFicha)
+    expect(depois.historico).toEqual(antes.historico)
   })
 
   it('no tablet, o cliente preenche a seção médica; salvar de novo com ela em branco não apaga', async () => {

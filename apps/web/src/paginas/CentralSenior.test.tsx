@@ -5,7 +5,7 @@ import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralSenior } from './CentralSenior.tsx'
 
-/** Uma tarefa do servidor (GET /api/tarefas): a conferência antes do INSS (D2.01). */
+/** Uma tarefa do servidor (GET /api/tarefas): a conferência antes do INSS. */
 const conferencia = {
   id: '11111111-1111-4111-8111-111111111111',
   casoId: '22222222-2222-4222-8222-222222222222',
@@ -34,7 +34,7 @@ afterEach(() => {
   entrarComo()
 })
 
-const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^\S+ /, ''))
+const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^[^\p{L}+]+ /u, ''))
 const sugestoes = () => within(screen.getByRole('region', { name: 'Chat com a IA' })).getAllByRole('button').map((b) => b.textContent)
 
 describe('GGVP-78 · a Central da Sênior, como no Figma (59:609)', () => {

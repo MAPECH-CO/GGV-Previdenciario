@@ -23,7 +23,16 @@ Portal operacional para o escritório previdenciário da GGV, refeito do zero a 
 | Decisões | `docs/decisoes/` |
 | Estudos de arquitetura (ex.: Chatwoot no portal) | `docs/arquitetura/` |
 
-## Estado em 26/09/2026
-- BPMN revisado no Miro; passos numerados nos cartões do board em 28/09 (códigos em `docs/bpmn/README.md`; D5 a conferir). Glossário dos códigos no Figma.
-- 89 histórias candidatas, todas com o rótulo `a-validar-bpmn`. Nenhuma está Pronta: faltam as respostas de `duvidas-abertas.md` e o refinamento.
-- Sprint 0 começa em 28/09. O Trabalhista (`mapech-trabalhista`) está pausado até o Prev terminar; este repositório segue a mesma metodologia.
+## Estado da base em 12/10/2026
+
+A main conferida nesta atualização é `5780145`, com o refinamento visual dos pedidos #58 e #59. O portal já tem
+telas React, API, permissões e testes. Ainda há fluxos mistos e integrações pendentes: implementação não significa
+aceite em homologação.
+
+- [Decisões e dúvidas do produto](docs/requisitos/duvidas-abertas.md): regras respondidas e pendências com Lucas.
+- [Roteiro do teste](docs/entrega/roteiro-do-teste-09-10.md): jornadas, permissões e limites da base atual.
+- [Conferência dos critérios](docs/conferencia-dos-criterios.md): evidências atualizadas e contagens históricas identificadas.
+- [Treinamento por perfil](docs/treinamento/por-perfil.md): material curto; realização e logins reais ainda pendentes.
+- [ADRs](docs/decisoes/README.md): stack aceita, pgvector, Chatwoot e decisões de saúde/guarda com pendências contratuais.
+
+Os pedidos da GGVP-159 são revisados separadamente; não são considerados integrados nesta fotografia da main.

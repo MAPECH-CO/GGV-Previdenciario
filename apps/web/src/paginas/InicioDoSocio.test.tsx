@@ -11,6 +11,7 @@ const painel: PainelDeResultados = {
   recorte: null,
   extincoes: { casos: 0, decididos: 0, porCausa: [] },
   pareceres: { dispensados: 0, exitoComDispensa: semDados('exito_com_dispensa', 'Êxito com parecer dispensado'), exitoComSuficiente: semDados('exito_com_suficiente', 'Êxito com parecer suficiente') },
+  motivos: { indeferimento: [], derrota: [] },
   totais: null,
   operacao: 'sem_dados',
   baseDoAcervo: { situacao: 'sem_dados' },
@@ -41,7 +42,7 @@ afterEach(() => {
   entrarComo()
 })
 
-const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^\S+ /, ''))
+const topo = () => within(screen.getByRole('navigation', { name: 'Principal' })).getAllByRole('link').map((a) => a.textContent?.replace(/^[^\p{L}+]+ /u, ''))
 
 describe('GGVP-78 · a tela inicial do Sócio é o painel de resultado (GGVP-75, perfis.md)', () => {
   it('o painel com a busca e o chat da Gestão do Sócio (Figma 2456:10128), a Gestão, a importação e o Financeiro no topo, sem o "Voltar ao início"', async () => {

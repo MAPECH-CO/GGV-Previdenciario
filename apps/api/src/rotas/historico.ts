@@ -13,6 +13,8 @@ export const TITULO_AUTORIZAR = 'Autorizar exportação do histórico'
 
 /** O que cada evento quer dizer, em palavras da equipe. O que não está aqui sai com o próprio nome, legível. */
 const DESCRICAO: Record<string, string> = {
+  // GGVP-142 CA3: a ação confirmada no cartão do chat.
+  tarefa_criada_pelo_chat: 'Criou a tarefa pelo chat (feito pelo chat)',
   acesso_negado: 'Tentou uma ação fora do perfil',
   portao_bloqueado: 'Tentou passar por um portão sem o que ele exige',
   conferencia_recusada: 'Aprovação para o INSS recusada pelo portão',
@@ -237,6 +239,7 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
     app.route<{ Params: { id: string } }>({
       method: ['PUT', 'PATCH', 'DELETE'],
       url,
+      config: { semTrava: 'o histórico não muda: a rota recusa sempre, para todo perfil, e registra a tentativa' },
       handler: async (pedido, resposta) => {
         await historico(pedido.usuario?.id ?? 'anonimo', 'historico_alteracao_recusada', pedido, `caso:${pedido.params.id}`, { metodo: pedido.method })
         return negar(resposta, 403, MSG_HISTORICO_IMUTAVEL)

@@ -1,9 +1,10 @@
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
-import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia, type ChanceDeExito } from '@ggv/contratos'
+import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
-import { taxaComCasos } from '../regras/caso.ts'
+import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { nomeDoBeneficio } from '@ggv/contratos'
 
@@ -23,8 +24,6 @@ export function Conferencia({ casoId }: { casoId: string }) {
   const [justificativa, setJustificativa] = useState('')
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
-  const [chance, setChance] = useState<ChanceDeExito | null>(null)
-  const [erroDaChance, setErroDaChance] = useState('')
 
   const carregar = () => chamarApi<CasoParaConferencia>(`/casos/${casoId}/conferencia`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
   useEffect(() => {
@@ -60,13 +59,6 @@ export function Conferencia({ casoId }: { casoId: string }) {
     await carregar()
   }
 
-  // GGVP-131 e sugestão pronta (07/10): a chance aparece sozinha ao abrir. O número vem do sistema (acervo conferido); os
-  // fatores da IA ficam prontos em segundo plano.
-  useEffect(() => {
-    if (!caso?.podeDecidir) return
-    void chamarApi<ChanceDeExito>(`/casos/${casoId}/chance`, { method: 'POST', corpo: {} }).then((r) => (r.ok ? setChance(r.dados) : setErroDaChance(r.erro)))
-  }, [casoId, caso?.podeDecidir])
-
   /** A segunda Sênior, outra pessoa, aprova ou recusa (Q14). O servidor recusa quem pediu. */
   async function responderDispensa(aprova: boolean) {
     const corpo = ResponderDispensa.parse({ aprova })
@@ -78,24 +70,21 @@ export function Conferencia({ casoId }: { casoId: string }) {
 
   if (!caso)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Conferência · GGV Previdenciário</title>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   const bloqueio = bloqueioDeAprovar(caso)
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Conferência · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Conferência antes do INSS</h1>
       <p className={styles.subtitulo}>
         {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
@@ -105,7 +94,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
       <section className={styles.cartao}>
         <h2 className={styles.cartaoTitulo}>Checklist (G1)</h2>
         {!caso.checklist.cadastrado ? (
-          <p className={styles.erroCampo}>Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar.</p>
+          <p className={styles.erroCampo}>Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar. <a href="/configuracao">Abrir Configuração</a></p>
         ) : caso.checklist.completo ? (
           <span className={styles.selo}>Checklist completo</span>
         ) : (
@@ -119,7 +108,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
         </ol>
         <p className={styles.dica}>
           Ficha do cliente: {caso.temFicha ? 'preenchida' : 'não preenchida'} · Kit assinado: {caso.kitAssinado ? 'sim' : 'não'} · Cálculo de tempo e pontos:
-          não há para este caso
+          cálculo ainda não mostrado aqui. A consulta do cálculo por caso ainda não está disponível; o rascunho do Atendimento não fica salvo.
         </p>
       </section>
 
@@ -164,34 +153,8 @@ export function Conferencia({ casoId }: { casoId: string }) {
         )}
       </section>
 
-      {caso.podeDecidir && (
-        <section className={styles.cartao} aria-label="Chance de êxito">
-          <h2 className={styles.cartaoTitulo}>Chance de êxito</h2>
-          {!chance ? (
-            <p className={styles.dica}>{erroDaChance || 'Calculando…'}</p>
-          ) : (
-            <>
-              <p>
-                {chance.porcentagem === null || !chance.baseEm ? (
-                  'Sem casos parecidos na casa ainda: sem porcentagem.'
-                ) : (
-                  <strong>
-                    {taxaComCasos(chance.favoraveis, chance.casos, new Date(chance.baseEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}
-                  </strong>
-                )}
-              </p>
-              <p className={styles.dica}>Calculado pelo sistema: {chance.regra}.</p>
-              {chance.fatores && (
-                <>
-                  <span className={`${styles.selo} ${styles.seloAlerta}`}>Fatores sugeridos pela IA · confira</span>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{chance.fatores.texto}</p>
-                </>
-              )}
-              {chance.motivoIa && <p className={styles.dica}>{chance.motivoIa}</p>}
-            </>
-          )}
-        </section>
-      )}
+      {/* GGVP-131, GGVP-150: a chance, só para quem tem chance.ver. */}
+      <ChanceDoCaso casoId={casoId} />
 
       {feito ? (
         <p className={styles.sucesso} role="status">
@@ -283,6 +246,6 @@ export function Conferencia({ casoId }: { casoId: string }) {
           </section>
         )
       )}
-    </main>
+    </TelaDePasso>
   )
 }

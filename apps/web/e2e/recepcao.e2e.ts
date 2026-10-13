@@ -106,7 +106,7 @@ for (const caminho of ['/balcao', '/clientes/novo', '/clientes/antonio-exemplo']
     await page.goto(`${caminho}?tema=escuro&fonte=grande`)
     const corpo = page.locator('body')
     await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-    await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+    await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
     await expect(page.locator('header').first()).toHaveCSS('background-color', rgb(tokens.cores.superficie.escuro))
   })
 }

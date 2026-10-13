@@ -17,7 +17,7 @@ import {
 import { demandaAberta } from '../regras/novaDemanda.ts'
 import { MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
 import { fecharContrato } from './contrato.ts'
-import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, obterFicha, receber, type Banco } from './servidor.ts'
 import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa, TarefaEncaminhada } from './tipos.ts'
 
 const QUEM_NO_PAPEL: Record<PapelNoFechamento, string> = {
@@ -60,7 +60,7 @@ export type DadosDoFechamento = { ficha: Ficha; entrevista?: Agendamento }
 
 /** GET /api/fichas/:id/fechamento */
 export async function obterFechamento(fichaId: string): Promise<DadosDoFechamento | null> {
-  const ficha = ler().fichas.find((f) => f.id === fichaId)
+  const ficha = await obterFicha(fichaId)
   return ficha ? { ficha, entrevista: entrevistaRealizada(ficha) } : null
 }
 
@@ -197,7 +197,7 @@ export async function registrarRecontato(fichaId: string, r: ResultadoDoRecontat
     if (r.resultado === 'calculo') {
       ficha.fechamento = { ...f, situacao: 'recalcular', quem: QUEM, quando }
       ficha.contatos.push({ data: hoje, canal: 'Recontato', texto: 'Quer seguir: o caso volta ao cálculo de tempo e pontos.' })
-      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos (D1.13)'))
+      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos'))
     } else {
       const detalhe = r.detalhe?.trim() || undefined
       const valido = MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === r.motivo) && podeRegistrarOMotivo(r.motivo, r.papel) && (detalhe?.length ?? 0) <= TAMANHO_DO_DETALHE

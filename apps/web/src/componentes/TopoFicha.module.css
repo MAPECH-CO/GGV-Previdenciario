@@ -1,48 +1,26 @@
-.topo {
+/* A faixa do título das telas de cliente, logo abaixo do topo (11/10). */
+.faixa {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  padding: 14px 32px;
-  background: var(--cor-superficie);
-  border-bottom: 1px solid var(--cor-linha);
-}
-
-.central {
-  border: 0;
-  background: none;
-  color: var(--cor-acento);
-  font-size: var(--fonte-13);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.nav {
-  display: flex;
-  gap: 16px;
-}
-
-.item {
-  padding: 7px 14px;
-  border: 1px solid var(--cor-linha);
-  border-radius: var(--raio-16);
-  background: var(--cor-superficie);
-  font-size: var(--fonte-13);
-  font-weight: 600;
-  white-space: nowrap;
+  gap: 12px 16px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 22px 32px 4px;
 }
 
 .titulos {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
 .titulo {
-  font-size: var(--fonte-18);
-  font-weight: 600;
+  font-size: var(--fonte-22);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .chips {
@@ -53,10 +31,10 @@
 
 .chipAcento,
 .chipNeutro {
-  padding: 2px 7px;
-  border-radius: 5px;
+  padding: 3px 8px;
+  border-radius: var(--raio-6);
   font-size: var(--fonte-11);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .chipAcento {
@@ -69,8 +47,16 @@
   color: var(--cor-texto-suave);
 }
 
-.quem {
-  color: var(--cor-texto-suave);
-  font-size: var(--fonte-12);
-  white-space: nowrap;
+@media (max-width: 760px) {
+  .faixa {
+    padding: 16px 16px 0;
+  }
+
+  .titulo {
+    font-size: var(--fonte-20);
+  }
+}
+
+.titulos {
+  flex-basis: 260px;
 }

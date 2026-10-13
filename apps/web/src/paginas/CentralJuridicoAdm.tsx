@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
-import { CampoBusca } from '../componentes/CampoBusca.tsx'
+import { BuscaGlobal } from '../componentes/BuscaGlobal.tsx'
 import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
@@ -16,8 +16,8 @@ import styles from './CentralAtendimento.module.css'
 // Jurídico administrativo (Lucas, 29/09). As tarefas nascem da perícia (dados/pericia.ts); as do protocolo no INSS (D2.02)
 // vêm do servidor e ficam no topo (junção de 08/10). É a tela inicial de quem entra como Jurídico administrativo.
 const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', glifo: '⌂', rotulo: 'Início', href: '/juridico-administrativo' },
-  { id: 'agenda', glifo: '▦', rotulo: 'Agenda', href: '/agenda' },
+  { id: 'inicio', rotulo: 'Início', href: '/juridico-administrativo' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
 const exemploChatJuridicoAdm = 'Ex.: “qual é a próxima tarefa da Maria Exemplo?”'
@@ -39,7 +39,7 @@ export function CentralJuridicoAdm() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Jurídico administrativo</h1>
-          <CampoBusca />
+          <BuscaGlobal local="central" />
           <ChatDaPericia exemplo={exemploChatJuridicoAdm} sugestoes={sugestoesChatJuridicoAdm} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>

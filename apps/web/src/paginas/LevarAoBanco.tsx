@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { ConcluirIdaAoBanco, type LevarAoBancoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 /**
@@ -35,25 +36,19 @@ export function LevarAoBanco({ casoId }: { casoId: string }) {
 
   if (!v)
     return (
-      <main className={styles.pagina}>
+      <TelaDePasso>
         <title>Levar ao banco · GGV Previdenciário</title>
-        <a className={styles.voltar} href="/">
-          ← Voltar ao início
-        </a>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}
           </p>
         )}
-      </main>
+      </TelaDePasso>
     )
 
   return (
-    <main className={styles.pagina}>
+    <TelaDePasso>
       <title>Levar ao banco · GGV Previdenciário</title>
-      <a className={styles.voltar} href="/">
-        ← Voltar ao início
-      </a>
       <h1 className={styles.titulo}>Levar ao banco</h1>
       <p className={styles.subtitulo}>{v.cliente}</p>
 
@@ -110,6 +105,6 @@ export function LevarAoBanco({ casoId }: { casoId: string }) {
           </div>
         </section>
       )}
-    </main>
+    </TelaDePasso>
   )
 }

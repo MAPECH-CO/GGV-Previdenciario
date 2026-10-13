@@ -26,6 +26,7 @@ const PERFIS = [
   ['helena', 'senior'],
   ['jessica', 'documentacao'],
   ['marcos', 'financeiro'],
+  ['lauro', 'socio'],
 ] as const
 
 // GGVP-133: o servidor não transcreve conversa de exemplo. A ligação sobe de verdade e a OpenAI é um serviço falso (nenhuma
@@ -313,6 +314,9 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
 
     // A pendência é da Ana: a advogada não dá por cumprida; o prazo novo é só da Sênior.
     expect((await chamar('gabi', 'POST', `/api/conversas/${id}/pendencia/cumprida`)).statusCode).toBe(403)
+    // GGVP-158: o Sócio não fica com pendência: a trava da rota recusa, e a recusa fica no histórico.
+    expect((await chamar('lauro', 'POST', `/api/conversas/${id}/pendencia/cumprida`)).statusCode).toBe(403)
+    expect((await eventos('acesso_negado')).filter((e) => e.acao === 'tarefa.cumprir')).toEqual([expect.objectContaining({ perfil: 'socio' })])
     expect((await chamar('ana', 'POST', `/api/conversas/${id}/pendencia/prazo`, { prazo: '20/10/2026' })).statusCode).toBe(403)
     expect((await json('helena', 'POST', `/api/conversas/${id}/pendencia/prazo`, { prazo: '01/10/2026' })).erro).toBe('Prazo de hoje em diante (dd/mm/aaaa).')
     expect((await json('helena', 'POST', `/api/conversas/${id}/pendencia/prazo`, { prazo: '20/10/2026' })).conversa.pendencia.prazo).toBe('2026-10-20')

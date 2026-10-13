@@ -19,14 +19,14 @@ import proprio from './RegistrarFechamento.module.css'
 // prevista?" ficam no painel, como no desenho; o cartão pede, além dele, quem registra a recusa do escritório (CA11) e a
 // sugestão da data pelo "ficou de pensar" ou "pediu para esperar" (CA12).
 
-export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
+export function RegistrarFechamento({ fichaId, antesDaEntrevista = false }: { fichaId: string; antesDaEntrevista?: boolean }) {
   const hoje = hojeIso(agora())
   const [dados, setDados] = useState<DadosDoFechamento | null | undefined>(undefined)
-  const [fechou, setFechou] = useState<boolean | null>(null)
-  const [motivo, setMotivo] = useState('')
+  const [fechou, setFechou] = useState<boolean | null>(antesDaEntrevista ? false : null)
+  const [motivo, setMotivo] = useState(antesDaEntrevista ? 'desistiu' : '')
   const [detalhe, setDetalhe] = useState('')
   const [papel, setPapel] = useState<PapelNoFechamento>('atendimento')
-  const [recontatar, setRecontatar] = useState<boolean | null>(null)
+  const [recontatar, setRecontatar] = useState<boolean | null>(antesDaEntrevista ? true : null)
   const [data, setData] = useState('')
   const [espera, setEspera] = useState<EsperaDoRecontato | null>(null)
   const [erroData, setErroData] = useState<string | undefined>()
@@ -39,6 +39,8 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
     let valendo = true
     obterFechamento(fichaId).then((d) => {
       if (valendo) setDados(d)
+    }).catch(() => {
+      if (valendo) setErro('Não foi possível buscar a ficha no servidor.')
     })
     return () => {
       valendo = false
@@ -49,7 +51,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
     return (
       <main className={proprio.vazia}>
         <title>Registrar fechamento · GGV Previdenciário</title>
-        <h1 className={styles.titulo}>{dados === null ? 'Ficha não encontrada' : 'Abrindo a tarefa…'}</h1>
+        <h1 className={styles.titulo}>{erro || (dados === null ? 'Ficha não encontrada' : 'Abrindo a tarefa…')}</h1>
         {dados === null && <a href="/">Voltar ao início</a>}
       </main>
     )
@@ -64,7 +66,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
   const pendente = porDemanda ? demanda?.situacao === 'aberta' : !ficha.fechamento || ficha.fechamento.situacao === 'recalcular'
   const motivoParado = motivoParadoDoFechamento({ fechou, motivo, detalhe, papel, recontatar: porDemanda ? false : recontatar, data, beneficio, calculoPendente: !porDemanda && calculoPendente(ficha) }, hoje)
   const primeiro = ficha.nome.split(' ')[0]
-  const subtitulo =
+  const subtitulo = antesDaEntrevista ? 'registre o motivo e a data de recontato' :
     fechou === true
       ? 'fechou · segue para o kit do benefício'
       : fechou === false
@@ -113,10 +115,8 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoPasso
-            passo="D1.14"
-            nomeDoPasso="Registrar o fechamento e o motivo"
             setor="Atendimento"
-            tarefa="Registrar fechamento"
+            tarefa={antesDaEntrevista ? "Desistência antes da entrevista" : "Registrar fechamento"}
             subtitulo={subtitulo}
             ficha={ficha}
             beneficio={beneficio}
@@ -128,6 +128,8 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
             }
           />
 
+          {antesDaEntrevista && <p className={styles.nota}>Registre a desistência e escolha se vale recontatar.
+            O cancelamento automático do compromisso ainda não está disponível.</p>}
           {!pendente && porDemanda ? (
             demanda ? (
               <section className={registrado ? styles.feito : styles.cartao} aria-labelledby="registrado">
@@ -138,7 +140,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                 </h2>
                 <p>
                   {demanda.situacao === 'fechou'
-                    ? `Segue para o kit do benefício (D1.15), com a subpasta «${nomeDaSubpasta(beneficio!, hoje)}» na pasta do cliente.`
+                    ? `Segue para o kit do benefício, com a subpasta «${nomeDaSubpasta(beneficio!, hoje)}» na pasta do cliente.`
                     : `${nomeMotivo(demanda.motivo)}${demanda.detalhe ? ` (${demanda.detalhe})` : ''}. ${primeiro} segue cliente nos outros processos.`}
                 </p>
                 <div className={styles.atalhos}>
@@ -169,7 +171,7 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
               </h2>
               <p>
                 {f.situacao === 'fechou'
-                  ? `${nomeBeneficio(beneficio)}: segue para o kit do benefício (D1.15).`
+                  ? `${nomeBeneficio(beneficio)}: segue para o kit do benefício.`
                   : f.situacao === 'recontatar'
                     ? 'O recontato está na agenda, e a tarefa "Recontatar lead" aparece na Central nesse dia.'
                     : 'Saiu das filas ativas e continua pesquisável no balcão, com o motivo e o histórico.'}
@@ -206,14 +208,14 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
                   ) : beneficio && beneficio !== 'nao-sei' ? (
                     <p className={proprio.texto}>
                       {primeiro} vira cliente com {nomeBeneficio(beneficio)}, o benefício que a advogada definiu, e o caso segue para o kit do
-                      benefício (D1.15).
+                      benefício.
                     </p>
                   ) : (
                     <p className={styles.aviso}>
                       Falta o benefício definido pela advogada.{' '}
                       {entrevista && (
                         <a className={styles.avisoLink} href={`/entrevista/${entrevista.id}/beneficio`}>
-                          Definir o benefício (D1.12)
+                          Definir o benefício
                         </a>
                       )}
                     </p>
@@ -267,12 +269,12 @@ export function RegistrarFechamento({ fichaId }: { fichaId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.14.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Decisões</h3>
           <div className={styles.decisao}>
             <p id="fechou-pergunta">Fechou com o escritório?</p>
             <div className={styles.ladoOpcoes} role="radiogroup" aria-labelledby="fechou-pergunta">
-              <button type="button" role="radio" className={styles.chip} aria-checked={fechou === true} disabled={!pendente} onClick={() => setFechou(true)}>
+              <button type="button" role="radio" className={styles.chip} aria-checked={fechou === true} disabled={!pendente || antesDaEntrevista} onClick={() => setFechou(true)}>
                 Sim, fechou
               </button>
               <button type="button" role="radio" className={styles.chip} aria-checked={fechou === false} disabled={!pendente} onClick={() => setFechou(false)}>

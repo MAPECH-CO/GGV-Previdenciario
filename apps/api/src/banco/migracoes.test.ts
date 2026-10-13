@@ -35,17 +35,31 @@ describe('migrações', () => {
     for (const nome of ['caso', 'evento_auditoria', 'pessoa', 'sessao', 'tarefa', 'usuario']) expect(t).toContain(nome)
     for (const nome of ['identificador_caso', 'etapa', 'decisao', 'documento', 'documento_medico', 'parecer_medico',
       'requerimento_inss', 'exigencia_item', 'pericia', 'publicacao', 'rodada_vigilia', 'peticao_versao',
-      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao',
+      'prestacao_contas', 'processo_acervo', 'credencial_govbr', 'consentimento', 'configuracao', 'ficha_recepcao', 'tarefa_recepcao', 'compromisso_interno', 'gravacao_recepcao', 'segunda_ficha_medica', 'contrato_recepcao', 'leitura_documento',
       'publicacao_descarte', 'publicacao_reclassificacao', 'chamada_ia', 'versao_campo', 'dado_bancario', 'glossario_termo', 'acervo_trecho']) expect(t).toContain(nome)
     expect(t).toContain('documentacao_medica')
     // GGVP-147: quem faz cada tarefa do setor.
     expect(t).toContain('atribuicao_tarefa')
-    expect(t).toHaveLength(58)
+    // GGVP-125, bloco 5c: a conferência do checklist, as boas-vindas e a cobrança dos documentos.
+    for (const nome of ['conferencia_checklist', 'boas_vindas', 'cobranca_documento']) expect(t).toContain(nome)
+    expect(t).toHaveLength(62)
   })
 
   it('GGVP-141 · a base de conhecimento do acervo: pgvector ligado e o índice HNSW pela distância de cosseno (ADR-013)', async () => {
     const { rows } = await db.execute<{ indexdef: string }>(sql`select indexdef from pg_indexes where indexname = 'acervo_trecho_vetor'`)
     expect(rows[0]?.indexdef).toMatch(/USING hnsw \(embedding vector_cosine_ops\)/)
+  })
+
+  it('GGVP-41 CA6 · o registro do acervo guarda a ficha do desfecho: matéria, vara, tese, resumo e lição', async () => {
+    const { rows } = await db.execute<{ column_name: string }>(sql`select column_name from information_schema.columns where table_name = 'processo_acervo'`)
+    expect(rows.map((r) => r.column_name)).toEqual(expect.arrayContaining(['materia', 'vara', 'tese', 'resumo', 'licao']))
+  })
+
+  it('GGVP-64 parte 2 · o caso guarda a vara e o juiz; o juízo, os entendimentos e quando a IA leu', async () => {
+    const colunas = async (tabela: string) =>
+      (await db.execute<{ column_name: string }>(sql`select column_name from information_schema.columns where table_name = ${tabela}`)).rows.map((r) => r.column_name)
+    expect(await colunas('caso')).toEqual(expect.arrayContaining(['vara', 'juiz']))
+    expect(await colunas('juizo')).toEqual(expect.arrayContaining(['entendimentos', 'entendimentos_em']))
   })
 
   it('toda tabela tem RLS ligado: no Supabase, a chave pública não lê nada (GGVP-119)', async () => {

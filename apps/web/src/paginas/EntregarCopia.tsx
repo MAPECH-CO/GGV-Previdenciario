@@ -101,8 +101,6 @@ export function EntregarCopia({ processoId }: { processoId: string }) {
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <CabecalhoDoContrato
-            passo="D1.20"
-            nomeDoPasso="Imprimir a cópia do contrato"
             tarefa="Entregar cópia do contrato"
             subtitulo={subtitulo}
             ficha={ficha}
@@ -226,8 +224,7 @@ export function EntregarCopia({ processoId }: { processoId: string }) {
                 ✓ Entrega registrada
               </h2>
               <p>
-                Entregue em {dataCurta(entrega.entregueEm, hoje)} a {entrega.quemRecebeu}. O caso segue para a conferência do checklist do benefício
-                (D1.21).
+                Entregue em {dataCurta(entrega.entregueEm, hoje)} a {entrega.quemRecebeu}. O caso segue para a conferência do checklist do benefício.
               </p>
               <div className={styles.atalhos}>
                 <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
@@ -264,7 +261,7 @@ export function EntregarCopia({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.20.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
             <li>• Cópia impressa da versão assinada*</li>

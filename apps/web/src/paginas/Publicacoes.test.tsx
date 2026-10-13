@@ -166,6 +166,28 @@ describe('Ler publicação (GGVP-74, GGVP-34)', () => {
     const [, init] = fetch.mock.calls.find(([url]) => String(url).endsWith('/classificacao'))!
     expect(JSON.parse(String(init?.body))).toMatchObject({ classe: 'nomeacao_perito', semPrazoNaDecisao: true })
   })
+
+  it('GGVP-64 parte 2 CA1 · a IA sugere a vara e o juiz escritos na publicação; a pessoa confere, e eles vão com a classificação', async () => {
+    const sugestao = {
+      classe: 'exigencia',
+      dias: 15,
+      resumo: 'O juiz pede o laudo.',
+      vara: '1ª Vara-Gabinete do JEF de São Paulo',
+      juiz: 'Dra. Exemplo',
+      chamadaId: '22222222-2222-4222-8222-222222222222',
+      modelo: 'gpt-4.1-mini',
+      alerta: null,
+    }
+    const fetch = servidor(publicacao, [200, { sugestao, motivo: null }])
+    render(<LerPublicacao publicacaoId={ID} />)
+    await screen.findByText('Sugestão da IA · confira antes de usar')
+    expect((screen.getByLabelText('Vara') as HTMLInputElement).value).toBe('1ª Vara-Gabinete do JEF de São Paulo')
+    fireEvent.change(screen.getByLabelText('Juiz'), { target: { value: 'Dra. Exemplo da Silva' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Classificar' }))
+    await screen.findByRole('status')
+    const [, init] = fetch.mock.calls.find(([url]) => String(url).endsWith('/classificacao'))!
+    expect(JSON.parse(String(init?.body))).toMatchObject({ classe: 'exigencia', vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo da Silva' })
+  })
 })
 
 describe('Publicações do processo (GGVP-74 CA5, CA7)', () => {

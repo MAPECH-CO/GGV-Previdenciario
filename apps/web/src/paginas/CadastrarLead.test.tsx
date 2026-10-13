@@ -1,10 +1,16 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { encerrarGravacao, iniciarGravacao, transcrever } from '../dados/entrevista.ts'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CadastrarLead } from './CadastrarLead.tsx'
 
+// Resposta inventada pelo teste; nenhum pedido sai para o ViaCEP.
+const endereco = { logradouro: 'Rua de Teste', bairro: 'Bairro de Teste', localidade: 'Cidade de Teste', uf: 'SP' }
+const respostaCep = () => new Response(JSON.stringify(endereco))
+afterEach(() => vi.unstubAllGlobals())
+
 beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => respostaCep()))
   configurarExemplo({ agora: () => new Date(2026, 9, 5, 14, 32), latencia: 0 })
   zerarExemplo()
 })
@@ -54,11 +60,62 @@ describe('Cadastrar lead · tela do passo', () => {
     preencher('Data de nascimento', '10/03/1958')
     expect(screen.getByText('68 anos')).toBeTruthy()
     preencher('CEP *', '01001000')
-    expect(await screen.findByText('Endereço pelo CEP (ViaCEP simulado): confira e complete o número.')).toBeTruthy()
+    expect(await screen.findByText('Endereço pelo CEP (ViaCEP): confira e complete o número.')).toBeTruthy()
     expect(campo('CEP *').value).toBe('01001-000')
-    expect(campo('Rua e número *').value).toBe('Praça da Sé, ')
-    expect([campo('Bairro *').value, campo('Cidade *').value, campo('UF *').value]).toEqual(['Sé', 'São Paulo', 'SP'])
+    expect(campo('Rua e número *').value).toBe('Rua de Teste, ')
+    expect([campo('Bairro *').value, campo('Cidade *').value, campo('UF *').value]).toEqual(['Bairro de Teste', 'Cidade de Teste', 'SP'])
     expect((screen.getByLabelText('Profissão *') as HTMLSelectElement).options[1].textContent).toBe('Agricultor(a) / trabalhador(a) rural')
+  })
+
+  it('CEP inexistente ou serviço indisponível permite completar o endereço à mão', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ erro: true }))).mockRejectedValueOnce(new Error('sem rede')))
+    await abrir()
+    for (const cep of ['99999-999', '01001-000']) {
+      preencher('CEP *', cep)
+      expect(await screen.findByText('Não foi possível consultar este CEP. Confira o CEP ou digite o endereço.')).toBeTruthy()
+    }
+    preencher('Rua e número *', 'Rua Manual, 20')
+    preencher('Bairro *', 'Bairro Manual')
+    expect(campo('Rua e número *').value).toBe('Rua Manual, 20')
+    expect(campo('Bairro *').value).toBe('Bairro Manual')
+  })
+
+  it('uma resposta do CEP anterior não preenche o novo endereço', async () => {
+    let resolver!: (r: Response) => void
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(() => new Promise<Response>((r) => { resolver = r }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...endereco, bairro: 'Novo bairro' }))))
+    await abrir()
+    preencher('CEP *', '01001-000')
+    preencher('CEP *', '02002-000')
+    await screen.findByText('Endereço pelo CEP (ViaCEP): confira e complete o número.')
+    await act(async () => { resolver(respostaCep()) })
+    expect(campo('Bairro *').value).toBe('Novo bairro')
+    expect(campo('CEP *').value).toBe('02002-000')
+  })
+
+  it('editar o CEP sem sair do campo invalida a resposta que estava a caminho', async () => {
+    let resolver!: (r: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((r) => { resolver = r })))
+    await abrir()
+    preencher('CEP *', '01001-000')
+    fireEvent.change(campo('CEP *'), { target: { value: '02' } })
+    await act(async () => { resolver(respostaCep()) })
+    expect(campo('Bairro *').value).toBe('')
+    expect(screen.queryByText(/Endereço pelo CEP/)).toBeNull()
+  })
+
+  it('preserva os campos digitados enquanto o ViaCEP responde', async () => {
+    let resolver!: (r: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((r) => { resolver = r })))
+    await abrir()
+    preencher('CEP *', '01001-000')
+    preencher('Rua e número *', 'Rua Manual, 20')
+    preencher('Bairro *', 'Bairro Manual')
+    preencher('Cidade *', 'Cidade Manual')
+    preencher('UF *', 'MG')
+    await act(async () => { resolver(respostaCep()) })
+    expect(['Rua e número *', 'Bairro *', 'Cidade *', 'UF *'].map((r) => campo(r).value))
+      .toEqual(['Rua Manual, 20', 'Bairro Manual', 'Cidade Manual', 'MG'])
   })
 
   it('CA2 · CPF de outra ficha: mostra o cadastro existente e não cria outro', async () => {

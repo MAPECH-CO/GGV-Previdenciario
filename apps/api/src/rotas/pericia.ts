@@ -104,6 +104,12 @@ const NO_CATALOGO: Record<string, string> = {
 /** O perfil do perito na coluna `perfil` (GGVP-73): o tipo, onde atua e os laudos, sem dado pessoal do cliente. */
 type PerfilGuardado = Pick<Perito, 'tipo' | 'onde' | 'laudos'>
 
+/** GGVP-152 CA1: os laudos guardados ficam como estão; dos novos, entra só o que ainda não está (pelo id do laudo). */
+export function juntarLaudos(guardados: Perito['laudos'], novos: Perito['laudos']): Perito['laudos'] {
+  const ja = new Set(guardados.map((l) => l.id))
+  return [...guardados, ...novos.filter((l) => !ja.has(l.id))]
+}
+
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; ia: Ia; preparo?: Preparo; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -127,7 +133,7 @@ function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
     ...t,
     pericia: semLeitura(t.pericia),
     anteriores: t.anteriores.map(semLeitura),
-    perfil: t.perfil && { ...t.perfil, porAssunto: [], perito: { ...t.perfil.perito, laudos: [] } },
+    perfil: t.perfil && { ...t.perfil, porAssunto: [], porBeneficio: [], perito: { ...t.perfil.perito, laudos: [] } },
   }
 }
 
@@ -273,7 +279,10 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
       }
       for (const p of d.mundo.peritos ?? []) {
         if (p.laudos.length === d.laudosAntes.get(p.id)) continue
-        await tx.update(perito).set({ perfil: { tipo: p.tipo, onde: p.onde, laudos: p.laudos } satisfies PerfilGuardado }).where(eq(perito.id, p.id))
+        // GGVP-152 CA1: relê o perfil com a linha travada e só acrescenta; outra gravação no meio não perde laudo.
+        const [atual] = await tx.select({ perfil: perito.perfil }).from(perito).where(eq(perito.id, p.id)).for('update')
+        const laudos = juntarLaudos((atual?.perfil as PerfilGuardado | null)?.laudos ?? [], p.laudos)
+        await tx.update(perito).set({ perfil: { tipo: p.tipo, onde: p.onde, laudos } satisfies PerfilGuardado }).where(eq(perito.id, p.id))
       }
     })
   }

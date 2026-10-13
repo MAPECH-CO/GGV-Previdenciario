@@ -72,7 +72,7 @@ describe('GGVP-133 · conversa do Relacionamento com o microfone de verdade', ()
     expect(enviou.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(conversa.finalizarConversa).mock.invocationCallOrder[0])
     // O servidor falso das telas transcreve com a conversa de exemplo (o de verdade, com a chave, transcreve o áudio); o
     // teste espera ela terminar (a máquina lenta pede folga).
-    expect(await screen.findByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.', undefined, { timeout: 15000 })).toBeTruthy()
+    expect(await screen.findByText('Transcrição pronta: o texto está nas transcrições do card.', undefined, { timeout: 15000 })).toBeTruthy()
   }, 30000)
 
   it('sem microfone, o áudio gravado fora sobe nesta conversa e vai para a transcrição; sem a chave do serviço, a tela diz o motivo, nenhuma fala de exemplo', async () => {
@@ -98,7 +98,7 @@ describe('GGVP-133 · conversa do Relacionamento com o microfone de verdade', ()
     expect(
       await screen.findByText('A transcrição falhou: a transcrição está desligada (falta a chave do serviço). O áudio está guardado; nada se perdeu.', undefined, { timeout: 15000 }),
     ).toBeTruthy()
-    expect(screen.queryByText('Transcrição pronta (D5.02): o texto está nas transcrições do card.')).toBeNull()
+    expect(screen.queryByText('Transcrição pronta: o texto está nas transcrições do card.')).toBeNull()
     expect(screen.queryByRole('list', { name: 'Falas' })).toBeNull()
     expect(document.body.textContent).not.toContain('Mudei de casa')
   }, 30000)

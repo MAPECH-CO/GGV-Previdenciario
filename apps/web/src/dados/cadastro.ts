@@ -1,6 +1,5 @@
-// EXEMPLO. Servidor de exemplo do cadastro do lead (GGVP-43), sobre o mesmo banco de servidor.ts. O cadastro completa a
-// ficha do primeiro contato, nunca cria outra (CA9). Ligar no servidor: trocar o corpo de cada função por fetch no
-// endpoint da design.md (change ggvp-6) e o ViaCEP simulado pelo de verdade.
+// Cadastro do lead na mesma ficha do primeiro contato (GGVP-43). A gravação usa a API para fichas do servidor
+// e a cópia local para os exemplos. A consulta de CEP usa o ViaCEP em ambos os casos.
 import { buscarCep, normalizarCpf, type Endereco } from '../campos.ts'
 import { cadastroDaFicha, errosDoCadastro, errosDoRepresentante, faltaParaOKit, fichaDoCadastro, mesclar, normalizarRg, ROTULOS_DO_CADASTRO } from '../regras/cadastro.ts'
 import { hojeIso } from '../regras/datas.ts'
@@ -66,7 +65,7 @@ export async function salvarCadastro(fichaId: string, pedido: PedidoDeCadastro):
     registros.push(evento(`Alterou o representante legal: «${antes}» → «${agoraE}»`, QUEM_ADVOGADA))
     ficha.representante = representante
   }
-  if (primeiraVez) registros.unshift(evento('Cadastrou o lead (D1.10): completou a mesma ficha do primeiro contato', QUEM_ADVOGADA))
+  if (primeiraVez) registros.unshift(evento('Cadastrou o lead: completou a mesma ficha do primeiro contato', QUEM_ADVOGADA))
   ficha.historico.push(...registros)
   const tarefa = banco.tarefas.find((t) => t.id === `cadastrar-${ficha.id}`)
   if (tarefa) tarefa.concluida = true
@@ -82,17 +81,7 @@ export async function podeGerarKit(fichaId: string): Promise<{ pode: boolean; fa
   return { pode: falta.length === 0, falta }
 }
 
-/** EXEMPLO. O ViaCEP simulado: só o CEP do exemplo do próprio ViaCEP responde; os outros são digitados. */
-const VIACEP_DE_EXEMPLO: Record<string, object> = {
-  '01001000': { logradouro: 'Praça da Sé', complemento: 'lado ímpar', bairro: 'Sé', localidade: 'São Paulo', uf: 'SP', ibge: '3550308' },
-}
-
-const viacepSimulado = (async (url: string) => {
-  const cep = /ws\/(\d{8})\//.exec(url)?.[1] ?? ''
-  return new Response(JSON.stringify(VIACEP_DE_EXEMPLO[cep] ?? { erro: true }), { headers: { 'Content-Type': 'application/json' } })
-}) as typeof fetch
-
-/** O CEP preenche rua, bairro, cidade e UF (CA10), pela função de campos. */
+/** Consulta pública pela biblioteca de campos; envia só o CEP, sem os demais dados da ficha. */
 export function buscarEndereco(cep: string): Promise<Endereco | null> {
-  return buscarCep(cep, viacepSimulado)
+  return buscarCep(cep)
 }

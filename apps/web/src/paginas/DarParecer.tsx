@@ -151,9 +151,6 @@ export function DarParecer({ processoId }: { processoId: string }) {
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
             <div className={styles.chips}>
-              <span className={styles.codigo} title="D1.21M · Analisar a documentação médica (passo do BPMN)">
-                D1.21M
-              </span>
               <span className={proprio.advogada}>Advogada</span>
               <span className={styles.beneficio}>◆ {beneficio}</span>
             </div>
@@ -432,7 +429,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O que o BPMN (Miro) pede no passo D1.21M.</p>
+          <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <p>
             • Se «Insuficiente — pedir complemento»: O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão, G20)*

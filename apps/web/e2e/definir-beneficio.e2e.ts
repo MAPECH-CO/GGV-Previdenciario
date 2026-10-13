@@ -22,7 +22,7 @@ async function entrevistaTranscrita(page: Page, agendamentoId: string) {
   await expect(page.getByText(/● Gravando/)).toBeVisible()
   await page.clock.runFor(140_000)
   await page.getByRole('button', { name: 'Encerrar e gerar resumo' }).click()
-  await expect(page.getByText(/Transcrição pronta \(D1.11\)/)).toBeVisible()
+  await expect(page.getByText(/Transcrição pronta/)).toBeVisible()
 }
 
 test('CA2, CA3, CA4, CA6 e CA7 · da tarefa à sugestão com a base e os requisitos; recusar com motivo e ver no histórico', async ({ page }) => {
@@ -45,13 +45,13 @@ test('CA2, CA3, CA4, CA6 e CA7 · da tarefa à sugestão com a base e os requisi
 
   await page.getByRole('link', { name: 'Abrir a ficha do cliente' }).click()
   const historico = page.getByRole('list', { name: 'Histórico' })
-  await expect(historico).toContainText('Definiu o benefício do caso (D1.12): LOAS Idoso')
+  await expect(historico).toContainText('Definiu o benefício do caso: LOAS Idoso')
   await expect(historico).toContainText('Recusou a sugestão da IA (Auxílio por Incapacidade Temporária): tem 65 anos e a renda da casa é baixa')
 })
 
 test('CA1 · o benefício citado pela advogada prevalece; o do acervo fica só como sugestão', async ({ page }) => {
   await entrevistaTranscrita(page, 'natalia-entrevista')
-  await page.getByRole('link', { name: 'Definir o benefício (D1.12)' }).click()
+  await page.getByRole('link', { name: 'Definir o benefício' }).click()
   const ia = page.getByRole('region', { name: 'A IA sugere · você confere' })
   await expect(ia).toContainText('Aposentadoria por Incapacidade Permanente · prevalece (G3)')
   await expect(ia).toContainText('Auxílio por Incapacidade Temporária · só como sugestão')
@@ -63,5 +63,5 @@ test('tema escuro e fonte grande na definição do benefício', async ({ page })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Definir benefício')
   const corpo = page.locator('body')
   await expect(corpo).toHaveCSS('background-color', rgb(tokens.cores.fundo.escuro))
-  await expect(corpo).toHaveCSS('font-size', `${tokens.fontes['14'].grande}px`)
+  await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })

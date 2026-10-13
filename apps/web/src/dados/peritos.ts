@@ -2,6 +2,7 @@
 // perito, Mateus, ainda sem refino) e com o acervo de processos, de onde vem o perito nomeado. Nomes "(exemplo)": nenhum é
 // real. O perfil não guarda dado pessoal do cliente (GGVP-73, CA4): cada laudo tem só a referência do caso.
 import { jurimetria, type Jurimetria, type TipoDePericia } from '../regras/pericia.ts'
+import { nomeBeneficio } from './catalogos.ts'
 
 /** Um laudo do acervo no perfil do perito: o que ele observou, perguntou e pediu. Sem nome nem CPF do cliente. */
 export type LaudoDoPerfil = {
@@ -13,6 +14,8 @@ export type LaudoDoPerfil = {
   tipo: TipoDePericia
   /** O assunto do laudo, para os números por assunto (G22). */
   assunto: string
+  /** GGVP-152 CA2: o benefício do processo (catálogo das telas), para os números por benefício; o laudo antigo não tem. */
+  beneficio?: string
   resultado: 'favoravel' | 'desfavoravel'
   /** Dias da perícia até o laudo. */
   dias: number
@@ -39,6 +42,8 @@ export type PerfilDoPerito = {
   versao: number
   jurimetria: Jurimetria
   porAssunto: { assunto: string; jurimetria: Jurimetria }[]
+  /** GGVP-152 CA2: os favoráveis por benefício, só com os laudos que guardam o benefício. */
+  porBeneficio: { beneficio: string; jurimetria: Jurimetria }[]
   observou: string[]
   perguntou: string[]
   pediu: string[]
@@ -146,6 +151,10 @@ export function perfilDoPerito(perito: Perito): PerfilDoPerito {
     versao: perito.laudos.length,
     jurimetria: jurimetria(perito.laudos),
     porAssunto: assuntos.map((assunto) => ({ assunto, jurimetria: jurimetria(perito.laudos.filter((l) => l.assunto === assunto)) })),
+    porBeneficio: [...new Set(perito.laudos.flatMap((l) => (l.beneficio ? [l.beneficio] : [])))].map((b) => ({
+      beneficio: nomeBeneficio(b),
+      jurimetria: jurimetria(perito.laudos.filter((l) => l.beneficio === b)),
+    })),
     observou: maisFrequentes(perito.laudos.map((l) => l.observou)),
     perguntou: maisFrequentes(perito.laudos.map((l) => l.perguntou)),
     pediu: maisFrequentes(perito.laudos.map((l) => l.pediu)),

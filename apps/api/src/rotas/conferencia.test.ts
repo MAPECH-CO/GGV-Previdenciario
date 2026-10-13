@@ -284,10 +284,61 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
 
   it('CA2 · sem casos parecidos, sem número; CA9 · o Atendimento não vê', async () => {
     const r = (await chance('helena')).json()
-    expect([r.casos, r.porcentagem, r.baseEm]).toEqual([0, null, null])
+    expect([r.casos, r.porcentagem, r.baseEm, r.cor, r.sugereNaoPegar]).toEqual([0, null, null, null, false])
     expect(enviado).toContain('sem casos parecidos na casa ainda')
     expect(enviado).toContain('Nenhum laudo médico novo esperando conferência')
     expect((await chance('ana')).statusCode).toBe(403)
+  })
+
+  it('GGVP-150 CA2, CA3, CA4 · a cor pela faixa, a sugestão abaixo de 15% e o que falta saber', async () => {
+    const conferido = { beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfechoConferidoPor: ids.helena }
+    await banco.insert(processoAcervo).values([
+      { ...conferido, desfecho: 'deferido' },
+      ...Array.from({ length: 9 }, () => ({ ...conferido, desfecho: 'improcedente' })),
+    ])
+    const r = (await chance('helena')).json()
+    expect([r.porcentagem, r.casos, r.cor, r.sugereNaoPegar]).toEqual([10, 10, 'vermelho', true])
+    // Na conferência, antes do INSS: sem perícia, sem processo judicial e sem parecer; o checklist está completo.
+    expect(r.faltaSaber).toEqual(['o perito', 'o juízo', 'o parecer médico'])
+  })
+
+  it('GGVP-150 CA5 · o histórico guarda os casos usados ao mostrar, e a chance com quem decidiu e o que decidiu', async () => {
+    const [usado] = await banco
+      .insert(processoAcervo)
+      .values({ beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfechoConferidoPor: ids.helena, desfecho: 'deferido' })
+      .returning()
+    await chance('helena')
+    const [mostrada] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))
+    expect(mostrada.detalhe).toMatchObject({ porcentagem: 100, casos: 1, casosUsados: [usado.id] })
+    await parecer('suficiente')
+    expect((await decidir('helena', { decisao: 'aprovar' })).statusCode).toBe(201)
+    const [decidida] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'caso_aprovado_para_inss'))
+    expect(decidida.quem).toBe(ids.helena)
+    expect(decidida.detalhe).toMatchObject({ chance: { porcentagem: 100, casos: 1, cor: 'verde', baseEm: expect.any(String), casosUsados: [usado.id] } })
+  })
+
+  it('GGVP-151 CA1, CA5 · na entrevista, ainda sem caso: a chance pelo benefício, com o que falta saber; o Atendimento não vê', async () => {
+    const conferido = { beneficio: 'pensao_morte', fonte: 'portal', desfechoConferidoPor: ids.helena }
+    await banco.insert(processoAcervo).values([
+      { ...conferido, desfecho: 'deferido' },
+      { ...conferido, desfecho: 'improcedente' },
+    ])
+    const pelo = async (apelido: string, beneficio: string) => app.inject({ method: 'GET', url: `/api/chance?beneficio=${beneficio}`, cookies: await cookieDe(apelido) })
+    // A entrevista manda o id do catálogo das telas; o servidor acha o benefício do portal.
+    const r = (await pelo('helena', 'pensao-morte')).json()
+    expect([r.porcentagem, r.casos, r.cor, r.fatores]).toEqual([50, 2, 'amarelo', null])
+    expect(r.faltaSaber).toEqual(['o perito', 'o juízo', 'o parecer médico'])
+    expect((await pelo('helena', 'pensao_morte')).json().casos).toBe(2)
+    expect((await pelo('helena', 'aposentadoria-rural')).json()).toMatchObject({ casos: 0, porcentagem: null, cor: null })
+    expect((await pelo('helena', '')).statusCode).toBe(400)
+    expect((await pelo('ana', 'pensao_morte')).statusCode).toBe(403)
+  })
+
+  it('GGVP-150 CA6 · a advogada e o Sócio também veem a chance; o Jurídico administrativo e o Atendimento não', async () => {
+    for (const [apelido, perfil] of [['gabi', 'advogada'], ['rui', 'socio']] as const)
+      await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+    expect([(await chance('gabi')).statusCode, (await chance('rui')).statusCode]).toEqual([200, 200])
+    expect([(await chance('igor')).statusCode, (await chance('ana')).statusCode]).toEqual([403, 403])
   })
 })
 

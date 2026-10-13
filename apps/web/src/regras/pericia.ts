@@ -1,6 +1,6 @@
 // Perícia (épico GGVP-10): regras puras, sem React. Prazo e número são código com teste (G19); o servidor de exemplo e,
 // depois, o de verdade usam as mesmas. Os nomes seguem os do servidor do Mateus (tabela `pericia`, perfil `juridico_adm`).
-import { dataParaIso } from '../campos.ts'
+import { dataParaIso, isoParaData } from '../campos.ts'
 import { somarDias } from './agenda.ts'
 import { taxaComCasos } from './caso.ts'
 import { dataCurta, hojeIso } from './datas.ts'
@@ -16,10 +16,10 @@ export const NOMES_DA_INSTANCIA: Record<Instancia, string> = { inss: 'INSS', jui
 
 /** De onde a perícia veio: o rótulo do que veio preenchido (CA3), o passo de origem e como o caso mostra "Em perícia" (CA1). */
 export const ORIGENS: Record<OrigemDaPericia, { rotulo: string; passo: string; caso: string }> = {
-  'd2-necessidade': { rotulo: 'D2 · necessidade inicial', passo: 'D2.03', caso: 'pedido ao INSS (D2)' },
-  'd2-exigencia': { rotulo: 'D2 · exigência do INSS', passo: 'D2.05', caso: 'exigência do INSS (D2)' },
-  'd3-despacho': { rotulo: 'D3 · despacho da sênior', passo: 'D3.03', caso: 'despacho da sênior (D3)' },
-  'd3a-juiz': { rotulo: 'D3a · pedido do juiz', passo: 'D3a.01', caso: 'pedido do juiz (D3a)' },
+  'd2-necessidade': { rotulo: 'necessidade inicial', passo: 'D2.03', caso: 'pedido ao INSS' },
+  'd2-exigencia': { rotulo: 'exigência do INSS', passo: 'D2.05', caso: 'exigência do INSS' },
+  'd3-despacho': { rotulo: 'despacho da sênior', passo: 'D3.03', caso: 'despacho da sênior' },
+  'd3a-juiz': { rotulo: 'pedido do juiz', passo: 'D3a.01', caso: 'pedido do juiz' },
 }
 
 /** O D2 espera o INSS liberar o agendamento (D2.E1) antes de a tarefa aparecer; D3 e D3a já nascem liberados (CA2). */
@@ -112,7 +112,7 @@ export const MINIMO_DO_QUE_ACONTECEU = 5
 
 /** A tentativa sem sucesso pede o dia e o que aconteceu (CA1). O dia não é futuro. Sem problema, null. */
 export function motivoParaNaoRegistrarTentativa(t: { dia: string | null; oQueAconteceu: string }, hoje: string): string | null {
-  if (!t.dia) return 'Informe o dia da tentativa (dd/mm/aaaa).'
+  if (!t.dia || !isoParaData(t.dia)) return 'Informe o dia da tentativa (dd/mm/aaaa).'
   if (t.dia > hoje) return 'O dia da tentativa não pode ser no futuro.'
   if (t.oQueAconteceu.trim().length < MINIMO_DO_QUE_ACONTECEU) return 'Diga o que aconteceu na tentativa.'
   return null
@@ -141,7 +141,7 @@ export function motivoParaNaoRegistrarMarcacao(
 
 /** A data, a hora e o local da perícia, do comprovante ou do juízo (GGVP-137): a data não pode ser passada. Sem problema, null. */
 export function motivoDaDataDaPericia(d: { data: string | null; hora: string; local: string }, hoje: string): string | null {
-  if (!d.data || d.data < hoje) return 'Confira a data da perícia: ela não pode ser passada.'
+  if (!d.data || !isoParaData(d.data) || d.data < hoje) return 'Confira a data da perícia: ela não pode ser passada.'
   if (!HORA.test(d.hora)) return 'Confira a hora da perícia.'
   if (d.local.trim().length < 3) return 'Confira o local da perícia.'
   return null
@@ -348,8 +348,8 @@ export function dataDoJuizoNaPublicacao(texto: string, tipo: TipoDePericia): { d
 
 /** Como o diagrama de origem segue com o resultado (CA2, CA4, CA6). */
 export const COMO_SEGUE: Record<OrigemDaPericia, string> = {
-  'd2-necessidade': 'o D2 segue: completa a junção antes da vigília do INSS',
-  'd2-exigencia': 'o D2 segue: volta à vigília do INSS (D2.04)',
-  'd3-despacho': 'volta ao judicial (D3): manifestar sobre o laudo',
-  'd3a-juiz': 'volta ao judicial (D3a): manifestar sobre o laudo',
+  'd2-necessidade': 'o caso segue: completa a junção antes da vigília do INSS',
+  'd2-exigencia': 'o caso segue: volta à vigília do INSS',
+  'd3-despacho': 'volta ao judicial: manifestar sobre o laudo',
+  'd3a-juiz': 'volta ao judicial: manifestar sobre o laudo',
 }

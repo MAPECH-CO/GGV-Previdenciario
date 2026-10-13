@@ -7,6 +7,7 @@
   border: 1px solid var(--cor-linha);
   border-radius: var(--raio-10);
   background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .titulo {

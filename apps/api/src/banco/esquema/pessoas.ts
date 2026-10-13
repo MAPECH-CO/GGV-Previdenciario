@@ -29,6 +29,8 @@ export const pessoa = pgTable(
     /** G16: todo lead que não vira cliente fica com o motivo. */
     motivoNaoVirou: text('motivo_nao_virou'),
     origem: text('origem'),
+    /** A pasta do cliente no Drive do escritório, achada ou criada no primeiro documento (GGVP-107 CA1). */
+    drivePastaId: text('drive_pasta_id'),
     /** LGPD: fim da guarda; os dados pessoais são apagados e fica só o que a lei exige. */
     anonimizadoEm: momento('anonimizado_em'),
     criadoEm: criadoEm(),
@@ -163,5 +165,19 @@ export const segundaFichaMedica = pgTable('segunda_ficha_medica', {
     .references(() => pessoa.id),
   medicos: jsonb('medicos').notNull(),
   lida: boolean('lida').notNull(),
+  atualizadoEm: atualizadoEm(),
+}).enableRLS()
+
+/**
+ * A leitura de cada documento que chegou à pasta da ficha (GGVP-81; GGVP-125, bloco 5b), no formato das telas: o tipo e a
+ * data sugeridos, o que a IA leu (nome, CPF, RG, endereço; do documento médico, só quem emitiu, nunca o conteúdo), a
+ * quarentena e a situação. Uma por arquivo: o id é "<ficha>/<nome do arquivo>".
+ */
+export const leituraDocumento = pgTable('leitura_documento', {
+  id: text('id').primaryKey(),
+  pessoaId: uuid('pessoa_id')
+    .notNull()
+    .references(() => pessoa.id),
+  dados: jsonb('dados').notNull(),
   atualizadoEm: atualizadoEm(),
 }).enableRLS()

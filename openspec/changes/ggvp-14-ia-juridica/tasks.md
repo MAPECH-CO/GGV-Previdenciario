@@ -100,3 +100,50 @@
 - [x] 14.2 Servidor: finalidade `recomendacao_pericia`; preparo das perícias sem resultado nem recomendação aprovada; tarefa "Conferir a recomendação da perícia" para a advogada; `GET /api/casos/:id/pericias`; `POST /api/pericias/:id/recomendacao/sugestao`; `POST /api/pericias/:id/recomendacao`; testes com IA falsa.
 - [x] 14.3 Tela "Perícias do caso" (`/casos/:id/pericias`): a recomendação pronta e editável (o que levar; na do juiz, quesitos e assistente técnico), "Aprovar a recomendação", a aprovada só para leitura; testes de tela.
 - [x] 14.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-41 · Medir ganho e perda e gravar no acervo (parte 1)
+
+- [x] 15.1 Contrato: `FichaDoDesfecho`, a ficha nas pendências de `ConferenciaDoAcervo` e a `tese` em `ConferirDesfecho` (`packages/contratos/src/acervo.ts`); o recorte `tese` (`resultados.ts`). Teste do formato; verifica com `pnpm --filter @ggv/contratos test`.
+- [x] 15.2 CA6 · Migração: `materia`, `vara`, `tese`, `resumo` e `licao` em `processo_acervo` (`apps/api/src/banco/esquema/outros.ts` e `apps/api/drizzle/`); verifica com o teste das migrações.
+- [x] 15.3 CA1, CA4, CA10, CA11 · Finalidade `ficha_do_desfecho` (`apps/api/src/ia/ia.ts`) e `fichaDoDesfecho` (`apps/api/src/fluxo/ficha-do-desfecho.ts`) no preparo, registrado em `rotas/acervo.ts`: a ficha anonimizada; sem ficha na falha, e nova tentativa. Teste com IA falsa; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.4 CA1, CA4, CA9 · O estudo de caso põe o perdido no acervo com a ficha do estudo, um registro por caso (`apps/api/src/rotas/estudo.ts`). Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.5 CA7 · Conferência com a ficha e a tese (`apps/api/src/fluxo/acervo.ts` e `rotas/acervo.ts`), com o antes e o depois no histórico; "Deferido no INSS" na lista de `DESFECHOS_DO_ACERVO` (ajuste de 08/10). Teste por perfil; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.6 CA3, CA5, CA8 · Recorte por tese no painel (`apps/api/src/fluxo/resultados.ts`), só com a ficha conferida. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 15.7 Dados de exemplo (`apps/api/src/banco/exemplo.ts`): um desfecho do portal com a ficha, esperando a conferência; verifica entrando como Sênior.
+- [x] 15.8 Telas: a ficha e o campo "Tese" em "Conferir desfechos" (`apps/web/src/paginas/ConferirAcervo.tsx`) e a opção "Tese" em "Resultados". Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 15.9 Playwright: a Sênior confere a ficha com a tese e vê o recorte por tese na Gestão; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 15.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-41, parte 2 (depois da GGVP-100, da parte 2 da GGVP-64 e do PR #11)
+
+- [ ] 15.11 CA1 · O perdido na Justiça registrado pelo portal entra no acervo (GGVP-100).
+- [ ] 15.12 CA3 · A vara pelo nome (GGVP-64, parte 2).
+- [ ] 15.13 CA1, CA4 · A lição no acervo de trechos da busca por significado (GGVP-141).
+
+## GGVP-153 · Pergunta de um clique para juiz, vara e tese não identificados
+
+- [x] 16.1 Contrato em `packages/contratos/src/acervo.ts`: `ConferenciaDoAcervo` ganha `incompletos` (o que falta em cada processo) e `conhecidos` (varas, juízes e teses); `CompletarAcervo` com vara e juiz até 120 e tese até 80 caracteres; teste em `acervo.test.ts`.
+- [x] 16.2 CA1, CA2, CA3 · Servidor: a lista em `apps/api/src/fluxo/acervo.ts` e `POST /api/acervo/processos/:id/completar` em `apps/api/src/rotas/acervo.ts` (só completa o que falta; vara e juiz no caso, vara e tese no acervo; histórico com antes e depois); teste em `rotas/acervo.test.ts`.
+- [x] 16.3 CA1 · Tela "Conferir desfechos" (`apps/web/src/paginas/ConferirAcervo.tsx`): o cartão "Falta completar", com as opções em um clique e o campo para uma nova; teste Vitest.
+- [x] 16.4 Playwright: a Sênior completa a vara de um processo e ele sai da lista.
+- [x] 16.5 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-154 · O acervo aprende com toda publicação e com os documentos do Drive
+
+- [x] 17.1 CA1, CA3, CA4 · Teste em `apps/api/src/ia/acervo.test.ts`: a publicação classificada por pessoa entra (com o rótulo da classe e sem o nome do cliente), a só sugerida pela IA não, e a rodada de novo não duplica.
+- [x] 17.2 CA1, CA3 · A fonte nova em `FONTES` (`apps/api/src/ia/acervo.ts`): toda publicação ligada a um caso e com `revisada_por`, além da de mérito.
+- [x] 17.3 Rodar typecheck, lint e testes; colar a saída; perguntar "Agora ok?" (sem tela nova: sem Playwright).
+- [ ] 17.4 CA2 · O documento do Drive com o conteúdo lido e conferido, quando a leitura de documentos existir (GGVP-95, GGVP-81).
+
+## GGVP-142 · Chat e Suporte pelo motor de IA de verdade (Mateus, 09/10)
+
+- [x] 18.1 ADR-016 (o kit de agentes da OpenAI no chat) e a dependência `@openai/agents` 0.18.0 na API, com o rastreamento desligado; verifica com `pnpm --filter @ggv/api typecheck`.
+- [x] 18.2 CA2 · `POST /api/chat`: as recusas (G17; G11 com histórico), "o que é o G8?", os portões do pedido e o pedido de outro perfil, como código, sem chamar o modelo. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.3 CA1, CA4 · O agente: a instrução, o modelo com o `fetch` injetado, as finalidades `chat` e `chat_juridico` no registro, a saúde (Jurídico e Sócio, com o acesso registrado), a barra de CID e a resposta sem IA. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.4 CA1, CA2 · Ferramentas de leitura: o caso (pela página do processo, com a sessão), o acervo com a regra de saúde, as tarefas da pessoa e o portão; as fontes e os links pelo código. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.5 CA3 · Ação com aprovação: o cartão a partir da aprovação do kit, guardado com quem pediu; `POST` e `DELETE /api/chat/acoes/:id`; criar tarefa e pedir a peça, com "feito pelo chat" no histórico. Teste com `fetch` falso; verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.6 CA3 · Marcar a perícia pelo chat leva à perícia do caso (decisão do Mateus, 09/10): lá a IA lê o comprovante e a pessoa confere a data, a hora e o local antes de marcar; o chat não marca sem a pessoa ver a leitura. Teste junto com a 16.7; verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.7 CA3 · As ações que dependem de enviar arquivo (laudo, documento, comprovante de RPV, lote do acervo) respondem com o link da tela. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.8 Tela: com o servidor ligado, `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor. Teste Vitest com `fetch` falso; verifica com `pnpm --filter @ggv/web test`.
+- [x] 18.9 Playwright do chat no servidor: a recusa do G17 sem modelo e a resposta sem a chave da IA, com o link do caso; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 18.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

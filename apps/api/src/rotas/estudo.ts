@@ -7,6 +7,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { EstudoDaIa, EstudosDeCaso, ROTULO_BENEFICIO, RevisarEstudo, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, chamadaIa, decisao, documento, parecerMedico, pericia, pessoa, peticao, peticaoVersao, publicacao, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { perdidoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 import { buscarNoAcervo } from '../ia/acervo.ts'
 import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
@@ -78,6 +79,8 @@ export function registrarRotasEstudo(app: FastifyInstance, { banco, agora = () =
     const s = await ia.sugerir('estudo_de_caso', { casoId, quem: null, conteudo, fontes }, { ...como, validar })
     if (!s) return null
     const estudo = EstudoDaIa.parse(lerJson(s.texto))
+    // GGVP-41 CA1, CA4: o perdido entra no acervo com a ficha do estudo, para medir ganho e perda; a Sênior confere.
+    await perdidoNoAcervo(banco, casoId, estudo)
     if (estudo.novoProcesso) {
       const [ja] = await banco.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.05'))).limit(1)
       if (!ja) await banco.insert(tarefa).values({ casoId, passo: 'D3b.05', titulo: TITULO_REVISAR, perfilDono: 'senior', criadoEm: agora() })
