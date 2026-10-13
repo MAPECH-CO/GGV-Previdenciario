@@ -147,7 +147,7 @@
 
 ## GGVP-161 · "Vale recorrer?": a chance pelos casos parecidos que recorreram e a avaliação da IA
 
-- [x] 14.1 CA1 · Contrato (`RESULTADOS_DO_RECURSO`, `ConferirDesfecho.recurso`) e a coluna `resultado_recurso` no acervo, com a migração 0031 gerada pelo drizzle-kit; teste da migração e de `acervo.test.ts`.
+- [x] 14.1 CA1 · Contrato (`RESULTADOS_DO_RECURSO`, `ConferirDesfecho.recurso`) e a coluna `resultado_recurso` no acervo, com a migração 0032 gerada pelo drizzle-kit (era 0031; renumerada em 13/10 porque o #74 entrou antes com a 0031 do catálogo de benefícios); teste da migração e de `acervo.test.ts`.
 - [x] 14.2 CA1 · A conferência do desfecho guarda o resultado do recurso, com o antes e o depois no histórico (`apps/api/src/rotas/acervo.ts`); a tela "Conferir desfechos" ganha o campo; testes em `rotas/acervo.test.ts` e `ConferirAcervo.test.tsx`.
 - [x] 14.3 CA2 · `calcularChanceDoRecurso` em `apps/api/src/fluxo/chance.ts`; teste em `chance.test.ts`.
 - [x] 14.4 CA2, CA3, CA4, CA5 · A rota do recurso (`apps/api/src/rotas/recurso.ts`): a chance, a avaliação pela finalidade nova `avaliacao_do_recurso` (sem porcentagem, sugestão pronta), o histórico da decisão; teste em `rotas/recurso.test.ts`.

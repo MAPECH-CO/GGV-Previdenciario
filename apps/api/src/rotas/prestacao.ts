@@ -17,7 +17,7 @@ import {
   type Erro,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarBloqueio } from '../sessao/rotas.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
@@ -110,6 +110,18 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         .limit(1)
     )[0] ?? null
 
+  /**
+   * O percentual de honorários do contrato, com duas casas (GGVP-92 CA8). O caso da Recepção guarda o do modelo quando o kit
+   * foi gerado (GGVP-158, P3.3); o da semente fica na tabela `contrato`. Nulo quando ninguém informou.
+   */
+  async function percentualDoContrato(casoId: string): Promise<string | null> {
+    const [recepcao] = await banco.select({ dados: contratoRecepcao.dados }).from(contratoRecepcao).where(eq(contratoRecepcao.casoId, casoId))
+    const daRecepcao = (recepcao?.dados as { contrato?: { percentualHonorarios?: number } } | undefined)?.contrato?.percentualHonorarios
+    if (typeof daRecepcao === 'number') return daRecepcao.toFixed(2)
+    const [ct] = await banco.select({ percentual: contrato.percentualHonorarios }).from(contrato).where(eq(contrato.casoId, casoId)).orderBy(desc(contrato.criadoEm)).limit(1)
+    return ct?.percentual ?? null
+  }
+
   async function nomes(ids: (string | null)[]) {
     const validos = [...new Set(ids.filter((i): i is string => i !== null))]
     const linhas = validos.length ? await banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, validos)) : []
@@ -124,7 +136,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (await deOutraAdvogada(pedido, casoId)) return negar(resposta, 403, MSG_OUTRA_ADVOGADA)
     const def = await deferimento(casoId)
     const [carta] = def?.documentoId ? await banco.select({ id: documento.id, nome: documento.nomeOriginal }).from(documento).where(eq(documento.id, def.documentoId)) : []
-    const [ct] = await banco.select({ percentual: contrato.percentualHonorarios }).from(contrato).where(eq(contrato.casoId, casoId)).orderBy(desc(contrato.criadoEm)).limit(1)
+    const percentualContrato = await percentualDoContrato(casoId)
     const versoes = await versoesDo(casoId)
     const ag = await agendamentoAtual(casoId)
     const nome = await nomes([...versoes.flatMap((v) => [v.okAdvogadaPor, v.recebidaPor]), ag?.acompanhanteId ?? null])
@@ -134,7 +146,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       cliente: c.nome,
       beneficio: c.beneficio,
       carta: carta ?? null,
-      percentualContrato: ct?.percentual ?? null,
+      percentualContrato,
       versoes: versoes.map((v) => ({
         versao: v.versao,
         valorRecebido: v.valorRecebido,
@@ -164,6 +176,10 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const def = await deferimento(casoId)
     if (!def) return negar(resposta, 409, MSG_SEM_DEFERIDO)
     const d = entrada.data
+    // CA8: o percentual é o do contrato e não muda na prestação; sem percentual no contrato, vale o digitado, como antes.
+    const doContrato = await percentualDoContrato(casoId)
+    if (doContrato !== null && Math.abs(Number(doContrato) - d.percentual) >= 0.005)
+      return negar(resposta, 400, `O percentual de honorários é o do contrato: ${Number(doContrato).toString().replace('.', ',')}%.`)
     const valores = calcularPrestacao(d.valorRecebido, d.percentual)
     const quem = pedido.usuario!.id
     // CA9: caso encerrado não ganha versão nova. A versão é contada com o caso travado, para duas não saírem iguais.

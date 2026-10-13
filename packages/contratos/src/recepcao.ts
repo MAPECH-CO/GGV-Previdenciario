@@ -1,7 +1,9 @@
 // Contratos da Recepção ligada no servidor (GGVP-125, bloco 1: o lead e a ficha). Espelham os tipos das telas do Pedro
 // (apps/web/src/dados/tipos.ts); a forma é conferida aqui, e as regras (nome, CPF, telefone, idade, duplicidade) são as
 // mesmas do servidor de exemplo, rodando no servidor de verdade.
+import { validarData } from '@ggv/campos'
 import { z } from 'zod'
+import { EntradaCalculoCnis } from './calculo-cnis.ts'
 
 const Texto = (max: number) => z.string().trim().max(max)
 const Opcional = (max: number) => Texto(max).optional()
@@ -40,6 +42,8 @@ export const EdicaoDaFicha = z.object({
   email: Opcional(200),
   estadoCivil: Opcional(50),
   endereco: Opcional(300),
+  /** O kit pede o bairro, e "Completar a ficha" leva até aqui (GGVP-158, P3.8). */
+  bairro: Opcional(200),
   cidadeUf: Opcional(200),
   cep: Opcional(20),
   profissao: Opcional(200),
@@ -96,8 +100,15 @@ export type MarcacaoDaEntrevista = z.infer<typeof MarcacaoDaEntrevista>
 export const EntrevistaAgora = z.object({ tipo: TipoDeEntrevista, com: Texto(60), duracao: z.number().int(), gravar: z.boolean() })
 export type EntrevistaAgora = z.infer<typeof EntrevistaAgora>
 
-/** POST /api/agendamentos/:id/resultado (CA6, CA8). */
-export const ResultadoDoCompromisso = z.object({ resultado: z.enum(['realizado', 'faltou']) })
+/**
+ * POST /api/agendamentos/:id/resultado (CA6, CA8). "Desistiu" é do lead antes da entrevista (GGVP-158, P3.7): o motivo da
+ * lista do "não fechou" (G16) e o recontato opcional, como no fechamento.
+ */
+export const ResultadoDoCompromisso = z.discriminatedUnion('resultado', [
+  z.object({ resultado: z.literal('realizado') }),
+  z.object({ resultado: z.literal('faltou') }),
+  z.object({ resultado: z.literal('desistiu'), motivo: Texto(60), detalhe: Opcional(2000), recontatar: z.object({ data: Texto(10) }).nullable() }),
+])
 export type ResultadoDoCompromisso = z.infer<typeof ResultadoDoCompromisso>
 
 /** POST /api/agendamentos/:id/convite e /confirmacao/mensagem: a mensagem conferida e enviada no Chatwoot. */
@@ -214,6 +225,17 @@ export const RegistroDoCalculo = z.discriminatedUnion('podeAposentar', [
 ])
 export type RegistroDoCalculo = z.infer<typeof RegistroDoCalculo>
 
+/**
+ * PUT /api/entrevistas/:id/cnis (GGVP-158, P3.4): o CNIS que o advogado do atendimento digita do papel ou do Meu INSS, com
+ * a origem e a data da extração (GGVP-57, CA4). O cálculo é o `calcularCnis`, rodado no servidor com esta entrada.
+ */
+export const CnisDigitado = z.object({
+  origem: z.enum(['meu-inss', 'impresso'], { error: 'Diga de onde veio o CNIS: impresso ou Meu INSS.' }),
+  extraidoEm: z.string().refine(validarData, 'Data da extração inválida: use dd/mm/aaaa.'),
+  calculo: EntradaCalculoCnis,
+})
+export type CnisDigitado = z.infer<typeof CnisDigitado>
+
 const Espera = z.enum(['pensar', 'esperar'])
 /** POST /api/fichas/:id/fechamento: "Fechou com o escritório?" (GGVP-60, G16). O papel vem da sessão, não daqui. */
 export const EnvioDoFechamento = z.discriminatedUnion('fechou', [
@@ -307,6 +329,8 @@ export const EnvioDeArquivos = z.object({
     .array(z.object({ nome: Texto(200), formato: z.enum(['pdf', 'jpg', 'png']), tamanho: z.number().int().min(0), tipo: Texto(60), hash: z.string().regex(/^[0-9a-f]{64}$/) }))
     .min(1)
     .max(20),
+  /** GGVP-158 P4.9: o caso dos documentos. Obrigatório quando o cliente tem mais de um caso; com um só, é ele. */
+  processoId: Texto(80).optional(),
 })
 export type EnvioDeArquivos = z.infer<typeof EnvioDeArquivos>
 
@@ -341,3 +365,65 @@ export type AdiamentoDaCobranca = z.infer<typeof AdiamentoDaCobranca>
 /** POST /api/processos/:id/cobranca/decisao: a decisão da Sênior no limite, com a justificativa (CA8). */
 export const DecisaoDaCobranca = z.object({ opcao: z.enum(['nova-tentativa', 'visita', 'suspender']), justificativa: Texto(1000), prazo: Data.optional() })
 export type DecisaoDaCobranca = z.infer<typeof DecisaoDaCobranca>
+
+/** POST /api/fichas/:id/pasta (GGVP-158 P4.7): a pasta do Drive escolhida, pelo id, ou "nova", que só nasce com o CPF. */
+export const LigacaoDaPasta = z.object({ pasta: Texto(200).min(1) })
+export type LigacaoDaPasta = z.infer<typeof LigacaoDaPasta>
+
+/** O que a IA leu num campo: o que faltar ou vier fora do formato fica vazio, e a pessoa confere. */
+const LidoNoPapel = z.string().trim().max(300).catch('')
+
+/**
+ * GGVP-158 parte 4 (P4.1): o que a IA devolve de um documento do balcão, lido pela imagem. É sugestão: o servidor
+ * confere o CPF, a data e o tipo antes de guardar, e a pessoa confere antes de arquivar. `assinado` nulo: o documento
+ * não pede a assinatura do cliente.
+ */
+export const LidoPelaIa = z.object({
+  tipo: LidoNoPapel,
+  data: LidoNoPapel,
+  nome: LidoNoPapel,
+  cpf: LidoNoPapel,
+  rg: LidoNoPapel,
+  endereco: LidoNoPapel,
+  assinado: z.boolean().nullable().catch(null),
+  dataEmBranco: z.boolean().catch(false),
+  legivel: z.boolean().catch(true),
+  confianca: z.number().min(0).max(100).catch(0),
+  emitente: LidoNoPapel,
+  registro: LidoNoPapel,
+})
+export type LidoPelaIa = z.infer<typeof LidoPelaIa>
+
+/**
+ * GGVP-158 P4.2: a ficha de atendimento em papel, lida pela IA. A senha do gov.br escrita no papel vem em `senha`, que o
+ * servidor tira antes de guardar qualquer coisa e leva só ao cofre (GGVP-24 CA15, G9).
+ */
+export const FichaLidaPelaIa = z.object({
+  nome: LidoNoPapel,
+  cpf: LidoNoPapel,
+  nascimento: LidoNoPapel,
+  telefone: LidoNoPapel,
+  endereco: LidoNoPapel,
+  pessoasNaCasa: z.union([z.number(), z.string()]).catch(''),
+  ultimaAtividade: LidoNoPapel,
+  semTrabalharDesde: LidoNoPapel,
+  pedidosAoInss: LidoNoPapel,
+  senha: LidoNoPapel,
+})
+export type FichaLidaPelaIa = z.infer<typeof FichaLidaPelaIa>
+
+/**
+ * GGVP-158 P4.4: o contrato assinado em papel, conferido pela IA contra o kit. `assinado`: a assinatura de quem assina
+ * está lá (não se é verdadeira); `faltam`: documento do kit ou rubrica que não veio; `pendencias`: o resto que ela apontou.
+ */
+export const ContratoLidoPelaIa = z.object({
+  reconhecido: z.boolean().catch(false),
+  assinado: z.boolean().catch(false),
+  faltam: z.array(LidoNoPapel).catch([]),
+  pendencias: z.array(LidoNoPapel).catch([]),
+})
+export type ContratoLidoPelaIa = z.infer<typeof ContratoLidoPelaIa>
+
+/** GGVP-158 P4.2: a segunda ficha em papel (auxílio acidente), campo a campo; a senha do Meu INSS, à parte, só para o cofre. */
+export const SegundaFichaLidaPelaIa = z.object({ respostas: z.record(z.string(), LidoNoPapel).catch({}), senha: LidoNoPapel })
+export type SegundaFichaLidaPelaIa = z.infer<typeof SegundaFichaLidaPelaIa>

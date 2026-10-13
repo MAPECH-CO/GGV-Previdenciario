@@ -1,5 +1,5 @@
 {
-  "id": "9c58b99a-efff-4980-a5d4-88b7330cffec",
+  "id": "fc0d8e09-5bc7-4038-aa7d-ded13803d977",
   "prevId": "54c1dc44-50bc-4c17-8e25-b43ddaf91e7d",
   "version": "7",
   "dialect": "postgresql",
@@ -1681,7 +1681,7 @@
       "checkConstraints": {
         "caso_beneficio": {
           "name": "caso_beneficio",
-          "value": "\"caso\".\"beneficio\" in ('bpc_loas_deficiente', 'bpc_loas_idoso', 'aposentadoria_pcd', 'aposentadoria_idade', 'aposentadoria_tempo', 'aposentadoria_especial', 'aposentadoria_incapacidade_permanente', 'auxilio_incapacidade_temporaria', 'auxilio_acidente', 'pensao_morte', 'salario_maternidade', 'outro')"
+          "value": "\"caso\".\"beneficio\" in ('bpc_loas_deficiente', 'bpc_loas_idoso', 'aposentadoria_pcd', 'aposentadoria_idade', 'aposentadoria_tempo', 'aposentadoria_especial', 'aposentadoria_incapacidade_permanente', 'auxilio_incapacidade_temporaria', 'auxilio_acidente', 'pensao_morte', 'salario_maternidade', 'incapacidade_permanente_acidentaria', 'aposentadoria_rural', 'aposentadoria_pcd_idade', 'restabelecimento', 'revisao_aposentadoria', 'revisao_vida_toda', 'ctc', 'atualizacao_vinculos', 'planejamento', 'restituicao_contribuicoes', 'isencao_ir', 'curatela', 'alvara', 'divorcio', 'inventario', 'guarda', 'consignado', 'revisao_consignado', 'emprestimo_indevido', 'cartao_rmc', 'negativacao_indevida', 'seguro_vida', 'seguro_carro', 'outro')"
         },
         "caso_fase": {
           "name": "caso_fase",
@@ -5928,12 +5928,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "resultado_recurso": {
-          "name": "resultado_recurso",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -6008,12 +6002,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "processo_acervo_resultado_recurso": {
-          "name": "processo_acervo_resultado_recurso",
-          "value": "\"processo_acervo\".\"resultado_recurso\" in ('provido', 'provido_parcial', 'nao_provido')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.roteiro_laudo": {

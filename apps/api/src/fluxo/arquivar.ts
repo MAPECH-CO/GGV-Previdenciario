@@ -3,7 +3,7 @@
 // do protocolo, para uma pasta dentro da do cliente. O Drive guarda arquivo; o motivo de indeferimento (D3.01) é dado e
 // fica só no banco, de onde o acervo lê (decisão do Mateus em 08/10).
 // Cada item leva a marca do portal: antes de criar, procura a marca, então reprocessar não duplica (CA3).
-import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, ne, notInArray, or, sql } from 'drizzle-orm'
 import { normalizarCpf } from '@ggv/campos'
 import { nomeTipo } from '../../../web/src/dados/catalogos.ts'
 import type { PastaDrive } from '../../../web/src/dados/tipos.ts'
@@ -85,13 +85,15 @@ export async function sincronizarDrive(banco: Banco, drive: Drive, pastas: Pasta
   }
 
   // CA1, CA2, CA7, CA8: todo documento do caso, venha de onde vier (balcão, card, chat), menos o PDF do pacote e o
-  // dado de exemplo, que nunca vai para o Drive do escritório.
+  // dado de exemplo, que nunca vai para o Drive do escritório. GGVP-158 P4.7: o que chegou pelo card ou pelo chat espera a
+  // conferência da Documentação; antes dela, o tipo e o dono ainda são só o que a pessoa anunciou.
+  const conferidoSeDaRecepcao = or(notInArray(documento.origem, ['card', 'chat']), eq(documento.situacao, 'conferido'))
   const documentos = await banco
     .select({ d: documento, p: { id: pessoa.id, nome: pessoa.nome, cpf: pessoa.cpf, drivePastaId: pessoa.drivePastaId } })
     .from(documento)
     .leftJoin(caso, eq(documento.casoId, caso.id))
     .innerJoin(pessoa, eq(pessoa.id, sql`coalesce(${documento.pessoaId}, ${caso.pessoaId})`))
-    .where(and(eq(documento.drivePendente, true), isNull(documento.excluidoEm), ne(documento.tipo, 'pacote_peticao'), ne(documento.origem, 'exemplo')))
+    .where(and(eq(documento.drivePendente, true), isNull(documento.excluidoEm), ne(documento.tipo, 'pacote_peticao'), ne(documento.origem, 'exemplo'), conferidoSeDaRecepcao))
     .orderBy(asc(documento.criadoEm))
   for (const { d, p } of documentos) {
     try {

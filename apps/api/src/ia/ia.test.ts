@@ -210,6 +210,48 @@ describe('GGVP-110 · conteúdo malicioso não manipula a IA', () => {
   })
 })
 
+describe('GGVP-158 parte 4 · a IA lê o arquivo junto', () => {
+  const PDF = new TextEncoder().encode('%PDF-1.4 o documento digitalizado')
+  const FOTO = new TextEncoder().encode('foto do documento')
+  const pedido = (arquivo: Uint8Array, mime: string) => ({ casoId: CASO, quem, conteudo: 'Tipo anunciado: CNIS', fontes: FONTES, anexo: { arquivo, mime } })
+  const base64 = (b: Uint8Array) => Buffer.from(b).toString('base64')
+
+  it('o PDF vai como arquivo e a foto como imagem; o registro guarda o hash, nunca o arquivo; outro arquivo chama de novo', async () => {
+    const fetch = servico(OPENAI_OK)
+    const ia = criarIa({ banco, ambiente: CHAVES, fetch })
+    const a = await ia.sugerir('resumo_resultado', pedido(PDF, 'application/pdf'))
+    const corpo = JSON.parse(String(fetch.mock.calls[0][1]?.body)) as { messages: { content: unknown }[] }
+    expect(corpo.messages[1].content).toEqual([
+      { type: 'text', text: '<conteudo>\nTipo anunciado: CNIS\n</conteudo>' },
+      { type: 'file', file: { filename: 'documento.pdf', file_data: `data:application/pdf;base64,${base64(PDF)}` } },
+    ])
+    expect((await ia.sugerir('resumo_resultado', pedido(PDF, 'application/pdf')))?.chamadaId).toBe(a?.chamadaId)
+    await ia.sugerir('resumo_resultado', pedido(FOTO, 'image/jpeg'))
+    const foto = JSON.parse(String(fetch.mock.calls[1][1]?.body)) as { messages: { content: { type: string; image_url?: { url: string } }[] }[] }
+    expect(foto.messages[1].content[1]).toEqual({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64(FOTO)}` } })
+    const registros = await banco.select().from(chamadaIa)
+    expect([fetch.mock.calls.length, registros.length, new Set(registros.map((c) => c.entradaHash)).size]).toEqual([2, 2, 2])
+    expect(JSON.stringify(registros)).not.toContain(base64(PDF))
+  })
+
+  it('o "limpar" roda antes de guardar: o que ele tira não volta nem fica no registro', async () => {
+    const fetch = servico({ choices: [{ message: { content: '{"nome":"Maria Exemplo","senha":"segredo-do-papel"}' } }] })
+    const ia = criarIa({ banco, ambiente: CHAVES, fetch })
+    const limpar = (texto: string) => JSON.stringify({ ...(lerJson(texto) as object), senha: undefined })
+    const s = await ia.sugerir('resumo_resultado', pedido(PDF, 'application/pdf'), { limpar })
+    expect(s?.texto).toBe('{"nome":"Maria Exemplo"}')
+    expect(JSON.stringify(await banco.select().from(chamadaIa))).not.toContain('segredo-do-papel')
+  })
+
+  it('o pedido sensível (documento médico) sem a autorização é recusado sem chamar o serviço; com ela, vai', async () => {
+    const fetch = servico(OPENAI_OK)
+    const sensivel = { ...pedido(PDF, 'application/pdf'), sensivel: true }
+    expect(await criarIa({ banco, ambiente: CHAVES, fetch }).sugerir('resumo_resultado', sensivel)).toBeNull()
+    expect([fetch.mock.calls.length, (await banco.select().from(chamadaIa))[0].situacao]).toEqual([0, 'recusada'])
+    expect(await criarIa({ banco, ambiente: { ...CHAVES, IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }).sugerir('resumo_resultado', sensivel, { refazer: true })).not.toBeNull()
+  })
+})
+
 describe('Sugestão pronta (Mateus, 07/10) · guardada pelo conteúdo', () => {
   const pedido = (conteudo: string, casoId: string | null = CASO) => ({ casoId, quem, conteudo, fontes: FONTES })
 

@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { usuario } from '../banco/esquema.ts'
@@ -157,5 +158,57 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
     const joana = await lead('Joana Ribeiro', '11987654321')
     expect((await chamar('julia', 'POST', `/api/fichas/${joana}/agendamentos`, MARCACAO)).statusCode).toBe(403)
     expect((await app.inject({ method: 'GET', url: '/api/recepcao' })).statusCode).toBe(401)
+  })
+})
+
+describe('GGVP-158 P3.6 · a agenda marca com as advogadas e as Sêniores reais', () => {
+  const idDe = async (apelido: string) => (await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, `${apelido}@exemplo.ggv`)))[0].id
+
+  it('a equipe: só o id e o nome de quem tem o perfil pedido; quem não marca não vê; perfil fora da matriz, recusa', async () => {
+    expect(await json('ana', 'GET', '/api/equipe?perfis=advogada,senior')).toEqual([
+      { id: await idDe('gabi'), nome: 'gabi' },
+      { id: await idDe('helena'), nome: 'helena' },
+    ])
+    expect((await chamar('julia', 'GET', '/api/equipe?perfis=advogada')).statusCode).toBe(403)
+    for (const perfis of ['', 'root', 'advogada,root']) expect((await chamar('ana', 'GET', `/api/equipe?perfis=${perfis}`)).statusCode, perfis).toBe(400)
+  })
+
+  it('a marcação com alguém da equipe guarda o id e o nome; quem não é advogada nem Sênior é recusado', async () => {
+    const gabi = await idDe('gabi')
+    const r = await marcar(await lead('Joana Ribeiro', '11987654321'), { com: gabi })
+    expect(r.agendamento).toMatchObject({ com: 'gabi', comId: gabi })
+    const outro = await lead('Maria Souza', '11912345678')
+    expect((await chamar('ana', 'POST', `/api/fichas/${outro}/agendamentos`, { ...MARCACAO, com: await idDe('julia'), hora: '16:00' })).statusCode).toBe(400)
+    // O catálogo fixo segue aceito até a tela usar a equipe real, sem o id.
+    const antigo = await marcar(outro, { hora: '16:00' })
+    expect(antigo.agendamento).toMatchObject({ com: 'Dra. Paula' })
+    expect(antigo.agendamento.comId).toBeUndefined()
+  })
+})
+
+describe('GGVP-158 P3.7 · a desistência antes da entrevista fica no servidor (G16)', () => {
+  const resultado = (id: string, corpo: object) => chamar('ana', 'POST', `/api/agendamentos/${id}/resultado`, corpo)
+
+  it('desistiu e pediu recontato: o motivo vai ao histórico, a entrevista sai da agenda e o recontato entra na data', async () => {
+    const fichaId = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(fichaId)
+    for (const errado of [{ resultado: 'desistiu', recontatar: null }, { resultado: 'desistiu', motivo: 'inventado', recontatar: null }])
+      expect((await resultado(agendamento.id, errado)).statusCode, JSON.stringify(errado)).toBe(400)
+    const r = (await resultado(agendamento.id, { resultado: 'desistiu', motivo: 'preco', detalhe: 'vai juntar o dinheiro', recontatar: { data: '09/11/2026' } })).json()
+    expect(r.ficha.fechamento).toMatchObject({ situacao: 'recontatar', motivo: 'preco', detalhe: 'vai juntar o dinheiro', recontatarEm: '2026-11-09' })
+    expect(r.ficha.agendamentos.find((a: { id: string }) => a.id === agendamento.id).estado).toBe('desistiu')
+    expect(r.ficha.agendamentos).toContainEqual(expect.objectContaining({ oQue: 'Recontatar lead', data: '2026-11-09' }))
+    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Preço \(vai juntar o dinheiro\)\. Recontatar em .+$/)
+    // O horário da entrevista fica livre: outra marcação no mesmo horário não avisa ocupado.
+    expect((await marcar(await lead('Maria Souza', '11912345678'))).resultado).toBe('marcado')
+  })
+
+  it('desistiu sem recontato: o lead é arquivado com o motivo; compromisso interno não desiste', async () => {
+    const fichaId = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(fichaId)
+    const r = (await resultado(agendamento.id, { resultado: 'desistiu', motivo: 'outro-escritorio', recontatar: null })).json()
+    expect(r.ficha.fechamento).toMatchObject({ situacao: 'arquivado', motivo: 'outro-escritorio' })
+    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Foi a outro escritório\. Lead arquivado com o motivo \(G16\)$/)
+    expect((await resultado(agendamento.id, { resultado: 'realizado' })).statusCode).toBe(400)
   })
 })

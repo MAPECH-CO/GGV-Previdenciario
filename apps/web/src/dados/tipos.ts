@@ -1,5 +1,21 @@
 // Forma dos dados que as telas consomem. Provisória: o contrato de verdade (schema Zod)
 // nasce na design.md de cada história e mora em packages/contratos.
+import type { EntradaDoCnis, calcularCnis } from '@ggv/contratos'
+
+/** O resultado do `calcularCnis` sem erro (GGVP-159; versão `rgps-comum-1`). */
+export type ResultadoDoCnis = Extract<ReturnType<typeof calcularCnis>, { ok: true }>
+
+/** O CNIS digitado pelo advogado do atendimento e o cálculo do servidor sobre ele (GGVP-158, P3.4). */
+export type CnisDoCaso = {
+  origem: 'meu-inss' | 'impresso'
+  /** aaaa-mm-dd */
+  extraidoEm: string
+  entrada: EntradaDoCnis
+  resultado: ResultadoDoCnis
+  quem: string
+  /** Data e hora ISO. */
+  quando: string
+}
 
 export type ClienteResumo = {
   id: string
@@ -63,6 +79,8 @@ export type Agendamento = {
   oQue: string
   /** Com quem: "Dra. Paula". */
   com?: string
+  /** O id do usuário que atende, da equipe real (GGVP-158, P3.6): o filtro "só as minhas" usa este. */
+  comId?: string
   // GGVP-123: a marcação da entrevista. Sem estes campos, vale o padrão (marcado, 45 minutos).
   tipo?: TipoDeEntrevista
   /** Em minutos. */
@@ -181,6 +199,8 @@ export type Ficha = {
   beneficioDefinido?: BeneficioDefinido
   /** Os cálculos de tempo e pontos sobre o CNIS, do mais antigo ao mais novo: refazer não apaga o anterior (GGVP-57). */
   calculos?: Calculo[]
+  /** O CNIS digitado no portal e o cálculo do servidor, o mais novo (GGVP-158, P3.4). */
+  cnisDigitado?: CnisDoCaso
   /** "Fechou com o escritório?" depois da entrevista: o motivo, o recontato ou o arquivo (GGVP-60). */
   fechamento?: Fechamento
   /** As novas demandas de quem já é cliente (GGVP-124). */
@@ -253,6 +273,7 @@ export type EdicaoFicha = Pick<
   | 'email'
   | 'estadoCivil'
   | 'endereco'
+  | 'bairro'
   | 'cidadeUf'
   | 'cep'
   | 'profissao'
@@ -327,7 +348,7 @@ export type RegistroRecebimento = {
 
 export type TipoDeEntrevista = 'video' | 'presencial' | 'telefone'
 
-export type EstadoDoCompromisso = 'marcado' | 'realizado' | 'faltou' | 'remarcado'
+export type EstadoDoCompromisso = 'marcado' | 'realizado' | 'faltou' | 'remarcado' | 'desistiu'
 
 export type CategoriaDaAgenda = 'visitas' | 'pericias' | 'audiencias' | 'protocolos' | 'prazos' | 'bancos' | 'retornos'
 
@@ -808,6 +829,9 @@ export type Calculo = {
   /** O CNIS usado: de onde veio e quando foi extraído (CA4). */
   cnisOrigem: Cnis['origem']
   cnisExtraidoEm: string
+  /** Do CNIS digitado no portal (GGVP-158, P3.4): as competências da carência e a versão do cálculo do servidor. */
+  carencia?: number
+  versao?: string
 }
 // GGVP-60 em diante: o fechamento depois da entrevista. Espelho do Zod da spec ggvp-60.
 

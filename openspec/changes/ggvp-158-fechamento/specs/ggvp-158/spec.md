@@ -178,3 +178,294 @@ Os 2 alertas do CodeQL em `textoDoHtml` SHALL ficar dispensados como falso posit
 - **Dado** o código de `textoDoHtml` reconferido
 - **Quando** os alertas são dispensados e o #62 entra na `main`
 - **Então** a aba de alertas não mostra nenhum dos 3
+
+### Requirement: P3.1 · A Sênior aprova o caso que veio da Recepção
+O portão G1 da aprovação SHALL contar como assinado o contrato da Recepção conferido (etapa da cópia em diante), e não só a tabela `contrato` da semente. A aprovação MUST seguir recusando, com o G1 no histórico, o caso sem kit cadastrado, com o checklist incompleto ou sem contrato assinado e conferido.
+
+#### Scenario: P3.1 · Contrato conferido na Recepção
+- **Dado** um caso que nasceu no "fechou" da Recepção, com o checklist completo e o contrato assinado e conferido
+- **Quando** a Sênior aprova
+- **Então** o caso vai para o INSS
+
+#### Scenario: P3.1 · Contrato ainda na leitura
+- **Dado** o mesmo caso com o contrato assinado, mas ainda não conferido
+- **Quando** a Sênior aprova
+- **Então** o portal recusa com "Contrato não assinado (G1)", e o bloqueio fica no histórico
+
+### Requirement: P3.2 · A liberação ao Jurídico confere o G1 inteiro
+A liberação ao Jurídico MUST recusar o caso sem kit cadastrado e o caso sem contrato assinado e conferido, com a mesma regra da aprovação, e o G1 SHALL ficar no histórico.
+
+#### Scenario: P3.2 · Benefício sem kit cadastrado
+- **Dado** um caso de um benefício sem kit cadastrado na Configuração
+- **Quando** o Atendimento libera ao Jurídico
+- **Então** o portal recusa com a mensagem do G1, e o bloqueio fica no histórico
+
+### Requirement: P3.3 · O percentual de honorários vem do modelo
+A Sênior SHALL informar, na Configuração, o percentual de honorários de cada modelo do kit. O contrato gerado SHALL guardar o percentual do modelo usado. A prestação de contas do caso SHALL ler esse percentual e MUST recusar um percentual digitado diferente do contrato.
+
+#### Scenario: P3.3 · Prestação com o percentual do contrato
+- **Dado** um modelo com 30% de honorários e um caso da Recepção com o kit gerado por ele
+- **Quando** a advogada registra a prestação com 25%
+- **Então** o portal recusa e diz que o percentual é o do contrato, 30%
+
+### Requirement: P3.4 · O cálculo de tempo e pontos sai do CNIS digitado
+O advogado do atendimento SHALL digitar no portal os vínculos do CNIS impresso ou baixado do Meu INSS. O servidor SHALL calcular em código, com teste, o tempo de contribuição, a carência e os pontos, e MUST NOT usar número calculado fora dele nem pela IA (G19). A regra de aposentadoria e o "já pode se aposentar" SHALL seguir escolhidos pelo advogado. O cálculo registrado libera o "Sim, fechou".
+
+#### Scenario: P3.4 · Lead do servidor com o CNIS impresso
+- **Dado** um lead do servidor cujo benefício exige cálculo, com o CNIS impresso
+- **Quando** o advogado digita os vínculos, escolhe a regra e registra o cálculo
+- **Então** o tempo, a carência e os pontos são os do servidor, e o "Sim, fechou" fica liberado
+
+### Requirement: P3.5 · A Sênior vê o cálculo na conferência
+A conferência da Sênior SHALL mostrar o último cálculo do caso: tempo, pontos, carência, regra, se já pode aposentar, quem calculou e quando.
+
+#### Scenario: P3.5 · Conferência com cálculo
+- **Dado** um caso com o cálculo registrado na Recepção
+- **Quando** a Sênior abre a conferência
+- **Então** vê o cálculo com quem o fez e quando
+
+### Requirement: P3.6 · A agenda marca com as advogadas e as Sêniores reais
+O portal SHALL listar as advogadas e as Sêniores pelos usuários com esse perfil, e a marcação SHALL guardar o id de quem atende, para o filtro "só as minhas".
+
+#### Scenario: P3.6 · Marcar com uma advogada
+- **Dado** uma advogada cadastrada como usuária do portal
+- **Quando** o Atendimento marca a entrevista com ela
+- **Então** o compromisso guarda o id e o nome dela
+
+### Requirement: P3.7 · A desistência antes da entrevista fica no servidor
+O resultado da entrevista marcada SHALL aceitar "desistiu", com o motivo da lista (G16) e a data de recontato opcional. Sem motivo, MUST recusar. Com recontato, a data SHALL ir para a agenda; sem recontato, o lead SHALL ser arquivado com o motivo.
+
+#### Scenario: P3.7 · Desistiu e pediu para ligar depois
+- **Dado** um lead com a entrevista marcada
+- **Quando** o Atendimento registra que ele desistiu, com o motivo e o recontato para daqui a um mês
+- **Então** o motivo fica no histórico, e o recontato aparece na agenda na data
+
+### Requirement: P3.8 · A ficha guarda o bairro
+A edição da ficha SHALL aceitar o bairro, como o endereço e a cidade.
+
+#### Scenario: P3.8 · Completar a ficha
+- **Dado** o kit pedindo o bairro que falta na ficha
+- **Quando** o Atendimento completa a ficha com o bairro
+- **Então** o bairro fica gravado, e o kit pode ser gerado
+
+### Requirement: P4.1 · A IA lê o conteúdo dos documentos do balcão
+A leitura dos documentos que chegam pelo card, pelo chat e pelo scanner SHALL vir do conteúdo do arquivo, lido pelo motor de IA:
+- o tipo, a data, o nome, o CPF, o RG e o endereço;
+- a assinatura, a data em branco e a legibilidade;
+- no documento médico, quem emitiu e o registro profissional.
+
+O nome do arquivo MUST NOT decidir nada da leitura. O código MUST conferir o CPF, a data e o tipo antes de guardar, e a pessoa confere antes de arquivar. Sem a IA (sem chave, recusada ou com falha), o documento SHALL ficar a conferir, com confiança zero, para a pessoa classificar.
+
+#### Scenario: P4.1 · O CNIS lido pelo conteúdo
+- **Dado** um CNIS enviado pelo card, com o nome e o CPF do cliente no conteúdo
+- **Quando** o conteúdo chega ao servidor
+- **Então** a leitura traz o tipo, o nome e o CPF que a IA leu, e o documento fica a conferir
+
+#### Scenario: P4.1 · O nome do arquivo não conta
+- **Dado** um documento assinado, num arquivo chamado "sem assinatura"
+- **Quando** a IA lê e acha a assinatura
+- **Então** a leitura não aponta falta de assinatura
+
+#### Scenario: P4.1 · CPF que não confere
+- **Dado** a IA leu um CPF inválido
+- **Quando** a leitura é guardada
+- **Então** o CPF fica de fora da leitura
+
+#### Scenario: P4.1 · Sem IA
+- **Dado** o servidor sem a chave da IA
+- **Quando** o conteúdo chega
+- **Então** o documento fica a conferir, com confiança zero, e a pessoa classifica
+
+### Requirement: P4.2 · A ficha em papel e a segunda ficha lidas pelo motor
+A leitura da ficha de atendimento em papel e a da segunda ficha SHALL receber o arquivo digitalizado (PDF ou imagem), guardá-lo em Documentos pessoais e devolver os campos que a IA leu, com os que ela não leu. Sem o arquivo, a leitura MUST recusar.
+
+A senha do gov.br escrita no papel SHALL ir direto ao cofre (GGVP-24 CA15). Ela MUST NOT aparecer em nenhum destes lugares (G9):
+- na resposta, na ficha ou no histórico;
+- no registro da IA;
+- no log.
+
+A seção médica da segunda ficha segue só para quem vê dado de saúde.
+
+#### Scenario: P4.2 · A senha escrita na ficha
+- **Dado** a ficha em papel com a senha do gov.br escrita
+- **Quando** a IA lê a ficha
+- **Então** a senha vai ao cofre, a resposta diz só que havia senha, e o valor não está na resposta, no histórico nem no registro da IA
+
+#### Scenario: P4.2 · Sem o arquivo
+- **Quando** a leitura da ficha em papel é pedida sem o arquivo
+- **Então** o portal recusa com "Anexe a ficha digitalizada (PDF ou imagem)."
+
+#### Scenario: P4.2 · Sem IA
+- **Dado** o servidor sem a chave da IA
+- **Quando** a ficha digitalizada chega
+- **Então** a imagem fica guardada, e todos os campos voltam como não lidos
+
+### Requirement: P4.3 · O papel do scanner entra pelo Drive
+O portal SHALL olhar o Drive do escritório a cada minuto, pela lista de mudanças, e trazer o arquivo novo que aparecer na pasta de um cliente:
+- o arquivo entra na ficha como chegado pelo scanner e aponta para o Drive, sem cópia;
+- a IA lê o arquivo;
+- os arquivos da mesma ficha que chegam juntos formam o lote da tarefa "Receber documento" aberta dela.
+
+A pasta que ainda não está ligada a uma ficha SHALL ser ligada só quando o título dela leva a uma ficha só (CPF, depois nome, a regra do balcão).
+
+MUST NOT entrar:
+- o que o próprio portal mandou ao Drive;
+- pasta, item da lixeira e o que está em "A REVISAR";
+- o mesmo arquivo duas vezes.
+
+A rodada MUST NOT rodar com o Drive só leitura, para não trazer documento real à homologação. A escolha fica no ADR-017 (decisão do Mateus, 13/10).
+
+#### Scenario: P4.3 · Arquivo novo na pasta ligada
+- **Dado** a pasta do cliente ligada à ficha
+- **Quando** o scanner guarda um PDF nela
+- **Então** na rodada seguinte o arquivo aparece na ficha como do scanner, e a IA lê
+
+#### Scenario: P4.3 · A mesma mudança duas vezes
+- **Quando** a mudança do mesmo arquivo chega de novo
+- **Então** o arquivo não se repete na ficha
+
+#### Scenario: P4.3 · Arquivo do próprio portal
+- **Quando** a mudança é de um arquivo que o portal enviou
+- **Então** nada entra
+
+#### Scenario: P4.3 · Pasta que serve a duas fichas
+- **Dado** uma pasta não ligada, cujo título serve a duas fichas
+- **Quando** um arquivo novo aparece nela
+- **Então** a pasta não é ligada, e nada entra
+
+#### Scenario: P4.3 · Drive só leitura
+- **Dado** o Drive só leitura
+- **Então** a rodada do scanner não roda
+
+### Requirement: P4.4 · O contrato assinado de verdade
+A digitalização do contrato assinado em papel SHALL receber o arquivo (PDF ou imagem) e guardá-lo como documento do caso.
+
+A leitura SHALL ser da IA sobre o arquivo:
+- a assinatura;
+- as páginas e rubricas que faltam, contra os documentos do kit;
+- o que mais ela apontar.
+
+A regra que já existe decide entre a conferência do Atendimento e a cópia. Sem a IA, o contrato MUST ir à conferência, com o motivo. A cópia ao cliente SHALL sair do arquivo guardado.
+
+#### Scenario: P4.4 · Assinado e completo
+- **Dado** o contrato digitalizado, com a assinatura e todas as páginas
+- **Quando** a IA lê
+- **Então** o contrato segue para a cópia
+
+#### Scenario: P4.4 · Falta uma rubrica
+- **Dado** o contrato digitalizado sem a rubrica de uma página
+- **Quando** a IA lê
+- **Então** o Atendimento recebe a conferência com o que a IA apontou
+
+#### Scenario: P4.4 · Sem o arquivo
+- **Quando** a digitalização chega sem o arquivo
+- **Então** o portal recusa com "Anexe o contrato assinado digitalizado (PDF ou imagem)."
+
+#### Scenario: P4.4 · Sem IA
+- **Dado** o servidor sem a chave da IA
+- **Quando** a leitura do contrato roda
+- **Então** o contrato vai à conferência com "A IA não leu o contrato agora: confira à mão."
+
+### Requirement: P4.5 · Sem ZapSign
+O portal MUST NOT oferecer o ZapSign, nem com a variável `ZAPSIGN_API_TOKEN`: nenhuma rota de envio ou de retorno. O serviço SHALL responder `zapsign: false`. A assinatura é só em papel (GGVP-136).
+
+#### Scenario: P4.5 · Com a variável preenchida
+- **Dado** o servidor com `ZAPSIGN_API_TOKEN`
+- **Quando** a tela pergunta os serviços do contrato
+- **Então** a resposta diz `zapsign: false`, e a rota de envio ao ZapSign não existe
+
+### Requirement: P4.6 · Os 34 benefícios no servidor
+O servidor SHALL aceitar os 34 benefícios do catálogo das telas, num catálogo só, com um id do servidor para cada um. O caso que nasce de qualquer um deles MUST guardar o benefício. A gestão SHALL publicar pela Configuração a lista de documentos de qualquer um deles. O benefício sem lista aprovada continua sem liberar o caso (GGVP-104 CA7).
+
+#### Scenario: P4.6 · Caso de aposentadoria rural
+- **Quando** o "Sim, fechou" de um lead da aposentadoria rural cria o caso
+- **Então** o caso guarda o benefício
+
+#### Scenario: P4.6 · A lista pela Configuração
+- **Dado** a gestão publicou a lista de documentos da aposentadoria rural
+- **Quando** o checklist do caso é montado
+- **Então** ele usa essa lista
+
+#### Scenario: P4.6 · Sem lista aprovada
+- **Dado** um benefício sem lista publicada
+- **Quando** o Atendimento libera o caso
+- **Então** o portal recusa, dizendo que não há lista de documentos aprovada para o benefício
+
+### Requirement: P4.7 · O Drive recebe só o conferido, e a pasta nasce no servidor
+A rodada do Drive MUST NOT enviar o documento que chegou pelo card ou pelo chat antes de a Documentação conferir.
+
+Ao criar a ficha com o Drive ligado, o servidor SHALL devolver as pastas de "#5. CLIENTES" que parecem ser do lead (CPF, depois nome). A rota da pasta SHALL:
+- ligar a pasta escolhida;
+- ou criar "<Nome> X A CLASSIFICAR", só com o CPF.
+
+Com o Drive só leitura, nada é criado.
+
+#### Scenario: P4.7 · Documento do card a conferir
+- **Dado** um documento do card ainda não conferido
+- **Quando** a rodada do Drive passa
+- **Então** ele não vai ao Drive; depois de conferido, vai
+
+#### Scenario: P4.7 · Pasta com o CPF do lead
+- **Dado** uma pasta em "#5. CLIENTES" com o CPF do lead
+- **Quando** a ficha é criada
+- **Então** a resposta traz a pasta, e ligá-la grava na ficha e no histórico
+
+#### Scenario: P4.7 · Pasta nova sem CPF
+- **Quando** quem atende pede a pasta nova para um lead sem CPF
+- **Então** o portal recusa com "A pasta nova só nasce com o CPF."
+
+#### Scenario: P4.7 · Drive só leitura
+- **Dado** o Drive só leitura
+- **Quando** quem atende pede a pasta nova
+- **Então** o portal recusa com "O Drive está só leitura: a pasta não pode ser criada."
+
+### Requirement: P4.8 · A cobrança respeita o limite também na mensagem
+O envio do modelo "cobrança" MUST obedecer ao limite da cobrança do caso. Com a cobrança na Sênior, ou antes dos 3 dias da última tentativa, o portal recusa com o mesmo motivo da cobrança.
+
+#### Scenario: P4.8 · Cobrança na Sênior
+- **Dado** a cobrança do caso passou do limite e está com a Sênior
+- **Quando** o Atendimento manda a mensagem de cobrança
+- **Então** o portal recusa com o motivo da cobrança
+
+#### Scenario: P4.8 · Dentro do limite
+- **Dado** a cobrança com uma tentativa, feita há 3 dias
+- **Quando** o Atendimento manda a mensagem de cobrança
+- **Então** a mensagem sai
+
+### Requirement: P4.9 · O documento vai ao caso certo
+Quando o cliente tem mais de um caso, o envio pelo card ou pelo chat MUST dizer o caso, e o conteúdo e a conferência SHALL usar esse caso.
+
+O documento que chegou antes de existir o caso SHALL entrar no primeiro caso que nascer. O laudo vira documento médico desse caso, para o parecer.
+
+#### Scenario: P4.9 · Dois casos, sem escolher
+- **Dado** um cliente com dois casos
+- **Quando** o Atendimento envia um documento sem dizer o caso
+- **Então** o portal recusa com "Escolha o caso do documento."
+
+#### Scenario: P4.9 · Dois casos, com o escolhido
+- **Dado** um cliente com dois casos
+- **Quando** o Atendimento envia o documento para o segundo caso
+- **Então** o documento fica no segundo caso
+
+#### Scenario: P4.9 · Laudo antes do caso
+- **Dado** um laudo que chegou quando o lead ainda não tinha caso
+- **Quando** o "Sim, fechou" cria o caso
+- **Então** o laudo está no caso e aparece no parecer
+
+### Requirement: P4.10 · A leitura de exemplo só nos testes de tela
+Estas partes SHALL existir só com `LEITURA_SIMULADA=sim`, que só os testes de tela usam:
+- a leitura de exemplo, pelo nome do arquivo;
+- a chamada sem arquivo;
+- as rotas que simulam o lote do scanner e a leitura do contrato.
+
+O servidor MUST NOT subir com essa variável na homologação nem na produção.
+
+#### Scenario: P4.10 · Homologação com a leitura de exemplo
+- **Dado** `AMBIENTE=homologacao` e `LEITURA_SIMULADA=sim`
+- **Quando** o servidor sobe
+- **Então** ele recusa, dizendo que a leitura de exemplo é só dos testes
+
+#### Scenario: P4.10 · Sem a variável
+- **Dado** o servidor sem `LEITURA_SIMULADA`
+- **Quando** a tela chama a rota que simula o lote do scanner
+- **Então** a rota não existe
