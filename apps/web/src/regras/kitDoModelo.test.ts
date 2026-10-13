@@ -29,8 +29,14 @@ describe('GGVP-136 · as {{VARIÁVEIS}} do kit', () => {
       expect(nomes, n).toContain(n)
   })
 
-  it('só os telefones para contato são opcionais: saem em branco quando a ficha não tem', () => {
-    expect(VARIAVEIS_DO_KIT.filter((v) => v.opcional).map((v) => v.nome)).toEqual(['TELEFONE P/ CONTATO', 'TEL 2'])
+  it('são opcionais os telefones para contato e o que a ficha não tem: saem em branco', () => {
+    expect(VARIAVEIS_DO_KIT.filter((v) => v.opcional).map((v) => v.nome)).toEqual([
+      'COMPLEMENTO',
+      'TELEFONE P/ CONTATO',
+      'TELEFONE PARA RECADO',
+      'TEL 2',
+      'E-MAIL GENITOR(A)',
+    ])
   })
 
   it('o nome vale depois de normalizado: o Word guarda o acento solto e põe espaço na ponta', () => {
@@ -148,6 +154,9 @@ describe('GGVP-136 CA3 · o valor de cada variável, da ficha e do caso', () => 
       'NACIONALIDADE DO BENEFICIÁRIO': 'brasileiro',
       'NÚMERO DO RG DO BENEFICIÁRIO': '11.222.333-4',
       'NÚMERO DO CPF DO BENEFICIÁRIO': '111.444.777-35',
+      // Os nomes do ZapSign (GGVP-158) seguem o beneficiário da linha.
+      'NOME BENEFICIARIO COMPLETO': 'Pedro de Exemplo Souza',
+      'CPF BENEFICIARIO': '111.444.777-35',
     })
   })
 
@@ -180,5 +189,36 @@ describe('GGVP-136 CA4 · o que falta para o modelo', () => {
   it('só conta o que o modelo usa: o genitor(a) não falta num modelo que não o pede', () => {
     expect(faltamNoKit(['NOME COMPLETO'], valoresDoKit(entrada(), '2026-10-09'))).toEqual([])
     expect(faltamNoKit(['NOME COMPLETO', 'PROFISSÃO GENITOR(A)'], valoresDoKit(entrada(), '2026-10-09'))).toEqual(['Profissão do genitor(a)'])
+  })
+})
+
+describe('GGVP-158 P1.9 · os nomes de variável dos modelos do ZapSign', () => {
+  const ZAPSIGN = ['ENDEREÇO', 'COMPLEMENTO', 'TELEFONE PARA RECADO', 'DIA', 'MÊS', 'ANO', 'NOME BENEFICIARIO COMPLETO', 'CPF BENEFICIARIO', 'E-MAIL GENITOR(A)']
+
+  it('o portal conhece os nomes do ZapSign: o modelo não é recusado', () => {
+    expect(variaveisDesconhecidas(ZAPSIGN)).toEqual([])
+  })
+
+  it('cada sinônimo sai com o mesmo dado do nome do portal; a data do contrato vem em dia, mês e ano', () => {
+    expect(valoresDoKit(entrada(), '2026-10-09')).toMatchObject({
+      ENDEREÇO: 'Rua das Flores',
+      'TELEFONE PARA RECADO': 'filha Renata · (11) 90000-0023',
+      'NOME BENEFICIARIO COMPLETO': 'Maria de Exemplo Souza',
+      'CPF BENEFICIARIO': '529.982.247-25',
+      DIA: '9',
+      MÊS: 'outubro',
+      ANO: '2026',
+    })
+    expect(valoresDoKit(entrada(), '2026-01-05')).toMatchObject({ DIA: '5', MÊS: 'janeiro', ANO: '2026' })
+  })
+
+  it('o que a ficha não tem (complemento, e-mail do genitor(a), recado) sai em branco e não barra o kit', () => {
+    expect(faltamNoKit(ZAPSIGN, valoresDoKit(entrada({ ficha: { ...FICHA, contatoApoio: undefined } }), '2026-10-09'))).toEqual([])
+  })
+
+  it('o endereço continua obrigatório com o nome do ZapSign, e falta uma vez só', () => {
+    const v = valoresDoKit(entrada({ ficha: { ...FICHA, endereco: undefined } }), '2026-10-09')
+    expect(faltamNoKit(['ENDEREÇO'], v)).toEqual(['Endereço'])
+    expect(faltamNoKit(['ENDEREÇO COMPLETO', 'ENDEREÇO'], v)).toEqual(['Endereço'])
   })
 })

@@ -25,23 +25,34 @@ const PESSOAIS: [string, string][] = [
 /** O Word às vezes guarda o acento separado da letra ("Ú" como "U" e o acento): o nome vale depois de normalizado. */
 export const nomeDaVariavel = (texto: string) => texto.normalize('NFC').trim()
 
+// Alguns modelos do ZapSign chamam o mesmo dado por outro nome (GGVP-158): o sinônimo vem logo depois do nome do portal,
+// com o mesmo rótulo. O que a ficha não tem (complemento, e-mail do genitor(a)) é opcional e sai em branco.
 export const VARIAVEIS_DO_KIT: VariavelDoKit[] = [
   ...PESSOAIS.map(([nome, rotulo]) => ({ nome, rotulo })),
   { nome: 'ENDEREÇO COMPLETO', rotulo: 'Endereço' },
+  { nome: 'ENDEREÇO', rotulo: 'Endereço' },
   { nome: 'Nº', rotulo: 'Número do endereço' },
+  { nome: 'COMPLEMENTO', rotulo: 'Complemento do endereço', opcional: true },
   { nome: 'BAIRRO', rotulo: 'Bairro' },
   { nome: 'CIDADE', rotulo: 'Cidade' },
   { nome: 'UF', rotulo: 'Estado (UF)' },
   { nome: 'CEP', rotulo: 'CEP' },
   { nome: 'TELEFONE', rotulo: 'Telefone' },
   { nome: 'TELEFONE P/ CONTATO', rotulo: 'Telefone para contato', opcional: true },
+  { nome: 'TELEFONE PARA RECADO', rotulo: 'Telefone para contato', opcional: true },
   // O modelo 7 chama os dois telefones de TEL 1 e TEL 2.
   { nome: 'TEL 1', rotulo: 'Telefone' },
   { nome: 'TEL 2', rotulo: 'Telefone para contato', opcional: true },
   { nome: 'DATA DE HOJE', rotulo: 'Data de hoje' },
+  { nome: 'DIA', rotulo: 'Data de hoje' },
+  { nome: 'MÊS', rotulo: 'Data de hoje' },
+  { nome: 'ANO', rotulo: 'Data de hoje' },
   ...PESSOAIS.map(([nome, rotulo]) => ({ nome: `${nome} DO BENEFICIÁRIO`, rotulo: `${rotulo} do beneficiário` })),
+  { nome: 'NOME BENEFICIARIO COMPLETO', rotulo: 'Nome completo do beneficiário' },
+  { nome: 'CPF BENEFICIARIO', rotulo: 'CPF do beneficiário' },
   { nome: 'DATA DE NASCIMENTO DO BENEFICIÁRIO', rotulo: 'Data de nascimento do beneficiário' },
   ...PESSOAIS.map(([nome, rotulo]) => ({ nome: `${nome} GENITOR(A)`, rotulo: `${rotulo} do genitor(a)` })),
+  { nome: 'E-MAIL GENITOR(A)', rotulo: 'E-mail do genitor(a)', opcional: true },
 ]
 
 const CONHECIDAS = new Set(VARIAVEIS_DO_KIT.map((v) => v.nome))
@@ -116,6 +127,16 @@ export function dataPorExtenso(iso: string): string {
 /** As datas do papel que o cliente preenche à mão na assinatura: linhas em branco, com o ano da assinatura. */
 export const dataEmBranco = (iso: string) => `dia ____________ de ________________ de ${iso.slice(0, 4)}`
 
+/**
+ * As variáveis de data que só a primeira vez no modelo leva preenchida (CA5), e o que vai no lugar das outras. No padrão do
+ * ZapSign, "{{DIA}} de {{MÊS}} de {{ANO}}": o dia e o mês ficam em branco; o {{ANO}} é sempre o ano, e não precisa entrar.
+ */
+export const DATAS_DO_CONTRATO: Record<string, (iso: string) => string> = {
+  'DATA DE HOJE': dataEmBranco,
+  DIA: () => '____________',
+  MÊS: () => '________________',
+}
+
 type Pessoa = { nome?: string; estadoCivil?: string; nacionalidade?: string; profissao?: string; cpf?: string; rg?: string }
 
 /** Estado civil e profissão no meio da frase do contrato ("casado(a)", "do lar"), não no começo de um campo. */
@@ -149,12 +170,17 @@ export function valoresDoKit({ ficha, dados, linha, representado }: EntradaDoKit
   const { logradouro, numero } = separarEndereco(ficha.endereco)
   const { cidade, uf } = separarCidadeUf(ficha.cidadeUf)
   const telefone = ficha.telefone ? formatarTelefone(ficha.telefone) : undefined
+  const beneficiario = daPessoa(' DO BENEFICIÁRIO', linha === 'curatela' ? curatelado : cliente)
+  const [ano, mes, dia] = hoje.split('-').map(Number)
   return {
     ...daPessoa('', cliente),
-    ...daPessoa(' DO BENEFICIÁRIO', linha === 'curatela' ? curatelado : cliente),
+    ...beneficiario,
+    'NOME BENEFICIARIO COMPLETO': beneficiario['NOME COMPLETO DO BENEFICIÁRIO'],
+    'CPF BENEFICIARIO': beneficiario['NÚMERO DO CPF DO BENEFICIÁRIO'],
     'DATA DE NASCIMENTO DO BENEFICIÁRIO': dados.curateladoNascimento,
     ...(representado ? daPessoa(' GENITOR(A)', genitor) : {}),
     'ENDEREÇO COMPLETO': logradouro,
+    ENDEREÇO: logradouro,
     'Nº': numero,
     BAIRRO: ficha.bairro,
     CIDADE: cidade,
@@ -163,8 +189,12 @@ export function valoresDoKit({ ficha, dados, linha, representado }: EntradaDoKit
     TELEFONE: telefone,
     'TEL 1': telefone,
     'TELEFONE P/ CONTATO': ficha.contatoApoio,
+    'TELEFONE PARA RECADO': ficha.contatoApoio,
     'TEL 2': ficha.contatoApoio,
     'DATA DE HOJE': dataPorExtenso(hoje),
+    DIA: String(dia),
+    MÊS: MESES[mes - 1],
+    ANO: String(ano),
   }
 }
 

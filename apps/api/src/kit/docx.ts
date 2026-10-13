@@ -3,7 +3,7 @@
 // o pizzip para abrir o zip). O modelo é do escritório: nada dele vai para o log.
 import Docxtemplater from 'docxtemplater'
 import PizZip from 'pizzip'
-import { dataEmBranco, nomeDaVariavel, variaveisDesconhecidas } from '../../../web/src/regras/kitDoModelo.ts'
+import { DATAS_DO_CONTRATO, nomeDaVariavel, variaveisDesconhecidas } from '../../../web/src/regras/kitDoModelo.ts'
 
 /** Onde o Word guarda texto que o modelo pode usar: o corpo, os cabeçalhos e os rodapés. */
 const PARTES_COM_TEXTO = /^word\/(document|header\d*|footer\d*)\.xml$/
@@ -63,15 +63,22 @@ export function lerModelo(conteudo: Buffer): ModeloLido {
  * O kit preenchido (CA3): cada {{VARIÁVEL}} sai com o dado do cliente, e o dado que falta sai em branco (`faltamNoKit` já
  * barrou o que é obrigatório). No papel (CA5), só a primeira {{DATA DE HOJE}} leva a data de hoje: é a do contrato de
  * honorários, o primeiro documento do modelo. As outras datas saem em branco, para o cliente preencher à mão na assinatura.
+ * A mesma regra vale para o {{DIA}} e o {{MÊS}} do padrão do ZapSign (GGVP-158).
  * ponytail: "a primeira é a do contrato" vale para os modelos do escritório; outro modelo com outra ordem pede outra regra.
  */
 export function preencherModelo(conteudo: Buffer, valores: Record<string, string | undefined>, hoje: string): Buffer {
-  let datas = 0
+  const vezes = new Map<string, number>()
   const doc = new Docxtemplater(new PizZip(conteudo), {
     ...OPCOES_DO_MODELO,
     parser: (tag: string) => {
       const nome = nomeDaVariavel(tag)
-      return { get: (escopo: Record<string, string | undefined>) => (nome === 'DATA DE HOJE' && datas++ > 0 ? dataEmBranco(hoje) : escopo[nome]) }
+      return {
+        get: (escopo: Record<string, string | undefined>) => {
+          const vez = vezes.get(nome) ?? 0
+          vezes.set(nome, vez + 1)
+          return (vez > 0 ? DATAS_DO_CONTRATO[nome]?.(hoje) : undefined) ?? escopo[nome]
+        },
+      }
     },
     nullGetter: () => '',
   })

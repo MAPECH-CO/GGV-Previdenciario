@@ -69,12 +69,22 @@
   - Na primeira tentativa (12/10), o portal respondeu 500: o depósito `documentos` do Supabase não aceitava Word. Com a autorização do Mateus, o tipo do Word entrou na lista do depósito, pelo conector.
   - O depósito agora está descrito em `docs/infra/homologacao.md`, para a produção nascer igual.
   - Verifica: a Configuração mostra a versão dos dois, e o cartão registra o que falta e por quê.
-- [ ] 1.12 Os nomes do ZapSign no kit (P1.9), num PR à parte sobre o #62, com revisão do Pedro. Na ordem contrato → teste → código:
+- [x] 1.12 Os nomes do ZapSign no kit (P1.9), num PR à parte sobre o #62, com revisão do Pedro. Na ordem contrato → teste → código:
   - em `apps/web/src/regras/kitDoModelo.ts`, os sinônimos com o mesmo valor do nome do portal e as variáveis que a ficha não tem como opcionais;
   - a regra da primeira data vale para `{{DIA}}`, `{{MÊS}}` e `{{ANO}}`, em `apps/api/src/kit/docx.ts`;
   - teste em `apps/web/src/regras/kitDoModelo.test.ts` e em `apps/api/src/kit/docx.test.ts`, com um .docx de teste montado na hora, sem modelo do escritório no repositório.
 
   Verifica com os testes e com a conferência dos 3 Contratos Completos baixados, fora do repositório: os três passam.
+
+  Verificado em 12/10:
+  - `kitDoModelo.test.ts` 18/18 e `docx.test.ts` 8/8;
+  - os 6 anexos da GGVP-136 passam no `lerModelo`;
+  - com uma ficha inventada, os 3 Contratos Completos saem sem nada faltando e sem `{{ }}` sobrando, e só a primeira data vem preenchida.
+
+  Achado para a 1.13: no modelo do auxílio incapacidade (22/01), a procuração vem antes do contrato de honorários, e a data sai na procuração.
+  - Decisão do Mateus (12/10): o contrato vai para o começo do Word.
+  - Feito numa cópia, fora do repositório: o bloco do contrato foi para o começo, com uma quebra de página antes da procuração.
+  - Conferido no Word: as mesmas 6 páginas, cada documento começando no alto de uma página, e a data preenchida no contrato.
 - [ ] 1.13 Depois do merge da 1.12, a Sênior sobe os 3 Contratos Completos (auxílio incapacidade, auxílio acidentário e LOAS). Verifica: o "Preparar contrato" gera o kit com os dados da ficha.
 - [ ] 1.14 Gotenberg (P1.10): o serviço `gotenberg/gotenberg:8` no mesmo projeto do Coolify, na porta 3000, sem domínio público, e o `GOTENBERG_URL` no app. Verifica: `GET /api/contrato/servicos` responde `pdf: true`, e o kit sai em PDF.
 - [ ] 1.15 Drive na homologação (P1.11): a decisão do Mateus, entre só leitura e pastas de teste, aplicada no Coolify. O Mateus apaga do Drive real a pasta de teste "Leads/2026/Teste Chatwoot Mateus". Verifica: o /saude mostra o Drive como o Mateus decidiu, e um lead novo não cria pasta nas pastas reais.

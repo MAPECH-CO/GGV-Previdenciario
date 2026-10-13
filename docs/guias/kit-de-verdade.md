@@ -8,7 +8,7 @@ Guia da GGVP-136 (passos D1.15 e D1.16 do BPMN, mais colher a assinatura, confer
 2. A Atendimento abre **Preparar contrato**. O portal usa o modelo da linha do benefício. Os honorários vêm do texto do modelo, sem campo para digitar, e a tela pede para conferir no kit antes de imprimir.
 3. Ao gerar, cada `{{VARIÁVEL}}` sai preenchida com a ficha e o caso. Se falta dado da ficha (bairro, cidade, UF, CEP...), o kit não é gerado: a tela lista o que falta e dá o atalho **Completar a ficha**. Gerado, o Word fica na pasta do cliente, com o modelo e a versão usados, e o histórico da ficha registra.
 4. Em **Colher assinatura**, **Imprimir o kit** abre o PDF na janela de impressão do navegador e deixa baixar. Sem conversor de PDF, baixa o Word preenchido para imprimir por ele.
-5. No papel, a data do contrato de honorários (a primeira `{{DATA DE HOJE}}` do modelo) sai preenchida; as outras saem em branco (`dia ____ de ____ de AAAA`), para preencher à mão na assinatura.
+5. No papel, a data do contrato de honorários (a primeira `{{DATA DE HOJE}}` do modelo) sai preenchida; as outras saem em branco (`dia ____ de ____ de AAAA`), para preencher à mão na assinatura. No padrão do ZapSign (`{{DIA}} de {{MÊS}} de {{ANO}}`), vale o mesmo: só o primeiro dia e mês saem preenchidos, e o ano sai sempre. Por isso o contrato de honorários precisa ser o primeiro documento do modelo.
 6. O assinado volta digitalizado e segue o caminho de sempre: concluir a assinatura, leitura, conferir o contrato assinado e entregar a cópia.
 
 ## 2. Os modelos e as linhas do kit
@@ -43,6 +43,8 @@ As variáveis, em três grupos:
 - **O cliente:** `NOME COMPLETO`, `ESTADO CIVIL`, `NACIONALIDADE`, `PROFISSÃO`, `NÚMERO DO CPF`, `NÚMERO DO RG`, `ENDEREÇO COMPLETO`, `Nº`, `BAIRRO`, `CIDADE`, `UF`, `CEP`, `TELEFONE`, `TELEFONE P/ CONTATO` (opcional), `DATA DE HOJE`. O modelo 7 chama os telefones de `TEL 1` e `TEL 2` (opcional).
 - **O beneficiário** (o representado do LOAS; o curatelado): as seis variáveis pessoais com o sufixo ` DO BENEFICIÁRIO` e `DATA DE NASCIMENTO DO BENEFICIÁRIO`.
 - **O genitor ou a genitora** que representa: as seis variáveis pessoais com o sufixo ` GENITOR(A)`. Endereço e telefone dele são os do cliente.
+
+Alguns modelos do ZapSign chamam o mesmo dado por outro nome, e o portal aceita os dois (GGVP-158): `ENDEREÇO` (o mesmo que `ENDEREÇO COMPLETO`), `TELEFONE PARA RECADO` (o mesmo que `TELEFONE P/ CONTATO`, opcional), `NOME BENEFICIARIO COMPLETO` e `CPF BENEFICIARIO` (os do beneficiário), e `DIA`, `MÊS` e `ANO` (a data). `COMPLEMENTO` e `E-MAIL GENITOR(A)` a ficha não tem: saem em branco e não barram o kit.
 
 Os dados que a ficha do balcão não tem (a nacionalidade, o que falta do representante, os dados do curatelado) entram como campos do contrato em **Preparar contrato**, no contrato do servidor.
 
