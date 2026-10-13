@@ -289,6 +289,6 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 4.19 A cobrança na mensagem (P4.8). Verifica com o teste das mensagens: na Sênior, recusa; dentro do limite, sai.
 - [x] 4.20 O caso escolhido no envio (P4.9). Verifica com `rotas/recepcao-documentos.test.ts`: com dois casos, sem escolher, recusa; com o caso escolhido, o documento vai a ele.
 - [x] 4.21 O documento de antes do caso (P4.9). Verifica com `rotas/recepcao-contrato.test.ts`: o laudo de antes entra no caso que nasce e vira documento médico.
-- [ ] 4.22 As variáveis (P4.5, P4.10): a lista das variáveis do servidor sem `ZAPSIGN_API_TOKEN` e com `LEITURA_SIMULADA`. Verifica com `variaveis.test.ts`.
+- [x] 4.22 As variáveis (P4.5, P4.10): a lista das variáveis do servidor sem `ZAPSIGN_API_TOKEN` e com `LEITURA_SIMULADA`. Verifica com `variaveis.test.ts`.
 - [ ] 4.23 Avisar o Pedro: o pedido lista o que muda para as telas.
 - [ ] 4.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
