@@ -1,8 +1,17 @@
 // Os modelos do kit no banco (GGVP-136): cada versão é uma linha de `modelo` (tipo "contrato"), com a chave do .docx no
 // armazenamento privado em `conteudo`. A versão em vigor é a única com `ativo`; as anteriores ficam guardadas.
-import { and, eq } from 'drizzle-orm'
+import { and, eq, like } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
-import { modelo } from '../banco/esquema.ts'
+import { configuracao, modelo } from '../banco/esquema.ts'
+
+/** O percentual de honorários de cada modelo fica na `configuracao`, nesta chave (GGVP-158, P3.3). */
+export const chaveDosHonorarios = (id: string) => `honorarios:${id}`
+
+/** Os percentuais de honorários que a Sênior informou, por identificador do modelo. */
+export async function honorariosDosModelos(banco: Banco): Promise<Map<string, number>> {
+  const linhas = await banco.select().from(configuracao).where(like(configuracao.chave, chaveDosHonorarios('%')))
+  return new Map(linhas.filter((l) => typeof l.valor === 'number').map((l) => [l.chave.slice(chaveDosHonorarios('').length), l.valor as number]))
+}
 
 /** O que `modelo.conteudo` guarda de um modelo do kit: onde está o arquivo e o que ele é. Nunca o nome do arquivo enviado. */
 export type ArquivoDoModelo = { chave: string; sha256: string; tamanho: number }

@@ -105,12 +105,12 @@ A parte 3 é só servidor, com teste junto. As telas são do Pedro, e o pedido l
     - A prestação lê o percentual do contrato da Recepção e, na semente, o da tabela `contrato`. O percentual digitado diferente é recusado (GGVP-92 CA8). Sem percentual no contrato, segue como hoje.
 22. **O CNIS digitado mora na ficha**, como os cálculos, e não numa tabela nova (o cartão falava em tabela).
     - Os dados da Recepção já ficam no JSON da ficha, e as telas leem a ficha.
-    - O CNIS guarda a origem (impresso ou Meu INSS), a data da extração, os vínculos (empresa, início e fim em aaaa-mm), quem digitou e quando.
-23. **O cálculo é por mês**, porque o CNIS traz início e fim em aaaa-mm.
-    - Tempo de contribuição: os meses cobertos por algum vínculo, contando uma vez o mês com dois vínculos.
-    - Carência: as contribuições de `contribuicoes`, que já existe.
-    - Pontos: a idade mais o tempo, em anos, com uma casa.
-    - O número digitado na tela deixa de valer; a regra e o "já pode se aposentar" seguem com o advogado. ponytail: tempo especial convertido e período em benefício não entram na conta; o advogado escolhe a regra sabendo disso.
+    - Guarda a origem (impresso ou Meu INSS), a data da extração, a entrada do cálculo, o resultado, quem digitou e quando.
+23. **O cálculo é o `calcularCnis` que o Pedro já fez** (`packages/contratos/src/calculo-cnis.ts`, GGVP-159 parte 3, versão `rgps-comum-1`, regras em `docs/requisitos/calculo-cnis.md`).
+    - Achado na tarefa 3.7 (13/10): o plano previa uma conta nova, por mês. O cálculo do Pedro já segue a EC 103 e a IN 128: dias até a reforma, competências depois, carência e pontos, com as competências pendentes à parte.
+    - O servidor roda o mesmo código da tela, com a mesma entrada (`EntradaCalculoCnis`), e guarda o resultado. O número digitado na tela deixa de valer.
+    - A regra e o "já pode se aposentar" seguem com o advogado.
+    - Com competência pendente, o resultado é parcial, e o servidor não registra o cálculo.
 24. **A equipe da agenda é a de usuários reais.**
     - `GET /api/equipe?perfis=advogada,senior` devolve só o id e o nome dos usuários ativos com o perfil, para quem marca (`ficha.editar`).
     - A marcação guarda `comId` e o nome. Enquanto a tela não muda, o id do catálogo fixo segue aceito, sem `comId`.
@@ -134,4 +134,4 @@ Nenhum.
 - **Caixa do escritório na homologação:** as conversas de teste aparecem para os atendentes. A trava dos telefones impede que um cliente receba.
 - **Sinônimos do ZapSign:** um nome novo no ZapSign volta a ser recusado. Por isso, a conferência fica antes de cada subida, e o recusado vai para o cartão.
 - **Parte 3 sem as telas:** até o Pedro ligar, as telas seguem no caminho de hoje. O cálculo de lead do servidor continua avisando que não salva, e a Configuração continua sem o campo do percentual. O servidor fica pronto e testado antes.
-- **Cálculo por mês:** dá a mesma conta do CNIS só quando não há tempo especial nem período em benefício. A regra fica com o advogado, que vê o CNIS inteiro.
+- **Cálculo do CNIS:** é só tempo comum do RGPS. Atividade especial, rural, período em benefício e pedágio ficam fora, como diz o documento do cálculo. A regra fica com o advogado, que vê o CNIS inteiro.

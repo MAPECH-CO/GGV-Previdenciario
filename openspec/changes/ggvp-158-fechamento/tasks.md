@@ -186,21 +186,21 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
   - Em `apps/api/src/rotas/conferencia.ts`, o `kitAssinado` passa a valer também pelo contrato da Recepção conferido.
   - Verifica com `rotas/conferencia.test.ts`: o caso da Recepção com o contrato conferido é aprovado; com o contrato na leitura, a aprovação recusa com o G1.
 - [x] 3.2 A liberação com o G1 inteiro (P3.2): `CasoParaLiberacao` com o `kitAssinado`, e a rota de liberação usando o `bloqueioDoG1`. Verifica com `rotas/conferencia.test.ts`: o kit não cadastrado e o contrato não conferido recusam, com o G1 no histórico.
-- [ ] 3.3 O percentual do modelo, contrato (P3.3): em `packages/contratos`, o `percentualHonorarios` de cada modelo em `ModelosDoEscritorio` e o `PercentualDoModelo` (de 0 a 100, até 2 casas). Verifica com o teste do contrato.
-- [ ] 3.4 O percentual do modelo, servidor (P3.3): `PUT /api/configuracao/modelos/:id/honorarios`, só da Sênior (`modelo.subir`), guardado na `configuracao` com o histórico; o `GET` dos modelos devolve o percentual. Verifica com `rotas/modelos.test.ts`.
+- [x] 3.3 O percentual do modelo, contrato (P3.3): em `packages/contratos`, o `percentualHonorarios` de cada modelo em `ModelosDoEscritorio` e o `PercentualDoModelo` (de 0 a 100, até 2 casas). Verifica com o teste do contrato.
+- [x] 3.4 O percentual do modelo, servidor (P3.3): `PUT /api/configuracao/modelos/:id/honorarios`, só da Sênior (`modelo.subir`), guardado na `configuracao` com o histórico; o `GET` dos modelos devolve o percentual. Verifica com `rotas/modelos.test.ts`.
 - [ ] 3.5 O contrato guarda o percentual (P3.3): ao gerar o kit, o contrato da Recepção guarda o percentual do modelo usado; sem percentual cadastrado, o kit sai, e o contrato fica sem. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [ ] 3.6 A prestação lê e compara (P3.3): o `GET` devolve o percentual do contrato da Recepção (ou da tabela `contrato`, na semente), e o `POST` recusa um percentual diferente do contrato. Verifica com `rotas/prestacao.test.ts`.
-- [ ] 3.7 O CNIS digitado, contrato e regra (P3.4).
-  - Em `packages/contratos`, o `CnisDigitado`: origem, data da extração e vínculos (empresa, início e fim em aaaa-mm).
-  - Em `apps/web/src/regras/calculo.ts`, `tempoDosVinculos` (une os meses que se sobrepõem) e `pontosDe` (a idade mais o tempo, em anos, com uma casa). A carência vem de `contribuicoes`.
-  - Verifica com o teste da regra (G19).
+- [ ] 3.7 O CNIS digitado, contrato (P3.4).
+  - Em `packages/contratos`, o `CnisDigitado`: a origem, a data da extração e a entrada do `calcularCnis` (`EntradaCalculoCnis`), que o Pedro já fez.
+  - Sem regra nova: o cálculo é o `calcularCnis` (decisão 23).
+  - Verifica com o teste do contrato.
 - [ ] 3.8 Guardar o CNIS (P3.4).
-  - `PUT /api/entrevistas/:id/cnis`, do advogado do atendimento (`ficha.analisar`), grava o CNIS na ficha com quem e quando, e o histórico.
-  - `GET /api/entrevistas/:id/calculo` devolve o CNIS e o tempo, a carência e os pontos calculados.
+  - `PUT /api/entrevistas/:id/cnis`, do advogado do atendimento (`ficha.analisar`), roda o `calcularCnis`. Com erro, recusa com os erros dele; sem erro, grava na ficha a entrada, o resultado, quem e quando, e o histórico.
+  - `GET /api/entrevistas/:id/calculo` devolve o CNIS guardado e o resultado.
   - Verifica com `rotas/recepcao-decisoes.test.ts`.
 - [ ] 3.9 O cálculo do servidor (P3.4).
-  - O `POST /api/entrevistas/:id/calculo` usa o tempo e os pontos calculados do CNIS guardado (o número da tela não vale) e guarda a carência. A regra e o "já pode se aposentar" vêm do advogado.
-  - O cálculo registrado libera o "Sim, fechou". A semente segue com o CNIS de exemplo.
+  - O `POST /api/entrevistas/:id/calculo` usa o tempo, os pontos e a carência do resultado guardado (o número da tela não vale). A regra e o "já pode se aposentar" vêm do advogado.
+  - Com competência pendente, recusa. O cálculo registrado libera o "Sim, fechou". A semente segue com o CNIS de exemplo.
   - Verifica com `rotas/recepcao-decisoes.test.ts`.
 - [ ] 3.10 A Sênior vê o cálculo (P3.5): `CasoParaConferencia` com o último cálculo (tempo, pontos, carência, regra, se pode aposentar, quem e quando). Verifica com `rotas/conferencia.test.ts`.
 - [ ] 3.11 A equipe real (P3.6): `GET /api/equipe?perfis=advogada,senior`, para quem marca (`ficha.editar`), devolve o id e o nome dos usuários ativos com o perfil. Verifica com `rotas/recepcao-agenda.test.ts`.
