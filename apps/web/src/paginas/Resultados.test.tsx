@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { Indicador, PainelDeResultados } from '@ggv/contratos'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { Resultados } from './Resultados.tsx'
 
 const ind = (chave: string, rotulo: string, casos: number, valor: number | null, unidade: Indicador['unidade'], situacao: Indicador['situacao']): Indicador => ({
@@ -47,7 +48,10 @@ function servidor(corpo: object) {
   return chamada
 }
 const itens = async (nome: string) => within(await screen.findByRole('list', { name: nome })).getAllByRole('listitem').map((i) => i.textContent)
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  entrarComo()
+})
 
 describe('Resultados do escritório (GGVP-75)', () => {
   it('CA1, CA8 · cada taxa com o número de casos e a data da base; sem amostra mínima (G22 de 07/10)', async () => {
@@ -119,8 +123,9 @@ describe('Resultados do escritório (GGVP-75)', () => {
   })
 
   it('o período pela biblioteca campos e o recorte vão ao servidor; data inválida nem sai da tela', async () => {
+    entrarComo('senior')
     const chamada = servidor(painel)
-    render(<Resultados />)
+    render(comSessao(<Resultados />))
     await screen.findByRole('list', { name: 'Indicadores do escritório' })
     fireEvent.change(screen.getByLabelText('De'), { target: { value: '01022026' } })
     fireEvent.change(screen.getByLabelText('Recorte'), { target: { value: 'juizo' } })
@@ -133,13 +138,36 @@ describe('Resultados do escritório (GGVP-75)', () => {
   })
 
   it('GGVP-41 CA3 · o recorte por tese, ao lado de benefício (matéria) e juízo (vara), vai ao servidor', async () => {
+    entrarComo('senior')
     const chamada = servidor(painel)
-    render(<Resultados />)
+    render(comSessao(<Resultados />))
     await screen.findByRole('list', { name: 'Indicadores do escritório' })
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(expect.arrayContaining(['Benefício', 'Juízo', 'Tese']))
     fireEvent.change(screen.getByLabelText('Recorte'), { target: { value: 'tese' } })
     fireEvent.click(screen.getByRole('button', { name: 'Ver resultados' }))
     await waitFor(() => expect(String(chamada.mock.calls.at(-1)?.[0])).toMatch(/recorte=tese$/))
+  })
+
+  it('GGVP-156 CA3 · a líder do Atendimento não vê os recortes da jurimetria nem a taxa por advogada; benefício continua', async () => {
+    entrarComo('atendimento-lider')
+    servidor(painel)
+    render(comSessao(<Resultados />))
+    await screen.findByRole('list', { name: 'Indicadores do escritório' })
+    expect(within(screen.getByLabelText('Recorte')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Escritório inteiro', 'Benefício'])
+  })
+
+  it('Mateus 13/10 · a taxa por advogada é só dos sócios: a Sênior vê a jurimetria sem ela; o Sócio vê tudo', async () => {
+    const opcoes = async (perfil: string) => {
+      entrarComo(perfil)
+      servidor(painel)
+      const { unmount } = render(comSessao(<Resultados />))
+      await screen.findByRole('list', { name: 'Indicadores do escritório' })
+      const lista = within(screen.getByLabelText('Recorte')).getAllByRole('option').map((o) => o.textContent)
+      unmount()
+      return lista
+    }
+    expect(await opcoes('senior')).toEqual(['Escritório inteiro', 'Benefício', 'Perito', 'Juízo', 'Vara', 'Tese'])
+    expect(await opcoes('socio')).toEqual(['Escritório inteiro', 'Benefício', 'Perito', 'Juízo', 'Vara', 'Advogada', 'Tese'])
   })
 
   it('GGVP-55 CA3 · a base do acervo com os totais, os que aguardam conferência fora das contas e a data da base', async () => {

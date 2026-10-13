@@ -187,6 +187,12 @@
   - Havia um quarto, num teste de tela (`seguranca.e2e.ts`): a regex escapava só o ponto. Agora escapa todo caractere especial; vai no #71 e fecha no merge.
 - [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+## GGVP-158 · Correções da revisão do #62 e do #63 (12/10)
+
+- [x] 2.14 P1.3 · A CSP com `frame-src 'self' blob:` (`apps/api/src/servidor.ts`), para a impressão do kit em PDF; teste em `servidor.test.ts` que confere a diretiva. Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts`.
+- [x] 2.15 P1.1 · Em produção, o `RELACIONAMENTO_SIMULADO=entrega` não vale (`apps/api/src/rotas/mensagens.ts`); teste em `rotas/mensagens.test.ts`. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
+- [x] 2.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
 ## GGVP-158 · Parte 3 · Caminho da Maria no servidor real (13/10)
 
 Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz nova. Na ordem contrato → teste → servidor.
@@ -415,6 +421,11 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - Verifica com `rotas/gestao.test.ts` e `rotas/pericia.test.ts`:
     - o líder do Atendimento e o Financeiro recebem 403 no recorte por perito;
     - a Documentação recebe a perícia sem os números.
+  - 13/10, na revisão do #75 (junto com a main, que trouxe a mesma regra pelo #73, GGVP-156): fica uma trava só, a da
+    GGVP-156 (perito, juízo, vara e tese). Na perícia, o perito segue para todos, sem os números e sem o resumo.
+- [x] 5.19.1 A taxa por advogada só dos sócios (decisão do Mateus, 13/10): a ação `resultados.ver_por_advogada` (`socio`) na
+  matriz 31; o servidor recusa o recorte por advogada sem ela, e a tela não o oferece.
+  - Verifica com `rotas/gestao.test.ts` (a Sênior, a líder e o Financeiro recebem 403; o Sócio, 200) e `Resultados.test.tsx`.
 
   Verificado em 13/10: `rotas/gestao.test.ts` e `rotas/pericia.test.ts`, 42/42. Fora de `estudo.ver`, a perícia vem sem o perfil do perito (os números e o resumo); o teste antigo, que dizia que a Documentação via os números, mudou com a regra.
 - [x] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.

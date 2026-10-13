@@ -14,6 +14,14 @@ Quando o servidor não tem as variáveis do Chatwoot, a mensagem ao cliente MUST
 - **Quando** alguém manda uma mensagem pronta ao cliente
 - **Então** a mensagem fica gravada como não enviada, com o motivo "simulado, não saiu", e a tela mostra isso
 
+Em produção (`NODE_ENV=production`), o modo de entrega de mentira dos testes de tela (`RELACIONAMENTO_SIMULADO=entrega`)
+MUST NOT valer: a mensagem segue como não enviada, mesmo com a variável posta por engano (revisão do #63, 12/10).
+
+#### Scenario: P1.1 · A entrega de mentira não vale em produção
+- **Dado** o servidor em produção, sem as variáveis do Chatwoot e com `RELACIONAMENTO_SIMULADO=entrega`
+- **Quando** alguém manda uma mensagem pronta ao cliente
+- **Então** a mensagem fica gravada como não enviada, com o motivo "simulado, não saiu"
+
 ### Requirement: P1.2 · O /saude diz qual versão está no ar
 O `/saude` SHALL devolver a versão do build (o commit, gravado na imagem na hora de montar). Fora da imagem, devolve "local".
 
@@ -29,6 +37,14 @@ Toda resposta do servidor SHALL levar `X-Content-Type-Options: nosniff`, `X-Fram
 - **Dado** o portal no ar por HTTPS
 - **Quando** o navegador pede uma tela ou uma rota da API
 - **Então** a resposta traz os quatro cabeçalhos, e a tela abre normalmente
+
+A CSP SHALL aceitar quadro (`frame-src`) da própria origem e de `blob:`, porque a tela imprime o kit do contrato em PDF
+num quadro escondido com o arquivo baixado em `blob:` (revisão do #62, 12/10: sem isso, a impressão era barrada).
+
+#### Scenario: P1.3 · Imprimir o kit em PDF
+- **Dado** o kit do contrato em PDF, baixado pela tela em "Colher assinatura"
+- **Quando** a pessoa manda imprimir
+- **Então** o quadro com o PDF abre, e a CSP não barra o endereço `blob:`
 
 ### Requirement: P1.4 · Produção não sobe sem banco
 Em produção (`NODE_ENV=production`), sem `DATABASE_URL` o servidor MUST NOT subir: hoje ele cai num banco em memória com os usuários de exemplo. Fora de produção, segue o banco embutido de hoje.
@@ -703,19 +719,27 @@ A manifestação e a dilação sobem como arquivo: a IA lê o texto. Sem a leitu
 - **Então** a versão fica aprovada, com o aviso "A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22)."
 
 ### Requirement: P5.13 · A jurimetria só para o Jurídico e os sócios
-Estes números MUST ir só a quem tem `estudo.ver` (Jurídico e sócios):
-- as taxas por perito, por juízo (e vara) e por advogada do painel de resultados;
-- os números e o resumo do perfil do perito na perícia.
+Estes números MUST ir só a quem tem `estudo.ver` (Jurídico e sócios), a mesma regra da GGVP-156 (#73):
+- as taxas por perito, por juízo, por vara e por tese do painel de resultados;
+- os números e o resumo do perfil do perito na perícia (o que observou, perguntou e pediu). O nome do perito segue para todos.
+
+A taxa de êxito de cada advogada (o recorte por advogada) MUST ir só aos sócios (`resultados.ver_por_advogada`, matriz 31),
+nem ao Jurídico (decisão do Mateus, 13/10, na revisão do #75).
 
 Os outros perfis veem o resto do painel e da perícia, sem esses números.
 
 #### Scenario: P5.13 · Painel por perito
 - **Quando** o líder do Atendimento pede o painel de resultados por perito
-- **Então** o portal recusa com "Esse recorte é só do Jurídico e dos sócios."
+- **Então** o portal recusa com "Os recortes por perito, juízo, vara e tese são da jurimetria: só o Jurídico e o Sócio veem."
+
+#### Scenario: P5.13 · Taxa por advogada
+- **Quando** a Sênior, o líder do Atendimento ou o Financeiro pedem o painel por advogada
+- **Então** o portal recusa com "A taxa de êxito de cada advogada é só dos sócios.", e a tela não oferece o recorte
+- **E** o Sócio vê o painel por advogada
 
 #### Scenario: P5.13 · Perícia na Documentação
 - **Quando** a Documentação abre a perícia do caso
-- **Então** a resposta não traz os números nem o resumo do perfil do perito
+- **Então** vê o perito, mas a resposta não traz os números nem o resumo do perfil dele
 
 ### Requirement: P5.14 · O juízo com o juiz e o perito
 `GET /api/casos/:id/juizo` SHALL trazer também:

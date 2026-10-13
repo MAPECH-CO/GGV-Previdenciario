@@ -4,11 +4,14 @@ import { z } from 'zod'
 
 /** GGVP-149 CA1: a vara é a conferida no caso (GGVP-64 parte 2). GGVP-41 (CA3): a tese vem da ficha do desfecho conferida pela Sênior. */
 export const RECORTES = ['beneficio', 'perito', 'juizo', 'vara', 'advogada', 'tese'] as const
+/**
+ * GGVP-156 (Mateus, 13/10) e GGVP-158 P5.13 (GGVP-131 CA10): os recortes que são jurimetria (as taxas por perito, juízo,
+ * vara e tese) saem só para o Jurídico e o Sócio (`estudo.ver`). A taxa por advogada é só dos sócios
+ * (`resultados.ver_por_advogada`, Mateus 13/10).
+ */
+export const RECORTES_DA_JURIMETRIA: readonly (typeof RECORTES)[number][] = ['perito', 'juizo', 'vara', 'tese']
 export const Recorte = z.enum(RECORTES)
 export type Recorte = z.infer<typeof Recorte>
-/** GGVP-158 P5.13 (GGVP-131 CA10, GGVP-156): as taxas por perito, juízo, vara e advogada são jurimetria: só com `estudo.ver`. */
-export const RECORTES_DO_JURIDICO: readonly Recorte[] = ['perito', 'juizo', 'vara', 'advogada']
-export const MSG_RECORTE_DO_JURIDICO = 'Esse recorte é só do Jurídico e dos sócios.'
 export const ROTULO_RECORTE: Record<Recorte, string> = { beneficio: 'Benefício', perito: 'Perito', juizo: 'Juízo', vara: 'Vara', advogada: 'Advogada', tese: 'Tese' }
 
 const data = (rotulo: string) =>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CompletarAcervo, ConferirDesfecho, DESFECHOS_DO_ACERVO, FichaDoDesfecho, ROTULO_DESFECHO_DO_ACERVO } from './acervo.ts'
+import { CompletarAcervo, ConferirDesfecho, DESFECHOS_DO_ACERVO, FichaDoDesfecho, RESULTADOS_DO_RECURSO, ROTULO_DESFECHO_DO_ACERVO, ROTULO_RESULTADO_DO_RECURSO } from './acervo.ts'
 import { PedidoDoPainel, ROTULO_RECORTE } from './resultados.ts'
 
 describe('conferência dos desfechos do acervo (GGVP-55)', () => {
@@ -40,5 +40,14 @@ describe('pergunta de um clique (GGVP-153)', () => {
     expect(CompletarAcervo.safeParse({ tese: 'x'.repeat(81) }).error?.issues[0].message).toBe('A tese tem até 80 caracteres')
     expect(CompletarAcervo.safeParse({ juiz: 'x'.repeat(121) }).error?.issues[0].message).toBe('O nome do juiz tem até 120 caracteres')
     expect(CompletarAcervo.safeParse({ vara: '  ' }).error?.issues[0].message).toBe('Escolha ou escreva o que falta.')
+  })
+})
+
+describe('resultado do recurso (GGVP-161)', () => {
+  it('CA1 · a conferência aceita o resultado do recurso da lista, ou nulo (sem recurso julgado)', () => {
+    expect(ConferirDesfecho.parse({ desfecho: 'improcedente', recurso: 'provido_parcial' }).recurso).toBe('provido_parcial')
+    expect(ConferirDesfecho.parse({ desfecho: 'improcedente', recurso: null }).recurso).toBeNull()
+    expect(ConferirDesfecho.safeParse({ desfecho: 'improcedente', recurso: 'talvez' }).error?.issues[0].message).toBe('Escolha o resultado do recurso')
+    expect(RESULTADOS_DO_RECURSO.map((r) => ROTULO_RESULTADO_DO_RECURSO[r])).toEqual(['Provido', 'Provido em parte', 'Não provido'])
   })
 })

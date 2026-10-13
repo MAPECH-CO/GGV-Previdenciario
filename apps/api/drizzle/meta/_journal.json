@@ -225,6 +225,13 @@
       "when": 1791908583548,
       "tag": "0031_catalogo_de_beneficios",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791924113961,
+      "tag": "0032_resultado_do_recurso",
+      "breakpoints": true
     }
   ]
 }

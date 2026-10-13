@@ -5,7 +5,9 @@ import {
   ConferirDesfecho,
   DESFECHOS_DO_ACERVO,
   ROTULO_BENEFICIO,
+  RESULTADOS_DO_RECURSO,
   ROTULO_DESFECHO_DO_ACERVO,
+  ROTULO_RESULTADO_DO_RECURSO,
   TAMANHO_DA_TESE,
   TAMANHO_DA_VARA,
   type Beneficio,
@@ -31,10 +33,13 @@ function ProcessoDoLote({ p, aoConferir }: { p: Pendente; aoConferir: (conferenc
   const [corrigindo, setCorrigindo] = useState(false)
   const [correcao, setCorrecao] = useState('')
   const [tese, setTese] = useState(p.ficha?.tese ?? '')
+  const idRecurso = useId()
+  const [recurso, setRecurso] = useState('')
   const [erro, setErro] = useState('')
 
   async function conferir(desfecho: string) {
-    const entrada = ConferirDesfecho.safeParse({ desfecho, ...(doPortal && { tese }) })
+    // GGVP-161 CA1: o resultado do recurso só vai quando a Sênior escolhe; sem escolher, o processo fica sem recurso julgado.
+    const entrada = ConferirDesfecho.safeParse({ desfecho, ...(doPortal && { tese }), ...(recurso && { recurso }) })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Escolha o desfecho')
     const r = await chamarApi<ConferenciaDoAcervo>(`/acervo/processos/${p.id}/conferencia`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
@@ -68,6 +73,18 @@ function ProcessoDoLote({ p, aoConferir }: { p: Pendente; aoConferir: (conferenc
           <p className={styles.dica}>Até {TAMANHO_DA_TESE} caracteres, sem doença nem CID. Vazia, o caso fica fora do recorte por tese.</p>
         </>
       )}
+      <label className={styles.rotulo} htmlFor={idRecurso}>
+        Resultado do recurso
+      </label>
+      <select id={idRecurso} className={styles.campo} value={recurso} onChange={(e) => setRecurso(e.target.value)}>
+        <option value="">Sem recurso julgado</option>
+        {RESULTADOS_DO_RECURSO.map((r) => (
+          <option key={r} value={r}>
+            {ROTULO_RESULTADO_DO_RECURSO[r]}
+          </option>
+        ))}
+      </select>
+      <p className={styles.dica}>Só com o recurso julgado: ele entra na chance do "Vale recorrer?" dos casos parecidos.</p>
       {corrigindo && (
         <>
           <label className={styles.rotulo} htmlFor={idCorrecao}>
