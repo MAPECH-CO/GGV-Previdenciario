@@ -205,9 +205,13 @@ export const ConcluirIdaAoBanco = z.discriminatedUnion(
 )
 export type ConcluirIdaAoBanco = z.infer<typeof ConcluirIdaAoBanco>
 
-export const CANAIS_DE_AVISO = ['whatsapp', 'telefone', 'email', 'sms'] as const
+/**
+ * GGVP-158 P6.4: o aviso é a ligação do Financeiro (Lucas, GGVP-98); o WhatsApp é só o complemento, depois dela, e sai de
+ * verdade pelo Chatwoot. E-mail e SMS saíram: o portal não envia por eles.
+ */
+export const CANAIS_DE_AVISO = ['telefone', 'whatsapp'] as const
 
-/** POST /api/casos/:id/banco/envio (CA3, CA11): a pessoa revisou o texto do modelo e enviou; o servidor registra. */
+/** POST /api/casos/:id/banco/envio (CA3, CA11): a ligação registrada, ou o complemento pelo WhatsApp, com o texto do modelo. */
 export const RegistrarEnvio = z.object({ canal: z.enum(CANAIS_DE_AVISO, { error: 'Escolha o canal' }) })
 export type RegistrarEnvio = z.infer<typeof RegistrarEnvio>
 

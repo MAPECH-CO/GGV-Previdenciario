@@ -347,8 +347,9 @@ O OK segue com a advogada, por decisão do Pedro.
 57. **A ida ao banco** (P6.4).
     - `CANAIS_DE_AVISO` fica `telefone` e `whatsapp`.
     - `telefone` é a ligação: o registro de hoje, com o acervo e a baixa.
-    - `whatsapp` pede a ligação registrada (`cliente_avisado_em`) e sai pelo correio do cliente (`criarCorreio().enviar`), com o modelo `ida-ao-banco` e o texto aprovado, que não muda. O que não saiu volta 409, com o motivo, e a tentativa fica no histórico, como no correio.
-    - `ida-ao-banco` entra em `MODELOS_DE_MENSAGEM` ("Confirmação da ida ao banco", do Financeiro). Na tela do correio, ele vem travado: "A confirmação da ida ao banco sai pela tela do Financeiro."
+    - `whatsapp` pede a ligação registrada (`cliente_avisado_em`) e sai pelo correio do cliente, com o texto aprovado, que não muda. O que não saiu volta 409, com o motivo, e a tentativa fica no histórico do cliente, fora dos avisos.
+    - O correio ganha `enviarAprovado`: o texto sai pela mesma saída do Chatwoot do envio (`sair`), pela conversa aberta do cliente, e a linha de `mensagem` guarda o `modeloId` do modelo aprovado.
+    - O modelo não entra em `MODELOS_DE_MENSAGEM` (mudança da execução, 13/10): o seletor da tela do correio e o correio de mentira dos testes de tela listam o catálogo inteiro, e os dois são do Pedro.
     - Ao subir com banco de verdade, `garantirModeloDaIdaAoBanco` (em `principal.ts`, junto dos feriados) põe o modelo só quando não há nenhum com esse nome. O texto é o da semente, sem "(modelo de exemplo)".
 58. **O id do Chatwoot** (P6.5).
     - `chatwoot.enviar` devolve o id da mensagem, e o correio grava em `mensagem.chatwoot_mensagem_id` (migração 0032, com índice).

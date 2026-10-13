@@ -485,14 +485,20 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - o contrato sem o combinado vem nulo.
 
   Verificado em 13/10: `rotas/prestacao.test.ts` 29/29 (4 novos): abre com o combinado; as fontes do contrato, da carta e do sistema; o ajuste com a fonte de quem conferiu e o histórico com os dois valores; a forma antiga e a Caixa acima dos honorários recusam.
-- [ ] 6.7 A ida ao banco (P6.4, decisão 57): telefone e WhatsApp; o WhatsApp só depois da ligação, pelo correio, com o modelo `ida-ao-banco`.
+- [x] 6.7 A ida ao banco (P6.4, decisão 57): telefone e WhatsApp; o WhatsApp só depois da ligação, pelo correio, com o texto aprovado.
   - Verifica com `rotas/prestacao.test.ts` e `rotas/mensagens.test.ts`:
     - a ligação registra como hoje;
     - o WhatsApp antes da ligação recusa;
     - o que não saiu recusa e fica no histórico;
     - o que saiu fica na lista do cliente.
-- [ ] 6.8 O modelo ao subir (P6.4): `garantirModeloDaIdaAoBanco`. Verifica com teste: o banco novo ganha o modelo, e o mudado pela Sênior fica.
-- [ ] 6.9 O id do Chatwoot (P6.5, decisão 58): `enviar` devolve o id, e o correio grava. Verifica com `chatwoot.test.ts` e `rotas/mensagens.test.ts`.
+
+  Verificado em 13/10: `rotas/prestacao.test.ts` 31/31 (2 novos; os de antes avisam pela ligação) e `rotas/mensagens.test.ts`. O WhatsApp antes da ligação recusa; sem o Chatwoot, 409 com o motivo, a tentativa no histórico e fora dos avisos; com ele, sai pela conversa aberta, com o texto aprovado e o aviso da senha.
+- [x] 6.8 O modelo ao subir (P6.4): `garantirModeloDaIdaAoBanco`. Verifica com teste: o banco novo ganha o modelo, e o mudado pela Sênior fica.
+
+  Verificado em 13/10, no teste de `rotas/prestacao.test.ts`: o banco sem o modelo ganha o padrão; o desligado pela Sênior fica, e nada entra.
+- [x] 6.9 O id do Chatwoot (P6.5, decisão 58): `enviar` devolve o id, e o correio grava. Verifica com `chatwoot.test.ts` e `rotas/mensagens.test.ts`.
+
+  Verificado em 13/10: `rotas/mensagens.test.ts` (o envio guarda o id 9001 do Chatwoot) e o complemento da ida ao banco (o id 77). O cliente do Chatwoot não tem teste próprio: o fetch de mentira das rotas cobre o `enviar`.
 - [ ] 6.10 A rota de entrada (P6.5, decisão 59): o segredo, o log, a conta, a caixa e a trava da homologação.
   - Verifica com `rotas/chatwoot-entrada.test.ts`:
     - sem a variável e com outro segredo, 404;

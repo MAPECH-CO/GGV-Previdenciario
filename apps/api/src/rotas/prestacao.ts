@@ -1,7 +1,7 @@
 // Benefício deferido (GGVP-44) e caso ganho (GGVP-98): prestação de contas da advogada (G8), recebimento do Financeiro,
 // e o Financeiro avisa o cliente e marca a ida ao banco (Lucas, 06/10); o Atendimento leva. Um caminho para o INSS e
 // para a Justiça (Mateus, 07/10).
-import { and, arrayOverlaps, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, arrayOverlaps, asc, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   AgendarIdaAoBanco,
@@ -21,11 +21,17 @@ import {
 import type { Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarBloqueio } from '../sessao/rotas.ts'
+import type { Correio } from './mensagens.ts'
+import { criarFichario } from './recepcao.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
 export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da advogada na prestação de contas (G8).'
 export const MODELO_IDA_AO_BANCO = 'Confirmação da ida ao banco'
+/** O texto padrão do modelo (o da semente, sem a marca de exemplo). A Sênior ajusta na Configuração (GGVP-158 P6.4). */
+export const TEXTO_PADRAO_IDA_AO_BANCO =
+  'Olá, {cliente}! Seu benefício foi concedido. A ida ao banco está marcada para {data}, às {hora}, em {local}.{acompanhamento} Qualquer dúvida, fale com o escritório.'
+export const MSG_LIGACAO_ANTES = 'Ligue para o cliente antes: a mensagem é só o complemento da ligação.'
 export const MSG_MESMA_PESSOA = 'Quem deu o OK na prestação não registra o recebimento.'
 export const MSG_ACOMPANHANTE = 'Escolha quem do Atendimento acompanha o cliente'
 export const MSG_ANTES_DO_AVISO = 'Avise o cliente antes de confirmar o recebimento.'
@@ -52,7 +58,19 @@ export async function recebimentosConfirmados(banco: Banco): Promise<Map<string,
   return new Map(eventos.map((e) => [e.alvo.replace(/^caso:/, ''), e.quando]))
 }
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; correio?: Correio }
+
+/**
+ * GGVP-158 P6.4: ao subir com banco de verdade, o modelo "Confirmação da ida ao banco" entra se não há nenhum com esse
+ * nome, como os feriados. O que a Sênior mudou (outra versão, ou desligado) nunca é refeito. Diz se entrou.
+ */
+export async function garantirModeloDaIdaAoBanco(banco: Banco, agora: Date): Promise<boolean> {
+  const [existe] = await banco.select({ id: modelo.id }).from(modelo).where(and(eq(modelo.tipo, 'mensagem'), eq(modelo.nome, MODELO_IDA_AO_BANCO))).limit(1)
+  if (existe) return false
+  const [novo] = await banco.insert(modelo).values({ tipo: 'mensagem', nome: MODELO_IDA_AO_BANCO, conteudo: TEXTO_PADRAO_IDA_AO_BANCO }).onConflictDoNothing().returning({ id: modelo.id })
+  if (novo) await banco.insert(eventoAuditoria).values({ quem: 'sistema', acao: 'modelo_padrao_carregado', alvo: 'configuracao', quando: agora, detalhe: { modelo: MODELO_IDA_AO_BANCO } })
+  return Boolean(novo)
+}
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const ABERTAS = ['aberta', 'em_andamento', 'aguardando'] as const
@@ -62,7 +80,8 @@ const horaBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, h
 
 export const MSG_OUTRA_ADVOGADA = 'A prestação de contas é da advogada responsável pelo caso.'
 
-export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = () => new Date(), correio }: Opcoes) {
+  const { fichas } = criarFichario(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
   /** GGVP-44 CA13: com advogada responsável, a prestação é só dela; o Financeiro e o caso sem responsável seguem como estão. */
   async function deOutraAdvogada(pedido: FastifyRequest, casoId: string) {
@@ -344,7 +363,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       .select({ quando: mensagem.enviadaEm, canal: mensagem.canal, texto: mensagem.conteudo, quem: usuario.nome })
       .from(mensagem)
       .innerJoin(usuario, eq(mensagem.enviadaPor, usuario.id))
-      .where(eq(mensagem.casoId, casoId))
+      // GGVP-158 P6.4: a tentativa que não saiu fica no histórico do cliente, mas não conta como aviso.
+      .where(and(eq(mensagem.casoId, casoId), or(isNull(mensagem.status), ne(mensagem.status, 'falhou'))))
       .orderBy(desc(mensagem.criadoEm))
     const equipe = await banco
       .select({ id: usuario.id, nome: usuario.nome })
@@ -429,6 +449,17 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     const desfecho = s.c.desfecho ?? ((await deferimento(casoId)) ? 'deferido' : null)
     if (!desfecho) return negar(resposta, 409, MSG_SEM_DESFECHO)
     const quem = pedido.usuario!.id
+    // GGVP-158 P6.4: o WhatsApp é só o complemento da ligação, com o texto aprovado, e sai de verdade pelo Chatwoot; o que
+    // não sai volta com o motivo, e a tentativa fica no histórico do cliente.
+    if (entrada.data.canal === 'whatsapp') {
+      if (!s.atual.clienteAvisadoEm) return negar(resposta, 409, MSG_LIGACAO_ANTES)
+      const [ficha] = await fichas([s.c.pessoaId])
+      if (!ficha || !correio) return negar(resposta, 409, 'O envio pelo Chatwoot não está ligado: a ligação já avisou o cliente.')
+      const saida = await correio.enviarAprovado(pedido, ficha, { casoId, modeloId: s.m.id, nome: MODELO_IDA_AO_BANCO, texto: s.texto })
+      if (saida.erro) return negar(resposta, 409, `A confirmação não saiu pelo Chatwoot: ${saida.erro}. A ligação já avisou o cliente.`)
+      await banco.insert(eventoAuditoria).values({ quem, acao: 'cliente_avisado_ida_ao_banco', alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, canal: 'whatsapp', complemento: true } })
+      return resposta.code(201).send({ ok: true, status: saida.status })
+    }
     const feito = await banco.transaction(async (tx) => {
       if (!(await casoAberto(tx, casoId))) return false
       await tx.insert(mensagem).values({

@@ -301,6 +301,8 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     expect(posts(chamadas)).toEqual([])
     const enviada = await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })
     expect(enviada).toMatchObject({ status: 'enviada', conversa: 502, quem: 'ana' })
+    // GGVP-158 P6.5: o id da mensagem no Chatwoot fica guardado, para a entrega e a leitura que ele avisa depois.
+    expect((await banco.select({ id: mensagem.chatwootMensagemId }).from(mensagem).where(eq(mensagem.id, enviada.id)))[0].id).toBe(9001)
     // O que já saiu não se repete na mesma conversa.
     expect((await json('ana', 'POST', url, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })).id).toBe(enviada.id)
     expect(posts(chamadas)).toEqual([{ metodo: 'POST', caminho: '/conversations/502/messages', corpo: saida(pronta.texto), token: 'token-de-teste' }])

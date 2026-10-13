@@ -61,7 +61,7 @@ import { registrarRotasRecepcaoDocumentos } from './rotas/recepcao-documentos.ts
 import { registrarRotasRecepcaoChecklist } from './rotas/recepcao-checklist.ts'
 import { registrarRotasRecepcaoCobranca } from './rotas/recepcao-cobranca.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
-import { registrarRotasMensagens } from './rotas/mensagens.ts'
+import { criarCorreio, registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
@@ -221,7 +221,7 @@ export function criarServidor({
     registrarRotasInss(app, { banco, agora, cofre: cofreDoGov, armazenamento: arquivos, tarefasPorArea })
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
-    registrarRotasPrestacao(app, { banco, agora })
+    registrarRotasPrestacao(app, { banco, agora, correio: criarCorreio(banco, agora ?? (() => new Date())) })
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
