@@ -298,6 +298,8 @@ export const CasoParaLiberacao = z.object({
   beneficio: z.string().nullable(),
   /** G1, igual à conferência da Sênior. */
   checklist: z.object({ cadastrado: z.boolean(), completo: z.boolean(), faltam: z.array(z.string()) }),
+  /** G1: o contrato assinado e conferido, como na conferência da Sênior (GGVP-158, P3.2). */
+  kitAssinado: z.boolean(),
   /** G17: por que não libera, pela regra única do contrato; nulo, em ordem. */
   travaDoParecer: z.string().nullable(),
   esperandoConferencia: z.boolean(),

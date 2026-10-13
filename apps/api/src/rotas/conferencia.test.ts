@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, contrato, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, contrato, contratoRecepcao, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -129,6 +129,20 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     const r = await decidir('helena', { decisao: 'aprovar' })
     expect([r.statusCode, r.json().erro]).toEqual([409, 'Contrato não assinado (G1): o caso não tem o contrato assinado.'])
     expect(await recusasDoG1()).toEqual(['G1'])
+  })
+
+  /** O caso que nasceu na Recepção tem o contrato dela, e não a linha da tabela `contrato`, que só a semente escreve. */
+  const contratoDaRecepcao = async (etapa: string) => {
+    await banco.delete(contrato)
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco.insert(contratoRecepcao).values({ casoId, pessoaId: c.pessoaId, dados: { contrato: { processoId: casoId, etapa }, processo: { id: casoId } } })
+  }
+
+  it('GGVP-158 P3.1 · o contrato da Recepção conta como assinado no G1 só depois de conferido', async () => {
+    await contratoDaRecepcao('leitura')
+    expect((await ver('helena')).json().kitAssinado).toBe(false)
+    await banco.update(contratoRecepcao).set({ dados: { contrato: { processoId: casoId, etapa: 'copia' }, processo: { id: casoId } } })
+    expect((await ver('helena')).json().kitAssinado).toBe(true)
   })
 
   it('CA5 e G17 · sem parecer, insuficiente, só sugerido pela IA ou com laudo novo esperando: recusa e registra', async () => {
