@@ -16,3 +16,13 @@ export async function entrarComo(request: APIRequestContext, email = ATENDIMENTO
   const r = await request.post('/api/sessao', { data: { email, senha: SENHA_DE_EXEMPLO } })
   if (!r.ok()) throw new Error(`login de exemplo falhou: ${r.status()}`)
 }
+
+/**
+ * Troca de usuário no meio do teste. Sai da tela antes de limpar a sessão: senão uma busca da tela antiga volta 401,
+ * leva ao /entrar e interrompe o próximo `page.goto` (net::ERR_ABORTED).
+ */
+export async function trocarDeUsuario(page: Page, email: string) {
+  await page.goto('about:blank')
+  await page.context().clearCookies()
+  await entrarPelaApi(page, email)
+}
