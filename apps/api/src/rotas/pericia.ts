@@ -49,6 +49,7 @@ import type { Perito } from '../../../web/src/dados/peritos.ts'
 import type { Ficha, Processo, Tarefa } from '../../../web/src/dados/tipos.ts'
 import { hojeIso } from '../../../web/src/regras/datas.ts'
 import { problemaG20 } from '../../../web/src/regras/parecer.ts'
+import { NO_CATALOGO } from './recepcao.ts'
 import { dataDoJuizoNaPublicacao, problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
 import {
   KIT_DA_PERICIA,
@@ -81,24 +82,6 @@ export const ORIGEM_DO_PASSO: Record<string, OrigemDaPericia> = {
   'D2.05': 'd2-exigencia',
   'D3.03': 'd3-despacho',
   'D3a.03': 'd3a-juiz',
-}
-
-/**
- * Os benefícios do servidor no catálogo das telas. ponytail: o mesmo mapa está no pedido #29 (`NO_CATALOGO`, em
- * rotas/recepcao.ts); quando ele entrar na main, importar de lá e apagar este.
- */
-const NO_CATALOGO: Record<string, string> = {
-  bpc_loas_deficiente: 'loas-deficiente',
-  bpc_loas_idoso: 'loas-idoso',
-  aposentadoria_pcd: 'aposentadoria-pcd',
-  aposentadoria_idade: 'aposentadoria-idade',
-  aposentadoria_tempo: 'aposentadoria-contribuicao',
-  aposentadoria_especial: 'aposentadoria-especial',
-  aposentadoria_incapacidade_permanente: 'incapacidade-permanente',
-  auxilio_incapacidade_temporaria: 'incapacidade-temporaria',
-  auxilio_acidente: 'auxilio-acidente',
-  pensao_morte: 'pensao-morte',
-  salario_maternidade: 'salario-maternidade',
 }
 
 /** O perfil do perito na coluna `perfil` (GGVP-73): o tipo, onde atua e os laudos, sem dado pessoal do cliente. */

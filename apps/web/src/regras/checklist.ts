@@ -184,6 +184,9 @@ export function contratoAssinadoDo(contrato: { etapa: string } | undefined, etap
   return ['leitura', 'conferir', 'copia', 'entregue'].includes(contrato.etapa)
 }
 
+/** O contrato assinado e conferido (GGVP-85): da cópia em diante. É o que vale no G1 da Sênior (GGVP-158, P3.1). */
+export const contratoConferidoDo = (contrato: { etapa: string } | undefined) => ['copia', 'entregue'].includes(contrato?.etapa ?? '')
+
 /** As miniaturas da semente ("RG", "CNIS"...), com o tipo da lista única. */
 const LEGADO: Record<string, string> = { RG: 'rg', CPF: 'cpf', 'Comp. residência': 'comprovante-residencia', CNIS: 'cnis', CTPS: 'ctps', Procuração: 'procuracao' }
 

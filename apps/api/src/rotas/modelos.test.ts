@@ -51,7 +51,13 @@ describe('GGVP-136 CA1 · modelo com versão, subido pela Configuração', () =>
     const antes = (await lista()).json()
     expect(antes.podeSubir).toBe(true)
     expect(antes.modelos).toHaveLength(9)
-    expect(antes.modelos.find((m: { id: string }) => m.id === APOSENTADORIAS)).toEqual({ id: APOSENTADORIAS, nome: 'Contrato Completo de aposentadorias', versao: null, vigenteDesde: null })
+    expect(antes.modelos.find((m: { id: string }) => m.id === APOSENTADORIAS)).toEqual({
+      id: APOSENTADORIAS,
+      nome: 'Contrato Completo de aposentadorias',
+      versao: null,
+      vigenteDesde: null,
+      percentualHonorarios: null,
+    })
 
     const docx = MODELO_VALIDO()
     const r = await subir('helena', APOSENTADORIAS, docx)
@@ -118,5 +124,33 @@ describe('GGVP-136 CA1 · modelo com versão, subido pela Configuração', () =>
 
   it('modelo fora da lista do kit é recusado', async () => {
     expect((await subir('helena', 'modelo-99', MODELO_VALIDO())).statusCode).toBe(404)
+  })
+})
+
+describe('GGVP-158 P3.3 · o percentual de honorários de cada modelo', () => {
+  const honorarios = async (apelido: string, id: string, percentual: unknown) =>
+    app.inject({ method: 'PUT', url: `/api/configuracao/modelos/${id}/honorarios`, cookies: await cookieDe(apelido), payload: { percentual } })
+  const doModelo = async () => (await lista()).json().modelos.find((m: { id: string }) => m.id === APOSENTADORIAS).percentualHonorarios
+
+  it('a Sênior informa o percentual do modelo; a lista mostra; a troca vai ao histórico da Configuração', async () => {
+    expect(await doModelo()).toBeNull()
+    const r = await honorarios('helena', APOSENTADORIAS, 30)
+    expect([r.statusCode, r.json()]).toEqual([201, { ok: true, percentual: 30 }])
+    await honorarios('helena', APOSENTADORIAS, 25.5)
+    expect(await doModelo()).toBe(25.5)
+    const config = (await app.inject({ method: 'GET', url: '/api/configuracao', cookies: await cookieDe('helena') })).json()
+    expect(config.historico.map((h: { descricao: string }) => h.descricao)).toEqual(
+      expect.arrayContaining([
+        'Honorários do modelo "Contrato Completo de aposentadorias": sem valor → 30%',
+        'Honorários do modelo "Contrato Completo de aposentadorias": 30% → 25,5%',
+      ]),
+    )
+  })
+
+  it('só a Sênior informa; fora de 0 a 100 ou sem número, recusa; modelo fora da lista, 404', async () => {
+    expect((await honorarios('lauro', APOSENTADORIAS, 30)).statusCode).toBe(403)
+    for (const errado of [101, -1, 'trinta', null]) expect((await honorarios('helena', APOSENTADORIAS, errado)).statusCode, String(errado)).toBe(400)
+    expect((await honorarios('helena', 'modelo-99', 30)).statusCode).toBe(404)
+    expect(await doModelo()).toBeNull()
   })
 })

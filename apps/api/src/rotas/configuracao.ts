@@ -33,6 +33,11 @@ function descrever(acao: string, d: Detalhe) {
   if (acao === 'mensagem_alterada') return `Mensagem "${d.nome}": versão ${d.versao} publicada`
   // GGVP-136: o modelo do Word do kit, na mesma linha do histórico.
   if (acao === 'modelo_publicado') return `Modelo "${d.nome}": versão ${d.versao} publicada`
+  // GGVP-158 P3.3: o percentual de honorários do modelo.
+  if (acao === 'honorarios_do_modelo') {
+    const pct = (v: unknown) => (typeof v === 'number' ? `${String(v).replace('.', ',')}%` : 'sem valor')
+    return `Honorários do modelo "${d.nome}": ${pct(d.antes)} → ${pct(d.depois)}`
+  }
   // GGVP-143: o glossário do escritório, na mesma linha do histórico.
   if (acao === 'glossario_termo_acrescentado') return `Glossário: "${d.termo}" acrescentado`
   if (acao === 'glossario_termo_tirado') return `Glossário: "${d.termo}" tirado`

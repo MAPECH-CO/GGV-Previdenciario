@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_G1 } from './conferencia.ts'
@@ -19,9 +19,9 @@ async function cookieDe(apelido: string) {
   const r = await app.inject({ method: 'POST', url: '/api/sessao', payload: { email: `${apelido}@exemplo.ggv`, senha: SENHA } })
   return { [COOKIE]: r.cookies.find((c) => c.name === COOKIE)!.value }
 }
-const chamar = async (apelido: string, method: 'GET' | 'POST', url: string, payload?: object) =>
+const chamar = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) =>
   app.inject({ method, url, cookies: await cookieDe(apelido), ...(payload ? { payload } : {}) })
-const json = async (apelido: string, method: 'GET' | 'POST', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
+const json = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
 
 /** O cliente com o caso aberto ("fechou"), como na Recepção. */
 async function casoDe(beneficio: string) {
@@ -40,10 +40,17 @@ async function completarOKit(fichaId: string, processoId: string, tipos = ['rg',
   expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })).toMatchObject({ arquivados: tipos.length })
 }
 const situacoes = (c: { checklist: { itens: { tipo: string; situacao: string }[] } }) => Object.fromEntries(c.checklist.itens.map((i) => [i.tipo, i.situacao]))
+/** "Está certo, seguir" na conferência do contrato assinado (GGVP-85): a etapa vai para a cópia. */
+async function conferirOContrato(processoId: string) {
+  const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
+  const dados = linha.dados as { contrato: object }
+  await banco.update(contratoRecepcao).set({ dados: { ...dados, contrato: { ...dados.contrato, etapa: 'copia' } } }).where(eq(contratoRecepcao.casoId, processoId))
+}
+const CONTRATO_NAO_ASSINADO = 'Contrato não assinado (G1): o caso não tem o contrato assinado.'
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
+  app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['sara', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // O kit do LOAS como a semente do servidor o publica: com os nomes do banco.
@@ -111,6 +118,22 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     expect(c.itens.map((i: { tipo: string }) => i.tipo)).toEqual(['contrato', 'boletim-ocorrencia', 'fotos-acidente', 'ficha-pronto-socorro', 'prontuario', 'exame-imagem-epoca', 'exame-pos-alta'])
   })
 
+  it('GGVP-158 P4.6 · o caso da aposentadoria rural guarda o benefício; sem lista publicada, não libera; a lista da Configuração vale', async () => {
+    const { processoId } = await casoDe('aposentadoria-rural')
+    expect((await banco.select({ beneficio: caso.beneficio }).from(caso).where(eq(caso.id, processoId)))[0].beneficio).toBe('aposentadoria_rural')
+    const url = `/api/processos/${processoId}/checklist`
+    expect((await json('dora', 'GET', url)).checklist).toMatchObject({ temLista: false })
+    const liberar = () => json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })
+    expect((await liberar()).erro).toContain('a lista de documentos do benefício, na configuração do escritório')
+
+    // A gestão publica a lista pela Configuração, sem código.
+    const publicada = await chamar('sara', 'PUT', '/api/configuracao/kits/aposentadoria_rural', { itens: [{ tipoDocumento: 'rg', obrigatorio: true }, { tipoDocumento: 'cnis', obrigatorio: true }] })
+    expect(publicada.statusCode).toBe(201)
+    const c = (await json('dora', 'GET', url)).checklist
+    expect(c.temLista).toBe(true)
+    expect(c.itens.map((i: { tipo: string }) => i.tipo)).toEqual(expect.arrayContaining(['rg', 'cnis']))
+  })
+
   it('a liberação do caso da Recepção confere esse checklist: o que falta com os nomes das telas, e a conferência completa', async () => {
     const { fichaId, processoId } = await casoDe('loas-idoso')
     const liberar = () => json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })
@@ -122,7 +145,20 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
 
     expect((await liberar()).erro).toBe(`${MSG_G1} a conferência do checklist completo (D1.21).`)
     expect((await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)).conferencia).toMatchObject({ completo: true, faltam: [] })
+    // GGVP-158 P3.2: o contrato assinado, mas ainda não conferido, barra a liberação com a mesma regra da aprovação.
+    expect((await liberar()).erro).toBe(CONTRATO_NAO_ASSINADO)
+    await conferirOContrato(processoId)
     expect(await liberar()).toEqual({ ok: true })
+  })
+
+  it('GGVP-158 P3.1 · a Sênior aprova o caso que veio da Recepção, com o contrato assinado e conferido', async () => {
+    const { fichaId, processoId } = await casoDe('loas-idoso')
+    await completarOKit(fichaId, processoId)
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    await conferirOContrato(processoId)
+    expect(await json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })).toEqual({ ok: true })
+    const r = await chamar('sara', 'POST', `/api/casos/${processoId}/conferencia`, { decisao: 'aprovar' })
+    expect([r.statusCode, r.json()]).toEqual([201, { ok: true, situacao: 'aprovado' }])
   })
 
   it('boas-vindas: só depois do checklist conferido; a Atendimento marca "Já enviei" uma vez; vai na cópia das telas', async () => {
@@ -208,6 +244,21 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
     expect(await json('sara', 'POST', `${url}/decisao`, decisao)).toEqual({ erro: 'A cobrança ainda não chegou ao limite.' })
   })
 
+  it('GGVP-158 P4.8 · a mensagem de cobrança obedece ao mesmo limite: na Sênior ou antes dos 3 dias, não sai; no prazo, sai', async () => {
+    const naSenior = await cobrancaAberta([
+      { dia: '2026-10-02', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' },
+      { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
+    ])
+    const mensagem = (c: { fichaId: string; processoId: string }) => json('ana', 'GET', `/api/fichas/${c.fichaId}/mensagens/cobranca?processo=${c.processoId}`)
+    expect(await mensagem(naSenior)).toMatchObject({ trava: 'Passou do limite de 2 tentativas: a sênior decide (G15).', texto: '' })
+
+    const hoje = await cobrancaAberta([{ dia: '2026-10-08', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
+    expect((await mensagem(hoje)).trava).toMatch(/^A próxima tentativa é em .+, 3 dias depois da última\.$/)
+
+    const noPrazo = await cobrancaAberta([{ dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
+    expect(await mensagem(noPrazo)).toMatchObject({ trava: null, texto: expect.stringContaining('faltam documentos') })
+  })
+
   it('chegou tudo: a cobrança fecha sozinha na sincronização, uma vez só', async () => {
     const { fichaId, processoId, url } = await cobrancaAberta()
     await completarOKit(fichaId, processoId)
@@ -261,6 +312,7 @@ describe('GGVP-125 · bloco 5d: o documento de qualquer canal confere as pendên
     await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
     expect((await liberar()).map((t) => [t.titulo, t.perfilDono, t.concluidaEm])).toEqual([['Liberar ao Jurídico', 'documentacao', null]])
 
+    await conferirOContrato(processoId)
     expect(await json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })).toEqual({ ok: true })
     expect((await liberar())[0].concluidaEm).not.toBeNull()
   })

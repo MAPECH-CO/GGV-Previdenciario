@@ -2,7 +2,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { criarServidor, MSG_ERRO_INESPERADO } from './servidor.ts'
+import { abrirBancoEmbutido } from './banco/conexao.ts'
+import { criarServidor, MSG_ERRO_INESPERADO, MSG_LEITURA_SO_NO_TESTE } from './servidor.ts'
 
 async function saude(opcoes: Parameters<typeof criarServidor>[0]) {
   const app = criarServidor(opcoes)
@@ -33,6 +34,34 @@ describe('GET /saude', () => {
 
   it('GGVP-158 · a versão no ar: o commit gravado na imagem', async () => {
     expect((await saude({ versao: '7d37d825' })).corpo.versao).toBe('7d37d825')
+  })
+})
+
+describe('GGVP-158 P4.10 · a leitura de exemplo só nos testes de tela', () => {
+  it('na homologação e na produção, o servidor não sobe com ela; fora delas, sobe', () => {
+    for (const ambiente of ['homologacao', 'producao']) {
+      vi.stubEnv('AMBIENTE', ambiente)
+      expect(() => criarServidor({ leituraSimulada: true })).toThrow(MSG_LEITURA_SO_NO_TESTE)
+    }
+    vi.unstubAllEnvs()
+    expect(() => criarServidor({ leituraSimulada: true })).not.toThrow()
+  })
+
+  it('sem ela, as rotas que simulam o lote do scanner e a leitura do contrato não existem; com ela, existem', async () => {
+    const { banco, fechar } = await abrirBancoEmbutido()
+    const rotas = async (leituraSimulada: boolean) => {
+      const app = criarServidor({ banco, leituraSimulada })
+      await app.ready()
+      const existem = [
+        app.hasRoute({ method: 'POST', url: '/api/tarefas/:id/lote' }),
+        app.hasRoute({ method: 'POST', url: '/api/processos/:id/contrato/leitura-simulada' }),
+      ]
+      await app.close()
+      return existem
+    }
+    expect(await rotas(false)).toEqual([false, false])
+    expect(await rotas(true)).toEqual([true, true])
+    await fechar()
   })
 })
 

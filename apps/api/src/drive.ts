@@ -1,11 +1,13 @@
 // Drive do escritório (GGVP-107) pela API REST, com o fetch do Node. A conta de serviço assina um JWT (node:crypto) e
-// troca por um token de uma hora. Sem a biblioteca googleapis: seis chamadas não pagam uma dependência.
-// Só lista, acha, cria pasta e envia arquivo novo. Não há função que mude, mova, apague ou compartilhe (CA4): o portal
-// não toca no que o escritório já tem no Drive, e nada fica público.
+// troca por um token de uma hora. Sem a biblioteca googleapis: oito chamadas não pagam uma dependência.
+// Só lista, acha, lê as mudanças, baixa, cria pasta e envia arquivo novo. Não há função que mude, mova, apague ou
+// compartilhe (CA4): o portal não toca no que o escritório já tem no Drive, e nada fica público.
 import { sign } from 'node:crypto'
 
 export type ItemDoDrive = { id: string; nome: string }
 export type ArquivoNovo = { nome: string; paiId: string; mime: string; conteudo: Buffer; marca: string }
+/** GGVP-158 P4.3: um item que mudou no Drive. `doPortal`: o portal criou (tem a marca); `fora`: removido ou na lixeira. */
+export type ItemMudado = { id: string; nome: string; mime: string; pais: string[]; doPortal: boolean; fora: boolean }
 
 export type Drive = {
   /** As subpastas de uma pasta, de todas as páginas. */
@@ -19,6 +21,13 @@ export type Drive = {
   enviar(arquivo: ArquivoNovo): Promise<string>
   /** Onde o arquivo está agora. Mover no Drive não muda o id (CA2). */
   onde(id: string): Promise<{ nome: string; pais: string[] }>
+  /**
+   * GGVP-158 P4.3: o que mudou no Drive compartilhado da pasta desde a marca, de todas as páginas, e a marca nova. Sem
+   * marca, só a marca de agora: o passado não entra.
+   */
+  mudancas(marca: string | null, pastaId: string): Promise<{ itens: ItemMudado[]; marca: string }>
+  /** GGVP-158 P4.3: o conteúdo do arquivo, para a leitura da IA. Só lê. */
+  baixar(id: string): Promise<Buffer>
 }
 
 /** Ids das pastas do escritório: "#5. CLIENTES" e "A REVISAR". */
@@ -50,6 +59,7 @@ export function criarToken(credenciais: Credenciais, buscar: typeof fetch = fetc
 
 export function criarDrive(credenciais: Credenciais, buscar: typeof fetch = fetch, agora = () => Date.now()): Drive {
   const autorizacao = criarToken(credenciais, buscar, agora)
+  let driveId: string | undefined
 
   async function chamar(url: string, init: RequestInit & { headers?: Record<string, string> } = {}) {
     const r = await buscar(url, { ...init, headers: { ...init.headers, authorization: await autorizacao() } })
@@ -99,8 +109,30 @@ export function criarDrive(credenciais: Credenciais, buscar: typeof fetch = fetc
       const j = (await (await chamar(`${API}/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true&fields=name,parents`)).json()) as { name: string; parents?: string[] }
       return { nome: j.name, pais: j.parents ?? [] }
     },
+    async mudancas(marca, pastaId) {
+      // O Drive compartilhado é o da pasta de clientes; vazio, a pasta está fora de um Drive compartilhado.
+      driveId ??= ((await (await chamar(`${API}/drive/v3/files/${encodeURIComponent(pastaId)}?supportsAllDrives=true&fields=driveId`)).json()) as { driveId?: string }).driveId ?? ''
+      const doDrive = `supportsAllDrives=true${driveId ? `&driveId=${encodeURIComponent(driveId)}` : ''}`
+      if (!marca) return { itens: [], marca: ((await (await chamar(`${API}/drive/v3/changes/startPageToken?${doDrive}`)).json()) as { startPageToken: string }).startPageToken }
+      const itens: ItemMudado[] = []
+      const campos = 'nextPageToken,newStartPageToken,changes(fileId,removed,file(name,mimeType,parents,trashed,appProperties))'
+      for (let pagina = marca; ; ) {
+        const url = `${API}/drive/v3/changes?pageToken=${encodeURIComponent(pagina)}&${doDrive}&includeItemsFromAllDrives=true&pageSize=1000&fields=${encodeURIComponent(campos)}`
+        const j = (await (await chamar(url)).json()) as { nextPageToken?: string; newStartPageToken?: string; changes: Mudanca[] }
+        for (const { fileId, removed, file: f } of j.changes)
+          itens.push({ id: fileId, nome: f?.name ?? '', mime: f?.mimeType ?? '', pais: f?.parents ?? [], doPortal: Boolean(f?.appProperties?.portal), fora: Boolean(removed || f?.trashed) })
+        if (!j.nextPageToken) return { itens, marca: j.newStartPageToken ?? pagina }
+        pagina = j.nextPageToken
+      }
+    },
+    async baixar(id) {
+      return Buffer.from(await (await chamar(`${API}/drive/v3/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`)).arrayBuffer())
+    },
   }
 }
+
+/** Uma mudança da lista do Drive (`changes.list`), só com os campos pedidos. */
+type Mudanca = { fileId: string; removed?: boolean; file?: { name: string; mimeType: string; parents?: string[]; trashed?: boolean; appProperties?: Record<string, string> } }
 
 /** O Drive das variáveis de ambiente (`.env.drive` ou Coolify); faltando uma, desligado. */
 export function abrirDrive(ambiente: Record<string, string | undefined> = process.env): { drive: Drive; pastas: PastasDoDrive; soLeitura: boolean } | null {
@@ -110,6 +142,12 @@ export function abrirDrive(ambiente: Record<string, string | undefined> = proces
   const soLeitura = ambiente.GOOGLE_DRIVE_SO_LEITURA === 'sim'
   return { drive: criarDrive(JSON.parse(Buffer.from(credenciais, 'base64').toString('utf8'))), pastas: { clientes, revisar }, soLeitura }
 }
+
+/**
+ * O Drive em que o portal grava e de onde traz o scanner: ligado e sem só leitura (CA10; GGVP-158 P4.3). Na homologação,
+ * só leitura, nem a rodada do Drive nem a do scanner rodam: nada vai ao Drive real e nenhum documento de cliente vem dele.
+ */
+export const driveDeVerdade = (d: ReturnType<typeof abrirDrive>) => (d && !d.soLeitura ? d : null)
 
 /** GGVP-107 CA9: lê as duas pastas do portal e devolve só as contagens (nunca nomes), ou o motivo do erro. Só leitura. */
 export async function conferirDrive(drive: Drive, pastas: PastasDoDrive): Promise<{ ok: true; clientes: number; revisar: number } | { ok: false; erro: string }> {

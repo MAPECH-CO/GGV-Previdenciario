@@ -13,18 +13,19 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { normalizarTelefone } from '@ggv/campos'
 import { IdDoModelo, PedidoDeMensagem, type Erro, type MensagemAoCliente, type MensagemPronta } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { decisao, mensagem, usuario } from '../banco/esquema.ts'
+import { cobrancaDocumento, decisao, mensagem, usuario } from '../banco/esquema.ts'
 import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
 import { criarCasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { COMO, diaFalado, horaFalada, mensagemDoConvite } from '../../../web/src/regras/agenda.ts'
-import { CANAIS, RESULTADOS } from '../../../web/src/regras/cobranca.ts'
+import { CANAIS, RESULTADOS, cobrancaDoCaso, type Cobranca } from '../../../web/src/regras/cobranca.ts'
 import { complementoNaTela, doProcesso, type Complemento } from '../../../web/src/regras/complemento.ts'
 import { mensagemDaConfirmacao } from '../../../web/src/regras/confirmacao.ts'
 import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, ordenarConversas, problemasDaMensagem } from '../../../web/src/regras/mensagens.ts'
 import { camposDoProcessoEmVigor } from './conversa.ts'
+import { criarChecklist } from './recepcao-checklist.ts'
 import { TITULO_AVISO } from './prestacao.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
 
@@ -57,6 +58,20 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
   const { lerParte, gravarParte } = criarCasoMedico(banco, agora)
+  const { doCaso } = criarChecklist(banco, agora)
+
+  /**
+   * GGVP-158 P4.8: o limite da cobrança vale também na mensagem. Com a cobrança aberta na Sênior, ou antes dos dias entre
+   * as tentativas, o motivo é o mesmo da tela da cobrança; sem cobrança aberta, nada a limitar.
+   */
+  async function cobrancaParada(casoId: string): Promise<string | null> {
+    const achado = await doCaso(casoId)
+    if (!achado) return null
+    const aberta = (await banco.select({ dados: cobrancaDocumento.dados }).from(cobrancaDocumento).where(eq(cobrancaDocumento.casoId, casoId)))
+      .map((l) => l.dados as Cobranca)
+      .find((c) => !c.encerrada)
+    return aberta ? cobrancaDoCaso(aberta, { ...achado, faltam: achado.checklist.faltam }, hoje()).motivoParado : null
+  }
 
   /**
    * O cliente no Chatwoot: o contato do telefone da ficha e as conversas dele (CA6). De verdade, a falha da consulta não
@@ -123,8 +138,11 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       }
       case 'boas-vindas':
         return pronto(`Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso de ${beneficio} começou. Qualquer dúvida, fale com a gente por aqui.`)
-      case 'cobranca':
+      case 'cobranca': {
+        const parada = processo && UUID.test(processo.id) ? await cobrancaParada(processo.id) : null
+        if (parada) return travado(parada)
         return pronto(`Olá, ${primeiro}! Para seguir com o seu caso de ${beneficio}, faltam documentos. Pode trazer aqui ou mandar foto por esta conversa?`)
+      }
       // CA7: o favorável sai com o texto da prestação de contas (G8), pela tela do Financeiro, que registra o aviso, o
       // recebimento e a baixa; o resumo da GGVP-22 é o do caso perdido e não serve para ele.
       case 'resultado-favoravel':

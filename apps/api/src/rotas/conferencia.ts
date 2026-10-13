@@ -28,6 +28,7 @@ import {
   documento,
   documentoMedico,
   fichaAtendimento,
+  fichaRecepcao,
   kitDocumento,
   parecerMedico,
   pericia,
@@ -46,10 +47,12 @@ import { esperandoConferencia, okDaSenior } from '../fluxo/conferencia.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { ehPeca } from './documentos.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
-import type { ChecklistDoCaso } from '../../../web/src/regras/checklist.ts'
+import type { ContratoGuardado } from './recepcao.ts'
+import type { Calculo } from '../../../web/src/dados/tipos.ts'
+import { contratoConferidoDo, type ChecklistDoCaso } from '../../../web/src/regras/checklist.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
-/** A liberação ao Jurídico (D1.24, GGVP-18) ainda usa esta mensagem; a conferência da Sênior usa `bloqueioDoG1`. */
+/** O começo da mensagem do checklist incompleto no `bloqueioDoG1`, que a liberação e a aprovação usam (GGVP-158, P3.2). */
 export const MSG_G1 = 'Checklist incompleto (G1): faltam'
 
 /**
@@ -102,11 +105,14 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
   /** `acao`: o mesmo G17 vale para aprovar para o INSS e para liberar ao Jurídico; muda só o texto da trava. */
   async function montar(casoId: string, perfilAtivo: string | null, quem?: string, acao: AcaoDoPortao = 'aprovar-inss') {
     const [c] = await banco
-      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm })
+      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm, pessoaId: caso.pessoaId })
       .from(caso)
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
       .where(eq(caso.id, casoId))
     if (!c) return null
+    // GGVP-158 P3.5: o último cálculo de tempo e pontos, que a Recepção guarda na ficha da pessoa.
+    const [daFicha] = await banco.select({ documento: fichaRecepcao.documento }).from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, c.pessoaId))
+    const calculo = (daFicha?.documento as { calculos?: Calculo[] } | undefined)?.calculos?.at(-1)
     // GGVP-96: a peça jurídica (pacote da petição, versões) só vai a quem vê a petição.
     const vePeca = pode(perfilAtivo, 'peticao.ver')
     const docs = (
@@ -133,7 +139,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     const tem = new Set(docs.map((d) => d.tipo))
     const faltam = kit.map((k) => k.tipo).filter((t) => !tem.has(t))
     // O caso que nasceu no "fechou" da Recepção tem o contrato dela: o G1 é o checklist da Recepção (bloco 5c).
-    const [daRecepcao] = await banco.select({ id: contratoRecepcao.casoId }).from(contratoRecepcao).where(eq(contratoRecepcao.casoId, casoId))
+    const [daRecepcao] = await banco.select({ dados: contratoRecepcao.dados }).from(contratoRecepcao).where(eq(contratoRecepcao.casoId, casoId))
     const recepcao = daRecepcao ? await checklistDaRecepcao(casoId) : null
     const faltamDaRecepcao = recepcao ? faltamNaRecepcao(recepcao) : null
     const [parecer] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, casoId)).orderBy(desc(parecerMedico.criadoEm)).limit(1)
@@ -178,7 +184,20 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
           : null,
       laudoNovoEsperando: Boolean(laudoNovo),
       temFicha: Boolean(ficha),
-      kitAssinado: Boolean(assinado),
+      // GGVP-158 P3.1: o caso da Recepção tem o contrato dela; vale assinado e conferido. A tabela `contrato` é da semente.
+      kitAssinado: Boolean(assinado) || contratoConferidoDo((daRecepcao?.dados as ContratoGuardado | undefined)?.contrato),
+      calculo: calculo
+        ? {
+            tempo: calculo.tempo,
+            pontos: calculo.pontos,
+            carencia: calculo.carencia ?? null,
+            regra: calculo.regra,
+            podeAposentar: calculo.podeAposentar,
+            dataPrevista: calculo.dataPrevista ?? null,
+            quem: calculo.quem,
+            quando: calculo.quando,
+          }
+        : null,
       podeDecidir: pode(perfilAtivo, 'caso.aprovar_para_inss') && espera,
       situacao: espera || !ok ? 'aguardando' : ok.resultado === 'aprovado' ? 'aprovado' : 'reprovado',
     })
@@ -279,6 +298,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       cliente: dados.cliente,
       beneficio: dados.beneficio,
       checklist: dados.checklist,
+      kitAssinado: dados.kitAssinado,
       travaDoParecer: dados.travaDoParecer,
       esperandoConferencia: await esperandoConferencia(banco, casoId),
       ajuste: ajuste && reprovacao ? { motivo: reprovacao.motivo ?? '', prazo: ajuste.prazo, reprovadoPor: reprovacao.por, reprovadoEm: reprovacao.em.toISOString() } : null,
@@ -307,9 +327,11 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       return negar(resposta, 403, MSG_QUEM_LIBERA)
     }
     if (dados.esperandoConferencia) return negar(resposta, 409, MSG_JA_NA_FILA)
-    if (dados.checklist.cadastrado && !dados.checklist.completo) {
+    // GGVP-158 P3.2: o G1 inteiro, como na aprovação da Sênior: kit cadastrado, checklist completo e contrato conferido.
+    const g1 = bloqueioDoG1(dados)
+    if (g1) {
       await bloqueio(pedido, casoId, 'G1', 'D1.24', {}, 'liberacao_recusada')
-      return negar(resposta, 409, `${MSG_G1} ${dados.checklist.faltam.join(', ')}.`)
+      return negar(resposta, 409, g1)
     }
     if (dados.travaDoParecer) {
       await bloqueio(pedido, casoId, 'G17', 'D1.24', {}, 'liberacao_recusada')
