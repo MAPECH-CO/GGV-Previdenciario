@@ -160,3 +160,9 @@
 - [ ] 2.11 Main protegida (P2.9): combinada com o Pedro e aplicada pelo `gh`. Verifica: um pedido sem aprovação não mescla.
 - [ ] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
 - [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-158 · Correções da revisão do #62 e do #63 (12/10)
+
+- [ ] 3.1 P1.3 · A CSP com `frame-src 'self' blob:` (`apps/api/src/servidor.ts`), para a impressão do kit em PDF; teste em `servidor.test.ts` que confere a diretiva. Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts`.
+- [ ] 3.2 P1.1 · Em produção, o `RELACIONAMENTO_SIMULADO=entrega` não vale (`apps/api/src/rotas/mensagens.ts`); teste em `rotas/mensagens.test.ts`. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
+- [ ] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

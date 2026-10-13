@@ -14,6 +14,14 @@ Quando o servidor não tem as variáveis do Chatwoot, a mensagem ao cliente MUST
 - **Quando** alguém manda uma mensagem pronta ao cliente
 - **Então** a mensagem fica gravada como não enviada, com o motivo "simulado, não saiu", e a tela mostra isso
 
+Em produção (`NODE_ENV=production`), o modo de entrega de mentira dos testes de tela (`RELACIONAMENTO_SIMULADO=entrega`)
+MUST NOT valer: a mensagem segue como não enviada, mesmo com a variável posta por engano (revisão do #63, 12/10).
+
+#### Scenario: P1.1 · A entrega de mentira não vale em produção
+- **Dado** o servidor em produção, sem as variáveis do Chatwoot e com `RELACIONAMENTO_SIMULADO=entrega`
+- **Quando** alguém manda uma mensagem pronta ao cliente
+- **Então** a mensagem fica gravada como não enviada, com o motivo "simulado, não saiu"
+
 ### Requirement: P1.2 · O /saude diz qual versão está no ar
 O `/saude` SHALL devolver a versão do build (o commit, gravado na imagem na hora de montar). Fora da imagem, devolve "local".
 
@@ -29,6 +37,14 @@ Toda resposta do servidor SHALL levar `X-Content-Type-Options: nosniff`, `X-Fram
 - **Dado** o portal no ar por HTTPS
 - **Quando** o navegador pede uma tela ou uma rota da API
 - **Então** a resposta traz os quatro cabeçalhos, e a tela abre normalmente
+
+A CSP SHALL aceitar quadro (`frame-src`) da própria origem e de `blob:`, porque a tela imprime o kit do contrato em PDF
+num quadro escondido com o arquivo baixado em `blob:` (revisão do #62, 12/10: sem isso, a impressão era barrada).
+
+#### Scenario: P1.3 · Imprimir o kit em PDF
+- **Dado** o kit do contrato em PDF, baixado pela tela em "Colher assinatura"
+- **Quando** a pessoa manda imprimir
+- **Então** o quadro com o PDF abre, e a CSP não barra o endereço `blob:`
 
 ### Requirement: P1.4 · Produção não sobe sem banco
 Em produção (`NODE_ENV=production`), sem `DATABASE_URL` o servidor MUST NOT subir: hoje ele cai num banco em memória com os usuários de exemplo. Fora de produção, segue o banco embutido de hoje.
