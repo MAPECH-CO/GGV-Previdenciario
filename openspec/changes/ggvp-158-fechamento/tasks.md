@@ -555,7 +555,9 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - a conversa do WhatsApp, pelo Atendimento.
 
   Verificado em 13/10: `rotas/conversa.test.ts` 12/12 e `rotas/transcricao-conversa.test.ts` 8/8. A atendente que decide recebe 403 (e a recusa fica no histórico, portão `conferencia_da_senior`); a Sênior decide os cinco itens, e a tarefa dela fecha. A conversa do WhatsApp, pelo Atendimento, fica no teste da tarefa 6.13.
-- [ ] 6.17 O Playwright da conversa com a Sênior conferindo (decisão 63). Verifica com o Playwright da conversa.
+- [x] 6.17 O Playwright da conversa com a Sênior conferindo (decisão 63). Verifica com o Playwright da conversa.
+
+  Verificado em 13/10: Playwright 260/260, com o da conversa. Ele não precisou mudar: usa a conversa só escrita, sem item da IA, e quem conduziu confere sem decidir nada.
 - [x] 6.18 A pendência vira tarefa (P6.7, decisão 64): a linha na conferência, fechada na cumprida, com o prazo novo; a Central da conversa lê as linhas.
   - Verifica com `rotas/conversa.test.ts`:
     - o lead sem caso;
@@ -571,4 +573,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
   Verificado em 13/10, no teste da conferência de `rotas/conversa.test.ts`: "no escritório" na ligação recusa, na rota e na conferência, e fica no histórico; com a chamada de vídeo registrada pela Ana, a Sênior muda o telefone em contrato novo, e a verificação fica na conversa.
 - [ ] 6.20 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
-- [ ] 6.21 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+- [x] 6.21 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10, com a main juntada (o #71 ao #74):
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 186/186 e `campos` 11/11;
+  - tela 1668/1668, em 198 arquivos. A primeira rodada achou a regra de abrir a conversa aceitando o WhatsApp (o `in` enxergava a entrada não enumerável); corrigida, com o teste do Pedro como estava;
+  - API 958 de 959 na suíte inteira (3 pulados), em 102 arquivos. A única falha foi a das variáveis, antes de o Mateus pôr o nome; depois, sozinha, 4/4, e as suítes da conversa e da entrada do Chatwoot de novo, 35/35;
+  - Playwright 260/260;
+  - `openspec validate --all --strict`, 16/16.
