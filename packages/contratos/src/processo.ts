@@ -33,6 +33,8 @@ export const ProcessoDoCaso = z.object({
       origem: z.enum(['d2-necessidade', 'd2-exigencia', 'd3-despacho', 'd3a-juiz']),
       situacao: z.enum(['aguardando-inss', 'marcar', 'aguardando-comprovante', 'agendada', 'na-advogada', 'aguardando-resultado', 'concluida']),
       marcada: z.object({ data: z.string(), hora: z.string(), local: z.string().nullable() }).nullable(),
+      /** GGVP-158 P5.5: a data que o sistema leu da publicação do juiz, e não a que alguém registrou. */
+      marcadaPeloSistema: z.boolean().optional(),
       perito: z.string().nullable(),
       resultado: z.enum(['favoravel', 'desfavoravel']).nullable(),
     })

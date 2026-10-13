@@ -349,10 +349,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - sem linha repetida com a "Trazer a resposta do INSS".
 
   Verificado em 13/10: `rotas/inss.test.ts` 13/13 (2 novos), e as nove suítes que leem a Central, 122/122. O "Olhei" vale para o caso inteiro: a tela não precisa saber o id da espera.
-- [ ] 5.8 A data do juiz na hora (P5.5, decisão 44): a exigência do juiz marca a perícia com a data da publicação, sem a tarefa de marcar; o resumo do processo diz `marcadaPeloSistema`.
+- [x] 5.8 A data do juiz na hora (P5.5, decisão 44): a exigência do juiz marca a perícia com a data da publicação, sem a tarefa de marcar; o resumo do processo diz `marcadaPeloSistema`.
   - Verifica com `rotas/exigencia-juiz.test.ts` e `rotas/processo.test.ts`:
     - com a data, a perícia marcada, sem tarefa de marcar, e a orientação "pelo sistema";
     - sem a data, a tarefa de marcar.
+
+  Verificado em 13/10: `rotas/pericia.test.ts` 33/33 (2 novos), `rotas/processo.test.ts` 8/8 e `rotas/exigencia-juiz.test.ts`. A tarefa de marcar já fechava na distribuição; faltava a data na linha antes de alguém abrir a tela, e o aviso no resumo. `marcadaPeloSistema` é opcional no contrato porque um teste de tela do Pedro monta o resumo à mão.
 - [ ] 5.9 O item sem documento (P5.6, decisão 45): `semSaida` em `EncerrarSemProva`; a rota pede a dilação, a remarcação ou o porquê.
   - Verifica com `rotas/manifestacao.test.ts`:
     - sem nada, recusa;

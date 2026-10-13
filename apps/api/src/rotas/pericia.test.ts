@@ -665,6 +665,27 @@ describe('GGVP-137 · a perícia anda de verdade (marcar, liberação do INSS, a
     ])
   })
 
+  it('GGVP-158 P5.5 · a data do juiz entra na hora em que a exigência abre a perícia; o resumo do processo diz que o sistema marcou', async () => {
+    await pedirPeloJuiz('Designo perícia médica para o dia 22/10/2026, às 10h30, na sala de perícias da Vara Federal de Santo Amaro.', ['medica'])
+    // Sem ninguém abrir a tela da perícia: a linha já está na agenda.
+    const [linha] = await banco.select().from(pericia)
+    expect([linha.agendadaPara?.toISOString(), linha.local]).toEqual(['2026-10-22T13:30:00.000Z', 'sala de perícias da Vara Federal de Santo Amaro'])
+    const resumo = async () => (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/processo`, cookies: await de('ana') })).json().pericia
+    expect(await resumo()).toMatchObject({ situacao: 'agendada', marcada: { data: '2026-10-22', hora: '10:30' }, marcadaPeloSistema: true })
+    // Aberta a perícia, a orientação diz que a data veio da publicação, pelo sistema, e o resumo segue igual.
+    const tarefas = (await app.inject({ method: 'GET', url: '/api/pericias/tarefas', cookies: await de('igor') })).json()
+    expect(tarefas.map((t: { acao: string; detalhe: string }) => [t.acao, t.detalhe.includes('(data lida da publicação pelo sistema)')])).toEqual([['Orientar para a perícia', true]])
+    expect((await resumo()).marcadaPeloSistema).toBe(true)
+  })
+
+  it('GGVP-158 P5.5 · sem data na publicação, nada é marcado e o resumo não diz que o sistema marcou', async () => {
+    await pedirPeloJuiz('Defiro a prova pericial. Determino perícia médica, em data a ser designada pelo perito.', ['medica'])
+    const [linha] = await banco.select().from(pericia)
+    expect(linha.agendadaPara).toBeNull()
+    const resumo = (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/processo`, cookies: await de('ana') })).json().pericia
+    expect([resumo.marcada, resumo.marcadaPeloSistema]).toEqual([null, false])
+  })
+
   it('GGVP-137 · sem data lida, o Jurídico administrativo registra a data do juízo: vai à agenda e a tarefa de marcar fecha', async () => {
     await pedirPeloJuiz('Designo perícia médica para 22/10/2026, às 10 horas, na sala 1 da Vara.', ['medica'])
     expect(await marcarAbertas()).toHaveLength(1)

@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, etapa, exigencia, exigenciaItem, pericia, pessoa, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { diasUteisAte, ehDiaUtil, feriadosNacionais, somarDias } from './prazo-inss.ts'
+import { dataDoJuizoNaPublicacao } from '../../../web/src/regras/pericia.ts'
 
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 type Tipo = 'medica' | 'social'
@@ -101,14 +102,19 @@ type Origem = typeof ORIGEM_INSS | typeof ORIGEM_JUIZ | typeof ORIGEM_DESPACHO
 
 /**
  * CA2, CA3, CA6: abre as perícias pedidas pela exigência e a tarefa do Jurídico administrativo, como a GGVP-31. Devolve
- * a tarefa de marcar que abriu.
+ * a tarefa de marcar que abriu. GGVP-158 P5.5: com o texto da publicação do juiz, a perícia que tem data, hora e local
+ * escritos já nasce marcada, na agenda, sem esperar alguém abrir a tela.
  */
-export async function abrirPericiasDaExigencia(tx: Tx, casoId: string, tipos: Tipo[], quem: string, agora: Date, origem: Origem = ORIGEM_INSS) {
+export async function abrirPericiasDaExigencia(tx: Tx, casoId: string, tipos: Tipo[], quem: string, agora: Date, origem: Origem = ORIGEM_INSS, publicacao?: string) {
   const [e] = await tx
     .insert(etapa)
     .values({ casoId, diagrama: origem.diagrama, passo: origem.passo, situacao: 'concluida', iniciadaEm: agora, concluidaEm: agora, concluidaPor: quem })
     .returning()
-  for (const tipo of tipos) await tx.insert(pericia).values({ casoId, tipo, chamadaPorEtapaId: e.id })
+  for (const tipo of tipos) {
+    const lida = publicacao ? dataDoJuizoNaPublicacao(publicacao, tipo) : null
+    const marcada = lida && { agendadaPara: new Date(`${lida.data}T${lida.hora}:00-03:00`), local: lida.local }
+    await tx.insert(pericia).values({ casoId, tipo, chamadaPorEtapaId: e.id, ...marcada })
+  }
   const [t] = await tx
     .insert(tarefa)
     .values({ casoId, passo: 'DP.01', titulo: `Marcar ${tipos.map((t) => NOME_PERICIA[t]).join(' e ')} (${origem.rotulo})`, perfilDono: 'juridico_adm' })

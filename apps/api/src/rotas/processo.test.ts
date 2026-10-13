@@ -152,6 +152,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       origem: 'd2-necessidade',
       situacao: 'concluida',
       marcada: { data: '2026-10-05', hora: '10:30', local: 'Agência Santo Amaro' },
+      marcadaPeloSistema: false,
       perito: 'Dr. Perito',
       resultado: 'favoravel',
     })
@@ -240,7 +241,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     const [e] = await banco.insert(etapa).values({ casoId: c.id, diagrama: 'D3a', passo: 'D3a.03', situacao: 'concluida' }).returning()
     await banco.insert(pericia).values({ casoId: c.id, tipo: 'social', chamadaPorEtapaId: e.id })
     const doJuiz = (await ver('ana', c.id)).json()
-    expect(doJuiz.pericia).toEqual({ tipo: 'social', origem: 'd3a-juiz', situacao: 'marcar', marcada: null, perito: null, resultado: null })
+    expect(doJuiz.pericia).toEqual({ tipo: 'social', origem: 'd3a-juiz', situacao: 'marcar', marcada: null, marcadaPeloSistema: false, perito: null, resultado: null })
     expect(doJuiz.proximoPasso).toBeNull()
   })
 

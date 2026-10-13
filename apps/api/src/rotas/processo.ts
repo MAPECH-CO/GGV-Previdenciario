@@ -36,7 +36,7 @@ import { ORIGEM_DO_PASSO } from './pericia.ts'
 import { NO_CATALOGO, UUID, horaEmBrasilia } from './recepcao.ts'
 import { etapaAtualDoCaso } from '../../../web/src/regras/caso.ts'
 import { esperaOInss, situacaoDaPericia } from '../../../web/src/regras/pericia.ts'
-import type { Pericia } from '../../../web/src/regras/periciaNoCaso.ts'
+import { SISTEMA, type Pericia } from '../../../web/src/regras/periciaNoCaso.ts'
 
 export const MSG_CASO_NAO_ENCONTRADO = 'Caso não encontrado.'
 
@@ -135,6 +135,8 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
           : quando
             ? { data: hojeEmBrasilia(quando), hora: horaEmBrasilia(quando), local: p.pericia.local }
             : null,
+        // GGVP-158 P5.5: sem o documento das telas, a data na linha da perícia do juiz só pode ter vindo da publicação.
+        marcadaPeloSistema: doc?.marcacao ? doc.marcacao.origem === 'juizo' && doc.marcacao.registradaPor === SISTEMA : origem === 'd3a-juiz' && quando !== null,
         perito: p.perito,
         resultado: p.pericia.resultado as 'favoravel' | 'desfavoravel' | null,
       }
