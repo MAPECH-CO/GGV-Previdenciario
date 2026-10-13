@@ -1,6 +1,7 @@
 // Contratos da garantia e governança (GGVP-13): tentativas bloqueadas (GGVP-109) e regras do roteiro em código (GGVP-25).
 import { normalizarInteiro, validarInteiro } from '@ggv/campos'
 import { z } from 'zod'
+import { CATALOGO_BENEFICIOS } from './catalogo-beneficios.ts'
 import { DataObrigatoria } from './inss.ts'
 
 /**
@@ -8,7 +9,7 @@ import { DataObrigatoria } from './inss.ts'
  * perfil; `funcoes`: separação de funções, quem deu o OK na prestação não registra o recebimento (GGVP-98 CA8). Fica
  * sem número na lista G1 a G22 (decisão do Mateus, 08/10; Q21).
  */
-export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'funcoes', 'G20'] as const
+export const PORTOES_DE_BLOQUEIO = ['G1', 'G2', 'G6', 'G7', 'G8', 'G17', 'G21', 'setores', 'perfil', 'funcoes', 'G20', 'G22'] as const
 export type PortaoDeBloqueio = (typeof PORTOES_DE_BLOQUEIO)[number]
 
 /** GET /api/gestao/tentativas (GGVP-109 CA9, `gestao.ver`): quem, quando, caso e portão, sem dado de saúde. */
@@ -163,8 +164,8 @@ export const UsoDoCofre = z.object({
 })
 export type UsoDoCofre = z.infer<typeof UsoDoCofre>
 
-/** O catálogo de benefícios do escritório (GGVP-104 CA5): um só, para o banco, a configuração e as telas. */
-export const BENEFICIOS = [
+/** Os 11 benefícios de antes do catálogo inteiro, na ordem de sempre: a Configuração lista assim, e eles vêm primeiro. */
+const ANTES = [
   'bpc_loas_deficiente',
   'bpc_loas_idoso',
   'aposentadoria_pcd',
@@ -176,10 +177,22 @@ export const BENEFICIOS = [
   'auxilio_acidente',
   'pensao_morte',
   'salario_maternidade',
-  'outro',
 ] as const
-export type Beneficio = (typeof BENEFICIOS)[number]
+type DoCatalogo = (typeof CATALOGO_BENEFICIOS)[number]['servidor']
+
+/**
+ * O catálogo de benefícios do escritório (GGVP-104 CA5): um só, para o banco, a configuração e as telas. GGVP-158 P4.6: os
+ * 34 do catálogo das telas, pelo id do servidor, e "outro".
+ */
+export type Beneficio = DoCatalogo | 'outro'
+export const BENEFICIOS: readonly Beneficio[] = [
+  ...ANTES,
+  ...CATALOGO_BENEFICIOS.map((b) => b.servidor).filter((s) => !(ANTES as readonly string[]).includes(s)),
+  'outro',
+]
 export const ROTULO_BENEFICIO: Record<Beneficio, string> = {
+  ...(Object.fromEntries(CATALOGO_BENEFICIOS.map((b) => [b.servidor, b.nome])) as Record<DoCatalogo, string>),
+  // Os 11 de antes guardam o nome que o servidor já usava, nos textos e no histórico.
   bpc_loas_deficiente: 'BPC/LOAS Deficiente',
   bpc_loas_idoso: 'BPC/LOAS Idoso',
   aposentadoria_pcd: 'Aposentadoria da Pessoa com Deficiência',
@@ -205,6 +218,9 @@ export const nomeDoBeneficio = (b: string | null): string =>
 export const PARAMETROS_DO_ESCRITORIO = {
   'cobranca.limite': { rotulo: 'Cobrança de documento: tentativas até subir para a Sênior', min: 1, max: 20 },
   'cobranca.intervalo_dias': { rotulo: 'Cobrança de documento: dias úteis entre as tentativas', min: 1, max: 30 },
+  // GGVP-158 P5.3: a confirmação da entrevista do lead (Lucas, GGVP-122: 2 tentativas, 3 dias).
+  'confirmacao.limite': { rotulo: 'Confirmação da entrevista do lead: tentativas até subir para a Sênior', min: 1, max: 20 },
+  'confirmacao.intervalo_dias': { rotulo: 'Confirmação da entrevista do lead: dias entre as tentativas', min: 1, max: 30 },
   'contato.limite': { rotulo: 'Cliente sumido: tentativas de contato até subir para a Sênior', min: 1, max: 20 },
   'contato.janela_dias': { rotulo: 'Cliente sumido: dias para as tentativas de contato', min: 1, max: 60 },
   'pericia.remarcacao.limite': { rotulo: 'Remarcação de perícia: remarcações até subir para a advogada responsável', min: 0, max: 10 },
@@ -214,6 +230,9 @@ export const PARAMETROS_DO_ESCRITORIO = {
 } as const
 export type Parametro = keyof typeof PARAMETROS_DO_ESCRITORIO
 export const PARAMETROS = Object.keys(PARAMETROS_DO_ESCRITORIO) as Parametro[]
+
+/** GGVP-158 P5.3: o laço do cliente sumido ainda não existe; os limites dele ficam guardados, sem uso, e a tela avisa. */
+export const PARAMETROS_SEM_USO: readonly Parametro[] = ['contato.limite', 'contato.janela_dias']
 
 /** PUT /api/configuracao/parametros/:chave: número inteiro pelo `campos`; a faixa de cada um, o servidor confere. */
 export const SalvarParametro = z.object({
@@ -243,9 +262,35 @@ export type PublicarKit = z.input<typeof PublicarKit>
 export const SalvarMensagem = z.object({ conteudo: z.string({ error: 'Escreva a mensagem' }).trim().min(1, 'Escreva a mensagem') })
 export type SalvarMensagem = z.infer<typeof SalvarMensagem>
 
+/** Um tribunal do protocolo (GGVP-158 P5.8): o nome, o site do peticionamento e o tamanho máximo por arquivo, em MB. */
+export const TribunalDoProtocolo = z.object({
+  nome: z.string({ error: 'Escreva o nome do tribunal' }).trim().min(3, 'Escreva o nome do tribunal').max(120, 'O nome do tribunal tem até 120 caracteres'),
+  site: z
+    .string({ error: 'Escreva o site do tribunal' })
+    .trim()
+    .refine((s) => /^https:\/\/\S+$/.test(s), 'O site do tribunal começa com https://'),
+  tamanhoMaximoMb: z
+    .unknown()
+    .refine(validarInteiro, 'Informe o tamanho por arquivo em MB, número inteiro')
+    .transform((v) => normalizarInteiro(v) as number)
+    .refine((n) => n >= 1 && n <= 100, 'O tamanho por arquivo vai de 1 a 100 MB'),
+})
+
+/** PUT /api/configuracao/tribunais (GGVP-158 P5.8): a lista inteira, cada tribunal uma vez. */
+export const SalvarTribunais = z
+  .object({ tribunais: z.array(TribunalDoProtocolo).min(1, 'Cadastre ao menos um tribunal') })
+  .refine((t) => new Set(t.tribunais.map((x) => x.nome.toLowerCase())).size === t.tribunais.length, { message: 'Cada tribunal entra uma vez', path: ['tribunais'] })
+export type SalvarTribunais = z.input<typeof SalvarTribunais>
+
+/** PUT /api/configuracao/assinatura (GGVP-158 P5.8): a assinatura padrão da petição; "[completar]" barra o protocolo. */
+export const SalvarAssinatura = z.object({
+  assinatura: z.string({ error: 'Escreva a assinatura' }).trim().min(3, 'Escreva a assinatura').max(500, 'A assinatura tem até 500 caracteres'),
+})
+export type SalvarAssinatura = z.infer<typeof SalvarAssinatura>
+
 /** GET /api/configuracao (GGVP-104, `gestao.ver`; editar com `configuracao.editar`). */
 export const ConfiguracaoDoEscritorio = z.object({
-  parametros: z.array(z.object({ chave: z.string(), rotulo: z.string(), valor: z.number().nullable(), min: z.number(), max: z.number() })),
+  parametros: z.array(z.object({ chave: z.string(), rotulo: z.string(), valor: z.number().nullable(), min: z.number(), max: z.number(), emUso: z.boolean() })),
   kits: z.array(
     z.object({
       beneficio: z.enum(BENEFICIOS),
@@ -257,6 +302,9 @@ export const ConfiguracaoDoEscritorio = z.object({
   /** Os tipos de documento já usados, para a gestão não escrever um que nenhuma tela usa. */
   tiposDeDocumento: z.array(z.string()),
   mensagens: z.array(z.object({ id: z.uuid(), nome: z.string(), conteudo: z.string() })),
+  /** GGVP-158 P5.8: os tribunais do protocolo e a assinatura padrão da petição. */
+  tribunais: z.array(z.object({ nome: z.string(), site: z.string(), tamanhoMaximoMb: z.number() })),
+  assinatura: z.string().nullable(),
   /** CA3: as últimas mudanças, com quem, quando e o que mudou. */
   historico: z.array(z.object({ quando: z.string(), quem: z.string(), descricao: z.string() })),
   podeEditar: z.boolean(),

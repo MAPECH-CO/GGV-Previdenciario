@@ -18,6 +18,7 @@ const base: CasoParaConferencia = {
   laudoNovoEsperando: false,
   temFicha: true,
   kitAssinado: true,
+  calculo: null,
   podeDecidir: true,
   situacao: 'aguardando',
 }

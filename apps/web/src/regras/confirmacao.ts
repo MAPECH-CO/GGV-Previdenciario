@@ -2,6 +2,7 @@
 import type { Agendamento, Confirmacao, Ficha, TipoDeEntrevista } from '../dados/tipos.ts'
 import { COMO, diaFalado, horaFalada, somarDias } from './agenda.ts'
 import { emAberto } from './busca.ts'
+import type { LimitesDoLaco } from './cobranca.ts'
 
 /** Quantas tentativas sem resposta antes de a tarefa passar para a advogada sênior (Lucas, 05/10). */
 export const TENTATIVAS_DE_CONFIRMACAO = 2
@@ -39,11 +40,12 @@ export function precisaConfirmar(ficha: Ficha, a: Agendamento, hoje: string): bo
   )
 }
 
-/** Depois de uma tentativa sem resposta: a próxima em 3 dias ou, na segunda, a advogada sênior (CA6). */
-export function depoisDaTentativa(semResposta: number, hoje: string): { naSenior: true } | { naSenior: false; proximaEm: string } {
-  return semResposta >= TENTATIVAS_DE_CONFIRMACAO
-    ? { naSenior: true }
-    : { naSenior: false, proximaEm: somarDias(hoje, DIAS_ENTRE_TENTATIVAS) }
+/** Sem a Configuração, os do Lucas (05/10). GGVP-158 P5.3: o servidor lê os do escritório. */
+export const LIMITES_DA_CONFIRMACAO: LimitesDoLaco = { tentativas: TENTATIVAS_DE_CONFIRMACAO, diasEntre: DIAS_ENTRE_TENTATIVAS }
+
+/** Depois de uma tentativa sem resposta: a próxima em alguns dias ou, no limite, a advogada sênior (CA6). */
+export function depoisDaTentativa(semResposta: number, hoje: string, l = LIMITES_DA_CONFIRMACAO): { naSenior: true } | { naSenior: false; proximaEm: string } {
+  return semResposta >= l.tentativas ? { naSenior: true } : { naSenior: false, proximaEm: somarDias(hoje, l.diasEntre) }
 }
 
 function juntar(itens: string[]): string {

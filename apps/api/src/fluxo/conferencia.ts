@@ -3,8 +3,12 @@ import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { decisao, tarefa, usuario } from '../banco/esquema.ts'
 
-/** G2: o OK é só a última decisão D2.01 da Sênior, nunca uma marcação de outro perfil; reprovar depois apaga o OK (CA9). */
+/**
+ * G2: o OK é só a última decisão D2.01 da Sênior, nunca uma marcação de outro perfil; reprovar depois apaga o OK (CA9).
+ * GGVP-158 P5.7: liberar de novo também apaga: com a conferência nova esperando a Sênior, o OK antigo não vale.
+ */
 export async function okDaSenior(banco: Banco, casoId: string) {
+  if (await esperandoConferencia(banco, casoId)) return null
   const [d] = await banco
     .select({ resultado: decisao.resultado, por: usuario.nome, em: decisao.decididoEm })
     .from(decisao)

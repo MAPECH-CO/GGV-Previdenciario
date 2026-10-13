@@ -1,6 +1,7 @@
 // Contratos do desfecho (GGVP-11): explicar o resultado ao cliente no caso perdido (GGVP-22).
 import { z } from 'zod'
 import { SugestaoDaIa } from './ia.ts'
+import { DataObrigatoria, naoFutura } from './inss.ts'
 
 /** Quem fala com o cliente (GGVP-22 CA5, Lucas 06/10): a advogada, em caso complexo, ou o Atendimento, no padrão. */
 export const QUEM_FALA = ['advogada', 'atendimento'] as const
@@ -104,6 +105,12 @@ export const ROTULO_DECISAO_DO_RECURSO: Record<(typeof DECISOES_DO_RECURSO)[numb
   nao_recorrer: 'Não, encerrar com estudo de caso',
 }
 
+/** POST /api/casos/:id/recurso/protocolo (GGVP-158 P5.15): a data do protocolo; o comprovante vai no mesmo envio. */
+export const ProtocoloDoRecurso = z.object({
+  protocoladoEm: DataObrigatoria('Informe a data do protocolo do recurso (dd/mm/aaaa)').refine(naoFutura, 'A data do protocolo não pode ser depois de hoje'),
+})
+export type ProtocoloDoRecurso = z.input<typeof ProtocoloDoRecurso>
+
 /** POST /api/casos/:id/recurso (CA3): a escolha e a justificativa, sempre. */
 export const DecidirRecurso = z.object({
   decisao: z.enum(DECISOES_DO_RECURSO, { error: 'Escolha se vale recorrer' }),
@@ -112,8 +119,9 @@ export const DecidirRecurso = z.object({
 export type DecidirRecurso = z.infer<typeof DecidirRecurso>
 
 /**
- * GET /api/casos/:id/recurso. O prazo é contado pelo sistema, pelo lado seguro (CA4, G12). A chance é da jurimetria,
- * calculada por código (CA8); nula enquanto não houver a do juízo. A IA nunca dá o número.
+ * GET /api/casos/:id/recurso. O prazo é contado pelo sistema, pelo lado seguro (CA4, G12). A chance do recurso é da
+ * jurimetria, calculada por código pelos recursos julgados do acervo (GGVP-161 CA2); `porcentagem` nula é "sem dados
+ * ainda". A IA nunca dá o número: ela traz a avaliação (`avaliacao`, GGVP-161 CA3).
  */
 export const RecursoDoCaso = z.object({
   casoId: z.uuid(),
@@ -122,7 +130,12 @@ export const RecursoDoCaso = z.object({
   beneficio: z.string().nullable(),
   sentenca: z.object({ disponibilizadaEm: z.string(), texto: z.string() }).nullable(),
   prazo: z.object({ fim: z.string(), regra: z.string() }).nullable(),
-  chance: z.object({ porcentagem: z.number().int(), casos: z.number().int(), regra: z.string() }).nullable(),
+  chance: z
+    .object({ porcentagem: z.number().int().nullable(), casos: z.number().int(), favoraveis: z.number().int(), baseEm: z.string().nullable(), regra: z.string() })
+    .nullable(),
+  /** GGVP-161 CA3: a avaliação da IA, pronta (sugestão pronta); nula quando a IA não respondeu, com o motivo. */
+  avaliacao: SugestaoDaIa.nullable().default(null),
+  motivoIa: z.string().nullable().default(null),
   decisao: z.object({ decisao: z.enum(DECISOES_DO_RECURSO), justificativa: z.string(), por: z.string(), em: z.string() }).nullable(),
   /** A tarefa "Decidir recurso" está aberta e o perfil decide (a Sênior). */
   podeDecidir: z.boolean(),

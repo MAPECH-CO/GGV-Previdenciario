@@ -1,6 +1,22 @@
 # Homologação no Coolify (GGVP-119)
 
-O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "Portal Operacional". A API serve a tela montada na mesma URL.
+O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "PrevGGVLucas", em São Paulo (sa-east-1), na mesma região da VPS. A API serve a tela montada na mesma URL.
+
+**Troca de 13/10 (Oregon → São Paulo).** Até 13/10, o banco era o projeto "Portal Operacional", em Oregon (us-west-2). Cada consulta levava menos de 1 ms no banco, mas a ida e volta entre a VPS e Oregon levava de 150 a 180 ms, e uma tela faz dezenas de consultas em sequência. O PrevGGVLucas guardava o portal antigo: o app dele foi parado (não apagado) e o banco dele foi limpo, sem backup, por decisão do Mateus. Os schemas `public` e `drizzle` foram copiados com `pg_dump`/`pg_restore` (Docker `postgres:17`), e os 5 modelos do depósito `documentos`, pela API do Storage, nos mesmos caminhos.
+
+**Medição depois da troca (13/10, 22h, Chrome do Mateus, perfil Sênior; tempo de cada chamada à API):**
+
+| Tela | Chamadas à API (ms) |
+|---|---|
+| Início | sessão 91 · recepção 77 · documentação médica 29 · perícias 22 · tarefas da perícia 55 · peritos 29 · tarefas 173 · setor/minhas 104 · setor 95 |
+| Processos | sessão 684 · recepção 291 · documentação médica 111 · perícias 32 · tarefas da perícia 79 · peritos 32 · processos 75 |
+| Prazos | sessão 181 · recepção 102 · documentação médica 546 · perícias 87 · tarefas da perícia 119 · peritos 46 |
+| Agenda | sessão 880 · recepção 108 · documentação médica 46 |
+| Resultados | sessão 140 |
+
+Nenhuma chamada passou de 1 segundo (CA8). A página em si chega em 22 ms (primeiro byte) e fica pronta em cerca de 400 ms. A `/api/sessao` variou de 91 a 880 ms entre as telas: fica de olho; se passar de 1 s, vira tarefa.
+
+**Como voltar:** enquanto o "Portal Operacional" existir, devolva no Coolify o `DATABASE_URL` (Session pooler de lá), o `SUPABASE_URL` e a `SUPABASE_SERVICE_ROLE_KEY` dele e faça o Redeploy. O que foi gravado em São Paulo depois da troca fica lá.
 
 Caminho de cada merge na `main`: a CI passa → o workflow **Imagem** publica `ghcr.io/mapech-co/ggv-previdenciario:main` (e a tag do commit) → chama o webhook do Coolify → o Coolify baixa a imagem e troca o container. A cada start, as migrações rodam no Supabase antes de a API subir; se falharem, o container não sobe e o Coolify mantém a versão anterior.
 
@@ -11,7 +27,7 @@ Nenhum valor desta página vai para o chat, o Jira ou o repositório.
 ## 1. Antes de começar
 
 1. **Domínio com https.** No DNS de um domínio do escritório, crie um registro **A** `prev-homolog` com o IP da VPS do Coolify. O cookie da sessão só vale em https, e o endereço `sslip.io` que o Coolify gera fica em http: nele, o login não funciona.
-2. **Banco.** No Supabase, projeto "Portal Operacional": **Project Settings → Database → Reset database password**. Depois, em **Connect → Session pooler**, copie a URL com a senha nova. O endereço direto só funciona em rede com IPv6.
+2. **Banco.** No Supabase, projeto "PrevGGVLucas" (São Paulo): **Project Settings → Database → Reset database password**. Depois, em **Connect → Session pooler**, copie a URL com a senha nova. O endereço direto só funciona em rede com IPv6.
 3. **Chave do cofre do gov.br.** Gere na sua máquina e guarde num gerenciador de senhas (trocar depois deixa ilegíveis as senhas já guardadas no cofre):
 
    ```bash
@@ -44,8 +60,8 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
    não enviada ("o telefone está fora da lista de teste da homologação") e a tela diz isso. Sem a lista, nenhum telefone
    recebe. Só o app de produção leva `AMBIENTE=producao`, e lá não há lista.
    Opcional, para o kit do contrato (GGVP-136): `GOTENBERG_URL` (o endereço interno do serviço Gotenberg, que converte o Word do
-   kit em PDF; sem ela o kit sai em Word) e `ZAPSIGN_API_TOKEN` (diz que o ZapSign está contratado; sem ela só há papel). O
-   Gotenberg é outro serviço no mesmo projeto, sem domínio público. Os passos estão em `docs/guias/kit-de-verdade.md`.
+   kit em PDF; sem ela o kit sai em Word). O ZapSign está fora do escopo (GGVP-158): a assinatura é em papel. O Gotenberg é
+   outro serviço no mesmo projeto, sem domínio público. Os passos estão em `docs/guias/kit-de-verdade.md`.
 4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
 5. **Webhooks:** copie a **Deploy webhook URL**.
 
@@ -137,11 +153,16 @@ Nenhum valor vai para o repositório, o Jira ou o chat.
 | `CHATWOOT_PERMITIDOS` | Fora de produção, os únicos telefones com que o Chatwoot fala, separados por vírgula. |
 | `RELACIONAMENTO_SIMULADO` | Sem o Chatwoot, `nao` tira até o contato simulado da tela. `entrega` finge a entrega e é só dos testes de tela (`playwright.config.ts`): na homologação e na produção, nunca. |
 | `GOTENBERG_URL` | O conversor do kit do contrato para PDF. Sem ela, o kit sai em Word. |
-| `ZAPSIGN_API_TOKEN` | Diz que o ZapSign está contratado. Sem ela, só papel. |
+| `LEITURA_SIMULADA` | `sim` troca a leitura da IA pela leitura de exemplo, pelo nome do arquivo. É só dos testes de tela (`playwright.config.ts`): com `AMBIENTE` igual a `homologacao` ou `producao`, o servidor não sobe com ela. |
 | `FONTES_PUBLICACAO` | As fontes da vigília do diário (`aasp`, `djen`). Fora de produção, o padrão é o exemplo. |
 | `DJEN_OABS` | As OABs que o DJEN procura, como `123456/SP`. |
 | `AASP_CHAVES` | As chaves da AASP. |
 | `VIGILIA_TRIBUNAIS` | Os tribunais da vigília. Padrão: TRF3 e TJSP. |
+| `ALARME_CANAL_URL` | O webhook do canal da equipe (Google Chat ou Slack) que recebe o alarme da vigília (ADR-018). Só `https`. Sem ela, o alarme fica no portal e no log. |
+| `ALARME_JIRA_URL` | O site do Jira onde o alarme abre chamado, como `https://<conta>.atlassian.net`. Só `https`. |
+| `ALARME_JIRA_EMAIL` | O e-mail do usuário de serviço que abre o chamado no Jira. |
+| `ALARME_JIRA_TOKEN` | O token de API desse usuário. Segredo: só no Coolify. |
+| `ALARME_JIRA_PROJETO` | A chave do projeto do chamado, como `GGVP`. Sem uma das quatro do Jira, não abre chamado. |
 | `PORTAL_URL` | Só para o comando `modelos:subir`: o endereço do portal. |
 | `SENIOR_EMAIL` | Só para o `modelos:subir`: o login da Sênior que sobe os modelos. |
 | `SENIOR_SENHA` | Só para o `modelos:subir`: a senha dela, digitada no terminal de quem roda. |

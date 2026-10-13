@@ -1,9 +1,16 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, fichaRecepcao, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, chamadaIa, credencialGovbr, documento, fichaRecepcao, usuario } from '../banco/esquema.ts'
+import { chaveDoCofre, criarCofre } from '../cofre.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { MSG_FICHA_DIGITALIZADA } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -29,7 +36,8 @@ const MEDICO = 'dor e perda de força na mão'
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
+  // A segunda ficha em papel daqui é a de exemplo, sem arquivo (GGVP-158 P4.10); a leitura de verdade tem o bloco no fim.
+  app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
@@ -103,5 +111,46 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     // Campo que a tela não conhece não entra.
     await json('ana', 'PUT', `/api/fichas/${fichaId}/segunda-ficha`, { respostas: { ...PAPEL, senha: 'gov-123' }, origem: 'tablet' })
     expect(JSON.stringify(await banco.select().from(fichaRecepcao))).not.toContain('gov-123')
+  })
+})
+
+describe('GGVP-158 P4.2 · a segunda ficha em papel lida pela IA', () => {
+  const SENHA_DO_PAPEL = 'Senha#Meu#INSS-2026'
+  const PDF = Buffer.from('%PDF-1.4 a segunda ficha preenchida à mão')
+  const LIDA = { respostas: { empresa: 'Exemplo Indústria Ltda', lado: 'direito', doencas: MEDICO, campoQueNaoExiste: 'x' }, senha: SENHA_DO_PAPEL }
+  const cofre = criarCofre(chaveDoCofre())
+  const ler = async (fichaId: string, arquivo?: Buffer) => {
+    const f = '----ggv'
+    const corpo =
+      arquivo &&
+      Buffer.concat([Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="segunda.pdf"\r\nContent-Type: application/pdf\r\n\r\n`), arquivo, Buffer.from(`\r\n--${f}--\r\n`)])
+    return app.inject({
+      method: 'POST',
+      url: `/api/fichas/${fichaId}/segunda-ficha/leitura`,
+      cookies: await cookieDe('ana'),
+      ...(corpo && { payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }),
+    })
+  }
+
+  beforeEach(async () => {
+    await app.close()
+    const fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(LIDA) } }] })))
+    // A seção médica é dado de saúde: a leitura usa a autorização do escritório (IA_PERMITE_DADO_DE_SAUDE).
+    const ia = criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste-openai', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch, agora: () => relogio })
+    app = criarServidor({ banco, agora: () => relogio, ia, cofre, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))) })
+  })
+
+  it('a IA lê os campos da ficha; a seção médica vai só ao Jurídico; a senha vai ao cofre e a nenhum outro lugar', async () => {
+    const fichaId = await lead()
+    expect((await ler(fichaId)).json()).toEqual({ erro: MSG_FICHA_DIGITALIZADA })
+    const leitura = (await ler(fichaId, PDF)).json()
+    expect(leitura).toMatchObject({ senhaLida: true, respostas: { empresa: 'Exemplo Indústria Ltda', lado: 'direito', doencas: '' } })
+    expect(leitura.respostas.campoQueNaoExiste).toBeUndefined()
+    expect(await json('gabi', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).toMatchObject({ lida: true, medicos: { doencas: MEDICO } })
+    const [credencial] = await banco.select().from(credencialGovbr)
+    expect(cofre.decifrar(credencial)).toBe(SENHA_DO_PAPEL)
+    for (const onde of [leitura, await banco.select().from(fichaRecepcao), await banco.select().from(chamadaIa)]) expect(JSON.stringify(onde)).not.toContain(SENHA_DO_PAPEL)
+    const [d] = await banco.select().from(documento)
+    expect([d.tipo, d.sensivel]).toEqual(['ficha-acidente', true])
   })
 })

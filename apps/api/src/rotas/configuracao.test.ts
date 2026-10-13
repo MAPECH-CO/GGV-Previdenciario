@@ -6,6 +6,7 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { BENEFICIOS as BENEFICIOS_DO_BANCO, caso, configuracao, eventoAuditoria, kitDocumento, modelo, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { ASSINATURA_PADRAO, TRIBUNAL_PADRAO, garantirPadroesDoProtocolo } from '../fluxo/protocolo-ao-subir.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -49,7 +50,11 @@ describe('GGVP-104 · configuração do escritório', () => {
       valor: 3,
       min: 1,
       max: 20,
+      emUso: true,
     })
+    // GGVP-158 P5.3: a confirmação do lead ganhou os dela; o cliente sumido não tem laço ainda, e a tela avisa.
+    const emUso = Object.fromEntries(c.parametros.map((p: { chave: string; emUso: boolean }) => [p.chave, p.emUso]))
+    expect(emUso).toMatchObject({ 'confirmacao.limite': true, 'confirmacao.intervalo_dias': true, 'pericia.remarcacao.limite': true, 'contato.limite': false, 'contato.janela_dias': false })
     expect([c.podeEditar, (await ver('lauro')).podeEditar]).toEqual([true, true])
     expect((await chamar('gabi', 'GET', '/api/configuracao')).statusCode).toBe(403)
     // GGVP-96: o Financeiro fica só com os Resultados da Gestão.
@@ -114,5 +119,36 @@ describe('GGVP-104 · configuração do escritório', () => {
 
   it('CA5 · o catálogo de benefícios do banco é o dos contratos', () => {
     expect(BENEFICIOS_DO_BANCO).toBe(BENEFICIOS)
+  })
+
+  it('GGVP-158 P5.8 · o tribunal e a assinatura: a gestão salva e fica no histórico; fora da faixa, sem https ou de fora da gestão, recusa', async () => {
+    expect([(await ver()).tribunais, (await ver()).assinatura]).toEqual([[], null])
+    const tribunais = (lista: object[], apelido = 'helena') => chamar(apelido, 'PUT', '/api/configuracao/tribunais', { tribunais: lista })
+    const jf = { nome: 'Justiça Federal da 3ª Região', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: '10' }
+    expect((await tribunais([jf], 'gabi')).statusCode).toBe(403)
+    expect((await tribunais([{ ...jf, tamanhoMaximoMb: '0' }])).json().erro).toBe('O tamanho por arquivo vai de 1 a 100 MB')
+    expect((await tribunais([{ ...jf, site: 'http://www.trf3.jus.br/' }])).json().erro).toBe('O site do tribunal começa com https://')
+    expect((await tribunais([jf, jf])).json().erro).toBe('Cada tribunal entra uma vez')
+    expect((await tribunais([jf])).statusCode).toBe(201)
+    const assinatura = await chamar('lauro', 'PUT', '/api/configuracao/assinatura', { assinatura: 'Dr. Glauco\nAdvogado responsável · OAB/UF [completar]' })
+    expect(assinatura.statusCode).toBe(201)
+    const c = await ver()
+    expect([c.tribunais, c.assinatura]).toEqual([[{ nome: 'Justiça Federal da 3ª Região', site: 'https://www.trf3.jus.br/', tamanhoMaximoMb: 10 }], 'Dr. Glauco\nAdvogado responsável · OAB/UF [completar]'])
+    expect(c.historico.map((h: { quem: string; descricao: string }) => [h.quem, h.descricao])).toEqual(
+      expect.arrayContaining([
+        ['helena', 'Tribunais do protocolo: Justiça Federal da 3ª Região (10 MB por arquivo)'],
+        ['lauro', 'Assinatura padrão da petição alterada'],
+      ]),
+    )
+  })
+
+  it('GGVP-158 P5.8 · ao subir num banco novo, o tribunal e a assinatura padrão entram uma vez; o que a Sênior mudou fica', async () => {
+    expect(await garantirPadroesDoProtocolo(banco, relogio)).toEqual(['tribunais', 'peticao.assinatura'])
+    const c = await ver()
+    expect([c.tribunais, c.assinatura]).toEqual([[TRIBUNAL_PADRAO], ASSINATURA_PADRAO])
+    expect(c.historico.map((h: { quem: string; descricao: string }) => [h.quem, h.descricao])).toContainEqual(['Sem sessão', 'O sistema pôs o padrão do protocolo: o tribunal e a assinatura'])
+    await chamar('helena', 'PUT', '/api/configuracao/assinatura', { assinatura: 'Dr. Glauco · OAB/SP 123.456' })
+    expect(await garantirPadroesDoProtocolo(banco, relogio)).toEqual([])
+    expect((await ver()).assinatura).toBe('Dr. Glauco · OAB/SP 123.456')
   })
 })

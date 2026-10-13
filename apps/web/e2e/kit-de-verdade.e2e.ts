@@ -68,9 +68,8 @@ test('a Sênior sobe e troca o modelo; a Atendimento vê o que falta na ficha, g
   await expect(page.getByRole('heading', { name: '✓ Contrato gerado · versão 1' })).toBeVisible()
   await expect(page.getByText(`O kit foi gerado pelo ${NOME_DO_MODELO} e segue para colher a assinatura do cliente.`)).toBeVisible()
 
-  // CA8 · Sem o ZapSign contratado, a opção do celular não aparece. O servidor do teste tem o ZapSign de mentira ligado (os outros
-  // testes usam); aqui a tela recebe "não contratado" e "sem conversor de PDF", como na homologação sem as duas variáveis.
-  await page.route('**/api/contrato/servicos', (rota) => rota.fulfill({ json: { zapsign: false, pdf: false } }))
+  // CA8 · Sem o ZapSign (fora do escopo, GGVP-158 P4.5), a opção do celular não aparece. O servidor do teste não tem o
+  // conversor de PDF, como a homologação sem o GOTENBERG_URL.
   await page.getByRole('link', { name: 'Colher assinatura' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lia Kit Teste · Colher assinatura')
   await expect(page.getByRole('radio', { name: 'ZapSign (digital)' })).toHaveCount(0)

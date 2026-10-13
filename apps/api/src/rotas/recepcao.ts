@@ -3,6 +3,7 @@
 // ficha de atendimento), rodando aqui com o perfil da sessão. A ficha fica em `ficha_recepcao`, no formato das telas; a
 // pessoa, em `pessoa`, que o resto do portal usa.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
+import { randomUUID } from 'node:crypto'
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
@@ -18,17 +19,24 @@ import {
   validarNome,
   validarTelefone,
 } from '@ggv/campos'
-import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
+import { BENEFICIO_NA_CONFIGURACAO, BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, LigacaoDaPasta, NovoClienteDoBalcao, pode, type Erro, type Perfil } from '@ggv/contratos'
+import type { Armazenamento } from '../armazenamento.ts'
+import type { Drive, PastasDoDrive } from '../drive.ts'
+import { pastaDoTitulo } from '../fluxo/arquivar.ts'
+import { pastasDoCliente } from '../../../web/src/regras/pasta.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, credencialGovbr, documento, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import type { Cofre } from '../cofre.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import { guardarNoCofre } from './cofre.ts'
+import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
-import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
-import { leituraDeExemplo } from '../../../web/src/dados/exemplo.ts'
+import { BENEFICIOS, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import { nomeSemSobrescrever } from '../../../web/src/regras/arquivos.ts'
-import { lerComIADeExemplo, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
+import type { DocumentoLido } from '../../../web/src/regras/leitura.ts'
+import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
 import type {
   Agendamento,
   Arquivo,
@@ -38,6 +46,8 @@ import type {
   Ficha,
   FichaResumo,
   Gravacao,
+  PapelNoFechamento,
+  PastaDrive,
   Processo,
   RespostaNovoCliente,
   TarefaEncaminhada,
@@ -52,6 +62,13 @@ import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
 
 export const MSG_FICHA_NAO_ENCONTRADA = 'Ficha não encontrada.'
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+/** O laudo que chega pelo card vira documento médico do caso (bloco 5b+), no tipo da tabela `documento_medico`. */
+export const TIPO_DO_DOCUMENTO_MEDICO: Record<string, 'laudo' | 'relatorio' | 'prontuario'> = { laudo: 'laudo', 'relatorio-medico': 'relatorio', prontuario: 'prontuario' }
+
+export const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
+/** Quem registra o "não fechou" ou a desistência, pelo perfil da sessão (GGVP-60 CA11): a recusa do escritório não é do Atendimento. */
+export const papelDa = (perfil: string | null | undefined): PapelNoFechamento =>
+  perfil === 'atendimento_lider' ? 'atendimento-senior' : JURIDICO.includes(perfil as Perfil) ? 'advogada-atendimento' : 'atendimento'
 /** A hora em Brasília, também no servidor em UTC: "14:32". */
 export const horaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
 export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
@@ -61,20 +78,11 @@ export const aceitaGanchoDeTeste = (ambiente: Record<string, string | undefined>
 /** Quem preenche no tablet é o próprio cliente (GGVP-24). */
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
 
-/** Os benefícios do servidor no catálogo das telas, para os casos que nasceram por outro caminho. */
-export const NO_CATALOGO: Record<string, string> = {
-  bpc_loas_deficiente: 'loas-deficiente',
-  bpc_loas_idoso: 'loas-idoso',
-  aposentadoria_pcd: 'aposentadoria-pcd',
-  aposentadoria_idade: 'aposentadoria-idade',
-  aposentadoria_tempo: 'aposentadoria-contribuicao',
-  aposentadoria_especial: 'aposentadoria-especial',
-  aposentadoria_incapacidade_permanente: 'incapacidade-permanente',
-  auxilio_incapacidade_temporaria: 'incapacidade-temporaria',
-  auxilio_acidente: 'auxilio-acidente',
-  pensao_morte: 'pensao-morte',
-  salario_maternidade: 'salario-maternidade',
-}
+/**
+ * Os benefícios do servidor no catálogo das telas, para os casos que nasceram por outro caminho. GGVP-158 P4.6: os dois
+ * mapas saem do catálogo único (`CATALOGO_BENEFICIOS`, com o id do servidor de cada um dos 34).
+ */
+export const NO_CATALOGO: Record<string, string> = Object.fromEntries(Object.entries(BENEFICIO_NA_CONFIGURACAO).map(([telas, servidor]) => [servidor, telas]))
 /** O benefício do catálogo das telas no catálogo do portal, para o caso que nasce no fechamento (bloco 4a). */
 export const NO_SERVIDOR: Record<string, string> = Object.fromEntries(Object.entries(NO_CATALOGO).map(([servidor, telas]) => [telas, servidor]))
 
@@ -92,6 +100,7 @@ const ROTULOS: Record<keyof EdicaoFicha, string> = {
   email: 'e-mail',
   estadoCivil: 'estado civil',
   endereco: 'endereço',
+  bairro: 'bairro',
   cidadeUf: 'cidade',
   cep: 'CEP',
   profissao: 'profissão',
@@ -119,7 +128,46 @@ function valoresAtuais(f: Ficha): Record<CampoDaFicha, string> {
   }
 }
 
-type Opcoes = { banco: Banco; agora?: () => Date; tarefasPorArea?: TarefasPorArea }
+type Opcoes = {
+  banco: Banco
+  agora?: () => Date
+  tarefasPorArea?: TarefasPorArea
+  /** GGVP-158 P4.2: onde a ficha em papel digitalizada fica guardada, o cofre da senha escrita nela e quem a lê. */
+  armazenamento: Armazenamento
+  cofre: Cofre
+  leitor: Leitor
+  /** GGVP-158 P4.7: o Drive do escritório, para a pasta do cliente. Sem ele (null), nenhuma pasta. */
+  drive?: { drive: Drive; pastas: PastasDoDrive; soLeitura: boolean } | null
+}
+
+export const MSG_FICHA_DIGITALIZADA = 'Anexe a ficha digitalizada (PDF ou imagem).'
+export const MSG_SEM_DRIVE = 'O Drive do escritório não está ligado.'
+export const MSG_PASTA_SEM_CPF = 'A pasta nova só nasce com o CPF.'
+export const MSG_DRIVE_SO_LEITURA = 'O Drive está só leitura: a pasta não pode ser criada.'
+
+/**
+ * GGVP-158 P4.2: a senha do gov.br escrita na ficha em papel vai ao cofre, só se quem lê cadastra no cofre (G9). A ficha
+ * registra o fato, nunca o valor, e a pessoa confere com o papel. Devolve se a senha foi ao cofre (`senhaLida`).
+ */
+export function criarSenhaDoPapel(banco: Banco, cofre: Cofre, agora: () => Date) {
+  const { evento } = criarFichario(banco, agora)
+  const historico = registrarHistorico(banco, agora)
+  return async function senhaDoPapelAoCofre(pedido: FastifyRequest, ficha: Ficha, senha: string | null, nome: string): Promise<boolean> {
+    if (senha === null) return false
+    if (!pode(pedido.perfilAtivo, 'cofre.cadastrar')) {
+      ficha.historico.push(evento('A ficha em papel tem a senha do gov.br escrita: quem cadastra no cofre é o Atendimento', nome))
+      return false
+    }
+    const quem = pedido.usuario!.id
+    const trocada = await guardarNoCofre(banco, cofre, ficha.id, senha, quem, agora)
+    await historico(quem, trocada ? 'cofre_senha_trocada' : 'cofre_senha_cadastrada', pedido, `pessoa:${ficha.id}`, { perfil: pedido.perfilAtivo, origem: 'ficha em papel' })
+    ficha.historico.push(evento('A IA leu a senha do gov.br escrita no papel, e ela foi para o cofre: confira com o papel', nome))
+    return true
+  }
+}
+
+/** A extensão do arquivo digitalizado, pelo tipo: o nome segue o padrão do escritório (G18). */
+export const extensaoDoAnexo = (mime: string | undefined) => (mime === 'image/png' ? 'png' : mime === 'image/jpeg' ? 'jpg' : 'pdf')
 
 /** O setor das pendências da Recepção (o campo `setor` de cada uma) por perfil. */
 const SETOR_DA_RECEPCAO: Partial<Record<string, string>> = {
@@ -240,6 +288,33 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       .onConflictDoUpdate({ target: tarefaRecepcao.id, set: { dados: t, concluidaEm: null } })
   }
 
+  /**
+   * O laudo novo de qualquer canal (bloco 5d): o card, o chat, o scanner e o arquivamento que confere como laudo o que
+   * chegou com outro tipo. Marca a ficha e o processo (quando o caso tem o contrato da Recepção) e abre "Analisar laudo
+   * novo" para o Jurídico, uma aberta por ficha (a concluída volta a abrir). Quem chama guarda a ficha.
+   */
+  async function avisarLaudoNovo(ficha: Ficha, caso: Processo | undefined, dia: string, texto: string, quem: string) {
+    ficha.laudoNovoEm = dia
+    const [linha] = caso ? await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, caso.id)) : []
+    if (linha) {
+      const g = linha.dados as ContratoGuardado
+      const dados = { ...g, processo: { ...g.processo, laudoNovoEm: dia } }
+      await banco.update(contratoRecepcao).set({ dados, atualizadoEm: agora() }).where(eq(contratoRecepcao.casoId, linha.casoId))
+    }
+    await garantirAberta({
+      id: `laudo-${ficha.id}`,
+      codigo: 'D1.21M',
+      cliente: { id: ficha.id, nome: ficha.nome },
+      acao: 'Analisar laudo novo',
+      detalhe: [caso ? nomeBeneficio(caso.beneficio) : 'sem caso em andamento', `laudo novo de ${dataCurta(dia, dia)}`].join(' · '),
+      prazo: 'hoje',
+      href: caso ? `/casos/${caso.id}/laudo-novo` : `/clientes/${ficha.id}`,
+      processoId: caso?.id,
+      setor: 'Jurídico',
+    })
+    ficha.historico.push(evento(texto, quem))
+  }
+
   /** O compromisso pelo id das telas: "<id da ficha>-ag-<n>". */
   async function acharAgendamento(id: string) {
     const fichaId = id.slice(0, 36)
@@ -310,13 +385,17 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       .onConflictDoUpdate({ target: leituraDocumento.id, set: { dados: l, atualizadoEm: agora() } })
   }
 
-  /** A IA (simulada) lê o que chegou à pasta e ainda não foi lido: uma leitura por arquivo (GGVP-81 CA1, CA13). */
-  async function lerArquivosNovos(ficha: Ficha): Promise<DocumentoLido[]> {
+  /**
+   * A IA lê o que chegou à pasta e ainda não foi lido: uma leitura por arquivo (GGVP-81 CA1, CA13). A de verdade só lê o
+   * arquivo cujo conteúdo veio junto (GGVP-158 P4.1); o resto espera o conteúdo. A de exemplo, dos testes de tela, lê tudo.
+   */
+  async function lerArquivosNovos(ficha: Ficha, leitor: Leitor, quem: string | null = null, conteudos = new Map<string, Conteudo>()): Promise<DocumentoLido[]> {
     const leituras = await leiturasDe(ficha.id)
     const novas: DocumentoLido[] = []
     for (const arquivo of ficha.arquivos) {
       if (!arquivo.aguardaLeitura || leituras.some((l) => l.id === `${ficha.id}/${arquivo.nome}`)) continue
-      const lida = lerComIADeExemplo(ficha, arquivo, leituras, agora().toISOString())
+      const lida = await leitor.documento({ ficha, arquivo, leituras, conteudo: conteudos.get(arquivo.nome), quem })
+      if (!lida) continue
       leituras.push(lida)
       novas.push(lida)
       await guardarLeitura(lida)
@@ -346,7 +425,25 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     return tarefa
   }
 
+  /** O lead que não vira cliente sai das filas, arquivado na pessoa com o motivo (GGVP-60 CA7, G16). */
+  async function arquivar(ficha: Ficha, motivo: string, detalhe: string | undefined) {
+    await banco
+      .update(pessoa)
+      .set({ situacao: 'nao_virou_cliente', motivoNaoVirou: `${nomeMotivo(motivo)}${detalhe ? `: ${detalhe}` : ''}`, atualizadoEm: agora() })
+      .where(eq(pessoa.id, ficha.id))
+    for (const t of await tarefas(ficha.id)) if (!t.concluida) await concluirTarefas(ficha.id, t.acao, t.id)
+  }
+
+  /** O compromisso "Recontatar lead" na agenda, no formato dos compromissos do servidor. */
+  function marcarRecontato(ficha: Ficha, data: string, quem: string): string {
+    const id = `${ficha.id}-ag-${randomUUID().slice(0, 8)}`
+    ficha.agendamentos.push({ id, data, hora: '09:00', oQue: 'Recontatar lead', com: quem, tipo: 'telefone', duracao: 15 })
+    return id
+  }
+
   return {
+    arquivar,
+    marcarRecontato,
     hoje,
     evento,
     nomeDe,
@@ -366,11 +463,19 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     leiturasDe,
     guardarLeitura,
     lerArquivosNovos,
+    avisarLaudoNovo,
   }
 }
 
-export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea }: Opcoes) {
+export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = () => new Date(), tarefasPorArea, armazenamento, cofre, leitor, drive = null }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const senhaDoPapelAoCofre = criarSenhaDoPapel(banco, cofre, agora)
+
+  /** GGVP-158 P4.7: as pastas de "#5. CLIENTES" que parecem da ficha (CPF, depois nome: a regra do balcão). Sem Drive, nenhuma. */
+  async function pastasParecidas(ficha: { nome: string; cpf?: string }): Promise<PastaDrive[]> {
+    const todas = drive && (await drive.drive.pastas(drive.pastas.clientes).catch(() => null))
+    return todas ? pastasDoCliente(todas.map(pastaDoTitulo), ficha) : []
+  }
   const { hoje, evento, nomeDe, fichas, resumo, guardar, concluirTarefas, tarefas, abrirPreparacao } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
@@ -462,8 +567,39 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     }
     await guardar(ficha)
     await historico(pedido.usuario!.id, 'ficha_criada', pedido, `pessoa:${p.id}`, { outraPessoa: parecidas.length > 0 })
-    // O Drive fica de fora (GGVP-107): sem pastas para ligar.
-    return { resultado: 'criada', id: p.id, pastas: [] }
+    // GGVP-158 P4.7: com o Drive, as pastas que parecem do lead, para quem atende ligar uma ou pedir a nova.
+    return { resultado: 'criada', id: p.id, pastas: await pastasParecidas(ficha) }
+  })
+
+  // GGVP-158 P4.7 (GGVP-16 CA11, CA14): a pasta do cliente no Drive. Liga a que já existe em "#5. CLIENTES" ou cria a nova,
+  // "<Nome> X A CLASSIFICAR", com a marca do portal; a nova só nasce com o CPF e com o Drive ligado para gravar (na
+  // homologação, só leitura, não cria). Ligar só grava no portal.
+  app.post<{ Params: { id: string } }>('/api/fichas/:id/pasta', editar, async (pedido, resposta) => {
+    const entrada = LigacaoDaPasta.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, MSG_DADOS_INVALIDOS)
+    const ficha = UUID.test(pedido.params.id) ? (await fichas([pedido.params.id]))[0] : undefined
+    if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
+    if (!drive) return negar(resposta, 400, MSG_SEM_DRIVE)
+    const nova = entrada.data.pasta === 'nova'
+    let escolhida: PastaDrive
+    if (nova) {
+      if (!ficha.cpf) return negar(resposta, 400, MSG_PASTA_SEM_CPF)
+      if (drive.soLeitura) return negar(resposta, 400, MSG_DRIVE_SO_LEITURA)
+      const marca = `pessoa:${ficha.id}`
+      const titulo = `${ficha.nome} X A CLASSIFICAR`
+      const id = (await drive.drive.achar(marca)) ?? (await drive.drive.criarPasta(titulo, drive.pastas.clientes, marca))
+      escolhida = { id, nome: ficha.nome, caminho: titulo, cpf: ficha.cpf }
+    } else {
+      const onde = await drive.drive.onde(entrada.data.pasta).catch(() => null)
+      if (!onde?.pais.includes(drive.pastas.clientes)) return negar(resposta, 404, 'Pasta não encontrada em "#5. CLIENTES".')
+      escolhida = pastaDoTitulo({ id: entrada.data.pasta, nome: onde.nome })
+    }
+    await banco.update(pessoa).set({ drivePastaId: escolhida.id, atualizadoEm: agora() }).where(eq(pessoa.id, ficha.id))
+    ficha.pastaId = escolhida.id
+    ficha.historico.push(evento(nova ? `Criou a pasta no Drive: ${escolhida.caminho}` : `Ligou à pasta que já existia no Drive: ${escolhida.caminho}`, await nomeDe(pedido)))
+    await guardar(ficha)
+    await historico(pedido.usuario!.id, 'pasta_ligada', pedido, `pessoa:${ficha.id}`, { nova })
+    return { ...escolhida, nova }
   })
 
   app.get<{ Params: { id: string } }>('/api/fichas/:id', ver, async (pedido, resposta) => {
@@ -502,15 +638,23 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     return { ficha }
   })
 
-  // GGVP-24 (GGVP-125, bloco 5a): a ficha de atendimento em papel passa no scanner e a IA lê (simulado); a imagem fica em
-  // Documentos pessoais, na ficha do servidor. A leitura simulada não traz senha de verdade: nada vai ao cofre (G9).
+  // GGVP-24 (GGVP-125, bloco 5a): a ficha de atendimento em papel passa no scanner e a IA lê; a imagem fica em Documentos
+  // pessoais, na ficha do servidor. GGVP-158 P4.2: a rota recebe o arquivo digitalizado, e a IA lê de verdade. A senha do
+  // gov.br escrita no papel vai só ao cofre, se quem lê cadastra no cofre (GGVP-24 CA15, G9); a pessoa confere com o papel.
+  // Sem o arquivo, só a leitura de exemplo dos testes de tela.
   app.post<{ Params: { id: string } }>('/api/fichas/:id/ficha-de-atendimento/leitura', editar, async (pedido, resposta) => {
     const ficha = UUID.test(pedido.params.id) ? (await fichas([pedido.params.id]))[0] : undefined
     if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
+    const enviado = pedido.isMultipart() ? (await lerFormulario(pedido))?.arquivo : null
+    if (enviado ? !TIPOS_DE_ANEXO.includes(enviado.mime) : !leitor.simulada) return negar(resposta, 400, MSG_FICHA_DIGITALIZADA)
     const dia = hoje()
     const modelo = 'GGV'
+    const quem = pedido.usuario!.id
     const arquivo: Arquivo = {
-      nome: nomeSemSobrescrever(`Ficha de atendimento ${modelo} - ${ficha.nome} - ${dia}.pdf`, ficha.arquivos.filter((a) => a.local === 'pessoais').map((a) => a.nome)),
+      nome: nomeSemSobrescrever(
+        `Ficha de atendimento ${modelo} - ${ficha.nome} - ${dia}.${extensaoDoAnexo(enviado?.mime)}`,
+        ficha.arquivos.filter((a) => a.local === 'pessoais').map((a) => a.nome),
+      ),
       tipo: 'ficha-atendimento',
       local: 'pessoais',
       data: dia,
@@ -518,11 +662,18 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
       repetido: false,
       aguardaLeitura: false,
     }
+    if (enviado) {
+      const dados = await guardarArquivo(armazenamento, ficha.id, enviado, 'ficha-atendimento', 'pessoas')
+      await banco.insert(documento).values({ pessoaId: ficha.id, tipo: 'ficha-atendimento', origem: 'scanner', sensivel: false, recebidoPor: quem, ...dados })
+      arquivo.hash = dados.hashSha256
+    }
     ficha.arquivos.push(arquivo)
-    const { campos, naoLidos } = leituraDeExemplo(ficha)
-    ficha.historico.push(evento(`A ficha de atendimento em papel (${modelo}) passou no scanner e a IA leu os campos; a imagem ficou em Documentos pessoais`, await nomeDe(pedido)))
+    const { campos, naoLidos, senha } = await leitor.fichaDeAtendimento({ ficha, conteudo: enviado ? { bytes: enviado.conteudo, mime: enviado.mime } : undefined, quem })
+    const nome = await nomeDe(pedido)
+    ficha.historico.push(evento(`A ficha de atendimento em papel (${modelo}) passou no scanner e a IA leu os campos; a imagem ficou em Documentos pessoais`, nome))
+    const senhaLida = await senhaDoPapelAoCofre(pedido, ficha, senha, nome)
     await guardar(ficha)
-    return { modelo, arquivo, campos, naoLidos, senhaLida: false, ficha }
+    return { modelo, arquivo, campos: { beneficioInteresse: ficha.beneficioInteresse ?? 'nao-sei', ...campos }, naoLidos, senhaLida, ficha }
   })
 
   // GGVP-24: a ficha de atendimento. Os dados pessoais vão para a ficha única e a triagem, com o que ficou em branco

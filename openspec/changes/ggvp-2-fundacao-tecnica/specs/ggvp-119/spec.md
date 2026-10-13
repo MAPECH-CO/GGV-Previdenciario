@@ -53,3 +53,29 @@ Os segredos de homologação MUST ficar só no Coolify, nunca no repositório.
 - **Dado** os segredos de homologação
 - **Quando** são configurados
 - **Então** ficam só no Coolify; nunca no repositório
+
+### Requirement: CA7 · Banco de homologação na mesma região do servidor
+O banco de homologação SHALL ficar no Supabase em São Paulo (sa-east-1), projeto "PrevGGVLucas", na mesma região da VPS do Coolify. A troca MUST preservar todos os dados e arquivos da homologação. O que existia no projeto de destino é apagado sem backup, por decisão do Mateus em 13/10 (os dados do portal antigo estão guardados em outro lugar).
+
+#### Scenario: CA7 · Antes de limpar o destino
+- **Dado** o PrevGGVLucas com o portal antigo
+- **Quando** a limpeza vai começar
+- **Então** a senha do banco foi trocada e não há conexão nem escrita do portal antigo
+
+#### Scenario: CA7 · Depois da troca
+- **Dado** a homologação apontando para o PrevGGVLucas
+- **Quando** a troca é conferida
+- **Então** a contagem de linhas de cada tabela e os 5 arquivos do depósito `documentos` batem com o "Portal Operacional", o login de teste entra e `GET /saude` diz `ligado`
+
+#### Scenario: CA7 · Se der errado
+- **Dado** um problema depois da troca
+- **Quando** o `DATABASE_URL`, o `SUPABASE_URL` e a chave do Coolify voltam para o "Portal Operacional", intacto até o ok final
+- **Então** a homologação volta a funcionar como antes da troca
+
+### Requirement: CA8 · Telas medidas depois da troca
+Com o banco em São Paulo, o tempo de resposta das rotas das telas principais da homologação MUST ser medido e registrado em `docs/infra/homologacao.md`. A rota acima de 1 segundo MUST virar tarefa própria, com teste.
+
+#### Scenario: CA8 · Medir as telas
+- **Dado** a homologação com o banco em São Paulo
+- **Quando** as rotas das telas principais são medidas
+- **Então** o tempo de cada uma fica registrado, e a que passa de 1 segundo vira tarefa nova

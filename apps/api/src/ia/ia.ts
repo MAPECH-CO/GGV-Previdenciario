@@ -56,12 +56,12 @@ export const FINALIDADES = {
   },
   /** GGVP-59: a nomeação de perito virou classe (versão 3). GGVP-64 parte 2: a vara e o juiz escritos (versão 4). */
   classificar_publicacao: {
-    versao: 4,
+    versao: 5,
     saude: false,
     json: true,
     barrarCid: true,
     instrucao:
-      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples", "vara": "a vara ou o juizado, como está escrito na publicação, ou null", "juiz": "o nome do juiz ou da juíza que assina, como está escrito, ou null"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito. Não invente vara nem juiz: sem estar escrito, null.',
+      'Leia a publicação judicial e responda só com um objeto JSON: {"classe": "exigencia" | "merito" | "nomeacao_perito" | "andamento", "dias": número de dias de prazo escrito na decisão ou null, "resumo": "o que a publicação diz, em até duas frases simples", "vara": "a vara ou o juizado, como está escrito na publicação, ou null", "juiz": "o nome do juiz ou da juíza que assina, como está escrito, ou null", "perito": "na nomeação de perito, o nome do perito ou da perita nomeado, sem o título (Dr., Dra.), como está escrito; fora dela, null"}. "exigencia" é intimação ou despacho que manda a parte fazer algo; "merito" é sentença ou acórdão que decide o pedido; "nomeacao_perito" é a decisão que nomeia o perito da perícia judicial; "andamento" é o resto. Não calcule datas: só copie o número de dias escrito. Não invente vara, juiz nem perito: sem estar escrito, null.',
   },
   /** GGVP-63: a petição pode citar o CID que está no laudo do caso; o G20 vale para a orientação ao cliente e ao médico. */
   minuta_peticao: {
@@ -174,6 +174,22 @@ export const FINALIDADES = {
     instrucao: [
       'Para a Sênior do escritório, liste em tópicos curtos: (1) os fatores do caso que puxam a chance de êxito para cima; (2) os que puxam para baixo; (3) o que fazer para a chance subir, com a ação concreta (por exemplo, trazer o relatório do médico assistente ou o documento da época).',
       'Use só o que está no conteúdo. Não calcule nem invente porcentagem: se houver número, ele vem do sistema e você só o cita como está.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-161 (Mateus, 13/10): no "Vale recorrer?", a IA avalia se o caso é bom ou ruim para recorrer, com o acervo e o
+   * conhecimento dela, marcado como tal. A chance é do código; a IA não dá porcentagem (a rota recusa a resposta com %).
+   */
+  avaliacao_do_recurso: {
+    versao: 1,
+    saude: true,
+    json: false,
+    barrarCid: false,
+    instrucao: [
+      'Para a Sênior do escritório, que decide se recorre de uma sentença improcedente, avalie se o caso é bom ou ruim para recorrer.',
+      'Comece com uma linha: "Bom para recorrer" ou "Ruim para recorrer". Depois, em tópicos curtos: por quê; o que pesa a favor; o que pesa contra; o que fazer no recurso.',
+      'Use a sentença, o caso e os trechos do acervo da casa, e diga quais trechos usou. Pode usar o seu conhecimento do direito previdenciário, mas marque cada ponto que vem dele com "(conhecimento geral da IA, confira)" e não cite número de processo, súmula ou julgado que não esteja no conteúdo.',
+      'Não escreva porcentagem nem número de chance: a chance vem do sistema e a Sênior já a vê ao lado.',
     ].join(' '),
   },
   /** GGVP-54 (G4): a IA analisa o indeferimento e sugere o que falta; quem despacha é a Sênior. Leitura interna. */
@@ -307,6 +323,74 @@ export const FINALIDADES = {
       'Não calcule datas, não complete o que não foi dito e não defina o benefício: quem decide é a advogada. Use só o que está no conteúdo; se nada disso foi dito, "itens" vazio.',
     ].join(' '),
   },
+  /**
+   * GGVP-158 parte 4 (P4.1): o documento do balcão (card, chat ou scanner), lido pela imagem que vai junto. É sugestão: o
+   * servidor confere o CPF, a data e o tipo (`LidoPelaIa`), e a Documentação confere antes de arquivar. Do documento
+   * médico, só quem emitiu e o registro (GGVP-95 CA1): ele vai com `sensivel`, e a saída com código de doença é barrada.
+   */
+  ler_documento_balcao: {
+    versao: 1,
+    saude: false,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda a Documentação de um escritório previdenciário a conferir os documentos que o cliente entregou.',
+      'Olhe o documento anexado (foto ou PDF) e responda só com um objeto JSON:',
+      '{"tipo": um id da lista de tipos, "data": "aaaa-mm-dd" (a data escrita no documento), "nome": "o nome do titular, como está escrito", "cpf": "o CPF do titular, se estiver escrito", "rg": "o RG do titular, se estiver escrito", "endereco": "o endereço, só no comprovante de residência", "assinado": true se o documento pede a assinatura do cliente e ela está lá, false se pede e falta, null se o documento não pede, "dataEmBranco": true se um campo de data ficou em branco, "legivel": false se não dá para ler o documento, "confianca": de 0 a 100, o quanto você tem certeza do tipo e da leitura, "emitente": "no documento médico, quem emitiu (médico, hospital, laboratório)", "registro": "no documento médico, o registro profissional (CRM, CRP...), se estiver escrito"}.',
+      `Tipos: ${TIPOS_DE_DOCUMENTO.map((t) => `${t.id} (${t.nome})`).join('; ')}.`,
+      'Copie os dados como estão no documento: não complete, não calcule e não corrija. O que não estiver no documento vai com o texto vazio.',
+      'Nunca escreva diagnóstico, doença, CID nem o conteúdo médico: do documento médico, só quem emitiu e o registro.',
+      'O bloco de conteúdo traz o tipo que a pessoa anunciou, que pode estar errado: o que vale é o documento.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-158 P4.2: a ficha de atendimento em papel, lida pela imagem. A senha do gov.br escrita no papel vem em `senha`; a
+   * rota tira o campo antes de guardar (o `limpar` da sugestão) e leva a senha só ao cofre (GGVP-24 CA15, G9).
+   */
+  ler_ficha_atendimento: {
+    versao: 1,
+    saude: false,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda o Atendimento de um escritório previdenciário a passar para o portal a ficha de atendimento que o cliente preencheu à mão.',
+      'Olhe a ficha anexada (foto ou PDF) e responda só com um objeto JSON:',
+      '{"nome": "o nome completo", "cpf": "o CPF", "nascimento": "dd/mm/aaaa", "telefone": "o telefone com DDD", "endereco": "o endereço", "pessoasNaCasa": quantas pessoas moram na casa, "ultimaAtividade": "o último trabalho, como está escrito", "semTrabalharDesde": "desde quando não trabalha, como está escrito", "pedidosAoInss": "os pedidos ao INSS, como estão escritos", "senha": "a senha do gov.br, se estiver escrita na ficha"}.',
+      'Copie como está escrito: não complete, não calcule e não corrija. O campo em branco ou que não dá para ler vai com o texto vazio.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-158 P4.2: a segunda ficha em papel (auxílio acidente), lida pela imagem. A seção médica é dado de saúde (o CID
+   * escrito pelo cliente é um campo dela, que só o Jurídico vê); a senha do Meu INSS vai à parte, só para o cofre.
+   */
+  ler_segunda_ficha: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você ajuda o Atendimento de um escritório previdenciário a passar para o portal a segunda ficha (auxílio acidente) que o cliente preencheu à mão.',
+      'Olhe a ficha anexada (foto ou PDF) e responda só com um objeto JSON: {"respostas": {"campo": "o que está escrito"}, "senha": "a senha do Meu INSS, se estiver escrita na ficha"}.',
+      'Os campos: empresa, funcao, vinculo, afastamentoEm (dd/mm/aaaa), acidenteEm (dd/mm/aaaa), acidenteLocal, nb, der (dd/mm/aaaa), cat ("sim" ou "nao"), catEm (dd/mm/aaaa), boletim ("sim" ou "nao"), boletimEm (dd/mm/aaaa), deTrabalho ("sim" ou "nao"), parteDoCorpo, lado, doencas, cid, tratamento, cirurgia ("sim" ou "nao"), medico, laudos e historico.',
+      'Copie como está escrito: não complete, não calcule, não corrija e não interprete. O campo em branco ou que não dá para ler fica de fora.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-158 P4.4: o contrato assinado em papel, conferido pela imagem contra o kit (os documentos e quem assina vêm no
+   * conteúdo). A IA só aponta; a regra que já existe decide entre a conferência do Atendimento e a cópia (GGVP-85).
+   */
+  ler_contrato_assinado: {
+    versao: 1,
+    saude: false,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda o Atendimento de um escritório previdenciário a conferir o kit do contrato que o cliente assinou em papel e foi digitalizado.',
+      'O bloco de conteúdo traz os documentos que o kit deve ter e quem assina.',
+      'Olhe o arquivo anexado e responda só com um objeto JSON: {"reconhecido": true se é o kit do contrato do escritório, "assinado": true se cada documento que pede assinatura está assinado por quem assina, "faltam": ["cada documento do kit que não veio, ou a página sem a rubrica, como \\"pág. 4 (rubrica)\\""], "pendencias": ["o que mais impede a conferência, como \\"a página da assinatura veio cortada\\""]}.',
+      'Não diga se a assinatura é verdadeira: só se ela está lá. Não aponte documento que não está na lista do kit.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 
@@ -325,12 +409,26 @@ const hash = (texto: string | Uint8Array) => createHash('sha256').update(texto).
 
 type Opcoes = { banco: Banco; ambiente?: Ambiente; fetch?: typeof globalThis.fetch; agora?: () => Date }
 type Quem = { casoId: string | null; quem: string | null }
-type Pedido = Quem & { conteudo: string; fontes: FonteDaIa[] }
+/**
+ * GGVP-158 parte 4: o arquivo vai junto (imagem ou PDF), e o modelo lê a página como ela é: vê a assinatura, a data em
+ * branco e a legibilidade. `sensivel`: o pedido tem dado de saúde, mesmo que a finalidade não tenha (o documento médico).
+ */
+type Pedido = Quem & { conteudo: string; fontes: FonteDaIa[]; anexo?: { arquivo: Uint8Array; mime: string }; sensivel?: boolean }
 /**
  * Sugestão pronta (07/10). `refazer`: chama de novo mesmo com sugestão guardada (outra versão, pedida pela pessoa).
  * `soPreparar`: o preparo em segundo plano, uma tentativa por conteúdo. `validar`: a saída só fica guardada se passar.
+ * `limpar`: roda na saída antes de tudo, e só o que ela devolve é guardado e volta (a senha do papel, G9).
  */
-export type ComoSugerir = { refazer?: boolean; soPreparar?: boolean; validar?: (texto: string) => boolean }
+export type ComoSugerir = { refazer?: boolean; soPreparar?: boolean; validar?: (texto: string) => boolean; limpar?: (texto: string) => string }
+
+/** O que identifica a entrada: o conteúdo e, com arquivo, o hash dele. Sem arquivo, a mesma de antes (a sugestão guardada vale). */
+const entradaDe = (p: Pedido) => (p.anexo ? `${p.conteudo}\n<arquivo ${hash(p.anexo.arquivo)}>` : p.conteudo)
+
+/** O arquivo na mensagem: a foto como imagem, o PDF como arquivo (a OpenAI lê as páginas). */
+const parteDoArquivo = ({ arquivo, mime }: { arquivo: Uint8Array; mime: string }) => {
+  const dados = `data:${mime};base64,${Buffer.from(arquivo).toString('base64')}`
+  return mime.startsWith('image/') ? { type: 'image_url', image_url: { url: dados } } : { type: 'file', file: { filename: 'documento.pdf', file_data: dados } }
+}
 
 export const MSG_CHAMADA_DE_OUTRO_CASO = 'A sugestão da IA não é deste caso.'
 
@@ -428,7 +526,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
    */
   async function sugerir(finalidade: Finalidade, pedido: Pedido, como: ComoSugerir = {}): Promise<SugestaoDaIa | null> {
     const f = FINALIDADES[finalidade]
-    const entradaHash = hash(pedido.conteudo)
+    const entradaHash = hash(entradaDe(pedido))
     const mesma = and(
       eq(chamadaIa.finalidade, finalidade),
       eq(chamadaIa.versaoInstrucao, f.versao),
@@ -455,7 +553,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
       const andando = emCurso.get(chave)
       if (andando) return andando
     }
-    const promessa = chamar(finalidade, pedido, como.validar)
+    const promessa = chamar(finalidade, pedido, como)
     emCurso.set(chave, promessa)
     try {
       return await promessa
@@ -464,11 +562,11 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
     }
   }
 
-  async function chamar(finalidade: Finalidade, pedido: Pedido, validar?: (texto: string) => boolean): Promise<SugestaoDaIa | null> {
+  async function chamar(finalidade: Finalidade, pedido: Pedido, { validar, limpar }: ComoSugerir): Promise<SugestaoDaIa | null> {
     const f = FINALIDADES[finalidade]
     const inicio = Date.now()
-    const base = { finalidade, fornecedor: 'openai' as const, modelo: modeloTexto, versaoInstrucao: f.versao, alvo: pedido, entrada: pedido.conteudo, fontes: pedido.fontes }
-    if (f.saude && !saudeAutorizada) {
+    const base = { finalidade, fornecedor: 'openai' as const, modelo: modeloTexto, versaoInstrucao: f.versao, alvo: pedido, entrada: entradaDe(pedido), fontes: pedido.fontes }
+    if ((f.saude || pedido.sensivel) && !saudeAutorizada) {
       await registrar({ ...base, saida: null, situacao: 'recusada', erro: 'dado de saúde sem autorização do escritório', inicio })
       return null
     }
@@ -478,6 +576,7 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
       return null
     }
     try {
+      const bloco = `<conteudo>\n${pedido.conteudo.replace(new RegExp(MARCA_DO_BLOCO, 'gi'), '[marca removida]')}\n</conteudo>`
       const resposta = await fetch(OPENAI, {
         method: 'POST',
         headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
@@ -485,16 +584,17 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
           model: modeloTexto,
           messages: [
             { role: 'system', content: `${REGRAS_DA_IA}\n\n${f.instrucao}` },
-            { role: 'user', content: `<conteudo>\n${pedido.conteudo.replace(new RegExp(MARCA_DO_BLOCO, 'gi'), '[marca removida]')}\n</conteudo>` },
+            { role: 'user', content: pedido.anexo ? [{ type: 'text', text: bloco }, parteDoArquivo(pedido.anexo)] : bloco },
           ],
           ...(f.json && { response_format: { type: 'json_object' } }),
         }),
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(pedido.anexo ? 90_000 : 30_000),
       })
       if (!resposta.ok) throw new Error(`OpenAI respondeu ${resposta.status}`)
       const corpo = (await resposta.json()) as { choices?: { message?: { content?: string } }[] }
-      const texto = corpo.choices?.[0]?.message?.content?.trim()
-      if (!texto) throw new Error('OpenAI respondeu sem texto')
+      const bruto = corpo.choices?.[0]?.message?.content?.trim()
+      if (!bruto) throw new Error('OpenAI respondeu sem texto')
+      const texto = limpar ? limpar(bruto) : bruto
       // GGVP-110 CA7 (G20): saída com código de doença não chega à tela.
       if (f.barrarCid && temCid(texto)) {
         await registrar({ ...base, saida: texto, situacao: 'recusada', alerta: 'saída com código de doença (G20)', inicio })

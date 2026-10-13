@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, identificadorCaso, juizo as juizoTabela, pessoa, processoAcervo, usuario } from '../banco/esquema.ts'
+import { caso, identificadorCaso, juizo as juizoTabela, pericia, perito, pessoa, processoAcervo, usuario } from '../banco/esquema.ts'
 import { SENHA_DE_EXEMPLO } from '../banco/exemplo.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -58,6 +58,20 @@ describe('GGVP-64 · GET /api/casos/:id/juizo', () => {
 
   it('G22 · a jurimetria é interna: o Atendimento e o Financeiro não veem', async () => {
     for (const apelido of ['ana', 'julia']) expect((await juizo(apelido)).statusCode, apelido).toBe(403)
+  })
+
+  it('GGVP-158 P5.14 · o juiz e o perito do caso vêm com quantos casos do escritório eles têm, contados no código', async () => {
+    expect((await juizo('gabi')).json()).toMatchObject({ casosDoJuiz: null, perito: null })
+    await banco.update(caso).set({ juiz: 'Dra. Maria Souza' }).where(eq(caso.id, casoId))
+    const [outra] = await banco.insert(pessoa).values({ nome: 'Outra (exemplo)' }).returning()
+    const [outro] = await banco.insert(caso).values({ pessoaId: outra.id, beneficio: 'bpc_loas_idoso', fase: 'judicial', juiz: 'maria  souza' }).returning()
+    const [pr] = await banco.insert(perito).values({ nome: 'Dr. Rui Tavares', nomeNormalizado: 'rui tavares' }).returning()
+    await banco.insert(pericia).values([
+      { casoId, tipo: 'medica', peritoId: pr.id },
+      { casoId: outro.id, tipo: 'medica', peritoId: pr.id },
+      { casoId: outro.id, tipo: 'social', peritoId: pr.id },
+    ])
+    expect((await juizo('gabi')).json()).toMatchObject({ juiz: 'Dra. Maria Souza', casosDoJuiz: 2, perito: { id: pr.id, nome: 'Dr. Rui Tavares', casos: 2 } })
   })
 
   it('Dados de exemplo · a advogada de exemplo vê o juízo de um processo judicial de exemplo, com a taxa e o tempo até a sentença', async () => {

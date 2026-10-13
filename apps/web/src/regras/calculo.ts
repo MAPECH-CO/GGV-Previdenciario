@@ -141,3 +141,16 @@ export function tempoFalado(t: TempoDeContribuicao): string {
 }
 
 export const pontosFalados = (pontos: number) => formatarDecimal(pontos, 1)
+
+/**
+ * Os dias de tempo do `calcularCnis` em anos, meses e dias, com a convenção dele (IN 128, art. 207, parágrafo único): o ano
+ * de 365 dias e o mês de 30 (GGVP-158, P3.4).
+ */
+export function tempoDosDias(dias: number): TempoDeContribuicao {
+  const anos = Math.floor(dias / 365)
+  const resto = dias - anos * 365
+  return { anos, meses: Math.floor(resto / 30), dias: resto % 30 }
+}
+
+/** Os pontos do `calcularCnis` com duas casas, cortando: arredondar para cima daria um ponto que a pessoa não tem. */
+export const pontosDoCnis = (pontos: number) => Math.floor(pontos * 100) / 100

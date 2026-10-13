@@ -1,8 +1,9 @@
 // Rodadas da vigília (GGVP-30, G13): 3 por dia por fonte, cada uma com início, fim, quantidade e status. Falha e
 // "não rodou" ficam marcadas, para nunca parecer um dia sem publicação.
-import { and, eq, gt, lte } from 'drizzle-orm'
+import { and, eq, gt, gte, lt, lte } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { configuracao, eventoAuditoria, rodadaVigilia } from '../banco/esquema.ts'
+import { criarSuporte, type Suporte } from '../suporte.ts'
 import { casarPublicacoes } from './casar.ts'
 import { hojeEmBrasilia } from './fila.ts'
 import type { Fonte } from './fontes.ts'
@@ -11,6 +12,23 @@ import type { Fonte } from './fontes.ts'
 export const HORARIOS_PADRAO = ['08:00', '13:00', '18:00']
 export const TEMPO_LIMITE_MS = 60_000
 export const TOLERANCIA_NAO_RODOU_MS = 30 * 60_000
+/** GGVP-158 P5.10: "rodando" além do tempo limite e mais esta folga é rodada que parou no meio. */
+export const FOLGA_DA_PRESA_MS = 5 * 60_000
+export const MSG_PRESA = 'a rodada parou no meio (o servidor reiniciou ou travou)'
+export const MSG_SEM_FONTE = 'nenhuma fonte de publicação ligada: nenhuma publicação chega ao portal'
+const horaBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
+
+/**
+ * GGVP-158 P5.10 (ADR-018): todo alarme da vigília vai ao suporte técnico (canal e Jira, quando ligados), ao log e ao
+ * histórico, com o resultado de cada entrega. A Sênior vê no topo da Central (`alarmesDaVigilia`).
+ */
+async function alarmar(banco: Banco, suporte: Suporte, quando: Date, alvo: string, detalhe: { fonte: string; erro: string; previstaPara?: Date }) {
+  const titulo = `Vigília das publicações: ${detalhe.fonte.toUpperCase()}`
+  const rodada = detalhe.previstaPara ? `a rodada das ${horaBr(detalhe.previstaPara)} ` : ''
+  const entregas = await suporte({ titulo, texto: `${rodada}não trouxe as publicações. Motivo: ${detalhe.erro}` })
+  await banco.insert(eventoAuditoria).values({ quem: 'sistema', acao: 'alarme_suporte', alvo, quando, detalhe: { fonte: detalhe.fonte, erro: detalhe.erro.slice(0, 300), ...entregas } })
+  console.error(`[vigília] alarme ao suporte técnico: ${detalhe.fonte}: ${detalhe.erro} (canal: ${entregas.canal}; Jira: ${entregas.jira})`)
+}
 const UM_DIA_MS = 86_400_000
 
 export async function horariosDaVigilia(banco: Banco): Promise<string[]> {
@@ -36,7 +54,7 @@ const comTempoLimite = <T>(promessa: Promise<T>, ms: number) =>
  * Roda uma rodada: busca as 24 horas até o horário previsto (a janela se sobrepõe à anterior; a repetida é descartada
  * pelo hash, CA6) e casa as publicações. Erro, tempo esgotado ou credencial inválida: `falhou`, com o erro (CA8).
  */
-export async function rodar(banco: Banco, rodadaId: string, fonte: Fonte, agora: () => Date, tempoLimite = TEMPO_LIMITE_MS) {
+export async function rodar(banco: Banco, rodadaId: string, fonte: Fonte, agora: () => Date, tempoLimite = TEMPO_LIMITE_MS, suporte: Suporte = criarSuporte()) {
   const [r] = await banco.update(rodadaVigilia).set({ situacao: 'rodando', inicio: agora(), erro: null }).where(eq(rodadaVigilia.id, rodadaId)).returning()
   try {
     const brutas = await comTempoLimite(fonte.buscar(new Date(r.previstaPara.getTime() - UM_DIA_MS), r.previstaPara), tempoLimite)
@@ -46,28 +64,56 @@ export async function rodar(banco: Banco, rodadaId: string, fonte: Fonte, agora:
   } catch (e) {
     const erro = e instanceof Error ? e.message : String(e)
     await banco.update(rodadaVigilia).set({ situacao: 'falhou', fim: agora(), erro }).where(eq(rodadaVigilia.id, rodadaId))
-    // CA8: falha de credencial ou da API vai também para o suporte técnico (canal a definir: por ora, histórico e log).
-    if (/credencial|api/i.test(erro)) {
-      await banco.insert(eventoAuditoria).values({ quem: 'sistema', acao: 'alarme_suporte', alvo: `rodada:${rodadaId}`, quando: agora(), detalhe: { fonte: fonte.nome, erro } })
-      console.error(`[vigília] alarme ao suporte técnico: ${fonte.nome}: ${erro}`)
-    }
+    // CA8 e GGVP-158 P5.10: falha de qualquer tipo vai ao suporte técnico.
+    await alarmar(banco, suporte, agora(), `rodada:${rodadaId}`, { fonte: fonte.nome, erro, previstaPara: r.previstaPara })
     return { situacao: 'falhou' as const, erro }
   }
 }
 
 /** CA9: prevista que passou da tolerância sem rodar vira "não rodou" (também alarma). */
-export async function marcarNaoRodou(banco: Banco, agora: Date) {
-  await banco
+export async function marcarNaoRodou(banco: Banco, agora: Date, suporte: Suporte = criarSuporte()) {
+  const perdidas = await banco
     .update(rodadaVigilia)
     .set({ situacao: 'nao_rodou', erro: 'a rodada não foi executada no horário previsto' })
     .where(and(eq(rodadaVigilia.situacao, 'prevista'), lte(rodadaVigilia.previstaPara, new Date(agora.getTime() - TOLERANCIA_NAO_RODOU_MS))))
+    .returning()
+  for (const r of perdidas) await alarmar(banco, suporte, agora, `rodada:${r.id}`, { fonte: r.fonte, erro: r.erro!, previstaPara: r.previstaPara })
+}
+
+/** GGVP-158 P5.10: "rodando" além do tempo limite (o servidor caiu no meio) vira falha, com alarme. */
+export async function marcarPresas(banco: Banco, agora: Date, suporte: Suporte = criarSuporte(), tempoLimite = TEMPO_LIMITE_MS) {
+  const presas = await banco
+    .update(rodadaVigilia)
+    .set({ situacao: 'falhou', fim: agora, erro: MSG_PRESA })
+    .where(and(eq(rodadaVigilia.situacao, 'rodando'), lt(rodadaVigilia.inicio, new Date(agora.getTime() - tempoLimite - FOLGA_DA_PRESA_MS))))
+    .returning()
+  for (const r of presas) await alarmar(banco, suporte, agora, `rodada:${r.id}`, { fonte: r.fonte, erro: MSG_PRESA, previstaPara: r.previstaPara })
+}
+
+/** GGVP-158 P5.10: sem fonte ligada (a produção sem `FONTES_PUBLICACAO`), um alarme por dia, nunca um dia mudo (G13). */
+export async function alarmarSemFonte(banco: Banco, agora: Date, suporte: Suporte = criarSuporte()) {
+  const alvo = `vigilia:sem-fonte:${hojeEmBrasilia(agora)}`
+  const [ja] = await banco.select({ id: eventoAuditoria.id }).from(eventoAuditoria).where(and(eq(eventoAuditoria.acao, 'alarme_suporte'), eq(eventoAuditoria.alvo, alvo))).limit(1)
+  if (!ja) await alarmar(banco, suporte, agora, alvo, { fonte: 'sem fonte', erro: MSG_SEM_FONTE })
+}
+
+/** O alarme de hoje da vigília sem fonte, para a Central da Sênior. */
+export async function semFonteHoje(banco: Banco, agora: Date) {
+  const [e] = await banco
+    .select({ id: eventoAuditoria.id })
+    .from(eventoAuditoria)
+    .where(and(eq(eventoAuditoria.acao, 'alarme_suporte'), eq(eventoAuditoria.alvo, `vigilia:sem-fonte:${hojeEmBrasilia(agora)}`), gte(eventoAuditoria.quando, new Date(agora.getTime() - 86_400_000))))
+    .limit(1)
+  return e?.id ?? null
 }
 
 /** Uma batida do relógio: planeja o dia, marca as perdidas e roda as que chegaram na hora. */
-export async function batida(banco: Banco, fontes: Fonte[], agora: () => Date) {
+export async function batida(banco: Banco, fontes: Fonte[], agora: () => Date, suporte: Suporte = criarSuporte()) {
   const agoraFixo = agora()
+  if (!fontes.length) await alarmarSemFonte(banco, agoraFixo, suporte)
   await planejarDia(banco, fontes, agoraFixo)
-  await marcarNaoRodou(banco, agoraFixo)
+  await marcarNaoRodou(banco, agoraFixo, suporte)
+  await marcarPresas(banco, agoraFixo, suporte)
   const prontas = await banco
     .select()
     .from(rodadaVigilia)
@@ -80,18 +126,18 @@ export async function batida(banco: Banco, fontes: Fonte[], agora: () => Date) {
     )
   for (const r of prontas) {
     const fonte = fontes.find((f) => f.nome === r.fonte)
-    if (fonte) await rodar(banco, r.id, fonte, agora)
+    if (fonte) await rodar(banco, r.id, fonte, agora, TEMPO_LIMITE_MS, suporte)
   }
 }
 
 /** Relógio da vigília: uma batida por minuto. Só em `principal.ts`; nos testes, chama-se `batida` direto. */
-export function ligarRelogio(banco: Banco, fontes: Fonte[]) {
+export function ligarRelogio(banco: Banco, fontes: Fonte[], suporte: Suporte = criarSuporte()) {
   let ocupado = false
   const bater = async () => {
     if (ocupado) return
     ocupado = true
     try {
-      await batida(banco, fontes, () => new Date())
+      await batida(banco, fontes, () => new Date(), suporte)
     } catch (e) {
       console.error('[vigília] batida falhou', e)
     } finally {

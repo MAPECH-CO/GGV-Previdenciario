@@ -11,7 +11,7 @@ import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { casoDoCnj, pedirLeitura } from '../vigilia/casar.ts'
 import { encaminhar } from '../vigilia/encaminhar.ts'
 import { itensDaFila } from '../vigilia/fila.ts'
-import { ligarPeritoNomeado, peritoDaPublicacao } from '../vigilia/perito.ts'
+import { ligarPeritoNomeado, peritoDaPublicacao, peritoPeloNome, tipoDaPericiaAberta } from '../vigilia/perito.ts'
 
 export const MSG_CNJ_SEM_CASO = 'Nenhum processo do escritório tem esse número CNJ.'
 
@@ -119,7 +119,7 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
       const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, pedido.params.id))
       if (!p || !p.casoId) return negar(resposta, 404, 'Publicação não encontrada.')
       const quem = pedido.usuario!.id
-      const { classe, dias, vara, juiz } = entrada.data
+      const { classe, dias, vara, juiz, perito } = entrada.data
       const contado = await banco.transaction(async (tx) => {
         if (p.classe && p.classe !== classe) await tx.insert(publicacaoReclassificacao).values({ publicacaoId: p.id, de: p.classe, para: classe, por: quem })
         await tx.update(publicacao).set({ classe, revisadaPor: quem, revisadaEm: agora() }).where(eq(publicacao.id, p.id))
@@ -141,7 +141,10 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
       // GGVP-59 CA1, CA6: o perito que a nomeação cita vai ao histórico do caso; sem reconhecer, a pergunta de um clique
       // da Perícia identifica, e nada trava.
       if (classe === 'nomeacao_perito') {
-        const nomeado = await peritoDaPublicacao(banco, p.texto)
+        // GGVP-158 P5.2: com o nome conferido, o perito vem da base ou nasce, do tipo da perícia aberta e de onde atua (a
+        // vara); sem nome, procura no texto, como antes.
+        const onde = vara ?? (await banco.select({ vara: caso.vara }).from(caso).where(eq(caso.id, p.casoId)))[0]?.vara ?? ''
+        const nomeado = perito ? await peritoPeloNome(banco, perito, await tipoDaPericiaAberta(banco, p.casoId), onde) : await peritoDaPublicacao(banco, p.texto)
         // GGVP-152 CA3: reconhecido, o perito fica ligado à perícia aberta do caso, quando ela existe.
         const pericia = nomeado && p.casoId ? await ligarPeritoNomeado(banco, p.casoId, nomeado.id, agora()) : null
         await historico(quem, 'perito_nomeado', pedido, `caso:${p.casoId}`, { publicacao: p.id, perito: nomeado, reconhecido: nomeado !== null, pericia })

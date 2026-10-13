@@ -5,6 +5,7 @@ import { caso, eventoAuditoria, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
+import { MSG_RECORTE_DA_JURIMETRIA, MSG_RECORTE_POR_ADVOGADA } from './gestao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -89,6 +90,33 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect(painel.totais).toBeNull()
     expect(painel.indicadores.map((i: { chave: string }) => i.chave)).toEqual(expect.arrayContaining(['deferimento_inss', 'procedencia', 'dias_ate_sentenca', 'dias_ate_receber']))
     expect(JSON.stringify(painel)).not.toMatch(/honorarios|recebimentos/i)
+  })
+
+  it('GGVP-156 CA3, CA4 · os recortes da jurimetria (perito, juízo, vara e tese) só para o Jurídico e o Sócio', async () => {
+    await banco
+      .insert(usuario)
+      .values({ email: 'lia@exemplo.ggv', nome: 'lia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
+    for (const recorte of ['perito', 'juizo', 'vara', 'tese']) {
+      for (const apelido of ['lia', 'julia']) {
+        const r = await resultados(apelido, `?recorte=${recorte}`)
+        expect([r.statusCode, r.json().erro], `${apelido} ${recorte}`).toEqual([403, MSG_RECORTE_DA_JURIMETRIA])
+      }
+      expect((await resultados('helena', `?recorte=${recorte}`)).statusCode, `Sênior ${recorte}`).toBe(200)
+      expect((await resultados('rui', `?recorte=${recorte}`)).statusCode, `Sócio ${recorte}`).toBe(200)
+    }
+    // O recorte por benefício e o painel sem recorte continuam para a líder e o Financeiro.
+    for (const consulta of ['', '?recorte=beneficio']) expect((await resultados('lia', consulta)).statusCode, consulta).toBe(200)
+  })
+
+  it('Mateus 13/10 · a taxa de êxito de cada advogada é só dos sócios', async () => {
+    await banco
+      .insert(usuario)
+      .values({ email: 'lia@exemplo.ggv', nome: 'lia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
+    for (const apelido of ['lia', 'julia', 'helena']) {
+      const r = await resultados(apelido, '?recorte=advogada')
+      expect([apelido, r.statusCode, r.json().erro]).toEqual([apelido, 403, MSG_RECORTE_POR_ADVOGADA])
+    }
+    expect((await resultados('rui', '?recorte=advogada')).statusCode).toBe(200)
   })
 
   it('só a gestão abre o painel', async () => {

@@ -32,6 +32,7 @@ import { registrarRotasSetor } from './rotas/setor.ts'
 import { criarTarefasPorArea } from './fluxo/tarefasPorArea.ts'
 import { registrarRotasIa } from './rotas/ia.ts'
 import { criarIa, type Ia } from './ia/ia.ts'
+import { criarLeitor } from './fluxo/leitura.ts'
 import { abrirConversor, type ConversorDePdf } from './kit/pdf.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasDesfecho } from './rotas/desfecho.ts'
@@ -51,7 +52,7 @@ import { registrarRotasCrianca } from './rotas/crianca.ts'
 import { registrarRotasDocumentacaoMedica } from './rotas/documentacao-medica.ts'
 import { fontesAtivas, type Fonte } from './vigilia/fontes.ts'
 import { registrarSessao } from './sessao/rotas.ts'
-import { registrarRotasRecepcao } from './rotas/recepcao.ts'
+import { aceitaGanchoDeTeste, registrarRotasRecepcao } from './rotas/recepcao.ts'
 import { registrarRotasRecepcaoAgenda } from './rotas/recepcao-agenda.ts'
 import { registrarRotasRecepcaoEntrevista } from './rotas/recepcao-entrevista.ts'
 import { registrarRotasRecepcaoDecisoes } from './rotas/recepcao-decisoes.ts'
@@ -95,12 +96,17 @@ type Opcoes = {
    * Word. `null`: sem conversor, mesmo com a variável (o teste que confere o Word).
    */
   conversor?: ConversorDePdf | null
-  /** O ZapSign está contratado. Padrão: há `ZAPSIGN_API_TOKEN`. Sem ele, só papel, e a opção do celular não aparece (GGVP-136, CA8). */
-  zapsign?: boolean
   /** Drive do escritório ligado (GGVP-107): a trava do pacote cobra o pacote salvo lá. Padrão: as variáveis do Drive. */
   driveLigado?: boolean
   /** O commit do build (GGVP-158), que o /saude mostra. Padrão: "local". */
   versao?: string
+  /**
+   * GGVP-158 P4.10: a leitura de exemplo, pelo nome do arquivo, no lugar da IA de verdade, só para os testes. Padrão:
+   * `LEITURA_SIMULADA=sim`, que só o Playwright liga.
+   */
+  leituraSimulada?: boolean
+  /** O Drive do escritório (GGVP-107; GGVP-158 P4.7, a pasta do cliente). Padrão: as variáveis do Drive; `null`, desligado. */
+  drive?: ReturnType<typeof abrirDrive>
 }
 
 declare module 'fastify' {
@@ -119,16 +125,18 @@ declare module 'fastify' {
 /**
  * GGVP-158: cabeçalhos de segurança em toda resposta, da API e da tela. A tela montada só carrega arquivos dela mesma; a
  * exceção é o texto ao vivo da entrevista, que o navegador pede direto à OpenAI com a chave temporária (web/src/dados/audio.ts).
+ * O quadro aceita blob:, porque a impressão do kit em PDF abre o arquivo baixado num quadro escondido (web/src/impressao.ts).
  */
 const CABECALHOS_DE_SEGURANCA = {
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
   'content-security-policy':
     "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; " +
-    "connect-src 'self' https://api.openai.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+    "connect-src 'self' https://api.openai.com; frame-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
 }
 
 export const MSG_ERRO_INESPERADO = 'Algo deu errado.'
+export const MSG_LEITURA_SO_NO_TESTE = 'A leitura de exemplo (LEITURA_SIMULADA) é só dos testes de tela: na homologação e na produção, o portal não sobe com ela.'
 
 /**
  * GGVP-158: o que o log guarda de um erro: o código e o tipo, nunca a mensagem. O erro do banco traz o SQL e os parâmetros
@@ -140,7 +148,25 @@ export function resumoDoErro(e: unknown) {
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia, conversor, zapsign, driveLigado, versao = 'local' }: Opcoes = {}) {
+export function criarServidor({
+  logger = false,
+  banco,
+  consultarBanco,
+  pastaTela,
+  agora,
+  cookieSeguro,
+  cofre,
+  armazenamento,
+  fontes,
+  ia,
+  conversor,
+  driveLigado,
+  versao = 'local',
+  leituraSimulada = process.env.LEITURA_SIMULADA === 'sim',
+  drive: driveDado,
+}: Opcoes = {}) {
+  // GGVP-158 P4.10: a homologação e a produção nunca leem pelo nome do arquivo.
+  if (leituraSimulada && !aceitaGanchoDeTeste(process.env)) throw new Error(MSG_LEITURA_SO_NO_TESTE)
   // GGVP-158: o log nunca leva o cookie da sessão nem a autorização, mesmo num registro que traga os cabeçalhos.
   const app = Fastify({ logger: logger && { redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'] } })
   // GGVP-158: o erro inesperado responde a mensagem genérica e registra só a rota, o código e o tipo. O 4xx (validação,
@@ -169,7 +195,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
   app.decorate('alimentarAcervo', () => alimentar())
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
   // CA10: só leitura não guarda o pacote no Drive, então a trava do pacote não o cobra.
-  const doAmbiente = abrirDrive()
+  const doAmbiente = driveDado === undefined ? abrirDrive() : driveDado
   const comDrive = driveLigado ?? (doAmbiente !== null && !doAmbiente.soLeitura)
   const drive = doAmbiente?.soLeitura ? ('so-leitura' as const) : comDrive ? ('ligado' as const) : ('desligado' as const)
 
@@ -201,7 +227,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
-    registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos, ia: motorIa })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
@@ -217,21 +243,23 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasDesfecho(app, { banco, agora })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecurso(app, { banco, agora })
+    registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea })
+    // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
+    const leitor = criarLeitor({ ia: motorIa, simulada: leituraSimulada, agora })
+    registrarRotasRecepcao(app, { banco, agora, tarefasPorArea, armazenamento: arquivos, cofre: cofreDoGov, leitor, drive: doAmbiente })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
     registrarRotasRecepcaoDecisoes(app, { banco, agora })
-    registrarRotasRecepcaoSegundaFicha(app, { banco, agora })
+    registrarRotasRecepcaoSegundaFicha(app, { banco, agora, armazenamento: arquivos, cofre: cofreDoGov, leitor })
     registrarRotasRecepcaoContrato(app, {
       banco,
       agora,
       armazenamento: arquivos,
       conversor: conversor === undefined ? abrirConversor() : (conversor ?? undefined),
-      zapsign: zapsign ?? Boolean(process.env.ZAPSIGN_API_TOKEN),
+      leitor,
     })
-    registrarRotasRecepcaoDocumentos(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasRecepcaoDocumentos(app, { banco, agora, armazenamento: arquivos, leitor })
     registrarRotasRecepcaoChecklist(app, { banco, agora })
     registrarRotasRecepcaoCobranca(app, { banco, agora })
     registrarRotasRoteiros(app, { banco, agora })

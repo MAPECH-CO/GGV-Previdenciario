@@ -4,15 +4,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
+import { criarIa } from '../ia/ia.ts'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { caso, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { docxDeTeste, formularioDoArquivo } from '../kit/docx-de-teste.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
-import { MSG_CONTEUDO_DIFERENTE } from './recepcao-documentos.ts'
+import { MSG_CONTEUDO_DIFERENTE, MSG_ESCOLHA_O_CASO } from './recepcao-documentos.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -38,8 +39,9 @@ const leiturasDe = async (fichaId: string) => (await banco.select().from(leitura
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  // O kit é o Word do escritório (GGVP-136): o ZapSign é o simulado e o kit sai em Word, sem conversor de PDF.
-  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), zapsign: true, conversor: null })
+  // O kit é o Word do escritório (GGVP-136), sem conversor de PDF; a assinatura é em papel (GGVP-158 P4.5). A leitura é a
+  // de exemplo, pelo nome do arquivo (GGVP-158 P4.10); a de verdade, pela IA, tem o bloco dela no fim.
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), conversor: null, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // Os contratos dos testes são do LOAS: o modelo dele, de teste, já está na Configuração. Só pede o nome e o CPF.
@@ -113,7 +115,7 @@ describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
     })
   })
 
-  it('o contrato assinado pelo ZapSign chega à pasta do processo já com a leitura, para a conferência da Documentação', async () => {
+  it('o contrato assinado em papel e digitalizado chega à pasta do processo já com a leitura, para a conferência da Documentação', async () => {
     const fichaId = await lead()
     const { processo } = await json('ana', 'POST', `/api/fichas/${fichaId}/processos`, { beneficio: 'loas-idoso' })
     const base = `/api/processos/${processo.id}/contrato`
@@ -122,8 +124,8 @@ describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
     const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
     const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
     await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes })
-    await json('ana', 'POST', `${base}/zapsign`)
-    const { arquivo } = await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
+    await json('ana', 'POST', `${base}/impressao`)
+    const { arquivo } = await json('ana', 'POST', `${base}/digitalizacao`)
     expect(await leiturasDe(fichaId)).toMatchObject([{ id: `${fichaId}/${arquivo.nome}`, tipo: 'contrato', situacao: 'a-conferir' }])
   })
 })
@@ -199,7 +201,7 @@ describe('GGVP-125 · bloco 5b: a conferência dos documentos no servidor', () =
     expect(JSON.stringify(r.ficha.historico)).not.toContain('12.345.678-9')
   })
 
-  it('o contrato assinado arquivado pela Documentação segue para a cópia; as leituras vão na cópia das telas', async () => {
+  it('o contrato assinado arquivado pela Documentação segue para a leitura do contrato; as leituras vão na cópia das telas', async () => {
     const fichaId = await lead()
     const { processo } = await json('ana', 'POST', `/api/fichas/${fichaId}/processos`, { beneficio: 'loas-idoso' })
     const base = `/api/processos/${processo.id}/contrato`
@@ -208,12 +210,14 @@ describe('GGVP-125 · bloco 5b: a conferência dos documentos no servidor', () =
     const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
     const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
     await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes })
-    await json('ana', 'POST', `${base}/zapsign`)
-    const { arquivo } = await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
+    // GGVP-158 P4.5: sem ZapSign, o assinado é o papel digitalizado. A leitura de exemplo do papel aponta a rubrica que falta.
+    await json('ana', 'POST', `${base}/impressao`)
+    const { arquivo } = await json('ana', 'POST', `${base}/digitalizacao`)
+    await json('ana', 'POST', `${base}/assinatura-em-papel`)
     const documentos = [{ id: `${fichaId}/${arquivo.nome}`, tipo: 'contrato', data: '2026-10-08' }]
     const r = await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })
     expect(r).toMatchObject({ arquivados: 1, contrato: true })
-    expect(r.contratos).toMatchObject([{ processoId: processo.id, etapa: 'copia' }])
+    expect(r.contratos).toMatchObject([{ processoId: processo.id, etapa: 'conferir', leitura: { faltam: ['pág. 4 (rubrica)'] } }])
     expect(r.ficha.arquivos.find((a: { nome: string }) => a.nome === arquivo.nome)).toMatchObject({ local: processo.id, aguardaLeitura: false })
     expect((await json('ana', 'GET', '/api/recepcao')).leituras).toMatchObject([{ id: `${fichaId}/${arquivo.nome}`, situacao: 'arquivado' }])
   })
@@ -236,7 +240,7 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
 
   beforeEach(async () => {
     await app.close()
-    app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))) })
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), leituraSimulada: true })
   })
 
   it('laudo com caso: guardado como documento sensível do caso e documento médico não conferido; o mesmo conteúdo não duplica', async () => {
@@ -249,8 +253,22 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     expect([d.casoId, d.pessoaId, d.tipo, d.sensivel, d.origem, d.hashSha256]).toEqual([c.id, fichaId, 'laudo', true, 'card', sha(PDF_LAUDO)])
     const [m] = await banco.select().from(documentoMedico).where(eq(documentoMedico.documentoId, d.id))
     expect([m.tipo, m.confirmadoEm]).toEqual(['laudo', null])
-    expect((await conteudo(fichaId, PDF_LAUDO)).json()).toEqual({ documentoId: d.id, repetido: true })
+    expect((await conteudo(fichaId, PDF_LAUDO)).json()).toEqual({ documentoId: d.id, repetido: true, leituras: [] })
     expect(await banco.select().from(documento)).toHaveLength(1)
+  })
+
+  it('GGVP-158 P4.9 · com dois casos, o envio diz o caso: sem ele, recusa; com ele, o laudo vai à pasta e ao registro do caso escolhido', async () => {
+    const fichaId = await lead()
+    await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' })
+    const [segundo] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'auxilio_incapacidade_temporaria', fase: 'administrativa' }).returning()
+    const laudo = doc('Laudo.pdf', 'laudo', sha(PDF_LAUDO))
+    expect(await enviar(fichaId, laudo)).toEqual({ erro: MSG_ESCOLHA_O_CASO })
+    const fora = await json('ana', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', processoId: '00000000-0000-4000-8000-000000000000', arquivos: [laudo] })
+    expect(fora).toEqual({ erro: 'Caso não encontrado.' })
+    const r = await json('ana', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', processoId: segundo.id, arquivos: [laudo] })
+    expect(r.arquivos).toMatchObject([{ nome: 'Laudo.pdf', local: segundo.id }])
+    const [d] = await banco.select().from(documento).where(eq(documento.id, (await conteudo(fichaId, PDF_LAUDO)).json().documentoId))
+    expect([d.casoId, d.sensivel]).toEqual([segundo.id, true])
   })
 
   it('sem caso, o RG fica com a pessoa e não é sensível; conteúdo que não foi anunciado é recusado e nada é guardado', async () => {
@@ -291,6 +309,36 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     const [t] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, `laudo-${fichaId}`))
     expect([(t.dados as { acao: string }).acao, (t.dados as { setor: string }).setor, t.concluidaEm]).toEqual(['Analisar laudo novo', 'Jurídico', null])
     expect(registros).toHaveLength(3)
+  })
+
+  describe('GGVP-158 P4.1 · a IA de verdade lê quando o conteúdo chega', () => {
+    const LIDO = { tipo: 'rg', data: '2010-05-04', nome: 'Joana Ribeiro', cpf: '', rg: '12.345.678-9', endereco: '', assinado: null, dataEmBranco: false, legivel: true, confianca: 88, emitente: '', registro: '' }
+    const resposta = () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(LIDO) } }] }))
+    let fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => resposta())
+
+    beforeEach(async () => {
+      await app.close()
+      fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => resposta())
+      const ia = criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste-openai' }, fetch, agora: () => relogio })
+      app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), ia })
+    })
+
+    it('o anúncio não lê; com o conteúdo, a IA lê pela imagem: o tipo e os dados vêm do documento, não do nome do arquivo', async () => {
+      const fichaId = await lead()
+      const anuncio = await enviar(fichaId, doc('Documento sem assinatura.pdf', 'outro', sha(PDF_RG)))
+      expect([anuncio.leituras, fetch.mock.calls.length]).toEqual([[], 0])
+      const r = await conteudo(fichaId, PDF_RG)
+      expect(r.statusCode).toBe(201)
+      expect(r.json().leituras).toMatchObject([
+        { id: `${fichaId}/Documento sem assinatura.pdf`, tipo: 'rg', data: '2010-05-04', confianca: 88, lidos: { nome: 'Joana Ribeiro', rg: '12.345.678-9' }, situacao: 'a-conferir' },
+      ])
+      expect(r.json().leituras[0].semAssinatura).toBeUndefined()
+      expect(String(fetch.mock.calls[0][1]?.body)).toContain(PDF_RG.toString('base64'))
+      expect((await leiturasDe(fichaId)).map((l) => l.tipo)).toEqual(['rg'])
+      // O mesmo conteúdo de novo não chama a IA outra vez: o arquivo já foi lido.
+      expect((await conteudo(fichaId, PDF_RG)).json()).toMatchObject({ repetido: true, leituras: [] })
+      expect(fetch.mock.calls.length).toBe(1)
+    })
   })
 })
 

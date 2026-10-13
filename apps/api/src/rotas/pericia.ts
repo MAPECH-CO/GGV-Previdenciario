@@ -34,21 +34,24 @@ import {
   pode,
   type Acao,
   type Erro,
+  type IdDoModelo,
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { avancarExigencia } from '../fluxo/exigencia.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { avancarExigencia, parametroDoEscritorio } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
+import { peritoPeloNome } from '../vigilia/perito.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import type { Perito } from '../../../web/src/dados/peritos.ts'
 import type { Ficha, Processo, Tarefa } from '../../../web/src/dados/tipos.ts'
 import { hojeIso } from '../../../web/src/regras/datas.ts'
 import { problemaG20 } from '../../../web/src/regras/parecer.ts'
+import { NO_CATALOGO } from './recepcao.ts'
 import { dataDoJuizoNaPublicacao, problemaDaOrientacao, type OrigemDaPericia, type TipoDePericia } from '../../../web/src/regras/pericia.ts'
 import {
   KIT_DA_PERICIA,
@@ -71,6 +74,8 @@ import {
 } from '../../../web/src/regras/periciaNoCaso.ts'
 
 export const MSG_SEM_PERICIA = 'Este caso não tem perícia.'
+/** GGVP-104 CA4 (Lucas, 02/10): 1 remarcação, e sobe para a advogada responsável. Vale sem nada salvo na Configuração. */
+export const REMARCACOES_DO_LUCAS = 1
 export const MSG_ARQUIVO_PDF = 'Anexe o PDF (até 25 MB).'
 export const MSG_ANEXO = 'Anexe o documento em PDF ou imagem (JPEG, PNG), até 25 MB.'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -81,24 +86,6 @@ export const ORIGEM_DO_PASSO: Record<string, OrigemDaPericia> = {
   'D2.05': 'd2-exigencia',
   'D3.03': 'd3-despacho',
   'D3a.03': 'd3a-juiz',
-}
-
-/**
- * Os benefícios do servidor no catálogo das telas. ponytail: o mesmo mapa está no pedido #29 (`NO_CATALOGO`, em
- * rotas/recepcao.ts); quando ele entrar na main, importar de lá e apagar este.
- */
-const NO_CATALOGO: Record<string, string> = {
-  bpc_loas_deficiente: 'loas-deficiente',
-  bpc_loas_idoso: 'loas-idoso',
-  aposentadoria_pcd: 'aposentadoria-pcd',
-  aposentadoria_idade: 'aposentadoria-idade',
-  aposentadoria_tempo: 'aposentadoria-contribuicao',
-  aposentadoria_especial: 'aposentadoria-especial',
-  aposentadoria_incapacidade_permanente: 'incapacidade-permanente',
-  auxilio_incapacidade_temporaria: 'incapacidade-temporaria',
-  auxilio_acidente: 'auxilio-acidente',
-  pensao_morte: 'pensao-morte',
-  salario_maternidade: 'salario-maternidade',
 }
 
 /** O perfil do perito na coluna `perfil` (GGVP-73): o tipo, onde atua e os laudos, sem dado pessoal do cliente. */
@@ -119,7 +106,7 @@ type DoCaso = { mundo: MundoDaPericia; casoId: string; linhas: Map<string, typeo
 /**
  * Saúde simples (Pedro, 08/10): fora do Jurídico (`dado_saude.ver_detalhe`), sai só o conteúdo médico, que aqui é o que a
  * IA leu dos laudos: o desta perícia e das anteriores, e os do acervo no perfil do perito (cada um com a referência do
- * caso), com o assunto deles (os números por assunto). Os números do perito (G22) todos veem. O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
+ * caso), com o assunto deles (os números por assunto). Os números do perito (G22) ficam com `estudo.ver` (GGVP-158 P5.13). O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
  * abre pelo Jurídico, na rota dos documentos, que registra quem abriu (acesso_dado_sensivel).
  */
 function semLeitura(p: Pericia): Pericia {
@@ -127,13 +114,30 @@ function semLeitura(p: Pericia): Pericia {
   return laudo ? { ...p, resultado: { ...p.resultado, laudo: { ...laudo, leitura: undefined } } } : p
 }
 
+const SEM_NUMEROS = { laudos: 0, favoraveis: 0, taxa: 0, diasAteOLaudo: 0 }
+
+/**
+ * GGVP-156 CA2 e GGVP-158 P5.13 (GGVP-131 CA10): os números do perito e o resumo do perfil (o que observou, perguntou e
+ * pediu) são jurimetria, só do Jurídico e dos sócios (`estudo.ver`, os mesmos perfis de `dado_saude.ver_detalhe`). Os
+ * outros veem o perito e a perícia, sem esses números e sem o resumo.
+ */
 function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
   if (juridico) return t
   return {
     ...t,
     pericia: semLeitura(t.pericia),
     anteriores: t.anteriores.map(semLeitura),
-    perfil: t.perfil && { ...t.perfil, porAssunto: [], porBeneficio: [], perito: { ...t.perfil.perito, laudos: [] } },
+    perfil: t.perfil && {
+      ...t.perfil,
+      versao: 0,
+      jurimetria: SEM_NUMEROS,
+      porAssunto: [],
+      porBeneficio: [],
+      observou: [],
+      perguntou: [],
+      pediu: [],
+      perito: { ...t.perfil.perito, laudos: [] },
+    },
   }
 }
 
@@ -227,6 +231,8 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     }
     const ps = await peritos()
     const mundo: MundoDaPericia = { fichas: [ficha], pericias: [], peritos: ps }
+    // GGVP-158 P5.3: o limite de remarcações da Configuração vale em cada perícia lida; sem ele, o do Lucas.
+    const limiteDeRemarcacoes = await parametroDoEscritorio(banco, 'pericia.remarcacao.limite', REMARCACOES_DO_LUCAS)
     const linhas = await banco.select().from(pericia).where(eq(pericia.casoId, casoId)).orderBy(asc(pericia.criadoEm), asc(pericia.id))
     for (const l of linhas) {
       if (l.documento) {
@@ -253,6 +259,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
         l.id,
       )
     }
+    for (const p of mundo.pericias!) p.limiteDeRemarcacoes = limiteDeRemarcacoes
     return { mundo, casoId, linhas: new Map(linhas.map((l) => [l.id, l])), laudosAntes: new Map(ps.map((p) => [p.id, p.laudos.length])) }
   }
 
@@ -355,6 +362,43 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   }
 
   type ComId = { Params: { id: string } }
+
+  /**
+   * GGVP-158 P5.2: o perito escolhido: o id da base ou, com o nome, o que `peritoPeloNome` acha ou cria, do tipo da perícia.
+   * Ele entra no mundo da perícia como está no banco, para a regra das telas achá-lo sem regravar o perfil.
+   */
+  async function peritoEscolhido(n: NaPericia, d: DoCaso, p: PeritoEscolhido): Promise<string> {
+    if (p.peritoId) return p.peritoId
+    const achado = await peritoPeloNome(banco, p.nome!, n.pericia.tipo)
+    if (!n.mundo.peritos?.some((x) => x.id === achado.id)) {
+      const [linha] = await banco.select({ especialidade: perito.especialidade, perfil: perito.perfil }).from(perito).where(eq(perito.id, achado.id))
+      const perfil = linha?.perfil as PerfilGuardado | null
+      const laudos = perfil?.laudos ?? []
+      ;(n.mundo.peritos ??= []).push({ id: achado.id, nome: achado.nome, especialidade: linha?.especialidade ?? '', tipo: perfil?.tipo ?? n.pericia.tipo, onde: perfil?.onde ?? '', laudos })
+      d.laudosAntes.set(achado.id, laudos.length)
+    }
+    return achado.id
+  }
+
+  /**
+   * GGVP-158 P5.1: o registro do que foi pelo Chatwoot pede a mensagem que o correio do cliente mandou de verdade
+   * (rotas/mensagens.ts): da pessoa do caso, do modelo e com o mesmo texto. Com o id, vale aquela; sem ele, a mais nova que
+   * saiu (a tela envia antes e registra depois). A que ficou como "não saiu" não serve.
+   * ponytail: casa pelo texto, que já traz a data da perícia; um id obrigatório fecha de vez quando a tela mandar.
+   */
+  async function envioDe(casoId: string, mensagemId: string | undefined, modelo: IdDoModelo, texto: string, oQue: string): Promise<{ erro: string } | { id: string }> {
+    const linhas = await banco
+      .select({ id: mensagem.id, status: mensagem.status })
+      .from(mensagem)
+      .innerJoin(caso, eq(caso.pessoaId, mensagem.pessoaId))
+      .where(and(eq(caso.id, casoId), eq(mensagem.modelo, modelo), eq(mensagem.conteudo, texto.trim()), mensagemId ? eq(mensagem.id, mensagemId) : undefined))
+      .orderBy(desc(mensagem.criadoEm))
+    const saiu = linhas.find((l) => l.status !== 'falhou')
+    if (saiu) return { id: saiu.id }
+    if (linhas.length) return { erro: `${oQue[0].toUpperCase()}${oQue.slice(1)} não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.` }
+    return { erro: mensagemId ? 'Esta não é a mensagem enviada: registre com a mensagem que saiu pelo Chatwoot.' : `Envie ${oQue} pelo Chatwoot antes de registrar.` }
+  }
+
 
   // GGVP-49: a perícia do processo, na visão do perfil. A que nasceu do INSS ganha aqui o formato das telas (DP.01).
   app.get<ComId>('/api/processos/:id/pericia', com('caso.ver'), async (pedido, resposta) => {
@@ -520,10 +564,14 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return a && mudar(pedido, resposta, { acao: 'pericia_remarcacao_autorizada', passo: 'DP.02' }, (n, quem) => mudancas.autorizacao(n, a.justificativa, quem))
   })
 
-  // GGVP-53 CA7: o lembrete da véspera, conferido e já enviado pelo correio do servidor (rotas/mensagens.ts).
-  app.post<ComId>('/api/processos/:id/pericia/lembrete', com('pericia.marcar'), (pedido, resposta) => {
+  // GGVP-53 CA7: o lembrete da véspera, conferido e já enviado pelo correio do servidor (rotas/mensagens.ts); GGVP-158 P5.1:
+  // o servidor confere que ele saiu.
+  app.post<ComId>('/api/processos/:id/pericia/lembrete', com('pericia.marcar'), async (pedido, resposta) => {
     const m = corpo(MensagemConferida, pedido, resposta)
-    return m && mudar(pedido, resposta, { acao: 'pericia_lembrete_enviado', passo: 'DP.04' }, (n, quem) => mudancas.lembrete(n, m.mensagem, quem))
+    if (!m) return
+    const envio = await envioDe(pedido.params.id, m.mensagemId, 'pericia-presenca', m.mensagem, 'o lembrete')
+    if ('erro' in envio) return negar(resposta, 409, envio.erro)
+    return mudar(pedido, resposta, { acao: 'pericia_lembrete_enviado', passo: 'DP.04', detalhe: { mensagem: envio.id } }, (n, quem) => mudancas.lembrete(n, m.mensagem, quem))
   })
 
   // GGVP-56: a Documentação reúne o que a perícia pede (DP.03).
@@ -564,9 +612,12 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return mudar(pedido, resposta, { acao: 'pericia_pedido_ao_medico', passo: 'DP.03' }, (n, quem) => mudancas.pedidoAoMedico(n, p.abordar, quem))
   })
 
-  app.post<ComId>('/api/processos/:id/pericia/cobranca', com('pericia.reunir_documentos'), (pedido, resposta) => {
+  app.post<ComId>('/api/processos/:id/pericia/cobranca', com('pericia.reunir_documentos'), async (pedido, resposta) => {
     const m = corpo(MensagemConferida, pedido, resposta)
-    return m && mudar(pedido, resposta, { acao: 'pericia_cobranca_enviada', passo: 'DP.03' }, (n, quem) => mudancas.cobranca(n, m.mensagem, quem))
+    if (!m) return
+    const envio = await envioDe(pedido.params.id, m.mensagemId, 'cobranca', m.mensagem, 'a cobrança')
+    if ('erro' in envio) return negar(resposta, 409, envio.erro)
+    return mudar(pedido, resposta, { acao: 'pericia_cobranca_enviada', passo: 'DP.03', detalhe: { mensagem: envio.id } }, (n, quem) => mudancas.cobranca(n, m.mensagem, quem))
   })
 
   app.post<ComId>('/api/processos/:id/pericia/cobranca/adiamento', com('pericia.reunir_documentos'), (pedido, resposta) =>
@@ -582,7 +633,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   // GGVP-61 CA6: a pergunta de um clique liga o perito; a orientação sai de novo pelo perfil.
   app.post<ComId>('/api/processos/:id/pericia/perito', com('pericia.orientar_cliente'), (pedido, resposta) => {
     const p = corpo(PeritoEscolhido, pedido, resposta)
-    return p && mudar(pedido, resposta, { acao: 'pericia_perito_ligado', passo: 'DP.05' }, (n, quem) => mudancas.perito(n, p.peritoId, quem))
+    return p && mudar(pedido, resposta, { acao: 'pericia_perito_ligado', passo: 'DP.05' }, async (n, quem, d) => mudancas.perito(n, await peritoEscolhido(n, d, p), quem))
   })
 
   /**
@@ -629,11 +680,16 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   app.post<ComId>('/api/processos/:id/pericia/orientacao', com('pericia.orientar_cliente'), async (pedido, resposta) => {
     const o = corpo(OrientacaoAoCliente, pedido, resposta)
     if (!o) return
+    // GGVP-158 P5.1: pelo Chatwoot, só registra a orientação que saiu.
+    const envio = o.canal === 'chatwoot' ? await envioDe(pedido.params.id, o.mensagemId, 'pericia-orientacao', o.texto, 'a orientação') : null
+    if (envio && 'erro' in envio) return negar(resposta, 409, envio.erro)
+    const mensagemId = envio?.id
     let recusa: string | null = null
-    const registro = { acao: 'pericia_orientacao_enviada', passo: 'DP.06', detalhe: { canal: o.canal } }
+    const registro = { acao: 'pericia_orientacao_enviada', passo: 'DP.06', detalhe: { canal: o.canal, mensagem: mensagemId ?? null } }
     const r = await mudar(pedido, resposta, registro, (n, quem) => {
       recusa = mudancas.orientacao(n, o, quem)
       if (recusa) registro.acao = ''
+      else if (mensagemId) n.pericia.preparacao = { ...n.pericia.preparacao!, mensagemId }
     })
     if (!recusa) return r
     await bloqueio(pedido, pedido.params.id, 'G20', 'DP.06', {}, 'pericia_orientacao_recusada')
@@ -739,6 +795,6 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   // GGVP-73 CA6: ligado o perito, o laudo sai da espera e entra no perfil dele.
   app.post<ComId>('/api/processos/:id/pericia/laudo/perito', com('pericia.conferir_resultado'), (pedido, resposta) => {
     const p = corpo(PeritoEscolhido, pedido, resposta)
-    return p && mudar(pedido, resposta, { acao: 'pericia_perito_do_laudo', passo: 'DP.09' }, (n, quem) => mudancas.peritoDoLaudo(n, p.peritoId, quem), true)
+    return p && mudar(pedido, resposta, { acao: 'pericia_perito_do_laudo', passo: 'DP.09' }, async (n, quem, d) => mudancas.peritoDoLaudo(n, await peritoEscolhido(n, d, p), quem), true)
   })
 }

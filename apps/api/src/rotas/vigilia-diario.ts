@@ -9,7 +9,7 @@ import { feriadosDoProcesso } from '../fluxo/prazo-judicial.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia, itensDaFila } from '../vigilia/fila.ts'
 import type { Fonte } from '../vigilia/fontes.ts'
-import { momentoDoHorario, rodar } from '../vigilia/rodadas.ts'
+import { MSG_SEM_FONTE, momentoDoHorario, rodar, semFonteHoje } from '../vigilia/rodadas.ts'
 
 type Opcoes = { banco: Banco; fontes: Fonte[]; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -24,7 +24,25 @@ export async function alarmesDaVigilia(banco: Banco, agora: Date) {
     .from(rodadaVigilia)
     .where(and(inArray(rodadaVigilia.situacao, [...PENDENTES]), gte(rodadaVigilia.previstaPara, new Date(agora.getTime() - 7 * UM_DIA_MS))))
     .orderBy(asc(rodadaVigilia.previstaPara))
-  return linhas.map((r) =>
+  // GGVP-158 P5.10: a vigília sem fonte ligada vem antes de tudo: nenhuma publicação chega.
+  const semFonte = await semFonteHoje(banco, agora)
+  const linhaSemFonte = semFonte
+    ? [
+        TarefaDaCentral.parse({
+          id: semFonte,
+          casoId: null,
+          passo: 'D4.01',
+          cliente: null,
+          contexto: 'Vigília das publicações',
+          titulo: 'Vigília sem fonte ligada',
+          detalhe: `${MSG_SEM_FONTE[0].toUpperCase()}${MSG_SEM_FONTE.slice(1)}. O suporte técnico foi avisado.`,
+          tela: '/vigilia',
+          prazo: hojeEmBrasilia(agora),
+          urgente: true,
+        }),
+      ]
+    : []
+  return [...linhaSemFonte, ...linhas.map((r) =>
     TarefaDaCentral.parse({
       id: r.id,
       casoId: null,
@@ -37,7 +55,7 @@ export async function alarmesDaVigilia(banco: Banco, agora: Date) {
       prazo: hojeEmBrasilia(agora),
       urgente: true,
     }),
-  )
+  )]
 }
 
 export function registrarRotasVigiliaDiario(app: FastifyInstance, { banco, fontes, agora = () => new Date() }: Opcoes) {

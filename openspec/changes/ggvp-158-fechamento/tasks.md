@@ -64,11 +64,17 @@
   - com o telefone de fora, a janela disse "fora da lista de teste".
 
   O #63 saiu do rascunho.
-- [ ] 1.11 Os modelos que passam (P1.8). Dos anexos da GGVP-136, conferidos com `lerModelo`, passam o `modelo-8` (kit consumidor de 23/07) e o `modelo-10` (seguro de vida).
+- [x] 1.11 Os modelos que passam (P1.8). Dos anexos da GGVP-136, conferidos com `lerModelo`, passam o `modelo-8` (kit consumidor de 23/07) e o `modelo-10` (seguro de vida).
   - A Sênior sobe os dois pelo `modelos:subir`, com a senha digitada só no terminal do Mateus.
   - Na primeira tentativa (12/10), o portal respondeu 500: o depósito `documentos` do Supabase não aceitava Word. Com a autorização do Mateus, o tipo do Word entrou na lista do depósito, pelo conector.
   - O depósito agora está descrito em `docs/infra/homologacao.md`, para a produção nascer igual.
   - Verifica: a Configuração mostra a versão dos dois, e o cartão registra o que falta e por quê.
+
+  Verificado em 13/10, junto com a 1.13:
+  - os 5 modelos estão na versão 1, em vigor, cada um com o seu arquivo no depósito;
+  - o comentário do cartão lista os 4 que faltam, porque o escritório ainda não mandou: aposentadorias, LOAS sem representante, curatela e restituição.
+
+  O 500 de 13/10 era outro: o `SUPABASE_URL` do app tinha o endereço do banco (`postgresql://`), e nenhum arquivo da homologação era guardado. O Mateus trocou para `https://gyqscrirlzfogurduruf.supabase.co`, e o depósito respondeu 200.
 - [x] 1.12 Os nomes do ZapSign no kit (P1.9), num PR à parte sobre o #62, com revisão do Pedro. Na ordem contrato → teste → código:
   - em `apps/web/src/regras/kitDoModelo.ts`, os sinônimos com o mesmo valor do nome do portal e as variáveis que a ficha não tem como opcionais;
   - a regra da primeira data vale para `{{DIA}}`, `{{MÊS}}` e `{{ANO}}`, em `apps/api/src/kit/docx.ts`;
@@ -86,9 +92,19 @@
   - Feito numa cópia, fora do repositório: o bloco do contrato foi para o começo, com uma quebra de página antes da procuração.
   - Conferido no Word: as mesmas 6 páginas, cada documento começando no alto de uma página, e a data preenchida no contrato.
 - [ ] 1.13 Depois do merge da 1.12, a Sênior sobe os 3 Contratos Completos (auxílio incapacidade, auxílio acidentário e LOAS). Verifica: o "Preparar contrato" gera o kit com os dados da ficha.
+  - 13/10: os 3 subiram, na versão 1. O LOAS foi como "LOAS representado por genitor(a)", porque usa os dados do genitor.
+  - Falta gerar um kit na tela.
 - [ ] 1.14 Gotenberg (P1.10): o serviço `gotenberg/gotenberg:8` no mesmo projeto do Coolify, na porta 3000, sem domínio público, e o `GOTENBERG_URL` no app. Verifica: `GET /api/contrato/servicos` responde `pdf: true`, e o kit sai em PDF.
+  - 13/10, com o ok do Mateus: o app `gotenberg-homologacao`, sem domínio, com o nome fixo na rede interna e o teto de 1 CPU e 1 GB.
+  - O `GOTENBERG_URL=http://gotenberg-homologacao:3000` está no app; do contêiner da API, a saúde dá 200 e a conversão de teste dá certo.
+  - Medido: parado, ~10 MB; convertendo, pico de ~120 a 180 MB, em ~4 s. O servidor tem 4 CPUs e 16 GB.
+  - Falta o kit em PDF na tela.
 - [ ] 1.15 Drive na homologação (P1.11): a decisão do Mateus, entre só leitura e pastas de teste, aplicada no Coolify. O Mateus apaga do Drive real a pasta de teste "Leads/2026/Teste Chatwoot Mateus". Verifica: o /saude mostra o Drive como o Mateus decidiu, e um lead novo não cria pasta nas pastas reais.
-- [ ] 1.16 Depois do merge do #62, o Mateus roda `homologacao:preparar` no terminal da homologação. Verifica: o /saude mostra o commit novo, e os peritos de exemplo aparecem ao registrar o perito de uma perícia.
+  - 13/10: o Mateus decidiu só leitura, e o /saude mostra `"drive":"so-leitura"`.
+  - Falta o Mateus apagar a pasta de teste (fica para depois, combinado em 13/10).
+- [x] 1.16 Depois do merge do #62, o Mateus roda `homologacao:preparar` no terminal da homologação. Verifica: o /saude mostra o commit novo, e os peritos de exemplo aparecem ao registrar o perito de uma perícia.
+
+  Verificado em 13/10: o comando terminou sem erro, o /saude mostra a `da10ac8d` (com o #62, o #63 e o #69), e os 3 peritos de exemplo estão no banco.
 - [ ] 1.17 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-158 · Parte 2 · Segurança e processo do repositório (o código)
@@ -156,7 +172,287 @@
 
 ## GGVP-158 · Parte 2 · Fora do código (12/10)
 
-- [ ] 2.10 Banco da homologação (P2.8): com a autorização do Mateus, o conector do Supabase lista só nomes e contagens do esquema `juridico`, das cópias `zz_backup_*` e da `_snap_pgss`. A proposta vai ao cartão; apagar, só o Mateus. Verifica: o comentário no cartão traz a lista e a proposta.
+- [x] 2.10 Banco da homologação (P2.8): com a autorização do Mateus, o conector do Supabase lista só nomes e contagens do esquema `juridico`, das cópias `zz_backup_*` e da `_snap_pgss`. A proposta vai ao cartão; apagar, só o Mateus. Verifica: o comentário no cartão traz a lista e a proposta.
+
+  Verificado em 13/10, no comentário do cartão:
+  - uns 40 MB que não são do portal, com nomes de dado real de um sistema anterior: clientes, processos, `acessos_gov` e credenciais;
+  - ninguém escreve desde 24 e 25/08, e a API pública do Supabase não tem acesso;
+  - a proposta: confirmar com o Pedro, exportar e apagar, trocar as chaves, e tratar `acessos_gov` como incidente se houver senha do gov.br fora do cofre.
 - [ ] 2.11 Main protegida (P2.9): combinada com o Pedro e aplicada pelo `gh`. Verifica: um pedido sem aprovação não mescla.
-- [ ] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
+- [x] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
+
+  Verificado em 13/10:
+  - o da regex lenta fechou com o #62;
+  - os 2 de `textoDoHtml` foram dispensados como falso positivo, com o motivo: o resultado é texto, mostrado como texto, e nunca volta a ser HTML.
+  - Havia um quarto, num teste de tela (`seguranca.e2e.ts`): a regex escapava só o ponto. Agora escapa todo caractere especial; vai no #71 e fecha no merge.
 - [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-158 · Correções da revisão do #62 e do #63 (12/10)
+
+- [x] 2.14 P1.3 · A CSP com `frame-src 'self' blob:` (`apps/api/src/servidor.ts`), para a impressão do kit em PDF; teste em `servidor.test.ts` que confere a diretiva. Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts`.
+- [x] 2.15 P1.1 · Em produção, o `RELACIONAMENTO_SIMULADO=entrega` não vale (`apps/api/src/rotas/mensagens.ts`); teste em `rotas/mensagens.test.ts`. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
+- [x] 2.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-158 · Parte 3 · Caminho da Maria no servidor real (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz nova. Na ordem contrato → teste → servidor.
+
+- [x] 3.1 G1 com o contrato da Recepção (P3.1).
+  - Em `apps/web/src/regras/checklist.ts`, a regra `contratoConferidoDo` (etapa `copia` ou `entregue`), com teste.
+  - Em `apps/api/src/rotas/conferencia.ts`, o `kitAssinado` passa a valer também pelo contrato da Recepção conferido.
+  - Verifica com `rotas/conferencia.test.ts`: o caso da Recepção com o contrato conferido é aprovado; com o contrato na leitura, a aprovação recusa com o G1.
+- [x] 3.2 A liberação com o G1 inteiro (P3.2): `CasoParaLiberacao` com o `kitAssinado`, e a rota de liberação usando o `bloqueioDoG1`. Verifica com `rotas/conferencia.test.ts`: o kit não cadastrado e o contrato não conferido recusam, com o G1 no histórico.
+- [x] 3.3 O percentual do modelo, contrato (P3.3): em `packages/contratos`, o `percentualHonorarios` de cada modelo em `ModelosDoEscritorio` e o `PercentualDoModelo` (de 0 a 100, até 2 casas). Verifica com o teste do contrato.
+- [x] 3.4 O percentual do modelo, servidor (P3.3): `PUT /api/configuracao/modelos/:id/honorarios`, só da Sênior (`modelo.subir`), guardado na `configuracao` com o histórico; o `GET` dos modelos devolve o percentual. Verifica com `rotas/modelos.test.ts`.
+- [x] 3.5 O contrato guarda o percentual (P3.3): ao gerar o kit, o contrato da Recepção guarda o percentual do modelo usado; sem percentual cadastrado, o kit sai, e o contrato fica sem. Verifica com `rotas/recepcao-contrato.test.ts`.
+- [x] 3.6 A prestação lê e compara (P3.3): o `GET` devolve o percentual do contrato da Recepção (ou da tabela `contrato`, na semente), e o `POST` recusa um percentual diferente do contrato. Verifica com `rotas/prestacao.test.ts`.
+- [x] 3.7 O CNIS digitado, contrato (P3.4).
+  - Em `packages/contratos`, o `CnisDigitado`: a origem, a data da extração e a entrada do `calcularCnis` (`EntradaCalculoCnis`), que o Pedro já fez.
+  - Sem regra nova: o cálculo é o `calcularCnis` (decisão 23).
+  - Verifica com o teste do contrato.
+- [x] 3.8 Guardar o CNIS (P3.4).
+  - `PUT /api/entrevistas/:id/cnis`, do advogado do atendimento (`ficha.analisar`), roda o `calcularCnis`. Com erro, recusa com os erros dele; sem erro, grava na ficha a entrada, o resultado, quem e quando, e o histórico.
+  - `GET /api/entrevistas/:id/calculo` devolve o CNIS guardado e o resultado.
+  - Verifica com `rotas/recepcao-decisoes.test.ts`.
+- [x] 3.9 O cálculo do servidor (P3.4).
+  - O `POST /api/entrevistas/:id/calculo` usa o tempo, os pontos e a carência do resultado guardado (o número da tela não vale). A regra e o "já pode se aposentar" vêm do advogado.
+  - Com competência pendente, recusa. O cálculo registrado libera o "Sim, fechou". A semente segue com o CNIS de exemplo.
+  - Verifica com `rotas/recepcao-decisoes.test.ts`.
+- [x] 3.10 A Sênior vê o cálculo (P3.5): `CasoParaConferencia` com o último cálculo (tempo, pontos, carência, regra, se pode aposentar, quem e quando). Verifica com `rotas/conferencia.test.ts`.
+- [x] 3.11 A equipe real (P3.6): `GET /api/equipe?perfis=advogada,senior`, para quem marca (`ficha.editar`), devolve o id e o nome dos usuários ativos com o perfil. Verifica com `rotas/recepcao-agenda.test.ts`.
+- [x] 3.12 Quem atende fica guardado (P3.6).
+  - A marcação aceita o id de um usuário da equipe real e guarda o `comId` e o nome. O id do catálogo fixo segue aceito até a tela mudar.
+  - O filtro "só as minhas" é da tela, pelo `comId`.
+  - Verifica com `rotas/recepcao-agenda.test.ts`.
+- [x] 3.13 A desistência antes da entrevista (P3.7).
+  - `ResultadoDoCompromisso` aceita "desistiu", com o motivo da lista (G16) e o recontato opcional; sem motivo, recusa.
+  - Com recontato, "Recontatar lead" vai à agenda na data; sem recontato, o lead é arquivado com o motivo.
+  - Verifica com `rotas/recepcao-agenda.test.ts`.
+- [x] 3.14 O bairro na ficha (P3.8): `EdicaoDaFicha` aceita o `bairro`, e o PATCH grava. Verifica com `rotas/recepcao.test.ts`.
+- [x] 3.15 Avisar o Pedro: o pedido lista os contratos novos que as telas usam (cálculo, percentual na Configuração, equipe da agenda, desistência e liberação).
+
+  Feito no #71, na seção "Para o Pedro ligar nas telas".
+- [x] 3.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+  Verificado em 13/10:
+  - typecheck e lint sem erro;
+  - contratos 171/171;
+  - tela 1653/1653, em 197 arquivos;
+  - API 854/854 (3 pulados), em 97 arquivos;
+  - Playwright 260/260.
+
+  O "Agora ok?" foi para o relatório final ao Mateus.
+
+## GGVP-158 · Parte 4 · Recepção sem simulação (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-4`, em cima do #71. A migração 0031 sai no fim, sobre a main mais nova. Na ordem contrato → teste → servidor.
+
+- [x] 4.1 A IA com o arquivo (P4.1, decisão 27).
+  - O `Pedido` de `ia.ts` ganha o anexo (imagem ou PDF), que vai na mensagem ao modelo.
+  - A sugestão pronta conta o hash do arquivo; o registro fica sem o conteúdo.
+  - O `limpar` roda antes do registro.
+  - Verifica com `ia/ia.test.ts`: o corpo do pedido leva o arquivo, o registro não, e o `limpar` roda antes de guardar.
+- [x] 4.2 A leitura do balcão, contrato (P4.1): em `packages/contratos`, o JSON que a IA devolve (`LidoPelaIa`); em `ia.ts`, a finalidade `ler_documento_balcao`. Verifica com o teste do contrato.
+- [x] 4.3 A leitura do balcão, servidor (P4.1): `lerDoBalcao` monta a `DocumentoLido` com as regras do código (decisão 29); sem IA, o documento fica a conferir com confiança zero.
+  - Verifica com teste:
+    - o CNIS lido pelo conteúdo;
+    - o nome do arquivo que não conta;
+    - o CPF inválido de fora;
+    - sem IA.
+- [x] 4.4 A leitura na chegada do conteúdo (P4.1): `POST /api/fichas/:id/arquivos/conteudo` lê o arquivo, e o anúncio não lê. Verifica com `rotas/recepcao-documentos.test.ts`.
+- [x] 4.5 A leitura de exemplo só no teste (P4.10).
+  - `LEITURA_SIMULADA=sim` liga o leitor de exemplo e as rotas simuladas.
+  - O servidor recusa subir com ela na homologação e na produção.
+  - O Playwright passa a ligá-la.
+  - Verifica com `servidor.test.ts` e com o Playwright.
+- [x] 4.6 A ficha em papel (P4.2): a rota recebe o arquivo e o guarda em Documentos pessoais; a IA lê (`ler_ficha_atendimento`), e a senha vai ao cofre.
+  - Verifica com `rotas/recepcao.test.ts`:
+    - a senha fica no cofre e fora da resposta, da ficha, do histórico e do registro da IA;
+    - sem o arquivo, recusa;
+    - sem IA, tudo volta como não lido.
+- [x] 4.7 A segunda ficha em papel (P4.2): o mesmo, com `ler_segunda_ficha`, e a seção médica só em `segunda_ficha_medica`. Verifica com `rotas/recepcao-segunda-ficha.test.ts`.
+- [x] 4.8 O Drive lê as mudanças e baixa o arquivo (P4.3): `drive.mudancas(marca)` e `drive.baixar(id)`. Verifica com `drive.test.ts`, com o fetch de mentira.
+- [x] 4.9 A rodada do scanner (P4.3, decisão 32): `olharOScanner`.
+  - Verifica com teste:
+    - o arquivo novo na pasta ligada entra e é lido;
+    - a mesma mudança não repete;
+    - o do portal e o de "A REVISAR" ficam fora;
+    - a pasta de duas fichas não é ligada;
+    - o lote vai à tarefa "Receber documento".
+- [x] 4.10 Ligar a rodada (P4.3): em `principal.ts`, junto da rodada do Drive, só com o Drive ligado e sem só leitura. Verifica com o teste da condição.
+- [x] 4.11 ADR-017 (P4.3): o scanner pelo Drive, por quê e o que custa. Verifica: o arquivo em `docs/decisoes/`.
+- [x] 4.12 O contrato assinado guardado (P4.4): a digitalização recebe o arquivo e o guarda como documento do caso; `GET .../contrato/assinado` devolve o arquivo. Verifica com `rotas/recepcao-contrato.test.ts`.
+- [x] 4.13 A leitura do contrato (P4.4): `ler_contrato_assinado`, com a lista do kit; a regra de hoje decide; sem IA, vai à conferência com o motivo. Verifica com `rotas/recepcao-contrato.test.ts`.
+- [x] 4.14 Sem ZapSign (P4.5): saem as rotas e a opção, e o serviço responde sempre `zapsign: false`. Verifica com `rotas/recepcao-contrato.test.ts`: com a variável, a rota não existe e o serviço diz falso.
+- [x] 4.15 Um catálogo só, contrato (P4.6): os 34 com o id do servidor; `BENEFICIOS` e os mapas saem dele. Verifica com o teste do contrato: 34 mais "outro", e os 11 ids de hoje iguais.
+- [x] 4.16 O catálogo no banco (P4.6): a migração 0031 com o CHECK.
+  - Verifica com teste:
+    - o caso da aposentadoria rural guarda o benefício;
+    - a lista publicada vale no checklist;
+    - sem lista, a liberação recusa.
+- [x] 4.17 Só o conferido vai ao Drive (P4.7): o filtro na rodada. Verifica com `fluxo/arquivar.test.ts`.
+- [x] 4.18 A pasta do cliente (P4.7): as pastas parecidas na criação da ficha, e `POST /api/fichas/:id/pasta`. Verifica com teste, com o Drive de mentira: liga; cria com CPF; recusa sem CPF e com o Drive só leitura.
+- [x] 4.19 A cobrança na mensagem (P4.8). Verifica com o teste das mensagens: na Sênior, recusa; dentro do limite, sai.
+- [x] 4.20 O caso escolhido no envio (P4.9). Verifica com `rotas/recepcao-documentos.test.ts`: com dois casos, sem escolher, recusa; com o caso escolhido, o documento vai a ele.
+- [x] 4.21 O documento de antes do caso (P4.9). Verifica com `rotas/recepcao-contrato.test.ts`: o laudo de antes entra no caso que nasce e vira documento médico.
+- [x] 4.22 As variáveis (P4.5, P4.10): a lista das variáveis do servidor sem `ZAPSIGN_API_TOKEN` e com `LEITURA_SIMULADA`. Verifica com `variaveis.test.ts`.
+- [x] 4.23 Avisar o Pedro: o pedido lista o que muda para as telas.
+
+  Feito no pedido da parte 4, na seção "Para o Pedro ligar nas telas".
+- [x] 4.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10:
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 177/177;
+  - tela 1653/1653, em 197 arquivos;
+  - API 887/887 (3 pulados), em 100 arquivos. Na suíte inteira, 25 testes estouraram o tempo pela carga da máquina; repetidos sem carga, passaram. A única falha de verdade foi o glossário, que agora recebe os 23 benefícios novos na 0031;
+  - Playwright 260/260.
+
+## GGVP-158 · Parte 5 · Perícia, INSS e Justiça (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-5`, em cima do #74. Sem migração nem matriz nova. Na ordem contrato → teste → servidor.
+
+- [x] 5.1 A orientação, o lembrete e a cobrança da perícia conferem a mensagem (P5.1, decisão 40): `mensagemId` opcional em `OrientacaoAoCliente` e em `MensagemConferida`; a rota acha a mensagem da pessoa, do modelo e do texto e recusa a que não saiu.
+  - Verifica com `rotas/pericia.test.ts`:
+    - a mensagem entregue registra;
+    - a que não saiu recusa;
+    - sem envio, recusa;
+    - a ligação segue sem mensagem.
+
+  Verificado em 13/10: `rotas/pericia.test.ts` 29/29, com os 3 novos de P5.1.
+- [x] 5.2 O perito pelo nome (P5.2, decisão 41): `perito` na leitura da IA e na classificação; `peritoPeloNome` acha ou cria; a nomeação liga à perícia aberta.
+  - Verifica com `rotas/publicacoes.test.ts` e `justica.test.ts` (contratos):
+    - o perito novo nasce e liga;
+    - a grafia conhecida não cria outro;
+    - sem perícia aberta, nasce médico e fica no histórico.
+
+  Verificado em 13/10: `rotas/publicacoes.test.ts` 23/23 (4 novos) e contratos `justica.test.ts` 24/24 (1 novo). A instrução da IA foi à versão 5.
+- [x] 5.3 A pergunta de um clique com o nome novo (P5.2): `PeritoEscolhido` aceita `nome`, também no perito do laudo. Verifica com `rotas/pericia.test.ts`: o perito nasce e fica ligado à perícia.
+
+  Verificado em 13/10, no teste de P5.2 de `rotas/pericia.test.ts` (sem nome nem id, 400).
+- [x] 5.4 O perfil laudo a laudo (P5.2): o laudo da perícia social entra no perfil do perito. Verifica com `rotas/pericia.test.ts`.
+
+  Verificado em 13/10: o mesmo teste leva a perícia social até o resultado, e o perfil da perita nova ganha o laudo.
+- [x] 5.5 Os limites por parâmetro, nas regras (P5.3, decisão 42): cobrança, confirmação e remarcação recebem os limites, com os números do Lucas como padrão; no servidor, a remarcação é 1 sem nada salvo.
+  - Verifica com os testes das regras:
+    - com 3 tentativas, a segunda sem resposta não sobe;
+    - com prazo externo, a próxima fica no dia antes.
+
+  Verificado em 13/10: regras da tela 363/363 (3 testes novos). A remarcação lê `limiteDeRemarcacoes` da própria perícia, que o servidor põe a cada leitura. A regra comum segue com 2 na tela de exemplo: passar a 1 quebrava 8 testes de tela do Pedro.
+- [x] 5.6 Os limites lidos da Configuração (P5.3): os parâmetros novos da confirmação; o servidor lê os quatro laços; `emUso` na Configuração.
+  - Verifica com teste:
+    - a cobrança da Recepção usa o limite salvo;
+    - a confirmação também;
+    - a remarcação sobe na segunda;
+    - os de `contato.*` voltam `emUso: false`.
+
+  Verificado em 13/10: `configuracao`, `recepcao-agenda` e `recepcao-checklist` 30/30, e `pericia` 31/31 (um novo em cada).
+- [x] 5.7 A espera de fora (P5.4, decisão 43): as linhas da espera na Central da advogada, urgentes no dia útil; `POST /api/casos/:id/esperas/olhada`.
+  - Verifica com teste:
+    - INSS decidindo, no topo na terça;
+    - fora do topo depois de "Olhei" e no sábado;
+    - a perícia feita sem resultado também;
+    - sem linha repetida com a "Trazer a resposta do INSS".
+
+  Verificado em 13/10: `rotas/inss.test.ts` 13/13 (2 novos), e as nove suítes que leem a Central, 122/122. O "Olhei" vale para o caso inteiro: a tela não precisa saber o id da espera.
+- [x] 5.8 A data do juiz na hora (P5.5, decisão 44): a exigência do juiz marca a perícia com a data da publicação, sem a tarefa de marcar; o resumo do processo diz `marcadaPeloSistema`.
+  - Verifica com `rotas/exigencia-juiz.test.ts` e `rotas/processo.test.ts`:
+    - com a data, a perícia marcada, sem tarefa de marcar, e a orientação "pelo sistema";
+    - sem a data, a tarefa de marcar.
+
+  Verificado em 13/10: `rotas/pericia.test.ts` 33/33 (2 novos), `rotas/processo.test.ts` 8/8 e `rotas/exigencia-juiz.test.ts`. A tarefa de marcar já fechava na distribuição; faltava a data na linha antes de alguém abrir a tela, e o aviso no resumo. `marcadaPeloSistema` é opcional no contrato porque um teste de tela do Pedro monta o resumo à mão.
+- [x] 5.9 O item sem documento (P5.6, decisão 45): `semSaida` em `EncerrarSemProva`; a rota pede a dilação, a remarcação ou o porquê.
+  - Verifica com `rotas/manifestacao.test.ts`:
+    - sem nada, recusa;
+    - com a dilação autorizada, encerra;
+    - com o `semSaida`, encerra e guarda o porquê.
+
+  Verificado em 13/10: `rotas/manifestacao.test.ts` 15/15 (3 novos; os de antes passam a dizer o porquê). O histórico guarda `tentou` (`dilacao`, `reagendamento` ou nulo) e o `semSaida`.
+- [x] 5.10 Encerrar e liberar (P5.7, decisão 46).
+  - Verifica com `rotas/vigilia.test.ts` e `rotas/conferencia.test.ts`:
+    - o caso já despachado não encerra;
+    - liberar de novo cancela o protocolo aberto, e o OK antigo não vale.
+
+  Verificado em 13/10: `rotas/vigilia.test.ts` 10/10 e `rotas/conferencia.test.ts` (um novo em cada), com `inss` e `indeferimento`, 62/62. A tela da vigília também só oferece encerrar com o despacho esperando.
+- [x] 5.11 Tribunal e assinatura, rotas (P5.8, decisão 47): `PUT /api/configuracao/tribunais` e `/assinatura`; o `GET` devolve os dois.
+  - Verifica com `rotas/configuracao.test.ts`:
+    - a Sênior salva, e fica no histórico;
+    - o Atendimento recusa;
+    - o tamanho fora da faixa recusa.
+
+  Verificado em 13/10: `rotas/configuracao.test.ts` 7/7 (2 novos).
+- [x] 5.12 A trava do pacote (P5.8, P5.9): falha sem tribunal e com a assinatura a completar; o protocolo recusa sem tribunal; o PDF não usa a assinatura "a configurar".
+  - Verifica com `fluxo/travas.test.ts` e `rotas/peticao.test.ts`.
+
+  Verificado em 13/10: `rotas/peticao.test.ts` 32/32 (2 novos; os de antes cadastram a assinatura de teste) e `fluxo/travas.test.ts`.
+- [x] 5.13 O alarme da vigília (P5.10, decisão 48): a rodada presa vira falha; sem fonte na produção, a linha da Sênior e o alarme do dia; `avisarSuporte`, com o canal e o Jira.
+  - Verifica com teste, com o fetch de mentira:
+    - a presa;
+    - o sem fonte, uma vez por dia;
+    - a falha de qualquer tipo chama o canal e o Jira uma vez, sem texto de publicação;
+    - a falha do Jira não derruba a rodada.
+
+  Verificado em 13/10: `suporte.test.ts` 4/4, `vigilia/rodadas.test.ts` 10/10 (4 novos) e `rotas/vigilia-diario.test.ts`, 19/19. O teste antigo do "não rodou" passou a manter a fonte na segunda batida: sem fonte, agora é outro alarme.
+- [x] 5.14 ADR-018 (P5.10): o alarme ao suporte pelo canal e pelo Jira, e o que cada variável liga. Verifica: o arquivo em `docs/decisoes/`.
+
+  Feito em 13/10: `docs/decisoes/ADR-018-alarme-ao-suporte.md`, na lista do README.
+- [x] 5.15 As variáveis (P5.10): as cinco `ALARME_*` na lista das variáveis do servidor e no documento da homologação.
+  - Verifica com `variaveis.test.ts`.
+  - O `.env.example` é do Mateus: a regra do repositório não deixa o agente ler nem editar `.env*`.
+
+  Verificado em 13/10: `variaveis.test.ts` 4/4, com os cinco nomes que o Mateus pôs no arquivo de exemplo e a tabela da homologação.
+- [x] 5.16 Feriados (P5.11, decisão 49): a carga aceita o ano; a linha "Carregar os feriados de <ano>" na Central da Sênior.
+  - Verifica com `rotas/feriados.test.ts` e o teste da Central:
+    - dezembro sem o ano seguinte mostra a linha;
+    - a carga de 2028 entra, e a linha some.
+
+  Verificado em 13/10: `rotas/feriados.test.ts` 5/5 (1 novo). A linha só aparece com a lista já em uso: a tabela vazia é a carga ao subir.
+- [x] 5.17 Jurimetria no texto, regra (P5.12, decisão 50): `numeroDeJurimetriaNoTexto` em `packages/contratos`.
+  - Verifica com o teste do contrato:
+    - os formatos do G22 acusam;
+    - o percentual de lei, o entendimento e o processo de exemplo passam;
+    - o texto grande roda em tempo linear.
+
+  Verificado em 13/10: contratos `ia.test.ts` 7/7 (3 novos).
+- [x] 5.18 Jurimetria no texto, servidor (P5.12): a aprovação da petição, da manifestação e da dilação recusa e registra o G22. Verifica com `rotas/peticao.test.ts` e `rotas/manifestacao.test.ts`.
+
+  Verificado em 13/10: `rotas/peticao.test.ts` 33/33 e `rotas/manifestacao.test.ts` 18/18 (4 novos). A manifestação e a dilação são lidas pela IA na aprovação; sem ela, aprovam com o aviso.
+- [x] 5.19 A jurimetria só com `estudo.ver` (P5.13, decisão 51): os recortes do painel e a `visao` da perícia.
+  - Verifica com `rotas/gestao.test.ts` e `rotas/pericia.test.ts`:
+    - o líder do Atendimento e o Financeiro recebem 403 no recorte por perito;
+    - a Documentação recebe a perícia sem os números.
+  - 13/10, na revisão do #75 (junto com a main, que trouxe a mesma regra pelo #73, GGVP-156): fica uma trava só, a da
+    GGVP-156 (perito, juízo, vara e tese). Na perícia, o perito segue para todos, sem os números e sem o resumo.
+- [x] 5.19.1 A taxa por advogada só dos sócios (decisão do Mateus, 13/10): a ação `resultados.ver_por_advogada` (`socio`) na
+  matriz 31; o servidor recusa o recorte por advogada sem ela, e a tela não o oferece.
+  - Verifica com `rotas/gestao.test.ts` (a Sênior, a líder e o Financeiro recebem 403; o Sócio, 200) e `Resultados.test.tsx`.
+
+  Verificado em 13/10: `rotas/gestao.test.ts` e `rotas/pericia.test.ts`, 42/42. Fora de `estudo.ver`, a perícia vem sem o perfil do perito (os números e o resumo); o teste antigo, que dizia que a Documentação via os números, mudou com a regra.
+- [x] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.
+  - Verifica com `rotas/juizo.test.ts` e `rotas/processo.test.ts`:
+    - dois casos com o mesmo juiz e perito contam 2;
+    - o resumo do Atendimento sem números.
+
+  Verificado em 13/10: `rotas/juizo.test.ts` 6/6 e `rotas/processo.test.ts` 9/9 (um novo em cada). O juízo ganhou `casosDoJuiz` e `perito`, sem mudar o `juiz` que a tela já usa; a vara e o juiz entram no resumo como opcionais, porque um teste de tela do Pedro monta o resumo à mão.
+- [x] 5.21 O protocolo do recurso (P5.15, decisão 53): `POST /api/casos/:id/recurso/protocolo`.
+  - Verifica com `rotas/recurso.test.ts`:
+    - fecha a tarefa e guarda o comprovante;
+    - sem tarefa, recusa;
+    - a data depois de hoje recusa.
+
+  Verificado em 13/10: `rotas/recurso.test.ts` 6/6 (1 novo).
+- [x] 5.22 O padrão ao subir (P5.8): o tribunal e a assinatura do banco novo, só o que faltar, em `principal.ts`, como os feriados (sem migração). Verifica com teste: o banco novo tem os dois; o banco com a chave guarda o que tinha.
+
+  Verificado em 13/10, no teste de `rotas/configuracao.test.ts`.
+- [x] 5.23 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+
+  Feito no pedido da parte 5, na seção "Para o Pedro ligar nas telas".
+- [x] 5.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10:
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 181/181 e `campos` 11/11;
+  - tela 1656/1656, em 197 arquivos;
+  - API 927 de 928 na suíte inteira (3 pulados), em 101 arquivos. A única falha foi a das variáveis, que rodou antes de o Mateus pôr os cinco nomes; depois, sozinha, 4/4;
+  - Playwright 260/260;
+  - `openspec validate --all --strict`, 16/16.

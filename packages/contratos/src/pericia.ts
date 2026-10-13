@@ -1,6 +1,7 @@
 // Contratos da Perícia ligada no servidor (GGVP-137). Espelham o que as telas do Pedro mandam (apps/web/src/dados/
 // pericia.ts); a forma é conferida aqui, e as regras (tentativa, marcação, documentos, orientação, comparecimento e
 // resultado) são as de apps/web/src/regras/periciaNoCaso.ts, rodando no servidor. A resposta é a perícia na tela.
+import { normalizarNome, validarNome } from '@ggv/campos'
 import { z } from 'zod'
 import { SugestaoDaIa } from './ia.ts'
 
@@ -42,8 +43,11 @@ export type RemarcacaoDaPericia = z.infer<typeof RemarcacaoDaPericia>
 export const AutorizacaoDeRemarcacao = z.object({ justificativa: Texto(1000) })
 export type AutorizacaoDeRemarcacao = z.infer<typeof AutorizacaoDeRemarcacao>
 
-/** POST /api/processos/:id/pericia/lembrete e /cobranca: a mensagem conferida, enviada pelo Chatwoot (simulado). */
-export const MensagemConferida = z.object({ mensagem: Texto(4000).min(1) })
+/**
+ * POST /api/processos/:id/pericia/lembrete e /cobranca: a mensagem conferida e o id da que o correio do cliente enviou pelo
+ * Chatwoot (`POST /api/fichas/:id/mensagens`). GGVP-158 P5.1: sem o envio de verdade, nada registra.
+ */
+export const MensagemConferida = z.object({ mensagem: Texto(4000).min(1), mensagemId: z.uuid().optional() })
 export type MensagemConferida = z.infer<typeof MensagemConferida>
 
 /** POST /api/processos/:id/pericia/faltas: a falta de um item do kit, com justificativa (GGVP-56, CA5). */
@@ -70,11 +74,28 @@ export const DecisaoDaFalta = z.object({ texto: Texto(1000) })
 export type DecisaoDaFalta = z.infer<typeof DecisaoDaFalta>
 
 /** POST /api/processos/:id/pericia/perito e /laudo/perito: a pergunta de um clique (GGVP-61 e GGVP-73, CA6). */
-export const PeritoEscolhido = z.object({ peritoId: Texto(60).min(1) })
+/** "Dra. Ana Souza" → "Ana Souza": o título não é nome, e o `validarNome` da `campos` só aceita letras (GGVP-158 P5.2). */
+export const semTitulo = (nome: string) => normalizarNome(nome).replace(/^(?:dra?|doutora?|sra?)\.?\s+/i, '')
+
+/** O nome do perito que a pessoa conferiu (GGVP-158 P5.2): vazio é nulo; o resto passa pelo `validarNome`, sem o título. */
+export const NomeDoPerito = z
+  .string()
+  .trim()
+  .max(120, 'O nome do perito tem até 120 caracteres')
+  .refine((n) => !n || validarNome(semTitulo(n)), 'Escreva o nome do perito só com letras')
+  .transform((n) => (n ? semTitulo(n) : null))
+
+/** POST /api/processos/:id/pericia/perito: o perito da base ou, sem ele na base, o nome do novo (GGVP-158 P5.2). */
+export const PeritoEscolhido = z
+  .object({ peritoId: Texto(60).optional(), nome: NomeDoPerito.optional() })
+  .refine((p) => Boolean(p.peritoId) || Boolean(p.nome), { message: 'Escolha o perito ou escreva o nome dele', path: ['nome'] })
 export type PeritoEscolhido = z.infer<typeof PeritoEscolhido>
 
-/** POST /api/processos/:id/pericia/orientacao: a orientação revisada, passada ao cliente (GGVP-62, CA2 a CA7). */
-export const OrientacaoAoCliente = z.object({ texto: Texto(6000), canal: z.enum(['chatwoot', 'ligacao']), revisei: z.boolean() })
+/**
+ * POST /api/processos/:id/pericia/orientacao: a orientação revisada, passada ao cliente (GGVP-62, CA2 a CA7). Pelo Chatwoot,
+ * vai o id da mensagem que o correio enviou (GGVP-158 P5.1).
+ */
+export const OrientacaoAoCliente = z.object({ texto: Texto(6000), canal: z.enum(['chatwoot', 'ligacao']), revisei: z.boolean(), mensagemId: z.uuid().optional() })
 export type OrientacaoAoCliente = z.infer<typeof OrientacaoAoCliente>
 
 /** POST /api/processos/:id/pericia/presenca: a confirmação da véspera (GGVP-66, CA7). */

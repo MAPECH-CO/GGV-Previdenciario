@@ -11,6 +11,12 @@ export const TENTATIVAS_DE_COBRANCA = 2
 /** Dias entre uma tentativa e a próxima (Lucas, 05/10). */
 export const DIAS_ENTRE_COBRANCAS = 3
 
+/** Os números de um laço do G15: tentativas antes da sênior e dias entre elas. GGVP-158 P5.3: vêm da Configuração. */
+export type LimitesDoLaco = { tentativas: number; diasEntre: number }
+
+/** Sem a Configuração, os do Lucas (05/10). */
+export const LIMITES_DA_COBRANCA: LimitesDoLaco = { tentativas: TENTATIVAS_DE_COBRANCA, diasEntre: DIAS_ENTRE_COBRANCAS }
+
 export type CanalDaCobranca = 'chatwoot' | 'ligacao'
 
 export const CANAIS: Record<CanalDaCobranca, string> = { chatwoot: 'Chatwoot', ligacao: 'Ligação' }
@@ -70,16 +76,16 @@ export type Cobranca = EstadoDaCobranca & {
 const menor = (a: string, b: string) => (a < b ? a : b)
 const maior = (a: string, b: string) => (a > b ? a : b)
 
-/** Quantas tentativas o Atendimento tem: 2, e mais uma a cada nova tentativa ou visita que a sênior decide. */
-export const limiteDeTentativas = (c: EstadoDaCobranca) => TENTATIVAS_DE_COBRANCA + c.decisoes.filter((d) => d.opcao !== 'suspender').length
+/** Quantas tentativas o Atendimento tem: as do limite, e mais uma a cada nova tentativa ou visita que a sênior decide. */
+export const limiteDeTentativas = (c: EstadoDaCobranca, l = LIMITES_DA_COBRANCA) => l.tentativas + c.decisoes.filter((d) => d.opcao !== 'suspender').length
 
 /**
  * O dia da próxima tentativa (CA3, CA4, CA12): a primeira no dia em que a cobrança abriu, as outras 3 dias depois da
  * última, ou na data adiada. Com prazo externo, no máximo no dia antes do prazo, e nunca antes da última tentativa.
  */
-export function proximaTentativa(c: EstadoDaCobranca): string {
+export function proximaTentativa(c: EstadoDaCobranca, l = LIMITES_DA_COBRANCA): string {
   const ultima = c.tentativas.at(-1)?.dia
-  let dia = ultima ? somarDias(ultima, DIAS_ENTRE_COBRANCAS) : c.abertaEm
+  let dia = ultima ? somarDias(ultima, l.diasEntre) : c.abertaEm
   // A data adiada vale para a próxima tentativa, não para as depois dela.
   if (c.adiadaPara && (!ultima || c.adiadaPara > ultima)) dia = c.adiadaPara
   if (c.prazo) dia = maior(menor(dia, somarDias(c.prazo.data, -1)), ultima ?? c.abertaEm)
@@ -87,21 +93,21 @@ export function proximaTentativa(c: EstadoDaCobranca): string {
 }
 
 /** Passou para a sênior (CA3, CA7): no limite, com a última sem resposta, ou com o lembrete vencido sem o documento. */
-export function naSenior(c: EstadoDaCobranca, hoje: string): boolean {
-  const limite = limiteDeTentativas(c)
+export function naSenior(c: EstadoDaCobranca, hoje: string, l = LIMITES_DA_COBRANCA): boolean {
+  const limite = limiteDeTentativas(c, l)
   if (c.tentativas.length < limite) return false
   const ultima = c.tentativas.at(-1)!
-  return ultima.resultado === 'sem-resposta' || hoje >= proximaTentativa(c)
+  return ultima.resultado === 'sem-resposta' || hoje >= proximaTentativa(c, l)
 }
 
 /** O lembrete chegou (CA5); com prazo externo, é sempre urgente (CA12). */
-export const urgente = (c: EstadoDaCobranca, hoje: string) => c.prazo !== undefined || proximaTentativa(c) <= hoje
+export const urgente = (c: EstadoDaCobranca, hoje: string, l = LIMITES_DA_COBRANCA) => c.prazo !== undefined || proximaTentativa(c, l) <= hoje
 
 /** Por que o Atendimento ainda não pode cobrar de novo; pode, null (CA3, CA5). */
-export function motivoParaNaoCobrar(c: EstadoDaCobranca, hoje: string): string | null {
-  if (naSenior(c, hoje)) return `Passou do limite de ${TENTATIVAS_DE_COBRANCA} tentativas: a sênior decide (G15).`
-  const proxima = proximaTentativa(c)
-  if (proxima > hoje) return `A próxima tentativa é em ${dataCurta(proxima, hoje)}, ${DIAS_ENTRE_COBRANCAS} dias depois da última.`
+export function motivoParaNaoCobrar(c: EstadoDaCobranca, hoje: string, l = LIMITES_DA_COBRANCA): string | null {
+  if (naSenior(c, hoje, l)) return `Passou do limite de ${l.tentativas} tentativas: a sênior decide (G15).`
+  const proxima = proximaTentativa(c, l)
+  if (proxima > hoje) return `A próxima tentativa é em ${dataCurta(proxima, hoje)}, ${l.diasEntre} dias depois da última.`
   return null
 }
 
@@ -122,8 +128,8 @@ export function motivoParaNaoDecidir(d: { opcao?: OpcaoDaSenior; justificativa: 
 }
 
 /** Até quando o cliente manda: o próximo lembrete depois desta tentativa, ou antes do prazo externo (CA11, CA12). */
-export function ateQuando(hoje: string, prazo?: PrazoExterno): string {
-  const normal = somarDias(hoje, DIAS_ENTRE_COBRANCAS)
+export function ateQuando(hoje: string, prazo?: PrazoExterno, l = LIMITES_DA_COBRANCA): string {
+  const normal = somarDias(hoje, l.diasEntre)
   return prazo ? maior(hoje, menor(normal, somarDias(prazo.data, -1))) : normal
 }
 
@@ -157,8 +163,13 @@ export type CobrancaDoCaso = {
 }
 
 /** A cobrança como a tela mostra (CA4, CA6, CA11): o que falta é sempre o checklist de agora (CA9). */
-export function cobrancaDoCaso(cobranca: Cobranca, caso: { ficha: Ficha; processo: Processo; beneficio: string; faltam: string[] }, hoje: string): CobrancaDoCaso {
-  const situacao: SituacaoDaCobranca = cobranca.encerrada ? 'encerrada' : naSenior(cobranca, hoje) ? 'na-senior' : 'aberta'
+export function cobrancaDoCaso(
+  cobranca: Cobranca,
+  caso: { ficha: Ficha; processo: Processo; beneficio: string; faltam: string[] },
+  hoje: string,
+  l = LIMITES_DA_COBRANCA,
+): CobrancaDoCaso {
+  const situacao: SituacaoDaCobranca = cobranca.encerrada ? 'encerrada' : naSenior(cobranca, hoje, l) ? 'na-senior' : 'aberta'
   const { ficha, processo, beneficio, faltam } = caso
   return {
     cobranca,
@@ -167,10 +178,10 @@ export function cobrancaDoCaso(cobranca: Cobranca, caso: { ficha: Ficha; process
     processo,
     beneficio,
     faltam,
-    proxima: proximaTentativa(cobranca),
+    proxima: proximaTentativa(cobranca, l),
     tentativa: cobranca.tentativas.length + 1,
-    urgente: situacao === 'aberta' && urgente(cobranca, hoje),
-    mensagem: mensagemDeCobranca({ nome: ficha.nome, beneficio, faltam, ate: ateQuando(hoje, cobranca.prazo), hoje }),
-    motivoParado: cobranca.encerrada ? 'A cobrança está fechada.' : motivoParaNaoCobrar(cobranca, hoje),
+    urgente: situacao === 'aberta' && urgente(cobranca, hoje, l),
+    mensagem: mensagemDeCobranca({ nome: ficha.nome, beneficio, faltam, ate: ateQuando(hoje, cobranca.prazo, l), hoje }),
+    motivoParado: cobranca.encerrada ? 'A cobrança está fechada.' : motivoParaNaoCobrar(cobranca, hoje, l),
   }
 }

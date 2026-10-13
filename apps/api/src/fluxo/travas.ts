@@ -40,9 +40,20 @@ export function travaCpf(texto: string, cpfDoCadastro: string | null): Trava {
  * tamanho que o tribunal aceita. `tamanhos` é o tamanho, em bytes, de cada documento do pacote. `noDrive`: se o pacote
  * já foi salvo no Drive (GGVP-107 CA6); `null` com o Drive desligado, e a trava não cobra.
  */
-export function travaPacote(citados: Citado[], pacote: ArquivoDoPacote[] | null, tamanhos: Record<string, number>, tribunal: Tribunal | null, noDrive: boolean | null = null): Trava {
+/**
+ * `doProtocolo` (GGVP-158 P5.8, P5.9): o que falta na Configuração para protocolar, o tribunal ou a assinatura; vai junto
+ * com o resto, para a advogada ver tudo de uma vez.
+ */
+export function travaPacote(
+  citados: Citado[],
+  pacote: ArquivoDoPacote[] | null,
+  tamanhos: Record<string, number>,
+  tribunal: Tribunal | null,
+  noDrive: boolean | null = null,
+  doProtocolo: string[] = [],
+): Trava {
   const trava = { chave: 'pacote' as const, nome: 'Pacote completo', criterio: 'Os documentos citados na petição estão no pacote, em PDF e no tamanho aceito pelo tribunal.' }
-  if (!pacote) return { ...trava, ok: false, evidencia: 'O pacote ainda não foi gerado.' }
+  if (!pacote) return { ...trava, ok: false, evidencia: ['O pacote ainda não foi gerado.', ...doProtocolo].join(' · ') }
   const mb = (bytes: number) => Math.round((bytes / 1_048_576) * 10) / 10
   const problemas = [
     ...citados.filter((c) => !c.documentoId).map((c) => `Falta: ${c.nome}`),
@@ -53,6 +64,7 @@ export function travaPacote(citados: Citado[], pacote: ArquivoDoPacote[] | null,
           .map((a) => `Grande demais para ${tribunal.nome}: ${a.nome} (${mb(tamanhos[a.documentoId])} MB; o limite é ${tribunal.tamanhoMaximoMb} MB)`)
       : []),
     ...(noDrive === false ? ['O pacote ainda não está no Drive; o portal salva sozinho em até um minuto'] : []),
+    ...doProtocolo,
   ]
   return {
     ...trava,

@@ -28,6 +28,6 @@ export function registrarRotasJuizo(app: FastifyInstance, { banco, agora = () =>
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
     const juizo = await juizoDoCaso(banco, c.id)
     if (!juizo) return negar(resposta, 404, MSG_SEM_NUMERO)
-    return JurimetriaDoJuizo.parse(await jurimetriaDoJuizo(banco, juizo, agora(), { vara: c.vara, juiz: c.juiz }))
+    return JurimetriaDoJuizo.parse(await jurimetriaDoJuizo(banco, juizo, agora(), { vara: c.vara, juiz: c.juiz, casoId: c.id }))
   })
 }

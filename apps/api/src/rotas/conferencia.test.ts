@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, contrato, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, contrato, contratoRecepcao, decisao, documento, documentoMedico, eventoAuditoria, fichaRecepcao, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -129,6 +129,48 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     const r = await decidir('helena', { decisao: 'aprovar' })
     expect([r.statusCode, r.json().erro]).toEqual([409, 'Contrato não assinado (G1): o caso não tem o contrato assinado.'])
     expect(await recusasDoG1()).toEqual(['G1'])
+  })
+
+  /** O caso que nasceu na Recepção tem o contrato dela, e não a linha da tabela `contrato`, que só a semente escreve. */
+  const contratoDaRecepcao = async (etapa: string) => {
+    await banco.delete(contrato)
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco.insert(contratoRecepcao).values({ casoId, pessoaId: c.pessoaId, dados: { contrato: { processoId: casoId, etapa }, processo: { id: casoId } } })
+  }
+
+  it('GGVP-158 P3.1 · o contrato da Recepção conta como assinado no G1 só depois de conferido', async () => {
+    await contratoDaRecepcao('leitura')
+    expect((await ver('helena')).json().kitAssinado).toBe(false)
+    await banco.update(contratoRecepcao).set({ dados: { contrato: { processoId: casoId, etapa: 'copia' }, processo: { id: casoId } } })
+    expect((await ver('helena')).json().kitAssinado).toBe(true)
+  })
+
+  it('GGVP-158 P3.5 · a Sênior vê o último cálculo de tempo e pontos da Recepção, com quem fez e quando', async () => {
+    expect((await ver('helena')).json().calculo).toBeNull()
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    const calculo = (pontos: number, quando: string) => ({
+      tempo: { anos: 35, meses: 2, dias: 10 },
+      pontos,
+      carencia: 420,
+      regra: 'Transição por pontos (EC 103, art. 15)',
+      podeAposentar: true,
+      quem: 'gabi',
+      quando,
+      cnisOrigem: 'impresso',
+      cnisExtraidoEm: '2026-10-05',
+    })
+    // Refazer guarda o anterior (GGVP-57 CA6): vale o último.
+    await banco.insert(fichaRecepcao).values({ pessoaId: c.pessoaId, documento: { calculos: [calculo(90, '2026-10-06T12:00:00.000Z'), calculo(99.5, '2026-10-07T12:00:00.000Z')] } })
+    expect((await ver('ana')).json().calculo).toEqual({
+      tempo: { anos: 35, meses: 2, dias: 10 },
+      pontos: 99.5,
+      carencia: 420,
+      regra: 'Transição por pontos (EC 103, art. 15)',
+      podeAposentar: true,
+      dataPrevista: null,
+      quem: 'gabi',
+      quando: '2026-10-07T12:00:00.000Z',
+    })
   })
 
   it('CA5 e G17 · sem parecer, insuficiente, só sugerido pela IA ou com laudo novo esperando: recusa e registra', async () => {
@@ -334,11 +376,11 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     expect((await pelo('ana', 'pensao_morte')).statusCode).toBe(403)
   })
 
-  it('GGVP-150 CA6 · a advogada e o Sócio também veem a chance; o Jurídico administrativo e o Atendimento não', async () => {
+  it('GGVP-150 CA6, GGVP-156 CA1 · a advogada, o Jurídico administrativo e o Sócio também veem a chance; o Atendimento e o Financeiro não', async () => {
     for (const [apelido, perfil] of [['gabi', 'advogada'], ['rui', 'socio']] as const)
       await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
-    expect([(await chance('gabi')).statusCode, (await chance('rui')).statusCode]).toEqual([200, 200])
-    expect([(await chance('igor')).statusCode, (await chance('ana')).statusCode]).toEqual([403, 403])
+    expect([(await chance('gabi')).statusCode, (await chance('igor')).statusCode, (await chance('rui')).statusCode]).toEqual([200, 200, 200])
+    expect([(await chance('ana')).statusCode, (await chance('julia')).statusCode]).toEqual([403, 403])
   })
 })
 
@@ -384,6 +426,21 @@ describe('GGVP-127 · o caso devolvido pela Sênior: ajustar e liberar de novo',
     // Já na fila: ninguém libera duas vezes; sem ajuste aberto, o Atendimento nem libera.
     expect([(await liberar('fabio')).statusCode, (await liberar('ana')).statusCode, (await liberacao('ana')).json().ajuste]).toEqual([409, 403, null])
     expect((await banco.select().from(eventoAuditoria)).map((e) => e.acao)).toContain('caso_liberado_ao_juridico')
+  })
+
+  it('GGVP-158 P5.7 · liberar de novo um caso já aprovado zera o OK: protocolar e decidir a perícia saem da fila até o OK novo', async () => {
+    await parecer('suficiente')
+    await decidir('helena', { decisao: 'aprovar' })
+    expect(await tarefasAbertas()).toEqual(expect.arrayContaining([['D2.02', 'juridico_adm'], ['D2.03', 'advogada']]))
+    expect((await liberar('fabio')).statusCode).toBe(201)
+    const abertas = await tarefasAbertas()
+    expect(abertas).toContainEqual(['D2.01', 'senior'])
+    expect(abertas.filter(([passo]) => passo === 'D2.02' || passo === 'D2.03')).toEqual([])
+    const protocolo = (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/protocolo`, cookies: await cookieDe('igor') })).json()
+    expect(protocolo.okSenior).toBeNull()
+    // O OK novo devolve as duas tarefas.
+    await decidir('helena', { decisao: 'aprovar' })
+    expect(await tarefasAbertas()).toEqual(expect.arrayContaining([['D2.02', 'juridico_adm'], ['D2.03', 'advogada']]))
   })
 
   it('CA4 · na liberação nova, o servidor confere de novo o checklist (G1) e o parecer (G17)', async () => {

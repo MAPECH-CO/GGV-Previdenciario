@@ -6,7 +6,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, etapa, eventoAuditoria, exigencia, exigenciaItem, identificadorCaso, pessoa, protocoloJudicial, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, etapa, eventoAuditoria, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, protocoloJudicial, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
@@ -173,7 +174,7 @@ describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
     expect((await encerrar({ alvo: 'item', id: doc.id, motivo: '' })).json().erro).toBe('Escreva por que vai manifestar sem essa prova')
     // A Sênior, advogada com mais poderes, também manifesta (GGVP-96); quem não é do Jurídico, não.
     expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'x' }, 'ana')).statusCode).toBe(403)
-    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe: o médico do cliente faleceu' })).statusCode).toBe(201)
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe: o médico do cliente faleceu', semSaida: 'Sem o médico, mais prazo não traz o laudo.' })).statusCode).toBe(201)
     const m = (await chamar('gabi', 'GET', '/manifestacao')).json()
     expect([m.faltam, m.semProva.map((e: { descricao: string; motivo: string; por: string }) => [e.descricao, e.motivo, e.por])]).toEqual([
       [],
@@ -187,9 +188,26 @@ describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
     expect((ev.detalhe as { semProva: unknown[] }).semProva).toEqual([{ descricao: 'Laudo', motivo: 'O laudo não existe: o médico do cliente faleceu' }])
   })
 
+  it('GGVP-158 P5.6 · antes da justificativa, a dilação: sem ela nem o porquê, recusa; autorizada pela Sênior, encerra', async () => {
+    const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
+    const sem = await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe' })
+    expect([sem.statusCode, sem.json().erro]).toEqual([409, 'Antes de encerrar sem prova, peça a dilação do prazo (na perícia, o reagendamento). Se nenhum cabe, diga por quê.'])
+    expect((await chamar('helena', 'POST', '/manifestacao/dilacao', { motivo: 'O médico pediu mais 30 dias para o laudo' })).statusCode).toBe(201)
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe' })).statusCode).toBe(201)
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'exigencia_juiz_sem_prova'))
+    expect(ev.detalhe).toMatchObject({ tentou: 'dilacao', semSaida: null })
+  })
+
+  it('GGVP-158 P5.6 · nenhum cabe: com o porquê, encerra, e o porquê fica no histórico', async () => {
+    const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
+    expect((await encerrar({ alvo: 'item', id: doc.id, motivo: 'O laudo não existe', semSaida: 'O hospital fechou; não há de onde tirar o laudo.' })).statusCode).toBe(201)
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'exigencia_juiz_sem_prova'))
+    expect(ev.detalhe).toMatchObject({ tentou: null, semSaida: 'O hospital fechou; não há de onde tirar o laudo.' })
+  })
+
   it('com um item ainda pendente, encerrar outro não libera: o portão continua (G21)', async () => {
     const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
-    await encerrar({ alvo: 'item', id: doc.id, motivo: 'Documento não existe' })
+    await encerrar({ alvo: 'item', id: doc.id, motivo: 'Documento não existe', semSaida: 'O documento nunca existiu.' })
     await anexarEAprovar()
     expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json().erro).toBe('Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento.')
   })
@@ -214,13 +232,60 @@ describe('GGVP-87 · perícia que não tem como ser feita (ajuste de 06/10)', ()
     await enviar('dora', `/exigencia-juiz/itens/${antes.find((p) => p.alvo === 'item')!.id}/prova`)
     let m = (await chamar('gabi', 'GET', '/manifestacao')).json()
     expect([m.faltam, m.pendentes.map((p: { alvo: string; setor: string }) => [p.alvo, p.setor]), m.podeEncerrarSemProva]).toEqual([['Perícia'], [['pericia', 'Jurídico administrativo']], true])
-    expect((await encerrar({ alvo: 'pericia', id: m.pendentes[0].id, motivo: 'O juiz cancelou a perícia; vamos pedir julgamento com o laudo' })).statusCode).toBe(201)
+    expect(
+      (await encerrar({ alvo: 'pericia', id: m.pendentes[0].id, motivo: 'O juiz cancelou a perícia; vamos pedir julgamento com o laudo', semSaida: 'O juiz cancelou: não há o que reagendar.' })).statusCode,
+    ).toBe(201)
     m = (await chamar('gabi', 'GET', '/manifestacao')).json()
     expect([m.faltam, m.semProva[0].descricao]).toEqual([[], 'Perícia médica'])
     expect((await chamar('gabi', 'GET', '/exigencia-juiz')).json().pericias).toEqual([{ tipo: 'medica', resultado: 'encerrada sem resultado' }])
     expect(await abertas()).toEqual(['advogada · Manifestar no processo'])
   })
 
+  it('GGVP-158 P5.6 · na perícia, o reagendamento pedido depois da exigência vale como a tentativa', async () => {
+    const m = (await chamar('gabi', 'GET', '/manifestacao')).json()
+    const id = m.pendentes.find((p: { alvo: string }) => p.alvo === 'pericia').id
+    expect((await encerrar({ alvo: 'pericia', id, motivo: 'O perito não atende' })).statusCode).toBe(409)
+    await banco.update(pericia).set({ remarcacoes: 1, documento: { remarcadaEm: new Date(AGORA.getTime() + 60_000).toISOString() } }).where(eq(pericia.id, id))
+    expect((await encerrar({ alvo: 'pericia', id, motivo: 'O perito não atende' })).statusCode).toBe(201)
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'exigencia_juiz_sem_prova'))
+    expect(ev.detalhe).toMatchObject({ tentou: 'reagendamento' })
+  })
+
   const encerrar = async (corpo: object) => chamar('gabi', 'POST', '/manifestacao/sem-prova', corpo)
+})
+
+describe('GGVP-158 P5.12 · número de jurimetria fora da manifestação e da dilação (G22)', () => {
+  /** O servidor com a IA de mentira: a Mistral devolve o texto dado; sem texto, a IA desligada. */
+  function servidorQueLe(texto: string | null) {
+    const ambiente = texto === null ? {} : { MISTRAL_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }
+    const fetch = async () => new Response(JSON.stringify({ pages: [{ markdown: texto }] }))
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), ia: criarIa({ banco, ambiente, fetch, agora: () => AGORA }) })
+  }
+  const aprovar = async (tipo = 'manifestacao') => {
+    const { numero } = (await enviar('gabi', '/manifestacao/versoes', { tipo })).json()
+    return chamar('gabi', 'POST', `/manifestacao/versoes/${numero}/aprovacao`, { aprovei: true })
+  }
+
+  it('a versão lida com a taxa e a base do portal não se aprova, e o portão fica registrado', async () => {
+    servidorQueLe('Excelência, este juízo julga procedentes 71% em 34 processos · base de 07/10.')
+    const r = await aprovar()
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria (G22): tire antes de aprovar.'])
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'jurimetria_no_texto'))
+    expect(b.detalhe).toMatchObject({ portao: 'G22', passo: 'D3a.04', versao: 1 })
+  })
+
+  it('a dilação que cita o entendimento do juízo e o processo de exemplo se aprova', async () => {
+    servidorQueLe('Requer a dilação por 30 dias. Este juízo entende que o laudo do assistente vale (processo 0001234-56.2025.4.03.6301).')
+    const r = await aprovar('dilacao')
+    expect([r.statusCode, r.json().aviso]).toEqual([201, undefined])
+  })
+
+  it('sem a IA, aprova com o aviso para a advogada conferir à mão', async () => {
+    servidorQueLe(null)
+    const r = await aprovar()
+    expect([r.statusCode, r.json().aviso]).toEqual([201, 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'])
+    const [a] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'manifestacao_aprovada'))
+    expect(a.detalhe).toMatchObject({ jurimetriaConferida: false })
+  })
 })
 

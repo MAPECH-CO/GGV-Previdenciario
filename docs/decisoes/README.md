@@ -11,6 +11,8 @@ Decisão registrada não se reverte por commit. Reverte por outro ADR que cite o
 | [013](ADR-013-base-de-conhecimento.md) | Base de conhecimento do acervo: pgvector no mesmo PostgreSQL (HNSW), busca híbrida com a palavra por RRF, embeddings da OpenAI pelo motor (GGVP-141) |
 | [015](ADR-015-chatwoot-motor-de-conversas.md) | Chatwoot como motor das conversas; aceitação não significa todas as integrações concluídas |
 | [016](ADR-016-kit-de-agentes-no-chat.md) | Kit de agentes da OpenAI em TypeScript no chat (GGVP-142): leitura sozinha, ação com aprovação da pessoa (o cartão), rastreamento desligado, registro em `chamada_ia`; as travas seguem como código |
+| [017](ADR-017-scanner-pelo-drive.md) | O papel do scanner entra pelo Drive (GGVP-158): a cada minuto, o portal lê a lista de mudanças e traz o arquivo novo da pasta de um cliente; o n8n não muda; não roda com o Drive só leitura |
+| [018](ADR-018-alarme-ao-suporte.md) | O alarme da vigília ao suporte técnico (GGVP-158): mensagem no canal da equipe por webhook e chamado no Jira, cada um com as suas variáveis; sem elas, o portal e o log |
 
 ## Decisões com pendências
 

@@ -218,6 +218,20 @@
       "when": 1791582098224,
       "tag": "0030_tipo_do_documento_no_item",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791908583548,
+      "tag": "0031_catalogo_de_beneficios",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791924113961,
+      "tag": "0032_resultado_do_recurso",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@
 // regras puras importadas das telas: horários, durações, equipe, limite de remarcação (G15) e tentativas de confirmação.
 // As tarefas que abrem e fecham ficam em `tarefa_recepcao`, para a Central de qualquer computador.
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { and, arrayOverlaps, asc, eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { dataParaIso } from '@ggv/campos'
 import {
@@ -14,13 +14,15 @@ import {
   MensagemEnviada,
   NovoCompromissoInterno,
   ResultadoDoCompromisso,
+  PERFIS,
   pode,
   type Erro,
+  type Perfil,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao } from '../banco/esquema.ts'
+import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
-import { EQUIPE, TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
+import { EQUIPE, MOTIVOS_DE_NAO_FECHAR, TIPOS_DE_ENTREVISTA, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import type {
   Agendamento,
   CompromissoGuardado,
@@ -34,15 +36,18 @@ import type {
 } from '../../../web/src/dados/tipos.ts'
 import { DURACOES, HORARIOS, equipeDaEntrevista, estadoDoEvento, horarioOcupado, podeRemarcar } from '../../../web/src/regras/agenda.ts'
 import { agendamentoDoDia, emAberto } from '../../../web/src/regras/busca.ts'
-import { TENTATIVAS_DE_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
+import { parametroDoEscritorio } from '../fluxo/exigencia.ts'
+import { LIMITES_DA_CONFIRMACAO, confirmada, depoisDaTentativa, precisaConfirmar } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, type ContratoGuardado } from './recepcao.ts'
+import { TAMANHO_DO_DETALHE, podeRegistrarOMotivo } from '../../../web/src/regras/fechamento.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, papelDa, type ContratoGuardado } from './recepcao.ts'
 import type { RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { criarCobranca } from './recepcao-cobranca.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
+export const MSG_DESISTENCIA = 'A desistência é do lead, na entrevista marcada.'
 
 const PASSOS: Record<string, string> = {
   Entrevista: 'D1.09 · Atender e entrevistar',
@@ -105,8 +110,23 @@ const guardado = (l: typeof compromissoInterno.$inferSelect): CompromissoGuardad
 type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, abrirPreparacao, quandoNaConfirmacao, acharAgendamento, gravacoes, leiturasDe } =
-    criarFichario(banco, agora)
+  const {
+    hoje,
+    evento,
+    nomeDe,
+    fichas,
+    guardar,
+    abrirTarefa,
+    concluirTarefas,
+    tarefas,
+    abrirPreparacao,
+    quandoNaConfirmacao,
+    acharAgendamento,
+    gravacoes,
+    leiturasDe,
+    arquivar,
+    marcarRecontato,
+  } = criarFichario(banco, agora)
   const { dasFichas: checklistsDas } = criarChecklist(banco, agora)
   const { daCopia: cobrancasDa } = criarCobranca(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
@@ -123,13 +143,37 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
 
   /** A agenda do escritório: entrevistas e retiradas das fichas e os compromissos internos; o remarcado sai (CA5). */
   async function eventosDoEscritorio(): Promise<EventoDaAgenda[]> {
-    const dasFichas = (await fichasDaRecepcao()).flatMap((f) => f.agendamentos.filter((a) => a.estado !== 'remarcado').map((a) => doAgendamento(f, a, hoje())))
+    // O remarcado e o desistido (GGVP-158, P3.7) saem: o horário fica livre.
+    const dasFichas = (await fichasDaRecepcao()).flatMap((f) => f.agendamentos.filter((a) => a.estado !== 'remarcado' && a.estado !== 'desistiu').map((a) => doAgendamento(f, a, hoje())))
     return [...dasFichas, ...(await internos()).map((i) => doInterno(i, hoje()))]
   }
 
   const fichaPeloId = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
 
   const novoId = (ficha: Ficha) => `${ficha.id}-ag-${randomUUID().slice(0, 8)}`
+
+  /**
+   * Quem atende a entrevista (GGVP-158, P3.6): um usuário com perfil de advogada ou Sênior, com o id guardado para o filtro
+   * "só as minhas". ponytail: o id do catálogo fixo (EQUIPE) segue valendo até a tela usar a equipe real.
+   */
+  async function quemAtende(id: string): Promise<{ nome: string; comId?: string } | undefined> {
+    if (UUID.test(id)) {
+      const [u] = await banco
+        .select({ id: usuario.id, nome: usuario.nome })
+        .from(usuario)
+        .where(and(eq(usuario.id, id), arrayOverlaps(usuario.perfis, ['advogada', 'senior'])))
+      return u && { nome: u.nome, comId: u.id }
+    }
+    const membro = equipeDaEntrevista(EQUIPE).find((p) => p.id === id)
+    return membro && { nome: membro.nome }
+  }
+
+  // GGVP-158 P3.6: a equipe da agenda são os usuários com o perfil pedido; vai só o id e o nome, para quem marca.
+  app.get<{ Querystring: { perfis?: string } }>('/api/equipe', editar, async (pedido, resposta) => {
+    const perfis = (pedido.query.perfis ?? '').split(',').map((p) => p.trim()).filter(Boolean)
+    if (perfis.length === 0 || perfis.some((p) => !PERFIS.includes(p as Perfil))) return negar(resposta, 400, 'Diga os perfis da equipe, como advogada,senior.')
+    return banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(arrayOverlaps(usuario.perfis, perfis)).orderBy(asc(usuario.nome))
+  })
 
   /** A pendência do Atendimento: a ficha em papel preenchida e escaneada antes da entrevista (GGVP-21 CA2, CA7). */
   async function abrirPreenchimento(ficha: Ficha, a: Agendamento, quem: string): Promise<TarefaEncaminhada> {
@@ -229,7 +273,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   app.post<{ Params: { id: string } }>('/api/fichas/:id/agendamentos', editar, async (pedido, resposta): Promise<(RespostaMarcacao & { ficha?: Ficha }) | Erro> => {
     const entrada = MarcacaoDaEntrevista.safeParse(pedido.body)
     const m = entrada.success ? entrada.data : null
-    const com = m ? equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com) : undefined
+    const com = m ? await quemAtende(m.com) : undefined
     if (
       !m ||
       !com ||
@@ -254,6 +298,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       hora: m.hora,
       oQue: 'Entrevista',
       com: com.nome,
+      ...(com.comId && { comId: com.comId }),
       tipo: m.tipo,
       duracao: m.duracao,
       estado: 'marcado',
@@ -282,7 +327,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   app.post<{ Params: { id: string } }>('/api/fichas/:id/entrevistas/agora', editar, async (pedido, resposta) => {
     const entrada = EntrevistaAgora.safeParse(pedido.body)
     const m = entrada.success ? entrada.data : null
-    const com = m ? equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com) : undefined
+    const com = m ? await quemAtende(m.com) : undefined
     if (!m || !com || !DURACOES.includes(m.duracao)) return negar(resposta, 400, 'Escolha o tipo e com quem.')
     const ficha = await fichaPeloId(pedido.params.id)
     if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
@@ -292,6 +337,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       hora: horaEmBrasilia(agora()),
       oQue: 'Entrevista',
       com: com.nome,
+      ...(com.comId && { comId: com.comId }),
       tipo: m.tipo,
       duracao: m.duracao,
       estado: 'marcado',
@@ -313,10 +359,12 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   // lead" do Jurídico; faltou grava a falta. Vale também para o compromisso interno.
   app.post<{ Params: { id: string } }>('/api/agendamentos/:id/resultado', editar, async (pedido, resposta) => {
     const entrada = ResultadoDoCompromisso.safeParse(pedido.body)
-    if (!entrada.success) return negar(resposta, 400, 'Escolha realizado ou faltou.')
-    const { resultado } = entrada.data
+    if (!entrada.success) return negar(resposta, 400, 'Escolha realizado, faltou ou desistiu; na desistência, o motivo.')
+    const envio = entrada.data
+    const { resultado } = envio
     const quem = await nomeDe(pedido)
     if (UUID.test(pedido.params.id)) {
+      if (resultado === 'desistiu') return negar(resposta, 400, MSG_DESISTENCIA)
       const [linha] = await banco.select().from(compromissoInterno).where(eq(compromissoInterno.id, pedido.params.id))
       if (!linha) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
       if (linha.estado !== 'marcado') return negar(resposta, 400, MSG_JA_REGISTRADO)
@@ -328,9 +376,38 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     if (!achado) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
     const { ficha, agendamento: a } = achado
     if (!emAberto(a)) return negar(resposta, 400, MSG_JA_REGISTRADO)
-    a.estado = resultado
     const entrevista = a.oQue === 'Entrevista'
     let registro: EventoHistorico
+    // GGVP-158 P3.7: o lead desiste antes da entrevista. É o "não fechou" do G16, com o motivo da lista e o recontato
+    // opcional: com data, "Recontatar lead" na agenda; sem data, o lead é arquivado com o motivo. O horário fica livre.
+    if (envio.resultado === 'desistiu') {
+      if (!entrevista || ficha.situacao !== 'lead') return negar(resposta, 400, MSG_DESISTENCIA)
+      const papel = papelDa(pedido.perfilAtivo)
+      if (!MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === envio.motivo) || !podeRegistrarOMotivo(envio.motivo, papel))
+        return negar(resposta, 400, 'Escolha o motivo da lista (G16).')
+      if ((envio.detalhe ?? '').length > TAMANHO_DO_DETALHE) return negar(resposta, 400, `O detalhe vai até ${TAMANHO_DO_DETALHE} caracteres.`)
+      const em = envio.recontatar ? dataParaIso(envio.recontatar.data) : null
+      if (envio.recontatar && (!em || em < hoje())) return negar(resposta, 400, 'Data do recontato inválida.')
+      const detalhe = envio.detalhe || undefined
+      const quando = agora().toISOString()
+      const desistiu = `Desistiu antes da entrevista de ${dataCurta(a.data, hoje())}: ${nomeMotivo(envio.motivo)}${detalhe ? ` (${detalhe})` : ''}.`
+      a.estado = 'desistiu'
+      if (em) {
+        await concluirTarefas(ficha.id, 'Receber para a entrevista')
+        await concluirTarefas(ficha.id, 'Confirmar agendamento')
+        const recontatoId = marcarRecontato(ficha, em, quem)
+        ficha.fechamento = { situacao: 'recontatar', motivo: envio.motivo, ...(detalhe && { detalhe }), recontatarEm: em, recontatoId, papel, quem, quando }
+        registro = evento(`${desistiu} Recontatar em ${dataCurta(em, hoje())}`, quem)
+      } else {
+        ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel, quem, quando }
+        await arquivar(ficha, envio.motivo, detalhe)
+        registro = evento(`${desistiu} Lead arquivado com o motivo (G16)`, quem)
+      }
+      ficha.historico.push(registro)
+      await guardar(ficha)
+      return { evento: registro, ficha, tarefas: await tarefas(ficha.id) }
+    }
+    a.estado = resultado
     if (resultado === 'realizado') {
       await concluirTarefas(ficha.id, 'Receber para a entrevista')
       if (entrevista && ficha.situacao === 'lead')
@@ -431,12 +508,17 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       const tarefa = r.jaPreencheuFicha ? await abrirPreparacao(ficha, a, quem) : await abrirPreenchimento(ficha, a, quem)
       saida = { tentativa, naSenior: confirmacao.naSenior ?? false, tarefa }
     } else {
-      const depois = depoisDaTentativa(confirmacao.tentativas.filter((t) => t.resultado === 'sem-resposta').length, hoje())
-      ficha.contatos.push({ data: hoje(), canal: CANAL[r.canal], texto: `Sem resposta à confirmação de ${sobre} (tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO}).` })
+      // GGVP-158 P5.3: as tentativas e os dias entre elas vêm da Configuração; sem ela, os do Lucas.
+      const l = {
+        tentativas: await parametroDoEscritorio(banco, 'confirmacao.limite', LIMITES_DA_CONFIRMACAO.tentativas),
+        diasEntre: await parametroDoEscritorio(banco, 'confirmacao.intervalo_dias', LIMITES_DA_CONFIRMACAO.diasEntre),
+      }
+      const depois = depoisDaTentativa(confirmacao.tentativas.filter((t) => t.resultado === 'sem-resposta').length, hoje(), l)
+      ficha.contatos.push({ data: hoje(), canal: CANAL[r.canal], texto: `Sem resposta à confirmação de ${sobre} (tentativa ${tentativa} de ${l.tentativas}).` })
       if (!depois.naSenior) {
         confirmacao.proximaEm = depois.proximaEm
         ficha.historico.push(
-          evento(`Tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO} sem resposta (${CANAL_FALADO[r.canal]}); nova tentativa em ${dataCurta(depois.proximaEm, hoje())}`, quem),
+          evento(`Tentativa ${tentativa} de ${l.tentativas} sem resposta (${CANAL_FALADO[r.canal]}); nova tentativa em ${dataCurta(depois.proximaEm, hoje())}`, quem),
         )
         saida = { tentativa, proximaEm: depois.proximaEm, naSenior: false }
       } else {
@@ -451,7 +533,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
             codigo: 'D1.04',
             cliente: { id: ficha.id, nome: ficha.nome },
             acao: 'Confirmar agendamento',
-            detalhe: `${TENTATIVAS_DE_CONFIRMACAO} tentativas sem resposta · a advogada sênior resolve e entra em contato com o lead`,
+            detalhe: `${l.tentativas} tentativas sem resposta · a advogada sênior resolve e entra em contato com o lead`,
             prazo: a.data === hoje() ? a.hora : dataCurta(a.data, hoje()),
             urgente: true,
             href: `/agenda/confirmar/${a.id}`,

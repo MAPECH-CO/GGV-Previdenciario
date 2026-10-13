@@ -1,6 +1,6 @@
 // Tentativas bloqueadas (GGVP-109 CA9): as recusas de portão e as ações fora do perfil, das mais recentes, para a gestão.
 // Resultados (GGVP-75): o painel de resultado para os sócios.
-import { PainelDeResultados, PedidoDoPainel, TentativasBloqueadas, pode, type Erro, type PortaoDeBloqueio } from '@ggv/contratos'
+import { PainelDeResultados, PedidoDoPainel, RECORTES_DA_JURIMETRIA, TentativasBloqueadas, pode, type Erro, type PortaoDeBloqueio } from '@ggv/contratos'
 import { desc, eq, inArray, or, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
@@ -25,6 +25,8 @@ const DESCRICAO: Record<string, string> = {
 /** Um id do banco no formato uuid, antes de ir à consulta (texto fora do formato faz o PostgreSQL falhar). */
 export const UUID = /^[0-9a-f-]{36}$/
 type Detalhe = { portao?: PortaoDeBloqueio; passo?: string; perfil?: string | null; acao?: string; casoId?: string }
+export const MSG_RECORTE_DA_JURIMETRIA = 'Os recortes por perito, juízo, vara e tese são da jurimetria: só o Jurídico e o Sócio veem.'
+export const MSG_RECORTE_POR_ADVOGADA = 'A taxa de êxito de cada advogada é só dos sócios.'
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 export function registrarRotasGestao(app: FastifyInstance, { banco, agora = () => new Date() }: { banco: Banco; agora?: () => Date }) {
@@ -78,6 +80,11 @@ export function registrarRotasGestao(app: FastifyInstance, { banco, agora = () =
     const hoje = hojeEmBrasilia(agora())
     // A data da base (G22) é o fim do período; depois de hoje não há dado, então o fim vai no máximo até hoje.
     const ate = entrada.data.ate && entrada.data.ate < hoje ? entrada.data.ate : hoje
+    // GGVP-156 CA3 e GGVP-158 P5.13: os recortes da jurimetria só para o Jurídico e o Sócio (`estudo.ver`, a mesma régua da tela do caso).
+    if (entrada.data.recorte && RECORTES_DA_JURIMETRIA.includes(entrada.data.recorte) && !pode(pedido.perfilAtivo, 'estudo.ver'))
+      return negar(resposta, 403, MSG_RECORTE_DA_JURIMETRIA)
+    // Mateus (13/10): a taxa de êxito de cada advogada, só os sócios.
+    if (entrada.data.recorte === 'advogada' && !pode(pedido.perfilAtivo, 'resultados.ver_por_advogada')) return negar(resposta, 403, MSG_RECORTE_POR_ADVOGADA)
     const { de = `${hoje.slice(0, 4)}-01-01`, recorte = null } = entrada.data
     if (de > ate) return negar(resposta, 400, 'A data inicial vem antes da final.')
     return PainelDeResultados.parse(await painelDeResultados(banco, { de, ate, recorte, verTotais: pode(pedido.perfilAtivo, 'valores.ver_totais') }))
