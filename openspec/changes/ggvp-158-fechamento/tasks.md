@@ -172,9 +172,19 @@
 
 ## GGVP-158 · Parte 2 · Fora do código (12/10)
 
-- [ ] 2.10 Banco da homologação (P2.8): com a autorização do Mateus, o conector do Supabase lista só nomes e contagens do esquema `juridico`, das cópias `zz_backup_*` e da `_snap_pgss`. A proposta vai ao cartão; apagar, só o Mateus. Verifica: o comentário no cartão traz a lista e a proposta.
+- [x] 2.10 Banco da homologação (P2.8): com a autorização do Mateus, o conector do Supabase lista só nomes e contagens do esquema `juridico`, das cópias `zz_backup_*` e da `_snap_pgss`. A proposta vai ao cartão; apagar, só o Mateus. Verifica: o comentário no cartão traz a lista e a proposta.
+
+  Verificado em 13/10, no comentário do cartão:
+  - uns 40 MB que não são do portal, com nomes de dado real de um sistema anterior: clientes, processos, `acessos_gov` e credenciais;
+  - ninguém escreve desde 24 e 25/08, e a API pública do Supabase não tem acesso;
+  - a proposta: confirmar com o Pedro, exportar e apagar, trocar as chaves, e tratar `acessos_gov` como incidente se houver senha do gov.br fora do cofre.
 - [ ] 2.11 Main protegida (P2.9): combinada com o Pedro e aplicada pelo `gh`. Verifica: um pedido sem aprovação não mescla.
-- [ ] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
+- [x] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
+
+  Verificado em 13/10:
+  - o da regex lenta fechou com o #62;
+  - os 2 de `textoDoHtml` foram dispensados como falso positivo, com o motivo: o resultado é texto, mostrado como texto, e nunca volta a ser HTML.
+  - Havia um quarto, num teste de tela (`seguranca.e2e.ts`): a regex escapava só o ponto. Agora escapa todo caractere especial; vai no #71 e fecha no merge.
 - [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-158 · Parte 3 · Caminho da Maria no servidor real (13/10)
@@ -213,5 +223,16 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
   - Com recontato, "Recontatar lead" vai à agenda na data; sem recontato, o lead é arquivado com o motivo.
   - Verifica com `rotas/recepcao-agenda.test.ts`.
 - [x] 3.14 O bairro na ficha (P3.8): `EdicaoDaFicha` aceita o `bairro`, e o PATCH grava. Verifica com `rotas/recepcao.test.ts`.
-- [ ] 3.15 Avisar o Pedro: o pedido lista os contratos novos que as telas usam (cálculo, percentual na Configuração, equipe da agenda, desistência e liberação).
-- [ ] 3.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.15 Avisar o Pedro: o pedido lista os contratos novos que as telas usam (cálculo, percentual na Configuração, equipe da agenda, desistência e liberação).
+
+  Feito no #71, na seção "Para o Pedro ligar nas telas".
+- [x] 3.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+  Verificado em 13/10:
+  - typecheck e lint sem erro;
+  - contratos 171/171;
+  - tela 1653/1653, em 197 arquivos;
+  - API 854/854 (3 pulados), em 97 arquivos;
+  - Playwright 260/260.
+
+  O "Agora ok?" foi para o relatório final ao Mateus.
