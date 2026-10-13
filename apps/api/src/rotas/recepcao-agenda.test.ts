@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { usuario } from '../banco/esquema.ts'
@@ -157,5 +158,30 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
     const joana = await lead('Joana Ribeiro', '11987654321')
     expect((await chamar('julia', 'POST', `/api/fichas/${joana}/agendamentos`, MARCACAO)).statusCode).toBe(403)
     expect((await app.inject({ method: 'GET', url: '/api/recepcao' })).statusCode).toBe(401)
+  })
+})
+
+describe('GGVP-158 P3.6 · a agenda marca com as advogadas e as Sêniores reais', () => {
+  const idDe = async (apelido: string) => (await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, `${apelido}@exemplo.ggv`)))[0].id
+
+  it('a equipe: só o id e o nome de quem tem o perfil pedido; quem não marca não vê; perfil fora da matriz, recusa', async () => {
+    expect(await json('ana', 'GET', '/api/equipe?perfis=advogada,senior')).toEqual([
+      { id: await idDe('gabi'), nome: 'gabi' },
+      { id: await idDe('helena'), nome: 'helena' },
+    ])
+    expect((await chamar('julia', 'GET', '/api/equipe?perfis=advogada')).statusCode).toBe(403)
+    for (const perfis of ['', 'root', 'advogada,root']) expect((await chamar('ana', 'GET', `/api/equipe?perfis=${perfis}`)).statusCode, perfis).toBe(400)
+  })
+
+  it('a marcação com alguém da equipe guarda o id e o nome; quem não é advogada nem Sênior é recusado', async () => {
+    const gabi = await idDe('gabi')
+    const r = await marcar(await lead('Joana Ribeiro', '11987654321'), { com: gabi })
+    expect(r.agendamento).toMatchObject({ com: 'gabi', comId: gabi })
+    const outro = await lead('Maria Souza', '11912345678')
+    expect((await chamar('ana', 'POST', `/api/fichas/${outro}/agendamentos`, { ...MARCACAO, com: await idDe('julia'), hora: '16:00' })).statusCode).toBe(400)
+    // O catálogo fixo segue aceito até a tela usar a equipe real, sem o id.
+    const antigo = await marcar(outro, { hora: '16:00' })
+    expect(antigo.agendamento).toMatchObject({ com: 'Dra. Paula' })
+    expect(antigo.agendamento.comId).toBeUndefined()
   })
 })

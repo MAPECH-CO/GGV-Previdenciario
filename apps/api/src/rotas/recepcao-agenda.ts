@@ -3,7 +3,7 @@
 // regras puras importadas das telas: horários, durações, equipe, limite de remarcação (G15) e tentativas de confirmação.
 // As tarefas que abrem e fecham ficam em `tarefa_recepcao`, para a Central de qualquer computador.
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { and, arrayOverlaps, asc, eq } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { dataParaIso } from '@ggv/campos'
 import {
@@ -14,11 +14,13 @@ import {
   MensagemEnviada,
   NovoCompromissoInterno,
   ResultadoDoCompromisso,
+  PERFIS,
   pode,
   type Erro,
+  type Perfil,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao } from '../banco/esquema.ts'
+import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { EQUIPE, TIPOS_DE_ENTREVISTA, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type {
@@ -131,6 +133,29 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
 
   const novoId = (ficha: Ficha) => `${ficha.id}-ag-${randomUUID().slice(0, 8)}`
 
+  /**
+   * Quem atende a entrevista (GGVP-158, P3.6): um usuário com perfil de advogada ou Sênior, com o id guardado para o filtro
+   * "só as minhas". ponytail: o id do catálogo fixo (EQUIPE) segue valendo até a tela usar a equipe real.
+   */
+  async function quemAtende(id: string): Promise<{ nome: string; comId?: string } | undefined> {
+    if (UUID.test(id)) {
+      const [u] = await banco
+        .select({ id: usuario.id, nome: usuario.nome })
+        .from(usuario)
+        .where(and(eq(usuario.id, id), arrayOverlaps(usuario.perfis, ['advogada', 'senior'])))
+      return u && { nome: u.nome, comId: u.id }
+    }
+    const membro = equipeDaEntrevista(EQUIPE).find((p) => p.id === id)
+    return membro && { nome: membro.nome }
+  }
+
+  // GGVP-158 P3.6: a equipe da agenda são os usuários com o perfil pedido; vai só o id e o nome, para quem marca.
+  app.get<{ Querystring: { perfis?: string } }>('/api/equipe', editar, async (pedido, resposta) => {
+    const perfis = (pedido.query.perfis ?? '').split(',').map((p) => p.trim()).filter(Boolean)
+    if (perfis.length === 0 || perfis.some((p) => !PERFIS.includes(p as Perfil))) return negar(resposta, 400, 'Diga os perfis da equipe, como advogada,senior.')
+    return banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(arrayOverlaps(usuario.perfis, perfis)).orderBy(asc(usuario.nome))
+  })
+
   /** A pendência do Atendimento: a ficha em papel preenchida e escaneada antes da entrevista (GGVP-21 CA2, CA7). */
   async function abrirPreenchimento(ficha: Ficha, a: Agendamento, quem: string): Promise<TarefaEncaminhada> {
     const tarefa: TarefaEncaminhada = {
@@ -229,7 +254,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   app.post<{ Params: { id: string } }>('/api/fichas/:id/agendamentos', editar, async (pedido, resposta): Promise<(RespostaMarcacao & { ficha?: Ficha }) | Erro> => {
     const entrada = MarcacaoDaEntrevista.safeParse(pedido.body)
     const m = entrada.success ? entrada.data : null
-    const com = m ? equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com) : undefined
+    const com = m ? await quemAtende(m.com) : undefined
     if (
       !m ||
       !com ||
@@ -254,6 +279,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       hora: m.hora,
       oQue: 'Entrevista',
       com: com.nome,
+      ...(com.comId && { comId: com.comId }),
       tipo: m.tipo,
       duracao: m.duracao,
       estado: 'marcado',
@@ -282,7 +308,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   app.post<{ Params: { id: string } }>('/api/fichas/:id/entrevistas/agora', editar, async (pedido, resposta) => {
     const entrada = EntrevistaAgora.safeParse(pedido.body)
     const m = entrada.success ? entrada.data : null
-    const com = m ? equipeDaEntrevista(EQUIPE).find((p) => p.id === m.com) : undefined
+    const com = m ? await quemAtende(m.com) : undefined
     if (!m || !com || !DURACOES.includes(m.duracao)) return negar(resposta, 400, 'Escolha o tipo e com quem.')
     const ficha = await fichaPeloId(pedido.params.id)
     if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
@@ -292,6 +318,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       hora: horaEmBrasilia(agora()),
       oQue: 'Entrevista',
       com: com.nome,
+      ...(com.comId && { comId: com.comId }),
       tipo: m.tipo,
       duracao: m.duracao,
       estado: 'marcado',

@@ -79,6 +79,8 @@ export type Agendamento = {
   oQue: string
   /** Com quem: "Dra. Paula". */
   com?: string
+  /** O id do usuário que atende, da equipe real (GGVP-158, P3.6): o filtro "só as minhas" usa este. */
+  comId?: string
   // GGVP-123: a marcação da entrevista. Sem estes campos, vale o padrão (marcado, 45 minutos).
   tipo?: TipoDeEntrevista
   /** Em minutos. */
