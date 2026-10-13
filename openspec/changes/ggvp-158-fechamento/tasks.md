@@ -306,12 +306,14 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
 Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-5`, em cima do #74. A migração 0032 sai no fim, sobre a main mais nova. Na ordem contrato → teste → servidor.
 
-- [ ] 5.1 A orientação e o lembrete conferem a mensagem (P5.1, decisão 40): `mensagemId` em `OrientacaoAoCliente` e em `MensagemConferida`; a rota confere a pessoa, o modelo, o texto e o status.
+- [x] 5.1 A orientação, o lembrete e a cobrança da perícia conferem a mensagem (P5.1, decisão 40): `mensagemId` opcional em `OrientacaoAoCliente` e em `MensagemConferida`; a rota acha a mensagem da pessoa, do modelo e do texto e recusa a que não saiu.
   - Verifica com `rotas/pericia.test.ts`:
     - a mensagem entregue registra;
     - a que não saiu recusa;
-    - sem o id, recusa;
+    - sem envio, recusa;
     - a ligação segue sem mensagem.
+
+  Verificado em 13/10: `rotas/pericia.test.ts` 29/29, com os 3 novos de P5.1.
 - [ ] 5.2 O perito pelo nome (P5.2, decisão 41): `perito` na leitura da IA e na classificação; `peritoPeloNome` acha ou cria; a nomeação liga à perícia aberta.
   - Verifica com `rotas/publicacoes.test.ts` e `vigilia/perito.test.ts`:
     - o perito novo nasce e liga;

@@ -222,7 +222,8 @@ export type ResultadoDaPericia = {
 
 /** Chatwoot (documento e instrução, Lucas 02/10 Q5) ou a ligação. */
 export type CanalDaOrientacao = 'chatwoot' | 'ligacao'
-export type PreparacaoDaPericia = { quando: string; quem: string; canal: CanalDaOrientacao; texto: string }
+/** `mensagemId`: a mensagem que saiu pelo Chatwoot, conferida pelo servidor (GGVP-158 P5.1). */
+export type PreparacaoDaPericia = { quando: string; quem: string; canal: CanalDaOrientacao; texto: string; mensagemId?: string }
 
 /** Quem faz sozinho. */
 export const SISTEMA = 'Sistema'

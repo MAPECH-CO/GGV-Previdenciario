@@ -471,13 +471,13 @@ O servidor MUST NOT subir com essa variável na homologação nem na produção.
 - **Então** a rota não existe
 
 ### Requirement: P5.1 · A orientação da perícia sai de verdade pelo Chatwoot
-A orientação pelo Chatwoot SHALL ficar registrada como enviada só quando a mensagem saiu. A rota da orientação MUST receber a mensagem que o correio do cliente enviou e conferir que ela:
+A orientação pelo Chatwoot SHALL ficar registrada como enviada só quando a mensagem saiu. A rota da orientação MUST achar a mensagem que o correio do cliente enviou (pelo id, quando vem, ou a mais nova) e conferir que ela:
 - é do mesmo cliente;
 - é do modelo "Perícia: data, o que levar e orientação";
 - tem o texto da orientação;
 - não ficou como "não saiu".
 
-O lembrete da véspera SHALL seguir a mesma regra, com uma das mensagens da perícia. A orientação por ligação fica como hoje, sem mensagem.
+O lembrete da véspera ("Perícia: confirmar a presença") e a cobrança dos documentos da perícia ("Cobrança de documentos") SHALL seguir a mesma regra. A orientação por ligação fica como hoje, sem mensagem.
 
 #### Scenario: P5.1 · A mensagem saiu
 - **Dado** a orientação enviada pelo Chatwoot e entregue
@@ -489,8 +489,9 @@ O lembrete da véspera SHALL seguir a mesma regra, com uma das mensagens da per�
 - **Quando** o Jurídico administrativo registra a orientação com ela
 - **Então** o portal recusa com "A orientação não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.", e nada é registrado
 
-#### Scenario: P5.1 · Sem mensagem
-- **Quando** o Jurídico administrativo registra a orientação pelo Chatwoot sem dizer a mensagem
+#### Scenario: P5.1 · Nada saiu
+- **Dado** nenhuma mensagem da orientação enviada ao cliente
+- **Quando** o Jurídico administrativo registra a orientação pelo Chatwoot
 - **Então** o portal recusa com "Envie a orientação pelo Chatwoot antes de registrar."
 
 ### Requirement: P5.2 · O perito nasce da nomeação

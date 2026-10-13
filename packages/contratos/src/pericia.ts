@@ -42,8 +42,11 @@ export type RemarcacaoDaPericia = z.infer<typeof RemarcacaoDaPericia>
 export const AutorizacaoDeRemarcacao = z.object({ justificativa: Texto(1000) })
 export type AutorizacaoDeRemarcacao = z.infer<typeof AutorizacaoDeRemarcacao>
 
-/** POST /api/processos/:id/pericia/lembrete e /cobranca: a mensagem conferida, enviada pelo Chatwoot (simulado). */
-export const MensagemConferida = z.object({ mensagem: Texto(4000).min(1) })
+/**
+ * POST /api/processos/:id/pericia/lembrete e /cobranca: a mensagem conferida e o id da que o correio do cliente enviou pelo
+ * Chatwoot (`POST /api/fichas/:id/mensagens`). GGVP-158 P5.1: sem o envio de verdade, nada registra.
+ */
+export const MensagemConferida = z.object({ mensagem: Texto(4000).min(1), mensagemId: z.uuid().optional() })
 export type MensagemConferida = z.infer<typeof MensagemConferida>
 
 /** POST /api/processos/:id/pericia/faltas: a falta de um item do kit, com justificativa (GGVP-56, CA5). */
@@ -73,8 +76,11 @@ export type DecisaoDaFalta = z.infer<typeof DecisaoDaFalta>
 export const PeritoEscolhido = z.object({ peritoId: Texto(60).min(1) })
 export type PeritoEscolhido = z.infer<typeof PeritoEscolhido>
 
-/** POST /api/processos/:id/pericia/orientacao: a orientação revisada, passada ao cliente (GGVP-62, CA2 a CA7). */
-export const OrientacaoAoCliente = z.object({ texto: Texto(6000), canal: z.enum(['chatwoot', 'ligacao']), revisei: z.boolean() })
+/**
+ * POST /api/processos/:id/pericia/orientacao: a orientação revisada, passada ao cliente (GGVP-62, CA2 a CA7). Pelo Chatwoot,
+ * vai o id da mensagem que o correio enviou (GGVP-158 P5.1).
+ */
+export const OrientacaoAoCliente = z.object({ texto: Texto(6000), canal: z.enum(['chatwoot', 'ligacao']), revisei: z.boolean(), mensagemId: z.uuid().optional() })
 export type OrientacaoAoCliente = z.infer<typeof OrientacaoAoCliente>
 
 /** POST /api/processos/:id/pericia/presenca: a confirmação da véspera (GGVP-66, CA7). */

@@ -202,9 +202,10 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
 
 40. **A orientação confere a mensagem** (P5.1).
     - A tela já envia antes, pelo correio do cliente (`POST /api/fichas/:id/mensagens`), e registra depois.
-    - `OrientacaoAoCliente` ganha `mensagemId`, obrigatório no canal `chatwoot`. A rota confere a linha de `mensagem`: a pessoa do caso, o modelo `pericia-orientacao`, o texto da orientação e o status diferente de `falhou`.
+    - `OrientacaoAoCliente` e `MensagemConferida` ganham `mensagemId`, opcional. A rota acha a linha de `mensagem` da pessoa do caso, do modelo e com o mesmo texto: com o id, aquela; sem ele, a mais nova que saiu. A tela de hoje já envia antes e não precisa mudar.
+    - O status `falhou` não serve: 409 "… não saiu pelo Chatwoot". Sem mensagem nenhuma: 409 "Envie … pelo Chatwoot antes de registrar."
+    - Os modelos: `pericia-orientacao` (orientação), `pericia-presenca` (lembrete da véspera) e `cobranca` (cobrança dos documentos da perícia, que tinha o mesmo defeito e usa o mesmo contrato).
     - O id vai à preparação da perícia e ao histórico.
-    - O lembrete da véspera (`MensagemConferida`) ganha o mesmo `mensagemId`, com um dos dois modelos da perícia.
     - Sem enviar de verdade, nada registra. É a regra do "simulado, não saiu" da parte 1.
 41. **O perito pelo nome** (P5.2).
     - `LeituraDaPublicacaoPelaIa` ganha `perito`, lido como a vara e o juiz; `ClassificarPublicacao` ganha `perito`, pelo `validarNome` da `campos`.
@@ -331,7 +332,7 @@ Parte 5, só nos contratos do servidor (as telas são do Pedro):
   - o arquivo que alguém tira de "A REVISAR" e põe na pasta do cliente também entra, porque é uma mudança de pasta;
   - a pasta cujo título serve a duas fichas fica sem ligar, até alguém ligar pela ficha.
 - **A senha no papel:** a imagem com a senha fica guardada (o Lucas disse que não precisa cobrir) e passa pelo modelo. O valor só fica no cofre.
-- **Parte 5 sem as telas:** a orientação e o lembrete pelo Chatwoot passam a pedir a mensagem enviada. A tela de hoje registra sem o id, então o registro recusa até o Pedro mandar o `mensagemId`. Recusar é o pedido: o portal não diz mais que mandou o que não mandou.
+- **Parte 5 sem as telas:** a orientação, o lembrete e a cobrança da perícia pelo Chatwoot passam a pedir a mensagem que saiu. A tela de hoje já envia antes, então segue igual; o que muda é a recusa quando o envio falhou (na homologação sem Chatwoot, sempre). Recusar é o pedido: o portal não diz mais que mandou o que não mandou.
 - **A assinatura a completar:** num banco novo, a petição não protocola até a Sênior pôr a OAB do Dr. Glauco, que espera o Lucas. É o lado seguro: nenhuma peça sai com assinatura errada.
 - **O limite do tribunal:** 3 MB pode barrar o arquivo que o JEF aceitaria (10 MB). A mensagem diz o limite, e a Sênior muda na Configuração.
 - **Jurimetria no texto:** a regra casa o formato que o portal mostra. Um número escrito de outro jeito passa, e a revisão da advogada segue valendo.

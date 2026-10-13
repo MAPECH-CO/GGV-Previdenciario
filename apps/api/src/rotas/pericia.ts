@@ -34,10 +34,11 @@ import {
   pode,
   type Acao,
   type Erro,
+  type IdDoModelo,
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type Ia } from '../ia/ia.ts'
@@ -339,6 +340,26 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
 
   type ComId = { Params: { id: string } }
 
+  /**
+   * GGVP-158 P5.1: o registro do que foi pelo Chatwoot pede a mensagem que o correio do cliente mandou de verdade
+   * (rotas/mensagens.ts): da pessoa do caso, do modelo e com o mesmo texto. Com o id, vale aquela; sem ele, a mais nova que
+   * saiu (a tela envia antes e registra depois). A que ficou como "não saiu" não serve.
+   * ponytail: casa pelo texto, que já traz a data da perícia; um id obrigatório fecha de vez quando a tela mandar.
+   */
+  async function envioDe(casoId: string, mensagemId: string | undefined, modelo: IdDoModelo, texto: string, oQue: string): Promise<{ erro: string } | { id: string }> {
+    const linhas = await banco
+      .select({ id: mensagem.id, status: mensagem.status })
+      .from(mensagem)
+      .innerJoin(caso, eq(caso.pessoaId, mensagem.pessoaId))
+      .where(and(eq(caso.id, casoId), eq(mensagem.modelo, modelo), eq(mensagem.conteudo, texto.trim()), mensagemId ? eq(mensagem.id, mensagemId) : undefined))
+      .orderBy(desc(mensagem.criadoEm))
+    const saiu = linhas.find((l) => l.status !== 'falhou')
+    if (saiu) return { id: saiu.id }
+    if (linhas.length) return { erro: `${oQue[0].toUpperCase()}${oQue.slice(1)} não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.` }
+    return { erro: mensagemId ? 'Esta não é a mensagem enviada: registre com a mensagem que saiu pelo Chatwoot.' : `Envie ${oQue} pelo Chatwoot antes de registrar.` }
+  }
+
+
   // GGVP-49: a perícia do processo, na visão do perfil. A que nasceu do INSS ganha aqui o formato das telas (DP.01).
   app.get<ComId>('/api/processos/:id/pericia', com('caso.ver'), async (pedido, resposta) => {
     const d = await doCaso(pedido.params.id)
@@ -503,10 +524,14 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return a && mudar(pedido, resposta, { acao: 'pericia_remarcacao_autorizada', passo: 'DP.02' }, (n, quem) => mudancas.autorizacao(n, a.justificativa, quem))
   })
 
-  // GGVP-53 CA7: o lembrete da véspera, conferido e já enviado pelo correio do servidor (rotas/mensagens.ts).
-  app.post<ComId>('/api/processos/:id/pericia/lembrete', com('pericia.marcar'), (pedido, resposta) => {
+  // GGVP-53 CA7: o lembrete da véspera, conferido e já enviado pelo correio do servidor (rotas/mensagens.ts); GGVP-158 P5.1:
+  // o servidor confere que ele saiu.
+  app.post<ComId>('/api/processos/:id/pericia/lembrete', com('pericia.marcar'), async (pedido, resposta) => {
     const m = corpo(MensagemConferida, pedido, resposta)
-    return m && mudar(pedido, resposta, { acao: 'pericia_lembrete_enviado', passo: 'DP.04' }, (n, quem) => mudancas.lembrete(n, m.mensagem, quem))
+    if (!m) return
+    const envio = await envioDe(pedido.params.id, m.mensagemId, 'pericia-presenca', m.mensagem, 'o lembrete')
+    if ('erro' in envio) return negar(resposta, 409, envio.erro)
+    return mudar(pedido, resposta, { acao: 'pericia_lembrete_enviado', passo: 'DP.04', detalhe: { mensagem: envio.id } }, (n, quem) => mudancas.lembrete(n, m.mensagem, quem))
   })
 
   // GGVP-56: a Documentação reúne o que a perícia pede (DP.03).
@@ -547,9 +572,12 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     return mudar(pedido, resposta, { acao: 'pericia_pedido_ao_medico', passo: 'DP.03' }, (n, quem) => mudancas.pedidoAoMedico(n, p.abordar, quem))
   })
 
-  app.post<ComId>('/api/processos/:id/pericia/cobranca', com('pericia.reunir_documentos'), (pedido, resposta) => {
+  app.post<ComId>('/api/processos/:id/pericia/cobranca', com('pericia.reunir_documentos'), async (pedido, resposta) => {
     const m = corpo(MensagemConferida, pedido, resposta)
-    return m && mudar(pedido, resposta, { acao: 'pericia_cobranca_enviada', passo: 'DP.03' }, (n, quem) => mudancas.cobranca(n, m.mensagem, quem))
+    if (!m) return
+    const envio = await envioDe(pedido.params.id, m.mensagemId, 'cobranca', m.mensagem, 'a cobrança')
+    if ('erro' in envio) return negar(resposta, 409, envio.erro)
+    return mudar(pedido, resposta, { acao: 'pericia_cobranca_enviada', passo: 'DP.03', detalhe: { mensagem: envio.id } }, (n, quem) => mudancas.cobranca(n, m.mensagem, quem))
   })
 
   app.post<ComId>('/api/processos/:id/pericia/cobranca/adiamento', com('pericia.reunir_documentos'), (pedido, resposta) =>
@@ -612,11 +640,16 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   app.post<ComId>('/api/processos/:id/pericia/orientacao', com('pericia.orientar_cliente'), async (pedido, resposta) => {
     const o = corpo(OrientacaoAoCliente, pedido, resposta)
     if (!o) return
+    // GGVP-158 P5.1: pelo Chatwoot, só registra a orientação que saiu.
+    const envio = o.canal === 'chatwoot' ? await envioDe(pedido.params.id, o.mensagemId, 'pericia-orientacao', o.texto, 'a orientação') : null
+    if (envio && 'erro' in envio) return negar(resposta, 409, envio.erro)
+    const mensagemId = envio?.id
     let recusa: string | null = null
-    const registro = { acao: 'pericia_orientacao_enviada', passo: 'DP.06', detalhe: { canal: o.canal } }
+    const registro = { acao: 'pericia_orientacao_enviada', passo: 'DP.06', detalhe: { canal: o.canal, mensagem: mensagemId ?? null } }
     const r = await mudar(pedido, resposta, registro, (n, quem) => {
       recusa = mudancas.orientacao(n, o, quem)
       if (recusa) registro.acao = ''
+      else if (mensagemId) n.pericia.preparacao = { ...n.pericia.preparacao!, mensagemId }
     })
     if (!recusa) return r
     await bloqueio(pedido, pedido.params.id, 'G20', 'DP.06', {}, 'pericia_orientacao_recusada')

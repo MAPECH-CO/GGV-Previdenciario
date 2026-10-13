@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, configuracao, credencialGovbr, decisao, documento, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, configuracao, credencialGovbr, decisao, documento, eventoAuditoria, identificadorCaso, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { criarIa } from '../ia/ia.ts'
@@ -285,6 +285,58 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect((await post('gabi', '/autorizacao', { justificativa: 'curta' })).statusCode).toBe(400)
     const r = await post('gabi', '/autorizacao', { justificativa: 'O cliente estava internado nas duas datas.' })
     expect(r.json().situacao).toBe('marcar')
+  })
+})
+
+describe('GGVP-158 P5.1 · o que vai pelo Chatwoot só registra com a mensagem que saiu', () => {
+  /** A mensagem como o correio do cliente grava (rotas/mensagens.ts), da pessoa do caso. */
+  async function enviada(modelo: string, conteudo: string, status = 'entregue') {
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    const [m] = await banco.insert(mensagem).values({ pessoaId: c.pessoaId, casoId, canal: 'whatsapp', modelo, conteudo, status, enviadaPor: ids.igor, enviadaEm: relogio }).returning()
+    return m.id
+  }
+  async function pronta() {
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    await marcar(false)
+    return (await ver('igor')).json().pericia.orientacao.texto as string
+  }
+
+  it('a orientação: sem envio, ou com o que não saiu, recusa e nada registra; com a entregue, registra com ela', async () => {
+    const texto = await pronta()
+    const orientar = (mensagemId?: string) => post('igor', '/orientacao', { texto, canal: 'chatwoot', revisei: true, ...(mensagemId && { mensagemId }) })
+    const sem = await orientar()
+    expect([sem.statusCode, sem.json().erro]).toEqual([409, 'Envie a orientação pelo Chatwoot antes de registrar.'])
+    await enviada('pericia-orientacao', texto, 'falhou')
+    const naoSaiu = await orientar()
+    expect([naoSaiu.statusCode, naoSaiu.json().erro]).toEqual([409, 'A orientação não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.'])
+    // Outro texto, ou o id de outra mensagem, não vale como a orientação.
+    const outra = await enviada('pericia-orientacao', 'Outro texto.')
+    expect([(await orientar(outra)).statusCode, (await ver('igor')).json().pericia.preparacao]).toEqual([409, undefined])
+    expect(await acoes()).not.toContain('pericia_orientacao_enviada')
+    const id = await enviada('pericia-orientacao', texto)
+    const ok = await orientar()
+    expect([ok.statusCode, ok.json().pericia.preparacao.canal, ok.json().pericia.preparacao.mensagemId]).toEqual([200, 'chatwoot', id])
+    const [e] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pericia_orientacao_enviada'))
+    expect(e.detalhe).toMatchObject({ canal: 'chatwoot', mensagem: id })
+  })
+
+  it('a orientação por ligação segue sem mensagem', async () => {
+    const texto = await pronta()
+    const r = await post('igor', '/orientacao', { texto, canal: 'ligacao', revisei: true })
+    expect([r.statusCode, r.json().pericia.preparacao.canal, r.json().pericia.preparacao.mensagemId]).toEqual([200, 'ligacao', undefined])
+  })
+
+  it('o lembrete da véspera e a cobrança da perícia: só com a mensagem que saiu', async () => {
+    await pronta()
+    const texto = 'Olá, Maria! Sua perícia é amanhã, 22/10, às 08:30. Leve RG e os laudos originais.'
+    const sem = await post('igor', '/lembrete', { mensagem: texto })
+    expect([sem.statusCode, sem.json().erro]).toEqual([409, 'Envie o lembrete pelo Chatwoot antes de registrar.'])
+    await enviada('pericia-presenca', texto)
+    const ok = await post('igor', '/lembrete', { mensagem: texto })
+    expect([ok.statusCode, ok.json().pericia.lembrete.mensagem]).toEqual([200, texto])
+    const cobranca = await post('dora', '/cobranca', { mensagem: 'Faltam os exames.' })
+    expect([cobranca.statusCode, cobranca.json().erro]).toEqual([409, 'Envie a cobrança pelo Chatwoot antes de registrar.'])
   })
 })
 
