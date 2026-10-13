@@ -1,6 +1,22 @@
 # Homologação no Coolify (GGVP-119)
 
-O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "Portal Operacional". A API serve a tela montada na mesma URL.
+O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "PrevGGVLucas", em São Paulo (sa-east-1), na mesma região da VPS. A API serve a tela montada na mesma URL.
+
+**Troca de 13/10 (Oregon → São Paulo).** Até 13/10, o banco era o projeto "Portal Operacional", em Oregon (us-west-2). Cada consulta levava menos de 1 ms no banco, mas a ida e volta entre a VPS e Oregon levava de 150 a 180 ms, e uma tela faz dezenas de consultas em sequência. O PrevGGVLucas guardava o portal antigo, que foi parado e apagado (sem backup, por decisão do Mateus). Os schemas `public` e `drizzle` foram copiados com `pg_dump`/`pg_restore` (Docker `postgres:17`), e os 5 modelos do depósito `documentos`, pela API do Storage, nos mesmos caminhos.
+
+**Medição depois da troca (13/10, 22h, Chrome do Mateus, perfil Sênior; tempo de cada chamada à API):**
+
+| Tela | Chamadas à API (ms) |
+|---|---|
+| Início | sessão 91 · recepção 77 · documentação médica 29 · perícias 22 · tarefas da perícia 55 · peritos 29 · tarefas 173 · setor/minhas 104 · setor 95 |
+| Processos | sessão 684 · recepção 291 · documentação médica 111 · perícias 32 · tarefas da perícia 79 · peritos 32 · processos 75 |
+| Prazos | sessão 181 · recepção 102 · documentação médica 546 · perícias 87 · tarefas da perícia 119 · peritos 46 |
+| Agenda | sessão 880 · recepção 108 · documentação médica 46 |
+| Resultados | sessão 140 |
+
+Nenhuma chamada passou de 1 segundo (CA8). A página em si chega em 22 ms (primeiro byte) e fica pronta em cerca de 400 ms. A `/api/sessao` variou de 91 a 880 ms entre as telas: fica de olho; se passar de 1 s, vira tarefa.
+
+**Como voltar:** enquanto o "Portal Operacional" existir, devolva no Coolify o `DATABASE_URL` (Session pooler de lá), o `SUPABASE_URL` e a `SUPABASE_SERVICE_ROLE_KEY` dele e faça o Redeploy. O que foi gravado em São Paulo depois da troca fica lá.
 
 Caminho de cada merge na `main`: a CI passa → o workflow **Imagem** publica `ghcr.io/mapech-co/ggv-previdenciario:main` (e a tag do commit) → chama o webhook do Coolify → o Coolify baixa a imagem e troca o container. A cada start, as migrações rodam no Supabase antes de a API subir; se falharem, o container não sobe e o Coolify mantém a versão anterior.
 
@@ -11,7 +27,7 @@ Nenhum valor desta página vai para o chat, o Jira ou o repositório.
 ## 1. Antes de começar
 
 1. **Domínio com https.** No DNS de um domínio do escritório, crie um registro **A** `prev-homolog` com o IP da VPS do Coolify. O cookie da sessão só vale em https, e o endereço `sslip.io` que o Coolify gera fica em http: nele, o login não funciona.
-2. **Banco.** No Supabase, projeto "Portal Operacional": **Project Settings → Database → Reset database password**. Depois, em **Connect → Session pooler**, copie a URL com a senha nova. O endereço direto só funciona em rede com IPv6.
+2. **Banco.** No Supabase, projeto "PrevGGVLucas" (São Paulo): **Project Settings → Database → Reset database password**. Depois, em **Connect → Session pooler**, copie a URL com a senha nova. O endereço direto só funciona em rede com IPv6.
 3. **Chave do cofre do gov.br.** Gere na sua máquina e guarde num gerenciador de senhas (trocar depois deixa ilegíveis as senhas já guardadas no cofre):
 
    ```bash
