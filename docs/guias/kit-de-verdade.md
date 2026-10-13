@@ -70,9 +70,8 @@ O nome do arquivo diz o modelo: o do contrato é o identificador inteiro (`contr
 | Variável | Para que serve | Sem ela |
 |---|---|---|
 | `GOTENBERG_URL` | Endereço do serviço Gotenberg, que converte o Word preenchido em PDF (por exemplo `http://gotenberg:3000`, sem barra no fim). | O portal entrega o Word preenchido para baixar e imprimir. |
-| `ZAPSIGN_API_TOKEN` | Diz que o ZapSign está contratado. Hoje o ZapSign do portal é simulado, e a API real pede plano pago. | Só papel: vale para qualquer entrevista, a opção do celular não aparece e o servidor recusa montar documento no ZapSign. |
 
-`GET /api/contrato/servicos` mostra o que o servidor entendeu: `{ "zapsign": false, "pdf": true }`, por exemplo. Nunca ponha o valor de um token em arquivo do repositório.
+O ZapSign está fora do escopo (GGVP-158): a assinatura é só em papel, para qualquer entrevista, e o servidor não tem rota de ZapSign. `GET /api/contrato/servicos` mostra o que o servidor oferece: `{ "zapsign": false, "pdf": true }`, por exemplo. Nunca ponha o valor de um token em arquivo do repositório.
 
 ## 6. Nota para o Mateus: o Gotenberg no Coolify
 
@@ -87,6 +86,6 @@ O PDF sai de um serviço à parte, o **Gotenberg** (o LibreOffice atrás de uma 
 
 ## 7. O que fica de fora
 
-- O ZapSign de verdade (a API pede plano pago). A opção do celular volta quando o servidor tiver `ZAPSIGN_API_TOKEN` e a integração real estiver ligada.
+- O ZapSign (a API pede plano pago): fora do escopo. Se o escritório contratar, a assinatura pelo celular volta por uma história nova, com a integração de verdade.
 - Contratos gerados antes do kit de verdade não têm o Word guardado: **Imprimir o kit** dá "Este contrato ainda não tem o kit gerado". Esses contratos precisam ser gerados de novo.
 - Os modelos do escritório: ficam fora do repositório, até os limpos. Os testes criam um `.docx` inventado.

@@ -44,8 +44,8 @@ Cole o token quando pedir a senha. Conferir: `Login Succeeded`.
    não enviada ("o telefone está fora da lista de teste da homologação") e a tela diz isso. Sem a lista, nenhum telefone
    recebe. Só o app de produção leva `AMBIENTE=producao`, e lá não há lista.
    Opcional, para o kit do contrato (GGVP-136): `GOTENBERG_URL` (o endereço interno do serviço Gotenberg, que converte o Word do
-   kit em PDF; sem ela o kit sai em Word) e `ZAPSIGN_API_TOKEN` (diz que o ZapSign está contratado; sem ela só há papel). O
-   Gotenberg é outro serviço no mesmo projeto, sem domínio público. Os passos estão em `docs/guias/kit-de-verdade.md`.
+   kit em PDF; sem ela o kit sai em Word). O ZapSign está fora do escopo (GGVP-158): a assinatura é em papel. O Gotenberg é
+   outro serviço no mesmo projeto, sem domínio público. Os passos estão em `docs/guias/kit-de-verdade.md`.
 4. **Healthcheck:** deixe desligado. A imagem traz o dela, que chama `/saude` pelo Node.
 5. **Webhooks:** copie a **Deploy webhook URL**.
 
@@ -137,7 +137,7 @@ Nenhum valor vai para o repositório, o Jira ou o chat.
 | `CHATWOOT_PERMITIDOS` | Fora de produção, os únicos telefones com que o Chatwoot fala, separados por vírgula. |
 | `RELACIONAMENTO_SIMULADO` | Sem o Chatwoot, `nao` tira até o contato simulado da tela. `entrega` finge a entrega e é só dos testes de tela (`playwright.config.ts`): na homologação e na produção, nunca. |
 | `GOTENBERG_URL` | O conversor do kit do contrato para PDF. Sem ela, o kit sai em Word. |
-| `ZAPSIGN_API_TOKEN` | Diz que o ZapSign está contratado. Sem ela, só papel. |
+| `LEITURA_SIMULADA` | `sim` troca a leitura da IA pela leitura de exemplo, pelo nome do arquivo. É só dos testes de tela (`playwright.config.ts`): com `AMBIENTE` igual a `homologacao` ou `producao`, o servidor não sobe com ela. |
 | `FONTES_PUBLICACAO` | As fontes da vigília do diário (`aasp`, `djen`). Fora de produção, o padrão é o exemplo. |
 | `DJEN_OABS` | As OABs que o DJEN procura, como `123456/SP`. |
 | `AASP_CHAVES` | As chaves da AASP. |
