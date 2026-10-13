@@ -11,7 +11,9 @@ const base: RecursoDoCaso = {
   beneficio: 'Auxílio-Acidente',
   sentenca: { disponibilizadaEm: '2026-10-05', texto: 'Sentença: julgo improcedente o pedido.' },
   prazo: { fim: '2026-10-20', regra: 'Recurso contra a sentença: 10 dias úteis (lado seguro, G12)' },
-  chance: null,
+  chance: { porcentagem: null, casos: 0, favoraveis: 0, baseEm: null, regra: 'providos sobre julgados' },
+  avaliacao: null,
+  motivoIa: null,
   decisao: null,
   podeDecidir: true,
 }
@@ -26,13 +28,44 @@ function servidor(get: RecursoDoCaso) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Decidir recurso (GGVP-100)', () => {
-  it('CA4, CA8 · o prazo recursal em destaque, contado pelo sistema; sem jurimetria do juízo, diz que não há número', async () => {
+  it('CA4, CA8 · o prazo recursal em destaque, contado pelo sistema; sem recurso julgado no acervo, diz que não há número', async () => {
     servidor(base)
     render(<DecidirRecurso casoId={CASO} />)
     expect((await screen.findByText('20/10/2026')).tagName).toBe('STRONG')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sérgio Nunes (exemplo) · Decidir recurso')
-    expect(screen.getByText('A chance pela jurimetria ainda não está disponível para este juízo.')).toBeTruthy()
+    expect(screen.getByText('Sem dados ainda: nenhum recurso julgado de caso parecido no acervo.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Antes de concluir' })).toBeTruthy()
+  })
+
+  it('GGVP-161 CA2 · a chance vem dos recursos julgados, com quantos casos e a data da base', async () => {
+    servidor({ ...base, chance: { porcentagem: 67, casos: 3, favoraveis: 2, baseEm: '2026-10-12T15:00:00.000Z', regra: 'providos sobre julgados' } })
+    render(<DecidirRecurso casoId={CASO} />)
+    expect(await screen.findByText('67% · 2 de 3 recursos julgados · base de 12/10 (providos sobre julgados)')).toBeTruthy()
+  })
+
+  it('GGVP-161 CA3 · a avaliação da IA chega pronta, marcada como sugestão, com as fontes', async () => {
+    const avaliacao = {
+      chamadaId: '8b3c4d5e-6f7a-4b2c-8d3e-4f5a6b7c8d9e',
+      sugestao: true as const,
+      texto: 'Bom para recorrer: o laudo não respondeu aos quesitos.',
+      fontes: [{ tipo: 'acervo' as const, referencia: 'caso-1', trecho: 'Caso parecido (exemplo): recurso provido' }],
+      modelo: 'exemplo',
+      geradaEm: '2026-10-12T15:00:00.000Z',
+      alerta: null,
+    }
+    servidor({ ...base, avaliacao })
+    render(<DecidirRecurso casoId={CASO} />)
+    const cartao = await screen.findByRole('region', { name: 'Avaliação da IA' })
+    expect(cartao.textContent).toContain('Sugestão da IA · confira')
+    expect(cartao.textContent).toContain('Bom para recorrer: o laudo não respondeu aos quesitos.')
+    expect(screen.getByRole('list', { name: 'Fontes da avaliação' }).textContent).toContain('Caso parecido (exemplo): recurso provido')
+  })
+
+  it('GGVP-161 CA5 · sem resposta da IA, diz o motivo e a decisão segue com a Sênior', async () => {
+    servidor({ ...base, motivoIa: 'A IA não trouxe a avaliação agora: a decisão fica com a sua leitura.' })
+    render(<DecidirRecurso casoId={CASO} />)
+    expect(await screen.findByText('A IA não trouxe a avaliação agora: a decisão fica com a sua leitura.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Registrar' })).toBeTruthy()
   })
 
   it('CA3 · "Registrar" só habilita com a escolha e a justificativa; envia as duas', async () => {

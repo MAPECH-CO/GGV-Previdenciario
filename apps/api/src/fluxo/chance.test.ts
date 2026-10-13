@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calcularChance, corDaChance, oQueFaltaSaber } from './chance.ts'
+import { calcularChance, calcularChanceDoRecurso, corDaChance, oQueFaltaSaber } from './chance.ts'
 
 describe('GGVP-131 CA2 · chance de êxito por código', () => {
   it('favoráveis sobre decididos, arredondado; desistência e desfecho vazio não contam', () => {
@@ -31,5 +31,16 @@ describe('GGVP-150 · cor e o que falta saber', () => {
       'os documentos que faltam no checklist: comprovante de residência, laudo médico',
     ])
     expect(oQueFaltaSaber({ peritoConhecido: true, juizoConhecido: true, temParecer: true, faltamNoChecklist: [] })).toEqual([])
+  })
+})
+
+describe('GGVP-161 CA2 · a chance do recurso por código', () => {
+  it('provido e provido em parte sobre os recursos julgados; sem recurso julgado não conta', () => {
+    expect(calcularChanceDoRecurso(['provido', 'provido_parcial', 'nao_provido', 'nao_provido', null])).toEqual({ casos: 4, favoraveis: 2, porcentagem: 50 })
+  })
+
+  it('sem recurso julgado, sem número; um só já conta (G22)', () => {
+    expect(calcularChanceDoRecurso([null, null])).toEqual({ casos: 0, favoraveis: 0, porcentagem: null })
+    expect(calcularChanceDoRecurso(['nao_provido'])).toEqual({ casos: 1, favoraveis: 0, porcentagem: 0 })
   })
 })

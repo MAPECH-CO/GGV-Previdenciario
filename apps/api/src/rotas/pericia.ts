@@ -110,13 +110,16 @@ function semLeitura(p: Pericia): Pericia {
   return laudo ? { ...p, resultado: { ...p.resultado, laudo: { ...laudo, leitura: undefined } } } : p
 }
 
+const SEM_NUMEROS = { laudos: 0, favoraveis: 0, taxa: 0, diasAteOLaudo: 0 }
+
 function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
   if (juridico) return t
   return {
     ...t,
     pericia: semLeitura(t.pericia),
     anteriores: t.anteriores.map(semLeitura),
-    perfil: t.perfil && { ...t.perfil, porAssunto: [], porBeneficio: [], perito: { ...t.perfil.perito, laudos: [] } },
+    // GGVP-156 CA2: os números do perito (a jurimetria) são do Jurídico e do Sócio; fora deles, o perfil vai sem os números.
+    perfil: t.perfil && { ...t.perfil, versao: 0, jurimetria: SEM_NUMEROS, porAssunto: [], porBeneficio: [], perito: { ...t.perfil.perito, laudos: [] } },
   }
 }
 

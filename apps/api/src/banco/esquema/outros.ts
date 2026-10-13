@@ -1,5 +1,5 @@
 // Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104, 143).
-import { TIPOS_DE_TERMO } from '@ggv/contratos'
+import { RESULTADOS_DO_RECURSO, TIPOS_DE_TERMO } from '@ggv/contratos'
 import { sql } from 'drizzle-orm'
 import { boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
@@ -92,8 +92,10 @@ export const processoAcervo = pgTable('processo_acervo', {
   tese: text('tese'),
   resumo: text('resumo'),
   licao: text('licao'),
+  /** GGVP-161 CA1: o resultado do recurso, conferido pela Sênior; nulo é "sem recurso julgado". */
+  resultadoRecurso: text('resultado_recurso'),
   criadoEm: criadoEm(),
-}).enableRLS()
+}, (t) => [emLista('processo_acervo_resultado_recurso', t.resultadoRecurso, RESULTADOS_DO_RECURSO)]).enableRLS()
 
 /**
  * Base de conhecimento do acervo (GGVP-141, ADR-013): um trecho anonimizado por fonte, com o vetor para a busca por

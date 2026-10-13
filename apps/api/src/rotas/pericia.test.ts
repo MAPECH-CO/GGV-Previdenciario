@@ -253,14 +253,14 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     // O PDF do laudo é sensível na pasta: só o Jurídico abre (rota dos documentos).
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
-    // A Documentação vê o resultado, o laudo na pasta, o perito e os números dele; a leitura do laudo, os laudos do perfil
-    // e o assunto deles (conteúdo médico), não.
+    // A Documentação vê o resultado, o laudo na pasta e o perito; a leitura do laudo, os laudos do perfil e o assunto deles
+    // (conteúdo médico), não. GGVP-156 CA2: os números do perito (a jurimetria) também não, só o Jurídico e o Sócio.
     const acessos = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
     for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
       expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
       expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
-      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto, daDora.perfil.porBeneficio]).toEqual(['Dr. R. Menezes', 1, [], [], []])
-      expect(daDora.perfil.jurimetria.laudos).toBe(1)
+      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto, daDora.perfil.porBeneficio]).toEqual(['Dr. R. Menezes', 0, [], [], []])
+      expect(daDora.perfil.jurimetria).toEqual({ laudos: 0, favoraveis: 0, taxa: 0, diasAteOLaudo: 0 })
     }
     expect(await acessos()).toEqual([])
     // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.
@@ -268,6 +268,7 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     expect([doJuridico.pericia.resultado.laudo.leitura.favoravel, doJuridico.perfil.porAssunto.map((a: { assunto: string }) => a.assunto)]).toEqual([true, ['sem assunto']])
     // GGVP-152 CA2: os favoráveis por benefício, calculados no servidor, com o número de laudos.
     expect(doJuridico.perfil.porBeneficio).toEqual([{ beneficio: 'LOAS Deficiente', jurimetria: expect.objectContaining({ laudos: 1, favoraveis: 1 }) }])
+    expect([doJuridico.perfil.versao, doJuridico.perfil.jurimetria.laudos]).toEqual([1, 1])
     expect(await acessos()).toEqual([[ids.gabi, casoId, `pericia:${linha.id}`]])
     expect(await acoes()).toEqual(expect.arrayContaining(['pericia_comparecimento_registrado', 'pericia_resultado_registrado']))
   })
