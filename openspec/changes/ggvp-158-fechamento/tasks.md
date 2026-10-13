@@ -409,10 +409,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 5.18 Jurimetria no texto, servidor (P5.12): a aprovação da petição, da manifestação e da dilação recusa e registra o G22. Verifica com `rotas/peticao.test.ts` e `rotas/manifestacao.test.ts`.
 
   Verificado em 13/10: `rotas/peticao.test.ts` 33/33 e `rotas/manifestacao.test.ts` 18/18 (4 novos). A manifestação e a dilação são lidas pela IA na aprovação; sem ela, aprovam com o aviso.
-- [ ] 5.19 A jurimetria só com `estudo.ver` (P5.13, decisão 51): os recortes do painel e a `visao` da perícia.
+- [x] 5.19 A jurimetria só com `estudo.ver` (P5.13, decisão 51): os recortes do painel e a `visao` da perícia.
   - Verifica com `rotas/gestao.test.ts` e `rotas/pericia.test.ts`:
     - o líder do Atendimento e o Financeiro recebem 403 no recorte por perito;
     - a Documentação recebe a perícia sem os números.
+
+  Verificado em 13/10: `rotas/gestao.test.ts` e `rotas/pericia.test.ts`, 42/42. Fora de `estudo.ver`, a perícia vem sem o perfil do perito (os números e o resumo); o teste antigo, que dizia que a Documentação via os números, mudou com a regra.
 - [ ] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.
   - Verifica com `rotas/juizo.test.ts` e `rotas/processo.test.ts`:
     - dois casos com o mesmo juiz e perito contam 2;

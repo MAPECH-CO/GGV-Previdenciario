@@ -1,6 +1,6 @@
 // Tentativas bloqueadas (GGVP-109 CA9): as recusas de portão e as ações fora do perfil, das mais recentes, para a gestão.
 // Resultados (GGVP-75): o painel de resultado para os sócios.
-import { PainelDeResultados, PedidoDoPainel, TentativasBloqueadas, pode, type Erro, type PortaoDeBloqueio } from '@ggv/contratos'
+import { MSG_RECORTE_DO_JURIDICO, PainelDeResultados, PedidoDoPainel, RECORTES_DO_JURIDICO, TentativasBloqueadas, pode, type Erro, type PortaoDeBloqueio } from '@ggv/contratos'
 import { desc, eq, inArray, or, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
@@ -80,6 +80,8 @@ export function registrarRotasGestao(app: FastifyInstance, { banco, agora = () =
     const ate = entrada.data.ate && entrada.data.ate < hoje ? entrada.data.ate : hoje
     const { de = `${hoje.slice(0, 4)}-01-01`, recorte = null } = entrada.data
     if (de > ate) return negar(resposta, 400, 'A data inicial vem antes da final.')
+    // GGVP-158 P5.13: o recorte por perito, juízo, vara ou advogada é jurimetria, só do Jurídico e dos sócios.
+    if (recorte && RECORTES_DO_JURIDICO.includes(recorte) && !pode(pedido.perfilAtivo, 'estudo.ver')) return negar(resposta, 403, MSG_RECORTE_DO_JURIDICO)
     return PainelDeResultados.parse(await painelDeResultados(banco, { de, ate, recorte, verTotais: pode(pedido.perfilAtivo, 'valores.ver_totais') }))
   })
 }

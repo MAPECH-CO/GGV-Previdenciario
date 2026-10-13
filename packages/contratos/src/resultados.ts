@@ -6,6 +6,9 @@ import { z } from 'zod'
 export const RECORTES = ['beneficio', 'perito', 'juizo', 'vara', 'advogada', 'tese'] as const
 export const Recorte = z.enum(RECORTES)
 export type Recorte = z.infer<typeof Recorte>
+/** GGVP-158 P5.13 (GGVP-131 CA10, GGVP-156): as taxas por perito, juízo, vara e advogada são jurimetria: só com `estudo.ver`. */
+export const RECORTES_DO_JURIDICO: readonly Recorte[] = ['perito', 'juizo', 'vara', 'advogada']
+export const MSG_RECORTE_DO_JURIDICO = 'Esse recorte é só do Jurídico e dos sócios.'
 export const ROTULO_RECORTE: Record<Recorte, string> = { beneficio: 'Benefício', perito: 'Perito', juizo: 'Juízo', vara: 'Vara', advogada: 'Advogada', tese: 'Tese' }
 
 const data = (rotulo: string) =>

@@ -253,14 +253,13 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     // O PDF do laudo é sensível na pasta: só o Jurídico abre (rota dos documentos).
     const [laudo] = await banco.select().from(documento).where(eq(documento.tipo, 'laudo-pericia'))
     expect(laudo.sensivel).toBe(true)
-    // A Documentação vê o resultado, o laudo na pasta, o perito e os números dele; a leitura do laudo, os laudos do perfil
-    // e o assunto deles (conteúdo médico), não.
+    // A Documentação vê o resultado e o laudo na pasta; a leitura do laudo (conteúdo médico), não. GGVP-158 P5.13: o perfil
+    // do perito, com os números e o resumo, é jurimetria, só do Jurídico e dos sócios.
     const acessos = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
     for (const daDora of [(await ver('dora')).json(), (await ver('dora', '/resultado')).json()]) {
       expect([daDora.pericia.resultado.registrado.favoravel, daDora.pericia.resultado.laudo.nome, daDora.pericia.resultado.laudo.leitura]).toEqual([true, 'laudo.pdf', undefined])
       expect(daDora.ficha.arquivos.map((a: { tipo: string }) => a.tipo)).toEqual(['comprovante-pericia', 'laudo-pericia'])
-      expect([daDora.perfil.perito.nome, daDora.perfil.versao, daDora.perfil.perito.laudos, daDora.perfil.porAssunto, daDora.perfil.porBeneficio]).toEqual(['Dr. R. Menezes', 1, [], [], []])
-      expect(daDora.perfil.jurimetria.laudos).toBe(1)
+      expect(daDora.perfil).toBeUndefined()
     }
     expect(await acessos()).toEqual([])
     // O Jurídico recebe a leitura e o assunto; a leitura dele fica registrada.

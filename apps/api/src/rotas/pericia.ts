@@ -106,7 +106,7 @@ type DoCaso = { mundo: MundoDaPericia; casoId: string; linhas: Map<string, typeo
 /**
  * Saúde simples (Pedro, 08/10): fora do Jurídico (`dado_saude.ver_detalhe`), sai só o conteúdo médico, que aqui é o que a
  * IA leu dos laudos: o desta perícia e das anteriores, e os do acervo no perfil do perito (cada um com a referência do
- * caso), com o assunto deles (os números por assunto). Os números do perito (G22) todos veem. O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
+ * caso), com o assunto deles (os números por assunto). Os números do perito (G22) ficam com `estudo.ver` (GGVP-158 P5.13). O status, o resultado, as datas, as etapas e o que a equipe escreveu, todo mundo do caso vê. O PDF do laudo só
  * abre pelo Jurídico, na rota dos documentos, que registra quem abriu (acesso_dado_sensivel).
  */
 function semLeitura(p: Pericia): Pericia {
@@ -114,13 +114,16 @@ function semLeitura(p: Pericia): Pericia {
   return laudo ? { ...p, resultado: { ...p.resultado, laudo: { ...laudo, leitura: undefined } } } : p
 }
 
-function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
-  if (juridico) return t
+function visao(t: PericiaNaTela, juridico: boolean, estudo: boolean): PericiaNaTela {
+  // GGVP-158 P5.13 (GGVP-131 CA10, GGVP-156): os números do perito e o resumo do perfil são jurimetria, só para quem tem
+  // `estudo.ver` (o Jurídico e os sócios). Os outros veem a perícia sem o perfil.
+  const comPerfil = estudo ? t : { ...t, perfil: undefined }
+  if (juridico) return comPerfil
   return {
-    ...t,
+    ...comPerfil,
     pericia: semLeitura(t.pericia),
     anteriores: t.anteriores.map(semLeitura),
-    perfil: t.perfil && { ...t.perfil, porAssunto: [], porBeneficio: [], perito: { ...t.perfil.perito, laudos: [] } },
+    perfil: comPerfil.perfil && { ...comPerfil.perfil, porAssunto: [], porBeneficio: [], perito: { ...comPerfil.perfil.perito, laudos: [] } },
   }
 }
 
@@ -289,6 +292,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   }
 
   const juridico = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
+  const estudo = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'estudo.ver')
 
   /** Um PDF do multipart (o comprovante ou o laudo; o documento da perícia também em imagem) e o JSON do campo `dados`. */
   async function lerMultipart(pedido: FastifyRequest, tipos = ['application/pdf']) {
@@ -333,7 +337,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     await guardar(d)
     // Sem ação: quem chama registra (a recusa de um portão vai pelo registrarBloqueio).
     if (registro.acao) await historico(pedido.usuario!.id, registro.acao, pedido, `caso:${d.casoId}`, { pericia: alvo.id, passo: registro.passo, ...registro.detalhe })
-    return visao(naTela(d.mundo, alvo, agora()), juridico(pedido))
+    return visao(naTela(d.mundo, alvo, agora()), juridico(pedido), estudo(pedido))
   }
 
   /** Lê o corpo pelo contrato; fora da forma, 400. */
@@ -390,7 +394,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     const p = periciaDo(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, MSG_SEM_PERICIA)
     if ([...d.linhas.values()].some((l) => !l.documento)) await guardar(d)
-    return visao(naTela(d.mundo, p, agora()), juridico(pedido))
+    return visao(naTela(d.mundo, p, agora()), juridico(pedido), estudo(pedido))
   })
 
   // GGVP-70: a perícia do resultado (a que espera o resultado ou a última conferida), na visão do perfil: o resultado todo
@@ -401,7 +405,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     if (!d) return negar(resposta, 404, 'Caso não encontrado.')
     const p = periciaDoResultado(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, 'Esta perícia não espera resultado.')
-    const t = visao(naTela(d.mundo, p, agora()), juridico(pedido))
+    const t = visao(naTela(d.mundo, p, agora()), juridico(pedido), estudo(pedido))
     // Fora do Jurídico a visão já tirou a leitura: só registra quem a recebeu de fato.
     if ([t.pericia, ...t.anteriores].some((x) => x.resultado?.laudo?.leitura))
       await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: d.casoId, recurso: `pericia:${p.id}`, quando: agora() })
@@ -434,7 +438,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     for (const casoId of casos) {
       const d = await doCaso(casoId)
       const p = d && periciaDo(d.mundo, casoId)
-      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido)))
+      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido), estudo(pedido)))
     }
     return lista
   })

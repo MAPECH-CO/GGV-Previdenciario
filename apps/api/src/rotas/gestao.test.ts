@@ -95,6 +95,20 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect((await resultados('gabi')).statusCode).toBe(403)
   })
 
+  it('GGVP-158 P5.13 · as taxas por perito, juízo, vara e advogada são só do Jurídico e dos sócios; o resto do painel segue', async () => {
+    await banco
+      .insert(usuario)
+      .values({ email: 'lia@exemplo.ggv', nome: 'lia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
+    for (const apelido of ['lia', 'julia'])
+      for (const recorte of ['perito', 'juizo', 'vara', 'advogada']) {
+        const r = await resultados(apelido, `?recorte=${recorte}`)
+        expect([apelido, recorte, r.statusCode, r.json().erro]).toEqual([apelido, recorte, 403, 'Esse recorte é só do Jurídico e dos sócios.'])
+      }
+    expect((await resultados('lia', '?recorte=beneficio')).statusCode).toBe(200)
+    expect((await resultados('julia')).statusCode).toBe(200)
+    expect([(await resultados('helena', '?recorte=perito')).statusCode, (await resultados('rui', '?recorte=advogada')).statusCode]).toEqual([200, 200])
+  })
+
   it('o período padrão vai de 1º de janeiro até hoje, em Brasília; o pedido usa dd/mm/aaaa e o recorte', async () => {
     const hoje = hojeEmBrasilia(new Date())
     expect((await resultados('rui')).json().periodo).toEqual({ de: `${hoje.slice(0, 4)}-01-01`, ate: hoje })
