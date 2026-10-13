@@ -406,6 +406,18 @@ export const FichaLidaPelaIa = z.object({
 })
 export type FichaLidaPelaIa = z.infer<typeof FichaLidaPelaIa>
 
+/**
+ * GGVP-158 P4.4: o contrato assinado em papel, conferido pela IA contra o kit. `assinado`: a assinatura de quem assina
+ * está lá (não se é verdadeira); `faltam`: documento do kit ou rubrica que não veio; `pendencias`: o resto que ela apontou.
+ */
+export const ContratoLidoPelaIa = z.object({
+  reconhecido: z.boolean().catch(false),
+  assinado: z.boolean().catch(false),
+  faltam: z.array(LidoNoPapel).catch([]),
+  pendencias: z.array(LidoNoPapel).catch([]),
+})
+export type ContratoLidoPelaIa = z.infer<typeof ContratoLidoPelaIa>
+
 /** GGVP-158 P4.2: a segunda ficha em papel (auxílio acidente), campo a campo; a senha do Meu INSS, à parte, só para o cofre. */
 export const SegundaFichaLidaPelaIa = z.object({ respostas: z.record(z.string(), LidoNoPapel).catch({}), senha: LidoNoPapel })
 export type SegundaFichaLidaPelaIa = z.infer<typeof SegundaFichaLidaPelaIa>

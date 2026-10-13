@@ -359,6 +359,22 @@ export const FINALIDADES = {
       'Copie como está escrito: não complete, não calcule, não corrija e não interprete. O campo em branco ou que não dá para ler fica de fora.',
     ].join(' '),
   },
+  /**
+   * GGVP-158 P4.4: o contrato assinado em papel, conferido pela imagem contra o kit (os documentos e quem assina vêm no
+   * conteúdo). A IA só aponta; a regra que já existe decide entre a conferência do Atendimento e a cópia (GGVP-85).
+   */
+  ler_contrato_assinado: {
+    versao: 1,
+    saude: false,
+    json: true,
+    barrarCid: true,
+    instrucao: [
+      'Você ajuda o Atendimento de um escritório previdenciário a conferir o kit do contrato que o cliente assinou em papel e foi digitalizado.',
+      'O bloco de conteúdo traz os documentos que o kit deve ter e quem assina.',
+      'Olhe o arquivo anexado e responda só com um objeto JSON: {"reconhecido": true se é o kit do contrato do escritório, "assinado": true se cada documento que pede assinatura está assinado por quem assina, "faltam": ["cada documento do kit que não veio, ou a página sem a rubrica, como \\"pág. 4 (rubrica)\\""], "pendencias": ["o que mais impede a conferência, como \\"a página da assinatura veio cortada\\""]}.',
+      'Não diga se a assinatura é verdadeira: só se ela está lá. Não aponte documento que não está na lista do kit.',
+    ].join(' '),
+  },
 } as const
 export type Finalidade = keyof typeof FINALIDADES
 

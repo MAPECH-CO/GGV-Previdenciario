@@ -2,11 +2,13 @@
 // guardar (G19): o CPF e a data pela @ggv/campos, o tipo pelo catálogo. A pessoa confere antes de arquivar. A leitura de
 // exemplo, pelo nome do arquivo, só existe com `LEITURA_SIMULADA=sim`, nos testes de tela (P4.10).
 import { dataParaIso, normalizarCpf, normalizarTelefone, validarCpf, validarData, validarNome, validarTelefone } from '@ggv/campos'
-import { FichaLidaPelaIa, LidoPelaIa, SegundaFichaLidaPelaIa } from '@ggv/contratos'
+import { ContratoLidoPelaIa, FichaLidaPelaIa, LidoPelaIa, SegundaFichaLidaPelaIa } from '@ggv/contratos'
 import { lerJson, type Ia } from '../ia/ia.ts'
 import { TIPOS_DE_DOCUMENTO } from '../../../web/src/dados/catalogos.ts'
 import { leituraDaSegundaFicha, leituraDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import type { Arquivo, EnvioDaFicha, Ficha, RespostasDaSegundaFicha } from '../../../web/src/dados/tipos.ts'
+import type { LeituraDoContrato } from '../../../web/src/regras/contrato.ts'
+import { leituraDeExemploDoContrato, type Contrato } from '../../../web/src/regras/contratoDoCaso.ts'
 import { ehMedico, lerComIADeExemplo, motivoDaQuarentena, type DadosLidos, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
 import { respostasVazias } from '../../../web/src/regras/segundaFicha.ts'
 
@@ -81,6 +83,10 @@ const semSenha = (entregar: (senha: string) => void) => (texto: string) => {
   return JSON.stringify(resto)
 }
 
+export const MSG_CONTRATO_SEM_IA = 'A IA não leu o contrato agora: confira à mão.'
+/** Sem a leitura da IA, o contrato vai à conferência do Atendimento, com o motivo (P4.4). */
+const CONTRATO_SEM_LEITURA: LeituraDoContrato = { reconhecido: false, assinatura: { reconhecida: false, texto: 'não conferida' }, faltam: [], pendencias: [MSG_CONTRATO_SEM_IA] }
+
 type Opcoes = { ia: Ia; simulada?: boolean; agora?: () => Date }
 
 /** Quem lê na Recepção: a IA de verdade, ou a leitura de exemplo dos testes de tela (`simulada`). */
@@ -148,6 +154,32 @@ export function criarLeitor({ ia, simulada = false, agora = () => new Date() }: 
     return { respostas: Object.fromEntries(Object.entries(lidas).filter(([c, v]) => campos.includes(c) && v !== '')), senha: senha as string | null }
   }
 
-  return { simulada, documento, fichaDeAtendimento, segundaFicha }
+  /**
+   * O contrato assinado (P4.4): a IA confere o arquivo contra os documentos do kit e quem assina; a regra que já existe
+   * (`precisaConferir`) decide entre a conferência e a cópia. Sem o arquivo ou sem a IA, vai à conferência, com o motivo.
+   */
+  async function contrato(p: { contrato: Contrato; conteudo?: Conteudo; quem: string | null }): Promise<LeituraDoContrato> {
+    if (simulada) return leituraDeExemploDoContrato(p.contrato)
+    const kit = p.contrato.kit
+    const s =
+      p.conteudo &&
+      kit &&
+      (await ia.sugerir(
+        'ler_contrato_assinado',
+        {
+          casoId: UUID.test(p.contrato.processoId) ? p.contrato.processoId : null,
+          quem: p.quem,
+          conteudo: [`Kit: ${kit.nome}.`, `Documentos: ${kit.documentos.map((d) => d.nome).join('; ')}.`, `Assinam: ${kit.assinam.join(' e ')}.`].join('\n'),
+          ...doPapel(p.conteudo, `contrato:${p.contrato.processoId}`),
+        },
+        { validar: (t) => ContratoLidoPelaIa.safeParse(lerJson(t)).success },
+      ))
+    if (!s) return CONTRATO_SEM_LEITURA
+    const l = ContratoLidoPelaIa.parse(lerJson(s.texto))
+    const texto = l.assinado ? 'a IA achou a assinatura de quem assina' : 'a IA não achou a assinatura de quem assina'
+    return { reconhecido: l.reconhecido, assinatura: { reconhecida: l.assinado, texto }, faltam: l.faltam.filter(Boolean), pendencias: l.pendencias.filter(Boolean) }
+  }
+
+  return { simulada, documento, fichaDeAtendimento, segundaFicha, contrato }
 }
 export type Leitor = ReturnType<typeof criarLeitor>

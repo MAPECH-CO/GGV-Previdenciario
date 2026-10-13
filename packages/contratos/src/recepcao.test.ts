@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { AdiamentoDaCobranca, CnisDigitado, DecisaoDaCobranca, FichaLidaPelaIa, LidoPelaIa, SegundaFichaLidaPelaIa, TentativaDaCobranca } from './recepcao.ts'
+import { AdiamentoDaCobranca, CnisDigitado, ContratoLidoPelaIa, DecisaoDaCobranca, FichaLidaPelaIa, LidoPelaIa, SegundaFichaLidaPelaIa, TentativaDaCobranca } from './recepcao.ts'
+
+describe('GGVP-158 P4.4 · o contrato assinado conferido pela IA', () => {
+  it('passa como veio; o que falta vira "não reconhecido, sem assinatura", que manda à conferência da pessoa', () => {
+    const lido = { reconhecido: true, assinado: true, faltam: ['pág. 4 (rubrica)'], pendencias: [] }
+    expect(ContratoLidoPelaIa.parse(lido)).toEqual(lido)
+    expect(ContratoLidoPelaIa.parse({})).toEqual({ reconhecido: false, assinado: false, faltam: [], pendencias: [] })
+  })
+})
 
 describe('GGVP-158 P4.2 · o que a IA lê das fichas em papel', () => {
   it('a ficha de atendimento: o que falta fica vazio, e as pessoas na casa aceitam número ou texto', () => {

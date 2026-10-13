@@ -50,7 +50,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
   const { hoje, evento, nomeDe, fichas, guardar, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos, avisarLaudoNovo } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const historico = registrarHistorico(banco, agora)
-  const lerContrato = criarLeituraDoContrato(banco, agora)
+  const lerContrato = criarLeituraDoContrato(banco, agora, leitor)
 
   const fichaPeloId = async (id: string) => (UUID.test(id) ? (await fichas([id]))[0] : undefined)
 
@@ -68,14 +68,17 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     return linha && ficha ? { doc: linha.dados as DocumentoLido, ficha } : null
   }
 
-  /** O conteúdo do arquivo do card guardado no portal, pelo hash: a leitura de verdade precisa dele (P4.1). */
+  /**
+   * O conteúdo do arquivo guardado no portal, pelo hash: a leitura de verdade precisa dele (P4.1). O do scanner fica no
+   * Drive, sem cópia aqui: sem conteúdo, a leitura vai à pessoa.
+   */
   async function conteudoGuardado(pessoaId: string, hash: string | undefined): Promise<Conteudo | undefined> {
     if (!hash) return undefined
     const [d] = await banco
       .select({ chave: documento.chaveArmazenamento, mime: documento.mime })
       .from(documento)
       .where(and(eq(documento.pessoaId, pessoaId), eq(documento.hashSha256, hash), isNull(documento.excluidoEm)))
-    return d ? { bytes: await armazenamento.ler(d.chave), mime: d.mime } : undefined
+    return d && !d.chave.startsWith('drive:') ? { bytes: await armazenamento.ler(d.chave), mime: d.mime } : undefined
   }
 
   /** Os contratos da Recepção de uma pessoa, para a cópia das telas depois da leitura do assinado. */
@@ -374,8 +377,12 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       if (d) conferidos.push(d)
     }
     await darBaixaNasExigencias(ficha.id, conferidos, pedido)
-    // O contrato do caso esperava esta leitura: ela decide entre a conferência e a cópia (GGVP-85).
-    for (const processoId of new Set(contratosLidos.map((l) => ficha.arquivos.find((a) => a.nome === l.arquivo)?.local ?? ''))) await lerContrato(processoId)
+    // O contrato do caso esperava esta leitura: ela decide entre a conferência e a cópia (GGVP-85). A IA lê o arquivo
+    // guardado no portal (GGVP-158 P4.4); o do scanner fica no Drive, e sem ele o contrato vai à conferência.
+    for (const l of contratosLidos) {
+      const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
+      if (arquivo) await lerContrato(arquivo.local, await conteudoGuardado(ficha.id, arquivo.hash), pedido.usuario!.id)
+    }
     return {
       arquivados: arquivados.length,
       descartados: saem.size,

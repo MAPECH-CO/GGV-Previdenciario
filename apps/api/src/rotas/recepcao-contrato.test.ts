@@ -3,15 +3,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { eq, sql } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, documento, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { MSG_CONTRATO_SEM_IA } from '../fluxo/leitura.ts'
+import { criarIa } from '../ia/ia.ts'
 import { docxDeTeste, formularioDoArquivo, textoDoDocx } from '../kit/docx-de-teste.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
+import { MSG_CONTRATO_DIGITALIZADO } from './recepcao-contrato.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -536,6 +539,68 @@ describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
     await reiniciar({ zapsign: true })
     const { base } = await gerar(fichaId)
     expect(await json('ana', 'POST', `${base}/impressao`)).toEqual({ erro: 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.' })
+  })
+})
+
+describe('GGVP-158 P4.4 · o contrato assinado de verdade: o arquivo fica guardado, e a IA confere contra o kit', () => {
+  const PDF = Buffer.from('%PDF-1.4 o contrato assinado em papel')
+  const TUDO_CERTO = { reconhecido: true, assinado: true, faltam: [], pendencias: [] }
+  let fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response('{}'))
+
+  /** O servidor com a IA de verdade (de mentira no teste), que lê o contrato e devolve `lido`. */
+  async function reabrir(lido: object, ambiente: Record<string, string> = { OPENAI_API_KEY: 'chave-de-teste-openai' }) {
+    await app.close()
+    fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(lido) } }] })))
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: false, conversor: null, ia: criarIa({ banco, ambiente, fetch, agora: () => relogio }) })
+  }
+  async function digitalizar(base: string, arquivo?: Buffer) {
+    const f = '----ggv'
+    const corpo = arquivo && Buffer.concat([Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="contrato.pdf"\r\nContent-Type: application/pdf\r\n\r\n`), arquivo, Buffer.from(`\r\n--${f}--\r\n`)])
+    return (
+      await app.inject({ method: 'POST', url: `${base}/digitalizacao`, cookies: await cookieDe('ana'), ...(corpo && { payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }) })
+    ).json()
+  }
+  /** Gera, imprime, digitaliza com o arquivo e conclui a assinatura em papel: com a IA de verdade, a leitura é já. */
+  async function assinar() {
+    const base = await gerado(await lead())
+    await json('ana', 'POST', `${base}/impressao`)
+    await digitalizar(base, PDF)
+    return { base, concluido: await json('ana', 'POST', `${base}/assinatura-em-papel`) }
+  }
+
+  it('sem o arquivo, a digitalização recusa; com ele, o contrato fica guardado no caso, e a cópia sai dele', async () => {
+    await reabrir(TUDO_CERTO)
+    const base = await gerado(await lead())
+    await json('ana', 'POST', `${base}/impressao`)
+    expect(await digitalizar(base)).toEqual({ erro: MSG_CONTRATO_DIGITALIZADO })
+    const { arquivo } = await digitalizar(base, PDF)
+    expect(arquivo).toMatchObject({ nome: 'Contrato assinado - Joana Ribeiro - 2026-10-08 (papel).pdf', tipo: 'contrato', origem: 'scanner', hash: expect.any(String) })
+    const processoId = base.split('/')[3]
+    expect((await kitsDoCaso(processoId)).filter((d) => d.tipo === 'contrato').map((d) => [d.origem, d.sensivel])).toEqual([['scanner', false]])
+    const copia = await chamar('ana', 'GET', `${base}/assinado`)
+    expect([copia.statusCode, copia.headers['content-type'], copia.rawPayload.equals(PDF)]).toEqual([200, 'application/pdf', true])
+    expect((await chamar('julia', 'GET', `${base}/assinado`)).statusCode).toBe(403)
+  })
+
+  it('assinado e completo: a IA confere o arquivo contra o kit, e o contrato segue para a cópia', async () => {
+    await reabrir(TUDO_CERTO)
+    const { concluido } = await assinar()
+    expect(concluido.contrato).toMatchObject({ etapa: 'copia', leitura: { reconhecido: true, assinatura: { reconhecida: true }, faltam: [], pendencias: [] } })
+    const pedido = fetch.mock.calls.map((c) => String(c[1]?.body)).find((b) => b.includes('ler_contrato') || b.includes('Kit:'))!
+    expect(pedido).toContain(PDF.toString('base64'))
+    expect(pedido).toContain('Documentos: ')
+  })
+
+  it('falta a rubrica: o Atendimento recebe a conferência com o que a IA apontou', async () => {
+    await reabrir({ ...TUDO_CERTO, faltam: ['pág. 4 (rubrica)'] })
+    const { concluido } = await assinar()
+    expect(concluido.contrato).toMatchObject({ etapa: 'conferir', leitura: { faltam: ['pág. 4 (rubrica)'] } })
+  })
+
+  it('sem IA: o contrato vai à conferência, com o motivo', async () => {
+    await reabrir(TUDO_CERTO, {})
+    const { concluido } = await assinar()
+    expect(concluido.contrato).toMatchObject({ etapa: 'conferir', leitura: { reconhecido: false, pendencias: [MSG_CONTRATO_SEM_IA] } })
   })
 })
 
