@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { entrarPelaApi } from './entrar.ts'
+import { entrarPelaApi, trocarDeUsuario } from './entrar.ts'
 
 // GGVP-9 · Judicialização e vigília, grupo 1, com a API de verdade e a fonte de exemplo. O relógio da vigília também
 // roda no servidor de teste: dependendo da hora, ele já pode ter trazido as publicações; por isso, aqui não se conta.
@@ -74,7 +74,7 @@ test('GGVP-74, GGVP-34 e GGVP-37 · a advogada lê a exigência, o prazo é cont
 const emDias = (n: number) => new Date(Date.now() + n * 86_400_000 - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
 const PDF = (nome: string) => ({ name: nome, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 exemplo') })
 
-test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atendimento sobem a prova; a advogada aprova e protocola', async ({ page, context }) => {
+test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atendimento sobem a prova; a advogada aprova e protocola', async ({ page }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Paulo Reis (exemplo) · Analisar exigência do juiz' }).click()
@@ -95,8 +95,7 @@ test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atend
     ['documentacao@exemplo.ggv', 'laudo.pdf'],
     ['atendimento@exemplo.ggv', 'ctps.pdf'],
   ] as const) {
-    await context.clearCookies()
-    await entrarPelaApi(page, email)
+    await trocarDeUsuario(page, email)
     await page.goto('/')
     await page.getByRole('link', { name: 'Paulo Reis (exemplo) · Cumprir exigência do juiz' }).click()
     await expect(page.getByText(/prazo do processo/)).toBeVisible()
@@ -105,8 +104,7 @@ test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atend
     await expect(page.getByRole('status')).toHaveText('Documento enviado. O item está cumprido.')
   }
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await trocarDeUsuario(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Paulo Reis (exemplo) · Manifestar no processo' }).click()
   await expect(page.getByText('Todos os setores subiram a prova. Pode manifestar.')).toBeVisible()
@@ -123,7 +121,7 @@ test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atend
 })
 
 // Grupo 3: do indeferido ao despacho e aos laços dos setores (Vicente Prado, de exemplo, esperando o INSS).
-test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior despacha a cada setor; os setores sobem o card; "Pedir a petição" aparece', async ({ page, context }) => {
+test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior despacha a cada setor; os setores sobem o card; "Pedir a petição" aparece', async ({ page }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Vicente Prado (exemplo) · Trazer a resposta do INSS' }).click()
@@ -135,8 +133,7 @@ test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior
   await page.getByRole('button', { name: 'Registrar' }).click()
   await expect(page.getByRole('status')).toHaveText('Indeferido registrado com o seu motivo. O caso foi para a Justiça e a Sênior recebeu "Despachar caso".')
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'senior@exemplo.ggv')
+  await trocarDeUsuario(page, 'senior@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Vicente Prado (exemplo) · Despachar caso' }).click()
   await expect(page.getByText(/Motivo com as palavras de quem viu: O INSS somou a renda do filho/)).toBeVisible()
@@ -155,8 +152,7 @@ test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior
   await expect(page.getByRole('status')).toHaveText('Despacho registrado. Cada setor recebeu "Cumprir pendência".')
   await expect(page.getByText('Falta: Atendimento, Documentação.')).toBeVisible()
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'atendimento@exemplo.ggv')
+  await trocarDeUsuario(page, 'atendimento@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Vicente Prado (exemplo) · Cumprir pendência' }).click()
   await expect(page.getByRole('heading', { name: 'Cumprir pendência' })).toBeVisible()
@@ -165,8 +161,7 @@ test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior
   await page.getByRole('button', { name: 'Consegui, subir no card' }).click()
   await expect(page.getByRole('status')).toHaveText('Subiu no card. O item está concluído.')
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await trocarDeUsuario(page, 'documentacao@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Vicente Prado (exemplo) · Cumprir pendência' }).click()
   await expect(page.getByText(/^Entregar até/)).toBeVisible()
@@ -175,8 +170,7 @@ test('GGVP-52, GGVP-54 e GGVP-58 · o indeferido já vai com o motivo; a Sênior
   await page.getByRole('button', { name: 'Enviar documento e concluir' }).click()
   await expect(page.getByRole('status')).toHaveText('Documento enviado. O item está cumprido.')
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  await trocarDeUsuario(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await expect(page.getByRole('link', { name: 'Vicente Prado (exemplo) · Pedir a petição' })).toBeVisible()
 })
