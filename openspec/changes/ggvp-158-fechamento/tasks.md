@@ -236,3 +236,68 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
   - Playwright 260/260.
 
   O "Agora ok?" foi para o relatório final ao Mateus.
+
+## GGVP-158 · Parte 4 · Recepção sem simulação (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-4`, em cima do #71. A migração 0031 sai no fim, sobre a main mais nova. Na ordem contrato → teste → servidor.
+
+- [x] 4.1 A IA com o arquivo (P4.1, decisão 27).
+  - O `Pedido` de `ia.ts` ganha o anexo (imagem ou PDF), que vai na mensagem ao modelo.
+  - A sugestão pronta conta o hash do arquivo; o registro fica sem o conteúdo.
+  - O `limpar` roda antes do registro.
+  - Verifica com `ia/ia.test.ts`: o corpo do pedido leva o arquivo, o registro não, e o `limpar` roda antes de guardar.
+- [x] 4.2 A leitura do balcão, contrato (P4.1): em `packages/contratos`, o JSON que a IA devolve (`LidoPelaIa`); em `ia.ts`, a finalidade `ler_documento_balcao`. Verifica com o teste do contrato.
+- [x] 4.3 A leitura do balcão, servidor (P4.1): `lerDoBalcao` monta a `DocumentoLido` com as regras do código (decisão 29); sem IA, o documento fica a conferir com confiança zero.
+  - Verifica com teste:
+    - o CNIS lido pelo conteúdo;
+    - o nome do arquivo que não conta;
+    - o CPF inválido de fora;
+    - sem IA.
+- [x] 4.4 A leitura na chegada do conteúdo (P4.1): `POST /api/fichas/:id/arquivos/conteudo` lê o arquivo, e o anúncio não lê. Verifica com `rotas/recepcao-documentos.test.ts`.
+- [x] 4.5 A leitura de exemplo só no teste (P4.10).
+  - `LEITURA_SIMULADA=sim` liga o leitor de exemplo e as rotas simuladas.
+  - O servidor recusa subir com ela na homologação e na produção.
+  - O Playwright passa a ligá-la.
+  - Verifica com `servidor.test.ts` e com o Playwright.
+- [x] 4.6 A ficha em papel (P4.2): a rota recebe o arquivo e o guarda em Documentos pessoais; a IA lê (`ler_ficha_atendimento`), e a senha vai ao cofre.
+  - Verifica com `rotas/recepcao.test.ts`:
+    - a senha fica no cofre e fora da resposta, da ficha, do histórico e do registro da IA;
+    - sem o arquivo, recusa;
+    - sem IA, tudo volta como não lido.
+- [x] 4.7 A segunda ficha em papel (P4.2): o mesmo, com `ler_segunda_ficha`, e a seção médica só em `segunda_ficha_medica`. Verifica com `rotas/recepcao-segunda-ficha.test.ts`.
+- [x] 4.8 O Drive lê as mudanças e baixa o arquivo (P4.3): `drive.mudancas(marca)` e `drive.baixar(id)`. Verifica com `drive.test.ts`, com o fetch de mentira.
+- [x] 4.9 A rodada do scanner (P4.3, decisão 32): `olharOScanner`.
+  - Verifica com teste:
+    - o arquivo novo na pasta ligada entra e é lido;
+    - a mesma mudança não repete;
+    - o do portal e o de "A REVISAR" ficam fora;
+    - a pasta de duas fichas não é ligada;
+    - o lote vai à tarefa "Receber documento".
+- [x] 4.10 Ligar a rodada (P4.3): em `principal.ts`, junto da rodada do Drive, só com o Drive ligado e sem só leitura. Verifica com o teste da condição.
+- [x] 4.11 ADR-017 (P4.3): o scanner pelo Drive, por quê e o que custa. Verifica: o arquivo em `docs/decisoes/`.
+- [x] 4.12 O contrato assinado guardado (P4.4): a digitalização recebe o arquivo e o guarda como documento do caso; `GET .../contrato/assinado` devolve o arquivo. Verifica com `rotas/recepcao-contrato.test.ts`.
+- [x] 4.13 A leitura do contrato (P4.4): `ler_contrato_assinado`, com a lista do kit; a regra de hoje decide; sem IA, vai à conferência com o motivo. Verifica com `rotas/recepcao-contrato.test.ts`.
+- [x] 4.14 Sem ZapSign (P4.5): saem as rotas e a opção, e o serviço responde sempre `zapsign: false`. Verifica com `rotas/recepcao-contrato.test.ts`: com a variável, a rota não existe e o serviço diz falso.
+- [x] 4.15 Um catálogo só, contrato (P4.6): os 34 com o id do servidor; `BENEFICIOS` e os mapas saem dele. Verifica com o teste do contrato: 34 mais "outro", e os 11 ids de hoje iguais.
+- [x] 4.16 O catálogo no banco (P4.6): a migração 0031 com o CHECK.
+  - Verifica com teste:
+    - o caso da aposentadoria rural guarda o benefício;
+    - a lista publicada vale no checklist;
+    - sem lista, a liberação recusa.
+- [x] 4.17 Só o conferido vai ao Drive (P4.7): o filtro na rodada. Verifica com `fluxo/arquivar.test.ts`.
+- [x] 4.18 A pasta do cliente (P4.7): as pastas parecidas na criação da ficha, e `POST /api/fichas/:id/pasta`. Verifica com teste, com o Drive de mentira: liga; cria com CPF; recusa sem CPF e com o Drive só leitura.
+- [x] 4.19 A cobrança na mensagem (P4.8). Verifica com o teste das mensagens: na Sênior, recusa; dentro do limite, sai.
+- [x] 4.20 O caso escolhido no envio (P4.9). Verifica com `rotas/recepcao-documentos.test.ts`: com dois casos, sem escolher, recusa; com o caso escolhido, o documento vai a ele.
+- [x] 4.21 O documento de antes do caso (P4.9). Verifica com `rotas/recepcao-contrato.test.ts`: o laudo de antes entra no caso que nasce e vira documento médico.
+- [x] 4.22 As variáveis (P4.5, P4.10): a lista das variáveis do servidor sem `ZAPSIGN_API_TOKEN` e com `LEITURA_SIMULADA`. Verifica com `variaveis.test.ts`.
+- [x] 4.23 Avisar o Pedro: o pedido lista o que muda para as telas.
+
+  Feito no pedido da parte 4, na seção "Para o Pedro ligar nas telas".
+- [x] 4.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10:
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 177/177;
+  - tela 1653/1653, em 197 arquivos;
+  - API 887/887 (3 pulados), em 100 arquivos. Na suíte inteira, 25 testes estouraram o tempo pela carga da máquina; repetidos sem carga, passaram. A única falha de verdade foi o glossário, que agora recebe os 23 benefícios novos na 0031;
+  - Playwright 260/260.

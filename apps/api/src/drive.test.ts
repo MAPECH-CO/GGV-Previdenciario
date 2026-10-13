@@ -1,16 +1,25 @@
 import { generateKeyPairSync, verify } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
-import { abrirDrive, conferirDrive, criarDrive, type Drive } from './drive.ts'
+import { abrirDrive, conferirDrive, criarDrive, driveDeVerdade, type Drive } from './drive.ts'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
 const CONTA = { client_email: 'portal@teste.iam.gserviceaccount.com', private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() }
 const PASTA = 'application/vnd.google-apps.folder'
 
-type Item = { id: string; name: string; parents: string[]; mimeType: string; appProperties?: Record<string, string>; tamanho?: number }
+type Item = { id: string; name: string; parents: string[]; mimeType: string; appProperties?: Record<string, string>; tamanho?: number; conteudo?: Buffer }
+type Mudanca = { fileId: string; removed?: boolean; file?: { name: string; mimeType: string; parents: string[]; trashed?: boolean; appProperties?: Record<string, string> } }
 
-/** O Google de mentira: token, listar, criar pasta, envio retomável e ver o arquivo. Anota cada chamada. */
+/** O Google de mentira: token, listar, criar pasta, envio retomável, ver e baixar o arquivo e a lista de mudanças. Anota cada chamada. */
 function googleFalso({ porPagina = 1000 } = {}) {
-  const g = { itens: [] as Item[], chamadas: [] as string[], falhar: null as { status: number; message: string } | null, buscar: null as unknown as typeof fetch }
+  const g = {
+    itens: [] as Item[],
+    mudancas: [] as Mudanca[],
+    driveId: undefined as string | undefined,
+    chamadas: [] as string[],
+    enderecos: [] as string[],
+    falhar: null as { status: number; message: string } | null,
+    buscar: null as unknown as typeof fetch,
+  }
   const tokens: string[] = []
   const sessoes = new Map<string, Omit<Item, 'id'>>()
   const json = (corpo: unknown, status = 200, headers: Record<string, string> = {}) =>
@@ -24,6 +33,7 @@ function googleFalso({ porPagina = 1000 } = {}) {
     const url = new URL(String(entrada))
     const metodo = init.method ?? 'GET'
     g.chamadas.push(`${metodo} ${url.pathname}`)
+    g.enderecos.push(url.href)
     if (url.href === 'https://oauth2.googleapis.com/token') {
       const [cabecalho, corpo, assinatura] = new URLSearchParams(String(init.body)).get('assertion')!.split('.')
       const claims = JSON.parse(Buffer.from(corpo, 'base64url').toString())
@@ -47,8 +57,17 @@ function googleFalso({ porPagina = 1000 } = {}) {
       const pagina = achados.slice(de, de + porPagina)
       return json({ files: pagina.map((i) => ({ id: i.id, name: i.name })), ...(de + porPagina < achados.length ? { nextPageToken: String(de + porPagina) } : {}) })
     }
+    if (metodo === 'GET' && url.pathname === '/drive/v3/changes/startPageToken') return json({ startPageToken: String(g.mudancas.length) })
+    if (metodo === 'GET' && url.pathname === '/drive/v3/changes') {
+      const de = Number(url.searchParams.get('pageToken'))
+      const ate = Math.min(de + porPagina, g.mudancas.length)
+      return json({ changes: g.mudancas.slice(de, ate), ...(ate < g.mudancas.length ? { nextPageToken: String(ate) } : { newStartPageToken: String(ate) }) })
+    }
     if (metodo === 'GET' && url.pathname.startsWith('/drive/v3/files/')) {
-      const i = g.itens.find((x) => x.id === decodeURIComponent(url.pathname.split('/').at(-1)!))
+      const id = decodeURIComponent(url.pathname.split('/').at(-1)!)
+      if (url.searchParams.get('fields') === 'driveId') return json(g.driveId ? { driveId: g.driveId } : {})
+      const i = g.itens.find((x) => x.id === id)
+      if (i && url.searchParams.get('alt') === 'media') return new Response(new Uint8Array(i.conteudo ?? Buffer.alloc(0)))
       return i ? json({ name: i.name, parents: i.parents }) : json({ error: { message: 'File not found' } }, 404)
     }
     if (metodo === 'POST' && url.pathname === '/drive/v3/files') {
@@ -147,5 +166,48 @@ describe('cliente do Drive (GGVP-107)', () => {
     expect(chamadas).toEqual(['pastas c', 'nomes r'])
     const recusado = { pastas: async () => Promise.reject(new Error('Drive: 404 pasta não encontrada')), nomes: async () => [] } as unknown as Drive
     expect(await conferirDrive(recusado, { clientes: 'c', revisar: 'r' })).toEqual({ ok: false, erro: 'Drive: 404 pasta não encontrada' })
+  })
+})
+
+describe('GGVP-158 P4.3 · as mudanças do Drive e o arquivo baixado, para o scanner', () => {
+  it('sem marca, só a marca de agora (o passado não entra); com ela, o que mudou, de todas as páginas, e a marca nova', async () => {
+    const g = googleFalso({ porPagina: 2 })
+    g.driveId = 'drive-do-escritorio'
+    g.mudancas.push({ fileId: 'antigo', file: { name: 'Antigo.pdf', mimeType: 'application/pdf', parents: ['pasta-da-rita'] } })
+    const drive = criarDrive(CONTA, g.buscar)
+    expect(await drive.mudancas(null, 'clientes')).toEqual({ itens: [], marca: '1' })
+    g.mudancas.push(
+      { fileId: 'novo', file: { name: 'CNIS - Rita Exemplo - 2026-10-13.pdf', mimeType: 'application/pdf', parents: ['pasta-da-rita'] } },
+      { fileId: 'do-portal', file: { name: 'Rg - Rita Exemplo - 2026-10-13.pdf', mimeType: 'application/pdf', parents: ['pasta-da-rita'], appProperties: { portal: 'documento:1' } } },
+      { fileId: 'na-lixeira', file: { name: 'Velho.pdf', mimeType: 'application/pdf', parents: ['pasta-da-rita'], trashed: true } },
+      { fileId: 'apagado', removed: true },
+    )
+    const r = await drive.mudancas('1', 'clientes')
+    expect(r.marca).toBe('5')
+    expect(r.itens.map((i) => [i.id, i.nome, i.pais, i.doPortal, i.fora])).toEqual([
+      ['novo', 'CNIS - Rita Exemplo - 2026-10-13.pdf', ['pasta-da-rita'], false, false],
+      ['do-portal', 'Rg - Rita Exemplo - 2026-10-13.pdf', ['pasta-da-rita'], true, false],
+      ['na-lixeira', 'Velho.pdf', ['pasta-da-rita'], false, true],
+      ['apagado', '', [], false, true],
+    ])
+    // O Drive compartilhado vem da pasta de clientes, uma vez só, e vai em toda chamada da lista.
+    expect(g.enderecos.filter((u) => u.includes('fields=driveId'))).toHaveLength(1)
+    expect(g.enderecos.filter((u) => u.includes('/changes')).every((u) => u.includes('driveId=drive-do-escritorio'))).toBe(true)
+    expect(g.chamadas.filter((c) => !LIBERADAS.test(c) && !c.startsWith('GET /drive/v3/changes'))).toEqual([])
+  })
+
+  it('o scanner e a rodada do Drive só rodam com o Drive ligado e sem só leitura (a homologação não traz documento real)', () => {
+    const credenciais = Buffer.from(JSON.stringify(CONTA)).toString('base64')
+    const base = { GOOGLE_DRIVE_CREDENCIAIS: credenciais, GOOGLE_DRIVE_PASTA_CLIENTES: 'c', GOOGLE_DRIVE_PASTA_REVISAR: 'r' }
+    expect(driveDeVerdade(abrirDrive({}))).toBeNull()
+    expect(driveDeVerdade(abrirDrive({ ...base, GOOGLE_DRIVE_SO_LEITURA: 'sim' }))).toBeNull()
+    expect(driveDeVerdade(abrirDrive(base))?.pastas).toEqual({ clientes: 'c', revisar: 'r' })
+  })
+
+  it('baixa o conteúdo do arquivo, só lendo', async () => {
+    const g = googleFalso()
+    g.itens.push({ id: 'cnis', name: 'CNIS.pdf', parents: ['pasta-da-rita'], mimeType: 'application/pdf', conteudo: Buffer.from('%PDF-1.4 o CNIS') })
+    expect((await criarDrive(CONTA, g.buscar).baixar('cnis')).toString()).toBe('%PDF-1.4 o CNIS')
+    expect(g.chamadas.at(-1)).toBe('GET /drive/v3/files/cnis')
   })
 })

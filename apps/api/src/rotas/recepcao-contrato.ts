@@ -1,9 +1,9 @@
 // O contrato do caso no servidor (GGVP-125, bloco 4), sobre o fichário da Recepção. O "fechou" cria o caso em `caso`
 // (o elo com o resto do portal) e o contrato com o kit; as condições do kit, a geração pelo modelo e a assinatura seguem as
 // regras do servidor de exemplo do Pedro (contrato.ts), com as regras puras importadas das telas; a leitura, a conferência e a
-// cópia também. O kit gerado é o Word do escritório, preenchido (GGVP-136). ZapSign, impressora, scanner e a leitura da IA
-// seguem simulados.
-import { and, eq, isNull } from 'drizzle-orm'
+// cópia também. O kit gerado é o Word do escritório, preenchido (GGVP-136). GGVP-158 parte 4: o contrato assinado em papel
+// é o arquivo digitalizado, e a IA o confere contra o kit; o ZapSign está fora do escopo.
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { dataParaIso, normalizarData, normalizarNome } from '@ggv/campos'
 import {
@@ -13,14 +13,13 @@ import {
   FechamentoDoCaso,
   MensagemEnviada,
   TIPO_DO_DOCX,
-  TentativaDoContrato,
   VerificacaoDoContrato,
   VisitaDaCopia,
   type Erro,
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, documento, pessoa } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, documento, documentoMedico, pessoa } from '../banco/esquema.ts'
 import { lerModelo, preencherModelo } from '../kit/docx.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
 import { honorariosDosModelos, modeloEmVigor } from '../kit/modelos.ts'
@@ -29,26 +28,19 @@ import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Agendamento, Arquivo, Ficha, Processo } from '../../../web/src/dados/tipos.ts'
 import {
   CONFERENCIAS,
-  NOMES_DOS_CANAIS,
   SEM_CONDICOES,
-  TENTATIVAS_DE_ASSINATURA,
-  cobrancaDaAssinatura,
   datasDoKit,
-  entrevistaDoCaso,
   erroDoCampo,
   errosDaVisita,
   faltando,
-  identificadorDoKit,
   identificadorDoModelo,
   kitRepresentado,
   linhaDoBeneficio,
-  mensagemDoLink,
   modeloDoKit,
   montarKit,
   motivoParadoDaEntrega,
   motivoParadoDaVerificacao,
   normalizarCampo,
-  papelNaHora,
   precisaConferir,
   resumoDaLeitura,
   ROTULOS_DOS_CAMPOS,
@@ -61,25 +53,25 @@ import {
   dadosDoCaso,
   daFicha,
   juntar,
-  leituraDeExemploDoContrato,
-  linkDoZapSign,
   visitaDaCopia,
   type Assinatura,
   type Contrato,
   type ContratoDoCaso,
 } from '../../../web/src/regras/contratoDoCaso.ts'
-import { nomeSemSobrescrever, problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
+import { localDoTipo, nomeSemSobrescrever, problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
 import { faltamNoKit, valoresDoKit } from '../../../web/src/regras/kitDoModelo.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
-import { guardarArquivo } from './formulario.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
+import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
+import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, TIPO_DO_DOCUMENTO_MEDICO, UUID, criarFichario, extensaoDoAnexo, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_CONTRATO_NAO_ENCONTRADO = 'Contrato não encontrado.'
 export const MSG_SEM_KIT = 'Este contrato ainda não tem o kit gerado.'
 export const MSG_SEM_PDF = 'O conversor de PDF não respondeu. Baixe o Word e imprima por ele.'
-export const MSG_SEM_ZAPSIGN = 'O ZapSign não está contratado: a assinatura é em papel.'
+export const MSG_CONTRATO_DIGITALIZADO = 'Anexe o contrato assinado digitalizado (PDF ou imagem).'
+export const MSG_SEM_ASSINADO = 'O contrato assinado ainda não foi digitalizado no portal.'
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 type Opcoes = {
@@ -88,24 +80,26 @@ type Opcoes = {
   agora?: () => Date
   /** Sem ele, o kit sai em Word (GGVP-136, CA5). */
   conversor?: ConversorDePdf
-  /** O ZapSign está contratado (GGVP-136, CA8). Sem ele, só papel, para qualquer entrevista. */
-  zapsign?: boolean
+  /** Quem lê o que chega à pasta: a IA de verdade, ou a de exemplo dos testes de tela (GGVP-158 parte 4). */
+  leitor: Leitor
 }
 
 /**
- * A leitura (simulada) do contrato assinado: decide entre a conferência do Atendimento e a cópia (GGVP-85 CA1, CA2). Chamam
- * o botão "Simular a leitura da IA" e a Documentação, ao arquivar o assinado (GGVP-81 CA4). Nulo se não esperava a leitura.
+ * A leitura do contrato assinado: decide entre a conferência do Atendimento e a cópia (GGVP-85 CA1, CA2). GGVP-158 P4.4: a
+ * IA confere o arquivo digitalizado contra o kit; sem o arquivo ou sem a IA, vai à conferência. Chamam a assinatura em
+ * papel (com o arquivo), a Documentação ao arquivar o assinado (GGVP-81 CA4) e, nos testes de tela, o botão "Simular a
+ * leitura da IA". Nulo se não esperava a leitura.
  */
-export function criarLeituraDoContrato(banco: Banco, agora: () => Date) {
+export function criarLeituraDoContrato(banco: Banco, agora: () => Date, leitor: Leitor) {
   const { evento, fichas, guardar } = criarFichario(banco, agora)
-  return async function lerContrato(processoId: string): Promise<{ ficha: Ficha; contrato: Contrato } | null> {
+  return async function lerContrato(processoId: string, conteudo?: Conteudo, quem: string | null = null): Promise<{ ficha: Ficha; contrato: Contrato } | null> {
     if (!UUID.test(processoId)) return null
     const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
     if (!linha) return null
     const { contrato, processo } = linha.dados as ContratoGuardado
     const [ficha] = await fichas([linha.pessoaId])
     if (!ficha || contrato.etapa !== 'leitura') return null
-    const leitura = leituraDeExemploDoContrato(contrato)
+    const leitura = await leitor.contrato({ contrato, conteudo, quem })
     contrato.leitura = { ...leitura, lidoEm: agora().toISOString() }
     const conferir = precisaConferir(leitura)
     contrato.etapa = conferir ? 'conferir' : 'copia'
@@ -127,10 +121,10 @@ export function criarLeituraDoContrato(banco: Banco, agora: () => Date) {
   }
 }
 
-export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), conversor, zapsign = false }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, abrirTarefa, concluirTarefas, tarefas, lerArquivosNovos } = criarFichario(banco, agora)
+export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), conversor, leitor }: Opcoes) {
+  const { hoje, evento, nomeDe, fichas, guardar, lerArquivosNovos } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
-  const lerContrato = criarLeituraDoContrato(banco, agora)
+  const lerContrato = criarLeituraDoContrato(banco, agora, leitor)
   // D1.16 a D1.20: o contrato é da raia do Atendimento; o % de honorários aparece só nele (GGVP-96).
   const conduzir = { preHandler: exigir(banco, 'contrato.conduzir', agora) }
   // Quem abre a tela de colher a assinatura, inclusive a Sênior quando o caso sobe (G15), lê o que o servidor oferece.
@@ -156,18 +150,30 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
 
   const quem = (pedido: FastifyRequest) => nomeDe(pedido)
 
+  /**
+   * GGVP-158 P4.9: o primeiro caso recebe os documentos da pessoa que chegaram antes dele; o laudo vira documento médico do
+   * caso, para o parecer. Na ficha, o arquivo que é de caso sai de Documentos pessoais e vai para a subpasta dele.
+   */
+  async function levarAoPrimeiroCaso(ficha: Ficha, casoId: string) {
+    const levados = await banco
+      .update(documento)
+      .set({ casoId })
+      .where(and(eq(documento.pessoaId, ficha.id), isNull(documento.casoId), isNull(documento.excluidoEm)))
+      .returning({ id: documento.id, tipo: documento.tipo })
+    const medicos = levados.flatMap((d) => (TIPO_DO_DOCUMENTO_MEDICO[d.tipo] ? [{ documentoId: d.id, tipo: TIPO_DO_DOCUMENTO_MEDICO[d.tipo] }] : []))
+    if (medicos.length > 0) await banco.insert(documentoMedico).values(medicos).onConflictDoNothing()
+    for (const a of ficha.arquivos) if (a.local === 'pessoais' && localDoTipo(a.tipo, casoId) === casoId) a.local = casoId
+  }
+
   /** Assinado, o contrato segue para a leitura da Documentação (GGVP-81). */
   const assinado = (processo: Processo): Processo => ({ ...processo, etapa: `Contrato assinado em ${dataCurta(hoje(), hoje())}`, proximaAcao: 'ler e arquivar o contrato assinado' })
 
   /**
-   * Por que o contrato não vai ao papel na hora: com o ZapSign contratado, só na entrevista presencial e sem documento lá (GGVP-77
-   * CA4). Sem o ZapSign, o papel é o único caminho e vale para qualquer entrevista: imprime e entrega, ou envia (GGVP-136).
+   * Por que o contrato não vai ao papel. Sem o ZapSign (GGVP-158 P4.5), o papel é o único caminho e vale para qualquer
+   * entrevista: imprime e entrega, ou envia (GGVP-136).
    */
-  function semPapel({ ficha, contrato }: ContratoDoCaso): string | null {
-    if (contrato.etapa !== 'assinatura' || !contrato.kit) return 'Este contrato não está para assinar.'
-    if (zapsign && !papelNaHora(entrevistaDoCaso(ficha.agendamentos))) return 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.'
-    if (contrato.assinatura?.zapsign) return 'O documento já foi para o ZapSign.'
-    return null
+  function semPapel({ contrato }: ContratoDoCaso): string | null {
+    return contrato.etapa !== 'assinatura' || !contrato.kit ? 'Este contrato não está para assinar.' : null
   }
   const noPapel = (contrato: Contrato): Assinatura => (contrato.assinatura = { ...(contrato.assinatura ?? { tentativas: [] }), forma: 'papel' })
 
@@ -200,7 +206,9 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
       ficha.situacao = 'cliente'
       ficha.desde = `${dia.slice(5, 7)}/${dia.slice(0, 4)}`
     }
+    const primeiro = ficha.processos.length === 0
     const [novo] = await banco.insert(caso).values({ pessoaId: ficha.id, beneficio: NO_SERVIDOR[beneficio] ?? null, fase: 'atendimento' }).returning()
+    if (primeiro) await levarAoPrimeiroCaso(ficha, novo.id)
     await banco.update(pessoa).set({ situacao: 'cliente', motivoNaoVirou: null, atualizadoEm: agora() }).where(eq(pessoa.id, ficha.id))
     // "Tem representante legal" do cadastro do lead (GGVP-43) já marca o LOAS representado; a pessoa confere no preparo.
     const condicoes = { ...SEM_CONDICOES, representado: Boolean(ficha.representante?.nome) }
@@ -359,123 +367,12 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     return enviar(docx, TIPO_DO_DOCX, 'attachment', d.nomeOriginal)
   })
 
-  // GGVP-136 CA5, CA8: o que o servidor oferece: o PDF (há conversor) e a assinatura pelo celular (o ZapSign está contratado).
-  app.get('/api/contrato/servicos', ver, async () => ({ zapsign, pdf: conversor !== undefined }))
-
-  // GGVP-72 CA1, CA4, CA5, CA12: o ZapSign (simulado) monta o documento pelo modelo e devolve o link. Um documento por kit:
-  // pedir de novo devolve o mesmo. A mensagem do WhatsApp com o link volta pronta para conferir.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign', conduzir, async (pedido, resposta) => {
-    if (!zapsign) return negar(resposta, 400, MSG_SEM_ZAPSIGN)
-    const achado = await acharContrato(pedido.params.id)
-    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
-    const { ficha, processo, contrato } = achado
-    if (contrato.etapa !== 'assinatura' || !contrato.kit) return negar(resposta, 400, 'Este contrato não está para assinar.')
-    if (contrato.assinatura?.forma === 'papel' && contrato.assinatura.arquivo) return negar(resposta, 400, 'O contrato assinado em papel já foi digitalizado.')
-    const assinatura: Assinatura = { ...(contrato.assinatura ?? { tentativas: [] }), forma: 'digital' }
-    contrato.assinatura = assinatura
-    if (!assinatura.zapsign) {
-      // A versão corrigida (GGVP-85) é outro documento.
-      const versao = contrato.documento?.versao ?? 1
-      const documentoId = `zapsign-exemplo-${processo.id}${versao > 1 ? `-v${versao}` : ''}`
-      assinatura.zapsign = { documentoId, link: linkDoZapSign(documentoId), status: 'enviado', criadoEm: agora().toISOString(), eventos: [] }
-      ficha.historico.push(evento(`Gerou o documento no ZapSign pelo modelo ${identificadorDoKit(contrato.kit)}: ${documentoId}`, await quem(pedido)))
-      await guardar(ficha)
-    }
-    await guardarContrato(ficha.id, { contrato, processo })
-    return { resultado: 'gerado', contrato, mensagem: mensagemDoLink(ficha.nome, assinatura.zapsign.link, assinatura.tentativas.length > 0), ficha: await fichaPeloId(ficha.id) }
-  })
-
-  // GGVP-72 CA2, CA5, CA11: cada tentativa fica com a data e o canal, e reenviar o link não cria outro documento. A primeira é
-  // o link enviado; a próxima, 3 dias depois. Com a segunda sem assinatura, o caso sobe para a advogada sênior (G15), com a
-  // tarefa no banco, e sai da Central do Atendimento.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/tentativas', conduzir, async (pedido, resposta) => {
-    const entrada = TentativaDoContrato.safeParse(pedido.body)
-    if (!entrada.success) return negar(resposta, 400, 'Canal inválido.')
-    const { canal, mensagem } = entrada.data
-    if (canal === 'whatsapp' && !mensagem) return negar(resposta, 400, 'Escreva a mensagem.')
-    const achado = await acharContrato(pedido.params.id)
-    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
-    const { ficha, processo, contrato } = achado
-    const a = contrato.assinatura
-    if (!a?.zapsign || a.zapsign.status === 'assinado') return negar(resposta, 400, 'Não há assinatura pendente no ZapSign.')
-    const dia = hoje()
-    const cobranca = cobrancaDaAssinatura(a.tentativas, dia)
-    if (cobranca.noLimite || (cobranca.proximaEm !== undefined && dia < cobranca.proximaEm)) return negar(resposta, 400, 'Ainda não é dia de tentar de novo.')
-    const nome = await quem(pedido)
-    a.tentativas.push({ data: dia, quando: agora().toISOString(), canal, quem: nome })
-    const n = a.tentativas.length
-    const pelo = NOMES_DOS_CANAIS[canal]
-    ficha.contatos.push({
-      data: dia,
-      canal: pelo,
-      texto: n === 1 ? 'Link do ZapSign enviado para assinar o contrato.' : `Lembrete da assinatura do contrato (tentativa ${n} de ${TENTATIVAS_DE_ASSINATURA}); o link é o mesmo.`,
-    })
-    ficha.historico.push(
-      evento(
-        n === 1
-          ? `Enviou o link do ZapSign pelo ${pelo} (tentativa 1 de ${TENTATIVAS_DE_ASSINATURA})`
-          : `Tentou contato de novo pelo ${pelo} (tentativa ${n} de ${TENTATIVAS_DE_ASSINATURA}), sem criar outro documento no ZapSign`,
-        nome,
-      ),
-    )
-    if (n >= TENTATIVAS_DE_ASSINATURA) {
-      a.naSenior = true
-      await abrirTarefa({
-        id: `senior-assinatura-${processo.id}`,
-        codigo: 'D1.17',
-        cliente: { id: ficha.id, nome: ficha.nome },
-        acao: 'Colher assinatura · limite de tentativas',
-        detalhe: `${nomeBeneficio(processo.beneficio)} · ${n} tentativas sem assinatura (G15) · o Atendimento tentou em ${a.tentativas.map((t) => dataCurta(t.data, dia)).join(' e ')}`,
-        prazo: 'hoje',
-        urgente: true,
-        href: `/contrato/${processo.id}/assinatura`,
-        processoId: processo.id,
-        setor: 'Jurídico',
-      })
-      ficha.historico.push(evento(`Subiu para a advogada sênior: ${n} tentativas sem assinatura (G15)`, nome))
-    }
-    await guardarContrato(ficha.id, { contrato, processo })
-    await guardar(ficha)
-    return { contrato, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id) }
-  })
-
-  // GGVP-72 CA6, CA7, CA10, simulado: o botão da tela faz o papel do retorno do ZapSign. O de verdade chega pelo webhook, com
-  // o segredo, quando o ZapSign for contratado; este botão sai junto. O mesmo evento não anexa duas vezes. Assinado, o arquivo
-  // final com as evidências vai ao card e segue para a leitura; a tarefa da assinatura se encerra, inclusive a da sênior.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/zapsign/retorno-simulado', conduzir, async (pedido, resposta) => {
-    const achado = await acharContrato(pedido.params.id)
-    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
-    const { ficha, processo, contrato } = achado
-    const z = contrato.assinatura?.zapsign
-    if (!z) return negar(resposta, 400, 'Não há documento no ZapSign.')
-    const eventoId = `${z.documentoId}-assinado`
-    if (z.eventos.includes(eventoId) || z.status === 'assinado') return { resultado: 'repetido', contrato, ficha }
-    const dia = hoje()
-    const arquivo = naPasta(ficha, {
-      nome: `Contrato assinado - ${ficha.nome} - ${dia} (ZapSign, com evidências).pdf`,
-      tipo: 'contrato',
-      local: processo.id,
-      data: dia,
-      origem: 'card',
-      repetido: false,
-      aguardaLeitura: true,
-    })
-    z.status = 'assinado'
-    z.eventos.push(eventoId)
-    contrato.assinatura = { ...contrato.assinatura!, assinadoEm: agora().toISOString(), arquivo: arquivo.nome }
-    contrato.etapa = 'leitura'
-    await concluirTarefas(ficha.id, 'Colher assinatura · limite de tentativas', `senior-assinatura-${processo.id}`)
-    ficha.historico.push(evento('O ZapSign devolveu o contrato assinado: anexado no card com as evidências da assinatura; segue para a leitura', 'ZapSign'))
-    await guardarContrato(ficha.id, { contrato, processo: assinado(processo) })
-    await guardar(ficha)
-    // Bloco 5b: a IA (simulada) lê o assinado, para a conferência da Documentação.
-    await lerArquivosNovos(ficha)
-    return { resultado: 'anexado', arquivo, contrato, ficha: await fichaPeloId(ficha.id), tarefas: await tarefas(ficha.id) }
-  })
+  // GGVP-136 CA5, CA8: o que o servidor oferece: o PDF (há conversor). GGVP-158 P4.5: o ZapSign está fora do escopo, mesmo
+  // com a variável: nenhuma rota de envio, de tentativa ou de retorno, e a opção do celular não aparece.
+  app.get('/api/contrato/servicos', ver, async () => ({ zapsign: false, pdf: conversor !== undefined }))
 
   // GGVP-77 CA1, CA4: "Papel, na hora": o kit sai com as datas em branco para preencher à mão, menos o contrato de
-  // honorários. Com o ZapSign contratado, só na entrevista presencial. Aqui só fica registrado que o kit foi impresso: o arquivo
-  // sai por GET .../contrato/kit (GGVP-136).
+  // honorários. Aqui só fica registrado que o kit foi impresso: o arquivo sai por GET .../contrato/kit (GGVP-136).
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/impressao', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
@@ -491,8 +388,9 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     return { contrato, datas: datasDoKit(contrato.kit!, 'papel', hoje()), ficha: await fichaPeloId(ficha.id) }
   })
 
-  // GGVP-77 CA2, simulado: o contrato assinado passa no scanner do balcão; a automação guarda o PDF pesquisável na pasta do
-  // cliente, e o arquivo aparece no card, para a leitura.
+  // GGVP-77 CA2: o contrato assinado passa no scanner do balcão e chega ao card, para a leitura. GGVP-158 P4.4: a rota
+  // recebe o arquivo digitalizado, que fica guardado como documento do caso (a cópia ao cliente sai dele). Sem o arquivo,
+  // só a digitalização de exemplo dos testes de tela.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/digitalizacao', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
@@ -502,9 +400,13 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     const assinatura = noPapel(contrato)
     if (!assinatura.impressoEm) return negar(resposta, 400, 'Imprima o kit antes.')
     if (assinatura.arquivo) return negar(resposta, 400, 'O contrato assinado já foi digitalizado.')
+    const enviado = pedido.isMultipart() ? (await lerFormulario(pedido))?.arquivo : null
+    if (enviado ? !TIPOS_DE_ANEXO.includes(enviado.mime) : !leitor.simulada) return negar(resposta, 400, MSG_CONTRATO_DIGITALIZADO)
     const dia = hoje()
     const arquivo = naPasta(ficha, {
-      nome: `Contrato assinado - ${ficha.nome} - ${dia} (papel, PDF pesquisável).pdf`,
+      nome: enviado
+        ? `Contrato assinado - ${ficha.nome} - ${dia} (papel).${extensaoDoAnexo(enviado.mime)}`
+        : `Contrato assinado - ${ficha.nome} - ${dia} (papel, PDF pesquisável).pdf`,
       tipo: 'contrato',
       local: processo.id,
       data: dia,
@@ -512,15 +414,23 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
       repetido: false,
       aguardaLeitura: true,
     })
+    const conteudos = new Map<string, Conteudo>()
+    if (enviado) {
+      const dados = await guardarArquivo(armazenamento, processo.id, enviado, 'contrato-assinado')
+      await banco.insert(documento).values({ casoId: processo.id, pessoaId: ficha.id, tipo: 'contrato', origem: 'scanner', sensivel: false, recebidoPor: pedido.usuario!.id, ...dados })
+      arquivo.hash = dados.hashSha256
+      conteudos.set(arquivo.nome, { bytes: enviado.conteudo, mime: enviado.mime })
+    }
     assinatura.arquivo = arquivo.nome
     ficha.historico.push(evento('Digitalizou o contrato assinado em papel: PDF pesquisável na pasta do cliente', 'Automação do balcão'))
     await guardarContrato(ficha.id, { contrato, processo })
     await guardar(ficha)
-    await lerArquivosNovos(ficha)
+    await lerArquivosNovos(ficha, leitor, pedido.usuario!.id, conteudos)
     return { arquivo, contrato, ficha: await fichaPeloId(ficha.id) }
   })
 
   // GGVP-77 CA3: a assinatura em papel só conclui com a digitalização do contrato assinado anexada; segue para a leitura.
+  // GGVP-158 P4.4: com a IA de verdade, a leitura é já, sobre o arquivo guardado; nos testes de tela, espera o botão.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/assinatura-em-papel', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
@@ -534,13 +444,45 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     ficha.historico.push(evento('Concluiu a assinatura em papel, com a digitalização anexada; segue para a leitura', await quem(pedido)))
     await guardarContrato(ficha.id, { contrato, processo: assinado(processo) })
     await guardar(ficha)
+    if (!leitor.simulada) {
+      const hash = ficha.arquivos.find((a) => a.nome === assinatura.arquivo)?.hash
+      const lido = await lerContrato(processo.id, await assinadoGuardado(processo.id, hash), pedido.usuario!.id)
+      if (lido) return { contrato: lido.contrato, ficha: await fichaPeloId(ficha.id) }
+    }
     return { contrato, ficha: await fichaPeloId(ficha.id) }
+  })
+
+  /** O contrato assinado guardado no portal (o do scanner fica no Drive): pelo hash, ou o último do caso. */
+  async function assinadoGuardado(casoId: string, hash?: string): Promise<Conteudo | undefined> {
+    const [d] = await banco
+      .select({ chave: documento.chaveArmazenamento, mime: documento.mime })
+      .from(documento)
+      .where(and(eq(documento.casoId, casoId), eq(documento.tipo, 'contrato'), isNull(documento.excluidoEm), hash ? eq(documento.hashSha256, hash) : undefined))
+      .orderBy(desc(documento.criadoEm))
+      .limit(1)
+    return d && !d.chave.startsWith('drive:') ? { bytes: await armazenamento.ler(d.chave), mime: d.mime } : undefined
+  }
+
+  // GGVP-158 P4.4: o contrato assinado guardado, para imprimir a cópia do cliente (GGVP-89). Sai como o kit: o navegador
+  // não adivinha o tipo nem roda script do arquivo.
+  app.get<{ Params: { id: string } }>('/api/processos/:id/contrato/assinado', conduzir, async (pedido, resposta) => {
+    const achado = await acharContrato(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
+    const hash = achado.ficha.arquivos.find((a) => a.nome === achado.contrato.assinatura?.arquivo)?.hash
+    const assinado = await assinadoGuardado(achado.processo.id, hash)
+    if (!assinado) return negar(resposta, 404, MSG_SEM_ASSINADO)
+    return resposta
+      .header('content-type', assinado.mime)
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "sandbox; default-src 'none'")
+      .header('content-disposition', `inline; filename*=UTF-8''${encodeURIComponent(achado.contrato.assinatura?.arquivo ?? 'contrato-assinado')}`)
+      .send(Buffer.from(assinado.bytes))
   })
 
   // GGVP-85 CA1, CA2, CA4, CA7, simulado: a leitura da IA do contrato assinado; a de verdade é da GGVP-81, aqui no servidor,
   // e nunca vem da tela. Reconhecido e tudo certo, segue para a cópia, sem tarefa; sem entender ou com problema, o
-  // Atendimento recebe "Conferir contrato" com o que a IA apontou.
-  app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', conduzir, async (pedido, resposta) => {
+  // Atendimento recebe "Conferir contrato" com o que a IA apontou. GGVP-158 P4.10: só nos testes de tela.
+  if (leitor.simulada) app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/leitura-simulada', conduzir, async (pedido, resposta) => {
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     if (achado.contrato.etapa !== 'leitura') return negar(resposta, 400, 'Este contrato não está esperando a leitura.')

@@ -1,6 +1,7 @@
 // Contratos da garantia e governança (GGVP-13): tentativas bloqueadas (GGVP-109) e regras do roteiro em código (GGVP-25).
 import { normalizarInteiro, validarInteiro } from '@ggv/campos'
 import { z } from 'zod'
+import { CATALOGO_BENEFICIOS } from './catalogo-beneficios.ts'
 import { DataObrigatoria } from './inss.ts'
 
 /**
@@ -163,8 +164,8 @@ export const UsoDoCofre = z.object({
 })
 export type UsoDoCofre = z.infer<typeof UsoDoCofre>
 
-/** O catálogo de benefícios do escritório (GGVP-104 CA5): um só, para o banco, a configuração e as telas. */
-export const BENEFICIOS = [
+/** Os 11 benefícios de antes do catálogo inteiro, na ordem de sempre: a Configuração lista assim, e eles vêm primeiro. */
+const ANTES = [
   'bpc_loas_deficiente',
   'bpc_loas_idoso',
   'aposentadoria_pcd',
@@ -176,10 +177,22 @@ export const BENEFICIOS = [
   'auxilio_acidente',
   'pensao_morte',
   'salario_maternidade',
-  'outro',
 ] as const
-export type Beneficio = (typeof BENEFICIOS)[number]
+type DoCatalogo = (typeof CATALOGO_BENEFICIOS)[number]['servidor']
+
+/**
+ * O catálogo de benefícios do escritório (GGVP-104 CA5): um só, para o banco, a configuração e as telas. GGVP-158 P4.6: os
+ * 34 do catálogo das telas, pelo id do servidor, e "outro".
+ */
+export type Beneficio = DoCatalogo | 'outro'
+export const BENEFICIOS: readonly Beneficio[] = [
+  ...ANTES,
+  ...CATALOGO_BENEFICIOS.map((b) => b.servidor).filter((s) => !(ANTES as readonly string[]).includes(s)),
+  'outro',
+]
 export const ROTULO_BENEFICIO: Record<Beneficio, string> = {
+  ...(Object.fromEntries(CATALOGO_BENEFICIOS.map((b) => [b.servidor, b.nome])) as Record<DoCatalogo, string>),
+  // Os 11 de antes guardam o nome que o servidor já usava, nos textos e no histórico.
   bpc_loas_deficiente: 'BPC/LOAS Deficiente',
   bpc_loas_idoso: 'BPC/LOAS Idoso',
   aposentadoria_pcd: 'Aposentadoria da Pessoa com Deficiência',

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_G1 } from './conferencia.ts'
@@ -19,9 +19,9 @@ async function cookieDe(apelido: string) {
   const r = await app.inject({ method: 'POST', url: '/api/sessao', payload: { email: `${apelido}@exemplo.ggv`, senha: SENHA } })
   return { [COOKIE]: r.cookies.find((c) => c.name === COOKIE)!.value }
 }
-const chamar = async (apelido: string, method: 'GET' | 'POST', url: string, payload?: object) =>
+const chamar = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) =>
   app.inject({ method, url, cookies: await cookieDe(apelido), ...(payload ? { payload } : {}) })
-const json = async (apelido: string, method: 'GET' | 'POST', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
+const json = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
 
 /** O cliente com o caso aberto ("fechou"), como na Recepção. */
 async function casoDe(beneficio: string) {
@@ -50,7 +50,7 @@ const CONTRATO_NAO_ASSINADO = 'Contrato não assinado (G1): o caso não tem o co
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  app = criarServidor({ banco, agora: () => relogio })
+  app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['sara', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // O kit do LOAS como a semente do servidor o publica: com os nomes do banco.
@@ -116,6 +116,22 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     const c = (await json('dora', 'GET', url)).checklist
     expect(c.bloqueio).toBeUndefined()
     expect(c.itens.map((i: { tipo: string }) => i.tipo)).toEqual(['contrato', 'boletim-ocorrencia', 'fotos-acidente', 'ficha-pronto-socorro', 'prontuario', 'exame-imagem-epoca', 'exame-pos-alta'])
+  })
+
+  it('GGVP-158 P4.6 · o caso da aposentadoria rural guarda o benefício; sem lista publicada, não libera; a lista da Configuração vale', async () => {
+    const { processoId } = await casoDe('aposentadoria-rural')
+    expect((await banco.select({ beneficio: caso.beneficio }).from(caso).where(eq(caso.id, processoId)))[0].beneficio).toBe('aposentadoria_rural')
+    const url = `/api/processos/${processoId}/checklist`
+    expect((await json('dora', 'GET', url)).checklist).toMatchObject({ temLista: false })
+    const liberar = () => json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })
+    expect((await liberar()).erro).toContain('a lista de documentos do benefício, na configuração do escritório')
+
+    // A gestão publica a lista pela Configuração, sem código.
+    const publicada = await chamar('sara', 'PUT', '/api/configuracao/kits/aposentadoria_rural', { itens: [{ tipoDocumento: 'rg', obrigatorio: true }, { tipoDocumento: 'cnis', obrigatorio: true }] })
+    expect(publicada.statusCode).toBe(201)
+    const c = (await json('dora', 'GET', url)).checklist
+    expect(c.temLista).toBe(true)
+    expect(c.itens.map((i: { tipo: string }) => i.tipo)).toEqual(expect.arrayContaining(['rg', 'cnis']))
   })
 
   it('a liberação do caso da Recepção confere esse checklist: o que falta com os nomes das telas, e a conferência completa', async () => {
@@ -226,6 +242,21 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
     expect(r).toMatchObject({ situacao: 'aberta', cobranca: { adiadaPara: '2026-10-20', decisoes: [{ opcao: 'nova-tentativa', justificativa: decisao.justificativa, prazo: '2026-10-20', quem: 'sara' }] } })
     expect(r.ficha.historico.at(-1).oQue).toMatch(/^Decidiu a cobrança: nova tentativa com prazo até .+\. Justificativa: A cliente está viajando e volta no dia 20\. A decisão voltou para o Atendimento$/)
     expect(await json('sara', 'POST', `${url}/decisao`, decisao)).toEqual({ erro: 'A cobrança ainda não chegou ao limite.' })
+  })
+
+  it('GGVP-158 P4.8 · a mensagem de cobrança obedece ao mesmo limite: na Sênior ou antes dos 3 dias, não sai; no prazo, sai', async () => {
+    const naSenior = await cobrancaAberta([
+      { dia: '2026-10-02', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' },
+      { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
+    ])
+    const mensagem = (c: { fichaId: string; processoId: string }) => json('ana', 'GET', `/api/fichas/${c.fichaId}/mensagens/cobranca?processo=${c.processoId}`)
+    expect(await mensagem(naSenior)).toMatchObject({ trava: 'Passou do limite de 2 tentativas: a sênior decide (G15).', texto: '' })
+
+    const hoje = await cobrancaAberta([{ dia: '2026-10-08', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
+    expect((await mensagem(hoje)).trava).toMatch(/^A próxima tentativa é em .+, 3 dias depois da última\.$/)
+
+    const noPrazo = await cobrancaAberta([{ dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
+    expect(await mensagem(noPrazo)).toMatchObject({ trava: null, texto: expect.stringContaining('faltam documentos') })
   })
 
   it('chegou tudo: a cobrança fecha sozinha na sincronização, uma vez só', async () => {

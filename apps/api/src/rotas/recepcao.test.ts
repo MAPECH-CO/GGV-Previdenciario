@@ -1,10 +1,18 @@
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, credencialGovbr, eventoAuditoria, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, credencialGovbr, documento, eventoAuditoria, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { chaveDoCofre, criarCofre } from '../cofre.ts'
+import type { Drive } from '../drive.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { MSG_DRIVE_SO_LEITURA, MSG_FICHA_DIGITALIZADA, MSG_PASTA_SEM_CPF, MSG_SEM_DRIVE } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -36,7 +44,8 @@ const pessoas = () => banco.select().from(pessoa)
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   relogio = new Date('2026-10-08T15:00:00Z')
-  app = criarServidor({ banco, agora: () => relogio })
+  // A ficha em papel daqui é a de exemplo, sem arquivo (GGVP-158 P4.10); a leitura de verdade tem o bloco dela no fim.
+  app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['gabi', 'advogada'], ['julia', 'financeiro']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
@@ -178,5 +187,151 @@ describe('GGVP-158 P3.8 · "Completar a ficha" grava o bairro', () => {
     expect(r.json().ficha).toMatchObject({ bairro: 'Vila Exemplo' })
     expect(r.json().ficha.historico.at(-1)).toMatchObject({ quem: 'ana', oQue: 'Alterou bairro' })
     expect((await chamar('ana', 'GET', `/api/fichas/${lead.id}`)).json().bairro).toBe('Vila Exemplo')
+  })
+})
+
+describe('GGVP-158 P4.2 · a ficha em papel lida pela IA, e a senha escrita só no cofre', () => {
+  const SENHA_DO_PAPEL = 'Segredo#Do#Papel-2026'
+  const LIDA = {
+    nome: 'Joana Ribeiro',
+    cpf: '529.982.247-25',
+    nascimento: '10/03/1958',
+    telefone: '(11) 98765-4321',
+    endereco: 'Rua das Flores, 10, Osasco/SP',
+    pessoasNaCasa: 3,
+    ultimaAtividade: 'doméstica, sem carteira',
+    semTrabalharDesde: '06/2026',
+    pedidosAoInss: 'nenhum',
+    senha: SENHA_DO_PAPEL,
+  }
+  const FICHA_PDF = Buffer.from('%PDF-1.4 a ficha de atendimento preenchida à mão')
+  const cofre = criarCofre(chaveDoCofre())
+  const comIa = (ambiente: Record<string, string>) => {
+    const fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(LIDA) } }] })))
+    return { fetch, ia: criarIa({ banco, ambiente, fetch, agora: () => relogio }) }
+  }
+  const lerFicha = async (apelido: string, id: string, arquivo?: Buffer) => {
+    const f = '----ggv'
+    const corpo = arquivo && Buffer.concat([
+      Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="ficha.pdf"\r\nContent-Type: application/pdf\r\n\r\n`),
+      arquivo,
+      Buffer.from(`\r\n--${f}--\r\n`),
+    ])
+    return app.inject({
+      method: 'POST',
+      url: `/api/fichas/${id}/ficha-de-atendimento/leitura`,
+      cookies: await cookieDe(apelido),
+      ...(corpo && { payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }),
+    })
+  }
+  const reabrir = async (ia: ReturnType<typeof criarIa>) => {
+    await app.close()
+    app = criarServidor({ banco, agora: () => relogio, ia, cofre, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))) })
+  }
+
+  it('a IA lê os campos, a senha vai ao cofre e não aparece na resposta, na ficha, no histórico nem no registro da IA', async () => {
+    const { ia, fetch } = comIa({ OPENAI_API_KEY: 'chave-de-teste-openai' })
+    await reabrir(ia)
+    const { id } = await cadastrar()
+    const r = await lerFicha('ana', id, FICHA_PDF)
+    expect(r.statusCode).toBe(200)
+    const lida = r.json()
+    expect(lida).toMatchObject({ campos: { nome: 'Joana Ribeiro', cpf: '52998224725', nascimento: '10/03/1958', pessoasNaCasa: 3 }, naoLidos: [], senhaLida: true })
+    expect(lida.arquivo.nome).toBe('Ficha de atendimento GGV - Joana Ribeiro - 2026-10-08.pdf')
+    expect(String(fetch.mock.calls[0][1]?.body)).toContain(FICHA_PDF.toString('base64'))
+    const [credencial] = await banco.select().from(credencialGovbr).where(eq(credencialGovbr.pessoaId, id))
+    expect(cofre.decifrar(credencial)).toBe(SENHA_DO_PAPEL)
+    const [ficha] = await banco.select().from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, id))
+    expect((ficha.documento as { historico: { oQue: string }[] }).historico.at(-1)?.oQue).toBe('A IA leu a senha do gov.br escrita no papel, e ela foi para o cofre: confira com o papel')
+    for (const onde of [lida, ficha, await banco.select().from(chamadaIa), await banco.select().from(eventoAuditoria)]) expect(JSON.stringify(onde)).not.toContain(SENHA_DO_PAPEL)
+    // A imagem fica guardada em Documentos pessoais, com o hash.
+    const [d] = await banco.select().from(documento).where(eq(documento.pessoaId, id))
+    expect([d.tipo, d.sensivel, d.origem]).toEqual(['ficha-atendimento', false, 'scanner'])
+  })
+
+  it('quem não cadastra no cofre (a Documentação) lê a ficha, mas a senha não vai ao cofre nem a lugar nenhum', async () => {
+    await reabrir(comIa({ OPENAI_API_KEY: 'chave-de-teste-openai' }).ia)
+    const { id } = await cadastrar()
+    const lida = (await lerFicha('dora', id, FICHA_PDF)).json()
+    expect(lida.senhaLida).toBe(false)
+    expect(await banco.select().from(credencialGovbr)).toEqual([])
+    expect(lida.ficha.historico.at(-1).oQue).toBe('A ficha em papel tem a senha do gov.br escrita: quem cadastra no cofre é o Atendimento')
+    expect(JSON.stringify(await banco.select().from(chamadaIa))).not.toContain(SENHA_DO_PAPEL)
+  })
+
+  it('sem o arquivo, recusa; sem IA, a imagem fica guardada e todos os campos voltam como não lidos', async () => {
+    const { ia, fetch } = comIa({})
+    await reabrir(ia)
+    const { id } = await cadastrar()
+    expect((await lerFicha('ana', id)).json()).toEqual({ erro: MSG_FICHA_DIGITALIZADA })
+    const lida = (await lerFicha('ana', id, FICHA_PDF)).json()
+    expect([lida.campos, lida.senhaLida, fetch.mock.calls.length]).toEqual([{ beneficioInteresse: 'loas-idoso' }, false, 0])
+    expect(lida.naoLidos).toEqual(['nome', 'cpf', 'nascimento', 'telefone', 'endereco', 'pessoasNaCasa', 'ultimaAtividade', 'semTrabalharDesde', 'pedidosAoInss'])
+    expect(await banco.select().from(documento)).toHaveLength(1)
+  })
+})
+
+describe('GGVP-158 P4.7 · a pasta do cliente no Drive', () => {
+  /** O Drive de mentira: as pastas, com quem é a pasta-mãe de cada uma, e o que o portal criou. */
+  function driveFalso(soLeitura = false) {
+    const pastas = [
+      { id: 'pasta-joana', nome: '529.982.247-25 X Joana Ribeiro', pai: 'clientes' },
+      { id: 'pasta-outra', nome: 'Outra Pessoa X LOAS', pai: 'clientes' },
+      { id: 'fora', nome: 'Joana Ribeiro', pai: 'arquivo-morto' },
+    ]
+    const criadas: { nome: string; pai: string; marca: string }[] = []
+    const drive = {
+      pastas: async (pai: string) => pastas.filter((p) => p.pai === pai).map(({ id, nome }) => ({ id, nome })),
+      onde: async (id: string) => {
+        const p = pastas.find((x) => x.id === id)
+        if (!p) throw new Error('Drive: 404 File not found')
+        return { nome: p.nome, pais: [p.pai] }
+      },
+      achar: async () => null,
+      criarPasta: async (nome: string, pai: string, marca: string) => {
+        criadas.push({ nome, pai, marca })
+        pastas.push({ id: `nova-${criadas.length}`, nome, pai })
+        return `nova-${criadas.length}`
+      },
+    } as unknown as Drive
+    return { criadas, drive: { drive, pastas: { clientes: 'clientes', revisar: 'revisar' }, soLeitura } }
+  }
+  const reabrir = async (drive: ReturnType<typeof driveFalso>['drive']) => {
+    await app.close()
+    app = criarServidor({ banco, agora: () => relogio, leituraSimulada: true, drive })
+  }
+  const pasta = async (fichaId: string, valor: string) => (await chamar('ana', 'POST', `/api/fichas/${fichaId}/pasta`, { pasta: valor })).json()
+
+  it('a ficha nova traz a pasta parecida (pelo CPF do título); ligar grava na ficha e no histórico; pasta de fora recusa', async () => {
+    await reabrir(driveFalso().drive)
+    const criada = await cadastrar()
+    expect(criada.pastas).toEqual([{ id: 'pasta-joana', nome: 'Joana Ribeiro', caminho: '529.982.247-25 X Joana Ribeiro', cpf: '52998224725' }])
+    expect(await pasta(criada.id, 'pasta-joana')).toMatchObject({ id: 'pasta-joana', nova: false })
+    expect((await banco.select().from(pessoa).where(eq(pessoa.id, criada.id)))[0].drivePastaId).toBe('pasta-joana')
+    const ficha = (await chamar('ana', 'GET', `/api/fichas/${criada.id}`)).json()
+    expect([ficha.pastaId, ficha.historico.at(-1).oQue]).toEqual(['pasta-joana', 'Ligou à pasta que já existia no Drive: 529.982.247-25 X Joana Ribeiro'])
+    expect(await pasta(criada.id, 'fora')).toEqual({ erro: 'Pasta não encontrada em "#5. CLIENTES".' })
+  })
+
+  it('a pasta nova só nasce com o CPF, como "<Nome> X A CLASSIFICAR", com a marca do portal; com o Drive só leitura, não cria', async () => {
+    const { drive, criadas } = driveFalso()
+    await reabrir(drive)
+    const semCpf = await cadastrar({ ...LEAD, nome: 'Rosa Exemplo', cpf: undefined, telefone: '11955554444', outraPessoa: true })
+    expect(await pasta(semCpf.id, 'nova')).toEqual({ erro: MSG_PASTA_SEM_CPF })
+    const comCpf = await cadastrar({ ...LEAD, nome: 'Marta Exemplo', cpf: '11144477735', telefone: '11955553333', outraPessoa: true })
+    expect(await pasta(comCpf.id, 'nova')).toMatchObject({ id: 'nova-1', nova: true, caminho: 'Marta Exemplo X A CLASSIFICAR' })
+    expect(criadas).toEqual([{ nome: 'Marta Exemplo X A CLASSIFICAR', pai: 'clientes', marca: `pessoa:${comCpf.id}` }])
+
+    const soLeitura = driveFalso(true)
+    await reabrir(soLeitura.drive)
+    const outra = await cadastrar({ ...LEAD, nome: 'Lia Exemplo', cpf: '61374825964', telefone: '11955552222', outraPessoa: true })
+    expect(await pasta(outra.id, 'nova')).toEqual({ erro: MSG_DRIVE_SO_LEITURA })
+    expect(soLeitura.criadas).toEqual([])
+  })
+
+  it('sem o Drive, a ficha nova não traz pasta, e ligar recusa', async () => {
+    const criada = await cadastrar()
+    expect(criada.pastas).toEqual([])
+    expect(await pasta(criada.id, 'nova')).toEqual({ erro: MSG_SEM_DRIVE })
   })
 })
