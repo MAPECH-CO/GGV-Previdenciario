@@ -117,6 +117,54 @@ describe('Central do perfil', () => {
   })
 })
 
+describe('GGVP-158 P5.4 · a espera de fora volta ao topo da advogada todo dia útil', () => {
+  let relogio: Date
+  const linhasDa = async (apelido: string) =>
+    (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe(apelido) })).json().map((t: { titulo: string; urgente: boolean; passo: string }) => [t.passo, t.titulo, t.urgente])
+  beforeEach(() => {
+    // Terça, 13/10/2026, 10h em Brasília.
+    relogio = new Date('2026-10-13T13:00:00Z')
+    app = criarServidor({ banco, cofre, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), agora: () => relogio })
+  })
+
+  it('o INSS decidindo: a tarefa dela sobe ao topo no dia útil; "Olhei, sem novidade" tira até o próximo dia útil; sábado, não chama', async () => {
+    await banco.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date('2026-10-01T12:00:00Z') })
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' })
+    expect(await linhasDa('gabi')).toEqual([
+      ['D2.04', 'Trazer a resposta do INSS', true],
+      ['D2.03', 'Decidir perícia', false],
+    ])
+    const gabi = await cookieDe('gabi')
+    expect((await app.inject({ method: 'POST', url: `/api/casos/${casoId}/esperas/olhada`, cookies: gabi })).statusCode).toBe(201)
+    expect(await linhasDa('gabi')).toEqual([
+      ['D2.03', 'Decidir perícia', false],
+      ['D2.04', 'Trazer a resposta do INSS', false],
+    ])
+    const [olhada] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'espera_olhada'))
+    expect([olhada.alvo, olhada.detalhe]).toEqual([`caso:${casoId}`, expect.objectContaining({ oQue: 'INSS decidir' })])
+    // No dia útil seguinte, chama de novo; no sábado, não.
+    relogio = new Date('2026-10-14T13:00:00Z')
+    expect((await linhasDa('gabi'))[0]).toEqual(['D2.04', 'Trazer a resposta do INSS', true])
+    relogio = new Date('2026-10-17T13:00:00Z')
+    expect((await linhasDa('gabi')).map((l: unknown[]) => l[2])).toEqual([false, false])
+  })
+
+  it('a espera sem tarefa ganha a linha "Olhar a espera"; a perícia feita sem resultado também; sem espera, "Olhei" recusa', async () => {
+    const gabi = await cookieDe('gabi')
+    const semEspera = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/esperas/olhada`, cookies: gabi })
+    expect([semEspera.statusCode, semEspera.json().erro]).toEqual([409, 'Este caso não está esperando ninguém de fora.'])
+    await banco.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.E1', situacao: 'aguardando_externo', aguardando: 'INSS receber o requerimento', iniciadaEm: new Date('2026-10-05T12:00:00Z') })
+    await banco.insert(pericia).values({ casoId, tipo: 'medica', agendadaPara: new Date('2026-10-09T12:00:00Z'), compareceu: true })
+    const linhas = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: gabi })).json()
+    expect(linhas.map((t: { titulo: string; urgente: boolean; detalhe: string }) => [t.titulo, t.urgente, t.detalhe])).toEqual([
+      ['Olhar a espera: INSS receber o requerimento', true, 'BPC/LOAS Deficiente · esperando desde 05/10 · lembrete diário'],
+      ['Olhar a espera: o resultado da perícia', true, 'BPC/LOAS Deficiente · esperando desde 09/10 · lembrete diário'],
+      ['Decidir perícia', false, 'BPC/LOAS Deficiente'],
+    ])
+    expect(await linhasDa('ana')).toEqual([])
+  })
+})
+
 describe('GGVP-27 · Protocolar no Meu INSS', () => {
   it('CA1 · abre o caso com os documentos na ordem e o aviso do cofre; outro perfil não abre', async () => {
     await okDaSenior()

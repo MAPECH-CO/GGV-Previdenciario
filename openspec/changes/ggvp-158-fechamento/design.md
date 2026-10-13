@@ -223,7 +223,7 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
     - Quais são: as etapas `aguardando_externo` do INSS (`aguardando` começa com "INSS") e as perícias com comparecimento e sem resultado.
     - Na Central da advogada, `GET /api/tarefas` monta uma linha por espera: "Olhar a espera: …", com o caso e a tela do caso.
     - A linha fica urgente (no topo) no dia útil, pelo `ehDiaUtil` com os feriados nacionais, até alguém marcar "Olhei, sem novidade" naquele dia.
-    - `POST /api/casos/:id/esperas/olhada` (`tarefa.cumprir`) grava um `evento_auditoria` `espera_olhada`, com a espera. Não há tabela nova.
+    - `POST /api/casos/:id/esperas/olhada` (`tarefa.cumprir`), sem corpo, grava um `evento_auditoria` `espera_olhada` para cada espera do caso. Não há tabela nova; sem espera, 409.
     - Quando a espera já tem tarefa da advogada (a "Trazer a resposta do INSS"), a própria linha dela vira o lembrete, sem linha repetida.
 44. **A data do juiz na hora** (P5.5).
     - `abrirPericiasDaExigencia`, na origem do juiz, recebe o texto da publicação.

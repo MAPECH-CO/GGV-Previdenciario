@@ -35,6 +35,7 @@ import type { Cofre } from '../cofre.ts'
 import { okDaSenior } from '../fluxo/conferencia.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { alertasDeExigencia } from '../fluxo/exigencia.ts'
+import { esperasDeFora, esperasQueChamamHoje } from '../fluxo/esperas.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
 import { hojeEmBrasilia, itensDaFila } from '../vigilia/fila.ts'
@@ -109,6 +110,7 @@ const hoje = hojeEmBrasilia // CA7 (GGVP-118): o dia de Brasília, não o de UTC
  * vencer" sem número: é parâmetro, a confirmar com o Lucas.
  */
 export const DIAS_DE_AVISO_DO_AJUSTE = 2
+export const MSG_SEM_ESPERA = 'Este caso não está esperando ninguém de fora.'
 const pertoDeVencer = (prazo: string, agora: Date) => prazo <= hoje(new Date(agora.getTime() + DIAS_DE_AVISO_DO_AJUSTE * 86_400_000))
 
 export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazenamento, agora = () => new Date(), tarefasPorArea }: Opcoes) {
@@ -159,8 +161,47 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
         }),
       )
     }
-    return visiveis
+    return perfil === 'advogada' ? comAsEsperas(visiveis) : visiveis
   }
+
+  /**
+   * GGVP-158 P5.4: cada espera de fora é uma linha da advogada, no topo no dia útil até alguém olhar no dia. A espera que
+   * já tem a tarefa dela ("Trazer a resposta do INSS") usa a própria linha, sem repetir.
+   */
+  async function comAsEsperas(visiveis: TarefaDaCentral[]): Promise<TarefaDaCentral[]> {
+    const chama = await esperasQueChamamHoje(banco, hoje(agora()))
+    const topo: TarefaDaCentral[] = []
+    const fim: TarefaDaCentral[] = []
+    for (const e of await esperasDeFora(banco)) {
+      const daTarefa = e.passo === 'D2.04' ? visiveis.find((t) => t.casoId === e.casoId && t.passo === 'D2.04') : undefined
+      if (daTarefa) {
+        if (chama(e.id)) topo.push({ ...visiveis.splice(visiveis.indexOf(daTarefa), 1)[0], urgente: true })
+        continue
+      }
+      const desde = hoje(e.desde)
+      const linha = TarefaDaCentral.parse({
+        id: e.id,
+        casoId: e.casoId,
+        passo: e.passo,
+        cliente: e.cliente,
+        titulo: `Olhar a espera: ${e.oQue}`,
+        detalhe: `${e.beneficio ? nomeDoBeneficio(e.beneficio) : 'benefício a definir'} · esperando desde ${desde.slice(8, 10)}/${desde.slice(5, 7)} · lembrete diário`,
+        tela: e.passo === 'DP.E4' ? `/casos/${e.casoId}/pericia` : TELA_DO_PASSO['D2.04'](e.casoId),
+        prazo: null,
+        urgente: chama(e.id),
+      })
+      ;(linha.urgente ? topo : fim).push(linha)
+    }
+    return [...topo, ...visiveis, ...fim]
+  }
+
+  // GGVP-158 P5.4: "Olhei, sem novidade": as esperas de fora do caso saem do topo até o próximo dia útil.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/esperas/olhada', { preHandler: exigir(banco, 'tarefa.cumprir', agora) }, async (pedido, resposta) => {
+    const esperas = await esperasDeFora(banco, pedido.params.id)
+    if (!esperas.length) return negar(resposta, 409, MSG_SEM_ESPERA)
+    for (const e of esperas) await historico(pedido.usuario!.id, 'espera_olhada', pedido, `caso:${e.casoId}`, { espera: e.id, oQue: e.oQue })
+    return resposta.code(201).send({ ok: true })
+  })
   // GGVP-147: as tarefas do banco entram nas tarefas do setor, no formato da linha da Central.
   tarefasPorArea?.registrar(async (perfil) =>
     (await tarefasDoPerfil(perfil)).map((t) => ({

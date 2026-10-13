@@ -341,12 +341,14 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - os de `contato.*` voltam `emUso: false`.
 
   Verificado em 13/10: `configuracao`, `recepcao-agenda` e `recepcao-checklist` 30/30, e `pericia` 31/31 (um novo em cada).
-- [ ] 5.7 A espera de fora (P5.4, decisão 43): as linhas da espera na Central da advogada, urgentes no dia útil; `POST /api/casos/:id/esperas/olhada`.
+- [x] 5.7 A espera de fora (P5.4, decisão 43): as linhas da espera na Central da advogada, urgentes no dia útil; `POST /api/casos/:id/esperas/olhada`.
   - Verifica com teste:
     - INSS decidindo, no topo na terça;
     - fora do topo depois de "Olhei" e no sábado;
     - a perícia feita sem resultado também;
     - sem linha repetida com a "Trazer a resposta do INSS".
+
+  Verificado em 13/10: `rotas/inss.test.ts` 13/13 (2 novos), e as nove suítes que leem a Central, 122/122. O "Olhei" vale para o caso inteiro: a tela não precisa saber o id da espera.
 - [ ] 5.8 A data do juiz na hora (P5.5, decisão 44): a exigência do juiz marca a perícia com a data da publicação, sem a tarefa de marcar; o resumo do processo diz `marcadaPeloSistema`.
   - Verifica com `rotas/exigencia-juiz.test.ts` e `rotas/processo.test.ts`:
     - com a data, a perícia marcada, sem tarefa de marcar, e a orientação "pelo sistema";
