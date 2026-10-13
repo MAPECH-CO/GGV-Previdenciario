@@ -16,7 +16,7 @@ A branch nasceu empilhada na Garantia (`feat/GGVP-13-garantia-e-governanca`), qu
 
 - **GGVP-92** · Prestação de contas montada pela IA e OK da advogada: refinada pelo Lucas, entra no próximo PR, depois de 09/10. Até lá, a prestação nasce só do deferimento no INSS. A do procedente na Justiça entra com ela e já cai no caminho desta change.
 - **GGVP-100** · Improcedente: decidir se recorre: refinada pelo Lucas, entra no próximo PR. Quando entrar, o "Não recorrer" chama `abrirExplicacaoDoResultado`. Essa ligação saiu da tarefa 2.8, que valia também para a GGVP-19, já ligada no PR da IA.
-- **GGVP-90** · Procedente: acompanhar o pagamento: em "Tarefas pendentes", com o Lucas.
+- **GGVP-90** · Procedente: acompanhar o pagamento: a confirmação do desfecho (CA3 e CA4) está no #31; o pagamento (CA1, CA2 e CA5 a CA8) espera as respostas do Lucas.
 
 ## Fora do escopo
 

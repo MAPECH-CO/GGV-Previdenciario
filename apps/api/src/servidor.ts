@@ -35,6 +35,7 @@ import { criarIa, type Ia } from './ia/ia.ts'
 import { criarLeitor } from './fluxo/leitura.ts'
 import { abrirConversor, type ConversorDePdf } from './kit/pdf.ts'
 import { criarPreparo } from './ia/preparo.ts'
+import { registrarRotasDesfecho } from './rotas/desfecho.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
@@ -240,6 +241,7 @@ export function criarServidor({
     registrarRotasModelos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasDesfecho(app, { banco, agora })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })

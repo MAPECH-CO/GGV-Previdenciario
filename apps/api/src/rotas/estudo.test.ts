@@ -84,6 +84,16 @@ describe('GGVP-19 · estudo de caso do processo perdido', () => {
     expect((await abertas()).filter((t) => t.includes(TITULO_REVISAR))).toHaveLength(1)
   })
 
+  it('GGVP-90 · enquanto a Sênior decide o recurso, o estudo e o resumo ao cliente esperam', async () => {
+    const [t] = await banco.insert(tarefa).values({ casoId, passo: 'D3b.04', titulo: 'Decidir recurso', perfilDono: 'senior' }).returning()
+    await app.prepararSugestoes()
+    expect(await chamadasDoEstudo()).toBe(0)
+    expect(await abertas()).toEqual(['senior · Decidir recurso'])
+    await banco.update(tarefa).set({ concluidaEm: new Date() }).where(eq(tarefa.id, t.id))
+    await app.prepararSugestoes()
+    expect(await chamadasDoEstudo()).toBe(1)
+  })
+
   it('CA3 · só a Sênior decide; a decisão guarda o estudo à parte, a tarefa fecha; o Atendimento não vê os estudos', async () => {
     await app.prepararSugestoes()
     expect((await estudos('ana')).statusCode).toBe(403)
