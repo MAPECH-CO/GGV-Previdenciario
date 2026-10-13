@@ -57,6 +57,8 @@ export type Contrato = {
   /** Os campos corrigidos na conferência (GGVP-69, CA5). */
   corrigidos?: CampoDoModelo[]
   documento?: DocumentoGerado
+  /** O percentual de honorários do modelo quando o kit foi gerado (GGVP-158, P3.3); sem ele, a Sênior não tinha informado. */
+  percentualHonorarios?: number
   /** Toda versão gerada fica, com o motivo (GGVP-69, CA3). */
   versoes?: { versao: number; geradoEm: string; motivo: string }[]
   /** Como o cliente assina e o que já aconteceu (GGVP-72). */
