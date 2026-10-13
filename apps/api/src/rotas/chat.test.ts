@@ -7,7 +7,7 @@ import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, doc
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MODELO_DA_REGRA } from './chat.ts'
+import { MODELO_DA_REGRA, MSG_PECA_ANTES_DO_DESPACHO } from './chat.ts'
 
 const SENHA = 'senha-do-portal-1'
 const CHAVE = { OPENAI_API_KEY: 'chave-de-teste' }
@@ -180,9 +180,13 @@ describe('GGVP-142 · as ferramentas de leitura (CA1, CA2)', () => {
     await banco.insert(documentoMedico).values({ documentoId: d.id, tipo: 'laudo', dataEmissao: '2026-09-20', cid: 'M54.5' })
   }
 
-  it('16.4 · o modelo recebe as quatro ferramentas de leitura e, com um caso, a de criar tarefa (a de ação pede o clique)', async () => {
+  it('16.4 · o modelo recebe as quatro ferramentas de leitura e, com um caso, a de criar tarefa só para quem atribui tarefa (GGVP-158 P7.3)', async () => {
     await perguntar('ana', 'Oi', casoId)
-    expect(chamadas[0].corpo.tools?.map((t) => t.function.name).sort()).toEqual(['buscar_no_acervo', 'criar_tarefa', 'explicar_portao', 'ler_caso', 'minhas_tarefas'])
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name).sort()).toEqual(['buscar_no_acervo', 'explicar_portao', 'ler_caso', 'minhas_tarefas'])
+    montar({ ...CHAVE, IA_PERMITE_DADO_DE_SAUDE: 'sim' })
+    chamadas = []
+    await perguntar('helena', 'Oi', casoId)
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('criar_tarefa')
   })
 
   it('16.4 · o caso vem da página do processo na visão do Atendimento: sem o laudo nem o CID; a fonte é o caso', async () => {
@@ -244,7 +248,7 @@ describe('GGVP-142 · a ação só com o clique de quem pediu (CA3)', () => {
   it('16.5 · criar tarefa: o pedido vira cartão e nada acontece antes do clique; o clique cria a tarefa na Central da Ana, com "feito pelo chat"', async () => {
     montar(COM_SAUDE)
     roteiro = [ferramenta('criar_tarefa', { acao: 'Cobrar documento', para: 'Ana', prazo: '2026-10-12' })]
-    const r = await perguntar('gabi', 'Cria uma tarefa para a Ana cobrar o laudo da Vera', casoId)
+    const r = await perguntar('helena', 'Cria uma tarefa para a Ana cobrar o laudo da Vera', casoId)
     expect(r).toMatchObject({
       tipo: 'acao',
       acao: { tipo: 'criar-tarefa', titulo: 'Vera Lúcia · Cobrar documento', responsavel: { nome: 'ana', setor: 'Atendimento' }, rotuloConfirmar: 'Criar tarefa' },
@@ -252,40 +256,40 @@ describe('GGVP-142 · a ação só com o clique de quem pediu (CA3)', () => {
     expect(await banco.select().from(tarefa)).toEqual([])
 
     roteiro = [{ role: 'assistant', content: 'Feito.' }]
-    const c = await confirmar('gabi', r.acao!.id)
+    const c = await confirmar('helena', r.acao!.id)
     expect(c.statusCode, c.body).toBe(200)
     expect(c.json()).toEqual({ estado: 'feito', texto: '✓ Feito: tarefa «Vera Lúcia · Cobrar documento» criada para ana.', links: [{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }] })
     expect(await banco.select().from(tarefa)).toMatchObject([{ casoId, titulo: 'Cobrar documento', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-12' }])
     const [e] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'tarefa_criada_pelo_chat'))
-    expect(e).toMatchObject({ quem: ids.gabi, alvo: `caso:${casoId}` })
+    expect(e).toMatchObject({ quem: ids.helena, alvo: `caso:${casoId}` })
     expect(e.detalhe).toMatchObject({ peloChat: true, titulo: 'Cobrar documento' })
-    expect((await confirmar('gabi', r.acao!.id)).statusCode, 'o mesmo cartão não serve duas vezes').toBe(410)
+    expect((await confirmar('helena', r.acao!.id)).statusCode, 'o mesmo cartão não serve duas vezes').toBe(410)
   })
 
   it('16.5 · outra pessoa não confirma; cancelar descarta o cartão', async () => {
     montar(COM_SAUDE)
     roteiro = [ferramenta('criar_tarefa', { acao: 'Cobrar documento', para: 'Ana', prazo: null })]
-    const r = await perguntar('gabi', 'Cria uma tarefa para a Ana cobrar o laudo', casoId)
+    const r = await perguntar('helena', 'Cria uma tarefa para a Ana cobrar o laudo', casoId)
     expect((await confirmar('ana', r.acao!.id)).statusCode).toBe(403)
     expect(await banco.select().from(tarefa)).toEqual([])
-    const d = await app.inject({ method: 'DELETE', url: `/api/chat/acoes/${r.acao!.id}`, cookies: await cookieDe('gabi') })
+    const d = await app.inject({ method: 'DELETE', url: `/api/chat/acoes/${r.acao!.id}`, cookies: await cookieDe('helena') })
     expect(d.statusCode).toBe(204)
-    expect((await confirmar('gabi', r.acao!.id)).statusCode).toBe(410)
+    expect((await confirmar('helena', r.acao!.id)).statusCode).toBe(410)
     expect(await banco.select().from(tarefa)).toEqual([])
   })
 
   it('16.5 · CA2 · a ação fora da lista de quem vai fazer não é feita, mesmo confirmada', async () => {
     montar(COM_SAUDE)
     roteiro = [ferramenta('criar_tarefa', { acao: 'Despachar caso', para: 'Ana', prazo: null })]
-    const r = await perguntar('gabi', 'Cria uma tarefa para a Ana despachar o caso', casoId)
+    const r = await perguntar('helena', 'Cria uma tarefa para a Ana despachar o caso', casoId)
     roteiro = [{ role: 'assistant', content: 'Não deu.' }]
-    const c = await confirmar('gabi', r.acao!.id)
+    const c = await confirmar('helena', r.acao!.id)
     expect(c.statusCode).toBe(400)
     expect(c.json().erro).toBe('Não foi feito: «Despachar caso» não está na lista de ações de ana.')
     expect(await banco.select().from(tarefa)).toEqual([])
   })
 
-  it('16.5 · pedir a peça é só da advogada e da sênior; o clique abre "Pedir petição" para ela, e a IA não assina (G6)', async () => {
+  it('16.5 · pedir a peça é só da advogada e da sênior; antes do despacho, recusa; depois, aponta para a mesma "Pedir a petição", e a IA não assina (G6)', async () => {
     await perguntar('ana', 'Oi', casoId)
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).not.toContain('pedir_peca')
 
@@ -295,10 +299,19 @@ describe('GGVP-142 · a ação só com o clique de quem pediu (CA3)', () => {
     const r = await perguntar('gabi', 'Faz a petição inicial da Vera', casoId)
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('pedir_peca')
     expect(r.acao).toMatchObject({ tipo: 'pedir-peca', titulo: 'Vera Lúcia · Petição inicial', travas: expect.arrayContaining([expect.stringContaining('(G6)')]) })
+    // GGVP-158 P7.3: sem o despacho da Sênior, a peça não é pedida, e nenhuma tarefa nasce.
+    roteiro = [{ role: 'assistant', content: 'Não deu.' }]
+    const antes = await confirmar('gabi', r.acao!.id)
+    expect([antes.statusCode, antes.json().erro]).toEqual([400, `Não foi feito: ${MSG_PECA_ANTES_DO_DESPACHO}`])
+    expect(await banco.select().from(tarefa)).toEqual([])
+    // O despacho abriu "Pedir a petição" (D3.05): o chat aponta para ela, sem criar outra.
+    await banco.insert(tarefa).values({ casoId, passo: 'D3.05', titulo: 'Pedir a petição', perfilDono: 'advogada' })
+    roteiro = [ferramenta('pedir_peca', { peca: 'Petição inicial' })]
+    const depois = await perguntar('gabi', 'Faz a petição inicial da Vera', casoId)
     roteiro = [{ role: 'assistant', content: 'Aberta.' }]
-    const c = await confirmar('gabi', r.acao!.id)
+    const c = await confirmar('gabi', depois.acao!.id)
     expect(c.json()).toMatchObject({ estado: 'feito', links: [{ rotulo: 'Abrir a petição', href: `/casos/${casoId}/peticao` }] })
-    expect(await banco.select().from(tarefa)).toMatchObject([{ casoId, titulo: 'Pedir petição', passo: 'D3.05', perfilDono: 'advogada', responsavelId: ids.gabi }])
+    expect(await banco.select().from(tarefa)).toMatchObject([{ casoId, titulo: 'Pedir a petição', passo: 'D3.05', perfilDono: 'advogada' }])
   })
 })
 

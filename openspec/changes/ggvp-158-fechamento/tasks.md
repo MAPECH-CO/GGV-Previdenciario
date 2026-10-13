@@ -613,11 +613,13 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - Verifica com as suítes da cobrança, do checklist, das mensagens e do fechamento e com `rotas/inss.test.ts`:
     - a cobrança aberta e encerrada;
     - o fechamento do lead na Central do Atendimento.
-- [ ] 7.6 O chat (P7.3, decisão 69): `criar_tarefa` só com `tarefa.atribuir`; `pedir_peca` só com a D3.05 aberta, sem outra.
+- [x] 7.6 O chat (P7.3, decisão 69): `criar_tarefa` só com `tarefa.atribuir`; `pedir_peca` só com a D3.05 aberta, sem outra.
   - Verifica com `rotas/chat.test.ts`:
     - a atendente não cria tarefa;
     - a peça antes do despacho recusa;
     - depois, a mesma tarefa.
+
+  Verificado em 13/10: `rotas/chat.test.ts` 29/29. A atendente e a advogada não recebem a ferramenta de criar tarefa, e a Sênior recebe (os testes de criar tarefa passaram a ser da Sênior); a peça antes do despacho recusa, sem tarefa; depois, aponta para a mesma "Pedir a petição".
 - [ ] 7.7 A sugestão de benefício, a IA (P7.4, decisão 70): a finalidade `sugerir_beneficio`, a busca do acervo e a saída conferida contra o catálogo.
   - Verifica com teste, com a IA de mentira:
     - o benefício fora do catálogo não vale;
