@@ -390,10 +390,10 @@ O OK segue com a advogada, por decisão do Pedro.
     - A Sênior que conduziu responde a pendência e decide de uma vez.
     - A tela de hoje manda as decisões na primeira conferência e passa a receber 403 fora da Sênior: o Playwright da conversa muda, e o Pedro é avisado.
 64. **A pendência vira tarefa** (P6.7).
-    - A migração 0032 deixa `tarefa.caso_id` sem obrigação, cria `tarefa.pessoa_id` e o CHECK "caso ou pessoa".
-    - Na conferência, a pendência cria a linha `D5.05`: a pessoa, o caso quando há, o responsável, o prazo e o perfil do setor. O id vai a `pendencia.tarefaId`.
-    - "Cumprida" fecha a linha, e o prazo novo muda a linha.
-    - As pendências abertas que já existem ganham a linha na própria migração, com o id na conversa.
+    - A migração 0032 deixa `tarefa.caso_id` sem obrigação, cria `tarefa.pessoa_id` e o CHECK "caso ou pessoa", e `tarefa.atendimento_id`, a conversa da tarefa da conversa.
+    - Na conferência, a pendência cria a linha `D5.05`: a pessoa, o caso quando há, a conversa, o responsável, o prazo e o perfil dele.
+    - "Cumprida" fecha a linha, e o prazo novo muda a linha. As duas acham a linha pela conversa.
+    - As pendências abertas que já existem ganham a linha na própria migração.
     - `/api/conversas/tarefas` lê as linhas `D5.04` e `D5.05`. O "Registrar conversa" (`D5.01`) lê só as conversas de quem está no login, pelo `quemId`, no SQL. A resposta para a tela não muda.
     - `/api/tarefas` não repete as linhas `D5`: elas seguem na Central pelo caminho da conversa.
     - O tipo da tarefa passa a ter `casoId` nulo. Os usos são conferidos pelo typecheck.

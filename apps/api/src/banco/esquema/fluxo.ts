@@ -2,7 +2,7 @@
 import { sql } from 'drizzle-orm'
 import { boolean, check, date, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
-import { caso } from './casos.ts'
+import { atendimento, caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
 import { pessoa } from './pessoas.ts'
 
@@ -43,6 +43,8 @@ export const tarefa = pgTable(
     /** Nulo só na tarefa da pessoa, como a pendência da conversa com o lead (GGVP-158 P6.7): aí vale `pessoaId`. */
     casoId: uuid('caso_id').references(() => caso.id),
     pessoaId: uuid('pessoa_id').references(() => pessoa.id),
+    /** A conversa da tarefa da conversa (D5.04 e D5.05): a Central lê a pendência e o cliente por ela (GGVP-158 P6.7). */
+    atendimentoId: uuid('atendimento_id').references(() => atendimento.id),
     etapaId: uuid('etapa_id').references(() => etapa.id),
     passo: text('passo'),
     titulo: text('titulo').notNull(),

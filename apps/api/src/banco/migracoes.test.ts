@@ -155,7 +155,7 @@ describe('confiança dos dados', () => {
     await db.execute(sql`insert into tarefa (pessoa_id, passo, titulo) values (${pessoaId}, 'D5.05', 'Cumprir pendência da conversa')`)
   })
 
-  it('GGVP-158 P6.7 · a pendência aberta da conversa ganha a linha da tarefa e o id na conversa; a cumprida, não; rodar de novo não repete', async () => {
+  it('GGVP-158 P6.7 · a pendência aberta da conversa ganha a linha da tarefa, ligada à conversa; a cumprida, não; rodar de novo não repete', async () => {
     const [{ id: pessoaId }] = (await db.execute<{ id: string }>(sql`insert into pessoa (nome) values ('Rita') returning id`)).rows
     const [{ id: doc }] = (
       await db.execute<{ id: string }>(
@@ -163,8 +163,14 @@ describe('confiança dos dados', () => {
       )
     ).rows
     const pendencia = (cumpridaEm?: string) => ({ texto: 'Trazer o laudo novo', responsavel: 'Doc', responsavelId: doc, setor: 'Documentação · ADM', prazo: '2026-10-20', ...(cumpridaEm && { cumpridaEm }) })
+    const conversas: string[] = []
     for (const p of [pendencia(), pendencia('2026-10-14T12:00:00.000Z')]) {
-      await db.execute(sql`insert into atendimento (pessoa_id, canal, inicio, dados) values (${pessoaId}, 'telefone', now(), ${JSON.stringify({ pendencia: p })}::jsonb)`)
+      const [{ id }] = (
+        await db.execute<{ id: string }>(
+          sql`insert into atendimento (pessoa_id, canal, inicio, dados) values (${pessoaId}, 'telefone', now(), ${JSON.stringify({ pendencia: p })}::jsonb) returning id`,
+        )
+      ).rows
+      conversas.push(id)
     }
     // A última instrução da migração 0032 é a que leva as pendências para a tabela; aqui ela roda de novo, sobre o banco com dados.
     const migracao = readFileSync(join(pastaMigracoes, '0032_pendencia_prestacao_e_chatwoot.sql'), 'utf8').split('--> statement-breakpoint')
@@ -172,12 +178,10 @@ describe('confiança dos dados', () => {
     await levar()
     await levar()
     const linhas = (
-      await db.execute<{ id: string; caso_id: string | null; pessoa_id: string; passo: string; perfil_dono: string; responsavel_id: string; prazo: string }>(
-        sql`select id, caso_id, pessoa_id, passo, perfil_dono, responsavel_id, prazo::text from tarefa where responsavel_id = ${doc}`,
+      await db.execute<{ caso_id: string | null; pessoa_id: string; atendimento_id: string; passo: string; perfil_dono: string; prazo: string }>(
+        sql`select caso_id, pessoa_id, atendimento_id, passo, perfil_dono, prazo::text from tarefa where responsavel_id = ${doc}`,
       )
     ).rows
-    expect(linhas.map((l) => [l.caso_id, l.pessoa_id, l.passo, l.perfil_dono, l.prazo])).toEqual([[null, pessoaId, 'D5.05', 'documentacao', '2026-10-20']])
-    const ids = (await db.execute<{ id: string | null }>(sql`select dados->'pendencia'->>'tarefaId' as id from atendimento where pessoa_id = ${pessoaId}`)).rows.map((r) => r.id)
-    expect(ids.sort()).toEqual([linhas[0].id, null].sort())
+    expect(linhas.map((l) => [l.caso_id, l.pessoa_id, l.atendimento_id, l.passo, l.perfil_dono, l.prazo])).toEqual([[null, pessoaId, conversas[0], 'D5.05', 'documentacao', '2026-10-20']])
   })
 })

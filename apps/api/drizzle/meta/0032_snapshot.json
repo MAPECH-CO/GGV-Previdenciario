@@ -1,5 +1,5 @@
 {
-  "id": "c79a82dd-cd85-404a-bfcd-0d07c68f74b7",
+  "id": "d8852c60-ece3-401c-98c4-93fb29069c04",
   "prevId": "fc0d8e09-5bc7-4038-aa7d-ded13803d977",
   "version": "7",
   "dialect": "postgresql",
@@ -2426,6 +2426,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "atendimento_id": {
+          "name": "atendimento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "etapa_id": {
           "name": "etapa_id",
           "type": "uuid",
@@ -2547,6 +2553,19 @@
           "tableTo": "pessoa",
           "columnsFrom": [
             "pessoa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tarefa_atendimento_id_atendimento_id_fk": {
+          "name": "tarefa_atendimento_id_atendimento_id_fk",
+          "tableFrom": "tarefa",
+          "tableTo": "atendimento",
+          "columnsFrom": [
+            "atendimento_id"
           ],
           "columnsTo": [
             "id"
