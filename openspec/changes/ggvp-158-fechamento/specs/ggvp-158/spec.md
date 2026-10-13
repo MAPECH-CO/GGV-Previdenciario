@@ -469,3 +469,276 @@ O servidor MUST NOT subir com essa variável na homologação nem na produção.
 - **Dado** o servidor sem `LEITURA_SIMULADA`
 - **Quando** a tela chama a rota que simula o lote do scanner
 - **Então** a rota não existe
+
+### Requirement: P5.1 · A orientação da perícia sai de verdade pelo Chatwoot
+A orientação pelo Chatwoot SHALL ficar registrada como enviada só quando a mensagem saiu. A rota da orientação MUST receber a mensagem que o correio do cliente enviou e conferir que ela:
+- é do mesmo cliente;
+- é do modelo "Perícia: data, o que levar e orientação";
+- tem o texto da orientação;
+- não ficou como "não saiu".
+
+O lembrete da véspera SHALL seguir a mesma regra, com uma das mensagens da perícia. A orientação por ligação fica como hoje, sem mensagem.
+
+#### Scenario: P5.1 · A mensagem saiu
+- **Dado** a orientação enviada pelo Chatwoot e entregue
+- **Quando** o Jurídico administrativo registra a orientação com essa mensagem
+- **Então** a perícia guarda a orientação com a mensagem, e a tarefa de orientar sai da fila
+
+#### Scenario: P5.1 · A mensagem não saiu
+- **Dado** a mensagem da orientação que ficou como "não saiu"
+- **Quando** o Jurídico administrativo registra a orientação com ela
+- **Então** o portal recusa com "A orientação não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.", e nada é registrado
+
+#### Scenario: P5.1 · Sem mensagem
+- **Quando** o Jurídico administrativo registra a orientação pelo Chatwoot sem dizer a mensagem
+- **Então** o portal recusa com "Envie a orientação pelo Chatwoot antes de registrar."
+
+### Requirement: P5.2 · O perito nasce da nomeação
+Na classificação da nomeação de perito, a IA SHALL ler o nome do perito, quando ele está escrito, e a pessoa confere. Com o nome conferido, o servidor SHALL:
+- achar o perito pelo nome e pelas grafias conhecidas;
+- ou, sem achar, criá-lo com o tipo da perícia aberta do caso (médica ou social) e o perfil vazio;
+- ligá-lo à perícia aberta.
+
+A pergunta de um clique da Perícia SHALL aceitar também o nome de um perito novo. O perfil SHALL crescer laudo a laudo, na perícia médica e na social. Pelo Raio-X, o perito entra com o importador da parte 7, pela mesma regra.
+
+#### Scenario: P5.2 · Perito novo
+- **Dado** nenhum perito com o nome "Ana Souza"
+- **Quando** a pessoa classifica a nomeação com o perito "Ana Souza"
+- **Então** o perito nasce, fica ligado à perícia aberta do caso e aparece na lista de peritos
+
+#### Scenario: P5.2 · Perito conhecido por outra grafia
+- **Dado** o perito "José da Silva", com a grafia "Jose Silva"
+- **Quando** a nomeação traz "Jose Silva"
+- **Então** a perícia liga ao perito que já existe, sem criar outro
+
+#### Scenario: P5.2 · O laudo da perícia social
+- **Dado** a perícia social com o perito ligado
+- **Quando** o laudo é registrado
+- **Então** o perfil do perito ganha esse laudo
+
+### Requirement: P5.3 · Os limites vêm da Configuração
+Os laços SHALL ler os limites da Configuração. Quando a gestão não mudou nada, valem os números do Lucas:
+
+| Laço | Tentativas | Intervalo |
+|---|---|---|
+| Cobrança de documento da Recepção | 2 | 3 dias |
+| Confirmação da entrevista do lead (parâmetros novos) | 2 | 3 dias |
+| Remarcação da perícia | 1 remarcação, depois sobe para a advogada responsável | — |
+
+Com prazo do juiz ou do INSS, a próxima tentativa MUST NOT passar do dia antes do prazo. A Configuração SHALL dizer quais limites estão em uso. O do cliente sumido segue sem uso: o laço não existe e fica fora da parte 5.
+
+#### Scenario: P5.3 · Cobrança com outro limite
+- **Dado** a gestão pôs 3 tentativas na cobrança
+- **Quando** a segunda tentativa fica sem resposta
+- **Então** a cobrança não sobe para a Sênior
+
+#### Scenario: P5.3 · Remarcação da perícia
+- **Dado** o limite padrão de 1 remarcação
+- **Quando** a perícia é remarcada pela segunda vez
+- **Então** ela sobe para a advogada responsável
+
+#### Scenario: P5.3 · Confirmação do lead
+- **Dado** a gestão pôs 3 tentativas na confirmação da entrevista
+- **Quando** a segunda tentativa fica sem confirmação
+- **Então** a confirmação não sobe para a Sênior
+
+#### Scenario: P5.3 · O prazo manda
+- **Dado** uma cobrança com prazo do juiz daqui a 2 dias e 3 dias entre as tentativas
+- **Quando** a tentativa de hoje fica sem resposta
+- **Então** a próxima fica para o dia antes do prazo
+
+### Requirement: P5.4 · A espera de fora volta ao topo todo dia útil
+Enquanto o caso espera o INSS ou o resultado da perícia já feita, a Central da advogada SHALL mostrar a espera no topo uma vez por dia útil. Do INSS, contam as três esperas: receber o requerimento, decidir e analisar a resposta.
+
+Com "Olhei, sem novidade", a espera SHALL sair do topo até o próximo dia útil, e a marca fica no histórico. Fim de semana e feriado não chamam.
+
+A espera da Justiça fica com a vigília do diário, que olha três vezes por dia. A vigília do Meu INSS continua manual.
+
+#### Scenario: P5.4 · Dia útil
+- **Dado** um caso esperando o INSS decidir
+- **Quando** a advogada abre a Central numa terça-feira útil
+- **Então** o caso está no topo, com "Olhar a espera: INSS decidir"
+
+#### Scenario: P5.4 · Olhei, sem novidade
+- **Quando** a advogada marca "Olhei, sem novidade"
+- **Então** a espera sai do topo até o próximo dia útil, e a marca fica no histórico
+
+#### Scenario: P5.4 · Sábado
+- **Dado** um sábado
+- **Quando** a advogada abre a Central
+- **Então** a espera não está no topo
+
+### Requirement: P5.5 · A perícia do juiz com a data da publicação
+Quando a exigência do juiz abre a perícia e a publicação traz a data, a hora e o local, o servidor SHALL marcar a perícia na hora, como lida pelo sistema, sem a tarefa de marcar. Também:
+- o resumo do processo SHALL dizer que o sistema marcou;
+- a tarefa de orientar SHALL dizer que o sistema marcou, com a data e como preparar.
+
+Sem data na publicação, a tarefa de marcar nasce, como hoje.
+
+#### Scenario: P5.5 · Data na publicação
+- **Dado** a publicação da exigência com "perícia médica em 20/11/2026, às 9h, na sede da Justiça Federal"
+- **Quando** a exigência é distribuída pedindo a perícia médica
+- **Então** a perícia fica marcada para 20/11/2026, às 9h, o resumo do processo diz que o sistema marcou, e não nasce a tarefa de marcar
+
+#### Scenario: P5.5 · Sem data
+- **Dado** a publicação sem data da perícia
+- **Quando** a exigência é distribuída pedindo a perícia
+- **Então** nasce a tarefa de marcar, como hoje
+
+### Requirement: P5.6 · O item sem documento passa antes pela dilação ou pelo reagendamento
+Para encerrar sem prova um item da exigência do juiz, a advogada SHALL ter antes o pedido de dilação do prazo autorizado pela Sênior nesta exigência. Na perícia, vale o pedido de reagendamento registrado. Sem nenhum dos dois, ela SHALL dizer por que nenhum cabe. Sem isso, o portal MUST recusar.
+
+#### Scenario: P5.6 · Sem dilação
+- **Dado** a exigência sem pedido de dilação
+- **Quando** a advogada encerra um item sem prova, só com o motivo
+- **Então** o portal recusa com "Antes de encerrar sem prova, peça a dilação do prazo (na perícia, o reagendamento). Se nenhum cabe, diga por quê."
+
+#### Scenario: P5.6 · Depois da dilação
+- **Dado** a dilação autorizada pela Sênior nesta exigência
+- **Quando** a advogada encerra o item sem prova, com o motivo
+- **Então** o item fica encerrado
+
+#### Scenario: P5.6 · Nenhum cabe
+- **Quando** a advogada encerra o item sem prova, com o motivo e o porquê de não caber a dilação
+- **Então** o item fica encerrado, e o porquê fica no histórico
+
+### Requirement: P5.7 · Encerrar só com o despacho esperando, e liberar de novo zera o OK
+`POST /api/casos/:id/encerrar` SHALL aceitar só o caso que espera o despacho da Sênior, como a tela já mostra.
+
+Liberar de novo um caso já aprovado SHALL zerar o OK anterior:
+- o protocolo MUST NOT andar com o OK antigo;
+- as tarefas abertas por ele (protocolar e decidir a perícia) são canceladas.
+
+#### Scenario: P5.7 · Caso já despachado
+- **Dado** um caso indeferido que a Sênior já despachou
+- **Quando** a Sênior tenta encerrar o caso
+- **Então** o portal recusa com "Este caso não está esperando o despacho da Sênior."
+
+#### Scenario: P5.7 · Liberar de novo
+- **Dado** um caso aprovado pela Sênior, com "Protocolar no Meu INSS" aberta
+- **Quando** a Documentação libera o caso de novo
+- **Então** "Protocolar no Meu INSS" sai da fila, e o protocolo só anda com o novo OK
+
+### Requirement: P5.8 · O tribunal e a assinatura na Configuração
+A Configuração SHALL mostrar e editar, com histórico:
+- os tribunais do protocolo: nome, site e tamanho máximo por arquivo, em MB;
+- a assinatura padrão da petição.
+
+Só a gestão edita. Um banco novo SHALL começar com a Justiça Federal da 3ª Região, com 3 MB por arquivo, e com a assinatura do Dr. Glauco, com a OAB a completar. A petição MUST NOT protocolar com a assinatura a completar.
+
+#### Scenario: P5.8 · Banco novo
+- **Quando** a migração roda num banco sem tribunal
+- **Então** a Configuração mostra a Justiça Federal da 3ª Região e a assinatura a completar
+
+#### Scenario: P5.8 · Assinatura a completar
+- **Dado** a assinatura com "[completar]"
+- **Quando** a advogada abre a petição aprovada
+- **Então** a trava do pacote diz "A assinatura padrão da petição ainda tem [completar]: complete na Configuração."
+
+#### Scenario: P5.8 · Mudar o tamanho
+- **Quando** a Sênior muda o tamanho do tribunal para 10 MB
+- **Então** a trava do pacote passa a usar 10 MB, e a mudança fica no histórico
+
+### Requirement: P5.9 · A trava do pacote sem tribunal
+Sem tribunal cadastrado, a trava do pacote MUST falhar com "Falta o tribunal do protocolo: a Sênior cadastra na Configuração." O protocolo SHALL recusar com a mesma mensagem.
+
+#### Scenario: P5.9 · Nenhum tribunal
+- **Dado** a Configuração sem tribunal
+- **Quando** a advogada abre a petição aprovada
+- **Então** a trava do pacote falha com a mensagem do tribunal que falta
+
+### Requirement: P5.10 · O alarme da vigília chega ao suporte
+Estes casos SHALL virar alarme:
+- a rodada presa em "rodando" além do tempo vira falha;
+- na produção, nenhuma fonte ligada.
+
+Todo alarme SHALL ir ao topo da Central da Sênior e ao suporte técnico. Valem a falha de qualquer tipo, a rodada que não rodou e a vigília sem fonte. O suporte recebe:
+- a mensagem no canal da equipe, por webhook;
+- o chamado no Jira.
+
+Cada um liga com as suas variáveis; sem elas, o alarme fica no portal e no log. O alarme sai uma vez por rodada e MUST NOT levar dado de cliente nem texto de publicação.
+
+#### Scenario: P5.10 · Rodada presa
+- **Dado** uma rodada em "rodando" há 15 minutos
+- **Quando** o relógio da vigília bate
+- **Então** a rodada vira falha, com o motivo
+
+#### Scenario: P5.10 · Produção sem fonte
+- **Dado** a produção sem fonte de publicação ligada
+- **Quando** a Sênior abre a Central
+- **Então** o topo diz que a vigília está sem fonte ligada
+
+#### Scenario: P5.10 · Falha de qualquer tipo
+- **Dado** o canal e o Jira ligados
+- **Quando** uma rodada falha por tempo esgotado
+- **Então** sai uma mensagem no canal e um chamado no Jira, com a fonte, o horário e o motivo, uma vez só
+
+### Requirement: P5.11 · Os feriados do ano que falta
+Quando o ano corrente não tem feriado nenhum, a Central da Sênior SHALL mostrar "Carregar os feriados de <ano>". O mesmo vale para o ano seguinte, a partir de dezembro. A carga da lei SHALL aceitar o ano.
+
+#### Scenario: P5.11 · Dezembro sem o ano seguinte
+- **Dado** dezembro de 2027, sem feriados de 2028
+- **Quando** a Sênior abre a Central
+- **Então** ela vê "Carregar os feriados de 2028"; depois da carga, os da lei de 2028 entram, e a tarefa some
+
+### Requirement: P5.12 · Número de jurimetria fora do texto da peça
+A aprovação da petição, da manifestação e do pedido de dilação MUST recusar o texto com número de jurimetria: taxa, tempo médio ou chance, no formato que o portal mostra (G22). A peça pode citar os entendimentos e os processos de exemplo.
+
+#### Scenario: P5.12 · Taxa no texto
+- **Dado** a versão da manifestação com "71% em 34 processos · base de 07/10"
+- **Quando** a advogada aprova a versão
+- **Então** o portal recusa com "O texto cita número de jurimetria (G22): tire antes de aprovar."
+
+#### Scenario: P5.12 · Entendimento citado
+- **Dado** a versão que cita um entendimento do juízo e o processo de exemplo
+- **Quando** a advogada aprova a versão
+- **Então** a versão fica aprovada
+
+### Requirement: P5.13 · A jurimetria só para o Jurídico e os sócios
+Estes números MUST ir só a quem tem `estudo.ver` (Jurídico e sócios):
+- as taxas por perito, por juízo (e vara) e por advogada do painel de resultados;
+- os números e o resumo do perfil do perito na perícia.
+
+Os outros perfis veem o resto do painel e da perícia, sem esses números.
+
+#### Scenario: P5.13 · Painel por perito
+- **Quando** o líder do Atendimento pede o painel de resultados por perito
+- **Então** o portal recusa com "Esse recorte é só do Jurídico e dos sócios."
+
+#### Scenario: P5.13 · Perícia na Documentação
+- **Quando** a Documentação abre a perícia do caso
+- **Então** a resposta não traz os números nem o resumo do perfil do perito
+
+### Requirement: P5.14 · O juízo com o juiz e o perito
+`GET /api/casos/:id/juizo` SHALL trazer também:
+- o juiz do caso, com quantos casos do escritório estão com ele;
+- o perito da perícia do caso, com quantos casos do escritório ele tem.
+
+As contas são feitas no código. O resumo do processo SHALL trazer a vara, o juiz e o nome do perito, sem números, para todos que veem o caso.
+
+#### Scenario: P5.14 · O juiz e o perito com os casos
+- **Dado** dois casos do escritório com o mesmo juiz e o mesmo perito
+- **Quando** a advogada abre o juízo de um deles
+- **Então** o juiz e o perito vêm com 2 casos cada
+
+#### Scenario: P5.14 · O resumo sem números
+- **Quando** o Atendimento abre o resumo do processo
+- **Então** vê a vara, o juiz e o nome do perito, sem número nenhum
+
+### Requirement: P5.15 · O protocolo do recurso fecha a tarefa
+A Sênior SHALL registrar o protocolo do recurso com o comprovante (PDF ou imagem, até 25 MB) e a data. O registro SHALL:
+- fechar "Elaborar e protocolar o recurso";
+- guardar o comprovante no caso;
+- ficar no histórico.
+
+O processo segue na vigília.
+
+#### Scenario: P5.15 · Recurso protocolado
+- **Dado** a tarefa "Elaborar e protocolar o recurso" aberta
+- **Quando** a Sênior registra o protocolo com o comprovante
+- **Então** a tarefa fecha, e o comprovante fica no caso
+
+#### Scenario: P5.15 · Sem recurso a protocolar
+- **Dado** um caso sem a tarefa do recurso
+- **Quando** a Sênior registra o protocolo
+- **Então** o portal recusa com "Este caso não tem recurso esperando o protocolo."

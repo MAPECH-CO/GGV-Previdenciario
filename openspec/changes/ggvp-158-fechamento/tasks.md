@@ -301,3 +301,93 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - tela 1653/1653, em 197 arquivos;
   - API 887/887 (3 pulados), em 100 arquivos. Na suíte inteira, 25 testes estouraram o tempo pela carga da máquina; repetidos sem carga, passaram. A única falha de verdade foi o glossário, que agora recebe os 23 benefícios novos na 0031;
   - Playwright 260/260.
+
+## GGVP-158 · Parte 5 · Perícia, INSS e Justiça (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-5`, em cima do #74. A migração 0032 sai no fim, sobre a main mais nova. Na ordem contrato → teste → servidor.
+
+- [ ] 5.1 A orientação e o lembrete conferem a mensagem (P5.1, decisão 40): `mensagemId` em `OrientacaoAoCliente` e em `MensagemConferida`; a rota confere a pessoa, o modelo, o texto e o status.
+  - Verifica com `rotas/pericia.test.ts`:
+    - a mensagem entregue registra;
+    - a que não saiu recusa;
+    - sem o id, recusa;
+    - a ligação segue sem mensagem.
+- [ ] 5.2 O perito pelo nome (P5.2, decisão 41): `perito` na leitura da IA e na classificação; `peritoPeloNome` acha ou cria; a nomeação liga à perícia aberta.
+  - Verifica com `rotas/publicacoes.test.ts` e `vigilia/perito.test.ts`:
+    - o perito novo nasce e liga;
+    - a grafia conhecida não cria outro;
+    - sem perícia aberta, nasce médico e fica no histórico.
+- [ ] 5.3 A pergunta de um clique com o nome novo (P5.2): `PeritoEscolhido` aceita `nome`. Verifica com `rotas/pericia.test.ts`: o perito nasce, e a orientação sai pelo perfil dele.
+- [ ] 5.4 O perfil laudo a laudo (P5.2): o laudo da perícia social entra no perfil do perito. Verifica com `rotas/pericia.test.ts`.
+- [ ] 5.5 Os limites por parâmetro, nas regras (P5.3, decisão 42): cobrança, confirmação e remarcação recebem os limites, com os números do Lucas como padrão; o da remarcação passa a 1.
+  - Verifica com os testes das regras:
+    - com 3 tentativas, a segunda sem resposta não sobe;
+    - com prazo externo, a próxima fica no dia antes.
+- [ ] 5.6 Os limites lidos da Configuração (P5.3): os parâmetros novos da confirmação; o servidor lê os quatro laços; `emUso` na Configuração.
+  - Verifica com teste:
+    - a cobrança da Recepção usa o limite salvo;
+    - a confirmação também;
+    - a remarcação sobe na segunda;
+    - os de `contato.*` voltam `emUso: false`.
+- [ ] 5.7 A espera de fora (P5.4, decisão 43): as linhas da espera na Central da advogada, urgentes no dia útil; `POST /api/casos/:id/esperas/olhada`.
+  - Verifica com teste:
+    - INSS decidindo, no topo na terça;
+    - fora do topo depois de "Olhei" e no sábado;
+    - a perícia feita sem resultado também;
+    - sem linha repetida com a "Trazer a resposta do INSS".
+- [ ] 5.8 A data do juiz na hora (P5.5, decisão 44): a exigência do juiz marca a perícia com a data da publicação, sem a tarefa de marcar; o resumo do processo diz `marcadaPeloSistema`.
+  - Verifica com `rotas/exigencia-juiz.test.ts` e `rotas/processo.test.ts`:
+    - com a data, a perícia marcada, sem tarefa de marcar, e a orientação "pelo sistema";
+    - sem a data, a tarefa de marcar.
+- [ ] 5.9 O item sem documento (P5.6, decisão 45): `semSaida` em `EncerrarSemProva`; a rota pede a dilação, a remarcação ou o porquê.
+  - Verifica com `rotas/manifestacao.test.ts`:
+    - sem nada, recusa;
+    - com a dilação autorizada, encerra;
+    - com o `semSaida`, encerra e guarda o porquê.
+- [ ] 5.10 Encerrar e liberar (P5.7, decisão 46).
+  - Verifica com `rotas/vigilia.test.ts` e `rotas/conferencia.test.ts`:
+    - o caso já despachado não encerra;
+    - liberar de novo cancela o protocolo aberto, e o OK antigo não vale.
+- [ ] 5.11 Tribunal e assinatura, rotas (P5.8, decisão 47): `PUT /api/configuracao/tribunais` e `/assinatura`; o `GET` devolve os dois.
+  - Verifica com `rotas/configuracao.test.ts`:
+    - a Sênior salva, e fica no histórico;
+    - o Atendimento recusa;
+    - o tamanho fora da faixa recusa.
+- [ ] 5.12 A trava do pacote (P5.8, P5.9): falha sem tribunal e com a assinatura a completar; o protocolo recusa sem tribunal; o PDF não usa a assinatura "a configurar".
+  - Verifica com `fluxo/travas.test.ts` e `rotas/peticao.test.ts`.
+- [ ] 5.13 O alarme da vigília (P5.10, decisão 48): a rodada presa vira falha; sem fonte na produção, a linha da Sênior e o alarme do dia; `avisarSuporte`, com o canal e o Jira.
+  - Verifica com teste, com o fetch de mentira:
+    - a presa;
+    - o sem fonte, uma vez por dia;
+    - a falha de qualquer tipo chama o canal e o Jira uma vez, sem texto de publicação;
+    - a falha do Jira não derruba a rodada.
+- [ ] 5.14 ADR-018 (P5.10): o alarme ao suporte pelo canal e pelo Jira, e o que cada variável liga. Verifica: o arquivo em `docs/decisoes/`.
+- [ ] 5.15 As variáveis (P5.10): as cinco `ALARME_*` na lista das variáveis do servidor e no documento da homologação.
+  - Verifica com `variaveis.test.ts`.
+  - O `.env.example` é do Mateus: a regra do repositório não deixa o agente ler nem editar `.env*`.
+- [ ] 5.16 Feriados (P5.11, decisão 49): a carga aceita o ano; a linha "Carregar os feriados de <ano>" na Central da Sênior.
+  - Verifica com `rotas/feriados.test.ts` e o teste da Central:
+    - dezembro sem o ano seguinte mostra a linha;
+    - a carga de 2028 entra, e a linha some.
+- [ ] 5.17 Jurimetria no texto, regra (P5.12, decisão 50): `numeroDeJurimetriaNoTexto` em `packages/contratos`.
+  - Verifica com o teste do contrato:
+    - os formatos do G22 acusam;
+    - o percentual de lei, o entendimento e o processo de exemplo passam;
+    - o texto grande roda em tempo linear.
+- [ ] 5.18 Jurimetria no texto, servidor (P5.12): a aprovação da petição, da manifestação e da dilação recusa e registra o G22. Verifica com `rotas/peticao.test.ts` e `rotas/manifestacao.test.ts`.
+- [ ] 5.19 A jurimetria só com `estudo.ver` (P5.13, decisão 51): os recortes do painel e a `visao` da perícia.
+  - Verifica com `rotas/gestao.test.ts` e `rotas/pericia.test.ts`:
+    - o líder do Atendimento e o Financeiro recebem 403 no recorte por perito;
+    - a Documentação recebe a perícia sem os números.
+- [ ] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.
+  - Verifica com `rotas/juizo.test.ts` e `rotas/processo.test.ts`:
+    - dois casos com o mesmo juiz e perito contam 2;
+    - o resumo do Atendimento sem números.
+- [ ] 5.21 O protocolo do recurso (P5.15, decisão 53): `POST /api/casos/:id/recurso/protocolo`.
+  - Verifica com `rotas/recurso.test.ts`:
+    - fecha a tarefa e guarda o comprovante;
+    - sem tarefa, recusa;
+    - a data depois de hoje recusa.
+- [ ] 5.22 A migração 0032 (P5.8): o tribunal e a assinatura do banco novo, com `ON CONFLICT DO NOTHING`, sobre a main mais nova. Verifica com teste: o banco novo tem os dois; o banco com a chave guarda o que tinha.
+- [ ] 5.23 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+- [ ] 5.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.

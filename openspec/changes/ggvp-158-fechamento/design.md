@@ -194,9 +194,120 @@ Também só servidor, com teste junto, num pedido em cima do #71. Migração nov
     - Com ela, as rotas aceitam a chamada sem arquivo, como hoje, e as rotas simuladas existem: o lote do scanner e a leitura do contrato.
     - O servidor recusa subir com ela e `AMBIENTE` igual a `homologacao` ou `producao`, a regra do `aceitaGanchoDeTeste`.
 
+### Parte 5 · Perícia, INSS e Justiça (decisões do Mateus, 13/10)
+
+Só servidor, com teste junto, num pedido em cima do #74. Várias rotas aqui são as que as telas da GGVP-159 parte 4 esperam ("espera a rota do Mateus"). Migração nova só uma, a 0032 (o tribunal e a assinatura padrão), no fim da parte e sobre a main mais nova. Não há matriz nova: a jurimetria usa `estudo.ver`, que já é do Jurídico e dos sócios.
+
+Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre chamado no Jira (a proposta dele de 02/10); o laço do cliente sumido fica fora da parte 5, porque não existe no código e falta dizer quando o cliente conta como sumido; plano aprovado, código em seguida.
+
+40. **A orientação confere a mensagem** (P5.1).
+    - A tela já envia antes, pelo correio do cliente (`POST /api/fichas/:id/mensagens`), e registra depois.
+    - `OrientacaoAoCliente` ganha `mensagemId`, obrigatório no canal `chatwoot`. A rota confere a linha de `mensagem`: a pessoa do caso, o modelo `pericia-orientacao`, o texto da orientação e o status diferente de `falhou`.
+    - O id vai à preparação da perícia e ao histórico.
+    - O lembrete da véspera (`MensagemConferida`) ganha o mesmo `mensagemId`, com um dos dois modelos da perícia.
+    - Sem enviar de verdade, nada registra. É a regra do "simulado, não saiu" da parte 1.
+41. **O perito pelo nome** (P5.2).
+    - `LeituraDaPublicacaoPelaIa` ganha `perito`, lido como a vara e o juiz; `ClassificarPublicacao` ganha `perito`, pelo `validarNome` da `campos`.
+    - Uma função só, `peritoPeloNome(banco, nome, tipo)`, acha pelo nome e pelas grafias (a regra de `peritoDaPublicacao`) ou cria, com `perfil: { tipo, onde: vara do caso ou "", laudos: [] }`. O nome cai no índice único do `nome_normalizado`.
+    - O tipo é o da perícia aberta do caso, a mais recente sem perito; sem perícia aberta, médica.
+    - `PeritoEscolhido` aceita `peritoId` ou `nome`, e a pergunta de um clique cria pela mesma função.
+    - O importador do Raio-X (parte 7) chama a mesma função.
+42. **Os limites por parâmetro** (P5.3).
+    - As regras puras (`regras/cobranca.ts`, `regras/confirmacao.ts`, `regras/pericia.ts`) recebem os limites, com os números do Lucas como padrão. A tela segue igual até o Pedro passar os valores.
+    - O servidor lê a `configuracao`: `cobranca.*`, os novos `confirmacao.limite` e `confirmacao.intervalo_dias`, e `pericia.remarcacao.limite`.
+    - O padrão da remarcação passa de 2 a 1, como o Lucas disse (GGVP-104).
+    - `ConfiguracaoDoEscritorio.parametros[]` ganha `emUso`. Os de `contato.*` ficam `false`, para a tela não precisar adivinhar.
+    - O prazo externo comprime: a regra da cobrança já faz (CA12); o teste cobre os laços que têm prazo.
+43. **A espera de fora** (P5.4).
+    - Quais são: as etapas `aguardando_externo` do INSS (`aguardando` começa com "INSS") e as perícias com comparecimento e sem resultado.
+    - Na Central da advogada, `GET /api/tarefas` monta uma linha por espera: "Olhar a espera: …", com o caso e a tela do caso.
+    - A linha fica urgente (no topo) no dia útil, pelo `ehDiaUtil` com os feriados nacionais, até alguém marcar "Olhei, sem novidade" naquele dia.
+    - `POST /api/casos/:id/esperas/olhada` (`tarefa.cumprir`) grava um `evento_auditoria` `espera_olhada`, com a espera. Não há tabela nova.
+    - Quando a espera já tem tarefa da advogada (a "Trazer a resposta do INSS"), a própria linha dela vira o lembrete, sem linha repetida.
+44. **A data do juiz na hora** (P5.5).
+    - `abrirPericiasDaExigencia`, na origem do juiz, recebe o texto da publicação.
+    - Para cada tipo, `dataDoJuizoNaPublicacao` grava `agendada_para` e `local` na linha da perícia.
+    - Com todas as perícias marcadas assim, a tarefa de marcar não nasce.
+    - Na primeira leitura, o documento das telas nasce com a mesma data (`criarPericia` com `dataDoJuizo`, como hoje), e a orientação já sai "pelo sistema".
+    - O resumo do processo (`GET /api/casos/:id/processo`) ganha `pericia.marcadaPeloSistema`: verdadeiro com a origem do juiz e a data lida.
+45. **O item sem documento** (P5.6).
+    - `EncerrarSemProva` ganha `semSaida` (texto), o porquê de não caber dilação nem reagendamento.
+    - A rota `/manifestacao/sem-prova` aceita quando existe:
+      - a dilação autorizada nesta exigência (a decisão `D3a.04` `dilacao`, a de `dilacaoAutorizada`);
+      - ou, na perícia, a remarcação registrada depois da exigência;
+      - ou o `semSaida` preenchido.
+    - O porquê vai ao histórico, junto com o motivo.
+46. **Encerrar e liberar** (P5.7).
+    - `/encerrar` pede a tarefa `D3.03` aberta: o despacho esperando, a mesma regra do `podeEncerrar` da tela.
+    - `okDaSenior` não vale com a tarefa `D2.01` aberta, que é a nova liberação.
+    - A nova liberação cancela as `D2.02` e `D2.03` abertas, que o OK anterior tinha aberto.
+47. **Tribunal e assinatura** (P5.8, P5.9).
+    - Chaves `tribunais` e `peticao.assinatura` da `configuracao`, como a semente já usa.
+    - `PUT /api/configuracao/tribunais` e `PUT /api/configuracao/assinatura`, com `configuracao.editar`. A mudança vai ao histórico da configuração, e `GET /api/configuracao` devolve os dois.
+    - O tamanho do tribunal é um inteiro de 1 a 100, pela `campos`. O site é `https`.
+    - A migração 0032 põe:
+      - a "Justiça Federal da 3ª Região", `https://www.trf3.jus.br/`, 3 MB;
+      - "Dr. Glauco · OAB/UF [completar]".
+
+      Fica `ON CONFLICT DO NOTHING`: a homologação preparada guarda o que tem.
+    - 3 MB é o menor limite que o TRF3 publicou: o PJe pede 3 MB por PDF, e os JEFs, 10 MB. A Sênior ajusta.
+    - A OAB do Dr. Glauco espera o Lucas.
+    - A trava do pacote falha sem tribunal e com a assinatura que tem "[completar". É a mesma regra do texto, `faltaCompletar` de `packages/contratos/src/ia.ts`.
+    - O PDF deixa de usar a assinatura "a configurar".
+48. **O alarme da vigília** (P5.10; ADR-018).
+    - A rodada `rodando` com `inicio` mais velho que o tempo limite e mais 5 minutos vira `falhou`: "a rodada parou no meio (o servidor reiniciou ou travou)". Isso roda na batida, junto do "não rodou".
+    - Na produção sem fonte, a `batida` registra o alarme do dia, uma vez por dia, e a Central da Sênior ganha a linha "Vigília sem fonte ligada".
+    - Toda passagem para `falhou` ou `nao_rodou`, e o "sem fonte", chamam `avisarSuporte`, um módulo novo:
+      - `ALARME_CANAL_URL`: POST `{ "text": … }`, que serve ao Google Chat e ao Slack;
+      - `ALARME_JIRA_URL`, `ALARME_JIRA_EMAIL`, `ALARME_JIRA_TOKEN` e `ALARME_JIRA_PROJETO`: o chamado pela API REST do Jira, do tipo "Tarefa", com autenticação básica de um usuário de serviço.
+    - O texto leva a fonte, o horário, a situação e o motivo, cortado em 300 caracteres. Não leva publicação nem cliente.
+    - A falha do canal ou do Jira não derruba a rodada: vai ao log e ao `evento_auditoria` (`alarme_suporte`, com o resultado de cada um).
+    - O monitor do /saude da parte 9 usa o mesmo `avisarSuporte`.
+49. **Feriados** (P5.11).
+    - `POST /api/configuracao/feriados/carga` aceita `{ ano }` (inteiro de 2020 a 2100). Sem ano, carrega os de `ANOS_DE_FERIADOS`, como hoje.
+    - A Central da Sênior ganha "Carregar os feriados de <ano>" quando o ano corrente (ou o seguinte, em dezembro) não tem feriado nenhum na tabela.
+    - O prazo sem os feriados do ano adianta, que é o lado seguro, por isso o aviso basta.
+50. **Jurimetria no texto** (P5.12).
+    - Uma regra pura em `packages/contratos`, `numeroDeJurimetriaNoTexto(texto)`, acha o formato do G22:
+      - porcentagem seguida de casos, laudos ou processos ("71% em 34 laudos", "71% · 24 de 34 laudos");
+      - "base de dd/mm";
+      - "chance" junto de porcentagem;
+      - "tempo médio" junto de dias.
+
+      Fica em tempo linear, sem regex com repetição aninhada.
+    - Vale na aprovação da versão da petição, da manifestação e da dilação. Recusa com 409 e registra o portão G22.
+    - Ela não pega toda porcentagem: o texto jurídico cita percentuais de lei.
+    - ponytail: casa o formato que o portal mostra. Número de jurimetria escrito de outro jeito passa; a revisão da advogada segue.
+51. **Jurimetria só para quem tem `estudo.ver`** (P5.13).
+    - No painel de resultados, os recortes `perito`, `vara`, `juizo` e `advogada` pedem `estudo.ver`: 403 "Esse recorte é só do Jurídico e dos sócios." O resto do painel segue para `resultados.ver`.
+    - Na perícia, a `visao` tira os números e o resumo do perfil do perito de quem não tem `estudo.ver`.
+    - Sem matriz nova.
+52. **O juízo com o juiz e o perito** (P5.14).
+    - `JurimetriaDoJuizo` ganha:
+      - `juiz: { nome, casos }`, a contagem dos casos com o mesmo `caso.juiz` normalizado;
+      - `perito: { id, nome, casos }`, os casos distintos com perícia desse perito.
+
+      As contas ficam no código, com teste.
+    - O resumo do processo ganha `vara`, `juiz` e o nome do perito, que já vem, sem número.
+53. **O protocolo do recurso** (P5.15).
+    - `POST /api/casos/:id/recurso/protocolo` (`recurso.decidir`, da Sênior), em multipart:
+      - o comprovante, em PDF ou imagem até 25 MB;
+      - `protocoladoEm`, que não pode ser depois de hoje.
+    - Ele grava o documento `comprovante_recurso` do caso, fecha a `D3b.04r` e registra `recurso_protocolado`.
+    - Sem a tarefa aberta: 409 "Este caso não tem recurso esperando o protocolo."
+
 ## Campos de formulário
 
-Nenhum.
+Partes 1 a 4: nenhum.
+
+Parte 5, só nos contratos do servidor (as telas são do Pedro):
+
+| Campo | Função da `campos` |
+|---|---|
+| O nome do perito (classificação e pergunta de um clique) | `validarNome` e `normalizarNome` |
+| O tamanho do tribunal | `validarInteiro` e `normalizarInteiro` |
+| O ano da carga dos feriados | `validarInteiro` e `normalizarInteiro` |
+| A data do protocolo do recurso | `validarData` |
 
 ## Risks / Trade-offs
 
@@ -220,3 +331,9 @@ Nenhum.
   - o arquivo que alguém tira de "A REVISAR" e põe na pasta do cliente também entra, porque é uma mudança de pasta;
   - a pasta cujo título serve a duas fichas fica sem ligar, até alguém ligar pela ficha.
 - **A senha no papel:** a imagem com a senha fica guardada (o Lucas disse que não precisa cobrir) e passa pelo modelo. O valor só fica no cofre.
+- **Parte 5 sem as telas:** a orientação e o lembrete pelo Chatwoot passam a pedir a mensagem enviada. A tela de hoje registra sem o id, então o registro recusa até o Pedro mandar o `mensagemId`. Recusar é o pedido: o portal não diz mais que mandou o que não mandou.
+- **A assinatura a completar:** num banco novo, a petição não protocola até a Sênior pôr a OAB do Dr. Glauco, que espera o Lucas. É o lado seguro: nenhuma peça sai com assinatura errada.
+- **O limite do tribunal:** 3 MB pode barrar o arquivo que o JEF aceitaria (10 MB). A mensagem diz o limite, e a Sênior muda na Configuração.
+- **Jurimetria no texto:** a regra casa o formato que o portal mostra. Um número escrito de outro jeito passa, e a revisão da advogada segue valendo.
+- **Alarme no Jira:** o tipo "Tarefa" e o projeto vêm do Jira do escritório. Se o Jira recusar, o canal e o portal ainda avisam, e a recusa fica no log.
+- **A espera de fora:** a perícia sem resultado chama todo dia útil até o resultado ser registrado. Quem não marca "Olhei" fica com a linha no topo o dia todo, que é o lembrete pedido.
