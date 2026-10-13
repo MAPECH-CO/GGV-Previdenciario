@@ -2,11 +2,20 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, documento, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, decisao, documento, eventoAuditoria, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { REGRA_DA_CHANCE_DO_RECURSO } from '../fluxo/chance.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_COMPROVANTE_DO_RECURSO, MSG_SEM_DECISAO, MSG_SEM_RECURSO_A_PROTOCOLAR, TITULO_DECIDIR, TITULO_RECORRER, abrirDecisaoDoRecurso } from './recurso.ts'
+import {
+  MSG_AVALIACAO_SEM_IA,
+  MSG_COMPROVANTE_DO_RECURSO,
+  MSG_SEM_DECISAO,
+  MSG_SEM_RECURSO_A_PROTOCOLAR,
+  TITULO_DECIDIR,
+  TITULO_RECORRER,
+  abrirDecisaoDoRecurso,
+} from './recurso.ts'
 import { TITULO_RESUMO } from './resultado.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -29,10 +38,13 @@ const estudosFeitos = async () => (await banco.select().from(chamadaIa).where(an
 
 /** A IA falsa (como no estudo de caso): devolve o estudo quando o pedido é de estudo de caso, e um texto simples nos outros. */
 const ESTUDO = { materia: 'Auxílio-acidente', resumo: 'O perito não viu redução.', motivo: 'Laudo desfavorável.', aprendizado: 'Juntar o relatório do assistente.', chance: 'menor', novoProcesso: false }
+/** GGVP-161: a avaliação do recurso que a IA falsa devolve; cada teste pode trocar (com porcentagem, por exemplo). */
+let avaliacaoDaIa = 'Bom para recorrer.\n- O laudo ignorou o relatório do médico assistente.\n- A turma recursal costuma rever laudo assim (conhecimento geral da IA, confira).'
 const fetchDaIa = async (_url: unknown, init?: RequestInit) => {
   const corpo = JSON.parse(String(init?.body)) as { messages: { content: string }[] }
   const doEstudo = corpo.messages[0].content.includes('estudo de caso')
-  return new Response(JSON.stringify({ choices: [{ message: { content: doEstudo ? JSON.stringify(ESTUDO) : 'Rascunho.' } }] }))
+  const doRecurso = corpo.messages[0].content.includes('decide se recorre')
+  return new Response(JSON.stringify({ choices: [{ message: { content: doEstudo ? JSON.stringify(ESTUDO) : doRecurso ? avaliacaoDaIa : 'Rascunho.' } }] }))
 }
 
 beforeEach(async () => {
@@ -66,12 +78,14 @@ describe('GGVP-100 · improcedente: decidir se recorre', () => {
     const central = (await app.inject({ method: 'GET', url: '/api/tarefas', cookies: await cookieDe('helena') })).json() as { cliente: { nome: string }; titulo: string; tela: string }[]
     expect(central.map((x) => [x.cliente.nome, x.titulo, x.tela])).toEqual([['Sérgio Nunes', TITULO_DECIDIR, `/casos/${casoId}/recurso`]])
     const r = (await chamar('helena', 'GET')).json()
-    expect([r.cliente, r.beneficio, r.sentenca.texto, r.prazo.fim, r.chance, r.decisao, r.podeDecidir]).toEqual([
+    expect([r.cliente, r.beneficio, r.sentenca.texto, r.prazo.fim, r.chance.porcentagem, r.chance.casos, r.decisao, r.podeDecidir]).toEqual([
       'Sérgio Nunes',
       'Auxílio-Acidente',
       'Sentença: julgo improcedente o pedido.',
       '2026-10-20',
+      // GGVP-161 CA2: sem recurso julgado no acervo, sem número ("sem dados ainda").
       null,
+      0,
       null,
       true,
     ])
@@ -144,5 +158,52 @@ describe('GGVP-100 · improcedente: decidir se recorre', () => {
     expect(await abertas()).toEqual([`advogada · ${TITULO_RESUMO}`])
     await app.prepararSugestoes()
     expect(await estudosFeitos()).toBe(1)
+  })
+})
+
+describe('GGVP-161 · "Vale recorrer?" com a chance do recurso e a avaliação da IA', () => {
+  async function acervo(resultadoRecurso: string | null, beneficio = 'auxilio_acidente', conferido = true) {
+    const [a] = await banco
+      .insert(processoAcervo)
+      .values({ beneficio, desfecho: 'improcedente', desfechoConferidoPor: conferido ? ids.helena : null, fonte: 'portal', resultadoRecurso })
+      .returning()
+    return a.id
+  }
+
+  it('CA2 · a chance pelos recursos julgados do mesmo benefício, com os casos e a base; outro benefício, sem recurso ou sem conferência não contam', async () => {
+    const usados = [await acervo('provido'), await acervo('nao_provido'), await acervo('provido_parcial')]
+    await acervo(null)
+    await acervo('provido', 'pensao_morte')
+    await acervo('provido', 'auxilio_acidente', false)
+    const { chance } = (await chamar('gabi', 'GET')).json()
+    expect([chance.porcentagem, chance.casos, chance.favoraveis, typeof chance.baseEm, chance.regra]).toEqual([67, 3, 2, 'string', REGRA_DA_CHANCE_DO_RECURSO])
+    expect(usados).toHaveLength(3)
+  })
+
+  it('CA3 · a avaliação da IA chega pronta, com as fontes; a que traz porcentagem é recusada e a tela recebe o motivo', async () => {
+    await app.prepararSugestoes()
+    const [pronta] = await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'avaliacao_do_recurso'))
+    expect(pronta.situacao).toBe('ok')
+    const r = (await chamar('helena', 'GET')).json()
+    expect([r.avaliacao.chamadaId, r.avaliacao.texto.split('\n')[0], r.motivoIa]).toEqual([pronta.id, 'Bom para recorrer.', null])
+    expect(r.avaliacao.fontes.map((f: { tipo: string }) => f.tipo)).toEqual(expect.arrayContaining(['caso', 'regra']))
+    // Com porcentagem no texto, a resposta não vale: o número é do código (G19).
+    avaliacaoDaIa = 'Bom para recorrer: 80% de chance.'
+    await banco.delete(chamadaIa)
+    const semNumero = (await chamar('helena', 'GET')).json()
+    expect([semNumero.avaliacao, semNumero.motivoIa]).toEqual([null, MSG_AVALIACAO_SEM_IA])
+    avaliacaoDaIa = 'Bom para recorrer.'
+  })
+
+  it('CA4 · a decisão guarda a chance, os casos usados e a avaliação da IA', async () => {
+    const usado = await acervo('provido')
+    const visto = (await chamar('helena', 'GET')).json()
+    expect((await chamar('helena', 'POST', { decisao: 'recorrer', justificativa: JUSTIFICATIVA })).statusCode).toBe(201)
+    const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'recurso_decidido'))
+    expect(h.detalhe).toMatchObject({ decisao: 'recorrer', chance: { porcentagem: 100, casos: 1, casosUsados: [usado], avaliacao: visto.avaliacao.chamadaId } })
+  })
+
+  it('CA5 · o Atendimento, o Financeiro e o Jurídico administrativo não abrem a tarefa', async () => {
+    for (const apelido of ['ana', 'julia', 'igor']) expect((await chamar(apelido, 'GET')).statusCode, apelido).toBe(403)
   })
 })

@@ -1,5 +1,5 @@
 {
-  "id": "d8852c60-ece3-401c-98c4-93fb29069c04",
+  "id": "e5b31e00-488e-4cf4-8e93-ae2404ef6a2f",
   "prevId": "fc0d8e09-5bc7-4038-aa7d-ded13803d977",
   "version": "7",
   "dialect": "postgresql",
@@ -2418,19 +2418,7 @@
           "name": "caso_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
-        },
-        "pessoa_id": {
-          "name": "pessoa_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "atendimento_id": {
-          "name": "atendimento_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "etapa_id": {
           "name": "etapa_id",
@@ -2547,32 +2535,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "tarefa_pessoa_id_pessoa_id_fk": {
-          "name": "tarefa_pessoa_id_pessoa_id_fk",
-          "tableFrom": "tarefa",
-          "tableTo": "pessoa",
-          "columnsFrom": [
-            "pessoa_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tarefa_atendimento_id_atendimento_id_fk": {
-          "name": "tarefa_atendimento_id_atendimento_id_fk",
-          "tableFrom": "tarefa",
-          "tableTo": "atendimento",
-          "columnsFrom": [
-            "atendimento_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "tarefa_etapa_id_etapa_id_fk": {
           "name": "tarefa_etapa_id_etapa_id_fk",
           "tableFrom": "tarefa",
@@ -2620,10 +2582,6 @@
         "tarefa_situacao": {
           "name": "tarefa_situacao",
           "value": "\"tarefa\".\"situacao\" in ('aberta', 'em_andamento', 'aguardando', 'concluida', 'cancelada')"
-        },
-        "tarefa_caso_ou_pessoa": {
-          "name": "tarefa_caso_ou_pessoa",
-          "value": "\"tarefa\".\"caso_id\" is not null or \"tarefa\".\"pessoa_id\" is not null"
         }
       },
       "isRLSEnabled": true
@@ -5468,12 +5426,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "chatwoot_mensagem_id": {
-          "name": "chatwoot_mensagem_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -5482,23 +5434,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "mensagem_chatwoot": {
-          "name": "mensagem_chatwoot",
-          "columns": [
-            {
-              "expression": "chatwoot_mensagem_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "mensagem_pessoa_id_pessoa_id_fk": {
           "name": "mensagem_pessoa_id_pessoa_id_fk",
@@ -5768,36 +5704,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "entrada": {
-          "name": "entrada",
-          "type": "numeric(14, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parcelas_quantidade": {
-          "name": "parcelas_quantidade",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parcela_valor": {
-          "name": "parcela_valor",
-          "type": "numeric(14, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parte_na_caixa": {
-          "name": "parte_na_caixa",
-          "type": "numeric(14, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "fontes": {
-          "name": "fontes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "carta_documento_id": {
           "name": "carta_documento_id",
           "type": "uuid",
@@ -6022,6 +5928,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "resultado_recurso": {
+          "name": "resultado_recurso",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "criado_em": {
           "name": "criado_em",
           "type": "timestamp with time zone",
@@ -6096,7 +6008,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "processo_acervo_resultado_recurso": {
+          "name": "processo_acervo_resultado_recurso",
+          "value": "\"processo_acervo\".\"resultado_recurso\" in ('provido', 'provido_parcial', 'nao_provido')"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.roteiro_laudo": {

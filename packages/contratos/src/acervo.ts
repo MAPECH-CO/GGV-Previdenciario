@@ -21,6 +21,11 @@ export const ROTULO_DESFECHO_DO_ACERVO: Record<DesfechoDoAcervo, string> = {
 
 /** GGVP-41: a tese vira grupo na Gestão; curta, para a mesma tese não se espalhar em vários grupos. */
 export const TAMANHO_DA_TESE = 80
+/** GGVP-161 CA1: o resultado do recurso conferido pela Sênior; provido e provido em parte contam como favoráveis. */
+export const RESULTADOS_DO_RECURSO = ['provido', 'provido_parcial', 'nao_provido'] as const
+export type ResultadoDoRecurso = (typeof RESULTADOS_DO_RECURSO)[number]
+export const ROTULO_RESULTADO_DO_RECURSO: Record<ResultadoDoRecurso, string> = { provido: 'Provido', provido_parcial: 'Provido em parte', nao_provido: 'Não provido' }
+
 /** GGVP-153: o que a pergunta de um clique completa. */
 export const CAMPOS_A_COMPLETAR = ['vara', 'juiz', 'tese'] as const
 /** Texto vazio é o mesmo que não saber (CA5). */
@@ -91,5 +96,7 @@ export type CompletarAcervo = z.infer<typeof CompletarAcervo>
 export const ConferirDesfecho = z.object({
   desfecho: z.enum(DESFECHOS_DO_ACERVO, { error: 'Escolha o desfecho' }),
   tese: z.string().trim().max(TAMANHO_DA_TESE, `A tese tem até ${TAMANHO_DA_TESE} caracteres`).optional(),
+  /** GGVP-161 CA1: o resultado do recurso, quando houve recurso julgado; nulo é "sem recurso julgado". */
+  recurso: z.enum(RESULTADOS_DO_RECURSO, { error: 'Escolha o resultado do recurso' }).nullable().optional(),
 })
 export type ConferirDesfecho = z.infer<typeof ConferirDesfecho>

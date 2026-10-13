@@ -1,0 +1,2 @@
+ALTER TABLE "processo_acervo" ADD COLUMN "resultado_recurso" text;--> statement-breakpoint
+ALTER TABLE "processo_acervo" ADD CONSTRAINT "processo_acervo_resultado_recurso" CHECK ("processo_acervo"."resultado_recurso" in ('provido', 'provido_parcial', 'nao_provido'));

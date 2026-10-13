@@ -5,6 +5,7 @@ import { caso, eventoAuditoria, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
+import { MSG_RECORTE_DA_JURIMETRIA, MSG_RECORTE_POR_ADVOGADA } from './gestao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -91,22 +92,35 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect(JSON.stringify(painel)).not.toMatch(/honorarios|recebimentos/i)
   })
 
-  it('só a gestão abre o painel', async () => {
-    expect((await resultados('gabi')).statusCode).toBe(403)
-  })
-
-  it('GGVP-158 P5.13 · as taxas por perito, juízo, vara e advogada são só do Jurídico e dos sócios; o resto do painel segue', async () => {
+  it('GGVP-156 CA3, CA4 · os recortes da jurimetria (perito, juízo, vara e tese) só para o Jurídico e o Sócio', async () => {
     await banco
       .insert(usuario)
       .values({ email: 'lia@exemplo.ggv', nome: 'lia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
-    for (const apelido of ['lia', 'julia'])
-      for (const recorte of ['perito', 'juizo', 'vara', 'advogada']) {
+    for (const recorte of ['perito', 'juizo', 'vara', 'tese']) {
+      for (const apelido of ['lia', 'julia']) {
         const r = await resultados(apelido, `?recorte=${recorte}`)
-        expect([apelido, recorte, r.statusCode, r.json().erro]).toEqual([apelido, recorte, 403, 'Esse recorte é só do Jurídico e dos sócios.'])
+        expect([r.statusCode, r.json().erro], `${apelido} ${recorte}`).toEqual([403, MSG_RECORTE_DA_JURIMETRIA])
       }
-    expect((await resultados('lia', '?recorte=beneficio')).statusCode).toBe(200)
-    expect((await resultados('julia')).statusCode).toBe(200)
-    expect([(await resultados('helena', '?recorte=perito')).statusCode, (await resultados('rui', '?recorte=advogada')).statusCode]).toEqual([200, 200])
+      expect((await resultados('helena', `?recorte=${recorte}`)).statusCode, `Sênior ${recorte}`).toBe(200)
+      expect((await resultados('rui', `?recorte=${recorte}`)).statusCode, `Sócio ${recorte}`).toBe(200)
+    }
+    // O recorte por benefício e o painel sem recorte continuam para a líder e o Financeiro.
+    for (const consulta of ['', '?recorte=beneficio']) expect((await resultados('lia', consulta)).statusCode, consulta).toBe(200)
+  })
+
+  it('Mateus 13/10 · a taxa de êxito de cada advogada é só dos sócios', async () => {
+    await banco
+      .insert(usuario)
+      .values({ email: 'lia@exemplo.ggv', nome: 'lia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['atendimento_lider'], trocarSenha: false })
+    for (const apelido of ['lia', 'julia', 'helena']) {
+      const r = await resultados(apelido, '?recorte=advogada')
+      expect([apelido, r.statusCode, r.json().erro]).toEqual([apelido, 403, MSG_RECORTE_POR_ADVOGADA])
+    }
+    expect((await resultados('rui', '?recorte=advogada')).statusCode).toBe(200)
+  })
+
+  it('só a gestão abre o painel', async () => {
+    expect((await resultados('gabi')).statusCode).toBe(403)
   })
 
   it('o período padrão vai de 1º de janeiro até hoje, em Brasília; o pedido usa dd/mm/aaaa e o recorte', async () => {

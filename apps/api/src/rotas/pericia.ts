@@ -114,16 +114,30 @@ function semLeitura(p: Pericia): Pericia {
   return laudo ? { ...p, resultado: { ...p.resultado, laudo: { ...laudo, leitura: undefined } } } : p
 }
 
-function visao(t: PericiaNaTela, juridico: boolean, estudo: boolean): PericiaNaTela {
-  // GGVP-158 P5.13 (GGVP-131 CA10, GGVP-156): os números do perito e o resumo do perfil são jurimetria, só para quem tem
-  // `estudo.ver` (o Jurídico e os sócios). Os outros veem a perícia sem o perfil.
-  const comPerfil = estudo ? t : { ...t, perfil: undefined }
-  if (juridico) return comPerfil
+const SEM_NUMEROS = { laudos: 0, favoraveis: 0, taxa: 0, diasAteOLaudo: 0 }
+
+/**
+ * GGVP-156 CA2 e GGVP-158 P5.13 (GGVP-131 CA10): os números do perito e o resumo do perfil (o que observou, perguntou e
+ * pediu) são jurimetria, só do Jurídico e dos sócios (`estudo.ver`, os mesmos perfis de `dado_saude.ver_detalhe`). Os
+ * outros veem o perito e a perícia, sem esses números e sem o resumo.
+ */
+function visao(t: PericiaNaTela, juridico: boolean): PericiaNaTela {
+  if (juridico) return t
   return {
-    ...comPerfil,
+    ...t,
     pericia: semLeitura(t.pericia),
     anteriores: t.anteriores.map(semLeitura),
-    perfil: comPerfil.perfil && { ...comPerfil.perfil, porAssunto: [], porBeneficio: [], perito: { ...comPerfil.perfil.perito, laudos: [] } },
+    perfil: t.perfil && {
+      ...t.perfil,
+      versao: 0,
+      jurimetria: SEM_NUMEROS,
+      porAssunto: [],
+      porBeneficio: [],
+      observou: [],
+      perguntou: [],
+      pediu: [],
+      perito: { ...t.perfil.perito, laudos: [] },
+    },
   }
 }
 
@@ -292,7 +306,6 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
   }
 
   const juridico = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
-  const estudo = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'estudo.ver')
 
   /** Um PDF do multipart (o comprovante ou o laudo; o documento da perícia também em imagem) e o JSON do campo `dados`. */
   async function lerMultipart(pedido: FastifyRequest, tipos = ['application/pdf']) {
@@ -337,7 +350,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     await guardar(d)
     // Sem ação: quem chama registra (a recusa de um portão vai pelo registrarBloqueio).
     if (registro.acao) await historico(pedido.usuario!.id, registro.acao, pedido, `caso:${d.casoId}`, { pericia: alvo.id, passo: registro.passo, ...registro.detalhe })
-    return visao(naTela(d.mundo, alvo, agora()), juridico(pedido), estudo(pedido))
+    return visao(naTela(d.mundo, alvo, agora()), juridico(pedido))
   }
 
   /** Lê o corpo pelo contrato; fora da forma, 400. */
@@ -394,7 +407,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     const p = periciaDo(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, MSG_SEM_PERICIA)
     if ([...d.linhas.values()].some((l) => !l.documento)) await guardar(d)
-    return visao(naTela(d.mundo, p, agora()), juridico(pedido), estudo(pedido))
+    return visao(naTela(d.mundo, p, agora()), juridico(pedido))
   })
 
   // GGVP-70: a perícia do resultado (a que espera o resultado ou a última conferida), na visão do perfil: o resultado todo
@@ -405,7 +418,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     if (!d) return negar(resposta, 404, 'Caso não encontrado.')
     const p = periciaDoResultado(d.mundo, d.casoId)
     if (!p) return negar(resposta, 404, 'Esta perícia não espera resultado.')
-    const t = visao(naTela(d.mundo, p, agora()), juridico(pedido), estudo(pedido))
+    const t = visao(naTela(d.mundo, p, agora()), juridico(pedido))
     // Fora do Jurídico a visão já tirou a leitura: só registra quem a recebeu de fato.
     if ([t.pericia, ...t.anteriores].some((x) => x.resultado?.laudo?.leitura))
       await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: d.casoId, recurso: `pericia:${p.id}`, quando: agora() })
@@ -438,7 +451,7 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     for (const casoId of casos) {
       const d = await doCaso(casoId)
       const p = d && periciaDo(d.mundo, casoId)
-      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido), estudo(pedido)))
+      if (d && p) lista.push(visao(naTela(d.mundo, p, agora()), juridico(pedido)))
     }
     return lista
   })

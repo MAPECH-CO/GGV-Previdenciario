@@ -125,13 +125,14 @@ declare module 'fastify' {
 /**
  * GGVP-158: cabeçalhos de segurança em toda resposta, da API e da tela. A tela montada só carrega arquivos dela mesma; a
  * exceção é o texto ao vivo da entrevista, que o navegador pede direto à OpenAI com a chave temporária (web/src/dados/audio.ts).
+ * O quadro aceita blob:, porque a impressão do kit em PDF abre o arquivo baixado num quadro escondido (web/src/impressao.ts).
  */
 const CABECALHOS_DE_SEGURANCA = {
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
   'content-security-policy':
     "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; " +
-    "connect-src 'self' https://api.openai.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+    "connect-src 'self' https://api.openai.com; frame-src 'self' blob:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
 }
 
 export const MSG_ERRO_INESPERADO = 'Algo deu errado.'
@@ -241,7 +242,7 @@ export function criarServidor({
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
     const leitor = criarLeitor({ ia: motorIa, simulada: leituraSimulada, agora })

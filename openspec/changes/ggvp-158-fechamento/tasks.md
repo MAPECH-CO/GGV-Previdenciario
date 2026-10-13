@@ -187,6 +187,12 @@
   - Havia um quarto, num teste de tela (`seguranca.e2e.ts`): a regex escapava só o ponto. Agora escapa todo caractere especial; vai no #71 e fecha no merge.
 - [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+## GGVP-158 · Correções da revisão do #62 e do #63 (12/10)
+
+- [x] 2.14 P1.3 · A CSP com `frame-src 'self' blob:` (`apps/api/src/servidor.ts`), para a impressão do kit em PDF; teste em `servidor.test.ts` que confere a diretiva. Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts`.
+- [x] 2.15 P1.1 · Em produção, o `RELACIONAMENTO_SIMULADO=entrega` não vale (`apps/api/src/rotas/mensagens.ts`); teste em `rotas/mensagens.test.ts`. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
+- [x] 2.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
 ## GGVP-158 · Parte 3 · Caminho da Maria no servidor real (13/10)
 
 Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz nova. Na ordem contrato → teste → servidor.
@@ -415,6 +421,11 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - Verifica com `rotas/gestao.test.ts` e `rotas/pericia.test.ts`:
     - o líder do Atendimento e o Financeiro recebem 403 no recorte por perito;
     - a Documentação recebe a perícia sem os números.
+  - 13/10, na revisão do #75 (junto com a main, que trouxe a mesma regra pelo #73, GGVP-156): fica uma trava só, a da
+    GGVP-156 (perito, juízo, vara e tese). Na perícia, o perito segue para todos, sem os números e sem o resumo.
+- [x] 5.19.1 A taxa por advogada só dos sócios (decisão do Mateus, 13/10): a ação `resultados.ver_por_advogada` (`socio`) na
+  matriz 31; o servidor recusa o recorte por advogada sem ela, e a tela não o oferece.
+  - Verifica com `rotas/gestao.test.ts` (a Sênior, a líder e o Financeiro recebem 403; o Sócio, 200) e `Resultados.test.tsx`.
 
   Verificado em 13/10: `rotas/gestao.test.ts` e `rotas/pericia.test.ts`, 42/42. Fora de `estudo.ver`, a perícia vem sem o perfil do perito (os números e o resumo); o teste antigo, que dizia que a Documentação via os números, mudou com a regra.
 - [x] 5.20 O juízo com o juiz e o perito (P5.14, decisão 52); o resumo do processo com a vara, o juiz e o perito.
@@ -448,18 +459,18 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
 ## GGVP-158 · Parte 6 · Desfecho, dinheiro e conversa (13/10)
 
-Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-6`, em cima do #75; o #31 segue no pedido dele. Migração 0032. Na ordem contrato → teste → servidor.
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-6`, em cima do #75; o #31 segue no pedido dele. Migração 0033 (a 0032 é a do recurso, que veio da main). Na ordem contrato → teste → servidor.
 
 - [ ] 6.1 O pedido #31 (P6.1, decisão 54): juntar a main na branch dele (merge, sem rebase), o texto da decisão só com `dado_saude.ver_detalhe`, e sair do rascunho para o Pedro.
   - Verifica com `rotas/desfecho.test.ts`:
     - a advogada lê o texto;
     - o Atendimento e a Documentação recebem o desfecho sem o texto.
-- [x] 6.2 A migração 0032 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, `tarefa.atendimento_id`, e as pendências abertas viram linha.
+- [x] 6.2 A migração 0033 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, `tarefa.atendimento_id`, e as pendências abertas viram linha.
   - Verifica com `banco/migracoes.test.ts` e com teste da migração:
     - a tarefa sem caso e sem pessoa é recusada;
     - a pendência aberta ganha a linha, ligada à conversa.
 
-  Verificado em 13/10: `banco/migracoes.test.ts` 15/15 (2 novos). A última instrução da 0032 leva as pendências abertas para a tabela e roda de novo sem repetir. Depois, a 0032 ganhou `tarefa.atendimento_id` (a conversa da tarefa), no lugar do id da tarefa guardado na conversa.
+  Verificado em 13/10: `banco/migracoes.test.ts` 15/15 (2 novos). A última instrução da migração leva as pendências abertas para a tabela e roda de novo sem repetir. Depois, ela ganhou `tarefa.atendimento_id` (a conversa da tarefa), no lugar do id da tarefa guardado na conversa. Com a main da parte 5 (o #73 trouxe a 0032 do recurso), ela virou a 0033.
 - [x] 6.3 A tarefa com `casoId` nulo (decisão 64): os usos conferidos pelo typecheck, e a Central geral sem a linha sem caso. Verifica com o typecheck e as suítes que leem a Central.
 
   Verificado em 13/10: o typecheck da API pegou 4 usos (Central e Financeiro), corrigidos; `rotas/inss.test.ts` e `rotas/financeiro.test.ts`, 17/17. A Central geral lê o caso pela junção e deixa de fora as linhas `D5`.

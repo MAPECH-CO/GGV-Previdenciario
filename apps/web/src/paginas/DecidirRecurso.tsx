@@ -4,8 +4,10 @@ import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
+import { taxaComCasos } from '../regras/caso.ts'
 import styles from './Balcao.module.css'
 import proprio from './Cobranca.module.css'
+import passo from './Passo.module.css'
 
 // Figma: step_D3b.04 "Improcedente: vale recorrer?" (1815:246). Quem decide é a Sênior (Lucas, 07/10); a advogada
 // responsável e o Sócio só leem (GGVP-100).
@@ -82,11 +84,39 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
               </dd>
               <dt>Sentença</dt>
               <dd>{r.sentenca ? `${dataBr(r.sentenca.disponibilizadaEm)} · ${r.sentenca.texto}` : 'não está no sistema'}</dd>
-              <dt>Chance pela jurimetria</dt>
-              <dd>{r.chance ? `${r.chance.porcentagem}% em ${r.chance.casos} casos (${r.chance.regra})` : 'A chance pela jurimetria ainda não está disponível para este juízo.'}</dd>
+              <dt>Chance do recurso</dt>
+              <dd>
+                {/* GGVP-161 CA2: pelos recursos julgados dos casos parecidos, calculada pelo sistema. */}
+                {r.chance && r.chance.porcentagem !== null && r.chance.baseEm
+                  ? `${taxaComCasos(r.chance.favoraveis, r.chance.casos, new Date(r.chance.baseEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }), 'recursos julgados')} (${r.chance.regra})`
+                  : 'Sem dados ainda: nenhum recurso julgado de caso parecido no acervo.'}
+              </dd>
             </dl>
             {r.prazo && <p className={proprio.detalhe}>{r.prazo.regra}</p>}
           </section>
+
+          {!r.decisao && (r.avaliacao || r.motivoIa) && (
+            <section className={styles.cartao} aria-label="Avaliação da IA">
+              <h2 className={styles.cartaoTitulo}>Avaliação da IA</h2>
+              {r.avaliacao ? (
+                <>
+                  {/* GGVP-161 CA3: a IA sugere; a Sênior decide. Sem porcentagem: o número é o da chance acima. */}
+                  <span className={`${passo.selo} ${passo.seloAlerta}`}>Sugestão da IA · confira</span>
+                  {r.avaliacao.alerta && <p className={passo.dica}>{r.avaliacao.alerta}</p>}
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{r.avaliacao.texto}</p>
+                  {r.avaliacao.fontes.length > 0 && (
+                    <ul className={passo.lista} aria-label="Fontes da avaliação">
+                      {r.avaliacao.fontes.map((f) => (
+                        <li key={f.referencia}>{f.trecho ?? f.referencia}</li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              ) : (
+                <p className={passo.dica}>{r.motivoIa}</p>
+              )}
+            </section>
+          )}
 
           {r.decisao ? (
             <section className={styles.feito} aria-labelledby="decidido">

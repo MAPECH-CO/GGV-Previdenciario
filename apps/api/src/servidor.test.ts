@@ -120,6 +120,8 @@ describe('GGVP-158 · cabeçalhos de segurança', () => {
       expect(r.headers['x-frame-options'], url).toBe('DENY')
       expect(r.headers['content-security-policy'], url).toContain("default-src 'self'")
       expect(r.headers['content-security-policy'], url).toContain("frame-ancestors 'none'")
+      // P1.3 (revisão do #62): a impressão do kit em PDF abre o arquivo num quadro em blob:.
+      expect(r.headers['content-security-policy'], url).toContain("frame-src 'self' blob:")
       expect(r.headers['strict-transport-security'], url).toBeUndefined()
     }
     await app.close()

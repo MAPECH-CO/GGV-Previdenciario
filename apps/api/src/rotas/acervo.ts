@@ -39,14 +39,20 @@ export function registrarRotasAcervo(app: FastifyInstance, { banco, agora = () =
     const { desfecho, tese } = entrada.data
     // GGVP-41 CA7: a tese vem junto quando a tela manda (vazia: fora do recorte por tese, CA5); sem ela, fica a que estava.
     const comTese = tese === undefined ? {} : { tese: tese || null }
+    // GGVP-161 CA1: o resultado do recurso, quando a tela manda (nulo: sem recurso julgado); sem ele, fica o que estava.
+    const { recurso } = entrada.data
+    const comRecurso = recurso === undefined ? {} : { resultadoRecurso: recurso }
     // A condição vai no próprio update: duas Sêniores ao mesmo tempo, só a primeira confere.
     const [conferido] = await banco
       .update(processoAcervo)
-      .set({ desfecho, desfechoConferidoPor: quem, ...comTese })
+      .set({ desfecho, desfechoConferidoPor: quem, ...comTese, ...comRecurso })
       .where(and(eq(processoAcervo.id, id), isNotNull(processoAcervo.desfecho), isNull(processoAcervo.desfechoConferidoPor)))
       .returning()
     if (!conferido) return negar(resposta, 409, antes.desfecho ? 'Esse desfecho já foi conferido.' : 'Esse processo ainda não tem desfecho lido.')
-    const teses = tese === undefined ? {} : { teseAntes: antes.tese, tese: conferido.tese }
+    const teses = {
+      ...(tese === undefined ? {} : { teseAntes: antes.tese, tese: conferido.tese }),
+      ...(recurso === undefined ? {} : { recursoAntes: antes.resultadoRecurso, recurso: conferido.resultadoRecurso }),
+    }
     await historico(quem, 'acervo_desfecho_conferido', pedido, `acervo:${id}`, { antes: antes.desfecho, depois: desfecho, ...teses })
     return conferenciaDoAcervo(banco)
   })

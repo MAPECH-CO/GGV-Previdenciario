@@ -51,6 +51,17 @@ describe('Conferir desfechos do lote (GGVP-55)', () => {
     expect(screen.getByText(/Esperando conferência: 1 · Já conferidos: 4/)).toBeTruthy()
   })
 
+  it('GGVP-161 CA1 · o resultado do recurso vai junto quando a Sênior escolhe; sem escolher, não vai', async () => {
+    const chamada = servidor(lote)
+    render(<ConferirAcervo />)
+    const primeiro = await processo('0004512-33.2019.4.03.6301')
+    fireEvent.change(within(primeiro).getByLabelText('Resultado do recurso'), { target: { value: 'provido_parcial' } })
+    fireEvent.click(within(primeiro).getByRole('button', { name: 'Confere' }))
+    await screen.findByRole('status')
+    expect(corpoDoPost(chamada)).toEqual([`/api/acervo/processos/${A}/conferencia`, { desfecho: 'improcedente', recurso: 'provido_parcial' }])
+    expect(within(await processo('0007781-90.2020.4.03.6301')).getByLabelText('Resultado do recurso')).toHaveProperty('value', '')
+  })
+
   it('CA7 · "Corrigir" pede o desfecho correto pela lista; sem escolher, a mensagem do contrato e nada vai ao servidor', async () => {
     const chamada = servidor(lote)
     render(<ConferirAcervo />)

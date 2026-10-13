@@ -301,7 +301,7 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
 
 ### Parte 6 · Desfecho, dinheiro e conversa (decisões do Mateus, 13/10)
 
-Só servidor, com teste junto, num pedido em cima do #75. O #31 segue no pedido dele. Uma migração, a 0032. Sem matriz nova: a Sênior confere pela `ficha.voltar_versao`, que já é só dela.
+Só servidor, com teste junto, num pedido em cima do #75. O #31 segue no pedido dele. Uma migração, a 0033 (a 0032 é a do recurso, que veio da main com o #73). Sem matriz nova: a Sênior confere pela `ficha.voltar_versao`, que já é só dela.
 
 Decisões do Mateus em 13/10:
 - a entrada e as parcelas vêm do contrato da Recepção;
@@ -335,7 +335,7 @@ O OK segue com a advogada, por decisão do Pedro.
       O repasse é sempre o recebido menos os honorários, em centavos.
     - `SalvarPrestacao` ganha `honorarios`, `entrada`, `parcelas` e `parteNaCaixa`, opcionais, pela `campos`. A parte na Caixa vai até os honorários.
     - `FORMAS_DE_PAGAMENTO` fica `pix` e `boleto` ("Boleto do escritório, no nome do cliente"). O rótulo das antigas fica, para ler as versões velhas.
-    - A migração 0032 dá à `prestacao_contas`: `entrada`, `parcelas_quantidade`, `parcela_valor`, `parte_na_caixa` e `fontes` (jsonb).
+    - A migração 0033 dá à `prestacao_contas`: `entrada`, `parcelas_quantidade`, `parcela_valor`, `parte_na_caixa` e `fontes` (jsonb).
     - As fontes são do servidor:
       - o percentual é do contrato, quando o contrato tem;
       - os honorários são do sistema quando batem com o cálculo, e de quem conferiu quando não;
@@ -352,7 +352,7 @@ O OK segue com a advogada, por decisão do Pedro.
     - O modelo não entra em `MODELOS_DE_MENSAGEM` (mudança da execução, 13/10): o seletor da tela do correio e o correio de mentira dos testes de tela listam o catálogo inteiro, e os dois são do Pedro.
     - Ao subir com banco de verdade, `garantirModeloDaIdaAoBanco` (em `principal.ts`, junto dos feriados) põe o modelo só quando não há nenhum com esse nome. O texto é o da semente, sem "(modelo de exemplo)".
 58. **O id do Chatwoot** (P6.5).
-    - `chatwoot.enviar` devolve o id da mensagem, e o correio grava em `mensagem.chatwoot_mensagem_id` (migração 0032, com índice).
+    - `chatwoot.enviar` devolve o id da mensagem, e o correio grava em `mensagem.chatwoot_mensagem_id` (migração 0033, com índice).
     - O status só anda para a frente: enviada, entregue, lida. "Falhou" vale a qualquer hora.
     - O aviso de mudança do Chatwoot (`message_updated`) não traz o status: o corpo é o `webhook_data` da mensagem, conferido no código do Chatwoot em 13/10. O portal pergunta o status (`statusDaMensagem`, na última página da conversa), só das mensagens que ele mandou.
 59. **A rota de entrada do Chatwoot** (P6.5; ADR-019).
@@ -396,7 +396,7 @@ O OK segue com a advogada, por decisão do Pedro.
     - A Sênior que conduziu responde a pendência e decide de uma vez.
     - A tela de hoje manda as decisões na primeira conferência e passa a receber 403 fora da Sênior: o Playwright da conversa muda, e o Pedro é avisado.
 64. **A pendência vira tarefa** (P6.7).
-    - A migração 0032 deixa `tarefa.caso_id` sem obrigação, cria `tarefa.pessoa_id` e o CHECK "caso ou pessoa", e `tarefa.atendimento_id`, a conversa da tarefa da conversa.
+    - A migração 0033 deixa `tarefa.caso_id` sem obrigação, cria `tarefa.pessoa_id` e o CHECK "caso ou pessoa", e `tarefa.atendimento_id`, a conversa da tarefa da conversa.
     - Na conferência, a pendência cria a linha `D5.05`: a pessoa, o caso quando há, a conversa, o responsável, o prazo e o perfil dele.
     - "Cumprida" fecha a linha, e o prazo novo muda a linha. As duas acham a linha pela conversa.
     - As pendências abertas que já existem ganham a linha na própria migração.

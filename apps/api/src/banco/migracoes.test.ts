@@ -172,8 +172,8 @@ describe('confiança dos dados', () => {
       ).rows
       conversas.push(id)
     }
-    // A última instrução da migração 0032 é a que leva as pendências para a tabela; aqui ela roda de novo, sobre o banco com dados.
-    const migracao = readFileSync(join(pastaMigracoes, '0032_pendencia_prestacao_e_chatwoot.sql'), 'utf8').split('--> statement-breakpoint')
+    // A última instrução da migração 0033 é a que leva as pendências para a tabela; aqui ela roda de novo, sobre o banco com dados.
+    const migracao = readFileSync(join(pastaMigracoes, '0033_pendencia_prestacao_e_chatwoot.sql'), 'utf8').split('--> statement-breakpoint')
     const levar = () => db.execute(sql.raw(migracao.at(-1)!))
     await levar()
     await levar()
