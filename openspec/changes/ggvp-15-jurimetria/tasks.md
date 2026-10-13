@@ -137,3 +137,10 @@
 - [x] 12.5 CA3 · Na classificação da nomeação (`apps/api/src/rotas/publicacoes.ts`), o perito reconhecido liga a perícia aberta do mesmo tipo; teste em `publicacoes.test.ts`.
 - [x] 12.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [ ] 12.7 CA2 · O recorte por CID, depois da resposta do Lucas no cartão (09/10).
+
+## GGVP-156 · Quem vê a jurimetria: o Jurídico e o Sócio; o Atendimento e a Documentação não
+
+- [ ] 13.1 CA1, CA4 · `chance.ver` com o Jurídico administrativo; matriz versão 30 e a impressão digital nova (`packages/contratos/src/permissoes.ts`); teste em `permissoes.test.ts`.
+- [ ] 13.2 CA2 · Na perícia, fora do Jurídico, o perfil do perito sai sem os números (`visao` em `apps/api/src/rotas/pericia.ts`); teste em `rotas/pericia.test.ts`.
+- [ ] 13.3 CA3 · Gestão: o servidor recusa os recortes por perito, juízo, vara e tese sem `estudo.ver` (`apps/api/src/rotas/gestao.ts`), e a tela não os oferece (`apps/web/src/paginas/Resultados.tsx`); testes em `rotas/gestao.test.ts` e `Resultados.test.tsx`.
+- [ ] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
