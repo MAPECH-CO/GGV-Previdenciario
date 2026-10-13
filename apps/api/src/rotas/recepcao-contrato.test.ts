@@ -81,8 +81,9 @@ beforeEach(async () => {
   relogio = INICIO
   ;({ banco, fechar } = await abrirBancoEmbutido())
   arquivos = armazenamentoLocal(mkdtempSync(join(tmpdir(), 'kit-')))
-  // Os testes de antes são do ZapSign contratado (simulado); o kit sai em Word, sem conversor de PDF.
-  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: true, conversor: null, leituraSimulada: true })
+  // O kit sai em Word, sem conversor de PDF. A assinatura é em papel (GGVP-158 P4.5: sem ZapSign), e a leitura é a de
+  // exemplo (P4.10); a de verdade tem o bloco dela no fim.
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, conversor: null, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // Os contratos dos testes são do LOAS: o modelo dele já está na Configuração (versão 1).
@@ -159,48 +160,7 @@ async function gerado(fichaId: string, cpf = VALIDOS.cpf) {
 }
 
 describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
-  it('ZapSign: um documento por kit; a segunda tentativa sem assinatura sobe para a sênior (G15); o retorno anexa uma vez e encerra a tarefa', async () => {
-    const base = await gerado(await lead())
-    expect((await chamar('julia', 'POST', `${base}/zapsign`)).statusCode).toBe(403)
-    // GGVP-96: o contrato é da raia do Atendimento (contrato.conduzir); a advogada fecha o caso, mas não conduz o contrato.
-    expect((await chamar('gabi', 'POST', `${base}/zapsign`)).statusCode).toBe(403)
-    const envio = await json('ana', 'POST', `${base}/zapsign`)
-    expect(envio).toMatchObject({ resultado: 'gerado', contrato: { assinatura: { forma: 'digital', tentativas: [], zapsign: { status: 'enviado' } } } })
-    const { documentoId, link } = envio.contrato.assinatura.zapsign
-    expect(envio.mensagem).toContain(link)
-    expect((await json('ana', 'POST', `${base}/zapsign`)).contrato.assinatura.zapsign.documentoId).toBe(documentoId)
-
-    expect((await chamar('ana', 'POST', `${base}/tentativas`, { canal: 'whatsapp' })).statusCode).toBe(400)
-    const primeira = await json('ana', 'POST', `${base}/tentativas`, { canal: 'whatsapp', mensagem: envio.mensagem })
-    expect(primeira.contrato.assinatura.tentativas).toMatchObject([{ data: '2026-10-08', canal: 'whatsapp', quem: 'ana' }])
-    expect(primeira.ficha.contatos.at(-1)).toMatchObject({ canal: 'WhatsApp', texto: 'Link do ZapSign enviado para assinar o contrato.' })
-    expect(await json('ana', 'POST', `${base}/tentativas`, { canal: 'ligacao' })).toEqual({ erro: 'Ainda não é dia de tentar de novo.' })
-
-    // Três dias depois, sem assinatura: a segunda tentativa é a última do Atendimento.
-    relogio = new Date('2026-10-11T15:00:00Z')
-    const segunda = await json('ana', 'POST', `${base}/tentativas`, { canal: 'ligacao' })
-    expect(segunda.contrato.assinatura).toMatchObject({ naSenior: true, tentativas: [{ canal: 'whatsapp' }, { canal: 'ligacao' }] })
-    const daSenior = { acao: 'Colher assinatura · limite de tentativas', setor: 'Jurídico', urgente: true }
-    expect(segunda.tarefas).toContainEqual(expect.objectContaining(daSenior))
-    expect(segunda.ficha.historico.at(-1).oQue).toBe('Subiu para a advogada sênior: 2 tentativas sem assinatura (G15)')
-    expect((await chamar('ana', 'POST', `${base}/tentativas`, { canal: 'ligacao' })).statusCode).toBe(400)
-
-    const retorno = await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
-    expect(retorno).toMatchObject({
-      resultado: 'anexado',
-      arquivo: { tipo: 'contrato', origem: 'card', aguardaLeitura: true },
-      contrato: { etapa: 'leitura', assinatura: { zapsign: { status: 'assinado', eventos: [`${documentoId}-assinado`] } } },
-    })
-    expect(retorno.contrato.assinatura.arquivo).toBe(retorno.arquivo.nome)
-    // Bloco 5a: o arquivo assinado fica na pasta do processo, na ficha do servidor.
-    expect(retorno.ficha.arquivos).toContainEqual(expect.objectContaining({ nome: retorno.arquivo.nome, local: retorno.contrato.processoId, aguardaLeitura: true }))
-    expect(retorno.ficha.processos[0]).toMatchObject({ etapa: 'Contrato assinado em 11/10', proximaAcao: 'ler e arquivar o contrato assinado' })
-    expect(retorno.tarefas).toContainEqual(expect.objectContaining({ ...daSenior, concluida: true }))
-    expect((await json('gabi', 'GET', '/api/recepcao')).tarefas.map((t: { acao: string }) => t.acao)).not.toContain(daSenior.acao)
-    expect((await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)).resultado).toBe('repetido')
-  })
-
-  it('papel na hora: só na entrevista presencial; imprime, digitaliza e só conclui com a digitalização; depois, nada de ZapSign', async () => {
+  it('papel: imprime, digitaliza e só conclui com a digitalização; depois, nada de ZapSign', async () => {
     const base = await gerado(await lead())
     expect(await json('ana', 'POST', `${base}/digitalizacao`)).toEqual({ erro: 'Imprima o kit antes.' })
     expect(await json('ana', 'POST', `${base}/assinatura-em-papel`)).toEqual({ erro: 'Anexe a digitalização do contrato assinado.' })
@@ -214,7 +174,8 @@ describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
     expect(arquivo).toMatchObject({ tipo: 'contrato', origem: 'scanner', aguardaLeitura: true })
     expect(digitalizado.ficha.arquivos).toContainEqual(arquivo)
     expect(await json('ana', 'POST', `${base}/digitalizacao`)).toEqual({ erro: 'O contrato assinado já foi digitalizado.' })
-    expect(await json('ana', 'POST', `${base}/zapsign`)).toEqual({ erro: 'O contrato assinado em papel já foi digitalizado.' })
+    // GGVP-158 P4.5: sem ZapSign, não há outro caminho para o contrato digitalizado.
+    expect((await chamar('ana', 'POST', `${base}/zapsign`)).statusCode).toBe(404)
 
     const concluido = await json('ana', 'POST', `${base}/assinatura-em-papel`)
     expect(concluido.contrato).toMatchObject({ etapa: 'leitura', assinatura: { forma: 'papel', arquivo: arquivo.nome, assinadoEm: expect.any(String) } })
@@ -222,19 +183,6 @@ describe('GGVP-125 · bloco 4b: a assinatura do contrato no servidor', () => {
     expect(concluido.ficha.historico.at(-1).oQue).toBe('Concluiu a assinatura em papel, com a digitalização anexada; segue para a leitura')
   })
 
-  it('entrevista por vídeo: a assinatura vai pelo ZapSign, sem papel; com o documento no ZapSign, papel também não', async () => {
-    const fichaId = await lead()
-    const marcada = await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, {
-      tipo: 'video', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false,
-    })
-    expect(marcada.resultado).toBe('marcado')
-    const base = await gerado(fichaId)
-    expect(await json('ana', 'POST', `${base}/impressao`)).toEqual({ erro: 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.' })
-
-    const presencial = await gerado(await lead('Marta Lima', '11955554444'), '11144477735')
-    await json('ana', 'POST', `${presencial}/zapsign`)
-    expect(await json('ana', 'POST', `${presencial}/impressao`)).toEqual({ erro: 'O documento já foi para o ZapSign.' })
-  })
 })
 
 describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato no servidor', () => {
@@ -307,15 +255,6 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
     expect(await json('ana', 'POST', `${base}/copia/entrega`, ENTREGA)).toEqual({ erro: 'Este contrato não está para entregar a cópia.' })
   })
 
-  it('assinado pelo ZapSign, a leitura reconhece e segue direto para a cópia, sem conferência', async () => {
-    const base = await gerado(await lead())
-    await json('ana', 'POST', `${base}/zapsign`)
-    await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
-    const lido = await json('ana', 'POST', `${base}/leitura-simulada`)
-    expect(lido.contrato).toMatchObject({ etapa: 'copia', leitura: { faltam: [], pendencias: [] } })
-    expect(lido.ficha.historico.at(-1).oQue).toBe('A IA leu o contrato assinado e reconheceu: tudo certo; segue para a cópia do contrato')
-    expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: true })).toEqual({ erro: 'Este contrato não está para conferir.' })
-  })
 })
 
 /** Fecha, pede o que falta e gera: devolve a resposta da geração e o endereço do contrato. */
@@ -461,10 +400,10 @@ describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guar
 })
 
 describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
-  /** Sobe o servidor de novo com outro conversor de PDF ou outro estado do ZapSign; o banco e os arquivos são os mesmos. */
-  async function reiniciar(opcoes: { conversor?: ConversorDePdf | null; zapsign?: boolean }) {
+  /** Sobe o servidor de novo com outro conversor de PDF; o banco e os arquivos são os mesmos. */
+  async function reiniciar(opcoes: { conversor?: ConversorDePdf | null }) {
     await app.close()
-    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: false, conversor: null, leituraSimulada: true, ...opcoes })
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, conversor: null, leituraSimulada: true, ...opcoes })
   }
   const PDF = Buffer.from('%PDF-1.7 do kit')
 
@@ -507,12 +446,16 @@ describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
     expect(await json('ana', 'GET', '/api/processos/00000000-0000-4000-8000-000000000000/contrato/kit')).toEqual({ erro: 'Contrato não encontrado.' })
   })
 
-  it('CA5 e CA8 · o servidor diz o que oferece: o PDF, se há conversor; a assinatura pelo celular, se o ZapSign está contratado', async () => {
-    await reiniciar({ conversor: async () => PDF, zapsign: false })
+  it('CA5 e GGVP-158 P4.5 · o servidor diz o que oferece: o PDF, se há conversor; o ZapSign, nunca, mesmo com a variável', async () => {
+    vi.stubEnv('ZAPSIGN_API_TOKEN', 'valor-de-mentira-dos-testes')
+    await reiniciar({ conversor: async () => PDF })
     expect(await json('ana', 'GET', '/api/contrato/servicos')).toEqual({ zapsign: false, pdf: true })
     expect((await app.inject({ method: 'GET', url: '/api/contrato/servicos' })).statusCode).toBe(401)
-    await reiniciar({ conversor: null, zapsign: true })
-    expect(await json('ana', 'GET', '/api/contrato/servicos')).toEqual({ zapsign: true, pdf: false })
+    for (const url of ['/api/processos/:id/contrato/zapsign', '/api/processos/:id/contrato/tentativas', '/api/processos/:id/contrato/zapsign/retorno-simulado'])
+      expect(app.hasRoute({ method: 'POST', url })).toBe(false)
+    vi.unstubAllEnvs()
+    await reiniciar({ conversor: null })
+    expect(await json('ana', 'GET', '/api/contrato/servicos')).toEqual({ zapsign: false, pdf: false })
   })
 
   it('CA7 e CA8 · sem o ZapSign, o papel vale para qualquer entrevista, e o assinado digitalizado segue o caminho de sempre', async () => {
@@ -521,9 +464,7 @@ describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
       tipo: 'video', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false,
     })
     expect(marcada.resultado).toBe('marcado')
-    await reiniciar({ zapsign: false })
     const { base } = await gerar(fichaId)
-    expect(await json('ana', 'POST', `${base}/zapsign`)).toEqual({ erro: 'O ZapSign não está contratado: a assinatura é em papel.' })
     const impresso = await json('ana', 'POST', `${base}/impressao`)
     expect(impresso.contrato.assinatura).toMatchObject({ forma: 'papel', impressoEm: expect.any(String) })
     expect((await json('ana', 'POST', `${base}/digitalizacao`)).arquivo).toMatchObject({ tipo: 'contrato', origem: 'scanner', aguardaLeitura: true })
@@ -531,15 +472,6 @@ describe('GGVP-136 · imprimir o kit e assinar no papel, sem o ZapSign', () => {
     expect((await json('ana', 'POST', `${base}/leitura-simulada`)).contrato.etapa).toBe('conferir')
   })
 
-  it('com o ZapSign contratado, a regra de antes continua: papel só na entrevista presencial', async () => {
-    const fichaId = await lead()
-    await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, {
-      tipo: 'video', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false,
-    })
-    await reiniciar({ zapsign: true })
-    const { base } = await gerar(fichaId)
-    expect(await json('ana', 'POST', `${base}/impressao`)).toEqual({ erro: 'Papel só na entrevista presencial: a assinatura vai pelo ZapSign.' })
-  })
 })
 
 describe('GGVP-158 P4.4 · o contrato assinado de verdade: o arquivo fica guardado, e a IA confere contra o kit', () => {
@@ -551,7 +483,7 @@ describe('GGVP-158 P4.4 · o contrato assinado de verdade: o arquivo fica guarda
   async function reabrir(lido: object, ambiente: Record<string, string> = { OPENAI_API_KEY: 'chave-de-teste-openai' }) {
     await app.close()
     fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(lido) } }] })))
-    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, zapsign: false, conversor: null, ia: criarIa({ banco, ambiente, fetch, agora: () => relogio }) })
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: arquivos, conversor: null, ia: criarIa({ banco, ambiente, fetch, agora: () => relogio }) })
   }
   async function digitalizar(base: string, arquivo?: Buffer) {
     const f = '----ggv'

@@ -95,8 +95,6 @@ type Opcoes = {
    * Word. `null`: sem conversor, mesmo com a variável (o teste que confere o Word).
    */
   conversor?: ConversorDePdf | null
-  /** O ZapSign está contratado. Padrão: há `ZAPSIGN_API_TOKEN`. Sem ele, só papel, e a opção do celular não aparece (GGVP-136, CA8). */
-  zapsign?: boolean
   /** Drive do escritório ligado (GGVP-107): a trava do pacote cobra o pacote salvo lá. Padrão: as variáveis do Drive. */
   driveLigado?: boolean
   /** O commit do build (GGVP-158), que o /saude mostra. Padrão: "local". */
@@ -158,7 +156,6 @@ export function criarServidor({
   fontes,
   ia,
   conversor,
-  zapsign,
   driveLigado,
   versao = 'local',
   leituraSimulada = process.env.LEITURA_SIMULADA === 'sim',
@@ -254,7 +251,6 @@ export function criarServidor({
       agora,
       armazenamento: arquivos,
       conversor: conversor === undefined ? abrirConversor() : (conversor ?? undefined),
-      zapsign: zapsign ?? Boolean(process.env.ZAPSIGN_API_TOKEN),
       leitor,
     })
     registrarRotasRecepcaoDocumentos(app, { banco, agora, armazenamento: arquivos, leitor })

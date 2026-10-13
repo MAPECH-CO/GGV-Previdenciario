@@ -39,9 +39,9 @@ const leiturasDe = async (fichaId: string) => (await banco.select().from(leitura
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  // O kit é o Word do escritório (GGVP-136): o ZapSign é o simulado e o kit sai em Word, sem conversor de PDF. A leitura é
-  // a de exemplo, pelo nome do arquivo (GGVP-158 P4.10); a de verdade, pela IA, tem o bloco dela no fim.
-  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), zapsign: true, conversor: null, leituraSimulada: true })
+  // O kit é o Word do escritório (GGVP-136), sem conversor de PDF; a assinatura é em papel (GGVP-158 P4.5). A leitura é a
+  // de exemplo, pelo nome do arquivo (GGVP-158 P4.10); a de verdade, pela IA, tem o bloco dela no fim.
+  app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), conversor: null, leituraSimulada: true })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['dora', 'documentacao'], ['julia', 'financeiro'], ['helena', 'senior']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
   // Os contratos dos testes são do LOAS: o modelo dele, de teste, já está na Configuração. Só pede o nome e o CPF.
@@ -115,7 +115,7 @@ describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
     })
   })
 
-  it('o contrato assinado pelo ZapSign chega à pasta do processo já com a leitura, para a conferência da Documentação', async () => {
+  it('o contrato assinado em papel e digitalizado chega à pasta do processo já com a leitura, para a conferência da Documentação', async () => {
     const fichaId = await lead()
     const { processo } = await json('ana', 'POST', `/api/fichas/${fichaId}/processos`, { beneficio: 'loas-idoso' })
     const base = `/api/processos/${processo.id}/contrato`
@@ -124,8 +124,8 @@ describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
     const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
     const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
     await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes })
-    await json('ana', 'POST', `${base}/zapsign`)
-    const { arquivo } = await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
+    await json('ana', 'POST', `${base}/impressao`)
+    const { arquivo } = await json('ana', 'POST', `${base}/digitalizacao`)
     expect(await leiturasDe(fichaId)).toMatchObject([{ id: `${fichaId}/${arquivo.nome}`, tipo: 'contrato', situacao: 'a-conferir' }])
   })
 })
@@ -201,7 +201,7 @@ describe('GGVP-125 · bloco 5b: a conferência dos documentos no servidor', () =
     expect(JSON.stringify(r.ficha.historico)).not.toContain('12.345.678-9')
   })
 
-  it('o contrato assinado arquivado pela Documentação segue para a cópia; as leituras vão na cópia das telas', async () => {
+  it('o contrato assinado arquivado pela Documentação segue para a leitura do contrato; as leituras vão na cópia das telas', async () => {
     const fichaId = await lead()
     const { processo } = await json('ana', 'POST', `/api/fichas/${fichaId}/processos`, { beneficio: 'loas-idoso' })
     const base = `/api/processos/${processo.id}/contrato`
@@ -210,12 +210,14 @@ describe('GGVP-125 · bloco 5b: a conferência dos documentos no servidor', () =
     const validos: Record<string, string> = { cpf: '52998224725', rg: '12.345.678-9', estadoCivil: 'Viúvo(a)', profissao: 'Do lar', endereco: 'Rua das Flores, 10, Centro, Osasco/SP', nacionalidade: 'brasileira' }
     const correcoes = Object.fromEntries((campos as string[]).map((c) => [c, validos[c]]))
     await json('ana', 'POST', `${base}/gerar`, { aprovados: false, oQueCorrigir: 'faltavam dados do cadastro', conferencias, correcoes })
-    await json('ana', 'POST', `${base}/zapsign`)
-    const { arquivo } = await json('ana', 'POST', `${base}/zapsign/retorno-simulado`)
+    // GGVP-158 P4.5: sem ZapSign, o assinado é o papel digitalizado. A leitura de exemplo do papel aponta a rubrica que falta.
+    await json('ana', 'POST', `${base}/impressao`)
+    const { arquivo } = await json('ana', 'POST', `${base}/digitalizacao`)
+    await json('ana', 'POST', `${base}/assinatura-em-papel`)
     const documentos = [{ id: `${fichaId}/${arquivo.nome}`, tipo: 'contrato', data: '2026-10-08' }]
     const r = await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })
     expect(r).toMatchObject({ arquivados: 1, contrato: true })
-    expect(r.contratos).toMatchObject([{ processoId: processo.id, etapa: 'copia' }])
+    expect(r.contratos).toMatchObject([{ processoId: processo.id, etapa: 'conferir', leitura: { faltam: ['pág. 4 (rubrica)'] } }])
     expect(r.ficha.arquivos.find((a: { nome: string }) => a.nome === arquivo.nome)).toMatchObject({ local: processo.id, aguardaLeitura: false })
     expect((await json('ana', 'GET', '/api/recepcao')).leituras).toMatchObject([{ id: `${fichaId}/${arquivo.nome}`, situacao: 'arquivado' }])
   })

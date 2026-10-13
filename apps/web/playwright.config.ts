@@ -27,14 +27,13 @@ export default defineConfig({
     {
       command: 'node --experimental-strip-types ../api/src/principal.ts',
       url: `http://127.0.0.1:${api}/saude`,
-      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC. GGVP-136: sem `ZAPSIGN_API_TOKEN` o
-      // servidor trata o ZapSign como não contratado (só papel, sem a opção do celular); o ZapSign é simulado, e os testes dele
-      // precisam da opção. O valor é de mentira. Sem `GOTENBERG_URL`, o kit sai em Word. GGVP-158: sem o Chatwoot, a mensagem
+      // O fuso do escritório, como na imagem da homologação (Dockerfile): o CI roda em UTC. Sem `GOTENBERG_URL`, o kit sai em
+      // Word; o ZapSign está fora do escopo (GGVP-158 P4.5), e a assinatura é em papel. GGVP-158: sem o Chatwoot, a mensagem
       // fica "simulado, não saiu"; aqui o Chatwoot de mentira entrega (`RELACIONAMENTO_SIMULADO=entrega`), para o convite, a
       // confirmação e a cobrança seguirem nos testes. GGVP-158 parte 4: a IA de verdade lê o conteúdo dos documentos; aqui, sem
       // chave, a leitura é a de exemplo, pelo nome do arquivo (`LEITURA_SIMULADA=sim`). Só aqui: na homologação e na produção,
       // nunca (o servidor não sobe com ela).
-      env: { PORTA: api, TZ: 'America/Sao_Paulo', ZAPSIGN_API_TOKEN: 'valor-de-mentira-dos-testes', RELACIONAMENTO_SIMULADO: 'entrega', LEITURA_SIMULADA: 'sim' },
+      env: { PORTA: api, TZ: 'America/Sao_Paulo', RELACIONAMENTO_SIMULADO: 'entrega', LEITURA_SIMULADA: 'sim' },
       reuseExistingServer: false,
     },
     {
