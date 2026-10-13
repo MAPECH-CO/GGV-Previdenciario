@@ -163,6 +163,6 @@
 
 ## GGVP-158 · Correções da revisão do #62 e do #63 (12/10)
 
-- [ ] 3.1 P1.3 · A CSP com `frame-src 'self' blob:` (`apps/api/src/servidor.ts`), para a impressão do kit em PDF; teste em `servidor.test.ts` que confere a diretiva. Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts`.
-- [ ] 3.2 P1.1 · Em produção, o `RELACIONAMENTO_SIMULADO=entrega` não vale (`apps/api/src/rotas/mensagens.ts`); teste em `rotas/mensagens.test.ts`. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
-- [ ] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 3.1 P1.3 · A CSP com `frame-src 'self' blob:` (`apps/api/src/servidor.ts`), para a impressão do kit em PDF; teste em `servidor.test.ts` que confere a diretiva. Verifica com `pnpm --filter @ggv/api exec vitest run src/servidor.test.ts`.
+- [x] 3.2 P1.1 · Em produção, o `RELACIONAMENTO_SIMULADO=entrega` não vale (`apps/api/src/rotas/mensagens.ts`); teste em `rotas/mensagens.test.ts`. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
+- [x] 3.3 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

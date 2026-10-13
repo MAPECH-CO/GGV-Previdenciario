@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -266,6 +267,22 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
     expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })).toMatchObject({ status: 'entregue' })
     expect(espiao).not.toHaveBeenCalled()
+  })
+
+  it('P1.1 · em produção, a entrega de mentira não vale: sem o Chatwoot, a mensagem segue como não enviada', async () => {
+    await app.close()
+    vi.stubEnv('RELACIONAMENTO_SIMULADO', 'entrega')
+    vi.stubEnv('NODE_ENV', 'production')
+    // Em produção o cofre exige a chave: uma gerada aqui, só para o servidor subir no teste.
+    vi.stubEnv('COFRE_CHAVE', randomBytes(32).toString('base64'))
+    try {
+      app = criarServidor({ banco, agora: () => relogio })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+    const { fichaId } = await cliente()
+    const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
+    expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'boas-vindas', texto: pronta.texto, conversa: pronta.conversas[0].id })).toMatchObject({ status: 'falhou', erro: MSG_SIMULADO })
   })
 
   it('com as variáveis, acha o contato e as conversas na caixa, e a mensagem sai pela conversa escolhida, com o token só no cabeçalho', async () => {

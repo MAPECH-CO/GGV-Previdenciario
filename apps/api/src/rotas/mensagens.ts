@@ -52,7 +52,8 @@ export type PedidoDeEnvio = { modelo: IdDoModelo; texto: string; conversa: numbe
 export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<string, string | undefined> = process.env) {
   const chatwoot = abrirChatwoot(ambiente)
   const simulado = !chatwoot && ambiente.RELACIONAMENTO_SIMULADO !== 'nao'
-  const entregaDeMentira = simulado && ambiente.RELACIONAMENTO_SIMULADO === 'entrega'
+  // GGVP-158 P1.1: a entrega de mentira é só dos testes de tela; em produção não vale, mesmo com a variável posta por engano.
+  const entregaDeMentira = simulado && ambiente.RELACIONAMENTO_SIMULADO === 'entrega' && ambiente.NODE_ENV !== 'production'
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
   const { lerParte, gravarParte } = criarCasoMedico(banco, agora)
