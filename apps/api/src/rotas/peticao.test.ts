@@ -74,6 +74,8 @@ beforeEach(async () => {
   app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos })
   for (const [apelido, perfil] of [['gabi', 'advogada'], ['helena', 'senior'], ['dora', 'documentacao'], ['ana', 'atendimento']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+  // GGVP-158 P5.8: sem a assinatura inteira, a peça não sai.
+  await banco.insert(configuracao).values({ chave: 'peticao.assinatura', valor: 'Dra. Exemplo\nAdvogada · OAB/SP 000.000 (exemplo)' })
   await despachadoADocumentacao()
 })
 afterEach(async () => {
@@ -452,6 +454,24 @@ describe('GGVP-71 · pacote e travas', () => {
     })
     // A Sênior também protocola (GGVP-96).
     expect((await ler('helena')).podeProtocolar).toBe(true)
+  })
+
+  it('GGVP-158 P5.9 · sem tribunal na Configuração, a trava do pacote diz que falta, e o protocolo recusa com a mesma frase', async () => {
+    await banco.delete(configuracao).where(eq(configuracao.chave, 'tribunais'))
+    expect((await travas()).pacote).toEqual([false, 'Falta: CNIS atualizado · Falta o tribunal do protocolo: a Sênior cadastra na Configuração.'])
+    const campos = { tribunal: 'Justiça Federal', numeroCnj: '0001234-96.2026.4.03.6301', dataProtocolo: '06/10/2026', conferiTema350: 'true', conferiCpf: 'true', conferiPacote: 'true' }
+    const r = await enviar('gabi', '/peticao/protocolo', campos, PDF('protocolo.pdf'))
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Falta o tribunal do protocolo: a Sênior cadastra na Configuração.'])
+  })
+
+  it('GGVP-158 P5.8 · com a assinatura a completar, a trava diz o que falta e a peça não sai; completada, o pacote é gerado de novo', async () => {
+    await banco.update(configuracao).set({ valor: 'Dr. Glauco\nAdvogado responsável · OAB/UF [completar]' }).where(eq(configuracao.chave, 'peticao.assinatura'))
+    await banco.update(peticaoVersao).set({ pacote: null })
+    expect((await chamar('gabi', 'POST', '/peticao/pacote')).statusCode).toBe(201)
+    expect((await travas()).pacote).toEqual([false, 'O pacote ainda não foi gerado. · A assinatura padrão da petição ainda tem [completar]: complete na Configuração.'])
+    await banco.update(configuracao).set({ valor: 'Dr. Glauco\nAdvogado responsável · OAB/SP 123.456' }).where(eq(configuracao.chave, 'peticao.assinatura'))
+    await chamar('gabi', 'POST', '/peticao/pacote')
+    expect((await travas()).pacote).toEqual([false, 'Falta: CNIS atualizado'])
   })
 
   it('CA13 · a advogada sobe o documento que falta, e o pacote é gerado de novo com ele', async () => {

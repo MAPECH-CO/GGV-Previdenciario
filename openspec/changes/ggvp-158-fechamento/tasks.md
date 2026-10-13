@@ -304,7 +304,7 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
 ## GGVP-158 · Parte 5 · Perícia, INSS e Justiça (13/10)
 
-Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-5`, em cima do #74. A migração 0032 sai no fim, sobre a main mais nova. Na ordem contrato → teste → servidor.
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-5`, em cima do #74. Sem migração nem matriz nova. Na ordem contrato → teste → servidor.
 
 - [x] 5.1 A orientação, o lembrete e a cobrança da perícia conferem a mensagem (P5.1, decisão 40): `mensagemId` opcional em `OrientacaoAoCliente` e em `MensagemConferida`; a rota acha a mensagem da pessoa, do modelo e do texto e recusa a que não saiu.
   - Verifica com `rotas/pericia.test.ts`:
@@ -368,13 +368,17 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - liberar de novo cancela o protocolo aberto, e o OK antigo não vale.
 
   Verificado em 13/10: `rotas/vigilia.test.ts` 10/10 e `rotas/conferencia.test.ts` (um novo em cada), com `inss` e `indeferimento`, 62/62. A tela da vigília também só oferece encerrar com o despacho esperando.
-- [ ] 5.11 Tribunal e assinatura, rotas (P5.8, decisão 47): `PUT /api/configuracao/tribunais` e `/assinatura`; o `GET` devolve os dois.
+- [x] 5.11 Tribunal e assinatura, rotas (P5.8, decisão 47): `PUT /api/configuracao/tribunais` e `/assinatura`; o `GET` devolve os dois.
   - Verifica com `rotas/configuracao.test.ts`:
     - a Sênior salva, e fica no histórico;
     - o Atendimento recusa;
     - o tamanho fora da faixa recusa.
-- [ ] 5.12 A trava do pacote (P5.8, P5.9): falha sem tribunal e com a assinatura a completar; o protocolo recusa sem tribunal; o PDF não usa a assinatura "a configurar".
+
+  Verificado em 13/10: `rotas/configuracao.test.ts` 7/7 (2 novos).
+- [x] 5.12 A trava do pacote (P5.8, P5.9): falha sem tribunal e com a assinatura a completar; o protocolo recusa sem tribunal; o PDF não usa a assinatura "a configurar".
   - Verifica com `fluxo/travas.test.ts` e `rotas/peticao.test.ts`.
+
+  Verificado em 13/10: `rotas/peticao.test.ts` 32/32 (2 novos; os de antes cadastram a assinatura de teste) e `fluxo/travas.test.ts`.
 - [ ] 5.13 O alarme da vigília (P5.10, decisão 48): a rodada presa vira falha; sem fonte na produção, a linha da Sênior e o alarme do dia; `avisarSuporte`, com o canal e o Jira.
   - Verifica com teste, com o fetch de mentira:
     - a presa;
@@ -408,6 +412,8 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - fecha a tarefa e guarda o comprovante;
     - sem tarefa, recusa;
     - a data depois de hoje recusa.
-- [ ] 5.22 A migração 0032 (P5.8): o tribunal e a assinatura do banco novo, com `ON CONFLICT DO NOTHING`, sobre a main mais nova. Verifica com teste: o banco novo tem os dois; o banco com a chave guarda o que tinha.
+- [x] 5.22 O padrão ao subir (P5.8): o tribunal e a assinatura do banco novo, só o que faltar, em `principal.ts`, como os feriados (sem migração). Verifica com teste: o banco novo tem os dois; o banco com a chave guarda o que tinha.
+
+  Verificado em 13/10, no teste de `rotas/configuracao.test.ts`.
 - [ ] 5.23 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
 - [ ] 5.24 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.

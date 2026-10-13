@@ -13,11 +13,14 @@ import { criarLeitor } from './fluxo/leitura.ts'
 import { olharOScanner } from './fluxo/scanner.ts'
 import { apagarSenhasVencidas } from './fluxo/cofre.ts'
 import { carregarFeriadosSeVazio } from './fluxo/feriados-ao-subir.ts'
+import { garantirPadroesDoProtocolo } from './fluxo/protocolo-ao-subir.ts'
 
 const { banco } = await abrirBanco()
 // P17: com banco de verdade, os feriados da lei de 2026 e 2027 entram na primeira subida (tabela vazia). No banco de
 // exemplo (testes de tela), não: lá a lista vazia é o ponto de partida dos testes do prazo e do botão "carregar".
 if (process.env.DATABASE_URL) await carregarFeriadosSeVazio(banco, new Date())
+// GGVP-158 P5.8: o tribunal e a assinatura padrão, só os que faltarem.
+if (process.env.DATABASE_URL) await garantirPadroesDoProtocolo(banco, new Date())
 
 const app = criarServidor({
   logger: true,

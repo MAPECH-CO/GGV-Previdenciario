@@ -262,6 +262,32 @@ export type PublicarKit = z.input<typeof PublicarKit>
 export const SalvarMensagem = z.object({ conteudo: z.string({ error: 'Escreva a mensagem' }).trim().min(1, 'Escreva a mensagem') })
 export type SalvarMensagem = z.infer<typeof SalvarMensagem>
 
+/** Um tribunal do protocolo (GGVP-158 P5.8): o nome, o site do peticionamento e o tamanho máximo por arquivo, em MB. */
+export const TribunalDoProtocolo = z.object({
+  nome: z.string({ error: 'Escreva o nome do tribunal' }).trim().min(3, 'Escreva o nome do tribunal').max(120, 'O nome do tribunal tem até 120 caracteres'),
+  site: z
+    .string({ error: 'Escreva o site do tribunal' })
+    .trim()
+    .refine((s) => /^https:\/\/\S+$/.test(s), 'O site do tribunal começa com https://'),
+  tamanhoMaximoMb: z
+    .unknown()
+    .refine(validarInteiro, 'Informe o tamanho por arquivo em MB, número inteiro')
+    .transform((v) => normalizarInteiro(v) as number)
+    .refine((n) => n >= 1 && n <= 100, 'O tamanho por arquivo vai de 1 a 100 MB'),
+})
+
+/** PUT /api/configuracao/tribunais (GGVP-158 P5.8): a lista inteira, cada tribunal uma vez. */
+export const SalvarTribunais = z
+  .object({ tribunais: z.array(TribunalDoProtocolo).min(1, 'Cadastre ao menos um tribunal') })
+  .refine((t) => new Set(t.tribunais.map((x) => x.nome.toLowerCase())).size === t.tribunais.length, { message: 'Cada tribunal entra uma vez', path: ['tribunais'] })
+export type SalvarTribunais = z.input<typeof SalvarTribunais>
+
+/** PUT /api/configuracao/assinatura (GGVP-158 P5.8): a assinatura padrão da petição; "[completar]" barra o protocolo. */
+export const SalvarAssinatura = z.object({
+  assinatura: z.string({ error: 'Escreva a assinatura' }).trim().min(3, 'Escreva a assinatura').max(500, 'A assinatura tem até 500 caracteres'),
+})
+export type SalvarAssinatura = z.infer<typeof SalvarAssinatura>
+
 /** GET /api/configuracao (GGVP-104, `gestao.ver`; editar com `configuracao.editar`). */
 export const ConfiguracaoDoEscritorio = z.object({
   parametros: z.array(z.object({ chave: z.string(), rotulo: z.string(), valor: z.number().nullable(), min: z.number(), max: z.number(), emUso: z.boolean() })),
@@ -276,6 +302,9 @@ export const ConfiguracaoDoEscritorio = z.object({
   /** Os tipos de documento já usados, para a gestão não escrever um que nenhuma tela usa. */
   tiposDeDocumento: z.array(z.string()),
   mensagens: z.array(z.object({ id: z.uuid(), nome: z.string(), conteudo: z.string() })),
+  /** GGVP-158 P5.8: os tribunais do protocolo e a assinatura padrão da petição. */
+  tribunais: z.array(z.object({ nome: z.string(), site: z.string(), tamanhoMaximoMb: z.number() })),
+  assinatura: z.string().nullable(),
   /** CA3: as últimas mudanças, com quem, quando e o que mudou. */
   historico: z.array(z.object({ quando: z.string(), quem: z.string(), descricao: z.string() })),
   podeEditar: z.boolean(),

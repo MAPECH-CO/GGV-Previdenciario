@@ -33,6 +33,9 @@ export const MSG_NADA_A_CONFERIR = 'Não há versão esperando a conferência.'
 export const MSG_CITADO_NAO_FALTA = 'Este documento citado não está faltando.'
 export const MSG_DOCUMENTO_QUE_FALTA = 'Anexe o documento (PDF ou imagem, até 25 MB) ou escolha um documento do caso.'
 export const MSG_NADA_A_PROTOCOLAR = 'Não há petição aprovada esperando o protocolo.'
+export const MSG_SEM_ASSINATURA = 'Falta a assinatura padrão da petição: a Sênior cadastra na Configuração.'
+export const MSG_ASSINATURA_A_COMPLETAR = 'A assinatura padrão da petição ainda tem [completar]: complete na Configuração.'
+export const MSG_SEM_TRIBUNAL = 'Falta o tribunal do protocolo: a Sênior cadastra na Configuração.'
 export const MSG_CNJ_DE_OUTRO_CASO = 'Este número de processo já está em outro caso.'
 
 /** `driveLigado`: a trava "pacote completo" cobra o pacote salvo no Drive (GGVP-107 CA6). */
@@ -49,6 +52,18 @@ const ehTribunal = (t: unknown): t is Tribunal =>
 export async function tribunaisDa(banco: Banco): Promise<Tribunal[]> {
   const [c] = await banco.select().from(configuracao).where(eq(configuracao.chave, 'tribunais'))
   return Array.isArray(c?.valor) ? c.valor.filter(ehTribunal) : []
+}
+
+/** A assinatura padrão da petição (GGVP-87; GGVP-158 P5.8); sem ela, nula. */
+export async function assinaturaDa(banco: Banco): Promise<string | null> {
+  const [c] = await banco.select().from(configuracao).where(eq(configuracao.chave, 'peticao.assinatura'))
+  return typeof c?.valor === 'string' && c.valor.trim() ? c.valor : null
+}
+
+/** GGVP-158 P5.8: o que falta na assinatura para a peça sair: nada (nulo), ela inteira ou o "[completar]". */
+export function problemaDaAssinatura(assinatura: string | null): string | null {
+  if (!assinatura) return MSG_SEM_ASSINATURA
+  return faltaCompletar(assinatura) ? MSG_ASSINATURA_A_COMPLETAR : null
 }
 
 export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia, preparo, driveLigado = false }: Opcoes) {
@@ -107,8 +122,10 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const v = (await versoesDa(peticaoId)).findLast((x) => x.aprovadaPor)
     if (!v) return
     const [p] = await banco.select().from(peticao).where(eq(peticao.id, peticaoId))
-    const [conf] = await banco.select().from(configuracao).where(eq(configuracao.chave, 'peticao.assinatura'))
-    const assinatura = typeof conf?.valor === 'string' ? conf.valor : 'Assinatura padrão do escritório (a configurar)'
+    // GGVP-158 P5.8: sem a assinatura inteira, a peça não sai; a trava do pacote diz o que falta, e o pacote é gerado de
+    // novo depois. ponytail: a assinatura mudada depois do pacote só vale no pacote gerado de novo.
+    const assinatura = await assinaturaDa(banco)
+    if (!assinatura || problemaDaAssinatura(assinatura)) return
     const guardar = async (conteudo: Buffer, nome: string) => {
       const dados = await guardarArquivo(armazenamento, casoId, { conteudo, mime: 'application/pdf', nome }, 'pacote-peticao')
       const [d] = await banco.insert(documento).values({ casoId, tipo: 'pacote_peticao', origem: 'portal', recebidoPor: quem, ...dados }).returning()
@@ -501,7 +518,8 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const [cliente] = await banco.select({ cpf: pessoa.cpf }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
     // GGVP-107 CA6: com o Drive ligado, o pacote também tem de estar salvo lá.
     const noDrive = driveLigado ? Boolean(aprovada.pacoteDriveId) : null
-    return [travaTema350(pacote), travaCpf(aprovada.conteudo, cliente?.cpf ?? null), travaPacote(citados, pacote, tamanhos, tribunal, noDrive)]
+    const doProtocolo = [...(tribunal ? [] : [MSG_SEM_TRIBUNAL]), ...[problemaDaAssinatura(await assinaturaDa(banco))].filter((x): x is string => x !== null)]
+    return [travaTema350(pacote), travaCpf(aprovada.conteudo, cliente?.cpf ?? null), travaPacote(citados, pacote, tamanhos, tribunal, noDrive, doProtocolo)]
   }
 
   /** O citado `i` do pedido, que ainda falta, e a petição; antes do protocolo. */
@@ -631,7 +649,9 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
     const aprovada = (await versoesDa(p.id)).findLast((v) => v.aprovadaPor)
     if (!aguardando || !aprovada) return negar(resposta, 409, MSG_NADA_A_PROTOCOLAR)
     const d = entrada.data
-    const tribunal = (await tribunaisDa(banco)).find((t) => t.nome === d.tribunal)
+    const tribunais = await tribunaisDa(banco)
+    if (!tribunais.length) return negar(resposta, 409, MSG_SEM_TRIBUNAL)
+    const tribunal = tribunais.find((t) => t.nome === d.tribunal)
     if (!tribunal) return negar(resposta, 400, 'Escolha um tribunal da configuração do escritório.')
     const quem = pedido.usuario!.id
     // CA3: trava falhando bloqueia o protocolo e diz qual.

@@ -196,7 +196,7 @@ Também só servidor, com teste junto, num pedido em cima do #71. Migração nov
 
 ### Parte 5 · Perícia, INSS e Justiça (decisões do Mateus, 13/10)
 
-Só servidor, com teste junto, num pedido em cima do #74. Várias rotas aqui são as que as telas da GGVP-159 parte 4 esperam ("espera a rota do Mateus"). Migração nova só uma, a 0032 (o tribunal e a assinatura padrão), no fim da parte e sobre a main mais nova. Não há matriz nova: a jurimetria usa `estudo.ver`, que já é do Jurídico e dos sócios.
+Só servidor, com teste junto, num pedido em cima do #74. Várias rotas aqui são as que as telas da GGVP-159 parte 4 esperam ("espera a rota do Mateus"). Não há migração nem matriz nova: o tribunal e a assinatura padrão entram ao subir, como os feriados, e a jurimetria usa `estudo.ver`, que já é do Jurídico e dos sócios.
 
 Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre chamado no Jira (a proposta dele de 02/10); o laço do cliente sumido fica fora da parte 5, porque não existe no código e falta dizer quando o cliente conta como sumido; plano aprovado, código em seguida.
 
@@ -246,15 +246,16 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
     - Chaves `tribunais` e `peticao.assinatura` da `configuracao`, como a semente já usa.
     - `PUT /api/configuracao/tribunais` e `PUT /api/configuracao/assinatura`, com `configuracao.editar`. A mudança vai ao histórico da configuração, e `GET /api/configuracao` devolve os dois.
     - O tamanho do tribunal é um inteiro de 1 a 100, pela `campos`. O site é `https`.
-    - A migração 0032 põe:
+    - Ao subir com banco de verdade, `garantirPadroesDoProtocolo` (em `principal.ts`, junto da carga dos feriados) põe só o que faltar, com uma linha no histórico da Configuração:
       - a "Justiça Federal da 3ª Região", `https://www.trf3.jus.br/`, 3 MB;
-      - "Dr. Glauco · OAB/UF [completar]".
+      - "Dr. Glauco", "Advogado responsável · OAB/UF [completar]".
 
-      Fica `ON CONFLICT DO NOTHING`: a homologação preparada guarda o que tem.
+      O que a Sênior mudou nunca é refeito. Não é migração: ela entraria em todo banco de teste e trombaria com os testes que cadastram o tribunal.
     - 3 MB é o menor limite que o TRF3 publicou: o PJe pede 3 MB por PDF, e os JEFs, 10 MB. A Sênior ajusta.
     - A OAB do Dr. Glauco espera o Lucas.
-    - A trava do pacote falha sem tribunal e com a assinatura que tem "[completar". É a mesma regra do texto, `faltaCompletar` de `packages/contratos/src/ia.ts`.
-    - O PDF deixa de usar a assinatura "a configurar".
+    - A trava do pacote falha sem tribunal e com a assinatura que falta ou tem "[completar". É a mesma regra do texto, `faltaCompletar` de `packages/contratos/src/ia.ts`. O protocolo sem tribunal nenhum recusa com a mesma frase.
+    - O PDF deixa de usar a assinatura "a configurar": sem a assinatura inteira, a peça não sai, e o pacote é gerado de novo depois (a rota que já existe).
+    - ponytail: a assinatura mudada depois do pacote gerado só vale no pacote gerado de novo.
 48. **O alarme da vigília** (P5.10; ADR-018).
     - A rodada `rodando` com `inicio` mais velho que o tempo limite e mais 5 minutos vira `falhou`: "a rodada parou no meio (o servidor reiniciou ou travou)". Isso roda na batida, junto do "não rodou".
     - Na produção sem fonte, a `batida` registra o alarme do dia, uma vez por dia, e a Central da Sênior ganha a linha "Vigília sem fonte ligada".

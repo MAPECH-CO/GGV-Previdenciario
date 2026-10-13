@@ -625,11 +625,11 @@ A Configuração SHALL mostrar e editar, com histórico:
 - os tribunais do protocolo: nome, site e tamanho máximo por arquivo, em MB;
 - a assinatura padrão da petição.
 
-Só a gestão edita. Um banco novo SHALL começar com a Justiça Federal da 3ª Região, com 3 MB por arquivo, e com a assinatura do Dr. Glauco, com a OAB a completar. A petição MUST NOT protocolar com a assinatura a completar.
+Só a gestão edita. Ao subir com um banco novo, o servidor SHALL pôr a Justiça Federal da 3ª Região, com 3 MB por arquivo, e a assinatura do Dr. Glauco, com a OAB a completar, só o que faltar. A petição MUST NOT protocolar com a assinatura a completar, e a peça não sai sem a assinatura inteira.
 
 #### Scenario: P5.8 · Banco novo
-- **Quando** a migração roda num banco sem tribunal
-- **Então** a Configuração mostra a Justiça Federal da 3ª Região e a assinatura a completar
+- **Quando** o servidor sobe com um banco sem tribunal nem assinatura
+- **Então** a Configuração mostra a Justiça Federal da 3ª Região e a assinatura a completar, e o histórico diz que o sistema pôs o padrão
 
 #### Scenario: P5.8 · Assinatura a completar
 - **Dado** a assinatura com "[completar]"

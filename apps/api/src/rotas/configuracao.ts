@@ -9,21 +9,25 @@ import {
   PARAMETROS_SEM_USO,
   PublicarKit,
   ROTULO_BENEFICIO,
+  SalvarAssinatura,
   SalvarMensagem,
   SalvarParametro,
+  SalvarTribunais,
   pode,
   type Beneficio,
   type Erro,
   type Parametro,
 } from '@ggv/contratos'
 import { and, asc, desc, eq, inArray, isNull, max } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply } from 'fastify'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
 import { configuracao, documento, eventoAuditoria, kitDocumento, modelo, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
+import type { Tribunal } from '../fluxo/travas.ts'
+import { assinaturaDa, tribunaisDa } from './peticao.ts'
 
 type Opcoes = { banco: Banco; agora?: () => Date }
-type Detalhe = { chave?: Parametro; antes?: unknown; depois?: unknown; beneficio?: Beneficio; versao?: number; nome?: string; itens?: number; termo?: string }
+type Detalhe = { chave?: Parametro; antes?: unknown; depois?: unknown; beneficio?: Beneficio; versao?: number; nome?: string; itens?: number; termo?: string; chaves?: string[] }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const UUID = /^[0-9a-f-]{36}$/
 
@@ -32,6 +36,11 @@ function descrever(acao: string, d: Detalhe) {
   if (acao === 'configuracao_alterada' && d.chave) return `${PARAMETROS_DO_ESCRITORIO[d.chave].rotulo}: ${d.antes ?? 'sem valor'} → ${d.depois}`
   if (acao === 'kit_publicado' && d.beneficio) return `Kit de ${ROTULO_BENEFICIO[d.beneficio]}: versão ${d.versao} publicada, com ${d.itens} documento(s)`
   if (acao === 'mensagem_alterada') return `Mensagem "${d.nome}": versão ${d.versao} publicada`
+  // GGVP-158 P5.8: o tribunal e a assinatura do protocolo.
+  if (acao === 'tribunais_alterados' && Array.isArray(d.depois))
+    return `Tribunais do protocolo: ${(d.depois as Tribunal[]).map((t) => `${t.nome} (${t.tamanhoMaximoMb} MB por arquivo)`).join(', ')}`
+  if (acao === 'assinatura_alterada') return 'Assinatura padrão da petição alterada'
+  if (acao === 'protocolo_padrao_carregado') return `O sistema pôs o padrão do protocolo: ${(d.chaves ?? []).map((c) => (c === 'tribunais' ? 'o tribunal' : 'a assinatura')).join(' e ')}`
   // GGVP-136: o modelo do Word do kit, na mesma linha do histórico.
   if (acao === 'modelo_publicado') return `Modelo "${d.nome}": versão ${d.versao} publicada`
   // GGVP-158 P3.3: o percentual de honorários do modelo.
@@ -84,6 +93,8 @@ export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora 
       }),
       tiposDeDocumento: [...new Set([...usados.map((u) => u.tipo), ...vigentes.map((k) => k.tipoDocumento)])].sort(),
       mensagens,
+      tribunais: await tribunaisDa(banco),
+      assinatura: await assinaturaDa(banco),
       historico: eventos.map((e) => ({ quando: e.quando.toISOString(), quem: nomes.get(e.quem) ?? 'Sem sessão', descricao: descrever(e.acao, e.detalhe as Detalhe) })),
       podeEditar: pode(pedido.perfilAtivo, 'configuracao.editar'),
     })
@@ -113,6 +124,33 @@ export function registrarRotasConfiguracao(app: FastifyInstance, { banco, agora 
       await registrarHistorico(tx, agora)(quem, 'configuracao_alterada', pedido, 'configuracao', { chave, antes: atual?.valor ?? null, depois: valor })
     })
     return resposta.code(201).send({ ok: true, valor })
+  })
+
+  /** GGVP-158 P5.8: grava uma chave da Configuração e o histórico juntos (GGVP-99). */
+  async function gravar(chave: string, valor: unknown, acao: string, pedido: FastifyRequest, detalhe: (antes: unknown) => Record<string, unknown>) {
+    const quem = pedido.usuario!.id
+    await banco.transaction(async (tx) => {
+      const [atual] = await tx.select().from(configuracao).where(eq(configuracao.chave, chave))
+      if (atual) await tx.update(configuracao).set({ valor, alteradoPor: quem, atualizadoEm: agora() }).where(eq(configuracao.chave, chave))
+      else await tx.insert(configuracao).values({ chave, valor, alteradoPor: quem })
+      await registrarHistorico(tx, agora)(quem, acao, pedido, 'configuracao', detalhe(atual?.valor ?? null))
+    })
+  }
+
+  // GGVP-158 P5.8 (GGVP-71): os tribunais do protocolo, com o site e o tamanho por arquivo; a trava do pacote usa daqui.
+  app.put('/api/configuracao/tribunais', editar, async (pedido, resposta) => {
+    const entrada = SalvarTribunais.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os tribunais.')
+    await gravar('tribunais', entrada.data.tribunais, 'tribunais_alterados', pedido, (antes) => ({ antes, depois: entrada.data.tribunais }))
+    return resposta.code(201).send({ ok: true, tribunais: entrada.data.tribunais })
+  })
+
+  // GGVP-158 P5.8 (GGVP-87): a assinatura padrão da petição.
+  app.put('/api/configuracao/assinatura', editar, async (pedido, resposta) => {
+    const entrada = SalvarAssinatura.safeParse(pedido.body)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Escreva a assinatura.')
+    await gravar('peticao.assinatura', entrada.data.assinatura, 'assinatura_alterada', pedido, (antes) => ({ antes, depois: entrada.data.assinatura }))
+    return resposta.code(201).send({ ok: true, assinatura: entrada.data.assinatura })
   })
 
   // CA1, CA3, CA6: publicar o kit revoga a versão vigente e grava a seguinte; o caso aberto fica com o kit da época.
