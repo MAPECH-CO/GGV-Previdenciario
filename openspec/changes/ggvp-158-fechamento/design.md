@@ -119,6 +119,81 @@ A parte 3 é só servidor, com teste junto. As telas são do Pedro, e o pedido l
     - Usa a lista de motivos do "não fechou" (G16) e o mesmo recontato: com data, "Recontatar lead" na agenda; sem data, o lead arquivado com o motivo.
 26. **Bairro:** `EdicaoDaFicha` ganha `bairro`, que o kit já pede.
 
+### Parte 4 · Recepção sem simulação (decisões do Mateus, 13/10)
+
+Também só servidor, com teste junto, num pedido em cima do #71. Migração nova só uma, a 0031 do catálogo, no fim da parte e sobre a main mais nova (se a main já tiver uma 0031, renumera). Não há matriz nova.
+
+27. **A IA lê pela imagem.**
+    - O modelo de texto da OpenAI recebe o arquivo (imagem ou PDF) junto com a instrução, numa chamada só. Assim enxerga a assinatura, a data em branco e a legibilidade, que o texto do OCR não mostra. A Mistral segue na perícia e no parecer.
+    - O `Pedido` de `ia.ts` ganha o anexo. A sugestão pronta conta o hash do arquivo, e o registro guarda só o tamanho e o hash, como hoje.
+28. **Quatro finalidades novas, em JSON:** `ler_documento_balcao`, `ler_ficha_atendimento`, `ler_segunda_ficha` e `ler_contrato_assinado`.
+    - O documento médico usa a autorização do dado de saúde. O médico é reconhecido pelo tipo anunciado, como o `sensivel` do documento já é.
+    - A segunda ficha também usa a autorização, por causa da seção médica.
+    - Sem a autorização, a leitura é recusada, e a pessoa preenche.
+29. **A regra é do código** (G19):
+    - o CPF e a data pela `@ggv/campos`;
+    - o tipo do catálogo; fora dele, o tipo anunciado;
+    - a confiança de 0 a 100, com o limite que já existe;
+    - a quarentena e o duplicado pelas regras de hoje.
+
+    O texto cru da IA não vai à tela, como na perícia.
+30. **A leitura acontece quando o conteúdo está no servidor:**
+    - card e chat: no envio do conteúdo;
+    - scanner: na rodada, que baixa o arquivo do Drive;
+    - papel e contrato: na própria rota, que recebe o arquivo.
+
+    O anúncio dos arquivos não lê mais, a não ser com a leitura de exemplo (decisão 39).
+31. **A senha escrita no papel** (GGVP-24 CA15, G9):
+    - a IA devolve a senha num campo à parte;
+    - o código tira esse campo antes de guardar qualquer coisa, cifra a senha no cofre e marca a ficha com a senha no cofre;
+    - o registro da IA guarda o JSON sem a senha: a sugestão ganha um `limpar`, que roda antes do registro;
+    - a resposta diz só `senhaLida`.
+
+    O modelo vê a imagem com a senha, pela autorização do Lucas de 07/10; o portal só guarda a senha no cofre.
+32. **O scanner entra pelo Drive** (decisão do Mateus, 13/10; ADR-017). O n8n não muda.
+    - **Quando:** a cada minuto, junto com a rodada do Drive, pela lista de mudanças do Drive compartilhado (`changes.list`). A marca da lista fica na `configuracao` (`drive:mudancas`). A primeira rodada só guarda a marca, sem trazer o passado.
+    - **O que entra:** o arquivo novo cuja pasta-mãe é a pasta ligada a uma ficha. A pasta não ligada é ligada quando o título leva a uma ficha só (`pastaDoTitulo` e `pastasDoCliente`, a regra do balcão).
+    - **O que fica fora:**
+      - pasta e lixeira;
+      - o que tem a marca do portal (`appProperties.portal`);
+      - o que está em "A REVISAR";
+      - o arquivo já conhecido (`documento.drive_arquivo_id`).
+    - **Como entra:**
+      - o arquivo vira uma linha de `documento` que aponta para o Drive, como o scanner de hoje, sem conteúdo no armazenamento, e entra na ficha;
+      - o conteúdo é baixado só para a leitura (`drive.baixar`);
+      - o tipo anunciado sai do começo do nome ("Tipo - Nome - data.pdf", o padrão do n8n); fora do catálogo, é "outro", e a IA sugere o tipo.
+    - **O lote:** os arquivos de uma ficha na mesma rodada viram o lote da tarefa "Receber documento" aberta, para o registro do recebimento.
+    - **Onde não roda:** com o Drive só leitura. A homologação, que olha o Drive real, não traz documento de cliente.
+33. **O contrato assinado:**
+    - a digitalização guarda o arquivo no armazenamento, como documento `contrato` do caso;
+    - a assinatura em papel segue exigindo o arquivo;
+    - a leitura manda à IA a lista de documentos do kit e devolve a `LeituraDoContrato`, que as telas já usam;
+    - `GET /api/processos/:id/contrato/assinado` devolve o arquivo, para a cópia.
+34. **O ZapSign sai:**
+    - saem as rotas de envio e de retorno e a opção do servidor;
+    - o serviço responde sempre `zapsign: false`;
+    - a coluna `zapsign_id` fica, sem migração;
+    - `ZAPSIGN_API_TOKEN` sai da lista de variáveis e da configuração do Playwright.
+35. **Um catálogo só de benefícios:**
+    - o `CATALOGO_BENEFICIOS` de `packages/contratos` ganha o id do servidor de cada um dos 34;
+    - `BENEFICIOS`, `ROTULO_BENEFICIO` e os mapas das telas saem dele;
+    - os 11 ids de hoje não mudam;
+    - a migração 0031 troca o CHECK `caso_beneficio`.
+36. **Drive:**
+    - a rodada pula o documento de origem card ou chat ainda não conferido;
+    - `POST /api/fichas` devolve as pastas parecidas, numa leitura de "#5. CLIENTES";
+    - `POST /api/fichas/:id/pasta` liga a escolhida, que precisa estar na lista, ou cria a nova, com a marca do portal. A nova só nasce com CPF e com o Drive ligado. As duas ficam no histórico.
+37. **O caso do documento:**
+    - `EnvioDeArquivos` ganha `processoId`, obrigatório quando o cliente tem mais de um caso;
+    - o local, o conteúdo e o arquivamento usam o caso do arquivo, e não o primeiro caso da ficha;
+    - quando nasce o primeiro caso, os documentos sem caso da pessoa entram nele;
+    - laudo, relatório médico e prontuário viram documento médico do caso.
+38. **A cobrança na mensagem:** o modelo "cobrança" usa o `motivoParado` da cobrança do caso (`cobrancaDoCaso`).
+39. **A leitura de exemplo fica atrás de `LEITURA_SIMULADA=sim`**, que o Playwright liga.
+    - O leitor é o das telas (`lerComIADeExemplo` e companhia).
+    - Com ela, as rotas aceitam a chamada sem arquivo, como hoje, e as rotas simuladas existem: o lote do scanner e a leitura do contrato.
+    - O servidor recusa subir com ela e `AMBIENTE` igual a `homologacao` ou `producao`, a regra do `aceitaGanchoDeTeste`.
+
 ## Campos de formulário
 
 Nenhum.
@@ -135,3 +210,13 @@ Nenhum.
 - **Sinônimos do ZapSign:** um nome novo no ZapSign volta a ser recusado. Por isso, a conferência fica antes de cada subida, e o recusado vai para o cartão.
 - **Parte 3 sem as telas:** até o Pedro ligar, as telas seguem no caminho de hoje. O cálculo de lead do servidor continua avisando que não salva, e a Configuração continua sem o campo do percentual. O servidor fica pronto e testado antes.
 - **Cálculo do CNIS:** é só tempo comum do RGPS. Atividade especial, rural, período em benefício e pedágio ficam fora, como diz o documento do cálculo. A regra fica com o advogado, que vê o CNIS inteiro.
+- **Parte 4 sem as telas:** a leitura da ficha em papel e a do contrato passam a pedir o arquivo, e a tela de hoje não manda.
+  - Até o Pedro ligar, essas leituras recusam na homologação.
+  - Os testes de tela seguem pela leitura de exemplo.
+- **Autorização do dado de saúde:** sem `IA_PERMITE_DADO_DE_SAUDE=sim`, o documento médico e a segunda ficha não são lidos.
+- **Custo da IA:** uma chamada por documento, com o arquivo. A sugestão pronta evita repetir a chamada para o mesmo arquivo.
+- **Scanner pelo Drive:**
+  - até um minuto de atraso;
+  - o arquivo que alguém tira de "A REVISAR" e põe na pasta do cliente também entra, porque é uma mudança de pasta;
+  - a pasta cujo título serve a duas fichas fica sem ligar, até alguém ligar pela ficha.
+- **A senha no papel:** a imagem com a senha fica guardada (o Lucas disse que não precisa cobrir) e passa pelo modelo. O valor só fica no cofre.
