@@ -64,11 +64,17 @@
   - com o telefone de fora, a janela disse "fora da lista de teste".
 
   O #63 saiu do rascunho.
-- [ ] 1.11 Os modelos que passam (P1.8). Dos anexos da GGVP-136, conferidos com `lerModelo`, passam o `modelo-8` (kit consumidor de 23/07) e o `modelo-10` (seguro de vida).
+- [x] 1.11 Os modelos que passam (P1.8). Dos anexos da GGVP-136, conferidos com `lerModelo`, passam o `modelo-8` (kit consumidor de 23/07) e o `modelo-10` (seguro de vida).
   - A Sênior sobe os dois pelo `modelos:subir`, com a senha digitada só no terminal do Mateus.
   - Na primeira tentativa (12/10), o portal respondeu 500: o depósito `documentos` do Supabase não aceitava Word. Com a autorização do Mateus, o tipo do Word entrou na lista do depósito, pelo conector.
   - O depósito agora está descrito em `docs/infra/homologacao.md`, para a produção nascer igual.
   - Verifica: a Configuração mostra a versão dos dois, e o cartão registra o que falta e por quê.
+
+  Verificado em 13/10, junto com a 1.13:
+  - os 5 modelos estão na versão 1, em vigor, cada um com o seu arquivo no depósito;
+  - o comentário do cartão lista os 4 que faltam, porque o escritório ainda não mandou: aposentadorias, LOAS sem representante, curatela e restituição.
+
+  O 500 de 13/10 era outro: o `SUPABASE_URL` do app tinha o endereço do banco (`postgresql://`), e nenhum arquivo da homologação era guardado. O Mateus trocou para `https://gyqscrirlzfogurduruf.supabase.co`, e o depósito respondeu 200.
 - [x] 1.12 Os nomes do ZapSign no kit (P1.9), num PR à parte sobre o #62, com revisão do Pedro. Na ordem contrato → teste → código:
   - em `apps/web/src/regras/kitDoModelo.ts`, os sinônimos com o mesmo valor do nome do portal e as variáveis que a ficha não tem como opcionais;
   - a regra da primeira data vale para `{{DIA}}`, `{{MÊS}}` e `{{ANO}}`, em `apps/api/src/kit/docx.ts`;
@@ -86,9 +92,19 @@
   - Feito numa cópia, fora do repositório: o bloco do contrato foi para o começo, com uma quebra de página antes da procuração.
   - Conferido no Word: as mesmas 6 páginas, cada documento começando no alto de uma página, e a data preenchida no contrato.
 - [ ] 1.13 Depois do merge da 1.12, a Sênior sobe os 3 Contratos Completos (auxílio incapacidade, auxílio acidentário e LOAS). Verifica: o "Preparar contrato" gera o kit com os dados da ficha.
+  - 13/10: os 3 subiram, na versão 1. O LOAS foi como "LOAS representado por genitor(a)", porque usa os dados do genitor.
+  - Falta gerar um kit na tela.
 - [ ] 1.14 Gotenberg (P1.10): o serviço `gotenberg/gotenberg:8` no mesmo projeto do Coolify, na porta 3000, sem domínio público, e o `GOTENBERG_URL` no app. Verifica: `GET /api/contrato/servicos` responde `pdf: true`, e o kit sai em PDF.
+  - 13/10, com o ok do Mateus: o app `gotenberg-homologacao`, sem domínio, com o nome fixo na rede interna e o teto de 1 CPU e 1 GB.
+  - O `GOTENBERG_URL=http://gotenberg-homologacao:3000` está no app; do contêiner da API, a saúde dá 200 e a conversão de teste dá certo.
+  - Medido: parado, ~10 MB; convertendo, pico de ~120 a 180 MB, em ~4 s. O servidor tem 4 CPUs e 16 GB.
+  - Falta o kit em PDF na tela.
 - [ ] 1.15 Drive na homologação (P1.11): a decisão do Mateus, entre só leitura e pastas de teste, aplicada no Coolify. O Mateus apaga do Drive real a pasta de teste "Leads/2026/Teste Chatwoot Mateus". Verifica: o /saude mostra o Drive como o Mateus decidiu, e um lead novo não cria pasta nas pastas reais.
-- [ ] 1.16 Depois do merge do #62, o Mateus roda `homologacao:preparar` no terminal da homologação. Verifica: o /saude mostra o commit novo, e os peritos de exemplo aparecem ao registrar o perito de uma perícia.
+  - 13/10: o Mateus decidiu só leitura, e o /saude mostra `"drive":"so-leitura"`.
+  - Falta o Mateus apagar a pasta de teste (fica para depois, combinado em 13/10).
+- [x] 1.16 Depois do merge do #62, o Mateus roda `homologacao:preparar` no terminal da homologação. Verifica: o /saude mostra o commit novo, e os peritos de exemplo aparecem ao registrar o perito de uma perícia.
+
+  Verificado em 13/10: o comando terminou sem erro, o /saude mostra a `da10ac8d` (com o #62, o #63 e o #69), e os 3 peritos de exemplo estão no banco.
 - [ ] 1.17 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-158 · Parte 2 · Segurança e processo do repositório (o código)
@@ -160,3 +176,42 @@
 - [ ] 2.11 Main protegida (P2.9): combinada com o Pedro e aplicada pelo `gh`. Verifica: um pedido sem aprovação não mescla.
 - [ ] 2.12 CodeQL (P2.10): reconferir `textoDoHtml` (`apps/api/src/vigilia/fontes.ts`) e dispensar os 2 alertas com o motivo, pelo `gh`. Verifica: a aba de alertas fica sem os 3 (o da regex fecha com o merge do #62).
 - [ ] 2.13 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-158 · Parte 3 · Caminho da Maria no servidor real (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz nova. Na ordem contrato → teste → servidor.
+
+- [ ] 3.1 G1 com o contrato da Recepção (P3.1).
+  - Em `apps/web/src/regras/checklist.ts`, a regra `contratoConferidoDo` (etapa `copia` ou `entregue`), com teste.
+  - Em `apps/api/src/rotas/conferencia.ts`, o `kitAssinado` passa a valer também pelo contrato da Recepção conferido.
+  - Verifica com `rotas/conferencia.test.ts`: o caso da Recepção com o contrato conferido é aprovado; com o contrato na leitura, a aprovação recusa com o G1.
+- [ ] 3.2 A liberação com o G1 inteiro (P3.2): `CasoParaLiberacao` com o `kitAssinado`, e a rota de liberação usando o `bloqueioDoG1`. Verifica com `rotas/conferencia.test.ts`: o kit não cadastrado e o contrato não conferido recusam, com o G1 no histórico.
+- [ ] 3.3 O percentual do modelo, contrato (P3.3): em `packages/contratos`, o `percentualHonorarios` de cada modelo em `ModelosDoEscritorio` e o `PercentualDoModelo` (de 0 a 100, até 2 casas). Verifica com o teste do contrato.
+- [ ] 3.4 O percentual do modelo, servidor (P3.3): `PUT /api/configuracao/modelos/:id/honorarios`, só da Sênior (`modelo.subir`), guardado na `configuracao` com o histórico; o `GET` dos modelos devolve o percentual. Verifica com `rotas/modelos.test.ts`.
+- [ ] 3.5 O contrato guarda o percentual (P3.3): ao gerar o kit, o contrato da Recepção guarda o percentual do modelo usado; sem percentual cadastrado, o kit sai, e o contrato fica sem. Verifica com `rotas/recepcao-contrato.test.ts`.
+- [ ] 3.6 A prestação lê e compara (P3.3): o `GET` devolve o percentual do contrato da Recepção (ou da tabela `contrato`, na semente), e o `POST` recusa um percentual diferente do contrato. Verifica com `rotas/prestacao.test.ts`.
+- [ ] 3.7 O CNIS digitado, contrato e regra (P3.4).
+  - Em `packages/contratos`, o `CnisDigitado`: origem, data da extração e vínculos (empresa, início e fim em aaaa-mm).
+  - Em `apps/web/src/regras/calculo.ts`, `tempoDosVinculos` (une os meses que se sobrepõem) e `pontosDe` (a idade mais o tempo, em anos, com uma casa). A carência vem de `contribuicoes`.
+  - Verifica com o teste da regra (G19).
+- [ ] 3.8 Guardar o CNIS (P3.4).
+  - `PUT /api/entrevistas/:id/cnis`, do advogado do atendimento (`ficha.analisar`), grava o CNIS na ficha com quem e quando, e o histórico.
+  - `GET /api/entrevistas/:id/calculo` devolve o CNIS e o tempo, a carência e os pontos calculados.
+  - Verifica com `rotas/recepcao-decisoes.test.ts`.
+- [ ] 3.9 O cálculo do servidor (P3.4).
+  - O `POST /api/entrevistas/:id/calculo` usa o tempo e os pontos calculados do CNIS guardado (o número da tela não vale) e guarda a carência. A regra e o "já pode se aposentar" vêm do advogado.
+  - O cálculo registrado libera o "Sim, fechou". A semente segue com o CNIS de exemplo.
+  - Verifica com `rotas/recepcao-decisoes.test.ts`.
+- [ ] 3.10 A Sênior vê o cálculo (P3.5): `CasoParaConferencia` com o último cálculo (tempo, pontos, carência, regra, se pode aposentar, quem e quando). Verifica com `rotas/conferencia.test.ts`.
+- [ ] 3.11 A equipe real (P3.6): `GET /api/equipe?perfis=advogada,senior`, para quem marca (`ficha.editar`), devolve o id e o nome dos usuários ativos com o perfil. Verifica com `rotas/recepcao-agenda.test.ts`.
+- [ ] 3.12 Quem atende fica guardado (P3.6).
+  - A marcação aceita o id de um usuário da equipe real e guarda o `comId` e o nome. O id do catálogo fixo segue aceito até a tela mudar.
+  - O filtro "só as minhas" é da tela, pelo `comId`.
+  - Verifica com `rotas/recepcao-agenda.test.ts`.
+- [ ] 3.13 A desistência antes da entrevista (P3.7).
+  - `ResultadoDoCompromisso` aceita "desistiu", com o motivo da lista (G16) e o recontato opcional; sem motivo, recusa.
+  - Com recontato, "Recontatar lead" vai à agenda na data; sem recontato, o lead é arquivado com o motivo.
+  - Verifica com `rotas/recepcao-agenda.test.ts`.
+- [ ] 3.14 O bairro na ficha (P3.8): `EdicaoDaFicha` aceita o `bairro`, e o PATCH grava. Verifica com `rotas/recepcao.test.ts`.
+- [ ] 3.15 Avisar o Pedro: o pedido lista os contratos novos que as telas usam (cálculo, percentual na Configuração, equipe da agenda, desistência e liberação).
+- [ ] 3.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

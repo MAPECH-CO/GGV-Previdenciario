@@ -178,3 +178,72 @@ Os 2 alertas do CodeQL em `textoDoHtml` SHALL ficar dispensados como falso posit
 - **Dado** o código de `textoDoHtml` reconferido
 - **Quando** os alertas são dispensados e o #62 entra na `main`
 - **Então** a aba de alertas não mostra nenhum dos 3
+
+### Requirement: P3.1 · A Sênior aprova o caso que veio da Recepção
+O portão G1 da aprovação SHALL contar como assinado o contrato da Recepção conferido (etapa da cópia em diante), e não só a tabela `contrato` da semente. A aprovação MUST seguir recusando, com o G1 no histórico, o caso sem kit cadastrado, com o checklist incompleto ou sem contrato assinado e conferido.
+
+#### Scenario: P3.1 · Contrato conferido na Recepção
+- **Dado** um caso que nasceu no "fechou" da Recepção, com o checklist completo e o contrato assinado e conferido
+- **Quando** a Sênior aprova
+- **Então** o caso vai para o INSS
+
+#### Scenario: P3.1 · Contrato ainda na leitura
+- **Dado** o mesmo caso com o contrato assinado, mas ainda não conferido
+- **Quando** a Sênior aprova
+- **Então** o portal recusa com "Contrato não assinado (G1)", e o bloqueio fica no histórico
+
+### Requirement: P3.2 · A liberação ao Jurídico confere o G1 inteiro
+A liberação ao Jurídico MUST recusar o caso sem kit cadastrado e o caso sem contrato assinado e conferido, com a mesma regra da aprovação, e o G1 SHALL ficar no histórico.
+
+#### Scenario: P3.2 · Benefício sem kit cadastrado
+- **Dado** um caso de um benefício sem kit cadastrado na Configuração
+- **Quando** o Atendimento libera ao Jurídico
+- **Então** o portal recusa com a mensagem do G1, e o bloqueio fica no histórico
+
+### Requirement: P3.3 · O percentual de honorários vem do modelo
+A Sênior SHALL informar, na Configuração, o percentual de honorários de cada modelo do kit. O contrato gerado SHALL guardar o percentual do modelo usado. A prestação de contas do caso SHALL ler esse percentual e MUST recusar um percentual digitado diferente do contrato.
+
+#### Scenario: P3.3 · Prestação com o percentual do contrato
+- **Dado** um modelo com 30% de honorários e um caso da Recepção com o kit gerado por ele
+- **Quando** a advogada registra a prestação com 25%
+- **Então** o portal recusa e diz que o percentual é o do contrato, 30%
+
+### Requirement: P3.4 · O cálculo de tempo e pontos sai do CNIS digitado
+O advogado do atendimento SHALL digitar no portal os vínculos do CNIS impresso ou baixado do Meu INSS. O servidor SHALL calcular em código, com teste, o tempo de contribuição, a carência e os pontos, e MUST NOT usar número calculado fora dele nem pela IA (G19). A regra de aposentadoria e o "já pode se aposentar" SHALL seguir escolhidos pelo advogado. O cálculo registrado libera o "Sim, fechou".
+
+#### Scenario: P3.4 · Lead do servidor com o CNIS impresso
+- **Dado** um lead do servidor cujo benefício exige cálculo, com o CNIS impresso
+- **Quando** o advogado digita os vínculos, escolhe a regra e registra o cálculo
+- **Então** o tempo, a carência e os pontos são os do servidor, e o "Sim, fechou" fica liberado
+
+### Requirement: P3.5 · A Sênior vê o cálculo na conferência
+A conferência da Sênior SHALL mostrar o último cálculo do caso: tempo, pontos, carência, regra, se já pode aposentar, quem calculou e quando.
+
+#### Scenario: P3.5 · Conferência com cálculo
+- **Dado** um caso com o cálculo registrado na Recepção
+- **Quando** a Sênior abre a conferência
+- **Então** vê o cálculo com quem o fez e quando
+
+### Requirement: P3.6 · A agenda marca com as advogadas e as Sêniores reais
+O portal SHALL listar as advogadas e as Sêniores pelos usuários com esse perfil, e a marcação SHALL guardar o id de quem atende, para o filtro "só as minhas".
+
+#### Scenario: P3.6 · Marcar com uma advogada
+- **Dado** uma advogada cadastrada como usuária do portal
+- **Quando** o Atendimento marca a entrevista com ela
+- **Então** o compromisso guarda o id e o nome dela
+
+### Requirement: P3.7 · A desistência antes da entrevista fica no servidor
+O resultado da entrevista marcada SHALL aceitar "desistiu", com o motivo da lista (G16) e a data de recontato opcional. Sem motivo, MUST recusar. Com recontato, a data SHALL ir para a agenda; sem recontato, o lead SHALL ser arquivado com o motivo.
+
+#### Scenario: P3.7 · Desistiu e pediu para ligar depois
+- **Dado** um lead com a entrevista marcada
+- **Quando** o Atendimento registra que ele desistiu, com o motivo e o recontato para daqui a um mês
+- **Então** o motivo fica no histórico, e o recontato aparece na agenda na data
+
+### Requirement: P3.8 · A ficha guarda o bairro
+A edição da ficha SHALL aceitar o bairro, como o endereço e a cidade.
+
+#### Scenario: P3.8 · Completar a ficha
+- **Dado** o kit pedindo o bairro que falta na ficha
+- **Quando** o Atendimento completa a ficha com o bairro
+- **Então** o bairro fica gravado, e o kit pode ser gerado
