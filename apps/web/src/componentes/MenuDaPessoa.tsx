@@ -58,7 +58,7 @@ export function PerfisDaPessoa({ usuario }: { usuario: UsuarioDaSessao }) {
   )
 }
 
-/** O botão de sair, com o ícone; a cópia do navegador fica (09/10, ver sessao.ts). */
+/** O botão de sair também limpa a cópia do navegador. */
 export function BotaoSair({ className }: { className: string }) {
   return (
     <button type="button" role="menuitem" className={className} onClick={() => void sair()}>

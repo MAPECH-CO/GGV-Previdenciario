@@ -1,0 +1,73 @@
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
+let servidor: typeof import('./servidor.ts')
+let api: typeof import('../api.ts')
+let sessao: typeof import('../sessao.ts')
+const assign = vi.fn()
+beforeEach(async () => {
+  vi.resetModules()
+  sessionStorage.clear()
+  localStorage.clear()
+  assign.mockReset()
+  vi.stubGlobal('location', { pathname: '/casos/inventado', search: '', origin: 'http://localhost', assign })
+  servidor = await import('./servidor.ts')
+  api = await import('../api.ts')
+  sessao = await import('../sessao.ts')
+  servidor.zerarExemplo()
+  const banco = servidor.ler()
+  banco.seq = 987
+  servidor.gravar(banco)
+  sessionStorage.setItem('ggv.exemplo.v4', 'cópia inventada')
+  localStorage.setItem('ggv.exemplo.v3', 'cópia inventada')
+  localStorage.setItem('preferencia-de-teste', 'escuro')
+})
+afterEach(() => { servidor.zerarExemplo(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+function copiaApagada() {
+  expect(sessionStorage.getItem(servidor.CHAVE)).toBeNull()
+  expect(sessionStorage.getItem('ggv.exemplo.v4')).toBeNull()
+  expect(localStorage.getItem('ggv.exemplo.v3')).toBeNull()
+  expect(localStorage.getItem('preferencia-de-teste')).toBe('escuro')
+  expect(servidor.ler().fichas).toEqual([])
+}
+it('sessão expirada apaga a cópia antes de voltar ao login', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
+  await api.chamarApi('/fichas/inventada')
+  copiaApagada()
+  expect(assign).toHaveBeenCalledWith('/entrar?volta=%2Fcasos%2Finventado')
+})
+it('sair apaga a cópia imediatamente e bloqueia gravação de resposta antiga', async () => {
+  let responder!: (r: Response) => void
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { responder = resolve })))
+  const antiga = servidor.ler()
+  const saindo = api.sair()
+  copiaApagada()
+  servidor.gravar(antiga)
+  copiaApagada()
+  responder(new Response(null, { status: 204 }))
+  await saindo
+  expect(assign).toHaveBeenCalledWith('/entrar')
+})
+it('falha de rede ao sair limpa a cópia e não afirma encerramento no servidor', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => { throw Error('falha inventada') }))
+  await api.sair()
+  copiaApagada()
+  expect(assign).toHaveBeenCalledWith('/entrar?saida=pendente')
+})
+it('troca confirmada limpa a cópia antes de abrir o novo perfil', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('{}')))
+  await sessao.trocarPerfil('atendimento')
+  copiaApagada()
+  expect(assign).toHaveBeenCalledWith('/')
+})
+it('troca recusada preserva o perfil e sua cópia', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('{"erro":"Perfil não atribuído"}', { status: 403 })))
+  expect((await sessao.trocarPerfil('socio')).ok).toBe(false)
+  expect(servidor.ler().seq).toBe(987)
+  expect(assign).not.toHaveBeenCalled()
+})
+it('armazenamento bloqueado também limpa a memória', async () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw Error('bloqueado') })
+  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw Error('bloqueado') })
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })))
+  await api.sair()
+  expect(servidor.ler().fichas).toEqual([])
+})

@@ -17,7 +17,7 @@ import {
 import { demandaAberta } from '../regras/novaDemanda.ts'
 import { MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from './catalogos.ts'
 import { fecharContrato } from './contrato.ts'
-import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, receber, type Banco } from './servidor.ts'
+import { QUEM, agora, doServidor, esperar, evento, gravar, ler, noBanco, obterFicha, receber, type Banco } from './servidor.ts'
 import type { Agendamento, EnvioDoFechamento, Ficha, PapelNoFechamento, ResultadoDoRecontato, Tarefa, TarefaEncaminhada } from './tipos.ts'
 
 const QUEM_NO_PAPEL: Record<PapelNoFechamento, string> = {
@@ -60,7 +60,7 @@ export type DadosDoFechamento = { ficha: Ficha; entrevista?: Agendamento }
 
 /** GET /api/fichas/:id/fechamento */
 export async function obterFechamento(fichaId: string): Promise<DadosDoFechamento | null> {
-  const ficha = ler().fichas.find((f) => f.id === fichaId)
+  const ficha = await obterFicha(fichaId)
   return ficha ? { ficha, entrevista: entrevistaRealizada(ficha) } : null
 }
 

@@ -181,6 +181,9 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
 
     expect(await json('ana', 'POST', `${url}/adiamento`, { para: null })).toEqual({ erro: 'Informe a nova data (dd/mm/aaaa).' })
     expect(await json('ana', 'POST', `${url}/adiamento`, { para: '2026-10-08' })).toEqual({ erro: 'A nova data tem de ser depois de hoje.' })
+    const impossivel = await chamar('ana', 'POST', `${url}/adiamento`, { para: '2027-02-31' })
+    expect(impossivel.statusCode).toBe(400)
+    expect(impossivel.json()).toEqual({ erro: 'Informe a nova data (dd/mm/aaaa).' })
     const adiada = await json('ana', 'POST', `${url}/adiamento`, { para: '2026-10-14' })
     expect(adiada.cobranca).toMatchObject({ adiadaPara: '2026-10-14', tentativas: [{ canal: 'ligacao' }] })
     expect(adiada.ficha.historico.at(-1).oQue).toMatch(/^Adiou a cobrança para .+; a contagem continua em 1 tentativa$/)

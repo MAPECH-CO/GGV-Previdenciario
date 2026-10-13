@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { baixarArquivo, imprimirPdf } from './impressao.ts'
+import { baixarArquivo, imprimirPdf, imprimirFicha } from './impressao.ts'
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -33,4 +33,15 @@ describe('GGVP-136 CA5 · imprimir e baixar o kit pelo navegador', () => {
     expect(clicados).toEqual(['blob:kit-1 | Kit do contrato - versão 1.docx'])
     expect(document.querySelector('a')).toBeNull()
   })
+})
+
+it('abre a impressão da ficha com texto escapado e só os campos fornecidos', () => {
+  const print = vi.fn()
+  vi.spyOn(HTMLIFrameElement.prototype, 'contentWindow', 'get').mockReturnValue({ focus: vi.fn(), print } as unknown as Window)
+  imprimirFicha([{ rotulo: 'Nome', valor: 'Pessoa Inventada <script>teste</script>' }, { rotulo: 'Endereço', valor: '' }])
+  const documento = document.querySelector('iframe')!.contentDocument!
+  expect(documento.body.textContent).toContain('Pessoa Inventada <script>teste</script>')
+  expect(documento.querySelector('script')).toBeNull()
+  expect(documento.body.textContent).not.toContain('gov.br')
+  expect(print).toHaveBeenCalledTimes(1)
 })

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
+import { AnexarPapel } from '../componentes/AnexarPapel.tsx'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { Campo } from '../componentes/Campo.tsx'
 import { CampoCofre } from '../componentes/CampoCofre.tsx'
@@ -6,8 +7,9 @@ import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { formatarCpf, formatarTelefone, isoParaData, normalizarData, dataParaIso } from '../campos.ts'
 import { BENEFICIOS, nomeBeneficio, type ItemCatalogo } from '../dados/catalogos.ts'
 import { conferirTelefone, dataDaFicha, lerFichaEmPapel, salvarFichaDeAtendimento } from '../dados/fichaAtendimento.ts'
-import { agora, obterFicha } from '../dados/servidor.ts'
+import { agora, doServidor, obterFicha } from '../dados/servidor.ts'
 import type { EnvioDaFicha, Ficha, LeituraDaFicha, SenhaGov } from '../dados/tipos.ts'
+import { imprimirFicha } from '../impressao.ts'
 import { hojeIso, hora, idadeEm } from '../regras/datas.ts'
 import {
   LIMITES,
@@ -162,6 +164,14 @@ export function FichaAtendimento({ fichaId, tablet = false }: { fichaId: string;
       leitura?.naoLidos.includes(campo as keyof EnvioDaFicha) && !valores?.[campo] ? 'a IA não leu: confira no papel' : '',
     ].filter(Boolean)
     return partes.length ? partes.join(' · ') : undefined
+  }
+
+  function imprimir() {
+    const camposDaFicha = valores
+    if (!camposDaFicha) return
+    setErro('')
+    try { imprimirFicha(PERGUNTAS.map(p => ({ rotulo: ROTULOS_DA_FICHA[p.campo], valor: camposDaFicha[p.campo] }))) }
+    catch { setErro('A janela de impressão não abriu. Confira a permissão do navegador e tente novamente.') }
   }
 
   async function digitalizar() {
@@ -359,7 +369,10 @@ export function FichaAtendimento({ fichaId, tablet = false }: { fichaId: string;
             <h2 id="ficha-em-papel" className={styles.cartaoTitulo}>
               Ficha em papel
             </h2>
-            {leitura ? (
+            <button type="button" className={styles.atalho} onClick={imprimir}>
+              Imprimir a ficha
+            </button>
+            {doServidor(fichaId) ? <AnexarPapel fichaId={fichaId} tipo="ficha-atendimento" /> : leitura ? (
               <p className={proprio.texto} role="status">
                 ✓ {leitura.arquivo.nome} em Documentos pessoais. A IA leu os campos marcados «lido pela IA · confira»
                 {leitura.naoLidos.length > 0 && `; não leu: ${juntar(leitura.naoLidos.map((c) => ROTULOS_DA_FICHA[c as CampoDaFicha]))}`}.

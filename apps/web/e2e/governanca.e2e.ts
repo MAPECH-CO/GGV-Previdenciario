@@ -65,11 +65,19 @@ test('GGVP-104 · a Sênior muda um parâmetro e publica o kit de um benefício;
   await page.goto('/')
   await page.getByRole('link', { name: 'Configuração' }).click()
   await expect(page.getByRole('heading', { name: 'Configuração do escritório' })).toBeVisible()
-  const janela = page.getByLabel('Cliente sumido: dias para as tentativas de contato (de 1 a 60)')
-  await expect(janela).toHaveValue('10')
-  await janela.fill('12')
-  await page.getByRole('button', { name: 'Salvar: Cliente sumido: dias para as tentativas de contato' }).click()
-  await expect(page.getByRole('status')).toHaveText('Parâmetro salvo.')
+  // A regra de contato ainda não é consumida pelo servidor; a tela deve deixar isso explícito.
+  await expect(page.getByLabel('Cliente sumido: dias para as tentativas de contato (de 1 a 60)')).toBeDisabled()
+  const limite = page.getByLabel('Cobrança de documento: tentativas até subir para a Sênior (de 1 a 20)')
+  await expect(limite).toHaveValue('2')
+  try {
+    await limite.fill('3')
+    await page.getByRole('button', { name: 'Salvar: Cobrança de documento: tentativas até subir para a Sênior' }).click()
+    await expect(page.getByRole('status')).toHaveText('Parâmetro salvo.')
+    await expect(page.getByRole('region', { name: 'Histórico da configuração' })).toContainText('Cobrança de documento: tentativas até subir para a Sênior: 2 → 3')
+  } finally {
+    // Restaura o parâmetro no banco fictício mesmo se uma expectativa falhar.
+    expect((await page.request.put('/api/configuracao/parametros/cobranca.limite', { data: { valor: '2' } })).ok()).toBe(true)
+  }
 
   await page.getByLabel('Benefício', { exact: true }).selectOption('salario_maternidade')
   const kit = page.getByRole('region', { name: 'Kit de Salário-Maternidade' })
@@ -79,6 +87,6 @@ test('GGVP-104 · a Sênior muda um parâmetro e publica o kit de um benefício;
   await expect(page.getByRole('status')).toHaveText('Kit publicado: a versão 1 vale para os casos novos.')
   const historico = page.getByRole('region', { name: 'Histórico da configuração' })
   await expect(historico).toContainText('Kit de Salário-Maternidade: versão 1 publicada, com 1 documento(s)')
-  await expect(historico).toContainText('Cliente sumido: dias para as tentativas de contato: 10 → 12')
+  await expect(historico).toContainText('Cobrança de documento: tentativas até subir para a Sênior: 2 → 3')
 })
 

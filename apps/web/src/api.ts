@@ -1,5 +1,7 @@
 // Toda chamada da tela ao servidor passa por aqui. Sessão expirada (401) leva ao login e guarda a tela de volta (GGVP-117, CA3).
 
+import { limparCopiaDaSessao } from './dados/copiaDaSessao.ts'
+
 const MARCA_ENTROU = 'ggv.entrou' // só diz "já entrou neste navegador", para o login falar em sessão expirada; nada sensível
 
 export type Resposta<T> = { ok: true; dados: T } | { ok: false; status: number; erro: string }
@@ -39,6 +41,7 @@ let saindo = false
 
 export function irParaEntrar() {
   if (saindo) return
+  limparCopiaDaSessao()
   const volta = window.location.pathname + window.location.search
   const params = new URLSearchParams({ volta })
   if (lerMarca()) params.set('expirou', '1')
@@ -83,7 +86,14 @@ function lerMarca() {
 
 export async function sair() {
   saindo = true
-  await chamarApi('/sessao', { method: 'DELETE' })
+  limparCopiaDaSessao()
+  let confirmado = false
+  try {
+    const r = await chamarApi('/sessao', { method: 'DELETE' })
+    confirmado = r.ok || r.status === 401
+  } catch {
+    // A cópia já foi apagada; a tela de entrada permite tentar encerrar a sessão no servidor novamente.
+  }
   marcarEntrou(false)
-  window.location.assign('/entrar')
+  window.location.assign(confirmado ? '/entrar' : '/entrar?saida=pendente')
 }

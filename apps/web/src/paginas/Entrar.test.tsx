@@ -69,3 +69,11 @@ describe('voltaSegura', () => {
     expect(voltaSegura(null)).toBe('/')
   })
 })
+
+it('saída não confirmada informa o limite e permite tentar encerrar a sessão de novo', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })))
+  render(<Entrar busca="?saida=pendente" />)
+  expect(screen.getByRole('alert').textContent).toContain('o servidor não confirmou a saída')
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar sair novamente' }))
+  await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/entrar'))
+})

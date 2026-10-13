@@ -94,6 +94,12 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
       cidade: 'São Paulo',
       uf: 'SP',
     }
+    // A API revalida o que veio do formulário, mesmo se a tela for contornada.
+    for (const invalido of [{ cep: '123' }, { cep: '00000000' }, { cpf: '00000000192' }, { telefone: '123' }, { nascimento: '31/02/2026' }]) {
+      const recusada = await chamar('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base, valores: { ...valores, ...invalido } })
+      expect(recusada.statusCode).toBe(400)
+    }
+    expect(await json('gabi', 'GET', `/api/fichas/${fichaId}`)).toEqual(ficha)
     const salvo = await json('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base, valores })
     expect(salvo).toMatchObject({ resultado: 'salvo', ficha: { rg: '123456789', cpf: '52998224725', bairro: 'Sé', cidadeUf: 'São Paulo / SP' } })
     const oQue = salvo.ficha.historico.map((e: { oQue: string }) => e.oQue)

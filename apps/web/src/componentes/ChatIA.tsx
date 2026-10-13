@@ -1,16 +1,9 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
-import { recusaImediata } from '../dados/chat.ts'
+import { MSG_FALA_VAZIA, recusaImediata, transcreverFala } from '../dados/chat.ts'
 import { usePerfil } from '../dados/perfis.ts'
+import { useGravador } from './useGravador.ts'
 import styles from './ChatIA.module.css'
-
-/** O reconhecimento de fala do navegador (Chrome e Edge). Sem ele, "Gravar áudio" avisa e a pessoa digita. */
-type Reconhecimento = { lang: string; interimResults: boolean; start(): void; stop(): void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null }
-function novoReconhecimento(): Reconhecimento | null {
-  const w = window as unknown as { SpeechRecognition?: new () => Reconhecimento; webkitSpeechRecognition?: new () => Reconhecimento }
-  const Classe = w.SpeechRecognition ?? w.webkitSpeechRecognition
-  return Classe ? new Classe() : null
-}
 
 type Props = {
   /** Exemplo que aparece no campo vazio. */
@@ -32,38 +25,27 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
   const [texto, setTexto] = useState('')
   const [anexos, setAnexos] = useState<File[]>([])
   const [aviso, setAviso] = useState('')
-  const [gravando, setGravando] = useState(false)
-  const reconhecimento = useRef<Reconhecimento | null>(null)
   // Quem está na sessão (sem sessão, ninguém).
   const perfil = usePerfil()
+  const pronto = useRef<HTMLButtonElement>(null)
 
-  /** "Gravar áudio" (GGVP-82, CA6): a fala vira texto no campo, para a pessoa conferir antes de enviar. */
-  function gravar() {
-    if (gravando) {
-      reconhecimento.current?.stop()
-      return
+  // "Gravar áudio" (GGVP-82 CA6, refeito em 12/10): a fala vira texto na caixa, para a pessoa conferir antes de enviar.
+  const gravador = useGravador(async (audio) => {
+    try {
+      const fala = await transcreverFala(audio)
+      if (!fala) return setAviso(MSG_FALA_VAZIA)
+      setAviso('')
+      setTexto((t) => (t.trim() ? `${t.trim()} ${fala}` : fala))
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : MSG_FALA_VAZIA)
+    } finally {
+      campo.current?.focus()
     }
-    const r = novoReconhecimento()
-    if (!r) {
-      setAviso('Este navegador não transforma a fala em texto: use o Chrome ou o Edge, ou digite a pergunta.')
-      return
-    }
-    r.lang = 'pt-BR'
-    r.interimResults = false
-    r.onresult = (e) => {
-      const fala = Array.from(e.results, (x) => x[0].transcript).join(' ').trim()
-      if (fala) setTexto((t) => (t ? `${t} ${fala}` : fala))
-    }
-    r.onend = () => setGravando(false)
-    r.onerror = () => {
-      setGravando(false)
-      setAviso('Não deu para ouvir: confira o microfone e tente de novo, ou digite a pergunta.')
-    }
-    reconhecimento.current = r
-    setAviso('')
-    setGravando(true)
-    r.start()
-  }
+  }, setAviso)
+  useEffect(() => {
+    if (gravador.estado === 'gravando') pronto.current?.focus()
+  }, [gravador.estado])
+  const tempo = `${Math.floor(gravador.segundos / 60)}:${String(gravador.segundos % 60).padStart(2, '0')}`
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -130,38 +112,65 @@ export function ChatIA({ exemplo, sugestoes, onEnviar, onAnexo, children }: Prop
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={aoTeclar}
         />
-        <div className={styles.acoes}>
-          {onAnexo ? (
-            <label className={styles.chip}>
-              + Anexar arquivo
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                multiple
-                className="so-leitor"
-                onChange={(e) => {
-                  const novos = Array.from(e.target.files ?? [])
-                  setAnexos((a) => [...a, ...novos.filter((n) => !a.some((x) => x.name === n.name))])
-                  e.target.value = ''
-                }}
-              />
-            </label>
-          ) : (
-            <button type="button" className={styles.chip} aria-disabled="true">
-              + Anexar arquivo
+        {gravador.estado === 'parado' ? (
+          <div className={styles.acoes}>
+            {onAnexo ? (
+              <label className={styles.chip}>
+                + Anexar arquivo
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  multiple
+                  className="so-leitor"
+                  onChange={(e) => {
+                    const novos = Array.from(e.target.files ?? [])
+                    setAnexos((a) => [...a, ...novos.filter((n) => !a.some((x) => x.name === n.name))])
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            ) : (
+              <button type="button" className={styles.chip} aria-disabled="true">
+                + Anexar arquivo
+              </button>
+            )}
+            <button type="button" className={styles.chip} onClick={() => void gravador.iniciar()}>
+              <span className={styles.gravar} aria-hidden="true">
+                ●
+              </span>
+              Gravar áudio
             </button>
-          )}
-          <button type="button" className={styles.chip} aria-pressed={gravando} onClick={gravar}>
-            <span className={styles.gravar} aria-hidden="true">
-              ●
+            <span className={styles.espaco} />
+            <button type="submit" className={styles.enviar}>
+              Enviar
+            </button>
+          </div>
+        ) : (
+          <div
+            className={styles.gravando}
+            role="group"
+            aria-label="Gravação"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') gravador.descartar()
+            }}
+          >
+            <span className={`${styles.ponto} ${gravador.estado === 'transcrevendo' ? styles.pontoParado : ''}`} aria-hidden="true" />
+            <span className={styles.estado}>{gravador.estado === 'gravando' ? 'Gravando' : 'Transcrevendo…'}</span>
+            <span className={styles.onda} aria-hidden="true">
+              {gravador.niveis.map((n, i) => (
+                <span key={i} style={{ height: `${Math.round(4 + n * 22)}px` }} />
+              ))}
             </span>
-            {gravando ? 'Parar de gravar' : 'Gravar áudio'}
-          </button>
-          <span className={styles.espaco} />
-          <button type="submit" className={styles.enviar}>
-            Enviar
-          </button>
-        </div>
+            <span className={styles.tempo}>{tempo}</span>
+            <button type="button" className={styles.descartar} aria-label="Descartar a gravação" disabled={gravador.estado !== 'gravando'} onClick={gravador.descartar}>
+              ✕
+            </button>
+            <button ref={pronto} type="button" className={styles.pronto} disabled={gravador.estado !== 'gravando'} onClick={gravador.pronto}>
+              <span aria-hidden="true">✓ </span>
+              Pronto
+            </button>
+          </div>
+        )}
       </form>
 
       <ul className={styles.sugestoes} aria-label="Sugestões">

@@ -61,6 +61,13 @@ test('cep: preenche o endereço pelo ViaCEP', async () => {
   assert.equal(await buscarCep('abc', fetchOk), null);
 });
 
+test('cep: falha HTTP, JSON inválido e resposta incompleta não quebram o cadastro', async () => {
+  for (const resposta of [new Response('', { status: 503 }), new Response('<html>indisponível</html>'), new Response('null'), new Response('{}')]) {
+    const buscar = (async () => resposta) as typeof fetch;
+    assert.equal(await buscarCep('01001-000', buscar), null);
+  }
+});
+
 test('data: letra não entra, 31/02 não existe', () => {
   assert.equal(analisarData('aa/bb/cccc'), null);
   assert.equal(analisarData('31/02/2024'), null);

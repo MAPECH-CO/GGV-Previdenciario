@@ -16,6 +16,8 @@ beforeEach(() => {
 async function abrir(fichaId: string, perfil: 'juridico' | 'atendimento', aoMudar = () => {}) {
   render(<Transcricoes ficha={(await obterFicha(fichaId))!} perfil={perfil} aoFechar={() => {}} aoMudar={aoMudar} />)
   await screen.findByRole('heading', { name: 'Transcrições do caso' })
+  // O título abre antes da consulta; a seleção só existe quando as gravações chegaram.
+  await within(screen.getByRole('navigation', { name: 'Gravações e registros' })).findByRole('button', { pressed: true })
 }
 
 async function entrevistaDaJosefa(falhar = false) {

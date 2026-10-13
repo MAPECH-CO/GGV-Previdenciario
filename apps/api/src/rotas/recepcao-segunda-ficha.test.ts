@@ -77,6 +77,22 @@ describe('GGVP-125 · bloco 3c: a segunda ficha no servidor, com a seção médi
     expect(await json('gabi', 'GET', `/api/fichas/${fichaId}/segunda-ficha`)).toMatchObject({ lida: false, medicos: { doencas: MEDICO } })
   })
 
+  it('revalida o NB no servidor: inválido não altera a segunda ficha nem o histórico', async () => {
+    const fichaId = await lead()
+    const url = `/api/fichas/${fichaId}/segunda-ficha`
+    const valida = await chamar('ana', 'PUT', url, { respostas: { ...PAPEL, nb: '123.456.789-0' }, origem: 'papel' })
+    expect(valida.statusCode).toBe(200)
+    const antes = valida.json().ficha
+    for (const nb of ['123456789', '12345678901', '0000000000']) {
+      const recusada = await chamar('ana', 'PUT', url, { respostas: { ...PAPEL, nb }, origem: 'papel' })
+      expect(recusada.statusCode).toBe(400)
+      expect(recusada.json()).toEqual({ erro: 'Segunda ficha inválida.' })
+    }
+    const depois = await json('ana', 'GET', `/api/fichas/${fichaId}`)
+    expect(depois.segundaFicha).toEqual(antes.segundaFicha)
+    expect(depois.historico).toEqual(antes.historico)
+  })
+
   it('no tablet, o cliente preenche a seção médica; salvar de novo com ela em branco não apaga', async () => {
     const fichaId = await lead()
     await json('ana', 'PUT', `/api/fichas/${fichaId}/segunda-ficha`, { respostas: { ...PAPEL, doencas: 'Lesão no ombro', cirurgia: 'sim' }, origem: 'tablet' })
