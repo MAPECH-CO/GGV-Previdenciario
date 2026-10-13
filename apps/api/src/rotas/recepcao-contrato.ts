@@ -23,7 +23,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, documento, pessoa } from '../banco/esquema.ts'
 import { lerModelo, preencherModelo } from '../kit/docx.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
-import { modeloEmVigor } from '../kit/modelos.ts'
+import { honorariosDosModelos, modeloEmVigor } from '../kit/modelos.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Agendamento, Arquivo, Ficha, Processo } from '../../../web/src/dados/tipos.ts'
@@ -307,6 +307,10 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     const modeloUsado = { ...modelo, versao: vigor.versao }
     const motivo = envio.aprovados ? `gerado pelo ${modelo.nome}` : `corrigido: ${oQueCorrigir}`
     contrato.documento = { versao, geradoEm, campos, textos: [], modelo: { id: modelo.id, versao: vigor.versao }, arquivo: { documentoId: kitGuardado.id, nome: nomeDoArquivo } }
+    // GGVP-158 P3.3: o percentual do modelo agora; a prestação lê daqui, e trocar na Configuração depois não muda.
+    const percentual = (await honorariosDosModelos(banco)).get(modelo.id)
+    if (percentual === undefined) delete contrato.percentualHonorarios
+    else contrato.percentualHonorarios = percentual
     contrato.versoes = [...(contrato.versoes ?? []), { versao, geradoEm, motivo }]
     contrato.etapa = 'assinatura'
     const seguinte: Processo = { ...processo, etapa: 'Contrato · assinatura', proximaAcao: 'colher a assinatura' }

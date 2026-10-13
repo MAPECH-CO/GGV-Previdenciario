@@ -40,6 +40,13 @@ async function completarOKit(fichaId: string, processoId: string, tipos = ['rg',
   expect(await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos })).toMatchObject({ arquivados: tipos.length })
 }
 const situacoes = (c: { checklist: { itens: { tipo: string; situacao: string }[] } }) => Object.fromEntries(c.checklist.itens.map((i) => [i.tipo, i.situacao]))
+/** "Está certo, seguir" na conferência do contrato assinado (GGVP-85): a etapa vai para a cópia. */
+async function conferirOContrato(processoId: string) {
+  const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
+  const dados = linha.dados as { contrato: object }
+  await banco.update(contratoRecepcao).set({ dados: { ...dados, contrato: { ...dados.contrato, etapa: 'copia' } } }).where(eq(contratoRecepcao.casoId, processoId))
+}
+const CONTRATO_NAO_ASSINADO = 'Contrato não assinado (G1): o caso não tem o contrato assinado.'
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
@@ -122,7 +129,20 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
 
     expect((await liberar()).erro).toBe(`${MSG_G1} a conferência do checklist completo (D1.21).`)
     expect((await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)).conferencia).toMatchObject({ completo: true, faltam: [] })
+    // GGVP-158 P3.2: o contrato assinado, mas ainda não conferido, barra a liberação com a mesma regra da aprovação.
+    expect((await liberar()).erro).toBe(CONTRATO_NAO_ASSINADO)
+    await conferirOContrato(processoId)
     expect(await liberar()).toEqual({ ok: true })
+  })
+
+  it('GGVP-158 P3.1 · a Sênior aprova o caso que veio da Recepção, com o contrato assinado e conferido', async () => {
+    const { fichaId, processoId } = await casoDe('loas-idoso')
+    await completarOKit(fichaId, processoId)
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    await conferirOContrato(processoId)
+    expect(await json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })).toEqual({ ok: true })
+    const r = await chamar('sara', 'POST', `/api/casos/${processoId}/conferencia`, { decisao: 'aprovar' })
+    expect([r.statusCode, r.json()]).toEqual([201, { ok: true, situacao: 'aprovado' }])
   })
 
   it('boas-vindas: só depois do checklist conferido; a Atendimento marca "Já enviei" uma vez; vai na cópia das telas', async () => {
@@ -261,6 +281,7 @@ describe('GGVP-125 · bloco 5d: o documento de qualquer canal confere as pendên
     await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
     expect((await liberar()).map((t) => [t.titulo, t.perfilDono, t.concluidaEm])).toEqual([['Liberar ao Jurídico', 'documentacao', null]])
 
+    await conferirOContrato(processoId)
     expect(await json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })).toEqual({ ok: true })
     expect((await liberar())[0].concluidaEm).not.toBeNull()
   })

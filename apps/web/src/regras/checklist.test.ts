@@ -3,6 +3,7 @@ import type { Arquivo } from '../dados/tipos.ts'
 import {
   complementaresDoCaso,
   contratoAssinadoDo,
+  contratoConferidoDo,
   documentosDoCaso,
   listaDoKit,
   montarChecklist,
@@ -191,6 +192,12 @@ describe('GGVP-125 · bloco 5c: o que as telas e o servidor calculam igual', () 
     expect(contratoAssinadoDo({ etapa: 'leitura' }, 'Contrato · leitura')).toBe(true)
     expect(contratoAssinadoDo(undefined, 'Contrato · gerar')).toBe(false)
     expect(contratoAssinadoDo(undefined, 'Documentação')).toBe(true)
+  })
+
+  it('GGVP-158 P3.1 · o contrato conferido, que vale no G1 da Sênior: da cópia em diante', () => {
+    const etapas = ['preparar', 'assinatura', 'leitura', 'conferir', 'copia', 'entregue']
+    expect(etapas.map((etapa) => contratoConferidoDo({ etapa }))).toEqual([false, false, false, false, true, true])
+    expect(contratoConferidoDo(undefined)).toBe(false)
   })
 
   it('os complementares: sem a circunstância do acidente ou a condição da criança, o checklist espera', () => {

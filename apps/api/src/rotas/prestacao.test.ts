@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import {
@@ -173,6 +173,30 @@ describe('GGVP-44 · prestação de contas', () => {
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     // Separação de funções, e não o G8 (que é "o aviso só sai depois do OK"): código neutro, sem número (Q21, 08/10).
     expect(b.detalhe).toMatchObject({ portao: 'funcoes', passo: 'D2.06r', perfil: 'financeiro', motivo: 'ok_e_recebimento' })
+  })
+})
+
+describe('GGVP-158 P3.3 · o percentual vem do contrato e não muda na prestação (GGVP-92 CA8)', () => {
+  it('o caso que veio da Recepção lê o percentual guardado no contrato dela', async () => {
+    await banco.delete(contrato)
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco.insert(contratoRecepcao).values({ casoId, pessoaId: c.pessoaId, dados: { contrato: { processoId: casoId, etapa: 'copia', percentualHonorarios: 25.5 }, processo: { id: casoId } } })
+    await deferir()
+    expect((await chamar('gabi', 'GET', '/prestacao')).json().percentualContrato).toBe('25.50')
+    expect((await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, percentual: '25,5' })).json()).toMatchObject({ ok: true, versao: 1 })
+  })
+
+  it('o percentual digitado diferente do contrato é recusado, e a mensagem diz qual vale', async () => {
+    await deferir()
+    const r = await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, percentual: '25' })
+    expect([r.statusCode, r.json().erro]).toEqual([400, 'O percentual de honorários é o do contrato: 30%.'])
+    expect(await banco.select().from(prestacaoContas)).toEqual([])
+  })
+
+  it('sem percentual no contrato, segue como antes: vale o digitado', async () => {
+    await banco.update(contrato).set({ percentualHonorarios: null })
+    await deferir()
+    expect((await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, percentual: '25' })).json()).toMatchObject({ ok: true, versao: 1 })
   })
 })
 

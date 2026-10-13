@@ -79,5 +79,6 @@ test('CA4 · a mensagem ao cliente termina dizendo que o escritório nunca pede 
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Senha Teste' })
   await janela.getByLabel('Modelo').selectOption('boas-vindas')
-  await expect(janela.getByRole('textbox')).toHaveValue(new RegExp(`${NUNCA_PEDIMOS.replace(/\./g, '\\.')}$`))
+  // A frase vira regex com todo caractere especial escapado, e não só o ponto (alerta do CodeQL, GGVP-158).
+  await expect(janela.getByRole('textbox')).toHaveValue(new RegExp(`${NUNCA_PEDIMOS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))
 })

@@ -3,6 +3,7 @@
 // ficha de atendimento), rodando aqui com o perfil da sessão. A ficha fica em `ficha_recepcao`, no formato das telas; a
 // pessoa, em `pessoa`, que o resto do portal usa.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
+import { randomUUID } from 'node:crypto'
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
@@ -18,14 +19,14 @@ import {
   validarNome,
   validarTelefone,
 } from '@ggv/campos'
-import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro } from '@ggv/contratos'
+import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, NovoClienteDoBalcao, type Erro, type Perfil } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, contratoRecepcao, credencialGovbr, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
-import { BENEFICIOS, nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
+import { BENEFICIOS, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import { leituraDeExemplo } from '../../../web/src/dados/exemplo.ts'
 import { nomeSemSobrescrever } from '../../../web/src/regras/arquivos.ts'
 import { lerComIADeExemplo, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
@@ -38,6 +39,7 @@ import type {
   Ficha,
   FichaResumo,
   Gravacao,
+  PapelNoFechamento,
   Processo,
   RespostaNovoCliente,
   TarefaEncaminhada,
@@ -52,6 +54,11 @@ import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
 
 export const MSG_FICHA_NAO_ENCONTRADA = 'Ficha não encontrada.'
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+export const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
+/** Quem registra o "não fechou" ou a desistência, pelo perfil da sessão (GGVP-60 CA11): a recusa do escritório não é do Atendimento. */
+export const papelDa = (perfil: string | null | undefined): PapelNoFechamento =>
+  perfil === 'atendimento_lider' ? 'atendimento-senior' : JURIDICO.includes(perfil as Perfil) ? 'advogada-atendimento' : 'atendimento'
 /** A hora em Brasília, também no servidor em UTC: "14:32". */
 export const horaEmBrasilia = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).format(d)
 export const MSG_DADOS_INVALIDOS = 'Dados da ficha inválidos.'
@@ -92,6 +99,7 @@ const ROTULOS: Record<keyof EdicaoFicha, string> = {
   email: 'e-mail',
   estadoCivil: 'estado civil',
   endereco: 'endereço',
+  bairro: 'bairro',
   cidadeUf: 'cidade',
   cep: 'CEP',
   profissao: 'profissão',
@@ -346,7 +354,25 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     return tarefa
   }
 
+  /** O lead que não vira cliente sai das filas, arquivado na pessoa com o motivo (GGVP-60 CA7, G16). */
+  async function arquivar(ficha: Ficha, motivo: string, detalhe: string | undefined) {
+    await banco
+      .update(pessoa)
+      .set({ situacao: 'nao_virou_cliente', motivoNaoVirou: `${nomeMotivo(motivo)}${detalhe ? `: ${detalhe}` : ''}`, atualizadoEm: agora() })
+      .where(eq(pessoa.id, ficha.id))
+    for (const t of await tarefas(ficha.id)) if (!t.concluida) await concluirTarefas(ficha.id, t.acao, t.id)
+  }
+
+  /** O compromisso "Recontatar lead" na agenda, no formato dos compromissos do servidor. */
+  function marcarRecontato(ficha: Ficha, data: string, quem: string): string {
+    const id = `${ficha.id}-ag-${randomUUID().slice(0, 8)}`
+    ficha.agendamentos.push({ id, data, hora: '09:00', oQue: 'Recontatar lead', com: quem, tipo: 'telefone', duracao: 15 })
+    return id
+  }
+
   return {
+    arquivar,
+    marcarRecontato,
     hoje,
     evento,
     nomeDe,

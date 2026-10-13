@@ -6,7 +6,7 @@ import { eq, sql } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, documento, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, documento, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
 import { docxDeTeste, formularioDoArquivo, textoDoDocx } from '../kit/docx-de-teste.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
 import { criarServidor } from '../servidor.ts'
@@ -352,6 +352,19 @@ describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guar
       'Osasco, dia ____________ de ________________ de 2026.',
     ])
     expect(r.ficha.historico.at(-1).oQue).toMatch(/^Gerou o contrato de .+ pelo modelo contrato-completo-loas-v2 \(versão 1\), guardado na pasta do cliente/)
+    // GGVP-158 P3.3: sem o percentual informado na Configuração, o contrato fica sem.
+    expect(r.contrato.percentualHonorarios).toBeUndefined()
+  })
+
+  it('GGVP-158 P3.3 · o contrato guarda o percentual de honorários do modelo no momento de gerar; trocar depois não muda', async () => {
+    const percentual = async (valor: number) =>
+      app.inject({ method: 'PUT', url: '/api/configuracao/modelos/contrato-completo-loas/honorarios', cookies: await cookieDe('helena'), payload: { percentual: valor } })
+    await percentual(30)
+    const { r, processoId } = await gerar(await lead())
+    expect(r.contrato.percentualHonorarios).toBe(30)
+    await percentual(25)
+    const [guardado] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
+    expect((guardado.dados as { contrato: { percentualHonorarios?: number } }).contrato.percentualHonorarios).toBe(30)
   })
 
   it('CA1 · o kit usa sempre a versão em vigor: a que vale na hora de gerar, e o kit guarda qual foi', async () => {
