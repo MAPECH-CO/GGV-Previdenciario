@@ -3,11 +3,14 @@
 import { fileURLToPath } from 'node:url'
 import { abrirArmazenamento } from './armazenamento.ts'
 import { abrirBanco } from './banco/conexao.ts'
-import { abrirDrive, conferirDrive } from './drive.ts'
+import { abrirDrive, conferirDrive, driveDeVerdade } from './drive.ts'
+import { criarIa } from './ia/ia.ts'
 import { criarServidor, resumoDoErro } from './servidor.ts'
 import { fontesAtivas } from './vigilia/fontes.ts'
 import { ligarRelogio } from './vigilia/rodadas.ts'
 import { sincronizarDrive } from './fluxo/arquivar.ts'
+import { criarLeitor } from './fluxo/leitura.ts'
+import { olharOScanner } from './fluxo/scanner.ts'
 import { apagarSenhasVencidas } from './fluxo/cofre.ts'
 import { carregarFeriadosSeVazio } from './fluxo/feriados-ao-subir.ts'
 
@@ -30,23 +33,32 @@ const limparCofre = () => void apagarSenhasVencidas(banco, new Date())
 limparCofre()
 setInterval(limparCofre, 24 * 3_600_000)
 // Drive do escritório (GGVP-107): com as variáveis, o que falta vai para o Drive ao subir e a cada minuto, uma rodada por vez.
+// GGVP-158 P4.3 (ADR-017): na mesma batida, o papel do scanner que chegou à pasta de um cliente entra no portal.
 const comDrive = abrirDrive()
+const deVerdade = driveDeVerdade(comDrive)
 if (comDrive?.soLeitura) {
-  // CA10: na homologação, só a leitura; nada vai para o Drive real do escritório.
+  // CA10: na homologação, só a leitura; nada vai para o Drive real do escritório, e nada vem do scanner.
   void conferirDrive(comDrive.drive, comDrive.pastas).then((r) =>
     r.ok ? app.log.info({ drive: r }, 'Drive lido (só leitura)') : app.log.error({ drive: r }, 'Drive não leu'),
   )
-} else if (comDrive) {
+} else if (deVerdade) {
   const arquivos = abrirArmazenamento()
+  const leitor = criarLeitor({ ia: criarIa({ banco }) })
   let rodando = false
   const enviarAoDrive = async () => {
     if (rodando) return
     rodando = true
     try {
-      const r = await sincronizarDrive(banco, comDrive.drive, comDrive.pastas, arquivos)
+      const r = await sincronizarDrive(banco, deVerdade.drive, deVerdade.pastas, arquivos)
       if (r.enviados || r.falhas.length) app.log.info({ drive: r }, 'rodada do Drive')
     } catch (e) {
       app.log.error(resumoDoErro(e), 'rodada do Drive')
+    }
+    try {
+      const s = await olharOScanner({ banco, drive: deVerdade.drive, pastas: deVerdade.pastas, leitor })
+      if (s.entraram || s.ficaramDeFora || s.falhas) app.log.info({ scanner: s }, 'rodada do scanner')
+    } catch (e) {
+      app.log.error(resumoDoErro(e), 'rodada do scanner')
     } finally {
       rodando = false
     }
@@ -54,7 +66,7 @@ if (comDrive?.soLeitura) {
   void enviarAoDrive()
   setInterval(() => void enviarAoDrive(), 60_000)
   // CA9: uma leitura ao subir, para a homologação mostrar no log que o Drive está ligado e lendo (só contagens).
-  void conferirDrive(comDrive.drive, comDrive.pastas).then((r) =>
+  void conferirDrive(deVerdade.drive, deVerdade.pastas).then((r) =>
     r.ok ? app.log.info({ drive: r }, 'Drive lido') : app.log.error({ drive: r }, 'Drive não leu'),
   )
 } else app.log.info('Drive desligado: faltam as variáveis GOOGLE_DRIVE_*')

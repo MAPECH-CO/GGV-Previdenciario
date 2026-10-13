@@ -286,6 +286,33 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       .onConflictDoUpdate({ target: tarefaRecepcao.id, set: { dados: t, concluidaEm: null } })
   }
 
+  /**
+   * O laudo novo de qualquer canal (bloco 5d): o card, o chat, o scanner e o arquivamento que confere como laudo o que
+   * chegou com outro tipo. Marca a ficha e o processo (quando o caso tem o contrato da Recepção) e abre "Analisar laudo
+   * novo" para o Jurídico, uma aberta por ficha (a concluída volta a abrir). Quem chama guarda a ficha.
+   */
+  async function avisarLaudoNovo(ficha: Ficha, caso: Processo | undefined, dia: string, texto: string, quem: string) {
+    ficha.laudoNovoEm = dia
+    const [linha] = caso ? await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, caso.id)) : []
+    if (linha) {
+      const g = linha.dados as ContratoGuardado
+      const dados = { ...g, processo: { ...g.processo, laudoNovoEm: dia } }
+      await banco.update(contratoRecepcao).set({ dados, atualizadoEm: agora() }).where(eq(contratoRecepcao.casoId, linha.casoId))
+    }
+    await garantirAberta({
+      id: `laudo-${ficha.id}`,
+      codigo: 'D1.21M',
+      cliente: { id: ficha.id, nome: ficha.nome },
+      acao: 'Analisar laudo novo',
+      detalhe: [caso ? nomeBeneficio(caso.beneficio) : 'sem caso em andamento', `laudo novo de ${dataCurta(dia, dia)}`].join(' · '),
+      prazo: 'hoje',
+      href: caso ? `/casos/${caso.id}/laudo-novo` : `/clientes/${ficha.id}`,
+      processoId: caso?.id,
+      setor: 'Jurídico',
+    })
+    ficha.historico.push(evento(texto, quem))
+  }
+
   /** O compromisso pelo id das telas: "<id da ficha>-ag-<n>". */
   async function acharAgendamento(id: string) {
     const fichaId = id.slice(0, 36)
@@ -434,6 +461,7 @@ export function criarFichario(banco: Banco, agora: () => Date) {
     leiturasDe,
     guardarLeitura,
     lerArquivosNovos,
+    avisarLaudoNovo,
   }
 }
 

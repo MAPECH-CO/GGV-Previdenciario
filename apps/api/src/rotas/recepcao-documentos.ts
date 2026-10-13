@@ -17,7 +17,6 @@ import type { Arquivo, EventoHistorico, Ficha, Processo, TarefaEncaminhada } fro
 import { formatoDoArquivo, localDoTipo, nomeSemSobrescrever, problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
 import { fichasCitadas } from '../../../web/src/regras/busca.ts'
 import { normalizarRg } from '../../../web/src/regras/cadastro.ts'
-import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { ROTULOS_DOS_CAMPOS, ehMedico, menosLegivel, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
 import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
@@ -48,7 +47,7 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
 type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento; leitor: Leitor }
 
 export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento, leitor }: Opcoes) {
-  const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos } = criarFichario(banco, agora)
+  const { hoje, evento, nomeDe, fichas, guardar, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos, avisarLaudoNovo } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const historico = registrarHistorico(banco, agora)
   const lerContrato = criarLeituraDoContrato(banco, agora)
@@ -83,36 +82,6 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
   const contratosDe = async (pessoaId: string) =>
     (await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.pessoaId, pessoaId))).map((c) => (c.dados as ContratoGuardado).contrato)
 
-  /** O laudo novo também marca o processo dele, quando o caso tem o contrato da Recepção. */
-  async function marcarLaudoNoProcesso(processoId: string, dia: string) {
-    const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
-    if (!linha) return
-    const g = linha.dados as ContratoGuardado
-    const dados = { ...g, processo: { ...g.processo, laudoNovoEm: dia } }
-    await banco.update(contratoRecepcao).set({ dados, atualizadoEm: agora() }).where(eq(contratoRecepcao.casoId, processoId))
-  }
-
-  /**
-   * O laudo novo de qualquer canal (bloco 5d): o card, o chat, o lote do scanner e o arquivamento que confere como laudo o
-   * que chegou com outro tipo. Marca a ficha e o processo e abre "Analisar laudo novo" para o Jurídico, uma aberta por
-   * ficha (a concluída volta a abrir). Quem chama guarda a ficha.
-   */
-  async function avisarLaudoNovo(ficha: Ficha, caso: Processo | undefined, dia: string, texto: string, quem: string) {
-    ficha.laudoNovoEm = dia
-    if (caso) await marcarLaudoNoProcesso(caso.id, dia)
-    await garantirAberta({
-      id: `laudo-${ficha.id}`,
-      codigo: 'D1.21M',
-      cliente: { id: ficha.id, nome: ficha.nome },
-      acao: 'Analisar laudo novo',
-      detalhe: [caso ? nomeBeneficio(caso.beneficio) : 'sem caso em andamento', `laudo novo de ${dataCurta(dia, dia)}`].join(' · '),
-      prazo: 'hoje',
-      href: caso ? `/casos/${caso.id}/laudo-novo` : `/clientes/${ficha.id}`,
-      processoId: caso?.id,
-      setor: 'Jurídico',
-    })
-    ficha.historico.push(evento(texto, quem))
-  }
 
   /**
    * O tipo conferido no registro do documento (bloco 5d). O do card e do chat pela linha que o conteúdo criou (pelo hash);

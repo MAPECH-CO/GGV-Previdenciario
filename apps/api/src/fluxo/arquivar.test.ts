@@ -37,6 +37,9 @@ function driveNaMemoria(pastasDeClientes: string[] = []) {
       const i = itens.find((x) => x.id === id)!
       return { nome: i.nome, pais: [i.pai] }
     },
+    // A rodada do Drive não lê as mudanças nem baixa: isso é do scanner (scanner.test.ts).
+    mudancas: async (marca) => ({ itens: [], marca: marca ?? '0' }),
+    baixar: async (id) => Buffer.from(itens.find((i) => i.id === id)?.conteudo ?? ''),
   }
   const dentro = (pai: string) => itens.filter((i) => i.pai === pai).map((i) => i.nome)
   const pastaChamada = (nome: string) => itens.find((i) => i.pasta && i.nome === nome)?.id

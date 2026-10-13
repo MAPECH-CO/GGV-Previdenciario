@@ -265,16 +265,16 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - sem o arquivo, recusa;
     - sem IA, tudo volta como não lido.
 - [x] 4.7 A segunda ficha em papel (P4.2): o mesmo, com `ler_segunda_ficha`, e a seção médica só em `segunda_ficha_medica`. Verifica com `rotas/recepcao-segunda-ficha.test.ts`.
-- [ ] 4.8 O Drive lê as mudanças e baixa o arquivo (P4.3): `drive.mudancas(marca)` e `drive.baixar(id)`. Verifica com `drive.test.ts`, com o fetch de mentira.
-- [ ] 4.9 A rodada do scanner (P4.3, decisão 32): `olharOScanner`.
+- [x] 4.8 O Drive lê as mudanças e baixa o arquivo (P4.3): `drive.mudancas(marca)` e `drive.baixar(id)`. Verifica com `drive.test.ts`, com o fetch de mentira.
+- [x] 4.9 A rodada do scanner (P4.3, decisão 32): `olharOScanner`.
   - Verifica com teste:
     - o arquivo novo na pasta ligada entra e é lido;
     - a mesma mudança não repete;
     - o do portal e o de "A REVISAR" ficam fora;
     - a pasta de duas fichas não é ligada;
     - o lote vai à tarefa "Receber documento".
-- [ ] 4.10 Ligar a rodada (P4.3): em `principal.ts`, junto da rodada do Drive, só com o Drive ligado e sem só leitura. Verifica com o teste da condição.
-- [ ] 4.11 ADR-017 (P4.3): o scanner pelo Drive, por quê e o que custa. Verifica: o arquivo em `docs/decisoes/`.
+- [x] 4.10 Ligar a rodada (P4.3): em `principal.ts`, junto da rodada do Drive, só com o Drive ligado e sem só leitura. Verifica com o teste da condição.
+- [x] 4.11 ADR-017 (P4.3): o scanner pelo Drive, por quê e o que custa. Verifica: o arquivo em `docs/decisoes/`.
 - [ ] 4.12 O contrato assinado guardado (P4.4): a digitalização recebe o arquivo e o guarda como documento do caso; `GET .../contrato/assinado` devolve o arquivo. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [ ] 4.13 A leitura do contrato (P4.4): `ler_contrato_assinado`, com a lista do kit; a regra de hoje decide; sem IA, vai à conferência com o motivo. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [ ] 4.14 Sem ZapSign (P4.5): saem as rotas e a opção, e o serviço responde sempre `zapsign: false`. Verifica com `rotas/recepcao-contrato.test.ts`: com a variável, a rota não existe e o serviço diz falso.
