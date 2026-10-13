@@ -13,6 +13,8 @@ import {
   RegistrarIndisponibilidade,
   pode,
   type Erro,
+  MSG_JURIMETRIA_NO_TEXTO,
+  numeroDeJurimetriaNoTexto,
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
@@ -34,16 +36,18 @@ import {
   usuario,
 } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ } from '../fluxo/exigencia.ts'
+import type { Ia } from '../ia/ia.ts'
 import { REGRA_INDISPONIBILIDADE, feriadosDoProcesso, prazoDepoisDaIndisponibilidade, tribunalDoCnj } from '../fluxo/prazo-judicial.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
 export const MSG_SEM_EXIGENCIA_JUIZ = 'Este caso não tem exigência do juiz em cumprimento.'
+export const MSG_VERSAO_SEM_LEITURA = 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'
 export const MSG_ANTES_DA_JUSTIFICATIVA = 'Antes de encerrar sem prova, peça a dilação do prazo (na perícia, o reagendamento). Se nenhum cabe, diga por quê.'
 export const MSG_VERSAO_NAO_APROVADA = 'Só a versão aprovada é protocolada: aprove a última versão antes (G6).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
 
-type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
+type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia?: Ia }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const EM_CURSO = ['aberta', 'dilacao_pedida', 'vencida'] as const
 
@@ -108,7 +112,7 @@ export async function abrirManifestacaoSePronta(banco: Banco, casoId: string, ag
   return true
 }
 
-export function registrarRotasManifestacao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
+export function registrarRotasManifestacao(app: FastifyInstance, { banco, armazenamento, agora = () => new Date(), ia }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
 
@@ -133,6 +137,16 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
     const [p] = await banco.select({ documento: pericia.documento }).from(pericia).where(eq(pericia.id, periciaId))
     const em = (p?.documento as { remarcadaEm?: string } | null)?.remarcadaEm
     return Boolean(em && new Date(em) >= desde)
+  }
+
+  /** GGVP-158 P5.12: o texto da versão anexada, lido pela IA; sem a IA, sem o arquivo ou sem leitura, nulo. */
+  async function textoDaVersao(casoId: string, documentoId: string | null, quem: string) {
+    if (!ia || !documentoId) return null
+    const [doc] = await banco.select().from(documento).where(eq(documento.id, documentoId))
+    const arquivo = doc ? await armazenamento.ler(doc.chaveArmazenamento).catch(() => null) : null
+    if (!doc || !arquivo) return null
+    const lido = await ia.lerDocumento({ casoId, quem, arquivo, mime: doc.mime, sensivel: true, referencia: `documento:${doc.id}` })
+    return lido?.texto ?? null
   }
 
   const dilacaoAutorizada = async (casoId: string, desde: Date) =>
@@ -321,9 +335,16 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
       const p = s ? await peticaoDa(pedido.params.id, s.exigencia.criadoEm) : null
       const ultima = p ? (await versoesDa(p.id)).at(-1) : undefined
       if (!ultima || ultima.numero !== Number(pedido.params.n)) return negar(resposta, 409, 'Aprove a última versão anexada.')
+      // GGVP-158 P5.12 (G22): a versão é arquivo; a IA lê o texto (o OCR da perícia e do parecer), e a regra confere. Sem a
+      // leitura, aprova com o aviso, e a advogada confere à mão.
+      const texto = await textoDaVersao(pedido.params.id, ultima.documentoId, pedido.usuario!.id)
+      if (texto && numeroDeJurimetriaNoTexto(texto)) {
+        await bloqueio(pedido, pedido.params.id, 'G22', 'D3a.04', { versao: ultima.numero }, 'jurimetria_no_texto')
+        return negar(resposta, 409, MSG_JURIMETRIA_NO_TEXTO)
+      }
       await banco.update(peticaoVersao).set({ aprovadaPor: pedido.usuario!.id, aprovadaEm: agora() }).where(eq(peticaoVersao.id, ultima.id))
-      await historico(pedido.usuario!.id, 'manifestacao_aprovada', pedido, `caso:${pedido.params.id}`, { versao: ultima.numero, hash: ultima.hash })
-      return resposta.code(201).send({ ok: true })
+      await historico(pedido.usuario!.id, 'manifestacao_aprovada', pedido, `caso:${pedido.params.id}`, { versao: ultima.numero, hash: ultima.hash, jurimetriaConferida: texto !== null })
+      return resposta.code(201).send({ ok: true, ...(texto === null && { aviso: MSG_VERSAO_SEM_LEITURA }) })
     },
   )
 

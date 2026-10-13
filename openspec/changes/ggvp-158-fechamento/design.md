@@ -277,7 +277,8 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
       - "tempo médio" junto de dias.
 
       Fica em tempo linear, sem regex com repetição aninhada.
-    - Vale na aprovação da versão da petição, da manifestação e da dilação. Recusa com 409 e registra o portão G22.
+    - Vale na aprovação da versão da petição, da manifestação e da dilação. Recusa com 409 e registra o portão G22, que entra em `PORTOES_DE_BLOQUEIO`.
+    - A petição tem o texto. A manifestação e a dilação sobem como arquivo: na aprovação, `ia.lerDocumento` (a Mistral, o OCR da perícia e do parecer; sensível) lê a versão. Sem a leitura (sem a IA ou sem a autorização), aprova com `aviso`, e o histórico guarda `jurimetriaConferida: false`.
     - Ela não pega toda porcentagem: o texto jurídico cita percentuais de lei.
     - ponytail: casa o formato que o portal mostra. Número de jurimetria escrito de outro jeito passa; a revisão da advogada segue.
 51. **Jurimetria só para quem tem `estudo.ver`** (P5.13).

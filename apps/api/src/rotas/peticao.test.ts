@@ -344,6 +344,16 @@ describe('GGVP-67 · conferir a petição', () => {
     expect((await chamar('gabi', 'POST', '/peticao/pedido', { texto: V1, citados: [{ documentoId: laudo.id }] })).statusCode).toBe(201)
   })
 
+  it('GGVP-158 P5.12 · a versão com número de jurimetria não se aprova (G22); tirado o número, aprova', async () => {
+    expect((await editar(`${V1}\nEste juízo julga procedentes 71% em 34 processos · base de 07/10.`)).statusCode).toBe(201)
+    const r = await aprovar(2)
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria (G22): tire antes de aprovar.'])
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'jurimetria_no_texto'))
+    expect(b.detalhe).toMatchObject({ portao: 'G22', passo: 'D3.06' })
+    expect((await editar(`${V1}\nEste juízo entende que o laudo do assistente técnico vale.`)).statusCode).toBe(201)
+    expect((await aprovar(3)).statusCode).toBe(201)
+  })
+
   it('CA4, CA11 · "Conferir petição" mostra a versão inteira; na versão 1 não há o que comparar', async () => {
     expect(await abertas()).toEqual(['advogada · Conferir petição'])
     const x = await ler()

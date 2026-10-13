@@ -399,12 +399,16 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - a carga de 2028 entra, e a linha some.
 
   Verificado em 13/10: `rotas/feriados.test.ts` 5/5 (1 novo). A linha só aparece com a lista já em uso: a tabela vazia é a carga ao subir.
-- [ ] 5.17 Jurimetria no texto, regra (P5.12, decisão 50): `numeroDeJurimetriaNoTexto` em `packages/contratos`.
+- [x] 5.17 Jurimetria no texto, regra (P5.12, decisão 50): `numeroDeJurimetriaNoTexto` em `packages/contratos`.
   - Verifica com o teste do contrato:
     - os formatos do G22 acusam;
     - o percentual de lei, o entendimento e o processo de exemplo passam;
     - o texto grande roda em tempo linear.
-- [ ] 5.18 Jurimetria no texto, servidor (P5.12): a aprovação da petição, da manifestação e da dilação recusa e registra o G22. Verifica com `rotas/peticao.test.ts` e `rotas/manifestacao.test.ts`.
+
+  Verificado em 13/10: contratos `ia.test.ts` 7/7 (3 novos).
+- [x] 5.18 Jurimetria no texto, servidor (P5.12): a aprovação da petição, da manifestação e da dilação recusa e registra o G22. Verifica com `rotas/peticao.test.ts` e `rotas/manifestacao.test.ts`.
+
+  Verificado em 13/10: `rotas/peticao.test.ts` 33/33 e `rotas/manifestacao.test.ts` 18/18 (4 novos). A manifestação e a dilação são lidas pela IA na aprovação; sem ela, aprovam com o aviso.
 - [ ] 5.19 A jurimetria só com `estudo.ver` (P5.13, decisão 51): os recortes do painel e a `visao` da perícia.
   - Verifica com `rotas/gestao.test.ts` e `rotas/pericia.test.ts`:
     - o líder do Atendimento e o Financeiro recebem 403 no recorte por perito;

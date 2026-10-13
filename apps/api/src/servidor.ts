@@ -225,7 +225,7 @@ export function criarServidor({
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
-    registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos, ia: motorIa })
     registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, etapa, eventoAuditoria, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, protocoloJudicial, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
@@ -251,5 +252,40 @@ describe('GGVP-87 · perícia que não tem como ser feita (ajuste de 06/10)', ()
   })
 
   const encerrar = async (corpo: object) => chamar('gabi', 'POST', '/manifestacao/sem-prova', corpo)
+})
+
+describe('GGVP-158 P5.12 · número de jurimetria fora da manifestação e da dilação (G22)', () => {
+  /** O servidor com a IA de mentira: a Mistral devolve o texto dado; sem texto, a IA desligada. */
+  function servidorQueLe(texto: string | null) {
+    const ambiente = texto === null ? {} : { MISTRAL_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }
+    const fetch = async () => new Response(JSON.stringify({ pages: [{ markdown: texto }] }))
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), ia: criarIa({ banco, ambiente, fetch, agora: () => AGORA }) })
+  }
+  const aprovar = async (tipo = 'manifestacao') => {
+    const { numero } = (await enviar('gabi', '/manifestacao/versoes', { tipo })).json()
+    return chamar('gabi', 'POST', `/manifestacao/versoes/${numero}/aprovacao`, { aprovei: true })
+  }
+
+  it('a versão lida com a taxa e a base do portal não se aprova, e o portão fica registrado', async () => {
+    servidorQueLe('Excelência, este juízo julga procedentes 71% em 34 processos · base de 07/10.')
+    const r = await aprovar()
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria (G22): tire antes de aprovar.'])
+    const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'jurimetria_no_texto'))
+    expect(b.detalhe).toMatchObject({ portao: 'G22', passo: 'D3a.04', versao: 1 })
+  })
+
+  it('a dilação que cita o entendimento do juízo e o processo de exemplo se aprova', async () => {
+    servidorQueLe('Requer a dilação por 30 dias. Este juízo entende que o laudo do assistente vale (processo 0001234-56.2025.4.03.6301).')
+    const r = await aprovar('dilacao')
+    expect([r.statusCode, r.json().aviso]).toEqual([201, undefined])
+  })
+
+  it('sem a IA, aprova com o aviso para a advogada conferir à mão', async () => {
+    servidorQueLe(null)
+    const r = await aprovar()
+    expect([r.statusCode, r.json().aviso]).toEqual([201, 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'])
+    const [a] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'manifestacao_aprovada'))
+    expect(a.detalhe).toMatchObject({ jurimetriaConferida: false })
+  })
 })
 

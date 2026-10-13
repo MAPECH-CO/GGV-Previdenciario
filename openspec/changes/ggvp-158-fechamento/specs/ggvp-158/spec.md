@@ -685,6 +685,8 @@ Quando o ano corrente não tem feriado nenhum, a Central da Sênior SHALL mostra
 ### Requirement: P5.12 · Número de jurimetria fora do texto da peça
 A aprovação da petição, da manifestação e do pedido de dilação MUST recusar o texto com número de jurimetria: taxa, tempo médio ou chance, no formato que o portal mostra (G22). A peça pode citar os entendimentos e os processos de exemplo.
 
+A manifestação e a dilação sobem como arquivo: a IA lê o texto. Sem a leitura, a versão SHALL ser aprovada com o aviso para a advogada conferir à mão.
+
 #### Scenario: P5.12 · Taxa no texto
 - **Dado** a versão da manifestação com "71% em 34 processos · base de 07/10"
 - **Quando** a advogada aprova a versão
@@ -694,6 +696,11 @@ A aprovação da petição, da manifestação e do pedido de dilação MUST recu
 - **Dado** a versão que cita um entendimento do juízo e o processo de exemplo
 - **Quando** a advogada aprova a versão
 - **Então** a versão fica aprovada
+
+#### Scenario: P5.12 · Sem a leitura da IA
+- **Dado** a IA desligada
+- **Quando** a advogada aprova a versão da manifestação
+- **Então** a versão fica aprovada, com o aviso "A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22)."
 
 ### Requirement: P5.13 · A jurimetria só para o Jurídico e os sócios
 Estes números MUST ir só a quem tem `estudo.ver` (Jurídico e sócios):
