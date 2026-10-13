@@ -7,7 +7,7 @@ Confirmar o desfecho de mérito (a porta de entrada do D3b): a decisão de méri
 ## ADDED Requirements
 
 ### Requirement: CA3 · Confirmar o desfecho lendo a decisão e a leitura da IA
-A tarefa "Confirmar desfecho" SHALL abrir uma tela com o trecho da decisão de mérito, a leitura da IA com o grau de confiança (quando houver) e o prazo do recurso; a advogada (ou a Sênior) MUST escolher procedente total, procedente em parte, improcedente ou extinto sem mérito, e extinto sem mérito MUST trazer a causa. Sem a confirmação, o caso não avança no D3b. A tela SHALL seguir o Figma "Confirmar o desfecho de mérito" (step_D4.02, 1815:166): o topo do passo, "O que você deve fazer" e "Antes de concluir".
+A tarefa "Confirmar desfecho" SHALL abrir uma tela com o trecho da decisão de mérito, a leitura da IA com o grau de confiança (quando houver) e o prazo do recurso; a advogada (ou a Sênior) MUST escolher procedente total, procedente em parte, improcedente ou extinto sem mérito, e extinto sem mérito MUST trazer a causa. Sem a confirmação, o caso não avança no D3b. A tela SHALL seguir o Figma "Confirmar o desfecho de mérito" (step_D4.02, 1815:166): o topo do passo, "O que você deve fazer" e "Antes de concluir". O trecho da decisão SHALL ir só a quem pode ver dado de saúde (`dado_saude.ver_detalhe`), porque a sentença pode trazer laudo, diagnóstico ou CID; os outros perfis MUST receber do servidor só o resultado, as datas e o prazo, sem o trecho (revisão do Pedro, 12/10).
 
 #### Scenario: CA3 · Abrir a tarefa
 - **Dado** uma decisão de mérito encaminhada pela vigília
@@ -18,6 +18,11 @@ A tarefa "Confirmar desfecho" SHALL abrir uma tela com o trecho da decisão de m
 - **Dado** a advogada na tela
 - **Quando** escolhe extinto sem mérito sem escrever a causa
 - **Então** a confirmação é recusada com o motivo
+
+#### Scenario: CA3 · O trecho só para quem vê dado de saúde
+- **Dado** uma sentença que cita o laudo e o CID
+- **Quando** o Atendimento ou a Documentação abre a tela
+- **Então** o servidor não manda o trecho, e a tela diz que ele fica com o Jurídico; quem vê dado de saúde recebe o trecho
 
 #### Scenario: CA3 · Outro perfil
 - **Dado** um perfil sem a permissão de classificar a publicação (o Atendimento, por exemplo)

@@ -165,3 +165,7 @@ A antiga 2.8, a ligação de `abrirExplicacaoDoResultado` no "Não recorrer", fo
 - [x] 15.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [x] 15.11 Trazer a main com o #35 (GGVP-100, na main desde 09/10): "Decidir recurso" nasce pela chamada do `abrirDecisaoDoRecurso` de `rotas/recurso.ts`, e sai a função local; a tela do desfecho mostra o prazo recursal da mesma conta (`sentencaEPrazo` do #35); o D3b.04 abre a tela do recurso; o estudo de caso segue o `semRecursoPendente` do #35; a semente fica com os casos dos dois. Os números desta seção passaram de 14 para 15, porque o #35 usou a 14. Testes.
 - [x] 15.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 15.13 Trazer a main (154 commits atrás em 13/10), por junção, sem rebase nem force-push.
+- [ ] 15.14 Servidor (revisão do Pedro, 12/10, P1): o `GET /api/casos/:id/desfecho` só devolve o trecho da sentença a quem tem `dado_saude.ver_detalhe`; os outros perfis recebem o resultado, as datas e o prazo. Teste com uma sentença médica fictícia: o Atendimento e a Documentação não recebem o trecho; quem vê dado de saúde recebe.
+- [ ] 15.15 Tela: sem o trecho, a linha diz que ele fica com o Jurídico (dado de saúde); teste Vitest.
+- [ ] 15.16 Rodar typecheck, lint, testes e Playwright; colar a saída no relatório final.
