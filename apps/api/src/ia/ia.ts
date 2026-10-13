@@ -108,6 +108,22 @@ export const FINALIDADES = {
     ].join(' '),
   },
   /**
+   * GGVP-158 P7.1: a estratégia do caso, interna, para a advogada conferir, ajustar e salvar. Só o Jurídico e os sócios
+   * leem; por isso pode citar o que o parecer e a perícia dizem.
+   */
+  estrategia_do_caso: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você propõe a estratégia de um processo previdenciário do escritório, para a advogada conferir, ajustar e salvar.',
+      'Leia o benefício, a fase, o indeferimento do INSS, o despacho da Sênior, o parecer médico, as perícias, a decisão de mérito e, se houver, os trechos do acervo, e responda só com um objeto JSON:',
+      '{"estrategia": "o caminho do caso em até 6 frases: o que provar, com quais documentos ou perícias, o risco principal e o próximo passo"}.',
+      'Diga o que falta quando o caso ainda não tem o dado, sem supor. Não calcule nem invente números, datas, prazos ou jurisprudência. Use só o que está no conteúdo.',
+    ].join(' '),
+  },
+  /**
    * GGVP-41: a ficha do desfecho no acervo, para medir ganho e perda; a Sênior confere. A tese vira grupo na Gestão, que
    * outros perfis veem: por isso sai sem doença nem CID.
    */

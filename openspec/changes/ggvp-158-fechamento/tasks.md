@@ -592,15 +592,19 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 7.1 A migração 0034 (decisões 72 e 73): `caso.valor_causa`, `pessoa.renda_por_pessoa` e as colunas do Raio-X no `processo_acervo`. Verifica com `banco/migracoes.test.ts`.
 
   Verificado em 13/10: `banco/migracoes.test.ts` 15/15, com a 0034 (o valor da causa, a renda por pessoa e as colunas do Raio-X no acervo).
-- [ ] 7.2 A estratégia, a IA (P7.1, decisão 67): a finalidade `estrategia_do_caso`, o conteúdo montado no código e a saída conferida.
+- [x] 7.2 A estratégia, a IA (P7.1, decisão 67): a finalidade `estrategia_do_caso`, o conteúdo montado no código e a saída conferida.
   - Verifica com teste, com a IA de mentira:
     - a proposta com as fontes;
     - a saída fora do formato não vale.
-- [ ] 7.3 A estratégia, as rotas (P7.1): `GET`, `POST` e a outra proposta; o preparo; a estratégia no resumo do processo.
+
+  Verificado em 13/10, em `rotas/estrategia.test.ts`: a proposta com o que o caso tem (o benefício, o indeferimento e o parecer) e as fontes; a saída fora do formato não vale e dá o aviso.
+- [x] 7.3 A estratégia, as rotas (P7.1): `GET`, `POST` e a outra proposta; o preparo; a estratégia no resumo do processo.
   - Verifica com `rotas/estrategia.test.ts`:
     - a proposta pronta;
     - a versão salva com o ajuste vai ao histórico;
     - o Atendimento não lê, nem no resumo.
+
+  Verificado em 13/10: `rotas/estrategia.test.ts` 5/5 e `rotas/processo.test.ts` 9/9. A proposta pronta na rodada, sem chamar de novo ao abrir; a versão ajustada com quem e quando, e o histórico sem o texto; a Sênior salva outra; o Atendimento recebe 403 e o resumo sem a estratégia; a proposta de outro caso recusa; pedir outra chama a IA de novo.
 - [ ] 7.4 As tarefas da Recepção, o módulo (P7.2, decisão 68): `sincronizarRecepcao` com a cobrança, o checklist, as boas-vindas e o fechamento.
   - Verifica com teste:
     - abre, fecha e atualiza o prazo;

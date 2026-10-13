@@ -28,6 +28,7 @@ import {
   tarefa,
   usuario,
 } from '../banco/esquema.ts'
+import { estrategiaAtual } from './estrategia.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { linhaDoCaso } from './historico.ts'
@@ -247,6 +248,8 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       identificadores: { nb: numero('nb'), protocolo: numero('protocolo_inss'), cnj: numero('cnj') },
       vara: c.caso.vara,
       juiz: c.caso.juiz,
+      // GGVP-158 P7.1: a estratégia é interna: só o Jurídico e os sócios.
+      ...(pode(perfil, 'estudo.ver') && { estrategia: await estrategiaAtual(banco, casoId) }),
       senhaGovNoCofre: !!cofre,
       transcricoes: (ficha?.documento as { transcricoes?: number } | undefined)?.transcricoes ?? 0,
       etapas: etapas.map((e) => ({ diagrama: e.diagrama, passo: e.passo, aguardando: e.aguardando, desde: e.iniciadaEm.toISOString() })),

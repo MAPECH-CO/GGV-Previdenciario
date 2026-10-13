@@ -63,6 +63,7 @@ import { registrarRotasRecepcaoCobranca } from './rotas/recepcao-cobranca.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
 import { criarCorreio, registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasChatwootEntrada } from './rotas/chatwoot-entrada.ts'
+import { registrarRotasEstrategia } from './rotas/estrategia.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
@@ -242,6 +243,8 @@ export function criarServidor({
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
+    // GGVP-158 P7.1: a estratégia do caso, que a IA propõe e o Jurídico confere.
+    registrarRotasEstrategia(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
