@@ -334,11 +334,11 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     expect((await pelo('ana', 'pensao_morte')).statusCode).toBe(403)
   })
 
-  it('GGVP-150 CA6 · a advogada e o Sócio também veem a chance; o Jurídico administrativo e o Atendimento não', async () => {
+  it('GGVP-150 CA6, GGVP-156 CA1 · a advogada, o Jurídico administrativo e o Sócio também veem a chance; o Atendimento e o Financeiro não', async () => {
     for (const [apelido, perfil] of [['gabi', 'advogada'], ['rui', 'socio']] as const)
       await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
-    expect([(await chance('gabi')).statusCode, (await chance('rui')).statusCode]).toEqual([200, 200])
-    expect([(await chance('igor')).statusCode, (await chance('ana')).statusCode]).toEqual([403, 403])
+    expect([(await chance('gabi')).statusCode, (await chance('igor')).statusCode, (await chance('rui')).statusCode]).toEqual([200, 200, 200])
+    expect([(await chance('ana')).statusCode, (await chance('julia')).statusCode]).toEqual([403, 403])
   })
 })
 

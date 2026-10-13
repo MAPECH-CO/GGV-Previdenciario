@@ -1,7 +1,8 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react'
 import { formatarDecimal, isoParaData, normalizarData, validarData } from '@ggv/campos'
-import { RAIO_X, RECORTES, ROTULO_RECORTE, type Indicador, type PainelDeResultados } from '@ggv/contratos'
+import { RAIO_X, RECORTES, RECORTES_DA_JURIMETRIA, ROTULO_RECORTE, type Indicador, type PainelDeResultados } from '@ggv/contratos'
 import { chamarApi, type Resposta } from '../api.ts'
+import { usePode } from '../sessao.ts'
 import { MolduraDaBase } from './Base.tsx'
 import styles from './Passo.module.css'
 import r from './Resultados.module.css'
@@ -98,6 +99,8 @@ function Serie({ valor }: { valor: string }) {
  */
 export function Resultados({ topo }: { topo?: ReactNode }) {
   const ids = { de: useId(), ate: useId(), recorte: useId() }
+  // GGVP-156 CA3: os recortes por perito, juízo, vara e tese são jurimetria: só o Jurídico e o Sócio. O servidor recusa também.
+  const veJurimetria = usePode('estudo.ver')
   const [de, setDe] = useState('')
   const [ate, setAte] = useState('')
   const [recorte, setRecorte] = useState('')
@@ -163,7 +166,7 @@ export function Resultados({ topo }: { topo?: ReactNode }) {
           </label>
           <select id={ids.recorte} className={styles.campo} value={recorte} onChange={(e) => setRecorte(e.target.value)}>
             <option value="">Escritório inteiro</option>
-            {RECORTES.map((x) => (
+            {RECORTES.filter((x) => veJurimetria || !RECORTES_DA_JURIMETRIA.includes(x)).map((x) => (
               <option key={x} value={x}>
                 {ROTULO_RECORTE[x]}
               </option>
