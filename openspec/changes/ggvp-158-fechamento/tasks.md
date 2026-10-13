@@ -277,14 +277,14 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 4.11 ADR-017 (P4.3): o scanner pelo Drive, por quê e o que custa. Verifica: o arquivo em `docs/decisoes/`.
 - [x] 4.12 O contrato assinado guardado (P4.4): a digitalização recebe o arquivo e o guarda como documento do caso; `GET .../contrato/assinado` devolve o arquivo. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [x] 4.13 A leitura do contrato (P4.4): `ler_contrato_assinado`, com a lista do kit; a regra de hoje decide; sem IA, vai à conferência com o motivo. Verifica com `rotas/recepcao-contrato.test.ts`.
-- [ ] 4.14 Sem ZapSign (P4.5): saem as rotas e a opção, e o serviço responde sempre `zapsign: false`. Verifica com `rotas/recepcao-contrato.test.ts`: com a variável, a rota não existe e o serviço diz falso.
+- [x] 4.14 Sem ZapSign (P4.5): saem as rotas e a opção, e o serviço responde sempre `zapsign: false`. Verifica com `rotas/recepcao-contrato.test.ts`: com a variável, a rota não existe e o serviço diz falso.
 - [ ] 4.15 Um catálogo só, contrato (P4.6): os 34 com o id do servidor; `BENEFICIOS` e os mapas saem dele. Verifica com o teste do contrato: 34 mais "outro", e os 11 ids de hoje iguais.
 - [ ] 4.16 O catálogo no banco (P4.6): a migração 0031 com o CHECK.
   - Verifica com teste:
     - o caso da aposentadoria rural guarda o benefício;
     - a lista publicada vale no checklist;
     - sem lista, a liberação recusa.
-- [ ] 4.17 Só o conferido vai ao Drive (P4.7): o filtro na rodada. Verifica com `fluxo/arquivar.test.ts`.
+- [x] 4.17 Só o conferido vai ao Drive (P4.7): o filtro na rodada. Verifica com `fluxo/arquivar.test.ts`.
 - [ ] 4.18 A pasta do cliente (P4.7): as pastas parecidas na criação da ficha, e `POST /api/fichas/:id/pasta`. Verifica com teste, com o Drive de mentira: liga; cria com CPF; recusa sem CPF e com o Drive só leitura.
 - [ ] 4.19 A cobrança na mensagem (P4.8). Verifica com o teste das mensagens: na Sênior, recusa; dentro do limite, sai.
 - [ ] 4.20 O caso escolhido no envio (P4.9). Verifica com `rotas/recepcao-documentos.test.ts`: com dois casos, sem escolher, recusa; com o caso escolhido, o documento vai a ele.

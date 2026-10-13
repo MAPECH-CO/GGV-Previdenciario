@@ -209,10 +209,10 @@ describe('arquivar no Drive (GGVP-107)', () => {
     expect(g.dentro(g.pastaChamada('Pacote de protocolo - 2026-10-08 (2)')!)).toEqual(['peticao-inicial-v1.pdf', 'carta.pdf'])
   })
 
-  it('CA7, CA8 · o arquivo do chat vai sozinho com o mesmo padrão, sem tarefa manual; o que já existia antes e o excluído não vão', async () => {
+  it('CA7, CA8 · o arquivo do chat, conferido, vai sozinho com o mesmo padrão, sem tarefa manual; o que já existia antes e o excluído não vão', async () => {
     const g = driveNaMemoria()
     const { casoId } = await cliente('Rita Exemplo')
-    const doChat = await guardar(casoId, 'comprovante_rpv', undefined, { origem: 'chat' })
+    const doChat = await guardar(casoId, 'comprovante_rpv', undefined, { origem: 'chat', situacao: 'conferido' })
     await guardar(casoId, 'cnis', undefined, { drivePendente: false })
     await guardar(casoId, 'ctps', undefined, { excluidoEm: new Date('2026-10-08T15:10:00Z') })
     await guardar(casoId, 'rg', undefined, { origem: 'exemplo' })
@@ -221,5 +221,18 @@ describe('arquivar no Drive (GGVP-107)', () => {
     expect(g.dentro(g.pastaChamada('Rita Exemplo X A CLASSIFICAR')!)).toEqual(['Comprovante rpv - Rita Exemplo - 2026-10-08.pdf'])
     expect((await doc(doChat.id)).driveArquivoId).not.toBeNull()
     expect(await banco.select().from(tarefa).where(eq(tarefa.casoId, casoId))).toEqual([])
+  })
+
+  it('GGVP-158 P4.7 · o que chegou pelo card ou pelo chat só vai depois da conferência da Documentação; o resto vai como antes', async () => {
+    const g = driveNaMemoria()
+    const { casoId } = await cliente('Rita Exemplo')
+    const doCard = await guardar(casoId, 'rg', undefined, { origem: 'card' })
+    const doChat = await guardar(casoId, 'cnis', undefined, { origem: 'chat' })
+    const doPortal = await guardar(casoId, 'peticao_inicial')
+    expect(await rodar(g.drive)).toEqual({ enviados: 1, falhas: [] })
+    expect([(await doc(doCard.id)).drivePendente, (await doc(doChat.id)).drivePendente, (await doc(doPortal.id)).drivePendente]).toEqual([true, true, false])
+    await banco.update(documento).set({ situacao: 'conferido' }).where(eq(documento.id, doCard.id))
+    expect(await rodar(g.drive)).toEqual({ enviados: 1, falhas: [] })
+    expect((await doc(doCard.id)).driveArquivoId).not.toBeNull()
   })
 })
