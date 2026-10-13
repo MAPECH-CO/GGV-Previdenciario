@@ -28,6 +28,7 @@ import {
   documento,
   documentoMedico,
   fichaAtendimento,
+  fichaRecepcao,
   kitDocumento,
   parecerMedico,
   pericia,
@@ -47,6 +48,7 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 import { ehPeca } from './documentos.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import type { ContratoGuardado } from './recepcao.ts'
+import type { Calculo } from '../../../web/src/dados/tipos.ts'
 import { contratoConferidoDo, type ChecklistDoCaso } from '../../../web/src/regras/checklist.ts'
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
@@ -103,11 +105,14 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
   /** `acao`: o mesmo G17 vale para aprovar para o INSS e para liberar ao Jurídico; muda só o texto da trava. */
   async function montar(casoId: string, perfilAtivo: string | null, quem?: string, acao: AcaoDoPortao = 'aprovar-inss') {
     const [c] = await banco
-      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm })
+      .select({ id: caso.id, beneficio: caso.beneficio, cliente: pessoa.nome, abertoEm: caso.criadoEm, pessoaId: caso.pessoaId })
       .from(caso)
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
       .where(eq(caso.id, casoId))
     if (!c) return null
+    // GGVP-158 P3.5: o último cálculo de tempo e pontos, que a Recepção guarda na ficha da pessoa.
+    const [daFicha] = await banco.select({ documento: fichaRecepcao.documento }).from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, c.pessoaId))
+    const calculo = (daFicha?.documento as { calculos?: Calculo[] } | undefined)?.calculos?.at(-1)
     // GGVP-96: a peça jurídica (pacote da petição, versões) só vai a quem vê a petição.
     const vePeca = pode(perfilAtivo, 'peticao.ver')
     const docs = (
@@ -181,6 +186,18 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       temFicha: Boolean(ficha),
       // GGVP-158 P3.1: o caso da Recepção tem o contrato dela; vale assinado e conferido. A tabela `contrato` é da semente.
       kitAssinado: Boolean(assinado) || contratoConferidoDo((daRecepcao?.dados as ContratoGuardado | undefined)?.contrato),
+      calculo: calculo
+        ? {
+            tempo: calculo.tempo,
+            pontos: calculo.pontos,
+            carencia: calculo.carencia ?? null,
+            regra: calculo.regra,
+            podeAposentar: calculo.podeAposentar,
+            dataPrevista: calculo.dataPrevista ?? null,
+            quem: calculo.quem,
+            quando: calculo.quando,
+          }
+        : null,
       podeDecidir: pode(perfilAtivo, 'caso.aprovar_para_inss') && espera,
       situacao: espera || !ok ? 'aguardando' : ok.resultado === 'aprovado' ? 'aprovado' : 'reprovado',
     })

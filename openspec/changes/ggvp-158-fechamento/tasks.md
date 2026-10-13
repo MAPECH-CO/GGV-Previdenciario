@@ -202,7 +202,7 @@ Só servidor, com teste junto; as telas são do Pedro. Sem migração nem matriz
   - O `POST /api/entrevistas/:id/calculo` usa o tempo, os pontos e a carência do resultado guardado (o número da tela não vale). A regra e o "já pode se aposentar" vêm do advogado.
   - Com competência pendente, recusa. O cálculo registrado libera o "Sim, fechou". A semente segue com o CNIS de exemplo.
   - Verifica com `rotas/recepcao-decisoes.test.ts`.
-- [ ] 3.10 A Sênior vê o cálculo (P3.5): `CasoParaConferencia` com o último cálculo (tempo, pontos, carência, regra, se pode aposentar, quem e quando). Verifica com `rotas/conferencia.test.ts`.
+- [x] 3.10 A Sênior vê o cálculo (P3.5): `CasoParaConferencia` com o último cálculo (tempo, pontos, carência, regra, se pode aposentar, quem e quando). Verifica com `rotas/conferencia.test.ts`.
 - [ ] 3.11 A equipe real (P3.6): `GET /api/equipe?perfis=advogada,senior`, para quem marca (`ficha.editar`), devolve o id e o nome dos usuários ativos com o perfil. Verifica com `rotas/recepcao-agenda.test.ts`.
 - [ ] 3.12 Quem atende fica guardado (P3.6).
   - A marcação aceita o id de um usuário da equipe real e guarda o `comId` e o nome. O id do catálogo fixo segue aceito até a tela mudar.

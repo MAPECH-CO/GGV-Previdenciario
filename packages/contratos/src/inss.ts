@@ -99,6 +99,21 @@ export const CasoParaConferencia = z.object({
   laudoNovoEsperando: z.boolean(),
   temFicha: z.boolean(),
   kitAssinado: z.boolean(),
+  /** O último cálculo de tempo e pontos da Recepção, com quem fez e quando (GGVP-158, P3.5); nulo, sem cálculo. */
+  calculo: z
+    .object({
+      tempo: z.object({ anos: z.number().int(), meses: z.number().int(), dias: z.number().int() }),
+      pontos: z.number(),
+      /** As competências da carência do cálculo do servidor; nula no cálculo antigo, digitado na tela. */
+      carencia: z.number().int().nullable(),
+      regra: z.string(),
+      podeAposentar: z.boolean(),
+      /** aaaa-mm-dd, no "ainda não pode se aposentar". */
+      dataPrevista: z.string().nullable(),
+      quem: z.string(),
+      quando: z.string(),
+    })
+    .nullable(),
   /** Só a Sênior decide; os outros perfis veem para leitura (CA4). */
   podeDecidir: z.boolean(),
   situacao: z.enum(['aguardando', 'aprovado', 'reprovado']),

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, contrato, contratoRecepcao, decisao, documento, documentoMedico, eventoAuditoria, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, contrato, contratoRecepcao, decisao, documento, documentoMedico, eventoAuditoria, fichaRecepcao, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -143,6 +143,34 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     expect((await ver('helena')).json().kitAssinado).toBe(false)
     await banco.update(contratoRecepcao).set({ dados: { contrato: { processoId: casoId, etapa: 'copia' }, processo: { id: casoId } } })
     expect((await ver('helena')).json().kitAssinado).toBe(true)
+  })
+
+  it('GGVP-158 P3.5 · a Sênior vê o último cálculo de tempo e pontos da Recepção, com quem fez e quando', async () => {
+    expect((await ver('helena')).json().calculo).toBeNull()
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    const calculo = (pontos: number, quando: string) => ({
+      tempo: { anos: 35, meses: 2, dias: 10 },
+      pontos,
+      carencia: 420,
+      regra: 'Transição por pontos (EC 103, art. 15)',
+      podeAposentar: true,
+      quem: 'gabi',
+      quando,
+      cnisOrigem: 'impresso',
+      cnisExtraidoEm: '2026-10-05',
+    })
+    // Refazer guarda o anterior (GGVP-57 CA6): vale o último.
+    await banco.insert(fichaRecepcao).values({ pessoaId: c.pessoaId, documento: { calculos: [calculo(90, '2026-10-06T12:00:00.000Z'), calculo(99.5, '2026-10-07T12:00:00.000Z')] } })
+    expect((await ver('ana')).json().calculo).toEqual({
+      tempo: { anos: 35, meses: 2, dias: 10 },
+      pontos: 99.5,
+      carencia: 420,
+      regra: 'Transição por pontos (EC 103, art. 15)',
+      podeAposentar: true,
+      dataPrevista: null,
+      quem: 'gabi',
+      quando: '2026-10-07T12:00:00.000Z',
+    })
   })
 
   it('CA5 e G17 · sem parecer, insuficiente, só sugerido pela IA ou com laudo novo esperando: recusa e registra', async () => {
