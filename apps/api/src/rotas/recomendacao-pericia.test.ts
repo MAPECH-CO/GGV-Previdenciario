@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, chamadaIa, decisao, etapa, exigencia, parecerMedico, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_JA_APROVADA, TITULO_CONFERIR } from './recomendacao-pericia.ts'
@@ -91,6 +91,9 @@ describe('GGVP-38 · recomendação sobre a perícia', () => {
     const corpo = { oQueLevar: ['Relatório do médico assistente'], quesitos: ['O autor consegue ficar em pé por mais de uma hora?'], assistenteTecnico: false, chamadaIaId: s.sugestao.chamadaId }
     expect((await chamar('igor', 'POST', `/api/pericias/${doJuiz}/recomendacao`, corpo)).statusCode).toBe(403)
     expect((await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao`, { ...corpo, oQueLevar: [] })).json().erro).toBe('Deixe ao menos um item em "O que levar"')
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    expect((await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao`, { ...corpo, chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
+    expect(await banco.select().from(decisao).where(eq(decisao.tipo, 'recomendacao_pericia'))).toHaveLength(0)
     expect((await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao`, corpo)).statusCode).toBe(201)
     expect((await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao`, corpo)).json().erro).toBe(MSG_JA_APROVADA)
     const [d] = await banco.select().from(decisao).where(eq(decisao.tipo, 'recomendacao_pericia'))

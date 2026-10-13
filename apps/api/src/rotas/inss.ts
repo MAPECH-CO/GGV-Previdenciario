@@ -177,7 +177,7 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
   )
 
   // Central do perfil (GGVP-78): tarefas abertas da raia do perfil ativo. Protocolo sem OK da Sênior não aparece (GGVP-27 CA5).
-  app.get('/api/tarefas', async (pedido) => {
+  app.get('/api/tarefas', { preHandler: exigir(banco, 'tarefa.ver', agora) }, async (pedido) => {
     const visiveis = await tarefasDoPerfil(pedido.perfilAtivo!)
     // GGVP-68 CA4 (Lucas, 02/10): os alertas de vencimento da exigência vão à Sênior e ao líder do administrativo.
     if (pedido.perfilAtivo !== 'senior' && pedido.perfilAtivo !== 'atendimento_lider') return visiveis

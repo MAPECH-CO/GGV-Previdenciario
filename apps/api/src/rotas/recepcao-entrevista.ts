@@ -67,6 +67,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
   const historico = registrarHistorico(banco, agora)
   const gravar = { preHandler: exigir(banco, 'entrevista.gravar', agora) }
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
+  const ouvir = { preHandler: exigir(banco, 'entrevista.ver', agora) }
 
   const acao = (g: Gravacao, nome: AcaoNaGravacao['acao'], aos: number) => {
     g.acoes.push({ acao: nome, quando: agora().toISOString(), aos })
@@ -419,7 +420,8 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
    * ouvir e ler nas Transcrições. Vale a permissão da gravação: a entrevista, `entrevista.gravar`; a conversa,
    * `conversa.registrar`; a do Jurídico, só com dado de saúde, e cada leitura fica registrada (LGPD).
    */
-  app.get<{ Params: { id: string; doc: string } }>('/api/gravacoes/:id/arquivos/:doc', async (pedido, resposta) => {
+  // GGVP-158: a trava da rota (`entrevista.ver`) vem antes; a conferência da gravação, mais estreita, continua aqui dentro.
+  app.get<{ Params: { id: string; doc: string } }>('/api/gravacoes/:id/arquivos/:doc', ouvir, async (pedido, resposta) => {
     const achado = await acharGravacao(pedido.params.id)
     if (!achado || !real) return negar(resposta, 404, MSG_GRAVACAO_NAO_ENCONTRADA)
     const { gravacao: g } = achado

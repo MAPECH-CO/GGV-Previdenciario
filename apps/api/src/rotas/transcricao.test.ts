@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, chamadaIa, documento, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, chamadaIa, documento, eventoAuditoria, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
 import { MSG_AUDIO_SUMIU, MSG_IA_SEM_RESPOSTA, MSG_IA_SEM_SAUDE, MSG_SERVICO_FORA, MSG_TRANSCRICAO_DESLIGADA } from '../fluxo/transcricao.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
@@ -124,7 +124,7 @@ const gravacaoNoBanco = async (id: string) => (await banco.select().from(gravaca
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
-  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada']] as const)
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['gabi', 'advogada'], ['dora', 'documentacao']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
 })
 afterEach(async () => {
@@ -263,6 +263,10 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     const atendimento = await ler('ana', t.audio.documentos[0].id)
     expect([atendimento.statusCode, atendimento.json().erro]).toEqual([403, MSG_GRAVACAO_SO_DO_JURIDICO])
     expect((await ler('gabi', '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b')).statusCode).toBe(404)
+    // GGVP-158: a Documentação não ouve entrevista: a trava da rota recusa antes, e a recusa fica no histórico.
+    expect((await ler('dora', t.audio.documentos[0].id)).statusCode).toBe(403)
+    const negados = (await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acesso_negado'))).map((e) => e.detalhe as Record<string, unknown>)
+    expect(negados.filter((d) => d.acao === 'entrevista.ver')).toEqual([expect.objectContaining({ perfil: 'documentacao' })])
   })
 
   it('CA8 · o serviço falha: a gravação fica "falhou", com o motivo, e o áudio continua guardado; tentar de novo transcreve', async () => {

@@ -1,7 +1,7 @@
 // GGVP-142: o chat das Centrais e a aba Suporte pelo servidor (POST /api/chat). Antes do modelo, como código, as mesmas
 // regras puras da tela (regras/chat.ts, parecer.ts e pericia.ts): as recusas, o portão citado, os portões do pedido e o
 // pedido de outro perfil. Nesses casos o modelo não é chamado (CA2). Depois, o agente do motor (ADR-016), com o caso que
-// o perfil vê. O chat é de todos os perfis: só a sessão, e cada dado segue a permissão de quem pergunta.
+// o perfil vê. O chat é de todos os perfis (`chat.usar`, GGVP-158), e cada dado segue a permissão de quem pergunta.
 import { randomUUID } from 'node:crypto'
 import {
   ConfirmacaoDoCartao,
@@ -29,7 +29,7 @@ import { comoDado, conversar, type Rodada } from '../ia/chat.ts'
 import { temCid, type Ia } from '../ia/ia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { montarBlocos, widgetDoAcervo, widgetsDasTarefas, widgetsDoCaso, type Oferta } from './widgetsDoChat.ts'
-import { registrarHistorico } from '../sessao/rotas.ts'
+import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import {
   ACOES_DO_PERFIL,
   acaoDaLista,
@@ -430,6 +430,7 @@ export const MSG_FALA_GRANDE = 'A fala passou de 10 MB: grave de novo, mais curt
 
 export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => new Date(), ia }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
+  const usar = { preHandler: exigir(banco, 'chat.usar', agora) }
   const pendentes = new Map<string, Pendente>()
   const ambiente = (pedido: FastifyRequest, alvo: Alvo | null, confirmacao?: Ambiente['confirmacao']): Ambiente => ({
     app,
@@ -448,7 +449,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
   })
   const ferramentas = (x: Ambiente) => [...ferramentasDeLeitura(x), ...ferramentasDeAcao(x)]
 
-  app.post('/api/chat', async (pedido, resposta) => {
+  app.post('/api/chat', usar, async (pedido, resposta) => {
     const entrada = PerguntaDoChat.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Pergunta inválida.')
     const { texto, processoId } = entrada.data
@@ -484,7 +485,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
   })
 
   // CA3: o clique em "Confirmar". Só quem pediu, com o mesmo perfil; o kit continua e a ação roda pelo código, com as travas.
-  app.post<{ Params: { id: string } }>('/api/chat/acoes/:id', async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/chat/acoes/:id', usar, async (pedido, resposta) => {
     const entrada = ConfirmacaoDoCartao.safeParse({ ...(pedido.body as object | null), acaoId: pedido.params.id })
     if (!entrada.success) return negar(resposta, 400, 'Confirmação inválida.')
     const p = pendentes.get(entrada.data.acaoId)
@@ -502,7 +503,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
   })
 
   // Cancelar: o cartão some e nada acontece.
-  app.delete<{ Params: { id: string } }>('/api/chat/acoes/:id', async (pedido, resposta) => {
+  app.delete<{ Params: { id: string } }>('/api/chat/acoes/:id', usar, async (pedido, resposta) => {
     const p = pendentes.get(pedido.params.id)
     if (p && p.quem !== pedido.usuario!.id) return negar(resposta, 403, 'Só quem pediu cancela o cartão.')
     pendentes.delete(pedido.params.id)
@@ -511,7 +512,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
 
   // 12/10: a fala do microfone vira texto para a pessoa conferir na caixa. O áudio não é guardado; o motor registra só
   // o tamanho e o hash. Saúde: a mesma regra do chat (o Jurídico e o Sócio pedem a autorização do escritório).
-  app.post('/api/chat/fala', async (pedido, resposta) => {
+  app.post('/api/chat/fala', usar, async (pedido, resposta) => {
     if (!pedido.isMultipart()) return negar(resposta, 415, MSG_FALA_SEM_AUDIO)
     const formulario = await lerFormulario(pedido)
     const arquivo = formulario?.arquivo

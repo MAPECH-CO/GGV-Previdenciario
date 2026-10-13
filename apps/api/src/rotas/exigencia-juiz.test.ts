@@ -8,7 +8,7 @@ import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
-import { criarIa } from '../ia/ia.ts'
+import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { casarPublicacoes } from '../vigilia/casar.ts'
@@ -169,6 +169,9 @@ describe('Épico IA · a IA sugere as tarefas da exigência do juiz (GGVP-79 CA3
     expect((await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()).toMatchObject({ sugestao: null, leitura: null, motivo: MSG_IA_SEM_SUGESTAO })
     comIa(JSON.stringify(LEITURA))
     const r = (await chamar('gabi', 'POST', '/exigencia-juiz/sugestao')).json()
+    // GGVP-158: a chamada que não é deste caso é recusada, e nada é gravado.
+    expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia', chamadaIaId: crypto.randomUUID() })).json().erro).toBe(MSG_CHAMADA_DE_OUTRO_CASO)
+    expect(await banco.select().from(decisao).where(eq(decisao.passo, 'D3a.02'))).toHaveLength(0)
     expect((await chamar('gabi', 'POST', '/exigencia-juiz', { decisao: 'ciencia', chamadaIaId: r.sugestao.chamadaId })).statusCode).toBe(201)
     const [d] = await banco.select().from(decisao).where(eq(decisao.passo, 'D3a.02'))
     expect([d.resultado, d.sugestaoIa]).toEqual(['ciencia', { chamadaId: r.sugestao.chamadaId }])

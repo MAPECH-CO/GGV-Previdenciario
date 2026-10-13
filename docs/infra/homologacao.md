@@ -78,8 +78,69 @@ No Supabase só entram os usuários criados com `pnpm --filter @ggv/api usuario:
 - CI vermelha na `main`: o workflow **Imagem** nem roda.
 - Migração com erro: o container sai antes de subir a API. Banco fora do ar: `/saude` responde 503. Nos dois casos o Coolify mantém a versão anterior e o erro fica no log do deploy.
 - Sem `COFRE_CHAVE`: a API para na largada e o log mostra "Falta COFRE_CHAVE".
+- Sem `DATABASE_URL` em produção: a API para na largada e diz que falta o banco, em vez de abrir o banco de exemplo (GGVP-158).
+- Envio de arquivo com erro 500 "sem mensagem": confira o depósito `documentos` do Supabase Storage (abaixo).
 - O servidor não baixa a imagem ("denied" ou "unauthorized"): refaça o passo 2.
+
+### O depósito de arquivos (Supabase Storage)
+
+Com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, os arquivos vão para o depósito privado `documentos`. Ele foi criado à mão no painel do Supabase, sem migração, então a produção precisa de um igual.
+
+- **Privado:** nunca público.
+- **Limite:** 25 MB por arquivo.
+- **Tipos aceitos:**
+  - PDF;
+  - JPEG, PNG, HEIC e WebP;
+  - áudio MPEG, MP4, OGG, WebM e WAV;
+  - texto;
+  - Word (`application/vnd.openxmlformats-officedocument.wordprocessingml.document`). Ficou de fora até 12/10, e o modelo do kit não subia: o Supabase recusa o tipo, e o portal responde 500 (GGVP-158).
 
 ## 7. Só dado de exemplo em homologação
 
 Homologação recebe só dado inventado. Dado real de cliente nunca entra lá, porque inclui dado de saúde.
+
+## 8. Variáveis do servidor
+
+A lista de tudo o que o servidor lê do ambiente (GGVP-158). Os nomes, sem valor, estão também no `.env.example` da raiz.
+Um teste (`apps/api/src/variaveis.test.ts`) confere as duas listas contra o código: variável nova entra aqui e lá.
+Nenhum valor vai para o repositório, o Jira ou o chat.
+
+| Variável | Para quê |
+| --- | --- |
+| `DATABASE_URL` | O Postgres (Supabase). Sem ela, o banco de exemplo na memória; em produção, sem ela, a API não sobe. |
+| `BANCO_LOCAL` | `pasta` guarda o banco de exemplo em `apps/api/.banco-local`. Só na máquina do dev. |
+| `NODE_ENV` | `production` na imagem: cookie só por HTTPS, HSTS, cofre e banco obrigatórios. |
+| `PORTA` | A porta da API. A imagem usa 3000. |
+| `HOST` | Onde a API escuta. A imagem usa 0.0.0.0. |
+| `VERSAO` | O commit do build, que o `/saude` mostra. A imagem grava; não se põe à mão. |
+| `AMBIENTE` | `homologacao` ou `producao`. Só a produção fala com qualquer telefone no Chatwoot; o `homologacao:preparar` só roda com `homologacao`. |
+| `COFRE_CHAVE` | A chave do cofre das senhas do gov.br (32 bytes em base64). Trocar deixa ilegíveis as senhas já guardadas. |
+| `SUPABASE_URL` | O Supabase Storage, onde ficam os arquivos. Sem ela, a pasta local. |
+| `SUPABASE_SERVICE_ROLE_KEY` | A chave de serviço do Storage. |
+| `OPENAI_API_KEY` | A IA (texto, transcrição, acervo). Sem ela, a IA fica desligada. |
+| `OPENAI_MODELO` | O modelo de texto da IA. Tem padrão. |
+| `OPENAI_MODELO_AO_VIVO` | O modelo do texto ao vivo da entrevista. Tem padrão. |
+| `OPENAI_MODELO_TRANSCRICAO` | O modelo da transcrição do áudio. Tem padrão. |
+| `OPENAI_MODELO_VETOR` | O modelo dos vetores do acervo. Tem padrão. |
+| `MISTRAL_API_KEY` | A leitura de documento (OCR). |
+| `MISTRAL_MODELO_OCR` | O modelo do OCR. Tem padrão. |
+| `IA_PERMITE_DADO_DE_SAUDE` | `sim` deixa a IA receber dado de saúde (autorização do Lucas, 07/10). |
+| `GOOGLE_DRIVE_CREDENCIAIS` | A conta de serviço do Drive do escritório (JSON em base64). |
+| `GOOGLE_DRIVE_PASTA_CLIENTES` | A pasta dos clientes no Drive. |
+| `GOOGLE_DRIVE_PASTA_REVISAR` | A pasta "a classificar" no Drive. |
+| `GOOGLE_DRIVE_SO_LEITURA` | `sim` só lê o Drive, sem gravar (homologação). |
+| `CHATWOOT_URL` | O endereço do Chatwoot, sem barra no fim. |
+| `CHATWOOT_CONTA` | O número da conta no Chatwoot. |
+| `CHATWOOT_CAIXA` | O número da caixa de entrada. |
+| `CHATWOOT_TOKEN` | O token de acesso de um agente da conta. |
+| `CHATWOOT_PERMITIDOS` | Fora de produção, os únicos telefones com que o Chatwoot fala, separados por vírgula. |
+| `RELACIONAMENTO_SIMULADO` | Sem o Chatwoot, `nao` tira até o contato simulado da tela. |
+| `GOTENBERG_URL` | O conversor do kit do contrato para PDF. Sem ela, o kit sai em Word. |
+| `ZAPSIGN_API_TOKEN` | Diz que o ZapSign está contratado. Sem ela, só papel. |
+| `FONTES_PUBLICACAO` | As fontes da vigília do diário (`aasp`, `djen`). Fora de produção, o padrão é o exemplo. |
+| `DJEN_OABS` | As OABs que o DJEN procura, como `123456/SP`. |
+| `AASP_CHAVES` | As chaves da AASP. |
+| `VIGILIA_TRIBUNAIS` | Os tribunais da vigília. Padrão: TRF3 e TJSP. |
+| `PORTAL_URL` | Só para o comando `modelos:subir`: o endereço do portal. |
+| `SENIOR_EMAIL` | Só para o `modelos:subir`: o login da Sênior que sobe os modelos. |
+| `SENIOR_SENHA` | Só para o `modelos:subir`: a senha dela, digitada no terminal de quem roda. |

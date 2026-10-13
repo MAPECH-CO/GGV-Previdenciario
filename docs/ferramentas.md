@@ -3,7 +3,7 @@
 | Ferramenta | Onde | Para quê |
 |---|---|---|
 | Jira | https://mapech.atlassian.net, projeto `GGVP` | Backlog, sprints, quadro. Chave `GGVP`. Fonte da verdade do que fazer e em que ordem |
-| GitHub | https://github.com/femezher/mapech-previdenciario | Código e documentação. Fonte da verdade do que foi feito. A **wiki** do repositório é publicada pela Action `.github/workflows/wiki.yml` a partir da pasta `wiki/`: edite `wiki/*.md` por PR, nunca na aba Wiki |
+| GitHub | https://github.com/MAPECH-CO/GGV-Previdenciario | Código e documentação. Fonte da verdade do que foi feito. A **wiki** do repositório é publicada pela Action `.github/workflows/wiki.yml` a partir da pasta `wiki/`: edite `wiki/*.md` por PR, nunca na aba Wiki |
 | Miro | board `uXjVHjbveV4=` | O BPMN do escritório. Vale o frame "revisão BPMN" da direita. Índice por diagrama em `docs/bpmn/README.md` |
 | Google Drive | pasta `Mapech/mapech-previdenciario` no Drive da MAPECH | Espelho de leitura do repositório, atualizado a cada commit. Para NotebookLM, celular e quem não usa git |
 | Claude Teams | projeto "GGV Previdenciário" | Contexto compartilhado: usa o `CLAUDE.md` deste repositório como instrução e a pasta do Drive como fonte |
@@ -27,6 +27,16 @@ Feita pela Action `.github/workflows/jira.yml`, versionada aqui, mais o aplicati
 - PR aberto: Em revisão. PR mesclado em `main`: Em homologação.
 - Item já Aceito nunca volta. Sem chave, nada acontece.
 - Segredos do repositório: `JIRA_EMAIL` e `JIRA_API_TOKEN`. Para trocar a chave, gere outra em id.atlassian.com e atualize o segredo.
+
+## O que segue desligado no repositório da MAPECH-CO (GGVP-158)
+Desde a mudança para o repositório da MAPECH-CO, dois workflows estão sem os segredos e ficam desligados até alguém pô-los
+(só os nomes aqui; os valores, nunca no repositório, no Jira ou no chat):
+- **Transição dos cartões** (`jira.yml`): sem `JIRA_EMAIL` e `JIRA_API_TOKEN`, o passo só avisa que não leu o item e nada
+  muda no Jira. A conferência da chave `GGVP-n` no título do PR segue valendo. Enquanto isso, cada dev move o próprio cartão:
+  o `/epico` faz pelo conector do Jira do Claude Code, ou à mão.
+- **Revisão automática do Claude** (`claude-review.yml`): sem `CLAUDE_CODE_OAUTH_TOKEN` nem `ANTHROPIC_API_KEY`, o passo diz
+  "sem credencial: nada a fazer" e passa. Enquanto isso, quem revisa cada PR é o outro dev: o Pedro revisa os do Mateus, e o
+  Mateus os do Pedro.
 
 ## Onde vai cada conversa
 - **Evento marcado** (planning, daily, refinamento, review, retro): na sala fixa do Meet, no horário.

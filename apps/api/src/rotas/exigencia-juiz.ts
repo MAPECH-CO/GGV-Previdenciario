@@ -9,7 +9,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, documento, etapa, exigencia, exigenciaItem, pericia, pessoa, peticao, peticaoVersao, prazo, protocoloJudicial, publicacao, tarefa, tentativa, usuario } from '../banco/esquema.ts'
 import { ORIGEM_JUIZ, abrirPericiasDaExigencia, lacosDas, lembreteDescrito, lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
-import { FINALIDADES, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
+import { FINALIDADES, MSG_CHAMADA_DE_OUTRO_CASO, chamadaDoCaso, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { casosComTarefaAberta, type Preparo } from '../ia/preparo.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
@@ -206,6 +206,7 @@ export function registrarRotasExigenciaJuiz(app: FastifyInstance, { banco, armaz
     const e = await exigenciaDoCaso(casoId)
     if (!e?.tarefaAnalise) return negar(resposta, 409, MSG_NADA_A_ANALISAR)
     const d = entrada.data
+    if (!(await chamadaDoCaso(banco, d.chamadaIaId, casoId))) return negar(resposta, 400, MSG_CHAMADA_DE_OUTRO_CASO)
     if (d.decisao === 'cumprir' && !d.itens.every((i) => tipoDeDocumentoValido(i.tipoDocumento))) return negar(resposta, 400, MSG_TIPO_DE_DOCUMENTO)
     const fim = e.prazo.fim
     // CA7: o prazo interno não passa do prazo do processo.

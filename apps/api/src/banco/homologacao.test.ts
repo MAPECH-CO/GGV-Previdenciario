@@ -5,8 +5,8 @@ import bcrypt from 'bcryptjs'
 import { count, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from './conexao.ts'
-import { caso, configuracao, rodadaVigilia, tarefa, usuario } from './esquema.ts'
-import { SENHA_DE_EXEMPLO, semearExemplos, usuariosDeExemplo } from './exemplo.ts'
+import { caso, compromissoInterno, configuracao, juizo, perito, rodadaVigilia, tarefa, usuario } from './esquema.ts'
+import { SENHA_DE_EXEMPLO, TITULO_DA_REUNIAO_DE_EXEMPLO, semearExemplos, usuariosDeExemplo } from './exemplo.ts'
 import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fontesAtivas } from '../vigilia/fontes.ts'
@@ -93,6 +93,31 @@ describe('homologação com usuários e dados de teste (GGVP-126)', () => {
     expect(antes.onde.casos).toBeGreaterThan(0)
     expect(await prepararHomologacao(banco, HOMOLOGACAO)).toEqual([])
     expect(await foto()).toEqual(antes)
+  })
+
+  it('GGVP-158 · os recursos novos entram também na homologação já preparada: peritos com perfil, entendimentos do juízo e a reunião na agenda, sem duplicar', async () => {
+    // A homologação preparada antes dos recursos novos: os usuários e os casos de exemplo, sem eles.
+    await semearExemplos(banco)
+    expect(await banco.select().from(perito)).toHaveLength(0)
+    expect(await prepararHomologacao(banco, HOMOLOGACAO)).toEqual([])
+    const recursos = async () => ({
+      peritos: (await banco.select().from(perito)).map((p) => [p.nome, (p.perfil as { laudos: unknown[] }).laudos.length > 0]).sort(),
+      juizos: (await banco.select().from(juizo)).map((j) => [j.nome, (j.entendimentos as unknown[]).length]),
+      agenda: (await banco.select().from(compromissoInterno)).map((c) => c.titulo),
+    })
+    const depois = await recursos()
+    expect(depois).toEqual({
+      peritos: [
+        ['Dr. A. Prado (exemplo)', true],
+        ['Dr. R. Menezes (exemplo)', true],
+        ['Sra. L. Assis (exemplo)', true],
+      ],
+      juizos: [['TRF3 · 6301', 1]],
+      agenda: [TITULO_DA_REUNIAO_DE_EXEMPLO],
+    })
+    // Rodar de novo não duplica nada.
+    await prepararHomologacao(banco, HOMOLOGACAO)
+    expect(await recursos()).toEqual(depois)
   })
 
   it('com o servidor no ar: o relógio da vigília já criou as rodadas do dia, e o comando roda mesmo assim', async () => {

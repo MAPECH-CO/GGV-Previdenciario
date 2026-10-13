@@ -1,6 +1,6 @@
 // Abre o banco. Com DATABASE_URL: o Postgres de verdade (dev na VPS ou homologação).
 // Sem: um Postgres embutido (PGlite) gravado em apps/api/.banco-local, migrado e com usuários de exemplo,
-// para o portal rodar na máquina sem Docker e sem Supabase.
+// para o portal rodar na máquina sem Docker e sem Supabase. Em produção, sem DATABASE_URL, não abre (GGVP-158).
 import { fileURLToPath } from 'node:url'
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
 import * as esquema from './esquema.ts'
@@ -11,12 +11,19 @@ export type Banco = PgDatabase<PgQueryResultHKT, typeof esquema>
 
 export const pastaBancoLocal = fileURLToPath(new URL('../../.banco-local', import.meta.url))
 
-export async function abrirBanco(url = process.env.DATABASE_URL): Promise<{ banco: Banco; fechar: () => Promise<void> }> {
+export const MSG_PRODUCAO_SEM_BANCO =
+  'Falta o DATABASE_URL: em produção o portal não sobe sem o banco de verdade (o banco embutido traria os usuários de exemplo).'
+
+export async function abrirBanco(
+  url = process.env.DATABASE_URL,
+  producao = process.env.NODE_ENV === 'production',
+): Promise<{ banco: Banco; fechar: () => Promise<void> }> {
   if (url) {
     const { drizzle } = await import('drizzle-orm/node-postgres')
     const banco = drizzle(url, { schema: esquema })
     return { banco, fechar: () => banco.$client.end() }
   }
+  if (producao) throw new Error(MSG_PRODUCAO_SEM_BANCO)
   // Padrão: na memória, com os usuários de exemplo, limpo a cada start. No Windows o `--watch` mata a API no meio
   // da gravação e corrompe a pasta; na memória isso não acontece. BANCO_LOCAL=pasta guarda em apps/api/.banco-local.
   return abrirBancoEmbutido(process.env.BANCO_LOCAL === 'pasta' ? pastaBancoLocal : undefined, true)

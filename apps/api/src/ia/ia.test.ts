@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { eq } from 'drizzle-orm'
 import { caso, chamadaIa, decisao, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
-import { DIMENSOES_DO_VETOR, FINALIDADES, REGRAS_DA_IA, criarIa, instrucaoSuspeita, lerJson, temCid } from './ia.ts'
+import { DIMENSOES_DO_VETOR, FINALIDADES, REGRAS_DA_IA, chamadaDoCaso, criarIa, instrucaoSuspeita, lerJson, temCid } from './ia.ts'
 
 let banco: Banco
 let fechar: () => Promise<void>
@@ -79,6 +79,17 @@ describe('GGVP-106 · sugerir (OpenAI)', () => {
       casoId: CASO, quem, conteudo: 'x', fontes: FONTES,
     })
     expect(s?.modelo).toBe('modelo-do-escritorio')
+  })
+})
+
+describe('GGVP-158 · a sugestão citada é deste caso', () => {
+  it('a chamada do caso vale; a de outro caso e a que não existe, não; sem chamada citada, nada a conferir', async () => {
+    const ia = criarIa({ banco, ambiente: CHAVES, fetch: servico(OPENAI_OK) })
+    const s = await ia.sugerir('resumo_resultado', { casoId: CASO, quem, conteudo: 'Sentença: improcedente.', fontes: FONTES })
+    expect(await chamadaDoCaso(banco, s!.chamadaId, CASO)).toBe(true)
+    expect(await chamadaDoCaso(banco, s!.chamadaId, '7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d')).toBe(false)
+    expect(await chamadaDoCaso(banco, crypto.randomUUID(), CASO)).toBe(false)
+    expect(await chamadaDoCaso(banco, undefined, CASO)).toBe(true)
   })
 })
 

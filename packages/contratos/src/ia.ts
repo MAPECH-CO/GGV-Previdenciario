@@ -44,7 +44,10 @@ export const ChamadasDaIa = z.object({ chamadas: z.array(ChamadaDaIa) })
 export type ChamadasDaIa = z.infer<typeof ChamadasDaIa>
 
 /** GGVP-22 CA6, GGVP-67 CA12: texto com o marcador "[completar...]" (da IA ou de alguém) não se aprova; regra única da tela
- * e do servidor. Nulo quando não falta nada. */
+ * e do servidor. Nulo quando não falta nada. GGVP-158: em tempo linear, sem regex (a regex travava com muitos "[completar"
+ * sem o fecho). Basta o primeiro: se ele não tem "]" depois, nenhum outro tem. */
 export function faltaCompletar(texto: string): string | null {
-  return /\[completar[^\]]*\]/i.test(texto) ? 'O texto ainda tem [completar]: preencha antes de aprovar.' : null
+  const t = texto.toLowerCase()
+  const i = t.indexOf('[completar')
+  return i >= 0 && t.indexOf(']', i) >= 0 ? 'O texto ainda tem [completar]: preencha antes de aprovar.' : null
 }

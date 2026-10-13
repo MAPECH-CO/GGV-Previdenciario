@@ -165,6 +165,8 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
   const registrar = { preHandler: exigir(banco, 'conversa.registrar', agora) }
   const voltar = { preHandler: exigir(banco, 'ficha.voltar_versao', agora) }
   const darPrazo = { preHandler: exigir(banco, 'conversa.prazo_da_pendencia', agora) }
+  const verTarefas = { preHandler: exigir(banco, 'tarefa.ver', agora) }
+  const cumprir = { preHandler: exigir(banco, 'tarefa.cumprir', agora) }
   const veSaude = (pedido: FastifyRequest) => pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
 
   async function guardarConversa(c: Guardada, g?: Gravacao) {
@@ -693,7 +695,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
   }
 
   // GGVP-88: o responsável ou a Sênior dá a pendência por cumprida; sai da Central.
-  app.post<{ Params: { id: string } }>('/api/conversas/:id/pendencia/cumprida', async (pedido, resp) => {
+  app.post<{ Params: { id: string } }>('/api/conversas/:id/pendencia/cumprida', cumprir, async (pedido, resp) => {
     const achada = await pendenciaAberta(pedido.params.id)
     if (!achada) return negar(resp, 404, 'Não há pendência aberta nesta conversa.')
     const { conversa: c, ficha, gravacao, p } = achada
@@ -738,7 +740,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
 
   // A Central de quem está no login: "Registrar conversa" (GGVP-76 CA8), "Cumprir pendência" e, para a Sênior,
   // "Pendência atrasada" (GGVP-88 CA4, CA5).
-  app.get('/api/conversas/tarefas', async (pedido) => {
+  app.get('/api/conversas/tarefas', verTarefas, async (pedido) => {
     const eu = pedido.usuario!.id
     const tarefas: Tarefa[] = []
     for (const c of await todasAsConversas()) {

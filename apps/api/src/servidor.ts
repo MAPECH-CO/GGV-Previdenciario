@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import fastifyStatic from '@fastify/static'
 import { sql } from 'drizzle-orm'
-import Fastify from 'fastify'
+import Fastify, { type FastifyError } from 'fastify'
 import { Saude } from '@ggv/contratos'
 import { abrirArmazenamento, type Armazenamento } from './armazenamento.ts'
 import type { Banco } from './banco/conexao.ts'
@@ -98,6 +98,8 @@ type Opcoes = {
   zapsign?: boolean
   /** Drive do escritório ligado (GGVP-107): a trava do pacote cobra o pacote salvo lá. Padrão: as variáveis do Drive. */
   driveLigado?: boolean
+  /** O commit do build (GGVP-158), que o /saude mostra. Padrão: "local". */
+  versao?: string
 }
 
 declare module 'fastify' {
@@ -107,11 +109,59 @@ declare module 'fastify' {
     /** GGVP-141 (ADR-013): uma rodada do acervo que se alimenta sozinho. Sem banco ou sem a chave da IA, não faz nada. */
     alimentarAcervo: () => Promise<void>
   }
+  interface FastifyContextConfig {
+    /** GGVP-158: por que esta rota /api não tem trava de permissão (a que recusa sempre, por exemplo). */
+    semTrava?: string
+  }
+}
+
+/**
+ * GGVP-158: cabeçalhos de segurança em toda resposta, da API e da tela. A tela montada só carrega arquivos dela mesma; a
+ * exceção é o texto ao vivo da entrevista, que o navegador pede direto à OpenAI com a chave temporária (web/src/dados/audio.ts).
+ */
+const CABECALHOS_DE_SEGURANCA = {
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'content-security-policy':
+    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; " +
+    "connect-src 'self' https://api.openai.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+}
+
+export const MSG_ERRO_INESPERADO = 'Algo deu errado.'
+
+/**
+ * GGVP-158: o que o log guarda de um erro: o código e o tipo, nunca a mensagem. O erro do banco traz o SQL e os parâmetros
+ * (dado do cliente) na mensagem e nos campos dele; o do Google, o nome do arquivo.
+ */
+export function resumoDoErro(e: unknown) {
+  const erro = e as { name?: string; code?: string | number; cause?: { code?: string } } | null
+  return { codigo: erro?.code ?? erro?.cause?.code, tipo: erro?.name }
 }
 
 /** Monta a API sem abrir porta, para o teste chamar as rotas com `inject`. */
-export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia, conversor, zapsign, driveLigado }: Opcoes = {}) {
-  const app = Fastify({ logger })
+export function criarServidor({ logger = false, banco, consultarBanco, pastaTela, agora, cookieSeguro, cofre, armazenamento, fontes, ia, conversor, zapsign, driveLigado, versao = 'local' }: Opcoes = {}) {
+  // GGVP-158: o log nunca leva o cookie da sessão nem a autorização, mesmo num registro que traga os cabeçalhos.
+  const app = Fastify({ logger: logger && { redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'] } })
+  // GGVP-158: o erro inesperado responde a mensagem genérica e registra só a rota, o código e o tipo. O 4xx (validação,
+  // corpo inválido) segue com o tratador padrão do Fastify, com a mensagem e o status dele.
+  app.setErrorHandler<FastifyError>((erro, pedido, resposta) => {
+    if (erro.statusCode && erro.statusCode < 500) return resposta.send(erro)
+    pedido.log.error({ rota: pedido.routeOptions.url, ...resumoDoErro(erro) }, 'erro inesperado')
+    return resposta.code(500).send({ erro: MSG_ERRO_INESPERADO })
+  })
+  // GGVP-158: toda rota /api tem trava de permissão; a que nascer sem trava não deixa o servidor subir. Ficam sem só as da
+  // sessão (entrar, sair, trocar a senha e o perfil), que abrem a sessão, e a que diz por quê em `config.semTrava`.
+  app.addHook('onRoute', (rota) => {
+    const dispensada = rota.url.startsWith('/api/sessao') || Boolean(rota.config?.semTrava)
+    if (rota.url.startsWith('/api/') && !dispensada && !rota.preHandler) throw new Error(`Rota sem trava de permissão: ${String(rota.method)} ${rota.url}`)
+  })
+  app.addHook('onSend', async (_pedido, resposta, corpo) => {
+    // O que a rota já pôs vale: o arquivo do cliente sai com a CSP de sandbox, mais estreita que a geral.
+    for (const [nome, valor] of Object.entries(CABECALHOS_DE_SEGURANCA)) if (!resposta.hasHeader(nome)) resposta.header(nome, valor)
+    // HSTS só por HTTPS: o cookie seguro é o sinal de que o portal está atrás do HTTPS (homologação e produção).
+    if (cookieSeguro) resposta.header('strict-transport-security', 'max-age=31536000; includeSubDomains')
+    return corpo
+  })
   let preparar = async () => {}
   app.decorate('prepararSugestoes', () => preparar())
   let alimentar = async () => {}
@@ -123,20 +173,20 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
   const drive = doAmbiente?.soLeitura ? ('so-leitura' as const) : comDrive ? ('ligado' as const) : ('desligado' as const)
 
   app.get('/saude', async (_pedido, resposta): Promise<Saude> => {
-    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco', drive })
+    if (!consultar) return Saude.parse({ ok: true, servico: 'api', banco: 'sem-banco', drive, versao })
     try {
       await consultar()
-      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado', drive })
+      return Saude.parse({ ok: true, servico: 'api', banco: 'ligado', drive, versao })
     } catch {
       resposta.code(503) // o deploy lê como falha e mantém a versão anterior no ar
-      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar', drive })
+      return Saude.parse({ ok: false, servico: 'api', banco: 'fora-do-ar', drive, versao })
     }
   })
 
   if (banco) {
     registrarSessao(app, { banco, agora, cookieSeguro })
     const motorIa = ia ?? criarIa({ banco, agora })
-    const preparo = criarPreparo(motorIa, (erro) => app.log.error({ erro }, 'preparo da sugestão da IA falhou'))
+    const preparo = criarPreparo(motorIa, (erro) => app.log.error(resumoDoErro(erro), 'preparo da sugestão da IA falhou'))
     preparar = preparo.rodar
     registrarRotasConferencia(app, { banco, agora, ia: motorIa, preparo })
     const arquivos = armazenamento ?? abrirArmazenamento()
@@ -207,7 +257,7 @@ export function criarServidor({ logger = false, banco, consultarBanco, pastaTela
     registrarRotasChat(app, { banco, agora, ia: motorIa })
     alimentar = async () => {
       if (!motorIa.ligada) return
-      await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error({ erro }, 'alimentar o acervo falhou'))
+      await alimentarAcervo(banco, motorIa).catch((erro) => app.log.error(resumoDoErro(erro), 'alimentar o acervo falhou'))
     }
   }
 

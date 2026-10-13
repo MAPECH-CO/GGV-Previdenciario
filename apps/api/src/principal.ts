@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { abrirArmazenamento } from './armazenamento.ts'
 import { abrirBanco } from './banco/conexao.ts'
 import { abrirDrive, conferirDrive } from './drive.ts'
-import { criarServidor } from './servidor.ts'
+import { criarServidor, resumoDoErro } from './servidor.ts'
 import { fontesAtivas } from './vigilia/fontes.ts'
 import { ligarRelogio } from './vigilia/rodadas.ts'
 import { sincronizarDrive } from './fluxo/arquivar.ts'
@@ -21,6 +21,7 @@ const app = criarServidor({
   banco,
   pastaTela: fileURLToPath(new URL('../../web/dist', import.meta.url)),
   cookieSeguro: process.env.NODE_ENV === 'production',
+  versao: process.env.VERSAO,
 })
 // Vigília do diário: 3 rodadas por dia (GGVP-30, G13). Uma batida por minuto, só aqui (nunca nos testes).
 ligarRelogio(banco, fontesAtivas())
@@ -45,7 +46,7 @@ if (comDrive?.soLeitura) {
       const r = await sincronizarDrive(banco, comDrive.drive, comDrive.pastas, arquivos)
       if (r.enviados || r.falhas.length) app.log.info({ drive: r }, 'rodada do Drive')
     } catch (e) {
-      app.log.error(e, 'rodada do Drive')
+      app.log.error(resumoDoErro(e), 'rodada do Drive')
     } finally {
       rodando = false
     }
