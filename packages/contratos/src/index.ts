@@ -118,3 +118,7 @@ export * from './financeiro.ts'
 
 // Os modelos do kit, com versão, subidos pela Sênior na Configuração (GGVP-136).
 export * from './modelos.ts'
+
+export { CATALOGO_BENEFICIOS, BENEFICIO_NA_CONFIGURACAO } from './catalogo-beneficios.ts'
+
+export * from './calculo-cnis.ts'

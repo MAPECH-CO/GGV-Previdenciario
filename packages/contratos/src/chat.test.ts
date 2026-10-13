@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CartaoDeAcao, PerguntaDoChat, RespostaDoChat } from './index.ts'
+import { BlocoDaResposta, CartaoDeAcao, PerguntaDoChat, RespostaDoChat, TextoDaFala, WidgetDoChat } from './index.ts'
 
 const sugestao = {
   chamadaId: '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6',
@@ -39,5 +39,38 @@ describe('GGVP-82 · contrato do chat', () => {
     expect(CartaoDeAcao.parse(cartao).responsavel?.nome).toBe('Jéssica (exemplo)')
     expect(CartaoDeAcao.safeParse({ ...cartao, passos: [] }).success).toBe(false)
     expect(CartaoDeAcao.safeParse({ ...cartao, tipo: 'aprovar-peticao' }).success).toBe(false)
+  })
+})
+
+describe('chat com widgets (12/10)', () => {
+  it('aceita os seis widgets e recusa dado fora do formato', () => {
+    const bons = [
+      { tipo: 'numeros', itens: [{ rotulo: 'Abertas', valor: 12 }, { rotulo: 'Urgentes', valor: 4, tom: 'erro' }] },
+      { tipo: 'lista', titulo: 'Tarefas', itens: [{ titulo: 'Ana · Cobrar', href: '/casos/1', selo: { texto: 'hoje', tom: 'acento' } }] },
+      { tipo: 'prazos', titulo: 'Prazos', inicio: '2026-10-12', itens: [{ data: '2026-10-13', oQue: 'Manifestar', urgente: true }] },
+      { tipo: 'etapas', itens: [{ rotulo: 'INSS', estado: 'feita' }, { rotulo: 'Justiça', estado: 'atual' }] },
+      { tipo: 'linha-do-tempo', titulo: 'Últimos', itens: [{ quando: '2026-10-10', texto: 'Juiz pediu perícia' }] },
+      { tipo: 'barras', titulo: 'Por cliente', itens: [{ rotulo: 'Ana', valor: 3 }] },
+    ]
+    for (const w of bons) expect(WidgetDoChat.safeParse(w).success, w.tipo).toBe(true)
+    expect(WidgetDoChat.safeParse({ tipo: 'numeros', itens: [{ rotulo: 'x', valor: 1.5 }] }).success).toBe(false)
+    expect(WidgetDoChat.safeParse({ tipo: 'numeros', itens: Array(5).fill({ rotulo: 'x', valor: 1 }) }).success).toBe(false)
+    expect(WidgetDoChat.safeParse({ tipo: 'lista', titulo: 't', itens: [{ titulo: 'a', href: 'https://fora.com' }] }).success).toBe(false)
+    for (const href of ['//fora.com', '/\\fora.com', '/casos\\x'])
+      expect(WidgetDoChat.safeParse({ tipo: 'lista', titulo: 't', itens: [{ titulo: 'a', href }] }).success, href).toBe(false)
+    expect(WidgetDoChat.safeParse({ tipo: 'prazos', titulo: 't', inicio: '12/10/2026', itens: [] }).success).toBe(false)
+    expect(WidgetDoChat.safeParse({ tipo: 'grafico', itens: [] }).success).toBe(false)
+  })
+
+  it('a resposta pode vir com blocos de texto e widget; sem blocos continua valendo', () => {
+    const blocos = [{ tipo: 'texto', texto: 'Hoje:' }, { tipo: 'widget', widget: { tipo: 'barras', titulo: 'x', itens: [{ rotulo: 'a', valor: 1 }] } }]
+    expect(BlocoDaResposta.array().parse(blocos)).toHaveLength(2)
+    expect(RespostaDoChat.parse({ tipo: 'resposta', sugestao, links: [], blocos }).blocos).toHaveLength(2)
+    expect(RespostaDoChat.parse({ tipo: 'resposta', sugestao, links: [] }).blocos).toBeUndefined()
+    expect(RespostaDoChat.safeParse({ tipo: 'resposta', sugestao, links: [], blocos: Array(13).fill(blocos[0]) }).success).toBe(false)
+  })
+
+  it('a fala transcrita é só o texto', () => {
+    expect(TextoDaFala.parse({ texto: 'o que tem hoje' })).toEqual({ texto: 'o que tem hoje' })
   })
 })

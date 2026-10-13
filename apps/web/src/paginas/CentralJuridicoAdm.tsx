@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
-import { CampoBusca } from '../componentes/CampoBusca.tsx'
+import { BuscaGlobal } from '../componentes/BuscaGlobal.tsx'
 import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
@@ -39,7 +39,7 @@ export function CentralJuridicoAdm() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Jurídico administrativo</h1>
-          <CampoBusca />
+          <BuscaGlobal local="central" />
           <ChatDaPericia exemplo={exemploChatJuridicoAdm} sugestoes={sugestoesChatJuridicoAdm} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>

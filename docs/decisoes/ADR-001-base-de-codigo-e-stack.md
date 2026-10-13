@@ -10,20 +10,20 @@ O portal precisa estar funcionando em 09/10/2026, feito por dois devs com o Clau
 2. **Front em TypeScript, servidor em Python (FastAPI).** Bom para IA e documentos. Contra: duas linguagens, contrato duplicado (Zod e Pydantic), `campos` reescrita em Python, dois jeitos de testar.
 
 ## Decisão
-TypeScript de ponta a ponta, em monorepo pnpm: Node 22 ou mais novo, Fastify + Zod na API, Drizzle + PostgreSQL no banco, pg-boss para tarefas agendadas, React 19 + Vite na tela, Vitest nos testes e Playwright nas telas.
+TypeScript de ponta a ponta, em monorepo pnpm: Node 22 ou mais novo, Fastify + Zod na API, Drizzle + PostgreSQL no banco, temporizadores `setInterval` no processo da API para tarefas agendadas, React 19 + Vite na tela, Vitest nos testes e Playwright nas telas.
 
 | Peça | Escolha | Por quê |
 |---|---|---|
 | Monorepo | pnpm workspaces (`apps/api`, `apps/web`, `packages/campos`, `packages/contratos`) | Um lock, um `pnpm dev`; tela e servidor importam os mesmos pacotes. |
 | API | Fastify | Leve, rápido, `inject` para testar rota sem subir porta. |
 | Contrato | Zod em `packages/contratos` | O mesmo schema valida o formulário e o corpo da requisição. |
-| Banco | PostgreSQL com Drizzle | SQL explícito, migração versionada no repositório, tipos gerados do esquema. |
-| Fila e agendamento | pg-boss, no próprio Postgres | Vigília 3 vezes por dia, lembretes e novas tentativas automáticas, sem Redis nem outro serviço para manter. |
+| Banco | PostgreSQL no Supabase, com Drizzle | SQL explícito, migração versionada no repositório, tipos gerados do esquema. |
+| Agendamento atual | `setInterval` no processo da API | Batida da vigília a cada minuto; preparo da IA/acervo a cada 5 minutos. Não há pg-boss instalado nem fila persistente de jobs. |
 | Tela | React 19 + Vite | Já é a base do GGVP-120. |
 | Testes | Vitest; Playwright nas telas; Postgres em memória (PGlite) no teste das migrações | Roda igual na máquina e no CI, sem Docker. |
 | Execução | Node tira os tipos do TypeScript direto (`--experimental-strip-types`) | Sem etapa de build na API. |
 
-Os dados do portal (casos, tarefas, banco de motivos, acervo, estudo dos peritos) moram no PostgreSQL. O Google Drive guarda só documento do cliente (PDF, carta) e fica fora até 09/10 (GGVP-107).
+Os dados do portal (casos, tarefas, banco de motivos, acervo, estudo dos peritos) moram no PostgreSQL. O armazenamento de documentos e o arquivamento no Google Drive são integrações separadas (GGVP-107), com código e configuração próprios; não são o banco de dados.
 
 ## Consequências
 - Todo pacote novo entra em `apps/` ou `packages/` e no `pnpm-workspace.yaml`.
@@ -31,4 +31,13 @@ Os dados do portal (casos, tarefas, banco de motivos, acervo, estudo dos peritos
 - Migração só por arquivo versionado do Drizzle (`apps/api/drizzle/`). Nada de mudar tabela à mão no banco.
 - O CI barra o PR com typecheck, lint, testes ou varredura de segredos falhando.
 - Proibido: segunda linguagem no servidor sem outro ADR; Docker obrigatório no desenvolvimento.
-- Fica para depois: base de conhecimento e busca (ADR-013), LGPD e dado de saúde (ADR-008).
+- Base de conhecimento e busca: ADR-013 aceito (pgvector e busca híbrida). Saúde e guarda: decisões no ADR-008, com região e contratos em aberto.
+
+## Correção documental de 12/10/2026
+
+A menção anterior a pg-boss descrevia a intenção inicial, não o código entregue. A GGVP-159 alinha este registro a
+`apps/api/src/principal.ts` e `apps/api/src/vigilia/rodadas.ts`: a vigília inicia ao subir e bate a cada minuto,
+o preparo da IA/acervo a cada 5 minutos, a limpeza do cofre diariamente e o arquivamento, quando configurado, a cada minuto.
+Os temporizadores param com o processo; não oferecem por si só fila durável nem coordenação entre réplicas.
+O estado das rodadas da vigília é persistido no banco. Uma adoção futura de fila exige decisão própria; esta correção
+não instala serviço nem altera execução.

@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react'
+import { CampoDeValorPendente } from '../componentes/CampoDeValorPendente.tsx'
 import type { FormEvent } from 'react'
 import { formatarCnj, hojeIso, isoParaData, normalizarCnj } from '@ggv/campos'
 import { AprovarPeticao, faltaCompletar, NovaVersao, PedirOutraVersao, PedirPeticao, ProtocolarPeticao, type MinutaDaIa, type OpcoesDoPedido, type PeticaoInicial } from '@ggv/contratos'
@@ -513,6 +514,7 @@ export function Peticao({ casoId }: { casoId: string }) {
 
       {/* GGVP-151 CA4: a chance só na tela, à parte da minuta; nenhum número vai ao texto que vai ao juiz. */}
       <ChanceDoCaso casoId={casoId} />
+      <CampoDeValorPendente tipo="causa" />
 
       {!x.pedido &&
         (x.faltam.length > 0 ? (

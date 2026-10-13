@@ -1,12 +1,11 @@
-// EXEMPLO. Servidor de exemplo da preparação da conversa (GGVP-32), sobre o mesmo banco de servidor.ts. O resumo é o que
-// a ficha de atendimento diz, juntado pelo portal (não é IA). Ligar no servidor: trocar o corpo de cada função por fetch no
-// endpoint indicado, sobre o contrato da design.md (change ggvp-6).
+// A preparação consulta a ficha atual no servidor. O resumo apenas reúne os campos preenchidos.
+// Fichas de demonstração continuam no modo local enquanto durar o modo misto.
 import { dataCurta, hojeIso, idadeEm } from '../regras/datas.ts'
 import { atencaoCurta, pontosDeAtencao } from '../regras/preparacao.ts'
 import { tarefasAdvogada } from './advogada.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { chamarApi } from '../api.ts'
-import { agora, doServidor, ler } from './servidor.ts'
+import { agendamentoDoServidor, agora, doServidor, ler, noBanco } from './servidor.ts'
 import type { Agendamento, Ficha, Preparacao, RespostasDaSegundaFicha, Tarefa } from './tipos.ts'
 
 /** O resumo da ficha de atendimento (CA3): junta o que a ficha diz, sem concluir nada. É regra, não IA (GGVP-133). */
@@ -46,9 +45,12 @@ async function comSecaoMedica(ficha: Ficha): Promise<Ficha> {
   return { ...ficha, segundaFicha: { ...ficha.segundaFicha, respostas: { ...ficha.segundaFicha.respostas, ...r.dados.medicos } } }
 }
 
-/** GET /api/entrevistas/:id/preparacao. Nulo quando o compromisso não existe. */
+/** Lê a ficha atual pela API; a seção médica continua protegida pela rota específica. */
 export async function obterPreparacao(agendamentoId: string): Promise<Preparacao | null> {
-  const achado = acharAgendamento(ler().fichas, agendamentoId)
+  const fichas = agendamentoDoServidor(agendamentoId)
+    ? [await noBanco<Ficha>(`/fichas/${agendamentoId.slice(0, 36)}`)]
+    : ler().fichas
+  const achado = acharAgendamento(fichas, agendamentoId)
   if (!achado) return null
   const hoje = hojeIso(agora())
   const { agendamento } = achado

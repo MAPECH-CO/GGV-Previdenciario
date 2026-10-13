@@ -80,7 +80,21 @@ No Supabase só entram os usuários criados com `pnpm --filter @ggv/api usuario:
 - Migração com erro: o container sai antes de subir a API. Banco fora do ar: `/saude` responde 503. Nos dois casos o Coolify mantém a versão anterior e o erro fica no log do deploy.
 - Sem `COFRE_CHAVE`: a API para na largada e o log mostra "Falta COFRE_CHAVE".
 - Sem `DATABASE_URL` em produção: a API para na largada e diz que falta o banco, em vez de abrir o banco de exemplo (GGVP-158).
+- Envio de arquivo com erro 500 "sem mensagem": confira o depósito `documentos` do Supabase Storage (abaixo).
 - O servidor não baixa a imagem ("denied" ou "unauthorized"): refaça o passo 2.
+
+### O depósito de arquivos (Supabase Storage)
+
+Com `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, os arquivos vão para o depósito privado `documentos`. Ele foi criado à mão no painel do Supabase, sem migração, então a produção precisa de um igual.
+
+- **Privado:** nunca público.
+- **Limite:** 25 MB por arquivo.
+- **Tipos aceitos:**
+  - PDF;
+  - JPEG, PNG, HEIC e WebP;
+  - áudio MPEG, MP4, OGG, WebM e WAV;
+  - texto;
+  - Word (`application/vnd.openxmlformats-officedocument.wordprocessingml.document`). Ficou de fora até 12/10, e o modelo do kit não subia: o Supabase recusa o tipo, e o portal responde 500 (GGVP-158).
 
 ## 7. Só dado de exemplo em homologação
 

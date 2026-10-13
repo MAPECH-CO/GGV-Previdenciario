@@ -6,6 +6,7 @@ import { Icone } from './Icone.tsx'
 import { ITENS_DA_GESTAO, itensDoPerfil } from './itensDaGestao.ts'
 import { Avatar, BotaoSair, MenuDaPessoa, PerfisDaPessoa } from './MenuDaPessoa.tsx'
 import styles from './Topbar.module.css'
+import { BuscaGlobal } from './BuscaGlobal.tsx'
 
 export type ItemNavegacao = {
   id: string
@@ -86,6 +87,8 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
         {!celular && <BotoesPreferencias />}
         {pessoa}
       </div>
+
+      {usuario && <div className={styles.busca}><BuscaGlobal /></div>}
 
       {celular && contexto && <p className={styles.contextoCelular}>{contexto}</p>}
 
