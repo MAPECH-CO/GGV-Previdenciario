@@ -144,3 +144,12 @@
 - [x] 13.2 CA2 · Na perícia, fora do Jurídico, o perfil do perito sai sem os números (`visao` em `apps/api/src/rotas/pericia.ts`); teste em `rotas/pericia.test.ts`.
 - [x] 13.3 CA3 · Gestão: o servidor recusa os recortes por perito, juízo, vara e tese sem `estudo.ver` (`apps/api/src/rotas/gestao.ts`), e a tela não os oferece (`apps/web/src/paginas/Resultados.tsx`); testes em `rotas/gestao.test.ts` e `Resultados.test.tsx`.
 - [x] 13.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-161 · "Vale recorrer?": a chance pelos casos parecidos que recorreram e a avaliação da IA
+
+- [ ] 14.1 CA1 · Contrato (`RESULTADOS_DO_RECURSO`, `ConferirDesfecho.recurso`) e a coluna `resultado_recurso` no acervo, com a migração 0031 gerada pelo drizzle-kit; teste da migração e de `acervo.test.ts`.
+- [ ] 14.2 CA1 · A conferência do desfecho guarda o resultado do recurso, com o antes e o depois no histórico (`apps/api/src/rotas/acervo.ts`); a tela "Conferir desfechos" ganha o campo; testes em `rotas/acervo.test.ts` e `ConferirAcervo.test.tsx`.
+- [ ] 14.3 CA2 · `calcularChanceDoRecurso` em `apps/api/src/fluxo/chance.ts`; teste em `chance.test.ts`.
+- [ ] 14.4 CA2, CA3, CA4, CA5 · A rota do recurso (`apps/api/src/rotas/recurso.ts`): a chance, a avaliação pela finalidade nova `avaliacao_do_recurso` (sem porcentagem, sugestão pronta), o histórico da decisão; teste em `rotas/recurso.test.ts`.
+- [ ] 14.5 CA2, CA3 · A tela "Vale recorrer?" (`apps/web/src/paginas/DecidirRecurso.tsx`): a chance com os casos e a base, ou "sem dados ainda", e a avaliação da IA com as fontes; teste Vitest.
+- [ ] 14.6 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

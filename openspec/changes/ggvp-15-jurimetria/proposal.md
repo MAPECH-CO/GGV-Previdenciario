@@ -37,6 +37,7 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
 
 6. **GGVP-149** · Gestão completa (continua a GGVP-75, conferência da jurimetria de 09/10) · Sócio, Sênior e líderes, sem valores. Primeiro o tempo até a sentença, os motivos mais comuns, o tempo médio até o dinheiro e a líder sem valores; o recorte por vara depois dos pedidos #27 e #18 (Mateus, 09/10).
 7. **GGVP-156** · Quem vê a jurimetria (decisão do Mateus, 13/10): o Jurídico (advogada, Sênior e Jurídico administrativo) e o Sócio; a chance também para o Jurídico administrativo; fora do Jurídico, a perícia sem os números do perito e a Gestão sem os recortes da jurimetria.
+8. **GGVP-161** · "Vale recorrer?" (decisão do Mateus, 13/10): a chance do recurso pelos casos parecidos com recurso julgado, que o acervo passa a guardar, e a avaliação da IA, pronta e sem porcentagem.
 
 Um ponto de "Agora ok?" no fim de cada história.
 
