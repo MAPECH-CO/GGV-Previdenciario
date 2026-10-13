@@ -4,20 +4,24 @@
 // (GGVP-19) e à explicação ao cliente (GGVP-22).
 import { and, desc, eq, isNull, notExists, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
-import { DecidirRecurso, ROTULO_BENEFICIO, RecursoDoCaso, pode, type Beneficio, type Erro, type Perfil } from '@ggv/contratos'
+import { DecidirRecurso, ProtocoloDoRecurso, ROTULO_BENEFICIO, RecursoDoCaso, pode, type Beneficio, type Erro, type Perfil } from '@ggv/contratos'
+import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, decisao, eventoAuditoria, pessoa, prazo as prazoProcessual, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, decisao, documento, eventoAuditoria, pessoa, prazo as prazoProcessual, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { feriadosDoProcesso, prazoRecursal } from '../fluxo/prazo-judicial.ts'
 import { exigir } from '../sessao/rotas.ts'
+import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { abrirExplicacaoDoResultado } from './resultado.ts'
 
 export const TITULO_DECIDIR = 'Decidir recurso'
 export const TITULO_RECORRER = 'Elaborar e protocolar o recurso'
+export const MSG_SEM_RECURSO_A_PROTOCOLAR = 'Este caso não tem recurso esperando o protocolo.'
+export const MSG_COMPROVANTE_DO_RECURSO = 'Anexe o comprovante do protocolo do recurso (PDF ou imagem, até 25 MB).'
 export const MSG_SEM_DECISAO = 'Este caso não tem decisão de recurso esperando.'
 /** Dúvida Q26, respondida pelo Lucas (09/10): quem elabora e protocola o recurso são as Sêniores. */
 export const QUEM_FAZ_O_RECURSO: Perfil = 'senior'
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; armazenamento?: Armazenamento }
 type Tx = Parameters<Parameters<Banco['transaction']>[0]>[0]
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -58,7 +62,7 @@ export function semRecursoPendente(banco: Banco) {
   )
 }
 
-export function registrarRotasRecurso(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecurso(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento }: Opcoes) {
   // CA3, CA4, CA8: o caso, a sentença, o prazo recursal e a decisão desta rodada, se já houve.
   app.get<{ Params: { id: string } }>('/api/casos/:id/recurso', { preHandler: exigir(banco, 'recurso.ver', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
@@ -120,6 +124,40 @@ export function registrarRotasRecurso(app: FastifyInstance, { banco, agora = () 
       return true
     })
     if (!feito) return negar(resposta, 409, MSG_SEM_DECISAO)
+    return resposta.code(201).send({ ok: true })
+  })
+
+  // GGVP-158 P5.15: o protocolo do recurso, com o comprovante e a data, fecha "Elaborar e protocolar o recurso" da
+  // Sênior; o processo segue na vigília (D3a), que traz o acórdão.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/recurso/protocolo', { preHandler: exigir(banco, 'recurso.decidir', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    const formulario = await lerFormulario(pedido)
+    const arquivo = formulario?.arquivo && TIPOS_DE_ANEXO.includes(formulario.arquivo.mime) ? formulario.arquivo : null
+    if (!arquivo || !armazenamento) return negar(resposta, 400, MSG_COMPROVANTE_DO_RECURSO)
+    const entrada = ProtocoloDoRecurso.safeParse(formulario!.campos)
+    if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Informe a data do protocolo do recurso.')
+    const [aberta] = await banco
+      .select({ id: tarefa.id })
+      .from(tarefa)
+      .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3b.04r'), isNull(tarefa.concluidaEm)))
+      .limit(1)
+    if (!aberta) return negar(resposta, 409, MSG_SEM_RECURSO_A_PROTOCOLAR)
+    const quem = pedido.usuario!.id
+    const dados = await guardarArquivo(armazenamento, casoId, arquivo, 'comprovante-recurso')
+    const feito = await banco.transaction(async (tx) => {
+      // A condição vai no próprio update: dois registros ao mesmo tempo, só o primeiro fecha a tarefa.
+      const [fechada] = await tx
+        .update(tarefa)
+        .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
+        .where(and(eq(tarefa.id, aberta.id), isNull(tarefa.concluidaEm)))
+        .returning({ id: tarefa.id })
+      if (!fechada) return false
+      const [doc] = await tx.insert(documento).values({ casoId, tipo: 'comprovante_recurso', origem: 'portal', recebidoPor: quem, ...dados }).returning()
+      await tx.update(tarefa).set({ evidenciaDocumentoId: doc.id }).where(eq(tarefa.id, aberta.id))
+      await tx.insert(eventoAuditoria).values({ quem, acao: 'recurso_protocolado', alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, protocoladoEm: entrada.data.protocoladoEm, documento: doc.id } })
+      return true
+    })
+    if (!feito) return negar(resposta, 409, MSG_SEM_RECURSO_A_PROTOCOLAR)
     return resposta.code(201).send({ ok: true })
   })
 }

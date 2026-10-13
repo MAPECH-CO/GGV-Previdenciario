@@ -240,7 +240,7 @@ export function criarServidor({
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
-    registrarRotasRecurso(app, { banco, agora })
+    registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
     const leitor = criarLeitor({ ia: motorIa, simulada: leituraSimulada, agora })

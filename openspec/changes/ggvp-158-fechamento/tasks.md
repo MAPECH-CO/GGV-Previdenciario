@@ -421,11 +421,13 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - o resumo do Atendimento sem números.
 
   Verificado em 13/10: `rotas/juizo.test.ts` 6/6 e `rotas/processo.test.ts` 9/9 (um novo em cada). O juízo ganhou `casosDoJuiz` e `perito`, sem mudar o `juiz` que a tela já usa; a vara e o juiz entram no resumo como opcionais, porque um teste de tela do Pedro monta o resumo à mão.
-- [ ] 5.21 O protocolo do recurso (P5.15, decisão 53): `POST /api/casos/:id/recurso/protocolo`.
+- [x] 5.21 O protocolo do recurso (P5.15, decisão 53): `POST /api/casos/:id/recurso/protocolo`.
   - Verifica com `rotas/recurso.test.ts`:
     - fecha a tarefa e guarda o comprovante;
     - sem tarefa, recusa;
     - a data depois de hoje recusa.
+
+  Verificado em 13/10: `rotas/recurso.test.ts` 6/6 (1 novo).
 - [x] 5.22 O padrão ao subir (P5.8): o tribunal e a assinatura do banco novo, só o que faltar, em `principal.ts`, como os feriados (sem migração). Verifica com teste: o banco novo tem os dois; o banco com a chave guarda o que tinha.
 
   Verificado em 13/10, no teste de `rotas/configuracao.test.ts`.
