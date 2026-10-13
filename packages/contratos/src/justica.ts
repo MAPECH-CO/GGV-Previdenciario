@@ -388,6 +388,8 @@ export const EncerrarSemProva = z.object({
   alvo: z.enum(['item', 'pericia'], { error: 'Escolha o item ou a perícia' }),
   id: z.uuid({ error: 'Escolha o item ou a perícia' }),
   motivo: z.string({ error: 'Escreva por que vai manifestar sem essa prova' }).trim().min(1, 'Escreva por que vai manifestar sem essa prova'),
+  /** GGVP-158 P5.6 (Lucas, 07/10, GGVP-87): sem a dilação nem o reagendamento antes, por que nenhum dos dois cabe. */
+  semSaida: z.string().trim().max(1000, 'O porquê tem até 1000 caracteres').optional(),
 })
 export type EncerrarSemProva = z.infer<typeof EncerrarSemProva>
 

@@ -355,11 +355,13 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - sem a data, a tarefa de marcar.
 
   Verificado em 13/10: `rotas/pericia.test.ts` 33/33 (2 novos), `rotas/processo.test.ts` 8/8 e `rotas/exigencia-juiz.test.ts`. A tarefa de marcar já fechava na distribuição; faltava a data na linha antes de alguém abrir a tela, e o aviso no resumo. `marcadaPeloSistema` é opcional no contrato porque um teste de tela do Pedro monta o resumo à mão.
-- [ ] 5.9 O item sem documento (P5.6, decisão 45): `semSaida` em `EncerrarSemProva`; a rota pede a dilação, a remarcação ou o porquê.
+- [x] 5.9 O item sem documento (P5.6, decisão 45): `semSaida` em `EncerrarSemProva`; a rota pede a dilação, a remarcação ou o porquê.
   - Verifica com `rotas/manifestacao.test.ts`:
     - sem nada, recusa;
     - com a dilação autorizada, encerra;
     - com o `semSaida`, encerra e guarda o porquê.
+
+  Verificado em 13/10: `rotas/manifestacao.test.ts` 15/15 (3 novos; os de antes passam a dizer o porquê). O histórico guarda `tentou` (`dilacao`, `reagendamento` ou nulo) e o `semSaida`.
 - [ ] 5.10 Encerrar e liberar (P5.7, decisão 46).
   - Verifica com `rotas/vigilia.test.ts` e `rotas/conferencia.test.ts`:
     - o caso já despachado não encerra;

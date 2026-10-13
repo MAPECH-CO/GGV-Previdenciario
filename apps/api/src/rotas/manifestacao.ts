@@ -39,6 +39,7 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
 export const MSG_SEM_EXIGENCIA_JUIZ = 'Este caso não tem exigência do juiz em cumprimento.'
+export const MSG_ANTES_DA_JUSTIFICATIVA = 'Antes de encerrar sem prova, peça a dilação do prazo (na perícia, o reagendamento). Se nenhum cabe, diga por quê.'
 export const MSG_VERSAO_NAO_APROVADA = 'Só a versão aprovada é protocolada: aprove a última versão antes (G6).'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
 
@@ -126,6 +127,13 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
     publicacaoId ? ((await banco.select({ cnj: publicacao.numeroCnj }).from(publicacao).where(eq(publicacao.id, publicacaoId)))[0]?.cnj ?? null) : null
 
   const versoesDa = (peticaoId: string) => banco.select().from(peticaoVersao).where(eq(peticaoVersao.peticaoId, peticaoId)).orderBy(asc(peticaoVersao.numero))
+
+  /** GGVP-158 P5.6: a perícia teve a remarcação registrada depois da exigência (o pedido de reagendamento). */
+  const reagendamentoPedido = async (periciaId: string, desde: Date) => {
+    const [p] = await banco.select({ documento: pericia.documento }).from(pericia).where(eq(pericia.id, periciaId))
+    const em = (p?.documento as { remarcadaEm?: string } | null)?.remarcadaEm
+    return Boolean(em && new Date(em) >= desde)
+  }
 
   const dilacaoAutorizada = async (casoId: string, desde: Date) =>
     Boolean(
@@ -223,6 +231,14 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
     if (!s) return negar(resposta, 409, MSG_SEM_EXIGENCIA_JUIZ)
     const d = entrada.data
     const quem = pedido.usuario!.id
+    // GGVP-158 P5.6 (Lucas, 07/10, GGVP-87): antes, a dilação do prazo autorizada nesta exigência ou, na perícia, o
+    // reagendamento pedido depois dela; só sem saída a advogada justifica, dizendo por quê.
+    const tentou = (await dilacaoAutorizada(casoId, s.exigencia.criadoEm))
+      ? 'dilacao'
+      : d.alvo === 'pericia' && (await reagendamentoPedido(d.id, s.exigencia.criadoEm))
+        ? 'reagendamento'
+        : null
+    if (!tentou && !d.semSaida) return negar(resposta, 409, MSG_ANTES_DA_JUSTIFICATIVA)
     if (d.alvo === 'item') {
       const item = s.pendentes.find((i) => i.id === d.id)
       if (!item) return negar(resposta, 404, 'Este item não está pendente nesta exigência.')
@@ -255,7 +271,7 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
           .set({ situacao: 'cancelada', concluidaEm: agora(), concluidaPor: quem })
           .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'DP.01'), gte(tarefa.criadoEm, s.exigencia.criadoEm), isNull(tarefa.concluidaEm)))
     }
-    await historico(quem, 'exigencia_juiz_sem_prova', pedido, `caso:${casoId}`, { alvo: d.alvo, id: d.id, motivo: d.motivo })
+    await historico(quem, 'exigencia_juiz_sem_prova', pedido, `caso:${casoId}`, { alvo: d.alvo, id: d.id, motivo: d.motivo, tentou, semSaida: tentou ? null : d.semSaida })
     await abrirManifestacaoSePronta(banco, casoId, agora())
     return resposta.code(201).send({ ok: true })
   })
