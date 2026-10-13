@@ -362,10 +362,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - com o `semSaida`, encerra e guarda o porquê.
 
   Verificado em 13/10: `rotas/manifestacao.test.ts` 15/15 (3 novos; os de antes passam a dizer o porquê). O histórico guarda `tentou` (`dilacao`, `reagendamento` ou nulo) e o `semSaida`.
-- [ ] 5.10 Encerrar e liberar (P5.7, decisão 46).
+- [x] 5.10 Encerrar e liberar (P5.7, decisão 46).
   - Verifica com `rotas/vigilia.test.ts` e `rotas/conferencia.test.ts`:
     - o caso já despachado não encerra;
     - liberar de novo cancela o protocolo aberto, e o OK antigo não vale.
+
+  Verificado em 13/10: `rotas/vigilia.test.ts` 10/10 e `rotas/conferencia.test.ts` (um novo em cada), com `inss` e `indeferimento`, 62/62. A tela da vigília também só oferece encerrar com o despacho esperando.
 - [ ] 5.11 Tribunal e assinatura, rotas (P5.8, decisão 47): `PUT /api/configuracao/tribunais` e `/assinatura`; o `GET` devolve os dois.
   - Verifica com `rotas/configuracao.test.ts`:
     - a Sênior salva, e fica no histórico;

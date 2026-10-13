@@ -7,6 +7,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { caso, documento, etapa, exigencia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
+import { MSG_NADA_A_DESPACHAR } from './indeferimento.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 export const MSG_FORA_DA_VIGILIA = 'O caso não está esperando a resposta do INSS.'
@@ -16,6 +17,12 @@ export const MSG_CARTA = 'Anexe a carta de indeferimento (PDF ou imagem, até 25
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 const hoje = hojeEmBrasilia // CA7 (GGVP-118): o dia de Brasília, não o de UTC
+
+/** GGVP-158 P5.7: o caso indeferido espera o despacho da Sênior (a tarefa D3.03 aberta). */
+async function despachoEsperando(banco: Banco, casoId: string) {
+  const [t] = await banco.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3.03'), isNull(tarefa.concluidaEm))).limit(1)
+  return Boolean(t)
+}
 
 export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamento, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
@@ -67,7 +74,7 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
       desde: espera?.iniciadaEm.toISOString() ?? null,
       registros,
       podeRegistrar: pode(pedido.perfilAtivo, 'inss.registrar_resposta') && Boolean(await vigiliaAberta(casoId)),
-      podeEncerrar: pode(pedido.perfilAtivo, 'caso.encerrar') && c.fase === 'judicial',
+      podeEncerrar: pode(pedido.perfilAtivo, 'caso.encerrar') && c.fase === 'judicial' && (await despachoEsperando(banco, casoId)),
     })
   })
 
@@ -152,6 +159,8 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
     const [c] = await banco.select({ fase: caso.fase }).from(caso).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
     if (c.fase !== 'judicial') return negar(resposta, 409, 'Só o caso indeferido, antes da Justiça, pode ser encerrado aqui.')
+    // GGVP-158 P5.7: só com o despacho da Sênior esperando, como a tela mostra; depois do despacho, o caso já anda para a Justiça.
+    if (!(await despachoEsperando(banco, casoId))) return negar(resposta, 409, MSG_NADA_A_DESPACHAR)
     await banco.transaction(async (tx) => {
       await tx
         .update(caso)

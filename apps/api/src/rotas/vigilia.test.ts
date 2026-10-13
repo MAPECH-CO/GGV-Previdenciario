@@ -138,4 +138,13 @@ describe('GGVP-48 · indeferido segue para a Justiça', () => {
     expect([c.fase, c.desfecho, c.causaDesfecho]).toEqual(['encerrado', 'desistencia', 'Cliente desistiu'])
     expect(await abertas()).toEqual([])
   })
+
+  it('GGVP-158 P5.7 · o caso que a Sênior já despachou não se encerra aqui: segue para a Justiça', async () => {
+    await registrar(INDEFERIDO)
+    await banco.update(tarefa).set({ situacao: 'concluida', concluidaEm: new Date() }).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3.03')))
+    expect((await ver('helena')).json().podeEncerrar).toBe(false)
+    const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/encerrar`, cookies: await cookieDe('helena'), payload: { motivo: 'Cliente desistiu' } })
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Este caso não está esperando o despacho da Sênior.'])
+    expect((await banco.select().from(caso).where(eq(caso.id, casoId)))[0].fase).toBe('judicial')
+  })
 })
