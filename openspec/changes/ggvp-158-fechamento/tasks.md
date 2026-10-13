@@ -584,3 +584,67 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - API 958 de 959 na suíte inteira (3 pulados), em 102 arquivos. A única falha foi a das variáveis, antes de o Mateus pôr o nome; depois, sozinha, 4/4, e as suítes da conversa e da entrada do Chatwoot de novo, 35/35;
   - Playwright 260/260;
   - `openspec validate --all --strict`, 16/16.
+
+## GGVP-158 · Parte 7 · Telas lidas do banco, acervo e importação (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-7`, em cima do #78. Migração 0034. Na ordem contrato → teste → servidor.
+
+- [ ] 7.1 A migração 0034 (decisões 72 e 73): `caso.valor_causa`, `pessoa.renda_por_pessoa` e as colunas do Raio-X no `processo_acervo`. Verifica com `banco/migracoes.test.ts`.
+- [ ] 7.2 A estratégia, a IA (P7.1, decisão 67): a finalidade `estrategia_do_caso`, o conteúdo montado no código e a saída conferida.
+  - Verifica com teste, com a IA de mentira:
+    - a proposta com as fontes;
+    - a saída fora do formato não vale.
+- [ ] 7.3 A estratégia, as rotas (P7.1): `GET`, `POST` e a outra proposta; o preparo; a estratégia no resumo do processo.
+  - Verifica com `rotas/estrategia.test.ts`:
+    - a proposta pronta;
+    - a versão salva com o ajuste vai ao histórico;
+    - o Atendimento não lê, nem no resumo.
+- [ ] 7.4 As tarefas da Recepção, o módulo (P7.2, decisão 68): `sincronizarRecepcao` com a cobrança, o checklist, as boas-vindas e o fechamento.
+  - Verifica com teste:
+    - abre, fecha e atualiza o prazo;
+    - uma linha por chave.
+- [ ] 7.5 As tarefas da Recepção, as rotas (P7.2): a sincronização no fim das rotas que mudam a origem; a Central geral com a tarefa da pessoa sem caso e o id da tela.
+  - Verifica com as suítes da cobrança, do checklist, das mensagens e do fechamento e com `rotas/inss.test.ts`:
+    - a cobrança aberta e encerrada;
+    - o fechamento do lead na Central do Atendimento.
+- [ ] 7.6 O chat (P7.3, decisão 69): `criar_tarefa` só com `tarefa.atribuir`; `pedir_peca` só com a D3.05 aberta, sem outra.
+  - Verifica com `rotas/chat.test.ts`:
+    - a atendente não cria tarefa;
+    - a peça antes do despacho recusa;
+    - depois, a mesma tarefa.
+- [ ] 7.7 A sugestão de benefício, a IA (P7.4, decisão 70): a finalidade `sugerir_beneficio`, a busca do acervo e a saída conferida contra o catálogo.
+  - Verifica com teste, com a IA de mentira:
+    - o benefício fora do catálogo não vale;
+    - sem fonte, "Sem referência na casa".
+- [ ] 7.8 A sugestão de benefício, as rotas (P7.4): o `GET` no servidor, o `POST` com a sugestão pronta, o preparo e o fim do acervo e do CNIS de exemplo no servidor.
+  - Verifica com `rotas/recepcao-decisoes.test.ts`:
+    - pronta, com as fontes;
+    - a recusa no histórico;
+    - sem a IA, o aviso.
+- [ ] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco e no caso perdido.
+  - Verifica com `rotas/vigilia.test.ts` e `rotas/prestacao.test.ts`:
+    - o deferimento entra no acervo;
+    - a ida ao banco não duplica.
+- [ ] 7.10 Os valores (P7.6, decisão 72): as rotas, a regra de valores e o resumo do processo.
+  - Verifica com `rotas/valores.test.ts`:
+    - a advogada grava;
+    - o Financeiro lê;
+    - o Atendimento e a Sênior recebem 403;
+    - o valor errado recusa.
+- [ ] 7.11 O Raio-X, a leitura (P7.7, decisão 73): o contrato, a leitura da planilha e o relatório, numa função pura.
+  - Verifica com teste, com uma base inventada:
+    - a linha sem número recusa;
+    - as colunas pessoais são ignoradas;
+    - os peritos, os juízes, as varas e a data de corte.
+- [ ] 7.12 O Raio-X, a carga (P7.7): a simulação e a confirmação com a marca, sem duplicar, com o perito pelo nome.
+  - Verifica com `rotas/raio-x.test.ts`:
+    - a simulação não grava;
+    - a confirmação grava uma vez;
+    - a marca de outra planilha recusa.
+- [ ] 7.13 O Raio-X, os indicadores (P7.7): a função pura e `GET /api/acervo/raio-x`.
+  - Verifica com teste:
+    - cada indicador com o número de casos;
+    - a data da base;
+    - sem base, vazio.
+- [ ] 7.14 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+- [ ] 7.15 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
