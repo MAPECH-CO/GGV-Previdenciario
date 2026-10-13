@@ -27,7 +27,7 @@ const abertas = async () =>
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco })
-  for (const [apelido, perfil] of [['gabi', 'advogada'], ['helena', 'senior'], ['ana', 'atendimento']] as const) {
+  for (const [apelido, perfil] of [['gabi', 'advogada'], ['helena', 'senior'], ['ana', 'atendimento'], ['dora', 'documentacao'], ['sergio', 'socio']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -108,3 +108,17 @@ describe('GGVP-90 · confirmar o desfecho de mérito', () => {
     expect(await abertas()).toEqual([{ titulo: TITULO_DECIDIR, passo: 'D3b.04', responsavel: null, prazo: '2026-10-19' }])
   })
 })
+
+describe('GGVP-90 · revisão do Pedro (12/10): o trecho da sentença só para quem vê dado de saúde', () => {
+  it('CA3 · a sentença que cita laudo e CID: o Atendimento e a Documentação não recebem o trecho; o Jurídico e o Sócio recebem', async () => {
+    const medica = 'O laudo pericial atesta CID F32.2 e incapacidade total; JULGO PROCEDENTE o pedido. (sentença fictícia)'
+    await banco.update(publicacao).set({ texto: medica }).where(eq(publicacao.casoId, casoId))
+    for (const apelido of ['ana', 'dora']) {
+      const d = (await chamar(apelido, 'GET')).json()
+      expect([d.decisao.texto, d.decisao.classeSugeridaIa, d.prazoRecurso]).toEqual([null, 'merito', '2026-10-20'])
+      expect(JSON.stringify(d)).not.toContain('F32')
+    }
+    for (const apelido of ['gabi', 'helena', 'sergio']) expect((await chamar(apelido, 'GET')).json().decisao.texto).toBe(medica)
+  })
+})
+

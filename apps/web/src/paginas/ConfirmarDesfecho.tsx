@@ -111,7 +111,7 @@ export function ConfirmarDesfecho({ casoId }: { casoId: string }) {
                 <dt>Processo</dt>
                 <dd>{d.decisao.numeroCnj ? formatarCnj(d.decisao.numeroCnj) : 'sem o número no sistema'}</dd>
                 <dt>Trecho</dt>
-                <dd>"…{d.decisao.texto}…"</dd>
+                <dd>{d.decisao.texto !== null ? `"…${d.decisao.texto}…"` : 'Fica com o Jurídico: a sentença pode trazer dado de saúde.'}</dd>
                 {d.decisao.classeSugeridaIa && (
                   <>
                     <dt>Leitura da IA</dt>

@@ -39,7 +39,8 @@ export const DesfechoParaConfirmar = z.object({
       disponibilizadaEm: z.string(),
       fonte: z.string(),
       numeroCnj: z.string().nullable(),
-      texto: z.string(),
+      /** O trecho da sentença: só para quem vê dado de saúde (`dado_saude.ver_detalhe`); para os outros, null (revisão do Pedro, 12/10). */
+      texto: z.string().nullable(),
       classeSugeridaIa: z.string().nullable(),
       confiancaIa: z.number().nullable(),
     })

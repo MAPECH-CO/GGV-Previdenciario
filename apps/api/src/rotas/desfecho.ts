@@ -48,7 +48,8 @@ export function registrarRotasDesfecho(app: FastifyInstance, { banco, agora = ()
       fichaId: c.fichaId,
       cliente: c.nome,
       beneficio: c.beneficio,
-      decisao: d ? { disponibilizadaEm: d.em, fonte: d.fonte, numeroCnj: d.cnj, texto: d.texto, classeSugeridaIa: d.sugerida, confiancaIa: d.confianca === null ? null : Number(d.confianca) } : null,
+      // A sentença pode trazer laudo, diagnóstico ou CID: o trecho vai só a quem vê dado de saúde (revisão do Pedro, 12/10).
+      decisao: d ? { disponibilizadaEm: d.em, fonte: d.fonte, numeroCnj: d.cnj, texto: pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe') ? d.texto : null, classeSugeridaIa: d.sugerida, confiancaIa: d.confianca === null ? null : Number(d.confianca) } : null,
       // O mesmo prazo que a Sênior recebe em "Decidir recurso" (G12, a conta do #35).
       prazoRecurso: (await sentencaEPrazo(banco, casoId)).prazo?.fim ?? null,
       // ponytail: a decisão guarda a forma (procedente) ou a causa (extinção) no mesmo campo; coluna própria se precisar das duas.

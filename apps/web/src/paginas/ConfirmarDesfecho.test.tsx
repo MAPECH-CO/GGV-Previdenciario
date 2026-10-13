@@ -86,4 +86,12 @@ describe('Confirmar o desfecho de mérito (GGVP-90)', () => {
     expect(screen.getByRole('link', { name: 'Abrir a ficha do cliente' }).getAttribute('href')).toBe('/clientes/7a2d3c4b-5e6f-4a70-9b8c-1d2e3f4a5b6c')
     expect(screen.getByRole('complementary', { name: 'Antes de concluir' }).textContent).toContain('a Sênior recebe "Decidir recurso"')
   })
+
+  it('revisão do Pedro (12/10) · sem o trecho (perfil que não vê dado de saúde), a linha diz que ele fica com o Jurídico', async () => {
+    servidor({ ...base, podeConfirmar: false, decisao: { ...base.decisao!, texto: null } })
+    render(<ConfirmarDesfecho casoId={CASO} />)
+    await screen.findByRole('region', { name: 'Decisão de mérito' })
+    expect(linha('Trecho')).toBe('Fica com o Jurídico: a sentença pode trazer dado de saúde.')
+  })
 })
+
