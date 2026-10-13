@@ -112,8 +112,9 @@ export const DecidirRecurso = z.object({
 export type DecidirRecurso = z.infer<typeof DecidirRecurso>
 
 /**
- * GET /api/casos/:id/recurso. O prazo é contado pelo sistema, pelo lado seguro (CA4, G12). A chance é da jurimetria,
- * calculada por código (CA8); nula enquanto não houver a do juízo. A IA nunca dá o número.
+ * GET /api/casos/:id/recurso. O prazo é contado pelo sistema, pelo lado seguro (CA4, G12). A chance do recurso é da
+ * jurimetria, calculada por código pelos recursos julgados do acervo (GGVP-161 CA2); `porcentagem` nula é "sem dados
+ * ainda". A IA nunca dá o número: ela traz a avaliação (`avaliacao`, GGVP-161 CA3).
  */
 export const RecursoDoCaso = z.object({
   casoId: z.uuid(),
@@ -122,7 +123,12 @@ export const RecursoDoCaso = z.object({
   beneficio: z.string().nullable(),
   sentenca: z.object({ disponibilizadaEm: z.string(), texto: z.string() }).nullable(),
   prazo: z.object({ fim: z.string(), regra: z.string() }).nullable(),
-  chance: z.object({ porcentagem: z.number().int(), casos: z.number().int(), regra: z.string() }).nullable(),
+  chance: z
+    .object({ porcentagem: z.number().int().nullable(), casos: z.number().int(), favoraveis: z.number().int(), baseEm: z.string().nullable(), regra: z.string() })
+    .nullable(),
+  /** GGVP-161 CA3: a avaliação da IA, pronta (sugestão pronta); nula quando a IA não respondeu, com o motivo. */
+  avaliacao: SugestaoDaIa.nullable().default(null),
+  motivoIa: z.string().nullable().default(null),
   decisao: z.object({ decisao: z.enum(DECISOES_DO_RECURSO), justificativa: z.string(), por: z.string(), em: z.string() }).nullable(),
   /** A tarefa "Decidir recurso" está aberta e o perfil decide (a Sênior). */
   podeDecidir: z.boolean(),

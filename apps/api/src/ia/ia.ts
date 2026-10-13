@@ -176,6 +176,22 @@ export const FINALIDADES = {
       'Use só o que está no conteúdo. Não calcule nem invente porcentagem: se houver número, ele vem do sistema e você só o cita como está.',
     ].join(' '),
   },
+  /**
+   * GGVP-161 (Mateus, 13/10): no "Vale recorrer?", a IA avalia se o caso é bom ou ruim para recorrer, com o acervo e o
+   * conhecimento dela, marcado como tal. A chance é do código; a IA não dá porcentagem (a rota recusa a resposta com %).
+   */
+  avaliacao_do_recurso: {
+    versao: 1,
+    saude: true,
+    json: false,
+    barrarCid: false,
+    instrucao: [
+      'Para a Sênior do escritório, que decide se recorre de uma sentença improcedente, avalie se o caso é bom ou ruim para recorrer.',
+      'Comece com uma linha: "Bom para recorrer" ou "Ruim para recorrer". Depois, em tópicos curtos: por quê; o que pesa a favor; o que pesa contra; o que fazer no recurso.',
+      'Use a sentença, o caso e os trechos do acervo da casa, e diga quais trechos usou. Pode usar o seu conhecimento do direito previdenciário, mas marque cada ponto que vem dele com "(conhecimento geral da IA, confira)" e não cite número de processo, súmula ou julgado que não esteja no conteúdo.',
+      'Não escreva porcentagem nem número de chance: a chance vem do sistema e a Sênior já a vê ao lado.',
+    ].join(' '),
+  },
   /** GGVP-54 (G4): a IA analisa o indeferimento e sugere o que falta; quem despacha é a Sênior. Leitura interna. */
   analisar_indeferimento: {
     versao: 1,

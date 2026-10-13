@@ -187,3 +187,23 @@ describe('pergunta de um clique para juiz, vara e tese (GGVP-153)', () => {
     expect((await completar('helena', acervoId, {})).json().erro).toBe('Escolha ou escreva o que falta.')
   })
 })
+
+describe('resultado do recurso na conferência (GGVP-161)', () => {
+  it('CA1 · a Sênior confere o desfecho com o resultado do recurso; o acervo guarda e o histórico tem o antes e o depois', async () => {
+    const r = await app.inject({
+      method: 'POST',
+      url: `/api/acervo/processos/${lidos[0]}/conferencia`,
+      cookies: await cookieDe('helena'),
+      payload: { desfecho: 'improcedente', recurso: 'provido_parcial' },
+    })
+    expect(r.statusCode).toBe(200)
+    const [linha] = await banco.select({ recurso: processoAcervo.resultadoRecurso }).from(processoAcervo).where(eq(processoAcervo.id, lidos[0]))
+    expect(linha.recurso).toBe('provido_parcial')
+    const [h] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acervo_desfecho_conferido'))
+    expect(h.detalhe).toMatchObject({ recursoAntes: null, recurso: 'provido_parcial' })
+    // Sem o campo, o resultado do recurso fica como estava (nulo: sem recurso julgado).
+    await conferir('helena', lidos[1], 'procedente_parcial')
+    const [outra] = await banco.select({ recurso: processoAcervo.resultadoRecurso }).from(processoAcervo).where(eq(processoAcervo.id, lidos[1]))
+    expect(outra.recurso).toBeNull()
+  })
+})

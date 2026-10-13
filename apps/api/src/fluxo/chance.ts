@@ -12,6 +12,15 @@ export function calcularChance(desfechos: (string | null)[]) {
   return { casos, favoraveis, porcentagem: casos ? Math.round((favoraveis / casos) * 100) : null }
 }
 
+export const REGRA_DA_CHANCE_DO_RECURSO = 'Recursos julgados no acervo conferido, do mesmo benefício: providos (no todo ou em parte) sobre julgados'
+
+/** GGVP-161 CA2: a chance do recurso; o caso sem recurso julgado não entra (G22: toda amostra conta, zero não é amostra). */
+export function calcularChanceDoRecurso(resultados: (string | null)[]) {
+  const julgados = resultados.filter((r): r is string => r !== null)
+  const favoraveis = julgados.filter((r) => r === 'provido' || r === 'provido_parcial').length
+  return { casos: julgados.length, favoraveis, porcentagem: julgados.length ? Math.round((favoraveis / julgados.length) * 100) : null }
+}
+
 /** GGVP-150 CA2 (Lucas, 07/10): pela porcentagem mostrada; 15 e 50 ficam no amarelo. */
 export function corDaChance(porcentagem: number | null) {
   if (porcentagem === null) return null
