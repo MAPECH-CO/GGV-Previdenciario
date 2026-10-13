@@ -278,8 +278,8 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 4.12 O contrato assinado guardado (P4.4): a digitalização recebe o arquivo e o guarda como documento do caso; `GET .../contrato/assinado` devolve o arquivo. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [x] 4.13 A leitura do contrato (P4.4): `ler_contrato_assinado`, com a lista do kit; a regra de hoje decide; sem IA, vai à conferência com o motivo. Verifica com `rotas/recepcao-contrato.test.ts`.
 - [x] 4.14 Sem ZapSign (P4.5): saem as rotas e a opção, e o serviço responde sempre `zapsign: false`. Verifica com `rotas/recepcao-contrato.test.ts`: com a variável, a rota não existe e o serviço diz falso.
-- [ ] 4.15 Um catálogo só, contrato (P4.6): os 34 com o id do servidor; `BENEFICIOS` e os mapas saem dele. Verifica com o teste do contrato: 34 mais "outro", e os 11 ids de hoje iguais.
-- [ ] 4.16 O catálogo no banco (P4.6): a migração 0031 com o CHECK.
+- [x] 4.15 Um catálogo só, contrato (P4.6): os 34 com o id do servidor; `BENEFICIOS` e os mapas saem dele. Verifica com o teste do contrato: 34 mais "outro", e os 11 ids de hoje iguais.
+- [x] 4.16 O catálogo no banco (P4.6): a migração 0031 com o CHECK.
   - Verifica com teste:
     - o caso da aposentadoria rural guarda o benefício;
     - a lista publicada vale no checklist;

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, cobrancaDocumento, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_G1 } from './conferencia.ts'
@@ -19,9 +19,9 @@ async function cookieDe(apelido: string) {
   const r = await app.inject({ method: 'POST', url: '/api/sessao', payload: { email: `${apelido}@exemplo.ggv`, senha: SENHA } })
   return { [COOKIE]: r.cookies.find((c) => c.name === COOKIE)!.value }
 }
-const chamar = async (apelido: string, method: 'GET' | 'POST', url: string, payload?: object) =>
+const chamar = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) =>
   app.inject({ method, url, cookies: await cookieDe(apelido), ...(payload ? { payload } : {}) })
-const json = async (apelido: string, method: 'GET' | 'POST', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
+const json = async (apelido: string, method: 'GET' | 'POST' | 'PUT', url: string, payload?: object) => (await chamar(apelido, method, url, payload)).json()
 
 /** O cliente com o caso aberto ("fechou"), como na Recepção. */
 async function casoDe(beneficio: string) {
@@ -116,6 +116,22 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     const c = (await json('dora', 'GET', url)).checklist
     expect(c.bloqueio).toBeUndefined()
     expect(c.itens.map((i: { tipo: string }) => i.tipo)).toEqual(['contrato', 'boletim-ocorrencia', 'fotos-acidente', 'ficha-pronto-socorro', 'prontuario', 'exame-imagem-epoca', 'exame-pos-alta'])
+  })
+
+  it('GGVP-158 P4.6 · o caso da aposentadoria rural guarda o benefício; sem lista publicada, não libera; a lista da Configuração vale', async () => {
+    const { processoId } = await casoDe('aposentadoria-rural')
+    expect((await banco.select({ beneficio: caso.beneficio }).from(caso).where(eq(caso.id, processoId)))[0].beneficio).toBe('aposentadoria_rural')
+    const url = `/api/processos/${processoId}/checklist`
+    expect((await json('dora', 'GET', url)).checklist).toMatchObject({ temLista: false })
+    const liberar = () => json('dora', 'POST', `/api/casos/${processoId}/liberacao`, { conferiChecklist: true, conferiAssinaturas: true })
+    expect((await liberar()).erro).toContain('a lista de documentos do benefício, na configuração do escritório')
+
+    // A gestão publica a lista pela Configuração, sem código.
+    const publicada = await chamar('sara', 'PUT', '/api/configuracao/kits/aposentadoria_rural', { itens: [{ tipoDocumento: 'rg', obrigatorio: true }, { tipoDocumento: 'cnis', obrigatorio: true }] })
+    expect(publicada.statusCode).toBe(201)
+    const c = (await json('dora', 'GET', url)).checklist
+    expect(c.temLista).toBe(true)
+    expect(c.itens.map((i: { tipo: string }) => i.tipo)).toEqual(expect.arrayContaining(['rg', 'cnis']))
   })
 
   it('a liberação do caso da Recepção confere esse checklist: o que falta com os nomes das telas, e a conferência completa', async () => {

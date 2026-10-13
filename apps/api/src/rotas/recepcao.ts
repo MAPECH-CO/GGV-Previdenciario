@@ -19,7 +19,7 @@ import {
   validarNome,
   validarTelefone,
 } from '@ggv/campos'
-import { BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, LigacaoDaPasta, NovoClienteDoBalcao, pode, type Erro, type Perfil } from '@ggv/contratos'
+import { BENEFICIO_NA_CONFIGURACAO, BuscaNoBalcao, ConsultaDeDuplicidade, EdicaoDaFicha, EnvioDaFichaDeAtendimento, LigacaoDaPasta, NovoClienteDoBalcao, pode, type Erro, type Perfil } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Drive, PastasDoDrive } from '../drive.ts'
 import { pastaDoTitulo } from '../fluxo/arquivar.ts'
@@ -78,20 +78,11 @@ export const aceitaGanchoDeTeste = (ambiente: Record<string, string | undefined>
 /** Quem preenche no tablet é o próprio cliente (GGVP-24). */
 const CLIENTE_NO_TABLET = 'Cliente (tablet)'
 
-/** Os benefícios do servidor no catálogo das telas, para os casos que nasceram por outro caminho. */
-export const NO_CATALOGO: Record<string, string> = {
-  bpc_loas_deficiente: 'loas-deficiente',
-  bpc_loas_idoso: 'loas-idoso',
-  aposentadoria_pcd: 'aposentadoria-pcd',
-  aposentadoria_idade: 'aposentadoria-idade',
-  aposentadoria_tempo: 'aposentadoria-contribuicao',
-  aposentadoria_especial: 'aposentadoria-especial',
-  aposentadoria_incapacidade_permanente: 'incapacidade-permanente',
-  auxilio_incapacidade_temporaria: 'incapacidade-temporaria',
-  auxilio_acidente: 'auxilio-acidente',
-  pensao_morte: 'pensao-morte',
-  salario_maternidade: 'salario-maternidade',
-}
+/**
+ * Os benefícios do servidor no catálogo das telas, para os casos que nasceram por outro caminho. GGVP-158 P4.6: os dois
+ * mapas saem do catálogo único (`CATALOGO_BENEFICIOS`, com o id do servidor de cada um dos 34).
+ */
+export const NO_CATALOGO: Record<string, string> = Object.fromEntries(Object.entries(BENEFICIO_NA_CONFIGURACAO).map(([telas, servidor]) => [servidor, telas]))
 /** O benefício do catálogo das telas no catálogo do portal, para o caso que nasce no fechamento (bloco 4a). */
 export const NO_SERVIDOR: Record<string, string> = Object.fromEntries(Object.entries(NO_CATALOGO).map(([servidor, telas]) => [telas, servidor]))
 
