@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { entrarPelaApi } from './entrar.ts'
+import { entrarPelaApi, trocarDeUsuario } from './entrar.ts'
 
 // Desfecho e financeiro (GGVP-11). Usuários e casos de exemplo do banco local; nenhum é real.
 
-test('GGVP-22 · a advogada aprova o resumo e passa ao Atendimento; o Atendimento tenta, explica e o caso fecha', async ({ page, context }) => {
+test('GGVP-22 · a advogada aprova o resumo e passa ao Atendimento; o Atendimento tenta, explica e o caso fecha', async ({ page }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Paulo Mendes (exemplo) · Aprovar o resumo para o cliente' }).click()
@@ -12,8 +12,7 @@ test('GGVP-22 · a advogada aprova o resumo e passa ao Atendimento; o Atendiment
   await page.getByRole('button', { name: 'Aprovar o resumo' }).click()
   await expect(page.getByRole('status')).toHaveText('Resumo aprovado. O Atendimento vai explicar ao cliente.')
 
-  await context.clearCookies()
-  await entrarPelaApi(page, 'atendimento@exemplo.ggv')
+  await trocarDeUsuario(page, 'atendimento@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Paulo Mendes (exemplo) · Explicar resultado' }).click()
   await expect(page.getByText(/Aprovado pelo Jurídico: Gabi \(exemplo\)/)).toBeVisible()

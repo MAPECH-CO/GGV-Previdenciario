@@ -50,7 +50,7 @@ Drizzle ORM com PostgreSQL. Esquema em `apps/api/src/banco/esquema.ts`; migraç�
 
 ## Modelo de dados do portal (base de todos os épicos, 05/10)
 
-Decisão do Mateus em 05/10: o banco nasce inteiro agora, desenhado a partir das histórias de todos os épicos, para o back-end e as telas de cada épico crescerem sobre a mesma base. Fonte: cartões do Jira (campos de cada tela, critérios e respostas do PO), `perfis.md`, `portoes-governanca.md` e o roteiro de laudos. O banco de homologação é o Supabase, projeto "Portal Operacional".
+Decisão do Mateus em 05/10: o banco nasce inteiro agora, desenhado a partir das histórias de todos os épicos, para o back-end e as telas de cada épico crescerem sobre a mesma base. Fonte: cartões do Jira (campos de cada tela, critérios e respostas do PO), `perfis.md`, `portoes-governanca.md` e o roteiro de laudos. O banco de homologação é o Supabase, projeto "Portal Operacional" (desde 13/10: "PrevGGVLucas", em São Paulo; ver "GGVP-119 · Banco de homologação em São Paulo").
 
 ### Regras que valem para toda tabela
 
@@ -115,6 +115,40 @@ Com `DATABASE_URL`, o servidor não cria usuário nem caso: a semente (`semearEx
 
 - **Rodar antes da fila:** o comando não duplica, então também não completa. Os casos dos épicos que entrarem depois ficam de fora. Rode depois dos merges; antes disso, só recriando o banco da homologação.
 - **Senha no terminal:** a lista aparece uma vez, para quem rodou. Não vai para log, repositório, Jira nem chat.
+
+## GGVP-119 · Banco de homologação em São Paulo (13/10)
+
+### Context
+
+A homologação demorava para carregar. Medição de 13/10:
+- A VPS do Coolify fica em São Paulo (Hostinger); o banco, no Supabase "Portal Operacional", em Oregon (us-west-2).
+- No banco, cada consulta leva menos de 1 ms (`pg_stat_statements`). O tempo vai na ida e volta pela rede, de 150 a 180 ms, e uma tela faz dezenas de consultas em sequência.
+- A Supabase não muda a região de um projeto: o caminho é outro projeto na região certa e a cópia dos dados.
+- O banco tem 62 MB, 5 arquivos no depósito `documentos` (4,7 MB) e nenhum usuário do Auth da Supabase (o portal tem login próprio).
+
+### Decisions
+
+1. **Destino: "PrevGGVLucas"** (sa-east-1), decisão do Mateus em 13/10, para não abrir projeto novo.
+   - Hoje ele guarda o portal antigo (1,5 GB; back-end e automações ainda gravam). Segundo o Mateus, ninguém usa.
+   - Antes de limpar: o back-end, o front e as automações antigas são desligados, a senha do banco é trocada (o que sobrar ligado perde o acesso) e um backup completo vai para fora da Supabase.
+   - Levantamento de 13/10 (outra conversa, só leitura): o scanner do balcão chama o portal antigo uma vez, no fim, para cadastrar o cliente, e segue em frente se der erro; nenhum outro fluxo ligado do n8n usa o portal antigo; em 3 dias, uma visita à tela de login. O back-end antigo ainda lê a AASP a cada hora e o DJEN três vezes ao dia.
+   - Três coisas não têm volta e vêm antes: a `FIELD_ENCRYPTION_KEY` do app antigo no cofre (919 senhas gov.br cifradas em `cofre_segredos`, chave fora do banco), os 21 GB de `acervo` copiados (fora do banco, servidor sem backup) e o ok do Lucas sobre as publicações. O app antigo é parado, não apagado.
+   - Os 4 passos do portal saem do fluxo do scanner a partir da versão no ar, não do rascunho de 08/10, que troca o Mistral pelo Claude sem teste.
+2. **Só `public` e `drizzle`.** O portal não usa outro schema; o `juridico` e os `zz_backup_*` de Oregon são sobras do portal antigo e ficam fora da cópia.
+3. **Cópia com `pg_dump` e `pg_restore`** pelo Docker (`postgres:17`), sem dono e sem permissões antigas (`--no-owner --no-privileges`). As extensões `vector` e `pg_trgm` já existem no destino.
+4. **Senha só no terminal do Mateus:** as URLs de origem e destino entram em variáveis da sessão do terminal, nunca em arquivo, no repositório ou no chat. O backup fica fora do repositório.
+5. **App parado durante a cópia** (uns 15 minutos): a vigília grava a cada 5 minutos, e o que for gravado em Oregon durante a cópia se perderia.
+6. **Arquivos pelo painel:** o depósito `documentos` é criado privado, com os mesmos tipos aceitos (`docs/infra/homologacao.md`), e os 5 arquivos vão nos mesmos caminhos.
+7. **Troca no Coolify pelo Mateus:** `DATABASE_URL` (session pooler de São Paulo), `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`.
+8. **Oregon fica intacto até o fim:** só depois de 2 dias sem problema, e com o ok do Mateus, um backup dele vai para fora da Supabase e o projeto é apagado. No plano pago não há pausa: a cobrança para quando o projeto é apagado.
+9. **Código depois da medição (CA8):** primeiro a troca; depois, as telas principais são medidas no ar, e só a rota acima de 1 s vira tarefa, com teste.
+
+### Risks / Trade-offs
+
+- **Algo antigo ainda ligado:** sem a troca de senha, o back-end antigo gravaria no schema que o portal novo usa. A senha nova corta isso.
+- **Voltar:** com Oregon intacto, devolver o `DATABASE_URL` (e o `SUPABASE_URL` e a chave) no Coolify restaura a homologação como estava, menos o que foi gravado em São Paulo depois da troca.
+- **Limpar o PrevGGVLucas não tem volta:** a tarefa 2.10 só roda com o ok do Mateus na hora. Em 13/10, o Mateus decidiu apagar sem backup ("confirmo apagar sem backup"): os dados do portal antigo e as senhas gov.br estão guardados em outro lugar. Os 21 GB de `acervo` ficam fora do banco e não são afetados.
+- **Extensões:** no PrevGGVLucas, `vector` está no schema `juridico` e `pg_trgm` no `prev_2026_09`; somem com eles. Antes da cópia, as duas são recriadas no `public`, como em Oregon, porque o dump de `public` não traz `CREATE EXTENSION` e a migração 0023 já consta como aplicada no `drizzle` copiado.
 
 ## GGVP-107 · Integração com o Google Drive
 
