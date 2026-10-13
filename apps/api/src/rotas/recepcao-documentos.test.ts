@@ -13,7 +13,7 @@ import { docxDeTeste, formularioDoArquivo } from '../kit/docx-de-teste.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { CONFERENCIAS } from '../../../web/src/regras/contrato.ts'
-import { MSG_CONTEUDO_DIFERENTE } from './recepcao-documentos.ts'
+import { MSG_CONTEUDO_DIFERENTE, MSG_ESCOLHA_O_CASO } from './recepcao-documentos.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -255,6 +255,20 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     expect([m.tipo, m.confirmadoEm]).toEqual(['laudo', null])
     expect((await conteudo(fichaId, PDF_LAUDO)).json()).toEqual({ documentoId: d.id, repetido: true, leituras: [] })
     expect(await banco.select().from(documento)).toHaveLength(1)
+  })
+
+  it('GGVP-158 P4.9 · com dois casos, o envio diz o caso: sem ele, recusa; com ele, o laudo vai à pasta e ao registro do caso escolhido', async () => {
+    const fichaId = await lead()
+    await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' })
+    const [segundo] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'auxilio_incapacidade_temporaria', fase: 'administrativa' }).returning()
+    const laudo = doc('Laudo.pdf', 'laudo', sha(PDF_LAUDO))
+    expect(await enviar(fichaId, laudo)).toEqual({ erro: MSG_ESCOLHA_O_CASO })
+    const fora = await json('ana', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', processoId: '00000000-0000-4000-8000-000000000000', arquivos: [laudo] })
+    expect(fora).toEqual({ erro: 'Caso não encontrado.' })
+    const r = await json('ana', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', processoId: segundo.id, arquivos: [laudo] })
+    expect(r.arquivos).toMatchObject([{ nome: 'Laudo.pdf', local: segundo.id }])
+    const [d] = await banco.select().from(documento).where(eq(documento.id, (await conteudo(fichaId, PDF_LAUDO)).json().documentoId))
+    expect([d.casoId, d.sensivel]).toEqual([segundo.id, true])
   })
 
   it('sem caso, o RG fica com a pessoa e não é sensível; conteúdo que não foi anunciado é recusado e nada é guardado', async () => {

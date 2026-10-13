@@ -19,7 +19,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, documento, pessoa } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, documento, documentoMedico, pessoa } from '../banco/esquema.ts'
 import { lerModelo, preencherModelo } from '../kit/docx.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
 import { honorariosDosModelos, modeloEmVigor } from '../kit/modelos.ts'
@@ -58,14 +58,14 @@ import {
   type Contrato,
   type ContratoDoCaso,
 } from '../../../web/src/regras/contratoDoCaso.ts'
-import { nomeSemSobrescrever, problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
+import { localDoTipo, nomeSemSobrescrever, problemaDoArquivo } from '../../../web/src/regras/arquivos.ts'
 import { faltamNoKit, valoresDoKit } from '../../../web/src/regras/kitDoModelo.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, UUID, criarFichario, extensaoDoAnexo, type ContratoGuardado } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, NO_SERVIDOR, TIPO_DO_DOCUMENTO_MEDICO, UUID, criarFichario, extensaoDoAnexo, type ContratoGuardado } from './recepcao.ts'
 
 export const MSG_CONTRATO_NAO_ENCONTRADO = 'Contrato não encontrado.'
 export const MSG_SEM_KIT = 'Este contrato ainda não tem o kit gerado.'
@@ -150,6 +150,21 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
 
   const quem = (pedido: FastifyRequest) => nomeDe(pedido)
 
+  /**
+   * GGVP-158 P4.9: o primeiro caso recebe os documentos da pessoa que chegaram antes dele; o laudo vira documento médico do
+   * caso, para o parecer. Na ficha, o arquivo que é de caso sai de Documentos pessoais e vai para a subpasta dele.
+   */
+  async function levarAoPrimeiroCaso(ficha: Ficha, casoId: string) {
+    const levados = await banco
+      .update(documento)
+      .set({ casoId })
+      .where(and(eq(documento.pessoaId, ficha.id), isNull(documento.casoId), isNull(documento.excluidoEm)))
+      .returning({ id: documento.id, tipo: documento.tipo })
+    const medicos = levados.flatMap((d) => (TIPO_DO_DOCUMENTO_MEDICO[d.tipo] ? [{ documentoId: d.id, tipo: TIPO_DO_DOCUMENTO_MEDICO[d.tipo] }] : []))
+    if (medicos.length > 0) await banco.insert(documentoMedico).values(medicos).onConflictDoNothing()
+    for (const a of ficha.arquivos) if (a.local === 'pessoais' && localDoTipo(a.tipo, casoId) === casoId) a.local = casoId
+  }
+
   /** Assinado, o contrato segue para a leitura da Documentação (GGVP-81). */
   const assinado = (processo: Processo): Processo => ({ ...processo, etapa: `Contrato assinado em ${dataCurta(hoje(), hoje())}`, proximaAcao: 'ler e arquivar o contrato assinado' })
 
@@ -191,7 +206,9 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
       ficha.situacao = 'cliente'
       ficha.desde = `${dia.slice(5, 7)}/${dia.slice(0, 4)}`
     }
+    const primeiro = ficha.processos.length === 0
     const [novo] = await banco.insert(caso).values({ pessoaId: ficha.id, beneficio: NO_SERVIDOR[beneficio] ?? null, fase: 'atendimento' }).returning()
+    if (primeiro) await levarAoPrimeiroCaso(ficha, novo.id)
     await banco.update(pessoa).set({ situacao: 'cliente', motivoNaoVirou: null, atualizadoEm: agora() }).where(eq(pessoa.id, ficha.id))
     // "Tem representante legal" do cadastro do lead (GGVP-43) já marca o LOAS representado; a pessoa confere no preparo.
     const condicoes = { ...SEM_CONDICOES, representado: Boolean(ficha.representante?.nome) }

@@ -21,14 +21,13 @@ import { fichaComCpf } from '../../../web/src/regras/duplicidade.ts'
 import { ROTULOS_DOS_CAMPOS, ehMedico, menosLegivel, type DocumentoLido } from '../../../web/src/regras/leitura.ts'
 import type { Conteudo, Leitor } from '../fluxo/leitura.ts'
 import { criarLeituraDoContrato } from './recepcao-contrato.ts'
-import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
+import { MSG_FICHA_NAO_ENCONTRADA, TIPO_DO_DOCUMENTO_MEDICO, UUID, criarFichario, type ContratoGuardado } from './recepcao.ts'
 
 /** Os tipos que trazem a avaliação do médico: chegando pelo card ou pelo chat, são "Laudo novo" (GGVP-17 CA6). */
 const LAUDOS = ['laudo', 'relatorio-medico', 'prontuario']
 
-/** O laudo novo que chega pelo card vira documento médico do caso (bloco 5b+), no tipo da tabela `documento_medico`. */
-const TIPO_DO_DOCUMENTO_MEDICO: Record<string, 'laudo' | 'relatorio' | 'prontuario'> = { laudo: 'laudo', 'relatorio-medico': 'relatorio', prontuario: 'prontuario' }
 export const MSG_CONTEUDO = 'Anexe o arquivo (PDF ou imagem, até 25 MB).'
+export const MSG_ESCOLHA_O_CASO = 'Escolha o caso do documento.'
 export const MSG_CONTEUDO_DIFERENTE = 'Este arquivo não é o que foi enviado pelo card.'
 
 /** Quem aparece no histórico quando o scanner guarda o papel. */
@@ -163,9 +162,12 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     if (!entrada.success || !entrada.data.arquivos.every(valido)) return negar(resposta, 400, 'Arquivos inválidos.')
     const ficha = await fichaPeloId(pedido.params.id)
     if (!ficha) return negar(resposta, 404, MSG_FICHA_NAO_ENCONTRADA)
-    const { origem } = entrada.data
+    const { origem, processoId } = entrada.data
+    // GGVP-158 P4.9: com mais de um caso, quem envia diz o caso dos documentos; com um só, é ele.
+    if (!processoId && ficha.processos.length > 1) return negar(resposta, 400, MSG_ESCOLHA_O_CASO)
+    const caso = processoId ? ficha.processos.find((p) => p.id === processoId) : ficha.processos[0]
+    if (processoId && !caso) return negar(resposta, 404, 'Caso não encontrado.')
     const dia = hoje()
-    const caso = ficha.processos[0]
     const novos: Arquivo[] = entrada.data.arquivos.map((a) => {
       const local = localDoTipo(a.tipo, caso?.id)
       const nomes = ficha.arquivos.filter((x) => x.local === local).map((x) => x.nome)
@@ -211,7 +213,9 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       .from(documento)
       .where(and(eq(documento.pessoaId, ficha.id), eq(documento.hashSha256, hash), isNull(documento.excluidoEm)))
     if (jaGuardado) return { documentoId: jaGuardado.id, repetido: true, leituras: await ler() }
-    const casoId = ficha.processos.map((p) => p.id).find((id) => UUID.test(id)) ?? null
+    // GGVP-158 P4.9: o caso do arquivo é o da pasta dele; o documento pessoal fica com o caso só quando a pessoa tem um só.
+    const casosDoServidor = ficha.processos.map((p) => p.id).filter((id) => UUID.test(id))
+    const casoId = UUID.test(anunciado.local) ? anunciado.local : casosDoServidor.length === 1 ? casosDoServidor[0] : null
     const dados = await guardarArquivo(armazenamento, casoId ?? ficha.id, arquivo, anunciado.tipo, casoId ? 'casos' : 'pessoas')
     const quem = pedido.usuario!.id
     const documentoId = await banco.transaction(async (tx) => {
@@ -329,7 +333,10 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       }
     }
     const quem = await nomeDe(pedido)
-    const caso = ficha.processos[0]
+    // GGVP-158 P4.9: o caso de cada documento é o da pasta dele; o pessoal, o caso só quando a pessoa tem um só.
+    const unico = ficha.processos.length === 1 ? ficha.processos[0] : undefined
+    const casoDo = (a: Arquivo) => ficha.processos.find((x) => x.id === a.local) ?? unico
+    let casoDoLaudo: Processo | undefined
     // A correção da classificação vale e fica no histórico, sem o conteúdo do documento (GGVP-95, CA2).
     for (const l of aConferir.filter((x) => escolhas.get(x.id)!.tipo !== x.tipo)) {
       l.sugerido = l.tipo
@@ -346,13 +353,16 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
       if (arquivo && l.situacao === 'arquivado') {
         // O que chegou com outro tipo e a pessoa conferiu como laudo também é laudo novo (bloco 5d).
-        if (LAUDOS.includes(l.tipo) && !LAUDOS.includes(arquivo.tipo)) virouLaudo = true
+        if (LAUDOS.includes(l.tipo) && !LAUDOS.includes(arquivo.tipo)) {
+          virouLaudo = true
+          casoDoLaudo = casoDo(arquivo)
+        }
         registrar.push({ leitura: l, arquivo })
       }
       if (arquivo) {
         // O contrato assinado já chega na subpasta do processo dele (GGVP-72, GGVP-77): fica lá, mesmo com outro caso aberto.
         const doProcesso = l.tipo === 'contrato' && ficha.processos.some((x) => x.id === arquivo.local)
-        const local = doProcesso ? arquivo.local : localDoTipo(l.tipo, caso?.id)
+        const local = doProcesso ? arquivo.local : localDoTipo(l.tipo, casoDo(arquivo)?.id)
         if (local !== arquivo.local) {
           arquivo.nome = nomeSemSobrescrever(arquivo.nome, ficha.arquivos.filter((a) => a.local === local).map((a) => a.nome))
           l.arquivo = arquivo.nome
@@ -368,12 +378,12 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     ficha.historico.push(registro)
     const contratosLidos = arquivados.filter((l) => l.tipo === 'contrato')
     if (contratosLidos.length > 0) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato (D1.19)', quem))
-    if (virouLaudo) await avisarLaudoNovo(ficha, caso, hoje(), 'Conferiu como laudo um documento que chegou com outro tipo; enviado ao Jurídico para análise', quem)
+    if (virouLaudo) await avisarLaudoNovo(ficha, casoDoLaudo, hoje(), 'Conferiu como laudo um documento que chegou com outro tipo; enviado ao Jurídico para análise', quem)
     await guardar(ficha)
-    const casoDoServidor = ficha.processos.map((x) => x.id).find((id) => UUID.test(id)) ?? null
     const conferidos: { id: string; tipo: string }[] = []
     for (const r of registrar) {
-      const d = await registrarConferido(r.leitura, r.arquivo, casoDoServidor, pedido.usuario!.id)
+      const c = casoDo(r.arquivo)
+      const d = await registrarConferido(r.leitura, r.arquivo, c && UUID.test(c.id) ? c.id : null, pedido.usuario!.id)
       if (d) conferidos.push(d)
     }
     await darBaixaNasExigencias(ficha.id, conferidos, pedido)
@@ -387,7 +397,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       arquivados: arquivados.length,
       descartados: saem.size,
       contrato: contratosLidos.length > 0,
-      processoId: caso?.id,
+      processoId: ficha.processos[0]?.id,
       evento: registro,
       ficha: await fichaPeloId(ficha.id),
       leituras: await leiturasDe(ficha.id),

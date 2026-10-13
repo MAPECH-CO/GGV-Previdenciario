@@ -58,6 +58,8 @@ import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
 
 export const MSG_FICHA_NAO_ENCONTRADA = 'Ficha não encontrada.'
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+/** O laudo que chega pelo card vira documento médico do caso (bloco 5b+), no tipo da tabela `documento_medico`. */
+export const TIPO_DO_DOCUMENTO_MEDICO: Record<string, 'laudo' | 'relatorio' | 'prontuario'> = { laudo: 'laudo', 'relatorio-medico': 'relatorio', prontuario: 'prontuario' }
 
 export const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 /** Quem registra o "não fechou" ou a desistência, pelo perfil da sessão (GGVP-60 CA11): a recusa do escritório não é do Atendimento. */

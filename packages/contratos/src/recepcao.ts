@@ -329,6 +329,8 @@ export const EnvioDeArquivos = z.object({
     .array(z.object({ nome: Texto(200), formato: z.enum(['pdf', 'jpg', 'png']), tamanho: z.number().int().min(0), tipo: Texto(60), hash: z.string().regex(/^[0-9a-f]{64}$/) }))
     .min(1)
     .max(20),
+  /** GGVP-158 P4.9: o caso dos documentos. Obrigatório quando o cliente tem mais de um caso; com um só, é ele. */
+  processoId: Texto(80).optional(),
 })
 export type EnvioDeArquivos = z.infer<typeof EnvioDeArquivos>
 

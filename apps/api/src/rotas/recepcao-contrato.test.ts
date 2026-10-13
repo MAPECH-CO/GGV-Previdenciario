@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -6,7 +7,7 @@ import { eq, sql } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, documento, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, documento, documentoMedico, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
 import { MSG_CONTRATO_SEM_IA } from '../fluxo/leitura.ts'
 import { criarIa } from '../ia/ia.ts'
 import { docxDeTeste, formularioDoArquivo, textoDoDocx } from '../kit/docx-de-teste.ts'
@@ -536,3 +537,32 @@ describe('GGVP-158 P4.4 · o contrato assinado de verdade: o arquivo fica guarda
   })
 })
 
+describe('GGVP-158 P4.9 · o documento que chegou antes do caso', () => {
+  it('o laudo de antes entra no primeiro caso que nasce e vira documento médico, para o parecer; o caso seguinte não leva nada', async () => {
+    const fichaId = await lead()
+    const LAUDO = Buffer.from('%PDF-1.4 o laudo que chegou antes do caso')
+    const hash = createHash('sha256').update(LAUDO).digest('hex')
+    await json('ana', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', arquivos: [{ nome: 'Laudo.pdf', formato: 'pdf', tamanho: LAUDO.length, tipo: 'laudo', hash }] })
+    const f = '----ggv'
+    const corpo = Buffer.concat([
+      Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="hash"\r\n\r\n${hash}\r\n`),
+      Buffer.from(`--${f}\r\nContent-Disposition: form-data; name="arquivo"; filename="Laudo.pdf"\r\nContent-Type: application/pdf\r\n\r\n`),
+      LAUDO,
+      Buffer.from(`\r\n--${f}--\r\n`),
+    ])
+    const guardado = await app.inject({ method: 'POST', url: `/api/fichas/${fichaId}/arquivos/conteudo`, cookies: await cookieDe('ana'), payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${f}` } })
+    expect(guardado.statusCode).toBe(201)
+    const documentoId = guardado.json().documentoId as string
+    expect((await banco.select().from(documento).where(eq(documento.id, documentoId)))[0].casoId).toBeNull()
+
+    const { processo } = await fechou(fichaId)
+    expect((await banco.select().from(documento).where(eq(documento.id, documentoId)))[0].casoId).toBe(processo.id)
+    expect(await banco.select().from(documentoMedico).where(eq(documentoMedico.documentoId, documentoId))).toMatchObject([{ tipo: 'laudo' }])
+    const ficha = await json('ana', 'GET', `/api/fichas/${fichaId}`)
+    expect(ficha.arquivos.find((a: { nome: string }) => a.nome === 'Laudo.pdf').local).toBe(processo.id)
+
+    const segundo = await fechou(fichaId, 'loas-deficiente')
+    expect((await banco.select().from(documento).where(eq(documento.id, documentoId)))[0].casoId).toBe(processo.id)
+    expect(segundo.processo.id).not.toBe(processo.id)
+  })
+})
