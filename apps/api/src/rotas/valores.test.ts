@@ -91,8 +91,9 @@ describe('GGVP-158 P7.6 · o valor da causa e a renda por pessoa do LOAS', () =>
     expect([outra.causa, outra.prestacao]).toEqual(['15000.00', undefined])
     const daAdvogada = (await chamar('gabi', 'GET', `/api/casos/${casoId}/processo`)).json()
     expect([daAdvogada.valorDaCausa, daAdvogada.rendaPorPessoa]).toEqual(['15000.00', null])
-    const doAtendimento = (await chamar('ana', 'GET', `/api/casos/${casoId}/processo`)).json()
-    expect([doAtendimento.valorDaCausa, doAtendimento.rendaPorPessoa]).toEqual([undefined, undefined])
-    expect(JSON.stringify(doAtendimento)).not.toContain('15000')
+    // O Atendimento nem abre o resumo do processo (GGVP-162).
+    const doAtendimento = await chamar('ana', 'GET', `/api/casos/${casoId}/processo`)
+    expect(doAtendimento.statusCode).toBe(403)
+    expect(doAtendimento.body).not.toContain('15000')
   })
 })

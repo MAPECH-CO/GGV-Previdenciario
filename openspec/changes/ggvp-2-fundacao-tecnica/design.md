@@ -211,3 +211,38 @@ não está no Drive". Gerar o pacote de novo zera `pacote_drive_id`.
 - Homônimo sem CPF no título cai na pasta de mesmo nome, como no balcão. A conferência pelo CPF dentro dos documentos
   da pasta fica para quando o escritório pedir.
 - Cliente com mais de uma pasta (uma por benefício) manda para "A REVISAR".
+
+## GGVP-162 · Quem abre o processo (14/10)
+
+### Context
+
+O Atendimento, a líder e a Documentação abriam qualquer processo do escritório: a lista e a busca (`/api/processos`), a
+página (`GET /api/casos/:id/processo`) e o histórico (`GET /api/casos/:id/historico`), tudo por `caso.ver`. A decisão do
+Mateus de 14/10 deixa o processo com o Jurídico e o Sócio.
+
+### Decisions
+
+1. **Ação nova `processo.abrir`, sem mexer em `caso.ver`.** As telas dos passos do Atendimento e da Documentação
+   (contrato, cobrança, liberação, exigência, perícia, ajuste) leem o caso com `caso.ver`; tirar `caso.ver` deles quebraria
+   as tarefas. `processo.abrir` guarda só o que é o processo: a página, a lista, a busca e o histórico. Têm: advogada,
+   Sênior, Jurídico administrativo e Sócio.
+2. **O histórico do processo segue a página.** A autorização da exportação, do Sócio, continua; o Sócio também abre o
+   processo.
+3. **O chat segue a mesma régua.** `ler_caso` lê a página do processo para quem a abre; para os outros, a ficha do cliente
+   (`GET /api/fichas/:pessoaId`), só com o processo do caso e os campos que a ficha mostra (número, benefício, etapa,
+   próxima ação e prazo). O link do caso vai à ficha (`/clientes/:pessoaId`): a ficha é da pessoa do caso.
+4. **A tela esconde, o servidor recusa** (GGVP-96 CA9). As rotas da tela ganham a mesma ação; os links que levariam à
+   página (ficha, busca, Clientes, Ajustar o caso, perícia, chat de exemplo) somem ou vão à ficha.
+5. **A página da perícia fica** com todos que veem o caso (GGVP-156): a Documentação tem tarefas nela.
+
+### Risks / Trade-offs
+
+- Quem tem `caso.ver` sem `processo.abrir` ainda lê, pelas rotas de cada passo, o que a tarefa precisa. A regra é sobre a
+  página, a lista, a busca e o histórico do processo, não sobre os dados de cada passo.
+- O chat do Atendimento responde com menos: só o que a ficha mostra e as tarefas da pessoa.
+- Supera o cenário "O resumo sem números" do P5.14 (change ggvp-158-fechamento), em que o Atendimento abria o resumo do
+  processo com a vara, o juiz e o perito: agora o resumo é de quem abre o processo. Ao arquivar a ggvp-158, levar esta
+  nota ao cenário.
+- O botão do evento da perícia na Agenda leva à página da perícia: para quem não abre o processo, ele diz "Abrir a
+  perícia" no lugar de "Abrir o processo". O "Ajustar o caso" ganhou o id da pessoa no `CasoParaLiberacao`, para levar à
+  ficha.

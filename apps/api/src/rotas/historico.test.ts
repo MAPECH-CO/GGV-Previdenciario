@@ -26,7 +26,7 @@ const acoes = async () => (await banco.select().from(eventoAuditoria)).map((e) =
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => new Date('2026-10-07T15:00:00Z') })
-  for (const [apelido, perfil] of [['helena', 'senior'], ['gabi', 'advogada'], ['lauro', 'socio'], ['julia', 'financeiro']] as const) {
+  for (const [apelido, perfil] of [['helena', 'senior'], ['gabi', 'advogada'], ['lauro', 'socio'], ['julia', 'financeiro'], ['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['fabio', 'documentacao']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -79,6 +79,12 @@ describe('GGVP-99 · histórico de quem fez o quê', () => {
       'Exigência do juiz perdida',
       'Publicação vinculada ao processo',
     ])
+  })
+
+  it('GGVP-162 CA1 · o histórico do processo é de quem abre o processo: o Atendimento, a líder e a Documentação recebem 403, registrado', async () => {
+    for (const apelido of ['ana', 'eva', 'fabio']) expect((await chamar(apelido, 'GET', `/api/casos/${casoId}/historico`)).statusCode, apelido).toBe(403)
+    for (const apelido of ['gabi', 'lauro']) expect((await chamar(apelido, 'GET', `/api/casos/${casoId}/historico`)).statusCode, apelido).toBe(200)
+    expect((await acoes()).filter((a) => a === 'acesso_negado')).toHaveLength(3)
   })
 
   it('CA9 · editar ou apagar o histórico pela API é recusado e registrado', async () => {

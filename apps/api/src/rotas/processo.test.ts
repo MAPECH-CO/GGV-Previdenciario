@@ -49,6 +49,7 @@ beforeEach(async () => {
   app = criarServidor({ banco, agora: () => new Date('2026-10-07T15:00:00Z') })
   const perfis = [
     ['ana', 'atendimento'],
+    ['eva', 'atendimento_lider'],
     ['fabio', 'documentacao'],
     ['gabi', 'advogada'],
     ['rosa', 'advogada'],
@@ -173,26 +174,21 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(acessos.map((a) => [a.usuarioId, a.perfil, a.casoId, a.recurso])).toEqual([[ids.gabi, 'advogada', casoId, `processo:${casoId}`]])
   })
 
-  it('o Atendimento e a Documentação: status, datas e o resultado da perícia; sem valores, sem conteúdo médico, sem o nome do laudo e sem a peça', async () => {
-    for (const apelido of ['ana', 'fabio']) {
-      const p = (await ver(apelido)).json()
-      expect([p.valores, p.saude]).toEqual([null, null])
-      expect(p.documentos.map((d: { nome: string | null; tipo: string; sensivel: boolean }) => [d.nome, d.tipo, d.sensivel])).toEqual([
-        [null, 'laudo', true],
-        ['rg-e-cpf.pdf', 'rg_e_cpf', false],
-      ])
-      expect([p.pericia.situacao, p.pericia.resultado, p.pericia.perito]).toEqual(['concluida', 'favoravel', 'Dr. Perito'])
-      expect(p.tarefas).toHaveLength(2)
-      expect(p.linha).toHaveLength(2)
+  it('GGVP-162 CA1 · o Atendimento, a líder e a Documentação não abrem o processo: 403, nada do caso e a tentativa registrada', async () => {
+    for (const apelido of ['ana', 'eva', 'fabio']) {
+      const r = await ver(apelido)
+      expect([apelido, r.statusCode]).toEqual([apelido, 403])
+      expect(r.body).not.toMatch(/Vera|laudo|rg-e-cpf/)
     }
+    const negados = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'acesso_negado')
+    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual(Array(3).fill([casoId, 'processo.abrir']))
     expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
   })
 
-  it('GGVP-158 P5.14 · o Atendimento vê a vara, o juiz e o nome do perito, sem número nenhum', async () => {
+  it('GGVP-158 P5.14 · o resumo do processo traz a vara, o juiz e o nome do perito (desde a GGVP-162, só para quem abre o processo)', async () => {
     await banco.update(caso).set({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Maria Souza' }).where(eq(caso.id, casoId))
-    const p = (await ver('ana')).json()
+    const p = (await ver('igor')).json()
     expect([p.vara, p.juiz, p.pericia.perito]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo', 'Dra. Maria Souza', 'Dr. Perito'])
-    expect(JSON.stringify(p)).not.toMatch(/casosDoJuiz|jurimetria|"casos"/)
   })
 
   it('a outra advogada não recebe os valores do caso; a Sênior e o Jurídico administrativo recebem o médico, sem valores', async () => {
@@ -211,7 +207,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
   it('o Financeiro não abre o caso, e a tentativa fica no histórico do caso', async () => {
     expect((await ver('julia')).statusCode).toBe(403)
     const negados = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'acesso_negado')
-    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([[casoId, 'caso.ver']])
+    expect(negados.map((e) => [(e.detalhe as { casoId?: string }).casoId, (e.detalhe as { acao: string }).acao])).toEqual([[casoId, 'processo.abrir']])
   })
 
   it('GGVP-96 · o Sócio lê o caso inteiro: os valores (Lucas, 07/10), o conteúdo médico e a peça (Pedro, 09/10); a leitura fica no registro', async () => {
@@ -247,7 +243,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     // A perícia que o juiz pediu (D3a.03), aberta pelo despacho e ainda sem a tela da perícia: nasce liberada, para marcar.
     const [e] = await banco.insert(etapa).values({ casoId: c.id, diagrama: 'D3a', passo: 'D3a.03', situacao: 'concluida' }).returning()
     await banco.insert(pericia).values({ casoId: c.id, tipo: 'social', chamadaPorEtapaId: e.id })
-    const doJuiz = (await ver('ana', c.id)).json()
+    const doJuiz = (await ver('igor', c.id)).json()
     expect(doJuiz.pericia).toEqual({ tipo: 'social', origem: 'd3a-juiz', situacao: 'marcar', marcada: null, marcadaPeloSistema: false, perito: null, resultado: null })
     expect(doJuiz.proximoPasso).toBeNull()
   })
@@ -263,10 +259,10 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
 
     // Na análise da advogada: o prazo do processo, uma vez.
     await publicar('Diga a parte autora sobre o laudo.', 'j1')
-    expect((await ver('ana')).json().prazos).toEqual([{ fim: '2026-10-27', regra: expect.any(String) }])
+    expect((await ver('gabi')).json().prazos).toEqual([{ fim: '2026-10-27', regra: expect.any(String) }])
     // Só ciência: nada a cumprir, o prazo sai.
     expect((await decidir({ decisao: 'ciencia' })).statusCode).toBe(201)
-    expect((await ver('ana')).json().prazos).toEqual([])
+    expect((await ver('gabi')).json().prazos).toEqual([])
 
     // Precisa cumprir: o prazo aparece só como a exigência, com os itens por setor.
     await publicar('Junte a parte autora o CNIS e a carteira de trabalho.', 'j2')
@@ -279,7 +275,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       .update(exigenciaItem)
       .set({ situacao: 'cumprido', cumpridoEm: new Date('2026-10-06T14:00:00Z'), cumpridoPor: ids.ana })
       .where(eq(exigenciaItem.descricao, 'Pedir a carteira de trabalho'))
-    let p = (await ver('ana')).json()
+    let p = (await ver('gabi')).json()
     expect(p.prazos).toEqual([])
     expect(doJuiz(p)).toEqual([
       {
@@ -301,7 +297,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       .update(tarefa)
       .set({ situacao: 'concluida', concluidaEm: new Date('2026-10-07T12:00:00Z') })
       .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D3a.03', 'D3a.04'])))
-    p = (await ver('ana')).json()
+    p = (await ver('gabi')).json()
     expect([p.prazos, doJuiz(p)]).toEqual([[], []])
   })
 })

@@ -144,6 +144,14 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     expect(screen.getByText(/Remarcar a perícia é com o Jurídico administrativo/)).toBeTruthy()
   })
 
+  it('GGVP-162 CA5 · para quem não abre o processo, o mesmo botão diz "Abrir a perícia"', async () => {
+    const [evento] = (await eventosDaAgenda('2026-10-16', '2026-10-16')).filter((e) => e.categoria === 'pericias')
+    entrarComo('atendimento')
+    render(comSessao(<DetalhePericia evento={evento} aoFechar={() => {}} />))
+    expect(screen.queryByRole('link', { name: 'Abrir o processo' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Abrir a perícia' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
+  })
+
   it('judicial · a página do processo diz que a data veio da publicação, e os prazos que ela define', async () => {
     entrarComo('advogada')
     render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))

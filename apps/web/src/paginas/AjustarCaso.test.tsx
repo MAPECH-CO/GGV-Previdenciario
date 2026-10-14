@@ -1,11 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CasoParaLiberacao } from '@ggv/contratos'
+import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { AjustarCaso } from './AjustarCaso.tsx'
 
 const CASO = '6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6'
+const PESSOA = '7a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
 const devolvido: CasoParaLiberacao = {
   casoId: CASO,
+  pessoaId: PESSOA,
   cliente: 'Benedito Alves (exemplo)',
   beneficio: 'bpc_loas_deficiente',
   checklist: { cadastrado: true, completo: true, faltam: [] },
@@ -27,6 +30,20 @@ function servidor(caso: CasoParaLiberacao, liberacao: [number, unknown] = [201, 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Ajustar o caso devolvido pela Sênior (GGVP-127)', () => {
+  it('GGVP-162 CA5 · para corrigir, o Atendimento vai à ficha do cliente; quem abre o processo, à página dele', async () => {
+    servidor(devolvido)
+    entrarComo('atendimento')
+    render(comSessao(<AjustarCaso casoId={CASO} />))
+    expect((await screen.findByRole('link', { name: 'ficha do cliente' })).getAttribute('href')).toBe(`/clientes/${PESSOA}`)
+    expect(screen.queryByRole('link', { name: 'página do processo' })).toBeNull()
+    cleanup()
+    entrarComo('senior')
+    render(comSessao(<AjustarCaso casoId={CASO} />))
+    expect((await screen.findByRole('link', { name: 'página do processo' })).getAttribute('href')).toBe(`/casos/${CASO}`)
+    cleanup()
+    entrarComo(undefined)
+  })
+
   it('CA1 · mostra o motivo, o prazo e quem devolveu', async () => {
     servidor(devolvido)
     render(<AjustarCaso casoId={CASO} />)

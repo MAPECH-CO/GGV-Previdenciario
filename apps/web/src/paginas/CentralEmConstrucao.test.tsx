@@ -26,10 +26,10 @@ describe('GGVP-78 · o início de perfil sem Central', () => {
 })
 
 describe('GGVP-135 · a Gestão no topo do líder do Atendimento (P14)', () => {
-  it('o líder vê Prazos, Tentativas bloqueadas e Resultados; o Atendimento, não', async () => {
+  it('o líder vê Prazos, Tentativas bloqueadas e Resultados, e Clientes sem Processos (GGVP-162); o Atendimento, não', async () => {
     entrarComo('atendimento-lider')
     const { unmount } = render(comSessao(<CentralAtendimento />))
-    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes', 'Processos', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração'])
+    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração'])
     unmount()
     entrarComo('atendimento')
     render(comSessao(<CentralAtendimento />))
