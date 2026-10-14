@@ -8,7 +8,7 @@ import { criarIa } from './ia/ia.ts'
 import { criarServidor, resumoDoErro } from './servidor.ts'
 import { fontesAtivas } from './vigilia/fontes.ts'
 import { ligarRelogio } from './vigilia/rodadas.ts'
-import { sincronizarDrive } from './fluxo/arquivar.ts'
+import { avisarSemCopia, sincronizarDrive } from './fluxo/arquivar.ts'
 import { criarLeitor } from './fluxo/leitura.ts'
 import { olharOScanner } from './fluxo/scanner.ts'
 import { apagarSenhasVencidas } from './fluxo/cofre.ts'
@@ -59,6 +59,13 @@ if (comDrive?.soLeitura) {
       if (r.enviados || r.falhas.length) app.log.info({ drive: r }, 'rodada do Drive')
     } catch (e) {
       app.log.error(resumoDoErro(e), 'rodada do Drive')
+    }
+    // GGVP-158 P9.4: o documento pronto que passou de 2 dias sem cópia no Drive avisa o suporte, uma vez por dia.
+    try {
+      const aviso = await avisarSemCopia(banco, new Date())
+      if (aviso) app.log.error({ semCopia: aviso }, 'arquivos sem cópia no Drive')
+    } catch (e) {
+      app.log.error(resumoDoErro(e), 'aviso da cópia no Drive')
     }
     try {
       const s = await olharOScanner({ banco, drive: deVerdade.drive, pastas: deVerdade.pastas, leitor })

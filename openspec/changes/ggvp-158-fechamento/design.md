@@ -512,6 +512,61 @@ O que já está feito e não entra: as outras leituras de conteúdo médico já 
     - A decisão guarda o texto (`decisao` e a parte do complemento) para o Jurídico e o Sócio.
     - Sem migração de dado: a homologação só tem dado de teste.
 
+### Parte 9 · Produção, a parte que não depende do Lucas (decisões do Mateus, 14/10)
+
+O código e o roteiro vão num pedido em cima do #82 (parte 8). O que é fora do código (Coolify, Supabase e DNS) é feito com o Mateus, passo a passo, cada um só com o pedido dele. Sem migração e sem matriz nova.
+
+Decisões do Mateus em 14/10:
+- o banco da produção é o PrevGGVLucas (São Paulo), que hoje é o da homologação. A homologação muda de banco antes, e o PrevGGVLucas é limpo do teste;
+- o monitor do /saude roda num container à parte no servidor, com a mesma imagem;
+- os arquivos têm a cópia no Drive do escritório, com um aviso quando ela atrasa. O banco fica com o backup diário do Supabase e a restauração testada;
+- plano aprovado, código em seguida.
+
+80. **A produção sobe pela versão que passou na homologação** (P9.1).
+    - É um app "Docker Image" no Coolify, como o da homologação, com a imagem pela tag do commit (`ghcr.io/mapech-co/ggv-previdenciario:<commit>`), nunca pela `main`.
+    - Liberar uma versão é trocar a tag pela que o /saude da homologação mostra e fazer o deploy; voltar é pôr a tag anterior.
+    - Sem webhook: a produção não muda sozinha a cada merge.
+    - Leva `AMBIENTE=producao`, domínio próprio com https e as variáveis da lista da homologação, com os valores da produção. Quem põe os valores é o Mateus; o roteiro leva só os nomes.
+    - Em produção, a largada recusa o que é de teste. Além do `LEITURA_SIMULADA` (P4.10), recusa o `GOOGLE_DRIVE_SO_LEITURA=sim` e o `RELACIONAMENTO_SIMULADO` com valor diferente de `nao`, e a mensagem diz qual variável sobrou. Copiar o app da homologação no Coolify traria essas variáveis.
+81. **O banco da produção é o PrevGGVLucas** (P9.2).
+    - A ordem:
+      1. a homologação muda de banco, para os dois apps nunca gravarem no mesmo;
+      2. o Mateus limpa o PrevGGVLucas;
+      3. a produção sobe.
+    - O banco novo da homologação é decisão do Mateus na hora. As opções:
+      - um projeto novo no Supabase, com o depósito de arquivos (tem custo);
+      - o "Portal Operacional", de Oregon (é lento e adia o apagar da tarefa 2.16);
+      - um Postgres no Coolify, com pgvector, e os arquivos numa pasta do servidor (sem custo novo).
+    - A limpeza deixa o banco como novo:
+      - os esquemas do portal (`public` e `drizzle`) saem inteiros, e a largada roda todas as migrações de novo. Assim volta junto o que as migrações põem, como o catálogo dos benefícios, e a largada põe os feriados, os padrões do protocolo e o modelo da ida ao banco;
+      - o depósito `documentos` fica vazio. Os modelos do Word sobem de novo pelo `modelos:subir`, com o login de uma Sênior da produção, porque o registro deles (a tabela `modelo`) sai com o banco (14/10, na implementação).
+
+      O roteiro traz os comandos, ensaiados antes no projeto temporário da restauração (decisão 82). Quem roda a limpeza é o Mateus; daqui, só nomes e contagens.
+    - A produção sobe vazia. Os usuários reais esperam a lista do Lucas (GGVP-126 CA6).
+82. **O backup do banco e a chave do cofre** (P9.3).
+    - O backup diário do Supabase do PrevGGVLucas é conferido pelo painel. O plano do projeto diz quantos dias ele guarda.
+    - Para testar a restauração, o backup mais novo vai para um projeto temporário, onde se conferem as migrações e as contagens. Quem apaga o projeto temporário é o Mateus.
+    - A `COFRE_CHAVE` da produção é nova, porque a da homologação passou pelos testes. Ela tem uma cópia no cofre de senhas do Mateus, fora do servidor: sem ela, um banco restaurado não abre as senhas do gov.br. O valor nunca passa por aqui.
+83. **Os arquivos com cópia no Drive** (P9.4).
+    - O backup do Supabase não leva o depósito de arquivos. A cópia é a do Drive do escritório: todo documento vai para lá (GGVP-107), menos o pacote da petição, que se gera de novo, e o exemplo.
+    - Quando um documento pronto para o Drive passa de 2 dias sem cópia, o Drive não está recebendo. Sai então um aviso por dia ao suporte, pelo módulo do alarme (ADR-018).
+      - O texto diz quantos estão nessa situação e quantos esperam a conferência da Documentação.
+      - Nunca leva o nome do cliente nem o do arquivo.
+    - A conta usa a mesma regra do envio, uma função só em `fluxo/arquivar.ts`, e roda na rodada do Drive. Com o Drive desligado ou só leitura, não roda.
+84. **O monitor do /saude** (P9.5).
+    - `apps/api/src/monitor.ts` olha a cada minuto o `/saude` do endereço que recebe. Conta como falha não responder em 10 segundos, responder diferente de 200 ou trazer `ok` diferente de `true`.
+    - Duas falhas seguidas avisam "O portal caiu", com o motivo. A primeira resposta boa depois avisa "O portal voltou", com quanto tempo ficou fora.
+    - Pedir duas falhas seguidas evita o aviso no deploy, que troca o container em segundos.
+    - O aviso vai pelo módulo do alarme (o canal e o Jira, ADR-018), com as mesmas variáveis `ALARME_*`.
+    - O endereço vai no comando (`pnpm --filter @ggv/api monitor https://…`), sem variável nova.
+    - Roda num app à parte no Coolify (docker compose), com a mesma imagem, o comando do monitor e o healthcheck da imagem desligado. Se o servidor inteiro cair, não avisa.
+85. **O roteiro** (`docs/infra/producao.md`). Cobre:
+    - o app e as variáveis (só os nomes);
+    - liberar e voltar uma versão;
+    - o monitor;
+    - o backup, a restauração e a chave do cofre;
+    - a limpeza do PrevGGVLucas e a mudança da homologação.
+
 ## Campos de formulário
 
 Partes 1 a 4: nenhum.
@@ -544,6 +599,8 @@ Parte 7, só nos contratos do servidor:
 | O nome do perito do Raio-X | `validarNome` e `normalizarNome` |
 
 Parte 8: nenhum. O `avisoNaGravacao` é o "sim" da caixa de marcar, sem valor digitado.
+
+Parte 9: nenhum.
 
 ## Risks / Trade-offs
 
@@ -594,3 +651,10 @@ Parte 8: nenhum. O `avisoNaGravacao` é o "sim" da caixa de marcar, sem valor di
 - **A lista da Recepção:** a advogada que a abre gera uma linha de leitura a cada abertura, e não uma por gravação. A lista leva as gravações de todos.
 - **Leituras sem registro:** a estratégia, a sugestão de benefício e a petição seguem sem registro de leitura. A auditoria contou só as rotas com a trava do dado de saúde.
 - **O aviso no áudio gravado fora:** até a tela da entrevista mandar a confirmação, o pedido do servidor espera. Quem sobe o áudio de fora hoje não confirma o aviso.
+- **O servidor inteiro fora do ar:** o monitor cai junto, e ninguém é avisado. Restam o painel do Coolify e o da Hostinger.
+- **A homologação muda de banco:** o roteiro de teste do Lucas recomeça no banco novo. É preciso rodar o `homologacao:preparar` de novo, com senhas novas.
+- **A produção sem o que espera o Lucas:**
+  - sem a lista de logins, ela sobe sem usuários reais;
+  - sem as OABs do DJEN e a chave da AASP, a vigília avisa "sem fonte" uma vez por dia (P5.10).
+- **O modo exemplo da tela** (bloqueio 1 da auditoria de 14/10) é do Pedro. Enquanto ele existir, a produção não abre ao escritório.
+- **A restauração testada:** pede um projeto temporário do Supabase (custo por hora), que o Mateus apaga depois.

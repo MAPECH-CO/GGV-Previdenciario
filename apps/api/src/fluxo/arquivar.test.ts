@@ -5,9 +5,10 @@ import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, documento, peticao, peticaoVersao, pessoa, resultadoInss, tarefa } from '../banco/esquema.ts'
+import { caso, documento, eventoAuditoria, peticao, peticaoVersao, pessoa, resultadoInss, tarefa } from '../banco/esquema.ts'
 import type { Drive, PastasDoDrive } from '../drive.ts'
-import { PASSO_DO_DRIVE, TITULO_DA_FALHA, pastaDoTitulo, sincronizarDrive } from './arquivar.ts'
+import type { Alarme, Suporte } from '../suporte.ts'
+import { PASSO_DO_DRIVE, TITULO_DA_FALHA, avisarSemCopia, pastaDoTitulo, sincronizarDrive } from './arquivar.ts'
 
 type Item = { id: string; nome: string; pai: string; pasta: boolean; marca: string; conteudo?: string }
 
@@ -234,5 +235,45 @@ describe('arquivar no Drive (GGVP-107)', () => {
     await banco.update(documento).set({ situacao: 'conferido' }).where(eq(documento.id, doCard.id))
     expect(await rodar(g.drive)).toEqual({ enviados: 1, falhas: [] })
     expect((await doc(doCard.id)).driveArquivoId).not.toBeNull()
+  })
+})
+
+describe('GGVP-158 P9.4 · o aviso dos arquivos sem cópia no Drive', () => {
+  const HOJE = new Date('2026-10-14T15:00:00Z')
+  const avisos: Alarme[] = []
+  const suporte: Suporte = async (a) => {
+    avisos.push(a)
+    return { canal: 'enviado', jira: 'desligado' }
+  }
+  beforeEach(() => void (avisos.length = 0))
+
+  it('o pronto há mais de 2 dias sem cópia avisa uma vez no dia, com as contagens e sem nome; o pacote e o exemplo ficam de fora', async () => {
+    const { casoId } = await cliente('Maria Inventada da Silva')
+    const velho = new Date('2026-10-11T15:00:00Z')
+    for (const tipo of ['laudo', 'rg', 'cnis']) await guardar(casoId, tipo, velho)
+    await guardar(casoId, 'laudo', velho, { origem: 'card' })
+    await guardar(casoId, 'pacote_peticao', velho)
+    await guardar(casoId, 'rg', velho, { origem: 'exemplo' })
+    await guardar(casoId, 'cnis', new Date('2026-10-13T15:00:00Z'))
+    expect(await avisarSemCopia(banco, HOJE, suporte)).toEqual({ prontos: 3, esperando: 1, canal: 'enviado', jira: 'desligado' })
+    expect(await avisarSemCopia(banco, new Date('2026-10-14T20:00:00Z'), suporte)).toBeNull()
+    expect(avisos).toEqual([
+      {
+        titulo: 'Arquivos do portal sem cópia no Drive',
+        texto: '3 documento(s) pronto(s) para o Drive sem cópia há mais de 2 dias: o Drive não está recebendo. Há também 1 esperando a conferência da Documentação.',
+      },
+    ])
+    expect(JSON.stringify(avisos)).not.toContain('Maria')
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'alarme_suporte'))
+    expect([ev.quem, ev.alvo, ev.detalhe]).toEqual(['sistema', 'drive:sem-copia:2026-10-14', { prontos: 3, esperando: 1, canal: 'enviado', jira: 'desligado' }])
+  })
+
+  it('sem documento pronto atrasado, nada sai: o recente e o que já tem cópia não contam', async () => {
+    const { casoId } = await cliente('João Inventado')
+    await guardar(casoId, 'laudo', new Date('2026-10-13T15:00:00Z'))
+    const comCopia = await guardar(casoId, 'rg', new Date('2026-10-10T15:00:00Z'))
+    await banco.update(documento).set({ drivePendente: false }).where(eq(documento.id, comCopia.id))
+    expect(await avisarSemCopia(banco, HOJE, suporte)).toBeNull()
+    expect(avisos).toEqual([])
   })
 })
