@@ -20,9 +20,9 @@ import {
   motivoParaNaoMudar,
   pertoDaPrestacao,
   podeConfirmarSegunda,
+  tarefaDoAvisoBancario,
   type Verificacao,
 } from '../../../web/src/regras/seguranca.ts'
-import { criarCorreio } from './mensagens.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario } from './recepcao.ts'
 
 export const MSG_SEM_PEDIDO_BANCARIO = 'Não há pedido de mudança dos dados bancários.'
@@ -58,12 +58,11 @@ export async function portaoDoContato(banco: Banco, agora: () => Date, pedido: F
   return null
 }
 
-type Opcoes = { banco: Banco; agora?: () => Date; ambiente?: Record<string, string | undefined> }
+type Opcoes = { banco: Banco; agora?: () => Date }
 
-export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = () => new Date(), ambiente = process.env }: Opcoes) {
+export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
-  const { evento, nomeDe, fichas, guardar, abrirTarefa } = criarFichario(banco, agora)
-  const correio = criarCorreio(banco, agora, ambiente)
+  const { evento, nomeDe, fichas, guardar, abrirTarefa, garantirAberta } = criarFichario(banco, agora)
   // LGPD, minimização (GGVP-96): os dados bancários, só quem pede ou confirma a mudança e o Financeiro, que repassa.
   const ver = { preHandler: exigir(banco, 'dados_bancarios.ver', agora) }
   const pedir = { preHandler: exigir(banco, 'dados_bancarios.pedir', agora) }
@@ -167,11 +166,9 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
     }
     await guardar(ficha)
     await historico(pedido.usuario!.id, 'dados_bancarios_confirmados', pedido, `pessoa:${ficha.id}`, { alerta: Boolean(perto) })
-    // O aviso ao contato cadastrado, pelo Chatwoot: se não foi o cliente, ele liga para o escritório (CA5).
-    const pronta = await correio.preparar(ficha, 'aviso-de-mudanca')
-    const aviso = await correio.enviar(pedido, ficha, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
-    // Sem sucesso falso: o aviso que não saiu volta com o motivo, para a tela dizer (GGVP-102 CA5).
-    const avisoNaoSaiu = 'erro' in aviso ? aviso.erro : aviso.mensagem.status === 'falhou' ? aviso.mensagem.erro : undefined
-    return { ...novo, ...(avisoNaoSaiu && { avisoNaoSaiu }) } satisfies MudancaBancariaConfirmada
+    // CA5 (opção B, decisão do Mateus em 14/10; o Lucas confirma): o aviso não sai sozinho. O Atendimento recebe a tarefa, com o
+    // aviso pronto na Mensagem ao cliente, para conferir e enviar; o envio que sai fecha a tarefa (rotas/mensagens.ts).
+    await garantirAberta(tarefaDoAvisoBancario(ficha))
+    return novo satisfies MudancaBancariaConfirmada
   })
 }

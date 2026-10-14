@@ -27,7 +27,7 @@ test('CA1 · o lead, ainda sem contrato, muda o telefone sem a verificação, e 
   await expect(page.getByText('Alterações salvas. Ficaram no histórico.')).toBeVisible()
 })
 
-test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva, em outro computador; o contato anterior é avisado', async ({ page, browser }) => {
+test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva, em outro computador; o aviso vira tarefa do Atendimento, que confere e envia', async ({ page, browser }) => {
   test.slow()
   const ficha = await fichaDoLead(page, 'Rosa Conta Teste', '11922220000')
   const cartao = page.getByRole('region', { name: 'Dados bancários para o repasse' })
@@ -48,14 +48,28 @@ test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva
   await eva.goto(ficha)
   const doCartao = eva.getByRole('region', { name: 'Dados bancários para o repasse' })
   await doCartao.getByRole('button', { name: 'Confirmar a mudança (segunda pessoa)' }).click()
-  await expect(doCartao.getByRole('status')).toHaveText('Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')
+  await expect(doCartao.getByRole('status')).toHaveText('Dados bancários mudados. O Atendimento recebeu a tarefa de avisar o cliente, com o aviso pronto para conferir e enviar.')
   await expect(doCartao).toContainText('Banco Exemplo Dois · agência 0002 · conta 65432-1')
-  await expect(eva.getByRole('list', { name: 'Últimos contatos' })).toContainText('Se não foi você, ligue para o escritório agora.')
+  // CA5 (opção B, decisão do Mateus em 14/10): nada sai sozinho para o cliente.
+  await expect(eva.getByRole('list', { name: 'Últimos contatos' })).not.toContainText('Se não foi você')
   // GGVP-96 (LGPD): o histórico vai a todos que veem o caso; fica só o fato, sem a conta.
   const historico = eva.getByRole('list', { name: 'Histórico' })
   await expect(historico).toContainText('Mudou os dados bancários (cliente no escritório; em contrato novo;')
   await expect(historico).not.toContainText('65432-1')
   await contexto.close()
+
+  // A Ana acha a tarefa na Central; o link abre a ficha com o aviso pronto; ela confere e envia, e a tarefa sai.
+  await page.goto('/')
+  const tarefa = page.getByRole('link', { name: 'Rosa Conta Teste · Avisar o cliente da mudança bancária' })
+  await tarefa.click()
+  const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Conta Teste' })
+  await expect(janela.getByLabel('Modelo')).toHaveValue('aviso-de-mudanca')
+  await expect(janela.getByRole('textbox')).toHaveValue(/Os dados para você receber os valores do seu caso mudaram hoje, a seu pedido\. Se não foi você, ligue para o escritório agora\./)
+  await janela.getByRole('button', { name: 'Enviar pelo Chatwoot' }).click()
+  await expect(janela.getByText(/✓ Simulado no Chatwoot às \d\d:\d\d/)).toBeVisible()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
+  await expect(tarefa).toHaveCount(0)
 })
 
 test('CA3 e CA7 · na ligação, o roteiro de segurança; no chat, a próxima tarefa vem com o lembrete da identidade', async ({ page }) => {

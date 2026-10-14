@@ -5,7 +5,8 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, eventoAuditoria, fichaRecepcao, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_FORA_DA_LISTA, MSG_SIMULADO } from './mensagens.ts'
+import { MSG_SIMULADO } from './mensagens.ts'
+import { AVISAR_MUDANCA_BANCARIA } from '../../../web/src/regras/seguranca.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -82,14 +83,11 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     expect((await chamar('ana', 'POST', confirmacao)).statusCode).toBe(403)
     const novo = await json('eva', 'POST', confirmacao)
     expect(novo).toMatchObject({ ...dados, fichaId: id, quem: 'ana' })
-    // GGVP-158: sem o Chatwoot, o aviso não sai, e a confirmação devolve o motivo em vez de fingir a entrega.
-    expect(novo.avisoNaoSaiu).toBe(MSG_SIMULADO)
     expect(await json('ana', 'GET', url)).toMatchObject({ atual: dados, pedido: null })
     const ficha = await json('ana', 'GET', `/api/fichas/${id}`)
     expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).toEqual(
       expect.arrayContaining([
         'Mudou os dados bancários (cliente no escritório; em contrato novo; pedido de ana, segunda confirmação de eva)',
-        `A mensagem «Aviso de mudança dos dados» não saiu pelo Chatwoot: ${MSG_SIMULADO}. Nada foi reenviado sozinho.`,
       ]),
     )
     // GGVP-96 (LGPD): o histórico da ficha vai a quem vê o caso; a Documentação e o Jurídico adm não leem banco, agência nem conta.
@@ -98,8 +96,10 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
       expect(vista, apelido).toContain('Mudou os dados bancários')
       for (const dado of ['Banco Exemplo', '0001', '12345-6']) expect(vista, `${apelido}: ${dado}`).not.toContain(dado)
     }
-    const [aviso] = await banco.select().from(mensagem)
-    expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'falhou', erro: MSG_SIMULADO })
+    // CA5 (opção B, 14/10): nenhuma mensagem sai sozinha; o Atendimento recebe a tarefa de avisar, com o aviso pronto.
+    expect(await banco.select().from(mensagem)).toEqual([])
+    const [aviso] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.setor, 'Atendimento'))
+    expect(aviso.dados).toMatchObject({ acao: AVISAR_MUDANCA_BANCARIA, urgente: true, href: `/clientes/${id}?mensagem=aviso-de-mudanca` })
     // Sem caso perto da prestação de contas, nenhum alerta.
     expect(await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.setor, 'Financeiro'))).toHaveLength(0)
     expect((await chamar('eva', 'POST', confirmacao)).statusCode).toBe(404)
@@ -112,28 +112,30 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     await json('gabi', 'POST', url, { dados: { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }, verificacao: { como: 'video', contratoNovo: true } })
     expect((await json('gabi', 'POST', `${url}/confirmacao`)).erro).toBe('A segunda confirmação é de outra pessoa, não de quem pediu.')
     await json('eva', 'POST', `${url}/confirmacao`)
-    const alertas = await banco.select().from(tarefaRecepcao)
+    const alertas = (await banco.select().from(tarefaRecepcao)).filter((t) => t.setor !== 'Atendimento')
     expect(alertas.map((t) => t.setor).sort()).toEqual(['Financeiro', 'Jurídico'])
     expect(alertas[0].dados).toMatchObject({ acao: 'Dados bancários mudaram', urgente: true })
   })
 
-  it('sem sucesso falso: na homologação, o aviso ao telefone fora da lista de teste não sai e a confirmação devolve o motivo', async () => {
-    // Endereço e token inventados; o telefone da ficha está fora da lista, então o Chatwoot nem é chamado.
-    const espiao = vi.fn()
-    vi.stubGlobal('fetch', espiao)
-    await app.close()
-    const ambiente = { CHATWOOT_URL: 'https://chatwoot.teste', CHATWOOT_CONTA: '7', CHATWOOT_CAIXA: '9', CHATWOOT_TOKEN: 'token-de-teste', AMBIENTE: 'homologacao', CHATWOOT_PERMITIDOS: '21998760000' }
-    for (const [nome, valor] of Object.entries(ambiente)) vi.stubEnv(nome, valor)
-    app = criarServidor({ banco, agora: () => relogio })
-    vi.unstubAllEnvs()
+  it('CA5 (opção B, 14/10) · o aviso sai só pela Mensagem ao cliente: o que não sai deixa a tarefa aberta; o que sai a fecha', async () => {
     const { id } = await novaFicha('11987654321')
     const url = `/api/fichas/${id}/dados-bancarios`
-    const dados = { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }
-    await json('ana', 'POST', url, { dados, verificacao: { como: 'presencial', contratoNovo: true } })
-    expect(await json('eva', 'POST', `${url}/confirmacao`)).toMatchObject({ ...dados, avisoNaoSaiu: MSG_FORA_DA_LISTA })
-    expect(espiao).not.toHaveBeenCalled()
-    const [aviso] = await banco.select().from(mensagem)
-    expect(aviso).toMatchObject({ modelo: 'aviso-de-mudanca', status: 'falhou', erro: MSG_FORA_DA_LISTA })
-    vi.unstubAllGlobals()
+    await json('ana', 'POST', url, { dados: { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }, verificacao: { como: 'presencial', contratoNovo: true } })
+    await json('eva', 'POST', `${url}/confirmacao`)
+    const tarefa = async () => (await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, `aviso-banco-${id}`)))[0]
+    const enviarAviso = async () => {
+      const pronta = await json('ana', 'GET', `/api/fichas/${id}/mensagens/aviso-de-mudanca`)
+      return json('ana', 'POST', `/api/fichas/${id}/mensagens`, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
+    }
+    // Sem o Chatwoot, o aviso não sai: a tarefa fica aberta, para tentar de novo.
+    expect(await enviarAviso()).toMatchObject({ status: 'falhou', erro: MSG_SIMULADO })
+    expect((await tarefa()).concluidaEm).toBeNull()
+    // Com o Chatwoot de mentira que entrega (o dos testes de tela), o aviso sai e fecha a tarefa.
+    await app.close()
+    vi.stubEnv('RELACIONAMENTO_SIMULADO', 'entrega')
+    app = criarServidor({ banco, agora: () => relogio })
+    vi.unstubAllEnvs()
+    expect((await enviarAviso()).status).not.toBe('falhou')
+    expect((await tarefa()).concluidaEm).not.toBeNull()
   })
 })

@@ -26,7 +26,7 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     expect(cartao().queryByText('Conta com os números e o dígito: 12345-6.')).toBeNull()
   })
 
-  it('CA1 e CA5 · só pede a mudança com o cliente verificado e em contrato novo; quem pediu não confirma; outra pessoa confirma e o contato anterior é avisado', async () => {
+  it('CA1 e CA5 · só pede a mudança com o cliente verificado e em contrato novo; quem pediu não confirma; outra pessoa confirma e o Atendimento recebe a tarefa de avisar o cliente', async () => {
     const aoMudar = vi.fn()
     // A sessão desde o começo: a troca de quem está logado mantém o cartão aberto (rerender).
     entrarComo('atendimento')
@@ -53,11 +53,16 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     entrarComo('atendimento-lider')
     rerender(comSessao(<CartaoDadosBancarios fichaId="lucia-exemplo" aoMudar={aoMudar} />))
     fireEvent.click(botao('Confirmar a mudança (segunda pessoa)'))
-    expect(await cartao().findByText('Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.')).toBeTruthy()
+    expect(await cartao().findByText('Dados bancários mudados. O Atendimento recebeu a tarefa de avisar o cliente, com o aviso pronto para conferir e enviar.')).toBeTruthy()
     expect(cartao().getByText(/^Banco Exemplo Dois · agência 0002 · conta 65432-1 · desde 07\/10\/2026/)).toBeTruthy()
     expect(aoMudar).toHaveBeenCalled()
+    // CA5 (opção B, 14/10): nada sai sozinho para o cliente; o Atendimento recebe a tarefa, com o link da mensagem pronta.
     const lucia = (await obterFicha('lucia-exemplo'))!
-    expect(lucia.contatos.at(-1)?.texto).toContain('Se não foi você, ligue para o escritório agora.')
+    expect(lucia.contatos.some((c) => c.texto.includes('Se não foi você'))).toBe(false)
+    expect(tarefasDoSetor('Atendimento').find((t) => t.acao === 'Avisar o cliente da mudança bancária')).toMatchObject({
+      href: '/clientes/lucia-exemplo?mensagem=aviso-de-mudanca',
+      urgente: true,
+    })
     expect(tarefasDoSetor('Jurídico')).toHaveLength(1)
   })
 
@@ -72,26 +77,6 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     expect(botao('Pedir a mudança').disabled).toBe(true)
     fireEvent.click(botao('Cancelar'))
     expect(botao('Mudar dados bancários')).toBeTruthy()
-  })
-
-  it('CA5 · sem sucesso falso: o aviso ao contato anterior que não saiu vira alerta, com o motivo', async () => {
-    const dados = { banco: 'Banco Exemplo Dois', agencia: '0002', conta: '65432-1' }
-    const pedido = { fichaId: 'f1', dados, verificacao: { como: 'presencial', contratoNovo: true }, pediu: 'ana', pedidoEm: '2026-10-07T17:00:00.000Z' }
-    let confirmado = false
-    vi.stubGlobal('fetch', async (_url: string, init: RequestInit = {}) => {
-      if (init.method === 'POST') {
-        confirmado = true
-        return Response.json({ ...dados, fichaId: 'f1', desde: '2026-10-07T17:32:00.000Z', quem: 'ana', avisoNaoSaiu: 'o telefone está fora da lista de teste da homologação' })
-      }
-      return Response.json(confirmado ? { atual: { ...dados, fichaId: 'f1', desde: '2026-10-07T17:32:00.000Z', quem: 'ana' }, pedido: null } : { atual: null, pedido })
-    })
-    render(comSessao(<CartaoDadosBancarios fichaId="f1" aoMudar={() => {}} />))
-    fireEvent.click(await cartao().findByRole('button', { name: 'Confirmar a mudança (segunda pessoa)' }))
-    expect((await cartao().findByRole('alert')).textContent).toBe(
-      'Dados bancários mudados. O aviso ao contato anterior não saiu: o telefone está fora da lista de teste da homologação; ficou no histórico.',
-    )
-    expect(cartao().getByRole('status').textContent).toBe('')
-    vi.unstubAllGlobals()
   })
 
   it('GGVP-138 · a ficha fora do banco: a API recusa e o cartão fica sem dados, sem erro solto', async () => {

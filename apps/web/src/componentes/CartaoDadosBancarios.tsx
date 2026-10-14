@@ -54,20 +54,17 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
 
   const motivo = erroDosDadosBancarios(dados) ?? motivoParaNaoMudar('dadosBancarios', verificacao)
 
-  async function fazer<T>(acao: () => Promise<T>, feito: string, naoSaiu?: (r: T) => string | undefined) {
+  async function fazer(acao: () => Promise<unknown>, feito: string) {
     if (ocupado) return
     setOcupado(true)
     setErro('')
     try {
-      const r = await acao()
+      await acao()
       await recarregar()
       setMudando(false)
       setDados(VAZIO)
       setVerificacao({})
-      // CA5: o aviso ao contato anterior que não saiu vira alerta, nunca sucesso.
-      const problema = naoSaiu?.(r)
-      setAviso(problema ? '' : feito)
-      if (problema) setErro(problema)
+      setAviso(feito)
       aoMudar()
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para registrar.')
@@ -111,8 +108,8 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
             onClick={() =>
               fazer(
                 () => confirmarMudancaBancaria(fichaId),
-                'Dados bancários mudados. O contato anterior recebeu o aviso pelo Chatwoot.',
-                (r) => r.avisoNaoSaiu && `Dados bancários mudados. O aviso ao contato anterior não saiu: ${r.avisoNaoSaiu}; ficou no histórico.`,
+                // CA5 (opção B, 14/10): o aviso não sai sozinho; vira a tarefa revisada do Atendimento.
+                'Dados bancários mudados. O Atendimento recebeu a tarefa de avisar o cliente, com o aviso pronto para conferir e enviar.',
               )
             }
           >

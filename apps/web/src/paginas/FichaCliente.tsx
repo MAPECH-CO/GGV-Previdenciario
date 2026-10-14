@@ -25,11 +25,13 @@ import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
 import { usePode, useSessao } from '../sessao.ts'
 import { canalDoContato, eventoDaMensagem } from '../regras/registroDeMensagem.ts'
+import type { IdDoModelo } from '../regras/mensagens.ts'
 import styles from './FichaCliente.module.css'
 
 // Figma: "Cliente · dados (Atendimento)" (73:199). A visão do Atendimento não traz petição, estratégia, valores nem laudo.
 
-export function FichaCliente({ id }: { id: string }) {
+/** `mensagemInicial`: o link de uma tarefa abre a ficha já na "Mensagem ao cliente", com o modelo pronto (GGVP-111 CA5). */
+export function FichaCliente({ id, mensagemInicial }: { id: string; mensagemInicial?: IdDoModelo }) {
   // undefined: abrindo; null: não existe.
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined)
   // Arquivos da janela "Conferir e enviar"; null com a janela fechada (GGVP-17).
@@ -44,7 +46,9 @@ export function FichaCliente({ id }: { id: string }) {
   // A volta de versão muda a ficha por fora do formulário: a chave nova refaz o formulário com os valores de agora.
   const [recarga, setRecarga] = useState(0)
   // A janela "Mensagem ao cliente", com modelo e registro (GGVP-102).
-  const [mensagem, setMensagem] = useState(false)
+  // Aberta pelo link da tarefa, já no modelo dela (GGVP-111 CA5); fechada, o próximo "Mensagem ao cliente" abre no de sempre.
+  const [mensagem, setMensagem] = useState(Boolean(mensagemInicial))
+  const [modeloDoLink, setModeloDoLink] = useState(mensagemInicial)
   const hoje = hojeIso(agora())
   // GGVP-111 e GGVP-96 (LGPD, minimização): os dados bancários, só quem pede ou confirma a mudança e o Financeiro. Sem
   // sessão (teste de uma tela sozinha), como foi desenhada.
@@ -172,7 +176,17 @@ export function FichaCliente({ id }: { id: string }) {
         <Transcricoes ficha={ficha} perfil="atendimento" aoFechar={() => setTranscricoes(false)} aoMudar={async () => setFicha(await obterFicha(id))} />
       )}
       {conversa && <RegistrarConversa ficha={ficha} aoFechar={() => setConversa(false)} />}
-      {mensagem && <MensagemAoCliente ficha={ficha} aoFechar={() => setMensagem(false)} aoEnviar={async () => setFicha(await obterFicha(id))} />}
+      {mensagem && (
+        <MensagemAoCliente
+          ficha={ficha}
+          modeloInicial={modeloDoLink}
+          aoFechar={() => {
+            setMensagem(false)
+            setModeloDoLink(undefined)
+          }}
+          aoEnviar={async () => setFicha(await obterFicha(id))}
+        />
+      )}
       {versoes && (
         <HistoricoDeVersoes
           ficha={ficha}

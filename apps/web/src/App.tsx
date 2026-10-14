@@ -103,6 +103,7 @@ import { CentralSenior } from './paginas/CentralSenior.tsx'
 import { CentralFinanceiro } from './paginas/CentralFinanceiro.tsx'
 import { InicioDoSocio } from './paginas/InicioDoSocio.tsx'
 import { Financeiro } from './paginas/Financeiro.tsx'
+import { MODELOS_DE_MENSAGEM, type IdDoModelo } from './regras/mensagens.ts'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -306,7 +307,11 @@ function TelaDoCaminho({ caminho, busca }: { caminho: string; busca: string }) {
   const cadastro = /^\/clientes\/([^/]+)\/cadastro$/.exec(caminho)
   if (cadastro) return <CadastrarLead fichaId={decodeURIComponent(cadastro[1])} />
   const ficha = /^\/clientes\/([^/]+)$/.exec(caminho)
-  if (ficha) return <FichaCliente id={decodeURIComponent(ficha[1])} />
+  if (ficha) {
+    // GGVP-111 CA5: o link da tarefa "Avisar o cliente da mudança bancária" abre a ficha na mensagem pronta (?mensagem=).
+    const pedida = parametros.get('mensagem')
+    return <FichaCliente id={decodeURIComponent(ficha[1])} mensagemInicial={pedida && pedida in MODELOS_DE_MENSAGEM ? (pedida as IdDoModelo) : undefined} />
+  }
   const prepararContrato = /^\/contrato\/([^/]+)\/preparar$/.exec(caminho)
   if (prepararContrato) return <PrepararContrato processoId={decodeURIComponent(prepararContrato[1])} />
   const colherAssinatura = /^\/contrato\/([^/]+)\/assinatura$/.exec(caminho)

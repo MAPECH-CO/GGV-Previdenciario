@@ -6,6 +6,7 @@
 import { hojeIso, hora } from '../../regras/datas.ts'
 import { COMO, diaFalado, horaFalada, mensagemDoConvite } from '../../regras/agenda.ts'
 import { MODELOS_DE_MENSAGEM, beneficioParaOCliente, comAvisoDaSenha, ordenarConversas, problemasDaMensagem, type IdDoModelo } from '../../regras/mensagens.ts'
+import { tarefaDoAvisoBancario } from '../../regras/seguranca.ts'
 import { buscarContatos, conversasDoContato, enviarNaConversa, type ContatoChatwoot, type ConversaChatwoot } from '../../dados/chatwoot.ts'
 import { obterCobranca } from '../../dados/cobranca.ts'
 import { obterComplemento } from '../../dados/complemento.ts'
@@ -201,6 +202,9 @@ export async function enviarMensagem(fichaId: string, pedido: PedidoDeMensagem, 
       por.quem,
     ),
   )
+  // GGVP-111 CA5 (opção B, 14/10), como o servidor: o aviso da mudança bancária que saiu fecha a tarefa do Atendimento.
+  if (pedido.modelo === 'aviso-de-mudanca' && status !== 'falhou')
+    banco.tarefas = banco.tarefas.map((t) => (t.id === tarefaDoAvisoBancario(ficha).id ? { ...t, concluida: true } : t))
   gravar(banco)
   return registro
 }

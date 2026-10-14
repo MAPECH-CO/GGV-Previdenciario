@@ -71,11 +71,11 @@
 - [x] 6.8 CA9 · `erroDosDadosBancarios` confere pela biblioteca, com as mesmas mensagens (tela e servidor). Teste da regra e da rota; verifica com `pnpm --filter @ggv/web test` e `pnpm --filter @ggv/api test`.
 - [x] 6.9 CA9 · O cartão "Dados bancários para o repasse" formata a agência e a conta a cada tecla. Teste Vitest em `CartaoDadosBancarios.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
 - [x] 6.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
-- [ ] 6.11 CA5 (opção B, 14/10) · Servidor: a confirmação não manda o aviso; abre para o Atendimento a tarefa "Avisar o cliente da mudança bancária", com o link `?mensagem=aviso-de-mudanca`; o servidor falso dos testes faz o mesmo. Teste em `rotas/seguranca.test.ts`; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.12 CA5 · O aviso que sai pela "Mensagem ao cliente" fecha a tarefa; o que não sai a deixa aberta (servidor e servidor falso). Teste; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 6.13 CA5 · Tela: a ficha abre a "Mensagem ao cliente" pelo link `?mensagem=`; o cartão diz que o Atendimento recebeu a tarefa; o roteiro de teste do Lucas atualizado. Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 6.14 Playwright `e2e/seguranca.e2e.ts`: a confirmação sem mensagem, a tarefa do Atendimento e o aviso enviado pela janela, que fecha a tarefa. Verifica com `pnpm --filter @ggv/web e2e`.
-- [ ] 6.15 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.11 CA5 (opção B, 14/10) · Servidor: a confirmação não manda o aviso; abre para o Atendimento a tarefa "Avisar o cliente da mudança bancária", com o link `?mensagem=aviso-de-mudanca`; o servidor falso dos testes faz o mesmo. Teste em `rotas/seguranca.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.12 CA5 · O aviso que sai pela "Mensagem ao cliente" fecha a tarefa; o que não sai a deixa aberta (servidor e servidor falso). Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.13 CA5 · Tela: a ficha abre a "Mensagem ao cliente" pelo link `?mensagem=`; o cartão diz que o Atendimento recebeu a tarefa; o roteiro de teste do Lucas atualizado. Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 6.14 Playwright `e2e/seguranca.e2e.ts`: a confirmação sem mensagem, a tarefa do Atendimento e o aviso enviado pela janela, que fecha a tarefa. Verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 6.15 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-138 · Ligar no servidor as telas do Relacionamento (Pedro, 08/10)
 
