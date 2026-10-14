@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LiberarAoJuridico, type CasoParaLiberacao } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { usePode } from '../sessao.ts'
 import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { nomeDoBeneficio } from '@ggv/contratos'
@@ -25,6 +26,8 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState(false)
+  // GGVP-162: quem não abre o processo (o Atendimento e a Documentação) corrige pela ficha do cliente.
+  const abreProcesso = usePode('processo.abrir')
 
   useEffect(() => {
     void chamarApi<CasoParaLiberacao>(`/casos/${casoId}/liberacao`).then((r) => (r.ok ? setCaso(r.dados) : setErro(r.erro)))
@@ -102,7 +105,15 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
       </section>
 
       <p className={styles.dica}>
-        Para corrigir, abra a <a href={`/casos/${casoId}`}>página do processo</a>: os documentos, o contrato e o parecer estão lá.
+        {abreProcesso ? (
+          <>
+            Para corrigir, abra a <a href={`/casos/${casoId}`}>página do processo</a>: os documentos, o contrato e o parecer estão lá.
+          </>
+        ) : (
+          <>
+            Para corrigir, abra a <a href={`/clientes/${caso.pessoaId}`}>ficha do cliente</a>: os documentos e o contrato estão lá.
+          </>
+        )}
       </p>
 
       {feito ? (

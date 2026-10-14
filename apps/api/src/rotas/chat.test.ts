@@ -15,7 +15,10 @@ let banco: Banco
 let fechar: () => Promise<void>
 let app: ReturnType<typeof criarServidor>
 let casoId: string
+let pessoaId: string
 const ids: Record<string, string> = {}
+/** GGVP-162: para o Atendimento, o link do caso é a ficha da cliente. */
+const fichaDaVera = () => ({ rotulo: 'Abrir a ficha do cliente', href: `/clientes/${pessoaId}` })
 
 /**
  * CA4: o serviço de IA é um `fetch` falso. Cada chamada leva a próxima mensagem do roteiro (a resposta do modelo, com
@@ -67,6 +70,7 @@ beforeEach(async () => {
   const [p] = await banco.insert(pessoa).values({ nome: 'Vera Lúcia', situacao: 'cliente' }).returning()
   const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'bpc_loas_deficiente', fase: 'administrativa', advogadaResponsavelId: ids.gabi }).returning()
   casoId = c.id
+  pessoaId = p.id
 })
 afterEach(() => fechar())
 
@@ -115,10 +119,10 @@ describe('GGVP-142 · as travas antes do modelo, como código (CA2)', () => {
 })
 
 describe('GGVP-142 · o agente do motor (CA1, CA4)', () => {
-  it('16.3 · a resposta vem do modelo, com o modelo, o link do caso e a chamada registrada como "chat"', async () => {
+  it('16.3 · a resposta vem do modelo, com o modelo, o link do caso (para o Atendimento, a ficha: GGVP-162) e a chamada registrada como "chat"', async () => {
     roteiro = [{ role: 'assistant', content: 'O caso espera o laudo novo.' }]
     const r = await perguntar('ana', 'O que falta no caso?', casoId)
-    expect(r).toMatchObject({ tipo: 'resposta', links: [{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }] })
+    expect(r).toMatchObject({ tipo: 'resposta', links: [fichaDaVera()] })
     expect(r.sugestao).toMatchObject({ texto: 'O caso espera o laudo novo.', modelo: 'gpt-4.1-mini', alerta: null })
     expect(chamadas.map((c) => c.url)).toEqual(['https://api.openai.com/v1/chat/completions'])
     const [chamada] = await registros()
@@ -141,7 +145,7 @@ describe('GGVP-142 · o agente do motor (CA1, CA4)', () => {
     montar({})
     const r = await perguntar('ana', 'O que falta no caso?', casoId)
     expect(r.sugestao.texto).toBe('O chat não respondeu: a IA está desligada neste ambiente (falta a chave do serviço).')
-    expect(r.links).toEqual([{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }])
+    expect(r.links).toEqual([fichaDaVera()])
     expect(await registros()).toMatchObject([{ finalidade: 'chat', situacao: 'desligada' }])
   })
 
@@ -154,7 +158,8 @@ describe('GGVP-142 · o agente do motor (CA1, CA4)', () => {
 
   it('16.3 · o cliente citado pelo nome inteiro vira o caso do contexto; nomes de dois clientes viram a pergunta "qual deles?"', async () => {
     roteiro = [{ role: 'assistant', content: 'Certo.' }]
-    expect((await perguntar('ana', 'O que falta para a Vera Lúcia?')).links).toEqual([{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }])
+    expect((await perguntar('ana', 'O que falta para a Vera Lúcia?')).links).toEqual([fichaDaVera()])
+    expect((await perguntar('gabi', 'O que falta para a Vera Lúcia?')).links).toEqual([{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }])
     const [p] = await banco.insert(pessoa).values({ nome: 'Rui Barbosa', situacao: 'cliente' }).returning()
     await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'aposentadoria_idade', fase: 'administrativa' })
     const r = await perguntar('ana', 'Compare a Vera Lúcia com o Rui Barbosa')
@@ -189,16 +194,16 @@ describe('GGVP-142 · as ferramentas de leitura (CA1, CA2)', () => {
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('criar_tarefa')
   })
 
-  it('16.4 · o caso vem da página do processo na visão do Atendimento: sem o laudo nem o CID; a fonte é o caso', async () => {
+  it('16.4, GGVP-162 CA6 · o Atendimento lê o caso pela ficha da cliente: o benefício e a etapa, sem a página do processo; a fonte é o caso', async () => {
     await laudoNoCaso()
     roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'O caso está na via administrativa.' }]
     const r = await perguntar('ana', 'Como está o caso?', casoId)
     expect(r.sugestao.texto).toBe('O caso está na via administrativa.')
     const lido = saidaDaFerramenta(1)
     expect(lido).toMatch(/^<conteudo>/)
-    expect(lido).toContain('"fase":"administrativa"')
-    expect(lido).toContain('"pessoa":{"nome":"Vera Lúcia"}')
-    for (const dado of ['M54.5', 'laudo-ortopedista', 'cpf', 'nascimento']) expect(lido).not.toContain(dado)
+    expect(lido).toContain('"cliente":"Vera Lúcia"')
+    expect(lido).toContain('"etapa":"Administrativa · INSS"')
+    for (const dado of ['M54.5', 'laudo-ortopedista', 'cpf', 'nascimento', '"fase"', '"documentos"', '"tarefas"']) expect(lido).not.toContain(dado)
     expect(r.sugestao.fontes).toEqual([{ tipo: 'caso', referencia: `caso:${casoId}` }])
   })
 
@@ -327,7 +332,7 @@ describe('GGVP-142 · o que depende de enviar arquivo leva à tela (CA3)', () =>
   it('16.7 · o laudo, o comprovante do INSS e o do pagamento levam ao caso, à perícia e à prestação, sem executar nada', async () => {
     const laudo = await comArquivos('ana', 'Subir laudo novo', ['laudo-ortopedista.pdf'], casoId)
     expect(laudo.sugestao.texto).toMatch(/^O chat ainda não sobe arquivo no servidor\. Para subir o laudo novo/)
-    expect(laudo.links).toEqual([{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }])
+    expect(laudo.links).toEqual([fichaDaVera()])
     expect((await comArquivos('ana', 'Comprovante da perícia do INSS', ['agendamento.pdf'], casoId)).links).toEqual([{ rotulo: 'Abrir a perícia', href: `/casos/${casoId}/pericia` }])
     expect((await comArquivos('julia', 'Comprovante de pagamento do RPV', ['rpv.pdf'], casoId)).links).toEqual([{ rotulo: 'Abrir a prestação de contas', href: `/casos/${casoId}/prestacao` }])
     expect(await banco.select().from(tarefa)).toEqual([])
@@ -424,9 +429,10 @@ describe('12/10 · os widgets do chat', () => {
     expect((await perguntar('ana', 'O que tem hoje?')).blocos).toBeUndefined()
   })
 
-  it('o caso oferece etapas, linha do tempo e prazos', async () => {
+  it('o caso oferece etapas, linha do tempo e prazos a quem abre o processo (GGVP-162)', async () => {
+    montar({ ...CHAVE, IA_PERMITE_DADO_DE_SAUDE: 'sim' })
     roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'Assim está:\n{{w1}}' }]
-    const r = await perguntar('ana', 'Como está o caso?', casoId)
+    const r = await perguntar('gabi', 'Como está o caso?', casoId)
     expect(saidaDaFerramenta(1)).toMatch(/\{\{w1\}\} etapas do processo/)
     expect(r.blocos?.[1]).toMatchObject({ tipo: 'widget', widget: { tipo: 'etapas' } })
   })

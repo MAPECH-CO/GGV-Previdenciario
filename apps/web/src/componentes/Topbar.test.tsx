@@ -69,8 +69,8 @@ describe('Topbar', () => {
 describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 1927:14, 1931:130)', () => {
   const ids = (perfil: string | null, lista: ItemNavegacao[] = itens) => itensDoPerfil(lista, perfil).map((i) => i.id)
 
-  it('Clientes e Processos depois do Início e da Agenda para o líder, a Advogada e a Sênior; a Gestão no fim, para quem tem', () => {
-    expect(ids('atendimento_lider')).toEqual(['inicio', 'agenda', 'clientes', 'processos', 'tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'])
+  it('Clientes e Processos depois do Início e da Agenda para a Advogada e a Sênior; a líder só com Clientes (GGVP-162); a Gestão no fim, para quem tem', () => {
+    expect(ids('atendimento_lider')).toEqual(['inicio', 'agenda', 'clientes', 'tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'])
     expect(ids('advogada')).toEqual(['inicio', 'agenda', 'clientes', 'processos'])
     expect(ids('senior', [...itens, { id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' }])).toEqual([
       'inicio',

@@ -77,7 +77,8 @@ describe('Clientes (GGVP-78)', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Clientes')
     const topo = within(screen.getByRole('navigation', { name: 'Principal' }))
     expect(topo.getByRole('link', { name: 'Clientes' }).getAttribute('aria-current')).toBe('page')
-    expect(topo.getByRole('link', { name: 'Processos' }).getAttribute('href')).toBe('/processos')
+    // GGVP-162: Processos é de quem abre o processo; a líder do Atendimento fica com Clientes.
+    expect(topo.queryByRole('link', { name: 'Processos' })).toBeNull()
     // "+ Novo cliente" no topo e na página: é do Atendimento.
     expect(screen.getAllByRole('link', { name: '+ Novo cliente' })).toHaveLength(2)
     const filtros = within(screen.getByRole('group', { name: 'Filtros' }))
@@ -89,19 +90,21 @@ describe('Clientes (GGVP-78)', () => {
     const [, seb, fer] = within(tabela).getAllByRole('row')
     expect(within(seb).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Sebastião Nunes', '***.982.247-**', 'Auxílio Acidentário', 'São Paulo · SP', '2', 'Em andamento', 'ontem'])
     expect(within(seb).getByRole('link', { name: 'Sebastião Nunes' }).getAttribute('href')).toBe(`/clientes/${SEB}`)
-    expect(within(seb).getByRole('link', { name: '2 processos de Sebastião Nunes' }).getAttribute('href')).toBe(`/processos?cliente=${SEB}`)
+    // GGVP-162: para a líder do Atendimento, a contagem é número, sem link para os processos.
+    expect(within(seb).queryByRole('link', { name: '2 processos de Sebastião Nunes' })).toBeNull()
     expect(within(fer).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Fernanda Ruiz', '—', '—', '—', '0', 'Lead', '—'])
     expect(screen.getByRole('status').textContent).toBe('1 cliente · 1 lead · mostrando 2')
     expect(screen.getByText(/Situação: Êxito = ganho, ganho parcial ou acordo já decidido/)).toBeTruthy()
     expect(screen.getByText('Página 1 de 3')).toBeTruthy()
   })
 
-  it('a Sênior não tem "+ Novo cliente", que é do Atendimento', async () => {
+  it('a Sênior não tem "+ Novo cliente", que é do Atendimento; a contagem abre os processos do cliente (GGVP-162)', async () => {
     servidor(clientes)
     entrarComo('senior')
     render(comSessao(<Clientes />))
-    await tabelaCarregada('Clientes')
+    const tabela = await tabelaCarregada('Clientes')
     expect(screen.queryByRole('link', { name: '+ Novo cliente' })).toBeNull()
+    expect(within(tabela).getByRole('link', { name: '2 processos de Sebastião Nunes' }).getAttribute('href')).toBe(`/processos?cliente=${SEB}`)
   })
 
   it('a busca vai no corpo do POST, nunca no endereço; filtro e página vão na consulta', async () => {

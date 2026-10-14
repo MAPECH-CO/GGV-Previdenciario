@@ -2,7 +2,7 @@
 // com a autorização da direção e o relatório de prazos. O banco também recusa alterar ou apagar `evento_auditoria`.
 import { HistoricoDoCaso, PedirExportacao, PrazosDoEscritorio, pode, type Erro } from '@ggv/contratos'
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
-import type { FastifyInstance, FastifyReply, preHandlerAsyncHookHandler } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, eventoAuditoria, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
@@ -180,14 +180,9 @@ export function registrarRotasHistorico(app: FastifyInstance, { banco, agora = (
     return { situacao: pedidos > autorizadas ? ('pedida' as const) : ('autorizada' as const), pedido }
   }
 
-  // A direção (o Sócio) não vê o caso: entra só para ver o pedido de exportação e autorizar (CA12).
-  const verCaso = exigir(banco, 'caso.ver', agora)
-  const verOuAutorizar: preHandlerAsyncHookHandler = async function (pedido, resposta) {
-    if (!pode(pedido.perfilAtivo, 'historico.autorizar_exportacao')) return verCaso.call(this, pedido, resposta)
-  }
-
-  // CA3, CA7, CA11: a linha do processo, dos eventos e das decisões, em ordem; sem o detalhe interno nem dado de saúde.
-  app.get<{ Params: { id: string } }>('/api/casos/:id/historico', { preHandler: verOuAutorizar }, async (pedido, resposta) => {
+  // CA3, CA7, CA11: a linha do processo, dos eventos e das decisões, em ordem; sem o detalhe interno nem dado de saúde. Só
+  // para quem abre o processo (GGVP-162): o Jurídico e o Sócio, que também autoriza a exportação (CA12).
+  app.get<{ Params: { id: string } }>('/api/casos/:id/historico', { preHandler: exigir(banco, 'processo.abrir', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const [c] = await banco.select({ cliente: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')

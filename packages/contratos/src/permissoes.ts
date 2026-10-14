@@ -25,9 +25,9 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
 // 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
-// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10). Quem entrar depois
+// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10), quem abre o processo 32 (14/10). Quem entrar depois
 // renumera.
-export const VERSAO_MATRIZ = 31
+export const VERSAO_MATRIZ = 32
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -50,6 +50,11 @@ export const MATRIZ = {
   'gestao.ver': ['socio', 'senior', 'atendimento_lider'],
   /** Ver o caso só para leitura (GGVP-23 CA4). O Sócio lê tudo (Lucas, 07/10); o Financeiro vê a prestação e os Resultados, não o caso. */
   'caso.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO, 'socio'],
+  /**
+   * Versão 32 (GGVP-162, Mateus 14/10): a página, a lista, a busca e o histórico do processo são do Jurídico e do Sócio. O
+   * Atendimento, a líder e a Documentação trabalham pela ficha do cliente e pelas tarefas, que seguem com `caso.ver`.
+   */
+  'processo.abrir': [...JURIDICO, 'socio'],
   // Fazer
   'laudo.subir': ['atendimento', 'atendimento_lider'],
   'laudo.conferir': ADVOGADAS,

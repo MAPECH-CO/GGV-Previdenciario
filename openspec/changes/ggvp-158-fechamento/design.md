@@ -472,6 +472,46 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - A constante `RAIO_X` do contrato sai quando a tela do Pedro ler a rota: o teste de tela dele conta os números de hoje.
     - O tamanho e o limite de linhas são os do importador de hoje. Nada do arquivo vai ao log.
 
+### Parte 8 · Auditoria (decisões do Mateus, 14/10)
+
+Só servidor, com teste junto, num pedido em cima do #81 (as palavras de desfecho do Raio-X). Uma migração, a 0035. Sem matriz nova.
+
+Decisões do Mateus em 14/10:
+- o aviso do áudio gravado fora (G10) vai num pedido à parte, que entra depois que a tela da entrevista do Pedro mandar a confirmação;
+- plano aprovado, código em seguida ("Escreve e segue").
+
+O que já está feito e não entra: as outras leituras de conteúdo médico já ficam registradas (o documento, o parecer, o processo, a conversa, a criança, a deficiência, a segunda ficha, a gravação aberta, a auditoria da IA e o chat).
+
+74. **Quem abre conteúdo médico fica registrado** (P8.1).
+    - A regra é a da auditoria de 11/10: a rota com a trava do dado de saúde (`dado_saude.ver_detalhe`) que entrega o conteúdo registra a leitura em `acesso_dado_sensivel`, como as outras. O registro só sai quando o conteúdo vai na resposta, como no processo e na criança.
+    - `GET /api/recepcao`: com uma gravação do Jurídico na resposta, uma linha por abertura, `recepcao:gravacoes`, sem caso (a gravação é da pessoa). Uma linha por abertura, e não por gravação: a lista leva todas.
+    - `GET /api/casos/:id/pericias`: com uma recomendação aprovada, `pericias:<caso>`.
+    - `POST /api/pericias/:id/recomendacao/sugestao`: com a recomendação, `recomendacao:<perícia>`, com o caso.
+    - `GET /api/casos/:id/desfecho`: com o texto da sentença, `desfecho:<caso>`. A rota entrou depois da auditoria (o #31, 13/10), com a mesma trava.
+    - Fica fora a saída da IA com dado de saúde lida por outras travas (a estratégia, por `estudo.ver`; a sugestão de benefício, por `ficha.analisar`; a petição, por `peticao.ver`): a auditoria contou as rotas com a trava do dado de saúde.
+75. **`chamada_ia` só cresce** (P8.2).
+    - A migração 0035 cria o gatilho `chamada_ia_so_cresce` (antes de alterar ou apagar), com a função do histórico (`historico_so_cresce`, da 0004).
+    - O portal só insere: há um `insert` só, em `ia.ts`. O teste do recurso que apagava as chamadas para pedir outra avaliação muda o jeito.
+76. **A senha dita sai do registro da IA** (P8.3).
+    - Em `transcrever` (`ia.ts`), a saída que vai a `chamada_ia` passa por `tirarSenhas`, a regra G9 da entrevista: a fala que cita "senha" e a resposta logo depois.
+    - As falas que voltam a quem chamou ficam como hoje. A entrevista já tira a senha antes de guardar, e mascarar duas vezes marcaria também a fala seguinte à marca.
+    - Vale para os dois que chamam: a entrevista e a fala do chat.
+77. **O histórico da ficha também no histórico de auditoria** (P8.4).
+    - Em `criarFichario.guardar`, por onde passam todas as rotas que escrevem no histórico da ficha (como na P7.2): as linhas além das que já estavam guardadas vão a `evento_auditoria`, uma por linha.
+    - A linha leva a ação `historico_da_ficha`, o alvo `ficha:<pessoa>` e a hora dela. O detalhe é `{ texto }`, com a senha mascarada (`tirarSenhas`).
+    - Quem fez: a linha guarda o nome, e o servidor acha o usuário pelo nome. Sem exatamente um usuário com o nome (o scanner, "Sistema", um homônimo), `quem` é `sistema`, e o nome vai em `detalhe.por`. ponytail: pelo nome, sem mexer nas 76 chamadas de `guardar`; passar o id quando houver homônimo.
+    - Só grava: a linha do tempo do processo e a exportação seguem lendo os eventos do caso.
+    - O histórico da ficha nunca leva conteúdo clínico (a regra de `anotar`). As duas justificativas que furavam a regra saem antes (P8.6), porque o histórico de auditoria não se apaga.
+78. **O aviso no áudio gravado fora** (P8.5).
+    - `POST /api/entrevistas/:id/audio` exige o campo `avisoNaGravacao=sim` no envio, como a ligação da conversa (GGVP-76). Sem ele: 400, "Confirme que a gravação começou com o aviso de gravação (G10).", e nada fica no caso.
+    - A linha do histórico diz que o aviso foi confirmado.
+    - Vai num pedido à parte (decisão do Mateus, 14/10), que entra depois que a tela da entrevista mandar o campo. A tela de hoje não manda, e o teste de tela da subida quebraria.
+79. **A justificativa só para quem vê dado de saúde** (P8.6).
+    - As duas justificativas em texto livre (a da dispensa do parecer e a da nova tentativa do complemento) saem da linha do histórico da ficha. A linha diz o que aconteceu, sem o texto.
+    - Na tela do parecer e na do complemento, quem não tem `dado_saude.ver_detalhe` recebe a justificativa vazia, como a conferência da Sênior já faz com a dispensa. O portão do parecer dispensado na documentação médica (`GET /api/documentacao-medica`) sai sem ela (14/10, na implementação: ele também levava o texto a todos).
+    - A decisão guarda o texto (`decisao` e a parte do complemento) para o Jurídico e o Sócio.
+    - Sem migração de dado: a homologação só tem dado de teste.
+
 ## Campos de formulário
 
 Partes 1 a 4: nenhum.
@@ -502,6 +542,8 @@ Parte 7, só nos contratos do servidor:
 | O número CNJ do Raio-X | `validarCnj` e `normalizarCnj` |
 | A data da decisão do Raio-X | `validarData` e `normalizarData` |
 | O nome do perito do Raio-X | `validarNome` e `normalizarNome` |
+
+Parte 8: nenhum. O `avisoNaGravacao` é o "sim" da caixa de marcar, sem valor digitado.
 
 ## Risks / Trade-offs
 
@@ -545,3 +587,10 @@ Parte 7, só nos contratos do servidor:
 - **A estratégia da IA:** é interna e só o Jurídico e os sócios leem. A IA só propõe; a versão que vale é a que a advogada ou a Sênior salvou.
 - **A sugestão sem a IA:** sem a chave ou sem a autorização do dado de saúde, a entrevista fica sem sugestão, e a advogada decide pela entrevista.
 - **Custo da IA:** uma chamada por caso para a estratégia e uma por entrevista para o benefício, prontas em segundo plano e guardadas pelo conteúdo.
+- **O histórico de auditoria para sempre:** a linha da ficha copiada não se apaga.
+  - A regra do histórico da ficha (só o que aconteceu, nunca conteúdo clínico) passa a proteger também a auditoria.
+  - Uma linha nova com conteúdo clínico ficaria para sempre. Por isso as duas justificativas saem antes.
+- **Quem, pelo nome:** com dois usuários de mesmo nome, a linha entra como do sistema, com o nome no detalhe.
+- **A lista da Recepção:** a advogada que a abre gera uma linha de leitura a cada abertura, e não uma por gravação. A lista leva as gravações de todos.
+- **Leituras sem registro:** a estratégia, a sugestão de benefício e a petição seguem sem registro de leitura. A auditoria contou só as rotas com a trava do dado de saúde.
+- **O aviso no áudio gravado fora:** até a tela da entrevista mandar a confirmação, o pedido do servidor espera. Quem sobe o áudio de fora hoje não confirma o aviso.

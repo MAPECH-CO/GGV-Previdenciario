@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test'
 import { entrarPelaApi } from './entrar.ts'
 
 // GGVP-86 · Navegar pelo caso numa linha só: a página do processo do Antônio (judicial, exigência do juiz, perícia pedida
-// pelo juiz e laudo novo), a do Pedro (administrativo, perito ainda não conhecido) e a visão do Atendimento. Cada teste
-// começa da semente.
+// pelo juiz e laudo novo), a do Pedro (administrativo, perito ainda não conhecido) e a recusa ao Atendimento e à
+// Documentação, que leem o caso pela ficha (GGVP-162). Cada teste começa da semente.
 
 type Tokens = { cores: Record<string, { claro: string; escuro: string }>; fontes: Record<string, { padrao: number; grande: number }> }
 const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-tokens.json', import.meta.url), 'utf8'))
@@ -51,21 +51,23 @@ test('CA7, CA13 · o Jurídico administrativo identifica o perito do Pedro em um
   await expect(page.getByText(/Perito identificado: Sra\. L\. Assis/)).toBeVisible()
 })
 
-test('Permissão · o Atendimento vê o caso sem petição, estratégia, valores nem saúde', async ({ page }) => {
+test('GGVP-162 · o Atendimento e a Documentação não abrem o processo; a ficha mostra o caso, sem link para a página dele', async ({ page }) => {
+  for (const email of ['atendimento@exemplo.ggv', 'documentacao@exemplo.ggv']) {
+    await entrarPelaApi(page, email)
+    await page.goto('/casos/antonio-exemplo-1')
+    await expect(page.getByRole('heading', { level: 1 }), email).toHaveText('Sem permissão')
+    await expect(page.locator('main'), email).not.toContainText('Linha do processo')
+  }
+  // A ficha mostra o caso e o que falta, sem link para a página do processo (CA3); o laudo novo segue levando à análise.
   await entrarPelaApi(page)
-  await page.goto('/casos/antonio-exemplo-1')
-  await expect(page.getByRole('heading', { name: 'Linha do processo · completa' })).toBeVisible()
-  await expect(page.getByText('Petição, estratégia e valores não aparecem para o Atendimento.')).toBeVisible()
-  await expect(page.locator('main')).not.toContainText('R$')
-  await expect(page.locator('main')).not.toContainText('Petição inicial')
-  // A ficha leva ao caso (CA5 na ficha: o laudo novo leva à análise).
   await page.goto('/clientes/antonio-exemplo')
   await expect(page.getByRole('link', { name: 'Laudo novo · 29/09' })).toHaveAttribute('href', '/casos/antonio-exemplo-1/laudo-novo')
+  await expect(page.locator('a[href="/casos/antonio-exemplo-1"]')).toHaveCount(0)
 })
 
 // GGVP-146 (parte 5): o caso que nasceu no servidor lê a página do banco, na visão de quem está na sessão. A Maria (de
 // exemplo) não é mexida por nenhum outro teste de tela: o banco do Playwright é um só para todos.
-test('caso do servidor · a página do processo lê o banco: a advogada vê o laudo pelo nome; o Atendimento, só que ele existe', async ({ page }) => {
+test('caso do servidor · a página do processo lê o banco: a advogada vê o laudo pelo nome; o Atendimento não abre (GGVP-162)', async ({ page }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   const tarefas: { casoId: string; cliente: { nome: string } }[] = await (await page.request.get('/api/tarefas')).json()
   const casoId = tarefas.find((t) => t.cliente.nome === 'Maria Souza (exemplo)')!.casoId
@@ -84,15 +86,11 @@ test('caso do servidor · a página do processo lê o banco: a advogada vê o la
   await expect(page.getByRole('dialog').getByRole('link', { name: 'Abrir o arquivo' })).toHaveAttribute('href', new RegExp(`^/api/casos/${casoId}/documentos/`))
   await page.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click()
 
-  // O Atendimento: o laudo existe, sem o nome nem o arquivo; sem o resumo de saúde.
+  // O Atendimento não abre o processo (GGVP-162): a tela diz "Sem permissão" e a API recusa.
   await entrarPelaApi(page)
   await page.goto(`/casos/${casoId}`)
-  await expect(page.getByText('Petição, estratégia e valores não aparecem para o Atendimento.')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Dados do processo' }).locator('..')).not.toContainText('Saúde (Jurídico)')
-  await expect(page.getByRole('button', { name: 'Abrir Laudo médico (exemplo).pdf' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Abrir Documento de saúde' }).click()
-  await expect(page.getByRole('dialog')).toContainText('O conteúdo do laudo é só do Jurídico')
-  await expect(page.getByRole('dialog').getByRole('link', { name: 'Abrir o arquivo' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sem permissão')
+  expect((await page.request.get(`/api/casos/${casoId}/processo`)).status()).toBe(403)
 
   // O Financeiro não abre o caso.
   await entrarPelaApi(page, 'financeiro@exemplo.ggv')

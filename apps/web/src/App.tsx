@@ -186,8 +186,8 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/configuracao$/, tela: () => <Exige acao="gestao.ver"><Configuracao /></Exige> },
   // GGVP-146, parte 2: a planilha do escritório, pela gestão que muda a configuração.
   { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
-  // GGVP-99: quem vê o caso vê a linha; a direção entra só para autorizar a exportação. O servidor decide.
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
+  // GGVP-99: a linha do processo. GGVP-162: só para quem abre o processo (o Jurídico e o Sócio, que autoriza a exportação).
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Exige acao="processo.abrir"><Historico casoId={id} /></Exige> },
   // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
   { padrao: /^\/financeiro$/, tela: () => <Exige acao="valores.ver_totais"><Financeiro /></Exige> },
 ]
@@ -245,9 +245,10 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
   [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
   [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
-  // GGVP-78: Clientes e Processos, as bases do topo, para quem vê o caso (antes da regra geral de /clientes).
+  // GGVP-78: Clientes e Processos, as bases do topo (antes da regra geral de /clientes). Clientes, para quem vê o caso;
+  // Processos, só para quem abre o processo (GGVP-162: o Jurídico e o Sócio).
   [/^\/clientes$/, 'caso.ver'],
-  [/^\/processos$/, 'caso.ver'],
+  [/^\/processos$/, 'processo.abrir'],
   // D5: a conversa com o cliente, do Atendimento e do Jurídico.
   [/^\/conversas\//, 'conversa.registrar'],
   // G15 (D1.17): passou do limite de tentativas, a tarefa da Sênior abre a assinatura; quem vê o caso lê, sem % de
@@ -262,7 +263,8 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/(balcao|clientes|contrato)(\/|$)/, 'ficha.editar'],
   [/^\/agenda\/(marcar|confirmar)\//, 'ficha.editar'],
   [/^\/casos\/[^/]+\/cobranca$/, 'ficha.editar'],
-  [/^\/casos\/[^/]+$/, 'caso.ver'],
+  // A página do processo (GGVP-162): o Jurídico e o Sócio; o Atendimento e a Documentação leem o caso pela ficha.
+  [/^\/casos\/[^/]+$/, 'processo.abrir'],
 ]
 
 function Telas({ caminho, busca }: { caminho: string; busca: string }) {

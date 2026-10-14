@@ -1,6 +1,7 @@
 // A documentação médica do servidor para as Centrais e o portão das telas ainda não ligadas (GGVP-132): as tarefas do
 // parecer e do complemento dos casos do banco, o parecer de cada um para o G17 e as fichas, para a cópia da tela. Sem
 // conteúdo clínico: só o resultado e o que fazer. ponytail: monta caso a caso; um resumo no banco quando crescer.
+import { pode } from '@ggv/contratos'
 import { eq, isNotNull } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import { decisao, documentacaoMedica, documento, documentoMedico } from '../banco/esquema.ts'
@@ -34,8 +35,9 @@ export function registrarRotasDocumentacaoMedica(app: FastifyInstance, opcoes: O
     return [...new Set(ids)]
   }
 
-  app.get('/api/documentacao-medica', { preHandler: exigir(banco, 'caso.ver', agora) }, async (): Promise<DocumentacaoMedicaDoServidor> => {
+  app.get('/api/documentacao-medica', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido): Promise<DocumentacaoMedicaDoServidor> => {
     const hoje = hojeEmBrasilia(agora())
+    const veSaude = pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
     const fichas = new Map<string, Ficha>()
     const tarefas: Tarefa[] = []
     const portoes: Record<string, Parecer> = {}
@@ -46,7 +48,8 @@ export function registrarRotasDocumentacaoMedica(app: FastifyInstance, opcoes: O
       const { p, laudoNovoEm } = await emDia(c, { semChamar: true })
       tarefas.push(...tarefasDoCaso({ ficha: c.ficha, processo: c.processo, p, ...(laudoNovoEm && { laudoNovoEm }), hoje }))
       const portao = parecerDoPortao(p)
-      if (portao) portoes[id] = portao
+      // GGVP-158 P8.6: a justificativa da dispensa é texto livre e pode citar a doença: só quem vê dado de saúde lê.
+      if (portao) portoes[id] = veSaude ? portao : { ...portao, justificativa: undefined }
       const complemento = await montar(c)
       if (complemento && complemento.tela.situacao !== 'encerrado' && complemento.tela.situacao !== 'aguardando-parecer') {
         const { pedir, decidir } = tarefasDoComplemento(complemento.tela, hoje)

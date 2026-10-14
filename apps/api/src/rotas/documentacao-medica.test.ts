@@ -61,9 +61,16 @@ describe('GGVP-132 · a documentação médica do servidor para as Centrais e o 
   it('o que acontece entra no histórico da ficha da Recepção, que a tela mostra: o resultado, nunca o conteúdo', async () => {
     await pedir('helena', 'POST', `/api/processos/${casoId}/parecer/dispensa`, { justificativa: 'Caso urgente, com prazo do INSS.' })
     const ficha = (await pedir('ana', 'GET', `/api/fichas/${pessoaId}`)).json()
-    expect(ficha.historico.map((e: { oQue: string; quem: string }) => [e.oQue, e.quem])).toEqual([
-      ['Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17). Justificativa: Caso urgente, com prazo do INSS.', 'Helena'],
-    ])
+    // GGVP-158 P8.6: a justificativa é texto livre e fica na decisão, só para quem vê dado de saúde.
+    expect(ficha.historico.map((e: { oQue: string; quem: string }) => [e.oQue, e.quem])).toEqual([['Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)', 'Helena']])
+  })
+
+  it('GGVP-158 P8.6 · no portão do parecer dispensado, a justificativa só para quem vê dado de saúde', async () => {
+    await banco.insert(usuario).values({ email: 'otavio@exemplo.ggv', nome: 'Otávio', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['senior'], trocarSenha: false })
+    await pedir('helena', 'POST', `/api/processos/${casoId}/parecer/dispensa`, { justificativa: 'Caso urgente, com prazo do INSS.' })
+    await pedir('otavio', 'POST', `/api/processos/${casoId}/parecer/dispensa/aprovacao`, { aprova: true })
+    expect((await pedir('ana', 'GET', '/api/documentacao-medica')).json().portoes[casoId]).toEqual({ situacao: 'dispensado', quem: 'Helena e Otávio', data: '2026-10-08' })
+    expect((await pedir('gabi', 'GET', '/api/documentacao-medica')).json().portoes[casoId].justificativa).toBe('Caso urgente, com prazo do INSS.')
   })
 
   it('a prova do acidente começa da sugestão da segunda ficha da Recepção (GGVP-28)', async () => {
