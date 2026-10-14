@@ -802,7 +802,7 @@ O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, se
 
 ## GGVP-158 · Ajuste do teste do Pedro (14/10)
 
-- [ ] 10.1 P7.2 · "Confirmar se a entrevista aconteceu" (D1.03) em `sincronizarRecepcao`: abre com o compromisso que passou sem "realizado" nem "faltou", uma linha por pessoa, com o prazo no mais antigo e o detalhe da tela; fecha quando ele é marcado.
+- [x] 10.1 P7.2 · "Confirmar se a entrevista aconteceu" (D1.03) em `sincronizarRecepcao`: abre com o compromisso que passou sem "realizado" nem "faltou", uma linha por pessoa, com o prazo no mais antigo e o detalhe da tela; fecha quando ele é marcado.
   - Verifica com teste: abre na virada do dia (rodada), fecha ao marcar realizado, não abre para o remarcado; aparece em `/api/tarefas` do Atendimento como atrasada; `pnpm --filter @ggv/api test`.
-- [ ] 10.2 P7.2 · A tela: `tarefasDeConfirmar` deixa de calcular a ficha do servidor, para a Central não repetir a linha. Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 10.3 Rodar typecheck, lint, testes e Playwright; colar a saída.
+- [x] 10.2 P7.2 · A tela: `tarefasDeConfirmar` deixa de calcular a ficha do servidor, para a Central não repetir a linha. Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 10.3 Rodar typecheck, lint, testes e Playwright; colar a saída.

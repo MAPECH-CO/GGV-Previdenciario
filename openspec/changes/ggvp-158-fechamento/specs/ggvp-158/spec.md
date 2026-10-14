@@ -978,7 +978,7 @@ Estas tarefas, que a Central do Atendimento calcula no navegador, SHALL ser linh
 - "Conferir checklist" (D1.21);
 - "Reenviar boas-vindas" (D1.22);
 - as do fechamento (D1.14);
-- "Confirmar se a entrevista aconteceu" (D1.03): o compromisso da ficha cujo dia passou sem "realizado" nem "faltou", uma linha por pessoa, com o prazo no dia do mais antigo (teste do Pedro, 14/10: a tarefa só existia na tela, e o chat não a via).
+- "Confirmar se a entrevista aconteceu" (D1.03): o compromisso da ficha cujo dia passou sem registro (realizado, falta ou desistência), uma linha por pessoa, com o prazo no dia do mais antigo (teste do Pedro, 14/10: a tarefa só existia na tela, e o chat não a via).
 
 O servidor MUST abrir e fechar cada linha a cada mudança do que a origina, com a pessoa e o caso, quando há. A Central geral SHALL mostrar também a tarefa da pessoa que ainda não tem caso.
 
