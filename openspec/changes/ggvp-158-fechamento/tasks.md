@@ -461,10 +461,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
 Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-6`, em cima do #75; o #31 segue no pedido dele. Migração 0033 (a 0032 é a do recurso, que veio da main). Na ordem contrato → teste → servidor.
 
-- [ ] 6.1 O pedido #31 (P6.1, decisão 54): juntar a main na branch dele (merge, sem rebase), o texto da decisão só com `dado_saude.ver_detalhe`, e sair do rascunho para o Pedro.
+- [x] 6.1 O pedido #31 (P6.1, decisão 54): juntar a main na branch dele (merge, sem rebase), o texto da decisão só com `dado_saude.ver_detalhe`, e sair do rascunho para o Pedro.
   - Verifica com `rotas/desfecho.test.ts`:
     - a advogada lê o texto;
     - o Atendimento e a Documentação recebem o desfecho sem o texto.
+
+  Feito pela outra sessão: o #31 entrou na main (63bf6254) com o texto da decisão só para quem vê dado de saúde. Verificado aqui em 13/10: `rotas/desfecho.test.ts` 8/8.
 - [x] 6.2 A migração 0033 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, `tarefa.atendimento_id`, e as pendências abertas viram linha.
   - Verifica com `banco/migracoes.test.ts` e com teste da migração:
     - a tarefa sem caso e sem pessoa é recusada;
@@ -584,3 +586,101 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - API 958 de 959 na suíte inteira (3 pulados), em 102 arquivos. A única falha foi a das variáveis, antes de o Mateus pôr o nome; depois, sozinha, 4/4, e as suítes da conversa e da entrada do Chatwoot de novo, 35/35;
   - Playwright 260/260;
   - `openspec validate --all --strict`, 16/16.
+
+## GGVP-158 · Parte 7 · Telas lidas do banco, acervo e importação (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-7`, em cima do #78. Migração 0034. Na ordem contrato → teste → servidor.
+
+- [x] 7.1 A migração 0034 (decisões 72 e 73): `caso.valor_causa`, `pessoa.renda_por_pessoa` e as colunas do Raio-X no `processo_acervo`. Verifica com `banco/migracoes.test.ts`.
+
+  Verificado em 13/10: `banco/migracoes.test.ts` 15/15, com a 0034 (o valor da causa, a renda por pessoa e as colunas do Raio-X no acervo).
+- [x] 7.2 A estratégia, a IA (P7.1, decisão 67): a finalidade `estrategia_do_caso`, o conteúdo montado no código e a saída conferida.
+  - Verifica com teste, com a IA de mentira:
+    - a proposta com as fontes;
+    - a saída fora do formato não vale.
+
+  Verificado em 13/10, em `rotas/estrategia.test.ts`: a proposta com o que o caso tem (o benefício, o indeferimento e o parecer) e as fontes; a saída fora do formato não vale e dá o aviso.
+- [x] 7.3 A estratégia, as rotas (P7.1): `GET`, `POST` e a outra proposta; o preparo; a estratégia no resumo do processo.
+  - Verifica com `rotas/estrategia.test.ts`:
+    - a proposta pronta;
+    - a versão salva com o ajuste vai ao histórico;
+    - o Atendimento não lê, nem no resumo.
+
+  Verificado em 13/10: `rotas/estrategia.test.ts` 5/5 e `rotas/processo.test.ts` 9/9. A proposta pronta na rodada, sem chamar de novo ao abrir; a versão ajustada com quem e quando, e o histórico sem o texto; a Sênior salva outra; o Atendimento recebe 403 e o resumo sem a estratégia; a proposta de outro caso recusa; pedir outra chama a IA de novo.
+- [x] 7.4 As tarefas da Recepção, o módulo (P7.2, decisão 68): `sincronizarRecepcao` com a cobrança, o checklist, as boas-vindas e o fechamento.
+  - Verifica com teste:
+    - abre, fecha e atualiza o prazo;
+    - uma linha por chave.
+
+  Verificado em 13/10, em `rotas/recepcao-checklist.test.ts` (3 novos): a linha abre com a cobrança, atualiza o prazo e o detalhe na tentativa e fecha quando chega tudo; "Decidir cobrança" abre no limite e fecha com a decisão; "Conferir checklist" e "Enviar boas-vindas" pelas regras das telas; a rodada de novo não repete, e o banco recusa a segunda aberta da mesma chave.
+- [x] 7.5 As tarefas da Recepção, as rotas (P7.2): a sincronização quando a ficha é guardada e na rodada de 5 minutos; a Central geral com a tarefa da pessoa sem caso e o id da tela.
+  - Verifica com as suítes da cobrança, do checklist, das mensagens e do fechamento e com `rotas/inss.test.ts`:
+    - a cobrança aberta e encerrada;
+    - o fechamento do lead na Central do Atendimento.
+
+  Verificado em 13/10: `rotas/recepcao-checklist.test.ts` e `rotas/recepcao-decisoes.test.ts` 32/32 (5 novos), e `inss`, `setor`, `conversa`, as suítes da Recepção e `banco/migracoes.test.ts`, 122/122. A Central do Atendimento mostra "Registrar fechamento" da pessoa, sem caso, com o id da tela; o líder atribui por esse id; registrar fecha; o recontato entra na data, pela rodada. Na tela, `dados/servidorLigado.test.ts` 35/35: as fontes da tela não repetem o caso do servidor. Contratos 189/189.
+- [x] 7.6 O chat (P7.3, decisão 69): `criar_tarefa` só com `tarefa.atribuir`; `pedir_peca` só com a D3.05 aberta, sem outra.
+  - Verifica com `rotas/chat.test.ts`:
+    - a atendente não cria tarefa;
+    - a peça antes do despacho recusa;
+    - depois, a mesma tarefa.
+
+  Verificado em 13/10: `rotas/chat.test.ts` 29/29. A atendente e a advogada não recebem a ferramenta de criar tarefa, e a Sênior recebe (os testes de criar tarefa passaram a ser da Sênior); a peça antes do despacho recusa, sem tarefa; depois, aponta para a mesma "Pedir a petição".
+- [x] 7.7 A sugestão de benefício, a IA (P7.4, decisão 70): a finalidade `sugerir_beneficio`, a busca do acervo e a saída conferida contra o catálogo.
+  - Verifica com teste, com a IA de mentira:
+    - o benefício fora do catálogo não vale;
+    - sem fonte, "Sem referência na casa".
+
+  Verificado em 13/10, em `rotas/recepcao-decisoes.test.ts`: o benefício fora do catálogo não vale e dá o aviso; sem caso parecido, o porquê começa com "Sem referência na casa", sem fontes.
+- [x] 7.8 A sugestão de benefício, as rotas (P7.4): o `GET` no servidor, o `POST` com a sugestão pronta, o preparo e o fim do acervo e do CNIS de exemplo no servidor.
+  - Verifica com `rotas/recepcao-decisoes.test.ts`:
+    - pronta, com as fontes;
+    - a recusa no histórico;
+    - sem a IA, o aviso.
+
+  Verificado em 13/10: `rotas/recepcao-decisoes.test.ts` 13/13 (4 novos) e `regras/regras.test.ts` 79/79. A sugestão pronta na rodada, com a fonte do acervo; a tela abre e a decisão registra a mesma, sem chamar a IA de novo; o Atendimento recebe 403; a recusa vai ao histórico com o motivo e a sugestão recusada; a carência vem do CNIS registrado; sem a IA, o aviso, e o citado segue.
+- [x] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco, no caso perdido e na confirmação do desfecho de mérito (o #31, que entrou na main).
+  - Verifica com `rotas/vigilia.test.ts` e `rotas/prestacao.test.ts`:
+    - o deferimento entra no acervo;
+    - a ida ao banco não duplica.
+
+  Verificado em 13/10: `rotas/vigilia.test.ts`, `rotas/prestacao.test.ts` (1 novo), `rotas/estudo.test.ts`, `rotas/acervo.test.ts` e `fluxo/ficha-do-desfecho.test.ts`, 67/67. O deferimento entra no acervo na hora, com a data; a ida ao banco não duplica; o caso perdido segue pela mesma função. Depois do #31 na main: `rotas/desfecho.test.ts` 8/8, e o desfecho de mérito confirmado entra no acervo, com a data da decisão.
+- [x] 7.10 Os valores (P7.6, decisão 72): as rotas, a regra de valores e o resumo do processo.
+  - Verifica com `rotas/valores.test.ts`:
+    - a advogada grava;
+    - o Financeiro lê;
+    - o Atendimento e a Sênior recebem 403;
+    - o valor errado recusa.
+
+  Verificado em 13/10: `rotas/valores.test.ts` 4/4 (novo) e `rotas/processo.test.ts` 9/9. A advogada grava; o Financeiro e o Sócio leem; o Atendimento, a Documentação e a Sênior recebem 403; o valor errado recusa; a prestação só para a advogada do caso na prestação de contas; o resumo do processo traz só o que o perfil vê.
+- [x] 7.11 O Raio-X, a leitura (P7.7, decisão 73): o contrato, a leitura da planilha e o relatório, numa função pura.
+  - Verifica com teste, com uma base inventada:
+    - a linha sem número recusa;
+    - as colunas pessoais são ignoradas;
+    - os peritos, os juízes, as varas e a data de corte.
+
+  Verificado em 13/10, em `fluxo/raio-x.test.ts` (novo): a linha sem número recusa; nome, CPF e telefone viram colunas ignoradas e nada deles entra; os peritos, os juízes, as varas e a data de corte; o número já no acervo fica; o repetido, o desfecho e o "sim ou não" desconhecidos recusam; sem a coluna cnj, nada.
+- [x] 7.12 O Raio-X, a carga (P7.7): a simulação e a confirmação com a marca, sem duplicar, com o perito pelo nome.
+  - Verifica com `rotas/raio-x.test.ts`:
+    - a simulação não grava;
+    - a confirmação grava uma vez;
+    - a marca de outra planilha recusa.
+
+  Verificado em 13/10: `rotas/raio-x.test.ts` 2/2 (novo), com `importacao` e `acervo`, 28/28. A simulação não grava nem registra; a marca de outra planilha recusa; a confirmação grava os dois processos uma vez, conferidos pela Sênior, com o perito pelo nome; o histórico guarda só as contagens; a mesma planilha de novo não duplica.
+- [x] 7.13 O Raio-X, os indicadores (P7.7): a função pura e `GET /api/acervo/raio-x`.
+  - Verifica com teste:
+    - cada indicador com o número de casos;
+    - a data da base;
+    - sem base, vazio.
+
+  Verificado em 13/10, em `fluxo/raio-x.test.ts` e `rotas/raio-x.test.ts`: cada indicador com o número de casos, no total e por safra; o cartório e o foro; a data da base; sem base, vazio; o Sócio lê e o Atendimento recebe 403.
+
+  13/10, na revisão do #79: o "Onde julgam" é a taxa por juízo, jurimetria (GGVP-156 CA3, P5.13). Fora do `estudo.ver`, a
+  rota manda a lista vazia; o Financeiro e a líder do Atendimento seguem com os outros indicadores. Teste em
+  `rotas/raio-x.test.ts`.
+- [x] 7.14 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+
+  Feito em 13/10: o pedido #79 lista, rota por rota, o que muda para as telas ("Para o Pedro ligar nas telas"): a estratégia, os valores, a definição do benefício, a Central, o chat e o Raio-X.
+- [x] 7.15 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10, com a main juntada (o #78): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674; API 989 de 996 na suíte inteira (3 pulados), com 4 falhas de testes que contavam todas as chamadas da IA na rodada (a estratégia também prepara), corrigidas e de novo 45/45; Playwright 262/262 na segunda rodada (a primeira achou o teste da jurimetria supondo o acervo parado, corrigido); `openspec validate --all --strict` 16/16.

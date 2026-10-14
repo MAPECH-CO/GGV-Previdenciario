@@ -100,3 +100,59 @@ export const ConferirDesfecho = z.object({
   recurso: z.enum(RESULTADOS_DO_RECURSO, { error: 'Escolha o resultado do recurso' }).nullable().optional(),
 })
 export type ConferirDesfecho = z.infer<typeof ConferirDesfecho>
+
+/**
+ * GGVP-158 P7.7 (GGVP-148): o Raio-X, a base histórica dos processos, no formato do importador de hoje (CSV, os títulos
+ * na primeira linha), até o Pedro entregar o formato do Raio-X. Só `cnj` é obrigatória; outra coluna é ignorada e aparece
+ * no relatório: nome, CPF, telefone e endereço nunca são gravados. `cartorio_cobrou`: os itens separados por ";". Os
+ * pedidos são os do importador (`PlanilhaDoEscritorio` na simulação e `ConfirmacaoDaImportacao` na carga).
+ */
+export const COLUNAS_DO_RAIO_X = [
+  'cnj',
+  'beneficio',
+  'desfecho',
+  'data_decisao',
+  'perito',
+  'vara',
+  'juiz',
+  'falha_nossa',
+  'laudo',
+  'extinto_por_determinacao',
+  'faltou_pericia',
+  'recurso',
+  'cartorio_cobrou',
+] as const
+
+/** POST /api/acervo/raio-x/simulacao: o relatório da carga, antes de gravar. */
+export const RelatorioDoRaioX = z.object({
+  /** A marca deste relatório: a carga só grava se a planilha e o acervo ainda dão o mesmo relatório. */
+  conferido: z.string(),
+  processos: z.object({ novos: z.number().int(), jaNoAcervo: z.number().int() }),
+  /** Os nomes distintos dos processos novos, em ordem alfabética. */
+  peritos: z.array(z.string()),
+  juizes: z.array(z.string()),
+  varas: z.array(z.string()),
+  /** AAAA-MM-DD: a decisão mais nova dos processos novos (a data de corte); nula sem nenhuma data. */
+  dataDeCorte: z.string().nullable(),
+  erros: z.array(z.object({ linha: z.number(), motivo: z.string() })),
+  colunasIgnoradas: z.array(z.string()),
+})
+export type RelatorioDoRaioX = z.infer<typeof RelatorioDoRaioX>
+
+const Taxa = z.object({ casos: z.number().int(), valor: z.number().nullable() })
+/** Uma taxa do Raio-X, no total e por safra (o ano do número CNJ), sempre com o número de casos; sem caso, nula. */
+export const TaxaDoRaioX = Taxa.extend({ chave: z.string(), rotulo: z.string(), porSafra: z.array(Taxa.extend({ safra: z.string() })) })
+export type TaxaDoRaioX = z.infer<typeof TaxaDoRaioX>
+
+/** GET /api/acervo/raio-x: os indicadores calculados da base importada (fonte `raio_x`); sem base, tudo vazio. */
+export const RaioXDaBase = z.object({
+  processos: z.number().int(),
+  /** AAAA-MM-DD: a decisão mais nova da base; nula sem base. */
+  dataDaBase: z.string().nullable(),
+  indicadores: z.array(TaxaDoRaioX),
+  /** O que o cartório mais cobra na inicial: os processos com cobrança e, de cada item, quantas vezes. */
+  cartorioCobra: z.object({ processos: z.number().int(), itens: z.array(z.object({ item: z.string(), vezes: z.number().int() })) }),
+  /** Onde julgam: o foro pelo número CNJ, com o êxito nos decididos dele. */
+  ondeJulgam: z.array(z.object({ foro: z.string(), processos: z.number().int(), decididos: z.number().int(), exito: z.number().nullable() })),
+})
+export type RaioXDaBase = z.infer<typeof RaioXDaBase>

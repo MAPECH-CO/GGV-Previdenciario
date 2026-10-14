@@ -1,6 +1,6 @@
 // Caso: o pedido de benefício de uma pessoa, do atendimento ao desfecho (GGVP-108, 24, 40, 21).
 import { BENEFICIOS } from '@ggv/contratos'
-import { integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { integer, jsonb, numeric, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
 import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 import { pessoa } from './pessoas.ts'
@@ -35,6 +35,8 @@ export const caso = pgTable(
     /** A vara e o juiz do processo, conferidos na leitura da publicação (GGVP-64 parte 2, CA1). */
     vara: text('vara'),
     juiz: text('juiz'),
+    /** GGVP-158 P7.6: o valor da causa, da petição. Só a advogada grava; a advogada, o Sócio e o Financeiro leem. */
+    valorCausa: numeric('valor_causa', { precision: 14, scale: 2 }),
     criadoEm: criadoEm(),
     atualizadoEm: atualizadoEm(),
   },

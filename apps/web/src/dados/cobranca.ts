@@ -182,7 +182,8 @@ export function tarefasDeCobrar(): Tarefa[] {
   const banco = ler()
   const hoje = hojeIso(agora())
   const tarefas = cobrancasDo(banco).flatMap((c) => {
-    const atual = c.encerrada ? null : montar(banco, c)
+    // O caso do servidor já vem na Central pela linha do servidor (GGVP-158 P7.2): não repete aqui.
+    const atual = c.encerrada || doServidor(c.processoId) ? null : montar(banco, c)
     if (!atual) return []
     const decisao = c.decisoes.at(-1)
     const detalhe = [
@@ -224,7 +225,8 @@ export function pendenciasDeDocumento(processoId: string): string[] {
 export function tarefasDeDecidirCobranca(): Tarefa[] {
   const banco = ler()
   const tarefas = cobrancasDo(banco).flatMap((c) => {
-    const atual = c.encerrada ? null : montar(banco, c)
+    // O caso do servidor já vem na Central pela linha do servidor (GGVP-158 P7.2): não repete aqui.
+    const atual = c.encerrada || doServidor(c.processoId) ? null : montar(banco, c)
     if (atual?.situacao !== 'na-senior') return []
     const semResposta = c.tentativas.filter((t) => t.resultado === 'sem-resposta').length
     return [

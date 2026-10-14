@@ -53,6 +53,11 @@ export const tarefa = pgTable(
     situacao: text('situacao').notNull().default('aberta'),
     /** Prazo interno do escritório; o prazo do processo fica em `prazo` e aparece ao lado. */
     prazo: date('prazo'),
+    /**
+     * GGVP-158 P7.2: o detalhe que a Central mostra, quando a tarefa tem um próprio (as da Recepção, como a tela calculava);
+     * nulo, o benefício do caso.
+     */
+    detalhe: text('detalhe'),
     prazoProcessualId: uuid('prazo_processual_id'),
     tentativas: integer('tentativas').notNull().default(0),
     /** G15: limite vem da configuração (Q1); passou, escala. */

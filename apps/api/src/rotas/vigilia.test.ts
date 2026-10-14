@@ -6,7 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, etapa, eventoAuditoria, exigencia, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, etapa, eventoAuditoria, exigencia, pessoa, resultadoInss, tarefa, usuario, processoAcervo } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_CARTA, MSG_COMUNICACAO, MSG_FORA_DA_VIGILIA } from './vigilia.ts'
@@ -79,6 +79,9 @@ describe('GGVP-35 · vigiar o Meu INSS', () => {
     expect(e.situacao).toBe('concluida')
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'deferimento_registrado'))).length).toBe(1)
     expect((await ver()).json().registros.map((x: { resumo: string; quem: string }) => [x.resumo, x.quem])).toEqual([['Deferido', 'gabi']])
+    // GGVP-158 P7.5: o deferimento entra no acervo na hora, com a data da decisão.
+    const acervo = await banco.select().from(processoAcervo)
+    expect(acervo.map((a) => [a.casoId, a.desfecho, a.dataDecisao, a.fonte])).toEqual([[casoId, 'deferido', res.dataDecisao, 'portal']])
   })
 
   it('CA3 · deferido diferente do pedido abre a análise, não a prestação de contas', async () => {

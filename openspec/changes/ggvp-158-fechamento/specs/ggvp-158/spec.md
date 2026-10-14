@@ -946,3 +946,166 @@ Na ligação e no WhatsApp, a verificação do cliente SHALL ser por chamada de 
 - **Dado** a ligação sem verificação
 - **Quando** a Sênior confirma o e-mail novo
 - **Então** o portal recusa, e a recusa fica no histórico
+
+### Requirement: P7.1 · A estratégia do caso: a IA propõe, e o Jurídico confere
+A página do processo SHALL ter a estratégia do caso, que só quem vê o estudo de caso (o Jurídico e os sócios) lê. A IA SHALL propor a estratégia, pronta e sem botão, pelo que o caso já tem:
+- o parecer registrado;
+- o despacho da Sênior;
+- o motivo do indeferimento;
+- o resultado da perícia;
+- a decisão de mérito;
+- os casos parecidos do acervo.
+
+A advogada ou a Sênior confere, ajusta e salva. Cada versão salva MUST ficar no histórico, com quem e quando. Pedir outra proposta é o único botão.
+
+#### Scenario: P7.1 · A proposta pronta
+- **Dado** o caso com o parecer registrado
+- **Quando** a advogada abre a estratégia
+- **Então** a proposta da IA já está lá, com as fontes, para conferir
+
+#### Scenario: P7.1 · Salvar com ajuste
+- **Dado** a proposta da IA
+- **Quando** a advogada ajusta o texto e salva
+- **Então** a estratégia vale com o texto dela, e a versão fica no histórico com quem e quando
+
+#### Scenario: P7.1 · Fora do Jurídico
+- **Quando** o Atendimento abre o resumo do processo
+- **Então** ele vem sem a estratégia
+
+### Requirement: P7.2 · As tarefas da Recepção são linhas da tabela de tarefas
+Estas tarefas, que a Central do Atendimento calcula no navegador, SHALL ser linhas da tabela de tarefas:
+- "Cobrar documento" e "Decidir cobrança" (D1.23);
+- "Conferir checklist" (D1.21);
+- "Reenviar boas-vindas" (D1.22);
+- as do fechamento (D1.14).
+
+O servidor MUST abrir e fechar cada linha a cada mudança do que a origina, com a pessoa e o caso, quando há. A Central geral SHALL mostrar também a tarefa da pessoa que ainda não tem caso.
+
+#### Scenario: P7.2 · A cobrança aberta
+- **Dado** o caso com documento faltando
+- **Quando** a cobrança abre
+- **Então** nasce a linha "Cobrar documento" do Atendimento, com o prazo da próxima tentativa
+
+#### Scenario: P7.2 · A cobrança encerrada
+- **Dado** a linha "Cobrar documento" aberta
+- **Quando** o documento chega e a cobrança encerra
+- **Então** a linha fecha
+
+#### Scenario: P7.2 · O fechamento do lead
+- **Dado** o lead entrevistado, ainda sem caso
+- **Quando** a entrevista termina sem o fechamento registrado
+- **Então** a tarefa do fechamento aparece na Central do Atendimento, da pessoa, sem caso
+
+### Requirement: P7.3 · O chat só cria tarefa e só pede a peça quando pode
+Criar tarefa pelo chat SHALL ser só de quem tem `tarefa.atribuir` (a Sênior e o líder do Atendimento). Pedir a peça pelo chat MUST esperar o despacho da Sênior:
+- sem a tarefa "Pedir a petição" aberta pelo despacho, recusa;
+- com ela, aponta para a mesma tarefa, sem criar outra.
+
+#### Scenario: P7.3 · Quem não atribui tarefa
+- **Quando** a atendente pede ao chat para criar uma tarefa
+- **Então** o chat não oferece a ação, e o servidor recusa se ela vier
+
+#### Scenario: P7.3 · A peça antes do despacho
+- **Dado** o caso sem o despacho da Sênior
+- **Quando** a advogada pede a peça pelo chat
+- **Então** o chat diz "A petição é pedida depois do despacho da Sênior.", e nenhuma tarefa nasce
+
+#### Scenario: P7.3 · A peça depois do despacho
+- **Dado** a tarefa "Pedir a petição" aberta pelo despacho
+- **Quando** a advogada pede a peça pelo chat
+- **Então** o chat aponta para a mesma tarefa, e nenhuma outra nasce
+
+### Requirement: P7.4 · A sugestão de benefício vem do acervo de verdade
+A sugestão de benefício da entrevista SHALL vir da IA, com os casos parecidos do acervo de verdade, pronta quando a transcrição fica pronta, e com as fontes. A IA SHALL recomendar sempre; sem caso parecido, diz que não achou referência na casa. A advogada confirma ou não, e a recusa fica no histórico, com o motivo. O servidor MUST deixar de usar o acervo e o CNIS de exemplo.
+
+#### Scenario: P7.4 · Pronta, com as fontes
+- **Dado** a entrevista transcrita
+- **Quando** a advogada abre a definição do benefício
+- **Então** a sugestão da IA já está lá, com os casos do acervo de onde veio
+
+#### Scenario: P7.4 · Sem caso parecido
+- **Dado** um acervo sem caso parecido
+- **Quando** a sugestão fica pronta
+- **Então** ela vem com "Sem referência na casa" no porquê
+
+#### Scenario: P7.4 · A advogada recusa
+- **Quando** a advogada escolhe outro benefício
+- **Então** a recusa fica no histórico, com o motivo e a sugestão que ela recusou
+
+#### Scenario: P7.4 · Sem a IA
+- **Dado** o servidor sem a IA
+- **Quando** a advogada abre a definição
+- **Então** não há sugestão, e o aviso diz que a IA não respondeu
+
+### Requirement: P7.5 · O desfecho entra no acervo quando é conhecido
+O registro do desfecho de cada caso no acervo SHALL nascer quando o desfecho é conhecido:
+- o deferimento no INSS, na hora do registro;
+- o desfecho de mérito, pela mesma função;
+- a ida ao banco, como hoje.
+
+Um registro por caso MUST valer, sem duplicar, com o número, o perito, o juízo e a data da decisão, sem dado pessoal.
+
+#### Scenario: P7.5 · O deferimento no INSS
+- **Quando** a vigília registra o deferimento do caso
+- **Então** o caso entra no acervo como deferido, com a data da decisão
+
+#### Scenario: P7.5 · Sem duplicar
+- **Dado** o caso já no acervo
+- **Quando** a ida ao banco é avisada
+- **Então** o acervo segue com um registro só do caso
+
+### Requirement: P7.6 · O valor da causa e a renda por pessoa do LOAS
+O valor da causa (na petição) e a renda por pessoa do LOAS (na ficha e na entrevista) SHALL ficar no servidor, pela regra de valores do Pedro (06/10):
+- a advogada grava;
+- a advogada, o Sócio e o Financeiro leem;
+- o Atendimento, a Documentação e a Sênior não leem.
+
+O resumo do processo SHALL trazer os valores que o perfil pode ver. O valor MUST passar pela biblioteca `campos`.
+
+#### Scenario: P7.6 · A advogada grava o valor da causa
+- **Quando** a advogada grava o valor da causa de R$ 15.000,00
+- **Então** o caso guarda o valor, e o Financeiro o vê no resumo do processo
+
+#### Scenario: P7.6 · Quem não vê valor
+- **Quando** o Atendimento pede os valores do caso
+- **Então** o portal recusa com 403
+
+#### Scenario: P7.6 · Valor errado
+- **Quando** a advogada grava a renda "abc"
+- **Então** o portal recusa com "Informe a renda por pessoa, como 1.234,56"
+
+### Requirement: P7.7 · O importador do Raio-X
+A Sênior SHALL subir a base histórica (o Raio-X dos processos) e ver antes o relatório da carga, sem gravar nada:
+- quantos peritos, juízes, varas e processos vão entrar;
+- a data de corte;
+- as linhas recusadas, com o motivo.
+
+Na confirmação, os processos MUST entrar no acervo com o desfecho, o benefício, o perito, o juízo e a vara. O mesmo processo carregado de novo não duplica.
+
+Os indicadores do Raio-X SHALL sair da base importada, por código com teste, cada um com o número de casos e a data da base. O acervo não guarda CPF, endereço nem telefone, e nada do arquivo vai ao log. O formato é o do importador de hoje (a planilha com os títulos na primeira linha), com as colunas da base, até o Pedro entregar o formato do Raio-X.
+
+#### Scenario: P7.7 · A simulação
+- **Dado** a planilha com três processos, um sem número
+- **Quando** a Sênior simula a carga
+- **Então** vê dois processos, os peritos, os juízes, as varas, a data de corte e a linha recusada com o motivo, e nada é gravado
+
+#### Scenario: P7.7 · A confirmação, sem duplicar
+- **Dado** o relatório conferido
+- **Quando** a Sênior confirma, e depois carrega a mesma planilha de novo
+- **Então** os processos entram no acervo uma vez só
+
+#### Scenario: P7.7 · Os indicadores
+- **Dado** a base carregada
+- **Quando** a Gestão abre o Raio-X
+- **Então** cada indicador vem calculado da base, com o número de casos e a data da base
+
+#### Scenario: P7.7 · Onde julgam, só para o Jurídico e o Sócio
+- **Dado** a base carregada
+- **Quando** o Financeiro ou a líder do Atendimento abrem o Raio-X
+- **Então** veem os indicadores, mas o "Onde julgam" (a taxa de êxito por juízo) vem vazio, como na GGVP-156 CA3 e na P5.13
+- **E** o Jurídico e o Sócio veem o "Onde julgam"
+
+#### Scenario: P7.7 · Dado pessoal na planilha
+- **Dado** a planilha com as colunas nome, CPF e telefone
+- **Quando** a Sênior simula
+- **Então** as três aparecem como colunas ignoradas, e nada delas é gravado

@@ -5,6 +5,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { ConfirmarDesfecho, DesfechoParaConfirmar, ehProcedente, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, decisao, etapa, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { abrirDecisaoDoRecurso, sentencaEPrazo } from './recurso.ts'
 
@@ -95,11 +96,13 @@ export function registrarRotasDesfecho(app: FastifyInstance, { banco, agora = ()
         .where(eq(caso.id, casoId))
         .returning({ advogadaId: caso.advogadaResponsavelId })
       const [lida] = await tx
-        .select({ id: publicacao.id, sugerida: publicacao.classeSugeridaIa, confianca: publicacao.confiancaIa })
+        .select({ id: publicacao.id, sugerida: publicacao.classeSugeridaIa, confianca: publicacao.confiancaIa, em: publicacao.disponibilizadaEm })
         .from(publicacao)
         .where(and(eq(publicacao.casoId, casoId), eq(publicacao.classe, 'merito')))
         .orderBy(desc(publicacao.disponibilizadaEm))
         .limit(1)
+      // GGVP-158 P7.5: o desfecho de mérito entra no acervo agora, com a data da decisão; um registro por caso.
+      await desfechoNoAcervo(tx, casoId, { desfecho, dataDecisao: lida?.em ?? null })
       await tx.insert(decisao).values({
         casoId,
         passo: PASSO_CONFIRMAR,

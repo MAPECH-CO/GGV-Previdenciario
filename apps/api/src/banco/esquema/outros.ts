@@ -100,6 +100,14 @@ export const processoAcervo = pgTable('processo_acervo', {
   licao: text('licao'),
   /** GGVP-161 CA1: o resultado do recurso, conferido pela Sênior; nulo é "sem recurso julgado". */
   resultadoRecurso: text('resultado_recurso'),
+  // GGVP-158 P7.7 (GGVP-148): o que a base histórica (o Raio-X) traz de cada processo, para os indicadores. Nulo: a base
+  // não disse. A safra é o ano do número CNJ, e o foro, o código de origem dele.
+  juiz: text('juiz'),
+  falhaNossa: boolean('falha_nossa'),
+  laudoFavoravel: boolean('laudo_favoravel'),
+  extintoPorDeterminacao: boolean('extinto_por_determinacao'),
+  faltouPericia: boolean('faltou_pericia'),
+  cartorioCobrou: jsonb('cartorio_cobrou'),
   criadoEm: criadoEm(),
 }, (t) => [emLista('processo_acervo_resultado_recurso', t.resultadoRecurso, RESULTADOS_DO_RECURSO)]).enableRLS()
 

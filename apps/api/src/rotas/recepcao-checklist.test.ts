@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, cobrancaDocumento, configuracao, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, cobrancaDocumento, conferenciaChecklist, configuracao, contratoRecepcao, documentacaoMedica, documento, kitDocumento, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_G1 } from './conferencia.ts'
@@ -333,3 +333,85 @@ describe('GGVP-125 · bloco 5d: o documento de qualquer canal confere as pendên
   })
 })
 
+describe('GGVP-158 P7.2 · as tarefas da Recepção são linhas da tabela de tarefas', () => {
+  type Linha = { id: string; casoId: string | null; passo: string; titulo: string; detalhe: string; prazo: string | null; tela: string | null; urgente: boolean }
+  const linha = async (apelido: string, id: string) => ((await json(apelido, 'GET', '/api/tarefas')) as Linha[]).find((t) => t.id === id)
+
+  it('a cobrança aberta vira "Cobrar documento" do Atendimento, com o prazo da próxima tentativa; a tentativa atualiza; chegou tudo, a linha fecha', async () => {
+    const { fichaId, processoId } = await casoDe('loas-idoso')
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    const cobrar = `cobrar-${processoId}`
+    expect(await linha('ana', cobrar)).toEqual({
+      id: cobrar,
+      casoId: processoId,
+      passo: 'D1.23',
+      cliente: { id: fichaId, nome: 'Joana Ribeiro' },
+      contexto: null,
+      titulo: 'Cobrar documento',
+      detalhe: expect.stringMatching(/^LOAS Idoso · .+ e mais 4 pendentes · 1ª tentativa$/),
+      tela: `/casos/${processoId}/cobranca`,
+      prazo: '2026-10-08',
+      urgente: true,
+    })
+    // Conferido o checklist do cliente novo, as boas-vindas também esperam o Atendimento.
+    expect(await linha('ana', `boas-vindas-${processoId}`)).toMatchObject({ titulo: 'Enviar boas-vindas', detalhe: 'LOAS Idoso · checklist conferido · 6 pendências' })
+
+    await json('ana', 'POST', `/api/processos/${processoId}/cobranca/tentativas`, { canal: 'ligacao', resultado: 'sem-resposta' })
+    expect(await linha('ana', cobrar)).toMatchObject({ prazo: '2026-10-11', urgente: false, detalhe: expect.stringMatching(/ · 2ª tentativa$/) })
+
+    // Chegou tudo: a mesma linha fecha.
+    await completarOKit(fichaId, processoId)
+    expect(await linha('ana', cobrar)).toBeUndefined()
+    const doCaso = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, processoId), eq(tarefa.passo, 'D1.23')))
+    expect(doCaso.map((t) => [t.titulo, t.situacao])).toEqual([['Cobrar documento', 'concluida']])
+    // A leitura arquivada depois da última conferência pede outra à Documentação (o relógio do teste é parado: a
+    // conferência volta três horas, e a rodada vê).
+    const [conf] = await banco.select().from(conferenciaChecklist).where(eq(conferenciaChecklist.casoId, processoId))
+    await banco.update(conferenciaChecklist).set({ dados: { ...(conf.dados as object), quando: '2026-10-08T12:00:00.000Z' } }).where(eq(conferenciaChecklist.id, conf.id))
+    await app.sincronizarRecepcao()
+    expect(await linha('dora', `checklist-${processoId}`)).toMatchObject({ titulo: 'Conferir checklist', passo: 'D1.21', prazo: '2026-10-08', tela: `/casos/${processoId}/checklist` })
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    expect(await linha('dora', `checklist-${processoId}`)).toBeUndefined()
+  })
+
+  it('no limite, "Decidir cobrança" vai à Sênior desde a última tentativa, pela rodada; a decisão fecha a linha e volta ao Atendimento', async () => {
+    const { processoId } = await casoDe('loas-idoso')
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    const [c] = await banco.select().from(cobrancaDocumento).where(eq(cobrancaDocumento.casoId, processoId))
+    const tentativas = [
+      { dia: '2026-10-02', canal: 'chatwoot', resultado: 'sem-resposta', quem: 'ana' },
+      { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
+    ]
+    await banco.update(cobrancaDocumento).set({ dados: { ...(c.dados as object), tentativas } }).where(eq(cobrancaDocumento.id, c.id))
+    // O que muda sem passar pela ficha (aqui, direto no banco; na vida, a data) entra na rodada de 5 minutos.
+    await app.sincronizarRecepcao()
+    const decidir = `decidir-cobranca-${processoId}`
+    expect(await linha('sara', decidir)).toMatchObject({
+      titulo: 'Decidir cobrança',
+      passo: 'D1.23',
+      prazo: '2026-10-05',
+      urgente: true,
+      detalhe: 'LOAS Idoso · 2 tentativas sem resposta · limite (G15)',
+      tela: `/casos/${processoId}/cobranca/decidir`,
+    })
+    expect(await linha('ana', `cobrar-${processoId}`)).toMatchObject({ prazo: null, urgente: false, detalhe: expect.stringMatching(/ · na sênior: decidir \(G15\)$/) })
+
+    const decisao = { opcao: 'nova-tentativa', justificativa: 'A cliente está viajando e volta no dia 20', prazo: '2026-10-20' }
+    expect((await chamar('sara', 'POST', `/api/processos/${processoId}/cobranca/decisao`, decisao)).statusCode).toBe(200)
+    expect(await linha('sara', decidir)).toBeUndefined()
+    expect(await linha('ana', `cobrar-${processoId}`)).toMatchObject({
+      prazo: '2026-10-20',
+      detalhe: expect.stringMatching(/ · 3ª tentativa · decisão da sênior: nova tentativa com prazo$/),
+    })
+  })
+
+  it('uma aberta por chave: a rodada de novo não repete, e o banco recusa a segunda', async () => {
+    const { processoId } = await casoDe('loas-idoso')
+    await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+    await app.sincronizarRecepcao()
+    await app.sincronizarRecepcao()
+    const abertas = await banco.select().from(tarefa).where(and(eq(tarefa.casoId, processoId), eq(tarefa.titulo, 'Cobrar documento')))
+    expect(abertas).toHaveLength(1)
+    await expect(banco.insert(tarefa).values({ casoId: processoId, passo: 'D1.23', titulo: 'Cobrar documento', perfilDono: 'atendimento' })).rejects.toThrow()
+  })
+})

@@ -64,13 +64,19 @@ test('GGVP-55 · a Sênior abre "Conferir desfechos do lote" pela Central, confe
   await expect(lista.getByRole('listitem').filter({ hasText: /\d{7}-\d{2}\.\d{4}\./ })).toHaveCount(2)
 
   await page.goto('/gestao/resultados')
-  await expect(page.getByText(/\d+ processos · \d+ conferidos, nas contas · \d+ aguardando conferência, fora das contas · base de 02\/10\/2026/)).toBeVisible()
+  // GGVP-158 P7.5: o desfecho entra no acervo quando é conhecido, e os testes de antes (o deferimento, o mérito) mudam a data da base.
+  await expect(page.getByText(/\d+ processos · \d+ conferidos, nas contas · \d+ aguardando conferência, fora das contas · base de \d{2}\/\d{2}\/\d{4}/)).toBeVisible()
 })
 
 test('GGVP-41 · a Sênior confere a ficha do desfecho do portal com a tese, e a Gestão recorta por tese', async ({ page }) => {
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/acervo/conferencia')
-  const doPortal = page.getByRole('list', { name: 'Desfechos para conferir' }).getByRole('listitem').filter({ hasText: 'Processo do portal' })
+  // GGVP-158 P7.5: outros desfechos do portal também esperam (os dos testes de antes); este é o da ficha da semente.
+  const doPortal = page
+    .getByRole('list', { name: 'Desfechos para conferir' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Processo do portal' })
+    .filter({ hasText: 'Juntar o estudo social com os gastos da casa' })
   await expect(doPortal.getByLabel('Ficha do desfecho')).toContainText('Juntar o estudo social com os gastos da casa')
   await expect(doPortal.getByLabel('Tese')).toHaveValue('Impedimento de longo prazo com renda acima de 1/4')
   await doPortal.getByLabel('Tese').fill('Impedimento de longo prazo e renda acima de 1/4')

@@ -859,7 +859,7 @@ describe('GGVP-125 · bloco 5c: o checklist, as boas-vindas e a cobrança no ser
     d: { checklists?: ChecklistNaCopia[]; boasVindas?: RegistroDasBoasVindas[]; cobrancas?: Cobranca[]; leituras?: DocumentoLido[] },
   ) => ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [cliente()], tarefas: [], internos: [], gravacoes: [], contratos: [], ...d }), ...rotas })
 
-  it('o checklist calculado no servidor vem na cópia; conferir vai ao servidor, e a cobrança que ele abriu dá "Cobrar documento"', async () => {
+  it('o checklist calculado no servidor vem na cópia; conferir vai ao servidor; as tarefas do caso são linhas do servidor', async () => {
     const fetch = sincronizar(
       {
         [`GET /api/processos/${PROC}/checklist`]: () => ({ ficha: cliente(), processo: cliente().processos[0], ...naCopia() }),
@@ -873,31 +873,26 @@ describe('GGVP-125 · bloco 5c: o checklist, as boas-vindas e a cobrança no ser
       { checklists: [naCopia()], leituras: [arquivada] },
     )
     await sincronizarRecepcao()
-    expect(tarefasDeConferirChecklist().find((t) => t.processoId === PROC)).toMatchObject({
-      acao: 'Conferir checklist',
-      detalhe: 'LOAS Idoso · 1 de 2 itens recebidos · leitura arquivada',
-    })
+    // GGVP-158 P7.2: "Conferir checklist" e "Cobrar documento" do caso do servidor são linhas do servidor; a tela não repete.
+    expect(tarefasDeConferirChecklist().some((t) => t.processoId === PROC)).toBe(false)
     expect((await obterChecklist(PROC))?.checklist.faltam).toEqual(['RG'])
 
     expect(await conferirChecklist(PROC)).toEqual(conferencia)
     expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/processos/${PROC}/checklist/conferencia`)
     expect(tarefasDeConferirChecklist().some((t) => t.processoId === PROC)).toBe(false)
-    expect(tarefasDeCobrar().find((t) => t.processoId === PROC)).toMatchObject({ acao: 'Cobrar documento', detalhe: 'LOAS Idoso · RG pendente · 1ª tentativa' })
+    // GGVP-158 P7.2: "Cobrar documento" do caso do servidor é linha do servidor; a tela não repete.
+    expect(tarefasDeCobrar().some((t) => t.processoId === PROC)).toBe(false)
     expect(pendenciasDeDocumento(PROC)).toEqual(['RG'])
   })
 
-  it('boas-vindas: conferido o checklist, a Atendimento recebe "Enviar boas-vindas"; "Já enviei" vai ao servidor e a tarefa sai', async () => {
+  it('boas-vindas: conferido o checklist, "Enviar boas-vindas" vem do servidor (a tela não repete); "Já enviei" vai ao servidor', async () => {
     const registro: RegistroDasBoasVindas = { fichaId: ID, processoId: PROC, quando: '2026-10-05T18:10:00.000Z', situacao: 'enviada', mensagem: 'Olá, Ivone!' }
     const fetch = sincronizar(
       { [`POST /api/processos/${PROC}/boas-vindas`]: () => ({ boasVindas: { situacao: 'enviada', mensagem: 'Olá, Ivone!', copias: [], faltam: ['RG'], registro }, ficha: cliente() }) },
       { checklists: [naCopia({ conferencia })] },
     )
     await sincronizarRecepcao()
-    expect(tarefasDeReenviarBoasVindas().find((t) => t.processoId === PROC)).toMatchObject({
-      acao: 'Enviar boas-vindas',
-      detalhe: 'LOAS Idoso · checklist conferido · 1 pendência',
-      href: `/casos/${PROC}/checklist`,
-    })
+    expect(tarefasDeReenviarBoasVindas().some((t) => t.processoId === PROC)).toBe(false)
     expect(await enviarBoasVindas(PROC, { conferi: true, mensagem: 'Olá, Ivone!' })).toEqual(registro)
     expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/processos/${PROC}/boas-vindas`)
     expect(ler().boasVindasDoServidor).toEqual([registro])
@@ -920,7 +915,8 @@ describe('GGVP-125 · bloco 5c: o checklist, as boas-vindas e a cobrança no ser
       { checklists: [naCopia({ conferencia })], cobrancas: [noLimite] },
     )
     await sincronizarRecepcao()
-    expect(tarefasDeDecidirCobranca().find((t) => t.processoId === PROC)).toMatchObject({ acao: 'Decidir cobrança', detalhe: 'LOAS Idoso · 2 tentativas sem resposta · limite (G15)' })
+    // GGVP-158 P7.2: "Decidir cobrança" do caso do servidor é linha do servidor; a tela não repete.
+    expect(tarefasDeDecidirCobranca().some((t) => t.processoId === PROC)).toBe(false)
 
     await registrarTentativa(PROC, { canal: 'ligacao', resultado: 'sem-resposta' })
     expect(corpoDa(fetch, fetch.mock.calls.length - 1)).toEqual({ canal: 'ligacao', resultado: 'sem-resposta' })

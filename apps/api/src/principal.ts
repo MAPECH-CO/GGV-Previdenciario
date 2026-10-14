@@ -82,3 +82,7 @@ await app.listen({ port: Number(process.env.PORTA ?? 3000), host: process.env.HO
 const prepararSugestoes = () => void app.prepararSugestoes().then(() => app.alimentarAcervo())
 prepararSugestoes()
 setInterval(prepararSugestoes, 5 * 60_000)
+// GGVP-158 P7.2: as tarefas da Recepção que mudam só com a data (o lembrete e o limite da cobrança, o recontato).
+const tarefasDaRecepcao = () => void app.sincronizarRecepcao().catch((e) => app.log.error(resumoDoErro(e), 'tarefas da Recepção'))
+tarefasDaRecepcao()
+setInterval(tarefasDaRecepcao, 5 * 60_000)

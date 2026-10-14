@@ -8,6 +8,7 @@ import { caso, documento, etapa, exigencia, pessoa, resultadoInss, tarefa, usuar
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import { MSG_NADA_A_DESPACHAR } from './indeferimento.ts'
+import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 export const MSG_FORA_DA_VIGILIA = 'O caso não está esperando a resposta do INSS.'
@@ -145,6 +146,8 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
       } else {
         // GGVP-44 CA4: a prestação nasce com a carta de concessão (a comunicação do deferimento).
         await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: d.id })
+        // GGVP-158 P7.5: o deferimento entra no acervo agora, não só na ida ao banco.
+        await desfechoNoAcervo(tx, casoId, { desfecho: 'deferido', dataDecisao: hoje(agora()) })
       }
     })
     await historico(quem, indeferido ? 'indeferimento_registrado' : 'deferimento_registrado', pedido, `caso:${casoId}`, { diferenteDoPedido: dados.diferenteDoPedido })

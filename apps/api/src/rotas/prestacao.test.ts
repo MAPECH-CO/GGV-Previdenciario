@@ -541,3 +541,14 @@ describe('GGVP-158 P6.4 · a ligação avisa; o WhatsApp é só o complemento, e
     expect((await banco.select().from(modelo)).length).toBe(1)
   })
 })
+
+describe('GGVP-158 P7.5 · o desfecho no acervo, um por caso', () => {
+  it('o caso que já entrou no acervo pela vigília não duplica na ida ao banco', async () => {
+    await ateOAviso()
+    await banco.insert(processoAcervo).values({ casoId, beneficio: 'bpc_loas_idoso', desfecho: 'deferido', dataDecisao: '2026-10-05', fonte: 'portal' })
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })).statusCode).toBe(201)
+    const acervo = await banco.select().from(processoAcervo)
+    expect(acervo.map((a) => [a.casoId, a.desfecho, a.dataDecisao])).toEqual([[casoId, 'deferido', '2026-10-05']])
+  })
+})

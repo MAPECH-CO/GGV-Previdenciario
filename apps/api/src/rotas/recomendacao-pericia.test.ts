@@ -36,7 +36,9 @@ let pedidos: string[] = []
 function comIa(resposta: object = RECOMENDACAO) {
   pedidos = []
   const fetch = async (_url: unknown, init?: RequestInit) => {
-    pedidos.push(JSON.parse(String(init?.body)).messages[1].content)
+    const corpo = JSON.parse(String(init?.body)) as { messages: { content: string }[] }
+    // Só as chamadas da recomendação contam: a rodada também prepara a estratégia do caso (GGVP-158 P7.1).
+    if (corpo.messages[0].content.includes('para uma perícia do cliente')) pedidos.push(corpo.messages[1].content)
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(resposta) } }] }))
   }
   app = criarServidor({ banco, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
@@ -114,7 +116,8 @@ describe('GGVP-38 · recomendação sobre a perícia', () => {
     comIa({ oQueLevar: [] })
     await app.prepararSugestoes()
     expect(pedidos).toHaveLength(1)
-    expect((await banco.select().from(chamadaIa)).map((c) => [c.situacao, c.erro])).toEqual([['falhou', 'saída fora do formato']])
+    const daRecomendacao = await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'recomendacao_pericia'))
+    expect(daRecomendacao.map((c) => [c.situacao, c.erro])).toEqual([['falhou', 'saída fora do formato']])
     expect(await abertas()).toEqual(['juridico_adm · Marcar perícia médica e avaliação social'])
     expect((await chamar('gabi', 'POST', `/api/pericias/${doInss}/recomendacao/sugestao`)).json().motivo).toBe('A IA não respondeu agora: escreva a recomendação pela sua leitura.')
   })

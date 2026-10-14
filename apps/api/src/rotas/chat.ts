@@ -18,13 +18,13 @@ import {
   type WidgetDoChat,
 } from '@ggv/contratos'
 import { tool, type Tool } from '@openai/agents'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, caso, documentacaoMedica, etapa, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_IA_DESLIGADA, MSG_IA_SEM_RESPOSTA, MSG_IA_SEM_SAUDE } from '../fluxo/transcricao.ts'
-import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
+import { MSG_SEM_REFERENCIA, SEM_CASO, buscarNoAcervo } from '../ia/acervo.ts'
 import { comoDado, conversar, type Rodada } from '../ia/chat.ts'
 import { temCid, type Ia } from '../ia/ia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -188,9 +188,6 @@ function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: str
   return { ...resposta, links: destino.links }
 }
 
-/** Sem caso no contexto, a busca no acervo não tem caso a deixar de fora. */
-const SEM_CASO = '00000000-0000-0000-0000-000000000000'
-
 /**
  * O que as ferramentas de uma pergunta conhecem: quem pergunta (com a sessão dele), o caso e as fontes usadas. Na
  * confirmação do cartão, também o responsável que a pessoa trocou, e o resultado (ou a falha) da ação.
@@ -329,6 +326,8 @@ const falhou = (x: Ambiente, motivo: string) => {
 
 /** CA3: criar tarefa, depois do clique. A ação vem da lista fixa de quem vai fazer (CA2); o histórico guarda "feito pelo chat". */
 async function criarTarefaPeloChat(x: Ambiente, acao: string, para: string, prazo: string | null) {
+  // GGVP-158 P7.3: criar tarefa pelo chat é de quem atribui tarefa (a Sênior e o líder do Atendimento); confere de novo.
+  if (!pode(x.perfil, 'tarefa.atribuir')) return falhou(x, 'criar tarefa pelo chat é da Sênior e do líder do Atendimento.')
   const casoId = x.alvo!.casoId
   const pessoas = await pessoasDoEscritorio(x.banco)
   const quem = x.confirmacao?.responsavel ? pessoas.find((p) => p.nome === x.confirmacao!.responsavel) : responsavelCitado(para, pessoas)
@@ -343,16 +342,24 @@ async function criarTarefaPeloChat(x: Ambiente, acao: string, para: string, praz
   return x.resultado.texto
 }
 
+export const MSG_PECA_ANTES_DO_DESPACHO = 'A petição é pedida depois do despacho da Sênior.'
+
 /**
- * CA3: pedir a peça, depois do clique. A IA não assina nem pede sozinha (G6): abre para quem pediu a tarefa "Pedir
- * petição", com a minuta pronta na tela da petição, e o pedido de verdade sai de lá, com o G17.
+ * CA3: pedir a peça, depois do clique. A IA não assina nem pede sozinha (G6). GGVP-158 P7.3: a peça espera o despacho da
+ * Sênior, que abre "Pedir a petição" (D3.05); o chat aponta para a mesma tarefa, sem criar outra, e o pedido de verdade
+ * sai da tela da petição, com o G17.
  */
 async function pedirPecaPeloChat(x: Ambiente, peca: string) {
   const casoId = x.alvo!.casoId
+  const [aberta] = await x.banco
+    .select({ id: tarefa.id, titulo: tarefa.titulo })
+    .from(tarefa)
+    .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D3.05'), isNull(tarefa.concluidaEm)))
+    .limit(1)
+  if (!aberta) return falhou(x, MSG_PECA_ANTES_DO_DESPACHO)
   const cliente = await clienteDoCaso(x.banco, casoId)
-  await x.banco.insert(tarefa).values({ casoId, passo: 'D3.05', titulo: 'Pedir petição', perfilDono: x.perfil, responsavelId: x.quem })
-  await x.evento('tarefa_criada_pelo_chat', `caso:${casoId}`, { titulo: 'Pedir petição', peca, responsavel: x.quem, peloChat: true })
-  const texto = `✓ Feito: a tarefa «${tituloDaTarefa(cliente.nome, 'Pedir petição')}» (${peca}) está na sua Central, com a minuta da IA pronta para você conferir e assinar (G6).`
+  await x.evento('peca_pedida_pelo_chat', `caso:${casoId}`, { tarefa: aberta.id, peca, peloChat: true })
+  const texto = `✓ Feito: a tarefa «${tituloDaTarefa(cliente.nome, aberta.titulo)}» (${peca}) já está aberta, com a minuta da IA pronta para você conferir e assinar (G6).`
   x.resultado = { texto, links: [{ rotulo: 'Abrir a petição', href: `/casos/${casoId}/peticao` }] }
   return texto
 }
@@ -363,7 +370,10 @@ async function pedirPecaPeloChat(x: Ambiente, peca: string) {
  */
 function ferramentasDeAcao(x: Ambiente): Tool[] {
   if (!x.alvo) return []
-  const lista: Tool[] = [
+  const lista: Tool[] = []
+  // GGVP-158 P7.3: só quem atribui tarefa recebe a ferramenta de criar tarefa.
+  if (pode(x.perfil, 'tarefa.atribuir'))
+    lista.push(
     tool({
       name: 'criar_tarefa',
       description: 'Cria, no caso do contexto, uma tarefa da lista fixa de ações para alguém do escritório (para: o nome da pessoa). Pede a confirmação da pessoa antes.',
@@ -371,7 +381,7 @@ function ferramentasDeAcao(x: Ambiente): Tool[] {
       needsApproval: true,
       execute: ({ acao, para, prazo }) => criarTarefaPeloChat(x, acao, para, prazo),
     }),
-  ]
+    )
   if (pode(x.perfil, 'peticao.pedir')) {
     lista.push(
       tool({
@@ -409,9 +419,13 @@ async function cartaoDaAprovacao(x: Ambiente, ferramenta: string, argumentos: Re
       ...comum,
       tipo: 'pedir-peca',
       titulo: tituloDaTarefa(cliente.nome, String(argumentos.peca ?? 'Petição')),
-      passos: ['Abrir para você a tarefa «Pedir petição», com a minuta da IA pronta', 'Registrar no histórico do caso: feito pelo chat'],
+      passos: ['Abrir a tarefa «Pedir a petição» que o despacho da Sênior abriu, com a minuta da IA pronta', 'Registrar no histórico do caso: feito pelo chat'],
       conferir: ['A peça certa para o caso'],
-      travas: ['A IA não assina nem protocola: você confere e assina (G6)', 'Sem o parecer médico "Suficiente" confirmado, o pedido não sai (G17)'],
+      travas: [
+        'A IA não assina nem protocola: você confere e assina (G6)',
+        'Sem o despacho da Sênior, a peça não é pedida',
+        'Sem o parecer médico "Suficiente" confirmado, o pedido não sai (G17)',
+      ],
       rotuloConfirmar: 'Abrir a tarefa',
     }
   }

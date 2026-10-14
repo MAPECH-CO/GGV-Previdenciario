@@ -413,6 +413,64 @@ O OK segue com a advogada, por decisão do Pedro.
     - O ADR registra a entrada do Chatwoot pelo webhook com segredo.
     - `CHATWOOT_WEBHOOK_SEGREDO` entra na lista das variáveis e na doc da homologação. O `.env.example` é do Mateus.
 
+### Parte 7 · Telas lidas do banco, acervo e importação (decisões do Mateus, 13/10)
+
+Só servidor, com teste junto, num pedido em cima do #78 (parte 6). Uma migração, a 0034. Sem matriz nova.
+
+Decisões do Mateus em 13/10:
+- a estratégia do caso: a IA propõe, e o Jurídico confere;
+- o importador do Raio-X entra pelo formato de hoje e muda quando o Pedro entregar o formato do Raio-X;
+- plano aprovado, código em seguida.
+
+O que já está feito e não entra: o juízo, a vara e o juiz no resumo do processo para todos (P5.14); o laudo novo e a pergunta do perito, que a tela do Pedro já lê das rotas do parecer e da perícia; "Liberar ao Jurídico" (D1.24), que já é linha do servidor.
+
+67. **A estratégia do caso** (P7.1).
+    - Finalidade nova da IA, `estrategia_do_caso`, com dado de saúde. O conteúdo é montado no código: o benefício e a etapa; o parecer registrado (a situação, os itens, o que abordar); o despacho da Sênior; o motivo do indeferimento; o resultado da perícia; a publicação de mérito.
+    - As fontes vêm da busca do acervo (o mesmo benefício). A saída é `{ estrategia }`, até 1.500 caracteres, conferida no código.
+    - Fica em `decisao` (tipo `estrategia`, resultado `registrada`, o texto em `justificativa` e a chamada da IA em `sugestao_ia`): cada versão é uma linha, e a atual é a mais nova. Sem migração.
+    - `GET /api/casos/:id/estrategia` (`estudo.ver`): a atual, as versões e a proposta pronta.
+    - `POST /api/casos/:id/estrategia` (`peticao.pedir`, a advogada e a Sênior): `{ texto, chamadaIaId? }`; a versão vai ao histórico.
+    - `POST /api/casos/:id/estrategia/sugestao`: pede outra proposta (`refazer`).
+    - O preparo deixa a proposta pronta nos casos com parecer registrado ou despacho e sem estratégia (GGVP-106).
+    - O resumo do processo ganha `estrategia`, o texto da atual, só com `estudo.ver`. Opcional no contrato.
+68. **As tarefas da Recepção viram linhas** (P7.2).
+    - Um módulo só, `fluxo/tarefas-da-recepcao.ts`: `sincronizarRecepcao(banco, agora, { casoId?, pessoaId? })` calcula o que deve estar aberto pelas mesmas regras puras das telas (a cobrança, o checklist, as boas-vindas que não saíram e o fechamento) e acerta as linhas: abre a que falta, fecha a que não vale mais e atualiza o prazo.
+    - A chave de cada linha é o passo, o título e o caso (ou a pessoa, sem caso): uma aberta por chave. O banco segura, com um índice único parcial na 0034, e a sincronização abre com "on conflict do nothing".
+    - É chamado quando a ficha é guardada (13/10, na implementação): toda rota da Recepção que muda a cobrança, o checklist, as boas-vindas ou o fechamento guarda a ficha no fim, e a chamada num lugar só não esquece rota. O que muda só com a data (o lembrete e o limite da cobrança, o recontato) entra na rodada de 5 minutos do processo (`app.sincronizarRecepcao`).
+    - A linha guarda o detalhe que a tela mostrava (`tarefa.detalhe`, na 0034), e a Central mostra esse detalhe no lugar do benefício.
+    - A Central geral (`/api/tarefas`) lê também a linha da pessoa sem caso (o cliente vem da linha ou do caso), e a tela de cada passo vem do passo.
+    - O id que a Central devolve para essas linhas é a chave que a tela já usa (`cobrar-<caso>` e as outras), para a atribuição do líder (GGVP-147) seguir valendo; o contrato da linha aceita esse id. As fontes da tela (`dados/`) deixam de calcular os casos do servidor, como já fazem com o D1.24.
+69. **O chat** (P7.3).
+    - `criar_tarefa` só entra nas ferramentas de quem tem `tarefa.atribuir`, e a execução confere de novo.
+    - `pedir_peca` confere a "Pedir a petição" (D3.05) aberta pelo despacho. Sem ela: "A petição é pedida depois do despacho da Sênior.". Com ela, não cria outra: devolve o link da petição e registra o pedido no histórico.
+70. **A sugestão de benefício** (P7.4).
+    - Finalidade nova, `sugerir_beneficio`, com dado de saúde. O conteúdo: o benefício de interesse e as falas da entrevista (já sem a senha). As informações conferidas ficam de fora (13/10, na implementação): mudam depois da transcrição e tirariam a sugestão do pronto, e o que elas dizem já está nas falas. As fontes: a busca do acervo (até 3, com saúde, de todos os benefícios), sem o caso mais novo da pessoa.
+    - A saída é `{ sugerido, alternativa, porque }`, com os ids do catálogo, conferidos no código. O citado e os requisitos ficam no código, como hoje; o citado vem à parte, também sem a IA (G3). Sem fonte, o porquê começa com "Sem referência na casa".
+    - `GET /api/entrevistas/:id/beneficio` no servidor (`ficha.analisar`): a transcrita, o citado, a sugestão, os dados dos requisitos e o aviso.
+    - A sugestão da entrevista é a última que a IA deu para a gravação: o `POST` registra a mesma, sem chamar de novo. O preparo deixa a sugestão pronta nas entrevistas transcritas sem benefício definido.
+    - O servidor deixa de importar o acervo de exemplo (`web/src/dados/acervo.ts`). Os requisitos usam o CNIS registrado no caso (parte 3), pela carência que o cálculo já contou (`requisitosDoBeneficio` aceita a carência pronta); sem ele, a carência fica sem resposta, e o cálculo recusa.
+    - A base da sugestão são as fontes da IA ("de onde veio").
+71. **O desfecho no acervo** (P7.5).
+    - Uma função só, `desfechoNoAcervo(banco, casoId, { desfecho, dataDecisao })`: insere quando o caso não tem registro, com o número, o perito da perícia mais nova, o juízo e a data; quando o registro existe sem desfecho, completa.
+    - Chamada no deferimento do INSS (na vigília, na mesma transação), na ida ao banco (no lugar do insert de hoje) e no estudo do caso perdido. O #31 entrou na main antes (13/10): a confirmação do desfecho de mérito dele chama a mesma aqui, na mesma transação.
+    - O juízo sai do número CNJ (`juizoDoCnj`), como na jurimetria: o registro guarda o número, e `juizo_id` fica para quando o juízo tiver cadastro.
+    - Sem dado pessoal: só número e ids. A ficha da IA segue anonimizada.
+72. **Os valores** (P7.6).
+    - A migração 0034 dá `valor_causa` ao caso e `renda_por_pessoa` à pessoa (`numeric(14,2)`).
+    - `GET /api/casos/:id/valores` (`caso.ver`): o valor da causa, a renda por pessoa e os da prestação, cada um pela regra `podeVerValor` das telas; sem nenhum, 403.
+    - `PUT /api/casos/:id/valor-da-causa` e `PUT /api/fichas/:id/renda-por-pessoa`: só a advogada, pela `campos`. O histórico diz que mudou, sem o valor.
+    - O resumo do processo ganha `valores`, os que o perfil pode ver. Opcional no contrato.
+73. **O Raio-X** (P7.7).
+    - A migração 0034 dá ao `processo_acervo`: `juiz`, `falha_nossa`, `laudo_favoravel`, `extinto_por_determinacao`, `faltou_pericia` e `cartorio_cobrou` (lista). A safra é o ano do número CNJ, e o foro é o código de origem do número.
+    - O formato (o do importador de hoje: CSV, títulos na primeira linha): `cnj` (obrigatório), `beneficio`, `desfecho`, `data_decisao`, `perito`, `vara`, `juiz`, `falha_nossa`, `laudo`, `extinto_por_determinacao`, `faltou_pericia`, `recurso` e `cartorio_cobrou` (itens separados por ";"). Outra coluna é ignorada e aparece no relatório; nome, CPF, telefone e endereço nunca são gravados.
+    - `POST /api/acervo/raio-x/simulacao` (`acervo.conferir_desfecho`, a Sênior): o relatório, com a marca, os processos novos e os já no acervo, os peritos, os juízes e as varas distintos, a data de corte (a decisão mais nova) e as linhas recusadas.
+    - `POST /api/acervo/raio-x`: a mesma planilha, a marca e a confirmação. Grava com a fonte `raio_x`; o número que já está no acervo fica como está. O perito vem pelo nome (`peritoPeloNome`, parte 5, dentro da transação; o que não existe nasce como perito médico).
+    - A confirmação da Sênior vale como a conferência dos desfechos da base (13/10, na implementação): eles entram conferidos por ela, não vão à fila "Conferir desfechos do lote" (979 de uma vez) e a jurimetria lê.
+    - Os indicadores: êxito nos decididos (procedente, em parte, acordo e o deferido; a desistência não é decisão), falha nossa, laudo favorável, extinção por não cumprir determinação, falta à perícia e recurso provido (em parte conta), cada um no total e por safra; o que o cartório mais cobra (os 10 mais) e onde julgam (o foro pelo número, com o êxito).
+    - `GET /api/acervo/raio-x` (`resultados.ver`): os indicadores, calculados por uma função pura com teste (uma base inventada), cada um com o número de casos; os totais e a data da base.
+    - A constante `RAIO_X` do contrato sai quando a tela do Pedro ler a rota: o teste de tela dele conta os números de hoje.
+    - O tamanho e o limite de linhas são os do importador de hoje. Nada do arquivo vai ao log.
+
 ## Campos de formulário
 
 Partes 1 a 4: nenhum.
@@ -434,6 +492,15 @@ Parte 6, só nos contratos do servidor:
 | A quantidade de parcelas | `validarInteiro` e `normalizarInteiro` |
 | O telefone que chega pelo Chatwoot | `normalizarTelefone` e `validarTelefone` |
 | O nome do contato do WhatsApp | `validarNome` e `normalizarNome` |
+
+Parte 7, só nos contratos do servidor:
+
+| Campo | Função da `campos` |
+|---|---|
+| O valor da causa e a renda por pessoa | `validarDecimal` e `normalizarDecimal` |
+| O número CNJ do Raio-X | `validarCnj` e `normalizarCnj` |
+| A data da decisão do Raio-X | `validarData` e `normalizarData` |
+| O nome do perito do Raio-X | `validarNome` e `normalizarNome` |
 
 ## Risks / Trade-offs
 
@@ -472,3 +539,8 @@ Parte 6, só nos contratos do servidor:
 - **Telefone dividido:** mãe e filha no mesmo número vão para a do nome do contato. Sem nome que bata, para a mais nova.
 - **Honorários ajustados:** quem confere pode mudar os honorários. O histórico guarda o calculado e o ajustado, e o percentual continua travado.
 - **Tarefa sem caso:** a Central geral (`/api/tarefas`) segue só com tarefas de caso, e a da pessoa aparece pela Central da conversa. A parte 7 junta as duas.
+- **Parte 7 sem as telas:** a estratégia, a sugestão de benefício, os valores e o Raio-X ganham rotas que a tela ainda não lê. As tarefas da Recepção aparecem em dobro na Central do Atendimento até a tela do Pedro deixar de calcular os casos do servidor, como já faz com o D1.24.
+- **O formato do Raio-X:** é o do importador de hoje, com as colunas da base. Quando o Pedro entregar o formato do Raio-X, as colunas mudam, e o resto (o relatório, a marca, a carga sem duplicar e os indicadores) fica.
+- **A estratégia da IA:** é interna e só o Jurídico e os sócios leem. A IA só propõe; a versão que vale é a que a advogada ou a Sênior salvou.
+- **A sugestão sem a IA:** sem a chave ou sem a autorização do dado de saúde, a entrevista fica sem sugestão, e a advogada decide pela entrevista.
+- **Custo da IA:** uma chamada por caso para a estratégia e uma por entrevista para o benefício, prontas em segundo plano e guardadas pelo conteúdo.

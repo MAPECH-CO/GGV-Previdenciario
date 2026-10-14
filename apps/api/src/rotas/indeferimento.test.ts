@@ -185,8 +185,9 @@ describe('Épico IA · a IA analisa o indeferimento e a Sênior despacha (GGVP-5
   it('Sugestão pronta (07/10) · a rodada deixa a análise pronta antes de a Sênior abrir; o que falhou não volta na rodada', async () => {
     let chamadas = 0
     let resposta = 'fora do ar'
-    const fetch = async () => {
-      chamadas++
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      // Só as chamadas da análise contam: a rodada também prepara a estratégia do caso indeferido (GGVP-158 P7.1).
+      if (String(init?.body).includes('despachar um caso indeferido')) chamadas++
       return resposta === 'fora do ar' ? new Response('{}', { status: 500 }) : new Response(JSON.stringify({ choices: [{ message: { content: resposta } }] }))
     }
     app = criarServidor({

@@ -37,6 +37,7 @@ import { abrirConversor, type ConversorDePdf } from './kit/pdf.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasDesfecho } from './rotas/desfecho.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
+import { sincronizarRecepcao } from './fluxo/tarefas-da-recepcao.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecurso } from './rotas/recurso.ts'
@@ -64,6 +65,9 @@ import { registrarRotasRecepcaoCobranca } from './rotas/recepcao-cobranca.ts'
 import { registrarRotasConversa } from './rotas/conversa.ts'
 import { criarCorreio, registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasChatwootEntrada } from './rotas/chatwoot-entrada.ts'
+import { registrarRotasEstrategia } from './rotas/estrategia.ts'
+import { registrarRotasValores } from './rotas/valores.ts'
+import { registrarRotasRaioX } from './rotas/raio-x.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
@@ -116,6 +120,8 @@ declare module 'fastify' {
     prepararSugestoes: () => Promise<void>
     /** GGVP-141 (ADR-013): uma rodada do acervo que se alimenta sozinho. Sem banco ou sem a chave da IA, não faz nada. */
     alimentarAcervo: () => Promise<void>
+    /** GGVP-158 P7.2: uma rodada das tarefas da Recepção, pelo que muda só com a data. Sem banco, não faz nada. */
+    sincronizarRecepcao: () => Promise<void>
   }
   interface FastifyContextConfig {
     /** GGVP-158: por que esta rota /api não tem trava de permissão (a que recusa sempre, por exemplo). */
@@ -194,6 +200,7 @@ export function criarServidor({
   app.decorate('prepararSugestoes', () => preparar())
   let alimentar = async () => {}
   app.decorate('alimentarAcervo', () => alimentar())
+  app.decorate('sincronizarRecepcao', () => (banco ? sincronizarRecepcao(banco, agora ?? (() => new Date())) : Promise.resolve()))
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
   // CA10: só leitura não guarda o pacote no Drive, então a trava do pacote não o cobra.
   const doAmbiente = driveDado === undefined ? abrirDrive() : driveDado
@@ -225,6 +232,8 @@ export function criarServidor({
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora, correio: criarCorreio(banco, agora ?? (() => new Date())) })
+    // GGVP-158 P7.6: o valor da causa e a renda por pessoa do LOAS, pela regra de valores.
+    registrarRotasValores(app, { banco, agora })
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
@@ -234,6 +243,8 @@ export function criarServidor({
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora, ia: motorIa, preparo })
+    // GGVP-158 P7.7 (GGVP-148): o importador do Raio-X e os indicadores da base importada.
+    registrarRotasRaioX(app, { banco, agora })
     registrarRotasJuizo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
@@ -244,6 +255,8 @@ export function criarServidor({
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasDesfecho(app, { banco, agora })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
+    // GGVP-158 P7.1: a estratégia do caso, que a IA propõe e o Jurídico confere.
+    registrarRotasEstrategia(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecurso(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasRecomendacaoPericia(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 parte 4: quem lê o que chega à Recepção, a IA de verdade ou a leitura de exemplo dos testes de tela.
@@ -251,7 +264,7 @@ export function criarServidor({
     registrarRotasRecepcao(app, { banco, agora, tarefasPorArea, armazenamento: arquivos, cofre: cofreDoGov, leitor, drive: doAmbiente })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
-    registrarRotasRecepcaoDecisoes(app, { banco, agora })
+    registrarRotasRecepcaoDecisoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecepcaoSegundaFicha(app, { banco, agora, armazenamento: arquivos, cofre: cofreDoGov, leitor })
     registrarRotasRecepcaoContrato(app, {
       banco,

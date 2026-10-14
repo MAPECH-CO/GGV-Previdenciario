@@ -48,9 +48,10 @@ export async function tipoDaPericiaAberta(banco: Banco, casoId: string) {
 /**
  * GGVP-158 P5.2: o perito pelo nome que a pessoa conferiu. Acha pelo nome, pelo nome normalizado ou por uma grafia, sem o
  * título; sem achar, cria com o perfil vazio do tipo da perícia (médica ou social) e de onde atua. Sem lista inicial
- * (Lucas, 07/10, GGVP-131): a base cresce pela nomeação, pela pergunta de um clique e, na parte 7, pelo Raio-X.
+ * (Lucas, 07/10, GGVP-131): a base cresce pela nomeação, pela pergunta de um clique e, na parte 7, pelo Raio-X (dentro da
+ * transação da carga).
  */
-export async function peritoPeloNome(banco: Banco, nome: string, tipo: string, onde = '') {
+export async function peritoPeloNome(banco: Banco | Parameters<Parameters<Banco['transaction']>[0]>[0], nome: string, tipo: string, onde = '') {
   const chave = semTitulo(nome)
   for (const p of await banco.select().from(perito))
     if ([p.nome, p.nomeNormalizado, ...((p.grafias as string[] | null) ?? [])].some((g) => semTitulo(g) === chave)) return { id: p.id, nome: p.nome, novo: false }

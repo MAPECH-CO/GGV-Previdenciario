@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, etapa, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { caso, decisao, etapa, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_SEM_DESFECHO_ESPERANDO, PASSO_PAGAMENTO, TITULO_PAGAMENTO } from './desfecho.ts'
@@ -71,6 +71,9 @@ describe('GGVP-90 · confirmar o desfecho de mérito', () => {
     const [d] = await banco.select().from(decisao).where(eq(decisao.casoId, casoId))
     expect([d.tipo, d.resultado, d.justificativa, d.decididoPor, d.perfil]).toEqual(['desfecho_merito', 'procedente_parcial', 'rpv', ids.gabi, 'advogada'])
     expect(await abertas()).toEqual([{ titulo: TITULO_PAGAMENTO, passo: PASSO_PAGAMENTO, responsavel: ids.gabi, prazo: null }])
+    // GGVP-158 P7.5: o desfecho de mérito entra no acervo na confirmação, com a data da decisão.
+    const acervo = await banco.select().from(processoAcervo)
+    expect(acervo.map((a) => [a.casoId, a.desfecho, a.dataDecisao, a.fonte])).toEqual([[casoId, 'procedente_parcial', '2026-10-05', 'portal']])
     const tela = (await chamar('gabi', 'GET')).json()
     expect(tela.confirmado).toMatchObject({ desfecho: 'procedente_parcial', forma: 'rpv', causa: null, por: 'gabi' })
     expect(tela.podeConfirmar).toBe(false)
