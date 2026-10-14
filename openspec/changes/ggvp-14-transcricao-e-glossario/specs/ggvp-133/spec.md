@@ -120,10 +120,30 @@ Na gravação de verdade sem microfone, a tela SHALL avisar com o motivo e MUST 
 ### Requirement: Ouvir o áudio e ler o texto final
 As Transcrições SHALL tocar o áudio guardado e abrir o texto final, com a permissão da gravação; a gravação com dado de saúde só abre para o Jurídico, com a leitura registrada.
 
+Teste do Pedro (14/10): no Atendimento, o player da ligação abria em 0:00 / 0:00, como se o áudio estivesse vazio. O áudio era o WebM da gravação ao vivo, guardado e servido certo; o player só não carregava nada antes do play.
+- Havendo áudio guardado, "Abrir áudio" SHALL mostrar o player com qualquer situação da transcrição: pronta, em andamento ou falhada.
+- O player SHALL abrir já com a duração do áudio, sem esperar o play.
+- Se o navegador não tocar o arquivo, a tela SHALL dizer que este navegador não toca o formato e oferecer "Baixar o áudio", em vez de um player parado.
+
 #### Scenario: Tocar
 - **Dado** uma gravação com o áudio guardado
 - **Quando** o Jurídico abre o áudio
 - **Então** o áudio toca, parte por parte, e o texto final abre; o Atendimento não abre a da advogada
+
+#### Scenario: O Atendimento abre o áudio da conversa
+- **Dado** a conversa gravada pela Atendimento, com o áudio guardado
+- **Quando** ela clica em "Abrir áudio"
+- **Então** o player abre com a duração do áudio e toca
+
+#### Scenario: A transcrição falhou
+- **Dado** a gravação com o áudio guardado e a transcrição falhada
+- **Quando** a pessoa clica em "Abrir áudio"
+- **Então** o player aparece e toca
+
+#### Scenario: Formato que o navegador não toca
+- **Dado** um áudio guardado que o navegador não consegue tocar
+- **Quando** a pessoa abre o áudio
+- **Então** a tela diz que este navegador não toca o formato e oferece "Baixar o áudio"
 
 ### Requirement: CA11 · O modelo numa variável de ambiente
 O modelo de transcrição SHALL vir da variável `OPENAI_MODELO_TRANSCRICAO` (e o do texto ao vivo, de `OPENAI_MODELO_AO_VIVO`), sem mudar código.

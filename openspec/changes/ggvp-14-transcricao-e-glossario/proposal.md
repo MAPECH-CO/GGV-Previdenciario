@@ -10,6 +10,8 @@ A entrevista, a conversa no escritório e a ligação gravada já têm tela, mas
 2. **GGVP-133** · Transcrição de áudio de verdade: quem fala, texto ao vivo e texto final arrumado · advogada responsável e Atendimento; IA e sistema. Começa quando o motor de IA (#26) e a Recepção no servidor (#29) estiverem na main. A parte da conversa do Relacionamento espera o Relacionamento no servidor (grupo 3).
 3. **GGVP-140** · IA de verdade no Relacionamento: resumo da conversa e o que mudou na ficha · Atendimento e Jurídico. Depois da GGVP-133 na conversa.
 
+Ajuste do teste do Pedro (14/10), na GGVP-133: o player das Transcrições abre com a duração, aparece também com a transcrição falhada e avisa quando o navegador não toca o formato.
+
 Um "Agora ok?" no fim de cada parte.
 
 ## Travadas

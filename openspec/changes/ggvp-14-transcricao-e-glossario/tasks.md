@@ -44,3 +44,10 @@
 - [x] 4.3 CA1, CA4 · Tela: o quadro "O que a IA encontrou na conversa" mostra o resumo como sugestão da IA, o alerta e a fonte (`apps/web/src/paginas/Conversa.tsx`); teste em `ConversaDaIa.test.tsx`.
 - [x] 4.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
+
+## GGVP-133 · Ajuste do teste do Pedro: o player das Transcrições (14/10)
+
+- [ ] 5.1 O player sai da seção da transcrição pronta: com áudio guardado, "Abrir áudio" mostra o player em qualquer situação da transcrição; `preload="metadata"`. Teste Vitest em `Transcricoes.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 5.2 O formato que não toca: o erro do `<audio>` troca o player pelo aviso e por "Baixar o áudio". Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 5.3 Playwright: a Atendimento anexa a ligação com um WebM do gravador do navegador; o player abre com a duração e toca, também com a transcrição falhada (sem a chave). Verifica com `pnpm --filter @ggv/web e2e`.
+- [ ] 5.4 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
