@@ -690,3 +690,40 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - "Em andamento" entra sem desfecho e sem linha recusada.
 
   Verificado em 14/10: `fluxo/raio-x.test.ts` (1 novo), `rotas/raio-x.test.ts` e `fluxo/importacao.test.ts`, 13/13; typecheck e lint da API sem erro. Cada palavra vira o desfecho do acervo, e "Em andamento" entra sem desfecho, sem linha recusada. Na primeira rodada, um teste das rotas do Raio-X falhou uma vez, sem repetir nas três rodadas seguintes.
+
+## GGVP-158 · Parte 8 · Auditoria (14/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-8`, em cima do #81. Migração 0035. Na ordem contrato → teste → servidor.
+
+O aviso do áudio gravado fora (8.6) vai na branch `feat/GGVP-158-parte-8-aviso`, num pedido que entra depois da tela da entrevista do Pedro.
+
+- [ ] 8.1 A migração 0035 (P8.2, decisão 75): o gatilho `chamada_ia_so_cresce`; o teste do recurso que apagava as chamadas muda o jeito.
+  - Verifica com `banco/migracoes.test.ts` e `rotas/recurso.test.ts`:
+    - alterar e apagar uma chamada recusam;
+    - registrar uma chamada nova segue.
+- [ ] 8.2 A senha dita fora do registro da IA (P8.3, decisão 76): `transcrever` grava a saída mascarada.
+  - Verifica com `ia/transcrever.test.ts`:
+    - a fala com a senha e a resposta logo depois saem mascaradas no registro;
+    - as falas devolvidas seguem como hoje.
+- [ ] 8.3 Quem abre conteúdo médico (P8.1, decisão 74): a lista da Recepção, as perícias do caso, a recomendação da IA e o desfecho registram a leitura.
+  - Verifica com `rotas/recepcao-agenda.test.ts`, `rotas/recomendacao-pericia.test.ts` e `rotas/desfecho.test.ts`:
+    - o Jurídico abre, e a leitura fica registrada;
+    - quem não vê dado de saúde não gera registro;
+    - sem o conteúdo na resposta, nada é registrado.
+- [ ] 8.4 A justificativa só para quem vê dado de saúde (P8.6, decisão 79): o parecer e o complemento.
+  - Verifica com `rotas/parecer.test.ts` e `rotas/complemento.test.ts`:
+    - a linha do histórico da ficha sem a justificativa;
+    - a Atendimento recebe a justificativa vazia;
+    - o Jurídico recebe a justificativa.
+- [ ] 8.5 O histórico da ficha no histórico de auditoria (P8.4, decisão 77): `guardar` grava as linhas novas.
+  - Verifica com teste:
+    - a linha nova entra com quem fez e a hora;
+    - guardar de novo não repete;
+    - a linha do scanner entra como do sistema;
+    - a senha sai mascarada.
+- [ ] 8.6 O aviso no áudio gravado fora (P8.5, decisão 78), no pedido à parte: `POST /api/entrevistas/:id/audio` exige `avisoNaGravacao=sim`.
+  - Verifica com a suíte da entrevista:
+    - sem a confirmação, 400 e nada no caso;
+    - com ela, o áudio entra e o histórico diz que o aviso foi confirmado.
+- [ ] 8.7 Avisar o Pedro: os dois pedidos listam o que muda para as telas (a caixa do aviso na entrevista; a justificativa vazia para quem não vê dado de saúde).
+- [ ] 8.8 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.

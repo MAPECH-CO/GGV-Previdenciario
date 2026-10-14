@@ -1115,3 +1115,82 @@ Os indicadores do Raio-X SHALL sair da base importada, por código com teste, ca
 - **Dado** a planilha com as colunas nome, CPF e telefone
 - **Quando** a Sênior simula
 - **Então** as três aparecem como colunas ignoradas, e nada delas é gravado
+
+### Requirement: P8.1 · Quem abre conteúdo médico fica registrado
+Toda rota que entrega conteúdo com a trava do dado de saúde SHALL registrar a leitura, como as outras: quem leu, o perfil, o caso e o que foi lido. Valem:
+- a lista da Recepção com as gravações do Jurídico;
+- as perícias do caso com a recomendação aprovada;
+- a recomendação sugerida pela IA;
+- o texto da sentença.
+
+Sem o conteúdo na resposta, nada MUST ser registrado.
+
+#### Scenario: P8.1 · As gravações do Jurídico na lista da Recepção
+- **Dado** a entrevista gravada com a advogada, só do Jurídico
+- **Quando** a advogada abre a lista da Recepção
+- **Então** a leitura fica registrada, uma vez por abertura
+- **E** a Atendimento abre a lista sem a gravação, e nada é registrado
+
+#### Scenario: P8.1 · A recomendação da perícia
+- **Dado** a perícia com a recomendação aprovada
+- **Quando** a advogada abre as perícias do caso, ou pede a recomendação da IA
+- **Então** cada leitura fica registrada, com o caso
+
+#### Scenario: P8.1 · O texto da sentença
+- **Dado** a sentença de mérito com o texto
+- **Quando** a advogada abre o desfecho do caso
+- **Então** a leitura fica registrada
+- **E** a Atendimento recebe o desfecho sem o texto, e nada é registrado
+
+### Requirement: P8.2 · O registro das chamadas da IA só cresce
+O banco MUST recusar alterar ou apagar uma chamada da IA já registrada, como no histórico (GGVP-106 CA4). Registrar uma chamada nova SHALL seguir como hoje.
+
+#### Scenario: P8.2 · Alterar ou apagar
+- **Dado** uma chamada da IA registrada
+- **Quando** alguém tenta alterar ou apagar a linha no banco
+- **Então** o banco recusa com "O histórico não pode ser alterado nem apagado"
+
+### Requirement: P8.3 · A senha dita não fica no registro da IA
+Na transcrição de áudio, o texto guardado no registro da chamada da IA MUST sair sem a senha dita (G9). A regra é a mesma da entrevista: a fala que cita a senha e a resposta logo depois. Vale para a entrevista e para a fala do chat.
+
+#### Scenario: P8.3 · A senha dita na entrevista
+- **Dado** o áudio em que o cliente diz "a senha é Girassol2024"
+- **Quando** a transcrição volta
+- **Então** o registro da chamada guarda a fala com a senha retirada, sem "Girassol2024"
+
+### Requirement: P8.4 · O histórico da ficha também no histórico de auditoria
+Cada linha nova do histórico da ficha (agenda, entrevista, contrato, documentos e o resto da Recepção) SHALL entrar também no histórico de auditoria, que não se altera: quem fez, quando e o que aconteceu, com a senha mascarada. A mesma linha MUST NOT entrar duas vezes.
+
+#### Scenario: P8.4 · A entrevista marcada
+- **Quando** a Atendimento marca a entrevista
+- **Então** o histórico de auditoria recebe a linha "Marcou a entrevista…", com ela como autora e a hora
+- **E** guardar a ficha de novo não repete a linha
+
+#### Scenario: P8.4 · O que o sistema faz
+- **Quando** o scanner guarda documentos na ficha
+- **Então** a linha entra como do sistema, com o nome do scanner no detalhe
+
+### Requirement: P8.5 · O áudio gravado fora do portal só entra com o aviso de gravação
+O áudio da entrevista gravado fora do portal MUST ser recusado sem a confirmação de que a gravação começou com o aviso ao cliente (G10), como na ligação da conversa. Com a confirmação, o histórico da ficha SHALL dizer que o aviso foi confirmado.
+
+#### Scenario: P8.5 · Sem a confirmação
+- **Quando** a advogada sobe o áudio da entrevista sem marcar o aviso
+- **Então** o portal recusa com "Confirme que a gravação começou com o aviso de gravação (G10)." e nada fica no caso
+
+#### Scenario: P8.5 · Com a confirmação
+- **Quando** a advogada sobe o áudio marcando o aviso
+- **Então** o áudio entra e vai à transcrição, e o histórico diz que o aviso foi confirmado
+
+### Requirement: P8.6 · A justificativa da dispensa e da nova tentativa só para quem vê dado de saúde
+A justificativa em texto livre da dispensa do parecer e da nova tentativa do complemento MUST ficar só para quem vê dado de saúde (o Jurídico e o Sócio). Ela sai do histórico da ficha, e as telas dos outros perfis a recebem vazia. A decisão SHALL guardar o texto.
+
+#### Scenario: P8.6 · A dispensa pedida
+- **Dado** a Sênior pediu a dispensa do parecer com a justificativa
+- **Quando** a Atendimento abre o parecer e a ficha
+- **Então** vê que a dispensa foi pedida, por quem e quando, sem a justificativa
+- **E** a advogada vê a justificativa
+
+#### Scenario: P8.6 · A nova tentativa do complemento
+- **Dado** a Sênior decidiu a nova tentativa com a justificativa
+- **Quando** a Atendimento abre o complemento
+- **Então** vê o prazo novo, sem a justificativa
