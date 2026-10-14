@@ -16,11 +16,11 @@ Cada caminho marcado "teste" tem teste de navegação no navegador, com o login 
 | Sênior | Central da Sênior (Figma 59:609), com as abas do setor | Início, Agenda, Clientes, Processos, Estudos de caso, Roteiros de laudos, a Gestão, Importar planilha | clientes, processos e a fila | sim |
 | Jurídico administrativo | Central do Jurídico administrativo | Início, Agenda | clientes e processos (a fila, quando a Perícia liberar a Central) | sim |
 | Financeiro | Central do Financeiro (Figma 59:863) | Início, Agenda, a Gestão, Financeiro (o painel) | só a fila (não vê o caso) | sim |
-| Sócio | Painel de resultado (GGVP-75), com a busca, o chat e a fila quando há tarefa; o Figma não tem Central do Sócio | Início, Agenda, Clientes, Processos, a Gestão, Importar planilha, Financeiro (o painel) | clientes, processos e a fila (lê tudo, Lucas 07/10) | sim |
+| Sócio | Painel de resultado (GGVP-75), com a busca, o chat e a fila quando há tarefa; o Figma não tem Central do Sócio | Início, Agenda, Clientes, Processos, Estudos de caso, Roteiros de laudos, Vigília, a Gestão, Importar planilha, Financeiro (o painel) | clientes, processos e a fila (lê tudo, Lucas 07/10; só vê, sem ação nova, GGVP-162 CA9) | sim |
 
 O topo vem do perfil da sessão em toda tela, não só na Central (GGVP-78): Clientes e Processos depois do Início e da
 Agenda para o líder do Atendimento (só Clientes), a Advogada, a Sênior e o Sócio (GGVP-162 CA8; no Figma também para o Financeiro, que a matriz ainda não deixa
-ver o caso); a Gestão no fim para quem tem `gestao.ver`, e o painel Financeiro depois dela para quem tem `valores.ver_totais`
+ver o caso); depois delas, só para o Sócio, Estudos de caso, Roteiros de laudos e Vigília, para ler (GGVP-162 CA9); a Gestão no fim para quem tem `gestao.ver`, e o painel Financeiro depois dela para quem tem `valores.ver_totais`
 (o Financeiro e o Sócio). "+ Novo cliente" fica só com o Atendimento, como no Figma. A Central provisória fica só para perfil
 novo, antes da tela dele.
 

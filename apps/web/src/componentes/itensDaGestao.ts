@@ -31,8 +31,20 @@ const COM_AS_BASES = ['atendimento_lider', 'advogada', 'senior', 'financeiro', '
 export const ITEM_DO_FINANCEIRO: ItemNavegacao = { id: 'financeiro', rotulo: 'Financeiro', href: '/financeiro' }
 
 /**
+ * GGVP-162 CA9 (Mateus, 14/10): o Sócio só vê, e vê tudo. Em toda tela, ele chega pelo topo às telas de consulta que a
+ * matriz já lhe deixa ver e que nos outros perfis ficam numa Central ou num alarme da fila: os estudos de caso, os roteiros
+ * de laudos (só a Sênior edita) e o painel da vigília (só a Sênior reprocessa). Nenhuma ação nova.
+ */
+export const ITENS_DE_CONSULTA_DO_SOCIO: ItemNavegacao[] = [
+  { id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' },
+  { id: 'roteiros', rotulo: 'Roteiros de laudos', href: '/roteiros' },
+  { id: 'vigilia', rotulo: 'Vigília', href: '/vigilia' },
+]
+
+/**
  * O topo de toda tela pelo perfil da sessão (GGVP-78): Clientes e Processos depois do Início e da Agenda, se a matriz deixa
- * ver o caso; a Gestão no fim, para quem tem `gestao.ver`, e o Financeiro depois dela, para quem vê os totais em dinheiro.
+ * ver o caso, e as telas de consulta do Sócio depois deles (GGVP-162 CA9); a Gestão no fim, para quem tem `gestao.ver`, e o
+ * Financeiro depois dela, para quem vê os totais em dinheiro.
  * O que a tela já trouxe não se repete.
  */
 export function itensDoPerfil(itens: ItemNavegacao[], perfil: string | null | undefined): ItemNavegacao[] {
@@ -41,6 +53,8 @@ export function itensDoPerfil(itens: ItemNavegacao[], perfil: string | null | un
     COM_AS_BASES.includes(perfil ?? '') && pode(perfil, 'caso.ver') && !tem(ITENS_DAS_BASES)
       ? ITENS_DAS_BASES.filter((i) => i.id !== 'processos' || pode(perfil, 'processo.abrir'))
       : []
+  // GGVP-162 CA9: as telas de consulta do Sócio, cada uma só se a tela já não a trouxe.
+  const consulta = perfil === 'socio' ? ITENS_DE_CONSULTA_DO_SOCIO.filter((i) => !tem([i])) : []
   // GGVP-96: quem vê os Resultados sem a Gestão (o Financeiro) fica só com eles.
   const resultados = ITENS_DA_GESTAO.filter((i) => i.id === 'resultados')
   const gestao = pode(perfil, 'gestao.ver')
@@ -49,5 +63,5 @@ export function itensDoPerfil(itens: ItemNavegacao[], perfil: string | null | un
   const financeiro = pode(perfil, 'valores.ver_totais') && !tem([ITEM_DO_FINANCEIRO]) ? [ITEM_DO_FINANCEIRO] : []
   const depois = itens.findIndex((i) => i.id !== 'inicio' && i.id !== 'agenda')
   const corte = depois < 0 ? itens.length : depois
-  return [...itens.slice(0, corte), ...bases, ...itens.slice(corte), ...gestao, ...financeiro]
+  return [...itens.slice(0, corte), ...bases, ...consulta, ...itens.slice(corte), ...gestao, ...financeiro]
 }

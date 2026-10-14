@@ -59,6 +59,26 @@ test('GGVP-162 CA8 · o Sócio chega a Clientes e a Processos pelo topo, como a 
   await expect(page.getByRole('table', { name: 'Processos' }).getByRole('link', { name: '0005678-75.2026.4.03.6301' })).toBeVisible()
 })
 
+test('GGVP-162 CA9 · o Sócio chega pelo topo aos Estudos de caso, aos Roteiros de laudos e à Vigília, e só lê', async ({ page }) => {
+  await entrarPelaApi(page, 'socio@exemplo.ggv')
+  await page.goto('/')
+  const topo = page.getByRole('navigation', { name: 'Principal' })
+  await topo.getByRole('link', { name: 'Estudos de caso' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Estudos de caso')
+  await expect(page.getByRole('button', { name: 'Vamos entrar com novo processo' })).toHaveCount(0)
+
+  await topo.getByRole('link', { name: 'Roteiros de laudos' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Roteiros de laudos')
+  await page.getByRole('list', { name: 'Roteiros' }).getByRole('link', { name: /^Auxílio-Acidente/ }).click()
+  await expect(page.getByText('Só a sênior edita o roteiro. Você vê a versão em vigor e as anteriores.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Editar o roteiro' })).toHaveCount(0)
+
+  // A tela do roteiro é de passo, e o topo dela também leva à Vigília.
+  await topo.getByRole('link', { name: 'Vigília' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Vigília das publicações')
+  await expect(page.getByRole('button', { name: 'Reprocessar' })).toHaveCount(0)
+})
+
 test('o Atendimento só tem a Agenda no topo; o Financeiro, que não vê o caso, não abre a lista', async ({ page }) => {
   await page.goto('/')
   const topo = page.getByRole('navigation', { name: 'Principal' })

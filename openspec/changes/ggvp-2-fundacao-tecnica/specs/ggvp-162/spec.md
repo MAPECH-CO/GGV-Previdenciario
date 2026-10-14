@@ -91,3 +91,20 @@ já lhe dá `caso.ver` e `processo.abrir` (o Lucas, como Sócio, não achava as 
 - **Dado** o Sócio
 - **Quando** abre o topo
 - **Então** tem Clientes e Processos depois do Início, além da Gestão e do Financeiro
+
+### Requirement: CA9 · O Sócio chega pelo topo a todas as telas de consulta, sem ação nova
+Em toda tela, o topo do Sócio SHALL levar a todas as telas de consulta do escritório que a matriz já lhe deixa ver: além
+das do CA8, Estudos de caso, Roteiros de laudos (só leitura) e o painel da Vigília, que hoje só se abre pelos alarmes da
+fila da Sênior. O Sócio MUST NOT ganhar ação nova: ele só vê; quem faz cada passo continua sendo cada setor, e os botões de
+ação dessas telas seguem escondidos para ele (Mateus, 14/10: "o sócio não faz nada, ele só tem acesso a todas as
+visualizações").
+
+#### Scenario: CA9 · As telas de consulta pelo topo
+- **Dado** o Sócio em qualquer tela
+- **Quando** abre o topo
+- **Então** tem Estudos de caso, Roteiros de laudos e Vigília, além do que o CA8 já dá, e cada um abre só para leitura
+
+#### Scenario: CA9 · Nenhuma ação nova
+- **Dado** o Sócio no painel da Vigília, nos Estudos de caso ou nos Roteiros de laudos
+- **Quando** a tela abre
+- **Então** não aparecem "Reprocessar", a revisão do estudo nem a edição do roteiro, e a matriz de permissões não muda
