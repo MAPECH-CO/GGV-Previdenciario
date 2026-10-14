@@ -451,7 +451,8 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - A base da sugestão são as fontes da IA ("de onde veio").
 71. **O desfecho no acervo** (P7.5).
     - Uma função só, `desfechoNoAcervo(banco, casoId, { desfecho, dataDecisao })`: insere quando o caso não tem registro, com o número, o perito da perícia mais nova, o juízo e a data; quando o registro existe sem desfecho, completa.
-    - Chamada no deferimento do INSS (na vigília, na mesma transação), na ida ao banco (no lugar do insert de hoje) e no estudo do caso perdido. O #31 chama a mesma no desfecho de mérito confirmado: o aviso vai no pedido dele.
+    - Chamada no deferimento do INSS (na vigília, na mesma transação), na ida ao banco (no lugar do insert de hoje) e no estudo do caso perdido. O #31 entrou na main antes (13/10): a confirmação do desfecho de mérito dele chama a mesma aqui, na mesma transação.
+    - O juízo sai do número CNJ (`juizoDoCnj`), como na jurimetria: o registro guarda o número, e `juizo_id` fica para quando o juízo tiver cadastro.
     - Sem dado pessoal: só número e ids. A ficha da IA segue anonimizada.
 72. **Os valores** (P7.6).
     - A migração 0034 dá `valor_causa` ao caso e `renda_por_pessoa` à pessoa (`numeric(14,2)`).

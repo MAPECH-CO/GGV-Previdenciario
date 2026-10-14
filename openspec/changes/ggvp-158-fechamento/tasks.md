@@ -461,10 +461,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
 Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-6`, em cima do #75; o #31 segue no pedido dele. Migração 0033 (a 0032 é a do recurso, que veio da main). Na ordem contrato → teste → servidor.
 
-- [ ] 6.1 O pedido #31 (P6.1, decisão 54): juntar a main na branch dele (merge, sem rebase), o texto da decisão só com `dado_saude.ver_detalhe`, e sair do rascunho para o Pedro.
+- [x] 6.1 O pedido #31 (P6.1, decisão 54): juntar a main na branch dele (merge, sem rebase), o texto da decisão só com `dado_saude.ver_detalhe`, e sair do rascunho para o Pedro.
   - Verifica com `rotas/desfecho.test.ts`:
     - a advogada lê o texto;
     - o Atendimento e a Documentação recebem o desfecho sem o texto.
+
+  Feito pela outra sessão: o #31 entrou na main (63bf6254) com o texto da decisão só para quem vê dado de saúde. Verificado aqui em 13/10: `rotas/desfecho.test.ts` 8/8.
 - [x] 6.2 A migração 0033 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, `tarefa.atendimento_id`, e as pendências abertas viram linha.
   - Verifica com `banco/migracoes.test.ts` e com teste da migração:
     - a tarefa sem caso e sem pessoa é recusada;
@@ -633,12 +635,12 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - sem a IA, o aviso.
 
   Verificado em 13/10: `rotas/recepcao-decisoes.test.ts` 13/13 (4 novos) e `regras/regras.test.ts` 79/79. A sugestão pronta na rodada, com a fonte do acervo; a tela abre e a decisão registra a mesma, sem chamar a IA de novo; o Atendimento recebe 403; a recusa vai ao histórico com o motivo e a sugestão recusada; a carência vem do CNIS registrado; sem a IA, o aviso, e o citado segue.
-- [x] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco e no caso perdido.
+- [x] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco, no caso perdido e na confirmação do desfecho de mérito (o #31, que entrou na main).
   - Verifica com `rotas/vigilia.test.ts` e `rotas/prestacao.test.ts`:
     - o deferimento entra no acervo;
     - a ida ao banco não duplica.
 
-  Verificado em 13/10: `rotas/vigilia.test.ts`, `rotas/prestacao.test.ts` (1 novo), `rotas/estudo.test.ts`, `rotas/acervo.test.ts` e `fluxo/ficha-do-desfecho.test.ts`, 67/67. O deferimento entra no acervo na hora, com a data; a ida ao banco não duplica; o caso perdido segue pela mesma função.
+  Verificado em 13/10: `rotas/vigilia.test.ts`, `rotas/prestacao.test.ts` (1 novo), `rotas/estudo.test.ts`, `rotas/acervo.test.ts` e `fluxo/ficha-do-desfecho.test.ts`, 67/67. O deferimento entra no acervo na hora, com a data; a ida ao banco não duplica; o caso perdido segue pela mesma função. Depois do #31 na main: `rotas/desfecho.test.ts` 8/8, e o desfecho de mérito confirmado entra no acervo, com a data da decisão.
 - [x] 7.10 Os valores (P7.6, decisão 72): as rotas, a regra de valores e o resumo do processo.
   - Verifica com `rotas/valores.test.ts`:
     - a advogada grava;
