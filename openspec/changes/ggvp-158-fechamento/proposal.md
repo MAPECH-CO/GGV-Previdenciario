@@ -18,7 +18,7 @@ Uma parte por vez, na ordem. Cada parte ganha spec e tarefas quando chegar a vez
 4. Recepção sem simulação.
 5. Perícia, INSS e Justiça.
 6. Desfecho, dinheiro e conversa.
-7. Telas lidas do banco, acervo e importação.
+7. Telas lidas do banco, acervo e importação. Ajuste do teste do Pedro (14/10): a confirmação da entrevista também vira linha da tabela de tarefas (P7.2).
 8. Auditoria.
 9. Produção, a parte que não depende do Lucas.
 

@@ -4,7 +4,7 @@
 
 Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10). O chat das Centrais e a aba Suporte respondem pelo motor de IA do portal, com o caso que o perfil vê, o acervo da casa e as fontes. As travas do chat continuam no servidor, como código. A ação pedida no chat vira um cartão, que só executa depois do "Confirmar" de quem pediu. O Sócio vê o conteúdo médico no chat, com o acesso registrado (decisão do Mateus, 09/10). As ações que dependem de enviar arquivo (comprovante do INSS, laudo, documento, comprovante de RPV e lote do acervo) levam à tela certa até as rotas de envio existirem no servidor.
 
-Ajustes do teste do Pedro (14/10, com o perfil do Atendimento): o chat não lembrava a conversa, só achava cliente com caso e pelo nome inteiro, pedia o nome completo em volta, e não dizia "você não tem acesso" quando o pedido era de outro perfil (CA5 a CA8).
+Ajustes do teste do Pedro (14/10, com o perfil do Atendimento): o chat não lembrava a conversa, só achava cliente com caso e pelo nome inteiro, pedia o nome completo em volta, e não dizia "você não tem acesso" quando o pedido era de outro perfil (CA5 a CA8). Também não sabia o dia de hoje e respondia que não havia tarefa atrasada com uma de 08/10 aberta em 14/10 (CA9).
 
 ## ADDED Requirements
 
@@ -119,3 +119,11 @@ Quando a pergunta precisa de um cliente e nenhum foi achado, o chat SHALL dizer 
 - **Dado** o Atendimento
 - **Quando** pede "quero criar uma minuta pra cliente Pedro Grigorio"
 - **Então** o chat responde, sem chamar o modelo, que pedir a petição é da advogada do caso e que o perfil não tem acesso, e diz para pedir a tarefa à Sênior ou à líder do Atendimento
+
+### Requirement: CA9 · O chat sabe o dia de hoje, e o atraso vem do código
+A instrução do chat SHALL levar o dia de hoje, no horário de Brasília. A lista de tarefas que vai ao modelo SHALL marcar cada tarefa, pelo código, como atrasada (o prazo antes de hoje) ou como vencendo hoje. O modelo MUST NOT calcular o atraso: ele repete o que veio marcado.
+
+#### Scenario: CA9 · Perguntar pelas atrasadas
+- **Dado** o Atendimento com a tarefa "Confirmar se a entrevista aconteceu" da entrevista de 08/10
+- **Quando** pergunta, em 14/10, "Tem alguma tarefa atrasada?"
+- **Então** a lista que o modelo lê traz essa tarefa marcada como atrasada, e a instrução diz que hoje é 14/10/2026

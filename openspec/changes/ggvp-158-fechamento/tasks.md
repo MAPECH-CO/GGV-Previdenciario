@@ -799,3 +799,10 @@ O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, se
   - o /saude conferido.
 - [ ] 9.10 O monitor no Coolify (P9.5): o docker compose com o comando, as variáveis `ALARME_*` e o healthcheck desligado. O teste é uma queda com o Mateus: o canal e o Jira recebem "caiu" e "voltou".
 - [ ] 9.11 Relatório final ao Mateus.
+
+## GGVP-158 · Ajuste do teste do Pedro (14/10)
+
+- [ ] 10.1 P7.2 · "Confirmar se a entrevista aconteceu" (D1.03) em `sincronizarRecepcao`: abre com o compromisso que passou sem "realizado" nem "faltou", uma linha por pessoa, com o prazo no mais antigo e o detalhe da tela; fecha quando ele é marcado.
+  - Verifica com teste: abre na virada do dia (rodada), fecha ao marcar realizado, não abre para o remarcado; aparece em `/api/tarefas` do Atendimento como atrasada; `pnpm --filter @ggv/api test`.
+- [ ] 10.2 P7.2 · A tela: `tarefasDeConfirmar` deixa de calcular a ficha do servidor, para a Central não repetir a linha. Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 10.3 Rodar typecheck, lint, testes e Playwright; colar a saída.
