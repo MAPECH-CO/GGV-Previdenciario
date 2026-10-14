@@ -471,6 +471,7 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - `GET /api/acervo/raio-x` (`resultados.ver`): os indicadores, calculados por uma função pura com teste (uma base inventada), cada um com o número de casos; os totais e a data da base.
     - A constante `RAIO_X` do contrato sai quando a tela do Pedro ler a rota: o teste de tela dele conta os números de hoje.
     - O tamanho e o limite de linhas são os do importador de hoje. Nada do arquivo vai ao log.
+    - A "Base do acervo" dos Resultados (GGVP-148 CA5) leva também a data de corte, a decisão mais nova da base, no campo `dataDeCorte` do painel (`PainelDeResultados`). O campo é opcional, para não quebrar os testes de tela que montam o painel. A `dataDaBase`, da entrada mais recente (GGVP-55 CA3), fica como está. A tela mostra a data de corte quando o Pedro ligar (14/10, pedido do Mateus).
 
 ### Parte 8 · Auditoria (decisões do Mateus, 14/10)
 
