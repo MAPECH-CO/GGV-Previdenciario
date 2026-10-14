@@ -690,6 +690,11 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - "Em andamento" entra sem desfecho e sem linha recusada.
 
   Verificado em 14/10: `fluxo/raio-x.test.ts` (1 novo), `rotas/raio-x.test.ts` e `fluxo/importacao.test.ts`, 13/13; typecheck e lint da API sem erro. Cada palavra vira o desfecho do acervo, e "Em andamento" entra sem desfecho, sem linha recusada. Na primeira rodada, um teste das rotas do Raio-X falhou uma vez, sem repetir nas três rodadas seguintes.
+- [ ] 7.17 A data de corte na "Base do acervo" (P7.7, decisão 73, GGVP-148 CA5, 14/10): `dataDeCorte`, opcional, no painel dos Resultados.
+  - Verifica com `fluxo/resultados.test.ts` e o teste dos contratos:
+    - a data de corte é a decisão mais nova da base;
+    - sem decisão na base, fica nula;
+    - o painel sem o campo segue valendo.
 
 ## GGVP-158 · Parte 8 · Auditoria (14/10)
 
