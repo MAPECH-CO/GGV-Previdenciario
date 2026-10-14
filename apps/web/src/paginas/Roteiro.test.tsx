@@ -62,6 +62,17 @@ describe('Roteiro de laudos · tela', () => {
     expect(screen.getByRole('list', { name: 'Obrigatórios · o que o documento precisa abordar' }).textContent).toContain('duração prevista em meses')
   })
 
+  it('GGVP-162 CA9 · o Sócio lê a lista e o roteiro, mas não edita', async () => {
+    entrarComo('socio')
+    const { unmount } = render(comSessao(<Roteiro />))
+    expect(within(await screen.findByRole('list', { name: 'Roteiros' })).getAllByRole('link')).toHaveLength(11)
+    unmount()
+    render(comSessao(<Roteiro id="loas-deficiente" />))
+    expect(await screen.findByRole('list', { name: 'Obrigatórios · o que o documento precisa abordar' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Editar o roteiro' })).toBeNull()
+    expect(screen.getByText('Só a sênior edita o roteiro. Você vê a versão em vigor e as anteriores.')).toBeTruthy()
+  })
+
   it('o Atendimento não vê o roteiro: ele é do Jurídico', async () => {
     entrarComo('atendimento')
     render(comSessao(<Roteiro id="loas-deficiente" />))

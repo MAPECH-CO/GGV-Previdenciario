@@ -11,9 +11,10 @@ import styles from './Balcao.module.css'
 import proprio from './Roteiro.module.css'
 
 // Sem quadro próprio no Figma: o roteiro aparece aplicado no Parecer médico (1654:2) e no step_D1.21M (14:195). Visual das
-// telas de passo (GGVP-93). Editar: sênior. Ver: Jurídico. Atendimento e Documentação veem só o que falta pedir, no parecer.
+// telas de passo (GGVP-93). Editar: sênior. Ver: Jurídico e o Sócio, que só lê (GGVP-162 CA9). Atendimento e Documentação
+// veem só o que falta pedir, no parecer.
 
-const JURIDICO = ['advogada', 'senior', 'senior-2']
+const QUEM_VE = ['advogada', 'senior', 'senior-2', 'socio']
 
 const TITULOS: Record<TipoDoItem, string> = {
   obrigatorio: 'Obrigatórios · o que o documento precisa abordar',
@@ -26,7 +27,7 @@ const quando = (iso: string, hoje: string) => dataCurta(hojeIso(new Date(iso)), 
 /** /roteiros e /roteiros/:id */
 export function Roteiro({ id }: { id?: string }) {
   const perfil = usePerfil('Advogada')
-  const doJuridico = JURIDICO.includes(perfil?.id ?? '')
+  const doJuridico = QUEM_VE.includes(perfil?.id ?? '')
   return (
     <>
       <title>{id ? 'Roteiro do benefício · GGV Previdenciário' : 'Roteiros de laudos · GGV Previdenciário'}</title>
@@ -304,7 +305,7 @@ function Lado() {
       </h2>
       <p className={styles.ladoSub}>O roteiro é a régua da análise da documentação médica: a IA aplica no laudo, e uma pessoa do Jurídico confere (G17).</p>
       <h3 className={styles.ladoSecao}>Quem mexe</h3>
-      <p className={styles.ladoSub}>A sênior edita; o Jurídico vê. Atendimento e Documentação veem só o que falta pedir, no parecer.</p>
+      <p className={styles.ladoSub}>A sênior edita; o Jurídico e o Sócio veem. Atendimento e Documentação veem só o que falta pedir, no parecer.</p>
       <h3 className={styles.ladoSecao}>Travas</h3>
       <p className={styles.ladoSub}>«Salvar» só habilita com pelo menos um item obrigatório e o texto de cada item.</p>
       <h3 className={styles.ladoSecao}>Como segue</h3>
