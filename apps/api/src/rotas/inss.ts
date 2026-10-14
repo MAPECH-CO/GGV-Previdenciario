@@ -39,6 +39,7 @@ import { esperasDeFora, esperasQueChamamHoje } from '../fluxo/esperas.ts'
 import { anosSemFeriados } from '../fluxo/feriados-ao-subir.ts'
 import { PASSOS_COM_GOVBR, alertarUsoForaDoPadrao } from '../fluxo/cofre.ts'
 import { ID_CONFERIR_DESFECHOS, conferenciaDoAcervo } from '../fluxo/acervo.ts'
+import { daRecepcao } from '../fluxo/tarefas-da-recepcao.ts'
 import { hojeEmBrasilia, itensDaFila } from '../vigilia/fila.ts'
 import { alarmesDaVigilia } from './vigilia-diario.ts'
 import { aposErro, estaTravado } from '../sessao/regras.ts'
@@ -136,26 +137,30 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
 
   /** As tarefas do banco abertas na raia do perfil, como a Central mostra. */
   async function tarefasDoPerfil(perfil: string): Promise<TarefaDaCentral[]> {
+    // GGVP-158 P7.2: a tarefa da pessoa que ainda não tem caso (o fechamento do lead) também entra, com o cliente da linha.
     const linhas = await banco
       .select({ tarefa, casoId: caso.id, cliente: { id: pessoa.id, nome: pessoa.nome }, beneficio: caso.beneficio })
       .from(tarefa)
-      .innerJoin(caso, eq(tarefa.casoId, caso.id))
-      .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
+      .leftJoin(caso, eq(tarefa.casoId, caso.id))
+      .innerJoin(pessoa, sql`${pessoa.id} = coalesce(${tarefa.pessoaId}, ${caso.pessoaId})`)
       // GGVP-158 P6.7: as tarefas da conversa (D5) chegam à Central pela rota da conversa, como antes; aqui não repetem.
       .where(and(eq(tarefa.perfilDono, perfil), inArray(tarefa.situacao, ['aberta', 'em_andamento']), sql`coalesce(${tarefa.passo}, '') not like 'D5.%'`))
       .orderBy(asc(tarefa.prazo), asc(tarefa.criadoEm))
     const visiveis: TarefaDaCentral[] = []
     for (const l of linhas) {
-      if (l.tarefa.passo === 'D2.02' && !(await okDaSeniorAprovado(l.casoId))) continue
+      if (l.tarefa.passo === 'D2.02' && (!l.casoId || !(await okDaSeniorAprovado(l.casoId)))) continue
+      // As da Recepção levam o id que a tela já usa (a atribuição do líder, GGVP-147, segue valendo) e a tela delas.
+      const daTela = daRecepcao(l.tarefa)
+      const alvo = l.casoId ?? l.cliente.id
       visiveis.push(
         TarefaDaCentral.parse({
-          id: l.tarefa.id,
+          id: daTela ? daTela.id(alvo) : l.tarefa.id,
           casoId: l.casoId,
           passo: l.tarefa.passo,
           cliente: l.cliente,
           titulo: l.tarefa.titulo,
-          detalhe: l.beneficio ? nomeDoBeneficio(l.beneficio) : 'benefício a definir',
-          tela: l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.casoId) : null,
+          detalhe: l.tarefa.detalhe ?? (l.beneficio ? nomeDoBeneficio(l.beneficio) : 'benefício a definir'),
+          tela: daTela ? daTela.tela(alvo) : l.casoId && l.tarefa.passo && TELA_DO_PASSO[l.tarefa.passo] ? TELA_DO_PASSO[l.tarefa.passo](l.casoId) : null,
           prazo: l.tarefa.prazo,
           // Pensão por morte em destaque na fila da Sênior (regra dos 90 dias do óbito; resposta do revisor de 05/10).
           urgente:

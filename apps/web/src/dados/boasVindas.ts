@@ -81,7 +81,8 @@ export async function enviarBoasVindas(processoId: string, envio: EnvioDasBoasVi
 export function tarefasDeReenviarBoasVindas(): Tarefa[] {
   const banco = ler()
   const tarefas = [...new Set((banco.boasVindas ?? []).map((r) => r.processoId))].flatMap((processoId) => {
-    const atual = montar(banco, processoId)
+    // O caso do servidor já vem na Central pela linha do servidor (GGVP-158 P7.2): não repete aqui.
+    const atual = doServidor(processoId) ? null : montar(banco, processoId)
     if (atual?.situacao !== 'falhou' || !atual.registro) return []
     return [
       {
@@ -97,24 +98,8 @@ export function tarefasDeReenviarBoasVindas(): Tarefa[] {
       },
     ]
   })
-  // Bloco 5c: no caso do servidor, conferido o checklist do cliente novo, a Atendimento manda por fora e marca "Já enviei".
-  const aEnviar = (banco.checklistsDoServidor ?? []).flatMap((c) => {
-    const atual = c.conferencia ? montar(banco, c.processoId) : null
-    if (atual?.situacao !== 'a-enviar') return []
-    const n = atual.faltam.length
-    return [
-      {
-        id: `boas-vindas-${c.processoId}`,
-        codigo: 'D1.22',
-        cliente: { id: atual.fichaId, nome: atual.nome },
-        acao: 'Enviar boas-vindas',
-        detalhe: `${c.beneficio} · checklist conferido · ${n === 0 ? 'sem pendências' : n === 1 ? '1 pendência' : `${n} pendências`}`,
-        prazo: 'hoje',
-        href: `/casos/${c.processoId}/checklist`,
-        processoId: c.processoId,
-      },
-    ]
-  })
+  // Bloco 5c: no caso do servidor, "Enviar boas-vindas" (a Atendimento manda por fora e marca "Já enviei") é linha do
+  // servidor desde a GGVP-158 P7.2.
   gravar(banco)
-  return [...tarefas, ...aEnviar]
+  return tarefas
 }

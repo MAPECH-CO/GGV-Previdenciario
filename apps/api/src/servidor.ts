@@ -37,6 +37,7 @@ import { abrirConversor, type ConversorDePdf } from './kit/pdf.ts'
 import { criarPreparo } from './ia/preparo.ts'
 import { registrarRotasDesfecho } from './rotas/desfecho.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
+import { sincronizarRecepcao } from './fluxo/tarefas-da-recepcao.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecurso } from './rotas/recurso.ts'
@@ -118,6 +119,8 @@ declare module 'fastify' {
     prepararSugestoes: () => Promise<void>
     /** GGVP-141 (ADR-013): uma rodada do acervo que se alimenta sozinho. Sem banco ou sem a chave da IA, não faz nada. */
     alimentarAcervo: () => Promise<void>
+    /** GGVP-158 P7.2: uma rodada das tarefas da Recepção, pelo que muda só com a data. Sem banco, não faz nada. */
+    sincronizarRecepcao: () => Promise<void>
   }
   interface FastifyContextConfig {
     /** GGVP-158: por que esta rota /api não tem trava de permissão (a que recusa sempre, por exemplo). */
@@ -196,6 +199,7 @@ export function criarServidor({
   app.decorate('prepararSugestoes', () => preparar())
   let alimentar = async () => {}
   app.decorate('alimentarAcervo', () => alimentar())
+  app.decorate('sincronizarRecepcao', () => (banco ? sincronizarRecepcao(banco, agora ?? (() => new Date())) : Promise.resolve()))
   const consultar = consultarBanco ?? (banco && (() => banco.execute(sql`select 1`)))
   // CA10: só leitura não guarda o pacote no Drive, então a trava do pacote não o cobra.
   const doAmbiente = driveDado === undefined ? abrirDrive() : driveDado

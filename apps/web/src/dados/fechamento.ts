@@ -217,6 +217,8 @@ export async function registrarRecontato(fichaId: string, r: ResultadoDoRecontat
 export function tarefasDeFechamento(): Tarefa[] {
   const hoje = hojeIso(agora())
   return ler().fichas.flatMap((ficha): Tarefa[] => {
+    // A ficha do servidor já vem na Central pela linha do servidor (GGVP-158 P7.2): não repete aqui.
+    if (doServidor(ficha.id)) return []
     const cliente = { id: ficha.id, nome: ficha.nome }
     if (precisaRegistrarFechamento(ficha)) {
       const entrevista = entrevistaRealizada(ficha)!

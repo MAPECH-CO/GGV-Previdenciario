@@ -153,7 +153,8 @@ export function tarefasDeConferirChecklist(): Tarefa[] {
     // Primeiro a leitura: com documento a conferir, o checklist ainda espera.
     const ultimo = daFicha.map((l) => l.arquivadoEm ?? '').sort().at(-1)
     const processo = ficha.processos[0]
-    if (!processo || !ultimo || daFicha.some((l) => l.situacao === 'a-conferir')) return []
+    // O caso do servidor já vem na Central pela linha do servidor (GGVP-158 P7.2): não repete aqui.
+    if (!processo || doServidor(processo.id) || !ultimo || daFicha.some((l) => l.situacao === 'a-conferir')) return []
     const caso = montar(banco, processo.id)
     if (!caso || (caso.conferencia && caso.conferencia.quando >= ultimo)) return []
     const recebidos = caso.checklist.itens.filter((i) => i.situacao === 'recebido').length

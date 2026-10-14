@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, fichaRecepcao, gravacaoRecepcao, pessoa, resultadoInss, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, fichaRecepcao, gravacaoRecepcao, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_IA_DESLIGADA, MSG_IA_SEM_RESPOSTA } from '../fluxo/transcricao.ts'
 import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
 import { criarIa } from '../ia/ia.ts'
@@ -381,5 +381,47 @@ describe('GGVP-158 P7.4 · a sugestão de benefício vem do acervo de verdade', 
     const def = await json('gabi', 'POST', url, { beneficio: 'incapacidade-temporaria', conferi: true })
     expect(def.ficha.beneficioDefinido).toMatchObject({ citado: 'incapacidade-temporaria', recusouSugestao: false, fontes: [] })
     expect(def.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/· o que citou na entrevista \(G3\)$/))
+  })
+})
+
+describe('GGVP-158 P7.2 · o fechamento do lead é linha da Central, da pessoa, sem caso', () => {
+  type Linha = { id: string; casoId: string | null; titulo: string; detalhe: string; prazo: string | null; tela: string | null; cliente: { id: string } | null }
+  const linha = async (apelido: string, id: string) => ((await json(apelido, 'GET', '/api/tarefas')) as Linha[]).find((t) => t.id === id)
+
+  it('a entrevista feita abre "Registrar fechamento" na Central do Atendimento; o líder atribui pelo id da tela; registrar fecha', async () => {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    const id = `fechamento-${fichaId}`
+    expect(await linha('ana', id)).toMatchObject({
+      casoId: null,
+      passo: 'D1.14',
+      cliente: { id: fichaId, nome: 'Joana Ribeiro' },
+      titulo: 'Registrar fechamento',
+      detalhe: expect.stringMatching(/ · entrevista em /),
+      tela: `/clientes/${fichaId}/fechamento`,
+      prazo: '2026-10-09',
+    })
+    // GGVP-147: a atribuição do líder vale pelo mesmo id.
+    const [ana] = await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, 'ana@exemplo.ggv'))
+    expect((await json('eva', 'GET', '/api/setor')).tarefas.map((t: { id: string }) => t.id)).toContain(id)
+    expect((await chamar('eva', 'POST', '/api/setor/atribuicoes', { tarefaId: id, responsavelId: ana.id })).statusCode).toBe(201)
+    expect((await json('ana', 'GET', '/api/setor/minhas')).minhas.map((t: { id: string }) => t.id)).toEqual([id])
+
+    await definir(agendamentoId, 'loas-idoso')
+    await json('ana', 'POST', `/api/fichas/${fichaId}/fechamento`, { fechou: false, motivo: 'preco', detalhe: 'achou caro', recontatar: null })
+    expect(await linha('ana', id)).toBeUndefined()
+    expect((await banco.select({ situacao: tarefa.situacao }).from(tarefa).where(eq(tarefa.pessoaId, fichaId))).map((t) => t.situacao)).toEqual(['concluida'])
+  })
+
+  it('o recontato entra na data, pela rodada; antes, não', async () => {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    await definir(agendamentoId, 'loas-idoso')
+    await json('ana', 'POST', `/api/fichas/${fichaId}/fechamento`, { fechou: false, motivo: 'sem-direito', recontatar: { data: '20/10/2026', espera: 'esperar' } })
+    const doLead = () =>
+      banco.select({ titulo: tarefa.titulo, casoId: tarefa.casoId, prazo: tarefa.prazo, situacao: tarefa.situacao }).from(tarefa).where(eq(tarefa.pessoaId, fichaId))
+    expect(await doLead()).toEqual([{ titulo: 'Registrar fechamento', casoId: null, prazo: '2026-10-09', situacao: 'concluida' }])
+    const noDia = criarServidor({ banco, agora: () => new Date('2026-10-20T15:00:00Z') })
+    await noDia.sincronizarRecepcao()
+    await noDia.close()
+    expect(await doLead()).toContainEqual({ titulo: 'Recontatar lead', casoId: null, prazo: '2026-10-20', situacao: 'aberta' })
   })
 })

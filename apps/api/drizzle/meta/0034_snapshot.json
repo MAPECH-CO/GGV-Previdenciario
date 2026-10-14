@@ -1,5 +1,5 @@
 {
-  "id": "02c41345-911a-49a2-927e-026446987b9f",
+  "id": "520eae7d-2cae-4990-8fd5-bcbdba881cbb",
   "prevId": "7d880f2a-020c-4686-be3d-9710318306c1",
   "version": "7",
   "dialect": "postgresql",
@@ -2484,6 +2484,12 @@
         "prazo": {
           "name": "prazo",
           "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detalhe": {
+          "name": "detalhe",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

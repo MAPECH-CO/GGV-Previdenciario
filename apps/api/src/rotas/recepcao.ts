@@ -31,6 +31,7 @@ import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { guardarNoCofre } from './cofre.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
+import { sincronizarRecepcao } from '../fluxo/tarefas-da-recepcao.ts'
 import { portaoDoContato } from './seguranca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { BENEFICIOS, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
@@ -273,6 +274,10 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       .insert(fichaRecepcao)
       .values({ pessoaId: f.id, documento })
       .onConflictDoUpdate({ target: fichaRecepcao.pessoaId, set: { documento, atualizadoEm: agora() } })
+    // GGVP-158 P7.2: as tarefas da Recepção da pessoa acompanham a ficha. Falhou, a rodada de 5 minutos acerta.
+    await sincronizarRecepcao(banco, agora, { pessoaId: f.id }).catch((e: unknown) =>
+      console.error('[recepção] as tarefas não sincronizaram', e instanceof Error ? e.message : e),
+    )
   }
 
   /** Abre a tarefa uma vez por motivo: o id é o das telas ("preparar-<entrevista>"); a que já existe fica como está. */

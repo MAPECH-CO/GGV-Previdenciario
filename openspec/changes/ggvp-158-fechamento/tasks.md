@@ -607,14 +607,18 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - o Atendimento não lê, nem no resumo.
 
   Verificado em 13/10: `rotas/estrategia.test.ts` 5/5 e `rotas/processo.test.ts` 9/9. A proposta pronta na rodada, sem chamar de novo ao abrir; a versão ajustada com quem e quando, e o histórico sem o texto; a Sênior salva outra; o Atendimento recebe 403 e o resumo sem a estratégia; a proposta de outro caso recusa; pedir outra chama a IA de novo.
-- [ ] 7.4 As tarefas da Recepção, o módulo (P7.2, decisão 68): `sincronizarRecepcao` com a cobrança, o checklist, as boas-vindas e o fechamento.
+- [x] 7.4 As tarefas da Recepção, o módulo (P7.2, decisão 68): `sincronizarRecepcao` com a cobrança, o checklist, as boas-vindas e o fechamento.
   - Verifica com teste:
     - abre, fecha e atualiza o prazo;
     - uma linha por chave.
-- [ ] 7.5 As tarefas da Recepção, as rotas (P7.2): a sincronização no fim das rotas que mudam a origem; a Central geral com a tarefa da pessoa sem caso e o id da tela.
+
+  Verificado em 13/10, em `rotas/recepcao-checklist.test.ts` (3 novos): a linha abre com a cobrança, atualiza o prazo e o detalhe na tentativa e fecha quando chega tudo; "Decidir cobrança" abre no limite e fecha com a decisão; "Conferir checklist" e "Enviar boas-vindas" pelas regras das telas; a rodada de novo não repete, e o banco recusa a segunda aberta da mesma chave.
+- [x] 7.5 As tarefas da Recepção, as rotas (P7.2): a sincronização quando a ficha é guardada e na rodada de 5 minutos; a Central geral com a tarefa da pessoa sem caso e o id da tela.
   - Verifica com as suítes da cobrança, do checklist, das mensagens e do fechamento e com `rotas/inss.test.ts`:
     - a cobrança aberta e encerrada;
     - o fechamento do lead na Central do Atendimento.
+
+  Verificado em 13/10: `rotas/recepcao-checklist.test.ts` e `rotas/recepcao-decisoes.test.ts` 32/32 (5 novos), e `inss`, `setor`, `conversa`, as suítes da Recepção e `banco/migracoes.test.ts`, 122/122. A Central do Atendimento mostra "Registrar fechamento" da pessoa, sem caso, com o id da tela; o líder atribui por esse id; registrar fecha; o recontato entra na data, pela rodada. Na tela, `dados/servidorLigado.test.ts` 35/35: as fontes da tela não repetem o caso do servidor. Contratos 189/189.
 - [x] 7.6 O chat (P7.3, decisão 69): `criar_tarefa` só com `tarefa.atribuir`; `pedir_peca` só com a D3.05 aberta, sem outra.
   - Verifica com `rotas/chat.test.ts`:
     - a atendente não cria tarefa;

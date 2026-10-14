@@ -435,10 +435,11 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - O resumo do processo ganha `estrategia`, o texto da atual, só com `estudo.ver`. Opcional no contrato.
 68. **As tarefas da Recepção viram linhas** (P7.2).
     - Um módulo só, `fluxo/tarefas-da-recepcao.ts`: `sincronizarRecepcao(banco, agora, { casoId?, pessoaId? })` calcula o que deve estar aberto pelas mesmas regras puras das telas (a cobrança, o checklist, as boas-vindas que não saíram e o fechamento) e acerta as linhas: abre a que falta, fecha a que não vale mais e atualiza o prazo.
-    - A chave de cada linha é o passo, o título e o caso (ou a pessoa, sem caso): uma aberta por chave.
-    - É chamado no fim de cada rota que muda a origem: a cobrança, o checklist, o envio das boas-vindas e o fechamento.
+    - A chave de cada linha é o passo, o título e o caso (ou a pessoa, sem caso): uma aberta por chave. O banco segura, com um índice único parcial na 0034, e a sincronização abre com "on conflict do nothing".
+    - É chamado quando a ficha é guardada (13/10, na implementação): toda rota da Recepção que muda a cobrança, o checklist, as boas-vindas ou o fechamento guarda a ficha no fim, e a chamada num lugar só não esquece rota. O que muda só com a data (o lembrete e o limite da cobrança, o recontato) entra na rodada de 5 minutos do processo (`app.sincronizarRecepcao`).
+    - A linha guarda o detalhe que a tela mostrava (`tarefa.detalhe`, na 0034), e a Central mostra esse detalhe no lugar do benefício.
     - A Central geral (`/api/tarefas`) lê também a linha da pessoa sem caso (o cliente vem da linha ou do caso), e a tela de cada passo vem do passo.
-    - O id que a Central devolve para essas linhas é a chave que a tela já usa (`cobrar-<caso>` e as outras), para a atribuição do líder (GGVP-147) seguir valendo. A tela do Pedro deixa de calcular os casos do servidor, como já faz com o D1.24.
+    - O id que a Central devolve para essas linhas é a chave que a tela já usa (`cobrar-<caso>` e as outras), para a atribuição do líder (GGVP-147) seguir valendo; o contrato da linha aceita esse id. As fontes da tela (`dados/`) deixam de calcular os casos do servidor, como já fazem com o D1.24.
 69. **O chat** (P7.3).
     - `criar_tarefa` só entra nas ferramentas de quem tem `tarefa.atribuir`, e a execução confere de novo.
     - `pedir_peca` confere a "Pedir a petição" (D3.05) aberta pelo despacho. Sem ela: "A petição é pedida depois do despacho da Sênior.". Com ela, não cria outra: devolve o link da petição e registra o pedido no histórico.

@@ -5,7 +5,8 @@ import { SugestaoDaIa } from './ia.ts'
 
 /** Linha da Central do perfil (GET /api/tarefas). Título e detalhe nunca levam CID nem diagnóstico. */
 export const TarefaDaCentral = z.object({
-  id: z.uuid(),
+  /** O id da linha; nas tarefas da Recepção, o que a tela já usa, como "cobrar-<caso>" (GGVP-158 P7.2). */
+  id: z.string().min(1),
   /** Nulo quando a tarefa é de um contexto, não de um caso (fila de revisão, vigília). */
   casoId: z.uuid().nullable(),
   passo: z.string().nullable(),
