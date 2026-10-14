@@ -65,6 +65,6 @@
 
 ## 14. CA4 · Tarefa sem tela própria (Pedro, 14/10, segundo PDF, ajuste 2)
 
-- [ ] 14.1 `destinoDaTarefa` em `componentes/TarefaLinha.tsx`: a tela da tarefa; sem ela, a ficha do cliente; sem cliente, nada (a linha não vira link). A fila (`TarefaLinha`) e a busca (`CampoBusca`) usam o mesmo; testes em `TarefaLinha.test.tsx` e `CampoBusca.test.tsx`.
-- [ ] 14.2 Apagar as tarefas de exemplo fixas sem tela: "Agendar ida ao banco" e "Avisar a cliente do resultado" (Atendimento), "Cumprir exigência do juiz" e "Responder a exigência do INSS" (Documentação) em `dados/atendimento.ts`, e "Prestação de contas: dar o OK" em `dados/advogada.ts`; as de verdade vêm do servidor; ajustar `CentralAtendimento.test.tsx` e o que contava com elas.
-- [ ] 14.3 Rodar typecheck, lint e testes; colar a saída; relatório final.
+- [x] 14.1 `destinoDaTarefa` em `dados/tarefas.ts`: a tela da tarefa; sem ela, a ficha do cliente; sem cliente, nada (a linha não vira link). A fila (`TarefaLinha`) e a busca (`CampoBusca`) usam o mesmo; testes em `TarefaLinha.test.tsx` e `CampoBusca.test.tsx`.
+- [x] 14.2 Apagar as tarefas de exemplo fixas sem tela: "Agendar ida ao banco" e "Avisar a cliente do resultado" (Atendimento), "Cumprir exigência do juiz" e "Responder a exigência do INSS" (Documentação) em `dados/atendimento.ts`, e "Prestação de contas: dar o OK" em `dados/advogada.ts`; as de verdade vêm do servidor; ajustar `CentralAtendimento.test.tsx` e o que contava com elas.
+- [x] 14.3 Rodar typecheck, lint e testes; colar a saída; relatório final.

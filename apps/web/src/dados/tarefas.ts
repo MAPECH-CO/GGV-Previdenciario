@@ -6,6 +6,12 @@ import type { Tarefa } from './tipos.ts'
 
 const formatarPrazo = (iso: string | null) => (iso ? `até ${iso.slice(8, 10)}/${iso.slice(5, 7)}` : undefined)
 
+/**
+ * Para onde a linha da tarefa leva, na fila e na busca (GGVP-120 CA4, Pedro, 14/10): a tela da tarefa; sem ela, a ficha
+ * do cliente; sem cliente, a linha não é link. Nunca a "tela não construída".
+ */
+export const destinoDaTarefa = (t: Pick<Tarefa, 'href' | 'cliente'>) => t.href ?? (t.cliente ? `/clientes/${t.cliente.id}` : undefined)
+
 export const paraLinha = (t: TarefaDaCentral): Tarefa => ({
   id: t.id,
   codigo: t.passo ?? '',

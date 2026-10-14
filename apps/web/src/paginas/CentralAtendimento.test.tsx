@@ -18,10 +18,10 @@ beforeEach(() => {
 })
 
 describe('Central do Atendimento', () => {
-  it('mostra a fila de 17 tarefas; quem não é líder não vê a aba "Tarefas do setor" (GGVP-147 CA3)', async () => {
+  it('mostra a fila de 13 tarefas; quem não é líder não vê a aba "Tarefas do setor" (GGVP-147 CA3)', async () => {
     render(<CentralAtendimento />)
     // A conversa com o cliente vem do servidor (GGVP-138): a fila completa chega depois dele.
-    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(17))
+    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(13))
     expect(screen.queryByRole('tab')).toBeNull()
   })
 
@@ -110,10 +110,13 @@ describe('Central do Atendimento', () => {
         'Antônio Exemplo · Receber documento',
         'Rita Exemplo · Conferir documento',
         'Sebastião Exemplo · Liberar ao Jurídico',
-        'Antônio Exemplo · Cumprir exigência do juiz',
-        'Pedro Exemplo · Responder a exigência do INSS',
       ])
         expect(screen.getByRole('link', { name: nome })).toBeTruthy()
+      // GGVP-120 CA4 (Pedro, 14/10): as exigências fixas de exemplo, sem tela, saíram; as de verdade vêm do servidor.
+      for (const nome of ['Antônio Exemplo · Cumprir exigência do juiz', 'Pedro Exemplo · Responder a exigência do INSS'])
+        expect(screen.queryByRole('link', { name: nome })).toBeNull()
+      // Nenhuma linha da fila leva à "tela não construída".
+      expect([...screen.getByRole('main').querySelectorAll('li a[aria-label]')].filter((l) => l.getAttribute('href')!.startsWith('/tarefas/'))).toEqual([])
       expect(acoes()).toContain('Receber documento')
       expect(acoes().filter((a) => !DA_DOCUMENTACAO.includes(a))).toEqual([])
       for (const nome of ['Antônio Exemplo · Cobrar documento', 'Marta Exemplo · Completar telefone', 'Balcão · Receber quem chegou'])
@@ -246,8 +249,8 @@ describe('Central do Atendimento', () => {
     cleanup()
     entrarComo('documentacao')
     render(comSessao(<CentralAtendimento />))
-    // As 6 da Documentação (GGVP-130), depois da resposta do servidor da conversa.
-    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(6))
+    // As 4 da Documentação (GGVP-130; as exigências fixas saíram, GGVP-120 CA4), depois da resposta do servidor da conversa.
+    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(4))
     expect(screen.queryByRole('link', { name: 'Pedro Exemplo · Registrar conversa' })).toBeNull()
   })
 
@@ -280,8 +283,8 @@ describe('Central do Atendimento', () => {
       vi.fn(async (url: string, init?: RequestInit) => (await responderRelacionamento(url, init)) ?? new Response(JSON.stringify([ajuste]))),
     )
     render(<CentralAtendimento />)
-    // As 16 de exemplo, a ligação do Pedro Exemplo (do servidor do Relacionamento) e o ajuste do servidor.
-    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(18))
+    // As 12 de exemplo, a ligação do Pedro Exemplo (do servidor do Relacionamento) e o ajuste do servidor.
+    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(14))
     const [primeira] = within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')
     expect(primeira.textContent).toContain('Ajustar o caso: Falta o laudo')
   })

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { agora, buscarNoBalcao, ler } from '../dados/servidor.ts'
+import { destinoDaTarefa } from '../dados/tarefas.ts'
 import type { ResultadoBusca, Tarefa } from '../dados/tipos.ts'
 import { resultadoDaFicha, semAcento } from '../regras/busca.ts'
 import { hojeIso } from '../regras/datas.ts'
@@ -103,13 +104,11 @@ export function CampoBusca({ tarefas = [] }: { tarefas?: Tarefa[] }) {
             <>
               <h2 className={styles.grupo}>Tarefas ({resultado.tarefas.length})</h2>
               <ul className={styles.lista} aria-label="Tarefas encontradas">
-                {resultado.tarefas.map((t) => (
-                  <li key={t.id}>
-                    <a href={t.href ?? `/tarefas/${t.id}`}>
-                      {t.cliente?.nome ?? t.contexto} · {t.acao}
-                    </a>
-                  </li>
-                ))}
+                {resultado.tarefas.map((t) => {
+                  const destino = destinoDaTarefa(t)
+                  const texto = `${t.cliente?.nome ?? t.contexto} · ${t.acao}`
+                  return <li key={t.id}>{destino ? <a href={destino}>{texto}</a> : texto}</li>
+                })}
               </ul>
             </>
           )}

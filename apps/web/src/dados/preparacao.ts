@@ -2,7 +2,6 @@
 // Fichas de demonstração continuam no modo local enquanto durar o modo misto.
 import { dataCurta, hojeIso, idadeEm } from '../regras/datas.ts'
 import { atencaoCurta, pontosDeAtencao } from '../regras/preparacao.ts'
-import { tarefasAdvogada } from './advogada.ts'
 import { nomeBeneficio } from './catalogos.ts'
 import { chamarApi } from '../api.ts'
 import { agendamentoDoServidor, agora, doServidor, ler, noBanco } from './servidor.ts'
@@ -84,5 +83,5 @@ export function tarefasDaAdvogada(): Tarefa[] {
         urgente: a.data === hoje,
       }
     })
-  return [...doJuridico, ...tarefasAdvogada]
+  return doJuridico
 }
