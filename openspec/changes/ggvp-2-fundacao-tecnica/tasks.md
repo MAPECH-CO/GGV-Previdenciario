@@ -35,7 +35,9 @@
 - [ ] 2.13 CA7 · (13/10: variáveis trocadas e app no ar; `/saude` com `ligado` no banco de São Paulo; o login copiado de Oregon abriu Início, Processos, Prazos, Agenda e Resultados no Chrome do Mateus. Falta abrir um documento.) O Mateus troca `DATABASE_URL`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no Coolify e sobe o app; verifica `GET /saude` com `ligado`, o login de teste e a abertura de um documento.
 - [x] 2.14 CA7 · Atualizar `docs/infra/homologacao.md`: projeto, região, a troca de 13/10 e como voltar; verifica lendo o arquivo.
 - [x] 2.15 CA8 · (13/10: nenhuma chamada acima de 1 s; tabela em `docs/infra/homologacao.md`; `/api/sessao` de 91 a 880 ms, em observação.) Medir o tempo de resposta das rotas das telas principais na homologação e registrar em `docs/infra/homologacao.md`; a rota acima de 1 segundo vira tarefa nova por `/opsx:update`; verifica pela tabela registrada.
-- [ ] 2.16 CA7 · Depois de 2 dias sem problema e com o ok do Mateus: backup do "Portal Operacional" fora da Supabase e exclusão do projeto de Oregon; verifica pelo conector, sem o projeto na lista.
+- [x] 2.16 CA7 · ~~Depois de 2 dias sem problema e com o ok do Mateus: backup do "Portal Operacional" fora da Supabase e exclusão do projeto de Oregon; verifica pelo conector, sem o projeto na lista.~~
+
+  Cancelada em 14/10 pelo Mateus: o "Portal Operacional", de Oregon, não é apagado. Ele volta a ser o banco da homologação quando a produção subir no PrevGGVLucas (GGVP-158, parte 9, decisão 81 e tarefa 9.6).
 - [ ] 2.6 CA1, CA2, CA3 · Conferir a implantação da homologação pela infraestrutura: banco no Supabase, projeto "Portal Operacional", e app no Coolify; segredos fora do repositório. Manter `docs/infra/homologacao.md` coerente e registrar a validação no ambiente autorizado. A atualização documental da GGVP-159 não executa esta tarefa nem autoriza apagar dados.
 - [x] 2.7 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
