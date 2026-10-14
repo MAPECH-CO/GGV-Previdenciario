@@ -9,7 +9,7 @@ const sha256 = (b: Buffer) => createHash('sha256').update(b).digest('hex')
 
 test('a Documentação abre o RG na conferência e na liberação; o laudo fica com o Jurídico', async ({ page, browser }) => {
   test.setTimeout(120_000)
-  const novo = { nome: 'Lia Abrir Documento', idade: 66, pretende: 'Quer o BPC do idoso.', telefone: '11933331177', cpf: '61427395837', beneficioInteresse: 'loas-idoso', outraPessoa: false }
+  const novo = { nome: 'Lia Abrir Documento', idade: 66, pretende: 'Quer o BPC do idoso.', telefone: '11933331188', cpf: '61427395837', beneficioInteresse: 'loas-idoso', outraPessoa: false }
   const { id } = await (await page.request.post('/api/fichas', { data: novo })).json()
   const { processo } = await (await page.request.post(`/api/fichas/${id}/processos`, { data: { beneficio: 'loas-idoso' } })).json()
   const rg = Buffer.from('%PDF-1.4 o RG da Lia, para abrir na janela')
