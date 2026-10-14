@@ -635,12 +635,14 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - a ida ao banco não duplica.
 
   Verificado em 13/10: `rotas/vigilia.test.ts`, `rotas/prestacao.test.ts` (1 novo), `rotas/estudo.test.ts`, `rotas/acervo.test.ts` e `fluxo/ficha-do-desfecho.test.ts`, 67/67. O deferimento entra no acervo na hora, com a data; a ida ao banco não duplica; o caso perdido segue pela mesma função.
-- [ ] 7.10 Os valores (P7.6, decisão 72): as rotas, a regra de valores e o resumo do processo.
+- [x] 7.10 Os valores (P7.6, decisão 72): as rotas, a regra de valores e o resumo do processo.
   - Verifica com `rotas/valores.test.ts`:
     - a advogada grava;
     - o Financeiro lê;
     - o Atendimento e a Sênior recebem 403;
     - o valor errado recusa.
+
+  Verificado em 13/10: `rotas/valores.test.ts` 4/4 (novo) e `rotas/processo.test.ts` 9/9. A advogada grava; o Financeiro e o Sócio leem; o Atendimento, a Documentação e a Sênior recebem 403; o valor errado recusa; a prestação só para a advogada do caso na prestação de contas; o resumo do processo traz só o que o perfil vê.
 - [ ] 7.11 O Raio-X, a leitura (P7.7, decisão 73): o contrato, a leitura da planilha e o relatório, numa função pura.
   - Verifica com teste, com uma base inventada:
     - a linha sem número recusa;

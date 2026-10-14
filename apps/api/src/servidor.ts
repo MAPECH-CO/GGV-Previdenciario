@@ -65,6 +65,7 @@ import { registrarRotasConversa } from './rotas/conversa.ts'
 import { criarCorreio, registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasChatwootEntrada } from './rotas/chatwoot-entrada.ts'
 import { registrarRotasEstrategia } from './rotas/estrategia.ts'
+import { registrarRotasValores } from './rotas/valores.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
@@ -226,6 +227,8 @@ export function criarServidor({
     registrarRotasVigilia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasExigencia(app, { banco, agora, armazenamento: arquivos })
     registrarRotasPrestacao(app, { banco, agora, correio: criarCorreio(banco, agora ?? (() => new Date())) })
+    // GGVP-158 P7.6: o valor da causa e a renda por pessoa do LOAS, pela regra de valores.
+    registrarRotasValores(app, { banco, agora })
     registrarRotasPublicacoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })

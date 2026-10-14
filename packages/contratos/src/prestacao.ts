@@ -81,6 +81,28 @@ const Inteiro = (mensagem: string, minimo: number, maximo: number) =>
     .refine((n) => n !== null && n >= minimo && n <= maximo, mensagem)
     .transform((n) => n as number)
 
+/**
+ * GGVP-158 P7.6: o valor da causa (da petição) e a renda por pessoa do LOAS (da ficha e da entrevista), em pt-BR. Só a
+ * advogada grava.
+ */
+export const ValorDaCausa = z.object({ valor: Decimal('Informe o valor da causa, como 1.234,56') })
+export type ValorDaCausa = z.input<typeof ValorDaCausa>
+export const RendaPorPessoa = z.object({ valor: Decimal('Informe a renda por pessoa, como 1.234,56') })
+export type RendaPorPessoa = z.input<typeof RendaPorPessoa>
+
+/**
+ * GET /api/casos/:id/valores (GGVP-158 P7.6): só os valores que o perfil pode ver, pela regra das telas
+ * (`podeVerValor`); o que ele não vê não vem. Texto decimal com ponto ("1234.56"); nulo quando ainda não foi informado.
+ */
+export const ValoresDoCaso = z.object({
+  casoId: z.uuid(),
+  causa: z.string().nullable().optional(),
+  rendaPorPessoa: z.string().nullable().optional(),
+  prestacao: z.object({ versao: z.number(), recebido: z.string(), honorarios: z.string(), repasse: z.string() }).nullable().optional(),
+  podeEditar: z.boolean(),
+})
+export type ValoresDoCaso = z.infer<typeof ValoresDoCaso>
+
 export const MSG_VALOR_DA_PARCELA = 'Informe o valor de cada parcela, como 1.234,56'
 /** As parcelas combinadas no contrato: quantas e o valor de cada uma. ponytail: parcelas iguais; lista, se o escritório pedir. */
 const ParcelasDoAcordo = z.object(

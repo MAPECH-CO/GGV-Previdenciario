@@ -20,6 +20,9 @@ export const ProcessoDoCaso = z.object({
   juiz: z.string().nullable().optional(),
   /** GGVP-158 P7.1: o texto da estratégia que vale, só para quem vê o estudo de caso (o Jurídico e os sócios). */
   estrategia: z.string().nullable().optional(),
+  /** GGVP-158 P7.6: o valor da causa e a renda por pessoa do LOAS, só quando a regra de valores deixa o perfil ver. */
+  valorDaCausa: z.string().nullable().optional(),
+  rendaPorPessoa: z.string().nullable().optional(),
   senhaGovNoCofre: z.boolean(),
   transcricoes: z.number().int(),
   /** Os passos do BPMN abertos agora; `aguardando` diz quem de fora o caso espera. */

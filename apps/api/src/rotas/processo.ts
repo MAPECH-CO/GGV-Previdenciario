@@ -29,6 +29,7 @@ import {
   usuario,
 } from '../banco/esquema.ts'
 import { estrategiaAtual } from './estrategia.ts'
+import { valoresVisiveis } from './valores.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { linhaDoCaso } from './historico.ts'
@@ -238,6 +239,8 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
     const [ficha] = await banco.select({ documento: fichaRecepcao.documento }).from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, c.pessoa.id))
     const [cofre] = await banco.select({ id: credencialGovbr.id }).from(credencialGovbr).where(eq(credencialGovbr.pessoaId, c.pessoa.id))
 
+    // GGVP-158 P7.6: os valores que a regra de valores deixa o perfil ver; os outros não vêm.
+    const visiveis = await valoresVisiveis(banco, casoId, perfil, quem)
     return ProcessoDoCaso.parse({
       casoId,
       pessoa: { id: c.pessoa.id, nome: c.pessoa.nome, cpf: c.pessoa.cpf, nascimento: c.pessoa.dataNascimento },
@@ -250,6 +253,8 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       juiz: c.caso.juiz,
       // GGVP-158 P7.1: a estratégia é interna: só o Jurídico e os sócios.
       ...(pode(perfil, 'estudo.ver') && { estrategia: await estrategiaAtual(banco, casoId) }),
+      ...(visiveis && 'causa' in visiveis && { valorDaCausa: visiveis.causa }),
+      ...(visiveis && 'rendaPorPessoa' in visiveis && { rendaPorPessoa: visiveis.rendaPorPessoa }),
       senhaGovNoCofre: !!cofre,
       transcricoes: (ficha?.documento as { transcricoes?: number } | undefined)?.transcricoes ?? 0,
       etapas: etapas.map((e) => ({ diagrama: e.diagrama, passo: e.passo, aguardando: e.aguardando, desde: e.iniciadaEm.toISOString() })),
