@@ -66,6 +66,8 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     const dados = { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }
     expect((await chamar('marcos', 'POST', url, { dados, verificacao: { como: 'presencial', contratoNovo: true } })).statusCode).toBe(403)
     expect((await json('ana', 'POST', url, { dados: { ...dados, agencia: '1' }, verificacao: { como: 'presencial', contratoNovo: true } })).erro).toMatch(/^Agência com 4 números/)
+    // GGVP-111 CA9: a tela põe o traço; o servidor confere de novo, pela mesma biblioteca.
+    expect((await json('ana', 'POST', url, { dados: { ...dados, conta: '123456' }, verificacao: { como: 'presencial', contratoNovo: true } })).erro).toBe('Conta com os números e o dígito: 12345-6.')
     expect((await json('ana', 'POST', url, { dados })).erro).toBe(SO_COM_VERIFICACAO)
     expect(await portoes()).toEqual([expect.objectContaining({ portao: 'verificacao', passo: 'D3b.02' })])
 

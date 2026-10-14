@@ -1,9 +1,13 @@
 import { useEffect, useId, useState } from 'react'
+import { formatarAgencia, formatarConta } from '../campos.ts'
 import { confirmarMudancaBancaria, obterDadosBancarios, pedirMudancaBancaria, type PedidoBancario, type RegistroBancario } from '../dados/seguranca.ts'
 import { dataHora } from '../regras/datas.ts'
 import { COMO_VERIFICOU, erroDosDadosBancarios, motivoParaNaoMudar, type ComoVerificou, type DadosBancarios } from '../regras/seguranca.ts'
 import { Cartao } from './Cartao.tsx'
 import styles from './CartaoDadosBancarios.module.css'
+
+/** GGVP-111 CA9 (Pedro, 14/10): a agência e a conta ganham o traço a cada tecla, pela biblioteca de campos. */
+const FORMATO: Partial<Record<keyof DadosBancarios, (valor: string) => string>> = { agencia: formatarAgencia, conta: formatarConta }
 
 type Props = { fichaId: string; /** Mudou: quem abriu relê a ficha (o histórico). */ aoMudar: () => void }
 
@@ -72,10 +76,19 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
     }
   }
 
-  const campo = (chave: keyof DadosBancarios, rotulo: string, extra: { inputMode?: 'numeric'; placeholder?: string } = {}) => (
+  const campo =(chave: keyof DadosBancarios, rotulo: string, extra: { inputMode?: 'numeric'; placeholder?: string } = {}) => (
     <label className={styles.campo} htmlFor={`${id}-${chave}`}>
       {rotulo}
-      <input id={`${id}-${chave}`} className={styles.entrada} value={dados[chave] ?? ''} onChange={(e) => setDados((d) => ({ ...d, [chave]: e.target.value }))} {...extra} />
+      <input
+        id={`${id}-${chave}`}
+        className={styles.entrada}
+        value={dados[chave] ?? ''}
+        onChange={(e) => {
+          const valor = FORMATO[chave]?.(e.target.value) ?? e.target.value
+          setDados((d) => ({ ...d, [chave]: valor }))
+        }}
+        {...extra}
+      />
     </label>
   )
 

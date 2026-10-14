@@ -16,6 +16,16 @@ const botao = (nome: string) => cartao().getByRole('button', { name: nome }) as 
 const digitar = (rotulo: string, valor: string) => fireEvent.change(cartao().getByLabelText(rotulo), { target: { value: valor } })
 
 describe('Dados bancários para o repasse (GGVP-111)', () => {
+  it('CA9 (Pedro, 14/10) · a agência e a conta ganham o traço sozinhas: a pessoa digita só os números', async () => {
+    render(comSessao(<CartaoDadosBancarios fichaId="lucia-exemplo" aoMudar={vi.fn()} />))
+    fireEvent.click(await cartao().findByRole('button', { name: 'Mudar dados bancários' }))
+    digitar('Agência *', '00019')
+    digitar('Conta com dígito *', '123456')
+    expect((cartao().getByLabelText('Agência *') as HTMLInputElement).value).toBe('0001-9')
+    expect((cartao().getByLabelText('Conta com dígito *') as HTMLInputElement).value).toBe('12345-6')
+    expect(cartao().queryByText('Conta com os números e o dígito: 12345-6.')).toBeNull()
+  })
+
   it('CA1 e CA5 · só pede a mudança com o cliente verificado e em contrato novo; quem pediu não confirma; outra pessoa confirma e o contato anterior é avisado', async () => {
     const aoMudar = vi.fn()
     // A sessão desde o começo: a troca de quem está logado mantém o cartão aberto (rerender).

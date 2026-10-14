@@ -67,10 +67,10 @@
 - [x] 6.4 Telas: a verificação no formulário da ficha (`EdicaoCliente.tsx`) e na conferência (`ConferirConversa.tsx`); o cartão "Dados bancários para o repasse" (`CartaoDadosBancarios.tsx`) no card; o roteiro de segurança na conversa por ligação ou com quem não é o cliente (`Conversa.tsx`); o lembrete nas mensagens da perícia (`MensagemAoCliente.tsx`); "o cliente me ligou" no chat da Central (`LaudoPeloChat.tsx`, com o `ChatIA` avisando o resto como antes). Teste em `CartaoDadosBancarios.test.tsx`, `FichaCliente.test.tsx`, `ConferirConversa.test.tsx`, `Conversa.test.tsx` e `LaudoPeloChat.test.tsx` (CA1 a CA8). Verifica com `pnpm vitest run src/componentes src/paginas`.
 - [x] 6.5 Playwright `e2e/seguranca.e2e.ts`: o telefone do Antônio com a verificação; a conta da Lúcia com a segunda confirmação, o aviso e o alerta da advogada; o roteiro na ligação e o lembrete no chat; a frase da senha na mensagem (CA1 a CA7). A conferência da ligação em `e2e/conversa.e2e.ts` passa a marcar a verificação. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5187 pnpm exec playwright test seguranca conversa --workers=1`.
 - [ ] 6.6 Ligar no servidor: os endpoints da design (`PATCH /api/fichas/:id` com a verificação e os de dados bancários), a segunda confirmação pela matriz de perfis, o alerta na Central do Financeiro quando ela existir e o aviso pelo Chatwoot de verdade (5.6). **Fica aberta nesta história.**
-- [ ] 6.7 CA9 · `packages/campos`: `formatarConta`, `validarConta`, `formatarAgencia` e `validarAgencia`, com o dígito X; teste em `packages/campos/test/campos.test.ts`; verifica com `pnpm --filter @ggv/campos test`.
-- [ ] 6.8 CA9 · `erroDosDadosBancarios` confere pela biblioteca, com as mesmas mensagens (tela e servidor). Teste da regra e da rota; verifica com `pnpm --filter @ggv/web test` e `pnpm --filter @ggv/api test`.
-- [ ] 6.9 CA9 · O cartão "Dados bancários para o repasse" formata a agência e a conta a cada tecla. Teste Vitest em `CartaoDadosBancarios.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 6.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.7 CA9 · `packages/campos`: `formatarConta`, `validarConta`, `formatarAgencia` e `validarAgencia`, com o dígito X; teste em `packages/campos/test/campos.test.ts`; verifica com `pnpm --filter @ggv/campos test`.
+- [x] 6.8 CA9 · `erroDosDadosBancarios` confere pela biblioteca, com as mesmas mensagens (tela e servidor). Teste da regra e da rota; verifica com `pnpm --filter @ggv/web test` e `pnpm --filter @ggv/api test`.
+- [x] 6.9 CA9 · O cartão "Dados bancários para o repasse" formata a agência e a conta a cada tecla. Teste Vitest em `CartaoDadosBancarios.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 6.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-138 · Ligar no servidor as telas do Relacionamento (Pedro, 08/10)
 
